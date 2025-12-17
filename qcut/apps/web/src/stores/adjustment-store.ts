@@ -50,6 +50,11 @@ export interface AdjustmentState {
     // Gemini 3 Pro Edit specific parameters
     resolution?: "1K" | "2K" | "4K";
     aspectRatio?: string; // auto, 1:1, 4:3, 3:4, 16:9, 9:16, 21:9, 3:2, 2:3, 5:4, 4:5
+
+    // GPT Image 1.5 Edit specific parameters
+    background?: "auto" | "transparent" | "opaque";
+    inputFidelity?: "low" | "high";
+    quality?: "low" | "medium" | "high";
   };
 
   // Edit history
@@ -196,6 +201,20 @@ const getDefaultParameters = (model: ImageEditModelId) => {
         safetyTolerance: 2,
         numImages: 1,
         outputFormat: "jpeg" as const,
+        syncMode: false,
+      };
+    case "gpt-image-1-5-edit":
+      return {
+        guidanceScale: 2.5,
+        steps: 20,
+        seed: undefined,
+        safetyTolerance: 2,
+        numImages: 1,
+        imageSize: "auto",
+        background: "auto" as const,
+        quality: "high" as const,
+        inputFidelity: "high" as const,
+        outputFormat: "png" as const,
         syncMode: false,
       };
     default:

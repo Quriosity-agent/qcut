@@ -51,6 +51,11 @@ export interface ImageEditRequest {
   // Gemini 3 Pro Edit specific parameters
   resolution?: "1K" | "2K" | "4K";
   aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
+
+  // GPT Image 1.5 Edit specific parameters
+  background?: "auto" | "transparent" | "opaque";
+  inputFidelity?: "low" | "high";
+  quality?: "low" | "medium" | "high";
 }
 
 export interface ImageUpscaleRequest {
@@ -177,6 +182,20 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
       enable_prompt_expansion: true,
       num_images: 1,
       output_format: "jpeg",
+      sync_mode: false,
+    },
+  },
+
+  // GPT Image 1.5 Edit endpoint
+  "gpt-image-1-5-edit": {
+    endpoint: "fal-ai/gpt-image-1.5/edit",
+    defaultParams: {
+      image_size: "auto",
+      background: "auto",
+      quality: "high",
+      input_fidelity: "high",
+      num_images: 1,
+      output_format: "png",
       sync_mode: false,
     },
   },
@@ -390,6 +409,19 @@ export async function editImage(
   }
   if (request.aspectRatio !== undefined) {
     payload.aspect_ratio = request.aspectRatio;
+  }
+
+  // GPT Image 1.5 Edit specific parameters
+  if (request.model === "gpt-image-1-5-edit") {
+    if (request.background !== undefined) {
+      payload.background = request.background;
+    }
+    if (request.inputFidelity !== undefined) {
+      payload.input_fidelity = request.inputFidelity;
+    }
+    if (request.quality !== undefined) {
+      payload.quality = request.quality;
+    }
   }
 
   console.log(`🎨 Editing image with ${request.model}:`, {
@@ -1152,6 +1184,49 @@ export function getImageEditModels() {
           default: "jpeg",
         },
         enablePromptExpansion: { type: "boolean", default: true },
+      },
+    },
+    {
+      id: "gpt-image-1-5-edit",
+      name: "GPT Image 1.5 Edit",
+      description:
+        "OpenAI's GPT Image 1.5 for high-fidelity image editing with strong prompt adherence",
+      provider: "OpenAI",
+      estimatedCost: "$0.04-0.08",
+      features: [
+        "High prompt adherence",
+        "Transparent background support",
+        "Input fidelity control",
+        "Multiple output formats",
+      ],
+      parameters: {
+        imageSize: {
+          type: "select",
+          options: ["auto", "1024x1024", "1536x1024", "1024x1536"],
+          default: "auto",
+        },
+        background: {
+          type: "select",
+          options: ["auto", "transparent", "opaque"],
+          default: "auto",
+        },
+        quality: {
+          type: "select",
+          options: ["low", "medium", "high"],
+          default: "high",
+        },
+        inputFidelity: {
+          type: "select",
+          options: ["low", "high"],
+          default: "high",
+        },
+        numImages: { min: 1, max: 4, default: 1, step: 1 },
+        outputFormat: {
+          type: "select",
+          options: ["jpeg", "png", "webp"],
+          default: "png",
+        },
+        syncMode: { type: "boolean", default: false },
       },
     },
   ];

@@ -543,6 +543,153 @@ export function ParameterControls() {
             </div>
           </>
         )}
+
+        {/* GPT Image 1.5 Edit Specific Controls */}
+        {selectedModel === "gpt-image-1-5-edit" && (
+          <>
+            {/* Multi-Image Upload */}
+            <MultiImageUpload
+              images={multipleImages}
+              maxImages={4}
+              onImagesChange={setMultipleImages}
+              label="Input Images (GPT Image 1.5)"
+            />
+
+            {/* Image Size Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Image Size</Label>
+              <Select
+                value={parameters.imageSize || "auto"}
+                onValueChange={(size) => updateParameter("imageSize", size)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto (Match Input)</SelectItem>
+                  <SelectItem value="1024x1024">1024×1024 (Square)</SelectItem>
+                  <SelectItem value="1536x1024">
+                    1536×1024 (Landscape 3:2)
+                  </SelectItem>
+                  <SelectItem value="1024x1536">
+                    1024×1536 (Portrait 2:3)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Output image resolution
+              </p>
+            </div>
+
+            {/* Background Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Background</Label>
+              <Select
+                value={parameters.background || "auto"}
+                onValueChange={(bg) => updateParameter("background", bg)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto</SelectItem>
+                  <SelectItem value="transparent">
+                    Transparent (for compositing)
+                  </SelectItem>
+                  <SelectItem value="opaque">Opaque</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Background type for output image
+              </p>
+            </div>
+
+            {/* Quality Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Quality</Label>
+              <Select
+                value={parameters.quality || "high"}
+                onValueChange={(q) => updateParameter("quality", q)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low (Faster)</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High (Best)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Output quality level
+              </p>
+            </div>
+
+            {/* Input Fidelity Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Input Fidelity</Label>
+              <Select
+                value={parameters.inputFidelity || "high"}
+                onValueChange={(f) => updateParameter("inputFidelity", f)}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low (More Creative)</SelectItem>
+                  <SelectItem value="high">High (Preserve Input)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                How closely to follow the input image
+              </p>
+            </div>
+
+            {/* Output Format Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Output Format</Label>
+              <Select
+                value={parameters.outputFormat || "png"}
+                onValueChange={(format) =>
+                  updateParameter("outputFormat", format)
+                }
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="png">PNG (Higher Quality)</SelectItem>
+                  <SelectItem value="jpeg">JPEG (Smaller Size)</SelectItem>
+                  <SelectItem value="webp">WebP (Best Compression)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Choose output image format
+              </p>
+            </div>
+
+            {/* Sync Mode Switch */}
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Sync Mode</Label>
+              <Switch
+                checked={parameters.syncMode || false}
+                onCheckedChange={(checked) =>
+                  updateParameter("syncMode", checked)
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use synchronous processing mode
+            </p>
+
+            {/* Pricing Display */}
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground">
+                Cost: $0.04-0.08 per image
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

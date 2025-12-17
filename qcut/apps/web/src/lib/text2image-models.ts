@@ -1203,6 +1203,92 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
       "No seed control for reproducibility",
     ],
   },
+
+  "gpt-image-1-5": {
+    id: "gpt-image-1-5",
+    name: "GPT Image 1.5",
+    description:
+      "OpenAI's GPT Image 1.5 for high-fidelity image generation with strong prompt adherence",
+    provider: "OpenAI",
+    endpoint: "https://fal.run/fal-ai/gpt-image-1.5",
+
+    qualityRating: 5,
+    speedRating: 4,
+
+    estimatedCost: "$0.04-0.08",
+    costPerImage: 4, // cents
+
+    maxResolution: "1536x1536",
+    supportedAspectRatios: ["1:1", "3:2", "2:3"],
+
+    defaultParams: {
+      image_size: "1024x1024",
+      background: "auto",
+      quality: "high",
+      num_images: 1,
+      output_format: "png",
+      sync_mode: false,
+    },
+
+    availableParams: [
+      {
+        name: "image_size",
+        type: "select",
+        options: ["1024x1024", "1536x1024", "1024x1536"],
+        default: "1024x1024",
+        description: "Output image resolution",
+      },
+      {
+        name: "background",
+        type: "select",
+        options: ["auto", "transparent", "opaque"],
+        default: "auto",
+        description: "Background type (transparent for compositing)",
+      },
+      {
+        name: "quality",
+        type: "select",
+        options: ["low", "medium", "high"],
+        default: "high",
+        description: "Output quality level",
+      },
+      {
+        name: "num_images",
+        type: "number",
+        min: 1,
+        max: 4,
+        default: 1,
+        description: "Number of images to generate",
+      },
+      {
+        name: "output_format",
+        type: "select",
+        options: ["jpeg", "png", "webp"],
+        default: "png",
+        description: "Output image format",
+      },
+    ],
+
+    bestFor: [
+      "High-fidelity image generation",
+      "Strong prompt adherence",
+      "Transparent backgrounds for compositing",
+      "Commercial content creation",
+    ],
+
+    strengths: [
+      "Excellent prompt adherence",
+      "Transparent background support",
+      "Multiple output formats (png, jpeg, webp)",
+      "Consistent quality across styles",
+    ],
+
+    limitations: [
+      "Limited resolution options (3 sizes)",
+      "No guidance scale control",
+      "No seed for reproducibility",
+    ],
+  },
 };
 
 // ============================================
@@ -1210,6 +1296,7 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 // ============================================
 export const TEXT2IMAGE_MODEL_ORDER = [
   "gemini-3-pro",
+  "gpt-image-1-5",
   "nano-banana",
   "seeddream-v4-5",
   "z-image-turbo",
@@ -1290,7 +1377,7 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 }
 
 export const MODEL_CATEGORIES = {
-  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro"],
+  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro", "gpt-image-1-5"],
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "seeddream-v4-5", "qwen-image"],
   VERSATILE: [
     "qwen-image",
@@ -1317,6 +1404,7 @@ export const MODEL_CATEGORIES = {
     "seeddream-v4",
     "seeddream-v4-5",
     "gemini-3-pro",
+    "gpt-image-1-5",
   ],
   COST_EFFECTIVE: [
     "seeddream-v3",
