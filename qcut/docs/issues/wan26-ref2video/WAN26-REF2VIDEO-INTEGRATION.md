@@ -385,11 +385,9 @@ export async function handleWAN26Ref2Video(
   );
 
   // Upload video files to FAL storage
-  const videoUrls: string[] = [];
-  for (const file of referenceFiles) {
-    const url = await uploadVideoToFal(file, ctx.falApiKey);
-    videoUrls.push(url);
-  }
+  const videoUrls = await Promise.all(
+    referenceFiles.map((file) => uploadVideoToFal(file, ctx.falApiKey))
+  );
 
   const { generateWAN26RefVideo } = await import("@/lib/ai-video");
 
