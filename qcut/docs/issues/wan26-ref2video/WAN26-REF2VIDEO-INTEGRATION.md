@@ -87,13 +87,13 @@ export interface WAN26Ref2VideoRequest {
 // WAN v2.6 Reference-to-Video (Avatar tab - reuses referenceImages UI)
 {
   id: "wan_26_ref2v",
-  name: "WAN v2.6 Ref2Video",
-  description: "Generate videos from 1-3 reference video clips with character consistency",
-  price: "0.75", // 5s @ $0.15/s for 1080p
+  name: "WAN v2.6 Ref2V",
+  description: "Generate videos guided by reference video clips - transfers motion/style to new content",
+  price: "0.10-0.15/s",
   resolution: "720p / 1080p",
-  max_duration: 10,
-  category: "avatar", // Avatar tab - reuses referenceImages UI
-  requiredInputs: ["referenceMedia"], // Accepts both images and videos
+  max_duration: 15,
+  category: "avatar",
+  requiredInputs: ["sourceVideo"], // Uses sourceVideo like other V2V models
   endpoints: {
     image_to_video: "fal-ai/wan/v2.6/reference-to-video",
   },
@@ -102,22 +102,18 @@ export interface WAN26Ref2VideoRequest {
     resolution: "1080p",
     aspect_ratio: "16:9",
     enable_prompt_expansion: true,
-    multi_shots: true,
-    enable_safety_checker: true,
   },
   supportedResolutions: ["720p", "1080p"],
-  supportedDurations: [5, 10],
+  supportedDurations: [5, 10, 15],
   supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
   perSecondPricing: {
     "720p": 0.10,
     "1080p": 0.15,
   },
-  /** Model accepts video files as references (not images) */
-  acceptsVideoReferences: true,
 },
 ```
 
-**Note**: Uses `category: "avatar"` to appear in avatar tab alongside `kling_o1_ref2video`.
+**Note**: Uses `category: "avatar"` to appear in avatar tab. Uses `sourceVideo` (not `referenceImages`) because it's a video-to-video model like `kling_o1_v2v_reference`.
 
 ---
 
