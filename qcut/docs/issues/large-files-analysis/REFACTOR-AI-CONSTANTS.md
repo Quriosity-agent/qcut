@@ -61,7 +61,7 @@ export function getCombinedCapabilities(selectedModelIds: T2VModelId[]): T2VMode
 ```
 
 ### Pattern 4: `ai-video/` directory structure
-```
+```text
 ai-video/
 ├── index.ts              # Barrel file
 ├── core/                 # Core utilities (fal-request, polling, streaming)
@@ -353,13 +353,22 @@ Slim down to essential config and re-exports:
  * Model definitions are split into category-specific files for maintainability.
  */
 import type { APIConfiguration } from "../types/ai-types";
-import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
+import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP, UPSCALE_MODELS } from "@/lib/upscale-models";
 
-// Re-export model configs
-export * from "./text2video-models-config";
-export * from "./image2video-models-config";
-export * from "./avatar-models-config";
-export * from "./error-messages";
+// Import model configs (for use in this file and re-export)
+import { T2V_MODELS, T2V_MODEL_ORDER, T2V_MODEL_CAPABILITIES } from "./text2video-models-config";
+import { I2V_MODELS, I2V_MODEL_ORDER, I2V_MODEL_CAPABILITIES } from "./image2video-models-config";
+import { AVATAR_MODELS, AVATAR_MODEL_ORDER, AVATAR_MODEL_CAPABILITIES } from "./avatar-models-config";
+import { ERROR_MESSAGES } from "./error-messages";
+
+// Re-export for consumers who need individual model categories
+export {
+  T2V_MODELS, T2V_MODEL_ORDER, T2V_MODEL_CAPABILITIES,
+  I2V_MODELS, I2V_MODEL_ORDER, I2V_MODEL_CAPABILITIES,
+  AVATAR_MODELS, AVATAR_MODEL_ORDER, AVATAR_MODEL_CAPABILITIES,
+  ERROR_MESSAGES,
+  UPSCALE_MODELS,
+};
 
 // FAL API Configuration
 export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
@@ -393,11 +402,6 @@ export const REVE_TEXT_TO_IMAGE_MODEL = { ... } as const;
 export const REVE_EDIT_MODEL = { ... } as const;
 
 // Backward compatibility: Combined AI_MODELS array
-import { T2V_MODELS } from "./text2video-models-config";
-import { I2V_MODELS } from "./image2video-models-config";
-import { AVATAR_MODELS } from "./avatar-models-config";
-import { UPSCALE_MODELS } from "@/lib/upscale-models";
-
 export const AI_MODELS: AIModel[] = [
   ...Object.values(T2V_MODELS),
   ...Object.values(I2V_MODELS),
