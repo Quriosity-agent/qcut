@@ -82,20 +82,25 @@ Rather than creating new files, **extend existing patterns**:
    - Add `T2V_MODELS: Record<T2VModelId, AIModel>`
    - Reuse existing `T2V_MODEL_CAPABILITIES` structure
    - Follows DRY principle
+   - **Review:** Keep a single source of truth for model IDs (derive `T2VModelId` from config data), and don't let this file become the next mega-file; split by provider later behind a stable barrel export if it starts creeping back toward 1k+ lines.
 
 2. **Create `image2video-models-config.ts`** (new, mirrors T2V pattern)
    - Add `I2V_MODELS`, `I2V_MODEL_ORDER`, `I2V_MODEL_CAPABILITIES`
+   - **Review:** Mirror the T2V structure, but extract shared utilities (ex: `getModelsInOrder({ order, models })`) so T2V/I2V/Avatar don't diverge via copy/paste.
 
 3. **Create `avatar-models-config.ts`** (new, mirrors T2V pattern)
    - Add `AVATAR_MODELS`, `AVATAR_MODEL_ORDER`
+   - **Review:** Reuse existing validation/upload constraints (sizes, durations, accepted file types) where possible so UI + validation rules stay consistent across features.
 
 4. **Keep existing `upscale-models.ts`** as-is
    - Already well-structured with endpoint mapping
+   - **Review:** Prefer importing/re-exporting from the canonical `lib/upscale-models.ts` and avoid duplicating endpoint maps; watch for circular dependencies if `lib/` ever imports from `ai/constants/`.
 
 5. **Reduce `ai-constants.ts`** to:
    - API config, UI constants, upload constants
    - Error messages (or extract to `error-messages.ts`)
    - Re-exports from model config files
+   - **Review:** Treat this file as the stable public facade: minimal logic, stable exports, and prefer explicit re-exports over `export *` if name collisions or import cycles show up.
 
 ---
 
@@ -173,6 +178,10 @@ export type AvatarModelId =
   // ... etc
 ```
 
+**Review**
+- Avoid hand-maintained string unions; derive `*ModelId` from `as const` data (`*_MODELS` keys or an ID list) so adding/removing models is a single edit.
+- Keep `ai-types.ts` from becoming a dumping ground; if it grows quickly, consider per-category types colocated with each `*-models-config.ts`.
+
 ### Step 2: Enhance `text2video-models-config.ts`
 
 Add model definitions alongside existing capabilities:
@@ -216,6 +225,11 @@ export function getT2VModelsInOrder(): [T2VModelId, AIModel][] {
 }
 ```
 
+**Review**
+- Prefer `const T2V_MODELS = { ... } as const satisfies Record<string, AIModel>` + `export type T2VModelId = keyof typeof T2V_MODELS` to make the config the source of truth and prevent stale ID types.
+- Make `T2V_MODEL_ORDER` `as const` and add an invariant (compile-time or runtime) that every `T2V_MODELS` key appears exactly once (prevents silent missing/duplicate models).
+- Extract shared helpers (order -> entries, ID -> model lookup) into a tiny utility so every category stays consistent without repetition.
+
 ### Step 3: Create `image2video-models-config.ts`
 
 Follow the same pattern as T2V:
@@ -258,6 +272,11 @@ export function getI2VModelsInOrder(): [I2VModelId, AIModel][] {
 }
 ```
 
+**Review**
+- Don't redefine `I2VModelId` here if it already lives in `ai-types.ts`; keep one source of truth for IDs to reduce maintenance churn.
+- Reuse capability primitives (durations/resolutions/aspect ratios) shared with T2V where possible; only introduce a new interface if I2V genuinely needs different concepts.
+- If any IDs have legacy aliases, include an `*_MODEL_ID_ALIASES` map early to keep rename/back-compat decisions localized to the config layer.
+
 ### Step 4: Create `avatar-models-config.ts`
 
 ```typescript
@@ -287,6 +306,10 @@ export interface AvatarModelCapabilities {
 export const AVATAR_MODEL_CAPABILITIES: Record<AvatarModelId, AvatarModelCapabilities> = { ... };
 ```
 
+**Review**
+- Keep capability data data-first (const objects) so you can reuse it for UI + validation without duplicating business rules in multiple layers.
+- If `supportedEmotions` becomes real, prefer deriving it from an `as const` list (typed union) rather than a free-form `string[]`.
+
 ### Step 5: Create `error-messages.ts`
 
 Extract error messages for maintainability:
@@ -312,6 +335,11 @@ export const ERROR_MESSAGES = {
 
 export type ErrorMessageKey = keyof typeof ERROR_MESSAGES;
 ```
+
+**Review**
+- If the app has i18n (or will), consider placing these into the existing localization pipeline rather than creating a new constants silo.
+- Avoid repeating near-identical strings per model; prefer small formatting helpers for shared patterns (file size limits, aspect ratio constraints) so changes apply everywhere.
+- The file-level doc comment is likely unnecessary; keep it lean unless there's genuinely non-obvious context.
 
 ### Step 6: Update `ai-constants.ts`
 
@@ -384,6 +412,11 @@ export const MODEL_HELPERS = {
 };
 ```
 
+**Review**
+- Guard env access: exporting a possibly-undefined `FAL_API_KEY` can create late runtime failures; consider an accessor that throws a clear error when a feature is used without configuration.
+- Be cautious with `export *` re-exports: they're convenient but can introduce name collisions and circular deps as the module graph grows; explicit exports are more stable long-term.
+- For legacy lookups, consider an `AI_MODELS_BY_ID` map (merged records) and build `AI_MODELS` in a stable UI order (from `*_MODEL_ORDER`) rather than relying on `Object.values()` ordering.
+
 ---
 
 ## Final File Sizes (Estimated)
@@ -430,30 +463,52 @@ export const MODEL_HELPERS = {
 
 ## Migration Path
 
+**Reviewer note:** This overlaps with `## Implementation Steps` above; consider keeping just one (or linking phases -> steps) to avoid drift over time.
+
 ### Phase 1: Extract Error Messages
 1. Create `error-messages.ts`
 2. Update imports in consumers
 3. Verify build passes
+
+**Review**
+- Keep the export surface stable (same keys/messages) to minimize churn; defer message wording tweaks to a separate change.
+- If there's an existing i18n/storybook snapshot flow, use it here; it's a good low-risk first move that should come with fast validation.
 
 ### Phase 2: Enhance T2V Config
 1. Add `T2V_MODELS` to existing `text2video-models-config.ts`
 2. Add `T2V_MODEL_ORDER` array
 3. Update `ai-constants.ts` to import
 
+**Review**
+- Preserve backwards-compatible exports (`T2V_MODEL_ID_ALIASES`, capability helpers) and make the new additions additive to avoid breaking existing imports.
+- Add an invariant that `T2V_MODEL_ORDER` contains all T2V IDs exactly once so future model additions don't silently disappear from UI.
+
 ### Phase 3: Create I2V Config
 1. Create `image2video-models-config.ts`
 2. Extract I2V models from `ai-constants.ts`
 3. Add capabilities interface
+
+**Review**
+- Minimize copy/paste: reuse shared model/ordering helpers and shared capability primitives from T2V where possible.
+- Keep extraction mechanical first (no renames), then do cleanup once everything compiles and UI parity is confirmed.
 
 ### Phase 4: Create Avatar Config
 1. Create `avatar-models-config.ts`
 2. Extract avatar models
 3. Add capabilities for required inputs
 
+**Review**
+- Align capability flags with existing UI inputs + validators; avoid creating "config truth" that disagrees with actual generator requirements.
+- Reuse shared constraint shapes (file sizes, durations) so the same rule doesn't live in multiple places.
+
 ### Phase 5: Finalize Main File
 1. Remove model definitions from `ai-constants.ts`
 2. Add re-exports
 3. Create backward-compatible `AI_MODELS` array
+
+**Review**
+- Prefer explicit re-exports (or a dedicated `index.ts` barrel) to keep the public API intentional and avoid accidental export churn.
+- Keep `AI_MODELS` construction deterministic (stable order) and add a uniqueness check for model IDs to catch collisions early.
 
 ---
 
@@ -468,6 +523,10 @@ export const MODEL_HELPERS = {
 - [ ] UI shows all models correctly
 - [ ] Generation works for each category
 
+**Review**
+- Add invariants that scale: no duplicate IDs, `*_MODEL_ORDER` covers `*_MODELS` keys (or document intentional omissions), and alias maps don't point to missing IDs.
+- Prefer checks based on ID sets over a fixed `AI_MODELS.length` so routine model additions don't look like refactor regressions.
+
 ---
 
 ## Risk Mitigation
@@ -478,6 +537,9 @@ export const MODEL_HELPERS = {
 | Model count mismatch | Assert `AI_MODELS.length === 47` (current count) |
 | Missing capabilities | Copy capabilities from `text2video-models-config.ts` pattern |
 | Type errors | Use `satisfies AIModel` for compile-time validation |
+
+**Review**
+- The length assertion is useful during the refactor, but consider replacing it with "expected IDs present + no duplicates" to reduce maintenance churn when models are added/removed.
 
 ---
 

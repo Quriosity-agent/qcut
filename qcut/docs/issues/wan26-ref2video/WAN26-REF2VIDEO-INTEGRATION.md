@@ -625,3 +625,47 @@ modelId !== "sync_lipsync_react1" &&
 | Quantity | 1-3 videos | Enforced by UI (3 slots) and validator |
 
 **Note**: Consider adding client-side video duration validation in future iteration.
+
+---
+
+## Review (2025-12-17)
+
+### Overall
+
+The proposed integration largely fits the current QCut AI architecture (model config in `apps/web/.../ai-constants.ts`, generators in `apps/web/src/lib/ai-video`, avatar routing via `routeAvatarHandler`, and UI reuse via the Avatar tab `referenceImages` state). A few doc/code mismatches and small implementation details should be corrected before landing.
+
+### Key Corrections (based on current code)
+
+1. **Keep `requiredInputs: ["referenceImages"]` (avoid introducing `"referenceMedia"`):**
+   - Existing code already uses `"referenceImages"` for ref2video gating (e.g., `kling_o1_ref2video`) in `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` and `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`.
+   - Introducing `"referenceMedia"` would require additional plumbing across helpers and validation. The simplest approach is to keep `"referenceImages"` and interpret those files as videos only when `wan_26_ref2v` is selected (as Subtask 9 already does).
+
+2. **`acceptsVideoReferences` isn’t currently part of `AIModel`:**
+   - `AI_MODELS` is typed as `AIModel[]`, and `AIModel` (in `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts`) does not include `acceptsVideoReferences`.
+   - Either add an optional `acceptsVideoReferences?: boolean` to `AIModel`, or drop the field and rely on the `isVideoRefModel(...)` helper (already sufficient for UI behavior).
+
+3. **Resolve validator/spec mismatch up-front:**
+   - Current WAN v2.6 validators in `apps/web/src/lib/ai-video/validation/validators.ts` enforce `prompt <= 2000`, `negative_prompt <= 1000`, and `duration ∈ {5,10,15}`.
+   - This doc’s API table states `prompt <= 800`, `negative_prompt <= 500`, and `duration ∈ {5,10}` for `fal-ai/wan/v2.6/reference-to-video`.
+   - Confirm the real constraints for the Ref2Video endpoint. If they differ from existing WAN v2.6 rules, add Ref2Video-specific validators (instead of reusing `validateWAN26Prompt` / `validateWAN26Duration`).
+
+4. **Fix `handleWAN26Ref2Video` upload wiring + avoid `await` in loops:**
+   - `ModelHandlerContext` does not currently expose `falApiKey`, so `uploadVideoToFal(file, ctx.falApiKey)` won’t compile as written.
+   - Prefer `falAIClient.uploadVideoToFal(file)` (already used in existing handlers) or retrieve the key via `getFalApiKey()` and pass it to `uploadVideoToFal`.
+   - Upload multiple reference videos with `Promise.all(...)` rather than a `for ... await` loop (repo guideline: avoid `await` inside loops).
+
+5. **Reference-slot/state edge cases when switching models:**
+   - Avatar tab state keeps 6 `referenceImages` slots (`REFERENCE_IMAGE_COUNT = 6`). Subtask 9 renders only 3 slots for video refs, but slots 3–5 may still contain previous image references.
+   - In the handler, only consider the first 3 slots and/or filter by MIME type (video) to avoid trying to upload images as videos after switching models.
+
+### Minor UX / Consistency Notes
+
+- `FileUpload`’s empty-state text for `fileType="video"` says “source video”; when used for reference videos this copy is slightly misleading (optional: make the empty-state copy configurable).
+- Pricing: `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` already contains `calculateWan26Cost(...)`, so Subtask 8 can reference/reuse it instead of adding a duplicate `calculateWAN26Cost(...)` with a different name.
+- Consider aligning the model `price` string with existing WAN entries (e.g., `"0.10-0.15/s"` like `wan_26_i2v`) since `perSecondPricing` is already used for WAN models.
+
+### Suggested “tight” implementation path
+
+- Keep `requiredInputs: ["referenceImages"]` in the model config.
+- Add `wan_26_ref2v` to `routeAvatarHandler`, implement `handleWAN26Ref2Video` using `falAIClient.uploadVideoToFal` + `generateWAN26RefVideo`.
+- Add Ref2Video-specific validators only if the endpoint constraints truly differ from existing WAN v2.6 models.
