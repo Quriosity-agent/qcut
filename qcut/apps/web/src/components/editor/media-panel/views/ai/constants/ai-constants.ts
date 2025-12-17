@@ -461,6 +461,34 @@ export const AI_MODELS: AIModel[] = [
       "1080p": 0.15,
     },
   },
+  // WAN v2.6 Reference-to-Video (Avatar category - uses reference video)
+  {
+    id: "wan_26_ref2v",
+    name: "WAN v2.6 Ref2V",
+    description:
+      "Generate videos guided by reference video clips - transfers motion/style to new content",
+    price: "0.10-0.15/s",
+    resolution: "720p / 1080p",
+    max_duration: 15,
+    category: "avatar",
+    requiredInputs: ["sourceVideo"],
+    endpoints: {
+      reference_to_video: "fal-ai/wan/v2.6/reference-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "1080p",
+      aspect_ratio: "16:9",
+      enable_prompt_expansion: true,
+    },
+    supportedResolutions: ["720p", "1080p"],
+    supportedDurations: [5, 10, 15],
+    supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    perSecondPricing: {
+      "720p": 0.1,
+      "1080p": 0.15,
+    },
+  },
   // Veo 3.1 Image-to-Video Models
   {
     id: "veo31_fast_image_to_video",

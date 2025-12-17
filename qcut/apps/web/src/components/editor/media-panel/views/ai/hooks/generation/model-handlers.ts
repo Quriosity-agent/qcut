@@ -22,6 +22,7 @@ import {
   generateWAN25ImageVideo,
   generateWAN26ImageVideo,
   generateWAN26TextVideo,
+  generateWAN26RefVideo,
   generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
@@ -198,6 +199,14 @@ export interface AvatarSettings {
   // Veo 3.1 Extend-Video specific settings
   extendVideoAspectRatio?: "auto" | "16:9" | "9:16";
   extendVideoGenerateAudio?: boolean;
+  // WAN v2.6 Ref2Video specific settings
+  wan26RefDuration?: 5 | 10 | 15;
+  wan26RefResolution?: "720p" | "1080p";
+  wan26RefAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  wan26RefNegativePrompt?: string;
+  wan26RefEnablePromptExpansion?: boolean;
+  wan26RefSeed?: number;
+  wan26RefEnableSafetyChecker?: boolean;
 }
 
 /**
@@ -1151,6 +1160,91 @@ export async function handleKlingO1Ref2Video(
 }
 
 /**
+ * Handle WAN v2.6 Reference-to-Video generation
+ *
+ * Uses a reference video to guide motion/style for the generated video.
+ */
+export async function handleWAN26Ref2Video(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.sourceVideo) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "WAN v2.6 Ref2Video requires a reference video",
+    };
+  }
+
+  // Upload the reference video to FAL
+  const falApiKey = import.meta.env.VITE_FAL_API_KEY;
+  if (!falApiKey) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "FAL API key not configured",
+    };
+  }
+
+  let referenceVideoUrl: string;
+
+  // Upload video via Electron IPC if available
+  if (window.electronAPI?.fal?.uploadVideo) {
+    const videoBuffer = await settings.sourceVideo.arrayBuffer();
+    const uploadResult = await window.electronAPI.fal.uploadVideo(
+      new Uint8Array(videoBuffer),
+      settings.sourceVideo.name,
+      falApiKey
+    );
+
+    if (!uploadResult.success || !uploadResult.url) {
+      return {
+        response: undefined,
+        shouldSkip: true,
+        skipReason: uploadResult.error || "Failed to upload reference video",
+      };
+    }
+    referenceVideoUrl = uploadResult.url;
+  } else {
+    // Fallback to browser upload - check size limit
+    const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+    if (settings.sourceVideo.size > MAX_VIDEO_SIZE_BYTES) {
+      return {
+        response: undefined,
+        shouldSkip: true,
+        skipReason:
+          "Video file too large for browser upload (max 50MB). Please use the desktop app.",
+      };
+    }
+
+    // Convert to data URL for browser fallback
+    const reader = new FileReader();
+    referenceVideoUrl = await new Promise<string>((resolve, reject) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(settings.sourceVideo!);
+    });
+  }
+
+  console.log(`  🎬 Calling generateWAN26RefVideo for ${ctx.modelId}...`);
+  const response = await generateWAN26RefVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    reference_video_url: referenceVideoUrl,
+    duration: settings.wan26RefDuration ?? 5,
+    resolution: settings.wan26RefResolution ?? "1080p",
+    aspect_ratio: settings.wan26RefAspectRatio ?? "16:9",
+    negative_prompt: settings.wan26RefNegativePrompt,
+    enable_prompt_expansion: settings.wan26RefEnablePromptExpansion ?? true,
+    seed: settings.wan26RefSeed,
+    enable_safety_checker: settings.wan26RefEnableSafetyChecker,
+  });
+  console.log("  ✅ generateWAN26RefVideo returned:", response);
+
+  return { response };
+}
+
+/**
  * Handle Kling O1 V2V (Video-to-Video) generation
  */
 export async function handleKlingO1V2V(
@@ -1561,6 +1655,8 @@ export async function routeAvatarHandler(
   switch (ctx.modelId) {
     case "kling_o1_ref2video":
       return handleKlingO1Ref2Video(ctx, settings);
+    case "wan_26_ref2v":
+      return handleWAN26Ref2Video(ctx, settings);
     case "kling_o1_v2v_reference":
     case "kling_o1_v2v_edit":
       return handleKlingO1V2V(ctx, settings);

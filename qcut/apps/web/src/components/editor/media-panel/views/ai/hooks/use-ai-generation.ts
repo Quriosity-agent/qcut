@@ -852,7 +852,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (
             (modelId === "wan_animate_replace" ||
               modelId === "kling_o1_v2v_reference" ||
-              modelId === "kling_o1_v2v_edit") &&
+              modelId === "kling_o1_v2v_edit" ||
+              modelId === "wan_26_ref2v") &&
             !sourceVideo
           ) {
             validationError = "Video-to-video model requires source video";
@@ -1772,7 +1773,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           if (
             (modelId === "wan_animate_replace" ||
               modelId === "kling_o1_v2v_reference" ||
-              modelId === "kling_o1_v2v_edit") &&
+              modelId === "kling_o1_v2v_edit" ||
+              modelId === "wan_26_ref2v") &&
             !sourceVideo
           )
             return false;
@@ -1796,6 +1798,11 @@ export function useAIGeneration(props: UseAIGenerationProps) {
               (img) => img !== null
             );
             if (!hasReferenceImage) return false;
+            continue;
+          }
+
+          // WAN v2.6 Ref2Video requires source video only (no avatar image)
+          if (modelId === "wan_26_ref2v") {
             continue;
           }
 

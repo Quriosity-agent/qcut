@@ -22,6 +22,7 @@ import type { TProject } from "@/types/project";
 export interface AIModelEndpoints {
   text_to_video?: string;
   image_to_video?: string;
+  reference_to_video?: string;
   upscale_video?: string;
 }
 
@@ -260,6 +261,28 @@ export interface UseAIGenerationProps {
   wan26AudioFile?: File | null;
   wan26NegativePrompt?: string;
   wan26EnablePromptExpansion?: boolean;
+
+  // WAN v2.6 Reference-to-Video options (Avatar tab)
+  /** Reference video file for WAN v2.6 Ref2Video */
+  wan26RefVideo?: File | null;
+  /** Duration for WAN v2.6 Ref2Video */
+  wan26RefDuration?: 5 | 10 | 15;
+  /** Resolution for WAN v2.6 Ref2Video */
+  wan26RefResolution?: "720p" | "1080p";
+  /** Aspect ratio for WAN v2.6 Ref2Video */
+  wan26RefAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  /** Audio URL for WAN v2.6 Ref2Video */
+  wan26RefAudioUrl?: string;
+  /** Audio file for WAN v2.6 Ref2Video */
+  wan26RefAudioFile?: File | null;
+  /** Negative prompt for WAN v2.6 Ref2Video */
+  wan26RefNegativePrompt?: string;
+  /** Enable prompt expansion for WAN v2.6 Ref2Video */
+  wan26RefEnablePromptExpansion?: boolean;
+  /** Random seed for reproducibility */
+  wan26RefSeed?: number;
+  /** Enable safety content filtering */
+  wan26RefEnableSafetyChecker?: boolean;
 
   // Kling Avatar v2 options
   /** Optional prompt for animation guidance (Kling Avatar v2) */
@@ -719,6 +742,36 @@ export interface WAN26I2VRequest {
   negative_prompt?: string;
   enable_prompt_expansion?: boolean;
   seed?: number;
+  enable_safety_checker?: boolean;
+}
+
+/**
+ * WAN v2.6 reference-to-video request parameters
+ *
+ * Generates video using a reference video clip to guide motion/style
+ * while maintaining subject identity from the prompt.
+ */
+export interface WAN26Ref2VideoRequest {
+  model: string;
+  /** Descriptive prompt for the generated video */
+  prompt: string;
+  /** Pre-uploaded reference video URL (FAL storage) */
+  reference_video_url: string;
+  /** Duration of output video in seconds */
+  duration?: 5 | 10 | 15;
+  /** Output video resolution */
+  resolution?: "720p" | "1080p";
+  /** Aspect ratio of output video */
+  aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
+  /** Optional audio URL to sync with the output */
+  audio_url?: string;
+  /** Negative prompt to avoid unwanted elements */
+  negative_prompt?: string;
+  /** Enable AI prompt expansion for better results */
+  enable_prompt_expansion?: boolean;
+  /** Random seed for reproducibility */
+  seed?: number;
+  /** Enable safety content filtering */
   enable_safety_checker?: boolean;
 }
 
