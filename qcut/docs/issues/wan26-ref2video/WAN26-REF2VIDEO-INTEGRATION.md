@@ -177,7 +177,7 @@ import type {
 import {
   // ... existing imports ...
   validateWAN26AspectRatio,
-  validateWAN26RefVideos, // ADD this
+  validateWAN26RefVideoUrl, // ADD this
 } from "../validation/validators";
 ```
 
@@ -185,12 +185,12 @@ import {
 
 ```typescript
 /**
- * Generate video from reference videos using WAN v2.6.
+ * Generate video from reference video using WAN v2.6.
  *
- * Takes 1-3 reference video clips for character/subject consistency.
- * Use @Video1, @Video2, @Video3 in prompt to reference subjects.
+ * Uses a reference video to guide the motion/style of the generated video.
+ * Similar to image-to-video but takes video input for motion guidance.
  *
- * @param request - Video URLs, prompt, and generation parameters
+ * @param request - Reference video URL, prompt, and generation parameters
  * @returns VideoGenerationResponse with job_id and final video_url
  * @throws Error if FAL_API_KEY missing or validation fails
  */
@@ -208,11 +208,14 @@ export async function generateWAN26RefVideo(
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
       if (!trimmedPrompt) {
-        throw new Error("Please enter a prompt describing the desired video");
+        throw new Error(
+          "Please enter a prompt for WAN v2.6 reference-to-video generation"
+        );
       }
       validateWAN26Prompt(trimmedPrompt);
 
-      validateWAN26RefVideos(request.video_urls);
+      // Validate reference video URL
+      validateWAN26RefVideoUrl(request.reference_video_url);
 
       if (request.negative_prompt) {
         validateWAN26NegativePrompt(request.negative_prompt);
@@ -244,14 +247,14 @@ export async function generateWAN26RefVideo(
         (modelConfig.default_params?.aspect_ratio as string) ??
         "16:9";
 
-      // Validate parameters
+      // Validate parameters (reuse WAN v2.6 validators)
       validateWAN26Duration(duration);
       validateWAN26Resolution(resolution);
       validateWAN26AspectRatio(aspectRatio);
 
       const payload: Record<string, unknown> = {
         prompt: trimmedPrompt,
-        video_urls: request.video_urls,
+        reference_video_url: request.reference_video_url,
         duration,
         resolution,
         aspect_ratio: aspectRatio,
@@ -259,14 +262,14 @@ export async function generateWAN26RefVideo(
           request.enable_prompt_expansion ??
           modelConfig.default_params?.enable_prompt_expansion ??
           true,
-        multi_shots:
-          request.multi_shots ??
-          modelConfig.default_params?.multi_shots ??
-          true,
         enable_safety_checker: request.enable_safety_checker ?? true,
       };
 
       // Optional parameters
+      if (request.audio_url) {
+        payload.audio_url = request.audio_url;
+      }
+
       if (request.negative_prompt) {
         payload.negative_prompt = request.negative_prompt;
       }
@@ -288,7 +291,7 @@ export async function generateWAN26RefVideo(
       return {
         job_id: jobId,
         status: "completed",
-        message: "Video generated successfully with WAN v2.6 Reference-to-Video",
+        message: "Video generated successfully with WAN v2.6 Ref2Video",
         estimated_time: 0,
         video_url: result.video?.url || result.video || result.url,
         video_data: result,
@@ -298,7 +301,7 @@ export async function generateWAN26RefVideo(
 }
 ```
 
-**Reuse**: 90% identical to `generateWAN26ImageVideo`, changed `image_url` to `video_urls`.
+**Note**: Similar structure to `generateWAN26ImageVideo` but uses `reference_video_url` input and `reference_to_video` endpoint for video-guided generation.
 
 ---
 
