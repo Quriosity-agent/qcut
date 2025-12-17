@@ -26,6 +26,7 @@ import {
   generateKlingO1Video,
   upscaleByteDanceVideo,
   upscaleFlashVSRVideo,
+  uploadVideoToFal,
 } from "@/lib/ai-video";
 import type { ProgressCallback } from "@/lib/ai-video-client";
 import type {
@@ -1186,44 +1187,27 @@ export async function handleWAN26Ref2Video(
     };
   }
 
+  // Check size limit before upload
+  const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+  if (settings.sourceVideo.size > MAX_VIDEO_SIZE_BYTES) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason:
+        "Video file too large (max 50MB). Please use a smaller video file.",
+    };
+  }
+
   let referenceVideoUrl: string;
-
-  // Upload video via Electron IPC if available
-  if (window.electronAPI?.fal?.uploadVideo) {
-    const videoBuffer = await settings.sourceVideo.arrayBuffer();
-    const uploadResult = await window.electronAPI.fal.uploadVideo(
-      new Uint8Array(videoBuffer),
-      settings.sourceVideo.name,
-      falApiKey
-    );
-
-    if (!uploadResult.success || !uploadResult.url) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason: uploadResult.error || "Failed to upload reference video",
-      };
-    }
-    referenceVideoUrl = uploadResult.url;
-  } else {
-    // Fallback to browser upload - check size limit
-    const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-    if (settings.sourceVideo.size > MAX_VIDEO_SIZE_BYTES) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason:
-          "Video file too large for browser upload (max 50MB). Please use the desktop app.",
-      };
-    }
-
-    // Convert to data URL for browser fallback
-    const reader = new FileReader();
-    referenceVideoUrl = await new Promise<string>((resolve, reject) => {
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(settings.sourceVideo!);
-    });
+  try {
+    // Upload to FAL storage (automatically uses Electron IPC if available, otherwise browser fetch)
+    referenceVideoUrl = await uploadVideoToFal(settings.sourceVideo, falApiKey);
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `Failed to upload reference video: ${error instanceof Error ? error.message : String(error)}`,
+    };
   }
 
   console.log(`  🎬 Calling generateWAN26RefVideo for ${ctx.modelId}...`);
