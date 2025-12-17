@@ -702,6 +702,7 @@ export interface WAN26T2VRequest {
   enable_prompt_expansion?: boolean;
   multi_shots?: boolean;
   seed?: number;
+  enable_safety_checker?: boolean;
 }
 
 /**
@@ -718,6 +719,7 @@ export interface WAN26I2VRequest {
   negative_prompt?: string;
   enable_prompt_expansion?: boolean;
   seed?: number;
+  enable_safety_checker?: boolean;
 }
 
 /**

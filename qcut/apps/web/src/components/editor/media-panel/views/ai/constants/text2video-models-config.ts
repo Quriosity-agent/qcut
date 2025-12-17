@@ -109,7 +109,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       supportsNegativePrompt: true,
       supportsPromptExpansion: true,
       supportsSeed: true,
-      supportsSafetyChecker: false,
+      supportsSafetyChecker: true,
       defaultAspectRatio: "16:9",
       defaultResolution: "1080p",
       defaultDuration: 5,

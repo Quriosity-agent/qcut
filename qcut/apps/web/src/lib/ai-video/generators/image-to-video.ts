@@ -980,6 +980,7 @@ export async function generateWAN26ImageVideo(
           request.enable_prompt_expansion ??
           modelConfig.default_params?.enable_prompt_expansion ??
           true,
+        enable_safety_checker: request.enable_safety_checker ?? true,
       };
 
       // Optional parameters
