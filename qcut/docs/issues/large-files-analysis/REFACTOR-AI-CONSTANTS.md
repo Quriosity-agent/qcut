@@ -2,41 +2,100 @@
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts`
 **Current Size**: 1,594 lines
-**Target Size**: ~300 lines (main file) + 4 module files
+**Target Size**: ~300 lines (main file) + modular files
 **Priority**: High (largest pending file, configuration-only, low-risk split)
 
 ---
 
-## Current Structure Analysis
+## Existing Patterns Analysis
 
-| Section | Lines | Location | Description |
-|---------|-------|----------|-------------|
-| FAL API Config | ~30 | 1-28 | API base URL, keys, config |
-| **AI_MODELS array** | **~1,130** | 30-1161 | **Bulk of file - 40+ model definitions** |
-| UI Constants | ~10 | 1163-1170 | Max chars, sizes, timeouts |
-| Upload Constants | ~50 | 1172-1219 | File type/size constraints |
-| Progress Constants | ~10 | 1221-1227 | Progress percentages |
-| Storage Keys | ~10 | 1229-1234 | localStorage keys |
-| Error Messages | ~150 | 1236-1383 | All error strings |
-| LTX Config | ~20 | 1385-1404 | LTX-specific settings |
-| Status Messages | ~10 | 1406-1414 | Status strings |
-| Defaults | ~15 | 1416-1426 | Default values |
-| Model Helpers | ~85 | 1428-1510 | Helper functions |
-| Reve Constants | ~55 | 1512-1566 | Reve model config |
-| Exports | ~30 | 1568-1594 | Re-exports |
+Before splitting, review existing patterns in the codebase for consistency:
 
-**Key Finding**: The `AI_MODELS` array (1,130 lines) represents 71% of the file.
+### Pattern 1: `text2image-models.ts` (1,417 lines)
+```typescript
+// Uses Record<string, Model> with typed IDs
+export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = { ... };
+
+// Priority order array for UI rendering
+export const TEXT2IMAGE_MODEL_ORDER = ["model-a", "model-b"] as const;
+export type Text2ImageModelId = (typeof TEXT2IMAGE_MODEL_ORDER)[number];
+
+// Helper functions
+export function getModelById(id: string): Text2ImageModel | undefined;
+export function getModelsByProvider(provider: string): Text2ImageModel[];
+export function getText2ImageModelEntriesInPriorityOrder();
+
+// Category groupings
+export const MODEL_CATEGORIES = {
+  PHOTOREALISTIC: ["model-a", "model-b"],
+  ARTISTIC: ["model-c"],
+} as const;
+```
+
+### Pattern 2: `upscale-models.ts` (383 lines)
+```typescript
+// Typed ID with priority order
+export const UPSCALE_MODEL_ORDER = ["crystal-upscaler", "seedvr-upscale", "topaz-upscale"] as const;
+export type UpscaleModelId = (typeof UPSCALE_MODEL_ORDER)[number];
+
+// Endpoint mapping (separate from model definitions)
+export const UPSCALE_MODEL_ENDPOINTS: Record<UpscaleModelId, string> = { ... };
+
+// Record with typed ID key
+export const UPSCALE_MODELS: Record<UpscaleModelId, UpscaleModel> = { ... };
+```
+
+### Pattern 3: `text2video-models-config.ts` (352 lines)
+```typescript
+// Capability-based configuration (separate from model definitions)
+export type T2VModelId = "sora2_text_to_video" | "wan_26_t2v" | ...;
+
+// ID aliases for backward compatibility
+export const T2V_MODEL_ID_ALIASES: Record<string, T2VModelId> = { ... };
+
+// Capabilities per model (UI-driven config)
+export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> = { ... };
+
+// Helper to compute combined capabilities
+export function getCombinedCapabilities(selectedModelIds: T2VModelId[]): T2VModelCapabilities;
+```
+
+### Pattern 4: `ai-video/` directory structure
+```
+ai-video/
+├── index.ts              # Barrel file
+├── core/                 # Core utilities (fal-request, polling, streaming)
+├── generators/           # Generation logic (text-to-video, image-to-video, avatar, upscale)
+├── models/               # Model-specific converters (sora2.ts)
+└── validation/           # Input validators
+```
 
 ---
 
-## AI_MODELS Breakdown by Category
+## Recommended Refactoring Strategy
 
-| Category | Model Count | Lines | Examples |
-|----------|-------------|-------|----------|
-| Text-to-Video | 16 | ~450 | Sora 2 T2V, Kling, WAN, LTX, Veo 3.1, Hailuo |
-| Image-to-Video | 18 | ~500 | Sora 2 I2V, Kling I2V, Seedance, Veo 3.1 I2V |
-| Avatar | 12 | ~250 | WAN Animate, Kling Avatar, Sync Lipsync, OmniHuman |
-| Upscale | 3 | ~80 | ByteDance, FlashVSR, Topaz |
+### Option A: Consolidate with Existing Files (Preferred)
+
+Rather than creating new files, **extend existing patterns**:
+
+1. **Merge video model definitions into `text2video-models-config.ts`**
+   - Add `T2V_MODELS: Record<T2VModelId, AIModel>`
+   - Reuse existing `T2V_MODEL_CAPABILITIES` structure
+   - Follows DRY principle
+
+2. **Create `image2video-models-config.ts`** (new, mirrors T2V pattern)
+   - Add `I2V_MODELS`, `I2V_MODEL_ORDER`, `I2V_MODEL_CAPABILITIES`
+
+3. **Create `avatar-models-config.ts`** (new, mirrors T2V pattern)
+   - Add `AVATAR_MODELS`, `AVATAR_MODEL_ORDER`
+
+4. **Keep existing `upscale-models.ts`** as-is
+   - Already well-structured with endpoint mapping
+
+5. **Reduce `ai-constants.ts`** to:
+   - API config, UI constants, upload constants
+   - Error messages (or extract to `error-messages.ts`)
+   - Re-exports from model config files
 
 ---
 
@@ -44,252 +103,383 @@
 
 ```
 ai/constants/
-├── ai-constants.ts          # Main exports (~300 lines)
-├── models/
-│   ├── index.ts             # Barrel file
-│   ├── text-to-video.ts     # T2V models (~450 lines)
-│   ├── image-to-video.ts    # I2V models (~500 lines)
-│   ├── avatar.ts            # Avatar models (~250 lines)
-│   └── upscale.ts           # Upscale models (~80 lines)
-└── error-messages.ts        # Error constants (~150 lines)
+├── ai-constants.ts              # Main config (~300 lines)
+│   ├── FAL_API_KEY, FAL_API_BASE, API_CONFIG
+│   ├── UI_CONSTANTS, UPLOAD_CONSTANTS, PROGRESS_CONSTANTS
+│   ├── STORAGE_KEYS, STATUS_MESSAGES, DEFAULTS
+│   ├── REVE_TEXT_TO_IMAGE_MODEL, REVE_EDIT_MODEL
+│   └── Re-exports from model files
+│
+├── text2video-models-config.ts  # Existing + enhanced (~450 lines)
+│   ├── T2V_MODEL_ORDER (typed array)
+│   ├── T2V_MODELS: Record<T2VModelId, AIModel>
+│   ├── T2V_MODEL_CAPABILITIES (existing)
+│   └── Helper functions
+│
+├── image2video-models-config.ts # New (~500 lines)
+│   ├── I2V_MODEL_ORDER (typed array)
+│   ├── I2V_MODELS: Record<I2VModelId, AIModel>
+│   ├── I2V_MODEL_CAPABILITIES
+│   └── Helper functions
+│
+├── avatar-models-config.ts      # New (~300 lines)
+│   ├── AVATAR_MODEL_ORDER (typed array)
+│   ├── AVATAR_MODELS: Record<AvatarModelId, AIModel>
+│   └── Helper functions
+│
+├── error-messages.ts            # New (~150 lines)
+│   └── ERROR_MESSAGES object
+│
+└── ai-model-options.ts          # Existing (keep as-is)
+
+lib/
+├── upscale-models.ts            # Existing (keep as-is, ~383 lines)
+└── text2image-models.ts         # Existing (keep as-is, ~1,417 lines)
 ```
 
 ---
 
 ## Implementation Steps
 
-### Step 1: Create `models/text-to-video.ts`
+### Step 1: Create Type Definitions
 
-Extract these models from `AI_MODELS`:
-- `sora2_text_to_video`
-- `sora2_text_to_video_pro`
-- `kling_v26_pro_t2v`
-- `wan_25_preview` (T2V endpoint)
-- `wan_26_t2v`
-- `ltxv2_pro_t2v`
-- `ltxv2_fast_t2v`
-- `veo31_fast_text_to_video`
-- `veo31_text_to_video`
-- `hailuo23_standard_t2v`
-- `hailuo23_pro_t2v`
-- `seedance`
-- `seedance_pro`
-- `kling_v2_5_turbo`
-- `veo3_fast`
-- `veo3`
-- `wan_turbo`
-- `hailuo`
-- `hailuo_pro`
-- `kling_v2`
+Add typed model IDs to `ai-types.ts`:
 
 ```typescript
-// models/text-to-video.ts
-import type { AIModel } from "../../types/ai-types";
+// Text-to-Video model IDs
+export type T2VModelId =
+  | "sora2_text_to_video"
+  | "sora2_text_to_video_pro"
+  | "kling_v26_pro_t2v"
+  | "wan_26_t2v"
+  | "ltxv2_pro_t2v"
+  | "ltxv2_fast_t2v"
+  | "veo31_fast_text_to_video"
+  | "veo31_text_to_video"
+  // ... etc
 
-export const TEXT_TO_VIDEO_MODELS: AIModel[] = [
-  // ... extracted models
-];
+// Image-to-Video model IDs
+export type I2VModelId =
+  | "sora2_image_to_video"
+  | "sora2_image_to_video_pro"
+  | "kling_v26_pro_i2v"
+  // ... etc
+
+// Avatar model IDs
+export type AvatarModelId =
+  | "wan_animate_replace"
+  | "kling_avatar_v2_standard"
+  | "kling_avatar_v2_pro"
+  // ... etc
 ```
 
-### Step 2: Create `models/image-to-video.ts`
+### Step 2: Enhance `text2video-models-config.ts`
 
-Extract these models:
-- `sora2_image_to_video`
-- `sora2_image_to_video_pro`
-- `kling_v26_pro_i2v`
-- `ltxv2_i2v`
-- `ltxv2_fast_i2v`
-- `seedance_pro_fast_i2v`
-- `seedance_pro_i2v`
-- `kling_v2_5_turbo_i2v`
-- `wan_25_preview_i2v`
-- `wan_26_i2v`
-- `veo31_fast_image_to_video`
-- `veo31_fast_frame_to_video`
-- `veo31_image_to_video`
-- `veo31_frame_to_video`
-- `hailuo23_standard`
-- `hailuo23_fast_pro`
-- `hailuo23_pro`
-- `vidu_q2_turbo_i2v`
-- `kling_o1_i2v`
+Add model definitions alongside existing capabilities:
 
 ```typescript
-// models/image-to-video.ts
-import type { AIModel } from "../../types/ai-types";
+// Existing T2V_MODEL_CAPABILITIES stays as-is
 
-export const IMAGE_TO_VIDEO_MODELS: AIModel[] = [
-  // ... extracted models
+// Add full model definitions
+export const T2V_MODELS: Record<T2VModelId, AIModel> = {
+  sora2_text_to_video: {
+    id: "sora2_text_to_video",
+    name: "Sora 2 Text-to-Video",
+    description: "OpenAI's state-of-the-art text-to-video generation (720p)",
+    price: "0.10/s",
+    resolution: "720p",
+    max_duration: 12,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/sora-2/text-to-video",
+    },
+    default_params: {
+      duration: 4,
+      resolution: "720p",
+      aspect_ratio: "16:9",
+    },
+  },
+  // ... more T2V models
+};
+
+// Priority order for UI
+export const T2V_MODEL_ORDER: T2VModelId[] = [
+  "kling_v26_pro_t2v",  // Best quality first
+  "sora2_text_to_video_pro",
+  "veo31_text_to_video",
+  // ... sorted by quality/price
 ];
+
+// Helper to get models in order
+export function getT2VModelsInOrder(): [T2VModelId, AIModel][] {
+  return T2V_MODEL_ORDER.map(id => [id, T2V_MODELS[id]]);
+}
 ```
 
-### Step 3: Create `models/avatar.ts`
+### Step 3: Create `image2video-models-config.ts`
 
-Extract these models:
-- `wan_animate_replace`
-- `kling_avatar_v2_standard`
-- `kling_avatar_v2_pro`
-- `sync_lipsync_react1`
-- `kling_o1_v2v_reference`
-- `kling_o1_v2v_edit`
-- `kling_o1_ref2video`
-- `bytedance_omnihuman_v1_5`
-- `veo31_fast_extend_video`
-- `veo31_extend_video`
-- `kling_avatar_pro`
-- `kling_avatar_standard`
-- `sora2_video_to_video_remix`
+Follow the same pattern as T2V:
 
 ```typescript
-// models/avatar.ts
-import type { AIModel } from "../../types/ai-types";
+import type { AIModel } from "../types/ai-types";
 
-export const AVATAR_MODELS: AIModel[] = [
-  // ... extracted models
+export type I2VModelId =
+  | "sora2_image_to_video"
+  | "sora2_image_to_video_pro"
+  | "kling_v26_pro_i2v"
+  | "ltxv2_i2v"
+  | "ltxv2_fast_i2v"
+  // ... etc
+
+export const I2V_MODEL_ORDER: I2VModelId[] = [
+  "kling_v26_pro_i2v",
+  "sora2_image_to_video_pro",
+  // ... sorted by quality
 ];
+
+export const I2V_MODELS: Record<I2VModelId, AIModel> = {
+  sora2_image_to_video: { ... },
+  // ... models extracted from ai-constants.ts
+};
+
+export interface I2VModelCapabilities {
+  supportsFirstFrame: boolean;
+  supportsLastFrame: boolean;
+  supportsEndFrame: boolean;
+  supportedResolutions: string[];
+  supportedDurations: number[];
+  // ... specific to I2V models
+}
+
+export const I2V_MODEL_CAPABILITIES: Record<I2VModelId, I2VModelCapabilities> = { ... };
+
+export function getI2VModelsInOrder(): [I2VModelId, AIModel][] {
+  return I2V_MODEL_ORDER.map(id => [id, I2V_MODELS[id]]);
+}
 ```
 
-### Step 4: Create `models/upscale.ts`
-
-Extract these models:
-- `bytedance_video_upscaler`
-- `flashvsr_video_upscaler`
-- `topaz_video_upscale`
+### Step 4: Create `avatar-models-config.ts`
 
 ```typescript
-// models/upscale.ts
-import type { AIModel } from "../../types/ai-types";
+import type { AIModel } from "../types/ai-types";
 
-export const UPSCALE_MODELS: AIModel[] = [
-  // ... extracted models
-];
+export type AvatarModelId =
+  | "wan_animate_replace"
+  | "kling_avatar_v2_standard"
+  | "kling_avatar_v2_pro"
+  | "sync_lipsync_react1"
+  | "bytedance_omnihuman_v1_5"
+  // ... etc
+
+export const AVATAR_MODEL_ORDER: AvatarModelId[] = [ ... ];
+
+export const AVATAR_MODELS: Record<AvatarModelId, AIModel> = { ... };
+
+export interface AvatarModelCapabilities {
+  requiresCharacterImage: boolean;
+  requiresAudioFile: boolean;
+  requiresSourceVideo: boolean;
+  supportsEmotion: boolean;
+  supportedEmotions?: string[];
+  audioConstraints?: { minDurationSec: number; maxDurationSec: number; maxFileSizeBytes: number };
+}
+
+export const AVATAR_MODEL_CAPABILITIES: Record<AvatarModelId, AvatarModelCapabilities> = { ... };
 ```
 
-### Step 5: Create `models/index.ts`
+### Step 5: Create `error-messages.ts`
+
+Extract error messages for maintainability:
 
 ```typescript
-// models/index.ts
-export { TEXT_TO_VIDEO_MODELS } from "./text-to-video";
-export { IMAGE_TO_VIDEO_MODELS } from "./image-to-video";
-export { AVATAR_MODELS } from "./avatar";
-export { UPSCALE_MODELS } from "./upscale";
-
-import { TEXT_TO_VIDEO_MODELS } from "./text-to-video";
-import { IMAGE_TO_VIDEO_MODELS } from "./image-to-video";
-import { AVATAR_MODELS } from "./avatar";
-import { UPSCALE_MODELS } from "./upscale";
-
-// Combined array for backward compatibility
-export const AI_MODELS = [
-  ...TEXT_TO_VIDEO_MODELS,
-  ...IMAGE_TO_VIDEO_MODELS,
-  ...AVATAR_MODELS,
-  ...UPSCALE_MODELS,
-];
-```
-
-### Step 6: Create `error-messages.ts`
-
-Extract `ERROR_MESSAGES` object (~150 lines):
-
-```typescript
-// error-messages.ts
+/**
+ * Centralized error messages for AI video generation.
+ * Organized by model/feature for easy maintenance.
+ */
 export const ERROR_MESSAGES = {
-  // ... all error messages
+  // Common errors
+  INVALID_FILE_TYPE: "Please select a valid image file",
+  FILE_TOO_LARGE: "Image file too large (max 10MB)",
+  NO_MODELS_SELECTED: "Please select at least one AI model",
+  EMPTY_PROMPT: "Please enter a prompt for video generation",
+  GENERATION_FAILED: "Video generation failed. Please try again.",
+
+  // Veo 3.1 specific
+  VEO31_IMAGE_TOO_LARGE: "Image must be under 8MB for Veo 3.1",
+  VEO31_INVALID_ASPECT_RATIO: "Veo 3.1 requires 16:9 or 9:16 aspect ratio for images",
+  // ... etc
 } as const;
+
+export type ErrorMessageKey = keyof typeof ERROR_MESSAGES;
 ```
 
-### Step 7: Update `ai-constants.ts`
+### Step 6: Update `ai-constants.ts`
+
+Slim down to essential config and re-exports:
 
 ```typescript
-// ai-constants.ts (~300 lines)
+/**
+ * AI Configuration Constants
+ *
+ * Main entry point for AI video generation configuration.
+ * Model definitions are split into category-specific files for maintainability.
+ */
 import type { APIConfiguration } from "../types/ai-types";
 import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
 
-// Re-export models
-export { AI_MODELS, TEXT_TO_VIDEO_MODELS, IMAGE_TO_VIDEO_MODELS, AVATAR_MODELS, UPSCALE_MODELS } from "./models";
-export { ERROR_MESSAGES } from "./error-messages";
+// Re-export model configs
+export * from "./text2video-models-config";
+export * from "./image2video-models-config";
+export * from "./avatar-models-config";
+export * from "./error-messages";
 
 // FAL API Configuration
 export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 export const FAL_API_BASE = "https://fal.run";
 export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 
-export const API_CONFIG: APIConfiguration = { ... };
+export const API_CONFIG: APIConfiguration = {
+  falApiKey: FAL_API_KEY,
+  falApiBase: FAL_API_BASE,
+  maxRetries: 3,
+  timeoutMs: 30_000,
+};
 
-// UI, Upload, Progress, Storage, Status constants (keep inline - small)
-export const UI_CONSTANTS = { ... };
-export const UPLOAD_CONSTANTS = { ... };
-export const PROGRESS_CONSTANTS = { ... };
-export const STORAGE_KEYS = { ... };
-export const LTXV2_FAST_CONFIG = { ... };
-export const STATUS_MESSAGES = { ... };
-export const DEFAULTS = { ... };
-export const MODEL_HELPERS = { ... };
-export const REVE_TEXT_TO_IMAGE_MODEL = { ... };
-export const REVE_EDIT_MODEL = { ... };
+// UI Constants (~10 lines)
+export const UI_CONSTANTS = { ... } as const;
 
-// Main config export
-export const AI_CONFIG = { ... };
-export default AI_CONFIG;
+// Upload Constants (~50 lines)
+export const UPLOAD_CONSTANTS = { ... } as const;
+
+// Progress, Storage, Status, Defaults (~50 lines total)
+export const PROGRESS_CONSTANTS = { ... } as const;
+export const STORAGE_KEYS = { ... } as const;
+export const STATUS_MESSAGES = { ... } as const;
+export const DEFAULTS = { ... } as const;
+
+// LTX Config (~20 lines)
+export const LTXV2_FAST_CONFIG = { ... } as const;
+
+// Reve Model Constants (~50 lines)
+export const REVE_TEXT_TO_IMAGE_MODEL = { ... } as const;
+export const REVE_EDIT_MODEL = { ... } as const;
+
+// Backward compatibility: Combined AI_MODELS array
+import { T2V_MODELS } from "./text2video-models-config";
+import { I2V_MODELS } from "./image2video-models-config";
+import { AVATAR_MODELS } from "./avatar-models-config";
+import { UPSCALE_MODELS } from "@/lib/upscale-models";
+
+export const AI_MODELS: AIModel[] = [
+  ...Object.values(T2V_MODELS),
+  ...Object.values(I2V_MODELS),
+  ...Object.values(AVATAR_MODELS),
+  ...Object.values(UPSCALE_MODELS),
+];
+
+// Legacy helper (deprecated, use category-specific helpers)
+export const MODEL_HELPERS = {
+  getModelById: (id: string) => AI_MODELS.find(m => m.id === id),
+  // ... other helpers
+};
 ```
 
 ---
 
 ## Final File Sizes (Estimated)
 
-| File | Lines | Change |
+| File | Lines | Status |
 |------|-------|--------|
-| `ai-constants.ts` | ~300 | -1,294 |
-| `models/text-to-video.ts` | ~450 | New |
-| `models/image-to-video.ts` | ~500 | New |
-| `models/avatar.ts` | ~250 | New |
-| `models/upscale.ts` | ~80 | New |
-| `models/index.ts` | ~25 | New |
+| `ai-constants.ts` | ~300 | Reduced from 1,594 |
+| `text2video-models-config.ts` | ~500 | Enhanced from 352 |
+| `image2video-models-config.ts` | ~500 | New |
+| `avatar-models-config.ts` | ~300 | New |
 | `error-messages.ts` | ~150 | New |
-| **Total** | ~1,755 | +161 (overhead) |
+| **Total** | ~1,750 | +156 overhead |
 
 ---
 
-## Benefits
+## Benefits of This Approach
 
-1. **Maintainability**: Each model category is isolated
-2. **Code Reviews**: Smaller, focused diffs
-3. **Team Collaboration**: Multiple developers can work on different categories
-4. **Testing**: Easier to test individual model categories
-5. **Discovery**: Clearer file names indicate content
+### 1. Consistency with Existing Patterns
+- Follows `upscale-models.ts` and `text2image-models.ts` conventions
+- Uses established `Record<ModelId, Model>` pattern
+- Maintains type safety with `as const` arrays
+
+### 2. Long-term Maintainability
+- Adding new models = add to one focused file
+- Capabilities separate from definitions (like `text2video-models-config.ts`)
+- Each category file is <500 lines
+
+### 3. Code Reuse
+- Existing `T2V_MODEL_CAPABILITIES` stays intact
+- `UPSCALE_MODELS` from `lib/upscale-models.ts` integrated via import
+- Helper functions shared across categories
+
+### 4. Backward Compatibility
+- `AI_MODELS` array still available via computed export
+- `MODEL_HELPERS` preserved for existing code
+- All current imports continue to work
+
+### 5. Improved Developer Experience
+- Find models by category instead of scrolling 1,500 lines
+- Type-safe model IDs prevent typos
+- IntelliSense works with `Record<ModelId, Model>`
 
 ---
 
-## Backward Compatibility
+## Migration Path
 
-- `AI_MODELS` array remains available via re-export
-- All existing imports continue to work
-- No breaking changes to consumers
+### Phase 1: Extract Error Messages
+1. Create `error-messages.ts`
+2. Update imports in consumers
+3. Verify build passes
+
+### Phase 2: Enhance T2V Config
+1. Add `T2V_MODELS` to existing `text2video-models-config.ts`
+2. Add `T2V_MODEL_ORDER` array
+3. Update `ai-constants.ts` to import
+
+### Phase 3: Create I2V Config
+1. Create `image2video-models-config.ts`
+2. Extract I2V models from `ai-constants.ts`
+3. Add capabilities interface
+
+### Phase 4: Create Avatar Config
+1. Create `avatar-models-config.ts`
+2. Extract avatar models
+3. Add capabilities for required inputs
+
+### Phase 5: Finalize Main File
+1. Remove model definitions from `ai-constants.ts`
+2. Add re-exports
+3. Create backward-compatible `AI_MODELS` array
 
 ---
 
 ## Validation Checklist
 
-- [ ] All imports resolve correctly
-- [ ] `AI_MODELS` contains same models in same order
-- [ ] Type checking passes (`bun run check-types`)
+- [ ] All model IDs preserved exactly
+- [ ] Endpoint paths unchanged
+- [ ] Default params unchanged
+- [ ] TypeScript compiles (`bun run check-types`)
 - [ ] Lint passes (`bun lint:clean`)
-- [ ] UI displays all models correctly
-- [ ] Generation works for all model categories
+- [ ] Tests pass (`bun run test`)
+- [ ] UI shows all models correctly
+- [ ] Generation works for each category
 
 ---
 
-## Risk Assessment
+## Risk Mitigation
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Import path issues | Low | Medium | Barrel file with re-exports |
-| Model order changes | Low | Low | Preserve original order in combined array |
-| Missing models | Low | High | Count models before/after split |
-| Type errors | Low | Low | TypeScript will catch at compile time |
+| Risk | Mitigation |
+|------|------------|
+| Breaking existing imports | Keep all exports in `ai-constants.ts` |
+| Model count mismatch | Assert `AI_MODELS.length === 47` (current count) |
+| Missing capabilities | Copy capabilities from `text2video-models-config.ts` pattern |
+| Type errors | Use `satisfies AIModel` for compile-time validation |
 
 ---
 
-*Document created: 2025-12-17*
-*Target: Reduce ai-constants.ts from 1,594 to ~300 lines*
+*Document updated: 2025-12-17*
+*Aligned with existing codebase patterns for long-term maintainability*

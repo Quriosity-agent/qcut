@@ -8,6 +8,8 @@ Integrate the WAN v2.6 Reference-to-Video model which generates videos from 1-3 
 
 **Key Differentiator**: Unlike image-to-video models, this takes **video clips** as references (not images).
 
+**UI Approach**: Reuse existing `referenceImages` UI from avatar tab, extended to accept both images and videos based on model requirements.
+
 ---
 
 ## API Specification
@@ -82,7 +84,7 @@ export interface WAN26Ref2VideoRequest {
 **Action**: ADD to `AI_MODELS` array after `wan_26_i2v` entry (~line 460)
 
 ```typescript
-// WAN v2.6 Reference-to-Video
+// WAN v2.6 Reference-to-Video (Avatar tab - reuses referenceImages UI)
 {
   id: "wan_26_ref2v",
   name: "WAN v2.6 Ref2Video",
@@ -90,10 +92,10 @@ export interface WAN26Ref2VideoRequest {
   price: "0.75", // 5s @ $0.15/s for 1080p
   resolution: "720p / 1080p",
   max_duration: 10,
-  category: "video", // Uses video inputs
-  requiredInputs: ["referenceVideos"], // New input type
+  category: "avatar", // Avatar tab - reuses referenceImages UI
+  requiredInputs: ["referenceMedia"], // Accepts both images and videos
   endpoints: {
-    image_to_video: "fal-ai/wan/v2.6/reference-to-video", // Reuse I2V slot
+    image_to_video: "fal-ai/wan/v2.6/reference-to-video",
   },
   default_params: {
     duration: 5,
@@ -110,10 +112,12 @@ export interface WAN26Ref2VideoRequest {
     "720p": 0.10,
     "1080p": 0.15,
   },
+  /** Model accepts video files as references (not images) */
+  acceptsVideoReferences: true,
 },
 ```
 
-**Note**: Uses `category: "video"` since it requires video inputs, not images.
+**Note**: Uses `category: "avatar"` to appear in avatar tab alongside `kling_o1_ref2video`.
 
 ---
 
@@ -308,18 +312,16 @@ export { generateWAN26RefVideo } from "./generators/image-to-video";
 **Action**: ADD after WAN v2.6 I2V options block (~line 262)
 
 ```typescript
-// WAN v2.6 Reference-to-Video options
+// WAN v2.6 Reference-to-Video options (reuses referenceImages from avatar state)
 wan26RefDuration?: 5 | 10;
 wan26RefResolution?: "720p" | "1080p";
 wan26RefAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 wan26RefNegativePrompt?: string;
 wan26RefEnablePromptExpansion?: boolean;
 wan26RefMultiShots?: boolean;
-/** Reference video files for WAN v2.6 Ref2Video (1-3 videos) */
-referenceVideoFiles?: (File | null)[];
-/** Uploaded reference video URLs */
-referenceVideoUrls?: string[];
 ```
+
+**Note**: No new file props needed - reuses existing `referenceImages` from avatar tab state.
 
 ---
 
@@ -327,44 +329,70 @@ referenceVideoUrls?: string[];
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`
 
-**Action**: ADD handler in appropriate switch case for "video" category models
+**Action**: ADD handler in `handleAvatarModels` switch after `kling_o1_ref2video` case (~line 1563)
 
 ```typescript
 case "wan_26_ref2v": {
-  const { generateWAN26RefVideo } = await import("@/lib/ai-video");
+  return handleWAN26Ref2Video(ctx, settings);
+}
+```
 
-  // Upload reference videos if not already URLs
+**Action**: ADD handler function after `handleKlingO1Ref2Video` (~line 1150)
+
+```typescript
+/**
+ * Handle WAN v2.6 Reference-to-Video generation
+ * Reuses referenceImages from avatar tab (accepts video files)
+ */
+async function handleWAN26Ref2Video(
+  ctx: ModelHandlerContext,
+  settings: AvatarSettings
+): Promise<ModelHandlerResult> {
+  // Reuse referenceImages - for this model they contain video files
+  const referenceFiles = settings.referenceImages?.filter((f) => f !== null) ?? [];
+
+  if (referenceFiles.length === 0) {
+    return {
+      success: false,
+      error: "At least one reference video is required",
+    };
+  }
+
+  if (referenceFiles.length > 3) {
+    return {
+      success: false,
+      error: "Maximum 3 reference videos allowed",
+    };
+  }
+
+  // Upload video files to FAL
   const videoUrls: string[] = [];
-  if (props.referenceVideoUrls && props.referenceVideoUrls.length > 0) {
-    videoUrls.push(...props.referenceVideoUrls);
-  } else if (props.referenceVideoFiles) {
-    for (const file of props.referenceVideoFiles) {
-      if (file) {
-        const url = await uploadVideoToFal(file, falApiKey);
-        videoUrls.push(url);
-      }
+  for (const file of referenceFiles) {
+    if (file) {
+      const url = await uploadVideoToFal(file, ctx.falApiKey);
+      videoUrls.push(url);
     }
   }
 
-  if (videoUrls.length === 0) {
-    throw new Error("At least one reference video is required");
-  }
+  const { generateWAN26RefVideo } = await import("@/lib/ai-video");
 
   return generateWAN26RefVideo({
-    model: modelId,
-    prompt,
+    model: ctx.modelId,
+    prompt: ctx.prompt,
     video_urls: videoUrls,
-    duration: props.wan26RefDuration,
-    resolution: props.wan26RefResolution,
-    aspect_ratio: props.wan26RefAspectRatio,
-    negative_prompt: props.wan26RefNegativePrompt,
-    enable_prompt_expansion: props.wan26RefEnablePromptExpansion,
-    multi_shots: props.wan26RefMultiShots,
-    seed: props.t2vSeed,
-    enable_safety_checker: props.t2vSafetyChecker,
+    duration: ctx.props.wan26RefDuration,
+    resolution: ctx.props.wan26RefResolution,
+    aspect_ratio: ctx.props.wan26RefAspectRatio,
+    negative_prompt: ctx.props.wan26RefNegativePrompt,
+    enable_prompt_expansion: ctx.props.wan26RefEnablePromptExpansion,
+    multi_shots: ctx.props.wan26RefMultiShots,
+    seed: ctx.props.t2vSeed,
+    enable_safety_checker: ctx.props.t2vSafetyChecker,
   });
 }
 ```
+
+**Reuse**: Follows exact pattern of `handleKlingO1Ref2Video`, reusing `referenceImages` from avatar state.
 
 ---
 
@@ -387,19 +415,74 @@ case "wan_26_ref2v": {
 
 ---
 
-## UI Components (Future Phase)
+## Subtask 9: Extend Reference Upload UI to Accept Videos
 
-The UI for selecting reference videos will require:
+**File**: `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx`
 
-1. **Video upload zone** accepting 1-3 video files
-2. **Video preview thumbnails** with remove buttons
-3. **Prompt hint** showing `@Video1`, `@Video2`, `@Video3` syntax
-4. **Validation UI** for video format/duration requirements
+**Action**: MODIFY the reference upload section to accept both images and videos based on model
 
-This can reuse patterns from:
-- `referenceImages` handling in Kling O1 Ref2Video
-- Video upload in Kling O1 V2V model
-- Multi-file upload in Seeddream 4.5 Edit
+**Approach**: Extend the existing `FileUpload` component usage to dynamically accept video files when `wan_26_ref2v` is selected.
+
+```typescript
+// Add helper to determine accepted file types based on selected model
+const getAcceptedReferenceTypes = (selectedModels: string[]) => {
+  const hasVideoRefModel = selectedModels.includes("wan_26_ref2v");
+  if (hasVideoRefModel) {
+    return "video/mp4,video/mov,video/webm"; // Videos for WAN v2.6 Ref2Video
+  }
+  return "image/*"; // Images for Kling O1 Ref2Video
+};
+
+// Modify FileUpload accept prop dynamically
+<FileUpload
+  accept={getAcceptedReferenceTypes(selectedModels)}
+  // ... rest of props
+/>
+```
+
+**Action**: Update labels/hints when video model is selected
+
+```typescript
+// Dynamic label based on model
+const getReferenceLabel = (selectedModels: string[]) => {
+  if (selectedModels.includes("wan_26_ref2v")) {
+    return "Reference Videos (1-3)";
+  }
+  return "Reference Images (1-7)";
+};
+
+const getReferenceHint = (selectedModels: string[]) => {
+  if (selectedModels.includes("wan_26_ref2v")) {
+    return "Use @Video1, @Video2, @Video3 in your prompt";
+  }
+  return "Upload character reference images";
+};
+```
+
+**Reuse**: 100% reuses existing `referenceImages` state and upload UI - only changes `accept` attribute and labels.
+
+---
+
+## Subtask 10: Update Validation in use-ai-generation.ts
+
+**File**: `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+
+**Action**: ADD validation case for `wan_26_ref2v` after `kling_o1_ref2video` (~line 1794)
+
+```typescript
+// Reference-to-video models require at least one reference
+if (modelId === "kling_o1_ref2video" || modelId === "wan_26_ref2v") {
+  const hasReferenceMedia = referenceImages?.some(
+    (item) => item !== null
+  );
+  if (!hasReferenceMedia) {
+    const mediaType = modelId === "wan_26_ref2v" ? "video" : "image";
+    throw new Error(`Please upload at least one reference ${mediaType}`);
+  }
+}
+```
+
+**Reuse**: Extends existing validation pattern, shared with `kling_o1_ref2video`.
 
 ---
 
@@ -407,23 +490,28 @@ This can reuse patterns from:
 
 | File | Action | Lines Changed |
 |------|--------|---------------|
-| `ai-types.ts` | ADD | ~25 lines |
-| `ai-constants.ts` | ADD | ~30 lines |
+| `ai-types.ts` | ADD | ~20 lines |
+| `ai-constants.ts` | ADD | ~32 lines |
 | `validators.ts` | ADD | ~15 lines |
 | `image-to-video.ts` | ADD | ~80 lines |
 | `index.ts` | ADD | ~1 line |
-| `model-handlers.ts` | ADD | ~25 lines |
+| `model-handlers.ts` | ADD | ~50 lines |
 | `ai-cost-calculators.ts` | ADD | ~6 lines |
+| `ai-avatar-tab.tsx` | MODIFY | ~15 lines |
+| `use-ai-generation.ts` | MODIFY | ~8 lines |
 
-**Total**: ~182 lines of new code
+**Total**: ~227 lines of new/modified code
 
 ---
 
 ## Testing Checklist
 
-- [ ] Model appears in AI panel when "video" tab active
-- [ ] Cost estimation shows correct pricing
+- [ ] Model appears in AI panel when "avatar" tab active
+- [ ] Reference upload accepts video files (MP4, MOV) when WAN v2.6 Ref2Video selected
+- [ ] Reference upload accepts image files when Kling O1 Ref2Video selected
+- [ ] Cost estimation shows correct pricing ($0.10/s 720p, $0.15/s 1080p)
 - [ ] Validation rejects 0 or 4+ videos
+- [ ] Validation shows correct error message mentioning "video" not "image"
 - [ ] Prompt with `@Video1` syntax works
 - [ ] Video generation completes successfully
 - [ ] Error handling shows meaningful messages
@@ -432,8 +520,11 @@ This can reuse patterns from:
 
 ## Long-term Maintainability Notes
 
-1. **Reuse existing validators**: Uses same `validateWAN26Prompt`, `validateWAN26Duration`, etc.
-2. **Consistent naming**: `wan_26_ref2v` follows pattern of `wan_26_t2v`, `wan_26_i2v`
-3. **Shared pricing logic**: Same per-second calculation as other WAN v2.6 variants
-4. **Type safety**: Full TypeScript interface with proper optional parameters
-5. **Modular generator**: Self-contained function following established patterns
+1. **Reuse existing UI**: Uses same `referenceImages` state and upload components from avatar tab
+2. **Reuse existing validators**: Uses same `validateWAN26Prompt`, `validateWAN26Duration`, etc.
+3. **Consistent naming**: `wan_26_ref2v` follows pattern of `wan_26_t2v`, `wan_26_i2v`
+4. **Shared pricing logic**: Same per-second calculation as other WAN v2.6 variants
+5. **Type safety**: Full TypeScript interface with proper optional parameters
+6. **Modular generator**: Self-contained function following `handleKlingO1Ref2Video` pattern
+7. **Dynamic UI**: Single upload UI adapts accept types based on selected model
+8. **Category alignment**: Uses `category: "avatar"` for proper tab placement
