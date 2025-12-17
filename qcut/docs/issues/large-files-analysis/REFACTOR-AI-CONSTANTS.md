@@ -10,16 +10,16 @@
 ## Implementation Status
 
 **Started**: 2025-12-17
-**Status**: 🟡 In Progress (Phases 1-2 Complete)
+**Status**: 🟡 In Progress (Phases 1-4 Complete)
 **Last Updated**: 2025-12-17
 **Current File Size**: 1,477 lines (Phase 5 will reduce significantly)
 
 ### Progress Summary
 - [x] Phase 1: Extract Error Messages ✅ **COMPLETED**
 - [x] Phase 2: Enhance T2V Config ✅ **COMPLETED**
-- [ ] Phase 3: Create I2V Config (In Progress)
-- [ ] Phase 4: Create Avatar Config
-- [ ] Phase 5: Finalize Main File
+- [x] Phase 3: Create I2V Config ✅ **COMPLETED**
+- [x] Phase 4: Create Avatar Config ✅ **COMPLETED**
+- [ ] Phase 5: Finalize Main File (In Progress)
 
 ### Implementation Log
 <!-- Add entries as work progresses, newest first -->
@@ -52,6 +52,36 @@
 **Files Modified:**
 - `text2video-models-config.ts`: 352 → 693 lines (+341 lines)
 - `ai-constants.ts`: 1,476 → 1,477 lines (+1 import line)
+
+**Note**: Models remain in ai-constants.ts for now; removal happens in Phase 5
+
+#### 2025-12-17 - Phase 3 Complete
+- ✅ Created `image2video-models-config.ts` with 19 image-to-video model definitions
+- ✅ Included Sora 2, Kling, WAN, LTX, Veo, Hailuo, Seedance, Vidu models
+- ✅ Added frame-to-video variants (Veo, Kling O1)
+- ✅ Derived I2VModelId type from I2V_MODELS keys
+- ✅ Added I2V_MODEL_ORDER array for UI priority rendering
+- ✅ Added getI2VModelsInOrder() helper function
+- ✅ TypeScript compilation passes cleanly
+- 📝 Commit: `23d766ac` - "feat: create image2video-models-config.ts with 19 I2V models"
+
+**Files Created:**
+- `apps/web/src/components/editor/media-panel/views/ai/constants/image2video-models-config.ts` (446 lines)
+
+**Note**: Models remain in ai-constants.ts for now; removal happens in Phase 5
+
+#### 2025-12-17 - Phase 4 Complete
+- ✅ Created `avatar-models-config.ts` with 14 avatar/talking-head model definitions
+- ✅ Models: WAN v2.6 Ref2V, Kling Avatar v2 (Standard/Pro), Sync Lipsync React-1
+- ✅ Included ByteDance OmniHuman, Kling O1 V2V, Veo 3.1 Extend, Sora 2 V2V Remix
+- ✅ Derived AvatarModelId type from AVATAR_MODELS keys
+- ✅ Added AVATAR_MODEL_ORDER array for UI priority rendering
+- ✅ Added getAvatarModelsInOrder() helper function
+- ✅ TypeScript compilation passes (330 lines)
+- 📝 Commit: `c8e7d352` - "feat: create avatar-models-config.ts with 14 avatar models"
+
+**Files Created:**
+- `apps/web/src/components/editor/media-panel/views/ai/constants/avatar-models-config.ts` (330 lines)
 
 **Note**: Models remain in ai-constants.ts for now; removal happens in Phase 5
 
