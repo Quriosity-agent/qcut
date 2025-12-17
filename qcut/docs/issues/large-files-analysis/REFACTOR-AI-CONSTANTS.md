@@ -148,49 +148,63 @@ lib/
 
 ### Step 1: Create Type Definitions
 
-Add typed model IDs to `ai-types.ts`:
+**DO NOT create hand-maintained string unions.** Instead, derive types from model data to ensure a single source of truth.
+
+In each model config file (e.g., `text2video-models-config.ts`), define models first, then derive the type:
 
 ```typescript
-// Text-to-Video model IDs
-export type T2VModelId =
-  | "sora2_text_to_video"
-  | "sora2_text_to_video_pro"
-  | "kling_v26_pro_t2v"
-  | "wan_26_t2v"
-  | "ltxv2_pro_t2v"
-  | "ltxv2_fast_t2v"
-  | "veo31_fast_text_to_video"
-  | "veo31_text_to_video"
-  // ... etc
+// Define the models as the source of truth
+export const T2V_MODELS = {
+  sora2_text_to_video: {
+    id: "sora2_text_to_video",
+    name: "Sora 2 Text-to-Video",
+    // ... model config
+  },
+  sora2_text_to_video_pro: {
+    id: "sora2_text_to_video_pro",
+    name: "Sora 2 Pro",
+    // ... model config
+  },
+  kling_v26_pro_t2v: {
+    id: "kling_v26_pro_t2v",
+    name: "Kling v2.6 Pro T2V",
+    // ... model config
+  },
+  // ... more models
+} as const satisfies Record<string, AIModel>;
 
-// Image-to-Video model IDs
-export type I2VModelId =
-  | "sora2_image_to_video"
-  | "sora2_image_to_video_pro"
-  | "kling_v26_pro_i2v"
-  // ... etc
+// Derive the type from the data
+export type T2VModelId = keyof typeof T2V_MODELS;
+```
 
-// Avatar model IDs
-export type AvatarModelId =
-  | "wan_animate_replace"
-  | "kling_avatar_v2_standard"
-  | "kling_avatar_v2_pro"
-  // ... etc
+The same pattern applies to I2V and Avatar models:
+
+```typescript
+// image2video-models-config.ts
+export const I2V_MODELS = { ... } as const satisfies Record<string, AIModel>;
+export type I2VModelId = keyof typeof I2V_MODELS;
+
+// avatar-models-config.ts
+export const AVATAR_MODELS = { ... } as const satisfies Record<string, AIModel>;
+export type AvatarModelId = keyof typeof AVATAR_MODELS;
 ```
 
 #### Review
-- Avoid hand-maintained string unions; derive `*ModelId` from `as const` data (`*_MODELS` keys or an ID list) so adding/removing models is a single edit.
-- Keep `ai-types.ts` from becoming a dumping ground; if it grows quickly, consider per-category types colocated with each `*-models-config.ts`.
+- This ensures adding/removing models is a single edit - no need to update types separately.
+- Types are automatically kept in sync with actual model keys.
+- Consider colocating types with their model configs in `*-models-config.ts` files rather than centralizing in `ai-types.ts`.
 
 ### Step 2: Enhance `text2video-models-config.ts`
 
-Add model definitions alongside existing capabilities:
+Add model definitions alongside existing capabilities, following the type derivation pattern from Step 1:
 
 ```typescript
+import type { AIModel } from "../types/ai-types";
+
 // Existing T2V_MODEL_CAPABILITIES stays as-is
 
-// Add full model definitions
-export const T2V_MODELS: Record<T2VModelId, AIModel> = {
+// Define models first (source of truth)
+export const T2V_MODELS = {
   sora2_text_to_video: {
     id: "sora2_text_to_video",
     name: "Sora 2 Text-to-Video",
@@ -209,52 +223,67 @@ export const T2V_MODELS: Record<T2VModelId, AIModel> = {
     },
   },
   // ... more T2V models
-};
+} as const satisfies Record<string, AIModel>;
+
+// Derive type from models
+export type T2VModelId = keyof typeof T2V_MODELS;
 
 // Priority order for UI
-export const T2V_MODEL_ORDER: T2VModelId[] = [
+export const T2V_MODEL_ORDER = [
   "kling_v26_pro_t2v",  // Best quality first
   "sora2_text_to_video_pro",
   "veo31_text_to_video",
   // ... sorted by quality/price
-];
+] as const satisfies readonly T2VModelId[];
 
 // Helper to get models in order
-export function getT2VModelsInOrder(): [T2VModelId, AIModel][] {
+export function getT2VModelsInOrder(): Array<[T2VModelId, AIModel]> {
   return T2V_MODEL_ORDER.map(id => [id, T2V_MODELS[id]]);
 }
 ```
 
 #### Review
-- Prefer `const T2V_MODELS = { ... } as const satisfies Record<string, AIModel>` + `export type T2VModelId = keyof typeof T2V_MODELS` to make the config the source of truth and prevent stale ID types.
-- Make `T2V_MODEL_ORDER` `as const` and add an invariant (compile-time or runtime) that every `T2V_MODELS` key appears exactly once (prevents silent missing/duplicate models).
+- The `as const satisfies` pattern ensures type safety and makes the model data the single source of truth.
+- `T2V_MODEL_ORDER` uses `as const satisfies readonly T2VModelId[]` to enforce that all IDs exist in `T2V_MODELS`.
+- Add a compile-time or runtime invariant that every `T2V_MODELS` key appears exactly once in `T2V_MODEL_ORDER` (prevents silent missing/duplicate models).
 - Extract shared helpers (order -> entries, ID -> model lookup) into a tiny utility so every category stays consistent without repetition.
 
 ### Step 3: Create `image2video-models-config.ts`
 
-Follow the same pattern as T2V:
+Follow the same type derivation pattern as T2V:
 
 ```typescript
 import type { AIModel } from "../types/ai-types";
 
-export type I2VModelId =
-  | "sora2_image_to_video"
-  | "sora2_image_to_video_pro"
-  | "kling_v26_pro_i2v"
-  | "ltxv2_i2v"
-  | "ltxv2_fast_i2v"
-  // ... etc
+// Define models first (source of truth)
+export const I2V_MODELS = {
+  sora2_image_to_video: {
+    id: "sora2_image_to_video",
+    name: "Sora 2 Image-to-Video",
+    // ... model config
+  },
+  sora2_image_to_video_pro: {
+    id: "sora2_image_to_video_pro",
+    name: "Sora 2 Pro I2V",
+    // ... model config
+  },
+  kling_v26_pro_i2v: {
+    id: "kling_v26_pro_i2v",
+    name: "Kling v2.6 Pro I2V",
+    // ... model config
+  },
+  // ... models extracted from ai-constants.ts
+} as const satisfies Record<string, AIModel>;
 
-export const I2V_MODEL_ORDER: I2VModelId[] = [
+// Derive type from models
+export type I2VModelId = keyof typeof I2V_MODELS;
+
+// Priority order for UI
+export const I2V_MODEL_ORDER = [
   "kling_v26_pro_i2v",
   "sora2_image_to_video_pro",
   // ... sorted by quality
-];
-
-export const I2V_MODELS: Record<I2VModelId, AIModel> = {
-  sora2_image_to_video: { ... },
-  // ... models extracted from ai-constants.ts
-};
+] as const satisfies readonly I2VModelId[];
 
 export interface I2VModelCapabilities {
   supportsFirstFrame: boolean;
@@ -267,32 +296,53 @@ export interface I2VModelCapabilities {
 
 export const I2V_MODEL_CAPABILITIES: Record<I2VModelId, I2VModelCapabilities> = { ... };
 
-export function getI2VModelsInOrder(): [I2VModelId, AIModel][] {
+export function getI2VModelsInOrder(): Array<[I2VModelId, AIModel]> {
   return I2V_MODEL_ORDER.map(id => [id, I2V_MODELS[id]]);
 }
 ```
 
 #### Review
-- Don't redefine `I2VModelId` here if it already lives in `ai-types.ts`; keep one source of truth for IDs to reduce maintenance churn.
+- Types are derived from model data, not hand-maintained unions, keeping a single source of truth.
 - Reuse capability primitives (durations/resolutions/aspect ratios) shared with T2V where possible; only introduce a new interface if I2V genuinely needs different concepts.
 - If any IDs have legacy aliases, include an `*_MODEL_ID_ALIASES` map early to keep rename/back-compat decisions localized to the config layer.
 
 ### Step 4: Create `avatar-models-config.ts`
 
+Follow the same type derivation pattern:
+
 ```typescript
 import type { AIModel } from "../types/ai-types";
 
-export type AvatarModelId =
-  | "wan_animate_replace"
-  | "kling_avatar_v2_standard"
-  | "kling_avatar_v2_pro"
-  | "sync_lipsync_react1"
-  | "bytedance_omnihuman_v1_5"
-  // ... etc
+// Define models first (source of truth)
+export const AVATAR_MODELS = {
+  wan_animate_replace: {
+    id: "wan_animate_replace",
+    name: "WAN Animate Replace",
+    // ... model config
+  },
+  kling_avatar_v2_standard: {
+    id: "kling_avatar_v2_standard",
+    name: "Kling Avatar v2 Standard",
+    // ... model config
+  },
+  kling_avatar_v2_pro: {
+    id: "kling_avatar_v2_pro",
+    name: "Kling Avatar v2 Pro",
+    // ... model config
+  },
+  // ... more avatar models
+} as const satisfies Record<string, AIModel>;
 
-export const AVATAR_MODEL_ORDER: AvatarModelId[] = [ ... ];
+// Derive type from models
+export type AvatarModelId = keyof typeof AVATAR_MODELS;
 
-export const AVATAR_MODELS: Record<AvatarModelId, AIModel> = { ... };
+// Priority order for UI
+export const AVATAR_MODEL_ORDER = [
+  "kling_avatar_v2_pro",
+  "kling_avatar_v2_standard",
+  "wan_animate_replace",
+  // ... sorted by quality/features
+] as const satisfies readonly AvatarModelId[];
 
 export interface AvatarModelCapabilities {
   requiresCharacterImage: boolean;
