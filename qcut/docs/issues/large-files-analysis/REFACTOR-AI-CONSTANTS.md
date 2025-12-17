@@ -178,7 +178,7 @@ export type AvatarModelId =
   // ... etc
 ```
 
-**Review**
+#### Review
 - Avoid hand-maintained string unions; derive `*ModelId` from `as const` data (`*_MODELS` keys or an ID list) so adding/removing models is a single edit.
 - Keep `ai-types.ts` from becoming a dumping ground; if it grows quickly, consider per-category types colocated with each `*-models-config.ts`.
 
@@ -225,7 +225,7 @@ export function getT2VModelsInOrder(): [T2VModelId, AIModel][] {
 }
 ```
 
-**Review**
+#### Review
 - Prefer `const T2V_MODELS = { ... } as const satisfies Record<string, AIModel>` + `export type T2VModelId = keyof typeof T2V_MODELS` to make the config the source of truth and prevent stale ID types.
 - Make `T2V_MODEL_ORDER` `as const` and add an invariant (compile-time or runtime) that every `T2V_MODELS` key appears exactly once (prevents silent missing/duplicate models).
 - Extract shared helpers (order -> entries, ID -> model lookup) into a tiny utility so every category stays consistent without repetition.
@@ -272,7 +272,7 @@ export function getI2VModelsInOrder(): [I2VModelId, AIModel][] {
 }
 ```
 
-**Review**
+#### Review
 - Don't redefine `I2VModelId` here if it already lives in `ai-types.ts`; keep one source of truth for IDs to reduce maintenance churn.
 - Reuse capability primitives (durations/resolutions/aspect ratios) shared with T2V where possible; only introduce a new interface if I2V genuinely needs different concepts.
 - If any IDs have legacy aliases, include an `*_MODEL_ID_ALIASES` map early to keep rename/back-compat decisions localized to the config layer.
@@ -306,7 +306,7 @@ export interface AvatarModelCapabilities {
 export const AVATAR_MODEL_CAPABILITIES: Record<AvatarModelId, AvatarModelCapabilities> = { ... };
 ```
 
-**Review**
+#### Review
 - Keep capability data data-first (const objects) so you can reuse it for UI + validation without duplicating business rules in multiple layers.
 - If `supportedEmotions` becomes real, prefer deriving it from an `as const` list (typed union) rather than a free-form `string[]`.
 
@@ -336,7 +336,7 @@ export const ERROR_MESSAGES = {
 export type ErrorMessageKey = keyof typeof ERROR_MESSAGES;
 ```
 
-**Review**
+#### Review
 - If the app has i18n (or will), consider placing these into the existing localization pipeline rather than creating a new constants silo.
 - Avoid repeating near-identical strings per model; prefer small formatting helpers for shared patterns (file size limits, aspect ratio constraints) so changes apply everywhere.
 - The file-level doc comment is likely unnecessary; keep it lean unless there's genuinely non-obvious context.
@@ -416,7 +416,7 @@ export const MODEL_HELPERS = {
 };
 ```
 
-**Review**
+#### Review
 - Guard env access: exporting a possibly-undefined `FAL_API_KEY` can create late runtime failures; consider an accessor that throws a clear error when a feature is used without configuration.
 - Be cautious with `export *` re-exports: they're convenient but can introduce name collisions and circular deps as the module graph grows; explicit exports are more stable long-term.
 - For legacy lookups, consider an `AI_MODELS_BY_ID` map (merged records) and build `AI_MODELS` in a stable UI order (from `*_MODEL_ORDER`) rather than relying on `Object.values()` ordering.
@@ -474,7 +474,7 @@ export const MODEL_HELPERS = {
 2. Update imports in consumers
 3. Verify build passes
 
-**Review**
+#### Review
 - Keep the export surface stable (same keys/messages) to minimize churn; defer message wording tweaks to a separate change.
 - If there's an existing i18n/storybook snapshot flow, use it here; it's a good low-risk first move that should come with fast validation.
 
@@ -483,7 +483,7 @@ export const MODEL_HELPERS = {
 2. Add `T2V_MODEL_ORDER` array
 3. Update `ai-constants.ts` to import
 
-**Review**
+#### Review
 - Preserve backwards-compatible exports (`T2V_MODEL_ID_ALIASES`, capability helpers) and make the new additions additive to avoid breaking existing imports.
 - Add an invariant that `T2V_MODEL_ORDER` contains all T2V IDs exactly once so future model additions don't silently disappear from UI.
 
@@ -492,7 +492,7 @@ export const MODEL_HELPERS = {
 2. Extract I2V models from `ai-constants.ts`
 3. Add capabilities interface
 
-**Review**
+#### Review
 - Minimize copy/paste: reuse shared model/ordering helpers and shared capability primitives from T2V where possible.
 - Keep extraction mechanical first (no renames), then do cleanup once everything compiles and UI parity is confirmed.
 
@@ -501,7 +501,7 @@ export const MODEL_HELPERS = {
 2. Extract avatar models
 3. Add capabilities for required inputs
 
-**Review**
+#### Review
 - Align capability flags with existing UI inputs + validators; avoid creating "config truth" that disagrees with actual generator requirements.
 - Reuse shared constraint shapes (file sizes, durations) so the same rule doesn't live in multiple places.
 
@@ -510,7 +510,7 @@ export const MODEL_HELPERS = {
 2. Add re-exports
 3. Create backward-compatible `AI_MODELS` array
 
-**Review**
+#### Review
 - Prefer explicit re-exports (or a dedicated `index.ts` barrel) to keep the public API intentional and avoid accidental export churn.
 - Keep `AI_MODELS` construction deterministic (stable order) and add a uniqueness check for model IDs to catch collisions early.
 
@@ -527,7 +527,7 @@ export const MODEL_HELPERS = {
 - [ ] UI shows all models correctly
 - [ ] Generation works for each category
 
-**Review**
+#### Review
 - Add invariants that scale: no duplicate IDs, `*_MODEL_ORDER` covers `*_MODELS` keys (or document intentional omissions), and alias maps don't point to missing IDs.
 - Prefer checks based on ID sets over a fixed `AI_MODELS.length` so routine model additions don't look like refactor regressions.
 
@@ -542,7 +542,7 @@ export const MODEL_HELPERS = {
 | Missing capabilities | Copy capabilities from `text2video-models-config.ts` pattern |
 | Type errors | Use `satisfies AIModel` for compile-time validation |
 
-**Review**
+#### Review
 - The length assertion is useful during the refactor, but consider replacing it with "expected IDs present + no duplicates" to reduce maintenance churn when models are added/removed.
 
 ---
