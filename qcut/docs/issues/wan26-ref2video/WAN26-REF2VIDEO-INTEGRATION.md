@@ -125,11 +125,13 @@ export interface WAN26Ref2VideoRequest {
 
 **File**: `apps/web/src/lib/ai-video/validation/validators.ts`
 
-**Action**: ADD after existing WAN26 validators
+**Action**: ADD after `isWAN26Model` (~line 436)
 
 ```typescript
 /**
  * Validate WAN v2.6 Ref2Video reference videos array
+ * @param videoUrls - Array of video URLs to validate
+ * @throws Error if array is empty, exceeds 3, or contains invalid URLs
  */
 export function validateWAN26RefVideos(videoUrls: string[]): void {
   if (!videoUrls || videoUrls.length === 0) {
@@ -144,9 +146,18 @@ export function validateWAN26RefVideos(videoUrls: string[]): void {
     }
   }
 }
+
+/**
+ * Checks if model is WAN v2.6 Reference-to-Video
+ * @param modelId - Model identifier to check
+ * @returns true if model is WAN v2.6 Ref2Video
+ */
+export function isWAN26Ref2VideoModel(modelId: string): boolean {
+  return modelId === "wan_26_ref2v";
+}
 ```
 
-**Reuse**: Follows pattern of `validateWAN26Prompt`, `validateWAN26Duration` etc.
+**Reuse**: Follows pattern of existing `validateWAN26Prompt` (line 362), `validateWAN26Duration` (line 386), and `isWAN26Model` (line 434).
 
 ---
 
@@ -156,23 +167,25 @@ export function validateWAN26RefVideos(videoUrls: string[]): void {
 
 **Action**: ADD import and function after `generateWAN26ImageVideo`
 
-**Import to ADD** (~line 19):
+**Import to ADD** (~line 19, add to existing import block):
 ```typescript
 import type {
   // ... existing imports ...
-  WAN26Ref2VideoRequest,
+  WAN26I2VRequest,
+  WAN26Ref2VideoRequest, // ADD this
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 ```
 
-**Import validator** (~line 51):
+**Import validator** (~line 51, add to existing import block):
 ```typescript
 import {
   // ... existing imports ...
-  validateWAN26RefVideos,
+  validateWAN26AspectRatio,
+  validateWAN26RefVideos, // ADD this
 } from "../validation/validators";
 ```
 
-**Function to ADD** after `generateWAN26ImageVideo` (~line 1020):
+**Function to ADD** after `generateWAN26ImageVideo` (~line 1019):
 
 ```typescript
 /**
@@ -329,54 +342,62 @@ wan26RefMultiShots?: boolean;
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`
 
-**Action**: ADD handler in `handleAvatarModels` switch after `kling_o1_ref2video` case (~line 1563)
-
+**Action 1**: ADD import at top of file (~line 15):
 ```typescript
-case "wan_26_ref2v": {
-  return handleWAN26Ref2Video(ctx, settings);
-}
+import { uploadVideoToFal } from "@/lib/ai-video/core/fal-upload";
 ```
 
-**Action**: ADD handler function after `handleKlingO1Ref2Video` (~line 1150)
+**Action 2**: ADD case in `routeAvatarHandler` switch after `kling_o1_ref2video` (~line 1563):
+
+```typescript
+case "wan_26_ref2v":
+  return handleWAN26Ref2Video(ctx, settings);
+```
+
+**Action 3**: ADD handler function after `handleKlingO1Ref2Video` (~line 1151):
 
 ```typescript
 /**
  * Handle WAN v2.6 Reference-to-Video generation
  * Reuses referenceImages from avatar tab (accepts video files)
  */
-async function handleWAN26Ref2Video(
+export async function handleWAN26Ref2Video(
   ctx: ModelHandlerContext,
   settings: AvatarSettings
 ): Promise<ModelHandlerResult> {
   // Reuse referenceImages - for this model they contain video files
-  const referenceFiles = settings.referenceImages?.filter((f) => f !== null) ?? [];
+  const referenceFiles = settings.referenceImages?.filter((f): f is File => f !== null) ?? [];
 
   if (referenceFiles.length === 0) {
     return {
-      success: false,
-      error: "At least one reference video is required",
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Reference-to-video requires at least one reference video",
     };
   }
 
   if (referenceFiles.length > 3) {
     return {
-      success: false,
-      error: "Maximum 3 reference videos allowed",
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Maximum 3 reference videos allowed",
     };
   }
 
-  // Upload video files to FAL
+  console.log(
+    `  🎬 Calling generateWAN26RefVideo for ${ctx.modelId} with ${referenceFiles.length} reference video(s)...`
+  );
+
+  // Upload video files to FAL storage
   const videoUrls: string[] = [];
   for (const file of referenceFiles) {
-    if (file) {
-      const url = await uploadVideoToFal(file, ctx.falApiKey);
-      videoUrls.push(url);
-    }
+    const url = await uploadVideoToFal(file, ctx.falApiKey);
+    videoUrls.push(url);
   }
 
   const { generateWAN26RefVideo } = await import("@/lib/ai-video");
 
-  return generateWAN26RefVideo({
+  const response = await generateWAN26RefVideo({
     model: ctx.modelId,
     prompt: ctx.prompt,
     video_urls: videoUrls,
@@ -389,10 +410,16 @@ async function handleWAN26Ref2Video(
     seed: ctx.props.t2vSeed,
     enable_safety_checker: ctx.props.t2vSafetyChecker,
   });
+
+  console.log("  ✅ generateWAN26RefVideo returned:", response);
+  return { response };
 }
 ```
 
-**Reuse**: Follows exact pattern of `handleKlingO1Ref2Video`, reusing `referenceImages` from avatar state.
+**Reuse**:
+- Follows exact pattern of `handleKlingO1Ref2Video` (line 1127)
+- Uses `uploadVideoToFal` from `@/lib/ai-video/core/fal-upload` (already exists)
+- Returns `ModelHandlerResult` with `response`/`shouldSkip`/`skipReason` pattern
 
 ---
 
@@ -400,18 +427,28 @@ async function handleWAN26Ref2Video(
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts`
 
-**Action**: ADD case in cost calculation switch
+**Action**: ADD function after `calculateKling26Cost` (~line 80)
 
 ```typescript
-case "wan_26_ref2v": {
-  const resolution = options.resolution || "1080p";
-  const duration = options.duration || 5;
-  const pricePerSecond = resolution === "1080p" ? 0.15 : 0.10;
-  return duration * pricePerSecond;
+/**
+ * Calculate WAN v2.6 cost based on resolution and duration
+ * @param resolution - 720p or 1080p
+ * @param duration - Duration in seconds (5 or 10)
+ * @returns Estimated cost in dollars
+ */
+export function calculateWAN26Cost(
+  resolution: string,
+  duration: number
+): number {
+  // Per-second pricing: $0.10/s for 720p, $0.15/s for 1080p
+  const perSecondRate = resolution === "1080p" ? 0.15 : 0.10;
+  return duration * perSecondRate;
 }
 ```
 
-**Reuse**: Same pricing logic as `wan_26_t2v` and `wan_26_i2v`.
+**Usage in UI**: Call this function when `wan_26_ref2v`, `wan_26_t2v`, or `wan_26_i2v` is selected.
+
+**Reuse**: Same pricing structure as `calculateViduQ2Cost` (line 87) and `calculateKling26Cost` (line 72).
 
 ---
 
@@ -419,47 +456,83 @@ case "wan_26_ref2v": {
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx`
 
-**Action**: MODIFY the reference upload section to accept both images and videos based on model
-
-**Approach**: Extend the existing `FileUpload` component usage to dynamically accept video files when `wan_26_ref2v` is selected.
+**Action 1**: ADD helper functions near component props (~line 150):
 
 ```typescript
-// Add helper to determine accepted file types based on selected model
-const getAcceptedReferenceTypes = (selectedModels: string[]) => {
-  const hasVideoRefModel = selectedModels.includes("wan_26_ref2v");
-  if (hasVideoRefModel) {
-    return "video/mp4,video/mov,video/webm"; // Videos for WAN v2.6 Ref2Video
-  }
-  return "image/*"; // Images for Kling O1 Ref2Video
-};
+/**
+ * Determine if video references are needed based on selected models
+ */
+const isVideoRefModel = (selectedModels: string[]) =>
+  selectedModels.includes("wan_26_ref2v");
 
-// Modify FileUpload accept prop dynamically
-<FileUpload
-  accept={getAcceptedReferenceTypes(selectedModels)}
-  // ... rest of props
-/>
+/**
+ * Get accepted file types for reference uploads
+ */
+const getReferenceAcceptedTypes = (selectedModels: string[]) =>
+  isVideoRefModel(selectedModels)
+    ? UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES
+    : UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES;
+
+/**
+ * Get file type for reference uploads
+ */
+const getReferenceFileType = (selectedModels: string[]): "video" | "image" =>
+  isVideoRefModel(selectedModels) ? "video" : "image";
 ```
 
-**Action**: Update labels/hints when video model is selected
+**Action 2**: MODIFY the reference images section (~line 244-270):
 
 ```typescript
-// Dynamic label based on model
-const getReferenceLabel = (selectedModels: string[]) => {
-  if (selectedModels.includes("wan_26_ref2v")) {
-    return "Reference Videos (1-3)";
-  }
-  return "Reference Images (1-7)";
-};
-
-const getReferenceHint = (selectedModels: string[]) => {
-  if (selectedModels.includes("wan_26_ref2v")) {
-    return "Use @Video1, @Video2, @Video3 in your prompt";
-  }
-  return "Upload character reference images";
-};
+{/* Reference Media - 6 slots in 3x2 grid (images or videos based on model) */}
+<div className="space-y-2">
+  <Label className="text-xs">
+    {isVideoRefModel(selectedModels)
+      ? "Reference Videos (1-3)"
+      : "Reference Images"}
+  </Label>
+  {isVideoRefModel(selectedModels) && (
+    <p className="text-xs text-muted-foreground">
+      Use @Video1, @Video2, @Video3 in your prompt
+    </p>
+  )}
+  <div className="grid grid-cols-3 gap-2">
+    {[0, 1, 2, 3, 4, 5]
+      .slice(0, isVideoRefModel(selectedModels) ? 3 : 6) // Only 3 slots for video
+      .map((index) => (
+        <FileUpload
+          key={`reference-${index}`}
+          id={`avatar-reference-${index}-input`}
+          label={isVideoRefModel(selectedModels) ? `Video ${index + 1}` : `Ref ${index + 1}`}
+          helperText=""
+          fileType={getReferenceFileType(selectedModels)}
+          acceptedTypes={getReferenceAcceptedTypes(selectedModels)}
+          maxSizeBytes={isVideoRefModel(selectedModels)
+            ? UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES
+            : UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+          maxSizeLabel={isVideoRefModel(selectedModels)
+            ? UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL
+            : UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+          formatsLabel={isVideoRefModel(selectedModels)
+            ? UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL
+            : UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+          file={referenceImages[index]}
+          preview={referenceImagePreviews[index]}
+          onFileChange={(file, preview) => {
+            onReferenceImageChange(index, file, preview || null);
+            if (file) onError(null);
+          }}
+          onError={onError}
+          isCompact={true}
+        />
+      ))}
+  </div>
+</div>
 ```
 
-**Reuse**: 100% reuses existing `referenceImages` state and upload UI - only changes `accept` attribute and labels.
+**Reuse**:
+- 100% reuses existing `referenceImages` state from `useAIAvatarTabState`
+- Uses existing `UPLOAD_CONSTANTS` for video/image constraints
+- Uses existing `FileUpload` component (supports both image and video `fileType`)
 
 ---
 
@@ -467,10 +540,10 @@ const getReferenceHint = (selectedModels: string[]) => {
 
 **File**: `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 
-**Action**: ADD validation case for `wan_26_ref2v` after `kling_o1_ref2video` (~line 1794)
+**Action**: MODIFY existing validation (~line 881 and ~line 1794) to include `wan_26_ref2v`:
 
 ```typescript
-// Reference-to-video models require at least one reference
+// Reference-to-video models require at least one reference (image or video)
 if (modelId === "kling_o1_ref2video" || modelId === "wan_26_ref2v") {
   const hasReferenceMedia = referenceImages?.some(
     (item) => item !== null
@@ -482,7 +555,15 @@ if (modelId === "kling_o1_ref2video" || modelId === "wan_26_ref2v") {
 }
 ```
 
-**Reuse**: Extends existing validation pattern, shared with `kling_o1_ref2video`.
+**Also update exclusion list** (~line 1807) to skip avatar image requirement:
+
+```typescript
+modelId !== "kling_o1_ref2video" &&
+modelId !== "wan_26_ref2v" && // ADD this line
+modelId !== "sync_lipsync_react1" &&
+```
+
+**Reuse**: Extends existing validation pattern at lines 881-885 and 1794-1809.
 
 ---
 
@@ -490,17 +571,17 @@ if (modelId === "kling_o1_ref2video" || modelId === "wan_26_ref2v") {
 
 | File | Action | Lines Changed |
 |------|--------|---------------|
-| `ai-types.ts` | ADD | ~20 lines |
-| `ai-constants.ts` | ADD | ~32 lines |
-| `validators.ts` | ADD | ~15 lines |
-| `image-to-video.ts` | ADD | ~80 lines |
-| `index.ts` | ADD | ~1 line |
-| `model-handlers.ts` | ADD | ~50 lines |
-| `ai-cost-calculators.ts` | ADD | ~6 lines |
-| `ai-avatar-tab.tsx` | MODIFY | ~15 lines |
-| `use-ai-generation.ts` | MODIFY | ~8 lines |
+| `ai-types.ts` | ADD | ~25 lines (type + props) |
+| `ai-constants.ts` | ADD | ~32 lines (model config) |
+| `validators.ts` | ADD | ~25 lines (2 functions) |
+| `image-to-video.ts` | ADD | ~85 lines (generator) |
+| `index.ts` | ADD | ~1 line (export) |
+| `model-handlers.ts` | ADD | ~55 lines (handler + import) |
+| `ai-cost-calculators.ts` | ADD | ~15 lines (cost function) |
+| `ai-avatar-tab.tsx` | MODIFY | ~50 lines (UI logic) |
+| `use-ai-generation.ts` | MODIFY | ~6 lines (validation) |
 
-**Total**: ~227 lines of new/modified code
+**Total**: ~294 lines of new/modified code
 
 ---
 
@@ -528,3 +609,19 @@ if (modelId === "kling_o1_ref2video" || modelId === "wan_26_ref2v") {
 6. **Modular generator**: Self-contained function following `handleKlingO1Ref2Video` pattern
 7. **Dynamic UI**: Single upload UI adapts accept types based on selected model
 8. **Category alignment**: Uses `category: "avatar"` for proper tab placement
+9. **Existing upload infra**: Uses `uploadVideoToFal` from `@/lib/ai-video/core/fal-upload` (already supports Electron IPC)
+10. **Existing constants**: Uses `UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES` (MP4, MOV, AVI already defined)
+
+---
+
+## Video Requirements (API Constraints)
+
+| Constraint | Value | Notes |
+|------------|-------|-------|
+| Format | MP4, MOV | Already supported by `ALLOWED_VIDEO_TYPES` |
+| Duration | 2-30 seconds | Per reference video |
+| File size | Max 30MB | Current `MAX_VIDEO_SIZE_BYTES` is 100MB (acceptable) |
+| FPS | Minimum 16 FPS | Not validated client-side |
+| Quantity | 1-3 videos | Enforced by UI (3 slots) and validator |
+
+**Note**: Consider adding client-side video duration validation in future iteration.
