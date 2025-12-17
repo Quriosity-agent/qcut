@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { RiDiscordFill, RiTwitterXLine } from "react-icons/ri";
+import { RiTwitterXLine } from "react-icons/ri";
 import { FaGithub } from "react-icons/fa6";
 import { getStars } from "@/lib/fetch-github-stars";
 import { getAssetPath } from "@/lib/asset-path";
@@ -49,7 +49,7 @@ export function Footer() {
             </p>
             <div className="flex justify-start gap-3">
               <a
-                href="https://github.com/qcut-app/qcut"
+                href="https://github.com/donghaozhang/qcut"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -57,20 +57,12 @@ export function Footer() {
                 <FaGithub className="h-5 w-5" />
               </a>
               <a
-                href="https://x.com/QCutApp"
+                href="https://x.com/peter6759"
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <RiTwitterXLine className="h-5 w-5" />
-              </a>
-              <a
-                href="https://discord.com/invite/Mu3acKZvCp"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <RiDiscordFill className="h-5 w-5" />
               </a>
             </div>
           </div>
@@ -120,7 +112,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://github.com/qcut-app/qcut/blob/main/README.md"
+                    href="https://github.com/donghaozhang/qcut/blob/main/README.md"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
