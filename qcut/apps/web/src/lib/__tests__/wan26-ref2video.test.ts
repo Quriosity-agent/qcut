@@ -137,7 +137,9 @@ describe("generateWAN26RefVideo", () => {
     it("should apply default duration of 5 seconds", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -157,7 +159,9 @@ describe("generateWAN26RefVideo", () => {
     it("should apply default resolution of 1080p", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -177,7 +181,9 @@ describe("generateWAN26RefVideo", () => {
     it("should apply default aspect_ratio of 16:9", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -199,7 +205,9 @@ describe("generateWAN26RefVideo", () => {
     it("should accept custom duration values", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -220,7 +228,9 @@ describe("generateWAN26RefVideo", () => {
     it("should accept custom resolution values", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -241,7 +251,9 @@ describe("generateWAN26RefVideo", () => {
     it("should include negative_prompt when provided", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -262,7 +274,9 @@ describe("generateWAN26RefVideo", () => {
     it("should include audio_url when provided", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -285,7 +299,9 @@ describe("generateWAN26RefVideo", () => {
     it("should use correct FAL endpoint for WAN v2.6 Ref2Video", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -304,7 +320,9 @@ describe("generateWAN26RefVideo", () => {
     it("should return completed status on success", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
@@ -321,7 +339,9 @@ describe("generateWAN26RefVideo", () => {
     it("should include job_id in response", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ video: { url: "https://example.com/output.mp4" } }),
+        json: async () => ({
+          video: { url: "https://example.com/output.mp4" },
+        }),
       });
       globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
