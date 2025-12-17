@@ -112,7 +112,7 @@ Keep as the orchestrator:
 
 ## Suggested File Layout (within `apps/web/src/components/editor/timeline/`)
 
-```
+```text
 timeline/
   index.tsx                 # main component (reduced)
   timeline-handlers.ts      # DnD + click-to-seek + scroll sync

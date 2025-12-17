@@ -699,7 +699,7 @@ All 10 subtasks have been implemented:
 
 ### Files Modified
 
-```
+```text
 apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts
   - Added WAN26Ref2VideoRequest interface
   - Added wan26Ref* props to UseAIGenerationProps
