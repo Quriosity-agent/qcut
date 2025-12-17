@@ -1557,6 +1557,24 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     viduQ2EnableBGM,
     viduQ2MovementAmplitude,
     viduQ2Resolution,
+    // WAN v2.6 T2V dependencies
+    wan26T2VDuration,
+    wan26T2VResolution,
+    wan26T2VAspectRatio,
+    wan26T2VNegativePrompt,
+    wan26T2VEnablePromptExpansion,
+    wan26T2VMultiShots,
+    // WAN v2.6 I2V dependencies
+    wan26Duration,
+    wan26Resolution,
+    wan26AspectRatio,
+    wan26AudioUrl,
+    wan26AudioFile,
+    wan26NegativePrompt,
+    wan26EnablePromptExpansion,
+    // Veo 3.1 Extend-Video dependencies
+    extendVideoAspectRatio,
+    extendVideoGenerateAudio,
   ]);
 
   // Reset generation state

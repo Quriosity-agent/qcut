@@ -589,7 +589,7 @@ export async function generateWAN26TextVideo(
           onProgress({
             status: "completed",
             progress: 100,
-            message: `WAN v2.6 video generated successfully`,
+            message: "WAN v2.6 video generated successfully",
             elapsedTime: Math.floor((Date.now() - startTime) / 1000),
           });
         }
@@ -597,7 +597,7 @@ export async function generateWAN26TextVideo(
         return {
           job_id: jobId,
           status: "completed",
-          message: `Video generated successfully with WAN v2.6`,
+          message: "Video generated successfully with WAN v2.6",
           estimated_time: Math.floor((Date.now() - startTime) / 1000),
           video_url: queueResult.video.url,
           video_data: queueResult,

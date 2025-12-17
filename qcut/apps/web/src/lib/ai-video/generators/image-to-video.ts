@@ -1008,7 +1008,7 @@ export async function generateWAN26ImageVideo(
       return {
         job_id: jobId,
         status: "completed",
-        message: `Video generated successfully with WAN v2.6`,
+        message: "Video generated successfully with WAN v2.6",
         estimated_time: 0,
         video_url: result.video?.url || result.video || result.url,
         video_data: result,
