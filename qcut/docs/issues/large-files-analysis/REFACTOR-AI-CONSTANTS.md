@@ -10,18 +10,34 @@
 ## Implementation Status
 
 **Started**: 2025-12-17
-**Status**: 🔴 Not Started
+**Status**: 🟡 In Progress (Phase 1 Complete)
 **Last Updated**: 2025-12-17
+**Current File Size**: 1,476 lines (reduced from 1,621)
 
 ### Progress Summary
-- [ ] Phase 1: Extract Error Messages
-- [ ] Phase 2: Enhance T2V Config
+- [x] Phase 1: Extract Error Messages ✅ **COMPLETED**
+- [ ] Phase 2: Enhance T2V Config (In Progress)
 - [ ] Phase 3: Create I2V Config
 - [ ] Phase 4: Create Avatar Config
 - [ ] Phase 5: Finalize Main File
 
 ### Implementation Log
 <!-- Add entries as work progresses, newest first -->
+
+#### 2025-12-17 - Phase 1 Complete
+- ✅ Created `error-messages.ts` with 170+ error messages organized by model/feature
+- ✅ Updated `ai-constants.ts` to re-export ERROR_MESSAGES using export-from syntax
+- ✅ Reduced `ai-constants.ts` from 1,621 to 1,476 lines (-145 lines, 9% reduction)
+- ✅ TypeScript compilation passes (bun x tsc --noEmit)
+- ✅ Linting passes (bun lint:clean)
+- ✅ Applied biome formatter to maintain code style consistency
+- 📝 Commit: `68324ff6` - "refactor: extract error messages to separate file (Phase 1)"
+
+**Files Created:**
+- `apps/web/src/components/editor/media-panel/views/ai/constants/error-messages.ts` (170 lines)
+
+**Files Modified:**
+- `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` (-145 lines)
 
 ---
 
@@ -588,21 +604,24 @@ export const MODEL_HELPERS = {
 
 ## Validation Checklist
 
-### Code Quality
-- [ ] All model IDs preserved exactly
-- [ ] Endpoint paths unchanged
-- [ ] Default params unchanged
-- [ ] No duplicate model IDs across categories
-- [ ] All `*_MODEL_ORDER` arrays cover corresponding `*_MODELS` keys
-- [ ] All legacy exports maintained in `ai-constants.ts`
+### Code Quality (Phase 1)
+- [x] All error messages preserved exactly
+- [x] Error message keys unchanged
+- [x] No duplicate error message keys
+- [x] All legacy exports maintained in `ai-constants.ts` (ERROR_MESSAGES re-exported)
+- [ ] All model IDs preserved exactly (Phases 2-5)
+- [ ] Endpoint paths unchanged (Phases 2-5)
+- [ ] Default params unchanged (Phases 2-5)
+- [ ] No duplicate model IDs across categories (Phases 2-5)
+- [ ] All `*_MODEL_ORDER` arrays cover corresponding `*_MODELS` keys (Phases 2-5)
 
-### Build & Tests
-- [ ] TypeScript compiles (`bun run check-types`)
-- [ ] Lint passes (`bun lint:clean`)
-- [ ] Tests pass (`bun run test`)
-- [ ] Build completes successfully (`bun run build`)
+### Build & Tests (Phase 1)
+- [x] TypeScript compiles (`bun x tsc --noEmit`)
+- [x] Lint passes (`bun lint:clean`)
+- [ ] Tests pass (`bun run test`) - Not yet verified
+- [ ] Build completes successfully (`bun run build`) - Not yet verified
 
-### Functional Testing
+### Functional Testing (Deferred to later phases)
 - [ ] UI shows all models correctly
 - [ ] Text-to-Video generation works
 - [ ] Image-to-Video generation works
@@ -611,7 +630,12 @@ export const MODEL_HELPERS = {
 - [ ] Model selection and switching works correctly
 
 ### Implementation Notes
-<!-- Add notes about any deviations from the plan, issues encountered, or important decisions -->
+
+**Phase 1 Decisions:**
+- Used export-from syntax (`export { ERROR_MESSAGES } from "./error-messages"`) to satisfy `noExportedImports` lint rule
+- Applied biome formatter to ensure consistent code style
+- Error messages organized by model/feature with clear comment sections
+- Added `ErrorMessageKey` type export for type-safe error message access
 
 #### Review
 - Add invariants that scale: no duplicate IDs, `*_MODEL_ORDER` covers `*_MODELS` keys (or document intentional omissions), and alias maps don't point to missing IDs.
