@@ -473,7 +473,7 @@ export const AI_MODELS: AIModel[] = [
     category: "avatar",
     requiredInputs: ["sourceVideo"],
     endpoints: {
-      image_to_video: "fal-ai/wan/v2.6/reference-to-video",
+      reference_to_video: "fal-ai/wan/v2.6/reference-to-video",
     },
     default_params: {
       duration: 5,

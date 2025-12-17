@@ -22,6 +22,7 @@ import type { TProject } from "@/types/project";
 export interface AIModelEndpoints {
   text_to_video?: string;
   image_to_video?: string;
+  reference_to_video?: string;
   upscale_video?: string;
 }
 

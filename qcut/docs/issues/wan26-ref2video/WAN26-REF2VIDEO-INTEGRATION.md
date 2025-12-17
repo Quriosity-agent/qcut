@@ -95,7 +95,7 @@ export interface WAN26Ref2VideoRequest {
   category: "avatar",
   requiredInputs: ["sourceVideo"], // Uses sourceVideo like other V2V models
   endpoints: {
-    image_to_video: "fal-ai/wan/v2.6/reference-to-video",
+    reference_to_video: "fal-ai/wan/v2.6/reference-to-video",
   },
   default_params: {
     duration: 5,
@@ -223,7 +223,7 @@ export async function generateWAN26RefVideo(
         throw new Error(`Unknown model: ${request.model}`);
       }
 
-      const endpoint = modelConfig.endpoints.image_to_video;
+      const endpoint = modelConfig.endpoints.reference_to_video;
       if (!endpoint) {
         throw new Error(
           `Model ${request.model} does not support reference-to-video generation`

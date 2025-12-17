@@ -1062,7 +1062,7 @@ export async function generateWAN26RefVideo(
         throw new Error(`Unknown model: ${request.model}`);
       }
 
-      const endpoint = modelConfig.endpoints.image_to_video;
+      const endpoint = modelConfig.endpoints.reference_to_video;
       if (!endpoint) {
         throw new Error(
           `Model ${request.model} does not support reference-to-video generation`
