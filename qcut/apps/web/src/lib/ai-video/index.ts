@@ -70,7 +70,9 @@ export {
   validateWAN26Resolution,
   validateWAN26T2VResolution,
   validateWAN26AspectRatio,
+  validateWAN26RefVideoUrl,
   isWAN26Model,
+  isWAN26Ref2VideoModel,
   // Sync Lipsync React-1 validators
   validateSyncLipsyncReact1Inputs,
   validateSyncLipsyncReact1VideoDuration,
@@ -146,6 +148,7 @@ export {
   generateKlingO1RefVideo,
   generateWAN25ImageVideo,
   generateWAN26ImageVideo,
+  generateWAN26RefVideo,
 } from "./generators/image-to-video";
 
 // ============================================

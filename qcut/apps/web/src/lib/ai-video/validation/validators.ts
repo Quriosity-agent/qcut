@@ -432,7 +432,37 @@ export function validateWAN26AspectRatio(aspectRatio: string): void {
  * @returns true if model is WAN v2.6
  */
 export function isWAN26Model(modelId: string): boolean {
-  return modelId === "wan_26_t2v" || modelId === "wan_26_i2v";
+  return (
+    modelId === "wan_26_t2v" ||
+    modelId === "wan_26_i2v" ||
+    modelId === "wan_26_ref2v"
+  );
+}
+
+/**
+ * Checks if model is the WAN v2.6 Reference-to-Video model
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is WAN v2.6 Ref2V
+ */
+export function isWAN26Ref2VideoModel(modelId: string): boolean {
+  return modelId === "wan_26_ref2v";
+}
+
+/**
+ * Validates reference video URL for WAN v2.6 Ref2Video
+ *
+ * @param referenceVideoUrl - Reference video URL to validate
+ * @throws Error if reference video URL is missing
+ */
+export function validateWAN26RefVideoUrl(
+  referenceVideoUrl: string | undefined
+): void {
+  if (!referenceVideoUrl) {
+    throw new Error(
+      "Reference video is required for WAN v2.6 reference-to-video generation"
+    );
+  }
 }
 
 // ============================================
