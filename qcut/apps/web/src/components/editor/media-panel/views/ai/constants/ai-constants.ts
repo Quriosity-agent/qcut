@@ -1373,8 +1373,7 @@ export const ERROR_MESSAGES = {
   WAN26_NEGATIVE_PROMPT_TOO_LONG:
     "Negative prompt exceeds maximum length of 1000 characters for WAN v2.6",
   WAN26_INVALID_DURATION: "Duration must be 5, 10, or 15 seconds for WAN v2.6",
-  WAN26_INVALID_RESOLUTION:
-    "Resolution must be 720p or 1080p for WAN v2.6",
+  WAN26_INVALID_RESOLUTION: "Resolution must be 720p or 1080p for WAN v2.6",
   WAN26_T2V_INVALID_RESOLUTION:
     "Resolution must be 720p or 1080p for WAN v2.6 text-to-video",
   WAN26_INVALID_ASPECT_RATIO:

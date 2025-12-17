@@ -1377,7 +1377,12 @@ export function recommendModelsForPrompt(prompt: string): string[] {
 }
 
 export const MODEL_CATEGORIES = {
-  PHOTOREALISTIC: ["imagen4-ultra", "wan-v2-2", "gemini-3-pro", "gpt-image-1-5"],
+  PHOTOREALISTIC: [
+    "imagen4-ultra",
+    "wan-v2-2",
+    "gemini-3-pro",
+    "gpt-image-1-5",
+  ],
   ARTISTIC: ["seeddream-v3", "seeddream-v4", "seeddream-v4-5", "qwen-image"],
   VERSATILE: [
     "qwen-image",

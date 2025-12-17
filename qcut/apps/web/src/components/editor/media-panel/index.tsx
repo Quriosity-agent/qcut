@@ -67,7 +67,7 @@ export function MediaPanel() {
 
   return (
     <div
-      className="h-full flex flex-col bg-panel rounded-sm"
+      className="h-full flex flex-col bg-panel rounded-lg overflow-hidden"
       data-testid="media-panel"
     >
       <TabBar />
