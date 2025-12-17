@@ -7,6 +7,7 @@
 
 import type { AIModel, APIConfiguration } from "../types/ai-types";
 import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
+import { ERROR_MESSAGES } from "./error-messages";
 
 // FAL API Configuration
 /** FAL.ai API key from environment variables */
