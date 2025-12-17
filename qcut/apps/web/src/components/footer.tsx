@@ -53,6 +53,7 @@ export function Footer() {
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Visit QCut GitHub repository"
               >
                 <FaGithub className="h-5 w-5" />
               </a>
@@ -61,6 +62,7 @@ export function Footer() {
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Follow QCut on X"
               >
                 <RiTwitterXLine className="h-5 w-5" />
               </a>
