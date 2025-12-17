@@ -205,6 +205,8 @@ export interface AvatarSettings {
   wan26RefAspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   wan26RefNegativePrompt?: string;
   wan26RefEnablePromptExpansion?: boolean;
+  wan26RefSeed?: number;
+  wan26RefEnableSafetyChecker?: boolean;
 }
 
 /**
@@ -1234,6 +1236,8 @@ export async function handleWAN26Ref2Video(
     aspect_ratio: settings.wan26RefAspectRatio ?? "16:9",
     negative_prompt: settings.wan26RefNegativePrompt,
     enable_prompt_expansion: settings.wan26RefEnablePromptExpansion ?? true,
+    seed: settings.wan26RefSeed,
+    enable_safety_checker: settings.wan26RefEnableSafetyChecker,
   });
   console.log("  ✅ generateWAN26RefVideo returned:", response);
 

@@ -279,6 +279,10 @@ export interface UseAIGenerationProps {
   wan26RefNegativePrompt?: string;
   /** Enable prompt expansion for WAN v2.6 Ref2Video */
   wan26RefEnablePromptExpansion?: boolean;
+  /** Random seed for reproducibility */
+  wan26RefSeed?: number;
+  /** Enable safety content filtering */
+  wan26RefEnableSafetyChecker?: boolean;
 
   // Kling Avatar v2 options
   /** Optional prompt for animation guidance (Kling Avatar v2) */
