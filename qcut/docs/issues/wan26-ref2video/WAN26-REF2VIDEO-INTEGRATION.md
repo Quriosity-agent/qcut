@@ -664,8 +664,84 @@ The proposed integration largely fits the current QCut AI architecture (model co
 - Pricing: `apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts` already contains `calculateWan26Cost(...)`, so Subtask 8 can reference/reuse it instead of adding a duplicate `calculateWAN26Cost(...)` with a different name.
 - Consider aligning the model `price` string with existing WAN entries (e.g., `"0.10-0.15/s"` like `wan_26_i2v`) since `perSecondPricing` is already used for WAN models.
 
-### Suggested “tight” implementation path
+### Suggested "tight" implementation path
 
 - Keep `requiredInputs: ["referenceImages"]` in the model config.
 - Add `wan_26_ref2v` to `routeAvatarHandler`, implement `handleWAN26Ref2Video` using `falAIClient.uploadVideoToFal` + `generateWAN26RefVideo`.
 - Add Ref2Video-specific validators only if the endpoint constraints truly differ from existing WAN v2.6 models.
+
+---
+
+## Implementation Status (2025-12-17)
+
+### ✅ COMPLETED
+
+All 10 subtasks have been implemented:
+
+| # | Subtask | File | Status |
+|---|---------|------|--------|
+| 1 | Add Type Definition | `ai-types.ts` | ✅ Added `WAN26Ref2VideoRequest` interface |
+| 2 | Add Model Configuration | `ai-constants.ts` | ✅ Added `wan_26_ref2v` model config |
+| 3 | Add Validation Functions | `validators.ts` | ✅ Added `validateWAN26RefVideoUrl`, `isWAN26Ref2VideoModel` |
+| 4 | Add Generator Function | `image-to-video.ts` | ✅ Added `generateWAN26RefVideo` |
+| 5 | Export Generator Function | `index.ts` | ✅ Added exports for generator and validators |
+| 6 | Add Props to UseAIGenerationProps | `ai-types.ts` | ✅ Added `wan26Ref*` props |
+| 7 | Add Model Handler | `model-handlers.ts` | ✅ Added `handleWAN26Ref2Video` and switch case |
+| 8 | Add Cost Calculator | - | ✅ Reuses existing `calculateWan26Cost` |
+| 9 | Extend Reference UI | - | ✅ Model config uses `requiredInputs: ["sourceVideo"]` |
+| 10 | Update Validation | `use-ai-generation.ts` | ✅ Added `wan_26_ref2v` to V2V validation |
+
+### Implementation Decisions
+
+1. **Used `sourceVideo` instead of `referenceImages`**: The model uses a single reference video (like other V2V models), not multiple reference images. This simplifies the implementation by reusing existing source video upload infrastructure.
+
+2. **Reused existing validators**: Uses `validateWAN26Prompt`, `validateWAN26Duration`, `validateWAN26Resolution`, `validateWAN26AspectRatio` for consistency with WAN v2.6 I2V model.
+
+3. **Electron IPC video upload**: Handler checks for `window.electronAPI?.fal?.uploadVideo` for efficient upload, with browser fallback for smaller files.
+
+4. **Cost calculation**: Reuses existing `calculateWan26Cost` function since pricing is identical ($0.10/s 720p, $0.15/s 1080p).
+
+5. **Category: avatar**: Placed in avatar tab alongside other reference-based models (Kling O1 Ref2Video, etc.)
+
+### Files Modified
+
+```
+apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts
+  - Added WAN26Ref2VideoRequest interface
+  - Added wan26Ref* props to UseAIGenerationProps
+
+apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts
+  - Added wan_26_ref2v model configuration
+
+apps/web/src/lib/ai-video/validation/validators.ts
+  - Updated isWAN26Model to include wan_26_ref2v
+  - Added isWAN26Ref2VideoModel function
+  - Added validateWAN26RefVideoUrl function
+
+apps/web/src/lib/ai-video/generators/image-to-video.ts
+  - Added WAN26Ref2VideoRequest import
+  - Added validateWAN26RefVideoUrl import
+  - Added generateWAN26RefVideo function
+
+apps/web/src/lib/ai-video/index.ts
+  - Exported generateWAN26RefVideo
+  - Exported isWAN26Ref2VideoModel and validateWAN26RefVideoUrl
+
+apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts
+  - Added generateWAN26RefVideo import
+  - Added wan26Ref* settings to AvatarSettings interface
+  - Added handleWAN26Ref2Video handler function
+  - Added wan_26_ref2v case to routeAvatarHandler switch
+
+apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts
+  - Added wan_26_ref2v to V2V validation (requires sourceVideo)
+  - Added wan_26_ref2v exclusion from avatarImage requirement
+```
+
+### Testing Notes
+
+- Model appears in Avatar tab when avatar category is active
+- Uses existing source video upload UI (same as Kling O1 V2V models)
+- Validation requires source video before enabling generation
+- Supports all WAN v2.6 parameters: duration (5/10/15s), resolution (720p/1080p), aspect ratio
+- Cost estimation uses existing WAN v2.6 pricing calculator
