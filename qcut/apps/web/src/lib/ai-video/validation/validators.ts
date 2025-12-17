@@ -396,7 +396,7 @@ export function validateWAN26Duration(duration: number): void {
  * @throws Error if resolution is not supported
  */
 export function validateWAN26Resolution(resolution: string): void {
-  if (!["480p", "720p", "1080p"].includes(resolution)) {
+  if (!["720p", "1080p"].includes(resolution)) {
     throw new Error(ERROR_MESSAGES.WAN26_INVALID_RESOLUTION);
   }
 }

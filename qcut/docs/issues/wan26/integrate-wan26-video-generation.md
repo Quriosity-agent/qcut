@@ -192,8 +192,8 @@ type WAN26AspectRatio = "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
 /**
  * Calculate WAN v2.6 cost based on resolution and duration
  * Pricing: $0.10/s for 720p, $0.15/s for 1080p
- * Note: 480p uses same price as 720p (I2V only)
- * @param resolution - 480p, 720p, or 1080p
+ * Note: WAN v2.6 only supports 720p and 1080p (no 480p)
+ * @param resolution - 720p or 1080p
  * @param duration - Duration in seconds (5, 10, or 15)
  * @returns Estimated cost in dollars
  */
@@ -202,7 +202,6 @@ export function calculateWan26Cost(
   duration: number
 ): number {
   const perSecondPricing: Record<string, number> = {
-    "480p": 0.10,
     "720p": 0.10,
     "1080p": 0.15,
   };
