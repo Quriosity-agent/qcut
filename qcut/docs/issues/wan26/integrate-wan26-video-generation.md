@@ -18,11 +18,11 @@ This document outlines the integration plan for WAN v2.6 video generation models
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `prompt` | string | Yes | — | Max 800 characters, supports Chinese/English |
+| `prompt` | string | Yes | — | Max 2000 characters, supports Chinese/English |
 | `aspect_ratio` | enum | No | "16:9" | 16:9, 9:16, 1:1, 4:3, 3:4 |
 | `resolution` | enum | No | "1080p" | 720p, 1080p |
 | `duration` | enum | No | "5" | 5, 10, 15 seconds |
-| `negative_prompt` | string | No | "" | Max 500 characters |
+| `negative_prompt` | string | No | "" | Max 1000 characters |
 | `enable_prompt_expansion` | boolean | No | true | LLM-based prompt rewriting |
 | `multi_shots` | boolean | No | true | Intelligent scene segmentation |
 | `seed` | integer | No | null | Random seed |
@@ -33,11 +33,11 @@ This document outlines the integration plan for WAN v2.6 video generation models
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `prompt` | string | Yes | — | Max 800 characters |
+| `prompt` | string | Yes | — | Max 2000 characters |
 | `image_url` | string | Yes | — | First frame image URL |
 | `resolution` | enum | No | "1080p" | 480p, 720p, 1080p |
 | `duration` | enum | No | "5" | 5, 10, 15 seconds |
-| `negative_prompt` | string | No | "" | Max 500 characters |
+| `negative_prompt` | string | No | "" | Max 1000 characters |
 | `enable_prompt_expansion` | boolean | No | true | LLM prompt rewriting |
 | `multi_shots` | boolean | No | false | Scene segmentation |
 | `seed` | integer | No | null | Random seed |

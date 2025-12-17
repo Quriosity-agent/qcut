@@ -254,7 +254,7 @@ export interface UseAIGenerationProps {
   wan26T2VMultiShots?: boolean;
   // WAN v2.6 I2V options
   wan26Duration?: 5 | 10 | 15;
-  wan26Resolution?: "480p" | "720p" | "1080p";
+  wan26Resolution?: "720p" | "1080p";
   wan26AspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   wan26AudioUrl?: string;
   wan26AudioFile?: File | null;
@@ -713,7 +713,7 @@ export interface WAN26I2VRequest {
   prompt: string;
   image_url: string;
   duration?: 5 | 10 | 15;
-  resolution?: "480p" | "720p" | "1080p";
+  resolution?: "720p" | "1080p";
   aspect_ratio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   audio_url?: string;
   negative_prompt?: string;

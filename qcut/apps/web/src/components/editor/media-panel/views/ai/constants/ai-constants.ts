@@ -440,8 +440,8 @@ export const AI_MODELS: AIModel[] = [
     name: "WAN v2.6 I2V",
     description:
       "Animate images with WAN 2.6 - 15s duration, audio sync, multi-shot support",
-    price: "0.05-0.15/s",
-    resolution: "480p / 720p / 1080p",
+    price: "0.10-0.15/s",
+    resolution: "720p / 1080p",
     max_duration: 15,
     category: "image",
     endpoints: {
@@ -453,11 +453,10 @@ export const AI_MODELS: AIModel[] = [
       aspect_ratio: "16:9",
       enable_prompt_expansion: true,
     },
-    supportedResolutions: ["480p", "720p", "1080p"],
+    supportedResolutions: ["720p", "1080p"],
     supportedDurations: [5, 10, 15],
     supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
     perSecondPricing: {
-      "480p": 0.05,
       "720p": 0.1,
       "1080p": 0.15,
     },
@@ -1375,7 +1374,7 @@ export const ERROR_MESSAGES = {
     "Negative prompt exceeds maximum length of 1000 characters for WAN v2.6",
   WAN26_INVALID_DURATION: "Duration must be 5, 10, or 15 seconds for WAN v2.6",
   WAN26_INVALID_RESOLUTION:
-    "Resolution must be 480p, 720p, or 1080p for WAN v2.6",
+    "Resolution must be 720p or 1080p for WAN v2.6",
   WAN26_T2V_INVALID_RESOLUTION:
     "Resolution must be 720p or 1080p for WAN v2.6 text-to-video",
   WAN26_INVALID_ASPECT_RATIO:

@@ -259,8 +259,8 @@ export function calculateWan26Cost(
   resolution: string,
   duration: number
 ): number {
+  // WAN v2.6 only supports 720p and 1080p (no 480p)
   const perSecondPricing: Record<string, number> = {
-    "480p": 0.05,
     "720p": 0.1,
     "1080p": 0.15,
   };

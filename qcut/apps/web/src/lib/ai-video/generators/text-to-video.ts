@@ -527,8 +527,14 @@ export async function generateWAN26TextVideo(
         duration,
         resolution,
         aspect_ratio: aspectRatio,
-        enable_prompt_expansion: request.enable_prompt_expansion ?? true,
-        multi_shots: request.multi_shots ?? false,
+        enable_prompt_expansion:
+          request.enable_prompt_expansion ??
+          modelConfig.default_params?.enable_prompt_expansion ??
+          true,
+        multi_shots:
+          request.multi_shots ??
+          modelConfig.default_params?.multi_shots ??
+          false,
         enable_safety_checker: request.enable_safety_checker ?? true,
       };
 
