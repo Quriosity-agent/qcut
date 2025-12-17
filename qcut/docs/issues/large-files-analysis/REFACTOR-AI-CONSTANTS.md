@@ -10,14 +10,14 @@
 ## Implementation Status
 
 **Started**: 2025-12-17
-**Status**: 🟡 In Progress (Phase 1 Complete)
+**Status**: 🟡 In Progress (Phases 1-2 Complete)
 **Last Updated**: 2025-12-17
-**Current File Size**: 1,476 lines (reduced from 1,621)
+**Current File Size**: 1,477 lines (Phase 5 will reduce significantly)
 
 ### Progress Summary
 - [x] Phase 1: Extract Error Messages ✅ **COMPLETED**
-- [ ] Phase 2: Enhance T2V Config (In Progress)
-- [ ] Phase 3: Create I2V Config
+- [x] Phase 2: Enhance T2V Config ✅ **COMPLETED**
+- [ ] Phase 3: Create I2V Config (In Progress)
 - [ ] Phase 4: Create Avatar Config
 - [ ] Phase 5: Finalize Main File
 
@@ -38,6 +38,22 @@
 
 **Files Modified:**
 - `apps/web/src/components/editor/media-panel/views/ai/constants/ai-constants.ts` (-145 lines)
+
+#### 2025-12-17 - Phase 2 Complete
+- ✅ Added T2V_MODELS with 15 text-to-video model definitions
+- ✅ Derived T2VModelId type from models (single source of truth pattern)
+- ✅ Added T2V_MODEL_ORDER array for UI priority rendering
+- ✅ Added getT2VModelsInOrder() helper function
+- ✅ Added capabilities for seedance_pro and hailuo_pro
+- ✅ Imported ERROR_MESSAGES in ai-constants.ts for internal use
+- ✅ TypeScript compilation passes
+- 📝 Commit: `3b3d0dd0` - "refactor: add T2V_MODELS to text2video-models-config.ts (Phase 2)"
+
+**Files Modified:**
+- `text2video-models-config.ts`: 352 → 693 lines (+341 lines)
+- `ai-constants.ts`: 1,476 → 1,477 lines (+1 import line)
+
+**Note**: Models remain in ai-constants.ts for now; removal happens in Phase 5
 
 ---
 
