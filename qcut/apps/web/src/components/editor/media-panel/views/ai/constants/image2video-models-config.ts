@@ -4,8 +4,19 @@
  */
 
 import type { AIModel } from "../types/ai-types";
+import { validateModelOrderInvariant } from "./model-config-validation";
 
-// Define I2V models first (source of truth)
+/**
+ * Image-to-video model definitions.
+ *
+ * Models that animate static images into dynamic videos, including:
+ * - Standard image animation
+ * - Frame-to-frame interpolation (first + last frame → video)
+ * - Multi-resolution support (480p to 4K)
+ * - Various duration options (2-20 seconds)
+ *
+ * Single source of truth for all I2V model configurations.
+ */
 export const I2V_MODELS = {
   sora2_image_to_video: {
     id: "sora2_image_to_video",
@@ -201,7 +212,7 @@ export const I2V_MODELS = {
     max_duration: 10,
     category: "image",
     endpoints: {
-      image_to_video: "fal-ai/wan-25-preview/image-to-video",
+      image_to_video: "wan-25-preview/image-to-video",
     },
     default_params: {
       duration: 5,
@@ -226,7 +237,7 @@ export const I2V_MODELS = {
     max_duration: 15,
     category: "image",
     endpoints: {
-      image_to_video: "fal-ai/wan/v2.6/image-to-video",
+      image_to_video: "wan/v2.6/image-to-video",
     },
     default_params: {
       duration: 5,
@@ -412,10 +423,16 @@ export const I2V_MODELS = {
   },
 } as const satisfies Record<string, AIModel>;
 
-// Derive type from models (single source of truth)
+/**
+ * Image-to-Video model identifier type derived from I2V_MODELS keys.
+ * Ensures type safety when referencing I2V models throughout the application.
+ */
 export type I2VModelId = keyof typeof I2V_MODELS;
 
-// Priority order for UI rendering
+/**
+ * Priority order for displaying I2V models in the UI.
+ * Models are ordered by quality/capability (highest first) to guide user selection.
+ */
 export const I2V_MODEL_ORDER: readonly I2VModelId[] = [
   "kling_v26_pro_i2v",
   "sora2_image_to_video_pro",
@@ -437,6 +454,12 @@ export const I2V_MODEL_ORDER: readonly I2VModelId[] = [
   "veo31_fast_frame_to_video",
   "kling_o1_i2v",
 ] as const;
+
+validateModelOrderInvariant({
+  category: "I2V",
+  models: I2V_MODELS,
+  order: I2V_MODEL_ORDER,
+});
 
 /**
  * Get I2V models in priority order for UI rendering.

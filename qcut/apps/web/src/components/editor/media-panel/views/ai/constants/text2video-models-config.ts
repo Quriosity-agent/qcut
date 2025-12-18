@@ -4,8 +4,22 @@
  */
 
 import type { AIModel } from "../types/ai-types";
+import {
+  validateAliasMapTargetsExist,
+  validateModelOrderInvariant,
+} from "./model-config-validation";
 
-// Define T2V models first (source of truth)
+/**
+ * Text-to-video model definitions.
+ *
+ * Models that generate videos from text prompts, including:
+ * - Multiple quality tiers (standard, pro, turbo)
+ * - Various resolutions (480p to 4K)
+ * - Different duration options (2-20 seconds)
+ * - Advanced features (audio generation, negative prompts, etc.)
+ *
+ * Single source of truth for all T2V model configurations.
+ */
 export const T2V_MODELS = {
   sora2_text_to_video: {
     id: "sora2_text_to_video",
@@ -74,7 +88,7 @@ export const T2V_MODELS = {
     max_duration: 15,
     category: "text",
     endpoints: {
-      text_to_video: "fal-ai/wan/v2.6/text-to-video",
+      text_to_video: "wan/v2.6/text-to-video",
     },
     default_params: {
       duration: 5,
@@ -132,7 +146,7 @@ export const T2V_MODELS = {
     supportedResolutions: ["1080p", "1440p", "2160p"],
     supportedDurations: [6, 8, 10, 12, 14, 16, 18, 20],
   },
-  veo31_fast: {
+  veo31_fast_text_to_video: {
     id: "veo31_fast_text_to_video",
     name: "Veo 3.1 Fast Text-to-Video",
     description:
@@ -154,7 +168,7 @@ export const T2V_MODELS = {
       auto_fix: true,
     },
   },
-  veo31: {
+  veo31_text_to_video: {
     id: "veo31_text_to_video",
     name: "Veo 3.1 Text-to-Video",
     description:
@@ -176,7 +190,7 @@ export const T2V_MODELS = {
       auto_fix: true,
     },
   },
-  hailuo_v2: {
+  hailuo23_standard_t2v: {
     id: "hailuo23_standard_t2v",
     name: "Hailuo 2.3 Standard T2V",
     description: "Budget-friendly text-to-video with 768p quality",
@@ -193,7 +207,7 @@ export const T2V_MODELS = {
       prompt_optimizer: true,
     },
   },
-  hailuo_pro: {
+  hailuo23_pro_t2v: {
     id: "hailuo23_pro_t2v",
     name: "Hailuo 2.3 Pro T2V",
     description:
@@ -211,7 +225,7 @@ export const T2V_MODELS = {
       prompt_optimizer: true,
     },
   },
-  seedance_t2v: {
+  seedance: {
     id: "seedance",
     name: "Seedance v1 Lite",
     description: "Fast and efficient text-to-video generation",
@@ -250,8 +264,8 @@ export const T2V_MODELS = {
     resolution: "1080p",
     max_duration: 10,
     endpoints: {
-      text_to_video: "fal-ai/wan-25-preview/text-to-video",
-      image_to_video: "fal-ai/wan-25-preview/image-to-video",
+      text_to_video: "wan-25-preview/text-to-video",
+      image_to_video: "wan-25-preview/image-to-video",
     },
     default_params: {
       duration: 5,
@@ -260,7 +274,7 @@ export const T2V_MODELS = {
       style_preset: "cinematic",
     },
   },
-  kling1_6_pro: {
+  kling_v2_5_turbo: {
     id: "kling_v2_5_turbo",
     name: "Kling v2.5 Turbo Pro",
     description: "Latest Kling model with enhanced turbo performance",
@@ -280,7 +294,7 @@ export const T2V_MODELS = {
       enhance_prompt: true,
     },
   },
-  kling1_6_standard: {
+  kling_v2_5_turbo_standard: {
     id: "kling_v2_5_turbo_standard",
     name: "Kling v2.5 Turbo Standard",
     description: "Standard Kling model for efficient text-to-video",
@@ -299,45 +313,72 @@ export const T2V_MODELS = {
   },
 } as const satisfies Record<string, AIModel>;
 
-// Derive type from models (single source of truth)
+/**
+ * Text-to-Video model identifier type derived from T2V_MODELS keys.
+ * Ensures type safety when referencing T2V models throughout the application.
+ */
 export type T2VModelId = keyof typeof T2V_MODELS;
 
-// Priority order for UI rendering
+/**
+ * Priority order for displaying T2V models in the UI.
+ * Models are ordered by quality/capability (highest first) to guide user selection.
+ */
 export const T2V_MODEL_ORDER: readonly T2VModelId[] = [
   "kling_v26_pro_t2v",
   "sora2_text_to_video_pro",
-  "veo31",
+  "veo31_text_to_video",
   "wan_26_t2v",
   "ltxv2_fast_t2v",
   "ltxv2_pro_t2v",
-  "hailuo_pro",
-  "veo31_fast",
+  "hailuo23_pro_t2v",
+  "veo31_fast_text_to_video",
   "seedance_pro",
   "sora2_text_to_video",
-  "hailuo_v2",
-  "kling1_6_pro",
-  "kling1_6_standard",
-  "seedance_t2v",
+  "hailuo23_standard_t2v",
+  "kling_v2_5_turbo",
+  "kling_v2_5_turbo_standard",
+  "seedance",
   "wan_25_preview",
 ] as const;
 
-// Map AI model ids to canonical T2VModelIds used by capability lookups.
-// This prevents text-to-video models whose ids differ between AI_MODELS and
-// T2V_MODEL_CAPABILITIES from being dropped when computing combined settings.
+/**
+ * Maps legacy/alternative AI model IDs to canonical T2VModelIds.
+ *
+ * Maintains backward compatibility by ensuring models with varying IDs
+ * across different parts of the codebase still resolve to the correct
+ * capability definitions when computing combined settings.
+ */
 export const T2V_MODEL_ID_ALIASES: Record<string, T2VModelId> = {
-  veo31_fast_text_to_video: "veo31_fast",
-  veo31_text_to_video: "veo31",
-  hailuo23_standard_t2v: "hailuo_v2",
-  hailuo23_pro_t2v: "hailuo_v2",
-  hailuo: "hailuo_v2",
-  hailuo_pro: "hailuo_v2",
-  seedance: "seedance_t2v",
-  seedance_pro: "seedance_t2v",
-  kling_v2_5_turbo: "kling1_6_pro",
-  kling_v2: "kling1_6_pro",
+  // Short aliases for convenience
+  veo31_fast: "veo31_fast_text_to_video",
+  veo31: "veo31_text_to_video",
+  hailuo_v2: "hailuo23_standard_t2v",
+  hailuo: "hailuo23_standard_t2v",
+  hailuo_pro: "hailuo23_pro_t2v",
+  seedance_t2v: "seedance",
+  seedance_pro: "seedance_pro",
+  kling1_6_pro: "kling_v2_5_turbo",
+  kling_v2: "kling_v2_5_turbo",
+  kling1_6_standard: "kling_v2_5_turbo_standard",
   kling_v26_pro: "kling_v26_pro_t2v",
 };
 
+validateModelOrderInvariant({
+  category: "T2V",
+  models: T2V_MODELS,
+  order: T2V_MODEL_ORDER,
+});
+
+validateAliasMapTargetsExist({
+  category: "T2V",
+  models: T2V_MODELS,
+  aliases: T2V_MODEL_ID_ALIASES,
+});
+
+/**
+ * Defines the capabilities and supported parameters for a text-to-video model.
+ * Used to dynamically show/hide UI controls and validate user input.
+ */
 export interface T2VModelCapabilities {
   supportsAspectRatio: boolean;
   supportedAspectRatios?: string[];
@@ -354,6 +395,10 @@ export interface T2VModelCapabilities {
   defaultDuration?: number;
 }
 
+/**
+ * Complete capability definitions for all text-to-video models.
+ * Maps each T2V model ID to its supported features and parameter ranges.
+ */
 export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
   {
     sora2_text_to_video: {
@@ -450,7 +495,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 6,
     },
 
-    veo31_fast: {
+    veo31_fast_text_to_video: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
       supportsResolution: true,
@@ -466,7 +511,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 8,
     },
 
-    veo31: {
+    veo31_text_to_video: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1"], // FAL Veo 3.1 supports 16:9, 9:16, and 1:1 (outpainting)
       supportsResolution: true,
@@ -482,7 +527,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 8,
     },
 
-    hailuo_v2: {
+    hailuo23_standard_t2v: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
       supportsResolution: true,
@@ -498,7 +543,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 5,
     },
 
-    seedance_t2v: {
+    seedance: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
       supportsResolution: true,
@@ -514,7 +559,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 5,
     },
 
-    kling1_6_pro: {
+    kling_v2_5_turbo: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
       supportsResolution: true,
@@ -530,7 +575,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 5,
     },
 
-    kling1_6_standard: {
+    kling_v2_5_turbo_standard: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
       supportsResolution: true,
@@ -576,7 +621,7 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultDuration: 5,
     },
 
-    hailuo_pro: {
+    hailuo23_pro_t2v: {
       supportsAspectRatio: true,
       supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
       supportsResolution: true,
@@ -629,6 +674,11 @@ export function getCombinedCapabilities(
   };
 }
 
+/**
+ * Finds the intersection of supported aspect ratios across multiple models.
+ * @param capabilities - Array of model capabilities to intersect
+ * @returns Common aspect ratios supported by all models, or undefined if none
+ */
 function getCommonAspectRatios(
   capabilities: T2VModelCapabilities[]
 ): string[] | undefined {
@@ -644,6 +694,11 @@ function getCommonAspectRatios(
   );
 }
 
+/**
+ * Finds the intersection of supported resolutions across multiple models.
+ * @param capabilities - Array of model capabilities to intersect
+ * @returns Common resolutions supported by all models, or undefined if none
+ */
 function getCommonResolutions(
   capabilities: T2VModelCapabilities[]
 ): string[] | undefined {
@@ -659,6 +714,11 @@ function getCommonResolutions(
   );
 }
 
+/**
+ * Finds the intersection of supported durations across multiple models.
+ * @param capabilities - Array of model capabilities to intersect
+ * @returns Common durations (in seconds) supported by all models, or undefined if none
+ */
 function getCommonDurations(
   capabilities: T2VModelCapabilities[]
 ): number[] | undefined {

@@ -12,9 +12,9 @@ import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/ups
 import { T2V_MODELS } from "./text2video-models-config";
 import { I2V_MODELS } from "./image2video-models-config";
 import { AVATAR_MODELS } from "./avatar-models-config";
+import { validateUniqueAIModelIds } from "./model-config-validation";
 import { UPSCALE_MODELS } from "@/lib/upscale-models";
-// biome-ignore lint/style/noExportedImports: ERROR_MESSAGES is used both for re-export and in local AI_CONFIG object
-import { ERROR_MESSAGES } from "./error-messages";
+import { ERROR_MESSAGES as ERROR_MESSAGES_INTERNAL } from "./error-messages";
 
 // FAL API Configuration
 /** FAL.ai API key from environment variables */
@@ -27,7 +27,10 @@ export const FAL_API_BASE = "https://fal.run";
  */
 export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 
-// API Configuration
+/**
+ * API configuration for FAL.ai video generation service.
+ * Includes retry logic, timeout settings, and authentication.
+ */
 export const API_CONFIG: APIConfiguration = {
   falApiKey: FAL_API_KEY,
   falApiBase: FAL_API_BASE,
@@ -95,7 +98,18 @@ export const AI_MODELS: AIModel[] = [
   ...Object.values(AVATAR_MODELS),
 ];
 
-// UI Constants
+validateUniqueAIModelIds({
+  categories: {
+    T2V: Object.values(T2V_MODELS),
+    I2V: Object.values(I2V_MODELS),
+    AVATAR: Object.values(AVATAR_MODELS),
+  },
+});
+
+/**
+ * UI constraints and limits for the AI video generation interface.
+ * Controls input validation, history management, and generation timeouts.
+ */
 export const UI_CONSTANTS = {
   MAX_PROMPT_CHARS: 500,
   MAX_IMAGE_SIZE_MB: 10,
@@ -104,7 +118,11 @@ export const UI_CONSTANTS = {
   GENERATION_TIMEOUT_MS: 300_000, // 5 minutes
 } as const;
 
-// File Upload Constants
+/**
+ * File upload constraints for all AI model types.
+ * Defines supported formats, size limits, and model-specific requirements
+ * for images, audio, and video uploads.
+ */
 export const UPLOAD_CONSTANTS = {
   // Image uploads (for image-to-video and avatar character images)
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/webp", "image/gif"],
@@ -153,7 +171,10 @@ export const UPLOAD_CONSTANTS = {
   EXTEND_VIDEO_OUTPUT_DURATION_SECONDS: 7,
 } as const;
 
-// Progress Constants
+/**
+ * Progress percentage milestones for video generation workflow.
+ * Used to provide user feedback during generation, polling, and download phases.
+ */
 export const PROGRESS_CONSTANTS = {
   INITIAL_PROGRESS: 0,
   POLLING_START_PROGRESS: 10,
@@ -161,7 +182,10 @@ export const PROGRESS_CONSTANTS = {
   COMPLETE_PROGRESS: 100,
 } as const;
 
-// Local Storage Keys
+/**
+ * Local storage keys for persisting user data and preferences.
+ * Used for generation history, user settings, and model selections.
+ */
 export const STORAGE_KEYS = {
   GENERATION_HISTORY: "ai-generation-history",
   USER_PREFERENCES: "ai-user-preferences",
@@ -171,8 +195,12 @@ export const STORAGE_KEYS = {
 // Error Messages
 // Re-export ERROR_MESSAGES for backward compatibility
 export { ERROR_MESSAGES } from "./error-messages";
+export { ERROR_MESSAGES as ERRORS } from "./error-messages";
 
-// LTX Video 2.0 Fast Configuration
+/**
+ * LTX Video 2.0 Fast model-specific configuration.
+ * Defines supported durations, resolutions, FPS options, and pricing tiers.
+ */
 export const LTXV2_FAST_CONFIG = {
   DURATIONS: [6, 8, 10, 12, 14, 16, 18, 20] as const,
   RESOLUTIONS: {
@@ -193,7 +221,10 @@ export const LTXV2_FAST_CONFIG = {
   },
 } as const;
 
-// Status Messages
+/**
+ * User-facing status messages for video generation workflow.
+ * Displayed in the UI during different stages of generation.
+ */
 export const STATUS_MESSAGES = {
   STARTING: "Starting generation...",
   PROCESSING: "Processing video...",
@@ -203,7 +234,10 @@ export const STATUS_MESSAGES = {
   FAILED: "Generation failed",
 } as const;
 
-// Default Values
+/**
+ * Default values for AI generation state initialization.
+ * Used when creating new generation sessions or resetting state.
+ */
 export const DEFAULTS = {
   PROMPT: "",
   SELECTED_MODELS: [] as string[],
@@ -215,7 +249,10 @@ export const DEFAULTS = {
   PROGRESS_LOGS: [] as string[],
 } as const;
 
-// Model Helper Functions
+/**
+ * Utility functions for querying and filtering AI models.
+ * Provides helpers for model lookup, filtering by capabilities, and input requirements.
+ */
 export const MODEL_HELPERS = {
   /**
    * Get model by ID
@@ -355,25 +392,30 @@ export const REVE_EDIT_MODEL = {
   defaultNumImages: 1,
 } as const;
 
-// Export individual constants for convenience
+/**
+ * Convenience aliases for commonly accessed constant groups.
+ * Provides shorter names for importing frequently used constants.
+ */
 export {
   AI_MODELS as MODELS,
   UI_CONSTANTS as UI,
   UPLOAD_CONSTANTS as UPLOAD,
   PROGRESS_CONSTANTS as PROGRESS,
   STORAGE_KEYS as STORAGE,
-  ERROR_MESSAGES as ERRORS,
   STATUS_MESSAGES as STATUS,
 };
 
-// Export default configuration object
+/**
+ * Complete AI configuration object combining all constants.
+ * Provides a single import point for all AI-related configuration.
+ */
 export const AI_CONFIG = {
   api: API_CONFIG,
   ui: UI_CONSTANTS,
   upload: UPLOAD_CONSTANTS,
   progress: PROGRESS_CONSTANTS,
   storage: STORAGE_KEYS,
-  errors: ERROR_MESSAGES,
+  errors: ERROR_MESSAGES_INTERNAL,
   status: STATUS_MESSAGES,
   defaults: DEFAULTS,
   models: AI_MODELS,

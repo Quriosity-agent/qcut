@@ -38,7 +38,11 @@ import {
 } from "@/components/ui/tooltip";
 import { Info, ChevronDown, ChevronUp } from "lucide-react";
 
-import { UPLOAD_CONSTANTS } from "../constants/ai-constants";
+import {
+  UPLOAD_CONSTANTS,
+  AVATAR_MODELS,
+  MODEL_HELPERS,
+} from "../constants/ai-constants";
 import { calculateKlingAvatarV2Cost } from "../utils/ai-cost-calculators";
 import type {
   SyncLipsyncEmotion,
@@ -199,113 +203,137 @@ export function AIAvatarTab({
     m.includes("extend_video")
   );
 
+  // Determine which upload fields to show based on selected model's requirements
+  const selectedModelId = selectedModels[0]; // Get first selected model
+  const selectedModel = selectedModelId ? AVATAR_MODELS[selectedModelId] : null;
+  const requiredInputs = selectedModel?.requiredInputs || [];
+
+  // Check what inputs are required
+  const needsCharacterImage = requiredInputs.includes("characterImage");
+  const needsLastFrame = requiredInputs.includes("lastFrame");
+  const needsAudioFile = requiredInputs.includes("audioFile");
+  const needsSourceVideo = requiredInputs.includes("sourceVideo");
+  const needsReferenceImages = requiredInputs.includes("referenceImages");
+
   return (
     <div className="space-y-4">
       {/* First Frame / Last Frame - Side by side */}
-      <div className="grid grid-cols-2 gap-2">
-        <FileUpload
-          id="avatar-first-frame-input"
-          label="First Frame"
-          helperText=""
-          fileType="image"
-          acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-          maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-          maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-          formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-          file={avatarImage}
-          preview={avatarImagePreview}
-          onFileChange={(file, preview) => {
-            onAvatarImageChange(file, preview || null);
-            if (file) onError(null);
-          }}
-          onError={onError}
-          isCompact={true}
-        />
-        <FileUpload
-          id="avatar-last-frame-input"
-          label="Last Frame"
-          helperText=""
-          fileType="image"
-          acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
-          maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-          maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-          formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-          file={avatarLastFrame}
-          preview={avatarLastFramePreview}
-          onFileChange={(file, preview) => {
-            onAvatarLastFrameChange(file, preview || null);
-            if (file) onError(null);
-          }}
-          onError={onError}
-          isCompact={true}
-        />
-      </div>
-
-      {/* Reference Images - 6 slots in 3x2 grid */}
-      <div className="space-y-2">
-        <Label className="text-xs">Reference Images</Label>
-        <div className="grid grid-cols-3 gap-2">
-          {[0, 1, 2, 3, 4, 5].map((index) => (
+      {(needsCharacterImage || needsLastFrame) && (
+        <div className="grid grid-cols-2 gap-2">
+          {needsCharacterImage && (
             <FileUpload
-              key={`reference-${index}`}
-              id={`avatar-reference-${index}-input`}
-              label={`Ref ${index + 1}`}
+              id="avatar-first-frame-input"
+              label="First Frame"
               helperText=""
               fileType="image"
               acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
               maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
               maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
               formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
-              file={referenceImages[index]}
-              preview={referenceImagePreviews[index]}
+              file={avatarImage}
+              preview={avatarImagePreview}
               onFileChange={(file, preview) => {
-                onReferenceImageChange(index, file, preview || null);
+                onAvatarImageChange(file, preview || null);
                 if (file) onError(null);
               }}
               onError={onError}
               isCompact={true}
             />
-          ))}
+          )}
+          {needsLastFrame && (
+            <FileUpload
+              id="avatar-last-frame-input"
+              label="Last Frame"
+              helperText=""
+              fileType="image"
+              acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+              maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+              maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+              formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+              file={avatarLastFrame}
+              preview={avatarLastFramePreview}
+              onFileChange={(file, preview) => {
+                onAvatarLastFrameChange(file, preview || null);
+                if (file) onError(null);
+              }}
+              onError={onError}
+              isCompact={true}
+            />
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Reference Images - 6 slots in 3x2 grid */}
+      {needsReferenceImages && (
+        <div className="space-y-2">
+          <Label className="text-xs">Reference Images</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <FileUpload
+                key={`reference-${index}`}
+                id={`avatar-reference-${index}-input`}
+                label={`Ref ${index + 1}`}
+                helperText=""
+                fileType="image"
+                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AVATAR_IMAGE_TYPES}
+                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
+                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
+                formatsLabel={UPLOAD_CONSTANTS.AVATAR_IMAGE_FORMATS_LABEL}
+                file={referenceImages[index]}
+                preview={referenceImagePreviews[index]}
+                onFileChange={(file, preview) => {
+                  onReferenceImageChange(index, file, preview || null);
+                  if (file) onError(null);
+                }}
+                onError={onError}
+                isCompact={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Audio Input */}
-      <FileUpload
-        id="avatar-audio-input"
-        label="Audio Input"
-        helperText=""
-        fileType="audio"
-        acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
-        maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
-        maxSizeLabel={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_LABEL}
-        formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
-        file={audioFile}
-        onFileChange={(file) => {
-          onAudioFileChange(file);
-          if (file) onError(null);
-        }}
-        onError={onError}
-        isCompact={isCompact}
-      />
+      {needsAudioFile && (
+        <FileUpload
+          id="avatar-audio-input"
+          label="Audio Input"
+          helperText=""
+          fileType="audio"
+          acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
+          maxSizeBytes={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_BYTES}
+          maxSizeLabel={UPLOAD_CONSTANTS.MAX_AUDIO_SIZE_LABEL}
+          formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
+          file={audioFile}
+          onFileChange={(file) => {
+            onAudioFileChange(file);
+            if (file) onError(null);
+          }}
+          onError={onError}
+          isCompact={isCompact}
+        />
+      )}
 
       {/* Source Video Upload */}
-      <FileUpload
-        id="avatar-video-input"
-        label="Source Video"
-        helperText=""
-        fileType="video"
-        acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
-        maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
-        maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
-        formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
-        file={sourceVideo}
-        onFileChange={(file) => {
-          onSourceVideoChange(file);
-          if (file) onError(null);
-        }}
-        onError={onError}
-        isCompact={isCompact}
-      />
+      {needsSourceVideo && (
+        <FileUpload
+          id="avatar-video-input"
+          label="Source Video"
+          helperText=""
+          fileType="video"
+          acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_VIDEO_TYPES}
+          maxSizeBytes={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_BYTES}
+          maxSizeLabel={UPLOAD_CONSTANTS.MAX_VIDEO_SIZE_LABEL}
+          formatsLabel={UPLOAD_CONSTANTS.VIDEO_FORMATS_LABEL}
+          file={sourceVideo}
+          onFileChange={(file) => {
+            onSourceVideoChange(file);
+            if (file) onError(null);
+          }}
+          onError={onError}
+          isCompact={isCompact}
+        />
+      )}
 
       {/* Optional Prompt for Avatar */}
       <div className="space-y-2">

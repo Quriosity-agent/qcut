@@ -4,8 +4,19 @@
  */
 
 import type { AIModel } from "../types/ai-types";
+import { validateModelOrderInvariant } from "./model-config-validation";
 
-// Define Avatar models first (source of truth)
+/**
+ * Avatar and video transformation model definitions.
+ *
+ * Includes models for:
+ * - Talking head/avatar generation (character image + audio → video)
+ * - Video-to-video transformation and editing
+ * - Reference-based video generation
+ * - Video extension and continuation
+ *
+ * Single source of truth for all avatar model configurations.
+ */
 export const AVATAR_MODELS = {
   wan_26_ref2v: {
     id: "wan_26_ref2v",
@@ -18,7 +29,7 @@ export const AVATAR_MODELS = {
     category: "avatar",
     requiredInputs: ["sourceVideo"],
     endpoints: {
-      reference_to_video: "fal-ai/wan/v2.6/reference-to-video",
+      reference_to_video: "wan/v2.6/reference-to-video",
     },
     default_params: {
       duration: 5,
@@ -44,7 +55,7 @@ export const AVATAR_MODELS = {
     category: "avatar",
     requiredInputs: ["characterImage", "sourceVideo"],
     endpoints: {
-      text_to_video: "fal-ai/wan/v2.2-14b/animate/replace",
+      text_to_video: "wan/v2.2-14b/animate/replace",
     },
     default_params: {
       resolution: "480p",
@@ -301,10 +312,16 @@ export const AVATAR_MODELS = {
   },
 } as const satisfies Record<string, AIModel>;
 
-// Derive type from models (single source of truth)
+/**
+ * Avatar model identifier type derived from AVATAR_MODELS keys.
+ * Ensures type safety when referencing avatar models throughout the application.
+ */
 export type AvatarModelId = keyof typeof AVATAR_MODELS;
 
-// Priority order for UI rendering
+/**
+ * Priority order for displaying avatar models in the UI.
+ * Models are ordered by quality/capability and use-case popularity.
+ */
 export const AVATAR_MODEL_ORDER: readonly AvatarModelId[] = [
   "kling_avatar_v2_pro",
   "kling_avatar_v2_standard",
@@ -321,6 +338,12 @@ export const AVATAR_MODEL_ORDER: readonly AvatarModelId[] = [
   "kling_avatar_standard",
   "sora2_video_to_video_remix",
 ] as const;
+
+validateModelOrderInvariant({
+  category: "AVATAR",
+  models: AVATAR_MODELS,
+  order: AVATAR_MODEL_ORDER,
+});
 
 /**
  * Get Avatar models in priority order for UI rendering.
