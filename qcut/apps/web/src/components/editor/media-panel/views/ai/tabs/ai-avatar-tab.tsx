@@ -38,11 +38,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Info, ChevronDown, ChevronUp } from "lucide-react";
 
-import {
-  UPLOAD_CONSTANTS,
-  AVATAR_MODELS,
-  MODEL_HELPERS,
-} from "../constants/ai-constants";
+import { UPLOAD_CONSTANTS, AVATAR_MODELS } from "../constants/ai-constants";
 import { calculateKlingAvatarV2Cost } from "../utils/ai-cost-calculators";
 import type {
   SyncLipsyncEmotion,
@@ -205,8 +201,12 @@ export function AIAvatarTab({
 
   // Determine which upload fields to show based on selected model's requirements
   const selectedModelId = selectedModels[0]; // Get first selected model
-  const selectedModel = selectedModelId ? AVATAR_MODELS[selectedModelId] : null;
-  const requiredInputs = selectedModel?.requiredInputs || [];
+  const selectedModel =
+    selectedModelId && selectedModelId in AVATAR_MODELS
+      ? AVATAR_MODELS[selectedModelId as keyof typeof AVATAR_MODELS]
+      : null;
+  const requiredInputs: readonly string[] =
+    selectedModel?.requiredInputs || [];
 
   // Check what inputs are required
   const needsCharacterImage = requiredInputs.includes("characterImage");
