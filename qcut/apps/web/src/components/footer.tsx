@@ -26,7 +26,7 @@ export function Footer() {
 
   return (
     <motion.footer
-      className="bg-gray-950 border-t border-slate-800"
+      className="bg-background border-t"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.8, duration: 0.8 }}
@@ -43,14 +43,14 @@ export function Footer() {
               />
               <span className="font-bold text-lg">QCut</span>
             </div>
-            <p className="text-sm md:text-left text-slate-400 mb-5">
+            <p className="text-sm md:text-left text-muted-foreground mb-5">
               The open source video editor that gets the job done. Simple,
               powerful, and works on any platform.
             </p>
             <div className="flex justify-start gap-3">
               <a
                 href="https://github.com/donghaozhang/qcut"
-                className="text-slate-400 hover:text-cyan-400 transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Visit QCut GitHub repository"
@@ -59,7 +59,7 @@ export function Footer() {
               </a>
               <a
                 href="https://x.com/peter6759"
-                className="text-slate-400 hover:text-cyan-400 transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow QCut on X"
@@ -71,12 +71,12 @@ export function Footer() {
 
           <div className="flex gap-12 justify-start items-start py-2">
             <div>
-              <h3 className="font-semibold text-slate-100 mb-4">Resources</h3>
+              <h3 className="font-semibold text-foreground mb-4">Resources</h3>
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     to="/roadmap"
-                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Roadmap
                   </Link>
@@ -84,7 +84,7 @@ export function Footer() {
                 <li>
                   <Link
                     to="/privacy"
-                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Privacy policy
                   </Link>
@@ -92,7 +92,7 @@ export function Footer() {
                 <li>
                   <Link
                     to="/terms"
-                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Terms of use
                   </Link>
@@ -102,12 +102,12 @@ export function Footer() {
 
             {/* Company Links */}
             <div>
-              <h3 className="font-semibold text-slate-100 mb-4">Company</h3>
+              <h3 className="font-semibold text-foreground mb-4">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
                     to="/contributors"
-                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Contributors
                   </Link>
@@ -115,7 +115,7 @@ export function Footer() {
                 <li>
                   <a
                     href="https://github.com/donghaozhang/qcut/blob/main/README.md"
-                    className="text-slate-400 hover:text-cyan-400 transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -129,7 +129,7 @@ export function Footer() {
 
         {/* Bottom Section */}
         <div className="pt-2 flex flex-col md:flex-row justify-between items-start gap-4">
-          <div className="flex items-center gap-4 text-sm text-slate-400">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>© 2025 QCut, All Rights Reserved</span>
           </div>
         </div>
