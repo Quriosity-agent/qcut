@@ -48,9 +48,9 @@ export function Handlebars({ children }: HandlebarsProps) {
   return (
     <div className="flex justify-center gap-4 leading-16">
       <div ref={containerRef} className="relative -rotate-[2.76deg] mt-0.5">
-        <div className="absolute inset-0 w-full h-full rounded-2xl border border-yellow-500 flex justify-between z-1">
+        <div className="absolute inset-0 w-full h-full rounded-2xl border border-cyan-500 flex justify-between z-1 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
           <motion.div
-            className="absolute z-10 left-0 h-full border border-yellow-500 w-7 rounded-full bg-accent flex items-center justify-center select-none"
+            className="absolute z-10 left-0 h-full border border-cyan-400 w-7 rounded-full bg-slate-900 flex items-center justify-center select-none shadow-[0_0_10px_rgba(6,182,212,0.4)]"
             style={{
               x: leftHandleX,
             }}
@@ -62,11 +62,11 @@ export function Handlebars({ children }: HandlebarsProps) {
             whileDrag={{ scale: 1.1, cursor: "grabbing" }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           >
-            <div className="w-2 h-8 rounded-full bg-yellow-500" />
+            <div className="w-2 h-8 rounded-full bg-cyan-400" />
           </motion.div>
 
           <motion.div
-            className="absolute z-10 -left-[30px] h-full border border-yellow-500 w-7 rounded-full bg-accent flex items-center justify-center select-none"
+            className="absolute z-10 -left-[30px] h-full border border-cyan-400 w-7 rounded-full bg-slate-900 flex items-center justify-center select-none shadow-[0_0_10px_rgba(6,182,212,0.4)]"
             style={{
               x: rightHandleX,
             }}
@@ -81,7 +81,7 @@ export function Handlebars({ children }: HandlebarsProps) {
             whileDrag={{ scale: 1.1, cursor: "grabbing" }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
           >
-            <div className="w-2 h-8 rounded-full bg-yellow-500" />
+            <div className="w-2 h-8 rounded-full bg-cyan-400" />
           </motion.div>
         </div>
 
