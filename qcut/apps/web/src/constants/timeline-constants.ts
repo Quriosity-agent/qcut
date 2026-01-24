@@ -30,6 +30,11 @@ export const TRACK_COLORS: Record<
     background: "bg-yellow-500/20",
     border: "border-white/80",
   },
+  remotion: {
+    solid: "bg-violet-500",
+    background: "bg-violet-500/20",
+    border: "border-white/80",
+  },
 } as const;
 
 // Utility functions
@@ -59,6 +64,7 @@ export const TRACK_HEIGHTS: Record<TrackType, number> = {
   audio: 50,
   sticker: 40,
   captions: 30,
+  remotion: 55,
 } as const;
 
 /**

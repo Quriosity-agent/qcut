@@ -2,7 +2,7 @@ import { MediaType } from "@/stores/media-store";
 import { generateUUID } from "@/lib/utils";
 
 /** Valid track types in the video editor timeline */
-export type TrackType = "media" | "text" | "audio" | "sticker" | "captions";
+export type TrackType = "media" | "text" | "audio" | "sticker" | "captions" | "remotion";
 
 /**
  * Base interface for all timeline elements
@@ -111,23 +111,46 @@ export interface CaptionElement extends BaseTimelineElement {
   source: "transcription" | "manual" | "imported";
 }
 
+/**
+ * Remotion element for animated React compositions
+ * References a Remotion component from the component registry
+ */
+export interface RemotionElement extends BaseTimelineElement {
+  type: "remotion";
+  /** ID of the Remotion component in the registry */
+  componentId: string;
+  /** Optional path to the source .tsx file (for imported components) */
+  componentPath?: string;
+  /** Props to pass to the Remotion component */
+  props: Record<string, unknown>;
+  /** Rendering mode: 'live' for preview, 'cached' for export */
+  renderMode: "live" | "cached";
+  /** Opacity level (0-1) */
+  opacity?: number;
+  /** Scale factor (1 = 100%) */
+  scale?: number;
+}
+
 // Typed timeline elements
 export type TimelineElement =
   | MediaElement
   | TextElement
   | StickerElement
-  | CaptionElement;
+  | CaptionElement
+  | RemotionElement;
 
 // Creation types (without id, for addElementToTrack)
 export type CreateMediaElement = Omit<MediaElement, "id">;
 export type CreateTextElement = Omit<TextElement, "id">;
 export type CreateStickerElement = Omit<StickerElement, "id">;
 export type CreateCaptionElement = Omit<CaptionElement, "id">;
+export type CreateRemotionElement = Omit<RemotionElement, "id">;
 export type CreateTimelineElement =
   | CreateMediaElement
   | CreateTextElement
   | CreateStickerElement
-  | CreateCaptionElement;
+  | CreateCaptionElement
+  | CreateRemotionElement;
 
 export interface TimelineElementProps {
   element: TimelineElement;
@@ -167,10 +190,22 @@ export interface StickerItemDragData {
   iconName: string;
 }
 
+export interface RemotionItemDragData {
+  id: string;
+  type: "remotion";
+  name: string;
+  componentId: string;
+  /** Default duration in frames */
+  durationInFrames: number;
+  /** Frames per second */
+  fps: number;
+}
+
 export type DragData =
   | MediaItemDragData
   | TextItemDragData
-  | StickerItemDragData;
+  | StickerItemDragData
+  | RemotionItemDragData;
 
 export interface TimelineTrack {
   id: string;
@@ -182,56 +217,28 @@ export interface TimelineTrack {
 }
 
 export function sortTracksByOrder(tracks: TimelineTrack[]): TimelineTrack[] {
+  // Define track type priority (lower = higher in the UI)
+  const trackPriority: Record<TrackType, number> = {
+    text: 1,      // Text on top
+    captions: 2,  // Captions below text
+    remotion: 3,  // Remotion below captions (overlay layer)
+    sticker: 4,   // Stickers below remotion
+    media: 5,     // Media tracks
+    audio: 6,     // Audio at bottom
+  };
+
   return [...tracks].sort((a, b) => {
-    // Text tracks always go to the top
-    if (a.type === "text" && b.type !== "text") return -1;
-    if (b.type === "text" && a.type !== "text") return 1;
+    const priorityA = trackPriority[a.type];
+    const priorityB = trackPriority[b.type];
 
-    // Caption tracks go after text, before stickers
-    if (a.type === "captions" && b.type !== "captions" && b.type !== "text")
-      return -1;
-    if (b.type === "captions" && a.type !== "captions" && a.type !== "text")
-      return 1;
+    // Sort by track type priority first
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
 
-    // Sticker tracks go after captions, before media
-    if (
-      a.type === "sticker" &&
-      b.type !== "sticker" &&
-      b.type !== "text" &&
-      b.type !== "captions"
-    )
-      return -1;
-    if (
-      b.type === "sticker" &&
-      a.type !== "sticker" &&
-      a.type !== "text" &&
-      a.type !== "captions"
-    )
-      return 1;
-
-    // Audio tracks always go to bottom
-    if (a.type === "audio" && b.type !== "audio") return 1;
-    if (b.type === "audio" && a.type !== "audio") return -1;
-
-    // Main track goes above audio but below text, captions, and sticker tracks
-    if (
-      a.isMain &&
-      !b.isMain &&
-      b.type !== "audio" &&
-      b.type !== "text" &&
-      b.type !== "captions" &&
-      b.type !== "sticker"
-    )
-      return 1;
-    if (
-      b.isMain &&
-      !a.isMain &&
-      a.type !== "audio" &&
-      a.type !== "text" &&
-      a.type !== "captions" &&
-      a.type !== "sticker"
-    )
-      return -1;
+    // Within same type, main track goes first
+    if (a.isMain && !b.isMain) return -1;
+    if (b.isMain && !a.isMain) return 1;
 
     // Within same category, maintain creation order
     return 0;
@@ -263,7 +270,7 @@ export function ensureMainTrack(tracks: TimelineTrack[]): TimelineTrack[] {
 
 // Timeline validation utilities
 export function canElementGoOnTrack(
-  elementType: "text" | "media" | "sticker" | "captions",
+  elementType: "text" | "media" | "sticker" | "captions" | "remotion",
   trackType: TrackType
 ): boolean {
   if (elementType === "text") {
@@ -278,11 +285,14 @@ export function canElementGoOnTrack(
   if (elementType === "captions") {
     return trackType === "captions";
   }
+  if (elementType === "remotion") {
+    return trackType === "remotion";
+  }
   return false;
 }
 
 export function validateElementTrackCompatibility(
-  element: { type: "text" | "media" | "sticker" | "captions" },
+  element: { type: "text" | "media" | "sticker" | "captions" | "remotion" },
   track: { type: TrackType }
 ): { isValid: boolean; errorMessage?: string } {
   const isValid = canElementGoOnTrack(element.type, track.type);
@@ -295,10 +305,80 @@ export function validateElementTrackCompatibility(
           ? "Sticker elements can only be placed on sticker tracks"
           : element.type === "captions"
             ? "Caption elements can only be placed on caption tracks"
-            : "Media elements can only be placed on media or audio tracks";
+            : element.type === "remotion"
+              ? "Remotion elements can only be placed on Remotion tracks"
+              : "Media elements can only be placed on media or audio tracks";
 
     return { isValid: false, errorMessage };
   }
 
   return { isValid: true };
+}
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Type guard to check if an element is a MediaElement
+ */
+export function isMediaElement(element: TimelineElement): element is MediaElement {
+  return element.type === "media";
+}
+
+/**
+ * Type guard to check if an element is a TextElement
+ */
+export function isTextElement(element: TimelineElement): element is TextElement {
+  return element.type === "text";
+}
+
+/**
+ * Type guard to check if an element is a StickerElement
+ */
+export function isStickerElement(element: TimelineElement): element is StickerElement {
+  return element.type === "sticker";
+}
+
+/**
+ * Type guard to check if an element is a CaptionElement
+ */
+export function isCaptionElement(element: TimelineElement): element is CaptionElement {
+  return element.type === "captions";
+}
+
+/**
+ * Type guard to check if an element is a RemotionElement
+ */
+export function isRemotionElement(element: TimelineElement): element is RemotionElement {
+  return element.type === "remotion";
+}
+
+/**
+ * Get all Remotion elements from a list of tracks
+ */
+export function getRemotionElements(tracks: TimelineTrack[]): RemotionElement[] {
+  const remotionElements: RemotionElement[] = [];
+  for (const track of tracks) {
+    for (const element of track.elements) {
+      if (isRemotionElement(element)) {
+        remotionElements.push(element);
+      }
+    }
+  }
+  return remotionElements;
+}
+
+/**
+ * Get Remotion elements that are active at a specific time
+ */
+export function getActiveRemotionElements(
+  tracks: TimelineTrack[],
+  currentTime: number
+): RemotionElement[] {
+  return getRemotionElements(tracks).filter((element) => {
+    const effectiveStart = element.startTime;
+    const effectiveEnd = element.startTime + (element.duration - element.trimStart - element.trimEnd);
+    return currentTime >= effectiveStart && currentTime < effectiveEnd;
+  });
 }

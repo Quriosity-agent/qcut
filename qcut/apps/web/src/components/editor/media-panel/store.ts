@@ -16,6 +16,7 @@ import {
   PenTool,
   Wand2Icon,
   ScissorsIcon,
+  Layers,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -35,7 +36,8 @@ export type Tab =
   | "ai"
   | "sounds"
   | "draw"
-  | "segmentation";
+  | "segmentation"
+  | "remotion";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -101,6 +103,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   segmentation: {
     icon: ScissorsIcon,
     label: "Segment",
+  },
+  remotion: {
+    icon: Layers,
+    label: "Remotion",
   },
 };
 

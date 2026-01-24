@@ -77,7 +77,10 @@
     "unified": "^11.0.5",
     "vaul": "^1.1.2",
     "zod": "^3.25.76",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@remotion/player": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "remotion": "^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",

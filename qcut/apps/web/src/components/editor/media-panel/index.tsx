@@ -15,6 +15,7 @@ import NanoEditView from "./views/nano-edit";
 import DrawView from "./views/draw";
 import VideoEditView from "./views/video-edit";
 import { SegmentationPanel } from "@/components/editor/segmentation";
+import { RemotionView } from "./views/remotion";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -63,6 +64,7 @@ export function MediaPanel() {
     sounds: <SoundsView />,
     draw: <DrawView />,
     segmentation: <SegmentationPanel />,
+    remotion: <RemotionView />,
   };
 
   return (

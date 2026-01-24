@@ -349,7 +349,7 @@ function TimelineElementComponent({
                   {
                     url: mediaItemUrl,
                     elementId: element.id,
-                    mediaId: element.mediaId,
+                    mediaId: "mediaId" in element ? element.mediaId : undefined,
                     error: e,
                   }
                 );
