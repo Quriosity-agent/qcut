@@ -32,6 +32,7 @@ import { PanelView } from "@/types/panel";
 import { useEffectsStore } from "@/stores/effects-store";
 import { EffectsProperties } from "./effects-properties";
 import { TransformProperties } from "./transform-properties";
+import { RemotionProperties } from "./remotion-properties";
 import { EFFECTS_ENABLED } from "@/config/features";
 
 export function PropertiesPanel() {
@@ -159,6 +160,10 @@ export function PropertiesPanel() {
       }
 
       return <MediaProperties element={element} trackId={trackId} />;
+    }
+
+    if (element.type === "remotion") {
+      return <RemotionProperties element={element} trackId={trackId} />;
     }
 
     return null;

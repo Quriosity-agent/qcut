@@ -942,6 +942,26 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
+    updateRemotionElement: (trackId, elementId, updates, pushHistory = true) => {
+      if (pushHistory) {
+        get().pushHistory();
+      }
+      updateTracksAndSave(
+        get()._tracks.map((track) =>
+          track.id === trackId
+            ? {
+                ...track,
+                elements: track.elements.map((element) =>
+                  element.id === elementId && element.type === "remotion"
+                    ? { ...element, ...updates }
+                    : element
+                ),
+              }
+            : track
+        )
+      );
+    },
+
     splitElement: (trackId, elementId, splitTime) => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);

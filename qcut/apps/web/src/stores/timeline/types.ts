@@ -13,6 +13,7 @@ export type {
   TimelineTrack,
   TextElement,
   MediaElement,
+  RemotionElement,
   DragData,
 } from "@/types/timeline";
 
@@ -30,6 +31,7 @@ import type {
   CreateTimelineElement,
   TextElement,
   MediaElement,
+  RemotionElement,
   DragData,
 } from "@/types/timeline";
 import type { MediaItem } from "../media-store";
@@ -340,6 +342,12 @@ export interface TimelineStore {
     trackId: string,
     elementId: string,
     updates: Partial<Pick<MediaElement, "volume">>,
+    pushHistory?: boolean
+  ) => void;
+  updateRemotionElement: (
+    trackId: string,
+    elementId: string,
+    updates: Partial<Pick<RemotionElement, "props" | "renderMode" | "opacity" | "scale">>,
     pushHistory?: boolean
   ) => void;
   checkElementOverlap: (
