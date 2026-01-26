@@ -705,6 +705,9 @@ export function PreviewPanel() {
     return null;
   };
 
+  // Track logged Remotion elements to avoid spam (Set of element IDs)
+  const loggedRemotionElementsRef = useRef<Set<string>>(new Set());
+
   // Render an element
   const renderElement = (elementData: ActiveElement, index: number) => {
     const { element, mediaItem } = elementData;
@@ -712,6 +715,15 @@ export function PreviewPanel() {
       element.startTime +
       (element.duration - element.trimStart - element.trimEnd);
     const elementKey = `${element.id}-${elementData.track.id}`;
+
+    // Debug: Log element type detection (Step 2) - only once per element ID
+    if (element.type === "remotion" && !loggedRemotionElementsRef.current.has(element.id)) {
+      loggedRemotionElementsRef.current.add(element.id);
+      const remotionEl = element as RemotionElement;
+      console.log("[REMOTION DEBUG] Step 2: ✅ Detected Remotion element");
+      console.log("[REMOTION DEBUG] Step 2: element.id =", element.id);
+      console.log("[REMOTION DEBUG] Step 2: componentId =", remotionEl.componentId);
+    }
 
     // Text elements
     if (element.type === "text") {
@@ -909,6 +921,8 @@ export function PreviewPanel() {
             height={previewDimensions.height}
             maxWidth={previewDimensions.width}
             maxHeight={previewDimensions.height}
+            externalFrame={currentFrame}
+            externalIsPlaying={isPlaying}
           />
         </div>
       );
@@ -972,8 +986,8 @@ export function PreviewPanel() {
               ref={previewRef}
               className="relative overflow-hidden border"
               style={{
-                width: previewDimensions.width,
-                height: previewDimensions.height,
+                width: previewDimensions.width || 640,
+                height: previewDimensions.height || 360,
                 backgroundColor:
                   activeProject?.backgroundType === "blur"
                     ? "transparent"

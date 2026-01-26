@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
@@ -6,11 +6,26 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { StorageProvider } from "@/components/storage-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
+import { initializeRemotionStore } from "@/stores/remotion-store";
 import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
+
+/**
+ * Remotion Store Initializer
+ * Ensures Remotion components are registered at app startup,
+ * before any timeline elements try to render them.
+ */
+function RemotionInitializer() {
+  useEffect(() => {
+    console.log("[REMOTION DEBUG] RemotionInitializer: Calling initializeRemotionStore()");
+    initializeRemotionStore();
+  }, []);
+  return null;
+}
 
 export const Route = createRootRoute({
   component: () => (
     <ThemeProvider attribute="class" defaultTheme="dark">
+      <RemotionInitializer />
       <TooltipProvider>
         <ErrorBoundary>
           <StorageProvider>

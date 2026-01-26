@@ -57,6 +57,10 @@ export interface RemotionPreviewProps {
   maxWidth?: number;
   /** Maximum height constraint */
   maxHeight?: number;
+  /** External frame control from timeline (overrides internal state) */
+  externalFrame?: number;
+  /** External playing state from timeline (overrides internal state) */
+  externalIsPlaying?: boolean;
   /** Callback when frame changes */
   onFrameChange?: (frame: number) => void;
   /** Callback when playback state changes */
@@ -91,6 +95,8 @@ export function RemotionPreview({
   height,
   maxWidth = 640,
   maxHeight = 360,
+  externalFrame,
+  externalIsPlaying,
   onFrameChange,
   onPlayStateChange,
   className,
@@ -99,9 +105,13 @@ export function RemotionPreview({
   // Refs
   const playerRef = useRef<RemotionPlayerHandle>(null);
 
-  // Local state
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
-  const [currentFrame, setCurrentFrame] = useState(0);
+  // Local state (used when no external control)
+  const [internalIsPlaying, setInternalIsPlaying] = useState(autoPlay);
+  const [internalFrame, setInternalFrame] = useState(0);
+
+  // Use external values when provided, otherwise use internal state
+  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+  const currentFrame = externalFrame !== undefined ? externalFrame : internalFrame;
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -109,16 +119,41 @@ export function RemotionPreview({
   const component = useRemotionComponent(componentId ?? "");
   const instance = useRemotionInstance(elementId ?? "");
 
+  // Debug: Step 3 - Log only on mount/componentId change
+  useEffect(() => {
+    console.log("[REMOTION DEBUG] Step 3: RemotionPreview mounted");
+    console.log("[REMOTION DEBUG] Step 3: componentId =", componentId);
+    console.log("[REMOTION DEBUG] Step 3: elementId =", elementId);
+    console.log("[REMOTION DEBUG] Step 3: Store lookup result:");
+    console.log("[REMOTION DEBUG] Step 3: component =", component?.id ?? "undefined ❌");
+    console.log("[REMOTION DEBUG] Step 3: instance =", instance?.elementId ?? "undefined");
+  }, [componentId, elementId, component?.id, instance?.elementId]);
+
   // Determine the effective component and props
   const effectiveComponent = useMemo(() => {
-    if (component) return component;
+    if (component) {
+      return component;
+    }
+
     if (instance) {
-      return useRemotionStore
+      const comp = useRemotionStore
         .getState()
         .registeredComponents.get(instance.componentId);
+      return comp;
     }
+
     return undefined;
   }, [component, instance]);
+
+  // Debug: Step 4 - Log effective component resolution
+  useEffect(() => {
+    console.log("[REMOTION DEBUG] Step 4: Resolving effective component");
+    if (effectiveComponent) {
+      console.log("[REMOTION DEBUG] Step 4: ✅ Found:", effectiveComponent.id);
+    } else {
+      console.log("[REMOTION DEBUG] Step 4: ❌ No component found!");
+    }
+  }, [effectiveComponent?.id]);
 
   const effectiveProps = useMemo(() => {
     if (inputProps) return inputProps;
@@ -130,24 +165,27 @@ export function RemotionPreview({
   // Calculate preview dimensions maintaining aspect ratio
   const previewDimensions = useMemo(() => {
     if (!effectiveComponent) {
-      return { width: maxWidth, height: maxHeight };
+      return { width: maxWidth || 640, height: maxHeight || 360 };
     }
 
-    const componentWidth = width ?? effectiveComponent.width;
-    const componentHeight = height ?? effectiveComponent.height;
+    // Use || instead of ?? to handle 0 values properly
+    const componentWidth = (width && width > 0) ? width : effectiveComponent.width;
+    const componentHeight = (height && height > 0) ? height : effectiveComponent.height;
+    const effectiveMaxWidth = (maxWidth && maxWidth > 0) ? maxWidth : 640;
+    const effectiveMaxHeight = (maxHeight && maxHeight > 0) ? maxHeight : 360;
     const aspectRatio = componentWidth / componentHeight;
 
     let previewWidth = componentWidth;
     let previewHeight = componentHeight;
 
     // Scale down to fit within max bounds
-    if (previewWidth > maxWidth) {
-      previewWidth = maxWidth;
+    if (previewWidth > effectiveMaxWidth) {
+      previewWidth = effectiveMaxWidth;
       previewHeight = previewWidth / aspectRatio;
     }
 
-    if (previewHeight > maxHeight) {
-      previewHeight = maxHeight;
+    if (previewHeight > effectiveMaxHeight) {
+      previewHeight = effectiveMaxHeight;
       previewWidth = previewHeight * aspectRatio;
     }
 
@@ -165,7 +203,7 @@ export function RemotionPreview({
     if (playerRef.current) {
       playerRef.current.toggle();
       const newPlayState = !isPlaying;
-      setIsPlaying(newPlayState);
+      setInternalIsPlaying(newPlayState);
       onPlayStateChange?.(newPlayState);
     }
   }, [isPlaying, onPlayStateChange]);
@@ -173,7 +211,7 @@ export function RemotionPreview({
   const handleSeek = useCallback(
     (value: number[]) => {
       const frame = Math.round(value[0]);
-      setCurrentFrame(frame);
+      setInternalFrame(frame);
       playerRef.current?.seekTo(frame);
       onFrameChange?.(frame);
     },
@@ -181,20 +219,23 @@ export function RemotionPreview({
   );
 
   const handleReset = useCallback(() => {
-    setCurrentFrame(0);
+    setInternalFrame(0);
     playerRef.current?.seekTo(0);
     playerRef.current?.pause();
-    setIsPlaying(false);
+    setInternalIsPlaying(false);
     onFrameChange?.(0);
     onPlayStateChange?.(false);
   }, [onFrameChange, onPlayStateChange]);
 
   const handleFrameUpdate = useCallback(
     (frame: number) => {
-      setCurrentFrame(frame);
+      // Only update internal state if not externally controlled
+      if (externalFrame === undefined) {
+        setInternalFrame(frame);
+      }
       onFrameChange?.(frame);
     },
-    [onFrameChange]
+    [onFrameChange, externalFrame]
   );
 
   const handleReady = useCallback(() => {
@@ -212,13 +253,21 @@ export function RemotionPreview({
     setIsReady(false);
   }, []);
 
-  // Auto-play effect
+  // Auto-play effect (only when not externally controlled)
   useEffect(() => {
-    if (autoPlay && isReady && playerRef.current) {
+    if (externalIsPlaying === undefined && autoPlay && isReady && playerRef.current) {
       playerRef.current.play();
-      setIsPlaying(true);
+      setInternalIsPlaying(true);
     }
-  }, [autoPlay, isReady]);
+  }, [autoPlay, isReady, externalIsPlaying]);
+
+  // Debug: Step 5 - Log render state changes
+  useEffect(() => {
+    console.log("[REMOTION DEBUG] Step 5: Render state changed");
+    console.log("[REMOTION DEBUG] Step 5: effectiveComponent =", effectiveComponent?.id ?? "undefined");
+    console.log("[REMOTION DEBUG] Step 5: isReady =", isReady);
+    console.log("[REMOTION DEBUG] Step 5: error =", error?.message ?? "none");
+  }, [effectiveComponent?.id, isReady, error]);
 
   // ========================================================================
   // Render
@@ -305,6 +354,9 @@ export function RemotionPreview({
           width: previewDimensions.width,
           height: previewDimensions.height,
         }}
+        data-testid="remotion-player"
+        data-component-id={effectiveComponent.id}
+        data-frame={currentFrame}
       >
         <RemotionPlayerWrapper
           ref={playerRef}
@@ -319,6 +371,15 @@ export function RemotionPreview({
           onFrameUpdate={handleFrameUpdate}
           onError={handleError}
         />
+        {/* Debug overlay showing current frame */}
+        {process.env.NODE_ENV === "development" && (
+          <div
+            className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded pointer-events-none"
+            style={{ zIndex: 100 }}
+          >
+            Frame: {currentFrame} | {effectiveComponent.id}
+          </div>
+        )}
       </div>
 
       {/* Controls */}

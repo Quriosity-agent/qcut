@@ -2,7 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
 import { BackgroundIcon } from "./icons";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+// Note: next/image doesn't work in Vite - use regular img tag instead
 import { colors } from "@/data/colors";
 import { useProjectStore } from "@/stores/project-store";
 import { PipetteIcon } from "lucide-react";
@@ -168,11 +168,10 @@ function BlurView({
           )}
           onClick={() => onBlurSelect(blur.value)}
         >
-          <Image
+          <img
             src={blurImage}
             alt={`Blur preview ${blur.label}`}
-            fill
-            className="object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{ filter: `blur(${blur.value}px)` }}
           />
           <div className="absolute bottom-1 left-1 right-1 text-center">

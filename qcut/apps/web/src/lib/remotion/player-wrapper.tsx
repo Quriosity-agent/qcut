@@ -137,6 +137,16 @@ export const RemotionPlayerWrapper = forwardRef<
   // Track when player is mounted (for triggering ready callback)
   const [isPlayerMounted, setIsPlayerMounted] = useState(false);
 
+  // Debug: Step 6 - Log only on mount
+  useEffect(() => {
+    console.log("[REMOTION DEBUG] Step 6: PlayerWrapper mounted");
+    console.log("[REMOTION DEBUG] Step 6: elementId =", elementId);
+    console.log("[REMOTION DEBUG] Step 6: component.id =", component?.id);
+    console.log("[REMOTION DEBUG] Step 6: component.component =", typeof component?.component);
+    console.log("[REMOTION DEBUG] Step 6: compositionWidth =", component?.width);
+    console.log("[REMOTION DEBUG] Step 6: compositionHeight =", component?.height);
+  }, [elementId, component?.id]);
+
   // Store actions
   const setInstancePlayerRef = useRemotionStore(
     (state) => state.setInstancePlayerRef
@@ -235,7 +245,12 @@ export const RemotionPlayerWrapper = forwardRef<
   useEffect(() => {
     // Use a small delay to ensure the Player has mounted and set its ref
     const checkRef = () => {
+      console.log("[REMOTION DEBUG] Step 7: Checking playerRef...");
+      console.log("[REMOTION DEBUG] Step 7: playerRef.current =", playerRef.current ? "SET ✅" : "null ❌");
+      console.log("[REMOTION DEBUG] Step 7: isPlayerMounted =", isPlayerMounted);
+
       if (playerRef.current && !isPlayerMounted) {
+        console.log("[REMOTION DEBUG] Step 7: ✅ Player mounted! Setting isPlayerMounted = true");
         setIsPlayerMounted(true);
       }
     };
@@ -251,10 +266,18 @@ export const RemotionPlayerWrapper = forwardRef<
 
   // Subscribe to player events once mounted
   useEffect(() => {
-    if (!isPlayerMounted) return;
+    if (!isPlayerMounted) {
+      console.log("[REMOTION DEBUG] Step 8: Waiting for player mount...");
+      return;
+    }
 
     const player = playerRef.current;
-    if (!player) return;
+    if (!player) {
+      console.log("[REMOTION DEBUG] Step 8: ❌ Player ref still null after mount flag!");
+      return;
+    }
+
+    console.log("[REMOTION DEBUG] Step 8: ✅ Setting up event listeners");
 
     // Listen for frame updates - use Remotion's callback listener types
     const frameListener = (data: { detail: { frame: number } }) => {
@@ -281,6 +304,7 @@ export const RemotionPlayerWrapper = forwardRef<
     p.addEventListener("error", errorListener as (data: unknown) => void);
 
     // Notify ready
+    console.log("[REMOTION DEBUG] Step 8: ✅ Calling onReady callback!");
     onReady?.();
 
     return () => {
@@ -385,6 +409,8 @@ export const RemotionPlayerWrapper = forwardRef<
         controls={showControls}
         loop={loop}
         playbackRate={playbackRate}
+        initialFrame={currentFrame ?? 0}
+        acknowledgeRemotionLicense
         style={{
           width: "100%",
           height: "100%",
