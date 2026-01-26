@@ -383,14 +383,17 @@ export class RemotionExportEngine extends ExportEngine {
     };
 
     // Use base class export with custom progress
-    const blob = await this.export((progress, status) => {
-      // Map encoding progress to compositing phase
-      const phaseProgress = progress * 0.9; // Reserve 10% for finalization
-      this.updateProgress("compositing", phaseProgress, status);
-    });
-
-    // Restore original render function
-    this.renderFrame = originalRenderFrame;
+    let blob: Blob;
+    try {
+      blob = await this.export((progress, status) => {
+        // Map encoding progress to compositing phase
+        const phaseProgress = progress * 0.9; // Reserve 10% for finalization
+        this.updateProgress("compositing", phaseProgress, status);
+      });
+    } finally {
+      // Restore original render function even if export fails
+      this.renderFrame = originalRenderFrame;
+    }
 
     this.updateProgress("compositing", 100, "Compositing complete");
 
@@ -448,9 +451,6 @@ export class RemotionExportEngine extends ExportEngine {
     );
 
     if (remotionLayers.length === 0) return;
-
-    // Get the current canvas content as the QCut layer
-    const qcutCanvas = this.canvas;
 
     // Composite Remotion frames onto the canvas
     // Note: We're drawing directly to the export canvas, not creating a new composite
