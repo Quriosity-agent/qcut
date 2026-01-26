@@ -901,7 +901,7 @@ export function PreviewPanel() {
       // Calculate the local time within the element for frame sync
       const elementStart = remotionElement.startTime + remotionElement.trimStart;
       const localTime = currentTime - elementStart;
-      const fps = 30; // Default FPS, could be retrieved from component definition
+      const fps = activeProject?.fps ?? 30; // Use project FPS with fallback
       const currentFrame = Math.max(0, Math.floor(localTime * fps));
 
       return (

@@ -41,16 +41,26 @@ const DEFAULT_PRESETS = [
 
 /**
  * Validate and normalize a color string
+ * @param color - Color string to normalize
+ * @param preserveAlpha - Whether to preserve alpha channel (converts to 8-digit hex)
  */
-function normalizeColor(color: string): string {
+function normalizeColor(color: string, preserveAlpha = false): string {
   // Handle empty or invalid
   if (!color) return "#000000";
 
   // Already a hex color
-  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color)) {
+  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color)) {
     // Expand 3-char hex to 6-char
     if (color.length === 4) {
       return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+    }
+    // Expand 4-char hex (#RGBA) to 8-char (#RRGGBBAA)
+    if (color.length === 5) {
+      return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}${color[4]}${color[4]}`;
+    }
+    // Strip alpha if not preserving
+    if (!preserveAlpha && color.length === 9) {
+      return color.substring(0, 7).toLowerCase();
     }
     return color.toLowerCase();
   }
@@ -63,8 +73,20 @@ function normalizeColor(color: string): string {
     const r = Math.min(255, parseInt(rgbMatch[1], 10));
     const g = Math.min(255, parseInt(rgbMatch[2], 10));
     const b = Math.min(255, parseInt(rgbMatch[3], 10));
-    const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-    return hex.toLowerCase();
+    const rHex = r.toString(16).padStart(2, "0");
+    const gHex = g.toString(16).padStart(2, "0");
+    const bHex = b.toString(16).padStart(2, "0");
+
+    // Handle alpha channel if present and preserving
+    if (preserveAlpha && rgbMatch[4] !== undefined) {
+      const alpha = Math.min(1, Math.max(0, parseFloat(rgbMatch[4])));
+      const aHex = Math.round(alpha * 255)
+        .toString(16)
+        .padStart(2, "0");
+      return `#${rHex}${gHex}${bHex}${aHex}`.toLowerCase();
+    }
+
+    return `#${rHex}${gHex}${bHex}`.toLowerCase();
   }
 
   return color;
@@ -81,14 +103,14 @@ export function ColorProp({
   presets = DEFAULT_PRESETS,
   allowAlpha = false,
 }: ColorPropProps) {
-  const [localValue, setLocalValue] = useState(normalizeColor(value));
+  const [localValue, setLocalValue] = useState(normalizeColor(value, allowAlpha));
   const [isOpen, setIsOpen] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
   // Sync local state with external value
   useEffect(() => {
-    setLocalValue(normalizeColor(value));
-  }, [value]);
+    setLocalValue(normalizeColor(value, allowAlpha));
+  }, [value, allowAlpha]);
 
   const handleColorPickerChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,28 +132,28 @@ export function ColorProp({
 
       setLocalValue(inputValue);
 
-      // Only update if it's a valid hex color
-      if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(inputValue)) {
-        onChange(normalizeColor(inputValue));
+      // Only update if it's a valid hex color (3, 4, 6, or 8 chars)
+      if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(inputValue)) {
+        onChange(normalizeColor(inputValue, allowAlpha));
       }
     },
-    [onChange]
+    [onChange, allowAlpha]
   );
 
   const handleTextInputBlur = useCallback(() => {
     // Normalize on blur
-    const normalized = normalizeColor(localValue);
+    const normalized = normalizeColor(localValue, allowAlpha);
     setLocalValue(normalized);
     onChange(normalized);
-  }, [localValue, onChange]);
+  }, [localValue, onChange, allowAlpha]);
 
   const handlePresetClick = useCallback(
     (preset: string) => {
-      const normalized = normalizeColor(preset);
+      const normalized = normalizeColor(preset, allowAlpha);
       setLocalValue(normalized);
       onChange(normalized);
     },
-    [onChange]
+    [onChange, allowAlpha]
   );
 
   const handleSwatchClick = useCallback(() => {

@@ -100,8 +100,29 @@ export type RemotionExportProgressCallback = (
 // Constants
 // ============================================================================
 
+/**
+ * Get a cross-platform temp directory path.
+ * In Electron, callers should override this via remotionConfig.tempDir
+ * using app.getPath('temp') from the main process via IPC.
+ */
+function getDefaultTempDir(): string {
+  // Check if we're in a Windows-like environment
+  if (typeof navigator !== "undefined" && navigator.platform?.startsWith("Win")) {
+    return "C:\\Users\\Public\\AppData\\Local\\Temp\\qcut-remotion-export";
+  }
+  // Check for TEMP/TMP environment variables (available in some contexts)
+  if (typeof process !== "undefined" && process.env) {
+    const envTemp = process.env.TEMP || process.env.TMP || process.env.TMPDIR;
+    if (envTemp) {
+      return `${envTemp}/qcut-remotion-export`;
+    }
+  }
+  // Default Unix path
+  return "/tmp/qcut-remotion-export";
+}
+
 export const DEFAULT_REMOTION_EXPORT_CONFIG: RemotionExportConfig = {
-  tempDir: "/tmp/qcut-remotion-export",
+  tempDir: getDefaultTempDir(),
   frameFormat: "jpeg",
   frameQuality: 90,
   keepTempFiles: false,

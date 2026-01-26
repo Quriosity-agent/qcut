@@ -82,7 +82,11 @@ export interface RemotionPlayerHandle {
   getCurrentFrame: () => number;
   /** Check if currently playing */
   isPlaying: () => boolean;
-  /** Set playback rate */
+  /**
+   * Set playback rate (NOT SUPPORTED)
+   * @deprecated Remotion Player does not support runtime playback rate changes.
+   * This method is a no-op and only logs a warning.
+   */
   setPlaybackRate: (rate: number) => void;
   /** Get the underlying PlayerRef */
   getPlayerRef: () => PlayerRef | null;
@@ -345,10 +349,14 @@ export const RemotionPlayerWrapper = forwardRef<
         return playerRef.current?.isPlaying() ?? false;
       },
 
-      setPlaybackRate: (rate: number) => {
-        // Note: Remotion Player doesn't have a direct setPlaybackRate method
-        // This would need to be implemented via component props or other means
-        console.warn("setPlaybackRate is not directly supported by Remotion Player");
+      setPlaybackRate: (_rate: number) => {
+        // Remotion Player does not support runtime playback rate changes.
+        // The playbackRate prop only exists on media components (<Video>, <Audio>)
+        // to control media speed within the composition, not on the Player itself.
+        console.warn(
+          "[RemotionPlayerWrapper] setPlaybackRate is not supported. " +
+            "Remotion Player does not have a playbackRate prop."
+        );
       },
 
       getPlayerRef: () => {

@@ -108,9 +108,23 @@ function isColorString(value: unknown): boolean {
 
 /**
  * Detect if a field name suggests a color
+ *
+ * Note: This is a heuristic based on common naming conventions. It works in
+ * conjunction with isColorString() which detects color values. False positives
+ * are acceptable since the color picker UI still accepts any string input.
  */
 function isColorFieldName(name: string): boolean {
-  const colorKeywords = ["color", "colour", "background", "fill", "stroke", "tint"];
+  const colorKeywords = [
+    "color",
+    "colour",
+    "background",
+    "fill",
+    "stroke",
+    "tint",
+    "border", // borderColor, border-color
+    "highlight",
+    "shadow", // shadowColor, boxShadow often includes colors
+  ];
   const lowerName = name.toLowerCase();
   return colorKeywords.some((keyword) => lowerName.includes(keyword));
 }
