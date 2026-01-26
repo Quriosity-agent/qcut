@@ -24,6 +24,7 @@ import type {
 } from "@/lib/remotion/types";
 import { generateUUID } from "@/lib/utils";
 import { builtInComponentDefinitions } from "@/lib/remotion/built-in";
+import { debugLog, debugError } from "@/lib/debug-config";
 
 // ============================================================================
 // Initial State
@@ -61,27 +62,24 @@ export const useRemotionStore = create<RemotionStore>()(
     // ========================================================================
 
     initialize: async () => {
-      console.log("[REMOTION DEBUG] Step 1: initialize() called");
-      console.log("[REMOTION DEBUG] Step 1: isInitialized =", get().isInitialized);
-      console.log("[REMOTION DEBUG] Step 1: isLoading =", get().isLoading);
+      debugLog("[REMOTION] initialize() called", { isInitialized: get().isInitialized, isLoading: get().isLoading });
 
       const { isInitialized } = get();
       if (isInitialized) {
-        console.log("[REMOTION DEBUG] Step 1: Already initialized, returning early");
+        debugLog("[REMOTION] Already initialized, returning early");
         return;
       }
 
       set({ isLoading: true });
-      console.log("[REMOTION DEBUG] Step 1: Set isLoading = true");
 
       try {
         // Load built-in components
         const newComponents = new Map(get().registeredComponents);
-        console.log("[REMOTION DEBUG] Step 1: Loading built-in components...");
+        debugLog("[REMOTION] Loading built-in components...");
 
         for (const definition of builtInComponentDefinitions) {
           newComponents.set(definition.id, definition);
-          console.log("[REMOTION DEBUG] Step 1: Registered:", definition.id);
+          debugLog("[REMOTION] Registered:", definition.id);
         }
 
         set({
@@ -90,10 +88,9 @@ export const useRemotionStore = create<RemotionStore>()(
           isLoading: false,
         });
 
-        console.log("[REMOTION DEBUG] Step 1: ✅ Initialization complete!");
-        console.log("[REMOTION DEBUG] Step 1: Total components:", newComponents.size);
+        debugLog("[REMOTION] Initialization complete!", { totalComponents: newComponents.size });
       } catch (error) {
-        console.error("[REMOTION DEBUG] Step 1: ❌ Initialization failed:", error);
+        debugError("[REMOTION] Initialization failed:", error);
         const remotionError: RemotionError = {
           type: "load",
           message:

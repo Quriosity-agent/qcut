@@ -20,6 +20,7 @@ import {
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { debugLog } from "@/lib/debug-config";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";
 import { FONT_CLASS_MAP } from "@/lib/font-config";
@@ -716,13 +717,11 @@ export function PreviewPanel() {
       (element.duration - element.trimStart - element.trimEnd);
     const elementKey = `${element.id}-${elementData.track.id}`;
 
-    // Debug: Log element type detection (Step 2) - only once per element ID
+    // Debug: Log element type detection - only once per element ID
     if (element.type === "remotion" && !loggedRemotionElementsRef.current.has(element.id)) {
       loggedRemotionElementsRef.current.add(element.id);
       const remotionEl = element as RemotionElement;
-      console.log("[REMOTION DEBUG] Step 2: ✅ Detected Remotion element");
-      console.log("[REMOTION DEBUG] Step 2: element.id =", element.id);
-      console.log("[REMOTION DEBUG] Step 2: componentId =", remotionEl.componentId);
+      debugLog("[REMOTION] Detected Remotion element", { elementId: element.id, componentId: remotionEl.componentId });
     }
 
     // Text elements
@@ -986,8 +985,8 @@ export function PreviewPanel() {
               ref={previewRef}
               className="relative overflow-hidden border"
               style={{
-                width: previewDimensions.width || 640,
-                height: previewDimensions.height || 360,
+                width: previewDimensions.width || canvasSize.width,
+                height: previewDimensions.height || canvasSize.height,
                 backgroundColor:
                   activeProject?.backgroundType === "blur"
                     ? "transparent"

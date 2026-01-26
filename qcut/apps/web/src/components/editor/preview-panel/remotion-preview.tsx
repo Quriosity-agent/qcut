@@ -31,6 +31,7 @@ import {
   type RemotionPlayerHandle,
 } from "@/lib/remotion/player-wrapper";
 import type { RemotionComponentDefinition } from "@/lib/remotion/types";
+import { debugLog } from "@/lib/debug-config";
 
 // ============================================================================
 // Types
@@ -119,14 +120,14 @@ export function RemotionPreview({
   const component = useRemotionComponent(componentId ?? "");
   const instance = useRemotionInstance(elementId ?? "");
 
-  // Debug: Step 3 - Log only on mount/componentId change
+  // Debug: Log on mount/componentId change
   useEffect(() => {
-    console.log("[REMOTION DEBUG] Step 3: RemotionPreview mounted");
-    console.log("[REMOTION DEBUG] Step 3: componentId =", componentId);
-    console.log("[REMOTION DEBUG] Step 3: elementId =", elementId);
-    console.log("[REMOTION DEBUG] Step 3: Store lookup result:");
-    console.log("[REMOTION DEBUG] Step 3: component =", component?.id ?? "undefined ❌");
-    console.log("[REMOTION DEBUG] Step 3: instance =", instance?.elementId ?? "undefined");
+    debugLog("[REMOTION] RemotionPreview mounted", {
+      componentId,
+      elementId,
+      component: component?.id,
+      instance: instance?.elementId,
+    });
   }, [componentId, elementId, component?.id, instance?.elementId]);
 
   // Determine the effective component and props
@@ -145,14 +146,12 @@ export function RemotionPreview({
     return undefined;
   }, [component, instance]);
 
-  // Debug: Step 4 - Log effective component resolution
+  // Debug: Log effective component resolution
   useEffect(() => {
-    console.log("[REMOTION DEBUG] Step 4: Resolving effective component");
-    if (effectiveComponent) {
-      console.log("[REMOTION DEBUG] Step 4: ✅ Found:", effectiveComponent.id);
-    } else {
-      console.log("[REMOTION DEBUG] Step 4: ❌ No component found!");
-    }
+    debugLog("[REMOTION] Effective component resolved", {
+      found: !!effectiveComponent,
+      componentId: effectiveComponent?.id,
+    });
   }, [effectiveComponent?.id]);
 
   const effectiveProps = useMemo(() => {
@@ -261,12 +260,13 @@ export function RemotionPreview({
     }
   }, [autoPlay, isReady, externalIsPlaying]);
 
-  // Debug: Step 5 - Log render state changes
+  // Debug: Log render state changes
   useEffect(() => {
-    console.log("[REMOTION DEBUG] Step 5: Render state changed");
-    console.log("[REMOTION DEBUG] Step 5: effectiveComponent =", effectiveComponent?.id ?? "undefined");
-    console.log("[REMOTION DEBUG] Step 5: isReady =", isReady);
-    console.log("[REMOTION DEBUG] Step 5: error =", error?.message ?? "none");
+    debugLog("[REMOTION] Render state changed", {
+      effectiveComponent: effectiveComponent?.id,
+      isReady,
+      error: error?.message,
+    });
   }, [effectiveComponent?.id, isReady, error]);
 
   // ========================================================================

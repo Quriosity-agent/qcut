@@ -7,6 +7,7 @@ import { StorageProvider } from "@/components/storage-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
 import { initializeRemotionStore } from "@/stores/remotion-store";
+import { debugLog } from "@/lib/debug-config";
 import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
 
 /**
@@ -16,7 +17,7 @@ import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
  */
 function RemotionInitializer() {
   useEffect(() => {
-    console.log("[REMOTION DEBUG] RemotionInitializer: Calling initializeRemotionStore()");
+    debugLog("[REMOTION] Initializing Remotion store");
     initializeRemotionStore();
   }, []);
   return null;
