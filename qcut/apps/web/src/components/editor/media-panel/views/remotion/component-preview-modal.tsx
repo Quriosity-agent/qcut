@@ -212,6 +212,7 @@ export function ComponentPreviewModal({
             <Button
               size="sm"
               variant="outline"
+              type="button"
               onClick={handleRestart}
               disabled={!!error}
               className="gap-1"
@@ -221,6 +222,7 @@ export function ComponentPreviewModal({
             <Button
               size="sm"
               variant="secondary"
+              type="button"
               onClick={togglePlay}
               disabled={!!error}
               className="gap-1 min-w-[80px]"
@@ -273,11 +275,11 @@ export function ComponentPreviewModal({
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
             Close
           </Button>
           {onAdd && (
-            <Button onClick={handleAdd} className="gap-1">
+            <Button type="button" onClick={handleAdd} className="gap-1">
               <Plus className="h-4 w-4" />
               Add to Timeline
             </Button>
