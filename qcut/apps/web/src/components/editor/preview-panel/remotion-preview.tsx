@@ -372,7 +372,7 @@ export function RemotionPreview({
           onError={handleError}
         />
         {/* Debug overlay showing current frame */}
-        {process.env.NODE_ENV === "development" && (
+        {import.meta.env.DEV && (
           <div
             className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded pointer-events-none"
             style={{ zIndex: 100 }}

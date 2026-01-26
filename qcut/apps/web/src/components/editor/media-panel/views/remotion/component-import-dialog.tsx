@@ -341,9 +341,12 @@ export function ComponentImportDialog({
 
         <div className="space-y-4">
           {/* File Drop Zone */}
-          <div
+          <button
+            type="button"
+            aria-label="Select Remotion component file"
             className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+              "w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+              "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-background",
               isDragging
                 ? "border-violet-500 bg-violet-500/10"
                 : "border-border hover:border-muted-foreground",
@@ -390,7 +393,7 @@ export function ComponentImportDialog({
                 </p>
               </div>
             )}
-          </div>
+          </button>
 
           {/* Validation Results */}
           {state.validation && (

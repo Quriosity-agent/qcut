@@ -479,6 +479,7 @@ export function KeyframeEditor({
               </PopoverTrigger>
               <PopoverContent side="bottom" align="start" className="w-64 p-2">
                 <KeyframeEditPanel
+                  key={selectedKeyframe.id}
                   keyframe={selectedKeyframe}
                   propType={propType}
                   durationInFrames={durationInFrames}

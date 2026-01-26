@@ -6,7 +6,7 @@
  * @module lib/remotion/built-in/text/scale-text
  */
 
-import React from "react";
+import { Fragment, type FC, type ComponentType } from "react";
 import {
   useCurrentFrame,
   useVideoConfig,
@@ -105,7 +105,7 @@ export const scaleTextDefaultProps: ScaleTextProps = {
  *
  * Displays text with various scaling animations.
  */
-export const ScaleText: React.FC<Partial<ScaleTextProps>> = ({
+export const ScaleText: FC<Partial<ScaleTextProps>> = ({
   text = scaleTextDefaultProps.text,
   fontSize = scaleTextDefaultProps.fontSize,
   fontFamily = scaleTextDefaultProps.fontFamily,
@@ -285,12 +285,12 @@ export const ScaleText: React.FC<Partial<ScaleTextProps>> = ({
     if (scaleMode === "word") {
       const words = text.split(" ");
       return words.map((word, i) => (
-        <React.Fragment key={`word-${i}`}>
+        <Fragment key={`word-${i}`}>
           {renderElement(word, i, `word-${i}`)}
           {i < words.length - 1 && (
             <span style={{ display: "inline-block" }}>&nbsp;</span>
           )}
-        </React.Fragment>
+        </Fragment>
       ));
     }
 
@@ -355,7 +355,7 @@ export const ScaleTextDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: ScaleTextSchema,
   defaultProps: scaleTextDefaultProps,
-  component: ScaleText as React.ComponentType<Record<string, unknown>>,
+  component: ScaleText as ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "scale", "zoom", "pop"],
   version: "1.0.0",

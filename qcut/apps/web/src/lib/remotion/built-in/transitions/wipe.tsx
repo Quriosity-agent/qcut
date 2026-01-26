@@ -156,6 +156,10 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
   const getGradientMask = () => {
     if (edgeSoftness === 0) return undefined;
 
+    // Convert pixel softness to percentage based on direction
+    const isHorizontal = direction === "left" || direction === "right";
+    const softnessPct = (edgeSoftness / (isHorizontal ? width : height)) * 100;
+
     const gradientDir = {
       left: "to right",
       right: "to left",
@@ -164,8 +168,8 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
     }[direction];
 
     const edgePos = progress * 100;
-    const softStart = Math.max(0, edgePos - edgeSoftness / 2);
-    const softEnd = Math.min(100, edgePos + edgeSoftness / 2);
+    const softStart = Math.max(0, edgePos - softnessPct / 2);
+    const softEnd = Math.min(100, edgePos + softnessPct / 2);
 
     return `linear-gradient(${gradientDir}, black ${softStart}%, transparent ${softEnd}%)`;
   };
