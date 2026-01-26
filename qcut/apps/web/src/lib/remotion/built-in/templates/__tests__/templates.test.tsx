@@ -141,7 +141,7 @@ describe("LowerThird", () => {
     });
 
     it("should render without crashing", () => {
-      const { container } = render(<LowerThird />);
+      const { container } = render(<LowerThird {...lowerThirdDefaultProps} />);
       expect(container).toBeTruthy();
     });
 
@@ -264,7 +264,7 @@ describe("TitleCard", () => {
     });
 
     it("should render without crashing", () => {
-      const { container } = render(<TitleCard />);
+      const { container } = render(<TitleCard {...titleCardDefaultProps} />);
       expect(container).toBeTruthy();
     });
 
@@ -384,7 +384,7 @@ describe("IntroScene", () => {
     });
 
     it("should render without crashing", () => {
-      const { container } = render(<IntroScene />);
+      const { container } = render(<IntroScene {...introSceneDefaultProps} />);
       expect(container).toBeTruthy();
     });
 
@@ -499,7 +499,7 @@ describe("OutroScene", () => {
     });
 
     it("should render without crashing", () => {
-      const { container } = render(<OutroScene />);
+      const { container } = render(<OutroScene {...outroSceneDefaultProps} />);
       expect(container).toBeTruthy();
     });
 
@@ -570,7 +570,7 @@ describe("OutroScene", () => {
 
 describe("Template Components Index", () => {
   it("should export all component definitions", () => {
-    expect(templateComponentDefinitions).toHaveLength(4);
+    expect(templateComponentDefinitions).toHaveLength(5);
   });
 
   it("should include all template components in definitions", () => {
@@ -579,14 +579,16 @@ describe("Template Components Index", () => {
     expect(ids).toContain("built-in-title-card");
     expect(ids).toContain("built-in-intro-scene");
     expect(ids).toContain("built-in-outro-scene");
+    expect(ids).toContain("built-in-skills-demo");
   });
 
   it("should have all definitions in templateComponentsById map", () => {
-    expect(templateComponentsById.size).toBe(4);
+    expect(templateComponentsById.size).toBe(5);
     expect(templateComponentsById.has("built-in-lower-third")).toBe(true);
     expect(templateComponentsById.has("built-in-title-card")).toBe(true);
     expect(templateComponentsById.has("built-in-intro-scene")).toBe(true);
     expect(templateComponentsById.has("built-in-outro-scene")).toBe(true);
+    expect(templateComponentsById.has("built-in-skills-demo")).toBe(true);
   });
 
   it("getTemplateComponent should return correct definition", () => {

@@ -86,7 +86,7 @@ export const typewriterDefaultProps: TypewriterProps = {
  *
  * Displays text character by character with an optional blinking cursor.
  */
-export const Typewriter: React.FC<TypewriterProps> = ({
+export const Typewriter: React.FC<Partial<TypewriterProps>> = ({
   text = typewriterDefaultProps.text,
   fontSize = typewriterDefaultProps.fontSize,
   fontFamily = typewriterDefaultProps.fontFamily,
@@ -185,7 +185,7 @@ export const TypewriterDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: TypewriterSchema,
   defaultProps: typewriterDefaultProps,
-  component: Typewriter,
+  component: Typewriter as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "typing", "typewriter"],
   version: "1.0.0",

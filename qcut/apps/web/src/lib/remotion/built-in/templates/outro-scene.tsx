@@ -282,7 +282,7 @@ const SocialIcon: React.FC<SocialIconProps> = ({
  *
  * Creates a professional video outro with CTA and end screen elements.
  */
-export const OutroScene: React.FC<OutroSceneProps> = ({
+export const OutroScene: React.FC<Partial<OutroSceneProps>> = ({
   title = outroSceneDefaultProps.title,
   subtitle = outroSceneDefaultProps.subtitle,
   channelName = outroSceneDefaultProps.channelName,
@@ -660,7 +660,7 @@ export const OutroSceneDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: OutroSceneSchema,
   defaultProps: outroSceneDefaultProps,
-  component: OutroScene,
+  component: OutroScene as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["template", "outro", "end-screen", "cta", "subscribe", "youtube"],
   version: "1.0.0",

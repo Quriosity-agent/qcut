@@ -347,3 +347,242 @@ export function getSupportedAudioCodecs(): string[] {
 
   return codecs.filter((codec) => MediaRecorder.isTypeSupported(codec));
 }
+
+// ============================================================================
+// Remotion Audio Integration
+// ============================================================================
+
+/**
+ * Audio source from a Remotion element
+ */
+export interface RemotionAudioSource {
+  /** ID of the Remotion element */
+  elementId: string;
+  /** Path or URL to the audio file */
+  audioPath: string;
+  /** Start frame within the Remotion composition */
+  startFrame: number;
+  /** Duration in frames */
+  durationFrames: number;
+  /** Volume level (0-1) */
+  volume: number;
+  /** Optional pan value (-1 to 1) */
+  pan?: number;
+}
+
+/**
+ * Result of mixing Remotion audio
+ */
+export interface RemotionAudioMixResult {
+  /** Combined audio buffer */
+  buffer: AudioBuffer;
+  /** Duration in seconds */
+  duration: number;
+  /** Number of sources mixed */
+  sourceCount: number;
+  /** Any errors encountered */
+  errors: Array<{ elementId: string; error: Error }>;
+}
+
+/**
+ * Extended AudioMixer with Remotion audio support
+ */
+export class RemotionAudioMixer extends AudioMixer {
+  private offlineContext: OfflineAudioContext | null = null;
+
+  /**
+   * Mix multiple Remotion audio sources into a single AudioBuffer
+   *
+   * @param sources - Array of Remotion audio sources to mix
+   * @param fps - Frames per second of the composition
+   * @param totalDurationSeconds - Total duration of the output in seconds
+   * @returns Promise<RemotionAudioMixResult>
+   */
+  async mixRemotionAudio(
+    sources: RemotionAudioSource[],
+    fps: number,
+    totalDurationSeconds: number
+  ): Promise<RemotionAudioMixResult> {
+    const errors: Array<{ elementId: string; error: Error }> = [];
+    const context = this.getContext();
+    const sampleRate = context.sampleRate;
+    const totalSamples = Math.ceil(totalDurationSeconds * sampleRate);
+
+    // Create an offline context for rendering
+    this.offlineContext = new OfflineAudioContext(
+      2, // stereo
+      totalSamples,
+      sampleRate
+    );
+
+    let sourcesProcessed = 0;
+
+    for (const source of sources) {
+      try {
+        await this.processRemotionAudioSource(source, fps);
+        sourcesProcessed++;
+      } catch (error) {
+        errors.push({
+          elementId: source.elementId,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+    }
+
+    // Render the mixed audio
+    const buffer = await this.offlineContext.startRendering();
+
+    return {
+      buffer,
+      duration: totalDurationSeconds,
+      sourceCount: sourcesProcessed,
+      errors,
+    };
+  }
+
+  /**
+   * Process a single Remotion audio source
+   */
+  private async processRemotionAudioSource(
+    source: RemotionAudioSource,
+    fps: number
+  ): Promise<void> {
+    if (!this.offlineContext) {
+      throw new Error("Offline context not initialized");
+    }
+
+    // Load the audio file
+    const audioBuffer = await this.loadAudioFromPath(source.audioPath);
+
+    // Calculate timing
+    const startTimeSeconds = source.startFrame / fps;
+    const durationSeconds = source.durationFrames / fps;
+
+    // Create buffer source
+    const bufferSource = this.offlineContext.createBufferSource();
+    bufferSource.buffer = audioBuffer;
+
+    // Create gain for volume control
+    const gainNode = this.offlineContext.createGain();
+    gainNode.gain.value = source.volume;
+
+    // Create panner if pan is specified
+    if (source.pan !== undefined && source.pan !== 0) {
+      const pannerNode = this.offlineContext.createStereoPanner();
+      pannerNode.pan.value = source.pan;
+      bufferSource.connect(pannerNode);
+      pannerNode.connect(gainNode);
+    } else {
+      bufferSource.connect(gainNode);
+    }
+
+    // Connect to destination
+    gainNode.connect(this.offlineContext.destination);
+
+    // Schedule playback
+    bufferSource.start(startTimeSeconds, 0, durationSeconds);
+  }
+
+  /**
+   * Load audio from a path (URL or data URL)
+   */
+  private async loadAudioFromPath(audioPath: string): Promise<AudioBuffer> {
+    const context = this.getContext();
+
+    // Fetch the audio data
+    const response = await fetch(audioPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return await context.decodeAudioData(arrayBuffer);
+  }
+
+  /**
+   * Extract audio from a Remotion element's pre-rendered output
+   *
+   * @param preRenderResult - Result from the pre-renderer
+   * @returns RemotionAudioSource or null if no audio
+   */
+  static extractAudioSource(
+    preRenderResult: {
+      elementId: string;
+      audioPath?: string;
+      totalFrames: number;
+    },
+    startFrame: number,
+    volume: number = 1
+  ): RemotionAudioSource | null {
+    if (!preRenderResult.audioPath) {
+      return null;
+    }
+
+    return {
+      elementId: preRenderResult.elementId,
+      audioPath: preRenderResult.audioPath,
+      startFrame,
+      durationFrames: preRenderResult.totalFrames,
+      volume,
+    };
+  }
+
+  /**
+   * Combine QCut audio buffer with Remotion audio buffer
+   */
+  async combineAudioBuffers(
+    qcutBuffer: AudioBuffer | null,
+    remotionBuffer: AudioBuffer | null
+  ): Promise<AudioBuffer | null> {
+    if (!qcutBuffer && !remotionBuffer) {
+      return null;
+    }
+
+    if (!qcutBuffer) {
+      return remotionBuffer;
+    }
+
+    if (!remotionBuffer) {
+      return qcutBuffer;
+    }
+
+    // Use the longer duration
+    const context = this.getContext();
+    const maxLength = Math.max(qcutBuffer.length, remotionBuffer.length);
+    const sampleRate = context.sampleRate;
+    const channels = Math.max(
+      qcutBuffer.numberOfChannels,
+      remotionBuffer.numberOfChannels
+    );
+
+    // Create offline context for mixing
+    const offlineContext = new OfflineAudioContext(
+      channels,
+      maxLength,
+      sampleRate
+    );
+
+    // Create sources for both buffers
+    const qcutSource = offlineContext.createBufferSource();
+    qcutSource.buffer = qcutBuffer;
+    qcutSource.connect(offlineContext.destination);
+    qcutSource.start(0);
+
+    const remotionSource = offlineContext.createBufferSource();
+    remotionSource.buffer = remotionBuffer;
+    remotionSource.connect(offlineContext.destination);
+    remotionSource.start(0);
+
+    // Render combined audio
+    return await offlineContext.startRendering();
+  }
+}
+
+/**
+ * Factory function to create a Remotion-aware audio mixer
+ */
+export function createRemotionAudioMixer(
+  options?: AudioMixerOptions
+): RemotionAudioMixer {
+  return new RemotionAudioMixer(options);
+}

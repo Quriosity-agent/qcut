@@ -53,6 +53,9 @@ import {
   ElementTransform,
 } from "./interactive-element-overlay";
 import { EFFECTS_ENABLED } from "@/config/features";
+// Import Remotion preview for rendering Remotion elements
+import { RemotionPreview } from "./preview-panel/remotion-preview";
+import type { RemotionElement } from "@/types/timeline";
 
 interface ActiveElement {
   element: TimelineElement;
@@ -877,6 +880,38 @@ export function PreviewPanel() {
           </div>
         );
       }
+    }
+
+    // Remotion elements
+    if (element.type === "remotion") {
+      const remotionElement = element as RemotionElement;
+
+      // Calculate the local time within the element for frame sync
+      const elementStart = remotionElement.startTime + remotionElement.trimStart;
+      const localTime = currentTime - elementStart;
+      const fps = 30; // Default FPS, could be retrieved from component definition
+      const currentFrame = Math.max(0, Math.floor(localTime * fps));
+
+      return (
+        <div
+          key={elementKey}
+          className="absolute inset-0"
+          style={{ zIndex: 50 + index }}
+        >
+          <RemotionPreview
+            elementId={remotionElement.id}
+            componentId={remotionElement.componentId}
+            inputProps={remotionElement.props}
+            showControls={false}
+            autoPlay={false}
+            loop={false}
+            width={previewDimensions.width}
+            height={previewDimensions.height}
+            maxWidth={previewDimensions.width}
+            maxHeight={previewDimensions.height}
+          />
+        </div>
+      );
     }
 
     return null;

@@ -90,7 +90,7 @@ function getEasingFunction(easing: string): ((t: number) => number) {
  *
  * Creates a wipe effect from one side to another.
  */
-export const Wipe: React.FC<WipeProps> = ({
+export const Wipe: React.FC<Partial<WipeProps>> = ({
   direction = wipeDefaultProps.direction,
   backgroundColor = wipeDefaultProps.backgroundColor,
   foregroundColor = wipeDefaultProps.foregroundColor,
@@ -217,7 +217,7 @@ export const WipeDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: WipeSchema,
   defaultProps: wipeDefaultProps,
-  component: Wipe,
+  component: Wipe as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["transition", "wipe", "reveal"],
   version: "1.0.0",

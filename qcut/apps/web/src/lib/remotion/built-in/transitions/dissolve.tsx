@@ -84,7 +84,7 @@ function getEasingFunction(easing: string): ((t: number) => number) {
  *
  * Creates a cross-fade effect between two scenes.
  */
-export const Dissolve: React.FC<DissolveProps> = ({
+export const Dissolve: React.FC<Partial<DissolveProps>> = ({
   backgroundColor = dissolveDefaultProps.backgroundColor,
   foregroundColor = dissolveDefaultProps.foregroundColor,
   dissolveDuration,
@@ -203,7 +203,7 @@ export const DissolveDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: DissolveSchema,
   defaultProps: dissolveDefaultProps,
-  component: Dissolve,
+  component: Dissolve as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["transition", "dissolve", "fade", "cross-fade"],
   version: "1.0.0",

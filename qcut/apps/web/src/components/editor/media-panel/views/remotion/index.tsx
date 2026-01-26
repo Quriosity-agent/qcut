@@ -11,10 +11,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  AlertCircle,
   Layers,
   Loader2,
-  Play,
   Plus,
   Search,
   X,
@@ -32,21 +30,21 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useRemotionStore, useComponentsByCategory } from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/remotion-store";
 import type { RemotionComponentDefinition, RemotionComponentCategory } from "@/lib/remotion/types";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
-import { generateUUID } from "@/lib/utils";
+import { ComponentCard } from "./component-card";
+import { ComponentPreviewModal } from "./component-preview-modal";
+import { ComponentImportDialog } from "./component-import-dialog";
 
 // ============================================================================
-// Types
+// Re-exports
 // ============================================================================
 
-interface ComponentCardProps {
-  component: RemotionComponentDefinition;
-  onAdd: (component: RemotionComponentDefinition) => void;
-  onPreview?: (component: RemotionComponentDefinition) => void;
-}
+export { ComponentCard } from "./component-card";
+export { ComponentPreviewModal } from "./component-preview-modal";
+export { ComponentImportDialog } from "./component-import-dialog";
 
 // ============================================================================
 // Category Configuration
@@ -63,126 +61,20 @@ const CATEGORY_CONFIG: Record<RemotionComponentCategory, { label: string; descri
 
 const CATEGORY_ORDER: RemotionComponentCategory[] = [
   "template",
-  "scene",
-  "animation",
   "text",
-  "effect",
   "transition",
+  "animation",
+  "scene",
+  "effect",
 ];
 
-// ============================================================================
-// Component Card
-// ============================================================================
-
-function ComponentCard({ component, onAdd, onPreview }: ComponentCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
-  const durationSeconds = (component.durationInFrames / component.fps).toFixed(1);
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            className={cn(
-              "relative group rounded-lg border border-border/80 bg-slate-800/50",
-              "transition-all cursor-pointer overflow-hidden",
-              "hover:border-violet-500/50 hover:bg-slate-700/70",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-            )}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onClick={() => onAdd(component)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onAdd(component);
-              }
-            }}
-            tabIndex={0}
-            role="button"
-            aria-label={`Add ${component.name} to timeline`}
-          >
-            {/* Thumbnail / Preview */}
-            <div className="aspect-video bg-gradient-to-br from-violet-600/20 to-purple-600/20 flex items-center justify-center">
-              {component.thumbnail ? (
-                <img
-                  src={component.thumbnail}
-                  alt={component.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Layers className="w-8 h-8 text-violet-400" />
-              )}
-
-              {/* Hover overlay with actions */}
-              {isHovered && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="gap-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAdd(component);
-                    }}
-                  >
-                    <Plus className="w-3 h-3" />
-                    Add
-                  </Button>
-                  {onPreview && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPreview(component);
-                      }}
-                    >
-                      <Play className="w-3 h-3" />
-                      Preview
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Component Info */}
-            <div className="p-2">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-medium text-foreground truncate">
-                  {component.name}
-                </span>
-                <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                  {durationSeconds}s
-                </Badge>
-              </div>
-              {component.description && (
-                <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                  {component.description}
-                </p>
-              )}
-            </div>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs">
-          <div className="space-y-1">
-            <p className="font-medium">{component.name}</p>
-            {component.description && (
-              <p className="text-xs text-muted-foreground">{component.description}</p>
-            )}
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              <span>{component.width}x{component.height}</span>
-              <span>{component.fps}fps</span>
-              <span>{component.durationInFrames} frames</span>
-            </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
+// Tab configuration - which categories to show in the tab bar
+const TAB_CATEGORIES: (RemotionComponentCategory | "all")[] = [
+  "all",
+  "template",
+  "text",
+  "transition",
+];
 
 // ============================================================================
 // Category Section
@@ -203,14 +95,14 @@ function CategorySection({ category, components, onAdd, onPreview }: CategorySec
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid={`category-section-${category}`}>
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-semibold">{config.label}</h3>
         <Badge variant="secondary" className="text-[10px]">
           {components.length}
         </Badge>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {components.map((component) => (
           <ComponentCard
             key={component.id}
@@ -260,6 +152,9 @@ function EmptyState({ searchQuery }: { searchQuery?: string }) {
 export function RemotionView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<"all" | RemotionComponentCategory>("all");
+  const [previewComponent, setPreviewComponent] = useState<RemotionComponentDefinition | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   // Get store state
   const { registeredComponents, isLoading, isInitialized, initialize } = useRemotionStore();
@@ -339,9 +234,15 @@ export function RemotionView() {
     [tracks, addTrack, addElementToTrack]
   );
 
-  // Handle preview (placeholder for now)
+  // Handle preview
   const handlePreview = useCallback((component: RemotionComponentDefinition) => {
-    toast.info(`Preview for "${component.name}" coming soon`);
+    setPreviewComponent(component);
+    setIsPreviewOpen(true);
+  }, []);
+
+  // Handle import success
+  const handleImportSuccess = useCallback((componentId: string) => {
+    toast.info("Component imported and ready to use");
   }, []);
 
   // Initialize store if needed
@@ -360,25 +261,47 @@ export function RemotionView() {
 
   return (
     <div className="flex h-full flex-col" data-testid="remotion-panel">
-      {/* Search Bar */}
-      <div className="border-b p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-          <Input
-            placeholder="Search Remotion components..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-accent rounded"
-              onClick={() => setSearchQuery("")}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+      {/* Search Bar & Import Button */}
+      <div className="border-b p-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+            <Input
+              placeholder="Search components..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10 h-9"
+              data-testid="remotion-search-input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-accent rounded flex items-center justify-center"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setIsImportDialogOpen(true)}
+                  data-testid="import-component-button"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Import custom component</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -392,24 +315,17 @@ export function RemotionView() {
             onValueChange={(v) => setActiveCategory(v as "all" | RemotionComponentCategory)}
             className="h-full flex flex-col"
           >
-            <TabsList className="mx-4 mt-2 grid grid-cols-4">
-              <TabsTrigger value="all" className="text-xs">
-                All
-              </TabsTrigger>
-              <TabsTrigger value="template" className="text-xs">
-                Templates
-              </TabsTrigger>
-              <TabsTrigger value="animation" className="text-xs">
-                Animations
-              </TabsTrigger>
-              <TabsTrigger value="text" className="text-xs">
-                Text
-              </TabsTrigger>
+            <TabsList className="mx-3 mt-2 grid" style={{ gridTemplateColumns: `repeat(${TAB_CATEGORIES.length}, 1fr)` }}>
+              {TAB_CATEGORIES.map((tab) => (
+                <TabsTrigger key={tab} value={tab} className="text-xs">
+                  {tab === "all" ? "All" : CATEGORY_CONFIG[tab].label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             <TabsContent value="all" className="flex-1 mt-0">
               <ScrollArea className="h-full">
-                <div className="p-4 space-y-6">
+                <div className="p-3 space-y-6">
                   {CATEGORY_ORDER.map((category) => (
                     <CategorySection
                       key={category}
@@ -426,9 +342,9 @@ export function RemotionView() {
             {CATEGORY_ORDER.map((category) => (
               <TabsContent key={category} value={category} className="flex-1 mt-0">
                 <ScrollArea className="h-full">
-                  <div className="p-4">
+                  <div className="p-3">
                     {componentsByCategory[category].length > 0 ? (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {componentsByCategory[category].map((component) => (
                           <ComponentCard
                             key={component.id}
@@ -456,7 +372,7 @@ export function RemotionView() {
 
       {/* Footer */}
       <div className="border-t p-2 text-center text-xs text-muted-foreground">
-        Powered by{" "}
+        {allComponents.length} components •{" "}
         <a
           href="https://remotion.dev"
           target="_blank"
@@ -466,6 +382,21 @@ export function RemotionView() {
           Remotion
         </a>
       </div>
+
+      {/* Preview Modal */}
+      <ComponentPreviewModal
+        component={previewComponent}
+        open={isPreviewOpen}
+        onOpenChange={setIsPreviewOpen}
+        onAdd={handleAddComponent}
+      />
+
+      {/* Import Dialog */}
+      <ComponentImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImportSuccess={handleImportSuccess}
+      />
     </div>
   );
 }

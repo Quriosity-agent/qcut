@@ -12,6 +12,7 @@ export const ExportEngineType = {
   WEBCODECS: "webcodecs",
   FFMPEG: "ffmpeg",
   CLI: "cli",
+  REMOTION: "remotion",
 } as const;
 
 export type ExportEngineType =
@@ -363,6 +364,55 @@ export class ExportEngineFactory {
             totalDuration
           );
         } catch (error) {
+          return new ExportEngine(
+            canvas,
+            settings,
+            tracks,
+            mediaItems,
+            totalDuration
+          );
+        }
+
+      case ExportEngineType.REMOTION:
+        // Remotion export engine for timelines with Remotion elements
+        console.log(
+          "🎬 REMOTION ENGINE SELECTED - Creating Remotion export engine..."
+        );
+        try {
+          const { RemotionExportEngine, requiresRemotionExport } = await import(
+            "./remotion/export-engine-remotion"
+          );
+
+          // Verify timeline actually has Remotion elements
+          if (!requiresRemotionExport(tracks)) {
+            console.log(
+              "⚠️ No Remotion elements found, falling back to Standard engine"
+            );
+            return new ExportEngine(
+              canvas,
+              settings,
+              tracks,
+              mediaItems,
+              totalDuration
+            );
+          }
+
+          console.log("✅ Creating Remotion export engine");
+          return new RemotionExportEngine(
+            canvas,
+            settings,
+            tracks,
+            mediaItems,
+            totalDuration
+          );
+        } catch (error) {
+          debugError(
+            "[ExportEngineFactory] Failed to load Remotion engine:",
+            error
+          );
+          console.error(
+            "❌ Remotion engine failed, falling back to Standard engine"
+          );
           return new ExportEngine(
             canvas,
             settings,

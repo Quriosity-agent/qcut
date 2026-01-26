@@ -99,7 +99,7 @@ function getOriginStyle(origin: string): string {
  *
  * Creates a zoom effect to transition between scenes.
  */
-export const Zoom: React.FC<ZoomProps> = ({
+export const Zoom: React.FC<Partial<ZoomProps>> = ({
   zoomType = zoomDefaultProps.zoomType,
   backgroundColor = zoomDefaultProps.backgroundColor,
   foregroundColor = zoomDefaultProps.foregroundColor,
@@ -234,7 +234,7 @@ export const ZoomDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: ZoomSchema,
   defaultProps: zoomDefaultProps,
-  component: Zoom,
+  component: Zoom as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["transition", "zoom", "scale", "punch"],
   version: "1.0.0",

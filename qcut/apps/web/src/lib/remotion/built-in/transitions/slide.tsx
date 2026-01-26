@@ -75,7 +75,7 @@ export const slideDefaultProps: SlideProps = {
  *
  * Creates a sliding effect where scenes move in from a direction.
  */
-export const Slide: React.FC<SlideProps> = ({
+export const Slide: React.FC<Partial<SlideProps>> = ({
   direction = slideDefaultProps.direction,
   backgroundColor = slideDefaultProps.backgroundColor,
   foregroundColor = slideDefaultProps.foregroundColor,
@@ -196,7 +196,7 @@ export const SlideDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: SlideSchema,
   defaultProps: slideDefaultProps,
-  component: Slide,
+  component: Slide as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["transition", "slide", "push", "motion"],
   version: "1.0.0",

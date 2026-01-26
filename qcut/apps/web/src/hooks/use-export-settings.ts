@@ -71,6 +71,7 @@ export function useExportSettings() {
             [ExportEngineType.WEBCODECS]: "WebCodecs Engine",
             [ExportEngineType.FFMPEG]: "FFmpeg Engine",
             [ExportEngineType.CLI]: "Native FFmpeg CLI",
+            [ExportEngineType.REMOTION]: "Remotion Engine",
           };
 
           const label = engineLabels[recommendation.engineType];

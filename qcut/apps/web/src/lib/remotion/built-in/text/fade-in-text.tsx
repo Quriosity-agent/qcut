@@ -105,7 +105,7 @@ function getEasingFunction(easing: string): ((t: number) => number) {
  *
  * Displays text with fade-in animation, supporting various modes.
  */
-export const FadeInText: React.FC<FadeInTextProps> = ({
+export const FadeInText: React.FC<Partial<FadeInTextProps>> = ({
   text = fadeInTextDefaultProps.text,
   fontSize = fadeInTextDefaultProps.fontSize,
   fontFamily = fadeInTextDefaultProps.fontFamily,
@@ -284,7 +284,7 @@ export const FadeInTextDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: FadeInTextSchema,
   defaultProps: fadeInTextDefaultProps,
-  component: FadeInText,
+  component: FadeInText as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "fade", "opacity"],
   version: "1.0.0",

@@ -116,7 +116,7 @@ export const titleCardDefaultProps: TitleCardProps = {
  *
  * Creates a full-screen title card with customizable animations.
  */
-export const TitleCard: React.FC<TitleCardProps> = ({
+export const TitleCard: React.FC<Partial<TitleCardProps>> = ({
   title = titleCardDefaultProps.title,
   subtitle = titleCardDefaultProps.subtitle,
   titleColor = titleCardDefaultProps.titleColor,
@@ -340,7 +340,7 @@ export const TitleCardDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: TitleCardSchema,
   defaultProps: titleCardDefaultProps,
-  component: TitleCard,
+  component: TitleCard as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["template", "title", "chapter", "header", "full-screen", "card"],
   version: "1.0.0",

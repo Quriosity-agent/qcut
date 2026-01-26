@@ -117,7 +117,7 @@ function getTransformForDirection(
  *
  * Displays text with spring-based bounce animation.
  */
-export const BounceText: React.FC<BounceTextProps> = ({
+export const BounceText: React.FC<Partial<BounceTextProps>> = ({
   text = bounceTextDefaultProps.text,
   fontSize = bounceTextDefaultProps.fontSize,
   fontFamily = bounceTextDefaultProps.fontFamily,
@@ -295,7 +295,7 @@ export const BounceTextDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: BounceTextSchema,
   defaultProps: bounceTextDefaultProps,
-  component: BounceText,
+  component: BounceText as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "bounce", "spring", "kinetic"],
   version: "1.0.0",

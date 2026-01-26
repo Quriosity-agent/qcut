@@ -132,7 +132,7 @@ function getInitialOffset(
  *
  * Displays text with slide-in animation from specified direction.
  */
-export const SlideText: React.FC<SlideTextProps> = ({
+export const SlideText: React.FC<Partial<SlideTextProps>> = ({
   text = slideTextDefaultProps.text,
   fontSize = slideTextDefaultProps.fontSize,
   fontFamily = slideTextDefaultProps.fontFamily,
@@ -322,7 +322,7 @@ export const SlideTextDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: SlideTextSchema,
   defaultProps: slideTextDefaultProps,
-  component: SlideText,
+  component: SlideText as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "slide", "motion"],
   version: "1.0.0",

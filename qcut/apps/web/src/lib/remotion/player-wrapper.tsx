@@ -13,6 +13,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
   forwardRef,
 } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
@@ -133,6 +134,9 @@ export const RemotionPlayerWrapper = forwardRef<
   const containerRef = useRef<HTMLDivElement>(null);
   const lastFrameRef = useRef<number>(0);
 
+  // Track when player is mounted (for triggering ready callback)
+  const [isPlayerMounted, setIsPlayerMounted] = useState(false);
+
   // Store actions
   const setInstancePlayerRef = useRemotionStore(
     (state) => state.setInstancePlayerRef
@@ -144,8 +148,14 @@ export const RemotionPlayerWrapper = forwardRef<
   );
 
   // Computed values
-  const effectiveWidth = width ?? component.width;
-  const effectiveHeight = height ?? component.height;
+  // IMPORTANT: compositionWidth/Height must be the component's native dimensions
+  // for positioning/scaling to work correctly. The display size is controlled
+  // by the container and style props.
+  const compositionWidth = component.width;
+  const compositionHeight = component.height;
+  // Display dimensions - what size to render at
+  const displayWidth = width ?? component.width;
+  const displayHeight = height ?? component.height;
   const effectiveFps = fps ?? component.fps;
   const effectiveDuration = durationInFrames ?? component.durationInFrames;
 
@@ -221,8 +231,28 @@ export const RemotionPlayerWrapper = forwardRef<
     [onError]
   );
 
-  // Subscribe to player events
+  // Detect when player ref becomes available
   useEffect(() => {
+    // Use a small delay to ensure the Player has mounted and set its ref
+    const checkRef = () => {
+      if (playerRef.current && !isPlayerMounted) {
+        setIsPlayerMounted(true);
+      }
+    };
+
+    // Check immediately
+    checkRef();
+
+    // Also check after a short delay (Player might set ref async)
+    const timer = setTimeout(checkRef, 50);
+
+    return () => clearTimeout(timer);
+  }, [isPlayerMounted]);
+
+  // Subscribe to player events once mounted
+  useEffect(() => {
+    if (!isPlayerMounted) return;
+
     const player = playerRef.current;
     if (!player) return;
 
@@ -258,7 +288,7 @@ export const RemotionPlayerWrapper = forwardRef<
       p.removeEventListener("ended", endedListener);
       p.removeEventListener("error", errorListener as (data: unknown) => void);
     };
-  }, [handleFrameChange, handleEnded, handleError, onReady]);
+  }, [isPlayerMounted, handleFrameChange, handleEnded, handleError, onReady]);
 
   // ========================================================================
   // Imperative Handle
@@ -337,8 +367,8 @@ export const RemotionPlayerWrapper = forwardRef<
       ref={containerRef}
       className={className}
       style={{
-        width: effectiveWidth,
-        height: effectiveHeight,
+        width: displayWidth,
+        height: displayHeight,
         position: "relative",
         overflow: "hidden",
         ...style,
@@ -350,8 +380,8 @@ export const RemotionPlayerWrapper = forwardRef<
         inputProps={inputProps}
         durationInFrames={effectiveDuration}
         fps={effectiveFps}
-        compositionWidth={effectiveWidth}
-        compositionHeight={effectiveHeight}
+        compositionWidth={compositionWidth}
+        compositionHeight={compositionHeight}
         controls={showControls}
         loop={loop}
         playbackRate={playbackRate}

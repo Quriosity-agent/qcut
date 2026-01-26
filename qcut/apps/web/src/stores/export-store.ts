@@ -10,6 +10,51 @@ import {
   AudioCodec,
 } from "@/types/export";
 
+// ============================================================================
+// Remotion Export Types
+// ============================================================================
+
+/**
+ * Remotion export phase for detailed progress tracking
+ */
+export type RemotionExportPhase =
+  | "idle"
+  | "analyzing"
+  | "prerendering"
+  | "compositing"
+  | "encoding"
+  | "cleanup"
+  | "complete"
+  | "error";
+
+/**
+ * Progress for a single Remotion element being pre-rendered
+ */
+export interface RemotionElementProgress {
+  elementId: string;
+  elementName: string;
+  progress: number; // 0-100
+  framesCompleted: number;
+  totalFrames: number;
+  status: "pending" | "rendering" | "complete" | "error" | "skipped";
+  error?: string;
+}
+
+/**
+ * Overall Remotion export progress
+ */
+export interface RemotionExportProgress {
+  phase: RemotionExportPhase;
+  overallProgress: number; // 0-100
+  phaseProgress: number; // 0-100
+  statusMessage: string;
+  elementsTotal: number;
+  elementsCompleted: number;
+  elementProgress: RemotionElementProgress[];
+  estimatedTimeRemaining?: number;
+  hasRemotionElements: boolean;
+}
+
 // Export history entry
 export interface ExportHistoryEntry {
   id: string;
@@ -33,6 +78,9 @@ interface ExportStore {
   // Export progress
   progress: ExportProgress;
 
+  // Remotion-specific progress
+  remotionProgress: RemotionExportProgress;
+
   // Error state
   error: string | null;
 
@@ -53,6 +101,13 @@ interface ExportStore {
   updateProgress: (progress: Partial<ExportProgress>) => void;
   setError: (error: string | null) => void;
   resetExport: () => void;
+
+  // Remotion progress actions
+  updateRemotionProgress: (progress: Partial<RemotionExportProgress>) => void;
+  updateRemotionElementProgress: (elementProgress: RemotionElementProgress) => void;
+  setRemotionPhase: (phase: RemotionExportPhase, message?: string) => void;
+  resetRemotionProgress: () => void;
+  skipFailedRemotionElement: (elementId: string) => void;
 
   // Audio actions (optional for backward compatibility)
   setAudioEnabled?: (enabled: boolean) => void;
@@ -97,6 +152,42 @@ const getDefaultProgress = (): ExportProgress => ({
   status: "",
 });
 
+// Default Remotion progress factory
+const getDefaultRemotionProgress = (): RemotionExportProgress => ({
+  phase: "idle",
+  overallProgress: 0,
+  phaseProgress: 0,
+  statusMessage: "",
+  elementsTotal: 0,
+  elementsCompleted: 0,
+  elementProgress: [],
+  hasRemotionElements: false,
+});
+
+// Helper to get human-readable phase messages
+const getPhaseMessage = (phase: RemotionExportPhase): string => {
+  switch (phase) {
+    case "idle":
+      return "";
+    case "analyzing":
+      return "Analyzing timeline for Remotion elements...";
+    case "prerendering":
+      return "Pre-rendering Remotion components...";
+    case "compositing":
+      return "Compositing frames...";
+    case "encoding":
+      return "Encoding video...";
+    case "cleanup":
+      return "Cleaning up temporary files...";
+    case "complete":
+      return "Export complete!";
+    case "error":
+      return "Export failed";
+    default:
+      return "";
+  }
+};
+
 export const useExportStore = create<ExportStore>()(
   devtools(
     (set, get) => ({
@@ -105,6 +196,7 @@ export const useExportStore = create<ExportStore>()(
       panelView: "settings",
       settings: getDefaultSettings(),
       progress: getDefaultProgress(),
+      remotionProgress: getDefaultRemotionProgress(),
       error: null,
       exportHistory: [],
 
@@ -161,9 +253,81 @@ export const useExportStore = create<ExportStore>()(
         set({
           settings: getDefaultSettings(),
           progress: getDefaultProgress(),
+          remotionProgress: getDefaultRemotionProgress(),
           error: null,
           isDialogOpen: false,
           // Keep audio settings on reset (user preference)
+        });
+      },
+
+      // Remotion progress actions
+      updateRemotionProgress: (newProgress) => {
+        set((state) => ({
+          remotionProgress: { ...state.remotionProgress, ...newProgress },
+        }));
+      },
+
+      updateRemotionElementProgress: (elementProgress) => {
+        set((state) => {
+          const existingIndex = state.remotionProgress.elementProgress.findIndex(
+            (ep) => ep.elementId === elementProgress.elementId
+          );
+
+          let updatedElements: RemotionElementProgress[];
+          if (existingIndex >= 0) {
+            updatedElements = [...state.remotionProgress.elementProgress];
+            updatedElements[existingIndex] = elementProgress;
+          } else {
+            updatedElements = [...state.remotionProgress.elementProgress, elementProgress];
+          }
+
+          // Calculate completed elements
+          const completedCount = updatedElements.filter(
+            (ep) => ep.status === "complete" || ep.status === "skipped"
+          ).length;
+
+          return {
+            remotionProgress: {
+              ...state.remotionProgress,
+              elementProgress: updatedElements,
+              elementsCompleted: completedCount,
+            },
+          };
+        });
+      },
+
+      setRemotionPhase: (phase, message) => {
+        set((state) => ({
+          remotionProgress: {
+            ...state.remotionProgress,
+            phase,
+            statusMessage: message || getPhaseMessage(phase),
+            phaseProgress: phase === "complete" ? 100 : 0,
+          },
+        }));
+      },
+
+      resetRemotionProgress: () => {
+        set({ remotionProgress: getDefaultRemotionProgress() });
+      },
+
+      skipFailedRemotionElement: (elementId) => {
+        set((state) => {
+          const updatedElements = state.remotionProgress.elementProgress.map((ep) =>
+            ep.elementId === elementId ? { ...ep, status: "skipped" as const } : ep
+          );
+
+          const completedCount = updatedElements.filter(
+            (ep) => ep.status === "complete" || ep.status === "skipped"
+          ).length;
+
+          return {
+            remotionProgress: {
+              ...state.remotionProgress,
+              elementProgress: updatedElements,
+              elementsCompleted: completedCount,
+            },
+          };
         });
       },
 

@@ -107,7 +107,7 @@ export const lowerThirdDefaultProps: LowerThirdProps = {
  *
  * Creates a professional lower third overlay for names and titles.
  */
-export const LowerThird: React.FC<LowerThirdProps> = ({
+export const LowerThird: React.FC<Partial<LowerThirdProps>> = ({
   primaryText = lowerThirdDefaultProps.primaryText,
   secondaryText = lowerThirdDefaultProps.secondaryText,
   primaryColor = lowerThirdDefaultProps.primaryColor,
@@ -301,7 +301,7 @@ export const LowerThirdDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: LowerThirdSchema,
   defaultProps: lowerThirdDefaultProps,
-  component: LowerThird,
+  component: LowerThird as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["template", "lower-third", "name", "title", "caption", "overlay"],
   version: "1.0.0",

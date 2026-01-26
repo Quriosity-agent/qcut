@@ -3,10 +3,35 @@ import react from "@vitejs/plugin-react";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { visualizer } from "rollup-plugin-visualizer";
+import path from "path";
 
 export default defineConfig({
   base: "./", // Critical for Electron file:// protocol
   publicDir: "public", // Ensure public directory is properly copied
+  resolve: {
+    alias: {
+      // Ensure single React version to prevent conflicts with Remotion
+      // Use root node_modules in monorepo
+      "react": path.resolve(__dirname, "../../node_modules/react"),
+      "react-dom": path.resolve(__dirname, "../../node_modules/react-dom"),
+      "react-dom/client": path.resolve(__dirname, "../../node_modules/react-dom/client"),
+      "scheduler": path.resolve(__dirname, "../../node_modules/scheduler"),
+      "react/jsx-runtime": path.resolve(__dirname, "../../node_modules/react/jsx-runtime"),
+      "react/jsx-dev-runtime": path.resolve(__dirname, "../../node_modules/react/jsx-dev-runtime"),
+    },
+    dedupe: ["react", "react-dom", "scheduler", "react/jsx-runtime"],
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom", "react-dom/client", "scheduler"],
+    // Force Remotion to use the same React
+    esbuildOptions: {
+      define: {
+        global: "globalThis",
+      },
+    },
+    // Exclude remotion packages from optimization to prevent double bundling
+    exclude: ["remotion", "@remotion/player", "@remotion/renderer"],
+  },
   plugins: [
     tsconfigPaths(), // Support for TypeScript path mapping
     TanStackRouterVite({
@@ -40,11 +65,14 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         manualChunks: (id) => {
           // Core React ecosystem - keep together to avoid context issues
+          // Include scheduler to prevent Remotion conflicts
+          // Note: @tanstack/react-router is NOT included here to avoid TDZ errors
+          // The router needs to be in the same chunk as the route tree for proper initialization
           if (
-            id.includes("react") ||
-            id.includes("react-dom") ||
-            id.includes("@radix-ui") ||
-            id.includes("@tanstack/react-router")
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/scheduler/") ||
+            id.includes("@radix-ui")
           ) {
             return "vendor-react";
           }

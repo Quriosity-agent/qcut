@@ -105,7 +105,7 @@ export const scaleTextDefaultProps: ScaleTextProps = {
  *
  * Displays text with various scaling animations.
  */
-export const ScaleText: React.FC<ScaleTextProps> = ({
+export const ScaleText: React.FC<Partial<ScaleTextProps>> = ({
   text = scaleTextDefaultProps.text,
   fontSize = scaleTextDefaultProps.fontSize,
   fontFamily = scaleTextDefaultProps.fontFamily,
@@ -355,7 +355,7 @@ export const ScaleTextDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: ScaleTextSchema,
   defaultProps: scaleTextDefaultProps,
-  component: ScaleText,
+  component: ScaleText as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["text", "animation", "scale", "zoom", "pop"],
   version: "1.0.0",

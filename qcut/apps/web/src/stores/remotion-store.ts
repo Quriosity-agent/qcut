@@ -23,6 +23,7 @@ import type {
   SyncState,
 } from "@/lib/remotion/types";
 import { generateUUID } from "@/lib/utils";
+import { builtInComponentDefinitions } from "@/lib/remotion/built-in";
 
 // ============================================================================
 // Initial State
@@ -66,10 +67,14 @@ export const useRemotionStore = create<RemotionStore>()(
       set({ isLoading: true });
 
       try {
-        // Load built-in components (will be implemented in Phase 5)
-        // For now, just mark as initialized
+        // Load built-in components
+        const newComponents = new Map(get().registeredComponents);
+        for (const definition of builtInComponentDefinitions) {
+          newComponents.set(definition.id, definition);
+        }
 
         set({
+          registeredComponents: newComponents,
           isInitialized: true,
           isLoading: false,
         });

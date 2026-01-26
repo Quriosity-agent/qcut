@@ -43,6 +43,15 @@ export {
   type OutroSceneProps,
 } from "./outro-scene";
 
+// Skills Demo
+export {
+  SkillsDemo,
+  SkillsDemoSchema,
+  SkillsDemoDefinition,
+  skillsDemoDefaultProps,
+  type SkillsDemoProps,
+} from "./skills-demo";
+
 // ============================================================================
 // All Template Component Definitions
 // ============================================================================
@@ -51,6 +60,7 @@ import { LowerThirdDefinition } from "./lower-third";
 import { TitleCardDefinition } from "./title-card";
 import { IntroSceneDefinition } from "./intro-scene";
 import { OutroSceneDefinition } from "./outro-scene";
+import { SkillsDemoDefinition } from "./skills-demo";
 import type { RemotionComponentDefinition } from "../../types";
 
 /**
@@ -61,6 +71,7 @@ export const templateComponentDefinitions: RemotionComponentDefinition[] = [
   TitleCardDefinition,
   IntroSceneDefinition,
   OutroSceneDefinition,
+  SkillsDemoDefinition,
 ];
 
 /**

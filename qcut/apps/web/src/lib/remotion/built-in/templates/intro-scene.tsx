@@ -169,7 +169,7 @@ const Particle: React.FC<ParticleProps> = ({
  *
  * Creates a professional video intro with logo and text animations.
  */
-export const IntroScene: React.FC<IntroSceneProps> = ({
+export const IntroScene: React.FC<Partial<IntroSceneProps>> = ({
   logoText = introSceneDefaultProps.logoText,
   title = introSceneDefaultProps.title,
   tagline = introSceneDefaultProps.tagline,
@@ -400,7 +400,7 @@ export const IntroSceneDefinition: RemotionComponentDefinition = {
   height: 1080,
   schema: IntroSceneSchema,
   defaultProps: introSceneDefaultProps,
-  component: IntroScene,
+  component: IntroScene as React.ComponentType<Record<string, unknown>>,
   source: "built-in",
   tags: ["template", "intro", "opener", "logo", "branded", "youtube"],
   version: "1.0.0",
