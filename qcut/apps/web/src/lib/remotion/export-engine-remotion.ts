@@ -216,8 +216,8 @@ export class RemotionExportEngine extends ExportEngine {
       // Phase 2: Pre-rendering Remotion elements
       await this.preRenderPhase();
 
-      // Phase 3: Compositing
-      await this.compositingPhase();
+      // Phase 3: Compositing (returns the encoded video blob)
+      const blob = await this.compositingPhase();
 
       // Phase 4: Encoding (handled by base class in compositingPhase)
 
@@ -226,10 +226,7 @@ export class RemotionExportEngine extends ExportEngine {
 
       this.updateProgress("complete", 100, "Export complete!");
 
-      // Return the final video blob
-      // Note: The actual blob is created during the compositing phase
-      // which calls the base class export method
-      throw new Error("Export blob should be returned from compositingPhase");
+      return blob;
     } catch (error) {
       this.currentPhase = "error";
       debugError("[RemotionExportEngine] Export failed:", error);
