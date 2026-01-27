@@ -105,8 +105,8 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
   const { durationInFrames, width, height } = useVideoConfig();
   const easingFn = getEasingFunction(easing);
 
-  // Calculate actual wipe duration
-  const actualDuration = wipeDuration ?? (durationInFrames - startDelay);
+  // Calculate actual wipe duration (minimum 1 frame to prevent zero-length interpolation range)
+  const actualDuration = wipeDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress (0 to 1)
@@ -124,7 +124,6 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
   // Calculate clip path based on direction
   const getClipPath = (forForeground: boolean) => {
     const p = forForeground ? 1 - progress : progress;
-    const soft = edgeSoftness;
 
     switch (direction) {
       case "left":

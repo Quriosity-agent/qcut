@@ -175,8 +175,13 @@ export function ComponentPreviewModal({
         {/* Preview Player */}
         <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
-              <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+            <div
+              className="absolute inset-0 flex items-center justify-center bg-black/80 z-10"
+              role="status"
+              aria-label="Loading preview"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-violet-400" aria-hidden="true" />
+              <span className="sr-only">Loading preview...</span>
             </div>
           )}
 

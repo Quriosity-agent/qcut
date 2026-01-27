@@ -128,6 +128,14 @@ interface PhaseIndicatorProps {
 }
 
 function PhaseIndicator({ phase, isActive, isComplete }: PhaseIndicatorProps) {
+  const phaseLabels: Record<string, string> = {
+    analyzing: "Analyze",
+    prerendering: "Pre-render",
+    compositing: "Composite",
+    encoding: "Encode",
+    cleanup: "Cleanup",
+  };
+
   return (
     <div
       className={cn(
@@ -139,7 +147,7 @@ function PhaseIndicator({ phase, isActive, isComplete }: PhaseIndicatorProps) {
     >
       {isActive && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
       {isComplete && <CheckCircle2 className="h-2.5 w-2.5" />}
-      <span className="capitalize">{phase.replace("ing", "")}</span>
+      <span>{phaseLabels[phase] ?? phase}</span>
     </div>
   );
 }
@@ -246,6 +254,7 @@ export function RemotionExportProgress({
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <CollapsibleTrigger asChild>
             <Button
+              type="button"
               variant="text"
               size="sm"
               className="w-full justify-between h-7 px-2"

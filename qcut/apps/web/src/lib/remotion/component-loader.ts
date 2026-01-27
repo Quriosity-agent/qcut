@@ -215,52 +215,8 @@ async function deleteStoredComponent(id: string): Promise<void> {
 }
 
 // ============================================================================
-// Code Execution (Sandboxed)
+// Helpers
 // ============================================================================
-
-/**
- * Create a sandboxed environment for component evaluation
- * Note: This is a basic sandbox - for production, consider using Web Workers or iframes
- */
-function createSandboxedEvaluator() {
-  // Create a restricted global scope
-  const restrictedGlobals: Record<string, unknown> = {
-    // Allow React
-    React: (window as typeof window & { React?: unknown }).React,
-    // Allow console for debugging
-    console: {
-      log: console.log.bind(console),
-      warn: console.warn.bind(console),
-      error: console.error.bind(console),
-    },
-    // Allow Math
-    Math,
-    // Allow basic types
-    Array,
-    Object,
-    String,
-    Number,
-    Boolean,
-    Date,
-    JSON,
-    Map,
-    Set,
-    Promise,
-    // Block dangerous globals
-    eval: undefined,
-    Function: undefined,
-    fetch: undefined,
-    XMLHttpRequest: undefined,
-    WebSocket: undefined,
-    localStorage: undefined,
-    sessionStorage: undefined,
-    indexedDB: undefined,
-    document: undefined,
-    window: undefined,
-  };
-
-  return restrictedGlobals;
-}
 
 /**
  * Generate a unique component ID

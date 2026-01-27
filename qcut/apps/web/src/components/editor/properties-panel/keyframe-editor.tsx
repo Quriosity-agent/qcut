@@ -338,11 +338,11 @@ export function KeyframeEditor({
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const percentage = x / rect.width;
-      const frame = Math.round(percentage * durationInFrames);
+      const frame = durationInFrames > 0 ? Math.round(percentage * durationInFrames) : 0;
 
       // Check if clicking near an existing keyframe
       const nearbyKeyframe = keyframes.find((kf) => {
-        const kfPercentage = kf.frame / durationInFrames;
+        const kfPercentage = durationInFrames > 0 ? kf.frame / durationInFrames : 0;
         return Math.abs(kfPercentage - percentage) < 0.02; // 2% tolerance
       });
 
@@ -358,8 +358,10 @@ export function KeyframeEditor({
     [disabled, durationInFrames, keyframes, propType, onKeyframeAdd]
   );
 
-  // Current playhead position percentage
-  const playheadPosition = (currentFrame / durationInFrames) * 100;
+  // Current playhead position percentage (guard against division by zero)
+  const playheadPosition = durationInFrames > 0
+    ? (currentFrame / durationInFrames) * 100
+    : 0;
 
   return (
     <div className="space-y-2">
@@ -437,7 +439,7 @@ export function KeyframeEditor({
               <KeyframeDiamond
                 key={kf.id}
                 keyframe={kf}
-                position={(kf.frame / durationInFrames) * 100}
+                position={durationInFrames > 0 ? (kf.frame / durationInFrames) * 100 : 0}
                 isSelected={kf.id === selectedKeyframeId}
                 onClick={() => setSelectedKeyframeId(kf.id)}
                 onDelete={() => onKeyframeDelete(kf.id)}
@@ -454,7 +456,7 @@ export function KeyframeEditor({
                 <polyline
                   points={sortedKeyframes
                     .map((kf) => {
-                      const x = (kf.frame / durationInFrames) * 100;
+                      const x = durationInFrames > 0 ? (kf.frame / durationInFrames) * 100 : 0;
                       // Normalize value for display (0-100%)
                       const minVal = Math.min(...sortedKeyframes.map((k) => k.value as number));
                       const maxVal = Math.max(...sortedKeyframes.map((k) => k.value as number));
