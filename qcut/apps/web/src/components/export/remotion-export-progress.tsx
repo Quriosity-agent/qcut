@@ -100,6 +100,7 @@ function ElementProgressItem({
             </span>
             {allowSkip && onSkip && (
               <Button
+                type="button"
                 variant="text"
                 size="sm"
                 onClick={onSkip}

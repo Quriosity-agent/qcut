@@ -19,7 +19,6 @@ import {
   Play,
   Plus,
   RotateCcw,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
 import type { RemotionComponentDefinition } from "@/lib/remotion/types";
 
 // ============================================================================
@@ -76,6 +74,51 @@ export function ComponentPreviewModal({
     }
   }, [component?.id]);
 
+  // Set up Player event listeners for play/pause/frameupdate
+  // The Remotion Player uses addEventListener on the ref, not props
+  useEffect(() => {
+    if (!component || error) return;
+
+    const player = playerRef.current;
+    if (!player) {
+      // Player not yet mounted, try again after a short delay
+      const timer = setTimeout(() => {
+        if (playerRef.current) {
+          setIsLoading(false);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+
+    // Player is ready
+    setIsLoading(false);
+
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+    const onFrameUpdate = (e: { detail: { frame: number } }) => {
+      setCurrentFrame(e.detail.frame);
+    };
+    const onError = (e: { detail: { error: Error } }) => {
+      setError(e.detail.error.message);
+      setIsLoading(false);
+    };
+
+    player.addEventListener("play", onPlay);
+    player.addEventListener("pause", onPause);
+    player.addEventListener("ended", onEnded);
+    player.addEventListener("frameupdate", onFrameUpdate);
+    player.addEventListener("error", onError);
+
+    return () => {
+      player.removeEventListener("play", onPlay);
+      player.removeEventListener("pause", onPause);
+      player.removeEventListener("ended", onEnded);
+      player.removeEventListener("frameupdate", onFrameUpdate);
+      player.removeEventListener("error", onError);
+    };
+  }, [component, error]);
+
   // Handle play/pause
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
@@ -85,16 +128,15 @@ export function ComponentPreviewModal({
     } else {
       playerRef.current.play();
     }
-    setIsPlaying(!isPlaying);
+    // Note: isPlaying state is updated via event listeners above
   }, [isPlaying]);
 
   // Handle restart
   const handleRestart = useCallback(() => {
     if (!playerRef.current) return;
     playerRef.current.seekTo(0);
-    setCurrentFrame(0);
-    setIsPlaying(false);
     playerRef.current.pause();
+    // Note: frame and playing state are updated via event listeners
   }, []);
 
   // Handle seek
@@ -102,7 +144,7 @@ export function ComponentPreviewModal({
     if (!playerRef.current || !component) return;
     const frame = Math.round(value[0]);
     playerRef.current.seekTo(frame);
-    setCurrentFrame(frame);
+    // Note: frame state is updated via frameupdate event listener
   }, [component]);
 
   // Handle add to timeline
@@ -111,22 +153,6 @@ export function ComponentPreviewModal({
     onAdd(component);
     onOpenChange(false);
   }, [component, onAdd, onOpenChange]);
-
-  // Handle player ready
-  const handlePlayerReady = useCallback(() => {
-    setIsLoading(false);
-  }, []);
-
-  // Handle player error
-  const handlePlayerError = useCallback((err: Error) => {
-    setError(err.message);
-    setIsLoading(false);
-  }, []);
-
-  // Handle frame change
-  const handleFrameChange = useCallback((frame: number) => {
-    setCurrentFrame(frame);
-  }, []);
 
   if (!component) return null;
 
@@ -178,10 +204,8 @@ export function ComponentPreviewModal({
               controls={false}
               loop
               autoPlay={false}
-              // Note: These events may not be available in all versions
-              // onPlay={() => setIsPlaying(true)}
-              // onPause={() => setIsPlaying(false)}
-              // onEnded={() => setIsPlaying(false)}
+              // Events are handled via playerRef.current.addEventListener()
+              // in the useEffect above (play, pause, ended, frameupdate, error)
             />
           )}
         </div>
@@ -201,6 +225,7 @@ export function ComponentPreviewModal({
               onValueChange={handleSeek}
               className="flex-1"
               disabled={!!error}
+              aria-label="Seek position"
             />
             <span className="text-xs text-muted-foreground w-12 text-right">
               {durationSeconds}s
@@ -216,8 +241,9 @@ export function ComponentPreviewModal({
               onClick={handleRestart}
               disabled={!!error}
               className="gap-1"
+              aria-label="Restart"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
             </Button>
             <Button
               size="sm"
