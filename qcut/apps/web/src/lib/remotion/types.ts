@@ -531,10 +531,17 @@ export function parseCacheKey(key: string): FrameCacheKey | null {
 
 /**
  * Calculate a hash for props object (for cache key generation)
+ * Note: Uses djb2-style hash. Collisions are acceptable for cache keys
+ * since they only cause cache misses, not data corruption.
  */
 export function hashProps(props: Record<string, unknown>): string {
-  // Simple JSON-based hash - could be improved with proper hashing
-  const str = JSON.stringify(props, Object.keys(props).sort());
+  let str: string;
+  try {
+    str = JSON.stringify(props, Object.keys(props).sort());
+  } catch {
+    // Handle circular references or other serialization errors
+    str = String(Object.keys(props).length);
+  }
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);

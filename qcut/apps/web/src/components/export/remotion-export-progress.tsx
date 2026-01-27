@@ -9,7 +9,7 @@
 
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -161,7 +161,7 @@ export function RemotionExportProgress({
   allowSkipFailed = true,
   className,
 }: RemotionExportProgressProps) {
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const remotionProgress = useExportStore((state) => state.remotionProgress);
   const skipFailedElement = useExportStore(
     (state) => state.skipFailedRemotionElement
