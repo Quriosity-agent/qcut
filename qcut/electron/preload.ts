@@ -575,12 +575,15 @@ const electronAPI: ElectronAPI = {
     }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke("gemini:chat", request),
     onStreamChunk: (callback: (data: { text: string }) => void): void => {
+      ipcRenderer.removeAllListeners("gemini:stream-chunk");
       ipcRenderer.on("gemini:stream-chunk", (_, data) => callback(data));
     },
     onStreamComplete: (callback: () => void): void => {
+      ipcRenderer.removeAllListeners("gemini:stream-complete");
       ipcRenderer.on("gemini:stream-complete", () => callback());
     },
     onStreamError: (callback: (data: { message: string }) => void): void => {
+      ipcRenderer.removeAllListeners("gemini:stream-error");
       ipcRenderer.on("gemini:stream-error", (_, data) => callback(data));
     },
     removeListeners: (): void => {
