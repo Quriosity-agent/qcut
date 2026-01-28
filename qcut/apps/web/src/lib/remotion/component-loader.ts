@@ -376,8 +376,7 @@ export async function loadStoredComponents(): Promise<RemotionComponentDefinitio
       author: stored.metadata.author,
       thumbnail: stored.thumbnail,
     }));
-  } catch (error) {
-    console.error("Failed to load stored components:", error);
+  } catch {
     return [];
   }
 }
@@ -401,7 +400,8 @@ export async function getComponentSourceCode(componentId: string): Promise<strin
   try {
     const stored = await getStoredComponent(componentId);
     return stored?.sourceCode || null;
-  } catch {
+  } catch (_error) {
+    // IndexedDB access failed; treat as not found
     return null;
   }
 }
@@ -436,11 +436,20 @@ export async function updateStoredComponent(
       };
     }
 
+    const metadata = validation.metadata;
+    if (!metadata) {
+      return {
+        success: false,
+        error: "Validation passed but metadata is missing",
+        validation,
+      };
+    }
+
     // Update stored component
     const updated: StoredComponent = {
       ...existing,
       sourceCode: newSourceCode,
-      metadata: validation.metadata!,
+      metadata,
       updatedAt: Date.now(),
     };
 
@@ -449,20 +458,20 @@ export async function updateStoredComponent(
     // Build updated component definition
     const componentDef: RemotionComponentDefinition = {
       id: componentId,
-      name: validation.metadata!.name,
-      description: validation.metadata!.description,
-      category: validation.metadata!.category,
-      durationInFrames: validation.metadata!.durationInFrames,
-      fps: validation.metadata!.fps,
-      width: validation.metadata!.width,
-      height: validation.metadata!.height,
+      name: metadata.name,
+      description: metadata.description,
+      category: metadata.category,
+      durationInFrames: metadata.durationInFrames,
+      fps: metadata.fps,
+      width: metadata.width,
+      height: metadata.height,
       schema: { safeParse: () => ({ success: true }) } as never,
       defaultProps: {},
       component: () => null,
       source: "imported",
-      tags: validation.metadata!.tags,
-      version: validation.metadata!.version,
-      author: validation.metadata!.author,
+      tags: metadata.tags,
+      version: metadata.version,
+      author: metadata.author,
     };
 
     return {
