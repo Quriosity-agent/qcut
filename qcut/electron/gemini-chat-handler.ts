@@ -181,9 +181,15 @@ async function formatRequestContents(
 
   // Add attachments to the last user message
   if (request.attachments && request.attachments.length > 0) {
-    const lastUserIndex = contents.findLastIndex(
-      (c: any) => c.role === "user"
-    );
+    // Find last user message index (compatible with older ES targets)
+    let lastUserIndex = -1;
+    for (let i = contents.length - 1; i >= 0; i--) {
+      if (contents[i].role === "user") {
+        lastUserIndex = i;
+        break;
+      }
+    }
+
     if (lastUserIndex >= 0) {
       for (const attachment of request.attachments) {
         const attachmentParts = await encodeAttachment(attachment);
