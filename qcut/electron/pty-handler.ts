@@ -128,7 +128,7 @@ export function setupPtyIPC(): void {
           cols: options.cols || 80,
           rows: options.rows || 24,
           cwd: options.cwd || process.cwd(),
-          env: process.env as { [key: string]: string },
+          env: process.env,
         });
 
         const session: PtySession = {

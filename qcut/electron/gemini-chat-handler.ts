@@ -294,6 +294,12 @@ export function setupGeminiChatIPC(): void {
       request: GeminiChatRequest
     ): Promise<{ success: boolean; error?: string }> => {
       console.log("[Gemini Chat] Chat request received");
+
+      // Validate request payload
+      if (!Array.isArray(request.messages) || request.messages.length === 0) {
+        return { success: false, error: "No messages provided" };
+      }
+
       console.log(
         "[Gemini Chat] Messages:",
         request.messages.length,
@@ -324,19 +330,28 @@ export function setupGeminiChatIPC(): void {
         const result = await model.generateContentStream({ contents });
 
         for await (const chunk of result.stream) {
+          // Check if renderer is still alive before sending
+          if (event.sender.isDestroyed()) {
+            console.log("[Gemini Chat] Sender destroyed, stopping stream");
+            break;
+          }
           const text = chunk.text();
           if (text) {
             event.sender.send("gemini:stream-chunk", { text });
           }
         }
 
-        event.sender.send("gemini:stream-complete");
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("gemini:stream-complete");
+        }
         console.log("[Gemini Chat] Stream completed successfully");
         return { success: true };
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error("[Gemini Chat] Error:", errorMessage);
-        event.sender.send("gemini:stream-error", { message: errorMessage });
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("gemini:stream-error", { message: errorMessage });
+        }
         return { success: false, error: errorMessage };
       }
     }
