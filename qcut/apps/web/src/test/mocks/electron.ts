@@ -102,6 +102,30 @@ export const mockElectronAPI: ElectronAPI = {
       stars: 1234,
     }),
   },
+
+  // PTY operations
+  pty: {
+    spawn: vi.fn().mockResolvedValue({
+      success: true,
+      sessionId: "test-pty-session",
+    }),
+    write: vi.fn().mockResolvedValue({ success: true }),
+    resize: vi.fn().mockResolvedValue({ success: true }),
+    kill: vi.fn().mockResolvedValue({ success: true }),
+    killAll: vi.fn().mockResolvedValue({ success: true }),
+    onData: vi.fn(),
+    onExit: vi.fn(),
+    removeListeners: vi.fn(),
+  },
+
+  // Gemini chat operations
+  geminiChat: {
+    send: vi.fn().mockResolvedValue({ success: true }),
+    onStreamChunk: vi.fn(),
+    onStreamComplete: vi.fn(),
+    onStreamError: vi.fn(),
+    removeListeners: vi.fn(),
+  },
 };
 
 /**

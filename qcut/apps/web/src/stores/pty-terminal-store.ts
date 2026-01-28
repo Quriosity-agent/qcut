@@ -79,6 +79,15 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     set({ status: "connecting", error: null, exitCode: null });
 
     try {
+      // Check for API availability (PTY is only available in desktop app)
+      if (!window.electronAPI?.pty) {
+        set({
+          status: "error",
+          error: "PTY is only available in the desktop app.",
+        });
+        return;
+      }
+
       // Determine command based on mode
       const command = isGeminiMode ? "npx @google/gemini-cli@latest" : undefined;
       console.log("[PTY Store] Command to spawn:", command || "(default shell)");
@@ -91,7 +100,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
       };
       console.log("[PTY Store] Spawn options:", JSON.stringify(spawnOptions, null, 2));
 
-      const result = await window.electronAPI?.pty?.spawn(spawnOptions);
+      const result = await window.electronAPI.pty.spawn(spawnOptions);
       console.log("[PTY Store] Spawn result:", JSON.stringify(result, null, 2));
 
       if (result?.success && result.sessionId) {
@@ -101,12 +110,14 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.error("[PTY Store] Spawn failed:", result?.error);
         set({
           status: "error",
-          error: result?.error || "Failed to spawn PTY session",
+          error: result?.error ?? "Failed to spawn PTY session",
         });
       }
-    } catch (error: any) {
-      console.error("[PTY Store] Exception:", error.message);
-      set({ status: "error", error: error.message });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to spawn PTY session";
+      console.error("[PTY Store] Exception:", message);
+      set({ status: "error", error: message });
     }
   },
 
