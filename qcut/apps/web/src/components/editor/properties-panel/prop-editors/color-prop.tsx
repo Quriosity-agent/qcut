@@ -56,11 +56,15 @@ function normalizeColor(color: string, preserveAlpha = false): string {
     }
     // Expand 4-char hex (#RGBA) to 8-char (#RRGGBBAA)
     if (color.length === 5) {
-      return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}${color[4]}${color[4]}`;
+      const expanded = `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}${color[4]}${color[4]}`;
+      if (!preserveAlpha) {
+        return expanded.slice(0, 7).toLowerCase();
+      }
+      return expanded.toLowerCase();
     }
     // Strip alpha if not preserving
     if (!preserveAlpha && color.length === 9) {
-      return color.substring(0, 7).toLowerCase();
+      return color.slice(0, 7).toLowerCase();
     }
     return color.toLowerCase();
   }

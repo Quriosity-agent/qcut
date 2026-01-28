@@ -1,8 +1,18 @@
 import { ipcMain, app } from "electron";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "node:fs/promises";
-import fsSync from "node:fs";
 import path from "node:path";
+
+// Dynamic import for @google/generative-ai to support packaged app
+let GoogleGenerativeAI: any;
+try {
+  // Try standard import first (development)
+  GoogleGenerativeAI = require("@google/generative-ai").GoogleGenerativeAI;
+} catch {
+  // In packaged app, load from extraResources
+  const modulePath = path.join(process.resourcesPath, "node_modules/@google/generative-ai/dist/index.js");
+  GoogleGenerativeAI = require(modulePath).GoogleGenerativeAI;
+}
+import fsSync from "node:fs";
 import { safeStorage } from "electron";
 
 interface GeminiTranscriptionRequest {

@@ -8,6 +8,10 @@ import path from "path";
 export default defineConfig({
   base: "./", // Critical for Electron file:// protocol
   publicDir: "public", // Ensure public directory is properly copied
+  define: {
+    // Required for React scheduler in Electron production builds
+    global: "globalThis",
+  },
   resolve: {
     alias: {
       // Ensure single React version to prevent conflicts with Remotion

@@ -100,6 +100,7 @@
       },
       "apps/web/dist/**/*",
       "node_modules/electron-updater/**/*",
+      "node_modules/@google/generative-ai/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -134,6 +135,10 @@
           "**/*.exe",
           "**/*.dll"
         ]
+      },
+      {
+        "from": "node_modules/@google/generative-ai",
+        "to": "node_modules/@google/generative-ai"
       }
     ],
     "asar": true,
@@ -142,6 +147,7 @@
       "**/node_modules/@ffmpeg/**/*",
       "**/node_modules/electron-updater/**/*",
       "**/node_modules/electron-log/**/*",
+      "**/node_modules/@google/generative-ai/**/*",
       "**/electron/resources/**/*"
     ],
     "win": {

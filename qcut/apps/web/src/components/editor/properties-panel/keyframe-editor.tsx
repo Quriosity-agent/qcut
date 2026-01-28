@@ -122,7 +122,14 @@ function KeyframeDiamond({
             )}
             style={{ left: `${position}%` }}
             onClick={onClick}
+            onKeyDown={(e) => {
+              if ((e.key === "Delete" || e.key === "Backspace") && !disabled) {
+                e.preventDefault();
+                onDelete();
+              }
+            }}
             disabled={disabled}
+            aria-label={`Keyframe at frame ${keyframe.frame}. Press Delete to remove.`}
           />
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">

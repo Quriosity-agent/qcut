@@ -178,7 +178,10 @@ export function RemotionExportProgress({
   }
 
   const phases = ["analyzing", "prerendering", "compositing", "encoding", "cleanup"];
-  const currentPhaseIndex = phases.indexOf(remotionProgress.phase);
+  const currentPhaseIndex =
+    remotionProgress.phase === "complete" || remotionProgress.phase === "error"
+      ? phases.length
+      : phases.indexOf(remotionProgress.phase);
 
   const hasErrors = remotionProgress.elementProgress.some(
     (ep) => ep.status === "error"

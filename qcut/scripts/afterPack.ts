@@ -9,7 +9,7 @@ async function afterPack(context: AfterPackContext): Promise<void> {
   process.stdout.write("Running afterPack hook to fix icon...\n");
 
   const appOutDir: string = context.appOutDir;
-  const exePath: string = path.join(appOutDir, "QCut Video Editor.exe");
+  const exePath: string = path.join(appOutDir, "QCut AI Video Editor.exe");
   const icoPath: string = path.join(
     context.packager.projectDir,
     "build",
