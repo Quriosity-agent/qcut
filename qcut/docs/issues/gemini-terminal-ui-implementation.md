@@ -1176,8 +1176,332 @@ Note: The `?` optional marker allows the renderer to check if Gemini chat is ava
 
 ---
 
+## Alternative: Gemini CLI Integration
+
+### Overview
+
+Instead of using the `@google/generative-ai` SDK directly, QCut could integrate with [Gemini CLI](https://github.com/google-gemini/gemini-cli) (`@google/gemini-cli`) - Google's official command-line AI assistant similar to Claude Code.
+
+### Current vs CLI Approach
+
+| Aspect | Current (SDK) | Gemini CLI |
+|--------|---------------|------------|
+| **Package** | `@google/generative-ai` | `@google/gemini-cli` |
+| **Auth** | API Key (stored in QCut settings) | Google OAuth (cached credentials) |
+| **Integration** | Direct API calls | Spawn as subprocess |
+| **Features** | Raw API access | Built-in tools, code editing, file context |
+| **Setup** | User must get API key from aistudio.google.com | One-time OAuth login |
+
+### Benefits of Gemini CLI Integration
+
+1. **No API Key Required**: Uses Google OAuth, users just login once
+2. **Built-in Tools**: File reading, code editing, web search, etc.
+3. **Context Awareness**: Automatic codebase understanding
+4. **Consistent Experience**: Same interface as standalone Gemini CLI
+5. **Active Development**: Google maintains and updates it
+
+### Implementation Approach
+
+#### Option A: Spawn CLI as Subprocess
+
+```typescript
+// electron/gemini-cli-handler.ts
+import { spawn, ChildProcess } from "child_process";
+import { ipcMain, BrowserWindow } from "electron";
+import path from "path";
+
+let geminiProcess: ChildProcess | null = null;
+
+interface GeminiCLIRequest {
+  prompt: string;
+  workingDir?: string;
+}
+
+export function setupGeminiCLIIPC(): void {
+  // Start Gemini CLI in non-interactive mode with --prompt
+  ipcMain.handle("gemini-cli:send", async (event, request: GeminiCLIRequest) => {
+    return new Promise((resolve, reject) => {
+      const args = ["@google/gemini-cli", "--prompt", request.prompt];
+
+      if (request.workingDir) {
+        args.push("--cwd", request.workingDir);
+      }
+
+      const proc = spawn("npx", args, {
+        shell: true,
+        cwd: request.workingDir || process.cwd(),
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      proc.stdout?.on("data", (data) => {
+        const text = data.toString();
+        stdout += text;
+        // Stream chunks to renderer
+        event.sender.send("gemini-cli:chunk", { text });
+      });
+
+      proc.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on("close", (code) => {
+        if (code === 0) {
+          event.sender.send("gemini-cli:complete");
+          resolve({ success: true, output: stdout });
+        } else {
+          event.sender.send("gemini-cli:error", { message: stderr });
+          resolve({ success: false, error: stderr });
+        }
+      });
+
+      proc.on("error", (err) => {
+        event.sender.send("gemini-cli:error", { message: err.message });
+        reject(err);
+      });
+    });
+  });
+
+  // Check if Gemini CLI is installed and authenticated
+  ipcMain.handle("gemini-cli:check", async () => {
+    return new Promise((resolve) => {
+      const proc = spawn("npx", ["@google/gemini-cli", "--version"], {
+        shell: true,
+      });
+
+      proc.on("close", (code) => {
+        resolve({ installed: code === 0 });
+      });
+
+      proc.on("error", () => {
+        resolve({ installed: false });
+      });
+    });
+  });
+
+  // Install Gemini CLI if not present
+  ipcMain.handle("gemini-cli:install", async (event) => {
+    return new Promise((resolve) => {
+      const proc = spawn("npm", ["install", "-g", "@google/gemini-cli"], {
+        shell: true,
+      });
+
+      proc.stdout?.on("data", (data) => {
+        event.sender.send("gemini-cli:install-progress", { text: data.toString() });
+      });
+
+      proc.on("close", (code) => {
+        resolve({ success: code === 0 });
+      });
+    });
+  });
+
+  console.log("[Gemini CLI] Handler registered");
+}
+```
+
+#### Option B: Embedded Terminal (PTY)
+
+For a full terminal experience, use node-pty to create a pseudo-terminal:
+
+```typescript
+// electron/gemini-pty-handler.ts
+import { ipcMain, BrowserWindow } from "electron";
+import * as pty from "node-pty";
+
+let ptyProcess: pty.IPty | null = null;
+
+export function setupGeminiPTYIPC(mainWindow: BrowserWindow): void {
+  ipcMain.handle("gemini-pty:start", async (event, workingDir: string) => {
+    // Kill existing process if any
+    if (ptyProcess) {
+      ptyProcess.kill();
+    }
+
+    // Spawn Gemini CLI in interactive mode
+    ptyProcess = pty.spawn("npx", ["@google/gemini-cli"], {
+      name: "xterm-color",
+      cols: 80,
+      rows: 30,
+      cwd: workingDir || process.cwd(),
+      env: process.env as { [key: string]: string },
+    });
+
+    // Forward output to renderer
+    ptyProcess.onData((data) => {
+      event.sender.send("gemini-pty:data", data);
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      event.sender.send("gemini-pty:exit", { exitCode });
+      ptyProcess = null;
+    });
+
+    return { success: true };
+  });
+
+  // Send input to PTY
+  ipcMain.handle("gemini-pty:write", async (_, data: string) => {
+    if (ptyProcess) {
+      ptyProcess.write(data);
+      return { success: true };
+    }
+    return { success: false, error: "PTY not running" };
+  });
+
+  // Resize PTY
+  ipcMain.handle("gemini-pty:resize", async (_, cols: number, rows: number) => {
+    if (ptyProcess) {
+      ptyProcess.resize(cols, rows);
+      return { success: true };
+    }
+    return { success: false };
+  });
+
+  // Kill PTY
+  ipcMain.handle("gemini-pty:kill", async () => {
+    if (ptyProcess) {
+      ptyProcess.kill();
+      ptyProcess = null;
+    }
+    return { success: true };
+  });
+}
+```
+
+#### Frontend: xterm.js Integration
+
+```tsx
+// apps/web/src/components/editor/media-panel/views/gemini-cli-terminal.tsx
+"use client";
+
+import { useEffect, useRef } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
+
+export function GeminiCLITerminal() {
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+
+  useEffect(() => {
+    if (!terminalRef.current) return;
+
+    // Initialize xterm.js
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: "JetBrains Mono, monospace",
+      theme: {
+        background: "#1a1a1a",
+        foreground: "#ffffff",
+      },
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(terminalRef.current);
+    fitAddon.fit();
+
+    xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
+
+    // Start Gemini CLI PTY
+    window.electronAPI?.geminiPty?.start(process.cwd());
+
+    // Handle PTY data
+    window.electronAPI?.geminiPty?.onData((data: string) => {
+      term.write(data);
+    });
+
+    // Handle user input
+    term.onData((data) => {
+      window.electronAPI?.geminiPty?.write(data);
+    });
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver(() => {
+      fitAddon.fit();
+      window.electronAPI?.geminiPty?.resize(term.cols, term.rows);
+    });
+    resizeObserver.observe(terminalRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.electronAPI?.geminiPty?.kill();
+      term.dispose();
+    };
+  }, []);
+
+  return (
+    <div className="h-full w-full bg-[#1a1a1a] p-2">
+      <div ref={terminalRef} className="h-full w-full" />
+    </div>
+  );
+}
+```
+
+### Dependencies Required for CLI Integration
+
+```json
+{
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0"
+  }
+}
+```
+
+**Note**: `node-pty` requires native compilation. For Electron:
+```bash
+# Rebuild for Electron
+npx electron-rebuild -f -w node-pty
+```
+
+### Migration Path
+
+1. **Phase 1**: Keep current SDK implementation (already working)
+2. **Phase 2**: Add CLI check on startup - detect if Gemini CLI is installed
+3. **Phase 3**: Add option in settings to switch between SDK and CLI modes
+4. **Phase 4**: Full PTY integration with xterm.js for interactive terminal
+
+### CLI Mode Advantages
+
+- **Agentic Capabilities**: Gemini CLI can read/write files, run commands
+- **Project Context**: Understands GEMINI.md, codebase structure
+- **Tool Use**: Built-in tools for search, edit, etc.
+- **Streaming**: Native streaming output
+- **OAuth**: No API key management needed
+
+### CLI Mode Limitations
+
+- **Dependency**: Requires user to have npm/npx available
+- **First Run**: OAuth flow requires browser interaction
+- **Media Analysis**: May need custom handling for video/image attachments
+- **Complexity**: PTY handling adds complexity vs direct API calls
+
+### Recommended Approach
+
+**Hybrid Mode**:
+1. Use SDK (`@google/generative-ai`) for media analysis (current implementation)
+2. Offer optional CLI mode (`@google/gemini-cli`) for users who want the full terminal experience
+
+This gives users flexibility:
+- Quick analysis → SDK mode (API key required)
+- Full coding assistant → CLI mode (OAuth, no API key)
+
+---
+
 ## Related Documentation
 
 - [Gemini API Documentation](https://ai.google.dev/gemini-api/docs)
 - [Gemini 2.0 Flash Capabilities](https://ai.google.dev/gemini-api/docs/models/gemini-v2)
+- [Gemini CLI GitHub](https://github.com/google-gemini/gemini-cli)
+- [xterm.js Documentation](https://xtermjs.org/)
+- [node-pty Documentation](https://github.com/microsoft/node-pty)
 - [QCut CLAUDE.md](../../../CLAUDE.md) - Project conventions and accessibility rules
