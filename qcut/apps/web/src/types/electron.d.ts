@@ -351,6 +351,50 @@ export interface ElectronAPI {
       error?: string;
     }>;
   };
+
+  /**
+   * Gemini Chat operations
+   * Enables conversational AI interactions with media context
+   */
+  geminiChat?: {
+    /**
+     * Send a chat message to Gemini with optional attachments
+     * @param request - Chat request with messages and optional media attachments
+     * @returns Promise resolving to success status
+     */
+    send: (request: {
+      messages: Array<{
+        role: "user" | "assistant";
+        content: string;
+      }>;
+      attachments?: Array<{
+        path: string;
+        mimeType: string;
+        name: string;
+      }>;
+      model?: string;
+    }) => Promise<{ success: boolean; error?: string }>;
+
+    /**
+     * Register callback for streaming text chunks
+     */
+    onStreamChunk: (callback: (data: { text: string }) => void) => void;
+
+    /**
+     * Register callback for stream completion
+     */
+    onStreamComplete: (callback: () => void) => void;
+
+    /**
+     * Register callback for stream errors
+     */
+    onStreamError: (callback: (data: { message: string }) => void) => void;
+
+    /**
+     * Remove all stream listeners (call on cleanup)
+     */
+    removeListeners: () => void;
+  };
 }
 
 declare global {

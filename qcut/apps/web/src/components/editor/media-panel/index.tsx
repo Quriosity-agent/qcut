@@ -16,6 +16,7 @@ import DrawView from "./views/draw";
 import VideoEditView from "./views/video-edit";
 import { SegmentationPanel } from "@/components/editor/segmentation";
 import { RemotionView } from "./views/remotion";
+import { GeminiTerminalView } from "./views/gemini-terminal";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -65,6 +66,7 @@ export function MediaPanel() {
     draw: <DrawView />,
     segmentation: <SegmentationPanel />,
     remotion: <RemotionView />,
+    gemini: <GeminiTerminalView />,
   };
 
   return (

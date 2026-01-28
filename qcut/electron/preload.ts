@@ -310,6 +310,19 @@ interface ElectronAPI {
     ) => Promise<FalUploadResult>;
   };
 
+  // Gemini Chat operations
+  geminiChat: {
+    send: (request: {
+      messages: Array<{ role: "user" | "assistant"; content: string }>;
+      attachments?: Array<{ path: string; mimeType: string; name: string }>;
+      model?: string;
+    }) => Promise<{ success: boolean; error?: string }>;
+    onStreamChunk: (callback: (data: { text: string }) => void) => void;
+    onStreamComplete: (callback: () => void) => void;
+    onStreamError: (callback: (data: { message: string }) => void) => void;
+    removeListeners: () => void;
+  };
+
   // Utility functions
   isElectron: boolean;
 }
@@ -519,6 +532,30 @@ const electronAPI: ElectronAPI = {
       apiKey: string
     ): Promise<FalUploadResult> =>
       ipcRenderer.invoke("fal:upload-audio", audioData, filename, apiKey),
+  },
+
+  // Gemini Chat operations
+  geminiChat: {
+    send: (request: {
+      messages: Array<{ role: "user" | "assistant"; content: string }>;
+      attachments?: Array<{ path: string; mimeType: string; name: string }>;
+      model?: string;
+    }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke("gemini:chat", request),
+    onStreamChunk: (callback: (data: { text: string }) => void): void => {
+      ipcRenderer.on("gemini:stream-chunk", (_, data) => callback(data));
+    },
+    onStreamComplete: (callback: () => void): void => {
+      ipcRenderer.on("gemini:stream-complete", () => callback());
+    },
+    onStreamError: (callback: (data: { message: string }) => void): void => {
+      ipcRenderer.on("gemini:stream-error", (_, data) => callback(data));
+    },
+    removeListeners: (): void => {
+      ipcRenderer.removeAllListeners("gemini:stream-chunk");
+      ipcRenderer.removeAllListeners("gemini:stream-complete");
+      ipcRenderer.removeAllListeners("gemini:stream-error");
+    },
   },
 
   // Utility functions
