@@ -101,6 +101,7 @@
       "apps/web/dist/**/*",
       "node_modules/electron-updater/**/*",
       "node_modules/@google/generative-ai/**/*",
+      "node_modules/node-pty/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -139,6 +140,10 @@
       {
         "from": "node_modules/@google/generative-ai",
         "to": "node_modules/@google/generative-ai"
+      },
+      {
+        "from": "node_modules/node-pty",
+        "to": "node_modules/node-pty"
       }
     ],
     "asar": true,
@@ -148,6 +153,7 @@
       "**/node_modules/electron-updater/**/*",
       "**/node_modules/electron-log/**/*",
       "**/node_modules/@google/generative-ai/**/*",
+      "**/node_modules/node-pty/**/*",
       "**/electron/resources/**/*"
     ],
     "win": {
@@ -240,6 +246,7 @@
     "electron-updater": "^6.6.2",
     "jszip": "^3.10.1",
     "next": "^15.5.2",
+    "node-pty": "^1.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "wavesurfer.js": "^7.10.1"

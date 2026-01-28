@@ -395,6 +395,80 @@ export interface ElectronAPI {
      */
     removeListeners: () => void;
   };
+
+  /**
+   * PTY Terminal operations
+   * Enables full terminal emulation via node-pty
+   */
+  pty?: {
+    /**
+     * Spawn a new PTY session
+     * @param options - Optional spawn configuration
+     * @returns Promise resolving to session ID or error
+     */
+    spawn: (options?: {
+      cols?: number;
+      rows?: number;
+      cwd?: string;
+      command?: string; // e.g., "npx @google/gemini-cli"
+    }) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+
+    /**
+     * Write data to PTY (keyboard input)
+     * @param sessionId - Session to write to
+     * @param data - Data to write (keystrokes)
+     */
+    write: (
+      sessionId: string,
+      data: string
+    ) => Promise<{ success: boolean; error?: string }>;
+
+    /**
+     * Resize PTY dimensions
+     * @param sessionId - Session to resize
+     * @param cols - Number of columns
+     * @param rows - Number of rows
+     */
+    resize: (
+      sessionId: string,
+      cols: number,
+      rows: number
+    ) => Promise<{ success: boolean; error?: string }>;
+
+    /**
+     * Kill a PTY session
+     * @param sessionId - Session to kill
+     */
+    kill: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+
+    /**
+     * Kill all PTY sessions (cleanup)
+     */
+    killAll: () => Promise<{ success: boolean }>;
+
+    /**
+     * Register callback for PTY output data
+     */
+    onData: (
+      callback: (data: { sessionId: string; data: string }) => void
+    ) => void;
+
+    /**
+     * Register callback for PTY exit
+     */
+    onExit: (
+      callback: (data: {
+        sessionId: string;
+        exitCode: number;
+        signal?: number;
+      }) => void
+    ) => void;
+
+    /**
+     * Remove all PTY event listeners
+     */
+    removeListeners: () => void;
+  };
 }
 
 declare global {

@@ -71,6 +71,7 @@ const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
 const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
+const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -367,6 +368,7 @@ app.whenReady().then(() => {
   setupApiKeyIPC(); // Add API key management support
   setupGeminiHandlers(); // Add Gemini transcription support
   setupGeminiChatIPC(); // Add Gemini chat support
+  setupPtyIPC(); // Add PTY terminal support
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
   // Note: font-resolver removed - handler not implemented
 
@@ -1265,6 +1267,9 @@ app.on("window-all-closed", () => {
     // Clean up video temp files
     const { cleanupAllVideoFiles } = require("./video-temp-handler.js");
     cleanupAllVideoFiles();
+
+    // Clean up PTY sessions
+    cleanupPtySessions();
 
     // Close the static server when quitting
     if (staticServer) {

@@ -323,6 +323,38 @@ interface ElectronAPI {
     removeListeners: () => void;
   };
 
+  // PTY Terminal operations
+  pty: {
+    spawn: (options?: {
+      cols?: number;
+      rows?: number;
+      cwd?: string;
+      command?: string;
+    }) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
+    write: (
+      sessionId: string,
+      data: string
+    ) => Promise<{ success: boolean; error?: string }>;
+    resize: (
+      sessionId: string,
+      cols: number,
+      rows: number
+    ) => Promise<{ success: boolean; error?: string }>;
+    kill: (sessionId: string) => Promise<{ success: boolean; error?: string }>;
+    killAll: () => Promise<{ success: boolean }>;
+    onData: (
+      callback: (data: { sessionId: string; data: string }) => void
+    ) => void;
+    onExit: (
+      callback: (data: {
+        sessionId: string;
+        exitCode: number;
+        signal?: number;
+      }) => void
+    ) => void;
+    removeListeners: () => void;
+  };
+
   // Utility functions
   isElectron: boolean;
 }
@@ -555,6 +587,50 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeAllListeners("gemini:stream-chunk");
       ipcRenderer.removeAllListeners("gemini:stream-complete");
       ipcRenderer.removeAllListeners("gemini:stream-error");
+    },
+  },
+
+  // PTY Terminal operations
+  pty: {
+    spawn: (options?: {
+      cols?: number;
+      rows?: number;
+      cwd?: string;
+      command?: string;
+    }): Promise<{ success: boolean; sessionId?: string; error?: string }> =>
+      ipcRenderer.invoke("pty:spawn", options),
+    write: (
+      sessionId: string,
+      data: string
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke("pty:write", sessionId, data),
+    resize: (
+      sessionId: string,
+      cols: number,
+      rows: number
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke("pty:resize", sessionId, cols, rows),
+    kill: (sessionId: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke("pty:kill", sessionId),
+    killAll: (): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke("pty:kill-all"),
+    onData: (
+      callback: (data: { sessionId: string; data: string }) => void
+    ): void => {
+      ipcRenderer.on("pty:data", (_, data) => callback(data));
+    },
+    onExit: (
+      callback: (data: {
+        sessionId: string;
+        exitCode: number;
+        signal?: number;
+      }) => void
+    ): void => {
+      ipcRenderer.on("pty:exit", (_, data) => callback(data));
+    },
+    removeListeners: (): void => {
+      ipcRenderer.removeAllListeners("pty:data");
+      ipcRenderer.removeAllListeners("pty:exit");
     },
   },
 
