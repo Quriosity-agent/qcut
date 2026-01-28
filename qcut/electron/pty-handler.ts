@@ -166,11 +166,13 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] Session ${sessionId} started successfully`);
         console.log(`[PTY] Active sessions: ${sessions.size}`);
         return { success: true, sessionId };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "PTY spawn failed";
+        const stack = error instanceof Error ? error.stack : undefined;
         console.error("[PTY] ===== SPAWN ERROR =====");
-        console.error("[PTY] Error message:", error.message);
-        console.error("[PTY] Error stack:", error.stack);
-        return { success: false, error: error.message };
+        console.error("[PTY] Error message:", message);
+        console.error("[PTY] Error stack:", stack);
+        return { success: false, error: message };
       }
     }
   );
@@ -187,9 +189,10 @@ export function setupPtyIPC(): void {
       try {
         session.process.write(data);
         return { success: true };
-      } catch (error: any) {
-        console.error(`[PTY] Write error for session ${sessionId}:`, error.message);
-        return { success: false, error: error.message };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "PTY write failed";
+        console.error(`[PTY] Write error for session ${sessionId}:`, message);
+        return { success: false, error: message };
       }
     }
   );
@@ -212,9 +215,10 @@ export function setupPtyIPC(): void {
         session.process.resize(cols, rows);
         console.log(`[PTY] Session ${sessionId} resized to ${cols}x${rows}`);
         return { success: true };
-      } catch (error: any) {
-        console.error(`[PTY] Resize error for session ${sessionId}:`, error.message);
-        return { success: false, error: error.message };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "PTY resize failed";
+        console.error(`[PTY] Resize error for session ${sessionId}:`, message);
+        return { success: false, error: message };
       }
     }
   );
@@ -233,9 +237,10 @@ export function setupPtyIPC(): void {
         sessions.delete(sessionId);
         console.log(`[PTY] Session ${sessionId} killed`);
         return { success: true };
-      } catch (error: any) {
-        console.error(`[PTY] Kill error for session ${sessionId}:`, error.message);
-        return { success: false, error: error.message };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "PTY kill failed";
+        console.error(`[PTY] Kill error for session ${sessionId}:`, message);
+        return { success: false, error: message };
       }
     }
   );

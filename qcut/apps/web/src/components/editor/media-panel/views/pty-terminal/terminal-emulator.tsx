@@ -144,7 +144,9 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
           try {
             fitAddon.fit();
             setDimensions(terminal.cols, terminal.rows);
-            resize();
+            void resize().catch(() => {
+              // Ignore resize errors (e.g., during unmount or when PTY unavailable)
+            });
           } catch {
             // Ignore resize errors during unmount
           }
