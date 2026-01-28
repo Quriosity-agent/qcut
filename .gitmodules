@@ -1,0 +1,3 @@
+[submodule "qcut/external/remotion"]
+	path = qcut/external/remotion
+	url = https://github.com/remotion-dev/remotion.git
