@@ -11,6 +11,8 @@ import { MessageItem } from "./gemini-terminal/message-item";
 import { AttachmentPreview } from "./gemini-terminal/attachment-preview";
 import { cn } from "@/lib/utils";
 import { generateUUID } from "@/lib/utils";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { toast } from "sonner";
 import type { AttachedFile } from "@/stores/gemini-terminal-store";
 
 export function GeminiTerminalView() {
@@ -101,10 +103,19 @@ export function GeminiTerminalView() {
           const { id } = JSON.parse(mediaData);
           const item = mediaStore?.mediaItems.find((m) => m.id === id);
           if (item) {
+            const filePath = item.localPath || item.url;
+
+            if (!filePath || filePath.startsWith("blob:")) {
+              toast.error(
+                "This media item doesn't have a local file path for Gemini analysis."
+              );
+              return;
+            }
+
             const attachment: AttachedFile = {
               id: generateUUID(),
               mediaId: item.id,
-              path: (item.file as any)?.path || item.url || "",
+              path: filePath,
               name: item.name,
               type: item.type as "image" | "video" | "audio",
               thumbnailUrl: item.thumbnailUrl,
@@ -113,7 +124,11 @@ export function GeminiTerminalView() {
             addAttachment(attachment);
           }
         } catch (err) {
-          console.error("Failed to parse media drag data:", err);
+          handleError(err, {
+            operation: "Parse media drag data",
+            category: ErrorCategory.VALIDATION,
+            severity: ErrorSeverity.LOW,
+          });
         }
       }
     },

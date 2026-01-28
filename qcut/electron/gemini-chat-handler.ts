@@ -4,8 +4,16 @@ import path from "node:path";
 import fsSync from "node:fs";
 import { safeStorage } from "electron";
 
+// Import types from @google/generative-ai for type safety
+import type {
+  GoogleGenerativeAI as GoogleGenerativeAIType,
+  Content,
+  Part,
+} from "@google/generative-ai";
+
 // Dynamic import for @google/generative-ai to support packaged app
-let GoogleGenerativeAI: any;
+// Using typeof to preserve type information while allowing dynamic loading
+let GoogleGenerativeAI: typeof GoogleGenerativeAIType;
 try {
   // Try standard import first (development)
   GoogleGenerativeAI = require("@google/generative-ai").GoogleGenerativeAI;
@@ -47,14 +55,6 @@ interface FileAttachment {
   name: string; // Display name
 }
 
-interface GeminiPart {
-  text?: string;
-  inlineData?: {
-    mimeType: string;
-    data: string;
-  };
-}
-
 // ============================================================================
 // API Key Retrieval (reuses pattern from gemini-transcribe-handler.ts)
 // ============================================================================
@@ -68,24 +68,29 @@ async function getGeminiApiKey(): Promise<string> {
   const fileExists = fsSync.existsSync(apiKeysFilePath);
 
   if (fileExists) {
-    const fileContent = fsSync.readFileSync(apiKeysFilePath, "utf8");
-    const encryptedData = JSON.parse(fileContent);
+    try {
+      const fileContent = fsSync.readFileSync(apiKeysFilePath, "utf8");
+      const encryptedData = JSON.parse(fileContent);
 
-    if (encryptedData.geminiApiKey) {
-      const encryptionAvailable = safeStorage.isEncryptionAvailable();
+      if (encryptedData.geminiApiKey) {
+        const encryptionAvailable = safeStorage.isEncryptionAvailable();
 
-      if (encryptionAvailable) {
-        try {
-          geminiApiKey = safeStorage.decryptString(
-            Buffer.from(encryptedData.geminiApiKey, "base64")
-          );
-        } catch {
-          // Fallback to plain text if decryption fails
+        if (encryptionAvailable) {
+          try {
+            geminiApiKey = safeStorage.decryptString(
+              Buffer.from(encryptedData.geminiApiKey, "base64")
+            );
+          } catch {
+            // Fallback to plain text if decryption fails
+            geminiApiKey = encryptedData.geminiApiKey || "";
+          }
+        } else {
           geminiApiKey = encryptedData.geminiApiKey || "";
         }
-      } else {
-        geminiApiKey = encryptedData.geminiApiKey || "";
       }
+    } catch (error) {
+      // Ignore corrupt/unreadable file; will fallback to environment variable below
+      console.warn("[Gemini Chat] Failed to read API keys file:", error);
     }
   }
 
@@ -107,13 +112,80 @@ async function getGeminiApiKey(): Promise<string> {
 }
 
 // ============================================================================
+// Path Validation (Security)
+// ============================================================================
+
+/**
+ * Validates that a file path is safe to read.
+ * Prevents path traversal attacks by ensuring paths are:
+ * 1. Absolute paths
+ * 2. Within allowed directories (user home, app data, temp)
+ * 3. Not containing suspicious patterns
+ */
+function isPathSafe(filePath: string): boolean {
+  // Normalize the path to resolve any .. or . segments
+  const normalizedPath = path.normalize(filePath);
+
+  // Must be an absolute path
+  if (!path.isAbsolute(normalizedPath)) {
+    console.warn("[Gemini Chat] Rejected relative path:", filePath);
+    return false;
+  }
+
+  // Check for suspicious patterns
+  if (
+    normalizedPath.includes("..") ||
+    normalizedPath.includes("\0") ||
+    normalizedPath.includes("%00")
+  ) {
+    console.warn("[Gemini Chat] Rejected path with suspicious patterns:", filePath);
+    return false;
+  }
+
+  // Define allowed base directories
+  const allowedDirs = [
+    app.getPath("home"),
+    app.getPath("userData"),
+    app.getPath("temp"),
+    app.getPath("documents"),
+    app.getPath("downloads"),
+    app.getPath("pictures"),
+    app.getPath("videos"),
+    app.getPath("music"),
+    app.getPath("desktop"),
+  ];
+
+  // Check if path is within an allowed directory
+  const isAllowed = allowedDirs.some((allowedDir) => {
+    const normalizedAllowed = path.normalize(allowedDir);
+    return normalizedPath.startsWith(normalizedAllowed + path.sep) ||
+           normalizedPath === normalizedAllowed;
+  });
+
+  if (!isAllowed) {
+    console.warn(
+      "[Gemini Chat] Rejected path outside allowed directories:",
+      filePath
+    );
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================================
 // Attachment Encoding
 // ============================================================================
 
 async function encodeAttachment(
   attachment: FileAttachment
-): Promise<GeminiPart[]> {
+): Promise<Part[]> {
   try {
+    // Validate path before reading
+    if (!isPathSafe(attachment.path)) {
+      throw new Error(`Access denied: ${attachment.path} is not in an allowed directory`);
+    }
+
     const buffer = await fs.readFile(attachment.path);
 
     if (attachment.mimeType.startsWith("image/")) {
@@ -161,10 +233,11 @@ async function encodeAttachment(
         text: `[Attached file: ${attachment.name} (${attachment.mimeType})]`,
       },
     ];
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(
       `[Gemini Chat] Failed to encode attachment ${attachment.name}:`,
-      error.message
+      errorMessage
     );
     return [
       {
@@ -176,11 +249,11 @@ async function encodeAttachment(
 
 async function formatRequestContents(
   request: GeminiChatRequest
-): Promise<any[]> {
-  const contents: any[] = [];
+): Promise<Content[]> {
+  const contents: Content[] = [];
 
   for (const message of request.messages) {
-    const parts: GeminiPart[] = [{ text: message.content }];
+    const parts: Part[] = [{ text: message.content }];
     contents.push({
       role: message.role === "user" ? "user" : "model",
       parts,
@@ -248,7 +321,7 @@ export function setupGeminiChatIPC(): void {
         console.log("[Gemini Chat] Formatted contents, starting stream...");
 
         // Stream the response
-        const result = await model.generateContentStream(contents);
+        const result = await model.generateContentStream({ contents });
 
         for await (const chunk of result.stream) {
           const text = chunk.text();
@@ -260,10 +333,11 @@ export function setupGeminiChatIPC(): void {
         event.sender.send("gemini:stream-complete");
         console.log("[Gemini Chat] Stream completed successfully");
         return { success: true };
-      } catch (error: any) {
-        console.error("[Gemini Chat] Error:", error.message);
-        event.sender.send("gemini:stream-error", { message: error.message });
-        return { success: false, error: error.message };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[Gemini Chat] Error:", errorMessage);
+        event.sender.send("gemini:stream-error", { message: errorMessage });
+        return { success: false, error: errorMessage };
       }
     }
   );

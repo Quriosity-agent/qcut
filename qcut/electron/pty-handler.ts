@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { platform } from "os";
+import { platform } from "node:os";
 
 // Dynamic import for node-pty to support packaged app
 let pty: typeof import("node-pty");
