@@ -132,11 +132,14 @@ function isPathSafe(filePath: string): boolean {
     return false;
   }
 
-  // Check for suspicious patterns
+  // Check for suspicious patterns (null bytes, URL-encoded null)
+  // Note: We check segments for ".." instead of string includes to avoid
+  // false positives on valid paths like "my..cache" or "foo..bar.txt"
+  const segments = filePath.split(path.sep);
   if (
-    normalizedPath.includes("..") ||
-    normalizedPath.includes("\0") ||
-    normalizedPath.includes("%00")
+    segments.includes("..") ||
+    filePath.includes("\0") ||
+    filePath.includes("%00")
   ) {
     console.warn("[Gemini Chat] Rejected path with suspicious patterns:", filePath);
     return false;

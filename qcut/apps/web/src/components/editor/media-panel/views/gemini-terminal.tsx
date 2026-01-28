@@ -70,16 +70,14 @@ export function GeminiTerminalView() {
     [handleSubmit]
   );
 
-  // Drag and drop handlers for media items
+  // Drag and drop handlers for media items from the media panel
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     dragCounterRef.current += 1;
 
-    // Check for internal media item drag or external files
-    if (
-      e.dataTransfer.types.includes("application/x-media-item") ||
-      e.dataTransfer.types.includes("Files")
-    ) {
+    // Only show drop zone for internal media items (not external files)
+    // External file drops are not currently supported
+    if (e.dataTransfer.types.includes("application/x-media-item")) {
       setIsDragOver(true);
     }
   }, []);
