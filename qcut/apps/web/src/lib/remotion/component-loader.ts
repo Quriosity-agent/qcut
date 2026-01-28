@@ -306,8 +306,8 @@ export async function loadComponentFromCode(
       };
 
       await storeComponent(storedComponent);
-    } catch (error) {
-      console.warn("Failed to store component in IndexedDB:", error);
+    } catch {
+      // Storage failure is non-blocking; component still loaded successfully
     }
   }
 

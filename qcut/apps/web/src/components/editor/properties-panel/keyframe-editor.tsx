@@ -255,6 +255,7 @@ function KeyframeEditPanel({
       </div>
 
       <Button
+        type="button"
         variant="destructive"
         size="sm"
         className="w-full h-7 text-xs"
