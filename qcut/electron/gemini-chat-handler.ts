@@ -9,13 +9,21 @@ let GoogleGenerativeAI: any;
 try {
   // Try standard import first (development)
   GoogleGenerativeAI = require("@google/generative-ai").GoogleGenerativeAI;
-} catch {
+  console.log("[Gemini Chat] Loaded SDK from standard path");
+} catch (error) {
+  console.warn("[Gemini Chat] Failed to load SDK from standard path:", error);
   // In packaged app, load from extraResources
   const modulePath = path.join(
     process.resourcesPath,
     "node_modules/@google/generative-ai/dist/index.js"
   );
-  GoogleGenerativeAI = require(modulePath).GoogleGenerativeAI;
+  try {
+    GoogleGenerativeAI = require(modulePath).GoogleGenerativeAI;
+    console.log("[Gemini Chat] Loaded SDK from production path:", modulePath);
+  } catch (prodError) {
+    console.error("[Gemini Chat] Failed to load SDK from production path:", prodError);
+    throw new Error("Failed to load @google/generative-ai SDK");
+  }
 }
 
 // ============================================================================

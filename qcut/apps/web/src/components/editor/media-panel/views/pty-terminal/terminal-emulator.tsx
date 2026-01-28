@@ -23,6 +23,7 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
   const handleData = useCallback(
     (data: { sessionId: string; data: string }) => {
       if (data.sessionId === sessionId && terminalRef.current) {
+        console.log("[Terminal] Received data for session:", data.sessionId, "length:", data.data.length);
         terminalRef.current.write(data.data);
       }
     },
@@ -32,6 +33,10 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
   // Handle terminal exit
   const handleExit = useCallback(
     (data: { sessionId: string; exitCode: number }) => {
+      console.log("[Terminal] ===== EXIT EVENT =====");
+      console.log("[Terminal] Session:", data.sessionId);
+      console.log("[Terminal] Exit code:", data.exitCode);
+      console.log("[Terminal] Current sessionId:", sessionId);
       if (data.sessionId === sessionId) {
         if (terminalRef.current) {
           terminalRef.current.write(

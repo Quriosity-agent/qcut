@@ -71,28 +71,41 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   connect: async (options = {}) => {
     const { isGeminiMode, workingDirectory, cols, rows } = get();
 
+    console.log("[PTY Store] ===== CONNECT =====");
+    console.log("[PTY Store] isGeminiMode:", isGeminiMode);
+    console.log("[PTY Store] workingDirectory:", workingDirectory);
+    console.log("[PTY Store] cols:", cols, "rows:", rows);
+
     set({ status: "connecting", error: null, exitCode: null });
 
     try {
       // Determine command based on mode
-      const command = isGeminiMode ? "npx @google/gemini-cli" : undefined;
+      const command = isGeminiMode ? "npx @google/gemini-cli@latest" : undefined;
+      console.log("[PTY Store] Command to spawn:", command || "(default shell)");
 
-      const result = await window.electronAPI?.pty?.spawn({
+      const spawnOptions = {
         cols,
         rows,
         cwd: options.cwd || workingDirectory || undefined,
         command: options.command || command,
-      });
+      };
+      console.log("[PTY Store] Spawn options:", JSON.stringify(spawnOptions, null, 2));
+
+      const result = await window.electronAPI?.pty?.spawn(spawnOptions);
+      console.log("[PTY Store] Spawn result:", JSON.stringify(result, null, 2));
 
       if (result?.success && result.sessionId) {
+        console.log("[PTY Store] Connected with sessionId:", result.sessionId);
         set({ sessionId: result.sessionId, status: "connected" });
       } else {
+        console.error("[PTY Store] Spawn failed:", result?.error);
         set({
           status: "error",
           error: result?.error || "Failed to spawn PTY session",
         });
       }
     } catch (error: any) {
+      console.error("[PTY Store] Exception:", error.message);
       set({ status: "error", error: error.message });
     }
   },

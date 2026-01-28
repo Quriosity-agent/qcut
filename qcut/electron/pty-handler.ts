@@ -5,14 +5,22 @@ import { platform } from "os";
 let pty: typeof import("node-pty");
 try {
   pty = require("node-pty");
-} catch {
+  console.log("[PTY] Loaded node-pty from standard path");
+} catch (error) {
+  console.warn("[PTY] Failed to load node-pty from standard path:", error);
   // In packaged app, load from extraResources
   const path = require("path");
   const modulePath = path.join(
     process.resourcesPath,
     "node_modules/node-pty"
   );
-  pty = require(modulePath);
+  try {
+    pty = require(modulePath);
+    console.log("[PTY] Loaded node-pty from production path:", modulePath);
+  } catch (prodError) {
+    console.error("[PTY] Failed to load node-pty from production path:", prodError);
+    throw new Error("Failed to load node-pty module");
+  }
 }
 
 // ============================================================================
@@ -72,10 +80,17 @@ function getShellArgs(): string[] {
 // ============================================================================
 
 export function setupPtyIPC(): void {
+  console.log("[PTY] Setting up PTY IPC handlers...");
+  console.log("[PTY] Platform:", platform());
+  console.log("[PTY] node-pty loaded:", pty ? "YES" : "NO");
+
   // Spawn a new PTY session
   ipcMain.handle(
     "pty:spawn",
     async (event, options: SpawnOptions = {}): Promise<SpawnResult> => {
+      console.log("[PTY] ===== SPAWN REQUEST =====");
+      console.log("[PTY] Options received:", JSON.stringify(options, null, 2));
+
       try {
         const sessionId = generateSessionId();
 
@@ -85,6 +100,7 @@ export function setupPtyIPC(): void {
 
         if (options.command) {
           // Custom command (e.g., "npx @google/gemini-cli")
+          console.log("[PTY] Custom command mode:", options.command);
           if (platform() === "win32") {
             shell = process.env.COMSPEC || "cmd.exe";
             args = ["/c", options.command];
@@ -94,14 +110,18 @@ export function setupPtyIPC(): void {
           }
         } else {
           // Default shell
+          console.log("[PTY] Default shell mode");
           shell = getShell();
           args = getShellArgs();
         }
 
         console.log(`[PTY] Spawning session ${sessionId}`);
-        console.log(`[PTY] Shell: ${shell}, Args: ${args.join(" ")}`);
+        console.log(`[PTY] Shell: ${shell}`);
+        console.log(`[PTY] Args: ${JSON.stringify(args)}`);
         console.log(`[PTY] CWD: ${options.cwd || process.cwd()}`);
         console.log(`[PTY] Dimensions: ${options.cols || 80}x${options.rows || 24}`);
+        console.log(`[PTY] COMSPEC env: ${process.env.COMSPEC}`);
+        console.log(`[PTY] SHELL env: ${process.env.SHELL}`);
 
         const ptyProcess = pty.spawn(shell, args, {
           name: "xterm-256color",
@@ -119,8 +139,13 @@ export function setupPtyIPC(): void {
 
         sessions.set(sessionId, session);
 
+        console.log(`[PTY] About to call pty.spawn()...`);
+
         // Forward PTY output to renderer
         ptyProcess.onData((data: string) => {
+          // Log first 100 chars of data for debugging
+          const preview = data.length > 100 ? data.substring(0, 100) + "..." : data;
+          console.log(`[PTY] Data from ${sessionId}:`, preview.replace(/\r?\n/g, "\\n"));
           if (!event.sender.isDestroyed()) {
             event.sender.send("pty:data", { sessionId, data });
           }
@@ -128,9 +153,10 @@ export function setupPtyIPC(): void {
 
         // Handle PTY exit
         ptyProcess.onExit(({ exitCode, signal }) => {
-          console.log(
-            `[PTY] Session ${sessionId} exited with code ${exitCode}, signal ${signal}`
-          );
+          console.log(`[PTY] ===== SESSION EXIT =====`);
+          console.log(`[PTY] Session: ${sessionId}`);
+          console.log(`[PTY] Exit code: ${exitCode}`);
+          console.log(`[PTY] Signal: ${signal}`);
           if (!event.sender.isDestroyed()) {
             event.sender.send("pty:exit", { sessionId, exitCode, signal });
           }
@@ -138,9 +164,12 @@ export function setupPtyIPC(): void {
         });
 
         console.log(`[PTY] Session ${sessionId} started successfully`);
+        console.log(`[PTY] Active sessions: ${sessions.size}`);
         return { success: true, sessionId };
       } catch (error: any) {
-        console.error("[PTY] Spawn error:", error.message);
+        console.error("[PTY] ===== SPAWN ERROR =====");
+        console.error("[PTY] Error message:", error.message);
+        console.error("[PTY] Error stack:", error.stack);
         return { success: false, error: error.message };
       }
     }
