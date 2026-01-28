@@ -428,6 +428,20 @@ export function KeyframeEditor({
               !disabled && "cursor-crosshair"
             )}
             onClick={handleTrackClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (!disabled) {
+                  const value = propType === "color"
+                    ? interpolateColor(keyframes, currentFrame)
+                    : interpolateNumber(keyframes, currentFrame);
+                  onKeyframeAdd(currentFrame, value);
+                }
+              }
+            }}
+            role="button"
+            tabIndex={disabled ? -1 : 0}
+            aria-label={`Keyframe track for ${propLabel}. Press Enter or Space to add keyframe at current frame.`}
           >
             {/* Playhead */}
             <div
@@ -453,6 +467,7 @@ export function KeyframeEditor({
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none"
                 preserveAspectRatio="none"
+                aria-hidden="true"
               >
                 <polyline
                   points={sortedKeyframes

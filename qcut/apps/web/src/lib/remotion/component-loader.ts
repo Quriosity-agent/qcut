@@ -262,7 +262,14 @@ export async function loadComponentFromCode(
   }
 
   // Extract metadata
-  const metadata = validation.metadata!;
+  const metadata = validation.metadata;
+  if (!metadata) {
+    return {
+      success: false,
+      error: "Validation passed but metadata is missing",
+      validation,
+    };
+  }
 
   // Generate component ID
   const componentId = opts.customId || generateComponentId(fileName);
