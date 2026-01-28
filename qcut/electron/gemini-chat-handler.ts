@@ -181,14 +181,14 @@ async function encodeAttachment(
   attachment: FileAttachment
 ): Promise<Part[]> {
   try {
-    // Validate path before reading
-    if (!isPathSafe(attachment.path)) {
-      throw new Error(`Access denied: ${attachment.path} is not in an allowed directory`);
+    // Resolve symlinks and validate the real path before reading
+    const realPath = await fs.realpath(attachment.path);
+    if (!isPathSafe(realPath)) {
+      throw new Error(`Access denied: ${realPath} is not in an allowed directory`);
     }
 
-    const buffer = await fs.readFile(attachment.path);
-
     if (attachment.mimeType.startsWith("image/")) {
+      const buffer = await fs.readFile(realPath);
       return [
         {
           inlineData: {
@@ -201,22 +201,29 @@ async function encodeAttachment(
 
     if (attachment.mimeType.startsWith("video/")) {
       // Gemini 2.0 Flash supports video natively
-      // For large videos, limit to first 10MB
+      // For large videos, limit to first 10MB - read only needed bytes to avoid memory spikes
       const maxSize = 10 * 1024 * 1024; // 10MB
-      const truncatedBuffer =
-        buffer.length > maxSize ? buffer.subarray(0, maxSize) : buffer;
-
-      return [
-        {
-          inlineData: {
-            mimeType: attachment.mimeType,
-            data: truncatedBuffer.toString("base64"),
+      const fileHandle = await fs.open(realPath, "r");
+      try {
+        const { size } = await fileHandle.stat();
+        const readSize = Math.min(size, maxSize);
+        const buffer = Buffer.alloc(readSize);
+        await fileHandle.read(buffer, 0, readSize, 0);
+        return [
+          {
+            inlineData: {
+              mimeType: attachment.mimeType,
+              data: buffer.toString("base64"),
+            },
           },
-        },
-      ];
+        ];
+      } finally {
+        await fileHandle.close();
+      }
     }
 
     if (attachment.mimeType.startsWith("audio/")) {
+      const buffer = await fs.readFile(realPath);
       return [
         {
           inlineData: {

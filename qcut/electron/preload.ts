@@ -620,6 +620,7 @@ const electronAPI: ElectronAPI = {
     onData: (
       callback: (data: { sessionId: string; data: string }) => void
     ): void => {
+      ipcRenderer.removeAllListeners("pty:data");
       ipcRenderer.on("pty:data", (_, data) => callback(data));
     },
     onExit: (
@@ -629,6 +630,7 @@ const electronAPI: ElectronAPI = {
         signal?: number;
       }) => void
     ): void => {
+      ipcRenderer.removeAllListeners("pty:exit");
       ipcRenderer.on("pty:exit", (_, data) => callback(data));
     },
     removeListeners: (): void => {

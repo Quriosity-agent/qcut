@@ -39,7 +39,14 @@ export function GeminiTerminalView() {
   // Auto-scroll on new messages
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // ScrollArea forwards ref to Root (overflow: hidden), not the Viewport
+      // Query for the actual scrollable element using Radix's data attribute
+      const viewport = scrollRef.current.querySelector(
+        "[data-radix-scroll-area-viewport]"
+      ) as HTMLElement | null;
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [messages, currentStreamingContent]);
 

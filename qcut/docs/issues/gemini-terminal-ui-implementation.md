@@ -18,7 +18,7 @@ Implement a terminal-like UI component within QCut's media panel that enables us
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Renderer Process                         │
 │  ┌─────────────────┐  ┌──────────────────────────────────┐  │

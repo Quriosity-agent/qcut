@@ -490,10 +490,9 @@ describe("useGeminiTerminalStore - API unavailable", () => {
   beforeEach(() => {
     cleanupElectron = setupElectronMock();
     // Remove Gemini API
-    window.electronAPI = {
-      ...window.electronAPI,
-      geminiChat: undefined as any,
-    };
+    if (window.electronAPI) {
+      window.electronAPI.geminiChat = undefined;
+    }
 
     // Reset store
     useGeminiTerminalStore.setState({

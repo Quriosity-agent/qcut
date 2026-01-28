@@ -24,6 +24,10 @@ export const mockElectronAPI: ElectronAPI = {
   }),
   readFile: vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
   writeFile: vi.fn().mockResolvedValue({ success: true }),
+  saveBlob: vi.fn().mockResolvedValue({
+    success: true,
+    filePath: "/path/to/saved/file.mp4",
+  }),
   getFileInfo: vi.fn().mockResolvedValue({
     size: 1024,
     created: new Date(),
@@ -41,8 +45,29 @@ export const mockElectronAPI: ElectronAPI = {
     clear: vi.fn().mockResolvedValue(undefined),
   },
 
+  // Audio operations
+  audio: {
+    saveTemp: vi.fn().mockResolvedValue("/tmp/audio-temp.mp3"),
+  },
+
   // Generic IPC invoke method
   invoke: vi.fn().mockResolvedValue(undefined),
+
+  // FAL AI operations
+  fal: {
+    uploadVideo: vi.fn().mockResolvedValue({
+      success: true,
+      url: "https://fal.ai/storage/video.mp4",
+    }),
+    uploadImage: vi.fn().mockResolvedValue({
+      success: true,
+      url: "https://fal.ai/storage/image.jpg",
+    }),
+    uploadAudio: vi.fn().mockResolvedValue({
+      success: true,
+      url: "https://fal.ai/storage/audio.mp3",
+    }),
+  },
 
   // FFmpeg operations
   ffmpeg: {
@@ -52,6 +77,10 @@ export const mockElectronAPI: ElectronAPI = {
       outputDir: "/tmp/output",
     }),
     saveFrame: vi.fn().mockResolvedValue("frame-001.png"),
+    saveStickerForExport: vi.fn().mockResolvedValue({
+      success: true,
+      path: "/tmp/sticker.png",
+    }),
     exportVideoCLI: vi.fn().mockResolvedValue({
       success: true,
       outputFile: "output.mp4",
@@ -59,6 +88,12 @@ export const mockElectronAPI: ElectronAPI = {
     readOutputFile: vi.fn().mockResolvedValue(Buffer.from([1, 2, 3])),
     cleanupExportSession: vi.fn().mockResolvedValue(undefined),
     validateFilterChain: vi.fn().mockResolvedValue(true),
+    processFrame: vi.fn().mockResolvedValue(undefined),
+    extractAudio: vi.fn().mockResolvedValue({
+      audioPath: "/tmp/audio.mp3",
+      fileSize: 1024,
+    }),
+    getPath: vi.fn().mockResolvedValue("/usr/bin/ffmpeg"),
   },
 
   // Sound search operations
@@ -75,10 +110,10 @@ export const mockElectronAPI: ElectronAPI = {
 
   // Transcription operations
   transcribe: {
-    audio: vi.fn().mockResolvedValue({
-      success: true,
+    transcribe: vi.fn().mockResolvedValue({
       text: "Test transcription",
       segments: [],
+      language: "en",
     }),
     cancel: vi.fn().mockResolvedValue({
       success: true,
@@ -91,6 +126,7 @@ export const mockElectronAPI: ElectronAPI = {
     get: vi.fn().mockResolvedValue({
       falApiKey: "",
       freesoundApiKey: "",
+      geminiApiKey: "",
     }),
     set: vi.fn().mockResolvedValue(true),
     clear: vi.fn().mockResolvedValue(true),

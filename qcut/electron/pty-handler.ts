@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, app } from "electron";
 import { platform } from "node:os";
 
 // Dynamic import for node-pty to support packaged app
@@ -83,6 +83,32 @@ export function setupPtyIPC(): void {
   console.log("[PTY] Setting up PTY IPC handlers...");
   console.log("[PTY] Platform:", platform());
   console.log("[PTY] node-pty loaded:", pty ? "YES" : "NO");
+
+  // Clean up PTY sessions when renderer crashes or is destroyed
+  app.on("web-contents-created", (_, contents) => {
+    contents.on("destroyed", () => {
+      const contentsId = contents.id;
+      const sessionsToKill = Array.from(sessions.values()).filter(
+        (s) => s.webContentsId === contentsId
+      );
+
+      if (sessionsToKill.length > 0) {
+        console.log(
+          `[PTY] Cleaning up ${sessionsToKill.length} sessions for destroyed webContents ${contentsId}`
+        );
+      }
+
+      for (const session of sessionsToKill) {
+        try {
+          session.process.kill();
+          sessions.delete(session.id);
+          console.log(`[PTY] Session ${session.id} killed (webContents destroyed)`);
+        } catch {
+          // Ignore errors during cleanup
+        }
+      }
+    });
+  });
 
   // Spawn a new PTY session
   ipcMain.handle(
