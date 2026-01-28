@@ -71,9 +71,14 @@ Before you begin, ensure you have the following installed on your system:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/donghaozhang/qcut.git
+   git clone --recursive https://github.com/donghaozhang/qcut.git
    cd qcut
    ```
+
+   > **Note:** The `--recursive` flag initializes submodules. If you already cloned without it, run:
+   > ```bash
+   > git submodule update --init --recursive
+   > ```
 
 2. **Install dependencies:**
    ```bash
