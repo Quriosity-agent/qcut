@@ -107,7 +107,9 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
     // Handle user input - send to PTY
     terminal.onData((data) => {
       if (sessionId) {
-        window.electronAPI?.pty?.write(sessionId, data);
+        void window.electronAPI?.pty?.write(sessionId, data).catch((error) => {
+          console.error("[Terminal] Failed to write to PTY:", error);
+        });
       }
     });
 

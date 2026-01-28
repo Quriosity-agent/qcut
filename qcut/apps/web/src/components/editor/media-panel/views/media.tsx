@@ -483,10 +483,19 @@ export function MediaView() {
                           const { addAttachment, setInputValue } =
                             useGeminiTerminalStore.getState();
 
+                          const filePath = item.localPath || item.url;
+
+                          if (!filePath || filePath.startsWith("blob:")) {
+                            toast.error(
+                              "This media item doesn't have a local file path for Gemini analysis. Try re-importing the file."
+                            );
+                            return;
+                          }
+
                           addAttachment({
                             id: generateUUID(),
                             mediaId: item.id,
-                            path: (item.file as any)?.path || item.url || "",
+                            path: filePath,
                             name: item.name,
                             type: item.type as "image" | "video" | "audio",
                             thumbnailUrl: item.thumbnailUrl,

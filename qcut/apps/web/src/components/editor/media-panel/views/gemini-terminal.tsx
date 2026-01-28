@@ -55,7 +55,7 @@ export function GeminiTerminalView() {
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       }
     },
     [handleSubmit]
