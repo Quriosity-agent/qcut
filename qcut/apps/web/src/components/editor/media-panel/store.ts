@@ -17,6 +17,8 @@ import {
   Wand2Icon,
   ScissorsIcon,
   Layers,
+  TerminalIcon,
+  SquareTerminalIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -37,7 +39,9 @@ export type Tab =
   | "sounds"
   | "draw"
   | "segmentation"
-  | "remotion";
+  | "remotion"
+  | "gemini"
+  | "pty";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -107,6 +111,14 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   remotion: {
     icon: Layers,
     label: "Remotion",
+  },
+  gemini: {
+    icon: TerminalIcon,
+    label: "Gemini",
+  },
+  pty: {
+    icon: SquareTerminalIcon,
+    label: "Terminal",
   },
 };
 

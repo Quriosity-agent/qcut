@@ -4,7 +4,7 @@ import { useDragDrop } from "@/hooks/use-drag-drop";
 // Media processing utilities will be imported dynamically when needed
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import type { MediaItem } from "@/stores/media-store-types";
-import { Image, Loader2, Music, Plus, Video, Edit, Layers } from "lucide-react";
+import { Image, Loader2, Music, Plus, Video, Edit, Layers, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { debugLog, debugError } from "@/lib/debug-config";
@@ -34,6 +34,8 @@ import { ExportAllButton } from "../export-all-button";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
+import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
+import { generateUUID } from "@/lib/utils";
 
 export function MediaView() {
   const {
@@ -470,6 +472,53 @@ export function MediaView() {
                           Image edit
                         </ContextMenuItem>
                       )}
+                      <ContextMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          // Switch to Gemini tab
+                          setActiveTab("gemini");
+
+                          // Add media as attachment
+                          const { addAttachment, setInputValue } =
+                            useGeminiTerminalStore.getState();
+
+                          const filePath = item.localPath || item.url;
+
+                          if (!filePath || filePath.startsWith("blob:")) {
+                            toast.error(
+                              "This media item doesn't have a local file path for Gemini analysis. Try re-importing the file."
+                            );
+                            return;
+                          }
+
+                          addAttachment({
+                            id: generateUUID(),
+                            mediaId: item.id,
+                            path: filePath,
+                            name: item.name,
+                            type: item.type as "image" | "video" | "audio",
+                            thumbnailUrl: item.thumbnailUrl,
+                            mimeType: item.file?.type || `${item.type}/*`,
+                          });
+
+                          // Pre-fill prompt based on media type
+                          const prompt =
+                            item.type === "video"
+                              ? "Describe what happens in this video:"
+                              : item.type === "audio"
+                                ? "Transcribe and summarize this audio:"
+                                : "Describe this image in detail:";
+                          setInputValue(prompt);
+
+                          toast.success(
+                            `"${item.name}" ready for Gemini analysis`
+                          );
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Analyze with Gemini
+                      </ContextMenuItem>
                       <ContextMenuItem
                         variant="destructive"
                         onClick={(e) => handleRemove(e, item.id)}
