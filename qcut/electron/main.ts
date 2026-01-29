@@ -440,6 +440,14 @@ app.whenReady().then(() => {
     }
   );
 
+  // Shell operations - show item in file explorer
+  ipcMain.handle(
+    "shell:showItemInFolder",
+    async (_event: IpcMainInvokeEvent, filePath: string): Promise<void> => {
+      shell.showItemInFolder(filePath);
+    }
+  );
+
   // Add IPC handler for GitHub API requests to bypass CORS
   ipcMain.handle("fetch-github-stars", async (): Promise<{ stars: number }> => {
     try {

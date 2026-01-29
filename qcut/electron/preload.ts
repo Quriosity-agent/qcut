@@ -299,6 +299,11 @@ interface ElectronAPI {
     clear: () => Promise<boolean>;
   };
 
+  // Shell operations
+  shell: {
+    showItemInFolder: (filePath: string) => Promise<void>;
+  };
+
   // GitHub operations
   github: {
     fetchStars: () => Promise<GitHubStarsResponse>;
@@ -566,6 +571,12 @@ const electronAPI: ElectronAPI = {
     set: (keys: ApiKeyConfig): Promise<boolean> =>
       ipcRenderer.invoke("api-keys:set", keys),
     clear: (): Promise<boolean> => ipcRenderer.invoke("api-keys:clear"),
+  },
+
+  // Shell operations
+  shell: {
+    showItemInFolder: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke("shell:showItemInFolder", filePath),
   },
 
   // GitHub operations

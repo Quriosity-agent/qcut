@@ -286,6 +286,11 @@ export interface ElectronAPI {
     clear: () => Promise<boolean>;
   };
 
+  // Shell operations
+  shell: {
+    showItemInFolder: (filePath: string) => Promise<void>;
+  };
+
   github: {
     fetchStars: () => Promise<{
       stars: number;

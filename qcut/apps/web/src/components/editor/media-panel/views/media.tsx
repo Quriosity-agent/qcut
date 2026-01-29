@@ -638,13 +638,8 @@ export function MediaView() {
                         <ContextMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (
-                              (window as any).electronAPI?.shell
-                                ?.showItemInFolder
-                            ) {
-                              (
-                                window as any
-                              ).electronAPI.shell.showItemInFolder(
+                            if (window.electronAPI?.shell?.showItemInFolder) {
+                              window.electronAPI.shell.showItemInFolder(
                                 item.localPath!
                               );
                             } else {

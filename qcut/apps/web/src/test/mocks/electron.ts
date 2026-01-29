@@ -132,6 +132,11 @@ export const mockElectronAPI: ElectronAPI = {
     clear: vi.fn().mockResolvedValue(true),
   },
 
+  // Shell operations
+  shell: {
+    showItemInFolder: vi.fn().mockResolvedValue(undefined),
+  },
+
   // GitHub operations
   github: {
     fetchStars: vi.fn().mockResolvedValue({
