@@ -1,5 +1,45 @@
 # AI Content Pipeline - Detailed Reference
 
+This file contains detailed specifications for models, API endpoints, and troubleshooting.
+
+## FAL API Endpoint Reference
+
+For direct API calls (not using the CLI), use these endpoint formats:
+
+| Model Key | FAL API Endpoint |
+|-----------|------------------|
+| `nano_banana_pro` | `https://fal.run/fal-ai/nano-banana-pro` |
+| `nano_banana_pro_edit` | `https://fal.run/fal-ai/nano-banana-pro/edit` |
+| `flux_dev` | `https://fal.run/fal-ai/flux/dev` |
+| `flux_schnell` | `https://fal.run/fal-ai/flux/schnell` |
+| `flux_kontext` | `https://fal.run/fal-ai/flux-pro/kontext` |
+| `gpt_image_1_5` | `https://fal.run/fal-ai/gpt-image-1/5` |
+| `veo3` | `https://fal.run/fal-ai/veo3` |
+| `sora_2` | `https://fal.run/fal-ai/sora/v2` |
+| `kling_2_6_pro` | `https://fal.run/fal-ai/kling-video/v2.6/pro/image-to-video` |
+| `hailuo` | `https://fal.run/fal-ai/minimax/video-01/image-to-video` |
+
+**Note:** Model keys use underscores (`nano_banana_pro`), but API endpoints use hyphens (`nano-banana-pro`).
+
+### Direct API Example
+
+```python
+import requests
+
+url = "https://fal.run/fal-ai/nano-banana-pro"
+headers = {
+    "Authorization": f"Key {FAL_KEY}",
+    "Content-Type": "application/json"
+}
+payload = {
+    "prompt": "A cute banana character",
+    "image_size": "landscape_16_9"
+}
+response = requests.post(url, headers=headers, json=payload)
+result = response.json()
+image_url = result["images"][0]["url"]
+```
+
 ## Complete Model Reference
 
 ### Text-to-Image Models

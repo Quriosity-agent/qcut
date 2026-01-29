@@ -46,7 +46,7 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
       expect(result.current.cliProvider).toBe("gemini");
-      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
+      expect(result.current.selectedModel).toBe("minimax/minimax-m2.1");
       expect(result.current.isGeminiMode).toBe(true);
       expect(result.current.workingDirectory).toBe("");
       expect(result.current.activeSkill).toBeNull();
@@ -616,7 +616,7 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
       expect(result.current.cliProvider).toBe("gemini");
-      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
+      expect(result.current.selectedModel).toBe("minimax/minimax-m2.1");
       expect(result.current.isGeminiMode).toBe(true);
       expect(result.current.workingDirectory).toBe("");
       expect(result.current.activeSkill).toBeNull();

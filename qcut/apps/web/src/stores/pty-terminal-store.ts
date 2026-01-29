@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { CliProvider } from "@/types/cli-provider";
-import { CLI_PROVIDERS, getDefaultCodexModel } from "@/types/cli-provider";
+import { CLI_PROVIDERS, getDefaultCodexModel, getDefaultClaudeModel } from "@/types/cli-provider";
 
 // ============================================================================
 // Types
@@ -15,6 +15,7 @@ export interface ActiveSkillContext {
   id: string;
   name: string;
   content: string;
+  folderName?: string; // Skill folder name for --project-doc flag
 }
 
 interface PtyTerminalState {
@@ -31,6 +32,7 @@ interface PtyTerminalState {
   // CLI provider state
   cliProvider: CliProvider;
   selectedModel: string | null; // For Codex/OpenRouter model selection
+  selectedClaudeModel: string | null; // For Claude Code model selection
 
   // Legacy compatibility
   isGeminiMode: boolean; // Derived from cliProvider for backward compatibility
@@ -54,6 +56,7 @@ interface PtyTerminalActions {
   // CLI provider management
   setCliProvider: (provider: CliProvider) => void;
   setSelectedModel: (modelId: string | null) => void;
+  setSelectedClaudeModel: (modelId: string | null) => void;
 
   // Legacy mode management (backward compatibility)
   setGeminiMode: (enabled: boolean) => void;
@@ -88,6 +91,7 @@ const initialState: PtyTerminalState = {
   rows: 24,
   cliProvider: "gemini", // Default to Gemini for backward compatibility
   selectedModel: getDefaultCodexModel(), // Default Codex model
+  selectedClaudeModel: getDefaultClaudeModel(), // Default Claude model
   isGeminiMode: true, // Derived from cliProvider
   workingDirectory: "",
   activeSkill: null,
@@ -107,17 +111,15 @@ Please acknowledge that you understand these instructions and are ready to help 
 }
 
 /**
- * Escape content for use in shell command (--full-context flag)
- * Handles special characters that would break shell parsing
+ * Build skill file path for --project-doc flag
+ * open-codex supports passing a markdown file as context via --project-doc
  */
-function escapeForShellArg(content: string): string {
-  // For Windows cmd.exe, we need different escaping
-  // Using double quotes and escaping internal quotes
-  return content
-    .replace(/\\/g, "\\\\") // Escape backslashes first
-    .replace(/"/g, '\\"') // Escape double quotes
-    .replace(/\$/g, "\\$") // Escape dollar signs
-    .replace(/`/g, "\\`"); // Escape backticks
+function buildSkillFilePath(workingDirectory: string, skillFolderName: string): string {
+  // Handle both Windows and Unix paths
+  const separator = workingDirectory.includes("\\") ? "\\" : "/";
+  // Get the parent directory (skills folder) and then the skill folder
+  const skillPath = `${workingDirectory}${separator}${skillFolderName}${separator}Skill.md`;
+  return skillPath;
 }
 
 // ============================================================================
@@ -138,16 +140,20 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     console.log("[PTY Store] activeSkill:", activeSkill?.name || "none");
 
     set({ status: "connecting", error: null, exitCode: null });
+    console.log("[PTY Store] Status set to connecting");
 
     try {
       // Check for API availability (PTY is only available in desktop app)
+      console.log("[PTY Store] Checking PTY API availability...");
       if (!window.electronAPI?.pty) {
+        console.error("[PTY Store] PTY API not available");
         set({
           status: "error",
           error: "PTY is only available in the desktop app.",
         });
         return;
       }
+      console.log("[PTY Store] PTY API is available");
 
       const providerConfig = CLI_PROVIDERS[cliProvider];
       let command: string | undefined;
@@ -155,9 +161,24 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
       // Build command based on provider
       if (cliProvider === "codex") {
+        console.log("[PTY Store] Building Codex command...");
         // Get OpenRouter API key for Codex
-        const apiKeys = await window.electronAPI?.apiKeys?.get();
+        console.log("[PTY Store] Getting API keys...");
+        let apiKeys;
+        try {
+          apiKeys = await window.electronAPI?.apiKeys?.get();
+          console.log("[PTY Store] API keys retrieved, openRouterApiKey length:", apiKeys?.openRouterApiKey?.length || 0);
+        } catch (apiKeyError) {
+          console.error("[PTY Store] Error getting API keys:", apiKeyError);
+          set({
+            status: "error",
+            error: "Failed to retrieve API keys. Please try again.",
+          });
+          return;
+        }
+
         if (!apiKeys?.openRouterApiKey) {
+          console.error("[PTY Store] OpenRouter API key not configured");
           set({
             status: "error",
             error: "OpenRouter API key not configured. Go to Settings > API Keys.",
@@ -173,14 +194,67 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
           command += ` --model ${selectedModel}`;
         }
 
-        // Inject skill via --full-context flag if active
-        // Codex supports passing context via command flag (no delay needed)
-        if (activeSkill && providerConfig.supportsSkillFlag && providerConfig.skillFlagFormat) {
-          const escapedContent = escapeForShellArg(activeSkill.content);
-          command += ` ${providerConfig.skillFlagFormat} "${escapedContent}"`;
+        // Inject skill via --project-doc flag if active and folder name is known
+        // open-codex supports passing a markdown file as context
+        console.log("[PTY Store] activeSkill?.folderName:", activeSkill?.folderName);
+        console.log("[PTY Store] workingDirectory:", workingDirectory);
+        if (activeSkill?.folderName && workingDirectory) {
+          const skillFilePath = buildSkillFilePath(workingDirectory, activeSkill.folderName);
+          command += ` --project-doc "${skillFilePath}"`;
+          console.log("[PTY Store] Skill file path:", skillFilePath);
         }
 
         console.log("[PTY Store] Codex command:", command);
+      } else if (cliProvider === "claude") {
+        console.log("[PTY Store] Building Claude command...");
+        // Get Anthropic API key for Claude
+        console.log("[PTY Store] Getting API keys for Claude...");
+        let apiKeys;
+        try {
+          apiKeys = await window.electronAPI?.apiKeys?.get();
+          console.log("[PTY Store] API keys retrieved, anthropicApiKey length:", apiKeys?.anthropicApiKey?.length || 0);
+        } catch (apiKeyError) {
+          console.error("[PTY Store] Error getting API keys:", apiKeyError);
+          set({
+            status: "error",
+            error: "Failed to retrieve API keys. Please try again.",
+          });
+          return;
+        }
+
+        if (!apiKeys?.anthropicApiKey) {
+          console.error("[PTY Store] Anthropic API key not configured");
+          set({
+            status: "error",
+            error: "Anthropic API key not configured. Go to Settings > API Keys.",
+          });
+          return;
+        }
+
+        env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
+
+        // Get Claude model from state
+        const { selectedClaudeModel } = get();
+
+        // Build Claude command
+        command = `claude`;
+        if (selectedClaudeModel) {
+          command += ` --model ${selectedClaudeModel}`;
+        }
+
+        // Inject skill via --append-system-prompt if active
+        if (activeSkill?.content) {
+          // Escape the content for shell
+          const escapedContent = activeSkill.content
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\$/g, '\\$')
+            .replace(/`/g, '\\`');
+          command += ` --append-system-prompt "${escapedContent}"`;
+          console.log("[PTY Store] Claude skill injected via --append-system-prompt");
+        }
+
+        console.log("[PTY Store] Claude command:", command);
       } else if (cliProvider === "gemini") {
         command = providerConfig.command;
         console.log("[PTY Store] Gemini command:", command);
@@ -246,6 +320,10 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
   setSelectedModel: (modelId) => {
     set({ selectedModel: modelId });
+  },
+
+  setSelectedClaudeModel: (modelId) => {
+    set({ selectedClaudeModel: modelId });
   },
 
   // Legacy compatibility - maps to setCliProvider

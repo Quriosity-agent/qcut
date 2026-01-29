@@ -21,10 +21,11 @@ import {
   Brain,
   X,
   Bot,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CliProvider } from "@/types/cli-provider";
-import { CLI_PROVIDERS, DEFAULT_OPENROUTER_MODELS } from "@/types/cli-provider";
+import { CLI_PROVIDERS, DEFAULT_OPENROUTER_MODELS, CLAUDE_MODELS } from "@/types/cli-provider";
 
 export function PtyTerminalView() {
   const {
@@ -34,11 +35,13 @@ export function PtyTerminalView() {
     error,
     cliProvider,
     selectedModel,
+    selectedClaudeModel,
     activeSkill,
     connect,
     disconnect,
     setCliProvider,
     setSelectedModel,
+    setSelectedClaudeModel,
     clearSkillContext,
   } = usePtyTerminalStore();
 
@@ -93,6 +96,7 @@ export function PtyTerminalView() {
                     <div className="flex items-center gap-2">
                       {provider.id === "gemini" && <Sparkles className="h-3 w-3" />}
                       {provider.id === "codex" && <Bot className="h-3 w-3" />}
+                      {provider.id === "claude" && <MessageSquare className="h-3 w-3" />}
                       {provider.id === "shell" && <TerminalIcon className="h-3 w-3" />}
                       <span>{provider.name}</span>
                     </div>
@@ -117,6 +121,29 @@ export function PtyTerminalView() {
                       <div className="flex flex-col">
                         <span className="text-sm">{model.name}</span>
                         <span className="text-xs text-muted-foreground">{model.provider}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Model Selector (only for Claude) */}
+            {cliProvider === "claude" && (
+              <Select
+                value={selectedClaudeModel || ""}
+                onValueChange={setSelectedClaudeModel}
+                disabled={isConnected || isConnecting}
+              >
+                <SelectTrigger className="w-[160px] h-8" aria-label="Select Claude model">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLAUDE_MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{model.name}</span>
+                        <span className="text-xs text-muted-foreground">{model.description}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -248,6 +275,11 @@ export function PtyTerminalView() {
                     Using model: {selectedModel || "default"}
                   </p>
                 )}
+                {cliProvider === "claude" && (
+                  <p className="text-xs mt-2 text-orange-400">
+                    Using model: {selectedClaudeModel || "sonnet"}
+                  </p>
+                )}
                 {cliProvider === "gemini" && (
                   <p className="text-xs mt-2 text-purple-400">
                     Skill instructions will be sent automatically
@@ -258,6 +290,7 @@ export function PtyTerminalView() {
               <>
                 {cliProvider === "gemini" && <Sparkles className="h-12 w-12 mb-4 opacity-50" />}
                 {cliProvider === "codex" && <Bot className="h-12 w-12 mb-4 opacity-50" />}
+                {cliProvider === "claude" && <MessageSquare className="h-12 w-12 mb-4 opacity-50" />}
                 {cliProvider === "shell" && <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />}
                 <p className="text-sm">
                   Click Start to launch {CLI_PROVIDERS[cliProvider].name}
@@ -270,6 +303,11 @@ export function PtyTerminalView() {
                 {cliProvider === "codex" && (
                   <p className="text-xs mt-1 opacity-70">
                     Requires OpenRouter API key in Settings
+                  </p>
+                )}
+                {cliProvider === "claude" && (
+                  <p className="text-xs mt-1 opacity-70">
+                    Requires Anthropic API key and claude CLI installed
                   </p>
                 )}
               </>

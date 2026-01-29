@@ -278,12 +278,14 @@ export interface ElectronAPI {
       freesoundApiKey: string;
       geminiApiKey: string;
       openRouterApiKey: string;
+      anthropicApiKey: string;
     }>;
     set: (keys: {
       falApiKey?: string;
       freesoundApiKey?: string;
       geminiApiKey?: string;
       openRouterApiKey?: string;
+      anthropicApiKey?: string;
     }) => Promise<boolean>;
     clear: () => Promise<boolean>;
   };

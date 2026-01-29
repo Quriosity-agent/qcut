@@ -21,6 +21,7 @@ import {
   Check,
   Sparkles,
   Bot,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSkillRunner } from "@/hooks/use-skill-runner";
@@ -65,6 +66,13 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   const handleRunWithCodex = () => {
     runSkill(skill.id, "codex");
     toast.info(`Running "${skill.name}" with Codex (OpenRouter)`, {
+      description: "Switching to terminal...",
+    });
+  };
+
+  const handleRunWithClaude = () => {
+    runSkill(skill.id, "claude");
+    toast.info(`Running "${skill.name}" with Claude Code`, {
       description: "Switching to terminal...",
     });
   };
@@ -226,6 +234,10 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
             <DropdownMenuItem onClick={handleRunWithCodex}>
               <Bot className="h-4 w-4 mr-2" />
               Run with Codex (OpenRouter)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRunWithClaude}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Run with Claude Code
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

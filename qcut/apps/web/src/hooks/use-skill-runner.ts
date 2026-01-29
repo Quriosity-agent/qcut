@@ -53,6 +53,7 @@ export function useSkillRunner() {
 
       const providerToUse: CliProvider = preferredProvider || cliProvider;
       console.log("[useSkillRunner] Running skill:", skill.name, "with provider:", providerToUse);
+      console.log("[useSkillRunner] Skill details:", { id: skill.id, folderName: skill.folderName });
 
       // 1. Get the project's skills folder path
       let skillsPath = "";
@@ -70,6 +71,7 @@ export function useSkillRunner() {
         id: skill.id,
         name: skill.name,
         content: skill.content,
+        folderName: skill.folderName, // For Codex --project-doc flag
       });
 
       // 3. Set provider if specified

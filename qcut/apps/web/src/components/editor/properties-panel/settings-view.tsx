@@ -290,10 +290,12 @@ function ApiKeysView() {
   const [freesoundApiKey, setFreesoundApiKey] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [openRouterApiKey, setOpenRouterApiKey] = useState("");
+  const [anthropicApiKey, setAnthropicApiKey] = useState("");
   const [showFalKey, setShowFalKey] = useState(false);
   const [showFreesoundKey, setShowFreesoundKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingFreesound, setIsTestingFreesound] = useState(false);
   const [freesoundTestResult, setFreesoundTestResult] = useState<{
@@ -316,6 +318,7 @@ function ApiKeysView() {
           setFreesoundApiKey(keys.freesoundApiKey || "");
           setGeminiApiKey(keys.geminiApiKey || "");
           setOpenRouterApiKey(keys.openRouterApiKey || "");
+          setAnthropicApiKey(keys.anthropicApiKey || "");
         }
       }
     } catch (error) {
@@ -349,6 +352,10 @@ function ApiKeysView() {
       "[Settings] OpenRouter API key length:",
       openRouterApiKey.trim().length
     );
+    console.log(
+      "[Settings] Anthropic API key length:",
+      anthropicApiKey.trim().length
+    );
 
     try {
       if (!window.electronAPI?.apiKeys) {
@@ -363,6 +370,7 @@ function ApiKeysView() {
         freesoundApiKey: freesoundApiKey.trim(),
         geminiApiKey: geminiApiKey.trim(),
         openRouterApiKey: openRouterApiKey.trim(),
+        anthropicApiKey: anthropicApiKey.trim(),
       });
 
       console.log("[Settings] ✅ API keys saved successfully, result:", result);
@@ -381,7 +389,7 @@ function ApiKeysView() {
         },
       });
     }
-  }, [falApiKey, freesoundApiKey, geminiApiKey, openRouterApiKey]);
+  }, [falApiKey, freesoundApiKey, geminiApiKey, openRouterApiKey, anthropicApiKey]);
 
   // Test Freesound API key
   const testFreesoundKey = useCallback(async () => {
@@ -588,6 +596,57 @@ function ApiKeysView() {
                 <EyeIcon className="h-4 w-4" />
               )}
             </Button>
+          </div>
+        </div>
+      </PropertyGroup>
+
+      {/* Anthropic API Key */}
+      <PropertyGroup title="Anthropic API Key">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">
+            For Claude Code CLI. Get your key at{" "}
+            <a
+              href="https://console.anthropic.com/settings/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-primary hover:underline"
+            >
+              console.anthropic.com
+            </a>
+          </div>
+          <div className="flex-1 relative">
+            <Input
+              type={showAnthropicKey ? "text" : "password"}
+              placeholder="Enter your Anthropic API key (sk-ant-...)"
+              value={anthropicApiKey}
+              onChange={(e) => setAnthropicApiKey(e.target.value)}
+              className="bg-panel-accent pr-10"
+              data-testid="anthropic-api-key-input"
+            />
+            <Button
+              type="button"
+              variant="text"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+            >
+              {showAnthropicKey ? (
+                <EyeOffIcon className="h-4 w-4" />
+              ) : (
+                <EyeIcon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Also requires <span className="font-mono">claude</span> CLI to be installed.{" "}
+            <a
+              href="https://claude.ai/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Download Claude Code
+            </a>
           </div>
         </div>
       </PropertyGroup>

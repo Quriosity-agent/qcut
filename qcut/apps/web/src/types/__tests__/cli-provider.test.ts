@@ -67,7 +67,7 @@ describe("CLI_PROVIDERS", () => {
 
     it("should support skill flag", () => {
       expect(codex.supportsSkillFlag).toBe(true);
-      expect(codex.skillFlagFormat).toBe("--full-context");
+      expect(codex.skillFlagFormat).toBe("--project-doc");
     });
   });
 
@@ -117,13 +117,13 @@ describe("CLI_PROVIDERS", () => {
 // ============================================================================
 
 describe("DEFAULT_OPENROUTER_MODELS", () => {
-  it("should have at least 5 default models", () => {
-    expect(DEFAULT_OPENROUTER_MODELS.length).toBeGreaterThanOrEqual(5);
+  it("should have at least 6 default models", () => {
+    expect(DEFAULT_OPENROUTER_MODELS.length).toBeGreaterThanOrEqual(6);
   });
 
-  it("should have Claude Sonnet 4 as first model", () => {
-    expect(DEFAULT_OPENROUTER_MODELS[0].id).toBe("anthropic/claude-sonnet-4");
-    expect(DEFAULT_OPENROUTER_MODELS[0].name).toBe("Claude Sonnet 4");
+  it("should have MiniMax M2.1 as first model (default)", () => {
+    expect(DEFAULT_OPENROUTER_MODELS[0].id).toBe("minimax/minimax-m2.1");
+    expect(DEFAULT_OPENROUTER_MODELS[0].name).toBe("MiniMax M2.1");
   });
 
   it("should have all required fields in each model", () => {
@@ -217,7 +217,7 @@ describe("getDefaultCodexModel", () => {
   it("should return first model ID", () => {
     const defaultModel = getDefaultCodexModel();
     expect(defaultModel).toBe(DEFAULT_OPENROUTER_MODELS[0].id);
-    expect(defaultModel).toBe("anthropic/claude-sonnet-4");
+    expect(defaultModel).toBe("minimax/minimax-m2.1");
   });
 
   it("should return a valid OpenRouter model ID", () => {
