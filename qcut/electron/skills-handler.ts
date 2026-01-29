@@ -53,6 +53,25 @@ function getProjectSkillsPath(projectId: string): string {
 }
 
 /**
+ * Validate that a resolved path is within the allowed base directory.
+ * Prevents path traversal attacks (e.g., "../../../etc/passwd").
+ */
+function isPathWithinBase(targetPath: string, basePath: string): boolean {
+  const resolvedTarget = path.resolve(targetPath);
+  const resolvedBase = path.resolve(basePath);
+  return resolvedTarget.startsWith(resolvedBase + path.sep) || resolvedTarget === resolvedBase;
+}
+
+/**
+ * Sanitize a filename/skillId to prevent path traversal.
+ * Only allows alphanumeric, dash, underscore, and dot (no slashes or ..).
+ */
+function sanitizePathSegment(segment: string): string {
+  // Remove any path separators and parent directory references
+  return segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+}
+
+/**
  * Get the path to the global .claude/skills folder
  */
 function getGlobalSkillsPath(): string {
@@ -184,8 +203,29 @@ export function setupSkillsIPC(): void {
     ): Promise<Skill | null> => {
       log.info("[Skills Handler] Importing skill from:", sourcePath);
 
+      // Security: Validate source path is within allowed directories
+      const globalSkillsPath = getGlobalSkillsPath();
+      const bundledSkillsPath = getBundledSkillsPath();
+      const resolvedSource = path.resolve(sourcePath);
+
+      const isFromGlobal = isPathWithinBase(resolvedSource, globalSkillsPath);
+      const isFromBundled = isPathWithinBase(resolvedSource, bundledSkillsPath);
+
+      if (!isFromGlobal && !isFromBundled) {
+        log.error(
+          "[Skills Handler] Security: Source path not in allowed directories:",
+          resolvedSource
+        );
+        return null;
+      }
+
       const skillsPath = getProjectSkillsPath(projectId);
-      const folderName = path.basename(sourcePath);
+      // Security: Use only the basename to prevent path traversal in destination
+      const folderName = sanitizePathSegment(path.basename(sourcePath));
+      if (!folderName) {
+        log.error("[Skills Handler] Security: Invalid folder name");
+        return null;
+      }
       const destPath = path.join(skillsPath, folderName);
 
       try {
@@ -193,7 +233,7 @@ export function setupSkillsIPC(): void {
         await fs.mkdir(skillsPath, { recursive: true });
 
         // Check if source has Skill.md
-        const sourceSkillMd = path.join(sourcePath, "Skill.md");
+        const sourceSkillMd = path.join(resolvedSource, "Skill.md");
         try {
           await fs.access(sourceSkillMd);
         } catch {
@@ -201,8 +241,8 @@ export function setupSkillsIPC(): void {
           return null;
         }
 
-        // Copy entire skill folder
-        await fs.cp(sourcePath, destPath, { recursive: true });
+        // Copy entire skill folder (source already validated above)
+        await fs.cp(resolvedSource, destPath, { recursive: true });
 
         // Read and parse the skill
         const skillMdPath = path.join(destPath, "Skill.md");
@@ -254,11 +294,25 @@ export function setupSkillsIPC(): void {
     ): Promise<void> => {
       log.info("[Skills Handler] Deleting skill:", skillId);
 
-      const skillPath = path.join(getProjectSkillsPath(projectId), skillId);
+      // Security: Sanitize skillId to prevent path traversal
+      const sanitizedSkillId = sanitizePathSegment(skillId);
+      if (!sanitizedSkillId || sanitizedSkillId !== skillId) {
+        log.error("[Skills Handler] Security: Invalid skill ID:", skillId);
+        throw new Error("Invalid skill ID");
+      }
+
+      const skillsPath = getProjectSkillsPath(projectId);
+      const skillPath = path.join(skillsPath, sanitizedSkillId);
+
+      // Security: Verify the resolved path is within the skills directory
+      if (!isPathWithinBase(skillPath, skillsPath)) {
+        log.error("[Skills Handler] Security: Path traversal attempt detected");
+        throw new Error("Invalid skill path");
+      }
 
       try {
         await fs.rm(skillPath, { recursive: true, force: true });
-        log.info("[Skills Handler] Successfully deleted skill:", skillId);
+        log.info("[Skills Handler] Successfully deleted skill:", sanitizedSkillId);
       } catch (error) {
         log.error("[Skills Handler] Failed to delete skill:", error);
         throw error;
@@ -277,11 +331,29 @@ export function setupSkillsIPC(): void {
     ): Promise<string> => {
       log.info("[Skills Handler] Getting content:", skillId, filename);
 
-      const filePath = path.join(
-        getProjectSkillsPath(projectId),
-        skillId,
-        filename
-      );
+      // Security: Sanitize skillId and filename to prevent path traversal
+      const sanitizedSkillId = sanitizePathSegment(skillId);
+      const sanitizedFilename = sanitizePathSegment(filename);
+
+      if (!sanitizedSkillId || !sanitizedFilename) {
+        log.error("[Skills Handler] Security: Invalid skill ID or filename");
+        throw new Error("Invalid skill ID or filename");
+      }
+
+      // Security: Only allow .md files to be read
+      if (!sanitizedFilename.endsWith(".md")) {
+        log.error("[Skills Handler] Security: Only .md files can be read");
+        throw new Error("Only markdown files can be read");
+      }
+
+      const skillsPath = getProjectSkillsPath(projectId);
+      const filePath = path.join(skillsPath, sanitizedSkillId, sanitizedFilename);
+
+      // Security: Verify the resolved path is within the skills directory
+      if (!isPathWithinBase(filePath, skillsPath)) {
+        log.error("[Skills Handler] Security: Path traversal attempt detected");
+        throw new Error("Invalid file path");
+      }
 
       try {
         return await fs.readFile(filePath, "utf-8");

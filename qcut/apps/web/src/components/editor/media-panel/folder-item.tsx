@@ -155,7 +155,7 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
               {FOLDER_COLORS.map((color) => (
                 <ContextMenuItem
                   key={color.label}
-                  onClick={() => setFolderColor(folder.id, color.value || "")}
+                  onClick={() => setFolderColor(folder.id, color.value ?? "")}
                 >
                   <span
                     className="w-3 h-3 rounded-full mr-2 border border-border"
@@ -166,7 +166,7 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
                     aria-hidden="true"
                   />
                   {color.label}
-                  {folder.color === color.value && " ✓"}
+                  {(folder.color ?? "") === (color.value ?? "") && " ✓"}
                 </ContextMenuItem>
               ))}
             </ContextMenuSubContent>
