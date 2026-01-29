@@ -307,7 +307,7 @@ export function PtyTerminalView() {
                 )}
                 {cliProvider === "claude" && (
                   <p className="text-xs mt-1 opacity-70">
-                    Requires Anthropic API key and claude CLI installed
+                    Uses Claude Pro/Max login (API key optional)
                   </p>
                 )}
               </>

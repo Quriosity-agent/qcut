@@ -207,31 +207,20 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.log("[PTY Store] Codex command:", command);
       } else if (cliProvider === "claude") {
         console.log("[PTY Store] Building Claude command...");
-        // Get Anthropic API key for Claude
-        console.log("[PTY Store] Getting API keys for Claude...");
+        // Claude Code CLI uses login by default (Claude Pro/Max subscription)
+        // API key is optional - only set if user has configured one
         let apiKeys;
         try {
           apiKeys = await window.electronAPI?.apiKeys?.get();
-          console.log("[PTY Store] API keys retrieved, anthropicApiKey length:", apiKeys?.anthropicApiKey?.length || 0);
+          if (apiKeys?.anthropicApiKey) {
+            env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
+            console.log("[PTY Store] Using Anthropic API key");
+          } else {
+            console.log("[PTY Store] No API key set, Claude will use login authentication");
+          }
         } catch (apiKeyError) {
-          console.error("[PTY Store] Error getting API keys:", apiKeyError);
-          set({
-            status: "error",
-            error: "Failed to retrieve API keys. Please try again.",
-          });
-          return;
+          console.warn("[PTY Store] Could not get API keys, continuing without:", apiKeyError);
         }
-
-        if (!apiKeys?.anthropicApiKey) {
-          console.error("[PTY Store] Anthropic API key not configured");
-          set({
-            status: "error",
-            error: "Anthropic API key not configured. Go to Settings > API Keys.",
-          });
-          return;
-        }
-
-        env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
 
         // Get Claude model from state
         const { selectedClaudeModel } = get();

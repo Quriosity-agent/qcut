@@ -600,24 +600,17 @@ function ApiKeysView() {
         </div>
       </PropertyGroup>
 
-      {/* Anthropic API Key */}
-      <PropertyGroup title="Anthropic API Key">
+      {/* Anthropic API Key (Optional) */}
+      <PropertyGroup title="Anthropic API Key (Optional)">
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
-            For Claude Code CLI. Get your key at{" "}
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-primary hover:underline"
-            >
-              console.anthropic.com
-            </a>
+            Claude Code uses your Claude Pro/Max subscription by default.
+            Only set this if you prefer API credits instead.
           </div>
           <div className="flex-1 relative">
             <Input
               type={showAnthropicKey ? "text" : "password"}
-              placeholder="Enter your Anthropic API key (sk-ant-...)"
+              placeholder="Optional: sk-ant-..."
               value={anthropicApiKey}
               onChange={(e) => setAnthropicApiKey(e.target.value)}
               className="bg-panel-accent pr-10"
@@ -638,7 +631,7 @@ function ApiKeysView() {
             </Button>
           </div>
           <div className="text-xs text-muted-foreground">
-            Also requires <span className="font-mono">claude</span> CLI to be installed.{" "}
+            Requires <span className="font-mono">claude</span> CLI installed.{" "}
             <a
               href="https://claude.ai/download"
               target="_blank"

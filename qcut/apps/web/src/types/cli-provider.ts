@@ -59,9 +59,9 @@ export const CLI_PROVIDERS: Record<CliProvider, CliProviderConfig> = {
   claude: {
     id: "claude",
     name: "Claude Code",
-    description: "Anthropic's Claude AI assistant (requires claude CLI)",
+    description: "Anthropic's Claude AI (uses login, API key optional)",
     command: "claude",
-    requiresApiKey: true,
+    requiresApiKey: false, // Uses Claude Pro/Max subscription by default, API key optional
     apiKeyEnvVar: "ANTHROPIC_API_KEY",
     supportsSkillFlag: true,
     skillFlagFormat: "--append-system-prompt", // Append skill content to system prompt
