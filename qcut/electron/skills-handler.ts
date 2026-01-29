@@ -3,6 +3,10 @@ import * as fs from "fs/promises";
 import * as path from "path";
 
 // Type definitions
+
+/**
+ * Logger interface compatible with electron-log.
+ */
 interface Logger {
   info(message?: any, ...optionalParams: any[]): void;
   warn(message?: any, ...optionalParams: any[]): void;
@@ -10,22 +14,41 @@ interface Logger {
   debug(message?: any, ...optionalParams: any[]): void;
 }
 
+/**
+ * Skill metadata and content loaded from project skills folder.
+ */
 interface Skill {
+  /** Unique identifier (same as folderName) */
   id: string;
+  /** Display name from frontmatter */
   name: string;
+  /** Description from frontmatter */
   description: string;
+  /** Optional dependency requirements (e.g., "python>=3.10") */
   dependencies?: string;
+  /** Folder name in the skills directory */
   folderName: string;
+  /** Main skill file (typically "Skill.md") */
   mainFile: string;
+  /** Additional .md files in the skill folder */
   additionalFiles: string[];
+  /** Full markdown content of the main file */
   content: string;
+  /** Creation timestamp */
   createdAt: number;
+  /** Last modification timestamp */
   updatedAt: number;
 }
 
+/**
+ * Parsed YAML frontmatter from Skill.md files.
+ */
 interface SkillFrontmatter {
+  /** Skill display name */
   name: string;
+  /** Skill description */
   description: string;
+  /** Optional dependency requirements */
   dependencies?: string;
 }
 

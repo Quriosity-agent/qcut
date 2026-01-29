@@ -37,13 +37,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/**
+ * Props for the FolderItem component.
+ */
 interface FolderItemProps {
+  /** The folder to display */
   folder: MediaFolder;
+  /** Nesting depth for indentation (0 = root level) */
   depth: number;
+  /** Callback when folder is selected */
   onSelect: (folderId: string | null) => void;
 }
 
-// Predefined folder colors
+/**
+ * Predefined folder colors for visual identification.
+ */
 const FOLDER_COLORS = [
   { label: "Default", value: undefined },
   { label: "Red", value: "#ef4444" },
@@ -55,6 +63,10 @@ const FOLDER_COLORS = [
   { label: "Pink", value: "#ec4899" },
 ];
 
+/**
+ * Renders a single folder item in the folder tree with context menu actions.
+ * Supports nested rendering for child folders, expand/collapse, rename, delete, and color customization.
+ */
 export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
   const {
     selectedFolderId,

@@ -7,11 +7,21 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import "@xterm/xterm/css/xterm.css";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 
+/**
+ * Props for the TerminalEmulator component.
+ */
 interface TerminalEmulatorProps {
+  /** PTY session ID to connect to, null if not connected */
   sessionId: string | null;
+  /** Callback fired when terminal is initialized and ready */
   onReady?: () => void;
 }
 
+/**
+ * Terminal emulator component using xterm.js.
+ * Provides a full terminal experience with ANSI color support, clipboard operations,
+ * and automatic resizing. Connects to a PTY session via Electron IPC.
+ */
 export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);

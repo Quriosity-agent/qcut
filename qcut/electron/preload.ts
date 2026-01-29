@@ -1,11 +1,19 @@
+/**
+ * Electron preload script that exposes a secure API to the renderer process.
+ * Uses contextBridge to safely expose IPC methods without exposing the full Electron API.
+ * @module preload
+ */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 
 // Type definitions for the exposed API
+
+/** File dialog filter for open/save dialogs */
 interface FileDialogFilter {
   name: string;
   extensions: string[];
 }
 
+/** File information returned from file operations */
 interface FileInfo {
   name: string;
   path: string;
@@ -14,6 +22,7 @@ interface FileInfo {
   type: string;
 }
 
+/** Parameters for searching sounds via Freesound API */
 interface SoundSearchParams {
   query?: string;
   page?: number;
@@ -22,12 +31,14 @@ interface SoundSearchParams {
   sort?: string;
 }
 
+/** Parameters for downloading a sound file */
 interface SoundDownloadParams {
   soundId: number;
   previewUrl: string;
   name: string;
 }
 
+/** Data for initiating a transcription request */
 interface TranscriptionRequestData {
   id: string;
   filename: string;
@@ -37,6 +48,7 @@ interface TranscriptionRequestData {
   controller?: AbortController;
 }
 
+/** Result from a transcription operation */
 interface TranscriptionResult {
   success: boolean;
   text?: string;
@@ -47,6 +59,7 @@ interface TranscriptionResult {
   id?: string;
 }
 
+/** A segment of transcribed text with timing information */
 interface TranscriptionSegment {
   id: number;
   start: number;
@@ -54,6 +67,7 @@ interface TranscriptionSegment {
   text: string;
 }
 
+/** Result from a cancellation operation */
 interface CancelResult {
   success: boolean;
   message?: string;
