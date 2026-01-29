@@ -549,11 +549,11 @@ export interface ElectronAPI {
     getPath: (projectId: string) => Promise<string>;
 
     /**
-     * Scan global .claude/skills folder for available skills
-     * @returns Array of available skills with path, name, description
+     * Scan for available skills (bundled + global ~/.claude/skills)
+     * @returns Array of available skills with path, name, description, bundled flag
      */
     scanGlobal: () => Promise<
-      Array<{ path: string; name: string; description: string }>
+      Array<{ path: string; name: string; description: string; bundled?: boolean }>
     >;
   };
 }

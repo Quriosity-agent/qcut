@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Folder, Brain, Loader2, Check } from "lucide-react";
+import { Folder, Brain, Loader2, Check, Package } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImportSkillDialogProps {
@@ -24,6 +24,7 @@ interface AvailableSkill {
   path: string;
   name: string;
   description: string;
+  bundled?: boolean;
 }
 
 export function ImportSkillDialog({
@@ -168,6 +169,12 @@ export function ImportSkillDialog({
                           <span className="font-medium text-sm truncate">
                             {skill.name}
                           </span>
+                          {skill.bundled && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-600 flex-shrink-0">
+                              <Package className="h-3 w-3" />
+                              Bundled
+                            </span>
+                          )}
                           {imported && (
                             <Check className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
                           )}

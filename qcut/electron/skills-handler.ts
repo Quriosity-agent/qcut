@@ -61,6 +61,19 @@ function getGlobalSkillsPath(): string {
 }
 
 /**
+ * Get the path to bundled default skills (shipped with app)
+ */
+function getBundledSkillsPath(): string {
+  // In production (packaged), resources are in app.getAppPath()/resources/
+  // In development, they're in the project root
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "default-skills");
+  }
+  // Development: relative to electron folder
+  return path.join(__dirname, "..", "resources", "default-skills");
+}
+
+/**
  * Parse frontmatter from Skill.md content
  */
 function parseSkillFrontmatter(content: string): SkillFrontmatter | null {
@@ -319,55 +332,75 @@ export function setupSkillsIPC(): void {
     }
   );
 
-  // Scan global .claude/skills folder for available skills
+  // Scan for available skills (bundled + global ~/.claude/skills)
   ipcMain.handle(
     "skills:scanGlobal",
     async (): Promise<
-      Array<{ path: string; name: string; description: string }>
+      Array<{ path: string; name: string; description: string; bundled?: boolean }>
     > => {
-      log.info("[Skills Handler] Scanning global skills folder");
+      log.info("[Skills Handler] Scanning for available skills");
 
-      const globalPath = getGlobalSkillsPath();
-
-      try {
-        await fs.access(globalPath);
-      } catch {
-        log.info("[Skills Handler] Global skills folder not found:", globalPath);
-        return [];
-      }
-
-      const entries = await fs.readdir(globalPath, { withFileTypes: true });
       const availableSkills: Array<{
         path: string;
         name: string;
         description: string;
+        bundled?: boolean;
       }> = [];
 
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-
-        const skillFolder = path.join(globalPath, entry.name);
-        const skillMdPath = path.join(skillFolder, "Skill.md");
-
+      // Helper function to scan a directory for skills
+      const scanSkillsDirectory = async (
+        dirPath: string,
+        isBundled: boolean
+      ) => {
         try {
-          const content = await fs.readFile(skillMdPath, "utf-8");
-          const frontmatter = parseSkillFrontmatter(content);
-
-          if (frontmatter) {
-            availableSkills.push({
-              path: skillFolder,
-              name: frontmatter.name,
-              description: frontmatter.description,
-            });
-            log.info("[Skills Handler] Found global skill:", frontmatter.name);
-          }
+          await fs.access(dirPath);
         } catch {
-          // Skip folders without valid Skill.md
+          log.info("[Skills Handler] Skills folder not found:", dirPath);
+          return;
         }
-      }
+
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          const skillFolder = path.join(dirPath, entry.name);
+          const skillMdPath = path.join(skillFolder, "Skill.md");
+
+          try {
+            const content = await fs.readFile(skillMdPath, "utf-8");
+            const frontmatter = parseSkillFrontmatter(content);
+
+            if (frontmatter) {
+              availableSkills.push({
+                path: skillFolder,
+                name: frontmatter.name,
+                description: frontmatter.description,
+                bundled: isBundled,
+              });
+              log.info(
+                `[Skills Handler] Found ${isBundled ? "bundled" : "global"} skill:`,
+                frontmatter.name
+              );
+            }
+          } catch {
+            // Skip folders without valid Skill.md
+          }
+        }
+      };
+
+      // 1. Scan bundled skills (shipped with app)
+      const bundledPath = getBundledSkillsPath();
+      log.info("[Skills Handler] Scanning bundled skills at:", bundledPath);
+      await scanSkillsDirectory(bundledPath, true);
+
+      // 2. Scan global ~/.claude/skills
+      const globalPath = getGlobalSkillsPath();
+      log.info("[Skills Handler] Scanning global skills at:", globalPath);
+      await scanSkillsDirectory(globalPath, false);
 
       log.info(
-        "[Skills Handler] Total global skills found:",
+        "[Skills Handler] Total available skills found:",
         availableSkills.length
       );
       return availableSkills;

@@ -381,7 +381,7 @@ interface ElectronAPI {
     browse: () => Promise<string | null>;
     getPath: (projectId: string) => Promise<string>;
     scanGlobal: () => Promise<
-      Array<{ path: string; name: string; description: string }>
+      Array<{ path: string; name: string; description: string; bundled?: boolean }>
     >;
   };
 
@@ -687,7 +687,7 @@ const electronAPI: ElectronAPI = {
     getPath: (projectId: string): Promise<string> =>
       ipcRenderer.invoke("skills:getPath", projectId),
     scanGlobal: (): Promise<
-      Array<{ path: string; name: string; description: string }>
+      Array<{ path: string; name: string; description: string; bundled?: boolean }>
     > => ipcRenderer.invoke("skills:scanGlobal"),
   },
 

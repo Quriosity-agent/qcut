@@ -138,6 +138,13 @@
         ]
       },
       {
+        "from": "resources/default-skills",
+        "to": "default-skills",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "node_modules/@google/generative-ai",
         "to": "node_modules/@google/generative-ai"
       },
