@@ -139,6 +139,9 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       parentId,
     });
 
+    // Auto-persist after mutation
+    void persistFolders();
+
     return id;
   },
 
@@ -172,6 +175,10 @@ export const useFolderStore = create<FolderStore>((set, get) => {
     }));
 
     debugLog("[FolderStore] Renamed folder:", { id, newName: trimmedName });
+
+    // Auto-persist after mutation
+    void persistFolders();
+
     return true;
   },
 
@@ -197,6 +204,9 @@ export const useFolderStore = create<FolderStore>((set, get) => {
     }));
 
     debugLog("[FolderStore] Deleted folders:", idsToDelete);
+
+    // Auto-persist after mutation
+    void persistFolders();
   },
 
   setFolderColor: (id, color) => {
@@ -207,6 +217,9 @@ export const useFolderStore = create<FolderStore>((set, get) => {
     }));
 
     debugLog("[FolderStore] Set folder color:", { id, color });
+
+    // Auto-persist after mutation
+    void persistFolders();
   },
 
   // ============================================================================
@@ -311,6 +324,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
         folders,
         isLoading: false,
         selectedFolderId: selectionValid ? selected : null,
+        activeProjectId: projectId,
       });
       debugLog("[FolderStore] Loaded folders:", {
         projectId,
@@ -319,7 +333,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       });
     } catch (error) {
       debugError("[FolderStore] Failed to load folders:", error);
-      set({ folders: [], selectedFolderId: null, isLoading: false });
+      set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
     }
   },
 
@@ -337,7 +351,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
   },
 
   clearFolders: () => {
-    set({ folders: [], selectedFolderId: null, isLoading: false });
+    set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
     debugLog("[FolderStore] Cleared all folders");
   },
-}));
+}});
