@@ -51,23 +51,28 @@ type FolderStore = FolderState & FolderActions;
 // ============================================================================
 
 export const useFolderStore = create<FolderStore>((set, get) => {
-  // Helper to auto-persist after mutations
-  const persistFolders = async () => {
-    const { activeProjectId, folders } = get();
-    if (!activeProjectId) {
-      debugLog("[FolderStore] Skipping persist - no active project");
-      return;
-    }
-    try {
-      const { storageService } = await import("@/lib/storage/storage-service");
-      await storageService.saveFolders(activeProjectId, folders);
-      debugLog("[FolderStore] Auto-persisted folders:", {
-        projectId: activeProjectId,
-        count: folders.length,
-      });
-    } catch (error) {
-      debugError("[FolderStore] Failed to auto-persist folders:", error);
-    }
+  // Serialize persist calls to prevent out-of-order writes
+  let persistQueue = Promise.resolve();
+
+  // Helper to auto-persist after mutations (serialized to ensure ordering)
+  const persistFolders = () => {
+    persistQueue = persistQueue.then(async () => {
+      const { activeProjectId, folders } = get();
+      if (!activeProjectId) {
+        debugLog("[FolderStore] Skipping persist - no active project");
+        return;
+      }
+      try {
+        const { storageService } = await import("@/lib/storage/storage-service");
+        await storageService.saveFolders(activeProjectId, folders);
+        debugLog("[FolderStore] Auto-persisted folders:", {
+          projectId: activeProjectId,
+          count: folders.length,
+        });
+      } catch (error) {
+        debugError("[FolderStore] Failed to auto-persist folders:", error);
+      }
+    });
   };
 
   return {
@@ -183,12 +188,20 @@ export const useFolderStore = create<FolderStore>((set, get) => {
   },
 
   deleteFolder: (id) => {
-    // Recursively get all descendant folder IDs
-    const getDescendantIds = (folderId: string): string[] => {
+    // Recursively get all descendant folder IDs with cycle detection
+    const getDescendantIds = (
+      folderId: string,
+      visited = new Set<string>()
+    ): string[] => {
+      if (visited.has(folderId)) {
+        debugError("[FolderStore] Circular reference detected in deleteFolder");
+        return [];
+      }
+      visited.add(folderId);
       const children = get().folders.filter((f) => f.parentId === folderId);
       return children.flatMap((child) => [
         child.id,
-        ...getDescendantIds(child.id),
+        ...getDescendantIds(child.id, visited),
       ]);
     };
 
