@@ -34,6 +34,9 @@ export const DEFAULT_FOLDER_IDS = {
   AI_GENERATED: "default-ai-generated",
 } as const;
 
+// System folder IDs (not user-created)
+export const SKILLS_FOLDER_ID = "system-skills-folder";
+
 export interface MediaItem {
   id: string;
   name: string;

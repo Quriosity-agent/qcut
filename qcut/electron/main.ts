@@ -72,6 +72,7 @@ const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
 const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
+const { setupSkillsIPC } = require("./skills-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -370,6 +371,7 @@ app.whenReady().then(() => {
   setupGeminiChatIPC(); // Add Gemini chat support
   setupPtyIPC(); // Add PTY terminal support
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
+  setupSkillsIPC(); // Add skills management support
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds

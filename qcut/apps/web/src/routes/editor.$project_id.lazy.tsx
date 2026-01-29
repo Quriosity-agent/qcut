@@ -8,6 +8,7 @@ import { usePlaybackControls } from "@/hooks/use-playback-controls";
 import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
+import { useSkillsStore } from "@/stores/skills-store";
 import "@/lib/debug-sticker-overlay"; // Load debug utilities
 import "@/lib/sticker-test-helper"; // Load sticker test helper
 import "@/lib/sticker-persistence-debug"; // Load persistence debug
@@ -36,6 +37,14 @@ function EditorPage() {
 
   // Save timeline when page becomes hidden (tab switch, close, etc.)
   useSaveOnVisibilityChange();
+
+  // Load skills when project changes
+  const { loadSkills } = useSkillsStore();
+  useEffect(() => {
+    if (activeProject?.id) {
+      loadSkills(activeProject.id);
+    }
+  }, [activeProject?.id, loadSkills]);
 
   // Track current load promise to handle concurrent loads properly
   const currentLoadPromiseRef = useRef<Promise<void> | null>(null);

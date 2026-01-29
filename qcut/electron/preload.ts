@@ -149,6 +149,19 @@ interface FalUploadResult {
   error?: string;
 }
 
+interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  dependencies?: string;
+  folderName: string;
+  mainFile: string;
+  additionalFiles: string[];
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 type ThemeSource = "system" | "light" | "dark";
 
 // Main electronAPI interface
@@ -353,6 +366,20 @@ interface ElectronAPI {
       }) => void
     ) => void;
     removeListeners: () => void;
+  };
+
+  // Skills operations
+  skills?: {
+    list: (projectId: string) => Promise<Skill[]>;
+    import: (projectId: string, sourcePath: string) => Promise<Skill | null>;
+    delete: (projectId: string, skillId: string) => Promise<void>;
+    getContent: (
+      projectId: string,
+      skillId: string,
+      filename: string
+    ) => Promise<string>;
+    browse: () => Promise<string | null>;
+    getPath: (projectId: string) => Promise<string>;
   };
 
   // Utility functions
@@ -639,6 +666,25 @@ const electronAPI: ElectronAPI = {
     },
   },
 
+  // Skills operations
+  skills: {
+    list: (projectId: string): Promise<Skill[]> =>
+      ipcRenderer.invoke("skills:list", projectId),
+    import: (projectId: string, sourcePath: string): Promise<Skill | null> =>
+      ipcRenderer.invoke("skills:import", projectId, sourcePath),
+    delete: (projectId: string, skillId: string): Promise<void> =>
+      ipcRenderer.invoke("skills:delete", projectId, skillId),
+    getContent: (
+      projectId: string,
+      skillId: string,
+      filename: string
+    ): Promise<string> =>
+      ipcRenderer.invoke("skills:getContent", projectId, skillId, filename),
+    browse: (): Promise<string | null> => ipcRenderer.invoke("skills:browse"),
+    getPath: (projectId: string): Promise<string> =>
+      ipcRenderer.invoke("skills:getPath", projectId),
+  },
+
   // Utility functions
   isElectron: true,
 };
@@ -665,6 +711,7 @@ export type {
   GitHubStarsResponse,
   FalUploadResult,
   ThemeSource,
+  Skill,
 };
 
 // Global type augmentation for renderer process

@@ -469,6 +469,85 @@ export interface ElectronAPI {
      */
     removeListeners: () => void;
   };
+
+  /**
+   * Skills operations
+   * Manages AI skills stored per-project
+   */
+  skills?: {
+    /**
+     * List all skills in a project
+     * @param projectId - Project identifier
+     * @returns Array of skills
+     */
+    list: (projectId: string) => Promise<
+      Array<{
+        id: string;
+        name: string;
+        description: string;
+        dependencies?: string;
+        folderName: string;
+        mainFile: string;
+        additionalFiles: string[];
+        content: string;
+        createdAt: number;
+        updatedAt: number;
+      }>
+    >;
+
+    /**
+     * Import a skill from a source folder
+     * @param projectId - Target project
+     * @param sourcePath - Absolute path to skill folder
+     * @returns Imported skill or null on failure
+     */
+    import: (
+      projectId: string,
+      sourcePath: string
+    ) => Promise<{
+      id: string;
+      name: string;
+      description: string;
+      dependencies?: string;
+      folderName: string;
+      mainFile: string;
+      additionalFiles: string[];
+      content: string;
+      createdAt: number;
+      updatedAt: number;
+    } | null>;
+
+    /**
+     * Delete a skill from a project
+     * @param projectId - Project identifier
+     * @param skillId - Skill folder name/ID
+     */
+    delete: (projectId: string, skillId: string) => Promise<void>;
+
+    /**
+     * Get content of a specific file in a skill
+     * @param projectId - Project identifier
+     * @param skillId - Skill folder name/ID
+     * @param filename - File to read (e.g., "Skill.md", "REFERENCE.md")
+     */
+    getContent: (
+      projectId: string,
+      skillId: string,
+      filename: string
+    ) => Promise<string>;
+
+    /**
+     * Open folder browser to select a skill folder
+     * @returns Selected path or null if canceled
+     */
+    browse: () => Promise<string | null>;
+
+    /**
+     * Get the skills folder path for a project
+     * @param projectId - Project identifier
+     */
+    getPath: (projectId: string) => Promise<string>;
+  };
 }
 
 declare global {

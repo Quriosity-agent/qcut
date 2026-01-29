@@ -52,8 +52,10 @@ import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
 import { useFolderStore } from "@/stores/folder-store";
+import { SKILLS_FOLDER_ID } from "@/stores/media-store-types";
 import { generateUUID } from "@/lib/utils";
 import { FolderTree } from "../folder-tree";
+import { SkillsView } from "./skills";
 
 export function MediaView() {
   const {
@@ -345,6 +347,23 @@ export function MediaView() {
       </div>
     );
   };
+
+  // If Skills folder is selected, show SkillsView
+  if (selectedFolderId === SKILLS_FOLDER_ID) {
+    return (
+      <div className="flex h-full">
+        {/* Folder sidebar */}
+        <div className="w-44 min-w-[140px] max-w-[200px] flex-shrink-0">
+          <FolderTree />
+        </div>
+
+        {/* Skills content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <SkillsView />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full">
