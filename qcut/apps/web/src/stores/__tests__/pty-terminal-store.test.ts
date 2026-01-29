@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { mockElectronAPI, setupElectronMock } from "@/test/mocks/electron";
+import { getDefaultCodexModel } from "@/types/cli-provider";
 
 describe("usePtyTerminalStore", () => {
   let cleanupElectron: () => void;
@@ -18,8 +19,12 @@ describe("usePtyTerminalStore", () => {
       error: null,
       cols: 80,
       rows: 24,
+      cliProvider: "gemini",
+      selectedModel: getDefaultCodexModel(),
       isGeminiMode: true,
       workingDirectory: "",
+      activeSkill: null,
+      skillPromptSent: false,
     });
 
     // Reset all mocks
@@ -40,8 +45,12 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.error).toBeNull();
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
+      expect(result.current.cliProvider).toBe("gemini");
+      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
       expect(result.current.isGeminiMode).toBe(true);
       expect(result.current.workingDirectory).toBe("");
+      expect(result.current.activeSkill).toBeNull();
+      expect(result.current.skillPromptSent).toBe(false);
     });
   });
 
@@ -62,7 +71,7 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.sessionId).toBe("test-pty-session");
     });
 
-    it("should spawn with Gemini CLI command when isGeminiMode is true", async () => {
+    it("should spawn with Gemini CLI command when cliProvider is gemini", async () => {
       const { result } = renderHook(() => usePtyTerminalStore());
 
       await act(async () => {
@@ -76,11 +85,11 @@ describe("usePtyTerminalStore", () => {
       );
     });
 
-    it("should spawn without command when isGeminiMode is false", async () => {
+    it("should spawn without command when cliProvider is shell", async () => {
       const { result } = renderHook(() => usePtyTerminalStore());
 
       act(() => {
-        result.current.setGeminiMode(false);
+        result.current.setCliProvider("shell");
       });
 
       await act(async () => {
@@ -92,6 +101,87 @@ describe("usePtyTerminalStore", () => {
           command: undefined,
         })
       );
+    });
+
+    it("should spawn Codex with model when cliProvider is codex and API key is set", async () => {
+      // Setup API key mock to return a valid key
+      vi.mocked(mockElectronAPI.apiKeys.get).mockResolvedValueOnce({
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+        openRouterApiKey: "sk-or-test-key",
+      });
+
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("codex");
+        result.current.setSelectedModel("anthropic/claude-sonnet-4");
+      });
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(mockElectronAPI.pty!.spawn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: expect.stringContaining("npx open-codex --provider openrouter"),
+          env: expect.objectContaining({
+            OPENROUTER_API_KEY: "sk-or-test-key",
+          }),
+        })
+      );
+    });
+
+    it("should include model in Codex command when selectedModel is set", async () => {
+      // Setup API key mock
+      vi.mocked(mockElectronAPI.apiKeys.get).mockResolvedValueOnce({
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+        openRouterApiKey: "sk-or-test-key",
+      });
+
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("codex");
+        result.current.setSelectedModel("openai/gpt-4o");
+      });
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(mockElectronAPI.pty!.spawn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: expect.stringContaining("--model openai/gpt-4o"),
+        })
+      );
+    });
+
+    it("should fail with error when Codex is selected but API key is missing", async () => {
+      // API key mock returns empty key
+      vi.mocked(mockElectronAPI.apiKeys.get).mockResolvedValueOnce({
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+        openRouterApiKey: "",
+      });
+
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("codex");
+      });
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(result.current.status).toBe("error");
+      expect(result.current.error).toContain("OpenRouter API key not configured");
+      expect(mockElectronAPI.pty!.spawn).not.toHaveBeenCalled();
     });
 
     it("should handle spawn failure", async () => {
@@ -255,17 +345,80 @@ describe("usePtyTerminalStore", () => {
     });
   });
 
-  describe("mode management", () => {
-    it("should toggle Gemini mode", () => {
+  describe("CLI provider management", () => {
+    it("should switch between providers", () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      expect(result.current.cliProvider).toBe("gemini");
+      expect(result.current.isGeminiMode).toBe(true);
+
+      act(() => {
+        result.current.setCliProvider("codex");
+      });
+
+      expect(result.current.cliProvider).toBe("codex");
+      expect(result.current.isGeminiMode).toBe(false);
+
+      act(() => {
+        result.current.setCliProvider("shell");
+      });
+
+      expect(result.current.cliProvider).toBe("shell");
+      expect(result.current.isGeminiMode).toBe(false);
+
+      act(() => {
+        result.current.setCliProvider("gemini");
+      });
+
+      expect(result.current.cliProvider).toBe("gemini");
+      expect(result.current.isGeminiMode).toBe(true);
+    });
+
+    it("should update selected model", () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setSelectedModel("openai/gpt-4o");
+      });
+
+      expect(result.current.selectedModel).toBe("openai/gpt-4o");
+    });
+
+    it("should clear selected model", () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setSelectedModel("openai/gpt-4o");
+      });
+
+      act(() => {
+        result.current.setSelectedModel(null);
+      });
+
+      expect(result.current.selectedModel).toBeNull();
+    });
+  });
+
+  describe("legacy mode management", () => {
+    it("should toggle Gemini mode via setGeminiMode (legacy)", () => {
       const { result } = renderHook(() => usePtyTerminalStore());
 
       expect(result.current.isGeminiMode).toBe(true);
+      expect(result.current.cliProvider).toBe("gemini");
 
       act(() => {
         result.current.setGeminiMode(false);
       });
 
       expect(result.current.isGeminiMode).toBe(false);
+      expect(result.current.cliProvider).toBe("shell");
+
+      act(() => {
+        result.current.setGeminiMode(true);
+      });
+
+      expect(result.current.isGeminiMode).toBe(true);
+      expect(result.current.cliProvider).toBe("gemini");
     });
 
     it("should set working directory", () => {
@@ -276,6 +429,117 @@ describe("usePtyTerminalStore", () => {
       });
 
       expect(result.current.workingDirectory).toBe("/home/user/projects");
+    });
+  });
+
+  describe("skill context management", () => {
+    it("should set active skill", () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      const skill = {
+        id: "test-skill",
+        name: "Test Skill",
+        content: "Test skill content",
+      };
+
+      act(() => {
+        result.current.setActiveSkill(skill);
+      });
+
+      expect(result.current.activeSkill).toEqual(skill);
+      expect(result.current.skillPromptSent).toBe(false);
+    });
+
+    it("should clear skill context", () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      const skill = {
+        id: "test-skill",
+        name: "Test Skill",
+        content: "Test skill content",
+      };
+
+      act(() => {
+        result.current.setActiveSkill(skill);
+      });
+
+      act(() => {
+        result.current.clearSkillContext();
+      });
+
+      expect(result.current.activeSkill).toBeNull();
+      expect(result.current.skillPromptSent).toBe(false);
+    });
+
+    it("should send skill prompt only for Gemini provider", async () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      const skill = {
+        id: "test-skill",
+        name: "Test Skill",
+        content: "Test skill content",
+      };
+
+      // Connect first
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      act(() => {
+        result.current.setActiveSkill(skill);
+      });
+
+      act(() => {
+        result.current.sendSkillPrompt();
+      });
+
+      expect(mockElectronAPI.pty!.write).toHaveBeenCalledWith(
+        "test-pty-session",
+        expect.stringContaining("Test Skill")
+      );
+      expect(result.current.skillPromptSent).toBe(true);
+    });
+
+    it("should not send skill prompt for Codex provider", async () => {
+      // Setup API key mock
+      vi.mocked(mockElectronAPI.apiKeys.get).mockResolvedValue({
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+        openRouterApiKey: "sk-or-test-key",
+      });
+
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("codex");
+      });
+
+      // Connect
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      const skill = {
+        id: "test-skill",
+        name: "Test Skill",
+        content: "Test skill content",
+      };
+
+      act(() => {
+        result.current.setActiveSkill(skill);
+      });
+
+      // Clear previous write calls from connection
+      vi.mocked(mockElectronAPI.pty!.write).mockClear();
+
+      act(() => {
+        result.current.sendSkillPrompt();
+      });
+
+      // Should not send prompt for Codex (uses --full-context flag instead)
+      expect(mockElectronAPI.pty!.write).not.toHaveBeenCalled();
+      expect(result.current.skillPromptSent).toBe(false);
     });
   });
 
@@ -307,6 +571,7 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.sessionId).toBeNull();
       expect(result.current.status).toBe("disconnected");
       expect(result.current.exitCode).toBe(0);
+      expect(result.current.skillPromptSent).toBe(false);
     });
 
     it("should handle error event", () => {
@@ -331,8 +596,14 @@ describe("usePtyTerminalStore", () => {
       });
       act(() => {
         result.current.setDimensions(100, 50);
-        result.current.setGeminiMode(false);
+        result.current.setCliProvider("codex");
+        result.current.setSelectedModel("openai/gpt-4o");
         result.current.setWorkingDirectory("/test");
+        result.current.setActiveSkill({
+          id: "skill",
+          name: "Skill",
+          content: "Content",
+        });
       });
 
       // Reset
@@ -344,8 +615,11 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.status).toBe("disconnected");
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
+      expect(result.current.cliProvider).toBe("gemini");
+      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
       expect(result.current.isGeminiMode).toBe(true);
       expect(result.current.workingDirectory).toBe("");
+      expect(result.current.activeSkill).toBeNull();
     });
   });
 });

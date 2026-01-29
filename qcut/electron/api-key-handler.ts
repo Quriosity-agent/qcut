@@ -7,12 +7,14 @@ interface ApiKeys {
   falApiKey: string;
   freesoundApiKey: string;
   geminiApiKey: string;
+  openRouterApiKey: string;
 }
 
 interface ApiKeyData {
   falApiKey?: string;
   freesoundApiKey?: string;
   geminiApiKey?: string;
+  openRouterApiKey?: string;
 }
 
 interface EncryptedApiKeyData {
@@ -39,7 +41,7 @@ export function setupApiKeyIPC(): void {
   ipcMain.handle("api-keys:get", async (): Promise<ApiKeys> => {
     try {
       if (!fs.existsSync(apiKeysFilePath)) {
-        return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
+        return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "", openRouterApiKey: "" };
       }
 
       const encryptedData: EncryptedApiKeyData = JSON.parse(
@@ -51,6 +53,7 @@ export function setupApiKeyIPC(): void {
         falApiKey: "",
         freesoundApiKey: "",
         geminiApiKey: "",
+        openRouterApiKey: "",
       };
 
       if (encryptedData.falApiKey && safeStorage.isEncryptionAvailable()) {
@@ -101,10 +104,25 @@ export function setupApiKeyIPC(): void {
         result.geminiApiKey = encryptedData.geminiApiKey || "";
       }
 
+      if (encryptedData.openRouterApiKey && safeStorage.isEncryptionAvailable()) {
+        try {
+          const decryptedOpenRouter: string = safeStorage.decryptString(
+            Buffer.from(encryptedData.openRouterApiKey, "base64")
+          );
+          result.openRouterApiKey = decryptedOpenRouter;
+        } catch (error: any) {
+          // Failed to decrypt OpenRouter API key, falling back to plain text
+          // Fallback: treat stored value as plain text
+          result.openRouterApiKey = encryptedData.openRouterApiKey || "";
+        }
+      } else {
+        result.openRouterApiKey = encryptedData.openRouterApiKey || "";
+      }
+
       return result;
     } catch (error: any) {
       // Failed to load API keys
-      return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "" };
+      return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "", openRouterApiKey: "" };
     }
   });
 
@@ -125,6 +143,9 @@ export function setupApiKeyIPC(): void {
         geminiApiKey: keys.geminiApiKey
           ? `${keys.geminiApiKey.substring(0, 10)}... (${keys.geminiApiKey.length} chars)`
           : "empty",
+        openRouterApiKey: keys.openRouterApiKey
+          ? `${keys.openRouterApiKey.substring(0, 10)}... (${keys.openRouterApiKey.length} chars)`
+          : "empty",
       });
 
       try {
@@ -132,6 +153,7 @@ export function setupApiKeyIPC(): void {
           falApiKey = "",
           freesoundApiKey = "",
           geminiApiKey = "",
+          openRouterApiKey = "",
         } = keys;
 
         const dataToStore: EncryptedApiKeyData = {};
@@ -166,6 +188,15 @@ export function setupApiKeyIPC(): void {
           } else {
             dataToStore.geminiApiKey = "";
           }
+
+          if (openRouterApiKey) {
+            const encryptedOpenRouter: Buffer =
+              safeStorage.encryptString(openRouterApiKey);
+            dataToStore.openRouterApiKey = encryptedOpenRouter.toString("base64");
+            console.log("[API Keys] 🔐 OpenRouter key encrypted");
+          } else {
+            dataToStore.openRouterApiKey = "";
+          }
         } else {
           // Fallback to plain text storage if encryption is not available
           console.log(
@@ -174,6 +205,7 @@ export function setupApiKeyIPC(): void {
           dataToStore.falApiKey = falApiKey;
           dataToStore.freesoundApiKey = freesoundApiKey;
           dataToStore.geminiApiKey = geminiApiKey;
+          dataToStore.openRouterApiKey = openRouterApiKey;
         }
 
         // Ensure the directory exists

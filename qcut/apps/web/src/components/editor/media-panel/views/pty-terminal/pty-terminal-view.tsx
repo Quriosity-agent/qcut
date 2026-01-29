@@ -4,8 +4,13 @@ import { useEffect } from "react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { TerminalEmulator } from "./terminal-emulator";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Play,
   Square,
@@ -15,8 +20,11 @@ import {
   Loader2,
   Brain,
   X,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { CliProvider } from "@/types/cli-provider";
+import { CLI_PROVIDERS, DEFAULT_OPENROUTER_MODELS } from "@/types/cli-provider";
 
 export function PtyTerminalView() {
   const {
@@ -24,11 +32,13 @@ export function PtyTerminalView() {
     status,
     exitCode,
     error,
-    isGeminiMode,
+    cliProvider,
+    selectedModel,
     activeSkill,
     connect,
     disconnect,
-    setGeminiMode,
+    setCliProvider,
+    setSelectedModel,
     clearSkillContext,
   } = usePtyTerminalStore();
 
@@ -67,31 +77,52 @@ export function PtyTerminalView() {
       {/* Header Controls */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/30">
         <div className="flex items-center gap-3">
-          {/* Mode Toggle */}
+          {/* Provider Selector */}
           <div className="flex items-center gap-2">
-            <Switch
-              id="gemini-mode"
-              checked={isGeminiMode}
-              onCheckedChange={setGeminiMode}
+            <Select
+              value={cliProvider}
+              onValueChange={(value: CliProvider) => setCliProvider(value)}
               disabled={isConnected || isConnecting}
-              aria-label="Toggle Gemini CLI mode"
-            />
-            <Label
-              htmlFor="gemini-mode"
-              className="text-sm flex items-center gap-1 cursor-pointer"
             >
-              {isGeminiMode ? (
-                <>
-                  <Sparkles className="h-3 w-3" aria-hidden="true" />
-                  Gemini CLI
-                </>
-              ) : (
-                <>
-                  <TerminalIcon className="h-3 w-3" aria-hidden="true" />
-                  Shell
-                </>
-              )}
-            </Label>
+              <SelectTrigger className="w-[140px] h-8" aria-label="Select CLI provider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.values(CLI_PROVIDERS).map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    <div className="flex items-center gap-2">
+                      {provider.id === "gemini" && <Sparkles className="h-3 w-3" />}
+                      {provider.id === "codex" && <Bot className="h-3 w-3" />}
+                      {provider.id === "shell" && <TerminalIcon className="h-3 w-3" />}
+                      <span>{provider.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Model Selector (only for Codex) */}
+            {cliProvider === "codex" && (
+              <Select
+                value={selectedModel || ""}
+                onValueChange={setSelectedModel}
+                disabled={isConnected || isConnecting}
+              >
+                <SelectTrigger className="w-[180px] h-8" aria-label="Select AI model">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEFAULT_OPENROUTER_MODELS.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{model.name}</span>
+                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Status Indicator */}
@@ -210,23 +241,35 @@ export function PtyTerminalView() {
                   {activeSkill.name}
                 </p>
                 <p className="text-xs mt-1 opacity-70">
-                  Click Start to run with Gemini CLI
+                  Click Start to run with {CLI_PROVIDERS[cliProvider].name}
                 </p>
-                <p className="text-xs mt-2 text-purple-400">
-                  Skill instructions will be sent automatically
-                </p>
+                {cliProvider === "codex" && (
+                  <p className="text-xs mt-2 text-blue-400">
+                    Using model: {selectedModel || "default"}
+                  </p>
+                )}
+                {cliProvider === "gemini" && (
+                  <p className="text-xs mt-2 text-purple-400">
+                    Skill instructions will be sent automatically
+                  </p>
+                )}
               </>
             ) : (
               <>
-                <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />
+                {cliProvider === "gemini" && <Sparkles className="h-12 w-12 mb-4 opacity-50" />}
+                {cliProvider === "codex" && <Bot className="h-12 w-12 mb-4 opacity-50" />}
+                {cliProvider === "shell" && <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />}
                 <p className="text-sm">
-                  {isGeminiMode
-                    ? "Click Start to launch Gemini CLI"
-                    : "Click Start to open a terminal"}
+                  Click Start to launch {CLI_PROVIDERS[cliProvider].name}
                 </p>
-                {isGeminiMode && (
+                {cliProvider === "gemini" && (
                   <p className="text-xs mt-1 opacity-70">
                     Requires Google account authentication on first use
+                  </p>
+                )}
+                {cliProvider === "codex" && (
+                  <p className="text-xs mt-1 opacity-70">
+                    Requires OpenRouter API key in Settings
                   </p>
                 )}
               </>

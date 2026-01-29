@@ -38,6 +38,7 @@ interface SpawnOptions {
   rows?: number;
   cwd?: string;
   command?: string; // e.g., "npx @google/gemini-cli"
+  env?: Record<string, string>; // Additional environment variables (e.g., OPENROUTER_API_KEY)
 }
 
 interface SpawnResult {
@@ -154,7 +155,10 @@ export function setupPtyIPC(): void {
           cols: options.cols || 80,
           rows: options.rows || 24,
           cwd: options.cwd || process.cwd(),
-          env: process.env,
+          env: {
+            ...process.env,
+            ...options.env, // Merge additional env vars (e.g., OPENROUTER_API_KEY)
+          },
         });
 
         const session: PtySession = {

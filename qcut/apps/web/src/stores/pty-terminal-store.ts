@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import type { CliProvider } from "@/types/cli-provider";
+import { CLI_PROVIDERS, getDefaultCodexModel } from "@/types/cli-provider";
 
 // ============================================================================
 // Types
@@ -7,7 +9,7 @@ import { create } from "zustand";
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
 /**
- * Active skill context for Gemini CLI
+ * Active skill context for CLI agents
  */
 export interface ActiveSkillContext {
   id: string;
@@ -26,11 +28,16 @@ interface PtyTerminalState {
   cols: number;
   rows: number;
 
-  // UI state
-  isGeminiMode: boolean; // true = launch Gemini CLI, false = launch shell
+  // CLI provider state
+  cliProvider: CliProvider;
+  selectedModel: string | null; // For Codex/OpenRouter model selection
+
+  // Legacy compatibility
+  isGeminiMode: boolean; // Derived from cliProvider for backward compatibility
+
   workingDirectory: string;
 
-  // Skill context (for running skills with Gemini CLI)
+  // Skill context (for running skills with CLI agents)
   activeSkill: ActiveSkillContext | null;
   skillPromptSent: boolean; // Track if initial skill prompt was sent
 }
@@ -44,7 +51,11 @@ interface PtyTerminalActions {
   setDimensions: (cols: number, rows: number) => void;
   resize: () => Promise<void>;
 
-  // Mode management
+  // CLI provider management
+  setCliProvider: (provider: CliProvider) => void;
+  setSelectedModel: (modelId: string | null) => void;
+
+  // Legacy mode management (backward compatibility)
   setGeminiMode: (enabled: boolean) => void;
   setWorkingDirectory: (dir: string) => void;
 
@@ -75,7 +86,9 @@ const initialState: PtyTerminalState = {
   error: null,
   cols: 80,
   rows: 24,
-  isGeminiMode: true,
+  cliProvider: "gemini", // Default to Gemini for backward compatibility
+  selectedModel: getDefaultCodexModel(), // Default Codex model
+  isGeminiMode: true, // Derived from cliProvider
   workingDirectory: "",
   activeSkill: null,
   skillPromptSent: false,
@@ -83,6 +96,7 @@ const initialState: PtyTerminalState = {
 
 /**
  * Build the skill prompt to send to Gemini CLI
+ * Note: Codex uses --full-context flag instead of prompt injection
  */
 function buildSkillPrompt(skill: ActiveSkillContext): string {
   return `I'm using the "${skill.name}" skill. Here are the instructions I need you to follow:
@@ -90,6 +104,20 @@ function buildSkillPrompt(skill: ActiveSkillContext): string {
 ${skill.content}
 
 Please acknowledge that you understand these instructions and are ready to help me with tasks using this skill.`;
+}
+
+/**
+ * Escape content for use in shell command (--full-context flag)
+ * Handles special characters that would break shell parsing
+ */
+function escapeForShellArg(content: string): string {
+  // For Windows cmd.exe, we need different escaping
+  // Using double quotes and escaping internal quotes
+  return content
+    .replace(/\\/g, "\\\\") // Escape backslashes first
+    .replace(/"/g, '\\"') // Escape double quotes
+    .replace(/\$/g, "\\$") // Escape dollar signs
+    .replace(/`/g, "\\`"); // Escape backticks
 }
 
 // ============================================================================
@@ -100,12 +128,14 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   ...initialState,
 
   connect: async (options = {}) => {
-    const { isGeminiMode, workingDirectory, cols, rows } = get();
+    const { cliProvider, selectedModel, workingDirectory, cols, rows, activeSkill } = get();
 
     console.log("[PTY Store] ===== CONNECT =====");
-    console.log("[PTY Store] isGeminiMode:", isGeminiMode);
+    console.log("[PTY Store] cliProvider:", cliProvider);
+    console.log("[PTY Store] selectedModel:", selectedModel);
     console.log("[PTY Store] workingDirectory:", workingDirectory);
     console.log("[PTY Store] cols:", cols, "rows:", rows);
+    console.log("[PTY Store] activeSkill:", activeSkill?.name || "none");
 
     set({ status: "connecting", error: null, exitCode: null });
 
@@ -119,17 +149,52 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         return;
       }
 
-      // Determine command based on mode
-      const command = isGeminiMode ? "npx @google/gemini-cli@latest" : undefined;
-      console.log("[PTY Store] Command to spawn:", command || "(default shell)");
+      const providerConfig = CLI_PROVIDERS[cliProvider];
+      let command: string | undefined;
+      let env: Record<string, string> = {};
+
+      // Build command based on provider
+      if (cliProvider === "codex") {
+        // Get OpenRouter API key for Codex
+        const apiKeys = await window.electronAPI?.apiKeys?.get();
+        if (!apiKeys?.openRouterApiKey) {
+          set({
+            status: "error",
+            error: "OpenRouter API key not configured. Go to Settings > API Keys.",
+          });
+          return;
+        }
+
+        env.OPENROUTER_API_KEY = apiKeys.openRouterApiKey;
+
+        // Build Codex command with provider and model
+        command = `npx open-codex --provider openrouter`;
+        if (selectedModel) {
+          command += ` --model ${selectedModel}`;
+        }
+
+        // Inject skill via --full-context flag if active
+        // Codex supports passing context via command flag (no delay needed)
+        if (activeSkill && providerConfig.supportsSkillFlag && providerConfig.skillFlagFormat) {
+          const escapedContent = escapeForShellArg(activeSkill.content);
+          command += ` ${providerConfig.skillFlagFormat} "${escapedContent}"`;
+        }
+
+        console.log("[PTY Store] Codex command:", command);
+      } else if (cliProvider === "gemini") {
+        command = providerConfig.command;
+        console.log("[PTY Store] Gemini command:", command);
+      }
+      // shell provider uses undefined command (default shell)
 
       const spawnOptions = {
         cols,
         rows,
         cwd: options.cwd || workingDirectory || undefined,
         command: options.command || command,
+        env: Object.keys(env).length > 0 ? env : undefined,
       };
-      console.log("[PTY Store] Spawn options:", JSON.stringify(spawnOptions, null, 2));
+      console.log("[PTY Store] Spawn options:", JSON.stringify({ ...spawnOptions, env: env.OPENROUTER_API_KEY ? "[REDACTED]" : undefined }, null, 2));
 
       const result = await window.electronAPI.pty.spawn(spawnOptions);
       console.log("[PTY Store] Spawn result:", JSON.stringify(result, null, 2));
@@ -171,8 +236,24 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     }
   },
 
+  // CLI provider management
+  setCliProvider: (provider) => {
+    set({
+      cliProvider: provider,
+      isGeminiMode: provider === "gemini",
+    });
+  },
+
+  setSelectedModel: (modelId) => {
+    set({ selectedModel: modelId });
+  },
+
+  // Legacy compatibility - maps to setCliProvider
   setGeminiMode: (enabled) => {
-    set({ isGeminiMode: enabled });
+    set({
+      cliProvider: enabled ? "gemini" : "shell",
+      isGeminiMode: enabled,
+    });
   },
 
   setWorkingDirectory: (dir) => {
@@ -189,10 +270,10 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   },
 
   sendSkillPrompt: () => {
-    const { sessionId, activeSkill, skillPromptSent, isGeminiMode } = get();
+    const { sessionId, activeSkill, skillPromptSent, cliProvider } = get();
 
-    // Only send if we have a skill, haven't sent yet, and are in Gemini mode
-    if (!activeSkill || skillPromptSent || !isGeminiMode || !sessionId) {
+    // Only send prompt injection for Gemini (Codex uses --full-context flag at spawn time)
+    if (!activeSkill || skillPromptSent || cliProvider !== "gemini" || !sessionId) {
       return;
     }
 
@@ -205,12 +286,12 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   },
 
   handleConnected: (sessionId) => {
-    const { activeSkill, skillPromptSent, isGeminiMode } = get();
+    const { activeSkill, skillPromptSent, cliProvider } = get();
     set({ sessionId, status: "connected" });
 
     // If skill is active and prompt not sent, send it after a delay
-    // (allow Gemini CLI to initialize)
-    if (activeSkill && !skillPromptSent && isGeminiMode) {
+    // (only for Gemini CLI - Codex uses flag injection at spawn time)
+    if (activeSkill && !skillPromptSent && cliProvider === "gemini") {
       console.log("[PTY Store] Will send skill prompt after Gemini CLI initializes");
       setTimeout(() => {
         get().sendSkillPrompt();

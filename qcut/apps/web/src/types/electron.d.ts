@@ -277,11 +277,13 @@ export interface ElectronAPI {
       falApiKey: string;
       freesoundApiKey: string;
       geminiApiKey: string;
+      openRouterApiKey: string;
     }>;
     set: (keys: {
       falApiKey?: string;
       freesoundApiKey?: string;
       geminiApiKey?: string;
+      openRouterApiKey?: string;
     }) => Promise<boolean>;
     clear: () => Promise<boolean>;
   };
@@ -415,7 +417,8 @@ export interface ElectronAPI {
       cols?: number;
       rows?: number;
       cwd?: string;
-      command?: string; // e.g., "npx @google/gemini-cli"
+      command?: string; // e.g., "npx @google/gemini-cli" or "npx open-codex"
+      env?: Record<string, string>; // Additional environment variables (e.g., OPENROUTER_API_KEY)
     }) => Promise<{ success: boolean; sessionId?: string; error?: string }>;
 
     /**

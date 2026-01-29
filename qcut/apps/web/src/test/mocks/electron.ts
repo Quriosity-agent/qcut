@@ -127,6 +127,7 @@ export const mockElectronAPI: ElectronAPI = {
       falApiKey: "",
       freesoundApiKey: "",
       geminiApiKey: "",
+      openRouterApiKey: "",
     }),
     set: vi.fn().mockResolvedValue(true),
     clear: vi.fn().mockResolvedValue(true),

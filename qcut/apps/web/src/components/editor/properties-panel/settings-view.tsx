@@ -289,9 +289,11 @@ function ApiKeysView() {
   const [falApiKey, setFalApiKey] = useState("");
   const [freesoundApiKey, setFreesoundApiKey] = useState("");
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [openRouterApiKey, setOpenRouterApiKey] = useState("");
   const [showFalKey, setShowFalKey] = useState(false);
   const [showFreesoundKey, setShowFreesoundKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTestingFreesound, setIsTestingFreesound] = useState(false);
   const [freesoundTestResult, setFreesoundTestResult] = useState<{
@@ -313,6 +315,7 @@ function ApiKeysView() {
           setFalApiKey(keys.falApiKey || "");
           setFreesoundApiKey(keys.freesoundApiKey || "");
           setGeminiApiKey(keys.geminiApiKey || "");
+          setOpenRouterApiKey(keys.openRouterApiKey || "");
         }
       }
     } catch (error) {
@@ -342,6 +345,10 @@ function ApiKeysView() {
       "[Settings] Gemini API key length:",
       geminiApiKey.trim().length
     );
+    console.log(
+      "[Settings] OpenRouter API key length:",
+      openRouterApiKey.trim().length
+    );
 
     try {
       if (!window.electronAPI?.apiKeys) {
@@ -355,6 +362,7 @@ function ApiKeysView() {
         falApiKey: falApiKey.trim(),
         freesoundApiKey: freesoundApiKey.trim(),
         geminiApiKey: geminiApiKey.trim(),
+        openRouterApiKey: openRouterApiKey.trim(),
       });
 
       console.log("[Settings] ✅ API keys saved successfully, result:", result);
@@ -373,7 +381,7 @@ function ApiKeysView() {
         },
       });
     }
-  }, [falApiKey, freesoundApiKey, geminiApiKey]);
+  }, [falApiKey, freesoundApiKey, geminiApiKey, openRouterApiKey]);
 
   // Test Freesound API key
   const testFreesoundKey = useCallback(async () => {
@@ -535,6 +543,46 @@ function ApiKeysView() {
               onClick={() => setShowGeminiKey(!showGeminiKey)}
             >
               {showGeminiKey ? (
+                <EyeOffIcon className="h-4 w-4" />
+              ) : (
+                <EyeIcon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </PropertyGroup>
+
+      {/* OpenRouter API Key */}
+      <PropertyGroup title="OpenRouter API Key">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-muted-foreground">
+            For Codex CLI (300+ AI models). Get your key at{" "}
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-primary hover:underline"
+            >
+              openrouter.ai/keys
+            </a>
+          </div>
+          <div className="flex-1 relative">
+            <Input
+              type={showOpenRouterKey ? "text" : "password"}
+              placeholder="Enter your OpenRouter API key (sk-or-v1-...)"
+              value={openRouterApiKey}
+              onChange={(e) => setOpenRouterApiKey(e.target.value)}
+              className="bg-panel-accent pr-10"
+              data-testid="openrouter-api-key-input"
+            />
+            <Button
+              type="button"
+              variant="text"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3"
+              onClick={() => setShowOpenRouterKey(!showOpenRouterKey)}
+            >
+              {showOpenRouterKey ? (
                 <EyeOffIcon className="h-4 w-4" />
               ) : (
                 <EyeIcon className="h-4 w-4" />

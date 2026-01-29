@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import type { Skill } from "@/types/skill";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Brain,
   Trash2,
   Play,
@@ -13,6 +19,8 @@ import {
   Copy,
   Folder,
   Check,
+  Sparkles,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSkillRunner } from "@/hooks/use-skill-runner";
@@ -48,8 +56,15 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   }, [isExpanded, activeProject, skillsBasePath]);
 
   const handleRunWithGemini = () => {
-    runSkill(skill.id);
+    runSkill(skill.id, "gemini");
     toast.info(`Running "${skill.name}" with Gemini CLI`, {
+      description: "Switching to terminal...",
+    });
+  };
+
+  const handleRunWithCodex = () => {
+    runSkill(skill.id, "codex");
+    toast.info(`Running "${skill.name}" with Codex (OpenRouter)`, {
       description: "Switching to terminal...",
     });
   };
@@ -195,16 +210,25 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
       </div>
 
       <div className="flex gap-2 mt-3">
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          className="flex-1"
-          onClick={handleRunWithGemini}
-        >
-          <Play className="h-3 w-3 mr-1" />
-          Run
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="default" size="sm" className="flex-1">
+              <Play className="h-3 w-3 mr-1" />
+              Run
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleRunWithGemini}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Run with Gemini CLI
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRunWithCodex}>
+              <Bot className="h-4 w-4 mr-2" />
+              Run with Codex (OpenRouter)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           type="button"
           variant="outline"
