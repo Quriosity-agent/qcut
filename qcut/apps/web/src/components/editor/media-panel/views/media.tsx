@@ -32,6 +32,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
   ContextMenuSeparator,
+  ContextMenuCheckboxItem,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,7 +71,8 @@ export function MediaView() {
   );
   const addMediaItem = mediaStore?.addMediaItem;
   const removeMediaItem = mediaStore?.removeMediaItem;
-  const moveToFolder = mediaStore?.moveToFolder;
+  const addToFolder = mediaStore?.addToFolder;
+  const removeFromFolder = mediaStore?.removeFromFolder;
 
   // Folder state
   const { folders, selectedFolderId } = useFolderStore();
@@ -576,34 +578,41 @@ export function MediaView() {
                       </ContextMenuItem>
                       <ContextMenuSeparator />
 
-                      {/* Move to Folder */}
+                      {/* Add to Folders (multi-folder support) */}
                       <ContextMenuSub>
                         <ContextMenuSubTrigger>
                           <FolderInput
                             className="h-4 w-4 mr-2"
                             aria-hidden="true"
                           />
-                          Move to Folder
+                          Add to Folders
                         </ContextMenuSubTrigger>
                         <ContextMenuSubContent>
-                          <ContextMenuItem
-                            onClick={() => moveToFolder?.(item.id, null)}
-                          >
-                            No Folder
-                          </ContextMenuItem>
-                          {folders.length > 0 && <ContextMenuSeparator />}
-                          {folders.map((folder) => (
-                            <ContextMenuItem
-                              key={folder.id}
-                              onClick={() =>
-                                moveToFolder?.(item.id, folder.id)
-                              }
-                            >
-                              {folder.name}
-                              {(item.folderIds || []).includes(folder.id) &&
-                                " ✓"}
+                          {folders.length === 0 && (
+                            <ContextMenuItem disabled>
+                              No folders created
                             </ContextMenuItem>
-                          ))}
+                          )}
+                          {folders.map((folder) => {
+                            const isInFolder = (item.folderIds || []).includes(
+                              folder.id
+                            );
+                            return (
+                              <ContextMenuCheckboxItem
+                                key={folder.id}
+                                checked={isInFolder}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    addToFolder?.(item.id, folder.id);
+                                  } else {
+                                    removeFromFolder?.(item.id, folder.id);
+                                  }
+                                }}
+                              >
+                                {folder.name}
+                              </ContextMenuCheckboxItem>
+                            );
+                          })}
                         </ContextMenuSubContent>
                       </ContextMenuSub>
 
