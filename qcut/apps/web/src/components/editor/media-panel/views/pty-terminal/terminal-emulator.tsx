@@ -117,7 +117,8 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
     // Handle user input - send to PTY
     terminal.onData((data) => {
       if (sessionId) {
-        void window.electronAPI?.pty?.write(sessionId, data).catch((error) => {
+        const writePromise = window.electronAPI?.pty?.write?.(sessionId, data);
+        writePromise?.catch((error) => {
           console.error("[Terminal] Failed to write to PTY:", error);
         });
       }
@@ -131,12 +132,17 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
         event.key === "v" &&
         event.type === "keydown"
       ) {
+        // Guard against clipboard API unavailability (non-secure contexts, tests)
+        if (!navigator.clipboard?.readText) {
+          return true;
+        }
         navigator.clipboard
           .readText()
           .then((text) => {
             if (text && sessionId) {
               // Send pasted text to PTY
-              window.electronAPI?.pty?.write(sessionId, text).catch((err) => {
+              const writePromise = window.electronAPI?.pty?.write?.(sessionId, text);
+              writePromise?.catch((err) => {
                 console.error("[Terminal] Failed to write pasted text:", err);
               });
             }
@@ -154,6 +160,10 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
         event.type === "keydown" &&
         terminal.hasSelection()
       ) {
+        // Guard against clipboard API unavailability (non-secure contexts, tests)
+        if (!navigator.clipboard?.writeText) {
+          return true;
+        }
         const selection = terminal.getSelection();
         if (selection) {
           navigator.clipboard.writeText(selection).catch((err) => {

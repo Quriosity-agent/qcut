@@ -4,7 +4,7 @@ This document describes QCut's integrated terminal system, which provides full P
 
 ## Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Renderer Process                          │
 │  ┌─────────────────────────────────────────────────────┐    │
@@ -112,22 +112,22 @@ React component wrapping xterm.js.
 ## Data Flow
 
 ### 1. User Types in Terminal
-```
+```text
 [Keyboard Input] → xterm.onData() → pty:write IPC → node-pty.write()
 ```
 
 ### 2. Process Outputs Text
-```
+```text
 node-pty.onData() → pty:data IPC → store callback → xterm.write()
 ```
 
 ### 3. Terminal Resize
-```
+```text
 ResizeObserver → FitAddon.fit() → store.setDimensions() → pty:resize IPC → node-pty.resize()
 ```
 
 ### 4. Process Exits
-```
+```text
 node-pty.onExit() → pty:exit IPC → store.handleDisconnected() → UI update
 ```
 
