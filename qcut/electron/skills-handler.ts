@@ -135,15 +135,15 @@ export function setupSkillsIPC(): void {
 
       const skillsPath = getProjectSkillsPath(projectId);
 
+      let entries;
       try {
-        await fs.access(skillsPath);
+        entries = await fs.readdir(skillsPath, { withFileTypes: true });
       } catch {
-        // Skills folder doesn't exist yet - return empty array
-        log.info("[Skills Handler] Skills folder not found, returning empty array");
+        // Skills folder doesn't exist or can't be read - return empty array
+        log.info("[Skills Handler] Skills folder not accessible, returning empty array");
         return [];
       }
 
-      const entries = await fs.readdir(skillsPath, { withFileTypes: true });
       const skills: Skill[] = [];
 
       for (const entry of entries) {
@@ -427,14 +427,13 @@ export function setupSkillsIPC(): void {
         dirPath: string,
         isBundled: boolean
       ) => {
+        let entries;
         try {
-          await fs.access(dirPath);
+          entries = await fs.readdir(dirPath, { withFileTypes: true });
         } catch {
-          log.info("[Skills Handler] Skills folder not found:", dirPath);
+          log.info("[Skills Handler] Skills folder not accessible:", dirPath);
           return;
         }
-
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
         for (const entry of entries) {
           if (!entry.isDirectory()) continue;

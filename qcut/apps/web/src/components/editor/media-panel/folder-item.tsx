@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useFolderStore } from "@/stores/folder-store";
 import type { MediaFolder } from "@/stores/media-store-types";
 import {
+  FOLDER_NAME_MAX_LENGTH,
+  FOLDER_NAME_MIN_LENGTH,
+} from "@/stores/media-store-types";
+import { toast } from "sonner";
+import {
   ChevronDown,
   ChevronRight,
   Folder,
@@ -71,10 +76,29 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
   const [newName, setNewName] = useState(folder.name);
 
   const handleRenameSubmit = () => {
-    if (newName && newName.trim() && newName.trim() !== folder.name) {
-      renameFolder(folder.id, newName.trim());
+    const trimmedName = newName.trim();
+
+    if (!trimmedName || trimmedName === folder.name) {
+      setIsRenameOpen(false);
+      return;
     }
-    setIsRenameOpen(false);
+
+    if (trimmedName.length < FOLDER_NAME_MIN_LENGTH) {
+      toast.error(`Folder name must be at least ${FOLDER_NAME_MIN_LENGTH} character`);
+      return;
+    }
+
+    if (trimmedName.length > FOLDER_NAME_MAX_LENGTH) {
+      toast.error(`Folder name must be ${FOLDER_NAME_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    const success = renameFolder(folder.id, trimmedName);
+    if (success) {
+      setIsRenameOpen(false);
+    } else {
+      toast.error("Failed to rename folder");
+    }
   };
 
   const handleDeleteConfirm = () => {

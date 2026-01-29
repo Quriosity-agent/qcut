@@ -126,11 +126,13 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
           .then((text) => {
             if (text && sessionId) {
               // Send pasted text to PTY
-              window.electronAPI?.pty?.write(sessionId, text);
+              window.electronAPI?.pty?.write(sessionId, text).catch((err) => {
+                console.error("[Terminal] Failed to write pasted text:", err);
+              });
             }
           })
           .catch((err) => {
-            console.error("[Terminal] Failed to paste:", err);
+            console.error("[Terminal] Failed to read clipboard:", err);
           });
         // Prevent default to avoid double paste
         return false;
