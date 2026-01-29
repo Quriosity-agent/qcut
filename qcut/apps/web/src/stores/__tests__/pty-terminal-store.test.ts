@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { mockElectronAPI, setupElectronMock } from "@/test/mocks/electron";
-import { getDefaultCodexModel } from "@/types/cli-provider";
+import { getDefaultCodexModel, getDefaultClaudeModel } from "@/types/cli-provider";
 
 describe("usePtyTerminalStore", () => {
   let cleanupElectron: () => void;
@@ -21,6 +21,7 @@ describe("usePtyTerminalStore", () => {
       rows: 24,
       cliProvider: "gemini",
       selectedModel: getDefaultCodexModel(),
+      selectedClaudeModel: getDefaultClaudeModel(),
       isGeminiMode: true,
       workingDirectory: "",
       activeSkill: null,
@@ -110,6 +111,7 @@ describe("usePtyTerminalStore", () => {
         freesoundApiKey: "",
         geminiApiKey: "",
         openRouterApiKey: "sk-or-test-key",
+        anthropicApiKey: "",
       });
 
       const { result } = renderHook(() => usePtyTerminalStore());
@@ -140,6 +142,7 @@ describe("usePtyTerminalStore", () => {
         freesoundApiKey: "",
         geminiApiKey: "",
         openRouterApiKey: "sk-or-test-key",
+        anthropicApiKey: "",
       });
 
       const { result } = renderHook(() => usePtyTerminalStore());
@@ -167,6 +170,7 @@ describe("usePtyTerminalStore", () => {
         freesoundApiKey: "",
         geminiApiKey: "",
         openRouterApiKey: "",
+        anthropicApiKey: "",
       });
 
       const { result } = renderHook(() => usePtyTerminalStore());
@@ -507,6 +511,7 @@ describe("usePtyTerminalStore", () => {
         freesoundApiKey: "",
         geminiApiKey: "",
         openRouterApiKey: "sk-or-test-key",
+        anthropicApiKey: "",
       });
 
       const { result } = renderHook(() => usePtyTerminalStore());

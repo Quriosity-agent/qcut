@@ -10,12 +10,13 @@ import type { CliProvider } from "@/types/cli-provider";
  *
  * When a skill is run:
  * 1. Sets the skill as active context in the PTY terminal store
- * 2. Sets the CLI provider (Gemini or Codex if specified)
+ * 2. Sets the CLI provider (Gemini, Codex, or Claude if specified)
  * 3. Sets the working directory to the project's skills folder
  * 4. Switches to the PTY terminal tab
  * 5. Auto-connects if not already connected
  * 6. For Gemini: Sends the skill prompt after connection
- * 7. For Codex: Skill is injected via --full-context flag at spawn time
+ * 7. For Codex: Skill is injected via --project-doc flag at spawn time
+ * 8. For Claude: Skill is injected via --append-system-prompt flag at spawn time
  */
 export function useSkillRunner() {
   const { skills } = useSkillsStore();
@@ -35,11 +36,11 @@ export function useSkillRunner() {
    * Run a skill with the specified or current CLI provider.
    *
    * @param skillId - The ID of the skill to run
-   * @param preferredProvider - Optional provider to use ("gemini" or "codex")
+   * @param preferredProvider - Optional provider to use ("gemini", "codex", or "claude")
    *                           If not specified, uses the currently selected provider
    */
   const runSkill = useCallback(
-    async (skillId: string, preferredProvider?: "gemini" | "codex") => {
+    async (skillId: string, preferredProvider?: "gemini" | "codex" | "claude") => {
       const skill = skills.find((s) => s.id === skillId);
       if (!skill) {
         console.warn("[useSkillRunner] Skill not found:", skillId);
