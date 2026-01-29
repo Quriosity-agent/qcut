@@ -53,6 +53,14 @@ function getProjectSkillsPath(projectId: string): string {
 }
 
 /**
+ * Get the path to the global .claude/skills folder
+ */
+function getGlobalSkillsPath(): string {
+  const homePath = app.getPath("home");
+  return path.join(homePath, ".claude", "skills");
+}
+
+/**
  * Parse frontmatter from Skill.md content
  */
 function parseSkillFrontmatter(content: string): SkillFrontmatter | null {
@@ -308,6 +316,61 @@ export function setupSkillsIPC(): void {
       projectId: string
     ): Promise<string> => {
       return getProjectSkillsPath(projectId);
+    }
+  );
+
+  // Scan global .claude/skills folder for available skills
+  ipcMain.handle(
+    "skills:scanGlobal",
+    async (): Promise<
+      Array<{ path: string; name: string; description: string }>
+    > => {
+      log.info("[Skills Handler] Scanning global skills folder");
+
+      const globalPath = getGlobalSkillsPath();
+
+      try {
+        await fs.access(globalPath);
+      } catch {
+        log.info("[Skills Handler] Global skills folder not found:", globalPath);
+        return [];
+      }
+
+      const entries = await fs.readdir(globalPath, { withFileTypes: true });
+      const availableSkills: Array<{
+        path: string;
+        name: string;
+        description: string;
+      }> = [];
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+
+        const skillFolder = path.join(globalPath, entry.name);
+        const skillMdPath = path.join(skillFolder, "Skill.md");
+
+        try {
+          const content = await fs.readFile(skillMdPath, "utf-8");
+          const frontmatter = parseSkillFrontmatter(content);
+
+          if (frontmatter) {
+            availableSkills.push({
+              path: skillFolder,
+              name: frontmatter.name,
+              description: frontmatter.description,
+            });
+            log.info("[Skills Handler] Found global skill:", frontmatter.name);
+          }
+        } catch {
+          // Skip folders without valid Skill.md
+        }
+      }
+
+      log.info(
+        "[Skills Handler] Total global skills found:",
+        availableSkills.length
+      );
+      return availableSkills;
     }
   );
 

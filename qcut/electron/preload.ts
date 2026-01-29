@@ -380,6 +380,9 @@ interface ElectronAPI {
     ) => Promise<string>;
     browse: () => Promise<string | null>;
     getPath: (projectId: string) => Promise<string>;
+    scanGlobal: () => Promise<
+      Array<{ path: string; name: string; description: string }>
+    >;
   };
 
   // Utility functions
@@ -683,6 +686,9 @@ const electronAPI: ElectronAPI = {
     browse: (): Promise<string | null> => ipcRenderer.invoke("skills:browse"),
     getPath: (projectId: string): Promise<string> =>
       ipcRenderer.invoke("skills:getPath", projectId),
+    scanGlobal: (): Promise<
+      Array<{ path: string; name: string; description: string }>
+    > => ipcRenderer.invoke("skills:scanGlobal"),
   },
 
   // Utility functions

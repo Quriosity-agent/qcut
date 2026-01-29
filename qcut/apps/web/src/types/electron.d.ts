@@ -547,6 +547,14 @@ export interface ElectronAPI {
      * @param projectId - Project identifier
      */
     getPath: (projectId: string) => Promise<string>;
+
+    /**
+     * Scan global .claude/skills folder for available skills
+     * @returns Array of available skills with path, name, description
+     */
+    scanGlobal: () => Promise<
+      Array<{ path: string; name: string; description: string }>
+    >;
   };
 }
 
