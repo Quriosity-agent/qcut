@@ -11,7 +11,9 @@ import {
   SerializedScene,
   TimelineData,
   StorageAdapter,
+  FolderData,
 } from "./types";
+import type { MediaFolder } from "@/stores/media-store-types";
 import { TimelineTrack } from "@/types/timeline";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
@@ -26,6 +28,7 @@ class StorageService {
       mediaFilesAdapter: OPFSAdapter;
     }
   >();
+  private folderAdapterCache = new Map<string, IndexedDBAdapter<FolderData>>();
 
   constructor() {
     this.config = {
@@ -114,6 +117,27 @@ class StorageService {
         projectId,
       });
     }
+  }
+
+  // Helper to get project-specific folder adapter
+  private getProjectFolderAdapter(
+    projectId: string
+  ): IndexedDBAdapter<FolderData> {
+    const cached = this.folderAdapterCache.get(projectId);
+    if (cached) {
+      return cached;
+    }
+
+    const adapter = new IndexedDBAdapter<FolderData>(
+      `${this.config.mediaDb}-${projectId}-folders`,
+      "folders",
+      this.config.version
+    );
+
+    this.folderAdapterCache.set(projectId, adapter);
+    debugLog("[StorageService] Cached folder adapter", { projectId });
+
+    return adapter;
   }
 
   // Helper to get project-specific timeline adapter
@@ -249,6 +273,7 @@ class StorageService {
   async deleteProject(id: string): Promise<void> {
     await this.projectsAdapter.remove(id);
     this.clearProjectMediaAdapters(id);
+    await this.deleteFolders(id);
   }
 
   // Media operations - now project-specific
@@ -285,6 +310,8 @@ class StorageService {
       metadata: mediaItem.metadata,
       // Persist localPath for FFmpeg CLI export (videos only)
       localPath: mediaItem.localPath,
+      // Persist folder membership for virtual folder organization
+      folderIds: mediaItem.folderIds,
     };
 
     await mediaMetadataAdapter.set(mediaItem.id, metadata);
@@ -417,6 +444,8 @@ class StorageService {
       metadata: metadata.metadata,
       // Restore localPath for FFmpeg CLI export
       localPath,
+      // Restore folder membership for virtual folder organization
+      folderIds: metadata.folderIds,
     };
   }
 
@@ -455,6 +484,80 @@ class StorageService {
       mediaFilesAdapter.clear(),
     ]);
     this.clearProjectMediaAdapters(projectId);
+  }
+
+  // ============================================================================
+  // Folder Operations - Virtual folder persistence
+  // ============================================================================
+
+  /**
+   * Save all folders for a project.
+   * Replaces existing folders with the new set.
+   */
+  async saveFolders(
+    projectId: string,
+    folders: MediaFolder[]
+  ): Promise<void> {
+    const adapter = this.getProjectFolderAdapter(projectId);
+
+    // Clear existing folders and save all new ones
+    await adapter.clear();
+
+    for (const folder of folders) {
+      const folderData: FolderData = {
+        id: folder.id,
+        name: folder.name,
+        parentId: folder.parentId,
+        color: folder.color,
+        isExpanded: folder.isExpanded,
+        createdAt: folder.createdAt,
+        updatedAt: folder.updatedAt,
+      };
+      await adapter.set(folder.id, folderData);
+    }
+
+    debugLog(
+      `[StorageService] Saved ${folders.length} folders for project ${projectId}`
+    );
+  }
+
+  /**
+   * Load all folders for a project.
+   */
+  async loadFolders(projectId: string): Promise<MediaFolder[]> {
+    const adapter = this.getProjectFolderAdapter(projectId);
+    const folderIds = await adapter.list();
+    const folders: MediaFolder[] = [];
+
+    for (const id of folderIds) {
+      const data = await adapter.get(id);
+      if (data) {
+        folders.push({
+          id: data.id,
+          name: data.name,
+          parentId: data.parentId,
+          color: data.color,
+          isExpanded: data.isExpanded ?? true,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        });
+      }
+    }
+
+    debugLog(
+      `[StorageService] Loaded ${folders.length} folders for project ${projectId}`
+    );
+    return folders;
+  }
+
+  /**
+   * Delete all folders for a project.
+   */
+  async deleteFolders(projectId: string): Promise<void> {
+    const adapter = this.getProjectFolderAdapter(projectId);
+    await adapter.clear();
+    this.folderAdapterCache.delete(projectId);
+    debugLog(`[StorageService] Deleted folders for project ${projectId}`);
   }
 
   // Legacy timeline operations (kept for backward compatibility)

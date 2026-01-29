@@ -2,6 +2,38 @@
 
 export type MediaType = "image" | "video" | "audio";
 
+// ============================================================================
+// Virtual Folder Types
+// ============================================================================
+
+/**
+ * Virtual folder for organizing media items.
+ * Virtual = metadata-only, files stay in original locations on disk.
+ * Follows industry standards (Premiere bins, DaVinci bins, FCP events).
+ */
+export interface MediaFolder {
+  id: string;
+  name: string;
+  parentId: string | null; // null = root level folder
+  color?: string; // hex color for visual identification (e.g., "#ef4444")
+  isExpanded: boolean; // UI collapse state for tree view
+  createdAt: number; // timestamp (Date.now())
+  updatedAt: number; // timestamp (Date.now())
+}
+
+// Folder constraints for validation
+export const FOLDER_MAX_DEPTH = 3;
+export const FOLDER_NAME_MAX_LENGTH = 50;
+export const FOLDER_NAME_MIN_LENGTH = 1;
+
+// Default folder IDs for optional auto-creation
+export const DEFAULT_FOLDER_IDS = {
+  VIDEOS: "default-videos",
+  AUDIO: "default-audio",
+  IMAGES: "default-images",
+  AI_GENERATED: "default-ai-generated",
+} as const;
+
 export interface MediaItem {
   id: string;
   name: string;
@@ -30,6 +62,8 @@ export interface MediaItem {
     source?: string; // e.g., 'text2image', 'upload', etc.
     [key: string]: any; // Allow other metadata
   };
+  // Virtual folder membership (can be in multiple folders like tags)
+  folderIds?: string[];
 }
 
 // Export type definitions for the store functions
@@ -73,4 +107,9 @@ export type MediaStore = {
   loadProjectMedia: (projectId: string) => Promise<void>;
   clearProjectMedia: (projectId: string) => Promise<void>;
   clearAllMedia: () => void;
+  // Folder assignment methods
+  addToFolder: (mediaId: string, folderId: string) => void;
+  removeFromFolder: (mediaId: string, folderId: string) => void;
+  moveToFolder: (mediaId: string, targetFolderId: string | null) => void;
+  getMediaByFolder: (folderId: string | null) => MediaItem[];
 };

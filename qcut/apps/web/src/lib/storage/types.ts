@@ -22,7 +22,22 @@ export interface MediaFileData {
   thumbnailUrl?: string; // Video thumbnail as data URL (persisted)
   metadata?: Record<string, unknown>; // Additional metadata
   localPath?: string; // Filesystem path for FFmpeg CLI export (videos only)
+  folderIds?: string[]; // Virtual folder membership
   // File will be stored separately in OPFS
+}
+
+/**
+ * Serialized folder data for IndexedDB storage.
+ * Matches MediaFolder interface from media-store-types.ts
+ */
+export interface FolderData {
+  id: string;
+  name: string;
+  parentId: string | null;
+  color?: string;
+  isExpanded: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface TimelineData {

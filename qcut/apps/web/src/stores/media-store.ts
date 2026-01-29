@@ -50,6 +50,12 @@ interface MediaStore {
   clearProjectMedia: (projectId: string) => Promise<void>;
   clearAllMedia: () => void; // Clear local state only
   restoreMediaItems: (items: MediaItem[]) => void; // Restore media items (for rollback)
+
+  // Folder assignment methods
+  addToFolder: (mediaId: string, folderId: string) => void;
+  removeFromFolder: (mediaId: string, folderId: string) => void;
+  moveToFolder: (mediaId: string, targetFolderId: string | null) => void;
+  getMediaByFolder: (folderId: string | null) => MediaItem[];
 }
 
 // Helper function to determine file type
@@ -829,5 +835,64 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
   restoreMediaItems: (items: MediaItem[]) => {
     debugLog(`[MediaStore] Restoring ${items.length} media items (rollback)`);
     set({ mediaItems: items });
+  },
+
+  // ============================================================================
+  // Folder Assignment Methods
+  // ============================================================================
+
+  addToFolder: (mediaId, folderId) => {
+    set((state) => ({
+      mediaItems: state.mediaItems.map((item) =>
+        item.id === mediaId
+          ? {
+              ...item,
+              folderIds: [...(item.folderIds || []), folderId].filter(
+                (id, index, arr) => arr.indexOf(id) === index // dedupe
+              ),
+            }
+          : item
+      ),
+    }));
+    debugLog("[MediaStore] Added media to folder:", { mediaId, folderId });
+  },
+
+  removeFromFolder: (mediaId, folderId) => {
+    set((state) => ({
+      mediaItems: state.mediaItems.map((item) =>
+        item.id === mediaId
+          ? {
+              ...item,
+              folderIds: (item.folderIds || []).filter((id) => id !== folderId),
+            }
+          : item
+      ),
+    }));
+    debugLog("[MediaStore] Removed media from folder:", { mediaId, folderId });
+  },
+
+  moveToFolder: (mediaId, targetFolderId) => {
+    set((state) => ({
+      mediaItems: state.mediaItems.map((item) =>
+        item.id === mediaId
+          ? {
+              ...item,
+              folderIds: targetFolderId ? [targetFolderId] : [],
+            }
+          : item
+      ),
+    }));
+    debugLog("[MediaStore] Moved media to folder:", { mediaId, targetFolderId });
+  },
+
+  getMediaByFolder: (folderId) => {
+    const { mediaItems } = get();
+    if (folderId === null) {
+      // "All Media" - return everything (excluding ephemeral)
+      return mediaItems.filter((item) => !item.ephemeral);
+    }
+    return mediaItems.filter(
+      (item) => !item.ephemeral && (item.folderIds || []).includes(folderId)
+    );
   },
 }));

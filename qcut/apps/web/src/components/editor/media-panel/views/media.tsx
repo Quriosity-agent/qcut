@@ -4,7 +4,19 @@ import { useDragDrop } from "@/hooks/use-drag-drop";
 // Media processing utilities will be imported dynamically when needed
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import type { MediaItem } from "@/stores/media-store-types";
-import { Image, Loader2, Music, Plus, Video, Edit, Layers, Sparkles } from "lucide-react";
+import {
+  Image,
+  Loader2,
+  Music,
+  Plus,
+  Video,
+  Edit,
+  Layers,
+  Sparkles,
+  Copy,
+  FolderInput,
+  ExternalLink,
+} from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { debugLog, debugError } from "@/lib/debug-config";
@@ -16,6 +28,10 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,7 +51,9 @@ import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
+import { useFolderStore } from "@/stores/folder-store";
 import { generateUUID } from "@/lib/utils";
+import { FolderTree } from "../folder-tree";
 
 export function MediaView() {
   const {
@@ -50,6 +68,10 @@ export function MediaView() {
   );
   const addMediaItem = mediaStore?.addMediaItem;
   const removeMediaItem = mediaStore?.removeMediaItem;
+  const moveToFolder = mediaStore?.moveToFolder;
+
+  // Folder state
+  const { folders, selectedFolderId } = useFolderStore();
   const { activeProject } = useProjectStore();
   const { setOriginalImage } = useAdjustmentStore();
   const { setActiveTab } = useMediaPanelStore();
@@ -83,11 +105,18 @@ export function MediaView() {
         return false;
       }
 
+      // Filter by selected folder
+      if (selectedFolderId !== null) {
+        if (!(item.folderIds || []).includes(selectedFolderId)) {
+          return false;
+        }
+      }
+
       return true;
     });
 
     setFilteredMediaItems(filtered);
-  }, [mediaItems, mediaFilter, searchQuery]);
+  }, [mediaItems, mediaFilter, searchQuery, selectedFolderId]);
 
   const processFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) {
@@ -318,22 +347,29 @@ export function MediaView() {
   };
 
   return (
-    <>
-      {/* Hidden file input for uploading media */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*,audio/*"
-        multiple
-        className="hidden"
-        onChange={handleFileChange}
-        aria-label="Upload media files"
-      />
+    <div className="flex h-full">
+      {/* Folder sidebar */}
+      <div className="w-44 min-w-[140px] max-w-[200px] flex-shrink-0">
+        <FolderTree />
+      </div>
 
-      <div
-        className={`h-full flex flex-col gap-1 transition-colors relative ${isDragOver ? "bg-accent/30" : ""}`}
-        {...dragProps}
-      >
+      {/* Main media content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Hidden file input for uploading media */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*,audio/*"
+          multiple
+          className="hidden"
+          onChange={handleFileChange}
+          aria-label="Upload media files"
+        />
+
+        <div
+          className={`h-full flex flex-col gap-1 transition-colors relative ${isDragOver ? "bg-accent/30" : ""}`}
+          {...dragProps}
+        >
         <div className="p-3 pb-2 bg-panel">
           {/* Search and filter controls */}
           <div className="flex gap-2">
@@ -519,6 +555,85 @@ export function MediaView() {
                         <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
                         Analyze with Gemini
                       </ContextMenuItem>
+                      <ContextMenuSeparator />
+
+                      {/* Move to Folder */}
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>
+                          <FolderInput
+                            className="h-4 w-4 mr-2"
+                            aria-hidden="true"
+                          />
+                          Move to Folder
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                          <ContextMenuItem
+                            onClick={() => moveToFolder?.(item.id, null)}
+                          >
+                            No Folder
+                          </ContextMenuItem>
+                          {folders.length > 0 && <ContextMenuSeparator />}
+                          {folders.map((folder) => (
+                            <ContextMenuItem
+                              key={folder.id}
+                              onClick={() =>
+                                moveToFolder?.(item.id, folder.id)
+                              }
+                            >
+                              {folder.name}
+                              {(item.folderIds || []).includes(folder.id) &&
+                                " ✓"}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+
+                      {/* Copy File Path */}
+                      <ContextMenuItem
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const path = item.localPath || item.url;
+                          if (path && !path.startsWith("blob:")) {
+                            await navigator.clipboard.writeText(path);
+                            toast.success("Path copied to clipboard");
+                          } else {
+                            toast.error("No file path available");
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" aria-hidden="true" />
+                        Copy File Path
+                      </ContextMenuItem>
+
+                      {/* Open in Explorer (Electron only) */}
+                      {item.localPath && (
+                        <ContextMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              (window as any).electronAPI?.shell
+                                ?.showItemInFolder
+                            ) {
+                              (
+                                window as any
+                              ).electronAPI.shell.showItemInFolder(
+                                item.localPath!
+                              );
+                            } else {
+                              toast.error("Only available in desktop app");
+                            }
+                          }}
+                        >
+                          <ExternalLink
+                            className="h-4 w-4 mr-2"
+                            aria-hidden="true"
+                          />
+                          Open in Explorer
+                        </ContextMenuItem>
+                      )}
+
+                      <ContextMenuSeparator />
+
                       <ContextMenuItem
                         variant="destructive"
                         onClick={(e) => handleRemove(e, item.id)}
@@ -532,7 +647,8 @@ export function MediaView() {
             )}
           </div>
         </ScrollArea>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
