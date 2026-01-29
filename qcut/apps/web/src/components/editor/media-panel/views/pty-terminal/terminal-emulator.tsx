@@ -113,6 +113,48 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
       }
     });
 
+    // Handle paste (Ctrl+V / Cmd+V)
+    terminal.attachCustomKeyEventHandler((event) => {
+      // Check for paste shortcut (Ctrl+V on Windows/Linux, Cmd+V on Mac)
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "v" &&
+        event.type === "keydown"
+      ) {
+        navigator.clipboard
+          .readText()
+          .then((text) => {
+            if (text && sessionId) {
+              // Send pasted text to PTY
+              window.electronAPI?.pty?.write(sessionId, text);
+            }
+          })
+          .catch((err) => {
+            console.error("[Terminal] Failed to paste:", err);
+          });
+        // Prevent default to avoid double paste
+        return false;
+      }
+      // Check for copy shortcut (Ctrl+C / Cmd+C) when there's a selection
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "c" &&
+        event.type === "keydown" &&
+        terminal.hasSelection()
+      ) {
+        const selection = terminal.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection).catch((err) => {
+            console.error("[Terminal] Failed to copy:", err);
+          });
+        }
+        // Return false to prevent sending Ctrl+C to terminal when copying
+        return false;
+      }
+      // Allow all other keys
+      return true;
+    });
+
     // Setup IPC listeners for PTY data
     window.electronAPI?.pty?.onData(handleData);
     window.electronAPI?.pty?.onExit(handleExit);

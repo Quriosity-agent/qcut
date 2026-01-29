@@ -69,15 +69,18 @@ function getBundledSkillsPath(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "default-skills");
   }
-  // Development: relative to electron folder
-  return path.join(__dirname, "..", "resources", "default-skills");
+  // Development: __dirname is dist/electron/, so go up 2 levels to project root
+  return path.join(__dirname, "..", "..", "resources", "default-skills");
 }
 
 /**
  * Parse frontmatter from Skill.md content
+ * Handles both LF (\n) and CRLF (\r\n) line endings
  */
 function parseSkillFrontmatter(content: string): SkillFrontmatter | null {
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  // Normalize line endings to LF
+  const normalizedContent = content.replace(/\r\n/g, "\n");
+  const match = normalizedContent.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
 
   const yaml = match[1];
@@ -391,6 +394,8 @@ export function setupSkillsIPC(): void {
 
       // 1. Scan bundled skills (shipped with app)
       const bundledPath = getBundledSkillsPath();
+      log.info("[Skills Handler] __dirname:", __dirname);
+      log.info("[Skills Handler] app.isPackaged:", app.isPackaged);
       log.info("[Skills Handler] Scanning bundled skills at:", bundledPath);
       await scanSkillsDirectory(bundledPath, true);
 

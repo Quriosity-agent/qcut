@@ -6,6 +6,15 @@ import { create } from "zustand";
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
+/**
+ * Active skill context for Gemini CLI
+ */
+export interface ActiveSkillContext {
+  id: string;
+  name: string;
+  content: string;
+}
+
 interface PtyTerminalState {
   // Session state
   sessionId: string | null;
@@ -20,6 +29,10 @@ interface PtyTerminalState {
   // UI state
   isGeminiMode: boolean; // true = launch Gemini CLI, false = launch shell
   workingDirectory: string;
+
+  // Skill context (for running skills with Gemini CLI)
+  activeSkill: ActiveSkillContext | null;
+  skillPromptSent: boolean; // Track if initial skill prompt was sent
 }
 
 interface PtyTerminalActions {
@@ -34,6 +47,11 @@ interface PtyTerminalActions {
   // Mode management
   setGeminiMode: (enabled: boolean) => void;
   setWorkingDirectory: (dir: string) => void;
+
+  // Skill context management
+  setActiveSkill: (skill: ActiveSkillContext | null) => void;
+  clearSkillContext: () => void;
+  sendSkillPrompt: () => void;
 
   // Internal state updates (called by IPC listeners)
   handleConnected: (sessionId: string) => void;
@@ -59,7 +77,20 @@ const initialState: PtyTerminalState = {
   rows: 24,
   isGeminiMode: true,
   workingDirectory: "",
+  activeSkill: null,
+  skillPromptSent: false,
 };
+
+/**
+ * Build the skill prompt to send to Gemini CLI
+ */
+function buildSkillPrompt(skill: ActiveSkillContext): string {
+  return `I'm using the "${skill.name}" skill. Here are the instructions I need you to follow:
+
+${skill.content}
+
+Please acknowledge that you understand these instructions and are ready to help me with tasks using this skill.`;
+}
 
 // ============================================================================
 // Store
@@ -148,12 +179,52 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     set({ workingDirectory: dir });
   },
 
+  // Skill context management
+  setActiveSkill: (skill) => {
+    set({ activeSkill: skill, skillPromptSent: false });
+  },
+
+  clearSkillContext: () => {
+    set({ activeSkill: null, skillPromptSent: false });
+  },
+
+  sendSkillPrompt: () => {
+    const { sessionId, activeSkill, skillPromptSent, isGeminiMode } = get();
+
+    // Only send if we have a skill, haven't sent yet, and are in Gemini mode
+    if (!activeSkill || skillPromptSent || !isGeminiMode || !sessionId) {
+      return;
+    }
+
+    const prompt = buildSkillPrompt(activeSkill);
+    console.log("[PTY Store] Sending skill prompt for:", activeSkill.name);
+
+    // Send the prompt to the terminal
+    window.electronAPI?.pty?.write(sessionId, prompt + "\n");
+    set({ skillPromptSent: true });
+  },
+
   handleConnected: (sessionId) => {
+    const { activeSkill, skillPromptSent, isGeminiMode } = get();
     set({ sessionId, status: "connected" });
+
+    // If skill is active and prompt not sent, send it after a delay
+    // (allow Gemini CLI to initialize)
+    if (activeSkill && !skillPromptSent && isGeminiMode) {
+      console.log("[PTY Store] Will send skill prompt after Gemini CLI initializes");
+      setTimeout(() => {
+        get().sendSkillPrompt();
+      }, 2000); // 2 second delay for Gemini CLI to be ready
+    }
   },
 
   handleDisconnected: (exitCode) => {
-    set({ sessionId: null, status: "disconnected", exitCode });
+    set({
+      sessionId: null,
+      status: "disconnected",
+      exitCode,
+      skillPromptSent: false, // Reset so prompt can be sent again on reconnect
+    });
   },
 
   handleError: (error) => {

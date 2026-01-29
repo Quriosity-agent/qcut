@@ -13,6 +13,8 @@ import {
   Terminal as TerminalIcon,
   Sparkles,
   Loader2,
+  Brain,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +25,11 @@ export function PtyTerminalView() {
     exitCode,
     error,
     isGeminiMode,
+    activeSkill,
     connect,
     disconnect,
     setGeminiMode,
+    clearSkillContext,
   } = usePtyTerminalStore();
 
   // Cleanup on unmount
@@ -106,6 +110,24 @@ export function PtyTerminalView() {
               {status}
             </span>
           </div>
+
+          {/* Active Skill Badge */}
+          {activeSkill && (
+            <div className="flex items-center gap-1 px-2 py-0.5 bg-purple-500/10 rounded-full">
+              <Brain className="h-3 w-3 text-purple-500" aria-hidden="true" />
+              <span className="text-xs text-purple-600 font-medium truncate max-w-[120px]">
+                {activeSkill.name}
+              </span>
+              <button
+                type="button"
+                onClick={clearSkillContext}
+                className="ml-0.5 text-purple-400 hover:text-destructive transition-colors"
+                aria-label="Clear skill context"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -181,16 +203,33 @@ export function PtyTerminalView() {
           <TerminalEmulator sessionId={sessionId} />
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-            <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />
-            <p className="text-sm">
-              {isGeminiMode
-                ? "Click Start to launch Gemini CLI"
-                : "Click Start to open a terminal"}
-            </p>
-            {isGeminiMode && (
-              <p className="text-xs mt-1 opacity-70">
-                Requires Google account authentication on first use
-              </p>
+            {activeSkill ? (
+              <>
+                <Brain className="h-12 w-12 mb-4 text-purple-500" />
+                <p className="text-sm font-medium text-foreground">
+                  {activeSkill.name}
+                </p>
+                <p className="text-xs mt-1 opacity-70">
+                  Click Start to run with Gemini CLI
+                </p>
+                <p className="text-xs mt-2 text-purple-400">
+                  Skill instructions will be sent automatically
+                </p>
+              </>
+            ) : (
+              <>
+                <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />
+                <p className="text-sm">
+                  {isGeminiMode
+                    ? "Click Start to launch Gemini CLI"
+                    : "Click Start to open a terminal"}
+                </p>
+                {isGeminiMode && (
+                  <p className="text-xs mt-1 opacity-70">
+                    Requires Google account authentication on first use
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}
