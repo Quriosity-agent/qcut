@@ -1,8 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useFolderStore } from "@/stores/folder-store";
 import type { MediaFolder } from "@/stores/media-store-types";
-import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  AlertTriangle,
+} from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,6 +20,17 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent,
 } from "@/components/ui/context-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface FolderItemProps {
   folder: MediaFolder;
@@ -47,48 +65,46 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
   const isSelected = selectedFolderId === folder.id;
   const isExpanded = folder.isExpanded;
 
-  const handleRename = () => {
-    const newName = prompt("Rename folder:", folder.name);
-    if (newName && newName.trim()) {
+  // Dialog states
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [newName, setNewName] = useState(folder.name);
+
+  const handleRenameSubmit = () => {
+    if (newName && newName.trim() && newName.trim() !== folder.name) {
       renameFolder(folder.id, newName.trim());
     }
+    setIsRenameOpen(false);
   };
 
-  const handleDelete = () => {
-    const hasDescendants = children.length > 0;
-    const message = hasDescendants
-      ? `Delete folder "${folder.name}" and all ${children.length} subfolder(s)?\n\nMedia files will NOT be deleted.`
-      : `Delete folder "${folder.name}"?\n\nMedia files will NOT be deleted.`;
+  const handleDeleteConfirm = () => {
+    deleteFolder(folder.id);
+    setIsDeleteOpen(false);
+  };
 
-    if (confirm(message)) {
-      deleteFolder(folder.id);
-    }
+  const openRenameDialog = () => {
+    setNewName(folder.name);
+    setIsRenameOpen(true);
   };
 
   return (
     <div>
       <ContextMenu>
-        <ContextMenuTrigger>
-          <button
-            type="button"
-            className={`w-full text-left px-2 py-1.5 text-sm rounded flex items-center gap-1 transition-colors ${
+        <ContextMenuTrigger asChild>
+          <div
+            className={`w-full px-2 py-1.5 text-sm rounded flex items-center gap-1 transition-colors cursor-default ${
               isSelected
                 ? "bg-accent text-accent-foreground"
                 : "hover:bg-muted"
             }`}
             style={{ paddingLeft: `${8 + depth * 12}px` }}
-            onClick={() => onSelect(folder.id)}
-            aria-selected={isSelected}
           >
             {/* Expand/Collapse toggle */}
             {hasChildren ? (
               <button
                 type="button"
                 className="p-0.5 hover:bg-muted/50 rounded flex-shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFolderExpanded(folder.id);
-                }}
+                onClick={() => toggleFolderExpanded(folder.id)}
                 aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
                 aria-expanded={isExpanded}
               >
@@ -99,31 +115,39 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
                 )}
               </button>
             ) : (
-              <span className="w-4 flex-shrink-0" /> // Spacer for alignment
+              <span className="w-4 flex-shrink-0" />
             )}
 
-            {/* Folder icon */}
-            {isExpanded && hasChildren ? (
-              <FolderOpen
-                className="h-4 w-4 flex-shrink-0"
-                style={{ color: folder.color || undefined }}
-                aria-hidden="true"
-              />
-            ) : (
-              <Folder
-                className="h-4 w-4 flex-shrink-0"
-                style={{ color: folder.color || undefined }}
-                aria-hidden="true"
-              />
-            )}
+            {/* Folder select button */}
+            <button
+              type="button"
+              className="flex-1 text-left flex items-center gap-1 min-w-0"
+              onClick={() => onSelect(folder.id)}
+              aria-selected={isSelected}
+            >
+              {/* Folder icon */}
+              {isExpanded && hasChildren ? (
+                <FolderOpen
+                  className="h-4 w-4 flex-shrink-0"
+                  style={{ color: folder.color || undefined }}
+                  aria-hidden="true"
+                />
+              ) : (
+                <Folder
+                  className="h-4 w-4 flex-shrink-0"
+                  style={{ color: folder.color || undefined }}
+                  aria-hidden="true"
+                />
+              )}
 
-            {/* Folder name */}
-            <span className="truncate flex-1">{folder.name}</span>
-          </button>
+              {/* Folder name */}
+              <span className="truncate flex-1">{folder.name}</span>
+            </button>
+          </div>
         </ContextMenuTrigger>
 
         <ContextMenuContent>
-          <ContextMenuItem onClick={handleRename}>Rename</ContextMenuItem>
+          <ContextMenuItem onClick={openRenameDialog}>Rename</ContextMenuItem>
 
           <ContextMenuSub>
             <ContextMenuSubTrigger>Change Color</ContextMenuSubTrigger>
@@ -150,11 +174,81 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
 
           <ContextMenuSeparator />
 
-          <ContextMenuItem variant="destructive" onClick={handleDelete}>
+          <ContextMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
             Delete Folder
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Rename Folder</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this folder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="folder-name" className="sr-only">
+              Folder name
+            </Label>
+            <Input
+              id="folder-name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameSubmit();
+                }
+              }}
+              placeholder="Folder name"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRenameOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSubmit} disabled={!newName.trim()}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Folder
+            </DialogTitle>
+            <DialogDescription>
+              {children.length > 0 ? (
+                <>
+                  Are you sure you want to delete &quot;{folder.name}&quot; and
+                  all {children.length} subfolder(s)?
+                </>
+              ) : (
+                <>Are you sure you want to delete &quot;{folder.name}&quot;?</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Media files will NOT be deleted, only the folder organization.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Children (recursive rendering) */}
       {isExpanded && hasChildren && (
