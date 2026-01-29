@@ -16,6 +16,7 @@ interface FolderState {
   folders: MediaFolder[];
   selectedFolderId: string | null; // null = "All Media" view
   isLoading: boolean;
+  activeProjectId: string | null; // Track project for auto-persistence
 }
 
 interface FolderActions {
@@ -49,11 +50,32 @@ type FolderStore = FolderState & FolderActions;
 // Folder Store Implementation
 // ============================================================================
 
-export const useFolderStore = create<FolderStore>((set, get) => ({
+export const useFolderStore = create<FolderStore>((set, get) => {
+  // Helper to auto-persist after mutations
+  const persistFolders = async () => {
+    const { activeProjectId, folders } = get();
+    if (!activeProjectId) {
+      debugLog("[FolderStore] Skipping persist - no active project");
+      return;
+    }
+    try {
+      const { storageService } = await import("@/lib/storage/storage-service");
+      await storageService.saveFolders(activeProjectId, folders);
+      debugLog("[FolderStore] Auto-persisted folders:", {
+        projectId: activeProjectId,
+        count: folders.length,
+      });
+    } catch (error) {
+      debugError("[FolderStore] Failed to auto-persist folders:", error);
+    }
+  };
+
+  return {
   // Initial State
   folders: [],
   selectedFolderId: null,
   isLoading: false,
+  activeProjectId: null,
 
   // ============================================================================
   // CRUD Operations
@@ -279,14 +301,25 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       const { storageService } = await import("@/lib/storage/storage-service");
       const folders = await storageService.loadFolders(projectId);
 
-      set({ folders, isLoading: false });
+      // Reset stale selection if current selectedFolderId doesn't exist in loaded folders
+      const selected = get().selectedFolderId;
+      const selectionValid = selected
+        ? folders.some((f) => f.id === selected)
+        : true;
+
+      set({
+        folders,
+        isLoading: false,
+        selectedFolderId: selectionValid ? selected : null,
+      });
       debugLog("[FolderStore] Loaded folders:", {
         projectId,
         count: folders.length,
+        selectionReset: !selectionValid,
       });
     } catch (error) {
       debugError("[FolderStore] Failed to load folders:", error);
-      set({ folders: [], isLoading: false });
+      set({ folders: [], selectedFolderId: null, isLoading: false });
     }
   },
 

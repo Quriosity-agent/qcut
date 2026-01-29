@@ -34,9 +34,14 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   // Get the skills folder path when expanded
   useEffect(() => {
     if (isExpanded && activeProject && !skillsBasePath) {
-      window.electronAPI?.skills?.getPath(activeProject.id).then((path) => {
-        setSkillsBasePath(path);
-      });
+      window.electronAPI?.skills
+        ?.getPath(activeProject.id)
+        .then((path) => {
+          setSkillsBasePath(path);
+        })
+        .catch((err) => {
+          console.error("[SkillCard] Failed to get skills path:", err);
+        });
     }
   }, [isExpanded, activeProject, skillsBasePath]);
 
