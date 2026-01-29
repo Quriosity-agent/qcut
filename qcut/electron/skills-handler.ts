@@ -86,12 +86,40 @@ function isPathWithinBase(targetPath: string, basePath: string): boolean {
 }
 
 /**
- * Sanitize a filename/skillId to prevent path traversal.
+ * Windows reserved device names that cannot be used as file/folder names.
+ * These names (with or without extensions) are reserved by Windows.
+ */
+const WINDOWS_RESERVED_NAMES = new Set([
+  "CON", "PRN", "AUX", "NUL",
+  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+  "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+]);
+
+/**
+ * Check if a name is a Windows reserved device name.
+ * Handles names with extensions (e.g., "CON.txt" is also reserved).
+ */
+function isWindowsReservedName(name: string): boolean {
+  // Get the base name without extension
+  const baseName = name.split(".")[0].toUpperCase();
+  return WINDOWS_RESERVED_NAMES.has(baseName);
+}
+
+/**
+ * Sanitize a filename/skillId to prevent path traversal and reserved name issues.
  * Only allows alphanumeric, dash, underscore, and dot (no slashes or ..).
+ * Also rejects Windows reserved device names.
  */
 function sanitizePathSegment(segment: string): string {
   // Remove any path separators and parent directory references
-  return segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+  let sanitized = segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+
+  // Check for Windows reserved names
+  if (isWindowsReservedName(sanitized)) {
+    return ""; // Return empty to trigger validation failure
+  }
+
+  return sanitized;
 }
 
 /**

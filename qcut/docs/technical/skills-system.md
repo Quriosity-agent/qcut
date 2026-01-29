@@ -264,9 +264,21 @@ function isPathWithinBase(targetPath: string, basePath: string): boolean {
   return resolved.startsWith(base + path.sep) || resolved === base;
 }
 
-// Sanitize folder/file names
+// Windows reserved device names
+const WINDOWS_RESERVED_NAMES = new Set([
+  "CON", "PRN", "AUX", "NUL",
+  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+  "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+]);
+
+// Sanitize folder/file names (includes Windows reserved name check)
 function sanitizePathSegment(segment: string): string {
-  return segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+  let sanitized = segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+  // Reject Windows reserved names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+  if (WINDOWS_RESERVED_NAMES.has(sanitized.split(".")[0].toUpperCase())) {
+    return ""; // Triggers validation failure
+  }
+  return sanitized;
 }
 ```
 
