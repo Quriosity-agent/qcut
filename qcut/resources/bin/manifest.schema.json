@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QCut Binary Manifest",
+  "description": "Schema for QCut bundled binary version manifest",
+  "type": "object",
+  "required": ["manifestVersion", "generatedAt", "binaries"],
+  "properties": {
+    "manifestVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Version of the manifest schema"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when manifest was generated"
+    },
+    "binaries": {
+      "type": "object",
+      "description": "Map of binary names to their configuration",
+      "additionalProperties": {
+        "$ref": "#/definitions/BinaryEntry"
+      }
+    },
+    "compatibility": {
+      "$ref": "#/definitions/CompatibilityMatrix",
+      "description": "QCut version to binary version compatibility mapping"
+    },
+    "updateChannel": {
+      "$ref": "#/definitions/UpdateChannels",
+      "description": "URLs for checking binary updates"
+    }
+  },
+  "definitions": {
+    "BinaryEntry": {
+      "type": "object",
+      "required": ["version", "minQCutVersion", "platforms"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Binary version (SemVer)"
+        },
+        "minQCutVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Minimum QCut version required"
+        },
+        "maxQCutVersion": {
+          "type": ["string", "null"],
+          "pattern": "^\\d+\\.\\d+\\.\\d+",
+          "description": "Maximum QCut version supported (null for no limit)"
+        },
+        "checksum": {
+          "type": "object",
+          "description": "Checksum for integrity verification",
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 hash of the binary"
+            },
+            "algorithm": {
+              "type": "string",
+              "enum": ["sha256"],
+              "description": "Hash algorithm used"
+            }
+          },
+          "required": ["sha256", "algorithm"]
+        },
+        "platforms": {
+          "type": "object",
+          "description": "Platform-specific binary information",
+          "additionalProperties": {
+            "$ref": "#/definitions/PlatformEntry"
+          }
+        },
+        "features": {
+          "type": "object",
+          "description": "Feature flags for this binary",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "requiredApiProviders": {
+          "type": "array",
+          "description": "API providers required by this binary",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deprecationNotice": {
+          "type": ["string", "null"],
+          "description": "Deprecation message if binary is being phased out"
+        }
+      }
+    },
+    "PlatformEntry": {
+      "type": "object",
+      "required": ["filename"],
+      "properties": {
+        "filename": {
+          "type": "string",
+          "description": "Binary filename for this platform"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "File size in bytes"
+        },
+        "downloadUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to download the binary"
+        }
+      }
+    },
+    "CompatibilityMatrix": {
+      "type": "object",
+      "properties": {
+        "qcutVersions": {
+          "type": "object",
+          "description": "Map of QCut versions to required binary versions",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "description": "SemVer range for required binary version"
+            }
+          }
+        }
+      }
+    },
+    "UpdateChannels": {
+      "type": "object",
+      "properties": {
+        "stable": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for stable release updates"
+        },
+        "beta": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL for beta release updates"
+        }
+      }
+    }
+  }
+}

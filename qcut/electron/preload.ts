@@ -404,6 +404,68 @@ interface ElectronAPI {
     >;
   };
 
+  // AI Pipeline operations
+  aiPipeline?: {
+    check: () => Promise<{ available: boolean; error?: string }>;
+    status: () => Promise<{
+      available: boolean;
+      version: string | null;
+      source: "bundled" | "system" | "python" | "unavailable";
+      compatible: boolean;
+      features: Record<string, boolean>;
+      error?: string;
+    }>;
+    generate: (options: {
+      command: string;
+      args: Record<string, string | number | boolean>;
+      outputDir?: string;
+      sessionId?: string;
+    }) => Promise<{
+      success: boolean;
+      outputPath?: string;
+      outputPaths?: string[];
+      error?: string;
+      duration?: number;
+      cost?: number;
+      models?: string[];
+      data?: unknown;
+    }>;
+    listModels: () => Promise<{
+      success: boolean;
+      error?: string;
+      models?: string[];
+      data?: unknown;
+    }>;
+    estimateCost: (options: {
+      model: string;
+      duration?: number;
+      resolution?: string;
+    }) => Promise<{
+      success: boolean;
+      error?: string;
+      cost?: number;
+    }>;
+    cancel: (sessionId: string) => Promise<{ success: boolean }>;
+    refresh: () => Promise<{
+      available: boolean;
+      version: string | null;
+      source: "bundled" | "system" | "python" | "unavailable";
+      compatible: boolean;
+      features: Record<string, boolean>;
+      error?: string;
+    }>;
+    onProgress: (
+      callback: (progress: {
+        stage: string;
+        percent: number;
+        message: string;
+        model?: string;
+        eta?: number;
+        sessionId?: string;
+      }) => void
+    ) => () => void;
+  };
+
   // Utility functions
   isElectron: boolean;
 }
@@ -714,6 +776,93 @@ const electronAPI: ElectronAPI = {
     scanGlobal: (): Promise<
       Array<{ path: string; name: string; description: string; bundled?: boolean }>
     > => ipcRenderer.invoke("skills:scanGlobal"),
+  },
+
+  // AI Pipeline operations
+  aiPipeline: {
+    check: (): Promise<{ available: boolean; error?: string }> =>
+      ipcRenderer.invoke("ai-pipeline:check"),
+
+    status: (): Promise<{
+      available: boolean;
+      version: string | null;
+      source: "bundled" | "system" | "python" | "unavailable";
+      compatible: boolean;
+      features: Record<string, boolean>;
+      error?: string;
+    }> => ipcRenderer.invoke("ai-pipeline:status"),
+
+    generate: (options: {
+      command: string;
+      args: Record<string, string | number | boolean>;
+      outputDir?: string;
+      sessionId?: string;
+    }): Promise<{
+      success: boolean;
+      outputPath?: string;
+      outputPaths?: string[];
+      error?: string;
+      duration?: number;
+      cost?: number;
+      models?: string[];
+      data?: unknown;
+    }> => ipcRenderer.invoke("ai-pipeline:generate", options),
+
+    listModels: (): Promise<{
+      success: boolean;
+      error?: string;
+      models?: string[];
+      data?: unknown;
+    }> => ipcRenderer.invoke("ai-pipeline:list-models"),
+
+    estimateCost: (options: {
+      model: string;
+      duration?: number;
+      resolution?: string;
+    }): Promise<{
+      success: boolean;
+      error?: string;
+      cost?: number;
+    }> => ipcRenderer.invoke("ai-pipeline:estimate-cost", options),
+
+    cancel: (sessionId: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke("ai-pipeline:cancel", sessionId),
+
+    refresh: (): Promise<{
+      available: boolean;
+      version: string | null;
+      source: "bundled" | "system" | "python" | "unavailable";
+      compatible: boolean;
+      features: Record<string, boolean>;
+      error?: string;
+    }> => ipcRenderer.invoke("ai-pipeline:refresh"),
+
+    onProgress: (
+      callback: (progress: {
+        stage: string;
+        percent: number;
+        message: string;
+        model?: string;
+        eta?: number;
+        sessionId?: string;
+      }) => void
+    ): (() => void) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        progress: {
+          stage: string;
+          percent: number;
+          message: string;
+          model?: string;
+          eta?: number;
+          sessionId?: string;
+        }
+      ) => callback(progress);
+      ipcRenderer.on("ai-pipeline:progress", handler);
+      return () => {
+        ipcRenderer.removeListener("ai-pipeline:progress", handler);
+      };
+    },
   },
 
   // Utility functions

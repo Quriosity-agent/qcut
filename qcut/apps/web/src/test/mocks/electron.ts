@@ -168,6 +168,52 @@ export const mockElectronAPI: ElectronAPI = {
     onStreamError: vi.fn(),
     removeListeners: vi.fn(),
   },
+
+  // AI Pipeline operations
+  aiPipeline: {
+    check: vi.fn().mockResolvedValue({ available: true }),
+    status: vi.fn().mockResolvedValue({
+      available: true,
+      version: "1.0.0",
+      source: "bundled" as const,
+      compatible: true,
+      features: {
+        textToVideo: true,
+        imageToVideo: true,
+        avatarGeneration: true,
+        videoUpscale: true,
+        yamlPipelines: true,
+      },
+    }),
+    generate: vi.fn().mockResolvedValue({
+      success: true,
+      outputPath: "/tmp/generated-video.mp4",
+      duration: 5.2,
+    }),
+    listModels: vi.fn().mockResolvedValue({
+      success: true,
+      models: ["sora-2", "kling-v1", "runway-gen3"],
+    }),
+    estimateCost: vi.fn().mockResolvedValue({
+      success: true,
+      cost: 0.15,
+    }),
+    cancel: vi.fn().mockResolvedValue({ success: true }),
+    refresh: vi.fn().mockResolvedValue({
+      available: true,
+      version: "1.0.0",
+      source: "bundled" as const,
+      compatible: true,
+      features: {
+        textToVideo: true,
+        imageToVideo: true,
+        avatarGeneration: true,
+        videoUpscale: true,
+        yamlPipelines: true,
+      },
+    }),
+    onProgress: vi.fn(() => vi.fn()),
+  },
 };
 
 /**

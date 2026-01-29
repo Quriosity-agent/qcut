@@ -564,6 +564,158 @@ export interface ElectronAPI {
       Array<{ path: string; name: string; description: string; bundled?: boolean }>
     >;
   };
+
+  /**
+   * AI Content Pipeline API
+   * Interfaces with the aicp CLI binary for AI content generation
+   */
+  aiPipeline?: {
+    /**
+     * Check if AI pipeline binary is available
+     * @returns Availability status and optional error message
+     */
+    check: () => Promise<{ available: boolean; error?: string }>;
+
+    /**
+     * Get detailed pipeline status
+     * @returns Full status including version, source, features
+     */
+    status: () => Promise<AIPipelineStatus>;
+
+    /**
+     * Generate AI content (image, video, avatar)
+     * @param options - Generation options including command and arguments
+     * @returns Result with output paths or error
+     */
+    generate: (options: AIPipelineGenerateOptions) => Promise<AIPipelineResult>;
+
+    /**
+     * List available AI models
+     * @returns Result with model list
+     */
+    listModels: () => Promise<AIPipelineResult>;
+
+    /**
+     * Estimate generation cost
+     * @param options - Model and generation parameters
+     * @returns Result with cost estimate
+     */
+    estimateCost: (options: AIPipelineCostEstimate) => Promise<AIPipelineResult>;
+
+    /**
+     * Cancel ongoing generation
+     * @param sessionId - Session ID of the generation to cancel
+     * @returns Success status
+     */
+    cancel: (sessionId: string) => Promise<{ success: boolean }>;
+
+    /**
+     * Refresh environment detection (after binary installation)
+     * @returns Updated pipeline status
+     */
+    refresh: () => Promise<AIPipelineStatus>;
+
+    /**
+     * Listen for progress updates during generation
+     * @param callback - Function called with progress data
+     * @returns Cleanup function to remove listener
+     */
+    onProgress: (callback: (progress: AIPipelineProgress) => void) => () => void;
+  };
+}
+
+// ============================================================================
+// AI Pipeline Types
+// ============================================================================
+
+/**
+ * Progress update during AI content generation
+ */
+export interface AIPipelineProgress {
+  /** Current stage of generation */
+  stage: string;
+  /** Progress percentage (0-100) */
+  percent: number;
+  /** Human-readable progress message */
+  message: string;
+  /** AI model being used (if applicable) */
+  model?: string;
+  /** Estimated time remaining in seconds */
+  eta?: number;
+  /** Session ID for this generation */
+  sessionId?: string;
+}
+
+/**
+ * Options for AI content generation
+ */
+export interface AIPipelineGenerateOptions {
+  /** Command to execute */
+  command:
+    | "generate-image"
+    | "create-video"
+    | "generate-avatar"
+    | "list-models"
+    | "estimate-cost"
+    | "run-pipeline";
+  /** Command arguments */
+  args: Record<string, string | number | boolean>;
+  /** Output directory for generated files */
+  outputDir?: string;
+  /** Unique session ID for tracking/cancellation */
+  sessionId?: string;
+}
+
+/**
+ * Result from AI pipeline operations
+ */
+export interface AIPipelineResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+  /** Primary output file path */
+  outputPath?: string;
+  /** All output file paths (for batch operations) */
+  outputPaths?: string[];
+  /** Error message if failed */
+  error?: string;
+  /** Operation duration in seconds */
+  duration?: number;
+  /** Estimated or actual cost */
+  cost?: number;
+  /** List of models (for list-models command) */
+  models?: string[];
+  /** Raw response data */
+  data?: unknown;
+}
+
+/**
+ * Options for cost estimation
+ */
+export interface AIPipelineCostEstimate {
+  /** Model to estimate for */
+  model: string;
+  /** Video duration in seconds */
+  duration?: number;
+  /** Output resolution (e.g., "1920x1080") */
+  resolution?: string;
+}
+
+/**
+ * Detailed pipeline status
+ */
+export interface AIPipelineStatus {
+  /** Whether pipeline is available */
+  available: boolean;
+  /** Binary/module version */
+  version: string | null;
+  /** Source of the pipeline (bundled, system, python, unavailable) */
+  source: "bundled" | "system" | "python" | "unavailable";
+  /** Whether version is compatible with QCut */
+  compatible: boolean;
+  /** Feature flags for available capabilities */
+  features: Record<string, boolean>;
+  /** Error message if unavailable */
+  error?: string;
 }
 
 declare global {
