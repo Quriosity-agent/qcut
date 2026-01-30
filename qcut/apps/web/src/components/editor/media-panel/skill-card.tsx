@@ -158,7 +158,10 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
               </span>
               <button
                 type="button"
-                onClick={() => copyToClipboard(getSkillFolderPath())}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyToClipboard(getSkillFolderPath());
+                }}
                 className={cn(
                   "p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity",
                   copiedPath === getSkillFolderPath()
@@ -195,7 +198,10 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
                   </span>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(filePath)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copyToClipboard(filePath);
+                    }}
                     className={cn(
                       "p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity",
                       copiedPath === filePath
