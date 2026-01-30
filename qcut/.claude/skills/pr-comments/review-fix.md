@@ -1,17 +1,10 @@
----
-name: pr-review-fix
-description: Evaluate and fix PR review comments. Reads a code review, checks if valid, then fixes or explains why not applicable.
-argument-hint: [comment-file.md]
-allowed-tools: Read, Edit, Glob, Grep, Bash(git diff *)
----
-
 # PR Review Evaluator & Fixer
 
 Evaluate a PR review comment and either fix the issue or explain why it doesn't apply.
 
 ## Instructions
 
-1. Read the task file provided: `$ARGUMENTS`
+1. Read the task file provided
 2. The task file contains a code review comment with:
    - The file path to check
    - The line number

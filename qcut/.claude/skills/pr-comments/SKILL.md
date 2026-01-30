@@ -1,79 +1,63 @@
 ---
 name: pr-comments
-description: Export GitHub PR review comments to individual markdown files. Use when user wants to copy, save, or export PR comments, code review feedback, or CodeRabbit/Gemini bot comments.
-argument-hint: [owner/repo] [pr-number] [output-dir]
+description: Export, preprocess, and fix GitHub PR review comments. Use when user wants to export PR comments, evaluate code reviews, or fix review feedback from CodeRabbit/Gemini bots.
+argument-hint: <action> [args...]
 disable-model-invocation: true
-allowed-tools: Bash(gh *), Bash(jq *), Bash(mkdir *), Bash(cat *), Bash(sed *), Read
+allowed-tools: Bash(gh *), Bash(jq *), Bash(mkdir *), Bash(sed *), Read, Edit, Glob, Grep
 ---
 
-# PR Comments Exporter
+# PR Comments Skill
 
-Export all review comments from a GitHub Pull Request into individual markdown files for easy copying and reference.
+Export GitHub PR review comments, preprocess for evaluation, and fix or reject each review.
 
-## Quick Start
+## Actions
 
-```bash
-# Step 1: Export PR comments
-/pr-comments donghaozhang/qcut 102
+### 1. Export: `/pr-comments export <owner/repo> <pr-number>`
 
-# Step 2: Preprocess for evaluation (creates task files)
-bash .claude/skills/pr-comments/scripts/batch-preprocess.sh docs/pr-comments/pr-102
-
-# Step 3: Evaluate and fix each comment
-/pr-review-fix docs/pr-comments/pr-102-tasks/comment-file.md
-```
-
-## Commands
-
-### Export Comments
+Export all review comments from a PR to individual markdown files.
 
 ```bash
-bash .claude/skills/pr-comments/scripts/export.sh $ARGUMENTS
+bash .claude/skills/pr-comments/scripts/export.sh $1 $2 $3
 ```
 
-**Arguments:**
-- `$0` - Repository in `owner/repo` format (e.g., `donghaozhang/qcut`)
-- `$1` - PR number (e.g., `102`)
-- `$2` - Output directory (optional, defaults to `docs/pr-comments/pr-{number}`)
+**Output:** `docs/pr-comments/pr-{number}/` with one file per comment.
 
-### Preprocess for Evaluation
+### 2. Preprocess: `/pr-comments preprocess <input-dir>`
 
-Convert exported comments into task files ready for agentic evaluation:
+Clean exported comments for agentic evaluation (removes `<details>` blocks, adds evaluation prompt).
 
 ```bash
-# Single file
-bash .claude/skills/pr-comments/scripts/preprocess.sh docs/pr-comments/pr-102/comment.md
-
-# Batch all files
-bash .claude/skills/pr-comments/scripts/batch-preprocess.sh docs/pr-comments/pr-102
+bash .claude/skills/pr-comments/scripts/batch-preprocess.sh $1
 ```
 
-This:
-- Removes `<details>` sections (AI prompts, proposed fixes)
-- Removes HTML comments
-- Adds evaluation prompt: "If valid, fix it. If not, explain why."
+**Output:** `{input-dir}-tasks/` with cleaned task files.
 
-## Workflow
+### 3. Fix: `/pr-comments fix <task-file.md>`
 
-```
-┌─────────────────────────────────────────────┐
-│  1. /pr-comments owner/repo 102             │
-│     Export comments to markdown files       │
-└─────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────┐
-│  2. batch-preprocess.sh                     │
-│     Clean files, add evaluation prompt      │
-└─────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────┐
-│  3. /pr-review-fix task-file.md             │
-│     Evaluate each, fix or explain           │
-└─────────────────────────────────────────────┘
-                      ↓
-┌─────────────────────────────────────────────┐
-│  4. Results: FIXED / NOT_APPLICABLE         │
-└─────────────────────────────────────────────┘
+Evaluate a single PR review comment. Read the source file, determine if valid, then fix or explain.
+
+Follow instructions in [review-fix.md](review-fix.md).
+
+### 4. Batch: `/pr-comments batch <tasks-dir>`
+
+Process all task files in a directory, evaluating and fixing each one.
+
+Follow instructions in [review-batch.md](review-batch.md).
+
+## Complete Workflow
+
+```bash
+# Step 1: Export comments from PR
+/pr-comments export donghaozhang/qcut 102
+
+# Step 2: Preprocess into task files
+/pr-comments preprocess docs/pr-comments/pr-102
+
+# Step 3a: Fix single comment
+/pr-comments fix docs/pr-comments/pr-102-tasks/comment.md
+
+# Step 3b: Or batch fix all
+/pr-comments batch docs/pr-comments/pr-102-tasks
 ```
 
 ## Output Structure
@@ -82,20 +66,19 @@ This:
 docs/pr-comments/
 ├── README.md
 ├── pr-102/                    # Raw exported comments
-│   ├── coderabbitai[bot]_*.md
-│   └── gemini-code-assist[bot]_*.md
+│   ├── coderabbitai[bot]_file_L42_123.md
+│   └── gemini-code-assist[bot]_file_L50_456.md
 └── pr-102-tasks/              # Preprocessed for evaluation
-    ├── coderabbitai[bot]_*.md
-    └── gemini-code-assist[bot]_*.md
+    ├── coderabbitai[bot]_file_L42_123.md
+    └── gemini-code-assist[bot]_file_L50_456.md
 ```
 
-## Related Skills
+## Supporting Files
 
-- `/pr-review-fix [file]` - Evaluate single comment, fix or explain
-- `/pr-review-batch [dir]` - Batch process all comments in directory
+- [review-fix.md](review-fix.md) - Single comment evaluation instructions
+- [review-batch.md](review-batch.md) - Batch processing instructions
 
 ## Requirements
 
 - GitHub CLI (`gh`) - installed and authenticated
 - `jq` - JSON processing
-- `sed` - text processing

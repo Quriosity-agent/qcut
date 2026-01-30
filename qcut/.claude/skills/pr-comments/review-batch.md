@@ -1,29 +1,22 @@
----
-name: pr-review-batch
-description: Batch evaluate and fix all PR review comments in a directory. Processes each comment, decides to fix or reject.
-argument-hint: [tasks-directory]
-context: fork
-agent: general-purpose
-allowed-tools: Read, Edit, Glob, Grep, Bash(git *), Skill(pr-review-fix *)
----
-
 # Batch PR Review Processor
 
 Process all PR review task files in a directory, evaluating and fixing each one.
 
 ## Instructions
 
-1. List all `.md` files in the directory: `$ARGUMENTS`
+1. List all `.md` files in the tasks directory
 2. For each file:
    - Read the task content
-   - Use `/pr-review-fix` skill to evaluate and fix
+   - Read the source file mentioned in the review
+   - Evaluate if the feedback is valid
+   - Fix or explain why not applicable
    - Log the result
 3. After all files processed, provide summary
 
 ## Process
 
 ```
-for each task_file in $ARGUMENTS/*.md:
+for each task_file in directory/*.md:
     1. Read task_file
     2. Extract file path and line from task
     3. Read the source file
