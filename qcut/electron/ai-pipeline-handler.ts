@@ -7,7 +7,10 @@
  * @module electron/ai-pipeline-handler
  */
 import { spawn, ChildProcess, exec } from "child_process";
+import { promisify } from "util";
 import { randomUUID } from "crypto";
+
+const execAsync = promisify(exec);
 import { app, ipcMain, IpcMainInvokeEvent, BrowserWindow } from "electron";
 import * as path from "path";
 import * as fs from "fs";
@@ -215,28 +218,11 @@ class AIPipelineManager {
     command: string;
     timeoutMs: number;
   }): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        exec(
-          command,
-          {
-            timeout: timeoutMs,
-            windowsHide: true,
-          },
-          (error, stdout, _stderr) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-            const output =
-              typeof stdout === "string" ? stdout : stdout.toString();
-            resolve(output);
-          }
-        );
-      } catch (error) {
-        reject(error);
-      }
+    const { stdout } = await execAsync(command, {
+      timeout: timeoutMs,
+      windowsHide: true,
     });
+    return typeof stdout === "string" ? stdout : stdout.toString();
   }
 
   /**
