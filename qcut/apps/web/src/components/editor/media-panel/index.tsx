@@ -16,7 +16,6 @@ import DrawView from "./views/draw";
 import VideoEditView from "./views/video-edit";
 import { SegmentationPanel } from "@/components/editor/segmentation";
 import { RemotionView } from "./views/remotion";
-import { GeminiTerminalView } from "./views/gemini-terminal";
 import { PtyTerminalView } from "./views/pty-terminal";
 import { WordTimelineView } from "./views/word-timeline-view";
 import React from "react";
@@ -68,7 +67,6 @@ export function MediaPanel() {
     draw: <DrawView />,
     segmentation: <SegmentationPanel />,
     remotion: <RemotionView />,
-    gemini: <GeminiTerminalView />,
     pty: <PtyTerminalView />,
     "word-timeline": <WordTimelineView />,
   };

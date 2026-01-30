@@ -17,7 +17,6 @@ import {
   Wand2Icon,
   ScissorsIcon,
   Layers,
-  TerminalIcon,
   SquareTerminalIcon,
   TextSelect,
 } from "lucide-react";
@@ -41,7 +40,6 @@ export type Tab =
   | "draw"
   | "segmentation"
   | "remotion"
-  | "gemini"
   | "pty"
   | "word-timeline";
 
@@ -113,10 +111,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   remotion: {
     icon: Layers,
     label: "Remotion",
-  },
-  gemini: {
-    icon: TerminalIcon,
-    label: "Gemini",
   },
   pty: {
     icon: SquareTerminalIcon,
