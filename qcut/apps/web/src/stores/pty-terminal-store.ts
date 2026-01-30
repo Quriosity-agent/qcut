@@ -115,6 +115,10 @@ Please acknowledge that you understand these instructions and are ready to help 
  * open-codex supports passing a markdown file as context via --project-doc
  */
 function buildSkillFilePath(workingDirectory: string, skillFolderName: string): string {
+  // Validate skillFolderName to prevent path traversal
+  if (skillFolderName.includes('..') || skillFolderName.includes('/') || skillFolderName.includes('\\')) {
+    throw new Error('Invalid skill folder name');
+  }
   // Handle both Windows and Unix paths
   const separator = workingDirectory.includes("\\") ? "\\" : "/";
   // Get the parent directory (skills folder) and then the skill folder
@@ -164,9 +168,16 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.log("[PTY Store] Building Codex command...");
         // Get OpenRouter API key for Codex
         console.log("[PTY Store] Getting API keys...");
+        if (!window.electronAPI?.apiKeys) {
+          set({
+            status: "error",
+            error: "API key storage is unavailable in this environment.",
+          });
+          return;
+        }
         let apiKeys;
         try {
-          apiKeys = await window.electronAPI?.apiKeys?.get();
+          apiKeys = await window.electronAPI.apiKeys.get();
           console.log("[PTY Store] API keys retrieved, openRouterApiKey length:", apiKeys?.openRouterApiKey?.length || 0);
         } catch (apiKeyError) {
           console.error("[PTY Store] Error getting API keys:", apiKeyError);
@@ -215,17 +226,21 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.log("[PTY Store] Building Claude command...");
         // Claude Code CLI uses login by default (Claude Pro/Max subscription)
         // API key is optional - only set if user has configured one
-        let apiKeys;
-        try {
-          apiKeys = await window.electronAPI?.apiKeys?.get();
-          if (apiKeys?.anthropicApiKey) {
-            env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
-            console.log("[PTY Store] Using Anthropic API key");
-          } else {
-            console.log("[PTY Store] No API key set, Claude will use login authentication");
+        if (window.electronAPI?.apiKeys) {
+          let apiKeys;
+          try {
+            apiKeys = await window.electronAPI.apiKeys.get();
+            if (apiKeys?.anthropicApiKey) {
+              env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
+              console.log("[PTY Store] Using Anthropic API key");
+            } else {
+              console.log("[PTY Store] No API key set, Claude will use login authentication");
+            }
+          } catch (apiKeyError) {
+            console.warn("[PTY Store] Could not get API keys, continuing without:", apiKeyError);
           }
-        } catch (apiKeyError) {
-          console.warn("[PTY Store] Could not get API keys, continuing without:", apiKeyError);
+        } else {
+          console.log("[PTY Store] API key storage unavailable, Claude will use login authentication");
         }
 
         // Get Claude model from state
