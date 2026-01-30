@@ -766,9 +766,12 @@ export async function bulkImportFiles(
         throw new Error(importResult?.error || "Import failed");
       }
 
-      // Create File object from path for media store
-      const response = await fetch(`file://${importResult.targetPath}`);
-      const blob = await response.blob();
+      // Create File object from path via Electron IPC (file:// protocol blocked in renderer)
+      const fileBuffer = await window.electronAPI?.fs?.readFile(importResult.targetPath);
+      if (!fileBuffer) {
+        throw new Error("Failed to read imported file");
+      }
+      const blob = new Blob([fileBuffer], { type: getMimeType(file.type) });
       const fileObj = new File([blob], file.name, {
         type: getMimeType(file.type),
       });
