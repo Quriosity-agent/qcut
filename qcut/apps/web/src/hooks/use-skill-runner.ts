@@ -53,18 +53,15 @@ export function useSkillRunner() {
       }
 
       const providerToUse: CliProvider = preferredProvider || cliProvider;
-      console.log("[useSkillRunner] Running skill:", skill.name, "with provider:", providerToUse);
-      console.log("[useSkillRunner] Skill details:", { id: skill.id, folderName: skill.folderName });
 
       // 1. Get the project's skills folder path
       let skillsPath = "";
       try {
         if (window.electronAPI?.skills?.getPath) {
           skillsPath = await window.electronAPI.skills.getPath(activeProject.id);
-          console.log("[useSkillRunner] Skills path:", skillsPath);
         }
-      } catch (error) {
-        console.error("[useSkillRunner] Failed to get skills path:", error);
+      } catch {
+        // Ignore - skills path is optional
       }
 
       // 2. Set skill as active context (used by both providers)
@@ -92,7 +89,6 @@ export function useSkillRunner() {
 
       // 6. If already connected, disconnect first to restart with new working directory/provider
       if (status === "connected") {
-        console.log("[useSkillRunner] Disconnecting to restart with new configuration");
         await disconnect();
         // Small delay before reconnecting
         setTimeout(() => {
@@ -100,7 +96,6 @@ export function useSkillRunner() {
         }, 200);
       } else if (status !== "connecting") {
         // Auto-start CLI if not connected
-        console.log("[useSkillRunner] Auto-connecting to CLI:", providerToUse);
         await connect();
       }
     },
