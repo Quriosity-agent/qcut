@@ -771,9 +771,10 @@ export async function bulkImportFiles(
       if (!fileBuffer) {
         throw new Error("Failed to read imported file");
       }
-      const blob = new Blob([fileBuffer], { type: getMimeType(file.type) });
+      const mimeType = getMimeType(file.name, file.type);
+      const blob = new Blob([fileBuffer], { type: mimeType });
       const fileObj = new File([blob], file.name, {
-        type: getMimeType(file.type),
+        type: mimeType,
       });
 
       // Determine target folder
@@ -831,7 +832,37 @@ export async function bulkImportFiles(
   return { imported, failed: errors.length, errors };
 }
 
-function getMimeType(type: FileInfo["type"]): string {
+function getMimeType(filename: string, type: FileInfo["type"]): string {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+
+  // Extension-based MIME type mapping
+  const mimeTypes: Record<string, string> = {
+    // Video
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    avi: "video/x-msvideo",
+    mkv: "video/x-matroska",
+    // Audio
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    m4a: "audio/mp4",
+    flac: "audio/flac",
+    // Image
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+  };
+
+  if (mimeTypes[ext]) {
+    return mimeTypes[ext];
+  }
+
+  // Fallback to category-based defaults
   switch (type) {
     case "video":
       return "video/mp4";
