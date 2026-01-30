@@ -119,4 +119,8 @@ export type MediaStore = {
   removeFromFolder: (mediaId: string, folderId: string) => void;
   moveToFolder: (mediaId: string, targetFolderId: string | null) => void;
   getMediaByFolder: (folderId: string | null) => MediaItem[];
+  // Bulk folder operations (for skills/automation)
+  bulkAddToFolder: (mediaIds: string[], folderId: string) => void;
+  bulkMoveToFolder: (mediaIds: string[], folderId: string | null) => void;
+  autoOrganizeByType: () => void;
 };

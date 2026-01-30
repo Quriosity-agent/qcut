@@ -6,6 +6,7 @@ import {
   FOLDER_MAX_DEPTH,
   FOLDER_NAME_MAX_LENGTH,
   FOLDER_NAME_MIN_LENGTH,
+  DEFAULT_FOLDER_IDS,
 } from "./media-store-types";
 
 // ============================================================================
@@ -119,6 +120,12 @@ interface FolderActions {
 
   /** Clear all folders from state */
   clearFolders: () => void;
+
+  /**
+   * Initialize default folders (Videos, Audio, Images, AI Generated) if they don't exist.
+   * Called automatically when loading a project.
+   */
+  initializeDefaultFolders: () => void;
 }
 
 /**
@@ -439,6 +446,9 @@ export const useFolderStore = create<FolderStore>((set, get) => {
         count: folders.length,
         selectionReset: !selectionValid,
       });
+
+      // Initialize default folders if they don't exist
+      get().initializeDefaultFolders();
     } catch (error) {
       debugError("[FolderStore] Failed to load folders:", error);
       set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
@@ -461,5 +471,42 @@ export const useFolderStore = create<FolderStore>((set, get) => {
   clearFolders: () => {
     set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
     debugLog("[FolderStore] Cleared all folders");
+  },
+
+  initializeDefaultFolders: () => {
+    const { folders } = get();
+    const now = Date.now();
+
+    const defaultFolders: Array<{ id: string; name: string; color: string }> = [
+      { id: DEFAULT_FOLDER_IDS.VIDEOS, name: "Videos", color: "#3b82f6" },
+      { id: DEFAULT_FOLDER_IDS.AUDIO, name: "Audio", color: "#22c55e" },
+      { id: DEFAULT_FOLDER_IDS.IMAGES, name: "Images", color: "#f59e0b" },
+      { id: DEFAULT_FOLDER_IDS.AI_GENERATED, name: "AI Generated", color: "#a855f7" },
+    ];
+
+    const newFolders: MediaFolder[] = [];
+    for (const def of defaultFolders) {
+      if (!folders.find((f) => f.id === def.id)) {
+        newFolders.push({
+          id: def.id,
+          name: def.name,
+          parentId: null,
+          color: def.color,
+          isExpanded: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    if (newFolders.length > 0) {
+      set((state) => ({ folders: [...state.folders, ...newFolders] }));
+      debugLog("[FolderStore] Initialized default folders:", {
+        created: newFolders.map((f) => f.name),
+      });
+
+      // Auto-persist after adding default folders
+      void persistFolders();
+    }
   },
 }});

@@ -17,6 +17,7 @@ import {
   handleMediaProcessingError,
 } from "@/lib/error-handler";
 import type { MediaItem, MediaType } from "./media-store-types";
+import { DEFAULT_FOLDER_IDS } from "./media-store-types";
 
 // Re-export types for backward compatibility
 export type { MediaItem, MediaType } from "./media-store-types";
@@ -56,6 +57,11 @@ interface MediaStore {
   removeFromFolder: (mediaId: string, folderId: string) => void;
   moveToFolder: (mediaId: string, targetFolderId: string | null) => void;
   getMediaByFolder: (folderId: string | null) => MediaItem[];
+
+  // Bulk folder operations (for skills/automation)
+  bulkAddToFolder: (mediaIds: string[], folderId: string) => void;
+  bulkMoveToFolder: (mediaIds: string[], folderId: string | null) => void;
+  autoOrganizeByType: () => void;
 }
 
 // Helper function to determine file type
@@ -855,6 +861,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ),
     }));
     debugLog("[MediaStore] Added media to folder:", { mediaId, folderId });
+
+    // Persist the change to storage
+    const { mediaItems } = get();
+    const item = mediaItems.find((m) => m.id === mediaId);
+    if (item) {
+      import("@/stores/project-store").then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist folder assignment:", error);
+          });
+        }
+      });
+    }
   },
 
   removeFromFolder: (mediaId, folderId) => {
@@ -869,6 +889,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ),
     }));
     debugLog("[MediaStore] Removed media from folder:", { mediaId, folderId });
+
+    // Persist the change to storage
+    const { mediaItems } = get();
+    const item = mediaItems.find((m) => m.id === mediaId);
+    if (item) {
+      import("@/stores/project-store").then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist folder removal:", error);
+          });
+        }
+      });
+    }
   },
 
   moveToFolder: (mediaId, targetFolderId) => {
@@ -883,6 +917,20 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       ),
     }));
     debugLog("[MediaStore] Moved media to folder:", { mediaId, targetFolderId });
+
+    // Persist the change to storage
+    const { mediaItems } = get();
+    const item = mediaItems.find((m) => m.id === mediaId);
+    if (item) {
+      import("@/stores/project-store").then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist folder move:", error);
+          });
+        }
+      });
+    }
   },
 
   getMediaByFolder: (folderId) => {
@@ -894,5 +942,125 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     return mediaItems.filter(
       (item) => !item.ephemeral && (item.folderIds || []).includes(folderId)
     );
+  },
+
+  // ============================================================================
+  // Bulk Folder Operations (for skills/automation)
+  // ============================================================================
+
+  bulkAddToFolder: (mediaIds, folderId) => {
+    set((state) => ({
+      mediaItems: state.mediaItems.map((item) =>
+        mediaIds.includes(item.id)
+          ? {
+              ...item,
+              folderIds: [...new Set([...(item.folderIds || []), folderId])],
+            }
+          : item
+      ),
+    }));
+    debugLog("[MediaStore] Bulk added to folder:", { count: mediaIds.length, folderId });
+
+    // Persist all changed items
+    const { mediaItems } = get();
+    import("@/stores/project-store").then(({ useProjectStore }) => {
+      const projectId = useProjectStore.getState().activeProject?.id;
+      if (projectId) {
+        const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+        for (const item of changedItems) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist bulk folder add:", error);
+          });
+        }
+      }
+    });
+  },
+
+  bulkMoveToFolder: (mediaIds, folderId) => {
+    set((state) => ({
+      mediaItems: state.mediaItems.map((item) =>
+        mediaIds.includes(item.id)
+          ? {
+              ...item,
+              folderIds: folderId ? [folderId] : [],
+            }
+          : item
+      ),
+    }));
+    debugLog("[MediaStore] Bulk moved to folder:", { count: mediaIds.length, folderId });
+
+    // Persist all changed items
+    const { mediaItems } = get();
+    import("@/stores/project-store").then(({ useProjectStore }) => {
+      const projectId = useProjectStore.getState().activeProject?.id;
+      if (projectId) {
+        const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+        for (const item of changedItems) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist bulk folder move:", error);
+          });
+        }
+      }
+    });
+  },
+
+  autoOrganizeByType: () => {
+    const { mediaItems } = get();
+
+    const typeToFolder: Record<string, string> = {
+      video: DEFAULT_FOLDER_IDS.VIDEOS,
+      audio: DEFAULT_FOLDER_IDS.AUDIO,
+      image: DEFAULT_FOLDER_IDS.IMAGES,
+    };
+
+    let organizedCount = 0;
+    const updatedItems = mediaItems.map((item) => {
+      // Skip if already organized or ephemeral
+      if (item.ephemeral || (item.folderIds && item.folderIds.length > 0)) {
+        return item;
+      }
+
+      // AI-generated content goes to AI Generated folder
+      if (item.metadata?.source) {
+        organizedCount++;
+        return { ...item, folderIds: [DEFAULT_FOLDER_IDS.AI_GENERATED] };
+      }
+
+      // Organize by media type
+      const targetFolder = typeToFolder[item.type];
+      if (targetFolder) {
+        organizedCount++;
+        return { ...item, folderIds: [targetFolder] };
+      }
+
+      return item;
+    });
+
+    set({ mediaItems: updatedItems });
+    debugLog("[MediaStore] Auto-organized media by type:", { organizedCount });
+
+    // Persist all organized items
+    import("@/stores/project-store").then(({ useProjectStore }) => {
+      const projectId = useProjectStore.getState().activeProject?.id;
+      if (projectId) {
+        const changedItems = updatedItems.filter(
+          (item) =>
+            !item.ephemeral &&
+            item.folderIds &&
+            item.folderIds.length > 0 &&
+            !mediaItems.find(
+              (orig) =>
+                orig.id === item.id &&
+                orig.folderIds &&
+                orig.folderIds.length > 0
+            )
+        );
+        for (const item of changedItems) {
+          storageService.saveMediaItem(projectId, item).catch((error) => {
+            debugError("[MediaStore] Failed to persist auto-organize:", error);
+          });
+        }
+      }
+    });
   },
 }));
