@@ -104,10 +104,14 @@ export class BinaryManager {
       if (fs.existsSync(this.manifestPath)) {
         const content = fs.readFileSync(this.manifestPath, "utf-8");
         this.manifest = JSON.parse(content);
-        console.log(
-          `[BinaryManager] Loaded manifest v${this.manifest?.manifestVersion}`
-        );
-      } else {
+        // Only log in development to avoid leaking to production console
+        if (!app.isPackaged) {
+          console.log(
+            `[BinaryManager] Loaded manifest v${this.manifest?.manifestVersion}`
+          );
+        }
+      } else if (!app.isPackaged) {
+        // Only warn in development - production should have bundled manifest
         console.warn(
           "[BinaryManager] No manifest found at",
           this.manifestPath,
@@ -249,7 +253,8 @@ export class BinaryManager {
       const isValid = hash === expectedHash;
       this.checksumCache.set(cacheKey, isValid);
 
-      if (!isValid) {
+      if (!isValid && !app.isPackaged) {
+        // Only log verbose checksum details in development
         console.warn(
           `[BinaryManager] Checksum mismatch for ${filePath}:`,
           `expected ${expectedHash.substring(0, 16)}...,`,
