@@ -91,8 +91,8 @@ if [ -n "$TASK_FILE" ] && [ -f "$TASK_FILE" ]; then
     COMPLETED_DIR="${TASK_DIR}_completed"
     FILENAME=$(basename "$TASK_FILE")
 
-    mkdir -p "$COMPLETED_DIR"
-    mv "$TASK_FILE" "$COMPLETED_DIR/$FILENAME"
+    mkdir -p -- "$COMPLETED_DIR"
+    mv -- "$TASK_FILE" "$COMPLETED_DIR/$FILENAME"
 
     echo "✓ Task moved to: $COMPLETED_DIR/$FILENAME"
 elif [ -n "$TASK_FILE" ]; then
