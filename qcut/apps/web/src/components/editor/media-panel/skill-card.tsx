@@ -218,29 +218,46 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
       </div>
 
       <div className="flex gap-2 mt-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="default" size="sm" className="flex-1">
-              <Play className="h-3 w-3 mr-1" />
-              Run
-              <ChevronDown className="h-3 w-3 ml-1" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={handleRunWithGemini}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Run with Gemini CLI
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleRunWithCodex}>
-              <Bot className="h-4 w-4 mr-2" />
-              Run with Codex (OpenRouter)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleRunWithClaude}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Run with Claude Code
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Split Button: Main action (Claude) + Dropdown for other options */}
+        <div className="flex flex-1">
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="flex-1 rounded-r-none border-r-0"
+            onClick={handleRunWithClaude}
+          >
+            <Play className="h-3 w-3 mr-1" />
+            Run with Claude
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="px-2 rounded-l-none border-l border-primary-foreground/20"
+                aria-label="More run options"
+              >
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleRunWithClaude}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Run with Claude Code
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRunWithCodex}>
+                <Bot className="h-4 w-4 mr-2" />
+                Run with Codex (OpenRouter)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRunWithGemini}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Run with Gemini CLI
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <Button
           type="button"
           variant="outline"
