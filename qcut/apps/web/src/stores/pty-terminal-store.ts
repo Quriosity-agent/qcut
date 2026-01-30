@@ -200,7 +200,13 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.log("[PTY Store] workingDirectory:", workingDirectory);
         if (activeSkill?.folderName && workingDirectory) {
           const skillFilePath = buildSkillFilePath(workingDirectory, activeSkill.folderName);
-          command += ` --project-doc "${skillFilePath}"`;
+          // Escape the path for shell to avoid injection and broken quoting
+          const escapedSkillFilePath = skillFilePath
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\$/g, '\\$')
+            .replace(/`/g, '\\`');
+          command += ` --project-doc "${escapedSkillFilePath}"`;
           console.log("[PTY Store] Skill file path:", skillFilePath);
         }
 
@@ -238,7 +244,9 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
             .replace(/\\/g, '\\\\')
             .replace(/"/g, '\\"')
             .replace(/\$/g, '\\$')
-            .replace(/`/g, '\\`');
+            .replace(/`/g, '\\`')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
           command += ` --append-system-prompt "${escapedContent}"`;
           console.log("[PTY Store] Claude skill injected via --append-system-prompt");
         }
