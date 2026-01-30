@@ -43,6 +43,34 @@ aicp list-models
 
 ## Quick Commands
 
+### Transcribe Audio (Primary Feature)
+
+Transcribe audio/video files with word-level timestamps, speaker diarization, and audio event detection.
+
+```bash
+# Basic transcription
+aicp transcribe -i audio.mp3
+aicp transcribe -i video.mp4              # Extracts audio automatically
+
+# With JSON output and custom settings
+aicp transcribe -i audio.mp3 -o output_folder --save-json transcript.json
+
+# Full options
+aicp transcribe -i audio.mp3 --diarize --tag-events --language eng
+```
+
+**For word-level timestamps**, use the Python API directly (see `REFERENCE.md` for details):
+```python
+import fal_client
+result = fal_client.subscribe("fal-ai/elevenlabs/speech-to-text",
+    arguments={"audio_url": fal_client.upload_file("audio.mp3"), "diarize": True})
+# result["words"] contains word-level timestamps with speaker IDs
+```
+
+**See `REFERENCE.md`** for complete CLI options, Python API details, and JSON structure.
+
+---
+
 ### Generate Image
 ```bash
 # Fast & cheap ($0.002)
@@ -65,11 +93,6 @@ aicp generate-avatar --image-url "https://..." --audio-url "https://..." --model
 ### Transfer Motion
 ```bash
 aicp transfer-motion -i person.jpg -v dance.mp4
-```
-
-### Transcribe Audio
-```bash
-aicp transcribe -i audio.mp3
 ```
 
 ### Analyze Video

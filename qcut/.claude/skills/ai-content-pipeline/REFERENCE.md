@@ -186,6 +186,108 @@ image_url = result["images"][0]["url"]
 - **Best for**: Video prompt optimization
 - **Output**: Detailed, cinematic prompts
 
+### Speech-to-Text Models
+
+#### ElevenLabs Scribe v2 (`scribe_v2`)
+- **Provider**: FAL AI (ElevenLabs)
+- **Endpoint**: `fal-ai/elevenlabs/speech-to-text`
+- **Best for**: High-accuracy transcription with word-level timestamps
+- **Cost**: ~$0.008 per minute
+- **Features**:
+  - 99 language support with auto-detection
+  - Word-level timestamps (start/end in seconds)
+  - Speaker diarization (identifies different speakers)
+  - Audio event tagging (laughter, applause, music, etc.)
+
+**CLI Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-i, --input` | Input audio/video file path or URL (required) |
+| `-o, --output` | Output directory (default: `output`) |
+| `--save-json FILENAME` | Save detailed metadata as JSON file |
+| `--language CODE` | Language code (e.g., `eng`, `spa`, `fra`). Default: auto-detect |
+| `--diarize` | Enable speaker diarization (default: enabled) |
+| `--no-diarize` | Disable speaker diarization |
+| `--tag-events` | Tag audio events like laughter, applause (default: enabled) |
+| `--no-tag-events` | Disable audio event tagging |
+| `--keyterms TERM1 TERM2` | Terms to bias transcription toward (+30% cost) |
+
+**Output Files:**
+- `{filename}_transcript_{timestamp}.txt` - Plain text transcript
+- `{filename}.json` (if `--save-json` used) - Basic metadata
+
+**Python API for Word-Level Timestamps:**
+
+The CLI `--save-json` option saves basic metadata. For full word-level timestamps with speaker IDs, use the Python API directly:
+
+```python
+import fal_client
+import json
+
+# Upload and transcribe
+audio_url = fal_client.upload_file("audio.mp3")
+result = fal_client.subscribe(
+    "fal-ai/elevenlabs/speech-to-text",
+    arguments={
+        "audio_url": audio_url,
+        "diarize": True,
+        "tag_audio_events": True,
+    }
+)
+
+# Save full result with word timestamps
+with open("transcript_words.json", "w") as f:
+    json.dump(result, f, indent=2)
+
+# Access word timestamps
+for word in result["words"]:
+    if word["type"] == "word":
+        print(f"{word['text']}: {word['start']:.2f}s - {word['end']:.2f}s ({word['speaker_id']})")
+```
+
+**Word Timestamp JSON Structure:**
+
+```json
+{
+  "text": "Full transcript text...",
+  "language_code": "eng",
+  "language_probability": 0.98,
+  "words": [
+    {
+      "text": "Hello",
+      "start": 0.2,
+      "end": 0.5,
+      "type": "word",
+      "speaker_id": "speaker_0"
+    },
+    {
+      "text": " ",
+      "start": 0.5,
+      "end": 0.52,
+      "type": "spacing",
+      "speaker_id": "speaker_0"
+    },
+    {
+      "text": "(laughter)",
+      "start": 1.0,
+      "end": 1.5,
+      "type": "audio_event",
+      "speaker_id": null
+    }
+  ]
+}
+```
+
+**Word Entry Types:**
+- `word` - Spoken word with timestamps and speaker
+- `spacing` - Space between words
+- `audio_event` - Non-speech audio (laughter, applause, music, etc.)
+- `punctuation` - Punctuation marks
+
+**Supported Languages (99 total):**
+Common codes: `eng` (English), `spa` (Spanish), `fra` (French), `deu` (German), `ita` (Italian), `por` (Portuguese), `rus` (Russian), `zho` (Chinese), `jpn` (Japanese), `kor` (Korean), `ara` (Arabic), `hin` (Hindi)
+
 ## Pipeline Configuration Options
 
 ### Step Types
