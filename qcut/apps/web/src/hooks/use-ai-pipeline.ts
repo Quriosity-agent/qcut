@@ -100,7 +100,7 @@ export function useAIPipeline(
   // Check availability on mount
   useEffect(() => {
     checkAvailability();
-  }, []);
+  }, [checkAvailability]);
 
   // Set up progress listener
   useEffect(() => {
@@ -143,7 +143,7 @@ export function useAIPipeline(
       }
 
       return available;
-    } catch (err) {
+    } catch {
       setIsAvailable(false);
       setIsChecked(true);
       setError("Failed to check AI pipeline availability");
@@ -167,7 +167,7 @@ export function useAIPipeline(
         }
       }
       return response ?? null;
-    } catch (err) {
+    } catch {
       setError("Failed to refresh AI pipeline environment");
       return null;
     }
@@ -294,8 +294,12 @@ export function useAIPipeline(
    * Cancel ongoing generation
    */
   const cancel = useCallback(async (): Promise<void> => {
-    if (sessionIdRef.current) {
+    if (!sessionIdRef.current) return;
+    try {
       await window.electronAPI?.aiPipeline?.cancel(sessionIdRef.current);
+    } catch {
+      setError("Failed to cancel generation");
+    } finally {
       sessionIdRef.current = null;
       setIsGenerating(false);
       setProgress(null);

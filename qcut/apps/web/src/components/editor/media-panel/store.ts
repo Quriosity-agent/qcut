@@ -19,6 +19,7 @@ import {
   Layers,
   TerminalIcon,
   SquareTerminalIcon,
+  TextSelect,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -41,7 +42,8 @@ export type Tab =
   | "segmentation"
   | "remotion"
   | "gemini"
-  | "pty";
+  | "pty"
+  | "word-timeline";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -119,6 +121,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   pty: {
     icon: SquareTerminalIcon,
     label: "Terminal",
+  },
+  "word-timeline": {
+    icon: TextSelect,
+    label: "Words",
   },
 };
 

@@ -1,0 +1,233 @@
+/**
+ * Word Timeline Store
+ *
+ * Zustand store for managing word-level transcription data.
+ * Supports loading from JSON files, word deletion marking, and selection state.
+ *
+ * @module stores/word-timeline-store
+ */
+
+import { create } from "zustand";
+import type {
+  WordTimelineData,
+  WordItem,
+  RawWordTimelineJson,
+  RawWordItem,
+} from "@/types/word-timeline";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface WordTimelineState {
+  /** Loaded word timeline data */
+  data: WordTimelineData | null;
+  /** Name of the loaded file */
+  fileName: string | null;
+  /** Currently selected word ID */
+  selectedWordId: string | null;
+  /** Loading state */
+  isLoading: boolean;
+  /** Error message if load failed */
+  error: string | null;
+}
+
+interface WordTimelineActions {
+  /** Load word timeline data from a JSON file */
+  loadFromJson: (file: File) => Promise<void>;
+  /** Load word timeline data from raw JSON object */
+  loadFromData: (data: RawWordTimelineJson, fileName?: string) => void;
+  /** Toggle the deleted state of a word */
+  toggleWordDeleted: (wordId: string) => void;
+  /** Set multiple words as deleted */
+  setWordsDeleted: (wordIds: string[], deleted: boolean) => void;
+  /** Select a word by ID */
+  selectWord: (wordId: string | null) => void;
+  /** Clear all loaded data */
+  clearData: () => void;
+  /** Get only visible words (excluding spacing) */
+  getVisibleWords: () => WordItem[];
+  /** Get word by ID */
+  getWordById: (wordId: string) => WordItem | undefined;
+  /** Get non-deleted words for export */
+  getNonDeletedWords: () => WordItem[];
+}
+
+type WordTimelineStore = WordTimelineState & WordTimelineActions;
+
+// ============================================================================
+// Initial State
+// ============================================================================
+
+const initialState: WordTimelineState = {
+  data: null,
+  fileName: null,
+  selectedWordId: null,
+  isLoading: false,
+  error: null,
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Transform raw words from JSON to include id and deleted flag
+ */
+function transformWords(rawWords: RawWordItem[]): WordItem[] {
+  return rawWords.map((word, index) => ({
+    ...word,
+    id: `word-${index}`,
+    deleted: false,
+  }));
+}
+
+/**
+ * Validate JSON structure
+ */
+function validateJson(json: unknown): json is RawWordTimelineJson {
+  if (typeof json !== "object" || json === null) {
+    return false;
+  }
+
+  const obj = json as Record<string, unknown>;
+
+  if (typeof obj.text !== "string") {
+    return false;
+  }
+
+  if (!Array.isArray(obj.words)) {
+    return false;
+  }
+
+  // Validate at least first word has required fields
+  if (obj.words.length > 0) {
+    const firstWord = obj.words[0] as Record<string, unknown>;
+    if (
+      typeof firstWord.text !== "string" ||
+      typeof firstWord.start !== "number" ||
+      typeof firstWord.end !== "number"
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// ============================================================================
+// Store
+// ============================================================================
+
+export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
+  ...initialState,
+
+  loadFromJson: async (file: File) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      if (!validateJson(json)) {
+        throw new Error(
+          "Invalid JSON format. Expected word timeline structure with 'text' and 'words' array."
+        );
+      }
+
+      const words = transformWords(json.words);
+
+      set({
+        data: {
+          text: json.text,
+          language_code: json.language_code || "unknown",
+          language_probability: json.language_probability || 0,
+          words,
+        },
+        fileName: file.name,
+        selectedWordId: null,
+        isLoading: false,
+        error: null,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load JSON file";
+      set({
+        isLoading: false,
+        error: message,
+      });
+      console.error("[WordTimelineStore] Load error:", err);
+    }
+  },
+
+  loadFromData: (data: RawWordTimelineJson, fileName?: string) => {
+    if (!validateJson(data)) {
+      set({ error: "Invalid data format" });
+      return;
+    }
+
+    const words = transformWords(data.words);
+
+    set({
+      data: {
+        text: data.text,
+        language_code: data.language_code || "unknown",
+        language_probability: data.language_probability || 0,
+        words,
+      },
+      fileName: fileName || "data.json",
+      selectedWordId: null,
+      isLoading: false,
+      error: null,
+    });
+  },
+
+  toggleWordDeleted: (wordId: string) => {
+    const { data } = get();
+    if (!data) return;
+
+    const words = data.words.map((w) =>
+      w.id === wordId ? { ...w, deleted: !w.deleted } : w
+    );
+
+    set({ data: { ...data, words } });
+  },
+
+  setWordsDeleted: (wordIds: string[], deleted: boolean) => {
+    const { data } = get();
+    if (!data) return;
+
+    const wordIdSet = new Set(wordIds);
+    const words = data.words.map((w) =>
+      wordIdSet.has(w.id) ? { ...w, deleted } : w
+    );
+
+    set({ data: { ...data, words } });
+  },
+
+  selectWord: (wordId: string | null) => {
+    set({ selectedWordId: wordId });
+  },
+
+  clearData: () => {
+    set(initialState);
+  },
+
+  getVisibleWords: () => {
+    const { data } = get();
+    if (!data) return [];
+    return data.words.filter((w) => w.type === "word");
+  },
+
+  getWordById: (wordId: string) => {
+    const { data } = get();
+    if (!data) return undefined;
+    return data.words.find((w) => w.id === wordId);
+  },
+
+  getNonDeletedWords: () => {
+    const { data } = get();
+    if (!data) return [];
+    return data.words.filter((w) => w.type === "word" && !w.deleted);
+  },
+}));

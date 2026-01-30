@@ -121,7 +121,7 @@ export const TIMELINE_CONSTANTS = {
   TRACK_HEIGHT: 60, // Default fallback
   DEFAULT_TEXT_DURATION: 5,
   DEFAULT_IMAGE_DURATION: 5,
-  DEFAULT_EMPTY_TIMELINE_DURATION: 20, // Default duration for empty timeline
+  DEFAULT_EMPTY_TIMELINE_DURATION: 300, // Default duration for empty timeline (5 minutes)
   MAX_EXPORT_DURATION: 600, // 10 minutes - balances usability vs system resources
   ZOOM_LEVELS: [0.25, 0.5, 1, 1.5, 2, 3, 4],
 } as const;
@@ -177,7 +177,7 @@ export function getFrameDuration(fps: number): number {
 
 // Timeline duration utility functions
 /**
- * Provides breathing room for editing. Empty timelines with 20s give users
+ * Provides breathing room for editing. Empty timelines with 5 minutes give users
  * space to drag content without immediately hitting the end. This prevents
  * the frustrating "timeline too small" experience that plagues amateur editors.
  * Business rule: Never make timeline smaller than content, but always give workspace.

@@ -18,6 +18,7 @@ import { SegmentationPanel } from "@/components/editor/segmentation";
 import { RemotionView } from "./views/remotion";
 import { GeminiTerminalView } from "./views/gemini-terminal";
 import { PtyTerminalView } from "./views/pty-terminal";
+import { WordTimelineView } from "./views/word-timeline-view";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -69,6 +70,7 @@ export function MediaPanel() {
     remotion: <RemotionView />,
     gemini: <GeminiTerminalView />,
     pty: <PtyTerminalView />,
+    "word-timeline": <WordTimelineView />,
   };
 
   return (

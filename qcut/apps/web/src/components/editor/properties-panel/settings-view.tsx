@@ -622,11 +622,16 @@ function ApiKeysView() {
               size="sm"
               className="absolute right-0 top-0 h-full px-3"
               onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+              aria-label={
+                showAnthropicKey
+                  ? "Hide Anthropic API key"
+                  : "Show Anthropic API key"
+              }
             >
               {showAnthropicKey ? (
-                <EyeOffIcon className="h-4 w-4" />
+                <EyeOffIcon className="h-4 w-4" title="Hide Anthropic API key" />
               ) : (
-                <EyeIcon className="h-4 w-4" />
+                <EyeIcon className="h-4 w-4" title="Show Anthropic API key" />
               )}
             </Button>
           </div>
