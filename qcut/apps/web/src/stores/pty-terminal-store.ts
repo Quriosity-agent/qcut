@@ -89,10 +89,10 @@ const initialState: PtyTerminalState = {
   error: null,
   cols: 80,
   rows: 24,
-  cliProvider: "gemini", // Default to Gemini for backward compatibility
+  cliProvider: "claude", // Default to Claude Code
   selectedModel: getDefaultCodexModel(), // Default Codex model
   selectedClaudeModel: getDefaultClaudeModel(), // Default Claude model
-  isGeminiMode: true, // Derived from cliProvider
+  isGeminiMode: false, // Derived from cliProvider
   workingDirectory: "",
   activeSkill: null,
   skillPromptSent: false,
@@ -239,14 +239,8 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
           command += ` --model ${selectedClaudeModel}`;
         }
 
-        // Inject skill via --append-system-prompt if active
-        // Note: We pass a short instruction to read the skill file rather than the full content
-        // to avoid Windows command line length limits (8191 chars) and escaping issues
-        if (activeSkill?.folderName && workingDirectory) {
-          const skillRelativePath = `skills/${activeSkill.folderName}/Skill.md`;
-          const instruction = `IMPORTANT: Read and follow the instructions in the file "${skillRelativePath}" before proceeding. This skill file contains your operational guidelines for this session.`;
-          command += ` --append-system-prompt "${instruction}"`;
-        }
+        // Note: Skills are not auto-injected for Claude - user starts them manually
+        // Claude has access to read skill files from the project directory
       } else if (cliProvider === "gemini") {
         command = providerConfig.command;
       }

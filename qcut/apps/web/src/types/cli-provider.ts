@@ -207,9 +207,12 @@ export function getDefaultCodexModel(): string {
   return DEFAULT_CODEX_MODEL_ID;
 }
 
+/** Default model ID for Claude (explicit to avoid array order dependency) */
+const DEFAULT_CLAUDE_MODEL_ID = "opus";
+
 /**
  * Get default model for Claude provider.
  */
 export function getDefaultClaudeModel(): string {
-  return CLAUDE_MODELS[0].id;
+  return DEFAULT_CLAUDE_MODEL_ID;
 }
