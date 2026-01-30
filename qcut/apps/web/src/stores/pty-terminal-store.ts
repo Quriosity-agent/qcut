@@ -131,6 +131,7 @@ function escapeStringForShell(content: string, escapeNewlines = false): string {
 /**
  * Build skill file path for --project-doc flag
  * open-codex supports passing a markdown file as context via --project-doc
+ * workingDirectory is the project folder, so we need to add "skills" to the path
  */
 function buildSkillFilePath(workingDirectory: string, skillFolderName: string): string {
   // Validate skillFolderName to prevent path traversal
@@ -139,8 +140,8 @@ function buildSkillFilePath(workingDirectory: string, skillFolderName: string): 
   }
   // Handle both Windows and Unix paths
   const separator = workingDirectory.includes("\\") ? "\\" : "/";
-  // Get the parent directory (skills folder) and then the skill folder
-  const skillPath = `${workingDirectory}${separator}${skillFolderName}${separator}Skill.md`;
+  // Build path: projectFolder/skills/skillFolderName/Skill.md
+  const skillPath = `${workingDirectory}${separator}skills${separator}${skillFolderName}${separator}Skill.md`;
   return skillPath;
 }
 

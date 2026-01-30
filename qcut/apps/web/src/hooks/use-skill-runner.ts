@@ -80,9 +80,11 @@ export function useSkillRunner() {
         setCliProvider(preferredProvider);
       }
 
-      // 4. Set working directory to project's skills folder
+      // 4. Set working directory to project folder (parent of skills folder)
       if (skillsPath) {
-        setWorkingDirectory(skillsPath);
+        // Get project folder by removing the trailing "skills" directory
+        const projectPath = skillsPath.replace(/[/\\]skills$/, "");
+        setWorkingDirectory(projectPath);
       }
 
       // 5. Switch to PTY terminal tab
