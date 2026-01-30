@@ -235,7 +235,8 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
   return (
     <div
       ref={containerRef}
-      className="h-full w-full"
+      className="h-full w-full [&_.xterm]:h-full [&_.xterm-viewport]:!bg-[#1a1a1a] [&_.xterm-screen]:!bg-[#1a1a1a]"
+      style={{ backgroundColor: "#1a1a1a" }}
       role="application"
       aria-label="Terminal emulator"
     />

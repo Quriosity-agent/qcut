@@ -256,7 +256,7 @@ export function PtyTerminalView() {
       )}
 
       {/* Terminal Area */}
-      <div className="flex-1 bg-[#1a1a1a] overflow-hidden">
+      <div className="flex-1 min-h-0 bg-[#1a1a1a] overflow-hidden">
         {isConnected || isConnecting ? (
           <TerminalEmulator sessionId={sessionId} />
         ) : (
