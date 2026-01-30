@@ -32,15 +32,30 @@ bash .claude/skills/pr-comments/scripts/batch-preprocess.sh $1
 
 **Output:** `{input-dir}-tasks/` with cleaned task files.
 
-### 3. Fix: `/pr-comments fix <task-file.md>`
+### 3. Analyze: `/pr-comments analyze <tasks-dir>`
+
+Show comments grouped by source file with recommended processing order.
+
+```bash
+bash .claude/skills/pr-comments/scripts/analyze.sh $1
+```
+
+**Output:** Table showing which files have multiple comments and line numbers (sorted for bottom-up fixing).
+
+### 4. Fix: `/pr-comments fix <task-file.md>`
 
 Evaluate a single PR review comment. Read the source file, determine if valid, then fix or explain.
 
 Follow instructions in [review-fix.md](review-fix.md).
 
-### 4. Batch: `/pr-comments batch <tasks-dir>`
+### 5. Batch: `/pr-comments batch <tasks-dir>`
 
-Process all task files in a directory, evaluating and fixing each one.
+Process all task files in a directory. **Groups comments by source file** and fixes bottom-up to avoid line number shifts.
+
+**Critical:** Multiple comments often target the same file. Batch mode:
+1. Groups tasks by source file
+2. Sorts by line number descending (bottom-up)
+3. Fixes all comments for one file before moving to next
 
 Follow instructions in [review-batch.md](review-batch.md).
 
