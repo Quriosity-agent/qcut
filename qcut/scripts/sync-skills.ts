@@ -17,7 +17,9 @@ const TARGET_DIR = "resources/default-skills";
 const BUNDLED_SKILLS = ["ai-content-pipeline", "ffmpeg-skill"];
 
 function syncSkills() {
-  console.log("📦 Syncing skills from .claude/skills/ → resources/default-skills/");
+  process.stdout.write(
+    "📦 Syncing skills from .claude/skills/ → resources/default-skills/\n",
+  );
 
   // Ensure target directory exists
   if (!existsSync(TARGET_DIR)) {
@@ -29,7 +31,7 @@ function syncSkills() {
     const targetPath = join(TARGET_DIR, skillName);
 
     if (!existsSync(sourcePath)) {
-      console.warn(`⚠️  Skill not found: ${sourcePath}`);
+      process.stderr.write(`⚠️  Skill not found: ${sourcePath}\n`);
       continue;
     }
 
@@ -40,10 +42,10 @@ function syncSkills() {
 
     // Copy skill folder
     cpSync(sourcePath, targetPath, { recursive: true });
-    console.log(`✅ Synced: ${skillName}`);
+    process.stdout.write(`✅ Synced: ${skillName}\n`);
   }
 
-  console.log("✨ Skills sync complete!");
+  process.stdout.write("✨ Skills sync complete!\n");
 }
 
 try {

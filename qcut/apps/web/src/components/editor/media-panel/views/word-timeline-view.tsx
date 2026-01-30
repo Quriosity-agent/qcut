@@ -128,11 +128,21 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
 
   const handleDrop = useCallback(
     (files: FileList) => {
-      const file = files[0];
-      if (file && file.name.endsWith(".json")) {
+      try {
+        const file = files[0];
+        if (!file) {
+          return;
+        }
+
+        const isJsonFile = file.name.endsWith(".json");
+        if (!isJsonFile) {
+          toast.error("Please drop a JSON file");
+          return;
+        }
+
         onFileSelect(file);
-      } else {
-        toast.error("Please drop a JSON file");
+      } catch (error) {
+        toast.error("Unable to process the dropped file");
       }
     },
     [onFileSelect]
@@ -141,23 +151,61 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
   const { isDragOver, dragProps } = useDragDrop({ onDrop: handleDrop });
 
   const handleClick = useCallback(() => {
-    fileInputRef.current?.click();
+    try {
+      fileInputRef.current?.click();
+    } catch (error) {
+      toast.error("Unable to open the file picker");
+    }
   }, []);
 
   const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
+    ({ target }: React.ChangeEvent<HTMLInputElement>) => {
+      try {
+        const file = target.files?.[0];
+        if (!file) {
+          return;
+        }
+
         onFileSelect(file);
+      } catch (error) {
+        toast.error("Unable to read the selected file");
       }
     },
     [onFileSelect]
   );
 
+  const handleDropZoneKeyDown = useCallback(
+    ({ key, nativeEvent }: React.KeyboardEvent<HTMLButtonElement>) => {
+      try {
+        const isActivationKey =
+          key === "Enter" || key === " " || key === "Spacebar";
+        if (!isActivationKey) {
+          return;
+        }
+
+        nativeEvent.preventDefault();
+        handleClick();
+      } catch (error) {
+        toast.error("Unable to open the file picker");
+      }
+    },
+    [handleClick]
+  );
+
   return (
     <div className="h-full flex items-center justify-center p-4" {...dragProps}>
-      <div
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <button
+        type="button"
         onClick={handleClick}
+        onKeyDown={handleDropZoneKeyDown}
+        disabled={isLoading}
         className={cn(
           "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all",
           "hover:border-primary hover:bg-primary/5",
@@ -167,17 +215,14 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
           isLoading && "pointer-events-none opacity-50"
         )}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          onChange={handleFileChange}
-          className="hidden"
-        />
         {isLoading ? (
-          <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin">
+            <title>Loading</title>
+          </Loader2>
         ) : (
-          <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground">
+            <title>Upload</title>
+          </Upload>
         )}
         <p className="text-sm text-muted-foreground">
           {isLoading
@@ -187,7 +232,7 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
         <p className="text-xs text-muted-foreground/70 mt-2">
           Supports transcription JSON with word-level timing
         </p>
-      </div>
+      </button>
     </div>
   );
 }
@@ -252,12 +297,20 @@ export function WordTimelineView() {
   if (error && !data) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <AlertCircle className="w-12 h-12 text-destructive mb-4">
+          <title>Error</title>
+        </AlertCircle>
         <p className="text-sm text-destructive font-medium">
           Failed to load file
         </p>
         <p className="text-xs text-muted-foreground mt-1">{error}</p>
-        <Button variant="outline" size="sm" onClick={handleClear} className="mt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleClear}
+          className="mt-4"
+        >
           Try Again
         </Button>
       </div>
@@ -285,13 +338,16 @@ export function WordTimelineView() {
           </span>
         </div>
         <Button
+          type="button"
           variant="text"
           size="icon"
           onClick={handleClear}
           className="shrink-0 h-7 w-7"
           title="Clear"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4">
+            <title>Clear</title>
+          </X>
         </Button>
       </div>
 
