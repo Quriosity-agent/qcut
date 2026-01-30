@@ -333,11 +333,19 @@ export class BinaryManager {
       return status.path;
     }
 
-    // Fallback to system PATH (for development)
-    console.log(
-      `[BinaryManager] Falling back to system PATH for: ${binaryName}`
+    // Fallback to system PATH only in development
+    if (!app.isPackaged) {
+      console.log(
+        `[BinaryManager] Falling back to system PATH for: ${binaryName}`
+      );
+      return binaryName;
+    }
+
+    // In production, don't use untrusted system binaries
+    console.warn(
+      `[BinaryManager] No valid bundled binary found for: ${binaryName}`
     );
-    return binaryName;
+    return null;
   }
 
   /**
