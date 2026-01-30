@@ -46,4 +46,13 @@ function syncSkills() {
   console.log("✨ Skills sync complete!");
 }
 
-syncSkills();
+try {
+  syncSkills();
+} catch (error) {
+  process.stderr.write(
+    `sync-skills failed: ${
+      error instanceof Error ? error.message : String(error)
+    }\n`,
+  );
+  process.exitCode = 1;
+}

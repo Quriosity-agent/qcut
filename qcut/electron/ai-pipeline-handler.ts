@@ -234,6 +234,32 @@ class AIPipelineManager {
     };
   }
 
+  private getExecutionTimeoutMs(): number {
+    const defaultTimeoutMs = 10 * 60 * 1000;
+    const rawTimeout = process.env.QCUT_AICP_TIMEOUT_MS;
+
+    if (!rawTimeout) {
+      return defaultTimeoutMs;
+    }
+
+    try {
+      const parsedTimeout = Number(rawTimeout);
+      if (!Number.isFinite(parsedTimeout) || parsedTimeout <= 0) {
+        console.warn(
+          `[AI Pipeline] Invalid QCUT_AICP_TIMEOUT_MS value: "${rawTimeout}", using default`
+        );
+        return defaultTimeoutMs;
+      }
+      return parsedTimeout;
+    } catch (error) {
+      console.warn(
+        "[AI Pipeline] Failed to parse QCUT_AICP_TIMEOUT_MS, using default:",
+        error
+      );
+      return defaultTimeoutMs;
+    }
+  }
+
   /**
    * Get command and base arguments for execution
    */
@@ -311,6 +337,58 @@ class AIPipelineManager {
       let stdout = "";
       let stderr = "";
       const startTime = Date.now();
+      const timeoutMs = this.getExecutionTimeoutMs();
+      let isSettled = false;
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      const resolveOnce = ({ result }: { result: PipelineResult }): void => {
+        if (isSettled) {
+          return;
+        }
+        isSettled = true;
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        try {
+          resolve(result);
+        } catch (error) {
+          console.error("[AI Pipeline] Failed to resolve promise:", error);
+        }
+      };
+
+      const safeKill = ({ signal }: { signal: NodeJS.Signals }): void => {
+        try {
+          proc.kill(signal);
+        } catch (error) {
+          console.warn("[AI Pipeline] Failed to kill process:", error);
+        }
+      };
+
+      timeoutId = setTimeout(() => {
+        try {
+          if (this.activeProcesses.has(sessionId)) {
+            safeKill({ signal: "SIGTERM" });
+            this.activeProcesses.delete(sessionId);
+          }
+          resolveOnce({
+            result: {
+              success: false,
+              error: `Process timed out after ${Math.round(timeoutMs / 1000)}s`,
+              duration: (Date.now() - startTime) / 1000,
+            },
+          });
+        } catch (error) {
+          console.error("[AI Pipeline] Timeout handler error:", error);
+          resolveOnce({
+            result: {
+              success: false,
+              error: "Process timed out",
+              duration: (Date.now() - startTime) / 1000,
+            },
+          });
+        }
+      }, timeoutMs);
 
       // Handle stdout
       proc.stdout?.on("data", (data: Buffer) => {
@@ -360,10 +438,12 @@ class AIPipelineManager {
             const resultMatch = stdout.match(/RESULT:(.+)$/m);
             if (resultMatch) {
               const result = JSON.parse(resultMatch[1]);
-              resolve({
-                success: true,
-                ...result,
-                duration,
+              resolveOnce({
+                result: {
+                  success: true,
+                  ...result,
+                  duration,
+                },
               });
               return;
             }
@@ -373,10 +453,12 @@ class AIPipelineManager {
             if (trimmedOutput.startsWith("{") || trimmedOutput.startsWith("[")) {
               try {
                 const jsonResult = JSON.parse(trimmedOutput);
-                resolve({
-                  success: true,
-                  data: jsonResult,
-                  duration,
+                resolveOnce({
+                  result: {
+                    success: true,
+                    data: jsonResult,
+                    duration,
+                  },
                 });
                 return;
               } catch {
@@ -392,35 +474,43 @@ class AIPipelineManager {
               const paths = pathMatches.map((m) =>
                 m.replace(/^(?:Output|Saved|Created):\s*/i, "").trim()
               );
-              resolve({
-                success: true,
-                outputPaths: paths,
-                outputPath: paths[0],
-                duration,
+              resolveOnce({
+                result: {
+                  success: true,
+                  outputPaths: paths,
+                  outputPath: paths[0],
+                  duration,
+                },
               });
               return;
             }
 
             // Success with no specific output
-            resolve({
-              success: true,
-              duration,
+            resolveOnce({
+              result: {
+                success: true,
+                duration,
+              },
             });
           } catch (parseError) {
             console.warn("[AI Pipeline] Failed to parse output:", parseError);
-            resolve({
-              success: true,
-              duration,
+            resolveOnce({
+              result: {
+                success: true,
+                duration,
+              },
             });
           }
         } else {
           const errorMessage =
             stderr.trim() || stdout.trim() || `Process exited with code ${code}`;
           console.error("[AI Pipeline] Failed:", errorMessage);
-          resolve({
-            success: false,
-            error: errorMessage,
-            duration,
+          resolveOnce({
+            result: {
+              success: false,
+              error: errorMessage,
+              duration,
+            },
           });
         }
       });
@@ -429,9 +519,11 @@ class AIPipelineManager {
       proc.on("error", (err: Error) => {
         this.activeProcesses.delete(sessionId);
         console.error("[AI Pipeline] Process error:", err);
-        resolve({
-          success: false,
-          error: err.message,
+        resolveOnce({
+          result: {
+            success: false,
+            error: err.message,
+          },
         });
       });
     });
