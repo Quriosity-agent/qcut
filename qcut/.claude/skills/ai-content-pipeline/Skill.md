@@ -28,7 +28,7 @@ cd video-agent-skill && pip install -e .
 ### Step 2: Configure API Keys
 
 Create a `.env` file:
-```
+```bash
 FAL_KEY=your_fal_api_key              # Required for most models
 ELEVENLABS_API_KEY=your_key           # Optional: transcription
 GEMINI_API_KEY=your_key               # Optional: video analysis
@@ -91,13 +91,13 @@ aicp list-motion-models    # Motion transfer models
 aicp list-speech-models    # Speech-to-text models
 ```
 
-## Available Models (51 Total)
+## Available Models (47 Total)
 
 | Category | Count | Examples |
 |----------|-------|----------|
 | Text-to-Image | 8 | `nano_banana_pro`, `flux_dev`, `flux_schnell`, `gpt_image_1_5` |
 | Image-to-Image | 8 | `nano_banana_pro_edit`, `flux_kontext`, `clarity_upscaler` |
-| Image-to-Video | 11 | `veo3`, `sora_2`, `kling_2_6_pro`, `hailuo` |
+| Image-to-Video | 11 | `veo_3`, `sora_2`, `kling_2_6_pro`, `hailuo` |
 | Image Understanding | 7 | `gemini_describe`, `gemini_ocr`, `gemini_qa` |
 | Avatar/Lipsync | 9 | `omnihuman_v1_5`, `fabric_1_0`, `multitalk` |
 | Motion Transfer | 1 | `kling_motion_control` |

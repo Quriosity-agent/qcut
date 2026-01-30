@@ -91,7 +91,7 @@ aicp list-motion-models    # Motion transfer models
 aicp list-speech-models    # Speech-to-text models
 ```
 
-## Available Models (47 Total)
+## Available Models (51 Total)
 
 | Category | Count | Examples |
 |----------|-------|----------|

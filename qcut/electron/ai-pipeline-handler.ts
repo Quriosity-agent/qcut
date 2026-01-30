@@ -7,6 +7,7 @@
  * @module electron/ai-pipeline-handler
  */
 import { spawn, ChildProcess, execSync } from "child_process";
+import { randomUUID } from "crypto";
 import { app, ipcMain, IpcMainInvokeEvent, BrowserWindow } from "electron";
 import * as path from "path";
 import * as fs from "fs";
@@ -246,6 +247,18 @@ class AIPipelineManager {
     throw new Error("AI Pipeline not available");
   }
 
+  private buildSessionId(): string {
+    try {
+      return `ai-${randomUUID()}`;
+    } catch (error) {
+      console.warn(
+        "[AI Pipeline] Failed to generate UUID, falling back to timestamp:",
+        error
+      );
+      return `ai-${Date.now()}-${process.pid}`;
+    }
+  }
+
   /**
    * Execute an AI pipeline command
    */
@@ -258,7 +271,7 @@ class AIPipelineManager {
     }
 
     const { cmd, baseArgs } = this.getCommand();
-    const sessionId = options.sessionId || `ai-${Date.now()}`;
+    const sessionId = options.sessionId || this.buildSessionId();
 
     // Build command arguments
     const args = [...baseArgs, options.command];

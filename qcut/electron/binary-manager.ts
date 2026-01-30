@@ -243,8 +243,9 @@ export class BinaryManager {
   private verifyChecksum(filePath: string, expectedHash: string): boolean {
     // Check cache first
     const cacheKey = `${filePath}:${expectedHash}`;
-    if (this.checksumCache.has(cacheKey)) {
-      return this.checksumCache.get(cacheKey)!;
+    const cached = this.checksumCache.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
     }
 
     try {

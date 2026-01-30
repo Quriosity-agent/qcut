@@ -14,7 +14,7 @@ For direct API calls (not using the CLI), use these endpoint formats:
 | `flux_schnell` | `https://fal.run/fal-ai/flux/schnell` |
 | `flux_kontext` | `https://fal.run/fal-ai/flux-pro/kontext` |
 | `gpt_image_1_5` | `https://fal.run/fal-ai/gpt-image-1/5` |
-| `veo_3` | `https://fal.run/fal-ai/veo3` |
+| `veo3` | `https://fal.run/fal-ai/veo3` |
 | `sora_2` | `https://fal.run/fal-ai/sora/v2` |
 | `kling_2_6_pro` | `https://fal.run/fal-ai/kling-video/v2.6/pro/image-to-video` |
 | `hailuo` | `https://fal.run/fal-ai/minimax/video-01/image-to-video` |
