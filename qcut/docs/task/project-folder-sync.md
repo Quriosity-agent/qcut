@@ -188,9 +188,14 @@ export function registerProjectFolderHandlers(): void {
     projectId: string,
     subPath: string = ""
   ): Promise<FileInfo[]> => {
-    const documentsPath = app.getPath("documents");
-    const projectRoot = path.join(documentsPath, "QCut", "Projects", projectId);
-    const targetPath = path.join(projectRoot, subPath);
+    const sanitizedProjectId = sanitizePathComponent(projectId);
+    const basePath = getQCutProjectsBase();
+    const projectRoot = path.join(basePath, sanitizedProjectId);
+    validatePathWithinBase(projectRoot, basePath);
+
+    const sanitizedSubPath = subPath.split(/[\/\\]/).map(sanitizePathComponent).join(path.sep);
+    const targetPath = path.join(projectRoot, sanitizedSubPath);
+    validatePathWithinBase(targetPath, projectRoot);
 
     const entries: FileInfo[] = [];
 
@@ -224,8 +229,10 @@ export function registerProjectFolderHandlers(): void {
     _,
     projectId: string
   ): Promise<{ created: string[]; existing: string[] }> => {
-    const documentsPath = app.getPath("documents");
-    const projectRoot = path.join(documentsPath, "QCut", "Projects", projectId);
+    const sanitizedProjectId = sanitizePathComponent(projectId);
+    const basePath = getQCutProjectsBase();
+    const projectRoot = path.join(basePath, sanitizedProjectId);
+    validatePathWithinBase(projectRoot, basePath);
 
     const requiredFolders = [
       "media",
