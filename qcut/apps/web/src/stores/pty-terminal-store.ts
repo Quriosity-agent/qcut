@@ -240,9 +240,12 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         }
 
         // Inject skill via --append-system-prompt if active
-        if (activeSkill?.content) {
-          const escapedContent = escapeStringForShell(activeSkill.content, true);
-          command += ` --append-system-prompt "${escapedContent}"`;
+        // Note: We pass a short instruction to read the skill file rather than the full content
+        // to avoid Windows command line length limits (8191 chars) and escaping issues
+        if (activeSkill?.folderName && workingDirectory) {
+          const skillRelativePath = `skills/${activeSkill.folderName}/Skill.md`;
+          const instruction = `IMPORTANT: Read and follow the instructions in the file "${skillRelativePath}" before proceeding. This skill file contains your operational guidelines for this session.`;
+          command += ` --append-system-prompt "${instruction}"`;
         }
       } else if (cliProvider === "gemini") {
         command = providerConfig.command;
