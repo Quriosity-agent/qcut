@@ -143,7 +143,7 @@ aicp list-speech-models    # Speech-to-text models
 ## Output Folder Structure
 
 Generated content follows QCut's standard project structure:
-```
+```text
 media/generated/
 ├── images/    # AI-generated images
 ├── videos/    # AI-generated videos
