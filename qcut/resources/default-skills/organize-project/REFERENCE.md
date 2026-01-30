@@ -3,7 +3,7 @@
 ## Complete Folder Structure
 
 ### Root Level
-```
+```text
 {ProjectName}/
 ├── project.qcut          # JSON project metadata
 ├── media/                # All media assets
@@ -14,7 +14,7 @@
 ```
 
 ### Media Folder Details
-```
+```text
 media/
 ├── imported/             # User-imported files
 │   ├── video/            # Optional: organize by type
@@ -29,7 +29,7 @@ media/
 ```
 
 ### Skills Folder Details
-```
+```text
 skills/
 ├── ai-content-pipeline/
 │   ├── Skill.md          # Main skill instructions
