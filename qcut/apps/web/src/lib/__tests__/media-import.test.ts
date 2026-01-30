@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { ElectronAPI } from "@/types/electron";
 
 // Create mock mediaImport API
 const createMockMediaImport = () => ({
@@ -27,12 +26,16 @@ const createMockMediaImport = () => ({
 describe("Media Import - Hybrid Symlink/Copy System", () => {
   let mockMediaImport: ReturnType<typeof createMockMediaImport>;
 
+  // Helper to get electronAPI with type assertion (safe in test context)
+  const getElectronAPI = () =>
+    (window as unknown as { electronAPI: { mediaImport: typeof mockMediaImport } }).electronAPI;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockMediaImport = createMockMediaImport();
 
     // Setup mock window.electronAPI with mediaImport
-    (window as any).electronAPI = {
+    (window as unknown as { electronAPI: unknown }).electronAPI = {
       platform: "win32",
       isElectron: true,
       mediaImport: mockMediaImport,
@@ -41,30 +44,31 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete (window as any).electronAPI;
+    delete (window as unknown as { electronAPI?: unknown }).electronAPI;
   });
 
   describe("API Availability", () => {
     it("should have mediaImport API available in Electron environment", () => {
-      expect(window.electronAPI).toBeDefined();
-      expect(window.electronAPI.mediaImport).toBeDefined();
+      const api = getElectronAPI();
+      expect(api).toBeDefined();
+      expect(api.mediaImport).toBeDefined();
     });
 
     it("should have all required mediaImport methods", () => {
-      const mediaImport = window.electronAPI.mediaImport;
-      expect(mediaImport?.import).toBeDefined();
-      expect(mediaImport?.validateSymlink).toBeDefined();
-      expect(mediaImport?.locateOriginal).toBeDefined();
-      expect(mediaImport?.relinkMedia).toBeDefined();
-      expect(mediaImport?.remove).toBeDefined();
-      expect(mediaImport?.checkSymlinkSupport).toBeDefined();
-      expect(mediaImport?.getMediaPath).toBeDefined();
+      const mediaImport = getElectronAPI().mediaImport;
+      expect(mediaImport.import).toBeDefined();
+      expect(mediaImport.validateSymlink).toBeDefined();
+      expect(mediaImport.locateOriginal).toBeDefined();
+      expect(mediaImport.relinkMedia).toBeDefined();
+      expect(mediaImport.remove).toBeDefined();
+      expect(mediaImport.checkSymlinkSupport).toBeDefined();
+      expect(mediaImport.getMediaPath).toBeDefined();
     });
   });
 
   describe("Import Media", () => {
     it("should successfully import media with symlink method", async () => {
-      const result = await window.electronAPI.mediaImport?.import({
+      const result = await getElectronAPI().mediaImport.import({
         sourcePath: "/path/to/original/video.mp4",
         projectId: "project-123",
         mediaId: "media-456",
@@ -72,11 +76,11 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
       });
 
       expect(result).toBeDefined();
-      expect(result?.success).toBe(true);
-      expect(result?.importMethod).toBe("symlink");
-      expect(result?.targetPath).toContain("media-123");
-      expect(result?.originalPath).toBe("/path/to/original/video.mp4");
-      expect(result?.fileSize).toBeGreaterThan(0);
+      expect(result.success).toBe(true);
+      expect(result.importMethod).toBe("symlink");
+      expect(result.targetPath).toContain("media-123");
+      expect(result.originalPath).toBe("/path/to/original/video.mp4");
+      expect(result.fileSize).toBeGreaterThan(0);
     });
 
     it("should call import with correct parameters", async () => {
@@ -87,7 +91,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
         preferSymlink: true,
       };
 
-      await window.electronAPI.mediaImport?.import(importOptions);
+      await getElectronAPI().mediaImport.import(importOptions);
 
       expect(mockMediaImport.import).toHaveBeenCalledWith(importOptions);
     });
@@ -101,15 +105,15 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
         fileSize: 2048000,
       });
 
-      const result = await window.electronAPI.mediaImport?.import({
+      const result = await getElectronAPI().mediaImport.import({
         sourcePath: "/path/to/original/video.mp4",
         projectId: "project-123",
         mediaId: "media-456",
         preferSymlink: true,
       });
 
-      expect(result?.success).toBe(true);
-      expect(result?.importMethod).toBe("copy");
+      expect(result.success).toBe(true);
+      expect(result.importMethod).toBe("copy");
     });
 
     it("should handle import failure gracefully", async () => {
@@ -122,20 +126,20 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
         error: "Source file does not exist or is not accessible",
       });
 
-      const result = await window.electronAPI.mediaImport?.import({
+      const result = await getElectronAPI().mediaImport.import({
         sourcePath: "/path/to/missing/file.mp4",
         projectId: "project-123",
         mediaId: "media-456",
       });
 
-      expect(result?.success).toBe(false);
-      expect(result?.error).toContain("does not exist");
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
     });
   });
 
   describe("Symlink Validation", () => {
     it("should validate existing symlink successfully", async () => {
-      const isValid = await window.electronAPI.mediaImport?.validateSymlink(
+      const isValid = await getElectronAPI().mediaImport.validateSymlink(
         "/path/to/symlink.mp4"
       );
 
@@ -148,7 +152,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
     it("should return false for broken symlink", async () => {
       mockMediaImport.validateSymlink.mockResolvedValueOnce(false);
 
-      const isValid = await window.electronAPI.mediaImport?.validateSymlink(
+      const isValid = await getElectronAPI().mediaImport.validateSymlink(
         "/path/to/broken-symlink.mp4"
       );
 
@@ -158,7 +162,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   describe("Locate Original File", () => {
     it("should locate original file for symlink", async () => {
-      const originalPath = await window.electronAPI.mediaImport?.locateOriginal(
+      const originalPath = await getElectronAPI().mediaImport.locateOriginal(
         "/path/to/symlink.mp4"
       );
 
@@ -171,7 +175,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
     it("should return null for non-symlink files", async () => {
       mockMediaImport.locateOriginal.mockResolvedValueOnce(null);
 
-      const originalPath = await window.electronAPI.mediaImport?.locateOriginal(
+      const originalPath = await getElectronAPI().mediaImport.locateOriginal(
         "/path/to/regular-file.mp4"
       );
 
@@ -181,14 +185,14 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   describe("Relink Media", () => {
     it("should successfully relink media to new source", async () => {
-      const result = await window.electronAPI.mediaImport?.relinkMedia(
+      const result = await getElectronAPI().mediaImport.relinkMedia(
         "project-123",
         "media-456",
         "/path/to/new/video.mp4"
       );
 
-      expect(result?.success).toBe(true);
-      expect(result?.originalPath).toBe("/path/to/new/video.mp4");
+      expect(result.success).toBe(true);
+      expect(result.originalPath).toBe("/path/to/new/video.mp4");
       expect(mockMediaImport.relinkMedia).toHaveBeenCalledWith(
         "project-123",
         "media-456",
@@ -199,7 +203,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   describe("Remove Imported Media", () => {
     it("should remove imported media file", async () => {
-      await window.electronAPI.mediaImport?.remove("project-123", "media-456");
+      await getElectronAPI().mediaImport.remove("project-123", "media-456");
 
       expect(mockMediaImport.remove).toHaveBeenCalledWith(
         "project-123",
@@ -211,7 +215,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
   describe("Symlink Support Check", () => {
     it("should report symlink support on system", async () => {
       const supported =
-        await window.electronAPI.mediaImport?.checkSymlinkSupport();
+        await getElectronAPI().mediaImport.checkSymlinkSupport();
 
       expect(supported).toBe(true);
       expect(mockMediaImport.checkSymlinkSupport).toHaveBeenCalled();
@@ -221,7 +225,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
       mockMediaImport.checkSymlinkSupport.mockResolvedValueOnce(false);
 
       const supported =
-        await window.electronAPI.mediaImport?.checkSymlinkSupport();
+        await getElectronAPI().mediaImport.checkSymlinkSupport();
 
       expect(supported).toBe(false);
     });
@@ -230,7 +234,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
   describe("Get Media Path", () => {
     it("should return media path for project", async () => {
       const mediaPath =
-        await window.electronAPI.mediaImport?.getMediaPath("project-123");
+        await getElectronAPI().mediaImport.getMediaPath("project-123");
 
       expect(mediaPath).toContain("media/imported");
       expect(mockMediaImport.getMediaPath).toHaveBeenCalledWith("project-123");
@@ -239,7 +243,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   describe("Import Metadata Integration", () => {
     it("should return import metadata for tracking", async () => {
-      const result = await window.electronAPI.mediaImport?.import({
+      const result = await getElectronAPI().mediaImport.import({
         sourcePath: "/path/to/original/video.mp4",
         projectId: "project-123",
         mediaId: "media-456",
@@ -247,9 +251,9 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
       });
 
       // Verify all fields needed for MediaImportMetadata
-      expect(result?.importMethod).toBeDefined();
-      expect(result?.originalPath).toBeDefined();
-      expect(result?.fileSize).toBeDefined();
+      expect(result.importMethod).toBeDefined();
+      expect(result.originalPath).toBeDefined();
+      expect(result.fileSize).toBeDefined();
     });
   });
 });
