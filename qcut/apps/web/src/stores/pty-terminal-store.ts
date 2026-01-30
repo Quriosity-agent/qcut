@@ -111,6 +111,24 @@ Please acknowledge that you understand these instructions and are ready to help 
 }
 
 /**
+ * Escape a string for safe use in shell command arguments
+ * Handles backslashes, quotes, dollar signs, backticks, and optionally newlines
+ */
+function escapeStringForShell(content: string, escapeNewlines = false): string {
+  let escaped = content
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`');
+  if (escapeNewlines) {
+    escaped = escaped
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+  return escaped;
+}
+
+/**
  * Build skill file path for --project-doc flag
  * open-codex supports passing a markdown file as context via --project-doc
  */
@@ -211,12 +229,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         console.log("[PTY Store] workingDirectory:", workingDirectory);
         if (activeSkill?.folderName && workingDirectory) {
           const skillFilePath = buildSkillFilePath(workingDirectory, activeSkill.folderName);
-          // Escape the path for shell to avoid injection and broken quoting
-          const escapedSkillFilePath = skillFilePath
-            .replace(/\\/g, '\\\\')
-            .replace(/"/g, '\\"')
-            .replace(/\$/g, '\\$')
-            .replace(/`/g, '\\`');
+          const escapedSkillFilePath = escapeStringForShell(skillFilePath);
           command += ` --project-doc "${escapedSkillFilePath}"`;
           console.log("[PTY Store] Skill file path:", skillFilePath);
         }
@@ -254,14 +267,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
         // Inject skill via --append-system-prompt if active
         if (activeSkill?.content) {
-          // Escape the content for shell
-          const escapedContent = activeSkill.content
-            .replace(/\\/g, '\\\\')
-            .replace(/"/g, '\\"')
-            .replace(/\$/g, '\\$')
-            .replace(/`/g, '\\`')
-            .replace(/\n/g, '\\n')
-            .replace(/\r/g, '\\r');
+          const escapedContent = escapeStringForShell(activeSkill.content, true);
           command += ` --append-system-prompt "${escapedContent}"`;
           console.log("[PTY Store] Claude skill injected via --append-system-prompt");
         }
