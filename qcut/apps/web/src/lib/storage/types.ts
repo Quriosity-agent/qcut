@@ -1,5 +1,6 @@
 import { TProject, Scene } from "@/types/project";
 import { TimelineTrack } from "@/types/timeline";
+import type { MediaImportMetadata } from "@/types/electron.d";
 
 export interface StorageAdapter<T> {
   get(key: string): Promise<T | null>;
@@ -23,6 +24,7 @@ export interface MediaFileData {
   metadata?: Record<string, unknown>; // Additional metadata
   localPath?: string; // Filesystem path for FFmpeg CLI export (videos only)
   folderIds?: string[]; // Virtual folder membership
+  importMetadata?: MediaImportMetadata; // Symlink/copy import tracking
   // File will be stored separately in OPFS
 }
 

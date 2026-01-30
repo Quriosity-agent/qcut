@@ -1,5 +1,7 @@
 // Define types directly to avoid static imports from media-store
 
+import type { MediaImportMetadata } from "@/types/electron.d";
+
 export type MediaType = "image" | "video" | "audio";
 
 // ============================================================================
@@ -67,6 +69,8 @@ export interface MediaItem {
   };
   // Virtual folder membership (can be in multiple folders like tags)
   folderIds?: string[];
+  // Import metadata for symlink/copy tracking
+  importMetadata?: MediaImportMetadata;
 }
 
 // Export type definitions for the store functions

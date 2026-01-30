@@ -74,6 +74,7 @@ const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupAIPipelineIPC, cleanupAIPipeline } = require("./ai-pipeline-handler.js");
+const { setupMediaImportIPC } = require("./media-import-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -374,6 +375,7 @@ app.whenReady().then(() => {
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
   setupSkillsIPC(); // Add skills management support
   setupAIPipelineIPC(); // Add AI content pipeline support
+  setupMediaImportIPC(); // Add media import with symlink/copy support
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds

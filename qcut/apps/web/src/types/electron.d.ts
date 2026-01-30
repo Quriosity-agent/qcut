@@ -624,6 +624,67 @@ export interface ElectronAPI {
      */
     onProgress: (callback: (progress: AIPipelineProgress) => void) => () => void;
   };
+
+  /**
+   * Media Import operations
+   * Handles importing media files with symlink/copy hybrid approach
+   */
+  mediaImport?: {
+    /**
+     * Import a media file into the project
+     * Attempts symlink first, falls back to copy if symlink fails
+     * @param options - Import options including source path and project ID
+     * @returns Import result with target path and method used
+     */
+    import: (options: MediaImportOptions) => Promise<MediaImportResult>;
+
+    /**
+     * Validate if a symlink is valid (target exists)
+     * @param symlinkPath - Path to the symlink to validate
+     * @returns True if symlink is valid
+     */
+    validateSymlink: (symlinkPath: string) => Promise<boolean>;
+
+    /**
+     * Get the original path of a symlinked file
+     * @param mediaPath - Path to the imported media
+     * @returns Original path or null if not a symlink
+     */
+    locateOriginal: (mediaPath: string) => Promise<string | null>;
+
+    /**
+     * Re-link media to a new source path
+     * @param projectId - Project ID
+     * @param mediaId - Media ID to relink
+     * @param newSourcePath - New source file path
+     * @returns Import result
+     */
+    relinkMedia: (
+      projectId: string,
+      mediaId: string,
+      newSourcePath: string
+    ) => Promise<MediaImportResult>;
+
+    /**
+     * Remove an imported media file (symlink or copy)
+     * @param projectId - Project ID
+     * @param mediaId - Media ID to remove
+     */
+    remove: (projectId: string, mediaId: string) => Promise<void>;
+
+    /**
+     * Check if symlinks are supported on the current system
+     * @returns True if symlinks are supported
+     */
+    checkSymlinkSupport: () => Promise<boolean>;
+
+    /**
+     * Get the media folder path for a project
+     * @param projectId - Project ID
+     * @returns Absolute path to the project's media/imported folder
+     */
+    getMediaPath: (projectId: string) => Promise<string>;
+  };
 }
 
 // ============================================================================
@@ -718,6 +779,57 @@ export interface AIPipelineStatus {
   features: Record<string, boolean>;
   /** Error message if unavailable */
   error?: string;
+}
+
+// ============================================================================
+// Media Import Types
+// ============================================================================
+
+/**
+ * Options for importing media into a project
+ */
+export interface MediaImportOptions {
+  /** Absolute path to the source file */
+  sourcePath: string;
+  /** Project ID to import into */
+  projectId: string;
+  /** Unique media ID for the imported file */
+  mediaId: string;
+  /** Whether to prefer symlinks over copies (default: true) */
+  preferSymlink?: boolean;
+}
+
+/**
+ * Result of a media import operation
+ */
+export interface MediaImportResult {
+  /** Whether the import succeeded */
+  success: boolean;
+  /** Path to the imported file (symlink or copy) */
+  targetPath: string;
+  /** Method used for import */
+  importMethod: "symlink" | "copy";
+  /** Original source path */
+  originalPath: string;
+  /** File size in bytes */
+  fileSize: number;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Metadata about how media was imported
+ * Stored with the media item for proper cleanup and management
+ */
+export interface MediaImportMetadata {
+  /** Method used for import */
+  importMethod: "symlink" | "copy";
+  /** Original source path */
+  originalPath: string;
+  /** Timestamp when media was imported */
+  importedAt: number;
+  /** File size in bytes */
+  fileSize: number;
 }
 
 declare global {

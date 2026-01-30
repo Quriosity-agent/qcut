@@ -176,6 +176,24 @@ interface Skill {
   updatedAt: number;
 }
 
+/** Options for importing media into a project */
+interface MediaImportOptions {
+  sourcePath: string;
+  projectId: string;
+  mediaId: string;
+  preferSymlink?: boolean;
+}
+
+/** Result of a media import operation */
+interface MediaImportResult {
+  success: boolean;
+  targetPath: string;
+  importMethod: "symlink" | "copy";
+  originalPath: string;
+  fileSize: number;
+  error?: string;
+}
+
 type ThemeSource = "system" | "light" | "dark";
 
 // Main electronAPI interface
@@ -464,6 +482,21 @@ interface ElectronAPI {
         sessionId?: string;
       }) => void
     ) => () => void;
+  };
+
+  // Media import operations (symlink with copy fallback)
+  mediaImport?: {
+    import: (options: MediaImportOptions) => Promise<MediaImportResult>;
+    validateSymlink: (path: string) => Promise<boolean>;
+    locateOriginal: (mediaPath: string) => Promise<string | null>;
+    relinkMedia: (
+      projectId: string,
+      mediaId: string,
+      newSourcePath: string
+    ) => Promise<MediaImportResult>;
+    remove: (projectId: string, mediaId: string) => Promise<void>;
+    checkSymlinkSupport: () => Promise<boolean>;
+    getMediaPath: (projectId: string) => Promise<string>;
   };
 
   // Utility functions
@@ -865,6 +898,33 @@ const electronAPI: ElectronAPI = {
     },
   },
 
+  // Media import operations (symlink with copy fallback)
+  mediaImport: {
+    import: (options: MediaImportOptions): Promise<MediaImportResult> =>
+      ipcRenderer.invoke("media-import:import", options),
+    validateSymlink: (path: string): Promise<boolean> =>
+      ipcRenderer.invoke("media-import:validate-symlink", path),
+    locateOriginal: (mediaPath: string): Promise<string | null> =>
+      ipcRenderer.invoke("media-import:locate-original", mediaPath),
+    relinkMedia: (
+      projectId: string,
+      mediaId: string,
+      newSourcePath: string
+    ): Promise<MediaImportResult> =>
+      ipcRenderer.invoke(
+        "media-import:relink",
+        projectId,
+        mediaId,
+        newSourcePath
+      ),
+    remove: (projectId: string, mediaId: string): Promise<void> =>
+      ipcRenderer.invoke("media-import:remove", projectId, mediaId),
+    checkSymlinkSupport: (): Promise<boolean> =>
+      ipcRenderer.invoke("media-import:check-symlink-support"),
+    getMediaPath: (projectId: string): Promise<string> =>
+      ipcRenderer.invoke("media-import:get-media-path", projectId),
+  },
+
   // Utility functions
   isElectron: true,
 };
@@ -892,6 +952,8 @@ export type {
   FalUploadResult,
   ThemeSource,
   Skill,
+  MediaImportOptions,
+  MediaImportResult,
 };
 
 // Global type augmentation for renderer process
