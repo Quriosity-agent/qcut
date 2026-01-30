@@ -266,13 +266,23 @@ LOG_LEVEL=DEBUG aicp run-chain --config config.yaml
 
 ## Output Organization
 
-Generated files are saved to:
+Generated files follow QCut's standard project structure:
 ```
-output/
-├── YYYY-MM-DD_HHMMSS/
-│   ├── step_1_image.png
-│   ├── step_2_video.mp4
-│   └── pipeline_results.json
+media/
+├── generated/
+│   ├── images/           # AI-generated images
+│   │   └── YYYY-MM-DD_HHMMSS_image.png
+│   ├── videos/           # AI-generated videos
+│   │   └── YYYY-MM-DD_HHMMSS_video.mp4
+│   └── audio/            # AI-generated audio/speech
+│       └── YYYY-MM-DD_HHMMSS_audio.mp3
+└── temp/                 # Processing intermediates
+    └── frames/           # Extracted frames for analysis
+```
+
+Pipeline metadata is saved to:
+```
+media/generated/pipeline_results.json
 ```
 
 Results JSON contains:
@@ -280,3 +290,5 @@ Results JSON contains:
 - Model parameters used
 - Output file paths
 - Cost breakdown
+
+**Note:** This structure aligns with QCut's organize-project skill for consistent project organization.

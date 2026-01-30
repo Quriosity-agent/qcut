@@ -117,6 +117,18 @@ aicp list-speech-models    # Speech-to-text models
 | Avatar | omnihuman_v1_5 | $0.08-0.25 |
 | Transcription | scribe_v2 | $0.008/min |
 
+## Output Folder Structure
+
+Generated content follows QCut's standard project structure:
+```
+media/generated/
+├── images/    # AI-generated images
+├── videos/    # AI-generated videos
+└── audio/     # AI-generated audio/speech
+```
+
+This aligns with the organize-project skill for consistent project organization.
+
 ## FAL API Direct Access
 
 For custom scripts calling FAL API directly:
