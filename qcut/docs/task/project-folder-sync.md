@@ -79,11 +79,34 @@ function getMediaType(ext: string): FileInfo["type"] {
   return "unknown";
 }
 
+// Security: Sanitize path components to prevent path traversal attacks
+function sanitizePathComponent(component: string): string {
+  // Remove any path separators and parent directory references
+  return component.replace(/[\/\\]/g, "").replace(/\.\./g, "");
+}
+
+// Security: Validate that resolved path stays within the allowed base directory
+function validatePathWithinBase(resolvedPath: string, basePath: string): void {
+  const normalizedResolved = path.resolve(resolvedPath);
+  const normalizedBase = path.resolve(basePath);
+  if (!normalizedResolved.startsWith(normalizedBase + path.sep) && normalizedResolved !== normalizedBase) {
+    throw new Error("Path traversal attempt detected");
+  }
+}
+
+// Get the QCut projects base directory
+function getQCutProjectsBase(): string {
+  return path.join(app.getPath("documents"), "QCut", "Projects");
+}
+
 export function registerProjectFolderHandlers(): void {
   // Get project root path
   ipcMain.handle("project-folder:get-root", async (_, projectId: string): Promise<string> => {
-    const documentsPath = app.getPath("documents");
-    return path.join(documentsPath, "QCut", "Projects", projectId);
+    const sanitizedProjectId = sanitizePathComponent(projectId);
+    const basePath = getQCutProjectsBase();
+    const projectPath = path.join(basePath, sanitizedProjectId);
+    validatePathWithinBase(projectPath, basePath);
+    return projectPath;
   });
 
   // Scan directory for media files
@@ -94,9 +117,15 @@ export function registerProjectFolderHandlers(): void {
     options: { recursive?: boolean; mediaOnly?: boolean } = {}
   ): Promise<ScanResult> => {
     const startTime = Date.now();
-    const documentsPath = app.getPath("documents");
-    const projectRoot = path.join(documentsPath, "QCut", "Projects", projectId);
-    const targetPath = path.join(projectRoot, subPath);
+    const sanitizedProjectId = sanitizePathComponent(projectId);
+    const basePath = getQCutProjectsBase();
+    const projectRoot = path.join(basePath, sanitizedProjectId);
+    validatePathWithinBase(projectRoot, basePath);
+
+    // Sanitize subPath and validate final target path
+    const sanitizedSubPath = subPath.split(/[\/\\]/).map(sanitizePathComponent).join(path.sep);
+    const targetPath = path.join(projectRoot, sanitizedSubPath);
+    validatePathWithinBase(targetPath, projectRoot);
 
     const files: FileInfo[] = [];
     const folders: string[] = [];
