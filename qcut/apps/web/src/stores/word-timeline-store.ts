@@ -72,7 +72,12 @@ const initialState: WordTimelineState = {
 // ============================================================================
 
 /**
- * Transform raw words from JSON to include id and deleted flag
+ * Transform raw words from JSON to include id and deleted flag.
+ * Each word is assigned a unique ID based on its index and initialized
+ * with deleted=false.
+ *
+ * @param rawWords - Array of raw word items from JSON
+ * @returns Array of WordItem with id and deleted properties added
  */
 function transformWords(rawWords: RawWordItem[]): WordItem[] {
   return rawWords.map((word, index) => ({
@@ -83,7 +88,13 @@ function transformWords(rawWords: RawWordItem[]): WordItem[] {
 }
 
 /**
- * Validate JSON structure
+ * Validate JSON structure matches expected word timeline format.
+ * Checks that the JSON has a 'text' string and 'words' array where
+ * each word has text (string), start/end (finite numbers), and
+ * type ("word" or "spacing").
+ *
+ * @param json - Unknown JSON value to validate
+ * @returns Type predicate indicating if json is RawWordTimelineJson
  */
 function validateJson(json: unknown): json is RawWordTimelineJson {
   if (typeof json !== "object" || json === null) {
