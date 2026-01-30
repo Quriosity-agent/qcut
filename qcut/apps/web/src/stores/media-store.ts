@@ -1021,7 +1021,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       }
 
       // AI-generated content goes to AI Generated folder
-      if (item.metadata?.source) {
+      // Check for explicit AI sources (not uploads or other non-AI sources)
+      const source = item.metadata?.source;
+      const isAiGenerated =
+        source &&
+        (source.includes("ai") ||
+          source === "text2image" ||
+          source === "fal-ai" ||
+          source.startsWith("fal-"));
+      if (isAiGenerated) {
         organizedCount++;
         return { ...item, folderIds: [DEFAULT_FOLDER_IDS.AI_GENERATED] };
       }
