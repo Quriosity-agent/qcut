@@ -84,14 +84,25 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
     }
   };
 
-  const copyToClipboard = async (path: string) => {
+  const [isCopying, setIsCopying] = useState(false);
+
+  const copyToClipboard = async (path: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Prevent rapid double-clicks
+    if (isCopying) return;
+    setIsCopying(true);
+
     try {
       await navigator.clipboard.writeText(path);
       setCopiedPath(path);
-      toast.success("Path copied to clipboard");
+      toast.success("Path copied to clipboard", { id: `copy-${path}` });
       setTimeout(() => setCopiedPath(null), 2000);
     } catch {
-      toast.error("Failed to copy path");
+      toast.error("Failed to copy path", { id: `copy-error-${path}` });
+    } finally {
+      setTimeout(() => setIsCopying(false), 300);
     }
   };
 
@@ -158,10 +169,7 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
               </span>
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyToClipboard(getSkillFolderPath());
-                }}
+                onClick={(e) => copyToClipboard(getSkillFolderPath(), e)}
                 className={cn(
                   "p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity",
                   copiedPath === getSkillFolderPath()
@@ -198,10 +206,7 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
                   </span>
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyToClipboard(filePath);
-                    }}
+                    onClick={(e) => copyToClipboard(filePath, e)}
                     className={cn(
                       "p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity",
                       copiedPath === filePath
