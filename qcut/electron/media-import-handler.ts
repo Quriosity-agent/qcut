@@ -238,7 +238,23 @@ async function importMedia(options: MediaImportOptions): Promise<MediaImportResu
   let importMethod: "symlink" | "copy" = "copy";
 
   if (preferSymlink) {
-    const symlinkSuccess = await tryCreateSymlink(sourcePath, targetPath);
+    let symlinkSuccess = false;
+    try {
+      symlinkSuccess = await tryCreateSymlink(sourcePath, targetPath);
+    } catch (error: unknown) {
+      // Handle unexpected symlink errors to maintain IPC contract
+      const err = error as NodeJS.ErrnoException;
+      log.error("[MediaImport] Unexpected symlink error:", err.message);
+      return {
+        success: false,
+        targetPath: "",
+        importMethod: "symlink",
+        originalPath: sourcePath,
+        fileSize: 0,
+        error: `Symlink creation failed unexpectedly: ${err.message}`,
+      };
+    }
+
     if (symlinkSuccess) {
       importMethod = "symlink";
     } else {
