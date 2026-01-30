@@ -12,7 +12,6 @@ import {
   Video,
   Edit,
   Layers,
-  Sparkles,
   Copy,
   FolderInput,
   ExternalLink,
@@ -51,7 +50,6 @@ import { ExportAllButton } from "../export-all-button";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
-import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
 import { useFolderStore } from "@/stores/folder-store";
 import { SKILLS_FOLDER_ID } from "@/stores/media-store-types";
 import { generateUUID } from "@/lib/utils";
@@ -529,54 +527,6 @@ export function MediaView() {
                           Image edit
                         </ContextMenuItem>
                       )}
-                      <ContextMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-
-                          // Switch to Gemini tab
-                          setActiveTab("gemini");
-
-                          // Add media as attachment
-                          const { addAttachment, setInputValue } =
-                            useGeminiTerminalStore.getState();
-
-                          const filePath = item.localPath || item.url;
-
-                          if (!filePath || filePath.startsWith("blob:")) {
-                            toast.error(
-                              "This media item doesn't have a local file path for Gemini analysis. Try re-importing the file."
-                            );
-                            return;
-                          }
-
-                          addAttachment({
-                            id: generateUUID(),
-                            mediaId: item.id,
-                            path: filePath,
-                            name: item.name,
-                            type: item.type as "image" | "video" | "audio",
-                            thumbnailUrl: item.thumbnailUrl,
-                            mimeType: item.file?.type || `${item.type}/*`,
-                          });
-
-                          // Pre-fill prompt based on media type
-                          const prompt =
-                            item.type === "video"
-                              ? "Describe what happens in this video:"
-                              : item.type === "audio"
-                                ? "Transcribe and summarize this audio:"
-                                : "Describe this image in detail:";
-                          setInputValue(prompt);
-
-                          toast.success(
-                            `"${item.name}" ready for Gemini analysis`
-                          );
-                        }}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
-                        Analyze with Gemini
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
 
                       {/* Add to Folders (multi-folder support) */}
                       <ContextMenuSub>
