@@ -21,7 +21,6 @@ import {
   Check,
   Sparkles,
   Bot,
-  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSkillRunner } from "@/hooks/use-skill-runner";
@@ -254,10 +253,6 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleRunWithClaude}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Run with Claude Code
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleRunWithCodex}>
                 <Bot className="h-4 w-4 mr-2" />
                 Run with Codex (OpenRouter)

@@ -629,9 +629,9 @@ function ApiKeysView() {
               }
             >
               {showAnthropicKey ? (
-                <EyeOffIcon className="h-4 w-4" />
+                <EyeOffIcon className="h-4 w-4" aria-hidden="true" />
               ) : (
-                <EyeIcon className="h-4 w-4" />
+                <EyeIcon className="h-4 w-4" aria-hidden="true" />
               )}
             </Button>
           </div>
