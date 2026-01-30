@@ -100,14 +100,26 @@ function validateJson(json: unknown): json is RawWordTimelineJson {
     return false;
   }
 
-  // Validate at least first word has required fields
-  if (obj.words.length > 0) {
-    const firstWord = obj.words[0] as Record<string, unknown>;
-    if (
-      typeof firstWord.text !== "string" ||
-      typeof firstWord.start !== "number" ||
-      typeof firstWord.end !== "number"
-    ) {
+  const words = obj.words as Array<unknown>;
+  for (const word of words) {
+    if (typeof word !== "object" || word === null) {
+      return false;
+    }
+
+    const entry = word as Record<string, unknown>;
+    if (typeof entry.text !== "string") {
+      return false;
+    }
+
+    if (typeof entry.start !== "number" || !Number.isFinite(entry.start)) {
+      return false;
+    }
+
+    if (typeof entry.end !== "number" || !Number.isFinite(entry.end)) {
+      return false;
+    }
+
+    if (entry.type !== "word" && entry.type !== "spacing") {
       return false;
     }
   }
