@@ -154,28 +154,17 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   connect: async (options = {}) => {
     const { cliProvider, selectedModel, workingDirectory, cols, rows, activeSkill } = get();
 
-    console.log("[PTY Store] ===== CONNECT =====");
-    console.log("[PTY Store] cliProvider:", cliProvider);
-    console.log("[PTY Store] selectedModel:", selectedModel);
-    console.log("[PTY Store] workingDirectory:", workingDirectory);
-    console.log("[PTY Store] cols:", cols, "rows:", rows);
-    console.log("[PTY Store] activeSkill:", activeSkill?.name || "none");
-
     set({ status: "connecting", error: null, exitCode: null });
-    console.log("[PTY Store] Status set to connecting");
 
     try {
       // Check for API availability (PTY is only available in desktop app)
-      console.log("[PTY Store] Checking PTY API availability...");
       if (!window.electronAPI?.pty) {
-        console.error("[PTY Store] PTY API not available");
         set({
           status: "error",
           error: "PTY is only available in the desktop app.",
         });
         return;
       }
-      console.log("[PTY Store] PTY API is available");
 
       const providerConfig = CLI_PROVIDERS[cliProvider];
       let command: string | undefined;
@@ -183,9 +172,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
       // Build command based on provider
       if (cliProvider === "codex") {
-        console.log("[PTY Store] Building Codex command...");
         // Get OpenRouter API key for Codex
-        console.log("[PTY Store] Getting API keys...");
         if (!window.electronAPI?.apiKeys) {
           set({
             status: "error",
@@ -196,9 +183,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         let apiKeys;
         try {
           apiKeys = await window.electronAPI.apiKeys.get();
-          console.log("[PTY Store] API keys retrieved, openRouterApiKey length:", apiKeys?.openRouterApiKey?.length || 0);
-        } catch (apiKeyError) {
-          console.error("[PTY Store] Error getting API keys:", apiKeyError);
+        } catch {
           set({
             status: "error",
             error: "Failed to retrieve API keys. Please try again.",
@@ -207,7 +192,6 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         }
 
         if (!apiKeys?.openRouterApiKey) {
-          console.error("[PTY Store] OpenRouter API key not configured");
           set({
             status: "error",
             error: "OpenRouter API key not configured. Go to Settings > API Keys.",
@@ -225,18 +209,12 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
         // Inject skill via --project-doc flag if active and folder name is known
         // open-codex supports passing a markdown file as context
-        console.log("[PTY Store] activeSkill?.folderName:", activeSkill?.folderName);
-        console.log("[PTY Store] workingDirectory:", workingDirectory);
         if (activeSkill?.folderName && workingDirectory) {
           const skillFilePath = buildSkillFilePath(workingDirectory, activeSkill.folderName);
           const escapedSkillFilePath = escapeStringForShell(skillFilePath);
           command += ` --project-doc "${escapedSkillFilePath}"`;
-          console.log("[PTY Store] Skill file path:", skillFilePath);
         }
-
-        console.log("[PTY Store] Codex command:", command);
       } else if (cliProvider === "claude") {
-        console.log("[PTY Store] Building Claude command...");
         // Claude Code CLI uses login by default (Claude Pro/Max subscription)
         // API key is optional - only set if user has configured one
         if (window.electronAPI?.apiKeys) {
@@ -245,15 +223,10 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
             apiKeys = await window.electronAPI.apiKeys.get();
             if (apiKeys?.anthropicApiKey) {
               env.ANTHROPIC_API_KEY = apiKeys.anthropicApiKey;
-              console.log("[PTY Store] Using Anthropic API key");
-            } else {
-              console.log("[PTY Store] No API key set, Claude will use login authentication");
             }
-          } catch (apiKeyError) {
-            console.warn("[PTY Store] Could not get API keys, continuing without:", apiKeyError);
+          } catch {
+            // Continue without API key - Claude will use login authentication
           }
-        } else {
-          console.log("[PTY Store] API key storage unavailable, Claude will use login authentication");
         }
 
         // Get Claude model from state
@@ -269,13 +242,9 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         if (activeSkill?.content) {
           const escapedContent = escapeStringForShell(activeSkill.content, true);
           command += ` --append-system-prompt "${escapedContent}"`;
-          console.log("[PTY Store] Claude skill injected via --append-system-prompt");
         }
-
-        console.log("[PTY Store] Claude command:", command);
       } else if (cliProvider === "gemini") {
         command = providerConfig.command;
-        console.log("[PTY Store] Gemini command:", command);
       }
       // shell provider uses undefined command (default shell)
 
@@ -286,16 +255,12 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         command: options.command || command,
         env: Object.keys(env).length > 0 ? env : undefined,
       };
-      console.log("[PTY Store] Spawn options:", JSON.stringify({ ...spawnOptions, env: env.OPENROUTER_API_KEY ? "[REDACTED]" : undefined }, null, 2));
 
       const result = await window.electronAPI.pty.spawn(spawnOptions);
-      console.log("[PTY Store] Spawn result:", JSON.stringify(result, null, 2));
 
       if (result?.success && result.sessionId) {
-        console.log("[PTY Store] Connected with sessionId:", result.sessionId);
         set({ sessionId: result.sessionId, status: "connected" });
       } else {
-        console.error("[PTY Store] Spawn failed:", result?.error);
         set({
           status: "error",
           error: result?.error ?? "Failed to spawn PTY session",
@@ -304,7 +269,6 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to spawn PTY session";
-      console.error("[PTY Store] Exception:", message);
       set({ status: "error", error: message });
     }
   },
@@ -374,7 +338,6 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     }
 
     const prompt = buildSkillPrompt(activeSkill);
-    console.log("[PTY Store] Sending skill prompt for:", activeSkill.name);
 
     // Send the prompt to the terminal
     window.electronAPI?.pty?.write(sessionId, prompt + "\n");
@@ -388,7 +351,6 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     // If skill is active and prompt not sent, send it after a delay
     // (only for Gemini CLI - Codex uses flag injection at spawn time)
     if (activeSkill && !skillPromptSent && cliProvider === "gemini") {
-      console.log("[PTY Store] Will send skill prompt after Gemini CLI initializes");
       setTimeout(() => {
         get().sendSkillPrompt();
       }, 2000); // 2 second delay for Gemini CLI to be ready

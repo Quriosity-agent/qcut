@@ -197,11 +197,14 @@ export function providerRequiresApiKey(provider: CliProvider): boolean {
   return CLI_PROVIDERS[provider].requiresApiKey;
 }
 
+/** Default model ID for Codex (explicit to avoid array order dependency) */
+const DEFAULT_CODEX_MODEL_ID = "anthropic/claude-sonnet-4";
+
 /**
  * Get default model for Codex provider.
  */
 export function getDefaultCodexModel(): string {
-  return DEFAULT_OPENROUTER_MODELS[0].id;
+  return DEFAULT_CODEX_MODEL_ID;
 }
 
 /**

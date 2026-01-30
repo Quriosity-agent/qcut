@@ -218,9 +218,25 @@ if (cliProvider === "claude") {
 
   // Inject skill via --append-system-prompt if active
   if (activeSkill?.content) {
-    const escapedContent = activeSkill.content.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+    // Use escapeStringForShell helper for full shell escaping
+    const escapedContent = escapeStringForShell(activeSkill.content, true);
     command += ` --append-system-prompt "${escapedContent}"`;
   }
+}
+
+// Helper function for shell escaping (handles \, ", $, `, \n, \r)
+function escapeStringForShell(content: string, escapeNewlines = false): string {
+  let escaped = content
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\$/g, '\\$')
+    .replace(/`/g, '\\`');
+  if (escapeNewlines) {
+    escaped = escaped
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+  return escaped;
 }
 ```
 

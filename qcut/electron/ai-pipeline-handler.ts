@@ -518,12 +518,14 @@ export function setupAIPipelineIPC(): void {
         return { success: false, error: "AI Pipeline not available" };
       }
 
-      return pipelineManager.execute(options, (progress) => {
+      // Generate sessionId if not provided to ensure correlation
+      const sessionId = options.sessionId ?? `ai-${Date.now()}`;
+      return pipelineManager.execute({ ...options, sessionId }, (progress) => {
         // Send progress to renderer
         const mainWindow = getMainWindow();
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send("ai-pipeline:progress", {
-            sessionId: options.sessionId,
+            sessionId,
             ...progress,
           });
         }
