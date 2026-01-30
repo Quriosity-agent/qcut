@@ -866,14 +866,18 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const { mediaItems } = get();
     const item = mediaItems.find((m) => m.id === mediaId);
     if (item) {
-      import("@/stores/project-store").then(({ useProjectStore }) => {
-        const projectId = useProjectStore.getState().activeProject?.id;
-        if (projectId) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist folder assignment:", error);
-          });
-        }
-      });
+      import("@/stores/project-store")
+        .then(({ useProjectStore }) => {
+          const projectId = useProjectStore.getState().activeProject?.id;
+          if (projectId) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist folder assignment:", error);
+            });
+          }
+        })
+        .catch((error) => {
+          debugError("[MediaStore] Failed to import project-store:", error);
+        });
     }
   },
 
@@ -894,14 +898,18 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const { mediaItems } = get();
     const item = mediaItems.find((m) => m.id === mediaId);
     if (item) {
-      import("@/stores/project-store").then(({ useProjectStore }) => {
-        const projectId = useProjectStore.getState().activeProject?.id;
-        if (projectId) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist folder removal:", error);
-          });
-        }
-      });
+      import("@/stores/project-store")
+        .then(({ useProjectStore }) => {
+          const projectId = useProjectStore.getState().activeProject?.id;
+          if (projectId) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist folder removal:", error);
+            });
+          }
+        })
+        .catch((error) => {
+          debugError("[MediaStore] Failed to import project-store:", error);
+        });
     }
   },
 
@@ -922,14 +930,18 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     const { mediaItems } = get();
     const item = mediaItems.find((m) => m.id === mediaId);
     if (item) {
-      import("@/stores/project-store").then(({ useProjectStore }) => {
-        const projectId = useProjectStore.getState().activeProject?.id;
-        if (projectId) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist folder move:", error);
-          });
-        }
-      });
+      import("@/stores/project-store")
+        .then(({ useProjectStore }) => {
+          const projectId = useProjectStore.getState().activeProject?.id;
+          if (projectId) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist folder move:", error);
+            });
+          }
+        })
+        .catch((error) => {
+          debugError("[MediaStore] Failed to import project-store:", error);
+        });
     }
   },
 
@@ -963,17 +975,21 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     // Persist all changed items
     const { mediaItems } = get();
-    import("@/stores/project-store").then(({ useProjectStore }) => {
-      const projectId = useProjectStore.getState().activeProject?.id;
-      if (projectId) {
-        const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
-        for (const item of changedItems) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist bulk folder add:", error);
-          });
+    import("@/stores/project-store")
+      .then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+          for (const item of changedItems) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist bulk folder add:", error);
+            });
+          }
         }
-      }
-    });
+      })
+      .catch((error) => {
+        debugError("[MediaStore] Failed to import project-store:", error);
+      });
   },
 
   bulkMoveToFolder: (mediaIds, folderId) => {
@@ -991,17 +1007,21 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
     // Persist all changed items
     const { mediaItems } = get();
-    import("@/stores/project-store").then(({ useProjectStore }) => {
-      const projectId = useProjectStore.getState().activeProject?.id;
-      if (projectId) {
-        const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
-        for (const item of changedItems) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist bulk folder move:", error);
-          });
+    import("@/stores/project-store")
+      .then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+          for (const item of changedItems) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist bulk folder move:", error);
+            });
+          }
         }
-      }
-    });
+      })
+      .catch((error) => {
+        debugError("[MediaStore] Failed to import project-store:", error);
+      });
   },
 
   autoOrganizeByType: () => {
@@ -1048,27 +1068,31 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     debugLog("[MediaStore] Auto-organized media by type:", { organizedCount });
 
     // Persist all organized items
-    import("@/stores/project-store").then(({ useProjectStore }) => {
-      const projectId = useProjectStore.getState().activeProject?.id;
-      if (projectId) {
-        const changedItems = updatedItems.filter(
-          (item) =>
-            !item.ephemeral &&
-            item.folderIds &&
-            item.folderIds.length > 0 &&
-            !mediaItems.find(
-              (orig) =>
-                orig.id === item.id &&
-                orig.folderIds &&
-                orig.folderIds.length > 0
-            )
-        );
-        for (const item of changedItems) {
-          storageService.saveMediaItem(projectId, item).catch((error) => {
-            debugError("[MediaStore] Failed to persist auto-organize:", error);
-          });
+    import("@/stores/project-store")
+      .then(({ useProjectStore }) => {
+        const projectId = useProjectStore.getState().activeProject?.id;
+        if (projectId) {
+          const changedItems = updatedItems.filter(
+            (item) =>
+              !item.ephemeral &&
+              item.folderIds &&
+              item.folderIds.length > 0 &&
+              !mediaItems.find(
+                (orig) =>
+                  orig.id === item.id &&
+                  orig.folderIds &&
+                  orig.folderIds.length > 0
+              )
+          );
+          for (const item of changedItems) {
+            storageService.saveMediaItem(projectId, item).catch((error) => {
+              debugError("[MediaStore] Failed to persist auto-organize:", error);
+            });
+          }
         }
-      }
-    });
+      })
+      .catch((error) => {
+        debugError("[MediaStore] Failed to import project-store:", error);
+      });
   },
 }));
