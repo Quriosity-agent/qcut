@@ -6,7 +6,7 @@
  *
  * @module electron/ai-pipeline-handler
  */
-import { spawn, ChildProcess, execSync } from "child_process";
+import { spawn, ChildProcess, exec } from "child_process";
 import { randomUUID } from "crypto";
 import { app, ipcMain, IpcMainInvokeEvent, BrowserWindow } from "electron";
 import * as path from "path";
@@ -73,18 +73,95 @@ class AIPipelineManager {
   private config: PipelineConfig;
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private binaryManager: BinaryManager;
+  private initialization: Promise<void> | null = null;
 
   constructor() {
     this.binaryManager = getBinaryManager();
-    this.config = this.detectEnvironment();
+    this.config = this.getFallbackConfig();
+    this.initialization = this.loadEnvironment();
+  }
+
+  private getFallbackConfig(): PipelineConfig {
+    return { useBundledBinary: false };
+  }
+
+  private async loadEnvironment(): Promise<void> {
+    try {
+      this.binaryManager.reloadManifest();
+    } catch (error) {
+      console.error("[AI Pipeline] Failed to reload manifest:", error);
+    }
+
+    try {
+      this.config = await this.detectEnvironment();
+    } catch (error) {
+      console.error("[AI Pipeline] Failed to detect environment:", error);
+      this.config = this.getFallbackConfig();
+    }
+  }
+
+  private async ensureEnvironmentReady(): Promise<void> {
+    if (!this.initialization) {
+      this.initialization = this.loadEnvironment();
+    }
+
+    try {
+      await this.initialization;
+    } catch (error) {
+      console.error("[AI Pipeline] Environment initialization failed:", error);
+      this.config = this.getFallbackConfig();
+    }
   }
 
   /**
    * Detect available AI pipeline binary/module
    * Priority: Bundled binary > System aicp > Python module
    */
-  private detectEnvironment(): PipelineConfig {
-    // Priority 1: Use BinaryManager for bundled binary (preferred)
+  private async detectEnvironment(): Promise<PipelineConfig> {
+    try {
+      const bundledConfig = this.getBundledConfig();
+      if (bundledConfig) {
+        return bundledConfig;
+      }
+
+      const commandTimeoutMs = 5000;
+      const systemVersion = await this.getVersionFromCommand({
+        command: "aicp --version",
+        label: "system aicp",
+        timeoutMs: commandTimeoutMs,
+      });
+      if (systemVersion) {
+        return { useBundledBinary: false, binaryPath: "aicp", version: systemVersion };
+      }
+
+      const pythonVersion = await this.getVersionFromCommand({
+        command: "python -m ai_content_pipeline --version",
+        label: "Python module",
+        timeoutMs: commandTimeoutMs,
+      });
+      if (pythonVersion) {
+        return { useBundledBinary: false, pythonPath: "python", version: pythonVersion };
+      }
+
+      if (process.platform !== "win32") {
+        const python3Version = await this.getVersionFromCommand({
+          command: "python3 -m ai_content_pipeline --version",
+          label: "Python3 module",
+          timeoutMs: commandTimeoutMs,
+        });
+        if (python3Version) {
+          return { useBundledBinary: false, pythonPath: "python3", version: python3Version };
+        }
+      }
+    } catch (error) {
+      console.error("[AI Pipeline] Failed to detect environment:", error);
+    }
+
+    console.warn("[AI Pipeline] No AI pipeline binary or Python module found");
+    return this.getFallbackConfig();
+  }
+
+  private getBundledConfig(): PipelineConfig | null {
     const status = this.binaryManager.getBinaryStatus("aicp");
     if (status.available && status.compatible) {
       console.log(
@@ -98,7 +175,6 @@ class AIPipelineManager {
       };
     }
 
-    // Log why bundled binary wasn't used
     if (!status.available) {
       console.log("[AI Pipeline] Bundled binary not found, trying fallbacks...");
     } else if (!status.compatible) {
@@ -107,67 +183,75 @@ class AIPipelineManager {
       );
     }
 
-    // Priority 2: System-installed aicp
-    try {
-      const version = execSync("aicp --version", {
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 5000,
-      })
-        .toString()
-        .trim();
-      console.log("[AI Pipeline] Using system aicp:", version);
-      return { useBundledBinary: false, binaryPath: "aicp", version };
-    } catch {
-      // Not found in PATH
-    }
+    return null;
+  }
 
-    // Priority 3: Python module
+  private async getVersionFromCommand({
+    command,
+    label,
+    timeoutMs,
+  }: {
+    command: string;
+    label: string;
+    timeoutMs: number;
+  }): Promise<string | null> {
     try {
-      const version = execSync("python -m ai_content_pipeline --version", {
-        stdio: ["ignore", "pipe", "ignore"],
-        timeout: 5000,
-      })
-        .toString()
-        .trim();
-      console.log("[AI Pipeline] Using Python module:", version);
-      return { useBundledBinary: false, pythonPath: "python", version };
-    } catch {
-      // Not found
-    }
-
-    // Try python3 on Unix systems
-    if (process.platform !== "win32") {
-      try {
-        const version = execSync("python3 -m ai_content_pipeline --version", {
-          stdio: ["ignore", "pipe", "ignore"],
-          timeout: 5000,
-        })
-          .toString()
-          .trim();
-        console.log("[AI Pipeline] Using Python3 module:", version);
-        return { useBundledBinary: false, pythonPath: "python3", version };
-      } catch {
-        // Not found
+      const output = await this.execCommand({ command, timeoutMs });
+      const version = output.trim();
+      if (!version) {
+        return null;
       }
+      console.log(`[AI Pipeline] Using ${label}:`, version);
+      return version;
+    } catch {
+      return null;
     }
+  }
 
-    // Not available
-    console.warn("[AI Pipeline] No AI pipeline binary or Python module found");
-    return { useBundledBinary: false };
+  private async execCommand({
+    command,
+    timeoutMs,
+  }: {
+    command: string;
+    timeoutMs: number;
+  }): Promise<string> {
+    return new Promise((resolve, reject) => {
+      try {
+        exec(
+          command,
+          {
+            timeout: timeoutMs,
+            windowsHide: true,
+          },
+          (error, stdout, _stderr) => {
+            if (error) {
+              reject(error);
+              return;
+            }
+            const output =
+              typeof stdout === "string" ? stdout : stdout.toString();
+            resolve(output);
+          }
+        );
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   /**
    * Refresh environment detection (useful after binary installation)
    */
-  refreshEnvironment(): void {
-    this.binaryManager.reloadManifest();
-    this.config = this.detectEnvironment();
+  async refreshEnvironment(): Promise<void> {
+    this.initialization = this.loadEnvironment();
+    await this.ensureEnvironmentReady();
   }
 
   /**
    * Check if AI pipeline is available
    */
-  isAvailable(): boolean {
+  async isAvailable(): Promise<boolean> {
+    await this.ensureEnvironmentReady();
     return (
       this.config.binaryPath !== undefined ||
       this.config.pythonPath !== undefined
@@ -177,7 +261,8 @@ class AIPipelineManager {
   /**
    * Get detailed status for UI display
    */
-  getStatus(): PipelineStatus {
+  async getStatus(): Promise<PipelineStatus> {
+    await this.ensureEnvironmentReady();
     const binaryStatus = this.binaryManager.getBinaryStatus("aicp");
 
     if (this.config.binaryPath && this.config.useBundledBinary) {
@@ -292,7 +377,7 @@ class AIPipelineManager {
     options: GenerateOptions,
     onProgress: (progress: PipelineProgress) => void
   ): Promise<PipelineResult> {
-    if (!this.isAvailable()) {
+    if (!(await this.isAvailable())) {
       return { success: false, error: "AI Pipeline not available" };
     }
 
@@ -589,7 +674,7 @@ export function setupAIPipelineIPC(): void {
       if (!pipelineManager) {
         return { available: false, error: "Pipeline manager not initialized" };
       }
-      const status = pipelineManager.getStatus();
+      const status = await pipelineManager.getStatus();
       return {
         available: status.available,
         error: status.error,
@@ -619,7 +704,11 @@ export function setupAIPipelineIPC(): void {
       event: IpcMainInvokeEvent,
       options: GenerateOptions
     ): Promise<PipelineResult> => {
-      if (!pipelineManager?.isAvailable()) {
+      if (!pipelineManager) {
+        return { success: false, error: "Pipeline manager not initialized" };
+      }
+      const isAvailable = await pipelineManager.isAvailable();
+      if (!isAvailable) {
         return { success: false, error: "AI Pipeline not available" };
       }
 
@@ -640,7 +729,11 @@ export function setupAIPipelineIPC(): void {
 
   // List available models
   ipcMain.handle("ai-pipeline:list-models", async (): Promise<PipelineResult> => {
-    if (!pipelineManager?.isAvailable()) {
+    if (!pipelineManager) {
+      return { success: false, error: "Pipeline manager not initialized" };
+    }
+    const isAvailable = await pipelineManager.isAvailable();
+    if (!isAvailable) {
       return { success: false, error: "AI Pipeline not available" };
     }
 
@@ -657,7 +750,11 @@ export function setupAIPipelineIPC(): void {
       _event: IpcMainInvokeEvent,
       options: { model: string; duration?: number; resolution?: string }
     ): Promise<PipelineResult> => {
-      if (!pipelineManager?.isAvailable()) {
+      if (!pipelineManager) {
+        return { success: false, error: "Pipeline manager not initialized" };
+      }
+      const isAvailable = await pipelineManager.isAvailable();
+      if (!isAvailable) {
         return { success: false, error: "AI Pipeline not available" };
       }
 
@@ -697,7 +794,7 @@ export function setupAIPipelineIPC(): void {
         error: "Pipeline manager not initialized",
       };
     }
-    pipelineManager.refreshEnvironment();
+    await pipelineManager.refreshEnvironment();
     return pipelineManager.getStatus();
   });
 

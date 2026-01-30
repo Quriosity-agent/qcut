@@ -97,11 +97,6 @@ export function useAIPipeline(
   const sessionIdRef = useRef<string | null>(null);
   const { onProgress, onComplete, onError } = options;
 
-  // Check availability on mount
-  useEffect(() => {
-    checkAvailability();
-  }, [checkAvailability]);
-
   // Set up progress listener
   useEffect(() => {
     if (!window.electronAPI?.aiPipeline?.onProgress) return;
@@ -150,6 +145,11 @@ export function useAIPipeline(
       return false;
     }
   }, []);
+
+  // Check availability on mount
+  useEffect(() => {
+    checkAvailability();
+  }, [checkAvailability]);
 
   /**
    * Refresh environment detection
