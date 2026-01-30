@@ -38,6 +38,16 @@ Documents/QCut/Projects/{project-name}/
 - AI-generated content goes to `media/generated/`
 - User-imported content goes to `media/imported/`
 
+### Hybrid Symlink Import System
+QCut uses a **hybrid symlink/copy system** for imported media:
+- **Symlinks preferred**: Creates symbolic links to original files (saves disk space)
+- **Copy fallback**: Falls back to copying when symlinks unavailable (Windows without admin, network drives)
+- **Metadata tracking**: Each import tracks `importMethod`, `originalPath`, and `fileSize`
+
+Files in `media/imported/` may be:
+- **Symlinks** pointing to the original file location
+- **Copies** of the original file (when symlink creation fails)
+
 ### Skills
 - Each skill is a folder with `Skill.md` as the entry point
 - Additional reference files: `REFERENCE.md`, `EXAMPLES.md`, `CONCEPTS.md`
@@ -90,6 +100,26 @@ find . -type f -size +100M
 
 # Clean temp files
 rm -rf media/temp/* cache/*
+
+# === Symlink Commands ===
+
+# List all symlinks in imported folder
+find media/imported -type l
+
+# Check if a file is a symlink
+ls -la media/imported/
+
+# Find broken symlinks
+find media/imported -xtype l
+
+# Show symlink target
+readlink media/imported/video-id.mp4
+
+# Create symlink manually (Unix/macOS)
+ln -s /path/to/original.mp4 media/imported/video-id.mp4
+
+# Create symlink manually (Windows - requires admin or dev mode)
+mklink media\imported\video-id.mp4 C:\path\to\original.mp4
 ```
 
 ## Example Organization Task
