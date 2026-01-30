@@ -59,6 +59,28 @@ Process all task files in a directory. **Groups comments by source file** and fi
 
 Follow instructions in [review-batch.md](review-batch.md).
 
+### 6. Resolve: `/pr-comments resolve <owner/repo> <pr-number> <comment-id> [task-file]`
+
+Resolve a PR review thread on GitHub and move task to completed folder.
+
+```bash
+bash .claude/skills/pr-comments/scripts/resolve-thread.sh $1 $2 $3 $4
+```
+
+**Example:**
+```bash
+/pr-comments resolve donghaozhang/qcut 102 2742327370 docs/pr-comments/pr-102-tasks/comment.md
+```
+
+**What it does:**
+1. Resolves the PR conversation thread on GitHub
+2. Moves the task file to `{tasks-dir}_completed/`
+
+**When to use:**
+- After FIXED → Resolve and move to completed
+- After ALREADY_FIXED → Resolve and move to completed
+- NOT_APPLICABLE → Don't resolve (leave comment explaining why)
+
 ## Complete Workflow
 
 ```bash
@@ -68,11 +90,17 @@ Follow instructions in [review-batch.md](review-batch.md).
 # Step 2: Preprocess into task files
 /pr-comments preprocess docs/pr-comments/pr-102
 
-# Step 3a: Fix single comment
+# Step 3: Analyze (see file groupings)
+/pr-comments analyze docs/pr-comments/pr-102-tasks
+
+# Step 4a: Fix single comment
 /pr-comments fix docs/pr-comments/pr-102-tasks/comment.md
 
-# Step 3b: Or batch fix all
+# Step 4b: Or batch fix all
 /pr-comments batch docs/pr-comments/pr-102-tasks
+
+# Step 5: Resolve thread and move task to completed
+/pr-comments resolve donghaozhang/qcut 102 2742327370 docs/pr-comments/pr-102-tasks/comment.md
 ```
 
 ## Output Structure
@@ -83,9 +111,10 @@ docs/pr-comments/
 ├── pr-102/                    # Raw exported comments
 │   ├── coderabbitai[bot]_file_L42_123.md
 │   └── gemini-code-assist[bot]_file_L50_456.md
-└── pr-102-tasks/              # Preprocessed for evaluation
-    ├── coderabbitai[bot]_file_L42_123.md
-    └── gemini-code-assist[bot]_file_L50_456.md
+├── pr-102-tasks/              # Preprocessed for evaluation (pending)
+│   └── coderabbitai[bot]_file_L50_456.md
+└── pr-102-tasks_completed/    # Resolved tasks
+    └── coderabbitai[bot]_file_L42_123.md
 ```
 
 ## Supporting Files
