@@ -118,7 +118,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "word-timeline": {
     icon: TextSelect,
-    label: "Words",
+    label: "Transcribe",
   },
 };
 
