@@ -195,7 +195,6 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
         isLoading: false,
         error: message,
       });
-      console.error("[WordTimelineStore] Load error:", err);
     }
   },
 
@@ -253,9 +252,6 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
       error: null,
     });
 
-    console.log(
-      `[WordTimelineStore] Loaded transcription: ${words.filter((w) => w.type === "word").length} words`
-    );
   },
 
   toggleWordDeleted: (wordId: string) => {
