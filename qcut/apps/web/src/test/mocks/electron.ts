@@ -119,6 +119,19 @@ export const mockElectronAPI: ElectronAPI = {
       success: true,
       message: "Transcription cancelled",
     }),
+    elevenlabs: vi.fn().mockResolvedValue({
+      text: "Test transcription",
+      language_code: "eng",
+      language_probability: 0.95,
+      words: [
+        { text: "Test", start: 0, end: 0.5, type: "word", speaker_id: null },
+        { text: " ", start: 0.5, end: 0.6, type: "spacing", speaker_id: null },
+        { text: "transcription", start: 0.6, end: 1.2, type: "word", speaker_id: null },
+      ],
+    }),
+    uploadToFal: vi.fn().mockResolvedValue({
+      url: "https://fal.ai/storage/mock-file-url",
+    }),
   },
 
   // API key operations

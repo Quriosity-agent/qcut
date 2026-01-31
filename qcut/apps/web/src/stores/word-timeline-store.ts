@@ -37,6 +37,22 @@ interface WordTimelineActions {
   loadFromJson: (file: File) => Promise<void>;
   /** Load word timeline data from raw JSON object */
   loadFromData: (data: RawWordTimelineJson, fileName?: string) => void;
+  /** Load from ElevenLabs transcription result (API response) */
+  loadFromTranscription: (
+    data: {
+      text: string;
+      language_code: string;
+      language_probability: number;
+      words: Array<{
+        text: string;
+        start: number;
+        end: number;
+        type: string;
+        speaker_id: string | null;
+      }>;
+    },
+    fileName: string
+  ) => void;
   /** Toggle the deleted state of a word */
   toggleWordDeleted: (wordId: string) => void;
   /** Set multiple words as deleted */
@@ -203,6 +219,48 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
       isLoading: false,
       error: null,
     });
+  },
+
+  /**
+   * Load from ElevenLabs transcription result.
+   * This handles the API response format which may include additional word types
+   * like "audio_event" and "punctuation" beyond the standard "word" and "spacing".
+   */
+  loadFromTranscription: (data, fileName) => {
+    // Transform ElevenLabs response to our internal format
+    const words: WordItem[] = data.words.map((word, index) => ({
+      id: `word-${index}`,
+      text: word.text,
+      start: word.start,
+      end: word.end,
+      // Map ElevenLabs types to our internal types
+      // "audio_event" and "punctuation" are treated as "spacing" for display purposes
+      type:
+        word.type === "word"
+          ? "word"
+          : word.type === "spacing"
+            ? "spacing"
+            : "spacing", // audio_event, punctuation -> spacing
+      speaker_id: word.speaker_id ?? undefined,
+      deleted: false,
+    }));
+
+    set({
+      data: {
+        text: data.text,
+        language_code: data.language_code,
+        language_probability: data.language_probability,
+        words,
+      },
+      fileName,
+      selectedWordId: null,
+      isLoading: false,
+      error: null,
+    });
+
+    console.log(
+      `[WordTimelineStore] Loaded transcription: ${words.filter((w) => w.type === "word").length} words`
+    );
   },
 
   toggleWordDeleted: (wordId: string) => {

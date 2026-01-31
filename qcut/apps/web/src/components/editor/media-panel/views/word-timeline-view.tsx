@@ -3,9 +3,10 @@
 /**
  * Word Timeline View Component
  *
- * Displays word-level transcription data from JSON files.
+ * Displays word-level transcription data from JSON files or transcribed media.
  * Features:
  * - Drag & drop JSON file import
+ * - Drag & drop video/audio for transcription (ElevenLabs Scribe v2)
  * - Click word to seek timeline to that timestamp
  * - Toggle word deletion (red color + strikethrough)
  * - Tooltip showing word timing on hover
@@ -24,11 +25,40 @@ import {
 } from "@/components/ui/tooltip";
 import { useWordTimelineStore } from "@/stores/word-timeline-store";
 import { usePlaybackStore } from "@/stores/playback-store";
+import { useElevenLabsTranscription } from "@/hooks/use-elevenlabs-transcription";
 import { useDragDrop } from "@/hooks/use-drag-drop";
-import { Upload, X, Loader2, AlertCircle } from "lucide-react";
+import { Upload, X, Loader2, AlertCircle, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WordItem } from "@/types/word-timeline";
 import { toast } from "sonner";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Supported media extensions for transcription */
+const MEDIA_EXTENSIONS = [
+  ".mp4",
+  ".mov",
+  ".avi",
+  ".mkv",
+  ".webm",
+  ".wav",
+  ".mp3",
+  ".m4a",
+  ".aac",
+];
+
+/** Check if a file is a supported media file */
+function isMediaFile(fileName: string): boolean {
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  return MEDIA_EXTENSIONS.includes(ext);
+}
+
+/** Check if a file is a JSON file */
+function isJsonFile(fileName: string): boolean {
+  return fileName.toLowerCase().endsWith(".json");
+}
 
 // ============================================================================
 // Helper Functions
@@ -119,11 +149,20 @@ function WordChip({
 // ============================================================================
 
 interface DropZoneProps {
-  onFileSelect: (file: File) => void;
+  onJsonSelect: (file: File) => void;
+  onMediaSelect: (filePath: string) => void;
   isLoading: boolean;
+  isTranscribing: boolean;
+  transcriptionProgress: string;
 }
 
-function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
+function DropZone({
+  onJsonSelect,
+  onMediaSelect,
+  isLoading,
+  isTranscribing,
+  transcriptionProgress,
+}: DropZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback(
@@ -134,18 +173,27 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
           return;
         }
 
-        const isJsonFile = file.name.endsWith(".json");
-        if (!isJsonFile) {
-          toast.error("Please drop a JSON file");
-          return;
+        if (isJsonFile(file.name)) {
+          onJsonSelect(file);
+        } else if (isMediaFile(file.name)) {
+          // For media files, we need the file path (Electron only)
+          // file.path is available in Electron
+          const filePath = (file as File & { path?: string }).path;
+          if (filePath) {
+            onMediaSelect(filePath);
+          } else {
+            toast.error("Media transcription requires the desktop app");
+          }
+        } else {
+          toast.error(
+            "Unsupported file type. Drop JSON or media files (MP4, WAV, MP3, etc.)"
+          );
         }
-
-        onFileSelect(file);
       } catch (error) {
         toast.error("Unable to process the dropped file");
       }
     },
-    [onFileSelect]
+    [onJsonSelect, onMediaSelect]
   );
 
   const { isDragOver, dragProps } = useDragDrop({ onDrop: handleDrop });
@@ -166,12 +214,21 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
           return;
         }
 
-        onFileSelect(file);
+        if (isJsonFile(file.name)) {
+          onJsonSelect(file);
+        } else if (isMediaFile(file.name)) {
+          const filePath = (file as File & { path?: string }).path;
+          if (filePath) {
+            onMediaSelect(filePath);
+          } else {
+            toast.error("Media transcription requires the desktop app");
+          }
+        }
       } catch (error) {
         toast.error("Unable to read the selected file");
       }
     },
-    [onFileSelect]
+    [onJsonSelect, onMediaSelect]
   );
 
   const handleDropZoneKeyDown = useCallback(
@@ -192,12 +249,14 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
     [handleClick]
   );
 
+  const isBusy = isLoading || isTranscribing;
+
   return (
     <div className="h-full flex items-center justify-center p-4" {...dragProps}>
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json"
+        accept=".json,.mp4,.mov,.avi,.mkv,.webm,.wav,.mp3,.m4a,.aac"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -205,33 +264,56 @@ function DropZone({ onFileSelect, isLoading }: DropZoneProps) {
         type="button"
         onClick={handleClick}
         onKeyDown={handleDropZoneKeyDown}
-        disabled={isLoading}
+        disabled={isBusy}
         className={cn(
-          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all",
+          "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all w-full max-w-sm",
           "hover:border-primary hover:bg-primary/5",
           isDragOver
             ? "border-primary bg-primary/10 scale-105"
             : "border-muted-foreground/25",
-          isLoading && "pointer-events-none opacity-50"
+          isBusy && "pointer-events-none opacity-50"
         )}
       >
-        {isLoading ? (
-          <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin">
-            <title>Loading</title>
-          </Loader2>
+        {isTranscribing ? (
+          <>
+            <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin">
+              <title>Transcribing</title>
+            </Loader2>
+            <p className="text-sm text-primary font-medium">
+              {transcriptionProgress || "Transcribing..."}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              This may take a moment depending on audio length
+            </p>
+          </>
+        ) : isLoading ? (
+          <>
+            <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin">
+              <title>Loading</title>
+            </Loader2>
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </>
         ) : (
-          <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground">
-            <title>Upload</title>
-          </Upload>
+          <>
+            <div className="flex justify-center gap-2 mb-4">
+              <Upload className="w-10 h-10 text-muted-foreground">
+                <title>Upload</title>
+              </Upload>
+              <Mic className="w-10 h-10 text-muted-foreground">
+                <title>Transcribe</title>
+              </Mic>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Drop media or JSON file here, or click to select
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-2">
+              Supports: MP4, MOV, WAV, MP3, JSON
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Media files will be transcribed with ElevenLabs
+            </p>
+          </>
         )}
-        <p className="text-sm text-muted-foreground">
-          {isLoading
-            ? "Loading..."
-            : "Drop a word timeline JSON file here, or click to select"}
-        </p>
-        <p className="text-xs text-muted-foreground/70 mt-2">
-          Supports transcription JSON with word-level timing
-        </p>
       </button>
     </div>
   );
@@ -257,14 +339,39 @@ export function WordTimelineView() {
 
   const { seek } = usePlaybackStore();
 
+  // Transcription hook
+  const {
+    transcribeMedia,
+    isTranscribing,
+    progress: transcriptionProgress,
+    error: transcriptionError,
+    clearError: clearTranscriptionError,
+  } = useElevenLabsTranscription();
+
   // Get only words (not spacing)
   const words = getVisibleWords();
 
-  const handleFileSelect = useCallback(
+  const handleJsonSelect = useCallback(
     (file: File) => {
       loadFromJson(file);
     },
     [loadFromJson]
+  );
+
+  const handleMediaSelect = useCallback(
+    async (filePath: string) => {
+      try {
+        const result = await transcribeMedia(filePath);
+        if (result) {
+          const wordCount = result.words.filter((w) => w.type === "word").length;
+          toast.success(`Transcription complete: ${wordCount} words`);
+        }
+      } catch (err) {
+        // Error is already handled in the hook
+        toast.error("Transcription failed");
+      }
+    },
+    [transcribeMedia]
   );
 
   const handleWordSelect = useCallback(
@@ -285,25 +392,31 @@ export function WordTimelineView() {
 
   const handleClear = useCallback(() => {
     clearData();
+    clearTranscriptionError();
     toast.info("Word timeline cleared");
-  }, [clearData]);
+  }, [clearData, clearTranscriptionError]);
 
   // Calculate stats
   const deletedCount = words.filter((w) => w.deleted).length;
   const lastWord = words[words.length - 1];
   const totalDuration = lastWord?.end || 0;
 
+  // Combined error state
+  const displayError = error || transcriptionError;
+
   // Error state
-  if (error && !data) {
+  if (displayError && !data) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-4 text-center">
         <AlertCircle className="w-12 h-12 text-destructive mb-4">
           <title>Error</title>
         </AlertCircle>
         <p className="text-sm text-destructive font-medium">
-          Failed to load file
+          {transcriptionError ? "Transcription failed" : "Failed to load file"}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">{error}</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+          {displayError}
+        </p>
         <Button
           type="button"
           variant="outline"
@@ -319,7 +432,15 @@ export function WordTimelineView() {
 
   // Empty state - show drop zone
   if (!data) {
-    return <DropZone onFileSelect={handleFileSelect} isLoading={isLoading} />;
+    return (
+      <DropZone
+        onJsonSelect={handleJsonSelect}
+        onMediaSelect={handleMediaSelect}
+        isLoading={isLoading}
+        isTranscribing={isTranscribing}
+        transcriptionProgress={transcriptionProgress}
+      />
+    );
   }
 
   return (

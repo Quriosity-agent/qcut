@@ -222,7 +222,7 @@ class AIPipelineManager {
       timeout: timeoutMs,
       windowsHide: true,
     });
-    return typeof stdout === "string" ? stdout : stdout.toString();
+    return typeof stdout === "string" ? stdout : String(stdout);
   }
 
   /**

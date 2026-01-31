@@ -267,7 +267,7 @@ interface ElectronAPI {
     getProjectDir: (projectId: string) => Promise<string>;
   };
 
-  // Transcription operations (Gemini API)
+  // Transcription operations (Gemini API + ElevenLabs)
   transcribe: {
     transcribe: (request: { audioPath: string; language?: string }) => Promise<{
       text: string;
@@ -286,6 +286,27 @@ interface ElectronAPI {
       language: string;
     }>;
     cancel: (id: string) => Promise<CancelResult>;
+    /** Transcribe using ElevenLabs Scribe v2 via FAL AI */
+    elevenlabs: (options: {
+      audioPath: string;
+      language?: string;
+      diarize?: boolean;
+      tagAudioEvents?: boolean;
+      keyterms?: string[];
+    }) => Promise<{
+      text: string;
+      language_code: string;
+      language_probability: number;
+      words: Array<{
+        text: string;
+        start: number;
+        end: number;
+        type: "word" | "spacing" | "audio_event" | "punctuation";
+        speaker_id: string | null;
+      }>;
+    }>;
+    /** Upload file to FAL storage */
+    uploadToFal: (filePath: string) => Promise<{ url: string }>;
   };
 
   // FFmpeg export operations
@@ -615,6 +636,42 @@ const electronAPI: ElectronAPI = {
     }> => ipcRenderer.invoke("transcribe:audio", request),
     cancel: (id: string): Promise<CancelResult> =>
       ipcRenderer.invoke("transcribe:cancel", id),
+
+    /**
+     * Transcribe audio using ElevenLabs Scribe v2 via FAL AI.
+     * Returns word-level timestamps with speaker diarization.
+     *
+     * @param options.audioPath - Path to audio file
+     * @param options.language - Language code (e.g., "eng"). Default: auto-detect
+     * @param options.diarize - Enable speaker identification. Default: true
+     * @param options.tagAudioEvents - Tag laughter, applause, etc. Default: true
+     * @param options.keyterms - Words to bias toward (+30% cost)
+     */
+    elevenlabs: (options: {
+      audioPath: string;
+      language?: string;
+      diarize?: boolean;
+      tagAudioEvents?: boolean;
+      keyterms?: string[];
+    }): Promise<{
+      text: string;
+      language_code: string;
+      language_probability: number;
+      words: Array<{
+        text: string;
+        start: number;
+        end: number;
+        type: "word" | "spacing" | "audio_event" | "punctuation";
+        speaker_id: string | null;
+      }>;
+    }> => ipcRenderer.invoke("transcribe:elevenlabs", options),
+
+    /**
+     * Upload a file to FAL storage.
+     * Returns the URL of the uploaded file.
+     */
+    uploadToFal: (filePath: string): Promise<{ url: string }> =>
+      ipcRenderer.invoke("transcribe:upload-to-fal", filePath),
   },
 
   // FFmpeg export operations

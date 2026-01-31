@@ -4,6 +4,36 @@ import type {
   AudioFileInput,
 } from "../lib/export-engine-cli";
 
+/**
+ * Word-level transcription item from ElevenLabs Scribe v2.
+ */
+export interface ElevenLabsTranscriptionWord {
+  /** The transcribed word or event text */
+  text: string;
+  /** Start time in seconds */
+  start: number;
+  /** End time in seconds */
+  end: number;
+  /** Type of element */
+  type: "word" | "spacing" | "audio_event" | "punctuation";
+  /** Speaker identifier (if diarization enabled) */
+  speaker_id: string | null;
+}
+
+/**
+ * Full transcription result from ElevenLabs Scribe v2.
+ */
+export interface ElevenLabsTranscribeResult {
+  /** Full transcription text */
+  text: string;
+  /** Detected/specified language code */
+  language_code: string;
+  /** Confidence score for language detection (0-1) */
+  language_probability: number;
+  /** Word-level transcription data */
+  words: ElevenLabsTranscriptionWord[];
+}
+
 export interface ElectronAPI {
   // System info
   platform: string;
@@ -182,8 +212,9 @@ export interface ElectronAPI {
     getProjectDir: (projectId: string) => Promise<string>;
   };
 
-  // Transcription operations (Gemini API)
+  // Transcription operations (Gemini API + ElevenLabs)
   transcribe: {
+    /** Gemini-based transcription (segments) */
     transcribe: (request: { audioPath: string; language?: string }) => Promise<{
       text: string;
       segments: Array<{
@@ -205,6 +236,21 @@ export interface ElectronAPI {
       message?: string;
       error?: string;
     }>;
+
+    /**
+     * ElevenLabs Scribe v2 transcription via FAL AI.
+     * Returns word-level timestamps with speaker diarization.
+     */
+    elevenlabs: (options: {
+      audioPath: string;
+      language?: string;
+      diarize?: boolean;
+      tagAudioEvents?: boolean;
+      keyterms?: string[];
+    }) => Promise<ElevenLabsTranscribeResult>;
+
+    /** Upload file to FAL storage */
+    uploadToFal: (filePath: string) => Promise<{ url: string }>;
   };
 
   // Generic IPC invoke method

@@ -75,6 +75,7 @@ const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupAIPipelineIPC, cleanupAIPipeline } = require("./ai-pipeline-handler.js");
 const { setupMediaImportIPC } = require("./media-import-handler.js");
+const { registerElevenLabsTranscribeHandler } = require("./elevenlabs-transcribe-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -370,6 +371,7 @@ app.whenReady().then(() => {
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
   setupGeminiHandlers(); // Add Gemini transcription support
+  registerElevenLabsTranscribeHandler(); // Add ElevenLabs transcription support
   setupGeminiChatIPC(); // Add Gemini chat support
   setupPtyIPC(); // Add PTY terminal support
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
