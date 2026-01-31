@@ -12,6 +12,53 @@ import type { PlayerRef } from "@remotion/player";
 import type { z } from "zod";
 
 // ============================================================================
+// Sequence Visualization Types
+// ============================================================================
+
+/**
+ * Metadata describing a single sequence within a Remotion composition.
+ * Used for visualizing internal structure in the timeline.
+ */
+export interface SequenceMetadata {
+  /** Human-readable name for the sequence */
+  name: string;
+  /** Frame at which this sequence starts (relative to composition) */
+  from: number;
+  /** Duration of the sequence in frames */
+  durationInFrames: number;
+  /** Color for timeline visualization (hex format) */
+  color?: string;
+  /** Optional description for tooltips */
+  description?: string;
+}
+
+/**
+ * Metadata describing a transition between sequences.
+ * Used for TransitionSeries components.
+ */
+export interface TransitionMetadata {
+  /** Index of the sequence this transition follows (0-based) */
+  afterSequenceIndex: number;
+  /** Duration of the transition overlap in frames */
+  durationInFrames: number;
+  /** Type of transition presentation */
+  presentation?: "fade" | "slide" | "wipe" | "zoom" | "custom";
+}
+
+/**
+ * Complete structure describing sequences and transitions within a composition.
+ * Enables timeline visualization of internal component structure.
+ */
+export interface SequenceStructure {
+  /** List of sequences in order */
+  sequences: SequenceMetadata[];
+  /** Optional transitions between sequences */
+  transitions?: TransitionMetadata[];
+  /** Pre-calculated total duration (sequences - transitions overlap) */
+  calculatedDuration?: number;
+}
+
+// ============================================================================
 // Component Definition Types
 // ============================================================================
 
@@ -63,6 +110,8 @@ export interface RemotionComponentDefinition {
   version?: string;
   /** Author information */
   author?: string;
+  /** Optional sequence structure for timeline visualization */
+  sequenceStructure?: SequenceStructure;
 }
 
 /**

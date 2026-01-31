@@ -12,6 +12,8 @@ import { Layers, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RemotionElement, TimelineTrack } from "@/types/timeline";
 import { useRemotionComponent, useRemotionInstance } from "@/stores/remotion-store";
+import { RemotionSequences } from "./remotion-sequences";
+import { calculateTotalDuration } from "@/lib/remotion/duration-calculator";
 
 // ============================================================================
 // Types
@@ -182,6 +184,15 @@ export function RemotionTimelineElement({
   const hasError = !!instance?.error;
   const cacheStatus = instance?.cacheStatus ?? "none";
 
+  // Check if component has sequence structure for visualization
+  const hasSequenceStructure = !!component?.sequenceStructure?.sequences?.length;
+  const sequenceTotalDuration = useMemo(() => {
+    if (component?.sequenceStructure) {
+      return calculateTotalDuration(component.sequenceStructure);
+    }
+    return 0;
+  }, [component?.sequenceStructure]);
+
   // Event handlers
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -316,6 +327,15 @@ export function RemotionTimelineElement({
             backgroundImage:
               "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.3) 3px, rgba(0,0,0,0.3) 6px)",
           }}
+        />
+      )}
+
+      {/* Sequence visualization (when component has sequenceStructure) */}
+      {hasSequenceStructure && component?.sequenceStructure && (
+        <RemotionSequences
+          structure={component.sequenceStructure}
+          totalDuration={sequenceTotalDuration || element.duration}
+          elementWidth={width}
         />
       )}
     </div>
