@@ -83,11 +83,12 @@ This means well-authored components already have human-readable sequence names w
 
 ## Implementation Phases
 
-### Phase 1: Easy - Component Metadata Approach
+### Phase 1: Easy - Component Metadata Approach ✅ COMPLETED
 
 **Estimated Effort**: 4-6 hours
 **Complexity**: Low
 **Risk**: Low
+**Status**: ✅ Implemented on 2026-02-01
 
 #### Concept
 
@@ -386,11 +387,12 @@ describe("TransitionMetadata", () => {
 
 ---
 
-### Phase 2: Medium - AST Parsing Approach
+### Phase 2: Medium - AST Parsing Approach ✅ COMPLETED
 
 **Estimated Effort**: 12-16 hours
 **Complexity**: Medium
 **Risk**: Medium (depends on component complexity)
+**Status**: ✅ Implemented on 2026-02-01
 
 #### Concept
 
@@ -770,29 +772,29 @@ Total: 195 frames (60+80+90-15-20)
 
 ## File Summary
 
-### Phase 1 Files (Easy)
-| File | Action | Purpose |
-|------|--------|---------|
-| `apps/web/src/lib/remotion/types.ts` | Modify | Add SequenceMetadata, TransitionMetadata, SequenceStructure types |
-| `apps/web/src/lib/remotion/duration-calculator.ts` | Create | Duration calculation with transition overlap handling |
-| `apps/web/src/lib/remotion/built-in/**/*.tsx` | Modify | Add sequenceStructure metadata to built-in components |
-| `apps/web/src/components/editor/timeline/remotion-sequences.tsx` | Create | Sequence bar visualization component |
-| `apps/web/src/components/editor/timeline/timeline-element.tsx` | Modify | Integrate RemotionSequences for remotion elements |
-| `apps/web/src/components/editor/timeline/__tests__/remotion-sequences.test.tsx` | Create | Component tests |
-| `apps/web/src/lib/remotion/__tests__/duration-calculator.test.ts` | Create | Duration calculation tests |
-| `apps/web/src/lib/remotion/__tests__/types.test.ts` | Create | Type validation tests |
+### Phase 1 Files (Easy) - ✅ COMPLETED
+| File | Action | Status | Purpose |
+|------|--------|--------|---------|
+| `apps/web/src/lib/remotion/types.ts` | Modify | ✅ Done | Add SequenceMetadata, TransitionMetadata, SequenceStructure types |
+| `apps/web/src/lib/remotion/duration-calculator.ts` | Create | ✅ Done | Duration calculation with transition overlap handling |
+| `apps/web/src/lib/remotion/built-in/**/*.tsx` | Modify | ⏳ Pending | Add sequenceStructure metadata to built-in components |
+| `apps/web/src/components/editor/timeline/remotion-sequences.tsx` | Create | ✅ Done | Sequence bar visualization component |
+| `apps/web/src/components/editor/timeline/remotion-element.tsx` | Modify | ✅ Done | Integrate RemotionSequences for remotion elements |
+| `apps/web/src/components/editor/timeline/__tests__/remotion-sequences.test.tsx` | Create | ✅ Done (14 tests) | Component tests |
+| `apps/web/src/lib/remotion/__tests__/duration-calculator.test.ts` | Create | ✅ Done (24 tests) | Duration calculation tests |
+| `apps/web/src/lib/remotion/__tests__/types.test.ts` | Existing | N/A | Type validation tests (already existed) |
 
-### Phase 2 Files (Medium)
-| File | Action | Purpose |
-|------|--------|---------|
-| `apps/web/package.json` | Modify | Add @babel/parser, @babel/traverse, @babel/types |
-| `apps/web/src/lib/remotion/sequence-parser.ts` | Create | AST-based sequence/transition extraction |
-| `apps/web/src/lib/remotion/sequence-analysis-service.ts` | Create | Caching service for parsed results |
-| `apps/web/src/lib/remotion/component-loader.ts` | Modify | Store source code for custom components |
-| `apps/web/src/stores/remotion-store.ts` | Modify | Add analyzedSequences state |
-| `apps/web/src/components/editor/timeline/parsed-sequence-overlay.tsx` | Create | Render parsed sequences with dynamic indicators |
-| `apps/web/src/lib/remotion/__tests__/sequence-parser.test.ts` | Create | Comprehensive AST parsing tests |
-| `apps/web/src/lib/remotion/__tests__/sequence-analysis-service.test.ts` | Create | Service caching tests |
+### Phase 2 Files (Medium) - ✅ COMPLETED
+| File | Action | Status | Purpose |
+|------|--------|--------|---------|
+| `apps/web/package.json` | Modify | ✅ Done | Add @babel/parser, @babel/traverse, @babel/types |
+| `apps/web/src/lib/remotion/sequence-parser.ts` | Create | ✅ Done | AST-based sequence/transition extraction |
+| `apps/web/src/lib/remotion/sequence-analysis-service.ts` | Create | ✅ Done | Caching service for parsed results |
+| `apps/web/src/lib/remotion/component-loader.ts` | Modify | ⏳ Pending | Store source code for custom components |
+| `apps/web/src/stores/remotion-store.ts` | Modify | ⏳ Pending | Add analyzedSequences state |
+| `apps/web/src/components/editor/timeline/parsed-sequence-overlay.tsx` | Create | ✅ Done | Render parsed sequences with dynamic indicators |
+| `apps/web/src/lib/remotion/__tests__/sequence-parser.test.ts` | Create | ✅ Done (26 tests) | Comprehensive AST parsing tests |
+| `apps/web/src/lib/remotion/__tests__/sequence-analysis-service.test.ts` | Create | ✅ Done (17 tests) | Service caching tests |
 
 ---
 
@@ -835,3 +837,166 @@ Total: 195 frames (60+80+90-15-20)
 ### QCut Internal Docs
 - [QCut Remotion Timeline Rendering](../technical/remotion-timeline-rendering.md) - Current integration status
 - [QCut Architecture](../../CLAUDE.md) - Project structure and patterns
+
+---
+
+## Implementation Notes (Phase 1)
+
+### Completed: 2026-02-01
+
+#### Files Created
+1. **`apps/web/src/lib/remotion/duration-calculator.ts`**
+   - `calculateTotalDuration()` - Calculates total duration with transition overlap
+   - `calculateSequencePositions()` - Returns frame positions for each sequence
+   - `getOverlappingSequences()` - Finds sequences at a given frame
+   - `findTransitionAtFrame()` - Finds transition at a given frame
+   - `validateSequenceStructure()` - Validates structure consistency
+
+2. **`apps/web/src/components/editor/timeline/remotion-sequences.tsx`**
+   - `RemotionSequences` - Main visualization component
+   - `SequenceBar` - Individual sequence bar with color and name
+   - `TransitionIndicator` - Dashed border for transition overlaps
+   - Default color palette for sequences without explicit colors
+
+3. **`apps/web/src/lib/remotion/__tests__/duration-calculator.test.ts`** (24 tests)
+   - Tests for all duration calculation functions
+   - Edge cases: empty sequences, negative positions, validation
+
+4. **`apps/web/src/components/editor/timeline/__tests__/remotion-sequences.test.tsx`** (14 tests)
+   - Component rendering tests
+   - Transition overlay tests
+   - Edge cases: narrow widths, many sequences
+
+#### Files Modified
+1. **`apps/web/src/lib/remotion/types.ts`**
+   - Added `SequenceMetadata` interface
+   - Added `TransitionMetadata` interface
+   - Added `SequenceStructure` interface
+   - Extended `RemotionComponentDefinition` with `sequenceStructure` field
+
+2. **`apps/web/src/components/editor/timeline/remotion-element.tsx`**
+   - Imported `RemotionSequences` component
+   - Imported `calculateTotalDuration` utility
+   - Added `hasSequenceStructure` check
+   - Renders `RemotionSequences` when metadata is available
+
+#### Usage
+To enable sequence visualization for a Remotion component, add `sequenceStructure` to its definition:
+
+```typescript
+const myComponent: RemotionComponentDefinition = {
+  id: "my-component",
+  // ... other fields
+  sequenceStructure: {
+    sequences: [
+      { name: "Intro", from: 0, durationInFrames: 90, color: "#8B5CF6" },
+      { name: "Main", from: 90, durationInFrames: 180, color: "#3B82F6" },
+    ],
+    // Optional: for TransitionSeries
+    transitions: [
+      { afterSequenceIndex: 0, durationInFrames: 15, presentation: "fade" },
+    ],
+  },
+};
+```
+
+#### Next Steps
+1. Add `sequenceStructure` metadata to built-in components
+2. ~~Consider Phase 2 (AST parsing) for automatic sequence detection~~ ✅ Done
+
+---
+
+## Implementation Notes (Phase 2)
+
+### Completed: 2026-02-01
+
+#### Files Created
+1. **`apps/web/src/lib/remotion/sequence-parser.ts`**
+   - `extractSequencesFromSource()` - Main AST parsing function
+   - `toSequenceStructure()` - Converts parsed structure to visualization format
+   - `hasDynamicValues()` - Checks if any values are computed at runtime
+   - Handles `<Sequence>`, `<TransitionSeries.Sequence>`, `<TS.Sequence>` patterns
+   - Detects transitions: `<TransitionSeries.Transition>`, `<TS.Transition>`
+   - Extracts `linearTiming()` duration and presentation names (fade, slide, wipe)
+   - Marks dynamic values (variables, expressions) as `"dynamic"`
+
+2. **`apps/web/src/lib/remotion/sequence-analysis-service.ts`**
+   - `SequenceAnalysisService` class with LRU caching
+   - `analyzeComponent()` - Analyzes source code and caches result
+   - `getCached()` - Returns cached result if available
+   - `invalidateCache()` - Invalidates cache for a component
+   - `clearCache()` - Clears entire cache
+   - `getCacheStats()` - Returns cache statistics
+   - Singleton instance via `getSequenceAnalysisService()`
+
+3. **`apps/web/src/components/editor/timeline/parsed-sequence-overlay.tsx`**
+   - `ParsedSequenceOverlay` - Visualizes auto-detected sequences
+   - `SequenceBar` - Individual sequence bar with dynamic indicator
+   - `DynamicBadge` - Shows tilde (~) for components with dynamic values
+   - Dashed borders for sequences with dynamic timing
+   - Default color palette for sequence visualization
+
+4. **`apps/web/src/lib/remotion/__tests__/sequence-parser.test.ts`** (26 tests)
+   - Sequence detection tests (9 tests)
+   - Transition detection tests (6 tests)
+   - TransitionSeries detection tests (2 tests)
+   - Error handling tests (3 tests)
+   - `toSequenceStructure` tests (3 tests)
+   - `hasDynamicValues` tests (3 tests)
+
+5. **`apps/web/src/lib/remotion/__tests__/sequence-analysis-service.test.ts`** (17 tests)
+   - analyzeComponent tests (3 tests)
+   - Caching tests (4 tests)
+   - Cache management tests (3 tests)
+   - Error handling tests (3 tests)
+   - hasAnalysis tests (2 tests)
+   - Singleton instance tests (2 tests)
+
+#### Dependencies Added
+- `@babel/parser` - JavaScript/TypeScript AST parser
+- `@babel/traverse` - AST traversal utilities
+- `@babel/types` - AST node type definitions
+
+#### Key Features
+- **AST-based extraction**: Uses Babel to parse JSX and extract sequence props
+- **Dynamic value detection**: Marks computed values as `"dynamic"`
+- **TransitionSeries support**: Handles both `TransitionSeries.Sequence` and `TS.Sequence`
+- **Timing extraction**: Extracts `durationInFrames` from `linearTiming()` calls
+- **Presentation detection**: Identifies `fade()`, `slide()`, `wipe()` transitions
+- **LRU caching**: Prevents re-parsing with source hash validation
+- **Error recovery**: Handles malformed JSX gracefully
+
+#### Usage Example
+```typescript
+import { extractSequencesFromSource, toSequenceStructure } from "@/lib/remotion/sequence-parser";
+import { getSequenceAnalysisService } from "@/lib/remotion/sequence-analysis-service";
+
+// Direct parsing
+const source = `
+  <TransitionSeries>
+    <TS.Sequence durationInFrames={60} name="Intro">
+      <IntroScene />
+    </TS.Sequence>
+    <TS.Transition timing={linearTiming({ durationInFrames: 15 })} presentation={fade()} />
+    <TS.Sequence durationInFrames={90} name="Main">
+      <MainScene />
+    </TS.Sequence>
+  </TransitionSeries>
+`;
+
+const parsed = extractSequencesFromSource(source);
+// parsed.sequences = [{ name: "Intro", durationInFrames: 60, ... }, { name: "Main", durationInFrames: 90, ... }]
+// parsed.transitions = [{ durationInFrames: 15, presentation: "fade", afterSequenceIndex: 0 }]
+// parsed.usesTransitionSeries = true
+
+// Using the service (with caching)
+const service = getSequenceAnalysisService();
+const result = await service.analyzeComponent("my-component", source);
+// result.structure contains the visualization-ready format
+```
+
+#### Remaining Integration Steps
+1. Integrate `ParsedSequenceOverlay` into `remotion-element.tsx`
+2. Add source code storage in `component-loader.ts`
+3. Add `analyzedSequences` state to `remotion-store.ts`
+4. Wire up analysis when custom components are imported
