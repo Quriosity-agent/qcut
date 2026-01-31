@@ -9,6 +9,7 @@
 
 import type { RemotionComponentDefinition, RemotionComponentCategory } from "./types";
 import { validateComponent, type ValidationResult, type ComponentMetadata } from "./component-validator";
+import { getSequenceAnalysisService, type AnalysisResult } from "./sequence-analysis-service";
 
 // ============================================================================
 // Types
@@ -26,6 +27,8 @@ export interface LoadResult {
   error?: string;
   /** Validation result */
   validation?: ValidationResult;
+  /** Sequence analysis result (for imported components) */
+  analysisResult?: AnalysisResult;
 }
 
 /**
@@ -300,6 +303,20 @@ export async function loadComponentFromCode(
     author: metadata.author,
   };
 
+  // Analyze source code for sequence structure
+  let analysisResult: AnalysisResult | undefined;
+  try {
+    const analysisService = getSequenceAnalysisService();
+    analysisResult = await analysisService.analyzeComponent(componentId, sourceCode);
+
+    // If analysis found sequences, attach to component definition
+    if (analysisResult.structure) {
+      componentDef.sequenceStructure = analysisResult.structure;
+    }
+  } catch {
+    // Analysis failure is non-blocking; component still loaded successfully
+  }
+
   // Store in IndexedDB if requested
   if (opts.storeInDB) {
     try {
@@ -322,6 +339,7 @@ export async function loadComponentFromCode(
     success: true,
     component: componentDef,
     validation,
+    analysisResult,
   };
 }
 
@@ -357,6 +375,18 @@ export async function loadComponentFromFile(
 }
 
 /**
+ * Result of loading stored components
+ */
+export interface LoadStoredComponentsResult {
+  /** Component definition */
+  definition: RemotionComponentDefinition;
+  /** Original source code */
+  sourceCode: string;
+  /** Sequence analysis result */
+  analysisResult?: AnalysisResult;
+}
+
+/**
  * Load all stored components from IndexedDB
  *
  * @returns Array of component definitions
@@ -383,6 +413,60 @@ export async function loadStoredComponents(): Promise<RemotionComponentDefinitio
       author: stored.metadata.author,
       thumbnail: stored.thumbnail,
     }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Load all stored components with analysis
+ *
+ * @returns Array of component definitions with source code and analysis
+ */
+export async function loadStoredComponentsWithAnalysis(): Promise<LoadStoredComponentsResult[]> {
+  try {
+    const storedComponents = await getAllStoredComponents();
+    const analysisService = getSequenceAnalysisService();
+    const results: LoadStoredComponentsResult[] = [];
+
+    for (const stored of storedComponents) {
+      // Analyze source code for sequences
+      let analysisResult: AnalysisResult | undefined;
+      try {
+        analysisResult = await analysisService.analyzeComponent(stored.id, stored.sourceCode);
+      } catch {
+        // Analysis failure is non-blocking
+      }
+
+      const definition: RemotionComponentDefinition = {
+        id: stored.id,
+        name: stored.metadata.name,
+        description: stored.metadata.description,
+        category: stored.metadata.category,
+        durationInFrames: stored.metadata.durationInFrames,
+        fps: stored.metadata.fps,
+        width: stored.metadata.width,
+        height: stored.metadata.height,
+        schema: { safeParse: () => ({ success: true }) } as never,
+        defaultProps: {},
+        component: () => null,
+        source: "imported" as const,
+        tags: stored.metadata.tags,
+        version: stored.metadata.version,
+        author: stored.metadata.author,
+        thumbnail: stored.thumbnail,
+        // Attach analyzed sequence structure
+        sequenceStructure: analysisResult?.structure ?? undefined,
+      };
+
+      results.push({
+        definition,
+        sourceCode: stored.sourceCode,
+        analysisResult,
+      });
+    }
+
+    return results;
   } catch {
     return [];
   }
@@ -462,6 +546,16 @@ export async function updateStoredComponent(
 
     await storeComponent(updated);
 
+    // Invalidate and re-analyze source code
+    let analysisResult: AnalysisResult | undefined;
+    try {
+      const analysisService = getSequenceAnalysisService();
+      analysisService.invalidateCache(componentId);
+      analysisResult = await analysisService.analyzeComponent(componentId, newSourceCode);
+    } catch {
+      // Analysis failure is non-blocking
+    }
+
     // Build updated component definition
     const componentDef: RemotionComponentDefinition = {
       id: componentId,
@@ -479,12 +573,15 @@ export async function updateStoredComponent(
       tags: metadata.tags,
       version: metadata.version,
       author: metadata.author,
+      // Attach analyzed sequence structure
+      sequenceStructure: analysisResult?.structure ?? undefined,
     };
 
     return {
       success: true,
       component: componentDef,
       validation,
+      analysisResult,
     };
   } catch (error) {
     return {
@@ -498,6 +595,7 @@ export default {
   loadComponentFromCode,
   loadComponentFromFile,
   loadStoredComponents,
+  loadStoredComponentsWithAnalysis,
   removeStoredComponent,
   getComponentSourceCode,
   updateStoredComponent,
