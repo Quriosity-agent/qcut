@@ -28,7 +28,7 @@ vi.mock("../component-validator", () => ({
     metadata: {
       name: "TestComponent",
       description: "A test component",
-      category: "templates",
+      category: "template",
       durationInFrames: 300,
       fps: 30,
       width: 1920,

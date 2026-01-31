@@ -50,14 +50,12 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
     id: "element-1",
     type: "remotion",
     name: "Test Element",
-    trackId: "track-1",
     componentId: "test-component",
     startTime: 0,
     duration: 5,
     trimStart: 0,
     trimEnd: 0,
     hidden: false,
-    locked: false,
     props: {},
     renderMode: "live",
   };
@@ -65,19 +63,16 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
   const mockTrack: TimelineTrack = {
     id: "track-1",
     name: "Track 1",
-    type: "video",
+    type: "remotion",
     elements: [],
     muted: false,
-    locked: false,
-    visible: true,
-    height: 80,
   };
 
   const mockComponent: RemotionComponentDefinition = {
     id: "test-component",
     name: "Test Component",
     description: "A test component",
-    category: "templates",
+    category: "template",
     durationInFrames: 150,
     fps: 30,
     width: 1920,
