@@ -340,7 +340,7 @@ function extractTimingDuration(
     return timing;
   }
 
-  if (!timing || typeof timing === "string" || timing === "dynamic") {
+  if (!timing || typeof timing === "string") {
     return "dynamic";
   }
 
@@ -396,7 +396,7 @@ function extractPresentationName(
     return presentation;
   }
 
-  if (!presentation || typeof presentation === "number" || presentation === "dynamic") {
+  if (!presentation || typeof presentation === "number") {
     return null;
   }
 
