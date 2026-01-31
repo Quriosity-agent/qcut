@@ -318,7 +318,7 @@ This version includes auto-update functionality:
 
 ---
 
-**Full Changelog:** https://github.com/your-org/qcut/compare/v${getPreviousVersion()}...v${version}
+**Full Changelog:** https://github.com/qcut-team/qcut/compare/v${getPreviousVersion()}...v${version}
 `;
 
     fs.writeFileSync(path.join(buildDir, "RELEASE_NOTES.md"), releaseNotes);

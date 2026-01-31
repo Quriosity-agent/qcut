@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    env:
+      # Override the local build output path for CI
+      BUILD_OUTPUT_DIR: ${{ github.workspace }}/release-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.18
+
+      - name: Cache Bun modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-1.2.18-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build web application
+        run: bun run build
+
+      - name: Build Electron application
+        run: |
+          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate checksums
+        shell: powershell
+        run: |
+          $buildDir = "${{ env.BUILD_OUTPUT_DIR }}"
+          $installer = Get-ChildItem -Path $buildDir -Filter "QCut*Setup*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($installer) {
+            $hash = Get-FileHash $installer.FullName -Algorithm SHA256
+            $content = @"
+          SHA256 Checksums for QCut ${{ github.ref_name }}
+          =================================
+
+          $($installer.Name)
+          SHA256: $($hash.Hash)
+
+          Verification:
+          1. Download the installer
+          2. Run: certutil -hashfile "$($installer.Name)" SHA256
+          3. Compare with the hash above
+          "@
+            Set-Content -Path "$buildDir/SHA256SUMS.txt" -Value $content
+            Write-Host "Checksum generated for $($installer.Name)"
+          } else {
+            Write-Host "No installer found in $buildDir"
+            Get-ChildItem -Path $buildDir -Recurse | Select-Object FullName
+          }
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: QCut v${{ steps.version.outputs.VERSION }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ env.BUILD_OUTPUT_DIR }}/QCut*Setup*.exe
+            ${{ env.BUILD_OUTPUT_DIR }}/SHA256SUMS.txt
+            ${{ env.BUILD_OUTPUT_DIR }}/latest.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
