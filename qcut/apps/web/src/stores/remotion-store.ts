@@ -25,6 +25,10 @@ import type {
 import { generateUUID } from "@/lib/utils";
 import { builtInComponentDefinitions } from "@/lib/remotion/built-in";
 import { debugLog, debugError } from "@/lib/debug-config";
+import {
+  getSequenceAnalysisService,
+  type AnalysisResult,
+} from "@/lib/remotion/sequence-analysis-service";
 
 // ============================================================================
 // Initial State
@@ -46,6 +50,7 @@ const initialState: RemotionStoreState = {
   isInitialized: false,
   isLoading: false,
   recentErrors: [],
+  analyzedSequences: new Map(),
 };
 
 // ============================================================================
@@ -513,6 +518,54 @@ export const useRemotionStore = create<RemotionStore>()(
     },
 
     // ========================================================================
+    // Sequence Analysis
+    // ========================================================================
+
+    setAnalysisResult: (componentId: string, result: AnalysisResult) => {
+      set((state) => {
+        const newMap = new Map(state.analyzedSequences);
+        newMap.set(componentId, result);
+        return { analyzedSequences: newMap };
+      });
+    },
+
+    getAnalysisResult: (componentId: string) => {
+      return get().analyzedSequences.get(componentId);
+    },
+
+    clearAnalysisResult: (componentId: string) => {
+      set((state) => {
+        const newMap = new Map(state.analyzedSequences);
+        newMap.delete(componentId);
+        return { analyzedSequences: newMap };
+      });
+    },
+
+    analyzeComponentSource: async (componentId: string, sourceCode: string) => {
+      const service = getSequenceAnalysisService();
+      const result = await service.analyzeComponent(componentId, sourceCode);
+      get().setAnalysisResult(componentId, result);
+
+      // If analysis found sequences, update the component definition
+      if (result.structure) {
+        set((state) => {
+          const components = new Map(state.registeredComponents);
+          const existing = components.get(componentId);
+          if (existing && !existing.sequenceStructure) {
+            components.set(componentId, {
+              ...existing,
+              sequenceStructure: result.structure!,
+            });
+            return { registeredComponents: components };
+          }
+          return state;
+        });
+      }
+
+      return result;
+    },
+
+    // ========================================================================
     // Cleanup
     // ========================================================================
 
@@ -616,6 +669,17 @@ export function useSyncState() {
  */
 export function useRemotionInitialized() {
   return useRemotionStore((state) => state.isInitialized);
+}
+
+/**
+ * Hook to get analysis result for a component
+ */
+export function useComponentAnalysis(
+  componentId: string | undefined
+): AnalysisResult | undefined {
+  return useRemotionStore((state) =>
+    componentId ? state.analyzedSequences.get(componentId) : undefined
+  );
 }
 
 // ============================================================================

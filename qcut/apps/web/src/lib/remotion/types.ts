@@ -446,6 +446,8 @@ export interface RemotionStoreState {
   isLoading: boolean;
   /** Recent errors for debugging */
   recentErrors: RemotionError[];
+  /** Cached sequence analysis results by componentId */
+  analyzedSequences: Map<string, import("./sequence-analysis-service").AnalysisResult>;
 }
 
 /**
@@ -502,6 +504,24 @@ export interface RemotionStoreActions {
   // Error Handling
   addError: (error: RemotionError) => void;
   clearErrors: () => void;
+
+  // Sequence Analysis
+  /** Store analysis result for a component */
+  setAnalysisResult: (
+    componentId: string,
+    result: import("./sequence-analysis-service").AnalysisResult
+  ) => void;
+  /** Get analysis result for a component */
+  getAnalysisResult: (
+    componentId: string
+  ) => import("./sequence-analysis-service").AnalysisResult | undefined;
+  /** Clear analysis for a component */
+  clearAnalysisResult: (componentId: string) => void;
+  /** Analyze a component's source code and store result */
+  analyzeComponentSource: (
+    componentId: string,
+    sourceCode: string
+  ) => Promise<import("./sequence-analysis-service").AnalysisResult>;
 
   // Cleanup
   reset: () => void;
