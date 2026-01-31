@@ -12,68 +12,74 @@ import type { MediaFile } from '../types/claude-api';
 
 const HANDLER_NAME = 'Media';
 
+/**
+ * Internal function to list media files - shared between handlers
+ */
+async function listMediaFiles(projectId: string): Promise<MediaFile[]> {
+  const mediaPath = getMediaPath(projectId);
+  const files: MediaFile[] = [];
+  
+  try {
+    // Check if directory exists
+    try {
+      await fs.access(mediaPath);
+    } catch {
+      claudeLog.info(HANDLER_NAME, 'Media directory does not exist, returning empty array');
+      return [];
+    }
+
+    const entries = await fs.readdir(mediaPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      
+      const filePath = path.join(mediaPath, entry.name);
+      const stat = await fs.stat(filePath);
+      const ext = path.extname(entry.name);
+      
+      const type = getMediaType(ext);
+      if (!type) continue;
+      
+      files.push({
+        id: generateId('media'),
+        name: entry.name,
+        type,
+        path: filePath,
+        size: stat.size,
+        createdAt: stat.birthtimeMs,
+        modifiedAt: stat.mtimeMs,
+      });
+    }
+    
+    claudeLog.info(HANDLER_NAME, `Found ${files.length} media files`);
+    return files;
+  } catch (error) {
+    claudeLog.error(HANDLER_NAME, 'Failed to list media:', error);
+    return [];
+  }
+}
+
 export function setupClaudeMediaIPC(): void {
   claudeLog.info(HANDLER_NAME, 'Setting up Media IPC handlers...');
 
   // ============================================================================
   // claude:media:list - List all media files in project
   // ============================================================================
-  ipcMain.handle('claude:media:list', async (event, projectId: string): Promise<MediaFile[]> => {
+  ipcMain.handle('claude:media:list', async (_event, projectId: string): Promise<MediaFile[]> => {
     claudeLog.info(HANDLER_NAME, `Listing media for project: ${projectId}`);
-    
-    const mediaPath = getMediaPath(projectId);
-    const files: MediaFile[] = [];
-    
-    try {
-      // Check if directory exists
-      try {
-        await fs.access(mediaPath);
-      } catch {
-        claudeLog.info(HANDLER_NAME, 'Media directory does not exist, returning empty array');
-        return [];
-      }
-
-      const entries = await fs.readdir(mediaPath, { withFileTypes: true });
-      
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        
-        const filePath = path.join(mediaPath, entry.name);
-        const stat = await fs.stat(filePath);
-        const ext = path.extname(entry.name);
-        
-        const type = getMediaType(ext);
-        if (!type) continue;
-        
-        files.push({
-          id: generateId('media'),
-          name: entry.name,
-          type,
-          path: filePath,
-          size: stat.size,
-          createdAt: stat.birthtimeMs,
-          modifiedAt: stat.mtimeMs,
-        });
-      }
-      
-      claudeLog.info(HANDLER_NAME, `Found ${files.length} media files`);
-      return files;
-    } catch (error) {
-      claudeLog.error(HANDLER_NAME, 'Failed to list media:', error);
-      return [];
-    }
+    return listMediaFiles(projectId);
   });
 
   // ============================================================================
   // claude:media:info - Get detailed info about a specific media file
   // ============================================================================
-  ipcMain.handle('claude:media:info', async (event, projectId: string, mediaId: string): Promise<MediaFile | null> => {
+  ipcMain.handle('claude:media:info', async (_event, projectId: string, mediaId: string): Promise<MediaFile | null> => {
     claudeLog.info(HANDLER_NAME, `Getting info for media in project ${projectId}`);
     
     // For now, list all and find by ID
     // In production, you might want a more efficient lookup
-    const allMedia = await ipcMain.handle('claude:media:list', event, projectId);
-    return (allMedia as MediaFile[]).find(m => m.id === mediaId) || null;
+    const allMedia = await listMediaFiles(projectId);
+    return allMedia.find(m => m.id === mediaId) || null;
   });
 
   // ============================================================================

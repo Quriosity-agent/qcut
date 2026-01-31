@@ -560,6 +560,47 @@ interface ElectronAPI {
     ) => Promise<{ created: string[]; existing: string[] }>;
   };
 
+  // Claude Code Integration API
+  claude?: {
+    media: {
+      list: (projectId: string) => Promise<any[]>;
+      info: (projectId: string, mediaId: string) => Promise<any>;
+      import: (projectId: string, source: string) => Promise<any>;
+      delete: (projectId: string, mediaId: string) => Promise<boolean>;
+      rename: (projectId: string, mediaId: string, newName: string) => Promise<boolean>;
+    };
+    timeline: {
+      export: (projectId: string, format: 'json' | 'md') => Promise<string>;
+      import: (projectId: string, data: string, format: 'json' | 'md') => Promise<void>;
+      addElement: (projectId: string, element: any) => Promise<string>;
+      updateElement: (projectId: string, elementId: string, changes: any) => Promise<void>;
+      removeElement: (projectId: string, elementId: string) => Promise<void>;
+      onRequest: (callback: () => void) => void;
+      sendResponse: (timeline: any) => void;
+      onApply: (callback: (timeline: any) => void) => void;
+      onAddElement: (callback: (element: any) => void) => void;
+      onUpdateElement: (callback: (data: { elementId: string; changes: any }) => void) => void;
+      onRemoveElement: (callback: (elementId: string) => void) => void;
+      removeListeners: () => void;
+    };
+    project: {
+      getSettings: (projectId: string) => Promise<any>;
+      updateSettings: (projectId: string, settings: any) => Promise<void>;
+      getStats: (projectId: string) => Promise<any>;
+      onStatsRequest: (callback: () => void) => void;
+      sendStatsResponse: (stats: any) => void;
+      onUpdated: (callback: (projectId: string, settings: any) => void) => void;
+      removeListeners: () => void;
+    };
+    export: {
+      getPresets: () => Promise<any[]>;
+      recommend: (projectId: string, target: string) => Promise<any>;
+    };
+    diagnostics: {
+      analyze: (error: any) => Promise<any>;
+    };
+  };
+
   // Utility functions
   isElectron: boolean;
 }

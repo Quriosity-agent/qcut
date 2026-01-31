@@ -218,10 +218,11 @@ class AIPipelineManager {
     command: string;
     timeoutMs: number;
   }): Promise<string> {
-    const { stdout } = await execAsync(command, {
+    const result = await execAsync(command, {
       timeout: timeoutMs,
       windowsHide: true,
     });
+    const stdout = result.stdout;
     return typeof stdout === "string" ? stdout : String(stdout);
   }
 
