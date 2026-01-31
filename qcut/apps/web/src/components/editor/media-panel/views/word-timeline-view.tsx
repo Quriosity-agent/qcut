@@ -14,7 +14,7 @@
  * @module components/editor/media-panel/views/word-timeline-view
  */
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +101,8 @@ function WordChip({
   onSelect,
   onToggleDelete,
 }: WordChipProps) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
   const handleClick = useCallback(() => {
     onSelect(word);
   }, [word, onSelect]);
@@ -113,11 +115,23 @@ function WordChip({
     [word.id, onToggleDelete]
   );
 
+  // Auto-scroll into view when selected during playback
+  useEffect(() => {
+    if (isSelected && buttonRef.current) {
+      buttonRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [isSelected]);
+
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
+            ref={buttonRef}
             type="button"
             onClick={handleClick}
             onContextMenu={handleRightClick}
@@ -396,7 +410,7 @@ export function WordTimelineView() {
     getVisibleWords,
   } = useWordTimelineStore();
 
-  const { seek } = usePlaybackStore();
+  const { seek, currentTime, isPlaying } = usePlaybackStore();
 
   // Transcription hook
   const {
@@ -409,6 +423,20 @@ export function WordTimelineView() {
 
   // Get only words (not spacing)
   const words = getVisibleWords();
+
+  // Auto-select word based on current playback time (karaoke-style sync)
+  useEffect(() => {
+    if (!isPlaying || words.length === 0) return;
+
+    // Find the word that contains the current time
+    const currentWord = words.find(
+      (word) => currentTime >= word.start && currentTime < word.end
+    );
+
+    if (currentWord && currentWord.id !== selectedWordId) {
+      selectWord(currentWord.id);
+    }
+  }, [currentTime, isPlaying, words, selectedWordId, selectWord]);
 
   const handleJsonSelect = useCallback(
     (file: File) => {

@@ -78,6 +78,7 @@ import {
   calculateTimelineBuffer,
 } from "@/constants/timeline-constants";
 import { Slider } from "@/components/ui/slider";
+import { useWordTimelineStore } from "@/stores/word-timeline-store";
 
 export function Timeline() {
   // Timeline shows all tracks (video, audio, effects) and their elements.
@@ -112,6 +113,13 @@ export function Timeline() {
   const setDuration = usePlaybackStore((s) => s.setDuration);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
   const toggle = usePlaybackStore((s) => s.toggle);
+
+  // Get deleted words from transcription for red markers on timeline
+  const wordTimelineData = useWordTimelineStore((s) => s.data);
+  const deletedWords = wordTimelineData?.words.filter(
+    (w) => w.type === "word" && w.deleted
+  ) || [];
+
   const [isDragOver, setIsDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -842,6 +850,31 @@ export function Timeline() {
                     </div>
                   ));
                 })()}
+
+                {/* Deleted word markers (red regions) */}
+                {deletedWords.length > 0 &&
+                  deletedWords.map((word) => {
+                    const left = word.start * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
+                    const width = Math.max(
+                      2,
+                      (word.end - word.start) * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
+                    );
+                    return (
+                      <div
+                        key={`deleted-${word.id}`}
+                        className="absolute bottom-0 h-2 bg-red-500/60 cursor-pointer hover:bg-red-500/80 transition-colors"
+                        style={{
+                          left: `${left}px`,
+                          width: `${width}px`,
+                        }}
+                        title={`Deleted: "${word.text}" (${word.start.toFixed(2)}s - ${word.end.toFixed(2)}s)`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          usePlaybackStore.getState().seek(word.start);
+                        }}
+                      />
+                    );
+                  })}
               </div>
             </ScrollArea>
           </div>
