@@ -106,8 +106,18 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
       filePath: string,
       options?: TranscriptionOptions
     ): Promise<ElevenLabsTranscribeResult | null> => {
+      console.log("[useElevenLabsTranscription] ========== START ==========");
+      console.log("[useElevenLabsTranscription] filePath:", filePath);
+      console.log("[useElevenLabsTranscription] options:", options);
+
       // Check if Electron API is available
+      console.log("[useElevenLabsTranscription] Checking electronAPI...");
+      console.log("[useElevenLabsTranscription] window.electronAPI:", !!window.electronAPI);
+      console.log("[useElevenLabsTranscription] window.electronAPI?.transcribe:", !!window.electronAPI?.transcribe);
+      console.log("[useElevenLabsTranscription] window.electronAPI?.transcribe?.elevenlabs:", !!window.electronAPI?.transcribe?.elevenlabs);
+
       if (!window.electronAPI?.transcribe?.elevenlabs) {
+        console.error("[useElevenLabsTranscription] ERROR: elevenlabs API not available");
         setError("Transcription is only available in the desktop app");
         return null;
       }
@@ -124,6 +134,10 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
         const isVideo = VIDEO_EXTENSIONS.includes(ext);
         const isAudio = AUDIO_EXTENSIONS.includes(ext);
 
+        console.log("[useElevenLabsTranscription] File extension:", ext);
+        console.log("[useElevenLabsTranscription] isVideo:", isVideo);
+        console.log("[useElevenLabsTranscription] isAudio:", isAudio);
+
         if (!isVideo && !isAudio) {
           throw new Error(
             `Unsupported file type: .${ext}. Supported: ${[...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS].join(", ")}`
@@ -134,17 +148,24 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
 
         // Step 1: Extract audio from video if needed
         if (isVideo) {
+          console.log("[useElevenLabsTranscription] Step 1: Extracting audio from video...");
           setProgress("Extracting audio from video...");
 
           if (!window.electronAPI?.ffmpeg?.extractAudio) {
+            console.error("[useElevenLabsTranscription] ERROR: ffmpeg.extractAudio not available");
             throw new Error("FFmpeg audio extraction not available");
           }
 
+          console.log("[useElevenLabsTranscription] Calling ffmpeg.extractAudio...");
+          // Use MP3 format for smaller file size (WAV is uncompressed and too large for upload)
           const extractResult = await window.electronAPI.ffmpeg.extractAudio({
             videoPath: filePath,
-            format: "wav",
+            format: "mp3",
           });
 
+          console.log("[useElevenLabsTranscription] Audio extraction result:", extractResult);
+          console.log("[useElevenLabsTranscription] Extracted file size:", extractResult.fileSize, "bytes");
+          console.log("[useElevenLabsTranscription] Extracted file size:", (extractResult.fileSize / 1024 / 1024).toFixed(2), "MB");
           audioPath = extractResult.audioPath;
           extractedAudioPath = audioPath; // Track for cleanup
 
@@ -154,6 +175,8 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
         }
 
         // Step 2: Call ElevenLabs transcription
+        console.log("[useElevenLabsTranscription] Step 2: Calling ElevenLabs API...");
+        console.log("[useElevenLabsTranscription] audioPath:", audioPath);
         setProgress("Transcribing audio with ElevenLabs...");
 
         const result = await window.electronAPI.transcribe.elevenlabs({
@@ -163,6 +186,10 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
           tagAudioEvents: options?.tagAudioEvents ?? true,
           keyterms: options?.keyterms,
         });
+
+        console.log("[useElevenLabsTranscription] ElevenLabs result:", result);
+        console.log("[useElevenLabsTranscription] Result text length:", result?.text?.length);
+        console.log("[useElevenLabsTranscription] Result words count:", result?.words?.length);
 
         // Step 3: Generate filename with timestamp
         const sourceFileName =
@@ -174,9 +201,13 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
           .slice(0, 15);
         const transcriptFileName = `${sourceFileName}_${timestamp}_transcript.json`;
 
+        console.log("[useElevenLabsTranscription] Step 3: Generated filename:", transcriptFileName);
+
         // Step 4: Load into word timeline store
+        console.log("[useElevenLabsTranscription] Step 4: Loading into word timeline store...");
         setProgress("Loading transcription...");
         loadFromTranscription(result, transcriptFileName);
+        console.log("[useElevenLabsTranscription] Loaded into store successfully");
 
         // Note: Project folder save and temp file cleanup are optional features
         // that require additional Electron IPC handlers to be implemented.

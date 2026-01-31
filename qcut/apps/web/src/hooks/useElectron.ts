@@ -71,14 +71,14 @@ export const useElectron = () => {
   const importMediaFiles = useCallback(async () => {
     if (isElectron()) {
       // In Electron mode, use native file dialog
-      const result = await openMultipleFilesDialog();
-      if (result.canceled || !result.filePaths.length) {
+      const filePaths = await openMultipleFilesDialog();
+      if (!filePaths || filePaths.length === 0) {
         return [];
       }
 
       // Convert file paths to File objects for consistency
       const files: File[] = [];
-      for (const filePath of result.filePaths) {
+      for (const filePath of filePaths) {
         try {
           const buffer = await readFile(filePath);
           const fileName = filePath.split(/[\\/]/).pop() || "unknown";

@@ -92,7 +92,8 @@ try {
 // Constants
 // ============================================================================
 
-const FAL_STORAGE_URL = "https://fal.ai/api/storage/upload";
+const FAL_STORAGE_INITIATE_URL =
+  "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3";
 const FAL_ELEVENLABS_URL =
   "https://fal.run/fal-ai/elevenlabs/speech-to-text/scribe-v2";
 const LOG_PREFIX = "[ElevenLabs]";
@@ -155,7 +156,9 @@ async function getFalApiKey(): Promise<string> {
 }
 
 /**
- * Uploads a file to FAL storage.
+ * Uploads a file to FAL storage using the two-step process.
+ * Step 1: Initiate upload to get signed URL
+ * Step 2: Upload file to signed URL
  *
  * @param filePath - Path to the file to upload
  * @param apiKey - FAL API key
@@ -166,36 +169,76 @@ async function uploadToFalStorage(
   apiKey: string
 ): Promise<string> {
   log.info(`${LOG_PREFIX} Uploading file to FAL storage...`);
+  console.log(`${LOG_PREFIX} Uploading file to FAL storage...`);
 
   const fileBuffer = await fs.readFile(filePath);
   const fileName = path.basename(filePath);
   const fileSize = fileBuffer.length;
 
   log.info(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+  console.log(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
-  const response = await fetch(FAL_STORAGE_URL, {
+  // Determine content type based on file extension
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const contentTypeMap: Record<string, string> = {
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    ogg: "audio/ogg",
+    flac: "audio/flac",
+  };
+  const contentType = contentTypeMap[ext ?? ""] ?? "audio/mpeg";
+
+  // Step 1: Initiate upload to get signed URL
+  console.log(`${LOG_PREFIX} Step 1: Initiating upload...`);
+  const initResponse = await fetch(FAL_STORAGE_INITIATE_URL, {
     method: "POST",
     headers: {
       Authorization: `Key ${apiKey}`,
-      "Content-Type": "application/octet-stream",
-      "X-Filename": fileName,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      file_name: fileName,
+      content_type: contentType,
+    }),
+  });
+
+  if (!initResponse.ok) {
+    const errorText = await initResponse.text();
+    console.error(`${LOG_PREFIX} Initiate failed: ${initResponse.status} - ${errorText}`);
+    throw new Error(`FAL storage initiate failed: ${initResponse.status} ${errorText}`);
+  }
+
+  const initData = (await initResponse.json()) as {
+    upload_url?: string;
+    file_url?: string;
+  };
+  const { upload_url, file_url } = initData;
+
+  if (!upload_url || !file_url) {
+    console.error(`${LOG_PREFIX} Missing URLs in response:`, initData);
+    throw new Error("FAL storage did not return upload URLs");
+  }
+
+  console.log(`${LOG_PREFIX} Step 2: Uploading to signed URL...`);
+
+  // Step 2: Upload file to the signed URL
+  const uploadResponse = await fetch(upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
     body: fileBuffer,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`FAL storage upload failed: ${response.status} ${errorText}`);
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.error(`${LOG_PREFIX} Upload failed: ${uploadResponse.status} - ${errorText}`);
+    throw new Error(`FAL storage upload failed: ${uploadResponse.status} ${errorText}`);
   }
 
-  const result = (await response.json()) as { url?: string };
-
-  if (!result.url) {
-    throw new Error("FAL storage upload did not return a URL");
-  }
-
-  log.info(`${LOG_PREFIX} File uploaded successfully`);
-  return result.url;
+  log.info(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
+  console.log(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
+  return file_url;
 }
 
 /**
@@ -264,6 +307,8 @@ async function callElevenLabsApi(
  * Call this function during app initialization.
  */
 export function registerElevenLabsTranscribeHandler(): void {
+  console.log(`${LOG_PREFIX} registerElevenLabsTranscribeHandler() called`);
+
   /**
    * Main transcription handler.
    * Uploads audio to FAL storage, then calls ElevenLabs Scribe v2.
@@ -271,6 +316,9 @@ export function registerElevenLabsTranscribeHandler(): void {
   ipcMain.handle(
     "transcribe:elevenlabs",
     async (_, options: ElevenLabsTranscribeOptions): Promise<ElevenLabsTranscribeResult> => {
+      console.log(`${LOG_PREFIX} ========================================`);
+      console.log(`${LOG_PREFIX} IPC handler "transcribe:elevenlabs" invoked`);
+      console.log(`${LOG_PREFIX} Options received:`, JSON.stringify(options, null, 2));
       log.info(`${LOG_PREFIX} ========================================`);
       log.info(`${LOG_PREFIX} Transcription request received`);
       log.info(`${LOG_PREFIX} Audio path: ${options.audioPath}`);
@@ -278,30 +326,44 @@ export function registerElevenLabsTranscribeHandler(): void {
       try {
         // Validate input
         if (!options.audioPath) {
+          console.error(`${LOG_PREFIX} ERROR: Audio path is required`);
           throw new Error("Audio path is required");
         }
 
         // Check file exists
+        console.log(`${LOG_PREFIX} Checking if file exists: ${options.audioPath}`);
         try {
           await fs.access(options.audioPath);
+          console.log(`${LOG_PREFIX} File exists ✓`);
         } catch {
+          console.error(`${LOG_PREFIX} ERROR: File not found: ${options.audioPath}`);
           throw new Error(`Audio file not found: ${options.audioPath}`);
         }
 
         // Get API key
+        console.log(`${LOG_PREFIX} Getting FAL API key...`);
         const apiKey = await getFalApiKey();
+        console.log(`${LOG_PREFIX} Got API key (length: ${apiKey?.length || 0})`);
 
         // Upload to FAL storage
+        console.log(`${LOG_PREFIX} Uploading to FAL storage...`);
         const audioUrl = await uploadToFalStorage(options.audioPath, apiKey);
+        console.log(`${LOG_PREFIX} Uploaded! URL: ${audioUrl}`);
 
         // Call ElevenLabs API
+        console.log(`${LOG_PREFIX} Calling ElevenLabs API...`);
         const result = await callElevenLabsApi(audioUrl, options, apiKey);
+        console.log(`${LOG_PREFIX} API call complete!`);
+        console.log(`${LOG_PREFIX} Result text length: ${result.text?.length}`);
+        console.log(`${LOG_PREFIX} Result words count: ${result.words?.length}`);
 
         log.info(`${LOG_PREFIX} Transcription completed successfully`);
         log.info(`${LOG_PREFIX} ========================================`);
+        console.log(`${LOG_PREFIX} ========================================`);
 
         return result;
       } catch (error) {
+        console.error(`${LOG_PREFIX} Transcription FAILED:`, error);
         log.error(`${LOG_PREFIX} Transcription failed:`, error);
         throw error;
       }
@@ -315,19 +377,24 @@ export function registerElevenLabsTranscribeHandler(): void {
   ipcMain.handle(
     "transcribe:upload-to-fal",
     async (_, filePath: string): Promise<{ url: string }> => {
+      console.log(`${LOG_PREFIX} IPC handler "transcribe:upload-to-fal" invoked`);
+      console.log(`${LOG_PREFIX} filePath: ${filePath}`);
       log.info(`${LOG_PREFIX} Upload request received: ${filePath}`);
 
       try {
         const apiKey = await getFalApiKey();
         const url = await uploadToFalStorage(filePath, apiKey);
+        console.log(`${LOG_PREFIX} Upload complete! URL: ${url}`);
         return { url };
       } catch (error) {
+        console.error(`${LOG_PREFIX} Upload FAILED:`, error);
         log.error(`${LOG_PREFIX} Upload failed:`, error);
         throw error;
       }
     }
   );
 
+  console.log(`${LOG_PREFIX} IPC handlers registered successfully`);
   log.info(`${LOG_PREFIX} IPC handlers registered`);
 }
 

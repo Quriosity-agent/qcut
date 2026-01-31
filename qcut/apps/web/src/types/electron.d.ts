@@ -40,15 +40,9 @@ export interface ElectronAPI {
   isElectron: boolean;
 
   // File operations
-  openFileDialog: () => Promise<{
-    canceled: boolean;
-    filePaths: string[];
-  }>;
+  openFileDialog: () => Promise<string | null>;
 
-  openMultipleFilesDialog: () => Promise<{
-    canceled: boolean;
-    filePaths: string[];
-  }>;
+  openMultipleFilesDialog: () => Promise<string[]>;
 
   saveFileDialog: (
     defaultFilename?: string,

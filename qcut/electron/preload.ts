@@ -530,10 +530,20 @@ const electronAPI: ElectronAPI = {
   platform: process.platform,
 
   // File operations
-  openFileDialog: (): Promise<string | null> =>
-    ipcRenderer.invoke("open-file-dialog"),
-  openMultipleFilesDialog: (): Promise<string[]> =>
-    ipcRenderer.invoke("open-multiple-files-dialog"),
+  openFileDialog: async (): Promise<string | null> => {
+    const result = await ipcRenderer.invoke("open-file-dialog");
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  },
+  openMultipleFilesDialog: async (): Promise<string[]> => {
+    const result = await ipcRenderer.invoke("open-multiple-files-dialog");
+    if (result.canceled || !result.filePaths) {
+      return [];
+    }
+    return result.filePaths;
+  },
   saveFileDialog: (
     defaultFilename?: string,
     filters?: FileDialogFilter[]

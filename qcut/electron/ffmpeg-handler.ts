@@ -799,16 +799,26 @@ export function setupFFmpegIPC(): void {
       const outputPath = path.join(tempDir, outputFileName);
 
       return new Promise<ExtractAudioResult>((resolve, reject) => {
+        // Choose codec and bitrate based on format
+        // Use low bitrate for transcription - quality doesn't need to be high
+        let codecArgs: string[];
+        if (format === "mp3") {
+          // MP3: use libmp3lame with low bitrate for speech transcription
+          // 32kbps mono at 16kHz is sufficient for speech recognition
+          codecArgs = ["-acodec", "libmp3lame", "-ab", "32k", "-ar", "16000", "-ac", "1"];
+        } else if (format === "aac" || format === "m4a") {
+          // AAC: low bitrate for speech
+          codecArgs = ["-acodec", "aac", "-ab", "32k", "-ar", "16000", "-ac", "1"];
+        } else {
+          // WAV/default: uncompressed PCM
+          codecArgs = ["-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1"];
+        }
+
         const args = [
           "-i",
           videoPath,
           "-vn",
-          "-acodec",
-          "pcm_s16le",
-          "-ar",
-          "16000",
-          "-ac",
-          "1",
+          ...codecArgs,
           "-y",
           outputPath,
         ];
