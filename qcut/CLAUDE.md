@@ -19,13 +19,11 @@ bun lint:clean
 bun format
 ```
 
-Core Principles:
+## Core Principles
 
-Systems Thinking: Analyze impacts across entire system
-Future-Proofing: Design decisions that accommodate growth
-Dependency Management: Minimize coupling, maximize cohesion
-
-frontend: UI/UX and user-facing development
+- **Systems Thinking**: Analyze impacts across entire system
+- **Future-Proofing**: Design decisions that accommodate growth
+- **Dependency Management**: Minimize coupling, maximize cohesion
 
 ### Code Documentation
 - Write self-documenting code with clear naming
@@ -41,7 +39,7 @@ QCut is a desktop video editor built with a **hybrid architecture** combining Vi
 
 ### Tech Stack
 - **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 18.3.1, TypeScript
-- **Desktop**: Electron 37.4.0 with TypeScript IPC handlers for file operations (10/11 files in TS)
+- **Desktop**: Electron 37.4.0 with TypeScript IPC handlers (100% TypeScript)
 - **State Management**: Zustand stores for separation of concerns
 - **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)
 - **Storage**: Multi-tier system (Electron IPC → IndexedDB → localStorage fallback)
@@ -85,11 +83,8 @@ qcut/
 └── docs/task/                   # Migration documentation
 ```
 
-
-
 ### Core Editor Architecture
 - **Timeline System**: Custom implementation in `src/components/editor/timeline/`
-- **State Management**: Multiple Zustand stores for separation of concerns
 - **Storage**: Abstraction layer supporting IndexedDB and OPFS
 - **Media Processing**: Client-side FFmpeg with WebAssembly
 
@@ -256,6 +251,8 @@ Modular architecture for AI video generation via FAL.ai (40+ models):
 - `electron/transcribe-handler.ts` - AI transcription services
 - `dist/electron/` - Compiled JavaScript output
 
+**Compilation:** Source files in `electron/*.ts` → Compiled to `dist/electron/*.js` via `bun x tsc`
+
 # QCut – Top 10 Accessibility Rules to Always Enforce
 
 These ten rules catch the most frequent and most critical a11y bugs in a React + Electron (Chromium) environment. Add them to your lint setup and PR checklist first.
@@ -285,7 +282,6 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 
 > **Implementation tip:** add these rules to your Ultracite (Biome) config at **error** level first; they deliver the highest value-to-refactor ratio for an existing QCut codebase.
 
-
 ## When Working on Features
 1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
 2. Test EXE builds with `npx electron-packager` after major changes
@@ -296,8 +292,6 @@ These ten rules catch the most frequent and most critical a11y bugs in a React +
 
 ### ✅ **DO** - Recommended Patterns
 - **Routing**: Use TanStack Router (`src/routes/`) for new features
-- **Backend Logic**: Implement via Electron IPC handlers in `electron/main.ts` (TypeScript)
-- **State Management**: Use Zustand stores in `src/stores/`
 - **Environment Variables**: Use `VITE_` prefix for client-side variables
 - **Image Components**: Consider dual Next.js/Vite compatibility when needed
 
@@ -321,44 +315,7 @@ When encountering Next.js patterns that don't work in Vite:
 - **Null Checks**: Always validate return values and handle undefined cases
 - **Mock Coverage**: Ensure test mocks match the actual API structure
 
-## TypeScript Development Guidelines
-
-### ✅ **Electron Main Process (100% TypeScript)**
-All Electron backend code is now fully TypeScript with comprehensive type safety:
-
-```typescript
-// Preferred: Type-safe IPC handler implementation
-ipcMain.handle("api-keys:get", async (): Promise<ApiKeys> => {
-  // Fully typed implementation
-});
-
-// All handlers have proper interfaces:
-interface ExportOptions {
-  sessionId: string;
-  width: number;
-  height: number;
-  fps: number;
-  quality: 'high' | 'medium' | 'low';
-}
-```
-
-### 🔧 **Working with TypeScript in Electron**
-
-**Compilation Process:**
-1. Source files in `electron/*.ts` 
-2. Compiled to `dist/electron/*.js` via `bun x tsc`
-3. Electron runs from compiled JavaScript files
-
-**Key Commands:**
-```bash
-# Compile TypeScript manually
-cd electron && bun x tsc
-
-# Full build (includes TypeScript compilation)
-bun run build
-```
-
-### 🎯 **TypeScript Best Practices for QCut**
+## TypeScript Best Practices
 
 1. **Handler Interfaces**: Define comprehensive interfaces for all IPC operations
 2. **Error Handling**: Use TypeScript error types for better debugging
@@ -366,9 +323,7 @@ bun run build
 4. **Import Paths**: Use relative imports for compiled modules (e.g., `./ffmpeg-handler.js`)
 5. **Type Exports**: Export types for use in renderer process
 
-### ⚠️ **Common TypeScript Pitfalls**
-
-- **Import Paths**: Compiled JS imports must use `.js` extension, not `.ts`
-- **Relative Paths**: Account for `dist/electron/` as the runtime directory
-- **Module Loading**: Ensure all dependencies are properly typed
-- **Protocol Handlers**: File paths must resolve correctly from compiled location
+**Common Pitfalls:**
+- Compiled JS imports must use `.js` extension, not `.ts`
+- Account for `dist/electron/` as the runtime directory
+- File paths must resolve correctly from compiled location
