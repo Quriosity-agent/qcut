@@ -862,15 +862,24 @@ export function Timeline() {
                     return (
                       <div
                         key={`deleted-${word.id}`}
-                        className="absolute bottom-0 h-2 bg-red-500/60 cursor-pointer hover:bg-red-500/80 transition-colors"
+                        role="button"
+                        tabIndex={0}
+                        className="absolute bottom-0 h-2 bg-red-500/60 cursor-pointer hover:bg-red-500/80 focus:ring-2 focus:ring-red-400 focus:outline-none transition-colors"
                         style={{
                           left: `${left}px`,
                           width: `${width}px`,
                         }}
-                        title={`Deleted: "${word.text}" (${word.start.toFixed(2)}s - ${word.end.toFixed(2)}s)`}
+                        aria-label={`Deleted word: ${word.text}, ${word.start.toFixed(2)} to ${word.end.toFixed(2)} seconds`}
                         onClick={(e) => {
                           e.stopPropagation();
                           usePlaybackStore.getState().seek(word.start);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            usePlaybackStore.getState().seek(word.start);
+                          }
                         }}
                       />
                     );

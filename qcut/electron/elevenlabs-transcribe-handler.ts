@@ -169,14 +169,14 @@ async function uploadToFalStorage(
   apiKey: string
 ): Promise<string> {
   log.info(`${LOG_PREFIX} Uploading file to FAL storage...`);
-  console.log(`${LOG_PREFIX} Uploading file to FAL storage...`);
+  log.info(`${LOG_PREFIX} Uploading file to FAL storage...`);
 
   const fileBuffer = await fs.readFile(filePath);
   const fileName = path.basename(filePath);
   const fileSize = fileBuffer.length;
 
   log.info(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
-  console.log(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+  log.info(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
   // Determine content type based on file extension
   const ext = fileName.split(".").pop()?.toLowerCase();
@@ -191,7 +191,7 @@ async function uploadToFalStorage(
   const contentType = contentTypeMap[ext ?? ""] ?? "audio/mpeg";
 
   // Step 1: Initiate upload to get signed URL
-  console.log(`${LOG_PREFIX} Step 1: Initiating upload...`);
+  log.info(`${LOG_PREFIX} Step 1: Initiating upload...`);
   const initResponse = await fetch(FAL_STORAGE_INITIATE_URL, {
     method: "POST",
     headers: {
@@ -206,7 +206,7 @@ async function uploadToFalStorage(
 
   if (!initResponse.ok) {
     const errorText = await initResponse.text();
-    console.error(`${LOG_PREFIX} Initiate failed: ${initResponse.status} - ${errorText}`);
+    log.error(`${LOG_PREFIX} Initiate failed: ${initResponse.status} - ${errorText}`);
     throw new Error(`FAL storage initiate failed: ${initResponse.status} ${errorText}`);
   }
 
@@ -217,11 +217,11 @@ async function uploadToFalStorage(
   const { upload_url, file_url } = initData;
 
   if (!upload_url || !file_url) {
-    console.error(`${LOG_PREFIX} Missing URLs in response:`, initData);
+    log.error(`${LOG_PREFIX} Missing URLs in response:`, initData);
     throw new Error("FAL storage did not return upload URLs");
   }
 
-  console.log(`${LOG_PREFIX} Step 2: Uploading to signed URL...`);
+  log.info(`${LOG_PREFIX} Step 2: Uploading to signed URL...`);
 
   // Step 2: Upload file to the signed URL
   const uploadResponse = await fetch(upload_url, {
@@ -232,12 +232,12 @@ async function uploadToFalStorage(
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text();
-    console.error(`${LOG_PREFIX} Upload failed: ${uploadResponse.status} - ${errorText}`);
+    log.error(`${LOG_PREFIX} Upload failed: ${uploadResponse.status} - ${errorText}`);
     throw new Error(`FAL storage upload failed: ${uploadResponse.status} ${errorText}`);
   }
 
   log.info(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
-  console.log(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
+  log.info(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
   return file_url;
 }
 
@@ -307,7 +307,7 @@ async function callElevenLabsApi(
  * Call this function during app initialization.
  */
 export function registerElevenLabsTranscribeHandler(): void {
-  console.log(`${LOG_PREFIX} registerElevenLabsTranscribeHandler() called`);
+  log.info(`${LOG_PREFIX} registerElevenLabsTranscribeHandler() called`);
 
   /**
    * Main transcription handler.
@@ -316,9 +316,9 @@ export function registerElevenLabsTranscribeHandler(): void {
   ipcMain.handle(
     "transcribe:elevenlabs",
     async (_, options: ElevenLabsTranscribeOptions): Promise<ElevenLabsTranscribeResult> => {
-      console.log(`${LOG_PREFIX} ========================================`);
-      console.log(`${LOG_PREFIX} IPC handler "transcribe:elevenlabs" invoked`);
-      console.log(`${LOG_PREFIX} Options received:`, JSON.stringify(options, null, 2));
+      log.info(`${LOG_PREFIX} ========================================`);
+      log.info(`${LOG_PREFIX} IPC handler "transcribe:elevenlabs" invoked`);
+      log.info(`${LOG_PREFIX} Options received:`, JSON.stringify(options, null, 2));
       log.info(`${LOG_PREFIX} ========================================`);
       log.info(`${LOG_PREFIX} Transcription request received`);
       log.info(`${LOG_PREFIX} Audio path: ${options.audioPath}`);
@@ -326,44 +326,44 @@ export function registerElevenLabsTranscribeHandler(): void {
       try {
         // Validate input
         if (!options.audioPath) {
-          console.error(`${LOG_PREFIX} ERROR: Audio path is required`);
+          log.error(`${LOG_PREFIX} ERROR: Audio path is required`);
           throw new Error("Audio path is required");
         }
 
         // Check file exists
-        console.log(`${LOG_PREFIX} Checking if file exists: ${options.audioPath}`);
+        log.info(`${LOG_PREFIX} Checking if file exists: ${options.audioPath}`);
         try {
           await fs.access(options.audioPath);
-          console.log(`${LOG_PREFIX} File exists ✓`);
+          log.info(`${LOG_PREFIX} File exists ✓`);
         } catch {
-          console.error(`${LOG_PREFIX} ERROR: File not found: ${options.audioPath}`);
+          log.error(`${LOG_PREFIX} ERROR: File not found: ${options.audioPath}`);
           throw new Error(`Audio file not found: ${options.audioPath}`);
         }
 
         // Get API key
-        console.log(`${LOG_PREFIX} Getting FAL API key...`);
+        log.info(`${LOG_PREFIX} Getting FAL API key...`);
         const apiKey = await getFalApiKey();
-        console.log(`${LOG_PREFIX} Got API key (length: ${apiKey?.length || 0})`);
+        log.info(`${LOG_PREFIX} Got API key (length: ${apiKey?.length || 0})`);
 
         // Upload to FAL storage
-        console.log(`${LOG_PREFIX} Uploading to FAL storage...`);
+        log.info(`${LOG_PREFIX} Uploading to FAL storage...`);
         const audioUrl = await uploadToFalStorage(options.audioPath, apiKey);
-        console.log(`${LOG_PREFIX} Uploaded! URL: ${audioUrl}`);
+        log.info(`${LOG_PREFIX} Uploaded! URL: ${audioUrl}`);
 
         // Call ElevenLabs API
-        console.log(`${LOG_PREFIX} Calling ElevenLabs API...`);
+        log.info(`${LOG_PREFIX} Calling ElevenLabs API...`);
         const result = await callElevenLabsApi(audioUrl, options, apiKey);
-        console.log(`${LOG_PREFIX} API call complete!`);
-        console.log(`${LOG_PREFIX} Result text length: ${result.text?.length}`);
-        console.log(`${LOG_PREFIX} Result words count: ${result.words?.length}`);
+        log.info(`${LOG_PREFIX} API call complete!`);
+        log.info(`${LOG_PREFIX} Result text length: ${result.text?.length}`);
+        log.info(`${LOG_PREFIX} Result words count: ${result.words?.length}`);
 
         log.info(`${LOG_PREFIX} Transcription completed successfully`);
         log.info(`${LOG_PREFIX} ========================================`);
-        console.log(`${LOG_PREFIX} ========================================`);
+        log.info(`${LOG_PREFIX} ========================================`);
 
         return result;
       } catch (error) {
-        console.error(`${LOG_PREFIX} Transcription FAILED:`, error);
+        log.error(`${LOG_PREFIX} Transcription FAILED:`, error);
         log.error(`${LOG_PREFIX} Transcription failed:`, error);
         throw error;
       }
@@ -377,24 +377,24 @@ export function registerElevenLabsTranscribeHandler(): void {
   ipcMain.handle(
     "transcribe:upload-to-fal",
     async (_, filePath: string): Promise<{ url: string }> => {
-      console.log(`${LOG_PREFIX} IPC handler "transcribe:upload-to-fal" invoked`);
-      console.log(`${LOG_PREFIX} filePath: ${filePath}`);
+      log.info(`${LOG_PREFIX} IPC handler "transcribe:upload-to-fal" invoked`);
+      log.info(`${LOG_PREFIX} filePath: ${filePath}`);
       log.info(`${LOG_PREFIX} Upload request received: ${filePath}`);
 
       try {
         const apiKey = await getFalApiKey();
         const url = await uploadToFalStorage(filePath, apiKey);
-        console.log(`${LOG_PREFIX} Upload complete! URL: ${url}`);
+        log.info(`${LOG_PREFIX} Upload complete! URL: ${url}`);
         return { url };
       } catch (error) {
-        console.error(`${LOG_PREFIX} Upload FAILED:`, error);
+        log.error(`${LOG_PREFIX} Upload FAILED:`, error);
         log.error(`${LOG_PREFIX} Upload failed:`, error);
         throw error;
       }
     }
   );
 
-  console.log(`${LOG_PREFIX} IPC handlers registered successfully`);
+  log.info(`${LOG_PREFIX} IPC handlers registered successfully`);
   log.info(`${LOG_PREFIX} IPC handlers registered`);
 }
 

@@ -234,13 +234,8 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
       start: word.start,
       end: word.end,
       // Map ElevenLabs types to our internal types
-      // "audio_event" and "punctuation" are treated as "spacing" for display purposes
-      type:
-        word.type === "word"
-          ? "word"
-          : word.type === "spacing"
-            ? "spacing"
-            : "spacing", // audio_event, punctuation -> spacing
+      // Only "word" is kept as-is; everything else (spacing, audio_event, punctuation) becomes "spacing"
+      type: word.type === "word" ? "word" : "spacing",
       speaker_id: word.speaker_id ?? undefined,
       deleted: false,
     }));

@@ -13,7 +13,7 @@ Add end-to-end transcription capability to the Transcribe panel:
 
 Following the **organize-project skill** standard structure:
 
-```
+```text
 Documents/QCut/Projects/{project-name}/
 ├── media/
 │   ├── imported/              # User-imported source media
@@ -483,7 +483,7 @@ const onDrop = useCallback(async (acceptedFiles: File[]) => {
 
 ## Data Flow Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    User Interface                            │
 │  ┌─────────────────────────────────────────────────────┐    │
@@ -579,7 +579,7 @@ The implementation uses these project folder paths (per organize-project skill):
    - "Complete!"
 4. Click a word → playhead seeks to that timestamp
 5. Verify file structure (per organize-project skill):
-   ```
+   ```text
    Documents/QCut/Projects/{project-name}/
    ├── media/generated/transcripts/
    │   └── {filename}_{timestamp}_transcript.json  ✅ Saved
