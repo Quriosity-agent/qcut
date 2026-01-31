@@ -204,7 +204,7 @@ image_url = result["images"][0]["url"]
 | Option | Description |
 |--------|-------------|
 | `-i, --input` | Input audio/video file path or URL (required) |
-| `-o, --output` | Output directory (default: `media/generated/audio`) |
+| `-o, --output` | Output directory (default: `output`) |
 | `--save-json FILENAME` | Save detailed metadata as JSON file |
 | `--language CODE` | Language code (e.g., `eng`, `spa`, `fra`). Default: auto-detect |
 | `--diarize` | Enable speaker diarization (default: enabled) |
@@ -214,8 +214,8 @@ image_url = result["images"][0]["url"]
 | `--keyterms TERM1 TERM2` | Terms to bias transcription toward (+30% cost) |
 
 **Output Files:**
-- `media/generated/audio/{filename}_transcript_{timestamp}.txt` - Plain text transcript
-- `media/generated/audio/{filename}.json` (if `--save-json` used) - Basic metadata
+- `{filename}_transcript_{timestamp}.txt` - Plain text transcript
+- `{filename}.json` (if `--save-json` used) - Basic metadata
 
 **Python API for Word-Level Timestamps:**
 

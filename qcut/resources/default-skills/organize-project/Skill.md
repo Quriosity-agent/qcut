@@ -48,8 +48,6 @@ Files in `media/imported/` may be:
 - **Symlinks** pointing to the original file location
 - **Copies** of the original file (when symlink creation fails)
 
-**Viewing import metadata**: Check `MediaItem.importMetadata` in IndexedDB (`qcut-media-{projectId}`) or use the Media Panel's file info to see import method and original path.
-
 ### Skills
 - Each skill is a folder with `Skill.md` as the entry point
 - Additional reference files: `REFERENCE.md`, `EXAMPLES.md`, `CONCEPTS.md`
@@ -79,16 +77,11 @@ QCut uses a **virtual folder system** for organizing media in the UI:
 
 ## When Organizing
 
-**For new files**: Use QCut's import system (via UI or `window.electronAPI.mediaImport`) - it handles symlinks automatically.
-
-**For reorganizing existing project files** (not recommended, but if necessary):
 1. **Identify file types** - Categorize by extension and source
 2. **Check existing structure** - Don't duplicate folders
-3. **Move files safely** - Use copy then delete, not direct move (protects against data loss if interrupted)
+3. **Move files safely** - Use copy then delete, not direct move
 4. **Update references** - Ensure project files still point to correct paths
 5. **Clean up empty folders** - Remove unused directories
-
-**Note**: Prefer using QCut's virtual folder system to organize files in the UI without moving physical files. This avoids breaking symlinks or references.
 
 ## Commands to Help
 
@@ -99,15 +92,13 @@ find . -type f \( -name "*.mp4" -o -name "*.mov" -o -name "*.jpg" -o -name "*.pn
 # Create standard structure
 mkdir -p media/{imported,generated,temp} output cache skills docs
 
-# Move videos to imported (using find for reliable glob handling)
-find . -maxdepth 1 -type f \( -name "*.mp4" -o -name "*.mov" -o -name "*.webm" \) -exec mv {} media/imported/ \;
+# Move videos to imported
+mv *.mp4 *.mov *.webm media/imported/ 2>/dev/null
 
 # Find large files (over 100MB)
 find . -type f -size +100M
 
 # Clean temp files
-# ⚠️ WARNING: Destructive command - verify you are in the correct project directory before running
-# Only use after confirming no important files exist in these directories
 rm -rf media/temp/* cache/*
 
 # === Symlink Commands ===
