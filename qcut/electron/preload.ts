@@ -520,6 +520,46 @@ interface ElectronAPI {
     getMediaPath: (projectId: string) => Promise<string>;
   };
 
+  // Project folder operations
+  projectFolder?: {
+    getRoot: (projectId: string) => Promise<string>;
+    scan: (
+      projectId: string,
+      subPath?: string,
+      options?: { recursive?: boolean; mediaOnly?: boolean }
+    ) => Promise<{
+      files: Array<{
+        name: string;
+        path: string;
+        relativePath: string;
+        type: "video" | "audio" | "image" | "unknown";
+        size: number;
+        modifiedAt: number;
+        isDirectory: boolean;
+      }>;
+      folders: string[];
+      totalSize: number;
+      scanTime: number;
+    }>;
+    list: (
+      projectId: string,
+      subPath?: string
+    ) => Promise<
+      Array<{
+        name: string;
+        path: string;
+        relativePath: string;
+        type: "video" | "audio" | "image" | "unknown";
+        size: number;
+        modifiedAt: number;
+        isDirectory: boolean;
+      }>
+    >;
+    ensureStructure: (
+      projectId: string
+    ) => Promise<{ created: string[]; existing: string[] }>;
+  };
+
   // Utility functions
   isElectron: boolean;
 }
@@ -990,6 +1030,48 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("media-import:check-symlink-support"),
     getMediaPath: (projectId: string): Promise<string> =>
       ipcRenderer.invoke("media-import:get-media-path", projectId),
+  },
+
+  // Project folder operations
+  projectFolder: {
+    getRoot: (projectId: string): Promise<string> =>
+      ipcRenderer.invoke("project-folder:get-root", projectId),
+    scan: (
+      projectId: string,
+      subPath?: string,
+      options?: { recursive?: boolean; mediaOnly?: boolean }
+    ): Promise<{
+      files: Array<{
+        name: string;
+        path: string;
+        relativePath: string;
+        type: "video" | "audio" | "image" | "unknown";
+        size: number;
+        modifiedAt: number;
+        isDirectory: boolean;
+      }>;
+      folders: string[];
+      totalSize: number;
+      scanTime: number;
+    }> => ipcRenderer.invoke("project-folder:scan", projectId, subPath, options),
+    list: (
+      projectId: string,
+      subPath?: string
+    ): Promise<
+      Array<{
+        name: string;
+        path: string;
+        relativePath: string;
+        type: "video" | "audio" | "image" | "unknown";
+        size: number;
+        modifiedAt: number;
+        isDirectory: boolean;
+      }>
+    > => ipcRenderer.invoke("project-folder:list", projectId, subPath),
+    ensureStructure: (
+      projectId: string
+    ): Promise<{ created: string[]; existing: string[] }> =>
+      ipcRenderer.invoke("project-folder:ensure-structure", projectId),
   },
 
   // Utility functions

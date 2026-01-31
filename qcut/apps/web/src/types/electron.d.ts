@@ -725,6 +725,83 @@ export interface ElectronAPI {
      */
     getMediaPath: (projectId: string) => Promise<string>;
   };
+
+  /**
+   * Project Folder operations
+   * Enables browsing and managing project directory contents
+   */
+  projectFolder?: {
+    /**
+     * Get the root path for a project
+     * @param projectId - Project ID
+     * @returns Absolute path to the project root
+     */
+    getRoot: (projectId: string) => Promise<string>;
+
+    /**
+     * Scan a directory for files
+     * @param projectId - Project ID
+     * @param subPath - Subdirectory path relative to project root
+     * @param options - Scan options (recursive, mediaOnly)
+     * @returns Scan result with files, folders, and stats
+     */
+    scan: (
+      projectId: string,
+      subPath?: string,
+      options?: { recursive?: boolean; mediaOnly?: boolean }
+    ) => Promise<ProjectFolderScanResult>;
+
+    /**
+     * List immediate children of a directory
+     * @param projectId - Project ID
+     * @param subPath - Subdirectory path relative to project root
+     * @returns Array of file/folder info
+     */
+    list: (projectId: string, subPath?: string) => Promise<ProjectFolderFileInfo[]>;
+
+    /**
+     * Ensure project folder structure exists
+     * @param projectId - Project ID
+     * @returns Created and existing folder lists
+     */
+    ensureStructure: (
+      projectId: string
+    ) => Promise<{ created: string[]; existing: string[] }>;
+  };
+}
+
+/**
+ * File information from project folder operations
+ */
+export interface ProjectFolderFileInfo {
+  /** File or folder name */
+  name: string;
+  /** Absolute path to the file */
+  path: string;
+  /** Path relative to project root */
+  relativePath: string;
+  /** Media type classification */
+  type: "video" | "audio" | "image" | "unknown";
+  /** File size in bytes (0 for directories) */
+  size: number;
+  /** Last modified timestamp in milliseconds */
+  modifiedAt: number;
+  /** Whether this entry is a directory */
+  isDirectory: boolean;
+}
+
+/**
+ * Result of a project folder scan operation
+ */
+export interface ProjectFolderScanResult {
+  /** List of files found */
+  files: ProjectFolderFileInfo[];
+  /** List of folder relative paths */
+  folders: string[];
+  /** Total size of all files in bytes */
+  totalSize: number;
+  /** Time taken to scan in milliseconds */
+  scanTime: number;
 }
 
 // ============================================================================

@@ -19,6 +19,7 @@ import {
   Layers,
   SquareTerminalIcon,
   TextSelect,
+  FolderSync,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -41,7 +42,8 @@ export type Tab =
   | "segmentation"
   | "remotion"
   | "pty"
-  | "word-timeline";
+  | "word-timeline"
+  | "project-folder";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -119,6 +121,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   "word-timeline": {
     icon: TextSelect,
     label: "Transcribe",
+  },
+  "project-folder": {
+    icon: FolderSync,
+    label: "Project",
   },
 };
 

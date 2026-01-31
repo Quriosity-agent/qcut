@@ -76,6 +76,7 @@ const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupAIPipelineIPC, cleanupAIPipeline } = require("./ai-pipeline-handler.js");
 const { setupMediaImportIPC } = require("./media-import-handler.js");
 const { registerElevenLabsTranscribeHandler } = require("./elevenlabs-transcribe-handler.js");
+const { setupProjectFolderIPC } = require("./project-folder-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -378,6 +379,7 @@ app.whenReady().then(() => {
   setupSkillsIPC(); // Add skills management support
   setupAIPipelineIPC(); // Add AI content pipeline support
   setupMediaImportIPC(); // Add media import with symlink/copy support
+  setupProjectFolderIPC(); // Add project folder scanning support
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds
