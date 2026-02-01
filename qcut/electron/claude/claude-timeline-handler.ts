@@ -89,16 +89,22 @@ export function setupClaudeTimelineIPC(): void {
  */
 async function requestTimelineFromRenderer(win: BrowserWindow, event: IpcMainInvokeEvent): Promise<ClaudeTimeline> {
   return new Promise((resolve, reject) => {
+    let resolved = false;
+
     const timeout = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
       ipcMain.removeListener('claude:timeline:response', handler);
       reject(new Error('Timeout waiting for timeline data'));
     }, 5000);
-    
+
     const handler = (_event: any, timeline: ClaudeTimeline) => {
+      if (resolved) return;
+      resolved = true;
       clearTimeout(timeout);
       resolve(timeline);
     };
-    
+
     ipcMain.once('claude:timeline:response', handler);
     win.webContents.send('claude:timeline:request');
   });
