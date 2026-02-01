@@ -11,6 +11,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
+  FolderOpen,
   Layers,
   Loader2,
   Plus,
@@ -37,6 +38,7 @@ import { useProjectStore } from "@/stores/project-store";
 import { ComponentCard } from "./component-card";
 import { ComponentPreviewModal } from "./component-preview-modal";
 import { ComponentImportDialog } from "./component-import-dialog";
+import { FolderImportDialog } from "./folder-import-dialog";
 
 // ============================================================================
 // Re-exports
@@ -45,6 +47,7 @@ import { ComponentImportDialog } from "./component-import-dialog";
 export { ComponentCard } from "./component-card";
 export { ComponentPreviewModal } from "./component-preview-modal";
 export { ComponentImportDialog } from "./component-import-dialog";
+export { FolderImportDialog } from "./folder-import-dialog";
 
 // ============================================================================
 // Category Configuration
@@ -57,6 +60,9 @@ const CATEGORY_CONFIG: Record<RemotionComponentCategory, { label: string; descri
   template: { label: "Templates", description: "Pre-built video templates" },
   transition: { label: "Transitions", description: "Scene transition effects" },
   text: { label: "Text", description: "Animated text and typography" },
+  intro: { label: "Intros", description: "Video intros and outros" },
+  social: { label: "Social", description: "Social media formats (portrait/square)" },
+  custom: { label: "Custom", description: "Custom imported components" },
 };
 
 const CATEGORY_ORDER: RemotionComponentCategory[] = [
@@ -155,6 +161,7 @@ export function RemotionView() {
   const [previewComponent, setPreviewComponent] = useState<RemotionComponentDefinition | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isFolderImportDialogOpen, setIsFolderImportDialogOpen] = useState(false);
 
   // Get store state
   const { registeredComponents, isLoading, isInitialized, initialize } = useRemotionStore();
@@ -190,6 +197,9 @@ export function RemotionView() {
       template: [],
       transition: [],
       text: [],
+      intro: [],
+      social: [],
+      custom: [],
     };
 
     for (const comp of filteredComponents) {
@@ -245,6 +255,11 @@ export function RemotionView() {
     toast.info("Component imported and ready to use");
   }, []);
 
+  // Handle folder import success
+  const handleFolderImportSuccess = useCallback((componentIds: string[]) => {
+    toast.info(`${componentIds.length} component${componentIds.length !== 1 ? "s" : ""} imported and ready to use`);
+  }, []);
+
   // Initialize store if needed
   if (!isInitialized && !isLoading) {
     initialize();
@@ -284,6 +299,24 @@ export function RemotionView() {
               </button>
             )}
           </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setIsFolderImportDialogOpen(true)}
+                  data-testid="import-folder-button"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Import Remotion folder</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -396,6 +429,13 @@ export function RemotionView() {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Folder Import Dialog */}
+      <FolderImportDialog
+        open={isFolderImportDialogOpen}
+        onOpenChange={setIsFolderImportDialogOpen}
+        onImportSuccess={handleFolderImportSuccess}
       />
     </div>
   );

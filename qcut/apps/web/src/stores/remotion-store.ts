@@ -21,6 +21,8 @@ import type {
   RenderJobStatus,
   RemotionError,
   SyncState,
+  ImportedFolderInfo,
+  FolderImportResult,
 } from "@/lib/remotion/types";
 import { generateUUID } from "@/lib/utils";
 import { builtInComponentDefinitions } from "@/lib/remotion/built-in";
@@ -29,6 +31,11 @@ import {
   getSequenceAnalysisService,
   type AnalysisResult,
 } from "@/lib/remotion/sequence-analysis-service";
+import {
+  importFromFolder as importFromFolderLoader,
+  isFolderImportAvailable,
+  type FolderLoadResult,
+} from "@/lib/remotion/component-loader";
 
 // ============================================================================
 // Initial State
@@ -51,6 +58,8 @@ const initialState: RemotionStoreState = {
   isLoading: false,
   recentErrors: [],
   analyzedSequences: new Map(),
+  importedFolders: new Map(),
+  isFolderImporting: false,
 };
 
 // ============================================================================
@@ -566,6 +575,153 @@ export const useRemotionStore = create<RemotionStore>()(
     },
 
     // ========================================================================
+    // Folder Import
+    // ========================================================================
+
+    importFromFolder: async (folderPath?: string): Promise<FolderImportResult> => {
+      // Check if folder import is available
+      if (!isFolderImportAvailable()) {
+        return {
+          success: false,
+          componentIds: [],
+          successCount: 0,
+          errorCount: 1,
+          errors: ["Folder import is only available in Electron"],
+          folderPath: folderPath || "",
+        };
+      }
+
+      set({ isFolderImporting: true });
+
+      try {
+        // Call the component loader to perform the import
+        const result = await importFromFolderLoader(folderPath);
+
+        if (!result.success) {
+          set({ isFolderImporting: false });
+          return {
+            success: false,
+            componentIds: [],
+            successCount: 0,
+            errorCount: result.errorCount,
+            errors: result.errors,
+            folderPath: result.folderPath,
+          };
+        }
+
+        // Register all loaded components
+        const componentIds: string[] = [];
+        const newComponents = new Map(get().registeredComponents);
+
+        for (const component of result.components) {
+          newComponents.set(component.id, component);
+          componentIds.push(component.id);
+          debugLog("[REMOTION] Registered folder component:", component.id);
+        }
+
+        // Create folder info entry
+        const folderInfo: ImportedFolderInfo = {
+          folderPath: result.folderPath,
+          name: result.folderPath.split(/[/\\]/).pop() || "Imported Folder",
+          componentIds,
+          compositionCount: result.components.length,
+          importedAt: Date.now(),
+          refreshedAt: Date.now(),
+        };
+
+        // Update state with new components and folder info
+        const newFolders = new Map(get().importedFolders);
+        newFolders.set(result.folderPath, folderInfo);
+
+        set({
+          registeredComponents: newComponents,
+          importedFolders: newFolders,
+          isFolderImporting: false,
+        });
+
+        debugLog("[REMOTION] Folder import complete:", {
+          folderPath: result.folderPath,
+          componentCount: componentIds.length,
+        });
+
+        return {
+          success: true,
+          componentIds,
+          successCount: result.successCount,
+          errorCount: result.errorCount,
+          errors: result.errors,
+          folderPath: result.folderPath,
+        };
+      } catch (error) {
+        debugError("[REMOTION] Folder import failed:", error);
+        set({ isFolderImporting: false });
+
+        return {
+          success: false,
+          componentIds: [],
+          successCount: 0,
+          errorCount: 1,
+          errors: [error instanceof Error ? error.message : "Unknown error"],
+          folderPath: folderPath || "",
+        };
+      }
+    },
+
+    refreshFolder: async (folderPath: string): Promise<FolderImportResult> => {
+      const existingFolder = get().importedFolders.get(folderPath);
+      if (!existingFolder) {
+        return {
+          success: false,
+          componentIds: [],
+          successCount: 0,
+          errorCount: 1,
+          errors: ["Folder not found in imported folders"],
+          folderPath,
+        };
+      }
+
+      // Remove existing components from this folder
+      const newComponents = new Map(get().registeredComponents);
+      for (const componentId of existingFolder.componentIds) {
+        newComponents.delete(componentId);
+      }
+      set({ registeredComponents: newComponents });
+
+      // Re-import from the folder
+      return get().importFromFolder(folderPath);
+    },
+
+    removeFolder: (folderPath: string) => {
+      const existingFolder = get().importedFolders.get(folderPath);
+      if (!existingFolder) {
+        debugLog("[REMOTION] Folder not found for removal:", folderPath);
+        return;
+      }
+
+      // Remove all components from this folder
+      const newComponents = new Map(get().registeredComponents);
+      for (const componentId of existingFolder.componentIds) {
+        newComponents.delete(componentId);
+        debugLog("[REMOTION] Removed folder component:", componentId);
+      }
+
+      // Remove folder info
+      const newFolders = new Map(get().importedFolders);
+      newFolders.delete(folderPath);
+
+      set({
+        registeredComponents: newComponents,
+        importedFolders: newFolders,
+      });
+
+      debugLog("[REMOTION] Folder removed:", folderPath);
+    },
+
+    getImportedFolders: () => {
+      return Array.from(get().importedFolders.values());
+    },
+
+    // ========================================================================
     // Cleanup
     // ========================================================================
 
@@ -629,6 +785,18 @@ export const selectRecentErrors = (state: RemotionStore) => state.recentErrors;
  */
 export const selectSyncState = (state: RemotionStore) => state.syncState;
 
+/**
+ * Selector to get all imported folders
+ */
+export const selectImportedFolders = (state: RemotionStore) =>
+  Array.from(state.importedFolders.values());
+
+/**
+ * Selector to check if folder import is in progress
+ */
+export const selectIsFolderImporting = (state: RemotionStore) =>
+  state.isFolderImporting;
+
 // ============================================================================
 // Hooks
 // ============================================================================
@@ -682,6 +850,20 @@ export function useComponentAnalysis(
   );
 }
 
+/**
+ * Hook to get all imported folders
+ */
+export function useImportedFolders() {
+  return useRemotionStore(selectImportedFolders);
+}
+
+/**
+ * Hook to check if folder import is in progress
+ */
+export function useFolderImporting() {
+  return useRemotionStore(selectIsFolderImporting);
+}
+
 // ============================================================================
 // Store Initialization
 // ============================================================================
@@ -716,5 +898,9 @@ if (typeof window !== "undefined") {
     ],
     isInitialized: () => useRemotionStore.getState().isInitialized,
     getInstances: () => [...useRemotionStore.getState().instances.keys()],
+    getImportedFolders: () => [
+      ...useRemotionStore.getState().importedFolders.keys(),
+    ],
+    isFolderImporting: () => useRemotionStore.getState().isFolderImporting,
   };
 }

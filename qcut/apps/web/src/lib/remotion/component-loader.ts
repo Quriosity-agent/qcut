@@ -591,6 +591,327 @@ export async function updateStoredComponent(
   }
 }
 
+// ============================================================================
+// Folder Import Types
+// ============================================================================
+
+/**
+ * Result of loading components from a Remotion folder
+ */
+export interface FolderLoadResult {
+  /** Whether the folder import was successful */
+  success: boolean;
+  /** Loaded component definitions */
+  components: RemotionComponentDefinition[];
+  /** Number of components successfully loaded */
+  successCount: number;
+  /** Number of components that failed to load */
+  errorCount: number;
+  /** Folder path that was imported */
+  folderPath: string;
+  /** Errors encountered during loading */
+  errors: string[];
+  /** Total import time in milliseconds */
+  importTime?: number;
+}
+
+/**
+ * Composition info from folder scan (matches Electron IPC types)
+ */
+export interface FolderCompositionInfo {
+  id: string;
+  name: string;
+  durationInFrames: number;
+  fps: number;
+  width: number;
+  height: number;
+  componentPath: string;
+  importPath: string;
+  line: number;
+}
+
+/**
+ * Bundle result from folder import
+ */
+export interface FolderBundleResult {
+  compositionId: string;
+  success: boolean;
+  code?: string;
+  sourceMap?: string;
+  error?: string;
+}
+
+// ============================================================================
+// Folder Import Functions
+// ============================================================================
+
+/**
+ * Load components from a Remotion folder import result.
+ * This function takes the results from the Electron IPC folder import
+ * and converts them into RemotionComponentDefinition objects.
+ *
+ * @param folderPath - The path to the Remotion folder
+ * @param compositions - Array of composition info from folder scan
+ * @param bundles - Array of bundle results with compiled code
+ * @param options - Load options
+ * @returns Load result with component definitions
+ */
+export async function loadComponentsFromFolder(
+  folderPath: string,
+  compositions: FolderCompositionInfo[],
+  bundles: FolderBundleResult[],
+  options: LoadOptions = DEFAULT_LOAD_OPTIONS
+): Promise<FolderLoadResult> {
+  const startTime = Date.now();
+  const opts = { ...DEFAULT_LOAD_OPTIONS, ...options };
+  const loadedComponents: RemotionComponentDefinition[] = [];
+  const errors: string[] = [];
+
+  // Create a map of bundle results by composition ID for quick lookup
+  const bundleMap = new Map<string, FolderBundleResult>();
+  for (const bundle of bundles) {
+    bundleMap.set(bundle.compositionId, bundle);
+  }
+
+  // Process each composition
+  for (const composition of compositions) {
+    const bundle = bundleMap.get(composition.id);
+
+    // Skip if bundling failed
+    if (!bundle || !bundle.success || !bundle.code) {
+      errors.push(
+        `Failed to bundle composition "${composition.id}": ${bundle?.error || "No bundle result"}`
+      );
+      continue;
+    }
+
+    try {
+      // Generate a unique ID for the component
+      const componentId = opts.customId
+        ? `${opts.customId}-${composition.id}`
+        : generateFolderComponentId(folderPath, composition.id);
+
+      // Determine category based on dimensions and duration
+      const category = inferCategoryFromComposition(composition);
+
+      // Create the component definition
+      const componentDef: RemotionComponentDefinition = {
+        id: componentId,
+        name: composition.name || composition.id,
+        description: `Imported from ${folderPath}`,
+        category,
+        durationInFrames: composition.durationInFrames,
+        fps: composition.fps,
+        width: composition.width,
+        height: composition.height,
+        schema: { safeParse: () => ({ success: true }) } as never,
+        defaultProps: {},
+        component: () => null, // Placeholder - actual component loaded dynamically
+        source: "imported",
+        folderPath, // Store the original folder path
+      };
+
+      // Analyze the bundled code for sequence structure
+      let analysisResult: AnalysisResult | undefined;
+      try {
+        const analysisService = getSequenceAnalysisService();
+        analysisResult = await analysisService.analyzeComponent(componentId, bundle.code);
+        if (analysisResult.structure) {
+          componentDef.sequenceStructure = analysisResult.structure;
+        }
+      } catch {
+        // Analysis failure is non-blocking
+      }
+
+      // Store in IndexedDB if requested
+      if (opts.storeInDB) {
+        try {
+          const storedComponent: StoredComponent = {
+            id: componentId,
+            fileName: `${composition.id}.tsx`,
+            sourceCode: bundle.code,
+            metadata: {
+              name: composition.name || composition.id,
+              description: `Imported from ${folderPath}`,
+              category,
+              durationInFrames: composition.durationInFrames,
+              fps: composition.fps,
+              width: composition.width,
+              height: composition.height,
+              hasSchema: false,
+              hasDefaultProps: false,
+              exports: ["default"],
+            },
+            importedAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          await storeComponent(storedComponent);
+        } catch {
+          // Storage failure is non-blocking
+        }
+      }
+
+      loadedComponents.push(componentDef);
+    } catch (error) {
+      errors.push(
+        `Error processing composition "${composition.id}": ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  return {
+    success: loadedComponents.length > 0,
+    components: loadedComponents,
+    successCount: loadedComponents.length,
+    errorCount: errors.length,
+    folderPath,
+    errors,
+    importTime: Date.now() - startTime,
+  };
+}
+
+/**
+ * Generate a unique component ID for folder-imported components
+ */
+function generateFolderComponentId(folderPath: string, compositionId: string): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 6);
+  // Extract folder name from path
+  const folderName = folderPath.split(/[/\\]/).pop() || "folder";
+  const sanitizedFolder = folderName
+    .replace(/[^a-zA-Z0-9-]/g, "-")
+    .toLowerCase()
+    .substring(0, 20);
+  const sanitizedId = compositionId
+    .replace(/[^a-zA-Z0-9-]/g, "-")
+    .toLowerCase();
+  return `folder-${sanitizedFolder}-${sanitizedId}-${timestamp}-${random}`;
+}
+
+/**
+ * Infer category from composition dimensions and properties
+ */
+function inferCategoryFromComposition(
+  composition: FolderCompositionInfo
+): RemotionComponentCategory {
+  const { width, height, durationInFrames, fps } = composition;
+  const durationSeconds = durationInFrames / fps;
+
+  // Check for common aspect ratios
+  const aspectRatio = width / height;
+
+  // Portrait video (9:16 or similar) - likely social media
+  if (aspectRatio < 0.7) {
+    return "social";
+  }
+
+  // Square video (1:1) - likely social media
+  if (aspectRatio >= 0.9 && aspectRatio <= 1.1) {
+    return "social";
+  }
+
+  // Short duration (<10s) and wide - likely intro/outro
+  if (durationSeconds < 10 && aspectRatio > 1.5) {
+    return "intro";
+  }
+
+  // Medium duration (10-30s) - likely transition or scene
+  if (durationSeconds >= 10 && durationSeconds <= 30) {
+    return "transition";
+  }
+
+  // Default to custom for longer or unusual content
+  return "custom";
+}
+
+/**
+ * Check if the Electron API for folder import is available
+ */
+export function isFolderImportAvailable(): boolean {
+  return !!(
+    typeof window !== "undefined" &&
+    window.electronAPI?.remotionFolder
+  );
+}
+
+/**
+ * Import components from a Remotion folder via Electron IPC.
+ * This is the main entry point for folder imports from the UI.
+ *
+ * @param folderPath - Optional folder path. If not provided, opens a folder dialog.
+ * @param options - Load options
+ * @returns Load result with component definitions
+ */
+export async function importFromFolder(
+  folderPath?: string,
+  options: LoadOptions = DEFAULT_LOAD_OPTIONS
+): Promise<FolderLoadResult> {
+  // Check if Electron API is available
+  if (!isFolderImportAvailable()) {
+    return {
+      success: false,
+      components: [],
+      successCount: 0,
+      errorCount: 1,
+      folderPath: folderPath || "",
+      errors: ["Folder import is only available in Electron"],
+    };
+  }
+
+  const api = window.electronAPI!.remotionFolder!;
+
+  try {
+    // If no folder path provided, open a dialog
+    let targetPath = folderPath;
+    if (!targetPath) {
+      const selectResult = await api.select();
+      if (!selectResult.success || selectResult.cancelled) {
+        return {
+          success: false,
+          components: [],
+          successCount: 0,
+          errorCount: 0,
+          folderPath: "",
+          errors: selectResult.error ? [selectResult.error] : [],
+        };
+      }
+      targetPath = selectResult.folderPath!;
+    }
+
+    // Perform the full import (scan + bundle)
+    const importResult = await api.import(targetPath);
+
+    if (!importResult.success) {
+      return {
+        success: false,
+        components: [],
+        successCount: 0,
+        errorCount: 1,
+        folderPath: targetPath,
+        errors: [importResult.error || "Import failed"],
+        importTime: importResult.importTime,
+      };
+    }
+
+    // Convert the IPC results into component definitions
+    const compositions = importResult.scan.compositions as FolderCompositionInfo[];
+    const bundles = importResult.bundle?.results || [];
+
+    return loadComponentsFromFolder(targetPath, compositions, bundles, options);
+  } catch (error) {
+    return {
+      success: false,
+      components: [],
+      successCount: 0,
+      errorCount: 1,
+      folderPath: folderPath || "",
+      errors: [error instanceof Error ? error.message : "Unknown error"],
+    };
+  }
+}
+
 export default {
   loadComponentFromCode,
   loadComponentFromFile,
@@ -599,4 +920,8 @@ export default {
   removeStoredComponent,
   getComponentSourceCode,
   updateStoredComponent,
+  // Folder import functions
+  loadComponentsFromFolder,
+  importFromFolder,
+  isFolderImportAvailable,
 };
