@@ -3,6 +3,17 @@ import type {
   VideoSourceInput,
   AudioFileInput,
 } from "../lib/export-engine-cli";
+import type {
+  MediaFile,
+  ClaudeTimeline,
+  ClaudeElement,
+  ProjectSettings,
+  ProjectStats,
+  ExportPreset,
+  ExportRecommendation,
+  ErrorReport,
+  DiagnosticResult,
+} from "../../../../electron/types/claude-api";
 
 /**
  * Word-level transcription item from ElevenLabs Scribe v2.
@@ -775,41 +786,41 @@ export interface ElectronAPI {
    */
   claude?: {
     media: {
-      list: (projectId: string) => Promise<any[]>;
-      info: (projectId: string, mediaId: string) => Promise<any>;
-      import: (projectId: string, source: string) => Promise<any>;
+      list: (projectId: string) => Promise<MediaFile[]>;
+      info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;
+      import: (projectId: string, source: string) => Promise<MediaFile | null>;
       delete: (projectId: string, mediaId: string) => Promise<boolean>;
       rename: (projectId: string, mediaId: string, newName: string) => Promise<boolean>;
     };
     timeline: {
       export: (projectId: string, format: 'json' | 'md') => Promise<string>;
       import: (projectId: string, data: string, format: 'json' | 'md') => Promise<void>;
-      addElement: (projectId: string, element: any) => Promise<string>;
-      updateElement: (projectId: string, elementId: string, changes: any) => Promise<void>;
+      addElement: (projectId: string, element: Partial<ClaudeElement>) => Promise<string>;
+      updateElement: (projectId: string, elementId: string, changes: Partial<ClaudeElement>) => Promise<void>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
-      onApply: (callback: (timeline: any) => void) => void;
-      onAddElement: (callback: (element: any) => void) => void;
-      onUpdateElement: (callback: (data: { elementId: string; changes: any }) => void) => void;
+      onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
+      onAddElement: (callback: (element: Partial<ClaudeElement>) => void) => void;
+      onUpdateElement: (callback: (data: { elementId: string; changes: Partial<ClaudeElement> }) => void) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
-      sendResponse: (timeline: any) => void;
+      sendResponse: (timeline: ClaudeTimeline) => void;
       removeListeners: () => void;
     };
     project: {
-      getSettings: (projectId: string) => Promise<any>;
-      updateSettings: (projectId: string, settings: any) => Promise<void>;
-      getStats: (projectId: string) => Promise<any>;
+      getSettings: (projectId: string) => Promise<ProjectSettings>;
+      updateSettings: (projectId: string, settings: Partial<ProjectSettings>) => Promise<void>;
+      getStats: (projectId: string) => Promise<ProjectStats>;
       onStatsRequest: (callback: () => void) => void;
-      sendStatsResponse: (stats: any) => void;
-      onUpdated: (callback: (projectId: string, settings: any) => void) => void;
+      sendStatsResponse: (stats: ProjectStats) => void;
+      onUpdated: (callback: (projectId: string, settings: ProjectSettings) => void) => void;
       removeListeners: () => void;
     };
     export: {
-      getPresets: () => Promise<any[]>;
-      recommend: (projectId: string, target: string) => Promise<any>;
+      getPresets: () => Promise<ExportPreset[]>;
+      recommend: (projectId: string, target: string) => Promise<ExportRecommendation>;
     };
     diagnostics: {
-      analyze: (error: any) => Promise<any>;
+      analyze: (error: ErrorReport) => Promise<DiagnosticResult>;
     };
   };
 

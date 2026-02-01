@@ -7,35 +7,7 @@ import { useTimelineStore } from '@/stores/timeline-store';
 import { useProjectStore } from '@/stores/project-store';
 import { useMediaStore } from '@/stores/media-store';
 import type { TimelineElement, TimelineTrack } from '@/types/timeline';
-
-// Claude-compatible timeline format for export
-interface ClaudeTimeline {
-  name: string;
-  duration: number;
-  width: number;
-  height: number;
-  fps: number;
-  tracks: ClaudeTrack[];
-}
-
-interface ClaudeTrack {
-  index: number;
-  name: string;
-  type: string;
-  elements: ClaudeElement[];
-}
-
-interface ClaudeElement {
-  id: string;
-  trackIndex: number;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  type: string;
-  sourceId?: string;
-  sourceName?: string;
-  content?: string;
-}
+import type { ClaudeTimeline, ClaudeTrack, ClaudeElement } from '../../../../electron/types/claude-api';
 
 /**
  * Calculate effective duration with safe trim handling
