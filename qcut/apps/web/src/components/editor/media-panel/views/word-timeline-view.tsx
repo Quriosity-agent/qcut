@@ -183,28 +183,45 @@ function DropZone({
 
   const handleDrop = useCallback(
     (files: FileList) => {
+      console.log("[WordTimeline] handleDrop called");
+      console.log("[WordTimeline] Files count:", files.length);
       try {
         const file = files[0];
         if (!file) {
+          console.log("[WordTimeline] No file found in drop");
           return;
         }
 
+        console.log("[WordTimeline] File dropped:", {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          path: (file as File & { path?: string }).path,
+        });
+
         if (isJsonFile(file.name)) {
+          console.log("[WordTimeline] Detected JSON file, calling onJsonSelect");
           onJsonSelect(file);
         } else if (isMediaFile(file.name)) {
+          console.log("[WordTimeline] Detected media file");
           // For media files, we need the file path (Electron only)
           const filePath = (file as File & { path?: string }).path;
+          console.log("[WordTimeline] File path from Electron:", filePath);
           if (filePath) {
+            console.log("[WordTimeline] Calling onMediaSelect with path:", filePath);
             onMediaSelect(filePath);
           } else {
+            console.error("[WordTimeline] No file path available - not running in Electron?");
             toast.error("Media transcription requires the desktop app");
           }
         } else {
+          console.warn("[WordTimeline] Unsupported file type:", file.name, file.type);
           toast.error(
             "Unsupported file type. Drop JSON or media files (MP4, WAV, MP3, etc.)"
           );
         }
-      } catch {
+      } catch (err) {
+        console.error("[WordTimeline] Error processing dropped file:", err);
         toast.error("Unable to process the dropped file");
       }
     },
@@ -214,39 +231,74 @@ function DropZone({
   const { isDragOver, dragProps } = useDragDrop({ onDrop: handleDrop });
 
   const handleClick = useCallback(async () => {
+    console.log("[WordTimeline] handleClick called (file picker button)");
     try {
       // Use Electron's native file dialog to get the file path
+      console.log("[WordTimeline] Checking for Electron file dialog API...");
+      console.log("[WordTimeline] window.electronAPI exists:", !!window.electronAPI);
+      console.log("[WordTimeline] openFileDialog exists:", !!window.electronAPI?.openFileDialog);
+
       if (window.electronAPI?.openFileDialog) {
-        const filePath = await window.electronAPI.openFileDialog();
+        console.log("[WordTimeline] Opening native file dialog...");
+        const dialogResult = await window.electronAPI.openFileDialog();
+
+        console.log("[WordTimeline] File dialog result:", dialogResult);
+        console.log("[WordTimeline] Result type:", typeof dialogResult);
+
+        // Handle both string (expected) and object (raw dialog result) formats
+        let filePath: string | null = null;
+        if (typeof dialogResult === "string") {
+          filePath = dialogResult;
+        } else if (dialogResult && typeof dialogResult === "object") {
+          // Raw dialog result object - extract filePath
+          const rawResult = dialogResult as { canceled?: boolean; filePaths?: string[] };
+          console.log("[WordTimeline] Raw dialog object:", rawResult);
+          if (!rawResult.canceled && rawResult.filePaths && rawResult.filePaths.length > 0) {
+            filePath = rawResult.filePaths[0];
+          }
+        }
+
+        console.log("[WordTimeline] Extracted file path:", filePath);
 
         if (!filePath) {
+          console.log("[WordTimeline] No file selected (dialog cancelled or empty)");
           return;
         }
 
         const fileName = filePath.split(/[/\\]/).pop() || "";
+        console.log("[WordTimeline] Selected file name:", fileName);
 
         if (isJsonFile(fileName)) {
+          console.log("[WordTimeline] JSON file detected, reading content...");
           // For JSON, we need to read the file content
           if (!window.electronAPI.readFile) {
+            console.error("[WordTimeline] readFile API not available");
             toast.error("File reading not available");
             return;
           }
           const buffer = await window.electronAPI.readFile(filePath);
+          console.log("[WordTimeline] File buffer received, size:", buffer?.length);
           if (buffer) {
             const uint8Array = new Uint8Array(buffer);
             const blob = new Blob([uint8Array], { type: "application/json" });
             const file = new File([blob], fileName, { type: "application/json" });
+            console.log("[WordTimeline] Calling onJsonSelect with File object");
             onJsonSelect(file);
           }
         } else if (isMediaFile(fileName)) {
+          console.log("[WordTimeline] Media file detected, calling onMediaSelect");
+          console.log("[WordTimeline] File path:", filePath);
           onMediaSelect(filePath);
         } else {
+          console.warn("[WordTimeline] Unsupported file type:", fileName);
           toast.error("Unsupported file type. Select JSON or media files.");
         }
       } else {
+        console.log("[WordTimeline] Electron API not available, using HTML file input");
         fileInputRef.current?.click();
       }
-    } catch {
+    } catch (err) {
+      console.error("[WordTimeline] Error in handleClick:", err);
       toast.error("Unable to open the file picker");
     }
   }, [onJsonSelect, onMediaSelect]);
@@ -408,6 +460,8 @@ export function WordTimelineView() {
 
   const handleJsonSelect = useCallback(
     (file: File) => {
+      console.log("[WordTimeline] handleJsonSelect called");
+      console.log("[WordTimeline] JSON file:", file.name, "size:", file.size);
       loadFromJson(file);
     },
     [loadFromJson]
@@ -415,11 +469,18 @@ export function WordTimelineView() {
 
   const handleMediaSelect = useCallback(
     async (filePath: string) => {
+      console.log("[WordTimeline] ========================================");
+      console.log("[WordTimeline] handleMediaSelect called");
+      console.log("[WordTimeline] File path:", filePath);
+      console.log("[WordTimeline] ========================================");
+
       // Try to find the media item in the store and add it to the timeline
       const mediaItems = useMediaStore.getState().mediaItems;
+      console.log("[WordTimeline] Media items in store:", mediaItems.length);
 
       // Normalize path for comparison (handle both forward and back slashes)
       const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
+      console.log("[WordTimeline] Normalized path:", normalizedPath);
 
       const mediaItem = mediaItems.find((item) => {
         // Check localPath
@@ -444,22 +505,32 @@ export function WordTimelineView() {
         return false;
       });
 
+      console.log("[WordTimeline] Found matching media item:", mediaItem ? mediaItem.name : "none");
+
       if (mediaItem) {
         // Add to timeline
+        console.log("[WordTimeline] Adding media item to timeline...");
         const added = useTimelineStore.getState().addMediaToNewTrack(mediaItem);
+        console.log("[WordTimeline] Media added to timeline:", added);
         if (added) {
           toast.success(`Added "${mediaItem.name}" to timeline`);
         }
       }
 
       // Start transcription
+      console.log("[WordTimeline] Starting transcription...");
       try {
         const result = await transcribeMedia(filePath);
+        console.log("[WordTimeline] Transcription result:", result ? "success" : "null");
         if (result) {
           const wordCount = result.words.filter((w) => w.type === "word").length;
+          console.log("[WordTimeline] Word count:", wordCount);
           toast.success(`Transcription complete: ${wordCount} words`);
+        } else {
+          console.warn("[WordTimeline] Transcription returned null");
         }
-      } catch {
+      } catch (err) {
+        console.error("[WordTimeline] Transcription error:", err);
         // Error is already handled in the hook
         toast.error("Transcription failed");
       }

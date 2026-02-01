@@ -88,15 +88,29 @@ export function getFFmpegPath(): string {
       throw new Error(`FFmpeg not found at: ${resourcePath}`);
     }
   } else {
-    // Development: try bundled FFmpeg first, then system PATH
+    // Development: try bundled FFmpeg first, then winget location, then system PATH
     const devPath: string = path.join(
       __dirname,
       "..",
       "resources",
       "ffmpeg.exe"
     );
+
+    // Check common winget installation locations
+    const homeDir = process.env.USERPROFILE || process.env.HOME || "";
+    const wingetBasePath = path.join(homeDir, "AppData", "Local", "Microsoft", "WinGet", "Packages");
+
     if (fs.existsSync(devPath)) {
       ffmpegPath = devPath;
+    } else if (fs.existsSync(wingetBasePath)) {
+      // Search for FFmpeg in winget packages
+      const wingetFFmpegPath = findFFmpegInWinget(wingetBasePath);
+      if (wingetFFmpegPath) {
+        ffmpegPath = wingetFFmpegPath;
+        debugLog("Found FFmpeg in winget:", ffmpegPath);
+      } else {
+        ffmpegPath = "ffmpeg"; // System PATH
+      }
     } else {
       ffmpegPath = "ffmpeg"; // System PATH
     }
@@ -108,6 +122,58 @@ export function getFFmpegPath(): string {
   }
 
   return ffmpegPath;
+}
+
+/**
+ * Searches for FFmpeg binary in winget packages directory.
+ * @param wingetBasePath - Base path to winget packages
+ * @returns Path to ffmpeg.exe if found, null otherwise
+ */
+function findFFmpegInWinget(wingetBasePath: string): string | null {
+  try {
+    const packages = fs.readdirSync(wingetBasePath);
+    for (const pkg of packages) {
+      if (pkg.toLowerCase().includes("ffmpeg")) {
+        const pkgPath = path.join(wingetBasePath, pkg);
+        // Search for ffmpeg.exe recursively (usually in bin folder)
+        const ffmpegExe = findFileRecursive(pkgPath, "ffmpeg.exe", 3);
+        if (ffmpegExe) {
+          return ffmpegExe;
+        }
+      }
+    }
+  } catch (err) {
+    debugWarn("Error searching winget packages:", err);
+  }
+  return null;
+}
+
+/**
+ * Recursively searches for a file up to a certain depth.
+ * @param dir - Directory to search
+ * @param filename - File to find
+ * @param maxDepth - Maximum recursion depth
+ * @returns Full path to file if found, null otherwise
+ */
+function findFileRecursive(dir: string, filename: string, maxDepth: number): string | null {
+  if (maxDepth <= 0) return null;
+
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) {
+        return fullPath;
+      }
+      if (entry.isDirectory()) {
+        const found = findFileRecursive(fullPath, filename, maxDepth - 1);
+        if (found) return found;
+      }
+    }
+  } catch (err) {
+    // Ignore permission errors
+  }
+  return null;
 }
 
 /**
