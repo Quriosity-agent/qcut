@@ -5,6 +5,7 @@
 
 import { useTimelineStore } from '@/stores/timeline-store';
 import { useProjectStore } from '@/stores/project-store';
+import { useMediaStore } from '@/stores/media-store';
 import type { TimelineElement, TimelineTrack } from '@/types/timeline';
 
 // Claude-compatible timeline format for export
@@ -260,13 +261,19 @@ export function setupClaudeProjectBridge(): void {
     // Count media by type
     const mediaCount = { video: 0, audio: 0, image: 0 };
     let elementCount = 0;
+    const mediaItems = useMediaStore.getState().mediaItems;
 
     for (const track of tracks) {
       elementCount += track.elements.length;
       for (const element of track.elements) {
         if (element.type === 'media') {
-          // Would need to look up media type from media store
-          mediaCount.video++;
+          const mediaItem = mediaItems.find(m => m.id === element.mediaId);
+          if (mediaItem && mediaItem.type in mediaCount) {
+            mediaCount[mediaItem.type]++;
+          } else {
+            // Fallback to video if media not found
+            mediaCount.video++;
+          }
         }
       }
     }
