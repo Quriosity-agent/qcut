@@ -137,7 +137,7 @@ export function setupClaudeExportIPC(): void {
     const suggestions: string[] = [];
     
     // Platform-specific warnings and suggestions
-    switch (target) {
+    switch (preset.platform) {
       case 'tiktok':
         suggestions.push('Videos under 60 seconds perform best on TikTok');
         suggestions.push('Add captions for better engagement (85% watch without sound)');

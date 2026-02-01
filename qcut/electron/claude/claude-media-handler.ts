@@ -13,6 +13,29 @@ import type { MediaFile } from '../types/claude-api';
 const HANDLER_NAME = 'Media';
 
 /**
+ * Generate a unique filename if file already exists
+ * Appends numeric suffix: file.mp4 -> file_1.mp4 -> file_2.mp4
+ */
+async function getUniqueFilePath(dir: string, fileName: string): Promise<string> {
+  const ext = path.extname(fileName);
+  const baseName = path.basename(fileName, ext);
+  let destPath = path.join(dir, fileName);
+  let counter = 1;
+
+  while (true) {
+    try {
+      await fs.access(destPath);
+      // File exists, try next suffix
+      destPath = path.join(dir, `${baseName}_${counter}${ext}`);
+      counter++;
+    } catch {
+      // File doesn't exist, use this path
+      return destPath;
+    }
+  }
+}
+
+/**
  * Internal function to list media files - shared between handlers
  */
 async function listMediaFiles(projectId: string): Promise<MediaFile[]> {
@@ -108,16 +131,18 @@ export function setupClaudeMediaIPC(): void {
         return null;
       }
       
-      const destPath = path.join(mediaPath, fileName);
-      
+      // Get unique path to avoid overwriting existing files
+      const destPath = await getUniqueFilePath(mediaPath, fileName);
+      const actualFileName = path.basename(destPath);
+
       // Copy file
       await fs.copyFile(source, destPath);
-      
+
       const stat = await fs.stat(destPath);
-      
+
       const mediaFile: MediaFile = {
         id: generateId('media'),
-        name: fileName,
+        name: actualFileName,
         type,
         path: destPath,
         size: stat.size,
