@@ -37,13 +37,24 @@ interface ClaudeElement {
 }
 
 /**
+ * Calculate effective duration with safe trim handling
+ * Guards against undefined trims and negative durations
+ */
+function getEffectiveDuration(element: TimelineElement): number {
+  const trimStart = element.trimStart ?? 0;
+  const trimEnd = element.trimEnd ?? 0;
+  const effectiveDuration = element.duration - trimStart - trimEnd;
+  return Math.max(0, effectiveDuration);
+}
+
+/**
  * Calculate total duration from tracks
  */
 function calculateTimelineDuration(tracks: TimelineTrack[]): number {
   let maxEndTime = 0;
   for (const track of tracks) {
     for (const element of track.elements) {
-      const effectiveDuration = element.duration - element.trimStart - element.trimEnd;
+      const effectiveDuration = getEffectiveDuration(element);
       const endTime = element.startTime + effectiveDuration;
       if (endTime > maxEndTime) {
         maxEndTime = endTime;
@@ -154,8 +165,8 @@ function formatTracksForExport(tracks: TimelineTrack[]): ClaudeTrack[] {
  * Format a single element for export
  */
 function formatElementForExport(element: TimelineElement, trackIndex: number): ClaudeElement {
-  const effectiveDuration = element.duration - element.trimStart - element.trimEnd;
-  
+  const effectiveDuration = getEffectiveDuration(element);
+
   const baseElement: ClaudeElement = {
     id: element.id,
     trackIndex,
