@@ -21,8 +21,6 @@ export interface ParsedSequenceOverlayProps {
   sequences: ParsedSequence[];
   /** Parsed transitions from AST analysis */
   transitions?: ParsedTransition[];
-  /** Frames per second for time calculations */
-  fps: number;
   /** Width of the element in pixels */
   elementWidth: number;
   /** Total duration in frames (for positioning) */
@@ -143,7 +141,6 @@ function DynamicBadge() {
  * <ParsedSequenceOverlay
  *   sequences={parsedResult.sequences}
  *   transitions={parsedResult.transitions}
- *   fps={30}
  *   elementWidth={200}
  *   totalDuration={300}
  * />
@@ -152,7 +149,6 @@ function DynamicBadge() {
 export function ParsedSequenceOverlay({
   sequences,
   transitions = [],
-  fps,
   elementWidth,
   totalDuration,
   usesTransitionSeries = false,

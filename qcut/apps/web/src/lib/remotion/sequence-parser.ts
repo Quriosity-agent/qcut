@@ -299,8 +299,8 @@ function extractTransitionProps(
  */
 function extractJSXProps(
   attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[]
-): Record<string, string | number | "dynamic" | t.Expression> {
-  const props: Record<string, string | number | "dynamic" | t.Expression> = {};
+): Record<string, string | number | boolean | "dynamic" | t.Expression> {
+  const props: Record<string, string | number | boolean | "dynamic" | t.Expression> = {};
 
   for (const attr of attributes) {
     if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
@@ -312,7 +312,7 @@ function extractJSXProps(
 
     if (value === null) {
       // Boolean attribute like <Sequence layout />
-      props[name] = true as unknown as string;
+      props[name] = true;
     } else if (t.isStringLiteral(value)) {
       props[name] = value.value;
     } else if (t.isJSXExpressionContainer(value)) {

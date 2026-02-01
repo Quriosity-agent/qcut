@@ -355,9 +355,9 @@ export function RemotionTimelineElement({
         <ParsedSequenceOverlay
           sequences={analysis.parsed.sequences}
           transitions={analysis.parsed.transitions}
-          fps={component?.fps ?? 30}
           elementWidth={width}
           totalDuration={element.duration}
+          usesTransitionSeries={analysis.parsed.usesTransitionSeries}
           className="opacity-80"
         />
       )}
