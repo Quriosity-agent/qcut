@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Priority Hierarchy: Long-term maintainability > scalability > performance > short-term gains
 
+
 ## Essential Commands
 
 ### Linting & Code Quality
@@ -327,3 +328,5 @@ When encountering Next.js patterns that don't work in Vite:
 - Compiled JS imports must use `.js` extension, not `.ts`
 - Account for `dist/electron/` as the runtime directory
 - File paths must resolve correctly from compiled location
+
+<!-- Update your CLAUDE.md so you don't make that mistake again -->
