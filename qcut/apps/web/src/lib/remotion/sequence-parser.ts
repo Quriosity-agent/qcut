@@ -286,9 +286,13 @@ function extractTransitionProps(
 ): Omit<ParsedTransition, "afterSequenceIndex"> {
   const props = extractJSXProps(node.openingElement.attributes);
 
+  // Filter out boolean values as they're not valid for timing/presentation
+  const timing = typeof props.timing === "boolean" ? undefined : props.timing;
+  const presentation = typeof props.presentation === "boolean" ? undefined : props.presentation;
+
   return {
-    durationInFrames: extractTimingDuration(props.timing),
-    presentation: extractPresentationName(props.presentation),
+    durationInFrames: extractTimingDuration(timing),
+    presentation: extractPresentationName(presentation),
     line: node.loc?.start.line ?? 0,
   };
 }

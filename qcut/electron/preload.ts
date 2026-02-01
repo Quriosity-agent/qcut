@@ -194,6 +194,96 @@ interface MediaImportResult {
   error?: string;
 }
 
+/** Composition information from a Remotion project */
+interface RemotionCompositionInfo {
+  /** Unique composition ID from the id prop */
+  id: string;
+  /** Display name (defaults to id if not specified) */
+  name: string;
+  /** Duration in frames */
+  durationInFrames: number;
+  /** Frames per second */
+  fps: number;
+  /** Video width in pixels */
+  width: number;
+  /** Video height in pixels */
+  height: number;
+  /** Path to the component file (resolved from import) */
+  componentPath: string;
+  /** Original import path from the source */
+  importPath: string;
+  /** Line number in source for debugging */
+  line: number;
+}
+
+/** Result of selecting a Remotion folder via dialog */
+interface RemotionFolderSelectResult {
+  /** Whether selection was successful */
+  success: boolean;
+  /** Selected folder path (if successful) */
+  folderPath?: string;
+  /** Whether user cancelled the dialog */
+  cancelled?: boolean;
+  /** Error message if selection failed */
+  error?: string;
+}
+
+/** Result of scanning a Remotion project folder */
+interface RemotionFolderScanResult {
+  /** Whether the folder is a valid Remotion project */
+  isValid: boolean;
+  /** Path to the Root.tsx or equivalent file */
+  rootFilePath: string | null;
+  /** Detected compositions */
+  compositions: RemotionCompositionInfo[];
+  /** Any errors encountered during parsing */
+  errors: string[];
+  /** Folder path that was scanned */
+  folderPath: string;
+}
+
+/** Result of bundling a single composition */
+interface RemotionBundleResult {
+  /** Composition ID */
+  compositionId: string;
+  /** Whether bundling was successful */
+  success: boolean;
+  /** Bundled JavaScript code (ESM format) */
+  code?: string;
+  /** Source map for debugging */
+  sourceMap?: string;
+  /** Error message if bundling failed */
+  error?: string;
+}
+
+/** Result of bundling compositions from a folder */
+interface RemotionFolderBundleResult {
+  /** Overall success (true if all succeeded) */
+  success: boolean;
+  /** Individual bundle results */
+  results: RemotionBundleResult[];
+  /** Number of successful bundles */
+  successCount: number;
+  /** Number of failed bundles */
+  errorCount: number;
+  /** Folder path that was bundled */
+  folderPath: string;
+}
+
+/** Combined result of folder import (scan + bundle) */
+interface RemotionFolderImportResult {
+  /** Whether import was successful */
+  success: boolean;
+  /** Scan result with composition metadata */
+  scan: RemotionFolderScanResult;
+  /** Bundle result with compiled code */
+  bundle: RemotionFolderBundleResult | null;
+  /** Total import time in milliseconds */
+  importTime: number;
+  /** Error message if import failed */
+  error?: string;
+}
+
 type ThemeSource = "system" | "light" | "dark";
 
 // Main electronAPI interface
@@ -560,7 +650,7 @@ interface ElectronAPI {
     ) => Promise<{ created: string[]; existing: string[] }>;
   };
 
-  // Claude Code Integration API
+// Claude Code Integration API
   claude?: {
     media: {
       list: (projectId: string) => Promise<any[]>;
@@ -599,6 +689,25 @@ interface ElectronAPI {
     diagnostics: {
       analyze: (error: any) => Promise<any>;
     };
+  };
+
+  // Remotion folder operations
+  remotionFolder?: {
+    /** Open folder selection dialog for Remotion projects */
+    select: () => Promise<RemotionFolderSelectResult>;
+    /** Scan a Remotion project folder for compositions */
+    scan: (folderPath: string) => Promise<RemotionFolderScanResult>;
+    /** Bundle compositions from a folder */
+    bundle: (
+      folderPath: string,
+      compositionIds?: string[]
+    ) => Promise<RemotionFolderBundleResult>;
+    /** Full import: scan + bundle in one operation */
+    import: (folderPath: string) => Promise<RemotionFolderImportResult>;
+    /** Check if bundler is available */
+    checkBundler: () => Promise<{ available: boolean }>;
+    /** Validate a folder is a Remotion project */
+    validate: (folderPath: string) => Promise<{ isValid: boolean; error?: string }>;
   };
 
   // Utility functions
@@ -1115,7 +1224,7 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("project-folder:ensure-structure", projectId),
   },
 
-  // Claude Code Integration API
+// Claude Code Integration API
   claude: {
     // Media operations
     media: {
@@ -1216,6 +1325,25 @@ const electronAPI: ElectronAPI = {
     },
   },
 
+  // Remotion folder operations
+  remotionFolder: {
+    select: (): Promise<RemotionFolderSelectResult> =>
+      ipcRenderer.invoke("remotion-folder:select"),
+    scan: (folderPath: string): Promise<RemotionFolderScanResult> =>
+      ipcRenderer.invoke("remotion-folder:scan", folderPath),
+    bundle: (
+      folderPath: string,
+      compositionIds?: string[]
+    ): Promise<RemotionFolderBundleResult> =>
+      ipcRenderer.invoke("remotion-folder:bundle", folderPath, compositionIds),
+    import: (folderPath: string): Promise<RemotionFolderImportResult> =>
+      ipcRenderer.invoke("remotion-folder:import", folderPath),
+    checkBundler: (): Promise<{ available: boolean }> =>
+      ipcRenderer.invoke("remotion-folder:check-bundler"),
+    validate: (folderPath: string): Promise<{ isValid: boolean; error?: string }> =>
+      ipcRenderer.invoke("remotion-folder:validate", folderPath),
+  },
+
   // Utility functions
   isElectron: true,
 };
@@ -1245,6 +1373,12 @@ export type {
   Skill,
   MediaImportOptions,
   MediaImportResult,
+  RemotionCompositionInfo,
+  RemotionFolderSelectResult,
+  RemotionFolderScanResult,
+  RemotionBundleResult,
+  RemotionFolderBundleResult,
+  RemotionFolderImportResult,
 };
 
 // Global type augmentation for renderer process

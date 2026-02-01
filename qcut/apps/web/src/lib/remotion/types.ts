@@ -71,7 +71,10 @@ export type RemotionComponentCategory =
   | "effect"
   | "template"
   | "transition"
-  | "text";
+  | "text"
+  | "intro"
+  | "social"
+  | "custom";
 
 /**
  * Complete definition of a Remotion component that can be used in QCut.
@@ -112,6 +115,8 @@ export interface RemotionComponentDefinition {
   author?: string;
   /** Optional sequence structure for timeline visualization */
   sequenceStructure?: SequenceStructure;
+  /** Original folder path for folder-imported components */
+  folderPath?: string;
 }
 
 /**
@@ -448,6 +453,46 @@ export interface RemotionStoreState {
   recentErrors: RemotionError[];
   /** Cached sequence analysis results by componentId */
   analyzedSequences: Map<string, import("./sequence-analysis-service").AnalysisResult>;
+  /** Imported folder metadata by folder path */
+  importedFolders: Map<string, ImportedFolderInfo>;
+  /** Whether a folder import is in progress */
+  isFolderImporting: boolean;
+}
+
+/**
+ * Information about an imported Remotion folder
+ */
+export interface ImportedFolderInfo {
+  /** Folder path */
+  folderPath: string;
+  /** Display name for the folder */
+  name: string;
+  /** Component IDs imported from this folder */
+  componentIds: string[];
+  /** Number of compositions detected */
+  compositionCount: number;
+  /** When the folder was imported */
+  importedAt: number;
+  /** When the folder was last refreshed */
+  refreshedAt: number;
+}
+
+/**
+ * Result of a folder import operation
+ */
+export interface FolderImportResult {
+  /** Whether import was successful */
+  success: boolean;
+  /** Component IDs that were imported */
+  componentIds: string[];
+  /** Number of components successfully imported */
+  successCount: number;
+  /** Number of components that failed */
+  errorCount: number;
+  /** Error messages */
+  errors: string[];
+  /** Folder path that was imported */
+  folderPath: string;
 }
 
 /**
@@ -522,6 +567,16 @@ export interface RemotionStoreActions {
     componentId: string,
     sourceCode: string
   ) => Promise<import("./sequence-analysis-service").AnalysisResult>;
+
+  // Folder Import
+  /** Import components from a Remotion folder */
+  importFromFolder: (folderPath?: string) => Promise<FolderImportResult>;
+  /** Refresh components from an imported folder */
+  refreshFolder: (folderPath: string) => Promise<FolderImportResult>;
+  /** Remove an imported folder and its components */
+  removeFolder: (folderPath: string) => void;
+  /** Get all imported folders */
+  getImportedFolders: () => ImportedFolderInfo[];
 
   // Cleanup
   reset: () => void;
