@@ -69,12 +69,7 @@ function calculateTimelineDuration(tracks: TimelineTrack[]): number {
  * Find track containing an element
  */
 function findTrackByElementId(tracks: TimelineTrack[], elementId: string): TimelineTrack | null {
-  for (const track of tracks) {
-    if (track.elements.some(e => e.id === elementId)) {
-      return track;
-    }
-  }
-  return null;
+  return tracks.find(track => track.elements.some(e => e.id === elementId)) || null;
 }
 
 /**
