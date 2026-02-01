@@ -125,7 +125,7 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle element update
-  claudeAPI.onUpdateElement((data: { elementId: string; changes: any }) => {
+  claudeAPI.onUpdateElement((data: { elementId: string; changes: Partial<ClaudeElement> }) => {
     console.log('[ClaudeTimelineBridge] Updating element:', data.elementId);
     // Note: Would need to implement updateElement in timeline store
     console.warn('[ClaudeTimelineBridge] updateElement not fully implemented');
