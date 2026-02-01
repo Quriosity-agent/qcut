@@ -57,7 +57,11 @@ export function formatTimeFromSeconds(seconds: number): string {
  * Parse time ("H:MM:SS" or "M:SS" -> seconds)
  */
 export function parseTime(time: string): number {
-  const parts = time.split(':').map(Number);
+  const rawParts = time.split(':');
+  if (!rawParts.every((part) => /^\d+$/.test(part.trim()))) {
+    throw new Error(`Invalid time format: ${time}`);
+  }
+  const parts = rawParts.map(Number);
   if (parts.length === 3) {
     return parts[0] * 3600 + parts[1] * 60 + parts[2];
   }
