@@ -185,9 +185,14 @@ function markdownToTimeline(md: string): ClaudeTimeline {
   if (durationMatch) {
     timeline.duration = parseTime(durationMatch[1]);
   }
-  
-  claudeLog.warn(HANDLER_NAME, 'Markdown parsing is basic - track/element parsing not fully implemented');
-  
+
+  // Track/element parsing not implemented - throw to prevent silent data loss
+  if (md.includes('## Track')) {
+    throw new Error('Markdown track parsing not yet implemented. Use JSON format for full timeline import.');
+  }
+
+  claudeLog.warn(HANDLER_NAME, 'Imported markdown contains project metadata only - no tracks parsed');
+
   return timeline;
 }
 
