@@ -27,6 +27,8 @@ export interface ParsedSequenceOverlayProps {
   elementWidth: number;
   /** Total duration in frames (for positioning) */
   totalDuration: number;
+  /** Whether the component uses TransitionSeries (affects positioning logic) */
+  usesTransitionSeries?: boolean;
   /** Optional className for the container */
   className?: string;
 }
@@ -153,6 +155,7 @@ export function ParsedSequenceOverlay({
   fps,
   elementWidth,
   totalDuration,
+  usesTransitionSeries = false,
   className,
 }: ParsedSequenceOverlayProps) {
   // Calculate positions for all sequences
@@ -162,45 +165,54 @@ export function ParsedSequenceOverlay({
     }
 
     const pixelsPerFrame = elementWidth / totalDuration;
-    const result: Array<{ left: number; width: number }> = [];
 
-    let currentFrom = 0;
+    // When using TransitionSeries, calculate positions sequentially
+    if (usesTransitionSeries) {
+      const result: Array<{ left: number; width: number }> = [];
+      let currentFrame = 0;
 
-    for (let i = 0; i < sequences.length; i++) {
-      const seq = sequences[i];
+      for (let i = 0; i < sequences.length; i++) {
+        const seq = sequences[i];
+        const duration =
+          seq.durationInFrames === "dynamic"
+            ? DEFAULT_DURATION
+            : seq.durationInFrames;
 
-      // Use actual from if available, otherwise calculate sequentially
-      const from = seq.from === "dynamic" ? currentFrom : seq.from;
+        // Check for transition before this sequence (creates overlap)
+        const prevTransition = transitions.find(
+          (t) => t.afterSequenceIndex === i - 1
+        );
+        if (prevTransition && i > 0) {
+          const transitionDuration =
+            prevTransition.durationInFrames === "dynamic"
+              ? 15
+              : prevTransition.durationInFrames;
+          currentFrame -= transitionDuration;
+        }
 
-      // Use actual duration or fallback
+        const from = Math.max(0, currentFrame);
+        result.push({
+          left: from * pixelsPerFrame,
+          width: duration * pixelsPerFrame,
+        });
+        currentFrame = from + duration;
+      }
+      return result;
+    }
+
+    // Default logic for absolutely positioned <Sequence> elements
+    return sequences.map((seq) => {
+      const from = typeof seq.from === "number" ? seq.from : 0;
       const duration =
         seq.durationInFrames === "dynamic"
           ? DEFAULT_DURATION
           : seq.durationInFrames;
-
-      // Check for transition before this sequence (reduces start position)
-      const prevTransition = transitions.find(
-        (t) => t.afterSequenceIndex === i - 1
-      );
-      let adjustedFrom = from;
-      if (prevTransition && i > 0) {
-        const transitionDuration =
-          prevTransition.durationInFrames === "dynamic"
-            ? 15
-            : prevTransition.durationInFrames;
-        adjustedFrom = Math.max(0, from - transitionDuration);
-      }
-
-      result.push({
-        left: adjustedFrom * pixelsPerFrame,
+      return {
+        left: from * pixelsPerFrame,
         width: duration * pixelsPerFrame,
-      });
-
-      currentFrom = from + duration;
-    }
-
-    return result;
-  }, [sequences, transitions, totalDuration, elementWidth]);
+      };
+    });
+  }, [sequences, transitions, totalDuration, elementWidth, usesTransitionSeries]);
 
   // Check if any sequences have dynamic values
   const hasDynamicValues = useMemo(() => {

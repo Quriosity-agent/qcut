@@ -49,11 +49,15 @@ const getTypedText = ({
 	return fullText.slice(0, typedChars);
 };
 
-const Cursor: React.FC<{
+const Cursor = ({
+	frame,
+	blinkFrames,
+	symbol = '\u258C',
+}: {
 	frame: number;
 	blinkFrames: number;
 	symbol?: string;
-}> = ({frame, blinkFrames, symbol = '\u258C'}) => {
+}) => {
 	const opacity = interpolate(
 		frame % blinkFrames,
 		[0, blinkFrames / 2, blinkFrames],
