@@ -3,11 +3,11 @@
  * Main entry point for all Claude API handlers
  */
 
-import { setupClaudeMediaIPC } from './claude-media-handler';
-import { setupClaudeTimelineIPC } from './claude-timeline-handler';
-import { setupClaudeProjectIPC } from './claude-project-handler';
-import { setupClaudeExportIPC } from './claude-export-handler';
-import { setupClaudeDiagnosticsIPC } from './claude-diagnostics-handler';
+import { setupClaudeMediaIPC } from './claude-media-handler.js';
+import { setupClaudeTimelineIPC } from './claude-timeline-handler.js';
+import { setupClaudeProjectIPC } from './claude-project-handler.js';
+import { setupClaudeExportIPC } from './claude-export-handler.js';
+import { setupClaudeDiagnosticsIPC } from './claude-diagnostics-handler.js';
 
 /**
  * Setup all Claude Code Integration IPC handlers

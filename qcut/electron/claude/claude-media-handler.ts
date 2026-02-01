@@ -6,8 +6,8 @@
 import { ipcMain } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getMediaPath, isPathSafe, getMediaType, generateId, sanitizeFilename } from './utils/helpers';
-import { claudeLog } from './utils/logger';
+import { getMediaPath, isPathSafe, getMediaType, generateId, sanitizeFilename } from './utils/helpers.js';
+import { claudeLog } from './utils/logger.js';
 import type { MediaFile } from '../types/claude-api';
 
 const HANDLER_NAME = 'Media';

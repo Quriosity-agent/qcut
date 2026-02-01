@@ -4,8 +4,8 @@
  */
 
 import { ipcMain, BrowserWindow, IpcMainInvokeEvent } from 'electron';
-import { formatTimeFromSeconds, parseTime } from './utils/helpers';
-import { claudeLog } from './utils/logger';
+import { formatTimeFromSeconds, parseTime } from './utils/helpers.js';
+import { claudeLog } from './utils/logger.js';
 import type { ClaudeTimeline, ClaudeTrack, ClaudeElement } from '../types/claude-api';
 
 const HANDLER_NAME = 'Timeline';

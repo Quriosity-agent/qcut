@@ -4,7 +4,7 @@
  */
 
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
-import { claudeLog } from './utils/logger';
+import { claudeLog } from './utils/logger.js';
 import type { ExportPreset, ExportRecommendation } from '../types/claude-api';
 
 const HANDLER_NAME = 'Export';
