@@ -112,13 +112,26 @@ export function setupClaudeMediaIPC(): void {
   // ============================================================================
   ipcMain.handle('claude:media:import', async (event, projectId: string, source: string): Promise<MediaFile | null> => {
     claudeLog.info(HANDLER_NAME, `Importing media from: ${source}`);
-    
+
+    // Security: Validate source path to prevent path traversal attacks
+    if (!isPathSafe(source)) {
+      claudeLog.error(HANDLER_NAME, 'Source path failed security validation');
+      return null;
+    }
+
     const mediaPath = getMediaPath(projectId);
-    
+
     try {
+      // Verify source exists and is a file
+      const sourceStat = await fs.stat(source);
+      if (!sourceStat.isFile()) {
+        claudeLog.error(HANDLER_NAME, 'Source is not a file');
+        return null;
+      }
+
       // Ensure media directory exists
       await fs.mkdir(mediaPath, { recursive: true });
-      
+
       // Get filename and sanitize
       const fileName = sanitizeFilename(path.basename(source));
       if (!fileName) {
