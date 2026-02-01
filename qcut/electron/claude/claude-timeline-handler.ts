@@ -4,7 +4,7 @@
  */
 
 import { ipcMain, BrowserWindow, IpcMainInvokeEvent } from 'electron';
-import { formatTimeFromSeconds, parseTime } from './utils/helpers.js';
+import { formatTimeFromSeconds, parseTime, generateId } from './utils/helpers.js';
 import { claudeLog } from './utils/logger.js';
 import type { ClaudeTimeline, ClaudeTrack, ClaudeElement } from '../types/claude-api';
 
@@ -61,8 +61,9 @@ export function setupClaudeTimelineIPC(): void {
   // ============================================================================
   ipcMain.handle('claude:timeline:addElement', async (event: IpcMainInvokeEvent, projectId: string, element: Partial<ClaudeElement>): Promise<string> => {
     claudeLog.info(HANDLER_NAME, `Adding element to project: ${projectId}`);
-    event.sender.send('claude:timeline:addElement', element);
-    return element.id || '';
+    const elementId = element.id || generateId('element');
+    event.sender.send('claude:timeline:addElement', { ...element, id: elementId });
+    return elementId;
   });
 
   // ============================================================================
