@@ -63,8 +63,10 @@ async function listMediaFiles(projectId: string): Promise<MediaFile[]> {
       const type = getMediaType(ext);
       if (!type) continue;
       
+      // Use deterministic ID based on filename for consistent lookups
+      const deterministicId = `media_${Buffer.from(entry.name).toString('base64url')}`;
       files.push({
-        id: generateId('media'),
+        id: deterministicId,
         name: entry.name,
         type,
         path: filePath,
