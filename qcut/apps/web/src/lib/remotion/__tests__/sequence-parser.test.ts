@@ -302,8 +302,13 @@ describe("extractSequencesFromSource", () => {
 
       const result = extractSequencesFromSource(source);
 
-      // Should either have errors or recover partially
-      expect(result.errors.length).toBeGreaterThanOrEqual(0);
+      // Severe syntax errors may throw (caught) or be recovered
+      expect(result.errors.length).toBeGreaterThan(0);
+      // Error message contains either "Parse error" (recovered) or "Failed to parse" (thrown)
+      expect(
+        result.errors[0].includes("Parse error") ||
+          result.errors[0].includes("Failed to parse")
+      ).toBe(true);
     });
 
     it("handles missing closing tags", () => {
@@ -314,8 +319,11 @@ describe("extractSequencesFromSource", () => {
 
       const result = extractSequencesFromSource(source);
 
-      // Parser should handle this with error recovery
+      // Parser should handle this with error recovery and report the issue
       expect(result).toBeDefined();
+      expect(result.errors.length).toBeGreaterThan(0);
+      // May still recover the Sequence even with missing closing tag
+      expect(result.sequences.length).toBeGreaterThanOrEqual(0);
     });
   });
 });

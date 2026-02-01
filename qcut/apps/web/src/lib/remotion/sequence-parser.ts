@@ -140,6 +140,15 @@ export function extractSequencesFromSource(sourceCode: string): ParsedStructure 
 
   try {
     ast = parse(sourceCode, PARSER_OPTIONS);
+
+    // Capture parser recovery errors (errorRecovery: true stores errors on AST)
+    if (ast.errors && ast.errors.length > 0) {
+      for (const err of ast.errors) {
+        result.errors.push(
+          `Parse error at line ${err.loc?.line ?? "unknown"}: ${err.message}`
+        );
+      }
+    }
   } catch (error) {
     result.errors.push(
       `Failed to parse source code: ${error instanceof Error ? error.message : String(error)}`
