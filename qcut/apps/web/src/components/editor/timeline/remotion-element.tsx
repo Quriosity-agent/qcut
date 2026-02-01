@@ -11,7 +11,10 @@ import React, { useMemo, useCallback } from "react";
 import { Layers, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RemotionElement, TimelineTrack } from "@/types/timeline";
-import { useRemotionComponent, useRemotionInstance } from "@/stores/remotion-store";
+import { useRemotionComponent, useRemotionInstance, useComponentAnalysis } from "@/stores/remotion-store";
+import { RemotionSequences } from "./remotion-sequences";
+import { ParsedSequenceOverlay } from "./parsed-sequence-overlay";
+import { calculateTotalDuration } from "@/lib/remotion/duration-calculator";
 
 // ============================================================================
 // Types
@@ -166,6 +169,7 @@ export function RemotionTimelineElement({
   // Get component and instance info from store
   const component = useRemotionComponent(element.componentId);
   const instance = useRemotionInstance(element.id);
+  const analysis = useComponentAnalysis(element.componentId);
 
   // Calculate dimensions
   const width = useMemo(
@@ -181,6 +185,24 @@ export function RemotionTimelineElement({
   const showResizeHandles = width >= MIN_WIDTH_FOR_HANDLES;
   const hasError = !!instance?.error;
   const cacheStatus = instance?.cacheStatus ?? "none";
+
+  // Check if component has sequence structure for visualization
+  // Author-provided metadata takes precedence over parsed analysis
+  const hasAuthorMetadata = !!component?.sequenceStructure?.sequences?.length;
+
+  // Fall back to parsed analysis for imported components without author metadata
+  const hasParsedAnalysis = !hasAuthorMetadata &&
+    !!analysis?.parsed?.sequences?.length;
+
+  // Check if any sequences have dynamic values
+  const hasDynamicValues = analysis?.hasDynamicValues ?? false;
+
+  const sequenceTotalDuration = useMemo(() => {
+    if (component?.sequenceStructure) {
+      return calculateTotalDuration(component.sequenceStructure);
+    }
+    return 0;
+  }, [component?.sequenceStructure]);
 
   // Event handlers
   const handleMouseDown = useCallback(
@@ -317,6 +339,37 @@ export function RemotionTimelineElement({
               "repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.3) 3px, rgba(0,0,0,0.3) 6px)",
           }}
         />
+      )}
+
+      {/* Sequence visualization - author-provided metadata (preferred) */}
+      {hasAuthorMetadata && component?.sequenceStructure && (
+        <RemotionSequences
+          structure={component.sequenceStructure}
+          totalDuration={sequenceTotalDuration || element.duration}
+          elementWidth={width}
+        />
+      )}
+
+      {/* Sequence visualization - parsed from AST (fallback for imports) */}
+      {hasParsedAnalysis && analysis?.parsed && (
+        <ParsedSequenceOverlay
+          sequences={analysis.parsed.sequences}
+          transitions={analysis.parsed.transitions}
+          elementWidth={width}
+          totalDuration={element.duration}
+          usesTransitionSeries={analysis.parsed.usesTransitionSeries}
+          className="opacity-80"
+        />
+      )}
+
+      {/* Dynamic values indicator badge */}
+      {hasParsedAnalysis && hasDynamicValues && (
+        <div
+          className="absolute top-1 left-1 px-1.5 py-0.5 text-[8px] font-medium bg-amber-500/80 text-white rounded"
+          title="Some timing values are computed at runtime"
+        >
+          ~dynamic
+        </div>
       )}
     </div>
   );

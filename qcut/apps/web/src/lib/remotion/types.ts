@@ -12,6 +12,53 @@ import type { PlayerRef } from "@remotion/player";
 import type { z } from "zod";
 
 // ============================================================================
+// Sequence Visualization Types
+// ============================================================================
+
+/**
+ * Metadata describing a single sequence within a Remotion composition.
+ * Used for visualizing internal structure in the timeline.
+ */
+export interface SequenceMetadata {
+  /** Human-readable name for the sequence */
+  name: string;
+  /** Frame at which this sequence starts (relative to composition) */
+  from: number;
+  /** Duration of the sequence in frames */
+  durationInFrames: number;
+  /** Color for timeline visualization (hex format) */
+  color?: string;
+  /** Optional description for tooltips */
+  description?: string;
+}
+
+/**
+ * Metadata describing a transition between sequences.
+ * Used for TransitionSeries components.
+ */
+export interface TransitionMetadata {
+  /** Index of the sequence this transition follows (0-based) */
+  afterSequenceIndex: number;
+  /** Duration of the transition overlap in frames */
+  durationInFrames: number;
+  /** Type of transition presentation */
+  presentation?: "fade" | "slide" | "wipe" | "zoom" | "custom";
+}
+
+/**
+ * Complete structure describing sequences and transitions within a composition.
+ * Enables timeline visualization of internal component structure.
+ */
+export interface SequenceStructure {
+  /** List of sequences in order */
+  sequences: SequenceMetadata[];
+  /** Optional transitions between sequences */
+  transitions?: TransitionMetadata[];
+  /** Pre-calculated total duration (sequences - transitions overlap) */
+  calculatedDuration?: number;
+}
+
+// ============================================================================
 // Component Definition Types
 // ============================================================================
 
@@ -24,7 +71,10 @@ export type RemotionComponentCategory =
   | "effect"
   | "template"
   | "transition"
-  | "text";
+  | "text"
+  | "intro"
+  | "social"
+  | "custom";
 
 /**
  * Complete definition of a Remotion component that can be used in QCut.
@@ -63,6 +113,10 @@ export interface RemotionComponentDefinition {
   version?: string;
   /** Author information */
   author?: string;
+  /** Optional sequence structure for timeline visualization */
+  sequenceStructure?: SequenceStructure;
+  /** Original folder path for folder-imported components */
+  folderPath?: string;
 }
 
 /**
@@ -397,6 +451,48 @@ export interface RemotionStoreState {
   isLoading: boolean;
   /** Recent errors for debugging */
   recentErrors: RemotionError[];
+  /** Cached sequence analysis results by componentId */
+  analyzedSequences: Map<string, import("./sequence-analysis-service").AnalysisResult>;
+  /** Imported folder metadata by folder path */
+  importedFolders: Map<string, ImportedFolderInfo>;
+  /** Whether a folder import is in progress */
+  isFolderImporting: boolean;
+}
+
+/**
+ * Information about an imported Remotion folder
+ */
+export interface ImportedFolderInfo {
+  /** Folder path */
+  folderPath: string;
+  /** Display name for the folder */
+  name: string;
+  /** Component IDs imported from this folder */
+  componentIds: string[];
+  /** Number of compositions detected */
+  compositionCount: number;
+  /** When the folder was imported */
+  importedAt: number;
+  /** When the folder was last refreshed */
+  refreshedAt: number;
+}
+
+/**
+ * Result of a folder import operation
+ */
+export interface FolderImportResult {
+  /** Whether import was successful */
+  success: boolean;
+  /** Component IDs that were imported */
+  componentIds: string[];
+  /** Number of components successfully imported */
+  successCount: number;
+  /** Number of components that failed */
+  errorCount: number;
+  /** Error messages */
+  errors: string[];
+  /** Folder path that was imported */
+  folderPath: string;
 }
 
 /**
@@ -453,6 +549,34 @@ export interface RemotionStoreActions {
   // Error Handling
   addError: (error: RemotionError) => void;
   clearErrors: () => void;
+
+  // Sequence Analysis
+  /** Store analysis result for a component */
+  setAnalysisResult: (
+    componentId: string,
+    result: import("./sequence-analysis-service").AnalysisResult
+  ) => void;
+  /** Get analysis result for a component */
+  getAnalysisResult: (
+    componentId: string
+  ) => import("./sequence-analysis-service").AnalysisResult | undefined;
+  /** Clear analysis for a component */
+  clearAnalysisResult: (componentId: string) => void;
+  /** Analyze a component's source code and store result */
+  analyzeComponentSource: (
+    componentId: string,
+    sourceCode: string
+  ) => Promise<import("./sequence-analysis-service").AnalysisResult>;
+
+  // Folder Import
+  /** Import components from a Remotion folder */
+  importFromFolder: (folderPath?: string) => Promise<FolderImportResult>;
+  /** Refresh components from an imported folder */
+  refreshFolder: (folderPath: string) => Promise<FolderImportResult>;
+  /** Remove an imported folder and its components */
+  removeFolder: (folderPath: string) => void;
+  /** Get all imported folders */
+  getImportedFolders: () => ImportedFolderInfo[];
 
   // Cleanup
   reset: () => void;
