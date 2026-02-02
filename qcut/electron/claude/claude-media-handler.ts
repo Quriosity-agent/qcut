@@ -6,7 +6,7 @@
 import { ipcMain } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getMediaPath, isPathSafe, getMediaType, generateId, sanitizeFilename } from './utils/helpers.js';
+import { getMediaPath, isValidSourcePath, getMediaType, generateId, sanitizeFilename } from './utils/helpers.js';
 import { claudeLog } from './utils/logger.js';
 import type { MediaFile } from '../types/claude-api';
 
@@ -113,8 +113,8 @@ export function setupClaudeMediaIPC(): void {
   ipcMain.handle('claude:media:import', async (event, projectId: string, source: string): Promise<MediaFile | null> => {
     claudeLog.info(HANDLER_NAME, `Importing media from: ${source}`);
 
-    // Security: Validate source path to prevent path traversal attacks
-    if (!isPathSafe(source)) {
+    // Security: Validate source path for import
+    if (!isValidSourcePath(source)) {
       claudeLog.error(HANDLER_NAME, 'Source path failed security validation');
       return null;
     }
@@ -155,8 +155,9 @@ export function setupClaudeMediaIPC(): void {
 
       const stat = await fs.stat(destPath);
 
+      // Use deterministic ID based on filename for consistent lookups (matches listMediaFiles)
       const mediaFile: MediaFile = {
-        id: generateId('media'),
+        id: `media_${Buffer.from(actualFileName).toString('base64url')}`,
         name: actualFileName,
         type,
         path: destPath,

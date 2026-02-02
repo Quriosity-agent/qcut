@@ -181,7 +181,11 @@ function formatElementForExport(element: TimelineElement, trackIndex: number): C
  * Apply imported Claude timeline to store
  */
 function applyTimelineToStore(timeline: ClaudeTimeline): void {
-  const projectStore = useProjectStore.getState();
+  // TODO: Full implementation would use useProjectStore.getState() to:
+  // 1. Validate media references exist
+  // 2. Map Claude elements back to internal TimelineElement types
+  // 3. Handle conflicts with existing elements
+  // 4. Update timeline store
 
   // Log the import for now
   console.log('[ClaudeTimelineBridge] Would apply timeline:', {
@@ -191,11 +195,6 @@ function applyTimelineToStore(timeline: ClaudeTimeline): void {
     totalElements: timeline.tracks.reduce((sum, t) => sum + t.elements.length, 0),
   });
 
-  // Note: Full implementation would:
-  // 1. Validate media references exist
-  // 2. Map Claude elements back to internal TimelineElement types
-  // 3. Handle conflicts with existing elements
-  // 4. Update timeline store
   console.warn('[ClaudeTimelineBridge] Full timeline import not implemented - complex operation requiring user confirmation');
 }
 

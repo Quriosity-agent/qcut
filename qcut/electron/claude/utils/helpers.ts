@@ -81,6 +81,19 @@ export function isPathSafe(targetPath: string, basePath: string): boolean {
 }
 
 /**
+ * Validate source path for import operations (basic security check)
+ * Allows importing from anywhere but prevents malicious inputs
+ */
+export function isValidSourcePath(sourcePath: string): boolean {
+  // Must be a non-empty string
+  if (!sourcePath || typeof sourcePath !== 'string') return false;
+  // No null bytes (injection attack prevention)
+  if (sourcePath.includes('\0')) return false;
+  // Must be an absolute path
+  return path.isAbsolute(sourcePath);
+}
+
+/**
  * Generate unique ID with prefix
  */
 export function generateId(prefix: string = 'id'): string {
