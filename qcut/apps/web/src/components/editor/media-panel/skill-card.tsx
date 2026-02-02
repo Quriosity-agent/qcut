@@ -88,43 +88,27 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   const [isCopying, setIsCopying] = useState(false);
 
   const copyToClipboard = async (path: string, e: React.MouseEvent) => {
-    console.log("[SkillCard] copyToClipboard called", {
-      path,
-      isCopying,
-      eventType: e.type,
-      eventTarget: (e.target as HTMLElement).tagName,
-      eventCurrentTarget: (e.currentTarget as HTMLElement).tagName,
-      timestamp: Date.now(),
-    });
-
     e.preventDefault();
     e.stopPropagation();
 
     // Prevent rapid double-clicks
     if (isCopying) {
-      console.log("[SkillCard] Blocked - already copying");
       return;
     }
     setIsCopying(true);
-    console.log("[SkillCard] Starting copy operation");
 
     try {
       await navigator.clipboard.writeText(path);
-      console.log("[SkillCard] Clipboard write successful");
       setCopiedPath(path);
-      // Use fixed toast id and dismiss first to prevent duplicates
-      const toastId = "skill-path-copy";
-      toast.dismiss(toastId);
-      console.log("[SkillCard] Showing toast with id:", toastId);
-      toast.success("Path copied to clipboard", { id: toastId });
+      // Use fixed toast id to prevent duplicates
+      toast.success("Path copied to clipboard", { id: "skill-path-copy" });
       setTimeout(() => setCopiedPath(null), 2000);
     } catch (err) {
-      console.error("[SkillCard] Clipboard write failed", err);
+      console.error("Failed to copy path:", err);
       toast.error("Failed to copy path", { id: "skill-path-copy-error" });
     } finally {
       setTimeout(() => {
         setIsCopying(false);
-        console.log("[SkillCard] Copy operation complete, isCopying reset");
       }, 300);
     }
   };

@@ -115,22 +115,33 @@ export function TerminalEmulator({
     // Handle user input - send to PTY
     terminal.onData((data) => {
       if (sessionId) {
-        const writePromise = window.electronAPI?.pty?.write?.(sessionId, data);
-        writePromise?.catch((error) => {
+        window.electronAPI?.pty?.write?.(sessionId, data)?.catch((error) => {
           console.error("[Terminal] Failed to write to PTY:", error);
         });
       }
     });
 
-    // Handle paste (Ctrl+V / Cmd+V)
+    // Track if we're currently pasting to prevent double onData
+    let isPasting = false;
+
+    // Handle keyboard shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
-      // Check for paste shortcut (Ctrl+V on Windows/Linux, Cmd+V on Mac)
+      // Handle paste (Ctrl+V / Cmd+V)
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === "v" &&
         event.type === "keydown"
       ) {
-        // Guard against clipboard API unavailability (non-secure contexts, tests)
+        if (isPasting) {
+          return false;
+        }
+        isPasting = true;
+        // Reset after a short delay
+        setTimeout(() => {
+          isPasting = false;
+        }, 100);
+
+        // Guard against clipboard API unavailability
         if (!navigator.clipboard?.readText) {
           return true;
         }
@@ -138,22 +149,17 @@ export function TerminalEmulator({
           .readText()
           .then((text) => {
             if (text && sessionId) {
-              // Send pasted text to PTY
-              const writePromise = window.electronAPI?.pty?.write?.(
-                sessionId,
-                text
-              );
-              writePromise?.catch((err) => {
-                console.error("[Terminal] Failed to write pasted text:", err);
-              });
+              // Write directly to PTY, bypassing terminal.paste()
+              window.electronAPI?.pty?.write?.(sessionId, text);
             }
           })
           .catch((err) => {
             console.error("[Terminal] Failed to read clipboard:", err);
           });
-        // Prevent default to avoid double paste
+        // Prevent xterm from also handling paste
         return false;
       }
+
       // Check for copy shortcut (Ctrl+C / Cmd+C) when there's a selection
       if (
         (event.ctrlKey || event.metaKey) &&
