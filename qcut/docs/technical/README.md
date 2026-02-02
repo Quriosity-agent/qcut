@@ -22,6 +22,13 @@ docs/technical/
 | [source-code-structure.md](architecture/source-code-structure.md) | Complete codebase structure with file counts |
 | [terminal-architecture.md](architecture/terminal-architecture.md) | xterm.js integration and terminal system |
 | [virtual-folder-system.md](architecture/virtual-folder-system.md) | Media organization metadata system |
+| [remotion-sequence-visualization.md](architecture/remotion-sequence-visualization.md) | Sequence/transition visualization in timeline |
+
+### Remotion Integration
+| Document | Description |
+|----------|-------------|
+| [remotion-timeline-rendering.md](remotion-timeline-rendering.md) | Remotion component rendering on timeline |
+| [remotion-sequence-visualization.md](architecture/remotion-sequence-visualization.md) | AST-based sequence detection and visualization |
 
 ### AI Video Generation
 | Document | Description |
