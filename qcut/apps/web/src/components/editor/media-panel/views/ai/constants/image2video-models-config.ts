@@ -426,7 +426,7 @@ export const I2V_MODELS = {
     name: "Vidu Q3 Image-to-Video",
     description:
       "Animate images with audio generation and multi-resolution support",
-    price: "0.07-0.15/s",
+    price: "0.07-0.154/s",
     resolution: "720p",
     max_duration: 5,
     category: "image",
