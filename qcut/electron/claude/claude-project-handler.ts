@@ -3,7 +3,7 @@
  * Provides project settings read/write capabilities for Claude Code integration
  */
 
-import { ipcMain, BrowserWindow, IpcMainInvokeEvent } from 'electron';
+import { ipcMain, BrowserWindow, IpcMainInvokeEvent, IpcMainEvent } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getProjectPath, getProjectSettingsPath } from './utils/helpers.js';
@@ -105,19 +105,26 @@ export function setupClaudeProjectIPC(): void {
     
     // Request stats from renderer (which has access to timeline state)
     return new Promise((resolve) => {
+      const requestId = `${Date.now()}-${win.webContents.id}`;
+
+      const handler = (responseEvent: IpcMainEvent, stats: ProjectStats, responseId?: string) => {
+        // Validate response is from the correct window and request
+        if (responseEvent.sender.id !== win.webContents.id || responseId !== requestId) {
+          return;
+        }
+        clearTimeout(timeout);
+        ipcMain.removeListener('claude:project:statsResponse', handler);
+        resolve(stats);
+      };
+
       const timeout = setTimeout(() => {
         ipcMain.removeListener('claude:project:statsResponse', handler);
         claudeLog.warn(HANDLER_NAME, 'Timeout waiting for stats, returning empty');
         resolve(getEmptyStats());
       }, 3000);
-      
-      const handler = (_e: any, stats: ProjectStats) => {
-        clearTimeout(timeout);
-        resolve(stats);
-      };
-      
-      ipcMain.once('claude:project:statsResponse', handler);
-      win.webContents.send('claude:project:statsRequest');
+
+      ipcMain.on('claude:project:statsResponse', handler);
+      win.webContents.send('claude:project:statsRequest', { projectId, requestId });
     });
   });
 
