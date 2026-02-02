@@ -12,7 +12,11 @@ import {
   isFFmpegExportEnabled,
 } from "@/lib/ffmpeg-video-recorder";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
-import { renderStickersToCanvas } from "@/lib/stickers/sticker-export-helper";
+import {
+  renderStickersToCanvas,
+  preloadStickerImages,
+  getStickerExportHelper,
+} from "@/lib/stickers/sticker-export-helper";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useEffectsStore } from "@/stores/effects-store";
@@ -575,22 +579,15 @@ export class ExportEngine {
       debugLog(
         `[STICKER_FRAME] Found ${visibleStickers.length} stickers for this frame`
       );
+
+      if (visibleStickers.length === 0) {
+        return;
+      }
+
       debugLog(
         "[STICKER_FRAME] Sticker IDs:",
         visibleStickers.map((s) => s.id)
       );
-      debugLog(
-        "[STICKER_DEBUG] All stickers in store:",
-        Array.from(stickersStore.overlayStickers.values())
-      );
-      debugLog("[STICKER_DEBUG] Visible stickers:", visibleStickers);
-
-      if (visibleStickers.length === 0) {
-        debugLog(
-          `[STICKER_DEBUG] No visible stickers at time ${currentTime}, skipping render`
-        );
-        return;
-      }
 
       // Get media items for stickers
       const mediaStore = useMediaStore.getState();
@@ -598,26 +595,32 @@ export class ExportEngine {
         mediaStore.mediaItems.map((item) => [item.id, item])
       );
 
-      // Render stickers to canvas
-      await renderStickersToCanvas(this.ctx, visibleStickers, mediaItemsMap, {
-        canvasWidth: this.canvas.width,
-        canvasHeight: this.canvas.height,
-        currentTime,
-      });
-
-      debugLog(
-        `[ExportEngine] Rendered ${visibleStickers.length} overlay stickers at time ${currentTime}`
+      // Render stickers to canvas and get result
+      const renderResult = await renderStickersToCanvas(
+        this.ctx,
+        visibleStickers,
+        mediaItemsMap,
+        {
+          canvasWidth: this.canvas.width,
+          canvasHeight: this.canvas.height,
+          currentTime,
+        }
       );
 
-      // CANVAS DEBUG: Validate canvas content after sticker rendering
-      const imageData = this.ctx.getImageData(0, 0, 100, 100); // Sample top-left corner
-      const hasContent = Array.from(imageData.data).some(
-        (value, index) => index % 4 !== 3 && value > 10 // Check RGB channels, ignore alpha
-      );
-      debugLog(
-        "[FRAME_CANVAS] Canvas has visible content after stickers:",
-        hasContent
-      );
+      // Log render result
+      if (renderResult.successful > 0) {
+        debugLog(
+          `[ExportEngine] Rendered ${renderResult.successful}/${renderResult.attempted} stickers at time ${currentTime.toFixed(3)}s`
+        );
+      }
+
+      // Log failures with details
+      if (renderResult.failed.length > 0) {
+        debugWarn(
+          `[ExportEngine] ${renderResult.failed.length} stickers failed to render at time ${currentTime.toFixed(3)}s:`,
+          renderResult.failed.map((f) => `${f.stickerId}: ${f.error}`).join(", ")
+        );
+      }
     } catch (error) {
       debugError("[ExportEngine] Failed to render overlay stickers:", error);
       debugError(
@@ -901,6 +904,37 @@ export class ExportEngine {
     debugLog(
       "[ExportEngine] ⚡ Optimizations: 500-2000ms timeout, retry mechanism, frame validation"
     );
+
+    // Preload sticker images before export starts
+    try {
+      const stickersStore = useStickersOverlayStore.getState();
+      const allStickers = stickersStore.getStickersForExport();
+
+      if (allStickers.length > 0) {
+        progressCallback?.(0, "Preloading sticker images...");
+
+        const mediaStore = useMediaStore.getState();
+        const mediaItemsMap = new Map(
+          mediaStore.mediaItems.map((item) => [item.id, item])
+        );
+
+        const preloadResult = await preloadStickerImages(allStickers, mediaItemsMap);
+
+        if (preloadResult.failed.length > 0) {
+          debugWarn(
+            `[ExportEngine] Failed to preload ${preloadResult.failed.length} sticker images:`,
+            preloadResult.failed
+          );
+        }
+
+        debugLog(
+          `[ExportEngine] Preloaded ${preloadResult.loaded}/${allStickers.length} sticker images`
+        );
+      }
+    } catch (preloadError) {
+      debugWarn("[ExportEngine] Sticker preload failed:", preloadError);
+      // Continue with export even if preload fails
+    }
 
     try {
       // Get canvas stream for manual frame capture FIRST (only for MediaRecorder)
