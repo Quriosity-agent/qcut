@@ -403,25 +403,56 @@ export async function handleViduQ3T2V(
     message: `Submitting ${ctx.modelName} request...`,
   });
 
-  const response = await generateViduQ3TextVideo(
-    {
-      model: ctx.modelId,
-      prompt: ctx.prompt,
-      duration: 5 as ViduQ3Duration,
-      resolution: (settings.resolution ?? "720p") as ViduQ3Resolution,
-      aspect_ratio: (settings.aspectRatio ?? "16:9") as ViduQ3AspectRatio,
-      audio: true,
-    },
-    ctx.progressCallback
-  );
+  // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
+  // "auto" is not supported by Vidu Q3
+  const normalizedResolution: ViduQ3Resolution = [
+    "360p",
+    "540p",
+    "720p",
+    "1080p",
+  ].includes(settings.resolution ?? "")
+    ? (settings.resolution as ViduQ3Resolution)
+    : "720p";
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+  // Normalize aspect ratio to Vidu Q3 supported values (16:9, 9:16, 4:3, 3:4, 1:1)
+  // "21:9" is not supported by Vidu Q3
+  const normalizedAspectRatio: ViduQ3AspectRatio = [
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "1:1",
+  ].includes(settings.aspectRatio ?? "")
+    ? (settings.aspectRatio as ViduQ3AspectRatio)
+    : "16:9";
 
-  return { response };
+  try {
+    const response = await generateViduQ3TextVideo(
+      {
+        model: ctx.modelId,
+        prompt: ctx.prompt,
+        duration: 5 as ViduQ3Duration,
+        resolution: normalizedResolution,
+        aspect_ratio: normalizedAspectRatio,
+        audio: true,
+      },
+      ctx.progressCallback
+    );
+
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
+
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -1021,23 +1052,42 @@ export async function handleViduQ3I2V(
     message: `Submitting ${ctx.modelName} request...`,
   });
 
-  const response = await generateViduQ3ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: 5 as ViduQ3Duration,
-    resolution: (settings.resolution ?? "720p") as ViduQ3Resolution,
-    audio: true,
-    seed: settings.imageSeed ?? undefined,
-  });
+  // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
+  // "auto" is not supported by Vidu Q3
+  const normalizedResolution: ViduQ3Resolution = [
+    "360p",
+    "540p",
+    "720p",
+    "1080p",
+  ].includes(settings.resolution ?? "")
+    ? (settings.resolution as ViduQ3Resolution)
+    : "720p";
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+  try {
+    const response = await generateViduQ3ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: 5 as ViduQ3Duration,
+      resolution: normalizedResolution,
+      audio: true,
+      seed: settings.imageSeed ?? undefined,
+    });
 
-  return { response };
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
+
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**

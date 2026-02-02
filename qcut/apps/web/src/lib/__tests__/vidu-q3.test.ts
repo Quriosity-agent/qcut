@@ -8,7 +8,9 @@ import {
   VIDU_Q3_RESOLUTIONS,
   VIDU_Q3_ASPECT_RATIOS,
   VIDU_Q3_MAX_PROMPT_LENGTH,
-  VIDU_Q3_SUPPORTED_DURATION,
+  VIDU_Q3_MIN_DURATION,
+  VIDU_Q3_MAX_DURATION,
+  VIDU_Q3_DEFAULT_DURATION,
 } from "@/lib/ai-video";
 
 const originalFetch = globalThis.fetch;
@@ -35,9 +37,7 @@ describe("Vidu Q3 Validators", () => {
 
     it("should include character count in error message", () => {
       const longPrompt = "A".repeat(2500);
-      expect(() => validateViduQ3Prompt(longPrompt)).toThrow(
-        /current: 2500/
-      );
+      expect(() => validateViduQ3Prompt(longPrompt)).toThrow(/current: 2500/);
     });
 
     it("should accept empty prompts (validation only checks length)", () => {
@@ -46,18 +46,34 @@ describe("Vidu Q3 Validators", () => {
   });
 
   describe("validateViduQ3Duration", () => {
-    it("should accept 5-second duration", () => {
+    it("should accept durations within the 1-16 second range", () => {
+      expect(() => validateViduQ3Duration(1)).not.toThrow();
       expect(() => validateViduQ3Duration(5)).not.toThrow();
+      expect(() => validateViduQ3Duration(8)).not.toThrow();
+      expect(() => validateViduQ3Duration(12)).not.toThrow();
+      expect(() => validateViduQ3Duration(16)).not.toThrow();
     });
 
-    it("should reject durations other than 5 seconds", () => {
-      expect(() => validateViduQ3Duration(3)).toThrow(
-        /Vidu Q3 currently only supports 5-second duration/
+    it("should reject durations below minimum (1 second)", () => {
+      expect(() => validateViduQ3Duration(0)).toThrow(
+        /Invalid duration for Vidu Q3/
       );
-      expect(() => validateViduQ3Duration(10)).toThrow(
-        /Vidu Q3 currently only supports 5-second duration/
+      expect(() => validateViduQ3Duration(-1)).toThrow(
+        /Invalid duration for Vidu Q3/
       );
-      expect(() => validateViduQ3Duration(0)).toThrow();
+    });
+
+    it("should reject durations above maximum (16 seconds)", () => {
+      expect(() => validateViduQ3Duration(17)).toThrow(
+        /Invalid duration for Vidu Q3/
+      );
+      expect(() => validateViduQ3Duration(30)).toThrow(
+        /Invalid duration for Vidu Q3/
+      );
+    });
+
+    it("should include the provided duration in error message", () => {
+      expect(() => validateViduQ3Duration(20)).toThrow(/got: 20/);
     });
   });
 
@@ -181,8 +197,10 @@ describe("Vidu Q3 Validators", () => {
       expect(VIDU_Q3_MAX_PROMPT_LENGTH).toBe(2000);
     });
 
-    it("should export correct supported duration", () => {
-      expect(VIDU_Q3_SUPPORTED_DURATION).toBe(5);
+    it("should export correct duration constraints", () => {
+      expect(VIDU_Q3_MIN_DURATION).toBe(1);
+      expect(VIDU_Q3_MAX_DURATION).toBe(16);
+      expect(VIDU_Q3_DEFAULT_DURATION).toBe(5);
     });
   });
 });

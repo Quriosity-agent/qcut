@@ -872,8 +872,14 @@ export const VIDU_Q3_ASPECT_RATIOS = [
 /** Maximum prompt length for Vidu Q3 models */
 export const VIDU_Q3_MAX_PROMPT_LENGTH = 2000;
 
-/** Currently supported duration for Vidu Q3 models */
-export const VIDU_Q3_SUPPORTED_DURATION = 5;
+/** Minimum duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_MIN_DURATION = 1;
+
+/** Maximum duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_MAX_DURATION = 16;
+
+/** Default duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_DEFAULT_DURATION = 5;
 
 /**
  * Validates prompt length for Vidu Q3 models (max 2000 chars)
@@ -890,15 +896,15 @@ export function validateViduQ3Prompt(prompt: string): void {
 }
 
 /**
- * Validates duration for Vidu Q3 models (only 5 seconds supported)
+ * Validates duration for Vidu Q3 models (1–16 seconds)
  *
  * @param duration - Duration in seconds
- * @throws Error if duration is not 5 seconds
+ * @throws Error if duration is outside 1–16 second range
  */
 export function validateViduQ3Duration(duration: number): void {
-  if (duration !== VIDU_Q3_SUPPORTED_DURATION) {
+  if (duration < VIDU_Q3_MIN_DURATION || duration > VIDU_Q3_MAX_DURATION) {
     throw new Error(
-      `Vidu Q3 currently only supports ${VIDU_Q3_SUPPORTED_DURATION}-second duration`
+      `Invalid duration for Vidu Q3. Supported: ${VIDU_Q3_MIN_DURATION}–${VIDU_Q3_MAX_DURATION} seconds (got: ${duration})`
     );
   }
 }

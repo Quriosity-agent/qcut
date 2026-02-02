@@ -4,7 +4,12 @@
  * SeedDream v4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
  */
 
-import { handleAIServiceError } from "./error-handler";
+import {
+  handleError,
+  handleAIServiceError,
+  ErrorCategory,
+  ErrorSeverity,
+} from "./error-handler";
 import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "./upscale-models";
 import {
   getModelCapabilities,
@@ -46,7 +51,8 @@ async function getFalApiKey(): Promise<string | null> {
   }
 
   // Check Electron storage (async)
-  const electronApiKeys = typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  const electronApiKeys =
+    typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
   if (electronApiKeys) {
     // Deduplicate concurrent calls
     if (!apiKeyFetchPromise) {
@@ -58,7 +64,13 @@ async function getFalApiKey(): Promise<string | null> {
             return keys.falApiKey;
           }
         } catch (error) {
-          console.error("[image-edit-client] Failed to load FAL API key from Electron storage:", error);
+          handleError(error, {
+            operation: "Load FAL API key from Electron storage",
+            category: ErrorCategory.AI_SERVICE,
+            severity: ErrorSeverity.LOW,
+            showToast: false, // Silent failure - don't interrupt user
+            metadata: { source: "image-edit-client" },
+          });
         }
         return null;
       })();
@@ -283,7 +295,9 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
 export async function uploadImageToFAL(imageFile: File): Promise<string> {
   const apiKey = await getFalApiKey();
   if (!apiKey) {
-    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   console.log("📤 UPLOAD: Starting upload process for:", {
@@ -369,7 +383,9 @@ export async function editImage(
 ): Promise<ImageEditResponse> {
   const apiKey = await getFalApiKey();
   if (!apiKey) {
-    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -689,7 +705,9 @@ export async function upscaleImage(
 ): Promise<ImageEditResponse> {
   const apiKey = await getFalApiKey();
   if (!apiKey) {
-    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -841,7 +859,9 @@ async function pollImageEditStatus(
 ): Promise<ImageEditResponse> {
   const apiKey = await getFalApiKey();
   if (!apiKey) {
-    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   const maxAttempts = 30; // 2.5 minutes max
