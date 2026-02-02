@@ -23,8 +23,56 @@ export {
   IMAGE_EDIT_MODEL_IDS,
 } from "./image-edit-capabilities";
 
-const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
+
+// Cache for the Electron-stored API key
+let cachedFalApiKey: string | null = null;
+let apiKeyFetchPromise: Promise<string | null> | null = null;
+
+/**
+ * Get FAL API key from environment variable or Electron storage.
+ * Results are cached for the session.
+ */
+async function getFalApiKey(): Promise<string | null> {
+  // First try environment variable (instant)
+  const envKey = import.meta.env.VITE_FAL_API_KEY;
+  if (envKey) {
+    return envKey;
+  }
+
+  // Return cached key if available
+  if (cachedFalApiKey) {
+    return cachedFalApiKey;
+  }
+
+  // Check Electron storage (async)
+  const electronApiKeys = typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  if (electronApiKeys) {
+    // Deduplicate concurrent calls
+    if (!apiKeyFetchPromise) {
+      apiKeyFetchPromise = (async () => {
+        try {
+          const keys = await electronApiKeys.get();
+          if (keys?.falApiKey) {
+            cachedFalApiKey = keys.falApiKey;
+            return keys.falApiKey;
+          }
+        } catch (error) {
+          console.error("[image-edit-client] Failed to load FAL API key from Electron storage:", error);
+        }
+        return null;
+      })();
+    }
+
+    const key = await apiKeyFetchPromise;
+    apiKeyFetchPromise = null;
+    if (key) {
+      return key;
+    }
+  }
+
+  return null;
+}
 
 // Environment check removed for production
 
@@ -233,8 +281,9 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
  * Upload image to FAL.ai and get URL
  */
 export async function uploadImageToFAL(imageFile: File): Promise<string> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
   }
 
   console.log("📤 UPLOAD: Starting upload process for:", {
@@ -318,8 +367,9 @@ export async function editImage(
   request: ImageEditRequest,
   onProgress?: ImageEditProgressCallback
 ): Promise<ImageEditResponse> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -461,7 +511,7 @@ export async function editImage(
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${apiKey}`,
         "Content-Type": "application/json",
         "X-Fal-Queue": "true",
       },
@@ -637,8 +687,9 @@ export async function upscaleImage(
   request: ImageUpscaleRequest,
   onProgress?: ImageEditProgressCallback
 ): Promise<ImageEditResponse> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -686,7 +737,7 @@ export async function upscaleImage(
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${apiKey}`,
         "Content-Type": "application/json",
         "X-Fal-Queue": "true",
       },
@@ -788,6 +839,11 @@ async function pollImageEditStatus(
   jobId?: string,
   modelName?: string
 ): Promise<ImageEditResponse> {
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+  }
+
   const maxAttempts = 30; // 2.5 minutes max
   let attempts = 0;
 
@@ -803,7 +859,7 @@ async function pollImageEditStatus(
         `${FAL_API_BASE}/queue/requests/${requestId}/status`,
         {
           headers: {
-            "Authorization": `Key ${FAL_API_KEY}`,
+            "Authorization": `Key ${apiKey}`,
           },
           signal: pollCtrl.signal,
         }
@@ -833,7 +889,7 @@ async function pollImageEditStatus(
           `${FAL_API_BASE}/queue/requests/${requestId}`,
           {
             headers: {
-              "Authorization": `Key ${FAL_API_KEY}`,
+              "Authorization": `Key ${apiKey}`,
             },
           }
         );
