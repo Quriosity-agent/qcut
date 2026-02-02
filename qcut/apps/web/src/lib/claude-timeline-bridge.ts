@@ -179,15 +179,19 @@ function formatElementForExport(element: TimelineElement, trackIndex: number): C
 
 /**
  * Apply imported Claude timeline to store
+ *
+ * @stub This function is intentionally a stub. Timeline import is a complex
+ * operation that requires user confirmation before overwriting existing work.
+ * Full implementation is tracked separately and out of scope for this PR.
+ *
+ * Future implementation will:
+ * 1. Validate media references exist in the media store
+ * 2. Map Claude elements back to internal TimelineElement types
+ * 3. Handle conflicts with existing elements (prompt user)
+ * 4. Update timeline store with imported data
  */
 function applyTimelineToStore(timeline: ClaudeTimeline): void {
-  // TODO: Full implementation would use useProjectStore.getState() to:
-  // 1. Validate media references exist
-  // 2. Map Claude elements back to internal TimelineElement types
-  // 3. Handle conflicts with existing elements
-  // 4. Update timeline store
-
-  // Log the import for now
+  // Log import details for debugging - helps verify the bridge is working
   console.log('[ClaudeTimelineBridge] Would apply timeline:', {
     name: timeline.name,
     duration: timeline.duration,
@@ -195,7 +199,7 @@ function applyTimelineToStore(timeline: ClaudeTimeline): void {
     totalElements: timeline.tracks.reduce((sum, t) => sum + t.elements.length, 0),
   });
 
-  console.warn('[ClaudeTimelineBridge] Full timeline import not implemented - complex operation requiring user confirmation');
+  console.warn('[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented');
 }
 
 /**
