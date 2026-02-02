@@ -29,7 +29,9 @@ import {
 // Test Helpers
 // ============================================================================
 
-function createMediaElement(overrides: Partial<MediaElement> = {}): MediaElement {
+function createMediaElement(
+  overrides: Partial<MediaElement> = {}
+): MediaElement {
   return {
     id: "media-1",
     type: "media",
@@ -69,7 +71,9 @@ function createTextElement(overrides: Partial<TextElement> = {}): TextElement {
   };
 }
 
-function createStickerElement(overrides: Partial<StickerElement> = {}): StickerElement {
+function createStickerElement(
+  overrides: Partial<StickerElement> = {}
+): StickerElement {
   return {
     id: "sticker-1",
     type: "sticker",
@@ -84,7 +88,9 @@ function createStickerElement(overrides: Partial<StickerElement> = {}): StickerE
   };
 }
 
-function createCaptionElement(overrides: Partial<CaptionElement> = {}): CaptionElement {
+function createCaptionElement(
+  overrides: Partial<CaptionElement> = {}
+): CaptionElement {
   return {
     id: "caption-1",
     type: "captions",
@@ -100,7 +106,9 @@ function createCaptionElement(overrides: Partial<CaptionElement> = {}): CaptionE
   };
 }
 
-function createRemotionElement(overrides: Partial<RemotionElement> = {}): RemotionElement {
+function createRemotionElement(
+  overrides: Partial<RemotionElement> = {}
+): RemotionElement {
   return {
     id: "remotion-1",
     type: "remotion",
@@ -116,7 +124,11 @@ function createRemotionElement(overrides: Partial<RemotionElement> = {}): Remoti
   };
 }
 
-function createTrack(type: TimelineTrack["type"], elements: TimelineElement[] = [], overrides: Partial<TimelineTrack> = {}): TimelineTrack {
+function createTrack(
+  type: TimelineTrack["type"],
+  elements: TimelineElement[] = [],
+  overrides: Partial<TimelineTrack> = {}
+): TimelineTrack {
   return {
     id: `track-${type}-${Math.random().toString(36).substr(2, 9)}`,
     name: `${type} Track`,
@@ -393,10 +405,10 @@ describe("sortTracksByOrder", () => {
       createTrack("text", [], { id: "text-1" }),
     ];
 
-    const originalOrder = tracks.map(t => t.id);
+    const originalOrder = tracks.map((t) => t.id);
     sortTracksByOrder(tracks);
 
-    expect(tracks.map(t => t.id)).toEqual(originalOrder);
+    expect(tracks.map((t) => t.id)).toEqual(originalOrder);
   });
 
   it("should handle empty array", () => {
@@ -465,7 +477,9 @@ describe("validateElementTrackCompatibility", () => {
       { type: "media" }
     );
     expect(result.isValid).toBe(false);
-    expect(result.errorMessage).toBe("Remotion elements can only be placed on Remotion tracks");
+    expect(result.errorMessage).toBe(
+      "Remotion elements can only be placed on Remotion tracks"
+    );
   });
 
   it("should provide correct error messages for each element type", () => {
@@ -473,24 +487,32 @@ describe("validateElementTrackCompatibility", () => {
       { type: "text" },
       { type: "media" }
     );
-    expect(textResult.errorMessage).toBe("Text elements can only be placed on text tracks");
+    expect(textResult.errorMessage).toBe(
+      "Text elements can only be placed on text tracks"
+    );
 
     const stickerResult = validateElementTrackCompatibility(
       { type: "sticker" },
       { type: "text" }
     );
-    expect(stickerResult.errorMessage).toBe("Sticker elements can only be placed on sticker tracks");
+    expect(stickerResult.errorMessage).toBe(
+      "Sticker elements can only be placed on sticker tracks"
+    );
 
     const captionResult = validateElementTrackCompatibility(
       { type: "captions" },
       { type: "media" }
     );
-    expect(captionResult.errorMessage).toBe("Caption elements can only be placed on caption tracks");
+    expect(captionResult.errorMessage).toBe(
+      "Caption elements can only be placed on caption tracks"
+    );
 
     const mediaResult = validateElementTrackCompatibility(
       { type: "media" },
       { type: "text" }
     );
-    expect(mediaResult.errorMessage).toBe("Media elements can only be placed on media or audio tracks");
+    expect(mediaResult.errorMessage).toBe(
+      "Media elements can only be placed on media or audio tracks"
+    );
   });
 });

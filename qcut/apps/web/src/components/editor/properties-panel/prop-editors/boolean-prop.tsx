@@ -37,9 +37,7 @@ export function BooleanProp({
     [onChange]
   );
 
-  const stateLabel = value
-    ? trueLabel || "On"
-    : falseLabel || "Off";
+  const stateLabel = value ? trueLabel || "On" : falseLabel || "Off";
 
   return (
     <div className="space-y-1.5">

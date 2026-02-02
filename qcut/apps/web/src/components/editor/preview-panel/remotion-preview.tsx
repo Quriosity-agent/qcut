@@ -111,8 +111,10 @@ export function RemotionPreview({
   const [internalFrame, setInternalFrame] = useState(0);
 
   // Use external values when provided, otherwise use internal state
-  const isPlaying = externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
-  const currentFrame = externalFrame !== undefined ? externalFrame : internalFrame;
+  const isPlaying =
+    externalIsPlaying !== undefined ? externalIsPlaying : internalIsPlaying;
+  const currentFrame =
+    externalFrame !== undefined ? externalFrame : internalFrame;
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -143,7 +145,7 @@ export function RemotionPreview({
       return comp;
     }
 
-    return undefined;
+    return;
   }, [component, instance]);
 
   // Debug: Log effective component resolution
@@ -152,7 +154,7 @@ export function RemotionPreview({
       found: !!effectiveComponent,
       componentId: effectiveComponent?.id,
     });
-  }, [effectiveComponent?.id]);
+  }, [effectiveComponent?.id, effectiveComponent]);
 
   const effectiveProps = useMemo(() => {
     if (inputProps) return inputProps;
@@ -168,10 +170,12 @@ export function RemotionPreview({
     }
 
     // Use || instead of ?? to handle 0 values properly
-    const componentWidth = (width && width > 0) ? width : effectiveComponent.width;
-    const componentHeight = (height && height > 0) ? height : effectiveComponent.height;
-    const effectiveMaxWidth = (maxWidth && maxWidth > 0) ? maxWidth : 640;
-    const effectiveMaxHeight = (maxHeight && maxHeight > 0) ? maxHeight : 360;
+    const componentWidth =
+      width && width > 0 ? width : effectiveComponent.width;
+    const componentHeight =
+      height && height > 0 ? height : effectiveComponent.height;
+    const effectiveMaxWidth = maxWidth && maxWidth > 0 ? maxWidth : 640;
+    const effectiveMaxHeight = maxHeight && maxHeight > 0 ? maxHeight : 360;
     const aspectRatio = componentWidth / componentHeight;
 
     let previewWidth = componentWidth;
@@ -254,7 +258,12 @@ export function RemotionPreview({
 
   // Auto-play effect (only when not externally controlled)
   useEffect(() => {
-    if (externalIsPlaying === undefined && autoPlay && isReady && playerRef.current) {
+    if (
+      externalIsPlaying === undefined &&
+      autoPlay &&
+      isReady &&
+      playerRef.current
+    ) {
       playerRef.current.play();
       setInternalIsPlaying(true);
     }

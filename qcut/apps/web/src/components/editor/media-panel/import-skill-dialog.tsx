@@ -42,7 +42,7 @@ export function ImportSkillDialog({
     if (open) {
       scanGlobalSkills();
     }
-  }, [open]);
+  }, [open, scanGlobalSkills]);
 
   const scanGlobalSkills = async () => {
     if (!window.electronAPI?.skills?.scanGlobal) {

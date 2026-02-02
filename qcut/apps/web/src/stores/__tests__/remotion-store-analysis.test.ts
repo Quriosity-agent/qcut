@@ -16,7 +16,13 @@ vi.mock("@/lib/remotion/sequence-analysis-service", () => ({
       componentId: "test-component",
       parsed: {
         sequences: [
-          { name: "Intro", from: 0, durationInFrames: 60, line: 1, isTransitionSequence: false },
+          {
+            name: "Intro",
+            from: 0,
+            durationInFrames: 60,
+            line: 1,
+            isTransitionSequence: false,
+          },
         ],
         transitions: [],
         usesTransitionSeries: false,
@@ -59,13 +65,20 @@ describe("RemotionStore - Sequence Analysis", () => {
       useRemotionStore.getState().setAnalysisResult("test-comp", mockResult);
 
       // Re-get state after update
-      expect(useRemotionStore.getState().analyzedSequences.get("test-comp")).toEqual(mockResult);
+      expect(
+        useRemotionStore.getState().analyzedSequences.get("test-comp")
+      ).toEqual(mockResult);
     });
 
     it("overwrites existing result for same componentId", () => {
       const result1: AnalysisResult = {
         componentId: "test-comp",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: false,
         analyzedAt: 1000,
@@ -73,7 +86,12 @@ describe("RemotionStore - Sequence Analysis", () => {
       };
       const result2: AnalysisResult = {
         componentId: "test-comp",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: true,
         analyzedAt: 2000,
@@ -85,8 +103,12 @@ describe("RemotionStore - Sequence Analysis", () => {
 
       // Re-get the state after the update
       const updatedState = useRemotionStore.getState();
-      expect(updatedState.analyzedSequences.get("test-comp")?.sourceHash).toBe("hash2");
-      expect(updatedState.analyzedSequences.get("test-comp")?.hasDynamicValues).toBe(true);
+      expect(updatedState.analyzedSequences.get("test-comp")?.sourceHash).toBe(
+        "hash2"
+      );
+      expect(
+        updatedState.analyzedSequences.get("test-comp")?.hasDynamicValues
+      ).toBe(true);
     });
   });
 
@@ -95,7 +117,12 @@ describe("RemotionStore - Sequence Analysis", () => {
       const store = useRemotionStore.getState();
       const mockResult: AnalysisResult = {
         componentId: "get-test",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: false,
         analyzedAt: Date.now(),
@@ -120,7 +147,12 @@ describe("RemotionStore - Sequence Analysis", () => {
     it("removes analysis for componentId", () => {
       const mockResult: AnalysisResult = {
         componentId: "clear-test",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: false,
         analyzedAt: Date.now(),
@@ -128,10 +160,14 @@ describe("RemotionStore - Sequence Analysis", () => {
       };
 
       useRemotionStore.getState().setAnalysisResult("clear-test", mockResult);
-      expect(useRemotionStore.getState().analyzedSequences.has("clear-test")).toBe(true);
+      expect(
+        useRemotionStore.getState().analyzedSequences.has("clear-test")
+      ).toBe(true);
 
       useRemotionStore.getState().clearAnalysisResult("clear-test");
-      expect(useRemotionStore.getState().analyzedSequences.has("clear-test")).toBe(false);
+      expect(
+        useRemotionStore.getState().analyzedSequences.has("clear-test")
+      ).toBe(false);
     });
 
     it("does nothing for unknown componentId", () => {
@@ -139,7 +175,9 @@ describe("RemotionStore - Sequence Analysis", () => {
 
       useRemotionStore.getState().clearAnalysisResult("nonexistent");
 
-      expect(useRemotionStore.getState().analyzedSequences.size).toBe(initialSize);
+      expect(useRemotionStore.getState().analyzedSequences.size).toBe(
+        initialSize
+      );
     });
   });
 
@@ -147,14 +185,20 @@ describe("RemotionStore - Sequence Analysis", () => {
     it("analyzes source and stores result", async () => {
       const sourceCode = `<Sequence durationInFrames={60} name="Test"><Content /></Sequence>`;
 
-      const result = await useRemotionStore.getState().analyzeComponentSource("analyze-test", sourceCode);
+      const result = await useRemotionStore
+        .getState()
+        .analyzeComponentSource("analyze-test", sourceCode);
 
       expect(result.componentId).toBe("test-component");
-      expect(useRemotionStore.getState().analyzedSequences.has("analyze-test")).toBe(true);
+      expect(
+        useRemotionStore.getState().analyzedSequences.has("analyze-test")
+      ).toBe(true);
     });
 
     it("returns the analysis result", async () => {
-      const result = await useRemotionStore.getState().analyzeComponentSource("result-test", "source");
+      const result = await useRemotionStore
+        .getState()
+        .analyzeComponentSource("result-test", "source");
 
       expect(result).toBeDefined();
       expect(result.parsed).toBeDefined();
@@ -166,7 +210,12 @@ describe("RemotionStore - Sequence Analysis", () => {
       const store = useRemotionStore.getState();
       const mockResult: AnalysisResult = {
         componentId: "hook-test",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: false,
         analyzedAt: Date.now(),
@@ -188,13 +237,20 @@ describe("RemotionStore - Sequence Analysis", () => {
     it("updates when analysis changes", () => {
       const store = useRemotionStore.getState();
 
-      const { result, rerender } = renderHook(() => useComponentAnalysis("reactive-test"));
+      const { result, rerender } = renderHook(() =>
+        useComponentAnalysis("reactive-test")
+      );
 
       expect(result.current).toBeUndefined();
 
       const mockResult: AnalysisResult = {
         componentId: "reactive-test",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: true,
         analyzedAt: Date.now(),
@@ -216,7 +272,12 @@ describe("RemotionStore - Sequence Analysis", () => {
       const store = useRemotionStore.getState();
       const mockResult: AnalysisResult = {
         componentId: "reset-test",
-        parsed: { sequences: [], transitions: [], usesTransitionSeries: false, errors: [] },
+        parsed: {
+          sequences: [],
+          transitions: [],
+          usesTransitionSeries: false,
+          errors: [],
+        },
         structure: null,
         hasDynamicValues: false,
         analyzedAt: Date.now(),
@@ -226,7 +287,9 @@ describe("RemotionStore - Sequence Analysis", () => {
       store.setAnalysisResult("reset-test", mockResult);
 
       // Verify the result was stored
-      const storedResult = useRemotionStore.getState().analyzedSequences.get("reset-test");
+      const storedResult = useRemotionStore
+        .getState()
+        .analyzedSequences.get("reset-test");
       expect(storedResult).toBeDefined();
 
       store.reset();

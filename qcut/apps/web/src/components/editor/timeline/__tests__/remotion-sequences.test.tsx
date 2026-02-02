@@ -72,9 +72,7 @@ describe("RemotionSequences", () => {
 
     it("renders nothing when totalDuration is 0", () => {
       const structure: SequenceStructure = {
-        sequences: [
-          { name: "A", from: 0, durationInFrames: 100 },
-        ],
+        sequences: [{ name: "A", from: 0, durationInFrames: 100 }],
       };
 
       const { container } = render(
@@ -90,9 +88,7 @@ describe("RemotionSequences", () => {
 
     it("renders nothing when elementWidth is 0", () => {
       const structure: SequenceStructure = {
-        sequences: [
-          { name: "A", from: 0, durationInFrames: 100 },
-        ],
+        sequences: [{ name: "A", from: 0, durationInFrames: 100 }],
       };
 
       const { container } = render(
@@ -110,9 +106,7 @@ describe("RemotionSequences", () => {
   describe("sequence names", () => {
     it("shows sequence names when bar is wide enough", () => {
       const structure: SequenceStructure = {
-        sequences: [
-          { name: "Intro Scene", from: 0, durationInFrames: 100 },
-        ],
+        sequences: [{ name: "Intro Scene", from: 0, durationInFrames: 100 }],
       };
 
       const { container } = render(
@@ -131,9 +125,7 @@ describe("RemotionSequences", () => {
   describe("tooltips", () => {
     it("shows tooltips with sequence name and duration", () => {
       const structure: SequenceStructure = {
-        sequences: [
-          { name: "Intro", from: 0, durationInFrames: 90 },
-        ],
+        sequences: [{ name: "Intro", from: 0, durationInFrames: 90 }],
       };
 
       const { container } = render(
@@ -144,7 +136,7 @@ describe("RemotionSequences", () => {
         />
       );
 
-      const bar = container.querySelector('[title]');
+      const bar = container.querySelector("[title]");
       expect(bar?.getAttribute("title")).toContain("Intro");
       expect(bar?.getAttribute("title")).toContain("90 frames");
     });
@@ -173,7 +165,9 @@ describe("RemotionSequences", () => {
       // Should render both sequence bars (filter out transition indicators)
       // Sequence bars have titles like "A: 60 frames (0-60)"
       // Transition indicators have titles like "fade transition: 15 frames"
-      const sequenceBars = container.querySelectorAll('[title^="A:"], [title^="B:"]');
+      const sequenceBars = container.querySelectorAll(
+        '[title^="A:"], [title^="B:"]'
+      );
       expect(sequenceBars.length).toBe(2);
     });
 
@@ -197,7 +191,9 @@ describe("RemotionSequences", () => {
       );
 
       // Should have a transition indicator with dashed border
-      const transitionIndicator = container.querySelector('[title*="transition"]');
+      const transitionIndicator = container.querySelector(
+        '[title*="transition"]'
+      );
       expect(transitionIndicator).toBeTruthy();
       expect(transitionIndicator?.className).toContain("border-dashed");
     });
@@ -221,7 +217,9 @@ describe("RemotionSequences", () => {
         />
       );
 
-      const transitionIndicator = container.querySelector('[title*="transition"]');
+      const transitionIndicator = container.querySelector(
+        '[title*="transition"]'
+      );
       expect(transitionIndicator?.getAttribute("title")).toContain("fade");
       expect(transitionIndicator?.getAttribute("title")).toContain("15 frames");
     });
@@ -259,9 +257,7 @@ describe("RemotionSequences", () => {
   describe("edge cases", () => {
     it("handles single sequence", () => {
       const structure: SequenceStructure = {
-        sequences: [
-          { name: "Only", from: 0, durationInFrames: 100 },
-        ],
+        sequences: [{ name: "Only", from: 0, durationInFrames: 100 }],
       };
 
       const { container } = render(

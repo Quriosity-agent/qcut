@@ -163,9 +163,13 @@ describe("SkillsStore", () => {
 
       await useSkillsStore.getState().loadSkills("project-1");
 
-      expect(window.electronAPI?.skills?.list).toHaveBeenCalledWith("project-1");
+      expect(window.electronAPI?.skills?.list).toHaveBeenCalledWith(
+        "project-1"
+      );
       expect(useSkillsStore.getState().skills).toHaveLength(2);
-      expect(useSkillsStore.getState().skills[0].name).toBe("AI Content Pipeline");
+      expect(useSkillsStore.getState().skills[0].name).toBe(
+        "AI Content Pipeline"
+      );
       expect(useSkillsStore.getState().isLoading).toBe(false);
     });
 
@@ -191,7 +195,9 @@ describe("SkillsStore", () => {
     it("returns null when electronAPI not available", async () => {
       (window as any).electronAPI = undefined;
 
-      const result = await useSkillsStore.getState().importSkill("project-1", "/path/to/skill");
+      const result = await useSkillsStore
+        .getState()
+        .importSkill("project-1", "/path/to/skill");
 
       expect(result).toBeNull();
     });
@@ -203,11 +209,15 @@ describe("SkillsStore", () => {
         },
       };
 
-      const result = await useSkillsStore.getState().importSkill("project-1", "/path/to/skill");
+      const result = await useSkillsStore
+        .getState()
+        .importSkill("project-1", "/path/to/skill");
 
       expect(result).toBe("skill-1");
       expect(useSkillsStore.getState().skills).toHaveLength(1);
-      expect(useSkillsStore.getState().skills[0].name).toBe("AI Content Pipeline");
+      expect(useSkillsStore.getState().skills[0].name).toBe(
+        "AI Content Pipeline"
+      );
     });
 
     it("handles import error gracefully", async () => {
@@ -217,7 +227,9 @@ describe("SkillsStore", () => {
         },
       };
 
-      const result = await useSkillsStore.getState().importSkill("project-1", "/path/to/skill");
+      const result = await useSkillsStore
+        .getState()
+        .importSkill("project-1", "/path/to/skill");
 
       expect(result).toBeNull();
       expect(useSkillsStore.getState().error).toBe("Import failed");

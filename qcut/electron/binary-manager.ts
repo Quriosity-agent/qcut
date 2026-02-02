@@ -210,7 +210,7 @@ export class BinaryManager {
       compatible,
       updateAvailable: false, // Set by checkForUpdates()
       features: entry.features || {},
-      error: !exists ? "Binary file not found" : undefined,
+      error: exists ? undefined : "Binary file not found",
     };
   }
 
@@ -265,7 +265,10 @@ export class BinaryManager {
 
       return isValid;
     } catch (error) {
-      console.error(`[BinaryManager] Failed to verify checksum for ${filePath}:`, error);
+      console.error(
+        `[BinaryManager] Failed to verify checksum for ${filePath}:`,
+        error
+      );
       this.checksumCache.set(cacheKey, false);
       return false;
     }
@@ -381,9 +384,7 @@ export class BinaryManager {
   /**
    * Check for binary updates from configured channels
    */
-  async checkForUpdates(
-    channel: "stable" | "beta" = "stable"
-  ): Promise<{
+  async checkForUpdates(channel: "stable" | "beta" = "stable"): Promise<{
     available: boolean;
     updates: Array<{
       binary: string;

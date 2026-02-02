@@ -21,7 +21,7 @@ export interface ClaudeAPIResponse<T> {
 export interface MediaFile {
   id: string;
   name: string;
-  type: 'video' | 'audio' | 'image';
+  type: "video" | "audio" | "image";
   path: string;
   size: number;
   duration?: number;
@@ -68,7 +68,15 @@ export interface ClaudeElement {
   startTime: number;
   endTime: number;
   duration: number;
-  type: 'video' | 'audio' | 'image' | 'text' | 'sticker' | 'captions' | 'remotion' | 'media';
+  type:
+    | "video"
+    | "audio"
+    | "image"
+    | "text"
+    | "sticker"
+    | "captions"
+    | "remotion"
+    | "media";
   sourceId?: string;
   sourceName?: string;
   content?: string;
@@ -147,7 +155,7 @@ export interface SystemInfo {
 
 export interface DiagnosticResult {
   errorType: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   possibleCauses: string[];
   suggestedFixes: string[];
   canAutoFix: boolean;

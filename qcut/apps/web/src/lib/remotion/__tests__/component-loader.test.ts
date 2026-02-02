@@ -147,7 +147,9 @@ describe("loadComponentFromCode", () => {
         { storeInDB: false }
       );
 
-      expect(result.component?.description).toBe("A test component for testing");
+      expect(result.component?.description).toBe(
+        "A test component for testing"
+      );
     });
 
     it("should extract component category", async () => {
@@ -286,7 +288,9 @@ describe("loadComponentFromCode", () => {
         }
       `;
 
-      const result = await loadComponentFromCode(codeWithEval, "test.tsx", { storeInDB: false });
+      const result = await loadComponentFromCode(codeWithEval, "test.tsx", {
+        storeInDB: false,
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("eval()");
@@ -308,7 +312,9 @@ describe("loadComponentFromCode", () => {
         }
       `;
 
-      const result = await loadComponentFromCode(codeWithFetch, "test.tsx", { storeInDB: false });
+      const result = await loadComponentFromCode(codeWithFetch, "test.tsx", {
+        storeInDB: false,
+      });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Network fetch");
@@ -382,30 +388,46 @@ describe("DEFAULT_LOAD_OPTIONS", () => {
 
 describe("Component ID Generation", () => {
   it("should sanitize file names with special characters", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "My Component (v2).tsx", {
-      storeInDB: false,
-    });
+    const result = await loadComponentFromCode(
+      VALID_COMPONENT_CODE,
+      "My Component (v2).tsx",
+      {
+        storeInDB: false,
+      }
+    );
 
     expect(result.component?.id).toMatch(/^imported-my-component--v2--/);
   });
 
   it("should lowercase the file name", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "MyComponent.tsx", {
-      storeInDB: false,
-    });
+    const result = await loadComponentFromCode(
+      VALID_COMPONENT_CODE,
+      "MyComponent.tsx",
+      {
+        storeInDB: false,
+      }
+    );
 
     expect(result.component?.id).toMatch(/^imported-mycomponent-/);
   });
 
   it("should generate unique IDs for different timestamps", async () => {
-    const result1 = await loadComponentFromCode(VALID_COMPONENT_CODE, "component.tsx", {
-      storeInDB: false,
-    });
+    const result1 = await loadComponentFromCode(
+      VALID_COMPONENT_CODE,
+      "component.tsx",
+      {
+        storeInDB: false,
+      }
+    );
     // Add a small delay to ensure different timestamps
     await new Promise((resolve) => setTimeout(resolve, 10));
-    const result2 = await loadComponentFromCode(VALID_COMPONENT_CODE, "component.tsx", {
-      storeInDB: false,
-    });
+    const result2 = await loadComponentFromCode(
+      VALID_COMPONENT_CODE,
+      "component.tsx",
+      {
+        storeInDB: false,
+      }
+    );
 
     expect(result1.component?.id).not.toBe(result2.component?.id);
   });
@@ -534,7 +556,9 @@ describe("Validation Integration", () => {
       }
     `;
 
-    const result = await loadComponentFromCode(codeWithoutReact, "test.tsx", { storeInDB: false });
+    const result = await loadComponentFromCode(codeWithoutReact, "test.tsx", {
+      storeInDB: false,
+    });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("React");
@@ -547,14 +571,18 @@ describe("Validation Integration", () => {
 
 describe("Edge Cases", () => {
   it("should handle empty file name", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "", { storeInDB: false });
+    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "", {
+      storeInDB: false,
+    });
 
     expect(result.success).toBe(true);
     expect(result.component?.id).toMatch(/^imported--/);
   });
 
   it("should handle file name with only extension", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, ".tsx", { storeInDB: false });
+    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, ".tsx", {
+      storeInDB: false,
+    });
 
     expect(result.success).toBe(true);
     expect(result.component?.id).toMatch(/^imported--/);
@@ -562,7 +590,9 @@ describe("Edge Cases", () => {
 
   it("should handle very long file names", async () => {
     const longName = "a".repeat(200) + ".tsx";
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, longName, { storeInDB: false });
+    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, longName, {
+      storeInDB: false,
+    });
 
     expect(result.success).toBe(true);
     expect(result.component?.id).toBeDefined();
@@ -570,9 +600,13 @@ describe("Edge Cases", () => {
 
   it("should handle file names with unicode characters", async () => {
     const unicodeName = "组件-コンポーネント.tsx";
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, unicodeName, {
-      storeInDB: false,
-    });
+    const result = await loadComponentFromCode(
+      VALID_COMPONENT_CODE,
+      unicodeName,
+      {
+        storeInDB: false,
+      }
+    );
 
     expect(result.success).toBe(true);
     expect(result.component?.id).toMatch(/^imported-/);

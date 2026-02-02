@@ -112,12 +112,23 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
 
       // Check if Electron API is available
       console.log("[ElevenLabs Hook] Checking Electron API availability...");
-      console.log("[ElevenLabs Hook] window.electronAPI exists:", !!window.electronAPI);
-      console.log("[ElevenLabs Hook] transcribe namespace exists:", !!window.electronAPI?.transcribe);
-      console.log("[ElevenLabs Hook] elevenlabs method exists:", !!window.electronAPI?.transcribe?.elevenlabs);
+      console.log(
+        "[ElevenLabs Hook] window.electronAPI exists:",
+        !!window.electronAPI
+      );
+      console.log(
+        "[ElevenLabs Hook] transcribe namespace exists:",
+        !!window.electronAPI?.transcribe
+      );
+      console.log(
+        "[ElevenLabs Hook] elevenlabs method exists:",
+        !!window.electronAPI?.transcribe?.elevenlabs
+      );
 
       if (!window.electronAPI?.transcribe?.elevenlabs) {
-        console.error("[ElevenLabs Hook] Electron transcribe API not available");
+        console.error(
+          "[ElevenLabs Hook] Electron transcribe API not available"
+        );
         setError("Transcription is only available in the desktop app");
         return null;
       }
@@ -147,15 +158,25 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
 
         // Step 1: Extract audio from video if needed
         if (isVideo) {
-          console.log("[ElevenLabs Hook] Step 1: Extracting audio from video...");
+          console.log(
+            "[ElevenLabs Hook] Step 1: Extracting audio from video..."
+          );
           setProgress("Extracting audio from video...");
 
           console.log("[ElevenLabs Hook] Checking FFmpeg API availability...");
-          console.log("[ElevenLabs Hook] ffmpeg namespace exists:", !!window.electronAPI?.ffmpeg);
-          console.log("[ElevenLabs Hook] extractAudio method exists:", !!window.electronAPI?.ffmpeg?.extractAudio);
+          console.log(
+            "[ElevenLabs Hook] ffmpeg namespace exists:",
+            !!window.electronAPI?.ffmpeg
+          );
+          console.log(
+            "[ElevenLabs Hook] extractAudio method exists:",
+            !!window.electronAPI?.ffmpeg?.extractAudio
+          );
 
           if (!window.electronAPI?.ffmpeg?.extractAudio) {
-            console.error("[ElevenLabs Hook] FFmpeg extractAudio API not available");
+            console.error(
+              "[ElevenLabs Hook] FFmpeg extractAudio API not available"
+            );
             throw new Error("FFmpeg audio extraction not available");
           }
 
@@ -170,7 +191,10 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
             format: "mp3",
           });
 
-          console.log("[ElevenLabs Hook] Audio extraction result:", extractResult);
+          console.log(
+            "[ElevenLabs Hook] Audio extraction result:",
+            extractResult
+          );
           audioPath = extractResult.audioPath;
           console.log("[ElevenLabs Hook] Audio path set to:", audioPath);
           // TODO: Implement temp file cleanup via Electron IPC handler
@@ -182,7 +206,9 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
         }
 
         // Step 2: Call ElevenLabs transcription
-        console.log("[ElevenLabs Hook] Step 2: Calling ElevenLabs transcription...");
+        console.log(
+          "[ElevenLabs Hook] Step 2: Calling ElevenLabs transcription..."
+        );
         setProgress("Transcribing audio with ElevenLabs...");
 
         const transcribeOptions = {
@@ -194,7 +220,8 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
         };
         console.log("[ElevenLabs Hook] Transcribe options:", transcribeOptions);
 
-        const result = await window.electronAPI.transcribe.elevenlabs(transcribeOptions);
+        const result =
+          await window.electronAPI.transcribe.elevenlabs(transcribeOptions);
 
         console.log("[ElevenLabs Hook] Transcription result received:");
         console.log("[ElevenLabs Hook] - Text length:", result?.text?.length);
@@ -203,17 +230,24 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
 
         // Step 3: Generate filename with timestamp
         const sourceFileName =
-          filePath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "") ||
-          "transcription";
+          filePath
+            .split(/[/\\]/)
+            .pop()
+            ?.replace(/\.[^.]+$/, "") || "transcription";
         const timestamp = new Date()
           .toISOString()
           .replace(/[-:]/g, "")
           .slice(0, 15);
         const transcriptFileName = `${sourceFileName}_${timestamp}_transcript.json`;
-        console.log("[ElevenLabs Hook] Generated filename:", transcriptFileName);
+        console.log(
+          "[ElevenLabs Hook] Generated filename:",
+          transcriptFileName
+        );
 
         // Step 4: Load into word timeline store
-        console.log("[ElevenLabs Hook] Step 4: Loading into word timeline store...");
+        console.log(
+          "[ElevenLabs Hook] Step 4: Loading into word timeline store..."
+        );
         setProgress("Loading transcription...");
         loadFromTranscription(result, transcriptFileName);
 

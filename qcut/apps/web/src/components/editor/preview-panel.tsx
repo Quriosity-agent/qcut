@@ -718,10 +718,16 @@ export function PreviewPanel() {
     const elementKey = `${element.id}-${elementData.track.id}`;
 
     // Debug: Log element type detection - only once per element ID
-    if (element.type === "remotion" && !loggedRemotionElementsRef.current.has(element.id)) {
+    if (
+      element.type === "remotion" &&
+      !loggedRemotionElementsRef.current.has(element.id)
+    ) {
       loggedRemotionElementsRef.current.add(element.id);
       const remotionEl = element as RemotionElement;
-      debugLog("[REMOTION] Detected Remotion element", { elementId: element.id, componentId: remotionEl.componentId });
+      debugLog("[REMOTION] Detected Remotion element", {
+        elementId: element.id,
+        componentId: remotionEl.componentId,
+      });
     }
 
     // Text elements
@@ -898,7 +904,8 @@ export function PreviewPanel() {
       const remotionElement = element as RemotionElement;
 
       // Calculate the local time within the element for frame sync
-      const elementStart = remotionElement.startTime + remotionElement.trimStart;
+      const elementStart =
+        remotionElement.startTime + remotionElement.trimStart;
       const localTime = currentTime - elementStart;
       const fps = activeProject?.fps ?? 30; // Use project FPS with fallback
       const currentFrame = Math.max(0, Math.floor(localTime * fps));

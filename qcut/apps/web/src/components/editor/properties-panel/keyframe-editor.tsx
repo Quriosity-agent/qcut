@@ -64,7 +64,12 @@ export interface KeyframeEditorProps {
   /** Called when a keyframe is added */
   onKeyframeAdd: (frame: number, value: unknown) => void;
   /** Called when a keyframe is updated */
-  onKeyframeUpdate: (id: string, frame: number, value: unknown, easing?: EasingType) => void;
+  onKeyframeUpdate: (
+    id: string,
+    frame: number,
+    value: unknown,
+    easing?: EasingType
+  ) => void;
   /** Called when a keyframe is deleted */
   onKeyframeDelete: (id: string) => void;
   /** Whether the editor is disabled */
@@ -117,7 +122,8 @@ function KeyframeDiamond({
               isSelected
                 ? "bg-violet-500 border-violet-400"
                 : "bg-violet-500/60 border-violet-500/40",
-              !disabled && "hover:bg-violet-400 hover:border-violet-300 cursor-pointer",
+              !disabled &&
+                "hover:bg-violet-400 hover:border-violet-300 cursor-pointer",
               disabled && "opacity-50 cursor-not-allowed"
             )}
             style={{ left: `${position}%` }}
@@ -137,9 +143,7 @@ function KeyframeDiamond({
           <div className="text-muted-foreground">
             Value: {String(keyframe.value)}
           </div>
-          <div className="text-muted-foreground">
-            Easing: {keyframe.easing}
-          </div>
+          <div className="text-muted-foreground">Easing: {keyframe.easing}</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -169,7 +173,7 @@ function KeyframeEditPanel({
 }: KeyframeEditPanelProps) {
   const [localFrame, setLocalFrame] = useState(keyframe.frame);
   const [localValue, setLocalValue] = useState(
-    propType === "number" ? String(keyframe.value) : keyframe.value as string
+    propType === "number" ? String(keyframe.value) : (keyframe.value as string)
   );
   const [localEasing, setLocalEasing] = useState(keyframe.easing);
 
@@ -177,7 +181,13 @@ function KeyframeEditPanel({
     const frame = parseInt(e.target.value, 10);
     if (!isNaN(frame) && frame >= 0 && frame <= durationInFrames) {
       setLocalFrame(frame);
-      onUpdate(frame, propType === "number" ? parseFloat(localValue as string) || 0 : localValue, localEasing);
+      onUpdate(
+        frame,
+        propType === "number"
+          ? parseFloat(localValue as string) || 0
+          : localValue,
+        localEasing
+      );
     }
   };
 
@@ -196,7 +206,13 @@ function KeyframeEditPanel({
 
   const handleEasingChange = (easing: EasingType) => {
     setLocalEasing(easing);
-    onUpdate(localFrame, propType === "number" ? parseFloat(localValue as string) || 0 : localValue, easing);
+    onUpdate(
+      localFrame,
+      propType === "number"
+        ? parseFloat(localValue as string) || 0
+        : localValue,
+      easing
+    );
   };
 
   return (
@@ -247,7 +263,11 @@ function KeyframeEditPanel({
 
       <div>
         <Label className="text-[10px] text-muted-foreground">Easing</Label>
-        <Select value={localEasing} onValueChange={handleEasingChange} disabled={disabled}>
+        <Select
+          value={localEasing}
+          onValueChange={handleEasingChange}
+          disabled={disabled}
+        >
           <SelectTrigger className="h-7 text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -293,7 +313,9 @@ export function KeyframeEditor({
   onKeyframeDelete,
   disabled,
 }: KeyframeEditorProps) {
-  const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(null);
+  const [selectedKeyframeId, setSelectedKeyframeId] = useState<string | null>(
+    null
+  );
   const [isExpanded, setIsExpanded] = useState(true);
 
   // Sort keyframes for display
@@ -346,20 +368,23 @@ export function KeyframeEditor({
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const percentage = x / rect.width;
-      const frame = durationInFrames > 0 ? Math.round(percentage * durationInFrames) : 0;
+      const frame =
+        durationInFrames > 0 ? Math.round(percentage * durationInFrames) : 0;
 
       // Check if clicking near an existing keyframe
       const nearbyKeyframe = keyframes.find((kf) => {
-        const kfPercentage = durationInFrames > 0 ? kf.frame / durationInFrames : 0;
+        const kfPercentage =
+          durationInFrames > 0 ? kf.frame / durationInFrames : 0;
         return Math.abs(kfPercentage - percentage) < 0.02; // 2% tolerance
       });
 
       if (nearbyKeyframe) {
         setSelectedKeyframeId(nearbyKeyframe.id);
       } else {
-        const value = propType === "color"
-          ? interpolateColor(keyframes, frame)
-          : interpolateNumber(keyframes, frame);
+        const value =
+          propType === "color"
+            ? interpolateColor(keyframes, frame)
+            : interpolateNumber(keyframes, frame);
         onKeyframeAdd(frame, value);
       }
     },
@@ -367,9 +392,8 @@ export function KeyframeEditor({
   );
 
   // Current playhead position percentage (guard against division by zero)
-  const playheadPosition = durationInFrames > 0
-    ? (currentFrame / durationInFrames) * 100
-    : 0;
+  const playheadPosition =
+    durationInFrames > 0 ? (currentFrame / durationInFrames) * 100 : 0;
 
   return (
     <div className="space-y-2">
@@ -439,9 +463,10 @@ export function KeyframeEditor({
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 if (!disabled) {
-                  const value = propType === "color"
-                    ? interpolateColor(keyframes, currentFrame)
-                    : interpolateNumber(keyframes, currentFrame);
+                  const value =
+                    propType === "color"
+                      ? interpolateColor(keyframes, currentFrame)
+                      : interpolateNumber(keyframes, currentFrame);
                   onKeyframeAdd(currentFrame, value);
                 }
               }
@@ -461,7 +486,9 @@ export function KeyframeEditor({
               <KeyframeDiamond
                 key={kf.id}
                 keyframe={kf}
-                position={durationInFrames > 0 ? (kf.frame / durationInFrames) * 100 : 0}
+                position={
+                  durationInFrames > 0 ? (kf.frame / durationInFrames) * 100 : 0
+                }
                 isSelected={kf.id === selectedKeyframeId}
                 onClick={() => setSelectedKeyframeId(kf.id)}
                 onDelete={() => onKeyframeDelete(kf.id)}
@@ -479,12 +506,22 @@ export function KeyframeEditor({
                 <polyline
                   points={sortedKeyframes
                     .map((kf) => {
-                      const x = durationInFrames > 0 ? (kf.frame / durationInFrames) * 100 : 0;
+                      const x =
+                        durationInFrames > 0
+                          ? (kf.frame / durationInFrames) * 100
+                          : 0;
                       // Normalize value for display (0-100%)
-                      const minVal = Math.min(...sortedKeyframes.map((k) => k.value as number));
-                      const maxVal = Math.max(...sortedKeyframes.map((k) => k.value as number));
+                      const minVal = Math.min(
+                        ...sortedKeyframes.map((k) => k.value as number)
+                      );
+                      const maxVal = Math.max(
+                        ...sortedKeyframes.map((k) => k.value as number)
+                      );
                       const range = maxVal - minVal || 1;
-                      const y = 100 - (((kf.value as number) - minVal) / range) * 80 - 10;
+                      const y =
+                        100 -
+                        (((kf.value as number) - minVal) / range) * 80 -
+                        10;
                       return `${x}%,${y}%`;
                     })
                     .join(" ")}
@@ -498,7 +535,10 @@ export function KeyframeEditor({
 
           {/* Selected keyframe editor */}
           {selectedKeyframe && (
-            <Popover open={true} onOpenChange={(open) => !open && setSelectedKeyframeId(null)}>
+            <Popover
+              open={true}
+              onOpenChange={(open) => !open && setSelectedKeyframeId(null)}
+            >
               <PopoverTrigger asChild>
                 <div />
               </PopoverTrigger>

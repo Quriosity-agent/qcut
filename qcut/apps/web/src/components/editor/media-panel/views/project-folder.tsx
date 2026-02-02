@@ -314,14 +314,12 @@ export function ProjectFolderView() {
                   "flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors",
                   "hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
                   selectedFiles.has(entry.path) && "bg-accent",
-                  entry.type === "unknown" &&
-                    !entry.isDirectory &&
-                    "opacity-50"
+                  entry.type === "unknown" && !entry.isDirectory && "opacity-50"
                 )}
                 onClick={() => handleEntryClick(entry)}
                 onKeyDown={(e) => handleEntryKeyDown(e, entry)}
                 aria-selected={selectedFiles.has(entry.path)}
-                aria-label={`${entry.isDirectory ? "Folder" : "File"}: ${entry.name}${!entry.isDirectory ? `, ${formatSize(entry.size)}` : ""}`}
+                aria-label={`${entry.isDirectory ? "Folder" : "File"}: ${entry.name}${entry.isDirectory ? "" : `, ${formatSize(entry.size)}`}`}
               >
                 {/* Checkbox for media files */}
                 {!entry.isDirectory && entry.type !== "unknown" && (

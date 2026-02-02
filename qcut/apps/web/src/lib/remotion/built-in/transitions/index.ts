@@ -66,14 +66,17 @@ export const transitionComponentDefinitions: RemotionComponentDefinition[] = [
 /**
  * Map of transition component definitions by ID
  */
-export const transitionComponentsById = new Map<string, RemotionComponentDefinition>(
-  transitionComponentDefinitions.map((def) => [def.id, def])
-);
+export const transitionComponentsById = new Map<
+  string,
+  RemotionComponentDefinition
+>(transitionComponentDefinitions.map((def) => [def.id, def]));
 
 /**
  * Get a transition component definition by ID
  */
-export function getTransitionComponent(id: string): RemotionComponentDefinition | undefined {
+export function getTransitionComponent(
+  id: string
+): RemotionComponentDefinition | undefined {
   return transitionComponentsById.get(id);
 }
 

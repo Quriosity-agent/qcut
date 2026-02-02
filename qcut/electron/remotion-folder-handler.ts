@@ -450,7 +450,10 @@ export function setupRemotionFolderIPC(): void {
   // -------------------------------------------------------------------------
   ipcMain.handle(
     "remotion-folder:validate",
-    async (_, folderPath: string): Promise<{ isValid: boolean; error?: string }> => {
+    async (
+      _,
+      folderPath: string
+    ): Promise<{ isValid: boolean; error?: string }> => {
       try {
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {

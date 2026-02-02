@@ -49,7 +49,11 @@ function normalizeColor(color: string, preserveAlpha = false): string {
   if (!color) return "#000000";
 
   // Already a hex color
-  if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(color)) {
+  if (
+    /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+      color
+    )
+  ) {
     // Expand 3-char hex to 6-char
     if (color.length === 4) {
       return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
@@ -107,7 +111,9 @@ export function ColorProp({
   presets = DEFAULT_PRESETS,
   allowAlpha = false,
 }: ColorPropProps) {
-  const [localValue, setLocalValue] = useState(normalizeColor(value, allowAlpha));
+  const [localValue, setLocalValue] = useState(
+    normalizeColor(value, allowAlpha)
+  );
   const [isOpen, setIsOpen] = useState(false);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,7 +143,11 @@ export function ColorProp({
       setLocalValue(inputValue);
 
       // Only update if it's a valid hex color (3, 4, 6, or 8 chars)
-      if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(inputValue)) {
+      if (
+        /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(
+          inputValue
+        )
+      ) {
         onChange(normalizeColor(inputValue, allowAlpha));
       }
     },
@@ -169,10 +179,7 @@ export function ColorProp({
 
   return (
     <div className="space-y-1.5">
-      <Label
-        htmlFor={name}
-        className={cn("text-xs", error && "text-red-500")}
-      >
+      <Label htmlFor={name} className={cn("text-xs", error && "text-red-500")}>
         {label}
       </Label>
 

@@ -28,7 +28,16 @@ vi.mock("remotion", () => ({
     height: 1080,
     durationInFrames: 90,
   }),
-  interpolate: (value: number, inputRange: number[], outputRange: number[], options?: { extrapolateLeft?: string; extrapolateRight?: string; easing?: (t: number) => number }) => {
+  interpolate: (
+    value: number,
+    inputRange: number[],
+    outputRange: number[],
+    options?: {
+      extrapolateLeft?: string;
+      extrapolateRight?: string;
+      easing?: (t: number) => number;
+    }
+  ) => {
     const [inputMin, inputMax] = inputRange;
     const [outputMin, outputMax] = outputRange;
     let progress = (value - inputMin) / (inputMax - inputMin);

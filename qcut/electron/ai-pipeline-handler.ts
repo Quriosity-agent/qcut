@@ -134,7 +134,11 @@ class AIPipelineManager {
         timeoutMs: commandTimeoutMs,
       });
       if (systemVersion) {
-        return { useBundledBinary: false, binaryPath: "aicp", version: systemVersion };
+        return {
+          useBundledBinary: false,
+          binaryPath: "aicp",
+          version: systemVersion,
+        };
       }
 
       const pythonVersion = await this.getVersionFromCommand({
@@ -143,7 +147,11 @@ class AIPipelineManager {
         timeoutMs: commandTimeoutMs,
       });
       if (pythonVersion) {
-        return { useBundledBinary: false, pythonPath: "python", version: pythonVersion };
+        return {
+          useBundledBinary: false,
+          pythonPath: "python",
+          version: pythonVersion,
+        };
       }
 
       if (process.platform !== "win32") {
@@ -153,7 +161,11 @@ class AIPipelineManager {
           timeoutMs: commandTimeoutMs,
         });
         if (python3Version) {
-          return { useBundledBinary: false, pythonPath: "python3", version: python3Version };
+          return {
+            useBundledBinary: false,
+            pythonPath: "python3",
+            version: python3Version,
+          };
         }
       }
     } catch (error) {
@@ -179,7 +191,9 @@ class AIPipelineManager {
     }
 
     if (!status.available) {
-      console.log("[AI Pipeline] Bundled binary not found, trying fallbacks...");
+      console.log(
+        "[AI Pipeline] Bundled binary not found, trying fallbacks..."
+      );
     } else if (!status.compatible) {
       console.warn(
         `[AI Pipeline] Bundled binary v${status.version} not compatible with QCut v${app.getVersion()}`
@@ -340,7 +354,10 @@ class AIPipelineManager {
       return { cmd: this.config.binaryPath, baseArgs: [] };
     }
     if (this.config.pythonPath) {
-      return { cmd: this.config.pythonPath, baseArgs: ["-m", "ai_content_pipeline"] };
+      return {
+        cmd: this.config.pythonPath,
+        baseArgs: ["-m", "ai_content_pipeline"],
+      };
     }
     throw new Error("AI Pipeline not available");
   }
@@ -522,7 +539,10 @@ class AIPipelineManager {
 
             // Try to parse entire stdout as JSON
             const trimmedOutput = stdout.trim();
-            if (trimmedOutput.startsWith("{") || trimmedOutput.startsWith("[")) {
+            if (
+              trimmedOutput.startsWith("{") ||
+              trimmedOutput.startsWith("[")
+            ) {
               try {
                 const jsonResult = JSON.parse(trimmedOutput);
                 resolveOnce({
@@ -575,7 +595,9 @@ class AIPipelineManager {
           }
         } else {
           const errorMessage =
-            stderr.trim() || stdout.trim() || `Process exited with code ${code}`;
+            stderr.trim() ||
+            stdout.trim() ||
+            `Process exited with code ${code}`;
           console.error("[AI Pipeline] Failed:", errorMessage);
           resolveOnce({
             result: {
@@ -715,20 +737,23 @@ export function setupAIPipelineIPC(): void {
   );
 
   // List available models
-  ipcMain.handle("ai-pipeline:list-models", async (): Promise<PipelineResult> => {
-    if (!pipelineManager) {
-      return { success: false, error: "Pipeline manager not initialized" };
-    }
-    const isAvailable = await pipelineManager.isAvailable();
-    if (!isAvailable) {
-      return { success: false, error: "AI Pipeline not available" };
-    }
+  ipcMain.handle(
+    "ai-pipeline:list-models",
+    async (): Promise<PipelineResult> => {
+      if (!pipelineManager) {
+        return { success: false, error: "Pipeline manager not initialized" };
+      }
+      const isAvailable = await pipelineManager.isAvailable();
+      if (!isAvailable) {
+        return { success: false, error: "AI Pipeline not available" };
+      }
 
-    return pipelineManager.execute(
-      { command: "list-models", args: {} },
-      () => {} // No progress for list
-    );
-  });
+      return pipelineManager.execute(
+        { command: "list-models", args: {} },
+        () => {} // No progress for list
+      );
+    }
+  );
 
   // Estimate cost
   ipcMain.handle(

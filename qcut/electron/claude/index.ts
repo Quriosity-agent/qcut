@@ -3,19 +3,19 @@
  * Main entry point for all Claude API handlers
  */
 
-import { setupClaudeMediaIPC } from './claude-media-handler.js';
-import { setupClaudeTimelineIPC } from './claude-timeline-handler.js';
-import { setupClaudeProjectIPC } from './claude-project-handler.js';
-import { setupClaudeExportIPC } from './claude-export-handler.js';
-import { setupClaudeDiagnosticsIPC } from './claude-diagnostics-handler.js';
-import { claudeLog } from './utils/logger.js';
+import { setupClaudeMediaIPC } from "./claude-media-handler.js";
+import { setupClaudeTimelineIPC } from "./claude-timeline-handler.js";
+import { setupClaudeProjectIPC } from "./claude-project-handler.js";
+import { setupClaudeExportIPC } from "./claude-export-handler.js";
+import { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
+import { claudeLog } from "./utils/logger.js";
 
 /**
  * Setup all Claude Code Integration IPC handlers
  * Call this once during app initialization
  */
 export function setupAllClaudeIPC(): void {
-  claudeLog.info('Claude', 'Initializing Claude Code Integration...');
+  claudeLog.info("Claude", "Initializing Claude Code Integration...");
 
   setupClaudeMediaIPC();
   setupClaudeTimelineIPC();
@@ -23,7 +23,7 @@ export function setupAllClaudeIPC(): void {
   setupClaudeExportIPC();
   setupClaudeDiagnosticsIPC();
 
-  claudeLog.info('Claude', 'All handlers registered successfully');
+  claudeLog.info("Claude", "All handlers registered successfully");
 }
 
 // Re-export individual setup functions for selective use

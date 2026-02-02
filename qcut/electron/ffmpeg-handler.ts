@@ -157,7 +157,9 @@ export function setupFFmpegIPC(): void {
       } = options;
 
       // Early debug logging to diagnose export issues
-      debugLog("🔍 [FFMPEG HANDLER] ============================================");
+      debugLog(
+        "🔍 [FFMPEG HANDLER] ============================================"
+      );
       debugLog("🔍 [FFMPEG HANDLER] Export options received:");
       debugLog("🔍 [FFMPEG HANDLER]   - sessionId:", sessionId);
       debugLog("🔍 [FFMPEG HANDLER]   - dimensions:", `${width}x${height}`);
@@ -166,20 +168,42 @@ export function setupFFmpegIPC(): void {
       debugLog("🔍 [FFMPEG HANDLER]   - duration:", duration);
       debugLog("🔍 [FFMPEG HANDLER]   - useDirectCopy:", useDirectCopy);
       debugLog("🔍 [FFMPEG HANDLER]   - useVideoInput:", options.useVideoInput);
-      debugLog("🔍 [FFMPEG HANDLER]   - videoInputPath:", options.videoInputPath);
-      debugLog("🔍 [FFMPEG HANDLER]   - videoSources count:", options.videoSources?.length || 0);
-      debugLog("🔍 [FFMPEG HANDLER]   - optimizationStrategy:", options.optimizationStrategy);
-      debugLog("🔍 [FFMPEG HANDLER]   - filterChain:", options.filterChain ? "present" : "none");
-      debugLog("🔍 [FFMPEG HANDLER]   - textFilterChain:", textFilterChain ? "present" : "none");
-      debugLog("🔍 [FFMPEG HANDLER]   - stickerFilterChain:", stickerFilterChain ? "present" : "none");
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - videoInputPath:",
+        options.videoInputPath
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - videoSources count:",
+        options.videoSources?.length || 0
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - optimizationStrategy:",
+        options.optimizationStrategy
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - filterChain:",
+        options.filterChain ? "present" : "none"
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - textFilterChain:",
+        textFilterChain ? "present" : "none"
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - stickerFilterChain:",
+        stickerFilterChain ? "present" : "none"
+      );
       if (options.videoSources && options.videoSources.length > 0) {
         debugLog("🔍 [FFMPEG HANDLER] Video sources:");
         for (const [i, v] of options.videoSources.entries()) {
           debugLog(`🔍 [FFMPEG HANDLER]   [${i}] path: ${v.path}`);
-          debugLog(`🔍 [FFMPEG HANDLER]   [${i}] duration: ${v.duration}, trimStart: ${v.trimStart}, trimEnd: ${v.trimEnd}`);
+          debugLog(
+            `🔍 [FFMPEG HANDLER]   [${i}] duration: ${v.duration}, trimStart: ${v.trimStart}, trimEnd: ${v.trimEnd}`
+          );
         }
       }
-      debugLog("🔍 [FFMPEG HANDLER] ============================================");
+      debugLog(
+        "🔍 [FFMPEG HANDLER] ============================================"
+      );
 
       // Validate sticker configuration
       if (
@@ -830,23 +854,34 @@ export function setupFFmpegIPC(): void {
         if (format === "mp3") {
           // MP3: use libmp3lame with low bitrate for speech transcription
           // 32kbps mono at 16kHz is sufficient for speech recognition
-          codecArgs = ["-acodec", "libmp3lame", "-ab", "32k", "-ar", "16000", "-ac", "1"];
+          codecArgs = [
+            "-acodec",
+            "libmp3lame",
+            "-ab",
+            "32k",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+          ];
         } else if (format === "aac" || format === "m4a") {
           // AAC: low bitrate for speech
-          codecArgs = ["-acodec", "aac", "-ab", "32k", "-ar", "16000", "-ac", "1"];
+          codecArgs = [
+            "-acodec",
+            "aac",
+            "-ab",
+            "32k",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+          ];
         } else {
           // WAV/default: uncompressed PCM
           codecArgs = ["-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1"];
         }
 
-        const args = [
-          "-i",
-          videoPath,
-          "-vn",
-          ...codecArgs,
-          "-y",
-          outputPath,
-        ];
+        const args = ["-i", videoPath, "-vn", ...codecArgs, "-y", outputPath];
 
         const ffmpeg = spawn(ffmpegPath, args, {
           windowsHide: true,

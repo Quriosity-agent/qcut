@@ -96,12 +96,16 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
     }
 
     if (trimmedName.length < FOLDER_NAME_MIN_LENGTH) {
-      toast.error(`Folder name must be at least ${FOLDER_NAME_MIN_LENGTH} character`);
+      toast.error(
+        `Folder name must be at least ${FOLDER_NAME_MIN_LENGTH} character`
+      );
       return;
     }
 
     if (trimmedName.length > FOLDER_NAME_MAX_LENGTH) {
-      toast.error(`Folder name must be ${FOLDER_NAME_MAX_LENGTH} characters or less`);
+      toast.error(
+        `Folder name must be ${FOLDER_NAME_MAX_LENGTH} characters or less`
+      );
       return;
     }
 
@@ -129,9 +133,7 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
         <ContextMenuTrigger asChild>
           <div
             className={`w-full px-2 py-1.5 text-sm rounded flex items-center gap-1 transition-colors cursor-default ${
-              isSelected
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-muted"
+              isSelected ? "bg-accent text-accent-foreground" : "hover:bg-muted"
             }`}
             style={{ paddingLeft: `${8 + depth * 12}px` }}
           >
@@ -210,7 +212,10 @@ export function FolderItem({ folder, depth, onSelect }: FolderItemProps) {
 
           <ContextMenuSeparator />
 
-          <ContextMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+          <ContextMenuItem
+            variant="destructive"
+            onClick={() => setIsDeleteOpen(true)}
+          >
             Delete Folder
           </ContextMenuItem>
         </ContextMenuContent>

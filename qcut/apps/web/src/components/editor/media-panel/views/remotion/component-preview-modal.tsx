@@ -72,7 +72,7 @@ export function ComponentPreviewModal({
       setIsLoading(true);
       setError(null);
     }
-  }, [component?.id]);
+  }, [component?.id, component]);
 
   // Set up Player event listeners for play/pause/frameupdate
   // The Remotion Player uses addEventListener on the ref, not props
@@ -140,12 +140,15 @@ export function ComponentPreviewModal({
   }, []);
 
   // Handle seek
-  const handleSeek = useCallback((value: number[]) => {
-    if (!playerRef.current || !component) return;
-    const frame = Math.round(value[0]);
-    playerRef.current.seekTo(frame);
-    // Note: frame state is updated via frameupdate event listener
-  }, [component]);
+  const handleSeek = useCallback(
+    (value: number[]) => {
+      if (!playerRef.current || !component) return;
+      const frame = Math.round(value[0]);
+      playerRef.current.seekTo(frame);
+      // Note: frame state is updated via frameupdate event listener
+    },
+    [component]
+  );
 
   // Handle add to timeline
   const handleAdd = useCallback(() => {
@@ -156,7 +159,9 @@ export function ComponentPreviewModal({
 
   if (!component) return null;
 
-  const durationSeconds = (component.durationInFrames / component.fps).toFixed(2);
+  const durationSeconds = (component.durationInFrames / component.fps).toFixed(
+    2
+  );
   const currentSeconds = (currentFrame / component.fps).toFixed(2);
 
   return (
@@ -168,7 +173,8 @@ export function ComponentPreviewModal({
             {component.name}
           </DialogTitle>
           <DialogDescription>
-            {component.description || "Preview this Remotion component before adding to your timeline."}
+            {component.description ||
+              "Preview this Remotion component before adding to your timeline."}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +186,10 @@ export function ComponentPreviewModal({
               role="status"
               aria-label="Loading preview"
             >
-              <Loader2 className="h-8 w-8 animate-spin text-violet-400" aria-hidden="true" />
+              <Loader2
+                className="h-8 w-8 animate-spin text-violet-400"
+                aria-hidden="true"
+              />
               <span className="sr-only">Loading preview...</span>
             </div>
           )}
@@ -306,7 +315,11 @@ export function ComponentPreviewModal({
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => onOpenChange(false)}
+          >
             Close
           </Button>
           {onAdd && (

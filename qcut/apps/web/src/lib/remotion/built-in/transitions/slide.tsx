@@ -35,7 +35,9 @@ export const SlideSchema = z.object({
   /** Duration of slide in frames (uses full duration if not specified) */
   slideDuration: z.number().min(1).optional(),
   /** Animation type */
-  animationType: z.enum(["linear", "easeOut", "spring", "bounce"]).default("easeOut"),
+  animationType: z
+    .enum(["linear", "easeOut", "spring", "bounce"])
+    .default("easeOut"),
   /** Start delay in frames */
   startDelay: z.number().min(0).default(0),
   /** Whether outgoing content also slides */
@@ -91,7 +93,7 @@ export const Slide: React.FC<Partial<SlideProps>> = ({
   const { durationInFrames, width, height, fps } = useVideoConfig();
 
   // Calculate actual slide duration
-  const actualDuration = slideDuration ?? (durationInFrames - startDelay);
+  const actualDuration = slideDuration ?? durationInFrames - startDelay;
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress based on animation type
@@ -108,25 +110,19 @@ export const Slide: React.FC<Partial<SlideProps>> = ({
       },
     });
   } else {
-    const easingFn = animationType === "linear"
-      ? Easing.linear
-      : Easing.out(Easing.cubic);
+    const easingFn =
+      animationType === "linear" ? Easing.linear : Easing.out(Easing.cubic);
 
-    progress = interpolate(
-      activeFrame,
-      [0, actualDuration],
-      [0, 1],
-      {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-        easing: easingFn,
-      }
-    );
+    progress = interpolate(activeFrame, [0, actualDuration], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easingFn,
+    });
   }
 
   // Calculate transforms based on direction
   const getTransform = (isIncoming: boolean) => {
-    const distance = isIncoming ? (1 - progress) : -progress;
+    const distance = isIncoming ? 1 - progress : -progress;
     const gapOffset = isIncoming ? -gap : gap;
 
     switch (direction) {
@@ -134,22 +130,22 @@ export const Slide: React.FC<Partial<SlideProps>> = ({
         // New content slides in from left
         return isIncoming
           ? `translateX(${-100 * distance}%)`
-          : `translateX(${100 * progress + (slideOut ? gapOffset / width * 100 : 0)}%)`;
+          : `translateX(${100 * progress + (slideOut ? (gapOffset / width) * 100 : 0)}%)`;
       case "right":
         // New content slides in from right
         return isIncoming
           ? `translateX(${100 * distance}%)`
-          : `translateX(${-100 * progress - (slideOut ? gapOffset / width * 100 : 0)}%)`;
+          : `translateX(${-100 * progress - (slideOut ? (gapOffset / width) * 100 : 0)}%)`;
       case "up":
         // New content slides in from top
         return isIncoming
           ? `translateY(${-100 * distance}%)`
-          : `translateY(${100 * progress + (slideOut ? gapOffset / height * 100 : 0)}%)`;
+          : `translateY(${100 * progress + (slideOut ? (gapOffset / height) * 100 : 0)}%)`;
       case "down":
         // New content slides in from bottom
         return isIncoming
           ? `translateY(${100 * distance}%)`
-          : `translateY(${-100 * progress - (slideOut ? gapOffset / height * 100 : 0)}%)`;
+          : `translateY(${-100 * progress - (slideOut ? (gapOffset / height) * 100 : 0)}%)`;
       default:
         return "none";
     }

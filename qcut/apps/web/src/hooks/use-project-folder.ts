@@ -33,7 +33,7 @@ export function useProjectFolder() {
    * List directory contents (non-recursive).
    */
   const listDirectory = useCallback(
-    async (subPath: string = "") => {
+    async (subPath = "") => {
       if (!projectId || !window.electronAPI?.projectFolder) {
         return;
       }
@@ -63,7 +63,7 @@ export function useProjectFolder() {
    * Scan for all media files (recursive).
    */
   const scanForMedia = useCallback(
-    async (subPath: string = "media") => {
+    async (subPath = "media") => {
       if (!projectId || !window.electronAPI?.projectFolder) {
         return null;
       }

@@ -124,7 +124,9 @@ const PARSER_OPTIONS: ParserOptions = {
  * // ]
  * ```
  */
-export function extractSequencesFromSource(sourceCode: string): ParsedStructure {
+export function extractSequencesFromSource(
+  sourceCode: string
+): ParsedStructure {
   const result: ParsedStructure = {
     sequences: [],
     transitions: [],
@@ -220,7 +222,9 @@ export function extractSequencesFromSource(sourceCode: string): ParsedStructure 
 /**
  * Get the string name of a JSX element, handling member expressions.
  */
-function getElementName(name: t.JSXIdentifier | t.JSXMemberExpression | t.JSXNamespacedName): string {
+function getElementName(
+  name: t.JSXIdentifier | t.JSXMemberExpression | t.JSXNamespacedName
+): string {
   if (t.isJSXIdentifier(name)) {
     return name.name;
   }
@@ -269,7 +273,12 @@ function extractSequenceProps(
 
   return {
     name: typeof props.name === "string" ? props.name : null,
-    from: typeof props.from === "number" ? props.from : props.from === undefined ? 0 : "dynamic",
+    from:
+      typeof props.from === "number"
+        ? props.from
+        : props.from === undefined
+          ? 0
+          : "dynamic",
     durationInFrames:
       typeof props.durationInFrames === "number"
         ? props.durationInFrames
@@ -288,7 +297,8 @@ function extractTransitionProps(
 
   // Filter out boolean values as they're not valid for timing/presentation
   const timing = typeof props.timing === "boolean" ? undefined : props.timing;
-  const presentation = typeof props.presentation === "boolean" ? undefined : props.presentation;
+  const presentation =
+    typeof props.presentation === "boolean" ? undefined : props.presentation;
 
   return {
     durationInFrames: extractTimingDuration(timing),
@@ -304,7 +314,10 @@ function extractTransitionProps(
 function extractJSXProps(
   attributes: (t.JSXAttribute | t.JSXSpreadAttribute)[]
 ): Record<string, string | number | boolean | "dynamic" | t.Expression> {
-  const props: Record<string, string | number | boolean | "dynamic" | t.Expression> = {};
+  const props: Record<
+    string,
+    string | number | boolean | "dynamic" | t.Expression
+  > = {};
 
   for (const attr of attributes) {
     if (!t.isJSXAttribute(attr) || !t.isJSXIdentifier(attr.name)) {
@@ -478,7 +491,13 @@ export function toSequenceStructure(
       transitions.push({
         afterSequenceIndex: trans.afterSequenceIndex,
         durationInFrames: duration,
-        presentation: (trans.presentation as "fade" | "slide" | "wipe" | "zoom" | "custom") ?? undefined,
+        presentation:
+          (trans.presentation as
+            | "fade"
+            | "slide"
+            | "wipe"
+            | "zoom"
+            | "custom") ?? undefined,
       });
 
       // Adjust subsequent sequence positions for overlap

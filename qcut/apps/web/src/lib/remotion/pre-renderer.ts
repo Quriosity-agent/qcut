@@ -107,7 +107,10 @@ export class RemotionPreRenderer {
    */
   private detectRenderMode(): RenderMode {
     // Check if Electron API is available
-    if (typeof window !== "undefined" && (window as any).electronAPI?.remotion) {
+    if (
+      typeof window !== "undefined" &&
+      (window as any).electronAPI?.remotion
+    ) {
       return "electron";
     }
     return "canvas";
@@ -140,7 +143,8 @@ export class RemotionPreRenderer {
     try {
       // Calculate total frames from element duration
       const totalFrames = Math.ceil(
-        (element.duration - element.trimStart - element.trimEnd) * this.config.fps
+        (element.duration - element.trimStart - element.trimEnd) *
+          this.config.fps
       );
 
       if (totalFrames <= 0) {
@@ -236,7 +240,12 @@ export class RemotionPreRenderer {
       fps: this.config.fps,
       totalFrames,
       onProgress: (frame: number) => {
-        onProgress?.(element.id, (frame / totalFrames) * 100, frame, totalFrames);
+        onProgress?.(
+          element.id,
+          (frame / totalFrames) * 100,
+          frame,
+          totalFrames
+        );
       },
     });
 
@@ -273,7 +282,12 @@ export class RemotionPreRenderer {
       const dataUrl = await this.captureFrameFromPlayer(element, frame);
       framePaths.set(frame, dataUrl);
 
-      onProgress?.(element.id, ((frame + 1) / totalFrames) * 100, frame + 1, totalFrames);
+      onProgress?.(
+        element.id,
+        ((frame + 1) / totalFrames) * 100,
+        frame + 1,
+        totalFrames
+      );
 
       // Yield to prevent UI blocking
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -353,7 +367,7 @@ export function estimateTotalFrames(
 export function estimateRenderTime(
   elements: RemotionElement[],
   fps: number,
-  msPerFrame: number = 50 // Default estimate
+  msPerFrame = 50 // Default estimate
 ): number {
   const totalFrames = estimateTotalFrames(elements, fps);
   return totalFrames * msPerFrame;
@@ -369,7 +383,11 @@ export function getElementsForPreRender(
 ): RemotionElement[] {
   return elements.filter((element) => {
     const elementStart = element.startTime;
-    const elementEnd = element.startTime + element.duration - element.trimStart - element.trimEnd;
+    const elementEnd =
+      element.startTime +
+      element.duration -
+      element.trimStart -
+      element.trimEnd;
     // Element overlaps with the export range
     return elementStart < endTime && elementEnd > startTime;
   });

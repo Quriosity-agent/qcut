@@ -76,8 +76,16 @@ vi.mock("@remotion/player", () => ({
 
 // Mock UI components that might cause issues
 vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div className={className} data-testid="scroll-area">{children}</div>
+  ScrollArea: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <div className={className} data-testid="scroll-area">
+      {children}
+    </div>
   ),
 }));
 
@@ -166,7 +174,9 @@ describe("ComponentCard", () => {
 
     render(<ComponentCard component={mockComponent} onAdd={onAdd} />);
 
-    expect(screen.getByText("A test component for testing")).toBeInTheDocument();
+    expect(
+      screen.getByText("A test component for testing")
+    ).toBeInTheDocument();
   });
 
   it("should render duration badge", async () => {
@@ -185,7 +195,9 @@ describe("ComponentCard", () => {
 
     render(<ComponentCard component={mockComponent} onAdd={onAdd} />);
 
-    const card = screen.getByRole("button", { name: /add test component to timeline/i });
+    const card = screen.getByRole("button", {
+      name: /add test component to timeline/i,
+    });
     fireEvent.click(card);
 
     expect(onAdd).toHaveBeenCalledWith(mockComponent);
@@ -197,7 +209,9 @@ describe("ComponentCard", () => {
 
     render(<ComponentCard component={mockComponent} onAdd={onAdd} />);
 
-    const card = screen.getByRole("button", { name: /add test component to timeline/i });
+    const card = screen.getByRole("button", {
+      name: /add test component to timeline/i,
+    });
     fireEvent.keyDown(card, { key: "Enter" });
 
     expect(onAdd).toHaveBeenCalledWith(mockComponent);
@@ -209,7 +223,9 @@ describe("ComponentCard", () => {
 
     render(<ComponentCard component={mockComponent} onAdd={onAdd} />);
 
-    const card = screen.getByRole("button", { name: /add test component to timeline/i });
+    const card = screen.getByRole("button", {
+      name: /add test component to timeline/i,
+    });
     fireEvent.keyDown(card, { key: " " });
 
     expect(onAdd).toHaveBeenCalledWith(mockComponent);
@@ -221,7 +237,9 @@ describe("ComponentCard", () => {
 
     render(<ComponentCard component={mockComponent} onAdd={onAdd} />);
 
-    expect(screen.getByTestId("component-card-test-component-1")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("component-card-test-component-1")
+    ).toBeInTheDocument();
   });
 
   it("should render in compact mode", async () => {
@@ -231,7 +249,9 @@ describe("ComponentCard", () => {
     render(<ComponentCard component={mockComponent} onAdd={onAdd} compact />);
 
     // In compact mode, description should not be shown
-    expect(screen.queryByText("A test component for testing")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("A test component for testing")
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -262,7 +282,9 @@ describe("RemotionView", () => {
     render(<RemotionView />);
 
     expect(screen.getByTestId("remotion-search-input")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/search components/i)).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/search components/i)
+    ).toBeInTheDocument();
   });
 
   it("should show empty state when no components", async () => {
@@ -390,7 +412,9 @@ describe("RemotionView", () => {
     expect(screen.getByRole("tab", { name: /all/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /templates/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /text/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /transitions/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /transitions/i })
+    ).toBeInTheDocument();
   });
 
   it("should group components by category", async () => {
@@ -407,7 +431,9 @@ describe("RemotionView", () => {
     // Should show category sections
     expect(screen.getByTestId("category-section-template")).toBeInTheDocument();
     expect(screen.getByTestId("category-section-text")).toBeInTheDocument();
-    expect(screen.getByTestId("category-section-transition")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("category-section-transition")
+    ).toBeInTheDocument();
   });
 
   it("should show component count in footer", async () => {
@@ -468,7 +494,9 @@ describe("Component Browser Integration", () => {
         componentId: "test-component-1",
       })
     );
-    expect(toast.success).toHaveBeenCalledWith('Added "Test Component" to timeline');
+    expect(toast.success).toHaveBeenCalledWith(
+      'Added "Test Component" to timeline'
+    );
   });
 
   it("should use existing remotion track if available", async () => {

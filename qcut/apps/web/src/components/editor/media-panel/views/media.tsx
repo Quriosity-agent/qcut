@@ -389,237 +389,241 @@ export function MediaView() {
           className={`h-full flex flex-col gap-1 transition-colors relative ${isDragOver ? "bg-accent/30" : ""}`}
           {...dragProps}
         >
-        <div className="p-3 pb-2 bg-panel">
-          {/* Search and filter controls */}
-          <div className="flex gap-2">
-            <Select value={mediaFilter} onValueChange={setMediaFilter}>
-              <SelectTrigger className="w-[80px] h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="video">Video</SelectItem>
-                <SelectItem value="audio">Audio</SelectItem>
-                <SelectItem value="image">Image</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="text"
-              placeholder="Search media..."
-              className="min-w-[60px] flex-1 h-9 text-xs"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleFileSelect}
-              disabled={isProcessing}
-              className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
-              data-testid="import-media-button"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-            </Button>
-            <ExportAllButton variant="outline" size="sm" className="h-9" />
-          </div>
-        </div>
-
-        <ScrollArea className="h-full">
-          <div className="flex-1 p-3 pt-0">
-            {isDragOver || filteredMediaItems.length === 0 ? (
-              <MediaDragOverlay
-                isVisible={true}
-                isProcessing={isProcessing}
-                progress={progress}
-                onClick={handleFileSelect}
-                isEmptyState={filteredMediaItems.length === 0 && !isDragOver}
+          <div className="p-3 pb-2 bg-panel">
+            {/* Search and filter controls */}
+            <div className="flex gap-2">
+              <Select value={mediaFilter} onValueChange={setMediaFilter}>
+                <SelectTrigger className="w-[80px] h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="audio">Audio</SelectItem>
+                  <SelectItem value="image">Image</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="text"
+                placeholder="Search media..."
+                className="min-w-[60px] flex-1 h-9 text-xs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-            ) : (
-              <div
-                className="grid gap-2"
-                style={{
-                  gridTemplateColumns: "repeat(auto-fill, 160px)",
-                }}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleFileSelect}
+                disabled={isProcessing}
+                className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
+                data-testid="import-media-button"
               >
-                {/* Render each media item as a draggable button */}
-                {filteredMediaItems.map((item) => (
-                  <ContextMenu key={item.id}>
-                    <ContextMenuTrigger>
-                      <DraggableMediaItem
-                        name={item.name}
-                        preview={renderPreview(item)}
-                        dragData={{
-                          id: item.id,
-                          type: item.type,
-                          name: item.name,
-                        }}
-                        showPlusOnDrag={false}
-                        onAddToTimeline={(currentTime) =>
-                          useTimelineStore
-                            .getState()
-                            .addMediaAtTime(item, currentTime)
-                        }
-                        rounded={false}
-                        data-testid="media-item"
-                      />
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem>Export clips</ContextMenuItem>
-                      {(item.type === "image" || item.type === "video") && (
-                        <ContextMenuItem
-                          aria-label="Add as overlay"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
+              <ExportAllButton variant="outline" size="sm" className="h-9" />
+            </div>
+          </div>
 
-                            // Debug logging for overlay creation (Task 2.2)
-                            // Note: We use filteredMediaItems which is already available from the hook
-                            const mediaExists = filteredMediaItems.some(
-                              (m) => m.id === item.id
-                            );
-
-                            debugLog("[MediaPanel] Overlay creation check:", {
-                              targetItemId: item.id,
-                              targetItemName: item.name,
-                              mediaExists,
-                              totalMediaItems: filteredMediaItems.length,
-                              availableMediaIds: filteredMediaItems.map(
-                                (m) => m.id
-                              ),
-                              timestamp: new Date().toISOString(),
-                            });
-
-                            const { addOverlaySticker } =
-                              useStickersOverlayStore.getState();
-                            const { currentTime } = usePlaybackStore.getState();
-                            const { getTotalDuration } =
-                              useTimelineStore.getState();
-                            const totalDuration = getTotalDuration();
-
-                            const start = Math.max(
-                              0,
-                              Math.min(currentTime, totalDuration)
-                            );
-                            const end = Math.min(start + 5, totalDuration);
-
-                            const overlayData = {
-                              timing: {
-                                startTime: start,
-                                endTime: end,
-                              },
-                            };
-
-                            addOverlaySticker(item.id, overlayData);
-
-                            toast.success(`Added "${item.name}" as overlay`);
+          <ScrollArea className="h-full">
+            <div className="flex-1 p-3 pt-0">
+              {isDragOver || filteredMediaItems.length === 0 ? (
+                <MediaDragOverlay
+                  isVisible={true}
+                  isProcessing={isProcessing}
+                  progress={progress}
+                  onClick={handleFileSelect}
+                  isEmptyState={filteredMediaItems.length === 0 && !isDragOver}
+                />
+              ) : (
+                <div
+                  className="grid gap-2"
+                  style={{
+                    gridTemplateColumns: "repeat(auto-fill, 160px)",
+                  }}
+                >
+                  {/* Render each media item as a draggable button */}
+                  {filteredMediaItems.map((item) => (
+                    <ContextMenu key={item.id}>
+                      <ContextMenuTrigger>
+                        <DraggableMediaItem
+                          name={item.name}
+                          preview={renderPreview(item)}
+                          dragData={{
+                            id: item.id,
+                            type: item.type,
+                            name: item.name,
                           }}
-                        >
-                          <Layers className="h-4 w-4 mr-2" aria-hidden="true" />
-                          Add as Overlay
-                        </ContextMenuItem>
-                      )}
-                      {item.type === "image" && (
-                        <ContextMenuItem onClick={(e) => handleEdit(e, item)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Image edit
-                        </ContextMenuItem>
-                      )}
-
-                      {/* Add to Folders (multi-folder support) */}
-                      <ContextMenuSub>
-                        <ContextMenuSubTrigger>
-                          <FolderInput
-                            className="h-4 w-4 mr-2"
-                            aria-hidden="true"
-                          />
-                          Add to Folders
-                        </ContextMenuSubTrigger>
-                        <ContextMenuSubContent>
-                          {folders.length === 0 && (
-                            <ContextMenuItem disabled>
-                              No folders created
-                            </ContextMenuItem>
-                          )}
-                          {folders.map((folder) => {
-                            const isInFolder = (item.folderIds || []).includes(
-                              folder.id
-                            );
-                            return (
-                              <ContextMenuCheckboxItem
-                                key={folder.id}
-                                checked={isInFolder}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    addToFolder?.(item.id, folder.id);
-                                  } else {
-                                    removeFromFolder?.(item.id, folder.id);
-                                  }
-                                }}
-                              >
-                                {folder.name}
-                              </ContextMenuCheckboxItem>
-                            );
-                          })}
-                        </ContextMenuSubContent>
-                      </ContextMenuSub>
-
-                      {/* Copy File Path */}
-                      <ContextMenuItem
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const path = item.localPath || item.url;
-                          if (path && !path.startsWith("blob:")) {
-                            await navigator.clipboard.writeText(path);
-                            toast.success("Path copied to clipboard");
-                          } else {
-                            toast.error("No file path available");
+                          showPlusOnDrag={false}
+                          onAddToTimeline={(currentTime) =>
+                            useTimelineStore
+                              .getState()
+                              .addMediaAtTime(item, currentTime)
                           }
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" aria-hidden="true" />
-                        Copy File Path
-                      </ContextMenuItem>
+                          rounded={false}
+                          data-testid="media-item"
+                        />
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem>Export clips</ContextMenuItem>
+                        {(item.type === "image" || item.type === "video") && (
+                          <ContextMenuItem
+                            aria-label="Add as overlay"
+                            onClick={(e) => {
+                              e.stopPropagation();
 
-                      {/* Open in Explorer (Electron only) */}
-                      {item.localPath && (
-                        <ContextMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.electronAPI?.shell?.showItemInFolder) {
-                              window.electronAPI.shell.showItemInFolder(
-                                item.localPath!
+                              // Debug logging for overlay creation (Task 2.2)
+                              // Note: We use filteredMediaItems which is already available from the hook
+                              const mediaExists = filteredMediaItems.some(
+                                (m) => m.id === item.id
                               );
+
+                              debugLog("[MediaPanel] Overlay creation check:", {
+                                targetItemId: item.id,
+                                targetItemName: item.name,
+                                mediaExists,
+                                totalMediaItems: filteredMediaItems.length,
+                                availableMediaIds: filteredMediaItems.map(
+                                  (m) => m.id
+                                ),
+                                timestamp: new Date().toISOString(),
+                              });
+
+                              const { addOverlaySticker } =
+                                useStickersOverlayStore.getState();
+                              const { currentTime } =
+                                usePlaybackStore.getState();
+                              const { getTotalDuration } =
+                                useTimelineStore.getState();
+                              const totalDuration = getTotalDuration();
+
+                              const start = Math.max(
+                                0,
+                                Math.min(currentTime, totalDuration)
+                              );
+                              const end = Math.min(start + 5, totalDuration);
+
+                              const overlayData = {
+                                timing: {
+                                  startTime: start,
+                                  endTime: end,
+                                },
+                              };
+
+                              addOverlaySticker(item.id, overlayData);
+
+                              toast.success(`Added "${item.name}" as overlay`);
+                            }}
+                          >
+                            <Layers
+                              className="h-4 w-4 mr-2"
+                              aria-hidden="true"
+                            />
+                            Add as Overlay
+                          </ContextMenuItem>
+                        )}
+                        {item.type === "image" && (
+                          <ContextMenuItem onClick={(e) => handleEdit(e, item)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Image edit
+                          </ContextMenuItem>
+                        )}
+
+                        {/* Add to Folders (multi-folder support) */}
+                        <ContextMenuSub>
+                          <ContextMenuSubTrigger>
+                            <FolderInput
+                              className="h-4 w-4 mr-2"
+                              aria-hidden="true"
+                            />
+                            Add to Folders
+                          </ContextMenuSubTrigger>
+                          <ContextMenuSubContent>
+                            {folders.length === 0 && (
+                              <ContextMenuItem disabled>
+                                No folders created
+                              </ContextMenuItem>
+                            )}
+                            {folders.map((folder) => {
+                              const isInFolder = (
+                                item.folderIds || []
+                              ).includes(folder.id);
+                              return (
+                                <ContextMenuCheckboxItem
+                                  key={folder.id}
+                                  checked={isInFolder}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      addToFolder?.(item.id, folder.id);
+                                    } else {
+                                      removeFromFolder?.(item.id, folder.id);
+                                    }
+                                  }}
+                                >
+                                  {folder.name}
+                                </ContextMenuCheckboxItem>
+                              );
+                            })}
+                          </ContextMenuSubContent>
+                        </ContextMenuSub>
+
+                        {/* Copy File Path */}
+                        <ContextMenuItem
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const path = item.localPath || item.url;
+                            if (path && !path.startsWith("blob:")) {
+                              await navigator.clipboard.writeText(path);
+                              toast.success("Path copied to clipboard");
                             } else {
-                              toast.error("Only available in desktop app");
+                              toast.error("No file path available");
                             }
                           }}
                         >
-                          <ExternalLink
-                            className="h-4 w-4 mr-2"
-                            aria-hidden="true"
-                          />
-                          Open in Explorer
+                          <Copy className="h-4 w-4 mr-2" aria-hidden="true" />
+                          Copy File Path
                         </ContextMenuItem>
-                      )}
 
-                      <ContextMenuSeparator />
+                        {/* Open in Explorer (Electron only) */}
+                        {item.localPath && (
+                          <ContextMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.electronAPI?.shell?.showItemInFolder) {
+                                window.electronAPI.shell.showItemInFolder(
+                                  item.localPath!
+                                );
+                              } else {
+                                toast.error("Only available in desktop app");
+                              }
+                            }}
+                          >
+                            <ExternalLink
+                              className="h-4 w-4 mr-2"
+                              aria-hidden="true"
+                            />
+                            Open in Explorer
+                          </ContextMenuItem>
+                        )}
 
-                      <ContextMenuItem
-                        variant="destructive"
-                        onClick={(e) => handleRemove(e, item.id)}
-                      >
-                        Delete
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+                        <ContextMenuSeparator />
+
+                        <ContextMenuItem
+                          variant="destructive"
+                          onClick={(e) => handleRemove(e, item.id)}
+                        >
+                          Delete
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </div>

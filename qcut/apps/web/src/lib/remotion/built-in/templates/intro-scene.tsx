@@ -44,7 +44,9 @@ export const IntroSceneSchema = z.object({
   /** Use gradient background */
   useGradient: z.boolean().default(true),
   /** Gradient direction */
-  gradientDirection: z.enum(["to-bottom", "to-right", "radial"]).default("radial"),
+  gradientDirection: z
+    .enum(["to-bottom", "to-right", "radial"])
+    .default("radial"),
   /** Logo size */
   logoSize: z.number().min(40).max(300).default(120),
   /** Title font size */
@@ -54,7 +56,9 @@ export const IntroSceneSchema = z.object({
   /** Font family */
   fontFamily: z.string().default("Inter, sans-serif"),
   /** Animation style */
-  animationStyle: z.enum(["elegant", "energetic", "minimal", "dramatic"]).default("elegant"),
+  animationStyle: z
+    .enum(["elegant", "energetic", "minimal", "dramatic"])
+    .default("elegant"),
   /** Logo animation delay (frames) */
   logoDelay: z.number().min(0).max(30).default(0),
   /** Title animation delay (frames) */
@@ -236,7 +240,7 @@ export const IntroScene: React.FC<Partial<IntroSceneProps>> = ({
   // Calculate logo transforms
   let logoScale = logoProgress;
   let logoRotation = 0;
-  let logoTranslateY = interpolate(logoProgress, [0, 1], [30, 0]);
+  const logoTranslateY = interpolate(logoProgress, [0, 1], [30, 0]);
 
   if (animationStyle === "dramatic") {
     logoScale = interpolate(logoProgress, [0, 1], [3, 1]);

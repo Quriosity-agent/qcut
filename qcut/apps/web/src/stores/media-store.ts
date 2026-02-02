@@ -871,7 +871,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           const projectId = useProjectStore.getState().activeProject?.id;
           if (projectId) {
             storageService.saveMediaItem(projectId, item).catch((error) => {
-              debugError("[MediaStore] Failed to persist folder assignment:", error);
+              debugError(
+                "[MediaStore] Failed to persist folder assignment:",
+                error
+              );
             });
           }
         })
@@ -903,7 +906,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           const projectId = useProjectStore.getState().activeProject?.id;
           if (projectId) {
             storageService.saveMediaItem(projectId, item).catch((error) => {
-              debugError("[MediaStore] Failed to persist folder removal:", error);
+              debugError(
+                "[MediaStore] Failed to persist folder removal:",
+                error
+              );
             });
           }
         })
@@ -924,7 +930,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           : item
       ),
     }));
-    debugLog("[MediaStore] Moved media to folder:", { mediaId, targetFolderId });
+    debugLog("[MediaStore] Moved media to folder:", {
+      mediaId,
+      targetFolderId,
+    });
 
     // Persist the change to storage
     const { mediaItems } = get();
@@ -971,7 +980,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           : item
       ),
     }));
-    debugLog("[MediaStore] Bulk added to folder:", { count: mediaIds.length, folderId });
+    debugLog("[MediaStore] Bulk added to folder:", {
+      count: mediaIds.length,
+      folderId,
+    });
 
     // Persist all changed items
     const { mediaItems } = get();
@@ -979,10 +991,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       .then(({ useProjectStore }) => {
         const projectId = useProjectStore.getState().activeProject?.id;
         if (projectId) {
-          const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+          const changedItems = mediaItems.filter((m) =>
+            mediaIds.includes(m.id)
+          );
           for (const item of changedItems) {
             storageService.saveMediaItem(projectId, item).catch((error) => {
-              debugError("[MediaStore] Failed to persist bulk folder add:", error);
+              debugError(
+                "[MediaStore] Failed to persist bulk folder add:",
+                error
+              );
             });
           }
         }
@@ -1003,7 +1020,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           : item
       ),
     }));
-    debugLog("[MediaStore] Bulk moved to folder:", { count: mediaIds.length, folderId });
+    debugLog("[MediaStore] Bulk moved to folder:", {
+      count: mediaIds.length,
+      folderId,
+    });
 
     // Persist all changed items
     const { mediaItems } = get();
@@ -1011,10 +1031,15 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       .then(({ useProjectStore }) => {
         const projectId = useProjectStore.getState().activeProject?.id;
         if (projectId) {
-          const changedItems = mediaItems.filter((m) => mediaIds.includes(m.id));
+          const changedItems = mediaItems.filter((m) =>
+            mediaIds.includes(m.id)
+          );
           for (const item of changedItems) {
             storageService.saveMediaItem(projectId, item).catch((error) => {
-              debugError("[MediaStore] Failed to persist bulk folder move:", error);
+              debugError(
+                "[MediaStore] Failed to persist bulk folder move:",
+                error
+              );
             });
           }
         }
@@ -1086,7 +1111,10 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
           );
           for (const item of changedItems) {
             storageService.saveMediaItem(projectId, item).catch((error) => {
-              debugError("[MediaStore] Failed to persist auto-organize:", error);
+              debugError(
+                "[MediaStore] Failed to persist auto-organize:",
+                error
+              );
             });
           }
         }

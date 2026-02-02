@@ -37,14 +37,17 @@ export const builtInComponentDefinitions: RemotionComponentDefinition[] = [
 /**
  * Map of all built-in component definitions by ID
  */
-export const builtInComponentsById = new Map<string, RemotionComponentDefinition>(
-  builtInComponentDefinitions.map((def) => [def.id, def])
-);
+export const builtInComponentsById = new Map<
+  string,
+  RemotionComponentDefinition
+>(builtInComponentDefinitions.map((def) => [def.id, def]));
 
 /**
  * Get a built-in component definition by ID
  */
-export function getBuiltInComponent(id: string): RemotionComponentDefinition | undefined {
+export function getBuiltInComponent(
+  id: string
+): RemotionComponentDefinition | undefined {
   return builtInComponentsById.get(id);
 }
 
@@ -67,12 +70,16 @@ export function getBuiltInComponentsByCategory(
 /**
  * Search built-in components by name or tags
  */
-export function searchBuiltInComponents(query: string): RemotionComponentDefinition[] {
+export function searchBuiltInComponents(
+  query: string
+): RemotionComponentDefinition[] {
   const lowerQuery = query.toLowerCase();
   return builtInComponentDefinitions.filter((def) => {
     const nameMatch = def.name.toLowerCase().includes(lowerQuery);
     const descMatch = def.description?.toLowerCase().includes(lowerQuery);
-    const tagMatch = def.tags?.some((tag) => tag.toLowerCase().includes(lowerQuery));
+    const tagMatch = def.tags?.some((tag) =>
+      tag.toLowerCase().includes(lowerQuery)
+    );
     return nameMatch || descMatch || tagMatch;
   });
 }

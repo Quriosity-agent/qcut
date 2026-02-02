@@ -42,12 +42,15 @@ export function SelectProp({
   placeholder = "Select...",
 }: SelectPropProps) {
   // Convert value to string for Select component
-  const stringValue = value !== undefined && value !== null ? String(value) : "";
+  const stringValue =
+    value !== undefined && value !== null ? String(value) : "";
 
   const handleChange = useCallback(
     (newStringValue: string) => {
       // Find the original value from options
-      const option = options.find((opt) => String(opt.value) === newStringValue);
+      const option = options.find(
+        (opt) => String(opt.value) === newStringValue
+      );
       if (option) {
         onChange(option.value);
       }
@@ -57,10 +60,7 @@ export function SelectProp({
 
   return (
     <div className="space-y-1.5">
-      <Label
-        htmlFor={name}
-        className={cn("text-xs", error && "text-red-500")}
-      >
+      <Label htmlFor={name} className={cn("text-xs", error && "text-red-500")}>
         {label}
       </Label>
 

@@ -123,7 +123,10 @@ async function tryCreateSymlink(
     // On Windows, use 'file' type for file symlinks
     // On Unix-like systems, the type is ignored
     await fs.symlink(sourcePath, targetPath, "file");
-    log.info("[MediaImport] Created symlink:", { source: sourcePath, target: targetPath });
+    log.info("[MediaImport] Created symlink:", {
+      source: sourcePath,
+      target: targetPath,
+    });
     return true;
   } catch (error: unknown) {
     const err = error as NodeJS.ErrnoException;
@@ -131,7 +134,10 @@ async function tryCreateSymlink(
     // EACCES: Permission denied
     // EXDEV: Cross-device link (different drives/filesystems)
     if (err.code === "EPERM" || err.code === "EACCES" || err.code === "EXDEV") {
-      log.warn("[MediaImport] Symlink failed, will fallback to copy:", err.code);
+      log.warn(
+        "[MediaImport] Symlink failed, will fallback to copy:",
+        err.code
+      );
       return false;
     }
     // Re-throw unexpected errors
@@ -144,13 +150,18 @@ async function tryCreateSymlink(
  */
 async function copyFile(sourcePath: string, targetPath: string): Promise<void> {
   await fs.copyFile(sourcePath, targetPath);
-  log.info("[MediaImport] Copied file:", { source: sourcePath, target: targetPath });
+  log.info("[MediaImport] Copied file:", {
+    source: sourcePath,
+    target: targetPath,
+  });
 }
 
 /**
  * Import a media file into the project using symlink with copy fallback.
  */
-async function importMedia(options: MediaImportOptions): Promise<MediaImportResult> {
+async function importMedia(
+  options: MediaImportOptions
+): Promise<MediaImportResult> {
   const { sourcePath, projectId, mediaId, preferSymlink = true } = options;
 
   // Validate inputs
@@ -384,7 +395,9 @@ async function removeImportedMedia(
   // Find the file with any extension
   try {
     const files = await fs.readdir(mediaDir);
-    const matchingFile = files.find((f) => f.startsWith(sanitizedMediaId + "."));
+    const matchingFile = files.find((f) =>
+      f.startsWith(sanitizedMediaId + ".")
+    );
 
     if (matchingFile) {
       const filePath = path.join(mediaDir, matchingFile);
@@ -412,7 +425,10 @@ async function removeImportedMedia(
  */
 async function checkSymlinkSupport(): Promise<boolean> {
   const tempDir = app.getPath("temp");
-  const testSource = path.join(tempDir, `qcut-symlink-test-source-${Date.now()}`);
+  const testSource = path.join(
+    tempDir,
+    `qcut-symlink-test-source-${Date.now()}`
+  );
   const testLink = path.join(tempDir, `qcut-symlink-test-link-${Date.now()}`);
 
   try {

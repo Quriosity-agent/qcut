@@ -87,7 +87,9 @@ describe("parseSchema", () => {
 
     const fields = parseSchema(schema);
 
-    expect(fields.find((f) => f.name === "backgroundColor")?.type).toBe("color");
+    expect(fields.find((f) => f.name === "backgroundColor")?.type).toBe(
+      "color"
+    );
     expect(fields.find((f) => f.name === "fillColor")?.type).toBe("color");
     expect(fields.find((f) => f.name === "regularText")?.type).toBe("string");
   });
@@ -112,9 +114,15 @@ describe("parseSchema", () => {
 
     const fields = parseSchema(schema);
 
-    expect(fields.find((f) => f.name === "required")?.validation.required).toBe(true);
-    expect(fields.find((f) => f.name === "optional")?.validation.required).toBe(false);
-    expect(fields.find((f) => f.name === "withDefault")?.validation.required).toBe(false);
+    expect(fields.find((f) => f.name === "required")?.validation.required).toBe(
+      true
+    );
+    expect(fields.find((f) => f.name === "optional")?.validation.required).toBe(
+      false
+    );
+    expect(
+      fields.find((f) => f.name === "withDefault")?.validation.required
+    ).toBe(false);
   });
 
   it("should parse nested objects", () => {
@@ -173,7 +181,11 @@ describe("parseSchema", () => {
 
   it("should handle union of literals as select", () => {
     const schema = z.object({
-      size: z.union([z.literal("small"), z.literal("medium"), z.literal("large")]),
+      size: z.union([
+        z.literal("small"),
+        z.literal("medium"),
+        z.literal("large"),
+      ]),
     });
 
     const fields = parseSchema(schema);
@@ -191,9 +203,13 @@ describe("parseSchema", () => {
 
     const fields = parseSchema(schema);
 
-    expect(fields.find((f) => f.name === "backgroundColor")?.label).toBe("Background Color");
+    expect(fields.find((f) => f.name === "backgroundColor")?.label).toBe(
+      "Background Color"
+    );
     expect(fields.find((f) => f.name === "fontSize")?.label).toBe("Font Size");
-    expect(fields.find((f) => f.name === "isVisible")?.label).toBe("Is Visible");
+    expect(fields.find((f) => f.name === "isVisible")?.label).toBe(
+      "Is Visible"
+    );
   });
 });
 

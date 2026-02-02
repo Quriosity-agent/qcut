@@ -48,7 +48,7 @@ export function GeminiTerminalView() {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages, currentStreamingContent]);
+  }, []);
 
   // Focus input on mount
   useEffect(() => {

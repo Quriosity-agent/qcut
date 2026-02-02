@@ -6,7 +6,15 @@
  * @module lib/remotion/__tests__/pre-renderer.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+} from "vitest";
 import {
   RemotionPreRenderer,
   createPreRenderer,
@@ -21,7 +29,9 @@ import type { RemotionElement } from "@/types/timeline";
 // Mock canvas for JSDOM environment
 beforeAll(() => {
   // Create a proper mock for HTMLCanvasElement.toDataURL
-  HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,test");
+  HTMLCanvasElement.prototype.toDataURL = vi.fn(
+    () => "data:image/png;base64,test"
+  );
 });
 
 // ============================================================================
@@ -148,7 +158,10 @@ describe("RemotionPreRenderer", () => {
       });
       const progressCallback = vi.fn();
 
-      const result = await preRenderer.preRenderElement(element, progressCallback);
+      const result = await preRenderer.preRenderElement(
+        element,
+        progressCallback
+      );
 
       // Progress is only called on successful frame renders
       if (result.success && result.totalFrames > 0) {

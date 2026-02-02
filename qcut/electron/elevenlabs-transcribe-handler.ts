@@ -175,8 +175,12 @@ async function uploadToFalStorage(
   const fileName = path.basename(filePath);
   const fileSize = fileBuffer.length;
 
-  log.info(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
-  log.info(`${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+  log.info(
+    `${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`
+  );
+  log.info(
+    `${LOG_PREFIX} File: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`
+  );
 
   // Determine content type based on file extension
   const ext = fileName.split(".").pop()?.toLowerCase();
@@ -206,8 +210,12 @@ async function uploadToFalStorage(
 
   if (!initResponse.ok) {
     const errorText = await initResponse.text();
-    log.error(`${LOG_PREFIX} Initiate failed: ${initResponse.status} - ${errorText}`);
-    throw new Error(`FAL storage initiate failed: ${initResponse.status} ${errorText}`);
+    log.error(
+      `${LOG_PREFIX} Initiate failed: ${initResponse.status} - ${errorText}`
+    );
+    throw new Error(
+      `FAL storage initiate failed: ${initResponse.status} ${errorText}`
+    );
   }
 
   const initData = (await initResponse.json()) as {
@@ -232,8 +240,12 @@ async function uploadToFalStorage(
 
   if (!uploadResponse.ok) {
     const errorText = await uploadResponse.text();
-    log.error(`${LOG_PREFIX} Upload failed: ${uploadResponse.status} - ${errorText}`);
-    throw new Error(`FAL storage upload failed: ${uploadResponse.status} ${errorText}`);
+    log.error(
+      `${LOG_PREFIX} Upload failed: ${uploadResponse.status} - ${errorText}`
+    );
+    throw new Error(
+      `FAL storage upload failed: ${uploadResponse.status} ${errorText}`
+    );
   }
 
   log.info(`${LOG_PREFIX} File uploaded successfully: ${file_url}`);
@@ -255,7 +267,9 @@ async function callElevenLabsApi(
   apiKey: string
 ): Promise<ElevenLabsTranscribeResult> {
   log.info(`${LOG_PREFIX} Calling ElevenLabs Scribe v2 API...`);
-  log.info(`${LOG_PREFIX} Options: diarize=${options.diarize ?? true}, tagAudioEvents=${options.tagAudioEvents ?? true}`);
+  log.info(
+    `${LOG_PREFIX} Options: diarize=${options.diarize ?? true}, tagAudioEvents=${options.tagAudioEvents ?? true}`
+  );
 
   const requestBody: Record<string, unknown> = {
     audio_url: audioUrl,
@@ -271,7 +285,9 @@ async function callElevenLabsApi(
 
   if (options.keyterms && options.keyterms.length > 0) {
     requestBody.keyterms = options.keyterms;
-    log.info(`${LOG_PREFIX} Keyterms: ${options.keyterms.length} terms (+30% cost)`);
+    log.info(
+      `${LOG_PREFIX} Keyterms: ${options.keyterms.length} terms (+30% cost)`
+    );
   }
 
   const response = await fetch(FAL_ELEVENLABS_URL, {
@@ -291,7 +307,9 @@ async function callElevenLabsApi(
   const result = (await response.json()) as ElevenLabsTranscribeResult;
 
   log.info(`${LOG_PREFIX} Transcription complete`);
-  log.info(`${LOG_PREFIX} Language: ${result.language_code} (confidence: ${(result.language_probability * 100).toFixed(1)}%)`);
+  log.info(
+    `${LOG_PREFIX} Language: ${result.language_code} (confidence: ${(result.language_probability * 100).toFixed(1)}%)`
+  );
   log.info(`${LOG_PREFIX} Words: ${result.words?.length || 0}`);
   log.info(`${LOG_PREFIX} Text length: ${result.text?.length || 0} characters`);
 
@@ -315,10 +333,16 @@ export function registerElevenLabsTranscribeHandler(): void {
    */
   ipcMain.handle(
     "transcribe:elevenlabs",
-    async (_, options: ElevenLabsTranscribeOptions): Promise<ElevenLabsTranscribeResult> => {
+    async (
+      _,
+      options: ElevenLabsTranscribeOptions
+    ): Promise<ElevenLabsTranscribeResult> => {
       log.info(`${LOG_PREFIX} ========================================`);
       log.info(`${LOG_PREFIX} IPC handler "transcribe:elevenlabs" invoked`);
-      log.info(`${LOG_PREFIX} Options received:`, JSON.stringify(options, null, 2));
+      log.info(
+        `${LOG_PREFIX} Options received:`,
+        JSON.stringify(options, null, 2)
+      );
       log.info(`${LOG_PREFIX} ========================================`);
       log.info(`${LOG_PREFIX} Transcription request received`);
       log.info(`${LOG_PREFIX} Audio path: ${options.audioPath}`);
@@ -336,7 +360,9 @@ export function registerElevenLabsTranscribeHandler(): void {
           await fs.access(options.audioPath);
           log.info(`${LOG_PREFIX} File exists ✓`);
         } catch {
-          log.error(`${LOG_PREFIX} ERROR: File not found: ${options.audioPath}`);
+          log.error(
+            `${LOG_PREFIX} ERROR: File not found: ${options.audioPath}`
+          );
           throw new Error(`Audio file not found: ${options.audioPath}`);
         }
 

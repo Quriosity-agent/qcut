@@ -11,7 +11,11 @@ import React, { useMemo, useCallback } from "react";
 import { Layers, RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RemotionElement, TimelineTrack } from "@/types/timeline";
-import { useRemotionComponent, useRemotionInstance, useComponentAnalysis } from "@/stores/remotion-store";
+import {
+  useRemotionComponent,
+  useRemotionInstance,
+  useComponentAnalysis,
+} from "@/stores/remotion-store";
 import { RemotionSequences } from "./remotion-sequences";
 import { ParsedSequenceOverlay } from "./parsed-sequence-overlay";
 import { calculateTotalDuration } from "@/lib/remotion/duration-calculator";
@@ -191,8 +195,8 @@ export function RemotionTimelineElement({
   const hasAuthorMetadata = !!component?.sequenceStructure?.sequences?.length;
 
   // Fall back to parsed analysis for imported components without author metadata
-  const hasParsedAnalysis = !hasAuthorMetadata &&
-    !!analysis?.parsed?.sequences?.length;
+  const hasParsedAnalysis =
+    !hasAuthorMetadata && !!analysis?.parsed?.sequences?.length;
 
   // Check if any sequences have dynamic values
   const hasDynamicValues = analysis?.hasDynamicValues ?? false;

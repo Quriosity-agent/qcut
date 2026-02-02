@@ -347,7 +347,9 @@ export interface TimelineStore {
   updateRemotionElement: (
     trackId: string,
     elementId: string,
-    updates: Partial<Pick<RemotionElement, "props" | "renderMode" | "opacity" | "scale">>,
+    updates: Partial<
+      Pick<RemotionElement, "props" | "renderMode" | "opacity" | "scale">
+    >,
     pushHistory?: boolean
   ) => void;
   checkElementOverlap: (

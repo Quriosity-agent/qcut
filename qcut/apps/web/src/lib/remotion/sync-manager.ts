@@ -43,7 +43,8 @@ export function globalToLocalFrame(
 ): number | null {
   const elementStartFrame = element.startTime * fps;
   const trimStartFrames = element.trimStart * fps;
-  const effectiveDuration = element.duration - element.trimStart - element.trimEnd;
+  const effectiveDuration =
+    element.duration - element.trimStart - element.trimEnd;
   const effectiveDurationFrames = effectiveDuration * fps;
   const elementEndFrame = elementStartFrame + effectiveDurationFrames;
 
@@ -105,7 +106,10 @@ export function getActiveElements(
   tracks: TimelineTrack[],
   currentTime: number
 ): Array<{ element: RemotionElement; track: TimelineTrack }> {
-  const activeElements: Array<{ element: RemotionElement; track: TimelineTrack }> = [];
+  const activeElements: Array<{
+    element: RemotionElement;
+    track: TimelineTrack;
+  }> = [];
 
   for (const track of tracks) {
     for (const element of track.elements) {
@@ -114,7 +118,8 @@ export function getActiveElements(
 
       const effectiveStart = element.startTime;
       const effectiveEnd =
-        element.startTime + (element.duration - element.trimStart - element.trimEnd);
+        element.startTime +
+        (element.duration - element.trimStart - element.trimEnd);
 
       if (currentTime >= effectiveStart && currentTime < effectiveEnd) {
         activeElements.push({ element, track });
@@ -134,7 +139,8 @@ export function isElementActive(
 ): boolean {
   const effectiveStart = element.startTime;
   const effectiveEnd =
-    element.startTime + (element.duration - element.trimStart - element.trimEnd);
+    element.startTime +
+    (element.duration - element.trimStart - element.trimEnd);
 
   return currentTime >= effectiveStart && currentTime < effectiveEnd;
 }
@@ -148,10 +154,9 @@ export function isElementActive(
  */
 export class SyncManager {
   private config: SyncConfig;
-  private lastSyncTime: number = 0;
   private seekTimeout: NodeJS.Timeout | null = null;
   private tracks: TimelineTrack[] = [];
-  private fps: number = 30;
+  private fps = 30;
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_SYNC_CONFIG, ...config };

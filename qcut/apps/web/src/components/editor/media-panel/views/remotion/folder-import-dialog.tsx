@@ -38,7 +38,10 @@ import {
   useImportedFolders,
   useFolderImporting,
 } from "@/stores/remotion-store";
-import type { FolderImportResult, ImportedFolderInfo } from "@/lib/remotion/types";
+import type {
+  FolderImportResult,
+  ImportedFolderInfo,
+} from "@/lib/remotion/types";
 
 // ============================================================================
 // Types
@@ -53,7 +56,13 @@ export interface FolderImportDialogProps {
   onImportSuccess?: (componentIds: string[]) => void;
 }
 
-type ImportStatus = "idle" | "scanning" | "bundling" | "importing" | "success" | "error";
+type ImportStatus =
+  | "idle"
+  | "scanning"
+  | "bundling"
+  | "importing"
+  | "success"
+  | "error";
 
 interface ImportState {
   /** Current import status */
@@ -97,8 +106,9 @@ function ImportedFolderItem({
             {folderName}
           </p>
           <p className="text-xs text-muted-foreground">
-            {folder.componentIds.length} component{folder.componentIds.length !== 1 ? "s" : ""} •
-            Imported {importDate}
+            {folder.componentIds.length} component
+            {folder.componentIds.length !== 1 ? "s" : ""} • Imported{" "}
+            {importDate}
           </p>
         </div>
       </div>
@@ -111,7 +121,9 @@ function ImportedFolderItem({
           disabled={isRefreshing}
           title="Refresh components from folder"
         >
-          <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          <RefreshCw
+            className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+          />
         </Button>
         <Button
           variant="outline"
@@ -342,8 +354,8 @@ export function FolderImportDialog({
             Import Remotion Folder
           </DialogTitle>
           <DialogDescription>
-            Import Remotion compositions from a project folder.
-            Components will be scanned, bundled, and registered.
+            Import Remotion compositions from a project folder. Components will
+            be scanned, bundled, and registered.
           </DialogDescription>
         </DialogHeader>
 

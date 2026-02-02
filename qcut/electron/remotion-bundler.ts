@@ -212,8 +212,8 @@ export async function bundleComposition(
     });
 
     // Extract output
-    const outputFile = result.outputFiles?.find((f) =>
-      f.path.endsWith(".js") || f.path === "<stdout>"
+    const outputFile = result.outputFiles?.find(
+      (f) => f.path.endsWith(".js") || f.path === "<stdout>"
     );
 
     if (!outputFile) {
@@ -233,7 +233,9 @@ export async function bundleComposition(
       }
     }
 
-    log.info(`${LOG_PREFIX} Successfully bundled: ${id} (${code.length} bytes)`);
+    log.info(
+      `${LOG_PREFIX} Successfully bundled: ${id} (${code.length} bytes)`
+    );
 
     return {
       compositionId: id,
@@ -276,7 +278,9 @@ export async function bundleCompositions(
     }
   }
 
-  log.info(`${LOG_PREFIX} Bundle complete: ${successCount} success, ${errorCount} errors`);
+  log.info(
+    `${LOG_PREFIX} Bundle complete: ${successCount} success, ${errorCount} errors`
+  );
 
   return {
     success: errorCount === 0,

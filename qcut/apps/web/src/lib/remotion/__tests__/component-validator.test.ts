@@ -183,7 +183,9 @@ describe("Component Validator - Forbidden Patterns", () => {
 
       const result = validateComponent(code);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Network fetch is not allowed in components");
+      expect(result.errors).toContain(
+        "Network fetch is not allowed in components"
+      );
     });
 
     it("should reject code using XMLHttpRequest", () => {
@@ -263,7 +265,9 @@ describe("Component Validator - Forbidden Patterns", () => {
 
       const result = validateComponent(code, { allowNetwork: true });
       // Should still validate other things, but network is now allowed
-      expect(result.errors).not.toContain("Network fetch is not allowed in components");
+      expect(result.errors).not.toContain(
+        "Network fetch is not allowed in components"
+      );
     });
   });
 
@@ -322,7 +326,9 @@ describe("Component Validator - Forbidden Patterns", () => {
 
       const result = validateComponent(code);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Environment variable access is not allowed");
+      expect(result.errors).toContain(
+        "Environment variable access is not allowed"
+      );
     });
 
     it("should reject code using global/globalThis", () => {
@@ -385,7 +391,9 @@ describe("Component Validator - Forbidden Patterns", () => {
       `;
 
       const result = validateComponent(code);
-      expect(result.warnings).toContain("Direct innerHTML assignment is not recommended");
+      expect(result.warnings).toContain(
+        "Direct innerHTML assignment is not recommended"
+      );
     });
   });
 
@@ -448,7 +456,9 @@ describe("Component Validator - Forbidden Patterns", () => {
       `;
 
       const result = validateComponent(code);
-      expect(result.warnings).toContain("localStorage access is not allowed in components");
+      expect(result.warnings).toContain(
+        "localStorage access is not allowed in components"
+      );
     });
 
     it("should warn about sessionStorage usage", () => {
@@ -468,7 +478,9 @@ describe("Component Validator - Forbidden Patterns", () => {
       `;
 
       const result = validateComponent(code);
-      expect(result.warnings).toContain("sessionStorage access is not allowed in components");
+      expect(result.warnings).toContain(
+        "sessionStorage access is not allowed in components"
+      );
     });
 
     it("should warn about indexedDB usage", () => {
@@ -488,7 +500,9 @@ describe("Component Validator - Forbidden Patterns", () => {
       `;
 
       const result = validateComponent(code);
-      expect(result.warnings).toContain("IndexedDB access is not allowed in components");
+      expect(result.warnings).toContain(
+        "IndexedDB access is not allowed in components"
+      );
     });
   });
 });
@@ -704,7 +718,9 @@ describe("Component Validator - Metadata Extraction", () => {
 
   it("should warn about missing fps", () => {
     const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.warnings).toContain("FPS not detected, will use project default");
+    expect(result.warnings).toContain(
+      "FPS not detected, will use project default"
+    );
   });
 });
 
@@ -763,7 +779,10 @@ describe("Component Validator - Required Exports", () => {
       }
     `;
 
-    const result = validateComponent(code, { requireSchema: false, requireDefaultProps: false });
+    const result = validateComponent(code, {
+      requireSchema: false,
+      requireDefaultProps: false,
+    });
     expect(result.errors).not.toContain("Component must export a Zod schema");
   });
 });
@@ -777,14 +796,20 @@ describe("Component Validator - File Size", () => {
     // Create a large string
     const largeCode = "a".repeat(600 * 1024); // 600KB
 
-    const result = validateComponent(largeCode, { maxFileSizeBytes: 500 * 1024 });
+    const result = validateComponent(largeCode, {
+      maxFileSizeBytes: 500 * 1024,
+    });
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("File size"))).toBe(true);
   });
 
   it("should accept files within size limit", () => {
-    const result = validateComponent(VALID_COMPONENT, { maxFileSizeBytes: 500 * 1024 });
-    expect(result.errors.filter((e) => e.includes("File size"))).toHaveLength(0);
+    const result = validateComponent(VALID_COMPONENT, {
+      maxFileSizeBytes: 500 * 1024,
+    });
+    expect(result.errors.filter((e) => e.includes("File size"))).toHaveLength(
+      0
+    );
   });
 });
 
@@ -807,12 +832,16 @@ describe("Component Validator - Remotion Imports", () => {
     `;
 
     const result = validateComponent(code);
-    expect(result.warnings).toContain("Component does not import from Remotion packages");
+    expect(result.warnings).toContain(
+      "Component does not import from Remotion packages"
+    );
   });
 
   it("should not warn when importing from remotion", () => {
     const result = validateComponent(VALID_COMPONENT);
-    expect(result.warnings).not.toContain("Component does not import from Remotion packages");
+    expect(result.warnings).not.toContain(
+      "Component does not import from Remotion packages"
+    );
   });
 
   it("should accept imports from @remotion/player", () => {
@@ -830,7 +859,9 @@ describe("Component Validator - Remotion Imports", () => {
     `;
 
     const result = validateComponent(code);
-    expect(result.warnings).not.toContain("Component does not import from Remotion packages");
+    expect(result.warnings).not.toContain(
+      "Component does not import from Remotion packages"
+    );
   });
 });
 

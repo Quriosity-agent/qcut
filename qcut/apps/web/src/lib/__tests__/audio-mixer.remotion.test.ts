@@ -25,7 +25,11 @@ class MockAudioBuffer {
   sampleRate: number;
   duration: number;
 
-  constructor(options: { length: number; numberOfChannels: number; sampleRate: number }) {
+  constructor(options: {
+    length: number;
+    numberOfChannels: number;
+    sampleRate: number;
+  }) {
     this.length = options.length;
     this.numberOfChannels = options.numberOfChannels;
     this.sampleRate = options.sampleRate;
@@ -62,7 +66,7 @@ class MockMediaStreamAudioDestinationNode {
 }
 
 class MockAudioContext {
-  sampleRate = 44100;
+  sampleRate = 44_100;
   state: AudioContextState = "running";
   currentTime = 0;
   destination = {};
@@ -70,27 +74,44 @@ class MockAudioContext {
   createGain = vi.fn(() => new MockGainNode());
   createStereoPanner = vi.fn(() => new MockStereoPannerNode());
   createBufferSource = vi.fn(() => new MockAudioBufferSourceNode());
-  createMediaStreamDestination = vi.fn(() => new MockMediaStreamAudioDestinationNode());
-  createMediaElementSource = vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn() }));
+  createMediaStreamDestination = vi.fn(
+    () => new MockMediaStreamAudioDestinationNode()
+  );
+  createMediaElementSource = vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  }));
 
-  decodeAudioData = vi.fn(async () =>
-    new MockAudioBuffer({ length: 44100, numberOfChannels: 2, sampleRate: 44100 })
+  decodeAudioData = vi.fn(
+    async () =>
+      new MockAudioBuffer({
+        length: 44_100,
+        numberOfChannels: 2,
+        sampleRate: 44_100,
+      })
   );
 
   resume = vi.fn(async () => {});
-  close = vi.fn(async () => { this.state = "closed"; });
+  close = vi.fn(async () => {
+    this.state = "closed";
+  });
 }
 
 class MockOfflineAudioContext {
   destination = {};
-  sampleRate = 44100;
+  sampleRate = 44_100;
 
   createGain = vi.fn(() => new MockGainNode());
   createStereoPanner = vi.fn(() => new MockStereoPannerNode());
   createBufferSource = vi.fn(() => new MockAudioBufferSourceNode());
 
-  startRendering = vi.fn(async () =>
-    new MockAudioBuffer({ length: 44100, numberOfChannels: 2, sampleRate: 44100 })
+  startRendering = vi.fn(
+    async () =>
+      new MockAudioBuffer({
+        length: 44_100,
+        numberOfChannels: 2,
+        sampleRate: 44_100,
+      })
   );
 }
 
@@ -289,9 +310,9 @@ describe("RemotionAudioMixer", () => {
 
     it("should return remotion buffer when qcut is null", async () => {
       const remotionBuffer = new MockAudioBuffer({
-        length: 44100,
+        length: 44_100,
         numberOfChannels: 2,
-        sampleRate: 44100,
+        sampleRate: 44_100,
       }) as unknown as AudioBuffer;
 
       const result = await mixer.combineAudioBuffers(null, remotionBuffer);
@@ -301,9 +322,9 @@ describe("RemotionAudioMixer", () => {
 
     it("should return qcut buffer when remotion is null", async () => {
       const qcutBuffer = new MockAudioBuffer({
-        length: 44100,
+        length: 44_100,
         numberOfChannels: 2,
-        sampleRate: 44100,
+        sampleRate: 44_100,
       }) as unknown as AudioBuffer;
 
       const result = await mixer.combineAudioBuffers(qcutBuffer, null);
@@ -313,18 +334,21 @@ describe("RemotionAudioMixer", () => {
 
     it("should combine both buffers when present", async () => {
       const qcutBuffer = new MockAudioBuffer({
-        length: 44100,
+        length: 44_100,
         numberOfChannels: 2,
-        sampleRate: 44100,
+        sampleRate: 44_100,
       }) as unknown as AudioBuffer;
 
       const remotionBuffer = new MockAudioBuffer({
-        length: 88200, // 2 seconds
+        length: 88_200, // 2 seconds
         numberOfChannels: 2,
-        sampleRate: 44100,
+        sampleRate: 44_100,
       }) as unknown as AudioBuffer;
 
-      const result = await mixer.combineAudioBuffers(qcutBuffer, remotionBuffer);
+      const result = await mixer.combineAudioBuffers(
+        qcutBuffer,
+        remotionBuffer
+      );
 
       expect(result).toBeDefined();
     });
@@ -343,7 +367,7 @@ describe("createRemotionAudioMixer", () => {
 
   it("should pass options to the mixer", () => {
     const mixer = createRemotionAudioMixer({
-      sampleRate: 48000,
+      sampleRate: 48_000,
       latencyHint: "playback",
     });
     expect(mixer).toBeInstanceOf(RemotionAudioMixer);

@@ -170,16 +170,14 @@ export async function loadBundledComponent(
 
       if (!Component) {
         throw new Error(
-          `No valid React component found in exports. ` +
-          `Available exports: ${Object.keys(module).join(", ")}`
+          "No valid React component found in exports. " +
+            `Available exports: ${Object.keys(module).join(", ")}`
         );
       }
 
       // Validate it's a function (React component)
       if (typeof Component !== "function") {
-        throw new Error(
-          `Export is not a function: got ${typeof Component}`
-        );
+        throw new Error(`Export is not a function: got ${typeof Component}`);
       }
 
       // Cache the component

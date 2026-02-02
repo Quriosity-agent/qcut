@@ -512,7 +512,7 @@ export class RemotionAudioMixer extends AudioMixer {
       totalFrames: number;
     },
     startFrame: number,
-    volume: number = 1
+    volume = 1
   ): RemotionAudioSource | null {
     if (!preRenderResult.audioPath) {
       return null;

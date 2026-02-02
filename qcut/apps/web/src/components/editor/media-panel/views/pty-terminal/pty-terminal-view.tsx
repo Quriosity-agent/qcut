@@ -25,7 +25,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CliProvider } from "@/types/cli-provider";
-import { CLI_PROVIDERS, DEFAULT_OPENROUTER_MODELS, CLAUDE_MODELS } from "@/types/cli-provider";
+import {
+  CLI_PROVIDERS,
+  DEFAULT_OPENROUTER_MODELS,
+  CLAUDE_MODELS,
+} from "@/types/cli-provider";
 
 export function PtyTerminalView() {
   const {
@@ -87,17 +91,26 @@ export function PtyTerminalView() {
               onValueChange={(value: CliProvider) => setCliProvider(value)}
               disabled={isConnected || isConnecting}
             >
-              <SelectTrigger className="w-[140px] h-8" aria-label="Select CLI provider">
+              <SelectTrigger
+                className="w-[140px] h-8"
+                aria-label="Select CLI provider"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(CLI_PROVIDERS).map((provider) => (
                   <SelectItem key={provider.id} value={provider.id}>
                     <div className="flex items-center gap-2">
-                      {provider.id === "gemini" && <Sparkles className="h-3 w-3" />}
+                      {provider.id === "gemini" && (
+                        <Sparkles className="h-3 w-3" />
+                      )}
                       {provider.id === "codex" && <Bot className="h-3 w-3" />}
-                      {provider.id === "claude" && <MessageSquare className="h-3 w-3" />}
-                      {provider.id === "shell" && <TerminalIcon className="h-3 w-3" />}
+                      {provider.id === "claude" && (
+                        <MessageSquare className="h-3 w-3" />
+                      )}
+                      {provider.id === "shell" && (
+                        <TerminalIcon className="h-3 w-3" />
+                      )}
                       <span>{provider.name}</span>
                     </div>
                   </SelectItem>
@@ -112,7 +125,10 @@ export function PtyTerminalView() {
                 onValueChange={setSelectedModel}
                 disabled={isConnected || isConnecting}
               >
-                <SelectTrigger className="w-[180px] h-8" aria-label="Select AI model">
+                <SelectTrigger
+                  className="w-[180px] h-8"
+                  aria-label="Select AI model"
+                >
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -120,7 +136,9 @@ export function PtyTerminalView() {
                     <SelectItem key={model.id} value={model.id}>
                       <div className="flex flex-col">
                         <span className="text-sm">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {model.provider}
+                        </span>
                       </div>
                     </SelectItem>
                   ))}
@@ -135,7 +153,10 @@ export function PtyTerminalView() {
                 onValueChange={setSelectedClaudeModel}
                 disabled={isConnected || isConnecting}
               >
-                <SelectTrigger className="w-[160px] h-8" aria-label="Select Claude model">
+                <SelectTrigger
+                  className="w-[160px] h-8"
+                  aria-label="Select Claude model"
+                >
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +164,9 @@ export function PtyTerminalView() {
                     <SelectItem key={model.id} value={model.id}>
                       <div className="flex flex-col">
                         <span className="text-sm">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.description}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {model.description}
+                        </span>
                       </div>
                     </SelectItem>
                   ))}
@@ -288,10 +311,18 @@ export function PtyTerminalView() {
               </>
             ) : (
               <>
-                {cliProvider === "gemini" && <Sparkles className="h-12 w-12 mb-4 opacity-50" />}
-                {cliProvider === "codex" && <Bot className="h-12 w-12 mb-4 opacity-50" />}
-                {cliProvider === "claude" && <MessageSquare className="h-12 w-12 mb-4 opacity-50" />}
-                {cliProvider === "shell" && <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />}
+                {cliProvider === "gemini" && (
+                  <Sparkles className="h-12 w-12 mb-4 opacity-50" />
+                )}
+                {cliProvider === "codex" && (
+                  <Bot className="h-12 w-12 mb-4 opacity-50" />
+                )}
+                {cliProvider === "claude" && (
+                  <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
+                )}
+                {cliProvider === "shell" && (
+                  <TerminalIcon className="h-12 w-12 mb-4 opacity-50" />
+                )}
                 <p className="text-sm">
                   Click Start to launch {CLI_PROVIDERS[cliProvider].name}
                 </p>

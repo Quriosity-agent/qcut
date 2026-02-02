@@ -942,7 +942,12 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
-    updateRemotionElement: (trackId, elementId, updates, pushHistory = true) => {
+    updateRemotionElement: (
+      trackId,
+      elementId,
+      updates,
+      pushHistory = true
+    ) => {
       if (pushHistory) {
         get().pushHistory();
       }

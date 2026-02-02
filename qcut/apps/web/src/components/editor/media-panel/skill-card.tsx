@@ -42,7 +42,9 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
   // Get the skills folder path when expanded
   useEffect(() => {
     if (isExpanded && activeProject && !skillsBasePath) {
-      const getPathPromise = window.electronAPI?.skills?.getPath?.(activeProject.id);
+      const getPathPromise = window.electronAPI?.skills?.getPath?.(
+        activeProject.id
+      );
       getPathPromise
         ?.then((path) => {
           if (path) {
@@ -155,7 +157,9 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
           ) : (
             <ChevronRight className="h-3 w-3" />
           )}
-          <span>{allFiles.length} file{allFiles.length > 1 ? "s" : ""}</span>
+          <span>
+            {allFiles.length} file{allFiles.length > 1 ? "s" : ""}
+          </span>
         </button>
 
         {isExpanded && (

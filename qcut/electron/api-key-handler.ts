@@ -43,7 +43,13 @@ export function setupApiKeyIPC(): void {
   ipcMain.handle("api-keys:get", async (): Promise<ApiKeys> => {
     try {
       if (!fs.existsSync(apiKeysFilePath)) {
-        return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "", openRouterApiKey: "", anthropicApiKey: "" };
+        return {
+          falApiKey: "",
+          freesoundApiKey: "",
+          geminiApiKey: "",
+          openRouterApiKey: "",
+          anthropicApiKey: "",
+        };
       }
 
       const encryptedData: EncryptedApiKeyData = JSON.parse(
@@ -107,7 +113,10 @@ export function setupApiKeyIPC(): void {
         result.geminiApiKey = encryptedData.geminiApiKey || "";
       }
 
-      if (encryptedData.openRouterApiKey && safeStorage.isEncryptionAvailable()) {
+      if (
+        encryptedData.openRouterApiKey &&
+        safeStorage.isEncryptionAvailable()
+      ) {
         try {
           const decryptedOpenRouter: string = safeStorage.decryptString(
             Buffer.from(encryptedData.openRouterApiKey, "base64")
@@ -122,7 +131,10 @@ export function setupApiKeyIPC(): void {
         result.openRouterApiKey = encryptedData.openRouterApiKey || "";
       }
 
-      if (encryptedData.anthropicApiKey && safeStorage.isEncryptionAvailable()) {
+      if (
+        encryptedData.anthropicApiKey &&
+        safeStorage.isEncryptionAvailable()
+      ) {
         try {
           const decryptedAnthropic: string = safeStorage.decryptString(
             Buffer.from(encryptedData.anthropicApiKey, "base64")
@@ -140,7 +152,13 @@ export function setupApiKeyIPC(): void {
       return result;
     } catch (error: any) {
       // Failed to load API keys
-      return { falApiKey: "", freesoundApiKey: "", geminiApiKey: "", openRouterApiKey: "", anthropicApiKey: "" };
+      return {
+        falApiKey: "",
+        freesoundApiKey: "",
+        geminiApiKey: "",
+        openRouterApiKey: "",
+        anthropicApiKey: "",
+      };
     }
   });
 
@@ -214,7 +232,8 @@ export function setupApiKeyIPC(): void {
           if (openRouterApiKey) {
             const encryptedOpenRouter: Buffer =
               safeStorage.encryptString(openRouterApiKey);
-            dataToStore.openRouterApiKey = encryptedOpenRouter.toString("base64");
+            dataToStore.openRouterApiKey =
+              encryptedOpenRouter.toString("base64");
             console.log("[API Keys] 🔐 OpenRouter key encrypted");
           } else {
             dataToStore.openRouterApiKey = "";

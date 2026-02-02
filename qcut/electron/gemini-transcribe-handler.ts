@@ -9,7 +9,10 @@ try {
   GoogleGenerativeAI = require("@google/generative-ai").GoogleGenerativeAI;
 } catch {
   // In packaged app, load from extraResources
-  const modulePath = path.join(process.resourcesPath, "node_modules/@google/generative-ai/dist/index.js");
+  const modulePath = path.join(
+    process.resourcesPath,
+    "node_modules/@google/generative-ai/dist/index.js"
+  );
   GoogleGenerativeAI = require(modulePath).GoogleGenerativeAI;
 }
 import fsSync from "node:fs";

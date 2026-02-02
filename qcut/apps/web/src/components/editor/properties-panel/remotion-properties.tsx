@@ -31,7 +31,10 @@ import {
   type ParsedField,
   type ValidationResult,
 } from "@/lib/remotion/schema-parser";
-import { useRemotionStore, useRemotionComponent } from "@/stores/remotion-store";
+import {
+  useRemotionStore,
+  useRemotionComponent,
+} from "@/stores/remotion-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import type { RemotionElement } from "@/types/timeline";
 
@@ -114,8 +117,8 @@ function MissingComponentState({ componentId }: { componentId: string }) {
       <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
       <h3 className="font-medium mb-1">Component Not Found</h3>
       <p className="text-sm text-muted-foreground">
-        The component "{componentId}" is not registered.
-        It may have been removed or not loaded yet.
+        The component "{componentId}" is not registered. It may have been
+        removed or not loaded yet.
       </p>
     </div>
   );
@@ -198,7 +201,13 @@ export function RemotionProperties({
       // Update instance props in remotion store
       updateInstanceProps(element.id, newProps);
     },
-    [localProps, trackId, element.id, updateRemotionElement, updateInstanceProps]
+    [
+      localProps,
+      trackId,
+      element.id,
+      updateRemotionElement,
+      updateInstanceProps,
+    ]
   );
 
   // Handle reset to defaults
@@ -210,7 +219,13 @@ export function RemotionProperties({
 
     // Update instance props in remotion store
     updateInstanceProps(element.id, defaultProps);
-  }, [defaultProps, trackId, element.id, updateRemotionElement, updateInstanceProps]);
+  }, [
+    defaultProps,
+    trackId,
+    element.id,
+    updateRemotionElement,
+    updateInstanceProps,
+  ]);
 
   // Component not found
   if (!component) {
@@ -295,21 +310,24 @@ export function RemotionProperties({
       )}
 
       {/* Validation Errors Summary */}
-      {!validationResult.success && Object.keys(validationResult.errors).length > 0 && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm">
-          <div className="flex items-center gap-2 text-red-500 font-medium mb-1">
-            <AlertCircle className="w-4 h-4" />
-            Validation Errors
+      {!validationResult.success &&
+        Object.keys(validationResult.errors).length > 0 && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm">
+            <div className="flex items-center gap-2 text-red-500 font-medium mb-1">
+              <AlertCircle className="w-4 h-4" />
+              Validation Errors
+            </div>
+            <ul className="text-xs text-red-400 space-y-1">
+              {Object.entries(validationResult.errors).map(
+                ([path, message]) => (
+                  <li key={path}>
+                    <span className="font-mono">{path}</span>: {message}
+                  </li>
+                )
+              )}
+            </ul>
           </div>
-          <ul className="text-xs text-red-400 space-y-1">
-            {Object.entries(validationResult.errors).map(([path, message]) => (
-              <li key={path}>
-                <span className="font-mono">{path}</span>: {message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
     </div>
   );
 }

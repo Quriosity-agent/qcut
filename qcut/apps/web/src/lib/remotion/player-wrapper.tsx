@@ -150,7 +150,13 @@ export const RemotionPlayerWrapper = forwardRef<
       componentType: typeof component?.component,
       dimensions: { width: component?.width, height: component?.height },
     });
-  }, [elementId, component?.id, component?.component, component?.width, component?.height]);
+  }, [
+    elementId,
+    component?.id,
+    component?.component,
+    component?.width,
+    component?.height,
+  ]);
 
   // Store actions
   const setInstancePlayerRef = useRemotionStore(
@@ -186,7 +192,7 @@ export const RemotionPlayerWrapper = forwardRef<
       // Destroy instance when component unmounts
       destroyInstance(elementId);
     };
-  }, [elementId, component.id, createInstance, destroyInstance]);
+  }, [elementId, component.id, createInstance, destroyInstance, inputProps]);
 
   // Register player ref with store
   useEffect(() => {
@@ -250,7 +256,10 @@ export const RemotionPlayerWrapper = forwardRef<
   useEffect(() => {
     // Use a small delay to ensure the Player has mounted and set its ref
     const checkRef = () => {
-      debugLog("[REMOTION] Checking playerRef", { hasRef: !!playerRef.current, isPlayerMounted });
+      debugLog("[REMOTION] Checking playerRef", {
+        hasRef: !!playerRef.current,
+        isPlayerMounted,
+      });
 
       if (playerRef.current && !isPlayerMounted) {
         debugLog("[REMOTION] Player mounted");
@@ -311,7 +320,10 @@ export const RemotionPlayerWrapper = forwardRef<
     onReady?.();
 
     return () => {
-      p.removeEventListener("frameupdate", frameListener as (data: unknown) => void);
+      p.removeEventListener(
+        "frameupdate",
+        frameListener as (data: unknown) => void
+      );
       p.removeEventListener("ended", endedListener);
       p.removeEventListener("error", errorListener as (data: unknown) => void);
     };

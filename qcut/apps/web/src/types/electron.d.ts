@@ -614,7 +614,12 @@ export interface ElectronAPI {
      * @returns Array of available skills with path, name, description, bundled flag
      */
     scanGlobal: () => Promise<
-      Array<{ path: string; name: string; description: string; bundled?: boolean }>
+      Array<{
+        path: string;
+        name: string;
+        description: string;
+        bundled?: boolean;
+      }>
     >;
   };
 
@@ -653,7 +658,9 @@ export interface ElectronAPI {
      * @param options - Model and generation parameters
      * @returns Result with cost estimate
      */
-    estimateCost: (options: AIPipelineCostEstimate) => Promise<AIPipelineResult>;
+    estimateCost: (
+      options: AIPipelineCostEstimate
+    ) => Promise<AIPipelineResult>;
 
     /**
      * Cancel ongoing generation
@@ -673,7 +680,9 @@ export interface ElectronAPI {
      * @param callback - Function called with progress data
      * @returns Cleanup function to remove listener
      */
-    onProgress: (callback: (progress: AIPipelineProgress) => void) => () => void;
+    onProgress: (
+      callback: (progress: AIPipelineProgress) => void
+    ) => () => void;
   };
 
   /**
@@ -768,7 +777,10 @@ export interface ElectronAPI {
      * @param subPath - Subdirectory path relative to project root
      * @returns Array of file/folder info
      */
-    list: (projectId: string, subPath?: string) => Promise<ProjectFolderFileInfo[]>;
+    list: (
+      projectId: string,
+      subPath?: string
+    ) => Promise<ProjectFolderFileInfo[]>;
 
     /**
      * Ensure project folder structure exists
@@ -790,34 +802,67 @@ export interface ElectronAPI {
       info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;
       import: (projectId: string, source: string) => Promise<MediaFile | null>;
       delete: (projectId: string, mediaId: string) => Promise<boolean>;
-      rename: (projectId: string, mediaId: string, newName: string) => Promise<boolean>;
+      rename: (
+        projectId: string,
+        mediaId: string,
+        newName: string
+      ) => Promise<boolean>;
     };
     timeline: {
-      export: (projectId: string, format: 'json' | 'md') => Promise<string>;
-      import: (projectId: string, data: string, format: 'json' | 'md') => Promise<void>;
-      addElement: (projectId: string, element: Partial<ClaudeElement>) => Promise<string>;
-      updateElement: (projectId: string, elementId: string, changes: Partial<ClaudeElement>) => Promise<void>;
+      export: (projectId: string, format: "json" | "md") => Promise<string>;
+      import: (
+        projectId: string,
+        data: string,
+        format: "json" | "md"
+      ) => Promise<void>;
+      addElement: (
+        projectId: string,
+        element: Partial<ClaudeElement>
+      ) => Promise<string>;
+      updateElement: (
+        projectId: string,
+        elementId: string,
+        changes: Partial<ClaudeElement>
+      ) => Promise<void>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
       onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
-      onAddElement: (callback: (element: Partial<ClaudeElement>) => void) => void;
-      onUpdateElement: (callback: (data: { elementId: string; changes: Partial<ClaudeElement> }) => void) => void;
+      onAddElement: (
+        callback: (element: Partial<ClaudeElement>) => void
+      ) => void;
+      onUpdateElement: (
+        callback: (data: {
+          elementId: string;
+          changes: Partial<ClaudeElement>;
+        }) => void
+      ) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
       removeListeners: () => void;
     };
     project: {
       getSettings: (projectId: string) => Promise<ProjectSettings>;
-      updateSettings: (projectId: string, settings: Partial<ProjectSettings>) => Promise<void>;
+      updateSettings: (
+        projectId: string,
+        settings: Partial<ProjectSettings>
+      ) => Promise<void>;
       getStats: (projectId: string) => Promise<ProjectStats>;
       onStatsRequest: (callback: () => void) => void;
       sendStatsResponse: (stats: ProjectStats) => void;
-      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void) => void;
+      onUpdated: (
+        callback: (
+          projectId: string,
+          settings: Partial<ProjectSettings>
+        ) => void
+      ) => void;
       removeListeners: () => void;
     };
     export: {
       getPresets: () => Promise<ExportPreset[]>;
-      recommend: (projectId: string, target: string) => Promise<ExportRecommendation>;
+      recommend: (
+        projectId: string,
+        target: string
+      ) => Promise<ExportRecommendation>;
     };
     diagnostics: {
       analyze: (error: ErrorReport) => Promise<DiagnosticResult>;
@@ -871,7 +916,9 @@ export interface ElectronAPI {
      * @param folderPath - Absolute path to validate
      * @returns Validation result
      */
-    validate: (folderPath: string) => Promise<{ isValid: boolean; error?: string }>;
+    validate: (
+      folderPath: string
+    ) => Promise<{ isValid: boolean; error?: string }>;
   };
 }
 

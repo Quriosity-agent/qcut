@@ -52,8 +52,20 @@ describe("Component Loader - Analysis Integration", () => {
       componentId: "test-component",
       parsed: {
         sequences: [
-          { name: "Scene1", from: 0, durationInFrames: 60, line: 5, isTransitionSequence: false },
-          { name: "Scene2", from: 60, durationInFrames: 90, line: 10, isTransitionSequence: false },
+          {
+            name: "Scene1",
+            from: 0,
+            durationInFrames: 60,
+            line: 5,
+            isTransitionSequence: false,
+          },
+          {
+            name: "Scene2",
+            from: 60,
+            durationInFrames: 90,
+            line: 10,
+            isTransitionSequence: false,
+          },
         ],
         transitions: [],
         usesTransitionSeries: false,
@@ -88,9 +100,13 @@ describe("Component Loader - Analysis Integration", () => {
         );
       `;
 
-      const result = await loadComponentFromCode(sourceCode, "TestComponent.tsx", {
-        storeInDB: false,
-      });
+      const result = await loadComponentFromCode(
+        sourceCode,
+        "TestComponent.tsx",
+        {
+          storeInDB: false,
+        }
+      );
 
       expect(mockAnalyzeComponent).toHaveBeenCalled();
       expect(result.success).toBe(true);
@@ -104,7 +120,9 @@ describe("Component Loader - Analysis Integration", () => {
       expect(result.success).toBe(true);
       expect(result.component?.sequenceStructure).toBeDefined();
       expect(result.component?.sequenceStructure?.sequences).toHaveLength(2);
-      expect(result.component?.sequenceStructure?.sequences[0].name).toBe("Scene1");
+      expect(result.component?.sequenceStructure?.sequences[0].name).toBe(
+        "Scene1"
+      );
     });
 
     it("returns analysisResult in load result", async () => {

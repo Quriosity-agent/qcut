@@ -98,7 +98,14 @@ export function getFFmpegPath(): string {
 
     // Check common winget installation locations
     const homeDir = process.env.USERPROFILE || process.env.HOME || "";
-    const wingetBasePath = path.join(homeDir, "AppData", "Local", "Microsoft", "WinGet", "Packages");
+    const wingetBasePath = path.join(
+      homeDir,
+      "AppData",
+      "Local",
+      "Microsoft",
+      "WinGet",
+      "Packages"
+    );
 
     if (fs.existsSync(devPath)) {
       ffmpegPath = devPath;
@@ -155,14 +162,21 @@ function findFFmpegInWinget(wingetBasePath: string): string | null {
  * @param maxDepth - Maximum recursion depth
  * @returns Full path to file if found, null otherwise
  */
-function findFileRecursive(dir: string, filename: string, maxDepth: number): string | null {
+function findFileRecursive(
+  dir: string,
+  filename: string,
+  maxDepth: number
+): string | null {
   if (maxDepth <= 0) return null;
 
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) {
+      if (
+        entry.isFile() &&
+        entry.name.toLowerCase() === filename.toLowerCase()
+      ) {
         return fullPath;
       }
       if (entry.isDirectory()) {

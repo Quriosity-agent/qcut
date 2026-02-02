@@ -96,36 +96,112 @@ export const DEFAULT_VALIDATION_OPTIONS: ValidationOptions = {
 /**
  * Forbidden API patterns (regex patterns for code analysis)
  */
-const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; message: string; severity: "error" | "warning" }> = [
+const FORBIDDEN_PATTERNS: Array<{
+  pattern: RegExp;
+  message: string;
+  severity: "error" | "warning";
+}> = [
   // File system access
-  { pattern: /\bfs\b|\brequire\s*\(\s*['"]fs['"]/, message: "File system access (fs) is not allowed", severity: "error" },
-  { pattern: /\bpath\b\.|\brequire\s*\(\s*['"]path['"]/, message: "Path module access is not allowed", severity: "error" },
-  { pattern: /\bchild_process\b/, message: "Child process access is not allowed", severity: "error" },
+  {
+    pattern: /\bfs\b|\brequire\s*\(\s*['"]fs['"]/,
+    message: "File system access (fs) is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bpath\b\.|\brequire\s*\(\s*['"]path['"]/,
+    message: "Path module access is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bchild_process\b/,
+    message: "Child process access is not allowed",
+    severity: "error",
+  },
 
   // Network access
-  { pattern: /\bfetch\s*\(/, message: "Network fetch is not allowed in components", severity: "error" },
-  { pattern: /\bXMLHttpRequest\b/, message: "XMLHttpRequest is not allowed", severity: "error" },
-  { pattern: /\bWebSocket\b/, message: "WebSocket is not allowed", severity: "error" },
-  { pattern: /\baxios\b/, message: "Axios HTTP client is not allowed", severity: "error" },
+  {
+    pattern: /\bfetch\s*\(/,
+    message: "Network fetch is not allowed in components",
+    severity: "error",
+  },
+  {
+    pattern: /\bXMLHttpRequest\b/,
+    message: "XMLHttpRequest is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bWebSocket\b/,
+    message: "WebSocket is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\baxios\b/,
+    message: "Axios HTTP client is not allowed",
+    severity: "error",
+  },
 
   // Dangerous globals
-  { pattern: /\beval\s*\(/, message: "eval() is not allowed", severity: "error" },
-  { pattern: /\bFunction\s*\(/, message: "Function constructor is not allowed", severity: "error" },
-  { pattern: /\bprocess\.env\b/, message: "Environment variable access is not allowed", severity: "error" },
-  { pattern: /\bglobal\b|\bglobalThis\b/, message: "Global object access is not allowed", severity: "error" },
+  {
+    pattern: /\beval\s*\(/,
+    message: "eval() is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bFunction\s*\(/,
+    message: "Function constructor is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bprocess\.env\b/,
+    message: "Environment variable access is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bglobal\b|\bglobalThis\b/,
+    message: "Global object access is not allowed",
+    severity: "error",
+  },
 
   // DOM manipulation (should use React patterns)
-  { pattern: /\bdocument\.write\b/, message: "document.write is not allowed", severity: "error" },
-  { pattern: /\binnerHTML\s*=/, message: "Direct innerHTML assignment is not recommended", severity: "warning" },
+  {
+    pattern: /\bdocument\.write\b/,
+    message: "document.write is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\binnerHTML\s*=/,
+    message: "Direct innerHTML assignment is not recommended",
+    severity: "warning",
+  },
 
   // Electron/Node specific
-  { pattern: /\brequire\s*\(\s*['"]electron['"]/, message: "Electron access is not allowed", severity: "error" },
-  { pattern: /\bwindow\.electronAPI\b/, message: "Electron API access is not allowed", severity: "error" },
+  {
+    pattern: /\brequire\s*\(\s*['"]electron['"]/,
+    message: "Electron access is not allowed",
+    severity: "error",
+  },
+  {
+    pattern: /\bwindow\.electronAPI\b/,
+    message: "Electron API access is not allowed",
+    severity: "error",
+  },
 
   // Storage (should be controlled by QCut)
-  { pattern: /\blocalStorage\b/, message: "localStorage access is not allowed in components", severity: "warning" },
-  { pattern: /\bsessionStorage\b/, message: "sessionStorage access is not allowed in components", severity: "warning" },
-  { pattern: /\bindexedDB\b/, message: "IndexedDB access is not allowed in components", severity: "warning" },
+  {
+    pattern: /\blocalStorage\b/,
+    message: "localStorage access is not allowed in components",
+    severity: "warning",
+  },
+  {
+    pattern: /\bsessionStorage\b/,
+    message: "sessionStorage access is not allowed in components",
+    severity: "warning",
+  },
+  {
+    pattern: /\bindexedDB\b/,
+    message: "IndexedDB access is not allowed in components",
+    severity: "warning",
+  },
 ];
 
 /**
@@ -183,7 +259,10 @@ function checkForbiddenPatterns(
 /**
  * Check for dynamic imports
  */
-function checkDynamicImports(code: string, options: ValidationOptions): string[] {
+function checkDynamicImports(
+  code: string,
+  options: ValidationOptions
+): string[] {
   if (options.allowDynamicImports) {
     return [];
   }
@@ -212,7 +291,9 @@ function extractMetadata(code: string): Partial<ComponentMetadata> {
   };
 
   // Extract component name
-  const nameMatch = code.match(/(?:export\s+const|const)\s+(\w+)Definition\s*[:=]/);
+  const nameMatch = code.match(
+    /(?:export\s+const|const)\s+(\w+)Definition\s*[:=]/
+  );
   if (nameMatch) {
     metadata.name = nameMatch[1];
   }
@@ -230,7 +311,9 @@ function extractMetadata(code: string): Partial<ComponentMetadata> {
   }
 
   // Check for component export
-  if (/(?:export\s+const|export\s+function|export\s+default)\s+\w+/.test(code)) {
+  if (
+    /(?:export\s+const|export\s+function|export\s+default)\s+\w+/.test(code)
+  ) {
     metadata.exports?.push("component");
   }
 
@@ -297,12 +380,18 @@ function extractMetadata(code: string): Partial<ComponentMetadata> {
 /**
  * Check for required Remotion imports
  */
-function checkRemotionImports(code: string): { valid: boolean; warnings: string[] } {
+function checkRemotionImports(code: string): {
+  valid: boolean;
+  warnings: string[];
+} {
   const warnings: string[] = [];
   let hasRemotionImport = false;
 
   for (const importPath of REMOTION_IMPORTS) {
-    if (code.includes(`from "${importPath}"`) || code.includes(`from '${importPath}'`)) {
+    if (
+      code.includes(`from "${importPath}"`) ||
+      code.includes(`from '${importPath}'`)
+    ) {
       hasRemotionImport = true;
       break;
     }
@@ -334,7 +423,11 @@ function checkFileSize(code: string, options: ValidationOptions): string[] {
 /**
  * Check for React component patterns
  */
-function checkReactPatterns(code: string): { valid: boolean; errors: string[]; warnings: string[] } {
+function checkReactPatterns(code: string): {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+} {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -345,12 +438,16 @@ function checkReactPatterns(code: string): { valid: boolean; errors: string[]; w
 
   // Should use hooks from Remotion
   if (!code.includes("useCurrentFrame") && !code.includes("useVideoConfig")) {
-    warnings.push("Component does not use Remotion hooks (useCurrentFrame, useVideoConfig)");
+    warnings.push(
+      "Component does not use Remotion hooks (useCurrentFrame, useVideoConfig)"
+    );
   }
 
   // Check for component function
   const hasComponentFunction =
-    /(?:function|const)\s+\w+\s*(?::\s*React\.FC|\([^)]*\)\s*(?:=>|{))/.test(code);
+    /(?:function|const)\s+\w+\s*(?::\s*React\.FC|\([^)]*\)\s*(?:=>|{))/.test(
+      code
+    );
 
   if (!hasComponentFunction) {
     errors.push("No React component function found");
@@ -385,7 +482,8 @@ export function validateComponent(
   allErrors.push(...sizeErrors);
 
   // Check forbidden patterns
-  const { errors: patternErrors, warnings: patternWarnings } = checkForbiddenPatterns(code, opts);
+  const { errors: patternErrors, warnings: patternWarnings } =
+    checkForbiddenPatterns(code, opts);
   allErrors.push(...patternErrors);
   allWarnings.push(...patternWarnings);
 
@@ -398,7 +496,8 @@ export function validateComponent(
   allWarnings.push(...importWarnings);
 
   // Check React patterns
-  const { errors: reactErrors, warnings: reactWarnings } = checkReactPatterns(code);
+  const { errors: reactErrors, warnings: reactWarnings } =
+    checkReactPatterns(code);
   allErrors.push(...reactErrors);
   allWarnings.push(...reactWarnings);
 
@@ -458,7 +557,10 @@ export function validateComponent(
  * Quick validation check without full analysis
  * Useful for real-time validation while typing
  */
-export function quickValidate(code: string): { valid: boolean; error?: string } {
+export function quickValidate(code: string): {
+  valid: boolean;
+  error?: string;
+} {
   // Basic checks
   if (!code || code.trim().length === 0) {
     return { valid: false, error: "Empty code" };

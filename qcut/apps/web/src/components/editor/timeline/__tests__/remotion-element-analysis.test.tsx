@@ -115,7 +115,9 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
       render(<RemotionTimelineElement {...mockProps} />);
 
       expect(screen.getByTestId("remotion-sequences")).toBeInTheDocument();
-      expect(screen.queryByTestId("parsed-sequence-overlay")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("parsed-sequence-overlay")
+      ).not.toBeInTheDocument();
     });
 
     it("renders ParsedSequenceOverlay when only analysis exists", () => {
@@ -123,7 +125,13 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
         componentId: "test-component",
         parsed: {
           sequences: [
-            { name: "Scene1", from: 0, durationInFrames: 60, line: 1, isTransitionSequence: false },
+            {
+              name: "Scene1",
+              from: 0,
+              durationInFrames: 60,
+              line: 1,
+              isTransitionSequence: false,
+            },
           ],
           transitions: [],
           usesTransitionSeries: false,
@@ -141,7 +149,9 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
       render(<RemotionTimelineElement {...mockProps} />);
 
       expect(screen.getByTestId("parsed-sequence-overlay")).toBeInTheDocument();
-      expect(screen.queryByTestId("remotion-sequences")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("remotion-sequences")
+      ).not.toBeInTheDocument();
     });
 
     it("prefers author metadata over parsed analysis", () => {
@@ -157,7 +167,13 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
         componentId: "test-component",
         parsed: {
           sequences: [
-            { name: "Parsed Seq", from: 0, durationInFrames: 50, line: 1, isTransitionSequence: false },
+            {
+              name: "Parsed Seq",
+              from: 0,
+              durationInFrames: 50,
+              line: 1,
+              isTransitionSequence: false,
+            },
           ],
           transitions: [],
           usesTransitionSeries: false,
@@ -176,7 +192,9 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
 
       // Should show author metadata, not parsed
       expect(screen.getByTestId("remotion-sequences")).toBeInTheDocument();
-      expect(screen.queryByTestId("parsed-sequence-overlay")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("parsed-sequence-overlay")
+      ).not.toBeInTheDocument();
     });
 
     it("renders nothing when no sequences available", () => {
@@ -186,8 +204,12 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
 
       render(<RemotionTimelineElement {...mockProps} />);
 
-      expect(screen.queryByTestId("remotion-sequences")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("parsed-sequence-overlay")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("remotion-sequences")
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("parsed-sequence-overlay")
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -197,7 +219,13 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
         componentId: "test-component",
         parsed: {
           sequences: [
-            { name: "Dynamic", from: "dynamic", durationInFrames: 60, line: 1, isTransitionSequence: false },
+            {
+              name: "Dynamic",
+              from: "dynamic",
+              durationInFrames: 60,
+              line: 1,
+              isTransitionSequence: false,
+            },
           ],
           transitions: [],
           usesTransitionSeries: false,
@@ -222,7 +250,13 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
         componentId: "test-component",
         parsed: {
           sequences: [
-            { name: "Static", from: 0, durationInFrames: 60, line: 1, isTransitionSequence: false },
+            {
+              name: "Static",
+              from: 0,
+              durationInFrames: 60,
+              line: 1,
+              isTransitionSequence: false,
+            },
           ],
           transitions: [],
           usesTransitionSeries: false,
@@ -271,7 +305,9 @@ describe("RemotionTimelineElement - Analysis Integration", () => {
       render(<RemotionTimelineElement {...mockProps} />);
 
       // Should not render ParsedSequenceOverlay for empty sequences
-      expect(screen.queryByTestId("parsed-sequence-overlay")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("parsed-sequence-overlay")
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -214,10 +214,7 @@ async function scanDirectory(
             isDirectory: false,
           });
         } catch (statError) {
-          log.warn(
-            `${LOG_PREFIX} Failed to stat file ${fullPath}:`,
-            statError
-          );
+          log.warn(`${LOG_PREFIX} Failed to stat file ${fullPath}:`, statError);
         }
       }
     }
@@ -262,7 +259,7 @@ export function setupProjectFolderIPC(): void {
     async (
       _,
       projectId: string,
-      subPath: string = "",
+      subPath = "",
       options: ScanOptions = {}
     ): Promise<ScanResult> => {
       const startTime = Date.now();
@@ -310,11 +307,7 @@ export function setupProjectFolderIPC(): void {
   // -------------------------------------------------------------------------
   ipcMain.handle(
     "project-folder:list",
-    async (
-      _,
-      projectId: string,
-      subPath: string = ""
-    ): Promise<FileInfo[]> => {
+    async (_, projectId: string, subPath = ""): Promise<FileInfo[]> => {
       const sanitizedProjectId = sanitizePathComponent(projectId);
       const basePath = getProjectsBasePath();
       const projectRoot = path.join(basePath, sanitizedProjectId);
@@ -336,7 +329,9 @@ export function setupProjectFolderIPC(): void {
       const entries: FileInfo[] = [];
 
       try {
-        const dirEntries = await fs.readdir(targetPath, { withFileTypes: true });
+        const dirEntries = await fs.readdir(targetPath, {
+          withFileTypes: true,
+        });
 
         for (const entry of dirEntries) {
           const fullPath = path.join(targetPath, entry.name);
@@ -357,10 +352,7 @@ export function setupProjectFolderIPC(): void {
               isDirectory: entry.isDirectory(),
             });
           } catch (statError) {
-            log.warn(
-              `${LOG_PREFIX} Failed to stat ${fullPath}:`,
-              statError
-            );
+            log.warn(`${LOG_PREFIX} Failed to stat ${fullPath}:`, statError);
           }
         }
       } catch (error) {
@@ -401,10 +393,7 @@ export function setupProjectFolderIPC(): void {
             created.push(folder);
             log.info(`${LOG_PREFIX} Created folder: ${folder}`);
           } catch (mkdirError) {
-            log.error(
-              `${LOG_PREFIX} Failed to create ${folder}:`,
-              mkdirError
-            );
+            log.error(`${LOG_PREFIX} Failed to create ${folder}:`, mkdirError);
           }
         }
       }

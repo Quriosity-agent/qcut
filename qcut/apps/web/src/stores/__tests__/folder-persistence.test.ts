@@ -16,11 +16,21 @@ const mockLoadFolders = vi.fn().mockResolvedValue([] as MediaFolder[]);
 
 vi.mock("@/lib/storage/storage-service", () => ({
   storageService: {
-    get saveMediaItem() { return mockSaveMediaItem; },
-    get loadAllMediaItems() { return vi.fn().mockResolvedValue([]); },
-    get deleteMediaItem() { return vi.fn().mockResolvedValue(undefined); },
-    get saveFolders() { return mockSaveFolders; },
-    get loadFolders() { return mockLoadFolders; },
+    get saveMediaItem() {
+      return mockSaveMediaItem;
+    },
+    get loadAllMediaItems() {
+      return vi.fn().mockResolvedValue([]);
+    },
+    get deleteMediaItem() {
+      return vi.fn().mockResolvedValue(undefined);
+    },
+    get saveFolders() {
+      return mockSaveFolders;
+    },
+    get loadFolders() {
+      return mockLoadFolders;
+    },
   },
 }));
 
@@ -34,11 +44,18 @@ vi.mock("@/stores/project-store", () => ({
 }));
 
 // Helper to create a mock MediaItem
-const createMockMediaItem = (id: string, type: "video" | "audio" | "image", folderIds: string[] = []) => ({
+const createMockMediaItem = (
+  id: string,
+  type: "video" | "audio" | "image",
+  folderIds: string[] = []
+) => ({
   id,
   name: `${type}-${id}.${type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg"}`,
   type,
-  file: new File([""], `${type}-${id}.${type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg"}`),
+  file: new File(
+    [""],
+    `${type}-${id}.${type === "video" ? "mp4" : type === "audio" ? "mp3" : "jpg"}`
+  ),
   url: `blob:test-${id}`,
   folderIds,
 });
@@ -47,7 +64,11 @@ describe("Media Folder Persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset stores
-    useMediaStore.setState({ mediaItems: [], isLoading: false, hasInitialized: false });
+    useMediaStore.setState({
+      mediaItems: [],
+      isLoading: false,
+      hasInitialized: false,
+    });
     useFolderStore.getState().clearFolders();
   });
 
@@ -68,7 +89,9 @@ describe("Media Folder Persistence", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify the store was updated
-      const updatedItem = useMediaStore.getState().mediaItems.find((m) => m.id === "media-1");
+      const updatedItem = useMediaStore
+        .getState()
+        .mediaItems.find((m) => m.id === "media-1");
       expect(updatedItem?.folderIds).toContain("folder-1");
 
       // Verify persistence was called
@@ -85,14 +108,19 @@ describe("Media Folder Persistence", () => {
       // Try to add same folder again
       useMediaStore.getState().addToFolder("media-1", "folder-1");
 
-      const updatedItem = useMediaStore.getState().mediaItems.find((m) => m.id === "media-1");
+      const updatedItem = useMediaStore
+        .getState()
+        .mediaItems.find((m) => m.id === "media-1");
       expect(updatedItem?.folderIds).toEqual(["folder-1"]); // No duplicates
     });
   });
 
   describe("removeFromFolder persistence", () => {
     it("should persist folder removal", async () => {
-      const mediaItem = createMockMediaItem("media-1", "video", ["folder-1", "folder-2"]);
+      const mediaItem = createMockMediaItem("media-1", "video", [
+        "folder-1",
+        "folder-2",
+      ]);
       useMediaStore.setState({ mediaItems: [mediaItem] });
 
       // Remove from folder
@@ -102,7 +130,9 @@ describe("Media Folder Persistence", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify the store was updated
-      const updatedItem = useMediaStore.getState().mediaItems.find((m) => m.id === "media-1");
+      const updatedItem = useMediaStore
+        .getState()
+        .mediaItems.find((m) => m.id === "media-1");
       expect(updatedItem?.folderIds).toEqual(["folder-2"]);
 
       // Verify persistence was called
@@ -125,7 +155,9 @@ describe("Media Folder Persistence", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify the store was updated
-      const updatedItem = useMediaStore.getState().mediaItems.find((m) => m.id === "media-1");
+      const updatedItem = useMediaStore
+        .getState()
+        .mediaItems.find((m) => m.id === "media-1");
       expect(updatedItem?.folderIds).toEqual(["folder-2"]);
 
       // Verify persistence was called
@@ -136,7 +168,10 @@ describe("Media Folder Persistence", () => {
     });
 
     it("should clear folders when moving to null", async () => {
-      const mediaItem = createMockMediaItem("media-1", "video", ["folder-1", "folder-2"]);
+      const mediaItem = createMockMediaItem("media-1", "video", [
+        "folder-1",
+        "folder-2",
+      ]);
       useMediaStore.setState({ mediaItems: [mediaItem] });
 
       // Move to no folder (root)
@@ -146,7 +181,9 @@ describe("Media Folder Persistence", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify the store was updated
-      const updatedItem = useMediaStore.getState().mediaItems.find((m) => m.id === "media-1");
+      const updatedItem = useMediaStore
+        .getState()
+        .mediaItems.find((m) => m.id === "media-1");
       expect(updatedItem?.folderIds).toEqual([]);
 
       // Verify persistence was called
@@ -167,16 +204,24 @@ describe("Media Folder Persistence", () => {
       useMediaStore.setState({ mediaItems });
 
       // Bulk add to folder
-      useMediaStore.getState().bulkAddToFolder(["media-1", "media-2"], "folder-1");
+      useMediaStore
+        .getState()
+        .bulkAddToFolder(["media-1", "media-2"], "folder-1");
 
       // Wait for async persistence
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Verify items were updated
       const updatedItems = useMediaStore.getState().mediaItems;
-      expect(updatedItems.find((m) => m.id === "media-1")?.folderIds).toContain("folder-1");
-      expect(updatedItems.find((m) => m.id === "media-2")?.folderIds).toContain("folder-1");
-      expect(updatedItems.find((m) => m.id === "media-3")?.folderIds || []).not.toContain("folder-1");
+      expect(updatedItems.find((m) => m.id === "media-1")?.folderIds).toContain(
+        "folder-1"
+      );
+      expect(updatedItems.find((m) => m.id === "media-2")?.folderIds).toContain(
+        "folder-1"
+      );
+      expect(
+        updatedItems.find((m) => m.id === "media-3")?.folderIds || []
+      ).not.toContain("folder-1");
 
       // Verify persistence was called (at least once - may batch or call multiple times)
       expect(mockSaveMediaItem).toHaveBeenCalled();
@@ -190,15 +235,21 @@ describe("Media Folder Persistence", () => {
       useMediaStore.setState({ mediaItems });
 
       // Bulk move to new folder
-      useMediaStore.getState().bulkMoveToFolder(["media-1", "media-2"], "new-folder");
+      useMediaStore
+        .getState()
+        .bulkMoveToFolder(["media-1", "media-2"], "new-folder");
 
       // Wait for async persistence
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Verify items were moved (old folder replaced)
       const updatedItems = useMediaStore.getState().mediaItems;
-      expect(updatedItems.find((m) => m.id === "media-1")?.folderIds).toEqual(["new-folder"]);
-      expect(updatedItems.find((m) => m.id === "media-2")?.folderIds).toEqual(["new-folder"]);
+      expect(updatedItems.find((m) => m.id === "media-1")?.folderIds).toEqual([
+        "new-folder",
+      ]);
+      expect(updatedItems.find((m) => m.id === "media-2")?.folderIds).toEqual([
+        "new-folder",
+      ]);
 
       // Verify persistence was called (at least once)
       expect(mockSaveMediaItem).toHaveBeenCalled();
@@ -220,10 +271,18 @@ describe("Default Folder Auto-Creation", () => {
     const folders = useFolderStore.getState().folders;
 
     // Check that default folders were created
-    expect(folders.find((f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS)).toBeDefined();
-    expect(folders.find((f) => f.id === DEFAULT_FOLDER_IDS.AUDIO)).toBeDefined();
-    expect(folders.find((f) => f.id === DEFAULT_FOLDER_IDS.IMAGES)).toBeDefined();
-    expect(folders.find((f) => f.id === DEFAULT_FOLDER_IDS.AI_GENERATED)).toBeDefined();
+    expect(
+      folders.find((f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS)
+    ).toBeDefined();
+    expect(
+      folders.find((f) => f.id === DEFAULT_FOLDER_IDS.AUDIO)
+    ).toBeDefined();
+    expect(
+      folders.find((f) => f.id === DEFAULT_FOLDER_IDS.IMAGES)
+    ).toBeDefined();
+    expect(
+      folders.find((f) => f.id === DEFAULT_FOLDER_IDS.AI_GENERATED)
+    ).toBeDefined();
   });
 
   it("should have correct names and colors for default folders", async () => {
@@ -231,7 +290,9 @@ describe("Default Folder Auto-Creation", () => {
 
     const folders = useFolderStore.getState().folders;
 
-    const videosFolder = folders.find((f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS);
+    const videosFolder = folders.find(
+      (f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS
+    );
     expect(videosFolder?.name).toBe("Videos");
     expect(videosFolder?.color).toBe("#3b82f6");
 
@@ -239,11 +300,15 @@ describe("Default Folder Auto-Creation", () => {
     expect(audioFolder?.name).toBe("Audio");
     expect(audioFolder?.color).toBe("#22c55e");
 
-    const imagesFolder = folders.find((f) => f.id === DEFAULT_FOLDER_IDS.IMAGES);
+    const imagesFolder = folders.find(
+      (f) => f.id === DEFAULT_FOLDER_IDS.IMAGES
+    );
     expect(imagesFolder?.name).toBe("Images");
     expect(imagesFolder?.color).toBe("#f59e0b");
 
-    const aiFolder = folders.find((f) => f.id === DEFAULT_FOLDER_IDS.AI_GENERATED);
+    const aiFolder = folders.find(
+      (f) => f.id === DEFAULT_FOLDER_IDS.AI_GENERATED
+    );
     expect(aiFolder?.name).toBe("AI Generated");
     expect(aiFolder?.color).toBe("#a855f7");
   });
@@ -251,13 +316,22 @@ describe("Default Folder Auto-Creation", () => {
   it("should not duplicate default folders if they already exist", async () => {
     // Simulate existing folders from storage
     mockLoadFolders.mockResolvedValue([
-      { id: DEFAULT_FOLDER_IDS.VIDEOS, name: "Videos", parentId: null, isExpanded: true, createdAt: 1, updatedAt: 1 },
+      {
+        id: DEFAULT_FOLDER_IDS.VIDEOS,
+        name: "Videos",
+        parentId: null,
+        isExpanded: true,
+        createdAt: 1,
+        updatedAt: 1,
+      },
     ]);
 
     await useFolderStore.getState().loadFolders("test-project-123");
 
     const folders = useFolderStore.getState().folders;
-    const videoFolders = folders.filter((f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS);
+    const videoFolders = folders.filter(
+      (f) => f.id === DEFAULT_FOLDER_IDS.VIDEOS
+    );
 
     expect(videoFolders).toHaveLength(1); // No duplicates
     expect(folders.length).toBe(4); // 1 existing + 3 new

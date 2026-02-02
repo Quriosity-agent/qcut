@@ -13,8 +13,11 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSanitize from "rehype-sanitize";
 
 const url =
-  (import.meta as unknown as { env: Record<string, string> }).env?.VITE_MARBLE_API_URL ?? "https://api.marblecms.com";
-const key = (import.meta as unknown as { env: Record<string, string> }).env?.VITE_MARBLE_WORKSPACE_KEY ?? "cmd4iw9mm0006l804kwqv0k46";
+  (import.meta as unknown as { env: Record<string, string> }).env
+    ?.VITE_MARBLE_API_URL ?? "https://api.marblecms.com";
+const key =
+  (import.meta as unknown as { env: Record<string, string> }).env
+    ?.VITE_MARBLE_WORKSPACE_KEY ?? "cmd4iw9mm0006l804kwqv0k46";
 
 async function fetchFromMarble<T>(endpoint: string): Promise<T> {
   try {

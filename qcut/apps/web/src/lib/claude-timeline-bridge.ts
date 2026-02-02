@@ -3,11 +3,15 @@
  * Connects Electron main process Claude API with renderer's Zustand stores
  */
 
-import { useTimelineStore } from '@/stores/timeline-store';
-import { useProjectStore } from '@/stores/project-store';
-import { useMediaStore } from '@/stores/media-store';
-import type { TimelineElement, TimelineTrack } from '@/types/timeline';
-import type { ClaudeTimeline, ClaudeTrack, ClaudeElement } from '../../../../electron/types/claude-api';
+import { useTimelineStore } from "@/stores/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
+import { useMediaStore } from "@/stores/media-store";
+import type { TimelineElement, TimelineTrack } from "@/types/timeline";
+import type {
+  ClaudeTimeline,
+  ClaudeTrack,
+  ClaudeElement,
+} from "../../../../electron/types/claude-api";
 
 /**
  * Calculate effective duration with safe trim handling
@@ -40,8 +44,14 @@ function calculateTimelineDuration(tracks: TimelineTrack[]): number {
 /**
  * Find track containing an element
  */
-function findTrackByElementId(tracks: TimelineTrack[], elementId: string): TimelineTrack | null {
-  return tracks.find(track => track.elements.some(e => e.id === elementId)) || null;
+function findTrackByElementId(
+  tracks: TimelineTrack[],
+  elementId: string
+): TimelineTrack | null {
+  return (
+    tracks.find((track) => track.elements.some((e) => e.id === elementId)) ||
+    null
+  );
 }
 
 /**
@@ -50,16 +60,16 @@ function findTrackByElementId(tracks: TimelineTrack[], elementId: string): Timel
  */
 export function setupClaudeTimelineBridge(): void {
   if (!window.electronAPI?.claude?.timeline) {
-    console.warn('[ClaudeTimelineBridge] Claude Timeline API not available');
+    console.warn("[ClaudeTimelineBridge] Claude Timeline API not available");
     return;
   }
 
   const claudeAPI = window.electronAPI.claude.timeline;
-  console.log('[ClaudeTimelineBridge] Setting up bridge...');
+  console.log("[ClaudeTimelineBridge] Setting up bridge...");
 
   // Respond to timeline export request from main process
   claudeAPI.onRequest(() => {
-    console.log('[ClaudeTimelineBridge] Received timeline export request');
+    console.log("[ClaudeTimelineBridge] Received timeline export request");
 
     const timelineState = useTimelineStore.getState();
     const projectState = useProjectStore.getState();
@@ -67,7 +77,7 @@ export function setupClaudeTimelineBridge(): void {
     const tracks = timelineState.tracks;
 
     const timeline: ClaudeTimeline = {
-      name: project?.name || 'Untitled',
+      name: project?.name || "Untitled",
       duration: calculateTimelineDuration(tracks),
       width: project?.canvasSize?.width || 1920,
       height: project?.canvasSize?.height || 1080,
@@ -76,12 +86,15 @@ export function setupClaudeTimelineBridge(): void {
     };
 
     claudeAPI.sendResponse(timeline);
-    console.log('[ClaudeTimelineBridge] Sent timeline response');
+    console.log("[ClaudeTimelineBridge] Sent timeline response");
   });
 
   // Handle timeline import from Claude
   claudeAPI.onApply((timeline: ClaudeTimeline) => {
-    console.log('[ClaudeTimelineBridge] Received timeline to apply:', timeline.name);
+    console.log(
+      "[ClaudeTimelineBridge] Received timeline to apply:",
+      timeline.name
+    );
     applyTimelineToStore(timeline);
   });
 
@@ -95,8 +108,10 @@ export function setupClaudeTimelineBridge(): void {
    * 4. Validating element doesn't overlap with existing elements
    */
   claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
-    console.log('[ClaudeTimelineBridge] Adding element:', element);
-    console.warn('[ClaudeTimelineBridge] addElement not implemented - requires type mapping');
+    console.log("[ClaudeTimelineBridge] Adding element:", element);
+    console.warn(
+      "[ClaudeTimelineBridge] addElement not implemented - requires type mapping"
+    );
   });
 
   /**
@@ -107,27 +122,34 @@ export function setupClaudeTimelineBridge(): void {
    * 2. Mapping partial ClaudeElement changes to TimelineElement fields
    * 3. Validating changes don't create invalid state (overlaps, negative times)
    */
-  claudeAPI.onUpdateElement((data: { elementId: string; changes: Partial<ClaudeElement> }) => {
-    console.log('[ClaudeTimelineBridge] Updating element:', data.elementId);
-    console.warn('[ClaudeTimelineBridge] updateElement not implemented - needs store method');
-  });
+  claudeAPI.onUpdateElement(
+    (data: { elementId: string; changes: Partial<ClaudeElement> }) => {
+      console.log("[ClaudeTimelineBridge] Updating element:", data.elementId);
+      console.warn(
+        "[ClaudeTimelineBridge] updateElement not implemented - needs store method"
+      );
+    }
+  );
 
   // Handle element removal
   claudeAPI.onRemoveElement((elementId: string) => {
-    console.log('[ClaudeTimelineBridge] Removing element:', elementId);
+    console.log("[ClaudeTimelineBridge] Removing element:", elementId);
     const timelineStore = useTimelineStore.getState();
     const tracks = timelineStore.tracks;
-    
+
     // Find the track containing this element
     const track = findTrackByElementId(tracks, elementId);
     if (track) {
       timelineStore.removeElementFromTrack(track.id, elementId);
     } else {
-      console.warn('[ClaudeTimelineBridge] Could not find track for element:', elementId);
+      console.warn(
+        "[ClaudeTimelineBridge] Could not find track for element:",
+        elementId
+      );
     }
   });
 
-  console.log('[ClaudeTimelineBridge] Bridge setup complete');
+  console.log("[ClaudeTimelineBridge] Bridge setup complete");
 }
 
 /**
@@ -135,17 +157,22 @@ export function setupClaudeTimelineBridge(): void {
  */
 function formatTracksForExport(tracks: TimelineTrack[]): ClaudeTrack[] {
   return tracks.map((track, index) => ({
-    index: index,
+    index,
     name: track.name || `Track ${index + 1}`,
     type: track.type,
-    elements: track.elements.map((element) => formatElementForExport(element, index)),
+    elements: track.elements.map((element) =>
+      formatElementForExport(element, index)
+    ),
   }));
 }
 
 /**
  * Format a single element for export
  */
-function formatElementForExport(element: TimelineElement, trackIndex: number): ClaudeElement {
+function formatElementForExport(
+  element: TimelineElement,
+  trackIndex: number
+): ClaudeElement {
   const effectiveDuration = getEffectiveDuration(element);
 
   const baseElement: ClaudeElement = {
@@ -159,28 +186,28 @@ function formatElementForExport(element: TimelineElement, trackIndex: number): C
 
   // Add type-specific fields
   switch (element.type) {
-    case 'media':
+    case "media":
       return {
         ...baseElement,
         sourceId: element.mediaId,
         sourceName: element.name,
       };
-    case 'text':
+    case "text":
       return {
         ...baseElement,
         content: element.content,
       };
-    case 'captions':
+    case "captions":
       return {
         ...baseElement,
         content: element.text,
       };
-    case 'sticker':
+    case "sticker":
       return {
         ...baseElement,
         sourceId: element.stickerId,
       };
-    case 'remotion':
+    case "remotion":
       return {
         ...baseElement,
         sourceId: element.componentId,
@@ -205,14 +232,19 @@ function formatElementForExport(element: TimelineElement, trackIndex: number): C
  */
 function applyTimelineToStore(timeline: ClaudeTimeline): void {
   // Log import details for debugging - helps verify the bridge is working
-  console.log('[ClaudeTimelineBridge] Would apply timeline:', {
+  console.log("[ClaudeTimelineBridge] Would apply timeline:", {
     name: timeline.name,
     duration: timeline.duration,
     tracks: timeline.tracks.length,
-    totalElements: timeline.tracks.reduce((sum, t) => sum + t.elements.length, 0),
+    totalElements: timeline.tracks.reduce(
+      (sum, t) => sum + t.elements.length,
+      0
+    ),
   });
 
-  console.warn('[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented');
+  console.warn(
+    "[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented"
+  );
 }
 
 /**
@@ -222,7 +254,7 @@ export function cleanupClaudeTimelineBridge(): void {
   if (window.electronAPI?.claude?.timeline?.removeListeners) {
     window.electronAPI.claude.timeline.removeListeners();
   }
-  console.log('[ClaudeTimelineBridge] Bridge cleanup complete');
+  console.log("[ClaudeTimelineBridge] Bridge cleanup complete");
 }
 
 /**
@@ -249,8 +281,8 @@ export function setupClaudeProjectBridge(): void {
     for (const track of tracks) {
       elementCount += track.elements.length;
       for (const element of track.elements) {
-        if (element.type === 'media') {
-          const mediaItem = mediaItems.find(m => m.id === element.mediaId);
+        if (element.type === "media") {
+          const mediaItem = mediaItems.find((m) => m.id === element.mediaId);
           if (mediaItem && mediaItem.type in mediaCount) {
             mediaCount[mediaItem.type]++;
           } else {
@@ -266,7 +298,8 @@ export function setupClaudeProjectBridge(): void {
       mediaCount,
       trackCount: tracks.length,
       elementCount,
-      lastModified: projectState.activeProject?.updatedAt?.getTime() || Date.now(),
+      lastModified:
+        projectState.activeProject?.updatedAt?.getTime() || Date.now(),
       fileSize: 0, // Would need to calculate
     };
 

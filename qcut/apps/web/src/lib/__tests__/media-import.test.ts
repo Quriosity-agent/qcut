@@ -7,7 +7,7 @@ const createMockMediaImport = () => ({
     targetPath: "/path/to/project/media/imported/media-123.mp4",
     importMethod: "symlink" as const,
     originalPath: "/path/to/original/video.mp4",
-    fileSize: 1024000,
+    fileSize: 1_024_000,
   }),
   validateSymlink: vi.fn().mockResolvedValue(true),
   locateOriginal: vi.fn().mockResolvedValue("/path/to/original/video.mp4"),
@@ -16,7 +16,7 @@ const createMockMediaImport = () => ({
     targetPath: "/path/to/project/media/imported/media-123.mp4",
     importMethod: "symlink" as const,
     originalPath: "/path/to/new/video.mp4",
-    fileSize: 1024000,
+    fileSize: 1_024_000,
   }),
   remove: vi.fn().mockResolvedValue(undefined),
   checkSymlinkSupport: vi.fn().mockResolvedValue(true),
@@ -28,7 +28,11 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   // Helper to get electronAPI with type assertion (safe in test context)
   const getElectronAPI = () =>
-    (window as unknown as { electronAPI: { mediaImport: typeof mockMediaImport } }).electronAPI;
+    (
+      window as unknown as {
+        electronAPI: { mediaImport: typeof mockMediaImport };
+      }
+    ).electronAPI;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,7 +48,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete (window as unknown as { electronAPI?: unknown }).electronAPI;
+    (window as unknown as { electronAPI?: unknown }).electronAPI = undefined;
   });
 
   describe("API Availability", () => {
@@ -102,7 +106,7 @@ describe("Media Import - Hybrid Symlink/Copy System", () => {
         targetPath: "/path/to/project/media/imported/media-456.mp4",
         importMethod: "copy" as const,
         originalPath: "/path/to/original/video.mp4",
-        fileSize: 2048000,
+        fileSize: 2_048_000,
       });
 
       const result = await getElectronAPI().mediaImport.import({

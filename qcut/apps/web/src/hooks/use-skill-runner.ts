@@ -40,7 +40,10 @@ export function useSkillRunner() {
    *                           If not specified, uses the currently selected provider
    */
   const runSkill = useCallback(
-    async (skillId: string, preferredProvider?: "gemini" | "codex" | "claude") => {
+    async (
+      skillId: string,
+      preferredProvider?: "gemini" | "codex" | "claude"
+    ) => {
       const skill = skills.find((s) => s.id === skillId);
       if (!skill) {
         console.warn("[useSkillRunner] Skill not found:", skillId);
@@ -58,7 +61,9 @@ export function useSkillRunner() {
       let skillsPath = "";
       try {
         if (window.electronAPI?.skills?.getPath) {
-          skillsPath = await window.electronAPI.skills.getPath(activeProject.id);
+          skillsPath = await window.electronAPI.skills.getPath(
+            activeProject.id
+          );
         }
       } catch {
         // Ignore - skills path is optional
@@ -99,7 +104,18 @@ export function useSkillRunner() {
         await connect();
       }
     },
-    [skills, activeProject, setActiveSkill, setCliProvider, setWorkingDirectory, setActiveTab, connect, disconnect, status, cliProvider]
+    [
+      skills,
+      activeProject,
+      setActiveSkill,
+      setCliProvider,
+      setWorkingDirectory,
+      setActiveTab,
+      connect,
+      disconnect,
+      status,
+      cliProvider,
+    ]
   );
 
   return { runSkill };

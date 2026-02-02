@@ -14,11 +14,15 @@ const SOURCE_DIR = ".claude/skills";
 const TARGET_DIR = "resources/default-skills";
 
 // Skills to sync (add new bundled skills here)
-const BUNDLED_SKILLS = ["ai-content-pipeline", "ffmpeg-skill", "organize-project"];
+const BUNDLED_SKILLS = [
+  "ai-content-pipeline",
+  "ffmpeg-skill",
+  "organize-project",
+];
 
 function syncSkills() {
   process.stdout.write(
-    "📦 Syncing skills from .claude/skills/ → resources/default-skills/\n",
+    "📦 Syncing skills from .claude/skills/ → resources/default-skills/\n"
   );
 
   // Ensure target directory exists
@@ -54,7 +58,7 @@ try {
   process.stderr.write(
     `sync-skills failed: ${
       error instanceof Error ? error.message : String(error)
-    }\n`,
+    }\n`
   );
   process.exitCode = 1;
 }

@@ -144,7 +144,10 @@ export async function generateFileBasedId(file: File): Promise<string> {
   // Use Web Crypto API to hash the string
   const encoder = new TextEncoder();
   const data = encoder.encode(uniqueString);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data as BufferSource);
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    data as BufferSource
+  );
 
   // Convert hash to hex string
   const hashArray = Array.from(new Uint8Array(hashBuffer));

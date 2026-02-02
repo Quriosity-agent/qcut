@@ -34,9 +34,7 @@ describe("calculateTotalDuration", () => {
         { name: "A", from: 0, durationInFrames: 40 },
         { name: "B", from: 0, durationInFrames: 60 },
       ],
-      transitions: [
-        { afterSequenceIndex: 0, durationInFrames: 30 },
-      ],
+      transitions: [{ afterSequenceIndex: 0, durationInFrames: 30 }],
     };
 
     // 40 + 60 - 30 = 70
@@ -75,9 +73,7 @@ describe("calculateTotalDuration", () => {
 
   it("handles single sequence", () => {
     const structure: SequenceStructure = {
-      sequences: [
-        { name: "Only", from: 0, durationInFrames: 100 },
-      ],
+      sequences: [{ name: "Only", from: 0, durationInFrames: 100 }],
     };
 
     expect(calculateTotalDuration(structure)).toBe(100);
@@ -130,9 +126,7 @@ describe("calculateSequencePositions", () => {
 
   it("handles first sequence starting at 0", () => {
     const structure: SequenceStructure = {
-      sequences: [
-        { name: "First", from: 0, durationInFrames: 100 },
-      ],
+      sequences: [{ name: "First", from: 0, durationInFrames: 100 }],
     };
 
     const positions = calculateSequencePositions(structure);
@@ -191,17 +185,13 @@ describe("getOverlappingSequences", () => {
   });
 
   it("returns empty array when before all sequences", () => {
-    const positions: SequencePosition[] = [
-      { from: 10, to: 60 },
-    ];
+    const positions: SequencePosition[] = [{ from: 10, to: 60 }];
 
     expect(getOverlappingSequences(positions, 5)).toEqual([]);
   });
 
   it("returns empty array when after all sequences", () => {
-    const positions: SequencePosition[] = [
-      { from: 0, to: 60 },
-    ];
+    const positions: SequencePosition[] = [{ from: 0, to: 60 }];
 
     expect(getOverlappingSequences(positions, 100)).toEqual([]);
   });
@@ -266,9 +256,7 @@ describe("validateSequenceStructure", () => {
         { name: "A", from: 0, durationInFrames: 60 },
         { name: "B", from: 0, durationInFrames: 80 },
       ],
-      transitions: [
-        { afterSequenceIndex: 0, durationInFrames: 15 },
-      ],
+      transitions: [{ afterSequenceIndex: 0, durationInFrames: 15 }],
     };
 
     expect(validateSequenceStructure(structure)).toEqual([]);
@@ -285,27 +273,23 @@ describe("validateSequenceStructure", () => {
 
   it("returns error for invalid sequence duration", () => {
     const structure: SequenceStructure = {
-      sequences: [
-        { name: "Bad", from: 0, durationInFrames: 0 },
-      ],
+      sequences: [{ name: "Bad", from: 0, durationInFrames: 0 }],
     };
 
     const errors = validateSequenceStructure(structure);
-    expect(errors.some(e => e.includes("invalid duration"))).toBe(true);
+    expect(errors.some((e) => e.includes("invalid duration"))).toBe(true);
   });
 
   it("returns error for invalid transition index", () => {
     const structure: SequenceStructure = {
-      sequences: [
-        { name: "A", from: 0, durationInFrames: 60 },
-      ],
+      sequences: [{ name: "A", from: 0, durationInFrames: 60 }],
       transitions: [
         { afterSequenceIndex: 0, durationInFrames: 15 }, // No sequence after A!
       ],
     };
 
     const errors = validateSequenceStructure(structure);
-    expect(errors.some(e => e.includes("afterSequenceIndex"))).toBe(true);
+    expect(errors.some((e) => e.includes("afterSequenceIndex"))).toBe(true);
   });
 
   it("returns error when transition exceeds sequence duration", () => {
@@ -320,6 +304,6 @@ describe("validateSequenceStructure", () => {
     };
 
     const errors = validateSequenceStructure(structure);
-    expect(errors.some(e => e.includes("exceeds"))).toBe(true);
+    expect(errors.some((e) => e.includes("exceeds"))).toBe(true);
   });
 });

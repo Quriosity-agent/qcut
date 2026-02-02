@@ -82,7 +82,10 @@ function getProjectSkillsPath(projectId: string): string {
 function isPathWithinBase(targetPath: string, basePath: string): boolean {
   const resolvedTarget = path.resolve(targetPath);
   const resolvedBase = path.resolve(basePath);
-  return resolvedTarget.startsWith(resolvedBase + path.sep) || resolvedTarget === resolvedBase;
+  return (
+    resolvedTarget.startsWith(resolvedBase + path.sep) ||
+    resolvedTarget === resolvedBase
+  );
 }
 
 /**
@@ -90,9 +93,28 @@ function isPathWithinBase(targetPath: string, basePath: string): boolean {
  * These names (with or without extensions) are reserved by Windows.
  */
 const WINDOWS_RESERVED_NAMES = new Set([
-  "CON", "PRN", "AUX", "NUL",
-  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-  "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+  "CON",
+  "PRN",
+  "AUX",
+  "NUL",
+  "COM1",
+  "COM2",
+  "COM3",
+  "COM4",
+  "COM5",
+  "COM6",
+  "COM7",
+  "COM8",
+  "COM9",
+  "LPT1",
+  "LPT2",
+  "LPT3",
+  "LPT4",
+  "LPT5",
+  "LPT6",
+  "LPT7",
+  "LPT8",
+  "LPT9",
 ]);
 
 /**
@@ -112,7 +134,7 @@ function isWindowsReservedName(name: string): boolean {
  */
 function sanitizePathSegment(segment: string): string {
   // Remove any path separators and parent directory references
-  let sanitized = segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
+  const sanitized = segment.replace(/[/\\]/g, "").replace(/\.\./g, "");
 
   // Check for Windows reserved names
   if (isWindowsReservedName(sanitized)) {
@@ -191,7 +213,9 @@ export function setupSkillsIPC(): void {
         entries = await fs.readdir(skillsPath, { withFileTypes: true });
       } catch {
         // Skills folder doesn't exist or can't be read - return empty array
-        log.info("[Skills Handler] Skills folder not accessible, returning empty array");
+        log.info(
+          "[Skills Handler] Skills folder not accessible, returning empty array"
+        );
         return [];
       }
 
@@ -235,7 +259,11 @@ export function setupSkillsIPC(): void {
           log.info("[Skills Handler] Loaded skill:", frontmatter.name);
         } catch (error) {
           // Skip invalid skill folders
-          log.warn("[Skills Handler] Failed to load skill from:", skillFolder, error);
+          log.warn(
+            "[Skills Handler] Failed to load skill from:",
+            skillFolder,
+            error
+          );
         }
       }
 
@@ -363,7 +391,10 @@ export function setupSkillsIPC(): void {
 
       try {
         await fs.rm(skillPath, { recursive: true, force: true });
-        log.info("[Skills Handler] Successfully deleted skill:", sanitizedSkillId);
+        log.info(
+          "[Skills Handler] Successfully deleted skill:",
+          sanitizedSkillId
+        );
       } catch (error) {
         log.error("[Skills Handler] Failed to delete skill:", error);
         throw error;
@@ -398,7 +429,11 @@ export function setupSkillsIPC(): void {
       }
 
       const skillsPath = getProjectSkillsPath(projectId);
-      const filePath = path.join(skillsPath, sanitizedSkillId, sanitizedFilename);
+      const filePath = path.join(
+        skillsPath,
+        sanitizedSkillId,
+        sanitizedFilename
+      );
 
       // Security: Verify the resolved path is within the skills directory
       if (!isPathWithinBase(filePath, skillsPath)) {
@@ -450,10 +485,7 @@ export function setupSkillsIPC(): void {
   // Get skills folder path (for displaying in UI)
   ipcMain.handle(
     "skills:getPath",
-    async (
-      event: IpcMainInvokeEvent,
-      projectId: string
-    ): Promise<string> => {
+    async (event: IpcMainInvokeEvent, projectId: string): Promise<string> => {
       return getProjectSkillsPath(projectId);
     }
   );
@@ -462,7 +494,12 @@ export function setupSkillsIPC(): void {
   ipcMain.handle(
     "skills:scanGlobal",
     async (): Promise<
-      Array<{ path: string; name: string; description: string; bundled?: boolean }>
+      Array<{
+        path: string;
+        name: string;
+        description: string;
+        bundled?: boolean;
+      }>
     > => {
       log.info("[Skills Handler] Scanning for available skills");
 

@@ -368,7 +368,7 @@ describe("toSequenceStructure", () => {
   });
 
   it("returns null for empty sequences", () => {
-    const source = `<div>No sequences</div>`;
+    const source = "<div>No sequences</div>";
 
     const parsed = extractSequencesFromSource(source);
     const structure = toSequenceStructure(parsed);
@@ -379,21 +379,21 @@ describe("toSequenceStructure", () => {
 
 describe("hasDynamicValues", () => {
   it("returns true when from is dynamic", () => {
-    const source = `<Sequence from={x} durationInFrames={60} />`;
+    const source = "<Sequence from={x} durationInFrames={60} />";
     const parsed = extractSequencesFromSource(source);
 
     expect(hasDynamicValues(parsed)).toBe(true);
   });
 
   it("returns true when durationInFrames is dynamic", () => {
-    const source = `<Sequence durationInFrames={DURATION} />`;
+    const source = "<Sequence durationInFrames={DURATION} />";
     const parsed = extractSequencesFromSource(source);
 
     expect(hasDynamicValues(parsed)).toBe(true);
   });
 
   it("returns false when all values are static", () => {
-    const source = `<Sequence from={0} durationInFrames={60} />`;
+    const source = "<Sequence from={0} durationInFrames={60} />";
     const parsed = extractSequencesFromSource(source);
 
     expect(hasDynamicValues(parsed)).toBe(false);

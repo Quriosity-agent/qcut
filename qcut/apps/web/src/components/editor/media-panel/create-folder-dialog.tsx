@@ -48,7 +48,9 @@ export function CreateFolderDialog({
     }
 
     if (trimmed.length > FOLDER_NAME_MAX_LENGTH) {
-      toast.error(`Folder name must be ${FOLDER_NAME_MAX_LENGTH} characters or less`);
+      toast.error(
+        `Folder name must be ${FOLDER_NAME_MAX_LENGTH} characters or less`
+      );
       return;
     }
 
@@ -110,11 +112,7 @@ export function CreateFolderDialog({
           >
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={handleCreate}
-            disabled={!name.trim()}
-          >
+          <Button type="button" onClick={handleCreate} disabled={!name.trim()}>
             Create
           </Button>
         </DialogFooter>

@@ -2,7 +2,13 @@ import { MediaType } from "@/stores/media-store";
 import { generateUUID } from "@/lib/utils";
 
 /** Valid track types in the video editor timeline */
-export type TrackType = "media" | "text" | "audio" | "sticker" | "captions" | "remotion";
+export type TrackType =
+  | "media"
+  | "text"
+  | "audio"
+  | "sticker"
+  | "captions"
+  | "remotion";
 
 /**
  * Base interface for all timeline elements
@@ -219,12 +225,12 @@ export interface TimelineTrack {
 export function sortTracksByOrder(tracks: TimelineTrack[]): TimelineTrack[] {
   // Define track type priority (lower = higher in the UI)
   const trackPriority: Record<TrackType, number> = {
-    text: 1,      // Text on top
-    captions: 2,  // Captions below text
-    remotion: 3,  // Remotion below captions (overlay layer)
-    sticker: 4,   // Stickers below remotion
-    media: 5,     // Media tracks
-    audio: 6,     // Audio at bottom
+    text: 1, // Text on top
+    captions: 2, // Captions below text
+    remotion: 3, // Remotion below captions (overlay layer)
+    sticker: 4, // Stickers below remotion
+    media: 5, // Media tracks
+    audio: 6, // Audio at bottom
   };
 
   return [...tracks].sort((a, b) => {
@@ -322,42 +328,54 @@ export function validateElementTrackCompatibility(
 /**
  * Type guard to check if an element is a MediaElement
  */
-export function isMediaElement(element: TimelineElement): element is MediaElement {
+export function isMediaElement(
+  element: TimelineElement
+): element is MediaElement {
   return element.type === "media";
 }
 
 /**
  * Type guard to check if an element is a TextElement
  */
-export function isTextElement(element: TimelineElement): element is TextElement {
+export function isTextElement(
+  element: TimelineElement
+): element is TextElement {
   return element.type === "text";
 }
 
 /**
  * Type guard to check if an element is a StickerElement
  */
-export function isStickerElement(element: TimelineElement): element is StickerElement {
+export function isStickerElement(
+  element: TimelineElement
+): element is StickerElement {
   return element.type === "sticker";
 }
 
 /**
  * Type guard to check if an element is a CaptionElement
  */
-export function isCaptionElement(element: TimelineElement): element is CaptionElement {
+export function isCaptionElement(
+  element: TimelineElement
+): element is CaptionElement {
   return element.type === "captions";
 }
 
 /**
  * Type guard to check if an element is a RemotionElement
  */
-export function isRemotionElement(element: TimelineElement): element is RemotionElement {
+export function isRemotionElement(
+  element: TimelineElement
+): element is RemotionElement {
   return element.type === "remotion";
 }
 
 /**
  * Get all Remotion elements from a list of tracks
  */
-export function getRemotionElements(tracks: TimelineTrack[]): RemotionElement[] {
+export function getRemotionElements(
+  tracks: TimelineTrack[]
+): RemotionElement[] {
   const remotionElements: RemotionElement[] = [];
   for (const track of tracks) {
     for (const element of track.elements) {
@@ -378,7 +396,9 @@ export function getActiveRemotionElements(
 ): RemotionElement[] {
   return getRemotionElements(tracks).filter((element) => {
     const effectiveStart = element.startTime;
-    const effectiveEnd = element.startTime + (element.duration - element.trimStart - element.trimEnd);
+    const effectiveEnd =
+      element.startTime +
+      (element.duration - element.trimStart - element.trimEnd);
     return currentTime >= effectiveStart && currentTime < effectiveEnd;
   });
 }

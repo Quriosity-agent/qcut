@@ -10,14 +10,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import {
-  FolderOpen,
-  Layers,
-  Loader2,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
+import { FolderOpen, Layers, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +25,10 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useRemotionStore } from "@/stores/remotion-store";
-import type { RemotionComponentDefinition, RemotionComponentCategory } from "@/lib/remotion/types";
+import type {
+  RemotionComponentDefinition,
+  RemotionComponentCategory,
+} from "@/lib/remotion/types";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { ComponentCard } from "./component-card";
@@ -53,15 +49,27 @@ export { FolderImportDialog } from "./folder-import-dialog";
 // Category Configuration
 // ============================================================================
 
-const CATEGORY_CONFIG: Record<RemotionComponentCategory, { label: string; description: string }> = {
-  animation: { label: "Animations", description: "Animated graphics and motion effects" },
-  scene: { label: "Scenes", description: "Full-screen compositions and backgrounds" },
+const CATEGORY_CONFIG: Record<
+  RemotionComponentCategory,
+  { label: string; description: string }
+> = {
+  animation: {
+    label: "Animations",
+    description: "Animated graphics and motion effects",
+  },
+  scene: {
+    label: "Scenes",
+    description: "Full-screen compositions and backgrounds",
+  },
   effect: { label: "Effects", description: "Visual effects and overlays" },
   template: { label: "Templates", description: "Pre-built video templates" },
   transition: { label: "Transitions", description: "Scene transition effects" },
   text: { label: "Text", description: "Animated text and typography" },
   intro: { label: "Intros", description: "Video intros and outros" },
-  social: { label: "Social", description: "Social media formats (portrait/square)" },
+  social: {
+    label: "Social",
+    description: "Social media formats (portrait/square)",
+  },
   custom: { label: "Custom", description: "Custom imported components" },
 };
 
@@ -93,7 +101,12 @@ interface CategorySectionProps {
   onPreview?: (component: RemotionComponentDefinition) => void;
 }
 
-function CategorySection({ category, components, onAdd, onPreview }: CategorySectionProps) {
+function CategorySection({
+  category,
+  components,
+  onAdd,
+  onPreview,
+}: CategorySectionProps) {
   const config = CATEGORY_CONFIG[category];
 
   if (components.length === 0) {
@@ -142,8 +155,9 @@ function EmptyState({ searchQuery }: { searchQuery?: string }) {
           <Layers className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-medium">No Remotion components</p>
           <p className="text-muted-foreground text-sm max-w-sm">
-            Remotion components will appear here once registered.
-            Components can be added from the built-in library or imported from your Remotion projects.
+            Remotion components will appear here once registered. Components can
+            be added from the built-in library or imported from your Remotion
+            projects.
           </p>
         </>
       )}
@@ -157,14 +171,19 @@ function EmptyState({ searchQuery }: { searchQuery?: string }) {
 
 export function RemotionView() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<"all" | RemotionComponentCategory>("all");
-  const [previewComponent, setPreviewComponent] = useState<RemotionComponentDefinition | null>(null);
+  const [activeCategory, setActiveCategory] = useState<
+    "all" | RemotionComponentCategory
+  >("all");
+  const [previewComponent, setPreviewComponent] =
+    useState<RemotionComponentDefinition | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isFolderImportDialogOpen, setIsFolderImportDialogOpen] = useState(false);
+  const [isFolderImportDialogOpen, setIsFolderImportDialogOpen] =
+    useState(false);
 
   // Get store state
-  const { registeredComponents, isLoading, isInitialized, initialize } = useRemotionStore();
+  const { registeredComponents, isLoading, isInitialized, initialize } =
+    useRemotionStore();
   const { addTrack, addElementToTrack, tracks } = useTimelineStore();
   const fps = useProjectStore((state) => state.activeProject?.fps ?? 30);
 
@@ -190,7 +209,10 @@ export function RemotionView() {
 
   // Group components by category
   const componentsByCategory = useMemo(() => {
-    const grouped: Record<RemotionComponentCategory, RemotionComponentDefinition[]> = {
+    const grouped: Record<
+      RemotionComponentCategory,
+      RemotionComponentDefinition[]
+    > = {
       animation: [],
       scene: [],
       effect: [],
@@ -213,14 +235,14 @@ export function RemotionView() {
   const handleAddComponent = useCallback(
     (component: RemotionComponentDefinition) => {
       // Find or create a Remotion track
-      let remotionTrack = tracks.find((t) => t.type === "remotion");
+      const remotionTrack = tracks.find((t) => t.type === "remotion");
       let trackId: string;
 
-      if (!remotionTrack) {
+      if (remotionTrack) {
+        trackId = remotionTrack.id;
+      } else {
         // Create a new Remotion track - addTrack takes TrackType and returns trackId
         trackId = addTrack("remotion");
-      } else {
-        trackId = remotionTrack.id;
       }
 
       // Calculate duration in seconds
@@ -245,10 +267,13 @@ export function RemotionView() {
   );
 
   // Handle preview
-  const handlePreview = useCallback((component: RemotionComponentDefinition) => {
-    setPreviewComponent(component);
-    setIsPreviewOpen(true);
-  }, []);
+  const handlePreview = useCallback(
+    (component: RemotionComponentDefinition) => {
+      setPreviewComponent(component);
+      setIsPreviewOpen(true);
+    },
+    []
+  );
 
   // Handle import success
   const handleImportSuccess = useCallback((componentId: string) => {
@@ -257,7 +282,9 @@ export function RemotionView() {
 
   // Handle folder import success
   const handleFolderImportSuccess = useCallback((componentIds: string[]) => {
-    toast.info(`${componentIds.length} component${componentIds.length !== 1 ? "s" : ""} imported and ready to use`);
+    toast.info(
+      `${componentIds.length} component${componentIds.length !== 1 ? "s" : ""} imported and ready to use`
+    );
   }, []);
 
   // Initialize store if needed
@@ -345,10 +372,17 @@ export function RemotionView() {
         ) : (
           <Tabs
             value={activeCategory}
-            onValueChange={(v) => setActiveCategory(v as "all" | RemotionComponentCategory)}
+            onValueChange={(v) =>
+              setActiveCategory(v as "all" | RemotionComponentCategory)
+            }
             className="h-full flex flex-col"
           >
-            <TabsList className="mx-3 mt-2 grid" style={{ gridTemplateColumns: `repeat(${TAB_CATEGORIES.length}, 1fr)` }}>
+            <TabsList
+              className="mx-3 mt-2 grid"
+              style={{
+                gridTemplateColumns: `repeat(${TAB_CATEGORIES.length}, 1fr)`,
+              }}
+            >
               {TAB_CATEGORIES.map((tab) => (
                 <TabsTrigger key={tab} value={tab} className="text-xs">
                   {tab === "all" ? "All" : CATEGORY_CONFIG[tab].label}
@@ -373,7 +407,11 @@ export function RemotionView() {
             </TabsContent>
 
             {CATEGORY_ORDER.map((category) => (
-              <TabsContent key={category} value={category} className="flex-1 mt-0">
+              <TabsContent
+                key={category}
+                value={category}
+                className="flex-1 mt-0"
+              >
                 <ScrollArea className="h-full">
                   <div className="p-3">
                     {componentsByCategory[category].length > 0 ? (
@@ -391,7 +429,8 @@ export function RemotionView() {
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <Layers className="mb-4 h-8 w-8 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          No {CATEGORY_CONFIG[category].label.toLowerCase()} available
+                          No {CATEGORY_CONFIG[category].label.toLowerCase()}{" "}
+                          available
                         </p>
                       </div>
                     )}
