@@ -65,7 +65,9 @@ export async function getFalApiKeyAsync(): Promise<string | undefined> {
             return keys.falApiKey;
           }
         } catch (error) {
-          console.error("[getFalApiKeyAsync] Failed to load FAL API key from Electron storage:", error);
+          handleAIServiceError(error, "Load FAL API key", {
+            operation: "electronKeyFetch",
+          });
         }
         return null;
       })();
