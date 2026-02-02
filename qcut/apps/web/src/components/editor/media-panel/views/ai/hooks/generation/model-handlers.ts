@@ -8,6 +8,7 @@
  */
 
 import { falAIClient } from "@/lib/fal-ai-client";
+import { debugLogger } from "@/lib/debug-logger";
 import {
   generateVideo,
   generateVideoFromImage,
@@ -1277,15 +1278,19 @@ export async function handleKlingO1Ref2Video(
     };
   }
 
-  console.log(
-    `  🎭 Calling generateAvatarVideo for ${ctx.modelId} with reference image...`
-  );
+  debugLogger.log("model-handlers", "AVATAR_GENERATE_START", {
+    modelId: ctx.modelId,
+    hasReferenceImage: true,
+  });
   const response = await generateAvatarVideo({
     model: ctx.modelId,
     characterImage: firstRefImage,
     prompt: ctx.prompt || undefined,
   });
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "AVATAR_GENERATE_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
@@ -1315,7 +1320,11 @@ export async function handleWAN26Ref2Video(
       const keys = await window.electronAPI.apiKeys.get();
       falApiKey = keys?.falApiKey;
     } catch (error) {
-      console.error("[model-handlers] Failed to get FAL API key from Electron storage:", error);
+      debugLogger.error(
+        "model-handlers",
+        "Failed to get FAL API key from Electron storage",
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
   if (!falApiKey) {
@@ -1366,7 +1375,9 @@ export async function handleWAN26Ref2Video(
     });
   }
 
-  console.log(`  🎬 Calling generateWAN26RefVideo for ${ctx.modelId}...`);
+  debugLogger.log("model-handlers", "WAN26_REF_VIDEO_START", {
+    modelId: ctx.modelId,
+  });
   const response = await generateWAN26RefVideo({
     model: ctx.modelId,
     prompt: ctx.prompt,
@@ -1379,7 +1390,10 @@ export async function handleWAN26Ref2Video(
     seed: settings.wan26RefSeed,
     enable_safety_checker: settings.wan26RefEnableSafetyChecker,
   });
-  console.log("  ✅ generateWAN26RefVideo returned:", response);
+  debugLogger.log("model-handlers", "WAN26_REF_VIDEO_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
