@@ -92,34 +92,75 @@ export type MultiModelGenerationResult = Record<string, GenerationResult>;
 class FalAIClient {
   private apiKey: string | null = null;
   private baseUrl = "https://fal.run";
+  private apiKeyInitPromise: Promise<void> | null = null;
 
   constructor() {
-    // Try to get API key from environment variables
-    // TODO: Move API key retrieval to a secure backend/Electron IPC channel so the key never ships to the browser bundle.
-    // Short-term mitigation: avoid logging the key and rely on server-side rate limiting as documented in ops runbook.
+    // Try to get API key from environment variables first
     this.apiKey =
       import.meta.env.VITE_FAL_API_KEY ||
       (typeof window !== "undefined" &&
         (window as any).process?.env?.FAL_API_KEY) ||
       null;
 
+    // If no env var, try Electron storage asynchronously
+    if (!this.apiKey) {
+      this.apiKeyInitPromise = this.initApiKeyFromElectron();
+    }
+  }
+
+  /**
+   * Initialize API key from Electron storage if available.
+   * Called lazily when env var is not set.
+   */
+  private async initApiKeyFromElectron(): Promise<void> {
+    if (typeof window !== "undefined" && window.electronAPI?.apiKeys) {
+      try {
+        const keys = await window.electronAPI.apiKeys.get();
+        if (keys?.falApiKey) {
+          this.apiKey = keys.falApiKey;
+          debugLogger.log(FAL_LOG_COMPONENT, "API_KEY_LOADED_FROM_ELECTRON", {
+            keyLength: keys.falApiKey.length,
+          });
+        }
+      } catch (error) {
+        debugLogger.error(
+          FAL_LOG_COMPONENT,
+          "API_KEY_ELECTRON_LOAD_FAILED",
+          error instanceof Error ? error.message : "Unknown error"
+        );
+      }
+    }
+
     if (!this.apiKey) {
       debugLogger.error(
         FAL_LOG_COMPONENT,
         "API_KEY_MISSING",
-        "FAL API key not found at initialization. Set VITE_FAL_API_KEY or configure it in Settings."
+        "FAL API key not found. Set VITE_FAL_API_KEY or configure it in Settings."
       );
     }
+  }
+
+  /**
+   * Ensure API key is loaded before making requests.
+   * Awaits the Electron storage init if it's in progress.
+   */
+  private async ensureApiKey(): Promise<string | null> {
+    if (this.apiKeyInitPromise) {
+      await this.apiKeyInitPromise;
+      this.apiKeyInitPromise = null;
+    }
+    return this.apiKey;
   }
 
   private async makeRequest<T = FalImageResponse>(
     endpoint: string,
     params: Record<string, unknown>
   ): Promise<T> {
-    // Check if API key is available
-    if (!this.apiKey) {
+    // Ensure API key is loaded (may be async from Electron storage)
+    const apiKey = await this.ensureApiKey();
+    if (!apiKey) {
       throw new Error(
-        "FAL API key is required for text-to-image generation. Please set VITE_FAL_API_KEY environment variable."
+        "FAL API key is required. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
       );
     }
 
@@ -138,7 +179,7 @@ class FalAIClient {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Key ${this.apiKey}`,
+        "Authorization": `Key ${apiKey}`,
       },
       body: JSON.stringify(params),
     });
@@ -204,12 +245,14 @@ class FalAIClient {
     file: File,
     fileType: FalUploadFileType = "asset"
   ): Promise<string> {
-    if (!this.apiKey) {
+    // Ensure API key is loaded (may be async from Electron storage)
+    const apiKey = await this.ensureApiKey();
+    if (!apiKey) {
       throw new Error(
-        "FAL API key is required for asset upload. Please set the VITE_FAL_API_KEY environment variable."
+        "FAL API key is required for asset upload. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
       );
     }
-    return uploadFileToFalCore(file, fileType, this.apiKey);
+    return uploadFileToFalCore(file, fileType, apiKey);
   }
 
   /**
@@ -613,17 +656,20 @@ class FalAIClient {
   // API key management
   setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
+    this.apiKeyInitPromise = null; // Clear any pending init
     debugLogger.log(FAL_LOG_COMPONENT, "API_KEY_UPDATED", {
       keyLength: apiKey?.length ?? 0,
     });
   }
 
-  hasApiKey(): boolean {
-    return !!this.apiKey;
+  async hasApiKey(): Promise<boolean> {
+    const apiKey = await this.ensureApiKey();
+    return !!apiKey;
   }
 
-  getApiKeyStatus(): { hasKey: boolean; source: string } {
-    if (!this.apiKey) {
+  async getApiKeyStatus(): Promise<{ hasKey: boolean; source: string }> {
+    const apiKey = await this.ensureApiKey();
+    if (!apiKey) {
       return { hasKey: false, source: "none" };
     }
 
@@ -635,6 +681,8 @@ class FalAIClient {
       (window as any).process?.env?.FAL_API_KEY
     )
       source = "window.process.env.FAL_API_KEY";
+    else if (typeof window !== "undefined" && window.electronAPI?.apiKeys)
+      source = "electron_storage";
     else source = "manually_set";
 
     return { hasKey: true, source };
@@ -644,7 +692,8 @@ class FalAIClient {
   async testModelAvailability(modelKey: string): Promise<boolean> {
     try {
       // Check API key first
-      if (!this.hasApiKey()) {
+      const hasKey = await this.hasApiKey();
+      if (!hasKey) {
         debugLogger.warn(FAL_LOG_COMPONENT, "MODEL_TEST_SKIPPED_NO_KEY", {
           modelKey,
         });
