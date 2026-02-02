@@ -960,6 +960,12 @@ async function pollImageEditStatus(
   throw new Error("Maximum polling attempts reached");
 }
 
+/**
+ * Maps FAL API status response to a normalized progress update object.
+ * @param status - The status response from FAL API
+ * @param elapsedTime - Time elapsed since the request started (in seconds)
+ * @returns Normalized progress update with status, progress percentage, and message
+ */
 function mapEditStatusToProgress(status: any, elapsedTime: number) {
   const baseUpdate = { elapsedTime };
 
@@ -1004,10 +1010,20 @@ function mapEditStatusToProgress(status: any, elapsedTime: number) {
   }
 }
 
+/**
+ * Pauses execution for a specified duration.
+ * @param ms - Duration to sleep in milliseconds
+ * @returns Promise that resolves after the specified duration
+ */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Generates a unique job ID for tracking image operations.
+ * @param prefix - Type of operation ("edit" or "upscale"), defaults to "edit"
+ * @returns Unique job ID string in format: {prefix}_{random}_{timestamp}
+ */
 function generateJobId(prefix: "edit" | "upscale" = "edit"): string {
   return (
     `${prefix}_` + Math.random().toString(36).substr(2, 9) + "_" + Date.now()
