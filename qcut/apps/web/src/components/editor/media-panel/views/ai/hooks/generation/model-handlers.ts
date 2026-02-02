@@ -1413,16 +1413,20 @@ export async function handleKlingO1V2V(
     };
   }
 
-  console.log(
-    `  🎬 Calling generateKlingO1Video for ${ctx.modelId} with source video...`
-  );
+  debugLogger.log("model-handlers", "KLING_O1_V2V_START", {
+    modelId: ctx.modelId,
+    hasSourceVideo: true,
+  });
   const response = await generateKlingO1Video({
     model: ctx.modelId,
     prompt: ctx.prompt,
     sourceVideo: settings.sourceVideo,
     duration: 5,
   });
-  console.log("  ✅ generateKlingO1Video returned:", response);
+  debugLogger.log("model-handlers", "KLING_O1_V2V_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
@@ -1442,8 +1446,10 @@ export async function handleKlingAvatarV2(
     };
   }
 
-  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
-  console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_START", {
+    modelId: ctx.modelId,
+    hasAudioFile: !!settings.audioFile,
+  });
 
   const [characterImageUrl, audioUrl] = await Promise.all([
     settings.uploadImageToFal(settings.avatarImage),
@@ -1456,9 +1462,9 @@ export async function handleKlingAvatarV2(
     throw new Error("Audio file is required for Kling Avatar v2");
   }
 
-  console.log("  ✅ Files uploaded to FAL storage");
-  console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
-  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_FILES_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   const response = await generateAvatarVideo({
     model: ctx.modelId,
@@ -1470,7 +1476,10 @@ export async function handleKlingAvatarV2(
     audioUrl,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1489,7 +1498,9 @@ export async function handleGenericAvatar(
     };
   }
 
-  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
+  debugLogger.log("model-handlers", "GENERIC_AVATAR_START", {
+    modelId: ctx.modelId,
+  });
 
   const response = await generateAvatarVideo({
     model: ctx.modelId,
@@ -1500,7 +1511,10 @@ export async function handleGenericAvatar(
     audioDuration: settings.audioDuration ?? undefined,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "GENERIC_AVATAR_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1528,10 +1542,9 @@ export async function handleSyncLipsyncReact1(
     };
   }
 
-  console.log(`  🎤 Calling generateAvatarVideo for ${ctx.modelId}...`);
-  console.log(
-    "  📤 Uploading files to FAL storage for Sync Lipsync React-1..."
-  );
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1545,9 +1558,9 @@ export async function handleSyncLipsyncReact1(
     falAIClient.uploadAudioToFal(settings.audioFile),
   ]);
 
-  console.log("  ✅ Files uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
-  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_FILES_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1573,7 +1586,10 @@ export async function handleSyncLipsyncReact1(
     message: `Lip-synced video generated with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1593,8 +1609,9 @@ export async function handleVeo31FastExtendVideo(
     };
   }
 
-  console.log(`  🎬 Calling Veo 3.1 Fast Extend-Video for ${ctx.modelId}...`);
-  console.log("  📤 Uploading video to FAL storage...");
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1604,8 +1621,9 @@ export async function handleVeo31FastExtendVideo(
 
   const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
 
-  console.log("  ✅ Video uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_VIDEO_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1629,7 +1647,10 @@ export async function handleVeo31FastExtendVideo(
     message: `Video extended with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ Veo 3.1 Fast Extend-Video returned:", response);
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1649,10 +1670,9 @@ export async function handleVeo31ExtendVideo(
     };
   }
 
-  console.log(
-    `  🎬 Calling Veo 3.1 Standard Extend-Video for ${ctx.modelId}...`
-  );
-  console.log("  📤 Uploading video to FAL storage...");
+  debugLogger.log("model-handlers", "VEO31_EXTEND_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1662,8 +1682,9 @@ export async function handleVeo31ExtendVideo(
 
   const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
 
-  console.log("  ✅ Video uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "VEO31_EXTEND_VIDEO_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1687,7 +1708,10 @@ export async function handleVeo31ExtendVideo(
     message: `Video extended with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ Veo 3.1 Standard Extend-Video returned:", response);
+  debugLogger.log("model-handlers", "VEO31_EXTEND_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 

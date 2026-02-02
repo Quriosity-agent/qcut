@@ -428,7 +428,7 @@ export const I2V_MODELS = {
       "Animate images with audio generation and multi-resolution support",
     price: "0.07-0.154/s",
     resolution: "720p",
-    max_duration: 5,
+    max_duration: 16,
     category: "image",
     endpoints: {
       image_to_video: "fal-ai/vidu/q3/image-to-video",
@@ -439,7 +439,7 @@ export const I2V_MODELS = {
       generate_audio: true,
     },
     supportedResolutions: ["360p", "540p", "720p", "1080p"],
-    supportedDurations: [5],
+    supportedDurations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     perSecondPricing: {
       "360p": 0.07,
       "540p": 0.07,

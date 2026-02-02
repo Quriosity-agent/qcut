@@ -318,7 +318,7 @@ export const T2V_MODELS = {
       "High-quality text-to-video with audio generation and multi-resolution support",
     price: "0.07-0.154/s",
     resolution: "720p",
-    max_duration: 5,
+    max_duration: 16,
     category: "text",
     endpoints: {
       text_to_video: "fal-ai/vidu/q3/text-to-video",
@@ -329,7 +329,7 @@ export const T2V_MODELS = {
       aspect_ratio: "16:9",
     },
     supportedResolutions: ["360p", "540p", "720p", "1080p"],
-    supportedDurations: [5],
+    supportedDurations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     supportedAspectRatios: ["16:9", "9:16", "4:3", "3:4", "1:1"],
     perSecondPricing: {
       "360p": 0.07,
@@ -671,7 +671,9 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       supportsResolution: true,
       supportedResolutions: ["360p", "540p", "720p", "1080p"],
       supportsDuration: true,
-      supportedDurations: [5],
+      supportedDurations: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      ],
       supportsNegativePrompt: false,
       supportsPromptExpansion: false,
       supportsSeed: true,
