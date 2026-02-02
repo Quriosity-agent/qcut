@@ -718,8 +718,10 @@ interface ElectronAPI {
         settings: Partial<ProjectSettings>
       ) => Promise<void>;
       getStats: (projectId: string) => Promise<ProjectStats>;
-      onStatsRequest: (callback: () => void) => void;
-      sendStatsResponse: (stats: ProjectStats) => void;
+      onStatsRequest: (
+        callback: (projectId: string, requestId: string) => void
+      ) => void;
+      sendStatsResponse: (stats: ProjectStats, requestId: string) => void;
       onUpdated: (
         callback: (
           projectId: string,
@@ -1396,12 +1398,17 @@ const electronAPI: ElectronAPI = {
         ),
       getStats: (projectId: string): Promise<ProjectStats> =>
         ipcRenderer.invoke("claude:project:getStats", projectId),
-      onStatsRequest: (callback: () => void): void => {
+      onStatsRequest: (
+        callback: (projectId: string, requestId: string) => void
+      ): void => {
         ipcRenderer.removeAllListeners("claude:project:statsRequest");
-        ipcRenderer.on("claude:project:statsRequest", () => callback());
+        ipcRenderer.on(
+          "claude:project:statsRequest",
+          (_event, { projectId, requestId }) => callback(projectId, requestId)
+        );
       },
-      sendStatsResponse: (stats: ProjectStats): void => {
-        ipcRenderer.send("claude:project:statsResponse", stats);
+      sendStatsResponse: (stats: ProjectStats, requestId: string): void => {
+        ipcRenderer.send("claude:project:statsResponse", stats, requestId);
       },
       onUpdated: (
         callback: (

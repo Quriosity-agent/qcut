@@ -102,14 +102,14 @@ export function PtyTerminalView() {
                   <SelectItem key={provider.id} value={provider.id}>
                     <div className="flex items-center gap-2">
                       {provider.id === "gemini" && (
-                        <Sparkles className="h-3 w-3" />
+                        <Sparkles className="h-3 w-3" aria-hidden="true" />
                       )}
-                      {provider.id === "codex" && <Bot className="h-3 w-3" />}
+                      {provider.id === "codex" && <Bot className="h-3 w-3" aria-hidden="true" />}
                       {provider.id === "claude" && (
-                        <MessageSquare className="h-3 w-3" />
+                        <MessageSquare className="h-3 w-3" aria-hidden="true" />
                       )}
                       {provider.id === "shell" && (
-                        <TerminalIcon className="h-3 w-3" />
+                        <TerminalIcon className="h-3 w-3" aria-hidden="true" />
                       )}
                       <span>{provider.name}</span>
                     </div>
@@ -205,7 +205,7 @@ export function PtyTerminalView() {
                 className="ml-0.5 text-purple-400 hover:text-destructive transition-colors"
                 aria-label="Clear skill context"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </button>
             </div>
           )}

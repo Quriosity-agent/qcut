@@ -99,8 +99,9 @@ export const Dissolve: React.FC<Partial<DissolveProps>> = ({
   const { durationInFrames } = useVideoConfig();
   const easingFn = getEasingFunction(easing);
 
-  // Calculate actual dissolve duration
-  const actualDuration = dissolveDuration ?? durationInFrames - startDelay;
+  // Calculate actual dissolve duration (ensure at least 1 to avoid zero/negative interpolation)
+  const actualDuration =
+    dissolveDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress (0 to 1)

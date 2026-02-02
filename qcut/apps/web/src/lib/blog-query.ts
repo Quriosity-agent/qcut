@@ -15,11 +15,21 @@ import rehypeSanitize from "rehype-sanitize";
 const url =
   (import.meta as unknown as { env: Record<string, string> }).env
     ?.VITE_MARBLE_API_URL ?? "https://api.marblecms.com";
-const key =
-  (import.meta as unknown as { env: Record<string, string> }).env
-    ?.VITE_MARBLE_WORKSPACE_KEY ?? "cmd4iw9mm0006l804kwqv0k46";
+const key = (import.meta as unknown as { env: Record<string, string> }).env
+  ?.VITE_MARBLE_WORKSPACE_KEY;
+
+if (!key) {
+  console.warn(
+    "[Blog] VITE_MARBLE_WORKSPACE_KEY is not set. Blog features will be unavailable."
+  );
+}
 
 async function fetchFromMarble<T>(endpoint: string): Promise<T> {
+  if (!key) {
+    throw new Error(
+      "VITE_MARBLE_WORKSPACE_KEY is not set. Cannot fetch blog content."
+    );
+  }
   try {
     const response = await fetch(`${url}/${key}/${endpoint}`);
     if (!response.ok) {

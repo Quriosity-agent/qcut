@@ -107,10 +107,7 @@ export class RemotionPreRenderer {
    */
   private detectRenderMode(): RenderMode {
     // Check if Electron API is available
-    if (
-      typeof window !== "undefined" &&
-      (window as any).electronAPI?.remotion
-    ) {
+    if (typeof window !== "undefined" && window.electronAPI?.remotion) {
       return "electron";
     }
     return "canvas";
@@ -221,7 +218,7 @@ export class RemotionPreRenderer {
     onProgress?: PreRenderProgressCallback
   ): Promise<Map<number, string>> {
     const framePaths = new Map<number, string>();
-    const electronAPI = (window as any).electronAPI?.remotion;
+    const electronAPI = window.electronAPI?.remotion;
 
     if (!electronAPI) {
       throw new Error("Electron Remotion API not available");
@@ -335,7 +332,7 @@ export class RemotionPreRenderer {
    * Clean up rendered frames for a session
    */
   async cleanup(sessionId: string): Promise<void> {
-    const electronAPI = (window as any).electronAPI?.remotion;
+    const electronAPI = window.electronAPI?.remotion;
 
     if (electronAPI?.cleanup) {
       await electronAPI.cleanup(sessionId);

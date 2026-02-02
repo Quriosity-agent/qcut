@@ -118,8 +118,9 @@ export class BinaryManager {
           "- running in fallback mode"
         );
       }
-    } catch (error) {
-      console.error("[BinaryManager] Failed to load manifest:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("[BinaryManager] Failed to load manifest:", errorMessage);
     }
   }
 
@@ -264,10 +265,11 @@ export class BinaryManager {
       }
 
       return isValid;
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(
         `[BinaryManager] Failed to verify checksum for ${filePath}:`,
-        error
+        errorMessage
       );
       this.checksumCache.set(cacheKey, false);
       return false;

@@ -411,12 +411,14 @@ export function MediaView() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <Button
+                type="button"
                 variant="outline"
                 size="lg"
                 onClick={handleFileSelect}
                 disabled={isProcessing}
                 className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
                 data-testid="import-media-button"
+                aria-label={isProcessing ? "Importing media" : "Import media"}
               >
                 {isProcessing ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -576,8 +578,16 @@ export function MediaView() {
                             e.stopPropagation();
                             const path = item.localPath || item.url;
                             if (path && !path.startsWith("blob:")) {
-                              await navigator.clipboard.writeText(path);
-                              toast.success("Path copied to clipboard");
+                              try {
+                                await navigator.clipboard.writeText(path);
+                                toast.success("Path copied to clipboard");
+                              } catch (error) {
+                                debugError(
+                                  "[Media View] Clipboard copy failed:",
+                                  error
+                                );
+                                toast.error("Failed to copy path");
+                              }
                             } else {
                               toast.error("No file path available");
                             }
@@ -593,9 +603,17 @@ export function MediaView() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (window.electronAPI?.shell?.showItemInFolder) {
-                                window.electronAPI.shell.showItemInFolder(
-                                  item.localPath!
-                                );
+                                try {
+                                  window.electronAPI.shell.showItemInFolder(
+                                    item.localPath!
+                                  );
+                                } catch (error) {
+                                  debugError(
+                                    "[Media View] Open in Explorer failed:",
+                                    error
+                                  );
+                                  toast.error("Failed to open in Explorer");
+                                }
                               } else {
                                 toast.error("Only available in desktop app");
                               }

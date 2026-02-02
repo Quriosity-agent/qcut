@@ -117,8 +117,9 @@ export const Zoom: React.FC<Partial<ZoomProps>> = ({
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
 
-  // Calculate actual zoom duration
-  const actualDuration = zoomDuration ?? durationInFrames - startDelay;
+  // Calculate actual zoom duration (ensure at least 1 to avoid zero/negative interpolation)
+  const actualDuration =
+    zoomDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress based on animation type

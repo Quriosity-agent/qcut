@@ -92,8 +92,9 @@ export const Slide: React.FC<Partial<SlideProps>> = ({
   const frame = useCurrentFrame();
   const { durationInFrames, width, height, fps } = useVideoConfig();
 
-  // Calculate actual slide duration
-  const actualDuration = slideDuration ?? durationInFrames - startDelay;
+  // Calculate actual slide duration (ensure at least 1 to avoid zero/negative interpolation)
+  const actualDuration =
+    slideDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress based on animation type

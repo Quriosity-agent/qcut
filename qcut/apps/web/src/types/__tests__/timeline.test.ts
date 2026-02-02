@@ -130,7 +130,7 @@ function createTrack(
   overrides: Partial<TimelineTrack> = {}
 ): TimelineTrack {
   return {
-    id: `track-${type}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `track-${type}-${Math.random().toString(36).slice(2, 11)}`,
     name: `${type} Track`,
     type,
     elements,

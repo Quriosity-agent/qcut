@@ -920,6 +920,41 @@ export interface ElectronAPI {
       folderPath: string
     ) => Promise<{ isValid: boolean; error?: string }>;
   };
+
+  /**
+   * Remotion pre-rendering operations
+   * Used for pre-rendering Remotion compositions in Electron
+   */
+  remotion?: {
+    /**
+     * Pre-render frames for a composition
+     * @param options - Pre-render options including element and render config
+     * @returns Pre-render result with success status and rendered frames
+     */
+    preRender: (options: {
+      elementId: string;
+      componentId: string;
+      props: Record<string, unknown>;
+      outputDir: string;
+      format: string;
+      quality: number;
+      width: number;
+      height: number;
+      fps: number;
+      totalFrames: number;
+      onProgress?: (frame: number) => void;
+    }) => Promise<{
+      success: boolean;
+      frames: Map<number, string>;
+      error?: string;
+    }>;
+
+    /**
+     * Cleanup pre-rendered frames
+     * @param sessionId - Session ID to cleanup
+     */
+    cleanup: (sessionId: string) => Promise<void>;
+  };
 }
 
 /**
