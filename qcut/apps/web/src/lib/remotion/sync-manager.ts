@@ -410,4 +410,4 @@ export function useSyncManager(config?: Partial<SyncConfig>) {
 // ============================================================================
 
 export { DEFAULT_SYNC_CONFIG };
-export type { SyncConfig, SyncState };
+// SyncConfig and SyncState types are exported from ./types
