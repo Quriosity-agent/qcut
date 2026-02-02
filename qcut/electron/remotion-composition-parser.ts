@@ -120,8 +120,7 @@ function extractImports(sourceCode: string): ImportInfo[] {
   const importRegex =
     /import\s+(?:(\w+)|(?:\{([^}]+)\}))\s+from\s+["']([^"']+)["']/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = importRegex.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(importRegex)) {
     const defaultImport = match[1];
     const namedImports = match[2];
     const importPath = match[3];
@@ -156,7 +155,7 @@ function extractImports(sourceCode: string): ImportInfo[] {
   // Also match: import DefaultName, { Named } from "path"
   const mixedImportRegex =
     /import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+["']([^"']+)["']/g;
-  while ((match = mixedImportRegex.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(mixedImportRegex)) {
     const defaultImport = match[1];
     const namedImports = match[2];
     const importPath = match[3];
@@ -254,10 +253,9 @@ function parseCompositions(
   // This regex captures the props section
   const compositionRegex = /<Composition\s+([^>]+?)(?:\/>|>)/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = compositionRegex.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(compositionRegex)) {
     const propsString = match[1];
-    const matchIndex = match.index;
+    const matchIndex = match.index ?? 0;
 
     // Calculate line number
     const lineNumber = sourceCode.substring(0, matchIndex).split("\n").length;
@@ -266,8 +264,7 @@ function parseCompositions(
     const propRegex = /(\w+)\s*=\s*(\{[^}]+\}|"[^"]*"|'[^']*'|\d+)/g;
     const props: Record<string, string> = {};
 
-    let propMatch: RegExpExecArray | null;
-    while ((propMatch = propRegex.exec(propsString)) !== null) {
+    for (const propMatch of propsString.matchAll(propRegex)) {
       props[propMatch[1]] = propMatch[2];
     }
 

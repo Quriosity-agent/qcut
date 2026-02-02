@@ -209,7 +209,7 @@ export function TerminalEmulator({
           try {
             fitAddon.fit();
             setDimensions(terminal.cols, terminal.rows);
-            void resize().catch(() => {
+            resize().catch(() => {
               // Ignore resize errors (e.g., during unmount or when PTY unavailable)
             });
           } catch {

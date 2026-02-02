@@ -136,8 +136,6 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
     const activeFrame = Math.max(0, frame - elementStart);
 
     let scale: number;
-    let rotation: number;
-    let opacity: number;
 
     switch (animationStyle) {
       case "zoom": {
@@ -210,7 +208,7 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
     }
 
     // Rotation animation
-    rotation = includeRotation
+    const rotation = includeRotation
       ? interpolate(activeFrame, [0, animationDuration], [initialRotation, 0], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
@@ -219,7 +217,7 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
       : 0;
 
     // Opacity animation
-    opacity = includeFade
+    const opacity = includeFade
       ? interpolate(activeFrame, [0, animationDuration / 3], [0, 1], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",

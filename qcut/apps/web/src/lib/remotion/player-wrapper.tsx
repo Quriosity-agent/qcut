@@ -507,6 +507,7 @@ export function RemotionPlayerError({
       </div>
       {onRetry && (
         <button
+          type="button"
           onClick={onRetry}
           style={{
             padding: "8px 16px",
