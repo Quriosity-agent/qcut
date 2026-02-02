@@ -92,8 +92,8 @@ find . -type f \( -name "*.mp4" -o -name "*.mov" -o -name "*.jpg" -o -name "*.pn
 # Create standard structure
 mkdir -p media/{imported,generated,temp} output cache skills docs
 
-# Move videos to imported (safe: copy then delete)
-cp *.mp4 *.mov *.webm media/imported/ 2>/dev/null && rm *.mp4 *.mov *.webm 2>/dev/null
+# Move videos to imported
+mv *.mp4 *.mov *.webm media/imported/ 2>/dev/null
 
 # Find large files (over 100MB)
 find . -type f -size +100M
