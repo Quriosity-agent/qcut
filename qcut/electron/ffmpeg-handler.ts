@@ -156,6 +156,31 @@ export function setupFFmpegIPC(): void {
         useDirectCopy = false,
       } = options;
 
+      // Early debug logging to diagnose export issues
+      debugLog("🔍 [FFMPEG HANDLER] ============================================");
+      debugLog("🔍 [FFMPEG HANDLER] Export options received:");
+      debugLog("🔍 [FFMPEG HANDLER]   - sessionId:", sessionId);
+      debugLog("🔍 [FFMPEG HANDLER]   - dimensions:", `${width}x${height}`);
+      debugLog("🔍 [FFMPEG HANDLER]   - fps:", fps);
+      debugLog("🔍 [FFMPEG HANDLER]   - quality:", quality);
+      debugLog("🔍 [FFMPEG HANDLER]   - duration:", duration);
+      debugLog("🔍 [FFMPEG HANDLER]   - useDirectCopy:", useDirectCopy);
+      debugLog("🔍 [FFMPEG HANDLER]   - useVideoInput:", options.useVideoInput);
+      debugLog("🔍 [FFMPEG HANDLER]   - videoInputPath:", options.videoInputPath);
+      debugLog("🔍 [FFMPEG HANDLER]   - videoSources count:", options.videoSources?.length || 0);
+      debugLog("🔍 [FFMPEG HANDLER]   - optimizationStrategy:", options.optimizationStrategy);
+      debugLog("🔍 [FFMPEG HANDLER]   - filterChain:", options.filterChain ? "present" : "none");
+      debugLog("🔍 [FFMPEG HANDLER]   - textFilterChain:", textFilterChain ? "present" : "none");
+      debugLog("🔍 [FFMPEG HANDLER]   - stickerFilterChain:", stickerFilterChain ? "present" : "none");
+      if (options.videoSources && options.videoSources.length > 0) {
+        debugLog("🔍 [FFMPEG HANDLER] Video sources:");
+        for (const [i, v] of options.videoSources.entries()) {
+          debugLog(`🔍 [FFMPEG HANDLER]   [${i}] path: ${v.path}`);
+          debugLog(`🔍 [FFMPEG HANDLER]   [${i}] duration: ${v.duration}, trimStart: ${v.trimStart}, trimEnd: ${v.trimEnd}`);
+        }
+      }
+      debugLog("🔍 [FFMPEG HANDLER] ============================================");
+
       // Validate sticker configuration
       if (
         stickerFilterChain &&

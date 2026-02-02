@@ -77,6 +77,7 @@ const { setupAIPipelineIPC, cleanupAIPipeline } = require("./ai-pipeline-handler
 const { setupMediaImportIPC } = require("./media-import-handler.js");
 const { registerElevenLabsTranscribeHandler } = require("./elevenlabs-transcribe-handler.js");
 const { setupProjectFolderIPC } = require("./project-folder-handler.js");
+const { setupAllClaudeIPC } = require("./claude/index.js");
 const { setupRemotionFolderIPC } = require("./remotion-folder-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
@@ -381,6 +382,7 @@ app.whenReady().then(() => {
   setupAIPipelineIPC(); // Add AI content pipeline support
   setupMediaImportIPC(); // Add media import with symlink/copy support
   setupProjectFolderIPC(); // Add project folder scanning support
+  setupAllClaudeIPC(); // Add Claude Code integration API
   setupRemotionFolderIPC(); // Add Remotion folder import support
   // Note: font-resolver removed - handler not implemented
 

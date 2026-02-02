@@ -3,6 +3,17 @@ import type {
   VideoSourceInput,
   AudioFileInput,
 } from "../lib/export-engine-cli";
+import type {
+  MediaFile,
+  ClaudeTimeline,
+  ClaudeElement,
+  ProjectSettings,
+  ProjectStats,
+  ExportPreset,
+  ExportRecommendation,
+  ErrorReport,
+  DiagnosticResult,
+} from "../../../../electron/types/claude-api";
 
 /**
  * Word-level transcription item from ElevenLabs Scribe v2.
@@ -767,6 +778,50 @@ export interface ElectronAPI {
     ensureStructure: (
       projectId: string
     ) => Promise<{ created: string[]; existing: string[] }>;
+  };
+
+  /**
+   * Claude Code Integration API
+   * Provides APIs for Claude to interact with QCut
+   */
+  claude?: {
+    media: {
+      list: (projectId: string) => Promise<MediaFile[]>;
+      info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;
+      import: (projectId: string, source: string) => Promise<MediaFile | null>;
+      delete: (projectId: string, mediaId: string) => Promise<boolean>;
+      rename: (projectId: string, mediaId: string, newName: string) => Promise<boolean>;
+    };
+    timeline: {
+      export: (projectId: string, format: 'json' | 'md') => Promise<string>;
+      import: (projectId: string, data: string, format: 'json' | 'md') => Promise<void>;
+      addElement: (projectId: string, element: Partial<ClaudeElement>) => Promise<string>;
+      updateElement: (projectId: string, elementId: string, changes: Partial<ClaudeElement>) => Promise<void>;
+      removeElement: (projectId: string, elementId: string) => Promise<void>;
+      onRequest: (callback: () => void) => void;
+      onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
+      onAddElement: (callback: (element: Partial<ClaudeElement>) => void) => void;
+      onUpdateElement: (callback: (data: { elementId: string; changes: Partial<ClaudeElement> }) => void) => void;
+      onRemoveElement: (callback: (elementId: string) => void) => void;
+      sendResponse: (timeline: ClaudeTimeline) => void;
+      removeListeners: () => void;
+    };
+    project: {
+      getSettings: (projectId: string) => Promise<ProjectSettings>;
+      updateSettings: (projectId: string, settings: Partial<ProjectSettings>) => Promise<void>;
+      getStats: (projectId: string) => Promise<ProjectStats>;
+      onStatsRequest: (callback: () => void) => void;
+      sendStatsResponse: (stats: ProjectStats) => void;
+      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void) => void;
+      removeListeners: () => void;
+    };
+    export: {
+      getPresets: () => Promise<ExportPreset[]>;
+      recommend: (projectId: string, target: string) => Promise<ExportRecommendation>;
+    };
+    diagnostics: {
+      analyze: (error: ErrorReport) => Promise<DiagnosticResult>;
+    };
   };
 
   /**
