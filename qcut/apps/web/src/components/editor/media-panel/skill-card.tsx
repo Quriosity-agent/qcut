@@ -99,8 +99,7 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
       setCopiedPath(path);
       toast.success("Path copied to clipboard", { id: "skill-path-copy" });
       setTimeout(() => setCopiedPath(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy path:", err);
+    } catch {
       toast.error("Failed to copy path", { id: "skill-path-copy-error" });
     } finally {
       setTimeout(() => setIsCopying(false), 300);
