@@ -80,7 +80,7 @@ export function PtyTerminalView() {
   const isConnecting = status === "connecting";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="pty-terminal-view">
       {/* Header Controls */}
       <div className="flex items-center justify-between p-2 border-b bg-muted/30">
         <div className="flex items-center gap-3">
@@ -94,6 +94,7 @@ export function PtyTerminalView() {
               <SelectTrigger
                 className="w-[140px] h-8"
                 aria-label="Select CLI provider"
+                data-testid="terminal-provider-selector"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -176,7 +177,7 @@ export function PtyTerminalView() {
           </div>
 
           {/* Status Indicator */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5" data-testid="terminal-status" data-status={status}>
             <div
               className={cn(
                 "h-2 w-2 rounded-full",
@@ -220,6 +221,7 @@ export function PtyTerminalView() {
               size="sm"
               onClick={handleStart}
               aria-label="Start terminal session"
+              data-testid="terminal-start-button"
             >
               <Play className="h-4 w-4 mr-1" aria-hidden="true" />
               Start
@@ -244,6 +246,7 @@ export function PtyTerminalView() {
                 size="sm"
                 onClick={handleRestart}
                 aria-label="Restart terminal session"
+                data-testid="terminal-restart-button"
               >
                 <RotateCcw className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -253,6 +256,7 @@ export function PtyTerminalView() {
                 size="sm"
                 onClick={handleStop}
                 aria-label="Stop terminal session"
+                data-testid="terminal-stop-button"
               >
                 <Square className="h-4 w-4 mr-1" aria-hidden="true" />
                 Stop

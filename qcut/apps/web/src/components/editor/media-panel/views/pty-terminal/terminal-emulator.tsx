@@ -268,6 +268,7 @@ export function TerminalEmulator({
       style={{ backgroundColor: "#1a1a1a" }}
       role="application"
       aria-label="Terminal emulator"
+      data-testid="terminal-emulator"
     />
   );
 }
