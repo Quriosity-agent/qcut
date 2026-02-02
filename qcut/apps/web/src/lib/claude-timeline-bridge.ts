@@ -85,18 +85,31 @@ export function setupClaudeTimelineBridge(): void {
     applyTimelineToStore(timeline);
   });
 
-  // Handle element addition
+  /**
+   * Handle element addition from Claude
+   *
+   * @stub This handler is intentionally a stub. Adding elements requires:
+   * 1. Mapping ClaudeElement types to internal TimelineElement types
+   * 2. Resolving media references (mediaId must exist in media store)
+   * 3. Determining target track (create new or use existing)
+   * 4. Validating element doesn't overlap with existing elements
+   */
   claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
     console.log('[ClaudeTimelineBridge] Adding element:', element);
-    // Note: Full implementation requires mapping to internal element types
-    console.warn('[ClaudeTimelineBridge] addElement requires type mapping - not fully implemented');
+    console.warn('[ClaudeTimelineBridge] addElement not implemented - requires type mapping');
   });
 
-  // Handle element update
+  /**
+   * Handle element update from Claude
+   *
+   * @stub This handler is intentionally a stub. Updating elements requires:
+   * 1. Timeline store to expose an updateElement method
+   * 2. Mapping partial ClaudeElement changes to TimelineElement fields
+   * 3. Validating changes don't create invalid state (overlaps, negative times)
+   */
   claudeAPI.onUpdateElement((data: { elementId: string; changes: Partial<ClaudeElement> }) => {
     console.log('[ClaudeTimelineBridge] Updating element:', data.elementId);
-    // Note: Would need to implement updateElement in timeline store
-    console.warn('[ClaudeTimelineBridge] updateElement not fully implemented');
+    console.warn('[ClaudeTimelineBridge] updateElement not implemented - needs store method');
   });
 
   // Handle element removal
