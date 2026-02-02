@@ -84,8 +84,10 @@ test.describe("Terminal Paste Functionality", () => {
   });
 
   // PTY-dependent tests - skipped by default since PTY may not be available in CI
-  // To run these tests locally, remove the .skip
-  test.describe.skip("PTY Terminal Session (requires PTY support)", () => {
+  // Set PTY_AVAILABLE=true in your environment to run these tests
+  test.describe("PTY Terminal Session (requires PTY support)", () => {
+    test.skip(() => process.env.PTY_AVAILABLE !== "true", "Requires PTY support (set PTY_AVAILABLE=true to run)");
+
     test("should start and stop shell terminal session", async ({ page }) => {
       await navigateToTerminalTab(page);
 
