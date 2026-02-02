@@ -812,7 +812,7 @@ export interface ElectronAPI {
       getStats: (projectId: string) => Promise<ProjectStats>;
       onStatsRequest: (callback: () => void) => void;
       sendStatsResponse: (stats: ProjectStats) => void;
-      onUpdated: (callback: (projectId: string, settings: ProjectSettings) => void) => void;
+      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void) => void;
       removeListeners: () => void;
     };
     export: {

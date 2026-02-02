@@ -1311,9 +1311,11 @@ const electronAPI: ElectronAPI = {
       sendStatsResponse: (stats: ProjectStats): void => {
         ipcRenderer.send('claude:project:statsResponse', stats);
       },
-      onUpdated: (callback: (projectId: string, settings: ProjectSettings) => void): void => {
+      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void): void => {
         ipcRenderer.removeAllListeners('claude:project:updated');
-        ipcRenderer.on('claude:project:updated', (_, projectId, settings) => callback(projectId, settings));
+        ipcRenderer.on('claude:project:updated', (_, projectId, settings: Partial<ProjectSettings>) =>
+          callback(projectId, settings)
+        );
       },
       removeListeners: (): void => {
         ipcRenderer.removeAllListeners('claude:project:statsRequest');
