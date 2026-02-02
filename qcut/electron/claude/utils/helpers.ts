@@ -136,6 +136,7 @@ module.exports = {
   formatTimeFromSeconds,
   parseTime,
   isPathSafe,
+  isValidSourcePath,
   generateId,
   getMediaType,
   sanitizeFilename,
