@@ -11,7 +11,6 @@ import type { TimelineTrack, RemotionElement } from "@/types/timeline";
 import { getActiveRemotionElements, isRemotionElement } from "@/types/timeline";
 import { useRemotionStore } from "@/stores/remotion-store";
 
-export type { SyncConfig, SyncState } from "./types";
 import type { SyncConfig, SyncState } from "./types";
 
 // ============================================================================

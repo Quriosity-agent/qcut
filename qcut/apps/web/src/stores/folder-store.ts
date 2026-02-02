@@ -249,7 +249,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       });
 
       // Auto-persist after mutation
-      void persistFolders();
+      persistFolders();
 
       return id;
     },
@@ -284,7 +284,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       debugLog("[FolderStore] Renamed folder:", { id, newName: trimmedName });
 
       // Auto-persist after mutation
-      void persistFolders();
+      persistFolders();
 
       return true;
     },
@@ -323,7 +323,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       debugLog("[FolderStore] Deleted folders:", idsToDelete);
 
       // Auto-persist after mutation
-      void persistFolders();
+      persistFolders();
     },
 
     setFolderColor: (id, color) => {
@@ -336,7 +336,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
       debugLog("[FolderStore] Set folder color:", { id, color });
 
       // Auto-persist after mutation
-      void persistFolders();
+      persistFolders();
     },
 
     // ============================================================================
@@ -531,7 +531,7 @@ export const useFolderStore = create<FolderStore>((set, get) => {
         });
 
         // Auto-persist after adding default folders
-        void persistFolders();
+        persistFolders();
       }
     },
   };
