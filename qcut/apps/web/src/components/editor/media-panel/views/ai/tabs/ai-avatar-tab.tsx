@@ -205,8 +205,7 @@ export function AIAvatarTab({
     selectedModelId && selectedModelId in AVATAR_MODELS
       ? AVATAR_MODELS[selectedModelId as keyof typeof AVATAR_MODELS]
       : null;
-  const requiredInputs: readonly string[] =
-    selectedModel?.requiredInputs || [];
+  const requiredInputs: readonly string[] = selectedModel?.requiredInputs || [];
 
   // Check what inputs are required
   const needsCharacterImage = requiredInputs.includes("characterImage");

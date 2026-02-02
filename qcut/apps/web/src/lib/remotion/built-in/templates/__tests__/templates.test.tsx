@@ -58,7 +58,16 @@ vi.mock("remotion", () => ({
     height: 1080,
     durationInFrames: 90,
   }),
-  interpolate: (value: number, inputRange: number[], outputRange: number[], options?: { extrapolateLeft?: string; extrapolateRight?: string; easing?: (t: number) => number }) => {
+  interpolate: (
+    value: number,
+    inputRange: number[],
+    outputRange: number[],
+    options?: {
+      extrapolateLeft?: string;
+      extrapolateRight?: string;
+      easing?: (t: number) => number;
+    }
+  ) => {
     const [inputMin, inputMax] = inputRange;
     const [outputMin, outputMax] = outputRange;
     let progress = (value - inputMin) / (inputMax - inputMin);
@@ -75,8 +84,16 @@ vi.mock("remotion", () => ({
     in: (fn: (t: number) => number) => fn,
     inOut: (fn: (t: number) => number) => fn,
   },
-  AbsoluteFill: ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) => (
-    <div data-testid="absolute-fill" style={style}>{children}</div>
+  AbsoluteFill: ({
+    children,
+    style,
+  }: {
+    children?: React.ReactNode;
+    style?: React.CSSProperties;
+  }) => (
+    <div data-testid="absolute-fill" style={style}>
+      {children}
+    </div>
   ),
 }));
 
@@ -238,7 +255,9 @@ describe("TitleCard", () => {
 
     it("should validate all vertical positions", () => {
       for (const position of ["top", "center", "bottom"]) {
-        const result = TitleCardSchema.safeParse({ verticalPosition: position });
+        const result = TitleCardSchema.safeParse({
+          verticalPosition: position,
+        });
         expect(result.success).toBe(true);
       }
     });
@@ -251,8 +270,15 @@ describe("TitleCard", () => {
     });
 
     it("should validate title text transforms", () => {
-      for (const transform of ["none", "uppercase", "lowercase", "capitalize"]) {
-        const result = TitleCardSchema.safeParse({ titleTextTransform: transform });
+      for (const transform of [
+        "none",
+        "uppercase",
+        "lowercase",
+        "capitalize",
+      ]) {
+        const result = TitleCardSchema.safeParse({
+          titleTextTransform: transform,
+        });
         expect(result.success).toBe(true);
       }
     });
@@ -300,7 +326,9 @@ describe("TitleCard", () => {
       const { container: top } = render(<TitleCard verticalPosition="top" />);
       expect(top).toBeTruthy();
 
-      const { container: bottom } = render(<TitleCard verticalPosition="bottom" />);
+      const { container: bottom } = render(
+        <TitleCard verticalPosition="bottom" />
+      );
       expect(bottom).toBeTruthy();
     });
   });
@@ -364,7 +392,9 @@ describe("IntroScene", () => {
 
     it("should validate all gradient directions", () => {
       for (const direction of ["to-bottom", "to-right", "radial"]) {
-        const result = IntroSceneSchema.safeParse({ gradientDirection: direction });
+        const result = IntroSceneSchema.safeParse({
+          gradientDirection: direction,
+        });
         expect(result.success).toBe(true);
       }
     });
@@ -532,7 +562,9 @@ describe("OutroScene", () => {
     });
 
     it("should render without video placeholders", () => {
-      const { container } = render(<OutroScene showVideoPlaceholders={false} />);
+      const { container } = render(
+        <OutroScene showVideoPlaceholders={false} />
+      );
       expect(container).toBeTruthy();
     });
 

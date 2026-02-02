@@ -119,7 +119,9 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
 
   // Line 1: User types command
   const commandStart = 30;
-  const commandChars = Math.floor(Math.max(0, frame - commandStart) / CHAR_SPEED);
+  const commandChars = Math.floor(
+    Math.max(0, frame - commandStart) / CHAR_SPEED
+  );
   const commandText = command.slice(0, Math.min(commandChars, command.length));
   const commandDone = commandChars >= command.length;
   const commandEndFrame = commandStart + command.length * CHAR_SPEED + 20;
@@ -129,7 +131,10 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
   const line2Text = `Installing skill from ${command.split(" ").pop()}...`;
   const line2Chars = Math.floor(Math.max(0, frame - line2Start) / 1);
   const line2Visible = frame >= line2Start;
-  const line2Content = line2Text.slice(0, Math.min(line2Chars, line2Text.length));
+  const line2Content = line2Text.slice(
+    0,
+    Math.min(line2Chars, line2Text.length)
+  );
 
   // Line 3: Found skill
   const line3Start = line2Start + 50;
@@ -163,14 +168,20 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
   const line7Text = "Would you like me to explain the available rules?";
   const line7Chars = Math.floor(Math.max(0, frame - line7Start) / 1);
   const line7Visible = frame >= line7Start;
-  const line7Content = line7Text.slice(0, Math.min(line7Chars, line7Text.length));
+  const line7Content = line7Text.slice(
+    0,
+    Math.min(line7Chars, line7Text.length)
+  );
 
   // Line 8: User response
   const line8Start = line7Start + line7Text.length + 40;
   const line8Command = "yes";
   const line8Chars = Math.floor(Math.max(0, frame - line8Start) / CHAR_SPEED);
   const line8Visible = frame >= line8Start;
-  const line8Content = line8Command.slice(0, Math.min(line8Chars, line8Command.length));
+  const line8Content = line8Command.slice(
+    0,
+    Math.min(line8Chars, line8Command.length)
+  );
   const line8Done = line8Chars >= line8Command.length;
 
   // Line 9: Agent lists rules
@@ -182,12 +193,21 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
   const showCursorOnLine8 = line8Visible && !line8Done;
   const showCursorAtEnd = line9Visible;
 
-  const rules = ["animations", "timing", "sequencing", "transitions", "audio", "fonts", "3d"];
+  const rules = [
+    "animations",
+    "timing",
+    "sequencing",
+    "transitions",
+    "audio",
+    "fonts",
+    "3d",
+  ];
 
   return (
     <AbsoluteFill
       style={{
-        background: "linear-gradient(150deg, #E8F4FD 0%, #F5F5F7 50%, #FDF2F8 100%)",
+        background:
+          "linear-gradient(150deg, #E8F4FD 0%, #F5F5F7 50%, #FDF2F8 100%)",
         justifyContent: "center",
         alignItems: "center",
         padding: 40,
@@ -200,7 +220,8 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
           width: 400,
           height: 400,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%)",
           top: "10%",
           left: "10%",
         }}
@@ -211,7 +232,8 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
           width: 300,
           height: 300,
           borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(236, 72, 153, 0.10) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(236, 72, 153, 0.10) 0%, transparent 70%)",
           bottom: "15%",
           right: "15%",
         }}
@@ -224,7 +246,8 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
           height: 700,
           backgroundColor: WINDOW_BG,
           borderRadius: 12,
-          boxShadow: "0 22px 70px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)",
+          boxShadow:
+            "0 22px 70px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -291,7 +314,8 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                 fontSize: 14,
                 fontWeight: 500,
                 color: "#3D3D3D",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                fontFamily:
+                  "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
               }}
             >
               Terminal — zsh — 120×35
@@ -313,7 +337,9 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
         >
           {/* Line 1: User command */}
           <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ color: pathColor, fontWeight: 500 }}>~/projects</span>
+            <span style={{ color: pathColor, fontWeight: 500 }}>
+              ~/projects
+            </span>
             <span style={{ color: textColor, margin: "0 8px" }}>$</span>
             <span style={{ color: textColor }}>{commandText}</span>
             {showCursorOnCommand && (
@@ -332,7 +358,14 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
 
           {/* Line 2: Installing */}
           {line2Visible && (
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
               <span style={{ color: "#007AFF" }}>●</span>
               <span style={{ color: "#6B7280" }}>{line2Content}</span>
             </div>
@@ -340,19 +373,38 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
 
           {/* Line 3: Found skill */}
           {line3Visible && (
-            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
               <span style={{ color: successColor }}>✓</span>
               <span style={{ color: textColor }}>
-                Found skill: <span style={{ color: accentColor, fontWeight: 600 }}>{skillName}</span>
+                Found skill:{" "}
+                <span style={{ color: accentColor, fontWeight: 600 }}>
+                  {skillName}
+                </span>
               </span>
             </div>
           )}
 
           {/* Line 4: Downloading */}
           {line4Visible && (
-            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
               <span style={{ color: "#007AFF" }}>↓</span>
-              <span style={{ color: "#6B7280" }}>Downloading {ruleCount} rules and 3 assets...</span>
+              <span style={{ color: "#6B7280" }}>
+                Downloading {ruleCount} rules and 3 assets...
+              </span>
             </div>
           )}
 
@@ -377,7 +429,14 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                   }}
                 />
               </div>
-              <span style={{ color: "#6B7280", fontSize: 12, marginTop: 4, display: "block" }}>
+              <span
+                style={{
+                  color: "#6B7280",
+                  fontSize: 12,
+                  marginTop: 4,
+                  display: "block",
+                }}
+              >
                 {Math.round(progressPercent)}% complete
               </span>
             </div>
@@ -385,7 +444,14 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
 
           {/* Line 5: Success */}
           {line5Visible && (
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
               <span style={{ color: successColor }}>✓</span>
               <span style={{ color: successColor, fontWeight: 600 }}>
                 Skill installed successfully!
@@ -408,8 +474,8 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                   }}
                 >
                   /remotion-best-practices
-                </span>
-                {" "}in your conversations
+                </span>{" "}
+                in your conversations
               </span>
             </div>
           )}
@@ -425,7 +491,14 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                 borderLeft: `3px solid ${accentColor}`,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 6,
+                }}
+              >
                 <span
                   style={{
                     backgroundColor: accentColor,
@@ -445,8 +518,12 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
 
           {/* Line 8: User response */}
           {line8Visible && (
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center" }}>
-              <span style={{ color: pathColor, fontWeight: 500 }}>~/projects</span>
+            <div
+              style={{ marginTop: 12, display: "flex", alignItems: "center" }}
+            >
+              <span style={{ color: pathColor, fontWeight: 500 }}>
+                ~/projects
+              </span>
               <span style={{ color: textColor, margin: "0 8px" }}>$</span>
               <span style={{ color: textColor }}>{line8Content}</span>
               {showCursorOnLine8 && (
@@ -475,7 +552,14 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                 borderLeft: `3px solid ${accentColor}`,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 8,
+                }}
+              >
                 <span
                   style={{
                     backgroundColor: accentColor,
@@ -489,8 +573,17 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                   Agent
                 </span>
               </div>
-              <span style={{ color: textColor }}>Here are the available rules:</span>
-              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              <span style={{ color: textColor }}>
+                Here are the available rules:
+              </span>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                }}
+              >
                 {rules.map((rule, i) => (
                   <span
                     key={rule}
@@ -512,7 +605,9 @@ export const SkillsDemo: React.FC<Partial<SkillsDemoProps>> = ({
                     {rule}
                   </span>
                 ))}
-                <span style={{ color: "#6B7280", fontSize: 13 }}>...and {ruleCount - rules.length} more</span>
+                <span style={{ color: "#6B7280", fontSize: 13 }}>
+                  ...and {ruleCount - rules.length} more
+                </span>
               </div>
               {showCursorAtEnd && (
                 <span

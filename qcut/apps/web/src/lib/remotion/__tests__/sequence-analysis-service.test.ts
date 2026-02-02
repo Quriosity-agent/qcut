@@ -70,7 +70,7 @@ describe("SequenceAnalysisService", () => {
 
   describe("caching", () => {
     it("caches analysis results by componentId", async () => {
-      const source = `<Sequence durationInFrames={60} />`;
+      const source = "<Sequence durationInFrames={60} />";
 
       const result1 = await service.analyzeComponent("cached", source);
       const result2 = await service.analyzeComponent("cached", source);
@@ -91,7 +91,7 @@ describe("SequenceAnalysisService", () => {
     });
 
     it("invalidates cache on request", async () => {
-      const source = `<Sequence durationInFrames={60} />`;
+      const source = "<Sequence durationInFrames={60} />";
 
       await service.analyzeComponent("to-invalidate", source);
       expect(service.hasAnalysis("to-invalidate")).toBe(true);
@@ -116,8 +116,14 @@ describe("SequenceAnalysisService", () => {
 
   describe("cache management", () => {
     it("provides cache statistics", async () => {
-      await service.analyzeComponent("comp-1", "<Sequence durationInFrames={30} />");
-      await service.analyzeComponent("comp-2", "<Sequence durationInFrames={60} />");
+      await service.analyzeComponent(
+        "comp-1",
+        "<Sequence durationInFrames={30} />"
+      );
+      await service.analyzeComponent(
+        "comp-2",
+        "<Sequence durationInFrames={60} />"
+      );
 
       const stats = service.getCacheStats();
 
@@ -127,8 +133,14 @@ describe("SequenceAnalysisService", () => {
     });
 
     it("clears cache when requested", async () => {
-      await service.analyzeComponent("to-clear-1", "<Sequence durationInFrames={30} />");
-      await service.analyzeComponent("to-clear-2", "<Sequence durationInFrames={60} />");
+      await service.analyzeComponent(
+        "to-clear-1",
+        "<Sequence durationInFrames={30} />"
+      );
+      await service.analyzeComponent(
+        "to-clear-2",
+        "<Sequence durationInFrames={60} />"
+      );
 
       service.clearCache();
 
@@ -138,9 +150,18 @@ describe("SequenceAnalysisService", () => {
     it("evicts oldest entries when at capacity", async () => {
       const smallService = new SequenceAnalysisService({ maxCacheSize: 2 });
 
-      await smallService.analyzeComponent("first", "<Sequence durationInFrames={30} />");
-      await smallService.analyzeComponent("second", "<Sequence durationInFrames={60} />");
-      await smallService.analyzeComponent("third", "<Sequence durationInFrames={90} />");
+      await smallService.analyzeComponent(
+        "first",
+        "<Sequence durationInFrames={30} />"
+      );
+      await smallService.analyzeComponent(
+        "second",
+        "<Sequence durationInFrames={60} />"
+      );
+      await smallService.analyzeComponent(
+        "third",
+        "<Sequence durationInFrames={90} />"
+      );
 
       const stats = smallService.getCacheStats();
 
@@ -160,7 +181,7 @@ describe("SequenceAnalysisService", () => {
     });
 
     it("handles malformed JSX", async () => {
-      const source = `<Sequence durationInFrames={60`;
+      const source = "<Sequence durationInFrames={60";
 
       const result = await service.analyzeComponent("malformed", source);
 
@@ -183,7 +204,10 @@ describe("SequenceAnalysisService", () => {
 
   describe("hasAnalysis", () => {
     it("returns true for analyzed components", async () => {
-      await service.analyzeComponent("check-has", "<Sequence durationInFrames={60} />");
+      await service.analyzeComponent(
+        "check-has",
+        "<Sequence durationInFrames={60} />"
+      );
 
       expect(service.hasAnalysis("check-has")).toBe(true);
     });
@@ -208,7 +232,10 @@ describe("Singleton instance", () => {
 
   it("resets properly", async () => {
     const service1 = getSequenceAnalysisService();
-    await service1.analyzeComponent("singleton-test", "<Sequence durationInFrames={60} />");
+    await service1.analyzeComponent(
+      "singleton-test",
+      "<Sequence durationInFrames={60} />"
+    );
 
     resetSequenceAnalysisService();
 

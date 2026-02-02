@@ -47,7 +47,9 @@ export const ZoomSchema = z.object({
   /** Spring stiffness (for spring animation) */
   stiffness: z.number().min(1).max(500).default(100),
   /** Zoom origin point */
-  origin: z.enum(["center", "top-left", "top-right", "bottom-left", "bottom-right"]).default("center"),
+  origin: z
+    .enum(["center", "top-left", "top-right", "bottom-left", "bottom-right"])
+    .default("center"),
 });
 
 export type ZoomProps = z.infer<typeof ZoomSchema>;
@@ -115,8 +117,9 @@ export const Zoom: React.FC<Partial<ZoomProps>> = ({
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
 
-  // Calculate actual zoom duration
-  const actualDuration = zoomDuration ?? (durationInFrames - startDelay);
+  // Calculate actual zoom duration (ensure at least 1 to avoid zero/negative interpolation)
+  const actualDuration =
+    zoomDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress based on animation type
@@ -133,20 +136,14 @@ export const Zoom: React.FC<Partial<ZoomProps>> = ({
       },
     });
   } else {
-    const easingFn = animationType === "linear"
-      ? Easing.linear
-      : Easing.out(Easing.cubic);
+    const easingFn =
+      animationType === "linear" ? Easing.linear : Easing.out(Easing.cubic);
 
-    progress = interpolate(
-      activeFrame,
-      [0, actualDuration],
-      [0, 1],
-      {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-        easing: easingFn,
-      }
-    );
+    progress = interpolate(activeFrame, [0, actualDuration], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easingFn,
+    });
   }
 
   // Calculate scales and opacities based on zoom type
@@ -178,7 +175,11 @@ export const Zoom: React.FC<Partial<ZoomProps>> = ({
       // Foreground zooms through (past camera) and background zooms in from small
       foregroundScale = interpolate(progress, [0, 1], [1, maxScale * 2]);
       foregroundOpacity = interpolate(progress, [0, 0.5, 1], [1, 0, 0]);
-      backgroundScale = interpolate(progress, [0, 0.5, 1], [1 / maxScale, 1 / maxScale, 1]);
+      backgroundScale = interpolate(
+        progress,
+        [0, 0.5, 1],
+        [1 / maxScale, 1 / maxScale, 1]
+      );
       backgroundOpacity = interpolate(progress, [0, 0.3, 1], [0, 1, 1]);
       break;
 

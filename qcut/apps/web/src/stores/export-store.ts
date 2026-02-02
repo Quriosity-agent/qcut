@@ -104,7 +104,9 @@ interface ExportStore {
 
   // Remotion progress actions
   updateRemotionProgress: (progress: Partial<RemotionExportProgress>) => void;
-  updateRemotionElementProgress: (elementProgress: RemotionElementProgress) => void;
+  updateRemotionElementProgress: (
+    elementProgress: RemotionElementProgress
+  ) => void;
   setRemotionPhase: (phase: RemotionExportPhase, message?: string) => void;
   resetRemotionProgress: () => void;
   skipFailedRemotionElement: (elementId: string) => void;
@@ -269,16 +271,20 @@ export const useExportStore = create<ExportStore>()(
 
       updateRemotionElementProgress: (elementProgress) => {
         set((state) => {
-          const existingIndex = state.remotionProgress.elementProgress.findIndex(
-            (ep) => ep.elementId === elementProgress.elementId
-          );
+          const existingIndex =
+            state.remotionProgress.elementProgress.findIndex(
+              (ep) => ep.elementId === elementProgress.elementId
+            );
 
           let updatedElements: RemotionElementProgress[];
           if (existingIndex >= 0) {
             updatedElements = [...state.remotionProgress.elementProgress];
             updatedElements[existingIndex] = elementProgress;
           } else {
-            updatedElements = [...state.remotionProgress.elementProgress, elementProgress];
+            updatedElements = [
+              ...state.remotionProgress.elementProgress,
+              elementProgress,
+            ];
           }
 
           // Calculate completed elements
@@ -313,8 +319,11 @@ export const useExportStore = create<ExportStore>()(
 
       skipFailedRemotionElement: (elementId) => {
         set((state) => {
-          const updatedElements = state.remotionProgress.elementProgress.map((ep) =>
-            ep.elementId === elementId ? { ...ep, status: "skipped" as const } : ep
+          const updatedElements = state.remotionProgress.elementProgress.map(
+            (ep) =>
+              ep.elementId === elementId
+                ? { ...ep, status: "skipped" as const }
+                : ep
           );
 
           const completedCount = updatedElements.filter(

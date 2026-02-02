@@ -251,7 +251,6 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
       isLoading: false,
       error: null,
     });
-
   },
 
   toggleWordDeleted: (wordId: string) => {
@@ -293,7 +292,7 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
 
   getWordById: (wordId: string) => {
     const { data } = get();
-    if (!data) return undefined;
+    if (!data) return;
     return data.words.find((w) => w.id === wordId);
   },
 

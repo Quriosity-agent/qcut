@@ -6,7 +6,15 @@
  * @module lib/remotion/__tests__/compositor.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  vi,
+  beforeAll,
+} from "vitest";
 import {
   FrameCompositor,
   createCompositor,
@@ -16,11 +24,17 @@ import {
   type CompositeLayer,
   type BlendMode,
 } from "../compositor";
-import type { TimelineElement, RemotionElement, TextElement } from "@/types/timeline";
+import type {
+  TimelineElement,
+  RemotionElement,
+  TextElement,
+} from "@/types/timeline";
 
 // Mock canvas for JSDOM environment
 beforeAll(() => {
-  HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,test");
+  HTMLCanvasElement.prototype.toDataURL = vi.fn(
+    () => "data:image/png;base64,test"
+  );
   HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => {
     callback(new Blob(["test"], { type: "image/png" }));
   });
@@ -30,10 +44,7 @@ beforeAll(() => {
 // Test Helpers
 // ============================================================================
 
-function createMockCanvas(
-  width: number = 100,
-  height: number = 100
-): HTMLCanvasElement {
+function createMockCanvas(width = 100, height = 100): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -91,7 +102,9 @@ function createMockTextElement(
   };
 }
 
-function createMockLayer(overrides: Partial<CompositeLayer> = {}): CompositeLayer {
+function createMockLayer(
+  overrides: Partial<CompositeLayer> = {}
+): CompositeLayer {
   return {
     zIndex: 0,
     source: "qcut",
@@ -139,7 +152,10 @@ describe("FrameCompositor", () => {
   describe("compositeFrame", () => {
     it("should return a result with correct structure", () => {
       const canvas = createMockCanvas();
-      const remotionFrames = new Map<string, ImageBitmap | HTMLImageElement | string>();
+      const remotionFrames = new Map<
+        string,
+        ImageBitmap | HTMLImageElement | string
+      >();
 
       const layers: CompositeLayer[] = [
         createMockLayer({ zIndex: 1, source: "qcut", elementId: "bottom" }),
@@ -154,9 +170,7 @@ describe("FrameCompositor", () => {
     });
 
     it("should handle null qcut canvas", () => {
-      const layers: CompositeLayer[] = [
-        createMockLayer({ source: "qcut" }),
-      ];
+      const layers: CompositeLayer[] = [createMockLayer({ source: "qcut" })];
 
       const result = compositor.compositeFrame(null, new Map(), layers);
 
@@ -447,9 +461,7 @@ describe("Blend modes", () => {
   for (const mode of blendModes) {
     it(`should handle ${mode} blend mode`, () => {
       const canvas = createMockCanvas();
-      const layers: CompositeLayer[] = [
-        createMockLayer({ blendMode: mode }),
-      ];
+      const layers: CompositeLayer[] = [createMockLayer({ blendMode: mode })];
 
       const result = compositor.compositeFrame(canvas, new Map(), layers);
 

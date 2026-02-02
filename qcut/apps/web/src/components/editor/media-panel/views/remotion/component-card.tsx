@@ -74,9 +74,13 @@ export function ComponentCard({
 }: ComponentCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const durationSeconds = (component.durationInFrames / component.fps).toFixed(1);
-  const gradientClass = CATEGORY_COLORS[component.category] || CATEGORY_COLORS.template;
-  const iconColorClass = CATEGORY_ICON_COLORS[component.category] || CATEGORY_ICON_COLORS.template;
+  const durationSeconds = (component.durationInFrames / component.fps).toFixed(
+    1
+  );
+  const gradientClass =
+    CATEGORY_COLORS[component.category] || CATEGORY_COLORS.template;
+  const iconColorClass =
+    CATEGORY_ICON_COLORS[component.category] || CATEGORY_ICON_COLORS.template;
 
   return (
     <TooltipProvider>
@@ -203,7 +207,11 @@ export function ComponentCard({
             {component.tags && component.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {component.tags.slice(0, 5).map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-[9px] px-1 py-0">
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className="text-[9px] px-1 py-0"
+                  >
                     {tag}
                   </Badge>
                 ))}

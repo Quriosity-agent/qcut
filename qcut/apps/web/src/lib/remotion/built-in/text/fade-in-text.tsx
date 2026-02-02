@@ -7,12 +7,7 @@
  */
 
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  Easing,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
 import { z } from "zod";
 import type { RemotionComponentDefinition } from "../../types";
 
@@ -43,7 +38,9 @@ export const FadeInTextSchema = z.object({
   /** Start delay in frames */
   startDelay: z.number().min(0).default(0),
   /** Easing function */
-  easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut"]).default("easeOut"),
+  easing: z
+    .enum(["linear", "easeIn", "easeOut", "easeInOut"])
+    .default("easeOut"),
   /** Text alignment */
   textAlign: z.enum(["left", "center", "right"]).default("center"),
   /** Font weight */
@@ -81,7 +78,7 @@ export const fadeInTextDefaultProps: FadeInTextProps = {
 // Helper Functions
 // ============================================================================
 
-function getEasingFunction(easing: string): ((t: number) => number) {
+function getEasingFunction(easing: string): (t: number) => number {
   switch (easing) {
     case "linear":
       return Easing.linear;
@@ -174,28 +171,18 @@ export const FadeInText: React.FC<Partial<FadeInTextProps>> = ({
   // Render based on fade mode
   const renderText = () => {
     if (fadeMode === "all") {
-      const opacity = interpolate(
-        activeFrame,
-        [0, fadeDuration],
-        [0, 1],
-        {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-          easing: easingFn,
-        }
-      );
+      const opacity = interpolate(activeFrame, [0, fadeDuration], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: easingFn,
+      });
 
       const translateY = slideUp
-        ? interpolate(
-            activeFrame,
-            [0, fadeDuration],
-            [slideDistance, 0],
-            {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: easingFn,
-            }
-          )
+        ? interpolate(activeFrame, [0, fadeDuration], [slideDistance, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+            easing: easingFn,
+          })
         : 0;
 
       return (
@@ -224,9 +211,11 @@ export const FadeInText: React.FC<Partial<FadeInTextProps>> = ({
     }
 
     if (fadeMode === "character") {
-      return text.split("").map((char, i) =>
-        renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
-      );
+      return text
+        .split("")
+        .map((char, i) =>
+          renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
+        );
     }
 
     return text;
@@ -241,8 +230,8 @@ export const FadeInText: React.FC<Partial<FadeInTextProps>> = ({
           textAlign === "center"
             ? "center"
             : textAlign === "right"
-            ? "flex-end"
-            : "flex-start",
+              ? "flex-end"
+              : "flex-start",
         width: "100%",
         height: "100%",
         backgroundColor,
@@ -276,7 +265,8 @@ export const FadeInText: React.FC<Partial<FadeInTextProps>> = ({
 export const FadeInTextDefinition: RemotionComponentDefinition = {
   id: "built-in-fade-in-text",
   name: "Fade In Text",
-  description: "Animates text fading in with optional word-by-word or character effects",
+  description:
+    "Animates text fading in with optional word-by-word or character effects",
   category: "text",
   durationInFrames: 90,
   fps: 30,

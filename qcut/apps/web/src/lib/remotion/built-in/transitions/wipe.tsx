@@ -34,7 +34,9 @@ export const WipeSchema = z.object({
   /** Duration of wipe in frames (uses full component duration if not specified) */
   wipeDuration: z.number().min(1).optional(),
   /** Easing function */
-  easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut"]).default("easeInOut"),
+  easing: z
+    .enum(["linear", "easeIn", "easeOut", "easeInOut"])
+    .default("easeInOut"),
   /** Edge softness in pixels (0 = hard edge) */
   edgeSoftness: z.number().min(0).max(200).default(0),
   /** Start delay in frames */
@@ -66,7 +68,7 @@ export const wipeDefaultProps: WipeProps = {
 // Helper Functions
 // ============================================================================
 
-function getEasingFunction(easing: string): ((t: number) => number) {
+function getEasingFunction(easing: string): (t: number) => number {
   switch (easing) {
     case "linear":
       return Easing.linear;
@@ -106,20 +108,16 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
   const easingFn = getEasingFunction(easing);
 
   // Calculate actual wipe duration (minimum 1 frame to prevent zero-length interpolation range)
-  const actualDuration = wipeDuration ?? Math.max(1, durationInFrames - startDelay);
+  const actualDuration =
+    wipeDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress (0 to 1)
-  const progress = interpolate(
-    activeFrame,
-    [0, actualDuration],
-    [0, 1],
-    {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-      easing: easingFn,
-    }
-  );
+  const progress = interpolate(activeFrame, [0, actualDuration], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: easingFn,
+  });
 
   // Calculate clip path based on direction
   const getClipPath = (forForeground: boolean) => {
@@ -153,7 +151,7 @@ export const Wipe: React.FC<Partial<WipeProps>> = ({
 
   // Calculate gradient for soft edge
   const getGradientMask = () => {
-    if (edgeSoftness === 0) return undefined;
+    if (edgeSoftness === 0) return;
 
     // Convert pixel softness to percentage based on direction
     const isHorizontal = direction === "left" || direction === "right";

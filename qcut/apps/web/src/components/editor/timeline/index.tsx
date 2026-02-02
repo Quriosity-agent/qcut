@@ -116,9 +116,8 @@ export function Timeline() {
 
   // Get deleted words from transcription for red markers on timeline
   const wordTimelineData = useWordTimelineStore((s) => s.data);
-  const deletedWords = wordTimelineData?.words.filter(
-    (w) => w.type === "word" && w.deleted
-  ) || [];
+  const deletedWords =
+    wordTimelineData?.words.filter((w) => w.type === "word" && w.deleted) || [];
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -854,10 +853,15 @@ export function Timeline() {
                 {/* Deleted word markers (red regions) */}
                 {deletedWords.length > 0 &&
                   deletedWords.map((word) => {
-                    const left = word.start * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel;
+                    const left =
+                      word.start *
+                      TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                      zoomLevel;
                     const width = Math.max(
                       2,
-                      (word.end - word.start) * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
+                      (word.end - word.start) *
+                        TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                        zoomLevel
                     );
                     return (
                       <div

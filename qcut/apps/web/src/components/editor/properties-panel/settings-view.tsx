@@ -389,7 +389,13 @@ function ApiKeysView() {
         },
       });
     }
-  }, [falApiKey, freesoundApiKey, geminiApiKey, openRouterApiKey, anthropicApiKey]);
+  }, [
+    falApiKey,
+    freesoundApiKey,
+    geminiApiKey,
+    openRouterApiKey,
+    anthropicApiKey,
+  ]);
 
   // Test Freesound API key
   const testFreesoundKey = useCallback(async () => {
@@ -604,8 +610,8 @@ function ApiKeysView() {
       <PropertyGroup title="Anthropic API Key (Optional)">
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
-            Claude Code uses your Claude Pro/Max subscription by default.
-            Only set this if you prefer API credits instead.
+            Claude Code uses your Claude Pro/Max subscription by default. Only
+            set this if you prefer API credits instead.
           </div>
           <div className="flex-1 relative">
             <Input

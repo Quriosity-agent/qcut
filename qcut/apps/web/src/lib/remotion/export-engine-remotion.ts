@@ -16,7 +16,11 @@
 
 import { ExportEngine } from "@/lib/export-engine";
 import type { ExportSettings, ExportProgress } from "@/types/export";
-import type { TimelineTrack, TimelineElement, RemotionElement } from "@/types/timeline";
+import type {
+  TimelineTrack,
+  TimelineElement,
+  RemotionElement,
+} from "@/types/timeline";
 import type { MediaItem } from "@/stores/media-store-types";
 import {
   RemotionPreRenderer,
@@ -43,6 +47,7 @@ import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
  * Export phases for Remotion-enabled export
  */
 export type RemotionExportPhase =
+  | "idle"
   | "analyzing"
   | "prerendering"
   | "compositing"
@@ -107,7 +112,10 @@ export type RemotionExportProgressCallback = (
  */
 function getDefaultTempDir(): string {
   // Check if we're in a Windows-like environment
-  if (typeof navigator !== "undefined" && navigator.platform?.startsWith("Win")) {
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.platform?.startsWith("Win")
+  ) {
     return "C:\\Users\\Public\\AppData\\Local\\Temp\\qcut-remotion-export";
   }
   // Check for TEMP/TMP environment variables (available in some contexts)
@@ -134,6 +142,7 @@ export const DEFAULT_REMOTION_EXPORT_CONFIG: RemotionExportConfig = {
  * Total should equal 100
  */
 const PHASE_WEIGHTS: Record<RemotionExportPhase, number> = {
+  idle: 0,
   analyzing: 5,
   prerendering: 40,
   compositing: 35,
@@ -161,8 +170,8 @@ export class RemotionExportEngine extends ExportEngine {
   private compositor: FrameCompositor | null = null;
   private preRenderResults: Map<string, PreRenderResult> = new Map();
   private remotionElements: RemotionElement[] = [];
-  private currentPhase: RemotionExportPhase = "analyzing";
   private progressCallback: RemotionExportProgressCallback | null = null;
+  private currentPhase: RemotionExportPhase = "idle";
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -304,7 +313,11 @@ export class RemotionExportEngine extends ExportEngine {
    */
   private async preRenderPhase(): Promise<void> {
     this.currentPhase = "prerendering";
-    this.updateProgress("prerendering", 0, "Pre-rendering Remotion elements...");
+    this.updateProgress(
+      "prerendering",
+      0,
+      "Pre-rendering Remotion elements..."
+    );
 
     if (!this.preRenderer || this.remotionElements.length === 0) {
       debugLog("[RemotionExportEngine] No elements to pre-render");
@@ -332,7 +345,8 @@ export class RemotionExportEngine extends ExportEngine {
         currentFrame,
         totalFrames
       ) => {
-        const elementProgress = (completedElements + progress / 100) / totalElements;
+        const elementProgress =
+          (completedElements + progress / 100) / totalElements;
         this.updateProgress(
           "prerendering",
           elementProgress * 100,
@@ -429,7 +443,9 @@ export class RemotionExportEngine extends ExportEngine {
 
       // Calculate which frame of this element to use
       const elementStart = element.startTime + element.trimStart;
-      const elementFrame = Math.floor((currentTime - elementStart) * this.getFrameRate());
+      const elementFrame = Math.floor(
+        (currentTime - elementStart) * this.getFrameRate()
+      );
 
       const framePath = result.framePaths.get(elementFrame);
       if (framePath) {
@@ -447,7 +463,8 @@ export class RemotionExportEngine extends ExportEngine {
 
     // Filter to only Remotion layers that we have frames for
     const remotionLayers = layers.filter(
-      (layer) => layer.source === "remotion" && remotionFrames.has(layer.elementId)
+      (layer) =>
+        layer.source === "remotion" && remotionFrames.has(layer.elementId)
     );
 
     if (remotionLayers.length === 0) return;
@@ -498,7 +515,14 @@ export class RemotionExportEngine extends ExportEngine {
 
         // Apply transform if present
         if (layer.transform) {
-          const { x, y, scale, rotation, anchorX = 0.5, anchorY = 0.5 } = layer.transform;
+          const {
+            x,
+            y,
+            scale,
+            rotation,
+            anchorX = 0.5,
+            anchorY = 0.5,
+          } = layer.transform;
           const centerX = anchorX * this.canvas.width;
           const centerY = anchorY * this.canvas.height;
 
@@ -516,9 +540,7 @@ export class RemotionExportEngine extends ExportEngine {
       };
 
       img.onerror = () => {
-        debugWarn(
-          `[RemotionExportEngine] Failed to load frame: ${framePath}`
-        );
+        debugWarn(`[RemotionExportEngine] Failed to load frame: ${framePath}`);
         resolve(); // Don't fail the entire export
       };
 
@@ -593,9 +615,8 @@ export class RemotionExportEngine extends ExportEngine {
       if (p === phase) {
         overallProgress += (PHASE_WEIGHTS[p] * phaseProgress) / 100;
         break;
-      } else {
-        overallProgress += PHASE_WEIGHTS[p];
       }
+      overallProgress += PHASE_WEIGHTS[p];
     }
 
     if (phase === "complete") {

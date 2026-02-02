@@ -3,12 +3,15 @@
  * Provides consistent logging across all Claude handlers
  */
 
-import electronLog from 'electron-log';
+import electronLog from "electron-log";
 
-type LogLike = Pick<typeof electronLog, 'info' | 'warn' | 'error' | 'debug' | 'log'>;
+type LogLike = Pick<
+  typeof electronLog,
+  "info" | "warn" | "error" | "debug" | "log"
+>;
 const log: LogLike = electronLog;
 
-const PREFIX = '[Claude API]';
+const PREFIX = "[Claude API]";
 
 export const claudeLog = {
   info: (handler: string, message: string, ...args: unknown[]): void => {

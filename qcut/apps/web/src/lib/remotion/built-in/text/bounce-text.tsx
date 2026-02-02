@@ -7,12 +7,7 @@
  */
 
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  spring,
-  interpolate,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
 import { z } from "zod";
 import type { RemotionComponentDefinition } from "../../types";
 
@@ -156,8 +151,16 @@ export const BounceText: React.FC<Partial<BounceTextProps>> = ({
 
     // Calculate transform based on direction
     const initialOffset = getTransformForDirection(direction, offsetDistance);
-    const translateX = interpolate(springProgress, [0, 1], [initialOffset.x, 0]);
-    const translateY = interpolate(springProgress, [0, 1], [initialOffset.y, 0]);
+    const translateX = interpolate(
+      springProgress,
+      [0, 1],
+      [initialOffset.x, 0]
+    );
+    const translateY = interpolate(
+      springProgress,
+      [0, 1],
+      [initialOffset.y, 0]
+    );
 
     // Scale animation
     const scale = includeScale
@@ -200,8 +203,16 @@ export const BounceText: React.FC<Partial<BounceTextProps>> = ({
       });
 
       const initialOffset = getTransformForDirection(direction, offsetDistance);
-      const translateX = interpolate(springProgress, [0, 1], [initialOffset.x, 0]);
-      const translateY = interpolate(springProgress, [0, 1], [initialOffset.y, 0]);
+      const translateX = interpolate(
+        springProgress,
+        [0, 1],
+        [initialOffset.x, 0]
+      );
+      const translateY = interpolate(
+        springProgress,
+        [0, 1],
+        [initialOffset.y, 0]
+      );
       const scale = includeScale
         ? interpolate(springProgress, [0, 1], [initialScale, 1])
         : 1;
@@ -235,9 +246,11 @@ export const BounceText: React.FC<Partial<BounceTextProps>> = ({
     }
 
     if (bounceMode === "character") {
-      return text.split("").map((char, i) =>
-        renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
-      );
+      return text
+        .split("")
+        .map((char, i) =>
+          renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
+        );
     }
 
     return text;
@@ -252,8 +265,8 @@ export const BounceText: React.FC<Partial<BounceTextProps>> = ({
           textAlign === "center"
             ? "center"
             : textAlign === "right"
-            ? "flex-end"
-            : "flex-start",
+              ? "flex-end"
+              : "flex-start",
         width: "100%",
         height: "100%",
         backgroundColor,

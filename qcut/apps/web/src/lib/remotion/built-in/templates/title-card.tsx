@@ -50,7 +50,9 @@ export const TitleCardSchema = z.object({
   /** Vertical position */
   verticalPosition: z.enum(["top", "center", "bottom"]).default("center"),
   /** Animation style */
-  animationStyle: z.enum(["fade", "scale", "slide-up", "slide-down", "blur"]).default("fade"),
+  animationStyle: z
+    .enum(["fade", "scale", "slide-up", "slide-down", "blur"])
+    .default("fade"),
   /** Enter animation duration (frames) */
   enterDuration: z.number().min(1).max(60).default(20),
   /** Hold duration (frames) */
@@ -72,7 +74,9 @@ export const TitleCardSchema = z.object({
   /** Letter spacing for title */
   titleLetterSpacing: z.number().min(-5).max(20).default(2),
   /** Text transform for title */
-  titleTextTransform: z.enum(["none", "uppercase", "lowercase", "capitalize"]).default("none"),
+  titleTextTransform: z
+    .enum(["none", "uppercase", "lowercase", "capitalize"])
+    .default("none"),
 });
 
 export type TitleCardProps = z.infer<typeof TitleCardSchema>;
@@ -302,15 +306,16 @@ export const TitleCard: React.FC<Partial<TitleCardProps>> = ({
                 fontWeight: subtitleFontWeight,
                 textAlign,
                 lineHeight: 1.3,
-                opacity: interpolate(
-                  frame,
-                  [enterDuration * 0.5, enterDuration],
-                  [0, 1],
-                  {
-                    extrapolateLeft: "clamp",
-                    extrapolateRight: "clamp",
-                  }
-                ) * (frame >= exitStart ? progress : 1),
+                opacity:
+                  interpolate(
+                    frame,
+                    [enterDuration * 0.5, enterDuration],
+                    [0, 1],
+                    {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                    }
+                  ) * (frame >= exitStart ? progress : 1),
               }}
             >
               {subtitle}

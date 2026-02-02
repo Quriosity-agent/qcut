@@ -154,24 +154,25 @@ export function useAIPipeline(
   /**
    * Refresh environment detection
    */
-  const refreshEnvironment = useCallback(async (): Promise<AIPipelineStatus | null> => {
-    try {
-      const response = await window.electronAPI?.aiPipeline?.refresh();
-      if (response) {
-        setStatus(response);
-        setIsAvailable(response.available);
-        if (!response.available && response.error) {
-          setError(response.error);
-        } else {
-          setError(null);
+  const refreshEnvironment =
+    useCallback(async (): Promise<AIPipelineStatus | null> => {
+      try {
+        const response = await window.electronAPI?.aiPipeline?.refresh();
+        if (response) {
+          setStatus(response);
+          setIsAvailable(response.available);
+          if (!response.available && response.error) {
+            setError(response.error);
+          } else {
+            setError(null);
+          }
         }
+        return response ?? null;
+      } catch {
+        setError("Failed to refresh AI pipeline environment");
+        return null;
       }
-      return response ?? null;
-    } catch {
-      setError("Failed to refresh AI pipeline environment");
-      return null;
-    }
-  }, []);
+    }, []);
 
   /**
    * Generate AI content

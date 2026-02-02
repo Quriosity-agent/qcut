@@ -73,9 +73,14 @@ const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
-const { setupAIPipelineIPC, cleanupAIPipeline } = require("./ai-pipeline-handler.js");
+const {
+  setupAIPipelineIPC,
+  cleanupAIPipeline,
+} = require("./ai-pipeline-handler.js");
 const { setupMediaImportIPC } = require("./media-import-handler.js");
-const { registerElevenLabsTranscribeHandler } = require("./elevenlabs-transcribe-handler.js");
+const {
+  registerElevenLabsTranscribeHandler,
+} = require("./elevenlabs-transcribe-handler.js");
 const { setupProjectFolderIPC } = require("./project-folder-handler.js");
 const { setupAllClaudeIPC } = require("./claude/index.js");
 const { setupRemotionFolderIPC } = require("./remotion-folder-handler.js");

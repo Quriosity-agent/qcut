@@ -99,7 +99,9 @@ function ObjectEditor({
                 key={childField.name}
                 field={childField}
                 value={value?.[childField.name]}
-                onChange={(newValue) => handleFieldChange(childField.name, newValue)}
+                onChange={(newValue) =>
+                  handleFieldChange(childField.name, newValue)
+                }
                 error={errors[childPath]}
                 disabled={disabled}
                 pathPrefix={fullPath}
@@ -123,16 +125,19 @@ interface ArrayEditorProps {
   disabled?: boolean;
 }
 
-function ArrayEditor({ field, value = [], onChange, disabled }: ArrayEditorProps) {
+function ArrayEditor({
+  field,
+  value = [],
+  onChange,
+  disabled,
+}: ArrayEditorProps) {
   // Basic array display - full implementation would include add/remove items
   return (
     <div className="space-y-2">
       <Label className="text-xs">{field.label}</Label>
       <div className="text-xs text-muted-foreground p-2 border rounded bg-muted/30">
         Array with {value.length} item(s)
-        {field.description && (
-          <p className="mt-1">{field.description}</p>
-        )}
+        {field.description && <p className="mt-1">{field.description}</p>}
       </div>
     </div>
   );
@@ -215,7 +220,9 @@ export function PropEditorFactory({
         <ColorProp
           name={field.name}
           label={field.label}
-          value={(value as string) ?? (field.defaultValue as string) ?? "#000000"}
+          value={
+            (value as string) ?? (field.defaultValue as string) ?? "#000000"
+          }
           onChange={handleChange as (v: string) => void}
           description={field.description}
           error={error}
@@ -261,9 +268,7 @@ export function PropEditorFactory({
     default:
       return (
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">
-            {field.label}
-          </Label>
+          <Label className="text-xs text-muted-foreground">{field.label}</Label>
           <div className="text-xs text-muted-foreground p-2 border rounded bg-muted/30">
             Unsupported field type: {field.type}
           </div>

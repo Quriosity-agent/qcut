@@ -10,8 +10,15 @@
 
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { SequenceStructure, SequenceMetadata, TransitionMetadata } from "@/lib/remotion/types";
-import { calculateSequencePositions, type SequencePosition } from "@/lib/remotion/duration-calculator";
+import type {
+  SequenceStructure,
+  SequenceMetadata,
+  TransitionMetadata,
+} from "@/lib/remotion/types";
+import {
+  calculateSequencePositions,
+  type SequencePosition,
+} from "@/lib/remotion/duration-calculator";
 
 // ============================================================================
 // Types
@@ -82,8 +89,12 @@ function SequenceBar({
   const color = sequence.color || getDefaultColor(index);
 
   // Calculate overlap width for gradient
-  const overlapWidth = hasOverlap ? (previousEnd - position.from) * pixelsPerFrame : 0;
-  const overlapPercent = hasOverlap ? Math.min(100, (overlapWidth / width) * 100) : 0;
+  const overlapWidth = hasOverlap
+    ? (previousEnd - position.from) * pixelsPerFrame
+    : 0;
+  const overlapPercent = hasOverlap
+    ? Math.min(100, (overlapWidth / width) * 100)
+    : 0;
 
   // Only show name if bar is wide enough
   const showName = width > 30;
@@ -106,9 +117,7 @@ function SequenceBar({
       title={`${sequence.name}: ${sequence.durationInFrames} frames (${position.from}-${position.to})`}
     >
       {showName && (
-        <span className="px-1 truncate drop-shadow-sm">
-          {sequence.name}
-        </span>
+        <span className="px-1 truncate drop-shadow-sm">{sequence.name}</span>
       )}
     </div>
   );

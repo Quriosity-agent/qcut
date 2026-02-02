@@ -9,7 +9,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { RemotionExportProgress } from "../remotion-export-progress";
-import { useExportStore, type RemotionExportProgress as RemotionExportProgressType, type RemotionElementProgress } from "@/stores/export-store";
+import {
+  useExportStore,
+  type RemotionExportProgress as RemotionExportProgressType,
+  type RemotionElementProgress,
+} from "@/stores/export-store";
 
 // Mock the export store
 vi.mock("@/stores/export-store", async () => {
@@ -294,10 +298,22 @@ describe("RemotionExportProgress", () => {
       setupMockStore(
         createMockRemotionProgress({
           elementProgress: [
-            createMockElementProgress({ elementName: "Pending", status: "pending" }),
-            createMockElementProgress({ elementName: "Complete", status: "complete" }),
-            createMockElementProgress({ elementName: "Error", status: "error" }),
-            createMockElementProgress({ elementName: "Skipped", status: "skipped" }),
+            createMockElementProgress({
+              elementName: "Pending",
+              status: "pending",
+            }),
+            createMockElementProgress({
+              elementName: "Complete",
+              status: "complete",
+            }),
+            createMockElementProgress({
+              elementName: "Error",
+              status: "error",
+            }),
+            createMockElementProgress({
+              elementName: "Skipped",
+              status: "skipped",
+            }),
           ],
         })
       );

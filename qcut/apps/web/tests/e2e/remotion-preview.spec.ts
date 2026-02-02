@@ -6,7 +6,13 @@
  * Run with: npx playwright test tests/e2e/remotion-preview.spec.ts
  */
 
-import { test, expect, _electron as electron, ElectronApplication, Page } from "@playwright/test";
+import {
+  test,
+  expect,
+  _electron as electron,
+  ElectronApplication,
+  Page,
+} from "@playwright/test";
 import path from "path";
 
 let electronApp: ElectronApplication;
@@ -99,7 +105,7 @@ test.describe("Remotion Preview Integration", () => {
       await page.waitForTimeout(1000);
 
       // Click on a component to add it
-      const fadeInTextComponent = page.locator('text=Fade In Text').first();
+      const fadeInTextComponent = page.locator("text=Fade In Text").first();
 
       if (await fadeInTextComponent.isVisible()) {
         // Find and click the Add button
@@ -124,7 +130,9 @@ test.describe("Remotion Preview Integration", () => {
 
     if (await timeline.isVisible()) {
       // Click on a Remotion element in timeline
-      const remotionElement = page.locator('[data-element-type="remotion"]').first();
+      const remotionElement = page
+        .locator('[data-element-type="remotion"]')
+        .first();
 
       if (await remotionElement.isVisible()) {
         await remotionElement.click();
@@ -144,7 +152,12 @@ test.describe("Remotion Preview Integration", () => {
           if (canvas) {
             const ctx = canvas.getContext("2d");
             if (ctx) {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              );
               // Check if there's any non-white pixel
               for (let i = 0; i < imageData.data.length; i += 4) {
                 const r = imageData.data[i];

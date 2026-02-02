@@ -79,7 +79,7 @@ QCut uses a **virtual folder system** for organizing media in the UI:
 
 1. **Identify file types** - Categorize by extension and source
 2. **Check existing structure** - Don't duplicate folders
-3. **Move files safely** - Use copy then delete, not direct move
+3. **Move files** - Use mv to relocate files to standard locations
 4. **Update references** - Ensure project files still point to correct paths
 5. **Clean up empty folders** - Remove unused directories
 

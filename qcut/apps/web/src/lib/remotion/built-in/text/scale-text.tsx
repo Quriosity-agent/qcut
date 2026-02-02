@@ -136,8 +136,6 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
     const activeFrame = Math.max(0, frame - elementStart);
 
     let scale: number;
-    let rotation: number;
-    let opacity: number;
 
     switch (animationStyle) {
       case "zoom": {
@@ -168,11 +166,7 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
             overshootClamping: false,
           },
         });
-        scale = interpolate(
-          springProgress,
-          [0, 1],
-          [initialScale, finalScale]
-        );
+        scale = interpolate(springProgress, [0, 1], [initialScale, finalScale]);
         break;
       }
 
@@ -214,30 +208,20 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
     }
 
     // Rotation animation
-    rotation = includeRotation
-      ? interpolate(
-          activeFrame,
-          [0, animationDuration],
-          [initialRotation, 0],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: Easing.out(Easing.ease),
-          }
-        )
+    const rotation = includeRotation
+      ? interpolate(activeFrame, [0, animationDuration], [initialRotation, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+          easing: Easing.out(Easing.ease),
+        })
       : 0;
 
     // Opacity animation
-    opacity = includeFade
-      ? interpolate(
-          activeFrame,
-          [0, animationDuration / 3],
-          [0, 1],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }
-        )
+    const opacity = includeFade
+      ? interpolate(activeFrame, [0, animationDuration / 3], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
       : 1;
 
     return { scale, rotation, opacity };
@@ -295,9 +279,11 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
     }
 
     if (scaleMode === "character") {
-      return text.split("").map((char, i) =>
-        renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
-      );
+      return text
+        .split("")
+        .map((char, i) =>
+          renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
+        );
     }
 
     return text;
@@ -312,8 +298,8 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
           textAlign === "center"
             ? "center"
             : textAlign === "right"
-            ? "flex-end"
-            : "flex-start",
+              ? "flex-end"
+              : "flex-start",
         width: "100%",
         height: "100%",
         backgroundColor,
@@ -347,7 +333,8 @@ export const ScaleText: FC<Partial<ScaleTextProps>> = ({
 export const ScaleTextDefinition: RemotionComponentDefinition = {
   id: "built-in-scale-text",
   name: "Scale Text",
-  description: "Animates text scaling in with zoom, pop, grow, or shrink effects",
+  description:
+    "Animates text scaling in with zoom, pop, grow, or shrink effects",
   category: "text",
   durationInFrames: 90,
   fps: 30,

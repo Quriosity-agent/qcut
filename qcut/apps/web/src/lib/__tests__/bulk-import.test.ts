@@ -44,7 +44,9 @@ describe("bulk-import", () => {
       expect(getMimeType("video.xyz", "video")).toBe("video/mp4");
       expect(getMimeType("audio.xyz", "audio")).toBe("audio/mpeg");
       expect(getMimeType("image.xyz", "image")).toBe("image/jpeg");
-      expect(getMimeType("file.xyz", "unknown")).toBe("application/octet-stream");
+      expect(getMimeType("file.xyz", "unknown")).toBe(
+        "application/octet-stream"
+      );
     });
 
     it("should handle files without extension", () => {
@@ -85,7 +87,7 @@ describe("bulk-import", () => {
         path: "/projects/test/media/video1.mp4",
         relativePath: "media/video1.mp4",
         type: "video",
-        size: 1024000,
+        size: 1_024_000,
         modifiedAt: Date.now(),
         isDirectory: false,
       },
@@ -94,7 +96,7 @@ describe("bulk-import", () => {
         path: "/projects/test/media/audio1.mp3",
         relativePath: "media/audio1.mp3",
         type: "audio",
-        size: 512000,
+        size: 512_000,
         modifiedAt: Date.now(),
         isDirectory: false,
       },
@@ -133,7 +135,7 @@ describe("bulk-import", () => {
               targetPath: "/projects/test/media/imported/mock-uuid-123.mp4",
               importMethod: "symlink",
               originalPath: "/projects/test/media/video1.mp4",
-              fileSize: 1024000,
+              fileSize: 1_024_000,
             }),
           },
         },

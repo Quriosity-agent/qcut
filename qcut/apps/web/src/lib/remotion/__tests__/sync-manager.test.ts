@@ -18,7 +18,9 @@ import {
 import type { RemotionElement, TimelineTrack } from "@/types/timeline";
 
 // Helper to create a test Remotion element
-function createTestElement(overrides: Partial<RemotionElement> = {}): RemotionElement {
+function createTestElement(
+  overrides: Partial<RemotionElement> = {}
+): RemotionElement {
   return {
     id: "test-elem-1",
     type: "remotion",

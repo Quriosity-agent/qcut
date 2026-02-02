@@ -16,7 +16,12 @@ import { interpolate, Easing } from "remotion";
 /**
  * Supported easing types for keyframe animations
  */
-export type EasingType = "linear" | "easeIn" | "easeOut" | "easeInOut" | "spring";
+export type EasingType =
+  | "linear"
+  | "easeIn"
+  | "easeOut"
+  | "easeInOut"
+  | "spring";
 
 /**
  * A single keyframe in the animation timeline
@@ -51,7 +56,10 @@ export interface KeyframeAnimationConfig {
 /**
  * Map of easing type names to Remotion easing functions
  */
-export const EASING_FUNCTIONS: Record<EasingType, ((t: number) => number) | undefined> = {
+export const EASING_FUNCTIONS: Record<
+  EasingType,
+  ((t: number) => number) | undefined
+> = {
   linear: undefined, // Default linear interpolation
   easeIn: Easing.ease,
   easeOut: Easing.out(Easing.ease),
@@ -62,7 +70,9 @@ export const EASING_FUNCTIONS: Record<EasingType, ((t: number) => number) | unde
 /**
  * Get the Remotion easing function for a given easing type
  */
-export function getEasingFunction(easing: EasingType): ((t: number) => number) | undefined {
+export function getEasingFunction(
+  easing: EasingType
+): ((t: number) => number) | undefined {
   return EASING_FUNCTIONS[easing];
 }
 
@@ -73,7 +83,9 @@ export function getEasingFunction(easing: EasingType): ((t: number) => number) |
 /**
  * Sort keyframes by frame number (ascending)
  */
-export function sortKeyframes<T extends { frame: number }>(keyframes: T[]): T[] {
+export function sortKeyframes<T extends { frame: number }>(
+  keyframes: T[]
+): T[] {
   return [...keyframes].sort((a, b) => a.frame - b.frame);
 }
 
@@ -100,7 +112,7 @@ export function validateKeyframes(keyframes: Keyframe[]): string | undefined {
     return "Keyframe frames cannot be negative";
   }
 
-  return undefined;
+  return;
 }
 
 /**
@@ -371,9 +383,7 @@ export function updateKeyframe(
   updates: Partial<Omit<Keyframe, "id">>
 ): Keyframe[] {
   return sortKeyframes(
-    keyframes.map((kf) =>
-      kf.id === id ? { ...kf, ...updates } : kf
-    )
+    keyframes.map((kf) => (kf.id === id ? { ...kf, ...updates } : kf))
   );
 }
 

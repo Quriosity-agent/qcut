@@ -126,7 +126,13 @@ export const mockElectronAPI: ElectronAPI = {
       words: [
         { text: "Test", start: 0, end: 0.5, type: "word", speaker_id: null },
         { text: " ", start: 0.5, end: 0.6, type: "spacing", speaker_id: null },
-        { text: "transcription", start: 0.6, end: 1.2, type: "word", speaker_id: null },
+        {
+          text: "transcription",
+          start: 0.6,
+          end: 1.2,
+          type: "word",
+          speaker_id: null,
+        },
       ],
     }),
     uploadToFal: vi.fn().mockResolvedValue({
@@ -235,7 +241,7 @@ export const mockElectronAPI: ElectronAPI = {
       targetPath: "/path/to/project/media/imported/media-123.mp4",
       importMethod: "symlink" as const,
       originalPath: "/path/to/original/video.mp4",
-      fileSize: 1024000,
+      fileSize: 1_024_000,
     }),
     validateSymlink: vi.fn().mockResolvedValue(true),
     locateOriginal: vi.fn().mockResolvedValue("/path/to/original/video.mp4"),
@@ -244,7 +250,7 @@ export const mockElectronAPI: ElectronAPI = {
       targetPath: "/path/to/project/media/imported/media-123.mp4",
       importMethod: "symlink" as const,
       originalPath: "/path/to/new/video.mp4",
-      fileSize: 1024000,
+      fileSize: 1_024_000,
     }),
     remove: vi.fn().mockResolvedValue(undefined),
     checkSymlinkSupport: vi.fn().mockResolvedValue(true),

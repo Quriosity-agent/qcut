@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSkillsStore } from "@/stores/skills-store";
 import { useProjectStore } from "@/stores/project-store";
 import {
@@ -37,14 +37,7 @@ export function ImportSkillDialog({
   const [isScanning, setIsScanning] = useState(false);
   const [availableSkills, setAvailableSkills] = useState<AvailableSkill[]>([]);
 
-  // Scan global skills when dialog opens
-  useEffect(() => {
-    if (open) {
-      scanGlobalSkills();
-    }
-  }, [open]);
-
-  const scanGlobalSkills = async () => {
+  const scanGlobalSkills = useCallback(async () => {
     if (!window.electronAPI?.skills?.scanGlobal) {
       return;
     }
@@ -53,12 +46,19 @@ export function ImportSkillDialog({
     try {
       const skills = await window.electronAPI.skills.scanGlobal();
       setAvailableSkills(skills);
-    } catch (error) {
+    } catch {
       // Silently handle - global folder may not exist
     } finally {
       setIsScanning(false);
     }
-  };
+  }, []);
+
+  // Scan global skills when dialog opens
+  useEffect(() => {
+    if (open) {
+      scanGlobalSkills();
+    }
+  }, [open, scanGlobalSkills]);
 
   const handleImport = async (skillPath: string, skillName: string) => {
     if (!activeProject) {

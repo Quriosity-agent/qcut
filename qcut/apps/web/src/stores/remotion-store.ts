@@ -76,7 +76,10 @@ export const useRemotionStore = create<RemotionStore>()(
     // ========================================================================
 
     initialize: async () => {
-      debugLog("[REMOTION] initialize() called", { isInitialized: get().isInitialized, isLoading: get().isLoading });
+      debugLog("[REMOTION] initialize() called", {
+        isInitialized: get().isInitialized,
+        isLoading: get().isLoading,
+      });
 
       const { isInitialized } = get();
       if (isInitialized) {
@@ -102,7 +105,9 @@ export const useRemotionStore = create<RemotionStore>()(
           isLoading: false,
         });
 
-        debugLog("[REMOTION] Initialization complete!", { totalComponents: newComponents.size });
+        debugLog("[REMOTION] Initialization complete!", {
+          totalComponents: newComponents.size,
+        });
       } catch (error) {
         debugError("[REMOTION] Initialization failed:", error);
         const remotionError: RemotionError = {
@@ -578,7 +583,9 @@ export const useRemotionStore = create<RemotionStore>()(
     // Folder Import
     // ========================================================================
 
-    importFromFolder: async (folderPath?: string): Promise<FolderImportResult> => {
+    importFromFolder: async (
+      folderPath?: string
+    ): Promise<FolderImportResult> => {
       // Check if folder import is available
       if (!isFolderImportAvailable()) {
         return {
@@ -805,7 +812,9 @@ export const selectIsFolderImporting = (state: RemotionStore) =>
  * Hook to get a specific component by ID
  */
 export function useRemotionComponent(componentId: string) {
-  return useRemotionStore((state) => state.registeredComponents.get(componentId));
+  return useRemotionStore((state) =>
+    state.registeredComponents.get(componentId)
+  );
 }
 
 /**

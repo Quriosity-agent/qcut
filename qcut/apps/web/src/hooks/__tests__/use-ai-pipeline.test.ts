@@ -251,7 +251,7 @@ describe("useAIPipeline", () => {
       mockElectronAPI.aiPipeline.generate.mockImplementation(
         () =>
           new Promise((resolve) =>
-            setTimeout(() => resolve({ success: true }), 10000)
+            setTimeout(() => resolve({ success: true }), 10_000)
           )
       );
 

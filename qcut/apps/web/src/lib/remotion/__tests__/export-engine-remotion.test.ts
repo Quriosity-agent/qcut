@@ -6,7 +6,15 @@
  * @module lib/remotion/__tests__/export-engine-remotion.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  beforeAll,
+} from "vitest";
 import {
   RemotionExportEngine,
   createRemotionExportEngine,
@@ -16,12 +24,18 @@ import {
   type RemotionExportPhase,
 } from "../export-engine-remotion";
 import type { ExportSettings } from "@/types/export";
-import type { TimelineTrack, RemotionElement, MediaElement } from "@/types/timeline";
+import type {
+  TimelineTrack,
+  RemotionElement,
+  MediaElement,
+} from "@/types/timeline";
 import type { MediaItem } from "@/stores/media-store-types";
 
 // Mock canvas for JSDOM environment
 beforeAll(() => {
-  HTMLCanvasElement.prototype.toDataURL = vi.fn(() => "data:image/png;base64,test");
+  HTMLCanvasElement.prototype.toDataURL = vi.fn(
+    () => "data:image/png;base64,test"
+  );
   HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => {
     callback(new Blob(["test"], { type: "image/png" }));
   });
@@ -32,7 +46,7 @@ beforeAll(() => {
 
   // Mock getContext to return a valid 2D context
   const originalGetContext = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = vi.fn(function(
+  HTMLCanvasElement.prototype.getContext = vi.fn(function (
     this: HTMLCanvasElement,
     contextId: string,
     options?: any
@@ -210,7 +224,9 @@ describe("RemotionExportEngine", () => {
     });
 
     it("should return true when Remotion elements exist", () => {
-      const tracks = [createMockTrack([createMockRemotionElement()], "remotion")];
+      const tracks = [
+        createMockTrack([createMockRemotionElement()], "remotion"),
+      ];
       const engine = new RemotionExportEngine(
         canvas,
         settings,
@@ -241,7 +257,9 @@ describe("RemotionExportEngine", () => {
 
   describe("cancel", () => {
     it("should cancel export without errors", () => {
-      const tracks = [createMockTrack([createMockRemotionElement()], "remotion")];
+      const tracks = [
+        createMockTrack([createMockRemotionElement()], "remotion"),
+      ];
       const engine = new RemotionExportEngine(
         canvas,
         settings,
@@ -339,7 +357,9 @@ describe("requiresRemotionExport", () => {
 
 describe("DEFAULT_REMOTION_EXPORT_CONFIG", () => {
   it("should have expected default values", () => {
-    expect(DEFAULT_REMOTION_EXPORT_CONFIG.tempDir).toBe("/tmp/qcut-remotion-export");
+    expect(DEFAULT_REMOTION_EXPORT_CONFIG.tempDir).toBe(
+      "/tmp/qcut-remotion-export"
+    );
     expect(DEFAULT_REMOTION_EXPORT_CONFIG.frameFormat).toBe("jpeg");
     expect(DEFAULT_REMOTION_EXPORT_CONFIG.frameQuality).toBe(90);
     expect(DEFAULT_REMOTION_EXPORT_CONFIG.keepTempFiles).toBe(false);

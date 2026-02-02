@@ -77,14 +77,17 @@ export const templateComponentDefinitions: RemotionComponentDefinition[] = [
 /**
  * Map of template component definitions by ID
  */
-export const templateComponentsById = new Map<string, RemotionComponentDefinition>(
-  templateComponentDefinitions.map((def) => [def.id, def])
-);
+export const templateComponentsById = new Map<
+  string,
+  RemotionComponentDefinition
+>(templateComponentDefinitions.map((def) => [def.id, def]));
 
 /**
  * Get a template component definition by ID
  */
-export function getTemplateComponent(id: string): RemotionComponentDefinition | undefined {
+export function getTemplateComponent(
+  id: string
+): RemotionComponentDefinition | undefined {
   return templateComponentsById.get(id);
 }
 

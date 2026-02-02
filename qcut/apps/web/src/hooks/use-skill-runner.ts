@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { toast } from "sonner";
 import { useSkillsStore } from "@/stores/skills-store";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { useMediaPanelStore } from "@/components/editor/media-panel/store";
@@ -40,15 +41,18 @@ export function useSkillRunner() {
    *                           If not specified, uses the currently selected provider
    */
   const runSkill = useCallback(
-    async (skillId: string, preferredProvider?: "gemini" | "codex" | "claude") => {
+    async (
+      skillId: string,
+      preferredProvider?: "gemini" | "codex" | "claude"
+    ) => {
       const skill = skills.find((s) => s.id === skillId);
       if (!skill) {
-        console.warn("[useSkillRunner] Skill not found:", skillId);
+        toast.error("Skill not found");
         return;
       }
 
       if (!activeProject) {
-        console.warn("[useSkillRunner] No active project");
+        toast.error("No active project");
         return;
       }
 
@@ -58,7 +62,9 @@ export function useSkillRunner() {
       let skillsPath = "";
       try {
         if (window.electronAPI?.skills?.getPath) {
-          skillsPath = await window.electronAPI.skills.getPath(activeProject.id);
+          skillsPath = await window.electronAPI.skills.getPath(
+            activeProject.id
+          );
         }
       } catch {
         // Ignore - skills path is optional
@@ -91,15 +97,25 @@ export function useSkillRunner() {
       if (status === "connected") {
         await disconnect();
         // Small delay before reconnecting
-        setTimeout(() => {
-          connect();
-        }, 200);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await connect();
       } else if (status !== "connecting") {
         // Auto-start CLI if not connected
         await connect();
       }
     },
-    [skills, activeProject, setActiveSkill, setCliProvider, setWorkingDirectory, setActiveTab, connect, disconnect, status, cliProvider]
+    [
+      skills,
+      activeProject,
+      setActiveSkill,
+      setCliProvider,
+      setWorkingDirectory,
+      setActiveTab,
+      connect,
+      disconnect,
+      status,
+      cliProvider,
+    ]
   );
 
   return { runSkill };

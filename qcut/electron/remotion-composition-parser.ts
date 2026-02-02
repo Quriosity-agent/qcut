@@ -117,10 +117,10 @@ function extractImports(sourceCode: string): ImportInfo[] {
   const imports: ImportInfo[] = [];
 
   // Match: import X from "path" or import { X } from "path"
-  const importRegex = /import\s+(?:(\w+)|(?:\{([^}]+)\}))\s+from\s+["']([^"']+)["']/g;
+  const importRegex =
+    /import\s+(?:(\w+)|(?:\{([^}]+)\}))\s+from\s+["']([^"']+)["']/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = importRegex.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(importRegex)) {
     const defaultImport = match[1];
     const namedImports = match[2];
     const importPath = match[3];
@@ -153,8 +153,9 @@ function extractImports(sourceCode: string): ImportInfo[] {
   }
 
   // Also match: import DefaultName, { Named } from "path"
-  const mixedImportRegex = /import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+["']([^"']+)["']/g;
-  while ((match = mixedImportRegex.exec(sourceCode)) !== null) {
+  const mixedImportRegex =
+    /import\s+(\w+)\s*,\s*\{([^}]+)\}\s+from\s+["']([^"']+)["']/g;
+  for (const match of sourceCode.matchAll(mixedImportRegex)) {
     const defaultImport = match[1];
     const namedImports = match[2];
     const importPath = match[3];
@@ -165,7 +166,13 @@ function extractImports(sourceCode: string): ImportInfo[] {
       isDefault: true,
     });
 
-    const names = namedImports.split(",").map((s) => s.trim().split(/\s+as\s+/).pop()?.trim());
+    const names = namedImports.split(",").map((s) =>
+      s
+        .trim()
+        .split(/\s+as\s+/)
+        .pop()
+        ?.trim()
+    );
     for (const name of names) {
       if (name) {
         imports.push({
@@ -246,10 +253,9 @@ function parseCompositions(
   // This regex captures the props section
   const compositionRegex = /<Composition\s+([^>]+?)(?:\/>|>)/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = compositionRegex.exec(sourceCode)) !== null) {
+  for (const match of sourceCode.matchAll(compositionRegex)) {
     const propsString = match[1];
-    const matchIndex = match.index;
+    const matchIndex = match.index ?? 0;
 
     // Calculate line number
     const lineNumber = sourceCode.substring(0, matchIndex).split("\n").length;
@@ -258,8 +264,7 @@ function parseCompositions(
     const propRegex = /(\w+)\s*=\s*(\{[^}]+\}|"[^"]*"|'[^']*'|\d+)/g;
     const props: Record<string, string> = {};
 
-    let propMatch: RegExpExecArray | null;
-    while ((propMatch = propRegex.exec(propsString)) !== null) {
+    for (const propMatch of propsString.matchAll(propRegex)) {
       props[propMatch[1]] = propMatch[2];
     }
 
@@ -273,7 +278,9 @@ function parseCompositions(
     // Extract component reference
     const componentRef = extractIdentifierProp(props.component || "");
     if (!componentRef) {
-      errors.push(`Line ${lineNumber}: Composition "${id}" missing 'component' prop`);
+      errors.push(
+        `Line ${lineNumber}: Composition "${id}" missing 'component' prop`
+      );
       continue;
     }
 
@@ -310,7 +317,9 @@ function parseCompositions(
     }
 
     // Extract dimensions and timing
-    const durationInFrames = extractNumberProp(props.durationInFrames || "") ?? DEFAULTS.durationInFrames;
+    const durationInFrames =
+      extractNumberProp(props.durationInFrames || "") ??
+      DEFAULTS.durationInFrames;
     const fps = extractNumberProp(props.fps || "") ?? DEFAULTS.fps;
     const width = extractNumberProp(props.width || "") ?? DEFAULTS.width;
     const height = extractNumberProp(props.height || "") ?? DEFAULTS.height;
@@ -394,7 +403,9 @@ export async function findRootFile(folderPath: string): Promise<string | null> {
 /**
  * Parse a Remotion project folder and extract composition information.
  */
-export async function parseRemotionProject(folderPath: string): Promise<ParseResult> {
+export async function parseRemotionProject(
+  folderPath: string
+): Promise<ParseResult> {
   const result: ParseResult = {
     isValid: false,
     rootFilePath: null,
@@ -406,7 +417,9 @@ export async function parseRemotionProject(folderPath: string): Promise<ParseRes
     // Validate it's a Remotion project
     const isValid = await isRemotionProject(folderPath);
     if (!isValid) {
-      result.errors.push("Not a valid Remotion project. Ensure package.json contains 'remotion' dependency and Root.tsx exists.");
+      result.errors.push(
+        "Not a valid Remotion project. Ensure package.json contains 'remotion' dependency and Root.tsx exists."
+      );
       return result;
     }
 

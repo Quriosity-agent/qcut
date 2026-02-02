@@ -11,12 +11,7 @@ import { render } from "@testing-library/react";
 import React from "react";
 
 // Import all components and definitions
-import {
-  Wipe,
-  WipeSchema,
-  WipeDefinition,
-  wipeDefaultProps,
-} from "../wipe";
+import { Wipe, WipeSchema, WipeDefinition, wipeDefaultProps } from "../wipe";
 
 import {
   Dissolve,
@@ -32,12 +27,7 @@ import {
   slideDefaultProps,
 } from "../slide";
 
-import {
-  Zoom,
-  ZoomSchema,
-  ZoomDefinition,
-  zoomDefaultProps,
-} from "../zoom";
+import { Zoom, ZoomSchema, ZoomDefinition, zoomDefaultProps } from "../zoom";
 
 import {
   transitionComponentDefinitions,
@@ -58,7 +48,16 @@ vi.mock("remotion", () => ({
     height: 1080,
     durationInFrames: 30,
   }),
-  interpolate: (value: number, inputRange: number[], outputRange: number[], options?: { extrapolateLeft?: string; extrapolateRight?: string; easing?: (t: number) => number }) => {
+  interpolate: (
+    value: number,
+    inputRange: number[],
+    outputRange: number[],
+    options?: {
+      extrapolateLeft?: string;
+      extrapolateRight?: string;
+      easing?: (t: number) => number;
+    }
+  ) => {
     const [inputMin, inputMax] = inputRange;
     const [outputMin, outputMax] = outputRange;
     let progress = (value - inputMin) / (inputMax - inputMin);
@@ -75,8 +74,16 @@ vi.mock("remotion", () => ({
     in: (fn: (t: number) => number) => fn,
     inOut: (fn: (t: number) => number) => fn,
   },
-  AbsoluteFill: ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) => (
-    <div data-testid="absolute-fill" style={style}>{children}</div>
+  AbsoluteFill: ({
+    children,
+    style,
+  }: {
+    children?: React.ReactNode;
+    style?: React.CSSProperties;
+  }) => (
+    <div data-testid="absolute-fill" style={style}>
+      {children}
+    </div>
   ),
 }));
 
@@ -377,7 +384,13 @@ describe("Zoom", () => {
     });
 
     it("should validate all origins", () => {
-      for (const origin of ["center", "top-left", "top-right", "bottom-left", "bottom-right"]) {
+      for (const origin of [
+        "center",
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+      ]) {
         const result = ZoomSchema.safeParse({ origin });
         expect(result.success).toBe(true);
       }
@@ -455,7 +468,9 @@ describe("Transition Components Index", () => {
     expect(transitionComponentsById.size).toBe(4);
     expect(transitionComponentsById.has("built-in-wipe")).toBe(true);
     expect(transitionComponentsById.has("built-in-dissolve")).toBe(true);
-    expect(transitionComponentsById.has("built-in-slide-transition")).toBe(true);
+    expect(transitionComponentsById.has("built-in-slide-transition")).toBe(
+      true
+    );
     expect(transitionComponentsById.has("built-in-zoom-transition")).toBe(true);
   });
 

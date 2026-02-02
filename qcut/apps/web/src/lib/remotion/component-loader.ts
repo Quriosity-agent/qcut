@@ -7,9 +7,19 @@
  * @module lib/remotion/component-loader
  */
 
-import type { RemotionComponentDefinition, RemotionComponentCategory } from "./types";
-import { validateComponent, type ValidationResult, type ComponentMetadata } from "./component-validator";
-import { getSequenceAnalysisService, type AnalysisResult } from "./sequence-analysis-service";
+import type {
+  RemotionComponentDefinition,
+  RemotionComponentCategory,
+} from "./types";
+import {
+  validateComponent,
+  type ValidationResult,
+  type ComponentMetadata,
+} from "./component-validator";
+import {
+  getSequenceAnalysisService,
+  type AnalysisResult,
+} from "./sequence-analysis-service";
 
 // ============================================================================
 // Types
@@ -307,7 +317,10 @@ export async function loadComponentFromCode(
   let analysisResult: AnalysisResult | undefined;
   try {
     const analysisService = getSequenceAnalysisService();
-    analysisResult = await analysisService.analyzeComponent(componentId, sourceCode);
+    analysisResult = await analysisService.analyzeComponent(
+      componentId,
+      sourceCode
+    );
 
     // If analysis found sequences, attach to component definition
     if (analysisResult.structure) {
@@ -391,7 +404,9 @@ export interface LoadStoredComponentsResult {
  *
  * @returns Array of component definitions
  */
-export async function loadStoredComponents(): Promise<RemotionComponentDefinition[]> {
+export async function loadStoredComponents(): Promise<
+  RemotionComponentDefinition[]
+> {
   try {
     const storedComponents = await getAllStoredComponents();
 
@@ -423,7 +438,9 @@ export async function loadStoredComponents(): Promise<RemotionComponentDefinitio
  *
  * @returns Array of component definitions with source code and analysis
  */
-export async function loadStoredComponentsWithAnalysis(): Promise<LoadStoredComponentsResult[]> {
+export async function loadStoredComponentsWithAnalysis(): Promise<
+  LoadStoredComponentsResult[]
+> {
   try {
     const storedComponents = await getAllStoredComponents();
     const analysisService = getSequenceAnalysisService();
@@ -433,7 +450,10 @@ export async function loadStoredComponentsWithAnalysis(): Promise<LoadStoredComp
       // Analyze source code for sequences
       let analysisResult: AnalysisResult | undefined;
       try {
-        analysisResult = await analysisService.analyzeComponent(stored.id, stored.sourceCode);
+        analysisResult = await analysisService.analyzeComponent(
+          stored.id,
+          stored.sourceCode
+        );
       } catch {
         // Analysis failure is non-blocking
       }
@@ -477,7 +497,9 @@ export async function loadStoredComponentsWithAnalysis(): Promise<LoadStoredComp
  *
  * @param componentId - The component ID to remove
  */
-export async function removeStoredComponent(componentId: string): Promise<void> {
+export async function removeStoredComponent(
+  componentId: string
+): Promise<void> {
   await deleteStoredComponent(componentId);
 }
 
@@ -487,7 +509,9 @@ export async function removeStoredComponent(componentId: string): Promise<void> 
  * @param componentId - The component ID
  * @returns The source code or null if not found
  */
-export async function getComponentSourceCode(componentId: string): Promise<string | null> {
+export async function getComponentSourceCode(
+  componentId: string
+): Promise<string | null> {
   try {
     const stored = await getStoredComponent(componentId);
     return stored?.sourceCode || null;
@@ -551,7 +575,10 @@ export async function updateStoredComponent(
     try {
       const analysisService = getSequenceAnalysisService();
       analysisService.invalidateCache(componentId);
-      analysisResult = await analysisService.analyzeComponent(componentId, newSourceCode);
+      analysisResult = await analysisService.analyzeComponent(
+        componentId,
+        newSourceCode
+      );
     } catch {
       // Analysis failure is non-blocking
     }
@@ -715,7 +742,10 @@ export async function loadComponentsFromFolder(
       let analysisResult: AnalysisResult | undefined;
       try {
         const analysisService = getSequenceAnalysisService();
-        analysisResult = await analysisService.analyzeComponent(componentId, bundle.code);
+        analysisResult = await analysisService.analyzeComponent(
+          componentId,
+          bundle.code
+        );
         if (analysisResult.structure) {
           componentDef.sequenceStructure = analysisResult.structure;
         }
@@ -775,7 +805,10 @@ export async function loadComponentsFromFolder(
 /**
  * Generate a unique component ID for folder-imported components
  */
-function generateFolderComponentId(folderPath: string, compositionId: string): string {
+function generateFolderComponentId(
+  folderPath: string,
+  compositionId: string
+): string {
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 6);
   // Extract folder name from path
@@ -831,8 +864,7 @@ function inferCategoryFromComposition(
  */
 export function isFolderImportAvailable(): boolean {
   return !!(
-    typeof window !== "undefined" &&
-    window.electronAPI?.remotionFolder
+    typeof window !== "undefined" && window.electronAPI?.remotionFolder
   );
 }
 
@@ -896,7 +928,8 @@ export async function importFromFolder(
     }
 
     // Convert the IPC results into component definitions
-    const compositions = importResult.scan.compositions as FolderCompositionInfo[];
+    const compositions = importResult.scan
+      .compositions as FolderCompositionInfo[];
     const bundles = importResult.bundle?.results || [];
 
     return loadComponentsFromFolder(targetPath, compositions, bundles, options);

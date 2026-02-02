@@ -171,7 +171,7 @@ function getSchemaDefault(schema: z.ZodTypeAny): unknown {
   if (schema instanceof z.ZodNullable) {
     return getSchemaDefault(schema._def.innerType);
   }
-  return undefined;
+  return;
 }
 
 // ============================================================================
@@ -214,10 +214,7 @@ function parseField(
     }
 
     // Detect color fields
-    if (
-      isColorFieldName(name) ||
-      isColorString(effectiveDefault)
-    ) {
+    if (isColorFieldName(name) || isColorString(effectiveDefault)) {
       type = "color";
     }
   } else if (unwrapped instanceof z.ZodNumber) {
@@ -257,7 +254,9 @@ function parseField(
   } else if (unwrapped instanceof z.ZodUnion) {
     // Check if it's a union of literals (for select)
     const options = unwrapped._def.options as z.ZodTypeAny[];
-    const allLiterals = options.every((opt) => unwrapSchema(opt) instanceof z.ZodLiteral);
+    const allLiterals = options.every(
+      (opt) => unwrapSchema(opt) instanceof z.ZodLiteral
+    );
 
     if (allLiterals) {
       type = "select";
@@ -410,7 +409,7 @@ export function getFieldByPath(
 
   for (const part of parts) {
     current = currentFields.find((f) => f.name === part);
-    if (!current) return undefined;
+    if (!current) return;
 
     if (current.children) {
       currentFields = current.children;
@@ -459,8 +458,8 @@ export function getValueByPath(
   let current: unknown = obj;
 
   for (const part of parts) {
-    if (current === null || current === undefined) return undefined;
-    if (typeof current !== "object") return undefined;
+    if (current === null || current === undefined) return;
+    if (typeof current !== "object") return;
     current = (current as Record<string, unknown>)[part];
   }
 

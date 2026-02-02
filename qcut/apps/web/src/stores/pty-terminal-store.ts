@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import type { CliProvider } from "@/types/cli-provider";
-import { CLI_PROVIDERS, getDefaultCodexModel, getDefaultClaudeModel } from "@/types/cli-provider";
+import {
+  CLI_PROVIDERS,
+  getDefaultCodexModel,
+  getDefaultClaudeModel,
+} from "@/types/cli-provider";
 
 // ============================================================================
 // Types
@@ -116,14 +120,12 @@ Please acknowledge that you understand these instructions and are ready to help 
  */
 function escapeStringForShell(content: string, escapeNewlines = false): string {
   let escaped = content
-    .replace(/\\/g, '\\\\')
+    .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`');
+    .replace(/\$/g, "\\$")
+    .replace(/`/g, "\\`");
   if (escapeNewlines) {
-    escaped = escaped
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r');
+    escaped = escaped.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
   }
   return escaped;
 }
@@ -133,10 +135,17 @@ function escapeStringForShell(content: string, escapeNewlines = false): string {
  * open-codex supports passing a markdown file as context via --project-doc
  * workingDirectory is the project folder, so we need to add "skills" to the path
  */
-function buildSkillFilePath(workingDirectory: string, skillFolderName: string): string {
+function buildSkillFilePath(
+  workingDirectory: string,
+  skillFolderName: string
+): string {
   // Validate skillFolderName to prevent path traversal
-  if (skillFolderName.includes('..') || skillFolderName.includes('/') || skillFolderName.includes('\\')) {
-    throw new Error('Invalid skill folder name');
+  if (
+    skillFolderName.includes("..") ||
+    skillFolderName.includes("/") ||
+    skillFolderName.includes("\\")
+  ) {
+    throw new Error("Invalid skill folder name");
   }
   // Handle both Windows and Unix paths
   const separator = workingDirectory.includes("\\") ? "\\" : "/";
@@ -153,7 +162,14 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   ...initialState,
 
   connect: async (options = {}) => {
-    const { cliProvider, selectedModel, workingDirectory, cols, rows, activeSkill } = get();
+    const {
+      cliProvider,
+      selectedModel,
+      workingDirectory,
+      cols,
+      rows,
+      activeSkill,
+    } = get();
 
     set({ status: "connecting", error: null, exitCode: null });
 
@@ -169,7 +185,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
       const providerConfig = CLI_PROVIDERS[cliProvider];
       let command: string | undefined;
-      let env: Record<string, string> = {};
+      const env: Record<string, string> = {};
 
       // Build command based on provider
       if (cliProvider === "codex") {
@@ -195,7 +211,8 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         if (!apiKeys?.openRouterApiKey) {
           set({
             status: "error",
-            error: "OpenRouter API key not configured. Go to Settings > API Keys.",
+            error:
+              "OpenRouter API key not configured. Go to Settings > API Keys.",
           });
           return;
         }
@@ -203,7 +220,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         env.OPENROUTER_API_KEY = apiKeys.openRouterApiKey;
 
         // Build Codex command with provider and model
-        command = `npx open-codex --provider openrouter`;
+        command = "npx open-codex --provider openrouter";
         if (selectedModel) {
           command += ` --model ${selectedModel}`;
         }
@@ -211,7 +228,10 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         // Inject skill via --project-doc flag if active and folder name is known
         // open-codex supports passing a markdown file as context
         if (activeSkill?.folderName && workingDirectory) {
-          const skillFilePath = buildSkillFilePath(workingDirectory, activeSkill.folderName);
+          const skillFilePath = buildSkillFilePath(
+            workingDirectory,
+            activeSkill.folderName
+          );
           const escapedSkillFilePath = escapeStringForShell(skillFilePath);
           command += ` --project-doc "${escapedSkillFilePath}"`;
         }
@@ -234,7 +254,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         const { selectedClaudeModel } = get();
 
         // Build Claude command
-        command = `claude`;
+        command = "claude";
         if (selectedClaudeModel) {
           command += ` --model ${selectedClaudeModel}`;
         }
@@ -331,7 +351,12 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     const { sessionId, activeSkill, skillPromptSent, cliProvider } = get();
 
     // Only send prompt injection for Gemini (Codex uses --full-context flag at spawn time)
-    if (!activeSkill || skillPromptSent || cliProvider !== "gemini" || !sessionId) {
+    if (
+      !activeSkill ||
+      skillPromptSent ||
+      cliProvider !== "gemini" ||
+      !sessionId
+    ) {
       return;
     }
 

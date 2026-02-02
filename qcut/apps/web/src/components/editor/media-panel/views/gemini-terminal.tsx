@@ -48,7 +48,7 @@ export function GeminiTerminalView() {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages, currentStreamingContent]);
+  }, []);
 
   // Focus input on mount
   useEffect(() => {
@@ -64,7 +64,7 @@ export function GeminiTerminalView() {
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        void handleSubmit();
+        handleSubmit();
       }
     },
     [handleSubmit]

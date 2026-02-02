@@ -494,10 +494,7 @@ class StorageService {
    * Save all folders for a project.
    * Replaces existing folders with the new set.
    */
-  async saveFolders(
-    projectId: string,
-    folders: MediaFolder[]
-  ): Promise<void> {
+  async saveFolders(projectId: string, folders: MediaFolder[]): Promise<void> {
     const adapter = this.getProjectFolderAdapter(projectId);
 
     // Clear existing folders and save all new ones

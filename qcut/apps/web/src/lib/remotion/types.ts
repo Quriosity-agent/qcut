@@ -452,7 +452,10 @@ export interface RemotionStoreState {
   /** Recent errors for debugging */
   recentErrors: RemotionError[];
   /** Cached sequence analysis results by componentId */
-  analyzedSequences: Map<string, import("./sequence-analysis-service").AnalysisResult>;
+  analyzedSequences: Map<
+    string,
+    import("./sequence-analysis-service").AnalysisResult
+  >;
   /** Imported folder metadata by folder path */
   importedFolders: Map<string, ImportedFolderInfo>;
   /** Whether a folder import is in progress */

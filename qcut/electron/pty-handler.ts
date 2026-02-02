@@ -10,15 +10,15 @@ try {
   console.warn("[PTY] Failed to load node-pty from standard path:", error);
   // In packaged app, load from extraResources
   const path = require("path");
-  const modulePath = path.join(
-    process.resourcesPath,
-    "node_modules/node-pty"
-  );
+  const modulePath = path.join(process.resourcesPath, "node_modules/node-pty");
   try {
     pty = require(modulePath);
     console.log("[PTY] Loaded node-pty from production path:", modulePath);
   } catch (prodError) {
-    console.error("[PTY] Failed to load node-pty from production path:", prodError);
+    console.error(
+      "[PTY] Failed to load node-pty from production path:",
+      prodError
+    );
     throw new Error("Failed to load node-pty module");
   }
 }
@@ -103,7 +103,9 @@ export function setupPtyIPC(): void {
         try {
           session.process.kill();
           sessions.delete(session.id);
-          console.log(`[PTY] Session ${session.id} killed (webContents destroyed)`);
+          console.log(
+            `[PTY] Session ${session.id} killed (webContents destroyed)`
+          );
         } catch {
           // Ignore errors during cleanup
         }
@@ -146,7 +148,9 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] Shell: ${shell}`);
         console.log(`[PTY] Args: ${JSON.stringify(args)}`);
         console.log(`[PTY] CWD: ${options.cwd || process.cwd()}`);
-        console.log(`[PTY] Dimensions: ${options.cols || 80}x${options.rows || 24}`);
+        console.log(
+          `[PTY] Dimensions: ${options.cols || 80}x${options.rows || 24}`
+        );
         console.log(`[PTY] COMSPEC env: ${process.env.COMSPEC}`);
         console.log(`[PTY] SHELL env: ${process.env.SHELL}`);
 
@@ -169,13 +173,17 @@ export function setupPtyIPC(): void {
 
         sessions.set(sessionId, session);
 
-        console.log(`[PTY] About to call pty.spawn()...`);
+        console.log("[PTY] About to call pty.spawn()...");
 
         // Forward PTY output to renderer
         ptyProcess.onData((data: string) => {
           // Log first 100 chars of data for debugging
-          const preview = data.length > 100 ? data.substring(0, 100) + "..." : data;
-          console.log(`[PTY] Data from ${sessionId}:`, preview.replace(/\r?\n/g, "\\n"));
+          const preview =
+            data.length > 100 ? data.substring(0, 100) + "..." : data;
+          console.log(
+            `[PTY] Data from ${sessionId}:`,
+            preview.replace(/\r?\n/g, "\\n")
+          );
           if (!event.sender.isDestroyed()) {
             event.sender.send("pty:data", { sessionId, data });
           }
@@ -183,7 +191,7 @@ export function setupPtyIPC(): void {
 
         // Handle PTY exit
         ptyProcess.onExit(({ exitCode, signal }) => {
-          console.log(`[PTY] ===== SESSION EXIT =====`);
+          console.log("[PTY] ===== SESSION EXIT =====");
           console.log(`[PTY] Session: ${sessionId}`);
           console.log(`[PTY] Exit code: ${exitCode}`);
           console.log(`[PTY] Signal: ${signal}`);
@@ -197,7 +205,8 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] Active sessions: ${sessions.size}`);
         return { success: true, sessionId };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "PTY spawn failed";
+        const message =
+          error instanceof Error ? error.message : "PTY spawn failed";
         const stack = error instanceof Error ? error.stack : undefined;
         console.error("[PTY] ===== SPAWN ERROR =====");
         console.error("[PTY] Error message:", message);
@@ -220,7 +229,8 @@ export function setupPtyIPC(): void {
         session.process.write(data);
         return { success: true };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "PTY write failed";
+        const message =
+          error instanceof Error ? error.message : "PTY write failed";
         console.error(`[PTY] Write error for session ${sessionId}:`, message);
         return { success: false, error: message };
       }
@@ -246,7 +256,8 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] Session ${sessionId} resized to ${cols}x${rows}`);
         return { success: true };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "PTY resize failed";
+        const message =
+          error instanceof Error ? error.message : "PTY resize failed";
         console.error(`[PTY] Resize error for session ${sessionId}:`, message);
         return { success: false, error: message };
       }
@@ -268,7 +279,8 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] Session ${sessionId} killed`);
         return { success: true };
       } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "PTY kill failed";
+        const message =
+          error instanceof Error ? error.message : "PTY kill failed";
         console.error(`[PTY] Kill error for session ${sessionId}:`, message);
         return { success: false, error: message };
       }

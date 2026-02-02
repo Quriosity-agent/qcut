@@ -22,7 +22,10 @@ interface TerminalEmulatorProps {
  * Provides a full terminal experience with ANSI color support, clipboard operations,
  * and automatic resizing. Connects to a PTY session via Electron IPC.
  */
-export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) {
+export function TerminalEmulator({
+  sessionId,
+  onReady,
+}: TerminalEmulatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -136,7 +139,10 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
           .then((text) => {
             if (text && sessionId) {
               // Send pasted text to PTY
-              const writePromise = window.electronAPI?.pty?.write?.(sessionId, text);
+              const writePromise = window.electronAPI?.pty?.write?.(
+                sessionId,
+                text
+              );
               writePromise?.catch((err) => {
                 console.error("[Terminal] Failed to write pasted text:", err);
               });
@@ -203,7 +209,7 @@ export function TerminalEmulator({ sessionId, onReady }: TerminalEmulatorProps) 
           try {
             fitAddon.fit();
             setDimensions(terminal.cols, terminal.rows);
-            void resize().catch(() => {
+            resize().catch(() => {
               // Ignore resize errors (e.g., during unmount or when PTY unavailable)
             });
           } catch {

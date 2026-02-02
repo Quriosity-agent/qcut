@@ -540,7 +540,12 @@ interface ElectronAPI {
     browse: () => Promise<string | null>;
     getPath: (projectId: string) => Promise<string>;
     scanGlobal: () => Promise<
-      Array<{ path: string; name: string; description: string; bundled?: boolean }>
+      Array<{
+        path: string;
+        name: string;
+        description: string;
+        bundled?: boolean;
+      }>
     >;
   };
 
@@ -661,41 +666,76 @@ interface ElectronAPI {
     ) => Promise<{ created: string[]; existing: string[] }>;
   };
 
-// Claude Code Integration API
+  // Claude Code Integration API
   claude?: {
     media: {
       list: (projectId: string) => Promise<MediaFile[]>;
       info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;
       import: (projectId: string, source: string) => Promise<MediaFile | null>;
       delete: (projectId: string, mediaId: string) => Promise<boolean>;
-      rename: (projectId: string, mediaId: string, newName: string) => Promise<boolean>;
+      rename: (
+        projectId: string,
+        mediaId: string,
+        newName: string
+      ) => Promise<boolean>;
     };
     timeline: {
-      export: (projectId: string, format: 'json' | 'md') => Promise<string>;
-      import: (projectId: string, data: string, format: 'json' | 'md') => Promise<void>;
-      addElement: (projectId: string, element: Partial<ClaudeElement>) => Promise<string>;
-      updateElement: (projectId: string, elementId: string, changes: Partial<ClaudeElement>) => Promise<void>;
+      export: (projectId: string, format: "json" | "md") => Promise<string>;
+      import: (
+        projectId: string,
+        data: string,
+        format: "json" | "md"
+      ) => Promise<void>;
+      addElement: (
+        projectId: string,
+        element: Partial<ClaudeElement>
+      ) => Promise<string>;
+      updateElement: (
+        projectId: string,
+        elementId: string,
+        changes: Partial<ClaudeElement>
+      ) => Promise<void>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
       onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
-      onAddElement: (callback: (element: Partial<ClaudeElement>) => void) => void;
-      onUpdateElement: (callback: (data: { elementId: string; changes: Partial<ClaudeElement> }) => void) => void;
+      onAddElement: (
+        callback: (element: Partial<ClaudeElement>) => void
+      ) => void;
+      onUpdateElement: (
+        callback: (data: {
+          elementId: string;
+          changes: Partial<ClaudeElement>;
+        }) => void
+      ) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
       removeListeners: () => void;
     };
     project: {
       getSettings: (projectId: string) => Promise<ProjectSettings>;
-      updateSettings: (projectId: string, settings: Partial<ProjectSettings>) => Promise<void>;
+      updateSettings: (
+        projectId: string,
+        settings: Partial<ProjectSettings>
+      ) => Promise<void>;
       getStats: (projectId: string) => Promise<ProjectStats>;
-      onStatsRequest: (callback: () => void) => void;
-      sendStatsResponse: (stats: ProjectStats) => void;
-      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void) => void;
+      onStatsRequest: (
+        callback: (projectId: string, requestId: string) => void
+      ) => void;
+      sendStatsResponse: (stats: ProjectStats, requestId: string) => void;
+      onUpdated: (
+        callback: (
+          projectId: string,
+          settings: Partial<ProjectSettings>
+        ) => void
+      ) => void;
       removeListeners: () => void;
     };
     export: {
       getPresets: () => Promise<ExportPreset[]>;
-      recommend: (projectId: string, target: string) => Promise<ExportRecommendation>;
+      recommend: (
+        projectId: string,
+        target: string
+      ) => Promise<ExportRecommendation>;
     };
     diagnostics: {
       analyze: (error: ErrorReport) => Promise<DiagnosticResult>;
@@ -718,7 +758,9 @@ interface ElectronAPI {
     /** Check if bundler is available */
     checkBundler: () => Promise<{ available: boolean }>;
     /** Validate a folder is a Remotion project */
-    validate: (folderPath: string) => Promise<{ isValid: boolean; error?: string }>;
+    validate: (
+      folderPath: string
+    ) => Promise<{ isValid: boolean; error?: string }>;
   };
 
   // Utility functions
@@ -1075,7 +1117,12 @@ const electronAPI: ElectronAPI = {
     getPath: (projectId: string): Promise<string> =>
       ipcRenderer.invoke("skills:getPath", projectId),
     scanGlobal: (): Promise<
-      Array<{ path: string; name: string; description: string; bundled?: boolean }>
+      Array<{
+        path: string;
+        name: string;
+        description: string;
+        bundled?: boolean;
+      }>
     > => ipcRenderer.invoke("skills:scanGlobal"),
   },
 
@@ -1214,7 +1261,8 @@ const electronAPI: ElectronAPI = {
       folders: string[];
       totalSize: number;
       scanTime: number;
-    }> => ipcRenderer.invoke("project-folder:scan", projectId, subPath, options),
+    }> =>
+      ipcRenderer.invoke("project-folder:scan", projectId, subPath, options),
     list: (
       projectId: string,
       subPath?: string
@@ -1235,106 +1283,167 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("project-folder:ensure-structure", projectId),
   },
 
-// Claude Code Integration API
+  // Claude Code Integration API
   claude: {
     // Media operations
     media: {
       list: (projectId: string): Promise<MediaFile[]> =>
-        ipcRenderer.invoke('claude:media:list', projectId),
+        ipcRenderer.invoke("claude:media:list", projectId),
       info: (projectId: string, mediaId: string): Promise<MediaFile | null> =>
-        ipcRenderer.invoke('claude:media:info', projectId, mediaId),
+        ipcRenderer.invoke("claude:media:info", projectId, mediaId),
       import: (projectId: string, source: string): Promise<MediaFile | null> =>
-        ipcRenderer.invoke('claude:media:import', projectId, source),
+        ipcRenderer.invoke("claude:media:import", projectId, source),
       delete: (projectId: string, mediaId: string): Promise<boolean> =>
-        ipcRenderer.invoke('claude:media:delete', projectId, mediaId),
-      rename: (projectId: string, mediaId: string, newName: string): Promise<boolean> =>
-        ipcRenderer.invoke('claude:media:rename', projectId, mediaId, newName),
+        ipcRenderer.invoke("claude:media:delete", projectId, mediaId),
+      rename: (
+        projectId: string,
+        mediaId: string,
+        newName: string
+      ): Promise<boolean> =>
+        ipcRenderer.invoke("claude:media:rename", projectId, mediaId, newName),
     },
 
     // Timeline operations
     timeline: {
-      export: (projectId: string, format: 'json' | 'md'): Promise<string> =>
-        ipcRenderer.invoke('claude:timeline:export', projectId, format),
-      import: (projectId: string, data: string, format: 'json' | 'md'): Promise<void> =>
-        ipcRenderer.invoke('claude:timeline:import', projectId, data, format),
-      addElement: (projectId: string, element: Partial<ClaudeElement>): Promise<string> =>
-        ipcRenderer.invoke('claude:timeline:addElement', projectId, element),
-      updateElement: (projectId: string, elementId: string, changes: Partial<ClaudeElement>): Promise<void> =>
-        ipcRenderer.invoke('claude:timeline:updateElement', projectId, elementId, changes),
+      export: (projectId: string, format: "json" | "md"): Promise<string> =>
+        ipcRenderer.invoke("claude:timeline:export", projectId, format),
+      import: (
+        projectId: string,
+        data: string,
+        format: "json" | "md"
+      ): Promise<void> =>
+        ipcRenderer.invoke("claude:timeline:import", projectId, data, format),
+      addElement: (
+        projectId: string,
+        element: Partial<ClaudeElement>
+      ): Promise<string> =>
+        ipcRenderer.invoke("claude:timeline:addElement", projectId, element),
+      updateElement: (
+        projectId: string,
+        elementId: string,
+        changes: Partial<ClaudeElement>
+      ): Promise<void> =>
+        ipcRenderer.invoke(
+          "claude:timeline:updateElement",
+          projectId,
+          elementId,
+          changes
+        ),
       removeElement: (projectId: string, elementId: string): Promise<void> =>
-        ipcRenderer.invoke('claude:timeline:removeElement', projectId, elementId),
+        ipcRenderer.invoke(
+          "claude:timeline:removeElement",
+          projectId,
+          elementId
+        ),
       // Event listeners for timeline sync
       onRequest: (callback: () => void): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:request');
-        ipcRenderer.on('claude:timeline:request', () => callback());
+        ipcRenderer.removeAllListeners("claude:timeline:request");
+        ipcRenderer.on("claude:timeline:request", () => callback());
       },
       onApply: (callback: (timeline: ClaudeTimeline) => void): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:apply');
-        ipcRenderer.on('claude:timeline:apply', (_, timeline) => callback(timeline));
+        ipcRenderer.removeAllListeners("claude:timeline:apply");
+        ipcRenderer.on("claude:timeline:apply", (_, timeline) =>
+          callback(timeline)
+        );
       },
-      onAddElement: (callback: (element: Partial<ClaudeElement>) => void): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:addElement');
-        ipcRenderer.on('claude:timeline:addElement', (_, element) => callback(element));
+      onAddElement: (
+        callback: (element: Partial<ClaudeElement>) => void
+      ): void => {
+        ipcRenderer.removeAllListeners("claude:timeline:addElement");
+        ipcRenderer.on("claude:timeline:addElement", (_, element) =>
+          callback(element)
+        );
       },
-      onUpdateElement: (callback: (data: { elementId: string; changes: Partial<ClaudeElement> }) => void): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:updateElement');
-        ipcRenderer.on('claude:timeline:updateElement', (_, data) => callback(data));
+      onUpdateElement: (
+        callback: (data: {
+          elementId: string;
+          changes: Partial<ClaudeElement>;
+        }) => void
+      ): void => {
+        ipcRenderer.removeAllListeners("claude:timeline:updateElement");
+        ipcRenderer.on("claude:timeline:updateElement", (_, data) =>
+          callback(data)
+        );
       },
       onRemoveElement: (callback: (elementId: string) => void): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:removeElement');
-        ipcRenderer.on('claude:timeline:removeElement', (_, id) => callback(id));
+        ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+        ipcRenderer.on("claude:timeline:removeElement", (_, id) =>
+          callback(id)
+        );
       },
       sendResponse: (timeline: ClaudeTimeline): void => {
-        ipcRenderer.send('claude:timeline:response', timeline);
+        ipcRenderer.send("claude:timeline:response", timeline);
       },
       removeListeners: (): void => {
-        ipcRenderer.removeAllListeners('claude:timeline:request');
-        ipcRenderer.removeAllListeners('claude:timeline:apply');
-        ipcRenderer.removeAllListeners('claude:timeline:addElement');
-        ipcRenderer.removeAllListeners('claude:timeline:updateElement');
-        ipcRenderer.removeAllListeners('claude:timeline:removeElement');
+        ipcRenderer.removeAllListeners("claude:timeline:request");
+        ipcRenderer.removeAllListeners("claude:timeline:apply");
+        ipcRenderer.removeAllListeners("claude:timeline:addElement");
+        ipcRenderer.removeAllListeners("claude:timeline:updateElement");
+        ipcRenderer.removeAllListeners("claude:timeline:removeElement");
       },
     },
 
     // Project operations
     project: {
       getSettings: (projectId: string): Promise<ProjectSettings> =>
-        ipcRenderer.invoke('claude:project:getSettings', projectId),
-      updateSettings: (projectId: string, settings: Partial<ProjectSettings>): Promise<void> =>
-        ipcRenderer.invoke('claude:project:updateSettings', projectId, settings),
+        ipcRenderer.invoke("claude:project:getSettings", projectId),
+      updateSettings: (
+        projectId: string,
+        settings: Partial<ProjectSettings>
+      ): Promise<void> =>
+        ipcRenderer.invoke(
+          "claude:project:updateSettings",
+          projectId,
+          settings
+        ),
       getStats: (projectId: string): Promise<ProjectStats> =>
-        ipcRenderer.invoke('claude:project:getStats', projectId),
-      onStatsRequest: (callback: () => void): void => {
-        ipcRenderer.removeAllListeners('claude:project:statsRequest');
-        ipcRenderer.on('claude:project:statsRequest', () => callback());
+        ipcRenderer.invoke("claude:project:getStats", projectId),
+      onStatsRequest: (
+        callback: (projectId: string, requestId: string) => void
+      ): void => {
+        ipcRenderer.removeAllListeners("claude:project:statsRequest");
+        ipcRenderer.on(
+          "claude:project:statsRequest",
+          (_event, { projectId, requestId }) => callback(projectId, requestId)
+        );
       },
-      sendStatsResponse: (stats: ProjectStats): void => {
-        ipcRenderer.send('claude:project:statsResponse', stats);
+      sendStatsResponse: (stats: ProjectStats, requestId: string): void => {
+        ipcRenderer.send("claude:project:statsResponse", stats, requestId);
       },
-      onUpdated: (callback: (projectId: string, settings: Partial<ProjectSettings>) => void): void => {
-        ipcRenderer.removeAllListeners('claude:project:updated');
-        ipcRenderer.on('claude:project:updated', (_, projectId, settings: Partial<ProjectSettings>) =>
-          callback(projectId, settings)
+      onUpdated: (
+        callback: (
+          projectId: string,
+          settings: Partial<ProjectSettings>
+        ) => void
+      ): void => {
+        ipcRenderer.removeAllListeners("claude:project:updated");
+        ipcRenderer.on(
+          "claude:project:updated",
+          (_, projectId, settings: Partial<ProjectSettings>) =>
+            callback(projectId, settings)
         );
       },
       removeListeners: (): void => {
-        ipcRenderer.removeAllListeners('claude:project:statsRequest');
-        ipcRenderer.removeAllListeners('claude:project:updated');
+        ipcRenderer.removeAllListeners("claude:project:statsRequest");
+        ipcRenderer.removeAllListeners("claude:project:updated");
       },
     },
 
     // Export operations
     export: {
       getPresets: (): Promise<ExportPreset[]> =>
-        ipcRenderer.invoke('claude:export:getPresets'),
-      recommend: (projectId: string, target: string): Promise<ExportRecommendation> =>
-        ipcRenderer.invoke('claude:export:recommend', projectId, target),
+        ipcRenderer.invoke("claude:export:getPresets"),
+      recommend: (
+        projectId: string,
+        target: string
+      ): Promise<ExportRecommendation> =>
+        ipcRenderer.invoke("claude:export:recommend", projectId, target),
     },
 
     // Diagnostics operations
     diagnostics: {
       analyze: (error: ErrorReport): Promise<DiagnosticResult> =>
-        ipcRenderer.invoke('claude:diagnostics:analyze', error),
+        ipcRenderer.invoke("claude:diagnostics:analyze", error),
     },
   },
 
@@ -1353,7 +1462,9 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("remotion-folder:import", folderPath),
     checkBundler: (): Promise<{ available: boolean }> =>
       ipcRenderer.invoke("remotion-folder:check-bundler"),
-    validate: (folderPath: string): Promise<{ isValid: boolean; error?: string }> =>
+    validate: (
+      folderPath: string
+    ): Promise<{ isValid: boolean; error?: string }> =>
       ipcRenderer.invoke("remotion-folder:validate", folderPath),
   },
 

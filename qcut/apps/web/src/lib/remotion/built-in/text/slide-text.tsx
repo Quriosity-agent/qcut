@@ -7,12 +7,7 @@
  */
 
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  Easing,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
 import { z } from "zod";
 import type { RemotionComponentDefinition } from "../../types";
 
@@ -45,7 +40,9 @@ export const SlideTextSchema = z.object({
   /** Start delay in frames */
   startDelay: z.number().min(0).default(0),
   /** Easing function */
-  easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut", "bounce"]).default("easeOut"),
+  easing: z
+    .enum(["linear", "easeIn", "easeOut", "easeInOut", "bounce"])
+    .default("easeOut"),
   /** Initial offset distance (percentage of container) */
   offsetPercent: z.number().min(0).max(200).default(100),
   /** Text alignment */
@@ -87,7 +84,10 @@ export const slideTextDefaultProps: SlideTextProps = {
 // Helper Functions
 // ============================================================================
 
-function getEasingFunction(easing: string, overshoot: number): ((t: number) => number) {
+function getEasingFunction(
+  easing: string,
+  overshoot: number
+): (t: number) => number {
   switch (easing) {
     case "linear":
       return Easing.linear;
@@ -160,32 +160,32 @@ export const SlideText: React.FC<Partial<SlideTextProps>> = ({
     const elementEnd = elementStart + slideDuration;
 
     // Progress for x/y translation
-    const progress = interpolate(
-      frame,
-      [elementStart, elementEnd],
-      [0, 1],
-      {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-        easing: easingFn,
-      }
-    );
+    const progress = interpolate(frame, [elementStart, elementEnd], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: easingFn,
+    });
 
     // Calculate transform
     const isHorizontal = direction === "left" || direction === "right";
     const translateX = isHorizontal
       ? interpolate(progress, [0, 1], [parseFloat(initialOffset.x), 0])
       : 0;
-    const translateY = !isHorizontal
-      ? interpolate(progress, [0, 1], [parseFloat(initialOffset.y), 0])
-      : 0;
+    const translateY = isHorizontal
+      ? 0
+      : interpolate(progress, [0, 1], [parseFloat(initialOffset.y), 0]);
 
     // Opacity animation
     const opacity = includeFade
-      ? interpolate(frame, [elementStart, elementStart + slideDuration / 3], [0, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
+      ? interpolate(
+          frame,
+          [elementStart, elementStart + slideDuration / 3],
+          [0, 1],
+          {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
+        )
       : 1;
 
     return (
@@ -209,30 +209,30 @@ export const SlideText: React.FC<Partial<SlideTextProps>> = ({
       const elementStart = startDelay;
       const elementEnd = elementStart + slideDuration;
 
-      const progress = interpolate(
-        frame,
-        [elementStart, elementEnd],
-        [0, 1],
-        {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-          easing: easingFn,
-        }
-      );
+      const progress = interpolate(frame, [elementStart, elementEnd], [0, 1], {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+        easing: easingFn,
+      });
 
       const isHorizontal = direction === "left" || direction === "right";
       const translateX = isHorizontal
         ? interpolate(progress, [0, 1], [parseFloat(initialOffset.x), 0])
         : 0;
-      const translateY = !isHorizontal
-        ? interpolate(progress, [0, 1], [parseFloat(initialOffset.y), 0])
-        : 0;
+      const translateY = isHorizontal
+        ? 0
+        : interpolate(progress, [0, 1], [parseFloat(initialOffset.y), 0]);
 
       const opacity = includeFade
-        ? interpolate(frame, [elementStart, elementStart + slideDuration / 3], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          })
+        ? interpolate(
+            frame,
+            [elementStart, elementStart + slideDuration / 3],
+            [0, 1],
+            {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }
+          )
         : 1;
 
       return (
@@ -261,9 +261,11 @@ export const SlideText: React.FC<Partial<SlideTextProps>> = ({
     }
 
     if (slideMode === "character") {
-      return text.split("").map((char, i) =>
-        renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
-      );
+      return text
+        .split("")
+        .map((char, i) =>
+          renderElement(char === " " ? "\u00A0" : char, i, `char-${i}`)
+        );
     }
 
     return text;
@@ -278,8 +280,8 @@ export const SlideText: React.FC<Partial<SlideTextProps>> = ({
           textAlign === "center"
             ? "center"
             : textAlign === "right"
-            ? "flex-end"
-            : "flex-start",
+              ? "flex-end"
+              : "flex-start",
         width: "100%",
         height: "100%",
         backgroundColor,

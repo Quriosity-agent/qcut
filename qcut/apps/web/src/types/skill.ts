@@ -44,7 +44,9 @@ export interface SkillFrontmatter {
  * # Main content here
  * ```
  */
-export function parseSkillFrontmatter(content: string): SkillFrontmatter | null {
+export function parseSkillFrontmatter(
+  content: string
+): SkillFrontmatter | null {
   const match = content.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return null;
 

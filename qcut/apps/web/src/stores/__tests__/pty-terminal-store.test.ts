@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { mockElectronAPI, setupElectronMock } from "@/test/mocks/electron";
-import { getDefaultCodexModel, getDefaultClaudeModel } from "@/types/cli-provider";
+import {
+  getDefaultCodexModel,
+  getDefaultClaudeModel,
+} from "@/types/cli-provider";
 
 describe("usePtyTerminalStore", () => {
   let cleanupElectron: () => void;
@@ -127,7 +130,9 @@ describe("usePtyTerminalStore", () => {
 
       expect(mockElectronAPI.pty!.spawn).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: expect.stringContaining("npx open-codex --provider openrouter"),
+          command: expect.stringContaining(
+            "npx open-codex --provider openrouter"
+          ),
           env: expect.objectContaining({
             OPENROUTER_API_KEY: "sk-or-test-key",
           }),
@@ -184,7 +189,9 @@ describe("usePtyTerminalStore", () => {
       });
 
       expect(result.current.status).toBe("error");
-      expect(result.current.error).toContain("OpenRouter API key not configured");
+      expect(result.current.error).toContain(
+        "OpenRouter API key not configured"
+      );
       expect(mockElectronAPI.pty!.spawn).not.toHaveBeenCalled();
     });
 
@@ -282,7 +289,9 @@ describe("usePtyTerminalStore", () => {
         await result.current.disconnect();
       });
 
-      expect(mockElectronAPI.pty!.kill).toHaveBeenCalledWith("test-pty-session");
+      expect(mockElectronAPI.pty!.kill).toHaveBeenCalledWith(
+        "test-pty-session"
+      );
       expect(result.current.sessionId).toBeNull();
       expect(result.current.status).toBe("disconnected");
     });

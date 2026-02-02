@@ -32,7 +32,9 @@ export const DissolveSchema = z.object({
   /** Duration of dissolve in frames (uses full duration if not specified) */
   dissolveDuration: z.number().min(1).optional(),
   /** Easing function */
-  easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut"]).default("linear"),
+  easing: z
+    .enum(["linear", "easeIn", "easeOut", "easeInOut"])
+    .default("linear"),
   /** Start delay in frames */
   startDelay: z.number().min(0).default(0),
   /** Dissolve style */
@@ -60,7 +62,7 @@ export const dissolveDefaultProps: DissolveProps = {
 // Helper Functions
 // ============================================================================
 
-function getEasingFunction(easing: string): ((t: number) => number) {
+function getEasingFunction(easing: string): (t: number) => number {
   switch (easing) {
     case "linear":
       return Easing.linear;
@@ -97,21 +99,17 @@ export const Dissolve: React.FC<Partial<DissolveProps>> = ({
   const { durationInFrames } = useVideoConfig();
   const easingFn = getEasingFunction(easing);
 
-  // Calculate actual dissolve duration
-  const actualDuration = dissolveDuration ?? (durationInFrames - startDelay);
+  // Calculate actual dissolve duration (ensure at least 1 to avoid zero/negative interpolation)
+  const actualDuration =
+    dissolveDuration ?? Math.max(1, durationInFrames - startDelay);
   const activeFrame = Math.max(0, frame - startDelay);
 
   // Calculate progress (0 to 1)
-  const progress = interpolate(
-    activeFrame,
-    [0, actualDuration],
-    [0, 1],
-    {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-      easing: easingFn,
-    }
-  );
+  const progress = interpolate(activeFrame, [0, actualDuration], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: easingFn,
+  });
 
   // Foreground opacity (fading out)
   const foregroundOpacity = 1 - progress;
@@ -121,7 +119,7 @@ export const Dissolve: React.FC<Partial<DissolveProps>> = ({
 
   // Generate dither pattern SVG
   const getDitherPattern = () => {
-    if (style !== "dither") return undefined;
+    if (style !== "dither") return;
 
     // Create a simple dither pattern based on progress
     const threshold = progress;
@@ -141,17 +139,10 @@ export const Dissolve: React.FC<Partial<DissolveProps>> = ({
               const x = i % ditherSize;
               const y = Math.floor(i / ditherSize);
               // Bayer matrix approximation
-              const ditherValue = ((x ^ y) / (ditherSize - 1));
+              const ditherValue = ditherSize > 1 ? (x ^ y) / (ditherSize - 1) : 0;
               const show = ditherValue < threshold;
               return show ? (
-                <rect
-                  key={i}
-                  x={x}
-                  y={y}
-                  width={1}
-                  height={1}
-                  fill="white"
-                />
+                <rect key={i} x={x} y={y} width={1} height={1} fill="white" />
               ) : null;
             })}
           </pattern>

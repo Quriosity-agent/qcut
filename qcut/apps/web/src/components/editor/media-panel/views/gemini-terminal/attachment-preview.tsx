@@ -43,10 +43,7 @@ export function AttachmentPreview({
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <Icon
-            className="h-6 w-6 text-muted-foreground"
-            aria-hidden="true"
-          />
+          <Icon className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
         </div>
       )}
       {onRemove && (

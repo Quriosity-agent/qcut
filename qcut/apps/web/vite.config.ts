@@ -18,10 +18,19 @@ export default defineConfig({
       // Use root node_modules in monorepo
       "react": path.resolve(__dirname, "../../node_modules/react"),
       "react-dom": path.resolve(__dirname, "../../node_modules/react-dom"),
-      "react-dom/client": path.resolve(__dirname, "../../node_modules/react-dom/client"),
+      "react-dom/client": path.resolve(
+        __dirname,
+        "../../node_modules/react-dom/client"
+      ),
       "scheduler": path.resolve(__dirname, "../../node_modules/scheduler"),
-      "react/jsx-runtime": path.resolve(__dirname, "../../node_modules/react/jsx-runtime"),
-      "react/jsx-dev-runtime": path.resolve(__dirname, "../../node_modules/react/jsx-dev-runtime"),
+      "react/jsx-runtime": path.resolve(
+        __dirname,
+        "../../node_modules/react/jsx-runtime"
+      ),
+      "react/jsx-dev-runtime": path.resolve(
+        __dirname,
+        "../../node_modules/react/jsx-dev-runtime"
+      ),
     },
     dedupe: ["react", "react-dom", "scheduler", "react/jsx-runtime"],
   },

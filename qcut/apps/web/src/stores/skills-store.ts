@@ -16,7 +16,10 @@ interface SkillsState {
 interface SkillsActions {
   // CRUD Operations
   loadSkills: (projectId: string) => Promise<void>;
-  importSkill: (projectId: string, sourcePath: string) => Promise<string | null>;
+  importSkill: (
+    projectId: string,
+    sourcePath: string
+  ) => Promise<string | null>;
   deleteSkill: (projectId: string, skillId: string) => Promise<void>;
 
   // Queries
@@ -62,7 +65,8 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
         debugLog("[SkillsStore] Skills not available in browser mode");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       debugError("[SkillsStore] Failed to load skills:", error);
       set({ error: errorMessage, isLoading: false });
     }
@@ -71,7 +75,10 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
   importSkill: async (projectId, sourcePath) => {
     try {
       if (window.electronAPI?.skills?.import) {
-        const skill = await window.electronAPI.skills.import(projectId, sourcePath);
+        const skill = await window.electronAPI.skills.import(
+          projectId,
+          sourcePath
+        );
         if (skill) {
           set((state) => ({ skills: [...state.skills, skill] }));
           debugLog("[SkillsStore] Imported skill:", {
@@ -84,7 +91,8 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
       }
       return null;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       debugError("[SkillsStore] Failed to import skill:", error);
       set({ error: errorMessage });
       return null;
@@ -103,7 +111,8 @@ export const useSkillsStore = create<SkillsStore>((set, get) => ({
         debugLog("[SkillsStore] Deleted skill:", { projectId, skillId });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       debugError("[SkillsStore] Failed to delete skill:", error);
       set({ error: errorMessage });
     }

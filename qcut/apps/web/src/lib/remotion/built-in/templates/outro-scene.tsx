@@ -52,7 +52,9 @@ export const OutroSceneSchema = z.object({
   /** Font family */
   fontFamily: z.string().default("Inter, sans-serif"),
   /** Layout style */
-  layoutStyle: z.enum(["centered", "split", "bottom-heavy"]).default("centered"),
+  layoutStyle: z
+    .enum(["centered", "split", "bottom-heavy"])
+    .default("centered"),
   /** Show subscribe button */
   showSubscribeButton: z.boolean().default(true),
   /** Subscribe button text */

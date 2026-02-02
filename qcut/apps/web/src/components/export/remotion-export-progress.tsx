@@ -30,7 +30,10 @@ import {
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useExportStore, type RemotionElementProgress } from "@/stores/export-store";
+import {
+  useExportStore,
+  type RemotionElementProgress,
+} from "@/stores/export-store";
 
 // ============================================================================
 // Types
@@ -177,7 +180,13 @@ export function RemotionExportProgress({
     return null;
   }
 
-  const phases = ["analyzing", "prerendering", "compositing", "encoding", "cleanup"];
+  const phases = [
+    "analyzing",
+    "prerendering",
+    "compositing",
+    "encoding",
+    "cleanup",
+  ];
   const currentPhaseIndex =
     remotionProgress.phase === "complete" || remotionProgress.phase === "error"
       ? phases.length
@@ -209,10 +218,7 @@ export function RemotionExportProgress({
       </div>
 
       {/* Overall Progress */}
-      <Progress
-        value={remotionProgress.overallProgress}
-        className="h-2"
-      />
+      <Progress value={remotionProgress.overallProgress} className="h-2" />
 
       {/* Phase Indicators */}
       <div className="flex flex-wrap gap-1">
@@ -237,7 +243,8 @@ export function RemotionExportProgress({
           <span className="text-muted-foreground">Rendering: </span>
           <span className="font-medium">{renderingElement.elementName}</span>
           <span className="text-muted-foreground ml-2">
-            ({renderingElement.framesCompleted}/{renderingElement.totalFrames} frames)
+            ({renderingElement.framesCompleted}/{renderingElement.totalFrames}{" "}
+            frames)
           </span>
         </div>
       )}

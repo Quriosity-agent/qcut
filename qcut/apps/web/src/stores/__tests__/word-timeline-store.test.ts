@@ -18,7 +18,9 @@ import type { RawWordTimelineJson } from "@/types/word-timeline";
 // Test Fixtures
 // ============================================================================
 
-function createMockJson(overrides?: Partial<RawWordTimelineJson>): RawWordTimelineJson {
+function createMockJson(
+  overrides?: Partial<RawWordTimelineJson>
+): RawWordTimelineJson {
   return {
     text: "Hello world test",
     language_code: "eng",
@@ -109,9 +111,9 @@ describe("WordTimelineStore", () => {
 
     it("should set error for invalid data structure", () => {
       // loadFromData validates the structure
-      useWordTimelineStore.getState().loadFromData(
-        { text: "test" } as unknown as RawWordTimelineJson
-      );
+      useWordTimelineStore
+        .getState()
+        .loadFromData({ text: "test" } as unknown as RawWordTimelineJson);
 
       const state = useWordTimelineStore.getState();
       expect(state.data).toBeNull();
@@ -152,7 +154,9 @@ describe("WordTimelineStore", () => {
 
       // Toggle back to not deleted
       useWordTimelineStore.getState().toggleWordDeleted(wordId);
-      expect(useWordTimelineStore.getState().data!.words[0].deleted).toBe(false);
+      expect(useWordTimelineStore.getState().data!.words[0].deleted).toBe(
+        false
+      );
     });
 
     it("should not affect other words when toggling", () => {
@@ -202,10 +206,14 @@ describe("WordTimelineStore", () => {
       loadMockData();
 
       // Delete first
-      useWordTimelineStore.getState().setWordsDeleted(["word-0", "word-2"], true);
+      useWordTimelineStore
+        .getState()
+        .setWordsDeleted(["word-0", "word-2"], true);
 
       // Restore
-      useWordTimelineStore.getState().setWordsDeleted(["word-0", "word-2"], false);
+      useWordTimelineStore
+        .getState()
+        .setWordsDeleted(["word-0", "word-2"], false);
 
       const state = useWordTimelineStore.getState();
       expect(state.data!.words[0].deleted).toBe(false);
@@ -283,7 +291,9 @@ describe("WordTimelineStore", () => {
       // Delete first word
       useWordTimelineStore.getState().toggleWordDeleted("word-0");
 
-      const nonDeletedWords = useWordTimelineStore.getState().getNonDeletedWords();
+      const nonDeletedWords = useWordTimelineStore
+        .getState()
+        .getNonDeletedWords();
 
       expect(nonDeletedWords).toHaveLength(2);
       expect(nonDeletedWords[0].text).toBe("world");
@@ -293,7 +303,9 @@ describe("WordTimelineStore", () => {
     it("should exclude spacing", () => {
       loadMockData();
 
-      const nonDeletedWords = useWordTimelineStore.getState().getNonDeletedWords();
+      const nonDeletedWords = useWordTimelineStore
+        .getState()
+        .getNonDeletedWords();
 
       expect(nonDeletedWords).toHaveLength(3);
       expect(nonDeletedWords.every((w) => w.type === "word")).toBe(true);
@@ -370,7 +382,13 @@ describe("WordTimelineStore", () => {
         language_code: "eng",
         language_probability: 0.99,
         words: [
-          { text: "Hello", start: 0, end: 0.5, type: "word", speaker_id: "speaker_0" },
+          {
+            text: "Hello",
+            start: 0,
+            end: 0.5,
+            type: "word",
+            speaker_id: "speaker_0",
+          },
         ],
       };
 

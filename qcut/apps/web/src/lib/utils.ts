@@ -55,7 +55,7 @@ export function generateUUID(): string {
  * @param el - Value to check
  * @returns True if the value is an HTMLElement or Element instance
  */
-export function isDOMElement(el: any): el is HTMLElement {
+export function isDOMElement(el: unknown): el is HTMLElement {
   return !!el && (el instanceof Element || el instanceof HTMLElement);
 }
 
@@ -144,7 +144,10 @@ export async function generateFileBasedId(file: File): Promise<string> {
   // Use Web Crypto API to hash the string
   const encoder = new TextEncoder();
   const data = encoder.encode(uniqueString);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data as BufferSource);
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    data as BufferSource
+  );
 
   // Convert hash to hex string
   const hashArray = Array.from(new Uint8Array(hashBuffer));

@@ -32,8 +32,14 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { loadComponentFromFile, type LoadResult } from "@/lib/remotion/component-loader";
-import { validateComponent, type ValidationResult } from "@/lib/remotion/component-validator";
+import {
+  loadComponentFromFile,
+  type LoadResult,
+} from "@/lib/remotion/component-loader";
+import {
+  validateComponent,
+  type ValidationResult,
+} from "@/lib/remotion/component-validator";
 import { useRemotionStore } from "@/stores/remotion-store";
 
 // ============================================================================
@@ -231,7 +237,13 @@ export function ComponentImportDialog({
         error: `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       }));
     }
-  }, [state.file, state.validation, registerComponent, onImportSuccess, handleOpenChange]);
+  }, [
+    state.file,
+    state.validation,
+    registerComponent,
+    onImportSuccess,
+    handleOpenChange,
+  ]);
 
   // Render validation status
   const renderValidationStatus = () => {
@@ -280,7 +292,9 @@ export function ComponentImportDialog({
         {/* Warnings */}
         {warnings.length > 0 && (
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-md p-3">
-            <p className="text-sm font-medium text-yellow-400 mb-2">Warnings:</p>
+            <p className="text-sm font-medium text-yellow-400 mb-2">
+              Warnings:
+            </p>
             <ul className="text-sm text-yellow-300 space-y-1">
               {warnings.map((warning, i) => (
                 <li key={i} className="flex items-start gap-2">
@@ -303,11 +317,15 @@ export function ComponentImportDialog({
               </div>
               <div>
                 <span className="text-muted-foreground">Category:</span>{" "}
-                <span className="font-medium capitalize">{metadata.category}</span>
+                <span className="font-medium capitalize">
+                  {metadata.category}
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Duration:</span>{" "}
-                <span className="font-medium">{metadata.durationInFrames} frames</span>
+                <span className="font-medium">
+                  {metadata.durationInFrames} frames
+                </span>
               </div>
               <div>
                 <span className="text-muted-foreground">Size:</span>{" "}
@@ -317,7 +335,9 @@ export function ComponentImportDialog({
               </div>
             </div>
             {metadata.description && (
-              <p className="text-sm text-muted-foreground">{metadata.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {metadata.description}
+              </p>
             )}
           </div>
         )}
@@ -368,12 +388,16 @@ export function ComponentImportDialog({
             {state.status === "validating" ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Validating component...</p>
+                <p className="text-sm text-muted-foreground">
+                  Validating component...
+                </p>
               </div>
             ) : state.status === "importing" ? (
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-10 w-10 animate-spin text-violet-400" />
-                <p className="text-sm text-muted-foreground">Importing component...</p>
+                <p className="text-sm text-muted-foreground">
+                  Importing component...
+                </p>
               </div>
             ) : state.status === "success" ? (
               <div className="flex flex-col items-center gap-2">

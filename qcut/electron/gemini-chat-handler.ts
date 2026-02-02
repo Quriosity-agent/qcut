@@ -29,7 +29,10 @@ try {
     GoogleGenerativeAI = require(modulePath).GoogleGenerativeAI;
     console.log("[Gemini Chat] Loaded SDK from production path:", modulePath);
   } catch (prodError) {
-    console.error("[Gemini Chat] Failed to load SDK from production path:", prodError);
+    console.error(
+      "[Gemini Chat] Failed to load SDK from production path:",
+      prodError
+    );
     throw new Error("Failed to load @google/generative-ai SDK");
   }
 }
@@ -141,7 +144,10 @@ function isPathSafe(filePath: string): boolean {
     filePath.includes("\0") ||
     filePath.includes("%00")
   ) {
-    console.warn("[Gemini Chat] Rejected path with suspicious patterns:", filePath);
+    console.warn(
+      "[Gemini Chat] Rejected path with suspicious patterns:",
+      filePath
+    );
     return false;
   }
 
@@ -161,8 +167,10 @@ function isPathSafe(filePath: string): boolean {
   // Check if path is within an allowed directory
   const isAllowed = allowedDirs.some((allowedDir) => {
     const normalizedAllowed = path.normalize(allowedDir);
-    return normalizedPath.startsWith(normalizedAllowed + path.sep) ||
-           normalizedPath === normalizedAllowed;
+    return (
+      normalizedPath.startsWith(normalizedAllowed + path.sep) ||
+      normalizedPath === normalizedAllowed
+    );
   });
 
   if (!isAllowed) {
@@ -180,14 +188,14 @@ function isPathSafe(filePath: string): boolean {
 // Attachment Encoding
 // ============================================================================
 
-async function encodeAttachment(
-  attachment: FileAttachment
-): Promise<Part[]> {
+async function encodeAttachment(attachment: FileAttachment): Promise<Part[]> {
   try {
     // Resolve symlinks and validate the real path before reading
     const realPath = await fs.realpath(attachment.path);
     if (!isPathSafe(realPath)) {
-      throw new Error(`Access denied: ${realPath} is not in an allowed directory`);
+      throw new Error(
+        `Access denied: ${realPath} is not in an allowed directory`
+      );
     }
 
     if (attachment.mimeType.startsWith("image/")) {
@@ -357,7 +365,8 @@ export function setupGeminiChatIPC(): void {
         console.log("[Gemini Chat] Stream completed successfully");
         return { success: true };
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         console.error("[Gemini Chat] Error:", errorMessage);
         if (!event.sender.isDestroyed()) {
           event.sender.send("gemini:stream-error", { message: errorMessage });

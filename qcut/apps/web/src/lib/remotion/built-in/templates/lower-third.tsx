@@ -40,7 +40,9 @@ export const LowerThirdSchema = z.object({
   /** Accent color (for decorative elements) */
   accentColor: z.string().default("#4361ee"),
   /** Animation style */
-  animationStyle: z.enum(["slide", "fade", "expand", "typewriter"]).default("slide"),
+  animationStyle: z
+    .enum(["slide", "fade", "expand", "typewriter"])
+    .default("slide"),
   /** Position from bottom (pixels) */
   bottomOffset: z.number().min(0).max(500).default(80),
   /** Position from left (pixels or "center") */
@@ -168,7 +170,7 @@ export const LowerThird: React.FC<Partial<LowerThirdProps>> = ({
 
   // Calculate transform based on animation style
   let translateX = 0;
-  let translateY = 0;
+  const translateY = 0;
   let opacity = 1;
   let scaleX = 1;
 

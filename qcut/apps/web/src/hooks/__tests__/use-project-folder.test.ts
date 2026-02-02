@@ -25,7 +25,7 @@ describe("useProjectFolder", () => {
       path: "/projects/test/media/video.mp4",
       relativePath: "media/video.mp4",
       type: "video" as const,
-      size: 1024000,
+      size: 1_024_000,
       modifiedAt: Date.now(),
       isDirectory: false,
     },
@@ -43,7 +43,7 @@ describe("useProjectFolder", () => {
   const mockScanResult = {
     files: mockListResult.filter((e) => !e.isDirectory),
     folders: ["media/images"],
-    totalSize: 1024000,
+    totalSize: 1_024_000,
     scanTime: 50,
   };
 

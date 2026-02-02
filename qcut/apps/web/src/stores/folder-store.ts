@@ -165,7 +165,9 @@ export const useFolderStore = create<FolderStore>((set, get) => {
         return;
       }
       try {
-        const { storageService } = await import("@/lib/storage/storage-service");
+        const { storageService } = await import(
+          "@/lib/storage/storage-service"
+        );
         await storageService.saveFolders(activeProjectId, folders);
         debugLog("[FolderStore] Auto-persisted folders:", {
           projectId: activeProjectId,
@@ -178,335 +180,359 @@ export const useFolderStore = create<FolderStore>((set, get) => {
   };
 
   return {
-  // Initial State
-  folders: [],
-  selectedFolderId: null,
-  isLoading: false,
-  activeProjectId: null,
+    // Initial State
+    folders: [],
+    selectedFolderId: null,
+    isLoading: false,
+    activeProjectId: null,
 
-  // ============================================================================
-  // CRUD Operations
-  // ============================================================================
+    // ============================================================================
+    // CRUD Operations
+    // ============================================================================
 
-  createFolder: (name, parentId = null) => {
-    const trimmedName = name.trim();
+    createFolder: (name, parentId = null) => {
+      const trimmedName = name.trim();
 
-    // Validate name length
-    if (
-      trimmedName.length < FOLDER_NAME_MIN_LENGTH ||
-      trimmedName.length > FOLDER_NAME_MAX_LENGTH
-    ) {
-      debugError("[FolderStore] Invalid folder name length:", {
-        length: trimmedName.length,
-        min: FOLDER_NAME_MIN_LENGTH,
-        max: FOLDER_NAME_MAX_LENGTH,
-      });
-      return null;
-    }
-
-    // Check depth limit if creating nested folder
-    if (parentId) {
-      const parentDepth = get().getFolderDepth(parentId);
-      if (parentDepth >= FOLDER_MAX_DEPTH - 1) {
-        debugError("[FolderStore] Max folder depth exceeded:", {
-          parentId,
-          parentDepth,
-          maxDepth: FOLDER_MAX_DEPTH,
+      // Validate name length
+      if (
+        trimmedName.length < FOLDER_NAME_MIN_LENGTH ||
+        trimmedName.length > FOLDER_NAME_MAX_LENGTH
+      ) {
+        debugError("[FolderStore] Invalid folder name length:", {
+          length: trimmedName.length,
+          min: FOLDER_NAME_MIN_LENGTH,
+          max: FOLDER_NAME_MAX_LENGTH,
         });
         return null;
       }
 
-      // Verify parent exists
-      const parentFolder = get().getFolderById(parentId);
-      if (!parentFolder) {
-        debugError("[FolderStore] Parent folder not found:", parentId);
-        return null;
+      // Check depth limit if creating nested folder
+      if (parentId) {
+        const parentDepth = get().getFolderDepth(parentId);
+        if (parentDepth >= FOLDER_MAX_DEPTH - 1) {
+          debugError("[FolderStore] Max folder depth exceeded:", {
+            parentId,
+            parentDepth,
+            maxDepth: FOLDER_MAX_DEPTH,
+          });
+          return null;
+        }
+
+        // Verify parent exists
+        const parentFolder = get().getFolderById(parentId);
+        if (!parentFolder) {
+          debugError("[FolderStore] Parent folder not found:", parentId);
+          return null;
+        }
       }
-    }
 
-    const id = generateUUID();
-    const now = Date.now();
+      const id = generateUUID();
+      const now = Date.now();
 
-    const newFolder: MediaFolder = {
-      id,
-      name: trimmedName,
-      parentId,
-      isExpanded: true,
-      createdAt: now,
-      updatedAt: now,
-    };
+      const newFolder: MediaFolder = {
+        id,
+        name: trimmedName,
+        parentId,
+        isExpanded: true,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    set((state) => ({
-      folders: [...state.folders, newFolder],
-    }));
+      set((state) => ({
+        folders: [...state.folders, newFolder],
+      }));
 
-    debugLog("[FolderStore] Created folder:", {
-      id,
-      name: trimmedName,
-      parentId,
-    });
-
-    // Auto-persist after mutation
-    void persistFolders();
-
-    return id;
-  },
-
-  renameFolder: (id, name) => {
-    const trimmedName = name.trim();
-
-    // Validate name length
-    if (
-      trimmedName.length < FOLDER_NAME_MIN_LENGTH ||
-      trimmedName.length > FOLDER_NAME_MAX_LENGTH
-    ) {
-      debugError("[FolderStore] Invalid folder name for rename:", {
-        length: trimmedName.length,
+      debugLog("[FolderStore] Created folder:", {
+        id,
+        name: trimmedName,
+        parentId,
       });
-      return false;
-    }
 
-    // Verify folder exists
-    const folder = get().getFolderById(id);
-    if (!folder) {
-      debugError("[FolderStore] Folder not found for rename:", id);
-      return false;
-    }
+      // Auto-persist after mutation
+      persistFolders();
 
-    set((state) => ({
-      folders: state.folders.map((f) =>
-        f.id === id
-          ? { ...f, name: trimmedName, updatedAt: Date.now() }
-          : f
-      ),
-    }));
+      return id;
+    },
 
-    debugLog("[FolderStore] Renamed folder:", { id, newName: trimmedName });
+    renameFolder: (id, name) => {
+      const trimmedName = name.trim();
 
-    // Auto-persist after mutation
-    void persistFolders();
-
-    return true;
-  },
-
-  deleteFolder: (id) => {
-    // Recursively get all descendant folder IDs with cycle detection
-    const getDescendantIds = (
-      folderId: string,
-      visited = new Set<string>()
-    ): string[] => {
-      if (visited.has(folderId)) {
-        debugError("[FolderStore] Circular reference detected in deleteFolder");
-        return [];
+      // Validate name length
+      if (
+        trimmedName.length < FOLDER_NAME_MIN_LENGTH ||
+        trimmedName.length > FOLDER_NAME_MAX_LENGTH
+      ) {
+        debugError("[FolderStore] Invalid folder name for rename:", {
+          length: trimmedName.length,
+        });
+        return false;
       }
-      visited.add(folderId);
-      const children = get().folders.filter((f) => f.parentId === folderId);
-      return children.flatMap((child) => [
-        child.id,
-        ...getDescendantIds(child.id, visited),
-      ]);
-    };
 
-    const idsToDelete = [id, ...getDescendantIds(id)];
-
-    set((state) => ({
-      folders: state.folders.filter((f) => !idsToDelete.includes(f.id)),
-      // Reset selection if deleted folder was selected
-      selectedFolderId:
-        state.selectedFolderId && idsToDelete.includes(state.selectedFolderId)
-          ? null
-          : state.selectedFolderId,
-    }));
-
-    debugLog("[FolderStore] Deleted folders:", idsToDelete);
-
-    // Auto-persist after mutation
-    void persistFolders();
-  },
-
-  setFolderColor: (id, color) => {
-    set((state) => ({
-      folders: state.folders.map((f) =>
-        f.id === id ? { ...f, color, updatedAt: Date.now() } : f
-      ),
-    }));
-
-    debugLog("[FolderStore] Set folder color:", { id, color });
-
-    // Auto-persist after mutation
-    void persistFolders();
-  },
-
-  // ============================================================================
-  // UI State
-  // ============================================================================
-
-  toggleFolderExpanded: (id) => {
-    set((state) => ({
-      folders: state.folders.map((f) =>
-        f.id === id ? { ...f, isExpanded: !f.isExpanded } : f
-      ),
-    }));
-  },
-
-  setSelectedFolder: (id) => {
-    set({ selectedFolderId: id });
-    debugLog("[FolderStore] Selected folder:", id);
-  },
-
-  expandAll: () => {
-    set((state) => ({
-      folders: state.folders.map((f) => ({ ...f, isExpanded: true })),
-    }));
-  },
-
-  collapseAll: () => {
-    set((state) => ({
-      folders: state.folders.map((f) => ({ ...f, isExpanded: false })),
-    }));
-  },
-
-  // ============================================================================
-  // Queries
-  // ============================================================================
-
-  getFolderById: (id) => {
-    return get().folders.find((f) => f.id === id);
-  },
-
-  getChildFolders: (parentId) => {
-    return get().folders.filter((f) => f.parentId === parentId);
-  },
-
-  getFolderDepth: (id) => {
-    let depth = 0;
-    let current = get().folders.find((f) => f.id === id);
-
-    while (current?.parentId) {
-      depth++;
-      current = get().folders.find((f) => f.id === current!.parentId);
-
-      // Safety check to prevent infinite loops
-      if (depth > FOLDER_MAX_DEPTH + 1) {
-        debugError("[FolderStore] Circular reference detected in folder tree");
-        break;
+      // Verify folder exists
+      const folder = get().getFolderById(id);
+      if (!folder) {
+        debugError("[FolderStore] Folder not found for rename:", id);
+        return false;
       }
-    }
 
-    return depth;
-  },
+      set((state) => ({
+        folders: state.folders.map((f) =>
+          f.id === id ? { ...f, name: trimmedName, updatedAt: Date.now() } : f
+        ),
+      }));
 
-  getFolderPath: (id) => {
-    const path: MediaFolder[] = [];
-    let current = get().folders.find((f) => f.id === id);
-    let safetyCounter = 0;
+      debugLog("[FolderStore] Renamed folder:", { id, newName: trimmedName });
 
-    while (current) {
-      path.unshift(current);
-      current = current.parentId
-        ? get().folders.find((f) => f.id === current!.parentId)
-        : undefined;
+      // Auto-persist after mutation
+      persistFolders();
 
-      // Safety check to prevent infinite loops
-      safetyCounter++;
-      if (safetyCounter > FOLDER_MAX_DEPTH + 1) {
-        debugError("[FolderStore] Circular reference detected in folder path");
-        break;
+      return true;
+    },
+
+    deleteFolder: (id) => {
+      // Recursively get all descendant folder IDs with cycle detection
+      const getDescendantIds = (
+        folderId: string,
+        visited = new Set<string>()
+      ): string[] => {
+        if (visited.has(folderId)) {
+          debugError(
+            "[FolderStore] Circular reference detected in deleteFolder"
+          );
+          return [];
+        }
+        visited.add(folderId);
+        const children = get().folders.filter((f) => f.parentId === folderId);
+        return children.flatMap((child) => [
+          child.id,
+          ...getDescendantIds(child.id, visited),
+        ]);
+      };
+
+      const idsToDelete = [id, ...getDescendantIds(id)];
+
+      set((state) => ({
+        folders: state.folders.filter((f) => !idsToDelete.includes(f.id)),
+        // Reset selection if deleted folder was selected
+        selectedFolderId:
+          state.selectedFolderId && idsToDelete.includes(state.selectedFolderId)
+            ? null
+            : state.selectedFolderId,
+      }));
+
+      debugLog("[FolderStore] Deleted folders:", idsToDelete);
+
+      // Auto-persist after mutation
+      persistFolders();
+    },
+
+    setFolderColor: (id, color) => {
+      set((state) => ({
+        folders: state.folders.map((f) =>
+          f.id === id ? { ...f, color, updatedAt: Date.now() } : f
+        ),
+      }));
+
+      debugLog("[FolderStore] Set folder color:", { id, color });
+
+      // Auto-persist after mutation
+      persistFolders();
+    },
+
+    // ============================================================================
+    // UI State
+    // ============================================================================
+
+    toggleFolderExpanded: (id) => {
+      set((state) => ({
+        folders: state.folders.map((f) =>
+          f.id === id ? { ...f, isExpanded: !f.isExpanded } : f
+        ),
+      }));
+    },
+
+    setSelectedFolder: (id) => {
+      set({ selectedFolderId: id });
+      debugLog("[FolderStore] Selected folder:", id);
+    },
+
+    expandAll: () => {
+      set((state) => ({
+        folders: state.folders.map((f) => ({ ...f, isExpanded: true })),
+      }));
+    },
+
+    collapseAll: () => {
+      set((state) => ({
+        folders: state.folders.map((f) => ({ ...f, isExpanded: false })),
+      }));
+    },
+
+    // ============================================================================
+    // Queries
+    // ============================================================================
+
+    getFolderById: (id) => {
+      return get().folders.find((f) => f.id === id);
+    },
+
+    getChildFolders: (parentId) => {
+      return get().folders.filter((f) => f.parentId === parentId);
+    },
+
+    getFolderDepth: (id) => {
+      let depth = 0;
+      let current = get().folders.find((f) => f.id === id);
+
+      while (current?.parentId) {
+        depth++;
+        current = get().folders.find((f) => f.id === current!.parentId);
+
+        // Safety check to prevent infinite loops
+        if (depth > FOLDER_MAX_DEPTH + 1) {
+          debugError(
+            "[FolderStore] Circular reference detected in folder tree"
+          );
+          break;
+        }
       }
-    }
 
-    return path;
-  },
+      return depth;
+    },
 
-  // ============================================================================
-  // Persistence
-  // ============================================================================
+    getFolderPath: (id) => {
+      const path: MediaFolder[] = [];
+      let current = get().folders.find((f) => f.id === id);
+      let safetyCounter = 0;
 
-  loadFolders: async (projectId) => {
-    set({ isLoading: true });
+      while (current) {
+        path.unshift(current);
+        current = current.parentId
+          ? get().folders.find((f) => f.id === current!.parentId)
+          : undefined;
 
-    try {
-      const { storageService } = await import("@/lib/storage/storage-service");
-      const folders = await storageService.loadFolders(projectId);
+        // Safety check to prevent infinite loops
+        safetyCounter++;
+        if (safetyCounter > FOLDER_MAX_DEPTH + 1) {
+          debugError(
+            "[FolderStore] Circular reference detected in folder path"
+          );
+          break;
+        }
+      }
 
-      // Reset stale selection if current selectedFolderId doesn't exist in loaded folders
-      const selected = get().selectedFolderId;
-      const selectionValid = selected
-        ? folders.some((f) => f.id === selected)
-        : true;
+      return path;
+    },
 
+    // ============================================================================
+    // Persistence
+    // ============================================================================
+
+    loadFolders: async (projectId) => {
+      set({ isLoading: true });
+
+      try {
+        const { storageService } = await import(
+          "@/lib/storage/storage-service"
+        );
+        const folders = await storageService.loadFolders(projectId);
+
+        // Reset stale selection if current selectedFolderId doesn't exist in loaded folders
+        const selected = get().selectedFolderId;
+        const selectionValid = selected
+          ? folders.some((f) => f.id === selected)
+          : true;
+
+        set({
+          folders,
+          isLoading: false,
+          selectedFolderId: selectionValid ? selected : null,
+          activeProjectId: projectId,
+        });
+        debugLog("[FolderStore] Loaded folders:", {
+          projectId,
+          count: folders.length,
+          selectionReset: !selectionValid,
+        });
+
+        // Initialize default folders if they don't exist
+        get().initializeDefaultFolders();
+      } catch (error) {
+        debugError("[FolderStore] Failed to load folders:", error);
+        set({
+          folders: [],
+          selectedFolderId: null,
+          isLoading: false,
+          activeProjectId: null,
+        });
+      }
+    },
+
+    saveFolders: async (projectId) => {
+      try {
+        const { storageService } = await import(
+          "@/lib/storage/storage-service"
+        );
+        await storageService.saveFolders(projectId, get().folders);
+        debugLog("[FolderStore] Saved folders:", {
+          projectId,
+          count: get().folders.length,
+        });
+      } catch (error) {
+        debugError("[FolderStore] Failed to save folders:", error);
+      }
+    },
+
+    clearFolders: () => {
       set({
-        folders,
+        folders: [],
+        selectedFolderId: null,
         isLoading: false,
-        selectedFolderId: selectionValid ? selected : null,
-        activeProjectId: projectId,
+        activeProjectId: null,
       });
-      debugLog("[FolderStore] Loaded folders:", {
-        projectId,
-        count: folders.length,
-        selectionReset: !selectionValid,
-      });
+      debugLog("[FolderStore] Cleared all folders");
+    },
 
-      // Initialize default folders if they don't exist
-      get().initializeDefaultFolders();
-    } catch (error) {
-      debugError("[FolderStore] Failed to load folders:", error);
-      set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
-    }
-  },
+    initializeDefaultFolders: () => {
+      const { folders } = get();
+      const now = Date.now();
 
-  saveFolders: async (projectId) => {
-    try {
-      const { storageService } = await import("@/lib/storage/storage-service");
-      await storageService.saveFolders(projectId, get().folders);
-      debugLog("[FolderStore] Saved folders:", {
-        projectId,
-        count: get().folders.length,
-      });
-    } catch (error) {
-      debugError("[FolderStore] Failed to save folders:", error);
-    }
-  },
+      const defaultFolders: Array<{ id: string; name: string; color: string }> =
+        [
+          { id: DEFAULT_FOLDER_IDS.VIDEOS, name: "Videos", color: "#3b82f6" },
+          { id: DEFAULT_FOLDER_IDS.AUDIO, name: "Audio", color: "#22c55e" },
+          { id: DEFAULT_FOLDER_IDS.IMAGES, name: "Images", color: "#f59e0b" },
+          {
+            id: DEFAULT_FOLDER_IDS.AI_GENERATED,
+            name: "AI Generated",
+            color: "#a855f7",
+          },
+        ];
 
-  clearFolders: () => {
-    set({ folders: [], selectedFolderId: null, isLoading: false, activeProjectId: null });
-    debugLog("[FolderStore] Cleared all folders");
-  },
-
-  initializeDefaultFolders: () => {
-    const { folders } = get();
-    const now = Date.now();
-
-    const defaultFolders: Array<{ id: string; name: string; color: string }> = [
-      { id: DEFAULT_FOLDER_IDS.VIDEOS, name: "Videos", color: "#3b82f6" },
-      { id: DEFAULT_FOLDER_IDS.AUDIO, name: "Audio", color: "#22c55e" },
-      { id: DEFAULT_FOLDER_IDS.IMAGES, name: "Images", color: "#f59e0b" },
-      { id: DEFAULT_FOLDER_IDS.AI_GENERATED, name: "AI Generated", color: "#a855f7" },
-    ];
-
-    const newFolders: MediaFolder[] = [];
-    for (const def of defaultFolders) {
-      if (!folders.find((f) => f.id === def.id)) {
-        newFolders.push({
-          id: def.id,
-          name: def.name,
-          parentId: null,
-          color: def.color,
-          isExpanded: true,
-          createdAt: now,
-          updatedAt: now,
-        });
+      const newFolders: MediaFolder[] = [];
+      for (const def of defaultFolders) {
+        if (!folders.find((f) => f.id === def.id)) {
+          newFolders.push({
+            id: def.id,
+            name: def.name,
+            parentId: null,
+            color: def.color,
+            isExpanded: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
       }
-    }
 
-    if (newFolders.length > 0) {
-      set((state) => ({ folders: [...state.folders, ...newFolders] }));
-      debugLog("[FolderStore] Initialized default folders:", {
-        created: newFolders.map((f) => f.name),
-      });
+      if (newFolders.length > 0) {
+        set((state) => ({ folders: [...state.folders, ...newFolders] }));
+        debugLog("[FolderStore] Initialized default folders:", {
+          created: newFolders.map((f) => f.name),
+        });
 
-      // Auto-persist after adding default folders
-      void persistFolders();
-    }
-  },
-}});
+        // Auto-persist after adding default folders
+        persistFolders();
+      }
+    },
+  };
+});

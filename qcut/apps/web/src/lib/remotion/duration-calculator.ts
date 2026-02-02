@@ -187,7 +187,9 @@ export function validateSequenceStructure(
   for (let i = 0; i < structure.sequences.length; i++) {
     const seq = structure.sequences[i];
     if (seq.durationInFrames <= 0) {
-      errors.push(`Sequence "${seq.name}" has invalid duration: ${seq.durationInFrames}`);
+      errors.push(
+        `Sequence "${seq.name}" has invalid duration: ${seq.durationInFrames}`
+      );
     }
   }
 
@@ -197,7 +199,9 @@ export function validateSequenceStructure(
       const trans = structure.transitions[i];
 
       if (trans.afterSequenceIndex < 0) {
-        errors.push(`Transition ${i} has invalid afterSequenceIndex: ${trans.afterSequenceIndex}`);
+        errors.push(
+          `Transition ${i} has invalid afterSequenceIndex: ${trans.afterSequenceIndex}`
+        );
       }
 
       if (trans.afterSequenceIndex >= structure.sequences.length - 1) {
@@ -207,7 +211,9 @@ export function validateSequenceStructure(
       }
 
       if (trans.durationInFrames <= 0) {
-        errors.push(`Transition ${i} has invalid duration: ${trans.durationInFrames}`);
+        errors.push(
+          `Transition ${i} has invalid duration: ${trans.durationInFrames}`
+        );
       }
 
       // Check transition doesn't exceed adjacent sequence durations

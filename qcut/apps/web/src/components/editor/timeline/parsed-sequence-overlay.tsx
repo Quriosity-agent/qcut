@@ -10,7 +10,10 @@
 
 import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { ParsedSequence, ParsedTransition } from "@/lib/remotion/sequence-parser";
+import type {
+  ParsedSequence,
+  ParsedTransition,
+} from "@/lib/remotion/sequence-parser";
 
 // ============================================================================
 // Types
@@ -208,7 +211,13 @@ export function ParsedSequenceOverlay({
         width: duration * pixelsPerFrame,
       };
     });
-  }, [sequences, transitions, totalDuration, elementWidth, usesTransitionSeries]);
+  }, [
+    sequences,
+    transitions,
+    totalDuration,
+    elementWidth,
+    usesTransitionSeries,
+  ]);
 
   // Check if any sequences have dynamic values
   const hasDynamicValues = useMemo(() => {

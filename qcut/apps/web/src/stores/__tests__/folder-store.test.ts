@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useFolderStore } from "../folder-store";
-import {
-  FOLDER_MAX_DEPTH,
-  FOLDER_NAME_MAX_LENGTH,
-} from "../media-store-types";
+import { FOLDER_MAX_DEPTH, FOLDER_NAME_MAX_LENGTH } from "../media-store-types";
 
 // Mock the debug utilities
 vi.mock("@/lib/debug-config", () => ({
@@ -310,9 +307,9 @@ describe("FolderStore", () => {
 
       useFolderStore.getState().expandAll();
 
-      expect(
-        useFolderStore.getState().folders.every((f) => f.isExpanded)
-      ).toBe(true);
+      expect(useFolderStore.getState().folders.every((f) => f.isExpanded)).toBe(
+        true
+      );
     });
 
     it("collapses all folders", () => {

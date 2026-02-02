@@ -149,9 +149,14 @@ export class FrameCompositor {
     // Check if context is available
     if (!this.outputCtx) {
       // Return empty result when context not available (e.g., in test environment)
-      const emptyData = typeof ImageData !== "undefined"
-        ? new ImageData(this.width, this.height)
-        : { data: new Uint8ClampedArray(this.width * this.height * 4), width: this.width, height: this.height } as ImageData;
+      const emptyData =
+        typeof ImageData !== "undefined"
+          ? new ImageData(this.width, this.height)
+          : ({
+              data: new Uint8ClampedArray(this.width * this.height * 4),
+              width: this.width,
+              height: this.height,
+            } as ImageData);
       return {
         imageData: emptyData,
         width: this.width,
@@ -206,10 +211,7 @@ export class FrameCompositor {
   /**
    * Apply a single layer to the output canvas
    */
-  private applyLayer(
-    source: CanvasImageSource,
-    layer: CompositeLayer
-  ): void {
+  private applyLayer(source: CanvasImageSource, layer: CompositeLayer): void {
     if (!this.outputCtx) return;
 
     const transform = layer.transform || DEFAULT_TRANSFORM;
@@ -303,7 +305,7 @@ export class FrameCompositor {
   /**
    * Get the output as a data URL
    */
-  toDataURL(format: "png" | "jpeg" = "png", quality: number = 0.92): string {
+  toDataURL(format: "png" | "jpeg" = "png", quality = 0.92): string {
     return this.outputCanvas.toDataURL(
       format === "png" ? "image/png" : "image/jpeg",
       quality
@@ -313,10 +315,7 @@ export class FrameCompositor {
   /**
    * Get the output as a Blob
    */
-  async toBlob(
-    format: "png" | "jpeg" = "png",
-    quality: number = 0.92
-  ): Promise<Blob> {
+  async toBlob(format: "png" | "jpeg" = "png", quality = 0.92): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.outputCanvas.toBlob(
         (blob) => {
@@ -376,8 +375,7 @@ export function computeLayerOrder(
     for (const element of track.elements) {
       // Check if element is visible at current time
       const elementStart = element.startTime + element.trimStart;
-      const elementEnd =
-        element.startTime + element.duration - element.trimEnd;
+      const elementEnd = element.startTime + element.duration - element.trimEnd;
 
       if (currentTime < elementStart || currentTime >= elementEnd) {
         continue;

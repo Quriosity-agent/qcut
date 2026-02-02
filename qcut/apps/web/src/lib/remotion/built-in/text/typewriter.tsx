@@ -7,12 +7,7 @@
  */
 
 import React from "react";
-import {
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  Easing,
-} from "remotion";
+import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion";
 import { z } from "zod";
 import type { RemotionComponentDefinition } from "../../types";
 
@@ -123,14 +118,20 @@ export const Typewriter: React.FC<Partial<TypewriterProps>> = ({
     showCursor && Math.floor(frame / cursorBlinkSpeed) % 2 === 0;
 
   // Show cursor only while typing or after completion with blink
-  const shouldShowCursor = showCursor && (charCount < text.length || cursorVisible);
+  const shouldShowCursor =
+    showCursor && (charCount < text.length || cursorVisible);
 
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: textAlign === "center" ? "center" : textAlign === "right" ? "flex-end" : "flex-start",
+        justifyContent:
+          textAlign === "center"
+            ? "center"
+            : textAlign === "right"
+              ? "flex-end"
+              : "flex-start",
         width: "100%",
         height: "100%",
         backgroundColor,
@@ -177,7 +178,8 @@ export const Typewriter: React.FC<Partial<TypewriterProps>> = ({
 export const TypewriterDefinition: RemotionComponentDefinition = {
   id: "built-in-typewriter",
   name: "Typewriter",
-  description: "Animates text appearing character by character like a typewriter",
+  description:
+    "Animates text appearing character by character like a typewriter",
   category: "text",
   durationInFrames: 150,
   fps: 30,

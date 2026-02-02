@@ -84,7 +84,9 @@ export const textComponentsById = new Map<string, RemotionComponentDefinition>(
 /**
  * Get a text component definition by ID
  */
-export function getTextComponent(id: string): RemotionComponentDefinition | undefined {
+export function getTextComponent(
+  id: string
+): RemotionComponentDefinition | undefined {
   return textComponentsById.get(id);
 }
 

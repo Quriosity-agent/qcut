@@ -61,10 +61,7 @@ describe("sortKeyframes", () => {
   });
 
   it("should not mutate original array", () => {
-    const keyframes = [
-      createTestKeyframe(30, 100),
-      createTestKeyframe(0, 0),
-    ];
+    const keyframes = [createTestKeyframe(30, 100), createTestKeyframe(0, 0)];
 
     sortKeyframes(keyframes);
 
@@ -93,24 +90,20 @@ describe("validateKeyframes", () => {
   });
 
   it("should return undefined for valid keyframes", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     expect(validateKeyframes(keyframes)).toBeUndefined();
   });
 
   it("should detect duplicate frames", () => {
-    const keyframes = [
-      createTestKeyframe(10, 0),
-      createTestKeyframe(10, 100),
-    ];
+    const keyframes = [createTestKeyframe(10, 0), createTestKeyframe(10, 100)];
     expect(validateKeyframes(keyframes)).toBe("Duplicate keyframe at frame 10");
   });
 
   it("should detect negative frames", () => {
     const keyframes = [createTestKeyframe(-5, 0)];
-    expect(validateKeyframes(keyframes)).toBe("Keyframe frames cannot be negative");
+    expect(validateKeyframes(keyframes)).toBe(
+      "Keyframe frames cannot be negative"
+    );
   });
 });
 
@@ -124,10 +117,7 @@ describe("findSurroundingKeyframes", () => {
   });
 
   it("should return last keyframe repeated for exact match on last", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
 
     const result = findSurroundingKeyframes(keyframes, 30);
 
@@ -137,10 +127,7 @@ describe("findSurroundingKeyframes", () => {
   });
 
   it("should return same keyframe for exact match on first", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
 
     const result = findSurroundingKeyframes(keyframes, 0);
 
@@ -150,10 +137,7 @@ describe("findSurroundingKeyframes", () => {
   });
 
   it("should return first keyframe repeated when before range", () => {
-    const keyframes = [
-      createTestKeyframe(10, 50),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(10, 50), createTestKeyframe(30, 100)];
 
     const result = findSurroundingKeyframes(keyframes, 5);
 
@@ -162,10 +146,7 @@ describe("findSurroundingKeyframes", () => {
   });
 
   it("should return last keyframe repeated when after range", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
 
     const result = findSurroundingKeyframes(keyframes, 50);
 
@@ -202,10 +183,7 @@ describe("interpolateNumber", () => {
   });
 
   it("should interpolate between two keyframes linearly", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
 
     // Exact start
     expect(interpolateNumber(keyframes, 0)).toBe(0);
@@ -218,19 +196,13 @@ describe("interpolateNumber", () => {
   });
 
   it("should clamp values before first keyframe", () => {
-    const keyframes = [
-      createTestKeyframe(10, 50),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(10, 50), createTestKeyframe(30, 100)];
 
     expect(interpolateNumber(keyframes, 5)).toBe(50);
   });
 
   it("should clamp values after last keyframe", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
 
     expect(interpolateNumber(keyframes, 50)).toBe(100);
   });
@@ -346,10 +318,7 @@ describe("generateAnimatedProp", () => {
   });
 
   it("should return animated function for number keyframes", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     const fn = generateAnimatedProp(keyframes, "number");
 
     expect(fn(0)).toBe(0);
@@ -376,19 +345,20 @@ describe("generateAnimatedProp", () => {
 describe("convertToRemotionInterpolate", () => {
   it("should return constant for empty keyframes", () => {
     expect(convertToRemotionInterpolate([], "opacity", "number")).toBe("0");
-    expect(convertToRemotionInterpolate([], "color", "color")).toBe('"#000000"');
+    expect(convertToRemotionInterpolate([], "color", "color")).toBe(
+      '"#000000"'
+    );
   });
 
   it("should return single value for one keyframe", () => {
     const keyframes = [createTestKeyframe(0, 50)];
-    expect(convertToRemotionInterpolate(keyframes, "opacity", "number")).toBe("50");
+    expect(convertToRemotionInterpolate(keyframes, "opacity", "number")).toBe(
+      "50"
+    );
   });
 
   it("should generate interpolate call for number keyframes", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     const result = convertToRemotionInterpolate(keyframes, "opacity", "number");
 
     expect(result).toContain("interpolate(frame");
@@ -401,7 +371,11 @@ describe("convertToRemotionInterpolate", () => {
       createTestKeyframe(0, "#ff0000"),
       createTestKeyframe(30, "#0000ff"),
     ];
-    const result = convertToRemotionInterpolate(keyframes, "backgroundColor", "color");
+    const result = convertToRemotionInterpolate(
+      keyframes,
+      "backgroundColor",
+      "color"
+    );
 
     expect(result).toContain("interpolateColors(frame");
     expect(result).toContain("[0, 30]");
@@ -458,10 +432,7 @@ describe("addKeyframe", () => {
 
 describe("updateKeyframe", () => {
   it("should update keyframe by id", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     const result = updateKeyframe(keyframes, "test-0", { value: 50 });
 
     expect(result[0].value).toBe(50);
@@ -469,10 +440,7 @@ describe("updateKeyframe", () => {
   });
 
   it("should re-sort when frame changes", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     const result = updateKeyframe(keyframes, "test-0", { frame: 50 });
 
     expect(result[0].frame).toBe(30);
@@ -489,10 +457,7 @@ describe("updateKeyframe", () => {
 
 describe("deleteKeyframe", () => {
   it("should remove keyframe by id", () => {
-    const keyframes = [
-      createTestKeyframe(0, 0),
-      createTestKeyframe(30, 100),
-    ];
+    const keyframes = [createTestKeyframe(0, 0), createTestKeyframe(30, 100)];
     const result = deleteKeyframe(keyframes, "test-0");
 
     expect(result.length).toBe(1);

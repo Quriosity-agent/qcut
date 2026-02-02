@@ -55,23 +55,27 @@ export function createNotRemotionProjectError(
 ): FolderImportError {
   return {
     type: "NOT_REMOTION_PROJECT",
-    message: `The selected folder is not a valid Remotion project`,
+    message: "The selected folder is not a valid Remotion project",
     details: reason || `Folder: ${folderPath}`,
     recoverable: true,
-    suggestion: "Select a folder containing a Remotion project with Root.tsx or remotion.config.ts",
+    suggestion:
+      "Select a folder containing a Remotion project with Root.tsx or remotion.config.ts",
   };
 }
 
 /**
  * Create a "no compositions found" error
  */
-export function createNoCompositionsError(folderPath: string): FolderImportError {
+export function createNoCompositionsError(
+  folderPath: string
+): FolderImportError {
   return {
     type: "NO_COMPOSITIONS_FOUND",
     message: "No Remotion compositions found in the project",
-    details: `No <Composition> elements detected in Root.tsx`,
+    details: "No <Composition> elements detected in Root.tsx",
     recoverable: true,
-    suggestion: "Ensure your project has <Composition> elements defined in Root.tsx",
+    suggestion:
+      "Ensure your project has <Composition> elements defined in Root.tsx",
   };
 }
 
@@ -142,7 +146,9 @@ export function createPermissionError(folderPath: string): FolderImportError {
 /**
  * Create a folder not found error
  */
-export function createFolderNotFoundError(folderPath: string): FolderImportError {
+export function createFolderNotFoundError(
+  folderPath: string
+): FolderImportError {
   return {
     type: "FOLDER_NOT_FOUND",
     message: "The specified folder was not found",
@@ -180,15 +186,24 @@ export function parseFolderImportError(
   // Try to detect error type from message
   const lowerMessage = message.toLowerCase();
 
-  if (lowerMessage.includes("not a remotion project") || lowerMessage.includes("root.tsx")) {
+  if (
+    lowerMessage.includes("not a remotion project") ||
+    lowerMessage.includes("root.tsx")
+  ) {
     return createNotRemotionProjectError("", message);
   }
 
-  if (lowerMessage.includes("no compositions") || lowerMessage.includes("no composition")) {
+  if (
+    lowerMessage.includes("no compositions") ||
+    lowerMessage.includes("no composition")
+  ) {
     return createNoCompositionsError("");
   }
 
-  if (lowerMessage.includes("permission") || lowerMessage.includes("access denied")) {
+  if (
+    lowerMessage.includes("permission") ||
+    lowerMessage.includes("access denied")
+  ) {
     return createPermissionError("");
   }
 
@@ -265,7 +280,6 @@ export function getErrorSeverity(
     case "PERMISSION_DENIED":
     case "FOLDER_NOT_FOUND":
       return "error";
-    case "UNKNOWN":
     default:
       return "error";
   }
