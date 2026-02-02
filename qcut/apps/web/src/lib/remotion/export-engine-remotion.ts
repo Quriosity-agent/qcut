@@ -47,6 +47,7 @@ import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
  * Export phases for Remotion-enabled export
  */
 export type RemotionExportPhase =
+  | "idle"
   | "analyzing"
   | "prerendering"
   | "compositing"
@@ -141,6 +142,7 @@ export const DEFAULT_REMOTION_EXPORT_CONFIG: RemotionExportConfig = {
  * Total should equal 100
  */
 const PHASE_WEIGHTS: Record<RemotionExportPhase, number> = {
+  idle: 0,
   analyzing: 5,
   prerendering: 40,
   compositing: 35,
@@ -169,6 +171,7 @@ export class RemotionExportEngine extends ExportEngine {
   private preRenderResults: Map<string, PreRenderResult> = new Map();
   private remotionElements: RemotionElement[] = [];
   private progressCallback: RemotionExportProgressCallback | null = null;
+  private currentPhase: RemotionExportPhase = "idle";
 
   constructor(
     canvas: HTMLCanvasElement,

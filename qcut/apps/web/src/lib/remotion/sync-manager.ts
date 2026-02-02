@@ -158,6 +158,7 @@ export class SyncManager {
   private seekTimeout: NodeJS.Timeout | null = null;
   private tracks: TimelineTrack[] = [];
   private fps = 30;
+  private lastSyncTime = 0;
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_SYNC_CONFIG, ...config };
