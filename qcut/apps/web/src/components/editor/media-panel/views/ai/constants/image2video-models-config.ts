@@ -436,6 +436,7 @@ export const I2V_MODELS = {
     default_params: {
       duration: 5,
       resolution: "720p",
+      generate_audio: true,
     },
     supportedResolutions: ["360p", "540p", "720p", "1080p"],
     supportedDurations: [5],
