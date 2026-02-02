@@ -34,13 +34,3 @@ export function setupAllClaudeIPC(): void {
 
   claudeLog.info("Claude", "All handlers registered successfully");
 }
-
-// CommonJS export for main.ts compatibility (uses require)
-module.exports = {
-  setupAllClaudeIPC,
-  setupClaudeMediaIPC,
-  setupClaudeTimelineIPC,
-  setupClaudeProjectIPC,
-  setupClaudeExportIPC,
-  setupClaudeDiagnosticsIPC,
-};
