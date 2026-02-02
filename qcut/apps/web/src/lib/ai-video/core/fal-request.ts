@@ -53,12 +53,13 @@ export async function getFalApiKeyAsync(): Promise<string | undefined> {
   }
 
   // Check Electron storage (async)
-  if (typeof window !== "undefined" && window.electronAPI?.apiKeys) {
+  const electronApiKeys = typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  if (electronApiKeys) {
     // Deduplicate concurrent calls
     if (!electronKeyFetchPromise) {
       electronKeyFetchPromise = (async () => {
         try {
-          const keys = await window.electronAPI.apiKeys.get();
+          const keys = await electronApiKeys.get();
           if (keys?.falApiKey) {
             cachedElectronApiKey = keys.falApiKey;
             return keys.falApiKey;
