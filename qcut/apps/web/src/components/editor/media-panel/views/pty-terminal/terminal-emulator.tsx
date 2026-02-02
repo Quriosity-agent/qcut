@@ -60,7 +60,6 @@ export function TerminalEmulator({
   // Initialize terminal
   useEffect(() => {
     if (!containerRef.current) return;
-
     // Create terminal instance
     const terminal = new Terminal({
       cursorBlink: true,
@@ -121,8 +120,32 @@ export function TerminalEmulator({
       }
     });
 
-    // Track if we're currently pasting to prevent double onData
+    // Track paste state to prevent double-writes
     let isPasting = false;
+
+    // Intercept paste event on xterm's internal textarea
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (isPasting) return;
+
+      const text = e.clipboardData?.getData('text');
+      if (text && sessionId) {
+        isPasting = true;
+        window.electronAPI?.pty?.write?.(sessionId, text);
+        setTimeout(() => { isPasting = false; }, 100);
+      }
+    };
+
+    // Add paste listener after a short delay (textarea may not be ready immediately)
+    const textareaCheckInterval = setInterval(() => {
+      if (terminal.textarea) {
+        terminal.textarea.addEventListener('paste', handlePaste, true);
+        clearInterval(textareaCheckInterval);
+      }
+    }, 10);
+    setTimeout(() => clearInterval(textareaCheckInterval), 1000);
 
     // Handle keyboard shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
@@ -132,31 +155,28 @@ export function TerminalEmulator({
         event.key === "v" &&
         event.type === "keydown"
       ) {
-        if (isPasting) {
-          return false;
-        }
-        isPasting = true;
-        // Reset after a short delay
-        setTimeout(() => {
-          isPasting = false;
-        }, 100);
+        if (isPasting) return false;
 
-        // Guard against clipboard API unavailability
-        if (!navigator.clipboard?.readText) {
-          return true;
+        isPasting = true;
+
+        // Read clipboard and write to PTY
+        if (navigator.clipboard?.readText) {
+          navigator.clipboard.readText()
+            .then((text) => {
+              if (text && sessionId) {
+                window.electronAPI?.pty?.write?.(sessionId, text);
+              }
+            })
+            .catch(() => {
+              // Clipboard read failed - ignore
+            })
+            .finally(() => {
+              setTimeout(() => { isPasting = false; }, 100);
+            });
+        } else {
+          setTimeout(() => { isPasting = false; }, 100);
         }
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            if (text && sessionId) {
-              // Write directly to PTY, bypassing terminal.paste()
-              window.electronAPI?.pty?.write?.(sessionId, text);
-            }
-          })
-          .catch((err) => {
-            console.error("[Terminal] Failed to read clipboard:", err);
-          });
-        // Prevent xterm from also handling paste
+
         return false;
       }
 
@@ -193,6 +213,8 @@ export function TerminalEmulator({
 
     // Cleanup
     return () => {
+      clearInterval(textareaCheckInterval);
+      terminal.textarea?.removeEventListener('paste', handlePaste, true);
       window.electronAPI?.pty?.removeListeners();
       terminal.dispose();
     };

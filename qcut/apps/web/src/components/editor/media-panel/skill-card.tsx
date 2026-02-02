@@ -91,25 +91,19 @@ export function SkillCard({ skill, onDelete }: SkillCardProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    // Prevent rapid double-clicks
-    if (isCopying) {
-      return;
-    }
+    if (isCopying) return;
     setIsCopying(true);
 
     try {
       await navigator.clipboard.writeText(path);
       setCopiedPath(path);
-      // Use fixed toast id to prevent duplicates
       toast.success("Path copied to clipboard", { id: "skill-path-copy" });
       setTimeout(() => setCopiedPath(null), 2000);
     } catch (err) {
       console.error("Failed to copy path:", err);
       toast.error("Failed to copy path", { id: "skill-path-copy-error" });
     } finally {
-      setTimeout(() => {
-        setIsCopying(false);
-      }, 300);
+      setTimeout(() => setIsCopying(false), 300);
     }
   };
 
