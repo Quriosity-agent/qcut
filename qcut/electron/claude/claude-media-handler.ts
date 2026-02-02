@@ -177,37 +177,67 @@ export function setupClaudeMediaIPC(): void {
   // ============================================================================
   // claude:media:delete - Delete a media file
   // ============================================================================
-  ipcMain.handle('claude:media:delete', async (event, projectId: string, mediaId: string): Promise<boolean> => {
+  ipcMain.handle('claude:media:delete', async (_event, projectId: string, mediaId: string): Promise<boolean> => {
     claudeLog.info(HANDLER_NAME, `Deleting media: ${mediaId}`);
-    
-    // Note: In a real implementation, you'd need to:
-    // 1. Look up the file path from mediaId
-    // 2. Check if it's used in the timeline
-    // 3. Delete the file
-    
-    claudeLog.warn(HANDLER_NAME, 'Delete not fully implemented - needs media ID lookup');
-    return false;
+
+    try {
+      // Look up the file by ID
+      const allMedia = await listMediaFiles(projectId);
+      const mediaFile = allMedia.find(m => m.id === mediaId);
+
+      if (!mediaFile) {
+        claudeLog.warn(HANDLER_NAME, `Media not found: ${mediaId}`);
+        return false;
+      }
+
+      // Delete the file
+      await fs.unlink(mediaFile.path);
+      claudeLog.info(HANDLER_NAME, `Successfully deleted: ${mediaFile.name}`);
+      return true;
+    } catch (error) {
+      claudeLog.error(HANDLER_NAME, 'Failed to delete media:', error);
+      return false;
+    }
   });
 
   // ============================================================================
   // claude:media:rename - Rename a media file
   // ============================================================================
-  ipcMain.handle('claude:media:rename', async (event, projectId: string, mediaId: string, newName: string): Promise<boolean> => {
+  ipcMain.handle('claude:media:rename', async (_event, projectId: string, mediaId: string, newName: string): Promise<boolean> => {
     claudeLog.info(HANDLER_NAME, `Renaming media ${mediaId} to: ${newName}`);
-    
+
     const sanitizedName = sanitizeFilename(newName);
     if (!sanitizedName) {
       claudeLog.error(HANDLER_NAME, 'Invalid new filename');
       return false;
     }
-    
-    // Note: In a real implementation, you'd need to:
-    // 1. Look up the file path from mediaId
-    // 2. Rename the file
-    // 3. Update any timeline references
-    
-    claudeLog.warn(HANDLER_NAME, 'Rename not fully implemented - needs media ID lookup');
-    return false;
+
+    try {
+      // Look up the file by ID
+      const allMedia = await listMediaFiles(projectId);
+      const mediaFile = allMedia.find(m => m.id === mediaId);
+
+      if (!mediaFile) {
+        claudeLog.warn(HANDLER_NAME, `Media not found: ${mediaId}`);
+        return false;
+      }
+
+      // Preserve original extension
+      const originalExt = path.extname(mediaFile.name);
+      const newNameWithExt = sanitizedName.includes('.') ? sanitizedName : sanitizedName + originalExt;
+
+      // Get unique path in case new name already exists
+      const mediaPath = getMediaPath(projectId);
+      const newPath = await getUniqueFilePath(mediaPath, newNameWithExt);
+
+      // Rename the file
+      await fs.rename(mediaFile.path, newPath);
+      claudeLog.info(HANDLER_NAME, `Successfully renamed: ${mediaFile.name} -> ${path.basename(newPath)}`);
+      return true;
+    } catch (error) {
+      claudeLog.error(HANDLER_NAME, 'Failed to rename media:', error);
+      return false;
+    }
   });
 
   claudeLog.info(HANDLER_NAME, 'Media IPC handlers registered');
