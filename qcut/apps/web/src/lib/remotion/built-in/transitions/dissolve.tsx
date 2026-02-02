@@ -139,7 +139,7 @@ export const Dissolve: React.FC<Partial<DissolveProps>> = ({
               const x = i % ditherSize;
               const y = Math.floor(i / ditherSize);
               // Bayer matrix approximation
-              const ditherValue = (x ^ y) / (ditherSize - 1);
+              const ditherValue = ditherSize > 1 ? (x ^ y) / (ditherSize - 1) : 0;
               const show = ditherValue < threshold;
               return show ? (
                 <rect key={i} x={x} y={y} width={1} height={1} fill="white" />
