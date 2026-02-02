@@ -502,9 +502,14 @@ export function MediaView() {
                                 useTimelineStore.getState();
                               const totalDuration = getTotalDuration();
 
+                              if (totalDuration <= 0) {
+                                toast.error("Add media to timeline first");
+                                return;
+                              }
+
                               const start = Math.max(
                                 0,
-                                Math.min(currentTime, totalDuration)
+                                Math.min(currentTime, totalDuration - 0.1)
                               );
                               const end = Math.min(start + 5, totalDuration);
 
