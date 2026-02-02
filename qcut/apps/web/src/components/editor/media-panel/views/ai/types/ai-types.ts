@@ -543,6 +543,32 @@ export interface ViduQ2I2VRequest {
 }
 
 /**
+ * Request parameters for Vidu Q3 text-to-video
+ */
+export interface ViduQ3T2VRequest {
+  model: string;
+  prompt: string;
+  duration?: number;
+  resolution?: "360p" | "540p" | "720p" | "1080p";
+  aspect_ratio?: "16:9" | "9:16" | "4:3" | "3:4" | "1:1";
+  audio?: boolean;
+  seed?: number;
+}
+
+/**
+ * Request parameters for Vidu Q3 image-to-video
+ */
+export interface ViduQ3I2VRequest {
+  model: string;
+  prompt: string;
+  image_url: string;
+  duration?: number;
+  resolution?: "360p" | "540p" | "720p" | "1080p";
+  audio?: boolean;
+  seed?: number;
+}
+
+/**
  * Request parameters for LTX Video 2.0 text-to-video
  */
 export interface LTXV2T2VRequest {

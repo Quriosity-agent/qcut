@@ -16,6 +16,8 @@ import {
   generateLTXV2Video,
   generateLTXV2ImageVideo,
   generateViduQ2Video,
+  generateViduQ3TextVideo,
+  generateViduQ3ImageVideo,
   generateSeedanceVideo,
   generateKlingImageVideo,
   generateKling26ImageVideo,
@@ -46,6 +48,9 @@ type HailuoDuration = 6 | 10;
 type ViduQ2Duration = 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type ViduQ2Resolution = "720p" | "1080p";
 type ViduQ2MovementAmplitude = "auto" | "small" | "medium" | "large";
+type ViduQ3Duration = 5;
+type ViduQ3Resolution = "360p" | "540p" | "720p" | "1080p";
+type ViduQ3AspectRatio = "16:9" | "9:16" | "4:3" | "3:4" | "1:1";
 type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 type SeedanceResolution = "480p" | "720p" | "1080p";
 type SeedanceAspectRatio =
@@ -380,6 +385,40 @@ export async function handleLTXV2FastT2V(
     status: "completed",
     progress: 100,
     message: `Video with audio generated using ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Vidu Q3 text-to-video generation
+ */
+export async function handleViduQ3T2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateViduQ3TextVideo(
+    {
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      duration: 5 as ViduQ3Duration,
+      resolution: (settings.resolution ?? "720p") as ViduQ3Resolution,
+      aspect_ratio: (settings.aspectRatio ?? "16:9") as ViduQ3AspectRatio,
+      audio: true,
+    },
+    ctx.progressCallback
+  );
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
   });
 
   return { response };
@@ -947,6 +986,48 @@ export async function handleWAN26I2V(
     audio_url: audioUrl ?? undefined,
     negative_prompt: settings.wan26NegativePrompt,
     enable_prompt_expansion: settings.wan26EnablePromptExpansion,
+    seed: settings.imageSeed ?? undefined,
+  });
+
+  ctx.progressCallback({
+    status: "completed",
+    progress: 100,
+    message: `Video generated with ${ctx.modelName}`,
+  });
+
+  return { response };
+}
+
+/**
+ * Handle Vidu Q3 image-to-video generation
+ */
+export async function handleViduQ3I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Vidu Q3 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  const response = await generateViduQ3ImageVideo({
+    model: ctx.modelId,
+    prompt: ctx.prompt,
+    image_url: imageUrl,
+    duration: 5 as ViduQ3Duration,
+    resolution: (settings.resolution ?? "720p") as ViduQ3Resolution,
+    audio: true,
     seed: settings.imageSeed ?? undefined,
   });
 
@@ -1568,6 +1649,8 @@ export async function routeTextToVideoHandler(
       return handleLTXV2FastT2V(ctx, settings);
     case "wan_26_t2v":
       return handleWAN26T2V(ctx, settings);
+    case "vidu_q3_t2v":
+      return handleViduQ3T2V(ctx, settings);
     default:
       return handleGenericT2V(ctx, settings);
   }
@@ -1591,6 +1674,8 @@ export async function routeImageToVideoHandler(
       return handleVeo31F2V(ctx, settings);
     case "vidu_q2_turbo_i2v":
       return handleViduQ2I2V(ctx, settings);
+    case "vidu_q3_i2v":
+      return handleViduQ3I2V(ctx, settings);
     case "ltxv2_i2v":
       return handleLTXV2I2V(ctx, settings);
     case "ltxv2_fast_i2v":

@@ -421,6 +421,31 @@ export const I2V_MODELS = {
     },
     supportedDurations: [5, 10],
   },
+  vidu_q3_i2v: {
+    id: "vidu_q3_i2v",
+    name: "Vidu Q3 Image-to-Video",
+    description:
+      "Animate images with audio generation and multi-resolution support",
+    price: "0.07-0.15/s",
+    resolution: "720p",
+    max_duration: 5,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/vidu/q3/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+    },
+    supportedResolutions: ["360p", "540p", "720p", "1080p"],
+    supportedDurations: [5],
+    perSecondPricing: {
+      "360p": 0.07,
+      "540p": 0.07,
+      "720p": 0.154,
+      "1080p": 0.154,
+    },
+  },
 } as const satisfies Record<string, AIModel>;
 
 /**
@@ -450,6 +475,7 @@ export const I2V_MODEL_ORDER: readonly I2VModelId[] = [
   "hailuo23_standard",
   "wan_25_preview_i2v",
   "vidu_q2_turbo_i2v",
+  "vidu_q3_i2v",
   "veo31_frame_to_video",
   "veo31_fast_frame_to_video",
   "kling_o1_i2v",

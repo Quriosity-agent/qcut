@@ -311,6 +311,33 @@ export const T2V_MODELS = {
       aspect_ratio: "16:9",
     },
   },
+  vidu_q3_t2v: {
+    id: "vidu_q3_t2v",
+    name: "Vidu Q3 Text-to-Video",
+    description:
+      "High-quality text-to-video with audio generation and multi-resolution support",
+    price: "0.07-0.15/s",
+    resolution: "720p",
+    max_duration: 5,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/vidu/q3/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      resolution: "720p",
+      aspect_ratio: "16:9",
+    },
+    supportedResolutions: ["360p", "540p", "720p", "1080p"],
+    supportedDurations: [5],
+    supportedAspectRatios: ["16:9", "9:16", "4:3", "3:4", "1:1"],
+    perSecondPricing: {
+      "360p": 0.07,
+      "540p": 0.07,
+      "720p": 0.154,
+      "1080p": 0.154,
+    },
+  },
 } as const satisfies Record<string, AIModel>;
 
 /**
@@ -338,6 +365,7 @@ export const T2V_MODEL_ORDER: readonly T2VModelId[] = [
   "kling_v2_5_turbo",
   "kling_v2_5_turbo_standard",
   "seedance",
+  "vidu_q3_t2v",
   "wan_25_preview",
 ] as const;
 
@@ -635,6 +663,22 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       defaultAspectRatio: "16:9",
       defaultResolution: "1080p",
       defaultDuration: 6,
+    },
+
+    vidu_q3_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "4:3", "3:4", "1:1"],
+      supportsResolution: true,
+      supportedResolutions: ["360p", "540p", "720p", "1080p"],
+      supportsDuration: true,
+      supportedDurations: [5],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: true,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultResolution: "720p",
+      defaultDuration: 5,
     },
   };
 

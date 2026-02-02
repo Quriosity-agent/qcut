@@ -17,6 +17,8 @@
 // ============================================
 export {
   getFalApiKey,
+  getFalApiKeyAsync,
+  clearFalApiKeyCache,
   FAL_API_BASE,
   FAL_UPLOAD_URL,
   generateJobId,
@@ -63,6 +65,16 @@ export {
   validateKlingAvatarV2Audio,
   isFastLTXV2TextModel,
   isHailuo23TextToVideo,
+  // Vidu Q3 validators
+  validateViduQ3Prompt,
+  validateViduQ3Duration,
+  validateViduQ3Resolution,
+  validateViduQ3AspectRatio,
+  isViduQ3Model,
+  VIDU_Q3_RESOLUTIONS,
+  VIDU_Q3_ASPECT_RATIOS,
+  VIDU_Q3_MAX_PROMPT_LENGTH,
+  VIDU_Q3_SUPPORTED_DURATION,
   // WAN v2.6 validators
   validateWAN26Prompt,
   validateWAN26NegativePrompt,
@@ -132,6 +144,7 @@ export {
   generateVideoFromText,
   generateLTXV2Video,
   generateWAN26TextVideo,
+  generateViduQ3TextVideo,
 } from "./generators/text-to-video";
 
 // ============================================
@@ -140,6 +153,7 @@ export {
 export {
   generateVideoFromImage,
   generateViduQ2Video,
+  generateViduQ3ImageVideo,
   generateLTXV2ImageVideo,
   generateSeedanceVideo,
   generateKlingImageVideo,

@@ -49,6 +49,20 @@ export const ERROR_MESSAGES = {
   VIDU_Q2_MISSING_IMAGE:
     "Image is required for Vidu Q2 image-to-video generation",
 
+  // Vidu Q3 errors
+  VIDU_Q3_EMPTY_PROMPT:
+    "Please enter a text prompt for Vidu Q3 video generation",
+  VIDU_Q3_PROMPT_TOO_LONG:
+    "Prompt exceeds maximum length of 2000 characters for Vidu Q3",
+  VIDU_Q3_INVALID_DURATION:
+    "Vidu Q3 currently only supports 5-second duration",
+  VIDU_Q3_INVALID_RESOLUTION:
+    "Invalid resolution for Vidu Q3. Supported: 360p, 540p, 720p, 1080p",
+  VIDU_Q3_INVALID_ASPECT_RATIO:
+    "Invalid aspect ratio for Vidu Q3. Supported: 16:9, 9:16, 4:3, 3:4, 1:1",
+  VIDU_Q3_I2V_MISSING_IMAGE:
+    "Image is required for Vidu Q3 image-to-video generation",
+
   // LTX Video 2.0 errors
   LTXV2_INVALID_DURATION:
     "Duration must be 6, 8, or 10 seconds for LTX Video 2.0",

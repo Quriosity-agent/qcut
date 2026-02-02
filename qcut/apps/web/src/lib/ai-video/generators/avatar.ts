@@ -12,6 +12,7 @@ import type {
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import {
   getFalApiKey,
+  getFalApiKeyAsync,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
@@ -42,9 +43,9 @@ export async function generateAvatarVideo(
     "Generate avatar video",
     { operation: "generateAvatarVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       console.log("Starting avatar video generation with FAL AI");

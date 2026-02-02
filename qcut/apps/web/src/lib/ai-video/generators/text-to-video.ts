@@ -12,11 +12,13 @@ import type {
   TextToVideoRequest,
   LTXV2T2VRequest,
   WAN26T2VRequest,
+  ViduQ3T2VRequest,
   ProgressCallback,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import type { Sora2Duration } from "@/types/sora2";
 import {
   getFalApiKey,
+  getFalApiKeyAsync,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
@@ -43,6 +45,10 @@ import {
   validateWAN26Duration,
   validateWAN26T2VResolution,
   validateWAN26AspectRatio,
+  validateViduQ3Prompt,
+  validateViduQ3Duration,
+  validateViduQ3Resolution,
+  validateViduQ3AspectRatio,
 } from "../validation/validators";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 
@@ -73,10 +79,10 @@ export async function generateVideo(
     "AI Video Generation",
     { operation: "generateVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
         throw new Error(
-          "FAL API key not configured. Please set VITE_FAL_API_KEY in your environment variables."
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
         );
       }
 
@@ -288,9 +294,9 @@ export async function generateVideoFromText(
     "Generate video from text",
     { operation: "generateVideoFromText", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt.trim();
@@ -374,9 +380,9 @@ export async function generateLTXV2Video(
     "Generate LTX Video 2.0 video",
     { operation: "generateLTXV2Video", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -473,9 +479,9 @@ export async function generateWAN26TextVideo(
     "Generate WAN v2.6 text-to-video",
     { operation: "generateWAN26TextVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -612,6 +618,145 @@ export async function generateWAN26TextVideo(
       }
 
       throw new Error("No video URL received from WAN v2.6 API");
+    }
+  );
+}
+
+/**
+ * Generate video from text using Vidu Q3.
+ *
+ * Features: Multi-resolution (360p-1080p), aspect ratio control, audio generation.
+ *
+ * @param request - Prompt, duration, resolution, aspect ratio
+ * @param onProgress - Optional callback for progress updates
+ * @returns VideoGenerationResponse with job_id and video_url
+ * @throws Error if FAL_API_KEY missing or validation fails
+ */
+export async function generateViduQ3TextVideo(
+  request: ViduQ3T2VRequest,
+  onProgress?: ProgressCallback
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "Generate Vidu Q3 text-to-video",
+    { operation: "generateViduQ3TextVideo", model: request.model },
+    async () => {
+      const falApiKey = await getFalApiKeyAsync();
+      if (!falApiKey) {
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+      }
+
+      const trimmedPrompt = request.prompt?.trim() ?? "";
+      if (!trimmedPrompt) {
+        throw new Error(
+          "Text prompt is required for Vidu Q3 text-to-video generation"
+        );
+      }
+      validateViduQ3Prompt(trimmedPrompt);
+
+      const modelConfig = getModelConfig(request.model);
+      if (!modelConfig) {
+        throw new Error(`Unknown model: ${request.model}`);
+      }
+
+      const endpoint = modelConfig.endpoints.text_to_video;
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not support text-to-video generation`
+        );
+      }
+
+      // Apply defaults
+      const duration = request.duration ?? 5;
+      const resolution =
+        request.resolution ??
+        (modelConfig.default_params?.resolution as string) ??
+        "720p";
+      const aspectRatio =
+        request.aspect_ratio ??
+        (modelConfig.default_params?.aspect_ratio as string) ??
+        "16:9";
+      const audio = request.audio ?? true;
+
+      // Validate parameters
+      validateViduQ3Duration(duration);
+      validateViduQ3Resolution(resolution);
+      validateViduQ3AspectRatio(aspectRatio);
+
+      const payload: Record<string, unknown> = {
+        prompt: trimmedPrompt,
+        duration,
+        resolution,
+        aspect_ratio: aspectRatio,
+        audio,
+      };
+
+      if (request.seed !== undefined) {
+        payload.seed = request.seed;
+      }
+
+      const jobId = generateJobId();
+      const startTime = Date.now();
+
+      // Initial status update
+      if (onProgress) {
+        onProgress({
+          status: "queued",
+          progress: 0,
+          message: "Submitting Vidu Q3 text-to-video request...",
+          elapsedTime: 0,
+        });
+      }
+
+      // Submit to queue
+      const queueResponse = await makeFalRequest(endpoint, payload, {
+        queueMode: true,
+      });
+
+      if (!queueResponse.ok) {
+        const errorData = await queueResponse.json().catch(() => ({}));
+        const errorMessage = handleQueueError(
+          queueResponse,
+          errorData,
+          endpoint
+        );
+        throw new Error(errorMessage);
+      }
+
+      const queueResult = await queueResponse.json();
+      const requestId = queueResult.request_id;
+
+      if (requestId) {
+        return await pollQueueStatus(requestId, {
+          endpoint,
+          startTime,
+          onProgress,
+          jobId,
+          modelName: request.model,
+        });
+      }
+
+      // Direct result
+      if (queueResult.video && queueResult.video.url) {
+        if (onProgress) {
+          onProgress({
+            status: "completed",
+            progress: 100,
+            message: "Vidu Q3 video generated successfully",
+            elapsedTime: Math.floor((Date.now() - startTime) / 1000),
+          });
+        }
+
+        return {
+          job_id: jobId,
+          status: "completed",
+          message: "Video generated successfully with Vidu Q3",
+          estimated_time: Math.floor((Date.now() - startTime) / 1000),
+          video_url: queueResult.video.url,
+          video_data: queueResult,
+        };
+      }
+
+      throw new Error("No video URL received from Vidu Q3 API");
     }
   );
 }
