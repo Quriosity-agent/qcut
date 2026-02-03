@@ -13,6 +13,7 @@ import type {
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import {
   getFalApiKey,
+  getFalApiKeyAsync,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
@@ -36,9 +37,9 @@ export async function upscaleByteDanceVideo(
     "Upscale video with ByteDance",
     { operation: "upscaleByteDanceVideo" },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       if (!request.video_url) {
@@ -100,9 +101,9 @@ export async function upscaleFlashVSRVideo(
     "Upscale video with FlashVSR",
     { operation: "upscaleFlashVSRVideo" },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       if (!request.video_url) {

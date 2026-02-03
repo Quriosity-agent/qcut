@@ -8,6 +8,7 @@
  */
 
 import { falAIClient } from "@/lib/fal-ai-client";
+import { debugLogger } from "@/lib/debug-logger";
 import {
   generateVideo,
   generateVideoFromImage,
@@ -16,6 +17,8 @@ import {
   generateLTXV2Video,
   generateLTXV2ImageVideo,
   generateViduQ2Video,
+  generateViduQ3TextVideo,
+  generateViduQ3ImageVideo,
   generateSeedanceVideo,
   generateKlingImageVideo,
   generateKling26ImageVideo,
@@ -46,6 +49,9 @@ type HailuoDuration = 6 | 10;
 type ViduQ2Duration = 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type ViduQ2Resolution = "720p" | "1080p";
 type ViduQ2MovementAmplitude = "auto" | "small" | "medium" | "large";
+type ViduQ3Duration = 5;
+type ViduQ3Resolution = "360p" | "540p" | "720p" | "1080p";
+type ViduQ3AspectRatio = "16:9" | "9:16" | "4:3" | "3:4" | "1:1";
 type SeedanceDuration = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 type SeedanceResolution = "480p" | "720p" | "1080p";
 type SeedanceAspectRatio =
@@ -383,6 +389,71 @@ export async function handleLTXV2FastT2V(
   });
 
   return { response };
+}
+
+/**
+ * Handle Vidu Q3 text-to-video generation
+ */
+export async function handleViduQ3T2V(
+  ctx: ModelHandlerContext,
+  settings: TextToVideoSettings
+): Promise<ModelHandlerResult> {
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
+  // "auto" is not supported by Vidu Q3
+  const normalizedResolution: ViduQ3Resolution = [
+    "360p",
+    "540p",
+    "720p",
+    "1080p",
+  ].includes(settings.resolution ?? "")
+    ? (settings.resolution as ViduQ3Resolution)
+    : "720p";
+
+  // Normalize aspect ratio to Vidu Q3 supported values (16:9, 9:16, 4:3, 3:4, 1:1)
+  // "21:9" is not supported by Vidu Q3
+  const normalizedAspectRatio: ViduQ3AspectRatio = [
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "1:1",
+  ].includes(settings.aspectRatio ?? "")
+    ? (settings.aspectRatio as ViduQ3AspectRatio)
+    : "16:9";
+
+  try {
+    const response = await generateViduQ3TextVideo(
+      {
+        model: ctx.modelId,
+        prompt: ctx.prompt,
+        duration: 5 as ViduQ3Duration,
+        resolution: normalizedResolution,
+        aspect_ratio: normalizedAspectRatio,
+        audio: true,
+      },
+      ctx.progressCallback
+    );
+
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
+
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -960,6 +1031,67 @@ export async function handleWAN26I2V(
 }
 
 /**
+ * Handle Vidu Q3 image-to-video generation
+ */
+export async function handleViduQ3I2V(
+  ctx: ModelHandlerContext,
+  settings: ImageToVideoSettings
+): Promise<ModelHandlerResult> {
+  if (!settings.selectedImage) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Vidu Q3 requires a selected image",
+    };
+  }
+
+  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+  ctx.progressCallback({
+    status: "processing",
+    progress: 10,
+    message: `Submitting ${ctx.modelName} request...`,
+  });
+
+  // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
+  // "auto" is not supported by Vidu Q3
+  const normalizedResolution: ViduQ3Resolution = [
+    "360p",
+    "540p",
+    "720p",
+    "1080p",
+  ].includes(settings.resolution ?? "")
+    ? (settings.resolution as ViduQ3Resolution)
+    : "720p";
+
+  try {
+    const response = await generateViduQ3ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: 5 as ViduQ3Duration,
+      resolution: normalizedResolution,
+      audio: true,
+      seed: settings.imageSeed ?? undefined,
+    });
+
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
+
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
+}
+
+/**
  * Handle WAN v2.6 text-to-video generation
  */
 export async function handleWAN26T2V(
@@ -1146,15 +1278,19 @@ export async function handleKlingO1Ref2Video(
     };
   }
 
-  console.log(
-    `  🎭 Calling generateAvatarVideo for ${ctx.modelId} with reference image...`
-  );
+  debugLogger.log("model-handlers", "AVATAR_GENERATE_START", {
+    modelId: ctx.modelId,
+    hasReferenceImage: true,
+  });
   const response = await generateAvatarVideo({
     model: ctx.modelId,
     characterImage: firstRefImage,
     prompt: ctx.prompt || undefined,
   });
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "AVATAR_GENERATE_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
@@ -1177,12 +1313,25 @@ export async function handleWAN26Ref2Video(
   }
 
   // Upload the reference video to FAL
-  const falApiKey = import.meta.env.VITE_FAL_API_KEY;
+  // Get API key from environment or Electron storage
+  let falApiKey = import.meta.env.VITE_FAL_API_KEY;
+  if (!falApiKey && typeof window !== "undefined" && window.electronAPI?.apiKeys) {
+    try {
+      const keys = await window.electronAPI.apiKeys.get();
+      falApiKey = keys?.falApiKey;
+    } catch (error) {
+      debugLogger.error(
+        "model-handlers",
+        "Failed to get FAL API key from Electron storage",
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
+  }
   if (!falApiKey) {
     return {
       response: undefined,
       shouldSkip: true,
-      skipReason: "FAL API key not configured",
+      skipReason: "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.",
     };
   }
 
@@ -1226,7 +1375,9 @@ export async function handleWAN26Ref2Video(
     });
   }
 
-  console.log(`  🎬 Calling generateWAN26RefVideo for ${ctx.modelId}...`);
+  debugLogger.log("model-handlers", "WAN26_REF_VIDEO_START", {
+    modelId: ctx.modelId,
+  });
   const response = await generateWAN26RefVideo({
     model: ctx.modelId,
     prompt: ctx.prompt,
@@ -1239,7 +1390,10 @@ export async function handleWAN26Ref2Video(
     seed: settings.wan26RefSeed,
     enable_safety_checker: settings.wan26RefEnableSafetyChecker,
   });
-  console.log("  ✅ generateWAN26RefVideo returned:", response);
+  debugLogger.log("model-handlers", "WAN26_REF_VIDEO_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
@@ -1259,16 +1413,20 @@ export async function handleKlingO1V2V(
     };
   }
 
-  console.log(
-    `  🎬 Calling generateKlingO1Video for ${ctx.modelId} with source video...`
-  );
+  debugLogger.log("model-handlers", "KLING_O1_V2V_START", {
+    modelId: ctx.modelId,
+    hasSourceVideo: true,
+  });
   const response = await generateKlingO1Video({
     model: ctx.modelId,
     prompt: ctx.prompt,
     sourceVideo: settings.sourceVideo,
     duration: 5,
   });
-  console.log("  ✅ generateKlingO1Video returned:", response);
+  debugLogger.log("model-handlers", "KLING_O1_V2V_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
 
   return { response };
 }
@@ -1288,8 +1446,10 @@ export async function handleKlingAvatarV2(
     };
   }
 
-  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
-  console.log("  📤 Uploading files to FAL storage for Kling Avatar v2...");
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_START", {
+    modelId: ctx.modelId,
+    hasAudioFile: !!settings.audioFile,
+  });
 
   const [characterImageUrl, audioUrl] = await Promise.all([
     settings.uploadImageToFal(settings.avatarImage),
@@ -1302,9 +1462,9 @@ export async function handleKlingAvatarV2(
     throw new Error("Audio file is required for Kling Avatar v2");
   }
 
-  console.log("  ✅ Files uploaded to FAL storage");
-  console.log("    - Image URL:", characterImageUrl.substring(0, 50) + "...");
-  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_FILES_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   const response = await generateAvatarVideo({
     model: ctx.modelId,
@@ -1316,7 +1476,10 @@ export async function handleKlingAvatarV2(
     audioUrl,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "KLING_AVATAR_V2_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1335,7 +1498,9 @@ export async function handleGenericAvatar(
     };
   }
 
-  console.log(`  🎭 Calling generateAvatarVideo for ${ctx.modelId}...`);
+  debugLogger.log("model-handlers", "GENERIC_AVATAR_START", {
+    modelId: ctx.modelId,
+  });
 
   const response = await generateAvatarVideo({
     model: ctx.modelId,
@@ -1346,7 +1511,10 @@ export async function handleGenericAvatar(
     audioDuration: settings.audioDuration ?? undefined,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "GENERIC_AVATAR_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1374,10 +1542,9 @@ export async function handleSyncLipsyncReact1(
     };
   }
 
-  console.log(`  🎤 Calling generateAvatarVideo for ${ctx.modelId}...`);
-  console.log(
-    "  📤 Uploading files to FAL storage for Sync Lipsync React-1..."
-  );
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1391,9 +1558,9 @@ export async function handleSyncLipsyncReact1(
     falAIClient.uploadAudioToFal(settings.audioFile),
   ]);
 
-  console.log("  ✅ Files uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
-  console.log("    - Audio URL:", audioUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_FILES_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1419,7 +1586,10 @@ export async function handleSyncLipsyncReact1(
     message: `Lip-synced video generated with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ generateAvatarVideo returned:", response);
+  debugLogger.log("model-handlers", "SYNC_LIPSYNC_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1439,8 +1609,9 @@ export async function handleVeo31FastExtendVideo(
     };
   }
 
-  console.log(`  🎬 Calling Veo 3.1 Fast Extend-Video for ${ctx.modelId}...`);
-  console.log("  📤 Uploading video to FAL storage...");
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1450,8 +1621,9 @@ export async function handleVeo31FastExtendVideo(
 
   const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
 
-  console.log("  ✅ Video uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_VIDEO_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1475,7 +1647,10 @@ export async function handleVeo31FastExtendVideo(
     message: `Video extended with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ Veo 3.1 Fast Extend-Video returned:", response);
+  debugLogger.log("model-handlers", "VEO31_FAST_EXTEND_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1495,10 +1670,9 @@ export async function handleVeo31ExtendVideo(
     };
   }
 
-  console.log(
-    `  🎬 Calling Veo 3.1 Standard Extend-Video for ${ctx.modelId}...`
-  );
-  console.log("  📤 Uploading video to FAL storage...");
+  debugLogger.log("model-handlers", "VEO31_EXTEND_START", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1508,8 +1682,9 @@ export async function handleVeo31ExtendVideo(
 
   const videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideo);
 
-  console.log("  ✅ Video uploaded to FAL storage");
-  console.log("    - Video URL:", videoUrl.substring(0, 50) + "...");
+  debugLogger.log("model-handlers", "VEO31_EXTEND_VIDEO_UPLOADED", {
+    modelId: ctx.modelId,
+  });
 
   ctx.progressCallback({
     status: "processing",
@@ -1533,7 +1708,10 @@ export async function handleVeo31ExtendVideo(
     message: `Video extended with ${ctx.modelName}`,
   });
 
-  console.log("  ✅ Veo 3.1 Standard Extend-Video returned:", response);
+  debugLogger.log("model-handlers", "VEO31_EXTEND_COMPLETE", {
+    modelId: ctx.modelId,
+    hasResponse: !!response,
+  });
   return { response };
 }
 
@@ -1568,6 +1746,8 @@ export async function routeTextToVideoHandler(
       return handleLTXV2FastT2V(ctx, settings);
     case "wan_26_t2v":
       return handleWAN26T2V(ctx, settings);
+    case "vidu_q3_t2v":
+      return handleViduQ3T2V(ctx, settings);
     default:
       return handleGenericT2V(ctx, settings);
   }
@@ -1591,6 +1771,8 @@ export async function routeImageToVideoHandler(
       return handleVeo31F2V(ctx, settings);
     case "vidu_q2_turbo_i2v":
       return handleViduQ2I2V(ctx, settings);
+    case "vidu_q3_i2v":
+      return handleViduQ3I2V(ctx, settings);
     case "ltxv2_i2v":
       return handleLTXV2I2V(ctx, settings);
     case "ltxv2_fast_i2v":

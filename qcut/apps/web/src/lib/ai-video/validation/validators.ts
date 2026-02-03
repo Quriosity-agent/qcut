@@ -852,3 +852,105 @@ export function validateSyncLipsyncReact1Inputs(params: {
   validateSyncLipsyncReact1Emotion(params.emotion);
   validateSyncLipsyncReact1Temperature(params.temperature);
 }
+
+// ============================================
+// Vidu Q3 Validators
+// ============================================
+
+/** Valid resolutions for Vidu Q3 models */
+export const VIDU_Q3_RESOLUTIONS = ["360p", "540p", "720p", "1080p"] as const;
+
+/** Valid aspect ratios for Vidu Q3 models */
+export const VIDU_Q3_ASPECT_RATIOS = [
+  "16:9",
+  "9:16",
+  "4:3",
+  "3:4",
+  "1:1",
+] as const;
+
+/** Maximum prompt length for Vidu Q3 models */
+export const VIDU_Q3_MAX_PROMPT_LENGTH = 2000;
+
+/** Minimum duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_MIN_DURATION = 1;
+
+/** Maximum duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_MAX_DURATION = 16;
+
+/** Default duration for Vidu Q3 models (in seconds) */
+export const VIDU_Q3_DEFAULT_DURATION = 5;
+
+/**
+ * Validates prompt length for Vidu Q3 models (max 2000 chars)
+ *
+ * @param prompt - Text prompt to validate
+ * @throws Error if prompt exceeds 2000 character limit
+ */
+export function validateViduQ3Prompt(prompt: string): void {
+  if (prompt.length > VIDU_Q3_MAX_PROMPT_LENGTH) {
+    throw new Error(
+      `Prompt too long for Vidu Q3. Maximum ${VIDU_Q3_MAX_PROMPT_LENGTH} characters allowed (current: ${prompt.length})`
+    );
+  }
+}
+
+/**
+ * Validates duration for Vidu Q3 models (1–16 seconds)
+ *
+ * @param duration - Duration in seconds
+ * @throws Error if duration is outside 1–16 second range
+ */
+export function validateViduQ3Duration(duration: number): void {
+  if (duration < VIDU_Q3_MIN_DURATION || duration > VIDU_Q3_MAX_DURATION) {
+    throw new Error(
+      `Invalid duration for Vidu Q3. Supported: ${VIDU_Q3_MIN_DURATION}–${VIDU_Q3_MAX_DURATION} seconds (got: ${duration})`
+    );
+  }
+}
+
+/**
+ * Validates resolution for Vidu Q3 models
+ *
+ * @param resolution - Video resolution (e.g., "720p")
+ * @throws Error if resolution is not 360p, 540p, 720p, or 1080p
+ */
+export function validateViduQ3Resolution(resolution: string): void {
+  if (
+    !VIDU_Q3_RESOLUTIONS.includes(
+      resolution as (typeof VIDU_Q3_RESOLUTIONS)[number]
+    )
+  ) {
+    throw new Error(
+      `Invalid resolution for Vidu Q3. Supported: ${VIDU_Q3_RESOLUTIONS.join(", ")}`
+    );
+  }
+}
+
+/**
+ * Validates aspect ratio for Vidu Q3 models
+ *
+ * @param aspectRatio - Aspect ratio string (e.g., "16:9")
+ * @throws Error if aspect ratio is not supported
+ */
+export function validateViduQ3AspectRatio(aspectRatio: string): void {
+  if (
+    !VIDU_Q3_ASPECT_RATIOS.includes(
+      aspectRatio as (typeof VIDU_Q3_ASPECT_RATIOS)[number]
+    )
+  ) {
+    throw new Error(
+      `Invalid aspect ratio for Vidu Q3. Supported: ${VIDU_Q3_ASPECT_RATIOS.join(", ")}`
+    );
+  }
+}
+
+/**
+ * Checks if model is a Vidu Q3 model
+ *
+ * @param modelId - Model identifier to check
+ * @returns true if model is Vidu Q3 T2V or I2V
+ */
+export function isViduQ3Model(modelId: string): boolean {
+  return modelId === "vidu_q3_t2v" || modelId === "vidu_q3_i2v";
+}

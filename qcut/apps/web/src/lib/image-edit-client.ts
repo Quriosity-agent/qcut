@@ -4,7 +4,12 @@
  * SeedDream v4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
  */
 
-import { handleAIServiceError } from "./error-handler";
+import {
+  handleError,
+  handleAIServiceError,
+  ErrorCategory,
+  ErrorSeverity,
+} from "./error-handler";
 import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "./upscale-models";
 import {
   getModelCapabilities,
@@ -23,8 +28,63 @@ export {
   IMAGE_EDIT_MODEL_IDS,
 } from "./image-edit-capabilities";
 
-const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 const FAL_API_BASE = "https://fal.run";
+
+// Cache for the Electron-stored API key
+let cachedFalApiKey: string | null = null;
+let apiKeyFetchPromise: Promise<string | null> | null = null;
+
+/**
+ * Get FAL API key from environment variable or Electron storage.
+ * Results are cached for the session.
+ */
+async function getFalApiKey(): Promise<string | null> {
+  // First try environment variable (instant)
+  const envKey = import.meta.env.VITE_FAL_API_KEY;
+  if (envKey) {
+    return envKey;
+  }
+
+  // Return cached key if available
+  if (cachedFalApiKey) {
+    return cachedFalApiKey;
+  }
+
+  // Check Electron storage (async)
+  const electronApiKeys =
+    typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  if (electronApiKeys) {
+    // Deduplicate concurrent calls
+    if (!apiKeyFetchPromise) {
+      apiKeyFetchPromise = (async () => {
+        try {
+          const keys = await electronApiKeys.get();
+          if (keys?.falApiKey) {
+            cachedFalApiKey = keys.falApiKey;
+            return keys.falApiKey;
+          }
+        } catch (error) {
+          handleError(error, {
+            operation: "Load FAL API key from Electron storage",
+            category: ErrorCategory.AI_SERVICE,
+            severity: ErrorSeverity.LOW,
+            showToast: false, // Silent failure - don't interrupt user
+            metadata: { source: "image-edit-client" },
+          });
+        }
+        return null;
+      })();
+    }
+
+    const key = await apiKeyFetchPromise;
+    apiKeyFetchPromise = null;
+    if (key) {
+      return key;
+    }
+  }
+
+  return null;
+}
 
 // Environment check removed for production
 
@@ -233,8 +293,11 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
  * Upload image to FAL.ai and get URL
  */
 export async function uploadImageToFAL(imageFile: File): Promise<string> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   console.log("📤 UPLOAD: Starting upload process for:", {
@@ -318,8 +381,11 @@ export async function editImage(
   request: ImageEditRequest,
   onProgress?: ImageEditProgressCallback
 ): Promise<ImageEditResponse> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -461,7 +527,7 @@ export async function editImage(
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${apiKey}`,
         "Content-Type": "application/json",
         "X-Fal-Queue": "true",
       },
@@ -637,8 +703,11 @@ export async function upscaleImage(
   request: ImageUpscaleRequest,
   onProgress?: ImageEditProgressCallback
 ): Promise<ImageEditResponse> {
-  if (!FAL_API_KEY) {
-    throw new Error("FAL API key not configured");
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   const modelConfig = MODEL_ENDPOINTS[request.model];
@@ -686,7 +755,7 @@ export async function upscaleImage(
     const response = await fetch(`${FAL_API_BASE}/${modelConfig.endpoint}`, {
       method: "POST",
       headers: {
-        "Authorization": `Key ${FAL_API_KEY}`,
+        "Authorization": `Key ${apiKey}`,
         "Content-Type": "application/json",
         "X-Fal-Queue": "true",
       },
@@ -788,6 +857,13 @@ async function pollImageEditStatus(
   jobId?: string,
   modelName?: string
 ): Promise<ImageEditResponse> {
+  const apiKey = await getFalApiKey();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
+  }
+
   const maxAttempts = 30; // 2.5 minutes max
   let attempts = 0;
 
@@ -803,7 +879,7 @@ async function pollImageEditStatus(
         `${FAL_API_BASE}/queue/requests/${requestId}/status`,
         {
           headers: {
-            "Authorization": `Key ${FAL_API_KEY}`,
+            "Authorization": `Key ${apiKey}`,
           },
           signal: pollCtrl.signal,
         }
@@ -833,7 +909,7 @@ async function pollImageEditStatus(
           `${FAL_API_BASE}/queue/requests/${requestId}`,
           {
             headers: {
-              "Authorization": `Key ${FAL_API_KEY}`,
+              "Authorization": `Key ${apiKey}`,
             },
           }
         );
@@ -904,6 +980,12 @@ async function pollImageEditStatus(
   throw new Error("Maximum polling attempts reached");
 }
 
+/**
+ * Maps FAL API status response to a normalized progress update object.
+ * @param status - The status response from FAL API
+ * @param elapsedTime - Time elapsed since the request started (in seconds)
+ * @returns Normalized progress update with status, progress percentage, and message
+ */
 function mapEditStatusToProgress(status: any, elapsedTime: number) {
   const baseUpdate = { elapsedTime };
 
@@ -948,10 +1030,20 @@ function mapEditStatusToProgress(status: any, elapsedTime: number) {
   }
 }
 
+/**
+ * Pauses execution for a specified duration.
+ * @param ms - Duration to sleep in milliseconds
+ * @returns Promise that resolves after the specified duration
+ */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Generates a unique job ID for tracking image operations.
+ * @param prefix - Type of operation ("edit" or "upscale"), defaults to "edit"
+ * @returns Unique job ID string in format: {prefix}_{random}_{timestamp}
+ */
 function generateJobId(prefix: "edit" | "upscale" = "edit"): string {
   return (
     `${prefix}_` + Math.random().toString(36).substr(2, 9) + "_" + Date.now()

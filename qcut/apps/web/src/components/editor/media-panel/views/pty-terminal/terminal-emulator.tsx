@@ -60,7 +60,6 @@ export function TerminalEmulator({
   // Initialize terminal
   useEffect(() => {
     if (!containerRef.current) return;
-
     // Create terminal instance
     const terminal = new Terminal({
       cursorBlink: true,
@@ -115,45 +114,72 @@ export function TerminalEmulator({
     // Handle user input - send to PTY
     terminal.onData((data) => {
       if (sessionId) {
-        const writePromise = window.electronAPI?.pty?.write?.(sessionId, data);
-        writePromise?.catch((error) => {
+        window.electronAPI?.pty?.write?.(sessionId, data)?.catch((error) => {
           console.error("[Terminal] Failed to write to PTY:", error);
         });
       }
     });
 
-    // Handle paste (Ctrl+V / Cmd+V)
+    // Track paste state to prevent double-writes
+    let isPasting = false;
+
+    // Intercept paste event on xterm's internal textarea
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (isPasting) return;
+
+      const text = e.clipboardData?.getData('text');
+      if (text && sessionId) {
+        isPasting = true;
+        window.electronAPI?.pty?.write?.(sessionId, text);
+        setTimeout(() => { isPasting = false; }, 100);
+      }
+    };
+
+    // Add paste listener after a short delay (textarea may not be ready immediately)
+    const textareaCheckInterval = setInterval(() => {
+      if (terminal.textarea) {
+        terminal.textarea.addEventListener('paste', handlePaste, true);
+        clearInterval(textareaCheckInterval);
+      }
+    }, 10);
+    setTimeout(() => clearInterval(textareaCheckInterval), 1000);
+
+    // Handle keyboard shortcuts
     terminal.attachCustomKeyEventHandler((event) => {
-      // Check for paste shortcut (Ctrl+V on Windows/Linux, Cmd+V on Mac)
+      // Handle paste (Ctrl+V / Cmd+V)
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key === "v" &&
         event.type === "keydown"
       ) {
-        // Guard against clipboard API unavailability (non-secure contexts, tests)
-        if (!navigator.clipboard?.readText) {
-          return true;
+        if (isPasting) return false;
+
+        isPasting = true;
+
+        // Read clipboard and write to PTY
+        if (navigator.clipboard?.readText) {
+          navigator.clipboard.readText()
+            .then((text) => {
+              if (text && sessionId) {
+                window.electronAPI?.pty?.write?.(sessionId, text);
+              }
+            })
+            .catch(() => {
+              // Clipboard read failed - ignore
+            })
+            .finally(() => {
+              setTimeout(() => { isPasting = false; }, 100);
+            });
+        } else {
+          setTimeout(() => { isPasting = false; }, 100);
         }
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            if (text && sessionId) {
-              // Send pasted text to PTY
-              const writePromise = window.electronAPI?.pty?.write?.(
-                sessionId,
-                text
-              );
-              writePromise?.catch((err) => {
-                console.error("[Terminal] Failed to write pasted text:", err);
-              });
-            }
-          })
-          .catch((err) => {
-            console.error("[Terminal] Failed to read clipboard:", err);
-          });
-        // Prevent default to avoid double paste
+
         return false;
       }
+
       // Check for copy shortcut (Ctrl+C / Cmd+C) when there's a selection
       if (
         (event.ctrlKey || event.metaKey) &&
@@ -187,6 +213,8 @@ export function TerminalEmulator({
 
     // Cleanup
     return () => {
+      clearInterval(textareaCheckInterval);
+      terminal.textarea?.removeEventListener('paste', handlePaste, true);
       window.electronAPI?.pty?.removeListeners();
       terminal.dispose();
     };
@@ -240,6 +268,7 @@ export function TerminalEmulator({
       style={{ backgroundColor: "#1a1a1a" }}
       role="application"
       aria-label="Terminal emulator"
+      data-testid="terminal-emulator"
     />
   );
 }

@@ -9,6 +9,7 @@ import type {
   ImageToVideoRequest,
   VideoGenerationResponse,
   ViduQ2I2VRequest,
+  ViduQ3I2VRequest,
   LTXV2I2VRequest,
   SeedanceI2VRequest,
   KlingI2VRequest,
@@ -22,6 +23,7 @@ import type {
 import type { Sora2Duration } from "@/types/sora2";
 import {
   getFalApiKey,
+  getFalApiKeyAsync,
   generateJobId,
   makeFalRequest,
   handleFalResponse,
@@ -40,6 +42,9 @@ import {
 import {
   validateViduQ2Prompt,
   validateViduQ2Duration,
+  validateViduQ3Prompt,
+  validateViduQ3Duration,
+  validateViduQ3Resolution,
   validateLTXV2I2VDuration,
   validateLTXV2I2VResolution,
   validateLTXV2FastExtendedConstraints,
@@ -70,9 +75,9 @@ export async function generateVideoFromImage(
     "Generate video from image",
     { operation: "generateVideoFromImage", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       // Convert image to base64 data URL
@@ -194,9 +199,9 @@ export async function generateViduQ2Video(
     "Generate Vidu Q2 video",
     { operation: "generateViduQ2Video", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -294,9 +299,9 @@ export async function generateLTXV2ImageVideo(
     "Generate LTX Video 2.0 I2V",
     { operation: "generateLTXV2ImageVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const isStandardModel = isStandardLTXV2ImageModel(request.model);
@@ -396,9 +401,9 @@ export async function generateSeedanceVideo(
     "Generate Seedance video",
     { operation: "generateSeedanceVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -496,9 +501,9 @@ export async function generateKlingImageVideo(
     "Generate Kling video",
     { operation: "generateKlingImageVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -579,9 +584,9 @@ export async function generateKling26ImageVideo(
     "Generate Kling 2.6 video",
     { operation: "generateKling26ImageVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -652,9 +657,9 @@ export async function generateKlingO1Video(
     "Generate Kling O1 video",
     { operation: "generateKlingO1Video", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -746,9 +751,9 @@ export async function generateKlingO1RefVideo(
     "Generate Kling O1 Ref video",
     { operation: "generateKlingO1RefVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -821,9 +826,9 @@ export async function generateWAN25ImageVideo(
     "Generate WAN 2.5 video",
     { operation: "generateWAN25ImageVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -922,9 +927,9 @@ export async function generateWAN26ImageVideo(
     "Generate WAN v2.6 video",
     { operation: "generateWAN26ImageVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -1037,9 +1042,9 @@ export async function generateWAN26RefVideo(
     "Generate WAN v2.6 Ref2Video",
     { operation: "generateWAN26RefVideo", model: request.model },
     async () => {
-      const falApiKey = getFalApiKey();
+      const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured");
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -1130,6 +1135,99 @@ export async function generateWAN26RefVideo(
         message: "Video generated successfully with WAN v2.6 Ref2Video",
         estimated_time: 0,
         video_url: result.video?.url || result.video || result.url,
+        video_data: result,
+      };
+    }
+  );
+}
+
+/**
+ * Generate video from image using Vidu Q3.
+ *
+ * Features: Multi-resolution (360p-1080p), audio generation.
+ *
+ * @param request - Image URL, prompt, and generation parameters
+ * @returns VideoGenerationResponse with job_id and video_url
+ * @throws Error if FAL_API_KEY missing or validation fails
+ */
+export async function generateViduQ3ImageVideo(
+  request: ViduQ3I2VRequest
+): Promise<VideoGenerationResponse> {
+  return withErrorHandling(
+    "Generate Vidu Q3 image-to-video",
+    { operation: "generateViduQ3ImageVideo", model: request.model },
+    async () => {
+      const falApiKey = await getFalApiKeyAsync();
+      if (!falApiKey) {
+        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+      }
+
+      const trimmedPrompt = request.prompt?.trim() ?? "";
+      if (!trimmedPrompt) {
+        throw new Error(
+          "Text prompt is required for Vidu Q3 image-to-video generation"
+        );
+      }
+      validateViduQ3Prompt(trimmedPrompt);
+
+      if (!request.image_url) {
+        throw new Error(
+          "Image is required for Vidu Q3 image-to-video generation"
+        );
+      }
+
+      const modelConfig = getModelConfig(request.model);
+      if (!modelConfig) {
+        throw new Error(`Unknown model: ${request.model}`);
+      }
+
+      const endpoint = modelConfig.endpoints.image_to_video;
+      if (!endpoint) {
+        throw new Error(
+          `Model ${request.model} does not support image-to-video generation`
+        );
+      }
+
+      // Apply defaults
+      const duration = request.duration ?? 5;
+      const resolution =
+        request.resolution ??
+        (modelConfig.default_params?.resolution as string) ??
+        "720p";
+      const audio = request.audio ?? true;
+
+      // Validate parameters
+      validateViduQ3Duration(duration);
+      validateViduQ3Resolution(resolution);
+
+      const payload: Record<string, unknown> = {
+        prompt: trimmedPrompt,
+        image_url: request.image_url,
+        duration,
+        resolution,
+        audio,
+      };
+
+      if (request.seed !== undefined) {
+        payload.seed = request.seed;
+      }
+
+      const jobId = generateJobId();
+
+      const response = await makeFalRequest(endpoint, payload);
+
+      if (!response.ok) {
+        await handleFalResponse(response, "Generate Vidu Q3 image-to-video");
+      }
+
+      const result = await response.json();
+
+      return {
+        job_id: jobId,
+        status: "completed",
+        message: `Video generated successfully with ${request.model}`,
+        estimated_time: 0,
+        video_url: result.video?.url || result.video,
         video_data: result,
       };
     }

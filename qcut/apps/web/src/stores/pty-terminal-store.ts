@@ -253,8 +253,8 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
         // Get Claude model from state
         const { selectedClaudeModel } = get();
 
-        // Build Claude command
-        command = "claude";
+        // Build Claude command with --dangerously-skip-permissions to avoid permission prompts
+        command = "claude --dangerously-skip-permissions";
         if (selectedClaudeModel) {
           command += ` --model ${selectedClaudeModel}`;
         }

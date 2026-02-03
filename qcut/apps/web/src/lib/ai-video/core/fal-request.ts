@@ -15,9 +15,80 @@ export const FAL_API_BASE = "https://fal.run";
  *
  * WHY: Tests stub environment variables after module load; reading lazily keeps
  * stubs in sync instead of freezing the value during import.
+ *
+ * @deprecated Use getFalApiKeyAsync() for production code to support Electron storage
  */
 export function getFalApiKey(): string | undefined {
   return import.meta.env.VITE_FAL_API_KEY;
+}
+
+/**
+ * Cache for the Electron-stored API key to avoid repeated async calls.
+ * Cleared on app reload.
+ */
+let cachedElectronApiKey: string | null = null;
+let electronKeyFetchPromise: Promise<string | null> | null = null;
+
+/**
+ * Retrieves the FAL API key from environment variable or Electron storage.
+ *
+ * Checks in order:
+ * 1. VITE_FAL_API_KEY environment variable (for development/CI)
+ * 2. Electron secure storage (for production desktop app)
+ *
+ * Results from Electron storage are cached for the session.
+ *
+ * @returns Promise resolving to the API key or undefined if not configured
+ */
+export async function getFalApiKeyAsync(): Promise<string | undefined> {
+  // First try environment variable (instant, no async needed)
+  const envApiKey = import.meta.env.VITE_FAL_API_KEY;
+  if (envApiKey) {
+    return envApiKey;
+  }
+
+  // Return cached Electron key if available
+  if (cachedElectronApiKey) {
+    return cachedElectronApiKey;
+  }
+
+  // Check Electron storage (async)
+  const electronApiKeys = typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  if (electronApiKeys) {
+    // Deduplicate concurrent calls
+    if (!electronKeyFetchPromise) {
+      electronKeyFetchPromise = (async () => {
+        try {
+          const keys = await electronApiKeys.get();
+          if (keys?.falApiKey) {
+            cachedElectronApiKey = keys.falApiKey;
+            return keys.falApiKey;
+          }
+        } catch (error) {
+          handleAIServiceError(error, "Load FAL API key", {
+            operation: "electronKeyFetch",
+          });
+        }
+        return null;
+      })();
+    }
+
+    const key = await electronKeyFetchPromise;
+    electronKeyFetchPromise = null; // Reset for next call
+    if (key) {
+      return key;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Clears the cached Electron API key. Useful for testing or when user updates their key.
+ */
+export function clearFalApiKeyCache(): void {
+  cachedElectronApiKey = null;
+  electronKeyFetchPromise = null;
 }
 
 /**
@@ -56,10 +127,10 @@ export async function makeFalRequest(
   payload: Record<string, unknown>,
   options?: FalRequestOptions
 ): Promise<Response> {
-  const apiKey = getFalApiKey();
+  const apiKey = await getFalApiKeyAsync();
   if (!apiKey) {
     const error = new Error(
-      "FAL API key not configured. Please set VITE_FAL_API_KEY in your environment variables."
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
     );
     handleAIServiceError(error, "FAL API Request", {
       configRequired: "VITE_FAL_API_KEY",

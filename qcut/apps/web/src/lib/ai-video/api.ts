@@ -12,7 +12,7 @@ import type {
   CostEstimate,
   VideoGenerationRequest,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
-import { getFalApiKey } from "./core/fal-request";
+import { getFalApiKey, getFalApiKeyAsync } from "./core/fal-request";
 import { getModelConfig } from "./generators/base-generator";
 
 /**
@@ -137,5 +137,6 @@ export function handleApiError(error: unknown): string {
  * @returns true if VITE_FAL_API_KEY is set, false otherwise
  */
 export async function isApiAvailable(): Promise<boolean> {
-  return !!getFalApiKey();
+  const apiKey = await getFalApiKeyAsync();
+  return !!apiKey;
 }
