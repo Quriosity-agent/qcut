@@ -4,6 +4,20 @@
 
 This document outlines the implementation plan to ensure QCut works consistently across Windows, macOS, and Linux. The focus is on long-term maintainability and proper cross-platform patterns.
 
+**IMPORTANT: All changes must preserve existing Windows functionality. Each task includes regression prevention measures.**
+
+---
+
+## Backward Compatibility Principles
+
+1. **Windows builds must continue to work** - Test `bun run dist:win` after every change
+2. **Preserve existing search paths** - Add new paths, don't remove existing ones
+3. **Use platform detection** - Never assume platform, always check `process.platform`
+4. **Environment variable fallbacks** - Allow overriding defaults for power users
+5. **Document all changes** - Update `docs/technical/guides/build-commands.md` alongside
+
+---
+
 ## Current State Analysis
 
 ### Critical Issues
@@ -48,11 +62,34 @@ This document outlines the implementation plan to ensure QCut works consistently
 "output": "dist-electron"
 ```
 
+**Regression Prevention:**
+- Update `docs/technical/guides/build-commands.md` to reflect new output path
+- The env var `ELECTRON_BUILDER_OUTPUT_DIR` can override this (already documented)
+- Test: `bun run dist:win` should create `dist-electron/` with installer
+
 #### Subtask 1.2: Fix extraResources Filter
 **Location:** `package.json:132-139`
 
+**Current directory structure (`electron/resources/`):**
+```
+electron/resources/
+├── avcodec-62.dll      # Windows FFmpeg DLLs (~156MB total)
+├── avdevice-62.dll
+├── avfilter-11.dll
+├── avformat-62.dll
+├── avutil-60.dll
+├── swresample-6.dll
+├── swscale-9.dll
+├── README.md
+└── ffmpeg/             # WebAssembly (handled by setup-ffmpeg.ts)
+    ├── ffmpeg-core.js
+    └── ffmpeg-core.wasm
+```
+
+**WARNING:** Do NOT use `["**/*"]` - it would duplicate WebAssembly files (~32MB).
+
 ```json
-// Current (Windows-only extensions)
+// Current (Windows-only - correct for Windows)
 "extraResources": [
   {
     "from": "electron/resources/",
@@ -61,15 +98,32 @@ This document outlines the implementation plan to ensure QCut works consistently
   }
 ]
 
-// Fixed (platform-aware with conditional resources)
+// Fixed (exclude WebAssembly, include platform binaries)
 "extraResources": [
   {
     "from": "electron/resources/",
     "to": "./",
-    "filter": ["**/*"]
+    "filter": [
+      "**/*.exe",
+      "**/*.dll",
+      "**/*.dylib",
+      "**/*.so",
+      "!**/ffmpeg/**"
+    ]
   }
 ]
 ```
+
+**Explanation:**
+- `**/*.exe`, `**/*.dll` - Windows binaries (existing)
+- `**/*.dylib` - macOS dynamic libraries
+- `**/*.so` - Linux shared objects
+- `!**/ffmpeg/**` - Exclude WebAssembly directory (handled by `setup-ffmpeg.ts`)
+
+**Regression Prevention:**
+- Current Windows DLLs will still be copied (same filter)
+- WebAssembly files remain excluded (not duplicated)
+- Test: Verify `dist-electron/` doesn't contain duplicate ffmpeg-core.wasm
 
 #### Subtask 1.3: Add macOS Configuration
 **Location:** After `package.json:176` (after `win` block)
@@ -135,10 +189,20 @@ This document outlines the implementation plan to ensure QCut works consistently
 **Complexity: High**
 **Files to modify:** `electron/ffmpeg/utils.ts`
 
+**CRITICAL: This function is called 15+ times across the codebase. Changes must be backward compatible.**
+
+**Current Windows behavior (MUST PRESERVE):**
+1. Packaged app: `process.resourcesPath/ffmpeg.exe`
+2. Development bundled: `__dirname/../resources/ffmpeg.exe`
+3. WinGet: Search `AppData/Local/Microsoft/WinGet/Packages/*/ffmpeg.exe`
+4. System PATH: Fall back to `"ffmpeg"` command
+
+**Note:** There is NO `ffmpeg.exe` in `electron/resources/` - only DLLs. Windows relies on system-installed FFmpeg via WinGet or PATH.
+
 #### Subtask 2.1: Update `getFFmpegPath()` Function
 **Location:** `electron/ffmpeg/utils.ts:77-132`
 
-The current implementation only searches Windows-specific paths (WinGet, `.exe` extension). Need to add macOS and Linux support.
+The current implementation only searches Windows-specific paths (WinGet, `.exe` extension). Need to add macOS and Linux support while preserving existing Windows behavior.
 
 ```typescript
 export function getFFmpegPath(): string {
@@ -231,11 +295,27 @@ function findFFmpegInWingetPaths(homeDir: string): string[] {
 }
 ```
 
+**Regression Prevention:**
+- Keep existing `findFFmpegInWinget()` function unchanged
+- Windows case (`win32`) must include all existing paths: WinGet, Chocolatey, Scoop
+- Test on Windows: Verify FFmpeg is found via WinGet before and after changes
+- Test: `bun run electron:dev` → use video export → should work
+
+**Verification Commands:**
+```bash
+# Windows - check current FFmpeg detection
+bun run electron:dev
+# In Electron DevTools console:
+window.electronAPI.ffmpeg.getPath()
+```
+
 ---
 
 ### Task 3: Cross-Platform Build Scripts
 **Complexity: Medium**
 **Files to modify:** `scripts/copy-ffmpeg.ts`
+
+**Note:** This script is used by `electron-packager` builds (`bun run package:win`), NOT by `electron-builder` builds (`bun run dist:win`). It's a secondary build method.
 
 #### Subtask 3.1: Update FFmpeg Copy Script
 **Location:** `scripts/copy-ffmpeg.ts:15-18`
@@ -272,6 +352,10 @@ const allowedExtensions = currentPlatform === "win32"
   ? [".exe", ".dll"]
   : [""];  // Unix binaries have no extension
 ```
+
+**Regression Prevention:**
+- Windows behavior unchanged: same target directory, same extensions
+- Test: `bun run package:win` should still copy DLLs to `dist-packager-new/QCut-win32-x64/resources/`
 
 ---
 
@@ -464,12 +548,13 @@ jobs:
 | File | Line(s) | Change |
 |------|---------|--------|
 | `package.json` | 79 | Change output path to `dist-electron` |
-| `package.json` | 136-139 | Change filter to `["**/*"]` |
+| `package.json` | 136-139 | Add `.dylib`, `.so` to filter, exclude `ffmpeg/` |
 | `package.json` | after 176 | Add `mac` config block |
 | `package.json` | after mac | Add `linux` config block |
 | `package.json` | scripts | Add `dist:mac`, `dist:linux`, `dist:all` |
-| `electron/ffmpeg/utils.ts` | 77-132 | Add macOS/Linux FFmpeg paths |
-| `scripts/copy-ffmpeg.ts` | 15-24 | Make platform-aware |
+| `electron/ffmpeg/utils.ts` | 77-132 | Add macOS/Linux FFmpeg paths (preserve Windows paths!) |
+| `scripts/copy-ffmpeg.ts` | 15-24 | Make platform-aware (keep Windows target unchanged) |
+| `docs/technical/guides/build-commands.md` | 86 | Update output path documentation |
 
 ### Files to Create
 | File | Purpose |
@@ -491,6 +576,70 @@ jobs:
 ### FFmpeg WebAssembly (@ffmpeg/ffmpeg)
 - **Status:** Cross-platform by design (WebAssembly)
 - **No changes needed:** Works on all platforms
+
+---
+
+## Windows Regression Testing Checklist
+
+**Run after EVERY change to verify Windows still works:**
+
+### Quick Smoke Test (5 min)
+```bash
+# 1. Development mode
+bun run electron:dev
+# - App should launch
+# - PTY terminal should work (cmd.exe)
+# - Check DevTools for FFmpeg path errors
+
+# 2. Production mode
+bun run electron
+# - App should launch without errors
+```
+
+### Full Build Test (15 min)
+```bash
+# 1. Build web app
+bun run build
+
+# 2. Build Windows installer
+bun run dist:win
+
+# 3. Verify output
+ls dist-electron/
+# Should contain: QCut-AI-Video-Editor-Setup-*.exe
+
+# 4. Install and test
+# - Run the installer
+# - Launch installed app
+# - Import a video
+# - Export a clip (tests FFmpeg)
+```
+
+### FFmpeg Specific Tests
+```bash
+# In Electron DevTools console:
+window.electronAPI.ffmpeg.getPath()
+# Should return path like:
+# "C:\Users\...\AppData\Local\Microsoft\WinGet\Packages\...\ffmpeg.exe"
+# or "ffmpeg" if using system PATH
+
+# Test video export
+# 1. Import any video
+# 2. Trim to 5 seconds
+# 3. Export as MP4
+# Should complete without errors
+```
+
+---
+
+## Documentation Updates Required
+
+When implementing changes, also update:
+
+| File | Update Needed |
+|------|---------------|
+| `docs/technical/guides/build-commands.md:86` | Change output path from `d:/AI_play/AI_Code/build_qcut/` |
+| `CLAUDE.md` | Update if any build commands change |
 
 ---
 
