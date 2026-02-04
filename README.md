@@ -4,8 +4,8 @@
       <img src="qcut/apps/web/public/assets/logo-v4.png" alt="QCut Logo" width="100" />
     </td>
     <td align="right">
-      <h1>QCut <span style="font-size: 0.7em; font-weight: normal;"></span></h1>
-      <h3 style="margin-top: -10px;">A free, open-source video editor for Windows desktop (and web).</h3>
+      <h1>QCut</h1>
+      <h3 style="margin-top: -10px;">A free, open-source video editor for Windows, macOS, and Linux.</h3>
     </td>
   </tr>
 </table>
@@ -18,283 +18,60 @@
 
 ## Features
 
-- **Native Windows Desktop App** - Runs completely offline with native file access
-- **Timeline-based editing** - Professional video editing interface
-- **Multi-track support** - Audio and video tracks with drag-and-drop
-- **Real-time preview** - Instant feedback while editing
+- **Cross-platform Desktop App** - Windows, macOS, and Linux with native file access
+- **Timeline-based Editing** - Professional multi-track video editing interface
+- **AI-Powered Generation** - Text-to-video, image-to-video, and text-to-image
 - **FFmpeg Integration** - Professional-grade video processing via WebAssembly
-- **AI-Powered Features** - Text-to-video, image-to-video, text-to-image generation *(desktop app only)*
-- **Sound Library** - Integrated library with search and commercial-use filtering *(desktop app only)*
-- **Stickers & Graphics** - Rich icon library with Iconify integration
-- **Text Overlays** - Customizable text elements with positioning and animations
-- **Local File System** - Native file dialogs and direct file access
-- **No watermarks or subscriptions** - Completely free forever
-- **Privacy-first** - All processing happens locally on your device
+- **Sound & Sticker Library** - Integrated media libraries with search
+- **100% Local Processing** - No watermarks, no subscriptions, no cloud required
 
-## Project Structure
-
-```
-qcut/
-├── apps/web/                    # Main Vite + React application
-│   └── src/
-│       ├── components/          # UI and editor components
-│       │   ├── editor/         # Video editor components
-│       │   └── ui/             # Reusable UI components
-│       ├── hooks/              # Custom React hooks
-│       ├── lib/                # Utilities, FFmpeg, and helpers
-│       ├── routes/             # TanStack Router pages
-│       ├── stores/             # Zustand state management
-│       └── types/              # TypeScript definitions
-├── electron/                    # 100% TypeScript Electron backend
-│   ├── main.ts                 # Main process (TypeScript)
-│   ├── preload.ts              # Preload script (TypeScript)
-│   ├── *-handler.ts            # All IPC handlers (TypeScript)
-│   └── dist/                   # Compiled JavaScript output
-├── packages/                    # Shared packages (monorepo)
-│   ├── auth/                   # Authentication logic
-│   └── db/                     # Database utilities
-└── docs/                       # Documentation and guides
-
-## Getting Started
-
-### Prerequisites
-
-Before you begin, ensure you have the following installed on your system:
-
-- [Node.js](https://nodejs.org/en/) (v18 or later)
-- [Bun](https://bun.sh/docs/installation) - Package manager and bundler
-- [Git](https://git-scm.com/) - For cloning the repository
-
-> **Note:** The Windows desktop app runs completely offline and doesn't require Docker, databases, or external services. Just Node.js and Bun are sufficient for building and running the Electron application.
-
-### Quick Start (Windows Desktop App)
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/donghaozhang/qcut.git
-   cd qcut
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   bun install
-   ```
-
-3. **Build and run the desktop app:**
-   ```bash
-   # Build the web app
-   cd qcut/apps/web
-   bun run build
-   
-   # Run the Electron app
-   cd ../..
-   bun run electron
-   ```
-
-   **Or use development mode for hot reload:**
-   ```bash
-   # Terminal 1: Start Vite dev server
-   cd qcut/apps/web
-   bun run dev
-   
-   # Terminal 2: Run Electron in dev mode
-   cd qcut
-   bun run electron:dev
-   ```
-
-The QCut desktop application will launch with the complete video editing interface!
-
-## Development Setup
-
-### Desktop App Development
-
-For developing the Electron desktop application:
-
-#### **Recommended Development Workflow:**
-
-1. **Terminal 1 - Frontend (hot reload):**
-   ```bash
-   cd qcut/apps/web
-   bun run dev
-   ```
-   The Vite dev server will start at `http://localhost:5173`
-
-2. **Terminal 2 - TypeScript Backend (auto-compile):**
-   ```bash
-   cd qcut
-   bun run build:electron:watch
-   ```
-   This will automatically recompile TypeScript files when you modify Electron backend code
-
-3. **Terminal 3 - Electron App:**
-   ```bash
-   cd qcut
-   bun run electron:dev
-   ```
-   Launch Electron in development mode (restart when backend changes)
-
-This workflow provides **hot reload for frontend** and **automatic compilation for backend** changes.
-
-### Available Scripts
-
-From the project root (`qcut/`):
-- `bun run electron` - Run the Electron app in production mode
-- `bun run electron:dev` - Run Electron in development mode  
-- `bun run build` - Build all packages (includes TypeScript compilation)
-- `bun run dist:win` - Build Windows installer (.exe)
-- `bun run lint` - Run linting with Biome
-- `bun run format` - Auto-format code with Biome
-
-From `qcut/apps/web/`:
-- `bun run dev` - Start Vite development server (port 5173)
-- `bun run build` - Build the production bundle
-- `bun run preview` - Preview the production build
-- `bun run lint:fix` - Auto-fix linting issues
-
-**TypeScript Development:**
-- `bun run build:electron` - Compile TypeScript files (one-time)
-- `bun run build:electron:watch` - Auto-recompile on file changes (recommended for development)
-- `bun run check-types` - Type checking across workspace
-
-### Building for Distribution
-
-To create a Windows executable:
+## Quick Start
 
 ```bash
-# Option 1: Using electron-packager (recommended for development)
+# 1. Clone and install
+git clone https://github.com/donghaozhang/qcut.git
 cd qcut
-npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite
+bun install
 
-# Option 2: Using electron-builder (for production installer)
-cd qcut/apps/web
-bun run build
-cd ../..
-bun run dist:win
+# 2. Run in development mode
+bun run electron:dev
+
+# Or build and run production
+bun run build && bun run electron
 ```
 
-> **Note:** The packaged app will be created in the `dist-packager/` directory, and the installer in the `dist-electron/` directory.
+**Prerequisites:** [Node.js](https://nodejs.org/) v18+ and [Bun](https://bun.sh/)
 
-## Architecture
+## Build for Distribution
 
-QCut uses a modern desktop application stack:
+```bash
+bun run dist:win      # Windows installer
+bun run dist:mac      # macOS .dmg (on macOS)
+bun run dist:linux    # Linux AppImage/deb (on Linux)
+```
 
-- **Frontend**: Vite 7 + React 18.3.1 + TanStack Router (hash-based routing)
-- **Desktop**: Electron 37.4.0 with **100% TypeScript** backend and secure IPC communication
-- **Video Processing**: FFmpeg via WebAssembly (@ffmpeg/ffmpeg)
-- **Styling**: Tailwind CSS 4 with custom dark theme
-- **State Management**: Zustand stores (editor, timeline, project, media)
-- **File System**: Native Electron file dialogs and operations
-- **Storage**: Multi-tier (Electron IPC → IndexedDB → localStorage)
-- **UI Components**: Radix UI primitives + custom components
-- **Monorepo**: Turborepo with Bun workspaces
+## Documentation
 
-## TypeScript Architecture
+| Topic | Link |
+|-------|------|
+| Build Commands | [docs/technical/guides/build-commands.md](qcut/docs/technical/guides/build-commands.md) |
+| Project Structure | [docs/technical/architecture/source-code-structure.md](qcut/docs/technical/architecture/source-code-structure.md) |
+| AI Features | [docs/technical/ai/](qcut/docs/technical/ai/) |
+| Testing | [docs/technical/testing/](qcut/docs/technical/testing/) |
+| All Technical Docs | [docs/technical/README.md](qcut/docs/technical/README.md) |
 
-QCut features a **100% TypeScript Electron backend** with comprehensive type safety:
+## Tech Stack
 
-### ✅ **Fully Converted Components**
-
-- **Main Process**: `electron/main.ts` - Complete Electron main process with all IPC handlers
-- **Preload Script**: `electron/preload.ts` - Type-safe renderer process bridge
-- **IPC Handlers**: All 19 handlers converted with comprehensive interfaces:
-  - `api-key-handler.ts` - Secure API key management
-  - `ffmpeg-handler.ts` - Video processing with FFmpeg
-  - `sound-handler.ts` - Audio/sound effects handling
-  - `transcribe-handler.ts` - AI transcription services
-  - `theme-handler.ts` - Application theming
-  - `temp-manager.ts` - Temporary file management
-  - `audio-temp-handler.ts` - Audio file processing
-
-### 🔧 **Development Workflow**
-
-1. **Source Files**: Write TypeScript in `electron/*.ts`
-2. **Compilation**: Files compile to `dist/electron/*.js` via `bun x tsc`
-3. **Execution**: Electron runs from compiled JavaScript files
-4. **Type Safety**: Full IntelliSense and compile-time error checking
-
-### 🎯 **Type Safety Benefits**
-
-- **Zero Runtime Type Errors**: All IPC communications are strictly typed
-- **Enhanced Developer Experience**: Full IntelliSense support for all handlers
-- **Maintainable Codebase**: Self-documenting interfaces and comprehensive error handling
-- **Future-Proof**: Type-safe refactoring and easy feature additions
+- **Frontend**: Vite + React + TanStack Router
+- **Desktop**: Electron with 100% TypeScript backend
+- **Video**: FFmpeg WebAssembly
+- **Styling**: Tailwind CSS + Radix UI
+- **Monorepo**: Turborepo + Bun
 
 ## Contributing
 
-We welcome contributions! The project has been successfully migrated to a desktop-first architecture.
+Fork the repo, follow Quick Start, create a feature branch, and submit a PR.
 
-**Quick start for contributors:**
+## License
 
-- Fork the repo and clone locally
-- Follow the Quick Start instructions above
-- Create a feature branch and submit a PR
-
-## Technical Notes
-
-### Key Technologies
-
-- **Hybrid Architecture**: Maintains compatibility with both Next.js patterns and TanStack Router
-- **Dynamic Imports**: Lazy loading for better performance (stores, components)
-- **WebAssembly FFmpeg**: Client-side video processing without server dependencies
-- **Electron IPC**: Secure communication between renderer and main process
-- **File Handling**: Native drag-and-drop, file dialogs, and direct file system access
-
-### Performance Optimizations
-
-- Lazy-loaded stores and components
-- Virtual scrolling for large lists
-- Optimized timeline rendering
-- Efficient media caching
-- WebAssembly for compute-intensive tasks
-
-### Known Limitations
-
-- API routes from Next.js structure are non-functional (use Electron IPC instead)
-- FFmpeg WebAssembly files need special handling in linting
-
-### Desktop-Only Features
-
-The following features require the Electron desktop app and are not available in web-only mode:
-
-- **AI Generation** (text-to-video, image-to-video, text-to-image) - Requires secure API key storage via Electron IPC
-- **Sound Library Search** - Freesound API integration requires secure API key management
-- **AI Transcription** - Gemini-based transcription requires secure API key storage
-- **Native File Access** - Direct file system operations for video export and media import
-
-These features rely on Electron's secure IPC communication for API key management and native file system access, which cannot be replicated in a browser-only environment.
-
-## Troubleshooting
-
-### Common Issues
-
-**Build Errors:**
-- Run `bun install` to ensure all dependencies are installed
-- Use `bun run lint:clean` instead of `bun lint` to skip FFmpeg WebAssembly parsing errors
-- Check that you're using the correct Node.js version (v18+)
-
-**Electron App Won't Start:**
-- Ensure you've built the web app first: `cd qcut/apps/web && bun run build`
-- Try running in development mode: `bun run electron:dev`
-- Check that all required files are present in `electron/` directory
-
-**API Errors:**
-- If you see `window.electronAPI.invoke is not a function`, make sure you're using structured API calls
-- Example: Use `window.electronAPI.sounds.search()` instead of `window.electronAPI.invoke("sounds:search")`
-- Check the preload script is properly configured
-
-**TypeScript Compilation Issues:**
-- Run `cd electron && bun x tsc` to manually compile TypeScript files
-- Check `electron/tsconfig.json` for correct configuration
-- Ensure all dependencies have proper type definitions
-- Verify import paths use `.js` extensions for compiled output
-
-**Performance Issues:**
-- Close unnecessary browser tabs if running in development mode
-- Ensure sufficient RAM available (recommended 8GB+)
-- Check if antivirus software is interfering with file operations
-
-**TypeScript Development Tips:**
-- All Electron backend code is now TypeScript - edit `.ts` files, not `.js`
-- After TypeScript changes, recompile with `bun x tsc` from the `electron/` directory
-- Use `bun run build` to build the entire project including TypeScript compilation
-- Compiled JavaScript files in `dist/electron/` are auto-generated - don't edit them directly
+MIT
