@@ -75,7 +75,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ steps.version.outputs.CHANNEL }}
+          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ steps.version.outputs.CHANNEL }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
