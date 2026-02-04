@@ -152,6 +152,7 @@ jobs:
 
       - name: Build Electron application
         run: |
+          rm -rf dist-electron
           npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
