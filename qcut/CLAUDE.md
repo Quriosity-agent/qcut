@@ -1,332 +1,130 @@
 # CLAUDE.md
-Always check the latest to make sure it is correct.
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with QCut.
 
-Priority Hierarchy: Long-term maintainability > scalability > performance > short-term gains
+**Priority**: Long-term maintainability > scalability > performance > short-term gains
 
+## Commands
 
-## Essential Commands
-
-### Linting & Code Quality
-```bash
-# Run standard linting (shows all errors including unfixable FFmpeg files)
-bun lint
-
-# Run clean linting (skips parse errors from FFmpeg WebAssembly files) - RECOMMENDED
-bun lint:clean
-
-# Auto-fix formatting issues
-bun format
-```
-
-## Core Principles
-
-- **Systems Thinking**: Analyze impacts across entire system
-- **Future-Proofing**: Design decisions that accommodate growth
-- **Dependency Management**: Minimize coupling, maximize cohesion
-
-### Code Documentation
-- Write self-documenting code with clear naming
-- Add JSDoc comments for complex functions
-- Document API interfaces and types
-- Include usage examples for reusable components
+| Task | Command |
+|------|---------|
+| Dev server | `bun dev` |
+| Electron dev | `bun run electron:dev` |
+| Electron prod | `bun run electron` |
+| Build | `bun build` |
+| Lint (clean) | `bun lint:clean` |
+| Format | `bun format` |
+| Test | `bun run test` |
+| Type check | `bun check-types` |
+| Release patch | `bun run release:patch` |
+| Build EXE | `npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite` |
 
 ## Project Overview
 
-QCut is a desktop video editor built with a **hybrid architecture** combining Vite + TanStack Router + Electron. The project maintains both Next.js-style and TanStack Router structures, indicating either an ongoing migration or dual compatibility design. It uses a monorepo structure with Bun as the package manager.
+QCut is a desktop video editor built with **Vite + TanStack Router + Electron**. It uses a monorepo structure with Bun as the package manager.
 
-## Key Architecture
+## Tech Stack
 
-### Tech Stack
-- **Frontend**: Vite 7.0.6, TanStack Router (Hash History), React 18.3.1, TypeScript
-- **Desktop**: Electron 37.4.0 with TypeScript IPC handlers (100% TypeScript)
-- **State Management**: Zustand stores for separation of concerns
-- **Video Processing**: FFmpeg WebAssembly (@ffmpeg/ffmpeg)
-- **Storage**: Multi-tier system (Electron IPC → IndexedDB → localStorage fallback)
-- **Styling**: Tailwind CSS 4.1.11
-- **UI Components**: Radix UI primitives
+- **Frontend**: Vite, TanStack Router, React, TypeScript
+- **Desktop**: Electron with TypeScript IPC handlers
+- **State**: Zustand stores
+- **Video**: FFmpeg WebAssembly
+- **Storage**: Electron IPC → IndexedDB → localStorage fallback
+- **Styling**: Tailwind CSS, Radix UI
 - **Monorepo**: Turborepo with Bun
-- **Type Safety**: Comprehensive TypeScript coverage for main process (38 IPC handlers across 6 files)
 
-### **🏗️ Hybrid Architecture Details**
+See `package.json` for current versions.
 
-**Dual Routing System:**
-- **Primary**: TanStack Router (`src/routes/` + `routeTree.gen.ts`)
-- **Secondary**: Next.js-style structure (`src/app/` with page.tsx files)
-- **API Routes**: Next.js format (`src/app/api/` with route.ts files) - **⚠️ Non-functional in Vite**
+## Project Structure
 
-**Key Implications:**
-- Vite dev server **does not execute** Next.js API routes
-- API calls to `/api/sounds/search` will fail with `net::ERR_FILE_NOT_FOUND`
-- Use **Electron IPC** for backend functionality instead of API routes
-
-### Project Structure
 ```
 qcut/
-├── apps/web/                    # Main Vite app
-│   └── src/
-│       ├── app/                 # Next.js-style structure (legacy/compatibility)
-│       │   ├── api/            # ⚠️ API routes exist but non-functional in Vite
-│       │   └── */page.tsx      # Next.js-style pages
-│       ├── routes/             # ✅ Active TanStack Router routes
-│       │   ├── __root.tsx
-│       │   └── *.tsx
-│       └── routeTree.gen.ts    # Generated router tree
+├── apps/web/src/
+│   ├── routes/          # TanStack Router (primary)
+│   ├── app/             # Next.js-style (legacy, non-functional in Vite)
+│   ├── stores/          # Zustand state management
+│   ├── components/      # React components
+│   └── lib/             # Utilities and services
 ├── packages/
-│   ├── auth/                    # @qcut/auth
-│   └── db/                      # @qcut/db
-├── electron/                    # 100% TypeScript Electron main and preload scripts
-│   ├── main.ts                  # ✅ Main process (TypeScript)
-│   ├── preload.ts               # ✅ Preload script (TypeScript)
-│   ├── *-handler.ts             # ✅ All IPC handlers (TypeScript)
-│   └── dist/                    # Compiled JavaScript output
-└── docs/task/                   # Migration documentation
+│   ├── auth/            # @qcut/auth
+│   └── db/              # @qcut/db
+├── electron/            # TypeScript IPC handlers
+│   ├── main.ts          # Main process
+│   ├── preload.ts       # Renderer bridge
+│   ├── *-handler.ts     # IPC handlers
+│   └── claude/          # Claude integration handlers
+└── docs/                # Documentation
 ```
 
-### Core Editor Architecture
-- **Timeline System**: Custom implementation in `src/components/editor/timeline/`
-- **Storage**: Abstraction layer supporting IndexedDB and OPFS
-- **Media Processing**: Client-side FFmpeg with WebAssembly
+## Key Entry Points
+
+| Area | File |
+|------|------|
+| Editor | `apps/web/src/routes/editor.$project_id.tsx` |
+| Timeline Store | `apps/web/src/stores/timeline-store.ts` |
+| AI Video | `apps/web/src/lib/ai-video/index.ts` |
+| Electron Main | `electron/main.ts` |
+| IPC Handlers | `electron/*-handler.ts` |
+
+## Code Standards
+
+- [Accessibility Rules](docs/reference/accessibility-rules.md) - 10 critical a11y rules
+- [Code Quality Rules](docs/reference/code-quality-rules.md) - 5 complexity rules
+
+**Core Principles**:
+- Write self-documenting code with clear naming
+- Add JSDoc for complex functions
+- Use `for...of` instead of `forEach`
+- Avoid `any` types
 
 ## Git Commit Guidelines
 
-**IMPORTANT**: When creating git commits:
+**IMPORTANT**:
 - DO NOT include "Co-Authored-By: Claude" attribution
-- DO NOT include the 🤖 emoji or "Generated with Claude Code" message
 - Use conventional commit format: `type: description`
-- Keep commit messages concise and descriptive
-
-## Development Commands
-
-### Root Level
-```bash
-bun dev          # Start all apps in development
-bun build        # Build all packages and apps
-bun check-types  # Type checking across workspace
-```
-
-### Web App (apps/web/)
-```bash
-bun dev                  # Vite dev server (port 5173)
-bun build                # Production build
-bun lint:fix             # Auto-fix linting issues
-```
-
-### Database Setup
-```bash
-# Docker services required:
-docker-compose up -d     # PostgreSQL (5432), Redis (6379)
-```
-
-### FFmpeg WebAssembly Setup
-```bash
-# Copy FFmpeg WASM files from node_modules to public directory
-bun run setup-ffmpeg
-```
-
-**Note**: FFmpeg WebAssembly files (`ffmpeg-core.js`, `ffmpeg-core.wasm`) are not committed to git. They are installed as npm dependencies (`@ffmpeg/core`) and copied to the public directory via the setup script. This keeps the repository size manageable while ensuring the files are available for runtime use.
-
-## Electron Build & Distribution
-
-### Development
-```bash
-bun run electron         # Run Electron app (production mode)
-bun run electron:dev     # Run Electron app (development mode)
-```
-
-### Building EXE
-```bash
-# Option 1: Using electron-packager (recommended)
-npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite
-
-# Option 2: Using electron-builder (if configured)
-bun run dist:win
-```
-
-### Release Management
-```bash
-# Complete release process (version bump + build + checksums + notes)
-bun run release:patch    # 0.3.40 -> 0.3.41
-bun run release:minor    # 0.3.40 -> 0.4.0  
-bun run release:major    # 0.3.40 -> 1.0.0
-```
-## Important Patterns
-
-### State Management
-```typescript
-// Zustand stores in src/stores/
-useEditorStore()    // Main editor state
-useTimelineStore()  // Timeline operations
-useProjectStore()   // Project management
-usePlaybackStore()  // Video playback
-```
-
-### Storage Abstraction
-```typescript
-// src/lib/storage/
-StorageService with IndexedDBAdapter or OPFSAdapter
-```
-
-### Timeline Components
-- `TimelineTrack` - Individual tracks
-- `TimelineElement` - Media elements on timeline
-- `TimelinePlayhead` - Current position indicator
-
-## Environment Variables
-```bash
-DATABASE_URL            # PostgreSQL connection
-BETTER_AUTH_SECRET      # Authentication
-UPSTASH_REDIS_REST_URL  # Redis for rate limiting
-MARBLE_WORKSPACE_KEY    # Blog CMS
-VITE_FAL_API_KEY        # FAL.ai API key for AI video generation
-```
-
-## Code Style
-- **Linting**: Biome with Ultracite configuration
-- **Many lint rules disabled** - be aware when adding new code
-- **Path aliases**: Use `@/` for `src/` imports
-
-## Testing
-
-### Test Framework - ✅ **FULLY CONFIGURED**
-- **Framework**: Vitest 3.2.4 with JSDOM environment
-- **Testing Library**: @testing-library/react 16.3.0 
-- **Status**: All 200+ tests passing successfully
-- **Coverage**: Component tests, integration tests, hook tests, utility tests
-
-### Running Tests
-```bash
-# Run all tests (recommended)
-cd qcut/apps/web && bun run test
-
-# Run tests with UI
-bun run test:ui
-
-# Run tests with coverage
-bun run test:coverage
-
-# Watch mode during development
-bun run test:watch
-```
-
-### Test Categories
-- **UI Components**: Button, Checkbox, Dialog, Toast, Tabs, Slider, etc.
-- **Hooks**: Custom React hooks with comprehensive test coverage  
-- **Integration**: Store initialization, project creation workflows
-- **Utilities**: Helper functions and utility modules
-
-### Test Environment Setup
-- **JSDOM**: Properly configured for DOM-based component testing
-- **Browser APIs**: Comprehensive mocking (MutationObserver, ResizeObserver, etc.)
-- **Radix UI Compatible**: Enhanced setup for complex UI component testing
-- **Mock System**: Robust mocking for Electron APIs and external dependencies
-
-## Key Files to Understand
-
-### Frontend (React/TypeScript)
-- `apps/web/src/routes/editor.$project_id.tsx` - Main editor entry
-- `apps/web/src/stores/timeline-store.ts` - Timeline state logic
-- `apps/web/src/lib/ffmpeg-utils.ts` - Video processing
-- `apps/web/src/components/editor/timeline/` - Timeline UI components
-
-### AI Video Generation (`apps/web/src/lib/ai-video/`)
-Modular architecture for AI video generation via FAL.ai (40+ models):
-- `index.ts` - Barrel file with backward-compatible exports
-- `core/fal-request.ts` - FAL API request utilities
-- `core/polling.ts` - Queue polling with progress updates
-- `core/streaming.ts` - Video streaming download
-- `generators/text-to-video.ts` - T2V generators (Sora 2, Veo, Kling, etc.)
-- `generators/image-to-video.ts` - I2V generators
-- `generators/avatar.ts` - Avatar/talking head generation
-- `generators/upscale.ts` - Video upscaling
-- `validation/validators.ts` - Input validation
-- `models/sora2.ts` - Sora 2 specific parameter conversion
-
-### Electron Backend (100% TypeScript)
-- `electron/main.ts` - Main Electron process with all IPC handlers
-- `electron/preload.ts` - Renderer process bridge
-- `electron/ffmpeg-handler.ts` - Video processing IPC handler
-- `electron/api-key-handler.ts` - Secure API key management
-- `electron/sound-handler.ts` - Audio/sound effects handler
-- `electron/transcribe-handler.ts` - AI transcription services
-- `dist/electron/` - Compiled JavaScript output
-
-**Compilation:** Source files in `electron/*.ts` → Compiled to `dist/electron/*.js` via `bun x tsc`
-
-# QCut – Top 10 Accessibility Rules to Always Enforce
-
-These ten rules catch the most frequent and most critical a11y bugs in a React + Electron (Chromium) environment. Add them to your lint setup and PR checklist first.
-
-| # | Rule | Why It Matters |
-|---|------|----------------|
-| **1** | **Provide a meaningful `alt` text for every image/icon that requires it.** | Screen-reader users rely on `alt`; missing or vague descriptions leave them with zero context. |
-| **2** | **Never place `aria-hidden="true"` on focusable elements.** | The element is still tabbable, but the assistive tech can’t read it – a dead end for keyboard users. |
-| **3** | **Every `<button>` *must* specify `type="button"` or `type="submit"`.** | Avoids accidental form submission and clarifies intent. |
-| **4** | **Ensure every `<a>` tag contains meaningful, screen-reader-friendly content and a valid `href`.** | “Empty” or icon-only links announce as “link” with no context or go nowhere. |
-| **5** | **If you add `onClick`, also support keyboard (`onKeyDown`/`onKeyUp`).** | Click-only handlers are unusable via keyboard or assistive switches. |
-| **6** | **Give every SVG icon a `<title>` element that describes its purpose.** | Without it, readers just announce “graphic” or skip the icon entirely. |
-| **7** | **Do not set `tabIndex` on non-interactive elements.** | Arbitrary focus order confuses keyboard navigation and breaks logical flow. |
-| **8** | **Use semantic elements instead of roles (`<button>` > `<div role="button">`).** | Native elements come with keyboard focus, states, and ARIA roles out of the box. |
-| **9** | **Heading tags (`<h1>` … `<h6>`) must contain real, visible text (not hidden via `aria-hidden`).** | Screen readers rely on the heading hierarchy for quick navigation. |
-| **10** | **For every table header `<th>`, set the correct `scope` (“row”, “col”).** | Gives assistive tech enough info to announce the correct header–cell relationship. |
-
-# QCut – Top 5 Code-Complexity & Quality Rules to Enforce First
-
-| # | Rule | Why It Pays Off Immediately |
-|---|------|-----------------------------|
-| **1** | **Use `for…of` instead of `Array.forEach`.** | `forEach` swallows `await`/`return`, prevents early-exit, and complicates error handling. `for…of` is clearer, supports `break` / `continue`, and works perfectly with `await`. |
-| **2** | **Set a Cognitive-Complexity ceiling for every function.** | Stops “God functions” from landing in the codebase; forces decomposition into smaller, testable helpers and keeps reviews manageable. |
-| **3** | **Ban the legacy `arguments` object; use rest parameters (`...args`).** | Rest parameters are iterable, type-safe, and compatible with arrow functions—essential for clean TypeScript and better IntelliSense. |
-| **4** | **Disallow `any` / `unknown` as type constraints.** | The single biggest source of hidden runtime bugs. Removing it preserves strong typing and makes large-scale refactors safe. |
-| **5** | **Forbid reassigning `const` variables and eliminate `var`.** | Guarantees immutability by default, avoids hoisting surprises, and simplifies reasoning about state—especially in asynchronous flows. |
-
-> **Implementation tip:** add these rules to your Ultracite (Biome) config at **error** level first; they deliver the highest value-to-refactor ratio for an existing QCut codebase.
-
-## When Working on Features
-1. Always test both `bun run electron:dev` (development) and `bun run electron` (production)
-2. Test EXE builds with `npx electron-packager` after major changes
-3. Ensure FFmpeg paths work in both dev and packaged environments
-4. Use Electron IPC for all file system operations
+- Keep messages concise
 
 ## Architecture Guidelines
 
-### ✅ **DO** - Recommended Patterns
-- **Routing**: Use TanStack Router (`src/routes/`) for new features
-- **Environment Variables**: Use `VITE_` prefix for client-side variables
-- **Image Components**: Consider dual Next.js/Vite compatibility when needed
+### DO
+- Use TanStack Router (`src/routes/`) for new features
+- Use `VITE_` prefix for client-side env vars
+- Use Electron IPC for backend functionality
 
-### ❌ **DON'T** - Avoid These Patterns  
-- **API Routes**: Don't expect `src/app/api/` routes to work in Vite (use Electron IPC instead)
-- **Server-side Logic**: Don't put backend logic in client-side components
-- **process.env**: Don't use `process.env` in client code (use `import.meta.env`)
-- **Next.js Dependencies**: Don't add features that require Next.js runtime
+### DON'T
+- Expect `src/app/api/` routes to work (use Electron IPC)
+- Use `process.env` in client code (use `import.meta.env`)
+- Add features requiring Next.js runtime
 
-### 🔧 **Migration Strategy**
-When encountering Next.js patterns that don't work in Vite:
-1. **API Routes** → Convert to Electron IPC handlers
-2. **Server Components** → Convert to client components with IPC calls
-3. **process.env** → Convert to `import.meta.env.VITE_*`
-4. **Next.js Image** → Use regular `<img>` or create compatibility wrapper
+### Electron API Best Practices
+- Use structured methods: `window.electronAPI.sounds.search()`
+- Check availability: `if (window.electronAPI?.sounds)`
+- Type definitions: `src/types/electron.d.ts`
 
-### 🎯 **Electron API Best Practices**
-- **Structured Methods**: Use `window.electronAPI.sounds.search()` instead of `window.electronAPI.invoke("sounds:search")`
-- **Type Safety**: All API calls have proper TypeScript definitions in `src/types/electron.d.ts`
-- **Error Handling**: Check for API availability before calling: `if (window.electronAPI?.sounds)`
-- **Null Checks**: Always validate return values and handle undefined cases
-- **Mock Coverage**: Ensure test mocks match the actual API structure
+## Testing
 
-## TypeScript Best Practices
+- **Framework**: Vitest + @testing-library/react
+- **Run**: `bun run test`
+- **Details**: [Testing Guide](docs/reference/testing-guide.md)
 
-1. **Handler Interfaces**: Define comprehensive interfaces for all IPC operations
-2. **Error Handling**: Use TypeScript error types for better debugging
-3. **Path Resolution**: Be careful with relative paths in compiled output
-4. **Import Paths**: Use relative imports for compiled modules (e.g., `./ffmpeg-handler.js`)
-5. **Type Exports**: Export types for use in renderer process
+## Environment Variables
 
-**Common Pitfalls:**
-- Compiled JS imports must use `.js` extension, not `.ts`
-- Account for `dist/electron/` as the runtime directory
-- File paths must resolve correctly from compiled location
+```bash
+DATABASE_URL            # PostgreSQL
+BETTER_AUTH_SECRET      # Auth
+UPSTASH_REDIS_REST_URL  # Redis
+VITE_FAL_API_KEY        # FAL.ai API
+```
 
-<!-- Update your CLAUDE.md so you don't make that mistake again -->
+## When Working on Features
+
+1. Test both `electron:dev` and `electron` modes
+2. Test EXE builds after major changes
+3. Ensure FFmpeg paths work in dev and packaged environments
+4. Use Electron IPC for all file system operations
+
+## TypeScript Notes
+
+- Compiled JS imports use `.js` extension, not `.ts`
+- Runtime directory is `dist/electron/`
+- File paths must resolve from compiled location

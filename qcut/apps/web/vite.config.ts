@@ -11,6 +11,8 @@ export default defineConfig({
   define: {
     // Required for React scheduler in Electron production builds
     global: "globalThis",
+    // Required for @babel/types and other Node.js modules in browser
+    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
   },
   resolve: {
     alias: {
