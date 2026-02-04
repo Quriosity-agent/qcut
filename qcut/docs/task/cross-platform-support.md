@@ -375,20 +375,30 @@ const allowedExtensions = currentPlatform === "win32"
     <!-- Allow unsigned executable memory (needed for node-pty) -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
-    <!-- Disable library validation (needed for native modules) -->
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
-    <!-- Microphone access for audio recording -->
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
-    <!-- Camera access (future feature) -->
-    <key>com.apple.security.device.camera</key>
-    <true/>
+    <!-- Disable library validation - enable only if native modules require it -->
+    <!-- <key>com.apple.security.cs.disable-library-validation</key> -->
+    <!-- <true/> -->
     <!-- File access for video editing -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
 </dict>
 </plist>
+```
+
+**Optional Entitlements (add when features ship):**
+
+```xml
+<!-- Microphone access - add when audio recording feature ships -->
+<key>com.apple.security.device.audio-input</key>
+<true/>
+
+<!-- Camera access - add when camera feature ships -->
+<key>com.apple.security.device.camera</key>
+<true/>
+
+<!-- Disable library validation - enable only if native modules fail to load -->
+<key>com.apple.security.cs.disable-library-validation</key>
+<true/>
 ```
 
 ---
