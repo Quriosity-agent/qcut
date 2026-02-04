@@ -345,10 +345,14 @@ if (!targetDir) {
 }
 
 // Platform-specific allowed extensions
+// Windows: check for .exe and .dll extensions
+// Unix: skip extension check (binaries have no extension, use executable bit instead)
 const allowedExtensions = currentPlatform === "win32"
   ? [".exe", ".dll"]
-  : [""];  // Unix binaries have no extension
+  : [];  // Unix: empty array = skip extension filtering, rely on executable check
 ```
+
+**Note:** For Unix platforms, the empty array means extension filtering is skipped. Instead, binary detection should use `fs.statSync(file).mode & 0o111` to check if the file is executable.
 
 **Regression Prevention:**
 - Windows behavior unchanged: same target directory, same extensions
