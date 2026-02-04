@@ -216,7 +216,7 @@
     },
     "mac": {
       "category": "public.app-category.video",
-      "icon": "build/icon.icns",
+      "icon": "build/qcut-icon.icns",
       "target": [
         {
           "target": "dmg",

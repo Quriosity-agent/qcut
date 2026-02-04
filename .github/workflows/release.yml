@@ -148,7 +148,7 @@ jobs:
           magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_256x256@2x.png
           magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_512x512.png
           magick 'build/icon.ico[0]' -resize 1024x1024 -background none -gravity center -extent 1024x1024 build/icon.iconset/icon_512x512@2x.png
-          iconutil -c icns build/icon.iconset -o build/icon.icns
+          iconutil -c icns build/icon.iconset -o build/qcut-icon.icns
 
       - name: Build Electron application
         run: |
