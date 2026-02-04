@@ -69,66 +69,133 @@ export const debugError = (...args: any[]): void => {
  * Resolves FFmpeg binary path for current environment (dev/packaged).
  *
  * Packaged apps expect FFmpeg in resources folder; dev mode searches
- * bundled resources then system PATH. Throws if FFmpeg not found.
+ * bundled resources then system paths. Supports Windows, macOS, and Linux.
  *
- * @returns Absolute path to FFmpeg binary or "ffmpeg" for system PATH
- * @throws Error if FFmpeg not found in expected locations
+ * Search order:
+ * 1. Packaged app resources folder
+ * 2. Development bundled resources
+ * 3. Platform-specific system paths (WinGet/Homebrew/apt)
+ * 4. System PATH fallback
+ *
+ * @returns Absolute path to FFmpeg binary or "ffmpeg"/"ffmpeg.exe" for system PATH
+ * @throws Error if FFmpeg not found in packaged app resources
  */
 export function getFFmpegPath(): string {
+  const platform = process.platform;
+  const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
   let ffmpegPath: string;
 
   if (app.isPackaged) {
     // Production: FFmpeg is in the app's resources folder
-    // extraResources config copies electron/resources/*.exe to resources/
-    const resourcePath: string = path.join(process.resourcesPath, "ffmpeg.exe");
+    // extraResources config copies platform-specific binaries to resources/
+    const resourcePath: string = path.join(process.resourcesPath, binaryName);
 
     if (fs.existsSync(resourcePath)) {
       ffmpegPath = resourcePath;
     } else {
+      // In packaged app, FFmpeg should exist - throw error
       throw new Error(`FFmpeg not found at: ${resourcePath}`);
     }
   } else {
-    // Development: try bundled FFmpeg first, then winget location, then system PATH
-    const devPath: string = path.join(
-      __dirname,
-      "..",
-      "resources",
-      "ffmpeg.exe"
-    );
-
-    // Check common winget installation locations
-    const homeDir = process.env.USERPROFILE || process.env.HOME || "";
-    const wingetBasePath = path.join(
-      homeDir,
-      "AppData",
-      "Local",
-      "Microsoft",
-      "WinGet",
-      "Packages"
-    );
+    // Development: try bundled FFmpeg first, then system paths, then PATH
+    const devPath: string = path.join(__dirname, "..", "resources", binaryName);
 
     if (fs.existsSync(devPath)) {
       ffmpegPath = devPath;
-    } else if (fs.existsSync(wingetBasePath)) {
-      // Search for FFmpeg in winget packages
-      const wingetFFmpegPath = findFFmpegInWinget(wingetBasePath);
-      if (wingetFFmpegPath) {
-        ffmpegPath = wingetFFmpegPath;
-        debugLog("Found FFmpeg in winget:", ffmpegPath);
-      } else {
-        ffmpegPath = "ffmpeg"; // System PATH
-      }
+      debugLog("Found bundled FFmpeg:", ffmpegPath);
     } else {
-      ffmpegPath = "ffmpeg"; // System PATH
+      // Search platform-specific system paths
+      const systemPaths = getSystemFFmpegPaths(platform, binaryName);
+      let foundPath: string | null = null;
+
+      for (const searchPath of systemPaths) {
+        if (fs.existsSync(searchPath)) {
+          foundPath = searchPath;
+          debugLog("Found FFmpeg at:", searchPath);
+          break;
+        }
+      }
+
+      if (foundPath) {
+        ffmpegPath = foundPath;
+      } else {
+        // Fallback to system PATH
+        ffmpegPath = binaryName;
+        debugLog("Falling back to system PATH:", binaryName);
+      }
     }
   }
 
-  // Verify FFmpeg exists (skip verification for system PATH)
-  if (ffmpegPath !== "ffmpeg" && !fs.existsSync(ffmpegPath)) {
+  // Verify FFmpeg exists (skip verification for system PATH fallback)
+  if (ffmpegPath !== binaryName && !fs.existsSync(ffmpegPath)) {
     throw new Error(`FFmpeg not found at: ${ffmpegPath}`);
   }
 
   return ffmpegPath;
+}
+
+/**
+ * Returns platform-specific paths where FFmpeg might be installed.
+ * Preserves existing Windows behavior (WinGet, Chocolatey, Scoop).
+ *
+ * @param platform - The current platform (win32, darwin, linux)
+ * @param binaryName - The binary name to search for
+ * @returns Array of paths to check
+ */
+function getSystemFFmpegPaths(platform: string, binaryName: string): string[] {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+
+  switch (platform) {
+    case "win32": {
+      // Windows: WinGet, Chocolatey, Scoop (preserves existing behavior)
+      const paths: string[] = [];
+
+      // WinGet installation (existing behavior)
+      const wingetBasePath = path.join(
+        homeDir,
+        "AppData",
+        "Local",
+        "Microsoft",
+        "WinGet",
+        "Packages"
+      );
+      if (fs.existsSync(wingetBasePath)) {
+        const wingetPath = findFFmpegInWinget(wingetBasePath);
+        if (wingetPath) {
+          paths.push(wingetPath);
+        }
+      }
+
+      // Chocolatey
+      paths.push("C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe");
+
+      // Scoop
+      paths.push(path.join(homeDir, "scoop", "shims", "ffmpeg.exe"));
+
+      return paths;
+    }
+
+    case "darwin":
+      // macOS: Homebrew (Apple Silicon first, then Intel), MacPorts
+      return [
+        "/opt/homebrew/bin/ffmpeg", // Homebrew (Apple Silicon M1/M2/M3)
+        "/usr/local/bin/ffmpeg", // Homebrew (Intel)
+        "/opt/local/bin/ffmpeg", // MacPorts
+      ];
+
+    case "linux":
+      // Linux: Standard paths, Snap, Flatpak user bin
+      return [
+        "/usr/bin/ffmpeg", // Most distros (apt, dnf, pacman)
+        "/usr/local/bin/ffmpeg", // Manual installation
+        "/snap/bin/ffmpeg", // Snap package
+        path.join(homeDir, ".local", "bin", "ffmpeg"), // Flatpak user bin
+      ];
+
+    default:
+      debugWarn(`Unknown platform: ${platform}`);
+      return [];
+  }
 }
 
 /**

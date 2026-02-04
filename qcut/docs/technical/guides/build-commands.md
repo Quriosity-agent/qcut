@@ -28,6 +28,21 @@ bun run dist:win:release  # Production - installer (10-15min)
 bun run build:exe         # Alternative packaging (5-8min)
 ```
 
+### Build macOS (on macOS only)
+```bash
+bun run dist:mac          # Build .dmg and .zip for macOS
+```
+
+### Build Linux (on Linux only)
+```bash
+bun run dist:linux        # Build AppImage and .deb for Linux
+```
+
+### Build All Platforms (CI/CD)
+```bash
+bun run dist:all          # Build for Windows, macOS, and Linux
+```
+
 ### Code Quality
 ```bash
 bun lint:clean    # Clean linting (recommended)
@@ -83,10 +98,11 @@ bun run release:major    # 0.3.51 → 1.0.0
 | `build:exe` | 5-8min | Alternative exe | ~300MB | Electron-packager |
 
 ## Output Locations
-- **Electron-builder**: `d:/AI_play/AI_Code/build_qcut/`
-  - Executable: `win-unpacked/QCut AI Video Editor.exe`
-  - Installer: `QCut-AI-Video-Editor-Setup-0.3.51.exe`
-- **Alternative**: `dist-packager-new/QCut-win32-x64/QCut.exe`
+- **Electron-builder**: `dist-electron/`
+  - **Windows**: `win-unpacked/QCut AI Video Editor.exe`, `QCut-AI-Video-Editor-Setup-*.exe`
+  - **macOS**: `mac/QCut AI Video Editor.app`, `QCut-AI-Video-Editor-*.dmg`
+  - **Linux**: `linux-unpacked/`, `QCut-AI-Video-Editor-*.AppImage`, `*.deb`
+- **Alternative (electron-packager)**: `dist-packager-new/QCut-win32-x64/QCut.exe`
 
 ## All Available Scripts
 
@@ -109,6 +125,9 @@ bun run release:major    # 0.3.51 → 1.0.0
 | `dist:win:fast` | Fast Windows build (store compression) |
 | `dist:win:release` | Production Windows build |
 | `dist:win:unsigned` | Unsigned Windows build |
+| `dist:mac` | Build macOS .dmg and .zip |
+| `dist:linux` | Build Linux AppImage and .deb |
+| `dist:all` | Build for all platforms |
 | `build:exe` | Build + package with electron-packager |
 | `setup-ffmpeg` | Copy FFmpeg WASM files to public |
 | `copy-ffmpeg` | Copy FFmpeg for packaged builds |

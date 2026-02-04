@@ -9,7 +9,8 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   AlertCircle,
   CheckCircle,
@@ -33,11 +34,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { isFolderImportAvailable } from "@/lib/remotion/component-loader";
-import {
-  useRemotionStore,
-  useImportedFolders,
-  useFolderImporting,
-} from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/remotion-store";
 import type {
   FolderImportResult,
   ImportedFolderInfo,
@@ -156,10 +153,19 @@ export function FolderImportDialog({
     error: null,
     progressMessage: "",
   });
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
 
-  const { importFromFolder, refreshFolder, removeFolder } = useRemotionStore();
-  const importedFolders = useImportedFolders();
-  const isFolderImporting = useFolderImporting();
+  // Get actions via getState() to avoid unstable references in deps
+  const importFromFolder = useRemotionStore.getState().importFromFolder;
+  const refreshFolder = useRemotionStore.getState().refreshFolder;
+  const removeFolder = useRemotionStore.getState().removeFolder;
+
+  // Use useShallow for arrays to prevent infinite re-renders
+  const importedFolders = useRemotionStore(
+    useShallow((state) => Array.from(state.importedFolders.values()))
+  );
+  const isFolderImporting = useRemotionStore((state) => state.isFolderImporting);
 
   // Check if folder import is available
   const isAvailable = isFolderImportAvailable();
@@ -179,6 +185,119 @@ export function FolderImportDialog({
       onOpenChange(open);
     },
     [onOpenChange]
+  );
+
+  // Handle drag events - use counter to handle child element events
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  // Handle dropped folder
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+
+      if (!isAvailable) {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          error: "Folder import is only available in Electron",
+        }));
+        return;
+      }
+
+      // Prevent concurrent imports
+      if (isFolderImporting) {
+        return;
+      }
+
+      // Get the dropped folder path (Electron provides .path on File objects)
+      const files = e.dataTransfer.files;
+      if (files.length === 0) return;
+
+      // In Electron, File objects have a .path property
+      const droppedPath = (files[0] as File & { path?: string }).path;
+      if (!droppedPath) {
+        setState((prev) => ({
+          ...prev,
+          status: "error",
+          error: "Could not get folder path. Please use the folder selector.",
+        }));
+        return;
+      }
+
+      setState({
+        status: "scanning",
+        folderPath: droppedPath,
+        result: null,
+        error: null,
+        progressMessage: "Validating folder...",
+      });
+
+      try {
+        // Use the store's importFromFolder with the dropped path
+        const result = await importFromFolder(droppedPath);
+
+        if (!result.success) {
+          setState({
+            status: "error",
+            folderPath: droppedPath,
+            result,
+            error: result.errors.join("; ") || "Import failed",
+            progressMessage: "",
+          });
+          return;
+        }
+
+        setState({
+          status: "success",
+          folderPath: droppedPath,
+          result,
+          error: null,
+          progressMessage: "",
+        });
+
+        toast.success(
+          `Imported ${result.successCount} component${result.successCount !== 1 ? "s" : ""} from folder`
+        );
+        onImportSuccess?.(result.componentIds);
+
+        setTimeout(() => {
+          handleOpenChange(false);
+        }, 1500);
+      } catch (error) {
+        setState({
+          status: "error",
+          folderPath: droppedPath,
+          result: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+          progressMessage: "",
+        });
+      }
+    },
+    [isAvailable, isFolderImporting, importFromFolder, onImportSuccess, handleOpenChange]
   );
 
   // Handle folder selection and import
@@ -335,7 +454,7 @@ export function FolderImportDialog({
           <div className="flex flex-col items-center gap-2">
             <FolderOpen className="h-10 w-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Select a Remotion project folder to import compositions
+              Click to select or drag & drop a Remotion project folder
             </p>
             <p className="text-xs text-muted-foreground/70">
               Folder should contain a Root.tsx or Composition components
@@ -370,18 +489,23 @@ export function FolderImportDialog({
             </div>
           )}
 
-          {/* Folder Selection Zone */}
+          {/* Folder Selection / Drop Zone */}
           <button
             type="button"
-            aria-label="Select Remotion folder"
+            aria-label="Select or drop Remotion folder"
             className={cn(
               "w-full border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
               "focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-background",
               "border-border hover:border-muted-foreground",
               state.status === "error" && "border-red-500/50 bg-red-500/5",
+              isDragOver && "border-violet-500 bg-violet-500/10",
               !isAvailable && "opacity-50 cursor-not-allowed"
             )}
             onClick={handleSelectFolder}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             disabled={
               !isAvailable ||
               isFolderImporting ||
@@ -390,7 +514,14 @@ export function FolderImportDialog({
               state.status === "importing"
             }
           >
-            {renderStatusContent()}
+            {isDragOver ? (
+              <div className="flex flex-col items-center gap-2">
+                <FolderOpen className="h-10 w-10 text-violet-400" />
+                <p className="text-sm text-violet-400">Drop folder here</p>
+              </div>
+            ) : (
+              renderStatusContent()
+            )}
           </button>
 
           {/* Error Display */}

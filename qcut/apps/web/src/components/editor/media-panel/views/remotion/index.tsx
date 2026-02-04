@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderOpen, Layers, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useRemotionStore } from "@/stores/remotion-store";
+import { useRemotionStore, selectAllComponents } from "@/stores/remotion-store";
+import { useShallow } from "zustand/react/shallow";
 import type {
   RemotionComponentDefinition,
   RemotionComponentCategory,
@@ -181,16 +182,15 @@ export function RemotionView() {
   const [isFolderImportDialogOpen, setIsFolderImportDialogOpen] =
     useState(false);
 
-  // Get store state
-  const { registeredComponents, isLoading, isInitialized, initialize } =
-    useRemotionStore();
+  // Get store state - use individual selectors for stable references
+  const isLoading = useRemotionStore((state) => state.isLoading);
+  const isInitialized = useRemotionStore((state) => state.isInitialized);
+  // Get components with shallow comparison to avoid infinite re-renders
+  const allComponents = useRemotionStore(useShallow(selectAllComponents));
+  // Get initialize via getState() to avoid unstable reference in useEffect deps
+  const initialize = useRemotionStore.getState().initialize;
   const { addTrack, addElementToTrack, tracks } = useTimelineStore();
   const fps = useProjectStore((state) => state.activeProject?.fps ?? 30);
-
-  // Get all components as array
-  const allComponents = useMemo(() => {
-    return Array.from(registeredComponents.values());
-  }, [registeredComponents]);
 
   // Filter components by search query
   const filteredComponents = useMemo(() => {
@@ -287,10 +287,15 @@ export function RemotionView() {
     );
   }, []);
 
-  // Initialize store if needed
-  if (!isInitialized && !isLoading) {
-    initialize();
-  }
+  // Initialize store if needed - must be in useEffect, not during render
+  // Note: initialize is obtained via getState() so it's not in deps (stable reference)
+  useEffect(() => {
+    console.log("[RemotionView] useEffect triggered - isInitialized:", isInitialized, "isLoading:", isLoading);
+    if (!isInitialized && !isLoading) {
+      console.log("[RemotionView] Calling initialize() - should only happen ONCE");
+      initialize();
+    }
+  }, [isInitialized, isLoading]); // No initialize in deps - prevents infinite loop
 
   // Loading state
   if (isLoading) {

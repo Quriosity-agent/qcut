@@ -11,6 +11,10 @@
  *   node scripts/release.js patch   # 0.1.0 -> 0.1.1
  *   node scripts/release.js minor   # 0.1.0 -> 0.2.0
  *   node scripts/release.js major   # 0.1.0 -> 1.0.0
+ *   node scripts/release.js alpha   # 0.1.0 -> 0.1.1-alpha.1
+ *   node scripts/release.js beta    # 0.1.0 -> 0.1.1-beta.1
+ *   node scripts/release.js rc      # 0.1.0 -> 0.1.1-rc.1
+ *   node scripts/release.js promote # 0.1.1-rc.2 -> 0.1.1
  */
 
 import fs from "fs";
@@ -18,12 +22,37 @@ import path from "path";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
-type ReleaseType = "patch" | "minor" | "major";
-const RELEASE_TYPES: ReleaseType[] = ["patch", "minor", "major"];
+type ReleaseType =
+  | "patch"
+  | "minor"
+  | "major"
+  | "alpha"
+  | "beta"
+  | "rc"
+  | "promote";
+const RELEASE_TYPES: ReleaseType[] = [
+  "patch",
+  "minor",
+  "major",
+  "alpha",
+  "beta",
+  "rc",
+  "promote",
+];
+
+type PrereleaseChannel = "alpha" | "beta" | "rc";
+const PRERELEASE_CHANNELS: PrereleaseChannel[] = ["alpha", "beta", "rc"];
 
 interface PackageJson {
   version: string;
   [key: string]: any;
+}
+
+interface ParsedVersion {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: { channel: string; number: number } | null;
 }
 
 /**
@@ -52,7 +81,14 @@ function main(): void {
 
   if (!releaseType || !RELEASE_TYPES.includes(releaseType as ReleaseType)) {
     process.stderr.write(
-      "❌ Usage: node scripts/release.js <patch|minor|major>\n"
+      "Usage: bun run release <patch|minor|major|alpha|beta|rc|promote>\n\n" +
+        "  patch   - Bump patch version (0.3.52 -> 0.3.53)\n" +
+        "  minor   - Bump minor version (0.3.52 -> 0.4.0)\n" +
+        "  major   - Bump major version (0.3.52 -> 1.0.0)\n" +
+        "  alpha   - Create/bump alpha prerelease (0.3.52 -> 0.3.53-alpha.1)\n" +
+        "  beta    - Create/bump beta prerelease (0.3.52 -> 0.3.53-beta.1)\n" +
+        "  rc      - Create/bump release candidate (0.3.52 -> 0.3.53-rc.1)\n" +
+        "  promote - Promote prerelease to stable (0.3.53-rc.2 -> 0.3.53)\n"
     );
     process.exit(1);
   }
@@ -118,6 +154,66 @@ function checkGitStatus(): void {
   process.stdout.write("✅ Working directory is clean\n");
 }
 
+/**
+ * Parse a version string into its components
+ * Handles both stable (1.2.3) and prerelease (1.2.3-beta.4) formats
+ */
+function parseVersion(version: string): ParsedVersion {
+  // Matches: 1.2.3 or 1.2.3-beta.4
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([a-z]+)\.(\d+))?$/);
+  if (!match) {
+    throw new Error(`Invalid version format: ${version}`);
+  }
+
+  return {
+    major: parseInt(match[1], 10),
+    minor: parseInt(match[2], 10),
+    patch: parseInt(match[3], 10),
+    prerelease: match[4]
+      ? { channel: match[4], number: parseInt(match[5], 10) }
+      : null,
+  };
+}
+
+/**
+ * Bump a prerelease version
+ * - If same channel: increment number (0.3.53-beta.1 -> 0.3.53-beta.2)
+ * - If stable: bump patch and start at 1 (0.3.52 -> 0.3.53-beta.1)
+ * - If different channel (progressing): start new channel at 1 (0.3.53-alpha.5 -> 0.3.53-beta.1)
+ * - If different channel (regressing): bump patch first (0.3.53-rc.1 -> 0.3.54-alpha.1)
+ */
+function bumpPrerelease(
+  parsed: ParsedVersion,
+  channel: PrereleaseChannel
+): string {
+  const { major, minor, patch, prerelease } = parsed;
+
+  // If current is same channel, increment prerelease number
+  if (prerelease && prerelease.channel === channel) {
+    return `${major}.${minor}.${patch}-${channel}.${prerelease.number + 1}`;
+  }
+
+  // If current is stable, bump patch and start prerelease at 1
+  if (!prerelease) {
+    return `${major}.${minor}.${patch + 1}-${channel}.1`;
+  }
+
+  // If switching channels (e.g., alpha -> beta, beta -> rc)
+  const channelOrder: PrereleaseChannel[] = ["alpha", "beta", "rc"];
+  const currentIdx = channelOrder.indexOf(
+    prerelease.channel as PrereleaseChannel
+  );
+  const targetIdx = channelOrder.indexOf(channel);
+
+  if (targetIdx > currentIdx) {
+    // Progressing forward (alpha -> beta -> rc): keep same base version
+    return `${major}.${minor}.${patch}-${channel}.1`;
+  } else {
+    // Going backward: bump patch first
+    return `${major}.${minor}.${patch + 1}-${channel}.1`;
+  }
+}
+
 function bumpVersion(releaseType: ReleaseType): string {
   // Handle both source and compiled execution contexts
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -132,18 +228,31 @@ function bumpVersion(releaseType: ReleaseType): string {
   );
 
   const currentVersion: string = packageJson.version;
-  const [major, minor, patch]: number[] = currentVersion.split(".").map(Number);
+  const parsed = parseVersion(currentVersion);
 
   let newVersion: string;
   switch (releaseType) {
     case "patch":
-      newVersion = `${major}.${minor}.${patch + 1}`;
+      // Reset prerelease, bump patch from base version
+      newVersion = `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
       break;
     case "minor":
-      newVersion = `${major}.${minor + 1}.0`;
+      newVersion = `${parsed.major}.${parsed.minor + 1}.0`;
       break;
     case "major":
-      newVersion = `${major + 1}.0.0`;
+      newVersion = `${parsed.major + 1}.0.0`;
+      break;
+    case "alpha":
+    case "beta":
+    case "rc":
+      newVersion = bumpPrerelease(parsed, releaseType);
+      break;
+    case "promote":
+      // Remove prerelease suffix to promote to stable
+      if (!parsed.prerelease) {
+        throw new Error("Cannot promote: current version is not a prerelease");
+      }
+      newVersion = `${parsed.major}.${parsed.minor}.${parsed.patch}`;
       break;
   }
 
@@ -357,7 +466,9 @@ function getPreviousVersion(): string {
     const tagList: string[] = tags
       .trim()
       .split("\n")
-      .filter((tag: string) => tag.match(/^v\d+\.\d+\.\d+$/));
+      .filter((tag: string) =>
+        tag.match(/^v\d+\.\d+\.\d+(-(?:alpha|beta|rc)\.\d+)?$/)
+      );
     return tagList[1] || "v0.0.0"; // Return second tag (previous version)
   } catch (error: any) {
     return "v0.0.0";
@@ -369,8 +480,14 @@ if (require.main === module) {
 }
 
 // CommonJS export for backward compatibility
-module.exports = { main, bumpVersion, generateChecksums };
+module.exports = {
+  main,
+  bumpVersion,
+  generateChecksums,
+  parseVersion,
+  bumpPrerelease,
+};
 
 // ES6 export for TypeScript files
-export { main, bumpVersion, generateChecksums };
-export type { ReleaseType, PackageJson };
+export { main, bumpVersion, generateChecksums, parseVersion, bumpPrerelease };
+export type { ReleaseType, PackageJson, ParsedVersion, PrereleaseChannel };

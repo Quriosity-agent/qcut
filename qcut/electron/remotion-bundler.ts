@@ -167,12 +167,84 @@ export async function bundleComposition(
     entryPath = foundPath;
     log.debug(`${LOG_PREFIX} Resolved entry: ${entryPath}`);
 
-    // Create a wrapper that exports the component as default
-    const wrapperCode = `
-      export * from "${entryPath.replace(/\\/g, "/")}";
-      import Component from "${entryPath.replace(/\\/g, "/")}";
-      export default Component;
-    `;
+    // Read source file to detect export type
+    const sourceCode = await fs.readFile(entryPath, "utf-8");
+    const normalizedPath = entryPath.replace(/\\/g, "/");
+
+    // Check for default export (including re-exported default)
+    // Note: "export { default as Foo }" is a named export, not a default export
+    const hasDefaultExport =
+      /export\s+default\s/.test(sourceCode) ||
+      /export\s*\{\s*default\s*\}\s*(?:from\s*["'][^"']+["'])?/.test(
+        sourceCode
+      );
+    // Check for named export matching composition ID
+    // Escape regex metacharacters in ID to prevent ReDoS
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Match direct exports (export const/function/class) and re-exports (export { Name })
+    // For aliased exports like "export { Foo as Bar }", only match the exported name (Bar), not source (Foo)
+    const hasDirectNamedExport = new RegExp(
+      `export\\s+(const|function|class)\\s+${escapedId}\\b`
+    ).test(sourceCode);
+    const hasReExportedName = (() => {
+      for (const match of sourceCode.matchAll(/export\s*\{([^}]*)\}/g)) {
+        const specifiers = match[1].split(",");
+        for (const spec of specifiers) {
+          const trimmed = spec.trim();
+          if (!trimmed) continue;
+          // Handle "Foo as Bar" or just "Foo"
+          const parts = trimmed.split(/\s+as\s+/);
+          const exportedName = (parts[1] ?? parts[0])?.trim();
+          if (exportedName === id) {
+            return true;
+          }
+        }
+      }
+      return false;
+    })();
+    const hasNamedExport = hasDirectNamedExport || hasReExportedName;
+
+    log.debug(
+      `${LOG_PREFIX} Export detection for ${id}: hasDefault=${hasDefaultExport}, hasNamed=${hasNamedExport}`
+    );
+
+    // Generate wrapper based on detected export type
+    let wrapperCode: string;
+    if (hasNamedExport) {
+      // Use named import
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import { ${id} as Component } from "${normalizedPath}";
+        export default Component;
+      `;
+    } else if (hasDefaultExport) {
+      // Use default import
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import Component from "${normalizedPath}";
+        export default Component;
+      `;
+    } else {
+      // Fallback: import everything and try to find a component
+      // This handles cases like OnlyLogo -> Logo
+      const componentNameMatch = sourceCode.match(
+        /export\s+(?:const|function|class)\s+(\w+)/
+      );
+      const extractedName = componentNameMatch?.[1];
+      // Validate that we have a proper JS identifier
+      if (!extractedName || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(extractedName)) {
+        return {
+          compositionId: id,
+          success: false,
+          error: `No valid exported component found in ${entryPath} for composition "${id}"`,
+        };
+      }
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import { ${extractedName} as Component } from "${normalizedPath}";
+        export default Component;
+      `;
+    }
 
     // Bundle with esbuild
     const result = await esbuild.build({

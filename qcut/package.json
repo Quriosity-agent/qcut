@@ -2,7 +2,11 @@
   "name": "qcut",
   "version": "0.3.52",
   "description": "QCut - Open-source video editor",
-  "author": "QCut Team",
+  "author": {
+    "name": "QCut Team",
+    "email": "support@qcut.app"
+  },
+  "homepage": "https://github.com/donghaozhang/qcut",
   "main": "dist/electron/main.js",
   "packageManager": "bun@1.2.18",
   "devDependencies": {
@@ -26,6 +30,7 @@
     "happy-dom": "^18.0.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
+    "patch-package": "^8.0.1",
     "playwright": "^1.40.0",
     "rollup-plugin-visualizer": "^6.0.3",
     "to-ico": "^1.1.5",
@@ -41,7 +46,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
-    "postinstall": "bun run setup-ffmpeg",
+    "postinstall": "bun run setup-ffmpeg && bun scripts/patch-node-pty.ts",
     "build:electron": "cd electron && bun x tsc",
     "build:electron:watch": "cd electron && bun x tsc --watch",
     "lint": "npx ultracite@latest lint",
@@ -55,6 +60,9 @@
     "dist:win:unsigned": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false",
     "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "dist:all": "electron-builder --win --mac --linux",
     "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
     "copy-ffmpeg": "bun scripts/copy-ffmpeg.ts",
     "setup-ffmpeg": "bun scripts/setup-ffmpeg.ts",
@@ -62,9 +70,13 @@
     "prebuild": "bun run setup-ffmpeg && bun run sync-skills",
     "sync-skills": "bun scripts/sync-skills.ts",
     "build:exe": "bun run build && bun run package:win",
-    "release:patch": "node scripts/release.js patch",
-    "release:minor": "node scripts/release.js minor",
-    "release:major": "node scripts/release.js major",
+    "release:patch": "bun scripts/release.ts patch",
+    "release:minor": "bun scripts/release.ts minor",
+    "release:major": "bun scripts/release.ts major",
+    "release:alpha": "bun scripts/release.ts alpha",
+    "release:beta": "bun scripts/release.ts beta",
+    "release:rc": "bun scripts/release.ts rc",
+    "release:promote": "bun scripts/release.ts promote",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -76,7 +88,7 @@
     "copyright": "Copyright © 2024 QCut Team",
     "afterPack": "./dist/scripts/afterPack.js",
     "directories": {
-      "output": "d:/AI_play/AI_Code/build_qcut",
+      "output": "dist-electron",
       "buildResources": "build"
     },
     "extraMetadata": {
@@ -84,7 +96,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "qcut-team",
+      "owner": "donghaozhang",
       "repo": "qcut",
       "private": false,
       "releaseType": "release"
@@ -100,6 +112,7 @@
         ]
       },
       "apps/web/dist/**/*",
+      "node_modules/electron-log/**/*",
       "node_modules/electron-updater/**/*",
       "node_modules/@google/generative-ai/**/*",
       "node_modules/node-pty/**/*",
@@ -135,7 +148,10 @@
         "to": "./",
         "filter": [
           "**/*.exe",
-          "**/*.dll"
+          "**/*.dll",
+          "**/*.dylib",
+          "**/*.so",
+          "!**/ffmpeg/**"
         ]
       },
       {
@@ -197,6 +213,46 @@
       "differentialPackage": true,
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "guid": "0fa53e31-8a77-5f52-ad1c-f9c8705b5d38"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "linux": {
+      "icon": "build/icons",
+      "category": "Video",
+      "maintainer": "QCut Team <support@qcut.app>",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "QCut AI Video Editor",
+          "Comment": "Open-source AI video editor",
+          "Categories": "AudioVideo;Video;AudioVideoEditing"
+        }
+      }
     },
     "protocols": [
       {

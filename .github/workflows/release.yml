@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+defaults:
+  run:
+    working-directory: qcut
+
 jobs:
   # Extract version info once, share across jobs
   prepare:
@@ -19,6 +23,7 @@ jobs:
     steps:
       - name: Extract version info
         id: version
+        working-directory: .
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -58,19 +63,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('qcut/bun.lock', 'qcut/apps/web/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
 
       - name: Install dependencies
         run: bun install
 
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
+
       - name: Build web application
         run: bun run build
 
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
+
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -79,8 +93,8 @@ jobs:
         with:
           name: windows-build
           path: |
-            dist-electron/QCut*Setup*.exe
-            dist-electron/*.yml
+            qcut/dist-electron/QCut*Setup*.exe
+            qcut/dist-electron/*.yml
           if-no-files-found: error
 
   # macOS build
@@ -100,30 +114,58 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('qcut/bun.lock', 'qcut/apps/web/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
 
       - name: Install dependencies
         run: bun install
 
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
+
       - name: Build web application
         run: bun run build
 
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
+
+      - name: Generate macOS icon
+        run: |
+          brew install imagemagick
+          mkdir -p build/icon.iconset
+          # Extract largest image from ICO and resize to all required sizes
+          magick 'build/icon.ico[0]' -resize 16x16 -background none -gravity center -extent 16x16 build/icon.iconset/icon_16x16.png
+          magick 'build/icon.ico[0]' -resize 32x32 -background none -gravity center -extent 32x32 build/icon.iconset/icon_16x16@2x.png
+          magick 'build/icon.ico[0]' -resize 32x32 -background none -gravity center -extent 32x32 build/icon.iconset/icon_32x32.png
+          magick 'build/icon.ico[0]' -resize 64x64 -background none -gravity center -extent 64x64 build/icon.iconset/icon_32x32@2x.png
+          magick 'build/icon.ico[0]' -resize 128x128 -background none -gravity center -extent 128x128 build/icon.iconset/icon_128x128.png
+          magick 'build/icon.ico[0]' -resize 256x256 -background none -gravity center -extent 256x256 build/icon.iconset/icon_128x128@2x.png
+          magick 'build/icon.ico[0]' -resize 256x256 -background none -gravity center -extent 256x256 build/icon.iconset/icon_256x256.png
+          magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_256x256@2x.png
+          magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_512x512.png
+          magick 'build/icon.ico[0]' -resize 1024x1024 -background none -gravity center -extent 1024x1024 build/icon.iconset/icon_512x512@2x.png
+          iconutil -c icns build/icon.iconset -o build/icon.icns
+
       - name: Build Electron application
         run: |
-          npx electron-builder --mac -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          rm -rf dist-electron
+          npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USE_HARD_LINKS: false
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
           path: |
-            dist-electron/*.dmg
-            dist-electron/*.zip
-            dist-electron/*.yml
+            qcut/dist-electron/*.dmg
+            qcut/dist-electron/*.zip
+            qcut/dist-electron/*.yml
           if-no-files-found: error
 
   # Linux build
@@ -143,19 +185,35 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('qcut/bun.lock', 'qcut/apps/web/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
 
       - name: Install dependencies
         run: bun install
 
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
+
       - name: Build web application
         run: bun run build
 
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
+
+      - name: Generate Linux icons
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          mkdir -p build/icons
+          convert build/icon.ico[0] -resize 256x256 build/icons/256x256.png
+          convert build/icon.ico[0] -resize 512x512 build/icons/512x512.png
+
       - name: Build Electron application
         run: |
-          npx electron-builder --linux -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --linux --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -164,9 +222,9 @@ jobs:
         with:
           name: linux-build
           path: |
-            dist-electron/*.AppImage
-            dist-electron/*.deb
-            dist-electron/*.yml
+            qcut/dist-electron/*.AppImage
+            qcut/dist-electron/*.deb
+            qcut/dist-electron/*.yml
           if-no-files-found: error
 
   # Create release with all artifacts
@@ -180,9 +238,11 @@ jobs:
           path: artifacts
 
       - name: List artifacts
+        working-directory: .
         run: find artifacts -type f | head -50
 
       - name: Generate checksums
+        working-directory: .
         run: |
           cd artifacts
           find . -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" \) -exec sha256sum {} \; > SHA256SUMS.txt

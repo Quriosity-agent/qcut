@@ -224,8 +224,19 @@ export function setupSkillsIPC(): void {
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
 
+        // Skip known non-skill directories
+        if (entry.name === "input" || entry.name === "temp") continue;
+
         const skillFolder = path.join(skillsPath, entry.name);
         const skillMdPath = path.join(skillFolder, "Skill.md");
+
+        // Check if Skill.md exists before trying to load
+        try {
+          await fs.access(skillMdPath);
+        } catch {
+          // Not a skill directory, skip silently
+          continue;
+        }
 
         try {
           const content = await fs.readFile(skillMdPath, "utf-8");

@@ -3,13 +3,23 @@
  * Provides consistent logging across all Claude handlers
  */
 
-import electronLog from "electron-log";
+type LogLike = {
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+  debug?: (...args: unknown[]) => void;
+  log: (...args: unknown[]) => void;
+};
 
-type LogLike = Pick<
-  typeof electronLog,
-  "info" | "warn" | "error" | "debug" | "log"
->;
-const log: LogLike = electronLog;
+// Use try-catch for electron-log to handle packaged app scenarios
+let log: LogLike;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  log = require("electron-log");
+} catch {
+  // Fallback to console if electron-log is not available
+  log = console;
+}
 
 const PREFIX = "[Claude API]";
 
