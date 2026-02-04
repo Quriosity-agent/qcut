@@ -273,6 +273,7 @@ export function generateStickerOverlayFilter(
 ## Files Summary
 
 ### Modified Files
+
 | File | Purpose |
 |------|---------|
 | `apps/web/src/lib/stickers/sticker-export-helper.ts` | Add error logging, image preloading |
@@ -283,6 +284,7 @@ export function generateStickerOverlayFilter(
 | `apps/web/src/stores/stickers-overlay-store.ts` | Add timing utility |
 
 ### New Test Files
+
 | File | Purpose |
 |------|---------|
 | `apps/web/src/lib/__tests__/sticker-export-helper.test.ts` | Error handling tests |
