@@ -137,16 +137,17 @@ jobs:
         run: |
           brew install imagemagick
           mkdir -p build/icon.iconset
-          magick build/icon.ico -resize 16x16 build/icon.iconset/icon_16x16.png
-          magick build/icon.ico -resize 32x32 build/icon.iconset/icon_16x16@2x.png
-          magick build/icon.ico -resize 32x32 build/icon.iconset/icon_32x32.png
-          magick build/icon.ico -resize 64x64 build/icon.iconset/icon_32x32@2x.png
-          magick build/icon.ico -resize 128x128 build/icon.iconset/icon_128x128.png
-          magick build/icon.ico -resize 256x256 build/icon.iconset/icon_128x128@2x.png
-          magick build/icon.ico -resize 256x256 build/icon.iconset/icon_256x256.png
-          magick build/icon.ico -resize 512x512 build/icon.iconset/icon_256x256@2x.png
-          magick build/icon.ico -resize 512x512 build/icon.iconset/icon_512x512.png
-          magick build/icon.ico -resize 1024x1024 build/icon.iconset/icon_512x512@2x.png
+          # Extract largest image from ICO and resize to all required sizes
+          magick 'build/icon.ico[0]' -resize 16x16 -background none -gravity center -extent 16x16 build/icon.iconset/icon_16x16.png
+          magick 'build/icon.ico[0]' -resize 32x32 -background none -gravity center -extent 32x32 build/icon.iconset/icon_16x16@2x.png
+          magick 'build/icon.ico[0]' -resize 32x32 -background none -gravity center -extent 32x32 build/icon.iconset/icon_32x32.png
+          magick 'build/icon.ico[0]' -resize 64x64 -background none -gravity center -extent 64x64 build/icon.iconset/icon_32x32@2x.png
+          magick 'build/icon.ico[0]' -resize 128x128 -background none -gravity center -extent 128x128 build/icon.iconset/icon_128x128.png
+          magick 'build/icon.ico[0]' -resize 256x256 -background none -gravity center -extent 256x256 build/icon.iconset/icon_128x128@2x.png
+          magick 'build/icon.ico[0]' -resize 256x256 -background none -gravity center -extent 256x256 build/icon.iconset/icon_256x256.png
+          magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_256x256@2x.png
+          magick 'build/icon.ico[0]' -resize 512x512 -background none -gravity center -extent 512x512 build/icon.iconset/icon_512x512.png
+          magick 'build/icon.ico[0]' -resize 1024x1024 -background none -gravity center -extent 1024x1024 build/icon.iconset/icon_512x512@2x.png
           iconutil -c icns build/icon.iconset -o build/icon.icns
 
       - name: Build Electron application
@@ -203,9 +204,10 @@ jobs:
 
       - name: Generate Linux icons
         run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick
           mkdir -p build/icons
-          convert build/icon.ico -resize 256x256 build/icons/256x256.png
-          convert build/icon.ico -resize 512x512 build/icons/512x512.png
+          convert build/icon.ico[0] -resize 256x256 build/icons/256x256.png
+          convert build/icon.ico[0] -resize 512x512 build/icons/512x512.png
 
       - name: Build Electron application
         run: |
