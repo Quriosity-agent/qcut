@@ -235,7 +235,7 @@ export function getFFmpegPath(): string {
 }
 
 function getSystemFFmpegPaths(platform: string): string[] {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const homeDir = require("os").homedir();
 
   switch (platform) {
     case "win32":
@@ -292,8 +292,10 @@ function findFFmpegInWingetPaths(homeDir: string): string[] {
 }
 ```
 
+**Note:** The helper functions `findFFmpegInWinget()` and `findFileRecursive()` are reused from the existing implementation in `electron/ffmpeg/utils.ts`.
+
 **Regression Prevention:**
-- Keep existing `findFFmpegInWinget()` function unchanged
+- Keep existing `findFFmpegInWinget()` and `findFileRecursive()` functions unchanged
 - Windows case (`win32`) must include all existing paths: WinGet, Chocolatey, Scoop
 - Test on Windows: Verify FFmpeg is found via WinGet before and after changes
 - Test: `bun run electron:dev` → use video export → should work

@@ -171,14 +171,21 @@ export async function bundleComposition(
     const sourceCode = await fs.readFile(entryPath, "utf-8");
     const normalizedPath = entryPath.replace(/\\/g, "/");
 
-    // Check for default export
-    const hasDefaultExport = /export\s+default\s/.test(sourceCode);
+    // Check for default export (including re-exported default)
+    const hasDefaultExport =
+      /export\s+default\s/.test(sourceCode) ||
+      /export\s*\{\s*default\s*(?:as\s+\w+)?\s*\}\s*(?:from\s*["'][^"']+["'])?/.test(
+        sourceCode
+      );
     // Check for named export matching composition ID
     // Escape regex metacharacters in ID to prevent ReDoS
     const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const hasNamedExport = new RegExp(
-      `export\\s+(const|function|class)\\s+${escapedId}\\b`
-    ).test(sourceCode);
+    // Match direct exports (export const/function/class) and re-exports (export { Name })
+    const hasNamedExport =
+      new RegExp(
+        `export\\s+(const|function|class)\\s+${escapedId}\\b`
+      ).test(sourceCode) ||
+      new RegExp(`export\\s*\\{[^}]*\\b${escapedId}\\b[^}]*\\}`).test(sourceCode);
 
     log.debug(
       `${LOG_PREFIX} Export detection for ${id}: hasDefault=${hasDefaultExport}, hasNamed=${hasNamedExport}`
