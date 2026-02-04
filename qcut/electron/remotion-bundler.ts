@@ -172,9 +172,10 @@ export async function bundleComposition(
     const normalizedPath = entryPath.replace(/\\/g, "/");
 
     // Check for default export (including re-exported default)
+    // Note: "export { default as Foo }" is a named export, not a default export
     const hasDefaultExport =
       /export\s+default\s/.test(sourceCode) ||
-      /export\s*\{\s*default\s*(?:as\s+\w+)?\s*\}\s*(?:from\s*["'][^"']+["'])?/.test(
+      /export\s*\{\s*default\s*\}\s*(?:from\s*["'][^"']+["'])?/.test(
         sourceCode
       );
     // Check for named export matching composition ID
