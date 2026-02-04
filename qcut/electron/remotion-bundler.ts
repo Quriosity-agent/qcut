@@ -167,10 +167,15 @@ export async function bundleComposition(
     entryPath = foundPath;
     log.debug(`${LOG_PREFIX} Resolved entry: ${entryPath}`);
 
-    // Create a wrapper that exports the component as default
+    // Create a wrapper that handles both named and default exports
+    // Try named export first (matching composition ID), then fall back to default
+    const normalizedPath = entryPath.replace(/\\/g, "/");
     const wrapperCode = `
-      export * from "${entryPath.replace(/\\/g, "/")}";
-      import Component from "${entryPath.replace(/\\/g, "/")}";
+      export * from "${normalizedPath}";
+      import * as AllExports from "${normalizedPath}";
+
+      // Try named export matching composition ID, then 'default', then first function export
+      const Component = AllExports["${id}"] || AllExports.default || Object.values(AllExports).find(v => typeof v === 'function');
       export default Component;
     `;
 
