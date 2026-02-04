@@ -564,6 +564,7 @@ jobs:
 ## Files Summary
 
 ### Files to Modify
+
 | File | Line(s) | Change |
 |------|---------|--------|
 | `package.json` | 79 | Change output path to `dist-electron` |
@@ -576,6 +577,7 @@ jobs:
 | `docs/technical/guides/build-commands.md` | 86 | Update output path documentation |
 
 ### Files to Create
+
 | File | Purpose |
 |------|---------|
 | `build/icon.icns` | macOS app icon |
