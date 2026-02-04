@@ -84,7 +84,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -152,7 +152,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --mac -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -211,7 +211,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --linux -c.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --linux --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
