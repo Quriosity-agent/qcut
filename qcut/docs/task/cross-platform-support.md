@@ -167,9 +167,11 @@ electron/resources/
     }
   ],
   "desktop": {
-    "Name": "QCut AI Video Editor",
-    "Comment": "Open-source AI video editor",
-    "Categories": "AudioVideo;Video;AudioVideoEditing"
+    "entry": {
+      "Name": "QCut AI Video Editor",
+      "Comment": "Open-source AI video editor",
+      "Categories": "AudioVideo;Video;AudioVideoEditing"
+    }
   }
 }
 ```
