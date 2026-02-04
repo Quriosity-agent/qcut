@@ -227,8 +227,42 @@ export const test = base.extend<ElectronFixtures>({
       }
     });
 
+    // Capture page errors (like script loading failures)
+    page.on("pageerror", (error) => {
+      console.error(`[RENDERER PAGE ERROR] ${error.message}`);
+      console.error(error.stack);
+    });
+
+    // Capture request failures
+    page.on("requestfailed", (request) => {
+      console.error(
+        `[RENDERER REQUEST FAILED] ${request.url()} - ${request.failure()?.errorText}`
+      );
+    });
+
     // Wait for the app to be ready using proper state-based waiting
     await page.waitForLoadState("domcontentloaded");
+
+    // Wait for React to mount - check for root element to have content
+    try {
+      await page.waitForFunction(
+        () => {
+          const root = document.getElementById("root");
+          return root && root.children.length > 0;
+        },
+        { timeout: 30_000 }
+      );
+      console.log("✅ React app mounted successfully");
+    } catch (error) {
+      console.error("❌ React app failed to mount within 30s");
+      // Log page content for debugging
+      const html = await page.content();
+      console.log("Page HTML length:", html.length);
+      const bodyContent = await page.evaluate(
+        () => document.body?.innerHTML?.substring(0, 500) || "No body"
+      );
+      console.log("Body content preview:", bodyContent);
+    }
 
     // Clean up any leftover data from previous test runs BEFORE starting test
     await cleanupDatabase(page);

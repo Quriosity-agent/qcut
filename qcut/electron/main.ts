@@ -4,6 +4,7 @@ import {
   ipcMain,
   dialog,
   protocol,
+  net,
   session,
   shell,
   IpcMainInvokeEvent,
@@ -15,6 +16,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as http from "http";
 import * as os from "os";
+import { pathToFileURL } from "url";
 
 // Type definitions
 interface Logger {
@@ -357,57 +359,57 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Register custom protocol for serving static files
-  protocol.registerFileProtocol("app", (request, callback) => {
-    let url = request.url.replace("app://", "").replace("app:/", "");
+  // Determine base path based on whether app is packaged
+  const basePath = app.isPackaged
+    ? path.join(app.getAppPath(), "apps/web/dist")
+    : path.join(__dirname, "../../apps/web/dist");
 
-    // Clean up the URL
-    if (url.startsWith("./")) {
-      url = url.substring(2);
+  logger.log(`[Protocol] Base path: ${basePath}`);
+  logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
+
+  // Register custom protocol using the newer handle API for better ES module support
+  protocol.handle("app", (request) => {
+    let urlPath = request.url.slice("app://".length);
+
+    // Clean up the URL path
+    if (urlPath.startsWith("./")) {
+      urlPath = urlPath.substring(2);
     }
-    if (url.startsWith("/")) {
-      url = url.substring(1);
+    if (urlPath.startsWith("/")) {
+      urlPath = urlPath.substring(1);
     }
 
     // Default to index.html for root
-    if (!url || url === "") {
-      url = "index.html";
+    if (!urlPath || urlPath === "") {
+      urlPath = "index.html";
     }
 
-    // Determine base path based on whether app is packaged
-    const basePath = app.isPackaged
-      ? path.join(app.getAppPath(), "apps/web/dist")
-      : path.join(__dirname, "../../apps/web/dist");
-
     // Handle FFmpeg resources specifically
-    if (url.startsWith("ffmpeg/")) {
-      const filename = url.replace("ffmpeg/", "");
+    if (urlPath.startsWith("ffmpeg/")) {
+      const filename = urlPath.replace("ffmpeg/", "");
       // In production, FFmpeg files are in resources/ffmpeg/
       const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
 
       // Check if file exists in resources/ffmpeg, fallback to dist
       if (fs.existsSync(ffmpegPath)) {
-        callback({ path: ffmpegPath });
-        return;
+        return net.fetch(pathToFileURL(ffmpegPath).toString());
       }
 
       // Fallback to dist directory
       const distPath = path.join(basePath, "ffmpeg", filename);
-      callback({ path: distPath });
-    } else {
-      // Handle other resources
-      const filePath = path.join(basePath, url);
-      logger.log(
-        `[Protocol] Serving file: ${filePath} (exists: ${fs.existsSync(filePath)})`
-      );
-
-      if (fs.existsSync(filePath)) {
-        callback({ path: filePath });
-      } else {
-        logger.error(`[Protocol] File not found: ${filePath}`);
-        callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
-      }
+      return net.fetch(pathToFileURL(distPath).toString());
     }
+
+    // Handle other resources
+    const filePath = path.join(basePath, urlPath);
+
+    if (fs.existsSync(filePath)) {
+      logger.log(`[Protocol] Serving: ${urlPath} -> ${filePath}`);
+      return net.fetch(pathToFileURL(filePath).toString());
+    }
+
+    logger.error(`[Protocol] File not found: ${filePath}`);
+    return new Response("Not Found", { status: 404 });
   });
 
   // Start the static server to serve FFmpeg WASM files

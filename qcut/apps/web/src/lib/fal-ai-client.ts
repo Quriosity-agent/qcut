@@ -96,15 +96,24 @@ class FalAIClient {
 
   constructor() {
     // Try to get API key from environment variables first
-    this.apiKey =
-      import.meta.env.VITE_FAL_API_KEY ||
-      (typeof window !== "undefined" &&
-        (window as any).process?.env?.FAL_API_KEY) ||
-      null;
+    try {
+      this.apiKey =
+        import.meta.env.VITE_FAL_API_KEY ||
+        (typeof window !== "undefined" &&
+          (window as any).process?.env?.FAL_API_KEY) ||
+        null;
 
-    // If no env var, try Electron storage asynchronously
-    if (!this.apiKey) {
-      this.apiKeyInitPromise = this.initApiKeyFromElectron();
+      // If no env var, try Electron storage asynchronously
+      if (!this.apiKey) {
+        // Defer the async init to avoid issues during module loading
+        setTimeout(() => {
+          this.apiKeyInitPromise = this.initApiKeyFromElectron();
+        }, 0);
+      }
+    } catch (error) {
+      // Silently handle initialization errors during module loading
+      console.warn("[FalAIClient] Constructor error:", error);
+      this.apiKey = null;
     }
   }
 
