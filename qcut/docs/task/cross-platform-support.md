@@ -71,7 +71,7 @@ This document outlines the implementation plan to ensure QCut works consistently
 **Location:** `package.json:132-139`
 
 **Current directory structure (`electron/resources/`):**
-```
+```text
 electron/resources/
 ├── avcodec-62.dll      # Windows FFmpeg DLLs (~156MB total)
 ├── avdevice-62.dll
