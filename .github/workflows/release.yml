@@ -133,6 +133,22 @@ jobs:
       - name: Build afterPack script
         run: cd scripts && bunx tsc
 
+      - name: Generate macOS icon
+        run: |
+          brew install imagemagick
+          mkdir -p build/icon.iconset
+          magick build/icon.ico -resize 16x16 build/icon.iconset/icon_16x16.png
+          magick build/icon.ico -resize 32x32 build/icon.iconset/icon_16x16@2x.png
+          magick build/icon.ico -resize 32x32 build/icon.iconset/icon_32x32.png
+          magick build/icon.ico -resize 64x64 build/icon.iconset/icon_32x32@2x.png
+          magick build/icon.ico -resize 128x128 build/icon.iconset/icon_128x128.png
+          magick build/icon.ico -resize 256x256 build/icon.iconset/icon_128x128@2x.png
+          magick build/icon.ico -resize 256x256 build/icon.iconset/icon_256x256.png
+          magick build/icon.ico -resize 512x512 build/icon.iconset/icon_256x256@2x.png
+          magick build/icon.ico -resize 512x512 build/icon.iconset/icon_512x512.png
+          magick build/icon.ico -resize 1024x1024 build/icon.iconset/icon_512x512@2x.png
+          iconutil -c icns build/icon.iconset -o build/icon.icns
+
       - name: Build Electron application
         run: |
           npx electron-builder --mac -c.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -184,6 +200,12 @@ jobs:
 
       - name: Build afterPack script
         run: cd scripts && bunx tsc
+
+      - name: Generate Linux icons
+        run: |
+          mkdir -p build/icons
+          convert build/icon.ico -resize 256x256 build/icons/256x256.png
+          convert build/icon.ico -resize 512x512 build/icons/512x512.png
 
       - name: Build Electron application
         run: |
