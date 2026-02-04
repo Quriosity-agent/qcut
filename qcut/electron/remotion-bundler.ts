@@ -167,17 +167,50 @@ export async function bundleComposition(
     entryPath = foundPath;
     log.debug(`${LOG_PREFIX} Resolved entry: ${entryPath}`);
 
-    // Create a wrapper that handles both named and default exports
-    // Try named export first (matching composition ID), then fall back to default
+    // Read source file to detect export type
+    const sourceCode = await fs.readFile(entryPath, "utf-8");
     const normalizedPath = entryPath.replace(/\\/g, "/");
-    const wrapperCode = `
-      export * from "${normalizedPath}";
-      import * as AllExports from "${normalizedPath}";
 
-      // Try named export matching composition ID, then 'default', then first function export
-      const Component = AllExports["${id}"] || AllExports.default || Object.values(AllExports).find(v => typeof v === 'function');
-      export default Component;
-    `;
+    // Check for default export
+    const hasDefaultExport = /export\s+default\s/.test(sourceCode);
+    // Check for named export matching composition ID
+    const hasNamedExport = new RegExp(
+      `export\\s+(const|function|class)\\s+${id}\\b`
+    ).test(sourceCode);
+
+    log.debug(
+      `${LOG_PREFIX} Export detection for ${id}: hasDefault=${hasDefaultExport}, hasNamed=${hasNamedExport}`
+    );
+
+    // Generate wrapper based on detected export type
+    let wrapperCode: string;
+    if (hasNamedExport) {
+      // Use named import
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import { ${id} as Component } from "${normalizedPath}";
+        export default Component;
+      `;
+    } else if (hasDefaultExport) {
+      // Use default import
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import Component from "${normalizedPath}";
+        export default Component;
+      `;
+    } else {
+      // Fallback: import everything and try to find a component
+      // This handles cases like OnlyLogo -> Logo
+      const componentNameMatch = sourceCode.match(
+        /export\s+(?:const|function|class)\s+(\w+)/
+      );
+      const exportName = componentNameMatch?.[1] || id;
+      wrapperCode = `
+        export * from "${normalizedPath}";
+        import { ${exportName} as Component } from "${normalizedPath}";
+        export default Component;
+      `;
+    }
 
     // Bundle with esbuild
     const result = await esbuild.build({
