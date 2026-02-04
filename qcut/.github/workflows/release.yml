@@ -96,6 +96,7 @@ jobs:
           } else {
             Write-Host "No installer found in $buildDir"
             Get-ChildItem -Path $buildDir -Recurse | Select-Object FullName
+            exit 1
           }
 
       - name: Create GitHub Release
