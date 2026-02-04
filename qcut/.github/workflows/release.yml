@@ -39,9 +39,36 @@ jobs:
       - name: Build web application
         run: bun run build
 
+      - name: Extract version info
+        id: version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+          # Detect if prerelease (contains -alpha, -beta, or -rc)
+          if [[ "$VERSION" =~ -alpha|-beta|-rc ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Extract channel name for electron-builder
+          if [[ "$VERSION" =~ -alpha ]]; then
+            echo "CHANNEL=alpha" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" =~ -beta ]]; then
+            echo "CHANNEL=beta" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" =~ -rc ]]; then
+            echo "CHANNEL=rc" >> $GITHUB_OUTPUT
+          else
+            echo "CHANNEL=latest" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Detected: VERSION=$VERSION, IS_PRERELEASE=$([[ "$VERSION" =~ -alpha|-beta|-rc ]] && echo true || echo false)"
+
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false
+          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ steps.version.outputs.CHANNEL }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -71,20 +98,17 @@ jobs:
             Get-ChildItem -Path $buildDir -Recurse | Select-Object FullName
           }
 
-      - name: Extract version from tag
-        id: version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: QCut v${{ steps.version.outputs.VERSION }}
           draft: true
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE == 'true' }}
+          make_latest: ${{ steps.version.outputs.IS_PRERELEASE == 'false' }}
           generate_release_notes: true
           files: |
             ${{ env.BUILD_OUTPUT_DIR }}/QCut*Setup*.exe
             ${{ env.BUILD_OUTPUT_DIR }}/SHA256SUMS.txt
-            ${{ env.BUILD_OUTPUT_DIR }}/latest.yml
+            ${{ env.BUILD_OUTPUT_DIR }}/*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -28,6 +28,8 @@ interface AutoUpdater {
   checkForUpdatesAndNotify(): Promise<any>;
   on(event: string, listener: (...args: any[]) => void): void;
   quitAndInstall(): void;
+  allowPrerelease: boolean;
+  channel: string;
 }
 
 interface MimeTypeMap {
@@ -108,6 +110,20 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+/**
+ * Detect the update channel based on the app version
+ * - Versions with -alpha (e.g., 1.0.0-alpha.1) use the alpha channel
+ * - Versions with -beta (e.g., 1.0.0-beta.1) use the beta channel
+ * - Versions with -rc (e.g., 1.0.0-rc.1) use the rc channel
+ * - Stable versions (e.g., 1.0.0) use the latest channel
+ */
+function detectChannelFromVersion(version: string): string {
+  if (version.includes("-alpha")) return "alpha";
+  if (version.includes("-beta")) return "beta";
+  if (version.includes("-rc")) return "rc";
+  return "latest";
+}
+
 function setupAutoUpdater(): void {
   if (!autoUpdater) {
     logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
@@ -116,7 +132,31 @@ function setupAutoUpdater(): void {
 
   logger.log("🔄 [AutoUpdater] Setting up auto-updater...");
 
-  // Configure auto-updater settings
+  // Detect channel from app version and configure accordingly
+  const appVersion = app.getVersion();
+  const channel = detectChannelFromVersion(appVersion);
+
+  logger.log(
+    `🔄 [AutoUpdater] App version: ${appVersion}, Channel: ${channel}`
+  );
+
+  // Configure channel-specific behavior
+  if (channel !== "latest") {
+    // Prerelease users should receive prerelease updates
+    autoUpdater.allowPrerelease = true;
+    autoUpdater.channel = channel;
+    logger.log(
+      `🔄 [AutoUpdater] Configured for ${channel} channel with allowPrerelease=true`
+    );
+  } else {
+    // Stable users should NOT receive prereleases by default
+    autoUpdater.allowPrerelease = false;
+    logger.log(
+      "🔄 [AutoUpdater] Configured for stable channel (latest.yml)"
+    );
+  }
+
+  // Check for updates
   autoUpdater.checkForUpdatesAndNotify();
 
   // Auto-updater event handlers
