@@ -13,13 +13,43 @@ defaults:
     working-directory: qcut
 
 jobs:
-  build-and-release:
+  # Extract version info once, share across jobs
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      is_prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
+      channel: ${{ steps.version.outputs.CHANNEL }}
+    steps:
+      - name: Extract version info
+        id: version
+        working-directory: .
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+          if [[ "$VERSION" =~ -alpha|-beta|-rc ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ "$VERSION" =~ -alpha ]]; then
+            echo "CHANNEL=alpha" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" =~ -beta ]]; then
+            echo "CHANNEL=beta" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" =~ -rc ]]; then
+            echo "CHANNEL=rc" >> $GITHUB_OUTPUT
+          else
+            echo "CHANNEL=latest" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Detected: VERSION=$VERSION"
+
+  # Windows build
+  build-windows:
+    needs: prepare
     runs-on: windows-latest
-
-    env:
-      # Override the local build output path for CI
-      BUILD_OUTPUT_DIR: ${{ github.workspace }}/release-build
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,89 +70,148 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Generate route tree
-        run: cd apps/web && bunx @tanstack/router-cli generate
+      - name: Build web application
+        run: bun run build
+
+      - name: Build Electron application
+        run: |
+          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            qcut/dist-electron/QCut*Setup*.exe
+            qcut/dist-electron/*.yml
+          if-no-files-found: error
+
+  # macOS build
+  build-macos:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.18
+
+      - name: Cache Bun modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('qcut/bun.lock', 'qcut/apps/web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-1.2.18-
+
+      - name: Install dependencies
+        run: bun install
 
       - name: Build web application
         run: bun run build
 
-      - name: Build Electron scripts
-        run: bun run build:electron
-
-      - name: Build afterPack script
-        run: cd scripts && bunx tsc
-
-      - name: Extract version info
-        id: version
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-          # Detect if prerelease (contains -alpha, -beta, or -rc)
-          if [[ "$VERSION" =~ -alpha|-beta|-rc ]]; then
-            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
-          else
-            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Extract channel name for electron-builder
-          if [[ "$VERSION" =~ -alpha ]]; then
-            echo "CHANNEL=alpha" >> $GITHUB_OUTPUT
-          elif [[ "$VERSION" =~ -beta ]]; then
-            echo "CHANNEL=beta" >> $GITHUB_OUTPUT
-          elif [[ "$VERSION" =~ -rc ]]; then
-            echo "CHANNEL=rc" >> $GITHUB_OUTPUT
-          else
-            echo "CHANNEL=latest" >> $GITHUB_OUTPUT
-          fi
-
-          echo "Detected: VERSION=$VERSION, IS_PRERELEASE=$([[ "$VERSION" =~ -alpha|-beta|-rc ]] && echo true || echo false)"
-
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.directories.output="${{ env.BUILD_OUTPUT_DIR }}" --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false --config.publish.channel=${{ steps.version.outputs.CHANNEL }}
+          npx electron-builder --mac -c.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate checksums
-        shell: powershell
-        working-directory: ${{ github.workspace }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            qcut/dist-electron/*.dmg
+            qcut/dist-electron/*.zip
+            qcut/dist-electron/*.yml
+          if-no-files-found: error
+
+  # Linux build
+  build-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.18
+
+      - name: Cache Bun modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('qcut/bun.lock', 'qcut/apps/web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-1.2.18-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build web application
+        run: bun run build
+
+      - name: Build Electron application
         run: |
-          $buildDir = "${{ env.BUILD_OUTPUT_DIR }}"
-          $installer = Get-ChildItem -Path $buildDir -Filter "QCut*Setup*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($installer) {
-            $hash = Get-FileHash $installer.FullName -Algorithm SHA256
-            $content = @"
-          SHA256 Checksums for QCut ${{ github.ref_name }}
-          =================================
+          npx electron-builder --linux -c.publish.channel=${{ needs.prepare.outputs.channel }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          $($installer.Name)
-          SHA256: $($hash.Hash)
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            qcut/dist-electron/*.AppImage
+            qcut/dist-electron/*.deb
+            qcut/dist-electron/*.yml
+          if-no-files-found: error
 
-          Verification:
-          1. Download the installer
-          2. Run: certutil -hashfile "$($installer.Name)" SHA256
-          3. Compare with the hash above
-          "@
-            Set-Content -Path "$buildDir/SHA256SUMS.txt" -Value $content
-            Write-Host "Checksum generated for $($installer.Name)"
-          } else {
-            Write-Host "No installer found in $buildDir"
-            Get-ChildItem -Path $buildDir -Recurse | Select-Object FullName
-          }
+  # Create release with all artifacts
+  release:
+    needs: [prepare, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        working-directory: .
+        run: find artifacts -type f | head -50
+
+      - name: Generate checksums
+        working-directory: .
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" \) -exec sha256sum {} \; > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: QCut v${{ steps.version.outputs.VERSION }}
+          name: QCut v${{ needs.prepare.outputs.version }}
           draft: true
-          prerelease: ${{ steps.version.outputs.IS_PRERELEASE == 'true' }}
-          make_latest: ${{ steps.version.outputs.IS_PRERELEASE == 'false' }}
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          make_latest: ${{ needs.prepare.outputs.is_prerelease == 'false' }}
           generate_release_notes: true
           files: |
-            ${{ env.BUILD_OUTPUT_DIR }}/QCut*Setup*.exe
-            ${{ env.BUILD_OUTPUT_DIR }}/SHA256SUMS.txt
-            ${{ env.BUILD_OUTPUT_DIR }}/*.yml
+            artifacts/windows-build/QCut*Setup*.exe
+            artifacts/windows-build/*.yml
+            artifacts/macos-build/*.dmg
+            artifacts/macos-build/*.zip
+            artifacts/macos-build/*.yml
+            artifacts/linux-build/*.AppImage
+            artifacts/linux-build/*.deb
+            artifacts/linux-build/*.yml
+            artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
