@@ -102,16 +102,15 @@ export default defineConfig({
             return "vendor-ui";
           }
 
-          // Video/Media processing kept in main bundle to avoid dependency issues
-          // if (id.includes('@ffmpeg') || id.includes('ffmpeg')) {
-          //   return 'video-processing';
-          // }
+          // Video/Media processing - FFmpeg WASM modules
+          if (id.includes('@ffmpeg') || id.includes('ffmpeg')) {
+            return 'vendor-ffmpeg';
+          }
 
-          // AI Features kept in main bundle to avoid dependency issues
-          // if (id.includes('fal-ai-client') || id.includes('text2image-store') ||
-          //     id.includes('/ai.tsx') || id.includes('ai-client')) {
-          //   return 'ai-features';
-          // }
+          // AI Features - FAL.ai client
+          if (id.includes('@fal-ai/client') || id.includes('fal-ai')) {
+            return 'vendor-ai';
+          }
 
           // Export functionality kept in main bundle to avoid React component issues
           // if (id.includes('export-engine') || id.includes('export-dialog') ||

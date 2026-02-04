@@ -1,7 +1,28 @@
 import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { useProjectStore } from "./project-store";
+
+// Lazy import getters to avoid circular dependencies
+let _timelineStore: any = null;
+let _projectStore: any = null;
+
+const getTimelineStoreSync = () => {
+  if (!_timelineStore) {
+    // This will work because by the time playback starts, stores are loaded
+    import("@/stores/timeline-store").then(m => { _timelineStore = m.useTimelineStore; });
+  }
+  return _timelineStore;
+};
+
+const getProjectStoreSync = () => {
+  if (!_projectStore) {
+    import("./project-store").then(m => { _projectStore = m.useProjectStore; });
+  }
+  return _projectStore;
+};
+
+// Pre-initialize stores when module loads
+import("@/stores/timeline-store").then(m => { _timelineStore = m.useTimelineStore; });
+import("./project-store").then(m => { _projectStore = m.useProjectStore; });
 
 /**
  * Playback store interface combining state and control methods
@@ -38,13 +59,15 @@ const startTimer = (store: () => PlaybackStore) => {
       lastUpdate = now;
 
       const newTime = state.currentTime + delta * state.speed;
-      const projectFps = useProjectStore.getState().activeProject?.fps ?? 30;
+      const projectStore = getProjectStoreSync();
+      const timelineStore = getTimelineStoreSync();
+      const projectFps = projectStore?.getState().activeProject?.fps ?? 30;
       const frameNumber = Math.round(newTime * projectFps);
 
       // Get actual content duration from timeline store
-      const actualContentDuration = useTimelineStore
-        .getState()
-        .getTotalDuration();
+      const actualContentDuration = timelineStore
+        ?.getState()
+        .getTotalDuration() ?? state.duration;
 
       // Stop at actual content end, not timeline duration (which has 10s minimum)
       // It was either this or reducing default min timeline to 1 second
@@ -53,7 +76,7 @@ const startTimer = (store: () => PlaybackStore) => {
 
       if (newTime >= effectiveDuration) {
         // When content completes, pause just before the end so we can see the last frame
-        const projectFps = useProjectStore.getState().activeProject?.fps;
+        const projectFps = projectStore?.getState().activeProject?.fps;
         if (!projectFps) {
           // Project FPS is not set, assuming 30fps
         }

@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { debugLog, debugError } from "@/lib/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
-import { useTimelineStore } from "./timeline-store";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
 import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg-utils";
 import {
@@ -641,6 +640,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
     }));
 
     // 2) Cascade into the timeline: remove any elements using this media ID
+    // Use dynamic import to avoid circular dependency and improve code splitting
+    const { useTimelineStore } = await import("./timeline-store");
     const timeline = useTimelineStore.getState();
     const {
       tracks,

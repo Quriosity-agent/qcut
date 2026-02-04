@@ -1,10 +1,19 @@
 import { create } from "zustand";
 import { Scene } from "@/types/project";
-import { useProjectStore } from "./project-store";
-import { useTimelineStore } from "./timeline-store";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID } from "@/lib/utils";
 import type { SerializedScene } from "@/lib/storage/types";
+
+// Helper to get stores dynamically to avoid circular dependencies
+const getProjectStore = async () => {
+  const { useProjectStore } = await import("./project-store");
+  return useProjectStore;
+};
+
+const getTimelineStore = async () => {
+  const { useTimelineStore } = await import("./timeline-store");
+  return useTimelineStore;
+};
 
 export function getMainScene({ scenes }: { scenes: Scene[] }): Scene | null {
   return scenes.find((scene) => scene.isMain) || null;
@@ -84,6 +93,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     };
     const updatedScenes = [...scenes, newScene];
 
+    const useProjectStore = await getProjectStore();
     const projectStore = useProjectStore.getState();
     const { activeProject } = projectStore;
 
@@ -129,6 +139,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     }
 
     // Update project
+    const useProjectStore = await getProjectStore();
     const projectStore = useProjectStore.getState();
     const { activeProject } = projectStore;
 
@@ -156,6 +167,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
 
       // If we switched scenes, load the new scene's timeline
       if (newCurrentScene && newCurrentScene.id !== currentScene?.id) {
+        const useTimelineStore = await getTimelineStore();
         const timelineStore = useTimelineStore.getState();
         await timelineStore.loadProjectTimeline({
           projectId: activeProject.id,
@@ -175,6 +187,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     );
 
     // Update project
+    const useProjectStore = await getProjectStore();
     const projectStore = useProjectStore.getState();
     const { activeProject } = projectStore;
 
@@ -209,6 +222,8 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
       throw new Error("Scene not found");
     }
 
+    const useTimelineStore = await getTimelineStore();
+    const useProjectStore = await getProjectStore();
     const timelineStore = useTimelineStore.getState();
     const projectStore = useProjectStore.getState();
     const { activeProject } = projectStore;
@@ -320,6 +335,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
     });
 
     if (ensuredScenes.length > scenes.length) {
+      const useProjectStore = await getProjectStore();
       const projectStore = useProjectStore.getState();
       const { activeProject } = projectStore;
 

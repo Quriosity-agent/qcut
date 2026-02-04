@@ -92,6 +92,136 @@ export async function getProjectStore() {
 }
 
 /**
+ * Lazily loads the scene store when needed
+ * @returns Promise<useSceneStore> The scene store hook
+ */
+export async function getSceneStore() {
+  const cacheKey = "scene-store";
+
+  if (storeCache.has(cacheKey)) {
+    return storeCache.get(cacheKey);
+  }
+
+  try {
+    const { useSceneStore } = await import("@/stores/scene-store");
+    storeCache.set(cacheKey, useSceneStore);
+    return useSceneStore;
+  } catch (error) {
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load scene store",
+      error instanceof Error ? error : String(error)
+    );
+    const { useSceneStore } = await import("@/stores/scene-store");
+    return useSceneStore;
+  }
+}
+
+/**
+ * Lazily loads the stickers overlay store when needed
+ * @returns Promise<useStickersOverlayStore> The stickers overlay store hook
+ */
+export async function getStickersOverlayStore() {
+  const cacheKey = "stickers-overlay-store";
+
+  if (storeCache.has(cacheKey)) {
+    return storeCache.get(cacheKey);
+  }
+
+  try {
+    const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+    storeCache.set(cacheKey, useStickersOverlayStore);
+    return useStickersOverlayStore;
+  } catch (error) {
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load stickers overlay store",
+      error instanceof Error ? error : String(error)
+    );
+    const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+    return useStickersOverlayStore;
+  }
+}
+
+/**
+ * Lazily loads the playback store when needed
+ * @returns Promise<usePlaybackStore> The playback store hook
+ */
+export async function getPlaybackStore() {
+  const cacheKey = "playback-store";
+
+  if (storeCache.has(cacheKey)) {
+    return storeCache.get(cacheKey);
+  }
+
+  try {
+    const { usePlaybackStore } = await import("@/stores/playback-store");
+    storeCache.set(cacheKey, usePlaybackStore);
+    return usePlaybackStore;
+  } catch (error) {
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load playback store",
+      error instanceof Error ? error : String(error)
+    );
+    const { usePlaybackStore } = await import("@/stores/playback-store");
+    return usePlaybackStore;
+  }
+}
+
+/**
+ * Lazily loads the export store when needed
+ * @returns Promise<useExportStore> The export store hook
+ */
+export async function getExportStore() {
+  const cacheKey = "export-store";
+
+  if (storeCache.has(cacheKey)) {
+    return storeCache.get(cacheKey);
+  }
+
+  try {
+    const { useExportStore } = await import("@/stores/export-store");
+    storeCache.set(cacheKey, useExportStore);
+    return useExportStore;
+  } catch (error) {
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load export store",
+      error instanceof Error ? error : String(error)
+    );
+    const { useExportStore } = await import("@/stores/export-store");
+    return useExportStore;
+  }
+}
+
+/**
+ * Lazily loads the editor store when needed
+ * @returns Promise<useEditorStore> The editor store hook
+ */
+export async function getEditorStore() {
+  const cacheKey = "editor-store";
+
+  if (storeCache.has(cacheKey)) {
+    return storeCache.get(cacheKey);
+  }
+
+  try {
+    const { useEditorStore } = await import("@/stores/editor-store");
+    storeCache.set(cacheKey, useEditorStore);
+    return useEditorStore;
+  } catch (error) {
+    debugLogger.error(
+      "lazy-stores",
+      "Failed to lazy load editor store",
+      error instanceof Error ? error : String(error)
+    );
+    const { useEditorStore } = await import("@/stores/editor-store");
+    return useEditorStore;
+  }
+}
+
+/**
  * Preloads critical stores for better performance
  * Call this early in the application lifecycle
  */
