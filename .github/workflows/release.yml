@@ -76,6 +76,12 @@ jobs:
       - name: Build web application
         run: bun run build
 
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
+
       - name: Build Electron application
         run: |
           npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
@@ -120,6 +126,12 @@ jobs:
 
       - name: Build web application
         run: bun run build
+
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
 
       - name: Build Electron application
         run: |
@@ -166,6 +178,12 @@ jobs:
 
       - name: Build web application
         run: bun run build
+
+      - name: Build Electron scripts
+        run: bun run build:electron
+
+      - name: Build afterPack script
+        run: cd scripts && bunx tsc
 
       - name: Build Electron application
         run: |
