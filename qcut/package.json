@@ -2,7 +2,11 @@
   "name": "qcut",
   "version": "0.3.52",
   "description": "QCut - Open-source video editor",
-  "author": "QCut Team",
+  "author": {
+    "name": "QCut Team",
+    "email": "support@qcut.app"
+  },
+  "homepage": "https://github.com/donghaozhang/qcut",
   "main": "dist/electron/main.js",
   "packageManager": "bun@1.2.18",
   "devDependencies": {
@@ -231,6 +235,7 @@
     "linux": {
       "icon": "build/icons",
       "category": "Video",
+      "maintainer": "QCut Team <support@qcut.app>",
       "target": [
         {
           "target": "AppImage",
