@@ -107,6 +107,7 @@
         ]
       },
       "apps/web/dist/**/*",
+      "node_modules/electron-log/**/*",
       "node_modules/electron-updater/**/*",
       "node_modules/@google/generative-ai/**/*",
       "node_modules/node-pty/**/*",
