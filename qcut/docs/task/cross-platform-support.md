@@ -473,6 +473,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
+      - name: Install FFmpeg
+        run: choco install ffmpeg -y
       - run: bun install
       - run: bun run build
       - run: bun run dist:win
@@ -486,6 +488,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
+      - name: Install FFmpeg
+        run: brew install ffmpeg
       - run: bun install
       - run: bun run build
       - run: bun run dist:mac
@@ -499,13 +503,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bun install
       - run: bun run build
       - run: bun run dist:linux
       - uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist-electron/*.AppImage
+          path: |
+            dist-electron/*.AppImage
+            dist-electron/*.deb
 ```
 
 ---
