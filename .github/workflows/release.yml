@@ -150,16 +150,13 @@ jobs:
           magick 'build/icon.ico[0]' -resize 1024x1024 -background none -gravity center -extent 1024x1024 build/icon.iconset/icon_512x512@2x.png
           iconutil -c icns build/icon.iconset -o build/icon.icns
 
-      - name: Build Electron application (x64)
+      - name: Build Electron application
         run: |
           rm -rf dist-electron
-          npx electron-builder --mac --x64 --config.publish.channel=${{ needs.prepare.outputs.channel }}
+          npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Electron application (arm64)
-        run: |
-          npx electron-builder --mac --arm64 --config.publish.channel=${{ needs.prepare.outputs.channel }}
+          USE_HARD_LINKS: false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
