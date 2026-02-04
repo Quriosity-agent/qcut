@@ -20,17 +20,34 @@ This document outlines the implementation plan to ensure QCut works consistently
 
 ## Current State Analysis
 
-### Critical Issues
+### Issues Identified (Pre-Change Baseline)
 
-| Priority | Issue | Location | Impact |
-|----------|-------|----------|--------|
-| CRITICAL | Hardcoded Windows build path `d:/` | `package.json:79` | macOS/Linux builds fail |
-| CRITICAL | No macOS/Linux electron-builder configs | `package.json:167-199` | Cannot package for macOS/Linux |
-| HIGH | FFmpeg binary detection Windows-only | `electron/ffmpeg/utils.ts:77-132` | FFmpeg unavailable on macOS/Linux |
-| HIGH | Windows-only FFmpeg copy script | `scripts/copy-ffmpeg.ts:15-18` | Build skipped on macOS/Linux |
-| HIGH | extraResources filter only .exe/.dll | `package.json:136-139` | macOS/Linux binaries excluded |
-| MEDIUM | Missing macOS icon (.icns) | `build/` directory | macOS packaging fails |
-| MEDIUM | Missing Linux icons (PNG) | `build/` directory | Linux packaging incomplete |
+> **Note:** This table documents the issues as they existed before implementation. Most of these have been **resolved** in the `mac-support` branch. See "Implementation Status" below for current state.
+
+| Priority | Issue | Original Location | Impact | Status |
+|----------|-------|-------------------|--------|--------|
+| CRITICAL | Hardcoded Windows build path `d:/` | `package.json` build.directories.output | macOS/Linux builds fail | ✅ Fixed |
+| CRITICAL | No macOS/Linux electron-builder configs | `package.json` build section | Cannot package for macOS/Linux | ✅ Fixed |
+| HIGH | FFmpeg binary detection Windows-only | `electron/ffmpeg/utils.ts` getFFmpegPath() | FFmpeg unavailable on macOS/Linux | ✅ Fixed |
+| HIGH | Windows-only FFmpeg copy script | `scripts/copy-ffmpeg.ts` | Build skipped on macOS/Linux | ⏭️ By Design |
+| HIGH | extraResources filter only .exe/.dll | `package.json` build.extraResources | macOS/Linux binaries excluded | ✅ Fixed |
+| MEDIUM | Missing macOS icon (.icns) | `build/` directory | macOS packaging fails | 🔄 Pending |
+| MEDIUM | Missing Linux icons (PNG) | `build/` directory | Linux packaging incomplete | 🔄 Pending |
+
+### Implementation Status
+
+**Resolved:**
+- `package.json:86` - Output path changed to `"dist-electron"` (cross-platform relative path)
+- `package.json:212-250` - Added `mac` and `linux` electron-builder configurations
+- `electron/ffmpeg/utils.ts:83-199` - `getFFmpegPath()` now supports Windows, macOS, and Linux with platform-specific system paths
+- `package.json:144-149` - extraResources filter now includes `.dylib` (macOS), `.so` (Linux), and excludes `ffmpeg/` WebAssembly directory
+
+**By Design:**
+- `scripts/copy-ffmpeg.ts:15-18` - Exits on non-Windows because `package:win` is a Windows-specific electron-packager target. macOS/Linux use `electron-builder` (`dist:mac`, `dist:linux`) instead
+
+**Pending:**
+- macOS icon (`build/icon.icns`) - Requires generation from source PNG
+- Linux icons (`build/icons/*.png`) - Requires generation of multiple sizes
 
 ### What's Already Cross-Platform (No Changes Needed)
 
