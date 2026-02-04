@@ -182,11 +182,27 @@ export async function bundleComposition(
     // Escape regex metacharacters in ID to prevent ReDoS
     const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // Match direct exports (export const/function/class) and re-exports (export { Name })
-    const hasNamedExport =
-      new RegExp(
-        `export\\s+(const|function|class)\\s+${escapedId}\\b`
-      ).test(sourceCode) ||
-      new RegExp(`export\\s*\\{[^}]*\\b${escapedId}\\b[^}]*\\}`).test(sourceCode);
+    // For aliased exports like "export { Foo as Bar }", only match the exported name (Bar), not source (Foo)
+    const hasDirectNamedExport = new RegExp(
+      `export\\s+(const|function|class)\\s+${escapedId}\\b`
+    ).test(sourceCode);
+    const hasReExportedName = (() => {
+      for (const match of sourceCode.matchAll(/export\s*\{([^}]*)\}/g)) {
+        const specifiers = match[1].split(",");
+        for (const spec of specifiers) {
+          const trimmed = spec.trim();
+          if (!trimmed) continue;
+          // Handle "Foo as Bar" or just "Foo"
+          const parts = trimmed.split(/\s+as\s+/);
+          const exportedName = (parts[1] ?? parts[0])?.trim();
+          if (exportedName === id) {
+            return true;
+          }
+        }
+      }
+      return false;
+    })();
+    const hasNamedExport = hasDirectNamedExport || hasReExportedName;
 
     log.debug(
       `${LOG_PREFIX} Export detection for ${id}: hasDefault=${hasDefaultExport}, hasNamed=${hasNamedExport}`
