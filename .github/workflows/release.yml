@@ -46,6 +46,9 @@ jobs:
       - name: Build web application
         run: bun run build
 
+      - name: Build Electron scripts
+        run: bun run build:electron
+
       - name: Extract version info
         id: version
         shell: bash
