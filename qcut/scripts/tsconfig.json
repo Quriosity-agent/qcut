@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
     "outDir": "../dist/scripts",
     "rootDir": ".",
     "strict": true,
@@ -10,12 +11,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
     "allowJs": true,
     "types": ["node"],
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["**/*.ts"],
+  "include": ["afterPack.ts"],
   "exclude": ["node_modules", "dist"]
 }
