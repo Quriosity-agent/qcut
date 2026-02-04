@@ -206,10 +206,18 @@ export async function bundleComposition(
       const componentNameMatch = sourceCode.match(
         /export\s+(?:const|function|class)\s+(\w+)/
       );
-      const exportName = componentNameMatch?.[1] || id;
+      const extractedName = componentNameMatch?.[1];
+      // Validate that we have a proper JS identifier
+      if (!extractedName || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(extractedName)) {
+        return {
+          compositionId: id,
+          success: false,
+          error: `No valid exported component found in ${entryPath} for composition "${id}"`,
+        };
+      }
       wrapperCode = `
         export * from "${normalizedPath}";
-        import { ${exportName} as Component } from "${normalizedPath}";
+        import { ${extractedName} as Component } from "${normalizedPath}";
         export default Component;
       `;
     }
