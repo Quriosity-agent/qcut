@@ -174,8 +174,10 @@ export async function bundleComposition(
     // Check for default export
     const hasDefaultExport = /export\s+default\s/.test(sourceCode);
     // Check for named export matching composition ID
+    // Escape regex metacharacters in ID to prevent ReDoS
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const hasNamedExport = new RegExp(
-      `export\\s+(const|function|class)\\s+${id}\\b`
+      `export\\s+(const|function|class)\\s+${escapedId}\\b`
     ).test(sourceCode);
 
     log.debug(
