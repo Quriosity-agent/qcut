@@ -91,7 +91,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "qcut-team",
+      "owner": "donghaozhang",
       "repo": "qcut",
       "private": false,
       "releaseType": "release"
