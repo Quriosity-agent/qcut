@@ -70,6 +70,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
+
       - name: Build web application
         run: bun run build
 
@@ -111,6 +114,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
 
       - name: Build web application
         run: bun run build
@@ -154,6 +160,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Generate route tree
+        run: cd apps/web && bunx @tanstack/router-cli generate
 
       - name: Build web application
         run: bun run build
