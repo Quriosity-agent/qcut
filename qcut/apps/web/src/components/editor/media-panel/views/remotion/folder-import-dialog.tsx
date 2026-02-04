@@ -216,6 +216,7 @@ export function FolderImportDialog({
     async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      dragCounterRef.current = 0;
       setIsDragOver(false);
 
       if (!isAvailable) {

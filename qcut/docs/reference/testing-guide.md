@@ -4,7 +4,7 @@
 
 ```bash
 # Run all tests
-cd qcut/apps/web && bun run test
+cd apps/web && bun run test
 
 # Run with UI
 bun run test:ui

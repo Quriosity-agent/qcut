@@ -11,7 +11,7 @@ This file provides guidance to Claude Code when working with QCut.
 | Dev server | `bun dev` |
 | Electron dev | `bun run electron:dev` |
 | Electron prod | `bun run electron` |
-| Build | `bun build` |
+| Build | `bun run build` |
 | Lint (clean) | `bun lint:clean` |
 | Format | `bun format` |
 | Test | `bun run test` |

@@ -19,6 +19,7 @@ The QCut build produces a **3.8MB main bundle** due to:
 ## Current State Analysis
 
 ### Bundle Composition
+
 | Chunk | Size | Status |
 |-------|------|--------|
 | index.js (main) | 3,845 KB | Too large |
@@ -29,7 +30,7 @@ The QCut build produces a **3.8MB main bundle** due to:
 ### Root Cause: Circular Dependencies
 The stores have circular dependencies handled with mixed import patterns:
 
-```
+```text
 timeline-store ←→ project-store ←→ media-store
       ↓                ↓               ↓
    scene-store   stickers-store   storage-service

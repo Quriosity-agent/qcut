@@ -209,22 +209,19 @@ export function getFFmpegPath(): string {
   const platform = process.platform;
   const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
-  if (app.isPackaged) {
-    // Production: FFmpeg is in the app's resources folder
-    const resourcePath = path.join(process.resourcesPath, binaryName);
+  // Check bundled FFmpeg first (both dev and packaged)
+  const resourcePaths = app.isPackaged
+    ? [path.join(process.resourcesPath, binaryName)]
+    : [path.join(__dirname, "..", "resources", binaryName)];
+
+  for (const resourcePath of resourcePaths) {
     if (fs.existsSync(resourcePath)) {
+      debugLog("Found bundled FFmpeg at:", resourcePath);
       return resourcePath;
     }
-    throw new Error(`FFmpeg not found at: ${resourcePath}`);
   }
 
-  // Development: try bundled FFmpeg first
-  const devPath = path.join(__dirname, "..", "resources", binaryName);
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-
-  // Platform-specific system paths
+  // Fall back to platform-specific system paths
   const systemPaths = getSystemFFmpegPaths(platform);
   for (const searchPath of systemPaths) {
     if (fs.existsSync(searchPath)) {

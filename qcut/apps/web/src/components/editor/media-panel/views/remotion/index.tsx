@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderOpen, Layers, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -296,18 +296,6 @@ export function RemotionView() {
       initialize();
     }
   }, [isInitialized, isLoading]); // No initialize in deps - prevents infinite loop
-
-  // Debug: render counter to detect infinite loops
-  const renderCountRef = useRef(0);
-  renderCountRef.current++;
-  console.log(
-    `[RemotionView] Render #${renderCountRef.current} - components: ${allComponents.length}, isInitialized: ${isInitialized}, isLoading: ${isLoading}`
-  );
-
-  // Warn if too many renders (potential infinite loop)
-  if (renderCountRef.current > 10) {
-    console.warn("[RemotionView] WARNING: High render count detected!", renderCountRef.current);
-  }
 
   // Loading state
   if (isLoading) {
