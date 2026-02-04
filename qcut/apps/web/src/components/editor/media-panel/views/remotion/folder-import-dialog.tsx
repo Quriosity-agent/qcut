@@ -228,6 +228,11 @@ export function FolderImportDialog({
         return;
       }
 
+      // Prevent concurrent imports
+      if (isFolderImporting) {
+        return;
+      }
+
       // Get the dropped folder path (Electron provides .path on File objects)
       const files = e.dataTransfer.files;
       if (files.length === 0) return;
@@ -292,7 +297,7 @@ export function FolderImportDialog({
         });
       }
     },
-    [isAvailable, importFromFolder, onImportSuccess, handleOpenChange]
+    [isAvailable, isFolderImporting, importFromFolder, onImportSuccess, handleOpenChange]
   );
 
   // Handle folder selection and import
