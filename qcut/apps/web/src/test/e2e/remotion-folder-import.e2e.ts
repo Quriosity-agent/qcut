@@ -63,11 +63,10 @@ test.describe("Remotion Folder Import", () => {
 
       // Call validation IPC directly
       const validationResult = await page.evaluate(async (folderPath) => {
-        const api = (window as any).electronAPI;
-        if (!api?.remotionFolder?.validate) {
+        if (!window.electronAPI?.remotionFolder?.validate) {
           return { error: "remotionFolder API not available" };
         }
-        return await api.remotionFolder.validate(folderPath);
+        return await window.electronAPI.remotionFolder.validate(folderPath);
       }, VALID_PROJECT);
 
       // Should be valid
