@@ -12,8 +12,11 @@ import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
 
 // Lazy import getters to avoid circular dependencies
-let _timelineStore: any = null;
-let _projectStore: any = null;
+type TimelineStoreHook = typeof import("@/stores/timeline-store")["useTimelineStore"];
+type ProjectStoreHook = typeof import("./project-store")["useProjectStore"];
+
+let _timelineStore: TimelineStoreHook | null = null;
+let _projectStore: ProjectStoreHook | null = null;
 
 /**
  * Synchronously gets the timeline store reference.
@@ -23,7 +26,9 @@ let _projectStore: any = null;
 const getTimelineStoreSync = () => {
   if (!_timelineStore) {
     // This will work because by the time playback starts, stores are loaded
-    import("@/stores/timeline-store").then(m => { _timelineStore = m.useTimelineStore; });
+    import("@/stores/timeline-store")
+      .then(m => { _timelineStore = m.useTimelineStore; })
+      .catch(err => console.error("Failed to load timeline store:", err));
   }
   return _timelineStore;
 };
@@ -35,14 +40,20 @@ const getTimelineStoreSync = () => {
  */
 const getProjectStoreSync = () => {
   if (!_projectStore) {
-    import("./project-store").then(m => { _projectStore = m.useProjectStore; });
+    import("./project-store")
+      .then(m => { _projectStore = m.useProjectStore; })
+      .catch(err => console.error("Failed to load project store:", err));
   }
   return _projectStore;
 };
 
 // Pre-initialize stores when module loads
-import("@/stores/timeline-store").then(m => { _timelineStore = m.useTimelineStore; });
-import("./project-store").then(m => { _projectStore = m.useProjectStore; });
+import("@/stores/timeline-store")
+  .then(m => { _timelineStore = m.useTimelineStore; })
+  .catch(err => console.error("Failed to pre-load timeline store:", err));
+import("./project-store")
+  .then(m => { _projectStore = m.useProjectStore; })
+  .catch(err => console.error("Failed to pre-load project store:", err));
 
 /**
  * Playback store interface combining state and control methods

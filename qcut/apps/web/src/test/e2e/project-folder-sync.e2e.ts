@@ -931,10 +931,11 @@ test.describe("Project Folder Sync", () => {
     });
 
     /**
-     * Test 6.2: Error state displays correctly in UI
+     * Test 6.2: Component renders without crashing
+     * Verifies the project folder view loads and doesn't crash on render.
      */
-    test("should display error state in UI", async ({ page }) => {
-      await createTestProject(page, "Error Display Test");
+    test("should render project folder view without crashing", async ({ page }) => {
+      await createTestProject(page, "Render Stability Test");
 
       // Navigate to project folder view
       const projectTab = page.locator(
@@ -946,7 +947,6 @@ test.describe("Project Folder Sync", () => {
         await page.waitForTimeout(500);
 
         // The view should exist without crashing
-        // Even if there's an error, the component should render
         const view = page.locator('[data-testid="project-folder-view"]');
         const anyContent = page.locator("body");
 
