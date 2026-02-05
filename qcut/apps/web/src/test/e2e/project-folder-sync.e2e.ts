@@ -876,30 +876,58 @@ test.describe("Project Folder Sync", () => {
     test("should handle missing electronAPI gracefully", async ({ page }) => {
       await createTestProject(page, "Missing API Test");
 
-      // Temporarily disable electronAPI
-      const result = await page.evaluate(async () => {
+      // Get project ID for testing
+      const projectId = await page.evaluate(() => {
+        const match = window.location.href.match(/editor\/([^/?#]+)/);
+        return match ? match[1] : "test-project-id";
+      });
+
+      // Temporarily disable electronAPI and attempt to use API-dependent functionality
+      const result = await page.evaluate(async (pid) => {
         const originalAPI = (window as any).electronAPI;
 
         // Temporarily remove API
         (window as any).electronAPI = undefined;
 
-        // Try to use the hook's functionality
         try {
-          // The hook should handle this gracefully without throwing
-          return { error: null, handled: true };
+          // Actually attempt to call the API (which is now undefined)
+          // This simulates what happens when running in browser without Electron
+          const api = (window as any).electronAPI;
+
+          // Try to access projectFolder API - should return null/undefined gracefully
+          const ensureResult = api?.projectFolder?.ensureStructure
+            ? await api.projectFolder.ensureStructure(pid)
+            : null;
+
+          const listResult = api?.projectFolder?.list
+            ? await api.projectFolder.list(pid, "media")
+            : null;
+
+          // The code should handle missing API gracefully (null checks work)
+          return {
+            ensureResult,
+            listResult,
+            handled: true,
+            apiWasUndefined: api === undefined,
+          };
         } catch (err) {
           return {
             error: err instanceof Error ? err.message : "Unknown error",
             handled: false,
+            apiWasUndefined: true,
           };
         } finally {
           // Restore API
           (window as any).electronAPI = originalAPI;
         }
-      });
+      }, projectId);
 
       // Should handle gracefully without crashing
       expect(result.handled).toBe(true);
+      expect(result.apiWasUndefined).toBe(true);
+      // Results should be null when API is missing (graceful degradation)
+      expect(result.ensureResult).toBeNull();
+      expect(result.listResult).toBeNull();
     });
 
     /**

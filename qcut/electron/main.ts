@@ -393,10 +393,17 @@ app.whenReady().then(() => {
       urlPath = "index.html";
     }
 
+    // Security: Normalize path and block traversal attempts
+    const normalizedPath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
+    if (normalizedPath !== urlPath || normalizedPath.includes("..")) {
+      logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
+      return new Response("Not Found", { status: 404 });
+    }
+
     try {
       // Handle FFmpeg resources specifically
-      if (urlPath.startsWith("ffmpeg/")) {
-        const filename = urlPath.replace("ffmpeg/", "");
+      if (normalizedPath.startsWith("ffmpeg/")) {
+        const filename = normalizedPath.replace("ffmpeg/", "");
         // In production, FFmpeg files are in resources/ffmpeg/
         const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
 
@@ -410,18 +417,25 @@ app.whenReady().then(() => {
         return await net.fetch(pathToFileURL(distPath).toString());
       }
 
-      // Handle other resources
-      const filePath = path.join(basePath, urlPath);
+      // Handle other resources with path containment check
+      const filePath = path.resolve(basePath, normalizedPath);
+      const baseResolved = path.resolve(basePath) + path.sep;
+
+      // Ensure resolved path stays within basePath
+      if (!filePath.startsWith(baseResolved) && filePath !== path.resolve(basePath)) {
+        logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
+        return new Response("Not Found", { status: 404 });
+      }
 
       if (fs.existsSync(filePath)) {
-        logger.log(`[Protocol] Serving: ${urlPath} -> ${filePath}`);
+        logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
         return await net.fetch(pathToFileURL(filePath).toString());
       }
 
       logger.error(`[Protocol] File not found: ${filePath}`);
       return new Response("Not Found", { status: 404 });
     } catch (error) {
-      logger.error(`[Protocol] Error fetching ${urlPath}:`, error);
+      logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
       return new Response("Internal Server Error", { status: 500 });
     }
   });
