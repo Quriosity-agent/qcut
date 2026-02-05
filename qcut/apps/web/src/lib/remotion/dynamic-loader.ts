@@ -123,9 +123,9 @@ export function setupGlobalsForDynamicImport(): void {
     (window as any).Remotion = Remotion;
 
     globalsInitialized = true;
-    console.log("[DynamicLoader] ✅ Globals initialized for dynamic imports");
+    debugLog("[DynamicLoader] ✅ Globals initialized for dynamic imports");
   } catch (e) {
-    console.error("[DynamicLoader] Failed to setup globals:", e);
+    debugError("[DynamicLoader] Failed to setup globals:", e);
   }
 }
 
