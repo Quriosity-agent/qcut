@@ -70,6 +70,7 @@ qcut/
 
 - [Accessibility Rules](docs/reference/accessibility-rules.md) - 10 critical a11y rules
 - [Code Quality Rules](docs/reference/code-quality-rules.md) - 5 complexity rules
+- [Media Panel Reference](docs/technical/media-panel-reference.md) - All 20 editor panels documented
 
 **Core Principles**:
 - Write self-documenting code with clear naming
