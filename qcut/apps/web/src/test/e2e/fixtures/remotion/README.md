@@ -4,7 +4,7 @@ Test fixtures for Remotion folder import E2E tests.
 
 ## Directory Structure
 
-```
+```text
 remotion/
 ├── valid-project/          # Valid Remotion project with compositions
 │   ├── package.json        # Has remotion dependency
