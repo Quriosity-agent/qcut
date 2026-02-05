@@ -142,7 +142,7 @@ function updateOptionalGlobals(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).RemotionTransitions = RemotionTransitions;
 
-  console.log(
+  debugLog(
     "[DynamicLoader] ✅ Optional packages globals updated:",
     "zColor" in RemotionZodTypes ? "zColor available" : "zColor not available"
   );
