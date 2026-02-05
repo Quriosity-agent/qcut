@@ -223,7 +223,9 @@ export function setupRemotionFolderIPC(): void {
         // Validate directory exists
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {
-          console.log(`${LOG_PREFIX} ❌ Folder does not exist or is not a directory`);
+          console.log(
+            `${LOG_PREFIX} ❌ Folder does not exist or is not a directory`
+          );
           return {
             isValid: false,
             rootFilePath: null,
@@ -241,7 +243,9 @@ export function setupRemotionFolderIPC(): void {
           `${LOG_PREFIX} ✅ Scan complete: Found ${parseResult.compositions.length} composition(s)`
         );
         if (parseResult.compositions.length > 0) {
-          console.log(`${LOG_PREFIX} 📋 Compositions: ${parseResult.compositions.map(c => c.id).join(", ")}`);
+          console.log(
+            `${LOG_PREFIX} 📋 Compositions: ${parseResult.compositions.map((c) => c.id).join(", ")}`
+          );
         }
         log.info(
           `${LOG_PREFIX} Scan complete: ${parseResult.compositions.length} compositions found`
@@ -317,7 +321,9 @@ export function setupRemotionFolderIPC(): void {
           compositionsToBundle = compositionsToBundle.filter((c) =>
             compositionIds.includes(c.id)
           );
-          console.log(`${LOG_PREFIX} 🎯 Filtering to ${compositionsToBundle.length} composition(s)`);
+          console.log(
+            `${LOG_PREFIX} 🎯 Filtering to ${compositionsToBundle.length} composition(s)`
+          );
         }
 
         if (compositionsToBundle.length === 0) {
@@ -333,7 +339,9 @@ export function setupRemotionFolderIPC(): void {
         }
 
         // Bundle all compositions
-        console.log(`${LOG_PREFIX} ⚙️ Bundling ${compositionsToBundle.length} composition(s)...`);
+        console.log(
+          `${LOG_PREFIX} ⚙️ Bundling ${compositionsToBundle.length} composition(s)...`
+        );
         const bundleResult = await bundleCompositions(
           compositionsToBundle,
           folderPath
@@ -390,7 +398,9 @@ export function setupRemotionFolderIPC(): void {
 
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {
-          console.log(`${LOG_PREFIX} ❌ Folder does not exist or is not a directory`);
+          console.log(
+            `${LOG_PREFIX} ❌ Folder does not exist or is not a directory`
+          );
           scanResult.errors.push("Folder does not exist or is not a directory");
           return {
             success: false,
@@ -419,7 +429,9 @@ export function setupRemotionFolderIPC(): void {
           };
         }
 
-        console.log(`${LOG_PREFIX} ✅ Found ${parseResult.compositions.length} composition(s): ${parseResult.compositions.map(c => c.id).join(", ")}`);
+        console.log(
+          `${LOG_PREFIX} ✅ Found ${parseResult.compositions.length} composition(s): ${parseResult.compositions.map((c) => c.id).join(", ")}`
+        );
 
         // Step 2: Bundle all compositions
         console.log(`${LOG_PREFIX} 📦 Step 3/3: Bundling compositions...`);
@@ -439,9 +451,13 @@ export function setupRemotionFolderIPC(): void {
             errorCount: bundled.errorCount,
             folderPath,
           };
-          console.log(`${LOG_PREFIX} ✅ Bundled ${bundled.successCount} composition(s)`);
+          console.log(
+            `${LOG_PREFIX} ✅ Bundled ${bundled.successCount} composition(s)`
+          );
         } else if (!bundlerAvailable) {
-          console.log(`${LOG_PREFIX} ⚠️ esbuild not available, skipping bundling`);
+          console.log(
+            `${LOG_PREFIX} ⚠️ esbuild not available, skipping bundling`
+          );
         }
 
         const importTime = Date.now() - startTime;

@@ -31,7 +31,9 @@ async function loadOptionalPackages(): Promise<void> {
   try {
     // Load main transitions module
     const transitions = await import("@remotion/transitions");
-    RemotionTransitions = { ...(transitions as unknown as Record<string, unknown>) };
+    RemotionTransitions = {
+      ...(transitions as unknown as Record<string, unknown>),
+    };
 
     // Load individual transition submodules - must be static imports for Vite to bundle them
     // Each import is in its own try-catch so failures don't stop other imports
@@ -78,7 +80,10 @@ async function loadOptionalPackages(): Promise<void> {
       // none not available
     }
 
-    debugLog("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));
+    debugLog(
+      "[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:",
+      Object.keys(RemotionTransitions)
+    );
   } catch (e) {
     debugLog("[DynamicLoader] @remotion/transitions not available:", e);
   }

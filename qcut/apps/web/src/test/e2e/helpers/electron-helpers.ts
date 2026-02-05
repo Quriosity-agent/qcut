@@ -616,9 +616,11 @@ export async function addStickerToCanvas(
 
     // Wait for stickers panel to be visible
     const stickersPanel = page.locator('[data-testid="stickers-panel"]');
-    await stickersPanel.waitFor({ state: "visible", timeout: 5000 }).catch(() => {
-      console.warn("Stickers panel did not become visible");
-    });
+    await stickersPanel
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => {
+        console.warn("Stickers panel did not become visible");
+      });
 
     // Wait for sticker items to load (use "attached" like passing tests do)
     const stickerItems = page.locator('[data-testid="sticker-item"]');
@@ -643,7 +645,9 @@ export async function addStickerToCanvas(
       const firstSticker = stickerItems.first();
 
       // Ensure sticker is visible before dragging
-      await firstSticker.waitFor({ state: "visible", timeout: 3000 }).catch(() => null);
+      await firstSticker
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => null);
 
       await firstSticker.dragTo(stickerCanvas, {
         force: true,

@@ -406,7 +406,10 @@ export function RemotionView() {
               ))}
             </TabsList>
 
-            <TabsContent value="all" className="flex-1 mt-0 min-h-0 overflow-hidden">
+            <TabsContent
+              value="all"
+              className="flex-1 mt-0 min-h-0 overflow-hidden"
+            >
               <ScrollArea className="h-full">
                 <div className="p-3 space-y-6">
                   {CATEGORY_ORDER.map((category) => (

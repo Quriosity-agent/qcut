@@ -241,9 +241,7 @@ function extractIdentifierProp(propValue: string): string | null {
  * Resolve a component path, handling directories with index files.
  * Returns the actual file path or null if not found.
  */
-async function resolveComponentPath(
-  basePath: string
-): Promise<string | null> {
+async function resolveComponentPath(basePath: string): Promise<string | null> {
   const extensions = [".tsx", ".ts", ".jsx", ".js"];
   const indexFiles = ["index.tsx", "index.ts", "index.jsx", "index.js"];
 
@@ -362,7 +360,9 @@ async function parseCompositions(
       } else {
         // Fallback: use base path with .tsx extension
         componentPath = basePath + ".tsx";
-        log.warn(`${LOG_PREFIX} Could not resolve ${importPath}, using ${componentPath}`);
+        log.warn(
+          `${LOG_PREFIX} Could not resolve ${importPath}, using ${componentPath}`
+        );
       }
     } else if (componentImport) {
       // External package import - component defined elsewhere

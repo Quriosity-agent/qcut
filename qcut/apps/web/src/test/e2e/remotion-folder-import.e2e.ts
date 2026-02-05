@@ -175,7 +175,7 @@ test.describe("Remotion Folder Import", () => {
       await captureTestStep(page, "remotion-import", 2, "before-scan");
 
       const scanResult = await page.evaluate(async (folderPath) => {
-        const api = (window as Window & { electronAPI?: { remotionFolder?: { scan: (path: string) => Promise<{ isValid: boolean; compositions: Array<{ id: string }>; errors: string[] }> } } }).electronAPI;
+        const api = (window as any).electronAPI;
         if (!api?.remotionFolder?.scan) {
           return { error: "remotionFolder API not available" } as const;
         }
@@ -194,15 +194,18 @@ test.describe("Remotion Folder Import", () => {
         expect(scanResult.compositions.length).toBe(2);
 
         // Verify composition metadata
-        const compositionIds = scanResult.compositions.map(
-          (c) => c.id
-        );
+        const compositionIds = scanResult.compositions.map((c) => c.id);
         expect(compositionIds).toContain("HelloWorld");
         expect(compositionIds).toContain("TestAnimation");
       }
 
       // Capture after scan
-      await captureTestStep(page, "remotion-import", 3, "compositions-detected");
+      await captureTestStep(
+        page,
+        "remotion-import",
+        3,
+        "compositions-detected"
+      );
     });
 
     /**
@@ -265,8 +268,7 @@ test.describe("Remotion Folder Import", () => {
         expect(scanResult.isValid).toBe(false);
         // Should have empty compositions or errors
         expect(
-          scanResult.compositions?.length === 0 ||
-            scanResult.errors?.length > 0
+          scanResult.compositions?.length === 0 || scanResult.errors?.length > 0
         ).toBe(true);
       }
     });
@@ -442,7 +444,9 @@ test.describe("Remotion Folder Import", () => {
       // Verify key editor elements are present
       const editorElements = await page.evaluate(() => {
         return {
-          hasTimeline: !!document.querySelector('[data-testid="timeline-track"]'),
+          hasTimeline: !!document.querySelector(
+            '[data-testid="timeline-track"]'
+          ),
           hasMediaPanel: !!document.querySelector(
             '[data-testid="media-panel"], [data-testid="import-media-button"]'
           ),
@@ -467,7 +471,8 @@ test.describe("Remotion Folder Import", () => {
         // Check for Zustand devtools or store availability
         const windowAny = window as any;
         return {
-          hasZustand: typeof windowAny.__ZUSTAND_DEVTOOLS__ !== "undefined" ||
+          hasZustand:
+            typeof windowAny.__ZUSTAND_DEVTOOLS__ !== "undefined" ||
             typeof windowAny.useRemotionStore !== "undefined",
         };
       });
@@ -537,7 +542,10 @@ test.describe("Remotion Folder Import", () => {
 
   // Skip these tests if REMOTION_PROJECT_PATH env var is not set
   test.describe("Real Remotion Project Debug", () => {
-    test.skip(!REAL_REMOTION_PROJECT, "Skipping: REMOTION_PROJECT_PATH env var not set");
+    test.skip(
+      !REAL_REMOTION_PROJECT,
+      "Skipping: REMOTION_PROJECT_PATH env var not set"
+    );
     /**
      * Test 7.1: Debug import of real Remotion project folder
      * Uses c:\Users\zdhpe\Desktop\remotion to test actual folder import
@@ -567,7 +575,10 @@ test.describe("Remotion Folder Import", () => {
         const api = (window as any).electronAPI;
         return await api.remotionFolder.validate(folderPath);
       }, REAL_REMOTION_PROJECT);
-      console.log("Validation Result:", JSON.stringify(validationResult, null, 2));
+      console.log(
+        "Validation Result:",
+        JSON.stringify(validationResult, null, 2)
+      );
       await captureTestStep(page, "real-debug", 1, "validation-result");
 
       // Step 3: Scan folder
@@ -601,7 +612,10 @@ test.describe("Remotion Folder Import", () => {
       console.log("  importTime:", importResult.importTime, "ms");
       if (importResult.scan) {
         console.log("  scan.isValid:", importResult.scan.isValid);
-        console.log("  scan.compositions:", importResult.scan.compositions?.length);
+        console.log(
+          "  scan.compositions:",
+          importResult.scan.compositions?.length
+        );
       }
       if (importResult.bundle) {
         console.log("  bundle.success:", importResult.bundle.success);
@@ -609,7 +623,9 @@ test.describe("Remotion Folder Import", () => {
         console.log("  bundle.errorCount:", importResult.bundle.errorCount);
         if (importResult.bundle.results) {
           for (const result of importResult.bundle.results) {
-            console.log(`    - ${result.compositionId}: ${result.success ? "✅" : "❌"} ${result.error || ""}`);
+            console.log(
+              `    - ${result.compositionId}: ${result.success ? "✅" : "❌"} ${result.error || ""}`
+            );
             if (result.code) {
               console.log(`      Code length: ${result.code.length} bytes`);
             }
@@ -704,21 +720,28 @@ test.describe("Remotion Folder Import", () => {
         console.log(`  Component Path: ${comp.componentPath}`);
         console.log(`  Import Path: ${comp.importPath}`);
         console.log(`  Dimensions: ${comp.width}x${comp.height}`);
-        console.log(`  Duration: ${comp.durationInFrames} frames @ ${comp.fps}fps`);
+        console.log(
+          `  Duration: ${comp.durationInFrames} frames @ ${comp.fps}fps`
+        );
         console.log(`  Line: ${comp.line}`);
 
         // Try to bundle just this composition
-        const bundleResult = await page.evaluate(async ({ folderPath, compIds }) => {
-          const api = (window as any).electronAPI;
-          if (!api?.remotionFolder?.bundle) {
-            return { error: "API not available" };
-          }
-          return await api.remotionFolder.bundle(folderPath, compIds);
-        }, { folderPath: REAL_REMOTION_PROJECT, compIds: [comp.id] });
+        const bundleResult = await page.evaluate(
+          async ({ folderPath, compIds }) => {
+            const api = (window as any).electronAPI;
+            if (!api?.remotionFolder?.bundle) {
+              return { error: "API not available" };
+            }
+            return await api.remotionFolder.bundle(folderPath, compIds);
+          },
+          { folderPath: REAL_REMOTION_PROJECT, compIds: [comp.id] }
+        );
 
         if (bundleResult.results?.[0]) {
           const result = bundleResult.results[0];
-          console.log(`  Bundle: ${result.success ? "✅ Success" : "❌ Failed"}`);
+          console.log(
+            `  Bundle: ${result.success ? "✅ Success" : "❌ Failed"}`
+          );
           if (result.error) {
             console.log(`  Error: ${result.error}`);
           }

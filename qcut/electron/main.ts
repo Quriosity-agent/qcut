@@ -1221,7 +1221,10 @@ app.whenReady().then(() => {
         if (error.code === "ENOENT") return null;
         // Handle JSON parse errors gracefully
         if (error instanceof SyntaxError) {
-          console.error(`[Storage] Corrupted JSON file for key "${key}":`, error.message);
+          console.error(
+            `[Storage] Corrupted JSON file for key "${key}":`,
+            error.message
+          );
           return null;
         }
         throw error;

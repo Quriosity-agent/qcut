@@ -47,15 +47,11 @@ test.describe("Sticker Overlay Export Tests", () => {
     await timelineTrack.hover();
     await page.mouse.up();
 
-    // Wait for timeline element to appear
-    await page
-      .waitForSelector('[data-testid="timeline-element"]', {
-        state: "visible",
-        timeout: 10_000,
-      })
-      .catch(() => {
-        // Timeline element not visible after drag - continuing
-      });
+    // Wait for timeline element to appear (fail immediately if not visible)
+    await page.waitForSelector('[data-testid="timeline-element"]', {
+      state: "visible",
+      timeout: 10_000,
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -354,9 +350,7 @@ test.describe("Sticker Overlay Export Tests", () => {
    * Test 4.2: Multiple stickers are processed during export
    * Verifies that adding multiple stickers results in sticker processing logs
    */
-  test("should process multiple stickers during export", async ({
-    page,
-  }) => {
+  test("should process multiple stickers during export", async ({ page }) => {
     // Collect console messages
     const consoleMessages: string[] = [];
     page.on("console", (msg) => {
@@ -537,9 +531,7 @@ test.describe("Sticker Overlay Export Tests", () => {
    * Note: This test verifies stickers remain in DOM during auto-save cycle,
    * not persistence across page reload (which would require navigation helpers).
    */
-  test("should preserve stickers during auto-save cycle", async ({
-    page,
-  }) => {
+  test("should preserve stickers during auto-save cycle", async ({ page }) => {
     // Add sticker to canvas
     const stickerAdded = await addStickerToCanvas(page);
     if (!stickerAdded) {
