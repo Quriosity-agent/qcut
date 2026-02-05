@@ -7,8 +7,52 @@
  * @module lib/remotion/dynamic-loader
  */
 
-import type React from "react";
+import * as React from "react";
+import * as Remotion from "remotion";
 import { debugLog, debugError } from "@/lib/debug-config";
+
+// ============================================================================
+// Global Setup for Dynamic Imports
+// ============================================================================
+
+/** Flag to track if globals have been initialized */
+let globalsInitialized = false;
+
+/**
+ * Ensure React and Remotion are available as globals for dynamic imports.
+ * Must be called once before any loadBundledComponent() calls.
+ *
+ * Blob URL imports cannot resolve bare specifiers like "react" or "remotion",
+ * so we make these available as globals that the wrapped code can reference.
+ */
+export function setupGlobalsForDynamicImport(): void {
+  if (typeof window === "undefined") return;
+  if (globalsInitialized) return;
+
+  try {
+    // Make React available globally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).React = React;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).ReactJSXRuntime = {
+      jsx: React.createElement,
+      jsxs: React.createElement,
+      Fragment: React.Fragment,
+    };
+
+    // Make Remotion available globally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Remotion = Remotion;
+
+    globalsInitialized = true;
+    console.log("[DynamicLoader] ✅ Globals initialized for dynamic imports");
+  } catch (e) {
+    console.error("[DynamicLoader] Failed to setup globals:", e);
+  }
+}
+
+// Initialize globals on module load
+setupGlobalsForDynamicImport();
 
 // ============================================================================
 // Types
@@ -212,21 +256,91 @@ export async function loadBundledComponent(
  * The bundled code has React/Remotion as externals, so we need to
  * make them available in the module scope.
  *
+ * esbuild produces ESM code with imports like:
+ *   import { useCurrentFrame } from "remotion";
+ *   import * as React from "react";
+ *
+ * Since blob URLs cannot resolve bare specifiers, we need to:
+ * 1. Remove the external import statements
+ * 2. Provide the dependencies from globals set up by setupGlobalsForDynamicImport()
+ *
  * @param bundledCode - The original bundled code
  * @returns Wrapped code with dependency injection
  */
 function wrapBundledCode(bundledCode: string): string {
-  // The bundled code expects to import from "react", "remotion", etc.
-  // Since these are external, we need to provide them as globals.
-  // This wrapper creates a module that exports the same interface.
+  // Ensure globals are available
+  setupGlobalsForDynamicImport();
 
-  // For ESM bundles, we can use import maps or inject the globals
-  // Since we're running in a browser context where React is already loaded,
-  // we rely on the bundler having marked these as external
+  // Preamble that provides React and Remotion from globals
+  const preamble = `
+// Injected by dynamic-loader: provide React/Remotion from globals
+const React = globalThis.React || window.React;
+const { useState, useEffect, useCallback, useMemo, useRef, useContext, useReducer, useLayoutEffect, Fragment, createElement, forwardRef, memo, lazy, Suspense, createContext, Children, cloneElement, isValidElement, Component, PureComponent } = React;
+const ReactJSXRuntime = globalThis.ReactJSXRuntime || window.ReactJSXRuntime || { jsx: React.createElement, jsxs: React.createElement, Fragment: React.Fragment };
+const { jsx, jsxs } = ReactJSXRuntime;
 
-  // If the bundle uses bare import specifiers that won't resolve,
-  // we could transform them here. For now, assume esbuild handles this.
-  return bundledCode;
+// Remotion exports
+const Remotion = globalThis.Remotion || window.Remotion || {};
+const { useCurrentFrame, useVideoConfig, AbsoluteFill, Sequence, Series, Audio, Video, Img, staticFile, interpolate, spring, Easing, continueRender, delayRender, random, measureSpring, Loop, Composition, Still, getInputProps, OffthreadVideo, useFrameRange, interpolateColors } = Remotion;
+`;
+
+  // Remove external import statements from the bundled code
+  // These patterns match what esbuild produces with external: ["react", "remotion", ...]
+  let transformed = bundledCode;
+
+  // Remove React imports (various forms)
+  transformed = transformed.replace(
+    /import\s+\*\s+as\s+\w+\s+from\s*["']react["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s+\w+\s+from\s*["']react["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s*\{[^}]*\}\s*from\s*["']react["'];?\n?/g,
+    ""
+  );
+
+  // Remove react/jsx-runtime imports
+  transformed = transformed.replace(
+    /import\s*\{[^}]*\}\s*from\s*["']react\/jsx-runtime["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s*\{[^}]*\}\s*from\s*["']react\/jsx-dev-runtime["'];?\n?/g,
+    ""
+  );
+
+  // Remove Remotion imports (various forms)
+  transformed = transformed.replace(
+    /import\s+\*\s+as\s+\w+\s+from\s*["']remotion["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s+\w+\s+from\s*["']remotion["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s*\{[^}]*\}\s*from\s*["']remotion["'];?\n?/g,
+    ""
+  );
+
+  // Remove @remotion/* imports
+  transformed = transformed.replace(
+    /import\s*\{[^}]*\}\s*from\s*["']@remotion\/[^"']+["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s+\*\s+as\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
+    ""
+  );
+  transformed = transformed.replace(
+    /import\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
+    ""
+  );
+
+  return preamble + transformed;
 }
 
 /**
@@ -329,4 +443,5 @@ export default {
   clearComponentCache,
   getCacheStats,
   cleanupDynamicLoader,
+  setupGlobalsForDynamicImport,
 };
