@@ -1,3 +1,12 @@
+/**
+ * Electron Main Process
+ *
+ * Entry point for the QCut desktop application. Handles window management,
+ * IPC communication, protocol registration, and integration with system features.
+ *
+ * @module electron/main
+ */
+
 import {
   app,
   BrowserWindow,

@@ -1,3 +1,12 @@
+/**
+ * FAL.ai Service
+ *
+ * Service layer for FAL.ai image generation and editing operations.
+ * Uses direct HTTP requests to avoid @fal-ai/client initialization issues in Electron.
+ *
+ * @module services/ai/fal-ai-service
+ */
+
 import type {
   FalAiTextToImageInput,
   FalAiImageEditInput,
@@ -6,7 +15,7 @@ import { getFalApiKeyAsync } from "@/lib/ai-video/core/fal-request";
 
 const FAL_API_BASE = "https://fal.run";
 
-// FAL API response types
+/** FAL API response structure */
 type FalApiResponse = {
   images?: { url: string }[];
   data?: {
@@ -16,7 +25,11 @@ type FalApiResponse = {
   };
 };
 
-// Type guard for FAL API response validation
+/**
+ * Type guard for validating FAL API response structure.
+ * @param response - The unknown response to validate
+ * @returns True if response matches FalApiResponse shape
+ */
 const isFalApiResponse = (response: unknown): response is FalApiResponse => {
   if (typeof response !== "object" || response === null) {
     return false;

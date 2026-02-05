@@ -1,3 +1,13 @@
+/**
+ * FAL.ai Client
+ *
+ * HTTP client for interacting with FAL.ai image and video generation APIs.
+ * Supports multiple model versions (V3, V4, Flux, etc.) and handles
+ * API key management from both environment variables and Electron storage.
+ *
+ * @module lib/fal-ai-client
+ */
+
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
 import { debugLogger } from "./debug-logger";
 import {
@@ -89,11 +99,17 @@ const FAL_LOG_COMPONENT = "FalAIClient";
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
 
+/**
+ * Client for FAL.ai image and video generation APIs.
+ * Handles authentication, request building, and response parsing
+ * for various AI models including Flux, SDXL, and video generation models.
+ */
 class FalAIClient {
   private apiKey: string | null = null;
   private baseUrl = "https://fal.run";
   private apiKeyInitPromise: Promise<void> | null = null;
 
+  /** Creates a new FAL.ai client instance and initializes API key */
   constructor() {
     // Try to get API key from environment variables first
     try {
@@ -160,6 +176,13 @@ class FalAIClient {
     return this.apiKey;
   }
 
+  /**
+   * Makes an authenticated HTTP request to the FAL.ai API.
+   * @param endpoint - The API endpoint URL or path
+   * @param params - Request parameters to send as JSON body
+   * @returns The parsed API response
+   * @throws Error if API key is missing or request fails
+   */
   private async makeRequest<T = FalImageResponse>(
     endpoint: string,
     params: Record<string, unknown>

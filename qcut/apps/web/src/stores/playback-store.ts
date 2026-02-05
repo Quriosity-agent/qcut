@@ -1,3 +1,13 @@
+/**
+ * Playback Store
+ *
+ * Manages video playback state and controls for the timeline editor.
+ * Handles play/pause, seeking, volume, speed, and synchronization
+ * with video elements via custom events.
+ *
+ * @module stores/playback-store
+ */
+
 import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
 
@@ -5,6 +15,11 @@ import type { PlaybackState, PlaybackControls } from "@/types/playback";
 let _timelineStore: any = null;
 let _projectStore: any = null;
 
+/**
+ * Synchronously gets the timeline store reference.
+ * Triggers async import on first call; returns cached value on subsequent calls.
+ * @returns The timeline store hook or null if not yet loaded
+ */
 const getTimelineStoreSync = () => {
   if (!_timelineStore) {
     // This will work because by the time playback starts, stores are loaded
@@ -13,6 +28,11 @@ const getTimelineStoreSync = () => {
   return _timelineStore;
 };
 
+/**
+ * Synchronously gets the project store reference.
+ * Triggers async import on first call; returns cached value on subsequent calls.
+ * @returns The project store hook or null if not yet loaded
+ */
 const getProjectStoreSync = () => {
   if (!_projectStore) {
     import("./project-store").then(m => { _projectStore = m.useProjectStore; });
@@ -116,6 +136,10 @@ const startTimer = (store: () => PlaybackStore) => {
   playbackTimer = requestAnimationFrame(updateTime);
 };
 
+/**
+ * Stops the playback timer and cleans up the animation frame.
+ * Called when playback is paused or the component unmounts.
+ */
 const stopTimer = () => {
   if (playbackTimer) {
     cancelAnimationFrame(playbackTimer);
