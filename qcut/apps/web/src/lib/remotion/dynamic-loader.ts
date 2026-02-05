@@ -15,26 +15,31 @@ import { debugLog, debugError } from "@/lib/debug-config";
 let RemotionZodTypes: Record<string, unknown> = {};
 let RemotionTransitions: Record<string, unknown> = {};
 
+/** Promise that resolves when optional packages are loaded */
+let optionalPackagesLoaded: Promise<void> | null = null;
+
 // Try to load optional packages (won't fail build if missing)
 async function loadOptionalPackages(): Promise<void> {
   try {
     const zodTypes = await import("@remotion/zod-types");
     RemotionZodTypes = zodTypes as unknown as Record<string, unknown>;
-  } catch {
-    // Package not available - compositions using zColor will fail
+    console.log("[DynamicLoader] ✅ Loaded @remotion/zod-types");
+  } catch (e) {
+    console.warn("[DynamicLoader] @remotion/zod-types not available:", e);
   }
 
   try {
     const transitions = await import("@remotion/transitions");
     RemotionTransitions = transitions as unknown as Record<string, unknown>;
+    console.log("[DynamicLoader] ✅ Loaded @remotion/transitions");
   } catch {
     // Package not available
   }
 }
 
-// Initialize optional packages (fire and forget)
-loadOptionalPackages().catch(() => {
-  // Ignore errors during optional package loading
+// Initialize optional packages and store the promise
+optionalPackagesLoaded = loadOptionalPackages().catch((e) => {
+  console.warn("[DynamicLoader] Error loading optional packages:", e);
 });
 
 // ============================================================================
@@ -70,21 +75,41 @@ export function setupGlobalsForDynamicImport(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Remotion = Remotion;
 
-    // Make optional Remotion packages available if loaded
-    if (Object.keys(RemotionZodTypes).length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).RemotionZodTypes = RemotionZodTypes;
-    }
-    if (Object.keys(RemotionTransitions).length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).RemotionTransitions = RemotionTransitions;
-    }
-
     globalsInitialized = true;
     console.log("[DynamicLoader] ✅ Globals initialized for dynamic imports");
   } catch (e) {
     console.error("[DynamicLoader] Failed to setup globals:", e);
   }
+}
+
+/**
+ * Update globals with optional packages after they've been loaded.
+ * Called internally after awaiting optionalPackagesLoaded.
+ */
+function updateOptionalGlobals(): void {
+  if (typeof window === "undefined") return;
+
+  // Make optional Remotion packages available
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).RemotionZodTypes = RemotionZodTypes;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).RemotionTransitions = RemotionTransitions;
+
+  console.log(
+    "[DynamicLoader] ✅ Optional packages globals updated:",
+    "zColor" in RemotionZodTypes ? "zColor available" : "zColor not available"
+  );
+}
+
+/**
+ * Ensure optional packages are loaded before using them.
+ * Call this before loading any component that might use zColor or transitions.
+ */
+export async function ensureOptionalPackagesLoaded(): Promise<void> {
+  if (optionalPackagesLoaded) {
+    await optionalPackagesLoaded;
+  }
+  updateOptionalGlobals();
 }
 
 // Initialize globals on module load
@@ -221,6 +246,9 @@ export async function loadBundledComponent(
 ): Promise<DynamicLoadResult> {
   const cacheId = componentId || compositionId;
 
+  // Ensure optional packages (zColor, transitions) are loaded before processing
+  await ensureOptionalPackagesLoaded();
+
   // Check cache first
   const cached = componentCache.get(cacheId);
   if (cached) {
@@ -307,6 +335,78 @@ function wrapBundledCode(bundledCode: string): string {
   // Ensure globals are available
   setupGlobalsForDynamicImport();
 
+  // First, extract aliased import names from the bundled code
+  // esbuild produces code like: import { jsx as jsx2, jsxs as jsxs6 } from "react/jsx-runtime";
+  const jsxAliases: string[] = [];
+  const jsxsAliases: string[] = [];
+  const fragmentAliases: string[] = [];
+
+  // Find all jsx/jsxs/Fragment aliases in react/jsx-runtime imports
+  const jsxRuntimeMatches = bundledCode.matchAll(
+    /import\s*\{([^}]*)\}\s*from\s*["']react\/jsx(?:-dev)?-runtime["'];?/g
+  );
+  for (const match of jsxRuntimeMatches) {
+    const specifiers = match[1].split(",");
+    for (const spec of specifiers) {
+      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+      if (aliasMatch) {
+        const original = aliasMatch[1];
+        const alias = aliasMatch[2] || original;
+        if (original === "jsx") jsxAliases.push(alias);
+        else if (original === "jsxs") jsxsAliases.push(alias);
+        else if (original === "Fragment") fragmentAliases.push(alias);
+      }
+    }
+  }
+
+  // Find Remotion import aliases
+  const remotionAliases: Map<string, string[]> = new Map();
+  const remotionImportMatches = bundledCode.matchAll(
+    /import\s*\{([^}]*)\}\s*from\s*["']remotion["'];?/g
+  );
+  for (const match of remotionImportMatches) {
+    const specifiers = match[1].split(",");
+    for (const spec of specifiers) {
+      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+      if (aliasMatch) {
+        const original = aliasMatch[1];
+        const alias = aliasMatch[2] || original;
+        if (!remotionAliases.has(original)) {
+          remotionAliases.set(original, []);
+        }
+        remotionAliases.get(original)?.push(alias);
+      }
+    }
+  }
+
+  // Build dynamic alias assignments for JSX
+  let jsxAliasAssignments = "";
+  for (const alias of jsxAliases) {
+    if (alias !== "jsx") {
+      jsxAliasAssignments += `const ${alias} = jsx;\n`;
+    }
+  }
+  for (const alias of jsxsAliases) {
+    if (alias !== "jsxs") {
+      jsxAliasAssignments += `const ${alias} = jsxs;\n`;
+    }
+  }
+  for (const alias of fragmentAliases) {
+    if (alias !== "Fragment") {
+      jsxAliasAssignments += `const ${alias} = Fragment;\n`;
+    }
+  }
+
+  // Build dynamic alias assignments for Remotion
+  let remotionAliasAssignments = "";
+  for (const [original, aliases] of remotionAliases) {
+    for (const alias of aliases) {
+      if (alias !== original) {
+        remotionAliasAssignments += `const ${alias} = ${original};\n`;
+      }
+    }
+  }
+
   // Preamble that provides React and Remotion from globals
   const preamble = `
 // Injected by dynamic-loader: provide React/Remotion from globals
@@ -315,9 +415,15 @@ const { useState, useEffect, useCallback, useMemo, useRef, useContext, useReduce
 const ReactJSXRuntime = globalThis.ReactJSXRuntime || window.ReactJSXRuntime || { jsx: React.createElement, jsxs: React.createElement, Fragment: React.Fragment };
 const { jsx, jsxs } = ReactJSXRuntime;
 
+// JSX aliases (esbuild renames jsx/jsxs to jsx2, jsxs6, etc.)
+${jsxAliasAssignments}
+
 // Remotion exports
 const Remotion = globalThis.Remotion || window.Remotion || {};
 const { useCurrentFrame, useVideoConfig, AbsoluteFill, Sequence, Series, Audio, Video, Img, staticFile, interpolate, spring, Easing, continueRender, delayRender, random, measureSpring, Loop, Composition, Still, getInputProps, OffthreadVideo, useFrameRange, interpolateColors } = Remotion;
+
+// Remotion aliases
+${remotionAliasAssignments}
 
 // @remotion/zod-types exports (if available)
 const RemotionZodTypes = globalThis.RemotionZodTypes || window.RemotionZodTypes || {};
