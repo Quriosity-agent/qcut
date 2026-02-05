@@ -54,7 +54,7 @@ test.describe("Sticker Overlay Export Tests", () => {
         timeout: 10_000,
       })
       .catch(() => {
-        console.warn("Timeline element not visible after drag - continuing");
+        // Timeline element not visible after drag - continuing
       });
   });
 
@@ -114,16 +114,6 @@ test.describe("Sticker Overlay Export Tests", () => {
         (msg.includes("Failed") ||
           msg.includes("error") ||
           msg.includes("not found"))
-    );
-
-    // Log for debugging
-    console.log(
-      "Console messages with sticker/error:",
-      consoleMessages.filter(
-        (m) =>
-          m.toLowerCase().includes("sticker") ||
-          m.toLowerCase().includes("error")
-      )
     );
 
     expect(hasErrorLog).toBe(true);
@@ -195,16 +185,6 @@ test.describe("Sticker Overlay Export Tests", () => {
         msg.includes("Preloading sticker") ||
         msg.includes("preload") ||
         (msg.includes("[StickerExportHelper]") && msg.includes("Preloaded"))
-    );
-
-    // Log for debugging
-    console.log(
-      "Preload-related logs:",
-      consoleMessages.filter(
-        (m) =>
-          m.toLowerCase().includes("preload") ||
-          m.toLowerCase().includes("sticker")
-      )
     );
 
     expect(hasPreloadLog).toBe(true);
@@ -367,19 +347,14 @@ test.describe("Sticker Overlay Export Tests", () => {
       msg.toLowerCase().includes("sticker")
     );
 
-    console.log(
-      "Sticker-related logs:",
-      consoleMessages.filter((m) => m.toLowerCase().includes("sticker"))
-    );
-
     expect(hasStickerLog).toBe(true);
   });
 
   /**
-   * Test 4.2: Export tracks failed stickers separately from successful ones
-   * Verifies failure tracking in render results
+   * Test 4.2: Multiple stickers are processed during export
+   * Verifies that adding multiple stickers results in sticker processing logs
    */
-  test("should track failed vs successful sticker renders", async ({
+  test("should process multiple stickers during export", async ({
     page,
   }) => {
     // Collect console messages
