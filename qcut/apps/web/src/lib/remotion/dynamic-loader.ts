@@ -34,40 +34,24 @@ async function loadOptionalPackages(): Promise<void> {
     RemotionTransitions = { ...(transitions as unknown as Record<string, unknown>) };
 
     // Load individual transition submodules (they export functions like fade(), slide(), etc.)
-    try {
-      const fadeModule = await import("@remotion/transitions/fade");
-      Object.assign(RemotionTransitions, fadeModule);
-    } catch { /* fade not available */ }
+    // Using dynamic import strings to avoid TypeScript module resolution issues
+    const submodules = [
+      "@remotion/transitions/fade",
+      "@remotion/transitions/slide",
+      "@remotion/transitions/wipe",
+      "@remotion/transitions/flip",
+      "@remotion/transitions/clock-wipe",
+      "@remotion/transitions/none",
+    ];
 
-    try {
-      const slideModule = await import("@remotion/transitions/slide");
-      Object.assign(RemotionTransitions, slideModule);
-    } catch { /* slide not available */ }
-
-    try {
-      const wipeModule = await import("@remotion/transitions/wipe");
-      Object.assign(RemotionTransitions, wipeModule);
-    } catch { /* wipe not available */ }
-
-    try {
-      const flipModule = await import("@remotion/transitions/flip");
-      Object.assign(RemotionTransitions, flipModule);
-    } catch { /* flip not available */ }
-
-    try {
-      const clockWipeModule = await import("@remotion/transitions/clock-wipe");
-      Object.assign(RemotionTransitions, clockWipeModule);
-    } catch { /* clock-wipe not available */ }
-
-    try {
-      const cubeModule = await import("@remotion/transitions/cube");
-      Object.assign(RemotionTransitions, cubeModule);
-    } catch { /* cube not available */ }
-
-    try {
-      const noneModule = await import("@remotion/transitions/none");
-      Object.assign(RemotionTransitions, noneModule);
-    } catch { /* none not available */ }
+    for (const submodule of submodules) {
+      try {
+        const mod = await import(/* @vite-ignore */ submodule);
+        Object.assign(RemotionTransitions, mod);
+      } catch {
+        // Submodule not available
+      }
+    }
 
     console.log("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));
   } catch {
