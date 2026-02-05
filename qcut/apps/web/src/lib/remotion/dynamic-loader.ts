@@ -11,22 +11,31 @@ import * as React from "react";
 import * as Remotion from "remotion";
 import { debugLog, debugError } from "@/lib/debug-config";
 
-// Try to import optional Remotion packages
+// Optional Remotion packages - loaded dynamically if available
 let RemotionZodTypes: Record<string, unknown> = {};
-try {
-  // @ts-expect-error - Optional import
-  RemotionZodTypes = require("@remotion/zod-types");
-} catch {
-  // Package not available
+let RemotionTransitions: Record<string, unknown> = {};
+
+// Try to load optional packages (won't fail build if missing)
+async function loadOptionalPackages(): Promise<void> {
+  try {
+    const zodTypes = await import("@remotion/zod-types");
+    RemotionZodTypes = zodTypes as unknown as Record<string, unknown>;
+  } catch {
+    // Package not available - compositions using zColor will fail
+  }
+
+  try {
+    const transitions = await import("@remotion/transitions");
+    RemotionTransitions = transitions as unknown as Record<string, unknown>;
+  } catch {
+    // Package not available
+  }
 }
 
-let RemotionTransitions: Record<string, unknown> = {};
-try {
-  // @ts-expect-error - Optional import
-  RemotionTransitions = require("@remotion/transitions");
-} catch {
-  // Package not available
-}
+// Initialize optional packages (fire and forget)
+loadOptionalPackages().catch(() => {
+  // Ignore errors during optional package loading
+});
 
 // ============================================================================
 // Global Setup for Dynamic Imports
