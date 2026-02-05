@@ -29,9 +29,47 @@ async function loadOptionalPackages(): Promise<void> {
   }
 
   try {
+    // Load main transitions module
     const transitions = await import("@remotion/transitions");
-    RemotionTransitions = transitions as unknown as Record<string, unknown>;
-    console.log("[DynamicLoader] ✅ Loaded @remotion/transitions");
+    RemotionTransitions = { ...(transitions as unknown as Record<string, unknown>) };
+
+    // Load individual transition submodules (they export functions like fade(), slide(), etc.)
+    try {
+      const fadeModule = await import("@remotion/transitions/fade");
+      Object.assign(RemotionTransitions, fadeModule);
+    } catch { /* fade not available */ }
+
+    try {
+      const slideModule = await import("@remotion/transitions/slide");
+      Object.assign(RemotionTransitions, slideModule);
+    } catch { /* slide not available */ }
+
+    try {
+      const wipeModule = await import("@remotion/transitions/wipe");
+      Object.assign(RemotionTransitions, wipeModule);
+    } catch { /* wipe not available */ }
+
+    try {
+      const flipModule = await import("@remotion/transitions/flip");
+      Object.assign(RemotionTransitions, flipModule);
+    } catch { /* flip not available */ }
+
+    try {
+      const clockWipeModule = await import("@remotion/transitions/clock-wipe");
+      Object.assign(RemotionTransitions, clockWipeModule);
+    } catch { /* clock-wipe not available */ }
+
+    try {
+      const cubeModule = await import("@remotion/transitions/cube");
+      Object.assign(RemotionTransitions, cubeModule);
+    } catch { /* cube not available */ }
+
+    try {
+      const noneModule = await import("@remotion/transitions/none");
+      Object.assign(RemotionTransitions, noneModule);
+    } catch { /* none not available */ }
+
+    console.log("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));
   } catch {
     // Package not available
   }
@@ -379,6 +417,46 @@ function wrapBundledCode(bundledCode: string): string {
     }
   }
 
+  // Find @remotion/zod-types import aliases (zColor, etc.)
+  const zodTypesAliases: Map<string, string[]> = new Map();
+  const zodTypesMatches = bundledCode.matchAll(
+    /import\s*\{([^}]*)\}\s*from\s*["']@remotion\/zod-types["'];?/g
+  );
+  for (const match of zodTypesMatches) {
+    const specifiers = match[1].split(",");
+    for (const spec of specifiers) {
+      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+      if (aliasMatch) {
+        const original = aliasMatch[1];
+        const alias = aliasMatch[2] || original;
+        if (!zodTypesAliases.has(original)) {
+          zodTypesAliases.set(original, []);
+        }
+        zodTypesAliases.get(original)?.push(alias);
+      }
+    }
+  }
+
+  // Find @remotion/transitions import aliases
+  const transitionsAliases: Map<string, string[]> = new Map();
+  const transitionsMatches = bundledCode.matchAll(
+    /import\s*\{([^}]*)\}\s*from\s*["']@remotion\/transitions["'];?/g
+  );
+  for (const match of transitionsMatches) {
+    const specifiers = match[1].split(",");
+    for (const spec of specifiers) {
+      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+      if (aliasMatch) {
+        const original = aliasMatch[1];
+        const alias = aliasMatch[2] || original;
+        if (!transitionsAliases.has(original)) {
+          transitionsAliases.set(original, []);
+        }
+        transitionsAliases.get(original)?.push(alias);
+      }
+    }
+  }
+
   // Build dynamic alias assignments for JSX
   let jsxAliasAssignments = "";
   for (const alias of jsxAliases) {
@@ -407,6 +485,26 @@ function wrapBundledCode(bundledCode: string): string {
     }
   }
 
+  // Build dynamic alias assignments for @remotion/zod-types
+  let zodTypesAliasAssignments = "";
+  for (const [original, aliases] of zodTypesAliases) {
+    for (const alias of aliases) {
+      if (alias !== original) {
+        zodTypesAliasAssignments += `const ${alias} = ${original};\n`;
+      }
+    }
+  }
+
+  // Build dynamic alias assignments for @remotion/transitions
+  let transitionsAliasAssignments = "";
+  for (const [original, aliases] of transitionsAliases) {
+    for (const alias of aliases) {
+      if (alias !== original) {
+        transitionsAliasAssignments += `const ${alias} = ${original};\n`;
+      }
+    }
+  }
+
   // Preamble that provides React and Remotion from globals
   const preamble = `
 // Injected by dynamic-loader: provide React/Remotion from globals
@@ -428,10 +526,14 @@ ${remotionAliasAssignments}
 // @remotion/zod-types exports (if available)
 const RemotionZodTypes = globalThis.RemotionZodTypes || window.RemotionZodTypes || {};
 const { zColor } = RemotionZodTypes;
+// zod-types aliases
+${zodTypesAliasAssignments}
 
 // @remotion/transitions exports (if available)
 const RemotionTransitions = globalThis.RemotionTransitions || window.RemotionTransitions || {};
-const { TransitionSeries, linearTiming, springTiming } = RemotionTransitions;
+const { TransitionSeries, linearTiming, springTiming, fade, slide, wipe, flip, clockWipe, cube, none } = RemotionTransitions;
+// transitions aliases
+${transitionsAliasAssignments}
 `;
 
   // Remove external import statements from the bundled code
