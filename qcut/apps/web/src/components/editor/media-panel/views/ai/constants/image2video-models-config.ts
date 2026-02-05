@@ -53,6 +53,46 @@ export const I2V_MODELS = {
       aspect_ratio: "auto",
     },
   },
+  kling_v3_pro_i2v: {
+    id: "kling_v3_pro_i2v",
+    name: "Kling v3 Pro I2V",
+    description:
+      "Professional image-to-video with cinematic visuals, fluid motion, native audio, and custom element support",
+    price: "0.336",
+    resolution: "1080p",
+    max_duration: 12,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/v3/pro/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+    supportedDurations: [5, 10, 12],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  kling_v3_standard_i2v: {
+    id: "kling_v3_standard_i2v",
+    name: "Kling v3 Standard I2V",
+    description:
+      "Quality image-to-video with cinematic motion and native audio, cost-effective option",
+    price: "0.252",
+    resolution: "1080p",
+    max_duration: 12,
+    category: "image",
+    endpoints: {
+      image_to_video: "fal-ai/kling-video/v3/standard/image-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+    supportedDurations: [5, 10, 12],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
   kling_v26_pro_i2v: {
     id: "kling_v26_pro_i2v",
     name: "Kling v2.6 Pro I2V",
@@ -460,6 +500,8 @@ export type I2VModelId = keyof typeof I2V_MODELS;
  * Models are ordered by quality/capability (highest first) to guide user selection.
  */
 export const I2V_MODEL_ORDER: readonly I2VModelId[] = [
+  "kling_v3_pro_i2v",
+  "kling_v3_standard_i2v",
   "kling_v26_pro_i2v",
   "sora2_image_to_video_pro",
   "veo31_image_to_video",
