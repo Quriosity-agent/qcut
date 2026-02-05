@@ -82,14 +82,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: Wand2Icon,
     label: "Video Edit",
   },
-  filters: {
-    icon: BlendIcon,
-    label: "Filters",
-  },
-  segmentation: {
-    icon: ScissorsIcon,
-    label: "Segment",
-  },
   remotion: {
     icon: Layers,
     label: "Remotion",
@@ -105,6 +97,15 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   "project-folder": {
     icon: FolderSync,
     label: "Project",
+  },
+  // WIP panels below
+  filters: {
+    icon: BlendIcon,
+    label: "Filters (WIP)",
+  },
+  segmentation: {
+    icon: ScissorsIcon,
+    label: "Segment (WIP)",
   },
   sounds: {
     icon: VolumeXIcon,

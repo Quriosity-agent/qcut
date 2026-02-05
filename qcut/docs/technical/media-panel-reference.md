@@ -13,12 +13,12 @@ This document provides a comprehensive overview of all 20 panels available in th
 7. [Text](#7-text)
 8. [Stickers](#8-stickers)
 9. [Video Edit](#9-video-edit)
-10. [Filters](#10-filters)
-11. [Segment](#11-segment)
-12. [Remotion](#12-remotion)
-13. [Terminal](#13-terminal)
-14. [Transcribe](#14-transcribe)
-15. [Project](#15-project)
+10. [Remotion](#10-remotion)
+11. [Terminal](#11-terminal)
+12. [Transcribe](#12-transcribe)
+13. [Project](#13-project)
+14. [Filters (WIP)](#14-filters-wip)
+15. [Segment (WIP)](#15-segment-wip)
 16. [Sounds (WIP)](#16-sounds-wip)
 17. [Effects (WIP)](#17-effects-wip)
 18. [Transitions (WIP)](#18-transitions-wip)
@@ -246,53 +246,7 @@ AI-powered video enhancement and audio tools.
 
 ---
 
-## 10. Filters
-
-**Icon:** `BlendIcon`
-**File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
-
-### Summary
-Apply visual filters to video clips.
-
-### Status
-**Coming soon** - Placeholder view currently displayed.
-
-### Planned Features
-- Color grading presets
-- Film grain effects
-- Vignette and blur filters
-- Custom LUT support
-
----
-
-## 11. Segment
-
-**Icon:** `ScissorsIcon`
-**File:** `apps/web/src/components/editor/segmentation/index.tsx`
-
-### Summary
-AI-powered image and video segmentation using SAM-3.
-
-### Features
-- **Text prompts:** Describe what to segment in natural language
-- **Point prompts:** Click on objects to segment
-- **Box prompts:** Draw bounding boxes around objects
-- **Object list:** Manage multiple segmented objects
-- **Mask overlay:** Visualize segmentation masks
-- **Image/Video modes:** Segment still images or video frames
-
-### Use Cases
-- Background removal
-- Object isolation
-- Subject extraction
-- Green screen replacement
-
-### File Path
-`apps/web/src/components/editor/segmentation/index.tsx`
-
----
-
-## 12. Remotion
+## 10. Remotion
 
 **Icon:** `Layers`
 **File:** `apps/web/src/components/editor/media-panel/views/remotion/index.tsx`
@@ -324,7 +278,7 @@ Browse and add Remotion components to the timeline.
 
 ---
 
-## 13. Terminal
+## 11. Terminal
 
 **Icon:** `SquareTerminalIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/pty-terminal/pty-terminal-view.tsx`
@@ -349,7 +303,7 @@ Integrated terminal with AI CLI assistant support.
 
 ---
 
-## 14. Transcribe
+## 12. Transcribe
 
 **Icon:** `TextSelect`
 **File:** `apps/web/src/components/editor/media-panel/views/word-timeline-view.tsx`
@@ -376,7 +330,7 @@ Word-level transcription and timeline editing.
 
 ---
 
-## 15. Project
+## 13. Project
 
 **Icon:** `FolderSync`
 **File:** `apps/web/src/components/editor/media-panel/views/project-folder.tsx`
@@ -395,6 +349,55 @@ Browse and import files from the project folder structure.
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/project-folder.tsx`
+
+---
+
+## 14. Filters (WIP)
+
+**Icon:** `BlendIcon`
+**File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
+
+### Summary
+Apply visual filters to video clips.
+
+### Status
+**Work in progress** - Placeholder view currently displayed.
+
+### Planned Features
+- Color grading presets
+- Film grain effects
+- Vignette and blur filters
+- Custom LUT support
+
+---
+
+## 15. Segment (WIP)
+
+**Icon:** `ScissorsIcon`
+**File:** `apps/web/src/components/editor/segmentation/index.tsx`
+
+### Summary
+AI-powered image and video segmentation using SAM-3.
+
+### Features
+- **Text prompts:** Describe what to segment in natural language
+- **Point prompts:** Click on objects to segment
+- **Box prompts:** Draw bounding boxes around objects
+- **Object list:** Manage multiple segmented objects
+- **Mask overlay:** Visualize segmentation masks
+- **Image/Video modes:** Segment still images or video frames
+
+### Use Cases
+- Background removal
+- Object isolation
+- Subject extraction
+- Green screen replacement
+
+### Status
+Work in progress - core functionality implemented.
+
+### File Path
+`apps/web/src/components/editor/segmentation/index.tsx`
 
 ---
 
