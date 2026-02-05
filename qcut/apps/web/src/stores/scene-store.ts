@@ -1,24 +1,51 @@
+/**
+ * Scene Store
+ *
+ * Manages scenes within a project. Scenes allow organizing timeline content
+ * into logical sections that can be switched and edited independently.
+ *
+ * @module stores/scene-store
+ */
+
 import { create } from "zustand";
 import { Scene } from "@/types/project";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID } from "@/lib/utils";
 import type { SerializedScene } from "@/lib/storage/types";
 
-// Helper to get stores dynamically to avoid circular dependencies
+/**
+ * Dynamically imports project store to avoid circular dependencies.
+ * @returns The project store hook
+ */
 const getProjectStore = async () => {
   const { useProjectStore } = await import("./project-store");
   return useProjectStore;
 };
 
+/**
+ * Dynamically imports timeline store to avoid circular dependencies.
+ * @returns The timeline store hook
+ */
 const getTimelineStore = async () => {
   const { useTimelineStore } = await import("./timeline-store");
   return useTimelineStore;
 };
 
+/**
+ * Gets the main scene from a list of scenes.
+ * @param scenes - Array of scenes to search
+ * @returns The main scene or null if not found
+ */
 export function getMainScene({ scenes }: { scenes: Scene[] }): Scene | null {
   return scenes.find((scene) => scene.isMain) || null;
 }
 
+/**
+ * Ensures at least one main scene exists in the scenes array.
+ * Creates a default main scene if none exists.
+ * @param scenes - Array of scenes to check
+ * @returns Updated scenes array with a guaranteed main scene
+ */
 function ensureMainScene(scenes: Scene[]): Scene[] {
   const hasMain = scenes.some((scene) => scene.isMain);
   if (!hasMain) {

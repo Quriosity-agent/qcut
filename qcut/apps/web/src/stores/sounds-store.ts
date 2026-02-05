@@ -1,3 +1,12 @@
+/**
+ * Sounds Store
+ *
+ * Manages sound effects search, playback, and saved sounds library.
+ * Integrates with Freesound API for sound effect discovery.
+ *
+ * @module stores/sounds-store
+ */
+
 import { create } from "zustand";
 import type { SoundEffect, SavedSound } from "@/types/sounds";
 import { toast } from "sonner";

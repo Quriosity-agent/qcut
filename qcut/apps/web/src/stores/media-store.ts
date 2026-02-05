@@ -1,3 +1,12 @@
+/**
+ * Media Store
+ *
+ * Manages media items (videos, images, audio) imported into the project.
+ * Handles media loading, thumbnail generation, and persistence.
+ *
+ * @module stores/media-store
+ */
+
 import { create } from "zustand";
 import { debugLog, debugError } from "@/lib/debug-config";
 import { storageService } from "@/lib/storage/storage-service";

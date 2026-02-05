@@ -1,3 +1,12 @@
+/**
+ * Timeline Store
+ *
+ * Core state management for the video timeline. Handles tracks, elements,
+ * drag operations, selection, and timeline persistence.
+ *
+ * @module stores/timeline-store
+ */
+
 import { create } from "zustand";
 import {
   sortTracksByOrder,
