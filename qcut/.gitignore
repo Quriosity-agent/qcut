@@ -69,7 +69,6 @@ build.log
 turbo.log
 
 # TanStack Router generated files
-/apps/web/src/routeTree.gen.ts
 
 # Claude settings (local only)
 .claude/settings.local.json
