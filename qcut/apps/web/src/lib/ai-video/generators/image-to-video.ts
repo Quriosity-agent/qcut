@@ -77,7 +77,9 @@ export async function generateVideoFromImage(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       // Convert image to base64 data URL
@@ -201,7 +203,9 @@ export async function generateViduQ2Video(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -301,7 +305,9 @@ export async function generateLTXV2ImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const isStandardModel = isStandardLTXV2ImageModel(request.model);
@@ -403,7 +409,9 @@ export async function generateSeedanceVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -503,7 +511,9 @@ export async function generateKlingImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -586,7 +596,9 @@ export async function generateKling26ImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -659,7 +671,9 @@ export async function generateKlingO1Video(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -753,7 +767,9 @@ export async function generateKlingO1RefVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -828,7 +844,9 @@ export async function generateWAN25ImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -929,7 +947,9 @@ export async function generateWAN26ImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -1044,7 +1064,9 @@ export async function generateWAN26RefVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -1159,7 +1181,9 @@ export async function generateViduQ3ImageVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";

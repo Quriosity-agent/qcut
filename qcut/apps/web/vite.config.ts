@@ -12,7 +12,9 @@ export default defineConfig({
     // Required for React scheduler in Electron production builds
     global: "globalThis",
     // Required for @babel/types and other Node.js modules in browser
-    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+    "process.env.NODE_ENV": JSON.stringify(
+      process.env.NODE_ENV || "development"
+    ),
   },
   resolve: {
     alias: {
@@ -45,7 +47,13 @@ export default defineConfig({
       },
     },
     // Exclude remotion packages from optimization to prevent double bundling
-    exclude: ["remotion", "@remotion/player", "@remotion/renderer"],
+    // Exclude @fal-ai/client to prevent initialization issues in Electron
+    exclude: [
+      "remotion",
+      "@remotion/player",
+      "@remotion/renderer",
+      "@fal-ai/client",
+    ],
   },
   plugins: [
     tsconfigPaths(), // Support for TypeScript path mapping
@@ -102,16 +110,21 @@ export default defineConfig({
             return "vendor-ui";
           }
 
-          // Video/Media processing kept in main bundle to avoid dependency issues
-          // if (id.includes('@ffmpeg') || id.includes('ffmpeg')) {
-          //   return 'video-processing';
-          // }
+          // Video/Media processing - FFmpeg WASM modules (node_modules only)
+          if (
+            id.includes("node_modules/@ffmpeg/") ||
+            id.includes("node_modules/ffmpeg")
+          ) {
+            return "vendor-ffmpeg";
+          }
 
-          // AI Features kept in main bundle to avoid dependency issues
-          // if (id.includes('fal-ai-client') || id.includes('text2image-store') ||
-          //     id.includes('/ai.tsx') || id.includes('ai-client')) {
-          //   return 'ai-features';
-          // }
+          // AI Features - FAL.ai client (node_modules only)
+          if (
+            id.includes("node_modules/@fal-ai/client") ||
+            id.includes("node_modules/fal-ai")
+          ) {
+            return "vendor-ai";
+          }
 
           // Export functionality kept in main bundle to avoid React component issues
           // if (id.includes('export-engine') || id.includes('export-dialog') ||

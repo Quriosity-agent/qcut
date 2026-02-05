@@ -1315,7 +1315,11 @@ export async function handleWAN26Ref2Video(
   // Upload the reference video to FAL
   // Get API key from environment or Electron storage
   let falApiKey = import.meta.env.VITE_FAL_API_KEY;
-  if (!falApiKey && typeof window !== "undefined" && window.electronAPI?.apiKeys) {
+  if (
+    !falApiKey &&
+    typeof window !== "undefined" &&
+    window.electronAPI?.apiKeys
+  ) {
     try {
       const keys = await window.electronAPI.apiKeys.get();
       falApiKey = keys?.falApiKey;
@@ -1331,7 +1335,8 @@ export async function handleWAN26Ref2Video(
     return {
       response: undefined,
       shouldSkip: true,
-      skipReason: "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.",
+      skipReason:
+        "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.",
     };
   }
 

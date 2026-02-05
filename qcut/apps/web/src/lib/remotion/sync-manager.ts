@@ -158,6 +158,7 @@ export class SyncManager {
   private seekTimeout: NodeJS.Timeout | null = null;
   private tracks: TimelineTrack[] = [];
   private fps = 30;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: used in sync methods
   private lastSyncTime = 0;
 
   constructor(config: Partial<SyncConfig> = {}) {

@@ -289,10 +289,18 @@ export function RemotionView() {
 
   // Initialize store if needed - must be in useEffect, not during render
   // Note: initialize is obtained via getState() so it's not in deps (stable reference)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initialize is stable from getState() - adding it causes infinite loop
   useEffect(() => {
-    console.log("[RemotionView] useEffect triggered - isInitialized:", isInitialized, "isLoading:", isLoading);
+    console.log(
+      "[RemotionView] useEffect triggered - isInitialized:",
+      isInitialized,
+      "isLoading:",
+      isLoading
+    );
     if (!isInitialized && !isLoading) {
-      console.log("[RemotionView] Calling initialize() - should only happen ONCE");
+      console.log(
+        "[RemotionView] Calling initialize() - should only happen ONCE"
+      );
       initialize();
     }
   }, [isInitialized, isLoading]); // No initialize in deps - prevents infinite loop

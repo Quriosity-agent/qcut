@@ -1,10 +1,15 @@
+/**
+ * Sounds Store
+ *
+ * Manages sound effects search, playback, and saved sounds library.
+ * Integrates with Freesound API for sound effect discovery.
+ *
+ * @module stores/sounds-store
+ */
+
 import { create } from "zustand";
 import type { SoundEffect, SavedSound } from "@/types/sounds";
 import { toast } from "sonner";
-import { useMediaStore } from "./media-store";
-import { useTimelineStore } from "./timeline-store";
-import { useProjectStore } from "./project-store";
-import { usePlaybackStore } from "./playback-store";
 import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
 
 // Illegal filename characters for file system safety
@@ -268,6 +273,19 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
   },
 
   addSoundToTimeline: async (sound) => {
+    // Dynamic imports to avoid circular dependencies and improve code splitting
+    const [
+      { useProjectStore },
+      { useMediaStore },
+      { useTimelineStore },
+      { usePlaybackStore },
+    ] = await Promise.all([
+      import("./project-store"),
+      import("./media-store"),
+      import("./timeline-store"),
+      import("./playback-store"),
+    ]);
+
     const activeProject = useProjectStore.getState().activeProject;
     if (!activeProject) {
       toast.error("No active project");

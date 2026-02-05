@@ -1,3 +1,12 @@
+/**
+ * Timeline Store
+ *
+ * Core state management for the video timeline. Handles tracks, elements,
+ * drag operations, selection, and timeline persistence.
+ *
+ * @module stores/timeline-store
+ */
+
 import { create } from "zustand";
 import {
   sortTracksByOrder,
@@ -13,12 +22,7 @@ import type {
   MediaElement,
   DragData,
 } from "@/types/timeline";
-import { useEditorStore } from "./editor-store";
-import {
-  useMediaStore,
-  getMediaAspectRatio,
-  type MediaItem,
-} from "./media-store";
+import type { MediaItem } from "./media-store";
 import { storageService } from "@/lib/storage/storage-service";
 import { createObjectURL } from "@/lib/blob-manager";
 // Dynamic import to break circular dependency
@@ -467,43 +471,56 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       // If this is the first element and it's a media element, automatically set the project canvas size
       // to match the media's aspect ratio and FPS (for videos)
       if (isFirstElement && newElement.type === "media") {
-        const mediaStore = useMediaStore.getState();
-        const mediaItem = mediaStore.mediaItems.find(
-          (item) => item.id === newElement.mediaId
-        );
+        import("./media-store")
+          .then(({ useMediaStore, getMediaAspectRatio }) => {
+            const mediaStore = useMediaStore.getState();
+            const mediaItem = mediaStore.mediaItems.find(
+              (item) => item.id === newElement.mediaId
+            );
 
-        if (
-          mediaItem &&
-          (mediaItem.type === "image" || mediaItem.type === "video")
-        ) {
-          const editorStore = useEditorStore.getState();
-          editorStore.setCanvasSizeFromAspectRatio(
-            getMediaAspectRatio(mediaItem)
-          );
-        }
-
-        // Set project FPS from the first video element
-        if (mediaItem && mediaItem.type === "video" && mediaItem.fps) {
-          const fps = mediaItem.fps;
-          import("./project-store")
-            .then(({ useProjectStore }) => {
-              const projectStore = useProjectStore.getState();
-              if (projectStore.activeProject) {
-                projectStore.updateProjectFps(fps);
-              }
-            })
-            .catch((error) => {
-              handleError(error, {
-                operation: "Update FPS from Project Store",
-                category: ErrorCategory.STORAGE,
-                severity: ErrorSeverity.LOW,
-                showToast: false,
-                metadata: {
-                  operation: "fps-update",
-                },
+            if (
+              mediaItem &&
+              (mediaItem.type === "image" || mediaItem.type === "video")
+            ) {
+              import("./editor-store").then(({ useEditorStore }) => {
+                const editorStore = useEditorStore.getState();
+                editorStore.setCanvasSizeFromAspectRatio(
+                  getMediaAspectRatio(mediaItem)
+                );
               });
+            }
+
+            // Set project FPS from the first video element
+            if (mediaItem && mediaItem.type === "video" && mediaItem.fps) {
+              const fps = mediaItem.fps;
+              import("./project-store")
+                .then(({ useProjectStore }) => {
+                  const projectStore = useProjectStore.getState();
+                  if (projectStore.activeProject) {
+                    projectStore.updateProjectFps(fps);
+                  }
+                })
+                .catch((error) => {
+                  handleError(error, {
+                    operation: "Update FPS from Project Store",
+                    category: ErrorCategory.STORAGE,
+                    severity: ErrorSeverity.LOW,
+                    showToast: false,
+                    metadata: {
+                      operation: "fps-update",
+                    },
+                  });
+                });
+            }
+          })
+          .catch((error) => {
+            handleError(error, {
+              operation: "Set canvas size from first element",
+              category: ErrorCategory.STORAGE,
+              severity: ErrorSeverity.LOW,
+              showToast: false,
             });
-        }
+          });
       }
 
       updateTracksAndSave(
@@ -1203,6 +1220,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       }
 
       try {
+        const { useMediaStore } = await import("./media-store");
         const mediaStore = useMediaStore.getState();
         const { useProjectStore } = await import("./project-store");
         const projectStore = useProjectStore.getState();

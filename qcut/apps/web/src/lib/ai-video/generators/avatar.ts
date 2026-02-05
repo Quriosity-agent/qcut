@@ -45,7 +45,9 @@ export async function generateAvatarVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       console.log("Starting avatar video generation with FAL AI");

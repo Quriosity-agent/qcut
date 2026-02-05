@@ -1,3 +1,13 @@
+/**
+ * FAL.ai Client
+ *
+ * HTTP client for interacting with FAL.ai image and video generation APIs.
+ * Supports multiple model versions (V3, V4, Flux, etc.) and handles
+ * API key management from both environment variables and Electron storage.
+ *
+ * @module lib/fal-ai-client
+ */
+
 import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
 import { debugLogger } from "./debug-logger";
 import {
@@ -89,22 +99,36 @@ const FAL_LOG_COMPONENT = "FalAIClient";
 // Multi-model generation result
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
 
+/**
+ * Client for FAL.ai image and video generation APIs.
+ * Handles authentication, request building, and response parsing
+ * for various AI models including Flux, SDXL, and video generation models.
+ */
 class FalAIClient {
   private apiKey: string | null = null;
   private baseUrl = "https://fal.run";
   private apiKeyInitPromise: Promise<void> | null = null;
 
+  /** Creates a new FAL.ai client instance and initializes API key */
   constructor() {
     // Try to get API key from environment variables first
-    this.apiKey =
-      import.meta.env.VITE_FAL_API_KEY ||
-      (typeof window !== "undefined" &&
-        (window as any).process?.env?.FAL_API_KEY) ||
-      null;
+    try {
+      this.apiKey =
+        import.meta.env.VITE_FAL_API_KEY ||
+        (typeof window !== "undefined" &&
+          (window as any).process?.env?.FAL_API_KEY) ||
+        null;
 
-    // If no env var, try Electron storage asynchronously
-    if (!this.apiKey) {
-      this.apiKeyInitPromise = this.initApiKeyFromElectron();
+      // If no env var, try Electron storage asynchronously
+      if (!this.apiKey) {
+        // Assign promise immediately to avoid race condition if ensureApiKey() is called
+        // before the async init starts. Promise creation is synchronous.
+        this.apiKeyInitPromise = this.initApiKeyFromElectron();
+      }
+    } catch (error) {
+      // Silently handle initialization errors during module loading
+      console.warn("[FalAIClient] Constructor error:", error);
+      this.apiKey = null;
     }
   }
 
@@ -152,6 +176,13 @@ class FalAIClient {
     return this.apiKey;
   }
 
+  /**
+   * Makes an authenticated HTTP request to the FAL.ai API.
+   * @param endpoint - The API endpoint URL or path
+   * @param params - Request parameters to send as JSON body
+   * @returns The parsed API response
+   * @throws Error if API key is missing or request fails
+   */
   private async makeRequest<T = FalImageResponse>(
     endpoint: string,
     params: Record<string, unknown>
@@ -1355,8 +1386,35 @@ export function convertParametersForModel(modelId: string, params: any) {
   }
 }
 
-// Export singleton instance
-export const falAIClient = new FalAIClient();
+// Lazy singleton to avoid temporal dead zone errors during module loading
+let _falAIClientInstance: FalAIClient | null = null;
+
+function getFalAIClientInstance(): FalAIClient {
+  if (!_falAIClientInstance) {
+    _falAIClientInstance = new FalAIClient();
+  }
+  return _falAIClientInstance;
+}
+
+// Export a proxy that lazily creates the instance on first access
+// This prevents the singleton from being created during module initialization
+export const falAIClient: FalAIClient = new Proxy({} as FalAIClient, {
+  get(_target, prop) {
+    const instance = getFalAIClientInstance();
+    const value = (instance as unknown as Record<string | symbol, unknown>)[
+      prop
+    ];
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(instance);
+    }
+    return value;
+  },
+  set(_target, prop, value) {
+    const instance = getFalAIClientInstance();
+    (instance as unknown as Record<string | symbol, unknown>)[prop] = value;
+    return true;
+  },
+});
 
 // Export main functions for easy importing
 export async function generateWithModel(

@@ -296,7 +296,9 @@ export async function generateVideoFromText(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt.trim();
@@ -382,7 +384,9 @@ export async function generateLTXV2Video(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -481,7 +485,9 @@ export async function generateWAN26TextVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";
@@ -642,7 +648,9 @@ export async function generateViduQ3TextVideo(
     async () => {
       const falApiKey = await getFalApiKeyAsync();
       if (!falApiKey) {
-        throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+        throw new Error(
+          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+        );
       }
 
       const trimmedPrompt = request.prompt?.trim() ?? "";

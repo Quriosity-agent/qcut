@@ -208,10 +208,9 @@ function bumpPrerelease(
   if (targetIdx > currentIdx) {
     // Progressing forward (alpha -> beta -> rc): keep same base version
     return `${major}.${minor}.${patch}-${channel}.1`;
-  } else {
-    // Going backward: bump patch first
-    return `${major}.${minor}.${patch + 1}-${channel}.1`;
   }
+  // Going backward: bump patch first
+  return `${major}.${minor}.${patch + 1}-${channel}.1`;
 }
 
 function bumpVersion(releaseType: ReleaseType): string {

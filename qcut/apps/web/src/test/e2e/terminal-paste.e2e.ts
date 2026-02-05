@@ -20,9 +20,12 @@ import { test, expect, createTestProject } from "./helpers/electron-helpers";
 async function navigateToTerminalTab(page: import("@playwright/test").Page) {
   // The Terminal tab is at the end of the tabbar, so we may need to scroll
   await page.evaluate(() => {
-    const scrollContainer = document.querySelector('.overflow-x-auto');
+    const scrollContainer = document.querySelector(".overflow-x-auto");
     if (scrollContainer) {
-      scrollContainer.scrollTo({ left: scrollContainer.scrollWidth, behavior: 'instant' });
+      scrollContainer.scrollTo({
+        left: scrollContainer.scrollWidth,
+        behavior: "instant",
+      });
     }
   });
 
@@ -86,7 +89,10 @@ test.describe("Terminal Paste Functionality", () => {
   // PTY-dependent tests - skipped by default since PTY may not be available in CI
   // Set PTY_AVAILABLE=true in your environment to run these tests
   test.describe("PTY Terminal Session (requires PTY support)", () => {
-    test.skip(() => process.env.PTY_AVAILABLE !== "true", "Requires PTY support (set PTY_AVAILABLE=true to run)");
+    test.skip(
+      () => process.env.PTY_AVAILABLE !== "true",
+      "Requires PTY support (set PTY_AVAILABLE=true to run)"
+    );
 
     test("should start and stop shell terminal session", async ({ page }) => {
       await navigateToTerminalTab(page);
@@ -102,7 +108,7 @@ test.describe("Terminal Paste Functionality", () => {
       await expect(page.getByTestId("terminal-status")).toHaveAttribute(
         "data-status",
         "connected",
-        { timeout: 15000 }
+        { timeout: 15_000 }
       );
 
       // Verify terminal emulator is rendered
@@ -119,7 +125,9 @@ test.describe("Terminal Paste Functionality", () => {
       );
     });
 
-    test("should paste text only once in terminal (no double-paste bug)", async ({ page }) => {
+    test("should paste text only once in terminal (no double-paste bug)", async ({
+      page,
+    }) => {
       await navigateToTerminalTab(page);
 
       // Start shell terminal
@@ -130,7 +138,7 @@ test.describe("Terminal Paste Functionality", () => {
       await expect(page.getByTestId("terminal-status")).toHaveAttribute(
         "data-status",
         "connected",
-        { timeout: 15000 }
+        { timeout: 15_000 }
       );
 
       const terminalEmulator = page.getByTestId("terminal-emulator");

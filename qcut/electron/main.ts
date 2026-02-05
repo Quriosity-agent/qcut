@@ -1,9 +1,19 @@
+/**
+ * Electron Main Process
+ *
+ * Entry point for the QCut desktop application. Handles window management,
+ * IPC communication, protocol registration, and integration with system features.
+ *
+ * @module electron/main
+ */
+
 import {
   app,
   BrowserWindow,
   ipcMain,
   dialog,
   protocol,
+  net,
   session,
   shell,
   IpcMainInvokeEvent,
@@ -15,6 +25,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as http from "http";
 import * as os from "os";
+import { pathToFileURL } from "url";
 
 // Type definitions
 interface Logger {
@@ -151,9 +162,7 @@ function setupAutoUpdater(): void {
   } else {
     // Stable users should NOT receive prereleases by default
     autoUpdater.allowPrerelease = false;
-    logger.log(
-      "🔄 [AutoUpdater] Configured for stable channel (latest.yml)"
-    );
+    logger.log("🔄 [AutoUpdater] Configured for stable channel (latest.yml)");
   }
 
   // Check for updates
@@ -357,56 +366,83 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  // Register custom protocol for serving static files
-  protocol.registerFileProtocol("app", (request, callback) => {
-    let url = request.url.replace("app://", "").replace("app:/", "");
+  // Determine base path based on whether app is packaged
+  const basePath = app.isPackaged
+    ? path.join(app.getAppPath(), "apps/web/dist")
+    : path.join(__dirname, "../../apps/web/dist");
 
-    // Clean up the URL
-    if (url.startsWith("./")) {
-      url = url.substring(2);
+  logger.log(`[Protocol] Base path: ${basePath}`);
+  logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
+
+  // Register custom protocol using the newer handle API for better ES module support
+  protocol.handle("app", async (request) => {
+    let urlPath = request.url.slice("app://".length);
+
+    // Clean up the URL path
+    if (urlPath.startsWith("./")) {
+      urlPath = urlPath.substring(2);
     }
-    if (url.startsWith("/")) {
-      url = url.substring(1);
+    if (urlPath.startsWith("/")) {
+      urlPath = urlPath.substring(1);
     }
 
     // Default to index.html for root
-    if (!url || url === "") {
-      url = "index.html";
+    if (!urlPath || urlPath === "") {
+      urlPath = "index.html";
     }
 
-    // Determine base path based on whether app is packaged
-    const basePath = app.isPackaged
-      ? path.join(app.getAppPath(), "apps/web/dist")
-      : path.join(__dirname, "../../apps/web/dist");
+    // Security: Normalize path and block traversal attempts
+    const normalizedPath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
+    if (normalizedPath !== urlPath || normalizedPath.includes("..")) {
+      logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
+      return new Response("Not Found", { status: 404 });
+    }
 
-    // Handle FFmpeg resources specifically
-    if (url.startsWith("ffmpeg/")) {
-      const filename = url.replace("ffmpeg/", "");
-      // In production, FFmpeg files are in resources/ffmpeg/
-      const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
+    try {
+      // Handle FFmpeg resources specifically
+      if (normalizedPath.startsWith("ffmpeg/")) {
+        const filename = normalizedPath.replace("ffmpeg/", "");
+        // In production, FFmpeg files are in resources/ffmpeg/
+        const ffmpegPath = path.join(
+          __dirname,
+          "resources",
+          "ffmpeg",
+          filename
+        );
 
-      // Check if file exists in resources/ffmpeg, fallback to dist
-      if (fs.existsSync(ffmpegPath)) {
-        callback({ path: ffmpegPath });
-        return;
+        // Check if file exists in resources/ffmpeg, fallback to dist
+        if (fs.existsSync(ffmpegPath)) {
+          return await net.fetch(pathToFileURL(ffmpegPath).toString());
+        }
+
+        // Fallback to dist directory
+        const distPath = path.join(basePath, "ffmpeg", filename);
+        return await net.fetch(pathToFileURL(distPath).toString());
       }
 
-      // Fallback to dist directory
-      const distPath = path.join(basePath, "ffmpeg", filename);
-      callback({ path: distPath });
-    } else {
-      // Handle other resources
-      const filePath = path.join(basePath, url);
-      logger.log(
-        `[Protocol] Serving file: ${filePath} (exists: ${fs.existsSync(filePath)})`
-      );
+      // Handle other resources with path containment check
+      const filePath = path.resolve(basePath, normalizedPath);
+      const baseResolved = path.resolve(basePath) + path.sep;
+
+      // Ensure resolved path stays within basePath
+      if (
+        !filePath.startsWith(baseResolved) &&
+        filePath !== path.resolve(basePath)
+      ) {
+        logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
+        return new Response("Not Found", { status: 404 });
+      }
 
       if (fs.existsSync(filePath)) {
-        callback({ path: filePath });
-      } else {
-        logger.error(`[Protocol] File not found: ${filePath}`);
-        callback({ error: -6 }); // net::ERR_FILE_NOT_FOUND
+        logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
+        return await net.fetch(pathToFileURL(filePath).toString());
       }
+
+      logger.error(`[Protocol] File not found: ${filePath}`);
+      return new Response("Not Found", { status: 404 });
+    } catch (error) {
+      logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
+      return new Response("Internal Server Error", { status: 500 });
     }
   });
 
