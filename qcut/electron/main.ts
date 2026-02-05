@@ -391,12 +391,14 @@ app.whenReady().then(() => {
       urlPath = "index.html";
     }
 
-    // Security: Normalize path and block traversal attempts
-    const normalizedPath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-    if (normalizedPath !== urlPath || normalizedPath.includes("..")) {
+    // Security: Block path traversal attempts
+    // Check for ".." before normalization to catch traversal attempts
+    if (urlPath.includes("..")) {
       logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
       return new Response("Not Found", { status: 404 });
     }
+    // Normalize path for consistent handling (converts / to \ on Windows)
+    const normalizedPath = path.normalize(urlPath);
 
     try {
       // Handle FFmpeg resources specifically

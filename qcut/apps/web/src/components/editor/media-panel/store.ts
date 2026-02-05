@@ -70,10 +70,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: PenTool,
     label: "Draw",
   },
-  captions: {
-    icon: CaptionsIcon,
-    label: "Captions",
-  },
   text: {
     icon: TypeIcon,
     label: "Text",
@@ -86,25 +82,9 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: Wand2Icon,
     label: "Video Edit",
   },
-  sounds: {
-    icon: VolumeXIcon,
-    label: "Sounds",
-  },
-  effects: {
-    icon: SparklesIcon,
-    label: "Effects",
-  },
-  transitions: {
-    icon: ArrowLeftRightIcon,
-    label: "Transitions",
-  },
   filters: {
     icon: BlendIcon,
     label: "Filters",
-  },
-  audio: {
-    icon: MusicIcon,
-    label: "Audio",
   },
   segmentation: {
     icon: ScissorsIcon,
@@ -125,6 +105,26 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   "project-folder": {
     icon: FolderSync,
     label: "Project",
+  },
+  sounds: {
+    icon: VolumeXIcon,
+    label: "Sounds (WIP)",
+  },
+  effects: {
+    icon: SparklesIcon,
+    label: "Effects (WIP)",
+  },
+  transitions: {
+    icon: ArrowLeftRightIcon,
+    label: "Transitions (WIP)",
+  },
+  audio: {
+    icon: MusicIcon,
+    label: "Audio (WIP)",
+  },
+  captions: {
+    icon: CaptionsIcon,
+    label: "Captions (WIP)",
   },
 };
 

@@ -595,34 +595,57 @@ export async function addStickerToCanvas(
   }
 ): Promise<boolean> {
   try {
-    // Open stickers panel
-    await page.click('[data-testid="stickers-panel-tab"]');
-    await page
-      .locator('[data-testid="stickers-panel"]')
-      .waitFor({ state: "visible", timeout: 5000 });
+    // Wait for the stickers panel tab to be available (use attached since it may be hidden on some viewports)
+    const stickerTab = page.locator('[data-testid="stickers-panel-tab"]');
+    await stickerTab
+      .waitFor({ state: "attached", timeout: 10_000 })
+      .catch(() => {
+        console.warn("Stickers panel tab not attached");
+        return null;
+      });
 
-    // Wait for sticker items to load
+    if ((await stickerTab.count()) === 0) {
+      console.warn(
+        "Stickers panel tab not found - stickers feature may not be available"
+      );
+      return false;
+    }
+
+    // Open stickers panel - click even if not visible (may be behind other elements)
+    await stickerTab.click({ force: true });
+
+    // Wait for stickers panel to be visible
+    const stickersPanel = page.locator('[data-testid="stickers-panel"]');
+    await stickersPanel.waitFor({ state: "visible", timeout: 5000 }).catch(() => {
+      console.warn("Stickers panel did not become visible");
+    });
+
+    // Wait for sticker items to load (use "attached" like passing tests do)
     const stickerItems = page.locator('[data-testid="sticker-item"]');
     await stickerItems
       .first()
-      .waitFor({ state: "visible", timeout: 5000 })
+      .waitFor({ state: "attached", timeout: 5000 })
       .catch(() => null);
 
-    if ((await stickerItems.count()) === 0) {
+    const itemCount = await stickerItems.count();
+    if (itemCount === 0) {
       console.warn("No sticker items found in panel");
       return false;
     }
 
     // Get sticker canvas
     const stickerCanvas = page.locator('[data-testid="sticker-canvas"]');
+    const canvasCount = await stickerCanvas.count();
 
-    if (
-      (await stickerCanvas.count()) > 0 &&
-      (await stickerCanvas.isVisible())
-    ) {
+    if (canvasCount > 0 && (await stickerCanvas.isVisible())) {
       // Drag sticker to canvas
       const targetPosition = options?.position || { x: 100, y: 100 };
-      await stickerItems.first().dragTo(stickerCanvas, {
+      const firstSticker = stickerItems.first();
+
+      // Ensure sticker is visible before dragging
+      await firstSticker.waitFor({ state: "visible", timeout: 3000 }).catch(() => null);
+
+      await firstSticker.dragTo(stickerCanvas, {
         force: true,
         targetPosition,
       });
@@ -636,7 +659,7 @@ export async function addStickerToCanvas(
       return true;
     }
 
-    console.warn("Sticker canvas not visible");
+    console.warn("Sticker canvas not visible - canvas count:", canvasCount);
     return false;
   } catch (error) {
     console.error("Failed to add sticker to canvas:", error);

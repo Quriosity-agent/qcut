@@ -1,0 +1,9 @@
+{
+  "name": "invalid-project",
+  "version": "1.0.0",
+  "description": "Project without Remotion dependency - used for testing error handling",
+  "dependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
