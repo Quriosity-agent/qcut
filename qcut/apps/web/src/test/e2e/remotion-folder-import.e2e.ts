@@ -176,9 +176,9 @@ test.describe("Remotion Folder Import", () => {
       await captureTestStep(page, "remotion-import", 2, "before-scan");
 
       const scanResult = await page.evaluate(async (folderPath) => {
-        const api = (window as any).electronAPI;
+        const api = (window as Window & { electronAPI?: { remotionFolder?: { scan: (path: string) => Promise<{ isValid: boolean; compositions: Array<{ id: string }>; errors: string[] }> } } }).electronAPI;
         if (!api?.remotionFolder?.scan) {
-          return { error: "remotionFolder API not available" };
+          return { error: "remotionFolder API not available" } as const;
         }
         return await api.remotionFolder.scan(folderPath);
       }, VALID_PROJECT);
@@ -186,7 +186,7 @@ test.describe("Remotion Folder Import", () => {
       // Should be valid scan result
       expect(scanResult).not.toBeNull();
 
-      if (!scanResult.error) {
+      if (!("error" in scanResult)) {
         expect(scanResult.isValid).toBe(true);
         expect(scanResult.compositions).toBeDefined();
         expect(Array.isArray(scanResult.compositions)).toBe(true);
@@ -196,7 +196,7 @@ test.describe("Remotion Folder Import", () => {
 
         // Verify composition metadata
         const compositionIds = scanResult.compositions.map(
-          (c: any) => c.id
+          (c) => c.id
         );
         expect(compositionIds).toContain("HelloWorld");
         expect(compositionIds).toContain("TestAnimation");
