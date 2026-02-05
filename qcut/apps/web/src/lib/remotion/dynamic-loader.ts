@@ -23,9 +23,9 @@ async function loadOptionalPackages(): Promise<void> {
   try {
     const zodTypes = await import("@remotion/zod-types");
     RemotionZodTypes = zodTypes as unknown as Record<string, unknown>;
-    console.log("[DynamicLoader] ✅ Loaded @remotion/zod-types");
+    debugLog("[DynamicLoader] ✅ Loaded @remotion/zod-types");
   } catch (e) {
-    console.warn("[DynamicLoader] @remotion/zod-types not available:", e);
+    debugLog("[DynamicLoader] @remotion/zod-types not available:", e);
   }
 
   try {
@@ -38,9 +38,9 @@ async function loadOptionalPackages(): Promise<void> {
     try {
       const fadeModule = await import("@remotion/transitions/fade");
       Object.assign(RemotionTransitions, fadeModule);
-      console.log("[DynamicLoader] ✅ Loaded fade transition");
+      debugLog("[DynamicLoader] ✅ Loaded fade transition");
     } catch (e) {
-      console.warn("[DynamicLoader] fade transition not available:", e);
+      debugLog("[DynamicLoader] fade transition not available:", e);
     }
 
     try {
@@ -78,15 +78,15 @@ async function loadOptionalPackages(): Promise<void> {
       // none not available
     }
 
-    console.log("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));
-  } catch {
-    // Package not available
+    debugLog("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));
+  } catch (e) {
+    debugLog("[DynamicLoader] @remotion/transitions not available:", e);
   }
 }
 
 // Initialize optional packages and store the promise
 optionalPackagesLoaded = loadOptionalPackages().catch((e) => {
-  console.warn("[DynamicLoader] Error loading optional packages:", e);
+  debugLog("[DynamicLoader] Error loading optional packages:", e);
 });
 
 // ============================================================================
