@@ -8,24 +8,15 @@ import { I2V_MODELS, I2V_MODEL_ORDER } from "../image2video-models-config";
 
 describe("Kling v3 Model Configurations", () => {
   describe("Text-to-Video Models", () => {
-    it("should have kling_v3_pro_t2v configuration", () => {
-      expect(T2V_MODELS.kling_v3_pro_t2v).toBeDefined();
-      expect(T2V_MODELS.kling_v3_pro_t2v.id).toBe("kling_v3_pro_t2v");
-      expect(T2V_MODELS.kling_v3_pro_t2v.name).toBe("Kling v3 Pro T2V");
-      expect(T2V_MODELS.kling_v3_pro_t2v.endpoints.text_to_video).toBe(
-        "fal-ai/kling-video/v3/pro/text-to-video"
-      );
-    });
-
-    it("should have kling_v3_standard_t2v configuration", () => {
-      expect(T2V_MODELS.kling_v3_standard_t2v).toBeDefined();
-      expect(T2V_MODELS.kling_v3_standard_t2v.id).toBe("kling_v3_standard_t2v");
-      expect(T2V_MODELS.kling_v3_standard_t2v.name).toBe(
-        "Kling v3 Standard T2V"
-      );
-      expect(T2V_MODELS.kling_v3_standard_t2v.endpoints.text_to_video).toBe(
-        "fal-ai/kling-video/v3/standard/text-to-video"
-      );
+    it.each([
+      { id: "kling_v3_pro_t2v", name: "Kling v3 Pro T2V", endpoint: "fal-ai/kling-video/v3/pro/text-to-video" },
+      { id: "kling_v3_standard_t2v", name: "Kling v3 Standard T2V", endpoint: "fal-ai/kling-video/v3/standard/text-to-video" },
+    ])("should have $id configuration", ({ id, name, endpoint }) => {
+      const model = T2V_MODELS[id as keyof typeof T2V_MODELS];
+      expect(model).toBeDefined();
+      expect(model.id).toBe(id);
+      expect(model.name).toBe(name);
+      expect(model.endpoints.text_to_video).toBe(endpoint);
     });
 
     it("should have correct capabilities for kling_v3_pro_t2v", () => {
@@ -86,24 +77,15 @@ describe("Kling v3 Model Configurations", () => {
   });
 
   describe("Image-to-Video Models", () => {
-    it("should have kling_v3_pro_i2v configuration", () => {
-      expect(I2V_MODELS.kling_v3_pro_i2v).toBeDefined();
-      expect(I2V_MODELS.kling_v3_pro_i2v.id).toBe("kling_v3_pro_i2v");
-      expect(I2V_MODELS.kling_v3_pro_i2v.name).toBe("Kling v3 Pro I2V");
-      expect(I2V_MODELS.kling_v3_pro_i2v.endpoints.image_to_video).toBe(
-        "fal-ai/kling-video/v3/pro/image-to-video"
-      );
-    });
-
-    it("should have kling_v3_standard_i2v configuration", () => {
-      expect(I2V_MODELS.kling_v3_standard_i2v).toBeDefined();
-      expect(I2V_MODELS.kling_v3_standard_i2v.id).toBe("kling_v3_standard_i2v");
-      expect(I2V_MODELS.kling_v3_standard_i2v.name).toBe(
-        "Kling v3 Standard I2V"
-      );
-      expect(I2V_MODELS.kling_v3_standard_i2v.endpoints.image_to_video).toBe(
-        "fal-ai/kling-video/v3/standard/image-to-video"
-      );
+    it.each([
+      { id: "kling_v3_pro_i2v", name: "Kling v3 Pro I2V", endpoint: "fal-ai/kling-video/v3/pro/image-to-video" },
+      { id: "kling_v3_standard_i2v", name: "Kling v3 Standard I2V", endpoint: "fal-ai/kling-video/v3/standard/image-to-video" },
+    ])("should have $id configuration", ({ id, name, endpoint }) => {
+      const model = I2V_MODELS[id as keyof typeof I2V_MODELS];
+      expect(model).toBeDefined();
+      expect(model.id).toBe(id);
+      expect(model.name).toBe(name);
+      expect(model.endpoints.image_to_video).toBe(endpoint);
     });
 
     it("should support audio generation for I2V models", () => {
