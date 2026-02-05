@@ -558,9 +558,11 @@ test.describe("Sticker Overlay Export Tests", () => {
   });
 
   /**
-   * Integration Test: Sticker persistence across project save/load
+   * Integration Test: Sticker persistence during auto-save
+   * Note: This test verifies stickers remain in DOM during auto-save cycle,
+   * not persistence across page reload (which would require navigation helpers).
    */
-  test("should persist stickers when project is saved and reloaded", async ({
+  test("should preserve stickers during auto-save cycle", async ({
     page,
   }) => {
     // Add sticker to canvas
@@ -576,10 +578,10 @@ test.describe("Sticker Overlay Export Tests", () => {
       .count();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Save project (should auto-save)
-    await page.waitForTimeout(1000); // Wait for auto-save
+    // Wait for auto-save cycle
+    await page.waitForTimeout(1000);
 
-    // Verify stickers still exist
+    // Verify stickers still exist after auto-save
     const finalCount = await page
       .locator('[data-testid="sticker-instance"]')
       .count();
