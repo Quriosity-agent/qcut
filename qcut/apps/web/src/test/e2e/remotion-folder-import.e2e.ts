@@ -39,8 +39,8 @@ const INVALID_PROJECT = remotionFixturePath("invalid-project");
 const NO_ROOT_PROJECT = remotionFixturePath("no-root-project");
 const EMPTY_FOLDER = remotionFixturePath("empty-folder");
 
-// Real Remotion project folder for integration testing
-const REAL_REMOTION_PROJECT = "c:\\Users\\zdhpe\\Desktop\\remotion";
+// Real Remotion project folder for integration testing (configurable via env)
+const REAL_REMOTION_PROJECT = process.env.REMOTION_PROJECT_PATH || "";
 
 // ============================================================================
 // Test Suite: Remotion Folder Import
@@ -536,7 +536,9 @@ test.describe("Remotion Folder Import", () => {
   // Subtask 7: Real Remotion Project Debugging Tests
   // --------------------------------------------------------------------------
 
+  // Skip these tests if REMOTION_PROJECT_PATH env var is not set
   test.describe("Real Remotion Project Debug", () => {
+    test.skip(!REAL_REMOTION_PROJECT, "Skipping: REMOTION_PROJECT_PATH env var not set");
     /**
      * Test 7.1: Debug import of real Remotion project folder
      * Uses c:\Users\zdhpe\Desktop\remotion to test actual folder import
