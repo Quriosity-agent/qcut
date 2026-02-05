@@ -145,7 +145,6 @@ async function checkBundlerAvailable(): Promise<boolean> {
  * Call this function during app initialization.
  */
 export function setupRemotionFolderIPC(): void {
-  console.log(`${LOG_PREFIX} 🔧 Registering IPC handlers...`);
   log.info(`${LOG_PREFIX} Registering IPC handlers`);
 
   // -------------------------------------------------------------------------
@@ -522,7 +521,6 @@ export function setupRemotionFolderIPC(): void {
     }
   );
 
-  console.log(`${LOG_PREFIX} ✅ IPC handlers registered`);
   log.info(`${LOG_PREFIX} IPC handlers registered`);
 }
 
