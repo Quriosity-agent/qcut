@@ -1364,8 +1364,35 @@ export function convertParametersForModel(modelId: string, params: any) {
   }
 }
 
-// Export singleton instance
-export const falAIClient = new FalAIClient();
+// Lazy singleton to avoid temporal dead zone errors during module loading
+let _falAIClientInstance: FalAIClient | null = null;
+
+function getFalAIClientInstance(): FalAIClient {
+  if (!_falAIClientInstance) {
+    _falAIClientInstance = new FalAIClient();
+  }
+  return _falAIClientInstance;
+}
+
+// Export a proxy that lazily creates the instance on first access
+// This prevents the singleton from being created during module initialization
+export const falAIClient: FalAIClient = new Proxy({} as FalAIClient, {
+  get(_target, prop) {
+    const instance = getFalAIClientInstance();
+    const value = (instance as unknown as Record<string | symbol, unknown>)[
+      prop
+    ];
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(instance);
+    }
+    return value;
+  },
+  set(_target, prop, value) {
+    const instance = getFalAIClientInstance();
+    (instance as unknown as Record<string | symbol, unknown>)[prop] = value;
+    return true;
+  },
+});
 
 // Export main functions for easy importing
 export async function generateWithModel(

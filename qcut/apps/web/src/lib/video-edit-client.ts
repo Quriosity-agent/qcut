@@ -4,12 +4,11 @@
  * WHY this client:
  * - Centralized FAL API integration for video edit models
  * - Handles authentication, polling, and error recovery
- * - Follows pattern from ai-video-client.ts
+ * - Uses direct HTTP requests to avoid @fal-ai/client initialization issues in Electron
  *
  * Performance: Direct client-to-FAL reduces latency by ~500ms vs backend proxy
  */
 
-import { fal } from "@fal-ai/client";
 import { debugLog, debugError } from "@/lib/debug-config";
 import type {
   KlingVideoToAudioParams,
@@ -18,6 +17,13 @@ import type {
   VideoEditResult,
 } from "@/components/editor/media-panel/views/video-edit-types";
 import { VIDEO_EDIT_MODELS } from "@/components/editor/media-panel/views/video-edit-constants";
+import {
+  getFalApiKeyAsync,
+  FAL_UPLOAD_URL,
+} from "@/lib/ai-video/core/fal-request";
+
+const FAL_API_BASE = "https://fal.run";
+const FAL_QUEUE_BASE = "https://queue.fal.run";
 
 /**
  * FAL API Response Types
@@ -81,15 +87,6 @@ type FalDirectResult = FalDirectResponse & {
   requestId?: string; // Some responses use camelCase
 };
 
-/**
- * FAL Subscribe Result
- * The actual structure returned by fal.subscribe()
- */
-interface FalSubscribeResult {
-  data: FalDirectResponse;
-  requestId: string;
-}
-
 type KlingInputPayload = {
   video_url: string;
   sound_effect_prompt?: string;
@@ -99,40 +96,25 @@ type KlingInputPayload = {
 
 /**
  * Video Edit Client Class
- * Singleton pattern for consistent FAL configuration
+ * Uses direct HTTP requests instead of @fal-ai/client to avoid Electron issues
  */
 class VideoEditClient {
   private initialized = false;
   private apiKey: string | null = null;
 
   constructor() {
-    this.initializeFalClient();
+    // Defer initialization to avoid module loading issues
   }
 
   /**
-   * Initialize FAL client with API key
-   * WHY: FAL requires authentication for all requests
-   * Edge case: API key might be loaded async from Electron
+   * Initialize with API key
    */
-  private async initializeFalClient() {
+  private async initializeApiKey() {
     try {
-      // Try environment variable first
-      this.apiKey = import.meta.env.VITE_FAL_API_KEY || null;
-
-      // Try Electron API if available
-      if (!this.apiKey && window.electronAPI?.apiKeys) {
-        const keys = await window.electronAPI.apiKeys.get();
-        if (keys?.falApiKey) {
-          this.apiKey = keys.falApiKey;
-        }
-      }
-
+      this.apiKey = (await getFalApiKeyAsync()) || null;
       if (this.apiKey) {
-        fal.config({
-          credentials: this.apiKey,
-        });
         this.initialized = true;
-        debugLog("Video Edit Client: FAL API initialized");
+        debugLog("Video Edit Client: API key loaded");
       } else {
         debugError("Video Edit Client: No FAL API key found");
       }
@@ -143,14 +125,10 @@ class VideoEditClient {
 
   /**
    * Ensure client is ready
-   * WHY: API key might load async, need to wait
    */
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
-
-    // Retry initialization
-    await this.initializeFalClient();
-
+    await this.initializeApiKey();
     if (!this.initialized) {
       throw new Error("FAL AI API key not configured");
     }
@@ -158,35 +136,76 @@ class VideoEditClient {
 
   /**
    * Handle FAL API errors
-   * WHY: Consistent error messages across all models
    */
-  private handleApiError(error: any): string {
-    if (error?.status === 429) {
+  private handleApiError(error: unknown): string {
+    const err = error as Record<string, unknown>;
+    if (err?.status === 429) {
       return "Rate limit exceeded. Please wait a moment and try again.";
     }
-    if (error?.status === 402) {
+    if (err?.status === 402) {
       return "Insufficient credits. Please check your FAL account.";
     }
-    if (error?.status === 413) {
+    if (err?.status === 413) {
       return "File too large. Please use a smaller video.";
     }
-    if (error?.message) {
-      return error.message;
+    if (err?.message && typeof err.message === "string") {
+      return err.message;
     }
     return "An unexpected error occurred. Please try again.";
   }
 
   /**
+   * Make a direct FAL API request
+   */
+  private async makeFalRequest<T>(
+    endpoint: string,
+    input: Record<string, unknown>
+  ): Promise<T> {
+    if (!this.apiKey) {
+      throw new Error("API key not initialized");
+    }
+
+    const url = endpoint.startsWith("https://")
+      ? endpoint
+      : `${FAL_API_BASE}/${endpoint}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${this.apiKey}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const err = errorData as Record<string, unknown>;
+
+      // Handle validation errors
+      if (response.status === 422 && err.detail) {
+        const details = Array.isArray(err.detail)
+          ? err.detail
+              .map((d: unknown) =>
+                typeof d === "object" && d !== null && "msg" in d
+                  ? (d as { msg: string }).msg
+                  : JSON.stringify(d)
+              )
+              .join(", ")
+          : String(err.detail);
+        throw new Error(`Validation error: ${details}`);
+      }
+
+      throw new Error(
+        `FAL API error: ${err.detail || err.error || response.statusText}`
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
    * Upload video file to FAL storage
-   *
-   * WHY: FAL endpoints require publicly accessible URLs, not blob/data URLs
-   *
-   * @param file - Video file to upload (File or Blob)
-   * @returns Publicly accessible URL for the uploaded video
-   *
-   * Edge cases:
-   * - Files over 90MB use multi-part upload automatically
-   * - Upload time scales with file size
    */
   async uploadVideo(file: File | Blob): Promise<string> {
     await this.ensureInitialized();
@@ -197,10 +216,28 @@ class VideoEditClient {
         type: file.type,
       });
 
-      const url = await fal.storage.upload(file);
+      const formData = new FormData();
+      formData.append("file", file);
 
-      debugLog("Video uploaded successfully:", url);
-      return url;
+      const response = await fetch(FAL_UPLOAD_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${this.apiKey}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = (await response.json()) as { url?: string };
+      if (!data.url) {
+        throw new Error("Upload response missing URL");
+      }
+
+      debugLog("Video uploaded successfully:", data.url);
+      return data.url;
     } catch (error) {
       debugError("Failed to upload video:", error);
       throw new Error(this.handleApiError(error));
@@ -209,8 +246,6 @@ class VideoEditClient {
 
   /**
    * Parse FAL API response defensively
-   * WHY: Some FAL models return data directly, others wrap it in a data property
-   * Pattern from fal-ai-service.ts to handle multiple response structures
    */
   private parseResponse(result: FalDirectResult): {
     videoUrl: string | null;
@@ -223,7 +258,6 @@ class VideoEditClient {
   } {
     console.log("[FAL Response Parser] Raw result:", result);
 
-    // Try multiple response structures (defensive programming)
     let videoUrl: string | null = null;
     let audioUrl: string | null = null;
 
@@ -232,9 +266,7 @@ class VideoEditClient {
       videoUrl = result.video_url;
     } else if (result.video?.url) {
       videoUrl = result.video.url;
-    }
-    // Check data property wrapper (some FAL models use this)
-    else if (result.data?.video_url) {
+    } else if (result.data?.video_url) {
       videoUrl = result.data.video_url;
     } else if (result.data?.video?.url) {
       videoUrl = result.data.video.url;
@@ -245,25 +277,16 @@ class VideoEditClient {
       audioUrl = result.audio_url;
     } else if (result.audio?.url) {
       audioUrl = result.audio.url;
-    }
-    // Check data property wrapper for audio
-    else if (result.data?.audio_url) {
+    } else if (result.data?.audio_url) {
       audioUrl = result.data.audio_url;
     } else if (result.data?.audio?.url) {
       audioUrl = result.data.audio.url;
     }
 
-    // Get duration from various sources
     const duration = result.video?.duration || result.data?.video?.duration;
-
-    // Get file size from various sources
     const fileSize = result.video?.size || result.data?.video?.size;
-
-    // Get video dimensions from various sources
     const width = result.video?.width || result.data?.video?.width;
     const height = result.video?.height || result.data?.video?.height;
-
-    // Get job/request ID (handle both snake_case and camelCase)
     const jobId = result.requestId || result.request_id || `fal-${Date.now()}`;
 
     console.log("[FAL Response Parser] Parsed:", {
@@ -281,15 +304,6 @@ class VideoEditClient {
 
   /**
    * Generate audio from video using Kling
-   *
-   * WHY this model:
-   * - Generates sound effects and background music for videos
-   * - Works with 3-20 second videos
-   * - Can enhance videos with ASMR mode
-   *
-   * Edge cases:
-   * - Videos must be 3-20 seconds
-   * - Max 200 characters for prompts
    */
   async generateKlingAudio(
     params: KlingVideoToAudioParams
@@ -298,34 +312,26 @@ class VideoEditClient {
 
     console.log("=== KLING VIDEO TO AUDIO DEBUG START ===");
     console.log("1. Input params received:", params);
-    console.log("2. Video URL type:", typeof params.video_url);
-    console.log("3. Video URL length:", params.video_url?.length);
-    console.log(
-      "4. Video URL preview:",
-      params.video_url?.substring(0, 100) + "..."
-    );
 
-    // Validate video URL before making API call
+    // Validate video URL
     if (!params.video_url) {
       throw new Error("Video URL is required");
     }
     if (params.video_url.startsWith("blob:")) {
       throw new Error(
-        "Blob URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage)."
+        "Blob URLs are not supported. Upload the video to FAL storage first."
       );
     }
     if (params.video_url.startsWith("data:")) {
       throw new Error(
-        "Data URLs are not supported. The video must be uploaded to a publicly accessible URL first (e.g., using FAL storage)."
+        "Data URLs are not supported. Upload the video to FAL storage first."
       );
     }
     if (
       !params.video_url.startsWith("http://") &&
       !params.video_url.startsWith("https://")
     ) {
-      throw new Error(
-        `Invalid video URL format: ${params.video_url.substring(0, 50)}... URLs must start with http:// or https://`
-      );
+      throw new Error(`Invalid video URL format: ${params.video_url.substring(0, 50)}...`);
     }
 
     debugLog("Generating audio with Kling:", {
@@ -341,48 +347,28 @@ class VideoEditClient {
       );
       if (!model) throw new Error("Model configuration not found");
 
-      // Build the input payload
       const inputPayload: KlingInputPayload = {
         video_url: params.video_url,
       };
 
-      // Add optional parameters only if they have values
-      if (params.sound_effect_prompt && params.sound_effect_prompt.trim()) {
+      if (params.sound_effect_prompt?.trim()) {
         inputPayload.sound_effect_prompt = params.sound_effect_prompt;
       }
-      if (
-        params.background_music_prompt &&
-        params.background_music_prompt.trim()
-      ) {
+      if (params.background_music_prompt?.trim()) {
         inputPayload.background_music_prompt = params.background_music_prompt;
       }
       if (params.asmr_mode !== undefined) {
         inputPayload.asmr_mode = params.asmr_mode;
       }
 
-      console.log(
-        "5. Final payload being sent to FAL:",
-        JSON.stringify(inputPayload, null, 2)
+      console.log("5. Final payload:", JSON.stringify(inputPayload, null, 2));
+
+      const result = await this.makeFalRequest<FalDirectResult>(
+        model.endpoints.process,
+        inputPayload
       );
-      console.log("6. Endpoint:", model.endpoints.process);
-      console.log("7. FAL initialized?", this.initialized);
-      console.log("8. API Key available?", !!this.apiKey);
 
-      // Call FAL API
-      const result = (await fal.subscribe(model.endpoints.process, {
-        input: inputPayload,
-        logs: true,
-        onQueueUpdate: (update) => {
-          console.log("9. Queue update received:", update);
-          debugLog("Kling queue update:", update);
-        },
-      })) as FalSubscribeResult;
-
-      // Parse response defensively
-      const parsed = this.parseResponse({
-        ...result.data,
-        requestId: result.requestId,
-      });
+      const parsed = this.parseResponse(result);
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
@@ -400,63 +386,15 @@ class VideoEditClient {
         width: parsed.width,
         height: parsed.height,
       };
-    } catch (error: any) {
-      console.error("=== KLING ERROR DEBUG ===");
-      console.error("Error type:", error?.constructor?.name);
-      console.error("Error message:", error?.message);
-      console.error("Error status:", error?.status);
-      console.error("Error statusText:", error?.statusText);
-      console.error("Error body:", error?.body);
-
-      // Log validation details if available
-      if (error?.body?.detail) {
-        console.error("Validation errors:");
-        if (Array.isArray(error.body.detail)) {
-          error.body.detail.forEach((detail: any, index: number) => {
-            console.error(`  ${index + 1}.`, detail);
-          });
-        } else {
-          console.error("  ", error.body.detail);
-        }
-      }
-
-      console.error("Full error object:", error);
-      console.error("Error response:", error?.response);
-      if (error?.response) {
-        try {
-          const responseText = await error.response.text();
-          console.error("Response text:", responseText);
-        } catch (e) {
-          console.error("Could not read response text");
-        }
-      }
-      console.error("=== END ERROR DEBUG ===");
-
+    } catch (error) {
+      console.error("=== KLING ERROR DEBUG ===", error);
       debugError("Kling audio generation failed:", error);
-
-      // Provide better error message for 422 validation errors
-      if (error?.status === 422 && error?.body?.detail) {
-        const details = Array.isArray(error.body.detail)
-          ? error.body.detail
-              .map((d: any) => d.msg || JSON.stringify(d))
-              .join(", ")
-          : String(error.body.detail);
-        throw new Error(`Validation error: ${details}`);
-      }
-
       throw new Error(this.handleApiError(error));
     }
   }
 
   /**
    * Generate synchronized audio using MMAudio V2
-   *
-   * WHY this model:
-   * - Creates audio that matches video content
-   * - Text prompt control over style/mood
-   *
-   * Business logic: $0.001 per second of output
-   * Performance: num_steps linearly affects processing time
    */
   async generateMMAudio(params: MMAudioV2Params): Promise<VideoEditResult> {
     await this.ensureInitialized();
@@ -471,9 +409,9 @@ class VideoEditClient {
       const model = VIDEO_EDIT_MODELS.find((m) => m.id === "mmaudio_v2");
       if (!model) throw new Error("Model configuration not found");
 
-      // Call FAL API
-      const result = (await fal.subscribe(model.endpoints.process, {
-        input: {
+      const result = await this.makeFalRequest<FalDirectResult>(
+        model.endpoints.process,
+        {
           video_url: params.video_url,
           prompt: params.prompt,
           negative_prompt: params.negative_prompt,
@@ -482,26 +420,17 @@ class VideoEditClient {
           duration: params.duration,
           cfg_strength: params.cfg_strength || 4.5,
           mask_away_clip: params.mask_away_clip || false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          debugLog("MMAudio queue update:", update);
-        },
-      })) as FalSubscribeResult;
+        }
+      );
 
-      // Parse response defensively
-      const parsed = this.parseResponse({
-        ...result.data,
-        requestId: result.requestId,
-      });
+      const parsed = this.parseResponse(result);
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
       }
 
-      // Calculate cost
       const duration = parsed.duration || params.duration || 10;
-      const cost = duration * 0.001; // $0.001 per second
+      const cost = duration * 0.001;
 
       return {
         modelId: "mmaudio_v2",
@@ -521,14 +450,6 @@ class VideoEditClient {
 
   /**
    * Upscale video using Topaz
-   *
-   * WHY this model:
-   * - Professional quality upscaling up to 8x
-   * - Frame interpolation for smoother playback
-   *
-   * Edge cases:
-   * - 8x upscale may fail for 720p+ sources (8K limit)
-   * - Processing time increases exponentially with factor
    */
   async upscaleTopaz(params: TopazUpscaleParams): Promise<VideoEditResult> {
     await this.ensureInitialized();
@@ -543,31 +464,22 @@ class VideoEditClient {
       const model = VIDEO_EDIT_MODELS.find((m) => m.id === "topaz_upscale");
       if (!model) throw new Error("Model configuration not found");
 
-      // Call FAL API
-      const result = (await fal.subscribe(model.endpoints.process, {
-        input: {
+      const result = await this.makeFalRequest<FalDirectResult>(
+        model.endpoints.process,
+        {
           video_url: params.video_url,
           upscale_factor: params.upscale_factor || 2.0,
           target_fps: params.target_fps,
           H264_output: params.H264_output || false,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          debugLog("Topaz queue update:", update);
-        },
-      })) as FalSubscribeResult;
+        }
+      );
 
-      // Parse response defensively
-      const parsed = this.parseResponse({
-        ...result.data,
-        requestId: result.requestId,
-      });
+      const parsed = this.parseResponse(result);
 
       if (!parsed.videoUrl) {
         throw new Error("No video URL in response");
       }
 
-      // Estimate cost based on upscale factor
       const factor = params.upscale_factor || 2.0;
       const cost = factor <= 2 ? 0.5 : factor <= 4 ? 2.0 : 5.0;
 
@@ -586,47 +498,39 @@ class VideoEditClient {
       throw new Error(this.handleApiError(error));
     }
   }
-
-  /**
-   * Get job status (for manual polling if needed)
-   * WHY: Some integrations may need custom polling logic
-   *
-   * NOTE: Currently disabled as fal.subscribe handles polling internally.
-   * The onQueueUpdate callback in subscribe provides real-time status updates.
-   */
-  // async getJobStatus(jobId: string): Promise<FalStatusResponse> {
-  //   await this.ensureInitialized();
-  //   try {
-  //     // fal.status may not be available in current client version
-  //     // Use fal.subscribe with request_id instead
-  //     throw new Error("Method not implemented - use fal.subscribe instead");
-  //   } catch (error) {
-  //     debugError("Failed to get job status:", error);
-  //     throw new Error(this.handleApiError(error));
-  //   }
-  // }
-
-  /**
-   * Cancel job
-   * WHY: Allow users to cancel long-running operations
-   *
-   * NOTE: Currently disabled as fal.subscribe handles the entire lifecycle.
-   * To cancel, the component should abort the subscribe promise.
-   */
-  // async cancelJob(jobId: string): Promise<void> {
-  //   await this.ensureInitialized();
-  //   try {
-  //     // fal.cancel may not be available in current client version
-  //     throw new Error("Method not implemented - abort the subscribe promise instead");
-  //   } catch (error) {
-  //     debugError("Failed to cancel job:", error);
-  //     // Don't throw - cancellation errors are non-critical
-  //   }
-  // }
 }
 
-// Export singleton instance
-export const videoEditClient = new VideoEditClient();
+// Lazy singleton to avoid module initialization issues
+let _videoEditClientInstance: VideoEditClient | null = null;
+
+function getVideoEditClientInstance(): VideoEditClient {
+  if (!_videoEditClientInstance) {
+    _videoEditClientInstance = new VideoEditClient();
+  }
+  return _videoEditClientInstance;
+}
+
+// Export a proxy that lazily creates the instance on first access
+export const videoEditClient: VideoEditClient = new Proxy(
+  {} as VideoEditClient,
+  {
+    get(_target, prop) {
+      const instance = getVideoEditClientInstance();
+      const value = (instance as unknown as Record<string | symbol, unknown>)[
+        prop
+      ];
+      if (typeof value === "function") {
+        return (value as (...args: unknown[]) => unknown).bind(instance);
+      }
+      return value;
+    },
+    set(_target, prop, value) {
+      const instance = getVideoEditClientInstance();
+      (instance as unknown as Record<string | symbol, unknown>)[prop] = value;
+      return true;
+    },
+  }
+);
 
 // Export types for convenience
 export type { VideoEditClient };

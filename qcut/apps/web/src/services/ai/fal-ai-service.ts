@@ -1,8 +1,10 @@
-import { fal } from "@fal-ai/client";
 import type {
   FalAiTextToImageInput,
   FalAiImageEditInput,
 } from "@/types/nano-edit";
+import { getFalApiKeyAsync } from "@/lib/ai-video/core/fal-request";
+
+const FAL_API_BASE = "https://fal.run";
 
 // FAL API response types
 type FalApiResponse = {
@@ -39,43 +41,77 @@ const isFalApiResponse = (response: unknown): response is FalApiResponse => {
   return hasImages && hasValidData;
 };
 
-// Configure fal client with API key from environment or settings
-const configureFalClient = async () => {
-  // First try environment variable (same as AI panel)
-  const envApiKey = import.meta.env.VITE_FAL_API_KEY;
-
-  if (envApiKey) {
-    fal.config({
-      credentials: envApiKey,
-    });
-    return true;
+/**
+ * Make a direct FAL API request without using @fal-ai/client
+ * This avoids initialization issues in Electron
+ */
+async function makeFalApiRequest(
+  endpoint: string,
+  input: Record<string, unknown>
+): Promise<FalApiResponse> {
+  const apiKey = await getFalApiKeyAsync();
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
-  // Fall back to Electron storage
-  if (window.electronAPI?.apiKeys) {
-    try {
-      const keys = await window.electronAPI.apiKeys.get();
+  const url = `${FAL_API_BASE}/${endpoint}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Key ${apiKey}`,
+    },
+    body: JSON.stringify(input),
+  });
 
-      if (keys?.falApiKey) {
-        fal.config({
-          credentials: keys.falApiKey,
-        });
-        return true;
-      }
-    } catch (error) {
-      console.error(
-        "[FalAiService] Failed to load FAL API key from storage:",
-        error
-      );
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage =
+      (errorData as Record<string, unknown>).detail ||
+      (errorData as Record<string, unknown>).error ||
+      response.statusText;
+    throw new Error(`FAL API error: ${errorMessage}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Parse image URLs from FAL API response
+ */
+function parseImageUrls(response: FalApiResponse): string[] {
+  // Check for images in direct response
+  if (response.images && Array.isArray(response.images)) {
+    return response.images.map((img) => img.url);
+  }
+  // Check for images in data property
+  if (response.data?.images && Array.isArray(response.data.images)) {
+    return response.data.images.map((img) => img.url);
+  }
+  // Check for single image in data
+  if (response.data?.image && typeof response.data.image === "string") {
+    return [response.data.image];
+  }
+  // Check for output property (some FAL models use this)
+  if (response.data?.output) {
+    if (Array.isArray(response.data.output)) {
+      return response.data.output
+        .map((item) => (typeof item === "string" ? item : item.url))
+        .filter(Boolean);
+    }
+    if (typeof response.data.output === "string") {
+      return [response.data.output];
     }
   }
-
-  return false;
-};
+  return [];
+}
 
 /**
  * Service for interacting with fal.ai Nano Banana APIs
  * Provides text-to-image generation and image editing capabilities
+ * Uses direct HTTP requests to avoid @fal-ai/client initialization issues in Electron
  */
 export const FalAiService = {
   /**
@@ -89,14 +125,6 @@ export const FalAiService = {
     options: Partial<FalAiTextToImageInput> = {}
   ): Promise<string[]> {
     try {
-      // Configure fal client with API key before making requests
-      const configured = await configureFalClient();
-      if (!configured) {
-        throw new Error(
-          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
-        );
-      }
-
       const input: FalAiTextToImageInput = {
         prompt,
         num_images: 1,
@@ -105,47 +133,16 @@ export const FalAiService = {
         ...options,
       };
 
-      const result = await fal.subscribe("fal-ai/nano-banana", {
-        input,
-      });
+      const response = await makeFalApiRequest(
+        "fal-ai/nano-banana",
+        input as unknown as Record<string, unknown>
+      );
 
-      // Parse response with proper typing
-      const unknownResp: unknown = result;
-      if (!isFalApiResponse(unknownResp)) {
+      if (!isFalApiResponse(response)) {
         throw new Error("Unexpected FAL response shape");
       }
-      const response: FalApiResponse = unknownResp;
 
-      // Try different response structures
-      let imageUrls: string[] = [];
-
-      // Check for images in direct response
-      if (response.images && Array.isArray(response.images)) {
-        imageUrls = response.images.map((img) => img.url);
-      }
-      // Check for images in data property
-      else if (response.data?.images && Array.isArray(response.data.images)) {
-        imageUrls = response.data.images.map((img) => img.url);
-      }
-      // Check for single image in data
-      else if (
-        response.data?.image &&
-        typeof response.data.image === "string"
-      ) {
-        imageUrls = [response.data.image];
-      }
-      // Check for output property (some FAL models use this)
-      else if (response.data?.output) {
-        if (Array.isArray(response.data.output)) {
-          imageUrls = response.data.output
-            .map((item) => (typeof item === "string" ? item : item.url))
-            .filter(Boolean);
-        } else if (typeof response.data.output === "string") {
-          imageUrls = [response.data.output];
-        }
-      }
-
-      return imageUrls;
+      return parseImageUrls(response);
     } catch (error) {
       throw new Error(
         `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -167,14 +164,6 @@ export const FalAiService = {
     options: Partial<FalAiImageEditInput> = {}
   ): Promise<string[]> {
     try {
-      // Configure fal client with API key before making requests
-      const configured = await configureFalClient();
-      if (!configured) {
-        throw new Error(
-          "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
-        );
-      }
-
       if (imageUrls.length === 0) {
         throw new Error("At least one image URL is required for editing");
       }
@@ -183,58 +172,25 @@ export const FalAiService = {
         throw new Error("Maximum 10 images can be processed at once");
       }
 
-      // The nano-banana/edit endpoint accepts data URLs directly
       const input: FalAiImageEditInput = {
         prompt,
-        image_urls: imageUrls, // Can be data URLs or regular URLs
+        image_urls: imageUrls,
         num_images: options.num_images || 1,
         output_format: options.output_format || "jpeg",
-        sync_mode: true, // synchronous response
+        sync_mode: true,
         ...options,
       };
 
-      // Use the correct nano-banana/edit endpoint
-      const result = await fal.subscribe("fal-ai/nano-banana/edit", {
-        input,
-      });
+      const response = await makeFalApiRequest(
+        "fal-ai/nano-banana/edit",
+        input as unknown as Record<string, unknown>
+      );
 
-      // Parse response with proper typing
-      const unknownResp: unknown = result;
-      if (!isFalApiResponse(unknownResp)) {
+      if (!isFalApiResponse(response)) {
         throw new Error("Unexpected FAL response shape");
       }
-      const response: FalApiResponse = unknownResp;
 
-      // Try different response structures
-      let editedUrls: string[] = [];
-
-      // Check for images in direct response
-      if (response.images && Array.isArray(response.images)) {
-        editedUrls = response.images.map((img) => img.url);
-      }
-      // Check for images in data property
-      else if (response.data?.images && Array.isArray(response.data.images)) {
-        editedUrls = response.data.images.map((img) => img.url);
-      }
-      // Check for single image in data
-      else if (
-        response.data?.image &&
-        typeof response.data.image === "string"
-      ) {
-        editedUrls = [response.data.image];
-      }
-      // Check for output property (some FAL models use this)
-      else if (response.data?.output) {
-        if (Array.isArray(response.data.output)) {
-          editedUrls = response.data.output
-            .map((item) => (typeof item === "string" ? item : item.url))
-            .filter(Boolean);
-        } else if (typeof response.data.output === "string") {
-          editedUrls = [response.data.output];
-        }
-      }
-
-      return editedUrls;
+      return parseImageUrls(response);
     } catch (error) {
       throw new Error(
         `Image editing failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -291,6 +247,7 @@ export const FalAiService = {
    * @returns Promise resolving to boolean indicating availability
    */
   async isAvailable(): Promise<boolean> {
-    return configureFalClient();
+    const apiKey = await getFalApiKeyAsync();
+    return !!apiKey;
   },
 } as const;

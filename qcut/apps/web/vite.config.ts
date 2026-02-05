@@ -45,7 +45,8 @@ export default defineConfig({
       },
     },
     // Exclude remotion packages from optimization to prevent double bundling
-    exclude: ["remotion", "@remotion/player", "@remotion/renderer"],
+    // Exclude @fal-ai/client to prevent initialization issues in Electron
+    exclude: ["remotion", "@remotion/player", "@remotion/renderer", "@fal-ai/client"],
   },
   plugins: [
     tsconfigPaths(), // Support for TypeScript path mapping
