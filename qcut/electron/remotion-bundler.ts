@@ -136,32 +136,42 @@ export async function bundleComposition(
     let entryPath = componentPath;
 
     // Try to find the actual file with extension
-    const extensions = ["", ".tsx", ".ts", ".jsx", ".js"];
+    // IMPORTANT: Use stat to check if it's a FILE, not just if it exists (access)
+    // This prevents accidentally matching a directory with the same name
+    const extensions = [".tsx", ".ts", ".jsx", ".js", ""];
     let foundPath: string | null = null;
 
     for (const ext of extensions) {
       const tryPath = componentPath.replace(/\.(tsx?|jsx?)$/, "") + ext;
       try {
-        await fs.access(tryPath);
-        foundPath = tryPath;
-        break;
+        const stats = await fs.stat(tryPath);
+        if (stats.isFile()) {
+          foundPath = tryPath;
+          break;
+        }
       } catch {
         // Try next extension
       }
     }
 
     if (!foundPath) {
-      // Try the path as-is
+      // Try the path as-is (if it has extension and is a file)
       try {
-        await fs.access(componentPath);
-        foundPath = componentPath;
+        const stats = await fs.stat(componentPath);
+        if (stats.isFile()) {
+          foundPath = componentPath;
+        }
       } catch {
-        return {
-          compositionId: id,
-          success: false,
-          error: `Component file not found: ${componentPath}`,
-        };
+        // File doesn't exist
       }
+    }
+
+    if (!foundPath) {
+      return {
+        compositionId: id,
+        success: false,
+        error: `Component file not found: ${componentPath}`,
+      };
     }
 
     entryPath = foundPath;

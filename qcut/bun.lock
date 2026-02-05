@@ -8,6 +8,7 @@
         "@ffmpeg/ffmpeg": "^0.12.15",
         "@ffmpeg/util": "^0.12.2",
         "@google/generative-ai": "^0.24.1",
+        "@remotion/zod-types": "^4.0.417",
         "electron-log": "^5.4.3",
         "electron-updater": "^6.6.2",
         "jszip": "^3.10.1",
@@ -753,6 +754,8 @@
     "@remotion/renderer": ["@remotion/renderer@4.0.410", "", { "dependencies": { "@remotion/licensing": "4.0.410", "@remotion/streaming": "4.0.410", "execa": "5.1.1", "extract-zip": "2.0.1", "remotion": "4.0.410", "source-map": "^0.8.0-beta.0", "ws": "8.17.1" }, "optionalDependencies": { "@remotion/compositor-darwin-arm64": "4.0.410", "@remotion/compositor-darwin-x64": "4.0.410", "@remotion/compositor-linux-arm64-gnu": "4.0.410", "@remotion/compositor-linux-arm64-musl": "4.0.410", "@remotion/compositor-linux-x64-gnu": "4.0.410", "@remotion/compositor-linux-x64-musl": "4.0.410", "@remotion/compositor-win32-x64-msvc": "4.0.410" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-Fbj7f0nh9qClW5QNbrUzxn3QEb0Xvi8llUl8OStxArJRYGsx0UhLP5FeA53p4fU+zNzU4Vje4jtyIihnNKLYng=="],
 
     "@remotion/streaming": ["@remotion/streaming@4.0.410", "", {}, "sha512-Ku+0h6ZNZn7W/U4tKk03PwONdZIXAMOvVWF0oVDo2ZBR5XQGLLEL3MsL6ECKIvDn90DmjkxUY2yT89IWrCXDYA=="],
+
+    "@remotion/zod-types": ["@remotion/zod-types@4.0.417", "", { "dependencies": { "remotion": "4.0.417" }, "peerDependencies": { "zod": "3.22.3" } }, "sha512-RWiCKUB0BhX+XAgbSXn5d4MZjSE8ExZL93BoXFviOb2YelKX9/5l1Ytni0cNB61e1CRtpzCzddMi7glHfn40Sg=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.27", "", {}, "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="],
 
@@ -2793,6 +2796,8 @@
     "@remotion/renderer/source-map": ["source-map@0.8.0-beta.0", "", { "dependencies": { "whatwg-url": "^7.0.0" } }, "sha512-2ymg6oRBpebeZi9UUNsgQ89bhx01TcTkmNTGnNO88imTmbSgy4nfujrgVEFKWpMTEGA11EDkTt7mqObTPdigIA=="],
 
     "@remotion/renderer/ws": ["ws@8.17.1", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-6XQFvXTkbfUOZOKKILFG1PDK2NDQs4azKQl26T0YS5CxqWLgXajbPZ+h4gZekJyRqFU8pvnbAbbs/3TgRPy+GQ=="],
+
+    "@remotion/zod-types/remotion": ["remotion@4.0.417", "", { "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-E+TsvgTqG490IdMjzKPXsZxbRJdJ0QI3hxTgW/Z6iLIV7T/E4/7eBYm9ObOq0Vz4+Mdgp66pOQbVkwNB8HlUDQ=="],
 
     "@tailwindcss/oxide/tar": ["tar@7.4.3", "", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.0.1", "mkdirp": "^3.0.1", "yallist": "^5.0.0" } }, "sha512-5S7Va8hKfV7W5U6g3aYxXmlPoZVAwUMy9AOKyF2fVuZa2UD3qZjg578OrLRt8PcNN1PleVaL/5/yYATNL0ICUw=="],
 

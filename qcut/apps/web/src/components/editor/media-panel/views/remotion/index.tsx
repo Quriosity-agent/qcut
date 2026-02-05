@@ -75,20 +75,23 @@ const CATEGORY_CONFIG: Record<
 };
 
 const CATEGORY_ORDER: RemotionComponentCategory[] = [
+  "custom",
   "template",
   "text",
   "transition",
   "animation",
   "scene",
   "effect",
+  "intro",
+  "social",
 ];
 
 // Tab configuration - which categories to show in the tab bar
 const TAB_CATEGORIES: (RemotionComponentCategory | "all")[] = [
   "all",
+  "custom",
   "template",
-  "text",
-  "transition",
+  "animation",
 ];
 
 // ============================================================================
@@ -379,7 +382,7 @@ export function RemotionView() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {filteredComponents.length === 0 ? (
           <EmptyState searchQuery={searchQuery} />
         ) : (
@@ -391,7 +394,7 @@ export function RemotionView() {
             className="h-full flex flex-col"
           >
             <TabsList
-              className="mx-3 mt-2 grid"
+              className="mx-3 mt-2 grid shrink-0"
               style={{
                 gridTemplateColumns: `repeat(${TAB_CATEGORIES.length}, 1fr)`,
               }}
@@ -403,7 +406,7 @@ export function RemotionView() {
               ))}
             </TabsList>
 
-            <TabsContent value="all" className="flex-1 mt-0">
+            <TabsContent value="all" className="flex-1 mt-0 min-h-0 overflow-hidden">
               <ScrollArea className="h-full">
                 <div className="p-3 space-y-6">
                   {CATEGORY_ORDER.map((category) => (
@@ -423,7 +426,7 @@ export function RemotionView() {
               <TabsContent
                 key={category}
                 value={category}
-                className="flex-1 mt-0"
+                className="flex-1 mt-0 min-h-0 overflow-hidden"
               >
                 <ScrollArea className="h-full">
                   <div className="p-3">

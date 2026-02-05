@@ -39,6 +39,9 @@ const INVALID_PROJECT = remotionFixturePath("invalid-project");
 const NO_ROOT_PROJECT = remotionFixturePath("no-root-project");
 const EMPTY_FOLDER = remotionFixturePath("empty-folder");
 
+// Real Remotion project folder for integration testing
+const REAL_REMOTION_PROJECT = "c:\\Users\\zdhpe\\Desktop\\remotion";
+
 // ============================================================================
 // Test Suite: Remotion Folder Import
 // ============================================================================
@@ -526,6 +529,208 @@ test.describe("Remotion Folder Import", () => {
 
       // Final state screenshot
       await captureScreenshot(page, "workflow-final", "workflow");
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Subtask 7: Real Remotion Project Debugging Tests
+  // --------------------------------------------------------------------------
+
+  test.describe("Real Remotion Project Debug", () => {
+    /**
+     * Test 7.1: Debug import of real Remotion project folder
+     * Uses c:\Users\zdhpe\Desktop\remotion to test actual folder import
+     */
+    test("should debug real Remotion project import", async ({ page }) => {
+      await createTestProject(page, "Real Remotion Debug Test");
+
+      console.log("\n========================================");
+      console.log("DEBUG: Real Remotion Project Import Test");
+      console.log("Folder:", REAL_REMOTION_PROJECT);
+      console.log("========================================\n");
+
+      // Step 1: Check API availability
+      const apiAvailable = await page.evaluate(() => {
+        return !!(window as any).electronAPI?.remotionFolder;
+      });
+      console.log("1. API Available:", apiAvailable);
+
+      if (!apiAvailable) {
+        console.log("ERROR: electronAPI.remotionFolder not available");
+        return;
+      }
+
+      // Step 2: Validate folder
+      console.log("\n--- Step 2: Validating folder ---");
+      const validationResult = await page.evaluate(async (folderPath) => {
+        const api = (window as any).electronAPI;
+        return await api.remotionFolder.validate(folderPath);
+      }, REAL_REMOTION_PROJECT);
+      console.log("Validation Result:", JSON.stringify(validationResult, null, 2));
+      await captureTestStep(page, "real-debug", 1, "validation-result");
+
+      // Step 3: Scan folder
+      console.log("\n--- Step 3: Scanning folder ---");
+      const scanResult = await page.evaluate(async (folderPath) => {
+        const api = (window as any).electronAPI;
+        return await api.remotionFolder.scan(folderPath);
+      }, REAL_REMOTION_PROJECT);
+      console.log("Scan Result:");
+      console.log("  isValid:", scanResult.isValid);
+      console.log("  rootFilePath:", scanResult.rootFilePath);
+      console.log("  compositions:", scanResult.compositions?.length);
+      if (scanResult.compositions) {
+        for (const comp of scanResult.compositions) {
+          console.log(`    - ${comp.id}: ${comp.componentPath}`);
+        }
+      }
+      if (scanResult.errors?.length > 0) {
+        console.log("  errors:", scanResult.errors);
+      }
+      await captureTestStep(page, "real-debug", 2, "scan-result");
+
+      // Step 4: Full import (includes bundling)
+      console.log("\n--- Step 4: Full import (bundling + loading) ---");
+      const importResult = await page.evaluate(async (folderPath) => {
+        const api = (window as any).electronAPI;
+        return await api.remotionFolder.import(folderPath);
+      }, REAL_REMOTION_PROJECT);
+      console.log("Import Result:");
+      console.log("  success:", importResult.success);
+      console.log("  importTime:", importResult.importTime, "ms");
+      if (importResult.scan) {
+        console.log("  scan.isValid:", importResult.scan.isValid);
+        console.log("  scan.compositions:", importResult.scan.compositions?.length);
+      }
+      if (importResult.bundle) {
+        console.log("  bundle.success:", importResult.bundle.success);
+        console.log("  bundle.successCount:", importResult.bundle.successCount);
+        console.log("  bundle.errorCount:", importResult.bundle.errorCount);
+        if (importResult.bundle.results) {
+          for (const result of importResult.bundle.results) {
+            console.log(`    - ${result.compositionId}: ${result.success ? "✅" : "❌"} ${result.error || ""}`);
+            if (result.code) {
+              console.log(`      Code length: ${result.code.length} bytes`);
+            }
+          }
+        }
+      }
+      if (importResult.error) {
+        console.log("  error:", importResult.error);
+      }
+      await captureTestStep(page, "real-debug", 3, "import-result");
+
+      // Step 5: Try to load components into the store
+      console.log("\n--- Step 5: Loading into Remotion store ---");
+      const storeResult = await page.evaluate(async (folderPath) => {
+        try {
+          // Access the Remotion store
+          const windowAny = window as any;
+
+          // Try to find the store (it might be exposed for debugging)
+          const stores = windowAny.__STORES__ || {};
+          const remotionStore = stores.remotion;
+
+          if (remotionStore?.getState) {
+            const state = remotionStore.getState();
+            return {
+              hasStore: true,
+              componentCount: state.registeredComponents?.size || 0,
+              folderCount: state.importedFolders?.size || 0,
+            };
+          }
+
+          return { hasStore: false, message: "Store not exposed" };
+        } catch (e) {
+          return { error: String(e) };
+        }
+      }, REAL_REMOTION_PROJECT);
+      console.log("Store Result:", JSON.stringify(storeResult, null, 2));
+
+      // Step 6: Check for console errors
+      console.log("\n--- Step 6: Checking browser console ---");
+      const consoleLogs = await page.evaluate(() => {
+        // Capture any errors that might be in the console
+        const windowAny = window as any;
+        return {
+          errors: windowAny.__CONSOLE_ERRORS__ || [],
+        };
+      });
+      console.log("Console state:", consoleLogs);
+
+      await captureTestStep(page, "real-debug", 4, "final-state");
+
+      console.log("\n========================================");
+      console.log("DEBUG TEST COMPLETE");
+      console.log("========================================\n");
+
+      // Assertions - we expect the import to work now
+      expect(validationResult.isValid).toBe(true);
+      expect(scanResult.isValid).toBe(true);
+      expect(scanResult.compositions?.length).toBeGreaterThan(0);
+    });
+
+    /**
+     * Test 7.2: Debug each composition individually
+     */
+    test("should debug individual compositions", async ({ page }) => {
+      await createTestProject(page, "Composition Debug Test");
+
+      console.log("\n========================================");
+      console.log("DEBUG: Individual Composition Test");
+      console.log("========================================\n");
+
+      // First scan to get compositions
+      const scanResult = await page.evaluate(async (folderPath) => {
+        const api = (window as any).electronAPI;
+        if (!api?.remotionFolder?.scan) {
+          return { error: "API not available" };
+        }
+        return await api.remotionFolder.scan(folderPath);
+      }, REAL_REMOTION_PROJECT);
+
+      if (!scanResult.compositions || scanResult.compositions.length === 0) {
+        console.log("No compositions found to debug");
+        return;
+      }
+
+      console.log(`Found ${scanResult.compositions.length} compositions:\n`);
+
+      // Debug each composition
+      for (const comp of scanResult.compositions) {
+        console.log(`--- Composition: ${comp.id} ---`);
+        console.log(`  Name: ${comp.name}`);
+        console.log(`  Component Path: ${comp.componentPath}`);
+        console.log(`  Import Path: ${comp.importPath}`);
+        console.log(`  Dimensions: ${comp.width}x${comp.height}`);
+        console.log(`  Duration: ${comp.durationInFrames} frames @ ${comp.fps}fps`);
+        console.log(`  Line: ${comp.line}`);
+
+        // Try to bundle just this composition
+        const bundleResult = await page.evaluate(async ({ folderPath, compIds }) => {
+          const api = (window as any).electronAPI;
+          if (!api?.remotionFolder?.bundle) {
+            return { error: "API not available" };
+          }
+          return await api.remotionFolder.bundle(folderPath, compIds);
+        }, { folderPath: REAL_REMOTION_PROJECT, compIds: [comp.id] });
+
+        if (bundleResult.results?.[0]) {
+          const result = bundleResult.results[0];
+          console.log(`  Bundle: ${result.success ? "✅ Success" : "❌ Failed"}`);
+          if (result.error) {
+            console.log(`  Error: ${result.error}`);
+          }
+          if (result.code) {
+            console.log(`  Code: ${result.code.length} bytes`);
+            // Log first 500 chars of code for debugging
+            console.log(`  Code preview: ${result.code.substring(0, 500)}...`);
+          }
+        }
+        console.log("");
+      }
+
+      console.log("========================================\n");
     });
   });
 });
