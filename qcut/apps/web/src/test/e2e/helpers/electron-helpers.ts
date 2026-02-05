@@ -581,6 +581,170 @@ export async function getMainWindow(electronApp: ElectronApplication) {
 }
 
 /**
+ * Adds a sticker from the sticker panel to the canvas overlay.
+ *
+ * @param page - Playwright page instance
+ * @param options - Optional position and wait settings
+ * @returns True if sticker was added successfully
+ */
+export async function addStickerToCanvas(
+  page: Page,
+  options?: {
+    position?: { x: number; y: number };
+    waitForRender?: boolean;
+  }
+): Promise<boolean> {
+  try {
+    // Open stickers panel
+    await page.click('[data-testid="stickers-panel-tab"]');
+    await page
+      .locator('[data-testid="stickers-panel"]')
+      .waitFor({ state: "visible", timeout: 5000 });
+
+    // Wait for sticker items to load
+    const stickerItems = page.locator('[data-testid="sticker-item"]');
+    await stickerItems
+      .first()
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => null);
+
+    if ((await stickerItems.count()) === 0) {
+      console.warn("No sticker items found in panel");
+      return false;
+    }
+
+    // Get sticker canvas
+    const stickerCanvas = page.locator('[data-testid="sticker-canvas"]');
+
+    if (
+      (await stickerCanvas.count()) > 0 &&
+      (await stickerCanvas.isVisible())
+    ) {
+      // Drag sticker to canvas
+      const targetPosition = options?.position || { x: 100, y: 100 };
+      await stickerItems.first().dragTo(stickerCanvas, {
+        force: true,
+        targetPosition,
+      });
+
+      // Wait for sticker instance to appear
+      await page
+        .locator('[data-testid="sticker-instance"]')
+        .first()
+        .waitFor({ state: "visible", timeout: 3000 });
+
+      return true;
+    }
+
+    console.warn("Sticker canvas not visible");
+    return false;
+  } catch (error) {
+    console.error("Failed to add sticker to canvas:", error);
+    return false;
+  }
+}
+
+/**
+ * Opens export dialog and starts export process.
+ *
+ * @param page - Playwright page instance
+ * @param options - Timeout and completion wait settings
+ * @returns True if export started successfully
+ */
+export async function startExport(
+  page: Page,
+  options?: {
+    timeout?: number;
+    waitForComplete?: boolean;
+  }
+): Promise<boolean> {
+  const timeout = options?.timeout || 30_000;
+
+  try {
+    // Open export dialog - try multiple selectors
+    const exportButton = page.locator('[data-testid*="export"]').first();
+    await exportButton.click();
+
+    await page.waitForSelector(
+      '[data-testid*="export-dialog"], .modal, [role="dialog"]',
+      { state: "visible", timeout: 5000 }
+    );
+
+    // Start export
+    const startExportButton = page.locator(
+      '[data-testid="export-start-button"]'
+    );
+    if (await startExportButton.isVisible({ timeout: 2000 })) {
+      await startExportButton.click();
+
+      // Wait for export progress indicator
+      await Promise.race([
+        page
+          .waitForSelector('[data-testid="export-status"]', {
+            state: "visible",
+            timeout,
+          })
+          .catch(() => null),
+        page
+          .waitForSelector('[data-testid="export-progress-bar"]', {
+            state: "visible",
+            timeout,
+          })
+          .catch(() => null),
+      ]);
+
+      if (options?.waitForComplete) {
+        // Wait for export completion
+        await page.waitForFunction(
+          () => {
+            const status = document.querySelector(
+              '[data-testid="export-status"]'
+            );
+            return (
+              status?.textContent?.includes("complete") ||
+              status?.textContent?.includes("done")
+            );
+          },
+          { timeout }
+        );
+      }
+
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Failed to start export:", error);
+    return false;
+  }
+}
+
+/**
+ * Waits for export to complete or reach a specific progress.
+ *
+ * @param page - Playwright page instance
+ * @param targetProgress - Progress percentage to wait for (0-100)
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForExportProgress(
+  page: Page,
+  targetProgress = 100,
+  timeout = 60_000
+): Promise<void> {
+  await page.waitForFunction(
+    (target) => {
+      const progressBar = document.querySelector(
+        '[data-testid="export-progress-bar"]'
+      );
+      const progressValue = progressBar?.getAttribute("value") || "0";
+      return Number.parseFloat(progressValue) >= target;
+    },
+    targetProgress,
+    { timeout }
+  );
+}
+
+/**
  * Waits for the application to be fully ready for testing.
  * Uses multiple strategies including element detection and network idle state.
  *
