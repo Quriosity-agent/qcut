@@ -688,8 +688,8 @@ export async function startExport(
   const timeout = options?.timeout || 30_000;
 
   try {
-    // Open export dialog - try multiple selectors
-    const exportButton = page.locator('[data-testid*="export"]').first();
+    // Open export dialog
+    const exportButton = page.locator('[data-testid="export-button"]');
     await exportButton.click();
 
     await page.waitForSelector(
