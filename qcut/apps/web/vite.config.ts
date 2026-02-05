@@ -103,13 +103,19 @@ export default defineConfig({
             return "vendor-ui";
           }
 
-          // Video/Media processing - FFmpeg WASM modules
-          if (id.includes('@ffmpeg') || id.includes('ffmpeg')) {
+          // Video/Media processing - FFmpeg WASM modules (node_modules only)
+          if (
+            id.includes("node_modules/@ffmpeg/") ||
+            id.includes("node_modules/ffmpeg")
+          ) {
             return 'vendor-ffmpeg';
           }
 
-          // AI Features - FAL.ai client
-          if (id.includes('@fal-ai/client') || id.includes('fal-ai')) {
+          // AI Features - FAL.ai client (node_modules only)
+          if (
+            id.includes("node_modules/@fal-ai/client") ||
+            id.includes("node_modules/fal-ai")
+          ) {
             return 'vendor-ai';
           }
 
