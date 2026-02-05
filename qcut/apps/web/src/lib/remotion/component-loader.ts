@@ -20,6 +20,8 @@ import {
   getSequenceAnalysisService,
   type AnalysisResult,
 } from "./sequence-analysis-service";
+import { loadBundledComponent } from "./dynamic-loader";
+import { debugLog, debugError } from "@/lib/debug-config";
 
 // ============================================================================
 // Types
@@ -718,10 +720,31 @@ export async function loadComponentsFromFolder(
         ? `${opts.customId}-${composition.id}`
         : generateFolderComponentId(folderPath, composition.id);
 
+      // Load the actual React component from bundled code
+      debugLog(
+        `[ComponentLoader] 🔄 Loading component: ${composition.id} (${componentId})`
+      );
+      const loadResult = await loadBundledComponent(
+        bundle.code,
+        composition.id,
+        componentId
+      );
+
+      if (!loadResult.success || !loadResult.component) {
+        const errorMsg = `Failed to load component "${composition.id}": ${loadResult.error || "Unknown error"}`;
+        debugError(`[ComponentLoader] ❌ ${errorMsg}`);
+        errors.push(errorMsg);
+        continue;
+      }
+
+      debugLog(
+        `[ComponentLoader] ✅ Successfully loaded component: ${composition.id}`
+      );
+
       // Determine category based on dimensions and duration
       const category = inferCategoryFromComposition(composition);
 
-      // Create the component definition
+      // Create the component definition with the ACTUAL loaded component
       const componentDef: RemotionComponentDefinition = {
         id: componentId,
         name: composition.name || composition.id,
@@ -733,7 +756,7 @@ export async function loadComponentsFromFolder(
         height: composition.height,
         schema: { safeParse: () => ({ success: true }) } as never,
         defaultProps: {},
-        component: () => null, // Placeholder - actual component loaded dynamically
+        component: loadResult.component, // Actual loaded component!
         source: "imported",
         folderPath, // Store the original folder path
       };

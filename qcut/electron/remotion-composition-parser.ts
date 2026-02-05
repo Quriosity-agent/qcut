@@ -238,14 +238,71 @@ function extractIdentifierProp(propValue: string): string | null {
 }
 
 /**
+ * Resolve a component path, handling directories with index files.
+ * Returns the actual file path or null if not found.
+ */
+async function resolveComponentPath(basePath: string): Promise<string | null> {
+  const extensions = [".tsx", ".ts", ".jsx", ".js"];
+  const indexFiles = ["index.tsx", "index.ts", "index.jsx", "index.js"];
+
+  // If path already has extension, check if it exists
+  if (basePath.match(/\.(tsx?|jsx?)$/)) {
+    try {
+      const stats = await fs.stat(basePath);
+      if (stats.isFile()) {
+        return basePath;
+      }
+    } catch {
+      // File doesn't exist
+    }
+    return null;
+  }
+
+  // Try adding extensions directly
+  for (const ext of extensions) {
+    const withExt = basePath + ext;
+    try {
+      const stats = await fs.stat(withExt);
+      if (stats.isFile()) {
+        return withExt;
+      }
+    } catch {
+      // File doesn't exist, continue
+    }
+  }
+
+  // Check if it's a directory with an index file
+  try {
+    const stats = await fs.stat(basePath);
+    if (stats.isDirectory()) {
+      for (const indexFile of indexFiles) {
+        const indexPath = path.join(basePath, indexFile);
+        try {
+          const indexStats = await fs.stat(indexPath);
+          if (indexStats.isFile()) {
+            return indexPath;
+          }
+        } catch {
+          // Index file doesn't exist, continue
+        }
+      }
+    }
+  } catch {
+    // Path doesn't exist
+  }
+
+  return null;
+}
+
+/**
  * Parse <Composition> elements from source code.
  */
-function parseCompositions(
+async function parseCompositions(
   sourceCode: string,
   imports: ImportInfo[],
   folderPath: string,
   rootFilePath: string
-): { compositions: CompositionInfo[]; errors: string[] } {
+): Promise<{ compositions: CompositionInfo[]; errors: string[] }> {
   const compositions: CompositionInfo[] = [];
   const errors: string[] = [];
 
@@ -293,18 +350,19 @@ function parseCompositions(
       importPath = componentImport.path;
       // Resolve relative import to absolute path
       const rootDir = path.dirname(rootFilePath);
-      componentPath = path.resolve(rootDir, componentImport.path);
+      const basePath = path.resolve(rootDir, componentImport.path);
 
-      // Add extension if not present
-      if (!componentPath.match(/\.(tsx?|jsx?)$/)) {
-        // Try common extensions
-        const extensions = [".tsx", ".ts", ".jsx", ".js"];
-        for (const ext of extensions) {
-          const withExt = componentPath + ext;
-          // We'll validate this exists later
-          componentPath = withExt;
-          break;
-        }
+      // Resolve the actual file path (handles directories with index files)
+      const resolvedPath = await resolveComponentPath(basePath);
+      if (resolvedPath) {
+        componentPath = resolvedPath;
+        log.debug(`${LOG_PREFIX} Resolved ${importPath} -> ${componentPath}`);
+      } else {
+        // Fallback: use base path with .tsx extension
+        componentPath = basePath + ".tsx";
+        log.warn(
+          `${LOG_PREFIX} Could not resolve ${importPath}, using ${componentPath}`
+        );
       }
     } else if (componentImport) {
       // External package import - component defined elsewhere
@@ -443,7 +501,7 @@ export async function parseRemotionProject(
     log.debug(`${LOG_PREFIX} Found ${imports.length} imports`);
 
     // Parse compositions
-    const { compositions, errors } = parseCompositions(
+    const { compositions, errors } = await parseCompositions(
       sourceCode,
       imports,
       folderPath,

@@ -24,7 +24,9 @@
         "**/coverage/**",
         "**/temp/**",
         "**/tmp/**",
-        "docs/completed/**"
+        "docs/completed/**",
+        "**/routeTree.gen.ts",
+        ".agents/**"
       ],
       "linter": {
         "enabled": false

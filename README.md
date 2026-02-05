@@ -56,6 +56,7 @@ bun run dist:linux    # Linux AppImage/deb (on Linux)
 |-------|------|
 | Build Commands | [docs/technical/guides/build-commands.md](qcut/docs/technical/guides/build-commands.md) |
 | Project Structure | [docs/technical/architecture/source-code-structure.md](qcut/docs/technical/architecture/source-code-structure.md) |
+| Media Panels | [docs/technical/media-panel-reference.md](qcut/docs/technical/media-panel-reference.md) |
 | AI Features | [docs/technical/ai/](qcut/docs/technical/ai/) |
 | Testing | [docs/technical/testing/](qcut/docs/technical/testing/) |
 | All Technical Docs | [docs/technical/README.md](qcut/docs/technical/README.md) |

@@ -391,12 +391,14 @@ app.whenReady().then(() => {
       urlPath = "index.html";
     }
 
-    // Security: Normalize path and block traversal attempts
-    const normalizedPath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
-    if (normalizedPath !== urlPath || normalizedPath.includes("..")) {
+    // Security: Block path traversal attempts
+    // Check for ".." before normalization to catch traversal attempts
+    if (urlPath.includes("..")) {
       logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
       return new Response("Not Found", { status: 404 });
     }
+    // Normalize path for consistent handling (converts / to \ on Windows)
+    const normalizedPath = path.normalize(urlPath);
 
     try {
       // Handle FFmpeg resources specifically
@@ -1210,9 +1212,21 @@ app.whenReady().then(() => {
         const userDataPath = app.getPath("userData");
         const filePath = path.join(userDataPath, "projects", `${key}.json`);
         const data = await fs.promises.readFile(filePath, "utf8");
+        // Handle empty or whitespace-only files
+        if (!data || !data.trim()) {
+          return null;
+        }
         return JSON.parse(data);
       } catch (error: any) {
         if (error.code === "ENOENT") return null;
+        // Handle JSON parse errors gracefully
+        if (error instanceof SyntaxError) {
+          logger.error(
+            `[Storage] Corrupted JSON file for key "${key}":`,
+            error.message
+          );
+          return null;
+        }
         throw error;
       }
     }

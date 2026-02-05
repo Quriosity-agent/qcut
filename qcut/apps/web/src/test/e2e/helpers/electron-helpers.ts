@@ -581,6 +581,201 @@ export async function getMainWindow(electronApp: ElectronApplication) {
 }
 
 /**
+ * Adds a sticker from the sticker panel to the canvas overlay.
+ *
+ * @param page - Playwright page instance
+ * @param options - Optional position and wait settings
+ * @returns True if sticker was added successfully
+ */
+export async function addStickerToCanvas(
+  page: Page,
+  options?: {
+    position?: { x: number; y: number };
+    waitForRender?: boolean;
+  }
+): Promise<boolean> {
+  try {
+    // Wait for the stickers panel tab to be available (use attached since it may be hidden on some viewports)
+    const stickerTab = page.locator('[data-testid="stickers-panel-tab"]');
+    await stickerTab
+      .waitFor({ state: "attached", timeout: 10_000 })
+      .catch(() => {
+        console.warn("Stickers panel tab not attached");
+        return null;
+      });
+
+    if ((await stickerTab.count()) === 0) {
+      console.warn(
+        "Stickers panel tab not found - stickers feature may not be available"
+      );
+      return false;
+    }
+
+    // Open stickers panel - click even if not visible (may be behind other elements)
+    await stickerTab.click({ force: true });
+
+    // Wait for stickers panel to be visible
+    const stickersPanel = page.locator('[data-testid="stickers-panel"]');
+    await stickersPanel
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => {
+        console.warn("Stickers panel did not become visible");
+      });
+
+    // Wait for sticker items to load (use "attached" like passing tests do)
+    const stickerItems = page.locator('[data-testid="sticker-item"]');
+    await stickerItems
+      .first()
+      .waitFor({ state: "attached", timeout: 5000 })
+      .catch(() => null);
+
+    const itemCount = await stickerItems.count();
+    if (itemCount === 0) {
+      console.warn("No sticker items found in panel");
+      return false;
+    }
+
+    // Get sticker canvas
+    const stickerCanvas = page.locator('[data-testid="sticker-canvas"]');
+    const canvasCount = await stickerCanvas.count();
+
+    if (canvasCount > 0 && (await stickerCanvas.isVisible())) {
+      // Drag sticker to canvas
+      const targetPosition = options?.position || { x: 100, y: 100 };
+      const firstSticker = stickerItems.first();
+
+      // Ensure sticker is visible before dragging
+      await firstSticker
+        .waitFor({ state: "visible", timeout: 3000 })
+        .catch(() => null);
+
+      await firstSticker.dragTo(stickerCanvas, {
+        force: true,
+        targetPosition,
+      });
+
+      // Wait for sticker instance to appear
+      await page
+        .locator('[data-testid="sticker-instance"]')
+        .first()
+        .waitFor({ state: "visible", timeout: 3000 });
+
+      if (options?.waitForRender) {
+        await page.waitForTimeout(500);
+      }
+
+      return true;
+    }
+
+    console.warn("Sticker canvas not visible - canvas count:", canvasCount);
+    return false;
+  } catch (error) {
+    console.error("Failed to add sticker to canvas:", error);
+    return false;
+  }
+}
+
+/**
+ * Opens export dialog and starts export process.
+ *
+ * @param page - Playwright page instance
+ * @param options - Timeout and completion wait settings
+ * @returns True if export started successfully
+ */
+export async function startExport(
+  page: Page,
+  options?: {
+    timeout?: number;
+    waitForComplete?: boolean;
+  }
+): Promise<boolean> {
+  const timeout = options?.timeout || 30_000;
+
+  try {
+    // Open export dialog
+    const exportButton = page.locator('[data-testid="export-button"]');
+    await exportButton.click();
+
+    await page.waitForSelector(
+      '[data-testid*="export-dialog"], .modal, [role="dialog"]',
+      { state: "visible", timeout: 5000 }
+    );
+
+    // Start export
+    const startExportButton = page.locator(
+      '[data-testid="export-start-button"]'
+    );
+    if (await startExportButton.isVisible({ timeout: 2000 })) {
+      await startExportButton.click();
+
+      // Wait for export progress indicator
+      await Promise.race([
+        page
+          .waitForSelector('[data-testid="export-status"]', {
+            state: "visible",
+            timeout,
+          })
+          .catch(() => null),
+        page
+          .waitForSelector('[data-testid="export-progress-bar"]', {
+            state: "visible",
+            timeout,
+          })
+          .catch(() => null),
+      ]);
+
+      if (options?.waitForComplete) {
+        // Wait for export completion
+        await page.waitForFunction(
+          () => {
+            const status = document.querySelector(
+              '[data-testid="export-status"]'
+            );
+            return (
+              status?.textContent?.includes("complete") ||
+              status?.textContent?.includes("done")
+            );
+          },
+          { timeout }
+        );
+      }
+
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Failed to start export:", error);
+    return false;
+  }
+}
+
+/**
+ * Waits for export to complete or reach a specific progress.
+ *
+ * @param page - Playwright page instance
+ * @param targetProgress - Progress percentage to wait for (0-100)
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForExportProgress(
+  page: Page,
+  targetProgress = 100,
+  timeout = 60_000
+): Promise<void> {
+  await page.waitForFunction(
+    (target) => {
+      const progressBar = document.querySelector(
+        '[data-testid="export-progress-bar"]'
+      );
+      const progressValue = progressBar?.getAttribute("value") || "0";
+      return Number.parseFloat(progressValue) >= target;
+    },
+    targetProgress,
+    { timeout }
+  );
+}
+
+/**
  * Waits for the application to be fully ready for testing.
  * Uses multiple strategies including element detection and network idle state.
  *

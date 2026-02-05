@@ -153,6 +153,7 @@ export function setupRemotionFolderIPC(): void {
   ipcMain.handle(
     "remotion-folder:select",
     async (): Promise<FolderSelectResult> => {
+      console.log(`${LOG_PREFIX} 📂 Opening folder selection dialog...`);
       log.info(`${LOG_PREFIX} Opening folder selection dialog`);
 
       try {
@@ -167,11 +168,13 @@ export function setupRemotionFolderIPC(): void {
           : await dialog.showOpenDialog(dialogOptions);
 
         if (result.canceled || result.filePaths.length === 0) {
+          console.log(`${LOG_PREFIX} ❌ Folder selection cancelled by user`);
           log.info(`${LOG_PREFIX} Folder selection cancelled`);
           return { success: false, cancelled: true };
         }
 
         const folderPath = result.filePaths[0];
+        console.log(`${LOG_PREFIX} 📁 Selected folder: ${folderPath}`);
         log.info(`${LOG_PREFIX} Selected folder: ${folderPath}`);
 
         // Validate it's a directory
@@ -184,8 +187,10 @@ export function setupRemotionFolderIPC(): void {
         }
 
         // Check if it's a valid Remotion project
+        console.log(`${LOG_PREFIX} 🔍 Validating Remotion project...`);
         const isValid = await isRemotionProject(folderPath);
         if (!isValid) {
+          console.log(`${LOG_PREFIX} ⚠️ Not a valid Remotion project`);
           log.warn(`${LOG_PREFIX} Selected folder is not a Remotion project`);
           return {
             success: false,
@@ -195,6 +200,7 @@ export function setupRemotionFolderIPC(): void {
           };
         }
 
+        console.log(`${LOG_PREFIX} ✅ Valid Remotion project detected`);
         return { success: true, folderPath };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -210,12 +216,16 @@ export function setupRemotionFolderIPC(): void {
   ipcMain.handle(
     "remotion-folder:scan",
     async (_, folderPath: string): Promise<FolderScanResult> => {
+      console.log(`${LOG_PREFIX} 🔎 Scanning folder: ${folderPath}`);
       log.info(`${LOG_PREFIX} Scanning folder: ${folderPath}`);
 
       try {
         // Validate directory exists
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {
+          console.log(
+            `${LOG_PREFIX} ❌ Folder does not exist or is not a directory`
+          );
           return {
             isValid: false,
             rootFilePath: null,
@@ -226,8 +236,17 @@ export function setupRemotionFolderIPC(): void {
         }
 
         // Parse the Remotion project
+        console.log(`${LOG_PREFIX} 📄 Parsing Root.tsx for compositions...`);
         const parseResult = await parseRemotionProject(folderPath);
 
+        console.log(
+          `${LOG_PREFIX} ✅ Scan complete: Found ${parseResult.compositions.length} composition(s)`
+        );
+        if (parseResult.compositions.length > 0) {
+          console.log(
+            `${LOG_PREFIX} 📋 Compositions: ${parseResult.compositions.map((c) => c.id).join(", ")}`
+          );
+        }
         log.info(
           `${LOG_PREFIX} Scan complete: ${parseResult.compositions.length} compositions found`
         );
@@ -263,12 +282,15 @@ export function setupRemotionFolderIPC(): void {
       folderPath: string,
       compositionIds?: string[]
     ): Promise<FolderBundleResult> => {
+      console.log(`${LOG_PREFIX} 📦 Bundling folder: ${folderPath}`);
       log.info(`${LOG_PREFIX} Bundling folder: ${folderPath}`);
 
       try {
         // Check if bundler is available
+        console.log(`${LOG_PREFIX} 🔧 Checking esbuild availability...`);
         const bundlerAvailable = await checkBundlerAvailable();
         if (!bundlerAvailable) {
+          console.log(`${LOG_PREFIX} ⚠️ esbuild bundler not available`);
           return {
             success: false,
             results: [],
@@ -277,10 +299,13 @@ export function setupRemotionFolderIPC(): void {
             folderPath,
           };
         }
+        console.log(`${LOG_PREFIX} ✅ esbuild bundler available`);
 
         // First scan to get compositions
+        console.log(`${LOG_PREFIX} 🔎 Scanning for compositions...`);
         const parseResult = await parseRemotionProject(folderPath);
         if (!parseResult.isValid) {
+          console.log(`${LOG_PREFIX} ❌ Invalid Remotion project`);
           return {
             success: false,
             results: [],
@@ -296,9 +321,13 @@ export function setupRemotionFolderIPC(): void {
           compositionsToBundle = compositionsToBundle.filter((c) =>
             compositionIds.includes(c.id)
           );
+          console.log(
+            `${LOG_PREFIX} 🎯 Filtering to ${compositionsToBundle.length} composition(s)`
+          );
         }
 
         if (compositionsToBundle.length === 0) {
+          console.log(`${LOG_PREFIX} ⚠️ No compositions to bundle`);
           log.warn(`${LOG_PREFIX} No compositions to bundle`);
           return {
             success: true,
@@ -310,11 +339,17 @@ export function setupRemotionFolderIPC(): void {
         }
 
         // Bundle all compositions
+        console.log(
+          `${LOG_PREFIX} ⚙️ Bundling ${compositionsToBundle.length} composition(s)...`
+        );
         const bundleResult = await bundleCompositions(
           compositionsToBundle,
           folderPath
         );
 
+        console.log(
+          `${LOG_PREFIX} ✅ Bundle complete: ${bundleResult.successCount} success, ${bundleResult.errorCount} errors`
+        );
         log.info(
           `${LOG_PREFIX} Bundle complete: ${bundleResult.successCount} success, ${bundleResult.errorCount} errors`
         );
@@ -347,10 +382,12 @@ export function setupRemotionFolderIPC(): void {
     "remotion-folder:import",
     async (_, folderPath: string): Promise<FolderImportResult> => {
       const startTime = Date.now();
+      console.log(`${LOG_PREFIX} 🚀 Starting full import: ${folderPath}`);
       log.info(`${LOG_PREFIX} Starting full import: ${folderPath}`);
 
       try {
         // Step 1: Scan the project
+        console.log(`${LOG_PREFIX} 📂 Step 1/3: Validating folder...`);
         const scanResult: FolderScanResult = {
           isValid: false,
           rootFilePath: null,
@@ -361,6 +398,9 @@ export function setupRemotionFolderIPC(): void {
 
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {
+          console.log(
+            `${LOG_PREFIX} ❌ Folder does not exist or is not a directory`
+          );
           scanResult.errors.push("Folder does not exist or is not a directory");
           return {
             success: false,
@@ -371,6 +411,7 @@ export function setupRemotionFolderIPC(): void {
           };
         }
 
+        console.log(`${LOG_PREFIX} 🔎 Step 2/3: Scanning for compositions...`);
         const parseResult = await parseRemotionProject(folderPath);
         scanResult.isValid = parseResult.isValid;
         scanResult.rootFilePath = parseResult.rootFilePath;
@@ -378,6 +419,7 @@ export function setupRemotionFolderIPC(): void {
         scanResult.errors = parseResult.errors;
 
         if (!parseResult.isValid) {
+          console.log(`${LOG_PREFIX} ❌ Not a valid Remotion project`);
           return {
             success: false,
             scan: scanResult,
@@ -387,11 +429,17 @@ export function setupRemotionFolderIPC(): void {
           };
         }
 
+        console.log(
+          `${LOG_PREFIX} ✅ Found ${parseResult.compositions.length} composition(s): ${parseResult.compositions.map((c) => c.id).join(", ")}`
+        );
+
         // Step 2: Bundle all compositions
+        console.log(`${LOG_PREFIX} 📦 Step 3/3: Bundling compositions...`);
         let bundleResult: FolderBundleResult | null = null;
         const bundlerAvailable = await checkBundlerAvailable();
 
         if (bundlerAvailable && parseResult.compositions.length > 0) {
+          console.log(`${LOG_PREFIX} ⚙️ Bundling with esbuild...`);
           const bundled = await bundleCompositions(
             parseResult.compositions,
             folderPath
@@ -403,9 +451,17 @@ export function setupRemotionFolderIPC(): void {
             errorCount: bundled.errorCount,
             folderPath,
           };
+          console.log(
+            `${LOG_PREFIX} ✅ Bundled ${bundled.successCount} composition(s)`
+          );
+        } else if (!bundlerAvailable) {
+          console.log(
+            `${LOG_PREFIX} ⚠️ esbuild not available, skipping bundling`
+          );
         }
 
         const importTime = Date.now() - startTime;
+        console.log(`${LOG_PREFIX} 🎉 Import complete in ${importTime}ms`);
         log.info(`${LOG_PREFIX} Import complete in ${importTime}ms`);
 
         return {
@@ -454,23 +510,28 @@ export function setupRemotionFolderIPC(): void {
       _,
       folderPath: string
     ): Promise<{ isValid: boolean; error?: string }> => {
+      console.log(`${LOG_PREFIX} 🔍 Validating folder: ${folderPath}`);
       try {
         const isDir = await validateDirectory(folderPath);
         if (!isDir) {
+          console.log(`${LOG_PREFIX} ❌ Path is not a directory`);
           return { isValid: false, error: "Path is not a directory" };
         }
 
         const isValid = await isRemotionProject(folderPath);
         if (!isValid) {
+          console.log(`${LOG_PREFIX} ❌ Not a valid Remotion project`);
           return {
             isValid: false,
             error: "Not a valid Remotion project",
           };
         }
 
+        console.log(`${LOG_PREFIX} ✅ Valid Remotion project`);
         return { isValid: true };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        console.log(`${LOG_PREFIX} ❌ Validation error: ${message}`);
         return { isValid: false, error: message };
       }
     }
