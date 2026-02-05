@@ -31,9 +31,7 @@ export async function getMediaStore() {
       "Failed to lazy load media store",
       error instanceof Error ? error : String(error)
     );
-    // Fallback to direct import if dynamic import fails
-    const { useMediaStore } = await import("@/stores/media-store");
-    return useMediaStore;
+    throw error;
   }
 }
 
@@ -58,9 +56,7 @@ export async function getTimelineStore() {
       "Failed to lazy load timeline store",
       error instanceof Error ? error : String(error)
     );
-    // Fallback to direct import if dynamic import fails
-    const { useTimelineStore } = await import("@/stores/timeline-store");
-    return useTimelineStore;
+    throw error;
   }
 }
 
@@ -85,9 +81,7 @@ export async function getProjectStore() {
       "Failed to lazy load project store",
       error instanceof Error ? error : String(error)
     );
-    // Fallback to direct import if dynamic import fails
-    const { useProjectStore } = await import("@/stores/project-store");
-    return useProjectStore;
+    throw error;
   }
 }
 
@@ -112,8 +106,7 @@ export async function getSceneStore() {
       "Failed to lazy load scene store",
       error instanceof Error ? error : String(error)
     );
-    const { useSceneStore } = await import("@/stores/scene-store");
-    return useSceneStore;
+    throw error;
   }
 }
 
@@ -138,8 +131,7 @@ export async function getStickersOverlayStore() {
       "Failed to lazy load stickers overlay store",
       error instanceof Error ? error : String(error)
     );
-    const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
-    return useStickersOverlayStore;
+    throw error;
   }
 }
 
@@ -164,8 +156,7 @@ export async function getPlaybackStore() {
       "Failed to lazy load playback store",
       error instanceof Error ? error : String(error)
     );
-    const { usePlaybackStore } = await import("@/stores/playback-store");
-    return usePlaybackStore;
+    throw error;
   }
 }
 
@@ -190,8 +181,7 @@ export async function getExportStore() {
       "Failed to lazy load export store",
       error instanceof Error ? error : String(error)
     );
-    const { useExportStore } = await import("@/stores/export-store");
-    return useExportStore;
+    throw error;
   }
 }
 
@@ -216,8 +206,7 @@ export async function getEditorStore() {
       "Failed to lazy load editor store",
       error instanceof Error ? error : String(error)
     );
-    const { useEditorStore } = await import("@/stores/editor-store");
-    return useEditorStore;
+    throw error;
   }
 }
 

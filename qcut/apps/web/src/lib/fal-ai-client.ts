@@ -105,10 +105,9 @@ class FalAIClient {
 
       // If no env var, try Electron storage asynchronously
       if (!this.apiKey) {
-        // Defer the async init to avoid issues during module loading
-        setTimeout(() => {
-          this.apiKeyInitPromise = this.initApiKeyFromElectron();
-        }, 0);
+        // Assign promise immediately to avoid race condition if ensureApiKey() is called
+        // before the async init starts. Promise creation is synchronous.
+        this.apiKeyInitPromise = this.initApiKeyFromElectron();
       }
     } catch (error) {
       // Silently handle initialization errors during module loading

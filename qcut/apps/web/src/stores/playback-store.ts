@@ -61,13 +61,13 @@ const startTimer = (store: () => PlaybackStore) => {
       const newTime = state.currentTime + delta * state.speed;
       const projectStore = getProjectStoreSync();
       const timelineStore = getTimelineStoreSync();
-      const projectFps = projectStore?.getState().activeProject?.fps ?? 30;
+      const projectFps = projectStore?.getState()?.activeProject?.fps ?? 30;
       const frameNumber = Math.round(newTime * projectFps);
 
       // Get actual content duration from timeline store
       const actualContentDuration = timelineStore
         ?.getState()
-        .getTotalDuration() ?? state.duration;
+        ?.getTotalDuration() ?? state.duration;
 
       // Stop at actual content end, not timeline duration (which has 10s minimum)
       // It was either this or reducing default min timeline to 1 second
@@ -76,7 +76,7 @@ const startTimer = (store: () => PlaybackStore) => {
 
       if (newTime >= effectiveDuration) {
         // When content completes, pause just before the end so we can see the last frame
-        const projectFps = projectStore?.getState().activeProject?.fps;
+        const projectFps = projectStore?.getState()?.activeProject?.fps;
         if (!projectFps) {
           // Project FPS is not set, assuming 30fps
         }

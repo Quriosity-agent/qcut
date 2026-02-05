@@ -368,7 +368,7 @@ app.whenReady().then(() => {
   logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
 
   // Register custom protocol using the newer handle API for better ES module support
-  protocol.handle("app", (request) => {
+  protocol.handle("app", async (request) => {
     let urlPath = request.url.slice("app://".length);
 
     // Clean up the URL path
@@ -384,32 +384,37 @@ app.whenReady().then(() => {
       urlPath = "index.html";
     }
 
-    // Handle FFmpeg resources specifically
-    if (urlPath.startsWith("ffmpeg/")) {
-      const filename = urlPath.replace("ffmpeg/", "");
-      // In production, FFmpeg files are in resources/ffmpeg/
-      const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
+    try {
+      // Handle FFmpeg resources specifically
+      if (urlPath.startsWith("ffmpeg/")) {
+        const filename = urlPath.replace("ffmpeg/", "");
+        // In production, FFmpeg files are in resources/ffmpeg/
+        const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
 
-      // Check if file exists in resources/ffmpeg, fallback to dist
-      if (fs.existsSync(ffmpegPath)) {
-        return net.fetch(pathToFileURL(ffmpegPath).toString());
+        // Check if file exists in resources/ffmpeg, fallback to dist
+        if (fs.existsSync(ffmpegPath)) {
+          return await net.fetch(pathToFileURL(ffmpegPath).toString());
+        }
+
+        // Fallback to dist directory
+        const distPath = path.join(basePath, "ffmpeg", filename);
+        return await net.fetch(pathToFileURL(distPath).toString());
       }
 
-      // Fallback to dist directory
-      const distPath = path.join(basePath, "ffmpeg", filename);
-      return net.fetch(pathToFileURL(distPath).toString());
+      // Handle other resources
+      const filePath = path.join(basePath, urlPath);
+
+      if (fs.existsSync(filePath)) {
+        logger.log(`[Protocol] Serving: ${urlPath} -> ${filePath}`);
+        return await net.fetch(pathToFileURL(filePath).toString());
+      }
+
+      logger.error(`[Protocol] File not found: ${filePath}`);
+      return new Response("Not Found", { status: 404 });
+    } catch (error) {
+      logger.error(`[Protocol] Error fetching ${urlPath}:`, error);
+      return new Response("Internal Server Error", { status: 500 });
     }
-
-    // Handle other resources
-    const filePath = path.join(basePath, urlPath);
-
-    if (fs.existsSync(filePath)) {
-      logger.log(`[Protocol] Serving: ${urlPath} -> ${filePath}`);
-      return net.fetch(pathToFileURL(filePath).toString());
-    }
-
-    logger.error(`[Protocol] File not found: ${filePath}`);
-    return new Response("Not Found", { status: 404 });
   });
 
   // Start the static server to serve FFmpeg WASM files

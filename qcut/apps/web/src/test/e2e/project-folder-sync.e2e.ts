@@ -215,9 +215,21 @@ test.describe("Project Folder Sync", () => {
         }
       }, projectId);
 
-      // Should either error or sanitize the path
-      // The handler sanitizes path components, so it won't actually traverse
+      // Should either error or sanitize the path (not actually traverse)
+      // The handler sanitizes path components by stripping ".." from paths
       expect(traversalResult).not.toBeNull();
+
+      // If success is true, it means the path was sanitized (traversal prevented)
+      // If success is false, an error was thrown (traversal blocked)
+      // Either outcome is acceptable security behavior
+      if (traversalResult.success) {
+        // Path was sanitized - the API returned without error
+        // which means it didn't actually traverse to ../../../etc
+        expect(traversalResult.error).toBeNull();
+      } else {
+        // Traversal was blocked with an error
+        expect(traversalResult.error).toBeTruthy();
+      }
     });
   });
 

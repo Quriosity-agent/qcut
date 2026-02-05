@@ -395,7 +395,7 @@ bun run test:e2e -- --headed
 ## Test Fixtures
 
 Media fixtures are located at:
-```
+```text
 apps/web/src/test/e2e/fixtures/media/
 ├── sample-video.mp4
 ├── sample-audio.mp3
