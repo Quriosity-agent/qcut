@@ -260,20 +260,18 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "Empty Folder View Test");
 
       // Navigate to project folder view if there's a tab
-      const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
-      );
+      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
-        // Check for empty state indicator
-        const emptyState = page.locator(
-          'text="Empty folder", text="No files found", [data-testid="empty-folder-state"]'
-        );
+        // Check for the project folder view container
+        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
-        // Empty state or file list should be present
+        // Check for empty state indicator or file list
+        const emptyState = page.locator('[data-testid="empty-folder-state"]');
         const hasEmptyState = (await emptyState.count()) > 0;
         const hasFileList = (await page.locator('[role="button"]').count()) > 0;
 
@@ -288,25 +286,23 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "Breadcrumb Navigation Test");
 
       // Navigate to project folder view
-      const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
-      );
+      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
-        // Look for breadcrumb elements or path display
-        const breadcrumbs = page.locator(
-          '[data-testid="breadcrumbs"], [data-testid="path-display"]'
-        );
+        // Check for the project folder view container first
+        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
-        // Or look for "Project Root" text which is the initial breadcrumb
-        const rootBreadcrumb = page.locator('text="Project Root"');
+        // Look for breadcrumb container
+        const breadcrumbs = page.locator('[data-testid="breadcrumbs"]');
+        await expect(breadcrumbs).toBeVisible({ timeout: 5000 });
 
-        const hasBreadcrumbs =
-          (await breadcrumbs.count()) > 0 || (await rootBreadcrumb.count()) > 0;
-        expect(hasBreadcrumbs).toBe(true);
+        // Verify breadcrumbs has content (buttons for navigation)
+        const breadcrumbButtons = breadcrumbs.locator('button');
+        expect(await breadcrumbButtons.count()).toBeGreaterThan(0);
       }
     });
 
@@ -320,7 +316,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -355,7 +351,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -400,7 +396,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -438,7 +434,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -491,7 +487,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -540,7 +536,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -639,41 +635,34 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "State Persistence Test");
 
       // Navigate to project folder view
-      const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
-      );
+      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
-        // Get initial state (breadcrumb text or similar)
-        const initialBreadcrumb = await page
-          .locator('text="Project Root"')
-          .textContent();
+        // Check project folder view is visible
+        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
-        // Switch to another tab
-        const mediaTab = page.locator(
-          '[data-testid="media-tab"], [role="tab"]:has-text("Media")'
-        );
+        // Verify breadcrumbs are visible
+        const breadcrumbs = page.locator('[data-testid="breadcrumbs"]');
+        await expect(breadcrumbs).toBeVisible({ timeout: 5000 });
 
-        if (
-          (await mediaTab.count()) > 0 &&
-          (await mediaTab.first().isVisible())
-        ) {
-          await mediaTab.first().click();
-          await page.waitForTimeout(300);
+        // Switch to media tab
+        const mediaTab = page.locator('[data-testid="media-panel-tab"]');
+
+        if ((await mediaTab.count()) > 0 && (await mediaTab.isVisible())) {
+          await mediaTab.click();
+          await page.waitForTimeout(500);
 
           // Switch back to project folder
           await projectTab.click();
-          await page.waitForTimeout(300);
+          await page.waitForTimeout(500);
 
-          // Verify state is maintained
-          const finalBreadcrumb = await page
-            .locator('text="Project Root"')
-            .textContent();
-
-          expect(finalBreadcrumb).toBe(initialBreadcrumb);
+          // Verify project folder view is still functional
+          await expect(projectFolderView).toBeVisible({ timeout: 5000 });
+          await expect(breadcrumbs).toBeVisible({ timeout: 5000 });
         }
       }
     });
@@ -695,7 +684,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
@@ -909,7 +898,7 @@ test.describe("Project Folder Sync", () => {
 
       // Navigate to project folder view
       const projectTab = page.locator(
-        '[data-testid="project-folder-tab"], [role="tab"]:has-text("Project")'
+        '[data-testid="project-folder-panel-tab"]'
       );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {

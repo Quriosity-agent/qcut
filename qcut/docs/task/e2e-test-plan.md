@@ -14,18 +14,15 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 
 | Status | Count |
 |--------|-------|
-| ✅ Passed | 72 |
-| ❌ Failed | 4 |
+| ✅ Passed | 75 |
+| ❌ Failed | 1 |
 | ⏭️ Skipped | 7 |
 | **Total** | **83** |
 
-**Pass Rate**: 86.7% (excluding skipped)
+**Pass Rate**: 98.7% (excluding skipped)
 
 **Failed Tests**:
 1. AI Enhancement: `4B.4 - Preview enhanced media with effects` (timeout on pause button)
-2. Project Folder Sync: `should show empty state when project folder is empty` (UI state)
-3. Project Folder Sync: `should display breadcrumb navigation` (UI state)
-4. Project Folder Sync: `should maintain project folder state across tab switches` (timeout)
 
 ---
 
@@ -48,7 +45,7 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 | 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ✅ 6/6 |
 | 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ✅ 2/4 (2 skip) |
 | 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 |
-| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ⚠️ 21/24 (3 fail) |
+| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ✅ 24/24 |
 | 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ✅ 1/1 |
 
 ---
@@ -292,7 +289,7 @@ Tests that Remotion panel doesn't cause infinite render loops (React Error #185)
 
 ---
 
-### 16. Project Folder Sync (`project-folder-sync.e2e.ts`) ⚠️ 21 PASSED, 3 FAILED
+### 16. Project Folder Sync (`project-folder-sync.e2e.ts`) ✅ ALL PASSED
 
 Tests the project folder sync feature with IPC handlers, UI, and integration.
 
@@ -311,8 +308,8 @@ Tests the project folder sync feature with IPC handlers, UI, and integration.
 | Test | Description | Status |
 |------|-------------|--------|
 | `should display Project Folder tab in Media Panel` | Verifies tab existence | ✅ PASS |
-| `should show empty state when project folder is empty` | Tests empty state UI | ❌ FAIL |
-| `should display breadcrumb navigation` | Tests breadcrumb display | ❌ FAIL |
+| `should show empty state when project folder is empty` | Tests empty state UI | ✅ PASS |
+| `should display breadcrumb navigation` | Tests breadcrumb display | ✅ PASS |
 | `should refresh directory listing on button click` | Tests refresh functionality | ✅ PASS |
 | `should disable up navigation at root level` | Tests navigation constraints | ✅ PASS |
 
@@ -331,7 +328,7 @@ Tests the project folder sync feature with IPC handlers, UI, and integration.
 |------|-------------|--------|
 | `should integrate project folder view with media panel` | Tests media panel integration | ✅ PASS |
 | `should switch between different media panel views` | Tests view switching | ✅ PASS |
-| `should maintain project folder state across tab switches` | Tests state persistence | ❌ FAIL |
+| `should maintain project folder state across tab switches` | Tests state persistence | ✅ PASS |
 | `should display correct icons for different file types` | Tests file type icons | ✅ PASS |
 
 #### Subtask 5: File Type Detection
@@ -350,7 +347,7 @@ Tests the project folder sync feature with IPC handlers, UI, and integration.
 | `should handle missing electronAPI gracefully` | Tests graceful API absence handling | ✅ PASS |
 | `should display error state in UI` | Tests error state display | ✅ PASS |
 
-**Run Time**: 2.4m | **Last Run**: 2026-02-05 | **Note**: 3 failures related to UI state detection (empty state, breadcrumb, tab switches)
+**Run Time**: 1.8m | **Last Run**: 2026-02-05
 
 ---
 
