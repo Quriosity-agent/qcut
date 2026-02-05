@@ -21,6 +21,7 @@ import {
   type AnalysisResult,
 } from "./sequence-analysis-service";
 import { loadBundledComponent } from "./dynamic-loader";
+import { debugLog, debugError } from "@/lib/debug-config";
 
 // ============================================================================
 // Types
@@ -720,7 +721,7 @@ export async function loadComponentsFromFolder(
         : generateFolderComponentId(folderPath, composition.id);
 
       // Load the actual React component from bundled code
-      console.log(
+      debugLog(
         `[ComponentLoader] 🔄 Loading component: ${composition.id} (${componentId})`
       );
       const loadResult = await loadBundledComponent(
@@ -731,12 +732,12 @@ export async function loadComponentsFromFolder(
 
       if (!loadResult.success || !loadResult.component) {
         const errorMsg = `Failed to load component "${composition.id}": ${loadResult.error || "Unknown error"}`;
-        console.error(`[ComponentLoader] ❌ ${errorMsg}`);
+        debugError(`[ComponentLoader] ❌ ${errorMsg}`);
         errors.push(errorMsg);
         continue;
       }
 
-      console.log(
+      debugLog(
         `[ComponentLoader] ✅ Successfully loaded component: ${composition.id}`
       );
 

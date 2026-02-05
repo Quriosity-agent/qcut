@@ -1,8 +1,8 @@
-import React from "react";
+import type { FC } from "react";
 import { ExternalLink } from "lucide-react";
 import ImageAssetsTab from "@/components/editor/nano-edit/tabs/ImageAssetsTab";
 
-const NanoEditView: React.FC = () => {
+const NanoEditView: FC = () => {
   return (
     <div className="p-4 h-full flex flex-col">
       {/* Header */}

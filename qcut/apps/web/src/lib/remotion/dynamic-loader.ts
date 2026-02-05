@@ -33,24 +33,49 @@ async function loadOptionalPackages(): Promise<void> {
     const transitions = await import("@remotion/transitions");
     RemotionTransitions = { ...(transitions as unknown as Record<string, unknown>) };
 
-    // Load individual transition submodules (they export functions like fade(), slide(), etc.)
-    // Using dynamic import strings to avoid TypeScript module resolution issues
-    const submodules = [
-      "@remotion/transitions/fade",
-      "@remotion/transitions/slide",
-      "@remotion/transitions/wipe",
-      "@remotion/transitions/flip",
-      "@remotion/transitions/clock-wipe",
-      "@remotion/transitions/none",
-    ];
+    // Load individual transition submodules - must be static imports for Vite to bundle them
+    // Each import is in its own try-catch so failures don't stop other imports
+    try {
+      const fadeModule = await import("@remotion/transitions/fade");
+      Object.assign(RemotionTransitions, fadeModule);
+      console.log("[DynamicLoader] ✅ Loaded fade transition");
+    } catch (e) {
+      console.warn("[DynamicLoader] fade transition not available:", e);
+    }
 
-    for (const submodule of submodules) {
-      try {
-        const mod = await import(/* @vite-ignore */ submodule);
-        Object.assign(RemotionTransitions, mod);
-      } catch {
-        // Submodule not available
-      }
+    try {
+      const slideModule = await import("@remotion/transitions/slide");
+      Object.assign(RemotionTransitions, slideModule);
+    } catch {
+      // slide not available
+    }
+
+    try {
+      const wipeModule = await import("@remotion/transitions/wipe");
+      Object.assign(RemotionTransitions, wipeModule);
+    } catch {
+      // wipe not available
+    }
+
+    try {
+      const flipModule = await import("@remotion/transitions/flip");
+      Object.assign(RemotionTransitions, flipModule);
+    } catch {
+      // flip not available
+    }
+
+    try {
+      const clockWipeModule = await import("@remotion/transitions/clock-wipe");
+      Object.assign(RemotionTransitions, clockWipeModule);
+    } catch {
+      // clock-wipe not available
+    }
+
+    try {
+      const noneModule = await import("@remotion/transitions/none");
+      Object.assign(RemotionTransitions, noneModule);
+    } catch {
+      // none not available
     }
 
     console.log("[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:", Object.keys(RemotionTransitions));

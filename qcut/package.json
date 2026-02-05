@@ -314,7 +314,10 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@google/generative-ai": "^0.24.1",
-    "@remotion/zod-types": "^4.0.417",
+    "@remotion/player": "4.0.417",
+    "@remotion/renderer": "4.0.417",
+    "@remotion/transitions": "4.0.417",
+    "@remotion/zod-types": "4.0.417",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "jszip": "^3.10.1",
@@ -322,6 +325,7 @@
     "node-pty": "^1.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "remotion": "4.0.417",
     "wavesurfer.js": "^7.10.1"
   },
   "resolutions": {
@@ -331,7 +335,12 @@
     "jpeg-js": "^0.4.4",
     "tmp": "^0.2.4",
     "esbuild": "^0.25.8",
-    "@types/node": "^24.3.1"
+    "@types/node": "^24.3.1",
+    "remotion": "4.0.417",
+    "@remotion/player": "4.0.417",
+    "@remotion/renderer": "4.0.417",
+    "@remotion/transitions": "4.0.417",
+    "@remotion/zod-types": "4.0.417"
   },
   "trustedDependencies": [
     "@tailwindcss/oxide",

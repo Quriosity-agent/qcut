@@ -1212,9 +1212,18 @@ app.whenReady().then(() => {
         const userDataPath = app.getPath("userData");
         const filePath = path.join(userDataPath, "projects", `${key}.json`);
         const data = await fs.promises.readFile(filePath, "utf8");
+        // Handle empty or whitespace-only files
+        if (!data || !data.trim()) {
+          return null;
+        }
         return JSON.parse(data);
       } catch (error: any) {
         if (error.code === "ENOENT") return null;
+        // Handle JSON parse errors gracefully
+        if (error instanceof SyntaxError) {
+          console.error(`[Storage] Corrupted JSON file for key "${key}":`, error.message);
+          return null;
+        }
         throw error;
       }
     }
