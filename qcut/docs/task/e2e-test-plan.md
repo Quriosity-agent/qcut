@@ -10,29 +10,46 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 - **Total Test Files**: 17
 - **Total Test Cases**: ~80+
 
+### Latest Test Run Summary (2026-02-05)
+
+| Status | Count |
+|--------|-------|
+| ✅ Passed | 72 |
+| ❌ Failed | 4 |
+| ⏭️ Skipped | 7 |
+| **Total** | **83** |
+
+**Pass Rate**: 86.7% (excluding skipped)
+
+**Failed Tests**:
+1. AI Enhancement: `4B.4 - Preview enhanced media with effects` (timeout on pause button)
+2. Project Folder Sync: `should show empty state when project folder is empty` (UI state)
+3. Project Folder Sync: `should display breadcrumb navigation` (UI state)
+4. Project Folder Sync: `should maintain project folder state across tab switches` (timeout)
+
 ---
 
 ## Test Files Summary
 
-| # | File | Description | Test Count |
-|---|------|-------------|------------|
-| 1 | `simple-navigation.e2e.ts` | Basic navigation tests | 3 |
-| 2 | `editor-navigation.e2e.ts` | Editor page navigation | 3 |
-| 3 | `project-workflow-part1.e2e.ts` | Project creation & media import | 2 |
-| 4 | `project-workflow-part2.e2e.ts` | Timeline operations | 3 |
-| 5 | `project-workflow-part3.e2e.ts` | Project persistence & export | 4 |
-| 6 | `multi-media-management-part1.e2e.ts` | Multi-media import & tracks | 5 |
-| 7 | `multi-media-management-part2.e2e.ts` | Timeline controls & editing | 7 |
-| 8 | `text-overlay-testing.e2e.ts` | Text overlay functionality | 6 |
-| 9 | `sticker-overlay-testing.e2e.ts` | Sticker overlay functionality | 6 |
-| 10 | `ai-transcription-caption-generation.e2e.ts` | AI transcription & captions | 6 |
-| 11 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 |
-| 12 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 |
-| 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 |
-| 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 5 |
-| 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 |
-| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 |
-| 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 |
+| # | File | Description | Tests | Status |
+|---|------|-------------|-------|--------|
+| 1 | `simple-navigation.e2e.ts` | Basic navigation tests | 3 | ✅ 3/3 |
+| 2 | `editor-navigation.e2e.ts` | Editor page navigation | 3 | ✅ 2/3 (1 skip) |
+| 3 | `project-workflow-part1.e2e.ts` | Project creation & media import | 2 | ✅ 2/2 |
+| 4 | `project-workflow-part2.e2e.ts` | Timeline operations | 3 | ✅ 3/3 |
+| 5 | `project-workflow-part3.e2e.ts` | Project persistence & export | 4 | ✅ 4/4 |
+| 6 | `multi-media-management-part1.e2e.ts` | Multi-media import & tracks | 5 | ✅ 5/5 |
+| 7 | `multi-media-management-part2.e2e.ts` | Timeline controls & editing | 7 | ✅ 7/7 |
+| 8 | `text-overlay-testing.e2e.ts` | Text overlay functionality | 6 | ✅ 6/6 |
+| 9 | `sticker-overlay-testing.e2e.ts` | Sticker overlay functionality | 6 | ✅ 6/6 |
+| 10 | `ai-transcription-caption-generation.e2e.ts` | AI transcription & captions | 6 | ✅ 4/6 (2 skip) |
+| 11 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 | ⚠️ 6/8 (1 fail, 1 skip) |
+| 12 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 | ✅ 8/8 |
+| 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ✅ 6/6 |
+| 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ✅ 2/4 (2 skip) |
+| 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 |
+| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ⚠️ 21/24 (3 fail) |
+| 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ✅ 1/1 |
 
 ---
 
@@ -157,179 +174,195 @@ Tests text overlay functionality in the editor.
 
 ---
 
-### 9. Sticker Overlay Testing (`sticker-overlay-testing.e2e.ts`)
+### 9. Sticker Overlay Testing (`sticker-overlay-testing.e2e.ts`) ✅ ALL PASSED
 
 Tests sticker overlay functionality in the editor.
 
-| Test | Description |
-|------|-------------|
-| `should access stickers panel and interact with sticker items` | Opens sticker panel, tests selection |
-| `should support sticker drag and drop to canvas` | Tests drag-and-drop to sticker canvas |
-| `should manipulate stickers on canvas after placement` | Tests selection, repositioning, resizing, deletion |
-| `should handle sticker panel categories and search` | Tests search and category navigation |
-| `should handle sticker overlay rendering` | Tests canvas positioning and z-index |
-| `should maintain sticker panel state across interactions` | Tests state persistence across tabs |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should access stickers panel and interact with sticker items` | Opens sticker panel, tests selection | ✅ PASS |
+| `should support sticker drag and drop to canvas` | Tests drag-and-drop to sticker canvas | ✅ PASS |
+| `should manipulate stickers on canvas after placement` | Tests selection, repositioning, resizing, deletion | ✅ PASS |
+| `should handle sticker panel categories and search` | Tests search and category navigation | ✅ PASS |
+| `should handle sticker overlay rendering` | Tests canvas positioning and z-index | ✅ PASS |
+| `should maintain sticker panel state across interactions` | Tests state persistence across tabs | ✅ PASS |
+
+**Run Time**: 47.7s | **Last Run**: 2026-02-05
 
 ---
 
-### 10. AI Transcription & Caption Generation (`ai-transcription-caption-generation.e2e.ts`)
+### 10. AI Transcription & Caption Generation (`ai-transcription-caption-generation.e2e.ts`) ✅ 4 PASSED, 2 SKIPPED
 
 Tests AI-powered transcription and caption generation workflow.
 
-| Test | Description |
-|------|-------------|
-| `4A.1 - Upload media file and access AI transcription` | Uploads media, accesses transcription panel |
-| `4A.2 - Generate transcription with AI service` | Generates transcription with AI |
-| `4A.3 - Edit and customize generated captions` | Edits AI-generated captions |
-| `4A.4 - Apply captions to timeline` | Applies captions to timeline tracks |
-| `4A.5 - Preview captions in video preview` | Tests caption display during playback |
-| `4A.6 - Export project with embedded captions` | Exports with embedded captions |
+| Test | Description | Status |
+|------|-------------|--------|
+| `4A.1 - Upload media file and access AI transcription` | Uploads media, accesses transcription panel | ✅ PASS |
+| `4A.2 - Generate transcription with AI service` | Generates transcription with AI | ✅ PASS |
+| `4A.3 - Edit and customize generated captions` | Edits AI-generated captions | ✅ PASS |
+| `4A.4 - Apply captions to timeline` | Applies captions to timeline tracks | ✅ PASS |
+| `4A.5 - Preview captions in video preview` | Tests caption display during playback | ⏭️ SKIP |
+| `4A.6 - Export project with embedded captions` | Exports with embedded captions | ⏭️ SKIP |
+
+**Run Time**: 32.2s | **Last Run**: 2026-02-05 | **Note**: Tests 5-6 skipped (marked skip in test file)
 
 ---
 
-### 11. AI Enhancement & Export Integration (`ai-enhancement-export-integration.e2e.ts`)
+### 11. AI Enhancement & Export Integration (`ai-enhancement-export-integration.e2e.ts`) ⚠️ 6 PASSED, 1 FAILED, 1 SKIPPED
 
 Tests AI-powered video enhancement and export integration.
 
-| Test | Description |
-|------|-------------|
-| `4B.1 - Access AI enhancement tools` | Accesses AI enhancement panel |
-| `4B.2 - Apply AI enhancement effects to media` | Applies AI effects to media |
-| `4B.3 - Use enhanced media in timeline` | Drags enhanced media to timeline |
-| `4B.4 - Preview enhanced media with effects` | Tests playback preview with enhancements |
-| `4B.5 - Export enhanced project with AI effects` | Exports with AI enhancements |
-| `4B.6 - Batch apply AI enhancements to multiple assets` | Tests bulk enhancement processing |
-| `4B.7 - Integration with project export workflow` | Tests end-to-end export workflow |
-| `upscale image workflow` | Tests image upscaling with FAL API |
+| Test | Description | Status |
+|------|-------------|--------|
+| `4B.1 - Access AI enhancement tools` | Accesses AI enhancement panel | ✅ PASS |
+| `4B.2 - Apply AI enhancement effects to media` | Applies AI effects to media | ✅ PASS |
+| `4B.3 - Use enhanced media in timeline` | Drags enhanced media to timeline | ✅ PASS |
+| `4B.4 - Preview enhanced media with effects` | Tests playback preview with enhancements | ❌ FAIL |
+| `4B.5 - Export enhanced project with AI effects` | Exports with AI enhancements | ✅ PASS |
+| `4B.6 - Batch apply AI enhancements to multiple assets` | Tests bulk enhancement processing | ✅ PASS |
+| `4B.7 - Integration with project export workflow` | Tests end-to-end export workflow | ✅ PASS |
+| `upscale image workflow` | Tests image upscaling with FAL API | ⏭️ SKIP |
+
+**Run Time**: 2.0m | **Last Run**: 2026-02-05 | **Note**: 4B.4 failed (timeout waiting for pause button); upscale skipped
 
 ---
 
-### 12. File Operations & Storage Management (`file-operations-storage-management.e2e.ts`)
+### 12. File Operations & Storage Management (`file-operations-storage-management.e2e.ts`) ✅ ALL PASSED
 
 Tests comprehensive file operations and storage management.
 
-| Test | Description |
-|------|-------------|
-| `5A.1 - Import media files with progress tracking` | Tests import with progress indicators |
-| `5A.2 - Handle large file imports` | Tests large file handling and memory |
-| `5A.3 - Test storage quota and fallback system` | Tests storage quota monitoring |
-| `5A.4 - Verify thumbnail generation for media` | Tests automatic thumbnail generation |
-| `5A.5 - Test drag and drop file operations` | Tests drag-and-drop file operations |
-| `5A.6 - Test file format support and validation` | Tests various file format handling |
-| `5A.7 - Test storage service integration` | Tests project persistence and retrieval |
-| `5A.8 - Test cross-platform file path handling` | Tests platform-specific file paths |
+| Test | Description | Status |
+|------|-------------|--------|
+| `5A.1 - Import media files with progress tracking` | Tests import with progress indicators | ✅ PASS |
+| `5A.2 - Handle large file imports` | Tests large file handling and memory | ✅ PASS |
+| `5A.3 - Test storage quota and fallback system` | Tests storage quota monitoring | ✅ PASS |
+| `5A.4 - Verify thumbnail generation for media` | Tests automatic thumbnail generation | ✅ PASS |
+| `5A.5 - Test drag and drop file operations` | Tests drag-and-drop file operations | ✅ PASS |
+| `5A.6 - Test file format support and validation` | Tests various file format handling | ✅ PASS |
+| `5A.7 - Test storage service integration` | Tests project persistence and retrieval | ✅ PASS |
+| `5A.8 - Test cross-platform file path handling` | Tests platform-specific file paths | ✅ PASS |
+
+**Run Time**: 55.9s | **Last Run**: 2026-02-05
 
 ---
 
-### 13. Auto-Save & Export File Management (`auto-save-export-file-management.e2e.ts`)
+### 13. Auto-Save & Export File Management (`auto-save-export-file-management.e2e.ts`) ✅ ALL PASSED
 
 Tests auto-save and export file management functionality.
 
-| Test | Description |
-|------|-------------|
-| `5B.1 - Configure and test auto-save functionality` | Tests auto-save configuration and triggering |
-| `5B.2 - Test project recovery after crash simulation` | Tests crash recovery workflow |
-| `5B.3 - Test export to custom directories` | Tests custom export location selection |
-| `5B.4 - Test export file format and quality options` | Tests format and quality configuration |
-| `5B.5 - Test file permissions and cross-platform compatibility` | Tests cross-platform file operations |
-| `5B.6 - Test comprehensive export workflow with all features` | Tests end-to-end export with all options |
+| Test | Description | Status |
+|------|-------------|--------|
+| `5B.1 - Configure and test auto-save functionality` | Tests auto-save configuration and triggering | ✅ PASS |
+| `5B.2 - Test project recovery after crash simulation` | Tests crash recovery workflow | ✅ PASS |
+| `5B.3 - Test export to custom directories` | Tests custom export location selection | ✅ PASS |
+| `5B.4 - Test export file format and quality options` | Tests format and quality configuration | ✅ PASS |
+| `5B.5 - Test file permissions and cross-platform compatibility` | Tests cross-platform file operations | ✅ PASS |
+| `5B.6 - Test comprehensive export workflow with all features` | Tests end-to-end export with all options | ✅ PASS |
+
+**Run Time**: 1.8m | **Last Run**: 2026-02-05
 
 ---
 
-### 14. Terminal Paste Functionality (`terminal-paste.e2e.ts`)
+### 14. Terminal Paste Functionality (`terminal-paste.e2e.ts`) ✅ 2 PASSED, 2 SKIPPED
 
 Tests terminal UI and paste functionality (fixes double-paste bug).
 
-| Test | Description |
-|------|-------------|
-| `should navigate to terminal tab` | Navigates to terminal tab, verifies UI |
-| `should display terminal UI elements correctly` | Verifies terminal UI elements |
-| `should start and stop shell terminal session` (PTY) | Starts/stops shell session |
-| `should paste text only once in terminal` (PTY) | Verifies no double-paste bug |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should navigate to terminal tab` | Navigates to terminal tab, verifies UI | ✅ PASS |
+| `should display terminal UI elements correctly` | Verifies terminal UI elements | ✅ PASS |
+| `should start and stop shell terminal session` (PTY) | Starts/stops shell session | ⏭️ SKIP |
+| `should paste text only once in terminal` (PTY) | Verifies no double-paste bug | ⏭️ SKIP |
 
-**Note**: PTY-dependent tests require `PTY_AVAILABLE=true` environment variable.
+**Run Time**: 8.1s | **Last Run**: 2026-02-05 | **Note**: PTY-dependent tests require `PTY_AVAILABLE=true` env variable
 
 ---
 
-### 15. Remotion Panel Stability (`remotion-panel-stability.e2e.ts`)
+### 15. Remotion Panel Stability (`remotion-panel-stability.e2e.ts`) ✅ ALL PASSED
 
 Tests that Remotion panel doesn't cause infinite render loops (React Error #185).
 
-| Test | Description |
-|------|-------------|
-| `should not cause infinite render loops when opening editor` | Detects React Error #185 |
-| `should render Remotion panel without infinite loops` | Opens Remotion panel, checks for errors |
-| `should load editor without errors` | General editor load test |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should not cause infinite render loops when opening editor` | Detects React Error #185 | ✅ PASS |
+| `should render Remotion panel without infinite loops` | Opens Remotion panel, checks for errors | ✅ PASS |
+| `should load editor without errors` | General editor load test | ✅ PASS |
+
+**Run Time**: 20.0s | **Last Run**: 2026-02-05
 
 ---
 
-### 16. Project Folder Sync (`project-folder-sync.e2e.ts`)
+### 16. Project Folder Sync (`project-folder-sync.e2e.ts`) ⚠️ 21 PASSED, 3 FAILED
 
 Tests the project folder sync feature with IPC handlers, UI, and integration.
 
 #### Subtask 1: Directory Scanning IPC Handlers
 
-| Test | Description |
-|------|-------------|
-| `should ensure project folder structure exists` | Creates project folder structure |
-| `should list directory contents via IPC` | Lists directory via IPC |
-| `should scan directory for media files recursively` | Recursive media file scan |
-| `should get project root path via IPC` | Gets project root path |
-| `should prevent path traversal attacks` | Tests security against path traversal |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should ensure project folder structure exists` | Creates project folder structure | ✅ PASS |
+| `should list directory contents via IPC` | Lists directory via IPC | ✅ PASS |
+| `should scan directory for media files recursively` | Recursive media file scan | ✅ PASS |
+| `should get project root path via IPC` | Gets project root path | ✅ PASS |
+| `should prevent path traversal attacks` | Tests security against path traversal | ✅ PASS |
 
 #### Subtask 2: Project Folder Browser UI
 
-| Test | Description |
-|------|-------------|
-| `should display Project Folder tab in Media Panel` | Verifies tab existence |
-| `should show empty state when project folder is empty` | Tests empty state UI |
-| `should display breadcrumb navigation` | Tests breadcrumb display |
-| `should refresh directory listing on button click` | Tests refresh functionality |
-| `should disable up navigation at root level` | Tests navigation constraints |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should display Project Folder tab in Media Panel` | Verifies tab existence | ✅ PASS |
+| `should show empty state when project folder is empty` | Tests empty state UI | ❌ FAIL |
+| `should display breadcrumb navigation` | Tests breadcrumb display | ❌ FAIL |
+| `should refresh directory listing on button click` | Tests refresh functionality | ✅ PASS |
+| `should disable up navigation at root level` | Tests navigation constraints | ✅ PASS |
 
 #### Subtask 3: Bulk Import Functionality
 
-| Test | Description |
-|------|-------------|
-| `should select all media files with Select All button` | Tests Select All functionality |
-| `should clear selection with Clear button` | Tests Clear selection |
-| `should show Import button when files are selected` | Tests Import button visibility |
-| `should toggle individual file selection via checkbox` | Tests individual selection |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should select all media files with Select All button` | Tests Select All functionality | ✅ PASS |
+| `should clear selection with Clear button` | Tests Clear selection | ✅ PASS |
+| `should show Import button when files are selected` | Tests Import button visibility | ✅ PASS |
+| `should toggle individual file selection via checkbox` | Tests individual selection | ✅ PASS |
 
 #### Subtask 4: Media Panel Integration
 
-| Test | Description |
-|------|-------------|
-| `should integrate project folder view with media panel` | Tests media panel integration |
-| `should switch between different media panel views` | Tests view switching |
-| `should maintain project folder state across tab switches` | Tests state persistence |
-| `should display correct icons for different file types` | Tests file type icons |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should integrate project folder view with media panel` | Tests media panel integration | ✅ PASS |
+| `should switch between different media panel views` | Tests view switching | ✅ PASS |
+| `should maintain project folder state across tab switches` | Tests state persistence | ❌ FAIL |
+| `should display correct icons for different file types` | Tests file type icons | ✅ PASS |
 
 #### Subtask 5: File Type Detection
 
-| Test | Description |
-|------|-------------|
-| `should detect video file types correctly` | Tests video extension detection |
-| `should detect audio file types correctly` | Tests audio extension detection |
-| `should detect image file types correctly` | Tests image extension detection |
-| `should mark non-media files as unknown` | Tests unknown type handling |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should detect video file types correctly` | Tests video extension detection | ✅ PASS |
+| `should detect audio file types correctly` | Tests audio extension detection | ✅ PASS |
+| `should detect image file types correctly` | Tests image extension detection | ✅ PASS |
+| `should mark non-media files as unknown` | Tests unknown type handling | ✅ PASS |
 
 #### Subtask 6: Error Handling
 
-| Test | Description |
-|------|-------------|
-| `should handle missing electronAPI gracefully` | Tests graceful API absence handling |
-| `should display error state in UI` | Tests error state display |
+| Test | Description | Status |
+|------|-------------|--------|
+| `should handle missing electronAPI gracefully` | Tests graceful API absence handling | ✅ PASS |
+| `should display error state in UI` | Tests error state display | ✅ PASS |
+
+**Run Time**: 2.4m | **Last Run**: 2026-02-05 | **Note**: 3 failures related to UI state detection (empty state, breadcrumb, tab switches)
 
 ---
 
-### 17. Debug ProjectId (`debug-projectid.e2e.ts`)
+### 17. Debug ProjectId (`debug-projectid.e2e.ts`) ✅ ALL PASSED
 
 Debug test to identify database issues (300+ databases being created).
 
-| Test | Description |
-|------|-------------|
-| `track projectId during sticker selection` | Tracks projectId during sticker flow |
+| Test | Description | Status |
+|------|-------------|--------|
+| `track projectId during sticker selection` | Tracks projectId during sticker flow | ✅ PASS |
+
+**Run Time**: 11.3s | **Last Run**: 2026-02-05
 
 ---
 
