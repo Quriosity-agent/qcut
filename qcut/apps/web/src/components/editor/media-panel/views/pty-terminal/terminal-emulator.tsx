@@ -130,18 +130,20 @@ export function TerminalEmulator({
 
       if (isPasting) return;
 
-      const text = e.clipboardData?.getData('text');
+      const text = e.clipboardData?.getData("text");
       if (text && sessionId) {
         isPasting = true;
         window.electronAPI?.pty?.write?.(sessionId, text);
-        setTimeout(() => { isPasting = false; }, 100);
+        setTimeout(() => {
+          isPasting = false;
+        }, 100);
       }
     };
 
     // Add paste listener after a short delay (textarea may not be ready immediately)
     const textareaCheckInterval = setInterval(() => {
       if (terminal.textarea) {
-        terminal.textarea.addEventListener('paste', handlePaste, true);
+        terminal.textarea.addEventListener("paste", handlePaste, true);
         clearInterval(textareaCheckInterval);
       }
     }, 10);
@@ -161,7 +163,8 @@ export function TerminalEmulator({
 
         // Read clipboard and write to PTY
         if (navigator.clipboard?.readText) {
-          navigator.clipboard.readText()
+          navigator.clipboard
+            .readText()
             .then((text) => {
               if (text && sessionId) {
                 window.electronAPI?.pty?.write?.(sessionId, text);
@@ -171,10 +174,14 @@ export function TerminalEmulator({
               // Clipboard read failed - ignore
             })
             .finally(() => {
-              setTimeout(() => { isPasting = false; }, 100);
+              setTimeout(() => {
+                isPasting = false;
+              }, 100);
             });
         } else {
-          setTimeout(() => { isPasting = false; }, 100);
+          setTimeout(() => {
+            isPasting = false;
+          }, 100);
         }
 
         return false;
@@ -214,7 +221,7 @@ export function TerminalEmulator({
     // Cleanup
     return () => {
       clearInterval(textareaCheckInterval);
-      terminal.textarea?.removeEventListener('paste', handlePaste, true);
+      terminal.textarea?.removeEventListener("paste", handlePaste, true);
       window.electronAPI?.pty?.removeListeners();
       terminal.dispose();
     };

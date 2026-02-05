@@ -105,7 +105,9 @@ export function PtyTerminalView() {
                       {provider.id === "gemini" && (
                         <Sparkles className="h-3 w-3" aria-hidden="true" />
                       )}
-                      {provider.id === "codex" && <Bot className="h-3 w-3" aria-hidden="true" />}
+                      {provider.id === "codex" && (
+                        <Bot className="h-3 w-3" aria-hidden="true" />
+                      )}
                       {provider.id === "claude" && (
                         <MessageSquare className="h-3 w-3" aria-hidden="true" />
                       )}
@@ -177,7 +179,11 @@ export function PtyTerminalView() {
           </div>
 
           {/* Status Indicator */}
-          <div className="flex items-center gap-1.5" data-testid="terminal-status" data-status={status}>
+          <div
+            className="flex items-center gap-1.5"
+            data-testid="terminal-status"
+            data-status={status}
+          >
             <div
               className={cn(
                 "h-2 w-2 rounded-full",

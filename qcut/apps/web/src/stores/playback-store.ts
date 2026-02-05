@@ -12,7 +12,8 @@ import { create } from "zustand";
 import type { PlaybackState, PlaybackControls } from "@/types/playback";
 
 // Lazy import getters to avoid circular dependencies
-type TimelineStoreHook = typeof import("@/stores/timeline-store")["useTimelineStore"];
+type TimelineStoreHook =
+  typeof import("@/stores/timeline-store")["useTimelineStore"];
 type ProjectStoreHook = typeof import("./project-store")["useProjectStore"];
 
 let _timelineStore: TimelineStoreHook | null = null;
@@ -27,8 +28,10 @@ const getTimelineStoreSync = () => {
   if (!_timelineStore) {
     // This will work because by the time playback starts, stores are loaded
     import("@/stores/timeline-store")
-      .then(m => { _timelineStore = m.useTimelineStore; })
-      .catch(err => console.error("Failed to load timeline store:", err));
+      .then((m) => {
+        _timelineStore = m.useTimelineStore;
+      })
+      .catch((err) => console.error("Failed to load timeline store:", err));
   }
   return _timelineStore;
 };
@@ -41,19 +44,25 @@ const getTimelineStoreSync = () => {
 const getProjectStoreSync = () => {
   if (!_projectStore) {
     import("./project-store")
-      .then(m => { _projectStore = m.useProjectStore; })
-      .catch(err => console.error("Failed to load project store:", err));
+      .then((m) => {
+        _projectStore = m.useProjectStore;
+      })
+      .catch((err) => console.error("Failed to load project store:", err));
   }
   return _projectStore;
 };
 
 // Pre-initialize stores when module loads
 import("@/stores/timeline-store")
-  .then(m => { _timelineStore = m.useTimelineStore; })
-  .catch(err => console.error("Failed to pre-load timeline store:", err));
+  .then((m) => {
+    _timelineStore = m.useTimelineStore;
+  })
+  .catch((err) => console.error("Failed to pre-load timeline store:", err));
 import("./project-store")
-  .then(m => { _projectStore = m.useProjectStore; })
-  .catch(err => console.error("Failed to pre-load project store:", err));
+  .then((m) => {
+    _projectStore = m.useProjectStore;
+  })
+  .catch((err) => console.error("Failed to pre-load project store:", err));
 
 /**
  * Playback store interface combining state and control methods
@@ -96,9 +105,8 @@ const startTimer = (store: () => PlaybackStore) => {
       const frameNumber = Math.round(newTime * projectFps);
 
       // Get actual content duration from timeline store
-      const actualContentDuration = timelineStore
-        ?.getState()
-        ?.getTotalDuration() ?? state.duration;
+      const actualContentDuration =
+        timelineStore?.getState()?.getTotalDuration() ?? state.duration;
 
       // Stop at actual content end, not timeline duration (which has 10s minimum)
       // It was either this or reducing default min timeline to 1 second

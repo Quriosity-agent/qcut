@@ -12,7 +12,11 @@ import type {
   Seeddream45EditParams,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
-import { getFalApiKey, getFalApiKeyAsync, FAL_API_BASE } from "../core/fal-request";
+import {
+  getFalApiKey,
+  getFalApiKeyAsync,
+  FAL_API_BASE,
+} from "../core/fal-request";
 
 // Re-export for convenience (using export from pattern)
 export type {
@@ -56,7 +60,9 @@ export async function generateSeeddream45Image(
   try {
     const apiKey = await getFalApiKeyAsync();
     if (!apiKey) {
-      throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+      throw new Error(
+        "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+      );
     }
 
     const endpoint = "fal-ai/bytedance/seedream/v4.5/text-to-image";
@@ -133,7 +139,9 @@ export async function editSeeddream45Image(
   try {
     const apiKey = await getFalApiKeyAsync();
     if (!apiKey) {
-      throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+      throw new Error(
+        "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+      );
     }
 
     // Validate image_urls
@@ -206,7 +214,9 @@ export async function uploadImageForSeeddream45Edit(
   try {
     const apiKey = await getFalApiKeyAsync();
     if (!apiKey) {
-      throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+      throw new Error(
+        "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+      );
     }
 
     // Use Electron IPC upload if available (bypasses CORS)

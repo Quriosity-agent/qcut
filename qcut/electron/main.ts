@@ -162,9 +162,7 @@ function setupAutoUpdater(): void {
   } else {
     // Stable users should NOT receive prereleases by default
     autoUpdater.allowPrerelease = false;
-    logger.log(
-      "🔄 [AutoUpdater] Configured for stable channel (latest.yml)"
-    );
+    logger.log("🔄 [AutoUpdater] Configured for stable channel (latest.yml)");
   }
 
   // Check for updates
@@ -405,7 +403,12 @@ app.whenReady().then(() => {
       if (normalizedPath.startsWith("ffmpeg/")) {
         const filename = normalizedPath.replace("ffmpeg/", "");
         // In production, FFmpeg files are in resources/ffmpeg/
-        const ffmpegPath = path.join(__dirname, "resources", "ffmpeg", filename);
+        const ffmpegPath = path.join(
+          __dirname,
+          "resources",
+          "ffmpeg",
+          filename
+        );
 
         // Check if file exists in resources/ffmpeg, fallback to dist
         if (fs.existsSync(ffmpegPath)) {
@@ -422,7 +425,10 @@ app.whenReady().then(() => {
       const baseResolved = path.resolve(basePath) + path.sep;
 
       // Ensure resolved path stays within basePath
-      if (!filePath.startsWith(baseResolved) && filePath !== path.resolve(basePath)) {
+      if (
+        !filePath.startsWith(baseResolved) &&
+        filePath !== path.resolve(basePath)
+      ) {
         logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
         return new Response("Not Found", { status: 404 });
       }

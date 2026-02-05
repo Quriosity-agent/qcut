@@ -122,7 +122,9 @@ export async function getStickersOverlayStore() {
   }
 
   try {
-    const { useStickersOverlayStore } = await import("@/stores/stickers-overlay-store");
+    const { useStickersOverlayStore } = await import(
+      "@/stores/stickers-overlay-store"
+    );
     storeCache.set(cacheKey, useStickersOverlayStore);
     return useStickersOverlayStore;
   } catch (error) {

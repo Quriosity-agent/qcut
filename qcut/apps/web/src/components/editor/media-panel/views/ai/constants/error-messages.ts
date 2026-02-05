@@ -54,8 +54,7 @@ export const ERROR_MESSAGES = {
     "Please enter a text prompt for Vidu Q3 video generation",
   VIDU_Q3_PROMPT_TOO_LONG:
     "Prompt exceeds maximum length of 2000 characters for Vidu Q3",
-  VIDU_Q3_INVALID_DURATION:
-    "Vidu Q3 currently only supports 5-second duration",
+  VIDU_Q3_INVALID_DURATION: "Vidu Q3 currently only supports 5-second duration",
   VIDU_Q3_INVALID_RESOLUTION:
     "Invalid resolution for Vidu Q3. Supported: 360p, 540p, 720p, 1080p",
   VIDU_Q3_INVALID_ASPECT_RATIO:

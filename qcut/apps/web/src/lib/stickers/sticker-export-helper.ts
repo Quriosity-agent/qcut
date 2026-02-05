@@ -80,7 +80,8 @@ export class StickerExportHelper {
         );
         result.successful++;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         result.failed.push({
           stickerId: sticker.id,
           error: errorMessage,

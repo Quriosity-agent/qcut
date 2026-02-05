@@ -102,10 +102,6 @@ class VideoEditClient {
   private initialized = false;
   private apiKey: string | null = null;
 
-  constructor() {
-    // Defer initialization to avoid module loading issues
-  }
-
   /**
    * Initialize with API key
    */
@@ -228,7 +224,9 @@ class VideoEditClient {
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Upload failed: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = (await response.json()) as { url?: string };
@@ -331,7 +329,9 @@ class VideoEditClient {
       !params.video_url.startsWith("http://") &&
       !params.video_url.startsWith("https://")
     ) {
-      throw new Error(`Invalid video URL format: ${params.video_url.substring(0, 50)}...`);
+      throw new Error(
+        `Invalid video URL format: ${params.video_url.substring(0, 50)}...`
+      );
     }
 
     debugLog("Generating audio with Kling:", {

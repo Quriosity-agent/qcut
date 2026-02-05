@@ -119,7 +119,8 @@ export class BinaryManager {
         );
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error("[BinaryManager] Failed to load manifest:", errorMessage);
     }
   }
@@ -266,7 +267,8 @@ export class BinaryManager {
 
       return isValid;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(
         `[BinaryManager] Failed to verify checksum for ${filePath}:`,
         errorMessage

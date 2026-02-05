@@ -14,7 +14,8 @@ import {
 } from "@/lib/ai-video";
 
 const originalFetch = globalThis.fetch;
-const originalFalApiKey = (import.meta.env as Record<string, unknown>).VITE_FAL_API_KEY;
+const originalFalApiKey = (import.meta.env as Record<string, unknown>)
+  .VITE_FAL_API_KEY;
 
 describe("Vidu Q3 Validators", () => {
   describe("validateViduQ3Prompt", () => {
@@ -225,7 +226,8 @@ describe("Vidu Q3 Text-to-Video Generator", () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
-    (import.meta.env as Record<string, unknown>).VITE_FAL_API_KEY = originalFalApiKey;
+    (import.meta.env as Record<string, unknown>).VITE_FAL_API_KEY =
+      originalFalApiKey;
     globalThis.fetch = originalFetch as typeof globalThis.fetch;
   });
 
@@ -449,7 +451,8 @@ describe("Vidu Q3 Image-to-Video Generator", () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
-    (import.meta.env as Record<string, unknown>).VITE_FAL_API_KEY = originalFalApiKey;
+    (import.meta.env as Record<string, unknown>).VITE_FAL_API_KEY =
+      originalFalApiKey;
     globalThis.fetch = originalFetch as typeof globalThis.fetch;
   });
 

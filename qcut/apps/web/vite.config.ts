@@ -12,7 +12,9 @@ export default defineConfig({
     // Required for React scheduler in Electron production builds
     global: "globalThis",
     // Required for @babel/types and other Node.js modules in browser
-    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+    "process.env.NODE_ENV": JSON.stringify(
+      process.env.NODE_ENV || "development"
+    ),
   },
   resolve: {
     alias: {
@@ -46,7 +48,12 @@ export default defineConfig({
     },
     // Exclude remotion packages from optimization to prevent double bundling
     // Exclude @fal-ai/client to prevent initialization issues in Electron
-    exclude: ["remotion", "@remotion/player", "@remotion/renderer", "@fal-ai/client"],
+    exclude: [
+      "remotion",
+      "@remotion/player",
+      "@remotion/renderer",
+      "@fal-ai/client",
+    ],
   },
   plugins: [
     tsconfigPaths(), // Support for TypeScript path mapping
@@ -108,7 +115,7 @@ export default defineConfig({
             id.includes("node_modules/@ffmpeg/") ||
             id.includes("node_modules/ffmpeg")
           ) {
-            return 'vendor-ffmpeg';
+            return "vendor-ffmpeg";
           }
 
           // AI Features - FAL.ai client (node_modules only)
@@ -116,7 +123,7 @@ export default defineConfig({
             id.includes("node_modules/@fal-ai/client") ||
             id.includes("node_modules/fal-ai")
           ) {
-            return 'vendor-ai';
+            return "vendor-ai";
           }
 
           // Export functionality kept in main bundle to avoid React component issues

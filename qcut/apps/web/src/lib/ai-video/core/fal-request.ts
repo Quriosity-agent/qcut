@@ -53,7 +53,8 @@ export async function getFalApiKeyAsync(): Promise<string | undefined> {
   }
 
   // Check Electron storage (async)
-  const electronApiKeys = typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+  const electronApiKeys =
+    typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
   if (electronApiKeys) {
     // Deduplicate concurrent calls
     if (!electronKeyFetchPromise) {
@@ -80,7 +81,7 @@ export async function getFalApiKeyAsync(): Promise<string | undefined> {
     }
   }
 
-  return undefined;
+  return;
 }
 
 /**

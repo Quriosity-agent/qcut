@@ -88,7 +88,9 @@ export async function pollQueueStatus(
 
   const falApiKey = await getFalApiKeyAsync();
   if (!falApiKey) {
-    throw new Error("FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.");
+    throw new Error(
+      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+    );
   }
 
   let attempts = 0;

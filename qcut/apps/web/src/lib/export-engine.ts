@@ -618,7 +618,9 @@ export class ExportEngine {
       if (renderResult.failed.length > 0) {
         debugWarn(
           `[ExportEngine] ${renderResult.failed.length} stickers failed to render at time ${currentTime.toFixed(3)}s:`,
-          renderResult.failed.map((f) => `${f.stickerId}: ${f.error}`).join(", ")
+          renderResult.failed
+            .map((f) => `${f.stickerId}: ${f.error}`)
+            .join(", ")
         );
       }
     } catch (error) {
@@ -918,7 +920,10 @@ export class ExportEngine {
           mediaStore.mediaItems.map((item) => [item.id, item])
         );
 
-        const preloadResult = await preloadStickerImages(allStickers, mediaItemsMap);
+        const preloadResult = await preloadStickerImages(
+          allStickers,
+          mediaItemsMap
+        );
 
         if (preloadResult.failed.length > 0) {
           debugWarn(

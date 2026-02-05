@@ -165,7 +165,9 @@ export function FolderImportDialog({
   const importedFolders = useRemotionStore(
     useShallow((state) => Array.from(state.importedFolders.values()))
   );
-  const isFolderImporting = useRemotionStore((state) => state.isFolderImporting);
+  const isFolderImporting = useRemotionStore(
+    (state) => state.isFolderImporting
+  );
 
   // Check if folder import is available
   const isAvailable = isFolderImportAvailable();
@@ -297,7 +299,13 @@ export function FolderImportDialog({
         });
       }
     },
-    [isAvailable, isFolderImporting, importFromFolder, onImportSuccess, handleOpenChange]
+    [
+      isAvailable,
+      isFolderImporting,
+      importFromFolder,
+      onImportSuccess,
+      handleOpenChange,
+    ]
   );
 
   // Handle folder selection and import

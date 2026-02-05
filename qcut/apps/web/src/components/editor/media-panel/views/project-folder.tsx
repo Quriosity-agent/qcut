@@ -193,7 +193,10 @@ export function ProjectFolderView() {
   return (
     <div className="flex flex-col h-full" data-testid="project-folder-view">
       {/* Breadcrumb navigation */}
-      <div className="flex items-center gap-1 p-2 border-b overflow-x-auto" data-testid="breadcrumbs">
+      <div
+        className="flex items-center gap-1 p-2 border-b overflow-x-auto"
+        data-testid="breadcrumbs"
+      >
         <Button
           variant="text"
           size="sm"
@@ -290,7 +293,10 @@ export function ProjectFolderView() {
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
           {entries.length === 0 && !isScanning && !error && (
-            <div className="p-8 text-center text-muted-foreground" data-testid="empty-folder-state">
+            <div
+              className="p-8 text-center text-muted-foreground"
+              data-testid="empty-folder-state"
+            >
               <Folder className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Empty folder</p>
             </div>

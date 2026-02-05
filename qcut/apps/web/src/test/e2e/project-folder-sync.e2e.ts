@@ -272,14 +272,18 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "Empty Folder View Test");
 
       // Navigate to project folder view if there's a tab
-      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
+      const projectTab = page.locator(
+        '[data-testid="project-folder-panel-tab"]'
+      );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
         await page.waitForTimeout(1000);
 
         // Check for the project folder view container
-        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        const projectFolderView = page.locator(
+          '[data-testid="project-folder-view"]'
+        );
         await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
         // Check for empty state indicator or file list
@@ -298,14 +302,18 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "Breadcrumb Navigation Test");
 
       // Navigate to project folder view
-      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
+      const projectTab = page.locator(
+        '[data-testid="project-folder-panel-tab"]'
+      );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
         await page.waitForTimeout(1000);
 
         // Check for the project folder view container first
-        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        const projectFolderView = page.locator(
+          '[data-testid="project-folder-view"]'
+        );
         await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
         // Look for breadcrumb container
@@ -313,7 +321,7 @@ test.describe("Project Folder Sync", () => {
         await expect(breadcrumbs).toBeVisible({ timeout: 5000 });
 
         // Verify breadcrumbs has content (buttons for navigation)
-        const breadcrumbButtons = breadcrumbs.locator('button');
+        const breadcrumbButtons = breadcrumbs.locator("button");
         expect(await breadcrumbButtons.count()).toBeGreaterThan(0);
       }
     });
@@ -347,7 +355,9 @@ test.describe("Project Folder Sync", () => {
           await page.waitForTimeout(1000);
 
           // Verify the view is still functional
-          const viewContainer = page.locator('[data-testid="project-folder-view"]');
+          const viewContainer = page.locator(
+            '[data-testid="project-folder-view"]'
+          );
           if ((await viewContainer.count()) > 0) {
             await expect(viewContainer).toBeVisible();
           }
@@ -647,14 +657,18 @@ test.describe("Project Folder Sync", () => {
       await createTestProject(page, "State Persistence Test");
 
       // Navigate to project folder view
-      const projectTab = page.locator('[data-testid="project-folder-panel-tab"]');
+      const projectTab = page.locator(
+        '[data-testid="project-folder-panel-tab"]'
+      );
 
       if ((await projectTab.count()) > 0 && (await projectTab.isVisible())) {
         await projectTab.click();
         await page.waitForTimeout(1000);
 
         // Check project folder view is visible
-        const projectFolderView = page.locator('[data-testid="project-folder-view"]');
+        const projectFolderView = page.locator(
+          '[data-testid="project-folder-view"]'
+        );
         await expect(projectFolderView).toBeVisible({ timeout: 5000 });
 
         // Verify breadcrumbs are visible
@@ -934,7 +948,9 @@ test.describe("Project Folder Sync", () => {
      * Test 6.2: Component renders without crashing
      * Verifies the project folder view loads and doesn't crash on render.
      */
-    test("should render project folder view without crashing", async ({ page }) => {
+    test("should render project folder view without crashing", async ({
+      page,
+    }) => {
       await createTestProject(page, "Render Stability Test");
 
       // Navigate to project folder view

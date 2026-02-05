@@ -16,9 +16,12 @@ test.describe("Remotion Panel Stability", () => {
     // Listen for React Error #185 in console
     page.on("console", (msg) => {
       const text = msg.text();
-      if (text.includes("error #185") || text.includes("Maximum update depth")) {
+      if (
+        text.includes("error #185") ||
+        text.includes("Maximum update depth")
+      ) {
         hasReactError185 = true;
-        console.error(`[TEST] React Error #185 detected!`);
+        console.error("[TEST] React Error #185 detected!");
       }
     });
 
@@ -42,7 +45,10 @@ test.describe("Remotion Panel Stability", () => {
 
     page.on("console", (msg) => {
       const text = msg.text();
-      if (text.includes("error #185") || text.includes("Maximum update depth")) {
+      if (
+        text.includes("error #185") ||
+        text.includes("Maximum update depth")
+      ) {
         hasError = true;
       }
     });
@@ -66,7 +72,9 @@ test.describe("Remotion Panel Stability", () => {
       await expect(remotionPanel).toBeVisible({ timeout: 3000 });
       console.log("[TEST] Remotion panel is visible");
     } else {
-      console.log("[TEST] Remotion tab not visible, checking if panel loads by default");
+      console.log(
+        "[TEST] Remotion tab not visible, checking if panel loads by default"
+      );
     }
 
     // Wait for any potential loops
@@ -81,7 +89,10 @@ test.describe("Remotion Panel Stability", () => {
 
     page.on("console", (msg) => {
       const text = msg.text();
-      if (text.includes("error #185") || text.includes("Maximum update depth")) {
+      if (
+        text.includes("error #185") ||
+        text.includes("Maximum update depth")
+      ) {
         hasError = true;
       }
     });
