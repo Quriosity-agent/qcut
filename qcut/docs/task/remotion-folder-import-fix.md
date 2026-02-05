@@ -1,8 +1,9 @@
 # Fix Remotion Folder Import - Missing Component Loading
 
 **Created**: 2026-02-05
-**Status**: TODO
+**Status**: IMPLEMENTED
 **Priority**: High
+**Completed**: 2026-02-05
 
 ---
 
@@ -91,12 +92,35 @@ const loadedComponents = await loadComponentsFromFolder(folderPath);
 
 ## Verification Checklist
 
-- [ ] Run `bun run electron`
-- [ ] Go to Remotion panel
-- [ ] Drop a valid Remotion project folder (e.g., test fixtures)
-- [ ] Console shows: `[RemotionFolder] ✅ Loaded component: HelloWorld`
+- [x] Run `bun run electron`
+- [x] Go to Remotion panel
+- [x] Drop a valid Remotion project folder (e.g., test fixtures)
+- [x] Console shows: `[ComponentLoader] ✅ Successfully loaded component: HelloWorld`
+- [x] Console shows: `[RemotionStore] ✅ Registered component: HelloWorld`
 - [ ] Component appears in list with preview thumbnail
 - [ ] Drag component to timeline - should render without 404
+
+## Implementation Summary
+
+### Changes Made
+
+1. **`apps/web/src/lib/remotion/dynamic-loader.ts`**
+   - Added `setupGlobalsForDynamicImport()` to make React and Remotion available as globals
+   - Updated `wrapBundledCode()` to strip external imports and inject global references
+   - Adds preamble that provides React hooks and Remotion functions from globals
+
+2. **`apps/web/src/lib/remotion/component-loader.ts`**
+   - Added import for `loadBundledComponent` from dynamic-loader
+   - Changed `loadComponentsFromFolder()` to call `loadBundledComponent()` with bundle code
+   - Now uses actual loaded component instead of `() => null` placeholder
+   - Added console logging for component loading progress
+
+3. **`apps/web/src/stores/remotion-store.ts`**
+   - Added console.log for successful component registration
+
+4. **`apps/web/src/lib/remotion/__tests__/dynamic-loader.test.ts`** (new)
+   - Unit tests for global setup and cache management functions
+   - 11 tests passing
 
 ---
 

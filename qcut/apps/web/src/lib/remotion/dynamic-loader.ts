@@ -11,6 +11,23 @@ import * as React from "react";
 import * as Remotion from "remotion";
 import { debugLog, debugError } from "@/lib/debug-config";
 
+// Try to import optional Remotion packages
+let RemotionZodTypes: Record<string, unknown> = {};
+try {
+  // @ts-expect-error - Optional import
+  RemotionZodTypes = require("@remotion/zod-types");
+} catch {
+  // Package not available
+}
+
+let RemotionTransitions: Record<string, unknown> = {};
+try {
+  // @ts-expect-error - Optional import
+  RemotionTransitions = require("@remotion/transitions");
+} catch {
+  // Package not available
+}
+
 // ============================================================================
 // Global Setup for Dynamic Imports
 // ============================================================================
@@ -43,6 +60,16 @@ export function setupGlobalsForDynamicImport(): void {
     // Make Remotion available globally
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).Remotion = Remotion;
+
+    // Make optional Remotion packages available if loaded
+    if (Object.keys(RemotionZodTypes).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).RemotionZodTypes = RemotionZodTypes;
+    }
+    if (Object.keys(RemotionTransitions).length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).RemotionTransitions = RemotionTransitions;
+    }
 
     globalsInitialized = true;
     console.log("[DynamicLoader] ✅ Globals initialized for dynamic imports");
@@ -282,6 +309,14 @@ const { jsx, jsxs } = ReactJSXRuntime;
 // Remotion exports
 const Remotion = globalThis.Remotion || window.Remotion || {};
 const { useCurrentFrame, useVideoConfig, AbsoluteFill, Sequence, Series, Audio, Video, Img, staticFile, interpolate, spring, Easing, continueRender, delayRender, random, measureSpring, Loop, Composition, Still, getInputProps, OffthreadVideo, useFrameRange, interpolateColors } = Remotion;
+
+// @remotion/zod-types exports (if available)
+const RemotionZodTypes = globalThis.RemotionZodTypes || window.RemotionZodTypes || {};
+const { zColor } = RemotionZodTypes;
+
+// @remotion/transitions exports (if available)
+const RemotionTransitions = globalThis.RemotionTransitions || window.RemotionTransitions || {};
+const { TransitionSeries, linearTiming, springTiming } = RemotionTransitions;
 `;
 
   // Remove external import statements from the bundled code
