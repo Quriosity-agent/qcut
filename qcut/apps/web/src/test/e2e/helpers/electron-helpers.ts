@@ -656,6 +656,10 @@ export async function addStickerToCanvas(
         .first()
         .waitFor({ state: "visible", timeout: 3000 });
 
+      if (options?.waitForRender) {
+        await page.waitForTimeout(500);
+      }
+
       return true;
     }
 
