@@ -121,6 +121,19 @@ describe("Kling v3 Model Configurations", () => {
       ]);
     });
 
+    it("should have negative_prompt and cfg_scale in I2V default params", () => {
+      expect(I2V_MODELS.kling_v3_pro_i2v.default_params.negative_prompt).toBe(
+        "blur, distort, and low quality"
+      );
+      expect(I2V_MODELS.kling_v3_pro_i2v.default_params.cfg_scale).toBe(0.5);
+      expect(
+        I2V_MODELS.kling_v3_standard_i2v.default_params.negative_prompt
+      ).toBe("blur, distort, and low quality");
+      expect(I2V_MODELS.kling_v3_standard_i2v.default_params.cfg_scale).toBe(
+        0.5
+      );
+    });
+
     it("should have correct supported aspect ratios for I2V models", () => {
       expect(I2V_MODELS.kling_v3_pro_i2v.supportedAspectRatios).toEqual([
         "16:9",

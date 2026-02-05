@@ -68,7 +68,9 @@ export const I2V_MODELS = {
     default_params: {
       duration: 5,
       aspect_ratio: "16:9",
+      cfg_scale: 0.5,
       generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
     },
     supportedDurations: [5, 10, 12],
     supportedAspectRatios: ["16:9", "9:16", "1:1"],
@@ -88,7 +90,9 @@ export const I2V_MODELS = {
     default_params: {
       duration: 5,
       aspect_ratio: "16:9",
+      cfg_scale: 0.5,
       generate_audio: true,
+      negative_prompt: "blur, distort, and low quality",
     },
     supportedDurations: [5, 10, 12],
     supportedAspectRatios: ["16:9", "9:16", "1:1"],

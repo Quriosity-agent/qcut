@@ -500,8 +500,8 @@ describe("Kling v3 Integration", () => {
 | 3 | Update model type definitions | ✅ DONE | Automatic via `keyof typeof` |
 | 4 | Update model capabilities | ✅ DONE | `text2video-models-config.ts` |
 | 5 | Update AI constants | ✅ DONE | Automatic via `Object.values` |
-| 6 | Verify generator functions | ✅ DONE | Generic handlers work |
-| 7 | Update model handlers | ✅ DONE | Generic routing works |
+| 6 | Verify generator functions | ⚠️ PARTIAL | Generic handlers work but don't pass negative_prompt, cfg_scale, end_image_url |
+| 7 | Update model handlers | ⚠️ PARTIAL | Generic routing works but needs dedicated handler for v3-specific params |
 | 8 | Add unit tests | ✅ DONE | `__tests__/kling-v3-models.test.ts` (21 tests) |
 | 9 | Add integration tests | ✅ DONE | Tests included in unit test file |
 
