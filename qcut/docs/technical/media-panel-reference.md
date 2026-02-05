@@ -2,6 +2,8 @@
 
 This document provides a comprehensive overview of all 20 panels available in the QCut video editor's media panel sidebar.
 
+> **Note:** All file paths in this document are relative to the `qcut/` project root directory.
+
 ## Table of Contents
 
 1. [Media](#1-media)
