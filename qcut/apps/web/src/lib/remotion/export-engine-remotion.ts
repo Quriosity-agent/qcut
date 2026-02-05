@@ -171,6 +171,8 @@ export class RemotionExportEngine extends ExportEngine {
   private preRenderResults: Map<string, PreRenderResult> = new Map();
   private remotionElements: RemotionElement[] = [];
   private progressCallback: RemotionExportProgressCallback | null = null;
+  // biome-ignore lint/correctness/noUnusedPrivateClassMembers: used in multiple export methods
+  private currentPhase: RemotionExportPhase = "idle";
 
   constructor(
     canvas: HTMLCanvasElement,
