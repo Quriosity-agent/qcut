@@ -1789,6 +1789,8 @@ export async function routeImageToVideoHandler(
     case "kling_v2_5_turbo_i2v":
       return handleKlingV25I2V(ctx, settings);
     case "kling_v26_pro_i2v":
+    case "kling_v3_pro_i2v":
+    case "kling_v3_standard_i2v":
       return handleKlingV26I2V(ctx, settings);
     case "wan_25_preview_i2v":
       return handleWAN25I2V(ctx, settings);

@@ -9,6 +9,7 @@ import { handleAIServiceError } from "@/lib/error-handler";
 
 // Direct FAL AI integration - no backend needed
 export const FAL_API_BASE = "https://fal.run";
+export const FAL_QUEUE_BASE = "https://queue.fal.run";
 
 /**
  * Retrieves the current FAL API key from environment at call time.
@@ -152,9 +153,10 @@ export async function makeFalRequest(
     headers["X-Fal-Queue"] = "true";
   }
 
+  const base = options?.queueMode ? FAL_QUEUE_BASE : FAL_API_BASE;
   const url = endpoint.startsWith("https://")
     ? endpoint
-    : `${FAL_API_BASE}/${endpoint}`;
+    : `${base}/${endpoint}`;
 
   return fetch(url, {
     method: "POST",

@@ -846,8 +846,13 @@ function buildTextToVideoPayload(
     payload.duration = modelConfig.max_duration;
   }
 
-  // Kling v2.6 expects duration as string
-  if (request.model === "kling_v26_pro_t2v" && payload.duration) {
+  // Kling v2.6+ expects duration as string
+  const klingStringDurationModels = [
+    "kling_v26_pro_t2v",
+    "kling_v3_pro_t2v",
+    "kling_v3_standard_t2v",
+  ];
+  if (klingStringDurationModels.includes(request.model) && payload.duration) {
     payload.duration = String(payload.duration);
   }
 
