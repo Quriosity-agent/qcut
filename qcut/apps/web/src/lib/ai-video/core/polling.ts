@@ -112,7 +112,7 @@ export async function pollQueueStatus(
     onProgress,
     jobId = generateJobId(),
     modelName = "AI Model",
-    maxAttempts = 60,
+    maxAttempts = 240,
     pollIntervalMs = 5000,
     downloadOptions,
     statusUrl: providedStatusUrl,
@@ -134,9 +134,12 @@ export async function pollQueueStatus(
 
     try {
       // Use FAL-provided status URL when available, fall back to constructed URL
-      const statusUrl =
+      const baseStatusUrl =
         providedStatusUrl ||
         `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}/status`;
+      const statusUrl = baseStatusUrl.includes("?")
+        ? `${baseStatusUrl}&logs=1`
+        : `${baseStatusUrl}?logs=1`;
       if (attempts === 1) {
         console.log(`[Queue Poll] Polling status at: ${statusUrl}`);
       }
