@@ -880,6 +880,31 @@ app.whenReady().then(() => {
     }
   );
 
+  // FAL queue fetch handler (bypasses CORS for queue.fal.run polling)
+  // The queue.fal.run subdomain doesn't return CORS headers for app:// origin,
+  // so we proxy GET requests through the main process (Node.js has no CORS).
+  ipcMain.handle(
+    "fal:queue-fetch",
+    async (
+      _event: IpcMainInvokeEvent,
+      url: string,
+      apiKey: string
+    ): Promise<{ ok: boolean; status: number; data: unknown }> => {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Key ${apiKey}`,
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, data };
+      } catch (error: any) {
+        logger.error(`[FAL Queue] Fetch error: ${error.message}`);
+        return { ok: false, status: 0, data: { error: error.message } };
+      }
+    }
+  );
+
   // File operation IPC handlers
   ipcMain.handle(
     "open-file-dialog",

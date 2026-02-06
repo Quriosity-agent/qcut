@@ -56,6 +56,46 @@ export const T2V_MODELS = {
       aspect_ratio: "16:9",
     },
   },
+  kling_v3_pro_t2v: {
+    id: "kling_v3_pro_t2v",
+    name: "Kling v3 Pro T2V",
+    description:
+      "Top-tier text-to-video with cinematic visuals, fluid motion, and native audio generation with multi-shot support",
+    price: "0.336",
+    resolution: "1080p",
+    max_duration: 15,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v3/pro/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+    supportedDurations: [5, 10, 15],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
+  kling_v3_standard_t2v: {
+    id: "kling_v3_standard_t2v",
+    name: "Kling v3 Standard T2V",
+    description:
+      "High-quality text-to-video with cinematic visuals and native audio generation, cost-effective option",
+    price: "0.252",
+    resolution: "1080p",
+    max_duration: 15,
+    category: "text",
+    endpoints: {
+      text_to_video: "fal-ai/kling-video/v3/standard/text-to-video",
+    },
+    default_params: {
+      duration: 5,
+      aspect_ratio: "16:9",
+      generate_audio: true,
+    },
+    supportedDurations: [3, 5, 10, 15],
+    supportedAspectRatios: ["16:9", "9:16", "1:1"],
+  },
   kling_v26_pro_t2v: {
     id: "kling_v26_pro_t2v",
     name: "Kling v2.6 Pro T2V",
@@ -351,6 +391,8 @@ export type T2VModelId = keyof typeof T2V_MODELS;
  * Models are ordered by quality/capability (highest first) to guide user selection.
  */
 export const T2V_MODEL_ORDER: readonly T2VModelId[] = [
+  "kling_v3_pro_t2v",
+  "kling_v3_standard_t2v",
   "kling_v26_pro_t2v",
   "sora2_text_to_video_pro",
   "veo31_text_to_video",
@@ -616,6 +658,34 @@ export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
       supportsSafetyChecker: false,
       defaultAspectRatio: "16:9",
       defaultResolution: "720p",
+      defaultDuration: 5,
+    },
+
+    kling_v3_pro_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1"],
+      supportsResolution: false,
+      supportsDuration: true,
+      supportedDurations: [5, 10, 15],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: false,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
+      defaultDuration: 5,
+    },
+
+    kling_v3_standard_t2v: {
+      supportsAspectRatio: true,
+      supportedAspectRatios: ["16:9", "9:16", "1:1"],
+      supportsResolution: false,
+      supportsDuration: true,
+      supportedDurations: [3, 5, 10, 15],
+      supportsNegativePrompt: false,
+      supportsPromptExpansion: false,
+      supportsSeed: false,
+      supportsSafetyChecker: false,
+      defaultAspectRatio: "16:9",
       defaultDuration: 5,
     },
 

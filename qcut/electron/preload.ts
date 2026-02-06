@@ -480,6 +480,10 @@ interface ElectronAPI {
       filename: string,
       apiKey: string
     ) => Promise<FalUploadResult>;
+    queueFetch: (
+      url: string,
+      apiKey: string
+    ) => Promise<{ ok: boolean; status: number; data: unknown }>;
   };
 
   // Gemini Chat operations
@@ -1024,6 +1028,11 @@ const electronAPI: ElectronAPI = {
       apiKey: string
     ): Promise<FalUploadResult> =>
       ipcRenderer.invoke("fal:upload-audio", audioData, filename, apiKey),
+    queueFetch: (
+      url: string,
+      apiKey: string
+    ): Promise<{ ok: boolean; status: number; data: unknown }> =>
+      ipcRenderer.invoke("fal:queue-fetch", url, apiKey),
   },
 
   // Gemini Chat operations

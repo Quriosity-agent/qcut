@@ -410,6 +410,11 @@ export interface ElectronAPI {
       url?: string;
       error?: string;
     }>;
+    /** Proxy GET request to queue.fal.run through main process (bypasses CORS) */
+    queueFetch: (
+      url: string,
+      apiKey: string
+    ) => Promise<{ ok: boolean; status: number; data: unknown }>;
   };
 
   /**

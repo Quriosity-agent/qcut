@@ -9,6 +9,7 @@ import { handleAIServiceError } from "@/lib/error-handler";
 
 // Direct FAL AI integration - no backend needed
 export const FAL_API_BASE = "https://fal.run";
+export const FAL_QUEUE_BASE = "https://queue.fal.run";
 
 /**
  * Retrieves the current FAL API key from environment at call time.
@@ -145,16 +146,15 @@ export async function makeFalRequest(
     "Content-Type": "application/json",
   };
 
-  // Add queue header if queue mode requested
-  // Note: Queue mode is primarily determined by the endpoint URL (queue.fal.run vs fal.run)
-  // This header is added for API compatibility and request tracking
+  // Queue mode uses queue.fal.run subdomain for async job submission
   if (options?.queueMode) {
     headers["X-Fal-Queue"] = "true";
   }
 
+  const base = options?.queueMode ? FAL_QUEUE_BASE : FAL_API_BASE;
   const url = endpoint.startsWith("https://")
     ? endpoint
-    : `${FAL_API_BASE}/${endpoint}`;
+    : `${base}/${endpoint}`;
 
   return fetch(url, {
     method: "POST",

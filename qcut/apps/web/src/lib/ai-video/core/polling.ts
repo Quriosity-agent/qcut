@@ -5,9 +5,8 @@
  */
 
 import {
-  getFalApiKey,
   getFalApiKeyAsync,
-  FAL_API_BASE,
+  FAL_QUEUE_BASE,
   sleep,
   generateJobId,
 } from "./fal-request";
@@ -18,6 +17,34 @@ import type {
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { streamVideoDownload, type StreamOptions } from "./streaming";
+
+/**
+ * Fetches from queue.fal.run, using Electron IPC to bypass CORS when available.
+ * Falls back to direct fetch for browser environments.
+ */
+async function fetchQueue(
+  url: string,
+  apiKey: string
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const electronFal =
+    typeof window !== "undefined" ? window.electronAPI?.fal : undefined;
+  if (electronFal?.queueFetch) {
+    console.log(`[Queue Poll] Using Electron IPC proxy for: ${url}`);
+    const result = await electronFal.queueFetch(url, apiKey);
+    console.log(
+      `[Queue Poll] IPC result: ok=${result.ok}, status=${result.status}`,
+      result.data
+    );
+    return result;
+  }
+  // Fallback for non-Electron environments
+  console.warn("[Queue Poll] No Electron IPC available, using direct fetch");
+  const response = await fetch(url, {
+    headers: { Authorization: `Key ${apiKey}` },
+  });
+  const data = await response.json().catch(() => ({}));
+  return { ok: response.ok, status: response.status, data };
+}
 
 /**
  * FAL queue status response structure
@@ -50,6 +77,10 @@ export interface PollOptions {
   pollIntervalMs?: number;
   /** Download options for streaming */
   downloadOptions?: StreamOptions;
+  /** FAL-provided status URL from queue submission response */
+  statusUrl?: string;
+  /** FAL-provided response URL from queue submission response */
+  responseUrl?: string;
 }
 
 /**
@@ -81,9 +112,11 @@ export async function pollQueueStatus(
     onProgress,
     jobId = generateJobId(),
     modelName = "AI Model",
-    maxAttempts = 60,
+    maxAttempts = 240,
     pollIntervalMs = 5000,
     downloadOptions,
+    statusUrl: providedStatusUrl,
+    responseUrl: providedResponseUrl,
   } = options;
 
   const falApiKey = await getFalApiKeyAsync();
@@ -100,26 +133,28 @@ export async function pollQueueStatus(
     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
     try {
-      // Check queue status
-      const statusResponse = await fetch(
-        `${FAL_API_BASE}/queue/requests/${requestId}/status`,
-        {
-          headers: {
-            Authorization: `Key ${falApiKey}`,
-          },
-        }
-      );
+      // Use FAL-provided status URL when available, fall back to constructed URL
+      const baseStatusUrl =
+        providedStatusUrl ||
+        `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}/status`;
+      const statusUrl = baseStatusUrl.includes("?")
+        ? `${baseStatusUrl}&logs=1`
+        : `${baseStatusUrl}?logs=1`;
+      if (attempts === 1) {
+        console.log(`[Queue Poll] Polling status at: ${statusUrl}`);
+      }
+      const statusResult = await fetchQueue(statusUrl, falApiKey);
 
-      if (!statusResponse.ok) {
+      if (!statusResult.ok) {
         console.warn(
           `Queue status check failed (attempt ${attempts}):`,
-          statusResponse.status
+          statusResult.status
         );
         await sleep(pollIntervalMs);
         continue;
       }
 
-      const status = (await statusResponse.json()) as QueueStatus;
+      const status = statusResult.data as QueueStatus;
       console.log(`Queue status (${elapsedTime}s):`, status);
 
       // Update progress based on status
@@ -130,18 +165,15 @@ export async function pollQueueStatus(
 
       // Check if completed
       if (status.status === "COMPLETED") {
-        // Get the result
-        const resultResponse = await fetch(
-          `${FAL_API_BASE}/queue/requests/${requestId}`,
-          {
-            headers: {
-              Authorization: `Key ${falApiKey}`,
-            },
-          }
-        );
+        // Use FAL-provided response URL when available, fall back to constructed URL
+        const resultUrl =
+          providedResponseUrl ||
+          `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}`;
+        console.log(`[Queue Poll] Fetching result from: ${resultUrl}`);
+        const resultResult = await fetchQueue(resultUrl, falApiKey);
 
-        if (!resultResponse.ok) {
-          const errorMessage = `Failed to fetch completed result: ${resultResponse.status} ${resultResponse.statusText}`;
+        if (!resultResult.ok) {
+          const errorMessage = `Failed to fetch completed result: ${resultResult.status}`;
           console.error(errorMessage);
           if (onProgress) {
             onProgress({
@@ -163,7 +195,7 @@ export async function pollQueueStatus(
           throw error;
         }
 
-        const result = await resultResponse.json();
+        const result = resultResult.data as Record<string, any>;
         console.log("FAL Queue completed:", result);
 
         // Handle streaming download if requested
