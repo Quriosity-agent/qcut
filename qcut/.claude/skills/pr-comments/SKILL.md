@@ -3,7 +3,7 @@ name: pr-comments
 description: Export, preprocess, and fix GitHub PR review comments. Use when user wants to export PR comments, evaluate code reviews, or fix review feedback from CodeRabbit/Gemini bots.
 argument-hint: <action> [args...]
 disable-model-invocation: true
-allowed-tools: Bash(gh *), Bash(jq *), Bash(mkdir *), Bash(sed *), Read, Edit, Glob, Grep
+allowed-tools: Bash(gh *), Bash(jq *), Bash(mkdir *), Bash(sed *), Bash(git *), Read, Edit, Glob, Grep
 ---
 
 # PR Comments Skill
@@ -81,6 +81,21 @@ bash .claude/skills/pr-comments/scripts/resolve-thread.sh $1 $2 $3 $4
 - After ALREADY_FIXED → Resolve and move to completed
 - NOT_APPLICABLE → Don't resolve (leave comment explaining why)
 
+### 7. Git: Commit and push after fixing
+
+After resolving, commit the modified source files and push to the current branch. **Do not script this** — the agent should do it directly because it knows which files were changed and why.
+
+1. `git add` the modified source file(s) (NOT task/docs files)
+2. `git commit` with a meaningful message based on what was fixed (use conventional commit format)
+3. `git push` to the current remote branch
+
+**Commit message format:** `fix: <what was fixed>` or `refactor: <what was refactored>` — derived from the review comment and the actual change made.
+
+**When to git:**
+- After FIXED → Commit and push
+- After ALREADY_FIXED → Skip (no code changes)
+- NOT_APPLICABLE → Skip (no code changes)
+
 ## Complete Workflow
 
 ```bash
@@ -101,6 +116,9 @@ bash .claude/skills/pr-comments/scripts/resolve-thread.sh $1 $2 $3 $4
 
 # Step 5: Resolve thread and move task to completed
 /pr-comments resolve donghaozhang/qcut 102 2742327370 docs/pr-comments/pr-102-tasks/comment.md
+
+# Step 6: Agent commits and pushes modified source files
+# (done automatically by the agent — no script needed)
 ```
 
 ## Output Structure

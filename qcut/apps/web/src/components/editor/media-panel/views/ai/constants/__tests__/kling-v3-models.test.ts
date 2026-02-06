@@ -9,8 +9,16 @@ import { I2V_MODELS, I2V_MODEL_ORDER } from "../image2video-models-config";
 describe("Kling v3 Model Configurations", () => {
   describe("Text-to-Video Models", () => {
     it.each([
-      { id: "kling_v3_pro_t2v", name: "Kling v3 Pro T2V", endpoint: "fal-ai/kling-video/v3/pro/text-to-video" },
-      { id: "kling_v3_standard_t2v", name: "Kling v3 Standard T2V", endpoint: "fal-ai/kling-video/v3/standard/text-to-video" },
+      {
+        id: "kling_v3_pro_t2v",
+        name: "Kling v3 Pro T2V",
+        endpoint: "fal-ai/kling-video/v3/pro/text-to-video",
+      },
+      {
+        id: "kling_v3_standard_t2v",
+        name: "Kling v3 Standard T2V",
+        endpoint: "fal-ai/kling-video/v3/standard/text-to-video",
+      },
     ])("should have $id configuration", ({ id, name, endpoint }) => {
       const model = T2V_MODELS[id as keyof typeof T2V_MODELS];
       expect(model).toBeDefined();
@@ -78,8 +86,16 @@ describe("Kling v3 Model Configurations", () => {
 
   describe("Image-to-Video Models", () => {
     it.each([
-      { id: "kling_v3_pro_i2v", name: "Kling v3 Pro I2V", endpoint: "fal-ai/kling-video/v3/pro/image-to-video" },
-      { id: "kling_v3_standard_i2v", name: "Kling v3 Standard I2V", endpoint: "fal-ai/kling-video/v3/standard/image-to-video" },
+      {
+        id: "kling_v3_pro_i2v",
+        name: "Kling v3 Pro I2V",
+        endpoint: "fal-ai/kling-video/v3/pro/image-to-video",
+      },
+      {
+        id: "kling_v3_standard_i2v",
+        name: "Kling v3 Standard I2V",
+        endpoint: "fal-ai/kling-video/v3/standard/image-to-video",
+      },
     ])("should have $id configuration", ({ id, name, endpoint }) => {
       const model = I2V_MODELS[id as keyof typeof I2V_MODELS];
       expect(model).toBeDefined();

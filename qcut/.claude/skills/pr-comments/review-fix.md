@@ -45,6 +45,16 @@ bash .claude/skills/pr-comments/scripts/resolve-thread.sh donghaozhang/qcut 102 
 - ❌ NOT_APPLICABLE → Don't resolve (explain in PR comment instead)
 - ⚠️ ALREADY_FIXED → Resolve the thread
 
+## Git: Commit and Push After Fixing
+
+After resolving, if the result was FIXED, commit and push the changes:
+
+1. `git add` the modified source file(s) only (not task/docs files)
+2. `git commit` with a conventional commit message describing the fix (e.g., `fix: validate input on submit` or `refactor: use parameterized tests`)
+3. `git push` to the current remote branch
+
+**Skip this step** for ALREADY_FIXED and NOT_APPLICABLE (no code was changed).
+
 ## Output Format
 
 After evaluation, provide a brief summary:
@@ -59,6 +69,7 @@ After evaluation, provide a brief summary:
 **Action taken:** [Description of fix OR reason why not applicable]
 
 **Thread resolved:** [Yes | No | N/A]
+**Committed:** [Yes (commit hash) | No (no code changes)]
 ```
 
 ## Important Guidelines
