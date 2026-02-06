@@ -170,6 +170,8 @@ export async function generateVideo(
           jobId,
           modelName: request.model,
           downloadOptions,
+          statusUrl: queueResult.status_url,
+          responseUrl: queueResult.response_url,
         });
       }
 
@@ -599,6 +601,8 @@ export async function generateWAN26TextVideo(
           onProgress,
           jobId,
           modelName: request.model,
+          statusUrl: queueResult.status_url,
+          responseUrl: queueResult.response_url,
         });
       }
 
@@ -740,6 +744,8 @@ export async function generateViduQ3TextVideo(
           onProgress,
           jobId,
           modelName: request.model,
+          statusUrl: queueResult.status_url,
+          responseUrl: queueResult.response_url,
         });
       }
 

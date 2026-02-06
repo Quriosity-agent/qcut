@@ -29,9 +29,16 @@ async function fetchQueue(
   const electronFal =
     typeof window !== "undefined" ? window.electronAPI?.fal : undefined;
   if (electronFal?.queueFetch) {
-    return electronFal.queueFetch(url, apiKey);
+    console.log(`[Queue Poll] Using Electron IPC proxy for: ${url}`);
+    const result = await electronFal.queueFetch(url, apiKey);
+    console.log(
+      `[Queue Poll] IPC result: ok=${result.ok}, status=${result.status}`,
+      result.data
+    );
+    return result;
   }
   // Fallback for non-Electron environments
+  console.warn("[Queue Poll] No Electron IPC available, using direct fetch");
   const response = await fetch(url, {
     headers: { Authorization: `Key ${apiKey}` },
   });
@@ -70,6 +77,10 @@ export interface PollOptions {
   pollIntervalMs?: number;
   /** Download options for streaming */
   downloadOptions?: StreamOptions;
+  /** FAL-provided status URL from queue submission response */
+  statusUrl?: string;
+  /** FAL-provided response URL from queue submission response */
+  responseUrl?: string;
 }
 
 /**
@@ -104,6 +115,8 @@ export async function pollQueueStatus(
     maxAttempts = 60,
     pollIntervalMs = 5000,
     downloadOptions,
+    statusUrl: providedStatusUrl,
+    responseUrl: providedResponseUrl,
   } = options;
 
   const falApiKey = await getFalApiKeyAsync();
@@ -120,9 +133,10 @@ export async function pollQueueStatus(
     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
     try {
-      // Check queue status (proxied through Electron IPC to bypass CORS)
-      // FAL queue API requires endpoint prefix: /{endpoint}/requests/{id}/status
-      const statusUrl = `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}/status`;
+      // Use FAL-provided status URL when available, fall back to constructed URL
+      const statusUrl =
+        providedStatusUrl ||
+        `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}/status`;
       if (attempts === 1) {
         console.log(`[Queue Poll] Polling status at: ${statusUrl}`);
       }
@@ -148,8 +162,10 @@ export async function pollQueueStatus(
 
       // Check if completed
       if (status.status === "COMPLETED") {
-        // Get the result (proxied through Electron IPC to bypass CORS)
-        const resultUrl = `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}`;
+        // Use FAL-provided response URL when available, fall back to constructed URL
+        const resultUrl =
+          providedResponseUrl ||
+          `${FAL_QUEUE_BASE}/${endpoint}/requests/${requestId}`;
         console.log(`[Queue Poll] Fetching result from: ${resultUrl}`);
         const resultResult = await fetchQueue(resultUrl, falApiKey);
 
