@@ -299,22 +299,6 @@ function createWindow(): void {
       callback: (response: HeadersReceivedResponse) => void
     ) => {
       const responseHeaders = { ...details.responseHeaders };
-      let statusLine: string | undefined;
-
-      // Inject CORS headers for queue.fal.run responses (server doesn't set them for app:// origin)
-      // Also handle OPTIONS preflight by overriding status to 200
-      if (details.url?.includes("queue.fal.run")) {
-        responseHeaders["Access-Control-Allow-Origin"] = ["app://."];
-        responseHeaders["Access-Control-Allow-Headers"] = [
-          "Authorization, Content-Type",
-        ];
-        responseHeaders["Access-Control-Allow-Methods"] = [
-          "GET, POST, OPTIONS",
-        ];
-        if (details.method === "OPTIONS") {
-          statusLine = "HTTP/1.1 200 OK";
-        }
-      }
 
       // Delete all existing CSP-related headers to ensure no conflicts
       Object.keys(responseHeaders).forEach((key: string) => {
@@ -339,7 +323,7 @@ function createWindow(): void {
       responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
       responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
 
-      callback({ responseHeaders, statusLine });
+      callback({ responseHeaders });
     }
   );
 
@@ -892,6 +876,31 @@ app.whenReady().then(() => {
       } catch (error: any) {
         logger.error(`[FAL Audio Upload] ❌ Error: ${error.message}`);
         return { success: false, error: error.message };
+      }
+    }
+  );
+
+  // FAL queue fetch handler (bypasses CORS for queue.fal.run polling)
+  // The queue.fal.run subdomain doesn't return CORS headers for app:// origin,
+  // so we proxy GET requests through the main process (Node.js has no CORS).
+  ipcMain.handle(
+    "fal:queue-fetch",
+    async (
+      _event: IpcMainInvokeEvent,
+      url: string,
+      apiKey: string
+    ): Promise<{ ok: boolean; status: number; data: unknown }> => {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Key ${apiKey}`,
+          },
+        });
+        const data = await response.json().catch(() => ({}));
+        return { ok: response.ok, status: response.status, data };
+      } catch (error: any) {
+        logger.error(`[FAL Queue] Fetch error: ${error.message}`);
+        return { ok: false, status: 0, data: { error: error.message } };
       }
     }
   );

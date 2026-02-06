@@ -5,7 +5,6 @@
  */
 
 import {
-  getFalApiKey,
   getFalApiKeyAsync,
   FAL_QUEUE_BASE,
   sleep,
@@ -18,6 +17,27 @@ import type {
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { streamVideoDownload, type StreamOptions } from "./streaming";
+
+/**
+ * Fetches from queue.fal.run, using Electron IPC to bypass CORS when available.
+ * Falls back to direct fetch for browser environments.
+ */
+async function fetchQueue(
+  url: string,
+  apiKey: string
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const electronFal =
+    typeof window !== "undefined" ? window.electronAPI?.fal : undefined;
+  if (electronFal?.queueFetch) {
+    return electronFal.queueFetch(url, apiKey);
+  }
+  // Fallback for non-Electron environments
+  const response = await fetch(url, {
+    headers: { Authorization: `Key ${apiKey}` },
+  });
+  const data = await response.json().catch(() => ({}));
+  return { ok: response.ok, status: response.status, data };
+}
 
 /**
  * FAL queue status response structure
@@ -100,27 +120,23 @@ export async function pollQueueStatus(
     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
 
     try {
-      // Check queue status
+      // Check queue status (proxied through Electron IPC to bypass CORS)
       const statusUrl = `${FAL_QUEUE_BASE}/requests/${requestId}/status`;
       if (attempts === 1) {
         console.log(`[Queue Poll] Polling status at: ${statusUrl}`);
       }
-      const statusResponse = await fetch(statusUrl, {
-        headers: {
-          Authorization: `Key ${falApiKey}`,
-        },
-      });
+      const statusResult = await fetchQueue(statusUrl, falApiKey);
 
-      if (!statusResponse.ok) {
+      if (!statusResult.ok) {
         console.warn(
           `Queue status check failed (attempt ${attempts}):`,
-          statusResponse.status
+          statusResult.status
         );
         await sleep(pollIntervalMs);
         continue;
       }
 
-      const status = (await statusResponse.json()) as QueueStatus;
+      const status = statusResult.data as QueueStatus;
       console.log(`Queue status (${elapsedTime}s):`, status);
 
       // Update progress based on status
@@ -131,17 +147,13 @@ export async function pollQueueStatus(
 
       // Check if completed
       if (status.status === "COMPLETED") {
-        // Get the result
+        // Get the result (proxied through Electron IPC to bypass CORS)
         const resultUrl = `${FAL_QUEUE_BASE}/requests/${requestId}`;
         console.log(`[Queue Poll] Fetching result from: ${resultUrl}`);
-        const resultResponse = await fetch(resultUrl, {
-          headers: {
-            Authorization: `Key ${falApiKey}`,
-          },
-        });
+        const resultResult = await fetchQueue(resultUrl, falApiKey);
 
-        if (!resultResponse.ok) {
-          const errorMessage = `Failed to fetch completed result: ${resultResponse.status} ${resultResponse.statusText}`;
+        if (!resultResult.ok) {
+          const errorMessage = `Failed to fetch completed result: ${resultResult.status}`;
           console.error(errorMessage);
           if (onProgress) {
             onProgress({
@@ -163,7 +175,7 @@ export async function pollQueueStatus(
           throw error;
         }
 
-        const result = await resultResponse.json();
+        const result = resultResult.data as Record<string, any>;
         console.log("FAL Queue completed:", result);
 
         // Handle streaming download if requested
