@@ -67,6 +67,11 @@ export const mockElectronAPI: ElectronAPI = {
       success: true,
       url: "https://fal.ai/storage/audio.mp3",
     }),
+    queueFetch: vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: {},
+    }),
   },
 
   // FFmpeg operations
