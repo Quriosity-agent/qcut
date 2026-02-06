@@ -299,6 +299,22 @@ function createWindow(): void {
       callback: (response: HeadersReceivedResponse) => void
     ) => {
       const responseHeaders = { ...details.responseHeaders };
+      let statusLine: string | undefined;
+
+      // Inject CORS headers for queue.fal.run responses (server doesn't set them for app:// origin)
+      // Also handle OPTIONS preflight by overriding status to 200
+      if (details.url?.includes("queue.fal.run")) {
+        responseHeaders["Access-Control-Allow-Origin"] = ["app://."];
+        responseHeaders["Access-Control-Allow-Headers"] = [
+          "Authorization, Content-Type",
+        ];
+        responseHeaders["Access-Control-Allow-Methods"] = [
+          "GET, POST, OPTIONS",
+        ];
+        if (details.method === "OPTIONS") {
+          statusLine = "HTTP/1.1 200 OK";
+        }
+      }
 
       // Delete all existing CSP-related headers to ensure no conflicts
       Object.keys(responseHeaders).forEach((key: string) => {
@@ -323,7 +339,7 @@ function createWindow(): void {
       responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
       responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
 
-      callback({ responseHeaders });
+      callback({ responseHeaders, statusLine });
     }
   );
 

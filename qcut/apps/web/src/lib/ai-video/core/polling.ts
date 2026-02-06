@@ -7,7 +7,7 @@
 import {
   getFalApiKey,
   getFalApiKeyAsync,
-  FAL_API_BASE,
+  FAL_QUEUE_BASE,
   sleep,
   generateJobId,
 } from "./fal-request";
@@ -101,14 +101,15 @@ export async function pollQueueStatus(
 
     try {
       // Check queue status
-      const statusResponse = await fetch(
-        `${FAL_API_BASE}/queue/requests/${requestId}/status`,
-        {
-          headers: {
-            Authorization: `Key ${falApiKey}`,
-          },
-        }
-      );
+      const statusUrl = `${FAL_QUEUE_BASE}/requests/${requestId}/status`;
+      if (attempts === 1) {
+        console.log(`[Queue Poll] Polling status at: ${statusUrl}`);
+      }
+      const statusResponse = await fetch(statusUrl, {
+        headers: {
+          Authorization: `Key ${falApiKey}`,
+        },
+      });
 
       if (!statusResponse.ok) {
         console.warn(
@@ -131,14 +132,13 @@ export async function pollQueueStatus(
       // Check if completed
       if (status.status === "COMPLETED") {
         // Get the result
-        const resultResponse = await fetch(
-          `${FAL_API_BASE}/queue/requests/${requestId}`,
-          {
-            headers: {
-              Authorization: `Key ${falApiKey}`,
-            },
-          }
-        );
+        const resultUrl = `${FAL_QUEUE_BASE}/requests/${requestId}`;
+        console.log(`[Queue Poll] Fetching result from: ${resultUrl}`);
+        const resultResponse = await fetch(resultUrl, {
+          headers: {
+            Authorization: `Key ${falApiKey}`,
+          },
+        });
 
         if (!resultResponse.ok) {
           const errorMessage = `Failed to fetch completed result: ${resultResponse.status} ${resultResponse.statusText}`;

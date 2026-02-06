@@ -146,9 +146,7 @@ export async function makeFalRequest(
     "Content-Type": "application/json",
   };
 
-  // Add queue header if queue mode requested
-  // Note: Queue mode is primarily determined by the endpoint URL (queue.fal.run vs fal.run)
-  // This header is added for API compatibility and request tracking
+  // Queue mode uses queue.fal.run subdomain for async job submission
   if (options?.queueMode) {
     headers["X-Fal-Queue"] = "true";
   }
