@@ -4,77 +4,49 @@ import { cn } from "@/lib/utils";
 import { Tab, tabs, useMediaPanelStore } from "./store";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useEffect } from "react";
+
+const tabKeys = Object.keys(tabs) as Tab[];
 
 export function TabBar() {
   const { activeTab, setActiveTab } = useMediaPanelStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [isAtEnd, setIsAtEnd] = useState(false);
-  const [isAtStart, setIsAtStart] = useState(true);
+  const tabRefs = useRef<Map<Tab, HTMLDivElement>>(new Map());
 
-  const scrollToEnd = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.scrollWidth,
-      });
-      setIsAtEnd(true);
-      setIsAtStart(false);
-    }
+  const activeIndex = tabKeys.indexOf(activeTab);
+  const hasPrev = activeIndex > 0;
+  const hasNext = activeIndex < tabKeys.length - 1;
+
+  const goToPrev = () => {
+    if (hasPrev) setActiveTab(tabKeys[activeIndex - 1]);
   };
 
-  const scrollToStart = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        left: 0,
-      });
-      setIsAtStart(true);
-      setIsAtEnd(false);
-    }
+  const goToNext = () => {
+    if (hasNext) setActiveTab(tabKeys[activeIndex + 1]);
   };
 
-  // We're using useEffect because we need to sync with external DOM scroll events
+  // Scroll active tab into view when it changes
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const checkScrollPosition = () => {
-      if (scrollContainerRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } =
-          scrollContainerRef.current;
-        const isAtEndNow = scrollLeft + clientWidth >= scrollWidth - 1;
-        const isAtStartNow = scrollLeft <= 1;
-        setIsAtEnd(isAtEndNow);
-        setIsAtStart(isAtStartNow);
-      }
-    };
-
-    checkScrollPosition();
-    container.addEventListener("scroll", checkScrollPosition);
-
-    const resizeObserver = new ResizeObserver(checkScrollPosition);
-    resizeObserver.observe(container);
-
-    return () => {
-      container.removeEventListener("scroll", checkScrollPosition);
-      resizeObserver.disconnect();
-    };
-  }, []);
+    const el = tabRefs.current.get(activeTab);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }, [activeTab]);
 
   return (
     <div className="flex">
-      <ScrollButton
-        direction="left"
-        onClick={scrollToStart}
-        isVisible={!isAtStart}
-      />
+      <NavButton direction="left" onClick={goToPrev} isVisible={hasPrev} />
       <div
         ref={scrollContainerRef}
         className="h-12 bg-panel-accent px-2 flex justify-start items-center gap-2 overflow-x-auto scrollbar-x-hidden relative w-full"
       >
-        {(Object.keys(tabs) as Tab[]).map((tabKey) => {
+        {tabKeys.map((tabKey) => {
           const tab = tabs[tabKey];
           return (
             <div
+              ref={(el) => {
+                if (el) tabRefs.current.set(tabKey, el);
+              }}
               className={cn(
                 "flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded hover:bg-foreground/5 transition-colors",
                 activeTab === tabKey ? "text-primary" : "text-muted-foreground"
@@ -91,16 +63,12 @@ export function TabBar() {
           );
         })}
       </div>
-      <ScrollButton
-        direction="right"
-        onClick={scrollToEnd}
-        isVisible={!isAtEnd}
-      />
+      <NavButton direction="right" onClick={goToNext} isVisible={hasNext} />
     </div>
   );
 }
 
-function ScrollButton({
+function NavButton({
   direction,
   onClick,
   isVisible,
