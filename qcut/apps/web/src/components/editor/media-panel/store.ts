@@ -20,6 +20,7 @@ import {
   SquareTerminalIcon,
   TextSelect,
   FolderSync,
+  CameraIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -43,7 +44,8 @@ export type Tab =
   | "remotion"
   | "pty"
   | "word-timeline"
-  | "project-folder";
+  | "project-folder"
+  | "camera-selector";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -61,6 +63,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   ai: {
     icon: BotIcon,
     label: "AI Video",
+  },
+  "camera-selector": {
+    icon: CameraIcon,
+    label: "Camera",
   },
   "nano-edit": {
     icon: PaletteIcon,

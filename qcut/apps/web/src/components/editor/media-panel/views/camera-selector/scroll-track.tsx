@@ -1,0 +1,85 @@
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+interface ScrollTrackProps<T> {
+  items: T[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+  renderItem: (item: T, index: number, selected: boolean) => ReactNode;
+  label: string;
+}
+
+export function ScrollTrack<T>({
+  items,
+  selectedIndex,
+  onSelect,
+  renderItem,
+  label,
+}: ScrollTrackProps<T>) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  // Scroll selected item into view on mount
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const selected = track.querySelector("[data-selected='true']");
+    if (selected?.scrollIntoView) {
+      selected.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, []);
+
+  // Convert vertical wheel → horizontal scroll
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(e.deltaY) > 0) {
+      e.preventDefault();
+      e.currentTarget.scrollBy({
+        left: e.deltaY * 2,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] text-muted-foreground/60 tracking-[1.5px] uppercase mb-1.5 pl-1">
+        {label}
+      </div>
+      <div
+        ref={trackRef}
+        onWheel={handleWheel}
+        className="flex gap-2.5 overflow-x-auto py-1.5 px-0.5 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin] [scrollbar-color:#333_transparent]"
+      >
+        {items.map((item, i) => (
+          <button
+            type="button"
+            key={i}
+            data-selected={i === selectedIndex}
+            onClick={() => {
+              onSelect(i);
+              // Smooth scroll clicked item to center
+              const el = trackRef.current?.children[i] as
+                | HTMLElement
+                | undefined;
+              el?.scrollIntoView?.({
+                behavior: "smooth",
+                inline: "center",
+                block: "nearest",
+              });
+            }}
+            className={cn(
+              "shrink-0 w-[100px] rounded-xl p-3 pt-2.5 text-center cursor-pointer transition-all duration-200 border-2 border-transparent snap-center flex flex-col items-center gap-1",
+              "bg-muted/40 hover:bg-muted/60 hover:border-muted-foreground/20",
+              i === selectedIndex &&
+                "border-emerald-500/60 bg-emerald-950/30 scale-105 hover:bg-emerald-950/30 hover:border-emerald-500/60"
+            )}
+          >
+            {renderItem(item, i, i === selectedIndex)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

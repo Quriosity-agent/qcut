@@ -1,6 +1,6 @@
 # QCut Media Panel Reference
 
-This document provides a comprehensive overview of all 20 panels available in the QCut video editor's media panel sidebar.
+This document provides a comprehensive overview of all 21 panels available in the QCut video editor's media panel sidebar.
 
 > **Note:** All file paths in this document are relative to the `qcut/` project root directory.
 
@@ -10,22 +10,23 @@ This document provides a comprehensive overview of all 20 panels available in th
 2. [AI Images](#2-ai-images)
 3. [Adjustment](#3-adjustment)
 4. [AI Video](#4-ai-video)
-5. [Nano Edit](#5-nano-edit)
-6. [Draw](#6-draw)
-7. [Text](#7-text)
-8. [Stickers](#8-stickers)
-9. [Video Edit](#9-video-edit)
-10. [Remotion](#10-remotion)
-11. [Terminal](#11-terminal)
-12. [Transcribe](#12-transcribe)
-13. [Project](#13-project)
-14. [Filters (WIP)](#14-filters-wip)
-15. [Segment (WIP)](#15-segment-wip)
-16. [Sounds (WIP)](#16-sounds-wip)
-17. [Effects (WIP)](#17-effects-wip)
-18. [Transitions (WIP)](#18-transitions-wip)
-19. [Audio (WIP)](#19-audio-wip)
-20. [Captions (WIP)](#20-captions-wip)
+5. [Camera](#5-camera)
+6. [Nano Edit](#6-nano-edit)
+7. [Draw](#7-draw)
+8. [Text](#8-text)
+9. [Stickers](#9-stickers)
+10. [Video Edit](#10-video-edit)
+11. [Remotion](#11-remotion)
+12. [Terminal](#12-terminal)
+13. [Transcribe](#13-transcribe)
+14. [Project](#14-project)
+15. [Filters (WIP)](#15-filters-wip)
+16. [Segment (WIP)](#16-segment-wip)
+17. [Sounds (WIP)](#17-sounds-wip)
+18. [Effects (WIP)](#18-effects-wip)
+19. [Transitions (WIP)](#19-transitions-wip)
+20. [Audio (WIP)](#20-audio-wip)
+21. [Captions (WIP)](#21-captions-wip)
 
 ---
 
@@ -130,7 +131,36 @@ Generate videos using AI from text, images, or existing videos.
 
 ---
 
-## 5. Nano Edit
+## 5. Camera
+
+**Icon:** `CameraIcon`
+**Tab key:** `camera-selector`
+**File:** `apps/web/src/components/editor/media-panel/views/camera-selector/camera-selector-view.tsx`
+
+### Summary
+Virtual cinema camera configurator for AI video workflows. Lets users select camera body, lens, focal length, and aperture.
+
+### Features
+- **Camera body selection:** 6 cameras (Red V-Raptor, Sony Venice, IMAX Film Camera, Arri Alexa 35, Arriflex 16SR, Panavision DXL2)
+- **Lens selection:** 11 lenses across spherical, anamorphic, and special types
+- **Focal length:** 4 options (8mm, 14mm, 35mm, 50mm)
+- **Aperture:** 3 options (f/1.4, f/4, f/11)
+- **Current setup display:** Shows selected camera thumbnail and focal length
+- **Horizontal scroll tracks:** Snap-scrolling with mouse wheel support
+
+### Components
+- `CameraSelectorView` — Main panel component
+- `ScrollTrack` — Reusable horizontal scroll track with snap scrolling
+
+### Store
+- `useCameraSelectorStore` — `apps/web/src/stores/camera-selector-store.ts`
+
+### File Path
+`apps/web/src/components/editor/media-panel/views/camera-selector/`
+
+---
+
+## 6. Nano Edit
 
 **Icon:** `PaletteIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/nano-edit.tsx`
@@ -148,7 +178,7 @@ AI-powered quick image and video enhancements.
 
 ---
 
-## 6. Draw
+## 7. Draw
 
 **Icon:** `PenTool`
 **File:** `apps/web/src/components/editor/media-panel/views/draw.tsx`
@@ -175,7 +205,7 @@ Freehand drawing and annotation canvas.
 
 ---
 
-## 7. Text
+## 8. Text
 
 **Icon:** `TypeIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/text.tsx`
@@ -194,7 +224,7 @@ Add text overlays to your video timeline.
 
 ---
 
-## 8. Stickers
+## 9. Stickers
 
 **Icon:** `StickerIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/stickers/stickers-view.tsx`
@@ -221,7 +251,7 @@ Browse and add stickers/icons to your video as overlays.
 
 ---
 
-## 9. Video Edit
+## 10. Video Edit
 
 **Icon:** `Wand2Icon`
 **File:** `apps/web/src/components/editor/media-panel/views/video-edit.tsx`
@@ -248,7 +278,7 @@ AI-powered video enhancement and audio tools.
 
 ---
 
-## 10. Remotion
+## 11. Remotion
 
 **Icon:** `Layers`
 **File:** `apps/web/src/components/editor/media-panel/views/remotion/index.tsx`
@@ -280,7 +310,7 @@ Browse and add Remotion components to the timeline.
 
 ---
 
-## 11. Terminal
+## 12. Terminal
 
 **Icon:** `SquareTerminalIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/pty-terminal/pty-terminal-view.tsx`
@@ -305,7 +335,7 @@ Integrated terminal with AI CLI assistant support.
 
 ---
 
-## 12. Transcribe
+## 13. Transcribe
 
 **Icon:** `TextSelect`
 **File:** `apps/web/src/components/editor/media-panel/views/word-timeline-view.tsx`
@@ -332,7 +362,7 @@ Word-level transcription and timeline editing.
 
 ---
 
-## 13. Project
+## 14. Project
 
 **Icon:** `FolderSync`
 **File:** `apps/web/src/components/editor/media-panel/views/project-folder.tsx`
@@ -354,7 +384,7 @@ Browse and import files from the project folder structure.
 
 ---
 
-## 14. Filters (WIP)
+## 15. Filters (WIP)
 
 **Icon:** `BlendIcon`
 **File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
@@ -373,7 +403,7 @@ Apply visual filters to video clips.
 
 ---
 
-## 15. Segment (WIP)
+## 16. Segment (WIP)
 
 **Icon:** `ScissorsIcon`
 **File:** `apps/web/src/components/editor/segmentation/index.tsx`
@@ -403,7 +433,7 @@ Work in progress - core functionality implemented.
 
 ---
 
-## 16. Sounds (WIP)
+## 17. Sounds (WIP)
 
 **Icon:** `VolumeXIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/sounds.tsx`
@@ -428,7 +458,7 @@ Work in progress - basic functionality available.
 
 ---
 
-## 17. Effects (WIP)
+## 18. Effects (WIP)
 
 **Icon:** `SparklesIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/effects.tsx`
@@ -460,7 +490,7 @@ Work in progress - requires feature flag to enable.
 
 ---
 
-## 18. Transitions (WIP)
+## 19. Transitions (WIP)
 
 **Icon:** `ArrowLeftRightIcon`
 **File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
@@ -480,7 +510,7 @@ Add transitions between clips on the timeline.
 
 ---
 
-## 19. Audio (WIP)
+## 20. Audio (WIP)
 
 **Icon:** `MusicIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/audio.tsx`
@@ -500,7 +530,7 @@ Work in progress - basic search UI implemented.
 
 ---
 
-## 20. Captions (WIP)
+## 21. Captions (WIP)
 
 **Icon:** `CaptionsIcon`
 **File:** `apps/web/src/components/editor/media-panel/views/captions.tsx`
