@@ -235,7 +235,7 @@ async function uploadToFalStorage(
   const uploadResponse = await fetch(upload_url, {
     method: "PUT",
     headers: { "Content-Type": contentType },
-    body: fileBuffer,
+    body: new Uint8Array(fileBuffer),
   });
 
   if (!uploadResponse.ok) {
