@@ -9,13 +9,18 @@
 import { copyFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, basename } from "node:path";
+import ffmpegPath from "ffmpeg-static";
+// @ts-expect-error ffprobe-static has no type definitions
+import { path as ffprobePath } from "ffprobe-static";
 
 const targetDir = "dist-packager-new/QCut-win32-x64/resources";
 
 async function copyFFmpegBinaries(): Promise<void> {
-  // Resolve binary paths from npm packages
-  const ffmpegPath: string = require("ffmpeg-static");
-  const ffprobePath: string = require("ffprobe-static").path;
+  if (!ffmpegPath) {
+    console.error("ffmpeg-static did not resolve a binary path.");
+    console.error("Run 'bun install' to download ffmpeg-static.");
+    process.exit(1);
+  }
 
   if (!existsSync(ffmpegPath)) {
     console.error(`FFmpeg binary not found at: ${ffmpegPath}`);
