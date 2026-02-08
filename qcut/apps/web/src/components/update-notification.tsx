@@ -114,8 +114,8 @@ export function UpdateNotification() {
             </p>
             {state.highlights.length > 0 && (
               <ul className="mt-1 text-xs text-muted-foreground space-y-0.5">
-                {state.highlights.map((h) => (
-                  <li key={h}>- {h}</li>
+                {state.highlights.map((h, i) => (
+                  <li key={i}>- {h}</li>
                 ))}
               </ul>
             )}
