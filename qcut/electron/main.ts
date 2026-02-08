@@ -135,6 +135,134 @@ function detectChannelFromVersion(version: string): string {
   return "latest";
 }
 
+/**
+ * Resolve the path to docs/releases/ directory.
+ * Works in both development and packaged (ASAR) builds.
+ */
+function getReleasesDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "docs", "releases");
+  }
+  // Development: relative to project root
+  return path.join(__dirname, "..", "docs", "releases");
+}
+
+/**
+ * Parse a release note Markdown file with YAML frontmatter.
+ * Returns { version, date, channel, content } or null on failure.
+ */
+function parseReleaseNote(
+  raw: string
+): {
+  version: string;
+  date: string;
+  channel: string;
+  content: string;
+} | null {
+  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  if (!fmMatch) {
+    return null;
+  }
+
+  const frontmatter = fmMatch[1];
+  const content = fmMatch[2].trim();
+
+  const versionMatch = frontmatter.match(/^version:\s*"?([^"\n]+)"?/m);
+  const dateMatch = frontmatter.match(/^date:\s*"?([^"\n]+)"?/m);
+  const channelMatch = frontmatter.match(/^channel:\s*"?([^"\n]+)"?/m);
+
+  if (!versionMatch) {
+    return null;
+  }
+
+  return {
+    version: versionMatch[1].trim(),
+    date: dateMatch ? dateMatch[1].trim() : "",
+    channel: channelMatch ? channelMatch[1].trim() : "stable",
+    content,
+  };
+}
+
+/**
+ * Compare two semver strings. Returns negative if a < b, positive if a > b, 0 if equal.
+ */
+function compareSemver(a: string, b: string): number {
+  const parseV = (v: string) => {
+    const [main, pre] = v.split("-");
+    const parts = main.split(".").map(Number);
+    return { parts, pre: pre || "" };
+  };
+
+  const pA = parseV(a);
+  const pB = parseV(b);
+
+  for (let i = 0; i < 3; i++) {
+    const diff = (pA.parts[i] || 0) - (pB.parts[i] || 0);
+    if (diff !== 0) return diff;
+  }
+
+  // No prerelease > prerelease (stable is higher)
+  if (!pA.pre && pB.pre) return 1;
+  if (pA.pre && !pB.pre) return -1;
+  if (pA.pre && pB.pre) return pA.pre.localeCompare(pB.pre);
+  return 0;
+}
+
+/**
+ * Fallback: parse CHANGELOG.md into release note entries.
+ */
+function readChangelogFallback(): any[] {
+  try {
+    const changelogPath = app.isPackaged
+      ? path.join(process.resourcesPath, "CHANGELOG.md")
+      : path.join(__dirname, "..", "CHANGELOG.md");
+
+    if (!fs.existsSync(changelogPath)) {
+      return [];
+    }
+
+    const raw = fs.readFileSync(changelogPath, "utf-8");
+    const entries: any[] = [];
+
+    // Split by version headers: ## [x.y.z] - YYYY-MM-DD
+    const versionRegex =
+      /^## \[(\d+\.\d+\.\d+(?:-[a-z]+\.\d+)?)\](?: - (\d{4}-\d{2}-\d{2}))?/gm;
+    let match: RegExpExecArray | null;
+    const positions: Array<{
+      version: string;
+      date: string;
+      start: number;
+    }> = [];
+
+    while ((match = versionRegex.exec(raw)) !== null) {
+      positions.push({
+        version: match[1],
+        date: match[2] || "",
+        start: match.index + match[0].length,
+      });
+    }
+
+    for (let i = 0; i < positions.length; i++) {
+      const end =
+        i + 1 < positions.length ? positions[i + 1].start - 50 : raw.length;
+      const content = raw.slice(positions[i].start, end).trim();
+      const version = positions[i].version;
+
+      entries.push({
+        version,
+        date: positions[i].date,
+        channel: version.includes("-") ? version.split("-")[1].split(".")[0] : "stable",
+        content: `# QCut v${version}\n\n${content}`,
+      });
+    }
+
+    return entries;
+  } catch (error: any) {
+    logger.error("Error reading CHANGELOG.md:", error);
+    return [];
+  }
+}
+
 function setupAutoUpdater(): void {
   if (!autoUpdater) {
     logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
@@ -1396,6 +1524,68 @@ app.whenReady().then(() => {
     } catch (error: any) {
       logger.error("Error installing update:", error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // IPC handlers for release notes
+  ipcMain.handle(
+    "get-release-notes",
+    async (_: any, version?: string): Promise<any> => {
+      try {
+        const releasesDir = getReleasesDir();
+        const filename = version ? `v${version}.md` : "latest.md";
+        const filePath = path.join(releasesDir, filename);
+
+        if (!fs.existsSync(filePath)) {
+          return null;
+        }
+
+        const raw = fs.readFileSync(filePath, "utf-8");
+        return parseReleaseNote(raw);
+      } catch (error: any) {
+        logger.error("Error reading release notes:", error);
+        return null;
+      }
+    }
+  );
+
+  ipcMain.handle("get-changelog", async (): Promise<any> => {
+    try {
+      const releasesDir = getReleasesDir();
+
+      if (!fs.existsSync(releasesDir)) {
+        // Fallback: read CHANGELOG.md
+        return readChangelogFallback();
+      }
+
+      const files = fs
+        .readdirSync(releasesDir)
+        .filter(
+          (f: string) => f.startsWith("v") && f.endsWith(".md")
+        )
+        .sort((a: string, b: string) => {
+          // Sort by semver descending
+          const vA = a.replace(/^v/, "").replace(/\.md$/, "");
+          const vB = b.replace(/^v/, "").replace(/\.md$/, "");
+          return compareSemver(vB, vA);
+        });
+
+      const notes: any[] = [];
+      for (const file of files) {
+        const raw = fs.readFileSync(
+          path.join(releasesDir, file),
+          "utf-8"
+        );
+        const parsed = parseReleaseNote(raw);
+        if (parsed) {
+          notes.push(parsed);
+        }
+      }
+
+      return notes;
+    } catch (error: any) {
+      logger.error("Error reading changelog:", error);
+      return readChangelogFallback();
     }
   });
 });

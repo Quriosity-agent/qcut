@@ -104,24 +104,28 @@ function main(): void {
     process.stdout.write("📋 Step 2: Bumping version...\n");
     const newVersion: string = bumpVersion(releaseType as ReleaseType);
 
-    // Step 3: Build web application
-    process.stdout.write("📋 Step 3: Building web application...\n");
+    // Step 3: Generate release doc in docs/releases/
+    process.stdout.write("📋 Step 3: Generating release doc...\n");
+    generateReleaseDoc(newVersion, releaseType as ReleaseType);
+
+    // Step 4: Build web application
+    process.stdout.write("📋 Step 4: Building web application...\n");
     buildWebApp();
 
-    // Step 4: Build Electron application
-    process.stdout.write("📋 Step 4: Building Electron application...\n");
+    // Step 5: Build Electron application
+    process.stdout.write("📋 Step 5: Building Electron application...\n");
     buildElectronApp();
 
-    // Step 5: Generate checksums
-    process.stdout.write("📋 Step 5: Generating checksums...\n");
+    // Step 6: Generate checksums
+    process.stdout.write("📋 Step 6: Generating checksums...\n");
     generateChecksums();
 
-    // Step 6: Create git tag
-    process.stdout.write("📋 Step 6: Creating git tag...\n");
+    // Step 7: Create git tag
+    process.stdout.write("📋 Step 7: Creating git tag...\n");
     createGitTag(newVersion);
 
-    // Step 7: Generate release notes template
-    process.stdout.write("📋 Step 7: Generating release notes...\n");
+    // Step 8: Generate release notes template
+    process.stdout.write("📋 Step 8: Generating release notes...\n");
     generateReleaseNotes(newVersion);
 
     process.stdout.write(
@@ -139,6 +143,95 @@ function main(): void {
       `\n❌ Release process failed: ${error?.message || error}\n`
     );
     process.exit(1);
+  }
+}
+
+/**
+ * Generate a release doc in docs/releases/ from the [Unreleased] section of CHANGELOG.md.
+ * Also updates latest.md for stable releases.
+ */
+function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
+  const currentDir = import.meta.dirname;
+  const isCompiled = currentDir.includes("dist");
+  const rootDir = isCompiled
+    ? path.join(currentDir, "../../")
+    : path.join(currentDir, "../");
+
+  const releasesDir = path.join(rootDir, "docs", "releases");
+  const changelogPath = path.join(rootDir, "CHANGELOG.md");
+
+  // Ensure docs/releases/ exists
+  if (!fs.existsSync(releasesDir)) {
+    fs.mkdirSync(releasesDir, { recursive: true });
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  const channel =
+    releaseType === "promote"
+      ? "stable"
+      : PRERELEASE_CHANNELS.includes(releaseType as PrereleaseChannel)
+        ? releaseType
+        : "stable";
+
+  // Extract [Unreleased] content from CHANGELOG.md
+  let unreleasedContent = "";
+  if (fs.existsSync(changelogPath)) {
+    const changelog = fs.readFileSync(changelogPath, "utf-8");
+    const unreleasedMatch = changelog.match(
+      /## \[Unreleased\]\s*\n([\s\S]*?)(?=\n## \[|$)/
+    );
+    if (unreleasedMatch) {
+      unreleasedContent = unreleasedMatch[1].trim();
+    }
+  }
+
+  // Build the release note file
+  const sections = unreleasedContent || "- Release v" + version;
+  const releaseDoc = `---
+version: "${version}"
+date: "${today}"
+channel: "${channel}"
+---
+
+# QCut v${version}
+
+${sections}
+`;
+
+  const filename = `v${version}.md`;
+  fs.writeFileSync(path.join(releasesDir, filename), releaseDoc);
+  process.stdout.write(`✅ Created docs/releases/${filename}\n`);
+
+  // Update latest.md for stable releases
+  if (channel === "stable") {
+    fs.writeFileSync(path.join(releasesDir, "latest.md"), releaseDoc);
+    process.stdout.write("✅ Updated docs/releases/latest.md\n");
+  }
+
+  // Update CHANGELOG.md: move [Unreleased] content to new version section
+  if (fs.existsSync(changelogPath) && unreleasedContent) {
+    const changelog = fs.readFileSync(changelogPath, "utf-8");
+    const updatedChangelog = changelog.replace(
+      /## \[Unreleased\]\s*\n[\s\S]*?(?=\n## \[|$)/,
+      `## [Unreleased]\n\n## [${version}] - ${today}\n\n${unreleasedContent}\n`
+    );
+    fs.writeFileSync(changelogPath, updatedChangelog);
+    process.stdout.write("✅ Updated CHANGELOG.md with new version section\n");
+  }
+
+  // Stage the release docs for the git tag step
+  try {
+    execSync(`git add docs/releases/${filename}`);
+    if (channel === "stable") {
+      execSync("git add docs/releases/latest.md");
+    }
+    if (unreleasedContent) {
+      execSync("git add CHANGELOG.md");
+    }
+  } catch {
+    process.stdout.write(
+      "⚠️  Could not stage release docs (non-fatal)\n"
+    );
   }
 }
 

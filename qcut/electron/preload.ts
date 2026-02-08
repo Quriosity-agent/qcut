@@ -767,6 +767,52 @@ interface ElectronAPI {
     ) => Promise<{ isValid: boolean; error?: string }>;
   };
 
+  // Update and release notes operations
+  updates?: {
+    checkForUpdates: () => Promise<{
+      available: boolean;
+      version?: string;
+      message?: string;
+      error?: string;
+    }>;
+    installUpdate: () => Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
+    }>;
+    getReleaseNotes: (version?: string) => Promise<{
+      version: string;
+      date: string;
+      channel: string;
+      content: string;
+    } | null>;
+    getChangelog: () => Promise<
+      Array<{
+        version: string;
+        date: string;
+        channel: string;
+        content: string;
+      }>
+    >;
+    onUpdateAvailable: (
+      callback: (data: {
+        version: string;
+        releaseNotes?: string;
+        releaseDate?: string;
+      }) => void
+    ) => () => void;
+    onDownloadProgress: (
+      callback: (data: {
+        percent: number;
+        transferred: number;
+        total: number;
+      }) => void
+    ) => () => void;
+    onUpdateDownloaded: (
+      callback: (data: { version: string }) => void
+    ) => () => void;
+  };
+
   // Utility functions
   isElectron: boolean;
 }
@@ -1475,6 +1521,44 @@ const electronAPI: ElectronAPI = {
       folderPath: string
     ): Promise<{ isValid: boolean; error?: string }> =>
       ipcRenderer.invoke("remotion-folder:validate", folderPath),
+  },
+
+  // Update and release notes operations
+  updates: {
+    checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+    installUpdate: () => ipcRenderer.invoke("install-update"),
+    getReleaseNotes: (version?: string) =>
+      ipcRenderer.invoke("get-release-notes", version),
+    getChangelog: () => ipcRenderer.invoke("get-changelog"),
+    onUpdateAvailable: (
+      callback: (data: {
+        version: string;
+        releaseNotes?: string;
+        releaseDate?: string;
+      }) => void
+    ) => {
+      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      ipcRenderer.on("update-available", handler);
+      return () => ipcRenderer.removeListener("update-available", handler);
+    },
+    onDownloadProgress: (
+      callback: (data: {
+        percent: number;
+        transferred: number;
+        total: number;
+      }) => void
+    ) => {
+      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      ipcRenderer.on("download-progress", handler);
+      return () => ipcRenderer.removeListener("download-progress", handler);
+    },
+    onUpdateDownloaded: (
+      callback: (data: { version: string }) => void
+    ) => {
+      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      ipcRenderer.on("update-downloaded", handler);
+      return () => ipcRenderer.removeListener("update-downloaded", handler);
+    },
   },
 
   // Utility functions

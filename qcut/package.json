@@ -168,6 +168,17 @@
       {
         "from": "node_modules/node-pty",
         "to": "node_modules/node-pty"
+      },
+      {
+        "from": "docs/releases",
+        "to": "docs/releases",
+        "filter": [
+          "**/*.md"
+        ]
+      },
+      {
+        "from": "CHANGELOG.md",
+        "to": "CHANGELOG.md"
       }
     ],
     "asar": true,

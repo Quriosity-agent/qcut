@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StorageProvider } from "@/components/storage-provider";
+import { UpdateNotification } from "@/components/update-notification";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
 import { initializeRemotionStore } from "@/stores/remotion-store";
@@ -35,6 +36,7 @@ export const Route = createRootRoute({
                 <Outlet />
               </ErrorBoundary>
               <Toaster />
+              <UpdateNotification />
             </BlobUrlCleanup>
           </StorageProvider>
         </ErrorBoundary>
