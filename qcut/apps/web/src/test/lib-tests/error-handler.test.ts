@@ -10,9 +10,15 @@ import {
 
 // Hoist mock fns so they're available when vi.mock factory runs (hoisted to top)
 const { mockToast, mockToastError, mockToastWarning } = vi.hoisted(() => ({
-  mockToast: vi.fn((_msg: string, _opts?: Record<string, unknown>) => "toast-id"),
-  mockToastError: vi.fn((_msg: string, _opts?: Record<string, unknown>) => "toast-id"),
-  mockToastWarning: vi.fn((_msg: string, _opts?: Record<string, unknown>) => "toast-id"),
+  mockToast: vi.fn(
+    (_msg: string, _opts?: Record<string, unknown>) => "toast-id"
+  ),
+  mockToastError: vi.fn(
+    (_msg: string, _opts?: Record<string, unknown>) => "toast-id"
+  ),
+  mockToastWarning: vi.fn(
+    (_msg: string, _opts?: Record<string, unknown>) => "toast-id"
+  ),
 }));
 
 vi.mock("sonner", () => ({

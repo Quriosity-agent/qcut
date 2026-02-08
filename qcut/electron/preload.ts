@@ -1558,13 +1558,9 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.on("download-progress", handler);
       return () => ipcRenderer.removeListener("download-progress", handler);
     },
-    onUpdateDownloaded: (
-      callback: (data: { version: string }) => void
-    ) => {
-      const handler = (
-        _: IpcRendererEvent,
-        data: { version: string }
-      ) => callback(data);
+    onUpdateDownloaded: (callback: (data: { version: string }) => void) => {
+      const handler = (_: IpcRendererEvent, data: { version: string }) =>
+        callback(data);
       ipcRenderer.on("update-downloaded", handler);
       return () => ipcRenderer.removeListener("update-downloaded", handler);
     },

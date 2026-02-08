@@ -226,7 +226,6 @@ describe("New Video Models Integration", () => {
       expect(wanCost.base_cost).toBe(0.12);
       expect(wanCost.estimated_cost).toBeGreaterThan(0);
     });
-
   });
 
   describe("Available Models API", () => {

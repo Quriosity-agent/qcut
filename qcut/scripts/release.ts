@@ -229,9 +229,7 @@ ${sections}
       execSync("git add CHANGELOG.md");
     }
   } catch {
-    process.stdout.write(
-      "⚠️  Could not stage release docs (non-fatal)\n"
-    );
+    process.stdout.write("⚠️  Could not stage release docs (non-fatal)\n");
   }
 }
 

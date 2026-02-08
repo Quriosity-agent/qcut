@@ -1452,7 +1452,10 @@ app.whenReady().then(() => {
   // IPC handlers for release notes
   ipcMain.handle(
     "get-release-notes",
-    async (_: IpcMainInvokeEvent, version?: string): Promise<ReleaseNote | null> => {
+    async (
+      _: IpcMainInvokeEvent,
+      version?: string
+    ): Promise<ReleaseNote | null> => {
       try {
         const releasesDir = getReleasesDir();
         const filename = version ? `v${version}.md` : "latest.md";

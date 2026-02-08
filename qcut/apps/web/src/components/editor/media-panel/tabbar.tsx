@@ -29,7 +29,11 @@ export function TabBar() {
   useEffect(() => {
     const el = tabRefs.current.get(activeTab);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
     }
   }, [activeTab]);
 
