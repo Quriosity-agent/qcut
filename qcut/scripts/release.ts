@@ -186,7 +186,7 @@ function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
   }
 
   // Build the release note file
-  const sections = unreleasedContent || "- Release v" + version;
+  const sections = unreleasedContent || `- Release v${version}`;
   const releaseDoc = `---
 version: "${version}"
 date: "${today}"

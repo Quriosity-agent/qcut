@@ -1537,7 +1537,10 @@ const electronAPI: ElectronAPI = {
         releaseDate?: string;
       }) => void
     ) => {
-      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      const handler = (
+        _: IpcRendererEvent,
+        data: { version: string; releaseNotes?: string; releaseDate?: string }
+      ) => callback(data);
       ipcRenderer.on("update-available", handler);
       return () => ipcRenderer.removeListener("update-available", handler);
     },
@@ -1548,14 +1551,20 @@ const electronAPI: ElectronAPI = {
         total: number;
       }) => void
     ) => {
-      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      const handler = (
+        _: IpcRendererEvent,
+        data: { percent: number; transferred: number; total: number }
+      ) => callback(data);
       ipcRenderer.on("download-progress", handler);
       return () => ipcRenderer.removeListener("download-progress", handler);
     },
     onUpdateDownloaded: (
       callback: (data: { version: string }) => void
     ) => {
-      const handler = (_: IpcRendererEvent, data: any) => callback(data);
+      const handler = (
+        _: IpcRendererEvent,
+        data: { version: string }
+      ) => callback(data);
       ipcRenderer.on("update-downloaded", handler);
       return () => ipcRenderer.removeListener("update-downloaded", handler);
     },

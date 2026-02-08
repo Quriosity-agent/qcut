@@ -98,6 +98,7 @@ describe("Multi-Image Support", () => {
         "nano-banana",
         "gemini-3-pro-edit",
         "flux-2-flex-edit",
+        "gpt-image-1-5-edit",
       ];
 
       for (const model of multiImageModels) {
@@ -162,6 +163,7 @@ describe("Multi-Image Support", () => {
       expect(multiImageModels).toContain("nano-banana");
       expect(multiImageModels).toContain("gemini-3-pro-edit");
       expect(multiImageModels).toContain("flux-2-flex-edit");
+      expect(multiImageModels).toContain("gpt-image-1-5-edit");
 
       // Should not include single-image models
       expect(multiImageModels).not.toContain("seededit");

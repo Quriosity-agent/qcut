@@ -131,7 +131,7 @@ describe("FFmpeg path resolution", () => {
       }
       const entries = readdirSync(resourcesDir);
       const sharedLibs = entries.filter(
-        (f) => f.endsWith(".dylib") || f.includes(".so")
+        (f) => f.endsWith(".dylib") || /\.so(\.|$)/.test(f)
       );
       expect(sharedLibs).toEqual([]);
     });

@@ -48,7 +48,7 @@ platform-specific static binary. No manual download is required.
 
 **Dependencies** (from `package.json`):
 - `ffmpeg-static@^5.3.0` — Statically linked FFmpeg binary (FFmpeg 6.1.1)
-- `ffprobe-static@^3.1.0` — FFprobe binary for video probing
+- `ffprobe-static@^3.1.0` — FFprobe binary for video probing (FFprobe 4.0.2)
 
 **How it works:**
 1. `bun install` downloads the platform-specific static binary into `node_modules/`

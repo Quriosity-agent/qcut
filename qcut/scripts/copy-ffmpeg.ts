@@ -1,5 +1,5 @@
 /**
- * Cross-platform FFmpeg resource copying script for electron-packager builds.
+ * Windows FFmpeg resource copying script for electron-packager builds.
  *
  * Copies FFmpeg and FFprobe static binaries from node_modules to the
  * electron-packager output directory. Only needed for electron-packager

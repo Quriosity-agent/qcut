@@ -227,7 +227,6 @@ describe("New Video Models Integration", () => {
       expect(wanCost.estimated_cost).toBeGreaterThan(0);
     });
 
-    // wan_turbo model was removed from the codebase — test removed
   });
 
   describe("Available Models API", () => {

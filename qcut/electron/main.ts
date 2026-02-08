@@ -34,6 +34,13 @@ import {
 } from "./release-notes-utils.js";
 
 // Type definitions
+interface ReleaseNote {
+  version: string;
+  date: string;
+  channel: string;
+  content: string;
+}
+
 interface Logger {
   log(message?: any, ...optionalParams: any[]): void;
   error(message?: any, ...optionalParams: any[]): void;
@@ -149,8 +156,8 @@ function getReleasesDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "docs", "releases");
   }
-  // Development: relative to project root
-  return path.join(__dirname, "..", "docs", "releases");
+  // Development: relative to project root (runtime dir is dist/electron/)
+  return path.join(__dirname, "..", "..", "docs", "releases");
 }
 
 // Delegate to release-notes-utils for testability
@@ -160,11 +167,11 @@ const compareSemver = _compareSemver;
 /**
  * Fallback: parse CHANGELOG.md into release note entries.
  */
-function readChangelogFallback(): any[] {
+function readChangelogFallback(): ReleaseNote[] {
   try {
     const changelogPath = app.isPackaged
       ? path.join(process.resourcesPath, "CHANGELOG.md")
-      : path.join(__dirname, "..", "CHANGELOG.md");
+      : path.join(__dirname, "..", "..", "CHANGELOG.md");
 
     if (!fs.existsSync(changelogPath)) {
       return [];
@@ -1445,7 +1452,7 @@ app.whenReady().then(() => {
   // IPC handlers for release notes
   ipcMain.handle(
     "get-release-notes",
-    async (_: any, version?: string): Promise<any> => {
+    async (_: IpcMainInvokeEvent, version?: string): Promise<ReleaseNote | null> => {
       try {
         const releasesDir = getReleasesDir();
         const filename = version ? `v${version}.md` : "latest.md";
@@ -1464,7 +1471,7 @@ app.whenReady().then(() => {
     }
   );
 
-  ipcMain.handle("get-changelog", async (): Promise<any> => {
+  ipcMain.handle("get-changelog", async (): Promise<ReleaseNote[]> => {
     try {
       const releasesDir = getReleasesDir();
       const notes = readReleaseNotesFromDir(releasesDir);

@@ -62,7 +62,12 @@ export function compareSemver(a: string, b: string): number {
   // No prerelease > prerelease (stable is higher)
   if (!pA.pre && pB.pre) return 1;
   if (pA.pre && !pB.pre) return -1;
-  if (pA.pre && pB.pre) return pA.pre.localeCompare(pB.pre);
+  if (pA.pre && pB.pre) {
+    const [labelA, numA] = pA.pre.split(".");
+    const [labelB, numB] = pB.pre.split(".");
+    if (labelA !== labelB) return labelA.localeCompare(labelB);
+    return (Number(numA) || 0) - (Number(numB) || 0);
+  }
   return 0;
 }
 
@@ -89,6 +94,7 @@ export function parseChangelog(raw: string): Array<{
     version: string;
     date: string;
     start: number;
+    headerStart: number;
   }> = [];
 
   for (
@@ -100,12 +106,13 @@ export function parseChangelog(raw: string): Array<{
       version: match[1],
       date: match[2] || "",
       start: match.index + match[0].length,
+      headerStart: match.index,
     });
   }
 
   for (let i = 0; i < positions.length; i++) {
     const end =
-      i + 1 < positions.length ? positions[i + 1].start - 50 : raw.length;
+      i + 1 < positions.length ? positions[i + 1].headerStart : raw.length;
     const content = raw.slice(positions[i].start, end).trim();
     const version = positions[i].version;
 

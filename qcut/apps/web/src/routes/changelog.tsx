@@ -40,8 +40,8 @@ function MarkdownContent({ content }: { content: string }) {
         key={`list-${elements.length}`}
         className="list-disc list-inside space-y-1 text-sm text-muted-foreground"
       >
-        {listItems.map((item) => (
-          <li key={item}>{item}</li>
+        {listItems.map((item, i) => (
+          <li key={i}>{item}</li>
         ))}
       </ul>
     );
