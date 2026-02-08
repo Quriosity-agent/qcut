@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.54] - 2026-02-08
+
 ### Added
 - AI content pipeline skill with 51 models across 8 categories
 - Speech-to-text transcription with ElevenLabs Scribe v2

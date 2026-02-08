@@ -72,8 +72,8 @@ function resolveBuildOutputDir(): string {
     ? path.join(currentDir, "../../") // Go up from dist/scripts
     : path.join(currentDir, "../"); // Go up from scripts
 
-  // Default to dist folder in project root
-  return path.join(rootDir, "dist");
+  // Default to dist-electron folder in project root
+  return path.join(rootDir, "dist-electron");
 }
 
 function main(): void {
@@ -386,11 +386,13 @@ function generateChecksums(): void {
 
     const installerPath: string = path.join(buildDir, installerFile);
 
-    // Generate SHA256 checksum
-    const checksum: string = execSync(
-      `powershell "Get-FileHash '${installerPath}' -Algorithm SHA256 | Select-Object -ExpandProperty Hash"`,
+    // Generate SHA256 checksum using certutil (works on all Windows versions)
+    const certutilOutput: string = execSync(
+      `certutil -hashfile "${installerPath}" SHA256`,
       { encoding: "utf8" }
-    ).trim();
+    );
+    // certutil output: line 0 = header, line 1 = hash, line 2 = status
+    const checksum: string = certutilOutput.split("\n")[1].trim().toUpperCase();
 
     // Write checksums file
     const checksumContent: string = `SHA256 Checksums for QCut Release
