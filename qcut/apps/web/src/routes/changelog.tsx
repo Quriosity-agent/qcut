@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
@@ -30,7 +31,7 @@ function MarkdownContent({ content }: { content: string }) {
   // Simple Markdown renderer for release notes:
   // handles headings (## / ###), bullet lists (- / *), and paragraphs
   const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
+  const elements: ReactNode[] = [];
   let listItems: string[] = [];
 
   const flushList = () => {
@@ -41,7 +42,7 @@ function MarkdownContent({ content }: { content: string }) {
         className="list-disc list-inside space-y-1 text-sm text-muted-foreground"
       >
         {listItems.map((item, i) => (
-          <li key={i}>{item}</li>
+          <li key={`${item}-${i}`}>{item}</li>
         ))}
       </ul>
     );
