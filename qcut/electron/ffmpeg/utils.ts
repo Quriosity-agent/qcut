@@ -109,7 +109,7 @@ export function getFFmpegPath(): string {
       return resourcePath;
     }
     throw new Error(
-      `FFmpeg not found. Ensure ffmpeg-static is installed: bun add ffmpeg-static`
+      "FFmpeg not found. Ensure ffmpeg-static is installed: bun add ffmpeg-static"
     );
   }
 

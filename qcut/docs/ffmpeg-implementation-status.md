@@ -157,9 +157,12 @@ Note: the `!**/ffmpeg/**` exclusion prevents the WASM subdirectory (`electron/re
 
 ## Summary
 
+> **Updated 2026-02-08**: Migrated to `ffmpeg-static` + `ffprobe-static` npm packages.
+> All platforms now ship with FFmpeg automatically via `bun install` + `asarUnpack`.
+
 | Platform | WASM (Previews) | CLI (Export) | End-User Experience |
 |----------|-----------------|-------------|---------------------|
-| Windows .exe | Works | Works **only if** builder included `ffmpeg.exe` | Export may fail silently |
-| macOS .dmg | Works | **Broken** — no macOS binary in repo | Export will crash |
-| Linux .AppImage/.deb | Works | **Broken** — no Linux binary in repo | Export will crash |
-| Dev mode (any OS) | Works | Works via system FFmpeg fallback | Full functionality |
+| Windows .exe | Works | Works (via `ffmpeg-static`) | Full functionality |
+| macOS .dmg | Works | Works (via `ffmpeg-static`) | Full functionality |
+| Linux .AppImage/.deb | Works | Works (via `ffmpeg-static`) | Full functionality |
+| Dev mode (any OS) | Works | Works (via `ffmpeg-static` or system fallback) | Full functionality |

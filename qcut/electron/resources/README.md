@@ -1,39 +1,37 @@
-# FFmpeg Binary Resources
+# FFmpeg Resources
 
-## Required Files
+## CLI Binary
 
-This directory should contain the FFmpeg binary for native CLI integration:
+FFmpeg and FFprobe CLI binaries are provided by the `ffmpeg-static` and
+`ffprobe-static` npm packages. They are downloaded automatically during
+`bun install`.
 
-- `ffmpeg.exe` (Windows) - Download from https://ffmpeg.org/download.html
+Manual download is no longer required.
 
-## Download Instructions
+### How It Works
 
-1. Go to https://ffmpeg.org/download.html
-2. Click "Windows" and select "Windows builds by BtbN"
-3. Download "ffmpeg-master-latest-win64-gpl.zip"
-4. Extract the zip file
-5. Copy `ffmpeg.exe` from `bin/` folder to this directory
-6. The final path should be: `qcut/electron/resources/ffmpeg.exe`
+- `bun install` downloads the platform-specific static binary into `node_modules/`
+- `electron-builder` unpacks it from ASAR via the `asarUnpack` config
+- At runtime, `require('ffmpeg-static')` returns the binary path
+- In packaged apps, the path is rewritten from `app.asar` to `app.asar.unpacked`
 
-## Build Integration
+### Path Resolution (electron/ffmpeg/utils.ts)
 
-The `package.json` is configured to bundle this binary in the Electron distribution:
+1. `ffmpeg-static` / `ffprobe-static` npm package (primary)
+2. `electron/resources/ffmpeg(.exe)` (legacy fallback)
+3. System paths: WinGet, Homebrew, apt, etc. (dev only)
+4. System PATH (dev only)
 
-```json
-"extraResources": [
-  {
-    "from": "electron/resources/",
-    "to": "resources/",
-    "filter": ["ffmpeg.exe"]
-  }
-]
-```
+## WebAssembly Files
 
-## Path Detection
+WASM files (`ffmpeg-core.js`, `ffmpeg-core.wasm`) are copied from
+`@ffmpeg/core` by `scripts/setup-ffmpeg.ts` during postinstall.
+These are used for in-browser previews and thumbnails.
 
-The `ffmpeg-handler.js` will automatically detect the correct path:
-- Development: `electron/resources/ffmpeg.exe` or system PATH
-- Production: `resources/ffmpeg.exe` (bundled in app)
+## Legacy
+
+The DLL files previously committed here have been removed. `ffmpeg-static`
+provides statically linked binaries that don't require separate shared libraries.
 
 ## Hardware Acceleration
 
