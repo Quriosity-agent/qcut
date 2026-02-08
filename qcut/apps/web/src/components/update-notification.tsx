@@ -29,7 +29,9 @@ export function UpdateNotification() {
 
   const handleInstall = useCallback(() => {
     if (!window.electronAPI?.updates) return;
-    window.electronAPI.updates.installUpdate();
+    window.electronAPI.updates.installUpdate().catch(() => {
+      toast.error("Failed to install update. Please restart manually.");
+    });
   }, []);
 
   const handleDismiss = useCallback((version: string) => {
@@ -84,7 +86,11 @@ export function UpdateNotification() {
           label: "Restart Now",
           onClick: () => {
             if (window.electronAPI?.updates) {
-              window.electronAPI.updates.installUpdate();
+              window.electronAPI.updates.installUpdate().catch(() => {
+                toast.error(
+                  "Failed to install update. Please restart manually."
+                );
+              });
             }
           },
         },
