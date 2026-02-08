@@ -160,7 +160,6 @@ function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
   const releasesDir = path.join(rootDir, "docs", "releases");
   const changelogPath = path.join(rootDir, "CHANGELOG.md");
 
-  // Ensure docs/releases/ exists
   if (!fs.existsSync(releasesDir)) {
     fs.mkdirSync(releasesDir, { recursive: true });
   }
@@ -185,7 +184,6 @@ function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
     }
   }
 
-  // Build the release note file
   const sections = unreleasedContent || `- Release v${version}`;
   const releaseDoc = `---
 version: "${version}"
@@ -202,7 +200,6 @@ ${sections}
   fs.writeFileSync(path.join(releasesDir, filename), releaseDoc);
   process.stdout.write(`✅ Created docs/releases/${filename}\n`);
 
-  // Update latest.md for stable releases
   if (channel === "stable") {
     fs.writeFileSync(path.join(releasesDir, "latest.md"), releaseDoc);
     process.stdout.write("✅ Updated docs/releases/latest.md\n");
