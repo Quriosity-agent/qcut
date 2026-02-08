@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { join } from "path";
 
 /**
@@ -10,6 +10,8 @@ import { join } from "path";
  * 2. The binaries exist on disk at the resolved paths
  * 3. package.json asarUnpack config includes both packages
  * 4. package.json files config includes both packages for ASAR bundling
+ * 5. Legacy DLL files have been removed from electron/resources
+ * 6. extraResources does not reference DLL/EXE filters
  */
 
 describe("FFmpeg path resolution", () => {
@@ -104,6 +106,76 @@ describe("FFmpeg path resolution", () => {
       // In practice, this path already has "unpacked" so the condition
       // (app.isPackaged) wouldn't apply to an already-unpacked path.
       expect(replaced).toContain("app.asar.unpacked");
+    });
+  });
+
+  describe("legacy DLL cleanup", () => {
+    const resourcesDir = join(
+      __dirname,
+      "../../../../../../electron/resources"
+    );
+
+    it("no DLL files remain in electron/resources", () => {
+      if (!existsSync(resourcesDir)) {
+        // Directory doesn't exist — that's fine
+        return;
+      }
+      const entries = readdirSync(resourcesDir);
+      const dllFiles = entries.filter((f) => f.endsWith(".dll"));
+      expect(dllFiles).toEqual([]);
+    });
+
+    it("no .dylib or .so files in electron/resources", () => {
+      if (!existsSync(resourcesDir)) {
+        return;
+      }
+      const entries = readdirSync(resourcesDir);
+      const sharedLibs = entries.filter(
+        (f) => f.endsWith(".dylib") || f.includes(".so")
+      );
+      expect(sharedLibs).toEqual([]);
+    });
+  });
+
+  describe("extraResources configuration", () => {
+    const packageJsonPath = join(__dirname, "../../../../../package.json");
+    const pkg = require(packageJsonPath);
+    const extraResources: Record<string, unknown>[] =
+      pkg.build?.extraResources ?? [];
+
+    it("does not reference DLL or EXE filters", () => {
+      const allFilters = extraResources
+        .filter((r) => typeof r === "object" && r !== null && "filter" in r)
+        .flatMap((r) => (r as { filter: string[] }).filter);
+      const binaryFilters = allFilters.filter(
+        (f) =>
+          f.includes(".dll") ||
+          f.includes(".exe") ||
+          f.includes(".dylib") ||
+          f.includes(".so")
+      );
+      expect(binaryFilters).toEqual([]);
+    });
+  });
+
+  describe("dependency configuration", () => {
+    const packageJsonPath = join(__dirname, "../../../../../package.json");
+    const pkg = require(packageJsonPath);
+
+    it("ffmpeg-static is a production dependency", () => {
+      expect(pkg.dependencies["ffmpeg-static"]).toBeDefined();
+    });
+
+    it("ffprobe-static is a production dependency", () => {
+      expect(pkg.dependencies["ffprobe-static"]).toBeDefined();
+    });
+
+    it("ffmpeg-static is a trusted dependency", () => {
+      expect(pkg.trustedDependencies).toContain("ffmpeg-static");
+    });
+
+    it("ffprobe-static is a trusted dependency", () => {
+      expect(pkg.trustedDependencies).toContain("ffprobe-static");
     });
   });
 });

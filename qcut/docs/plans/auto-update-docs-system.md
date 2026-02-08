@@ -1,6 +1,6 @@
 # Auto-Update Documentation System
 
-**Status: IMPLEMENTED** (2026-02-08)
+**Status: IMPLEMENTED & VERIFIED** (2026-02-08)
 
 ## Goal
 
@@ -16,12 +16,12 @@ Create a documentation-driven auto-update system where Markdown files under `doc
 - **Blog system** (`routes/blog.tsx`, `routes/blog.$slug.tsx`): Uses MarbleCMS external API — not local docs
 - **Roadmap page** (`routes/roadmap.tsx`): Placeholder page with no content
 
-### What's Missing
-1. No way for renderer to trigger manual update checks (preload gap)
-2. No in-app UI showing release notes / "What's New"
-3. No mechanism to read local `docs/` Markdown and display it
-4. Release notes are generated as a template but not consumed by the app
-5. No structured docs for per-version release notes
+### What Was Missing (now resolved)
+1. ~~No way for renderer to trigger manual update checks (preload gap)~~ → `electron/preload.ts:1527-1545`
+2. ~~No in-app UI showing release notes / "What's New"~~ → `apps/web/src/components/update-notification.tsx`
+3. ~~No mechanism to read local `docs/` Markdown and display it~~ → `electron/release-notes-utils.ts`
+4. ~~Release notes are generated as a template but not consumed by the app~~ → `scripts/release.ts:153-222`
+5. ~~No structured docs for per-version release notes~~ → `docs/releases/`
 
 ## Architecture
 
@@ -45,7 +45,7 @@ apps/web/src/
 
 ## Implementation Plan
 
-### Subtask 1: Create `docs/releases/` structure with version Markdown files (~10 min)
+### Subtask 1: Create `docs/releases/` structure with version Markdown files — DONE
 
 Create a structured `docs/releases/` directory with per-version release notes.
 
@@ -75,7 +75,7 @@ channel: "alpha"
 - Media import error handling for unexpected symlink failures
 ```
 
-### Subtask 2: Expose update + release notes IPC in preload.ts (~10 min)
+### Subtask 2: Expose update + release notes IPC in preload.ts — DONE
 
 Bridge the existing `check-for-updates` and `install-update` IPC handlers to the renderer, plus add a new handler to read release notes from bundled docs.
 
@@ -109,12 +109,13 @@ ipcMain.handle("get-changelog", async () => {
 });
 ```
 
-**Relevant files:**
-- `electron/preload.ts:1-1522`
-- `electron/main.ts:1352-1400`
-- `apps/web/src/types/electron.d.ts`
+**Actual implementation locations:**
+- `electron/preload.ts:1527-1545` — `updates` namespace with 7 methods/listeners
+- `electron/main.ts:1446-1474` — `get-release-notes` and `get-changelog` IPC handlers
+- `apps/web/src/types/electron.d.ts:968-985` — `updates` property on `ElectronAPI`
+- `apps/web/src/types/electron.d.ts:1012-1021` — `ReleaseNote` interface
 
-### Subtask 3: Create update notification component (~15 min)
+### Subtask 3: Create update notification component — DONE
 
 A toast/banner that appears when `update-available` IPC event fires, showing the new version and release highlights.
 
@@ -133,11 +134,13 @@ A toast/banner that appears when `update-available` IPC event fires, showing the
 4. When update is downloaded, shows "Restart to Update" prompt
 5. Persists dismissal in localStorage so it doesn't re-show until next version
 
-**Relevant files:**
-- `apps/web/src/components/` — existing component patterns
-- `apps/web/src/routes/__root.tsx` — mount point for global notification
+**Actual implementation locations:**
+- `apps/web/src/components/update-notification.tsx` — `UpdateNotification` component
+- `apps/web/src/lib/release-notes.ts` — `extractHighlights()`, `getChannelColor()`, `isVersionDismissed()`, `dismissVersion()`, `fetchReleaseNotes()`, `fetchChangelog()`
+- `apps/web/src/routes/__root.tsx:7` — imports `UpdateNotification`
+- `apps/web/src/routes/__root.tsx:39` — mounts `<UpdateNotification />`
 
-### Subtask 4: Create changelog route page (~15 min)
+### Subtask 4: Create changelog route page — DONE
 
 A full in-app changelog page that renders all release notes.
 
@@ -151,12 +154,10 @@ A full in-app changelog page that renders all release notes.
 4. Shows version badge (alpha/beta/rc/stable) with color coding
 5. Falls back to reading `CHANGELOG.md` if per-version files aren't available
 
-**Relevant files:**
-- `apps/web/src/routes/blog.$slug.tsx` — reference for Markdown rendering pattern
-- `apps/web/src/routes/roadmap.tsx` — similar page layout
-- `apps/web/src/components/ui/prose.tsx` — Markdown prose renderer
+**Actual implementation location:**
+- `apps/web/src/routes/changelog.tsx` — `/changelog` route with `ChannelBadge` and `MarkdownContent` components
 
-### Subtask 5: Integrate release doc generation into release script (~10 min)
+### Subtask 5: Integrate release doc generation into release script — DONE
 
 Modify `scripts/release.ts` to automatically create/update `docs/releases/v{version}.md` during the release process.
 
@@ -170,44 +171,45 @@ Modify `scripts/release.ts` to automatically create/update `docs/releases/v{vers
 4. Copy to `docs/releases/latest.md`
 5. Add `docs/releases/` files to git staging
 
-**Relevant files:**
-- `scripts/release.ts:1-493`
-- `CHANGELOG.md:1-69`
+**Actual implementation locations:**
+- `scripts/release.ts:109` — calls `generateReleaseDoc(newVersion, releaseType)`
+- `scripts/release.ts:153-222` — `generateReleaseDoc()` function implementation
 
-### Subtask 6: Add unit tests (~15 min)
+### Subtask 6: Add unit tests — DONE (45 tests, all passing)
 
-**Files:**
-- `apps/web/src/lib/__tests__/release-notes.test.ts` — Markdown parsing tests
-- `electron/__tests__/release-notes-handler.test.ts` — IPC handler tests
+**Test files:**
+- `apps/web/src/lib/__tests__/release-notes.test.ts` — 14 client-side tests (extractHighlights, getChannelColor, isVersionDismissed, dismissVersion)
+- `electron/__tests__/release-notes-handler.test.ts` — 31 Electron-side tests (parseReleaseNote, compareSemver, parseChangelog, readReleaseNotesFromDir)
 
-**Test cases:**
+**Test cases covered:**
 - Parse frontmatter from release note Markdown
 - Handle missing/malformed release note files
 - Version sorting (semver-aware)
 - Channel detection from version string
 - Fallback to CHANGELOG.md when per-version files missing
-- Release script generates correct docs/releases/ file
+- Highlight extraction from release note content
+- localStorage-based version dismissal
 
-**Relevant files:**
-- `docs/reference/testing-guide.md` — testing conventions
-- Existing test files for patterns
-
-## Implementation Order
-
+**Verification (2026-02-08):**
 ```
-Subtask 1 (docs structure)
-    ↓
-Subtask 2 (IPC bridge) ← can start in parallel with 1
-    ↓
-Subtask 3 (notification component) ← depends on 2
-Subtask 4 (changelog page) ← depends on 2
-    ↓
-Subtask 5 (release script) ← depends on 1
-    ↓
-Subtask 6 (tests) ← depends on 2, 3, 4
+vitest run electron/__tests__/release-notes-handler.test.ts  → 31 passed
+vitest run apps/web/src/lib/__tests__/release-notes.test.ts  → 14 passed
 ```
 
-**Estimated total: ~75 minutes**
+## Implementation Order (all complete)
+
+```
+Subtask 1 (docs structure)        ✅
+    ↓
+Subtask 2 (IPC bridge)            ✅
+    ↓
+Subtask 3 (notification component)✅
+Subtask 4 (changelog page)        ✅
+    ↓
+Subtask 5 (release script)        ✅
+    ↓
+Subtask 6 (tests)                 ✅  45/45 passing
+```
 
 ## Key Design Decisions
 
@@ -244,3 +246,23 @@ Subtask 6 (tests) ← depends on 2, 3, 4
 | `apps/web/src/routes/__root.tsx` | Mounted `<UpdateNotification />` globally |
 | `package.json` | Added `docs/releases/` and `CHANGELOG.md` to `extraResources` |
 | `scripts/release.ts` | Added `generateReleaseDoc()` step in release flow |
+
+## Post-Implementation Verification (2026-02-08)
+
+All 19 files (13 new + 6 modified) verified present with correct content.
+
+| Check | Result |
+|-------|--------|
+| All 7 release note Markdown files exist with YAML frontmatter | PASS |
+| `electron/release-notes-utils.ts` exports 4 pure functions | PASS |
+| `electron/main.ts` imports utils and has IPC handlers at L1446-1474 | PASS |
+| `electron/preload.ts` has `updates` namespace at L1527-1545 | PASS |
+| `apps/web/src/types/electron.d.ts` has `ReleaseNote` + `updates` types | PASS |
+| `apps/web/src/components/update-notification.tsx` exists | PASS |
+| `apps/web/src/routes/changelog.tsx` exists at `/changelog` | PASS |
+| `apps/web/src/routes/__root.tsx` mounts `<UpdateNotification />` | PASS |
+| `scripts/release.ts` calls `generateReleaseDoc()` at L109 | PASS |
+| `package.json` has `docs/releases/` in `extraResources` | PASS |
+| 31 Electron-side tests pass | PASS |
+| 14 client-side tests pass | PASS |
+| No existing features broken (working tree clean) | PASS |

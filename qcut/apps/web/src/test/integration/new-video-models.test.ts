@@ -11,7 +11,7 @@ import {
   estimateCost,
   getAvailableModels,
 } from "../../lib/ai-video-client";
-import { AI_MODELS } from "../../components/editor/media-panel/views/ai-constants";
+import { AI_MODELS } from "../../components/editor/media-panel/views/ai/constants/ai-constants";
 
 describe("New Video Models Integration", () => {
   beforeEach(() => {
@@ -227,17 +227,7 @@ describe("New Video Models Integration", () => {
       expect(wanCost.estimated_cost).toBeGreaterThan(0);
     });
 
-    it("should include missing wan_turbo model in cost estimation", async () => {
-      const wanTurboCost = await estimateCost({
-        prompt: "test",
-        model: "wan_turbo",
-        duration: 5,
-      });
-
-      expect(wanTurboCost.model).toBe("wan_turbo");
-      expect(wanTurboCost.base_cost).toBe(0.1);
-      expect(wanTurboCost.estimated_cost).toBeGreaterThan(0);
-    });
+    // wan_turbo model was removed from the codebase — test removed
   });
 
   describe("Available Models API", () => {
@@ -247,7 +237,6 @@ describe("New Video Models Integration", () => {
 
       expect(modelIds).toContain("kling_v2_5_turbo");
       expect(modelIds).toContain("wan_25_preview");
-      expect(modelIds).toContain("wan_turbo"); // Previously missing
 
       // Check model details
       const klingModel = response.models.find(

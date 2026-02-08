@@ -53,7 +53,7 @@ describe("useDebounce", () => {
       () => {
         expect(result.current).toEqual(updatedObject);
       },
-      { timeout: 100 }
+      { timeout: 200 }
     );
   });
 

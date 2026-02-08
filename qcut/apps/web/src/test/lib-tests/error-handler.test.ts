@@ -6,16 +6,29 @@ import {
   handleAIServiceError,
   ErrorCategory,
   ErrorSeverity,
-} from "../error-handler";
+} from "../../lib/error-handler";
 
-// Import toast to get the mocked version (already mocked in test setup)
-import { toast } from "sonner";
+// Hoist mock fns so they're available when vi.mock factory runs (hoisted to top)
+const { mockToast, mockToastError, mockToastWarning } = vi.hoisted(() => ({
+  mockToast: vi.fn((_msg: string, _opts?: any) => "toast-id"),
+  mockToastError: vi.fn((_msg: string, _opts?: any) => "toast-id"),
+  mockToastWarning: vi.fn((_msg: string, _opts?: any) => "toast-id"),
+}));
 
-// Get references to the mock functions from the test setup
-// toast is actually the mocked object from the setup, with all methods as spies
-const mockToast = vi.mocked(toast, true);
-const mockToastError = vi.mocked(toast.error);
-const mockToastWarning = vi.mocked(toast.warning);
+vi.mock("sonner", () => ({
+  toast: Object.assign(mockToast, {
+    success: vi.fn(),
+    error: mockToastError,
+    info: vi.fn(),
+    warning: mockToastWarning,
+    message: vi.fn(),
+    loading: vi.fn(),
+    promise: vi.fn(),
+    custom: vi.fn(),
+    dismiss: vi.fn(),
+  }),
+  Toaster: vi.fn(() => null),
+}));
 
 // Mock clipboard API
 Object.assign(navigator, {
