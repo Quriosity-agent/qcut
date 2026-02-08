@@ -22,12 +22,22 @@ const mockRemotionStore: {
   registeredComponents: Map<string, RemotionComponentDefinition>;
   isLoading: boolean;
   isInitialized: boolean;
+  isFolderImporting: boolean;
+  importedFolders: Map<string, unknown>;
   initialize: ReturnType<typeof vi.fn>;
+  importFromFolder: ReturnType<typeof vi.fn>;
+  refreshFolder: ReturnType<typeof vi.fn>;
+  removeFolder: ReturnType<typeof vi.fn>;
 } = {
   registeredComponents: new Map(),
   isLoading: false,
   isInitialized: true,
+  isFolderImporting: false,
+  importedFolders: new Map(),
   initialize: vi.fn(),
+  importFromFolder: vi.fn(),
+  refreshFolder: vi.fn(),
+  removeFolder: vi.fn(),
 };
 
 const mockTimelineStore: {
@@ -45,8 +55,24 @@ const mockProjectStore = {
 };
 
 vi.mock("@/stores/remotion-store", () => ({
-  useRemotionStore: () => mockRemotionStore,
+  useRemotionStore: Object.assign(
+    (selectorOrUndefined?: (state: typeof mockRemotionStore) => unknown) => {
+      if (typeof selectorOrUndefined === "function") {
+        return selectorOrUndefined(mockRemotionStore);
+      }
+      return mockRemotionStore;
+    },
+    {
+      getState: () => mockRemotionStore,
+    }
+  ),
   useComponentsByCategory: vi.fn(),
+  selectAllComponents: (state: typeof mockRemotionStore) =>
+    Array.from(state.registeredComponents.values()),
+}));
+
+vi.mock("zustand/react/shallow", () => ({
+  useShallow: <T,>(fn: (state: unknown) => T) => fn,
 }));
 
 vi.mock("@/stores/timeline-store", () => ({
@@ -410,10 +436,10 @@ describe("RemotionView", () => {
     render(<RemotionView />);
 
     expect(screen.getByRole("tab", { name: /all/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /custom/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /templates/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /text/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: /transitions/i })
+      screen.getByRole("tab", { name: /animations/i })
     ).toBeInTheDocument();
   });
 

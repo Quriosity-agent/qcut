@@ -22,10 +22,10 @@ describe("usePtyTerminalStore", () => {
       error: null,
       cols: 80,
       rows: 24,
-      cliProvider: "gemini",
+      cliProvider: "claude",
       selectedModel: getDefaultCodexModel(),
       selectedClaudeModel: getDefaultClaudeModel(),
-      isGeminiMode: true,
+      isGeminiMode: false,
       workingDirectory: "",
       activeSkill: null,
       skillPromptSent: false,
@@ -49,9 +49,9 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.error).toBeNull();
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
-      expect(result.current.cliProvider).toBe("gemini");
-      expect(result.current.selectedModel).toBe("minimax/minimax-m2.1");
-      expect(result.current.isGeminiMode).toBe(true);
+      expect(result.current.cliProvider).toBe("claude");
+      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
+      expect(result.current.isGeminiMode).toBe(false);
       expect(result.current.workingDirectory).toBe("");
       expect(result.current.activeSkill).toBeNull();
       expect(result.current.skillPromptSent).toBe(false);
@@ -77,6 +77,10 @@ describe("usePtyTerminalStore", () => {
 
     it("should spawn with Gemini CLI command when cliProvider is gemini", async () => {
       const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("gemini");
+      });
 
       await act(async () => {
         await result.current.connect();
@@ -362,8 +366,8 @@ describe("usePtyTerminalStore", () => {
     it("should switch between providers", () => {
       const { result } = renderHook(() => usePtyTerminalStore());
 
-      expect(result.current.cliProvider).toBe("gemini");
-      expect(result.current.isGeminiMode).toBe(true);
+      expect(result.current.cliProvider).toBe("claude");
+      expect(result.current.isGeminiMode).toBe(false);
 
       act(() => {
         result.current.setCliProvider("codex");
@@ -416,8 +420,8 @@ describe("usePtyTerminalStore", () => {
     it("should toggle Gemini mode via setGeminiMode (legacy)", () => {
       const { result } = renderHook(() => usePtyTerminalStore());
 
-      expect(result.current.isGeminiMode).toBe(true);
-      expect(result.current.cliProvider).toBe("gemini");
+      expect(result.current.isGeminiMode).toBe(false);
+      expect(result.current.cliProvider).toBe("claude");
 
       act(() => {
         result.current.setGeminiMode(false);
@@ -486,6 +490,10 @@ describe("usePtyTerminalStore", () => {
 
     it("should send skill prompt only for Gemini provider", async () => {
       const { result } = renderHook(() => usePtyTerminalStore());
+
+      act(() => {
+        result.current.setCliProvider("gemini");
+      });
 
       const skill = {
         id: "test-skill",
@@ -629,9 +637,9 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.status).toBe("disconnected");
       expect(result.current.cols).toBe(80);
       expect(result.current.rows).toBe(24);
-      expect(result.current.cliProvider).toBe("gemini");
-      expect(result.current.selectedModel).toBe("minimax/minimax-m2.1");
-      expect(result.current.isGeminiMode).toBe(true);
+      expect(result.current.cliProvider).toBe("claude");
+      expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
+      expect(result.current.isGeminiMode).toBe(false);
       expect(result.current.workingDirectory).toBe("");
       expect(result.current.activeSkill).toBeNull();
     });

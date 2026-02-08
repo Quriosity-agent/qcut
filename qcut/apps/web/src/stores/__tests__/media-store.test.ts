@@ -188,6 +188,7 @@ describe("MediaStore", () => {
         file: new File([""], "video.mp4", { type: "video/mp4" }),
         duration: 60,
         thumbnailUrl: "stored-thumb.jpg",
+        thumbnailStatus: "ready",
         width: 1920,
         height: 1080,
         fps: 30,

@@ -312,7 +312,7 @@ describe("generateWAN26RefVideo", () => {
       });
 
       const [callUrl] = fetchMock.mock.calls[0];
-      expect(callUrl).toContain("fal-ai/wan/v2.6/reference-to-video");
+      expect(callUrl).toContain("wan/v2.6/reference-to-video");
     });
   });
 

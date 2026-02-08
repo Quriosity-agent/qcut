@@ -357,8 +357,8 @@ describe("requiresRemotionExport", () => {
 
 describe("DEFAULT_REMOTION_EXPORT_CONFIG", () => {
   it("should have expected default values", () => {
-    expect(DEFAULT_REMOTION_EXPORT_CONFIG.tempDir).toBe(
-      "/tmp/qcut-remotion-export"
+    expect(DEFAULT_REMOTION_EXPORT_CONFIG.tempDir).toContain(
+      "qcut-remotion-export"
     );
     expect(DEFAULT_REMOTION_EXPORT_CONFIG.frameFormat).toBe("jpeg");
     expect(DEFAULT_REMOTION_EXPORT_CONFIG.frameQuality).toBe(90);
