@@ -26,6 +26,12 @@ import * as fs from "fs";
 import * as http from "http";
 import * as os from "os";
 import { pathToFileURL } from "url";
+import {
+  parseReleaseNote as _parseReleaseNote,
+  compareSemver as _compareSemver,
+  parseChangelog,
+  readReleaseNotesFromDir,
+} from "./release-notes-utils.js";
 
 // Type definitions
 interface Logger {
@@ -147,66 +153,9 @@ function getReleasesDir(): string {
   return path.join(__dirname, "..", "docs", "releases");
 }
 
-/**
- * Parse a release note Markdown file with YAML frontmatter.
- * Returns { version, date, channel, content } or null on failure.
- */
-function parseReleaseNote(
-  raw: string
-): {
-  version: string;
-  date: string;
-  channel: string;
-  content: string;
-} | null {
-  const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
-  if (!fmMatch) {
-    return null;
-  }
-
-  const frontmatter = fmMatch[1];
-  const content = fmMatch[2].trim();
-
-  const versionMatch = frontmatter.match(/^version:\s*"?([^"\n]+)"?/m);
-  const dateMatch = frontmatter.match(/^date:\s*"?([^"\n]+)"?/m);
-  const channelMatch = frontmatter.match(/^channel:\s*"?([^"\n]+)"?/m);
-
-  if (!versionMatch) {
-    return null;
-  }
-
-  return {
-    version: versionMatch[1].trim(),
-    date: dateMatch ? dateMatch[1].trim() : "",
-    channel: channelMatch ? channelMatch[1].trim() : "stable",
-    content,
-  };
-}
-
-/**
- * Compare two semver strings. Returns negative if a < b, positive if a > b, 0 if equal.
- */
-function compareSemver(a: string, b: string): number {
-  const parseV = (v: string) => {
-    const [main, pre] = v.split("-");
-    const parts = main.split(".").map(Number);
-    return { parts, pre: pre || "" };
-  };
-
-  const pA = parseV(a);
-  const pB = parseV(b);
-
-  for (let i = 0; i < 3; i++) {
-    const diff = (pA.parts[i] || 0) - (pB.parts[i] || 0);
-    if (diff !== 0) return diff;
-  }
-
-  // No prerelease > prerelease (stable is higher)
-  if (!pA.pre && pB.pre) return 1;
-  if (pA.pre && !pB.pre) return -1;
-  if (pA.pre && pB.pre) return pA.pre.localeCompare(pB.pre);
-  return 0;
-}
+// Delegate to release-notes-utils for testability
+const parseReleaseNote = _parseReleaseNote;
+const compareSemver = _compareSemver;
 
 /**
  * Fallback: parse CHANGELOG.md into release note entries.
@@ -222,41 +171,7 @@ function readChangelogFallback(): any[] {
     }
 
     const raw = fs.readFileSync(changelogPath, "utf-8");
-    const entries: any[] = [];
-
-    // Split by version headers: ## [x.y.z] - YYYY-MM-DD
-    const versionRegex =
-      /^## \[(\d+\.\d+\.\d+(?:-[a-z]+\.\d+)?)\](?: - (\d{4}-\d{2}-\d{2}))?/gm;
-    let match: RegExpExecArray | null;
-    const positions: Array<{
-      version: string;
-      date: string;
-      start: number;
-    }> = [];
-
-    while ((match = versionRegex.exec(raw)) !== null) {
-      positions.push({
-        version: match[1],
-        date: match[2] || "",
-        start: match.index + match[0].length,
-      });
-    }
-
-    for (let i = 0; i < positions.length; i++) {
-      const end =
-        i + 1 < positions.length ? positions[i + 1].start - 50 : raw.length;
-      const content = raw.slice(positions[i].start, end).trim();
-      const version = positions[i].version;
-
-      entries.push({
-        version,
-        date: positions[i].date,
-        channel: version.includes("-") ? version.split("-")[1].split(".")[0] : "stable",
-        content: `# QCut v${version}\n\n${content}`,
-      });
-    }
-
-    return entries;
+    return parseChangelog(raw);
   } catch (error: any) {
     logger.error("Error reading CHANGELOG.md:", error);
     return [];
@@ -1552,34 +1467,11 @@ app.whenReady().then(() => {
   ipcMain.handle("get-changelog", async (): Promise<any> => {
     try {
       const releasesDir = getReleasesDir();
+      const notes = readReleaseNotesFromDir(releasesDir);
 
-      if (!fs.existsSync(releasesDir)) {
+      if (notes.length === 0) {
         // Fallback: read CHANGELOG.md
         return readChangelogFallback();
-      }
-
-      const files = fs
-        .readdirSync(releasesDir)
-        .filter(
-          (f: string) => f.startsWith("v") && f.endsWith(".md")
-        )
-        .sort((a: string, b: string) => {
-          // Sort by semver descending
-          const vA = a.replace(/^v/, "").replace(/\.md$/, "");
-          const vB = b.replace(/^v/, "").replace(/\.md$/, "");
-          return compareSemver(vB, vA);
-        });
-
-      const notes: any[] = [];
-      for (const file of files) {
-        const raw = fs.readFileSync(
-          path.join(releasesDir, file),
-          "utf-8"
-        );
-        const parsed = parseReleaseNote(raw);
-        if (parsed) {
-          notes.push(parsed);
-        }
       }
 
       return notes;

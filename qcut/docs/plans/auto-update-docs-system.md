@@ -1,5 +1,7 @@
 # Auto-Update Documentation System
 
+**Status: IMPLEMENTED** (2026-02-08)
+
 ## Goal
 
 Create a documentation-driven auto-update system where Markdown files under `docs/` serve as the source of truth for release notes, changelogs, and "What's New" content. When a new version is released, the client automatically fetches and displays this content to users.
@@ -213,3 +215,32 @@ Subtask 6 (tests) ← depends on 2, 3, 4
 2. **Frontmatter metadata**: Each release note has YAML frontmatter for structured data (version, date, channel) so the UI can filter/sort without parsing Markdown.
 3. **Graceful degradation**: If per-version files don't exist, falls back to `CHANGELOG.md`. If running in browser (not Electron), the changelog page reads from a bundled JSON.
 4. **Channel-aware display**: Alpha/beta/rc badges help users understand their update channel.
+
+## Implementation Files
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `docs/releases/README.md` | Format documentation and conventions |
+| `docs/releases/v0.1.0.md` | Release notes for v0.1.0 |
+| `docs/releases/v0.2.0.md` | Release notes for v0.2.0 |
+| `docs/releases/v0.3.0.md` | Release notes for v0.3.0 |
+| `docs/releases/v0.3.52.md` | Release notes for v0.3.52 |
+| `docs/releases/v0.3.53-alpha.1.md` | Release notes for v0.3.53-alpha.1 |
+| `docs/releases/latest.md` | Copy of most recent stable release |
+| `electron/release-notes-utils.ts` | Pure functions: `parseReleaseNote`, `compareSemver`, `parseChangelog`, `readReleaseNotesFromDir` |
+| `apps/web/src/lib/release-notes.ts` | Client-side utilities: highlight extraction, version dismissal, IPC wrappers |
+| `apps/web/src/components/update-notification.tsx` | Toast/banner for update events |
+| `apps/web/src/routes/changelog.tsx` | In-app changelog page at `/changelog` |
+| `apps/web/src/lib/__tests__/release-notes.test.ts` | 14 client-side unit tests |
+| `electron/__tests__/release-notes-handler.test.ts` | 31 Electron-side unit tests |
+
+### Modified Files
+| File | Change |
+|------|--------|
+| `electron/main.ts` | Imports from `release-notes-utils.ts`, added `get-release-notes` and `get-changelog` IPC handlers |
+| `electron/preload.ts` | Added `updates` namespace with 7 methods/listeners |
+| `apps/web/src/types/electron.d.ts` | Added `ReleaseNote` interface and `updates` property on `ElectronAPI` |
+| `apps/web/src/routes/__root.tsx` | Mounted `<UpdateNotification />` globally |
+| `package.json` | Added `docs/releases/` and `CHANGELOG.md` to `extraResources` |
+| `scripts/release.ts` | Added `generateReleaseDoc()` step in release flow |

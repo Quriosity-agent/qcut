@@ -101,6 +101,15 @@ docs/issues/video-effect/
 /electron/resources/ffmpeg/*.js
 /electron/resources/ffmpeg/*.wasm
 
+# FFmpeg native binaries (provided by ffmpeg-static/ffprobe-static npm packages)
+/electron/resources/ffmpeg
+/electron/resources/ffmpeg.exe
+/electron/resources/ffprobe
+/electron/resources/ffprobe.exe
+/electron/resources/*.dll
+/electron/resources/*.dylib
+/electron/resources/*.so*
+
 # Playwright test artifacts
 test-results/
 test-temp/
