@@ -98,6 +98,7 @@ describe("Multi-Image Support", () => {
         "nano-banana",
         "gemini-3-pro-edit",
         "flux-2-flex-edit",
+        "gpt-image-1-5-edit",
       ];
 
       for (const model of multiImageModels) {
@@ -122,8 +123,8 @@ describe("Multi-Image Support", () => {
   });
 
   describe("IMAGE_EDIT_MODEL_IDS", () => {
-    it("contains all 9 models", () => {
-      expect(IMAGE_EDIT_MODEL_IDS).toHaveLength(9);
+    it("contains all 10 models", () => {
+      expect(IMAGE_EDIT_MODEL_IDS).toHaveLength(10);
     });
 
     it("includes all expected model IDs", () => {
@@ -162,6 +163,7 @@ describe("Multi-Image Support", () => {
       expect(multiImageModels).toContain("nano-banana");
       expect(multiImageModels).toContain("gemini-3-pro-edit");
       expect(multiImageModels).toContain("flux-2-flex-edit");
+      expect(multiImageModels).toContain("gpt-image-1-5-edit");
 
       // Should not include single-image models
       expect(multiImageModels).not.toContain("seededit");
@@ -169,8 +171,8 @@ describe("Multi-Image Support", () => {
       expect(multiImageModels).not.toContain("reve-edit");
     });
 
-    it("returns 5 multi-image models", () => {
-      expect(getMultiImageModelIds()).toHaveLength(5);
+    it("returns 6 multi-image models", () => {
+      expect(getMultiImageModelIds()).toHaveLength(6);
     });
   });
 

@@ -263,7 +263,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
 
       await expect(
         generateSeeddream45Image({ prompt: "Test prompt" })
-      ).rejects.toThrow(/Seeddream 4.5 generation failed: 401/);
+      ).rejects.toThrow(/Seeddream 4.5 image generation failed: 401/);
     });
 
     it("should throw error when API key is not configured", async () => {
@@ -316,7 +316,7 @@ describe("Seeddream 4.5 Image Edit", () => {
           prompt: "Edit this image",
           image_urls: [],
         })
-      ).rejects.toThrow(/At least one image URL is required/);
+      ).rejects.toThrow(/Please select at least one image to edit/);
     });
 
     it("should reject more than 10 images", async () => {
@@ -443,7 +443,7 @@ describe("Seeddream 4.5 Image Edit", () => {
           prompt: "Edit this",
           image_urls: ["https://fal.ai/storage/input.png"],
         })
-      ).rejects.toThrow(/Seeddream 4.5 edit failed: 500/);
+      ).rejects.toThrow(/Seeddream 4.5 image generation failed: 500/);
     });
   });
 });

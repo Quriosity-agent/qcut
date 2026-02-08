@@ -26,8 +26,21 @@ import * as fs from "fs";
 import * as http from "http";
 import * as os from "os";
 import { pathToFileURL } from "url";
+import {
+  parseReleaseNote as _parseReleaseNote,
+  compareSemver as _compareSemver,
+  parseChangelog,
+  readReleaseNotesFromDir,
+} from "./release-notes-utils.js";
 
 // Type definitions
+interface ReleaseNote {
+  version: string;
+  date: string;
+  channel: string;
+  content: string;
+}
+
 interface Logger {
   log(message?: any, ...optionalParams: any[]): void;
   error(message?: any, ...optionalParams: any[]): void;
@@ -133,6 +146,43 @@ function detectChannelFromVersion(version: string): string {
   if (version.includes("-beta")) return "beta";
   if (version.includes("-rc")) return "rc";
   return "latest";
+}
+
+/**
+ * Resolve the path to docs/releases/ directory.
+ * Works in both development and packaged (ASAR) builds.
+ */
+function getReleasesDir(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "docs", "releases");
+  }
+  // Development: relative to project root (runtime dir is dist/electron/)
+  return path.join(__dirname, "..", "..", "docs", "releases");
+}
+
+// Delegate to release-notes-utils for testability
+const parseReleaseNote = _parseReleaseNote;
+const compareSemver = _compareSemver;
+
+/**
+ * Fallback: parse CHANGELOG.md into release note entries.
+ */
+function readChangelogFallback(): ReleaseNote[] {
+  try {
+    const changelogPath = app.isPackaged
+      ? path.join(process.resourcesPath, "CHANGELOG.md")
+      : path.join(__dirname, "..", "..", "CHANGELOG.md");
+
+    if (!fs.existsSync(changelogPath)) {
+      return [];
+    }
+
+    const raw = fs.readFileSync(changelogPath, "utf-8");
+    return parseChangelog(raw);
+  } catch (error: any) {
+    logger.error("Error reading CHANGELOG.md:", error);
+    return [];
+  }
 }
 
 function setupAutoUpdater(): void {
@@ -1396,6 +1446,48 @@ app.whenReady().then(() => {
     } catch (error: any) {
       logger.error("Error installing update:", error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // IPC handlers for release notes
+  ipcMain.handle(
+    "get-release-notes",
+    async (
+      _: IpcMainInvokeEvent,
+      version?: string
+    ): Promise<ReleaseNote | null> => {
+      try {
+        const releasesDir = getReleasesDir();
+        const filename = version ? `v${version}.md` : "latest.md";
+        const filePath = path.join(releasesDir, filename);
+
+        if (!fs.existsSync(filePath)) {
+          return null;
+        }
+
+        const raw = fs.readFileSync(filePath, "utf-8");
+        return parseReleaseNote(raw);
+      } catch (error: any) {
+        logger.error("Error reading release notes:", error);
+        return null;
+      }
+    }
+  );
+
+  ipcMain.handle("get-changelog", async (): Promise<ReleaseNote[]> => {
+    try {
+      const releasesDir = getReleasesDir();
+      const notes = readReleaseNotesFromDir(releasesDir);
+
+      if (notes.length === 0) {
+        // Fallback: read CHANGELOG.md
+        return readChangelogFallback();
+      }
+
+      return notes;
+    } catch (error: any) {
+      logger.error("Error reading changelog:", error);
+      return readChangelogFallback();
     }
   });
 });

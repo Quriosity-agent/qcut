@@ -3,6 +3,16 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Mock features module BEFORE effects-store import so EFFECTS_ENABLED is true
+// The test setup mocks localStorage.getItem as vi.fn() which returns undefined,
+// but isFeatureEnabled checks `override !== null` — undefined !== null is true,
+// so it evaluates `undefined === "true"` → false, disabling effects at module load.
+vi.mock("@/config/features", () => ({
+  EFFECTS_ENABLED: true,
+  isFeatureEnabled: () => true,
+}));
+
 import { useEffectsStore } from "../../stores/effects-store";
 
 describe("Debug Effects Store", () => {
@@ -19,6 +29,7 @@ describe("Debug Effects Store", () => {
         }),
         setItem: vi.fn(),
         removeItem: vi.fn(),
+        clear: vi.fn(),
       },
       writable: true,
     });

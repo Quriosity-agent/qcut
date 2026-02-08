@@ -98,13 +98,28 @@ describe("Image Validation", () => {
 
   describe("getImageDimensions", () => {
     it("should handle image loading errors gracefully", async () => {
-      const invalidFile = new File(["invalid"], "broken.png", {
-        type: "image/png",
-      });
+      // Mock Image to trigger onerror (JSDOM doesn't fire onerror for blob URLs)
+      const OriginalImage = globalThis.Image;
+      globalThis.Image = class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        set src(_url: string) {
+          // Simulate async error
+          setTimeout(() => this.onerror?.(), 0);
+        }
+      } as unknown as typeof Image;
 
-      await expect(getImageDimensions(invalidFile)).rejects.toThrow(
-        "Failed to load image"
-      );
+      try {
+        const invalidFile = new File(["invalid"], "broken.png", {
+          type: "image/png",
+        });
+
+        await expect(getImageDimensions(invalidFile)).rejects.toThrow(
+          "Failed to load image"
+        );
+      } finally {
+        globalThis.Image = OriginalImage;
+      }
     });
   });
 });

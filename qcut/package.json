@@ -63,7 +63,7 @@
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
     "dist:all": "electron-builder --win --mac --linux",
-    "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\" && bun run copy-ffmpeg",
+    "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\"",
     "copy-ffmpeg": "bun scripts/copy-ffmpeg.ts",
     "setup-ffmpeg": "bun scripts/setup-ffmpeg.ts",
     "predev": "bun run setup-ffmpeg",
@@ -116,6 +116,8 @@
       "node_modules/electron-updater/**/*",
       "node_modules/@google/generative-ai/**/*",
       "node_modules/node-pty/**/*",
+      "node_modules/ffmpeg-static/**/*",
+      "node_modules/ffprobe-static/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -144,17 +146,6 @@
     "nodeGypRebuild": false,
     "extraResources": [
       {
-        "from": "electron/resources/",
-        "to": "./",
-        "filter": [
-          "**/*.exe",
-          "**/*.dll",
-          "**/*.dylib",
-          "**/*.so",
-          "!**/ffmpeg/**"
-        ]
-      },
-      {
         "from": "resources/default-skills",
         "to": "default-skills",
         "filter": [
@@ -168,12 +159,25 @@
       {
         "from": "node_modules/node-pty",
         "to": "node_modules/node-pty"
+      },
+      {
+        "from": "docs/releases",
+        "to": "docs/releases",
+        "filter": [
+          "**/*.md"
+        ]
+      },
+      {
+        "from": "CHANGELOG.md",
+        "to": "CHANGELOG.md"
       }
     ],
     "asar": true,
     "asarUnpack": [
       "**/node_modules/sharp/**/*",
       "**/node_modules/@ffmpeg/**/*",
+      "**/node_modules/ffmpeg-static/**/*",
+      "**/node_modules/ffprobe-static/**/*",
       "**/node_modules/electron-updater/**/*",
       "**/node_modules/electron-log/**/*",
       "**/node_modules/@google/generative-ai/**/*",
@@ -320,6 +324,8 @@
     "@remotion/zod-types": "4.0.417",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
     "jszip": "^3.10.1",
     "next": "^15.5.2",
     "node-pty": "^1.1.0",
@@ -347,6 +353,8 @@
     "electron",
     "electron-winstaller",
     "esbuild",
+    "ffmpeg-static",
+    "ffprobe-static",
     "sharp"
   ]
 }

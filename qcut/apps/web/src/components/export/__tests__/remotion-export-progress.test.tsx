@@ -137,12 +137,12 @@ describe("RemotionExportProgress", () => {
 
       render(<RemotionExportProgress />);
 
-      // Phase text is created by removing "ing" suffix, so check for partial matches
-      expect(screen.getByText(/analyz/i)).toBeInTheDocument();
-      expect(screen.getByText(/prerender/i)).toBeInTheDocument();
-      expect(screen.getByText(/composit/i)).toBeInTheDocument();
-      expect(screen.getByText(/encod/i)).toBeInTheDocument();
-      expect(screen.getByText(/cleanup/i)).toBeInTheDocument();
+      // Phase labels are exact: Analyze, Pre-render, Composite, Encode, Cleanup
+      expect(screen.getByText("Analyze")).toBeInTheDocument();
+      expect(screen.getByText("Pre-render")).toBeInTheDocument();
+      expect(screen.getByText("Composite")).toBeInTheDocument();
+      expect(screen.getByText("Encode")).toBeInTheDocument();
+      expect(screen.getByText("Cleanup")).toBeInTheDocument();
     });
   });
 

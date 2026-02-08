@@ -960,6 +960,64 @@ export interface ElectronAPI {
      */
     cleanup: (sessionId: string) => Promise<void>;
   };
+
+  /**
+   * Auto-update and release notes operations
+   * Provides manual update control and access to bundled release notes
+   */
+  updates?: {
+    /** Manually check for available updates */
+    checkForUpdates: () => Promise<{
+      available: boolean;
+      version?: string;
+      message?: string;
+      error?: string;
+    }>;
+    /** Install a downloaded update (triggers app restart) */
+    installUpdate: () => Promise<{
+      success: boolean;
+      message?: string;
+      error?: string;
+    }>;
+    /** Get release notes for a specific version, or latest if omitted */
+    getReleaseNotes: (version?: string) => Promise<ReleaseNote | null>;
+    /** Get all available release notes, sorted newest first */
+    getChangelog: () => Promise<ReleaseNote[]>;
+    /** Listen for update-available events from auto-updater */
+    onUpdateAvailable: (
+      callback: (data: {
+        version: string;
+        releaseNotes?: string;
+        releaseDate?: string;
+      }) => void
+    ) => () => void;
+    /** Listen for download progress events */
+    onDownloadProgress: (
+      callback: (data: {
+        percent: number;
+        transferred: number;
+        total: number;
+      }) => void
+    ) => () => void;
+    /** Listen for update-downloaded events */
+    onUpdateDownloaded: (
+      callback: (data: { version: string }) => void
+    ) => () => void;
+  };
+}
+
+/**
+ * A parsed release note with frontmatter metadata and Markdown content
+ */
+export interface ReleaseNote {
+  /** Semver version string */
+  version: string;
+  /** Release date in ISO format */
+  date: string;
+  /** Release channel: stable, alpha, beta, or rc */
+  channel: "stable" | "alpha" | "beta" | "rc";
+  /** Raw Markdown content (excluding frontmatter) */
+  content: string;
 }
 
 /**

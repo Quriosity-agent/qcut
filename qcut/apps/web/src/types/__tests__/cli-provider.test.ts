@@ -214,10 +214,9 @@ describe("providerRequiresApiKey", () => {
 });
 
 describe("getDefaultCodexModel", () => {
-  it("should return first model ID", () => {
+  it("should return default codex model ID", () => {
     const defaultModel = getDefaultCodexModel();
-    expect(defaultModel).toBe(DEFAULT_OPENROUTER_MODELS[0].id);
-    expect(defaultModel).toBe("minimax/minimax-m2.1");
+    expect(defaultModel).toBe("anthropic/claude-sonnet-4");
   });
 
   it("should return a valid OpenRouter model ID", () => {

@@ -62,6 +62,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
 
+      - name: Cache ffmpeg-static binary
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/ffmpeg-static/ffmpeg*
+            node_modules/ffprobe-static/bin
+          key: ffmpeg-static-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
       - name: Install dependencies
         run: bun install
 
@@ -103,6 +111,14 @@ jobs:
           key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
+
+      - name: Cache ffmpeg-static binary
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/ffmpeg-static/ffmpeg*
+            node_modules/ffprobe-static/bin
+          key: ffmpeg-static-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         run: bun install
@@ -146,6 +162,14 @@ jobs:
           key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock', 'apps/web/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-1.2.18-
+
+      - name: Cache ffmpeg-static binary
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/ffmpeg-static/ffmpeg*
+            node_modules/ffprobe-static/bin
+          key: ffmpeg-static-${{ runner.os }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         run: bun install
