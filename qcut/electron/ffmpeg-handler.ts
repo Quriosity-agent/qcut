@@ -101,7 +101,20 @@ export function setupFFmpegIPC(): void {
   ipcMain.handle("ffmpeg-health", async (): Promise<FFmpegHealthResult> => {
     if (healthResult) return healthResult;
     // If startup check hasn't completed yet, run it now
-    healthResult = await verifyFFmpegBinary();
+    try {
+      healthResult = await verifyFFmpegBinary();
+    } catch (error) {
+      console.error("[FFmpeg Health] IPC health check failed:", error);
+      healthResult = {
+        ffmpegOk: false,
+        ffprobeOk: false,
+        ffmpegVersion: "",
+        ffprobeVersion: "",
+        ffmpegPath: "",
+        ffprobePath: "",
+        errors: [String(error)],
+      };
+    }
     return healthResult;
   });
 
