@@ -1,8 +1,17 @@
+/**
+ * Post-build verification script for packaged FFmpeg binaries.
+ *
+ * Runs after electron-builder to confirm that ffmpeg.exe and ffprobe.exe
+ * are present, correctly unpacked, and executable inside the win-unpacked
+ * output directory. Exits with code 1 if any check fails.
+ */
+
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
+/** Result of spawning a binary with `-version`. */
 interface BinaryRunResult {
   exitCode: number | null;
   firstLine: string;
@@ -10,11 +19,18 @@ interface BinaryRunResult {
   error: string;
 }
 
+/** Directory candidate with modification time for sorting. */
 interface CandidateDir {
   fullPath: string;
   mtimeMs: number;
 }
 
+/**
+ * Finds the win-unpacked output directory inside dist-electron.
+ * If multiple candidates exist, returns the most recently modified one.
+ * @param distDir - The dist-electron directory path
+ * @returns Absolute path to the win-unpacked directory
+ */
 async function resolveWinUnpackedDir({
   distDir,
 }: {
@@ -23,7 +39,9 @@ async function resolveWinUnpackedDir({
   try {
     const entries = await readdir(distDir, { withFileTypes: true });
     const candidateNames = entries
-      .filter((entry) => entry.isDirectory() && entry.name.endsWith("win-unpacked"))
+      .filter(
+        (entry) => entry.isDirectory() && entry.name.endsWith("win-unpacked")
+      )
       .map((entry) => entry.name);
 
     if (candidateNames.length === 0) {
@@ -50,6 +68,12 @@ async function resolveWinUnpackedDir({
   }
 }
 
+/**
+ * Recursively searches for a file by name starting from the given directory.
+ * @param startDir - Root directory to begin the search
+ * @param fileName - Case-insensitive file name to find
+ * @returns Absolute path to the first match, or null if not found
+ */
 async function findFirstFile({
   startDir,
   fileName,
@@ -60,7 +84,8 @@ async function findFirstFile({
   try {
     const entries = await readdir(startDir, { withFileTypes: true });
     const directHit = entries.find(
-      (entry) => entry.isFile() && entry.name.toLowerCase() === fileName.toLowerCase()
+      (entry) =>
+        entry.isFile() && entry.name.toLowerCase() === fileName.toLowerCase()
     );
     if (directHit) {
       return join(startDir, directHit.name);
@@ -70,8 +95,9 @@ async function findFirstFile({
       .filter((entry) => entry.isDirectory())
       .map((entry) => join(startDir, entry.name));
     const nestedHits = await Promise.all(
-      subDirs.map(async (subDir): Promise<string | null> =>
-        findFirstFile({ startDir: subDir, fileName })
+      subDirs.map(
+        async (subDir): Promise<string | null> =>
+          findFirstFile({ startDir: subDir, fileName })
       )
     );
 
@@ -87,6 +113,13 @@ async function findFirstFile({
   }
 }
 
+/**
+ * Locates a node_modules package inside the packaged app resources.
+ * Checks app.asar.unpacked/node_modules first, then bare node_modules.
+ * @param resourcesDir - The resources directory of the packaged app
+ * @param moduleName - npm package name (e.g. "ffmpeg-static")
+ * @returns Absolute path to the module directory, or null if not found
+ */
 function resolvePackagedModuleDir({
   resourcesDir,
   moduleName,
@@ -113,6 +146,13 @@ function resolvePackagedModuleDir({
   }
 }
 
+/**
+ * Resolves the binary path within a module directory.
+ * For ffprobe, checks arch-specific subdirectories (preferred → x64 → ia32).
+ * @param moduleDir - Root directory of the npm module
+ * @param binaryName - Binary file name (e.g. "ffmpeg.exe")
+ * @returns Absolute path to the binary, or null if not found
+ */
 function resolvePreferredBinaryPath({
   moduleDir,
   binaryName,
@@ -146,6 +186,13 @@ function resolvePreferredBinaryPath({
   }
 }
 
+/**
+ * Spawns a binary with `-version` and captures the output.
+ * Returns a result object instead of throwing, for safe parallel execution.
+ * @param binaryPath - Absolute path to the executable
+ * @param timeoutMs - Maximum time to wait before killing the process
+ * @returns Exit code, first stdout line, stderr, and any error message
+ */
 function runBinaryVersion({
   binaryPath,
   timeoutMs,
@@ -203,6 +250,11 @@ function runBinaryVersion({
   });
 }
 
+/**
+ * Main verification entry point. Locates the packaged win-unpacked directory,
+ * finds ffmpeg.exe and ffprobe.exe, validates paths, and executes them to
+ * confirm they are functional. Throws on any failure.
+ */
 async function verifyPackagedFFmpeg(): Promise<void> {
   const distDir = join(process.cwd(), "dist-electron");
   if (!existsSync(distDir)) {
