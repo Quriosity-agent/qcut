@@ -28,6 +28,7 @@ import type {
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
+  FFmpegHealthResult,
 } from "./ffmpeg/types";
 
 // Re-export types for external use (using export from)
@@ -55,9 +56,21 @@ import {
   parseProgress,
   probeVideoFile,
   normalizeVideo,
+  verifyFFmpegBinary,
 } from "./ffmpeg/utils";
 
 const tempManager = new TempManager();
+
+/** Cached health check result — populated by initFFmpegHealthCheck() */
+let healthResult: FFmpegHealthResult | null = null;
+
+/**
+ * Runs FFmpeg/FFprobe health check and caches the result.
+ * Called at startup from main.ts — async, non-blocking.
+ */
+export async function initFFmpegHealthCheck(): Promise<void> {
+  healthResult = await verifyFFmpegBinary();
+}
 
 /**
  * Registers all FFmpeg-related IPC handlers for video export operations.
@@ -69,6 +82,14 @@ export function setupFFmpegIPC(): void {
   // Handle ffmpeg-path request
   ipcMain.handle("ffmpeg-path", async (): Promise<string> => {
     return getFFmpegPath();
+  });
+
+  // Handle ffmpeg health check request
+  ipcMain.handle("ffmpeg-health", async (): Promise<FFmpegHealthResult> => {
+    if (healthResult) return healthResult;
+    // If startup check hasn't completed yet, run it now
+    healthResult = await verifyFFmpegBinary();
+    return healthResult;
   });
 
   // Create export session
@@ -1254,11 +1275,21 @@ function buildFFmpegArgs(
   );
 }
 
-// Re-export getFFmpegPath for backward compatibility (used by main.ts, using export from)
-export { getFFmpegPath } from "./ffmpeg/utils";
+// Re-export getFFmpegPath and getFFprobePath for backward compatibility (used by main.ts)
+export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils";
 
 // CommonJS export for backward compatibility with main.js
-module.exports = { setupFFmpegIPC, getFFmpegPath };
+module.exports = {
+  setupFFmpegIPC,
+  initFFmpegHealthCheck,
+  getFFmpegPath,
+  getFFprobePath,
+};
 
 // ES6 export for TypeScript files
-export default { setupFFmpegIPC, getFFmpegPath };
+export default {
+  setupFFmpegIPC,
+  initFFmpegHealthCheck,
+  getFFmpegPath,
+  getFFprobePath,
+};
