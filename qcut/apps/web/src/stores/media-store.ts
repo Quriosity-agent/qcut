@@ -1145,7 +1145,13 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       return syncProjectFolder(projectId);
     } catch (error) {
       debugError("[MediaStore] Failed to sync from project folder:", error);
-      return { imported: 0, skipped: 0, errors: [String(error)], totalDiskFiles: 0 };
+      return {
+        imported: 0,
+        skipped: 0,
+        errors: [String(error)],
+        scanTime: 0,
+        totalDiskFiles: 0,
+      };
     }
   },
 }));
