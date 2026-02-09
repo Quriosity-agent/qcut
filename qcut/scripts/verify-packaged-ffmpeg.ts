@@ -128,11 +128,11 @@ function resolvePreferredBinaryPath({
 
     if (binaryName.toLowerCase() === "ffprobe.exe") {
       const preferredArch = process.arch === "ia32" ? "ia32" : "x64";
-      const candidates = [
+      const candidates = new Set([
         join(moduleDir, "bin", "win32", preferredArch, "ffprobe.exe"),
         join(moduleDir, "bin", "win32", "x64", "ffprobe.exe"),
         join(moduleDir, "bin", "win32", "ia32", "ffprobe.exe"),
-      ];
+      ]);
       for (const candidate of candidates) {
         if (existsSync(candidate)) {
           return candidate;
