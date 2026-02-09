@@ -521,13 +521,21 @@ app.whenReady().then(() => {
   setupPtyIPC(); // Add PTY terminal support
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
   migrateAIVideosToDocuments()
-    .then((result: { copied: number; skipped: number }) => {
-      if (result.copied > 0) {
+    .then(
+      (result: {
+        copied: number;
+        skipped: number;
+        projectsProcessed: number;
+        errors: string[];
+      }) => {
         console.log(
-          `[AI Video Migration] Copied ${result.copied} files, skipped ${result.skipped}`
+          `[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
         );
+        if (result.errors.length > 0) {
+          console.warn("[AI Video Migration] Errors:", result.errors);
+        }
       }
-    })
+    )
     .catch((err: Error) => {
       console.error("[AI Video Migration] Failed:", err.message);
     });

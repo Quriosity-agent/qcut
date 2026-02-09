@@ -18,7 +18,7 @@ export function sanitizeFilename(filename: string): string {
  */
 export function getAIVideoDir(projectId: string): string {
   const documentsPath = app.getPath("documents");
-  return path.join(
+  const dir = path.join(
     documentsPath,
     "QCut",
     "Projects",
@@ -27,6 +27,10 @@ export function getAIVideoDir(projectId: string): string {
     "generated",
     "videos"
   );
+  console.log(
+    `[AI Video Path] getAIVideoDir("${projectId}") → ${dir} (documents=${documentsPath})`
+  );
+  return dir;
 }
 
 /**
@@ -125,6 +129,9 @@ export async function saveAIVideoToDisk(
 
     // Create project-specific video directory (Documents-based)
     const projectDir = getAIVideoDir(projectId);
+    console.log(
+      `[AI Video Save] Saving to projectDir: ${projectDir} (projectId="${projectId}")`
+    );
 
     // Ensure directory exists with proper permissions
     try {
@@ -332,11 +339,17 @@ export function registerAIVideoHandlers(): void {
   ipcMain.handle(
     "ai-video:get-project-dir",
     async (event, projectId: string): Promise<string> => {
-      return getAIVideoDir(projectId);
+      const dir = getAIVideoDir(projectId);
+      console.log(
+        `[AI Video IPC] get-project-dir("${projectId}") → ${dir}`
+      );
+      return dir;
     }
   );
 
-  console.log("✅ AI Video save handlers registered");
+  console.log(
+    "✅ AI Video save handlers registered (Documents-based paths)"
+  );
 }
 
 // --- Migration ---
@@ -363,11 +376,17 @@ export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
   };
 
   const legacyRoot = path.join(app.getPath("userData"), "projects");
+  console.log(`[AI Video Migration] Legacy root: ${legacyRoot}`);
+  console.log(
+    `[AI Video Migration] Documents base: ${app.getPath("documents")}`
+  );
 
   // Early return if no legacy directory
   try {
     await fs.promises.access(legacyRoot);
+    console.log("[AI Video Migration] Legacy root exists, scanning...");
   } catch {
+    console.log("[AI Video Migration] No legacy root found, skipping.");
     return result;
   }
 
