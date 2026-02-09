@@ -113,6 +113,39 @@ function resolvePackagedModuleDir({
   }
 }
 
+function resolvePreferredBinaryPath({
+  moduleDir,
+  binaryName,
+}: {
+  moduleDir: string;
+  binaryName: string;
+}): string | null {
+  try {
+    const directPath = join(moduleDir, binaryName);
+    if (existsSync(directPath)) {
+      return directPath;
+    }
+
+    if (binaryName.toLowerCase() === "ffprobe.exe") {
+      const preferredArch = process.arch === "ia32" ? "ia32" : "x64";
+      const candidates = [
+        join(moduleDir, "bin", "win32", preferredArch, "ffprobe.exe"),
+        join(moduleDir, "bin", "win32", "x64", "ffprobe.exe"),
+        join(moduleDir, "bin", "win32", "ia32", "ffprobe.exe"),
+      ];
+      for (const candidate of candidates) {
+        if (existsSync(candidate)) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function runBinaryVersion({
   binaryPath,
   timeoutMs,
@@ -200,14 +233,24 @@ async function verifyPackagedFFmpeg(): Promise<void> {
       );
     }
 
-    const ffmpegPath = await findFirstFile({
-      startDir: ffmpegRoot,
-      fileName: "ffmpeg.exe",
-    });
-    const ffprobePath = await findFirstFile({
-      startDir: ffprobeRoot,
-      fileName: "ffprobe.exe",
-    });
+    const ffmpegPath =
+      resolvePreferredBinaryPath({
+        moduleDir: ffmpegRoot,
+        binaryName: "ffmpeg.exe",
+      }) ??
+      (await findFirstFile({
+        startDir: ffmpegRoot,
+        fileName: "ffmpeg.exe",
+      }));
+    const ffprobePath =
+      resolvePreferredBinaryPath({
+        moduleDir: ffprobeRoot,
+        binaryName: "ffprobe.exe",
+      }) ??
+      (await findFirstFile({
+        startDir: ffprobeRoot,
+        fileName: "ffprobe.exe",
+      }));
 
     if (!ffmpegPath) {
       throw new Error(`ffmpeg.exe not found under: ${ffmpegRoot}`);

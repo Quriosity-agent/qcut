@@ -336,6 +336,23 @@ export function getFFprobePath(): string {
 
   if (app.isPackaged) {
     const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+    if (process.platform === "win32") {
+      const preferredArch = process.arch === "ia32" ? "ia32" : "x64";
+      const preferredPath = path.join(
+        process.resourcesPath,
+        "node_modules",
+        "ffprobe-static",
+        "bin",
+        "win32",
+        preferredArch,
+        ffprobeExe
+      );
+      if (fs.existsSync(preferredPath)) {
+        console.log("[FFmpeg] Found packaged ffprobe-static (arch-specific):", preferredPath);
+        return preferredPath;
+      }
+    }
+
     const packagedNodeModulesPath = findPackagedNodeModuleBinary(
       "ffprobe-static",
       ffprobeExe
