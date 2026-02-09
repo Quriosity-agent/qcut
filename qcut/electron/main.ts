@@ -508,18 +508,36 @@ app.whenReady().then(() => {
   staticServer = createStaticServer();
 
   createWindow();
-  setupFFmpegIPC(); // Add FFmpeg CLI support
-  initFFmpegHealthCheck().catch((err: Error) => {
-    logger.error("[FFmpeg Health] Startup check failed:", err.message);
-  }); // Async, non-blocking — verifies binaries are executable
-  setupSoundIPC(); // Add sound search support
-  setupThemeIPC(); // Add theme switching support
-  setupApiKeyIPC(); // Add API key management support
-  setupGeminiHandlers(); // Add Gemini transcription support
-  registerElevenLabsTranscribeHandler(); // Add ElevenLabs transcription support
-  setupGeminiChatIPC(); // Add Gemini chat support
-  setupPtyIPC(); // Add PTY terminal support
-  registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
+
+  // Register all IPC handlers with try/catch to prevent cascade failures
+  const handlers: [string, () => void][] = [
+    ["FFmpegIPC", setupFFmpegIPC],
+    ["SoundIPC", setupSoundIPC],
+    ["ThemeIPC", setupThemeIPC],
+    ["ApiKeyIPC", setupApiKeyIPC],
+    ["GeminiHandlers", setupGeminiHandlers],
+    ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
+    ["GeminiChatIPC", setupGeminiChatIPC],
+    ["PtyIPC", setupPtyIPC],
+    ["AIVideoHandlers", registerAIVideoHandlers],
+    ["SkillsIPC", setupSkillsIPC],
+    ["AIPipelineIPC", setupAIPipelineIPC],
+    ["MediaImportIPC", setupMediaImportIPC],
+    ["ProjectFolderIPC", setupProjectFolderIPC],
+    ["ClaudeIPC", setupAllClaudeIPC],
+    ["RemotionFolderIPC", setupRemotionFolderIPC],
+  ];
+
+  for (const [name, setup] of handlers) {
+    try {
+      setup();
+      console.log(`✅ ${name} registered`);
+    } catch (err: any) {
+      console.error(`❌ ${name} FAILED:`, err.message, err.stack);
+    }
+  }
+
+  initFFmpegHealthCheck();
   migrateAIVideosToDocuments()
     .then(
       (result: {
@@ -539,12 +557,6 @@ app.whenReady().then(() => {
     .catch((err: Error) => {
       console.error("[AI Video Migration] Failed:", err.message);
     });
-  setupSkillsIPC(); // Add skills management support
-  setupAIPipelineIPC(); // Add AI content pipeline support
-  setupMediaImportIPC(); // Add media import with symlink/copy support
-  setupProjectFolderIPC(); // Add project folder scanning support
-  setupAllClaudeIPC(); // Add Claude Code integration API
-  setupRemotionFolderIPC(); // Add Remotion folder import support
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds
