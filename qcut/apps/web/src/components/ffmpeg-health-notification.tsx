@@ -20,9 +20,28 @@ export function FFmpegHealthNotification() {
         if (!result.ffmpegOk) failed.push("FFmpeg");
         if (!result.ffprobeOk) failed.push("FFprobe");
 
+        const lines: string[] = [
+          `${failed.join(" and ")} binary not found or not executable.`,
+        ];
+
+        // Show resolved paths so users/support can diagnose
+        if (result.ffmpegPath) {
+          lines.push(`FFmpeg path: ${result.ffmpegPath}`);
+        }
+        if (result.ffprobePath) {
+          lines.push(`FFprobe path: ${result.ffprobePath}`);
+        }
+
+        // Show specific errors from the health check
+        if (result.errors && result.errors.length > 0) {
+          for (const err of result.errors) {
+            lines.push(`Error: ${err}`);
+          }
+        }
+
         toast.warning("Video export may not work", {
-          description: `${failed.join(" and ")} binary not found or not executable. Try reinstalling QCut.`,
-          duration: 15_000,
+          description: lines.join("\n"),
+          duration: 30_000,
         });
       })
       .catch(() => {
