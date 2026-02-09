@@ -184,6 +184,9 @@ export async function integrateVideoToMediaStore(
       fileName: saveResult.fileName,
       fileSize: saveResult.fileSize,
     });
+    console.log(
+      `[AI Video Save] localPath = ${saveResult.localPath}`
+    );
 
     // Step 3: Add to media store
     const localUrl = URL.createObjectURL(file);
