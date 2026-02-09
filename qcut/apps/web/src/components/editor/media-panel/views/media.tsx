@@ -15,8 +15,9 @@ import {
   Copy,
   FolderInput,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { debugLog, debugError } from "@/lib/debug-config";
 import { createObjectURL } from "@/lib/blob-manager";
@@ -83,6 +84,8 @@ export function MediaView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all");
   const [filteredMediaItems, setFilteredMediaItems] = useState<MediaItem[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const hasSyncedRef = useRef(false);
 
   // Media store state monitoring (debug removed)
   // useEffect(() => {
