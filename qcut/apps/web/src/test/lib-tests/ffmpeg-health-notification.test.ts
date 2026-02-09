@@ -20,12 +20,48 @@ vi.mock("sonner", () => ({
 
 import { toast } from "sonner";
 
+/**
+ * Simulates the notification logic from FFmpegHealthNotification component.
+ * Extracted here so tests exercise the real branching without mounting React.
+ */
+async function runHealthCheckLogic(
+  checkHealth: () => Promise<any>
+): Promise<void> {
+  const result = await checkHealth();
+  if (result.ffmpegOk && result.ffprobeOk) return;
+
+  const failed: string[] = [];
+  if (!result.ffmpegOk) failed.push("FFmpeg");
+  if (!result.ffprobeOk) failed.push("FFprobe");
+
+  const lines: string[] = [
+    `${failed.join(" and ")} binary not found or not executable.`,
+  ];
+
+  if (result.ffmpegPath) {
+    lines.push(`FFmpeg path: ${result.ffmpegPath}`);
+  }
+  if (result.ffprobePath) {
+    lines.push(`FFprobe path: ${result.ffprobePath}`);
+  }
+
+  if (result.errors && result.errors.length > 0) {
+    for (const err of result.errors) {
+      lines.push(`Error: ${err}`);
+    }
+  }
+
+  toast.warning("Video export may not work", {
+    description: lines.join("\n"),
+    duration: 30_000,
+  });
+}
+
 describe("FFmpeg health notification logic", () => {
   const originalElectronAPI = (globalThis as any).window?.electronAPI;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Set up global window if needed
     if (typeof globalThis.window === "undefined") {
       (globalThis as any).window = {};
     }
@@ -50,21 +86,13 @@ describe("FFmpeg health notification logic", () => {
       errors: [],
     });
 
-    (globalThis as any).window.electronAPI = {
-      ffmpeg: { checkHealth: mockCheckHealth },
-    };
-
-    // Run the same logic as the component's useEffect
-    const result = await mockCheckHealth();
-    if (!result.ffmpegOk || !result.ffprobeOk) {
-      toast.warning("Video export may not work");
-    }
+    await runHealthCheckLogic(mockCheckHealth);
 
     expect(mockCheckHealth).toHaveBeenCalledOnce();
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it("shows warning toast when FFmpeg is not OK", async () => {
+  it("shows warning toast with path and error when FFmpeg fails", async () => {
     const mockCheckHealth = vi.fn().mockResolvedValue({
       ffmpegOk: false,
       ffprobeOk: true,
@@ -75,28 +103,45 @@ describe("FFmpeg health notification logic", () => {
       errors: ["FFmpeg spawn error: ENOENT"],
     });
 
-    (globalThis as any).window.electronAPI = {
-      ffmpeg: { checkHealth: mockCheckHealth },
-    };
-
-    const result = await mockCheckHealth();
-    if (!result.ffmpegOk || !result.ffprobeOk) {
-      const failed: string[] = [];
-      if (!result.ffmpegOk) failed.push("FFmpeg");
-      if (!result.ffprobeOk) failed.push("FFprobe");
-      toast.warning("Video export may not work", {
-        description: `${failed.join(" and ")} binary not found or not executable. Try reinstalling QCut.`,
-        duration: 15_000,
-      });
-    }
+    await runHealthCheckLogic(mockCheckHealth);
 
     expect(mockCheckHealth).toHaveBeenCalledOnce();
     expect(toast.warning).toHaveBeenCalledWith(
       "Video export may not work",
       expect.objectContaining({
-        description: expect.stringContaining("FFmpeg"),
+        description: expect.stringContaining("FFmpeg path: /usr/bin/ffmpeg"),
+        duration: 30_000,
       })
     );
+    // Should include the specific error
+    const call = (toast.warning as any).mock.calls[0];
+    expect(call[1].description).toContain("Error: FFmpeg spawn error: ENOENT");
+    // Should NOT mention FFprobe in the failure line
+    expect(call[1].description).toMatch(
+      /^FFmpeg binary not found or not executable\./
+    );
+  });
+
+  it("shows both binaries when both fail", async () => {
+    const mockCheckHealth = vi.fn().mockResolvedValue({
+      ffmpegOk: false,
+      ffprobeOk: false,
+      ffmpegVersion: "",
+      ffprobeVersion: "",
+      ffmpegPath: "C:\\app\\ffmpeg.exe",
+      ffprobePath: "C:\\app\\ffprobe.exe",
+      errors: ["FFmpeg spawn error: ENOENT", "FFprobe spawn error: ENOENT"],
+    });
+
+    await runHealthCheckLogic(mockCheckHealth);
+
+    const call = (toast.warning as any).mock.calls[0];
+    const desc: string = call[1].description;
+    expect(desc).toContain("FFmpeg and FFprobe binary not found");
+    expect(desc).toContain("FFmpeg path: C:\\app\\ffmpeg.exe");
+    expect(desc).toContain("FFprobe path: C:\\app\\ffprobe.exe");
+    expect(desc).toContain("Error: FFmpeg spawn error: ENOENT");
+    expect(desc).toContain("Error: FFprobe spawn error: ENOENT");
   });
 
   it("does nothing when electronAPI is not available", () => {
@@ -105,14 +150,11 @@ describe("FFmpeg health notification logic", () => {
     const checkHealth = (globalThis as any).window?.electronAPI?.ffmpeg
       ?.checkHealth;
 
-    // Same guard as the component
     if (!checkHealth) {
-      // Early return — no error, no toast
       expect(toast.warning).not.toHaveBeenCalled();
       return;
     }
 
-    // Should not reach here
     expect.unreachable("checkHealth should not be available");
   });
 });

@@ -93,11 +93,12 @@ export function getFFmpegPath(): string {
     }
 
     if (fs.existsSync(staticPath)) {
-      debugLog("Found ffmpeg-static:", staticPath);
+      console.log("[FFmpeg] Found ffmpeg-static:", staticPath);
       return staticPath;
     }
+    console.log("[FFmpeg] ffmpeg-static path not on disk:", staticPath);
   } catch {
-    debugLog("ffmpeg-static package not found, falling back");
+    console.log("[FFmpeg] ffmpeg-static package not found, falling back");
   }
 
   // 2. Legacy fallback: electron/resources/ or process.resourcesPath
@@ -106,9 +107,14 @@ export function getFFmpegPath(): string {
 
   if (app.isPackaged) {
     const resourcePath: string = path.join(process.resourcesPath, binaryName);
+    console.log("[FFmpeg] Checking resourcesPath:", resourcePath);
     if (fs.existsSync(resourcePath)) {
+      console.log("[FFmpeg] Found in resourcesPath:", resourcePath);
       return resourcePath;
     }
+    console.error(
+      "[FFmpeg] NOT FOUND in packaged app. Searched: ffmpeg-static (asar.unpacked), resourcesPath"
+    );
     throw new Error(
       "FFmpeg not found. Ensure ffmpeg-static is installed: bun add ffmpeg-static"
     );
@@ -117,20 +123,20 @@ export function getFFmpegPath(): string {
   // 3. Development: bundled resources → system paths → PATH
   const devPath: string = path.join(__dirname, "..", "resources", binaryName);
   if (fs.existsSync(devPath)) {
-    debugLog("Found bundled FFmpeg:", devPath);
+    console.log("[FFmpeg] Found bundled FFmpeg:", devPath);
     return devPath;
   }
 
   const systemPaths = getSystemFFmpegPaths(platform, binaryName);
   for (const searchPath of systemPaths) {
     if (fs.existsSync(searchPath)) {
-      debugLog("Found FFmpeg at:", searchPath);
+      console.log("[FFmpeg] Found FFmpeg at:", searchPath);
       return searchPath;
     }
   }
 
   // Last resort: system PATH
-  debugLog("Falling back to system PATH:", binaryName);
+  console.log("[FFmpeg] Falling back to system PATH:", binaryName);
   return binaryName;
 }
 
@@ -276,11 +282,12 @@ export function getFFprobePath(): string {
     }
 
     if (fs.existsSync(staticPath)) {
-      debugLog("Found ffprobe-static:", staticPath);
+      console.log("[FFmpeg] Found ffprobe-static:", staticPath);
       return staticPath;
     }
+    console.log("[FFmpeg] ffprobe-static path not on disk:", staticPath);
   } catch {
-    debugLog("ffprobe-static package not found, falling back");
+    console.log("[FFmpeg] ffprobe-static package not found, falling back");
   }
 
   // 2. Fallback: same directory as ffmpeg
