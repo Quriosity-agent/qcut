@@ -106,6 +106,14 @@ export function getFFmpegPath(): string {
   const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
   if (app.isPackaged) {
+    const packagedNodeModulesPath = findPackagedNodeModuleBinary(
+      "ffmpeg-static",
+      binaryName
+    );
+    if (packagedNodeModulesPath) {
+      return packagedNodeModulesPath;
+    }
+
     const resourcePath: string = path.join(process.resourcesPath, binaryName);
     console.log("[FFmpeg] Checking resourcesPath:", resourcePath);
     if (fs.existsSync(resourcePath)) {
@@ -264,6 +272,46 @@ function findFileRecursive(
 }
 
 /**
+ * Finds a binary copied via build.extraResources into
+ * <resources>/node_modules/<moduleName>/....
+ */
+function findPackagedNodeModuleBinary(
+  moduleName: string,
+  binaryName: string,
+  maxDepth = 6
+): string | null {
+  try {
+    if (!app.isPackaged) {
+      return null;
+    }
+
+    const moduleDir = path.join(
+      process.resourcesPath,
+      "node_modules",
+      moduleName
+    );
+    if (!fs.existsSync(moduleDir)) {
+      return null;
+    }
+
+    const binaryPath = findFileRecursive(moduleDir, binaryName, maxDepth);
+    if (binaryPath) {
+      console.log(
+        `[FFmpeg] Found packaged ${moduleName} binary in resources/node_modules:`,
+        binaryPath
+      );
+    }
+    return binaryPath;
+  } catch (error) {
+    console.log(
+      `[FFmpeg] Failed to search packaged ${moduleName} binary:`,
+      error
+    );
+    return null;
+  }
+}
+
+/**
  * Resolves FFprobe binary path.
  *
  * Search order:
@@ -288,6 +336,41 @@ export function getFFprobePath(): string {
     console.log("[FFmpeg] ffprobe-static path not on disk:", staticPath);
   } catch {
     console.log("[FFmpeg] ffprobe-static package not found, falling back");
+  }
+
+  if (app.isPackaged) {
+    const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+    if (process.platform === "win32") {
+      const preferredArch = process.arch === "ia32" ? "ia32" : "x64";
+      const candidateArches = new Set([preferredArch, "x64", "ia32"]);
+
+      for (const arch of candidateArches) {
+        const archPath = path.join(
+          process.resourcesPath,
+          "node_modules",
+          "ffprobe-static",
+          "bin",
+          "win32",
+          arch,
+          ffprobeExe
+        );
+        if (fs.existsSync(archPath)) {
+          console.log(
+            "[FFmpeg] Found packaged ffprobe-static (arch-specific):",
+            archPath
+          );
+          return archPath;
+        }
+      }
+    }
+
+    const packagedNodeModulesPath = findPackagedNodeModuleBinary(
+      "ffprobe-static",
+      ffprobeExe
+    );
+    if (packagedNodeModulesPath) {
+      return packagedNodeModulesPath;
+    }
   }
 
   // 2. Fallback: same directory as ffmpeg
