@@ -1,18 +1,17 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Tab, tabs, useMediaPanelStore } from "./store";
+import { tabs, tabGroups, useMediaPanelStore } from "./store";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useRef, useEffect } from "react";
 
-const tabKeys = Object.keys(tabs) as Tab[];
-
 export function TabBar() {
-  const { activeTab, setActiveTab } = useMediaPanelStore();
+  const { activeTab, setActiveTab, activeGroup } = useMediaPanelStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Map<Tab, HTMLDivElement>>(new Map());
+  const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  const tabKeys = tabGroups[activeGroup].tabs;
   const activeIndex = tabKeys.indexOf(activeTab);
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < tabKeys.length - 1;
@@ -42,7 +41,7 @@ export function TabBar() {
       <NavButton direction="left" onClick={goToPrev} isVisible={hasPrev} />
       <div
         ref={scrollContainerRef}
-        className="h-12 bg-panel-accent px-2 flex justify-start items-center gap-2 overflow-x-auto scrollbar-x-hidden relative w-full"
+        className="h-10 bg-panel-accent px-2 flex justify-start items-center gap-2 overflow-x-auto scrollbar-x-hidden relative w-full"
       >
         {tabKeys.map((tabKey) => {
           const tab = tabs[tabKey];

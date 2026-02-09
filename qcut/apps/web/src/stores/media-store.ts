@@ -70,6 +70,11 @@ interface MediaStore {
   bulkAddToFolder: (mediaIds: string[], folderId: string) => void;
   bulkMoveToFolder: (mediaIds: string[], folderId: string | null) => void;
   autoOrganizeByType: () => void;
+
+  // Project folder sync
+  syncFromProjectFolder: (
+    projectId: string
+  ) => Promise<import("@/lib/project-folder-sync").SyncResult>;
 }
 
 // Helper function to determine file type
@@ -1132,5 +1137,21 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
       .catch((error) => {
         debugError("[MediaStore] Failed to import project-store:", error);
       });
+  },
+
+  syncFromProjectFolder: async (projectId) => {
+    try {
+      const { syncProjectFolder } = await import("@/lib/project-folder-sync");
+      return syncProjectFolder(projectId);
+    } catch (error) {
+      debugError("[MediaStore] Failed to sync from project folder:", error);
+      return {
+        imported: 0,
+        skipped: 0,
+        errors: [String(error)],
+        scanTime: 0,
+        totalDiskFiles: 0,
+      };
+    }
   },
 }));

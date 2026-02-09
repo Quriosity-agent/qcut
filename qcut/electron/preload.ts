@@ -1032,6 +1032,7 @@ const electronAPI: ElectronAPI = {
     checkFFmpegResource: (filename: string): Promise<boolean> =>
       ipcRenderer.invoke("check-ffmpeg-resource", filename),
     getPath: (): Promise<string> => ipcRenderer.invoke("ffmpeg-path"),
+    checkHealth: () => ipcRenderer.invoke("ffmpeg-health"),
   },
 
   // API key operations

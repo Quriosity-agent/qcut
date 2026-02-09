@@ -1,4 +1,5 @@
 import type { StickerSource } from "../../../../electron/ffmpeg-handler";
+import type { FFmpegHealthResult } from "../../../../electron/ffmpeg/types";
 import type {
   VideoSourceInput,
   AudioFileInput,
@@ -321,6 +322,8 @@ export interface ElectronAPI {
       fileSize: number;
     }>;
     getPath: () => Promise<string>;
+    /** Returns cached FFmpeg/FFprobe health check result */
+    checkHealth: () => Promise<FFmpegHealthResult>;
   };
 
   apiKeys: {

@@ -240,6 +240,27 @@ export interface VideoProbeResult {
 }
 
 /**
+ * Result of FFmpeg/FFprobe binary health check at startup.
+ * Used to verify binaries are executable before user attempts export.
+ */
+export interface FFmpegHealthResult {
+  /** Whether FFmpeg binary spawned and returned version info */
+  ffmpegOk: boolean;
+  /** Whether FFprobe binary spawned and returned version info */
+  ffprobeOk: boolean;
+  /** Parsed FFmpeg version string (e.g., "6.1.1") or empty on failure */
+  ffmpegVersion: string;
+  /** Parsed FFprobe version string (e.g., "6.1.1") or empty on failure */
+  ffprobeVersion: string;
+  /** Resolved absolute path to FFmpeg binary */
+  ffmpegPath: string;
+  /** Resolved absolute path to FFprobe binary */
+  ffprobePath: string;
+  /** Error messages from failed checks (empty array if all OK) */
+  errors: string[];
+}
+
+/**
  * IPC handler type map for FFmpeg operations.
  */
 export interface FFmpegHandlers {

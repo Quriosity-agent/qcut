@@ -90,7 +90,10 @@ try {
 }
 
 // Import handlers (compiled TypeScript - relative to dist/electron output)
-const { setupFFmpegIPC } = require("./ffmpeg-handler.js");
+const {
+  setupFFmpegIPC,
+  initFFmpegHealthCheck,
+} = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
@@ -503,6 +506,9 @@ app.whenReady().then(() => {
 
   createWindow();
   setupFFmpegIPC(); // Add FFmpeg CLI support
+  initFFmpegHealthCheck().catch((err: Error) => {
+    logger.error("[FFmpeg Health] Startup check failed:", err.message);
+  }); // Async, non-blocking — verifies binaries are executable
   setupSoundIPC(); // Add sound search support
   setupThemeIPC(); // Add theme switching support
   setupApiKeyIPC(); // Add API key management support
@@ -1141,14 +1147,9 @@ app.whenReady().then(() => {
       const { spawn } = require("child_process");
 
       try {
-        // Get ffprobe path (should be in same directory as ffmpeg)
-        const { getFFmpegPath } = require("./ffmpeg-handler.js");
-        const ffmpegPath = getFFmpegPath();
-        const ffmpegDir = path.dirname(ffmpegPath);
-        const ffprobePath = path.join(
-          ffmpegDir,
-          process.platform === "win32" ? "ffprobe.exe" : "ffprobe"
-        );
+        // Get ffprobe path via ffprobe-static (resolves correctly in packaged builds)
+        const { getFFprobePath } = require("./ffmpeg-handler.js");
+        const ffprobePath = getFFprobePath();
 
         return new Promise((resolve) => {
           logger.log(`[Main] Running ffprobe on: ${filePath}`);

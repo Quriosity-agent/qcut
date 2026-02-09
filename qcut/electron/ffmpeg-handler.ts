@@ -28,6 +28,7 @@ import type {
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
+  FFmpegHealthResult,
 } from "./ffmpeg/types";
 
 // Re-export types for external use (using export from)
@@ -55,9 +56,39 @@ import {
   parseProgress,
   probeVideoFile,
   normalizeVideo,
+  verifyFFmpegBinary,
 } from "./ffmpeg/utils";
 
 const tempManager = new TempManager();
+
+/** Cached health check promise — ensures verifyFFmpegBinary() runs only once */
+let healthCheckPromise: Promise<FFmpegHealthResult> | null = null;
+
+function getFFmpegHealth(): Promise<FFmpegHealthResult> {
+  if (!healthCheckPromise) {
+    healthCheckPromise = verifyFFmpegBinary().catch((error) => {
+      console.error("[FFmpeg Health] Health check failed:", error);
+      return {
+        ffmpegOk: false,
+        ffprobeOk: false,
+        ffmpegVersion: "",
+        ffprobeVersion: "",
+        ffmpegPath: "",
+        ffprobePath: "",
+        errors: [String(error)],
+      };
+    });
+  }
+  return healthCheckPromise;
+}
+
+/**
+ * Kicks off FFmpeg/FFprobe health check and caches the promise.
+ * Called at startup from main.ts — async, non-blocking.
+ */
+export function initFFmpegHealthCheck(): void {
+  getFFmpegHealth();
+}
 
 /**
  * Registers all FFmpeg-related IPC handlers for video export operations.
@@ -69,6 +100,11 @@ export function setupFFmpegIPC(): void {
   // Handle ffmpeg-path request
   ipcMain.handle("ffmpeg-path", async (): Promise<string> => {
     return getFFmpegPath();
+  });
+
+  // Handle ffmpeg health check request
+  ipcMain.handle("ffmpeg-health", (): Promise<FFmpegHealthResult> => {
+    return getFFmpegHealth();
   });
 
   // Create export session
@@ -1254,11 +1290,21 @@ function buildFFmpegArgs(
   );
 }
 
-// Re-export getFFmpegPath for backward compatibility (used by main.ts, using export from)
-export { getFFmpegPath } from "./ffmpeg/utils";
+// Re-export getFFmpegPath and getFFprobePath for backward compatibility (used by main.ts)
+export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils";
 
 // CommonJS export for backward compatibility with main.js
-module.exports = { setupFFmpegIPC, getFFmpegPath };
+module.exports = {
+  setupFFmpegIPC,
+  initFFmpegHealthCheck,
+  getFFmpegPath,
+  getFFprobePath,
+};
 
 // ES6 export for TypeScript files
-export default { setupFFmpegIPC, getFFmpegPath };
+export default {
+  setupFFmpegIPC,
+  initFFmpegHealthCheck,
+  getFFmpegPath,
+  getFFprobePath,
+};

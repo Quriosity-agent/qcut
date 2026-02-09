@@ -23,6 +23,7 @@ export type {
   ExtractAudioResult,
   VideoProbeResult,
   FFmpegHandlers,
+  FFmpegHealthResult,
 } from "./types";
 
 // Utilities
@@ -43,4 +44,6 @@ export {
   probeVideoFile,
   // Video normalization
   normalizeVideo,
+  // Health check
+  verifyFFmpegBinary,
 } from "./utils";
