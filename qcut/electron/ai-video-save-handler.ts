@@ -8,8 +8,38 @@ const MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024; // 5GB limit for AI videos
 /**
  * Sanitize filename to prevent path traversal attacks
  */
-function sanitizeFilename(filename: string): string {
+export function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+/**
+ * Get the Documents-based AI video directory for a project.
+ * Path: Documents/QCut/Projects/{projectId}/media/generated/videos/
+ */
+export function getAIVideoDir(projectId: string): string {
+  const documentsPath = app.getPath("documents");
+  return path.join(
+    documentsPath,
+    "QCut",
+    "Projects",
+    sanitizeFilename(projectId),
+    "media",
+    "generated",
+    "videos"
+  );
+}
+
+/**
+ * Get the legacy AppData-based AI video directory for migration.
+ * Path: AppData/qcut/projects/{projectId}/ai-videos/
+ */
+export function getLegacyAIVideoDir(projectId: string): string {
+  return path.join(
+    app.getPath("userData"),
+    "projects",
+    sanitizeFilename(projectId),
+    "ai-videos"
+  );
 }
 
 /**
@@ -93,13 +123,8 @@ export async function saveAIVideoToDisk(
       };
     }
 
-    // Create project-specific video directory
-    const projectDir = path.join(
-      app.getPath("userData"),
-      "projects",
-      sanitizeFilename(projectId),
-      "ai-videos"
-    );
+    // Create project-specific video directory (Documents-based)
+    const projectDir = getAIVideoDir(projectId);
 
     // Ensure directory exists with proper permissions
     try {
@@ -307,14 +332,120 @@ export function registerAIVideoHandlers(): void {
   ipcMain.handle(
     "ai-video:get-project-dir",
     async (event, projectId: string): Promise<string> => {
-      return path.join(
-        app.getPath("userData"),
-        "projects",
-        sanitizeFilename(projectId),
-        "ai-videos"
-      );
+      return getAIVideoDir(projectId);
     }
   );
 
   console.log("✅ AI Video save handlers registered");
+}
+
+// --- Migration ---
+
+interface MigrationResult {
+  copied: number;
+  skipped: number;
+  projectsProcessed: number;
+  errors: string[];
+}
+
+/**
+ * One-time migration: copy AI videos from AppData to Documents.
+ * - Copies files, does NOT delete originals (existing localPath refs still work)
+ * - Skips files that already exist at the destination (idempotent)
+ * - Non-blocking: errors are collected, not thrown
+ */
+export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
+  const result: MigrationResult = {
+    copied: 0,
+    skipped: 0,
+    projectsProcessed: 0,
+    errors: [],
+  };
+
+  const legacyRoot = path.join(app.getPath("userData"), "projects");
+
+  // Early return if no legacy directory
+  try {
+    await fs.promises.access(legacyRoot);
+  } catch {
+    return result;
+  }
+
+  // Enumerate project directories
+  let projectDirs: string[];
+  try {
+    const entries = await fs.promises.readdir(legacyRoot, {
+      withFileTypes: true,
+    });
+    projectDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch (err) {
+    result.errors.push(`Failed to read legacy projects dir: ${err}`);
+    return result;
+  }
+
+  for (const projectName of projectDirs) {
+    const legacyVideoDir = path.join(legacyRoot, projectName, "ai-videos");
+
+    // Skip projects without ai-videos folder
+    try {
+      await fs.promises.access(legacyVideoDir);
+    } catch {
+      continue;
+    }
+
+    result.projectsProcessed++;
+    const destDir = getAIVideoDir(projectName);
+
+    // Ensure destination exists
+    try {
+      await fs.promises.mkdir(destDir, { recursive: true, mode: 0o755 });
+    } catch (err) {
+      result.errors.push(
+        `Failed to create dest dir for ${projectName}: ${err}`
+      );
+      continue;
+    }
+
+    // Copy files
+    let files: string[];
+    try {
+      files = await fs.promises.readdir(legacyVideoDir);
+    } catch (err) {
+      result.errors.push(
+        `Failed to read legacy dir for ${projectName}: ${err}`
+      );
+      continue;
+    }
+
+    for (const file of files) {
+      const srcPath = path.join(legacyVideoDir, file);
+      const destPath = path.join(destDir, file);
+
+      // Skip directories
+      try {
+        const stat = await fs.promises.stat(srcPath);
+        if (!stat.isFile()) continue;
+      } catch {
+        continue;
+      }
+
+      // Skip if destination already exists
+      try {
+        await fs.promises.access(destPath);
+        result.skipped++;
+        continue;
+      } catch {
+        // File doesn't exist at destination — proceed with copy
+      }
+
+      try {
+        await fs.promises.copyFile(srcPath, destPath);
+        result.copied++;
+      } catch (err) {
+        result.errors.push(`Failed to copy ${file} in ${projectName}: ${err}`);
+      }
+    }
+  }
+
+  return result;
 }

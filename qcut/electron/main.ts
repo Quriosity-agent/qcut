@@ -98,7 +98,10 @@ const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
-const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
+const {
+  registerAIVideoHandlers,
+  migrateAIVideosToDocuments,
+} = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
@@ -517,6 +520,17 @@ app.whenReady().then(() => {
   setupGeminiChatIPC(); // Add Gemini chat support
   setupPtyIPC(); // Add PTY terminal support
   registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
+  migrateAIVideosToDocuments()
+    .then((result: { copied: number; skipped: number }) => {
+      if (result.copied > 0) {
+        console.log(
+          `[AI Video Migration] Copied ${result.copied} files, skipped ${result.skipped}`
+        );
+      }
+    })
+    .catch((err: Error) => {
+      console.error("[AI Video Migration] Failed:", err.message);
+    });
   setupSkillsIPC(); // Add skills management support
   setupAIPipelineIPC(); // Add AI content pipeline support
   setupMediaImportIPC(); // Add media import with symlink/copy support
