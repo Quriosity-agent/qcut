@@ -44,6 +44,55 @@ This _should_ unpack the binaries, but the issue may be:
 - The binary platform mismatch (e.g., wrong arch bundled)
 - `ffmpeg-static` resolving to a path that doesn't survive the asar packing/unpacking
 
+## Additional Possible Causes (Code Review Notes)
+
+These are extra hypotheses based on current implementation details in
+`electron/ffmpeg/utils.ts` and build config:
+
+1. **Path rewrite can produce `.unpacked.unpacked`**
+   - Current packaged logic always runs:
+     - `staticPath = staticPath.replace("app.asar", "app.asar.unpacked")`
+   - If `ffmpeg-static` already returns an unpacked path
+     (`.../app.asar.unpacked/...`), this becomes
+     `.../app.asar.unpacked.unpacked/...`, which will fail `existsSync`.
+   - This would show up in logs as a checked path containing
+     `app.asar.unpacked.unpacked`.
+
+2. **`ffmpeg-static` binary may never have been downloaded on build machine**
+   - `ffmpeg-static` relies on install-time binary availability.
+   - If install scripts were skipped, blocked, or cache-corrupted in CI/build
+     env, package code can exist while binary file is missing.
+   - Result: app ships without actual executable payload.
+
+3. **Packaged fallback path is weak for electron-builder**
+   - Packaged fallback checks only `<resources>/ffmpeg.exe`.
+   - But no electron-builder path currently copies FFmpeg directly to
+     `<resources>/ffmpeg.exe`; `scripts/copy-ffmpeg.ts` is only used by
+     `build:exe` (`electron-packager`) flow.
+   - So if `ffmpeg-static` resolution fails, packaged fallback is likely to fail too.
+
+4. **Over-broad `catch` hides true failure mode**
+   - `getFFmpegPath()` catches all errors and logs "package not found".
+   - This can hide different real causes (null path, malformed path, runtime
+     exceptions), making diagnosis misleading unless path logs are inspected.
+
+5. **Binary exists but cannot execute on client endpoint**
+   - Health check uses `spawn(binaryPath, ["-version"])`.
+   - Endpoint security/quarantine/permission policy can block execution even
+     when file exists, producing "not executable" style failures.
+
+6. **Architecture/runtime mismatch edge cases**
+   - Installer is x64-targeted in scripts.
+   - On some client environments (arm64 emulation or restricted runtime),
+     shipped FFmpeg binary may exist but still fail to launch.
+
+### High-Value Signals to Look For in Client Logs
+
+- Path contains `app.asar.unpacked.unpacked` (strong signal of rewrite bug)
+- `ffmpeg-static path not on disk` with a plausible unpacked path
+- `Found ffmpeg-static` followed by spawn failure (`EPERM`, `ENOENT`, timeout)
+- `Checking resourcesPath: .../resources/ffmpeg.exe` and file missing
+
 ## What We've Done So Far
 
 ### v0.3.57 — Diagnostics (PR #116)
