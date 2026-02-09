@@ -27,7 +27,7 @@ QCut bundles `ffmpeg-static` (v5.3.0) and `ffprobe-static` (v3.1.0) as npm packa
 ### Known risk: `validate-audio-file` handler inconsistency
 
 In `electron/main.ts:1138-1242`, the `"validate-audio-file"` IPC handler derives the ffprobe path by:
-```
+```text
 getFFmpegPath() → dirname → join("ffprobe.exe")
 ```
 This assumes ffprobe is in the **same directory** as ffmpeg. But `ffprobe-static` is a separate npm package with its own `node_modules/` path. In packaged builds with `asarUnpack`, ffmpeg-static and ffprobe-static unpack to **different** directories. This handler should use `getFFprobePath()` from `electron/ffmpeg/utils.ts:268` instead.
