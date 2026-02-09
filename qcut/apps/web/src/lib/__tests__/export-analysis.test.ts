@@ -216,6 +216,46 @@ describe("Export Analysis", () => {
       expect(result.optimizationStrategy).toBe("direct-video-with-filters");
     });
 
+    it("should detect overlay stickers and use direct-video-with-filters", () => {
+      const tracks: TimelineTrack[] = [
+        {
+          id: "track-1",
+          name: "Video Track",
+          type: "media",
+          elements: [createMediaElement("el-1", "video-1", 0, 10)],
+        },
+      ];
+
+      const mediaItems: MediaItem[] = [createMediaItem("video-1", "video")];
+
+      // Pass overlayStickersCount > 0 to simulate overlay stickers
+      const result = analyzeTimelineForExport(tracks, mediaItems, undefined, 3);
+
+      expect(result.hasStickers).toBe(true);
+      expect(result.canUseDirectCopy).toBe(false);
+      expect(result.needsFilterEncoding).toBe(true);
+      expect(result.optimizationStrategy).toBe("direct-video-with-filters");
+    });
+
+    it("should use direct-copy when overlayStickersCount is 0", () => {
+      const tracks: TimelineTrack[] = [
+        {
+          id: "track-1",
+          name: "Video Track",
+          type: "media",
+          elements: [createMediaElement("el-1", "video-1", 0, 10)],
+        },
+      ];
+
+      const mediaItems: MediaItem[] = [createMediaItem("video-1", "video")];
+
+      const result = analyzeTimelineForExport(tracks, mediaItems, undefined, 0);
+
+      expect(result.hasStickers).toBe(false);
+      expect(result.canUseDirectCopy).toBe(true);
+      expect(result.optimizationStrategy).toBe("direct-copy");
+    });
+
     it("should detect effects and use direct-video-with-filters", () => {
       const tracks: TimelineTrack[] = [
         {

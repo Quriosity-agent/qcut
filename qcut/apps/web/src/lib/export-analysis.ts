@@ -304,14 +304,15 @@ function checkVideoPropertiesMatch(
 export function analyzeTimelineForExport(
   tracks: TimelineTrack[],
   mediaItems: MediaItem[],
-  exportCanvas?: ExportCanvasOptions
+  exportCanvas?: ExportCanvasOptions,
+  overlayStickersCount?: number
 ): ExportAnalysis {
   // Create a map for fast media item lookup
   const mediaItemsMap = new Map(mediaItems.map((item) => [item.id, item]));
 
   let hasImageElements = false;
   let hasTextElements = false;
-  let hasStickers = false;
+  let hasStickers = overlayStickersCount != null && overlayStickersCount > 0;
   let hasEffects = false;
   let videoElementCount = 0;
   const videoTimeRanges: Array<{ start: number; end: number }> = [];
