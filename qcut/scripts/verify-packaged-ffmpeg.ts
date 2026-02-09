@@ -204,103 +204,97 @@ function runBinaryVersion({
 }
 
 async function verifyPackagedFFmpeg(): Promise<void> {
-  try {
-    const distDir = join(process.cwd(), "dist-electron");
-    if (!existsSync(distDir)) {
-      throw new Error(`dist-electron not found: ${distDir}`);
-    }
-
-    const winUnpackedDir = await resolveWinUnpackedDir({ distDir });
-    const resourcesDir = join(winUnpackedDir, "resources");
-    const ffmpegRoot = resolvePackagedModuleDir({
-      resourcesDir,
-      moduleName: "ffmpeg-static",
-    });
-    const ffprobeRoot = resolvePackagedModuleDir({
-      resourcesDir,
-      moduleName: "ffprobe-static",
-    });
-
-    if (!ffmpegRoot) {
-      throw new Error(
-        `ffmpeg-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
-      );
-    }
-
-    if (!ffprobeRoot) {
-      throw new Error(
-        `ffprobe-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
-      );
-    }
-
-    const ffmpegPath =
-      resolvePreferredBinaryPath({
-        moduleDir: ffmpegRoot,
-        binaryName: "ffmpeg.exe",
-      }) ??
-      (await findFirstFile({
-        startDir: ffmpegRoot,
-        fileName: "ffmpeg.exe",
-      }));
-    const ffprobePath =
-      resolvePreferredBinaryPath({
-        moduleDir: ffprobeRoot,
-        binaryName: "ffprobe.exe",
-      }) ??
-      (await findFirstFile({
-        startDir: ffprobeRoot,
-        fileName: "ffprobe.exe",
-      }));
-
-    if (!ffmpegPath) {
-      throw new Error(`ffmpeg.exe not found under: ${ffmpegRoot}`);
-    }
-
-    if (!ffprobePath) {
-      throw new Error(`ffprobe.exe not found under: ${ffprobeRoot}`);
-    }
-
-    if (ffmpegPath.includes("app.asar.unpacked.unpacked")) {
-      throw new Error(`Invalid FFmpeg path rewrite detected: ${ffmpegPath}`);
-    }
-
-    if (ffprobePath.includes("app.asar.unpacked.unpacked")) {
-      throw new Error(`Invalid FFprobe path rewrite detected: ${ffprobePath}`);
-    }
-
-    const [ffmpegResult, ffprobeResult] = await Promise.all([
-      runBinaryVersion({ binaryPath: ffmpegPath, timeoutMs: 8000 }),
-      runBinaryVersion({ binaryPath: ffprobePath, timeoutMs: 8000 }),
-    ]);
-
-    if (ffmpegResult.error || ffmpegResult.exitCode !== 0) {
-      throw new Error(
-        `ffmpeg.exe failed (exit=${ffmpegResult.exitCode}, error=${ffmpegResult.error}, stderr=${ffmpegResult.stderr.trim()})`
-      );
-    }
-
-    if (ffprobeResult.error || ffprobeResult.exitCode !== 0) {
-      throw new Error(
-        `ffprobe.exe failed (exit=${ffprobeResult.exitCode}, error=${ffprobeResult.error}, stderr=${ffprobeResult.stderr.trim()})`
-      );
-    }
-
-    process.stdout.write("✅ Packaged FFmpeg verification passed\n");
-    process.stdout.write(`FFmpeg: ${ffmpegPath}\n`);
-    process.stdout.write(`FFprobe: ${ffprobePath}\n`);
-    process.stdout.write(`FFmpeg version: ${ffmpegResult.firstLine}\n`);
-    process.stdout.write(`FFprobe version: ${ffprobeResult.firstLine}\n`);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    process.stderr.write(`❌ Packaged FFmpeg verification failed: ${message}\n`);
-    process.exit(1);
+  const distDir = join(process.cwd(), "dist-electron");
+  if (!existsSync(distDir)) {
+    throw new Error(`dist-electron not found: ${distDir}`);
   }
+
+  const winUnpackedDir = await resolveWinUnpackedDir({ distDir });
+  const resourcesDir = join(winUnpackedDir, "resources");
+  const ffmpegRoot = resolvePackagedModuleDir({
+    resourcesDir,
+    moduleName: "ffmpeg-static",
+  });
+  const ffprobeRoot = resolvePackagedModuleDir({
+    resourcesDir,
+    moduleName: "ffprobe-static",
+  });
+
+  if (!ffmpegRoot) {
+    throw new Error(
+      `ffmpeg-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
+    );
+  }
+
+  if (!ffprobeRoot) {
+    throw new Error(
+      `ffprobe-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
+    );
+  }
+
+  const ffmpegPath =
+    resolvePreferredBinaryPath({
+      moduleDir: ffmpegRoot,
+      binaryName: "ffmpeg.exe",
+    }) ??
+    (await findFirstFile({
+      startDir: ffmpegRoot,
+      fileName: "ffmpeg.exe",
+    }));
+  const ffprobePath =
+    resolvePreferredBinaryPath({
+      moduleDir: ffprobeRoot,
+      binaryName: "ffprobe.exe",
+    }) ??
+    (await findFirstFile({
+      startDir: ffprobeRoot,
+      fileName: "ffprobe.exe",
+    }));
+
+  if (!ffmpegPath) {
+    throw new Error(`ffmpeg.exe not found under: ${ffmpegRoot}`);
+  }
+
+  if (!ffprobePath) {
+    throw new Error(`ffprobe.exe not found under: ${ffprobeRoot}`);
+  }
+
+  if (ffmpegPath.includes("app.asar.unpacked.unpacked")) {
+    throw new Error(`Invalid FFmpeg path rewrite detected: ${ffmpegPath}`);
+  }
+
+  if (ffprobePath.includes("app.asar.unpacked.unpacked")) {
+    throw new Error(`Invalid FFprobe path rewrite detected: ${ffprobePath}`);
+  }
+
+  const [ffmpegResult, ffprobeResult] = await Promise.all([
+    runBinaryVersion({ binaryPath: ffmpegPath, timeoutMs: 8000 }),
+    runBinaryVersion({ binaryPath: ffprobePath, timeoutMs: 8000 }),
+  ]);
+
+  if (ffmpegResult.error || ffmpegResult.exitCode !== 0) {
+    throw new Error(
+      `ffmpeg.exe failed (exit=${ffmpegResult.exitCode}, error=${ffmpegResult.error}, stderr=${ffmpegResult.stderr.trim()})`
+    );
+  }
+
+  if (ffprobeResult.error || ffprobeResult.exitCode !== 0) {
+    throw new Error(
+      `ffprobe.exe failed (exit=${ffprobeResult.exitCode}, error=${ffprobeResult.error}, stderr=${ffprobeResult.stderr.trim()})`
+    );
+  }
+
+  process.stdout.write("✅ Packaged FFmpeg verification passed\n");
+  process.stdout.write(`FFmpeg: ${ffmpegPath}\n`);
+  process.stdout.write(`FFprobe: ${ffprobePath}\n`);
+  process.stdout.write(`FFmpeg version: ${ffmpegResult.firstLine}\n`);
+  process.stdout.write(`FFprobe version: ${ffprobeResult.firstLine}\n`);
 }
 
 try {
   await verifyPackagedFFmpeg();
 } catch (error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`❌ Unexpected verification failure: ${message}\n`);
+  process.stderr.write(`❌ Packaged FFmpeg verification failed: ${message}\n`);
   process.exit(1);
 }
