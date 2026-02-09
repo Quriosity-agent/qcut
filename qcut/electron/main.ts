@@ -98,7 +98,10 @@ const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
-const { registerAIVideoHandlers } = require("./ai-video-save-handler.js");
+const {
+  registerAIVideoHandlers,
+  migrateAIVideosToDocuments,
+} = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
@@ -505,24 +508,55 @@ app.whenReady().then(() => {
   staticServer = createStaticServer();
 
   createWindow();
-  setupFFmpegIPC(); // Add FFmpeg CLI support
-  initFFmpegHealthCheck().catch((err: Error) => {
-    logger.error("[FFmpeg Health] Startup check failed:", err.message);
-  }); // Async, non-blocking — verifies binaries are executable
-  setupSoundIPC(); // Add sound search support
-  setupThemeIPC(); // Add theme switching support
-  setupApiKeyIPC(); // Add API key management support
-  setupGeminiHandlers(); // Add Gemini transcription support
-  registerElevenLabsTranscribeHandler(); // Add ElevenLabs transcription support
-  setupGeminiChatIPC(); // Add Gemini chat support
-  setupPtyIPC(); // Add PTY terminal support
-  registerAIVideoHandlers(); // Add AI video save to disk support (MANDATORY)
-  setupSkillsIPC(); // Add skills management support
-  setupAIPipelineIPC(); // Add AI content pipeline support
-  setupMediaImportIPC(); // Add media import with symlink/copy support
-  setupProjectFolderIPC(); // Add project folder scanning support
-  setupAllClaudeIPC(); // Add Claude Code integration API
-  setupRemotionFolderIPC(); // Add Remotion folder import support
+
+  // Register all IPC handlers with try/catch to prevent cascade failures
+  const handlers: [string, () => void][] = [
+    ["FFmpegIPC", setupFFmpegIPC],
+    ["SoundIPC", setupSoundIPC],
+    ["ThemeIPC", setupThemeIPC],
+    ["ApiKeyIPC", setupApiKeyIPC],
+    ["GeminiHandlers", setupGeminiHandlers],
+    ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
+    ["GeminiChatIPC", setupGeminiChatIPC],
+    ["PtyIPC", setupPtyIPC],
+    ["AIVideoHandlers", registerAIVideoHandlers],
+    ["SkillsIPC", setupSkillsIPC],
+    ["AIPipelineIPC", setupAIPipelineIPC],
+    ["MediaImportIPC", setupMediaImportIPC],
+    ["ProjectFolderIPC", setupProjectFolderIPC],
+    ["ClaudeIPC", setupAllClaudeIPC],
+    ["RemotionFolderIPC", setupRemotionFolderIPC],
+  ];
+
+  for (const [name, setup] of handlers) {
+    try {
+      setup();
+      console.log(`✅ ${name} registered`);
+    } catch (err: any) {
+      console.error(`❌ ${name} FAILED:`, err.message, err.stack);
+    }
+  }
+
+  initFFmpegHealthCheck();
+  migrateAIVideosToDocuments()
+    .then(
+      (result: {
+        copied: number;
+        skipped: number;
+        projectsProcessed: number;
+        errors: string[];
+      }) => {
+        console.log(
+          `[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
+        );
+        if (result.errors.length > 0) {
+          console.warn("[AI Video Migration] Errors:", result.errors);
+        }
+      }
+    )
+    .catch((err: Error) => {
+      console.error("[AI Video Migration] Failed:", err.message);
+    });
   // Note: font-resolver removed - handler not implemented
 
   // Configure auto-updater for production builds

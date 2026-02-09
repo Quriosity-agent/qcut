@@ -4,6 +4,7 @@ import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
+import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import {
   analyzeTimelineForExport,
   type ExportAnalysis,
@@ -292,9 +293,14 @@ export class CLIExportEngine extends ExportEngine {
     debugLog(
       "[CLIExportEngine] 🔍 Analyzing timeline for export optimization..."
     );
+    const overlayStickersCount = useStickersOverlayStore
+      .getState()
+      .getStickersForExport().length;
     this.exportAnalysis = analyzeTimelineForExport(
       this.tracks,
-      this.mediaItems
+      this.mediaItems,
+      undefined,
+      overlayStickersCount
     );
 
     debugLog("[CLIExportEngine] 📊 Export Analysis:", this.exportAnalysis);

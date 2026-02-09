@@ -403,9 +403,7 @@ test.describe("Sticker Overlay Export Tests", () => {
     await addStickerToCanvas(page, { position: { x: 120, y: 120 } });
 
     // Verify both stickers exist
-    const stickerCount = await page
-      .locator('[data-testid="sticker-instance"]')
-      .count();
+    const stickerCount = await page.locator("[data-sticker-id]").count();
     expect(stickerCount).toBeGreaterThanOrEqual(2);
 
     // Verify z-index ordering in store
@@ -491,9 +489,7 @@ test.describe("Sticker Overlay Export Tests", () => {
     }
 
     // Step 2: Verify sticker is visible in preview
-    const stickerInstance = page
-      .locator('[data-testid="sticker-instance"]')
-      .first();
+    const stickerInstance = page.locator("[data-sticker-id]").first();
     await expect(stickerInstance).toBeVisible();
 
     // Step 3: Manipulate sticker (optional - drag to new position)
@@ -540,18 +536,14 @@ test.describe("Sticker Overlay Export Tests", () => {
     }
 
     // Get initial sticker count
-    const initialCount = await page
-      .locator('[data-testid="sticker-instance"]')
-      .count();
+    const initialCount = await page.locator("[data-sticker-id]").count();
     expect(initialCount).toBeGreaterThan(0);
 
     // Wait for auto-save cycle
     await page.waitForTimeout(1000);
 
     // Verify stickers still exist after auto-save
-    const finalCount = await page
-      .locator('[data-testid="sticker-instance"]')
-      .count();
+    const finalCount = await page.locator("[data-sticker-id]").count();
     expect(finalCount).toBe(initialCount);
   });
 });

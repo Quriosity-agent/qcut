@@ -125,7 +125,5 @@ export function setupStickerTest() {
   setupTestEnvironment();
 }
 
-// Auto-run if in development
-if (import.meta.env.DEV) {
-  setupStickerTest();
-}
+// Always setup test helpers - needed for E2E tests which run against production builds
+setupStickerTest();

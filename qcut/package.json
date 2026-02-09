@@ -44,7 +44,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "turbo run build && bun run build:electron",
     "check-types": "turbo run check-types",
     "postinstall": "bun run setup-ffmpeg && bun scripts/patch-node-pty.ts",
     "build:electron": "cd electron && bun x tsc",
@@ -69,7 +69,7 @@
     "predev": "bun run setup-ffmpeg",
     "prebuild": "bun run setup-ffmpeg && bun run sync-skills",
     "sync-skills": "bun scripts/sync-skills.ts",
-    "build:exe": "bun run build && bun run package:win",
+    "build:exe": "bun run build && bun run package:win && bun run copy-ffmpeg",
     "release:patch": "bun scripts/release.ts patch",
     "release:minor": "bun scripts/release.ts minor",
     "release:major": "bun scripts/release.ts major",

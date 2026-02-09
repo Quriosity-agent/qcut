@@ -95,6 +95,7 @@ function StickerItem({
             )}
             onClick={handleClick}
             disabled={hasError || !imageUrl}
+            data-testid="sticker-item"
           >
             {isLoading && (
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

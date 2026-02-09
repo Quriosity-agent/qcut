@@ -95,9 +95,7 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
         await expect(stickerCanvas).toBeAttached({ timeout: 2000 });
 
         // Count existing sticker instances on canvas before drop
-        const stickerInstances = page.locator(
-          '[data-testid="sticker-instance"]'
-        );
+        const stickerInstances = page.locator("[data-sticker-id]");
         const instancesBefore = await stickerInstances.count();
 
         // Perform drag-and-drop with better options
@@ -190,12 +188,12 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
         targetPosition: { x: 150, y: 150 },
       });
       await page
-        .locator('[data-testid="sticker-instance"]')
+        .locator("[data-sticker-id]")
         .first()
         .waitFor({ state: "visible", timeout: 5000 });
 
       // Find the placed sticker instance
-      const stickerInstances = page.locator('[data-testid="sticker-instance"]');
+      const stickerInstances = page.locator("[data-sticker-id]");
       if ((await stickerInstances.count()) > 0) {
         const placedSticker = stickerInstances.first();
         await expect(placedSticker).toBeVisible();
