@@ -52,9 +52,7 @@ export function TabBar() {
               }}
               className={cn(
                 "flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded hover:bg-foreground/5 transition-colors",
-                activeTab === tabKey
-                  ? "text-primary"
-                  : "text-muted-foreground",
+                activeTab === tabKey ? "text-primary" : "text-muted-foreground"
               )}
               onClick={() => setActiveTab(tabKey)}
               key={tabKey}
