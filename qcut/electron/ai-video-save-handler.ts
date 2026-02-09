@@ -340,16 +340,12 @@ export function registerAIVideoHandlers(): void {
     "ai-video:get-project-dir",
     async (event, projectId: string): Promise<string> => {
       const dir = getAIVideoDir(projectId);
-      console.log(
-        `[AI Video IPC] get-project-dir("${projectId}") → ${dir}`
-      );
+      console.log(`[AI Video IPC] get-project-dir("${projectId}") → ${dir}`);
       return dir;
     }
   );
 
-  console.log(
-    "✅ AI Video save handlers registered (Documents-based paths)"
-  );
+  console.log("✅ AI Video save handlers registered (Documents-based paths)");
 }
 
 // --- Migration ---
@@ -444,7 +440,8 @@ export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
       try {
         const stat = await fs.promises.stat(srcPath);
         if (!stat.isFile()) continue;
-      } catch {
+      } catch (err) {
+        result.errors.push(`Failed to stat source file ${srcPath}: ${err}`);
         continue;
       }
 
