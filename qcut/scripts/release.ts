@@ -564,19 +564,7 @@ function getPreviousVersion(): string {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+main();
 
-// CommonJS export for backward compatibility
-module.exports = {
-  main,
-  bumpVersion,
-  generateChecksums,
-  parseVersion,
-  bumpPrerelease,
-};
-
-// ES6 export for TypeScript files
 export { main, bumpVersion, generateChecksums, parseVersion, bumpPrerelease };
 export type { ReleaseType, PackageJson, ParsedVersion, PrereleaseChannel };
