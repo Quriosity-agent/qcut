@@ -8,10 +8,7 @@
  * @module lib/project-folder-sync
  */
 
-import {
-  DEFAULT_FOLDER_IDS,
-  type MediaItem,
-} from "@/stores/media-store-types";
+import { DEFAULT_FOLDER_IDS, type MediaItem } from "@/stores/media-store-types";
 import type {
   ProjectFolderFileInfo,
   ProjectFolderScanResult,
@@ -44,9 +41,7 @@ export interface SyncResult {
  * Determines which virtual folder IDs a file should be assigned to
  * based on its media type and disk location.
  */
-export function determineFolderIds(
-  file: ProjectFolderFileInfo,
-): string[] {
+export function determineFolderIds(file: ProjectFolderFileInfo): string[] {
   const folderIds: string[] = [];
 
   // Type-based assignment
@@ -77,7 +72,7 @@ export function determineFolderIds(
  */
 export function findUntrackedFiles(
   diskFiles: ProjectFolderFileInfo[],
-  mediaItems: MediaItem[],
+  mediaItems: MediaItem[]
 ): ProjectFolderFileInfo[] {
   // Build lookup sets from existing media items
   const localPaths = new Set<string>();
@@ -129,7 +124,7 @@ function normalizePath(p: string): string {
  * into the media store with appropriate virtual folder assignments.
  */
 export async function syncProjectFolder(
-  projectId: string,
+  projectId: string
 ): Promise<SyncResult> {
   const startTime = Date.now();
   const result: SyncResult = {
@@ -142,7 +137,9 @@ export async function syncProjectFolder(
 
   // Guard: Electron API must be available
   if (!window.electronAPI?.projectFolder) {
-    debugLog("[ProjectFolderSync] electronAPI.projectFolder not available, skipping sync");
+    debugLog(
+      "[ProjectFolderSync] electronAPI.projectFolder not available, skipping sync"
+    );
     return result;
   }
 
@@ -159,7 +156,7 @@ export async function syncProjectFolder(
 
     result.totalDiskFiles = scanResult.files.length;
     debugLog(
-      `[ProjectFolderSync] Found ${scanResult.files.length} media files on disk (${scanResult.scanTime}ms)`,
+      `[ProjectFolderSync] Found ${scanResult.files.length} media files on disk (${scanResult.scanTime}ms)`
     );
 
     // Dynamically import media store to avoid circular dependencies
@@ -172,13 +169,15 @@ export async function syncProjectFolder(
     result.skipped = result.totalDiskFiles - untrackedFiles.length;
 
     if (untrackedFiles.length === 0) {
-      debugLog("[ProjectFolderSync] All files already tracked, nothing to import");
+      debugLog(
+        "[ProjectFolderSync] All files already tracked, nothing to import"
+      );
       result.scanTime = Date.now() - startTime;
       return result;
     }
 
     debugLog(
-      `[ProjectFolderSync] Importing ${untrackedFiles.length} untracked files`,
+      `[ProjectFolderSync] Importing ${untrackedFiles.length} untracked files`
     );
 
     // Import each untracked file
@@ -190,9 +189,10 @@ export async function syncProjectFolder(
           throw new Error("readFile returned null");
         }
 
-        // Create File object
+        // Create File object (convert Buffer to Uint8Array for Blob compatibility)
         const mimeType = getMimeType(file.name, file.type);
-        const blob = new Blob([buffer], { type: mimeType });
+        const uint8 = new Uint8Array(buffer);
+        const blob = new Blob([uint8], { type: mimeType });
         const fileObj = new File([blob], file.name, { type: mimeType });
 
         // Determine folder assignments
@@ -224,12 +224,12 @@ export async function syncProjectFolder(
     }
 
     debugLog(
-      `[ProjectFolderSync] Sync complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`,
+      `[ProjectFolderSync] Sync complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`
     );
   } catch (err) {
     debugError("[ProjectFolderSync] Sync failed:", err);
     result.errors.push(
-      `Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+      `Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`
     );
   }
 
