@@ -285,7 +285,11 @@ function findPackagedNodeModuleBinary(
       return null;
     }
 
-    const moduleDir = path.join(process.resourcesPath, "node_modules", moduleName);
+    const moduleDir = path.join(
+      process.resourcesPath,
+      "node_modules",
+      moduleName
+    );
     if (!fs.existsSync(moduleDir)) {
       return null;
     }
@@ -351,7 +355,10 @@ export function getFFprobePath(): string {
           ffprobeExe
         );
         if (fs.existsSync(archPath)) {
-          console.log("[FFmpeg] Found packaged ffprobe-static (arch-specific):", archPath);
+          console.log(
+            "[FFmpeg] Found packaged ffprobe-static (arch-specific):",
+            archPath
+          );
           return archPath;
         }
       }
