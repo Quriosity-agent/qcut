@@ -444,6 +444,15 @@ interface ElectronAPI {
     getFFmpegResourcePath: (filename: string) => Promise<string>;
     checkFFmpegResource: (filename: string) => Promise<boolean>;
     getPath: () => Promise<string>;
+    checkHealth: () => Promise<{
+      ffmpegOk: boolean;
+      ffprobeOk: boolean;
+      ffmpegVersion: string;
+      ffprobeVersion: string;
+      ffmpegPath: string;
+      ffprobePath: string;
+      errors: string[];
+    }>;
   };
 
   // API key operations
@@ -1032,7 +1041,15 @@ const electronAPI: ElectronAPI = {
     checkFFmpegResource: (filename: string): Promise<boolean> =>
       ipcRenderer.invoke("check-ffmpeg-resource", filename),
     getPath: (): Promise<string> => ipcRenderer.invoke("ffmpeg-path"),
-    checkHealth: () => ipcRenderer.invoke("ffmpeg-health"),
+    checkHealth: (): Promise<{
+      ffmpegOk: boolean;
+      ffprobeOk: boolean;
+      ffmpegVersion: string;
+      ffprobeVersion: string;
+      ffmpegPath: string;
+      ffprobePath: string;
+      errors: string[];
+    }> => ipcRenderer.invoke("ffmpeg-health"),
   },
 
   // API key operations
