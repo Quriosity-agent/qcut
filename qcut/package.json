@@ -162,6 +162,14 @@
         "to": "node_modules/node-pty"
       },
       {
+        "from": "node_modules/ffmpeg-static",
+        "to": "node_modules/ffmpeg-static"
+      },
+      {
+        "from": "node_modules/ffprobe-static",
+        "to": "node_modules/ffprobe-static"
+      },
+      {
         "from": "docs/releases",
         "to": "docs/releases",
         "filter": [

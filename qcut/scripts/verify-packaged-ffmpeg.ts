@@ -87,6 +87,32 @@ async function findFirstFile({
   }
 }
 
+function resolvePackagedModuleDir({
+  resourcesDir,
+  moduleName,
+}: {
+  resourcesDir: string;
+  moduleName: string;
+}): string | null {
+  try {
+    const candidateRoots = [
+      join(resourcesDir, "app.asar.unpacked", "node_modules"),
+      join(resourcesDir, "node_modules"),
+    ];
+
+    for (const root of candidateRoots) {
+      const moduleDir = join(root, moduleName);
+      if (existsSync(moduleDir)) {
+        return moduleDir;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function runBinaryVersion({
   binaryPath,
   timeoutMs,
@@ -152,26 +178,26 @@ async function verifyPackagedFFmpeg(): Promise<void> {
     }
 
     const winUnpackedDir = await resolveWinUnpackedDir({ distDir });
-    const nodeModulesDir = join(
-      winUnpackedDir,
-      "resources",
-      "app.asar.unpacked",
-      "node_modules"
-    );
+    const resourcesDir = join(winUnpackedDir, "resources");
+    const ffmpegRoot = resolvePackagedModuleDir({
+      resourcesDir,
+      moduleName: "ffmpeg-static",
+    });
+    const ffprobeRoot = resolvePackagedModuleDir({
+      resourcesDir,
+      moduleName: "ffprobe-static",
+    });
 
-    if (!existsSync(nodeModulesDir)) {
-      throw new Error(`Packaged node_modules not found: ${nodeModulesDir}`);
+    if (!ffmpegRoot) {
+      throw new Error(
+        `ffmpeg-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
+      );
     }
 
-    const ffmpegRoot = join(nodeModulesDir, "ffmpeg-static");
-    const ffprobeRoot = join(nodeModulesDir, "ffprobe-static");
-
-    if (!existsSync(ffmpegRoot)) {
-      throw new Error(`ffmpeg-static not packaged: ${ffmpegRoot}`);
-    }
-
-    if (!existsSync(ffprobeRoot)) {
-      throw new Error(`ffprobe-static not packaged: ${ffprobeRoot}`);
+    if (!ffprobeRoot) {
+      throw new Error(
+        `ffprobe-static not packaged under: ${join(resourcesDir, "app.asar.unpacked", "node_modules")} or ${join(resourcesDir, "node_modules")}`
+      );
     }
 
     const ffmpegPath = await findFirstFile({
