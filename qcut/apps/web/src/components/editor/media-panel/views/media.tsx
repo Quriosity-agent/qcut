@@ -170,6 +170,52 @@ export function MediaView() {
 
   const handleFileSelect = () => fileInputRef.current?.click(); // Open file picker
 
+  // Sync project folder: scan disk for untracked files and import them
+  const handleSync = useCallback(async () => {
+    if (!activeProject?.id || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const { syncProjectFolder } = await import("@/lib/project-folder-sync");
+      const result = await syncProjectFolder(activeProject.id);
+      if (result.imported > 0) {
+        toast.success(`Synced ${result.imported} file(s) from project folder`);
+      } else if (result.errors.length > 0) {
+        toast.error(`Sync failed for ${result.errors.length} file(s)`);
+      } else {
+        toast.info("Project folder in sync — no new files found");
+      }
+    } catch (err) {
+      debugError("[MediaView] Sync failed:", err);
+      toast.error("Failed to sync project folder");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [activeProject?.id, isSyncing]);
+
+  // Auto-sync on first mount when media store is initialized
+  useEffect(() => {
+    if (
+      !hasSyncedRef.current &&
+      mediaStore?.hasInitialized &&
+      activeProject?.id &&
+      window.electronAPI?.projectFolder
+    ) {
+      hasSyncedRef.current = true;
+      import("@/lib/project-folder-sync")
+        .then(({ syncProjectFolder }) => syncProjectFolder(activeProject.id))
+        .then((result) => {
+          if (result.imported > 0) {
+            toast.info(
+              `Auto-synced ${result.imported} file(s) from project folder`,
+            );
+          }
+        })
+        .catch(() => {
+          // Silent fail for auto-sync — user can manually trigger via button
+        });
+    }
+  }, [mediaStore?.hasInitialized, activeProject?.id]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // When files are selected via file picker, process them
     if (e.target.files) processFiles(e.target.files);
@@ -427,6 +473,23 @@ export function MediaView() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Plus className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={handleSync}
+                disabled={isSyncing || isProcessing}
+                className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
+                data-testid="sync-project-folder-button"
+                aria-label={isSyncing ? "Syncing project folder" : "Sync project folder"}
+                title="Sync files from project folder"
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
               <ExportAllButton variant="outline" size="sm" className="h-9" />
