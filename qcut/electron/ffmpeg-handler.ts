@@ -69,7 +69,20 @@ let healthResult: FFmpegHealthResult | null = null;
  * Called at startup from main.ts — async, non-blocking.
  */
 export async function initFFmpegHealthCheck(): Promise<void> {
-  healthResult = await verifyFFmpegBinary();
+  try {
+    healthResult = await verifyFFmpegBinary();
+  } catch (error) {
+    console.error("[FFmpeg Health] Health check failed:", error);
+    healthResult = {
+      ffmpegOk: false,
+      ffprobeOk: false,
+      ffmpegVersion: "",
+      ffprobeVersion: "",
+      ffmpegPath: "",
+      ffprobePath: "",
+      errors: [String(error)],
+    };
+  }
 }
 
 /**
