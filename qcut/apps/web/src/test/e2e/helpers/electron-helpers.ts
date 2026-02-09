@@ -595,10 +595,27 @@ export async function addStickerToCanvas(
   }
 ): Promise<boolean> {
   try {
-    // Wait for the stickers panel tab to be available (use attached since it may be hidden on some viewports)
+    // Step 1: Switch to the "edit" group which contains the stickers tab
+    const editGroup = page.locator('[data-testid="group-edit"]');
+    await editGroup
+      .waitFor({ state: "attached", timeout: 10_000 })
+      .catch(() => {
+        console.warn("Edit group tab not attached");
+        return null;
+      });
+
+    if ((await editGroup.count()) === 0) {
+      console.warn("Edit group tab not found");
+      return false;
+    }
+
+    await editGroup.click({ force: true });
+    await page.waitForTimeout(300);
+
+    // Step 2: Click the stickers panel tab (now visible under edit group)
     const stickerTab = page.locator('[data-testid="stickers-panel-tab"]');
     await stickerTab
-      .waitFor({ state: "attached", timeout: 10_000 })
+      .waitFor({ state: "attached", timeout: 5000 })
       .catch(() => {
         console.warn("Stickers panel tab not attached");
         return null;
@@ -611,10 +628,9 @@ export async function addStickerToCanvas(
       return false;
     }
 
-    // Open stickers panel - click even if not visible (may be behind other elements)
     await stickerTab.click({ force: true });
 
-    // Wait for stickers panel to be visible
+    // Step 3: Wait for stickers panel to load
     const stickersPanel = page.locator('[data-testid="stickers-panel"]');
     await stickersPanel
       .waitFor({ state: "visible", timeout: 5000 })
@@ -622,53 +638,95 @@ export async function addStickerToCanvas(
         console.warn("Stickers panel did not become visible");
       });
 
-    // Wait for sticker items to load (use "attached" like passing tests do)
+    // Step 4: Wait for sticker items to load (fetched from Iconify API - needs network)
     const stickerItems = page.locator('[data-testid="sticker-item"]');
+
+    // Log panel state for diagnostics
+    const panelHtml = await page
+      .locator('[data-testid="stickers-panel"]')
+      .innerHTML()
+      .catch(() => "panel not found");
+    console.log(
+      `[addStickerToCanvas] Panel HTML length: ${panelHtml.length}, first 200: ${panelHtml.substring(0, 200)}`
+    );
+
     await stickerItems
       .first()
-      .waitFor({ state: "attached", timeout: 5000 })
+      .waitFor({ state: "visible", timeout: 15_000 })
       .catch(() => null);
 
     const itemCount = await stickerItems.count();
     if (itemCount === 0) {
-      console.warn("No sticker items found in panel");
+      console.warn(
+        "No sticker items found in panel - Iconify API may be unreachable"
+      );
+      return false;
+    }
+    console.log(`[addStickerToCanvas] Found ${itemCount} sticker items`);
+
+    // Step 5: Click a sticker item to add it to media library
+    // Use force:true because TooltipTrigger intercepts pointer events
+    await stickerItems.first().click({ force: true });
+
+    // Wait for the media item to be added (toast appears)
+    await page.waitForTimeout(2000);
+
+    // Step 6: Add the sticker to the overlay canvas via store
+    // The stickers panel only adds to media library, not overlay,
+    // so we manually call addOverlaySticker with the latest image media item
+    // Uses window.stickerTest.getStores() exposed by sticker-test-helper.ts
+    const added = await page.evaluate(async () => {
+      const stickerTest = (window as any).stickerTest;
+      if (!stickerTest?.getStores) {
+        console.error(
+          "[addStickerToCanvas] window.stickerTest not available"
+        );
+        return false;
+      }
+
+      const stores = stickerTest.getStores();
+      if (!stores?.media?.mediaItems || !stores?.stickers?.addOverlaySticker) {
+        console.error("[addStickerToCanvas] stores not ready");
+        return false;
+      }
+
+      // Find the most recently added image media item
+      const imageItems = stores.media.mediaItems.filter(
+        (item: any) => item.type === "image"
+      );
+      if (imageItems.length === 0) {
+        console.error("[addStickerToCanvas] no image media items found");
+        return false;
+      }
+
+      const latestImage = imageItems[imageItems.length - 1];
+      console.log(
+        `[addStickerToCanvas] Adding overlay sticker for media: ${latestImage.name} (${latestImage.id})`
+      );
+
+      // Add to overlay
+      await stores.stickers.addOverlaySticker(latestImage.id);
+      return true;
+    });
+
+    if (!added) {
+      console.warn(
+        "Could not add sticker to overlay via store - stores may not be exposed"
+      );
       return false;
     }
 
-    // Get sticker canvas
-    const stickerCanvas = page.locator('[data-testid="sticker-canvas"]');
-    const canvasCount = await stickerCanvas.count();
+    // Step 7: Wait for sticker element to appear on canvas
+    await page
+      .locator("[data-sticker-id]")
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 });
 
-    if (canvasCount > 0 && (await stickerCanvas.isVisible())) {
-      // Drag sticker to canvas
-      const targetPosition = options?.position || { x: 100, y: 100 };
-      const firstSticker = stickerItems.first();
-
-      // Ensure sticker is visible before dragging
-      await firstSticker
-        .waitFor({ state: "visible", timeout: 3000 })
-        .catch(() => null);
-
-      await firstSticker.dragTo(stickerCanvas, {
-        force: true,
-        targetPosition,
-      });
-
-      // Wait for sticker instance to appear
-      await page
-        .locator('[data-testid="sticker-instance"]')
-        .first()
-        .waitFor({ state: "visible", timeout: 3000 });
-
-      if (options?.waitForRender) {
-        await page.waitForTimeout(500);
-      }
-
-      return true;
+    if (options?.waitForRender) {
+      await page.waitForTimeout(500);
     }
 
-    console.warn("Sticker canvas not visible - canvas count:", canvasCount);
-    return false;
+    return true;
   } catch (error) {
     console.error("Failed to add sticker to canvas:", error);
     return false;

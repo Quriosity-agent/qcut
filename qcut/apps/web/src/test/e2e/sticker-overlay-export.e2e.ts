@@ -404,7 +404,7 @@ test.describe("Sticker Overlay Export Tests", () => {
 
     // Verify both stickers exist
     const stickerCount = await page
-      .locator('[data-testid="sticker-instance"]')
+      .locator('[data-sticker-id]')
       .count();
     expect(stickerCount).toBeGreaterThanOrEqual(2);
 
@@ -492,7 +492,7 @@ test.describe("Sticker Overlay Export Tests", () => {
 
     // Step 2: Verify sticker is visible in preview
     const stickerInstance = page
-      .locator('[data-testid="sticker-instance"]')
+      .locator('[data-sticker-id]')
       .first();
     await expect(stickerInstance).toBeVisible();
 
@@ -541,7 +541,7 @@ test.describe("Sticker Overlay Export Tests", () => {
 
     // Get initial sticker count
     const initialCount = await page
-      .locator('[data-testid="sticker-instance"]')
+      .locator('[data-sticker-id]')
       .count();
     expect(initialCount).toBeGreaterThan(0);
 
@@ -550,7 +550,7 @@ test.describe("Sticker Overlay Export Tests", () => {
 
     // Verify stickers still exist after auto-save
     const finalCount = await page
-      .locator('[data-testid="sticker-instance"]')
+      .locator('[data-sticker-id]')
       .count();
     expect(finalCount).toBe(initialCount);
   });
