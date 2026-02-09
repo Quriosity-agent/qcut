@@ -73,7 +73,7 @@ interface MediaStore {
 
   // Project folder sync
   syncFromProjectFolder: (
-    projectId: string,
+    projectId: string
   ) => Promise<import("@/lib/project-folder-sync").SyncResult>;
 }
 

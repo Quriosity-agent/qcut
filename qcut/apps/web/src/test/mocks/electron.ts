@@ -99,6 +99,15 @@ export const mockElectronAPI: ElectronAPI = {
       fileSize: 1024,
     }),
     getPath: vi.fn().mockResolvedValue("/usr/bin/ffmpeg"),
+    checkHealth: vi.fn().mockResolvedValue({
+      ffmpegOk: true,
+      ffprobeOk: true,
+      ffmpegVersion: "6.1.1",
+      ffprobeVersion: "6.1.1",
+      ffmpegPath: "/usr/bin/ffmpeg",
+      ffprobePath: "/usr/bin/ffprobe",
+      errors: [],
+    }),
   },
 
   // Sound search operations

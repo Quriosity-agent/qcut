@@ -5,24 +5,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  findUntrackedFiles,
-  determineFolderIds,
-} from "../project-folder-sync";
+import { findUntrackedFiles, determineFolderIds } from "../project-folder-sync";
 import type { ProjectFolderFileInfo } from "@/types/electron";
 import type { MediaItem } from "@/stores/media-store-types";
 import { DEFAULT_FOLDER_IDS } from "@/stores/media-store-types";
 
 // Helper to create a mock ProjectFolderFileInfo
 function mockDiskFile(
-  overrides: Partial<ProjectFolderFileInfo> = {},
+  overrides: Partial<ProjectFolderFileInfo> = {}
 ): ProjectFolderFileInfo {
   return {
     name: "clip.mp4",
     path: "C:/Users/test/Documents/QCut/Projects/p1/media/imported/clip.mp4",
     relativePath: "media/imported/clip.mp4",
     type: "video",
-    size: 1024000,
+    size: 1_024_000,
     modifiedAt: Date.now(),
     isDirectory: false,
     ...overrides,
@@ -30,9 +27,7 @@ function mockDiskFile(
 }
 
 // Helper to create a mock MediaItem
-function mockMediaItem(
-  overrides: Partial<MediaItem> = {},
-): MediaItem {
+function mockMediaItem(overrides: Partial<MediaItem> = {}): MediaItem {
   return {
     id: "test-id",
     name: "clip.mp4",
@@ -51,9 +46,7 @@ describe("project-folder-sync", () => {
         type: "video",
         relativePath: "media/imported/clip.mp4",
       });
-      expect(determineFolderIds(file)).toEqual([
-        DEFAULT_FOLDER_IDS.VIDEOS,
-      ]);
+      expect(determineFolderIds(file)).toEqual([DEFAULT_FOLDER_IDS.VIDEOS]);
     });
 
     it("assigns audio files to AUDIO folder", () => {
@@ -62,9 +55,7 @@ describe("project-folder-sync", () => {
         type: "audio",
         relativePath: "media/imported/song.mp3",
       });
-      expect(determineFolderIds(file)).toEqual([
-        DEFAULT_FOLDER_IDS.AUDIO,
-      ]);
+      expect(determineFolderIds(file)).toEqual([DEFAULT_FOLDER_IDS.AUDIO]);
     });
 
     it("assigns image files to IMAGES folder", () => {
@@ -73,9 +64,7 @@ describe("project-folder-sync", () => {
         type: "image",
         relativePath: "media/imported/photo.png",
       });
-      expect(determineFolderIds(file)).toEqual([
-        DEFAULT_FOLDER_IDS.IMAGES,
-      ]);
+      expect(determineFolderIds(file)).toEqual([DEFAULT_FOLDER_IDS.IMAGES]);
     });
 
     it("assigns files in media/generated/ to AI_GENERATED folder too", () => {
@@ -135,10 +124,9 @@ describe("project-folder-sync", () => {
           localPath: "/some/other/path.mp4",
           importMetadata: {
             importMethod: "symlink",
-            originalPath:
-              "C:\\projects\\p1\\media\\imported\\clip.mp4",
+            originalPath: "C:\\projects\\p1\\media\\imported\\clip.mp4",
             importedAt: Date.now(),
-            fileSize: 1024000,
+            fileSize: 1_024_000,
           },
         }),
       ];
@@ -157,11 +145,9 @@ describe("project-folder-sync", () => {
         mockMediaItem({
           name: "clip.mp4",
           localPath: "/different/path.mp4",
-          file: new File(
-            [new ArrayBuffer(5000)],
-            "clip.mp4",
-            { type: "video/mp4" },
-          ),
+          file: new File([new ArrayBuffer(5000)], "clip.mp4", {
+            type: "video/mp4",
+          }),
         }),
       ];
       expect(findUntrackedFiles(diskFiles, mediaItems)).toEqual([]);
@@ -217,10 +203,7 @@ describe("project-folder-sync", () => {
           localPath: "C:/p/media/existing.mp4",
         }),
       ];
-      const result = findUntrackedFiles(
-        [tracked, untracked],
-        mediaItems,
-      );
+      const result = findUntrackedFiles([tracked, untracked], mediaItems);
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe("brand-new.mp4");
     });
@@ -241,9 +224,7 @@ describe("project-folder-sync", () => {
     it("returns zero imported when electronAPI.projectFolder is unavailable", async () => {
       (window as any).electronAPI = undefined;
 
-      const { syncProjectFolder } = await import(
-        "../project-folder-sync"
-      );
+      const { syncProjectFolder } = await import("../project-folder-sync");
       const result = await syncProjectFolder("test-project");
       expect(result.imported).toBe(0);
       expect(result.skipped).toBe(0);
@@ -277,9 +258,7 @@ describe("project-folder-sync", () => {
         },
       }));
 
-      const { syncProjectFolder } = await import(
-        "../project-folder-sync"
-      );
+      const { syncProjectFolder } = await import("../project-folder-sync");
       const result = await syncProjectFolder("test-project");
       expect(result.imported).toBe(0);
       expect(result.totalDiskFiles).toBe(0);

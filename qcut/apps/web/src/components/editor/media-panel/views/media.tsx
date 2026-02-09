@@ -206,7 +206,7 @@ export function MediaView() {
         .then((result) => {
           if (result.imported > 0) {
             toast.info(
-              `Auto-synced ${result.imported} file(s) from project folder`,
+              `Auto-synced ${result.imported} file(s) from project folder`
             );
           }
         })
@@ -483,7 +483,9 @@ export function MediaView() {
                 disabled={isSyncing || isProcessing}
                 className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
                 data-testid="sync-project-folder-button"
-                aria-label={isSyncing ? "Syncing project folder" : "Sync project folder"}
+                aria-label={
+                  isSyncing ? "Syncing project folder" : "Sync project folder"
+                }
                 title="Sync files from project folder"
               >
                 {isSyncing ? (
