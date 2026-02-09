@@ -21,6 +21,8 @@ import {
   TextSelect,
   FolderSync,
   CameraIcon,
+  FolderOpenIcon,
+  WrenchIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -135,18 +137,108 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
 };
 
+// --- Tab Groups ---
+
+export type TabGroup = "media" | "ai-create" | "edit" | "effects" | "tools";
+
+export const tabGroups: {
+  [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
+} = {
+  media: {
+    icon: FolderOpenIcon,
+    label: "Media",
+    tabs: ["media", "project-folder", "sounds", "audio"],
+  },
+  "ai-create": {
+    icon: SparklesIcon,
+    label: "AI Create",
+    tabs: [
+      "ai",
+      "text2image",
+      "adjustment",
+      "nano-edit",
+      "camera-selector",
+      "segmentation",
+    ],
+  },
+  edit: {
+    icon: ScissorsIcon,
+    label: "Edit",
+    tabs: [
+      "text",
+      "captions",
+      "word-timeline",
+      "video-edit",
+      "draw",
+      "stickers",
+    ],
+  },
+  effects: {
+    icon: BlendIcon,
+    label: "Effects",
+    tabs: ["filters", "effects", "transitions"],
+  },
+  tools: {
+    icon: WrenchIcon,
+    label: "Tools",
+    tabs: ["remotion", "pty"],
+  },
+};
+
+/** Reverse lookup: given a tab, return which group it belongs to. */
+export function getGroupForTab(tab: Tab): TabGroup {
+  for (const [groupKey, group] of Object.entries(tabGroups)) {
+    if (group.tabs.includes(tab)) {
+      return groupKey as TabGroup;
+    }
+  }
+  return "media";
+}
+
+// --- Store ---
+
 interface MediaPanelStore {
+  activeGroup: TabGroup;
+  setActiveGroup: (group: TabGroup) => void;
+
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
+
+  lastTabPerGroup: Record<TabGroup, Tab>;
 
   // AI-specific state
   aiActiveTab: "text" | "image" | "avatar" | "upscale";
   setAiActiveTab: (tab: "text" | "image" | "avatar" | "upscale") => void;
 }
 
+const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
+  media: "media",
+  "ai-create": "ai",
+  edit: "text",
+  effects: "filters",
+  tools: "remotion",
+};
+
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
+  activeGroup: "media",
+  setActiveGroup: (group) =>
+    set((state) => ({
+      activeGroup: group,
+      activeTab: state.lastTabPerGroup[group],
+    })),
+
   activeTab: "media",
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) =>
+    set((state) => {
+      const group = getGroupForTab(tab);
+      return {
+        activeTab: tab,
+        activeGroup: group,
+        lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
+      };
+    }),
+
+  lastTabPerGroup: { ...defaultLastTabPerGroup },
 
   // AI-specific state defaults
   aiActiveTab: "text",

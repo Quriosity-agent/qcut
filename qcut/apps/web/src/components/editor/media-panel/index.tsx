@@ -1,5 +1,6 @@
 "use client";
 
+import { GroupBar } from "./group-bar";
 import { TabBar } from "./tabbar";
 import { MediaView } from "./views/media";
 import { useMediaPanelStore, Tab } from "./store";
@@ -80,6 +81,7 @@ export function MediaPanel() {
       className="h-full flex flex-col bg-panel rounded-lg overflow-hidden"
       data-testid="media-panel"
     >
+      <GroupBar />
       <TabBar />
       <div className="flex-1 overflow-y-auto">{viewMap[activeTab]}</div>
     </div>
