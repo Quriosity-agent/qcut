@@ -61,28 +61,33 @@ import {
 
 const tempManager = new TempManager();
 
-/** Cached health check result — populated by initFFmpegHealthCheck() */
-let healthResult: FFmpegHealthResult | null = null;
+/** Cached health check promise — ensures verifyFFmpegBinary() runs only once */
+let healthCheckPromise: Promise<FFmpegHealthResult> | null = null;
+
+function getFFmpegHealth(): Promise<FFmpegHealthResult> {
+  if (!healthCheckPromise) {
+    healthCheckPromise = verifyFFmpegBinary().catch((error) => {
+      console.error("[FFmpeg Health] Health check failed:", error);
+      return {
+        ffmpegOk: false,
+        ffprobeOk: false,
+        ffmpegVersion: "",
+        ffprobeVersion: "",
+        ffmpegPath: "",
+        ffprobePath: "",
+        errors: [String(error)],
+      };
+    });
+  }
+  return healthCheckPromise;
+}
 
 /**
- * Runs FFmpeg/FFprobe health check and caches the result.
+ * Kicks off FFmpeg/FFprobe health check and caches the promise.
  * Called at startup from main.ts — async, non-blocking.
  */
-export async function initFFmpegHealthCheck(): Promise<void> {
-  try {
-    healthResult = await verifyFFmpegBinary();
-  } catch (error) {
-    console.error("[FFmpeg Health] Health check failed:", error);
-    healthResult = {
-      ffmpegOk: false,
-      ffprobeOk: false,
-      ffmpegVersion: "",
-      ffprobeVersion: "",
-      ffmpegPath: "",
-      ffprobePath: "",
-      errors: [String(error)],
-    };
-  }
+export function initFFmpegHealthCheck(): void {
+  getFFmpegHealth();
 }
 
 /**
@@ -98,24 +103,8 @@ export function setupFFmpegIPC(): void {
   });
 
   // Handle ffmpeg health check request
-  ipcMain.handle("ffmpeg-health", async (): Promise<FFmpegHealthResult> => {
-    if (healthResult) return healthResult;
-    // If startup check hasn't completed yet, run it now
-    try {
-      healthResult = await verifyFFmpegBinary();
-    } catch (error) {
-      console.error("[FFmpeg Health] IPC health check failed:", error);
-      healthResult = {
-        ffmpegOk: false,
-        ffprobeOk: false,
-        ffmpegVersion: "",
-        ffprobeVersion: "",
-        ffmpegPath: "",
-        ffprobePath: "",
-        errors: [String(error)],
-      };
-    }
-    return healthResult;
+  ipcMain.handle("ffmpeg-health", (): Promise<FFmpegHealthResult> => {
+    return getFFmpegHealth();
   });
 
   // Create export session
