@@ -614,12 +614,10 @@ export async function addStickerToCanvas(
 
     // Step 2: Click the stickers panel tab (now visible under edit group)
     const stickerTab = page.locator('[data-testid="stickers-panel-tab"]');
-    await stickerTab
-      .waitFor({ state: "attached", timeout: 5000 })
-      .catch(() => {
-        console.warn("Stickers panel tab not attached");
-        return null;
-      });
+    await stickerTab.waitFor({ state: "attached", timeout: 5000 }).catch(() => {
+      console.warn("Stickers panel tab not attached");
+      return null;
+    });
 
     if ((await stickerTab.count()) === 0) {
       console.warn(
@@ -678,9 +676,7 @@ export async function addStickerToCanvas(
     const added = await page.evaluate(async () => {
       const stickerTest = (window as any).stickerTest;
       if (!stickerTest?.getStores) {
-        console.error(
-          "[addStickerToCanvas] window.stickerTest not available"
-        );
+        console.error("[addStickerToCanvas] window.stickerTest not available");
         return false;
       }
 
