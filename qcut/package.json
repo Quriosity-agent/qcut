@@ -44,7 +44,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "turbo run build && bun run build:electron",
     "check-types": "turbo run check-types",
     "postinstall": "bun run setup-ffmpeg && bun scripts/patch-node-pty.ts",
     "build:electron": "cd electron && bun x tsc",
