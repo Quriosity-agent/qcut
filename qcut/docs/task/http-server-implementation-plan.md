@@ -10,7 +10,7 @@
 
 QCut's Claude integration currently works through Electron IPC only — unusable by external tools like Claude Code. This plan adds a lightweight HTTP server on `localhost:8765` that proxies REST requests to the existing IPC handlers.
 
-```
+```text
 Claude Code  ──HTTP──>  localhost:8765  ──IPC──>  QCut Main Process  ──IPC──>  Renderer
 ```
 
@@ -320,7 +320,7 @@ QCut exposes a REST API on `http://127.0.0.1:8765` for external tools like Claud
 
 ### Authentication (Optional)
 Set `QCUT_API_TOKEN=your-secret` env var. If set, all requests require:
-```
+```text
 Authorization: Bearer your-secret
 ```
 
@@ -343,7 +343,6 @@ curl -X POST http://127.0.0.1:8765/api/claude/media/project_123/import \
 
 # Get TikTok export recommendation
 curl http://127.0.0.1:8765/api/claude/export/project_123/recommend/tiktok
-```
 ```
 
 ### 5b. Update CLAUDE.md
@@ -393,7 +392,7 @@ Add HTTP server reference to the Key Entry Points table:
 
 ## Implementation Order
 
-```
+```text
 Subtask 2 (extract functions)  ──>  Subtask 1 (HTTP server + router)  ──>  Subtask 3 (register)
                                                                               |
                                                                               v
