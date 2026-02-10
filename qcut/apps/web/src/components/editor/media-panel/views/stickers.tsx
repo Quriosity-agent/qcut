@@ -383,41 +383,44 @@ export function StickersView() {
         const mediaItem = useMediaStore
           .getState()
           .mediaItems.find((item) => item.id === mediaId);
-        if (mediaItem) {
-          const currentTime = usePlaybackStore.getState().currentTime;
-          const timelineStore = useTimelineStore.getState();
-          const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
-
-          if (!wasAdded) {
-            toast.error(`Could not add ${name} — overlaps existing element`);
-            return;
-          }
-
-          // Set initial transforms so sticker renders as positioned overlay.
-          // Find the just-added element by matching mediaId and startTime.
-          const newEl = timelineStore.tracks
-            .flatMap((t) => t.elements)
-            .find(
-              (e): e is import("@/types/timeline").MediaElement =>
-                e.type === "media" &&
-                e.startTime === currentTime &&
-                (e as import("@/types/timeline").MediaElement).mediaId ===
-                  mediaId &&
-                e.width === undefined
-            );
-          if (newEl) {
-            timelineStore.updateElementTransform(
-              newEl.id,
-              {
-                position: { x: 0, y: 0 },
-                size: { width: 200, height: 200 },
-              },
-              { pushHistory: false }
-            );
-          }
-
-          debugLog("[StickersView] Added sticker to timeline at", currentTime);
+        if (!mediaItem) {
+          toast.error("Sticker saved but could not be loaded for timeline");
+          return;
         }
+
+        const currentTime = usePlaybackStore.getState().currentTime;
+        const timelineStore = useTimelineStore.getState();
+        const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
+
+        if (!wasAdded) {
+          toast.error(`Could not add ${name} — overlaps existing element`);
+          return;
+        }
+
+        // Set initial transforms so sticker renders as positioned overlay.
+        // Find the just-added element by matching mediaId and startTime.
+        const newEl = timelineStore.tracks
+          .flatMap((t) => t.elements)
+          .find(
+            (e): e is import("@/types/timeline").MediaElement =>
+              e.type === "media" &&
+              e.startTime === currentTime &&
+              (e as import("@/types/timeline").MediaElement).mediaId ===
+                mediaId &&
+              e.width === undefined
+          );
+        if (newEl) {
+          timelineStore.updateElementTransform(
+            newEl.id,
+            {
+              position: { x: 0, y: 0 },
+              size: { width: 200, height: 200 },
+            },
+            { pushHistory: false }
+          );
+        }
+
+        debugLog("[StickersView] Added sticker to timeline at", currentTime);
 
         // Add to recent stickers
         addRecentSticker(iconId, name);
