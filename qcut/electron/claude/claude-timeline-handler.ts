@@ -253,7 +253,7 @@ export function setupClaudeTimelineIPC(): void {
     "claude:timeline:updateElement",
     async (
       event: IpcMainInvokeEvent,
-      projectId: string,
+      _projectId: string,
       elementId: string,
       changes: Partial<ClaudeElement>,
     ): Promise<void> => {
@@ -269,7 +269,7 @@ export function setupClaudeTimelineIPC(): void {
     "claude:timeline:removeElement",
     async (
       event: IpcMainInvokeEvent,
-      projectId: string,
+      _projectId: string,
       elementId: string,
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Removing element: ${elementId}`);
