@@ -5,8 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createRouter, HttpError } from "../utils/http-router";
-import * as http from "http";
-import { EventEmitter } from "events";
+import * as http from "node:http";
+import { EventEmitter } from "node:events";
 
 // Mock electron modules (imported transitively)
 vi.mock("electron", () => ({

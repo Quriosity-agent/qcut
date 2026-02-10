@@ -12,7 +12,7 @@ import {
   afterAll,
   beforeEach,
 } from "vitest";
-import * as http from "http";
+import * as http from "node:http";
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before importing the server module

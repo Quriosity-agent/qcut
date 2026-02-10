@@ -33,7 +33,7 @@ The Claude Code Integration API lets external tools (Claude Code, scripts) inter
 
 ## Architecture
 
-```
+```text
 Claude Code (CLI)                      QCut Renderer Process
      |                                        |
      | HTTP (localhost:8765)                   | Electron IPC
@@ -952,7 +952,7 @@ QCut exposes a REST API on `http://127.0.0.1:8765` for external tools like Claud
 
 If `QCUT_API_TOKEN` is set, all requests require the header:
 
-```
+```text
 Authorization: Bearer your-secret
 ```
 
@@ -1021,7 +1021,7 @@ curl -X POST http://127.0.0.1:8765/api/claude/media/project_123/import \
 curl http://127.0.0.1:8765/api/claude/export/project_123/recommend/tiktok
 
 # With authentication
-curl -H "Authorization: Bearer my-token" \
+curl -H "Authorization: Bearer <your-token>" \
   http://127.0.0.1:8765/api/claude/health
 ```
 

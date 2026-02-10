@@ -644,7 +644,16 @@ export function createTimelineOperations({
         }
 
         // Process the new media file
-        const mediaData: any = {
+        const mediaData: {
+          name: string;
+          type: string;
+          file: File;
+          url: string;
+          width?: number;
+          height?: number;
+          duration?: number;
+          thumbnailUrl?: string;
+        } = {
           name: newFile.name,
           type: fileType,
           file: newFile,
@@ -890,9 +899,12 @@ export function createTimelineOperations({
           ("fontStyle" in item ? item.fontStyle : "normal") || "normal",
         textDecoration:
           ("textDecoration" in item ? item.textDecoration : "none") || "none",
-        x: ("x" in item ? item.x : 0) || 0,
-        y: ("y" in item ? item.y : 0) || 0,
-        rotation: ("rotation" in item ? item.rotation : 0) || 0,
+        x: "x" in item && item.x !== undefined ? item.x : 0,
+        y: "y" in item && item.y !== undefined ? item.y : 0,
+        rotation:
+          "rotation" in item && item.rotation !== undefined
+            ? item.rotation
+            : 0,
         opacity:
           "opacity" in item && item.opacity !== undefined ? item.opacity : 1,
       });

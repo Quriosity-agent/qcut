@@ -213,13 +213,18 @@ export function setupClaudeTimelineIPC(): void {
 
       let timeline: ClaudeTimeline;
 
-      if (format === "md") {
-        timeline = markdownToTimeline(data);
-      } else {
-        timeline = JSON.parse(data);
+      try {
+        if (format === "md") {
+          timeline = markdownToTimeline(data);
+        } else {
+          timeline = JSON.parse(data);
+        }
+        validateTimeline(timeline);
+      } catch (error) {
+        claudeLog.error(HANDLER_NAME, "Invalid timeline payload", error);
+        throw new Error("Invalid timeline payload");
       }
 
-      validateTimeline(timeline);
       event.sender.send("claude:timeline:apply", timeline);
 
       claudeLog.info(HANDLER_NAME, "Timeline import sent to renderer");

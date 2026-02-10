@@ -22,14 +22,15 @@ interface Logger {
   debug(message?: unknown, ...optionalParams: unknown[]): void;
 }
 
-let log: Logger;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  log = require("electron-log");
-} catch {
-  const noop = (): void => {};
-  log = { info: noop, warn: noop, error: noop, debug: noop };
-}
+const noop = (): void => {};
+let log: Logger = { info: noop, warn: noop, error: noop, debug: noop };
+void import("electron-log/main")
+  .then((module) => {
+    log = module.default as Logger;
+  })
+  .catch(() => {
+    // keep noop logger when electron-log isn't available
+  });
 
 // ============================================================================
 // Types

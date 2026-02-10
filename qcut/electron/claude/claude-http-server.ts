@@ -9,7 +9,7 @@
  * with the renderer via IPC through the existing BrowserWindow.
  */
 
-import * as http from "http";
+import * as http from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "./utils/http-router.js";
 import { claudeLog } from "./utils/logger.js";
@@ -62,8 +62,12 @@ function checkAuth(req: http.IncomingMessage): boolean {
 }
 
 export function startClaudeHTTPServer(
-  port = parseInt(process.env.QCUT_API_PORT || "8765", 10),
+  port = Number.parseInt(process.env.QCUT_API_PORT ?? "8765", 10),
 ): void {
+  const resolvedPort = Number.isFinite(port) && port > 0 ? port : 8765;
+  if (resolvedPort !== port) {
+    claudeLog.warn("HTTP", "Invalid QCUT_API_PORT, falling back to 8765");
+  }
   if (server) {
     claudeLog.warn("HTTP", "Server already running, skipping start");
     return;
@@ -143,9 +147,15 @@ export function startClaudeHTTPServer(
     if (format === "md") {
       timeline = markdownToTimeline(req.body.data);
     } else {
-      timeline = typeof req.body.data === "string"
-        ? JSON.parse(req.body.data)
-        : req.body.data;
+      if (typeof req.body.data === "string") {
+        try {
+          timeline = JSON.parse(req.body.data);
+        } catch {
+          throw new HttpError(400, "Invalid JSON in 'data'");
+        }
+      } else {
+        timeline = req.body.data;
+      }
     }
     validateTimeline(timeline);
     const win = getWindow();
@@ -254,7 +264,13 @@ export function startClaudeHTTPServer(
     // 30s request timeout
     req.setTimeout(30_000, () => {
       res.writeHead(408, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Request timeout" }));
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: "Request timeout",
+          timestamp: Date.now(),
+        }),
+      );
     });
 
     // Auth check
@@ -273,15 +289,15 @@ export function startClaudeHTTPServer(
     router.handle(req, res);
   });
 
-  server.listen(port, "127.0.0.1", () => {
-    claudeLog.info("HTTP", `Server started on http://127.0.0.1:${port}`);
+  server.listen(resolvedPort, "127.0.0.1", () => {
+    claudeLog.info("HTTP", `Server started on http://127.0.0.1:${resolvedPort}`);
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       claudeLog.warn(
         "HTTP",
-        `Port ${port} in use. Claude HTTP API disabled.`,
+        `Port ${resolvedPort} in use. Claude HTTP API disabled.`,
       );
     } else {
       claudeLog.error("HTTP", `Server error: ${err.message}`);

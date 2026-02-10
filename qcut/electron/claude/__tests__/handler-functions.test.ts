@@ -111,7 +111,7 @@ describe("Export Handler Functions", () => {
 // ---------------------------------------------------------------------------
 
 import { analyzeError, getSystemInfo } from "../claude-diagnostics-handler";
-import * as os from "os";
+import * as os from "node:os";
 
 describe("Diagnostics Handler Functions", () => {
   const mockSystemInfo = {

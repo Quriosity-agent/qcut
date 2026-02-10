@@ -1587,8 +1587,12 @@ app.on("window-all-closed", () => {
     cleanupAIPipeline();
 
     // Close the Claude HTTP server
-    const { stopClaudeHTTPServer } = require("./claude/index.js");
-    stopClaudeHTTPServer();
+    try {
+      const { stopClaudeHTTPServer } = require("./claude/index.js");
+      stopClaudeHTTPServer();
+    } catch (error: unknown) {
+      logger.warn("⚠️ [Claude] Failed to stop HTTP server:", error);
+    }
 
     // Close the static server when quitting
     if (staticServer) {

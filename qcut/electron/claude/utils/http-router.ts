@@ -3,8 +3,8 @@
  * Matches METHOD /path/:param patterns, parses JSON bodies, extracts query params.
  */
 
-import * as http from "http";
-import * as url from "url";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import { parse } from "node:url";
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
@@ -21,14 +21,14 @@ export class HttpError extends Error {
 export interface ParsedRequest {
   params: Record<string, string>;
   query: Record<string, string>;
-  body: any;
+  body: unknown;
 }
 
 interface Route {
   method: string;
   pattern: RegExp;
   paramNames: string[];
-  handler: (req: ParsedRequest) => Promise<any>;
+  handler: (req: ParsedRequest) => Promise<unknown>;
 }
 
 function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
@@ -40,7 +40,7 @@ function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
   return { pattern: new RegExp(`^${regexStr}$`), paramNames };
 }
 
-function parseBody(req: http.IncomingMessage): Promise<any> {
+function parseBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = "";
     let size = 0;
@@ -65,11 +65,11 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 }
 
 export interface Router {
-  get(path: string, handler: (req: ParsedRequest) => Promise<any>): void;
-  post(path: string, handler: (req: ParsedRequest) => Promise<any>): void;
-  patch(path: string, handler: (req: ParsedRequest) => Promise<any>): void;
-  delete(path: string, handler: (req: ParsedRequest) => Promise<any>): void;
-  handle(req: http.IncomingMessage, res: http.ServerResponse): void;
+  get(path: string, handler: (req: ParsedRequest) => Promise<unknown>): void;
+  post(path: string, handler: (req: ParsedRequest) => Promise<unknown>): void;
+  patch(path: string, handler: (req: ParsedRequest) => Promise<unknown>): void;
+  delete(path: string, handler: (req: ParsedRequest) => Promise<unknown>): void;
+  handle(req: IncomingMessage, res: ServerResponse): void;
 }
 
 export function createRouter(): Router {
@@ -78,20 +78,20 @@ export function createRouter(): Router {
   function addRoute(
     method: string,
     path: string,
-    handler: (req: ParsedRequest) => Promise<any>,
+    handler: (req: ParsedRequest) => Promise<unknown>,
   ) {
     const { pattern, paramNames } = pathToRegex(path);
     routes.push({ method: method.toUpperCase(), pattern, paramNames, handler });
   }
 
-  function sendJson(res: http.ServerResponse, status: number, data: any) {
+  function sendJson(res: ServerResponse, status: number, data: unknown) {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
   }
 
-  async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
+  async function handle(req: IncomingMessage, res: ServerResponse) {
     const method = (req.method || "GET").toUpperCase();
-    const parsed = url.parse(req.url || "/", true);
+    const parsed = parse(req.url || "/", true);
     const pathname = parsed.pathname || "/";
     const query: Record<string, string> = {};
     for (const [key, val] of Object.entries(parsed.query)) {
@@ -103,29 +103,36 @@ export function createRouter(): Router {
       const match = pathname.match(route.pattern);
       if (!match) continue;
 
-      const params: Record<string, string> = {};
-      for (let i = 0; i < route.paramNames.length; i++) {
-        params[route.paramNames[i]] = decodeURIComponent(match[i + 1]);
-      }
-
       try {
-        let body: any;
+        const params: Record<string, string> = {};
+        for (let i = 0; i < route.paramNames.length; i++) {
+          params[route.paramNames[i]] = decodeURIComponent(match[i + 1]);
+        }
+
+        let body: unknown;
         if (method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE") {
           body = await parseBody(req);
         }
         const result = await route.handler({ params, query, body });
         sendJson(res, 200, { success: true, data: result, timestamp: Date.now() });
-      } catch (error: any) {
-        if (error instanceof HttpError) {
+      } catch (error: unknown) {
+        if (error instanceof URIError) {
+          sendJson(res, 400, {
+            success: false,
+            error: "Invalid URL encoding",
+            timestamp: Date.now(),
+          });
+        } else if (error instanceof HttpError) {
           sendJson(res, error.status, {
             success: false,
             error: error.message,
             timestamp: Date.now(),
           });
         } else {
+          const message = error instanceof Error ? error.message : "Internal server error";
           sendJson(res, 500, {
             success: false,
-            error: error.message || "Internal server error",
+            error: message,
             timestamp: Date.now(),
           });
         }

@@ -192,7 +192,7 @@ export function setupClaudeExportIPC(): void {
 
   ipcMain.handle(
     "claude:export:recommend",
-    async (_event: IpcMainInvokeEvent, projectId: string, target: string) =>
+    async (_event: IpcMainInvokeEvent, _projectId: string, target: string) =>
       getExportRecommendation(target),
   );
 
