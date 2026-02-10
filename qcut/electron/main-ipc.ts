@@ -449,7 +449,7 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
       filePath: string
     ): Promise<Buffer | null> => {
       try {
-        return fs.readFileSync(filePath);
+        return await fs.promises.readFile(filePath);
       } catch (error: any) {
         logger.error("Error reading file:", error);
         return null;
@@ -465,7 +465,7 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
       data: string | Buffer
     ): Promise<boolean> => {
       try {
-        fs.writeFileSync(filePath, data);
+        await fs.promises.writeFile(filePath, data);
         return true;
       } catch (error: any) {
         logger.error("Error writing file:", error);
@@ -512,7 +512,7 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
     "file-exists",
     async (_event: IpcMainInvokeEvent, filePath: string): Promise<boolean> => {
       try {
-        fs.accessSync(filePath, fs.constants.F_OK);
+        await fs.promises.access(filePath, fs.constants.F_OK);
         return true;
       } catch {
         return false;
@@ -624,7 +624,7 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
     "get-file-info",
     async (_event: IpcMainInvokeEvent, filePath: string) => {
       try {
-        const stats = fs.statSync(filePath);
+        const stats = await fs.promises.stat(filePath);
         return {
           name: path.basename(filePath),
           path: filePath,
@@ -654,8 +654,9 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
       key: string,
       data: any
     ): Promise<void> => {
+      const safeKey = path.basename(key);
       const userDataPath = app.getPath("userData");
-      const filePath = path.join(userDataPath, "projects", `${key}.json`);
+      const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
       await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
       await fs.promises.writeFile(filePath, JSON.stringify(data));
     }
@@ -665,8 +666,9 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
     "storage:load",
     async (_event: IpcMainInvokeEvent, key: string): Promise<any> => {
       try {
+        const safeKey = path.basename(key);
         const userDataPath = app.getPath("userData");
-        const filePath = path.join(userDataPath, "projects", `${key}.json`);
+        const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
         const data = await fs.promises.readFile(filePath, "utf8");
         if (!data || !data.trim()) {
           return null;
@@ -690,8 +692,9 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
     "storage:remove",
     async (_event: IpcMainInvokeEvent, key: string): Promise<void> => {
       try {
+        const safeKey = path.basename(key);
         const userDataPath = app.getPath("userData");
-        const filePath = path.join(userDataPath, "projects", `${key}.json`);
+        const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
         await fs.promises.unlink(filePath);
       } catch (error: any) {
         if (error.code !== "ENOENT") throw error;
