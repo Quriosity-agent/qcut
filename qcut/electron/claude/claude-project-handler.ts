@@ -33,7 +33,7 @@ function getEmptyStats(): ProjectStats {
  * Get project settings from disk
  */
 export async function getProjectSettings(
-  projectId: string,
+  projectId: string
 ): Promise<ProjectSettings> {
   claudeLog.info(HANDLER_NAME, `Getting settings for project: ${projectId}`);
 
@@ -57,11 +57,7 @@ export async function getProjectSettings(
       exportQuality: project.exportQuality || "high",
     };
   } catch (error) {
-    claudeLog.error(
-      HANDLER_NAME,
-      "Failed to read project settings:",
-      error,
-    );
+    claudeLog.error(HANDLER_NAME, "Failed to read project settings:", error);
     throw new Error(`Failed to read project: ${projectId}`);
   }
 }
@@ -72,7 +68,7 @@ export async function getProjectSettings(
  */
 export async function updateProjectSettings(
   projectId: string,
-  settings: Partial<ProjectSettings>,
+  settings: Partial<ProjectSettings>
 ): Promise<void> {
   claudeLog.info(HANDLER_NAME, `Updating settings for project: ${projectId}`);
 
@@ -103,22 +99,11 @@ export async function updateProjectSettings(
 
     project.updatedAt = new Date().toISOString();
 
-    await fs.writeFile(
-      settingsPath,
-      JSON.stringify(project, null, 2),
-      "utf-8",
-    );
+    await fs.writeFile(settingsPath, JSON.stringify(project, null, 2), "utf-8");
 
-    claudeLog.info(
-      HANDLER_NAME,
-      `Successfully updated project: ${projectId}`,
-    );
+    claudeLog.info(HANDLER_NAME, `Successfully updated project: ${projectId}`);
   } catch (error) {
-    claudeLog.error(
-      HANDLER_NAME,
-      "Failed to update project settings:",
-      error,
-    );
+    claudeLog.error(HANDLER_NAME, "Failed to update project settings:", error);
     throw error;
   }
 }
@@ -129,7 +114,7 @@ export async function updateProjectSettings(
  */
 export async function getProjectStats(
   win: BrowserWindow,
-  projectId: string,
+  projectId: string
 ): Promise<ProjectStats> {
   claudeLog.info(HANDLER_NAME, `Getting stats for project: ${projectId}`);
 
@@ -139,7 +124,7 @@ export async function getProjectStats(
     const handler = (
       responseEvent: IpcMainEvent,
       stats: ProjectStats,
-      responseId?: string,
+      responseId?: string
     ) => {
       if (
         responseEvent.sender.id !== win.webContents.id ||
@@ -156,16 +141,23 @@ export async function getProjectStats(
       ipcMain.removeListener("claude:project:statsResponse", handler);
       claudeLog.warn(
         HANDLER_NAME,
-        "Timeout waiting for stats, returning empty",
+        "Timeout waiting for stats, returning empty"
       );
       resolve(getEmptyStats());
     }, 3000);
 
-    ipcMain.on("claude:project:statsResponse", handler);
-    win.webContents.send("claude:project:statsRequest", {
-      projectId,
-      requestId,
-    });
+    try {
+      ipcMain.on("claude:project:statsResponse", handler);
+      win.webContents.send("claude:project:statsRequest", {
+        projectId,
+        requestId,
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      ipcMain.removeListener("claude:project:statsResponse", handler);
+      claudeLog.error(HANDLER_NAME, "Failed to request stats:", error);
+      resolve(getEmptyStats());
+    }
   });
 }
 
@@ -178,7 +170,7 @@ export function setupClaudeProjectIPC(): void {
   ipcMain.handle(
     "claude:project:getSettings",
     async (_event: IpcMainInvokeEvent, projectId: string) =>
-      getProjectSettings(projectId),
+      getProjectSettings(projectId)
   );
 
   ipcMain.handle(
@@ -186,12 +178,12 @@ export function setupClaudeProjectIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       projectId: string,
-      settings: Partial<ProjectSettings>,
+      settings: Partial<ProjectSettings>
     ) => {
       await updateProjectSettings(projectId, settings);
       // Notify renderer process
       event.sender.send("claude:project:updated", projectId, settings);
-    },
+    }
   );
 
   ipcMain.handle(
@@ -202,7 +194,7 @@ export function setupClaudeProjectIPC(): void {
         return getEmptyStats();
       }
       return getProjectStats(win, projectId);
-    },
+    }
   );
 
   claudeLog.info(HANDLER_NAME, "Project IPC handlers registered");

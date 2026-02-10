@@ -137,7 +137,7 @@ export function getExportRecommendation(target: string): ExportRecommendation {
     case "tiktok":
       suggestions.push("Videos under 60 seconds perform best on TikTok");
       suggestions.push(
-        "Add captions for better engagement (85% watch without sound)",
+        "Add captions for better engagement (85% watch without sound)"
       );
       suggestions.push("Use trending sounds when possible");
       warnings.push("Maximum video length is 10 minutes");
@@ -147,9 +147,7 @@ export function getExportRecommendation(target: string): ExportRecommendation {
       suggestions.push("Reels should be 15-90 seconds for optimal reach");
       suggestions.push("Use trending audio when possible");
       suggestions.push("Add text overlays for accessibility");
-      warnings.push(
-        "Instagram compresses videos - export at higher quality",
-      );
+      warnings.push("Instagram compresses videos - export at higher quality");
       break;
 
     case "youtube":
@@ -167,9 +165,7 @@ export function getExportRecommendation(target: string): ExportRecommendation {
     case "linkedin":
       suggestions.push("Professional content performs best");
       suggestions.push("Keep videos under 3 minutes for best engagement");
-      suggestions.push(
-        "Add subtitles - many watch at work without sound",
-      );
+      suggestions.push("Add subtitles - many watch at work without sound");
       break;
 
     case "discord":
@@ -186,15 +182,12 @@ export function getExportRecommendation(target: string): ExportRecommendation {
 export function setupClaudeExportIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Export IPC handlers...");
 
-  ipcMain.handle(
-    "claude:export:getPresets",
-    async () => getExportPresets(),
-  );
+  ipcMain.handle("claude:export:getPresets", async () => getExportPresets());
 
   ipcMain.handle(
     "claude:export:recommend",
     async (_event: IpcMainInvokeEvent, _projectId: string, target: string) =>
-      getExportRecommendation(target),
+      getExportRecommendation(target)
   );
 
   claudeLog.info(HANDLER_NAME, "Export IPC handlers registered");
