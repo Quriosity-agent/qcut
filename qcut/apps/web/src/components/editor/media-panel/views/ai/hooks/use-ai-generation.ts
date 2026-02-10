@@ -16,16 +16,11 @@ import {
 } from "@/lib/ai-video-client";
 import { AIVideoOutputManager } from "@/lib/ai-video-output";
 import { debugLogger } from "@/lib/debug-logger";
-import { getMediaStoreUtils } from "@/stores/media-store-loader";
-import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { falAIClient } from "@/lib/fal-ai-client";
 import { validateReveEditImage } from "@/lib/image-validation";
 
 import {
-  integrateVideoToMediaStore,
-  updateVideoWithLocalPaths,
-  canIntegrateMedia,
   routeTextToVideoHandler,
   routeImageToVideoHandler,
   routeUpscaleHandler,
@@ -38,52 +33,32 @@ import {
   type ModelHandlerContext,
 } from "./generation";
 import {
+  downloadVideoToMemory as downloadVideoToMemoryHelper,
+  uploadImageToFal as uploadImageToFalHelper,
+  uploadAudioToFal as uploadAudioToFalHelper,
+  validateGenerationInputs,
+  buildUnifiedParams,
+  getModelCapabilities,
+  processModelResponse,
+  type ValidationContext,
+  type ResponseHandlerContext,
+} from "./use-ai-generation-helpers";
+import {
   AI_MODELS,
   UI_CONSTANTS,
   PROGRESS_CONSTANTS,
   STATUS_MESSAGES,
   ERROR_MESSAGES,
-  REVE_EDIT_MODEL,
 } from "../constants/ai-constants";
-import {
-  T2V_MODEL_CAPABILITIES,
-  type T2VModelCapabilities,
-  type T2VModelId,
-} from "../constants/text2video-models-config";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
   AIGenerationState,
   UseAIGenerationProps,
-  ProgressCallback as AIProgressCallback,
 } from "../types/ai-types";
 
 // Re-export frame models constant for local use
 const VEO31_FRAME_MODELS = FRAME_MODELS;
-
-function getSafeDuration(
-  requestedDuration: number,
-  capabilities?: T2VModelCapabilities
-): number | undefined {
-  if (!capabilities?.supportsDuration) return;
-
-  const allowedDurations = capabilities.supportedDurations;
-  const fallbackDuration =
-    capabilities.defaultDuration ??
-    (allowedDurations && allowedDurations.length > 0
-      ? allowedDurations[0]
-      : undefined);
-
-  if (!allowedDurations || allowedDurations.length === 0) {
-    return requestedDuration;
-  }
-
-  if (allowedDurations.includes(requestedDuration)) {
-    return requestedDuration;
-  }
-
-  return fallbackDuration ?? allowedDurations[0];
-}
 
 /**
  * Custom hook for managing AI video generation
@@ -354,80 +329,19 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     onProgress,
   ]);
 
-  // Helper function to download video to memory
+  // Stable callback wrappers around extracted helpers (empty deps = referentially stable)
   const downloadVideoToMemory = useCallback(
-    async (videoUrl: string): Promise<Uint8Array> => {
-      debugLog("📥 Starting video download from:", videoUrl);
-
-      const response = await fetch(videoUrl);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to download video: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("Response body is not readable");
-      }
-
-      const chunks: Uint8Array[] = [];
-      let receivedLength = 0;
-
-      // Read the stream
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) break;
-
-        if (value) {
-          chunks.push(value);
-          receivedLength += value.length;
-        }
-      }
-
-      // Concatenate chunks into single Uint8Array
-      const result = new Uint8Array(receivedLength);
-      let position = 0;
-
-      for (const chunk of chunks) {
-        result.set(chunk, position);
-        position += chunk.length;
-      }
-
-      debugLog(`📥 Download complete: ${result.length} bytes`);
-      return result;
-    },
+    (videoUrl: string) => downloadVideoToMemoryHelper(videoUrl),
     []
   );
-
-  // Helper function to upload image to FAL and get URL (for Veo 3.1)
-  const uploadImageToFal = useCallback(async (file: File): Promise<string> => {
-    debugLog("📤 Uploading image to FAL:", file.name);
-
-    try {
-      const url = await falAIClient.uploadImageToFal(file);
-      debugLog(`📤 Upload complete: ${url}`);
-      return url;
-    } catch (error) {
-      debugError("❌ Failed to upload image to FAL", error);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-  }, []);
-
-  // Helper function to upload audio for WAN 2.5 background music support
-  const uploadAudioToFal = useCallback(async (file: File): Promise<string> => {
-    debugLog("?? Uploading audio to FAL:", file.name);
-
-    try {
-      const url = await falAIClient.uploadAudioToFal(file);
-      debugLog("?? Audio upload complete:", url);
-      return url;
-    } catch (error) {
-      debugError("? Failed to upload audio to FAL", error);
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-  }, []); // Status polling function
+  const uploadImageToFal = useCallback(
+    (file: File) => uploadImageToFalHelper(file),
+    []
+  );
+  const uploadAudioToFal = useCallback(
+    (file: File) => uploadAudioToFalHelper(file),
+    []
+  ); // Status polling function
   const startStatusPolling = useCallback(
     (jobId: string): Promise<void> => {
       let hasResolved = false;
@@ -666,55 +580,21 @@ export function useAIGeneration(props: UseAIGenerationProps) {
 
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
-        const modelCapabilities =
-          modelId in T2V_MODEL_CAPABILITIES
-            ? T2V_MODEL_CAPABILITIES[modelId as T2VModelId]
-            : undefined;
+        const modelCapabilities = getModelCapabilities(modelId);
 
-        const unifiedParams: Record<string, unknown> = {};
-        if (modelCapabilities?.supportsAspectRatio && t2vAspectRatio) {
-          unifiedParams.aspect_ratio = t2vAspectRatio;
-        }
-        if (modelCapabilities?.supportsResolution && t2vResolution) {
-          unifiedParams.resolution = t2vResolution;
-        }
-        if (modelCapabilities?.supportsDuration && t2vDuration) {
-          const safeDuration = getSafeDuration(t2vDuration, modelCapabilities);
-          if (safeDuration !== undefined) {
-            if (
-              safeDuration !== t2vDuration &&
-              modelCapabilities.supportedDurations?.length
-            ) {
-              debugLogger.log("AIGeneration", "T2V_DURATION_SANITIZED", {
-                modelId,
-                requestedDuration: t2vDuration,
-                appliedDuration: safeDuration,
-                allowedDurations: modelCapabilities.supportedDurations,
-              });
-            }
-            unifiedParams.duration = safeDuration;
-          }
-        }
-        const trimmedNegativePrompt = t2vNegativePrompt?.trim();
-        if (
-          modelCapabilities?.supportsNegativePrompt &&
-          trimmedNegativePrompt
-        ) {
-          unifiedParams.negative_prompt = trimmedNegativePrompt;
-        }
-        if (modelCapabilities?.supportsPromptExpansion && t2vPromptExpansion) {
-          unifiedParams.prompt_expansion = true;
-        }
-        if (
-          modelCapabilities?.supportsSeed &&
-          typeof t2vSeed === "number" &&
-          t2vSeed !== -1
-        ) {
-          unifiedParams.seed = t2vSeed;
-        }
-        if (modelCapabilities?.supportsSafetyChecker) {
-          unifiedParams.enable_safety_checker = t2vSafetyChecker;
-        }
+        // Mock doesn't skip Sora2, so isSora2TextModel = false
+        const unifiedParams = buildUnifiedParams({
+          modelId,
+          modelCapabilities,
+          isSora2TextModel: false,
+          t2vAspectRatio,
+          t2vResolution,
+          t2vDuration,
+          t2vNegativePrompt,
+          t2vPromptExpansion,
+          t2vSeed,
+          t2vSafetyChecker,
+        });
 
         setStatusMessage(
           `🧪 Mock generating with ${modelName} (${i + 1}/${selectedModels.length})`
@@ -814,89 +694,18 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     );
     console.log("");
 
-    let validationError: string | null = null;
-
-    if (activeTab === "text") {
-      if (!prompt.trim()) {
-        validationError = "Missing prompt for text tab";
-      } else if (selectedModels.length === 0) {
-        validationError = "No models selected for text tab";
-      }
-    } else if (activeTab === "image") {
-      if (selectedModels.length === 0) {
-        validationError = "Missing models for image tab";
-      } else {
-        const hasFrameModel = selectedModels.some((id) =>
-          VEO31_FRAME_MODELS.has(id)
-        );
-        const hasImageModel = selectedModels.some(
-          (id) => !VEO31_FRAME_MODELS.has(id)
-        );
-
-        if (hasFrameModel && (!firstFrame || !lastFrame)) {
-          validationError =
-            "Frame-to-video models require first and last frames";
-        }
-
-        if (!validationError && hasImageModel && !selectedImage) {
-          validationError = "Image-to-video models require an image";
-        }
-      }
-    } else if (activeTab === "avatar") {
-      if (selectedModels.length === 0) {
-        validationError = "Missing models for avatar tab";
-      } else {
-        // Check model-specific requirements
-        for (const modelId of selectedModels) {
-          // V2V models require source video only
-          if (
-            (modelId === "wan_animate_replace" ||
-              modelId === "kling_o1_v2v_reference" ||
-              modelId === "kling_o1_v2v_edit" ||
-              modelId === "wan_26_ref2v") &&
-            !sourceVideo
-          ) {
-            validationError = "Video-to-video model requires source video";
-            break;
-          }
-          // Audio-based avatar models require avatar image + audio
-          if (
-            (modelId === "kling_avatar_pro" ||
-              modelId === "kling_avatar_standard" ||
-              modelId === "bytedance_omnihuman_v1_5") &&
-            !audioFile
-          ) {
-            validationError = "Audio-based avatar model requires audio file";
-            break;
-          }
-          if (
-            (modelId === "kling_avatar_pro" ||
-              modelId === "kling_avatar_standard" ||
-              modelId === "bytedance_omnihuman_v1_5") &&
-            !avatarImage
-          ) {
-            validationError = "Audio-based avatar model requires avatar image";
-            break;
-          }
-          // Reference-to-video model requires at least one reference image
-          if (modelId === "kling_o1_ref2video") {
-            const hasReferenceImage = referenceImages?.some(
-              (img) => img !== null
-            );
-            if (!hasReferenceImage) {
-              validationError =
-                "Kling O1 Reference-to-Video requires at least one reference image";
-              break;
-            }
-          }
-          // WAN Animate/Replace requires avatar image
-          if (modelId === "wan_animate_replace" && !avatarImage) {
-            validationError = "WAN model requires character image";
-            break;
-          }
-        }
-      }
-    }
+    const validationCtx: ValidationContext = {
+      prompt,
+      selectedModels,
+      selectedImage,
+      firstFrame,
+      lastFrame,
+      sourceVideo,
+      audioFile,
+      avatarImage,
+      referenceImages: referenceImages ?? [],
+    };
+    const validationError = validateGenerationInputs(activeTab, validationCtx);
 
     if (validationError) {
       console.error("❌ Validation failed!");
@@ -942,71 +751,23 @@ export function useAIGeneration(props: UseAIGenerationProps) {
       for (let i = 0; i < selectedModels.length; i++) {
         const modelId = selectedModels[i];
         const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
-        const modelCapabilities =
-          modelId in T2V_MODEL_CAPABILITIES
-            ? T2V_MODEL_CAPABILITIES[modelId as T2VModelId]
-            : undefined;
-
+        const modelCapabilities = getModelCapabilities(modelId);
         const isSora2TextModel =
           activeTab === "text" && modelId.startsWith("sora2_");
 
-        // Build unified params based on model capabilities
-        const unifiedParams: Record<string, unknown> = {};
-        if (
-          modelCapabilities?.supportsAspectRatio &&
-          t2vAspectRatio &&
-          !isSora2TextModel
-        ) {
-          unifiedParams.aspect_ratio = t2vAspectRatio;
-        }
-        if (
-          modelCapabilities?.supportsResolution &&
-          t2vResolution &&
-          !isSora2TextModel
-        ) {
-          unifiedParams.resolution = t2vResolution;
-        }
-        if (
-          modelCapabilities?.supportsDuration &&
-          t2vDuration &&
-          !isSora2TextModel
-        ) {
-          const safeDuration = getSafeDuration(t2vDuration, modelCapabilities);
-          if (safeDuration !== undefined) {
-            if (
-              safeDuration !== t2vDuration &&
-              modelCapabilities.supportedDurations?.length
-            ) {
-              debugLogger.log("AIGeneration", "T2V_DURATION_SANITIZED", {
-                modelId,
-                requestedDuration: t2vDuration,
-                appliedDuration: safeDuration,
-                allowedDurations: modelCapabilities.supportedDurations,
-              });
-            }
-            unifiedParams.duration = safeDuration;
-          }
-        }
-        const trimmedNegativePrompt = t2vNegativePrompt?.trim();
-        if (
-          modelCapabilities?.supportsNegativePrompt &&
-          trimmedNegativePrompt
-        ) {
-          unifiedParams.negative_prompt = trimmedNegativePrompt;
-        }
-        if (modelCapabilities?.supportsPromptExpansion && t2vPromptExpansion) {
-          unifiedParams.prompt_expansion = true;
-        }
-        if (
-          modelCapabilities?.supportsSeed &&
-          typeof t2vSeed === "number" &&
-          t2vSeed !== -1
-        ) {
-          unifiedParams.seed = t2vSeed;
-        }
-        if (modelCapabilities?.supportsSafetyChecker) {
-          unifiedParams.enable_safety_checker = t2vSafetyChecker;
-        }
+        // Build unified params via extracted helper
+        const unifiedParams = buildUnifiedParams({
+          modelId,
+          modelCapabilities,
+          isSora2TextModel,
+          t2vAspectRatio,
+          t2vResolution,
+          t2vDuration,
+          t2vNegativePrompt,
+          t2vPromptExpansion,
+          t2vSeed,
+          t2vSafetyChecker,
+        });
 
         console.log(`step 4: sanitized params for ${modelId}`, {
           unifiedParams,
@@ -1212,232 +973,24 @@ export function useAIGeneration(props: UseAIGenerationProps) {
           response = handlerResult.response;
         }
 
-        console.log("step 5a: post-API response analysis");
-        console.log("   - response received:", !!response);
-        if (response) {
-          console.log(
-            "   - response.video_url:",
-            !!response.video_url,
-            response.video_url?.substring(0, 50) + "..."
-          );
-          console.log(
-            "   - response.job_id:",
-            !!response.job_id,
-            response.job_id
-          );
-          console.log("   - response keys:", Object.keys(response));
-          console.log("   - response.status:", response.status);
-        } else {
-          console.log("   - response is undefined/null");
-        }
+        // Process response via extracted helper
+        const responseCtx: ResponseHandlerContext = {
+          prompt: prompt.trim(),
+          modelId,
+          activeTab,
+          activeProject,
+          addMediaItem,
+          onError: (error) => onError?.(error),
+          setIsGenerating,
+          setGenerationProgress,
+          setStatusMessage,
+          startStatusPolling,
+        };
 
-        console.log(`\n  🔍 Response analysis for ${modelId}:`);
-        console.log("    - response exists:", !!response);
-        console.log("    - response.job_id:", response?.job_id);
-        console.log("    - response.video_url:", response?.video_url);
-        console.log("    - response.status:", response?.status);
-        console.log("    - Full response:", JSON.stringify(response, null, 2));
-
-        if (response?.job_id) {
-          console.log("🔍 FIX VERIFICATION: Processing job_id response");
-          console.log("   - job_id exists:", !!response.job_id);
-          console.log("   - video_url exists:", !!response.video_url);
-
-          if (response?.video_url) {
-            // 🎯 OPTION 1 FIX: Direct mode with job_id - video is ready immediately
-            console.log("🎉 FIX SUCCESS: Direct mode with job_id detected!");
-            console.log(
-              "🎯 DIRECT MODE WITH JOB_ID - Video URL:",
-              response.video_url
-            );
-
-            debugLogger.log("AIGeneration", "DIRECT_VIDEO_WITH_JOB_ID", {
-              model: modelId,
-              jobId: response.job_id,
-              videoUrl: response.video_url,
-            });
-
-            const videoData = response.video_data as
-              | { video?: { duration?: number } }
-              | undefined;
-            const newVideo: GeneratedVideo = {
-              jobId: response.job_id,
-              videoUrl: response.video_url,
-              videoPath: undefined,
-              fileSize: undefined,
-              duration: videoData?.video?.duration,
-              prompt: prompt.trim(),
-              model: modelId,
-            };
-
-            // Add to generations array
-            generations.push({ modelId, video: newVideo });
-            console.log("📦 Added to generations array:", generations.length);
-
-            // Media integration using extracted function
-            const { canIntegrate: canDoIntegration, missing } =
-              canIntegrateMedia(
-                activeProject?.id,
-                addMediaItem,
-                response.video_url
-              );
-            console.log(
-              "   - WILL EXECUTE MEDIA INTEGRATION:",
-              canDoIntegration
-            );
-            if (!canDoIntegration) {
-              console.log("   - missing for integration:", missing);
-            }
-
-            if (activeProject && addMediaItem && response.video_url) {
-              const integrationResult = await integrateVideoToMediaStore({
-                videoUrl: response.video_url,
-                modelId,
-                prompt: newVideo.prompt,
-                projectId: activeProject.id,
-                addMediaItem,
-                duration: newVideo.duration || 5,
-                sourceType:
-                  activeTab === "text"
-                    ? "text2video"
-                    : activeTab === "image"
-                      ? "image2video"
-                      : activeTab === "angles"
-                        ? "image2video"
-                        : activeTab,
-                onError: (error) => {
-                  setIsGenerating(false);
-                  setGenerationProgress(0);
-                  setStatusMessage(error);
-                  onError(error);
-                },
-              });
-
-              if (integrationResult.success) {
-                // Update video with local paths
-                Object.assign(
-                  newVideo,
-                  updateVideoWithLocalPaths(
-                    newVideo,
-                    integrationResult,
-                    response.video_url
-                  )
-                );
-              } else if (integrationResult.error) {
-                // Critical error - abort generation
-                return;
-              }
-            } else {
-              console.warn("⚠️ Cannot add to media store:", missing);
-            }
-          } else {
-            // Traditional polling mode: no video_url yet
-            console.log("step 6: polling mode - deferring download");
-
-            const newVideo: GeneratedVideo = {
-              jobId: response.job_id,
-              videoUrl: "", // Will be filled when polling completes
-              videoPath: undefined,
-              fileSize: undefined,
-              duration: undefined,
-              prompt: prompt.trim(),
-              model: modelId,
-            };
-
-            // Add to generations array so results are properly tracked
-            generations.push({ modelId, video: newVideo });
-
-            // Start status polling for this job
-            startStatusPolling(response.job_id);
-
-            debugLogger.log("AIGeneration", "GENERATION_STARTED", {
-              jobId: response.job_id,
-              model: modelId,
-              modelName,
-            });
-          }
-        } else if (response?.video_url) {
-          // Direct mode: video is ready immediately
-          console.log(
-            "🎯 DIRECT MODE TRIGGERED - Video URL:",
-            response.video_url
-          );
-          debugLogger.log("AIGeneration", "DIRECT_VIDEO_READY", {
-            model: modelId,
-            videoUrl: response.video_url,
-          });
-
-          const newVideo: GeneratedVideo = {
-            jobId: `direct-${Date.now()}`,
-            videoUrl: response.video_url,
-            videoPath: undefined,
-            fileSize: undefined,
-            duration: undefined,
-            prompt: prompt.trim(),
-            model: modelId,
-          };
-
-          // Add to generations array
-          generations.push({ modelId, video: newVideo });
-          console.log("📦 Added to generations array:", generations.length);
-
-          // Media integration using extracted function
-          const { canIntegrate: canDoIntegration, missing } = canIntegrateMedia(
-            activeProject?.id,
-            addMediaItem,
-            response.video_url
-          );
-          console.log("   - WILL EXECUTE MEDIA INTEGRATION:", canDoIntegration);
-          if (!canDoIntegration) {
-            console.log("   - missing for integration:", missing);
-          }
-
-          if (activeProject && addMediaItem && response.video_url) {
-            const integrationResult = await integrateVideoToMediaStore({
-              videoUrl: response.video_url,
-              modelId,
-              prompt: newVideo.prompt,
-              projectId: activeProject.id,
-              addMediaItem,
-              duration: newVideo.duration || 5,
-              sourceType:
-                activeTab === "text"
-                  ? "text2video"
-                  : activeTab === "image"
-                    ? "image2video"
-                    : activeTab === "angles"
-                      ? "image2video"
-                      : activeTab,
-              onError: (error) => {
-                setIsGenerating(false);
-                setGenerationProgress(0);
-                setStatusMessage(error);
-                onError(error);
-              },
-            });
-
-            if (integrationResult.success) {
-              // Update video with local paths
-              Object.assign(
-                newVideo,
-                updateVideoWithLocalPaths(
-                  newVideo,
-                  integrationResult,
-                  response.video_url
-                )
-              );
-            } else if (integrationResult.error) {
-              // Critical error - abort generation
-              return;
-            }
-          } else {
-            console.warn("⚠️ Cannot add to media store:", missing);
-          }
-        } else {
-          console.warn(
-            "⚠️ Response has neither job_id nor video_url:",
-            response
-          );
+        const result = await processModelResponse(response, responseCtx);
+        if (result) {
+          generations.push({ modelId, video: result.video });
+          if (result.fatal) return;
         }
       }
 
