@@ -17,183 +17,6 @@ import type { ProjectSettings, ProjectStats } from "../types/claude-api";
 
 const HANDLER_NAME = "Project";
 
-export function setupClaudeProjectIPC(): void {
-  claudeLog.info(HANDLER_NAME, "Setting up Project IPC handlers...");
-
-  // ============================================================================
-  // claude:project:getSettings - Get project settings
-  // ============================================================================
-  ipcMain.handle(
-    "claude:project:getSettings",
-    async (
-      event: IpcMainInvokeEvent,
-      projectId: string
-    ): Promise<ProjectSettings> => {
-      claudeLog.info(
-        HANDLER_NAME,
-        `Getting settings for project: ${projectId}`
-      );
-
-      const settingsPath = getProjectSettingsPath(projectId);
-
-      try {
-        const content = await fs.readFile(settingsPath, "utf-8");
-        const project = JSON.parse(content);
-
-        // Extract canvas size - handle both old and new formats
-        const width = project.canvasSize?.width || project.width || 1920;
-        const height = project.canvasSize?.height || project.height || 1080;
-
-        return {
-          name: project.name || "Untitled",
-          width,
-          height,
-          fps: project.fps || 30,
-          aspectRatio: project.aspectRatio || `${width}:${height}`,
-          backgroundColor: project.backgroundColor || "#000000",
-          exportFormat: project.exportFormat || "mp4",
-          exportQuality: project.exportQuality || "high",
-        };
-      } catch (error) {
-        claudeLog.error(
-          HANDLER_NAME,
-          "Failed to read project settings:",
-          error
-        );
-        throw new Error(`Failed to read project: ${projectId}`);
-      }
-    }
-  );
-
-  // ============================================================================
-  // claude:project:updateSettings - Update project settings
-  // ============================================================================
-  ipcMain.handle(
-    "claude:project:updateSettings",
-    async (
-      event: IpcMainInvokeEvent,
-      projectId: string,
-      settings: Partial<ProjectSettings>
-    ): Promise<void> => {
-      claudeLog.info(
-        HANDLER_NAME,
-        `Updating settings for project: ${projectId}`
-      );
-
-      const settingsPath = getProjectSettingsPath(projectId);
-
-      try {
-        // Read existing settings
-        const content = await fs.readFile(settingsPath, "utf-8");
-        const project = JSON.parse(content);
-
-        // Merge settings carefully
-        if (settings.name !== undefined) project.name = settings.name;
-        if (settings.fps !== undefined) project.fps = settings.fps;
-        if (settings.backgroundColor !== undefined)
-          project.backgroundColor = settings.backgroundColor;
-        if (settings.exportFormat !== undefined)
-          project.exportFormat = settings.exportFormat;
-        if (settings.exportQuality !== undefined)
-          project.exportQuality = settings.exportQuality;
-
-        // Handle canvas size separately
-        if (settings.width !== undefined || settings.height !== undefined) {
-          if (!project.canvasSize) {
-            project.canvasSize = { width: 1920, height: 1080 };
-          }
-          if (settings.width !== undefined)
-            project.canvasSize.width = settings.width;
-          if (settings.height !== undefined)
-            project.canvasSize.height = settings.height;
-        }
-
-        // Update timestamp
-        project.updatedAt = new Date().toISOString();
-
-        // Write back
-        await fs.writeFile(
-          settingsPath,
-          JSON.stringify(project, null, 2),
-          "utf-8"
-        );
-
-        // Notify renderer process
-        event.sender.send("claude:project:updated", projectId, settings);
-
-        claudeLog.info(
-          HANDLER_NAME,
-          `Successfully updated project: ${projectId}`
-        );
-      } catch (error) {
-        claudeLog.error(
-          HANDLER_NAME,
-          "Failed to update project settings:",
-          error
-        );
-        throw error;
-      }
-    }
-  );
-
-  // ============================================================================
-  // claude:project:getStats - Get project statistics
-  // ============================================================================
-  ipcMain.handle(
-    "claude:project:getStats",
-    async (
-      event: IpcMainInvokeEvent,
-      projectId: string
-    ): Promise<ProjectStats> => {
-      claudeLog.info(HANDLER_NAME, `Getting stats for project: ${projectId}`);
-
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (!win) {
-        return getEmptyStats();
-      }
-
-      // Request stats from renderer (which has access to timeline state)
-      return new Promise((resolve) => {
-        const requestId = `${Date.now()}-${win.webContents.id}`;
-
-        const handler = (
-          responseEvent: IpcMainEvent,
-          stats: ProjectStats,
-          responseId?: string
-        ) => {
-          // Validate response is from the correct window and request
-          if (
-            responseEvent.sender.id !== win.webContents.id ||
-            responseId !== requestId
-          ) {
-            return;
-          }
-          clearTimeout(timeout);
-          ipcMain.removeListener("claude:project:statsResponse", handler);
-          resolve(stats);
-        };
-
-        const timeout = setTimeout(() => {
-          ipcMain.removeListener("claude:project:statsResponse", handler);
-          claudeLog.warn(
-            HANDLER_NAME,
-            "Timeout waiting for stats, returning empty"
-          );
-          resolve(getEmptyStats());
-        }, 3000);
-
-        ipcMain.on("claude:project:statsResponse", handler);
-        win.webContents.send("claude:project:statsRequest", {
-          projectId,
-          requestId,
-        });
-      });
-    }
-  );
-
-  claudeLog.info(HANDLER_NAME, "Project IPC handlers registered");
-}
-
 function getEmptyStats(): ProjectStats {
   return {
     totalDuration: 0,
@@ -205,5 +28,189 @@ function getEmptyStats(): ProjectStats {
   };
 }
 
+/**
+ * Get project settings from disk
+ */
+export async function getProjectSettings(
+  projectId: string,
+): Promise<ProjectSettings> {
+  claudeLog.info(HANDLER_NAME, `Getting settings for project: ${projectId}`);
+
+  const settingsPath = getProjectSettingsPath(projectId);
+
+  try {
+    const content = await fs.readFile(settingsPath, "utf-8");
+    const project = JSON.parse(content);
+
+    const width = project.canvasSize?.width || project.width || 1920;
+    const height = project.canvasSize?.height || project.height || 1080;
+
+    return {
+      name: project.name || "Untitled",
+      width,
+      height,
+      fps: project.fps || 30,
+      aspectRatio: project.aspectRatio || `${width}:${height}`,
+      backgroundColor: project.backgroundColor || "#000000",
+      exportFormat: project.exportFormat || "mp4",
+      exportQuality: project.exportQuality || "high",
+    };
+  } catch (error) {
+    claudeLog.error(
+      HANDLER_NAME,
+      "Failed to read project settings:",
+      error,
+    );
+    throw new Error(`Failed to read project: ${projectId}`);
+  }
+}
+
+/**
+ * Update project settings on disk.
+ * Returns the updated settings but does NOT notify the renderer — the IPC wrapper handles that.
+ */
+export async function updateProjectSettings(
+  projectId: string,
+  settings: Partial<ProjectSettings>,
+): Promise<void> {
+  claudeLog.info(HANDLER_NAME, `Updating settings for project: ${projectId}`);
+
+  const settingsPath = getProjectSettingsPath(projectId);
+
+  try {
+    const content = await fs.readFile(settingsPath, "utf-8");
+    const project = JSON.parse(content);
+
+    if (settings.name !== undefined) project.name = settings.name;
+    if (settings.fps !== undefined) project.fps = settings.fps;
+    if (settings.backgroundColor !== undefined)
+      project.backgroundColor = settings.backgroundColor;
+    if (settings.exportFormat !== undefined)
+      project.exportFormat = settings.exportFormat;
+    if (settings.exportQuality !== undefined)
+      project.exportQuality = settings.exportQuality;
+
+    if (settings.width !== undefined || settings.height !== undefined) {
+      if (!project.canvasSize) {
+        project.canvasSize = { width: 1920, height: 1080 };
+      }
+      if (settings.width !== undefined)
+        project.canvasSize.width = settings.width;
+      if (settings.height !== undefined)
+        project.canvasSize.height = settings.height;
+    }
+
+    project.updatedAt = new Date().toISOString();
+
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify(project, null, 2),
+      "utf-8",
+    );
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Successfully updated project: ${projectId}`,
+    );
+  } catch (error) {
+    claudeLog.error(
+      HANDLER_NAME,
+      "Failed to update project settings:",
+      error,
+    );
+    throw error;
+  }
+}
+
+/**
+ * Get project stats from renderer via IPC.
+ * Requires a BrowserWindow to communicate with.
+ */
+export async function getProjectStats(
+  win: BrowserWindow,
+  projectId: string,
+): Promise<ProjectStats> {
+  claudeLog.info(HANDLER_NAME, `Getting stats for project: ${projectId}`);
+
+  return new Promise((resolve) => {
+    const requestId = `${Date.now()}-${win.webContents.id}`;
+
+    const handler = (
+      responseEvent: IpcMainEvent,
+      stats: ProjectStats,
+      responseId?: string,
+    ) => {
+      if (
+        responseEvent.sender.id !== win.webContents.id ||
+        responseId !== requestId
+      ) {
+        return;
+      }
+      clearTimeout(timeout);
+      ipcMain.removeListener("claude:project:statsResponse", handler);
+      resolve(stats);
+    };
+
+    const timeout = setTimeout(() => {
+      ipcMain.removeListener("claude:project:statsResponse", handler);
+      claudeLog.warn(
+        HANDLER_NAME,
+        "Timeout waiting for stats, returning empty",
+      );
+      resolve(getEmptyStats());
+    }, 3000);
+
+    ipcMain.on("claude:project:statsResponse", handler);
+    win.webContents.send("claude:project:statsRequest", {
+      projectId,
+      requestId,
+    });
+  });
+}
+
+export { getEmptyStats };
+
+export function setupClaudeProjectIPC(): void {
+  claudeLog.info(HANDLER_NAME, "Setting up Project IPC handlers...");
+
+  ipcMain.handle(
+    "claude:project:getSettings",
+    async (_event: IpcMainInvokeEvent, projectId: string) =>
+      getProjectSettings(projectId),
+  );
+
+  ipcMain.handle(
+    "claude:project:updateSettings",
+    async (
+      event: IpcMainInvokeEvent,
+      projectId: string,
+      settings: Partial<ProjectSettings>,
+    ) => {
+      await updateProjectSettings(projectId, settings);
+      // Notify renderer process
+      event.sender.send("claude:project:updated", projectId, settings);
+    },
+  );
+
+  ipcMain.handle(
+    "claude:project:getStats",
+    async (event: IpcMainInvokeEvent, projectId: string) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        return getEmptyStats();
+      }
+      return getProjectStats(win, projectId);
+    },
+  );
+
+  claudeLog.info(HANDLER_NAME, "Project IPC handlers registered");
+}
+
 // CommonJS export for main.ts compatibility
-module.exports = { setupClaudeProjectIPC };
+module.exports = {
+  setupClaudeProjectIPC,
+  getProjectSettings,
+  updateProjectSettings,
+  getProjectStats,
+  getEmptyStats,
+};

@@ -1586,6 +1586,10 @@ app.on("window-all-closed", () => {
     // Clean up AI Pipeline processes
     cleanupAIPipeline();
 
+    // Close the Claude HTTP server
+    const { stopClaudeHTTPServer } = require("./claude/index.js");
+    stopClaudeHTTPServer();
+
     // Close the static server when quitting
     if (staticServer) {
       staticServer.close();

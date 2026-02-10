@@ -11,6 +11,10 @@ export { setupClaudeTimelineIPC } from "./claude-timeline-handler.js";
 export { setupClaudeProjectIPC } from "./claude-project-handler.js";
 export { setupClaudeExportIPC } from "./claude-export-handler.js";
 export { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
+export {
+  startClaudeHTTPServer,
+  stopClaudeHTTPServer,
+} from "./claude-http-server.js";
 
 // Import for internal use
 import { setupClaudeMediaIPC } from "./claude-media-handler.js";
@@ -18,6 +22,7 @@ import { setupClaudeTimelineIPC } from "./claude-timeline-handler.js";
 import { setupClaudeProjectIPC } from "./claude-project-handler.js";
 import { setupClaudeExportIPC } from "./claude-export-handler.js";
 import { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
+import { startClaudeHTTPServer } from "./claude-http-server.js";
 
 /**
  * Setup all Claude Code Integration IPC handlers
@@ -31,6 +36,16 @@ export function setupAllClaudeIPC(): void {
   setupClaudeProjectIPC();
   setupClaudeExportIPC();
   setupClaudeDiagnosticsIPC();
+
+  // Start HTTP server for external control (non-blocking — failure is non-fatal)
+  try {
+    startClaudeHTTPServer();
+  } catch (error) {
+    claudeLog.warn(
+      "Claude",
+      `HTTP server failed to start: ${error}. External control disabled.`,
+    );
+  }
 
   claudeLog.info("Claude", "All handlers registered successfully");
 }
