@@ -902,9 +902,7 @@ export function createTimelineOperations({
         x: "x" in item && item.x !== undefined ? item.x : 0,
         y: "y" in item && item.y !== undefined ? item.y : 0,
         rotation:
-          "rotation" in item && item.rotation !== undefined
-            ? item.rotation
-            : 0,
+          "rotation" in item && item.rotation !== undefined ? item.rotation : 0,
         opacity:
           "opacity" in item && item.opacity !== undefined ? item.opacity : 1,
       });

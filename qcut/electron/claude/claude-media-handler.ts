@@ -101,11 +101,11 @@ export async function listMediaFiles(projectId: string): Promise<MediaFile[]> {
  */
 export async function getMediaInfo(
   projectId: string,
-  mediaId: string,
+  mediaId: string
 ): Promise<MediaFile | null> {
   claudeLog.info(
     HANDLER_NAME,
-    `Getting info for media in project ${projectId}`,
+    `Getting info for media in project ${projectId}`
   );
   const allMedia = await listMediaFiles(projectId);
   return allMedia.find((m) => m.id === mediaId) || null;
@@ -116,7 +116,7 @@ export async function getMediaInfo(
  */
 export async function importMediaFile(
   projectId: string,
-  source: string,
+  source: string
 ): Promise<MediaFile | null> {
   claudeLog.info(HANDLER_NAME, `Importing media from: ${source}`);
 
@@ -178,7 +178,7 @@ export async function importMediaFile(
  */
 export async function deleteMediaFile(
   projectId: string,
-  mediaId: string,
+  mediaId: string
 ): Promise<boolean> {
   claudeLog.info(HANDLER_NAME, `Deleting media: ${mediaId}`);
 
@@ -206,7 +206,7 @@ export async function deleteMediaFile(
 export async function renameMediaFile(
   projectId: string,
   mediaId: string,
-  newName: string,
+  newName: string
 ): Promise<boolean> {
   claudeLog.info(HANDLER_NAME, `Renaming media ${mediaId} to: ${newName}`);
 
@@ -236,7 +236,7 @@ export async function renameMediaFile(
     await fs.rename(mediaFile.path, newPath);
     claudeLog.info(
       HANDLER_NAME,
-      `Successfully renamed: ${mediaFile.name} -> ${path.basename(newPath)}`,
+      `Successfully renamed: ${mediaFile.name} -> ${path.basename(newPath)}`
     );
     return true;
   } catch (error) {
@@ -249,33 +249,32 @@ export async function renameMediaFile(
 export function setupClaudeMediaIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Media IPC handlers...");
 
-  ipcMain.handle(
-    "claude:media:list",
-    async (_event, projectId: string) => listMediaFiles(projectId),
+  ipcMain.handle("claude:media:list", async (_event, projectId: string) =>
+    listMediaFiles(projectId)
   );
 
   ipcMain.handle(
     "claude:media:info",
     async (_event, projectId: string, mediaId: string) =>
-      getMediaInfo(projectId, mediaId),
+      getMediaInfo(projectId, mediaId)
   );
 
   ipcMain.handle(
     "claude:media:import",
     async (_event, projectId: string, source: string) =>
-      importMediaFile(projectId, source),
+      importMediaFile(projectId, source)
   );
 
   ipcMain.handle(
     "claude:media:delete",
     async (_event, projectId: string, mediaId: string) =>
-      deleteMediaFile(projectId, mediaId),
+      deleteMediaFile(projectId, mediaId)
   );
 
   ipcMain.handle(
     "claude:media:rename",
     async (_event, projectId: string, mediaId: string, newName: string) =>
-      renameMediaFile(projectId, mediaId, newName),
+      renameMediaFile(projectId, mediaId, newName)
   );
 
   claudeLog.info(HANDLER_NAME, "Media IPC handlers registered");

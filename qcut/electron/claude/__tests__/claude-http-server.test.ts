@@ -175,7 +175,7 @@ function fetch(
     method?: string;
     body?: string;
     headers?: Record<string, string>;
-  } = {},
+  } = {}
 ): Promise<{ status: number; body: any }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
@@ -191,7 +191,9 @@ function fetch(
       },
       (res) => {
         let data = "";
-        res.on("data", (chunk) => (data += chunk));
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
         res.on("end", () => {
           try {
             resolve({
@@ -202,7 +204,7 @@ function fetch(
             resolve({ status: res.statusCode || 0, body: data });
           }
         });
-      },
+      }
     );
     req.on("error", reject);
     if (options.body) req.write(options.body);
@@ -219,8 +221,9 @@ beforeAll(async () => {
   serverPort = 0; // Will be assigned by OS
   // We need to start on port 0 and find the assigned port
   // Since startClaudeHTTPServer uses a fixed port, we set the env var
-  serverPort = 18765 + Math.floor(Math.random() * 1000);
+  serverPort = 18_765 + Math.floor(Math.random() * 1000);
   process.env.QCUT_API_PORT = String(serverPort);
+  // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
   delete process.env.QCUT_API_TOKEN;
 
   startClaudeHTTPServer(serverPort);
@@ -231,6 +234,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   stopClaudeHTTPServer();
+  // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
   delete process.env.QCUT_API_PORT;
 });
 
@@ -296,9 +300,7 @@ describe("Claude HTTP Server", () => {
   });
 
   it("GET /api/claude/export/:projectId/recommend/:target returns recommendation", async () => {
-    const res = await fetch(
-      "/api/claude/export/proj_123/recommend/tiktok",
-    );
+    const res = await fetch("/api/claude/export/proj_123/recommend/tiktok");
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -360,6 +362,7 @@ describe("Claude HTTP Server - Auth", () => {
   });
 
   it("accepts requests without token when QCUT_API_TOKEN is not set", async () => {
+    // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
     delete process.env.QCUT_API_TOKEN;
     const res = await fetch("/api/claude/health");
     expect(res.status).toBe(200);
@@ -372,6 +375,7 @@ describe("Claude HTTP Server - Auth", () => {
       expect(res.status).toBe(401);
       expect(res.body.error).toBe("Unauthorized");
     } finally {
+      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });
@@ -384,6 +388,7 @@ describe("Claude HTTP Server - Auth", () => {
       });
       expect(res.status).toBe(200);
     } finally {
+      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });
@@ -396,6 +401,7 @@ describe("Claude HTTP Server - Auth", () => {
       });
       expect(res.status).toBe(401);
     } finally {
+      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });

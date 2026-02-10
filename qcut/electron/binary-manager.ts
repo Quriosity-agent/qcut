@@ -24,7 +24,7 @@ interface Logger {
 
 const noop = (): void => {};
 let log: Logger = { info: noop, warn: noop, error: noop, debug: noop };
-void import("electron-log/main")
+import("electron-log/main")
   .then((module) => {
     log = module.default as Logger;
   })

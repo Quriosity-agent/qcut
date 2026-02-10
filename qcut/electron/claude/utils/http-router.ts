@@ -34,10 +34,13 @@ interface Route {
 /** Convert a route path with :param placeholders into a RegExp and extract param names. */
 function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
   const paramNames: string[] = [];
-  const regexStr = path.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, name) => {
-    paramNames.push(name);
-    return "([^/]+)";
-  });
+  const regexStr = path.replace(
+    /:([a-zA-Z_][a-zA-Z0-9_]*)/g,
+    (_match, name) => {
+      paramNames.push(name);
+      return "([^/]+)";
+    }
+  );
   return { pattern: new RegExp(`^${regexStr}$`), paramNames };
 }
 
@@ -81,7 +84,7 @@ export function createRouter(): Router {
   function addRoute(
     method: string,
     path: string,
-    handler: (req: ParsedRequest) => Promise<unknown>,
+    handler: (req: ParsedRequest) => Promise<unknown>
   ) {
     const { pattern, paramNames } = pathToRegex(path);
     routes.push({ method: method.toUpperCase(), pattern, paramNames, handler });
@@ -113,11 +116,20 @@ export function createRouter(): Router {
         }
 
         let body: unknown;
-        if (method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE") {
+        if (
+          method === "POST" ||
+          method === "PATCH" ||
+          method === "PUT" ||
+          method === "DELETE"
+        ) {
           body = await parseBody(req);
         }
         const result = await route.handler({ params, query, body });
-        sendJson(res, 200, { success: true, data: result, timestamp: Date.now() });
+        sendJson(res, 200, {
+          success: true,
+          data: result,
+          timestamp: Date.now(),
+        });
       } catch (error: unknown) {
         if (error instanceof URIError) {
           sendJson(res, 400, {
@@ -132,7 +144,8 @@ export function createRouter(): Router {
             timestamp: Date.now(),
           });
         } else {
-          const message = error instanceof Error ? error.message : "Internal server error";
+          const message =
+            error instanceof Error ? error.message : "Internal server error";
           sendJson(res, 500, {
             success: false,
             error: message,

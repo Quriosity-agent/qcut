@@ -616,9 +616,17 @@ function ApiKeysView() {
               }
             >
               {showAnthropicKey ? (
-                <EyeOffIcon className="h-4 w-4" aria-hidden="true" title="Hide Anthropic API key" />
+                <EyeOffIcon
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                  title="Hide Anthropic API key"
+                />
               ) : (
-                <EyeIcon className="h-4 w-4" aria-hidden="true" title="Show Anthropic API key" />
+                <EyeIcon
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                  title="Show Anthropic API key"
+                />
               )}
             </Button>
           </div>

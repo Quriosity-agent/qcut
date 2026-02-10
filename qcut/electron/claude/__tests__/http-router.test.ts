@@ -24,7 +24,7 @@ vi.mock("electron", () => ({
 function createMockReq(
   method: string,
   url: string,
-  body?: string,
+  body?: string
 ): http.IncomingMessage {
   const req = new EventEmitter() as http.IncomingMessage;
   req.method = method;
@@ -98,10 +98,7 @@ describe("HTTP Router", () => {
     }));
     router.get("/api/claude/media/:projectId/:mediaId", handler);
 
-    const req = createMockReq(
-      "GET",
-      "/api/claude/media/proj_1/media_abc",
-    );
+    const req = createMockReq("GET", "/api/claude/media/proj_1/media_abc");
     const res = createMockRes();
 
     await router.handle(req, res);
@@ -122,7 +119,7 @@ describe("HTTP Router", () => {
     const req = createMockReq(
       "POST",
       "/api/claude/media/proj_1/import",
-      JSON.stringify({ source: "/path/to/file.mp4" }),
+      JSON.stringify({ source: "/path/to/file.mp4" })
     );
     const res = createMockRes();
 
@@ -155,10 +152,7 @@ describe("HTTP Router", () => {
     }));
     router.get("/api/claude/timeline/:projectId", handler);
 
-    const req = createMockReq(
-      "GET",
-      "/api/claude/timeline/proj_1?format=md",
-    );
+    const req = createMockReq("GET", "/api/claude/timeline/proj_1?format=md");
     const res = createMockRes();
 
     await router.handle(req, res);

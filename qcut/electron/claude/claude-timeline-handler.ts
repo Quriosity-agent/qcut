@@ -22,7 +22,7 @@ const HANDLER_NAME = "Timeline";
  * Request timeline data from renderer process
  */
 export async function requestTimelineFromRenderer(
-  win: BrowserWindow,
+  win: BrowserWindow
 ): Promise<ClaudeTimeline> {
   return new Promise((resolve, reject) => {
     let resolved = false;
@@ -74,7 +74,7 @@ export function timelineToMarkdown(timeline: ClaudeTimeline): string {
     for (const element of track.elements) {
       const content = (element.content || element.sourceName || "-").substring(
         0,
-        25,
+        25
       );
       md += `| \`${element.id.substring(0, 8)}\` | ${formatTimeFromSeconds(element.startTime)} | ${formatTimeFromSeconds(element.endTime)} | ${formatTimeFromSeconds(element.duration)} | ${element.type} | ${element.sourceName || "-"} | ${content} |\n`;
     }
@@ -124,13 +124,13 @@ export function markdownToTimeline(md: string): ClaudeTimeline {
   // Track/element parsing not implemented - throw to prevent silent data loss
   if (md.includes("## Track")) {
     throw new Error(
-      "Markdown track parsing not yet implemented. Use JSON format for full timeline import.",
+      "Markdown track parsing not yet implemented. Use JSON format for full timeline import."
     );
   }
 
   claudeLog.warn(
     HANDLER_NAME,
-    "Imported markdown contains project metadata only - no tracks parsed",
+    "Imported markdown contains project metadata only - no tracks parsed"
   );
 
   return timeline;
@@ -178,11 +178,11 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       projectId: string,
-      format: "json" | "md",
+      format: "json" | "md"
     ): Promise<string> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Exporting timeline for project: ${projectId}, format: ${format}`,
+        `Exporting timeline for project: ${projectId}, format: ${format}`
       );
 
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -196,7 +196,7 @@ export function setupClaudeTimelineIPC(): void {
         return timelineToMarkdown(timeline);
       }
       return JSON.stringify(timeline, null, 2);
-    },
+    }
   );
 
   ipcMain.handle(
@@ -205,11 +205,11 @@ export function setupClaudeTimelineIPC(): void {
       event: IpcMainInvokeEvent,
       projectId: string,
       data: string,
-      format: "json" | "md",
+      format: "json" | "md"
     ): Promise<void> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Importing timeline for project: ${projectId}, format: ${format}`,
+        `Importing timeline for project: ${projectId}, format: ${format}`
       );
 
       let timeline: ClaudeTimeline;
@@ -229,7 +229,7 @@ export function setupClaudeTimelineIPC(): void {
       event.sender.send("claude:timeline:apply", timeline);
 
       claudeLog.info(HANDLER_NAME, "Timeline import sent to renderer");
-    },
+    }
   );
 
   ipcMain.handle(
@@ -237,7 +237,7 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       projectId: string,
-      element: Partial<ClaudeElement>,
+      element: Partial<ClaudeElement>
     ): Promise<string> => {
       claudeLog.info(HANDLER_NAME, `Adding element to project: ${projectId}`);
       const elementId = element.id || generateId("element");
@@ -246,7 +246,7 @@ export function setupClaudeTimelineIPC(): void {
         id: elementId,
       });
       return elementId;
-    },
+    }
   );
 
   ipcMain.handle(
@@ -255,14 +255,14 @@ export function setupClaudeTimelineIPC(): void {
       event: IpcMainInvokeEvent,
       _projectId: string,
       elementId: string,
-      changes: Partial<ClaudeElement>,
+      changes: Partial<ClaudeElement>
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Updating element: ${elementId}`);
       event.sender.send("claude:timeline:updateElement", {
         elementId,
         changes,
       });
-    },
+    }
   );
 
   ipcMain.handle(
@@ -270,11 +270,11 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       _projectId: string,
-      elementId: string,
+      elementId: string
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Removing element: ${elementId}`);
       event.sender.send("claude:timeline:removeElement", elementId);
-    },
+    }
   );
 
   claudeLog.info(HANDLER_NAME, "Timeline IPC handlers registered");

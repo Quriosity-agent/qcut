@@ -42,7 +42,7 @@ export function getSystemInfo(): SystemInfo {
  */
 export function analyzeError(
   error: ErrorReport,
-  systemInfo?: SystemInfo,
+  systemInfo?: SystemInfo
 ): DiagnosticResult {
   const sysInfo = systemInfo || getSystemInfo();
 
@@ -243,15 +243,20 @@ export function setupClaudeDiagnosticsIPC(): void {
   ipcMain.handle(
     "claude:diagnostics:analyze",
     async (_event: IpcMainInvokeEvent, error: ErrorReport) => {
-      claudeLog.info(HANDLER_NAME, `Analyzing error: ${error.message}`);
-      const systemInfo = getSystemInfo();
-      const result = analyzeError(error, systemInfo);
-      claudeLog.info(
-        HANDLER_NAME,
-        `Diagnosis complete: ${result.errorType} (${result.severity})`,
-      );
-      return result;
-    },
+      try {
+        claudeLog.info(HANDLER_NAME, `Analyzing error: ${error.message}`);
+        const systemInfo = getSystemInfo();
+        const result = analyzeError(error, systemInfo);
+        claudeLog.info(
+          HANDLER_NAME,
+          `Diagnosis complete: ${result.errorType} (${result.severity})`
+        );
+        return result;
+      } catch (err) {
+        claudeLog.error(HANDLER_NAME, "Diagnostics analysis failed:", err);
+        throw err instanceof Error ? err : new Error(String(err));
+      }
+    }
   );
 
   claudeLog.info(HANDLER_NAME, "Diagnostics IPC handlers registered");

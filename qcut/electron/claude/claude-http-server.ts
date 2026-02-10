@@ -63,7 +63,7 @@ function checkAuth(req: IncomingMessage): boolean {
 }
 
 export function startClaudeHTTPServer(
-  port = Number.parseInt(process.env.QCUT_API_PORT ?? "8765", 10),
+  port = Number.parseInt(process.env.QCUT_API_PORT ?? "8765", 10)
 ): void {
   const resolvedPort = Number.isFinite(port) && port > 0 ? port : 8765;
   if (resolvedPort !== port) {
@@ -114,7 +114,7 @@ export function startClaudeHTTPServer(
     return renameMediaFile(
       req.params.projectId,
       req.params.mediaId,
-      req.body.newName,
+      req.body.newName
     );
   });
 
@@ -126,10 +126,7 @@ export function startClaudeHTTPServer(
     const timeline = await Promise.race([
       requestTimelineFromRenderer(win),
       new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new HttpError(504, "Renderer timed out")),
-          5000,
-        ),
+        setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
       ),
     ]);
     const format = req.query.format || "json";
@@ -170,7 +167,8 @@ export function startClaudeHTTPServer(
     }
     const win = getWindow();
     const elementId =
-      req.body.id || `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      req.body.id ||
+      `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     win.webContents.send("claude:timeline:addElement", {
       ...req.body,
       id: elementId,
@@ -187,7 +185,7 @@ export function startClaudeHTTPServer(
         changes: req.body || {},
       });
       return { updated: true };
-    },
+    }
   );
 
   router.delete(
@@ -196,10 +194,10 @@ export function startClaudeHTTPServer(
       const win = getWindow();
       win.webContents.send(
         "claude:timeline:removeElement",
-        req.params.elementId,
+        req.params.elementId
       );
       return { removed: true };
-    },
+    }
   );
 
   // ==========================================================================
@@ -220,7 +218,7 @@ export function startClaudeHTTPServer(
       win.webContents.send(
         "claude:project:updated",
         req.params.projectId,
-        req.body,
+        req.body
       );
     } catch {
       // No window — settings still saved to disk
@@ -270,7 +268,7 @@ export function startClaudeHTTPServer(
           success: false,
           error: "Request timeout",
           timestamp: Date.now(),
-        }),
+        })
       );
     });
 
@@ -282,7 +280,7 @@ export function startClaudeHTTPServer(
           success: false,
           error: "Unauthorized",
           timestamp: Date.now(),
-        }),
+        })
       );
       return;
     }
@@ -291,14 +289,17 @@ export function startClaudeHTTPServer(
   });
 
   server.listen(resolvedPort, "127.0.0.1", () => {
-    claudeLog.info("HTTP", `Server started on http://127.0.0.1:${resolvedPort}`);
+    claudeLog.info(
+      "HTTP",
+      `Server started on http://127.0.0.1:${resolvedPort}`
+    );
   });
 
   server.on("error", (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE") {
       claudeLog.warn(
         "HTTP",
-        `Port ${resolvedPort} in use. Claude HTTP API disabled.`,
+        `Port ${resolvedPort} in use. Claude HTTP API disabled.`
       );
     } else {
       claudeLog.error("HTTP", `Server error: ${err.message}`);

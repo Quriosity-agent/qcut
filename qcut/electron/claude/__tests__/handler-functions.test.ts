@@ -136,7 +136,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "media",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("file_not_found");
     expect(result.severity).toBe("medium");
@@ -150,7 +150,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "file write",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("permission_denied");
     expect(result.severity).toBe("high");
@@ -163,7 +163,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "render",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("out_of_memory");
     expect(result.severity).toBe("critical");
@@ -176,7 +176,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "export",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("ffmpeg_error");
   });
@@ -188,7 +188,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "api call",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("network_error");
     expect(result.severity).toBe("low");
@@ -201,7 +201,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "save",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("storage_error");
   });
@@ -213,7 +213,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "unknown",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.errorType).toBe("unknown");
     expect(result.severity).toBe("medium");
@@ -226,7 +226,7 @@ describe("Diagnostics Handler Functions", () => {
         context: "test",
         timestamp: Date.now(),
       },
-      mockSystemInfo,
+      mockSystemInfo
     );
     expect(result.systemInfo).toEqual(mockSystemInfo);
   });
@@ -312,7 +312,7 @@ describe("Timeline Handler Functions", () => {
   it("markdownToTimeline throws for markdown with tracks", () => {
     const md = "# Timeline: Test\n## Track 1: Video\n";
     expect(() => markdownToTimeline(md)).toThrow(
-      "Markdown track parsing not yet implemented",
+      "Markdown track parsing not yet implemented"
     );
   });
 
@@ -321,26 +321,26 @@ describe("Timeline Handler Functions", () => {
   });
 
   it("validateTimeline rejects missing name", () => {
-    expect(() =>
-      validateTimeline({ ...validTimeline, name: "" }),
-    ).toThrow("Timeline must have a name");
+    expect(() => validateTimeline({ ...validTimeline, name: "" })).toThrow(
+      "Timeline must have a name"
+    );
   });
 
   it("validateTimeline rejects invalid dimensions", () => {
-    expect(() =>
-      validateTimeline({ ...validTimeline, width: 0 }),
-    ).toThrow("Timeline must have valid dimensions");
+    expect(() => validateTimeline({ ...validTimeline, width: 0 })).toThrow(
+      "Timeline must have valid dimensions"
+    );
   });
 
   it("validateTimeline rejects invalid FPS", () => {
-    expect(() =>
-      validateTimeline({ ...validTimeline, fps: -1 }),
-    ).toThrow("Timeline must have valid FPS");
+    expect(() => validateTimeline({ ...validTimeline, fps: -1 })).toThrow(
+      "Timeline must have valid FPS"
+    );
   });
 
   it("validateTimeline rejects missing tracks array", () => {
     expect(() =>
-      validateTimeline({ ...validTimeline, tracks: null as any }),
+      validateTimeline({ ...validTimeline, tracks: null as any })
     ).toThrow("Timeline must have tracks array");
   });
 

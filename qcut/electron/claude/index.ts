@@ -43,7 +43,7 @@ export function setupAllClaudeIPC(): void {
   } catch (error) {
     claudeLog.warn(
       "Claude",
-      `HTTP server failed to start: ${error}. External control disabled.`,
+      `HTTP server failed to start: ${error}. External control disabled.`
     );
   }
 

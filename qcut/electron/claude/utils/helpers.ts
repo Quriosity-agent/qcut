@@ -19,7 +19,12 @@ export function sanitizeProjectId(projectId: string): string {
  */
 export function getProjectPath(projectId: string): string {
   const documentsPath = app.getPath("documents");
-  return path.join(documentsPath, "QCut", "Projects", sanitizeProjectId(projectId));
+  return path.join(
+    documentsPath,
+    "QCut",
+    "Projects",
+    sanitizeProjectId(projectId)
+  );
 }
 
 /**
