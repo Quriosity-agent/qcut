@@ -194,6 +194,15 @@ export {
 } from "./generators/image";
 
 // ============================================
+// Cinematic Angles Generator
+// ============================================
+export {
+  generateCinematicAngles,
+  type AngleGenerationRequest,
+  type AngleProgressCallback,
+} from "./generators/angles";
+
+// ============================================
 // High-Level API Functions
 // ============================================
 export {

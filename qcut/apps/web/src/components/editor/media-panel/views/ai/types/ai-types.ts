@@ -21,6 +21,8 @@ import type { TProject } from "@/types/project";
 // Model Configuration Interfaces
 export interface AIModelEndpoints {
   text_to_video?: string;
+  text_to_image?: string;
+  image_edit?: string;
   image_to_video?: string;
   reference_to_video?: string;
   upscale_video?: string;
@@ -81,7 +83,13 @@ export interface UpscaleModelParameters {
  * - avatar: Character animation from image + audio
  * - upscale: Image quality enhancement
  */
-export type ModelCategory = "text" | "image" | "video" | "avatar" | "upscale";
+export type ModelCategory =
+  | "text"
+  | "image"
+  | "video"
+  | "avatar"
+  | "upscale"
+  | "angles";
 
 // Core AI Model Interface
 export interface AIModel {
@@ -163,7 +171,7 @@ export interface UseAIGenerationProps {
   prompt: string;
   selectedModels: string[];
   selectedImage: File | null;
-  activeTab: "text" | "image" | "avatar" | "upscale";
+  activeTab: "text" | "image" | "avatar" | "upscale" | "angles";
   activeProject: TProject | null;
   onProgress: (status: ProgressUpdate) => void;
   onError: (error: string) => void;
@@ -382,7 +390,7 @@ export interface AIHistoryState {
 }
 
 // UI State Types
-export type AIActiveTab = "text" | "image" | "avatar" | "upscale";
+export type AIActiveTab = "text" | "image" | "avatar" | "upscale" | "angles";
 
 // Avatar-specific types
 export interface AvatarUploadState {

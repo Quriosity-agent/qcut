@@ -177,7 +177,7 @@ function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
   if (fs.existsSync(changelogPath)) {
     const changelog = fs.readFileSync(changelogPath, "utf-8");
     const unreleasedMatch = changelog.match(
-      /## \[Unreleased\]\s*\n([\s\S]*?)(?=\n## \[|$)/
+      /## \[Unreleased\][^\r\n]*\r?\n([\s\S]*?)(?=\r?\n## \[|$)/
     );
     if (unreleasedMatch) {
       unreleasedContent = unreleasedMatch[1].trim();
@@ -209,7 +209,7 @@ ${sections}
   if (fs.existsSync(changelogPath) && unreleasedContent) {
     const changelog = fs.readFileSync(changelogPath, "utf-8");
     const updatedChangelog = changelog.replace(
-      /## \[Unreleased\]\s*\n[\s\S]*?(?=\n## \[|$)/,
+      /## \[Unreleased\][^\r\n]*\r?\n[\s\S]*?(?=\r?\n## \[|$)/,
       `## [Unreleased]\n\n## [${version}] - ${today}\n\n${unreleasedContent}\n`
     );
     fs.writeFileSync(changelogPath, updatedChangelog);

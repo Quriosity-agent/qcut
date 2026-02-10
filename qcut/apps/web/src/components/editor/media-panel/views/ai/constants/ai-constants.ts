@@ -12,6 +12,7 @@ import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/ups
 import { T2V_MODELS } from "./text2video-models-config";
 import { I2V_MODELS } from "./image2video-models-config";
 import { AVATAR_MODELS } from "./avatar-models-config";
+import { ANGLES_MODEL } from "./angles-config";
 import { validateUniqueAIModelIds } from "./model-config-validation";
 import { UPSCALE_MODELS } from "@/lib/upscale-models";
 import { ERROR_MESSAGES as ERROR_MESSAGES_INTERNAL } from "./error-messages";
@@ -76,6 +77,15 @@ export {
   type UpscaleModelId,
 } from "@/lib/upscale-models";
 
+// Re-export Angles config
+export {
+  ANGLES_MODEL,
+  CINEMATIC_ANGLES,
+  ANGLE_COUNT,
+  ANGLE_BATCH_SIZE,
+  type CinematicAngleId,
+} from "./angles-config";
+
 // ============================================================================
 // Backward Compatibility: Consolidated AI_MODELS Array
 // ============================================================================
@@ -96,6 +106,7 @@ export const AI_MODELS: AIModel[] = [
   ...Object.values(T2V_MODELS),
   ...Object.values(I2V_MODELS),
   ...Object.values(AVATAR_MODELS),
+  ANGLES_MODEL,
 ];
 
 validateUniqueAIModelIds({

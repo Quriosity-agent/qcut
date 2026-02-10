@@ -14,6 +14,16 @@ interface UpdateState {
   highlights: string[];
 }
 
+/** Extract plain-text bullet lines from raw release notes as a last-resort fallback. */
+function extractFallbackLines(releaseNotes: string, maxItems = 3): string[] {
+  const lines = releaseNotes
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+    .filter((line) => line.length > 0);
+
+  return lines.slice(0, maxItems);
+}
+
 /**
  * Global update notification listener.
  * Mount once at the root level (e.g., in __root.tsx).
@@ -47,7 +57,23 @@ export function UpdateNotification() {
       if (isVersionDismissed(data.version)) return;
 
       const notes = await fetchReleaseNotes(data.version);
-      const highlights = notes ? extractHighlights(notes.content) : [];
+      const localHighlights = notes ? extractHighlights(notes.content) : [];
+      const remoteReleaseNotes =
+        typeof data.releaseNotes === "string" ? data.releaseNotes : "";
+      const remoteHighlights =
+        remoteReleaseNotes.length > 0
+          ? extractHighlights(remoteReleaseNotes)
+          : [];
+      const hasLocalHighlights = localHighlights.length > 0;
+      const hasRemoteHighlights = remoteHighlights.length > 0;
+      const fallbackHighlights = extractFallbackLines(remoteReleaseNotes);
+      let highlights = fallbackHighlights;
+      if (hasRemoteHighlights) {
+        highlights = remoteHighlights;
+      }
+      if (hasLocalHighlights) {
+        highlights = localHighlights;
+      }
 
       setState({
         phase: "available",

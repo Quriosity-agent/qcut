@@ -207,8 +207,10 @@ interface MediaPanelStore {
   lastTabPerGroup: Record<TabGroup, Tab>;
 
   // AI-specific state
-  aiActiveTab: "text" | "image" | "avatar" | "upscale";
-  setAiActiveTab: (tab: "text" | "image" | "avatar" | "upscale") => void;
+  aiActiveTab: "text" | "image" | "avatar" | "upscale" | "angles";
+  setAiActiveTab: (
+    tab: "text" | "image" | "avatar" | "upscale" | "angles"
+  ) => void;
 }
 
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {

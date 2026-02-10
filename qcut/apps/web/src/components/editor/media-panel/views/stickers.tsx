@@ -27,6 +27,8 @@ import {
 import { useStickersStore } from "@/stores/stickers-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useProjectStore } from "@/stores/project-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { usePlaybackStore } from "@/stores/playback-store";
 import {
   buildIconSvgUrl,
   getCollection,
@@ -45,7 +47,7 @@ interface StickerItemProps {
   isSelected?: boolean;
 }
 
-// StickerItem Component
+/** Single sticker icon tile with loading/error states and click-to-select. */
 function StickerItem({
   icon,
   name,
@@ -161,6 +163,7 @@ interface CollectionContentProps {
   onSelect: (iconId: string, name: string) => void;
 }
 
+/** Renders the icon grid for a single Iconify collection. */
 function CollectionContent({
   collectionPrefix,
   collections,
@@ -264,7 +267,7 @@ function CollectionContent({
   );
 }
 
-// Main StickersView Component
+/** Stickers panel — search, browse collections, and add icon stickers to the timeline. */
 export function StickersView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCollection, setSelectedCollection] = useState<string>("all");
@@ -372,16 +375,59 @@ export function StickersView() {
           activeProject.id
         );
 
-        await addMediaItem(activeProject.id, mediaItemData);
+        const mediaId = await addMediaItem(activeProject.id, mediaItemData);
 
         console.log("[StickersView] Media item added successfully");
         debugLog("[StickersView] Media item added successfully");
+
+        // Add to timeline at current playback position
+        const mediaItem = useMediaStore
+          .getState()
+          .mediaItems.find((item) => item.id === mediaId);
+        if (!mediaItem) {
+          toast.error("Sticker saved but could not be loaded for timeline");
+          return;
+        }
+
+        const currentTime = usePlaybackStore.getState().currentTime;
+        const timelineStore = useTimelineStore.getState();
+        const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
+
+        if (!wasAdded) {
+          toast.error(`Could not add ${name} — overlaps existing element`);
+          return;
+        }
+
+        // Set initial transforms so sticker renders as positioned overlay.
+        // Find the just-added element by matching mediaId and startTime.
+        const newEl = timelineStore.tracks
+          .flatMap((t) => t.elements)
+          .find(
+            (e): e is import("@/types/timeline").MediaElement =>
+              e.type === "media" &&
+              e.startTime === currentTime &&
+              (e as import("@/types/timeline").MediaElement).mediaId ===
+                mediaId &&
+              e.width === undefined
+          );
+        if (newEl) {
+          timelineStore.updateElementTransform(
+            newEl.id,
+            {
+              position: { x: 0, y: 0 },
+              size: { width: 200, height: 200 },
+            },
+            { pushHistory: false }
+          );
+        }
+
+        debugLog("[StickersView] Added sticker to timeline at", currentTime);
 
         // Add to recent stickers
         addRecentSticker(iconId, name);
         debugLog("[StickersView] Added to recent stickers");
 
-        toast.success(`Added ${name} to project`);
+        toast.success(`Added ${name} to timeline`);
       } catch (error) {
         debugError("[StickersView] Error adding sticker:", error);
         toast.error("Failed to add sticker to project");

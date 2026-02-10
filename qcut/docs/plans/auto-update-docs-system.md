@@ -1,16 +1,35 @@
 # Auto-Update Documentation System
 
-**Status: IMPLEMENTED & VERIFIED** (2026-02-08)
+**Status: IMPLEMENTED WITH FIXES VERIFIED** (2026-02-10)
 
 ## Goal
 
 Create a documentation-driven auto-update system where Markdown files under `docs/` serve as the source of truth for release notes, changelogs, and "What's New" content. When a new version is released, the client automatically fetches and displays this content to users.
 
+## Fix Verification (2026-02-10)
+
+Two post-implementation bugs were fixed and verified:
+
+1. **Release script `[Unreleased]` parsing bug fixed** (`scripts/release.ts`)
+   - Hardened regex for extracting and replacing the `[Unreleased]` section so an empty section no longer consumes the next version header.
+   - Prevents malformed `docs/releases/v*.md` content like nested previous-version headers.
+
+2. **Update notification fallback bug fixed** (`electron/main.ts`, `apps/web/src/components/update-notification.tsx`)
+   - Main process now normalizes auto-updater `releaseNotes` payloads to a renderer-safe string.
+   - Renderer now falls back to updater-provided release notes when local `docs/releases/v{newVersion}.md` is not available in the currently installed app.
+
+**Verification run:**
+- `bun x tsc -p electron/tsconfig.json --noEmit` → PASS
+- `bun x tsc --noEmit` (in `apps/web`) → PASS
+- `bun x vitest run electron/__tests__/release-notes-handler.test.ts` → 31 passed
+- `bun x vitest run src/lib/__tests__/release-notes.test.ts` (in `apps/web`) → 14 passed
+- Regex sanity check on current `CHANGELOG.md` confirmed empty `[Unreleased]` parses as empty content, not the next version section.
+
 ## Current State Analysis
 
 ### What Exists
 - **Electron auto-updater** (`electron/main.ts:138-229`): Channel-aware (`alpha/beta/rc/latest`), checks hourly, downloads updates via GitHub Releases + `electron-updater`
-- **IPC handlers** (`electron/main.ts:1352-1400`): `check-for-updates` and `install-update` exist but are **NOT exposed** in `preload.ts`
+- **IPC handlers + preload bridge** (`electron/main.ts`, `electron/preload.ts`): `check-for-updates` and `install-update` are exposed to renderer via `window.electronAPI.updates`
 - **CHANGELOG.md** (root): Keep a Changelog format with version history
 - **Release script** (`scripts/release.ts`): Generates `RELEASE_NOTES.md` template per build
 - **Blog system** (`routes/blog.tsx`, `routes/blog.$slug.tsx`): Uses MarbleCMS external API — not local docs

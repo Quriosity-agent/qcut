@@ -61,6 +61,9 @@ interface MimeTypeMap {
 }
 
 type HandlerFunction = () => void;
+interface AutoUpdaterReleaseNoteEntry {
+  note?: unknown;
+}
 
 // Initialize electron-log early
 let log: any = null;
@@ -154,6 +157,40 @@ function detectChannelFromVersion(version: string): string {
   return "latest";
 }
 
+/** Normalise electron-updater release notes (string | array) into a plain string. */
+function normalizeAutoUpdaterReleaseNotes(releaseNotes: unknown): string {
+  try {
+    if (typeof releaseNotes === "string") {
+      return releaseNotes.trim();
+    }
+
+    if (!Array.isArray(releaseNotes)) {
+      return "";
+    }
+
+    const notes: string[] = [];
+    for (const entry of releaseNotes as AutoUpdaterReleaseNoteEntry[]) {
+      if (!entry || typeof entry !== "object") {
+        continue;
+      }
+
+      const note = entry.note;
+      if (typeof note !== "string") {
+        continue;
+      }
+
+      const trimmed = note.trim();
+      if (trimmed.length > 0) {
+        notes.push(trimmed);
+      }
+    }
+
+    return notes.join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Resolve the path to docs/releases/ directory.
  * Works in both development and packaged (ASAR) builds.
@@ -191,6 +228,7 @@ function readChangelogFallback(): ReleaseNote[] {
   }
 }
 
+/** Configure and start the electron-updater auto-updater lifecycle. */
 function setupAutoUpdater(): void {
   if (!autoUpdater) {
     logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
@@ -231,12 +269,15 @@ function setupAutoUpdater(): void {
 
   autoUpdater.on("update-available", (info: any) => {
     logger.log("📦 [AutoUpdater] Update available:", info.version);
+    const normalizedReleaseNotes = normalizeAutoUpdaterReleaseNotes(
+      info.releaseNotes
+    );
 
     // Send to renderer process
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("update-available", {
         version: info.version,
-        releaseNotes: info.releaseNotes,
+        releaseNotes: normalizedReleaseNotes,
         releaseDate: info.releaseDate,
       });
     }
@@ -284,6 +325,7 @@ function setupAutoUpdater(): void {
   ); // 1 hour
 }
 
+/** Create a local HTTP server to serve FFmpeg WASM and other static assets. */
 function createStaticServer(): http.Server {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || "", `http://${req.headers.host}`);
@@ -347,6 +389,7 @@ function createStaticServer(): http.Server {
   return server;
 }
 
+/** Create the main BrowserWindow with CSP headers and protocol handling. */
 function createWindow(): void {
   // ③ "Replace" rather than "append" CSP - completely override all existing CSP policies
   session.defaultSession.webRequest.onHeadersReceived(
