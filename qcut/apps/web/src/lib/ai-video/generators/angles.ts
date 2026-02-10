@@ -2,7 +2,7 @@
  * Cinematic Angles Generator
  *
  * Generates 9 camera-angle variations of a source image using
- * Seeddream 4.5 text-to-image with angle-specific prompt suffixes.
+ * Seeddream 4.5 edit endpoint with angle-specific prompt suffixes.
  *
  * Images are generated in batches of ANGLE_BATCH_SIZE to respect
  * FAL.ai rate limits while maximising parallelism.
@@ -52,8 +52,8 @@ export async function generateCinematicAngles(
 
   const results: Partial<Record<CinematicAngleId, string>> = {};
   const endpoint =
-    ANGLES_MODEL.endpoints.text_to_image ??
-    "fal-ai/bytedance/seedream/v4.5/text-to-image";
+    ANGLES_MODEL.endpoints.image_edit ??
+    "fal-ai/bytedance/seedream/v4.5/edit";
 
   // Process angles in batches
   for (let i = 0; i < CINEMATIC_ANGLES.length; i += ANGLE_BATCH_SIZE) {
@@ -75,6 +75,7 @@ export async function generateCinematicAngles(
           },
           body: JSON.stringify({
             prompt: fullPrompt,
+            image_urls: [sourceImageUrl],
             image_size: "square_hd",
             num_images: 1,
             max_images: 1,
