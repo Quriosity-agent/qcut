@@ -13,34 +13,15 @@ import {
   ensureMainTrack,
   validateElementTrackCompatibility,
 } from "@/types/timeline";
-import type {
-  TrackType,
-  TimelineElement,
-  CreateTimelineElement,
-  TimelineTrack,
-  TextElement,
-  MediaElement,
-  DragData,
-} from "@/types/timeline";
-import type { MediaItem } from "./media-store";
+import type { TimelineElement, TimelineTrack } from "@/types/timeline";
 import { storageService } from "@/lib/storage/storage-service";
-import { createObjectURL } from "@/lib/blob-manager";
 // Dynamic import to break circular dependency
 // import { useProjectStore } from "./project-store";
 import { generateUUID } from "@/lib/utils";
-import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { toast } from "sonner";
-import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
 
 // Import from timeline module
-import {
-  type TimelineStore,
-  type DragState,
-  INITIAL_DRAG_STATE,
-  getElementNameWithSuffix,
-  createTrack,
-} from "./timeline";
+import { type TimelineStore, createTrack } from "./timeline";
 import { createTimelineOperations } from "./timeline-store-operations";
 
 // TimelineStore interface is now imported from ./timeline/types
@@ -956,6 +937,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     // Operations (ripple, split, audio/media, drag, add-at-time, effects)
-    ...createTimelineOperations({ get, set, deps: { updateTracks, updateTracksAndSave, autoSaveTimeline } }),
+    ...createTimelineOperations({
+      get,
+      set,
+      deps: { updateTracks, updateTracksAndSave, autoSaveTimeline },
+    }),
   };
 });

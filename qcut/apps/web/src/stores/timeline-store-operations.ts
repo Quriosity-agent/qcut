@@ -17,7 +17,7 @@ import type {
   DragData,
 } from "@/types/timeline";
 import type { MediaItem } from "./media-store";
-import type { TimelineStore } from "./timeline";
+import type { TimelineStore, DragState } from "./timeline";
 import { INITIAL_DRAG_STATE, getElementNameWithSuffix } from "./timeline";
 import { generateUUID } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
@@ -302,10 +302,7 @@ export function createTimelineOperations({
         const shouldApplyRipple = currentTrack.id === trackId;
 
         const updatedElements = currentTrack.elements.map((currentElement) => {
-          if (
-            currentElement.id === elementId &&
-            currentTrack.id === trackId
-          ) {
+          if (currentElement.id === elementId && currentTrack.id === trackId) {
             return { ...currentElement, startTime: clampedNewStartTime };
           }
 
@@ -702,8 +699,7 @@ export function createTimelineOperations({
         if (!newMediaItem) {
           return {
             success: false,
-            error:
-              "Failed to create media item in project. Please try again.",
+            error: "Failed to create media item in project. Please try again.",
           };
         }
 
@@ -874,8 +870,7 @@ export function createTimelineOperations({
         type: "text",
         name: item.name || "Text",
         content:
-          ("content" in item ? item.content : "Default Text") ||
-          "Default Text",
+          ("content" in item ? item.content : "Default Text") || "Default Text",
         duration: TIMELINE_CONSTANTS.DEFAULT_TEXT_DURATION,
         startTime: 0,
         trimStart: 0,
@@ -885,9 +880,8 @@ export function createTimelineOperations({
           ("fontFamily" in item ? item.fontFamily : "Arial") || "Arial",
         color: ("color" in item ? item.color : "#ffffff") || "#ffffff",
         backgroundColor:
-          ("backgroundColor" in item
-            ? item.backgroundColor
-            : "transparent") || "transparent",
+          ("backgroundColor" in item ? item.backgroundColor : "transparent") ||
+          "transparent",
         textAlign:
           ("textAlign" in item ? item.textAlign : "center") || "center",
         fontWeight:
