@@ -153,8 +153,8 @@ describe("migrateAIVideosToDocuments", () => {
     });
 
     vi.spyOn(fs.promises, "readdir").mockResolvedValue([
-      { name: "project-1", isDirectory: () => true } as fs.Dirent,
-    ] as fs.Dirent[]);
+      { name: "project-1", isDirectory: () => true },
+    ] as any);
 
     const result = await migrateAIVideosToDocuments();
     expect(result.projectsProcessed).toBe(0);
@@ -181,10 +181,10 @@ describe("migrateAIVideosToDocuments", () => {
           {
             name: "proj-1",
             isDirectory: () => true,
-          } as fs.Dirent,
-        ] as fs.Dirent[];
+          },
+        ] as any;
       }
-      return ["video1.mp4", "video2.mp4"] as string[];
+      return ["video1.mp4", "video2.mp4"] as any;
     });
 
     vi.spyOn(fs.promises, "mkdir").mockResolvedValue(undefined as any);
@@ -210,10 +210,10 @@ describe("migrateAIVideosToDocuments", () => {
           {
             name: "proj-1",
             isDirectory: () => true,
-          } as fs.Dirent,
-        ] as fs.Dirent[];
+          },
+        ] as any;
       }
-      return ["existing.mp4"] as string[];
+      return ["existing.mp4"] as any;
     });
 
     vi.spyOn(fs.promises, "mkdir").mockResolvedValue(undefined as any);
@@ -247,10 +247,10 @@ describe("migrateAIVideosToDocuments", () => {
           {
             name: "proj-1",
             isDirectory: () => true,
-          } as fs.Dirent,
-        ] as fs.Dirent[];
+          },
+        ] as any;
       }
-      return ["fail.mp4"] as string[];
+      return ["fail.mp4"] as any;
     });
 
     vi.spyOn(fs.promises, "mkdir").mockResolvedValue(undefined as any);

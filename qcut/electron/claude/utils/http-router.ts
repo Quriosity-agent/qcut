@@ -21,7 +21,7 @@ export class HttpError extends Error {
 export interface ParsedRequest {
   params: Record<string, string>;
   query: Record<string, string>;
-  body: unknown;
+  body: any;
 }
 
 interface Route {
