@@ -12,6 +12,7 @@ import { handleAIServiceError } from "@/lib/error-handler";
 import {
   CINEMATIC_ANGLES,
   ANGLE_BATCH_SIZE,
+  ANGLES_MODEL,
   type CinematicAngleId,
 } from "@/components/editor/media-panel/views/ai/constants/angles-config";
 import { getFalApiKeyAsync, FAL_API_BASE } from "../core/fal-request";
@@ -50,7 +51,9 @@ export async function generateCinematicAngles(
   const sourceImageUrl = await uploadImageToFal(request.sourceImage, apiKey);
 
   const results: Partial<Record<CinematicAngleId, string>> = {};
-  const endpoint = "fal-ai/bytedance/seedream/v4.5/text-to-image";
+  const endpoint =
+    ANGLES_MODEL.endpoints.text_to_image ??
+    "fal-ai/bytedance/seedream/v4.5/text-to-image";
 
   // Process angles in batches
   for (let i = 0; i < CINEMATIC_ANGLES.length; i += ANGLE_BATCH_SIZE) {
