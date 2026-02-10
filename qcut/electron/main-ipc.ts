@@ -654,11 +654,16 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
       key: string,
       data: any
     ): Promise<void> => {
-      const safeKey = path.basename(key);
-      const userDataPath = app.getPath("userData");
-      const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
-      await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.promises.writeFile(filePath, JSON.stringify(data));
+      try {
+        const safeKey = path.basename(key);
+        const userDataPath = app.getPath("userData");
+        const filePath = path.join(userDataPath, "projects", `${safeKey}.json`);
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.promises.writeFile(filePath, JSON.stringify(data));
+      } catch (error: unknown) {
+        logger.error(`[Storage] Failed to save key "${key}":`, error);
+        throw error;
+      }
     }
   );
 
