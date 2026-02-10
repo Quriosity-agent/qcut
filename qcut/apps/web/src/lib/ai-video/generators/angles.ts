@@ -72,7 +72,6 @@ export async function generateCinematicAngles(
           },
           body: JSON.stringify({
             prompt: fullPrompt,
-            image_url: sourceImageUrl,
             image_size: "square_hd",
             num_images: 1,
             max_images: 1,
