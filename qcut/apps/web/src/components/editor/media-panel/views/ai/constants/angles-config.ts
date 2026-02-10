@@ -77,7 +77,7 @@ export const ANGLE_BATCH_SIZE = 3;
  * SHOTS Cinematic Angles model definition.
  * Uses Seeddream 4.5 as the backend for image generation.
  */
-export const ANGLES_MODEL: AIModel = {
+export const ANGLES_MODEL = {
   id: "shots_cinematic_angles",
   name: "SHOTS Cinematic Angles",
   description: "Generate 9 cinematic camera angles from a single image",
@@ -90,4 +90,4 @@ export const ANGLES_MODEL: AIModel = {
   },
   default_params: {},
   requiredInputs: ["sourceImage"],
-};
+} satisfies AIModel;
