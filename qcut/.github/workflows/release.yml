@@ -86,7 +86,7 @@ jobs:
           name: windows-build
           path: |
             dist-electron/QCut*Setup*.exe
-            dist-electron/*.yml
+            dist-electron/latest.yml
           if-no-files-found: error
 
   # macOS build
@@ -135,7 +135,7 @@ jobs:
           path: |
             dist-electron/*.dmg
             dist-electron/*.zip
-            dist-electron/*.yml
+            dist-electron/latest-mac.yml
           if-no-files-found: error
 
   # Linux build
@@ -184,7 +184,7 @@ jobs:
           path: |
             dist-electron/*.AppImage
             dist-electron/*.deb
-            dist-electron/*.yml
+            dist-electron/latest-linux.yml
           if-no-files-found: error
 
   # Create release with all artifacts
