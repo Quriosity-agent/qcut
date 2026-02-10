@@ -1136,72 +1136,27 @@ export async function handleWAN26Ref2Video(
     };
   }
 
-  // Upload the reference video to FAL
-  // Get API key from environment or Electron storage
-  let falApiKey = import.meta.env.VITE_FAL_API_KEY;
-  if (
-    !falApiKey &&
-    typeof window !== "undefined" &&
-    window.electronAPI?.apiKeys
-  ) {
-    try {
-      const keys = await window.electronAPI.apiKeys.get();
-      falApiKey = keys?.falApiKey;
-    } catch (error) {
-      debugLogger.error(
-        "model-handlers",
-        "Failed to get FAL API key from Electron storage",
-        error instanceof Error ? error : new Error(String(error))
-      );
-    }
-  }
-  if (!falApiKey) {
+  // Upload the reference video via falAIClient (handles API key + Electron IPC internally)
+  let referenceVideoUrl: string;
+  try {
+    referenceVideoUrl = await falAIClient.uploadVideoToFal(
+      settings.sourceVideo
+    );
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to upload reference video";
+    debugLogger.error(
+      "model-handlers",
+      "WAN26_REF_VIDEO_UPLOAD_FAILED",
+      error instanceof Error ? error : new Error(String(error))
+    );
     return {
       response: undefined,
       shouldSkip: true,
-      skipReason:
-        "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings.",
+      skipReason: errorMessage,
     };
-  }
-
-  let referenceVideoUrl: string;
-
-  // Upload video via Electron IPC if available
-  if (window.electronAPI?.fal?.uploadVideo) {
-    const videoBuffer = await settings.sourceVideo.arrayBuffer();
-    const uploadResult = await window.electronAPI.fal.uploadVideo(
-      new Uint8Array(videoBuffer),
-      settings.sourceVideo.name,
-      falApiKey
-    );
-
-    if (!uploadResult.success || !uploadResult.url) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason: uploadResult.error || "Failed to upload reference video",
-      };
-    }
-    referenceVideoUrl = uploadResult.url;
-  } else {
-    // Fallback to browser upload - check size limit
-    const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-    if (settings.sourceVideo.size > MAX_VIDEO_SIZE_BYTES) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason:
-          "Video file too large for browser upload (max 50MB). Please use the desktop app.",
-      };
-    }
-
-    // Convert to data URL for browser fallback
-    const reader = new FileReader();
-    referenceVideoUrl = await new Promise<string>((resolve, reject) => {
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(settings.sourceVideo!);
-    });
   }
 
   debugLogger.log("model-handlers", "WAN26_REF_VIDEO_START", {
