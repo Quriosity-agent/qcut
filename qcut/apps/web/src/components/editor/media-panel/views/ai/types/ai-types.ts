@@ -21,6 +21,7 @@ import type { TProject } from "@/types/project";
 // Model Configuration Interfaces
 export interface AIModelEndpoints {
   text_to_video?: string;
+  text_to_image?: string;
   image_to_video?: string;
   reference_to_video?: string;
   upscale_video?: string;

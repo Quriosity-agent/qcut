@@ -86,7 +86,7 @@ export const ANGLES_MODEL = {
   max_duration: 0,
   category: "angles",
   endpoints: {
-    text_to_video: "fal-ai/bytedance/seedream/v4.5/text-to-image",
+    text_to_image: "fal-ai/bytedance/seedream/v4.5/text-to-image",
   },
   default_params: {},
   requiredInputs: ["sourceImage"],
