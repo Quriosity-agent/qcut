@@ -338,25 +338,6 @@ function ApiKeysView() {
 
   // Save API keys
   const saveApiKeys = useCallback(async () => {
-    console.log("[Settings] 💾 Saving API keys...");
-    console.log("[Settings] FAL API key length:", falApiKey.trim().length);
-    console.log(
-      "[Settings] Freesound API key length:",
-      freesoundApiKey.trim().length
-    );
-    console.log(
-      "[Settings] Gemini API key length:",
-      geminiApiKey.trim().length
-    );
-    console.log(
-      "[Settings] OpenRouter API key length:",
-      openRouterApiKey.trim().length
-    );
-    console.log(
-      "[Settings] Anthropic API key length:",
-      anthropicApiKey.trim().length
-    );
-
     try {
       if (!window.electronAPI?.apiKeys) {
         console.error("[Settings] ❌ window.electronAPI.apiKeys not available");

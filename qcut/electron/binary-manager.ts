@@ -12,6 +12,27 @@ import * as path from "path";
 import * as crypto from "crypto";
 
 // ============================================================================
+// Logger Setup
+// ============================================================================
+
+interface Logger {
+  info(message?: unknown, ...optionalParams: unknown[]): void;
+  warn(message?: unknown, ...optionalParams: unknown[]): void;
+  error(message?: unknown, ...optionalParams: unknown[]): void;
+  debug(message?: unknown, ...optionalParams: unknown[]): void;
+}
+
+const noop = (): void => {};
+let log: Logger = { info: noop, warn: noop, error: noop, debug: noop };
+import("electron-log/main")
+  .then((module) => {
+    log = module.default as Logger;
+  })
+  .catch(() => {
+    // keep noop logger when electron-log isn't available
+  });
+
+// ============================================================================
 // Types
 // ============================================================================
 

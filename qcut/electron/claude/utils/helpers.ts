@@ -7,11 +7,24 @@ import { app } from "electron";
 import * as path from "path";
 
 /**
+ * Sanitize a projectId to prevent path traversal attacks.
+ * Strips path separators and parent directory references.
+ */
+export function sanitizeProjectId(projectId: string): string {
+  return projectId.replace(/[/\\]/g, "").replace(/\.\./g, "");
+}
+
+/**
  * Get project folder path
  */
 export function getProjectPath(projectId: string): string {
   const documentsPath = app.getPath("documents");
-  return path.join(documentsPath, "QCut", "Projects", projectId);
+  return path.join(
+    documentsPath,
+    "QCut",
+    "Projects",
+    sanitizeProjectId(projectId)
+  );
 }
 
 /**
@@ -137,6 +150,7 @@ export function sanitizeFilename(filename: string): string {
 
 // CommonJS export for compatibility
 module.exports = {
+  sanitizeProjectId,
   getProjectPath,
   getMediaPath,
   getTimelinePath,

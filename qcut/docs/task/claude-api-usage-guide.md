@@ -24,31 +24,25 @@
 
 ## Overview
 
-The Claude Code Integration API lets external tools (Claude Code, scripts) interact with QCut's editor through **Electron IPC channels**. It is organized into 5 modules with 18 total methods.
+The Claude Code Integration API lets external tools (Claude Code, scripts) interact with QCut's editor. It is organized into 5 modules with 18 total methods, accessible through two interfaces:
 
-**Access point:** `window.electronAPI.claude.*` (renderer process only)
-
-**No external server** is exposed (no HTTP/WebSocket/REST). All communication goes through Electron's IPC mechanism between the main process and the renderer process.
+1. **Electron IPC** — `window.electronAPI.claude.*` (renderer process)
+2. **HTTP REST API** — `http://127.0.0.1:8765/api/claude/*` (external tools like Claude Code)
 
 ---
 
 ## Architecture
 
-```
-Claude Code / External Tool
-        |
-        v
-Electron Main Process
-  electron/claude/index.ts          <-- setupAllClaudeIPC()
-  electron/claude/claude-*-handler.ts   <-- IPC handlers
-        |
-        v  (ipcMain.handle / BrowserWindow.webContents.send)
-Electron Renderer Process
-  window.electronAPI.claude.*       <-- preload.ts exposure
-        |
-        v
-Zustand Stores
-  timeline-store, project-store, media-store
+```text
+Claude Code (CLI)                      QCut Renderer Process
+     |                                        |
+     | HTTP (localhost:8765)                   | Electron IPC
+     v                                        v
+  claude-http-server.ts ──> Extracted Handler Functions <── IPC thin wrappers
+                                    |
+                                    v
+                             Zustand Stores
+               timeline-store, project-store, media-store
 ```
 
 ### Handler Registration
@@ -69,6 +63,7 @@ This calls each module's setup function:
 | Project | `setupClaudeProjectIPC()` | `electron/claude/claude-project-handler.ts` |
 | Export | `setupClaudeExportIPC()` | `electron/claude/claude-export-handler.ts` |
 | Diagnostics | `setupClaudeDiagnosticsIPC()` | `electron/claude/claude-diagnostics-handler.ts` |
+| HTTP Server | `startClaudeHTTPServer()` | `electron/claude/claude-http-server.ts` |
 
 ### Shared Types
 
@@ -944,11 +939,112 @@ All Claude API channels use the `claude:` prefix, preventing conflicts with exis
 
 ---
 
+## HTTP API (External Control)
+
+QCut exposes a REST API on `http://127.0.0.1:8765` for external tools like Claude Code. The server starts automatically when QCut launches and binds to localhost only (no external network access).
+
+### Configuration
+
+| Env Variable | Default | Description |
+|-------------|---------|-------------|
+| `QCUT_API_PORT` | `8765` | HTTP server port |
+| `QCUT_API_TOKEN` | (none) | Bearer token for authentication (optional) |
+
+If `QCUT_API_TOKEN` is set, all requests require the header:
+
+```text
+Authorization: Bearer your-secret
+```
+
+### Route Map
+
+| HTTP Method | Route | Description |
+|-------------|-------|-------------|
+| `GET` | `/api/claude/health` | Health check |
+| `GET` | `/api/claude/media/:projectId` | List media files |
+| `GET` | `/api/claude/media/:projectId/:mediaId` | Get media info |
+| `POST` | `/api/claude/media/:projectId/import` | Import media (`{"source": "..."}`) |
+| `DELETE` | `/api/claude/media/:projectId/:mediaId` | Delete media |
+| `PATCH` | `/api/claude/media/:projectId/:mediaId/rename` | Rename media (`{"newName": "..."}`) |
+| `GET` | `/api/claude/timeline/:projectId` | Export timeline (`?format=json\|md`) |
+| `POST` | `/api/claude/timeline/:projectId/import` | Import timeline |
+| `POST` | `/api/claude/timeline/:projectId/elements` | Add element |
+| `PATCH` | `/api/claude/timeline/:projectId/elements/:elementId` | Update element |
+| `DELETE` | `/api/claude/timeline/:projectId/elements/:elementId` | Remove element |
+| `GET` | `/api/claude/project/:projectId/settings` | Get settings |
+| `PATCH` | `/api/claude/project/:projectId/settings` | Update settings |
+| `GET` | `/api/claude/project/:projectId/stats` | Get stats |
+| `GET` | `/api/claude/export/presets` | List presets |
+| `GET` | `/api/claude/export/:projectId/recommend/:target` | Get recommendation |
+| `POST` | `/api/claude/diagnostics/analyze` | Analyze error |
+
+### Response Format
+
+All responses use a consistent JSON envelope:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "timestamp": 1707580800000
+}
+```
+
+Error responses:
+
+```json
+{
+  "success": false,
+  "error": "Error message",
+  "timestamp": 1707580800000
+}
+```
+
+### curl Examples
+
+```bash
+# Health check
+curl http://127.0.0.1:8765/api/claude/health
+
+# List media
+curl http://127.0.0.1:8765/api/claude/media/project_123
+
+# Export timeline as markdown
+curl "http://127.0.0.1:8765/api/claude/timeline/project_123?format=md"
+
+# Import media
+curl -X POST http://127.0.0.1:8765/api/claude/media/project_123/import \
+  -H "Content-Type: application/json" \
+  -d '{"source": "C:\\Users\\me\\Videos\\clip.mp4"}'
+
+# Get TikTok export recommendation
+curl http://127.0.0.1:8765/api/claude/export/project_123/recommend/tiktok
+
+# With authentication
+curl -H "Authorization: Bearer <your-token>" \
+  http://127.0.0.1:8765/api/claude/health
+```
+
+### Security
+
+| Risk | Mitigation |
+|------|-----------|
+| Network exposure | Binds to `127.0.0.1` only |
+| Unauthorized access | Optional bearer token via `QCUT_API_TOKEN` |
+| Path traversal | Reuses existing `isValidSourcePath()` and `sanitizeFilename()` |
+| Port conflict | Configurable via `QCUT_API_PORT` (default 8765) |
+| Denial of service | 1MB body size limit, 30s request timeout |
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `electron/claude/claude-http-server.ts` | HTTP server, route registration, auth |
+| `electron/claude/utils/http-router.ts` | Lightweight router (path params, body parsing) |
+
+---
+
 ## Limitations
-
-### No External API
-
-There is no HTTP/WebSocket/REST server. The API is **Electron IPC only** - it can only be called from within the QCut renderer process via `window.electronAPI.claude`.
 
 ### Timeline Write Operations
 

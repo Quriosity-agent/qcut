@@ -14,41 +14,10 @@ import type {
 
 const HANDLER_NAME = "Diagnostics";
 
-export function setupClaudeDiagnosticsIPC(): void {
-  claudeLog.info(HANDLER_NAME, "Setting up Diagnostics IPC handlers...");
-
-  // ============================================================================
-  // claude:diagnostics:analyze - Analyze error and provide diagnostics
-  // ============================================================================
-  ipcMain.handle(
-    "claude:diagnostics:analyze",
-    async (
-      event: IpcMainInvokeEvent,
-      error: ErrorReport
-    ): Promise<DiagnosticResult> => {
-      claudeLog.info(HANDLER_NAME, `Analyzing error: ${error.message}`);
-
-      // Collect system information
-      const systemInfo = getSystemInfo();
-
-      // Analyze the error
-      const result = analyzeError(error, systemInfo);
-
-      claudeLog.info(
-        HANDLER_NAME,
-        `Diagnosis complete: ${result.errorType} (${result.severity})`
-      );
-      return result;
-    }
-  );
-
-  claudeLog.info(HANDLER_NAME, "Diagnostics IPC handlers registered");
-}
-
 /**
  * Get current system information
  */
-function getSystemInfo(): SystemInfo {
+export function getSystemInfo(): SystemInfo {
   const totalMem = os.totalmem();
   const freeMem = os.freemem();
 
@@ -71,26 +40,26 @@ function getSystemInfo(): SystemInfo {
 /**
  * Analyze error and provide diagnostic information
  */
-function analyzeError(
+export function analyzeError(
   error: ErrorReport,
-  systemInfo: SystemInfo
+  systemInfo?: SystemInfo
 ): DiagnosticResult {
+  const sysInfo = systemInfo || getSystemInfo();
+
   const result: DiagnosticResult = {
     errorType: "unknown",
     severity: "medium",
     possibleCauses: [],
     suggestedFixes: [],
     canAutoFix: false,
-    systemInfo,
+    systemInfo: sysInfo,
   };
 
   const msg = error.message.toLowerCase();
   const stack = (error.stack || "").toLowerCase();
   const context = (error.context || "").toLowerCase();
 
-  // ============================================================================
   // File System Errors
-  // ============================================================================
   if (msg.includes("enoent") || msg.includes("no such file")) {
     result.errorType = "file_not_found";
     result.severity = "medium";
@@ -108,9 +77,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // Permission Errors
-  // ============================================================================
   else if (
     msg.includes("eacces") ||
     msg.includes("eperm") ||
@@ -132,9 +99,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // Memory Errors
-  // ============================================================================
   else if (
     msg.includes("enomem") ||
     msg.includes("out of memory") ||
@@ -145,7 +110,7 @@ function analyzeError(
     result.severity = "critical";
 
     const usedPercent = (
-      (systemInfo.memory.used / systemInfo.memory.total) *
+      (sysInfo.memory.used / sysInfo.memory.total) *
       100
     ).toFixed(1);
 
@@ -164,9 +129,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // FFmpeg Errors
-  // ============================================================================
   else if (
     msg.includes("ffmpeg") ||
     stack.includes("ffmpeg") ||
@@ -188,9 +151,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // Network Errors
-  // ============================================================================
   else if (
     msg.includes("network") ||
     msg.includes("fetch") ||
@@ -213,9 +174,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // React/UI Errors
-  // ============================================================================
   else if (
     stack.includes("react") ||
     msg.includes("render") ||
@@ -237,9 +196,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // Storage/Database Errors
-  // ============================================================================
   else if (
     msg.includes("indexeddb") ||
     msg.includes("storage") ||
@@ -261,9 +218,7 @@ function analyzeError(
     ];
   }
 
-  // ============================================================================
   // Unknown Errors
-  // ============================================================================
   else {
     result.errorType = "unknown";
     result.severity = "medium";
@@ -281,5 +236,35 @@ function analyzeError(
   return result;
 }
 
+/** Register Claude diagnostics IPC handlers for error analysis and system info. */
+export function setupClaudeDiagnosticsIPC(): void {
+  claudeLog.info(HANDLER_NAME, "Setting up Diagnostics IPC handlers...");
+
+  ipcMain.handle(
+    "claude:diagnostics:analyze",
+    async (_event: IpcMainInvokeEvent, error: ErrorReport) => {
+      try {
+        claudeLog.info(HANDLER_NAME, `Analyzing error: ${error.message}`);
+        const systemInfo = getSystemInfo();
+        const result = analyzeError(error, systemInfo);
+        claudeLog.info(
+          HANDLER_NAME,
+          `Diagnosis complete: ${result.errorType} (${result.severity})`
+        );
+        return result;
+      } catch (err) {
+        claudeLog.error(HANDLER_NAME, "Diagnostics analysis failed:", err);
+        throw err instanceof Error ? err : new Error(String(err));
+      }
+    }
+  );
+
+  claudeLog.info(HANDLER_NAME, "Diagnostics IPC handlers registered");
+}
+
 // CommonJS export for main.ts compatibility
-module.exports = { setupClaudeDiagnosticsIPC };
+module.exports = {
+  setupClaudeDiagnosticsIPC,
+  analyzeError,
+  getSystemInfo,
+};

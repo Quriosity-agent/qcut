@@ -72,6 +72,7 @@ qcut/
 | AI Video | `apps/web/src/lib/ai-video/index.ts` |
 | Electron Main | `electron/main.ts` |
 | IPC Handlers | `electron/*-handler.ts` |
+| Claude HTTP API | `electron/claude/claude-http-server.ts` |
 
 ## Code Standards
 

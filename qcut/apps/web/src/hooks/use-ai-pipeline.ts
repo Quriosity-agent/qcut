@@ -298,8 +298,10 @@ export function useAIPipeline(
     if (!sessionIdRef.current) return;
     try {
       await window.electronAPI?.aiPipeline?.cancel(sessionIdRef.current);
-    } catch {
-      setError("Failed to cancel generation");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to cancel generation";
+      setError(errorMessage);
     } finally {
       sessionIdRef.current = null;
       setIsGenerating(false);
