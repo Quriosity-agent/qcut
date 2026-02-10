@@ -9,12 +9,12 @@ import { parse } from "node:url";
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
 export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
+  status: number;
+
+  constructor(status: number, message: string) {
     super(message);
     this.name = "HttpError";
+    this.status = status;
   }
 }
 
