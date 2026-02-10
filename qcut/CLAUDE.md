@@ -4,6 +4,13 @@ This file provides guidance to Claude Code when working with QCut.
 
 **Priority**: Long-term maintainability > scalability > performance > short-term gains
 
+## Core Principles
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+No code file longer than 800 lines, longer consider a new code file
+
 ## Commands
 
 | Task | Command |

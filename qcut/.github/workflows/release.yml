@@ -78,9 +78,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npx electron-builder --win --publish never --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false -c.publish.channel=${{ needs.prepare.outputs.channel }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -128,9 +126,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --mac -c.publish.channel=${{ needs.prepare.outputs.channel }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npx electron-builder --mac --publish never -c.publish.channel=${{ needs.prepare.outputs.channel }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -179,9 +175,7 @@ jobs:
 
       - name: Build Electron application
         run: |
-          npx electron-builder --linux -c.publish.channel=${{ needs.prepare.outputs.channel }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npx electron-builder --linux --publish never -c.publish.channel=${{ needs.prepare.outputs.channel }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
