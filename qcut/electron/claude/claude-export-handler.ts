@@ -182,6 +182,7 @@ export function getExportRecommendation(target: string): ExportRecommendation {
   return { preset, warnings, suggestions };
 }
 
+/** Register Claude export IPC handlers for presets and recommendations. */
 export function setupClaudeExportIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Export IPC handlers...");
 

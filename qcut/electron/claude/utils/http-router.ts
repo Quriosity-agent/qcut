@@ -31,6 +31,7 @@ interface Route {
   handler: (req: ParsedRequest) => Promise<unknown>;
 }
 
+/** Convert a route path with :param placeholders into a RegExp and extract param names. */
 function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
   const paramNames: string[] = [];
   const regexStr = path.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, name) => {
@@ -40,6 +41,7 @@ function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
   return { pattern: new RegExp(`^${regexStr}$`), paramNames };
 }
 
+/** Parse the request body as JSON, enforcing a 1MB size limit. */
 function parseBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -72,6 +74,7 @@ export interface Router {
   handle(req: IncomingMessage, res: ServerResponse): void;
 }
 
+/** Create a lightweight HTTP router that matches METHOD /path/:param patterns. */
 export function createRouter(): Router {
   const routes: Route[] = [];
 

@@ -169,6 +169,7 @@ export function validateTimeline(timeline: ClaudeTimeline): void {
   }
 }
 
+/** Register all Claude timeline IPC handlers for export, import, and element manipulation. */
 export function setupClaudeTimelineIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Timeline IPC handlers...");
 

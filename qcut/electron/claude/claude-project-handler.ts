@@ -17,6 +17,7 @@ import type { ProjectSettings, ProjectStats } from "../types/claude-api";
 
 const HANDLER_NAME = "Project";
 
+/** Return a ProjectStats object with all counters at zero. */
 function getEmptyStats(): ProjectStats {
   return {
     totalDuration: 0,
@@ -170,6 +171,7 @@ export async function getProjectStats(
 
 export { getEmptyStats };
 
+/** Register Claude project IPC handlers for settings and stats. */
 export function setupClaudeProjectIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Project IPC handlers...");
 

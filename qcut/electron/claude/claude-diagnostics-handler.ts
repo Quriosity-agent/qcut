@@ -236,6 +236,7 @@ export function analyzeError(
   return result;
 }
 
+/** Register Claude diagnostics IPC handlers for error analysis and system info. */
 export function setupClaudeDiagnosticsIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Diagnostics IPC handlers...");
 

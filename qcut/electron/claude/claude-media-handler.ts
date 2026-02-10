@@ -245,6 +245,7 @@ export async function renameMediaFile(
   }
 }
 
+/** Register Claude media IPC handlers for listing, importing, deleting, and renaming media. */
 export function setupClaudeMediaIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Media IPC handlers...");
 
