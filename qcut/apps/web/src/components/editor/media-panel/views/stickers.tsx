@@ -27,6 +27,8 @@ import {
 import { useStickersStore } from "@/stores/stickers-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useProjectStore } from "@/stores/project-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { usePlaybackStore } from "@/stores/playback-store";
 import {
   buildIconSvgUrl,
   getCollection,
@@ -372,16 +374,26 @@ export function StickersView() {
           activeProject.id
         );
 
-        await addMediaItem(activeProject.id, mediaItemData);
+        const mediaId = await addMediaItem(activeProject.id, mediaItemData);
 
         console.log("[StickersView] Media item added successfully");
         debugLog("[StickersView] Media item added successfully");
+
+        // Add to timeline at current playback position
+        const mediaItem = useMediaStore
+          .getState()
+          .mediaItems.find((item) => item.id === mediaId);
+        if (mediaItem) {
+          const currentTime = usePlaybackStore.getState().currentTime;
+          useTimelineStore.getState().addMediaAtTime(mediaItem, currentTime);
+          debugLog("[StickersView] Added sticker to timeline at", currentTime);
+        }
 
         // Add to recent stickers
         addRecentSticker(iconId, name);
         debugLog("[StickersView] Added to recent stickers");
 
-        toast.success(`Added ${name} to project`);
+        toast.success(`Added ${name} to timeline`);
       } catch (error) {
         debugError("[StickersView] Error adding sticker:", error);
         toast.error("Failed to add sticker to project");
