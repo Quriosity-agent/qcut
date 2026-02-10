@@ -23,7 +23,7 @@ import type {
   ThemeSource,
   SaveAIVideoOptions,
   SaveAIVideoResult,
-} from "./preload-types";
+} from "./preload-types.js";
 import {
   createPtyAPI,
   createSkillsAPI,
@@ -33,7 +33,7 @@ import {
   createClaudeAPI,
   createRemotionFolderAPI,
   createUpdatesAPI,
-} from "./preload-integrations";
+} from "./preload-integrations.js";
 
 // Expose the API to the renderer process
 const electronAPI: ElectronAPI = {
@@ -339,7 +339,7 @@ export type {
   ThemeSource,
   SaveAIVideoOptions,
   SaveAIVideoResult,
-} from "./preload-types";
+} from "./preload-types.js";
 
 export type {
   TranscriptionRequestData,
@@ -356,4 +356,4 @@ export type {
   RemotionBundleResult,
   RemotionFolderBundleResult,
   RemotionFolderImportResult,
-} from "./preload-types";
+} from "./preload-types.js";

@@ -13,7 +13,7 @@ import type {
   Skill,
   MediaImportOptions,
   MediaImportResult,
-} from "./preload-types";
+} from "./preload-types.js";
 import type {
   MediaFile,
   ClaudeTimeline,
@@ -24,7 +24,7 @@ import type {
   ExportRecommendation,
   ErrorReport,
   DiagnosticResult,
-} from "./types/claude-api";
+} from "./types/claude-api.js";
 
 // ============================================================================
 // PTY Terminal
