@@ -32,7 +32,7 @@ export async function downloadStickerAsFile(
     // Download SVG content from Iconify API
     // Using standard size for consistency with existing sticker handling
     const svgContent = await downloadIconSvg(collection, icon, {
-      color: "currentColor",
+      color: "#FFFFFF",
       width: 512,
       height: 512,
     });
