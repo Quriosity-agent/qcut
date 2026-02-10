@@ -69,29 +69,8 @@ export async function downloadVideoToMemory(
     );
   }
 
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("Response body is not readable");
-  }
-
-  const chunks: Uint8Array[] = [];
-  let receivedLength = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      chunks.push(value);
-      receivedLength += value.length;
-    }
-  }
-
-  const result = new Uint8Array(receivedLength);
-  let position = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, position);
-    position += chunk.length;
-  }
+  const buffer = await response.arrayBuffer();
+  const result = new Uint8Array(buffer);
 
   debugLog(`Download complete: ${result.length} bytes`);
   return result;
@@ -173,6 +152,21 @@ export function validateImageTab(
   return null;
 }
 
+/** Models that require source video (video-to-video). */
+const V2V_MODELS = new Set([
+  "wan_animate_replace",
+  "kling_o1_v2v_reference",
+  "kling_o1_v2v_edit",
+  "wan_26_ref2v",
+]);
+
+/** Models that require avatar image + audio file. */
+const AUDIO_AVATAR_MODELS = new Set([
+  "kling_avatar_pro",
+  "kling_avatar_standard",
+  "bytedance_omnihuman_v1_5",
+]);
+
 export function validateAvatarTab(
   selectedModels: string[],
   sourceVideo: File | null | undefined,
@@ -183,32 +177,12 @@ export function validateAvatarTab(
   if (selectedModels.length === 0) return "Missing models for avatar tab";
 
   for (const modelId of selectedModels) {
-    // V2V models require source video only
-    if (
-      (modelId === "wan_animate_replace" ||
-        modelId === "kling_o1_v2v_reference" ||
-        modelId === "kling_o1_v2v_edit" ||
-        modelId === "wan_26_ref2v") &&
-      !sourceVideo
-    ) {
+    if (V2V_MODELS.has(modelId) && !sourceVideo) {
       return "Video-to-video model requires source video";
     }
-    // Audio-based avatar models require audio
-    if (
-      (modelId === "kling_avatar_pro" ||
-        modelId === "kling_avatar_standard" ||
-        modelId === "bytedance_omnihuman_v1_5") &&
-      !audioFile
-    ) {
-      return "Audio-based avatar model requires audio file";
-    }
-    if (
-      (modelId === "kling_avatar_pro" ||
-        modelId === "kling_avatar_standard" ||
-        modelId === "bytedance_omnihuman_v1_5") &&
-      !avatarImage
-    ) {
-      return "Audio-based avatar model requires avatar image";
+    if (AUDIO_AVATAR_MODELS.has(modelId)) {
+      if (!audioFile) return "Audio-based avatar model requires audio file";
+      if (!avatarImage) return "Audio-based avatar model requires avatar image";
     }
     // Reference-to-video model
     if (modelId === "kling_o1_ref2video") {
