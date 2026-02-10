@@ -21,6 +21,8 @@ Two post-implementation bugs were fixed and verified:
 **Verification run:**
 - `bun x tsc -p electron/tsconfig.json --noEmit` → PASS
 - `bun x tsc --noEmit` (in `apps/web`) → PASS
+- `bun x vitest run electron/__tests__/release-notes-handler.test.ts` → 31 passed
+- `bun x vitest run src/lib/__tests__/release-notes.test.ts` (in `apps/web`) → 14 passed
 - Regex sanity check on current `CHANGELOG.md` confirmed empty `[Unreleased]` parses as empty content, not the next version section.
 
 ## Current State Analysis
