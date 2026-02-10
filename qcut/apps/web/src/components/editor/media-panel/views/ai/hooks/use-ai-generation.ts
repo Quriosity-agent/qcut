@@ -1302,7 +1302,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                     ? "text2video"
                     : activeTab === "image"
                       ? "image2video"
-                      : activeTab,
+                      : activeTab === "angles"
+                        ? "image2video"
+                        : activeTab,
                 onError: (error) => {
                   setIsGenerating(false);
                   setGenerationProgress(0);
@@ -1403,7 +1405,9 @@ export function useAIGeneration(props: UseAIGenerationProps) {
                   ? "text2video"
                   : activeTab === "image"
                     ? "image2video"
-                    : activeTab,
+                    : activeTab === "angles"
+                      ? "image2video"
+                      : activeTab,
               onError: (error) => {
                 setIsGenerating(false);
                 setGenerationProgress(0);
@@ -1818,6 +1822,10 @@ export function useAIGeneration(props: UseAIGenerationProps) {
             return false;
         }
         return true;
+      }
+      if (activeTab === "angles") {
+        // Angles tab manages its own generation flow
+        return false;
       }
 
       return false;

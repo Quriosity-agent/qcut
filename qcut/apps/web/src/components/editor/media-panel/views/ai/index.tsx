@@ -11,6 +11,7 @@ import {
   Upload,
   X,
   UserIcon,
+  ApertureIcon,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import {
@@ -38,12 +39,14 @@ import { useTextTabState, T2V_DEFAULTS } from "./hooks/use-ai-text-tab-state";
 import { useImageTabState } from "./hooks/use-ai-image-tab-state";
 import { useAvatarTabState } from "./hooks/use-ai-avatar-tab-state";
 import { useUpscaleTabState } from "./hooks/use-ai-upscale-tab-state";
+import { useAnglesTabState } from "./hooks/use-ai-angles-tab-state";
 
 // Import extracted UI components
 import { AITextTab } from "./tabs/ai-text-tab";
 import { AIImageTab } from "./tabs/ai-image-tab";
 import { AIAvatarTab } from "./tabs/ai-avatar-tab";
 import { AIUpscaleTab } from "./tabs/ai-upscale-tab";
+import { AIAnglesTab } from "./tabs/ai-angles-tab";
 import { AISora2Settings } from "./settings/ai-sora-settings";
 import { AIVeo31Settings } from "./settings/ai-veo-settings";
 import {
@@ -122,6 +125,7 @@ export function AiView() {
   const imageTabState = useImageTabState({ selectedModels });
   const avatarTabState = useAvatarTabState();
   const upscaleTabState = useUpscaleTabState();
+  const anglesTabState = useAnglesTabState();
 
   // Destructure text tab state for easier access
   const {
@@ -564,7 +568,7 @@ export function AiView() {
               setActiveTab(value as AIActiveTab)
             }
           >
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger
                 value="text"
                 className="text-xs"
@@ -596,6 +600,14 @@ export function AiView() {
               >
                 <Upload className="size-3 mr-1" />
                 {!isCompact && "Upscale"}
+              </TabsTrigger>
+              <TabsTrigger
+                value="angles"
+                className="text-xs"
+                data-testid="ai-tab-angles"
+              >
+                <ApertureIcon className="size-3 mr-1" />
+                {!isCompact && "Angles"}
               </TabsTrigger>
             </TabsList>
 
@@ -941,6 +953,17 @@ export function AiView() {
                 onTopazH264OutputChange={upscaleSetters.setTopazH264Output}
               />
             </TabsContent>
+
+            {/* Angles Tab */}
+            <TabsContent value="angles" className="space-y-4">
+              <AIAnglesTab
+                prompt={prompt}
+                onPromptChange={setPrompt}
+                isCompact={isCompact}
+                onError={setError}
+                anglesState={anglesTabState}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* Model Selection Grid */}
@@ -965,6 +988,9 @@ export function AiView() {
                 }
                 if (activeTab === "upscale") {
                   return model.category === "upscale";
+                }
+                if (activeTab === "angles") {
+                  return model.category === "angles";
                 }
                 return false;
               }).map((model) => (
