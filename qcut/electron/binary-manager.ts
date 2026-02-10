@@ -12,6 +12,26 @@ import * as path from "path";
 import * as crypto from "crypto";
 
 // ============================================================================
+// Logger Setup
+// ============================================================================
+
+interface Logger {
+  info(message?: unknown, ...optionalParams: unknown[]): void;
+  warn(message?: unknown, ...optionalParams: unknown[]): void;
+  error(message?: unknown, ...optionalParams: unknown[]): void;
+  debug(message?: unknown, ...optionalParams: unknown[]): void;
+}
+
+let log: Logger;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  log = require("electron-log");
+} catch {
+  const noop = (): void => {};
+  log = { info: noop, warn: noop, error: noop, debug: noop };
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
