@@ -69,10 +69,37 @@ interface ParsedRequest {
 
 Features:
 - Path parameter extraction (`:projectId`, `:mediaId`)
-- JSON body parsing for POST/PUT/DELETE
+- JSON body parsing for POST/PUT/DELETE with **1MB body size limit** (returns 413 if exceeded)
 - Query string parsing
 - `HttpError` class for typed error responses (handlers throw `HttpError` for non-200 status codes)
 - Returns `{ status, body }` or catches `HttpError` to send appropriate status
+
+**Body size enforcement** (inside the router's body parser):
+
+```typescript
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB
+
+function parseBody(req: http.IncomingMessage): Promise<any> {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MAX_BODY_SIZE) {
+        req.destroy();
+        reject(new HttpError(413, "Payload too large"));
+        return;
+      }
+      body += chunk;
+    });
+    req.on("end", () => {
+      try { resolve(body ? JSON.parse(body) : undefined); }
+      catch { reject(new HttpError(400, "Invalid JSON")); }
+    });
+    req.on("error", reject);
+  });
+}
+```
 
 ### 1b. Create HTTP server handler
 
@@ -120,6 +147,28 @@ import { claudeLog } from "./utils/logger";
 
 let server: http.Server | null = null;
 
+// --- CORS headers (needed when browser-based tools call the API) ---
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "http://localhost:3000",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+function setCorsHeaders(res: http.ServerResponse): void {
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    res.setHeader(key, value);
+  }
+}
+
+// --- Bearer token auth (optional — only enforced when QCUT_API_TOKEN is set) ---
+function checkAuth(req: http.IncomingMessage): boolean {
+  const token = process.env.QCUT_API_TOKEN;
+  if (!token) return true; // Auth disabled
+  const authHeader = req.headers.authorization;
+  return authHeader === `Bearer ${token}`;
+}
+
 export function startClaudeHTTPServer(
   port = parseInt(process.env.QCUT_API_PORT || "8765", 10)
 ): void {
@@ -149,7 +198,30 @@ export function startClaudeHTTPServer(
     uptime: process.uptime(),
   }));
 
-  server = http.createServer((req, res) => router.handle(req, res));
+  server = http.createServer((req, res) => {
+    // 30s request timeout — prevents hung connections
+    req.setTimeout(30_000, () => {
+      res.writeHead(408, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Request timeout" }));
+    });
+
+    // CORS — set headers on every response, handle OPTIONS preflight
+    setCorsHeaders(res);
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    // Auth — reject early if QCUT_API_TOKEN is set and token is missing/wrong
+    if (!checkAuth(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized" }));
+      return;
+    }
+
+    router.handle(req, res);
+  });
   server.listen(port, "127.0.0.1", () => {
     claudeLog.info("HTTP", `Server started on http://127.0.0.1:${port}`);
   });

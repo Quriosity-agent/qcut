@@ -1230,6 +1230,14 @@ export async function handleKlingAvatarV2(
     };
   }
 
+  if (!settings.audioFile) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Audio file is required for Kling Avatar v2",
+    };
+  }
+
   debugLogger.log("model-handlers", "KLING_AVATAR_V2_START", {
     modelId: ctx.modelId,
     hasAudioFile: !!settings.audioFile,
@@ -1237,14 +1245,8 @@ export async function handleKlingAvatarV2(
 
   const [characterImageUrl, audioUrl] = await Promise.all([
     settings.uploadImageToFal(settings.avatarImage),
-    settings.audioFile
-      ? settings.uploadAudioToFal(settings.audioFile)
-      : Promise.resolve(""),
+    settings.uploadAudioToFal(settings.audioFile),
   ]);
-
-  if (!audioUrl) {
-    throw new Error("Audio file is required for Kling Avatar v2");
-  }
 
   debugLogger.log("model-handlers", "KLING_AVATAR_V2_FILES_UPLOADED", {
     modelId: ctx.modelId,
