@@ -70,13 +70,18 @@ export function AIAnglesTab({
     }
   }, [state.sourceImage, prompt, setters, onError]);
 
-  const handleDownloadSelected = useCallback(() => {
+  const handleDownloadSelected = useCallback(async () => {
     for (const { id, url } of state.selectedUrls) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `angle-${id}.png`;
-      a.click();
-      a.remove();
+      try {
+        const blob = await fetch(url).then((r) => r.blob());
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `angle-${id}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (err) {
+        console.error(`Failed to download angle-${id}:`, err);
+      }
     }
   }, [state.selectedUrls]);
 
