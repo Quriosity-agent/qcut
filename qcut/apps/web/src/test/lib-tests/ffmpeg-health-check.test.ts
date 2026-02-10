@@ -56,33 +56,49 @@ describe("FFmpeg binary health check", () => {
   describe("ffmpeg execution", () => {
     const ffmpegPath: string = require("ffmpeg-static");
 
-    it("ffmpeg -version returns exit code 0", async () => {
-      const result = await spawnVersion(ffmpegPath);
-      expect(result.error).toBe("");
-      expect(result.code).toBe(0);
-    });
+    it(
+      "ffmpeg -version returns exit code 0",
+      async () => {
+        const result = await spawnVersion(ffmpegPath);
+        expect(result.error).toBe("");
+        expect(result.code).toBe(0);
+      },
+      SPAWN_TIMEOUT + 1000,
+    );
 
-    it("ffmpeg version string is parseable", async () => {
-      const result = await spawnVersion(ffmpegPath);
-      const firstLine = result.stdout.split("\n")[0] ?? "";
-      expect(firstLine).toMatch(/ffmpeg version \d+\.\d+/);
-    });
+    it(
+      "ffmpeg version string is parseable",
+      async () => {
+        const result = await spawnVersion(ffmpegPath);
+        const firstLine = result.stdout.split("\n")[0] ?? "";
+        expect(firstLine).toMatch(/ffmpeg version \d+\.\d+/);
+      },
+      SPAWN_TIMEOUT + 1000,
+    );
   });
 
   describe("ffprobe execution", () => {
     const ffprobePath: string = require("ffprobe-static").path;
 
-    it("ffprobe -version returns exit code 0", async () => {
-      const result = await spawnVersion(ffprobePath);
-      expect(result.error).toBe("");
-      expect(result.code).toBe(0);
-    });
+    it(
+      "ffprobe -version returns exit code 0",
+      async () => {
+        const result = await spawnVersion(ffprobePath);
+        expect(result.error).toBe("");
+        expect(result.code).toBe(0);
+      },
+      SPAWN_TIMEOUT + 1000,
+    );
 
-    it("ffprobe version string is parseable", async () => {
-      const result = await spawnVersion(ffprobePath);
-      const firstLine = result.stdout.split("\n")[0] ?? "";
-      expect(firstLine).toMatch(/ffprobe version \d+\.\d+/);
-    });
+    it(
+      "ffprobe version string is parseable",
+      async () => {
+        const result = await spawnVersion(ffprobePath);
+        const firstLine = result.stdout.split("\n")[0] ?? "";
+        expect(firstLine).toMatch(/ffprobe version \d+\.\d+/);
+      },
+      SPAWN_TIMEOUT + 1000,
+    );
   });
 
   it(

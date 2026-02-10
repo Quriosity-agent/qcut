@@ -223,11 +223,15 @@ if (typeof Proxy !== "undefined") {
 
 // Re-apply periodically to catch late initializations
 const intervals = [0, 1, 10, 100];
-intervals.forEach((delay) => {
+for (const delay of intervals) {
   setTimeout(() => {
     patchGlobal(globalThis, "globalThis");
     patchGlobal(global, "global");
-    patchGlobal(window, "window");
-    patchGlobal(self, "self");
+    if (typeof window !== "undefined") {
+      patchGlobal(window, "window");
+    }
+    if (typeof self !== "undefined") {
+      patchGlobal(self, "self");
+    }
   }, delay);
-});
+}
