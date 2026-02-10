@@ -301,10 +301,20 @@ export function PreviewPanel() {
 
     const handleMouseUp = () => {
       if (dragState.isDragging && dragState.trackId && dragState.elementId) {
-        updateTextElement(dragState.trackId, dragState.elementId, {
-          x: dragState.currentX,
-          y: dragState.currentY,
-        });
+        // Find element type to use appropriate update method
+        const track = tracks.find((t) => t.id === dragState.trackId);
+        const el = track?.elements.find((e) => e.id === dragState.elementId);
+        if (el?.type === "text") {
+          updateTextElement(dragState.trackId, dragState.elementId, {
+            x: dragState.currentX,
+            y: dragState.currentY,
+          });
+        } else {
+          updateElementPosition(dragState.elementId, {
+            x: dragState.currentX,
+            y: dragState.currentY,
+          });
+        }
       }
       setDragState((prev) => ({ ...prev, isDragging: false }));
     };
@@ -322,7 +332,7 @@ export function PreviewPanel() {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [dragState, previewDimensions, canvasSize, updateTextElement]);
+  }, [dragState, previewDimensions, canvasSize, updateTextElement, tracks, updateElementPosition]);
 
   const handleTextMouseDown = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -867,6 +877,71 @@ export function PreviewPanel() {
 
       // Image elements
       if (mediaItem.type === "image") {
+        // Positioned image (sticker) — has explicit width/height transforms
+        if (element.width !== undefined) {
+          const scaleRatio = previewDimensions.width / canvasSize.width;
+          const elX = element.x ?? 0;
+          const elY = element.y ?? 0;
+          const elW = element.width ?? 200;
+          const elH = element.height ?? 200;
+          const isDraggingThis =
+            dragState.isDragging && dragState.elementId === element.id;
+          const displayX = isDraggingThis ? dragState.currentX : elX;
+          const displayY = isDraggingThis ? dragState.currentY : elY;
+
+          return (
+            <div
+              key={elementKey}
+              className="absolute cursor-grab"
+              onClick={() => setSelectedElementId(element.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedElementId(element.id);
+                }
+              }}
+              onMouseDown={(e) =>
+                handleTextMouseDown(e, element, elementData.track.id)
+              }
+              onWheel={(e) => {
+                e.stopPropagation();
+                const delta = e.deltaY > 0 ? -20 : 20;
+                const curW = element.width ?? 200;
+                const curH = element.height ?? 200;
+                const aspect = curW / curH;
+                const newW = Math.max(
+                  30,
+                  Math.min(canvasSize.width, curW + delta)
+                );
+                const newH = newW / aspect;
+                updateElementSize(element.id, {
+                  width: newW,
+                  height: newH,
+                });
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`Sticker: ${element.name}`}
+              style={{
+                left: `${50 + (displayX / canvasSize.width) * 100}%`,
+                top: `${50 + (displayY / canvasSize.height) * 100}%`,
+                width: `${elW * scaleRatio}px`,
+                height: `${elH * scaleRatio}px`,
+                transform: `translate(-50%, -50%) rotate(${element.rotation ?? 0}deg)`,
+                zIndex: 90 + index,
+              }}
+            >
+              <img
+                src={mediaItem.url!}
+                alt={mediaItem.name}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            </div>
+          );
+        }
+
+        // Full-bleed background image (no transforms set)
         return (
           <div
             key={elementKey}

@@ -385,7 +385,30 @@ export function StickersView() {
           .mediaItems.find((item) => item.id === mediaId);
         if (mediaItem) {
           const currentTime = usePlaybackStore.getState().currentTime;
-          useTimelineStore.getState().addMediaAtTime(mediaItem, currentTime);
+          const timelineStore = useTimelineStore.getState();
+          timelineStore.addMediaAtTime(mediaItem, currentTime);
+
+          // Set initial transforms so sticker renders as positioned overlay
+          for (const track of timelineStore.tracks) {
+            const el = track.elements.find(
+              (e) =>
+                e.type === "media" &&
+                "mediaId" in e &&
+                (e as any).mediaId === mediaId
+            );
+            if (el && el.width === undefined) {
+              timelineStore.updateElementTransform(
+                el.id,
+                {
+                  position: { x: 0, y: 0 },
+                  size: { width: 200, height: 200 },
+                },
+                { pushHistory: false }
+              );
+              break;
+            }
+          }
+
           debugLog("[StickersView] Added sticker to timeline at", currentTime);
         }
 
