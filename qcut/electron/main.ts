@@ -61,6 +61,9 @@ interface MimeTypeMap {
 }
 
 type HandlerFunction = () => void;
+interface AutoUpdaterReleaseNoteEntry {
+  note?: unknown;
+}
 
 // Initialize electron-log early
 let log: any = null;
@@ -154,6 +157,39 @@ function detectChannelFromVersion(version: string): string {
   return "latest";
 }
 
+function normalizeAutoUpdaterReleaseNotes(releaseNotes: unknown): string {
+  try {
+    if (typeof releaseNotes === "string") {
+      return releaseNotes.trim();
+    }
+
+    if (!Array.isArray(releaseNotes)) {
+      return "";
+    }
+
+    const notes: string[] = [];
+    for (const entry of releaseNotes as AutoUpdaterReleaseNoteEntry[]) {
+      if (!entry || typeof entry !== "object") {
+        continue;
+      }
+
+      const note = entry.note;
+      if (typeof note !== "string") {
+        continue;
+      }
+
+      const trimmed = note.trim();
+      if (trimmed.length > 0) {
+        notes.push(trimmed);
+      }
+    }
+
+    return notes.join("\n\n");
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Resolve the path to docs/releases/ directory.
  * Works in both development and packaged (ASAR) builds.
@@ -231,12 +267,15 @@ function setupAutoUpdater(): void {
 
   autoUpdater.on("update-available", (info: any) => {
     logger.log("📦 [AutoUpdater] Update available:", info.version);
+    const normalizedReleaseNotes = normalizeAutoUpdaterReleaseNotes(
+      info.releaseNotes
+    );
 
     // Send to renderer process
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("update-available", {
         version: info.version,
-        releaseNotes: info.releaseNotes,
+        releaseNotes: normalizedReleaseNotes,
         releaseDate: info.releaseDate,
       });
     }
