@@ -17,6 +17,7 @@ import type {
   DragData,
 } from "@/types/timeline";
 import type { MediaItem } from "./media-store";
+import type { MediaType } from "./media-store-types";
 import type { TimelineStore, DragState } from "./timeline";
 import { INITIAL_DRAG_STATE, getElementNameWithSuffix } from "./timeline";
 import { generateUUID } from "@/lib/utils";
@@ -646,7 +647,7 @@ export function createTimelineOperations({
         // Process the new media file
         const mediaData: {
           name: string;
-          type: string;
+          type: MediaType;
           file: File;
           url: string;
           width?: number;
