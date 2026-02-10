@@ -78,6 +78,7 @@
     "release:beta": "bun scripts/release.ts beta",
     "release:rc": "bun scripts/release.ts rc",
     "release:promote": "bun scripts/release.ts promote",
+    "test": "cd apps/web && bunx vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
