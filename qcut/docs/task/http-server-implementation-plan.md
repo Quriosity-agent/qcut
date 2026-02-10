@@ -19,7 +19,7 @@ Claude Code  ──HTTP──>  localhost:8765  ──IPC──>  QCut Main Proc
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | HTTP library | Native `http` module | Already imported in `main.ts`, no new dependency, follows existing `createStaticServer()` pattern |
-| Port | 8765 | Avoids conflict with existing static server (8080) and common dev ports |
+| Port | 8765 (configurable via `QCUT_API_PORT`) | Avoids conflict with existing static server (8080) and common dev ports |
 | Bind address | `127.0.0.1` only | Security: prevents external network access |
 | Auth | Bearer token (optional) | Simple, stateless, configurable via env var |
 | Architecture | Separate handler file | Follows existing handler pattern, keeps `main.ts` minimal |
@@ -40,7 +40,14 @@ Claude Code  ──HTTP──>  localhost:8765  ──IPC──>  QCut Main Proc
 A lightweight router (~60 lines) that matches `METHOD /path/:param` patterns and extracts params. No external dependency.
 
 ```typescript
-// Core interface
+// Error convention: throw HttpError for non-200 responses
+class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 interface Route {
   method: string;
   pattern: RegExp;
@@ -57,13 +64,15 @@ interface ParsedRequest {
 // Usage:
 // router.get("/api/media/:projectId", async (req) => { ... });
 // router.post("/api/timeline/:projectId/import", async (req) => { ... });
+// Errors: throw new HttpError(404, "Not found");
 ```
 
 Features:
 - Path parameter extraction (`:projectId`, `:mediaId`)
 - JSON body parsing for POST/PUT/DELETE
 - Query string parsing
-- Returns `{ status, body }` or throws for error responses
+- `HttpError` class for typed error responses (handlers throw `HttpError` for non-200 status codes)
+- Returns `{ status, body }` or catches `HttpError` to send appropriate status
 
 ### 1b. Create HTTP server handler
 
@@ -111,7 +120,9 @@ import { claudeLog } from "./utils/logger";
 
 let server: http.Server | null = null;
 
-export function startClaudeHTTPServer(port = 8765): void {
+export function startClaudeHTTPServer(
+  port = parseInt(process.env.QCUT_API_PORT || "8765", 10)
+): void {
   const router = createRouter();
 
   // Media routes
@@ -122,8 +133,11 @@ export function startClaudeHTTPServer(port = 8765): void {
   // Timeline routes (need renderer window)
   router.get("/api/claude/timeline/:projectId", async (req) => {
     const win = BrowserWindow.getAllWindows()[0];
-    if (!win) throw { status: 503, message: "No active window" };
-    const timeline = await requestTimelineFromRenderer(win);
+    if (!win) throw new HttpError(503, "No active window");
+    const timeline = await Promise.race([
+      requestTimelineFromRenderer(win),
+      new Promise((_, reject) => setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)),
+    ]);
     const format = req.query.format || "json";
     // ...
   });
@@ -214,8 +228,12 @@ import { startClaudeHTTPServer, stopClaudeHTTPServer } from "./claude-http-serve
 export function setupAllClaudeIPC(): void {
   // ... existing handler setup ...
 
-  // Start HTTP server for external control
-  startClaudeHTTPServer();
+  // Start HTTP server for external control (non-blocking — failure is non-fatal)
+  try {
+    startClaudeHTTPServer();
+  } catch (error) {
+    claudeLog.warn("Claude", `HTTP server failed to start: ${error}. External control disabled.`);
+  }
 
   claudeLog.info("Claude", "All handlers registered successfully");
 }
