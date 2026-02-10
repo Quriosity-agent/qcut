@@ -431,7 +431,7 @@ export async function handleDirectWithJobResponse(
       fatal = true;
     }
   } else if (!canIntegrate) {
-    console.warn("Cannot add to media store:", missing);
+    debugLogger.warn("AIGeneration", "MEDIA_STORE_MISSING_FIELDS", { missing });
   }
 
   return { video: newVideo, fatal };
@@ -526,7 +526,7 @@ export async function handleDirectVideoResponse(
       fatal = true;
     }
   } else if (!canIntegrate) {
-    console.warn("Cannot add to media store:", missing);
+    debugLogger.warn("AIGeneration", "MEDIA_STORE_MISSING_FIELDS", { missing });
   }
 
   return { video: newVideo, fatal };
@@ -577,7 +577,7 @@ export async function processModelResponse(
     case "direct_video":
       return handleDirectVideoResponse(response, ctx);
     case "empty":
-      console.warn("Response has neither job_id nor video_url:", response);
+      debugLogger.warn("AIGeneration", "EMPTY_RESPONSE", { response });
       return null;
   }
 }

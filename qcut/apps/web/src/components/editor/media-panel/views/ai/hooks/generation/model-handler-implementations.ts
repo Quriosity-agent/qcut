@@ -999,6 +999,14 @@ export async function handleByteDanceUpscale(
     ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
     : settings.sourceVideoUrl;
 
+  if (!videoUrl) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Video URL could not be determined",
+    };
+  }
+
   ctx.progressCallback({
     status: "processing",
     progress: 10,
@@ -1012,7 +1020,7 @@ export async function handleByteDanceUpscale(
   });
 
   const response = await upscaleByteDanceVideo({
-    video_url: videoUrl!,
+    video_url: videoUrl,
     target_resolution:
       settings.bytedanceTargetResolution as ByteDanceResolution,
     target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
@@ -1046,6 +1054,14 @@ export async function handleFlashVSRUpscale(
     ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
     : settings.sourceVideoUrl;
 
+  if (!videoUrl) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: "Video URL could not be determined",
+    };
+  }
+
   const upscaleFactor = settings.flashvsrUpscaleFactor ?? 4;
 
   ctx.progressCallback({
@@ -1061,7 +1077,7 @@ export async function handleFlashVSRUpscale(
   });
 
   const response = await upscaleFlashVSRVideo({
-    video_url: videoUrl!,
+    video_url: videoUrl,
     upscale_factor: upscaleFactor,
     acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
     quality: settings.flashvsrQuality,

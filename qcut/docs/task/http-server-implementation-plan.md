@@ -108,9 +108,10 @@ function parseBody(req: http.IncomingMessage): Promise<any> {
 The main server file that:
 1. Creates an `http.Server` on `127.0.0.1:8765`
 2. Registers routes that map to existing IPC handler logic
-3. Handles CORS (for browser-based tools)
-4. Optional bearer token auth via `QCUT_API_TOKEN` env var
-5. Exports `startClaudeHTTPServer()` and `stopClaudeHTTPServer()`
+3. Optional bearer token auth via `QCUT_API_TOKEN` env var
+4. Exports `startClaudeHTTPServer()` and `stopClaudeHTTPServer()`
+
+> **Note:** No CORS handling needed — the only consumer is Claude Code (a CLI tool), not a browser. CORS is browser-enforced and irrelevant for non-browser HTTP clients like `curl` or Claude Code.
 
 **Route mapping (all routes prefixed with `/api/claude`):**
 
@@ -146,20 +147,6 @@ import { createRouter } from "./utils/http-router";
 import { claudeLog } from "./utils/logger";
 
 let server: http.Server | null = null;
-
-// --- CORS headers (needed when browser-based tools call the API) ---
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "http://localhost:3000",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
-};
-
-function setCorsHeaders(res: http.ServerResponse): void {
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    res.setHeader(key, value);
-  }
-}
 
 // --- Bearer token auth (optional — only enforced when QCUT_API_TOKEN is set) ---
 function checkAuth(req: http.IncomingMessage): boolean {
@@ -204,14 +191,6 @@ export function startClaudeHTTPServer(
       res.writeHead(408, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Request timeout" }));
     });
-
-    // CORS — set headers on every response, handle OPTIONS preflight
-    setCorsHeaders(res);
-    if (req.method === "OPTIONS") {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
 
     // Auth — reject early if QCUT_API_TOKEN is set and token is missing/wrong
     if (!checkAuth(req)) {
