@@ -63,7 +63,7 @@ describe("FFmpeg binary health check", () => {
         expect(result.error).toBe("");
         expect(result.code).toBe(0);
       },
-      SPAWN_TIMEOUT + 1000,
+      SPAWN_TIMEOUT + 1000
     );
 
     it(
@@ -73,7 +73,7 @@ describe("FFmpeg binary health check", () => {
         const firstLine = result.stdout.split("\n")[0] ?? "";
         expect(firstLine).toMatch(/ffmpeg version \d+\.\d+/);
       },
-      SPAWN_TIMEOUT + 1000,
+      SPAWN_TIMEOUT + 1000
     );
   });
 
@@ -87,7 +87,7 @@ describe("FFmpeg binary health check", () => {
         expect(result.error).toBe("");
         expect(result.code).toBe(0);
       },
-      SPAWN_TIMEOUT + 1000,
+      SPAWN_TIMEOUT + 1000
     );
 
     it(
@@ -97,7 +97,7 @@ describe("FFmpeg binary health check", () => {
         const firstLine = result.stdout.split("\n")[0] ?? "";
         expect(firstLine).toMatch(/ffprobe version \d+\.\d+/);
       },
-      SPAWN_TIMEOUT + 1000,
+      SPAWN_TIMEOUT + 1000
     );
   });
 
