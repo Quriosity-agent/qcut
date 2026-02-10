@@ -386,7 +386,14 @@ export function StickersView() {
         if (mediaItem) {
           const currentTime = usePlaybackStore.getState().currentTime;
           const timelineStore = useTimelineStore.getState();
-          timelineStore.addMediaAtTime(mediaItem, currentTime);
+          const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
+
+          if (!wasAdded) {
+            toast.error(
+              `Could not add ${name} — overlaps existing element`
+            );
+            return;
+          }
 
           // Set initial transforms so sticker renders as positioned overlay.
           // Find the just-added element by matching mediaId and startTime.
