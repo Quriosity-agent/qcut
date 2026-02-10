@@ -9,7 +9,8 @@
  * with the renderer via IPC through the existing BrowserWindow.
  */
 
-import * as http from "node:http";
+import { createServer } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "./utils/http-router.js";
 import { claudeLog } from "./utils/logger.js";
@@ -40,7 +41,7 @@ import {
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
 
-let server: http.Server | null = null;
+let server: Server | null = null;
 
 /**
  * Get the first available BrowserWindow or throw 503
@@ -54,7 +55,7 @@ function getWindow(): BrowserWindow {
 /**
  * Check bearer token auth (only enforced when QCUT_API_TOKEN is set)
  */
-function checkAuth(req: http.IncomingMessage): boolean {
+function checkAuth(req: IncomingMessage): boolean {
   const token = process.env.QCUT_API_TOKEN;
   if (!token) return true;
   const authHeader = req.headers.authorization;
@@ -260,7 +261,7 @@ export function startClaudeHTTPServer(
   // ==========================================================================
   // Create and start the server
   // ==========================================================================
-  server = http.createServer((req, res) => {
+  server = createServer((req, res) => {
     // 30s request timeout
     req.setTimeout(30_000, () => {
       res.writeHead(408, { "Content-Type": "application/json" });
