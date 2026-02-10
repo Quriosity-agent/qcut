@@ -22,6 +22,7 @@ export interface AnglesTabState {
   generatingAngles: Set<CinematicAngleId>;
 }
 
+/** Hook managing source image, generated results, and selection state for the angles tab. */
 export function useAnglesTabState() {
   const [sourceImage, setSourceImageRaw] = useState<File | null>(null);
   const [sourceImagePreview, setSourceImagePreview] = useState<string | null>(

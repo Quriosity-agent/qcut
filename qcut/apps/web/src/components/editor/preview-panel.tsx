@@ -64,7 +64,7 @@ interface ActiveElement {
   mediaItem: MediaItem | null;
 }
 
-// Hook for effects rendering
+/** Compute the aggregate CSS filter string for an element's enabled effects. */
 function useEffectsRendering(elementId: string | null, enabled = false) {
   const getElementEffects = useEffectsStore((state) => state.getElementEffects);
 
@@ -108,6 +108,7 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
   return { filterStyle, hasEffects: hasEnabledEffects };
 }
 
+/** Canvas preview of the timeline — renders media, text, stickers, captions, and effects. */
 export function PreviewPanel() {
   const {
     tracks,

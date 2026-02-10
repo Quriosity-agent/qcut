@@ -47,7 +47,7 @@ interface StickerItemProps {
   isSelected?: boolean;
 }
 
-// StickerItem Component
+/** Single sticker icon tile with loading/error states and click-to-select. */
 function StickerItem({
   icon,
   name,
@@ -163,6 +163,7 @@ interface CollectionContentProps {
   onSelect: (iconId: string, name: string) => void;
 }
 
+/** Renders the icon grid for a single Iconify collection. */
 function CollectionContent({
   collectionPrefix,
   collections,
@@ -266,7 +267,7 @@ function CollectionContent({
   );
 }
 
-// Main StickersView Component
+/** Stickers panel — search, browse collections, and add icon stickers to the timeline. */
 export function StickersView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCollection, setSelectedCollection] = useState<string>("all");

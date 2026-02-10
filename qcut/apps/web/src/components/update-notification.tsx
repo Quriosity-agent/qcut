@@ -14,6 +14,7 @@ interface UpdateState {
   highlights: string[];
 }
 
+/** Extract plain-text bullet lines from raw release notes as a last-resort fallback. */
 function extractFallbackLines(releaseNotes: string, maxItems = 3): string[] {
   const lines = releaseNotes
     .split(/\r?\n/)

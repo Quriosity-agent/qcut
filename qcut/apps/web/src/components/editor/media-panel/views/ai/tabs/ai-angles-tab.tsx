@@ -28,6 +28,7 @@ interface AIAnglesTabProps {
   anglesState: ReturnType<typeof useAnglesTabState>;
 }
 
+/** Panel for uploading a source image and generating 9 cinematic camera angles. */
 export function AIAnglesTab({
   prompt,
   onPromptChange,
