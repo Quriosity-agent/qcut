@@ -332,7 +332,14 @@ export function PreviewPanel() {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [dragState, previewDimensions, canvasSize, updateTextElement, tracks, updateElementPosition]);
+  }, [
+    dragState,
+    previewDimensions,
+    canvasSize,
+    updateTextElement,
+    tracks,
+    updateElementPosition,
+  ]);
 
   const handleTextMouseDown = (
     e: React.MouseEvent<HTMLDivElement>,

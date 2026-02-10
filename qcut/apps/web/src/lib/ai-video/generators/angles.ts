@@ -52,8 +52,7 @@ export async function generateCinematicAngles(
 
   const results: Partial<Record<CinematicAngleId, string>> = {};
   const endpoint =
-    ANGLES_MODEL.endpoints.image_edit ??
-    "fal-ai/bytedance/seedream/v4.5/edit";
+    ANGLES_MODEL.endpoints.image_edit ?? "fal-ai/bytedance/seedream/v4.5/edit";
 
   // Process angles in batches
   for (let i = 0; i < CINEMATIC_ANGLES.length; i += ANGLE_BATCH_SIZE) {

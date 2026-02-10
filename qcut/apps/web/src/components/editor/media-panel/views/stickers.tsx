@@ -389,9 +389,7 @@ export function StickersView() {
           const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
 
           if (!wasAdded) {
-            toast.error(
-              `Could not add ${name} — overlaps existing element`
-            );
+            toast.error(`Could not add ${name} — overlaps existing element`);
             return;
           }
 
