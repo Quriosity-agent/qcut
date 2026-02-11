@@ -8,7 +8,7 @@
  * @module lib/fal-ai-client
  */
 
-import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
+import { TEXT2IMAGE_MODELS } from "./text2image-models";
 import { debugLogger } from "./debug-logger";
 import {
   handleAIServiceError,
@@ -21,7 +21,6 @@ import type {
   Veo31ImageToVideoInput,
   Veo31FrameToVideoInput,
   Veo31ExtendVideoInput,
-  Veo31Response,
   ReveTextToImageInput,
   ReveTextToImageOutput,
   ReveEditInput,
@@ -33,71 +32,40 @@ import {
   type FalUploadFileType,
 } from "./ai-video/core/fal-upload";
 import {
-  normalizeAspectRatio,
-  imageSizeToAspectRatio,
-  normalizeOutputFormat,
-  clampReveNumImages,
-  truncateRevePrompt,
-  validateRevePrompt,
-  validateReveNumImages,
-  VALID_OUTPUT_FORMATS,
-  DEFAULT_ASPECT_RATIO,
-  IMAGE_SIZE_TO_ASPECT_RATIO,
-  MIN_REVE_IMAGES,
-  MAX_REVE_IMAGES,
-  MAX_REVE_PROMPT_LENGTH,
-  type OutputFormat,
-} from "./ai-video/validation/validators";
-import {
   convertV3Parameters,
   convertV4Parameters,
   convertNanoBananaParameters,
   convertFluxParameters,
   detectModelVersion,
 } from "./fal-ai/model-handlers";
+import {
+  generateWithModel as generateWithModelCore,
+  generateWithMultipleModels as generateWithMultipleModelsCore,
+} from "./fal-ai-client-generation";
+import {
+  veo31FastTextToVideo,
+  veo31FastImageToVideo,
+  veo31FastFrameToVideo,
+  veo31TextToVideo,
+  veo31ImageToVideo,
+  veo31FrameToVideo,
+  veo31FastExtendVideo,
+  veo31ExtendVideo,
+} from "./fal-ai-client-veo31";
+import { reveTextToImage, reveEdit } from "./fal-ai-client-reve";
+import {
+  FAL_LOG_COMPONENT,
+  type FalImageResponse,
+  type GenerationSettings,
+  type GenerationResult,
+  type MultiModelGenerationResult,
+} from "./fal-ai-client-internal-types";
 
-// Types for API responses
-interface FalImageResponse {
-  // Most models return images array
-  images?: Array<{
-    url: string;
-    width: number;
-    height: number;
-    content_type: string;
-  }>;
-  // WAN v2.2 returns single image object
-  image?: {
-    url: string;
-    width: number;
-    height: number;
-    content_type?: string;
-  };
-  timings?: Record<string, number>;
-  seed?: number;
-  has_nsfw_concepts?: boolean[];
-}
-
-interface GenerationResult {
-  success: boolean;
-  imageUrl?: string;
-  error?: string;
-  metadata?: {
-    seed?: number;
-    timings?: Record<string, number>;
-    dimensions?: { width: number; height: number };
-  };
-}
-
-export interface GenerationSettings {
-  imageSize: string | number;
-  seed?: number;
-  outputFormat?: OutputFormat;
-}
-
-const FAL_LOG_COMPONENT = "FalAIClient";
-
-// Multi-model generation result
-export type MultiModelGenerationResult = Record<string, GenerationResult>;
+export type {
+  GenerationSettings,
+  GenerationResult,
+  MultiModelGenerationResult,
+} from "./fal-ai-client-internal-types";
 
 /**
  * Client for FAL.ai image and video generation APIs.
@@ -307,316 +275,17 @@ class FalAIClient {
     return this.uploadFileToFal(file, "video");
   }
 
-  private convertSettingsToParams(
-    model: Text2ImageModel,
-    prompt: string,
-    settings: GenerationSettings
-  ): Record<string, any> {
-    const params: Record<string, any> = {
-      prompt,
-      ...model.defaultParams,
-    };
-
-    // Add seed if provided
-    if (settings.seed !== undefined && settings.seed !== null) {
-      params.seed = settings.seed;
-    }
-
-    // Convert generic settings to model-specific parameters
-    switch (model.id) {
-      case "imagen4-ultra":
-        // Imagen4 uses aspect_ratio - map from size format to aspect ratio
-        switch (settings.imageSize) {
-          case "square":
-          case "square_hd":
-            params.aspect_ratio = "1:1";
-            break;
-          case "portrait_3_4":
-            params.aspect_ratio = "3:4";
-            break;
-          case "portrait_9_16":
-            params.aspect_ratio = "9:16";
-            break;
-          case "landscape_4_3":
-            params.aspect_ratio = "4:3";
-            break;
-          case "landscape_16_9":
-            params.aspect_ratio = "16:9";
-            break;
-          default:
-            params.aspect_ratio = "1:1";
-        }
-        break;
-
-      case "seeddream-v3":
-        // SeedDream v3 uses image_size (predefined values or custom)
-        params.image_size = settings.imageSize;
-        break;
-
-      case "wan-v2-2":
-        // WAN v2.2 uses image_size like SeedDream v3
-        params.image_size = settings.imageSize;
-        break;
-
-      case "flux-2-flex":
-        // FLUX 2 Flex uses image_size enum directly (like WAN v2.2)
-        params.image_size = settings.imageSize;
-        break;
-
-      case "qwen-image":
-        // Qwen Image uses image_size parameter
-        params.image_size = settings.imageSize;
-        break;
-
-      case "flux-pro-v11-ultra":
-        // FLUX Pro uses aspect_ratio
-        switch (settings.imageSize) {
-          case "square":
-          case "square_hd":
-            params.aspect_ratio = "1:1";
-            break;
-          case "portrait_3_4":
-            params.aspect_ratio = "3:4";
-            break;
-          case "portrait_9_16":
-            params.aspect_ratio = "9:16";
-            break;
-          case "landscape_4_3":
-            params.aspect_ratio = "4:3";
-            break;
-          case "landscape_16_9":
-            params.aspect_ratio = "16:9";
-            break;
-          default:
-            params.aspect_ratio = "16:9"; // Default for FLUX
-        }
-        break;
-
-      case "seeddream-v4":
-        // SeedDream V4 uses string image_size values like "square_hd", "square", etc.
-        if (typeof settings.imageSize === "string") {
-          // Validate and use string values directly for V4
-          const validV4Sizes = [
-            "square",
-            "square_hd",
-            "portrait_3_4",
-            "landscape_4_3",
-            "portrait_9_16",
-            "landscape_16_9",
-          ];
-          if (validV4Sizes.includes(settings.imageSize)) {
-            params.image_size = settings.imageSize;
-          } else {
-            debugLogger.warn(
-              FAL_LOG_COMPONENT,
-              "SEEDDREAM_V4_INVALID_IMAGE_SIZE",
-              {
-                requestedSize: settings.imageSize,
-                fallback: "square_hd",
-              }
-            );
-            params.image_size = "square_hd";
-          }
-        } else if (typeof settings.imageSize === "number") {
-          // Convert numeric size to closest V4 string equivalent
-          const clampedSize = Math.min(
-            Math.max(Math.round(settings.imageSize), 1024),
-            4096
-          );
-          if (clampedSize >= 1536) {
-            params.image_size = "square_hd"; // 1536x1536
-          } else if (clampedSize >= 1280) {
-            params.image_size = "portrait_3_4"; // ~1280px
-          } else {
-            params.image_size = "square"; // 1024x1024
-          }
-          debugLogger.log(FAL_LOG_COMPONENT, "SEEDDREAM_V4_SIZE_COERCED", {
-            inputSize: settings.imageSize,
-            coercedSize: params.image_size,
-          });
-        } else {
-          // Default fallback
-          params.image_size = "square_hd";
-        }
-        break;
-
-      case "seeddream-v4-5":
-        // SeedDream V4.5 uses string image_size values including auto_2K/auto_4K
-        if (typeof settings.imageSize === "string") {
-          const validV45Sizes = [
-            "square",
-            "square_hd",
-            "portrait_4_3",
-            "portrait_16_9",
-            "landscape_4_3",
-            "landscape_16_9",
-            "auto_2K",
-            "auto_4K",
-          ];
-          if (validV45Sizes.includes(settings.imageSize)) {
-            params.image_size = settings.imageSize;
-          } else {
-            debugLogger.warn(
-              FAL_LOG_COMPONENT,
-              "SEEDDREAM_V45_INVALID_IMAGE_SIZE",
-              {
-                requestedSize: settings.imageSize,
-                fallback: "auto_2K",
-              }
-            );
-            params.image_size = "auto_2K";
-          }
-        } else {
-          params.image_size = "auto_2K";
-        }
-        break;
-
-      case "seeddream-v4-5-edit":
-        // SeedDream V4.5 Edit - same image_size handling as v4.5
-        // Note: image_urls are handled separately by the edit function
-        if (typeof settings.imageSize === "string") {
-          const validV45Sizes = [
-            "square",
-            "square_hd",
-            "portrait_4_3",
-            "portrait_16_9",
-            "landscape_4_3",
-            "landscape_16_9",
-            "auto_2K",
-            "auto_4K",
-          ];
-          if (validV45Sizes.includes(settings.imageSize)) {
-            params.image_size = settings.imageSize;
-          } else {
-            params.image_size = "auto_2K";
-          }
-        } else {
-          params.image_size = "auto_2K";
-        }
-        break;
-
-      case "nano-banana":
-        // Nano Banana expects aspect_ratio instead of image_size
-        params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
-        params.image_size = undefined;
-        params.seed = undefined;
-        break;
-
-      case "gemini-3-pro":
-        // Gemini 3 Pro uses aspect_ratio (like Imagen4) + resolution
-        params.aspect_ratio = imageSizeToAspectRatio(settings.imageSize);
-        // Remove image_size if set (Gemini uses aspect_ratio)
-        params.image_size = undefined;
-        // Note: resolution param is passed through defaultParams
-        break;
-
-      case "z-image-turbo":
-        // Z-Image Turbo uses image_size presets directly (like SeedDream)
-        // Note: Z-Image uses portrait_4_3/portrait_16_9 (not portrait_3_4/portrait_9_16)
-        if (typeof settings.imageSize === "string") {
-          // Map app's standard size tokens to Z-Image's format
-          const sizeMapping: Record<string, string> = {
-            portrait_3_4: "portrait_4_3",
-            portrait_9_16: "portrait_16_9",
-          };
-          params.image_size =
-            sizeMapping[settings.imageSize] || settings.imageSize;
-        } else {
-          params.image_size = "landscape_4_3";
-        }
-        break;
-    }
-
-    const supportsOutputFormat = model.availableParams.some(
-      (param) => param.name === "output_format"
-    );
-    // Consolidate potential format values from settings or params (snake_case or camelCase).
-    const potentialFormat =
-      settings.outputFormat ??
-      (params.output_format as string | undefined) ??
-      ((params as Record<string, unknown>).outputFormat as string | undefined);
-    if (potentialFormat) {
-      if (supportsOutputFormat) {
-        // Normalize the format and assign it, falling back to the default if none is found.
-        params.output_format = normalizeOutputFormat(potentialFormat);
-      } else {
-        // Model doesn't support output_format but user provided it; warn and drop it to avoid 422s.
-        debugLogger.warn(FAL_LOG_COMPONENT, "OUTPUT_FORMAT_NOT_SUPPORTED", {
-          modelId: model.id,
-          requestedFormat: potentialFormat,
-        });
-      }
-      // Ensure the camelCase version is removed to avoid sending both.
-      (params as Record<string, unknown>).outputFormat = undefined;
-    }
-
-    return params;
-  }
-
   async generateWithModel(
     modelKey: string,
     prompt: string,
     settings: GenerationSettings
   ): Promise<GenerationResult> {
-    try {
-      const model = TEXT2IMAGE_MODELS[modelKey];
-      if (!model) {
-        throw new Error(`Unknown model: ${modelKey}`);
-      }
-
-      const params = this.convertSettingsToParams(model, prompt, settings);
-
-      debugLogger.log(FAL_LOG_COMPONENT, "MODEL_GENERATION_START", {
-        model: model.name,
-        modelKey,
-        promptPreview: prompt.slice(0, 120),
-        promptLength: prompt.length,
-        params,
-      });
-
-      const response = await this.makeRequest(model.endpoint, params);
-
-      let image: { url: string; width: number; height: number };
-
-      // Handle different response formats
-      if (modelKey === "wan-v2-2") {
-        // WAN v2.2 returns {image: {...}, seed: ...}
-        if (!response.image) {
-          throw new Error("No image returned from API");
-        }
-        image = response.image;
-      } else {
-        // Other models return {images: [...], seed: ...}
-        if (!response.images || response.images.length === 0) {
-          throw new Error("No images returned from API");
-        }
-        image = response.images[0];
-      }
-
-      return {
-        success: true,
-        imageUrl: image.url,
-        metadata: {
-          seed: response.seed,
-          timings: response.timings,
-          dimensions: {
-            width: image.width,
-            height: image.height,
-          },
-        },
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Generate image with FAL AI model", {
-        modelKey,
-        operation: "generateWithModel",
-      });
-
-      return {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      };
-    }
+    return generateWithModelCore(
+      { makeRequest: this.makeRequest.bind(this) },
+      modelKey,
+      prompt,
+      settings
+    );
   }
 
   async generateWithMultipleModels(
@@ -624,64 +293,12 @@ class FalAIClient {
     prompt: string,
     settings: GenerationSettings
   ): Promise<MultiModelGenerationResult> {
-    debugLogger.log(FAL_LOG_COMPONENT, "MULTI_MODEL_GENERATION_START", {
+    return generateWithMultipleModelsCore(
+      { makeRequest: this.makeRequest.bind(this) },
       modelKeys,
-      modelCount: modelKeys.length,
-    });
-
-    // Create promises for all model generations
-    const generationPromises = modelKeys.map(async (modelKey) => {
-      const result = await this.generateWithModel(modelKey, prompt, settings);
-      return [modelKey, result] as [string, GenerationResult];
-    });
-
-    try {
-      // Wait for all generations to complete (or fail)
-      const results = await Promise.allSettled(generationPromises);
-
-      const finalResults: MultiModelGenerationResult = {};
-
-      results.forEach((result, index) => {
-        const modelKey = modelKeys[index];
-
-        if (result.status === "fulfilled") {
-          finalResults[modelKey] = result.value[1];
-        } else {
-          handleAIServiceError(result.reason, "Multi-model image generation", {
-            modelKey,
-            operation: "generateWithMultipleModels",
-          });
-          finalResults[modelKey] = {
-            success: false,
-            error:
-              result.reason instanceof Error
-                ? result.reason.message
-                : "Generation failed",
-          };
-        }
-      });
-
-      return finalResults;
-    } catch (error) {
-      handleAIServiceError(error, "Multi-model image generation", {
-        modelCount: modelKeys.length,
-        operation: "generateWithMultipleModels",
-      });
-
-      // Return error results for all models
-      const errorResults: MultiModelGenerationResult = {};
-      modelKeys.forEach((modelKey) => {
-        errorResults[modelKey] = {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Multi-model generation failed",
-        };
-      });
-
-      return errorResults;
-    }
+      prompt,
+      settings
+    );
   }
 
   // API key management
@@ -796,570 +413,97 @@ class FalAIClient {
   // Veo 3.1 FAST Methods (budget-friendly, faster)
   // ============================================
 
-  /**
-   * Generate video from text using Veo 3.1 Fast
-   * @param params Veo 3.1 text-to-video parameters
-   * @returns Video generation response with video URL or error
-   */
   async generateVeo31FastTextToVideo(
     params: Veo31TextToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/fast";
-
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_TEXT_TO_VIDEO_REQUEST", {
-        params,
-      });
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Fast response");
-      }
-
-      return {
-        job_id: `veo31_fast_${Date.now()}`, // Generate unique ID
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Fast text-to-video generation", {
-        operation: "generateVeo31FastTextToVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Fast generation failed";
-      return {
-        job_id: `veo31_fast_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31FastTextToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Generate video from image using Veo 3.1 Fast
-   * @param params Veo 3.1 image-to-video parameters
-   * @returns Generation result with video URL or error
-   */
   async generateVeo31FastImageToVideo(
     params: Veo31ImageToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/image-to-video";
-
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_IMAGE_TO_VIDEO_REQUEST", {
-        params,
-      });
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Fast response");
-      }
-
-      return {
-        job_id: `veo31_fast_img2vid_${Date.now()}`,
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Fast image-to-video generation", {
-        operation: "generateVeo31FastImageToVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Fast generation failed";
-      return {
-        job_id: `veo31_fast_img2vid_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31FastImageToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Generate video from first and last frames using Veo 3.1 Fast
-   * @param params Veo 3.1 frame-to-video parameters
-   * @returns Generation result with video URL or error
-   */
   async generateVeo31FastFrameToVideo(
     params: Veo31FrameToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint =
-        "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
-
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_FRAME_TO_VIDEO_REQUEST", {
-        params,
-      });
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Fast response");
-      }
-
-      return {
-        job_id: `veo31_fast_frame2vid_${Date.now()}`,
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Fast frame-to-video generation", {
-        operation: "generateVeo31FastFrameToVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Fast generation failed";
-      return {
-        job_id: `veo31_fast_frame2vid_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31FastFrameToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
   // ============================================
   // Veo 3.1 STANDARD Methods (premium quality)
   // ============================================
 
-  /**
-   * Generate video from text using Veo 3.1 Standard
-   * @param params Veo 3.1 text-to-video parameters
-   * @returns Generation result with video URL or error
-   */
   async generateVeo31TextToVideo(
     params: Veo31TextToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1"; // No /fast suffix
-
-      debugLogger.log(
-        FAL_LOG_COMPONENT,
-        "VEO31_STANDARD_TEXT_TO_VIDEO_REQUEST",
-        {
-          params,
-        }
-      );
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Standard response");
-      }
-
-      return {
-        job_id: `veo31_std_${Date.now()}`,
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Standard text-to-video generation", {
-        operation: "generateVeo31TextToVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Standard generation failed";
-      return {
-        job_id: `veo31_std_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31TextToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Generate video from image using Veo 3.1 Standard
-   * @param params Veo 3.1 image-to-video parameters
-   * @returns Generation result with video URL or error
-   */
   async generateVeo31ImageToVideo(
     params: Veo31ImageToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video"; // No /fast
-
-      debugLogger.log(
-        FAL_LOG_COMPONENT,
-        "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST",
-        {
-          params,
-        }
-      );
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Standard response");
-      }
-
-      return {
-        job_id: `veo31_std_img2vid_${Date.now()}`,
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(
-        error,
-        "Veo 3.1 Standard image-to-video generation",
-        {
-          operation: "generateVeo31ImageToVideo",
-        }
-      );
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Standard generation failed";
-      return {
-        job_id: `veo31_std_img2vid_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31ImageToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Generate video from first and last frames using Veo 3.1 Standard
-   * @param params Veo 3.1 frame-to-video parameters
-   * @returns Video generation response with video URL or error
-   */
   async generateVeo31FrameToVideo(
     params: Veo31FrameToVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint =
-        "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video"; // No /fast
-
-      debugLogger.log(
-        FAL_LOG_COMPONENT,
-        "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST",
-        {
-          params,
-        }
-      );
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Standard response");
-      }
-
-      return {
-        job_id: `veo31_std_frame2vid_${Date.now()}`,
-        status: "completed",
-        message: "Video generated successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(
-        error,
-        "Veo 3.1 Standard frame-to-video generation",
-        {
-          operation: "generateVeo31FrameToVideo",
-        }
-      );
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Standard generation failed";
-      return {
-        job_id: `veo31_std_frame2vid_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31FrameToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
   // ============================================
   // Veo 3.1 Extend-Video Methods
   // ============================================
 
-  /**
-   * Extend a video using Veo 3.1 Fast
-   * @param params Veo 3.1 extend-video parameters
-   * @returns Video generation response with extended video URL
-   */
   async generateVeo31FastExtendVideo(
     params: Veo31ExtendVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/fast/extend-video";
-
-      debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_EXTEND_VIDEO_REQUEST", {
-        params,
-      });
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Fast extend response");
-      }
-
-      return {
-        job_id: `veo31_fast_extend_${Date.now()}`,
-        status: "completed",
-        message: "Video extended successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Fast extend-video generation", {
-        operation: "generateVeo31FastExtendVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error ? error.message : "Veo 3.1 Fast extend failed";
-      return {
-        job_id: `veo31_fast_extend_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31FastExtendVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Extend a video using Veo 3.1 Standard
-   * @param params Veo 3.1 extend-video parameters
-   * @returns Video generation response with extended video URL
-   */
   async generateVeo31ExtendVideo(
     params: Veo31ExtendVideoInput
   ): Promise<VideoGenerationResponse> {
-    try {
-      const endpoint = "https://fal.run/fal-ai/veo3.1/extend-video";
-
-      debugLogger.log(
-        FAL_LOG_COMPONENT,
-        "VEO31_STANDARD_EXTEND_VIDEO_REQUEST",
-        {
-          params,
-        }
-      );
-
-      const response = await this.makeRequest<Veo31Response>(
-        endpoint,
-        params as unknown as Record<string, unknown>
-      );
-
-      if (!response.video?.url) {
-        throw new Error("No video URL in Veo 3.1 Standard extend response");
-      }
-
-      return {
-        job_id: `veo31_std_extend_${Date.now()}`,
-        status: "completed",
-        message: "Video extended successfully",
-        video_url: response.video.url,
-      };
-    } catch (error) {
-      handleAIServiceError(error, "Veo 3.1 Standard extend-video generation", {
-        operation: "generateVeo31ExtendVideo",
-      });
-
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Veo 3.1 Standard extend failed";
-      return {
-        job_id: `veo31_std_extend_error_${Date.now()}`,
-        status: "failed",
-        message: errorMessage,
-      };
-    }
+    return veo31ExtendVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Generate images with Reve Text-to-Image model
-   *
-   * @param params - Reve text-to-image parameters
-   * @returns Image generation response with URLs
-   *
-   * @example
-   * const result = await client.generateReveTextToImage({
-   *   prompt: "A serene mountain landscape at sunset",
-   *   aspect_ratio: "16:9",
-   *   num_images: 2,
-   *   output_format: "png"
-   * });
-   */
   async generateReveTextToImage(
     params: ReveTextToImageInput
   ): Promise<ReveTextToImageOutput> {
-    let sanitizedParams: ReveTextToImageInput | null = null;
-
-    try {
-      sanitizedParams = {
-        ...params,
-        prompt: truncateRevePrompt(params.prompt),
-        num_images: clampReveNumImages(params.num_images),
-      };
-      sanitizedParams.output_format = normalizeOutputFormat(
-        sanitizedParams.output_format ?? params.output_format,
-        "png"
-      );
-
-      // Retrieve endpoint from single source of truth
-      const model = TEXT2IMAGE_MODELS["reve-text-to-image"];
-      if (!model) {
-        throw new Error("Reve text-to-image model not found in configuration");
-      }
-      const endpoint = model.endpoint;
-
-      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_REQUEST", {
-        promptLength: sanitizedParams.prompt.length,
-        promptPreview: sanitizedParams.prompt.slice(0, 120),
-        num_images: sanitizedParams.num_images,
-        aspect_ratio: sanitizedParams.aspect_ratio,
-        output_format: sanitizedParams.output_format,
-      });
-
-      const response = await this.makeRequest<ReveTextToImageOutput>(
-        endpoint,
-        sanitizedParams as unknown as Record<string, unknown>
-      );
-
-      if (!response.images || response.images.length === 0) {
-        throw new Error("No images in Reve Text-to-Image response");
-      }
-
-      debugLogger.log(FAL_LOG_COMPONENT, "REVE_TEXT_TO_IMAGE_COMPLETED", {
-        imageCount: response.images.length,
-      });
-      return response;
-    } catch (error) {
-      handleAIServiceError(error, "Reve Text-to-Image generation", {
-        operation: "generateReveTextToImage",
-        promptLength: sanitizedParams?.prompt.length ?? params.prompt?.length,
-        num_images: sanitizedParams?.num_images ?? params.num_images,
-        aspect_ratio: sanitizedParams?.aspect_ratio ?? params.aspect_ratio,
-        output_format: sanitizedParams?.output_format ?? params.output_format,
-      });
-
-      throw error instanceof Error
-        ? error
-        : new Error("Reve Text-to-Image generation failed");
-    }
+    return reveTextToImage(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
-  /**
-   * Edit images with Reve Edit model
-   *
-   * @param params - Reve edit parameters
-   * @returns Edited image response with URLs
-   *
-   * @example
-   * const result = await client.generateReveEdit({
-   *   prompt: "Make the sky sunset orange",
-   *   image_url: "https://example.com/image.jpg",
-   *   num_images: 2
-   * });
-   */
   async generateReveEdit(params: ReveEditInput): Promise<ReveEditOutput> {
-    let sanitizedParams: ReveEditInput | null = null;
-
-    try {
-      sanitizedParams = {
-        ...params,
-        prompt: truncateRevePrompt(params.prompt.trim()),
-        num_images: clampReveNumImages(params.num_images),
-      };
-      sanitizedParams.output_format = normalizeOutputFormat(
-        sanitizedParams.output_format ?? params.output_format,
-        "png"
-      );
-
-      // Validate sanitized inputs before issuing the request
-      validateRevePrompt(sanitizedParams.prompt);
-      validateReveNumImages(sanitizedParams.num_images);
-
-      const trimmedImageUrl = sanitizedParams.image_url?.trim();
-      if (!trimmedImageUrl || !/^(https?:|data:)/i.test(trimmedImageUrl)) {
-        throw new Error("image_url must be http(s) or data: URI");
-      }
-      sanitizedParams = {
-        ...sanitizedParams,
-        image_url: trimmedImageUrl,
-      };
-
-      // Retrieve endpoint from single source of truth
-      const { MODEL_ENDPOINTS } = await import("@/lib/image-edit-client");
-      const modelConfig = MODEL_ENDPOINTS["reve-edit"];
-      if (!modelConfig) {
-        throw new Error("Reve edit model not found in configuration");
-      }
-      const endpoint = `https://fal.run/${modelConfig.endpoint}`;
-
-      {
-        const { prompt, image_url, ...rest } = sanitizedParams;
-        debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_REQUEST", {
-          ...rest,
-          hasImage: !!image_url,
-          promptLength: prompt.length,
-          promptPreview: prompt.slice(0, 120),
-        });
-      }
-
-      const response = await this.makeRequest<ReveEditOutput>(
-        endpoint,
-        sanitizedParams as unknown as Record<string, unknown>
-      );
-
-      if (!response.images || response.images.length === 0) {
-        throw new Error("No images in Reve Edit response");
-      }
-
-      debugLogger.log(FAL_LOG_COMPONENT, "REVE_EDIT_COMPLETED", {
-        imageCount: response.images.length,
-      });
-      return response;
-    } catch (error) {
-      handleAIServiceError(error, "Reve Edit generation", {
-        operation: "generateReveEdit",
-        promptLength: sanitizedParams?.prompt.length ?? params.prompt.length,
-        num_images: sanitizedParams?.num_images ?? params.num_images,
-        hasImage: !!(sanitizedParams?.image_url ?? params.image_url),
-      });
-
-      throw error instanceof Error
-        ? error
-        : new Error("Reve Edit generation failed");
-    }
+    return reveEdit({ makeRequest: this.makeRequest.bind(this) }, params);
   }
 }
 

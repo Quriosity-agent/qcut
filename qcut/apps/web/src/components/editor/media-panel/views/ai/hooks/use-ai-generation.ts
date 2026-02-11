@@ -9,16 +9,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  handleApiError,
-  getGenerationStatus,
-  ProgressCallback,
-} from "@/lib/ai-video-client";
+import { handleApiError, ProgressCallback } from "@/lib/ai-video-client";
 import { AIVideoOutputManager } from "@/lib/ai-video-output";
 import { debugLogger } from "@/lib/debug-logger";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
-import { falAIClient } from "@/lib/fal-ai-client";
-import { validateReveEditImage } from "@/lib/image-validation";
 
 import {
   routeTextToVideoHandler,
@@ -43,13 +37,11 @@ import {
   type ValidationContext,
   type ResponseHandlerContext,
 } from "./use-ai-generation-helpers";
-import {
-  AI_MODELS,
-  UI_CONSTANTS,
-  PROGRESS_CONSTANTS,
-  STATUS_MESSAGES,
-  ERROR_MESSAGES,
-} from "../constants/ai-constants";
+import { useAIPolling } from "./use-ai-polling";
+import { handleMockGenerate as handleMockGenerateAction } from "./use-ai-mock-generation";
+import { useVeo31State } from "./use-veo31-state";
+import { useReveEditState } from "./use-reve-edit-state";
+import { AI_MODELS, PROGRESS_CONSTANTS } from "../constants/ai-constants";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
@@ -212,35 +204,29 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     "720p"
   );
 
-  // Veo 3.1 specific state
-  const [veo31Settings, setVeo31Settings] = useState<{
-    resolution: "720p" | "1080p";
-    duration: "4s" | "6s" | "8s";
-    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
-    generateAudio: boolean;
-    enhancePrompt: boolean;
-    autoFix: boolean;
-  }>({
-    resolution: "720p",
-    duration: "8s",
-    aspectRatio: "16:9",
-    generateAudio: true,
-    enhancePrompt: true,
-    autoFix: true,
-  });
+  const {
+    veo31Settings,
+    setVeo31Settings,
+    setVeo31Resolution,
+    setVeo31Duration,
+    setVeo31AspectRatio,
+    setVeo31GenerateAudio,
+    setVeo31EnhancePrompt,
+    setVeo31AutoFix,
+    firstFrame,
+    setFirstFrame,
+    lastFrame,
+    setLastFrame,
+    resetVeo31State,
+  } = useVeo31State();
 
-  // Veo 3.1 frame state (for frame-to-video model)
-  const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [lastFrame, setLastFrame] = useState<File | null>(null);
-
-  // Reve Edit state
-  const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(
-    null
-  );
-  const [uploadedImagePreview, setUploadedImagePreview] = useState<
-    string | null
-  >(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const {
+    uploadedImageForEdit,
+    uploadedImagePreview,
+    uploadedImageUrl,
+    handleImageUploadForEdit,
+    clearUploadedImageForEdit,
+  } = useReveEditState();
 
   // Sora 2 detection flags
   const isSora2Selected = selectedModels.some((id) => id.startsWith("sora2_"));
@@ -341,317 +327,73 @@ export function useAIGeneration(props: UseAIGenerationProps) {
   const uploadAudioToFal = useCallback(
     (file: File) => uploadAudioToFalHelper(file),
     []
-  ); // Status polling function
-  const startStatusPolling = useCallback(
-    (jobId: string): Promise<void> => {
-      let hasResolved = false;
-      const resolveOnce = (resolve: () => void) => {
-        if (!hasResolved) {
-          hasResolved = true;
-          resolve();
-        }
-      };
-
-      // Clear any existing polling interval before starting a new one
-      setPollingInterval((current) => {
-        if (current) clearInterval(current);
-        return null;
-      });
-
-      setGenerationProgress(PROGRESS_CONSTANTS.POLLING_START_PROGRESS);
-      setStatusMessage(STATUS_MESSAGES.STARTING);
-
-      return new Promise<void>((resolve) => {
-        const pollStatus = async () => {
-          try {
-            const status = await getGenerationStatus(jobId);
-
-            if (status.progress) {
-              setGenerationProgress(status.progress);
-            }
-
-            if (status.status === "processing") {
-              setStatusMessage(
-                `${STATUS_MESSAGES.PROCESSING} ${status.progress || 0}%`
-              );
-            } else if (
-              status.status === "completed" &&
-              (status.videoUrl ?? status.video_url)
-            ) {
-              // Clear polling (avoid stale closure)
-              setPollingInterval((current) => {
-                if (current) clearInterval(current);
-                return null;
-              });
-
-              setGenerationProgress(PROGRESS_CONSTANTS.COMPLETE_PROGRESS);
-              setStatusMessage(STATUS_MESSAGES.COMPLETE);
-
-              const newVideo: GeneratedVideo = {
-                jobId,
-                videoUrl: status.videoUrl ?? status.video_url ?? "",
-                videoPath: undefined,
-                fileSize: undefined,
-                duration: undefined,
-                prompt: prompt.trim(),
-                model: selectedModels[0] || "unknown",
-              };
-
-              setGeneratedVideo(newVideo);
-
-              // Automatically add to media store
-              if (activeProject) {
-                try {
-                  console.log(
-                    "[AI Generation] Downloading generated video for media store...",
-                    {
-                      projectId: activeProject.id,
-                      modelId: selectedModels[0] || "unknown",
-                      videoUrl: newVideo.videoUrl,
-                    }
-                  );
-
-                  const response = await fetch(newVideo.videoUrl);
-                  const blob = await response.blob();
-                  const file = new File(
-                    [blob],
-                    `generated-video-${newVideo.jobId.substring(0, 8)}.mp4`,
-                    { type: "video/mp4" }
-                  );
-
-                  if (!addMediaItem) {
-                    throw new Error("Media store not ready");
-                  }
-
-                  console.log(
-                    "[AI Generation] Adding video to media store...",
-                    {
-                      projectId: activeProject.id,
-                      name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                      duration: newVideo.duration || 5,
-                      width: 1920,
-                      height: 1080,
-                      fileSize: file.size,
-                    }
-                  );
-
-                  const newItemId = await addMediaItem(activeProject.id, {
-                    name: `AI: ${newVideo.prompt.substring(0, 30)}...`,
-                    type: "video",
-                    file,
-                    url: newVideo.videoUrl,
-                    duration: newVideo.duration || 5,
-                    width: 1920,
-                    height: 1080,
-                  });
-
-                  console.log("[AI Generation] addMediaItem succeeded", {
-                    mediaItemId: newItemId,
-                    projectId: activeProject.id,
-                  });
-
-                  debugLogger.log(
-                    "AIGeneration",
-                    `Added AI video to media with ID: ${newItemId}`
-                  );
-
-                  debugLogger.log(
-                    "AIGeneration",
-                    "VIDEO_ADDED_TO_MEDIA_STORE",
-                    {
-                      videoUrl: newVideo.videoUrl,
-                      projectId: activeProject.id,
-                    }
-                  );
-                } catch (error) {
-                  console.error("[AI Generation] addMediaItem failed", {
-                    projectId: activeProject?.id,
-                    modelId: selectedModels[0] || "unknown",
-                    videoUrl: newVideo.videoUrl,
-                    error:
-                      error instanceof Error ? error.message : String(error),
-                  });
-
-                  debugLogger.log(
-                    "AIGeneration",
-                    "VIDEO_ADD_TO_MEDIA_STORE_FAILED",
-                    {
-                      error:
-                        error instanceof Error
-                          ? error.message
-                          : "Unknown error",
-                      projectId: activeProject.id,
-                    }
-                  );
-                }
-              }
-
-              setIsGenerating(false);
-              resolveOnce(resolve);
-            } else if (status.status === "failed") {
-              // Clear polling (avoid stale closure)
-              setPollingInterval((current) => {
-                if (current) clearInterval(current);
-                return null;
-              });
-
-              const errorMessage =
-                status.error || ERROR_MESSAGES.GENERATION_FAILED;
-              onError?.(errorMessage);
-              setIsGenerating(false);
-              resolveOnce(resolve);
-            }
-          } catch (error) {
-            debugLogger.log("AIGeneration", "STATUS_POLLING_ERROR", {
-              error: error instanceof Error ? error.message : "Unknown error",
-              jobId,
-            });
-            setGenerationProgress((prev) => Math.min(prev + 5, 90));
-          }
-        };
-
-        // Poll immediately, then every interval
-        pollStatus();
-        const interval = setInterval(
-          pollStatus,
-          UI_CONSTANTS.POLLING_INTERVAL_MS
-        );
-        setPollingInterval(interval);
-      });
-    },
-    [prompt, selectedModels, activeProject, addMediaItem, onError]
   );
+
+  const startStatusPolling = useAIPolling({
+    callbacks: {
+      setGenerationProgress,
+      setStatusMessage,
+      setGeneratedVideo,
+      setIsGenerating,
+      setPollingInterval,
+      onError,
+    },
+    context: {
+      prompt,
+      selectedModels,
+      activeProject,
+      addMediaItem,
+    },
+  });
 
   // Mock generation function for testing
   const handleMockGenerate = useCallback(async () => {
-    if (activeTab === "text") {
-      if (!prompt.trim() || selectedModels.length === 0) return;
-    } else if (activeTab === "image") {
-      if (selectedModels.length === 0) return;
-
-      const hasFrameModel = selectedModels.some((id) =>
-        VEO31_FRAME_MODELS.has(id)
-      );
-      const hasImageModel = selectedModels.some(
-        (id) => !VEO31_FRAME_MODELS.has(id)
-      );
-
-      if (hasFrameModel && (!firstFrame || !lastFrame)) return;
-      if (hasImageModel && !selectedImage) return;
-    } else if (activeTab === "upscale") {
-      if (selectedModels.length === 0) {
-        console.log("? Validation failed - missing models for upscale tab");
-        return;
+    await handleMockGenerateAction(
+      {
+        activeTab,
+        prompt,
+        selectedModels,
+        selectedImage,
+        firstFrame,
+        lastFrame,
+        avatarImage: avatarImage ?? null,
+        audioFile: audioFile ?? null,
+        sourceVideo: sourceVideo ?? null,
+        sourceVideoFile,
+        sourceVideoUrl,
+        referenceImages: referenceImages ?? [],
+        t2vAspectRatio,
+        t2vResolution,
+        t2vDuration,
+        t2vNegativePrompt,
+        t2vPromptExpansion,
+        t2vSeed,
+        t2vSafetyChecker,
+      },
+      {
+        setIsGenerating,
+        setJobId,
+        setGeneratedVideos,
+        setGenerationStartTime,
+        setElapsedTime,
+        setStatusMessage,
+        onComplete,
+        onError,
       }
-
-      if (!sourceVideoFile && !sourceVideoUrl) {
-        console.log(
-          "? Validation failed - video source required for upscaling"
-        );
-        return;
-      }
-    } else if (activeTab === "avatar") {
-      if (!avatarImage || selectedModels.length === 0) return;
-    }
-
-    setIsGenerating(true);
-    setJobId(null);
-    setGeneratedVideos([]);
-
-    // Start the client-side timer
-    const startTime = Date.now();
-    setGenerationStartTime(startTime);
-    setElapsedTime(0);
-
-    try {
-      const mockGenerations: GeneratedVideoResult[] = [];
-
-      for (let i = 0; i < selectedModels.length; i++) {
-        console.log(
-          "------------------------------------------------------------"
-        );
-        console.log(
-          `Model ${i + 1}/${selectedModels.length} - processing:`,
-          selectedModels[i]
-        );
-        console.log(
-          "------------------------------------------------------------"
-        );
-
-        const modelId = selectedModels[i];
-        const modelName = AI_MODELS.find((m) => m.id === modelId)?.name;
-        const modelCapabilities = getModelCapabilities(modelId);
-
-        // Mock doesn't skip Sora2, so isSora2TextModel = false
-        const unifiedParams = buildUnifiedParams({
-          modelId,
-          modelCapabilities,
-          isSora2TextModel: false,
-          t2vAspectRatio,
-          t2vResolution,
-          t2vDuration,
-          t2vNegativePrompt,
-          t2vPromptExpansion,
-          t2vSeed,
-          t2vSafetyChecker,
-        });
-
-        setStatusMessage(
-          `🧪 Mock generating with ${modelName} (${i + 1}/${selectedModels.length})`
-        );
-
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        const mockVideo: GeneratedVideo = {
-          jobId: `mock-job-${Date.now()}-${i}`,
-          videoUrl:
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          videoPath:
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          fileSize: 2_097_152,
-          duration: 15,
-          prompt: prompt.trim(),
-          model: modelId,
-        };
-
-        mockGenerations.push({ modelId, video: mockVideo });
-
-        debugLogger.log("AIGeneration", "MOCK_VIDEO_GENERATED", {
-          modelName,
-          mockJobId: mockVideo.jobId,
-          modelId,
-        });
-      }
-
-      setGeneratedVideos(mockGenerations);
-      setStatusMessage(
-        `🧪 Mock generated ${mockGenerations.length} videos successfully!`
-      );
-      onComplete?.(mockGenerations);
-    } catch (error) {
-      const errorMessage =
-        "Mock generation error: " +
-        (error instanceof Error ? error.message : "Unknown error");
-      onError?.(errorMessage);
-      debugLogger.log("AIGeneration", "MOCK_GENERATION_FAILED", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+    );
   }, [
     activeTab,
     prompt,
-    selectedImage,
-    avatarImage,
     selectedModels,
-    onError,
-    onComplete,
+    selectedImage,
     firstFrame,
     lastFrame,
+    avatarImage,
+    audioFile,
+    sourceVideo,
     sourceVideoFile,
     sourceVideoUrl,
+    referenceImages,
     t2vAspectRatio,
     t2vResolution,
     t2vDuration,
@@ -659,6 +401,8 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     t2vPromptExpansion,
     t2vSeed,
     t2vSafetyChecker,
+    onComplete,
+    onError,
   ]);
 
   // Main generation function
@@ -1149,104 +893,14 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     setGeneratedVideo(null);
     setGeneratedVideos([]);
 
-    // Reset Veo 3.1 state
-    setVeo31Settings({
-      resolution: "720p",
-      duration: "8s",
-      aspectRatio: "16:9",
-      generateAudio: true,
-      enhancePrompt: true,
-      autoFix: true,
-    });
-    setFirstFrame(null);
-    setLastFrame(null);
+    resetVeo31State();
 
     // Critical: Cleanup polling interval
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
     }
-  }, [pollingInterval]);
-
-  // Veo 3.1 setter functions
-  const setVeo31Resolution = useCallback((resolution: "720p" | "1080p") => {
-    setVeo31Settings((prev) => ({ ...prev, resolution }));
-  }, []);
-
-  const setVeo31Duration = useCallback((duration: "4s" | "6s" | "8s") => {
-    setVeo31Settings((prev) => ({ ...prev, duration }));
-  }, []);
-
-  const setVeo31AspectRatio = useCallback(
-    (aspectRatio: "9:16" | "16:9" | "1:1" | "auto") => {
-      setVeo31Settings((prev) => ({ ...prev, aspectRatio }));
-    },
-    []
-  );
-
-  const setVeo31GenerateAudio = useCallback((generateAudio: boolean) => {
-    setVeo31Settings((prev) => ({ ...prev, generateAudio }));
-  }, []);
-
-  const setVeo31EnhancePrompt = useCallback((enhancePrompt: boolean) => {
-    setVeo31Settings((prev) => ({ ...prev, enhancePrompt }));
-  }, []);
-
-  const setVeo31AutoFix = useCallback((autoFix: boolean) => {
-    setVeo31Settings((prev) => ({ ...prev, autoFix }));
-  }, []);
-
-  /**
-   * Clear uploaded image for Reve Edit
-   */
-  const clearUploadedImageForEdit = useCallback(() => {
-    if (uploadedImagePreview) {
-      URL.revokeObjectURL(uploadedImagePreview);
-    }
-    setUploadedImageForEdit(null);
-    setUploadedImagePreview(null);
-    setUploadedImageUrl(null);
-  }, [uploadedImagePreview]);
-
-  /**
-   * Handle image upload for Reve Edit
-   */
-  const handleImageUploadForEdit = useCallback(
-    async (file: File) => {
-      try {
-        // Validate image first
-        const validation = await validateReveEditImage(file);
-
-        if (!validation.valid) {
-          const errorMessage = validation.error || "Invalid image file";
-          console.error("[Reve Edit] Validation failed:", errorMessage);
-          // Note: Error should be handled by parent component
-          throw new Error(errorMessage);
-        }
-
-        // Create preview
-        const preview = URL.createObjectURL(file);
-        setUploadedImagePreview(preview);
-        setUploadedImageForEdit(file);
-
-        // Upload to FAL storage
-        const imageUrl = await falAIClient.uploadImageToFal(file);
-        setUploadedImageUrl(imageUrl);
-
-        console.log("[Reve Edit] Image uploaded successfully:", {
-          fileName: file.name,
-          fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-          dimensions: validation.dimensions,
-          url: imageUrl,
-        });
-      } catch (err) {
-        console.error("[Reve Edit] Image upload failed:", err);
-        clearUploadedImageForEdit();
-        throw err;
-      }
-    },
-    [clearUploadedImageForEdit]
-  );
+  }, [pollingInterval, resetVeo31State]);
 
   // Export the complete generation state
   const generationState: AIGenerationState = {
