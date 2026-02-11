@@ -94,7 +94,8 @@ jobs:
           name: windows-build
           path: |
             qcut/dist-electron/QCut*Setup*.exe
-            qcut/dist-electron/*.yml
+            qcut/dist-electron/latest.yml
+            !qcut/dist-electron/builder-debug.yml
           if-no-files-found: error
 
   # macOS build
@@ -165,7 +166,8 @@ jobs:
           path: |
             qcut/dist-electron/*.dmg
             qcut/dist-electron/*.zip
-            qcut/dist-electron/*.yml
+            qcut/dist-electron/latest-mac.yml
+            !qcut/dist-electron/builder-debug.yml
           if-no-files-found: error
 
   # Linux build
@@ -224,7 +226,8 @@ jobs:
           path: |
             qcut/dist-electron/*.AppImage
             qcut/dist-electron/*.deb
-            qcut/dist-electron/*.yml
+            qcut/dist-electron/latest-linux.yml
+            !qcut/dist-electron/builder-debug.yml
           if-no-files-found: error
 
   # Create release with all artifacts
@@ -258,13 +261,13 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/windows-build/QCut*Setup*.exe
-            artifacts/windows-build/*.yml
+            artifacts/windows-build/latest.yml
             artifacts/macos-build/*.dmg
             artifacts/macos-build/*.zip
-            artifacts/macos-build/*.yml
+            artifacts/macos-build/latest-mac.yml
             artifacts/linux-build/*.AppImage
             artifacts/linux-build/*.deb
-            artifacts/linux-build/*.yml
+            artifacts/linux-build/latest-linux.yml
             artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

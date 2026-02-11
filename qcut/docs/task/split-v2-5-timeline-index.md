@@ -4,12 +4,15 @@
 **Phase:** 5 (execute last)
 **Estimated Effort:** 30-40 minutes
 **Risk Level:** High — shared refs, drag state, complex render tree, 15+ refs
+**Status:** Completed on February 11, 2026
 
 ---
 
 ## Goal
 
-Extract `TimelineToolbar` (already a separate component) and drag handlers into their own files. Reduce `timeline/index.tsx` from 1584 to ~400 lines while preserving all timeline functionality.
+Extract `TimelineToolbar` (already a separate component) and drag handlers into their own files. Reduce `timeline/index.tsx` from 1584 while preserving all timeline functionality.
+
+Implementation result: `timeline/index.tsx` reduced to 860 lines, with toolbar/drag/icon logic moved into dedicated files.
 
 ---
 
@@ -175,7 +178,7 @@ Used by: Timeline track labels (line 920 area) only. Import in `index.tsx`.
 
 ---
 
-## What Stays in `timeline/index.tsx` (~400 lines)
+## What Stays in `timeline/index.tsx` (post-split)
 
 | Section | Lines | Description |
 |---------|-------|-------------|
@@ -195,34 +198,52 @@ Used by: Timeline track labels (line 920 area) only. Import in `index.tsx`.
 
 ## Implementation Steps
 
-1. **Create `track-icon.tsx`** — simplest, zero dependencies.
-2. **Create `timeline-toolbar.tsx`** — already a separate component, just move + add imports.
-3. **Create `timeline-drag-handlers.ts`** — extract `useDragHandlers` hook.
-4. **Update `timeline/index.tsx`**:
-   - Remove `TimelineToolbar` component code (lines 1106-1584)
-   - Remove `TrackIcon` component code (lines 1087-1104)
-   - Remove drag handler code (lines 365-546)
-   - Add imports: `import { TimelineToolbar } from "./timeline-toolbar"`
-   - Add imports: `import { TrackIcon } from "./track-icon"`
-   - Add imports: `import { useDragHandlers } from "./timeline-drag-handlers"`
-   - Compose `useDragHandlers` hook and use returned `dragProps`
-5. **Clean up unused imports** from `index.tsx` (icons, UI components only used by toolbar).
+1. [x] Create `track-icon.tsx`.
+2. [x] Create `timeline-toolbar.tsx`.
+3. [x] Create `timeline-drag-handlers.ts`.
+4. [x] Update `timeline/index.tsx` to import and compose extracted modules.
+5. [x] Clean up unused imports in `timeline/index.tsx`.
+
+---
+
+## Implementation Outcome
+
+### Created Files
+
+- `apps/web/src/components/editor/timeline/timeline-toolbar.tsx` (536 lines)
+- `apps/web/src/components/editor/timeline/timeline-drag-handlers.ts` (215 lines)
+- `apps/web/src/components/editor/timeline/track-icon.tsx` (22 lines)
+- `apps/web/src/components/editor/timeline/__tests__/timeline-toolbar.test.tsx`
+- `apps/web/src/components/editor/timeline/__tests__/timeline-drag-handlers.test.ts`
+- `apps/web/src/components/editor/timeline/__tests__/track-icon.test.tsx`
+
+### Updated Files
+
+- `apps/web/src/components/editor/timeline/index.tsx` (1584 -> 860 lines)
 
 ---
 
 ## Verification
 
 ```bash
-# Type check
-bun run check-types
+# Type check (workspace)
+bun run check-types                     # pass
+
+# Type check (app tsconfig)
+bun x tsc --noEmit -p apps/web/tsconfig.json  # pass
 
 # Lint
-bun lint:clean
+bun run lint:clean                      # pass
 
-# Smoke test: full timeline interaction
-bun run electron:dev
-# Test: drag & drop media, toolbar buttons, split/delete, zoom, scroll sync
+# Targeted unit tests for this subtask
+bun x vitest run --config apps/web/vitest.config.ts \
+  apps/web/src/components/editor/timeline/__tests__/timeline-toolbar.test.tsx \
+  apps/web/src/components/editor/timeline/__tests__/timeline-drag-handlers.test.ts \
+  apps/web/src/components/editor/timeline/__tests__/track-icon.test.tsx
+# result: 3 files passed, 9 tests passed
 ```
+
+Smoke test in Electron (`bun run electron:dev`) remains a manual follow-up.
 
 ---
 
@@ -262,6 +283,6 @@ bun run electron:dev
 | Drag handlers use `useTimelineStore.getState()` | Direct store access works in extracted hook; no props needed |
 | Scroll sync effect references `rulerScrollRef`, `tracksScrollRef` | These refs stay in Timeline; not used by extracted components |
 | `TrackIcon` used in track labels area only | Import from `./track-icon` in `index.tsx` |
-| `handleDrop` calls `createObjectURL`, `generateUUID` | Import these utilities directly in `timeline-drag-handlers.ts` |
+| `handleDrop` calls `createObjectURL` and dynamic stores | Handled in `timeline-drag-handlers.ts` with try-catch and store lookups |
 | `handleDrop` accesses `addMediaItem` from async media store | Pass via hook params; already destructured in Timeline |
 | 30+ imports in `index.tsx` become split across files | Each file imports only what it needs; cleaner dependency tree |

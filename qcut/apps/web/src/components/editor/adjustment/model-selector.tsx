@@ -52,7 +52,7 @@ export function ModelSelector() {
                       <img
                         src={logo}
                         alt=""
-                        className="w-3 h-3 shrink-0 rounded-sm"
+                        className="w-4 h-4 shrink-0 rounded-sm"
                       />
                     ) : null;
                   })()}

@@ -1010,7 +1010,7 @@ export function AiView() {
                         <img
                           src={logo}
                           alt=""
-                          className="w-4 h-4 shrink-0 rounded-sm"
+                          className="w-5 h-5 shrink-0 rounded-sm"
                         />
                       ) : null;
                     })()}
