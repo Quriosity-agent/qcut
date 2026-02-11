@@ -3,7 +3,7 @@
 **Parent Plan:** [split-top5-large-files-plan-v2.md](./split-top5-large-files-plan-v2.md)
 **Phase:** 4
 **Estimated Effort:** 30-40 minutes
-**Risk Level:** Medium — hook state interdependencies, closure-heavy polling logic
+**Risk Level:** Medium-High — hook state interdependencies, closure-heavy polling logic, and large return-object contract
 
 ---
 
@@ -49,6 +49,7 @@ Continue the partial extraction from Round 1. Move settings builders, response h
 | `.../views/ai/index.tsx:36` | `import { useAIGeneration } from "./hooks/use-ai-generation"` |
 
 The consumer imports `useAIGeneration` which returns a massive object. As long as the return shape is identical, no consumer changes needed.
+Also preserve `export type UseAIGenerationReturn = ReturnType<typeof useAIGeneration>` for type-level compatibility.
 
 ---
 
@@ -70,17 +71,18 @@ Extract `startStatusPolling` (lines 345-523) into a custom hook.
 
 ```typescript
 // use-ai-polling.ts
+import type { Dispatch, SetStateAction } from "react";
 import type { GeneratedVideo, GeneratedVideoResult } from "../../types/ai-types";
 
 export interface PollingCallbacks {
   setGenerationProgress: (p: number) => void;
   setStatusMessage: (m: string) => void;
-  setProgressLogs: React.Dispatch<React.SetStateAction<string[]>>;
+  setProgressLogs: Dispatch<SetStateAction<string[]>>;
   setJobId: (id: string | null) => void;
   setGeneratedVideo: (v: GeneratedVideo | null) => void;
-  setGeneratedVideos: React.Dispatch<React.SetStateAction<GeneratedVideoResult[]>>;
+  setGeneratedVideos: Dispatch<SetStateAction<GeneratedVideoResult[]>>;
   setIsGenerating: (g: boolean) => void;
-  setPollingInterval: (i: NodeJS.Timeout | null) => void;
+  setPollingInterval: (i: ReturnType<typeof setInterval> | null) => void;
   onError?: (error: string) => void;
   onComplete?: () => void;
 }
@@ -102,6 +104,8 @@ export function createStatusPoller(
   };
 }
 ```
+
+Prefer implementing this as `useAIPolling(...)` that returns `startStatusPolling` and handles cleanup, rather than invoking a factory during render.
 
 **In main hook:**
 ```typescript
@@ -126,6 +130,8 @@ Extract `handleMockGenerate` (lines 526-662) as a standalone function.
 
 ```typescript
 // use-ai-mock-generation.ts
+import type { Dispatch, SetStateAction } from "react";
+
 export interface MockGenerationParams {
   prompt: string;
   selectedModels: string[];
@@ -142,7 +148,7 @@ export interface MockGenerationCallbacks {
   setGenerationProgress: (p: number) => void;
   setStatusMessage: (m: string) => void;
   setGeneratedVideo: (v: GeneratedVideo | null) => void;
-  setGeneratedVideos: React.Dispatch<React.SetStateAction<GeneratedVideoResult[]>>;
+  setGeneratedVideos: Dispatch<SetStateAction<GeneratedVideoResult[]>>;
   setGenerationStartTime: (t: number | null) => void;
   addMediaItem: ((...args: any[]) => Promise<void>) | undefined;
   onComplete?: () => void;
@@ -244,6 +250,7 @@ export function useReveEditState() {
    - Import and compose all extracted hooks
    - Replace inline code with calls to extracted functions
    - Verify return object shape unchanged
+6. Add/adjust contract tests to lock public return keys and polling semantics before cleanup.
 
 ---
 
@@ -288,6 +295,8 @@ bun run electron:dev
 |-----------|-------------------|
 | `createStatusPoller returns a function` | Factory pattern |
 | `startStatusPolling calls setStatusMessage` | Callback wiring |
+| `startStatusPolling clears previous interval and resolves once` | Polling lifecycle parity |
+| `startStatusPolling polls immediately before interval` | Existing behavior parity |
 
 ### `__tests__/use-ai-mock-generation.test.ts`
 
@@ -303,7 +312,27 @@ bun run electron:dev
 | Risk | Mitigation |
 |------|------------|
 | Polling uses 10+ state setters | Bundle into `PollingCallbacks` interface; pass once |
+| Polling lifecycle regression (double intervals, unresolved promise) | Add parity tests for clear-before-start, immediate first poll, and single resolve |
 | `handleGenerate` deps array changes | Extracted helpers are stable; deps shrink |
 | Composing 4 hooks changes render behavior | Each hook is a simple `useState` wrapper; no extra renders |
-| `resetGenerationState` needs to reset Veo31 + Reve | Call their reset methods from composed hooks |
+| Reset semantics drift during extraction | Keep current behavior exactly unless product intentionally changes UX; lock with tests |
 | Return object shape drift | TypeScript enforces return shape; any missing field is a compile error |
+
+---
+
+## Review Comments (LTS + No-Breaking-Change Focus)
+
+1. Keep `use-ai-generation.ts` as the public entrypoint  
+Treat `use-ai-polling.ts`, `use-ai-mock-generation.ts`, `use-veo31-state.ts`, and `use-reve-edit-state.ts` as internal modules. Avoid adding direct imports from UI files to internal split modules.
+
+2. Preserve return-object API exactly  
+`index.tsx` uses many fields (`handleGenerate`, `canGenerate`, `veo31Settings`, `setVeo31Resolution`, `handleImageUploadForEdit`, etc.). Add a contract test that asserts required keys exist to prevent accidental breaking changes.
+
+3. Preserve polling behavior verbatim  
+Current behavior includes immediate first poll, interval polling, clear previous interval before start, clear interval on completion/failure, and resolve-once promise behavior. Keep this unchanged when extracting.
+
+4. Reuse existing validation helpers in mock generation  
+`handleMockGenerate` currently duplicates tab validation logic. Prefer calling `validateGenerationInputs` to reduce drift between mock and real flows over time.
+
+5. Preserve Reve Edit object URL lifecycle  
+Keep current `clearUploadedImageForEdit` behavior and ensure preview URLs are revoked on cleanup paths to avoid leaks during long editing sessions.
