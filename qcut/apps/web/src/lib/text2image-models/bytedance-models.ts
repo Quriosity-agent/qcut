@@ -189,6 +189,7 @@ export const BYTEDANCE_MODELS: Record<string, Text2ImageModel> = {
     ],
   },
 
+  // Keep "seeddream" model IDs for internal consistency; the FAL endpoint uses "seedream".
   "seeddream-v4-5": {
     id: "seeddream-v4-5",
     name: "SeedDream v4.5",
