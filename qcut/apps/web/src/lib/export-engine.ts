@@ -363,7 +363,9 @@ export class ExportEngine {
           await this.ffmpegRecorder.addFrame(dataUrl, frame);
         } else {
           if (videoTrack && "requestFrame" in videoTrack) {
-            (videoTrack as any).requestFrame();
+            (
+              videoTrack as MediaStreamTrack & { requestFrame(): void }
+            ).requestFrame();
             await new Promise((resolve) => setTimeout(resolve, 50));
           } else {
             debugWarn(`[ExportEngine] Cannot capture frame ${frame + 1}`);
@@ -540,7 +542,18 @@ export class ExportEngine {
     if ("showSaveFilePicker" in window) {
       try {
         const mimeType = blob.type || formatInfo.mimeTypes[0];
-        const fileHandle = await (window as any).showSaveFilePicker({
+        const fileHandle = await (
+          window as Window &
+            typeof globalThis & {
+              showSaveFilePicker(options?: {
+                suggestedName?: string;
+                types?: {
+                  description: string;
+                  accept: Record<string, string[]>;
+                }[];
+              }): Promise<FileSystemFileHandle>;
+            }
+        ).showSaveFilePicker({
           suggestedName: finalFilename,
           types: [
             {
