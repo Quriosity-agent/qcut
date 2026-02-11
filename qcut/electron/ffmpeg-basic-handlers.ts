@@ -17,9 +17,9 @@ import type {
   OpenFolderResult,
   FFmpegHealthResult,
   ExportSession,
-} from "./ffmpeg/types";
+} from "./ffmpeg/types.js";
 
-import { getFFmpegPath } from "./ffmpeg/utils";
+import { getFFmpegPath } from "./ffmpeg/utils.js";
 
 /**
  * Registers basic FFmpeg IPC handlers.
