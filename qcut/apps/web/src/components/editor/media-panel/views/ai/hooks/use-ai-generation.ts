@@ -9,16 +9,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  handleApiError,
-  getGenerationStatus,
-  ProgressCallback,
-} from "@/lib/ai-video-client";
+import { handleApiError, ProgressCallback } from "@/lib/ai-video-client";
 import { AIVideoOutputManager } from "@/lib/ai-video-output";
 import { debugLogger } from "@/lib/debug-logger";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
-import { falAIClient } from "@/lib/fal-ai-client";
-import { validateReveEditImage } from "@/lib/image-validation";
 
 import {
   routeTextToVideoHandler,
@@ -43,6 +37,10 @@ import {
   type ValidationContext,
   type ResponseHandlerContext,
 } from "./use-ai-generation-helpers";
+import { useAIPolling } from "./use-ai-polling";
+import { handleMockGenerate as handleMockGenerateAction } from "./use-ai-mock-generation";
+import { useVeo31State } from "./use-veo31-state";
+import { useReveEditState } from "./use-reve-edit-state";
 import {
   AI_MODELS,
   UI_CONSTANTS,
@@ -212,35 +210,29 @@ export function useAIGeneration(props: UseAIGenerationProps) {
     "720p"
   );
 
-  // Veo 3.1 specific state
-  const [veo31Settings, setVeo31Settings] = useState<{
-    resolution: "720p" | "1080p";
-    duration: "4s" | "6s" | "8s";
-    aspectRatio: "9:16" | "16:9" | "1:1" | "auto";
-    generateAudio: boolean;
-    enhancePrompt: boolean;
-    autoFix: boolean;
-  }>({
-    resolution: "720p",
-    duration: "8s",
-    aspectRatio: "16:9",
-    generateAudio: true,
-    enhancePrompt: true,
-    autoFix: true,
-  });
+  const {
+    veo31Settings,
+    setVeo31Settings,
+    setVeo31Resolution,
+    setVeo31Duration,
+    setVeo31AspectRatio,
+    setVeo31GenerateAudio,
+    setVeo31EnhancePrompt,
+    setVeo31AutoFix,
+    firstFrame,
+    setFirstFrame,
+    lastFrame,
+    setLastFrame,
+    resetVeo31State,
+  } = useVeo31State();
 
-  // Veo 3.1 frame state (for frame-to-video model)
-  const [firstFrame, setFirstFrame] = useState<File | null>(null);
-  const [lastFrame, setLastFrame] = useState<File | null>(null);
-
-  // Reve Edit state
-  const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(
-    null
-  );
-  const [uploadedImagePreview, setUploadedImagePreview] = useState<
-    string | null
-  >(null);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const {
+    uploadedImageForEdit,
+    uploadedImagePreview,
+    uploadedImageUrl,
+    handleImageUploadForEdit,
+    clearUploadedImageForEdit,
+  } = useReveEditState();
 
   // Sora 2 detection flags
   const isSora2Selected = selectedModels.some((id) => id.startsWith("sora2_"));

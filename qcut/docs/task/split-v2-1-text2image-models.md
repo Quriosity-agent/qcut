@@ -255,3 +255,74 @@ Use root-level commands consistently:
 - `bun run lint:clean` passed.
 - `bun x vitest run src/lib/text2image-models/__tests__/text2image-models.test.ts` passed (`8` tests).
 - `bun run check-types` executed but reported no package tasks in this workspace setup.
+
+---
+
+## Code Review (2026-02-11)
+
+**Reviewer:** Claude Opus 4.6
+**Verdict:** APPROVED with minor findings
+
+### Verification Results
+
+| Check | Result |
+|-------|--------|
+| `tsc --noEmit` (apps/web) | Pass — zero errors |
+| `vitest run` (8 tests) | Pass — all green (must run from `apps/web/`, not repo root) |
+| Model count (registry) | 14 — correct |
+| Model count (picker order) | 13 — correct (`seeddream-v4-5-edit` excluded) |
+| All files under 800 lines | Pass — largest is `other-models.ts` at 462 lines |
+| Consumer imports unchanged | Pass — 3 consumers verified, all use `@/lib/text2image-models` |
+| Compatibility shim present | Pass — `text2image-models.ts` re-exports from `./text2image-models/index` |
+
+### What Was Done Well
+
+1. **Clean separation by provider.** Google (3 models / 249 lines), ByteDance (4 / 361), Flux (2 / 185), Other (5 / 462) — logical grouping that matches how new models are added.
+2. **Circular dependency avoided.** `types.ts` holds the `Text2ImageModel` interface; all provider files import from `./types`, not `./index`. This follows the review comment #2 exactly.
+3. **Backward-compatible shim.** The original `text2image-models.ts` file re-exports both values and types, so `fal-ai-client.ts` (which uses a relative `"./text2image-models"` import) continues to resolve correctly.
+4. **Good test coverage.** 8 tests cover registry count, order integrity, required fields, helper functions, category validity, and the edit-only model exclusion — all the integrity checks recommended in review comment #4.
+5. **`TEXT2IMAGE_MODEL_ORDER` stays in `index.ts`** as the single source of truth for picker ordering, not split across provider files.
+
+### Issues Found
+
+#### Issue 1 (Low): Test runner must be invoked from `apps/web/`
+
+The validation section says `bun x vitest run src/lib/text2image-models/__tests__/text2image-models.test.ts` — this fails when run from the repo root (`c:\...\qcut\qcut`) because the `@/` alias is only configured in `apps/web/vitest.config.ts`. The test only passes when run from `apps/web/`:
+
+```bash
+# Fails from repo root:
+bun x vitest run src/lib/text2image-models/__tests__/text2image-models.test.ts
+
+# Works:
+cd apps/web && npx vitest run src/lib/text2image-models/__tests__/text2image-models.test.ts
+```
+
+The standard `bun run test` (which uses the workspace config) should work correctly, so this is a documentation accuracy issue only.
+
+**Recommendation:** Update the validation command in the doc to clarify the working directory, or use `bun run test -- --run src/lib/text2image-models` from the root.
+
+#### Issue 2 (Informational): `any` types in `Text2ImageModel` interface
+
+`types.ts` uses `Record<string, any>` for `defaultParams` and `any` for `availableParams[].default`. This is inherited from the original monolith, not introduced by the split. Flagging for future improvement only — no action required for this task.
+
+#### Issue 3 (Informational): `types.ts` not listed in plan Step 1
+
+The plan's Step 1 says `index.ts` will contain the `Text2ImageModel` interface, but the implementation correctly moved it to `types.ts` per review comment #2. The plan doc wasn't retroactively updated to reflect this change, but the "Files Involved" table at the top does list `types.ts`, so the discrepancy is minor.
+
+### Model Audit
+
+All 14 models verified present with correct provider grouping:
+
+| File | Models | Count |
+|------|--------|-------|
+| `google-models.ts` | imagen4-ultra, nano-banana, gemini-3-pro | 3 |
+| `bytedance-models.ts` | seeddream-v3, seeddream-v4, seeddream-v4-5, seeddream-v4-5-edit | 4 |
+| `flux-models.ts` | flux-pro-v11-ultra, flux-2-flex | 2 |
+| `other-models.ts` | wan-v2-2, qwen-image, reve-text-to-image, z-image-turbo, gpt-image-1-5 | 5 |
+| **Total** | | **14** |
+
+All 13 entries in `TEXT2IMAGE_MODEL_ORDER` map to valid keys. All category IDs in `MODEL_CATEGORIES` map to valid keys. `seeddream-v4-5-edit` is in registry but not in order array (intentional).
+
+### Summary
+
+The split is clean, well-tested, and follows all 5 review comments from the plan. No breaking changes, no missing models, no circular dependencies. The only actionable item is the test runner documentation (Issue 1), which is cosmetic.
