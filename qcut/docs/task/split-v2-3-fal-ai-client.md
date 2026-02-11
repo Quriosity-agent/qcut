@@ -11,6 +11,23 @@
 
 Extract model-specific methods from the `FalAIClient` class into standalone function files. The class delegates to these functions, keeping its public API shape identical. The proxy-based singleton (`falAIClient`) and named wrapper exports (for dynamic imports) continue to work unchanged.
 
+## Implementation Update (2026-02-11)
+
+- Status: Completed
+- Added compatibility coverage in `apps/web/src/lib/__tests__/fal-ai-client-split.test.ts`.
+- Verified split architecture is in place:
+  - `apps/web/src/lib/fal-ai-client-generation.ts`
+  - `apps/web/src/lib/fal-ai-client-veo31.ts`
+  - `apps/web/src/lib/fal-ai-client-reve.ts`
+  - `apps/web/src/lib/fal-ai-client-internal-types.ts`
+  - `apps/web/src/lib/fal-ai-client.ts` delegates to extracted modules with bound `makeRequest`.
+
+### Verification Notes
+
+- `bun run check-types`: no tasks executed in this workspace (Turbo reported `0 total`).
+- `bun x vitest run apps/web/src/lib/__tests__/fal-ai-client-split.test.ts`: blocked in sandbox with `spawn EPERM`.
+- `bun x tsc --noEmit -p apps/web/tsconfig.json`: blocked by existing parse error at `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts:409`.
+
 ---
 
 ## Files Involved
