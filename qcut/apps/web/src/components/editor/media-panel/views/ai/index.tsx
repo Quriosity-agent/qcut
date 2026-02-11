@@ -3,8 +3,6 @@
 import {
   BotIcon,
   Loader2,
-  Play,
-  Download,
   History,
   TypeIcon,
   ImageIcon,
@@ -13,7 +11,7 @@ import {
   UserIcon,
   ApertureIcon,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -21,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,12 +52,7 @@ import {
 } from "./settings/ai-reve-settings";
 
 // Import constants and types
-import {
-  AI_MODELS,
-  LTXV2_FAST_CONFIG,
-  REVE_TEXT_TO_IMAGE_MODEL,
-} from "./constants/ai-constants";
-import { getProviderLogo } from "./constants/model-provider-logos";
+import { AI_MODELS, REVE_TEXT_TO_IMAGE_MODEL } from "./constants/ai-constants";
 import {
   getCombinedCapabilities,
   resolveT2VModelId,
@@ -72,14 +64,14 @@ import type { AIActiveTab } from "./types/ai-types";
 import {
   type ReveAspectRatioOption,
   type ReveOutputFormatOption,
-  REVE_NUM_IMAGE_OPTIONS,
 } from "./constants/ai-model-options";
 
-// Import cost calculators
-import {
-  calculateByteDanceUpscaleCost,
-  calculateFlashVSRUpscaleCost,
-} from "./utils/ai-cost-calculators";
+// Import extracted Phase 3 hooks and components
+import { useCostCalculation } from "./hooks/use-cost-calculation";
+import { useAIPanelEffects } from "./hooks/use-ai-panel-effects";
+import { AIModelSelectionGrid } from "./components/ai-model-selection-grid";
+import { AIGenerationFeedback } from "./components/ai-generation-feedback";
+import { AIValidationMessages } from "./components/ai-validation-messages";
 
 /**
  * Render the AI features panel including tabs for Text, Image, Avatar, and Upscale,
@@ -171,73 +163,25 @@ export function AiView() {
     return getCombinedCapabilities(textVideoModelIds);
   }, [selectedModels]);
 
-  // Clamp unified settings when selected models change
-  useEffect(() => {
-    if (
-      combinedCapabilities.supportedAspectRatios &&
-      combinedCapabilities.supportedAspectRatios.length > 0 &&
-      !combinedCapabilities.supportedAspectRatios.includes(
-        textState.t2vAspectRatio
-      )
-    ) {
-      textSetters.setT2vAspectRatio(
-        combinedCapabilities.supportedAspectRatios[0]
-      );
-    }
-
-    if (
-      combinedCapabilities.supportedResolutions &&
-      combinedCapabilities.supportedResolutions.length > 0 &&
-      !combinedCapabilities.supportedResolutions.includes(
-        textState.t2vResolution
-      )
-    ) {
-      textSetters.setT2vResolution(
-        combinedCapabilities.supportedResolutions[0]
-      );
-    }
-
-    if (
-      combinedCapabilities.supportedDurations &&
-      combinedCapabilities.supportedDurations.length > 0 &&
-      !combinedCapabilities.supportedDurations.includes(textState.t2vDuration)
-    ) {
-      textSetters.setT2vDuration(combinedCapabilities.supportedDurations[0]);
-    }
-  }, [
+  // Side-effects: capability clamping, Reve reset, frame sync
+  useAIPanelEffects({
     combinedCapabilities,
-    textState.t2vAspectRatio,
-    textState.t2vResolution,
-    textState.t2vDuration,
-    textSetters,
-  ]);
-
-  // Reset Reve state when model is deselected
-  useEffect(() => {
-    if (!selectedModels.some((id) => id === "reve-text-to-image")) {
-      setReveAspectRatio("3:2");
-      setReveNumImages(1);
-      setReveOutputFormat("png");
-    }
-  }, [selectedModels]);
-
-  // Sync firstFrame with selectedImage for backward compatibility
-  useEffect(() => {
-    if (imageState.firstFrame && !imageState.lastFrame) {
-      setSelectedImage(imageState.firstFrame);
-      setImagePreview(imageState.firstFramePreview);
-    } else if (imageState.firstFrame && imageState.lastFrame) {
-      setSelectedImage(null);
-      setImagePreview(null);
-    } else {
-      setSelectedImage(null);
-      setImagePreview(null);
-    }
-  }, [
-    imageState.firstFrame,
-    imageState.lastFrame,
-    imageState.firstFramePreview,
-  ]);
+    t2vAspectRatio: textState.t2vAspectRatio,
+    t2vResolution: textState.t2vResolution,
+    t2vDuration: textState.t2vDuration,
+    setT2vAspectRatio: textSetters.setT2vAspectRatio,
+    setT2vResolution: textSetters.setT2vResolution,
+    setT2vDuration: textSetters.setT2vDuration,
+    selectedModels,
+    setReveAspectRatio,
+    setReveNumImages,
+    setReveOutputFormat,
+    firstFrame: imageState.firstFrame,
+    lastFrame: imageState.lastFrame,
+    firstFramePreview: imageState.firstFramePreview,
+    setSelectedImage,
+    setImagePreview,
+  });
 
   // ============================================
   // Generation Hook
@@ -390,97 +334,29 @@ export function AiView() {
     );
   };
 
-  const isModelSelected = (modelId: string) => selectedModels.includes(modelId);
-
-  // ============================================
-  // Cost Calculation
-  // ============================================
-  const videoDurationSeconds = upscaleState.videoMetadata?.duration ?? 10;
-
-  const bytedanceEstimatedCost = useMemo(
-    () =>
-      calculateByteDanceUpscaleCost(
-        upscaleState.bytedance.targetResolution,
-        upscaleState.bytedance.targetFPS,
-        videoDurationSeconds
-      ),
-    [
-      upscaleState.bytedance.targetResolution,
-      upscaleState.bytedance.targetFPS,
-      videoDurationSeconds,
-    ]
-  );
-
-  const flashvsrEstimatedCost = useMemo(() => {
-    if (!upscaleState.videoMetadata) return "$0.000";
-    const { width, height, frames, duration, fps } = upscaleState.videoMetadata;
-    const frameCount =
-      frames ?? Math.max(1, Math.round((duration ?? 0) * (fps ?? 30)));
-
-    return calculateFlashVSRUpscaleCost(
-      width,
-      height,
-      frameCount,
-      upscaleState.flashvsr.upscaleFactor
-    );
-  }, [upscaleState.videoMetadata, upscaleState.flashvsr.upscaleFactor]);
-
-  const totalCost = selectedModels.reduce((total, modelId) => {
-    const model = AI_MODELS.find((m) => m.id === modelId);
-    let modelCost = model ? parseFloat(model.price) : 0;
-
-    // Adjust for Sora 2 duration and resolution
-    if (modelId.startsWith("sora2_")) {
-      if (modelId === "sora2_video_to_video_remix") {
-        modelCost = 0;
-      } else if (
-        modelId === "sora2_text_to_video_pro" ||
-        modelId === "sora2_image_to_video_pro"
-      ) {
-        if (generation.resolution === "1080p") {
-          modelCost = generation.duration * 0.5;
-        } else if (generation.resolution === "720p") {
-          modelCost = generation.duration * 0.3;
-        } else {
-          modelCost = generation.duration * 0.3;
-        }
-      } else {
-        modelCost = generation.duration * 0.1;
-      }
-    } else if (modelId.startsWith("veo31_")) {
-      const durationSeconds = Number.parseInt(
-        generation.veo31Settings.duration,
-        10
-      );
-      const isFastModel = modelId.includes("_fast_");
-      const pricePerSecond = isFastModel
-        ? generation.veo31Settings.generateAudio
-          ? 0.15
-          : 0.1
-        : generation.veo31Settings.generateAudio
-          ? 0.4
-          : 0.2;
-      modelCost = durationSeconds * pricePerSecond;
-    } else if (modelId === "reve-text-to-image") {
-      modelCost = REVE_TEXT_TO_IMAGE_MODEL.pricing.perImage * reveNumImages;
-    } else if (modelId === "hailuo23_standard_t2v") {
-      modelCost = textState.hailuoT2VDuration === 10 ? 0.56 : 0.28;
-    } else if (modelId === "ltxv2_fast_i2v") {
-      const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[imageState.ltxv2Image.resolution] ?? 0;
-      modelCost = imageState.ltxv2Image.duration * pricePerSecond;
-    } else if (modelId === "ltxv2_fast_t2v") {
-      const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[textState.ltxv2FastResolution] ?? 0;
-      modelCost = textState.ltxv2FastDuration * pricePerSecond;
-    }
-
-    return total + modelCost;
-  }, 0);
-
-  const hasRemixSelected = selectedModels.includes(
-    "sora2_video_to_video_remix"
-  );
+  // Cost calculation (extracted hook)
+  const {
+    totalCost,
+    bytedanceEstimatedCost,
+    flashvsrEstimatedCost,
+    hasRemixSelected,
+  } = useCostCalculation({
+    selectedModels,
+    reveNumImages,
+    generationDuration: generation.duration,
+    generationResolution: generation.resolution,
+    veo31Duration: generation.veo31Settings.duration,
+    veo31GenerateAudio: generation.veo31Settings.generateAudio,
+    hailuoT2VDuration: textState.hailuoT2VDuration,
+    ltxv2FastDuration: textState.ltxv2FastDuration,
+    ltxv2FastResolution: textState.ltxv2FastResolution,
+    ltxv2ImageDuration: imageState.ltxv2Image.duration,
+    ltxv2ImageResolution: imageState.ltxv2Image.resolution,
+    bytedanceTargetResolution: upscaleState.bytedance.targetResolution,
+    bytedanceTargetFPS: upscaleState.bytedance.targetFPS,
+    flashvsrUpscaleFactor: upscaleState.flashvsr.upscaleFactor,
+    videoMetadata: upscaleState.videoMetadata,
+  });
 
   // ============================================
   // Render Helpers
@@ -968,63 +844,12 @@ export function AiView() {
           </Tabs>
 
           {/* Model Selection Grid */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">Select AI Models</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {AI_MODELS.filter((model) => {
-                // Filter models based on active tab
-                if (activeTab === "avatar") {
-                  return model.category === "avatar";
-                }
-                if (activeTab === "text") {
-                  // Show text-to-video models (excluding avatar and image-to-video)
-                  return (
-                    model.category === "text" ||
-                    (!model.category && model.category !== "avatar")
-                  );
-                }
-                if (activeTab === "image") {
-                  // Show image-to-video models
-                  return model.category === "image";
-                }
-                if (activeTab === "upscale") {
-                  return model.category === "upscale";
-                }
-                if (activeTab === "angles") {
-                  return model.category === "angles";
-                }
-                return false;
-              }).map((model) => (
-                <Button
-                  key={model.id}
-                  type="button"
-                  size="sm"
-                  variant={isModelSelected(model.id) ? "default" : "outline"}
-                  onClick={() => toggleModel(model.id)}
-                  className={`h-auto min-h-[44px] py-2 px-2 text-xs justify-start items-start ${isCompact ? "flex-col" : "flex-row"}`}
-                >
-                  <div className="flex items-center gap-1.5 text-left leading-tight flex-1 min-w-0">
-                    {(() => {
-                      const logo = getProviderLogo(model.id);
-                      return logo ? (
-                        <img
-                          src={logo}
-                          alt=""
-                          className="w-5 h-5 shrink-0 rounded-sm"
-                        />
-                      ) : null;
-                    })()}
-                    <span className="truncate">{model.name}</span>
-                  </div>
-                  {!isCompact && (
-                    <span className="ml-2 text-muted-foreground whitespace-nowrap shrink-0">
-                      ${model.price}
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <AIModelSelectionGrid
+            activeTab={activeTab}
+            selectedModels={selectedModels}
+            isCompact={isCompact}
+            onToggleModel={toggleModel}
+          />
 
           {/* Cost Summary */}
           {selectedModels.length > 0 && (
@@ -1091,158 +916,31 @@ export function AiView() {
               />
             )}
 
-          {/* Error Display */}
-          {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <div className="text-xs text-destructive">{error}</div>
-            </div>
-          )}
-
-          {/* Progress Display */}
-          {generation.isGenerating && (
-            <div className="space-y-3 p-3 bg-muted/50 rounded-md">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-medium">Generating...</div>
-                <div className="text-xs text-muted-foreground">
-                  {Math.round(generation.generationProgress)}%
-                </div>
-              </div>
-              <div className="w-full bg-muted-foreground/20 rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${generation.generationProgress}%` }}
-                />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {generation.statusMessage}
-              </div>
-              {generation.elapsedTime > 0 && (
-                <div className="text-xs text-muted-foreground">
-                  Elapsed: {Math.floor(generation.elapsedTime / 60)}:
-                  {(generation.elapsedTime % 60).toString().padStart(2, "0")}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Generated Videos Results */}
-          {generation.hasResults && (
-            <div className="space-y-2">
-              <Label className="text-xs">Generated Videos</Label>
-              <div className="space-y-2">
-                {generation.generatedVideos.map((result) => {
-                  const model = AI_MODELS.find((m) => m.id === result.modelId);
-                  return (
-                    <div
-                      key={result.video.jobId}
-                      className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Play className="size-4 text-primary" />
-                        <div>
-                          <div className="text-xs font-medium">
-                            {model?.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {result.video.prompt.substring(0, 30)}...
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const downloadUrl =
-                            result.video.videoUrl || result.video.videoPath;
-
-                          if (!downloadUrl) {
-                            console.warn("Missing downloadUrl", {
-                              jobId: result.video.jobId,
-                            });
-                            return;
-                          }
-
-                          const isBlob = downloadUrl.startsWith("blob:");
-                          let filename = `ai-video-${result.video.jobId}.mp4`;
-
-                          if (!isBlob) {
-                            try {
-                              const parsed = new URL(downloadUrl);
-                              const lastPart =
-                                parsed.pathname.split("/").pop() || "";
-                              filename = lastPart || filename;
-                            } catch {
-                              // fall back to default filename
-                            }
-                          }
-
-                          const a = document.createElement("a");
-                          a.href = downloadUrl;
-                          a.download = filename;
-                          a.click();
-                          a.remove();
-                        }}
-                        className="h-6 px-2"
-                        aria-label="Download video"
-                      >
-                        <Download className="size-3" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Error, Progress, and Generated Videos */}
+          <AIGenerationFeedback
+            error={error}
+            isGenerating={generation.isGenerating}
+            generationProgress={generation.generationProgress}
+            statusMessage={generation.statusMessage}
+            elapsedTime={generation.elapsedTime}
+            hasResults={generation.hasResults}
+            generatedVideos={generation.generatedVideos}
+          />
 
           {/* Validation Messages */}
           {!generation.canGenerate && selectedModels.length > 0 && (
-            <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md">
-              <div className="text-xs text-orange-600 dark:text-orange-400 space-y-1">
-                {activeTab === "text" && !prompt.trim() && (
-                  <div>Please enter a prompt to generate video</div>
-                )}
-                {activeTab === "image" &&
-                  !selectedImage &&
-                  !generation.hasVeo31FrameToVideo && (
-                    <div>Please upload an image for video generation</div>
-                  )}
-                {activeTab === "image" &&
-                  generation.hasVeo31FrameToVideo &&
-                  !imageState.firstFrame && (
-                    <div>
-                      Please upload the first frame (required for
-                      frame-to-video)
-                    </div>
-                  )}
-                {activeTab === "image" &&
-                  generation.hasVeo31FrameToVideo &&
-                  !imageState.lastFrame && (
-                    <div>
-                      Please upload the last frame (required for frame-to-video)
-                    </div>
-                  )}
-                {activeTab === "avatar" &&
-                  !avatarState.avatarImage &&
-                  !selectedModels.includes("sync_lipsync_react1") &&
-                  !selectedModels.some(
-                    (id) =>
-                      id === "kling_o1_v2v_reference" ||
-                      id === "kling_o1_v2v_edit" ||
-                      id === "kling_o1_ref2video"
-                  ) && <div>Please upload a character image</div>}
-                {activeTab === "avatar" &&
-                  selectedModels.includes("sync_lipsync_react1") &&
-                  !avatarState.syncLipsyncSourceVideo && (
-                    <div>Please upload a source video</div>
-                  )}
-                {activeTab === "avatar" &&
-                  selectedModels.includes("sync_lipsync_react1") &&
-                  !avatarState.audioFile && (
-                    <div>Please upload an audio file</div>
-                  )}
-              </div>
-            </div>
+            <AIValidationMessages
+              activeTab={activeTab}
+              selectedModels={selectedModels}
+              prompt={prompt}
+              selectedImage={selectedImage}
+              hasVeo31FrameToVideo={generation.hasVeo31FrameToVideo}
+              firstFrame={imageState.firstFrame}
+              lastFrame={imageState.lastFrame}
+              avatarImage={avatarState.avatarImage}
+              syncLipsyncSourceVideo={avatarState.syncLipsyncSourceVideo}
+              audioFile={avatarState.audioFile}
+            />
           )}
 
           {/* Generate Button */}

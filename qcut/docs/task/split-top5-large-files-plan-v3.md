@@ -9,7 +9,7 @@
 | # | File | Lines | Target | Status |
 |---|------|------:|--------|--------|
 | 1 | `apps/web/src/lib/export-engine.ts` | 1404 | ~550 core + ~440 renderer + ~125 recorder + ~145 utils + ~92 debug | **Not started** |
-| 2 | `apps/web/src/lib/image-edit-client.ts` | 1325 | ~450 core + ~270 models + ~180 polling | **Not started** |
+| 2 | `apps/web/src/lib/image-edit-client.ts` | 1325→793 | ~793 core + ~278 models + ~204 polling + ~75 utils | **Done** |
 | 3 | `electron/ffmpeg-handler.ts` | 1310 | ~100 orchestrator + ~567 export + ~274 utilities + ~265 args + ~72 basic | **Not started** |
 | 4 | `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-image-tab.tsx` | 1283 | ~400 shell + 7 model settings components | **Not started** |
 | 5 | `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | 1270 | ~400 core + ~89 cost hook + ~66 effects hook + ~235 UI components | **Not started** |
@@ -20,7 +20,7 @@
 
 | Phase | File | Why This Order | Status |
 |-------|------|---------------|--------|
-| **Phase 1** | **#2 image-edit-client** | Lowest risk — mostly pure data + independent polling module | **Not started** |
+| **Phase 1** | **#2 image-edit-client** | Lowest risk — mostly pure data + independent polling module | **Done** |
 | **Phase 2** | **#4 ai-image-tab** | Low-medium risk — 7 model sections are fully independent, no shared state | **Not started** |
 | **Phase 3** | **#5 ai/index** | Medium risk — hook extraction + UI component extraction, well-bounded | **Not started** |
 | **Phase 4** | **#1 export-engine** | Medium-high risk — class method extraction, shared canvas/ctx state | **Not started** |

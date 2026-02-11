@@ -3,7 +3,12 @@ import { useExportStore } from "@/stores/export-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 // Export engine factory and engine types will be imported dynamically when needed
-import type { ExportFormat, ExportQuality } from "@/types/export";
+import type {
+  ExportFormat,
+  ExportQuality,
+  AudioCodec,
+  ExportSettingsWithAudio,
+} from "@/types/export";
 import type { ExportEngine } from "@/lib/export-engine";
 import type {
   ExportEngineFactory,
@@ -60,6 +65,9 @@ export function useExportProgress() {
       filename: string;
       engineType: EngineSelection;
       resolution: { width: number; height: number };
+      includeAudio?: boolean;
+      audioCodec?: AudioCodec;
+      audioBitrate?: number;
     }
   ) => {
     // Reset any previous errors
@@ -138,6 +146,9 @@ export function useExportProgress() {
           width: exportSettings.resolution.width,
           height: exportSettings.resolution.height,
           filename: exportSettings.filename,
+          includeAudio: exportSettings.includeAudio,
+          audioCodec: exportSettings.audioCodec,
+          audioBitrate: exportSettings.audioBitrate,
         },
         tracks,
         mediaItems,

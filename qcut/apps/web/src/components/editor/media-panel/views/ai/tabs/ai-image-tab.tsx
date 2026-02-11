@@ -11,35 +11,17 @@
 
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { FileUpload } from "@/components/ui/file-upload";
 
 import { AIImageUploadSection } from "../components/ai-image-upload";
+import { AiKlingV25Settings } from "../components/ai-kling-v25-settings";
+import { AiKlingV26Settings } from "../components/ai-kling-v26-settings";
+import { AiLtxFastI2VSettings } from "../components/ai-ltx-fast-i2v-settings";
+import { AiLtxI2VSettings } from "../components/ai-ltx-i2v-settings";
+import { AiSeedanceSettings } from "../components/ai-seedance-settings";
+import { AiViduQ2Settings } from "../components/ai-vidu-q2-settings";
+import { AiWan25Settings } from "../components/ai-wan25-settings";
 import {
-  AI_MODELS,
-  LTXV2_FAST_CONFIG,
-  UPLOAD_CONSTANTS,
-  ERROR_MESSAGES,
-} from "../constants/ai-constants";
-import {
-  LTXV2_FAST_RESOLUTION_LABELS,
-  LTXV2_FAST_RESOLUTION_PRICE_SUFFIX,
-  LTXV2_FAST_FPS_LABELS,
-  SEEDANCE_DURATION_OPTIONS,
-  SEEDANCE_RESOLUTIONS,
-  SEEDANCE_ASPECT_RATIOS,
-  KLING_ASPECT_RATIOS,
-  KLING26_ASPECT_RATIOS,
-  WAN25_DURATIONS,
-  WAN25_RESOLUTIONS,
   type LTXV2FastDuration,
   type LTXV2FastResolution,
   type LTXV2FastFps,
@@ -51,12 +33,6 @@ import {
   type Wan25Duration,
   type Wan25Resolution,
 } from "../constants/ai-model-options";
-import {
-  calculateSeedanceCost,
-  calculateKlingCost,
-  calculateKling26Cost,
-  calculateLTXV2Cost,
-} from "../utils/ai-cost-calculators";
 
 // ============================================
 // Types
@@ -294,56 +270,6 @@ export function AIImageTab({
   const kling26I2VSelected = selectedModels.includes("kling_v26_pro_i2v");
   const wan25Selected = selectedModels.includes("wan_25_preview_i2v");
 
-  // LTX Fast extended duration constraints
-  const ltxv2FastExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
-  const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
-  const isExtendedLTXV2FastImageDuration =
-    ltxv2ImageDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
-
-  // Model config lookups
-  const seedanceModelId = seedanceProSelected
-    ? "seedance_pro_i2v"
-    : "seedance_pro_fast_i2v";
-  const seedanceModelConfig = AI_MODELS.find(
-    (model) => model.id === seedanceModelId
-  );
-  const seedanceDurationOptions =
-    seedanceModelConfig?.supportedDurations ?? SEEDANCE_DURATION_OPTIONS;
-  const seedanceResolutionOptions =
-    seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
-  const seedanceAspectRatioOptions =
-    seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
-  const seedanceEstimatedCost = calculateSeedanceCost(
-    seedanceModelId,
-    seedanceResolution,
-    seedanceDuration
-  );
-
-  const klingModelConfig = AI_MODELS.find(
-    (model) => model.id === "kling_v2_5_turbo_i2v"
-  );
-  const klingAspectRatios =
-    klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
-  const klingEstimatedCost = calculateKlingCost(klingDuration);
-
-  // Kling v2.6 cost calculation
-  const kling26EstimatedCost = calculateKling26Cost(
-    kling26Duration,
-    kling26GenerateAudio
-  );
-
-  // WAN 2.5 config
-  const wan25ModelConfig = AI_MODELS.find(
-    (model) => model.id === "wan_25_preview_i2v"
-  );
-  const wan25DurationOptions =
-    wan25ModelConfig?.supportedDurations ?? WAN25_DURATIONS;
-  const wan25ResolutionOptions =
-    wan25ModelConfig?.supportedResolutions ?? WAN25_RESOLUTIONS;
-  const wan25PricePerSecond =
-    wan25ModelConfig?.perSecondPricing?.[wan25Resolution] ?? 0;
-  const wan25EstimatedCost = wan25PricePerSecond * wan25Duration;
-
   return (
     <div className="space-y-4">
       {/* Image upload - supports both I2V and F2V modes */}
@@ -396,342 +322,47 @@ export function AIImageTab({
 
       {/* Vidu Q2 Settings */}
       {viduQ2Selected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            Vidu Q2 Turbo Settings
-          </Label>
-
-          <div className="space-y-1">
-            <Label htmlFor="vidu-duration" className="text-xs">
-              Duration
-            </Label>
-            <Select
-              value={viduQ2Duration.toString()}
-              onValueChange={(value) =>
-                onViduQ2DurationChange(
-                  Number(value) as 2 | 3 | 4 | 5 | 6 | 7 | 8
-                )
-              }
-            >
-              <SelectTrigger id="vidu-duration" className="h-8 text-xs">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {[2, 3, 4, 5, 6, 7, 8].map((d) => (
-                  <SelectItem key={d} value={d.toString()}>
-                    {d} seconds
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="vidu-resolution" className="text-xs">
-              Resolution
-            </Label>
-            <Select
-              value={viduQ2Resolution}
-              onValueChange={(value) =>
-                onViduQ2ResolutionChange(value as "720p" | "1080p")
-              }
-            >
-              <SelectTrigger id="vidu-resolution" className="h-8 text-xs">
-                <SelectValue placeholder="Select resolution" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="720p">720p ($0.05/sec)</SelectItem>
-                <SelectItem value="1080p">
-                  1080p ($0.20 base + $0.05/sec)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="vidu-movement" className="text-xs">
-              Movement Amplitude
-            </Label>
-            <Select
-              value={viduQ2MovementAmplitude}
-              onValueChange={(value) =>
-                onViduQ2MovementAmplitudeChange(
-                  value as "auto" | "small" | "medium" | "large"
-                )
-              }
-            >
-              <SelectTrigger id="vidu-movement" className="h-8 text-xs">
-                <SelectValue placeholder="Select motion" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Auto</SelectItem>
-                <SelectItem value="small">Small</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="large">Large</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {viduQ2Duration === 4 && (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="vidu-bgm"
-                checked={viduQ2EnableBGM}
-                onCheckedChange={(checked) =>
-                  onViduQ2EnableBGMChange(Boolean(checked))
-                }
-              />
-              <Label htmlFor="vidu-bgm" className="text-xs">
-                Add background music (4-second videos only)
-              </Label>
-            </div>
-          )}
-
-          <div className="text-xs text-muted-foreground">
-            Pricing: 720p @ $0.05/sec • 1080p adds $0.20 base fee
-          </div>
-        </div>
+        <AiViduQ2Settings
+          duration={viduQ2Duration}
+          onDurationChange={onViduQ2DurationChange}
+          resolution={viduQ2Resolution}
+          onResolutionChange={onViduQ2ResolutionChange}
+          movementAmplitude={viduQ2MovementAmplitude}
+          onMovementAmplitudeChange={onViduQ2MovementAmplitudeChange}
+          bgm={viduQ2EnableBGM}
+          onBgmChange={onViduQ2EnableBGMChange}
+          isCompact={isCompact}
+        />
       )}
 
       {/* LTX I2V Settings */}
       {ltxv2I2VSelected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            LTX Video 2.0 Settings
-          </Label>
-
-          <div className="space-y-1">
-            <Label htmlFor="ltxv2-i2v-duration" className="text-xs font-medium">
-              Duration
-            </Label>
-            <Select
-              value={ltxv2I2VDuration.toString()}
-              onValueChange={(value) =>
-                onLTXV2I2VDurationChange(Number(value) as 6 | 8 | 10)
-              }
-            >
-              <SelectTrigger id="ltxv2-i2v-duration" className="h-8 text-xs">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6">6 seconds</SelectItem>
-                <SelectItem value="8">8 seconds</SelectItem>
-                <SelectItem value="10">10 seconds</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label
-              htmlFor="ltxv2-i2v-resolution"
-              className="text-xs font-medium"
-            >
-              Resolution
-            </Label>
-            <Select
-              value={ltxv2I2VResolution}
-              onValueChange={(value) =>
-                onLTXV2I2VResolutionChange(value as "1080p" | "1440p" | "2160p")
-              }
-            >
-              <SelectTrigger id="ltxv2-i2v-resolution" className="h-8 text-xs">
-                <SelectValue placeholder="Select resolution" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1080p">1080p ($0.06/sec)</SelectItem>
-                <SelectItem value="1440p">1440p ($0.12/sec)</SelectItem>
-                <SelectItem value="2160p">4K ($0.24/sec)</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="text-xs text-muted-foreground">
-              Estimated cost: $
-              {calculateLTXV2Cost(
-                ltxv2I2VResolution,
-                ltxv2I2VDuration,
-                "pro"
-              ).toFixed(2)}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="ltxv2-i2v-fps" className="text-xs font-medium">
-              Frame Rate
-            </Label>
-            <Select
-              value={ltxv2I2VFPS.toString()}
-              onValueChange={(value) =>
-                onLTXV2I2VFPSChange(Number(value) as 25 | 50)
-              }
-            >
-              <SelectTrigger id="ltxv2-i2v-fps" className="h-8 text-xs">
-                <SelectValue placeholder="Select frame rate" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">25 FPS (Standard)</SelectItem>
-                <SelectItem value="50">50 FPS (High)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="ltxv2-i2v-audio"
-              checked={ltxv2I2VGenerateAudio}
-              onCheckedChange={(checked) =>
-                onLTXV2I2VGenerateAudioChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="ltxv2-i2v-audio" className="text-xs">
-              Generate synchronized audio
-            </Label>
-          </div>
-
-          <div className="text-xs text-muted-foreground">
-            Transforms your image into a high-quality video with matching audio.
-          </div>
-        </div>
+        <AiLtxI2VSettings
+          duration={ltxv2I2VDuration}
+          onDurationChange={onLTXV2I2VDurationChange}
+          resolution={ltxv2I2VResolution}
+          onResolutionChange={onLTXV2I2VResolutionChange}
+          fps={ltxv2I2VFPS}
+          onFpsChange={onLTXV2I2VFPSChange}
+          generateAudio={ltxv2I2VGenerateAudio}
+          onGenerateAudioChange={onLTXV2I2VGenerateAudioChange}
+          isCompact={isCompact}
+        />
       )}
 
       {/* LTX Fast I2V Settings */}
       {ltxv2ImageSelected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            LTX Video 2.0 Fast Settings
-          </Label>
-
-          <div className="space-y-1">
-            <Label
-              htmlFor="ltxv2-image-duration"
-              className="text-xs font-medium"
-            >
-              Duration
-            </Label>
-            <Select
-              value={ltxv2ImageDuration.toString()}
-              onValueChange={(value) =>
-                onLTXV2ImageDurationChange(Number(value) as LTXV2FastDuration)
-              }
-            >
-              <SelectTrigger id="ltxv2-image-duration" className="h-8 text-xs">
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
-                  <SelectItem
-                    key={durationOption}
-                    value={durationOption.toString()}
-                  >
-                    {durationOption} seconds
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label
-              htmlFor="ltxv2-image-resolution"
-              className="text-xs font-medium"
-            >
-              Resolution
-            </Label>
-            <Select
-              value={ltxv2ImageResolution}
-              onValueChange={(value) =>
-                onLTXV2ImageResolutionChange(value as LTXV2FastResolution)
-              }
-            >
-              <SelectTrigger
-                id="ltxv2-image-resolution"
-                className="h-8 text-xs"
-              >
-                <SelectValue placeholder="Select resolution" />
-              </SelectTrigger>
-              <SelectContent>
-                {LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD.map(
-                  (resolutionOption) => {
-                    const disabled =
-                      isExtendedLTXV2FastImageDuration &&
-                      !ltxv2FastExtendedResolutions.includes(
-                        resolutionOption as (typeof ltxv2FastExtendedResolutions)[number]
-                      );
-
-                    return (
-                      <SelectItem
-                        key={resolutionOption}
-                        value={resolutionOption}
-                        disabled={disabled}
-                      >
-                        {LTXV2_FAST_RESOLUTION_LABELS[resolutionOption]}
-                        {LTXV2_FAST_RESOLUTION_PRICE_SUFFIX[resolutionOption] ??
-                          ""}
-                      </SelectItem>
-                    );
-                  }
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="ltxv2-image-fps" className="text-xs">
-              Frame Rate
-            </Label>
-            <Select
-              value={ltxv2ImageFPS.toString()}
-              onValueChange={(value) =>
-                onLTXV2ImageFPSChange(Number(value) as LTXV2FastFps)
-              }
-            >
-              <SelectTrigger id="ltxv2-image-fps" className="h-8 text-xs">
-                <SelectValue placeholder="Select frame rate" />
-              </SelectTrigger>
-              <SelectContent>
-                {LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD.map((fpsOption) => {
-                  const disabled =
-                    isExtendedLTXV2FastImageDuration &&
-                    !ltxv2FastExtendedFps.includes(
-                      fpsOption as (typeof ltxv2FastExtendedFps)[number]
-                    );
-
-                  return (
-                    <SelectItem
-                      key={fpsOption}
-                      value={fpsOption.toString()}
-                      disabled={disabled}
-                    >
-                      {LTXV2_FAST_FPS_LABELS[fpsOption]}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="ltxv2-image-audio"
-              checked={ltxv2ImageGenerateAudio}
-              onCheckedChange={(checked) =>
-                onLTXV2ImageGenerateAudioChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="ltxv2-image-audio" className="text-xs">
-              Generate audio
-            </Label>
-          </div>
-
-          {isExtendedLTXV2FastImageDuration && (
-            <div className="text-xs text-muted-foreground">
-              {ERROR_MESSAGES.LTXV2_I2V_EXTENDED_DURATION_CONSTRAINT}
-            </div>
-          )}
-
-          <div className="text-xs text-muted-foreground">
-            6-20 second clips with optional audio at up to 4K. Longer clips
-            automatically use 1080p at 25 FPS.
-          </div>
-        </div>
+        <AiLtxFastI2VSettings
+          duration={ltxv2ImageDuration}
+          onDurationChange={onLTXV2ImageDurationChange}
+          resolution={ltxv2ImageResolution}
+          onResolutionChange={onLTXV2ImageResolutionChange}
+          fps={ltxv2ImageFPS}
+          onFpsChange={onLTXV2ImageFPSChange}
+          generateAudio={ltxv2ImageGenerateAudio}
+          onGenerateAudioChange={onLTXV2ImageGenerateAudioChange}
+          isCompact={isCompact}
+        />
       )}
 
       {/* LTX Fast T2V Settings (shown in Image tab when selected) */}
@@ -748,502 +379,79 @@ export function AIImageTab({
 
       {/* Seedance Settings */}
       {seedanceSelected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">Seedance Settings</Label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="seedance-duration" className="text-xs">
-                Duration
-              </Label>
-              <Select
-                value={seedanceDuration.toString()}
-                onValueChange={(value) =>
-                  onSeedanceDurationChange(Number(value) as SeedanceDuration)
-                }
-              >
-                <SelectTrigger id="seedance-duration" className="h-8 text-xs">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  {seedanceDurationOptions.map((durationOption) => (
-                    <SelectItem
-                      key={durationOption}
-                      value={durationOption.toString()}
-                    >
-                      {durationOption} seconds
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="seedance-resolution" className="text-xs">
-                Resolution
-              </Label>
-              <Select
-                value={seedanceResolution}
-                onValueChange={(value) =>
-                  onSeedanceResolutionChange(value as SeedanceResolution)
-                }
-              >
-                <SelectTrigger id="seedance-resolution" className="h-8 text-xs">
-                  <SelectValue placeholder="Select resolution" />
-                </SelectTrigger>
-                <SelectContent>
-                  {seedanceResolutionOptions.map((resolutionOption) => (
-                    <SelectItem key={resolutionOption} value={resolutionOption}>
-                      {resolutionOption.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="seedance-aspect" className="text-xs">
-              Aspect Ratio
-            </Label>
-            <Select
-              value={seedanceAspectRatio}
-              onValueChange={(value) =>
-                onSeedanceAspectRatioChange(value as SeedanceAspectRatio)
-              }
-            >
-              <SelectTrigger id="seedance-aspect" className="h-8 text-xs">
-                <SelectValue placeholder="Select aspect ratio" />
-              </SelectTrigger>
-              <SelectContent>
-                {seedanceAspectRatioOptions.map((ratio) => (
-                  <SelectItem key={ratio} value={ratio}>
-                    {ratio.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="seedance-camera-fixed"
-              checked={seedanceCameraFixed}
-              onCheckedChange={(checked) =>
-                onSeedanceCameraFixedChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="seedance-camera-fixed" className="text-xs">
-              Lock camera position
-            </Label>
-          </div>
-
-          {seedanceProSelected && (
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">
-                End Frame (optional)
-              </Label>
-              <Input
-                id="seedance-end-frame-url"
-                type="url"
-                value={seedanceEndFrameUrl ?? ""}
-                onChange={(event) =>
-                  onSeedanceEndFrameUrlChange(
-                    event.target.value ? event.target.value : undefined
-                  )
-                }
-                placeholder="https://example.com/final-frame.png"
-                className="h-8 text-xs"
-              />
-              <FileUpload
-                id="seedance-end-frame-upload"
-                label="Upload End Frame"
-                helperText="Optional reference for the final frame"
-                fileType="image"
-                acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_IMAGE_TYPES}
-                maxSizeBytes={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_BYTES}
-                maxSizeLabel={UPLOAD_CONSTANTS.MAX_IMAGE_SIZE_LABEL}
-                formatsLabel={UPLOAD_CONSTANTS.IMAGE_FORMATS_LABEL}
-                file={seedanceEndFrameFile}
-                preview={seedanceEndFramePreview}
-                onFileChange={(file, preview) => {
-                  onSeedanceEndFrameFileChange(file, preview || null);
-                  if (file) {
-                    onSeedanceEndFrameUrlChange(undefined);
-                  }
-                }}
-                onError={onError}
-                isCompact={isCompact}
-              />
-            </div>
-          )}
-
-          <div className="text-xs text-muted-foreground">
-            Estimated cost: ${seedanceEstimatedCost.toFixed(2)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Seedance animates 2-12 second clips with reproducible seeds and
-            optional end frames (Pro only).
-          </div>
-        </div>
+        <AiSeedanceSettings
+          duration={seedanceDuration}
+          onDurationChange={onSeedanceDurationChange}
+          resolution={seedanceResolution}
+          onResolutionChange={onSeedanceResolutionChange}
+          aspectRatio={seedanceAspectRatio}
+          onAspectRatioChange={onSeedanceAspectRatioChange}
+          cameraFixed={seedanceCameraFixed}
+          onCameraFixedChange={onSeedanceCameraFixedChange}
+          endFrameUrl={seedanceEndFrameUrl}
+          onEndFrameUrlChange={onSeedanceEndFrameUrlChange}
+          endFrameFile={seedanceEndFrameFile}
+          endFramePreview={seedanceEndFramePreview}
+          onEndFrameFileChange={onSeedanceEndFrameFileChange}
+          isProSelected={seedanceProSelected}
+          isCompact={isCompact}
+          onError={onError}
+        />
       )}
 
       {/* Kling v2.5 Settings */}
       {klingI2VSelected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            Kling v2.5 Turbo Settings
-          </Label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="kling-duration" className="text-xs">
-                Duration
-              </Label>
-              <Select
-                value={klingDuration.toString()}
-                onValueChange={(value) =>
-                  onKlingDurationChange(Number(value) as 5 | 10)
-                }
-              >
-                <SelectTrigger id="kling-duration" className="h-8 text-xs">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 seconds ($0.35)</SelectItem>
-                  <SelectItem value="10">10 seconds ($0.70)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="kling-aspect" className="text-xs">
-                Aspect Ratio
-              </Label>
-              <Select
-                value={klingAspectRatio}
-                onValueChange={(value) =>
-                  onKlingAspectRatioChange(value as KlingAspectRatio)
-                }
-              >
-                <SelectTrigger id="kling-aspect" className="h-8 text-xs">
-                  <SelectValue placeholder="Select aspect ratio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {klingAspectRatios.map((ratio) => (
-                    <SelectItem key={ratio} value={ratio}>
-                      {ratio.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="kling-cfg" className="text-xs">
-              Prompt Adherence ({klingCfgScale.toFixed(1)})
-            </Label>
-            <input
-              id="kling-cfg"
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={klingCfgScale}
-              onChange={(event) =>
-                onKlingCfgScaleChange(Number(event.target.value))
-              }
-              className="w-full cursor-pointer"
-            />
-            <div className="text-xs text-muted-foreground">
-              Lower values add more freedom, higher values follow the prompt
-              closely.
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="kling-enhance-prompt"
-              checked={klingEnhancePrompt}
-              onCheckedChange={(checked) =>
-                onKlingEnhancePromptChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="kling-enhance-prompt" className="text-xs">
-              Enhance prompt with AI
-            </Label>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="kling-negative-prompt" className="text-xs">
-              Negative Prompt (optional)
-            </Label>
-            <Textarea
-              id="kling-negative-prompt"
-              value={klingNegativePrompt}
-              onChange={(event) =>
-                onKlingNegativePromptChange(event.target.value)
-              }
-              placeholder="blur, distort, low quality"
-              className="min-h-[60px] text-xs"
-              maxLength={2500}
-            />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Estimated cost: ${klingEstimatedCost.toFixed(2)}
-          </div>
-        </div>
+        <AiKlingV25Settings
+          duration={klingDuration}
+          onDurationChange={onKlingDurationChange}
+          aspectRatio={klingAspectRatio}
+          onAspectRatioChange={onKlingAspectRatioChange}
+          cfgScale={klingCfgScale}
+          onCfgScaleChange={onKlingCfgScaleChange}
+          enhancePrompt={klingEnhancePrompt}
+          onEnhancePromptChange={onKlingEnhancePromptChange}
+          negativePrompt={klingNegativePrompt}
+          onNegativePromptChange={onKlingNegativePromptChange}
+          isCompact={isCompact}
+        />
       )}
 
       {/* Kling v2.6 Settings */}
       {kling26I2VSelected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            Kling v2.6 Pro Settings
-          </Label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="kling26-duration" className="text-xs">
-                Duration
-              </Label>
-              <Select
-                value={kling26Duration.toString()}
-                onValueChange={(value) =>
-                  onKling26DurationChange(Number(value) as 5 | 10)
-                }
-              >
-                <SelectTrigger id="kling26-duration" className="h-8 text-xs">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">
-                    5 seconds (${kling26GenerateAudio ? "0.70" : "0.35"})
-                  </SelectItem>
-                  <SelectItem value="10">
-                    10 seconds (${kling26GenerateAudio ? "1.40" : "0.70"})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="kling26-aspect" className="text-xs">
-                Aspect Ratio
-              </Label>
-              <Select
-                value={kling26AspectRatio}
-                onValueChange={(value) =>
-                  onKling26AspectRatioChange(value as Kling26AspectRatio)
-                }
-              >
-                <SelectTrigger id="kling26-aspect" className="h-8 text-xs">
-                  <SelectValue placeholder="Select aspect ratio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {KLING26_ASPECT_RATIOS.map((ratio) => (
-                    <SelectItem key={ratio} value={ratio}>
-                      {ratio.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="kling26-cfg" className="text-xs">
-              Prompt Adherence ({kling26CfgScale.toFixed(1)})
-            </Label>
-            <input
-              id="kling26-cfg"
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={kling26CfgScale}
-              onChange={(event) =>
-                onKling26CfgScaleChange(Number(event.target.value))
-              }
-              className="w-full cursor-pointer"
-            />
-            <div className="text-xs text-muted-foreground">
-              Lower values add more freedom, higher values follow the prompt
-              closely.
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="kling26-generate-audio"
-              checked={kling26GenerateAudio}
-              onCheckedChange={(checked) =>
-                onKling26GenerateAudioChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="kling26-generate-audio" className="text-xs">
-              Generate native audio (Chinese/English)
-            </Label>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="kling26-negative-prompt" className="text-xs">
-              Negative Prompt (optional)
-            </Label>
-            <Textarea
-              id="kling26-negative-prompt"
-              value={kling26NegativePrompt}
-              onChange={(event) =>
-                onKling26NegativePromptChange(event.target.value)
-              }
-              placeholder="blur, distort, and low quality"
-              className="min-h-[60px] text-xs"
-              maxLength={2500}
-            />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Estimated cost: ${kling26EstimatedCost.toFixed(2)}
-            {kling26GenerateAudio ? " (with audio)" : " (no audio)"}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Kling v2.6 Pro supports native audio generation and offers cinematic
-            visual quality.
-          </div>
-        </div>
+        <AiKlingV26Settings
+          duration={kling26Duration}
+          onDurationChange={onKling26DurationChange}
+          aspectRatio={kling26AspectRatio}
+          onAspectRatioChange={onKling26AspectRatioChange}
+          cfgScale={kling26CfgScale}
+          onCfgScaleChange={onKling26CfgScaleChange}
+          generateAudio={kling26GenerateAudio}
+          onGenerateAudioChange={onKling26GenerateAudioChange}
+          negativePrompt={kling26NegativePrompt}
+          onNegativePromptChange={onKling26NegativePromptChange}
+          isCompact={isCompact}
+        />
       )}
 
       {/* WAN 2.5 Settings */}
       {wan25Selected && (
-        <div className="space-y-3 text-left border-t pt-3">
-          <Label className="text-sm font-semibold">
-            WAN 2.5 Preview Settings
-          </Label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="wan25-duration" className="text-xs">
-                Duration
-              </Label>
-              <Select
-                value={wan25Duration.toString()}
-                onValueChange={(value) =>
-                  onWan25DurationChange(Number(value) as Wan25Duration)
-                }
-              >
-                <SelectTrigger id="wan25-duration" className="h-8 text-xs">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wan25DurationOptions.map((durationOption) => (
-                    <SelectItem
-                      key={durationOption}
-                      value={durationOption.toString()}
-                    >
-                      {durationOption} seconds
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="wan25-resolution" className="text-xs">
-                Resolution
-              </Label>
-              <Select
-                value={wan25Resolution}
-                onValueChange={(value) =>
-                  onWan25ResolutionChange(value as Wan25Resolution)
-                }
-              >
-                <SelectTrigger id="wan25-resolution" className="h-8 text-xs">
-                  <SelectValue placeholder="Select resolution" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wan25ResolutionOptions.map((resolutionOption) => (
-                    <SelectItem key={resolutionOption} value={resolutionOption}>
-                      {resolutionOption.toUpperCase()} ( $
-                      {wan25ModelConfig?.perSecondPricing?.[resolutionOption] ??
-                        0}
-                      /sec)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="wan25-enhance-prompt"
-              checked={wan25EnablePromptExpansion}
-              onCheckedChange={(checked) =>
-                onWan25EnablePromptExpansionChange(Boolean(checked))
-              }
-            />
-            <Label htmlFor="wan25-enhance-prompt" className="text-xs">
-              Enhance prompt with AI
-            </Label>
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="wan25-negative" className="text-xs">
-              Negative Prompt (max 500 characters)
-            </Label>
-            <Textarea
-              id="wan25-negative"
-              value={wan25NegativePrompt}
-              onChange={(event) =>
-                onWan25NegativePromptChange(event.target.value.slice(0, 500))
-              }
-              placeholder="Avoid blurry, shaky motion..."
-              className="min-h-[60px] text-xs"
-              maxLength={500}
-            />
-            <div className="text-xs text-muted-foreground">
-              {wan25NegativePrompt.length}/500 characters
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">
-              Background Music (optional)
-            </Label>
-            <Input
-              type="url"
-              value={wan25AudioUrl ?? ""}
-              onChange={(event) =>
-                onWan25AudioUrlChange(
-                  event.target.value ? event.target.value : undefined
-                )
-              }
-              placeholder="https://example.com/music.mp3"
-              className="h-8 text-xs"
-            />
-            <FileUpload
-              id="wan25-audio-upload"
-              label="Upload Audio"
-              helperText="MP3/WAV between 3-30 seconds (max 15MB)"
-              fileType="audio"
-              acceptedTypes={UPLOAD_CONSTANTS.ALLOWED_AUDIO_TYPES}
-              maxSizeBytes={15 * 1024 * 1024}
-              maxSizeLabel="15MB"
-              formatsLabel={UPLOAD_CONSTANTS.AUDIO_FORMATS_LABEL}
-              file={wan25AudioFile}
-              preview={wan25AudioPreview}
-              onFileChange={(file, preview) => {
-                onWan25AudioFileChange(file, preview || null);
-                if (file) {
-                  onWan25AudioUrlChange(undefined);
-                }
-              }}
-              onError={onError}
-              isCompact={isCompact}
-            />
-          </div>
-
-          <div className="text-xs text-muted-foreground">
-            Estimated cost: ${wan25EstimatedCost.toFixed(2)} ( $
-            {wan25PricePerSecond.toFixed(2)}/sec)
-          </div>
-        </div>
+        <AiWan25Settings
+          duration={wan25Duration}
+          onDurationChange={onWan25DurationChange}
+          resolution={wan25Resolution}
+          onResolutionChange={onWan25ResolutionChange}
+          enablePromptExpansion={wan25EnablePromptExpansion}
+          onEnablePromptExpansionChange={onWan25EnablePromptExpansionChange}
+          negativePrompt={wan25NegativePrompt}
+          onNegativePromptChange={onWan25NegativePromptChange}
+          audioUrl={wan25AudioUrl}
+          onAudioUrlChange={onWan25AudioUrlChange}
+          audioFile={wan25AudioFile}
+          audioPreview={wan25AudioPreview}
+          onAudioFileChange={onWan25AudioFileChange}
+          isCompact={isCompact}
+          onError={onError}
+        />
       )}
 
       {/* Advanced Options (Seed) */}

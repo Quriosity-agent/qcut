@@ -1,5 +1,8 @@
 import { ExportEngine } from "./export-engine";
-import { ExportSettings } from "@/types/export";
+import type {
+  ExportSettingsWithAudio,
+  AudioExportOptions,
+} from "@/types/export";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
@@ -41,10 +44,11 @@ export class CLIExportEngine extends ExportEngine {
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
   private exportAnalysis: ExportAnalysis | null = null;
+  private audioOptions: AudioExportOptions;
 
   constructor(
     canvas: HTMLCanvasElement,
-    settings: ExportSettings,
+    settings: ExportSettingsWithAudio,
     tracks: TimelineTrack[],
     mediaItems: MediaItem[],
     totalDuration: number,
@@ -52,6 +56,13 @@ export class CLIExportEngine extends ExportEngine {
   ) {
     super(canvas, settings, tracks, mediaItems, totalDuration);
     this.effectsStore = effectsStore;
+    this.audioOptions = {
+      includeAudio: settings.includeAudio,
+      audioCodec: settings.audioCodec,
+      audioBitrate: settings.audioBitrate,
+      audioSampleRate: settings.audioSampleRate,
+      audioChannels: settings.audioChannels,
+    };
 
     // 🚨 SAFETY CHECK: Verify Electron environment
     if (
@@ -447,8 +458,18 @@ export class CLIExportEngine extends ExportEngine {
     // Progress: 5% - Preparing audio files
     progressCallback?.(5, "Preparing audio files...");
 
-    // Prepare audio files for FFmpeg
-    let audioFiles = await this.prepareAudioFiles();
+    // Gate audio preparation behind request-scoped includeAudio setting
+    // Default to true for backward compatibility
+    const includeAudio = this.audioOptions.includeAudio ?? true;
+    let audioFiles: AudioFileInput[] = [];
+
+    if (includeAudio) {
+      audioFiles = await this.prepareAudioFiles();
+    } else {
+      debugLog(
+        "[CLI Export] Audio excluded by user setting (includeAudio=false)"
+      );
+    }
 
     // audioFiles can be validated and filtered here if needed
     // e.g., audioFiles = audioFiles.filter(validateAudioFile);

@@ -46,6 +46,7 @@ import {
   setAudioExportConfig,
   getCodecForFormat,
 } from "@/lib/audio-export-config";
+import { detectAudioSources } from "@/lib/export-cli/sources";
 
 export function ExportDialog() {
   const { error } = useExportStore();
@@ -69,10 +70,8 @@ export function ExportDialog() {
     (track) => track.type === "captions" && track.elements.length > 0
   );
 
-  // Check if there are audio tracks available
-  const hasAudio = tracks.some(
-    (track) => track.type === "audio" && track.elements.length > 0
-  );
+  // Check if there are audio sources available (audio tracks + video audio)
+  const { hasAudio } = detectAudioSources(tracks, mediaItems);
 
   const captionFormats: {
     value: CaptionFormat;
@@ -209,11 +208,10 @@ export function ExportDialog() {
       filename: exportSettings.filename,
       engineType: exportSettings.engineType,
       resolution: exportSettings.resolution,
-      // Add audio settings (backward compatible - ignored if not supported)
       includeAudio: audioEnabled,
       audioCodec,
       audioBitrate: 128,
-    } as any);
+    });
   };
 
   if (mediaItemsLoading) {
