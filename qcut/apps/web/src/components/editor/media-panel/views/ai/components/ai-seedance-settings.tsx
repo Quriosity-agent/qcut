@@ -69,7 +69,11 @@ export function AiSeedanceSettings({
     seedanceModelConfig?.supportedResolutions ?? SEEDANCE_RESOLUTIONS;
   const aspectRatioOptions =
     seedanceModelConfig?.supportedAspectRatios ?? SEEDANCE_ASPECT_RATIOS;
-  const estimatedCost = calculateSeedanceCost(seedanceModelId, resolution, duration);
+  const estimatedCost = calculateSeedanceCost(
+    seedanceModelId,
+    resolution,
+    duration
+  );
 
   const handleEndFrameFileChange = ({
     file,
@@ -110,7 +114,10 @@ export function AiSeedanceSettings({
             </SelectTrigger>
             <SelectContent>
               {durationOptions.map((durationOption) => (
-                <SelectItem key={durationOption} value={durationOption.toString()}>
+                <SelectItem
+                  key={durationOption}
+                  value={durationOption.toString()}
+                >
                   {durationOption} seconds
                 </SelectItem>
               ))}

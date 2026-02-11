@@ -31,10 +31,8 @@ export function AiViduQ2Settings({
   onMovementAmplitudeChange,
   bgm,
   onBgmChange,
-  isCompact,
+  isCompact: _isCompact,
 }: AiViduQ2SettingsProps) {
-  void isCompact;
-
   return (
     <div className="space-y-3 text-left border-t pt-3">
       <Label className="text-sm font-semibold">Vidu Q2 Turbo Settings</Label>
@@ -54,7 +52,10 @@ export function AiViduQ2Settings({
           </SelectTrigger>
           <SelectContent>
             {[2, 3, 4, 5, 6, 7, 8].map((durationOption) => (
-              <SelectItem key={durationOption} value={durationOption.toString()}>
+              <SelectItem
+                key={durationOption}
+                value={durationOption.toString()}
+              >
                 {durationOption} seconds
               </SelectItem>
             ))}
@@ -68,14 +69,18 @@ export function AiViduQ2Settings({
         </Label>
         <Select
           value={resolution}
-          onValueChange={(value) => onResolutionChange(value as "720p" | "1080p")}
+          onValueChange={(value) =>
+            onResolutionChange(value as "720p" | "1080p")
+          }
         >
           <SelectTrigger id="vidu-resolution" className="h-8 text-xs">
             <SelectValue placeholder="Select resolution" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="720p">720p ($0.05/sec)</SelectItem>
-            <SelectItem value="1080p">1080p ($0.20 base + $0.05/sec)</SelectItem>
+            <SelectItem value="1080p">
+              1080p ($0.20 base + $0.05/sec)
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -119,7 +119,7 @@ Changes:
 - Define `ExportEngineContext` interface (exported)
 - Import from 4 new modules
 - Class constructor builds context object
-- `export()` method delegates: `renderFrameImpl(this.ctx, ...)` → `renderFrame(this.context, ...)`
+- `export()` method calls: `renderFrame(this.context, elements, frameTime)`
 - Keep: class shell, constructor, `export()` orchestration, `cancel()`, `isExportInProgress()`, `isExportCancelled()`, `downloadVideo()`, `exportAndDownload()`, `preloadAllVideos()`, `preloadVideo()`
 - Public API signatures unchanged
 

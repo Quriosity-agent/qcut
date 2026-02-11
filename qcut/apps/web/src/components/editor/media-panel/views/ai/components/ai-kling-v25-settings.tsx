@@ -40,14 +40,13 @@ export function AiKlingV25Settings({
   onEnhancePromptChange,
   negativePrompt,
   onNegativePromptChange,
-  isCompact,
+  isCompact: _isCompact,
 }: AiKlingV25SettingsProps) {
-  void isCompact;
-
   const klingModelConfig = AI_MODELS.find(
     (model) => model.id === "kling_v2_5_turbo_i2v"
   );
-  const aspectRatios = klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
+  const aspectRatios =
+    klingModelConfig?.supportedAspectRatios ?? KLING_ASPECT_RATIOS;
   const estimatedCost = calculateKlingCost(duration);
 
   return (
@@ -112,7 +111,8 @@ export function AiKlingV25Settings({
           className="w-full cursor-pointer"
         />
         <div className="text-xs text-muted-foreground">
-          Lower values add more freedom, higher values follow the prompt closely.
+          Lower values add more freedom, higher values follow the prompt
+          closely.
         </div>
       </div>
 
