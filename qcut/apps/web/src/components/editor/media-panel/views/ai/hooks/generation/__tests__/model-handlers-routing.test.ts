@@ -5,7 +5,11 @@ import type {
   ModelHandlerContext,
   TextToVideoSettings,
 } from "../model-handler-types";
-import { routeAvatarHandler, routeImageToVideoHandler, routeTextToVideoHandler } from "../model-handlers";
+import {
+  routeAvatarHandler,
+  routeImageToVideoHandler,
+  routeTextToVideoHandler,
+} from "../model-handlers";
 import * as avatarHandlers from "../handlers/avatar-handlers";
 import * as textToVideoHandlers from "../handlers/text-to-video-handlers";
 
@@ -27,7 +31,9 @@ vi.mock("../handlers/avatar-handlers", () => ({
   handleKlingAvatarV2: vi.fn().mockResolvedValue({ response: undefined }),
   handleGenericAvatar: vi.fn().mockResolvedValue({ response: undefined }),
   handleSyncLipsyncReact1: vi.fn().mockResolvedValue({ response: undefined }),
-  handleVeo31FastExtendVideo: vi.fn().mockResolvedValue({ response: undefined }),
+  handleVeo31FastExtendVideo: vi
+    .fn()
+    .mockResolvedValue({ response: undefined }),
   handleVeo31ExtendVideo: vi.fn().mockResolvedValue({ response: undefined }),
 }));
 
@@ -71,7 +77,9 @@ describe("model handler routing regression", () => {
   });
 
   it("routeAvatarHandler unknown model falls back to generic", async () => {
-    const handleGenericAvatarMock = vi.mocked(avatarHandlers.handleGenericAvatar);
+    const handleGenericAvatarMock = vi.mocked(
+      avatarHandlers.handleGenericAvatar
+    );
     await routeAvatarHandler(
       createContext({ modelId: "unknown_avatar_model" }),
       {} as AvatarSettings

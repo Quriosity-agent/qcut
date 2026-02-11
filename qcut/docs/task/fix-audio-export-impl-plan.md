@@ -50,54 +50,24 @@ Exported videos have no audio due to 3 root causes:
 
 ---
 
-## Subtask 2: Fix `getAudioElements()` to include video tracks with audio
+## Subtask 2: Verify `getAudioElements()` coverage (no code change needed)
 
 **Files:**
 - `apps/web/src/stores/timeline-store-operations.ts` (lines 514-540)
-- `apps/web/src/types/timeline.ts` (TimelineTrack type definition)
+- `apps/web/src/types/timeline.ts` (TrackType definition)
 
-**Problem:** `getAudioElements()` only iterates tracks where `track.type === "audio" || track.type === "media"`. Video elements placed on `"video"` type tracks that contain embedded audio streams are completely skipped. This is the primary reason audio is missing.
+**Original assumption was wrong:** The plan assumed video files live on `"video"` type tracks, but `TrackType` is `"media" | "text" | "audio" | "sticker" | "captions" | "remotion"` — there is no `"video"` track type. Video files are placed on `"media"` tracks, which `getAudioElements()` already includes (`track.type === "audio" || track.type === "media"`).
 
-**Fix:**
-1. Expand the track type filter to also include `"video"` tracks:
-   ```typescript
-   getAudioElements: (): Array<{...}> => {
-     const { tracks } = get();
-     const audioElements: Array<{...}> = [];
-     for (const track of tracks) {
-       // Include video tracks — video files often contain audio streams
-       if (
-         track.type === "audio" ||
-         track.type === "media" ||
-         track.type === "video"
-       ) {
-         for (const element of track.elements) {
-           if (element.type === "media") {
-             audioElements.push({
-               element,
-               trackId: track.id,
-               absoluteStart: element.startTime,
-             });
-           }
-         }
-       }
-     }
-     return audioElements;
-   },
-   ```
-2. This change is safe because `prepareAudioFiles()` already fetches the media file by `mediaId` and saves it as-is. FFmpeg handles audio extraction from video containers natively.
+**Conclusion:** `getAudioElements()` already collects media elements from both audio and media tracks. The audio export issue is NOT caused by missing track type filtering. The root causes are the remaining subtasks: Mode 1.5 throwing on audio (Subtask 4), `includeAudio` flag not wired (Subtask 1), and `hasAudio` detection in the export dialog (Subtask 3).
 
-**Why not probe for audio streams first?** Probing would require an IPC round-trip per video file in the renderer process, adding latency. FFmpeg already handles video files that have no audio stream gracefully (it ignores missing audio). The current approach of "pass all media files, let FFmpeg sort it out" is simpler and more robust.
-
-**Tests:**
+**Tests (validation only):**
 - `apps/web/src/stores/__tests__/timeline-store-audio.test.ts`
   - Test: `getAudioElements()` returns elements from `"audio"` tracks
-  - Test: `getAudioElements()` returns elements from `"media"` tracks
-  - Test: `getAudioElements()` returns elements from `"video"` tracks (NEW)
+  - Test: `getAudioElements()` returns elements from `"media"` tracks (covers video files)
   - Test: `getAudioElements()` does NOT return elements from `"text"` or `"captions"` tracks
-  - Test: `getAudioElements()` only includes `element.type === "media"` elements (skips text overlays on video tracks)
+  - Test: `getAudioElements()` only includes `element.type === "media"` elements
 
-**Verification:** Add a video-with-audio to the timeline on a default video track. Export → audio should be present.
+**Verification:** Confirm that video-with-audio on a `"media"` track is already returned by `getAudioElements()`.
 
 ---
 
@@ -109,26 +79,26 @@ Exported videos have no audio due to 3 root causes:
 **Problem:** The `hasAudio` check that controls the "Include Audio" checkbox visibility only looks for `track.type === "audio"` tracks. If the user has video files with embedded audio (on video/media tracks) but no dedicated audio track, the checkbox is hidden. The user can't even see the audio option.
 
 **Fix:**
-1. Update `hasAudio` to also check for media elements on video/media tracks:
+1. Update `hasAudio` to also check for media elements on `"media"` tracks (video files with embedded audio live on `"media"` tracks, not a `"video"` type which doesn't exist):
    ```typescript
    const hasAudio = tracks.some(
      (track) =>
        (track.type === "audio" && track.elements.length > 0) ||
-       ((track.type === "media" || track.type === "video") &&
+       (track.type === "media" &&
          track.elements.some((el) => el.type === "media"))
    );
    ```
-2. This mirrors the logic in the updated `getAudioElements()` from Subtask 2.
+2. This mirrors the existing `getAudioElements()` logic which already covers `"audio"` and `"media"` tracks.
 
 **Tests:**
 - `apps/web/src/components/__tests__/export-dialog-audio.test.ts`
   - Test: `hasAudio` is `true` when audio track has elements
-  - Test: `hasAudio` is `true` when video track has media elements (NEW)
+  - Test: `hasAudio` is `true` when media track has media elements (video with audio)
   - Test: `hasAudio` is `false` when only text/caption tracks exist
   - Test: Audio checkbox renders when `hasAudio` is `true`
   - Test: Audio checkbox is hidden when `hasAudio` is `false`
 
-**Verification:** Add video-with-audio on a video track (no separate audio track) → "Audio Export" section should be visible.
+**Verification:** Add video-with-audio on a media track (no separate audio track) → "Audio Export" section should be visible.
 
 ---
 

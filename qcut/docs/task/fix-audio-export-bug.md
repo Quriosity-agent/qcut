@@ -10,21 +10,21 @@ When exporting video with audio in QCut, the exported video has no audio.
 
 ## Root Causes
 
-### 1. `getAudioElements()` returns empty array
+### 1. `getAudioElements()` — likely NOT the issue (re-evaluated)
 
 **File:** `apps/web/src/stores/timeline-store-operations.ts`
 
-The function only collects audio from tracks typed as `"audio"` or `"media"`. If audio is embedded in video files (not on a separate audio track), it won't be found and FFmpeg receives no audio files.
+The function collects audio from tracks typed as `"audio"` or `"media"`. Since `TrackType` is `"media" | "text" | "audio" | "sticker" | "captions" | "remotion"` (no `"video"` type exists), video files already live on `"media"` tracks and ARE covered by the filter. This root cause was initially misdiagnosed.
 
 ```typescript
 if (track.type === "audio" || track.type === "media") {
   if (element.type === "media") {
-    // collect audio
+    // collect audio — already covers video files on media tracks
   }
 }
 ```
 
-**Impact:** `prepareAudioFiles()` in the CLI export engine calls `getAudioElements()` and gets an empty array, so FFmpeg is invoked without any `-i` audio inputs.
+**Impact:** If `getAudioElements()` returns empty, the issue is more likely in `prepareAudioFiles()` processing or downstream FFmpeg invocation, not the track type filter.
 
 ### 2. Mode 1.5 explicitly blocks audio
 
@@ -82,9 +82,9 @@ The export dialog has an `includeAudio` toggle that passes `audioEnabled` to `ha
 
 ## Proposed Fix
 
-### Phase 1: Fix audio collection (highest impact)
-1. Update `getAudioElements()` to also extract audio from video elements on media tracks (videos that contain audio streams)
-2. In `prepareAudioFiles()`, extract audio from video files using FFmpeg if they have audio streams (probe with FFprobe first)
+### Phase 1: Verify audio collection (may not need changes)
+1. `getAudioElements()` already filters `track.type === "audio" || track.type === "media"`. Since `TrackType` has no `"video"` — video files live on `"media"` tracks — collection already covers them.
+2. Investigate `prepareAudioFiles()` to verify it correctly extracts audio from video containers via FFmpeg.
 
 ### Phase 2: Fix Mode 1.5 audio support
 1. After video concat in Mode 1.5, add a second FFmpeg pass to mux audio

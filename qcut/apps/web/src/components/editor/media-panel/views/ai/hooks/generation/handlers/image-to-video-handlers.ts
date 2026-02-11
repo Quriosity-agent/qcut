@@ -696,26 +696,26 @@ export async function handleViduQ3I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
-
-  // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
-  // "auto" is not supported by Vidu Q3
-  const normalizedResolution: ViduQ3Resolution = [
-    "360p",
-    "540p",
-    "720p",
-    "1080p",
-  ].includes(settings.resolution ?? "")
-    ? (settings.resolution as ViduQ3Resolution)
-    : "720p";
-
   try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
+
+    // Normalize resolution to Vidu Q3 supported values (360p, 540p, 720p, 1080p)
+    // "auto" is not supported by Vidu Q3
+    const normalizedResolution: ViduQ3Resolution = [
+      "360p",
+      "540p",
+      "720p",
+      "1080p",
+    ].includes(settings.resolution ?? "")
+      ? (settings.resolution as ViduQ3Resolution)
+      : "720p";
+
     const response = await generateViduQ3ImageVideo({
       model: ctx.modelId,
       prompt: ctx.prompt,
