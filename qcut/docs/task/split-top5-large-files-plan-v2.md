@@ -6,13 +6,13 @@
 
 ## Current Top 5 Files Worth Splitting
 
-| # | File | Lines | Target | New File(s) |
-|---|------|------:|--------|-------------|
-| 1 | `apps/web/src/components/editor/timeline/index.tsx` | 1584 | ~400 + ~480 + ~180 | `timeline-toolbar.tsx`, `timeline-drag-handlers.ts` |
-| 2 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | 1518 | ~270 + ~620 + ~120 + ~415 | Split by handler category into 4 files |
-| 3 | `apps/web/src/lib/fal-ai-client.ts` | 1512 | ~500 + ~375 + ~405 + ~155 | Split by model family |
-| 4 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1428 | ~700 + ~180 + ~140 + ~55 | Continue partial split #2 |
-| 5 | `apps/web/src/lib/text2image-models.ts` | 1422 | ~100 registry + ~4 provider files | Split by provider |
+| # | File | Lines | Target | Subtask |
+|---|------|------:|--------|---------|
+| 1 | `apps/web/src/components/editor/timeline/index.tsx` | 1584 | ~400 + ~480 + ~180 | [split-v2-5-timeline-index.md](./split-v2-5-timeline-index.md) |
+| 2 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | 1518 | ~270 + ~620 + ~120 + ~415 | [split-v2-2-model-handler-implementations.md](./split-v2-2-model-handler-implementations.md) |
+| 3 | `apps/web/src/lib/fal-ai-client.ts` | 1512 | ~500 + ~375 + ~405 + ~155 | [split-v2-3-fal-ai-client.md](./split-v2-3-fal-ai-client.md) |
+| 4 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1428 | ~700 + ~180 + ~140 + ~55 | [split-v2-4-use-ai-generation.md](./split-v2-4-use-ai-generation.md) |
+| 5 | `apps/web/src/lib/text2image-models.ts` | 1422 | ~100 registry + ~4 provider files | [split-v2-1-text2image-models.md](./split-v2-1-text2image-models.md) |
 
 ---
 
