@@ -3,13 +3,13 @@
 **Parent Plan:** [split-top5-large-files-plan-v2.md](./split-top5-large-files-plan-v2.md)
 **Phase:** 2
 **Estimated Effort:** 20-25 minutes
-**Risk Level:** Low — all 33 handlers are independent exported functions with one consumer
+**Risk Level:** Medium — handlers are independent, but router mappings/fallback behavior are runtime-sensitive
 
 ---
 
 ## Goal
 
-Split the monolithic handler file into 4 category files under a `handlers/` subdirectory. The single consumer (`model-handlers.ts`) updates its imports. No API shape changes.
+Split the monolithic handler file into 4 category files under a `handlers/` subdirectory. The single consumer (`model-handlers.ts`) updates its imports. No API shape or routing behavior changes.
 
 ---
 
@@ -17,7 +17,8 @@ Split the monolithic handler file into 4 category files under a `handlers/` subd
 
 | File | Action |
 |------|--------|
-| `.../generation/model-handler-implementations.ts` | **Delete** after migration |
+| `.../generation/model-handler-implementations.ts` | **Keep as temporary compatibility re-export**, then delete in cleanup PR |
+| `.../generation/model-handler-types.ts` | **Create** — shared handler context/settings/result types |
 | `.../generation/handlers/text-to-video-handlers.ts` | **Create** — 8 T2V handlers |
 | `.../generation/handlers/image-to-video-handlers.ts` | **Create** — 15 I2V handlers |
 | `.../generation/handlers/upscale-handlers.ts` | **Create** — 2 upscale handlers |
@@ -26,11 +27,13 @@ Split the monolithic handler file into 4 category files under a `handlers/` subd
 
 > Base path: `apps/web/src/components/editor/media-panel/views/ai/hooks/generation`
 
-### Single Consumer
+### Primary Consumer
 
 | File | Line |
 |------|------|
 | `.../generation/model-handlers.ts:52` | Imports all 33 handler functions |
+
+Note: `.../generation/index.ts` re-exports router functions and public types from `model-handlers.ts`, so `model-handlers.ts` public exports must remain stable.
 
 ---
 
@@ -55,7 +58,7 @@ Imports needed:
 ```typescript
 import { generateVideoFromText, generateLTXV2Video, generateViduQ3TextVideo, generateWAN26TextVideo, generateVideo } from "@/lib/ai-video";
 import { falAIClient } from "@/lib/fal-ai-client";
-import type { ModelHandlerContext, ModelHandlerResult, TextToVideoSettings } from "../model-handlers";
+import type { ModelHandlerContext, ModelHandlerResult, TextToVideoSettings } from "../model-handler-types";
 ```
 
 ### `handlers/image-to-video-handlers.ts` (~620 lines)
@@ -84,7 +87,7 @@ Imports needed:
 ```typescript
 import { generateVideoFromImage, generateViduQ2Video, generateLTXV2ImageVideo, generateSeedanceVideo, generateKlingImageVideo, generateKling26ImageVideo, generateWAN25ImageVideo, generateWAN26ImageVideo, generateViduQ3ImageVideo, generateVideo } from "@/lib/ai-video";
 import { falAIClient } from "@/lib/fal-ai-client";
-import type { ModelHandlerContext, ModelHandlerResult, ImageToVideoSettings } from "../model-handlers";
+import type { ModelHandlerContext, ModelHandlerResult, ImageToVideoSettings } from "../model-handler-types";
 ```
 
 ### `handlers/upscale-handlers.ts` (~120 lines)
@@ -99,7 +102,7 @@ Coercion types needed: `ByteDanceResolution`, `ByteDanceFPS`, `FlashVSRAccelerat
 Imports needed:
 ```typescript
 import { upscaleByteDanceVideo, upscaleFlashVSRVideo } from "@/lib/ai-video";
-import type { ModelHandlerContext, ModelHandlerResult, UpscaleSettings } from "../model-handlers";
+import type { ModelHandlerContext, ModelHandlerResult, UpscaleSettings } from "../model-handler-types";
 ```
 
 ### `handlers/avatar-handlers.ts` (~415 lines)
@@ -120,7 +123,7 @@ Imports needed:
 import { generateAvatarVideo, generateKlingO1Video, generateWAN26RefVideo, generateVideo } from "@/lib/ai-video";
 import { falAIClient } from "@/lib/fal-ai-client";
 import { debugLogger } from "@/lib/debug-logger";
-import type { ModelHandlerContext, ModelHandlerResult, AvatarSettings } from "../model-handlers";
+import type { ModelHandlerContext, ModelHandlerResult, AvatarSettings } from "../model-handler-types";
 ```
 
 ---
@@ -130,18 +133,42 @@ import type { ModelHandlerContext, ModelHandlerResult, AvatarSettings } from "..
 ### Step 1: Create `handlers/` directory
 
 ```bash
+# macOS/Linux
 mkdir -p apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers
 ```
 
-### Step 2: Create the 4 handler files
+```powershell
+# Windows PowerShell
+New-Item -ItemType Directory -Force -Path "apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers"
+```
+
+### Step 2: Create `model-handler-types.ts`
+
+Move shared types from `model-handlers.ts` into:
+
+```
+apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-types.ts
+```
+
+Types:
+- `ModelHandlerContext`
+- `TextToVideoSettings`
+- `ImageToVideoSettings`
+- `AvatarSettings`
+- `UpscaleSettings`
+- `ModelHandlerResult`
+
+Then re-export these from `model-handlers.ts` to keep public API unchanged.
+
+### Step 3: Create the 4 handler files
 
 For each file:
-1. Add imports (types from `../model-handlers`, generators from `@/lib/ai-video`)
+1. Add imports (types from `../model-handler-types`, generators from `@/lib/ai-video`)
 2. Add coercion types used only by handlers in that file
 3. Copy handler function bodies verbatim
 4. Export all handlers as named exports
 
-### Step 3: Update `model-handlers.ts` imports
+### Step 4: Update `model-handlers.ts` imports
 
 Replace single import from `./model-handler-implementations` with 4 imports:
 
@@ -156,11 +183,30 @@ import { handleByteDanceUpscale, handleFlashVSRUpscale } from "./handlers/upscal
 import { handleKlingO1Ref2Video, handleWAN26Ref2Video, ... } from "./handlers/avatar-handlers";
 ```
 
-### Step 4: Delete `model-handler-implementations.ts`
+Also update header comment in `model-handlers.ts` to reference `handlers/*-handlers.ts` and `model-handler-types.ts`.
 
-### Step 5: Verify all 33 handlers are accounted for
+### Step 5: Keep temporary compatibility file
 
-Run: `grep -c "export function handle" handlers/*.ts` — should total 33.
+Temporarily keep `model-handler-implementations.ts` as a deprecated re-export shim:
+
+```typescript
+export * from "./handlers/text-to-video-handlers";
+export * from "./handlers/image-to-video-handlers";
+export * from "./handlers/upscale-handlers";
+export * from "./handlers/avatar-handlers";
+```
+
+Delete this shim in a follow-up cleanup PR after verifying no hidden imports.
+
+### Step 6: Verify all 33 handlers are accounted for
+
+Run:
+
+```bash
+rg -n "^export async function handle" apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers -g "*.ts"
+```
+
+Expect 33 matches.
 
 ---
 
@@ -192,6 +238,14 @@ Create `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/han
 | `All 33 handlers are functions` | Type safety |
 | `handleWAN26T2V is in text-to-video, not image-to-video` | Correct categorization |
 
+Add router behavior regression tests:
+
+| Test Case | What It Validates |
+|-----------|-------------------|
+| `routeTextToVideoHandler maps wan_26_t2v to WAN handler` | Existing model routing preserved |
+| `routeImageToVideoHandler returns skip for frame model when frames missing` | Existing guard behavior preserved |
+| `routeAvatarHandler unknown model falls back to generic` | Existing fallback preserved |
+
 ---
 
 ## Risks & Mitigations
@@ -199,6 +253,7 @@ Create `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/han
 | Risk | Mitigation |
 |------|------------|
 | Missing handler in router after split | Count exports per file; must total 33 |
-| Coercion type shared between categories | Each file declares its own local coercion types; no sharing needed |
+| Router mapping regression during import rewrite | Add route-level regression tests for representative model IDs + fallback paths |
+| Type-only import cycle grows into runtime cycle later | Extract shared types to `model-handler-types.ts` |
 | Import path `../model-handlers` resolves differently from `handlers/` | Use relative imports consistently |
 | `debugLogger` only used by avatar handlers | Only import in `avatar-handlers.ts` |

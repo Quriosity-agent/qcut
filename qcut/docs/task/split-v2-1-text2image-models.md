@@ -3,7 +3,7 @@
 **Parent Plan:** [split-top5-large-files-plan-v2.md](./split-top5-large-files-plan-v2.md)
 **Phase:** 1 (execute first)
 **Estimated Effort:** 15-20 minutes
-**Risk Level:** Low — pure configuration data, zero logic, zero state
+**Risk Level:** Medium — mostly configuration data, but exported helpers/types and module resolution behavior are runtime-sensitive
 
 ---
 
@@ -189,3 +189,31 @@ Create `apps/web/src/lib/text2image-models/__tests__/text2image-models.test.ts`:
 | Model order changes | `TEXT2IMAGE_MODEL_ORDER` stays in `index.ts` as source of truth |
 | Relative import in `fal-ai-client.ts` breaks | Test relative `"./text2image-models"` path; adjust if needed |
 | New models added to wrong file | Provider grouping is clear; document in each file header |
+
+---
+
+## Review Comments (LTS + No-Breaking-Change Focus)
+
+1. Keep backward compatibility shim instead of deleting immediately  
+Replace Step 7 with: keep `apps/web/src/lib/text2image-models.ts` as a compatibility re-export (`export * from "./text2image-models/index"` and `export type * from "./text2image-models/index"`).  
+Rationale: all current imports continue to work regardless of directory-index resolution differences; this is safer for long-term support.
+
+2. Avoid type-only circular dependency between `index.ts` and provider files  
+Do not import `Text2ImageModel` from `./index` inside provider files.  
+Create `apps/web/src/lib/text2image-models/types.ts` for shared types and import from there.
+
+3. Preserve current behavior: registry has 14 models, selector order has 13  
+Current UI model picker iterates `TEXT2IMAGE_MODEL_ORDER`, not `TEXT2IMAGE_MODELS`, so `seeddream-v4-5-edit` is intentionally not in the picker.  
+Update smoke test wording from “all 14 models appear” to “13 generation models appear in picker; full registry remains 14 including edit-only model.”
+
+4. Add integrity checks that prevent silent drift  
+In tests, add:
+- every `TEXT2IMAGE_MODEL_ORDER` id exists in `TEXT2IMAGE_MODELS`
+- every id in `MODEL_CATEGORIES` exists in `TEXT2IMAGE_MODELS`
+- `seeddream-v4-5-edit` exists in `TEXT2IMAGE_MODELS` and is not in `TEXT2IMAGE_MODEL_ORDER` (intentional behavior)
+
+5. Update command examples to match repository scripts  
+Use root-level commands consistently:
+- `bun run check-types`
+- `bun run lint:clean`
+- `bun run test` (or targeted vitest command for the new test file)
