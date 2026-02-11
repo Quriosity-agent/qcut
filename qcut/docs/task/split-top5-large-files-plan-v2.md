@@ -47,8 +47,8 @@ Each phase is one commit. Do not start the next phase until verification passes.
 ### Implementation
 
 1. Create directory `apps/web/src/lib/text2image-models/`.
-2. Move `Text2ImageModel` interface to `index.ts`.
-3. Each provider file exports an array of model configs.
+2. Move `Text2ImageModel` interface to `types.ts`.
+3. Each provider file exports a `Record<string, Text2ImageModel>` map of model configs.
 4. `index.ts` imports and aggregates all providers into `TEXT2IMAGE_MODELS`.
 5. Move `TEXT2IMAGE_MODEL_ORDER`, `MODEL_CATEGORIES`, helper functions to `index.ts`.
 6. Delete original `text2image-models.ts`.

@@ -35,9 +35,9 @@ export const TEXT2IMAGE_MODEL_ORDER = [
 export type Text2ImageModelId = (typeof TEXT2IMAGE_MODEL_ORDER)[number];
 
 export function getText2ImageModelEntriesInPriorityOrder() {
-  return TEXT2IMAGE_MODEL_ORDER.map(
-    (modelId) => [modelId, TEXT2IMAGE_MODELS[modelId]] as const
-  );
+  return TEXT2IMAGE_MODEL_ORDER.filter(
+    (modelId) => TEXT2IMAGE_MODELS[modelId] !== undefined
+  ).map((modelId) => [modelId, TEXT2IMAGE_MODELS[modelId]] as const);
 }
 
 // Helper functions
@@ -65,6 +65,9 @@ export function getModelsBySpeed(minRating: number): Text2ImageModel[] {
 
 export function getCostRange(): { min: number; max: number } {
   const costs = Object.values(TEXT2IMAGE_MODELS).map((m) => m.costPerImage);
+  if (costs.length === 0) {
+    return { min: 0, max: 0 };
+  }
   return {
     min: Math.min(...costs),
     max: Math.max(...costs),

@@ -72,7 +72,9 @@ describe("fal-ai-client split compatibility", () => {
 
   it("reveTextToImage validates and sanitizes prompt inputs", async () => {
     const makeRequestMock = vi.fn().mockResolvedValue({
-      images: [{ url: "https://example.com/reve.png", width: 1024, height: 1024 }],
+      images: [
+        { url: "https://example.com/reve.png", width: 1024, height: 1024 },
+      ],
     });
     const delegate: FalAIClientRequestDelegate = {
       makeRequest: makeRequestMock,
@@ -89,7 +91,9 @@ describe("fal-ai-client split compatibility", () => {
       Record<string, unknown>,
     ];
 
-    expect((requestParams.prompt as string).length).toBe(MAX_REVE_PROMPT_LENGTH);
+    expect((requestParams.prompt as string).length).toBe(
+      MAX_REVE_PROMPT_LENGTH
+    );
     expect(requestParams.num_images).toBe(MAX_REVE_IMAGES);
   });
 

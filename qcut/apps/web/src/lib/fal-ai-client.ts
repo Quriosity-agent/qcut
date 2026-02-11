@@ -447,7 +447,10 @@ class FalAIClient {
   async generateVeo31TextToVideo(
     params: Veo31TextToVideoInput
   ): Promise<VideoGenerationResponse> {
-    return veo31TextToVideo({ makeRequest: this.makeRequest.bind(this) }, params);
+    return veo31TextToVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
   async generateVeo31ImageToVideo(
@@ -484,13 +487,19 @@ class FalAIClient {
   async generateVeo31ExtendVideo(
     params: Veo31ExtendVideoInput
   ): Promise<VideoGenerationResponse> {
-    return veo31ExtendVideo({ makeRequest: this.makeRequest.bind(this) }, params);
+    return veo31ExtendVideo(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
   async generateReveTextToImage(
     params: ReveTextToImageInput
   ): Promise<ReveTextToImageOutput> {
-    return reveTextToImage({ makeRequest: this.makeRequest.bind(this) }, params);
+    return reveTextToImage(
+      { makeRequest: this.makeRequest.bind(this) },
+      params
+    );
   }
 
   async generateReveEdit(params: ReveEditInput): Promise<ReveEditOutput> {

@@ -104,10 +104,14 @@ export function convertSettingsToParams(
         if (validV4Sizes.includes(settings.imageSize)) {
           params.image_size = settings.imageSize;
         } else {
-          debugLogger.warn(FAL_LOG_COMPONENT, "SEEDDREAM_V4_INVALID_IMAGE_SIZE", {
-            requestedSize: settings.imageSize,
-            fallback: "square_hd",
-          });
+          debugLogger.warn(
+            FAL_LOG_COMPONENT,
+            "SEEDDREAM_V4_INVALID_IMAGE_SIZE",
+            {
+              requestedSize: settings.imageSize,
+              fallback: "square_hd",
+            }
+          );
           params.image_size = "square_hd";
         }
       } else if (typeof settings.imageSize === "number") {
@@ -308,7 +312,12 @@ export async function generateWithMultipleModels(
   });
 
   const generationPromises = modelKeys.map(async (modelKey) => {
-    const result = await generateWithModel(delegate, modelKey, prompt, settings);
+    const result = await generateWithModel(
+      delegate,
+      modelKey,
+      prompt,
+      settings
+    );
     return [modelKey, result] as [string, GenerationResult];
   });
 
@@ -349,7 +358,9 @@ export async function generateWithMultipleModels(
       errorResults[modelKey] = {
         success: false,
         error:
-          error instanceof Error ? error.message : "Multi-model generation failed",
+          error instanceof Error
+            ? error.message
+            : "Multi-model generation failed",
       };
     });
 

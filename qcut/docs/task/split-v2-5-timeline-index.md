@@ -58,6 +58,7 @@ Timeline currently passes these as props (line 654):
 ```
 
 **Contents to move:**
+
 | Section | Lines | Description |
 |---------|-------|-------------|
 | Component declaration | 1106-1112 | Props destructuring |
@@ -91,6 +92,7 @@ import { toast } from "sonner";
 Extract drag handler functions (lines 365-546) into a custom hook.
 
 **Functions to extract:**
+
 | Function | Lines | Description |
 |----------|-------|-------------|
 | `handleDragEnter` | 365-376 | Increment counter, set `isDragOver` |

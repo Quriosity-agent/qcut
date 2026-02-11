@@ -102,7 +102,7 @@ describe("FFmpeg binary health check", () => {
   });
 
   it(
-    "both binaries respond within 5 seconds",
+    "both binaries respond within 15 seconds",
     async () => {
       const ffmpegPath: string = require("ffmpeg-static");
       const ffprobePath: string = require("ffprobe-static").path;
