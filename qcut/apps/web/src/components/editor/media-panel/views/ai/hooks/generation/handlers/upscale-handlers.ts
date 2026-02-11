@@ -30,9 +30,25 @@ export async function handleByteDanceUpscale(
     };
   }
 
-  const videoUrl = settings.sourceVideoFile
-    ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
-    : settings.sourceVideoUrl;
+  let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
+
+  if (settings.sourceVideoFile) {
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Uploading video for ${ctx.modelName}...`,
+    });
+
+    try {
+      videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
+    } catch (error) {
+      return {
+        response: undefined,
+        shouldSkip: true,
+        skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
 
   if (!videoUrl) {
     return {
@@ -44,30 +60,32 @@ export async function handleByteDanceUpscale(
 
   ctx.progressCallback({
     status: "processing",
-    progress: 10,
-    message: `Uploading video for ${ctx.modelName}...`,
-  });
-
-  ctx.progressCallback({
-    status: "processing",
     progress: 30,
     message: `Upscaling video to ${settings.bytedanceTargetResolution}...`,
   });
 
-  const response = await upscaleByteDanceVideo({
-    video_url: videoUrl,
-    target_resolution:
-      settings.bytedanceTargetResolution as ByteDanceResolution,
-    target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
-  });
+  try {
+    const response = await upscaleByteDanceVideo({
+      video_url: videoUrl,
+      target_resolution:
+        settings.bytedanceTargetResolution as ByteDanceResolution,
+      target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video upscaled with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video upscaled with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `ByteDance upscale failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 /**
@@ -85,9 +103,25 @@ export async function handleFlashVSRUpscale(
     };
   }
 
-  const videoUrl = settings.sourceVideoFile
-    ? await falAIClient.uploadVideoToFal(settings.sourceVideoFile)
-    : settings.sourceVideoUrl;
+  let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
+
+  if (settings.sourceVideoFile) {
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Uploading video for ${ctx.modelName}...`,
+    });
+
+    try {
+      videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
+    } catch (error) {
+      return {
+        response: undefined,
+        shouldSkip: true,
+        skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
 
   if (!videoUrl) {
     return {
@@ -101,35 +135,36 @@ export async function handleFlashVSRUpscale(
 
   ctx.progressCallback({
     status: "processing",
-    progress: 10,
-    message: `Uploading video for ${ctx.modelName}...`,
-  });
-
-  ctx.progressCallback({
-    status: "processing",
     progress: 30,
     message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
   });
 
-  const response = await upscaleFlashVSRVideo({
-    video_url: videoUrl,
-    upscale_factor: upscaleFactor,
-    acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
-    quality: settings.flashvsrQuality,
-    color_fix: settings.flashvsrColorFix,
-    preserve_audio: settings.flashvsrPreserveAudio,
-    output_format: settings.flashvsrOutputFormat as FlashVSROutputFormat,
-    output_quality: settings.flashvsrOutputQuality as FlashVSROutputQuality,
-    output_write_mode: settings.flashvsrOutputWriteMode as FlashVSRWriteMode,
-    seed: settings.flashvsrSeed ?? undefined,
-  });
+  try {
+    const response = await upscaleFlashVSRVideo({
+      video_url: videoUrl,
+      upscale_factor: upscaleFactor,
+      acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
+      quality: settings.flashvsrQuality,
+      color_fix: settings.flashvsrColorFix,
+      preserve_audio: settings.flashvsrPreserveAudio,
+      output_format: settings.flashvsrOutputFormat as FlashVSROutputFormat,
+      output_quality: settings.flashvsrOutputQuality as FlashVSROutputQuality,
+      output_write_mode: settings.flashvsrOutputWriteMode as FlashVSRWriteMode,
+      seed: settings.flashvsrSeed ?? undefined,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video upscaled with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video upscaled with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `FlashVSR upscale failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
-

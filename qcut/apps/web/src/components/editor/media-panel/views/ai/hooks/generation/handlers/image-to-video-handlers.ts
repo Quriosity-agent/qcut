@@ -60,22 +60,30 @@ export async function handleVeo31FastI2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-  const imageAspectRatio =
-    settings.veo31Settings.aspectRatio === "16:9" ||
-    settings.veo31Settings.aspectRatio === "9:16"
-      ? settings.veo31Settings.aspectRatio
-      : "16:9";
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+    const imageAspectRatio =
+      settings.veo31Settings.aspectRatio === "16:9" ||
+      settings.veo31Settings.aspectRatio === "9:16"
+        ? settings.veo31Settings.aspectRatio
+        : "16:9";
 
-  const response = await falAIClient.generateVeo31FastImageToVideo({
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    aspect_ratio: imageAspectRatio,
-    duration: "8s",
-    resolution: settings.veo31Settings.resolution,
-    generate_audio: settings.veo31Settings.generateAudio,
-  });
-  return { response };
+    const response = await falAIClient.generateVeo31FastImageToVideo({
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      aspect_ratio: imageAspectRatio,
+      duration: "8s",
+      resolution: settings.veo31Settings.resolution,
+      generate_audio: settings.veo31Settings.generateAudio,
+    });
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -93,22 +101,30 @@ export async function handleVeo31I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-  const imageAspectRatio =
-    settings.veo31Settings.aspectRatio === "16:9" ||
-    settings.veo31Settings.aspectRatio === "9:16"
-      ? settings.veo31Settings.aspectRatio
-      : "16:9";
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+    const imageAspectRatio =
+      settings.veo31Settings.aspectRatio === "16:9" ||
+      settings.veo31Settings.aspectRatio === "9:16"
+        ? settings.veo31Settings.aspectRatio
+        : "16:9";
 
-  const response = await falAIClient.generateVeo31ImageToVideo({
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    aspect_ratio: imageAspectRatio,
-    duration: "8s",
-    resolution: settings.veo31Settings.resolution,
-    generate_audio: settings.veo31Settings.generateAudio,
-  });
-  return { response };
+    const response = await falAIClient.generateVeo31ImageToVideo({
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      aspect_ratio: imageAspectRatio,
+      duration: "8s",
+      resolution: settings.veo31Settings.resolution,
+      generate_audio: settings.veo31Settings.generateAudio,
+    });
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -126,24 +142,32 @@ export async function handleVeo31FastF2V(
     };
   }
 
-  const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
-  const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
-  const frameAspectRatio =
-    settings.veo31Settings.aspectRatio === "16:9" ||
-    settings.veo31Settings.aspectRatio === "9:16"
-      ? settings.veo31Settings.aspectRatio
-      : "16:9";
+  try {
+    const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
+    const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
+    const frameAspectRatio =
+      settings.veo31Settings.aspectRatio === "16:9" ||
+      settings.veo31Settings.aspectRatio === "9:16"
+        ? settings.veo31Settings.aspectRatio
+        : "16:9";
 
-  const response = await falAIClient.generateVeo31FastFrameToVideo({
-    prompt: ctx.prompt,
-    first_frame_url: firstFrameUrl,
-    last_frame_url: lastFrameUrl,
-    aspect_ratio: frameAspectRatio,
-    duration: "8s",
-    resolution: settings.veo31Settings.resolution,
-    generate_audio: settings.veo31Settings.generateAudio,
-  });
-  return { response };
+    const response = await falAIClient.generateVeo31FastFrameToVideo({
+      prompt: ctx.prompt,
+      first_frame_url: firstFrameUrl,
+      last_frame_url: lastFrameUrl,
+      aspect_ratio: frameAspectRatio,
+      duration: "8s",
+      resolution: settings.veo31Settings.resolution,
+      generate_audio: settings.veo31Settings.generateAudio,
+    });
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -161,24 +185,32 @@ export async function handleVeo31F2V(
     };
   }
 
-  const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
-  const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
-  const frameAspectRatio =
-    settings.veo31Settings.aspectRatio === "16:9" ||
-    settings.veo31Settings.aspectRatio === "9:16"
-      ? settings.veo31Settings.aspectRatio
-      : "16:9";
+  try {
+    const firstFrameUrl = await settings.uploadImageToFal(settings.firstFrame);
+    const lastFrameUrl = await settings.uploadImageToFal(settings.lastFrame);
+    const frameAspectRatio =
+      settings.veo31Settings.aspectRatio === "16:9" ||
+      settings.veo31Settings.aspectRatio === "9:16"
+        ? settings.veo31Settings.aspectRatio
+        : "16:9";
 
-  const response = await falAIClient.generateVeo31FrameToVideo({
-    prompt: ctx.prompt,
-    first_frame_url: firstFrameUrl,
-    last_frame_url: lastFrameUrl,
-    aspect_ratio: frameAspectRatio,
-    duration: "8s",
-    resolution: settings.veo31Settings.resolution,
-    generate_audio: settings.veo31Settings.generateAudio,
-  });
-  return { response };
+    const response = await falAIClient.generateVeo31FrameToVideo({
+      prompt: ctx.prompt,
+      first_frame_url: firstFrameUrl,
+      last_frame_url: lastFrameUrl,
+      aspect_ratio: frameAspectRatio,
+      duration: "8s",
+      resolution: settings.veo31Settings.resolution,
+      generate_audio: settings.veo31Settings.generateAudio,
+    });
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -196,32 +228,40 @@ export async function handleViduQ2I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateViduQ2Video({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.viduQ2Duration as ViduQ2Duration,
-    resolution: settings.viduQ2Resolution as ViduQ2Resolution,
-    movement_amplitude:
-      settings.viduQ2MovementAmplitude as ViduQ2MovementAmplitude,
-    bgm: settings.viduQ2EnableBGM,
-  });
+    const response = await generateViduQ2Video({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.viduQ2Duration as ViduQ2Duration,
+      resolution: settings.viduQ2Resolution as ViduQ2Resolution,
+      movement_amplitude:
+        settings.viduQ2MovementAmplitude as ViduQ2MovementAmplitude,
+      bgm: settings.viduQ2EnableBGM,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -239,31 +279,39 @@ export async function handleLTXV2I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateLTXV2ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.ltxv2I2VDuration as LTXV2Duration,
-    resolution: settings.ltxv2I2VResolution as LTXV2Resolution,
-    fps: settings.ltxv2I2VFPS as LTXV2FPS,
-    generate_audio: settings.ltxv2I2VGenerateAudio,
-  });
+    const response = await generateLTXV2ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.ltxv2I2VDuration as LTXV2Duration,
+      resolution: settings.ltxv2I2VResolution as LTXV2Resolution,
+      fps: settings.ltxv2I2VFPS as LTXV2FPS,
+      generate_audio: settings.ltxv2I2VGenerateAudio,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video with audio generated using ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video with audio generated using ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -281,31 +329,39 @@ export async function handleLTXV2FastI2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateLTXV2ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.ltxv2ImageDuration as LTXV2Duration,
-    resolution: settings.ltxv2ImageResolution as LTXV2Resolution,
-    fps: settings.ltxv2ImageFPS as LTXV2FPS,
-    generate_audio: settings.ltxv2ImageGenerateAudio,
-  });
+    const response = await generateLTXV2ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.ltxv2ImageDuration as LTXV2Duration,
+      resolution: settings.ltxv2ImageResolution as LTXV2Resolution,
+      fps: settings.ltxv2ImageFPS as LTXV2FPS,
+      generate_audio: settings.ltxv2ImageGenerateAudio,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video with audio generated using ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video with audio generated using ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -323,32 +379,40 @@ export async function handleSeedanceProFastI2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateSeedanceVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.seedanceDuration as SeedanceDuration,
-    resolution: settings.seedanceResolution as SeedanceResolution,
-    aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
-    camera_fixed: settings.seedanceCameraFixed,
-    seed: settings.imageSeed ?? undefined,
-  });
+    const response = await generateSeedanceVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.seedanceDuration as SeedanceDuration,
+      resolution: settings.seedanceResolution as SeedanceResolution,
+      aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
+      camera_fixed: settings.seedanceCameraFixed,
+      seed: settings.imageSeed ?? undefined,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -366,36 +430,44 @@ export async function handleSeedanceProI2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-  const endFrameUrl = settings.seedanceEndFrameFile
-    ? await settings.uploadImageToFal(settings.seedanceEndFrameFile)
-    : settings.seedanceEndFrameUrl;
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+    const endFrameUrl = settings.seedanceEndFrameFile
+      ? await settings.uploadImageToFal(settings.seedanceEndFrameFile)
+      : settings.seedanceEndFrameUrl;
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateSeedanceVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.seedanceDuration as SeedanceDuration,
-    resolution: settings.seedanceResolution as SeedanceResolution,
-    aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
-    camera_fixed: settings.seedanceCameraFixed,
-    end_image_url: endFrameUrl ?? undefined,
-    seed: settings.imageSeed ?? undefined,
-  });
+    const response = await generateSeedanceVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.seedanceDuration as SeedanceDuration,
+      resolution: settings.seedanceResolution as SeedanceResolution,
+      aspect_ratio: settings.seedanceAspectRatio as SeedanceAspectRatio,
+      camera_fixed: settings.seedanceCameraFixed,
+      end_image_url: endFrameUrl ?? undefined,
+      seed: settings.imageSeed ?? undefined,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -413,32 +485,40 @@ export async function handleKlingV25I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateKlingImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.klingDuration as KlingDuration,
-    cfg_scale: settings.klingCfgScale,
-    aspect_ratio: settings.klingAspectRatio as KlingAspectRatio,
-    enhance_prompt: settings.klingEnhancePrompt,
-    negative_prompt: settings.klingNegativePrompt,
-  });
+    const response = await generateKlingImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.klingDuration as KlingDuration,
+      cfg_scale: settings.klingCfgScale,
+      aspect_ratio: settings.klingAspectRatio as KlingAspectRatio,
+      enhance_prompt: settings.klingEnhancePrompt,
+      negative_prompt: settings.klingNegativePrompt,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -456,30 +536,38 @@ export async function handleKlingV26I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateKling26ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.kling26Duration as KlingDuration,
-    generate_audio: settings.kling26GenerateAudio,
-    negative_prompt: settings.kling26NegativePrompt,
-  });
+    const response = await generateKling26ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.kling26Duration as KlingDuration,
+      generate_audio: settings.kling26GenerateAudio,
+      negative_prompt: settings.kling26NegativePrompt,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -497,36 +585,44 @@ export async function handleWAN25I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-  const audioUrl = settings.wan25AudioFile
-    ? await settings.uploadAudioToFal(settings.wan25AudioFile)
-    : settings.wan25AudioUrl;
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+    const audioUrl = settings.wan25AudioFile
+      ? await settings.uploadAudioToFal(settings.wan25AudioFile)
+      : settings.wan25AudioUrl;
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateWAN25ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.wan25Duration as WAN25Duration,
-    resolution: settings.wan25Resolution as WAN25Resolution,
-    audio_url: audioUrl ?? undefined,
-    negative_prompt: settings.wan25NegativePrompt,
-    enable_prompt_expansion: settings.wan25EnablePromptExpansion,
-    seed: settings.imageSeed ?? undefined,
-  });
+    const response = await generateWAN25ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.wan25Duration as WAN25Duration,
+      resolution: settings.wan25Resolution as WAN25Resolution,
+      audio_url: audioUrl ?? undefined,
+      negative_prompt: settings.wan25NegativePrompt,
+      enable_prompt_expansion: settings.wan25EnablePromptExpansion,
+      seed: settings.imageSeed ?? undefined,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -544,37 +640,45 @@ export async function handleWAN26I2V(
     };
   }
 
-  const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
-  const audioUrl = settings.wan26AudioFile
-    ? await settings.uploadAudioToFal(settings.wan26AudioFile)
-    : settings.wan26AudioUrl;
+  try {
+    const imageUrl = await settings.uploadImageToFal(settings.selectedImage);
+    const audioUrl = settings.wan26AudioFile
+      ? await settings.uploadAudioToFal(settings.wan26AudioFile)
+      : settings.wan26AudioUrl;
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 10,
-    message: `Submitting ${ctx.modelName} request...`,
-  });
+    ctx.progressCallback({
+      status: "processing",
+      progress: 10,
+      message: `Submitting ${ctx.modelName} request...`,
+    });
 
-  const response = await generateWAN26ImageVideo({
-    model: ctx.modelId,
-    prompt: ctx.prompt,
-    image_url: imageUrl,
-    duration: settings.wan26Duration as WAN26Duration,
-    resolution: settings.wan26Resolution as WAN26Resolution,
-    aspect_ratio: settings.wan26AspectRatio as WAN26AspectRatio,
-    audio_url: audioUrl ?? undefined,
-    negative_prompt: settings.wan26NegativePrompt,
-    enable_prompt_expansion: settings.wan26EnablePromptExpansion,
-    seed: settings.imageSeed ?? undefined,
-  });
+    const response = await generateWAN26ImageVideo({
+      model: ctx.modelId,
+      prompt: ctx.prompt,
+      image_url: imageUrl,
+      duration: settings.wan26Duration as WAN26Duration,
+      resolution: settings.wan26Resolution as WAN26Resolution,
+      aspect_ratio: settings.wan26AspectRatio as WAN26AspectRatio,
+      audio_url: audioUrl ?? undefined,
+      negative_prompt: settings.wan26NegativePrompt,
+      enable_prompt_expansion: settings.wan26EnablePromptExpansion,
+      seed: settings.imageSeed ?? undefined,
+    });
 
-  ctx.progressCallback({
-    status: "completed",
-    progress: 100,
-    message: `Video generated with ${ctx.modelName}`,
-  });
+    ctx.progressCallback({
+      status: "completed",
+      progress: 100,
+      message: `Video generated with ${ctx.modelName}`,
+    });
 
-  return { response };
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
 
 /**
@@ -653,16 +757,23 @@ export async function handleGenericI2V(
     };
   }
 
-  const response = await generateVideoFromImage({
-    image: settings.selectedImage,
-    prompt: ctx.prompt,
-    model: ctx.modelId,
-    ...(ctx.modelId.startsWith("sora2_") && {
-      duration: settings.duration,
-      aspect_ratio: settings.aspectRatio,
-      resolution: settings.resolution,
-    }),
-  });
-  return { response };
+  try {
+    const response = await generateVideoFromImage({
+      image: settings.selectedImage,
+      prompt: ctx.prompt,
+      model: ctx.modelId,
+      ...(ctx.modelId.startsWith("sora2_") && {
+        duration: settings.duration,
+        aspect_ratio: settings.aspectRatio,
+        resolution: settings.resolution,
+      }),
+    });
+    return { response };
+  } catch (error) {
+    return {
+      response: undefined,
+      shouldSkip: true,
+      skipReason: `${ctx.modelName} generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+  }
 }
-
