@@ -10,6 +10,7 @@ import {
 } from "@/lib/image-edit-client";
 import { cn } from "@/lib/utils";
 import { Check, Images } from "lucide-react";
+import { getProviderLogo } from "../media-panel/views/ai/constants/model-provider-logos";
 
 export function ModelSelector() {
   const { selectedModel, setSelectedModel } = useAdjustmentStore();
@@ -45,6 +46,16 @@ export function ModelSelector() {
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   {isSelected && <Check className="w-3 h-3 flex-shrink-0" />}
+                  {(() => {
+                    const logo = getProviderLogo(model.id);
+                    return logo ? (
+                      <img
+                        src={logo}
+                        alt=""
+                        className="w-4 h-4 shrink-0 rounded-sm"
+                      />
+                    ) : null;
+                  })()}
                   <span className="text-xs font-medium truncate">
                     {model.name}
                   </span>

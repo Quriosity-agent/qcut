@@ -60,6 +60,7 @@ import {
   LTXV2_FAST_CONFIG,
   REVE_TEXT_TO_IMAGE_MODEL,
 } from "./constants/ai-constants";
+import { getProviderLogo } from "./constants/model-provider-logos";
 import {
   getCombinedCapabilities,
   resolveT2VModelId,
@@ -1002,9 +1003,19 @@ export function AiView() {
                   onClick={() => toggleModel(model.id)}
                   className={`h-auto min-h-[44px] py-2 px-2 text-xs justify-start items-start ${isCompact ? "flex-col" : "flex-row"}`}
                 >
-                  <span className="text-left leading-tight flex-1">
-                    {model.name}
-                  </span>
+                  <div className="flex items-center gap-1.5 text-left leading-tight flex-1 min-w-0">
+                    {(() => {
+                      const logo = getProviderLogo(model.id);
+                      return logo ? (
+                        <img
+                          src={logo}
+                          alt=""
+                          className="w-5 h-5 shrink-0 rounded-sm"
+                        />
+                      ) : null;
+                    })()}
+                    <span className="truncate">{model.name}</span>
+                  </div>
                   {!isCompact && (
                     <span className="ml-2 text-muted-foreground whitespace-nowrap shrink-0">
                       ${model.price}
