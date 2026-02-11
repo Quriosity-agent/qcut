@@ -8,7 +8,7 @@
  * @module lib/fal-ai-client
  */
 
-import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "./text2image-models";
+import { TEXT2IMAGE_MODELS } from "./text2image-models";
 import { debugLogger } from "./debug-logger";
 import {
   handleAIServiceError,
@@ -21,7 +21,6 @@ import type {
   Veo31ImageToVideoInput,
   Veo31FrameToVideoInput,
   Veo31ExtendVideoInput,
-  Veo31Response,
   ReveTextToImageInput,
   ReveTextToImageOutput,
   ReveEditInput,
@@ -33,28 +32,33 @@ import {
   type FalUploadFileType,
 } from "./ai-video/core/fal-upload";
 import {
-  normalizeAspectRatio,
-  imageSizeToAspectRatio,
-  normalizeOutputFormat,
-  clampReveNumImages,
-  truncateRevePrompt,
-  validateRevePrompt,
-  validateReveNumImages,
-  VALID_OUTPUT_FORMATS,
-  DEFAULT_ASPECT_RATIO,
-  IMAGE_SIZE_TO_ASPECT_RATIO,
-  MIN_REVE_IMAGES,
-  MAX_REVE_IMAGES,
-  MAX_REVE_PROMPT_LENGTH,
-  type OutputFormat,
-} from "./ai-video/validation/validators";
-import {
   convertV3Parameters,
   convertV4Parameters,
   convertNanoBananaParameters,
   convertFluxParameters,
   detectModelVersion,
 } from "./fal-ai/model-handlers";
+import {
+  convertSettingsToParams as convertSettingsToParamsCore,
+  generateWithModel as generateWithModelCore,
+  generateWithMultipleModels as generateWithMultipleModelsCore,
+} from "./fal-ai-client-generation";
+import {
+  veo31FastTextToVideo,
+  veo31FastImageToVideo,
+  veo31FastFrameToVideo,
+  veo31TextToVideo,
+  veo31ImageToVideo,
+  veo31FrameToVideo,
+  veo31FastExtendVideo,
+  veo31ExtendVideo,
+} from "./fal-ai-client-veo31";
+import { reveTextToImage, reveEdit } from "./fal-ai-client-reve";
+import type {
+  GenerationSettings,
+  GenerationResult,
+  MultiModelGenerationResult,
+} from "./fal-ai-client-internal-types";
 
 // Types for API responses
 interface FalImageResponse {
@@ -77,27 +81,13 @@ interface FalImageResponse {
   has_nsfw_concepts?: boolean[];
 }
 
-interface GenerationResult {
-  success: boolean;
-  imageUrl?: string;
-  error?: string;
-  metadata?: {
-    seed?: number;
-    timings?: Record<string, number>;
-    dimensions?: { width: number; height: number };
-  };
-}
-
-export interface GenerationSettings {
-  imageSize: string | number;
-  seed?: number;
-  outputFormat?: OutputFormat;
-}
-
 const FAL_LOG_COMPONENT = "FalAIClient";
 
-// Multi-model generation result
-export type MultiModelGenerationResult = Record<string, GenerationResult>;
+export type {
+  GenerationSettings,
+  GenerationResult,
+  MultiModelGenerationResult,
+} from "./fal-ai-client-internal-types";
 
 /**
  * Client for FAL.ai image and video generation APIs.
