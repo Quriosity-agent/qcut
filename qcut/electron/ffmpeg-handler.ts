@@ -561,10 +561,44 @@ export function setupFFmpegIPC(): void {
                   mixArgs.push("-i", af.path);
                 }
 
+                // Check if the concat output has an audio stream
+                const hasBaseAudio = await new Promise<boolean>((resolve) => {
+                  const probePath = getFFprobePath();
+                  const probe = spawn(
+                    probePath,
+                    [
+                      "-v",
+                      "quiet",
+                      "-select_streams",
+                      "a",
+                      "-show_entries",
+                      "stream=codec_type",
+                      "-of",
+                      "csv=p=0",
+                      concatOutputTemp,
+                    ],
+                    { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+                  );
+                  let stdout = "";
+                  probe.stdout?.on("data", (d: Buffer) => {
+                    stdout += d.toString();
+                  });
+                  probe.on("close", () => resolve(stdout.trim().length > 0));
+                  probe.on("error", () => resolve(false));
+                });
+
                 // Build filter_complex for audio mixing
                 // Each overlay audio gets adelay (in ms) and volume adjustment
                 const filterParts: string[] = [];
-                const mixInputLabels: string[] = ["[0:a]"]; // base video audio
+                const mixInputLabels: string[] = [];
+
+                if (hasBaseAudio) {
+                  mixInputLabels.push("[0:a]"); // base video audio
+                } else {
+                  console.log(
+                    "🔇 [MODE 1.5 EXPORT] No base audio stream — mixing overlays only"
+                  );
+                }
 
                 for (let i = 0; i < audioFiles.length; i++) {
                   const af = audioFiles[i];
@@ -577,9 +611,11 @@ export function setupFFmpegIPC(): void {
                   mixInputLabels.push(label);
                 }
 
+                // Use "first" duration when base audio sets the length, "longest" otherwise
+                const amixDuration = hasBaseAudio ? "first" : "longest";
                 const mixInputCount = mixInputLabels.length;
                 filterParts.push(
-                  `${mixInputLabels.join("")}amix=inputs=${mixInputCount}:duration=first:dropout_transition=0[aout]`
+                  `${mixInputLabels.join("")}amix=inputs=${mixInputCount}:duration=${amixDuration}:dropout_transition=0[aout]`
                 );
 
                 mixArgs.push(

@@ -56,7 +56,8 @@ export function AiWan25Settings({
   const wan25ModelConfig = AI_MODELS.find(
     (model) => model.id === "wan_25_preview_i2v"
   );
-  const durationOptions = wan25ModelConfig?.supportedDurations ?? WAN25_DURATIONS;
+  const durationOptions =
+    wan25ModelConfig?.supportedDurations ?? WAN25_DURATIONS;
   const resolutionOptions =
     wan25ModelConfig?.supportedResolutions ?? WAN25_RESOLUTIONS;
   const pricePerSecond = wan25ModelConfig?.perSecondPricing?.[resolution] ?? 0;
@@ -92,14 +93,19 @@ export function AiWan25Settings({
           </Label>
           <Select
             value={duration.toString()}
-            onValueChange={(value) => onDurationChange(Number(value) as Wan25Duration)}
+            onValueChange={(value) =>
+              onDurationChange(Number(value) as Wan25Duration)
+            }
           >
             <SelectTrigger id="wan25-duration" className="h-8 text-xs">
               <SelectValue placeholder="Select duration" />
             </SelectTrigger>
             <SelectContent>
               {durationOptions.map((durationOption) => (
-                <SelectItem key={durationOption} value={durationOption.toString()}>
+                <SelectItem
+                  key={durationOption}
+                  value={durationOption.toString()}
+                >
                   {durationOption} seconds
                 </SelectItem>
               ))}
@@ -112,7 +118,9 @@ export function AiWan25Settings({
           </Label>
           <Select
             value={resolution}
-            onValueChange={(value) => onResolutionChange(value as Wan25Resolution)}
+            onValueChange={(value) =>
+              onResolutionChange(value as Wan25Resolution)
+            }
           >
             <SelectTrigger id="wan25-resolution" className="h-8 text-xs">
               <SelectValue placeholder="Select resolution" />
@@ -120,8 +128,8 @@ export function AiWan25Settings({
             <SelectContent>
               {resolutionOptions.map((resolutionOption) => (
                 <SelectItem key={resolutionOption} value={resolutionOption}>
-                  {resolutionOption.toUpperCase()} (
-                  ${wan25ModelConfig?.perSecondPricing?.[resolutionOption] ?? 0}
+                  {resolutionOption.toUpperCase()} ( $
+                  {wan25ModelConfig?.perSecondPricing?.[resolutionOption] ?? 0}
                   /sec)
                 </SelectItem>
               ))}
@@ -150,7 +158,9 @@ export function AiWan25Settings({
         <Textarea
           id="wan25-negative"
           value={negativePrompt}
-          onChange={(event) => onNegativePromptChange(event.target.value.slice(0, 500))}
+          onChange={(event) =>
+            onNegativePromptChange(event.target.value.slice(0, 500))
+          }
           placeholder="Avoid blurry, shaky motion..."
           className="min-h-[60px] text-xs"
           maxLength={500}
@@ -161,11 +171,15 @@ export function AiWan25Settings({
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs font-medium">Background Music (optional)</Label>
+        <Label className="text-xs font-medium">
+          Background Music (optional)
+        </Label>
         <Input
           type="url"
           value={audioUrl ?? ""}
-          onChange={(event) => onAudioUrlChange(event.target.value || undefined)}
+          onChange={(event) =>
+            onAudioUrlChange(event.target.value || undefined)
+          }
           placeholder="https://example.com/music.mp3"
           className="h-8 text-xs"
         />
@@ -192,7 +206,8 @@ export function AiWan25Settings({
       </div>
 
       <div className="text-xs text-muted-foreground">
-        Estimated cost: ${estimatedCost.toFixed(2)} (${pricePerSecond.toFixed(2)}
+        Estimated cost: ${estimatedCost.toFixed(2)} ($
+        {pricePerSecond.toFixed(2)}
         /sec)
       </div>
     </div>
