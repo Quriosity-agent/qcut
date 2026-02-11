@@ -72,7 +72,7 @@ export async function handleVeo31FastI2V(
       prompt: ctx.prompt,
       image_url: imageUrl,
       aspect_ratio: imageAspectRatio,
-      duration: "8s",
+      duration: settings.veo31Settings.duration,
       resolution: settings.veo31Settings.resolution,
       generate_audio: settings.veo31Settings.generateAudio,
     });
@@ -113,7 +113,7 @@ export async function handleVeo31I2V(
       prompt: ctx.prompt,
       image_url: imageUrl,
       aspect_ratio: imageAspectRatio,
-      duration: "8s",
+      duration: settings.veo31Settings.duration,
       resolution: settings.veo31Settings.resolution,
       generate_audio: settings.veo31Settings.generateAudio,
     });
@@ -156,7 +156,7 @@ export async function handleVeo31FastF2V(
       first_frame_url: firstFrameUrl,
       last_frame_url: lastFrameUrl,
       aspect_ratio: frameAspectRatio,
-      duration: "8s",
+      duration: settings.veo31Settings.duration,
       resolution: settings.veo31Settings.resolution,
       generate_audio: settings.veo31Settings.generateAudio,
     });
@@ -199,7 +199,7 @@ export async function handleVeo31F2V(
       first_frame_url: firstFrameUrl,
       last_frame_url: lastFrameUrl,
       aspect_ratio: frameAspectRatio,
-      duration: "8s",
+      duration: settings.veo31Settings.duration,
       resolution: settings.veo31Settings.resolution,
       generate_audio: settings.veo31Settings.generateAudio,
     });
