@@ -39,10 +39,8 @@ export function AiKlingV26Settings({
   onGenerateAudioChange,
   negativePrompt,
   onNegativePromptChange,
-  isCompact,
+  isCompact: _isCompact,
 }: AiKlingV26SettingsProps) {
-  void isCompact;
-
   const estimatedCost = calculateKling26Cost(duration, generateAudio);
 
   return (
@@ -111,7 +109,8 @@ export function AiKlingV26Settings({
           className="w-full cursor-pointer"
         />
         <div className="text-xs text-muted-foreground">
-          Lower values add more freedom, higher values follow the prompt closely.
+          Lower values add more freedom, higher values follow the prompt
+          closely.
         </div>
       </div>
 

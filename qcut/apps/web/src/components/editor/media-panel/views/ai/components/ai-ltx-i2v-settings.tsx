@@ -30,10 +30,8 @@ export function AiLtxI2VSettings({
   onFpsChange,
   generateAudio,
   onGenerateAudioChange,
-  isCompact,
+  isCompact: _isCompact,
 }: AiLtxI2VSettingsProps) {
-  void isCompact;
-
   const estimatedCost = calculateLTXV2Cost(resolution, duration, "pro");
 
   return (
@@ -46,7 +44,9 @@ export function AiLtxI2VSettings({
         </Label>
         <Select
           value={duration.toString()}
-          onValueChange={(value) => onDurationChange(Number(value) as 6 | 8 | 10)}
+          onValueChange={(value) =>
+            onDurationChange(Number(value) as 6 | 8 | 10)
+          }
         >
           <SelectTrigger id="ltxv2-i2v-duration" className="h-8 text-xs">
             <SelectValue placeholder="Select duration" />

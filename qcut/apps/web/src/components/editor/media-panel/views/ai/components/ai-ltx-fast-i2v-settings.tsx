@@ -38,10 +38,8 @@ export function AiLtxFastI2VSettings({
   onFpsChange,
   generateAudio,
   onGenerateAudioChange,
-  isCompact,
+  isCompact: _isCompact,
 }: AiLtxFastI2VSettingsProps) {
-  void isCompact;
-
   const ltxv2FastExtendedResolutions = LTXV2_FAST_CONFIG.RESOLUTIONS.EXTENDED;
   const ltxv2FastExtendedFps = LTXV2_FAST_CONFIG.FPS_OPTIONS.EXTENDED;
   const isExtendedDuration =
@@ -49,7 +47,9 @@ export function AiLtxFastI2VSettings({
 
   return (
     <div className="space-y-3 text-left border-t pt-3">
-      <Label className="text-sm font-semibold">LTX Video 2.0 Fast Settings</Label>
+      <Label className="text-sm font-semibold">
+        LTX Video 2.0 Fast Settings
+      </Label>
 
       <div className="space-y-1">
         <Label htmlFor="ltxv2-image-duration" className="text-xs font-medium">
@@ -66,7 +66,10 @@ export function AiLtxFastI2VSettings({
           </SelectTrigger>
           <SelectContent>
             {LTXV2_FAST_CONFIG.DURATIONS.map((durationOption) => (
-              <SelectItem key={durationOption} value={durationOption.toString()}>
+              <SelectItem
+                key={durationOption}
+                value={durationOption.toString()}
+              >
                 {durationOption} seconds
               </SelectItem>
             ))}

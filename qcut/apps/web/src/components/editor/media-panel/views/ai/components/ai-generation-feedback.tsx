@@ -81,9 +81,13 @@ export function AIGenerationFeedback({
                   <div className="flex items-center space-x-2">
                     <Play className="size-4 text-primary" />
                     <div>
-                      <div className="text-xs font-medium">{model?.name}</div>
+                      <div className="text-xs font-medium">
+                        {model?.name ?? "AI Video"}
+                      </div>
                       <div className="text-xs text-muted-foreground">
-                        {result.video.prompt.substring(0, 30)}...
+                        {result.video.prompt.length > 30
+                          ? `${result.video.prompt.substring(0, 30)}...`
+                          : result.video.prompt}
                       </div>
                     </div>
                   </div>
@@ -114,6 +118,17 @@ export function AIGenerationFeedback({
                         } catch {
                           // fall back to default filename
                         }
+                      }
+
+                      const isSafeProtocol =
+                        downloadUrl.startsWith("http://") ||
+                        downloadUrl.startsWith("https://") ||
+                        downloadUrl.startsWith("blob:");
+                      if (!isSafeProtocol) {
+                        console.warn("Blocked unsafe download URL protocol", {
+                          jobId: result.video.jobId,
+                        });
+                        return;
                       }
 
                       const a = document.createElement("a");

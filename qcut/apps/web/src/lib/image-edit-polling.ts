@@ -86,7 +86,7 @@ export async function pollImageEditStatus(
             onProgress({
               status: "completed",
               progress: 100,
-              message: `Image edited successfully with ${modelName}`,
+              message: `Image edited successfully${modelName ? ` with ${modelName}` : ""}`,
               elapsedTime,
             });
           }
@@ -94,7 +94,7 @@ export async function pollImageEditStatus(
           return {
             job_id: jobId || requestId,
             status: "completed",
-            message: `Image edited successfully with ${modelName}`,
+            message: `Image edited successfully${modelName ? ` with ${modelName}` : ""}`,
             result_url: result.images?.[0]?.url || result.image?.url,
             seed_used: result.seed,
             processing_time: elapsedTime,

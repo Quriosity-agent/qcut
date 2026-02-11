@@ -46,7 +46,7 @@ export async function getFalApiKey(): Promise<string | null> {
             category: ErrorCategory.AI_SERVICE,
             severity: ErrorSeverity.LOW,
             showToast: false, // Silent failure - don't interrupt user
-            metadata: { source: "image-edit-client" },
+            metadata: { source: "image-edit-utils" },
           });
         }
         return null;
