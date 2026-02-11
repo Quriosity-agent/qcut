@@ -1,5 +1,8 @@
 import { ExportEngine } from "./export-engine";
-import { ExportSettings } from "@/types/export";
+import type {
+  ExportSettingsWithAudio,
+  AudioExportOptions,
+} from "@/types/export";
 import { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
@@ -41,10 +44,11 @@ export class CLIExportEngine extends ExportEngine {
   private frameDir: string | null = null;
   private effectsStore?: EffectsStore;
   private exportAnalysis: ExportAnalysis | null = null;
+  private audioOptions: AudioExportOptions;
 
   constructor(
     canvas: HTMLCanvasElement,
-    settings: ExportSettings,
+    settings: ExportSettingsWithAudio,
     tracks: TimelineTrack[],
     mediaItems: MediaItem[],
     totalDuration: number,
@@ -52,6 +56,13 @@ export class CLIExportEngine extends ExportEngine {
   ) {
     super(canvas, settings, tracks, mediaItems, totalDuration);
     this.effectsStore = effectsStore;
+    this.audioOptions = {
+      includeAudio: settings.includeAudio,
+      audioCodec: settings.audioCodec,
+      audioBitrate: settings.audioBitrate,
+      audioSampleRate: settings.audioSampleRate,
+      audioChannels: settings.audioChannels,
+    };
 
     // 🚨 SAFETY CHECK: Verify Electron environment
     if (

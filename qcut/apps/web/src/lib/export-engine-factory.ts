@@ -1,5 +1,5 @@
 import { ExportEngine } from "./export-engine";
-import { ExportSettings } from "@/types/export";
+import type { ExportSettings, ExportSettingsWithAudio } from "@/types/export";
 import { TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
@@ -190,7 +190,7 @@ export class ExportEngineFactory {
   // Create engine instance based on recommendation or type
   async createEngine(
     canvas: HTMLCanvasElement,
-    settings: ExportSettings,
+    settings: ExportSettingsWithAudio,
     tracks: TimelineTrack[],
     mediaItems: MediaItem[],
     totalDuration: number,

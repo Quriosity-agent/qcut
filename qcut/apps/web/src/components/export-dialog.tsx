@@ -209,11 +209,10 @@ export function ExportDialog() {
       filename: exportSettings.filename,
       engineType: exportSettings.engineType,
       resolution: exportSettings.resolution,
-      // Add audio settings (backward compatible - ignored if not supported)
       includeAudio: audioEnabled,
       audioCodec,
       audioBitrate: 128,
-    } as any);
+    });
   };
 
   if (mediaItemsLoading) {
