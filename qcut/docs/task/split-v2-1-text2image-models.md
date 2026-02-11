@@ -17,8 +17,9 @@ Split the monolithic model config file into provider-grouped files with a barrel
 
 | File | Action |
 |------|--------|
-| `apps/web/src/lib/text2image-models.ts` | **Delete** after migration |
+| `apps/web/src/lib/text2image-models.ts` | **Keep** as compatibility shim re-export |
 | `apps/web/src/lib/text2image-models/index.ts` | **Create** — interface, registry, helpers, categories |
+| `apps/web/src/lib/text2image-models/types.ts` | **Create** — shared `Text2ImageModel` type |
 | `apps/web/src/lib/text2image-models/google-models.ts` | **Create** — Google provider models |
 | `apps/web/src/lib/text2image-models/bytedance-models.ts` | **Create** — ByteDance provider models |
 | `apps/web/src/lib/text2image-models/flux-models.ts` | **Create** — Flux provider models |
@@ -140,9 +141,13 @@ export const TEXT2IMAGE_MODELS: Record<string, Text2ImageModel> = {
 };
 ```
 
-### Step 7: Delete original file
+### Step 7: Keep compatibility shim (applied)
 
-Delete `apps/web/src/lib/text2image-models.ts`.
+Keep `apps/web/src/lib/text2image-models.ts` as:
+```typescript
+export * from "./text2image-models/index";
+export type * from "./text2image-models/index";
+```
 
 ### Step 8: Fix `fal-ai-client.ts` relative import
 
@@ -159,7 +164,8 @@ bun run check-types
 # Lint
 bun lint:clean
 
-# Smoke test: open text2image panel, verify all 14 models appear
+# Smoke test: open text2image panel, verify 13 generation models appear in picker
+# and full registry remains 14 (includes edit-only model)
 bun run electron:dev
 ```
 
@@ -217,3 +223,35 @@ Use root-level commands consistently:
 - `bun run check-types`
 - `bun run lint:clean`
 - `bun run test` (or targeted vitest command for the new test file)
+
+---
+
+## Implementation Update (2026-02-11)
+
+### Completed
+
+- Created split model modules:
+  - `apps/web/src/lib/text2image-models/index.ts`
+  - `apps/web/src/lib/text2image-models/types.ts`
+  - `apps/web/src/lib/text2image-models/google-models.ts`
+  - `apps/web/src/lib/text2image-models/bytedance-models.ts`
+  - `apps/web/src/lib/text2image-models/flux-models.ts`
+  - `apps/web/src/lib/text2image-models/other-models.ts`
+- Replaced monolith with compatibility shim in:
+  - `apps/web/src/lib/text2image-models.ts`
+- Preserved existing consumer imports (no import path changes needed).
+- Added integrity/unit tests:
+  - `apps/web/src/lib/text2image-models/__tests__/text2image-models.test.ts`
+
+### Behavior Checks
+
+- Registry count remains `14`.
+- `TEXT2IMAGE_MODEL_ORDER` remains `13`.
+- `seeddream-v4-5-edit` exists in registry and is intentionally excluded from picker order.
+
+### Validation Run
+
+- `bun x tsc --noEmit -p apps/web/tsconfig.json` passed.
+- `bun run lint:clean` passed.
+- `bun x vitest run src/lib/text2image-models/__tests__/text2image-models.test.ts` passed (`8` tests).
+- `bun run check-types` executed but reported no package tasks in this workspace setup.
