@@ -100,7 +100,8 @@ export async function veo31FastFrameToVideo(
   params: Veo31FrameToVideoInput
 ): Promise<VideoGenerationResponse> {
   try {
-    const endpoint = "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
+    const endpoint =
+      "https://fal.run/fal-ai/veo3.1/fast/first-last-frame-to-video";
 
     debugLogger.log(FAL_LOG_COMPONENT, "VEO31_FAST_FRAME_TO_VIDEO_REQUEST", {
       params,
@@ -168,7 +169,9 @@ export async function veo31TextToVideo(
     });
 
     const errorMessage =
-      error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      error instanceof Error
+        ? error.message
+        : "Veo 3.1 Standard generation failed";
     return {
       job_id: `veo31_std_error_${Date.now()}`,
       status: "failed",
@@ -184,9 +187,13 @@ export async function veo31ImageToVideo(
   try {
     const endpoint = "https://fal.run/fal-ai/veo3.1/image-to-video";
 
-    debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST", {
-      params,
-    });
+    debugLogger.log(
+      FAL_LOG_COMPONENT,
+      "VEO31_STANDARD_IMAGE_TO_VIDEO_REQUEST",
+      {
+        params,
+      }
+    );
 
     const response = await delegate.makeRequest<Veo31Response>(
       endpoint,
@@ -209,7 +216,9 @@ export async function veo31ImageToVideo(
     });
 
     const errorMessage =
-      error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      error instanceof Error
+        ? error.message
+        : "Veo 3.1 Standard generation failed";
     return {
       job_id: `veo31_std_img2vid_error_${Date.now()}`,
       status: "failed",
@@ -225,9 +234,13 @@ export async function veo31FrameToVideo(
   try {
     const endpoint = "https://fal.run/fal-ai/veo3.1/first-last-frame-to-video";
 
-    debugLogger.log(FAL_LOG_COMPONENT, "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST", {
-      params,
-    });
+    debugLogger.log(
+      FAL_LOG_COMPONENT,
+      "VEO31_STANDARD_FRAME_TO_VIDEO_REQUEST",
+      {
+        params,
+      }
+    );
 
     const response = await delegate.makeRequest<Veo31Response>(
       endpoint,
@@ -250,7 +263,9 @@ export async function veo31FrameToVideo(
     });
 
     const errorMessage =
-      error instanceof Error ? error.message : "Veo 3.1 Standard generation failed";
+      error instanceof Error
+        ? error.message
+        : "Veo 3.1 Standard generation failed";
     return {
       job_id: `veo31_std_frame2vid_error_${Date.now()}`,
       status: "failed",

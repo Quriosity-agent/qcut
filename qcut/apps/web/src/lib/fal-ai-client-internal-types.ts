@@ -1,10 +1,7 @@
 import type { OutputFormat } from "./ai-video/validation/validators";
 
 export interface FalAIClientRequestDelegate {
-  makeRequest<T>(
-    endpoint: string,
-    params: Record<string, unknown>
-  ): Promise<T>;
+  makeRequest<T>(endpoint: string, params: Record<string, unknown>): Promise<T>;
 }
 
 export interface GenerationResult {

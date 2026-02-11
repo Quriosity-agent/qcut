@@ -145,6 +145,8 @@ export async function reveEdit(
       hasImage: !!(sanitizedParams?.image_url ?? params.image_url),
     });
 
-    throw error instanceof Error ? error : new Error("Reve Edit generation failed");
+    throw error instanceof Error
+      ? error
+      : new Error("Reve Edit generation failed");
   }
 }
