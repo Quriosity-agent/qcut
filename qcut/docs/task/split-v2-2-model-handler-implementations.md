@@ -7,6 +7,24 @@
 
 ---
 
+## Status (2026-02-11)
+
+Completed and verified.
+
+Validation summary:
+- `model-handler-types.ts` exists and `model-handlers.ts` re-exports the moved types.
+- Handler implementations are split under `handlers/` by category (8 T2V, 15 I2V, 2 upscale, 8 avatar/extend).
+- `model-handler-implementations.ts` is a compatibility re-export shim.
+- Router regression and handler export tests exist:
+  - `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/__tests__/handler-exports.test.ts`
+  - `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/__tests__/model-handlers-routing.test.ts`
+
+Executed verification:
+- `rg -n "^export async function handle" apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers -g "*.ts"` -> 33 matches.
+- `bun x vitest run --config apps/web/vitest.config.ts apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/__tests__/handler-exports.test.ts apps/web/src/components/editor/media-panel/views/ai/hooks/generation/__tests__/model-handlers-routing.test.ts` -> 2 test files passed, 9 tests passed.
+
+---
+
 ## Goal
 
 Split the monolithic handler file into 4 category files under a `handlers/` subdirectory. The single consumer (`model-handlers.ts`) updates its imports. No API shape or routing behavior changes.
