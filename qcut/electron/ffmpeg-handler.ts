@@ -9,13 +9,13 @@
 
 import { TempManager } from "./temp-manager.js";
 
-import type { FFmpegHealthResult } from "./ffmpeg/types";
+import type { FFmpegHealthResult } from "./ffmpeg/types.js";
 
 import {
   verifyFFmpegBinary,
   getFFmpegPath,
   getFFprobePath,
-} from "./ffmpeg/utils";
+} from "./ffmpeg/utils.js";
 
 // Sub-module setup functions
 import { setupBasicHandlers } from "./ffmpeg-basic-handlers.js";
@@ -33,7 +33,7 @@ export type {
   OpenFolderResult,
   ExtractAudioOptions,
   ExtractAudioResult,
-} from "./ffmpeg/types";
+} from "./ffmpeg/types.js";
 
 const tempManager = new TempManager();
 
@@ -79,7 +79,7 @@ export function setupFFmpegIPC(): void {
 }
 
 // Re-export getFFmpegPath and getFFprobePath for backward compatibility (used by main.ts)
-export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils";
+export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils.js";
 
 // CommonJS export for backward compatibility with main.js
 module.exports = {
