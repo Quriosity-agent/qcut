@@ -1,20 +1,24 @@
 # Large Files Report (>800 lines)
 
-Generated: 2026-02-11 (updated after split-v2 phases)
+Generated: 2026-02-11 (updated after split-v2 phases 1–4)
 
 ## Summary
 
-**Total files exceeding 800 lines:** 37
+**Total files exceeding 800 lines:** 36
 
-Previous report had 39 files. The decrease is from split-v2 completing Phase 1 (text2image-models) and Phase 3 (fal-ai-client), which brought both files under 800. Phase 4 (use-ai-generation) was partial — reduced from 1428 → 1082 but still over the limit.
+Previous report had 39 files. The decrease is from split-v2 completing:
+- **Phase 1** (text2image-models): 1422 → 2-line re-export shim — removed from list
+- **Phase 2** (model-handler-implementations): 1518 → 10-line compat shim — removed from list
+- **Phase 3** (fal-ai-client): 1512 → 656 lines — removed from list
+- **Phase 4** (use-ai-generation): 1428 → 1082 — still over limit (settings builders + response handlers remain)
 
 ### Split Plan v2 Impact
 
 | Phase | File | Before | After | Status |
 |-------|------|--------|-------|--------|
 | Phase 1 | `text2image-models.ts` | 1422 | ~91 barrel + split dir | **Done** — removed from list |
-| Phase 2 | `model-handler-implementations.ts` | 1518 | 1518 | **Not started** |
-| Phase 3 | `fal-ai-client.ts` | 1512 | 647 | **Done** — removed from list |
+| Phase 2 | `model-handler-implementations.ts` | 1518 | 10 (shim) | **Done** — removed from list |
+| Phase 3 | `fal-ai-client.ts` | 1512 | 656 | **Done** — removed from list |
 | Phase 4 | `use-ai-generation.ts` | 1428 | 1082 | **Partial** — still >800 |
 | Phase 5 | `timeline/index.tsx` | 1584 | 1584 | **Not started** |
 
@@ -23,7 +27,6 @@ Previous report had 39 files. The decrease is from split-v2 completing Phase 1 (
 | Lines | File | Category | Notes |
 |------:|------|----------|-------|
 | 1584 | `apps/web/src/components/editor/timeline/index.tsx` | Timeline UI | Split v2 Phase 5 — not started |
-| 1518 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | AI Generation | Split v2 Phase 2 — not started |
 | 1404 | `apps/web/src/lib/export-engine.ts` | Export | |
 | 1325 | `apps/web/src/lib/image-edit-client.ts` | AI Client | |
 | 1315 | `apps/web/src/types/electron.d.ts` | Type Definitions | |
@@ -64,7 +67,7 @@ Previous report had 39 files. The decrease is from split-v2 completing Phase 1 (
 
 | Category | Files | Total Lines |
 |----------|------:|------------:|
-| AI Generation / UI / Config | 11 | ~12,286 |
+| AI Generation / UI / Config | 10 | ~10,768 |
 | State Management | 5 | ~4,920 |
 | Electron | 4 | ~3,967 |
 | Export | 3 | ~3,391 |
@@ -82,7 +85,6 @@ Previous report had 39 files. The decrease is from split-v2 completing Phase 1 (
 - `export-engine.backup.ts` (1087 lines) appears to be a backup file — consider removing if no longer needed.
 - AI subsystem under `media-panel/views/ai/` remains the most complex area with the highest concentration of large files.
 - `use-ai-generation.ts` (1082 lines) still needs further extraction — settings builders and response handlers were not fully moved to helpers file.
-- `model-handler-implementations.ts` (1518 lines) needs split into 4 handler category files (T2V, I2V, avatar, upscale).
-- `timeline/index.tsx` (1584 lines) is the largest file and next split candidate.
+- `timeline/index.tsx` (1584 lines) is the largest file and next split candidate (Phase 5).
 - Several test/e2e files (974, 957, 866, 840 lines) are over 800 — less critical since they don't affect runtime, but worth noting.
-- `fal-ai-client.ts` and `text2image-models.ts` were successfully removed from this list by split-v2 Phases 1 and 3.
+- `text2image-models.ts`, `model-handler-implementations.ts`, and `fal-ai-client.ts` were successfully removed from this list by split-v2 Phases 1–3.
