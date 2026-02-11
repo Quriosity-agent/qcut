@@ -1,5 +1,6 @@
-import type { TimelineElement } from "@/types/timeline";
+import type { TimelineElement, TrackType } from "@/types/timeline";
 import type { MediaItem } from "@/stores/media-store-types";
+import type { OverlaySticker } from "@/types/sticker-overlay";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { renderStickersToCanvas } from "@/lib/stickers/sticker-export-helper";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
@@ -50,18 +51,24 @@ export async function renderFrame(
 
   // Log frame rendering details for first frame and every 30th frame
   if (currentTime === 0 || Math.floor(currentTime * context.fps) % 30 === 0) {
-    console.log(
+    debugLog(
       `🎨 FRAME RENDER: Time=${currentTime.toFixed(2)}s, Elements=${activeElements.length}`
     );
   }
 
   // Sort elements by track type (render bottom to top)
+  const trackRenderOrder: Record<TrackType, number> = {
+    audio: 0,
+    media: 1,
+    sticker: 2,
+    remotion: 3,
+    captions: 4,
+    text: 5,
+  };
   const sortedElements = activeElements.sort((a, b) => {
-    if (a.track.type === "text" && b.track.type !== "text") return 1;
-    if (b.track.type === "text" && a.track.type !== "text") return -1;
-    if (a.track.type === "audio" && b.track.type !== "audio") return -1;
-    if (b.track.type === "audio" && a.track.type !== "audio") return 1;
-    return 0;
+    const orderA = trackRenderOrder[a.track.type] ?? 1;
+    const orderB = trackRenderOrder[b.track.type] ?? 1;
+    return orderA - orderB;
   });
 
   // Render each active element
@@ -123,7 +130,7 @@ export async function renderImage(
   // Track which image is being used
   context.usedImages.add(mediaItem.id);
 
-  console.log(
+  debugLog(
     `🖼️ EXPORT: Using image - ID: ${mediaItem.id}, Name: ${mediaItem.name || "Unnamed"}, URL: ${mediaItem.url}`
   );
 
@@ -141,7 +148,7 @@ export async function renderImage(
           canvas.height
         );
 
-        console.log(
+        debugLog(
           `🖼️ EXPORT: Rendered image "${mediaItem.name || mediaItem.id}" at position (${x}, ${y}) with size ${width}x${height}`
         );
 
@@ -150,11 +157,11 @@ export async function renderImage(
             const effects = useEffectsStore
               .getState()
               .getElementEffects(element.id);
-            console.log(
+            debugLog(
               `🎨 EXPORT ENGINE: Retrieved ${effects.length} effects for image element ${element.id}`
             );
             const enabledEffects = effects.filter((e) => e.enabled);
-            console.log(
+            debugLog(
               `✨ EXPORT ENGINE: ${enabledEffects.length} enabled effects for image element ${element.id}`
             );
 
@@ -163,7 +170,7 @@ export async function renderImage(
               const mergedParams = mergeEffectParameters(
                 ...enabledEffects.map((e) => e.parameters)
               );
-              console.log(
+              debugLog(
                 "🔨 EXPORT ENGINE: Applying effects to image canvas:",
                 mergedParams
               );
@@ -172,13 +179,13 @@ export async function renderImage(
               applyAdvancedCanvasEffects(ctx, mergedParams);
               ctx.restore();
             } else {
-              console.log(
+              debugLog(
                 `🚫 EXPORT ENGINE: No enabled effects for image element ${element.id}, drawing normally`
               );
               ctx.drawImage(img, x, y, width, height);
             }
           } catch (error) {
-            console.error(
+            debugError(
               `❌ EXPORT ENGINE: Effects failed for image element ${element.id}:`,
               error
             );
@@ -200,7 +207,7 @@ export async function renderImage(
       reject(new Error(`Failed to load image: ${mediaItem.url}`));
     };
 
-    img.src = mediaItem.url!;
+    img.src = mediaItem.url as string;
   });
 }
 
@@ -256,11 +263,13 @@ async function renderVideoAttempt(
 ): Promise<void> {
   const { ctx, canvas, videoCache } = context;
 
+  const url = mediaItem.url as string; // Guaranteed non-null by renderVideo guard
+
   try {
-    let video = videoCache.get(mediaItem.url!);
+    let video = videoCache.get(url);
     if (!video) {
       video = document.createElement("video");
-      video.src = mediaItem.url!;
+      video.src = url;
       video.crossOrigin = "anonymous";
 
       await new Promise<void>((resolve, reject) => {
@@ -268,7 +277,7 @@ async function renderVideoAttempt(
         video!.onerror = () => reject(new Error("Failed to load video"));
       });
 
-      videoCache.set(mediaItem.url!, video);
+      videoCache.set(url, video);
     }
 
     const seekTime = timeOffset + element.trimStart;
@@ -313,16 +322,16 @@ async function renderVideoAttempt(
         const effects = useEffectsStore
           .getState()
           .getElementEffects(element.id);
-        console.log(
+        debugLog(
           `🎨 EXPORT ENGINE: Retrieved ${effects?.length || 0} effects for video element ${element.id}`
         );
         if (effects && effects.length > 0) {
           const activeEffects = effects.filter((e) => e.enabled);
-          console.log(
+          debugLog(
             `✨ EXPORT ENGINE: ${activeEffects.length} enabled effects for video element ${element.id}`
           );
           if (activeEffects.length === 0) {
-            console.log(
+            debugLog(
               `🚫 EXPORT ENGINE: No enabled effects for video element ${element.id}, drawing normally`
             );
             ctx.drawImage(video, x, y, width, height);
@@ -333,7 +342,7 @@ async function renderVideoAttempt(
           const mergedParams = mergeEffectParameters(
             ...activeEffects.map((e) => e.parameters)
           );
-          console.log(
+          debugLog(
             "🔨 EXPORT ENGINE: Applying effects to video canvas:",
             mergedParams
           );
@@ -342,13 +351,13 @@ async function renderVideoAttempt(
           applyAdvancedCanvasEffects(ctx, mergedParams);
           ctx.restore();
         } else {
-          console.log(
+          debugLog(
             `🚫 EXPORT ENGINE: No effects found for video element ${element.id}, drawing normally`
           );
           ctx.drawImage(video, x, y, width, height);
         }
       } catch (error) {
-        console.error(
+        debugError(
           `❌ EXPORT ENGINE: Video effects failed for element ${element.id}:`,
           error
         );
@@ -384,7 +393,7 @@ export async function renderOverlayStickers(
   context: RenderContext,
   currentTime: number
 ): Promise<void> {
-  let visibleStickers: any[] = [];
+  let visibleStickers: OverlaySticker[] = [];
   try {
     const stickersStore = useStickersOverlayStore.getState();
     visibleStickers = stickersStore.getVisibleStickersAtTime(currentTime);
@@ -438,7 +447,7 @@ export async function renderOverlayStickers(
     );
     debugError(
       "[ExportEngine] Sticker details:",
-      visibleStickers?.map((s: any) => ({
+      visibleStickers?.map((s) => ({
         id: s.id,
         mediaItemId: s.mediaItemId,
       })) || []
@@ -459,8 +468,8 @@ export function renderTextElement(
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
-  const x = element.type === "text" ? element.x || 50 : 50;
-  const y = element.type === "text" ? element.y || 50 : 50;
+  const x = element.x ?? 50;
+  const y = element.y ?? 50;
 
   ctx.fillText(element.content, x, y);
 }

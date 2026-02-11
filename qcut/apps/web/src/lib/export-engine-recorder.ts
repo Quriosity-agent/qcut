@@ -46,7 +46,7 @@ export function setupMediaRecorder(
 
   for (const mimeType of formatInfo.mimeTypes) {
     if (MediaRecorder.isTypeSupported(mimeType)) {
-      selectedMimeType = mimeType as any;
+      selectedMimeType = mimeType;
       break;
     }
   }
@@ -117,20 +117,19 @@ export async function stopRecording(context: RecorderContext): Promise<Blob> {
     `[ExportEngine] Export complete: ${totalSize} bytes, ${context.recordedChunks.length} chunks`
   );
 
+  const recorder = context.mediaRecorder;
+  const mimeType = recorder.mimeType || "video/webm";
+
   return new Promise((resolve) => {
-    context.mediaRecorder!.onstop = () => {
-      const blob = new Blob(context.recordedChunks, {
-        type: "video/webm",
-      });
+    recorder.onstop = () => {
+      const blob = new Blob(context.recordedChunks, { type: mimeType });
       resolve(blob);
     };
 
-    if (context.mediaRecorder!.state === "recording") {
-      context.mediaRecorder!.stop();
+    if (recorder.state === "recording") {
+      recorder.stop();
     } else {
-      const blob = new Blob(context.recordedChunks, {
-        type: "video/webm",
-      });
+      const blob = new Blob(context.recordedChunks, { type: mimeType });
       resolve(blob);
     }
   });

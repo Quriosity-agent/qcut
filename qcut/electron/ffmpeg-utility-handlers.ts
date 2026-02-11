@@ -120,12 +120,24 @@ export function setupUtilityHandlers(tempManager: TempManager): void {
         );
 
         let stderr = "";
+        let settled = false;
+
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            ffmpeg.kill();
+            reject(new Error("Frame processing timeout"));
+          }
+        }, 10_000);
 
         ffmpeg.stderr?.on("data", (data) => {
           stderr += data.toString();
         });
 
         ffmpeg.on("close", (code) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           if (code === 0) {
             resolve();
           } else {
@@ -138,13 +150,11 @@ export function setupUtilityHandlers(tempManager: TempManager): void {
         });
 
         ffmpeg.on("error", (err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           reject(err);
         });
-
-        setTimeout(() => {
-          ffmpeg.kill();
-          reject(new Error("Frame processing timeout"));
-        }, 10_000);
       });
     }
   );
@@ -270,6 +280,9 @@ export function setupUtilityHandlers(tempManager: TempManager): void {
       }
     ): Promise<{ success: boolean; path?: string; error?: string }> => {
       try {
+        // Sanitize inputs to prevent path traversal
+        const safeStickerId = path.basename(stickerId);
+        const safeFormat = path.basename(format);
         const stickerDir = path.join(
           tempManager.getFrameDir(sessionId),
           "stickers"
@@ -279,8 +292,14 @@ export function setupUtilityHandlers(tempManager: TempManager): void {
           await fs.promises.mkdir(stickerDir, { recursive: true });
         }
 
-        const filename = `sticker_${stickerId}.${format}`;
+        const filename = `sticker_${safeStickerId}.${safeFormat}`;
         const stickerPath = path.join(stickerDir, filename);
+
+        // Verify resolved path stays within session directory
+        const resolvedPath = path.resolve(stickerPath);
+        if (!resolvedPath.startsWith(path.resolve(stickerDir))) {
+          throw new Error("Invalid sticker path: path traversal detected");
+        }
 
         const buffer = Buffer.from(imageData);
         await fs.promises.writeFile(stickerPath, buffer);

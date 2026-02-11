@@ -53,8 +53,17 @@ export function setupBasicHandlers(
       event: IpcMainInvokeEvent,
       { sessionId, frameName, data }: FrameData
     ): Promise<string> => {
+      // Sanitize frameName to prevent path traversal
+      const safeFrameName = path.basename(frameName);
       const frameDir: string = tempManager.getFrameDir(sessionId);
-      const framePath: string = path.join(frameDir, frameName);
+      const framePath: string = path.join(frameDir, safeFrameName);
+
+      // Verify resolved path stays within frame directory
+      const resolvedPath = path.resolve(framePath);
+      if (!resolvedPath.startsWith(path.resolve(frameDir))) {
+        throw new Error("Invalid frame path: path traversal detected");
+      }
+
       const buffer: Buffer = Buffer.from(data, "base64");
 
       // Validate buffer
@@ -67,7 +76,9 @@ export function setupBasicHandlers(
         0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
       ]);
       if (!buffer.subarray(0, 8).equals(pngSignature)) {
-        // Warning: Invalid PNG signature
+        console.warn(
+          `[FFmpeg] Warning: Invalid PNG signature for frame ${safeFrameName}`
+        );
       }
 
       fs.writeFileSync(framePath, buffer);
@@ -80,6 +91,12 @@ export function setupBasicHandlers(
   ipcMain.handle(
     "read-output-file",
     async (event: IpcMainInvokeEvent, outputPath: string): Promise<Buffer> => {
+      // Validate outputPath is within the temp export directory
+      const resolvedOutput = path.resolve(outputPath);
+      const tempDir = path.resolve(tempManager.getTempDir());
+      if (!resolvedOutput.startsWith(tempDir)) {
+        throw new Error("Invalid output path: must be within export directory");
+      }
       return fs.readFileSync(outputPath);
     }
   );

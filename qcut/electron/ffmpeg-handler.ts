@@ -11,7 +11,11 @@ import { TempManager } from "./temp-manager.js";
 
 import type { FFmpegHealthResult } from "./ffmpeg/types";
 
-import { verifyFFmpegBinary } from "./ffmpeg/utils";
+import {
+  verifyFFmpegBinary,
+  getFFmpegPath,
+  getFFprobePath,
+} from "./ffmpeg/utils";
 
 // Sub-module setup functions
 import { setupBasicHandlers } from "./ffmpeg-basic-handlers.js";
@@ -81,8 +85,8 @@ export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils";
 module.exports = {
   setupFFmpegIPC,
   initFFmpegHealthCheck,
-  getFFmpegPath: require("./ffmpeg/utils").getFFmpegPath,
-  getFFprobePath: require("./ffmpeg/utils").getFFprobePath,
+  getFFmpegPath,
+  getFFprobePath,
 };
 
 // ES6 export for TypeScript files

@@ -55,17 +55,17 @@ export function getActiveElements(
 
   // Log active elements for investigation
   if (activeElements.length > 0 && currentTime % 1 === 0) {
-    console.log(
+    debugLog(
       `\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`
     );
     for (const { element } of activeElements) {
       const effects = useEffectsStore.getState().getElementEffects(element.id);
       const hasEffects = effects && effects.length > 0;
-      console.log(
+      debugLog(
         `  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : "none"}`
       );
       if (hasEffects) {
-        console.log(
+        debugLog(
           `    ✨ Effects applied: ${effects.map((e) => `${e.name}(${e.enabled ? "on" : "off"})`).join(", ")}`
         );
       }
@@ -126,8 +126,8 @@ export function calculateElementBounds(
   const elementY = element.type === "text" ? element.y : undefined;
 
   return {
-    x: elementX || x,
-    y: elementY || y,
+    x: elementX ?? x,
+    y: elementY ?? y,
     width,
     height,
   };
