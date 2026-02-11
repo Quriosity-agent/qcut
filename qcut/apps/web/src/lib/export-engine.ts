@@ -568,7 +568,8 @@ export class ExportEngine {
         await writable.close();
         return;
       } catch (error) {
-        // Fall back to traditional download
+        // User cancelled or API unavailable - fall back to traditional download
+        console.warn("[ExportEngine] showSaveFilePicker failed, using fallback:", error);
       }
     }
 

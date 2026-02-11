@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import type {
   TimelineTrack,
   TimelineElement,
@@ -271,7 +272,7 @@ describe("TimelineStore", () => {
       result.current.addTrack("audio");
       result.current.addElementToTrack(result.current.tracks[0].id, {
         type: "media",
-        mediaId: "test",
+        mediaId: TEST_MEDIA_ID,
         startTime: 0,
         duration: 10,
         name: "Media",

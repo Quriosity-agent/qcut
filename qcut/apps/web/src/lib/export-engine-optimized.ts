@@ -3,6 +3,7 @@ import { ExportSettings } from "@/types/export";
 import { TimelineElement, TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { handleExportError } from "@/lib/error-handler";
+import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 
 // Frame cache entry
 interface CachedFrame {
@@ -153,7 +154,7 @@ export class OptimizedExportEngine extends ExportEngine {
           // Check if element overlaps with batch timespan
           if (elementStart < endTime && elementEnd > startTime) {
             const mediaItem =
-              element.type === "media" && element.mediaId !== "test"
+              element.type === "media" && element.mediaId !== TEST_MEDIA_ID
                 ? this.mediaItems.find((item) => item.id === element.mediaId) ||
                   null
                 : null;
@@ -322,7 +323,7 @@ export class OptimizedExportEngine extends ExportEngine {
     this.tracks.forEach((track) => {
       track.elements.forEach((element) => {
         let mediaItem = null;
-        if (element.type === "media" && element.mediaId !== "test") {
+        if (element.type === "media" && element.mediaId !== TEST_MEDIA_ID) {
           mediaItem =
             this.mediaItems.find((item) => item.id === element.mediaId) || null;
         }

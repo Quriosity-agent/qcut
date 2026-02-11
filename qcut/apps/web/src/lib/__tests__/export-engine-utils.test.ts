@@ -6,7 +6,11 @@ import {
   getActiveElements,
   calculateElementBounds,
 } from "../export-engine-utils";
-import type { TimelineTrack } from "@/types/timeline";
+import type {
+  TimelineTrack,
+  MediaElement,
+  TextElement,
+} from "@/types/timeline";
 
 // Mock stores
 vi.mock("@/stores/effects-store", () => ({
@@ -29,7 +33,7 @@ const createMediaElement = (
   startTime: number,
   duration: number,
   options: { hidden?: boolean } = {}
-) => ({
+): MediaElement => ({
   id,
   type: "media" as const,
   mediaId,
@@ -46,7 +50,7 @@ const createTextElement = (
   startTime: number,
   duration: number,
   options: { x?: number; y?: number } = {}
-) => ({
+): TextElement => ({
   id,
   type: "text" as const,
   name: `Text ${id}`,
@@ -96,8 +100,8 @@ describe("Export Engine Utils", () => {
         {
           id: "t1",
           name: "Track 1",
-          type: "video",
-          elements: [element as any],
+          type: "media",
+          elements: [element],
           muted: false,
         },
       ];
@@ -117,8 +121,8 @@ describe("Export Engine Utils", () => {
         {
           id: "t1",
           name: "Track 1",
-          type: "video",
-          elements: [element as any],
+          type: "media",
+          elements: [element],
           muted: false,
         },
       ];
@@ -137,8 +141,8 @@ describe("Export Engine Utils", () => {
         {
           id: "t1",
           name: "Track 1",
-          type: "video",
-          elements: [visible as any, hidden as any],
+          type: "media",
+          elements: [visible, hidden],
           muted: false,
         },
       ];
@@ -155,15 +159,15 @@ describe("Export Engine Utils", () => {
         {
           id: "t1",
           name: "Track 1",
-          type: "video",
-          elements: [e1 as any],
+          type: "media",
+          elements: [e1],
           muted: false,
         },
         {
           id: "t2",
           name: "Track 2",
-          type: "video",
-          elements: [e2 as any],
+          type: "media",
+          elements: [e2],
           muted: false,
         },
       ];
@@ -177,7 +181,7 @@ describe("Export Engine Utils", () => {
     it("scales down larger media to fit canvas", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
       const bounds = calculateElementBounds(
-        element as any,
+        element,
         3840,
         2160,
         1920,
@@ -193,7 +197,7 @@ describe("Export Engine Utils", () => {
     it("keeps original size for smaller media", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
       const bounds = calculateElementBounds(
-        element as any,
+        element,
         640,
         480,
         1920,
@@ -211,7 +215,7 @@ describe("Export Engine Utils", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
       // Ultra-wide media: 2560x720 (aspect 3.55)
       const bounds = calculateElementBounds(
-        element as any,
+        element,
         2560,
         720,
         1920,
@@ -230,7 +234,7 @@ describe("Export Engine Utils", () => {
         y: 300,
       });
       const bounds = calculateElementBounds(
-        element as any,
+        element,
         100,
         50,
         1920,

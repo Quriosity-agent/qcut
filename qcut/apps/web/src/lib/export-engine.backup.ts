@@ -12,6 +12,7 @@ import {
   isFFmpegExportEnabled,
 } from "@/lib/ffmpeg-video-recorder";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { renderStickersToCanvas } from "@/lib/stickers/sticker-export-helper";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media-store";
@@ -135,7 +136,7 @@ export class ExportEngine {
 
         if (currentTime >= elementStart && currentTime < elementEnd) {
           let mediaItem = null;
-          if (element.type === "media" && element.mediaId !== "test") {
+          if (element.type === "media" && element.mediaId !== TEST_MEDIA_ID) {
             mediaItem =
               this.mediaItems.find((item) => item.id === element.mediaId) ||
               null;

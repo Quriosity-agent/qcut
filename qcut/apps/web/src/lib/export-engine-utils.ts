@@ -1,4 +1,5 @@
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
+import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import type { MediaItem } from "@/stores/media-store-types";
 import { debugLog, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
@@ -39,7 +40,7 @@ export function getActiveElements(
 
       if (currentTime >= elementStart && currentTime < elementEnd) {
         let mediaItem = null;
-        if (element.type === "media" && element.mediaId !== "test") {
+        if (element.type === "media" && element.mediaId !== TEST_MEDIA_ID) {
           mediaItem =
             mediaItems.find((item) => item.id === element.mediaId) || null;
           if (!mediaItem) {
