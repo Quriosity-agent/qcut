@@ -15,7 +15,10 @@ function createCallbacks({
   initialInterval = null,
 }: {
   initialInterval?: NodeJS.Timeout | null;
-} = {}): { callbacks: PollingCallbacks; getInterval: () => NodeJS.Timeout | null } {
+} = {}): {
+  callbacks: PollingCallbacks;
+  getInterval: () => NodeJS.Timeout | null;
+} {
   let pollingInterval = initialInterval;
   let progressValue = 0;
 

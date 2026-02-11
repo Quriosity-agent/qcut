@@ -45,7 +45,9 @@ describe("useReveEditState", () => {
 
     expect(result.current.uploadedImageForEdit).toBe(file);
     expect(result.current.uploadedImagePreview).toBeTruthy();
-    expect(result.current.uploadedImageUrl).toBe("https://fal.example/image.png");
+    expect(result.current.uploadedImageUrl).toBe(
+      "https://fal.example/image.png"
+    );
 
     act(() => {
       result.current.clearUploadedImageForEdit();

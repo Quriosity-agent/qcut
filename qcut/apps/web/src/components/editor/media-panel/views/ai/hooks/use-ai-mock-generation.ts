@@ -92,12 +92,16 @@ export async function handleMockGenerate(
     const mockGenerations: GeneratedVideoResult[] = [];
 
     for (const [index, modelId] of params.selectedModels.entries()) {
-      console.log("------------------------------------------------------------");
+      console.log(
+        "------------------------------------------------------------"
+      );
       console.log(
         `Model ${index + 1}/${params.selectedModels.length} - processing:`,
         modelId
       );
-      console.log("------------------------------------------------------------");
+      console.log(
+        "------------------------------------------------------------"
+      );
 
       const modelName = AI_MODELS.find((model) => model.id === modelId)?.name;
       const modelCapabilities = getModelCapabilities(modelId);

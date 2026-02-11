@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { getGenerationStatus } from "@/lib/ai-video-client";
 import { debugLogger } from "@/lib/debug-logger";
 import type { MediaStore } from "@/stores/media-store-types";
@@ -90,7 +89,9 @@ export function createStatusPoller({
             (status.videoUrl ?? status.video_url)
           ) {
             clearPollingInterval({ callbacks });
-            callbacks.setGenerationProgress(PROGRESS_CONSTANTS.COMPLETE_PROGRESS);
+            callbacks.setGenerationProgress(
+              PROGRESS_CONSTANTS.COMPLETE_PROGRESS
+            );
             callbacks.setStatusMessage(STATUS_MESSAGES.COMPLETE);
 
             const newVideo: GeneratedVideo = {
@@ -169,8 +170,7 @@ export function createStatusPoller({
                   projectId: context.activeProject?.id,
                   modelId: context.selectedModels[0] || "unknown",
                   videoUrl: newVideo.videoUrl,
-                  error:
-                    error instanceof Error ? error.message : String(error),
+                  error: error instanceof Error ? error.message : String(error),
                 });
 
                 debugLogger.log(
@@ -178,9 +178,7 @@ export function createStatusPoller({
                   "VIDEO_ADD_TO_MEDIA_STORE_FAILED",
                   {
                     error:
-                      error instanceof Error
-                        ? error.message
-                        : "Unknown error",
+                      error instanceof Error ? error.message : "Unknown error",
                     projectId: context.activeProject.id,
                   }
                 );
@@ -194,7 +192,8 @@ export function createStatusPoller({
 
           if (status.status === "failed") {
             clearPollingInterval({ callbacks });
-            const errorMessage = status.error || ERROR_MESSAGES.GENERATION_FAILED;
+            const errorMessage =
+              status.error || ERROR_MESSAGES.GENERATION_FAILED;
             callbacks.onError?.(errorMessage);
             callbacks.setIsGenerating(false);
             resolveOnce({ resolve });
@@ -210,9 +209,9 @@ export function createStatusPoller({
         }
       };
 
-      void pollStatus();
+      pollStatus();
       const interval = setInterval(() => {
-        void pollStatus();
+        pollStatus();
       }, UI_CONSTANTS.POLLING_INTERVAL_MS);
       callbacks.setPollingInterval(interval);
     });
@@ -223,16 +222,5 @@ export function useAIPolling({
   callbacks,
   context,
 }: CreateStatusPollerOptions) {
-  return useCallback(createStatusPoller({ callbacks, context }), [
-    callbacks.setGenerationProgress,
-    callbacks.setStatusMessage,
-    callbacks.setGeneratedVideo,
-    callbacks.setIsGenerating,
-    callbacks.setPollingInterval,
-    callbacks.onError,
-    context.prompt,
-    context.selectedModels,
-    context.activeProject,
-    context.addMediaItem,
-  ]);
+  return createStatusPoller({ callbacks, context });
 }

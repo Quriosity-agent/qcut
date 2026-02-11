@@ -41,10 +41,7 @@ import { useAIPolling } from "./use-ai-polling";
 import { handleMockGenerate as handleMockGenerateAction } from "./use-ai-mock-generation";
 import { useVeo31State } from "./use-veo31-state";
 import { useReveEditState } from "./use-reve-edit-state";
-import {
-  AI_MODELS,
-  PROGRESS_CONSTANTS,
-} from "../constants/ai-constants";
+import { AI_MODELS, PROGRESS_CONSTANTS } from "../constants/ai-constants";
 import type {
   GeneratedVideo,
   GeneratedVideoResult,
