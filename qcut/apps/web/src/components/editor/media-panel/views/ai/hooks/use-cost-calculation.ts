@@ -116,12 +116,14 @@ export function useCostCalculation(
     } else if (modelId === "hailuo23_standard_t2v") {
       modelCost = input.hailuoT2VDuration === 10 ? 0.56 : 0.28;
     } else if (modelId === "ltxv2_fast_i2v") {
-      const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[input.ltxv2ImageResolution] ?? 0;
+      const key =
+        input.ltxv2ImageResolution as keyof typeof LTXV2_FAST_CONFIG.PRICING;
+      const pricePerSecond = LTXV2_FAST_CONFIG.PRICING[key] ?? 0;
       modelCost = input.ltxv2ImageDuration * pricePerSecond;
     } else if (modelId === "ltxv2_fast_t2v") {
-      const pricePerSecond =
-        LTXV2_FAST_CONFIG.PRICING[input.ltxv2FastResolution] ?? 0;
+      const key =
+        input.ltxv2FastResolution as keyof typeof LTXV2_FAST_CONFIG.PRICING;
+      const pricePerSecond = LTXV2_FAST_CONFIG.PRICING[key] ?? 0;
       modelCost = input.ltxv2FastDuration * pricePerSecond;
     }
 

@@ -313,11 +313,11 @@ describe("Each component renders without crash", () => {
     expect(() =>
       render(
         <AiLtxFastI2VSettings
-          duration={5}
+          duration={6}
           onDurationChange={vi.fn()}
-          resolution="480p"
+          resolution="1080p"
           onResolutionChange={vi.fn()}
-          fps={24}
+          fps={25}
           onFpsChange={vi.fn()}
           generateAudio={false}
           onGenerateAudioChange={vi.fn()}
