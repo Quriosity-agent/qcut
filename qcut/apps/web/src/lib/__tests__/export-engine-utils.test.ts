@@ -106,11 +106,17 @@ describe("Export Engine Utils", () => {
         },
       ];
       const mediaItems = [
-        { id: "m1", type: "video" as const, url: "test.mp4", name: "Test" },
+        {
+          id: "m1",
+          type: "video" as const,
+          url: "test.mp4",
+          name: "Test",
+          file: new File([], "test.mp4"),
+        },
       ];
 
       // At time 2s (within element's range 1-4)
-      const active = getActiveElements(tracks, mediaItems as any, 2);
+      const active = getActiveElements(tracks, mediaItems, 2);
       expect(active).toHaveLength(1);
       expect(active[0].element.id).toBe("e1");
     });
@@ -180,13 +186,7 @@ describe("Export Engine Utils", () => {
   describe("calculateElementBounds", () => {
     it("scales down larger media to fit canvas", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
-      const bounds = calculateElementBounds(
-        element,
-        3840,
-        2160,
-        1920,
-        1080
-      );
+      const bounds = calculateElementBounds(element, 3840, 2160, 1920, 1080);
 
       expect(bounds.width).toBe(1920);
       expect(bounds.height).toBe(1080);
@@ -196,13 +196,7 @@ describe("Export Engine Utils", () => {
 
     it("keeps original size for smaller media", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
-      const bounds = calculateElementBounds(
-        element,
-        640,
-        480,
-        1920,
-        1080
-      );
+      const bounds = calculateElementBounds(element, 640, 480, 1920, 1080);
 
       expect(bounds.width).toBe(640);
       expect(bounds.height).toBe(480);
@@ -214,13 +208,7 @@ describe("Export Engine Utils", () => {
     it("maintains aspect ratio when scaling wider media", () => {
       const element = createMediaElement("e1", "m1", 0, 5);
       // Ultra-wide media: 2560x720 (aspect 3.55)
-      const bounds = calculateElementBounds(
-        element,
-        2560,
-        720,
-        1920,
-        1080
-      );
+      const bounds = calculateElementBounds(element, 2560, 720, 1920, 1080);
 
       // Should fit to width
       expect(bounds.width).toBe(1920);
@@ -233,13 +221,7 @@ describe("Export Engine Utils", () => {
         x: 200,
         y: 300,
       });
-      const bounds = calculateElementBounds(
-        element,
-        100,
-        50,
-        1920,
-        1080
-      );
+      const bounds = calculateElementBounds(element, 100, 50, 1920, 1080);
 
       expect(bounds.x).toBe(200);
       expect(bounds.y).toBe(300);

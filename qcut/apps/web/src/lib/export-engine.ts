@@ -569,7 +569,10 @@ export class ExportEngine {
         return;
       } catch (error) {
         // User cancelled or API unavailable - fall back to traditional download
-        console.warn("[ExportEngine] showSaveFilePicker failed, using fallback:", error);
+        console.warn(
+          "[ExportEngine] showSaveFilePicker failed, using fallback:",
+          error
+        );
       }
     }
 
