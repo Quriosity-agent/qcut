@@ -22,6 +22,10 @@ export default defineConfig({
       path.resolve(rootDir, "src/test/setup-radix-patches.ts"),
       path.resolve(rootDir, "src/test/setup.ts"),
     ],
+    include: [
+      "**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../../electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+    ],
     exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
     isolate: true,
     pool: "forks",
