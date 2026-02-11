@@ -1,6 +1,8 @@
 // Location: electron/__tests__/ffmpeg-basic-handlers.test.ts
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { TempManager } from "../temp-manager.js";
+import type { OpenFolderResult } from "../ffmpeg/types.js";
 
 // vi.hoisted runs before vi.mock hoisting — safe to reference in factories
 const { mockHandle, mockOpenPath } = vi.hoisted(() => ({
@@ -65,7 +67,10 @@ describe("setupBasicHandlers", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    setupBasicHandlers(mockTempManager as any, mockGetFFmpegHealth);
+    setupBasicHandlers(
+      mockTempManager as unknown as TempManager,
+      mockGetFFmpegHealth
+    );
   });
 
   it("registers all 7 IPC handlers", () => {
@@ -119,7 +124,7 @@ describe("setupBasicHandlers", () => {
 
   it("open-frames-folder opens the frame directory", async () => {
     const handler = getHandler("open-frames-folder");
-    const result: any = await handler({}, "session-99");
+    const result = (await handler({}, "session-99")) as OpenFolderResult;
     expect(mockTempManager.getFrameDir).toHaveBeenCalledWith("session-99");
     expect(mockOpenPath).toHaveBeenCalledWith(
       "/tmp/qcut-export/session-99/frames"
