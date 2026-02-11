@@ -4,7 +4,7 @@
  */
 
 import { handleAIServiceError } from "./error-handler";
-import { getFalApiKey, FAL_API_BASE } from "./image-edit-utils";
+import { getFalApiKey } from "./image-edit-utils";
 import type {
   ImageEditResponse,
   ImageEditProgressCallback,
@@ -40,7 +40,7 @@ export async function pollImageEditStatus(
       const pollTimeout = setTimeout(() => pollCtrl.abort(), 15_000); // 15 second timeout per poll
 
       const statusResponse = await fetch(
-        `${FAL_API_BASE}/queue/requests/${requestId}/status`,
+        `${endpoint}/queue/requests/${requestId}/status`,
         {
           headers: {
             "Authorization": `Key ${apiKey}`,
@@ -70,7 +70,7 @@ export async function pollImageEditStatus(
 
       if (status.status === "COMPLETED") {
         const resultResponse = await fetch(
-          `${FAL_API_BASE}/queue/requests/${requestId}`,
+          `${endpoint}/queue/requests/${requestId}`,
           {
             headers: {
               "Authorization": `Key ${apiKey}`,
