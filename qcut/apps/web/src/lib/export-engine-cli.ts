@@ -458,8 +458,18 @@ export class CLIExportEngine extends ExportEngine {
     // Progress: 5% - Preparing audio files
     progressCallback?.(5, "Preparing audio files...");
 
-    // Prepare audio files for FFmpeg
-    let audioFiles = await this.prepareAudioFiles();
+    // Gate audio preparation behind request-scoped includeAudio setting
+    // Default to true for backward compatibility
+    const includeAudio = this.audioOptions.includeAudio ?? true;
+    let audioFiles: AudioFileInput[] = [];
+
+    if (includeAudio) {
+      audioFiles = await this.prepareAudioFiles();
+    } else {
+      debugLog(
+        "[CLI Export] Audio excluded by user setting (includeAudio=false)"
+      );
+    }
 
     // audioFiles can be validated and filtered here if needed
     // e.g., audioFiles = audioFiles.filter(validateAudioFile);

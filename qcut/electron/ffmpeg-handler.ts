@@ -542,14 +542,129 @@ export function setupFFmpegIPC(): void {
                 });
               });
 
-              // TODO: Audio mixing not yet implemented for Mode 1.5
+              // Mix overlay audio files into the concatenated output if present
               if (audioFiles && audioFiles.length > 0) {
-                console.warn(
-                  "⚠️ [MODE 1.5 EXPORT] Audio mixing not yet implemented for Mode 1.5"
+                console.log(
+                  `🎧 [MODE 1.5 EXPORT] Mixing ${audioFiles.length} overlay audio file(s) into output...`
                 );
-                throw new Error(
-                  "Audio mixing not supported in Mode 1.5 - falling back to Mode 3"
+
+                const concatOutputTemp = path.join(
+                  frameDir,
+                  "concat_before_audio.mp4"
                 );
+                // Rename current output to temp so we can mix into final output
+                fs.renameSync(outputFile, concatOutputTemp);
+
+                // Build FFmpeg inputs: video + each audio file
+                const mixArgs: string[] = ["-y", "-i", concatOutputTemp];
+                for (const af of audioFiles) {
+                  mixArgs.push("-i", af.path);
+                }
+
+                // Build filter_complex for audio mixing
+                // Each overlay audio gets adelay (in ms) and volume adjustment
+                const filterParts: string[] = [];
+                const mixInputLabels: string[] = ["[0:a]"]; // base video audio
+
+                for (let i = 0; i < audioFiles.length; i++) {
+                  const af = audioFiles[i];
+                  const delayMs = Math.round((af.startTime ?? 0) * 1000);
+                  const vol = af.volume ?? 1.0;
+                  const label = `[oa${i}]`;
+                  filterParts.push(
+                    `[${i + 1}:a]adelay=${delayMs}|${delayMs},volume=${vol}${label}`
+                  );
+                  mixInputLabels.push(label);
+                }
+
+                const mixInputCount = mixInputLabels.length;
+                filterParts.push(
+                  `${mixInputLabels.join("")}amix=inputs=${mixInputCount}:duration=first:dropout_transition=0[aout]`
+                );
+
+                mixArgs.push(
+                  "-filter_complex",
+                  filterParts.join(";"),
+                  "-map",
+                  "0:v",
+                  "-map",
+                  "[aout]",
+                  "-c:v",
+                  "copy",
+                  "-c:a",
+                  "aac",
+                  "-b:a",
+                  "192k",
+                  "-movflags",
+                  "+faststart",
+                  outputFile
+                );
+
+                console.log(
+                  `🎧 [MODE 1.5 EXPORT] Audio mix command: ffmpeg ${mixArgs.join(" ")}`
+                );
+
+                await new Promise<void>((mixResolve, mixReject) => {
+                  const mixProcess: ChildProcess = spawn(ffmpegPath, mixArgs, {
+                    windowsHide: true,
+                    stdio: ["ignore", "pipe", "pipe"],
+                  });
+
+                  let mixStderr = "";
+
+                  mixProcess.stderr?.on("data", (chunk: Buffer) => {
+                    mixStderr += chunk.toString();
+                  });
+
+                  mixProcess.on("close", (code: number | null) => {
+                    if (code === 0) {
+                      console.log(
+                        "🎧 [MODE 1.5 EXPORT] ✅ Audio mixing complete!"
+                      );
+                      // Clean up temp file
+                      try {
+                        fs.unlinkSync(concatOutputTemp);
+                      } catch {
+                        // ignore cleanup errors
+                      }
+                      mixResolve();
+                    } else {
+                      console.error(
+                        `❌ [MODE 1.5 EXPORT] Audio mixing failed with code ${code}`
+                      );
+                      console.error(
+                        `❌ [MODE 1.5 EXPORT] FFmpeg stderr:\n${mixStderr}`
+                      );
+                      // Restore original concat output (without overlay audio)
+                      try {
+                        fs.renameSync(concatOutputTemp, outputFile);
+                      } catch {
+                        // ignore restore errors
+                      }
+                      console.warn(
+                        "⚠️ [MODE 1.5 EXPORT] Falling back to output without overlay audio"
+                      );
+                      mixResolve(); // Don't reject — export with embedded audio only
+                    }
+                  });
+
+                  mixProcess.on("error", (err: Error) => {
+                    console.error(
+                      "❌ [MODE 1.5 EXPORT] Audio mix process error:",
+                      err
+                    );
+                    // Restore original concat output
+                    try {
+                      fs.renameSync(concatOutputTemp, outputFile);
+                    } catch {
+                      // ignore restore errors
+                    }
+                    console.warn(
+                      "⚠️ [MODE 1.5 EXPORT] Falling back to output without overlay audio"
+                    );
+                    mixResolve(); // Don't reject — graceful fallback
+                  });
+                });
               }
 
               // Success!
