@@ -6,25 +6,25 @@
 
 ## Current Top 5 Files Worth Splitting
 
-| # | File | Lines | Target | Subtask |
-|---|------|------:|--------|---------|
-| 1 | `apps/web/src/components/editor/timeline/index.tsx` | 1584 | ~400 + ~480 + ~180 | [split-v2-5-timeline-index.md](./split-v2-5-timeline-index.md) |
-| 2 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | 1518 | ~270 + ~620 + ~120 + ~415 | [split-v2-2-model-handler-implementations.md](./split-v2-2-model-handler-implementations.md) |
-| 3 | `apps/web/src/lib/fal-ai-client.ts` | 1512 | ~500 + ~375 + ~405 + ~155 | [split-v2-3-fal-ai-client.md](./split-v2-3-fal-ai-client.md) |
-| 4 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1428 | ~700 + ~180 + ~140 + ~55 | [split-v2-4-use-ai-generation.md](./split-v2-4-use-ai-generation.md) |
-| 5 | `apps/web/src/lib/text2image-models.ts` | 1422 | ~100 registry + ~4 provider files | [split-v2-1-text2image-models.md](./split-v2-1-text2image-models.md) |
+| # | File | Lines | Target | Subtask | Status |
+|---|------|------:|--------|---------|--------|
+| 1 | `apps/web/src/components/editor/timeline/index.tsx` | 1584 | ~400 + ~480 + ~180 | [split-v2-5-timeline-index.md](./split-v2-5-timeline-index.md) | **Not started** |
+| 2 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | 1518 | ~270 + ~620 + ~120 + ~415 | [split-v2-2-model-handler-implementations.md](./split-v2-2-model-handler-implementations.md) | **Not started** |
+| 3 | `apps/web/src/lib/fal-ai-client.ts` | 1512 | ~500 + ~375 + ~405 + ~155 | [split-v2-3-fal-ai-client.md](./split-v2-3-fal-ai-client.md) | **Done** (647 lines) |
+| 4 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1428 | ~700 + ~180 + ~140 + ~55 | [split-v2-4-use-ai-generation.md](./split-v2-4-use-ai-generation.md) | **Partial** (1082 lines, still >800) |
+| 5 | `apps/web/src/lib/text2image-models.ts` | 1422 | ~100 registry + ~4 provider files | [split-v2-1-text2image-models.md](./split-v2-1-text2image-models.md) | **Done** |
 
 ---
 
 ## Execution Order
 
-| Phase | Subtask | Why This Order |
-|-------|---------|---------------|
-| **Phase 1** | **#5 text2image-models** | Lowest risk — pure config data, no logic, no state |
-| **Phase 2** | **#2 model-handler-implementations** | Low risk — independent pure functions, clear category boundaries |
-| **Phase 3** | **#3 fal-ai-client** | Medium risk — class method extraction, but methods are self-contained |
-| **Phase 4** | **#4 use-ai-generation** | Medium risk — continues partial split, interdependent hook state |
-| **Phase 5** | **#1 timeline/index** | Highest risk — complex refs, shared state, component extraction |
+| Phase | Subtask | Why This Order | Status |
+|-------|---------|---------------|--------|
+| **Phase 1** | **#5 text2image-models** | Lowest risk — pure config data, no logic, no state | **Done** |
+| **Phase 2** | **#2 model-handler-implementations** | Low risk — independent pure functions, clear category boundaries | **Not started** |
+| **Phase 3** | **#3 fal-ai-client** | Medium risk — class method extraction, but methods are self-contained | **Done** |
+| **Phase 4** | **#4 use-ai-generation** | Medium risk — continues partial split, interdependent hook state | **Partial** — polling + mock extracted, but main file still 1082 lines |
+| **Phase 5** | **#1 timeline/index** | Highest risk — complex refs, shared state, component extraction | **Not started** |
 
 Each phase is one commit. Do not start the next phase until verification passes.
 

@@ -1,39 +1,29 @@
 # Large Files Report (>800 lines)
 
-Generated: 2026-02-11 (updated after file-split phases)
+Generated: 2026-02-11 (updated after split-v2 phases)
 
 ## Summary
 
-**Total files exceeding 800 lines:** 39
+**Total files exceeding 800 lines:** 37
 
-Previous report (2026-02-09) had 27 files. The increase is due to: (a) new files created by the split plan, (b) other files growing from ongoing development, and (c) files that were just under 800 now crossing the threshold.
+Previous report had 39 files. The decrease is from split-v2 completing Phase 1 (text2image-models) and Phase 3 (fal-ai-client), which brought both files under 800. Phase 4 (use-ai-generation) was partial — reduced from 1428 → 1082 but still over the limit.
 
-### Split Plan Impact
+### Split Plan v2 Impact
 
-The [split-top5-large-files-plan](./split-top5-large-files-plan.md) removed 3 files from the >800 list and added 3 new ones:
-
-| Action | File | Before | After |
-|--------|------|--------|-------|
-| Reduced below 800 | `model-handlers.ts` | 1676 | 379 |
-| Reduced below 800 | `electron/preload.ts` | 1517 | 359 |
-| Reduced below 800 | `electron/main.ts` | 1368 | 646 |
-| Reduced (still >800) | `timeline-store.ts` | 1660 | 946 |
-| Reduced (still >800) | `use-ai-generation.ts` | 1695 | 1428 |
-| **New** from split | `model-handler-implementations.ts` | — | 1518 |
-| **New** from split | `timeline-store-operations.ts` | — | 1047 |
-| **New** from split | `main-ipc.ts` | — | 884 |
-
-Net effect: the top 5 files went from avg 1583 lines → avg 806 lines. Three originals are now well under 800.
+| Phase | File | Before | After | Status |
+|-------|------|--------|-------|--------|
+| Phase 1 | `text2image-models.ts` | 1422 | ~91 barrel + split dir | **Done** — removed from list |
+| Phase 2 | `model-handler-implementations.ts` | 1518 | 1518 | **Not started** |
+| Phase 3 | `fal-ai-client.ts` | 1512 | 647 | **Done** — removed from list |
+| Phase 4 | `use-ai-generation.ts` | 1428 | 1082 | **Partial** — still >800 |
+| Phase 5 | `timeline/index.tsx` | 1584 | 1584 | **Not started** |
 
 ## Files by Line Count
 
 | Lines | File | Category | Notes |
 |------:|------|----------|-------|
-| 1584 | `apps/web/src/components/editor/timeline/index.tsx` | Timeline UI | Follow-up split candidate |
-| 1518 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | AI Generation | NEW from split #3 |
-| 1512 | `apps/web/src/lib/fal-ai-client.ts` | AI Client | |
-| 1428 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | AI Generation | Split #2 partial — target was ~1050 |
-| 1422 | `apps/web/src/lib/text2image-models.ts` | AI Models Config | |
+| 1584 | `apps/web/src/components/editor/timeline/index.tsx` | Timeline UI | Split v2 Phase 5 — not started |
+| 1518 | `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handler-implementations.ts` | AI Generation | Split v2 Phase 2 — not started |
 | 1404 | `apps/web/src/lib/export-engine.ts` | Export | |
 | 1325 | `apps/web/src/lib/image-edit-client.ts` | AI Client | |
 | 1315 | `apps/web/src/types/electron.d.ts` | Type Definitions | |
@@ -46,18 +36,19 @@ Net effect: the top 5 files went from avg 1583 lines → avg 806 lines. Three or
 | 1157 | `apps/web/src/stores/media-store.ts` | State Management | |
 | 1132 | `apps/web/src/components/editor/draw/canvas/drawing-canvas.tsx` | Drawing Canvas | |
 | 1087 | `apps/web/src/lib/export-engine.backup.ts` | Export (backup) | Consider removing |
-| 1047 | `apps/web/src/stores/timeline-store-operations.ts` | State Management | NEW from split #1 |
+| 1082 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | AI Generation | Split v2 Phase 4 — partial |
+| 1047 | `apps/web/src/stores/timeline-store-operations.ts` | State Management | From split v1 |
 | 983 | `apps/web/src/lib/remotion/component-loader.ts` | Remotion | |
 | 974 | `apps/web/src/test/e2e/project-folder-sync.e2e.ts` | Tests | |
 | 957 | `apps/web/src/lib/remotion/__tests__/component-validator.test.ts` | Tests | |
 | 956 | `apps/web/src/lib/ai-video/validation/validators.ts` | AI Validation | |
 | 956 | `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts` | AI Types | |
 | 947 | `electron/ffmpeg/utils.ts` | Electron / FFmpeg | |
-| 946 | `apps/web/src/stores/timeline-store.ts` | State Management | Reduced from 1660 (split #1) |
+| 946 | `apps/web/src/stores/timeline-store.ts` | State Management | Reduced from 1660 (split v1) |
 | 918 | `apps/web/src/stores/remotion-store.ts` | State Management | |
 | 903 | `apps/web/src/lib/ffmpeg-utils.ts` | FFmpeg Utils | |
 | 900 | `apps/web/src/lib/export-engine-cli.ts` | Export | |
-| 884 | `electron/main-ipc.ts` | Electron | NEW from split #5 |
+| 884 | `electron/main-ipc.ts` | Electron | From split v1 |
 | 869 | `apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts` | AI Models Config | |
 | 866 | `apps/web/src/test/e2e/helpers/electron-helpers.ts` | Tests | |
 | 866 | `apps/web/src/lib/ai-video/generators/text-to-video.ts` | AI Generation | |
@@ -73,7 +64,7 @@ Net effect: the top 5 files went from avg 1583 lines → avg 806 lines. Three or
 
 | Category | Files | Total Lines |
 |----------|------:|------------:|
-| AI Generation / UI / Config | 12 | ~14,664 |
+| AI Generation / UI / Config | 11 | ~12,286 |
 | State Management | 5 | ~4,920 |
 | Electron | 4 | ~3,967 |
 | Export | 3 | ~3,391 |
@@ -90,7 +81,8 @@ Net effect: the top 5 files went from avg 1583 lines → avg 806 lines. Three or
 
 - `export-engine.backup.ts` (1087 lines) appears to be a backup file — consider removing if no longer needed.
 - AI subsystem under `media-panel/views/ai/` remains the most complex area with the highest concentration of large files.
-- `use-ai-generation.ts` (1428 lines) still needs further extraction — settings builders and response handlers from split-2 plan were not fully moved to helpers file.
-- `model-handler-implementations.ts` (1518 lines) is a new large file from the split — could be further split by handler category (T2V, I2V, avatar, upscale) if needed.
-- `timeline/index.tsx` (1584 lines) is the next split candidate per the plan's follow-up section.
+- `use-ai-generation.ts` (1082 lines) still needs further extraction — settings builders and response handlers were not fully moved to helpers file.
+- `model-handler-implementations.ts` (1518 lines) needs split into 4 handler category files (T2V, I2V, avatar, upscale).
+- `timeline/index.tsx` (1584 lines) is the largest file and next split candidate.
 - Several test/e2e files (974, 957, 866, 840 lines) are over 800 — less critical since they don't affect runtime, but worth noting.
+- `fal-ai-client.ts` and `text2image-models.ts` were successfully removed from this list by split-v2 Phases 1 and 3.
