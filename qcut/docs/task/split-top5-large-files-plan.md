@@ -1,7 +1,24 @@
 # Implementation Plan: Split Top 5 Largest Files (Reviewed)
 
 **Reviewed:** 2026-02-10
+**Status:** Mostly Complete (2026-02-11)
 **Goal:** Reduce file size and coupling with no behavior changes.
+
+## Completion Summary
+
+| # | File | Before | After | New File(s) | Phase Status |
+|---|------|--------|-------|-------------|-------------|
+| 1 | `timeline-store.ts` | 1886 | 946 | `timeline-store-operations.ts` (1047) | DONE |
+| 2 | `use-ai-generation.ts` | 1876 | **1428** | `use-ai-generation-helpers.ts` (583) | **PARTIAL** — still 1428 lines vs ~1050 target |
+| 3 | `model-handlers.ts` | 1865 | 379 | `model-handler-implementations.ts` (1518) | DONE |
+| 4 | `preload.ts` | 1630 | 359 | `preload-types.ts` (795) + `preload-integrations.ts` (337) | DONE |
+| 5 | `main.ts` | 1601 | 646 | `main-ipc.ts` (884) | DONE |
+
+### Remaining Issues
+- **#2 use-ai-generation.ts (1428 lines):** ~380 lines over target. Groups 3 (settings builders) and 4 (response handlers) from the subtask plan may not have been fully extracted. Needs further extraction to reach ~1050.
+- **800-line rule violations:** `timeline-store-operations.ts` (1047), `model-handler-implementations.ts` (1518), `timeline-store.ts` (946), `main-ipc.ts` (884), `use-ai-generation.ts` (1428) all exceed the 800-line CLAUDE.md rule.
+
+---
 
 ## Current Top Files (TS/TSX/JS/JSX)
 

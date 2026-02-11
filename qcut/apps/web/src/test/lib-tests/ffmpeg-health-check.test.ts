@@ -10,8 +10,8 @@ import { spawn } from "child_process";
  * paths and packaging config) by validating runtime behavior.
  */
 
-/** Timeout for each spawn (ms) */
-const SPAWN_TIMEOUT = 5000;
+/** Timeout for each spawn (ms) — CI runners (especially macOS) can be slow */
+const SPAWN_TIMEOUT = 15_000;
 
 /**
  * Spawns a binary with -version and returns { code, stdout, error }.
