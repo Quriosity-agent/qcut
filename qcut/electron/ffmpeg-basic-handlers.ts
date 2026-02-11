@@ -117,7 +117,10 @@ export function setupBasicHandlers(
       sessionId: string
     ): Promise<OpenFolderResult> => {
       const frameDir: string = tempManager.getFrameDir(sessionId);
-      await shell.openPath(frameDir);
+      const errorMessage = await shell.openPath(frameDir);
+      if (errorMessage) {
+        throw new Error(`Failed to open frames folder: ${errorMessage}`);
+      }
       return { success: true, path: frameDir };
     }
   );
