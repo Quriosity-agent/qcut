@@ -18,14 +18,14 @@ export interface Text2ImageModel {
   supportedAspectRatios: string[];
 
   // Model-specific parameters
-  defaultParams: Record<string, any>;
+  defaultParams: Record<string, string | number | boolean>;
   availableParams: Array<{
     name: string;
     type: "number" | "string" | "boolean" | "select";
     min?: number;
     max?: number;
     options?: string[];
-    default: any;
+    default: string | number | boolean | null;
     description: string;
   }>;
 
