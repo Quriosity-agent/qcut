@@ -8,9 +8,10 @@ import type {
   Veo31Response,
 } from "@/types/ai-generation";
 import type { VideoGenerationResponse } from "./ai-video-client";
-import type { FalAIClientRequestDelegate } from "./fal-ai-client-internal-types";
-
-const FAL_LOG_COMPONENT = "FalAIClient";
+import {
+  FAL_LOG_COMPONENT,
+  type FalAIClientRequestDelegate,
+} from "./fal-ai-client-internal-types";
 
 export async function veo31FastTextToVideo(
   delegate: FalAIClientRequestDelegate,

@@ -14,9 +14,10 @@ import type {
   ReveEditInput,
   ReveEditOutput,
 } from "@/types/ai-generation";
-import type { FalAIClientRequestDelegate } from "./fal-ai-client-internal-types";
-
-const FAL_LOG_COMPONENT = "FalAIClient";
+import {
+  FAL_LOG_COMPONENT,
+  type FalAIClientRequestDelegate,
+} from "./fal-ai-client-internal-types";
 
 export async function reveTextToImage(
   delegate: FalAIClientRequestDelegate,

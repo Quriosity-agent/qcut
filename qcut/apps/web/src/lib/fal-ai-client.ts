@@ -53,34 +53,13 @@ import {
   veo31ExtendVideo,
 } from "./fal-ai-client-veo31";
 import { reveTextToImage, reveEdit } from "./fal-ai-client-reve";
-import type {
-  GenerationSettings,
-  GenerationResult,
-  MultiModelGenerationResult,
+import {
+  FAL_LOG_COMPONENT,
+  type FalImageResponse,
+  type GenerationSettings,
+  type GenerationResult,
+  type MultiModelGenerationResult,
 } from "./fal-ai-client-internal-types";
-
-// Types for API responses
-interface FalImageResponse {
-  // Most models return images array
-  images?: Array<{
-    url: string;
-    width: number;
-    height: number;
-    content_type: string;
-  }>;
-  // WAN v2.2 returns single image object
-  image?: {
-    url: string;
-    width: number;
-    height: number;
-    content_type?: string;
-  };
-  timings?: Record<string, number>;
-  seed?: number;
-  has_nsfw_concepts?: boolean[];
-}
-
-const FAL_LOG_COMPONENT = "FalAIClient";
 
 export type {
   GenerationSettings,

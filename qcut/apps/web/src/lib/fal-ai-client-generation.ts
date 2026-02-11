@@ -5,32 +5,14 @@ import {
   imageSizeToAspectRatio,
   normalizeOutputFormat,
 } from "./ai-video/validation/validators";
-import type {
-  FalAIClientRequestDelegate,
-  GenerationSettings,
-  GenerationResult,
-  MultiModelGenerationResult,
+import {
+  FAL_LOG_COMPONENT,
+  type FalAIClientRequestDelegate,
+  type FalImageResponse,
+  type GenerationSettings,
+  type GenerationResult,
+  type MultiModelGenerationResult,
 } from "./fal-ai-client-internal-types";
-
-const FAL_LOG_COMPONENT = "FalAIClient";
-
-interface FalImageResponse {
-  images?: Array<{
-    url: string;
-    width: number;
-    height: number;
-    content_type: string;
-  }>;
-  image?: {
-    url: string;
-    width: number;
-    height: number;
-    content_type?: string;
-  };
-  timings?: Record<string, number>;
-  seed?: number;
-  has_nsfw_concepts?: boolean[];
-}
 
 export function convertSettingsToParams(
   model: Text2ImageModel,

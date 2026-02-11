@@ -25,3 +25,25 @@ export interface GenerationSettings {
 }
 
 export type MultiModelGenerationResult = Record<string, GenerationResult>;
+
+export interface FalImageResponse {
+  // Most models return images array
+  images?: Array<{
+    url: string;
+    width: number;
+    height: number;
+    content_type: string;
+  }>;
+  // WAN v2.2 returns single image object
+  image?: {
+    url: string;
+    width: number;
+    height: number;
+    content_type?: string;
+  };
+  timings?: Record<string, number>;
+  seed?: number;
+  has_nsfw_concepts?: boolean[];
+}
+
+export const FAL_LOG_COMPONENT = "FalAIClient";
