@@ -16,8 +16,8 @@ import type {
   FrameData,
   OpenFolderResult,
   FFmpegHealthResult,
-  ExportSession,
 } from "./ffmpeg/types.js";
+import type { ExportSession } from "./temp-manager.js";
 
 import { getFFmpegPath } from "./ffmpeg/utils.js";
 

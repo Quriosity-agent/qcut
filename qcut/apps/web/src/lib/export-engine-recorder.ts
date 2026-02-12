@@ -42,7 +42,7 @@ export function setupMediaRecorder(
   const stream = existingStream || context.canvas.captureStream(0);
 
   const formatInfo = FORMAT_INFO[context.settings.format];
-  let selectedMimeType = formatInfo.mimeTypes[0];
+  let selectedMimeType: string = formatInfo.mimeTypes[0];
 
   for (const mimeType of formatInfo.mimeTypes) {
     if (MediaRecorder.isTypeSupported(mimeType)) {
