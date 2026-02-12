@@ -7,6 +7,9 @@
 // Video source extraction
 export { extractVideoSources, extractVideoInputPath } from "./video-sources";
 
+// Image source extraction
+export { extractImageSources } from "./image-sources";
+
 // Sticker source extraction
 export { extractStickerSources } from "./sticker-sources";
 
