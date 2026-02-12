@@ -14,6 +14,7 @@
     "@emnapi/core": "^1.4.5",
     "@emnapi/wasi-threads": "^1.1.0",
     "@playwright/test": "^1.40.0",
+    "@types/babel__traverse": "^7.28.0",
     "@types/electron-builder": "^2.8.2",
     "@types/jsdom": "^21.1.7",
     "@types/jszip": "^3.4.1",
@@ -27,6 +28,7 @@
     "electron-builder": "^26.0.12",
     "electron-devtools-installer": "^4.0.0",
     "electron-packager": "^17.1.2",
+    "esbuild": "^0.25.8",
     "happy-dom": "^18.0.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
@@ -47,7 +49,7 @@
     "build": "turbo run build && bun run build:electron",
     "check-types": "turbo run check-types",
     "postinstall": "bun run setup-ffmpeg && bun scripts/patch-node-pty.ts",
-    "build:electron": "cd electron && bun x tsc",
+    "build:electron": "cd electron && bun x tsc && bun x esbuild ../electron/preload.ts --bundle --platform=node --outfile=../dist/electron/preload.js --external:electron",
     "build:electron:watch": "cd electron && bun x tsc --watch",
     "lint": "npx ultracite@latest lint",
     "lint:clean": "npx @biomejs/biome check --skip-parse-errors .",
@@ -342,6 +344,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "4.0.417",
+    "scheduler": "^0.27.0",
     "wavesurfer.js": "^7.10.1"
   },
   "resolutions": {
