@@ -330,10 +330,21 @@ export function getFFprobePath(): string {
     }
 
     if (fs.existsSync(staticPath)) {
-      console.log("[FFmpeg] Found ffprobe-static:", staticPath);
-      return staticPath;
+      // Verify the binary is actually executable (fix for macOS arm64 bug in ffprobe-static)
+      try {
+        const { spawnSync } = require("child_process");
+        const result = spawnSync(staticPath, ["-version"], { timeout: 2000 });
+        if (result.status === 0 || result.stdout) {
+          console.log("[FFmpeg] Found ffprobe-static:", staticPath);
+          return staticPath;
+        }
+        console.log("[FFmpeg] ffprobe-static binary not executable, trying fallback");
+      } catch (err) {
+        console.log("[FFmpeg] ffprobe-static execution test failed:", err);
+      }
+    } else {
+      console.log("[FFmpeg] ffprobe-static path not on disk:", staticPath);
     }
-    console.log("[FFmpeg] ffprobe-static path not on disk:", staticPath);
   } catch {
     console.log("[FFmpeg] ffprobe-static package not found, falling back");
   }
@@ -373,16 +384,29 @@ export function getFFprobePath(): string {
     }
   }
 
-  // 2. Fallback: same directory as ffmpeg
+  // 2. Try system paths (especially important for macOS arm64)
+  const platform = process.platform;
+  const ffprobeExe = platform === "win32" ? "ffprobe.exe" : "ffprobe";
+  const systemPaths = getSystemFFmpegPaths(platform, ffprobeExe);
+
+  for (const searchPath of systemPaths) {
+    if (fs.existsSync(searchPath)) {
+      console.log("[FFmpeg] Found ffprobe at system path:", searchPath);
+      return searchPath;
+    }
+  }
+
+  // 3. Fallback: same directory as ffmpeg
   const ffmpegPath = getFFmpegPath();
   const ffmpegDir = path.dirname(ffmpegPath);
-  const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
 
   // If ffmpeg is system PATH, assume ffprobe is too
   if (ffmpegPath === "ffmpeg" || ffmpegPath === "ffmpeg.exe") {
+    console.log("[FFmpeg] Falling back to system PATH ffprobe");
     return "ffprobe";
   }
 
+  console.log("[FFmpeg] Using ffprobe from ffmpeg directory:", ffmpegDir);
   return path.join(ffmpegDir, ffprobeExe);
 }
 
