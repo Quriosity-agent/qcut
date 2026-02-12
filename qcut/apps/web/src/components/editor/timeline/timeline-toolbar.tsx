@@ -38,7 +38,10 @@ import { useProjectStore } from "@/stores/project-store";
 import { useSceneStore } from "@/stores/scene-store";
 import { ScenesView } from "../scenes-view";
 import { EFFECTS_ENABLED } from "@/config/features";
-import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import {
+  TIMELINE_CONSTANTS,
+  TEST_MEDIA_ID,
+} from "@/constants/timeline-constants";
 import { toast } from "sonner";
 
 export interface TimelineToolbarProps {
@@ -308,7 +311,7 @@ export function TimelineToolbar({
                       const trackId = addTrack("media");
                       addElementToTrack(trackId, {
                         type: "media",
-                        mediaId: "test",
+                        mediaId: TEST_MEDIA_ID,
                         name: "Test Clip",
                         duration: TIMELINE_CONSTANTS.DEFAULT_TEXT_DURATION,
                         startTime: 0,

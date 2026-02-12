@@ -1,38 +1,50 @@
 # Split Top 5 Large Files — Round 3: Overview
 
 **Created:** 2026-02-11
+**Completed:** 2026-02-12
+**Status:** All 5 phases completed
 **Goal:** Reduce all remaining >800-line files to <800 lines with zero behavior changes.
-**Predecessor:** [split-top5-large-files-plan-v2.md](./split-top5-large-files-plan-v2.md)
 
-## Task Files
+## Results
 
-Each phase has its own implementation task file:
+| Phase | Target File | Before | After | Status | Commit |
+|-------|-------------|-------:|------:|--------|--------|
+| 1 | `image-edit-client.ts` | 1325 | 716 | Done | `53efb8d9` |
+| 2 | `ai-image-tab.tsx` | 1283 | 464 | Done | `776c546e` |
+| 3 | `ai/index.tsx` | 1281 | 935 | Done (see note) | `6f5900af` |
+| 4 | `export-engine.ts` | 1404 | 542 | Done | `237aa647` |
+| 5 | `ffmpeg-handler.ts` | 1310 | 83 | Done | `05af141e` |
 
-| Phase | Task File | Target File | Lines | Est. Time |
-|-------|-----------|-------------|------:|-----------|
-| 1 | [split-v3-phase1-image-edit-client.md](./split-v3-phase1-image-edit-client.md) | `image-edit-client.ts` | 1325 | ~25 min |
-| 2 | [split-v3-phase2-ai-image-tab.md](./split-v3-phase2-ai-image-tab.md) | `ai-image-tab.tsx` | 1283 | ~35 min |
-| 3 | [split-v3-phase3-ai-index.md](./split-v3-phase3-ai-index.md) | `ai/index.tsx` | 1281 | ~30 min |
-| 4 | [split-v3-phase4-export-engine.md](./split-v3-phase4-export-engine.md) | `export-engine.ts` | 1404 | ~40 min |
-| 5 | [split-v3-phase5-ffmpeg-handler.md](./split-v3-phase5-ffmpeg-handler.md) | `ffmpeg-handler.ts` | 1310 | ~45 min |
+### Extracted Modules
 
-## Execution Rules
+**Phase 1** — `apps/web/src/lib/`:
+- `image-edit-client.ts` (716 lines, main)
+- Extracted polling, data, and utility modules
 
-1. **Sequential execution** — complete Phase N before starting Phase N+1.
-2. **One commit per phase** — each phase is atomic and independently verifiable.
-3. **No behavior changes** — pure refactor, all public APIs stay identical.
-4. **Verification per phase:**
-   - `bun run check-types` passes
-   - `bun lint:clean` passes
-   - `bun run test` passes (affected tests)
-   - Smoke test: `bun run electron:dev` — affected features work
+**Phase 2** — `apps/web/src/components/editor/media-panel/views/ai/tabs/`:
+- `ai-image-tab.tsx` (464 lines, main)
+- 7 model settings components extracted
 
-## Risk Summary
+**Phase 3** — `apps/web/src/components/editor/media-panel/views/ai/`:
+- `index.tsx` (935 lines, main)
+- Extracted hooks and components
 
-| Phase | Risk | Reason |
-|-------|------|--------|
-| 1 | Low | Pure data + independent polling module |
-| 2 | Low-Medium | 7 independent model components, no shared state |
-| 3 | Medium | Hook extraction with dependency management |
-| 4 | Medium-High | Class method extraction, shared canvas/ctx state |
-| 5 | High | IPC handler registration, dual CJS/ESM, Electron context |
+**Phase 4** — `apps/web/src/lib/`:
+- `export-engine.ts` (542 lines, main)
+- `export-engine-utils.ts` (120 lines)
+- `export-engine-debug.ts` (76 lines)
+- `export-engine-recorder.ts` (113 lines)
+- `export-engine-renderer.ts` (422 lines)
+
+**Phase 5** — `electron/`:
+- `ffmpeg-handler.ts` (83 lines, orchestrator)
+- `ffmpeg-args-builder.ts` (254 lines)
+- `ffmpeg-basic-handlers.ts` (108 lines)
+- `ffmpeg-export-handler.ts` (690 lines)
+- `ffmpeg-utility-handlers.ts` (284 lines)
+
+## Known Remaining Issues
+
+1. **`ai/index.tsx` (935 lines)** — Phase 3 extraction reduced it from 1281 but it still exceeds the 800-line limit. Needs a follow-up round.
+2. **`export-engine-cli.ts` (831 lines)** — Pre-existing file not part of the original plan, but exceeds 800 lines. Consider splitting in a future pass.
+3. **`export-engine.backup.ts` (927 lines)** — Backup file from Phase 4. Should be deleted once the refactor is stable.

@@ -114,6 +114,9 @@ export function getTotalTracksHeight(
   return tracksHeight + gapsHeight;
 }
 
+/** Sentinel mediaId used for placeholder/test clips that have no real media backing */
+export const TEST_MEDIA_ID = "test";
+
 // Other timeline constants
 export const TIMELINE_CONSTANTS = {
   ELEMENT_MIN_WIDTH: 80,

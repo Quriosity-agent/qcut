@@ -28,6 +28,7 @@ import { getVideoSource } from "@/lib/media-source";
 import { BackgroundSettings } from "../background-settings";
 import { useProjectStore } from "@/stores/project-store";
 import { useSceneStore } from "@/stores/scene-store";
+import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { TextElementDragState } from "@/types/editor";
 import {
   FullscreenToolbar,
@@ -436,7 +437,7 @@ export function PreviewPanel() {
           let mediaItem = null;
           if (element.type === "media") {
             mediaItem =
-              element.mediaId === "test"
+              element.mediaId === TEST_MEDIA_ID
                 ? null
                 : mediaItems.find((item) => item.id === element.mediaId) ||
                   null;
@@ -602,7 +603,7 @@ export function PreviewPanel() {
         element.type === "media" &&
         mediaItem &&
         (mediaItem.type === "video" || mediaItem.type === "image") &&
-        element.mediaId !== "test" // Exclude test elements
+        element.mediaId !== TEST_MEDIA_ID // Exclude test elements
     );
   }, [activeElements]);
 
@@ -822,7 +823,7 @@ export function PreviewPanel() {
     // Media elements
     if (element.type === "media") {
       // Test elements
-      if (!mediaItem || element.mediaId === "test") {
+      if (!mediaItem || element.mediaId === TEST_MEDIA_ID) {
         return (
           <div
             key={elementKey}
