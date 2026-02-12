@@ -74,6 +74,7 @@ turbo.log
 .claude/settings.local.json
 .claude/*
 !.claude/skills/
+!.claude/commands/
 
 # Reference version (local development only)
 docs/completed/reference-version/
