@@ -100,12 +100,12 @@ export class FrameByFrameRecorder {
 - `apps/web/src/lib/export-engine-recorder.ts` (modify)
 
 **Current flow** (broken):
-```
+```text
 render frame → videoTrack.requestFrame() → wait 50ms → next frame
 ```
 
 **New flow** (fixed):
-```
+```text
 render frame → canvas.toBlob() → store bytes → next frame (no wait needed)
 after all frames → FFmpeg WASM encode → return blob
 ```
@@ -188,7 +188,7 @@ after all frames → FFmpeg WASM encode → return blob
 
 ## Implementation Order
 
-```
+```text
 1.1 Create FrameByFrameRecorder  ──┐
                                     ├── 1.3 Integrate into export loop ── 1.4 Update factory/UI
 1.2 Fix FFmpeg WASM encoding    ──┘

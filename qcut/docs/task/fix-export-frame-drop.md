@@ -31,7 +31,7 @@ Exported video (`export_2026-02-12_00-43.webm`) has severe quality issues - vide
 
 ## Frame Timing Sample (worst section)
 
-```
+```text
 Frame 151->152: 313ms (at 9.157s)
 Frame 152->153: 249ms (at 9.470s)
 Frame 164->165: 856ms (at 12.206s)  <- nearly 1 second gap
