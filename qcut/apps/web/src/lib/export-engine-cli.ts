@@ -16,6 +16,7 @@ import {
 // Import extracted modules
 import type {
   StickerSourceForFilter,
+  ImageSourceInput,
   ProgressCallback,
   VideoSourceInput,
   AudioFileInput,
@@ -23,11 +24,13 @@ import type {
 import {
   buildTextOverlayFilters,
   buildStickerOverlayFilters,
+  buildImageOverlayFilters,
 } from "./export-cli/filters";
 import {
   extractVideoSources,
   extractVideoInputPath,
   extractStickerSources,
+  extractImageSources,
 } from "./export-cli/sources";
 
 // Re-export types for backward compatibility (using export from)
@@ -151,6 +154,36 @@ export class CLIExportEngine extends ExportEngine {
       this.totalDuration,
       undefined, // Use default store getter
       undefined, // Use default API
+      debugLog
+    );
+  }
+
+  /**
+   * Extract image sources using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private async extractImageSourcesWrapper(): Promise<ImageSourceInput[]> {
+    return extractImageSources(
+      this.tracks,
+      this.mediaItems,
+      this.sessionId,
+      undefined, // Use default API (window.electronAPI.video)
+      debugLog
+    );
+  }
+
+  /**
+   * Build image overlay filters using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private buildImageOverlayFiltersWrapper(
+    imageSources: ImageSourceInput[]
+  ): string {
+    return buildImageOverlayFilters(
+      imageSources,
+      this.canvas.width,
+      this.canvas.height,
+      1, // videoInputCount = 1 (base video)
       debugLog
     );
   }
@@ -677,6 +710,32 @@ export class CLIExportEngine extends ExportEngine {
       stickerFilterChain = undefined;
     }
 
+    // Extract image sources for image-video-composite strategy
+    let imageFilterChain: string | undefined;
+    let imageSources: ImageSourceInput[] = [];
+
+    if (this.exportAnalysis?.hasImageElements) {
+      try {
+        imageSources = await this.extractImageSourcesWrapper();
+
+        if (imageSources.length > 0) {
+          // Build FFmpeg overlay filter chain for images
+          imageFilterChain = this.buildImageOverlayFiltersWrapper(imageSources);
+
+          debugLog(`[CLI Export] Image sources: ${imageSources.length}`);
+          debugLog(`[CLI Export] Image filter chain: ${imageFilterChain}`);
+        }
+      } catch (error) {
+        debugWarn(
+          "[CLI Export] Failed to process images, continuing without:",
+          error
+        );
+        // Continue export without images if processing fails
+        imageSources = [];
+        imageFilterChain = undefined;
+      }
+    }
+
     // Extract video sources for direct copy optimization
     // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
     const hasTextFilters = textFilterChain.length > 0;
@@ -736,6 +795,8 @@ export class CLIExportEngine extends ExportEngine {
     if (!this.sessionId) {
       throw new Error("No active session ID");
     }
+    const hasImageFilters = (imageFilterChain?.length ?? 0) > 0;
+
     const exportOptions = {
       sessionId: this.sessionId,
       width: this.canvas.width,
@@ -748,12 +809,15 @@ export class CLIExportEngine extends ExportEngine {
       textFilterChain: hasTextFilters ? textFilterChain : undefined, // Add text filter chain
       stickerFilterChain, // ADD THIS
       stickerSources, // ADD THIS
+      imageFilterChain, // ADD THIS - Image overlay filters
+      imageSources, // ADD THIS - Image source inputs
       useDirectCopy: !!(
         this.exportAnalysis?.canUseDirectCopy &&
         this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&
         !hasTextFilters &&
-        !hasStickerFilters
-      ), // Disable direct copy when text, stickers, or video-normalization mode
+        !hasStickerFilters &&
+        !hasImageFilters
+      ), // Disable direct copy when text, stickers, images, or video-normalization mode
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
@@ -782,6 +846,9 @@ export class CLIExportEngine extends ExportEngine {
     );
     console.log(
       `   - Sticker overlays: ${hasStickerFilters ? `YES (${stickerSources.length} stickers)` : "NO"}`
+    );
+    console.log(
+      `   - Image overlays: ${hasImageFilters ? `YES (${imageSources.length} images)` : "NO"}`
     );
     console.log(
       `   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`
