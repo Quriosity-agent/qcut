@@ -180,6 +180,8 @@ export function setupExportHandler(tempManager: TempManager): void {
             options.videoSources,
             stickerFilterChain,
             stickerSources,
+            options.imageFilterChain,
+            options.imageSources,
             options.useVideoInput || false,
             options.videoInputPath,
             options.trimStart,

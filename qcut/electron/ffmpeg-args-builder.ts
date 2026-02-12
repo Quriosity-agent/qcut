@@ -13,6 +13,7 @@ import fs from "fs";
 import type {
   AudioFile,
   VideoSource,
+  ImageSource,
   StickerSource,
   QualitySettings,
 } from "./ffmpeg/types";
@@ -42,6 +43,8 @@ export function buildFFmpegArgs(
   videoSources?: VideoSource[],
   stickerFilterChain?: string,
   stickerSources?: StickerSource[],
+  imageFilterChain?: string,
+  imageSources?: ImageSource[],
   useVideoInput = false,
   videoInputPath?: string,
   trimStart?: number,
@@ -74,6 +77,20 @@ export function buildFFmpegArgs(
       args.push("-t", duration.toString());
     }
 
+    // Add image inputs (for image-video-composite strategy)
+    // Images come after video, before stickers
+    if (imageSources && imageSources.length > 0) {
+      for (const image of imageSources) {
+        if (!fs.existsSync(image.path)) {
+          debugWarn(`[FFmpeg] Image file not found: ${image.path}`);
+          continue;
+        }
+        // -loop 1 makes the image loop, -t duration sets how long
+        args.push("-loop", "1", "-t", image.duration.toString(), "-i", image.path);
+        debugLog(`[FFmpeg] Added image input: ${image.path} (duration: ${image.duration}s)`);
+      }
+    }
+
     // Add sticker image inputs
     if (stickerSources && stickerSources.length > 0) {
       for (const sticker of stickerSources) {
@@ -90,6 +107,11 @@ export function buildFFmpegArgs(
 
     if (filterChain) {
       filters.push(filterChain);
+    }
+
+    // Add image overlay filters (if present)
+    if (imageFilterChain) {
+      filters.push(imageFilterChain);
     }
 
     if (stickerFilterChain) {
