@@ -718,9 +718,9 @@ export function validateTimelineForExport(params: {
     allVideosHaveLocalPath,
   } = params;
 
-  // Check for no video elements
-  if (videoElementCount === 0) {
-    console.error("❌ [EXPORT VALIDATION] No video elements found in timeline");
+  // Check for no video elements (allow if images present)
+  if (videoElementCount === 0 && !hasImageElements) {
+    console.error("❌ [EXPORT VALIDATION] No video or image elements found in timeline");
     throw new ExportUnsupportedError("no-video-elements");
   }
 

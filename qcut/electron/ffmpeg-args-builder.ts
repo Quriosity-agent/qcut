@@ -54,7 +54,8 @@ export function buildFFmpegArgs(
     QUALITY_SETTINGS[quality] || QUALITY_SETTINGS.medium;
 
   // =============================================================================
-  // MODE 2: Direct video input with FFmpeg filters (text/stickers)
+  // MODE 2: Direct video input with FFmpeg filters (text/stickers/images)
+  // Special case: Image-only timelines (no video input)
   // =============================================================================
   if (useVideoInput && videoInputPath) {
     console.log("⚡ [MODE 2] ============================================");
@@ -76,6 +77,19 @@ export function buildFFmpegArgs(
     if (duration) {
       args.push("-t", duration.toString());
     }
+  } else if (imageSources && imageSources.length > 0 && !videoInputPath) {
+    // Image-only timeline: Generate black background as base
+    console.log("🖼️ [IMAGE-ONLY] ============================================");
+    console.log("🖼️ [IMAGE-ONLY] Entering image-only mode: Black background + image overlays");
+    debugLog("[FFmpeg] IMAGE-ONLY: Using generated black background");
+    const args: string[] = ["-y"];
+
+    // Generate black background video with lavfi
+    args.push(
+      "-f", "lavfi",
+      "-i", `color=c=black:s=${width}x${height}:d=${duration}:r=${fps}`
+    );
+    debugLog(`[FFmpeg] IMAGE-ONLY: Generated black background ${width}x${height} @ ${fps}fps for ${duration}s`);
 
     // Add image inputs (for image-video-composite strategy)
     // Images come after video, before stickers
@@ -179,8 +193,13 @@ export function buildFFmpegArgs(
     args.push("-movflags", "+faststart");
     args.push(outputFile);
 
-    console.log("⚡ [MODE 2] ✅ FFmpeg args built successfully");
-    console.log("⚡ [MODE 2] ============================================");
+    if (useVideoInput) {
+      console.log("⚡ [MODE 2] ✅ FFmpeg args built successfully");
+      console.log("⚡ [MODE 2] ============================================");
+    } else {
+      console.log("🖼️ [IMAGE-ONLY] ✅ FFmpeg args built successfully");
+      console.log("🖼️ [IMAGE-ONLY] ============================================");
+    }
     return args;
   }
 
