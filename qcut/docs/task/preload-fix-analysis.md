@@ -2,7 +2,7 @@
 
 ## The Error
 
-```
+```text
 Unable to load preload script: /Users/peter/Desktop/code/qcut/qcut/dist/electron/preload.js
 Error: module not found: ./preload-integrations.js
     at preloadRequire (VM4 sandbox_bundle:2:143993)
@@ -91,7 +91,7 @@ The error only appears in the Electron console (DevTools), not in the terminal. 
 
 This means: `isElectron()` returns `false`, exports fall back to browser mode, file operations don't work, etc. The console log at line 38-39 of the task confirms this:
 
-```
+```text
 use-export-progress.ts:104   - isElectron(): false
 ```
 
