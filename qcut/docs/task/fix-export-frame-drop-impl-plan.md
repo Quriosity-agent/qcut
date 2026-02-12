@@ -1,218 +1,247 @@
-# Fix Export Frame Drop - Implementation Plan
+# Fix Export Frame Drop - Implementation Plan (v2)
 
 ## Problem Summary
 
-Exported video has ~4 FPS effective rate instead of 30 FPS. Root cause: `MediaRecorder` records in real-time but canvas rendering can't keep up, causing massive frame drops.
+Exported video has ~4 FPS effective rate instead of 30 FPS when timeline contains mixed image+video elements.
 
-## Architecture Context
+## Root Cause
 
-The export system has **3 engine types**:
+The CLI export engine (Electron FFmpeg) **explicitly rejects image elements** in `export-analysis.ts:712`. When images are present, export falls back to the browser `MediaRecorder` path, which can't keep up with real-time rendering, causing massive frame drops.
 
-| Engine | Path | Status |
-|--------|------|--------|
-| `CLIExportEngine` | Electron FFmpeg CLI | Working (bypasses canvas) |
-| `ExportEngine` (Standard) | Browser MediaRecorder | **Broken** (frame drops) |
-| `OptimizedExportEngine` | Browser MediaRecorder + caching | **Broken** (same issue) |
+```
+Timeline has images → CLIExportEngine throws ExportUnsupportedError("image-elements")
+→ Falls back to Standard ExportEngine (MediaRecorder)
+→ MediaRecorder records real-time but rendering takes >33ms/frame
+→ Result: 4 FPS choppy output
+```
 
-The CLI engine works well in Electron. The Standard/Optimized engines share the same fundamental flaw: `MediaRecorder` requires real-time frame delivery.
+## Fix Strategy
 
-## Strategy
+**Add image support to the CLI export engine.** FFmpeg natively handles images as video inputs via `-loop 1 -t <duration> -i image.png`. This is the same technique already used for sticker overlays - we just need to extend it to timeline image elements.
 
-**Phase 1**: Frame-by-frame export for browser path (Option A - reliable fix)
-**Phase 2**: Optimize rendering bottlenecks (Option B - performance gains)
+No new recorder classes or FFmpeg WASM changes needed. The existing CLI architecture handles everything.
 
 ---
 
-## Phase 1: Frame-by-Frame Browser Export
+## Subtask 1: Remove image rejection from export validation
 
-### Subtask 1.1: Create `FrameByFrameRecorder` class
-
-**What**: Replace `MediaRecorder` with a recorder that captures each frame as a PNG blob, stores them in memory, then encodes to video via FFmpeg WASM.
-
-**Why**: The existing `FFmpegVideoRecorder` was disabled due to timeout issues, but the approach is correct. We need a fresh, simpler implementation that avoids the pitfalls.
+**What**: Remove the `ExportUnsupportedError("image-elements")` check and update the analysis to route image timelines through a new strategy.
 
 **Files**:
-- `apps/web/src/lib/export-frame-recorder.ts` (new - ~120 lines)
+- `apps/web/src/lib/export-analysis.ts` (lines 692-717, 394-396, 412-419)
+- `apps/web/src/lib/export-errors.ts` (keep type for backward compat, remove from validation)
 
-**Implementation**:
+**Changes**:
+1. In `validateTimelineForExport()`: Remove the `hasImageElements` check that throws
+2. In `analyzeTimelineForExport()`: Add new optimization strategy `"image-video-composite"` for mixed image+video timelines
+3. Update `ExportAnalysis.optimizationStrategy` union type to include `"image-video-composite"`
+4. Keep `needsFrameRendering` flag set when images present (for logging), but don't block export
+
+**Tests**: `apps/web/src/lib/__tests__/export-analysis.test.ts`
+- Test that mixed image+video timeline no longer throws
+- Test that strategy is `"image-video-composite"` when images present
+- Test that pure video timelines still use existing strategies unchanged
+
+---
+
+## Subtask 2: Extract image sources from timeline
+
+**What**: Create an image source extractor (similar to existing `extractVideoSources`) that identifies image elements and resolves their file paths for FFmpeg.
+
+**Files**:
+- `apps/web/src/lib/export-cli/sources/image-sources.ts` (new ~80 lines)
+- `apps/web/src/lib/export-cli/types.ts` (add `ImageSourceInput` type)
+
+**ImageSourceInput type**:
 ```typescript
-export class FrameByFrameRecorder {
-  private frames: Uint8Array[] = [];
-  private canvas: HTMLCanvasElement;
-  private settings: ExportSettings;
-  private fps: number;
-
-  // Capture current canvas state as PNG bytes
-  async captureFrame(): Promise<void>;
-
-  // Encode all captured frames into video blob using FFmpeg WASM
-  async encode(): Promise<Blob>;
-
-  // Cleanup memory
-  dispose(): void;
+export interface ImageSourceInput {
+  path: string;          // Local file path for FFmpeg
+  startTime: number;     // When image appears on timeline
+  duration: number;      // How long image is visible
+  width?: number;        // Original image width
+  height?: number;       // Original image height
+  trimStart: number;     // Trim start (usually 0 for images)
+  trimEnd: number;       // Trim end (usually 0 for images)
+  elementId: string;     // For debugging
 }
 ```
 
-**Key design decisions**:
-- Use `canvas.toBlob("image/png")` instead of `toDataURL` to avoid base64 overhead
-- Store raw `Uint8Array` frames to minimize memory copies
-- Encode in a single FFmpeg WASM call at the end (not per-frame)
-- Memory budget: ~2MB per 1080p PNG frame x 2000 frames = ~4GB max. For longer videos, flush frames to IndexedDB in batches
-
-**Tests**: `apps/web/src/lib/__tests__/export-frame-recorder.test.ts`
-- Test frame capture accumulates correct count
-- Test encode produces a valid blob
-- Test dispose clears memory
-
----
-
-### Subtask 1.2: Re-enable and fix FFmpeg WASM encoding
-
-**What**: The existing `ffmpeg-video-recorder.ts` has FFmpeg WASM encoding but it's disabled. Fix the timeout issues and create a focused encoding utility.
-
-**Why**: We need FFmpeg WASM to assemble PNG frames into a video in the browser (no Electron dependency).
-
-**Files**:
-- `apps/web/src/lib/ffmpeg-video-recorder.ts` (modify)
-- `apps/web/src/lib/ffmpeg-utils-encode.ts` (existing - review/modify)
-
 **Implementation**:
-- Fix `isFFmpegExportEnabled()` to return `true` when FFmpeg WASM is available
-- Add timeout handling per-frame write (not global timeout)
-- Add progress callback during encoding phase
-- Guard with feature detection: if FFmpeg WASM fails to load, fall back to MediaRecorder with a warning
+- Iterate timeline tracks, find media elements where `mediaItem.type === "image"`
+- Resolve `localPath` from mediaItem (same as video source extraction)
+- If no `localPath`, download image to temp dir via IPC (same pattern as sticker sources)
+- Calculate effective `startTime` and `duration` from element properties
 
-**Tests**: `apps/web/src/lib/__tests__/ffmpeg-video-recorder.test.ts`
-- Test encoding with mock frames
-- Test timeout handling
-- Test fallback behavior
-
----
-
-### Subtask 1.3: Integrate frame-by-frame recorder into export loop
-
-**What**: Modify the export loop in `ExportEngine.export()` to use `FrameByFrameRecorder` instead of `MediaRecorder` when available.
-
-**Why**: The frame loop already renders each frame correctly - we just need to swap the capture mechanism.
-
-**Files**:
-- `apps/web/src/lib/export-engine.ts` (modify lines 287-410)
-- `apps/web/src/lib/export-engine-recorder.ts` (modify)
-
-**Current flow** (broken):
-```
-render frame → videoTrack.requestFrame() → wait 50ms → next frame
-```
-
-**New flow** (fixed):
-```
-render frame → canvas.toBlob() → store bytes → next frame (no wait needed)
-after all frames → FFmpeg WASM encode → return blob
-```
-
-**Key changes**:
-- Remove the `captureStream(0)` + `requestFrame()` path
-- Remove the arbitrary `setTimeout(resolve, 50)` delay between frames
-- Add two-phase progress: "Rendering frames (1/2000)" then "Encoding video..."
-- Keep MediaRecorder as ultimate fallback if FFmpeg WASM unavailable
-
-**Tests**: `apps/web/src/lib/__tests__/export-engine.test.ts`
-- Test that export uses frame-by-frame when FFmpeg WASM available
-- Test fallback to MediaRecorder when unavailable
+**Tests**: `apps/web/src/lib/__tests__/export-cli-image-sources.test.ts`
+- Test extraction from timeline with images
+- Test localPath resolution
+- Test mixed image+video timeline extraction
 
 ---
 
-### Subtask 1.4: Update export factory and UI
+## Subtask 3: Build FFmpeg filter graph for image compositing
 
-**What**: Update the engine factory to prefer frame-by-frame for browser exports. Update progress UI to show two-phase export.
+**What**: Generate FFmpeg `-filter_complex` chains that composite images onto the video timeline at the correct positions and durations.
 
 **Files**:
-- `apps/web/src/lib/export-engine-factory.ts` (modify engine recommendation)
-- `apps/web/src/components/export-dialog.tsx` (modify progress display)
+- `apps/web/src/lib/export-cli/filters/image-overlay.ts` (new ~100 lines)
+
+**FFmpeg approach**: Each image becomes an input with `-loop 1 -t <duration> -i <path>`, then overlaid using:
+```
+[img]scale=W:H:force_original_aspect_ratio=decrease,pad=W:H:(ow-iw)/2:(oh-ih)/2:black,
+     setpts=PTS+<startTime>/TB[img_timed];
+[base][img_timed]overlay=0:0:enable='between(t,<start>,<end>)'[out]
+```
+
+**Key design decisions**:
+- Reuse the same overlay pattern already proven for stickers
+- Scale images to fit export resolution (maintain aspect ratio, pad with black)
+- Support element `x`, `y` positioning if set, otherwise center
+- Chain multiple image overlays sequentially (same as sticker overlay chaining)
+- Handle timing via `enable='between(t,start,end)'` filter option
+
+**Tests**: `apps/web/src/lib/__tests__/export-cli-image-overlay.test.ts`
+- Test single image overlay filter generation
+- Test multiple image overlay chaining
+- Test image scaling/positioning in filter string
+
+---
+
+## Subtask 4: Integrate image sources into CLIExportEngine
+
+**What**: Wire the image extraction and filter building into the CLI export flow, alongside existing video/text/sticker handling.
+
+**Files**:
+- `apps/web/src/lib/export-engine-cli.ts` (modify `exportWithCLI` method, lines 451-849)
 
 **Changes**:
-- Factory: Browser recommendation should note "frame-by-frame" in reason text
-- UI: Show "Rendering frame X of Y..." during capture phase, "Encoding video..." during FFmpeg phase
-- Add estimated time remaining based on average frame render time
+1. Add `extractImageSourcesWrapper()` method (same pattern as video/sticker wrappers)
+2. In `exportWithCLI()`:
+   - After sticker extraction, extract image sources
+   - Build image overlay filter chain
+   - Pass `imageSources` and `imageFilterChain` to FFmpeg export options
+3. Handle the `"image-video-composite"` strategy in the mode selection logic
+
+**Integration point** (after line 678 in current code):
+```typescript
+// Extract image sources
+let imageFilterChain: string | undefined;
+let imageSources: ImageSourceInput[] = [];
+if (this.exportAnalysis?.hasImageElements) {
+  imageSources = await this.extractImageSourcesWrapper();
+  if (imageSources.length > 0) {
+    imageFilterChain = buildImageOverlayFilters(imageSources, this.canvas.width, this.canvas.height);
+  }
+}
+```
 
 ---
 
-## Phase 2: Optimize Rendering Bottlenecks
+## Subtask 5: Extend Electron FFmpeg handler for image inputs
 
-### Subtask 2.1: Eliminate video seek delays
-
-**What**: The biggest rendering bottleneck is video seeking. Each frame waits 150ms after seek + up to 2000ms timeout. This alone accounts for most of the slowness.
+**What**: Update the FFmpeg args builder and export handler to accept image sources and include them in the FFmpeg command.
 
 **Files**:
-- `apps/web/src/lib/export-engine-renderer.ts` (modify `renderVideo`, lines 215-389)
+- `electron/ffmpeg-args-builder.ts` (extend `buildFFmpegArgs`)
+- `electron/ffmpeg-export-handler.ts` (pass new options through)
+- `electron/ffmpeg/types.ts` (add `ImageSource` type)
 
-**Optimizations**:
-- **Pre-decode video frames**: Before export, decode all needed video frames into an `ImageBitmap` cache using `createImageBitmap()` from video element
-- **Sequential seek optimization**: When frames are sequential (most common), skip the seek entirely - the video is already at the right position
-- **Reduce post-seek delay**: 150ms is excessive for sequential playback; use 16ms (one vsync) for sequential frames, keep 150ms only for large seeks
-- **Use `requestVideoFrameCallback`** where supported for precise frame timing
+**Changes to `buildFFmpegArgs`**:
+1. Accept new params: `imageSources?: ImageSource[]`, `imageFilterChain?: string`
+2. Add image inputs before sticker inputs: `-loop 1 -t <duration> -i <image_path>`
+3. Include `imageFilterChain` in the filter chain assembly
+4. Adjust input stream indices to account for image inputs (images come after video, before stickers and audio)
 
-**Tests**: `apps/web/src/lib/__tests__/export-engine-renderer.test.ts`
-- Test sequential frame optimization skips seek
-- Test pre-decode cache hit rate
+**Input ordering**:
+```
+[0] video input
+[1..N] image inputs (-loop 1 -t duration -i path)
+[N+1..M] sticker inputs (-loop 1 -i path)
+[M+1..K] audio inputs (-i path)
+```
+
+**Tests**: `electron/__tests__/ffmpeg-args-builder.test.ts`
+- Test FFmpeg args include image inputs with `-loop 1 -t`
+- Test filter chain includes image overlay filters
+- Test stream index calculation with mixed inputs
 
 ---
 
-### Subtask 2.2: Optimize image loading
+## Subtask 6: Handle image-only timelines (no video)
 
-**What**: Images are loaded with `new Image()` on every frame, even if the same image was used in the previous frame.
-
-**Files**:
-- `apps/web/src/lib/export-engine-renderer.ts` (modify `renderImage`, lines 123-212)
-
-**Optimizations**:
-- Pre-load all images before export starts (already done in `OptimizedExportEngine.preloadAssets()`)
-- Port the preloading logic to the base `ExportEngine`
-- Use `createImageBitmap()` for faster canvas drawing (avoids decode-on-draw)
-
----
-
-### Subtask 2.3: Batch frame validation
-
-**What**: Frame validation (`getImageData` + pixel sampling) runs every 10th frame. `getImageData` forces a GPU→CPU readback which stalls the pipeline.
+**What**: Support exporting timelines that contain only images (no video elements). Currently blocked by `ExportUnsupportedError("no-video-elements")`.
 
 **Files**:
-- `apps/web/src/lib/export-engine.ts` (modify validation logic, lines 331-357)
+- `apps/web/src/lib/export-analysis.ts` (modify `validateTimelineForExport`)
+- `electron/ffmpeg-args-builder.ts` (handle no base video input)
 
-**Optimizations**:
-- Only validate first frame and last frame (not every 10th)
-- Or validate asynchronously after export completes by decoding the output video
-- Remove `getImageData` from the hot path entirely
+**Changes**:
+- Update validation: allow export when `videoElementCount === 0` but `hasImageElements === true`
+- For image-only timelines, use the first image as the base input instead of a video
+- Generate a black background video with `color=c=black:s=WxH:d=<duration>` as the base, then overlay images on top
+
+**FFmpeg base for image-only**:
+```
+ffmpeg -f lavfi -i color=c=black:s=1920x1080:d=10:r=30 \
+  -loop 1 -t 5 -i image1.png \
+  -filter_complex "[1:v]scale=...[img];[0:v][img]overlay=..." \
+  output.mp4
+```
+
+**Tests**: `apps/web/src/lib/__tests__/export-analysis.test.ts`
+- Test image-only timeline passes validation
+- Test base video generation for image-only export
 
 ---
 
 ## Implementation Order
 
 ```
-1.1 Create FrameByFrameRecorder  ──┐
-                                    ├── 1.3 Integrate into export loop ── 1.4 Update factory/UI
-1.2 Fix FFmpeg WASM encoding    ──┘
-
-2.1 Eliminate video seek delays (independent)
-2.2 Optimize image loading (independent)
-2.3 Batch frame validation (independent)
+1. Remove image rejection          ──┐
+2. Extract image sources           ──┤
+3. Build image overlay filters     ──┼── 4. Integrate into CLIExportEngine ── 5. Extend Electron handler
+                                     │
+                                     └── 6. Image-only timelines (can be parallel with 4-5)
 ```
 
-Phase 1 subtasks (1.1-1.4) are sequential. Phase 2 subtasks (2.1-2.3) are independent and can be done in any order after Phase 1.
+Subtasks 1-3 are independent and can be done in parallel.
+Subtask 4 depends on 1-3.
+Subtask 5 depends on 4.
+Subtask 6 is independent but requires changes from 1.
 
 ## Risk Assessment
 
 | Risk | Mitigation |
 |------|------------|
-| FFmpeg WASM memory limits (4GB for long videos) | Flush frames to IndexedDB/OPFS in batches of 300 |
-| FFmpeg WASM load failure in some browsers | Fall back to MediaRecorder with user warning |
-| `canvas.toBlob()` slower than expected | Use `OffscreenCanvas.convertToBlob()` where available |
-| Phase 2 seek optimization breaks edge cases | Keep retry mechanism, only optimize the common path |
+| Images without `localPath` | Download to temp dir via IPC (same as sticker pattern) |
+| Complex filter graphs with many images | FFmpeg handles 10+ overlay chains; test with 5+ images |
+| Input stream index miscalculation | Clear ordering convention: video → images → stickers → audio |
+| Image scaling distortion | Use `force_original_aspect_ratio=decrease` + `pad` (proven pattern) |
+| Browser fallback still broken | Separate issue; this plan fixes the primary Electron path |
 
 ## Success Criteria
 
-- Exported video has consistent 30 FPS (verified via ffprobe)
-- All frames rendered (frame count = duration x fps)
-- No visible stutter or frame drops
-- Export works in both Electron and browser
-- Existing CLI export path unaffected
+- Mixed image+video timeline exports at 30 FPS via CLI engine
+- Image-only timeline exports at 30 FPS via CLI engine
+- Images correctly positioned, scaled, and timed in output
+- Pure video timelines unaffected (same Mode 1/1.5/2 behavior)
+- No regression in text/sticker overlay exports
+- Verified via ffprobe: consistent frame timing, correct duration
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `apps/web/src/lib/export-analysis.ts` | Modify (remove image rejection, add strategy) |
+| `apps/web/src/lib/export-errors.ts` | Keep (backward compat) |
+| `apps/web/src/lib/export-engine-cli.ts` | Modify (add image extraction + filter wiring) |
+| `apps/web/src/lib/export-cli/types.ts` | Modify (add `ImageSourceInput`) |
+| `apps/web/src/lib/export-cli/sources/image-sources.ts` | **New** (~80 lines) |
+| `apps/web/src/lib/export-cli/filters/image-overlay.ts` | **New** (~100 lines) |
+| `electron/ffmpeg-args-builder.ts` | Modify (add image inputs + filters) |
+| `electron/ffmpeg-export-handler.ts` | Modify (pass image options) |
+| `electron/ffmpeg/types.ts` | Modify (add `ImageSource` type) |
+| `apps/web/src/lib/__tests__/export-analysis.test.ts` | **New/Modify** |
+| `apps/web/src/lib/__tests__/export-cli-image-sources.test.ts` | **New** |
+| `apps/web/src/lib/__tests__/export-cli-image-overlay.test.ts` | **New** |
+| `electron/__tests__/ffmpeg-args-builder.test.ts` | **New/Modify** |
