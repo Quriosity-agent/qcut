@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.65",
+  "version": "0.3.67",
   "description": "QCut - Open-source video editor",
   "author": {
     "name": "QCut Team",
@@ -14,6 +14,7 @@
     "@emnapi/core": "^1.4.5",
     "@emnapi/wasi-threads": "^1.1.0",
     "@playwright/test": "^1.40.0",
+    "@types/babel__traverse": "^7.28.0",
     "@types/electron-builder": "^2.8.2",
     "@types/jsdom": "^21.1.7",
     "@types/jszip": "^3.4.1",
@@ -27,6 +28,7 @@
     "electron-builder": "^26.0.12",
     "electron-devtools-installer": "^4.0.0",
     "electron-packager": "^17.1.2",
+    "esbuild": "^0.25.8",
     "happy-dom": "^18.0.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
@@ -47,28 +49,30 @@
     "build": "turbo run build && bun run build:electron",
     "check-types": "turbo run check-types",
     "postinstall": "bun run setup-ffmpeg && bun scripts/patch-node-pty.ts",
-    "build:electron": "cd electron && bun x tsc",
+    "build:electron": "cd electron && bun x tsc && bun x esbuild ../electron/preload.ts --bundle --platform=node --outfile=../dist/electron/preload.js --external:electron",
     "build:electron:watch": "cd electron && bun x tsc --watch",
     "lint": "npx ultracite@latest lint",
     "lint:clean": "npx @biomejs/biome check --skip-parse-errors .",
     "format": "npx ultracite@latest format",
     "electron": "electron .",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win -c.win.forceCodeSigning=false",
-    "dist:dir": "electron-builder --dir",
-    "dist:win:unsigned": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
-    "dist:win:release": "electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
-    "dist:win:fast": "electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux",
-    "dist:all": "electron-builder --win --mac --linux",
+    "dist": "bun run stage-ffmpeg-binaries && electron-builder",
+    "dist:win": "bun run stage-ffmpeg-binaries && electron-builder --win -c.win.forceCodeSigning=false",
+    "dist:dir": "bun run stage-ffmpeg-binaries && electron-builder --dir",
+    "dist:win:unsigned": "bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
+    "compile-afterpack": "mkdir -p dist/scripts && bun build scripts/afterPack.ts --outfile=dist/scripts/afterPack.js --target=node --format=cjs",
+    "dist:win:release": "bun run compile-afterpack && bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
+    "dist:win:fast": "bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
+    "dist:mac": "bun run stage-ffmpeg-binaries && electron-builder --mac && bun run verify:packaged-ffmpeg",
+    "dist:linux": "bun run stage-ffmpeg-binaries && electron-builder --linux && bun run verify:packaged-ffmpeg",
+    "dist:all": "bun run stage-ffmpeg-binaries && electron-builder --win --mac --linux",
     "package:win": "electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager-new --overwrite --ignore=\"dist-packager.*\" --ignore=\"dist-electron.*\"",
     "copy-ffmpeg": "bun scripts/copy-ffmpeg.ts",
     "verify:packaged-ffmpeg": "bun scripts/verify-packaged-ffmpeg.ts",
     "setup-ffmpeg": "bun scripts/setup-ffmpeg.ts",
+    "stage-ffmpeg-binaries": "bun scripts/stage-ffmpeg-binaries.ts",
     "predev": "bun run setup-ffmpeg",
-    "prebuild": "bun run setup-ffmpeg && bun run sync-skills",
+    "prebuild": "bun run setup-ffmpeg && bun run stage-ffmpeg-binaries && bun run sync-skills",
     "sync-skills": "bun scripts/sync-skills.ts",
     "build:exe": "bun run build && bun run package:win && bun run copy-ffmpeg",
     "release:patch": "bun scripts/release.ts patch",
@@ -118,8 +122,6 @@
       "node_modules/electron-updater/**/*",
       "node_modules/@google/generative-ai/**/*",
       "node_modules/node-pty/**/*",
-      "node_modules/ffmpeg-static/**/*",
-      "node_modules/ffprobe-static/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
       "!**/node_modules/*.d.ts",
@@ -144,7 +146,7 @@
       "!**/apps/landing/**/*"
     ],
     "compression": "maximum",
-    "npmRebuild": true,
+    "npmRebuild": false,
     "nodeGypRebuild": false,
     "extraResources": [
       {
@@ -163,12 +165,8 @@
         "to": "node_modules/node-pty"
       },
       {
-        "from": "node_modules/ffmpeg-static",
-        "to": "node_modules/ffmpeg-static"
-      },
-      {
-        "from": "node_modules/ffprobe-static",
-        "to": "node_modules/ffprobe-static"
+        "from": "electron/resources/ffmpeg",
+        "to": "ffmpeg"
       },
       {
         "from": "docs/releases",
@@ -186,8 +184,6 @@
     "asarUnpack": [
       "**/node_modules/sharp/**/*",
       "**/node_modules/@ffmpeg/**/*",
-      "**/node_modules/ffmpeg-static/**/*",
-      "**/node_modules/ffprobe-static/**/*",
       "**/node_modules/electron-updater/**/*",
       "**/node_modules/electron-log/**/*",
       "**/node_modules/@google/generative-ai/**/*",
@@ -334,6 +330,7 @@
     "@remotion/zod-types": "4.0.417",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
+    "ffmpeg-ffprobe-static": "^6.1.2-rc.1",
     "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0",
     "jszip": "^3.10.1",
@@ -342,6 +339,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "remotion": "4.0.417",
+    "scheduler": "^0.23.2",
     "wavesurfer.js": "^7.10.1"
   },
   "resolutions": {

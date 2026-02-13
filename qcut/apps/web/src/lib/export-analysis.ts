@@ -33,7 +33,8 @@ export interface ExportAnalysis {
   optimizationStrategy:
     | "direct-copy"
     | "direct-video-with-filters"
-    | "video-normalization";
+    | "video-normalization"
+    | "image-video-composite";
   /** Human-readable explanation of strategy choice */
   reason: string;
 }
@@ -431,15 +432,23 @@ export function analyzeTimelineForExport(
   let optimizationStrategy:
     | "direct-copy"
     | "direct-video-with-filters"
-    | "video-normalization";
+    | "video-normalization"
+    | "image-video-composite";
 
   // Mode decision tree (priority order):
-  // 1. Can we use direct copy? (Mode 1 - fastest)
-  // 2. Single video with filters? (Mode 2 - fast)
-  // 3. Multiple videos that need normalization? (Mode 1.5 - medium-fast)
+  // 1. Check if images present - requires image-video-composite strategy
+  // 2. Can we use direct copy? (Mode 1 - fastest)
+  // 3. Single video with filters? (Mode 2 - fast)
+  // 4. Multiple videos that need normalization? (Mode 1.5 - medium-fast)
   // Note: Mode 3 (frame rendering) removed - unsupported cases now throw errors
 
-  if (canUseDirectCopy) {
+  if (hasImageElements) {
+    // Images require FFmpeg overlay filters (similar to stickers)
+    optimizationStrategy = "image-video-composite";
+    console.log(
+      "🖼️ [MODE DETECTION] Image elements detected - using image-video-composite strategy"
+    );
+  } else if (canUseDirectCopy) {
     console.log(
       `🎯 [MODE DETECTION] Direct copy eligible - ${videoElementCount} video(s), checking requirements...`
     );
@@ -521,7 +530,10 @@ export function analyzeTimelineForExport(
 
   // Generate reason for strategy choice
   let reason = "";
-  if (optimizationStrategy === "direct-copy") {
+  if (optimizationStrategy === "image-video-composite") {
+    reason =
+      "Timeline contains image elements - using FFmpeg overlay filters for compositing";
+  } else if (optimizationStrategy === "direct-copy") {
     if (videoElementCount === 1) {
       reason =
         "Single video with no overlays, effects, or compositing - using direct copy";
@@ -615,7 +627,11 @@ export function analyzeTimelineForExport(
   }
 
   // Log optimization strategy with clear mode indicators
-  if (optimizationStrategy === "direct-copy") {
+  if (optimizationStrategy === "image-video-composite") {
+    console.log(
+      "🖼️ [EXPORT ANALYSIS] IMAGE-VIDEO-COMPOSITE: Using FFmpeg overlay filters for image compositing! 🖼️"
+    );
+  } else if (optimizationStrategy === "direct-copy") {
     console.log(
       "✅ [EXPORT ANALYSIS] MODE 1: Using DIRECT COPY optimization - Fast export! 🚀"
     );
@@ -702,19 +718,16 @@ export function validateTimelineForExport(params: {
     allVideosHaveLocalPath,
   } = params;
 
-  // Check for no video elements
-  if (videoElementCount === 0) {
-    console.error("❌ [EXPORT VALIDATION] No video elements found in timeline");
+  // Check for no video elements (allow if images present)
+  if (videoElementCount === 0 && !hasImageElements) {
+    console.error(
+      "❌ [EXPORT VALIDATION] No video or image elements found in timeline"
+    );
     throw new ExportUnsupportedError("no-video-elements");
   }
 
-  // Check for image elements (unsupported - would require Mode 3)
-  if (hasImageElements) {
-    console.error(
-      "❌ [EXPORT VALIDATION] Image elements are not supported in export"
-    );
-    throw new ExportUnsupportedError("image-elements");
-  }
+  // Image elements are now supported via CLI export engine (FFmpeg overlay)
+  // No validation check needed - handled by image-video-composite strategy
 
   // Check for overlapping videos (unsupported - would require Mode 3)
   if (hasOverlappingVideos) {

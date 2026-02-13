@@ -283,7 +283,7 @@ describe("Export Analysis", () => {
   });
 
   describe("Unsupported Configurations (should throw errors)", () => {
-    it("should throw error for image elements", () => {
+    it("should support image elements with image-video-composite strategy", () => {
       const tracks: TimelineTrack[] = [
         {
           id: "track-1",
@@ -301,12 +301,9 @@ describe("Export Analysis", () => {
         createMediaItem("image-1", "image"),
       ];
 
-      expect(() => analyzeTimelineForExport(tracks, mediaItems)).toThrow(
-        ExportUnsupportedError
-      );
-      expect(() => analyzeTimelineForExport(tracks, mediaItems)).toThrow(
-        /Image elements are not currently supported/
-      );
+      const result = analyzeTimelineForExport(tracks, mediaItems);
+      expect(result.optimizationStrategy).toBe("image-video-composite");
+      expect(result.hasImageElements).toBe(true);
     });
 
     it("should throw error for overlapping videos", () => {
@@ -386,8 +383,8 @@ describe("Export Analysis", () => {
     });
   });
 
-  describe("ExportUnsupportedError properties", () => {
-    it("should have correct properties for image-elements error", () => {
+  describe("Image Support", () => {
+    it("should properly analyze timelines with image elements", () => {
       const tracks: TimelineTrack[] = [
         {
           id: "track-1",
@@ -405,16 +402,10 @@ describe("Export Analysis", () => {
         createMediaItem("image-1", "image"),
       ];
 
-      try {
-        analyzeTimelineForExport(tracks, mediaItems);
-        expect.fail("Should have thrown ExportUnsupportedError");
-      } catch (error) {
-        expect(error).toBeInstanceOf(ExportUnsupportedError);
-        const exportError = error as ExportUnsupportedError;
-        expect(exportError.reason).toBe("image-elements");
-        expect(exportError.userMessage).toContain("Image elements");
-        expect(exportError.suggestion).toContain("Remove image elements");
-      }
+      const result = analyzeTimelineForExport(tracks, mediaItems);
+      expect(result.optimizationStrategy).toBe("image-video-composite");
+      expect(result.hasImageElements).toBe(true);
+      expect(result.canUseDirectCopy).toBe(false); // Images require filters
     });
   });
 });

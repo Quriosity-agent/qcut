@@ -105,8 +105,11 @@ test.describe("Debug ProjectId Bug", () => {
     }
     console.log("");
 
-    // Open stickers panel
+    // Open stickers panel (stickers tab is in the "edit" group)
     console.log("📍 CHECKPOINT 5: Opening stickers panel");
+    // First switch to edit group
+    await page.getByTestId("group-edit").click();
+    // Then click stickers tab
     await page.getByTestId("stickers-panel-tab").click();
     await expect(page.getByTestId("stickers-panel")).toBeVisible();
 

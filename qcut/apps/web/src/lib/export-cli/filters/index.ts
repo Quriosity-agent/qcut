@@ -22,3 +22,9 @@ export {
 
 // Sticker overlay filter building
 export { buildStickerOverlayFilters } from "./sticker-overlay";
+
+// Image overlay filter building
+export {
+  buildImageOverlayFilters,
+  getImageInputStartIndex,
+} from "./image-overlay";

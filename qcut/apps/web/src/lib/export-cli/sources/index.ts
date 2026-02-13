@@ -7,8 +7,17 @@
 // Video source extraction
 export { extractVideoSources, extractVideoInputPath } from "./video-sources";
 
+// Image source extraction
+export { extractImageSources } from "./image-sources";
+
 // Sticker source extraction
 export { extractStickerSources } from "./sticker-sources";
 
 // Audio source detection (shared between dialog UI and export pipeline)
 export { detectAudioSources, type AudioSourceInfo } from "./audio-detection";
+
+// Audio source extraction for CLI FFmpeg export
+export {
+  extractAudioFileInputs,
+  type AudioSourceAPI,
+} from "./audio-sources";

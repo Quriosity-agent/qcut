@@ -2,25 +2,33 @@
 
 ## CLI Binary
 
-FFmpeg and FFprobe CLI binaries are provided by the `ffmpeg-static` and
-`ffprobe-static` npm packages. They are downloaded automatically during
-`bun install`.
+Production builds use staged binaries under:
 
-Manual download is no longer required.
+`electron/resources/ffmpeg/<platform>-<arch>/`
+
+Examples:
+- `electron/resources/ffmpeg/darwin-arm64/ffmpeg`
+- `electron/resources/ffmpeg/darwin-arm64/ffprobe`
+- `electron/resources/ffmpeg/win32-x64/ffmpeg.exe`
+- `electron/resources/ffmpeg/win32-x64/ffprobe.exe`
 
 ### How It Works
 
-- `bun install` downloads the platform-specific static binary into `node_modules/`
-- `electron-builder` unpacks it from ASAR via the `asarUnpack` config
-- At runtime, `require('ffmpeg-static')` returns the binary path
-- In packaged apps, the path is rewritten from `app.asar` to `app.asar.unpacked`
+1. Run `bun run stage-ffmpeg-binaries`
+2. The script stages FFmpeg/FFprobe for configured targets into `electron/resources/ffmpeg`
+3. `electron-builder` copies that directory to packaged `resources/ffmpeg`
+4. In packaged apps, runtime resolves binaries only from `process.resourcesPath/ffmpeg/<platform>-<arch>/`
 
 ### Path Resolution (electron/ffmpeg/utils.ts)
 
-1. `ffmpeg-static` / `ffprobe-static` npm package (primary)
-2. `electron/resources/ffmpeg(.exe)` (legacy fallback)
-3. System paths: WinGet, Homebrew, apt, etc. (dev only)
-4. System PATH (dev only)
+Packaged:
+1. `process.resourcesPath/ffmpeg/<platform>-<arch>/<binary>`
+2. Fail fast if missing
+
+Development:
+1. Staged binaries in `electron/resources/ffmpeg/<platform>-<arch>/`
+2. `ffmpeg-static` / `ffprobe-static` fallback
+3. System install fallback
 
 ## WebAssembly Files
 
@@ -28,10 +36,10 @@ WASM files (`ffmpeg-core.js`, `ffmpeg-core.wasm`) are copied from
 `@ffmpeg/core` by `scripts/setup-ffmpeg.ts` during postinstall.
 These are used for in-browser previews and thumbnails.
 
-## Legacy
+## Notes
 
-The DLL files previously committed here have been removed. `ffmpeg-static`
-provides statically linked binaries that don't require separate shared libraries.
+- Staged native binaries are ignored by git via `.gitignore`.
+- `ffmpeg-static`/`ffprobe-static` are still allowed as development fallbacks.
 
 ## Hardware Acceleration
 

@@ -36,6 +36,29 @@ export interface VideoSource {
 }
 
 /**
+ * Image source configuration for FFmpeg overlay
+ * Contains file path, timing, and dimension information for image compositing
+ */
+export interface ImageSource {
+  /** File system path to the image file */
+  path: string;
+  /** Start time in seconds for image appearance */
+  startTime: number;
+  /** Duration in seconds for image display */
+  duration: number;
+  /** Original image width in pixels (optional) */
+  width?: number;
+  /** Original image height in pixels (optional) */
+  height?: number;
+  /** Trim start time (usually 0 for images) */
+  trimStart: number;
+  /** Trim end time (usually 0 for images) */
+  trimEnd: number;
+  /** Element identifier for debugging */
+  elementId: string;
+}
+
+/**
  * Sticker source configuration for FFmpeg overlay
  * Contains file path and positioning information for stickers
  */
@@ -91,6 +114,10 @@ export interface ExportOptions {
   stickerFilterChain?: string;
   /** Sticker image sources for overlay (when stickerFilterChain is provided) */
   stickerSources?: StickerSource[];
+  /** Optional FFmpeg overlay filter chain for images */
+  imageFilterChain?: string;
+  /** Image sources for overlay (when imageFilterChain is provided) */
+  imageSources?: ImageSource[];
   /** Enable direct video copy/concat optimization (skips frame rendering) */
   useDirectCopy?: boolean;
   /** Video sources for direct copy optimization (when useDirectCopy=true) */
@@ -103,11 +130,12 @@ export interface ExportOptions {
   trimStart?: number;
   /** Video trim end time in seconds */
   trimEnd?: number;
-  /** Optimization strategy for export mode selection (Mode 1, 1.5, or 2) */
+  /** Optimization strategy for export mode selection (Mode 1, 1.5, 2, or image-video-composite) */
   optimizationStrategy?:
     | "direct-copy"
     | "direct-video-with-filters"
-    | "video-normalization";
+    | "video-normalization"
+    | "image-video-composite";
 }
 
 /**

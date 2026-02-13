@@ -1,63 +1,73 @@
 /**
- * Windows FFmpeg resource copying script for electron-packager builds.
+ * Copies staged FFmpeg resources for electron-packager builds.
  *
- * Copies FFmpeg and FFprobe static binaries from node_modules to the
- * electron-packager output directory. Only needed for electron-packager
- * builds (e.g., package:win). electron-builder uses asarUnpack instead.
+ * Source:
+ *   electron/resources/ffmpeg/
+ * Destination:
+ *   dist-packager-new/<app>/resources/ffmpeg/
  */
 
-import { copyFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, basename } from "node:path";
-import ffmpegPath from "ffmpeg-static";
-// @ts-expect-error ffprobe-static has no type definitions
-import { path as ffprobePath } from "ffprobe-static";
+import { cp } from "node:fs/promises";
+import { join } from "node:path";
 
-const targetDir = "dist-packager-new/QCut-win32-x64/resources";
-
-async function copyFFmpegBinaries(): Promise<void> {
-  if (!ffmpegPath) {
-    console.error("ffmpeg-static did not resolve a binary path.");
-    console.error("Run 'bun install' to download ffmpeg-static.");
-    process.exit(1);
+function getErrorMessage({ error }: { error: unknown }): string {
+  try {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
+  } catch {
+    return "Unknown error";
   }
-
-  if (!existsSync(ffmpegPath)) {
-    console.error(`FFmpeg binary not found at: ${ffmpegPath}`);
-    console.error("Run 'bun install' to download ffmpeg-static.");
-    process.exit(1);
-  }
-
-  if (!existsSync(ffprobePath)) {
-    console.error(`FFprobe binary not found at: ${ffprobePath}`);
-    console.error("Run 'bun install' to download ffprobe-static.");
-    process.exit(1);
-  }
-
-  // Ensure target directory exists
-  if (!existsSync(targetDir)) {
-    await mkdir(targetDir, { recursive: true });
-  }
-
-  // Copy ffmpeg binary
-  const ffmpegDest = join(targetDir, basename(ffmpegPath));
-  await copyFile(ffmpegPath, ffmpegDest);
-  console.log(`Copied: ${basename(ffmpegPath)} -> ${ffmpegDest}`);
-
-  // Copy ffprobe binary
-  const ffprobeDest = join(targetDir, basename(ffprobePath));
-  await copyFile(ffprobePath, ffprobeDest);
-  console.log(`Copied: ${basename(ffprobePath)} -> ${ffprobeDest}`);
-
-  console.log(
-    "FFmpeg binaries copied successfully (from ffmpeg-static/ffprobe-static)"
-  );
 }
 
-try {
-  await copyFFmpegBinaries();
-} catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  console.error("Failed to copy FFmpeg binaries:", errorMessage);
-  process.exit(1);
+async function resolvePackagerResourcesDir(): Promise<string> {
+  try {
+    const baseDir = join(process.cwd(), "dist-packager-new");
+    if (!existsSync(baseDir)) {
+      throw new Error(`electron-packager output not found: ${baseDir}`);
+    }
+
+    const targetDir = join(baseDir, "QCut-win32-x64", "resources");
+    if (!existsSync(targetDir)) {
+      throw new Error(`Packager resources dir not found: ${targetDir}`);
+    }
+
+    return targetDir;
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to resolve packager output directory: ${getErrorMessage({ error })}`
+    );
+  }
 }
+
+async function copyFFmpegResources(): Promise<void> {
+  try {
+    const sourceDir = join(process.cwd(), "electron", "resources", "ffmpeg");
+    if (!existsSync(sourceDir)) {
+      throw new Error(
+        `Staged FFmpeg resources not found: ${sourceDir}. Run 'bun run stage-ffmpeg-binaries' first.`
+      );
+    }
+
+    const resourcesDir = await resolvePackagerResourcesDir();
+    const destinationDir = join(resourcesDir, "ffmpeg");
+
+    await cp(sourceDir, destinationDir, {
+      recursive: true,
+      force: true,
+    });
+
+    console.log(
+      `Copied staged FFmpeg resources: ${sourceDir} -> ${destinationDir}`
+    );
+  } catch (error: unknown) {
+    console.error(
+      `Failed to copy staged FFmpeg resources: ${getErrorMessage({ error })}`
+    );
+    process.exit(1);
+  }
+}
+
+copyFFmpegResources();

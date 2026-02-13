@@ -5,7 +5,7 @@
  * These functions can be imported and used across multiple modules.
  */
 
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { app } from "electron";
 import path from "path";
 import fs from "fs";
@@ -66,84 +66,170 @@ export const debugError = (...args: any[]): void => {
 // Path Resolution
 // ============================================================================
 
+interface StagedBinarySearchResult {
+  resolvedPath: string | null;
+  searchedPaths: string[];
+}
+
+function getBinaryName({
+  tool,
+  platform,
+}: {
+  tool: "ffmpeg" | "ffprobe";
+  platform: string;
+}): string {
+  if (platform === "win32") {
+    return `${tool}.exe`;
+  }
+  return tool;
+}
+
+function getPreferredTargetKeys(): string[] {
+  const exactTarget = `${process.platform}-${process.arch}`;
+  return [exactTarget];
+}
+
+function resolveStagedBinaryFromRoot({
+  rootPath,
+  binaryName,
+}: {
+  rootPath: string;
+  binaryName: string;
+}): StagedBinarySearchResult {
+  const targetKeys = getPreferredTargetKeys();
+  const searchedPaths = targetKeys.map((targetKey) =>
+    path.join(rootPath, targetKey, binaryName)
+  );
+
+  for (const candidatePath of searchedPaths) {
+    if (fs.existsSync(candidatePath)) {
+      return { resolvedPath: candidatePath, searchedPaths };
+    }
+  }
+
+  return { resolvedPath: null, searchedPaths };
+}
+
+function getDevStagedRootCandidates(): string[] {
+  const candidates = [
+    path.join(process.cwd(), "electron", "resources", "ffmpeg"),
+    path.join(__dirname, "..", "..", "..", "electron", "resources", "ffmpeg"),
+    path.join(__dirname, "..", "resources", "ffmpeg"),
+  ];
+  return Array.from(new Set(candidates));
+}
+
+function resolveStagedBinaryFromCandidates({
+  rootPaths,
+  binaryName,
+}: {
+  rootPaths: string[];
+  binaryName: string;
+}): StagedBinarySearchResult {
+  const searchedPaths: string[] = [];
+
+  for (const rootPath of rootPaths) {
+    const result = resolveStagedBinaryFromRoot({ rootPath, binaryName });
+    searchedPaths.push(...result.searchedPaths);
+    if (result.resolvedPath) {
+      return {
+        resolvedPath: result.resolvedPath,
+        searchedPaths,
+      };
+    }
+  }
+
+  return { resolvedPath: null, searchedPaths };
+}
+
+function isBinaryExecutable({ binaryPath }: { binaryPath: string }): boolean {
+  try {
+    const result = spawnSync(binaryPath, ["-version"], {
+      timeout: 2500,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+function resolvePackagedStagedBinaryOrThrow({
+  binaryName,
+  toolName,
+}: {
+  binaryName: string;
+  toolName: string;
+}): string {
+  const packagedRootPath = path.join(process.resourcesPath, "ffmpeg");
+  const result = resolveStagedBinaryFromRoot({
+    rootPath: packagedRootPath,
+    binaryName,
+  });
+
+  if (result.resolvedPath) {
+    console.log(
+      `[FFmpeg] Using staged ${toolName} binary from packaged resources:`,
+      result.resolvedPath
+    );
+    return result.resolvedPath;
+  }
+
+  const searchDetails = result.searchedPaths.join(", ");
+  throw new Error(
+    `${toolName} staged binary not found in packaged app. Expected one of: ${searchDetails}`
+  );
+}
+
 /**
  * Resolves FFmpeg binary path for current environment (dev/packaged).
  *
  * Search order:
- * 1. ffmpeg-static npm package (primary — works dev & packaged)
- * 2. Legacy electron/resources/ path (backwards compatibility)
- * 3. Platform-specific system paths (WinGet/Homebrew/apt) — dev only
- * 4. System PATH fallback — dev only
- *
- * In packaged Electron apps, the ffmpeg-static path is inside app.asar
- * which can't be executed. The path is rewritten to app.asar.unpacked.
- *
- * @returns Absolute path to FFmpeg binary or "ffmpeg"/"ffmpeg.exe" for system PATH
- * @throws Error if FFmpeg not found in packaged app
+ * - Packaged: staged binary only (`process.resourcesPath/ffmpeg/<platform>-<arch>/`)
+ * - Development: staged binary → ffmpeg-static → system install → PATH
  */
 export function getFFmpegPath(): string {
-  // 1. Try ffmpeg-static package (primary — works dev & packaged)
+  const platform = process.platform;
+  const binaryName = getBinaryName({ tool: "ffmpeg", platform });
+
+  if (app.isPackaged) {
+    return resolvePackagedStagedBinaryOrThrow({
+      binaryName,
+      toolName: "FFmpeg",
+    });
+  }
+
+  const devStagedResult = resolveStagedBinaryFromCandidates({
+    rootPaths: getDevStagedRootCandidates(),
+    binaryName,
+  });
+  if (devStagedResult.resolvedPath) {
+    console.log(
+      "[FFmpeg] Using staged FFmpeg binary in development:",
+      devStagedResult.resolvedPath
+    );
+    return devStagedResult.resolvedPath;
+  }
+
   try {
-    let staticPath: string = require("ffmpeg-static");
-
-    // In packaged Electron apps, the path points inside app.asar
-    // which can't be executed. Replace with the unpacked path.
-    if (app.isPackaged) {
-      staticPath = staticPath.replace("app.asar", "app.asar.unpacked");
-    }
-
+    const staticPath: string = require("ffmpeg-static");
     if (fs.existsSync(staticPath)) {
       console.log("[FFmpeg] Found ffmpeg-static:", staticPath);
       return staticPath;
     }
-    console.log("[FFmpeg] ffmpeg-static path not on disk:", staticPath);
   } catch {
-    console.log("[FFmpeg] ffmpeg-static package not found, falling back");
-  }
-
-  // 2. Legacy fallback: electron/resources/ or process.resourcesPath
-  const platform = process.platform;
-  const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-
-  if (app.isPackaged) {
-    const packagedNodeModulesPath = findPackagedNodeModuleBinary(
-      "ffmpeg-static",
-      binaryName
-    );
-    if (packagedNodeModulesPath) {
-      return packagedNodeModulesPath;
-    }
-
-    const resourcePath: string = path.join(process.resourcesPath, binaryName);
-    console.log("[FFmpeg] Checking resourcesPath:", resourcePath);
-    if (fs.existsSync(resourcePath)) {
-      console.log("[FFmpeg] Found in resourcesPath:", resourcePath);
-      return resourcePath;
-    }
-    console.error(
-      "[FFmpeg] NOT FOUND in packaged app. Searched: ffmpeg-static (asar.unpacked), resourcesPath"
-    );
-    throw new Error(
-      "FFmpeg not found. Ensure ffmpeg-static is installed: bun add ffmpeg-static"
-    );
-  }
-
-  // 3. Development: bundled resources → system paths → PATH
-  const devPath: string = path.join(__dirname, "..", "resources", binaryName);
-  if (fs.existsSync(devPath)) {
-    console.log("[FFmpeg] Found bundled FFmpeg:", devPath);
-    return devPath;
+    console.log("[FFmpeg] ffmpeg-static package not available in development");
   }
 
   const systemPaths = getSystemFFmpegPaths(platform, binaryName);
   for (const searchPath of systemPaths) {
     if (fs.existsSync(searchPath)) {
-      console.log("[FFmpeg] Found FFmpeg at:", searchPath);
+      console.log("[FFmpeg] Found FFmpeg at system path:", searchPath);
       return searchPath;
     }
   }
 
-  // Last resort: system PATH
   console.log("[FFmpeg] Falling back to system PATH:", binaryName);
   return binaryName;
 }
@@ -272,118 +358,88 @@ function findFileRecursive(
 }
 
 /**
- * Finds a binary copied via build.extraResources into
- * <resources>/node_modules/<moduleName>/....
- */
-function findPackagedNodeModuleBinary(
-  moduleName: string,
-  binaryName: string,
-  maxDepth = 6
-): string | null {
-  try {
-    if (!app.isPackaged) {
-      return null;
-    }
-
-    const moduleDir = path.join(
-      process.resourcesPath,
-      "node_modules",
-      moduleName
-    );
-    if (!fs.existsSync(moduleDir)) {
-      return null;
-    }
-
-    const binaryPath = findFileRecursive(moduleDir, binaryName, maxDepth);
-    if (binaryPath) {
-      console.log(
-        `[FFmpeg] Found packaged ${moduleName} binary in resources/node_modules:`,
-        binaryPath
-      );
-    }
-    return binaryPath;
-  } catch (error) {
-    console.log(
-      `[FFmpeg] Failed to search packaged ${moduleName} binary:`,
-      error
-    );
-    return null;
-  }
-}
-
-/**
  * Resolves FFprobe binary path.
  *
  * Search order:
- * 1. ffprobe-static npm package (primary)
- * 2. Same directory as FFmpeg binary (legacy fallback)
- *
- * @returns Absolute path to FFprobe binary or "ffprobe" for system PATH
+ * - Packaged: staged binary only (`process.resourcesPath/ffmpeg/<platform>-<arch>/`)
+ * - Development: staged binary → ffprobe-static (executable) → system install → FFmpeg dir → PATH
  */
 export function getFFprobePath(): string {
-  // 1. Try ffprobe-static package
-  try {
-    let staticPath: string = require("ffprobe-static").path;
+  const platform = process.platform;
+  const binaryName = getBinaryName({ tool: "ffprobe", platform });
 
-    if (app.isPackaged) {
-      staticPath = staticPath.replace("app.asar", "app.asar.unpacked");
+  if (app.isPackaged) {
+    return resolvePackagedStagedBinaryOrThrow({
+      binaryName,
+      toolName: "FFprobe",
+    });
+  }
+
+  const devStagedResult = resolveStagedBinaryFromCandidates({
+    rootPaths: getDevStagedRootCandidates(),
+    binaryName,
+  });
+  if (devStagedResult.resolvedPath) {
+    if (isBinaryExecutable({ binaryPath: devStagedResult.resolvedPath })) {
+      console.log(
+        "[FFmpeg] Using staged FFprobe binary in development:",
+        devStagedResult.resolvedPath
+      );
+      return devStagedResult.resolvedPath;
     }
+    console.log(
+      "[FFmpeg] Staged FFprobe binary exists but failed executable check:",
+      devStagedResult.resolvedPath
+    );
+  }
 
-    if (fs.existsSync(staticPath)) {
+  try {
+    const staticPath: string = require("ffprobe-static").path;
+    if (
+      fs.existsSync(staticPath) &&
+      isBinaryExecutable({ binaryPath: staticPath })
+    ) {
       console.log("[FFmpeg] Found ffprobe-static:", staticPath);
       return staticPath;
     }
-    console.log("[FFmpeg] ffprobe-static path not on disk:", staticPath);
   } catch {
-    console.log("[FFmpeg] ffprobe-static package not found, falling back");
+    console.log("[FFmpeg] ffprobe-static package not available in development");
   }
 
-  if (app.isPackaged) {
-    const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
-    if (process.platform === "win32") {
-      const preferredArch = process.arch === "ia32" ? "ia32" : "x64";
-      const candidateArches = new Set([preferredArch, "x64", "ia32"]);
-
-      for (const arch of candidateArches) {
-        const archPath = path.join(
-          process.resourcesPath,
-          "node_modules",
-          "ffprobe-static",
-          "bin",
-          "win32",
-          arch,
-          ffprobeExe
-        );
-        if (fs.existsSync(archPath)) {
-          console.log(
-            "[FFmpeg] Found packaged ffprobe-static (arch-specific):",
-            archPath
-          );
-          return archPath;
-        }
-      }
+  const systemPaths = getSystemFFmpegPaths(platform, binaryName);
+  for (const searchPath of systemPaths) {
+    if (!fs.existsSync(searchPath)) {
+      continue;
     }
-
-    const packagedNodeModulesPath = findPackagedNodeModuleBinary(
-      "ffprobe-static",
-      ffprobeExe
-    );
-    if (packagedNodeModulesPath) {
-      return packagedNodeModulesPath;
+    if (!isBinaryExecutable({ binaryPath: searchPath })) {
+      continue;
     }
+    console.log("[FFmpeg] Found FFprobe at system path:", searchPath);
+    return searchPath;
   }
 
-  // 2. Fallback: same directory as ffmpeg
   const ffmpegPath = getFFmpegPath();
   const ffmpegDir = path.dirname(ffmpegPath);
-  const ffprobeExe = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
 
-  // If ffmpeg is system PATH, assume ffprobe is too
   if (ffmpegPath === "ffmpeg" || ffmpegPath === "ffmpeg.exe") {
-    return "ffprobe";
+    console.log("[FFmpeg] Falling back to system PATH FFprobe");
+    return binaryName;
   }
 
-  return path.join(ffmpegDir, ffprobeExe);
+  const ffprobeFromFFmpegDir = path.join(ffmpegDir, binaryName);
+  if (fs.existsSync(ffprobeFromFFmpegDir)) {
+    console.log(
+      "[FFmpeg] Using FFprobe from FFmpeg directory:",
+      ffprobeFromFFmpegDir
+    );
+    return ffprobeFromFFmpegDir;
+  }
+
+  console.log(
+    "[FFmpeg] Falling back to system PATH FFprobe binary name:",
+    binaryName
+  );
+  return binaryName;
 }
 
 // ============================================================================

@@ -1,0 +1,236 @@
+/**
+ * Audio Source Extraction
+ *
+ * Resolves timeline audio candidates into FFmpeg-ready local file inputs.
+ * Prefers stable filesystem/file-backed inputs and only falls back to URL fetch.
+ */
+
+import type { TimelineTrack, TimelineElement } from "@/types/timeline";
+import type { MediaItem } from "@/stores/media-store";
+import type { AudioFileInput } from "../types";
+
+type LogFn = (...args: unknown[]) => void;
+
+interface SaveAudioResult {
+  success: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface AudioSourceAPI {
+  fileExists: (filePath: string) => Promise<boolean>;
+  saveTemp: (params: {
+    audioData: ArrayBuffer;
+    filename: string;
+  }) => Promise<SaveAudioResult>;
+}
+
+interface TimelineAudioCandidate {
+  elementId: string;
+  mediaItem: MediaItem;
+  startTime: number;
+  volume: number;
+}
+
+function guessExtension(mediaItem: MediaItem): string {
+  const fromName = mediaItem.name.split(".").pop();
+  if (fromName && fromName.length <= 5) {
+    return fromName.toLowerCase();
+  }
+
+  const mimeType = mediaItem.file?.type || "";
+  if (mimeType.includes("wav")) return "wav";
+  if (mimeType.includes("mpeg")) return "mp3";
+  if (mimeType.includes("ogg")) return "ogg";
+  if (mimeType.includes("aac")) return "aac";
+  if (mimeType.includes("mp4")) return "m4a";
+  return "mp3";
+}
+
+function collectAudioCandidates(
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[]
+): TimelineAudioCandidate[] {
+  const mediaMap = new Map(mediaItems.map((item) => [item.id, item]));
+  const candidates: TimelineAudioCandidate[] = [];
+
+  for (const track of tracks) {
+    // Only timeline audio-track elements are overlay inputs.
+    // Media-track video audio stays in the base video stream via normal mode mappings.
+    if (track.type !== "audio") {
+      continue;
+    }
+
+    for (const element of track.elements) {
+      if (element.type !== "media" || element.hidden) {
+        continue;
+      }
+
+      const mediaElement = element as TimelineElement & { mediaId: string };
+      const mediaItem = mediaMap.get(mediaElement.mediaId);
+      if (!mediaItem) {
+        continue;
+      }
+
+      if (mediaItem.type === "image") {
+        continue;
+      }
+
+      if (mediaItem.type !== "video" && mediaItem.type !== "audio") {
+        continue;
+      }
+
+      candidates.push({
+        elementId: element.id,
+        mediaItem,
+        startTime: element.startTime,
+        volume: element.volume ?? 1.0,
+      });
+    }
+  }
+
+  return candidates;
+}
+
+async function resolveCandidatePath(
+  candidate: TimelineAudioCandidate,
+  sessionId: string | null,
+  api: AudioSourceAPI,
+  logger: LogFn
+): Promise<string | null> {
+  const { mediaItem, elementId } = candidate;
+
+  if (mediaItem.localPath) {
+    try {
+      const exists = await api.fileExists(mediaItem.localPath);
+      if (exists) {
+        logger(
+          `[AudioSources] Using localPath for ${mediaItem.name}: ${mediaItem.localPath}`
+        );
+        return mediaItem.localPath;
+      }
+      logger(
+        `[AudioSources] localPath missing on disk for ${mediaItem.name}: ${mediaItem.localPath}`
+      );
+    } catch (error) {
+      logger(
+        `[AudioSources] localPath check failed for ${mediaItem.name}:`,
+        error
+      );
+    }
+  }
+
+  if (
+    mediaItem.file &&
+    mediaItem.file.size > 0 &&
+    typeof mediaItem.file.arrayBuffer === "function"
+  ) {
+    try {
+      const audioData = await mediaItem.file.arrayBuffer();
+      const ext = guessExtension(mediaItem);
+      const filename = `audio_${sessionId ?? "nosession"}_${elementId}.${ext}`;
+      const result = await api.saveTemp({ audioData, filename });
+      if (result.success && result.path) {
+        logger(`[AudioSources] Saved file-backed source: ${filename}`);
+        return result.path;
+      }
+      logger(
+        `[AudioSources] Failed to save file-backed source ${filename}: ${result.error || "Unknown error"}`
+      );
+    } catch (error) {
+      logger(
+        `[AudioSources] Failed file-backed extraction for ${mediaItem.name}:`,
+        error
+      );
+    }
+  } else if (mediaItem.file && mediaItem.file.size > 0) {
+    logger(
+      `[AudioSources] File-backed extraction skipped for ${mediaItem.name}: arrayBuffer() unavailable`
+    );
+  }
+
+  if (mediaItem.url) {
+    try {
+      const response = await fetch(mediaItem.url);
+      if (!response.ok) {
+        throw new Error(`Fetch failed with status ${response.status}`);
+      }
+      const audioData = await response.arrayBuffer();
+      const ext = guessExtension(mediaItem);
+      const filename = `audio_${sessionId ?? "nosession"}_${elementId}.${ext}`;
+      const result = await api.saveTemp({ audioData, filename });
+      if (result.success && result.path) {
+        logger(`[AudioSources] Saved URL-backed source: ${filename}`);
+        return result.path;
+      }
+      logger(
+        `[AudioSources] Failed to save URL-backed source ${filename}: ${result.error || "Unknown error"}`
+      );
+    } catch (error) {
+      logger(
+        `[AudioSources] URL fallback failed for ${mediaItem.name}:`,
+        error
+      );
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Resolve timeline audio sources to FFmpeg-ready file inputs.
+ */
+export async function extractAudioFileInputs(
+  tracks: TimelineTrack[],
+  mediaItems: MediaItem[],
+  sessionId: string | null,
+  api: AudioSourceAPI,
+  logger: LogFn = console.log
+): Promise<AudioFileInput[]> {
+  try {
+    const candidates = collectAudioCandidates(tracks, mediaItems);
+    logger(
+      `[AudioSources] Collected ${candidates.length} audio candidate(s) from timeline`
+    );
+
+    const resolved = await Promise.all(
+      candidates.map(async (candidate) => {
+        try {
+          const path = await resolveCandidatePath(
+            candidate,
+            sessionId,
+            api,
+            logger
+          );
+          if (!path) {
+            logger(
+              `[AudioSources] Could not resolve source for ${candidate.mediaItem.name}`
+            );
+            return null;
+          }
+          return {
+            path,
+            startTime: candidate.startTime,
+            volume: candidate.volume,
+          } as AudioFileInput;
+        } catch (error) {
+          logger(
+            `[AudioSources] Failed resolving candidate ${candidate.mediaItem.name}:`,
+            error
+          );
+          return null;
+        }
+      })
+    );
+
+    const valid = resolved.filter(
+      (item): item is AudioFileInput => item !== null
+    );
+    valid.sort((a, b) => a.startTime - b.startTime);
+    logger(`[AudioSources] Resolved ${valid.length} audio file input(s)`);
+    return valid;
+  } catch (error) {
+    logger("[AudioSources] Extraction failed:", error);
+    return [];
+  }
+}

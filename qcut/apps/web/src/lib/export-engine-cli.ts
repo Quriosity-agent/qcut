@@ -16,6 +16,7 @@ import {
 // Import extracted modules
 import type {
   StickerSourceForFilter,
+  ImageSourceInput,
   ProgressCallback,
   VideoSourceInput,
   AudioFileInput,
@@ -23,11 +24,15 @@ import type {
 import {
   buildTextOverlayFilters,
   buildStickerOverlayFilters,
+  buildImageOverlayFilters,
 } from "./export-cli/filters";
 import {
   extractVideoSources,
   extractVideoInputPath,
   extractStickerSources,
+  extractImageSources,
+  extractAudioFileInputs,
+  detectAudioSources,
 } from "./export-cli/sources";
 
 // Re-export types for backward compatibility (using export from)
@@ -38,6 +43,21 @@ export type {
 } from "./export-cli/types";
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
+type ElectronInvoke = (channel: string, ...args: unknown[]) => Promise<unknown>;
+
+interface FileInfoLike {
+  size: number;
+}
+
+interface AudioValidationLike {
+  error?: string;
+  hasAudio?: boolean;
+  duration?: number;
+  info?: {
+    streams?: unknown[];
+  };
+  valid?: boolean;
+}
 
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
@@ -137,6 +157,35 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   /**
+   * Count visible video media elements currently present on timeline tracks.
+   */
+  private countVisibleVideoElements(): number {
+    let count = 0;
+
+    for (const track of this.tracks) {
+      if (track.type !== "media") {
+        continue;
+      }
+
+      for (const element of track.elements) {
+        if (element.hidden || element.type !== "media") {
+          continue;
+        }
+
+        const mediaElement = element as TimelineElement & { mediaId: string };
+        const mediaItem = this.mediaItems.find(
+          (item) => item.id === mediaElement.mediaId
+        );
+        if (mediaItem?.type === "video") {
+          count++;
+        }
+      }
+    }
+
+    return count;
+  }
+
+  /**
    * Extract sticker sources using extracted module.
    * Wrapper that passes instance properties.
    */
@@ -151,6 +200,36 @@ export class CLIExportEngine extends ExportEngine {
       this.totalDuration,
       undefined, // Use default store getter
       undefined, // Use default API
+      debugLog
+    );
+  }
+
+  /**
+   * Extract image sources using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private async extractImageSourcesWrapper(): Promise<ImageSourceInput[]> {
+    return extractImageSources(
+      this.tracks,
+      this.mediaItems,
+      this.sessionId,
+      undefined, // Use default API (window.electronAPI.video)
+      debugLog
+    );
+  }
+
+  /**
+   * Build image overlay filters using extracted module.
+   * Wrapper that passes instance properties.
+   */
+  private buildImageOverlayFiltersWrapper(
+    imageSources: ImageSourceInput[]
+  ): string {
+    return buildImageOverlayFilters(
+      imageSources,
+      this.canvas.width,
+      this.canvas.height,
+      1, // videoInputCount = 1 (base video)
       debugLog
     );
   }
@@ -170,78 +249,318 @@ export class CLIExportEngine extends ExportEngine {
   // - extractStickerSources -> export-cli/sources/sticker-sources.ts (now uses wrapper)
   // - buildStickerOverlayFilters -> export-cli/filters/sticker-overlay.ts (now uses wrapper)
 
-  private async prepareAudioFiles(): Promise<AudioFileInput[]> {
-    const results: AudioFileInput[] = [];
-    const { useTimelineStore } = await import("@/stores/timeline-store");
-    const { useMediaStore } = await import("@/stores/media-store");
+  private getOptionalInvoke(): ElectronInvoke | null {
+    try {
+      const maybeInvoke = (
+        window.electronAPI as typeof window.electronAPI & {
+          invoke?: ElectronInvoke;
+        }
+      )?.invoke;
+      if (typeof maybeInvoke === "function") {
+        return maybeInvoke;
+      }
+      return null;
+    } catch (error) {
+      debugWarn(
+        "[CLIExportEngine] Failed to access optional invoke API:",
+        error
+      );
+      return null;
+    }
+  }
 
-    const audioElements = useTimelineStore.getState().getAudioElements();
-    const concurrency = 4;
-    const queue = [...audioElements];
-    const workers = Array.from({ length: concurrency }, async () => {
-      while (queue.length) {
-        const audioElement = queue.shift()!;
-        const mediaItem = useMediaStore
-          .getState()
-          .mediaItems.find(
-            (m) => m.id === (audioElement.element as any).mediaId
-          );
-        if (!mediaItem?.url) {
+  private async invokeIfAvailable({
+    args = [],
+    channel,
+  }: {
+    args?: unknown[];
+    channel: string;
+  }): Promise<unknown | null> {
+    try {
+      const invoke = this.getOptionalInvoke();
+      if (!invoke) {
+        return null;
+      }
+      return await invoke(channel, ...args);
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Optional invoke call failed for channel ${channel}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  private async getFileInfo({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<FileInfoLike | null> {
+    try {
+      if (!window.electronAPI) {
+        return null;
+      }
+      const fileInfo = await window.electronAPI.getFileInfo(filePath);
+      if (!fileInfo || typeof fileInfo.size !== "number") {
+        return null;
+      }
+      return fileInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  private async fileExists({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<boolean> {
+    try {
+      const fileInfo = await this.getFileInfo({ filePath });
+      if (fileInfo && fileInfo.size >= 0) {
+        return true;
+      }
+
+      const legacyExists = await this.invokeIfAvailable({
+        channel: "file-exists",
+        args: [filePath],
+      });
+      return legacyExists === true;
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Failed to determine file existence for ${filePath}:`,
+        error
+      );
+      return false;
+    }
+  }
+
+  private async validateAudioWithFfprobe({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<AudioValidationLike | null> {
+    try {
+      const validation = await this.invokeIfAvailable({
+        channel: "validate-audio-file",
+        args: [filePath],
+      });
+      if (!validation || typeof validation !== "object") {
+        return null;
+      }
+
+      return validation as AudioValidationLike;
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Failed to run optional ffprobe validation for ${filePath}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  private async resolveAudioPreparationInputs(): Promise<{
+    tracks: TimelineTrack[];
+    mediaItems: MediaItem[];
+  }> {
+    try {
+      const tracks = this.tracks;
+      const mergedMediaById = new Map<string, MediaItem>();
+
+      for (const mediaItem of this.mediaItems) {
+        mergedMediaById.set(mediaItem.id, mediaItem);
+      }
+
+      const referencedMediaIds = new Set<string>();
+      for (const track of tracks) {
+        if (track.type !== "media" && track.type !== "audio") {
           continue;
         }
-        try {
-          const response = await fetch(mediaItem.url);
-          if (!response.ok) {
-            debugWarn(
-              `[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`
-            );
+
+        for (const element of track.elements) {
+          if (element.type !== "media") {
             continue;
           }
-          const arrayBuffer = await response.arrayBuffer();
-          const guessExt = () => {
-            const fromName = mediaItem.name.split(".").pop();
-            if (fromName && fromName.length <= 5) return fromName.toLowerCase();
-            // basic mime fallback
-            const mt = (mediaItem as any).file?.type as string | undefined;
-            if (mt?.includes("wav")) return "wav";
-            if (mt?.includes("mpeg")) return "mp3";
-            if (mt?.includes("ogg")) return "ogg";
-            return "mp3";
-          };
-          const ext = guessExt();
-          const filename = `audio_${this.sessionId}_${(audioElement.element as any).id}.${ext}`;
-          const result = await window.electronAPI?.invoke(
-            "save-audio-for-export",
-            {
-              audioData: arrayBuffer,
-              filename,
-            }
-          );
-          if (result?.success) {
-            results.push({
-              path: result.path,
-              startTime: audioElement.absoluteStart ?? 0,
-              volume: (audioElement.element as any).volume ?? 1.0,
-            });
-            debugLog(
-              `[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`
-            );
-          } else {
-            debugWarn(
-              `[CLIExportEngine] Failed to save audio file: ${result?.error}`
-            );
-          }
-        } catch (error) {
-          debugError("[CLIExportEngine] Error preparing audio file:", error);
+          referencedMediaIds.add(element.mediaId);
         }
       }
-    });
-    await Promise.all(workers);
 
-    debugLog(
-      `[CLIExportEngine] Prepared ${results.length} audio files for export`
-    );
-    return results;
+      const unresolvedMediaIds = Array.from(referencedMediaIds).filter((id) => {
+        const mediaItem = mergedMediaById.get(id);
+        if (!mediaItem) {
+          return true;
+        }
+
+        const hasLocalPath = typeof mediaItem.localPath === "string";
+        const hasFile = !!mediaItem.file && mediaItem.file.size > 0;
+        const hasUrl =
+          typeof mediaItem.url === "string" && mediaItem.url.length > 0;
+        return !hasLocalPath && !hasFile && !hasUrl;
+      });
+
+      if (unresolvedMediaIds.length === 0) {
+        return {
+          mediaItems: Array.from(mergedMediaById.values()),
+          tracks,
+        };
+      }
+
+      const { useProjectStore } = await import("@/stores/project-store");
+      const projectId = useProjectStore.getState().activeProject?.id;
+      if (!projectId) {
+        debugWarn(
+          "[CLIExportEngine] Cannot hydrate missing audio media items without an active project ID"
+        );
+        return {
+          mediaItems: Array.from(mergedMediaById.values()),
+          tracks,
+        };
+      }
+
+      const { storageService } = await import("@/lib/storage/storage-service");
+      const hydratedItems = await Promise.all(
+        unresolvedMediaIds.map(async (mediaId) => {
+          try {
+            return await storageService.loadMediaItem(projectId, mediaId);
+          } catch (error) {
+            debugWarn(
+              `[CLIExportEngine] Failed to hydrate media item ${mediaId} from storage:`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+
+      for (const hydratedItem of hydratedItems) {
+        if (!hydratedItem) {
+          continue;
+        }
+        mergedMediaById.set(hydratedItem.id, hydratedItem);
+      }
+
+      return {
+        mediaItems: Array.from(mergedMediaById.values()),
+        tracks,
+      };
+    } catch (error) {
+      debugWarn(
+        "[CLIExportEngine] Failed to build audio preparation inputs, using in-memory snapshot:",
+        error
+      );
+      return {
+        mediaItems: this.mediaItems,
+        tracks: this.tracks,
+      };
+    }
+  }
+
+  private async prepareAudioFiles(): Promise<AudioFileInput[]> {
+    try {
+      if (!window.electronAPI) {
+        return [];
+      }
+
+      const { tracks, mediaItems } = await this.resolveAudioPreparationInputs();
+      debugLog("[CLIExportEngine] Audio preparation inputs:", {
+        mediaItemsCount: mediaItems.length,
+        trackCount: tracks.length,
+      });
+
+      const results = await extractAudioFileInputs(
+        tracks,
+        mediaItems,
+        this.sessionId,
+        {
+          fileExists: async (filePath: string): Promise<boolean> => {
+            try {
+              return await this.fileExists({ filePath });
+            } catch (error) {
+              debugWarn(
+                `[CLIExportEngine] Failed to verify file existence for ${filePath}:`,
+                error
+              );
+              return false;
+            }
+          },
+          saveTemp: async ({
+            audioData,
+            filename,
+          }: {
+            audioData: ArrayBuffer;
+            filename: string;
+          }): Promise<{ success: boolean; path?: string; error?: string }> => {
+            try {
+              if (window.electronAPI?.audio?.saveTemp) {
+                const path = await window.electronAPI.audio.saveTemp(
+                  new Uint8Array(audioData),
+                  filename
+                );
+                if (typeof path === "string" && path.length > 0) {
+                  return {
+                    success: true,
+                    path,
+                  };
+                }
+              }
+
+              const result = await this.invokeIfAvailable({
+                channel: "save-audio-for-export",
+                args: [{ audioData, filename }],
+              });
+              const parsedResult =
+                result && typeof result === "object"
+                  ? (result as {
+                      success?: boolean;
+                      path?: string;
+                      error?: string;
+                    })
+                  : null;
+
+              if (!parsedResult) {
+                return {
+                  success: false,
+                  error: "No available API to persist audio temp file",
+                };
+              }
+
+              return {
+                success: parsedResult.success === true,
+                path: parsedResult.path,
+                error: parsedResult.error,
+              };
+            } catch (error) {
+              return {
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              };
+            }
+          },
+        },
+        debugLog
+      );
+
+      if (results.length === 0) {
+        const audioSources = detectAudioSources(tracks, mediaItems);
+        if (audioSources.hasAudio) {
+          debugWarn(
+            "[CLIExportEngine] Audio sources detected in timeline but none were resolved to exportable files",
+            {
+              embeddedVideoAudioCount: audioSources.embeddedVideoAudioCount,
+              overlayAudioCount: audioSources.overlayAudioCount,
+            }
+          );
+        }
+      }
+
+      debugLog(
+        `[CLIExportEngine] Prepared ${results.length} audio files for export`
+      );
+      return results;
+    } catch (error) {
+      debugError("[CLIExportEngine] Error preparing audio files:", error);
+      return [];
+    }
   }
 
   /**
@@ -323,9 +642,13 @@ export class CLIExportEngine extends ExportEngine {
 
       // Determine export mode based on analysis
       // Note: Mode 3 (image-pipeline) has been removed - unsupported cases now throw errors
+      const visibleVideoCount = this.countVisibleVideoElements();
+      const isImageCompositeStrategy =
+        this.exportAnalysis?.optimizationStrategy === "image-video-composite";
       const canUseMode2 =
         this.exportAnalysis?.optimizationStrategy ===
-        "direct-video-with-filters";
+          "direct-video-with-filters" ||
+        (isImageCompositeStrategy && visibleVideoCount === 1);
       const videoInput: {
         path: string;
         trimStart: number;
@@ -461,6 +784,10 @@ export class CLIExportEngine extends ExportEngine {
     // Gate audio preparation behind request-scoped includeAudio setting
     // Default to true for backward compatibility
     const includeAudio = this.audioOptions.includeAudio ?? true;
+    debugLog("[CLI Export] includeAudio option:", {
+      includeAudio,
+      requestedIncludeAudio: this.audioOptions.includeAudio,
+    });
     let audioFiles: AudioFileInput[] = [];
 
     if (includeAudio) {
@@ -506,31 +833,33 @@ export class CLIExportEngine extends ExportEngine {
 
         try {
           // Check if file exists
-          const exists = await window.electronAPI?.invoke(
-            "file-exists",
-            audioFile.path
-          );
+          const exists = await this.fileExists({ filePath: audioFile.path });
           debugLog(`[CLI Export] Audio file ${index} exists: ${exists}`);
 
           if (!exists) {
-            const error = `Audio file does not exist: ${audioFile.path}`;
-            debugError(`[CLI Export] ${error}`);
-            throw new Error(error);
+            debugWarn(
+              `[CLI Export] Skipping missing audio file: ${audioFile.path}`
+            );
+            return null;
           }
 
           // Check file size to ensure it's not empty/corrupted
-          const fileInfo = await window.electronAPI?.invoke(
-            "get-file-info",
-            audioFile.path
-          );
+          const fileInfo = await this.getFileInfo({ filePath: audioFile.path });
+          if (!fileInfo) {
+            debugWarn(
+              `[CLI Export] Skipping audio file with unavailable metadata: ${audioFile.path}`
+            );
+            return null;
+          }
           debugLog(
             `[CLI Export] Audio file ${index} size: ${fileInfo.size} bytes`
           );
 
           if (fileInfo.size === 0) {
-            const error = `Audio file is empty: ${audioFile.path}`;
-            debugError(`[CLI Export] ${error}`);
-            throw new Error(error);
+            debugWarn(
+              `[CLI Export] Skipping empty audio file: ${audioFile.path}`
+            );
+            return null;
           }
 
           // Validate audio file format with ffprobe
@@ -538,20 +867,20 @@ export class CLIExportEngine extends ExportEngine {
             `[CLI Export] Validating audio file ${index} format with ffprobe...`
           );
 
-          try {
-            const audioValidation = await window.electronAPI?.invoke(
-              "validate-audio-file",
-              audioFile.path
-            );
+          const audioValidation = await this.validateAudioWithFfprobe({
+            filePath: audioFile.path,
+          });
+          if (audioValidation) {
             debugLog(
               `[CLI Export] Audio file ${index} validation result:`,
               audioValidation
             );
 
             if (!audioValidation.valid) {
-              const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
-              debugError(`[CLI Export] ${error}`);
-              throw new Error(error);
+              debugWarn(
+                `[CLI Export] Skipping invalid audio file: ${audioFile.path} (${audioValidation.error || "Unknown validation error"})`
+              );
+              return null;
             }
 
             debugLog(
@@ -571,25 +900,14 @@ export class CLIExportEngine extends ExportEngine {
               );
               return null; // Mark for filtering
             }
-
-            return audioFile; // Valid audio file
-          } catch (validationError) {
-            // Log validation error but continue with the file
-            debugError(
-              "[CLI Export] Audio validation failed:",
-              validationError
-            );
-            debugLog(
-              "[CLI Export] Including file despite validation failure..."
-            );
-            return audioFile; // Keep the file despite ffprobe failure
           }
+          return audioFile; // Valid audio file
         } catch (error) {
-          debugError(
-            `[CLI Export] Failed to validate audio file ${index}:`,
+          debugWarn(
+            `[CLI Export] Skipping audio file ${audioFile.path} after validation error:`,
             error
           );
-          throw new Error(`Failed to validate audio file: ${audioFile.path}`);
+          return null;
         }
       })
     );
@@ -677,14 +995,45 @@ export class CLIExportEngine extends ExportEngine {
       stickerFilterChain = undefined;
     }
 
+    // Extract image sources for image-video-composite strategy
+    let imageFilterChain: string | undefined;
+    let imageSources: ImageSourceInput[] = [];
+
+    if (this.exportAnalysis?.hasImageElements) {
+      try {
+        imageSources = await this.extractImageSourcesWrapper();
+
+        if (imageSources.length > 0) {
+          // Build FFmpeg overlay filter chain for images
+          imageFilterChain = this.buildImageOverlayFiltersWrapper(imageSources);
+
+          debugLog(`[CLI Export] Image sources: ${imageSources.length}`);
+          debugLog(`[CLI Export] Image filter chain: ${imageFilterChain}`);
+        } else {
+          throw new Error(
+            "Timeline contains image elements but no image sources were resolved."
+          );
+        }
+      } catch (error) {
+        debugError("[CLI Export] Failed to process image sources:", error);
+        throw new Error(
+          `Failed to process image sources for export: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+
     // Extract video sources for direct copy optimization
     // IMPORTANT: Disable direct copy if we have text filters OR sticker filters
     const hasTextFilters = textFilterChain.length > 0;
     const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
 
     // Determine which mode to use and extract appropriate video info
+    const visibleVideoCount = this.countVisibleVideoElements();
     const canUseMode2 =
-      this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters";
+      this.exportAnalysis?.optimizationStrategy ===
+        "direct-video-with-filters" ||
+      (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+        visibleVideoCount === 1);
     const videoInput: {
       path: string;
       trimStart: number;
@@ -726,16 +1075,32 @@ export class CLIExportEngine extends ExportEngine {
       this.exportAnalysis?.optimizationStrategy === "video-normalization" ||
       (this.exportAnalysis?.canUseDirectCopy &&
         !hasTextFilters &&
-        !hasStickerFilters);
+        !hasStickerFilters) ||
+      (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+        visibleVideoCount > 0 &&
+        !videoInput);
 
     const videoSources: VideoSourceInput[] = shouldExtractVideoSources
       ? await this.extractVideoSourcesWrapper()
       : [];
 
+    if (
+      this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+      visibleVideoCount > 0 &&
+      !videoInput &&
+      videoSources.length === 0
+    ) {
+      throw new Error(
+        "Image/video composite export requires a base video input, but none could be resolved."
+      );
+    }
+
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
       throw new Error("No active session ID");
     }
+    const hasImageFilters = imageSources.length > 0;
+
     const exportOptions = {
       sessionId: this.sessionId,
       width: this.canvas.width,
@@ -748,12 +1113,15 @@ export class CLIExportEngine extends ExportEngine {
       textFilterChain: hasTextFilters ? textFilterChain : undefined, // Add text filter chain
       stickerFilterChain, // ADD THIS
       stickerSources, // ADD THIS
+      imageFilterChain, // ADD THIS - Image overlay filters
+      imageSources, // ADD THIS - Image source inputs
       useDirectCopy: !!(
         this.exportAnalysis?.canUseDirectCopy &&
         this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&
         !hasTextFilters &&
-        !hasStickerFilters
-      ), // Disable direct copy when text, stickers, or video-normalization mode
+        !hasStickerFilters &&
+        !hasImageFilters
+      ), // Disable direct copy when text, stickers, images, or video-normalization mode
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
@@ -782,6 +1150,9 @@ export class CLIExportEngine extends ExportEngine {
     );
     console.log(
       `   - Sticker overlays: ${hasStickerFilters ? `YES (${stickerSources.length} stickers)` : "NO"}`
+    );
+    console.log(
+      `   - Image overlays: ${hasImageFilters ? `YES (${imageSources.length} images)` : "NO"}`
     );
     console.log(
       `   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`

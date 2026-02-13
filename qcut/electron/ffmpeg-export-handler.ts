@@ -119,6 +119,12 @@ export function setupExportHandler(tempManager: TempManager): void {
           "Sticker filter chain provided without sticker sources"
         );
       }
+      if (
+        options.imageFilterChain &&
+        (!options.imageSources || options.imageSources.length === 0)
+      ) {
+        throw new Error("Image filter chain provided without image sources");
+      }
 
       // Check if any video has trim values (concat demuxer can't handle per-video trimming)
       const hasTrimmedVideos =
@@ -141,6 +147,8 @@ export function setupExportHandler(tempManager: TempManager): void {
         !textFilterChain &&
         !stickerFilterChain &&
         !options.filterChain &&
+        !options.imageFilterChain &&
+        !(options.imageSources && options.imageSources.length > 0) &&
         !hasTrimmedVideos;
 
       // Validate duration to prevent crashes or excessive resource usage
@@ -165,26 +173,28 @@ export function setupExportHandler(tempManager: TempManager): void {
         }
 
         const buildArgs = () =>
-          buildFFmpegArgs(
-            frameDir,
+          buildFFmpegArgs({
+            inputDir: frameDir,
             outputFile,
             width,
             height,
             fps,
             quality,
-            validatedDuration,
+            duration: validatedDuration,
             audioFiles,
-            options.filterChain,
+            filterChain: options.filterChain,
             textFilterChain,
-            effectiveUseDirectCopy,
-            options.videoSources,
+            useDirectCopy: effectiveUseDirectCopy,
+            videoSources: options.videoSources,
             stickerFilterChain,
             stickerSources,
-            options.useVideoInput || false,
-            options.videoInputPath,
-            options.trimStart,
-            options.trimEnd
-          );
+            imageFilterChain: options.imageFilterChain,
+            imageSources: options.imageSources,
+            useVideoInput: options.useVideoInput || false,
+            videoInputPath: options.videoInputPath,
+            trimStart: options.trimStart,
+            trimEnd: options.trimEnd,
+          });
 
         // Mode 1.5 builds its own args; defer until after Mode 1.5 branch when needed
         let args: string[] | null =

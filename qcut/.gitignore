@@ -11,6 +11,9 @@
 /apps/web/dist/
 /dist/
 /build/
+!/build/*.icns
+!/build/*.ico
+!/build/entitlements.mac.plist
 dist-electron/
 dist-packager*/
 build_exe/
@@ -74,6 +77,7 @@ turbo.log
 .claude/settings.local.json
 .claude/*
 !.claude/skills/
+!.claude/commands/
 
 # Reference version (local development only)
 docs/completed/reference-version/

@@ -493,6 +493,10 @@ export async function createTestProject(
  * @throws {Error} When file upload fails or times out
  */
 export async function uploadTestMedia(page: Page, filePath: string) {
+  // Get the current media item count before import
+  const mediaItems = page.locator('[data-testid="media-item"]');
+  const initialCount = await mediaItems.count();
+
   // Click the import media button to trigger file picker
   await page.getByTestId("import-media-button").click();
 
@@ -500,9 +504,15 @@ export async function uploadTestMedia(page: Page, filePath: string) {
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(filePath);
 
-  // Wait for upload to complete - look for the media item in the media panel
-  // Just wait for the file name to appear as that's the most reliable indicator
-  await page.waitForSelector("text=sample-", { timeout: 15_000 });
+  // Wait for a new media item to be added (count increases)
+  await page.waitForFunction(
+    (expectedCount) => {
+      const items = document.querySelectorAll('[data-testid="media-item"]');
+      return items.length > expectedCount;
+    },
+    initialCount,
+    { timeout: 15_000 }
+  );
 }
 
 /**
