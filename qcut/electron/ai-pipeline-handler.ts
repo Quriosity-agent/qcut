@@ -127,6 +127,13 @@ class AIPipelineManager {
         return bundledConfig;
       }
 
+      if (app.isPackaged) {
+        console.warn(
+          "[AI Pipeline] Packaged mode requires bundled AICP binary; skipping system/Python fallbacks"
+        );
+        return this.getFallbackConfig();
+      }
+
       const commandTimeoutMs = 5000;
       const systemVersion = await this.getVersionFromCommand({
         command: "aicp --version",
@@ -302,9 +309,31 @@ class AIPipelineManager {
       source: "unavailable",
       compatible: false,
       features: {},
-      error:
-        "AI Pipeline binary not found. Install aicp or the ai_content_pipeline Python package.",
+      error: this.getUnavailableErrorMessage(),
     };
+  }
+
+  private getUnavailableErrorMessage(): string {
+    try {
+      if (app.isPackaged) {
+        return (
+          "AI Content Pipeline is not available. " +
+          "The bundled binary was not found or failed validation. " +
+          "Please reinstall QCut or contact support."
+        );
+      }
+
+      return (
+        "AI Pipeline binary not found. Install aicp or the " +
+        "ai_content_pipeline Python package for development."
+      );
+    } catch (error) {
+      console.warn(
+        "[AI Pipeline] Failed to build unavailable message, using fallback:",
+        error
+      );
+      return "AI Pipeline not available";
+    }
   }
 
   /**
@@ -382,7 +411,7 @@ class AIPipelineManager {
     onProgress: (progress: PipelineProgress) => void
   ): Promise<PipelineResult> {
     if (!(await this.isAvailable())) {
-      return { success: false, error: "AI Pipeline not available" };
+      return { success: false, error: this.getUnavailableErrorMessage() };
     }
 
     const { cmd, baseArgs } = this.getCommand();
@@ -718,7 +747,8 @@ export function setupAIPipelineIPC(): void {
       }
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
-        return { success: false, error: "AI Pipeline not available" };
+        const status = await pipelineManager.getStatus();
+        return { success: false, error: status.error || "AI Pipeline not available" };
       }
 
       // Generate sessionId if not provided to ensure correlation
@@ -745,7 +775,8 @@ export function setupAIPipelineIPC(): void {
       }
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
-        return { success: false, error: "AI Pipeline not available" };
+        const status = await pipelineManager.getStatus();
+        return { success: false, error: status.error || "AI Pipeline not available" };
       }
 
       return pipelineManager.execute(
@@ -767,7 +798,8 @@ export function setupAIPipelineIPC(): void {
       }
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
-        return { success: false, error: "AI Pipeline not available" };
+        const status = await pipelineManager.getStatus();
+        return { success: false, error: status.error || "AI Pipeline not available" };
       }
 
       return pipelineManager.execute(

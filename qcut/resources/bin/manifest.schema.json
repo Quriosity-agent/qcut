@@ -103,6 +103,11 @@
           "type": "string",
           "description": "Binary filename for this platform"
         },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash for this platform-specific binary"
+        },
         "size": {
           "type": "integer",
           "minimum": 0,

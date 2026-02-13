@@ -1,11 +1,11 @@
 {
   "$schema": "./manifest.schema.json",
   "manifestVersion": "1.0.0",
-  "generatedAt": "2026-01-29T00:00:00Z",
+  "generatedAt": "2026-02-13T00:00:00Z",
   "binaries": {
     "aicp": {
       "version": "1.0.0",
-      "minQCutVersion": "0.3.50",
+      "minQCutVersion": "0.3.67",
       "maxQCutVersion": null,
       "platforms": {
         "win32-x64": {
@@ -46,6 +46,9 @@
         "aicp": ">=1.0.0"
       },
       "0.4.0": {
+        "aicp": ">=1.0.0"
+      },
+      "0.3.67": {
         "aicp": ">=1.0.0"
       }
     }

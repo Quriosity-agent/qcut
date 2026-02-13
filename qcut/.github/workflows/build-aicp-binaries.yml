@@ -1,0 +1,126 @@
+name: Build AICP Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      aicp_source_ref:
+        description: "video-agent-skill git ref (tag/commit)"
+        required: false
+        default: "v1.0.0"
+      upload_release_assets:
+        description: "Upload artifacts to current release tag"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "aicp-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: darwin-arm64
+            binary_name: aicp
+          - os: macos-13
+            target: darwin-x64
+            binary_name: aicp
+          - os: windows-latest
+            target: win32-x64
+            binary_name: aicp.exe
+          - os: ubuntu-latest
+            target: linux-x64
+            binary_name: aicp
+
+    env:
+      AICP_SOURCE_REF: ${{ github.event.inputs.aicp_source_ref || 'v1.0.0' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build AICP binary (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          bash build/aicp/build.sh
+
+      - name: Build AICP binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./build/aicp/build.ps1
+
+      - name: Prepare artifact payload
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p build/aicp/artifacts/${{ matrix.target }}
+          cp build/aicp/dist/${{ matrix.binary_name }} build/aicp/artifacts/${{ matrix.target }}/${{ matrix.binary_name }}
+
+          python - <<'PY'
+import hashlib
+import pathlib
+
+binary_path = pathlib.Path("build/aicp/artifacts/${{ matrix.target }}/${{ matrix.binary_name }}")
+hash_value = hashlib.sha256(binary_path.read_bytes()).hexdigest()
+size_value = binary_path.stat().st_size
+
+checksums_path = pathlib.Path("build/aicp/artifacts/${{ matrix.target }}/checksums.txt")
+checksums_path.write_text(
+    f"target=${{ matrix.target }}\n"
+    f"filename=${{ matrix.binary_name }}\n"
+    f"sha256={hash_value}\n"
+    f"size={size_value}\n",
+    encoding="utf-8",
+)
+PY
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aicp-${{ matrix.target }}
+          path: build/aicp/artifacts/${{ matrix.target }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/aicp-v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.upload_release_assets == 'true')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | sort
+
+      - name: Create release assets bundle checksums
+        run: |
+          set -euo pipefail
+          find artifacts -type f \( -name 'aicp' -o -name 'aicp.exe' \) -exec sha256sum {} \; | tee artifacts/SHA256SUMS.txt
+
+      - name: Upload assets to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            artifacts/**/aicp
+            artifacts/**/aicp.exe
+            artifacts/**/checksums.txt
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

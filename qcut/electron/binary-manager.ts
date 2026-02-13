@@ -57,7 +57,8 @@ export interface BinaryEntry {
 
 export interface PlatformEntry {
   filename: string;
-  size: number;
+  size?: number;
+  sha256?: string;
   downloadUrl?: string;
 }
 
@@ -90,6 +91,7 @@ export class BinaryManager {
   private manifest: BinaryManifest | null = null;
   private manifestPath: string;
   private binDir: string;
+  private binDirCandidates: string[];
   private qcutVersion: string;
   private checksumCache: Map<string, boolean> = new Map();
 
@@ -98,20 +100,31 @@ export class BinaryManager {
 
     if (app.isPackaged) {
       this.binDir = path.join(process.resourcesPath, "bin");
+      this.binDirCandidates = [this.binDir];
       this.manifestPath = path.join(this.binDir, "manifest.json");
     } else {
-      // Development: check multiple possible locations
-      const devBinDir = path.join(__dirname, "..", "resources", "bin");
-      const altBinDir = path.join(__dirname, "..", "..", "resources", "bin");
+      const devManifestDirCandidates = [
+        path.join(__dirname, "..", "resources", "bin"),
+        path.join(__dirname, "resources", "bin"),
+        path.join(__dirname, "..", "..", "resources", "bin"),
+      ];
+      const devBinaryDirCandidates = [
+        path.join(__dirname, "resources", "bin"),
+        path.join(__dirname, "..", "resources", "bin"),
+        path.join(__dirname, "..", "..", "resources", "bin"),
+      ];
 
-      if (fs.existsSync(devBinDir)) {
-        this.binDir = devBinDir;
-      } else if (fs.existsSync(altBinDir)) {
-        this.binDir = altBinDir;
-      } else {
-        this.binDir = devBinDir; // Default, will be created if needed
-      }
-      this.manifestPath = path.join(this.binDir, "manifest.json");
+      this.binDirCandidates = Array.from(new Set(devBinaryDirCandidates));
+      this.binDir =
+        this.binDirCandidates.find((candidate) => fs.existsSync(candidate)) ||
+        this.binDirCandidates[0];
+
+      const manifestCandidatePaths = devManifestDirCandidates.map((candidate) =>
+        path.join(candidate, "manifest.json")
+      );
+      this.manifestPath =
+        manifestCandidatePaths.find((candidate) => fs.existsSync(candidate)) ||
+        manifestCandidatePaths[0];
     }
 
     this.loadManifest();
@@ -179,10 +192,71 @@ export class BinaryManager {
    * Get status of a specific binary
    */
   getBinaryStatus(binaryName: string): BinaryStatus {
-    const entry = this.manifest?.binaries[binaryName];
-    const platformKey = `${process.platform}-${process.arch}`;
+    try {
+      const entry = this.manifest?.binaries[binaryName];
+      const platformKey = `${process.platform}-${process.arch}`;
 
-    if (!entry) {
+      if (!entry) {
+        return {
+          name: binaryName,
+          available: false,
+          version: null,
+          path: null,
+          checksumValid: false,
+          compatible: false,
+          updateAvailable: false,
+          features: {},
+          error: "Binary not in manifest",
+        };
+      }
+
+      const platformInfo = entry.platforms[platformKey];
+      if (!platformInfo) {
+        return {
+          name: binaryName,
+          available: false,
+          version: entry.version,
+          path: null,
+          checksumValid: false,
+          compatible: false,
+          updateAvailable: false,
+          features: entry.features || {},
+          error: `No binary for platform: ${platformKey}`,
+        };
+      }
+
+      const binaryPath = this.resolveBinaryPath({
+        binaryName,
+        platformKey,
+        platformInfo,
+      });
+      const exists = binaryPath !== null;
+
+      let checksumValid = true;
+      const expectedSha256 = platformInfo.sha256 || entry.checksum?.sha256;
+      if (exists && binaryPath && expectedSha256) {
+        checksumValid = this.verifyChecksum(binaryPath, expectedSha256);
+      }
+
+      const compatible = this.isVersionCompatible(
+        entry.minQCutVersion,
+        entry.maxQCutVersion
+      );
+
+      return {
+        name: binaryName,
+        available: exists,
+        version: entry.version,
+        path: exists ? binaryPath : null,
+        checksumValid,
+        compatible,
+        updateAvailable: false,
+        features: entry.features || {},
+        error: exists ? undefined : "Binary file not found",
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       return {
         name: binaryName,
         available: false,
@@ -192,49 +266,47 @@ export class BinaryManager {
         compatible: false,
         updateAvailable: false,
         features: {},
-        error: "Binary not in manifest",
+        error: `Failed to resolve binary status: ${errorMessage}`,
       };
     }
+  }
 
-    const platformInfo = entry.platforms[platformKey];
-    if (!platformInfo) {
-      return {
-        name: binaryName,
-        available: false,
-        version: entry.version,
-        path: null,
-        checksumValid: false,
-        compatible: false,
-        updateAvailable: false,
-        features: entry.features || {},
-        error: `No binary for platform: ${platformKey}`,
-      };
+  private resolveBinaryPath({
+    binaryName,
+    platformKey,
+    platformInfo,
+  }: {
+    binaryName: string;
+    platformKey: string;
+    platformInfo: PlatformEntry;
+  }): string | null {
+    try {
+      for (const rootDir of this.binDirCandidates) {
+        const candidatePaths = [
+          path.join(rootDir, binaryName, platformKey, platformInfo.filename),
+          path.join(rootDir, platformKey, platformInfo.filename),
+          path.join(rootDir, platformInfo.filename),
+        ];
+
+        for (const candidatePath of candidatePaths) {
+          if (fs.existsSync(candidatePath)) {
+            return candidatePath;
+          }
+        }
+      }
+
+      return null;
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (!app.isPackaged) {
+        console.warn(
+          `[BinaryManager] Failed to resolve binary path for ${binaryName}:`,
+          errorMessage
+        );
+      }
+      return null;
     }
-
-    const binaryPath = path.join(this.binDir, platformInfo.filename);
-    const exists = fs.existsSync(binaryPath);
-
-    let checksumValid = true; // Default to true if no checksum specified
-    if (exists && entry.checksum) {
-      checksumValid = this.verifyChecksum(binaryPath, entry.checksum.sha256);
-    }
-
-    const compatible = this.isVersionCompatible(
-      entry.minQCutVersion,
-      entry.maxQCutVersion
-    );
-
-    return {
-      name: binaryName,
-      available: exists,
-      version: entry.version,
-      path: exists ? binaryPath : null,
-      checksumValid,
-      compatible,
-      updateAvailable: false, // Set by checkForUpdates()
-      features: entry.features || {},
-      error: exists ? undefined : "Binary file not found",
-    };
   }
 
   /**

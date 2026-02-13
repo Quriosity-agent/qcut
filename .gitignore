@@ -6,6 +6,12 @@ electron-builds/
 dist/
 dist*/
 build/
+!qcut/build/
+!qcut/build/aicp/
+!qcut/build/aicp/aicp.spec
+!qcut/build/aicp/entry.py
+!qcut/build/aicp/build.sh
+!qcut/build/aicp/build.ps1
 dist-electron/
 dist-packager*/
 node_modules/
