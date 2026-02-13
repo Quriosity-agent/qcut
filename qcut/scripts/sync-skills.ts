@@ -18,6 +18,8 @@ const BUNDLED_SKILLS = [
   "ai-content-pipeline",
   "ffmpeg-skill",
   "organize-project",
+  "qcut-api",
+  "qcut-toolkit",
 ];
 
 function syncSkills() {

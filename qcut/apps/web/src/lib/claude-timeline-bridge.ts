@@ -98,20 +98,102 @@ export function setupClaudeTimelineBridge(): void {
     applyTimelineToStore(timeline);
   });
 
-  /**
-   * Handle element addition from Claude
-   *
-   * @stub This handler is intentionally a stub. Adding elements requires:
-   * 1. Mapping ClaudeElement types to internal TimelineElement types
-   * 2. Resolving media references (mediaId must exist in media store)
-   * 3. Determining target track (create new or use existing)
-   * 4. Validating element doesn't overlap with existing elements
-   */
+  // Handle element addition from Claude
   claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
     console.log("[ClaudeTimelineBridge] Adding element:", element);
-    console.warn(
-      "[ClaudeTimelineBridge] addElement not implemented - requires type mapping"
-    );
+
+    const timelineStore = useTimelineStore.getState();
+    const mediaStore = useMediaStore.getState();
+
+    if (
+      element.type === "media" ||
+      element.type === "video" ||
+      element.type === "audio" ||
+      element.type === "image"
+    ) {
+      // Look up media by sourceName or sourceId
+      let mediaItem = null;
+      if (element.sourceName) {
+        mediaItem = mediaStore.mediaItems.find(
+          (item) => item.name === element.sourceName
+        );
+      }
+      if (!mediaItem && element.sourceId) {
+        mediaItem = mediaStore.mediaItems.find(
+          (item) => item.id === element.sourceId
+        );
+      }
+
+      if (!mediaItem) {
+        console.warn(
+          "[ClaudeTimelineBridge] Media not found:",
+          element.sourceName || element.sourceId
+        );
+        return;
+      }
+
+      // Find or create a media track
+      const trackId = timelineStore.findOrCreateTrack("media");
+
+      // Calculate duration from endTime-startTime or fall back to media duration
+      const duration =
+        element.endTime != null && element.startTime != null
+          ? element.endTime - element.startTime
+          : mediaItem.duration || 10;
+
+      timelineStore.addElementToTrack(trackId, {
+        type: "media",
+        name: mediaItem.name,
+        mediaId: mediaItem.id,
+        startTime: element.startTime || 0,
+        duration,
+        trimStart: 0,
+        trimEnd: 0,
+      });
+
+      console.log(
+        "[ClaudeTimelineBridge] Added media element:",
+        mediaItem.name
+      );
+    } else if (element.type === "text") {
+      const trackId = timelineStore.findOrCreateTrack("text");
+      const duration =
+        element.endTime != null && element.startTime != null
+          ? element.endTime - element.startTime
+          : 5;
+
+      timelineStore.addElementToTrack(trackId, {
+        type: "text",
+        name: element.content || "Text",
+        content: element.content || "",
+        startTime: element.startTime || 0,
+        duration,
+        trimStart: 0,
+        trimEnd: 0,
+        fontSize: 48,
+        fontFamily: "Inter",
+        color: "#ffffff",
+        backgroundColor: "transparent",
+        textAlign: "center",
+        fontWeight: "normal",
+        fontStyle: "normal",
+        textDecoration: "none",
+        x: 0.5,
+        y: 0.5,
+        rotation: 0,
+        opacity: 1,
+      });
+
+      console.log(
+        "[ClaudeTimelineBridge] Added text element:",
+        element.content
+      );
+    } else {
+      console.warn(
+        "[ClaudeTimelineBridge] Unsupported element type:",
+        element.type
+      );
+    }
   });
 
   /**

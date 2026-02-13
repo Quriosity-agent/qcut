@@ -231,3 +231,39 @@ Cases:
 - Syncing arbitrary user global skills automatically into every project
 - UI for selecting per-project sync profile
 - Non-markdown assets beyond current skill package format
+
+---
+
+## Implementation Status (2026-02-13)
+
+Completed changes:
+- `scripts/sync-skills.ts`
+  - Expanded `BUNDLED_SKILLS` to include:
+    - `qcut-toolkit`
+    - `organize-project`
+    - `ffmpeg-skill`
+    - `ai-content-pipeline`
+    - `qcut-api`
+- `electron/skills-sync-handler.ts` (new)
+  - Added `skills:syncForClaude` IPC handler and sync implementation.
+- `electron/main.ts`
+  - Registered `setupSkillsSyncIPC` during main-process handler setup.
+- `electron/preload-integrations.ts`
+  - Added `skills.syncForClaude(projectId)` preload bridge.
+- `electron/preload-types.ts`
+  - Added `SkillsSyncForClaudeResult` and `skills.syncForClaude` typing.
+- `apps/web/src/types/electron.d.ts`
+  - Added renderer typing for `skills.syncForClaude`.
+- `apps/web/src/lib/project-skills-sync.ts` (new)
+  - Added non-blocking, failure-safe helper for sync invocation.
+- `apps/web/src/stores/project-store.ts`
+  - Added fire-and-forget sync call after successful `loadProject()`.
+- `electron/__tests__/skills-sync-handler.test.ts` (new)
+  - Added baseline/mirror/skip/recopy/missing-source/path-validation tests.
+- `apps/web/src/lib/__tests__/project-skills-sync.test.ts` (new)
+  - Added non-blocking/failure-safe helper behavior tests.
+
+Recommended targeted validation commands:
+- `bunx vitest run electron/__tests__/skills-sync-handler.test.ts apps/web/src/lib/__tests__/project-skills-sync.test.ts --config apps/web/vitest.config.ts`
+- `bunx tsc --noEmit -p apps/web/tsconfig.json`
+- `bunx tsc --noEmit -p electron/tsconfig.json`

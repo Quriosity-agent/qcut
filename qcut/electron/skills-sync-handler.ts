@@ -14,7 +14,7 @@ interface SyncSkillsForClaudeOptions {
   projectRootPath?: string;
   bundledSkillsPath?: string;
   documentsPath?: string;
-  managedSkillFolders?: string[];
+  managedSkillFolders?: readonly string[];
 }
 
 export interface SkillsSyncForClaudeResult {
@@ -64,7 +64,11 @@ async function listFilesRecursive({
 }): Promise<string[]> {
   const files: string[] = [];
 
-  const walk = async ({ currentDir }: { currentDir: string }): Promise<void> => {
+  const walk = async ({
+    currentDir,
+  }: {
+    currentDir: string;
+  }): Promise<void> => {
     const entries = await fs.readdir(currentDir, { withFileTypes: true });
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -212,7 +216,12 @@ async function syncCanonicalToClaudeMirror({
   claudeMirrorSkillsPath: string;
   manifestPath: string;
   managedSkillFolders: readonly string[];
-}): Promise<{ copied: number; skipped: number; removed: number; synced: boolean }> {
+}): Promise<{
+  copied: number;
+  skipped: number;
+  removed: number;
+  synced: boolean;
+}> {
   await fs.mkdir(claudeMirrorSkillsPath, { recursive: true });
 
   const previousManifest = await readSyncManifest({ manifestPath });
@@ -262,7 +271,8 @@ async function syncCanonicalToClaudeMirror({
   const previouslyManagedFolders = previousManifest?.managedFolders || [];
   for (const oldFolderName of previouslyManagedFolders) {
     const isStillManaged = managedSkillFolders.includes(oldFolderName);
-    const existsInNextManifest = Object.hasOwn(nextFolderHashes, oldFolderName);
+    const existsInNextManifest =
+      Object.keys(nextFolderHashes).includes(oldFolderName);
     if (!isStillManaged || existsInNextManifest) {
       continue;
     }
@@ -340,7 +350,8 @@ export async function syncSkillsForClaudeProject({
       projectRootPath,
       documentsPath,
     });
-    const resolvedBundledSkillsPath = bundledSkillsPath || getBundledSkillsPath();
+    const resolvedBundledSkillsPath =
+      bundledSkillsPath || getBundledSkillsPath();
 
     const canonicalSkillsPath = path.join(resolvedProjectRoot, "skills");
     const claudeMirrorSkillsPath = path.join(

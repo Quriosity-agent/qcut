@@ -14,7 +14,7 @@ function getElectronApi({
     return electronApi;
   }
   if (typeof window === "undefined") {
-    return undefined;
+    return;
   }
   return window.electronAPI;
 }
