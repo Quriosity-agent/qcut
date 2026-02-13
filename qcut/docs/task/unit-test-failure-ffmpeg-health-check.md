@@ -14,7 +14,7 @@ spawn Unknown system error -86
 ```
 
 ## Root Cause
-macOS system error -86 when attempting to spawn ffprobe binary. This is a platform-specific error that typically indicates:
+macOS error -86 when attempting to spawn ffprobe binary. This is a platform-specific error that typically indicates:
 - Binary architecture mismatch
 - Code signing issues on macOS
 - Permissions or security restrictions
