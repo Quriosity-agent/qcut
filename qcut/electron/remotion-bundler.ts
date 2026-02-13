@@ -107,7 +107,7 @@ const EXTERNAL_PACKAGES = [
 /**
  * Get esbuild dynamically to avoid bundling issues.
  */
-async function getEsbuild(): Promise<typeof import("esbuild")> {
+async function getEsbuild(): Promise<any> {
   try {
     // Try to require esbuild
     return require("esbuild");
@@ -295,7 +295,7 @@ export async function bundleComposition(
 
     // Extract output
     const outputFile = result.outputFiles?.find(
-      (f) => f.path.endsWith(".js") || f.path === "<stdout>"
+      (f: any) => f.path.endsWith(".js") || f.path === "<stdout>"
     );
 
     if (!outputFile) {
