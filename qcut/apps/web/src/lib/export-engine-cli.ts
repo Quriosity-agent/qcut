@@ -31,6 +31,8 @@ import {
   extractVideoInputPath,
   extractStickerSources,
   extractImageSources,
+  extractAudioFileInputs,
+  detectAudioSources,
 } from "./export-cli/sources";
 
 // Re-export types for backward compatibility (using export from)
@@ -232,78 +234,198 @@ export class CLIExportEngine extends ExportEngine {
   // - extractStickerSources -> export-cli/sources/sticker-sources.ts (now uses wrapper)
   // - buildStickerOverlayFilters -> export-cli/filters/sticker-overlay.ts (now uses wrapper)
 
-  private async prepareAudioFiles(): Promise<AudioFileInput[]> {
-    const results: AudioFileInput[] = [];
-    const { useTimelineStore } = await import("@/stores/timeline-store");
-    const { useMediaStore } = await import("@/stores/media-store");
+  private async resolveAudioPreparationInputs(): Promise<{
+    tracks: TimelineTrack[];
+    mediaItems: MediaItem[];
+  }> {
+    try {
+      const tracks = this.tracks;
+      const mergedMediaById = new Map<string, MediaItem>();
 
-    const audioElements = useTimelineStore.getState().getAudioElements();
-    const concurrency = 4;
-    const queue = [...audioElements];
-    const workers = Array.from({ length: concurrency }, async () => {
-      while (queue.length) {
-        const audioElement = queue.shift()!;
-        const mediaItem = useMediaStore
-          .getState()
-          .mediaItems.find(
-            (m) => m.id === (audioElement.element as any).mediaId
-          );
-        if (!mediaItem?.url) {
+      for (const mediaItem of this.mediaItems) {
+        mergedMediaById.set(mediaItem.id, mediaItem);
+      }
+
+      const referencedMediaIds = new Set<string>();
+      for (const track of tracks) {
+        if (track.type !== "media" && track.type !== "audio") {
           continue;
         }
-        try {
-          const response = await fetch(mediaItem.url);
-          if (!response.ok) {
-            debugWarn(
-              `[CLIExportEngine] Failed to fetch audio: ${mediaItem.name}`
-            );
+
+        for (const element of track.elements) {
+          if (element.type !== "media") {
             continue;
           }
-          const arrayBuffer = await response.arrayBuffer();
-          const guessExt = () => {
-            const fromName = mediaItem.name.split(".").pop();
-            if (fromName && fromName.length <= 5) return fromName.toLowerCase();
-            // basic mime fallback
-            const mt = (mediaItem as any).file?.type as string | undefined;
-            if (mt?.includes("wav")) return "wav";
-            if (mt?.includes("mpeg")) return "mp3";
-            if (mt?.includes("ogg")) return "ogg";
-            return "mp3";
-          };
-          const ext = guessExt();
-          const filename = `audio_${this.sessionId}_${(audioElement.element as any).id}.${ext}`;
-          const result = await window.electronAPI?.invoke(
-            "save-audio-for-export",
-            {
-              audioData: arrayBuffer,
-              filename,
-            }
-          );
-          if (result?.success) {
-            results.push({
-              path: result.path,
-              startTime: audioElement.absoluteStart ?? 0,
-              volume: (audioElement.element as any).volume ?? 1.0,
-            });
-            debugLog(
-              `[CLIExportEngine] Prepared audio file: ${filename} at ${audioElement.absoluteStart}s`
-            );
-          } else {
-            debugWarn(
-              `[CLIExportEngine] Failed to save audio file: ${result?.error}`
-            );
-          }
-        } catch (error) {
-          debugError("[CLIExportEngine] Error preparing audio file:", error);
+          referencedMediaIds.add(element.mediaId);
         }
       }
-    });
-    await Promise.all(workers);
 
-    debugLog(
-      `[CLIExportEngine] Prepared ${results.length} audio files for export`
-    );
-    return results;
+      const unresolvedMediaIds = Array.from(referencedMediaIds).filter((id) => {
+        const mediaItem = mergedMediaById.get(id);
+        if (!mediaItem) {
+          return true;
+        }
+
+        const hasLocalPath = typeof mediaItem.localPath === "string";
+        const hasFile = !!mediaItem.file && mediaItem.file.size > 0;
+        const hasUrl = typeof mediaItem.url === "string" && mediaItem.url.length > 0;
+        return !hasLocalPath && !hasFile && !hasUrl;
+      });
+
+      if (unresolvedMediaIds.length === 0) {
+        return {
+          mediaItems: Array.from(mergedMediaById.values()),
+          tracks,
+        };
+      }
+
+      const { useProjectStore } = await import("@/stores/project-store");
+      const projectId = useProjectStore.getState().activeProject?.id;
+      if (!projectId) {
+        debugWarn(
+          "[CLIExportEngine] Cannot hydrate missing audio media items without an active project ID"
+        );
+        return {
+          mediaItems: Array.from(mergedMediaById.values()),
+          tracks,
+        };
+      }
+
+      const { storageService } = await import("@/lib/storage/storage-service");
+      const hydratedItems = await Promise.all(
+        unresolvedMediaIds.map(async (mediaId) => {
+          try {
+            return await storageService.loadMediaItem(projectId, mediaId);
+          } catch (error) {
+            debugWarn(
+              `[CLIExportEngine] Failed to hydrate media item ${mediaId} from storage:`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+
+      for (const hydratedItem of hydratedItems) {
+        if (!hydratedItem) {
+          continue;
+        }
+        mergedMediaById.set(hydratedItem.id, hydratedItem);
+      }
+
+      return {
+        mediaItems: Array.from(mergedMediaById.values()),
+        tracks,
+      };
+    } catch (error) {
+      debugWarn(
+        "[CLIExportEngine] Failed to build audio preparation inputs, using in-memory snapshot:",
+        error
+      );
+      return {
+        mediaItems: this.mediaItems,
+        tracks: this.tracks,
+      };
+    }
+  }
+
+  private async prepareAudioFiles(): Promise<AudioFileInput[]> {
+    try {
+      if (!window.electronAPI) {
+        return [];
+      }
+
+      const { tracks, mediaItems } = await this.resolveAudioPreparationInputs();
+      debugLog("[CLIExportEngine] Audio preparation inputs:", {
+        mediaItemsCount: mediaItems.length,
+        trackCount: tracks.length,
+      });
+
+      const results = await extractAudioFileInputs(
+        tracks,
+        mediaItems,
+        this.sessionId,
+        {
+          fileExists: async (filePath: string): Promise<boolean> => {
+            try {
+              const exists = await window.electronAPI?.invoke(
+                "file-exists",
+                filePath
+              );
+              return exists === true;
+            } catch (error) {
+              debugWarn(
+                `[CLIExportEngine] Failed to verify file existence for ${filePath}:`,
+                error
+              );
+              return false;
+            }
+          },
+          saveTemp: async ({
+            audioData,
+            filename,
+          }: {
+            audioData: ArrayBuffer;
+            filename: string;
+          }): Promise<{ success: boolean; path?: string; error?: string }> => {
+            try {
+              if (window.electronAPI?.audio?.saveTemp) {
+                const path = await window.electronAPI.audio.saveTemp(
+                  new Uint8Array(audioData),
+                  filename
+                );
+                if (typeof path === "string" && path.length > 0) {
+                  return {
+                    success: true,
+                    path,
+                  };
+                }
+              }
+
+              const result = await window.electronAPI?.invoke(
+                "save-audio-for-export",
+                {
+                  audioData,
+                  filename,
+                }
+              );
+              return {
+                success: result?.success === true,
+                path: result?.path,
+                error: result?.error,
+              };
+            } catch (error) {
+              return {
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              };
+            }
+          },
+        },
+        debugLog
+      );
+
+      if (results.length === 0) {
+        const audioSources = detectAudioSources(tracks, mediaItems);
+        if (audioSources.hasAudio) {
+          debugWarn(
+            "[CLIExportEngine] Audio sources detected in timeline but none were resolved to exportable files",
+            {
+              embeddedVideoAudioCount: audioSources.embeddedVideoAudioCount,
+              overlayAudioCount: audioSources.overlayAudioCount,
+            }
+          );
+        }
+      }
+
+      debugLog(
+        `[CLIExportEngine] Prepared ${results.length} audio files for export`
+      );
+      return results;
+    } catch (error) {
+      debugError("[CLIExportEngine] Error preparing audio files:", error);
+      return [];
+    }
   }
 
   /**
@@ -527,6 +649,10 @@ export class CLIExportEngine extends ExportEngine {
     // Gate audio preparation behind request-scoped includeAudio setting
     // Default to true for backward compatibility
     const includeAudio = this.audioOptions.includeAudio ?? true;
+    debugLog("[CLI Export] includeAudio option:", {
+      includeAudio,
+      requestedIncludeAudio: this.audioOptions.includeAudio,
+    });
     let audioFiles: AudioFileInput[] = [];
 
     if (includeAudio) {
