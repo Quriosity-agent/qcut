@@ -154,15 +154,32 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] COMSPEC env: ${process.env.COMSPEC}`);
         console.log(`[PTY] SHELL env: ${process.env.SHELL}`);
 
+        const spawnCwd = options.cwd || process.cwd();
+        const spawnEnv = {
+          ...process.env,
+          ...options.env, // Merge additional env vars (e.g., OPENROUTER_API_KEY)
+        };
+
+        console.log(`[PTY] Spawning: shell="${shell}" args=${JSON.stringify(args)}`);
+        console.log(`[PTY] CWD exists: ${require("fs").existsSync(spawnCwd)} (${spawnCwd})`);
+        console.log(`[PTY] PATH preview: ${(spawnEnv.PATH || "").split(":").slice(0, 5).join(":")}`);
+        if (options.command) {
+          const cmdBin = options.command.split(" ")[0];
+          const { execSync } = require("child_process");
+          try {
+            const whichResult = execSync(`which ${cmdBin} 2>/dev/null || echo "NOT FOUND"`, { env: spawnEnv }).toString().trim();
+            console.log(`[PTY] which ${cmdBin}: ${whichResult}`);
+          } catch {
+            console.log(`[PTY] which ${cmdBin}: lookup failed`);
+          }
+        }
+
         const ptyProcess = pty.spawn(shell, args, {
           name: "xterm-256color",
           cols: options.cols || 80,
           rows: options.rows || 24,
-          cwd: options.cwd || process.cwd(),
-          env: {
-            ...process.env,
-            ...options.env, // Merge additional env vars (e.g., OPENROUTER_API_KEY)
-          },
+          cwd: spawnCwd,
+          env: spawnEnv,
         });
 
         const session: PtySession = {
@@ -208,9 +225,14 @@ export function setupPtyIPC(): void {
         const message =
           error instanceof Error ? error.message : "PTY spawn failed";
         const stack = error instanceof Error ? error.stack : undefined;
+        const code = error && typeof error === "object" && "code" in error ? (error as { code: string }).code : "none";
+        const errno = error && typeof error === "object" && "errno" in error ? (error as { errno: number }).errno : "none";
         console.error("[PTY] ===== SPAWN ERROR =====");
         console.error("[PTY] Error message:", message);
+        console.error("[PTY] Error code:", code, "errno:", errno);
         console.error("[PTY] Error stack:", stack);
+        console.error("[PTY] Shell env SHELL:", process.env.SHELL);
+        console.error("[PTY] Platform:", platform());
         return { success: false, error: message };
       }
     }

@@ -9,6 +9,12 @@ import { FFmpegHealthNotification } from "@/components/ffmpeg-health-notificatio
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
 import { initializeRemotionStore } from "@/stores/remotion-store";
+import {
+  setupClaudeTimelineBridge,
+  setupClaudeProjectBridge,
+  cleanupClaudeTimelineBridge,
+  cleanupClaudeProjectBridge,
+} from "@/lib/claude-timeline-bridge";
 import { debugLog } from "@/lib/debug-config";
 import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
 
@@ -25,10 +31,28 @@ function RemotionInitializer() {
   return null;
 }
 
+/**
+ * Claude Bridge Initializer
+ * Connects renderer-side IPC listeners so the Claude HTTP API
+ * can read timeline/project data from Zustand stores.
+ */
+function ClaudeInitializer() {
+  useEffect(() => {
+    setupClaudeTimelineBridge();
+    setupClaudeProjectBridge();
+    return () => {
+      cleanupClaudeTimelineBridge();
+      cleanupClaudeProjectBridge();
+    };
+  }, []);
+  return null;
+}
+
 export const Route = createRootRoute({
   component: () => (
     <ThemeProvider attribute="class" defaultTheme="dark">
       <RemotionInitializer />
+      <ClaudeInitializer />
       <TooltipProvider>
         <ErrorBoundary>
           <StorageProvider>
