@@ -11,6 +11,9 @@
 /apps/web/dist/
 /dist/
 /build/
+!/build/*.icns
+!/build/*.ico
+!/build/entitlements.mac.plist
 dist-electron/
 dist-packager*/
 build_exe/
