@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.66",
+  "version": "0.3.67",
   "description": "QCut - Open-source video editor",
   "author": {
     "name": "QCut Team",
@@ -198,7 +198,8 @@
       "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "compression": "store"
+      "compression": "store",
+      "npmRebuild": false
     },
     "nsis": {
       "oneClick": false,
