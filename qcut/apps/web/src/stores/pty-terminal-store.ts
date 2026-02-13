@@ -380,26 +380,25 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     const prompt = buildSkillPrompt(activeSkill);
 
     try {
-      const writeResult = window.electronAPI?.pty?.write(sessionId, prompt + "\n");
+      const writeResult = window.electronAPI?.pty?.write(
+        sessionId,
+        prompt + "\n"
+      );
+      set({ skillPromptSent: true });
       if (writeResult && typeof writeResult.catch === "function") {
-        writeResult
-          .then(() => {
-            set({ skillPromptSent: true });
-          })
-          .catch((error: unknown) => {
-            const message =
-              error instanceof Error
-                ? error.message
-                : "Failed to send skill prompt";
-            set({ error: message });
-          });
+        writeResult.catch((error: unknown) => {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to send skill prompt";
+          set({ error: message, skillPromptSent: false });
+        });
         return;
       }
-      set({ skillPromptSent: true });
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to send skill prompt";
-      set({ error: message });
+      set({ error: message, skillPromptSent: false });
     }
   },
 
