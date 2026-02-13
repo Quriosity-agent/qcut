@@ -41,9 +41,10 @@ Need to update the test to:
 - `apps/web/src/test/e2e/debug-projectid.e2e.ts` (line ~108-110)
 
 ## Test Status
-❌ **FAILED** - Needs fix
+✅ **RESOLVED**
 
-## Next Steps
-1. Find how to switch tab groups (look for group bar component)
-2. Update test to switch to edit group before clicking stickers tab
-3. Run test again to verify fix
+## Resolution
+The fix has been implemented in `apps/web/src/test/e2e/debug-projectid.e2e.ts`:
+1. Test now switches to edit group using `page.getByTestId("group-edit").click()` (line 111)
+2. Then clicks stickers tab (line 113)
+3. This ensures stickers panel is accessible before interaction
