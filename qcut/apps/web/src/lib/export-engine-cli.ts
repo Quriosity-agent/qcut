@@ -140,6 +140,35 @@ export class CLIExportEngine extends ExportEngine {
   }
 
   /**
+   * Count visible video media elements currently present on timeline tracks.
+   */
+  private countVisibleVideoElements(): number {
+    let count = 0;
+
+    for (const track of this.tracks) {
+      if (track.type !== "media") {
+        continue;
+      }
+
+      for (const element of track.elements) {
+        if (element.hidden || element.type !== "media") {
+          continue;
+        }
+
+        const mediaElement = element as TimelineElement & { mediaId: string };
+        const mediaItem = this.mediaItems.find(
+          (item) => item.id === mediaElement.mediaId
+        );
+        if (mediaItem?.type === "video") {
+          count++;
+        }
+      }
+    }
+
+    return count;
+  }
+
+  /**
    * Extract sticker sources using extracted module.
    * Wrapper that passes instance properties.
    */
@@ -356,9 +385,13 @@ export class CLIExportEngine extends ExportEngine {
 
       // Determine export mode based on analysis
       // Note: Mode 3 (image-pipeline) has been removed - unsupported cases now throw errors
+      const visibleVideoCount = this.countVisibleVideoElements();
+      const isImageCompositeStrategy =
+        this.exportAnalysis?.optimizationStrategy === "image-video-composite";
       const canUseMode2 =
         this.exportAnalysis?.optimizationStrategy ===
-        "direct-video-with-filters";
+          "direct-video-with-filters" ||
+        (isImageCompositeStrategy && visibleVideoCount === 1);
       const videoInput: {
         path: string;
         trimStart: number;
@@ -724,15 +757,16 @@ export class CLIExportEngine extends ExportEngine {
 
           debugLog(`[CLI Export] Image sources: ${imageSources.length}`);
           debugLog(`[CLI Export] Image filter chain: ${imageFilterChain}`);
+        } else {
+          throw new Error(
+            "Timeline contains image elements but no image sources were resolved."
+          );
         }
       } catch (error) {
-        debugWarn(
-          "[CLI Export] Failed to process images, continuing without:",
-          error
+        debugError("[CLI Export] Failed to process image sources:", error);
+        throw new Error(
+          `Failed to process image sources for export: ${error instanceof Error ? error.message : String(error)}`
         );
-        // Continue export without images if processing fails
-        imageSources = [];
-        imageFilterChain = undefined;
       }
     }
 
@@ -742,8 +776,11 @@ export class CLIExportEngine extends ExportEngine {
     const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
 
     // Determine which mode to use and extract appropriate video info
+    const visibleVideoCount = this.countVisibleVideoElements();
     const canUseMode2 =
-      this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters";
+      this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters" ||
+      (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+        visibleVideoCount === 1);
     const videoInput: {
       path: string;
       trimStart: number;
@@ -785,17 +822,31 @@ export class CLIExportEngine extends ExportEngine {
       this.exportAnalysis?.optimizationStrategy === "video-normalization" ||
       (this.exportAnalysis?.canUseDirectCopy &&
         !hasTextFilters &&
-        !hasStickerFilters);
+        !hasStickerFilters) ||
+      (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+        visibleVideoCount > 0 &&
+        !videoInput);
 
     const videoSources: VideoSourceInput[] = shouldExtractVideoSources
       ? await this.extractVideoSourcesWrapper()
       : [];
 
+    if (
+      this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
+      visibleVideoCount > 0 &&
+      !videoInput &&
+      videoSources.length === 0
+    ) {
+      throw new Error(
+        "Image/video composite export requires a base video input, but none could be resolved."
+      );
+    }
+
     // Build options AFTER validation so the filtered list is sent
     if (!this.sessionId) {
       throw new Error("No active session ID");
     }
-    const hasImageFilters = (imageFilterChain?.length ?? 0) > 0;
+    const hasImageFilters = imageSources.length > 0;
 
     const exportOptions = {
       sessionId: this.sessionId,

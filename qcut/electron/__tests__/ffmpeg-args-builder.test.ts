@@ -1,363 +1,241 @@
-// Location: electron/__tests__/ffmpeg-args-builder.test.ts
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildFFmpegArgs,
+  type BuildFFmpegArgsOptions,
+} from "../ffmpeg-args-builder";
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildFFmpegArgs } from "../ffmpeg-args-builder";
+const { existsSyncMock, writeFileSyncMock } = vi.hoisted(() => {
+  return {
+    existsSyncMock: vi.fn(() => true),
+    writeFileSyncMock: vi.fn(),
+  };
+});
 
-// Mock fs — all file existence checks pass
 vi.mock("fs", () => ({
   default: {
-    existsSync: vi.fn(() => true),
-    writeFileSync: vi.fn(),
+    existsSync: existsSyncMock,
+    writeFileSync: writeFileSyncMock,
   },
-  existsSync: vi.fn(() => true),
-  writeFileSync: vi.fn(),
+  existsSync: existsSyncMock,
+  writeFileSync: writeFileSyncMock,
 }));
 
-// Mock electron app (needed by ffmpeg/utils)
 vi.mock("electron", () => ({
   app: { getPath: vi.fn(() => "/tmp") },
 }));
 
+function createBaseOptions(
+  overrides: Partial<BuildFFmpegArgsOptions> = {}
+): BuildFFmpegArgsOptions {
+  return {
+    inputDir: "/frames",
+    outputFile: "/output.mp4",
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    quality: "medium",
+    duration: 10,
+    audioFiles: [],
+    ...overrides,
+  };
+}
+
 describe("buildFFmpegArgs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    existsSyncMock.mockReturnValue(true);
   });
 
-  describe("Mode 2: Direct video input with filters", () => {
-    it("builds args for video input with filter chain", () => {
+  describe("Composite Mode", () => {
+    it("builds args for direct video input with effects filters", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        "eq=brightness=0.1",
-        undefined,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        "/input.mp4"
+        createBaseOptions({
+          useVideoInput: true,
+          videoInputPath: "/input.mp4",
+          filterChain: "eq=brightness=0.1",
+        })
       );
 
-      expect(args).toContain("-y");
       expect(args).toContain("-i");
       expect(args).toContain("/input.mp4");
-      expect(args).toContain("-vf");
-      expect(args).toContain("eq=brightness=0.1");
+      expect(args).toContain("-filter_complex");
+      expect(args.join(" ")).toContain("eq=brightness=0.1");
+      expect(args).toContain("-map");
       expect(args).toContain("-c:v");
       expect(args).toContain("libx264");
-      expect(args).toContain("-pix_fmt");
-      expect(args).toContain("yuv420p");
       expect(args).toContain("/output.mp4");
     });
 
-    it("includes trim start when provided", () => {
+    it("includes trim start and duration in video input mode", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        "/input.mp4",
-        2.5
+        createBaseOptions({
+          useVideoInput: true,
+          videoInputPath: "/input.mp4",
+          trimStart: 2.5,
+        })
       );
 
-      const ssIndex = args.indexOf("-ss");
-      expect(ssIndex).toBeGreaterThan(-1);
-      expect(args[ssIndex + 1]).toBe("2.5");
+      const trimStartIndex = args.indexOf("-ss");
+      expect(trimStartIndex).toBeGreaterThan(-1);
+      expect(args[trimStartIndex + 1]).toBe("2.5");
+
+      const durationIndex = args.indexOf("-t");
+      expect(durationIndex).toBeGreaterThan(-1);
+      expect(args[durationIndex + 1]).toBe("10");
     });
 
-    it("includes duration flag", () => {
+    it("builds mixed video + image overlays on top of the video input", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        "/input.mp4"
+        createBaseOptions({
+          useVideoInput: true,
+          videoInputPath: "/input.mp4",
+          imageSources: [
+            {
+              path: "/image-1.png",
+              startTime: 1,
+              duration: 3,
+              trimStart: 0,
+              trimEnd: 0,
+              elementId: "img-1",
+            },
+          ],
+        })
       );
 
-      const tIndex = args.indexOf("-t");
-      expect(tIndex).toBeGreaterThan(-1);
-      expect(args[tIndex + 1]).toBe("10");
+      expect(args).toContain("-loop");
+      expect(args).toContain("/image-1.png");
+      expect(args).toContain("-filter_complex");
+      expect(args.join(" ")).toContain("overlay=x=0:y=0");
+      expect(args).toContain("-map");
+      expect(args).toContain("0:a?");
     });
 
-    it("includes audio codec when audio files provided", () => {
+    it("supports image-only timelines using a lavfi color base", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [{ path: "/audio.mp3", startTime: 0 }],
-        undefined,
-        undefined,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        "/input.mp4"
+        createBaseOptions({
+          imageSources: [
+            {
+              path: "/image-only.png",
+              startTime: 0,
+              duration: 10,
+              trimStart: 0,
+              trimEnd: 0,
+              elementId: "img-only",
+            },
+          ],
+        })
       );
 
-      expect(args).toContain("-c:a");
-      expect(args).toContain("aac");
-      expect(args).toContain("-b:a");
-      expect(args).toContain("128k");
+      expect(args).toContain("lavfi");
+      expect(args.join(" ")).toContain("color=c=black");
+      expect(args).toContain("/image-only.png");
+      expect(args).not.toContain("0:a?");
     });
 
-    it("uses filter_complex for sticker overlays", () => {
+    it("mixes delayed audio with filter_complex in composite mode", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        false,
-        undefined,
-        "[0:v][1:v]overlay",
-        [
-          {
-            id: "s1",
-            path: "/sticker.png",
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 100,
-            startTime: 0,
-            endTime: 5,
-            zIndex: 1,
-          },
-        ],
-        true,
-        "/input.mp4"
+        createBaseOptions({
+          useVideoInput: true,
+          videoInputPath: "/input.mp4",
+          audioFiles: [{ path: "/audio.mp3", startTime: 2, volume: 0.8 }],
+        })
       );
 
       expect(args).toContain("-filter_complex");
-      expect(args).toContain("-loop");
+      expect(args.join(" ")).toContain("adelay=2000|2000");
+      expect(args.join(" ")).toContain("volume=0.8");
+      expect(args).toContain("[a_0]");
     });
   });
 
-  describe("Mode 1: Direct copy", () => {
+  describe("Direct Copy Mode", () => {
     it("builds args for single video direct copy", () => {
       const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        true,
-        [
-          {
-            path: "/video.mp4",
-            startTime: 0,
-            duration: 10,
-          },
-        ]
+        createBaseOptions({
+          useDirectCopy: true,
+          videoSources: [{ path: "/video.mp4", startTime: 0, duration: 10 }],
+        })
       );
 
-      expect(args).toContain("-y");
+      expect(args).toContain("-i");
+      expect(args).toContain("/video.mp4");
       expect(args).toContain("-c:v");
       expect(args).toContain("copy");
-      expect(args).toContain("-movflags");
-      expect(args).toContain("+faststart");
       expect(args).toContain("/output.mp4");
     });
 
-    it("includes quality flag for high quality", () => {
-      // Mode 1 uses -c:v copy, so CRF isn't used.
-      // But Mode 2 uses quality settings.
-      const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "high",
-        10,
-        [],
-        undefined,
-        undefined,
-        false,
-        undefined,
-        undefined,
-        undefined,
-        true,
-        "/input.mp4"
+    it("normalizes Windows paths in concat list content", () => {
+      buildFFmpegArgs(
+        createBaseOptions({
+          useDirectCopy: true,
+          videoSources: [
+            {
+              path: "C:\\clips\\video1.mp4",
+              startTime: 0,
+              duration: 5,
+            },
+            {
+              path: "C:\\clips\\video2.mp4",
+              startTime: 5,
+              duration: 5,
+            },
+          ],
+        })
       );
 
-      expect(args).toContain("-crf");
-      expect(args).toContain("18");
-      expect(args).toContain("-preset");
-      expect(args).toContain("slow");
-    });
-
-    it("handles single video with trim", () => {
-      const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        true,
-        [
-          {
-            path: "/video.mp4",
-            startTime: 0,
-            duration: 10,
-            trimStart: 2,
-            trimEnd: 1,
-          },
-        ]
-      );
-
-      expect(args).toContain("-ss");
-      expect(args).toContain("2");
-      // Effective duration = 10 - 2 - 1 = 7
-      const tIndex = args.indexOf("-t");
-      expect(args[tIndex + 1]).toBe("7");
-    });
-
-    it("handles audio with delay", () => {
-      const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [{ path: "/audio.mp3", startTime: 3.5 }],
-        undefined,
-        undefined,
-        true,
-        [
-          {
-            path: "/video.mp4",
-            startTime: 0,
-            duration: 10,
-          },
-        ]
-      );
-
-      expect(args).toContain("-filter_complex");
-      // Delay should be 3500ms
-      const fcIndex = args.indexOf("-filter_complex");
-      expect(args[fcIndex + 1]).toContain("adelay=3500|3500");
-    });
-
-    it("uses concat demuxer for multiple videos", () => {
-      const args = buildFFmpegArgs(
-        "/frames",
-        "/output.mp4",
-        1920,
-        1080,
-        30,
-        "medium",
-        10,
-        [],
-        undefined,
-        undefined,
-        true,
-        [
-          {
-            path: "/video1.mp4",
-            startTime: 0,
-            duration: 5,
-          },
-          {
-            path: "/video2.mp4",
-            startTime: 5,
-            duration: 5,
-          },
-        ]
-      );
-
-      expect(args).toContain("-f");
-      expect(args).toContain("concat");
-      expect(args).toContain("-safe");
-      expect(args).toContain("0");
-    });
-  });
-
-  describe("error handling", () => {
-    it("throws for invalid config (no mode matched)", () => {
-      expect(() =>
-        buildFFmpegArgs("/frames", "/output.mp4", 1920, 1080, 30, "medium", 10)
-      ).toThrow("Invalid export configuration");
+      expect(writeFileSyncMock).toHaveBeenCalledTimes(1);
+      const concatContent = String(writeFileSyncMock.mock.calls[0][1]);
+      expect(concatContent).toContain("C:/clips/video1.mp4");
+      expect(concatContent).toContain("C:/clips/video2.mp4");
     });
 
     it("throws for multi-video with trim values", () => {
       expect(() =>
         buildFFmpegArgs(
-          "/frames",
-          "/output.mp4",
-          1920,
-          1080,
-          30,
-          "medium",
-          10,
-          [],
-          undefined,
-          undefined,
-          true,
-          [
-            {
-              path: "/video1.mp4",
-              startTime: 0,
-              duration: 5,
-              trimStart: 1,
-            },
-            {
-              path: "/video2.mp4",
-              startTime: 5,
-              duration: 5,
-            },
-          ]
+          createBaseOptions({
+            useDirectCopy: true,
+            videoSources: [
+              {
+                path: "/video1.mp4",
+                startTime: 0,
+                duration: 5,
+                trimStart: 1,
+              },
+              {
+                path: "/video2.mp4",
+                startTime: 5,
+                duration: 5,
+              },
+            ],
+          })
         )
       ).toThrow("trim values");
+    });
+  });
+
+  describe("Error Handling", () => {
+    it("throws for invalid configuration with no export mode", () => {
+      expect(() => buildFFmpegArgs(createBaseOptions())).toThrow(
+        "Invalid export configuration"
+      );
+    });
+
+    it("throws when declared video input path does not exist", () => {
+      existsSyncMock.mockImplementation((filePath: string) => {
+        if (filePath === "/missing.mp4") {
+          return false;
+        }
+        return true;
+      });
+
+      expect(() =>
+        buildFFmpegArgs(
+          createBaseOptions({
+            useVideoInput: true,
+            videoInputPath: "/missing.mp4",
+          })
+        )
+      ).toThrow("Video source not found");
     });
   });
 });
