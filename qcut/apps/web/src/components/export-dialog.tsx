@@ -702,6 +702,7 @@ export function ExportDialog() {
                       setIncludeAudio(checked as boolean)
                     }
                     disabled={exportProgress.progress.isExporting}
+                    data-testid="export-include-audio-checkbox"
                   />
                   <Label
                     htmlFor="include-audio"
