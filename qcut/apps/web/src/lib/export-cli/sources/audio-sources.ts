@@ -196,7 +196,12 @@ export async function extractAudioFileInputs(
     const resolved = await Promise.all(
       candidates.map(async (candidate) => {
         try {
-          const path = await resolveCandidatePath(candidate, sessionId, api, logger);
+          const path = await resolveCandidatePath(
+            candidate,
+            sessionId,
+            api,
+            logger
+          );
           if (!path) {
             logger(
               `[AudioSources] Could not resolve source for ${candidate.mediaItem.name}`
@@ -218,7 +223,9 @@ export async function extractAudioFileInputs(
       })
     );
 
-    const valid = resolved.filter((item): item is AudioFileInput => item !== null);
+    const valid = resolved.filter(
+      (item): item is AudioFileInput => item !== null
+    );
     valid.sort((a, b) => a.startTime - b.startTime);
     logger(`[AudioSources] Resolved ${valid.length} audio file input(s)`);
     return valid;

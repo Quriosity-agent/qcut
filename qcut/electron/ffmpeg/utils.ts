@@ -145,7 +145,7 @@ function resolveStagedBinaryFromCandidates({
 function isBinaryExecutable({ binaryPath }: { binaryPath: string }): boolean {
   try {
     const result = spawnSync(binaryPath, ["-version"], {
-      timeout: 2_500,
+      timeout: 2500,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -205,7 +205,10 @@ export function getFFmpegPath(): string {
     binaryName,
   });
   if (devStagedResult.resolvedPath) {
-    console.log("[FFmpeg] Using staged FFmpeg binary in development:", devStagedResult.resolvedPath);
+    console.log(
+      "[FFmpeg] Using staged FFmpeg binary in development:",
+      devStagedResult.resolvedPath
+    );
     return devStagedResult.resolvedPath;
   }
 
@@ -392,7 +395,10 @@ export function getFFprobePath(): string {
 
   try {
     const staticPath: string = require("ffprobe-static").path;
-    if (fs.existsSync(staticPath) && isBinaryExecutable({ binaryPath: staticPath })) {
+    if (
+      fs.existsSync(staticPath) &&
+      isBinaryExecutable({ binaryPath: staticPath })
+    ) {
       console.log("[FFmpeg] Found ffprobe-static:", staticPath);
       return staticPath;
     }
@@ -429,7 +435,10 @@ export function getFFprobePath(): string {
     return ffprobeFromFFmpegDir;
   }
 
-  console.log("[FFmpeg] Falling back to system PATH FFprobe binary name:", binaryName);
+  console.log(
+    "[FFmpeg] Falling back to system PATH FFprobe binary name:",
+    binaryName
+  );
   return binaryName;
 }
 

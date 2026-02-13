@@ -74,7 +74,7 @@ function resolveFallbackBinaryPath({
 function isExecutable({ binaryPath }: { binaryPath: string }): boolean {
   try {
     const result = spawnSync(binaryPath, ["-version"], {
-      timeout: 2_500,
+      timeout: 2500,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });

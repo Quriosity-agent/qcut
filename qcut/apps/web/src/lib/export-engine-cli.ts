@@ -261,7 +261,10 @@ export class CLIExportEngine extends ExportEngine {
       }
       return null;
     } catch (error) {
-      debugWarn("[CLIExportEngine] Failed to access optional invoke API:", error);
+      debugWarn(
+        "[CLIExportEngine] Failed to access optional invoke API:",
+        error
+      );
       return null;
     }
   }
@@ -390,7 +393,8 @@ export class CLIExportEngine extends ExportEngine {
 
         const hasLocalPath = typeof mediaItem.localPath === "string";
         const hasFile = !!mediaItem.file && mediaItem.file.size > 0;
-        const hasUrl = typeof mediaItem.url === "string" && mediaItem.url.length > 0;
+        const hasUrl =
+          typeof mediaItem.url === "string" && mediaItem.url.length > 0;
         return !hasLocalPath && !hasFile && !hasUrl;
       });
 
@@ -506,7 +510,11 @@ export class CLIExportEngine extends ExportEngine {
               });
               const parsedResult =
                 result && typeof result === "object"
-                  ? (result as { success?: boolean; path?: string; error?: string })
+                  ? (result as {
+                      success?: boolean;
+                      path?: string;
+                      error?: string;
+                    })
                   : null;
 
               if (!parsedResult) {
@@ -848,7 +856,9 @@ export class CLIExportEngine extends ExportEngine {
           );
 
           if (fileInfo.size === 0) {
-            debugWarn(`[CLI Export] Skipping empty audio file: ${audioFile.path}`);
+            debugWarn(
+              `[CLI Export] Skipping empty audio file: ${audioFile.path}`
+            );
             return null;
           }
 
@@ -1020,7 +1030,8 @@ export class CLIExportEngine extends ExportEngine {
     // Determine which mode to use and extract appropriate video info
     const visibleVideoCount = this.countVisibleVideoElements();
     const canUseMode2 =
-      this.exportAnalysis?.optimizationStrategy === "direct-video-with-filters" ||
+      this.exportAnalysis?.optimizationStrategy ===
+        "direct-video-with-filters" ||
       (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
         visibleVideoCount === 1);
     const videoInput: {

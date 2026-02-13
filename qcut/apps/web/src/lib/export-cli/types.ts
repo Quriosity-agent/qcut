@@ -32,14 +32,14 @@ export interface AudioFileInput {
  * Contains path, timing, and dimension data for image compositing.
  */
 export interface ImageSourceInput {
-  path: string;          // Local file path for FFmpeg
-  startTime: number;     // When image appears on timeline
-  duration: number;      // How long image is visible
-  width?: number;        // Original image width
-  height?: number;       // Original image height
-  trimStart: number;     // Trim start (usually 0 for images)
-  trimEnd: number;       // Trim end (usually 0 for images)
-  elementId: string;     // For debugging
+  path: string; // Local file path for FFmpeg
+  startTime: number; // When image appears on timeline
+  duration: number; // How long image is visible
+  width?: number; // Original image width
+  height?: number; // Original image height
+  trimStart: number; // Trim start (usually 0 for images)
+  trimEnd: number; // Trim end (usually 0 for images)
+  elementId: string; // For debugging
 }
 
 /**

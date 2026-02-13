@@ -59,9 +59,13 @@ async function copyFFmpegResources(): Promise<void> {
       force: true,
     });
 
-    console.log(`Copied staged FFmpeg resources: ${sourceDir} -> ${destinationDir}`);
+    console.log(
+      `Copied staged FFmpeg resources: ${sourceDir} -> ${destinationDir}`
+    );
   } catch (error: unknown) {
-    console.error(`Failed to copy staged FFmpeg resources: ${getErrorMessage({ error })}`);
+    console.error(
+      `Failed to copy staged FFmpeg resources: ${getErrorMessage({ error })}`
+    );
     process.exit(1);
   }
 }

@@ -720,7 +720,9 @@ export function validateTimelineForExport(params: {
 
   // Check for no video elements (allow if images present)
   if (videoElementCount === 0 && !hasImageElements) {
-    console.error("❌ [EXPORT VALIDATION] No video or image elements found in timeline");
+    console.error(
+      "❌ [EXPORT VALIDATION] No video or image elements found in timeline"
+    );
     throw new ExportUnsupportedError("no-video-elements");
   }
 

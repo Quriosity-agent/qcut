@@ -38,7 +38,7 @@ export function buildImageOverlayFilters(
   imageSources: ImageSourceInput[],
   canvasWidth: number,
   canvasHeight: number,
-  videoInputCount: number = 1,
+  videoInputCount = 1,
   logger: LogFn = console.log
 ): string {
   if (!imageSources || imageSources.length === 0) {

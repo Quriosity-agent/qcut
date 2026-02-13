@@ -49,8 +49,9 @@ async function addMediaItemToTimeline({
         if (track.getAttribute("data-track-type") !== targetType) {
           continue;
         }
-        count += track.querySelectorAll('[data-testid="timeline-element"]')
-          .length;
+        count += track.querySelectorAll(
+          '[data-testid="timeline-element"]'
+        ).length;
       }
       return count;
     }, trackType);
@@ -66,7 +67,9 @@ async function addMediaItemToTimeline({
       await mediaItem.locator("button").first().click({ force: true });
     } else {
       const targetTrack = page
-        .locator(`[data-testid="timeline-track"][data-track-type="${trackType}"]`)
+        .locator(
+          `[data-testid="timeline-track"][data-track-type="${trackType}"]`
+        )
         .first();
       await expect(targetTrack).toBeVisible({ timeout: 15_000 });
       await mediaItem.dragTo(targetTrack);
@@ -84,8 +87,9 @@ async function addMediaItemToTimeline({
               if (track.getAttribute("data-track-type") !== targetType) {
                 continue;
               }
-              count += track.querySelectorAll('[data-testid="timeline-element"]')
-                .length;
+              count += track.querySelectorAll(
+                '[data-testid="timeline-element"]'
+              ).length;
             }
             return count;
           }, trackType);
@@ -119,13 +123,13 @@ async function installExportBlobCapture({ page }: { page: Page }) {
       };
 
       const globalWindow = window as WindowWithExportCapture;
-      const electronAPI = (window as Window & { electronAPI?: ElectronAPIWithExport })
-        .electronAPI;
+      const electronAPI = (
+        window as Window & { electronAPI?: ElectronAPIWithExport }
+      ).electronAPI;
 
       if (!globalWindow.__qcutCreateObjectURLOriginal) {
-        globalWindow.__qcutCreateObjectURLOriginal = URL.createObjectURL.bind(
-          URL
-        );
+        globalWindow.__qcutCreateObjectURLOriginal =
+          URL.createObjectURL.bind(URL);
 
         URL.createObjectURL = (object: Blob | MediaSource): string => {
           if (object instanceof Blob && object.type.startsWith("video/")) {
@@ -144,7 +148,10 @@ async function installExportBlobCapture({ page }: { page: Page }) {
       globalWindow.__qcutLastExportOutputPath = null;
 
       const ffmpegApi = electronAPI?.ffmpeg;
-      if (ffmpegApi?.exportVideoCLI && !(ffmpegApi as { __qcutWrapped?: boolean }).__qcutWrapped) {
+      if (
+        ffmpegApi?.exportVideoCLI &&
+        !(ffmpegApi as { __qcutWrapped?: boolean }).__qcutWrapped
+      ) {
         const originalExport = ffmpegApi.exportVideoCLI.bind(ffmpegApi);
         ffmpegApi.exportVideoCLI = async (options: unknown) => {
           const result = await originalExport(options);

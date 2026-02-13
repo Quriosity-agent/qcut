@@ -32,7 +32,7 @@ const DEFAULT_BASE_URL =
   "https://github.com/descriptinc/ffmpeg-ffprobe-static/releases/download/";
 const FALLBACK_RELEASE_TAG = "b6.1.2-rc.1";
 const MIN_BINARY_SIZE_BYTES = 1_000_000;
-const VERSION_CHECK_TIMEOUT_MS = 8_000;
+const VERSION_CHECK_TIMEOUT_MS = 8000;
 const STAGING_ROOT = join(process.cwd(), "electron", "resources", "ffmpeg");
 
 function getErrorMessage({ error }: { error: unknown }): string {
@@ -322,7 +322,9 @@ async function stageFFmpegBinaries(): Promise<void> {
     await mkdir(STAGING_ROOT, { recursive: true });
 
     console.log(`[stage-ffmpeg] Staging root: ${STAGING_ROOT}`);
-    console.log(`[stage-ffmpeg] Targets: ${targets.map((t) => t.key).join(", ")}`);
+    console.log(
+      `[stage-ffmpeg] Targets: ${targets.map((t) => t.key).join(", ")}`
+    );
     console.log(`[stage-ffmpeg] Release: ${releaseTag}`);
     console.log(`[stage-ffmpeg] Base URL: ${baseReleaseUrl}`);
 

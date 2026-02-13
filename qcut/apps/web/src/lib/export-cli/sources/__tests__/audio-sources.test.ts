@@ -224,12 +224,10 @@ describe("extractAudioFileInputs", () => {
       }),
     ];
 
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({
-        ok: true,
-        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-      } as unknown as Response);
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    } as unknown as Response);
 
     const api: AudioSourceAPI = {
       fileExists: vi.fn(async () => false),

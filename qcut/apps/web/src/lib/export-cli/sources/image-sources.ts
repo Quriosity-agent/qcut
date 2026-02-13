@@ -144,9 +144,7 @@ export async function extractImageSources(
   // Sort by start time
   imageSources.sort((a, b) => a.startTime - b.startTime);
 
-  logger(
-    `[ImageSources] 📊 Total images extracted: ${imageSources.length}`
-  );
+  logger(`[ImageSources] 📊 Total images extracted: ${imageSources.length}`);
 
   return imageSources;
 }

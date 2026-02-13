@@ -38,7 +38,7 @@ const DEFAULT_STAGE_TARGETS = [
   "win32-x64",
   "linux-x64",
 ];
-const VERSION_TIMEOUT_MS = 8_000;
+const VERSION_TIMEOUT_MS = 8000;
 
 function getErrorMessage({ error }: { error: unknown }): string {
   try {
@@ -231,7 +231,9 @@ async function verifyPackagedFFmpeg(): Promise<void> {
     const resourcesDir = await resolveLatestResourcesDir();
     const stagedRoot = join(resourcesDir, "ffmpeg");
     if (!existsSync(stagedRoot)) {
-      throw new Error(`Packaged staged FFmpeg directory not found: ${stagedRoot}`);
+      throw new Error(
+        `Packaged staged FFmpeg directory not found: ${stagedRoot}`
+      );
     }
 
     const rawTargets =
@@ -265,7 +267,9 @@ async function verifyPackagedFFmpeg(): Promise<void> {
       );
     }
 
-    const runnableTarget = targets.find((target) => isRunnableOnHost({ target }));
+    const runnableTarget = targets.find((target) =>
+      isRunnableOnHost({ target })
+    );
     if (!runnableTarget) {
       process.stdout.write(
         `✅ Packaged FFmpeg verification passed (presence only). No runnable host target in: ${targets.map((target) => target.key).join(", ")}\n`
@@ -285,7 +289,10 @@ async function verifyPackagedFFmpeg(): Promise<void> {
     );
 
     const [ffmpegResult, ffprobeResult] = await Promise.all([
-      runBinaryVersion({ binaryPath: ffmpegPath, timeoutMs: VERSION_TIMEOUT_MS }),
+      runBinaryVersion({
+        binaryPath: ffmpegPath,
+        timeoutMs: VERSION_TIMEOUT_MS,
+      }),
       runBinaryVersion({
         binaryPath: ffprobePath,
         timeoutMs: VERSION_TIMEOUT_MS,

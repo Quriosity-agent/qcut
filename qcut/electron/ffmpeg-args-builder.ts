@@ -96,7 +96,8 @@ function buildAudioFilters(
       transforms.push(`volume=${volume}`);
     }
 
-    const transformChain = transforms.length > 0 ? transforms.join(",") : "anull";
+    const transformChain =
+      transforms.length > 0 ? transforms.join(",") : "anull";
     const inputIndex = audioStartIndex + index;
     filterSteps.push(`[${inputIndex}:a]${transformChain}[${outputLabel}]`);
     mixedLabels.push(`[${outputLabel}]`);
@@ -214,7 +215,14 @@ function buildCompositeEncodeArgs(
     }
 
     validImages.push(imageSource);
-    args.push("-loop", "1", "-t", String(imageSource.duration), "-i", imageSource.path);
+    args.push(
+      "-loop",
+      "1",
+      "-t",
+      String(imageSource.duration),
+      "-i",
+      imageSource.path
+    );
   }
 
   const validStickers: StickerSource[] = [];
@@ -309,7 +317,9 @@ function buildCompositeEncodeArgs(
 
   if (textFilterChain) {
     const outputLabel = `v_text_${filterLabelIndex++}`;
-    filterSteps.push(`[${currentVideoLabel}]${textFilterChain}[${outputLabel}]`);
+    filterSteps.push(
+      `[${currentVideoLabel}]${textFilterChain}[${outputLabel}]`
+    );
     currentVideoLabel = outputLabel;
   }
 
