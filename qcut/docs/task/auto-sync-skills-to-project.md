@@ -1,84 +1,95 @@
 # Auto-Sync Skills to Project Folder
 
-> Make qcut-toolkit skills automatically available in every QCut project so Claude Code can discover them
+> Make bundled QCut skills automatically available to Claude Code in each project, without breaking existing skill architecture
 
-**Created:** 2026-02-13
-**Priority:** Medium — Skills exist but are invisible to Claude Code running in project directories
-**Estimated Effort:** ~30 minutes (3 subtasks)
+**Created:** 2026-02-13  
+**Revised:** 2026-02-13  
+**Priority:** Medium  
+**Estimated Effort:** ~45 minutes (4 subtasks)
 
 ---
 
 ## Problem
 
-Skills live in `.claude/skills/` at the repo level, but QCut projects live in `Documents/QCut/Projects/{project-name}/`. When Claude Code runs in the PTY terminal with `cwd` set to a project folder, it cannot see the repo's skills — they're in a completely different directory tree.
+Claude Code discovers project-local skills from:
 
-**Current state:**
 ```
-~/.claude/skills/          ← personal skills (Claude Code sees these)
-repo/.claude/skills/       ← repo skills (only visible when cwd = repo)
-Documents/QCut/Projects/   ← project folders (PTY cwd, no skills here)
+{projectRoot}/.claude/skills/
 ```
 
-**Desired state:**
+But QCut currently stores project skills in:
+
 ```
-Documents/QCut/Projects/{project}/
+{Documents}/QCut/Projects/{projectId}/skills/
+```
+
+So Claude Code running in PTY with `cwd={projectRoot}` cannot discover QCut-managed project skills automatically.
+
+---
+
+## Current Architecture Reality
+
+| Area | Current behavior |
+|------|------------------|
+| Project skills store | `electron/skills-handler.ts` uses `{project}/skills` as canonical location |
+| Bundled defaults | Build pipeline already syncs repo skills into `resources/default-skills` |
+| Preload API | Skills APIs exist under `window.electronAPI.skills.*` |
+| Claude bridge | Claude IPC API currently has no skills sync endpoint |
+
+**Important constraint:** Do not replace `project/skills` with `project/.claude/skills`. Existing app flows (`skills:list`, import/delete, skill runner) depend on `project/skills`.
+
+---
+
+## Revised Goal
+
+Keep `project/skills` as the canonical app-managed store, and add a managed mirror for Claude discovery:
+
+```
+{projectRoot}/
+├── skills/                 ← canonical (QCut APIs/UI)
 └── .claude/
-    └── skills/
-        ├── qcut-toolkit/          ← auto-synced
-        ├── organize-project/      ← auto-synced
-        ├── ffmpeg-skill/          ← auto-synced
-        ├── ai-content-pipeline/   ← auto-synced
-        └── qcut-api/              ← auto-synced
+    └── skills/             ← mirror for Claude Code autodiscovery
 ```
 
 ---
 
 ## Design Decisions
 
-### When to sync
+### 1) Where sync logic lives
 
-| Trigger | Pros | Cons |
-|---------|------|------|
-| On project creation | Clean initial state | Misses updates |
-| **On project open** | Always fresh | Slight delay |
-| On app startup (all projects) | Everything stays current | Unnecessary I/O |
+Use `skills` IPC domain, not Claude IPC domain.
 
-**Decision:** Sync on project open — runs once when `loadProject()` completes. Minimal overhead, always current.
+Reason:
+- Skill syncing is primarily filesystem/project-skill behavior.
+- Keeps ownership aligned with `electron/skills-handler.ts`.
+- Avoids coupling core project skill logic to Claude-only modules.
 
-### Copy vs. symlink
+### 2) When to sync
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Copy | Works everywhere, self-contained | Gets stale, wastes disk |
-| Symlink | Always current, no duplication | Breaks on Windows without admin, breaks if app moves |
-| **Copy with version check** | Works everywhere, stays current | Slightly more complex |
+Sync after successful `loadProject()` in `apps/web/src/stores/project-store.ts`, fire-and-forget:
+- Do not block editor load.
+- Log warning on failure; never crash project open.
 
-**Decision:** Copy with a content hash. A `.skills-hash` file in the project tracks what version was synced. Only re-copy when skills change.
+### 3) Copy strategy
 
-### Where to sync
+Use copy + hash/manifest, not symlink:
+- Works on Windows/macOS/Linux.
+- Supports packaged app paths.
+- Avoids symlink permission/path portability issues.
 
-Sync to `{project}/.claude/skills/` — this is where Claude Code auto-discovers skills. The project-folder panel in QCut UI can also read from this location.
+### 4) Sync source of truth
 
-### What to sync
+Reuse existing bundled pipeline:
+- Dev/packaged runtime source: `resources/default-skills`
+- Keep repo-to-bundle sync in `scripts/sync-skills.ts`
+- Expand bundled skill list to include:
+  - `qcut-toolkit`
+  - `organize-project`
+  - `ffmpeg-skill`
+  - `ai-content-pipeline`
+  - `qcut-api`
 
-The qcut-toolkit super skill and its 4 sub-skills:
-
-```
-qcut-toolkit/SKILL.md
-organize-project/SKILL.md, REFERENCE.md
-ffmpeg-skill/Skill.md, REFERENCE.md, CONCEPTS.md, ADVANCED.md
-ai-content-pipeline/Skill.md, REFERENCE.md, EXAMPLES.md
-qcut-api/SKILL.md, REFERENCE.md
-```
-
-Total: ~5 folders, ~12 files, ~80KB.
-
-### Source location
-
-| Environment | Skills source path |
-|-------------|-------------------|
-| Dev (`electron:dev`) | `{repo}/.claude/skills/` |
-| Production (packaged) | `{app.getPath('resources')}/skills/` via `extraResources` |
+No new `package.json` `extraResources` entry is required if `resources/default-skills` remains the source.
 
 ---
 
@@ -86,132 +97,104 @@ Total: ~5 folders, ~12 files, ~80KB.
 
 ```
 Project Open
-    │
-    ▼
-loadProject(projectId)
-    │
-    ▼
-syncSkillsToProject(projectId)   ← new Electron IPC handler
-    │
-    ├── Resolve skills source (repo or bundled resources)
-    ├── Hash all skill file contents → newHash
-    ├── Read {project}/.skills-hash → existingHash
-    ├── If newHash === existingHash → skip (already synced)
-    ├── If different → copy skill folders to {project}/.claude/skills/
-    └── Write newHash to {project}/.skills-hash
-    │
-    ▼
-PTY terminal spawns with cwd = project folder
-    │
-    ▼
-Claude Code finds .claude/skills/ automatically
+  ↓
+loadProject(projectId) succeeds
+  ↓
+window.electronAPI.skills.syncForClaude(projectId)  (non-blocking)
+  ↓
+[Main process]
+  1) Ensure canonical project skills contain bundled baseline (idempotent)
+  2) Mirror canonical project skills -> project/.claude/skills (managed sync)
+  3) Persist sync manifest/hash
+  ↓
+PTY terminal starts in project root
+  ↓
+Claude Code discovers project/.claude/skills automatically
 ```
 
 ---
 
 ## Subtasks
 
-### Subtask 1: Create skills sync IPC handler
+### Subtask 1: Expand bundled skill source list
+
+**File:** `scripts/sync-skills.ts`
+
+Update `BUNDLED_SKILLS` to:
+- `qcut-toolkit`
+- `organize-project`
+- `ffmpeg-skill`
+- `ai-content-pipeline`
+- `qcut-api`
+
+This keeps `resources/default-skills` aligned with required Claude-facing toolkit skills.
+
+---
+
+### Subtask 2: Add main-process sync handler in Skills domain
 
 **Files:**
-- `electron/claude/claude-skills-sync-handler.ts` (new)
-- `electron/claude/index.ts` (register handler)
+- `electron/skills-sync-handler.ts` (new)
+- `electron/main.ts` (register setup)
 
-**Changes:**
-1. Create `syncSkillsToProject(projectId)` function:
-   - Resolve source path: `app.isPackaged ? path.join(process.resourcesPath, 'skills') : path.join(__dirname, '../../.claude/skills')`
-   - Define skill folders to sync: `['qcut-toolkit', 'organize-project', 'ffmpeg-skill', 'ai-content-pipeline', 'qcut-api']`
-   - Hash all source skill files (SHA-256 of concatenated contents)
-   - Read `{projectPath}/.skills-hash`, compare with new hash
-   - If different: create `{projectPath}/.claude/skills/` dirs, copy files
-   - Write new hash to `{projectPath}/.skills-hash`
+Add IPC handler:
+- `ipcMain.handle("skills:syncForClaude", async (_event, projectId) => ...)`
 
-2. Register IPC handler: `ipcMain.handle('claude:skills:sync', handler)`
+Behavior:
+1. Resolve project root: `{Documents}/QCut/Projects/{projectId}`
+2. Resolve canonical dir: `{projectRoot}/skills`
+3. Resolve mirror dir: `{projectRoot}/.claude/skills`
+4. Resolve bundled source:
+   - packaged: `path.join(process.resourcesPath, "default-skills")`
+   - dev: `path.join(app.getAppPath(), "resources", "default-skills")`
+5. Ensure bundled baseline skills exist in canonical dir (copy only required folders)
+6. Mirror canonical -> `.claude/skills`
+7. Use manifest/hash to skip unchanged copies
+8. Return summary `{ synced: boolean, copied: number, skipped: number }`
 
-3. Add to `setupAllClaudeIPC()` in `index.ts`
+Safety requirements:
+- Validate `projectId` path segment (no traversal).
+- Recursive hashing includes relative file path + file content.
+- Wrap filesystem ops in `try/catch`; surface controlled errors only.
 
-**Hashing approach:**
-```typescript
-import { createHash } from "node:crypto";
+---
 
-function hashSkillFiles(sourceDir: string, folders: string[]): string {
-  const hash = createHash("sha256");
-  for (const folder of folders) {
-    const dir = path.join(sourceDir, folder);
-    if (!fs.existsSync(dir)) continue;
-    for (const file of fs.readdirSync(dir).sort()) {
-      if (file.endsWith(".md")) {
-        hash.update(fs.readFileSync(path.join(dir, file)));
-      }
-    }
-  }
-  return hash.digest("hex");
-}
+### Subtask 3: Expose and consume sync API
+
+**Files:**
+- `electron/preload-integrations.ts`
+- `electron/preload-types.ts`
+- `apps/web/src/types/electron.d.ts`
+- `apps/web/src/stores/project-store.ts`
+
+API addition:
+- `window.electronAPI.skills.syncForClaude(projectId: string): Promise<{ synced: boolean; copied: number; skipped: number }>`
+
+Call site:
+- After successful project load in `loadProject(id)`, fire-and-forget:
+
+```ts
+window.electronAPI?.skills?.syncForClaude?.(id).catch((error) => {
+  console.warn("[ProjectStore] skills syncForClaude failed", error);
+});
 ```
 
-**Test:**
-- Sync to empty project → skills appear
-- Sync again unchanged → no file I/O (hash matches)
-- Modify a skill file → re-syncs
-
 ---
 
-### Subtask 2: Call sync on project open
+### Subtask 4: Add tests
 
-**Files:**
-- `electron/preload-integrations.ts` (expose IPC)
-- `apps/web/src/types/electron.d.ts` (type definition)
-- `apps/web/src/stores/project-store.ts` (call after loadProject)
+**Electron tests:**
+- `electron/__tests__/skills-sync-handler.test.ts`
 
-**Changes:**
-1. Add to preload: `window.electronAPI.claude.skills.sync(projectId)`
-2. Add type: `skills: { sync(projectId: string): Promise<void> }`
-3. In `loadProject()`, after successful load:
-   ```typescript
-   // Sync skills to project folder (non-blocking, fire-and-forget)
-   window.electronAPI?.claude?.skills?.sync(projectId).catch((err) => {
-     console.warn("[ProjectStore] Skills sync failed:", err);
-   });
-   ```
+Cases:
+1. Empty project -> baseline skills copied to `skills` and mirrored to `.claude/skills`
+2. Second sync unchanged -> no recopy (manifest/hash skip)
+3. Bundled skill content change -> recopy only changed skill
+4. Missing bundled source -> graceful no-op with warning
+5. Path traversal in `projectId` rejected safely
 
-**Important:** Fire-and-forget — don't block project loading on skill sync. If sync fails, log a warning but don't break the app.
-
-**Test:**
-- Open project → skills appear in project `.claude/skills/`
-- Open project without Electron API → no error (graceful skip)
-
----
-
-### Subtask 3: Bundle skills for production builds
-
-**Files:**
-- `package.json` (extraResources config)
-- `electron-builder.yml` or equivalent build config
-
-**Changes:**
-1. Add skills to `extraResources` in the build config:
-   ```json
-   "extraResources": [
-     {
-       "from": ".claude/skills",
-       "to": "skills",
-       "filter": ["**/*.md"]
-     }
-   ]
-   ```
-
-2. This copies all `.md` files from `.claude/skills/` into `resources/skills/` in the packaged app.
-
-3. The sync handler resolves source based on `app.isPackaged`:
-   ```typescript
-   const skillsSource = app.isPackaged
-     ? path.join(process.resourcesPath, "skills")
-     : path.join(app.getAppPath(), ".claude", "skills");
-   ```
-
-**Test:**
-- Build with `bun run build` → verify `resources/skills/` contains skill files
-- Run packaged app → open project → skills synced from bundled source
+**Web/store test:**
+- Ensure `project-store` sync call is non-blocking and failure-safe.
 
 ---
 
@@ -219,24 +202,14 @@ function hashSkillFiles(sourceDir: string, folders: string[]): string {
 
 | File | Change |
 |------|--------|
-| `electron/claude/claude-skills-sync-handler.ts` | New — sync logic, hashing, copy |
-| `electron/claude/index.ts` | Register sync handler |
-| `electron/preload-integrations.ts` | Expose `claude.skills.sync()` |
-| `apps/web/src/types/electron.d.ts` | Add type for skills sync |
-| `apps/web/src/stores/project-store.ts` | Call sync after loadProject |
-| `package.json` | Add skills to extraResources |
-
----
-
-## Unit Tests
-
-| Test Case | File |
-|-----------|------|
-| Skills copied to empty project | `electron/__tests__/claude-skills-sync.test.ts` |
-| Hash match skips re-copy | `electron/__tests__/claude-skills-sync.test.ts` |
-| Hash mismatch triggers re-copy | `electron/__tests__/claude-skills-sync.test.ts` |
-| Missing source folder handled gracefully | `electron/__tests__/claude-skills-sync.test.ts` |
-| Production path resolution works | `electron/__tests__/claude-skills-sync.test.ts` |
+| `scripts/sync-skills.ts` | Expand bundled skill list |
+| `electron/skills-sync-handler.ts` | New sync logic + IPC handler |
+| `electron/main.ts` | Register sync handler setup |
+| `electron/preload-integrations.ts` | Add `skills.syncForClaude` |
+| `electron/preload-types.ts` | Add preload type for sync method |
+| `apps/web/src/types/electron.d.ts` | Add renderer type for sync method |
+| `apps/web/src/stores/project-store.ts` | Fire-and-forget sync call after project load |
+| `electron/__tests__/skills-sync-handler.test.ts` | New sync behavior tests |
 
 ---
 
@@ -244,17 +217,17 @@ function hashSkillFiles(sourceDir: string, folders: string[]): string {
 
 | Risk | Mitigation |
 |------|-----------|
-| Sync slows project open | Fire-and-forget, hash check skips when unchanged |
-| Disk space from copies | ~80KB per project, negligible |
-| User edits synced skills | Overwritten on next sync — document this behavior |
-| Skills source missing in packaged app | Graceful fallback, log warning, don't crash |
-| Race condition on rapid project switching | Sync is idempotent, last write wins safely |
+| Project open slowdown | Fire-and-forget + hash-based skip |
+| Divergence between `skills` and `.claude/skills` | Always mirror from canonical `skills` |
+| Overwriting user-custom `.claude/skills` content | Only manage folders tracked in manifest |
+| Missing bundled files in packaged build | Graceful warning + no crash |
+| Rapid project switching | Idempotent sync; per-project manifest |
 
 ---
 
 ## Out of Scope
 
-- Syncing user-created custom skills (only qcut-toolkit sub-skills)
-- Two-way sync (project → repo)
-- UI for managing which skills are synced
-- Per-project skill customization
+- Two-way sync from `.claude/skills` back to canonical `skills`
+- Syncing arbitrary user global skills automatically into every project
+- UI for selecting per-project sync profile
+- Non-markdown assets beyond current skill package format
