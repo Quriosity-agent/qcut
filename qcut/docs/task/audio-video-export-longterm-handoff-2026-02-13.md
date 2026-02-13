@@ -108,3 +108,59 @@ User requested long-term fix and verification for export bug where timeline with
    - `localPath` -> `file` bytes -> `url` fetch
 3. Keep E2E assertion based on output artifact stream validation (not only UI status text).
 4. Add a second E2E case for video-only timeline to guard embedded-audio path separately.
+
+---
+
+## Update (2026-02-13, Later Session)
+
+### Additional Root Cause Confirmed
+
+1. `apps/web/src/lib/export-engine-cli.ts` relied on `window.electronAPI.invoke(...)` for:
+   - `file-exists`
+   - `get-file-info`
+   - `validate-audio-file`
+2. `invoke` is not exposed by `electron/preload.ts`, so this path was brittle and could block export startup or drop audio inputs.
+
+### Long-Term Fixes Added
+
+1. Removed hard dependency on generic `invoke` in renderer audio flow:
+   - Added typed-safe helpers in `CLIExportEngine`:
+     - optional invoke bridge (only when available)
+     - typed `getFileInfo` and `fileExists`
+     - optional ffprobe validation wrapper
+   - Audio validation now skips invalid files instead of aborting the whole export.
+
+2. Narrowed overlay audio extraction to real audio timeline overlays:
+   - `apps/web/src/lib/export-cli/sources/audio-sources.ts`
+   - `collectAudioCandidates()` now collects from `audio` tracks only.
+   - Media-track video audio remains in base video stream (Mode 1/2/1.5 handling), avoiding duplicate or invalid overlay inputs.
+
+3. Updated unit tests for new extraction behavior:
+   - `apps/web/src/lib/export-cli/sources/__tests__/audio-sources.test.ts`
+   - Test now expects only audio-track candidates.
+
+### Verification Results
+
+1. Unit tests passed:
+   ```bash
+   cd apps/web && bunx vitest run src/lib/export-cli/sources/__tests__/audio-sources.test.ts src/lib/export-cli/sources/__tests__/audio-detection.test.ts
+   ```
+
+2. Type-check passed:
+   ```bash
+   cd apps/web && bunx tsc --noEmit -p tsconfig.json
+   ```
+
+3. Rebuilt runtime artifacts:
+   ```bash
+   cd apps/web && bun run build && cd ../.. && bun run build:electron
+   ```
+
+4. Focused E2E passed:
+   ```bash
+   PLAYWRIGHT_HTML_OPEN=never bun run test:e2e -- apps/web/src/test/e2e/audio-video-simultaneous-export.e2e.ts --reporter=line
+   ```
+   Key signal from logs:
+   - `Audio files: 1`
+   - `FFmpeg export completed successfully`
+   - test status: `1 passed`

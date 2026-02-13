@@ -43,6 +43,21 @@ export type {
 } from "./export-cli/types";
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
+type ElectronInvoke = (channel: string, ...args: unknown[]) => Promise<unknown>;
+
+interface FileInfoLike {
+  size: number;
+}
+
+interface AudioValidationLike {
+  error?: string;
+  hasAudio?: boolean;
+  duration?: number;
+  info?: {
+    streams?: unknown[];
+  };
+  valid?: boolean;
+}
 
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
@@ -234,6 +249,113 @@ export class CLIExportEngine extends ExportEngine {
   // - extractStickerSources -> export-cli/sources/sticker-sources.ts (now uses wrapper)
   // - buildStickerOverlayFilters -> export-cli/filters/sticker-overlay.ts (now uses wrapper)
 
+  private getOptionalInvoke(): ElectronInvoke | null {
+    try {
+      const maybeInvoke = (
+        window.electronAPI as typeof window.electronAPI & {
+          invoke?: ElectronInvoke;
+        }
+      )?.invoke;
+      if (typeof maybeInvoke === "function") {
+        return maybeInvoke;
+      }
+      return null;
+    } catch (error) {
+      debugWarn("[CLIExportEngine] Failed to access optional invoke API:", error);
+      return null;
+    }
+  }
+
+  private async invokeIfAvailable({
+    args = [],
+    channel,
+  }: {
+    args?: unknown[];
+    channel: string;
+  }): Promise<unknown | null> {
+    try {
+      const invoke = this.getOptionalInvoke();
+      if (!invoke) {
+        return null;
+      }
+      return await invoke(channel, ...args);
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Optional invoke call failed for channel ${channel}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  private async getFileInfo({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<FileInfoLike | null> {
+    try {
+      if (!window.electronAPI) {
+        return null;
+      }
+      const fileInfo = await window.electronAPI.getFileInfo(filePath);
+      if (!fileInfo || typeof fileInfo.size !== "number") {
+        return null;
+      }
+      return fileInfo;
+    } catch {
+      return null;
+    }
+  }
+
+  private async fileExists({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<boolean> {
+    try {
+      const fileInfo = await this.getFileInfo({ filePath });
+      if (fileInfo && fileInfo.size >= 0) {
+        return true;
+      }
+
+      const legacyExists = await this.invokeIfAvailable({
+        channel: "file-exists",
+        args: [filePath],
+      });
+      return legacyExists === true;
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Failed to determine file existence for ${filePath}:`,
+        error
+      );
+      return false;
+    }
+  }
+
+  private async validateAudioWithFfprobe({
+    filePath,
+  }: {
+    filePath: string;
+  }): Promise<AudioValidationLike | null> {
+    try {
+      const validation = await this.invokeIfAvailable({
+        channel: "validate-audio-file",
+        args: [filePath],
+      });
+      if (!validation || typeof validation !== "object") {
+        return null;
+      }
+
+      return validation as AudioValidationLike;
+    } catch (error) {
+      debugWarn(
+        `[CLIExportEngine] Failed to run optional ffprobe validation for ${filePath}:`,
+        error
+      );
+      return null;
+    }
+  }
+
   private async resolveAudioPreparationInputs(): Promise<{
     tracks: TimelineTrack[];
     mediaItems: MediaItem[];
@@ -348,11 +470,7 @@ export class CLIExportEngine extends ExportEngine {
         {
           fileExists: async (filePath: string): Promise<boolean> => {
             try {
-              const exists = await window.electronAPI?.invoke(
-                "file-exists",
-                filePath
-              );
-              return exists === true;
+              return await this.fileExists({ filePath });
             } catch (error) {
               debugWarn(
                 `[CLIExportEngine] Failed to verify file existence for ${filePath}:`,
@@ -382,17 +500,26 @@ export class CLIExportEngine extends ExportEngine {
                 }
               }
 
-              const result = await window.electronAPI?.invoke(
-                "save-audio-for-export",
-                {
-                  audioData,
-                  filename,
-                }
-              );
+              const result = await this.invokeIfAvailable({
+                channel: "save-audio-for-export",
+                args: [{ audioData, filename }],
+              });
+              const parsedResult =
+                result && typeof result === "object"
+                  ? (result as { success?: boolean; path?: string; error?: string })
+                  : null;
+
+              if (!parsedResult) {
+                return {
+                  success: false,
+                  error: "No available API to persist audio temp file",
+                };
+              }
+
               return {
-                success: result?.success === true,
-                path: result?.path,
-                error: result?.error,
+                success: parsedResult.success === true,
+                path: parsedResult.path,
+                error: parsedResult.error,
               };
             } catch (error) {
               return {
@@ -698,31 +825,31 @@ export class CLIExportEngine extends ExportEngine {
 
         try {
           // Check if file exists
-          const exists = await window.electronAPI?.invoke(
-            "file-exists",
-            audioFile.path
-          );
+          const exists = await this.fileExists({ filePath: audioFile.path });
           debugLog(`[CLI Export] Audio file ${index} exists: ${exists}`);
 
           if (!exists) {
-            const error = `Audio file does not exist: ${audioFile.path}`;
-            debugError(`[CLI Export] ${error}`);
-            throw new Error(error);
+            debugWarn(
+              `[CLI Export] Skipping missing audio file: ${audioFile.path}`
+            );
+            return null;
           }
 
           // Check file size to ensure it's not empty/corrupted
-          const fileInfo = await window.electronAPI?.invoke(
-            "get-file-info",
-            audioFile.path
-          );
+          const fileInfo = await this.getFileInfo({ filePath: audioFile.path });
+          if (!fileInfo) {
+            debugWarn(
+              `[CLI Export] Skipping audio file with unavailable metadata: ${audioFile.path}`
+            );
+            return null;
+          }
           debugLog(
             `[CLI Export] Audio file ${index} size: ${fileInfo.size} bytes`
           );
 
           if (fileInfo.size === 0) {
-            const error = `Audio file is empty: ${audioFile.path}`;
-            debugError(`[CLI Export] ${error}`);
-            throw new Error(error);
+            debugWarn(`[CLI Export] Skipping empty audio file: ${audioFile.path}`);
+            return null;
           }
 
           // Validate audio file format with ffprobe
@@ -730,20 +857,20 @@ export class CLIExportEngine extends ExportEngine {
             `[CLI Export] Validating audio file ${index} format with ffprobe...`
           );
 
-          try {
-            const audioValidation = await window.electronAPI?.invoke(
-              "validate-audio-file",
-              audioFile.path
-            );
+          const audioValidation = await this.validateAudioWithFfprobe({
+            filePath: audioFile.path,
+          });
+          if (audioValidation) {
             debugLog(
               `[CLI Export] Audio file ${index} validation result:`,
               audioValidation
             );
 
             if (!audioValidation.valid) {
-              const error = `Invalid audio file format: ${audioFile.path} - ${audioValidation.error}`;
-              debugError(`[CLI Export] ${error}`);
-              throw new Error(error);
+              debugWarn(
+                `[CLI Export] Skipping invalid audio file: ${audioFile.path} (${audioValidation.error || "Unknown validation error"})`
+              );
+              return null;
             }
 
             debugLog(
@@ -763,25 +890,14 @@ export class CLIExportEngine extends ExportEngine {
               );
               return null; // Mark for filtering
             }
-
-            return audioFile; // Valid audio file
-          } catch (validationError) {
-            // Log validation error but continue with the file
-            debugError(
-              "[CLI Export] Audio validation failed:",
-              validationError
-            );
-            debugLog(
-              "[CLI Export] Including file despite validation failure..."
-            );
-            return audioFile; // Keep the file despite ffprobe failure
           }
+          return audioFile; // Valid audio file
         } catch (error) {
-          debugError(
-            `[CLI Export] Failed to validate audio file ${index}:`,
+          debugWarn(
+            `[CLI Export] Skipping audio file ${audioFile.path} after validation error:`,
             error
           );
-          throw new Error(`Failed to validate audio file: ${audioFile.path}`);
+          return null;
         }
       })
     );

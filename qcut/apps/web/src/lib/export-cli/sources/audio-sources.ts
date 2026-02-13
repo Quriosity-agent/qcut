@@ -55,7 +55,9 @@ function collectAudioCandidates(
   const candidates: TimelineAudioCandidate[] = [];
 
   for (const track of tracks) {
-    if (track.type !== "media" && track.type !== "audio") {
+    // Only timeline audio-track elements are overlay inputs.
+    // Media-track video audio stays in the base video stream via normal mode mappings.
+    if (track.type !== "audio") {
       continue;
     }
 
@@ -118,7 +120,11 @@ async function resolveCandidatePath(
     }
   }
 
-  if (mediaItem.file && mediaItem.file.size > 0) {
+  if (
+    mediaItem.file &&
+    mediaItem.file.size > 0 &&
+    typeof mediaItem.file.arrayBuffer === "function"
+  ) {
     try {
       const audioData = await mediaItem.file.arrayBuffer();
       const ext = guessExtension(mediaItem);
@@ -137,6 +143,10 @@ async function resolveCandidatePath(
         error
       );
     }
+  } else if (mediaItem.file && mediaItem.file.size > 0) {
+    logger(
+      `[AudioSources] File-backed extraction skipped for ${mediaItem.name}: arrayBuffer() unavailable`
+    );
   }
 
   if (mediaItem.url) {

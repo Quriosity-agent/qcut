@@ -69,7 +69,7 @@ describe("extractAudioFileInputs", () => {
     vi.restoreAllMocks();
   });
 
-  it("extracts video/audio candidates and skips images/hidden elements", async () => {
+  it("extracts only audio-track candidates and skips media-track video/image/hidden elements", async () => {
     const tracks: TimelineTrack[] = [
       makeTrack({
         id: "media-track",
@@ -140,16 +140,20 @@ describe("extractAudioFileInputs", () => {
       api
     );
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(1);
     expect(result[0].path).toBe("/tmp/music.mp3");
-    expect(result[1].path).toBe("/tmp/video.mp4");
     expect(result[0].startTime).toBe(0);
-    expect(result[1].startTime).toBe(3);
-    expect(result[1].volume).toBe(0.7);
     expect(api.saveTemp).not.toHaveBeenCalled();
   });
 
   it("falls back to file-backed temp save when localPath is unavailable", async () => {
+    const fileBackedAudio = new File(["voiceover"], "voiceover.mp3", {
+      type: "audio/mpeg",
+    });
+    Object.defineProperty(fileBackedAudio, "arrayBuffer", {
+      value: vi.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer),
+    });
+
     const tracks: TimelineTrack[] = [
       makeTrack({
         id: "audio-track",
@@ -169,6 +173,7 @@ describe("extractAudioFileInputs", () => {
         id: "audio-1",
         type: "audio",
         name: "voiceover.mp3",
+        file: fileBackedAudio,
         localPath: "/tmp/missing.mp3",
       }),
     ];
