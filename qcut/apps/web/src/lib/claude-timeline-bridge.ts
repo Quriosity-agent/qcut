@@ -5,7 +5,7 @@
 
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useMediaStore } from "@/stores/media-store";
+import { useMediaStore, type MediaItem } from "@/stores/media-store";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
 import type {
   ClaudeTimeline,
@@ -54,6 +54,178 @@ function findTrackByElementId(
   );
 }
 
+const CLAUDE_MEDIA_ELEMENT_TYPES = {
+  media: "media",
+  video: "video",
+  audio: "audio",
+  image: "image",
+} as const;
+
+const DEFAULT_MEDIA_DURATION_SECONDS = 10;
+const DEFAULT_TEXT_DURATION_SECONDS = 5;
+const DEFAULT_TEXT_CONTENT = "Text";
+
+type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
+type MediaStoreState = ReturnType<typeof useMediaStore.getState>;
+
+function isClaudeMediaElementType({
+  type,
+}: {
+  type: Partial<ClaudeElement>["type"] | undefined;
+}): boolean {
+  return (
+    type === CLAUDE_MEDIA_ELEMENT_TYPES.media ||
+    type === CLAUDE_MEDIA_ELEMENT_TYPES.video ||
+    type === CLAUDE_MEDIA_ELEMENT_TYPES.audio ||
+    type === CLAUDE_MEDIA_ELEMENT_TYPES.image
+  );
+}
+
+function getElementStartTime({
+  element,
+}: {
+  element: Partial<ClaudeElement>;
+}): number {
+  if (typeof element.startTime === "number" && element.startTime >= 0) {
+    return element.startTime;
+  }
+  return 0;
+}
+
+function getElementDuration({
+  element,
+  fallbackDuration,
+}: {
+  element: Partial<ClaudeElement>;
+  fallbackDuration: number;
+}): number {
+  if (
+    typeof element.startTime === "number" &&
+    typeof element.endTime === "number"
+  ) {
+    const rangeDuration = element.endTime - element.startTime;
+    if (rangeDuration > 0) {
+      return rangeDuration;
+    }
+  }
+
+  if (fallbackDuration > 0) {
+    return fallbackDuration;
+  }
+
+  return DEFAULT_MEDIA_DURATION_SECONDS;
+}
+
+function findMediaItemForElement({
+  element,
+  mediaItems,
+}: {
+  element: Partial<ClaudeElement>;
+  mediaItems: MediaItem[];
+}): MediaItem | null {
+  if (element.sourceName) {
+    const mediaByName = mediaItems.find((item) => item.name === element.sourceName);
+    if (mediaByName) {
+      return mediaByName;
+    }
+  }
+
+  if (element.sourceId) {
+    return mediaItems.find((item) => item.id === element.sourceId) || null;
+  }
+
+  return null;
+}
+
+function addClaudeMediaElement({
+  element,
+  timelineStore,
+  mediaStore,
+}: {
+  element: Partial<ClaudeElement>;
+  timelineStore: TimelineStoreState;
+  mediaStore: MediaStoreState;
+}): void {
+  const mediaItem = findMediaItemForElement({
+    element,
+    mediaItems: mediaStore.mediaItems,
+  });
+
+  if (!mediaItem) {
+    console.warn(
+      "[ClaudeTimelineBridge] Media not found:",
+      element.sourceName || element.sourceId
+    );
+    return;
+  }
+
+  const trackId = timelineStore.findOrCreateTrack("media");
+  const fallbackDuration =
+    typeof mediaItem.duration === "number" && mediaItem.duration > 0
+      ? mediaItem.duration
+      : DEFAULT_MEDIA_DURATION_SECONDS;
+  const startTime = getElementStartTime({ element });
+  const duration = getElementDuration({
+    element,
+    fallbackDuration,
+  });
+
+  timelineStore.addElementToTrack(trackId, {
+    type: "media",
+    name: mediaItem.name,
+    mediaId: mediaItem.id,
+    startTime,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+  });
+
+  console.log("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
+}
+
+function addClaudeTextElement({
+  element,
+  timelineStore,
+}: {
+  element: Partial<ClaudeElement>;
+  timelineStore: TimelineStoreState;
+}): void {
+  const trackId = timelineStore.findOrCreateTrack("text");
+  const startTime = getElementStartTime({ element });
+  const duration = getElementDuration({
+    element,
+    fallbackDuration: DEFAULT_TEXT_DURATION_SECONDS,
+  });
+  const content =
+    typeof element.content === "string" && element.content.trim().length > 0
+      ? element.content
+      : DEFAULT_TEXT_CONTENT;
+
+  timelineStore.addElementToTrack(trackId, {
+    type: "text",
+    name: content,
+    content,
+    startTime,
+    duration,
+    trimStart: 0,
+    trimEnd: 0,
+    fontSize: 48,
+    fontFamily: "Inter",
+    color: "#ffffff",
+    backgroundColor: "transparent",
+    textAlign: "center",
+    fontWeight: "normal",
+    fontStyle: "normal",
+    textDecoration: "none",
+    x: 0.5,
+    y: 0.5,
+    rotation: 0,
+    opacity: 1,
+  });
+
+  console.log("[ClaudeTimelineBridge] Added text element:", content);
+}
+
 /**
  * Setup Claude Timeline Bridge
  * Call this once during app initialization
@@ -69,130 +241,77 @@ export function setupClaudeTimelineBridge(): void {
 
   // Respond to timeline export request from main process
   claudeAPI.onRequest(() => {
-    console.log("[ClaudeTimelineBridge] Received timeline export request");
+    try {
+      console.log("[ClaudeTimelineBridge] Received timeline export request");
 
-    const timelineState = useTimelineStore.getState();
-    const projectState = useProjectStore.getState();
-    const project = projectState.activeProject;
-    const tracks = timelineState.tracks;
+      const timelineState = useTimelineStore.getState();
+      const projectState = useProjectStore.getState();
+      const project = projectState.activeProject;
+      const tracks = timelineState.tracks;
 
-    const timeline: ClaudeTimeline = {
-      name: project?.name || "Untitled",
-      duration: calculateTimelineDuration(tracks),
-      width: project?.canvasSize?.width || 1920,
-      height: project?.canvasSize?.height || 1080,
-      fps: project?.fps || 30,
-      tracks: formatTracksForExport(tracks),
-    };
+      const timeline: ClaudeTimeline = {
+        name: project?.name || "Untitled",
+        duration: calculateTimelineDuration(tracks),
+        width: project?.canvasSize?.width || 1920,
+        height: project?.canvasSize?.height || 1080,
+        fps: project?.fps || 30,
+        tracks: formatTracksForExport(tracks),
+      };
 
-    claudeAPI.sendResponse(timeline);
-    console.log("[ClaudeTimelineBridge] Sent timeline response");
+      claudeAPI.sendResponse(timeline);
+      console.log("[ClaudeTimelineBridge] Sent timeline response");
+    } catch (error) {
+      console.error(
+        "[ClaudeTimelineBridge] Failed to handle timeline export request:",
+        error
+      );
+    }
   });
 
   // Handle timeline import from Claude
   claudeAPI.onApply((timeline: ClaudeTimeline) => {
-    console.log(
-      "[ClaudeTimelineBridge] Received timeline to apply:",
-      timeline.name
-    );
-    applyTimelineToStore(timeline);
+    try {
+      console.log(
+        "[ClaudeTimelineBridge] Received timeline to apply:",
+        timeline.name
+      );
+      applyTimelineToStore(timeline);
+    } catch (error) {
+      console.error("[ClaudeTimelineBridge] Failed to apply timeline:", error);
+    }
   });
 
   // Handle element addition from Claude
   claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
-    console.log("[ClaudeTimelineBridge] Adding element:", element);
+    try {
+      console.log("[ClaudeTimelineBridge] Adding element:", element);
 
-    const timelineStore = useTimelineStore.getState();
-    const mediaStore = useMediaStore.getState();
+      const timelineStore = useTimelineStore.getState();
+      const mediaStore = useMediaStore.getState();
 
-    if (
-      element.type === "media" ||
-      element.type === "video" ||
-      element.type === "audio" ||
-      element.type === "image"
-    ) {
-      // Look up media by sourceName or sourceId
-      let mediaItem = null;
-      if (element.sourceName) {
-        mediaItem = mediaStore.mediaItems.find(
-          (item) => item.name === element.sourceName
-        );
-      }
-      if (!mediaItem && element.sourceId) {
-        mediaItem = mediaStore.mediaItems.find(
-          (item) => item.id === element.sourceId
-        );
-      }
-
-      if (!mediaItem) {
-        console.warn(
-          "[ClaudeTimelineBridge] Media not found:",
-          element.sourceName || element.sourceId
-        );
+      if (isClaudeMediaElementType({ type: element.type })) {
+        addClaudeMediaElement({
+          element,
+          timelineStore,
+          mediaStore,
+        });
         return;
       }
 
-      // Find or create a media track
-      const trackId = timelineStore.findOrCreateTrack("media");
+      if (element.type === "text") {
+        addClaudeTextElement({
+          element,
+          timelineStore,
+        });
+        return;
+      }
 
-      // Calculate duration from endTime-startTime or fall back to media duration
-      const duration =
-        element.endTime != null && element.startTime != null
-          ? element.endTime - element.startTime
-          : mediaItem.duration || 10;
-
-      timelineStore.addElementToTrack(trackId, {
-        type: "media",
-        name: mediaItem.name,
-        mediaId: mediaItem.id,
-        startTime: element.startTime || 0,
-        duration,
-        trimStart: 0,
-        trimEnd: 0,
-      });
-
-      console.log(
-        "[ClaudeTimelineBridge] Added media element:",
-        mediaItem.name
-      );
-    } else if (element.type === "text") {
-      const trackId = timelineStore.findOrCreateTrack("text");
-      const duration =
-        element.endTime != null && element.startTime != null
-          ? element.endTime - element.startTime
-          : 5;
-
-      timelineStore.addElementToTrack(trackId, {
-        type: "text",
-        name: element.content || "Text",
-        content: element.content || "",
-        startTime: element.startTime || 0,
-        duration,
-        trimStart: 0,
-        trimEnd: 0,
-        fontSize: 48,
-        fontFamily: "Inter",
-        color: "#ffffff",
-        backgroundColor: "transparent",
-        textAlign: "center",
-        fontWeight: "normal",
-        fontStyle: "normal",
-        textDecoration: "none",
-        x: 0.5,
-        y: 0.5,
-        rotation: 0,
-        opacity: 1,
-      });
-
-      console.log(
-        "[ClaudeTimelineBridge] Added text element:",
-        element.content
-      );
-    } else {
       console.warn(
         "[ClaudeTimelineBridge] Unsupported element type:",
         element.type
       );
+    } catch (error) {
+      console.error("[ClaudeTimelineBridge] Failed to add element:", error);
     }
   });
 
@@ -206,27 +325,42 @@ export function setupClaudeTimelineBridge(): void {
    */
   claudeAPI.onUpdateElement(
     (data: { elementId: string; changes: Partial<ClaudeElement> }) => {
-      console.log("[ClaudeTimelineBridge] Updating element:", data.elementId);
-      console.warn(
-        "[ClaudeTimelineBridge] updateElement not implemented - needs store method"
-      );
+      try {
+        console.log("[ClaudeTimelineBridge] Updating element:", data.elementId);
+        console.warn(
+          "[ClaudeTimelineBridge] updateElement not implemented - needs store method"
+        );
+      } catch (error) {
+        console.error(
+          "[ClaudeTimelineBridge] Failed to handle element update:",
+          error
+        );
+      }
     }
   );
 
   // Handle element removal
   claudeAPI.onRemoveElement((elementId: string) => {
-    console.log("[ClaudeTimelineBridge] Removing element:", elementId);
-    const timelineStore = useTimelineStore.getState();
-    const tracks = timelineStore.tracks;
+    try {
+      console.log("[ClaudeTimelineBridge] Removing element:", elementId);
+      const timelineStore = useTimelineStore.getState();
+      const tracks = timelineStore.tracks;
 
-    // Find the track containing this element
-    const track = findTrackByElementId(tracks, elementId);
-    if (track) {
-      timelineStore.removeElementFromTrack(track.id, elementId);
-    } else {
+      // Find the track containing this element
+      const track = findTrackByElementId(tracks, elementId);
+      if (track) {
+        timelineStore.removeElementFromTrack(track.id, elementId);
+        return;
+      }
+
       console.warn(
         "[ClaudeTimelineBridge] Could not find track for element:",
         elementId
+      );
+    } catch (error) {
+      console.error(
+        "[ClaudeTimelineBridge] Failed to handle element removal:",
+        error
       );
     }
   });
@@ -313,20 +447,24 @@ function formatElementForExport(
  * 4. Update timeline store with imported data
  */
 function applyTimelineToStore(timeline: ClaudeTimeline): void {
-  // Log import details for debugging - helps verify the bridge is working
-  console.log("[ClaudeTimelineBridge] Would apply timeline:", {
-    name: timeline.name,
-    duration: timeline.duration,
-    tracks: timeline.tracks.length,
-    totalElements: timeline.tracks.reduce(
-      (sum, t) => sum + t.elements.length,
-      0
-    ),
-  });
+  try {
+    // Log import details for debugging - helps verify the bridge is working
+    console.log("[ClaudeTimelineBridge] Would apply timeline:", {
+      name: timeline.name,
+      duration: timeline.duration,
+      tracks: timeline.tracks.length,
+      totalElements: timeline.tracks.reduce(
+        (sum, t) => sum + t.elements.length,
+        0
+      ),
+    });
 
-  console.warn(
-    "[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented"
-  );
+    console.warn(
+      "[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented"
+    );
+  } catch (error) {
+    console.error("[ClaudeTimelineBridge] Timeline import failed:", error);
+  }
 }
 
 /**
