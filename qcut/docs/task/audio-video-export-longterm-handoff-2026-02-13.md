@@ -164,3 +164,41 @@ User requested long-term fix and verification for export bug where timeline with
    - `Audio files: 1`
    - `FFmpeg export completed successfully`
    - test status: `1 passed`
+
+### Edge Case: Audio Longer Than Video
+
+Question raised: what happens if overlay audio duration is longer than the video/timeline duration?
+
+Current behavior (important):
+1. Mode 2 / composite path is mostly safe because export args include `-t <timelineDuration>`, which clamps output duration.
+2. Mode 1 direct-copy path does not consistently enforce `-shortest` when external audio is mapped, so long overlay audio can outlive video.
+3. Mode 1.5 overlay mix uses:
+   - `amix=duration=first` when base audio exists (generally clamped),
+   - `amix=duration=longest` when no base audio exists (can exceed video duration).
+
+Long-term policy recommendation:
+1. Export output duration should equal timeline/video duration by default.
+2. Audio longer than timeline should be trimmed (not extend output), unless a future explicit "extend output to longest audio" option is added.
+
+Concrete implementation plan:
+1. Mode 1 (`electron/ffmpeg-args-builder.ts`):
+   - add `-shortest` when external audio inputs are present.
+2. Mode 1.5 (`electron/ffmpeg-export-handler.ts` in `mixOverlayAudio()`):
+   - force clamping to video duration by either:
+     - using `-shortest`, and/or
+     - applying `atrim=0:<videoDuration>` on final mixed audio.
+3. Keep Mode 2 clamp with `-t <duration>`; optionally add `-shortest` for consistency.
+
+Test cases to add:
+1. 5s video + 20s audio-track clip -> output must be ~5s.
+2. 5s silent video + 20s audio-track clip (no base audio) -> output must be ~5s.
+3. 5s video (with embedded audio) + 20s overlay audio -> output must be ~5s and include mixed audio.
+
+### Recorded Decision (User Request)
+
+Date: 2026-02-13
+
+1. User asked: what if audio is longer than video.
+2. Decision recorded: prioritize long-term stability and deterministic output duration.
+3. Expected product behavior: export length follows timeline/video length by default; excess audio is trimmed.
+4. Follow-up implementation (pending): add explicit duration clamping in Mode 1 and Mode 1.5 paths as listed above.
