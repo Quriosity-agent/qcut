@@ -1,5 +1,6 @@
 import { ipcMain, app } from "electron";
 import { platform } from "node:os";
+import { createSpawnDiagnostics } from "./pty-spawn-diagnostics";
 
 // Dynamic import for node-pty to support packaged app
 let pty: typeof import("node-pty");
@@ -50,6 +51,24 @@ interface SpawnResult {
 interface OperationResult {
   success: boolean;
   error?: string;
+}
+
+function getPtySpawnRecoveryHint({
+  message,
+}: {
+  message: string;
+}): string | null {
+  const normalizedMessage = message.toLowerCase();
+  const hasAbiSignature =
+    normalizedMessage.includes("posix_spawnp failed") ||
+    normalizedMessage.includes("node_module_version") ||
+    normalizedMessage.includes("module version mismatch");
+
+  if (!hasAbiSignature) {
+    return null;
+  }
+
+  return "node-pty may be built for a different ABI. Run: npx electron-rebuild -f -w node-pty";
 }
 
 // ============================================================================
@@ -160,18 +179,31 @@ export function setupPtyIPC(): void {
           ...options.env, // Merge additional env vars (e.g., OPENROUTER_API_KEY)
         };
 
-        console.log(`[PTY] Spawning: shell="${shell}" args=${JSON.stringify(args)}`);
-        console.log(`[PTY] CWD exists: ${require("fs").existsSync(spawnCwd)} (${spawnCwd})`);
-        console.log(`[PTY] PATH preview: ${(spawnEnv.PATH || "").split(":").slice(0, 5).join(":")}`);
-        if (options.command) {
-          const cmdBin = options.command.split(" ")[0];
-          const { execSync } = require("child_process");
-          try {
-            const whichResult = execSync(`which ${cmdBin} 2>/dev/null || echo "NOT FOUND"`, { env: spawnEnv }).toString().trim();
-            console.log(`[PTY] which ${cmdBin}: ${whichResult}`);
-          } catch {
-            console.log(`[PTY] which ${cmdBin}: lookup failed`);
-          }
+        const diagnostics = createSpawnDiagnostics({
+          shell,
+          args,
+          cwd: spawnCwd,
+          command: options.command,
+          envPath: spawnEnv.PATH,
+          platformName: platform(),
+          pathExtEnv: spawnEnv.PATHEXT,
+        });
+
+        console.log(
+          `[PTY] Spawning: shell="${diagnostics.shell}" args=${JSON.stringify(
+            diagnostics.args
+          )}`
+        );
+        console.log(
+          `[PTY] CWD exists: ${diagnostics.cwdExists} (${diagnostics.cwd})`
+        );
+        console.log(`[PTY] PATH preview: ${diagnostics.pathPreview}`);
+        if (diagnostics.commandBinary) {
+          const resolvedCommandPath =
+            diagnostics.resolvedCommandPath || "NOT FOUND";
+          console.log(
+            `[PTY] command ${diagnostics.commandBinary}: ${resolvedCommandPath}`
+          );
         }
 
         const ptyProcess = pty.spawn(shell, args, {
@@ -225,15 +257,25 @@ export function setupPtyIPC(): void {
         const message =
           error instanceof Error ? error.message : "PTY spawn failed";
         const stack = error instanceof Error ? error.stack : undefined;
-        const code = error && typeof error === "object" && "code" in error ? (error as { code: string }).code : "none";
-        const errno = error && typeof error === "object" && "errno" in error ? (error as { errno: number }).errno : "none";
+        const code =
+          error && typeof error === "object" && "code" in error
+            ? (error as { code: string }).code
+            : "none";
+        const errno =
+          error && typeof error === "object" && "errno" in error
+            ? (error as { errno: number }).errno
+            : "none";
         console.error("[PTY] ===== SPAWN ERROR =====");
         console.error("[PTY] Error message:", message);
         console.error("[PTY] Error code:", code, "errno:", errno);
         console.error("[PTY] Error stack:", stack);
         console.error("[PTY] Shell env SHELL:", process.env.SHELL);
         console.error("[PTY] Platform:", platform());
-        return { success: false, error: message };
+        const recoveryHint = getPtySpawnRecoveryHint({ message });
+        const errorMessage = recoveryHint
+          ? `${message}. ${recoveryHint}`
+          : message;
+        return { success: false, error: errorMessage };
       }
     }
   );

@@ -18,29 +18,27 @@ import { test, expect, createTestProject } from "./helpers/electron-helpers";
  * The tab might be in a scrollable area, so we scroll to make it visible first
  */
 async function navigateToTerminalTab(page: import("@playwright/test").Page) {
-  // The Terminal tab is at the end of the tabbar, so we may need to scroll
-  await page.evaluate(() => {
-    const scrollContainer = document.querySelector(".overflow-x-auto");
-    if (scrollContainer) {
-      scrollContainer.scrollTo({
-        left: scrollContainer.scrollWidth,
-        behavior: "instant",
-      });
-    }
-  });
+  try {
+    // PTY tab lives inside the "Tools" group, so ensure that group is active first
+    const toolsGroup = page.getByTestId("group-tools");
+    await toolsGroup.click({ timeout: 5000 });
 
-  // Wait a moment for scroll to complete
-  await page.waitForTimeout(200);
+    // Click on the PTY terminal tab
+    const ptyTab = page.getByTestId("pty-panel-tab");
+    await ptyTab.click({ timeout: 5000 });
 
-  // Click on the PTY terminal tab
-  const ptyTab = page.getByTestId("pty-panel-tab");
-  await ptyTab.click({ timeout: 5000 });
-
-  // Wait for terminal view to be visible
-  await page.waitForSelector('[data-testid="pty-terminal-view"]', {
-    timeout: 5000,
-    state: "visible",
-  });
+    // Wait for terminal view to be visible
+    await page.waitForSelector('[data-testid="pty-terminal-view"]', {
+      timeout: 5000,
+      state: "visible",
+    });
+  } catch (error) {
+    throw new Error(
+      `Failed to navigate to PTY terminal tab: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
 }
 
 test.describe("Terminal Paste Functionality", () => {

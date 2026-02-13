@@ -9,12 +9,7 @@ import { FFmpegHealthNotification } from "@/components/ffmpeg-health-notificatio
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
 import { initializeRemotionStore } from "@/stores/remotion-store";
-import {
-  setupClaudeTimelineBridge,
-  setupClaudeProjectBridge,
-  cleanupClaudeTimelineBridge,
-  cleanupClaudeProjectBridge,
-} from "@/lib/claude-timeline-bridge";
+import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge-lifecycle";
 import { debugLog } from "@/lib/debug-config";
 import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
 
@@ -38,12 +33,7 @@ function RemotionInitializer() {
  */
 function ClaudeInitializer() {
   useEffect(() => {
-    setupClaudeTimelineBridge();
-    setupClaudeProjectBridge();
-    return () => {
-      cleanupClaudeTimelineBridge();
-      cleanupClaudeProjectBridge();
-    };
+    return setupClaudeBridgeLifecycle();
   }, []);
   return null;
 }
