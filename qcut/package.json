@@ -91,7 +91,7 @@
     "appId": "com.qcut.videoeditor",
     "productName": "QCut AI Video Editor",
     "copyright": "Copyright © 2024 QCut Team",
-    "afterPack": "./scripts/afterPack.ts",
+    "afterPack": "./dist/scripts/afterPack.js",
     "directories": {
       "output": "dist-electron",
       "buildResources": "build"
