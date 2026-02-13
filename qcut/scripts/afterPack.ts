@@ -73,9 +73,5 @@ async function afterPack(context: AfterPackContext): Promise<void> {
   );
 }
 
-// CommonJS export for backward compatibility with electron-builder
-module.exports = { default: afterPack };
-
-// ES6 export for TypeScript files
-export default afterPack;
-export type { AfterPackContext };
+// CommonJS export for electron-builder
+export = afterPack;
