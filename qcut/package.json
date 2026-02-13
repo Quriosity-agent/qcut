@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.65",
+  "version": "0.3.66",
   "description": "QCut - Open-source video editor",
   "author": {
     "name": "QCut Team",
@@ -60,7 +60,7 @@
     "dist:win": "bun run stage-ffmpeg-binaries && electron-builder --win -c.win.forceCodeSigning=false",
     "dist:dir": "bun run stage-ffmpeg-binaries && electron-builder --dir",
     "dist:win:unsigned": "bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
-    "compile-afterpack": "mkdir -p dist/scripts && bun x tsc scripts/afterPack.ts --outDir dist/scripts --module commonjs --target ES2020 --skipLibCheck",
+    "compile-afterpack": "mkdir -p dist/scripts && bun x tsc scripts/afterPack.ts --outDir dist/scripts --module commonjs --target ES2020 --skipLibCheck --types",
     "dist:win:release": "bun run compile-afterpack && bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.win.verifyUpdateCodeSignature=false && bun run verify:packaged-ffmpeg",
     "dist:win:fast": "bun run stage-ffmpeg-binaries && electron-builder --win --config.win.forceCodeSigning=false --config.compression=store --config.nsis.differentialPackage=false",
     "dist:mac": "bun run stage-ffmpeg-binaries && electron-builder --mac && bun run verify:packaged-ffmpeg",
