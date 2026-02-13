@@ -146,7 +146,7 @@
       "!**/apps/landing/**/*"
     ],
     "compression": "maximum",
-    "npmRebuild": true,
+    "npmRebuild": false,
     "nodeGypRebuild": false,
     "extraResources": [
       {
@@ -198,8 +198,7 @@
       "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "compression": "store",
-      "npmRebuild": false
+      "compression": "store"
     },
     "nsis": {
       "oneClick": false,
