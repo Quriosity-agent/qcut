@@ -190,6 +190,15 @@ export interface Skill {
   updatedAt: number;
 }
 
+export interface SkillsSyncForClaudeResult {
+  synced: boolean;
+  copied: number;
+  skipped: number;
+  removed: number;
+  warnings: string[];
+  error?: string;
+}
+
 /** Options for importing media into a project */
 export interface MediaImportOptions {
   sourcePath: string;
@@ -525,6 +534,7 @@ export interface ElectronAPI {
         bundled?: boolean;
       }>
     >;
+    syncForClaude: (projectId: string) => Promise<SkillsSyncForClaudeResult>;
   };
 
   // AI Pipeline operations

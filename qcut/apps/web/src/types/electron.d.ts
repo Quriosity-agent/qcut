@@ -629,6 +629,20 @@ export interface ElectronAPI {
         bundled?: boolean;
       }>
     >;
+
+    /**
+     * Sync managed project skills into .claude/skills for Claude autodiscovery
+     * @param projectId - Project identifier
+     * @returns Sync summary
+     */
+    syncForClaude: (projectId: string) => Promise<{
+      synced: boolean;
+      copied: number;
+      skipped: number;
+      removed: number;
+      warnings: string[];
+      error?: string;
+    }>;
   };
 
   /**

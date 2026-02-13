@@ -70,6 +70,8 @@ export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
     browse: () => ipcRenderer.invoke("skills:browse"),
     getPath: (projectId) => ipcRenderer.invoke("skills:getPath", projectId),
     scanGlobal: () => ipcRenderer.invoke("skills:scanGlobal"),
+    syncForClaude: (projectId) =>
+      ipcRenderer.invoke("skills:syncForClaude", projectId),
   };
 }
 

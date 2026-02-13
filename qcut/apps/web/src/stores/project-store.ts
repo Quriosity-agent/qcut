@@ -10,6 +10,7 @@ import { getMediaStore } from "./media-store-loader";
 // import { useStickersOverlayStore } from "./stickers-overlay-store";
 import { generateUUID } from "@/lib/utils";
 import { debugError, debugLog } from "@/lib/debug-config";
+import { syncProjectSkillsForClaude } from "@/lib/project-skills-sync";
 import {
   handleError,
   ErrorCategory,
@@ -279,6 +280,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         timelineStore.loadProjectTimeline({ projectId: id }),
         stickersStore.loadFromProject(id),
       ]);
+
+      syncProjectSkillsForClaude({ projectId: id });
       debugLog(`[ProjectStore] Project loading complete: ${id}`);
     } catch (error) {
       // Rollback to previous state if we had a project open

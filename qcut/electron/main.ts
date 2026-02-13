@@ -99,6 +99,7 @@ const {
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
+const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
 const {
   setupAIPipelineIPC,
   cleanupAIPipeline,
@@ -551,6 +552,7 @@ app.whenReady().then(() => {
     ["PtyIPC", setupPtyIPC],
     ["AIVideoHandlers", registerAIVideoHandlers],
     ["SkillsIPC", setupSkillsIPC],
+    ["SkillsSyncIPC", setupSkillsSyncIPC],
     ["AIPipelineIPC", setupAIPipelineIPC],
     ["MediaImportIPC", setupMediaImportIPC],
     ["ProjectFolderIPC", setupProjectFolderIPC],
