@@ -9,6 +9,7 @@ import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
 import { useSkillsStore } from "@/stores/skills-store";
+import { cleanupPtyOnEditorExit } from "@/lib/pty-session-cleanup";
 import "@/lib/debug-sticker-overlay"; // Load debug utilities
 import "@/lib/sticker-test-helper"; // Load sticker test helper
 import "@/lib/sticker-persistence-debug"; // Load persistence debug
@@ -26,6 +27,12 @@ export const Route = createLazyFileRoute("/editor/$project_id")({
 function EditorPage() {
   const navigate = useNavigate();
   const { project_id } = Route.useParams();
+
+  useEffect(() => {
+    return () => {
+      cleanupPtyOnEditorExit();
+    };
+  }, []);
 
   const {
     activeProject,

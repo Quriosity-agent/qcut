@@ -293,10 +293,19 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
   disconnect: async () => {
     const { sessionId } = get();
-    if (sessionId) {
-      await window.electronAPI?.pty?.kill(sessionId);
+    try {
+      if (sessionId) {
+        await window.electronAPI?.pty?.kill(sessionId);
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to terminate PTY session";
+      set({ error: message });
+    } finally {
+      set({ sessionId: null, status: "disconnected" });
     }
-    set({ sessionId: null, status: "disconnected" });
   },
 
   setDimensions: (cols, rows) => {
@@ -306,7 +315,15 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
   resize: async () => {
     const { sessionId, cols, rows } = get();
     if (sessionId) {
-      await window.electronAPI?.pty?.resize(sessionId, cols, rows);
+      try {
+        await window.electronAPI?.pty?.resize(sessionId, cols, rows);
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to resize PTY session";
+        set({ error: message });
+      }
     }
   },
 
@@ -362,9 +379,28 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
     const prompt = buildSkillPrompt(activeSkill);
 
-    // Send the prompt to the terminal
-    window.electronAPI?.pty?.write(sessionId, prompt + "\n");
-    set({ skillPromptSent: true });
+    try {
+      const writeResult = window.electronAPI?.pty?.write(sessionId, prompt + "\n");
+      if (writeResult && typeof writeResult.catch === "function") {
+        writeResult
+          .then(() => {
+            set({ skillPromptSent: true });
+          })
+          .catch((error: unknown) => {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Failed to send skill prompt";
+            set({ error: message });
+          });
+        return;
+      }
+      set({ skillPromptSent: true });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to send skill prompt";
+      set({ error: message });
+    }
   },
 
   handleConnected: (sessionId) => {

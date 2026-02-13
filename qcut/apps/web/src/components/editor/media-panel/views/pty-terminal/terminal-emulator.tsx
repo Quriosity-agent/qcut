@@ -15,6 +15,8 @@ interface TerminalEmulatorProps {
   sessionId: string | null;
   /** Callback fired when terminal is initialized and ready */
   onReady?: () => void;
+  /** Whether the terminal is currently visible in the UI */
+  isVisible?: boolean;
 }
 
 /**
@@ -25,12 +27,30 @@ interface TerminalEmulatorProps {
 export function TerminalEmulator({
   sessionId,
   onReady,
+  isVisible = true,
 }: TerminalEmulatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
 
   const { setDimensions, resize, handleDisconnected } = usePtyTerminalStore();
+
+  const fitTerminal = useCallback(() => {
+    const fitAddon = fitAddonRef.current;
+    const terminal = terminalRef.current;
+    if (!fitAddon || !terminal) {
+      return;
+    }
+    try {
+      fitAddon.fit();
+      setDimensions(terminal.cols, terminal.rows);
+      resize().catch(() => {
+        // Ignore resize errors (e.g., during unmount or when PTY unavailable)
+      });
+    } catch {
+      // Ignore fit/resize errors during terminal teardown
+    }
+  }, [setDimensions, resize]);
 
   // Handle terminal output
   const handleData = useCallback(
@@ -101,15 +121,13 @@ export function TerminalEmulator({
     // Open terminal in container
     terminal.open(containerRef.current);
 
-    // Small delay to ensure container is rendered before fitting
-    setTimeout(() => {
-      fitAddon.fit();
-      setDimensions(terminal.cols, terminal.rows);
-    }, 0);
-
     // Store refs
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
+
+    requestAnimationFrame(() => {
+      fitTerminal();
+    });
 
     // Handle user input - send to PTY
     terminal.onData((data) => {
@@ -133,7 +151,11 @@ export function TerminalEmulator({
       const text = e.clipboardData?.getData("text");
       if (text && sessionId) {
         isPasting = true;
-        window.electronAPI?.pty?.write?.(sessionId, text);
+        window.electronAPI?.pty
+          ?.write?.(sessionId, text)
+          ?.catch((error) => {
+            console.error("[Terminal] Failed to paste into PTY:", error);
+          });
         setTimeout(() => {
           isPasting = false;
         }, 100);
@@ -167,7 +189,14 @@ export function TerminalEmulator({
             .readText()
             .then((text) => {
               if (text && sessionId) {
-                window.electronAPI?.pty?.write?.(sessionId, text);
+                window.electronAPI?.pty
+                  ?.write?.(sessionId, text)
+                  ?.catch((error) => {
+                    console.error(
+                      "[Terminal] Failed to write clipboard text:",
+                      error
+                    );
+                  });
               }
             })
             .catch(() => {
@@ -225,7 +254,7 @@ export function TerminalEmulator({
       window.electronAPI?.pty?.removeListeners();
       terminal.dispose();
     };
-  }, [sessionId, handleData, handleExit, setDimensions, onReady]);
+  }, [sessionId, handleData, handleExit, fitTerminal, onReady]);
 
   // Handle resize
   useEffect(() => {
@@ -234,23 +263,10 @@ export function TerminalEmulator({
     }
 
     const container = containerRef.current;
-    const fitAddon = fitAddonRef.current;
-    const terminal = terminalRef.current;
-
     const resizeObserver = new ResizeObserver(() => {
       // Use requestAnimationFrame to batch resize operations
       requestAnimationFrame(() => {
-        if (fitAddon && terminal) {
-          try {
-            fitAddon.fit();
-            setDimensions(terminal.cols, terminal.rows);
-            resize().catch(() => {
-              // Ignore resize errors (e.g., during unmount or when PTY unavailable)
-            });
-          } catch {
-            // Ignore resize errors during unmount
-          }
-        }
+        fitTerminal();
       });
     });
 
@@ -259,7 +275,17 @@ export function TerminalEmulator({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [setDimensions, resize]);
+  }, [fitTerminal]);
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      fitTerminal();
+      terminalRef.current?.focus();
+    });
+  }, [isVisible, fitTerminal]);
 
   // Focus terminal when sessionId changes (new connection)
   useEffect(() => {

@@ -34,9 +34,9 @@ const EffectsView = React.lazy(() =>
 );
 
 export function MediaPanel() {
-  const { activeTab } = useMediaPanelStore();
+  const activeTab = useMediaPanelStore((state) => state.activeTab);
 
-  const viewMap: Record<Tab, React.ReactNode> = {
+  const viewMap: Record<Exclude<Tab, "pty">, React.ReactNode> = {
     media: <MediaView />,
     audio: <AudioView />,
     text: <TextView />,
@@ -70,11 +70,12 @@ export function MediaPanel() {
     draw: <DrawView />,
     segmentation: <SegmentationPanel />,
     remotion: <RemotionView />,
-    pty: <PtyTerminalView />,
     "word-timeline": <WordTimelineView />,
     "project-folder": <ProjectFolderView />,
     "camera-selector": <CameraSelectorView />,
   };
+
+  const activeNonPtyTab = activeTab === "pty" ? null : activeTab;
 
   return (
     <div
@@ -83,7 +84,16 @@ export function MediaPanel() {
     >
       <GroupBar />
       <TabBar />
-      <div className="flex-1 overflow-y-auto">{viewMap[activeTab]}</div>
+      <div
+        className="flex-1 min-h-0"
+        style={{ display: activeTab === "pty" ? "flex" : "none" }}
+        data-testid="media-panel-pty-container"
+      >
+        <PtyTerminalView />
+      </div>
+      {activeNonPtyTab && (
+        <div className="flex-1 overflow-y-auto">{viewMap[activeNonPtyTab]}</div>
+      )}
     </div>
   );
 }

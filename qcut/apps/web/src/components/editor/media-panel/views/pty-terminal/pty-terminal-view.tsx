@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { TerminalEmulator } from "./terminal-emulator";
 import { Button } from "@/components/ui/button";
@@ -30,8 +29,10 @@ import {
   DEFAULT_OPENROUTER_MODELS,
   CLAUDE_MODELS,
 } from "@/types/cli-provider";
+import { useMediaPanelStore } from "../../store";
 
 export function PtyTerminalView() {
+  const activeTab = useMediaPanelStore((state) => state.activeTab);
   const {
     sessionId,
     status,
@@ -47,37 +48,44 @@ export function PtyTerminalView() {
     setSelectedModel,
     setSelectedClaudeModel,
     clearSkillContext,
+    handleError,
   } = usePtyTerminalStore();
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      const currentSessionId = usePtyTerminalStore.getState().sessionId;
-      if (currentSessionId) {
-        window.electronAPI?.pty?.kill(currentSessionId);
-      }
-      window.electronAPI?.pty?.removeListeners();
-    };
-  }, []);
+  const setAsyncActionError = ({ error }: { error: unknown }) => {
+    const message =
+      error instanceof Error ? error.message : "Terminal action failed";
+    handleError(message);
+  };
 
   const handleStart = async () => {
-    await connect();
+    try {
+      await connect();
+    } catch (error) {
+      setAsyncActionError({ error });
+    }
   };
 
   const handleStop = async () => {
-    await disconnect();
+    try {
+      await disconnect();
+    } catch (error) {
+      setAsyncActionError({ error });
+    }
   };
 
   const handleRestart = async () => {
-    await disconnect();
-    // Small delay to ensure cleanup
-    setTimeout(() => {
-      connect();
-    }, 100);
+    try {
+      await disconnect();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await connect();
+    } catch (error) {
+      setAsyncActionError({ error });
+    }
   };
 
   const isConnected = status === "connected";
   const isConnecting = status === "connecting";
+  const isTerminalVisible = activeTab === "pty";
 
   return (
     <div className="flex flex-col h-full" data-testid="pty-terminal-view">
@@ -291,7 +299,10 @@ export function PtyTerminalView() {
       {/* Terminal Area */}
       <div className="flex-1 min-h-0 bg-[#1a1a1a] overflow-hidden">
         {isConnected || isConnecting ? (
-          <TerminalEmulator sessionId={sessionId} />
+          <TerminalEmulator
+            sessionId={sessionId}
+            isVisible={isTerminalVisible}
+          />
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             {activeSkill ? (
