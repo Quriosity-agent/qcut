@@ -14,6 +14,7 @@ import type {
   TimelineTrack,
   TimelineElement,
   TextElement,
+  MarkdownElement,
   DragData,
 } from "@/types/timeline";
 import type { MediaItem } from "./media-store";
@@ -22,6 +23,7 @@ import type { TimelineStore, DragState } from "./timeline";
 import { INITIAL_DRAG_STATE, getElementNameWithSuffix } from "./timeline";
 import { generateUUID } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import { clampMarkdownDuration } from "@/lib/markdown";
 import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";

@@ -12,6 +12,7 @@ export type {
   CreateTimelineElement,
   TimelineTrack,
   TextElement,
+  MarkdownElement,
   MediaElement,
   RemotionElement,
   DragData,
@@ -30,6 +31,7 @@ import type {
   TrackType,
   CreateTimelineElement,
   TextElement,
+  MarkdownElement,
   MediaElement,
   RemotionElement,
   DragData,
@@ -316,6 +318,31 @@ export interface TimelineStore {
       >
     >
   ) => void;
+  updateMarkdownElement: (
+    trackId: string,
+    elementId: string,
+    updates: Partial<
+      Pick<
+        MarkdownElement,
+        | "markdownContent"
+        | "theme"
+        | "fontSize"
+        | "fontFamily"
+        | "padding"
+        | "backgroundColor"
+        | "textColor"
+        | "scrollMode"
+        | "scrollSpeed"
+        | "duration"
+        | "x"
+        | "y"
+        | "width"
+        | "height"
+        | "rotation"
+        | "opacity"
+      >
+    >
+  ) => void;
 
   // Interactive element manipulation (for effects)
   // Batched transform updater - use this to update multiple properties atomically and avoid history spam
@@ -361,8 +388,10 @@ export interface TimelineStore {
   findOrCreateTrack: (trackType: TrackType) => string;
   addMediaAtTime: (item: MediaItem, currentTime?: number) => boolean;
   addTextAtTime: (item: TextElement, currentTime?: number) => boolean;
+  addMarkdownAtTime: (item: MarkdownElement, currentTime?: number) => boolean;
   addMediaToNewTrack: (item: MediaItem) => boolean;
   addTextToNewTrack: (item: TextElement | DragData) => boolean;
+  addMarkdownToNewTrack: (item: MarkdownElement | DragData) => boolean;
 
   // Effects-related methods
   /**
