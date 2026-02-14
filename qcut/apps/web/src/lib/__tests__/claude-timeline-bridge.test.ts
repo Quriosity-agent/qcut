@@ -18,7 +18,9 @@ const storeMocks = vi.hoisted(() => {
     mediaItems: [],
   };
 
-  const projectStoreState = {
+  const projectStoreState: {
+    activeProject: { id: string } | null;
+  } = {
     activeProject: null,
   };
 
@@ -31,6 +33,8 @@ const storeMocks = vi.hoisted(() => {
     projectGetState: vi.fn(() => projectStoreState),
   };
 });
+
+const syncProjectFolderMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/stores/timeline-store", () => ({
   useTimelineStore: {
@@ -50,9 +54,19 @@ vi.mock("@/stores/project-store", () => ({
   },
 }));
 
-type AddElementHandler = (element: Partial<ClaudeElement>) => void;
+vi.mock("@/lib/project-folder-sync", () => ({
+  syncProjectFolder: syncProjectFolderMock,
+}));
 
-function setupTimelineBridgeWithHandlers(): {
+type AddElementHandler = (
+  element: Partial<ClaudeElement>
+) => void | Promise<void>;
+
+function setupTimelineBridgeWithHandlers({
+  withProjectFolder = false,
+}: {
+  withProjectFolder?: boolean;
+} = {}): {
   addElementHandler: AddElementHandler;
   timelineApi: {
     onRequest: ReturnType<typeof vi.fn>;
@@ -87,19 +101,30 @@ function setupTimelineBridgeWithHandlers(): {
     removeListeners: vi.fn(),
   };
 
+  const electronAPI: {
+    claude: {
+      timeline: typeof timelineApi;
+    };
+    projectFolder?: object;
+  } = {
+    claude: {
+      timeline: timelineApi,
+    },
+  };
+  if (withProjectFolder) {
+    electronAPI.projectFolder = {};
+  }
+
   (
     window as unknown as {
       electronAPI?: {
         claude?: {
           timeline?: typeof timelineApi;
         };
+        projectFolder?: object;
       };
     }
-  ).electronAPI = {
-    claude: {
-      timeline: timelineApi,
-    },
-  };
+  ).electronAPI = electronAPI;
 
   setupClaudeTimelineBridge();
 
@@ -121,6 +146,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    syncProjectFolderMock.mockReset();
 
     storeMocks.timelineStoreState.findOrCreateTrack.mockReset();
     storeMocks.timelineStoreState.addElementToTrack.mockReset();
@@ -132,13 +158,14 @@ describe("setupClaudeTimelineBridge - add element", () => {
     storeMocks.timelineStoreState.tracks = [];
 
     storeMocks.mediaStoreState.mediaItems = [];
+    storeMocks.projectStoreState.activeProject = null;
 
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("adds a media element when sourceName matches imported media", () => {
+  it("adds a media element when sourceName matches imported media", async () => {
     storeMocks.mediaStoreState.mediaItems = [
       {
         id: "media-1",
@@ -151,7 +178,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
 
     const { addElementHandler } = setupTimelineBridgeWithHandlers();
 
-    addElementHandler({
+    await addElementHandler({
       type: "video",
       sourceName: "clip-a.mp4",
       startTime: 2,
@@ -174,7 +201,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
     });
   });
 
-  it("adds a media element by sourceId and falls back to media duration", () => {
+  it("adds a media element by sourceId and falls back to media duration", async () => {
     storeMocks.mediaStoreState.mediaItems = [
       {
         id: "media-2",
@@ -187,7 +214,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
 
     const { addElementHandler } = setupTimelineBridgeWithHandlers();
 
-    addElementHandler({
+    await addElementHandler({
       type: "media",
       sourceId: "media-2",
       startTime: 3,
@@ -206,10 +233,50 @@ describe("setupClaudeTimelineBridge - add element", () => {
     });
   });
 
-  it("adds a text element with defaults when content is missing", () => {
+  it("adds a media element using deterministic Claude sourceId", async () => {
+    const filename = "clip-c.mp4";
+    const bytes = new TextEncoder().encode(filename);
+    const binary = Array.from(bytes, (value) =>
+      String.fromCharCode(value)
+    ).join("");
+    const sourceId = `media_${btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")}`;
+
+    storeMocks.mediaStoreState.mediaItems = [
+      {
+        id: "renderer-media-3",
+        name: filename,
+        type: "video",
+        file: new File([""], filename),
+        duration: 8,
+      },
+    ];
+
     const { addElementHandler } = setupTimelineBridgeWithHandlers();
 
-    addElementHandler({
+    await addElementHandler({
+      type: "video",
+      sourceId,
+      startTime: 0,
+      endTime: 4,
+    });
+
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).toHaveBeenCalledWith("media-track", {
+      type: "media",
+      name: filename,
+      mediaId: "renderer-media-3",
+      startTime: 0,
+      duration: 4,
+      trimStart: 0,
+      trimEnd: 0,
+    });
+  });
+
+  it("adds a text element with defaults when content is missing", async () => {
+    const { addElementHandler } = setupTimelineBridgeWithHandlers();
+
+    await addElementHandler({
       type: "text",
       startTime: 1,
       endTime: 4,
@@ -243,11 +310,58 @@ describe("setupClaudeTimelineBridge - add element", () => {
     });
   });
 
-  it("does not add media when referenced source does not exist", () => {
+  it("syncs project folder once and retries media resolution", async () => {
+    storeMocks.projectStoreState.activeProject = { id: "proj-1" };
+    syncProjectFolderMock.mockImplementation(async () => {
+      storeMocks.mediaStoreState.mediaItems = [
+        {
+          id: "synced-image-1",
+          name: "missing-image.png",
+          type: "image",
+          file: new File([""], "missing-image.png"),
+          duration: 3,
+        },
+      ];
+      return {
+        imported: 1,
+        skipped: 0,
+        errors: [],
+        scanTime: 5,
+        totalDiskFiles: 1,
+      };
+    });
+
+    const { addElementHandler } = setupTimelineBridgeWithHandlers({
+      withProjectFolder: true,
+    });
+
+    await addElementHandler({
+      type: "image",
+      sourceName: "missing-image.png",
+      startTime: 0,
+      endTime: 3,
+    });
+
+    expect(syncProjectFolderMock).toHaveBeenCalledTimes(1);
+    expect(syncProjectFolderMock).toHaveBeenCalledWith("proj-1");
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).toHaveBeenCalledWith("media-track", {
+      type: "media",
+      name: "missing-image.png",
+      mediaId: "synced-image-1",
+      startTime: 0,
+      duration: 3,
+      trimStart: 0,
+      trimEnd: 0,
+    });
+  });
+
+  it("does not add media when referenced source does not exist", async () => {
     const warningSpy = vi.spyOn(console, "warn");
     const { addElementHandler } = setupTimelineBridgeWithHandlers();
 
-    addElementHandler({
+    await addElementHandler({
       type: "image",
       sourceName: "missing-image.png",
       startTime: 0,

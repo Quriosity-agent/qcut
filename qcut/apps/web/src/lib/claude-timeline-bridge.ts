@@ -64,9 +64,11 @@ const CLAUDE_MEDIA_ELEMENT_TYPES = {
 const DEFAULT_MEDIA_DURATION_SECONDS = 10;
 const DEFAULT_TEXT_DURATION_SECONDS = 5;
 const DEFAULT_TEXT_CONTENT = "Text";
+const CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX = "media_";
 
 type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
-type MediaStoreState = ReturnType<typeof useMediaStore.getState>;
+
+const projectMediaSyncInFlight = new Map<string, Promise<void>>();
 
 function isClaudeMediaElementType({
   type,
@@ -133,24 +135,130 @@ function findMediaItemForElement({
   }
 
   if (element.sourceId) {
-    return mediaItems.find((item) => item.id === element.sourceId) || null;
+    const mediaById = mediaItems.find((item) => item.id === element.sourceId);
+    if (mediaById) {
+      return mediaById;
+    }
+
+    const decodedSourceName = getSourceNameFromDeterministicSourceId({
+      sourceId: element.sourceId,
+    });
+    if (decodedSourceName) {
+      const mediaByDecodedName = mediaItems.find(
+        (item) => item.name === decodedSourceName
+      );
+      if (mediaByDecodedName) {
+        return mediaByDecodedName;
+      }
+    }
   }
 
   return null;
 }
 
-function addClaudeMediaElement({
+function decodeBase64UrlUtf8({
+  encoded,
+}: {
+  encoded: string;
+}): string | null {
+  try {
+    const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = window.atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function getSourceNameFromDeterministicSourceId({
+  sourceId,
+}: {
+  sourceId: string;
+}): string | null {
+  if (!sourceId.startsWith(CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX)) {
+    return null;
+  }
+
+  const encodedName = sourceId.slice(CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX.length);
+  if (!encodedName) {
+    return null;
+  }
+
+  return decodeBase64UrlUtf8({ encoded: encodedName });
+}
+
+async function syncProjectMediaIfNeeded({
+  projectId,
+}: {
+  projectId: string;
+}): Promise<void> {
+  const existingSync = projectMediaSyncInFlight.get(projectId);
+  if (existingSync) {
+    await existingSync;
+    return;
+  }
+
+  const syncPromise = (async (): Promise<void> => {
+    try {
+      const { syncProjectFolder } = await import("@/lib/project-folder-sync");
+      await syncProjectFolder(projectId);
+    } catch (error) {
+      console.warn("[ClaudeTimelineBridge] Media sync failed:", error);
+    } finally {
+      projectMediaSyncInFlight.delete(projectId);
+    }
+  })();
+
+  projectMediaSyncInFlight.set(projectId, syncPromise);
+  await syncPromise;
+}
+
+async function resolveMediaItemForElement({
+  element,
+  projectId,
+}: {
+  element: Partial<ClaudeElement>;
+  projectId: string | undefined;
+}): Promise<MediaItem | null> {
+  try {
+    const mediaBeforeSync = findMediaItemForElement({
+      element,
+      mediaItems: useMediaStore.getState().mediaItems,
+    });
+    if (mediaBeforeSync) {
+      return mediaBeforeSync;
+    }
+
+    if (!projectId || !window.electronAPI?.projectFolder) {
+      return null;
+    }
+
+    await syncProjectMediaIfNeeded({ projectId });
+
+    return findMediaItemForElement({
+      element,
+      mediaItems: useMediaStore.getState().mediaItems,
+    });
+  } catch (error) {
+    console.warn("[ClaudeTimelineBridge] Media resolution failed:", error);
+    return null;
+  }
+}
+
+async function addClaudeMediaElement({
   element,
   timelineStore,
-  mediaStore,
+  projectId,
 }: {
   element: Partial<ClaudeElement>;
   timelineStore: TimelineStoreState;
-  mediaStore: MediaStoreState;
-}): void {
-  const mediaItem = findMediaItemForElement({
+  projectId: string | undefined;
+}): Promise<void> {
+  const mediaItem = await resolveMediaItemForElement({
     element,
-    mediaItems: mediaStore.mediaItems,
+    projectId,
   });
 
   if (!mediaItem) {
@@ -284,18 +392,18 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle element addition from Claude
-  claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
+  claudeAPI.onAddElement(async (element: Partial<ClaudeElement>) => {
     try {
       console.log("[ClaudeTimelineBridge] Adding element:", element);
 
       const timelineStore = useTimelineStore.getState();
-      const mediaStore = useMediaStore.getState();
+      const projectId = useProjectStore.getState().activeProject?.id;
 
       if (isClaudeMediaElementType({ type: element.type })) {
-        addClaudeMediaElement({
+        await addClaudeMediaElement({
           element,
           timelineStore,
-          mediaStore,
+          projectId,
         });
         return;
       }
