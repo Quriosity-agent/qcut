@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { createObjectURL } from "@/lib/blob-manager";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { usePlaybackStore } from "@/stores/playback-store";
 import { toast } from "sonner";
 import type { DragData } from "@/types/timeline";
 import type { MediaItem, MediaStore } from "@/stores/media-store-types";
@@ -88,6 +89,11 @@ export function useDragHandlers({
             return;
           }
 
+          if (dragData.type === "markdown") {
+            useTimelineStore.getState().addMarkdownToNewTrack(dragData);
+            return;
+          }
+
           if (dragData.type === "sticker") {
             try {
               const { useStickersStore } = await import(
@@ -161,6 +167,53 @@ export function useDragHandlers({
       if (e.dataTransfer.files?.length > 0) {
         if (!activeProject) {
           toast.error("No active project");
+          return;
+        }
+
+        const droppedFiles = Array.from(e.dataTransfer.files);
+        const markdownFiles = droppedFiles.filter((file) =>
+          file.name.toLowerCase().endsWith(".md")
+        );
+
+        if (markdownFiles.length > 0) {
+          try {
+            for (const markdownFile of markdownFiles) {
+              const markdownContent = await markdownFile.text();
+              const currentTime = usePlaybackStore.getState().currentTime;
+              useTimelineStore.getState().addMarkdownAtTime(
+                {
+                  id: "dropped-markdown",
+                  type: "markdown",
+                  name: markdownFile.name,
+                  markdownContent,
+                  duration: 300,
+                  startTime: 0,
+                  trimStart: 0,
+                  trimEnd: 0,
+                  theme: "dark",
+                  fontSize: 18,
+                  fontFamily: "Arial",
+                  padding: 16,
+                  backgroundColor: "rgba(0, 0, 0, 0.85)",
+                  textColor: "#ffffff",
+                  scrollMode: "static",
+                  scrollSpeed: 30,
+                  x: 0,
+                  y: 0,
+                  width: 720,
+                  height: 420,
+                  rotation: 0,
+                  opacity: 1,
+                },
+                currentTime
+              );
+            }
+
+            toast.success(`Added ${markdownFiles.length} markdown file(s)`);
+          } catch (error) {
+            console.error("Error processing markdown files:", error);
+            toast.error("Failed to process markdown files");
+          }
           return;
         }
 
