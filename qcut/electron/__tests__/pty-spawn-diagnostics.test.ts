@@ -40,8 +40,10 @@ describe("extractCommandBinary", () => {
   });
 });
 
+const isWindows = process.platform === "win32";
+
 describe("resolveCommandOnPath", () => {
-  it("resolves executable command on unix-like path", () => {
+  it.skipIf(isWindows)("resolves executable command on unix-like path", () => {
     const tempDir = createTempDir();
     const commandPath = join(tempDir, "claude");
     writeFileSync(commandPath, "#!/bin/sh\necho ok\n");
@@ -73,24 +75,27 @@ describe("resolveCommandOnPath", () => {
 });
 
 describe("createSpawnDiagnostics", () => {
-  it("returns spawn diagnostics with resolved command path and cwd status", () => {
-    const tempDir = createTempDir();
-    const commandPath = join(tempDir, "claude");
-    writeFileSync(commandPath, "#!/bin/sh\necho ok\n");
-    chmodSync(commandPath, 0o755);
+  it.skipIf(isWindows)(
+    "returns spawn diagnostics with resolved command path and cwd status",
+    () => {
+      const tempDir = createTempDir();
+      const commandPath = join(tempDir, "claude");
+      writeFileSync(commandPath, "#!/bin/sh\necho ok\n");
+      chmodSync(commandPath, 0o755);
 
-    const diagnostics = createSpawnDiagnostics({
-      shell: "/bin/zsh",
-      args: ["-c", "claude --dangerously-skip-permissions"],
-      cwd: tempDir,
-      command: "claude --dangerously-skip-permissions",
-      envPath: tempDir,
-      platformName: "darwin",
-    });
+      const diagnostics = createSpawnDiagnostics({
+        shell: "/bin/zsh",
+        args: ["-c", "claude --dangerously-skip-permissions"],
+        cwd: tempDir,
+        command: "claude --dangerously-skip-permissions",
+        envPath: tempDir,
+        platformName: "darwin",
+      });
 
-    expect(diagnostics.cwdExists).toBe(true);
-    expect(diagnostics.commandBinary).toBe("claude");
-    expect(diagnostics.resolvedCommandPath).toBe(commandPath);
-    expect(diagnostics.pathPreview).toBe(tempDir);
-  });
+      expect(diagnostics.cwdExists).toBe(true);
+      expect(diagnostics.commandBinary).toBe("claude");
+      expect(diagnostics.resolvedCommandPath).toBe(commandPath);
+      expect(diagnostics.pathPreview).toBe(tempDir);
+    }
+  );
 });
