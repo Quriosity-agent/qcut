@@ -191,9 +191,8 @@ export function findOrCreateTrackOperation(
   ctx: OperationContext,
   trackType: TrackType
 ): string {
-  // Always create new text track to allow multiple text elements
-  // Insert text tracks at the top
-  if (trackType === "text") {
+  // Always create new text/markdown tracks to allow independent overlays
+  if (trackType === "text" || trackType === "markdown") {
     return ctx.insertTrackAt(trackType, 0);
   }
 

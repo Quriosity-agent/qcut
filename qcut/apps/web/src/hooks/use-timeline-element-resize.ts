@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ResizeState, TimelineElement, TimelineTrack } from "@/types/timeline";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 
 interface UseTimelineElementResizeProps {
   element: TimelineElement;
@@ -40,9 +41,23 @@ export function useTimelineElementResize({
     pushHistory,
   } = useTimelineStore();
 
+  const getMinEffectiveDuration = useCallback(() => {
+    if (element.type === "markdown") {
+      return TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION;
+    }
+    return 0.1;
+  }, [element.type]);
+
+  const getMaxEffectiveDuration = useCallback(() => {
+    if (element.type === "markdown") {
+      return TIMELINE_CONSTANTS.MARKDOWN_MAX_DURATION;
+    }
+    return Number.POSITIVE_INFINITY;
+  }, [element.type]);
+
   const canExtendElementDuration = useCallback(() => {
     // Text elements can always be extended
-    if (element.type === "text") {
+    if (element.type === "text" || element.type === "markdown") {
       return true;
     }
 
@@ -81,7 +96,9 @@ export function useTimelineElementResize({
 
       if (resizing.side === "left") {
         // Left resize - different behavior for media vs text/image elements
-        const maxAllowed = element.duration - resizing.initialTrimEnd - 0.1;
+        const minEffectiveDuration = getMinEffectiveDuration();
+        const maxAllowed =
+          element.duration - resizing.initialTrimEnd - minEffectiveDuration;
         const calculated = resizing.initialTrimStart + deltaTime;
 
         if (calculated >= 0) {
@@ -104,7 +121,20 @@ export function useTimelineElementResize({
             // Text/Image: extend element to the left by moving startTime and increasing duration
             const extensionAmount = Math.abs(calculated);
             const maxExtension = element.startTime;
-            const actualExtension = Math.min(extensionAmount, maxExtension);
+            const maxEffectiveDuration = getMaxEffectiveDuration();
+            const maxDurationFromType = Number.isFinite(maxEffectiveDuration)
+              ? Math.max(
+                  0,
+                  maxEffectiveDuration +
+                    resizing.initialTrimEnd -
+                    element.duration
+                )
+              : Number.POSITIVE_INFINITY;
+            const actualExtension = Math.min(
+              extensionAmount,
+              maxExtension,
+              maxDurationFromType
+            );
             const newStartTime = element.startTime - actualExtension;
             const newDuration = element.duration + actualExtension;
 
@@ -143,7 +173,14 @@ export function useTimelineElementResize({
           if (canExtendElementDuration()) {
             // Extend the duration instead of reducing trimEnd further
             const extensionNeeded = Math.abs(calculated);
-            const newDuration = element.duration + extensionNeeded;
+            const maxEffectiveDuration = getMaxEffectiveDuration();
+            const maxDuration = Number.isFinite(maxEffectiveDuration)
+              ? maxEffectiveDuration + resizing.initialTrimStart
+              : Number.POSITIVE_INFINITY;
+            const newDuration = Math.min(
+              element.duration + extensionNeeded,
+              maxDuration
+            );
             const newTrimEnd = 0; // Reset trimEnd to 0 since we're extending
 
             // Update duration first, then trim
@@ -167,7 +204,9 @@ export function useTimelineElementResize({
           }
         } else {
           // Normal trimming within original duration
-          const maxTrimEnd = element.duration - resizing.initialTrimStart - 0.1; // Leave at least 0.1s visible
+          const minEffectiveDuration = getMinEffectiveDuration();
+          const maxTrimEnd =
+            element.duration - resizing.initialTrimStart - minEffectiveDuration;
           const newTrimEnd = Math.max(0, Math.min(maxTrimEnd, calculated));
 
           updateElementTrim(
@@ -189,6 +228,8 @@ export function useTimelineElementResize({
       updateElementStartTime,
       updateElementDuration,
       canExtendElementDuration,
+      getMinEffectiveDuration,
+      getMaxEffectiveDuration,
     ]
   );
 
