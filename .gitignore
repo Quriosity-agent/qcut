@@ -44,6 +44,9 @@ qcut/electron/resources/test*
 nul
 *.backup
 
+# Workspace copies
+qcut_*/
+
 # Third-party library files that shouldn't be linted
 **/public/ffmpeg/ffmpeg-core.js
 **/public/ffmpeg/ffmpeg-core.wasm
