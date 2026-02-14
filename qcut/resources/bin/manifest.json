@@ -1,32 +1,36 @@
 {
   "$schema": "./manifest.schema.json",
   "manifestVersion": "1.0.0",
-  "generatedAt": "2026-02-13T00:00:00Z",
+  "generatedAt": "2026-02-14T01:01:30Z",
   "binaries": {
     "aicp": {
-      "version": "1.0.0",
+      "version": "1.0.25",
       "minQCutVersion": "0.3.67",
       "maxQCutVersion": null,
       "platforms": {
         "win32-x64": {
           "filename": "aicp.exe",
-          "size": 0,
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.0/aicp-windows-x64.exe"
+          "size": 48432354,
+          "sha256": "9ada69a1075b7a3c4b39bc6162c3f2bfed7ffb9f406f933082c6e5f2733623b4",
+          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.25/aicp-windows-x64.exe"
         },
         "darwin-x64": {
           "filename": "aicp",
-          "size": 0,
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.0/aicp-macos-x64"
+          "size": 47452672,
+          "sha256": "f983b4d592e6cb28dc3bccbefba232edc5588ba4f4ff80f0a361558fa0e37cb9",
+          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.25/aicp-macos-x86_64"
         },
         "darwin-arm64": {
           "filename": "aicp",
-          "size": 0,
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.0/aicp-macos-arm64"
+          "size": 45524800,
+          "sha256": "14e3729009ae0beab45f309fe3f9fb600411fc43d5a7e0adeddd77abcf3d10df",
+          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.25/aicp-macos-arm64"
         },
         "linux-x64": {
           "filename": "aicp",
-          "size": 0,
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.0/aicp-linux-x64"
+          "size": 49516744,
+          "sha256": "a70c8b454dc366910ed3771bad7020386a790930062a7b19078c0593103de2a6",
+          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.25/aicp-linux-x86_64"
         }
       },
       "features": {
