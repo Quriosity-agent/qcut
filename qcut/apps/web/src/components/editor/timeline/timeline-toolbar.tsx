@@ -205,7 +205,7 @@ export function TimelineToolbar({
     try {
       addMarkdownAtTime(
         {
-          id: "default-markdown",
+          id: `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           type: "markdown",
           name: "Markdown",
           markdownContent: "# Title\n\nStart writing...",

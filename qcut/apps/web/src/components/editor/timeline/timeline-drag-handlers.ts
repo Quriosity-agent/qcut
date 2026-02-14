@@ -182,7 +182,7 @@ export function useDragHandlers({
               const currentTime = usePlaybackStore.getState().currentTime;
               useTimelineStore.getState().addMarkdownAtTime(
                 {
-                  id: "dropped-markdown",
+                  id: `dropped-markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                   type: "markdown",
                   name: markdownFile.name,
                   markdownContent,

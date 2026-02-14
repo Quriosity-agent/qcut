@@ -1,4 +1,5 @@
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import { debugError } from "@/lib/debug-config";
 
 interface StripMarkdownSyntaxParams {
   markdown: string;
@@ -33,7 +34,7 @@ export function stripMarkdownSyntax({
 
     return `${normalized.slice(0, maxLength).trimEnd()}...`;
   } catch (error) {
-    console.error("[markdown] Failed to strip markdown syntax:", error);
+    debugError("[markdown] Failed to strip markdown syntax:", error);
     return markdown;
   }
 }
@@ -55,7 +56,7 @@ export function clampMarkdownDuration({
       Math.max(TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION, duration)
     );
   } catch (error) {
-    console.error("[markdown] Failed to clamp markdown duration:", error);
+    debugError("[markdown] Failed to clamp markdown duration:", error);
     return TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION;
   }
 }

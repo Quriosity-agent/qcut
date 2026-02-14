@@ -112,10 +112,11 @@ export function MarkdownProperties({
   return (
     <div className="space-y-6 p-5">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">
+        <Label htmlFor="markdown-content" className="text-xs text-muted-foreground">
           Markdown content
         </Label>
         <Textarea
+          id="markdown-content"
           value={element.markdownContent}
           className="min-h-40 resize-y bg-background/50"
           onChange={(e) => {

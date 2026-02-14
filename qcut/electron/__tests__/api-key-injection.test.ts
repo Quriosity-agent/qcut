@@ -162,6 +162,14 @@ vi.mock("../claude/claude-media-handler.js", () => ({
 // Import after all mocks are wired
 import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-handler";
 
+// Dummy test keys — obviously fake to avoid secret-scanning false positives
+const FAKE_FAL_KEY = "test-fal-key-dummy-12345";
+const FAKE_GEMINI_KEY = "test-gemini-key-dummy-xyz";
+const FAKE_FAL_ONLY_KEY = "test-fal-only-dummy";
+const FAKE_FAL_INHERIT_KEY = "test-fal-inherit-dummy";
+const FAKE_FAL_SUCCESS_KEY = "test-fal-success-dummy";
+const FAKE_FAL_FAIL_KEY = "test-fal-fail-dummy";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -244,7 +252,7 @@ describe("API key injection e2e", () => {
 
     for (const command of authCommands) {
       it(`injects FAL_KEY for ${command}`, async () => {
-        mocks.state.decryptedKeys.falApiKey = "fal-test-key-12345";
+        mocks.state.decryptedKeys.falApiKey = FAKE_FAL_KEY;
         mocks.state.spawnBehavior.stdout = '{"status":"ok"}';
 
         setupAIPipelineIPC();
@@ -259,8 +267,8 @@ describe("API key injection e2e", () => {
         expect(mocks.mockSpawn).toHaveBeenCalledTimes(1);
 
         const call = lastSpawnCall();
-        expect(call.env.FAL_KEY).toBe("fal-test-key-12345");
-        expect(call.env.FAL_API_KEY).toBe("fal-test-key-12345");
+        expect(call.env.FAL_KEY).toBe(FAKE_FAL_KEY);
+        expect(call.env.FAL_API_KEY).toBe(FAKE_FAL_KEY);
       });
     }
   });
@@ -344,8 +352,8 @@ describe("API key injection e2e", () => {
   // =========================================================================
 
   it("injects both FAL_KEY and GEMINI_API_KEY when both are set", async () => {
-    mocks.state.decryptedKeys.falApiKey = "fal-abc";
-    mocks.state.decryptedKeys.geminiApiKey = "gemini-xyz";
+    mocks.state.decryptedKeys.falApiKey = FAKE_FAL_KEY;
+    mocks.state.decryptedKeys.geminiApiKey = FAKE_GEMINI_KEY;
     mocks.state.spawnBehavior.stdout = '{"status":"ok"}';
 
     setupAIPipelineIPC();
@@ -358,13 +366,13 @@ describe("API key injection e2e", () => {
     });
 
     const call = lastSpawnCall();
-    expect(call.env.FAL_KEY).toBe("fal-abc");
-    expect(call.env.FAL_API_KEY).toBe("fal-abc");
-    expect(call.env.GEMINI_API_KEY).toBe("gemini-xyz");
+    expect(call.env.FAL_KEY).toBe(FAKE_FAL_KEY);
+    expect(call.env.FAL_API_KEY).toBe(FAKE_FAL_KEY);
+    expect(call.env.GEMINI_API_KEY).toBe(FAKE_GEMINI_KEY);
   });
 
   it("injects FAL_KEY but omits GEMINI_API_KEY when only FAL is set", async () => {
-    mocks.state.decryptedKeys.falApiKey = "fal-only";
+    mocks.state.decryptedKeys.falApiKey = FAKE_FAL_ONLY_KEY;
     mocks.state.decryptedKeys.geminiApiKey = "";
     mocks.state.spawnBehavior.stdout = '{"status":"ok"}';
 
@@ -378,7 +386,7 @@ describe("API key injection e2e", () => {
     });
 
     const call = lastSpawnCall();
-    expect(call.env.FAL_KEY).toBe("fal-only");
+    expect(call.env.FAL_KEY).toBe(FAKE_FAL_ONLY_KEY);
     expect(call.env.GEMINI_API_KEY).toBeUndefined();
   });
 
@@ -426,7 +434,7 @@ describe("API key injection e2e", () => {
   // =========================================================================
 
   it("spawn env contains process.env values alongside injected keys", async () => {
-    mocks.state.decryptedKeys.falApiKey = "fal-inherit-test";
+    mocks.state.decryptedKeys.falApiKey = FAKE_FAL_INHERIT_KEY;
     mocks.state.spawnBehavior.stdout = '{"status":"ok"}';
 
     setupAIPipelineIPC();
@@ -443,7 +451,7 @@ describe("API key injection e2e", () => {
     // Should have inherited PATH from process.env
     expect(call.env.PATH).toBeDefined();
     // Plus the injected key
-    expect(call.env.FAL_KEY).toBe("fal-inherit-test");
+    expect(call.env.FAL_KEY).toBe(FAKE_FAL_INHERIT_KEY);
   });
 
   // =========================================================================
@@ -451,7 +459,7 @@ describe("API key injection e2e", () => {
   // =========================================================================
 
   it("returns success with output path when generation completes", async () => {
-    mocks.state.decryptedKeys.falApiKey = "fal-success";
+    mocks.state.decryptedKeys.falApiKey = FAKE_FAL_SUCCESS_KEY;
     mocks.state.spawnBehavior.stdout = JSON.stringify({
       status: "ok",
       outputPath: "/tmp/qcut/aicp-output/result.png",
@@ -478,7 +486,7 @@ describe("API key injection e2e", () => {
   // =========================================================================
 
   it("returns generation_failed when process exits non-zero", async () => {
-    mocks.state.decryptedKeys.falApiKey = "fal-fail";
+    mocks.state.decryptedKeys.falApiKey = FAKE_FAL_FAIL_KEY;
     mocks.state.spawnBehavior.exitCode = 1;
     mocks.state.spawnBehavior.stderr = "Model not found: bad-model";
 

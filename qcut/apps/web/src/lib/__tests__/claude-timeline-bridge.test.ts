@@ -58,6 +58,14 @@ vi.mock("@/lib/project-folder-sync", () => ({
   syncProjectFolder: syncProjectFolderMock,
 }));
 
+const debugMocks = vi.hoisted(() => ({
+  debugLog: vi.fn(),
+  debugWarn: vi.fn(),
+  debugError: vi.fn(),
+}));
+
+vi.mock("@/lib/debug-config", () => debugMocks);
+
 type AddElementHandler = (
   element: Partial<ClaudeElement>
 ) => void | Promise<void>;
@@ -358,7 +366,6 @@ describe("setupClaudeTimelineBridge - add element", () => {
   });
 
   it("does not add media when referenced source does not exist", async () => {
-    const warningSpy = vi.spyOn(console, "warn");
     const { addElementHandler } = setupTimelineBridgeWithHandlers();
 
     await addElementHandler({
@@ -371,7 +378,7 @@ describe("setupClaudeTimelineBridge - add element", () => {
     expect(
       storeMocks.timelineStoreState.addElementToTrack
     ).not.toHaveBeenCalled();
-    expect(warningSpy).toHaveBeenCalledWith(
+    expect(debugMocks.debugWarn).toHaveBeenCalledWith(
       "[ClaudeTimelineBridge] Media not found:",
       "missing-image.png"
     );
