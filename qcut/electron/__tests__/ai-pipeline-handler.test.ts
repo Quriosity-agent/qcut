@@ -51,6 +51,13 @@ const mocks = vi.hoisted(() => {
       features: {},
       error: "Binary file not found",
     },
+    decryptedKeys: {
+      falApiKey: "",
+      freesoundApiKey: "",
+      geminiApiKey: "",
+      openRouterApiKey: "",
+      anthropicApiKey: "",
+    },
   };
 
   const mockExec: ExecMock = ((command, _options, callback) => {
@@ -78,6 +85,9 @@ const mocks = vi.hoisted(() => {
     };
   };
 
+  const mockGetDecryptedApiKeys = vi.fn(async () => state.decryptedKeys);
+  const mockImportMediaFile = vi.fn(async () => null);
+
   return {
     state,
     mockExec,
@@ -90,6 +100,8 @@ const mocks = vi.hoisted(() => {
           kill: vi.fn(),
         }) as unknown as ChildProcess
     ),
+    mockGetDecryptedApiKeys,
+    mockImportMediaFile,
     mockBinaryManager: {
       reloadManifest: vi.fn(),
       getBinaryStatus: vi.fn(() => state.binaryStatus),
@@ -106,9 +118,15 @@ vi.mock("child_process", () => ({
   spawn: mocks.mockSpawn,
 }));
 
+vi.mock("node:child_process", () => ({
+  exec: mocks.mockExec,
+  spawn: mocks.mockSpawn,
+}));
+
 vi.mock("electron", () => ({
   app: {
     getVersion: () => "0.3.67",
+    getPath: () => "/tmp",
     get isPackaged() {
       return mocks.state.isPackaged;
     },
@@ -127,17 +145,11 @@ vi.mock("../binary-manager.js", () => ({
 }));
 
 vi.mock("../api-key-handler.js", () => ({
-  getDecryptedApiKeys: vi.fn(async () => ({
-    falApiKey: "",
-    freesoundApiKey: "",
-    geminiApiKey: "",
-    openRouterApiKey: "",
-    anthropicApiKey: "",
-  })),
+  getDecryptedApiKeys: mocks.mockGetDecryptedApiKeys,
 }));
 
 vi.mock("../claude/claude-media-handler.js", () => ({
-  importMediaFile: vi.fn(async () => null),
+  importMediaFile: mocks.mockImportMediaFile,
 }));
 
 import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-handler";
@@ -156,6 +168,13 @@ describe("AIPipelineManager fallback behavior", () => {
     mocks.state.execBehaviors.clear();
     mocks.state.execCalls = [];
     mocks.state.isPackaged = true;
+    mocks.state.decryptedKeys = {
+      falApiKey: "",
+      freesoundApiKey: "",
+      geminiApiKey: "",
+      openRouterApiKey: "",
+      anthropicApiKey: "",
+    };
 
     mocks.state.binaryStatus = {
       name: "aicp",
@@ -174,6 +193,9 @@ describe("AIPipelineManager fallback behavior", () => {
       () => mocks.state.binaryStatus
     );
     mocks.mockIpcHandle.mockClear();
+    mocks.mockSpawn.mockClear();
+    mocks.mockGetDecryptedApiKeys.mockClear();
+    mocks.mockImportMediaFile.mockClear();
   });
 
   afterEach(() => {
@@ -254,5 +276,55 @@ describe("AIPipelineManager fallback behavior", () => {
     expect(status.source).toBe("system");
     expect(status.version).toBe("1.2.3");
     expect(mocks.state.execCalls).toContain("aicp --version");
+  });
+
+  it("returns pre-flight missing key error without spawning process", async () => {
+    mocks.state.binaryStatus = {
+      name: "aicp",
+      available: true,
+      version: "1.0.1",
+      path: "/tmp/aicp",
+      checksumValid: true,
+      compatible: true,
+      updateAvailable: false,
+      features: {},
+    };
+    mocks.state.decryptedKeys = {
+      falApiKey: "",
+      freesoundApiKey: "",
+      geminiApiKey: "",
+      openRouterApiKey: "",
+      anthropicApiKey: "",
+    };
+
+    setupAIPipelineIPC();
+
+    const result = (await getHandler({ channel: "ai-pipeline:generate" })({}, {
+      command: "generate-image",
+      args: { text: "cat", model: "nano_banana_pro" },
+      sessionId: "session-2",
+    })) as { success: boolean; errorCode?: string };
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe("missing_key");
+    expect(mocks.mockSpawn).not.toHaveBeenCalled();
+  });
+
+  it("does not load API keys during environment detection", async () => {
+    mocks.state.binaryStatus = {
+      name: "aicp",
+      available: true,
+      version: "1.0.1",
+      path: "/tmp/aicp",
+      checksumValid: true,
+      compatible: true,
+      updateAvailable: false,
+      features: {},
+    };
+
+    setupAIPipelineIPC();
+
+    await getHandler({ channel: "ai-pipeline:status" })();
+    expect(mocks.mockGetDecryptedApiKeys).not.toHaveBeenCalled();
   });
 });
