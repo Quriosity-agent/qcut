@@ -50,7 +50,7 @@ const DEFAULT_STAGE_TARGETS = [
   "win32-x64",
   "linux-x64",
 ];
-const VERSION_CHECK_TIMEOUT_MS = 30000;
+const VERSION_CHECK_TIMEOUT_MS = 30_000;
 const MIN_BINARY_SIZE_BYTES = 1_000_000;
 const MANIFEST_PATH = join(process.cwd(), "resources", "bin", "manifest.json");
 const STAGING_ROOT = join(
