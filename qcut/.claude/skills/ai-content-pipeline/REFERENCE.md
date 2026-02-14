@@ -2,6 +2,16 @@
 
 This file contains detailed specifications for models, API endpoints, and troubleshooting.
 
+## Current Integration Notes (QCut)
+
+- Primary workflow is QCut bundled AICP (no local Python/pip setup required).
+- In QCut app mode, set API keys in `Editor -> Settings -> API Keys`.
+- QCut injects `FAL_KEY` for generation commands at process spawn.
+- In standalone CLI mode, you must export keys manually (for example `FAL_KEY`).
+- Treat `aicp list-models` output as source of truth for local model availability.
+- `list-models` may emit provider/runtime warnings in standalone mode.
+- `list-models` may not reliably support `--json` in current upstream behavior.
+
 ## FAL API Endpoint Reference
 
 For direct API calls (not using the CLI), use these endpoint formats:
@@ -291,14 +301,14 @@ Common codes: `eng` (English), `spa` (Spanish), `fra` (French), `deu` (German), 
 ## Pipeline Configuration Options
 
 ### Step Types
-- `text-to-image`: Generate image from text
-- `image-to-image`: Transform existing image
-- `image-to-video`: Create video from image
-- `text-to-video`: Full text-to-video pipeline
-- `image-understanding`: Analyze/describe image
-- `prompt-generation`: Optimize prompts
-- `text-to-speech`: Generate audio
-- `video-upscale`: Enhance video quality
+- `text_to_image`: Generate image from text
+- `image_to_image`: Transform existing image
+- `image_to_video`: Create video from image
+- `text_to_video`: Full text-to-video pipeline
+- `image_understanding`: Analyze/describe image
+- `prompt_generation`: Optimize prompts
+- `text_to_speech`: Generate audio
+- `upscale_video`: Enhance video quality
 
 ### Common Parameters
 
@@ -341,23 +351,29 @@ Benefits:
 ### Common Issues
 
 **"API key not found"**
-- Check `.env` file exists in project root
-- Verify variable names match expected format
-- Restart terminal after adding keys
+- QCut app mode:
+  - Open `Editor -> Settings -> API Keys`
+  - Set `FAL API Key`
+  - Retry generation
+- Standalone CLI mode:
+  - Export `FAL_KEY` in the shell before running commands
+  - Verify it exists with `echo $FAL_KEY`
 
 **"Model not available"**
-- Verify model name spelling
-- Check provider API status
-- Confirm account has access
+- Run `aicp list-models` and select a model from that output.
+- Verify model spelling matches exactly.
+- Confirm provider account access where required.
+- If standalone mode shows provider directory/module warnings, use QCut app mode or rebuild runtime with required integrations.
 
 **"Output directory not found"**
-- Pipeline creates `output/` automatically
-- Check write permissions
+- For CLI usage, pass `--output-dir` to a writable path.
+- If CLI ignores output dir, inspect default `output/` folder.
+- In QCut app mode, output path recovery is handled by app-side fallback logic.
 
 **"GCP authentication failed"**
 - Run `gcloud auth login`
 - Run `gcloud auth application-default login`
-- Verify PROJECT_ID in .env
+- Verify project configuration/environment variables for your GCP setup
 
 ### Debug Mode
 

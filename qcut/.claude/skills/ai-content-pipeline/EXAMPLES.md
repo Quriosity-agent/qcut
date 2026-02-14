@@ -2,6 +2,13 @@
 
 This file contains YAML pipeline configuration examples for common workflows.
 
+## Before Running Examples
+
+- In QCut app mode, configure keys in `Editor -> Settings -> API Keys`.
+- In standalone CLI mode, export required keys (for example `FAL_KEY`) first.
+- Run `aicp list-models` and choose models that are available in your current runtime.
+- Do not assume every documented model is enabled in every packaged/runtime build.
+
 ## Step Types
 
 **IMPORTANT:** Step types use underscores (e.g., `text_to_image`, not `text-to-image`)
@@ -28,7 +35,7 @@ description: "Generate an image from text"
 steps:
   - name: "generate_image"
     type: "text_to_image"
-    model: "flux_dev"
+    model: "MODEL_FROM_LIST_MODELS"
     params:
       prompt: "A majestic mountain landscape at sunset"
       width: 1920
@@ -94,7 +101,7 @@ description: "Split grid and animate scenes in parallel"
 steps:
   - name: "generate_grid"
     type: "text_to_image"
-    model: "nano_banana_pro"
+    model: "MODEL_FROM_LIST_MODELS"
     params:
       prompt: "A 2x2 grid of 4 cinematic scenes"
       aspect_ratio: "16:9"
