@@ -5,7 +5,7 @@
  * Extracted from export-engine-cli.ts lines 265-482.
  */
 
-import type { TextElement, TimelineTrack } from "@/types/timeline";
+import type { MarkdownElement, TextElement, TimelineTrack } from "@/types/timeline";
 import type { Platform } from "../types";
 import {
   escapeTextForFFmpeg,
@@ -13,6 +13,7 @@ import {
   colorToFFmpeg,
 } from "./text-escape";
 import { resolveFontPath } from "./font-resolver";
+import { stripMarkdownSyntax } from "@/lib/markdown";
 
 /**
  * Convert a TextElement to FFmpeg drawtext filter string.
@@ -108,11 +109,48 @@ export function convertTextElementToDrawtext(
   return `drawtext=${filterParams.join(":")}`;
 }
 
+export function convertMarkdownElementToDrawtext(
+  element: MarkdownElement,
+  platform?: Platform
+): string {
+  const plainText = stripMarkdownSyntax({
+    markdown: element.markdownContent || "",
+  });
+  if (!plainText.trim() || element.hidden) {
+    return "";
+  }
+
+  const textElement: TextElement = {
+    id: element.id,
+    type: "text",
+    name: element.name,
+    duration: element.duration,
+    startTime: element.startTime,
+    trimStart: element.trimStart,
+    trimEnd: element.trimEnd,
+    content: plainText,
+    fontSize: element.fontSize,
+    fontFamily: element.fontFamily,
+    color: element.textColor,
+    backgroundColor: element.backgroundColor,
+    textAlign: "left",
+    fontWeight: "normal",
+    fontStyle: "normal",
+    textDecoration: "none",
+    x: element.x,
+    y: element.y,
+    rotation: element.rotation,
+    opacity: element.opacity,
+  };
+
+  return convertTextElementToDrawtext(textElement, platform);
+}
+
 /**
  * Text element with ordering information for filter chain building.
  */
 interface TextElementWithOrder {
-  element: TextElement;
+  element: TextElement | MarkdownElement;
   trackIndex: number;
   elementIndex: number;
 }
@@ -138,18 +176,21 @@ export function buildTextOverlayFilters(
   // Collect text elements with ordering info
   for (let trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
     const track = tracks[trackIndex];
-    if (track.type !== "text") continue;
-
     for (
       let elementIndex = 0;
       elementIndex < track.elements.length;
       elementIndex++
     ) {
       const element = track.elements[elementIndex];
-      if (element.type !== "text" || element.hidden) continue;
+      if (
+        (element.type !== "text" && element.type !== "markdown") ||
+        element.hidden
+      ) {
+        continue;
+      }
 
       textElementsWithOrder.push({
-        element: element as TextElement,
+        element,
         trackIndex,
         elementIndex,
       });
@@ -163,7 +204,12 @@ export function buildTextOverlayFilters(
   });
 
   return textElementsWithOrder
-    .map((item) => convertTextElementToDrawtext(item.element, platform))
+    .map((item) => {
+      if (item.element.type === "markdown") {
+        return convertMarkdownElementToDrawtext(item.element, platform);
+      }
+      return convertTextElementToDrawtext(item.element, platform);
+    })
     .filter((f) => f !== "")
     .join(",");
 }

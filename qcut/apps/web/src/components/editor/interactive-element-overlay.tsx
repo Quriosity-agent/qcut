@@ -200,8 +200,8 @@ export function InteractiveElementOverlay({
   // Check if element has effects
   const hasEffects = getElementEffects(element.id).length > 0;
 
-  // Only show interactive overlay for elements with effects or text elements
-  if (!hasEffects && element.type !== "text") {
+  // Only show interactive overlay for elements with effects or text/markdown elements
+  if (!hasEffects && element.type !== "text" && element.type !== "markdown") {
     return null;
   }
 

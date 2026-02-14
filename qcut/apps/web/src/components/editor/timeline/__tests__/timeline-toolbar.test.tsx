@@ -47,6 +47,7 @@ interface MockTimelineState {
     trackId: string,
     element: Record<string, unknown>
   ) => void;
+  addMarkdownAtTime: (element: Record<string, unknown>, time: number) => void;
   removeElementFromTrack: (trackId: string, elementId: string) => void;
   removeElementFromTrackWithRipple: (
     trackId: string,
@@ -104,6 +105,7 @@ describe("TimelineToolbar", () => {
     ],
     addTrack: () => "new-track",
     addElementToTrack: vi.fn(),
+    addMarkdownAtTime: vi.fn(),
     removeElementFromTrack: vi.fn(),
     removeElementFromTrackWithRipple: vi.fn(),
     selectedElements: [{ trackId: "track-1", elementId: "element-1" }],

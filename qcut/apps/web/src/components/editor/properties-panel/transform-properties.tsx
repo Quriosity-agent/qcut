@@ -20,8 +20,8 @@ interface TransformPropertiesProps {
 
 // Type guard to check if element has transform properties
 function getTransformProperties(element: TimelineElement) {
-  // TextElement always has these properties
-  if (element.type === "text") {
+  // Text and markdown elements always have these properties
+  if (element.type === "text" || element.type === "markdown") {
     return {
       x: element.x,
       y: element.y,
@@ -48,9 +48,10 @@ export function TransformProperties({
   const { updateElementTransform } = useTimelineStore();
   const { getElementEffects } = useEffectsStore();
 
-  // Check if element has effects or is a text element
+  // Check if element has effects or is a text/markdown element
   const hasEffects = getElementEffects(element.id).length > 0;
-  const showTransformControls = hasEffects || element.type === "text";
+  const showTransformControls =
+    hasEffects || element.type === "text" || element.type === "markdown";
 
   // Initialize transform values using type-safe getter
   const [transform, setTransform] = useState(() =>

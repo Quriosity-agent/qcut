@@ -4,6 +4,7 @@ import { TimelineElement, TimelineTrack } from "@/types/timeline";
 import { MediaItem } from "@/stores/media-store";
 import { handleExportError } from "@/lib/error-handler";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
+import { stripMarkdownSyntax } from "@/lib/markdown";
 
 // Frame cache entry
 interface CachedFrame {
@@ -227,8 +228,20 @@ export class OptimizedExportEngine extends ExportEngine {
     // Sort elements by track type (render bottom to top)
     const sortedElements = activeElements.sort((a, b) => {
       // Text tracks on top
-      if (a.track.type === "text" && b.track.type !== "text") return 1;
-      if (b.track.type === "text" && a.track.type !== "text") return -1;
+      if (
+        (a.track.type === "text" || a.track.type === "markdown") &&
+        b.track.type !== "text" &&
+        b.track.type !== "markdown"
+      ) {
+        return 1;
+      }
+      if (
+        (b.track.type === "text" || b.track.type === "markdown") &&
+        a.track.type !== "text" &&
+        a.track.type !== "markdown"
+      ) {
+        return -1;
+      }
       // Audio tracks at bottom
       if (a.track.type === "audio" && b.track.type !== "audio") return -1;
       if (b.track.type === "audio" && a.track.type !== "audio") return 1;
@@ -245,7 +258,7 @@ export class OptimizedExportEngine extends ExportEngine {
     for (const { element, mediaItem } of sortedElements) {
       if (element.type === "media" && mediaItem && mediaItem.type === "image") {
         imageBatch.push({ element, mediaItem });
-      } else if (element.type === "text") {
+      } else if (element.type === "text" || element.type === "markdown") {
         textBatch.push(element);
       }
       // Handle other types individually for now
@@ -397,6 +410,31 @@ export class OptimizedExportEngine extends ExportEngine {
         const y = element.y || 50;
         ctx.fillText(element.content, x, y);
       }
+    }
+
+    for (const element of textBatch) {
+      if (element.type !== "markdown") continue;
+
+      const plainText = stripMarkdownSyntax({
+        markdown: element.markdownContent || "",
+      });
+      if (!plainText.trim()) continue;
+
+      const x = element.x || 50;
+      const y = element.y || 50;
+      const lineHeight = (element.fontSize || 18) * 1.4;
+      const lines = plainText.split("\n");
+
+      ctx.save();
+      ctx.globalAlpha = element.opacity ?? 1;
+      ctx.fillStyle = element.textColor || "#ffffff";
+      ctx.font = `${element.fontSize || 18}px ${element.fontFamily || "Arial"}`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      for (let index = 0; index < lines.length; index++) {
+        ctx.fillText(lines[index], x, y + lineHeight * index);
+      }
+      ctx.restore();
     }
   }
 
