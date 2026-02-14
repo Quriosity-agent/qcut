@@ -862,8 +862,7 @@ export function createTimelineOperations({
     addMarkdownAtTime: (item: MarkdownElement, currentTime = 0): boolean => {
       const targetTrackId = get().insertTrackAt("markdown", 0);
       const duration = clampMarkdownDuration({
-        duration:
-          item.duration ?? TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+        duration: item.duration ?? TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
       });
 
       if (get().checkElementOverlap(targetTrackId, currentTime, duration)) {
@@ -963,7 +962,8 @@ export function createTimelineOperations({
       const markdownContent =
         "type" in item && item.type === "markdown"
           ? item.markdownContent
-          : "markdownContent" in item
+          : "markdownContent" in item &&
+              typeof item.markdownContent === "string"
             ? item.markdownContent
             : "# Title\n\nStart writing...";
 
@@ -1016,7 +1016,8 @@ export function createTimelineOperations({
             : 30,
         x: "x" in item && typeof item.x === "number" ? item.x : 0,
         y: "y" in item && typeof item.y === "number" ? item.y : 0,
-        width: "width" in item && typeof item.width === "number" ? item.width : 720,
+        width:
+          "width" in item && typeof item.width === "number" ? item.width : 720,
         height:
           "height" in item && typeof item.height === "number"
             ? item.height

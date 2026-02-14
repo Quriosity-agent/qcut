@@ -75,7 +75,9 @@ describe("MarkdownOverlay", () => {
     );
 
     const overlay = screen.getByTestId("markdown-overlay");
-    expect(overlay).toHaveStyle({ backgroundColor: "transparent" });
+    expect(["transparent", "rgba(0, 0, 0, 0)"]).toContain(
+      overlay.style.backgroundColor
+    );
   });
 
   it("handles empty markdown content gracefully", () => {

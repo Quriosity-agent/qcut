@@ -156,11 +156,7 @@ function findMediaItemForElement({
   return null;
 }
 
-function decodeBase64UrlUtf8({
-  encoded,
-}: {
-  encoded: string;
-}): string | null {
+function decodeBase64UrlUtf8({ encoded }: { encoded: string }): string | null {
   try {
     const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
@@ -181,7 +177,9 @@ function getSourceNameFromDeterministicSourceId({
     return null;
   }
 
-  const encodedName = sourceId.slice(CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX.length);
+  const encodedName = sourceId.slice(
+    CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX.length
+  );
   if (!encodedName) {
     return null;
   }
@@ -487,7 +485,8 @@ export function setupClaudeTimelineBridge(): void {
           }
           if (changes.style) {
             const s = changes.style;
-            if (typeof s.fontSize === "number") textUpdates.fontSize = s.fontSize;
+            if (typeof s.fontSize === "number")
+              textUpdates.fontSize = s.fontSize;
             if (typeof s.fontFamily === "string")
               textUpdates.fontFamily = s.fontFamily;
             if (typeof s.color === "string") textUpdates.color = s.color;
@@ -525,10 +524,7 @@ export function setupClaudeTimelineBridge(): void {
           }
         }
 
-        console.log(
-          "[ClaudeTimelineBridge] Updated element:",
-          data.elementId
-        );
+        console.log("[ClaudeTimelineBridge] Updated element:", data.elementId);
       } catch (error) {
         console.error(
           "[ClaudeTimelineBridge] Failed to handle element update:",
@@ -596,7 +592,7 @@ function formatElementForExport(
     startTime: element.startTime,
     endTime: element.startTime + effectiveDuration,
     duration: effectiveDuration,
-    type: element.type,
+    type: element.type === "markdown" ? "text" : element.type,
   };
 
   // Add type-specific fields
@@ -626,6 +622,11 @@ function formatElementForExport(
       return {
         ...baseElement,
         sourceId: element.componentId,
+      };
+    case "markdown":
+      return {
+        ...baseElement,
+        content: element.markdownContent,
       };
     default:
       return baseElement;

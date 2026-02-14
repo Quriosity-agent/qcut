@@ -6,11 +6,16 @@ import { MarkdownEditorPanel } from "../markdown-editor-panel";
 const updateMarkdownElement = vi.fn();
 
 vi.mock("@/stores/timeline-store", () => ({
-  useTimelineStore: (selector: (state: { updateMarkdownElement: typeof updateMarkdownElement }) => unknown) =>
-    selector({ updateMarkdownElement }),
+  useTimelineStore: (
+    selector: (state: {
+      updateMarkdownElement: typeof updateMarkdownElement;
+    }) => unknown
+  ) => selector({ updateMarkdownElement }),
 }));
 
-function createElement(overrides: Partial<MarkdownElement> = {}): MarkdownElement {
+function createElement(
+  overrides: Partial<MarkdownElement> = {}
+): MarkdownElement {
   return {
     id: "markdown-1",
     type: "markdown",
@@ -46,12 +51,16 @@ describe("MarkdownEditorPanel", () => {
   it("updates markdown content", () => {
     render(<MarkdownEditorPanel element={createElement()} trackId="track-1" />);
 
-    const textarea = screen.getByRole("textbox");
+    const textarea = screen.getAllByRole("textbox")[0];
     fireEvent.change(textarea, { target: { value: "# Updated" } });
 
-    expect(updateMarkdownElement).toHaveBeenCalledWith("track-1", "markdown-1", {
-      markdownContent: "# Updated",
-    });
+    expect(updateMarkdownElement).toHaveBeenCalledWith(
+      "track-1",
+      "markdown-1",
+      {
+        markdownContent: "# Updated",
+      }
+    );
   });
 
   it("clamps duration to minimum", () => {
@@ -61,9 +70,13 @@ describe("MarkdownEditorPanel", () => {
     fireEvent.change(durationInput, { target: { value: "10" } });
     fireEvent.blur(durationInput);
 
-    expect(updateMarkdownElement).toHaveBeenCalledWith("track-1", "markdown-1", {
-      duration: 120,
-    });
+    expect(updateMarkdownElement).toHaveBeenCalledWith(
+      "track-1",
+      "markdown-1",
+      {
+        duration: 120,
+      }
+    );
   });
 
   it("clamps duration to maximum", () => {
@@ -73,8 +86,12 @@ describe("MarkdownEditorPanel", () => {
     fireEvent.change(durationInput, { target: { value: "8000" } });
     fireEvent.blur(durationInput);
 
-    expect(updateMarkdownElement).toHaveBeenCalledWith("track-1", "markdown-1", {
-      duration: 7200,
-    });
+    expect(updateMarkdownElement).toHaveBeenCalledWith(
+      "track-1",
+      "markdown-1",
+      {
+        duration: 7200,
+      }
+    );
   });
 });
