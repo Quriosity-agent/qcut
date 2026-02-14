@@ -376,7 +376,7 @@ export function validateElementTrackCompatibility(
               ? "Remotion elements can only be placed on Remotion tracks"
               : element.type === "markdown"
                 ? "Markdown elements can only be placed on markdown tracks"
-              : "Media elements can only be placed on media or audio tracks";
+                : "Media elements can only be placed on media or audio tracks";
 
     return { isValid: false, errorMessage };
   }

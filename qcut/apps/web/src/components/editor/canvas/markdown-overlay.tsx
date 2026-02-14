@@ -46,7 +46,10 @@ export function MarkdownOverlay({
       const elapsed = Math.max(0, currentTime - element.startTime);
       return elapsed * Math.max(0, element.scrollSpeed);
     } catch (error) {
-      console.error("[MarkdownOverlay] Failed to calculate scroll offset:", error);
+      console.error(
+        "[MarkdownOverlay] Failed to calculate scroll offset:",
+        error
+      );
       return 0;
     }
   }, [element.scrollMode, element.startTime, element.scrollSpeed, currentTime]);
@@ -69,22 +72,31 @@ export function MarkdownOverlay({
       <div
         style={{
           transform: `translateY(-${scrollOffset * canvasScale}px)`,
-          willChange: element.scrollMode === "auto-scroll" ? "transform" : "auto",
+          willChange:
+            element.scrollMode === "auto-scroll" ? "transform" : "auto",
         }}
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
             h1: ({ children }) => (
-              <h1 className="text-2xl font-semibold mb-3 leading-tight">{children}</h1>
+              <h1 className="text-2xl font-semibold mb-3 leading-tight">
+                {children}
+              </h1>
             ),
             h2: ({ children }) => (
-              <h2 className="text-xl font-semibold mb-2 leading-tight">{children}</h2>
+              <h2 className="text-xl font-semibold mb-2 leading-tight">
+                {children}
+              </h2>
             ),
             h3: ({ children }) => (
-              <h3 className="text-lg font-semibold mb-2 leading-tight">{children}</h3>
+              <h3 className="text-lg font-semibold mb-2 leading-tight">
+                {children}
+              </h3>
             ),
-            p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
+            p: ({ children }) => (
+              <p className="mb-2 leading-relaxed">{children}</p>
+            ),
             ul: ({ children }) => (
               <ul className="list-disc ml-5 mb-3 space-y-1">{children}</ul>
             ),
@@ -92,7 +104,9 @@ export function MarkdownOverlay({
               <ol className="list-decimal ml-5 mb-3 space-y-1">{children}</ol>
             ),
             code: ({ children }) => (
-              <code className="font-mono bg-black/20 px-1 py-0.5 rounded">{children}</code>
+              <code className="font-mono bg-black/20 px-1 py-0.5 rounded">
+                {children}
+              </code>
             ),
             pre: ({ children }) => (
               <pre className="font-mono text-xs bg-black/20 p-2 rounded mb-3 overflow-x-auto">
@@ -115,7 +129,9 @@ export function MarkdownOverlay({
               </a>
             ),
             table: ({ children }) => (
-              <table className="w-full text-left border-collapse mb-3">{children}</table>
+              <table className="w-full text-left border-collapse mb-3">
+                {children}
+              </table>
             ),
             th: ({ children }) => (
               <th className="border border-current/30 px-2 py-1 text-xs font-semibold">
@@ -123,7 +139,9 @@ export function MarkdownOverlay({
               </th>
             ),
             td: ({ children }) => (
-              <td className="border border-current/20 px-2 py-1 text-xs">{children}</td>
+              <td className="border border-current/20 px-2 py-1 text-xs">
+                {children}
+              </td>
             ),
           }}
         >

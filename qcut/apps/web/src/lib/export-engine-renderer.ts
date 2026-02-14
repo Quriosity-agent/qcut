@@ -570,7 +570,11 @@ export function renderMarkdownElement({
     ctx.textBaseline = "top";
 
     const maxLineWidth = Math.max(20, boxWidth - padding * 2);
-    const lines = wrapTextForCanvas({ ctx, text: plainText, maxWidth: maxLineWidth });
+    const lines = wrapTextForCanvas({
+      ctx,
+      text: plainText,
+      maxWidth: maxLineWidth,
+    });
     const startX = -boxWidth / 2 + padding;
     const startY = -boxHeight / 2 + padding - scrollOffset;
 

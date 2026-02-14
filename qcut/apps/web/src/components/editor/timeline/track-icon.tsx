@@ -1,4 +1,11 @@
-import { Video, TypeIcon, Music, Sticker, FileText, Captions } from "lucide-react";
+import {
+  Video,
+  TypeIcon,
+  Music,
+  Sticker,
+  FileText,
+  Captions,
+} from "lucide-react";
 import type { TrackType } from "@/types/timeline";
 
 interface TrackIconProps {

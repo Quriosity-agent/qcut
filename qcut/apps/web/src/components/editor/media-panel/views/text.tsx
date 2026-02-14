@@ -118,9 +118,7 @@ export function TextView() {
           name="Default markdown"
           preview={
             <div className="flex items-center justify-center w-full h-full bg-accent rounded p-2">
-              <span className="text-xs select-none text-center">
-                Markdown
-              </span>
+              <span className="text-xs select-none text-center">Markdown</span>
             </div>
           }
           dragData={{

@@ -24,6 +24,8 @@ describe("TrackIcon", () => {
 
   it('renders FileText icon for "markdown" type', () => {
     render(<TrackIcon type="markdown" />);
-    expect(document.querySelector('[data-testid="markdown-icon"]')).toBeTruthy();
+    expect(
+      document.querySelector('[data-testid="markdown-icon"]')
+    ).toBeTruthy();
   });
 });

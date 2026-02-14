@@ -5,7 +5,11 @@
  * Extracted from export-engine-cli.ts lines 265-482.
  */
 
-import type { MarkdownElement, TextElement, TimelineTrack } from "@/types/timeline";
+import type {
+  MarkdownElement,
+  TextElement,
+  TimelineTrack,
+} from "@/types/timeline";
 import type { Platform } from "../types";
 import {
   escapeTextForFFmpeg,

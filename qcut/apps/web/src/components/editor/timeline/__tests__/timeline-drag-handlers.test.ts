@@ -7,25 +7,24 @@ const {
   addMarkdownToNewTrack,
   addMediaToNewTrack,
   mockedTimelineStore,
-} =
-  vi.hoisted(() => {
-    const addTextToNewTrackFn = vi.fn();
-    const addMarkdownToNewTrackFn = vi.fn();
-    const addMediaToNewTrackFn = vi.fn();
-    const mockedTimelineStoreFn = Object.assign(vi.fn(), {
-      getState: vi.fn(() => ({
-        addTextToNewTrack: addTextToNewTrackFn,
-        addMarkdownToNewTrack: addMarkdownToNewTrackFn,
-        addMediaToNewTrack: addMediaToNewTrackFn,
-      })),
-    });
-    return {
+} = vi.hoisted(() => {
+  const addTextToNewTrackFn = vi.fn();
+  const addMarkdownToNewTrackFn = vi.fn();
+  const addMediaToNewTrackFn = vi.fn();
+  const mockedTimelineStoreFn = Object.assign(vi.fn(), {
+    getState: vi.fn(() => ({
       addTextToNewTrack: addTextToNewTrackFn,
       addMarkdownToNewTrack: addMarkdownToNewTrackFn,
       addMediaToNewTrack: addMediaToNewTrackFn,
-      mockedTimelineStore: mockedTimelineStoreFn,
-    };
+    })),
   });
+  return {
+    addTextToNewTrack: addTextToNewTrackFn,
+    addMarkdownToNewTrack: addMarkdownToNewTrackFn,
+    addMediaToNewTrack: addMediaToNewTrackFn,
+    mockedTimelineStore: mockedTimelineStoreFn,
+  };
+});
 
 vi.mock("@/stores/timeline-store", () => ({
   useTimelineStore: mockedTimelineStore,

@@ -30,10 +30,16 @@ export function MarkdownProperties({
   element,
   trackId,
 }: MarkdownPropertiesProps) {
-  const updateMarkdownElement = useTimelineStore((s) => s.updateMarkdownElement);
+  const updateMarkdownElement = useTimelineStore(
+    (s) => s.updateMarkdownElement
+  );
 
-  const [durationInput, setDurationInput] = useState(element.duration.toString());
-  const [fontSizeInput, setFontSizeInput] = useState(element.fontSize.toString());
+  const [durationInput, setDurationInput] = useState(
+    element.duration.toString()
+  );
+  const [fontSizeInput, setFontSizeInput] = useState(
+    element.fontSize.toString()
+  );
   const [paddingInput, setPaddingInput] = useState(element.padding.toString());
   const [scrollSpeedInput, setScrollSpeedInput] = useState(
     element.scrollSpeed.toString()
@@ -44,13 +50,21 @@ export function MarkdownProperties({
     setFontSizeInput(element.fontSize.toString());
     setPaddingInput(element.padding.toString());
     setScrollSpeedInput(element.scrollSpeed.toString());
-  }, [element.duration, element.fontSize, element.padding, element.scrollSpeed]);
+  }, [
+    element.duration,
+    element.fontSize,
+    element.padding,
+    element.scrollSpeed,
+  ]);
 
   const applyUpdates = ({ updates }: { updates: Partial<MarkdownElement> }) => {
     try {
       updateMarkdownElement(trackId, element.id, updates);
     } catch (error) {
-      console.error("[MarkdownProperties] Failed to update markdown element:", error);
+      console.error(
+        "[MarkdownProperties] Failed to update markdown element:",
+        error
+      );
     }
   };
 
@@ -67,14 +81,20 @@ export function MarkdownProperties({
 
   const handleFontSizeBlur = () => {
     const parsed = Number.parseInt(fontSizeInput, 10);
-    const nextFontSize = Math.max(10, Math.min(96, Number.isFinite(parsed) ? parsed : 18));
+    const nextFontSize = Math.max(
+      10,
+      Math.min(96, Number.isFinite(parsed) ? parsed : 18)
+    );
     setFontSizeInput(nextFontSize.toString());
     applyUpdates({ updates: { fontSize: nextFontSize } });
   };
 
   const handlePaddingBlur = () => {
     const parsed = Number.parseInt(paddingInput, 10);
-    const nextPadding = Math.max(0, Math.min(96, Number.isFinite(parsed) ? parsed : 16));
+    const nextPadding = Math.max(
+      0,
+      Math.min(96, Number.isFinite(parsed) ? parsed : 16)
+    );
     setPaddingInput(nextPadding.toString());
     applyUpdates({ updates: { padding: nextPadding } });
   };
@@ -92,7 +112,9 @@ export function MarkdownProperties({
   return (
     <div className="space-y-6 p-5">
       <div className="space-y-2">
-        <Label className="text-xs text-muted-foreground">Markdown content</Label>
+        <Label className="text-xs text-muted-foreground">
+          Markdown content
+        </Label>
         <Textarea
           value={element.markdownContent}
           className="min-h-40 resize-y bg-background/50"
