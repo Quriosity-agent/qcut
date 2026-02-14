@@ -1,239 +1,250 @@
-# Secure API Key Injection for AICP Binary — Implementation Plan
+# AICP End-to-End Reliability Plan (Install, Auth, Output, Import)
 
-## Overview
+**Date:** 2026-02-14  
+**Source:** `docs/task/session-notes.md`
 
-Inject the user's encrypted FAL API key into the AICP binary process at spawn time, so the bundled binary can call FAL.ai without requiring a `.env` file or manual key entry each session.
+## Goal
 
-## Current State — Almost Everything Exists
+Remove all manual setup and failure-prone steps so a user can generate AI media and see it in QCut Media with one flow:
 
-| Component | File | Status |
-|-----------|------|--------|
-| **Encryption** | `electron/api-key-handler.ts` (323 lines) | Done — `safeStorage.encryptString()` / `decryptString()`, stored in `~/.config/QCut/api-keys.json` with `0o600` permissions |
-| **Settings UI** | `apps/web/src/components/editor/properties-panel/settings-view.tsx` (lines 288-659) | Done — `ApiKeysView` component with input fields for 5 keys (FAL, Freesound, Gemini, OpenRouter, Anthropic), show/hide toggles, save button |
-| **IPC bridge** | `electron/preload.ts` (lines 235-241) | Done — `window.electronAPI.apiKeys.get()` / `.set()` / `.clear()` |
-| **Type definitions** | `apps/web/src/types/electron.d.ts` (lines 329-345) | Done — `ApiKeyConfig` type with all 5 keys |
-| **Client-side usage** | `apps/web/src/lib/fal-ai-client.ts` (lines 75-145) | Done — FAL client loads key from Electron storage on init |
-| **AICP env injection** | `electron/ai-pipeline-handler.ts` (line 450) | **NOT DONE** — passes `env: { ...process.env }` only |
+1. QCut detects bundled AICP.
+2. QCut injects API key securely.
+3. Generation runs with deterministic output path handling.
+4. Result is imported automatically into the project.
 
-### The Gap
+No local Python install, no `.env`, no manual file copy, no manual import curl.
 
-```typescript
-// ai-pipeline-handler.ts line 447-451 (current)
-const proc = spawn(cmd, args, {
-  windowsHide: true,
-  stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env },  // ← Only inherits process.env, no stored keys
-});
-```
+## Problems To Solve (Mapped 1:1)
 
-The AICP binary needs `FAL_KEY` in its environment to call FAL.ai. The key is already encrypted and stored — it just isn't being read and injected at spawn time.
+1. AICP not installed  
+2. Python version incompatibility  
+3. PEP 668 pip restrictions  
+4. Missing `FAL_KEY` env var  
+5. `--output-dir` mismatch behavior
+
+## Strategy
+
+Split into four workstreams and make each one testable in isolation.
+
+- Workstream A: Binary distribution/runtime policy (solves 1, 2, 3)
+- Workstream B: Secure API key injection and validation (solves 4)
+- Workstream C: Output path normalization and resilient result parsing (solves 5)
+- Workstream D: Automatic media import + UX hardening (removes manual user steps)
 
 ---
 
-## Implementation Subtasks
+## Workstream A: Binary Distribution and Runtime Policy
 
-### Task 1: Load Stored API Keys in AIPipelineManager (15 min)
+Status: Mostly complete based on `bundle-aicp-python-binary*.md`; keep this as release gate.
 
-**File to modify:**
+### A1. Ship bundled AICP for all target platforms
+
+Files:
+- `resources/bin/manifest.json`
+- `resources/bin/manifest.schema.json`
+- `scripts/stage-aicp-binaries.ts`
+- `scripts/verify-packaged-aicp.ts`
+- `.github/workflows/build-aicp-binaries.yml`
+
+Acceptance:
+- Packaged app contains host `aicp` binary under `resources/bin/aicp/<platform>/`.
+- Host binary passes `--version` in packaged validation.
+- Checksum/size validation enforced per platform in staging and runtime.
+
+### A2. Packaged runtime uses bundled binary only
+
+Files:
 - `electron/ai-pipeline-handler.ts`
 
-**Changes:**
+Acceptance:
+- In packaged mode, no Python/system fallback attempt.
+- User-facing error says reinstall/repair app if bundled binary missing/corrupt.
 
-Import the key retrieval function from the existing api-key-handler and load keys during environment detection. Inject them into the spawned process environment.
+### A3. macOS xattr hardening
 
-1. Import the key loading function from `api-key-handler.ts` (need to check what's exported — likely need to export a `getDecryptedKeys()` function)
-2. In the `execute()` method, read the stored FAL key and inject it into the spawn env:
+Files:
+- `scripts/stage-aicp-binaries.ts`
 
-```typescript
-// In execute(), before spawning:
-const storedKeys = await getDecryptedApiKeys();
-const spawnEnv = {
-  ...process.env,
-  ...(storedKeys.falApiKey ? { FAL_KEY: storedKeys.falApiKey } : {}),
-  ...(storedKeys.geminiApiKey ? { GEMINI_API_KEY: storedKeys.geminiApiKey } : {}),
-};
-
-const proc = spawn(cmd, args, {
-  windowsHide: true,
-  stdio: ["ignore", "pipe", "pipe"],
-  env: spawnEnv,
-});
-```
-
-3. Also inject into the `detectEnvironment()` version checks so `aicp --version` can work even if the binary requires a key.
-
-**Relevant files:**
-- `electron/api-key-handler.ts` — check what's exported, may need to expose a `getDecryptedApiKeys()` function
-- `electron/ai-pipeline-handler.ts:447-451` — the spawn call
-
-**Acceptance criteria:**
-- AICP process receives `FAL_KEY` from encrypted storage
-- No plaintext key written to disk (stays in memory only)
-- Works when user has set key via Settings UI
-- Falls back gracefully when no key is stored (AICP will report its own "key missing" error)
+Acceptance:
+- Post-download xattr cleanup (`com.apple.quarantine`/provenance) is best-effort.
+- Host validation does not hang due to quarantine metadata.
 
 ---
 
-### Task 2: Export Key Retrieval from api-key-handler (10 min)
+## Workstream B: Secure API Key Injection and Validation
 
-**File to modify:**
+### B1. Centralize decrypted key access in Electron main process
+
+Files:
 - `electron/api-key-handler.ts`
 
-**Changes:**
+Changes:
+- Extract reusable `getDecryptedApiKeys()` for main-process consumers.
+- Reuse same decryption path as IPC handler.
 
-The current handler registers IPC handlers but may not export a function callable from other Electron main-process modules. Add an exported function:
+Acceptance:
+- No duplicate decryption logic.
+- Returns empty strings for missing keys.
 
-```typescript
-/**
- * Read and decrypt stored API keys from disk.
- * For use by other main-process modules (e.g., ai-pipeline-handler).
- * Returns empty strings for keys that aren't stored.
- */
-export async function getDecryptedApiKeys(): Promise<ApiKeyConfig> {
-  // Re-use existing decryption logic
-}
-```
+### B2. Inject keys only at generation spawn time
 
-Check current exports — if the decryption logic is already in a standalone function, just export it. If it's inline in the IPC handler, extract it.
-
-**Acceptance criteria:**
-- `getDecryptedApiKeys()` is importable from `ai-pipeline-handler.ts`
-- Returns the same data as the `api-keys:get` IPC handler
-- Does not duplicate decryption logic (reuse existing code)
-
----
-
-### Task 3: Validate Key Before Generation (10 min)
-
-**File to modify:**
+Files:
 - `electron/ai-pipeline-handler.ts`
 
-**Changes:**
+Changes:
+- Build `spawnEnv` from `process.env` plus decrypted keys.
+- Inject `FAL_KEY` (and optional provider keys if needed by command).
+- Do not inject keys into environment detection/version checks.
 
-Before executing a generation command, check if the required API key is available. Return a clear, actionable error if not:
+Acceptance:
+- `generate-image` receives `FAL_KEY` when configured.
+- `aicp --version` and environment detection remain key-independent.
 
-```typescript
-// In execute(), before spawning:
-if (!spawnEnv.FAL_KEY && command !== "list-models" && command !== "--help") {
-  return {
-    success: false,
-    error: "FAL API key not configured. Go to Editor → Settings → API Keys to add your key.",
-  };
-}
-```
+### B3. Add pre-flight key validation
 
-This avoids spawning a process that will fail 10+ seconds later with a cryptic error from the AICP binary.
+Files:
+- `electron/ai-pipeline-handler.ts`
 
-**Acceptance criteria:**
-- Missing key returns immediate, user-friendly error with navigation hint
-- `list-models` and help commands work without a key
-- Error message tells the user exactly where to fix it
+Changes:
+- For commands that require FAL, fail fast with actionable message when key missing.
+- Allow non-auth commands (`list-models`, `--help`, version checks).
 
----
+Acceptance:
+- Missing key error returns immediately with path: `Editor -> Settings -> API Keys`.
 
-### Task 4: Unit Tests (15 min)
+### B4. Stop key material leakage in logs
 
-**Files to create:**
-- `electron/__tests__/api-key-injection.test.ts`
+Files:
+- `electron/api-key-handler.ts`
+- `electron/ai-pipeline-handler.ts`
 
-**Test cases:**
+Changes:
+- Remove key prefix/length debug logging.
+- Keep only non-sensitive operational logs.
 
-1. **Key injection** — when FAL key is stored, it appears in the spawn environment
-2. **No key stored** — spawn env doesn't include `FAL_KEY` (no crash, no undefined)
-3. **Multiple keys** — FAL + Gemini keys both injected correctly
-4. **Key not leaked to logs** — ensure console.log in execute() doesn't print the key value
-5. **Pre-flight validation** — generate command without key returns actionable error
-6. **List-models bypass** — `list-models` command works without key
-
-**Acceptance criteria:**
-- All tests pass with `bun run test`
-- Tests mock `safeStorage` and file system (no real keychain access in CI)
+Acceptance:
+- No plaintext or partial key value appears in logs.
 
 ---
 
-## Estimated Total Time: ~50 minutes
+## Workstream C: Output Path Determinism and Result Recovery
 
-| Task | Time |
-|------|------|
-| 1. Inject keys into AICP spawn env | 15 min |
-| 2. Export key retrieval function | 10 min |
-| 3. Pre-flight key validation | 10 min |
-| 4. Unit tests | 15 min |
+### C1. Make output path behavior deterministic for QCut
 
-## File Impact Summary
+Files:
+- `electron/ai-pipeline-handler.ts`
 
-| File | Action |
-|------|--------|
-| `electron/ai-pipeline-handler.ts` | Modify — inject stored keys into spawn env, add pre-flight check |
-| `electron/api-key-handler.ts` | Modify — export `getDecryptedApiKeys()` for use by other modules |
-| `electron/__tests__/api-key-injection.test.ts` | **Create** — unit tests |
+Changes:
+- Always pass QCut-controlled output directory.
+- Ensure directory exists before spawn.
+- Track baseline file set before run and diff after run when CLI output path is absent.
 
-### No changes needed
+Acceptance:
+- Generated file can be resolved even if upstream ignores `--output-dir`.
 
-| File | Why |
-|------|-----|
-| `electron/preload.ts` | IPC bridge already exposes `apiKeys.get/set/clear` |
-| `apps/web/src/types/electron.d.ts` | Types already defined |
-| `apps/web/src/components/editor/properties-panel/settings-view.tsx` | Settings UI already complete with FAL key input |
-| `apps/web/src/lib/fal-ai-client.ts` | Client-side FAL usage already loads from Electron storage |
+### C2. Robust result extraction priority
 
-## Security Model
+Files:
+- `electron/ai-pipeline-handler.ts`
 
-```
-User enters FAL key in Settings UI (once)
-        │
-        ▼
-window.electronAPI.apiKeys.set({ falApiKey: "sk-..." })
-        │
-        ▼
-api-key-handler.ts
-├── safeStorage.encryptString("sk-...") → encrypted Buffer
-├── Buffer.toString("base64") → "dGhpcyBpcyBl..."
-└── writeFile("~/.config/QCut/api-keys.json", { falApiKey: "dGhpcyBpcyBl..." }, mode: 0o600)
-        │
-        ▼ (on AICP generation request)
-        │
-ai-pipeline-handler.ts
-├── getDecryptedApiKeys() → { falApiKey: "sk-..." }
-├── Inject into spawn env: { ...process.env, FAL_KEY: "sk-..." }
-└── spawn("aicp", args, { env: spawnEnv })
-        │
-        ▼
-AICP process reads FAL_KEY from its environment
-├── Calls FAL API with Authorization header
-└── Process exits, env destroyed — key only existed in memory
-```
+Parsing order:
+1. Structured JSON/`RESULT:` output path
+2. Explicit stdout/stderr path patterns
+3. Filesystem diff fallback (newest matching artifact)
 
-**What's protected:**
-- Key encrypted at rest by OS keychain (macOS Keychain / Windows DPAPI / Linux Secret Service)
-- File permissions `0o600` — only owner can read
-- Key only decrypted in Electron main process memory, never in renderer
-- Passed to AICP via process environment (standard, same as how any CLI tool reads secrets)
-- Process environment destroyed when AICP exits
+Acceptance:
+- `PipelineResult.outputPath` is returned for successful generations in normal and fallback modes.
 
-**What's NOT protected against:**
-- Root/admin access on the machine (can access keychain)
-- Memory dump of the running process (key is in memory during generation)
-- These are inherent to any client-side key storage — acceptable trade-offs for a desktop app
+### C3. Upstream compatibility guard
 
-## Diagram
+Files:
+- `electron/ai-pipeline-handler.ts`
 
-```
-Settings UI                  Electron Main Process              AICP Binary
-───────────                  ──────────────────────              ───────────
+Changes:
+- Add tolerant parsing so upstream CLI format changes degrade gracefully.
+- Emit concise error when output cannot be resolved.
 
-"Enter FAL Key"              api-key-handler.ts
-  [sk-abc123]  ──────────►   encrypt + store
-                             ~/.config/QCut/api-keys.json
-                             (encrypted, 0o600)
+Acceptance:
+- No silent success with missing path.
 
-"Generate Image" ─────────►  ai-pipeline-handler.ts
-                             ├── getDecryptedApiKeys()
-                             ├── env = { FAL_KEY: "sk-abc123" }
-                             └── spawn("aicp", args, { env })
-                                        │
-                                        └──────────────────────► aicp generate-image
-                                                                 ├── reads FAL_KEY
-                                                                 ├── calls FAL API
-                                                                 └── exits (env gone)
-```
+---
+
+## Workstream D: Automatic Media Import and UX Hardening
+
+### D1. Auto-import generated artifact into Media panel
+
+Files:
+- `electron/ai-pipeline-handler.ts`
+- Existing media import integration point in main process (use project-aware import path used by current REST flow)
+
+Changes:
+- After successful generation, trigger same import pathway used by editor media imports.
+- Return `mediaId` and `outputPath` to renderer.
+
+Acceptance:
+- User sees generated media in panel without manual curl or file copy.
+
+### D2. Tight user-facing errors and recovery actions
+
+Files:
+- `electron/ai-pipeline-handler.ts`
+- Renderer surface that displays pipeline errors
+
+Acceptance:
+- Errors are categorized: `missing_key`, `binary_missing`, `generation_failed`, `output_unresolved`, `import_failed`.
+- Each error has one clear next action.
+
+---
+
+## Test Plan (Must Pass Before Release)
+
+### Unit Tests
+
+Files:
+- `electron/__tests__/api-key-injection.test.ts` (new)
+- `electron/__tests__/ai-pipeline-handler.test.ts` (extend)
+
+Coverage:
+- Key injection on spawn
+- No key in detection/version checks
+- Missing key pre-flight failure
+- No key leakage to logs
+- Output path fallback via filesystem diff
+- Error classification mapping
+
+### Integration/Packaging Tests
+
+Commands:
+- `bun run stage-aicp-binaries`
+- `bun run verify:packaged-aicp`
+- `bun run build`
+
+Coverage:
+- Packaged resources include host binary + manifest
+- Host binary executes in packaged validation
+- Pipeline returns output path and import metadata
+
+### Manual Smoke (Packaged App)
+
+1. Fresh machine/user profile with no Python installed.
+2. Set FAL key once in Settings.
+3. Run image generation from editor.
+4. Confirm media appears in panel automatically.
+
+---
+
+## Rollout Order
+
+1. Complete Workstream B (secure key injection + fast failures).  
+2. Complete Workstream C (deterministic output resolution).  
+3. Complete Workstream D (auto-import + categorized UX errors).  
+4. Keep Workstream A checks as CI/release gate every build.
+
+## Definition of Done
+
+All five blockers from `docs/task/session-notes.md` are eliminated in shipped UX:
+
+- No Python/pip requirement for end users.
+- No `.env` requirement for API key.
+- No manual command-line copy/import steps.
+- Generation either succeeds with imported media or fails with one actionable message.

@@ -1111,6 +1111,10 @@ export interface AIPipelineGenerateOptions {
   outputDir?: string;
   /** Unique session ID for tracking/cancellation */
   sessionId?: string;
+  /** Optional project ID to auto-import generated media */
+  projectId?: string;
+  /** Disable post-generation auto-import when false */
+  autoImport?: boolean;
 }
 
 /**
@@ -1125,6 +1129,8 @@ export interface AIPipelineResult {
   outputPaths?: string[];
   /** Error message if failed */
   error?: string;
+  /** Normalized error category for UI recovery actions */
+  errorCode?: string;
   /** Operation duration in seconds */
   duration?: number;
   /** Estimated or actual cost */
@@ -1133,6 +1139,10 @@ export interface AIPipelineResult {
   models?: string[];
   /** Raw response data */
   data?: unknown;
+  /** Imported media identifier when auto-import succeeds */
+  mediaId?: string;
+  /** Final imported media path when auto-import succeeds */
+  importedPath?: string;
 }
 
 /**

@@ -553,15 +553,20 @@ export interface ElectronAPI {
       args: Record<string, string | number | boolean>;
       outputDir?: string;
       sessionId?: string;
+      projectId?: string;
+      autoImport?: boolean;
     }) => Promise<{
       success: boolean;
       outputPath?: string;
       outputPaths?: string[];
       error?: string;
+      errorCode?: string;
       duration?: number;
       cost?: number;
       models?: string[];
       data?: unknown;
+      mediaId?: string;
+      importedPath?: string;
     }>;
     listModels: () => Promise<{
       success: boolean;

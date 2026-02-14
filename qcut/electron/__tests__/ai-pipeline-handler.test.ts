@@ -126,6 +126,20 @@ vi.mock("../binary-manager.js", () => ({
   getBinaryManager: () => mocks.mockBinaryManager,
 }));
 
+vi.mock("../api-key-handler.js", () => ({
+  getDecryptedApiKeys: vi.fn(async () => ({
+    falApiKey: "",
+    freesoundApiKey: "",
+    geminiApiKey: "",
+    openRouterApiKey: "",
+    anthropicApiKey: "",
+  })),
+}));
+
+vi.mock("../claude/claude-media-handler.js", () => ({
+  importMediaFile: vi.fn(async () => null),
+}));
+
 import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-handler";
 
 function getHandler({ channel }: { channel: string }): IpcHandler {
