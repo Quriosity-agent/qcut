@@ -25,10 +25,12 @@ type ExecMock = ((
   options: ExecOptions,
   callback: ExecCallback
 ) => void) & {
-  [key: symbol]: ((
-    command: string,
-    options: ExecOptions
-  ) => Promise<{ stdout: string; stderr: string }>) | undefined;
+  [key: symbol]:
+    | ((
+        command: string,
+        options: ExecOptions
+      ) => Promise<{ stdout: string; stderr: string }>)
+    | undefined;
 };
 
 const mocks = vi.hoisted(() => {
@@ -114,11 +116,13 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("child_process", () => ({
+  default: { exec: mocks.mockExec, spawn: mocks.mockSpawn },
   exec: mocks.mockExec,
   spawn: mocks.mockSpawn,
 }));
 
 vi.mock("node:child_process", () => ({
+  default: { exec: mocks.mockExec, spawn: mocks.mockSpawn },
   exec: mocks.mockExec,
   spawn: mocks.mockSpawn,
 }));
@@ -299,11 +303,14 @@ describe("AIPipelineManager fallback behavior", () => {
 
     setupAIPipelineIPC();
 
-    const result = (await getHandler({ channel: "ai-pipeline:generate" })({}, {
-      command: "generate-image",
-      args: { text: "cat", model: "nano_banana_pro" },
-      sessionId: "session-2",
-    })) as { success: boolean; errorCode?: string };
+    const result = (await getHandler({ channel: "ai-pipeline:generate" })(
+      {},
+      {
+        command: "generate-image",
+        args: { text: "cat", model: "nano_banana_pro" },
+        sessionId: "session-2",
+      }
+    )) as { success: boolean; errorCode?: string };
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe("missing_key");

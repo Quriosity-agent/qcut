@@ -69,18 +69,19 @@ function setupTimelineBridgeWithHandlers(): {
   const timelineApi = {
     onRequest: vi.fn((_callback: () => void) => {}),
     onApply: vi.fn((_callback: (timeline: ClaudeTimeline) => void) => {}),
-    onAddElement: vi.fn((callback: (element: Partial<ClaudeElement>) => void) => {
-      addElementHandler = callback;
-    }),
-    onUpdateElement: vi
-      .fn(
-        (
-          _callback: (data: {
-            elementId: string;
-            changes: Partial<ClaudeElement>;
-          }) => void
-        ) => {}
-      ),
+    onAddElement: vi.fn(
+      (callback: (element: Partial<ClaudeElement>) => void) => {
+        addElementHandler = callback;
+      }
+    ),
+    onUpdateElement: vi.fn(
+      (
+        _callback: (data: {
+          elementId: string;
+          changes: Partial<ClaudeElement>;
+        }) => void
+      ) => {}
+    ),
     onRemoveElement: vi.fn((_callback: (elementId: string) => void) => {}),
     sendResponse: vi.fn(),
     removeListeners: vi.fn(),
@@ -157,21 +158,20 @@ describe("setupClaudeTimelineBridge - add element", () => {
       endTime: 6,
     });
 
-    expect(storeMocks.timelineStoreState.findOrCreateTrack).toHaveBeenCalledWith(
-      "media"
-    );
-    expect(storeMocks.timelineStoreState.addElementToTrack).toHaveBeenCalledWith(
-      "media-track",
-      {
-        type: "media",
-        name: "clip-a.mp4",
-        mediaId: "media-1",
-        startTime: 2,
-        duration: 4,
-        trimStart: 0,
-        trimEnd: 0,
-      }
-    );
+    expect(
+      storeMocks.timelineStoreState.findOrCreateTrack
+    ).toHaveBeenCalledWith("media");
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).toHaveBeenCalledWith("media-track", {
+      type: "media",
+      name: "clip-a.mp4",
+      mediaId: "media-1",
+      startTime: 2,
+      duration: 4,
+      trimStart: 0,
+      trimEnd: 0,
+    });
   });
 
   it("adds a media element by sourceId and falls back to media duration", () => {
@@ -193,18 +193,17 @@ describe("setupClaudeTimelineBridge - add element", () => {
       startTime: 3,
     });
 
-    expect(storeMocks.timelineStoreState.addElementToTrack).toHaveBeenCalledWith(
-      "media-track",
-      {
-        type: "media",
-        name: "clip-b.mp4",
-        mediaId: "media-2",
-        startTime: 3,
-        duration: 9,
-        trimStart: 0,
-        trimEnd: 0,
-      }
-    );
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).toHaveBeenCalledWith("media-track", {
+      type: "media",
+      name: "clip-b.mp4",
+      mediaId: "media-2",
+      startTime: 3,
+      duration: 9,
+      trimStart: 0,
+      trimEnd: 0,
+    });
   });
 
   it("adds a text element with defaults when content is missing", () => {
@@ -216,33 +215,32 @@ describe("setupClaudeTimelineBridge - add element", () => {
       endTime: 4,
     });
 
-    expect(storeMocks.timelineStoreState.findOrCreateTrack).toHaveBeenCalledWith(
-      "text"
-    );
-    expect(storeMocks.timelineStoreState.addElementToTrack).toHaveBeenCalledWith(
-      "text-track",
-      {
-        type: "text",
-        name: "Text",
-        content: "Text",
-        startTime: 1,
-        duration: 3,
-        trimStart: 0,
-        trimEnd: 0,
-        fontSize: 48,
-        fontFamily: "Inter",
-        color: "#ffffff",
-        backgroundColor: "transparent",
-        textAlign: "center",
-        fontWeight: "normal",
-        fontStyle: "normal",
-        textDecoration: "none",
-        x: 0.5,
-        y: 0.5,
-        rotation: 0,
-        opacity: 1,
-      }
-    );
+    expect(
+      storeMocks.timelineStoreState.findOrCreateTrack
+    ).toHaveBeenCalledWith("text");
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).toHaveBeenCalledWith("text-track", {
+      type: "text",
+      name: "Text",
+      content: "Text",
+      startTime: 1,
+      duration: 3,
+      trimStart: 0,
+      trimEnd: 0,
+      fontSize: 48,
+      fontFamily: "Inter",
+      color: "#ffffff",
+      backgroundColor: "transparent",
+      textAlign: "center",
+      fontWeight: "normal",
+      fontStyle: "normal",
+      textDecoration: "none",
+      x: 0.5,
+      y: 0.5,
+      rotation: 0,
+      opacity: 1,
+    });
   });
 
   it("does not add media when referenced source does not exist", () => {
@@ -256,7 +254,9 @@ describe("setupClaudeTimelineBridge - add element", () => {
       endTime: 3,
     });
 
-    expect(storeMocks.timelineStoreState.addElementToTrack).not.toHaveBeenCalled();
+    expect(
+      storeMocks.timelineStoreState.addElementToTrack
+    ).not.toHaveBeenCalled();
     expect(warningSpy).toHaveBeenCalledWith(
       "[ClaudeTimelineBridge] Media not found:",
       "missing-image.png"

@@ -211,7 +211,9 @@ async function verifyPackagedAicp(): Promise<void> {
     const resourcesDir = await resolveLatestResourcesDir();
     const stagedRoot = join(resourcesDir, "bin", "aicp");
     if (!existsSync(stagedRoot)) {
-      throw new Error(`Packaged staged AICP directory not found: ${stagedRoot}`);
+      throw new Error(
+        `Packaged staged AICP directory not found: ${stagedRoot}`
+      );
     }
 
     const rawTargets =
@@ -220,7 +222,11 @@ async function verifyPackagedAicp(): Promise<void> {
 
     const missingPaths: string[] = [];
     for (const target of targets) {
-      const binaryPath = join(stagedRoot, target.key, getBinaryName({ target }));
+      const binaryPath = join(
+        stagedRoot,
+        target.key,
+        getBinaryName({ target })
+      );
       if (!existsSync(binaryPath)) {
         missingPaths.push(binaryPath);
       }
@@ -270,4 +276,4 @@ async function verifyPackagedAicp(): Promise<void> {
   }
 }
 
-void verifyPackagedAicp();
+verifyPackagedAicp();

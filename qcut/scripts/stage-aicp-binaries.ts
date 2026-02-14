@@ -151,7 +151,11 @@ function isHostTarget({ target }: { target: StageTarget }): boolean {
   }
 }
 
-async function computeSha256({ filePath }: { filePath: string }): Promise<string> {
+async function computeSha256({
+  filePath,
+}: {
+  filePath: string;
+}): Promise<string> {
   try {
     const buffer = await readFile(filePath);
     return createHash("sha256").update(buffer).digest("hex");
@@ -257,7 +261,9 @@ function resolveDownloadUrl({
     const platformAlias =
       TARGET_ALIASES[target.platform as keyof typeof TARGET_ALIASES];
     if (!platformAlias) {
-      throw new Error(`Unsupported platform for AICP URL override: ${target.platform}`);
+      throw new Error(
+        `Unsupported platform for AICP URL override: ${target.platform}`
+      );
     }
 
     const prefix = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
@@ -405,7 +411,9 @@ async function stageTarget({
       return;
     }
 
-    const versionCheck = await runVersionCheck({ binaryPath: stagedBinary.path });
+    const versionCheck = await runVersionCheck({
+      binaryPath: stagedBinary.path,
+    });
     if (versionCheck.error || versionCheck.exitCode !== 0) {
       throw new Error(
         `Host validation failed for ${target.key}: exit=${versionCheck.exitCode} error=${versionCheck.error} stderr=${versionCheck.stderr.trim()}`
@@ -431,14 +439,18 @@ async function stageAicpBinaries(): Promise<void> {
     const manifest = await loadManifest();
     const manifestPlatforms = manifest.binaries?.aicp?.platforms;
     if (!manifestPlatforms) {
-      throw new Error("AICP platforms are missing from resources/bin/manifest.json");
+      throw new Error(
+        "AICP platforms are missing from resources/bin/manifest.json"
+      );
     }
 
     await syncManifestForPackaging();
     await mkdir(STAGING_ROOT, { recursive: true });
 
     console.log(`[stage-aicp] Staging root: ${STAGING_ROOT}`);
-    console.log(`[stage-aicp] Targets: ${targets.map((target) => target.key).join(", ")}`);
+    console.log(
+      `[stage-aicp] Targets: ${targets.map((target) => target.key).join(", ")}`
+    );
 
     await Promise.all(
       targets.map((target) =>
@@ -452,7 +464,9 @@ async function stageAicpBinaries(): Promise<void> {
 
     console.log("[stage-aicp] AICP staging completed");
   } catch (error: unknown) {
-    console.error(`[stage-aicp] AICP staging failed: ${getErrorMessage({ error })}`);
+    console.error(
+      `[stage-aicp] AICP staging failed: ${getErrorMessage({ error })}`
+    );
     process.exit(1);
   }
 }

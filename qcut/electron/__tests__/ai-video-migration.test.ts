@@ -22,11 +22,15 @@ vi.mock("electron", () => ({
 }));
 
 // Mock crypto for deterministic unique IDs
-vi.mock("crypto", () => ({
-  randomBytes: vi.fn(() => ({
-    toString: () => "abcdef0123456789",
-  })),
-}));
+vi.mock("crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("crypto")>();
+  return {
+    ...actual,
+    randomBytes: vi.fn(() => ({
+      toString: () => "abcdef0123456789",
+    })),
+  };
+});
 
 import {
   sanitizeFilename,

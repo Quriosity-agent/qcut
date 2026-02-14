@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 interface ManifestPlatformEntry {
   filename: string;
@@ -33,14 +34,24 @@ function loadJsonFile<T>({ filePath }: { filePath: string }): T {
 }
 
 describe("binary manifest schema contract", () => {
-  const schemaPath = join(process.cwd(), "resources", "bin", "manifest.schema.json");
-  const manifestPath = join(process.cwd(), "resources", "bin", "manifest.json");
+  // Resolve from test file location (electron/__tests__/) up to repo root
+  const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const schemaPath = join(repoRoot, "resources", "bin", "manifest.schema.json");
+  const manifestPath = join(repoRoot, "resources", "bin", "manifest.json");
 
   it("includes per-platform sha256 in PlatformEntry schema", () => {
-    const schema = loadJsonFile<Record<string, unknown>>({ filePath: schemaPath });
+    const schema = loadJsonFile<Record<string, unknown>>({
+      filePath: schemaPath,
+    });
     const definitions = (schema.definitions || {}) as Record<string, unknown>;
-    const platformEntry = (definitions.PlatformEntry || {}) as Record<string, unknown>;
-    const properties = (platformEntry.properties || {}) as Record<string, unknown>;
+    const platformEntry = (definitions.PlatformEntry || {}) as Record<
+      string,
+      unknown
+    >;
+    const properties = (platformEntry.properties || {}) as Record<
+      string,
+      unknown
+    >;
 
     expect(properties.sha256).toBeDefined();
     const sha256Definition = properties.sha256 as Record<string, unknown>;

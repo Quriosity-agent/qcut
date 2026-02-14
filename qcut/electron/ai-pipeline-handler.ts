@@ -485,7 +485,12 @@ class AIPipelineManager {
 
       let outputDir = options.outputDir;
       if (!outputDir) {
-        outputDir = path.join(app.getPath("temp"), "qcut", "aicp-output", sessionId);
+        outputDir = path.join(
+          app.getPath("temp"),
+          "qcut",
+          "aicp-output",
+          sessionId
+        );
       }
 
       fs.mkdirSync(outputDir, { recursive: true });
@@ -625,7 +630,7 @@ class AIPipelineManager {
         "gi"
       );
       const absolutePathPattern = new RegExp(
-        `((?:[A-Za-z]:\\\\|/)[^\\n\\r\"']+?\\.${OUTPUT_FILE_EXTENSIONS_PATTERN})`,
+        `((?:[A-Za-z]:\\\\|/)[^\\n\\r"']+?\\.${OUTPUT_FILE_EXTENSIONS_PATTERN})`,
         "g"
       );
 
@@ -649,7 +654,10 @@ class AIPipelineManager {
         }
       }
     } catch (error) {
-      console.warn("[AI Pipeline] Failed to parse output paths from text:", error);
+      console.warn(
+        "[AI Pipeline] Failed to parse output paths from text:",
+        error
+      );
     }
 
     return this.dedupePaths({ paths: outputPaths });
@@ -707,7 +715,10 @@ class AIPipelineManager {
         }
       }
     } catch (error) {
-      console.warn("[AI Pipeline] Failed to parse output paths from JSON:", error);
+      console.warn(
+        "[AI Pipeline] Failed to parse output paths from JSON:",
+        error
+      );
     }
 
     return this.dedupePaths({ paths: resolvedPaths });
@@ -742,7 +753,10 @@ class AIPipelineManager {
       changedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
       return changedFiles.map((entry) => entry.filePath);
     } catch (error) {
-      console.warn("[AI Pipeline] Failed to recover outputs from directory:", error);
+      console.warn(
+        "[AI Pipeline] Failed to recover outputs from directory:",
+        error
+      );
       return [];
     }
   }
@@ -808,7 +822,7 @@ class AIPipelineManager {
     filePath,
   }: {
     filePath: string;
-    }): string | null {
+  }): string | null {
     try {
       const normalizedPath = filePath.replace(/\\\\/g, "/");
       const projectMatch = normalizedPath.match(/\/QCut\/Projects\/([^/]+)/);
@@ -839,7 +853,8 @@ class AIPipelineManager {
       }
 
       const projectId =
-        options.projectId || this.inferProjectIdFromPath({ filePath: result.outputPath });
+        options.projectId ||
+        this.inferProjectIdFromPath({ filePath: result.outputPath });
       if (!projectId) {
         return result;
       }
@@ -861,7 +876,10 @@ class AIPipelineManager {
           "Generation succeeded but import failed. Try importing the output file manually from the generated path.",
       };
     } catch (error) {
-      console.error("[AI Pipeline] Failed to auto-import generated media:", error);
+      console.error(
+        "[AI Pipeline] Failed to auto-import generated media:",
+        error
+      );
       return {
         ...result,
         success: false,
@@ -891,7 +909,9 @@ class AIPipelineManager {
     const sessionId = options.sessionId || this.buildSessionId();
     const args = [...baseArgs, options.command];
 
-    if (this.shouldUseJsonOutput({ command: options.command, args: options.args })) {
+    if (
+      this.shouldUseJsonOutput({ command: options.command, args: options.args })
+    ) {
       args.push("--json");
     }
 
@@ -1047,12 +1067,18 @@ class AIPipelineManager {
               try {
                 parsedResult = JSON.parse(resultMatch[1]);
               } catch (error) {
-                console.warn("[AI Pipeline] Failed to parse RESULT payload:", error);
+                console.warn(
+                  "[AI Pipeline] Failed to parse RESULT payload:",
+                  error
+                );
               }
             }
 
             const trimmedOutput = stdout.trim();
-            if (!parsedResult && (trimmedOutput.startsWith("{") || trimmedOutput.startsWith("["))) {
+            if (
+              !parsedResult &&
+              (trimmedOutput.startsWith("{") || trimmedOutput.startsWith("["))
+            ) {
               try {
                 parsedResult = JSON.parse(trimmedOutput);
               } catch {
@@ -1083,7 +1109,9 @@ class AIPipelineManager {
               })
             );
 
-            const dedupedOutputPaths = this.dedupePaths({ paths: outputCandidates });
+            const dedupedOutputPaths = this.dedupePaths({
+              paths: outputCandidates,
+            });
 
             let successResult: PipelineResult = {
               success: true,
@@ -1091,7 +1119,10 @@ class AIPipelineManager {
             };
 
             if (parsedResult) {
-              if (typeof parsedResult === "object" && !Array.isArray(parsedResult)) {
+              if (
+                typeof parsedResult === "object" &&
+                !Array.isArray(parsedResult)
+              ) {
                 const pipelinePayload = parsedResult as Partial<PipelineResult>;
                 successResult = {
                   ...successResult,
@@ -1126,7 +1157,10 @@ class AIPipelineManager {
             }
 
             const importedResult = await this.maybeAutoImportOutput({
-              options: { ...options, outputDir: outputDir || options.outputDir },
+              options: {
+                ...options,
+                outputDir: outputDir || options.outputDir,
+              },
               result: successResult,
             });
             resolveOnce({ result: importedResult });
@@ -1267,7 +1301,10 @@ export function setupAIPipelineIPC(): void {
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
         const status = await pipelineManager.getStatus();
-        return { success: false, error: status.error || "AI Pipeline not available" };
+        return {
+          success: false,
+          error: status.error || "AI Pipeline not available",
+        };
       }
 
       // Generate sessionId if not provided to ensure correlation
@@ -1295,7 +1332,10 @@ export function setupAIPipelineIPC(): void {
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
         const status = await pipelineManager.getStatus();
-        return { success: false, error: status.error || "AI Pipeline not available" };
+        return {
+          success: false,
+          error: status.error || "AI Pipeline not available",
+        };
       }
 
       return pipelineManager.execute(
@@ -1318,7 +1358,10 @@ export function setupAIPipelineIPC(): void {
       const isAvailable = await pipelineManager.isAvailable();
       if (!isAvailable) {
         const status = await pipelineManager.getStatus();
-        return { success: false, error: status.error || "AI Pipeline not available" };
+        return {
+          success: false,
+          error: status.error || "AI Pipeline not available",
+        };
       }
 
       return pipelineManager.execute(

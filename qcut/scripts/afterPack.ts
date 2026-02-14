@@ -2,14 +2,16 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
-// biome-ignore lint/style/noExportedImports: This is not being re-exported, just used for type annotation
-import { AfterPackContext } from "electron-builder";
+import type { AfterPackContext } from "electron-builder";
 
 async function afterPack(context: AfterPackContext): Promise<void> {
   process.stdout.write("Running afterPack hook to fix icon...\n");
 
   // Skip icon fixing when cross-compiling (e.g., building Windows on macOS)
-  if (process.platform !== "win32" && context.electronPlatformName === "win32") {
+  if (
+    process.platform !== "win32" &&
+    context.electronPlatformName === "win32"
+  ) {
     process.stdout.write(
       "Skipping icon fix: cross-compiling from non-Windows platform\n"
     );

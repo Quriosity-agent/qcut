@@ -51,7 +51,11 @@ function getApiKeysFilePath(): string {
   }
 }
 
-function decryptStoredValue({ encryptedValue }: { encryptedValue?: string }): string {
+function decryptStoredValue({
+  encryptedValue,
+}: {
+  encryptedValue?: string;
+}): string {
   if (!encryptedValue) {
     return "";
   }
@@ -67,14 +71,22 @@ function decryptStoredValue({ encryptedValue }: { encryptedValue?: string }): st
   }
 }
 
-function decryptStoredApiKeys({ encryptedData }: { encryptedData: EncryptedApiKeyData }): ApiKeys {
+function decryptStoredApiKeys({
+  encryptedData,
+}: {
+  encryptedData: EncryptedApiKeyData;
+}): ApiKeys {
   try {
     return {
-      falApiKey: decryptStoredValue({ encryptedValue: encryptedData.falApiKey }),
+      falApiKey: decryptStoredValue({
+        encryptedValue: encryptedData.falApiKey,
+      }),
       freesoundApiKey: decryptStoredValue({
         encryptedValue: encryptedData.freesoundApiKey,
       }),
-      geminiApiKey: decryptStoredValue({ encryptedValue: encryptedData.geminiApiKey }),
+      geminiApiKey: decryptStoredValue({
+        encryptedValue: encryptedData.geminiApiKey,
+      }),
       openRouterApiKey: decryptStoredValue({
         encryptedValue: encryptedData.openRouterApiKey,
       }),
@@ -168,7 +180,8 @@ export function setupApiKeyIPC(): void {
           if (openRouterApiKey) {
             const encryptedOpenRouter: Buffer =
               safeStorage.encryptString(openRouterApiKey);
-            dataToStore.openRouterApiKey = encryptedOpenRouter.toString("base64");
+            dataToStore.openRouterApiKey =
+              encryptedOpenRouter.toString("base64");
           } else {
             dataToStore.openRouterApiKey = "";
           }
@@ -194,9 +207,13 @@ export function setupApiKeyIPC(): void {
           fs.mkdirSync(dir, { recursive: true });
         }
 
-        fs.writeFileSync(apiKeysFilePath, JSON.stringify(dataToStore, null, 2), {
-          mode: 0o600,
-        });
+        fs.writeFileSync(
+          apiKeysFilePath,
+          JSON.stringify(dataToStore, null, 2),
+          {
+            mode: 0o600,
+          }
+        );
 
         return true;
       } catch (error: any) {

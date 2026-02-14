@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { debugError } from "@/lib/debug-config";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -133,7 +134,7 @@ export function TerminalEmulator({
     terminal.onData((data) => {
       if (sessionId) {
         window.electronAPI?.pty?.write?.(sessionId, data)?.catch((error) => {
-          console.error("[Terminal] Failed to write to PTY:", error);
+          debugError("[Terminal] Failed to write to PTY:", error);
         });
       }
     });
@@ -151,11 +152,9 @@ export function TerminalEmulator({
       const text = e.clipboardData?.getData("text");
       if (text && sessionId) {
         isPasting = true;
-        window.electronAPI?.pty
-          ?.write?.(sessionId, text)
-          ?.catch((error) => {
-            console.error("[Terminal] Failed to paste into PTY:", error);
-          });
+        window.electronAPI?.pty?.write?.(sessionId, text)?.catch((error) => {
+          debugError("[Terminal] Failed to paste into PTY:", error);
+        });
         setTimeout(() => {
           isPasting = false;
         }, 100);
@@ -192,7 +191,7 @@ export function TerminalEmulator({
                 window.electronAPI?.pty
                   ?.write?.(sessionId, text)
                   ?.catch((error) => {
-                    console.error(
+                    debugError(
                       "[Terminal] Failed to write clipboard text:",
                       error
                     );
@@ -230,7 +229,7 @@ export function TerminalEmulator({
         const selection = terminal.getSelection();
         if (selection) {
           navigator.clipboard.writeText(selection).catch((err) => {
-            console.error("[Terminal] Failed to copy:", err);
+            debugError("[Terminal] Failed to copy:", err);
           });
         }
         // Return false to prevent sending Ctrl+C to terminal when copying

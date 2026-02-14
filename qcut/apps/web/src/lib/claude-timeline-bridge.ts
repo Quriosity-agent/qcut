@@ -124,7 +124,9 @@ function findMediaItemForElement({
   mediaItems: MediaItem[];
 }): MediaItem | null {
   if (element.sourceName) {
-    const mediaByName = mediaItems.find((item) => item.name === element.sourceName);
+    const mediaByName = mediaItems.find(
+      (item) => item.name === element.sourceName
+    );
     if (mediaByName) {
       return mediaByName;
     }
