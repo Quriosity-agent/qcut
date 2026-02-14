@@ -160,7 +160,7 @@ describe("FFmpeg binary health check", () => {
     async () => {
       const result = await spawnVersion({ binaryPath: ffmpegPath as string });
       const firstLine = result.stdout.split("\n")[0] ?? "";
-      expect(firstLine).toMatch(/ffmpeg version \d+\.\d+/);
+      expect(firstLine).toMatch(/ffmpeg version [nN]?\d+\.\d+/);
     },
     SPAWN_TIMEOUT + 1000
   );
@@ -180,7 +180,7 @@ describe("FFmpeg binary health check", () => {
     async () => {
       const result = await spawnVersion({ binaryPath: ffprobePath as string });
       const firstLine = result.stdout.split("\n")[0] ?? "";
-      expect(firstLine).toMatch(/ffprobe version \d+\.\d+/);
+      expect(firstLine).toMatch(/ffprobe version [nN]?\d+\.\d+/);
     },
     SPAWN_TIMEOUT + 1000
   );
