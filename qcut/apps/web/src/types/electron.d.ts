@@ -869,8 +869,10 @@ export interface ElectronAPI {
         settings: Partial<ProjectSettings>
       ) => Promise<void>;
       getStats: (projectId: string) => Promise<ProjectStats>;
-      onStatsRequest: (callback: () => void) => void;
-      sendStatsResponse: (stats: ProjectStats) => void;
+      onStatsRequest: (
+        callback: (projectId: string, requestId: string) => void
+      ) => void;
+      sendStatsResponse: (stats: ProjectStats, requestId: string) => void;
       onUpdated: (
         callback: (
           projectId: string,

@@ -709,8 +709,8 @@ export function setupClaudeProjectBridge(): void {
 
   const projectAPI = window.electronAPI.claude.project;
 
-  // Respond to stats request
-  projectAPI.onStatsRequest(() => {
+  // Respond to stats request (must forward requestId for main process matching)
+  projectAPI.onStatsRequest((_projectId: string, requestId: string) => {
     const timelineState = useTimelineStore.getState();
     const projectState = useProjectStore.getState();
     const tracks = timelineState.tracks;
@@ -745,7 +745,7 @@ export function setupClaudeProjectBridge(): void {
       fileSize: 0, // Would need to calculate
     };
 
-    projectAPI.sendStatsResponse(stats);
+    projectAPI.sendStatsResponse(stats, requestId);
   });
 }
 

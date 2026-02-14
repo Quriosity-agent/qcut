@@ -45,7 +45,7 @@ export function getTimelinePath(projectId: string): string {
  * Get project settings file path
  */
 export function getProjectSettingsPath(projectId: string): string {
-  return path.join(getProjectPath(projectId), "project.json");
+  return path.join(getProjectPath(projectId), "project.qcut");
 }
 
 /**
