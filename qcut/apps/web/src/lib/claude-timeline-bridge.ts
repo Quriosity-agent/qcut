@@ -633,37 +633,59 @@ function formatElementForExport(
 }
 
 /**
- * Apply imported Claude timeline to store
- *
- * @stub This function is intentionally a stub. Timeline import is a complex
- * operation that requires user confirmation before overwriting existing work.
- * Full implementation is tracked separately and out of scope for this PR.
- *
- * Future implementation will:
- * 1. Validate media references exist in the media store
- * 2. Map Claude elements back to internal TimelineElement types
- * 3. Handle conflicts with existing elements (prompt user)
- * 4. Update timeline store with imported data
+ * Apply imported Claude timeline to store (appends to existing timeline)
  */
-function applyTimelineToStore(timeline: ClaudeTimeline): void {
-  try {
-    // Log import details for debugging - helps verify the bridge is working
-    console.log("[ClaudeTimelineBridge] Would apply timeline:", {
-      name: timeline.name,
-      duration: timeline.duration,
-      tracks: timeline.tracks.length,
-      totalElements: timeline.tracks.reduce(
-        (sum, t) => sum + t.elements.length,
-        0
-      ),
-    });
+async function applyTimelineToStore(timeline: ClaudeTimeline): Promise<void> {
+  const totalElements = timeline.tracks.reduce(
+    (sum, t) => sum + t.elements.length,
+    0
+  );
+  console.log("[ClaudeTimelineBridge] Applying timeline:", {
+    name: timeline.name,
+    duration: timeline.duration,
+    tracks: timeline.tracks.length,
+    totalElements,
+  });
 
-    console.warn(
-      "[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented"
-    );
-  } catch (error) {
-    console.error("[ClaudeTimelineBridge] Timeline import failed:", error);
+  const timelineStore = useTimelineStore.getState();
+  const projectId = useProjectStore.getState().activeProject?.id;
+  let added = 0;
+
+  for (const track of timeline.tracks) {
+    for (const element of track.elements) {
+      try {
+        if (isClaudeMediaElementType({ type: element.type })) {
+          await addClaudeMediaElement({
+            element,
+            timelineStore: useTimelineStore.getState(),
+            projectId,
+          });
+          added++;
+        } else if (element.type === "text") {
+          addClaudeTextElement({
+            element,
+            timelineStore: useTimelineStore.getState(),
+          });
+          added++;
+        } else {
+          console.warn(
+            "[ClaudeTimelineBridge] Skipping unsupported element type:",
+            element.type
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[ClaudeTimelineBridge] Failed to add element during import:",
+          element.id,
+          error
+        );
+      }
+    }
   }
+
+  console.log(
+    `[ClaudeTimelineBridge] Timeline import complete: ${added}/${totalElements} elements added`
+  );
 }
 
 /**
