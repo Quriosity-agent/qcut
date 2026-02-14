@@ -108,6 +108,7 @@ export function MarkdownProperties({
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
+                data-testid="markdown-duration-slider"
                 value={[element.duration]}
                 min={TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION}
                 max={TIMELINE_CONSTANTS.MARKDOWN_MAX_DURATION}
@@ -120,6 +121,7 @@ export function MarkdownProperties({
                 className="w-full"
               />
               <Input
+                data-testid="markdown-duration-input"
                 type="number"
                 value={durationInput}
                 min={TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION}
@@ -160,6 +162,7 @@ export function MarkdownProperties({
           <PropertyItemValue>
             <div className="flex items-center gap-2">
               <Slider
+                data-testid="markdown-font-size-slider"
                 value={[element.fontSize]}
                 min={10}
                 max={96}
@@ -171,6 +174,7 @@ export function MarkdownProperties({
                 className="w-full"
               />
               <Input
+                data-testid="markdown-font-size-input"
                 type="number"
                 value={fontSizeInput}
                 min={10}
