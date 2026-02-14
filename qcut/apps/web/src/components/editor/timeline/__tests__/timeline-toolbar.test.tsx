@@ -172,4 +172,10 @@ describe("TimelineToolbar", () => {
     fireEvent.click(screen.getByTestId("split-clip-button"));
     expect(splitElement).toHaveBeenCalledWith("track-1", "element-1", 5);
   });
+
+  it("add markdown button adds markdown at playhead", () => {
+    render(<TimelineToolbar zoomLevel={1} setZoomLevel={setZoomLevel} />);
+    fireEvent.click(screen.getByTestId("add-markdown-button"));
+    expect(timelineState.addMarkdownAtTime).toHaveBeenCalled();
+  });
 });

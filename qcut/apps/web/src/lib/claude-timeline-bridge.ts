@@ -379,13 +379,13 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle timeline import from Claude
-  claudeAPI.onApply((timeline: ClaudeTimeline) => {
+  claudeAPI.onApply(async (timeline: ClaudeTimeline) => {
     try {
       console.log(
         "[ClaudeTimelineBridge] Received timeline to apply:",
         timeline.name
       );
-      applyTimelineToStore(timeline);
+      await applyTimelineToStore(timeline);
     } catch (error) {
       console.error("[ClaudeTimelineBridge] Failed to apply timeline:", error);
     }
@@ -425,20 +425,109 @@ export function setupClaudeTimelineBridge(): void {
     }
   });
 
-  /**
-   * Handle element update from Claude
-   *
-   * @stub This handler is intentionally a stub. Updating elements requires:
-   * 1. Timeline store to expose an updateElement method
-   * 2. Mapping partial ClaudeElement changes to TimelineElement fields
-   * 3. Validating changes don't create invalid state (overlaps, negative times)
-   */
+  // Handle element update from Claude
   claudeAPI.onUpdateElement(
     (data: { elementId: string; changes: Partial<ClaudeElement> }) => {
       try {
         console.log("[ClaudeTimelineBridge] Updating element:", data.elementId);
-        console.warn(
-          "[ClaudeTimelineBridge] updateElement not implemented - needs store method"
+
+        const timelineStore = useTimelineStore.getState();
+        const track = findTrackByElementId(
+          timelineStore.tracks,
+          data.elementId
+        );
+        if (!track) {
+          console.warn(
+            "[ClaudeTimelineBridge] Could not find track for element:",
+            data.elementId
+          );
+          return;
+        }
+
+        const element = track.elements.find((e) => e.id === data.elementId);
+        if (!element) {
+          return;
+        }
+
+        const { changes } = data;
+
+        // Update start time
+        if (typeof changes.startTime === "number") {
+          timelineStore.updateElementStartTime(
+            track.id,
+            data.elementId,
+            changes.startTime
+          );
+        }
+
+        // Update duration (from explicit duration or endTime - startTime)
+        if (typeof changes.duration === "number" && changes.duration > 0) {
+          timelineStore.updateElementDuration(
+            track.id,
+            data.elementId,
+            changes.duration
+          );
+        } else if (typeof changes.endTime === "number") {
+          const start = changes.startTime ?? element.startTime;
+          const newDuration = changes.endTime - start;
+          if (newDuration > 0) {
+            timelineStore.updateElementDuration(
+              track.id,
+              data.elementId,
+              newDuration
+            );
+          }
+        }
+
+        // Update type-specific properties
+        if (element.type === "text") {
+          const textUpdates: Record<string, unknown> = {};
+          if (typeof changes.content === "string") {
+            textUpdates.content = changes.content;
+          }
+          if (changes.style) {
+            const s = changes.style;
+            if (typeof s.fontSize === "number") textUpdates.fontSize = s.fontSize;
+            if (typeof s.fontFamily === "string")
+              textUpdates.fontFamily = s.fontFamily;
+            if (typeof s.color === "string") textUpdates.color = s.color;
+            if (typeof s.backgroundColor === "string")
+              textUpdates.backgroundColor = s.backgroundColor;
+            if (typeof s.textAlign === "string")
+              textUpdates.textAlign = s.textAlign;
+            if (typeof s.fontWeight === "string")
+              textUpdates.fontWeight = s.fontWeight;
+            if (typeof s.fontStyle === "string")
+              textUpdates.fontStyle = s.fontStyle;
+            if (typeof s.textDecoration === "string")
+              textUpdates.textDecoration = s.textDecoration;
+          }
+          if (Object.keys(textUpdates).length > 0) {
+            timelineStore.updateTextElement(
+              track.id,
+              data.elementId,
+              textUpdates
+            );
+          }
+        }
+
+        if (element.type === "media" && changes.style) {
+          const mediaUpdates: Record<string, unknown> = {};
+          if (typeof changes.style.volume === "number") {
+            mediaUpdates.volume = changes.style.volume;
+          }
+          if (Object.keys(mediaUpdates).length > 0) {
+            timelineStore.updateMediaElement(
+              track.id,
+              data.elementId,
+              mediaUpdates
+            );
+          }
+        }
+
+        console.log(
+          "[ClaudeTimelineBridge] Updated element:",
+          data.elementId
         );
       } catch (error) {
         console.error(
