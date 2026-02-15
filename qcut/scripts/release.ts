@@ -333,7 +333,11 @@ function bumpVersion(releaseType: ReleaseType): string {
   } else if (PRERELEASE_CHANNELS.includes(releaseType as PrereleaseChannel)) {
     const channel = releaseType as PrereleaseChannel;
 
-    if (parsed.prerelease && parsed.prerelease.channel === channel && isToday(parsed)) {
+    if (
+      parsed.prerelease &&
+      parsed.prerelease.channel === channel &&
+      isToday(parsed)
+    ) {
       // Same channel, same day: bump prerelease number
       newVersion = `${dateStr}.${parsed.build}-${channel}.${parsed.prerelease.number + 1}`;
     } else if (isToday(parsed) && !parsed.prerelease) {
@@ -426,7 +430,7 @@ function buildElectronApp(): void {
   try {
     execSync("bun run verify:packaged-aicp", {
       stdio: "inherit",
-      timeout: 15000,
+      timeout: 15_000,
     });
   } catch {
     process.stdout.write("⚠️  AICP verification skipped (non-fatal)\n");
@@ -435,7 +439,11 @@ function buildElectronApp(): void {
 
 function computeChecksum(filePath: string): string {
   const fileBuffer = fs.readFileSync(filePath);
-  return crypto.createHash("sha256").update(fileBuffer).digest("hex").toUpperCase();
+  return crypto
+    .createHash("sha256")
+    .update(fileBuffer)
+    .digest("hex")
+    .toUpperCase();
 }
 
 function generateChecksums(): void {
@@ -452,7 +460,8 @@ function generateChecksums(): void {
       throw new Error("Installer file not found");
     }
 
-    let checksumContent = `SHA256 Checksums for QCut Release\n=================================\n\n`;
+    let checksumContent =
+      "SHA256 Checksums for QCut Release\n=================================\n\n";
 
     for (const installerFile of installerFiles) {
       const installerPath: string = path.join(buildDir, installerFile);
@@ -606,7 +615,9 @@ function getPreviousVersion(): string {
       .trim()
       .split("\n")
       .filter((tag: string) =>
-        tag.match(/^v(\d{4}\.\d{2}\.\d{2}\.\d+|\d+\.\d+\.\d+)(-(?:alpha|beta|rc)\.\d+)?$/)
+        tag.match(
+          /^v(\d{4}\.\d{2}\.\d{2}\.\d+|\d+\.\d+\.\d+)(-(?:alpha|beta|rc)\.\d+)?$/
+        )
       );
     return tagList[1] || "v0.0.0";
   } catch (error: any) {

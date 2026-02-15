@@ -121,7 +121,10 @@ describe("timeline scroll limit - 2 hour support", () => {
     const viewportWidth = 1200;
     const scrollWidth = playheadPx; // timeline content width
     const scrollMax = scrollWidth - viewportWidth; // 358,800
-    const desiredScroll = Math.max(0, Math.min(scrollMax, playheadPx - viewportWidth / 2));
+    const desiredScroll = Math.max(
+      0,
+      Math.min(scrollMax, playheadPx - viewportWidth / 2)
+    );
 
     // scrollMax caps the scroll, so playhead sits at right edge
     expect(desiredScroll).toBe(scrollMax);
@@ -139,7 +142,10 @@ describe("timeline scroll limit - 2 hour support", () => {
     const viewportWidth = 1200;
     const scrollWidth = TWO_HOURS_SECONDS * PPS * zoomLevel;
     const scrollMax = scrollWidth - viewportWidth;
-    const desiredScroll = Math.max(0, Math.min(scrollMax, playheadPx - viewportWidth / 2));
+    const desiredScroll = Math.max(
+      0,
+      Math.min(scrollMax, playheadPx - viewportWidth / 2)
+    );
     const playheadRelative = playheadPx - desiredScroll;
 
     // Mid-timeline: playhead should be centered

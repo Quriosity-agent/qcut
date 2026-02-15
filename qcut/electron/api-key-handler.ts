@@ -274,7 +274,8 @@ export function setupApiKeyIPC(): void {
   // so CLI tools can access keys saved before syncToAicpCredentials was added.
   loadElectronStoredKeys()
     .then((keys) => {
-      const hasKeys = keys.falApiKey || keys.geminiApiKey || keys.openRouterApiKey;
+      const hasKeys =
+        keys.falApiKey || keys.geminiApiKey || keys.openRouterApiKey;
       if (hasKeys) {
         syncToAicpCredentials(keys);
       }
@@ -406,8 +407,13 @@ export function setupApiKeyIPC(): void {
     const electronKeys = await loadElectronStoredKeys();
     const aicpKeys = loadAicpCredentials();
 
-    function resolveStatus(envName: string, field: keyof ApiKeys, altEnvName?: string): KeyStatus {
-      if (process.env[envName] || (altEnvName && process.env[altEnvName])) return { set: true, source: "environment" };
+    function resolveStatus(
+      envName: string,
+      field: keyof ApiKeys,
+      altEnvName?: string
+    ): KeyStatus {
+      if (process.env[envName] || (altEnvName && process.env[altEnvName]))
+        return { set: true, source: "environment" };
       if (electronKeys[field]) return { set: true, source: "electron" };
       if (aicpKeys[field]) return { set: true, source: "aicp-cli" };
       return { set: false, source: "not-set" };

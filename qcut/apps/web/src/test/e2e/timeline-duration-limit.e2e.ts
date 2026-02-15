@@ -9,10 +9,7 @@
  */
 
 import { test, expect, createTestProject } from "./helpers/electron-helpers";
-import {
-  captureTestStep,
-  captureScreenshot,
-} from "./utils/screenshot-helper";
+import { captureTestStep, captureScreenshot } from "./utils/screenshot-helper";
 
 const SCREENSHOT_FOLDER = "timeline-duration-limit";
 
@@ -44,16 +41,21 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       return {
         tracksScrollWidth: tracksContainer.scrollWidth,
         tracksClientWidth: tracksContainer.clientWidth,
-        tracksCanScroll: tracksContainer.scrollWidth > tracksContainer.clientWidth,
+        tracksCanScroll:
+          tracksContainer.scrollWidth > tracksContainer.clientWidth,
         rulerScrollWidth: rulerContainer?.scrollWidth ?? 0,
         rulerClientWidth: rulerContainer?.clientWidth ?? 0,
-        rulerCanScroll: (rulerContainer?.scrollWidth ?? 0) > (rulerContainer?.clientWidth ?? 0),
+        rulerCanScroll:
+          (rulerContainer?.scrollWidth ?? 0) >
+          (rulerContainer?.clientWidth ?? 0),
         hasTracksContainer: true,
         hasRulerContainer: !!rulerContainer,
         // Check there are NO Radix scroll viewports inside these containers
         hasRadixViewport:
-          tracksContainer.querySelector("[data-radix-scroll-area-viewport]") !== null ||
-          (rulerContainer?.querySelector("[data-radix-scroll-area-viewport]") ?? null) !== null,
+          tracksContainer.querySelector("[data-radix-scroll-area-viewport]") !==
+            null ||
+          (rulerContainer?.querySelector("[data-radix-scroll-area-viewport]") ??
+            null) !== null,
       };
     });
 
@@ -99,12 +101,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       JSON.stringify(extendedScrollInfo, null, 2)
     );
 
-    await captureTestStep(
-      page,
-      SCREENSHOT_FOLDER,
-      3,
-      "scrolled-past-128s"
-    );
+    await captureTestStep(page, SCREENSHOT_FOLDER, 3, "scrolled-past-128s");
 
     // Verify we can scroll past the old 128-second / 6400px limit
     if (extendedScrollInfo) {
@@ -158,12 +155,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       expect(syncInfo.inSync).toBe(true);
     }
 
-    await captureTestStep(
-      page,
-      SCREENSHOT_FOLDER,
-      4,
-      "scroll-sync-verified"
-    );
+    await captureTestStep(page, SCREENSHOT_FOLDER, 4, "scroll-sync-verified");
 
     // Step 6: Test wheel-event horizontal scrolling (simulates trackpad gesture)
     // First, reset scroll position to 0
@@ -211,12 +203,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       expect(wheelScrollResult.scrollLeft).toBeGreaterThan(0);
     }
 
-    await captureTestStep(
-      page,
-      SCREENSHOT_FOLDER,
-      5,
-      "wheel-scroll-test"
-    );
+    await captureTestStep(page, SCREENSHOT_FOLDER, 5, "wheel-scroll-test");
 
     // Step 7: Test seek at a position past 128 seconds (renamed from Step 6)
     const seekInfo = await page.evaluate(() => {
@@ -243,12 +230,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
     console.log("Seek info:", JSON.stringify(seekInfo, null, 2));
 
     // Final screenshot showing the timeline at extended position
-    await captureTestStep(
-      page,
-      SCREENSHOT_FOLDER,
-      6,
-      "timeline-at-200s"
-    );
+    await captureTestStep(page, SCREENSHOT_FOLDER, 6, "timeline-at-200s");
 
     // Step 8: Verify ruler time labels show times > 2 minutes
     const rulerLabels = await page.evaluate(() => {
