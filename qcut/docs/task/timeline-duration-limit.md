@@ -59,7 +59,7 @@ At 50px/s: `7,200 * 50 = 360,000px` — far beyond any browser limit. Reducing `
 The timeline duration isn't hardcoded — it's **computed from content**:
 
 1. **`getTotalDuration()`** (`apps/web/src/stores/timeline-store.ts:787-803`) finds the latest element endpoint across all tracks
-2. **`calculateMinimumTimelineDuration()`** (`apps/web/src/constants/timeline-constants.ts:197-208`) ensures at least 600 seconds (10 minutes) for empty timelines
+2. **`calculateMinimumTimelineDuration()`** (`apps/web/src/constants/timeline-constants.ts:197-208`) ensures at least 7,200 seconds (2 hours) for empty timelines
 3. **`setDuration()`** in the playback store (`apps/web/src/stores/playback-store.ts:227-228`) stores this value
 4. The timeline `useEffect` (`apps/web/src/components/editor/timeline/index.tsx:316-319`) updates duration whenever tracks change:
 
@@ -70,7 +70,7 @@ useEffect(() => {
 }, [tracks, setDuration, getTotalDuration]);
 ```
 
-So the **duration value itself** can be 600s (10 minutes) or more — the problem is that the **visual timeline** can only render ~128 seconds worth of pixels at default zoom before hitting the scroll container's width limit.
+So the **duration value itself** can be 7,200s (2 hours) or more — the problem is that the **visual timeline** can only render ~128 seconds worth of pixels at default zoom before hitting the scroll container's width limit.
 
 ## Data Flow Summary
 
@@ -79,7 +79,7 @@ Track elements (startTime + duration)
     ↓
 getTotalDuration() → finds latest end time
     ↓
-calculateMinimumTimelineDuration() → ensures ≥ 600s
+calculateMinimumTimelineDuration() → ensures ≥ 7,200s
     ↓
 setDuration() → stored in playback-store
     ↓
@@ -168,8 +168,8 @@ Apply `timeline-scroll` class to the ruler and tracks native scroll containers.
 
 No tests currently exist for `timeline-constants.ts`. Add tests to validate:
 
-- `calculateMinimumTimelineDuration()` returns ≥600s for empty/zero/invalid durations
-- `calculateMinimumTimelineDuration()` returns content duration when > 600s
+- `calculateMinimumTimelineDuration()` returns ≥7,200s for empty/zero/invalid durations
+- `calculateMinimumTimelineDuration()` returns content duration when > 7,200s
 - `calculateTimelineBuffer()` returns ≥5s minimum
 - `calculateTimelineBuffer()` returns 10% for large durations
 - `snapTimeToFrame()` returns correct frame-snapped values
@@ -201,7 +201,7 @@ No tests currently exist for `timeline-constants.ts`. Add tests to validate:
 
 After implementation, verify:
 
-1. Empty timeline renders 10 minutes of scrollable area
+1. Empty timeline renders 2 hours of scrollable area
 2. Can place an element at 1 hour and scroll to it
 3. Playhead scrubbing/seeking works at any position
 4. Auto-scroll during playback works past 128s
