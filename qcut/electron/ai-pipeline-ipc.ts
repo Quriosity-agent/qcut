@@ -182,4 +182,3 @@ export function cleanupAIPipeline(): void {
 app.on("before-quit", () => {
   cleanupAIPipeline();
 });
-

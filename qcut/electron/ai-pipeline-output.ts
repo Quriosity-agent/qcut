@@ -161,7 +161,10 @@ export function extractOutputPathsFromText({
       }
     }
   } catch (error) {
-    console.warn("[AI Pipeline] Failed to parse output paths from text:", error);
+    console.warn(
+      "[AI Pipeline] Failed to parse output paths from text:",
+      error
+    );
   }
 
   return dedupePaths({ paths: outputPaths });
@@ -219,7 +222,10 @@ export function extractOutputPathsFromJson({
       }
     }
   } catch (error) {
-    console.warn("[AI Pipeline] Failed to parse output paths from JSON:", error);
+    console.warn(
+      "[AI Pipeline] Failed to parse output paths from JSON:",
+      error
+    );
   }
 
   return dedupePaths({ paths: resolvedPaths });
@@ -254,7 +260,10 @@ export function recoverOutputPathsFromDirectory({
     changedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
     return changedFiles.map((entry) => entry.filePath);
   } catch (error) {
-    console.warn("[AI Pipeline] Failed to recover outputs from directory:", error);
+    console.warn(
+      "[AI Pipeline] Failed to recover outputs from directory:",
+      error
+    );
     return [];
   }
 }
@@ -314,4 +323,3 @@ export function inferProjectIdFromPath({
     return null;
   }
 }
-
