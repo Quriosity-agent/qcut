@@ -23,7 +23,7 @@ No code file longer than 800 lines, longer consider a new code file
 | Format | `bun format` |
 | Test | `bun run test` |
 | Type check | `bun check-types` |
-| Release patch | `bun run release:patch` |
+| Release | `bun run release` |
 | Build EXE | `npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite` |
 
 ## Project Overview

@@ -1,20 +1,22 @@
 /**
  * QCut Release Script
  *
+ * Date-based versioning: YYYY.MM.DD.N
+ *   - YYYY.MM.DD is today's date
+ *   - N is the build number for that day (starts at 1)
+ *
  * Automates the release process:
- * 1. Version bumping
+ * 1. Version bumping (date-based)
  * 2. Building the application
  * 3. Generating checksums
  * 4. Creating release notes template
  *
  * Usage:
- *   node scripts/release.js patch   # 0.1.0 -> 0.1.1
- *   node scripts/release.js minor   # 0.1.0 -> 0.2.0
- *   node scripts/release.js major   # 0.1.0 -> 1.0.0
- *   node scripts/release.js alpha   # 0.1.0 -> 0.1.1-alpha.1
- *   node scripts/release.js beta    # 0.1.0 -> 0.1.1-beta.1
- *   node scripts/release.js rc      # 0.1.0 -> 0.1.1-rc.1
- *   node scripts/release.js promote # 0.1.1-rc.2 -> 0.1.1
+ *   bun scripts/release.ts              # Next version for today (2026.02.15.1 or .2, .3, etc.)
+ *   bun scripts/release.ts alpha        # 2026.02.15.1-alpha.1
+ *   bun scripts/release.ts beta         # 2026.02.15.1-beta.1
+ *   bun scripts/release.ts rc           # 2026.02.15.1-rc.1
+ *   bun scripts/release.ts promote      # 2026.02.15.1-rc.2 -> 2026.02.15.1
  */
 
 import fs from "fs";
@@ -23,18 +25,9 @@ import crypto from "crypto";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
-type ReleaseType =
-  | "patch"
-  | "minor"
-  | "major"
-  | "alpha"
-  | "beta"
-  | "rc"
-  | "promote";
+type ReleaseType = "stable" | "alpha" | "beta" | "rc" | "promote";
 const RELEASE_TYPES: ReleaseType[] = [
-  "patch",
-  "minor",
-  "major",
+  "stable",
   "alpha",
   "beta",
   "rc",
@@ -50,51 +43,47 @@ interface PackageJson {
 }
 
 interface ParsedVersion {
-  major: number;
-  minor: number;
-  patch: number;
+  year: number;
+  month: number;
+  day: number;
+  build: number;
   prerelease: { channel: string; number: number } | null;
 }
 
 /**
  * Resolves the build output directory based on environment
- * @returns The build output directory path
  */
 function resolveBuildOutputDir(): string {
-  // Check for environment variable first (CI/CD)
   if (process.env.BUILD_OUTPUT_DIR) {
     return process.env.BUILD_OUTPUT_DIR;
   }
 
-  // Handle both source and compiled execution contexts
   const currentDir = import.meta.dirname;
   const isCompiled = currentDir.includes("dist");
   const rootDir = isCompiled
-    ? path.join(currentDir, "../../") // Go up from dist/scripts
-    : path.join(currentDir, "../"); // Go up from scripts
+    ? path.join(currentDir, "../../")
+    : path.join(currentDir, "../");
 
-  // Default to dist-electron folder in project root
   return path.join(rootDir, "dist-electron");
 }
 
 function main(): void {
-  const releaseType: string | undefined = process.argv[2];
+  const releaseType: string = process.argv[2] || "stable";
 
-  if (!releaseType || !RELEASE_TYPES.includes(releaseType as ReleaseType)) {
+  if (!RELEASE_TYPES.includes(releaseType as ReleaseType)) {
     process.stderr.write(
-      "Usage: bun run release <patch|minor|major|alpha|beta|rc|promote>\n\n" +
-        "  patch   - Bump patch version (0.3.52 -> 0.3.53)\n" +
-        "  minor   - Bump minor version (0.3.52 -> 0.4.0)\n" +
-        "  major   - Bump major version (0.3.52 -> 1.0.0)\n" +
-        "  alpha   - Create/bump alpha prerelease (0.3.52 -> 0.3.53-alpha.1)\n" +
-        "  beta    - Create/bump beta prerelease (0.3.52 -> 0.3.53-beta.1)\n" +
-        "  rc      - Create/bump release candidate (0.3.52 -> 0.3.53-rc.1)\n" +
-        "  promote - Promote prerelease to stable (0.3.53-rc.2 -> 0.3.53)\n"
+      "Usage: bun run release [stable|alpha|beta|rc|promote]\n\n" +
+        "  (default) - Next date-based version (2026.02.15.1)\n" +
+        "  alpha     - Create/bump alpha prerelease (2026.02.15.1-alpha.1)\n" +
+        "  beta      - Create/bump beta prerelease (2026.02.15.1-beta.1)\n" +
+        "  rc        - Create/bump release candidate (2026.02.15.1-rc.1)\n" +
+        "  promote   - Promote prerelease to stable (2026.02.15.1-rc.2 -> 2026.02.15.1)\n"
     );
     process.exit(1);
   }
 
-  process.stdout.write(`🚀 Starting ${releaseType} release process...\n\n`);
+  const label = releaseType === "stable" ? "date" : releaseType;
+  process.stdout.write(`🚀 Starting ${label} release process...\n\n`);
 
   try {
     // Step 1: Check working directory is clean
@@ -167,11 +156,9 @@ function generateReleaseDoc(version: string, releaseType: ReleaseType): void {
 
   const today = new Date().toISOString().split("T")[0];
   const channel =
-    releaseType === "promote"
+    releaseType === "promote" || releaseType === "stable"
       ? "stable"
-      : PRERELEASE_CHANNELS.includes(releaseType as PrereleaseChannel)
-        ? releaseType
-        : "stable";
+      : releaseType;
 
   // Extract [Unreleased] content from CHANGELOG.md
   let unreleasedContent = "";
@@ -244,71 +231,86 @@ function checkGitStatus(): void {
 }
 
 /**
- * Parse a version string into its components
- * Handles both stable (1.2.3) and prerelease (1.2.3-beta.4) formats
+ * Get today's date components
  */
-function parseVersion(version: string): ParsedVersion {
-  // Matches: 1.2.3 or 1.2.3-beta.4
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([a-z]+)\.(\d+))?$/);
-  if (!match) {
-    throw new Error(`Invalid version format: ${version}`);
-  }
-
+function getTodayComponents(): { year: number; month: number; day: number } {
+  const now = new Date();
   return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10),
-    prerelease: match[4]
-      ? { channel: match[4], number: parseInt(match[5], 10) }
-      : null,
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+    day: now.getDate(),
   };
 }
 
 /**
- * Bump a prerelease version
- * - If same channel: increment number (0.3.53-beta.1 -> 0.3.53-beta.2)
- * - If stable: bump patch and start at 1 (0.3.52 -> 0.3.53-beta.1)
- * - If different channel (progressing): start new channel at 1 (0.3.53-alpha.5 -> 0.3.53-beta.1)
- * - If different channel (regressing): bump patch first (0.3.53-rc.1 -> 0.3.54-alpha.1)
+ * Format date components with zero-padding for month and day
  */
-function bumpPrerelease(
-  parsed: ParsedVersion,
-  channel: PrereleaseChannel
-): string {
-  const { major, minor, patch, prerelease } = parsed;
+function formatDateVersion(year: number, month: number, day: number): string {
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${year}.${mm}.${dd}`;
+}
 
-  // If current is same channel, increment prerelease number
-  if (prerelease && prerelease.channel === channel) {
-    return `${major}.${minor}.${patch}-${channel}.${prerelease.number + 1}`;
-  }
-
-  // If current is stable, bump patch and start prerelease at 1
-  if (!prerelease) {
-    return `${major}.${minor}.${patch + 1}-${channel}.1`;
-  }
-
-  // If switching channels (e.g., alpha -> beta, beta -> rc)
-  const channelOrder: PrereleaseChannel[] = ["alpha", "beta", "rc"];
-  const currentIdx = channelOrder.indexOf(
-    prerelease.channel as PrereleaseChannel
+/**
+ * Parse a date-based version string into its components
+ * Handles: 2026.02.15.1 and 2026.02.15.1-beta.3
+ * Also handles legacy semver: 0.3.72
+ */
+function parseVersion(version: string): ParsedVersion {
+  // Try date-based format: YYYY.MM.DD.N or YYYY.MM.DD.N-channel.N
+  const dateMatch = version.match(
+    /^(\d{4})\.(\d{2})\.(\d{2})\.(\d+)(?:-([a-z]+)\.(\d+))?$/
   );
-  const targetIdx = channelOrder.indexOf(channel);
-
-  if (targetIdx > currentIdx) {
-    // Progressing forward (alpha -> beta -> rc): keep same base version
-    return `${major}.${minor}.${patch}-${channel}.1`;
+  if (dateMatch) {
+    return {
+      year: parseInt(dateMatch[1], 10),
+      month: parseInt(dateMatch[2], 10),
+      day: parseInt(dateMatch[3], 10),
+      build: parseInt(dateMatch[4], 10),
+      prerelease: dateMatch[5]
+        ? { channel: dateMatch[5], number: parseInt(dateMatch[6], 10) }
+        : null,
+    };
   }
-  // Going backward: bump patch first
-  return `${major}.${minor}.${patch + 1}-${channel}.1`;
+
+  // Legacy semver format - treat as needing a fresh date version
+  const semverMatch = version.match(
+    /^(\d+)\.(\d+)\.(\d+)(?:-([a-z]+)\.(\d+))?$/
+  );
+  if (semverMatch) {
+    const today = getTodayComponents();
+    return {
+      year: today.year,
+      month: today.month,
+      day: today.day,
+      build: 0, // Will be bumped to 1
+      prerelease: semverMatch[4]
+        ? { channel: semverMatch[4], number: parseInt(semverMatch[5], 10) }
+        : null,
+    };
+  }
+
+  throw new Error(`Invalid version format: ${version}`);
+}
+
+/**
+ * Determine if the parsed version matches today's date
+ */
+function isToday(parsed: ParsedVersion): boolean {
+  const today = getTodayComponents();
+  return (
+    parsed.year === today.year &&
+    parsed.month === today.month &&
+    parsed.day === today.day
+  );
 }
 
 function bumpVersion(releaseType: ReleaseType): string {
-  // Handle both source and compiled execution contexts
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const isCompiled = currentDir.includes(`${path.sep}dist${path.sep}`);
   const rootDir = isCompiled
-    ? path.join(currentDir, "../../") // Go up from dist/scripts
-    : path.join(currentDir, "../"); // Go up from scripts
+    ? path.join(currentDir, "../../")
+    : path.join(currentDir, "../");
 
   const packagePath: string = path.join(rootDir, "package.json");
   const packageJson: PackageJson = JSON.parse(
@@ -317,31 +319,42 @@ function bumpVersion(releaseType: ReleaseType): string {
 
   const currentVersion: string = packageJson.version;
   const parsed = parseVersion(currentVersion);
+  const today = getTodayComponents();
+  const dateStr = formatDateVersion(today.year, today.month, today.day);
 
   let newVersion: string;
-  switch (releaseType) {
-    case "patch":
-      // Reset prerelease, bump patch from base version
-      newVersion = `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
-      break;
-    case "minor":
-      newVersion = `${parsed.major}.${parsed.minor + 1}.0`;
-      break;
-    case "major":
-      newVersion = `${parsed.major + 1}.0.0`;
-      break;
-    case "alpha":
-    case "beta":
-    case "rc":
-      newVersion = bumpPrerelease(parsed, releaseType);
-      break;
-    case "promote":
-      // Remove prerelease suffix to promote to stable
-      if (!parsed.prerelease) {
-        throw new Error("Cannot promote: current version is not a prerelease");
-      }
-      newVersion = `${parsed.major}.${parsed.minor}.${parsed.patch}`;
-      break;
+
+  if (releaseType === "promote") {
+    if (!parsed.prerelease) {
+      throw new Error("Cannot promote: current version is not a prerelease");
+    }
+    // Remove prerelease suffix
+    newVersion = `${formatDateVersion(parsed.year, parsed.month, parsed.day)}.${parsed.build}`;
+  } else if (PRERELEASE_CHANNELS.includes(releaseType as PrereleaseChannel)) {
+    const channel = releaseType as PrereleaseChannel;
+
+    if (parsed.prerelease && parsed.prerelease.channel === channel && isToday(parsed)) {
+      // Same channel, same day: bump prerelease number
+      newVersion = `${dateStr}.${parsed.build}-${channel}.${parsed.prerelease.number + 1}`;
+    } else if (isToday(parsed) && !parsed.prerelease) {
+      // Same day, stable -> prerelease: bump build and start at 1
+      newVersion = `${dateStr}.${parsed.build + 1}-${channel}.1`;
+    } else if (isToday(parsed) && parsed.prerelease) {
+      // Same day, different channel: keep build, start new channel at 1
+      newVersion = `${dateStr}.${parsed.build}-${channel}.1`;
+    } else {
+      // New day: start fresh
+      newVersion = `${dateStr}.1-${channel}.1`;
+    }
+  } else {
+    // Stable release
+    if (isToday(parsed) && !parsed.prerelease) {
+      // Same day: bump build number
+      newVersion = `${dateStr}.${parsed.build + 1}`;
+    } else {
+      // New day or from prerelease: start at 1
+      newVersion = `${dateStr}.1`;
+    }
   }
 
   packageJson.version = newVersion;
@@ -391,7 +404,6 @@ function getInstallerPattern(): RegExp {
 }
 
 function buildElectronApp(): void {
-  // Compile afterPack hook (needed for all platforms)
   try {
     execSync("bun run compile-afterpack", { stdio: "inherit" });
   } catch {
@@ -406,7 +418,6 @@ function buildElectronApp(): void {
     throw new Error("Failed to build Electron application");
   }
 
-  // Run post-build verification (non-fatal)
   try {
     execSync("bun run verify:packaged-ffmpeg", { stdio: "inherit" });
   } catch {
@@ -462,15 +473,9 @@ function generateChecksums(): void {
 
 function createGitTag(version: string): void {
   try {
-    // Add package.json to staging
     execSync("git add package.json");
-
-    // Commit version bump
     execSync(`git commit -m "chore: bump version to v${version}"`);
-
-    // Create tag
     execSync(`git tag -a v${version} -m "Release v${version}"`);
-
     process.stdout.write(`✅ Git tag v${version} created\n`);
   } catch (error: any) {
     throw new Error("Failed to create git tag: " + error.message);
@@ -501,17 +506,17 @@ function generateReleaseNotes(version: string): void {
 ## 🎉 What's New
 
 <!-- Add your changes here -->
-- 
+-
 
 ## 🐛 Bug Fixes
 
 <!-- Add bug fixes here -->
-- 
+-
 
 ## 🔧 Technical Changes
 
 <!-- Add technical changes here -->
-- 
+-
 
 ## 📦 Download
 
@@ -572,12 +577,11 @@ This version includes auto-update functionality:
       "⚠️  Could not generate full release notes template, creating basic version\n"
     );
 
-    // Handle both source and compiled execution contexts for fallback
     const currentDir = import.meta.dirname;
     const isCompiled = currentDir.includes("dist");
     const rootDir = isCompiled
-      ? path.join(currentDir, "../../") // Go up from dist/scripts
-      : path.join(currentDir, "../"); // Go up from scripts
+      ? path.join(currentDir, "../../")
+      : path.join(currentDir, "../");
 
     const basicNotes: string = `# QCut Video Editor v${version}
 
@@ -602,9 +606,9 @@ function getPreviousVersion(): string {
       .trim()
       .split("\n")
       .filter((tag: string) =>
-        tag.match(/^v\d+\.\d+\.\d+(-(?:alpha|beta|rc)\.\d+)?$/)
+        tag.match(/^v(\d{4}\.\d{2}\.\d{2}\.\d+|\d+\.\d+\.\d+)(-(?:alpha|beta|rc)\.\d+)?$/)
       );
-    return tagList[1] || "v0.0.0"; // Return second tag (previous version)
+    return tagList[1] || "v0.0.0";
   } catch (error: any) {
     return "v0.0.0";
   }
@@ -612,5 +616,5 @@ function getPreviousVersion(): string {
 
 main();
 
-export { main, bumpVersion, generateChecksums, parseVersion, bumpPrerelease };
+export { main, bumpVersion, generateChecksums, parseVersion };
 export type { ReleaseType, PackageJson, ParsedVersion, PrereleaseChannel };
