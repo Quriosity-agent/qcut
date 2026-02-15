@@ -460,21 +460,36 @@ export function setupClaudeTimelineBridge(): void {
         }
 
         // Update duration (from explicit duration or endTime - startTime)
+        // Markdown elements route through updateMarkdownElement for clamping
+        const isMarkdown = element.type === "markdown";
+
         if (typeof changes.duration === "number" && changes.duration > 0) {
-          timelineStore.updateElementDuration(
-            track.id,
-            data.elementId,
-            changes.duration
-          );
+          if (isMarkdown) {
+            timelineStore.updateMarkdownElement(track.id, data.elementId, {
+              duration: changes.duration,
+            });
+          } else {
+            timelineStore.updateElementDuration(
+              track.id,
+              data.elementId,
+              changes.duration
+            );
+          }
         } else if (typeof changes.endTime === "number") {
           const start = changes.startTime ?? element.startTime;
           const newDuration = changes.endTime - start;
           if (newDuration > 0) {
-            timelineStore.updateElementDuration(
-              track.id,
-              data.elementId,
-              newDuration
-            );
+            if (isMarkdown) {
+              timelineStore.updateMarkdownElement(track.id, data.elementId, {
+                duration: newDuration,
+              });
+            } else {
+              timelineStore.updateElementDuration(
+                track.id,
+                data.elementId,
+                newDuration
+              );
+            }
           }
         }
 
@@ -515,9 +530,6 @@ export function setupClaudeTimelineBridge(): void {
           const markdownUpdates: Record<string, unknown> = {};
           if (typeof changes.content === "string") {
             markdownUpdates.markdownContent = changes.content;
-          }
-          if (typeof changes.duration === "number" && changes.duration > 0) {
-            markdownUpdates.duration = changes.duration;
           }
           if (Object.keys(markdownUpdates).length > 0) {
             timelineStore.updateMarkdownElement(
