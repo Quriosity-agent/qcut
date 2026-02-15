@@ -14,6 +14,7 @@ import type {
   ProjectFolderScanResult,
 } from "@/types/electron.d";
 import { getMimeType } from "@/lib/bulk-import";
+import { getOrCreateObjectURL } from "@/lib/blob-manager";
 import { debugLog, debugError } from "@/lib/debug-config";
 
 // ============================================================================
@@ -202,11 +203,15 @@ export async function syncProjectFolder(
         const normalizedRelPath = file.relativePath.replace(/\\/g, "/");
         const isGenerated = normalizedRelPath.startsWith("media/generated");
 
+        // Create blob URL for display so timeline elements can render the media
+        const displayUrl = getOrCreateObjectURL(fileObj, "project-folder-sync");
+
         // Add to media store
         await store.addMediaItem(projectId, {
           name: file.name,
           type: file.type as "video" | "audio" | "image",
           file: fileObj,
+          url: displayUrl,
           localPath: file.path,
           isLocalFile: true,
           folderIds,

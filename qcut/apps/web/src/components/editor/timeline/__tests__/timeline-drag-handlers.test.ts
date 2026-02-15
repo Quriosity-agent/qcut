@@ -2,22 +2,29 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDragHandlers } from "../timeline-drag-handlers";
 
-const { addTextToNewTrack, addMediaToNewTrack, mockedTimelineStore } =
-  vi.hoisted(() => {
-    const addTextToNewTrackFn = vi.fn();
-    const addMediaToNewTrackFn = vi.fn();
-    const mockedTimelineStoreFn = Object.assign(vi.fn(), {
-      getState: vi.fn(() => ({
-        addTextToNewTrack: addTextToNewTrackFn,
-        addMediaToNewTrack: addMediaToNewTrackFn,
-      })),
-    });
-    return {
+const {
+  addTextToNewTrack,
+  addMarkdownToNewTrack,
+  addMediaToNewTrack,
+  mockedTimelineStore,
+} = vi.hoisted(() => {
+  const addTextToNewTrackFn = vi.fn();
+  const addMarkdownToNewTrackFn = vi.fn();
+  const addMediaToNewTrackFn = vi.fn();
+  const mockedTimelineStoreFn = Object.assign(vi.fn(), {
+    getState: vi.fn(() => ({
       addTextToNewTrack: addTextToNewTrackFn,
+      addMarkdownToNewTrack: addMarkdownToNewTrackFn,
       addMediaToNewTrack: addMediaToNewTrackFn,
-      mockedTimelineStore: mockedTimelineStoreFn,
-    };
+    })),
   });
+  return {
+    addTextToNewTrack: addTextToNewTrackFn,
+    addMarkdownToNewTrack: addMarkdownToNewTrackFn,
+    addMediaToNewTrack: addMediaToNewTrackFn,
+    mockedTimelineStore: mockedTimelineStoreFn,
+  };
+});
 
 vi.mock("@/stores/timeline-store", () => ({
   useTimelineStore: mockedTimelineStore,
@@ -52,6 +59,7 @@ describe("useDragHandlers", () => {
     vi.clearAllMocks();
     mockedTimelineStore.getState.mockReturnValue({
       addTextToNewTrack,
+      addMarkdownToNewTrack,
       addMediaToNewTrack,
     });
   });
@@ -141,5 +149,38 @@ describe("useDragHandlers", () => {
     });
 
     expect(addMediaToNewTrack).toHaveBeenCalledWith(mediaItem);
+  });
+
+  it("handleDrop processes markdown drag data", async () => {
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        mediaItems: [],
+        addMediaItem: undefined,
+        activeProject: { id: "project-1" },
+      })
+    );
+
+    const dragData = JSON.stringify({
+      id: "markdown-1",
+      type: "markdown",
+      name: "Markdown",
+      markdownContent: "# Hello",
+    });
+
+    await act(async () => {
+      await result.current.dragProps.onDrop(
+        createDragEvent({
+          itemData: dragData,
+          types: ["application/x-media-item"],
+        })
+      );
+    });
+
+    expect(addMarkdownToNewTrack).toHaveBeenCalledWith({
+      id: "markdown-1",
+      type: "markdown",
+      name: "Markdown",
+      markdownContent: "# Hello",
+    });
   });
 });

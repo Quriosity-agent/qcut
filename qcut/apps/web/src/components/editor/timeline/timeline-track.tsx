@@ -559,6 +559,24 @@ function TimelineTrackContentComponent({
                   existingElement.trimEnd);
               return snappedTime < existingEnd && newElementEnd > existingStart;
             });
+          } else if (dragData.type === "markdown") {
+            const newElementDuration =
+              TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION;
+            const snappedTime = getDropSnappedTime(
+              dropTime,
+              newElementDuration
+            );
+            const newElementEnd = snappedTime + newElementDuration;
+
+            wouldOverlap = track.elements.some((existingElement) => {
+              const existingStart = existingElement.startTime;
+              const existingEnd =
+                existingElement.startTime +
+                (existingElement.duration -
+                  existingElement.trimStart -
+                  existingElement.trimEnd);
+              return snappedTime < existingEnd && newElementEnd > existingStart;
+            });
           } else {
             // Media elements
             const mediaItem = mediaItems.find(
@@ -930,6 +948,86 @@ function TimelineTrackContentComponent({
             textDecoration: "none",
             x: 0,
             y: 0,
+            rotation: 0,
+            opacity: 1,
+          });
+        } else if (dragData.type === "markdown") {
+          let targetTrackId = track.id;
+          let targetTrack = track;
+
+          if (track.type !== "markdown" || dropPosition !== "on") {
+            const mainTrack = getMainTrack(tracks);
+            let insertIndex: number;
+
+            if (dropPosition === "above") {
+              insertIndex = currentTrackIndex;
+            } else if (dropPosition === "below") {
+              insertIndex = currentTrackIndex + 1;
+            } else if (mainTrack) {
+              const mainTrackIndex = tracks.findIndex(
+                (t) => t.id === mainTrack.id
+              );
+              insertIndex = mainTrackIndex;
+            } else {
+              insertIndex = 0;
+            }
+
+            targetTrackId = insertTrackAt("markdown", insertIndex);
+            const updatedTracks = useTimelineStore.getState().tracks;
+            const newTargetTrack = updatedTracks.find(
+              (t) => t.id === targetTrackId
+            );
+            if (!newTargetTrack) return;
+            targetTrack = newTargetTrack;
+          }
+
+          const markdownDuration = TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION;
+          const markdownSnappedTime = getDropSnappedTime(
+            newStartTime,
+            markdownDuration
+          );
+          const newElementEnd = markdownSnappedTime + markdownDuration;
+
+          const hasOverlap = targetTrack.elements.some((existingElement) => {
+            const existingStart = existingElement.startTime;
+            const existingEnd =
+              existingElement.startTime +
+              (existingElement.duration -
+                existingElement.trimStart -
+                existingElement.trimEnd);
+            return (
+              markdownSnappedTime < existingEnd && newElementEnd > existingStart
+            );
+          });
+
+          if (hasOverlap) {
+            toast.error(
+              "Cannot place element here - it would overlap with existing elements"
+            );
+            return;
+          }
+
+          addElementToTrack(targetTrackId, {
+            type: "markdown",
+            name: dragData.name || "Markdown",
+            markdownContent:
+              dragData.markdownContent || "# Title\n\nStart writing...",
+            duration: markdownDuration,
+            startTime: markdownSnappedTime,
+            trimStart: 0,
+            trimEnd: 0,
+            theme: "dark",
+            fontSize: 18,
+            fontFamily: "Arial",
+            padding: 16,
+            backgroundColor: "rgba(0, 0, 0, 0.85)",
+            textColor: "#ffffff",
+            scrollMode: "static",
+            scrollSpeed: 30,
+            x: 0,
+            y: 0,
+            width: 720,
+            height: 420,
             rotation: 0,
             opacity: 1,
           });

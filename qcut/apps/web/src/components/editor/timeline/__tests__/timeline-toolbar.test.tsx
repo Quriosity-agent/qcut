@@ -47,6 +47,7 @@ interface MockTimelineState {
     trackId: string,
     element: Record<string, unknown>
   ) => void;
+  addMarkdownAtTime: (element: Record<string, unknown>, time: number) => void;
   removeElementFromTrack: (trackId: string, elementId: string) => void;
   removeElementFromTrackWithRipple: (
     trackId: string,
@@ -104,6 +105,7 @@ describe("TimelineToolbar", () => {
     ],
     addTrack: () => "new-track",
     addElementToTrack: vi.fn(),
+    addMarkdownAtTime: vi.fn(),
     removeElementFromTrack: vi.fn(),
     removeElementFromTrackWithRipple: vi.fn(),
     selectedElements: [{ trackId: "track-1", elementId: "element-1" }],
@@ -169,5 +171,11 @@ describe("TimelineToolbar", () => {
     render(<TimelineToolbar zoomLevel={1} setZoomLevel={setZoomLevel} />);
     fireEvent.click(screen.getByTestId("split-clip-button"));
     expect(splitElement).toHaveBeenCalledWith("track-1", "element-1", 5);
+  });
+
+  it("add markdown button adds markdown at playhead", () => {
+    render(<TimelineToolbar zoomLevel={1} setZoomLevel={setZoomLevel} />);
+    fireEvent.click(screen.getByTestId("add-markdown-button"));
+    expect(timelineState.addMarkdownAtTime).toHaveBeenCalled();
   });
 });

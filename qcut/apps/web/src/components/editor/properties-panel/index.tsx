@@ -34,6 +34,7 @@ import { EffectsProperties } from "./effects-properties";
 import { TransformProperties } from "./transform-properties";
 import { RemotionProperties } from "./remotion-properties";
 import { EFFECTS_ENABLED } from "@/config/features";
+import { MarkdownProperties } from "./markdown-properties";
 
 export function PropertiesPanel() {
   const { activeProject, updateProjectFps } = useProjectStore();
@@ -166,6 +167,10 @@ export function PropertiesPanel() {
       return <RemotionProperties element={element} trackId={trackId} />;
     }
 
+    if (element.type === "markdown") {
+      return <MarkdownProperties element={element} trackId={trackId} />;
+    }
+
     return null;
   };
 
@@ -190,7 +195,10 @@ export function PropertiesPanel() {
                   if (!element) return null;
 
                   const showEffects = EFFECTS_ENABLED && hasEffects(element.id);
-                  const showTransform = element.type === "text" || showEffects;
+                  const showTransform =
+                    element.type === "text" ||
+                    element.type === "markdown" ||
+                    showEffects;
 
                   return (
                     <div key={elementId}>

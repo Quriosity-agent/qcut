@@ -40,10 +40,16 @@ export function getTrackName(type: TrackType): string {
       return "Media Track";
     case "text":
       return "Text Track";
+    case "markdown":
+      return "Markdown Track";
     case "audio":
       return "Audio Track";
     case "sticker":
       return "Sticker Track";
+    case "captions":
+      return "Captions Track";
+    case "remotion":
+      return "Remotion Track";
     default:
       return "Track";
   }

@@ -35,6 +35,11 @@ export const TRACK_COLORS: Record<
     background: "bg-violet-500/20",
     border: "border-white/80",
   },
+  markdown: {
+    solid: "bg-sky-600",
+    background: "bg-sky-500/20",
+    border: "border-white/80",
+  },
 } as const;
 
 // Utility functions
@@ -65,6 +70,7 @@ export const TRACK_HEIGHTS: Record<TrackType, number> = {
   sticker: 40,
   captions: 30,
   remotion: 55,
+  markdown: 55,
 } as const;
 
 /**
@@ -123,9 +129,12 @@ export const TIMELINE_CONSTANTS = {
   PIXELS_PER_SECOND: 50,
   TRACK_HEIGHT: 60, // Default fallback
   DEFAULT_TEXT_DURATION: 5,
+  MARKDOWN_MIN_DURATION: 120,
+  MARKDOWN_MAX_DURATION: 7200,
+  MARKDOWN_DEFAULT_DURATION: 300,
   DEFAULT_IMAGE_DURATION: 5,
-  DEFAULT_EMPTY_TIMELINE_DURATION: 300, // Default duration for empty timeline (5 minutes)
-  MAX_EXPORT_DURATION: 600, // 10 minutes - balances usability vs system resources
+  DEFAULT_EMPTY_TIMELINE_DURATION: 600, // Default duration for empty timeline (10 minutes)
+  MAX_EXPORT_DURATION: 7200, // 2 hours
   ZOOM_LEVELS: [0.25, 0.5, 1, 1.5, 2, 3, 4],
 } as const;
 

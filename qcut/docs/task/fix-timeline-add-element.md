@@ -1,8 +1,8 @@
-# Fix: Timeline addElement Bridge Not Implemented
+# Fix: Timeline Bridge Stubs Implemented
 
-**Date:** 2026-02-13
+**Date:** 2026-02-13 (updated 2026-02-15)
 **File:** `apps/web/src/lib/claude-timeline-bridge.ts`
-**Status:** Fix applied, rebuild required
+**Status:** All handlers implemented
 
 ## What Happened
 
@@ -19,98 +19,42 @@ The `addElement` flow has three stages:
 Claude API (HTTP) → Electron Main Process (IPC) → Renderer Bridge → Zustand Store
 ```
 
-The **renderer bridge handler** (`onAddElement`) was an intentional stub. It logged the incoming element but never called the timeline store:
+The **renderer bridge handler** (`onAddElement`) was an intentional stub. It logged the incoming element but never called the timeline store. The main process handler generated an element ID and returned it immediately — making the HTTP response look successful — but the renderer discarded the actual element data.
 
-```typescript
-// BEFORE (stub)
-claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
-  console.log("[ClaudeTimelineBridge] Adding element:", element);
-  console.warn(
-    "[ClaudeTimelineBridge] addElement not implemented - requires type mapping"
-  );
-});
-```
+The same issue affected `applyTimelineToStore` and `onUpdateElement`.
 
-The main process handler generated an element ID and returned it immediately — making the HTTP response look successful — but the renderer discarded the actual element data.
+## Fixes Applied
 
-The same issue affects `applyTimelineToStore` (used by the timeline import endpoint) and `onUpdateElement` — both are also stubs.
-
-## The Fix
+### onAddElement
 
 Replaced the stub with a working implementation that:
 
-1. Looks up the media item by `sourceName` (or `sourceId`) in `useMediaStore`
-2. Finds or creates a track via `timelineStore.findOrCreateTrack("media")`
-3. Calculates duration from `endTime - startTime` (falls back to media duration)
-4. Calls `timelineStore.addElementToTrack()` with a proper `CreateMediaElement`
+1. Resolves media via `sourceName`, `sourceId`, or deterministic media ID (base64-encoded name)
+2. Syncs project folder if media not found initially
+3. Finds or creates a track via `timelineStore.findOrCreateTrack("media")`
+4. Calculates duration from `endTime - startTime` (falls back to media duration)
+5. Calls `timelineStore.addElementToTrack()` with a proper `CreateMediaElement`
+6. Supports `type: "text"` elements with default styling
 
-Also added support for `type: "text"` elements with default styling.
+### onUpdateElement
 
-```typescript
-// AFTER (working)
-claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
-  const timelineStore = useTimelineStore.getState();
-  const mediaStore = useMediaStore.getState();
+Maps `Partial<ClaudeElement>` changes to timeline store update methods:
 
-  if (
-    element.type === "media" ||
-    element.type === "video" ||
-    element.type === "audio" ||
-    element.type === "image"
-  ) {
-    let mediaItem = null;
-    if (element.sourceName) {
-      mediaItem = mediaStore.mediaItems.find(
-        (item) => item.name === element.sourceName
-      );
-    }
-    if (!mediaItem && element.sourceId) {
-      mediaItem = mediaStore.mediaItems.find(
-        (item) => item.id === element.sourceId
-      );
-    }
+- `startTime` → `updateElementStartTime()`
+- `duration` / `endTime` → `updateElementDuration()`
+- `content` + `style` on text elements → `updateTextElement()`
+- `style.volume` on media elements → `updateMediaElement()`
 
-    if (!mediaItem) {
-      console.warn("[ClaudeTimelineBridge] Media not found:", element.sourceName || element.sourceId);
-      return;
-    }
+### onApply (timeline import)
 
-    const trackId = timelineStore.findOrCreateTrack("media");
-    const duration =
-      element.endTime != null && element.startTime != null
-        ? element.endTime - element.startTime
-        : mediaItem.duration || 10;
+Iterates all tracks/elements in the imported `ClaudeTimeline` and appends them to the existing timeline using the same `addClaudeMediaElement` and `addClaudeTextElement` helpers used by `onAddElement`.
 
-    timelineStore.addElementToTrack(trackId, {
-      type: "media",
-      name: mediaItem.name,
-      mediaId: mediaItem.id,
-      startTime: element.startTime || 0,
-      duration,
-      trimStart: 0,
-      trimEnd: 0,
-    });
-  }
-  // ... text element handling omitted for brevity
-});
-```
-
-## Remaining Stubs
-
-Two other bridge handlers are still stubs and will fail silently:
+## Handler Status
 
 | Handler | Channel | Status |
 |---------|---------|--------|
-| `onAddElement` | `claude:timeline:addElement` | **Fixed** |
-| `onUpdateElement` | `claude:timeline:updateElement` | Stub |
-| `onApply` (timeline import) | `claude:timeline:apply` | Stub |
-
-## To Apply
-
-The fix is in renderer code, so QCut must be rebuilt:
-
-```bash
-cd /Users/peter/Desktop/code/qcut/qcut
-bun run build
-# then restart QCut
-```
+| `onAddElement` | `claude:timeline:addElement` | **Implemented** |
+| `onUpdateElement` | `claude:timeline:updateElement` | **Implemented** |
+| `onApply` (timeline import) | `claude:timeline:apply` | **Implemented** |
+| `onRemoveElement` | `claude:timeline:removeElement` | **Implemented** |
+| `onRequest` (timeline export) | `claude:timeline:request` | **Implemented** |

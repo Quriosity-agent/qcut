@@ -14,6 +14,7 @@ import type {
   TimelineTrack,
   TimelineElement,
   TextElement,
+  MarkdownElement,
   DragData,
 } from "@/types/timeline";
 import type { MediaItem } from "./media-store";
@@ -22,6 +23,7 @@ import type { TimelineStore, DragState } from "./timeline";
 import { INITIAL_DRAG_STATE, getElementNameWithSuffix } from "./timeline";
 import { generateUUID } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
+import { clampMarkdownDuration } from "@/lib/markdown";
 import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
@@ -857,6 +859,45 @@ export function createTimelineOperations({
       return true;
     },
 
+    addMarkdownAtTime: (item: MarkdownElement, currentTime = 0): boolean => {
+      const targetTrackId = get().insertTrackAt("markdown", 0);
+      const duration = clampMarkdownDuration({
+        duration: item.duration ?? TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+      });
+
+      if (get().checkElementOverlap(targetTrackId, currentTime, duration)) {
+        toast.error(
+          "Cannot place element here - it would overlap with existing elements"
+        );
+        return false;
+      }
+
+      get().addElementToTrack(targetTrackId, {
+        type: "markdown",
+        name: item.name || "Markdown",
+        markdownContent: item.markdownContent || "# Title\n\nStart writing...",
+        duration,
+        startTime: currentTime,
+        trimStart: 0,
+        trimEnd: 0,
+        theme: item.theme || "dark",
+        fontSize: item.fontSize || 18,
+        fontFamily: item.fontFamily || "Arial",
+        padding: item.padding ?? 16,
+        backgroundColor: item.backgroundColor || "rgba(0, 0, 0, 0.85)",
+        textColor: item.textColor || "#ffffff",
+        scrollMode: item.scrollMode || "static",
+        scrollSpeed: item.scrollSpeed ?? 30,
+        x: item.x ?? 0,
+        y: item.y ?? 0,
+        width: item.width ?? 720,
+        height: item.height ?? 420,
+        rotation: item.rotation ?? 0,
+        opacity: item.opacity ?? 1,
+      });
+      return true;
+    },
+
     addMediaToNewTrack: (item: MediaItem): boolean => {
       const trackType = item.type === "audio" ? "audio" : "media";
       const targetTrackId = get().findOrCreateTrack(trackType);
@@ -876,11 +917,16 @@ export function createTimelineOperations({
     addTextToNewTrack: (item: TextElement | DragData): boolean => {
       const targetTrackId = get().insertTrackAt("text", 0); // Always create new text track at the top
 
+      const dragDataContent =
+        "type" in item && item.type === "text" ? item.content : undefined;
+      const textElementContent = "content" in item ? item.content : undefined;
+
       get().addElementToTrack(targetTrackId, {
         type: "text",
         name: item.name || "Text",
-        content:
-          ("content" in item ? item.content : "Default Text") || "Default Text",
+        content: (dragDataContent ?? textElementContent ?? "Default Text")
+          .toString()
+          .trim(),
         duration: TIMELINE_CONSTANTS.DEFAULT_TEXT_DURATION,
         startTime: 0,
         trimStart: 0,
@@ -906,6 +952,84 @@ export function createTimelineOperations({
           "rotation" in item && item.rotation !== undefined ? item.rotation : 0,
         opacity:
           "opacity" in item && item.opacity !== undefined ? item.opacity : 1,
+      });
+      return true;
+    },
+
+    addMarkdownToNewTrack: (item: MarkdownElement | DragData): boolean => {
+      const targetTrackId = get().insertTrackAt("markdown", 0);
+
+      const markdownContent =
+        "type" in item && item.type === "markdown"
+          ? item.markdownContent
+          : "markdownContent" in item &&
+              typeof item.markdownContent === "string"
+            ? item.markdownContent
+            : "# Title\n\nStart writing...";
+
+      const duration = clampMarkdownDuration({
+        duration:
+          "duration" in item && typeof item.duration === "number"
+            ? item.duration
+            : TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+      });
+
+      get().addElementToTrack(targetTrackId, {
+        type: "markdown",
+        name: item.name || "Markdown",
+        markdownContent: markdownContent.toString(),
+        duration,
+        startTime: 0,
+        trimStart: 0,
+        trimEnd: 0,
+        theme:
+          "theme" in item && typeof item.theme === "string"
+            ? item.theme
+            : "dark",
+        fontSize:
+          "fontSize" in item && typeof item.fontSize === "number"
+            ? item.fontSize
+            : 18,
+        fontFamily:
+          "fontFamily" in item && typeof item.fontFamily === "string"
+            ? item.fontFamily
+            : "Arial",
+        padding:
+          "padding" in item && typeof item.padding === "number"
+            ? item.padding
+            : 16,
+        backgroundColor:
+          "backgroundColor" in item && typeof item.backgroundColor === "string"
+            ? item.backgroundColor
+            : "rgba(0, 0, 0, 0.85)",
+        textColor:
+          "textColor" in item && typeof item.textColor === "string"
+            ? item.textColor
+            : "#ffffff",
+        scrollMode:
+          "scrollMode" in item && item.scrollMode === "auto-scroll"
+            ? "auto-scroll"
+            : "static",
+        scrollSpeed:
+          "scrollSpeed" in item && typeof item.scrollSpeed === "number"
+            ? item.scrollSpeed
+            : 30,
+        x: "x" in item && typeof item.x === "number" ? item.x : 0,
+        y: "y" in item && typeof item.y === "number" ? item.y : 0,
+        width:
+          "width" in item && typeof item.width === "number" ? item.width : 720,
+        height:
+          "height" in item && typeof item.height === "number"
+            ? item.height
+            : 420,
+        rotation:
+          "rotation" in item && typeof item.rotation === "number"
+            ? item.rotation
+            : 0,
+        opacity:
+          "opacity" in item && typeof item.opacity === "number"
+            ? item.opacity
+            : 1,
       });
       return true;
     },

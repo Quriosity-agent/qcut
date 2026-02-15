@@ -8,7 +8,8 @@ export type TrackType =
   | "audio"
   | "sticker"
   | "captions"
-  | "remotion";
+  | "remotion"
+  | "markdown";
 
 /**
  * Base interface for all timeline elements
@@ -137,13 +138,51 @@ export interface RemotionElement extends BaseTimelineElement {
   scale?: number;
 }
 
+/**
+ * Markdown element for rich, long-form text overlays
+ */
+export interface MarkdownElement extends BaseTimelineElement {
+  type: "markdown";
+  /** Raw markdown content */
+  markdownContent: string;
+  /** Visual theme preset */
+  theme: "light" | "dark" | "transparent";
+  /** Base font size in pixels */
+  fontSize: number;
+  /** Font family */
+  fontFamily: string;
+  /** Inner padding in pixels */
+  padding: number;
+  /** Background color as CSS color string */
+  backgroundColor: string;
+  /** Foreground text color as CSS color string */
+  textColor: string;
+  /** Scroll behavior for long content */
+  scrollMode: "static" | "auto-scroll";
+  /** Scroll speed in pixels/second (auto-scroll only) */
+  scrollSpeed: number;
+  /** Horizontal position relative to canvas center */
+  x: number;
+  /** Vertical position relative to canvas center */
+  y: number;
+  /** Element width */
+  width: number;
+  /** Element height */
+  height: number;
+  /** Rotation angle in degrees */
+  rotation: number;
+  /** Opacity level (0-1) */
+  opacity: number;
+}
+
 // Typed timeline elements
 export type TimelineElement =
   | MediaElement
   | TextElement
   | StickerElement
   | CaptionElement
-  | RemotionElement;
+  | RemotionElement
+  | MarkdownElement;
 
 // Creation types (without id, for addElementToTrack)
 export type CreateMediaElement = Omit<MediaElement, "id">;
@@ -151,12 +190,14 @@ export type CreateTextElement = Omit<TextElement, "id">;
 export type CreateStickerElement = Omit<StickerElement, "id">;
 export type CreateCaptionElement = Omit<CaptionElement, "id">;
 export type CreateRemotionElement = Omit<RemotionElement, "id">;
+export type CreateMarkdownElement = Omit<MarkdownElement, "id">;
 export type CreateTimelineElement =
   | CreateMediaElement
   | CreateTextElement
   | CreateStickerElement
   | CreateCaptionElement
-  | CreateRemotionElement;
+  | CreateRemotionElement
+  | CreateMarkdownElement;
 
 export interface TimelineElementProps {
   element: TimelineElement;
@@ -207,11 +248,19 @@ export interface RemotionItemDragData {
   fps: number;
 }
 
+export interface MarkdownItemDragData {
+  id: string;
+  type: "markdown";
+  name: string;
+  markdownContent: string;
+}
+
 export type DragData =
   | MediaItemDragData
   | TextItemDragData
   | StickerItemDragData
-  | RemotionItemDragData;
+  | RemotionItemDragData
+  | MarkdownItemDragData;
 
 export interface TimelineTrack {
   id: string;
@@ -227,6 +276,7 @@ export function sortTracksByOrder(tracks: TimelineTrack[]): TimelineTrack[] {
   const trackPriority: Record<TrackType, number> = {
     text: 1, // Text on top
     captions: 2, // Captions below text
+    markdown: 2.5, // Markdown overlays between captions and remotion
     remotion: 3, // Remotion below captions (overlay layer)
     sticker: 4, // Stickers below remotion
     media: 5, // Media tracks
@@ -276,7 +326,13 @@ export function ensureMainTrack(tracks: TimelineTrack[]): TimelineTrack[] {
 
 // Timeline validation utilities
 export function canElementGoOnTrack(
-  elementType: "text" | "media" | "sticker" | "captions" | "remotion",
+  elementType:
+    | "text"
+    | "media"
+    | "sticker"
+    | "captions"
+    | "remotion"
+    | "markdown",
   trackType: TrackType
 ): boolean {
   if (elementType === "text") {
@@ -294,11 +350,16 @@ export function canElementGoOnTrack(
   if (elementType === "remotion") {
     return trackType === "remotion";
   }
+  if (elementType === "markdown") {
+    return trackType === "markdown";
+  }
   return false;
 }
 
 export function validateElementTrackCompatibility(
-  element: { type: "text" | "media" | "sticker" | "captions" | "remotion" },
+  element: {
+    type: "text" | "media" | "sticker" | "captions" | "remotion" | "markdown";
+  },
   track: { type: TrackType }
 ): { isValid: boolean; errorMessage?: string } {
   const isValid = canElementGoOnTrack(element.type, track.type);
@@ -313,7 +374,9 @@ export function validateElementTrackCompatibility(
             ? "Caption elements can only be placed on caption tracks"
             : element.type === "remotion"
               ? "Remotion elements can only be placed on Remotion tracks"
-              : "Media elements can only be placed on media or audio tracks";
+              : element.type === "markdown"
+                ? "Markdown elements can only be placed on markdown tracks"
+                : "Media elements can only be placed on media or audio tracks";
 
     return { isValid: false, errorMessage };
   }
@@ -368,6 +431,15 @@ export function isRemotionElement(
   element: TimelineElement
 ): element is RemotionElement {
   return element.type === "remotion";
+}
+
+/**
+ * Type guard to check if an element is a MarkdownElement
+ */
+export function isMarkdownElement(
+  element: TimelineElement
+): element is MarkdownElement {
+  return element.type === "markdown";
 }
 
 /**

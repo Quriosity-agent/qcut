@@ -3,6 +3,7 @@ import type {
   TimelineTrack,
   MediaElement,
   TextElement,
+  MarkdownElement,
   StickerElement,
   CaptionElement,
 } from "@/types/timeline";
@@ -47,6 +48,14 @@ export const mockCaptionTrack: TimelineTrack = {
   id: "track-caption-1",
   name: "Caption Track",
   type: "captions",
+  elements: [],
+  muted: false,
+};
+
+export const mockMarkdownTrack: TimelineTrack = {
+  id: "track-markdown-1",
+  name: "Markdown Track",
+  type: "markdown",
   elements: [],
   muted: false,
 };
@@ -119,9 +128,36 @@ export const mockCaptionElement: CaptionElement = {
   hidden: false,
 };
 
+export const mockMarkdownElement: MarkdownElement = {
+  id: "element-markdown-001",
+  type: "markdown",
+  name: "Test Markdown",
+  markdownContent: "# Test\\n\\nMarkdown",
+  startTime: 0,
+  duration: 300,
+  trimStart: 0,
+  trimEnd: 0,
+  theme: "dark",
+  fontSize: 18,
+  fontFamily: "Arial",
+  padding: 16,
+  backgroundColor: "rgba(0, 0, 0, 0.85)",
+  textColor: "#ffffff",
+  scrollMode: "static",
+  scrollSpeed: 30,
+  x: 0,
+  y: 0,
+  width: 720,
+  height: 420,
+  rotation: 0,
+  opacity: 1,
+  hidden: false,
+};
+
 export const mockTimelineElements: TimelineElement[] = [
   mockMediaElement,
   mockTextElement,
+  mockMarkdownElement,
   mockStickerElement,
   mockCaptionElement,
 ];
@@ -136,7 +172,7 @@ export const mockTimelineTracks: TimelineTrack[] = [
  * Create custom timeline element
  */
 export function createMockTimelineElement(
-  type: "media" | "text" | "sticker" | "captions",
+  type: "media" | "text" | "markdown" | "sticker" | "captions",
   overrides: Partial<TimelineElement> = {}
 ): TimelineElement {
   const generatedId = `element-${type}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -164,6 +200,13 @@ export function createMockTimelineElement(
         ...overrides,
         id: overrides.id ?? generatedId,
       } as TextElement;
+    case "markdown":
+      return {
+        ...mockMarkdownElement,
+        ...baseElement,
+        ...overrides,
+        id: overrides.id ?? generatedId,
+      } as MarkdownElement;
     case "sticker":
       return {
         ...mockStickerElement,
@@ -188,7 +231,7 @@ export function createMockTimelineElement(
  * Create custom timeline track
  */
 export function createMockTimelineTrack(
-  type: "media" | "text" | "audio" | "sticker" | "captions",
+  type: "media" | "text" | "markdown" | "audio" | "sticker" | "captions",
   overrides: Partial<TimelineTrack> = {}
 ): TimelineTrack {
   return {

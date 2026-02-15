@@ -48,6 +48,31 @@ export function addElementToTimeline(
       opacity: 1,
       ...element,
     } as CreateTimelineElement;
+  } else if (track.type === "markdown") {
+    elementData = {
+      type: "markdown",
+      startTime: 0,
+      duration: 300,
+      trimStart: 0,
+      trimEnd: 0,
+      name: "Test Markdown",
+      markdownContent: "# Test",
+      theme: "dark",
+      fontSize: 18,
+      fontFamily: "Arial",
+      padding: 16,
+      backgroundColor: "rgba(0, 0, 0, 0.85)",
+      textColor: "#ffffff",
+      scrollMode: "static",
+      scrollSpeed: 30,
+      x: 0,
+      y: 0,
+      width: 720,
+      height: 420,
+      rotation: 0,
+      opacity: 1,
+      ...element,
+    } as CreateTimelineElement;
   } else if (track.type === "sticker") {
     elementData = {
       type: "sticker",

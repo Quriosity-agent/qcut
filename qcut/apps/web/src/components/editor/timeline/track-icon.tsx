@@ -1,4 +1,11 @@
-import { Video, TypeIcon, Music, Sticker } from "lucide-react";
+import {
+  Video,
+  TypeIcon,
+  Music,
+  Sticker,
+  FileText,
+  Captions,
+} from "lucide-react";
 import type { TrackType } from "@/types/timeline";
 
 interface TrackIconProps {
@@ -13,6 +20,10 @@ export function TrackIcon({ type }: TrackIconProps) {
       return <Music className="w-4 h-4 shrink-0 text-muted-foreground" />;
     case "sticker":
       return <Sticker className="w-4 h-4 shrink-0 text-muted-foreground" />;
+    case "captions":
+      return <Captions className="w-4 h-4 shrink-0 text-muted-foreground" />;
+    case "markdown":
+      return <FileText className="w-4 h-4 shrink-0 text-muted-foreground" />;
     default:
       return <Video className="w-4 h-4 shrink-0 text-muted-foreground" />;
   }

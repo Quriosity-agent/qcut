@@ -17,6 +17,7 @@ import {
   calculateElementBounds,
 } from "./export-engine-utils";
 import { validateRenderedFrame } from "./export-engine-debug";
+import { stripMarkdownSyntax } from "@/lib/markdown";
 
 /** Context passed to renderer functions */
 export interface RenderContext {
@@ -64,6 +65,7 @@ export async function renderFrame(
     remotion: 3,
     captions: 4,
     text: 5,
+    markdown: 6,
   };
   const sortedElements = activeElements.sort((a, b) => {
     const orderA = trackRenderOrder[a.track.type] ?? 1;
@@ -93,6 +95,13 @@ async function renderElement(
     await renderMediaElement(context, element, mediaItem, elementTimeOffset);
   } else if (element.type === "text") {
     renderTextElement(context.ctx, element);
+  } else if (element.type === "markdown") {
+    renderMarkdownElement({
+      ctx: context.ctx,
+      canvas: context.canvas,
+      element,
+      currentTime,
+    });
   }
 }
 
@@ -472,4 +481,113 @@ export function renderTextElement(
   const y = element.y ?? 50;
 
   ctx.fillText(element.content, x, y);
+}
+
+interface RenderMarkdownElementParams {
+  ctx: CanvasRenderingContext2D;
+  canvas: HTMLCanvasElement;
+  element: TimelineElement;
+  currentTime: number;
+}
+
+function wrapTextForCanvas({
+  ctx,
+  text,
+  maxWidth,
+}: {
+  ctx: CanvasRenderingContext2D;
+  text: string;
+  maxWidth: number;
+}): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    const candidateWidth = ctx.measureText(candidate).width;
+
+    if (candidateWidth <= maxWidth || currentLine.length === 0) {
+      currentLine = candidate;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+export function renderMarkdownElement({
+  ctx,
+  canvas,
+  element,
+  currentTime,
+}: RenderMarkdownElementParams): void {
+  if (element.type !== "markdown") return;
+
+  const plainText = stripMarkdownSyntax({
+    markdown: element.markdownContent || "",
+  });
+  if (!plainText.trim()) return;
+
+  const fontSize = element.fontSize || 18;
+  const padding = element.padding ?? 16;
+  const boxWidth = element.width ?? 720;
+  const boxHeight = element.height ?? 420;
+  const centerX = canvas.width / 2 + (element.x ?? 0);
+  const centerY = canvas.height / 2 + (element.y ?? 0);
+  const lineHeight = fontSize * 1.4;
+
+  const elapsed = Math.max(0, currentTime - element.startTime);
+  const scrollOffset =
+    element.scrollMode === "auto-scroll"
+      ? elapsed * Math.max(0, element.scrollSpeed)
+      : 0;
+
+  try {
+    ctx.save();
+    ctx.globalAlpha = element.opacity ?? 1;
+    ctx.translate(centerX, centerY);
+    ctx.rotate(((element.rotation ?? 0) * Math.PI) / 180);
+
+    if (element.backgroundColor && element.backgroundColor !== "transparent") {
+      ctx.fillStyle = element.backgroundColor;
+      ctx.fillRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight);
+    }
+
+    ctx.beginPath();
+    ctx.rect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight);
+    ctx.clip();
+
+    ctx.fillStyle = element.textColor || "#ffffff";
+    ctx.font = `${fontSize}px ${element.fontFamily || "Arial"}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+
+    const maxLineWidth = Math.max(20, boxWidth - padding * 2);
+    const lines = wrapTextForCanvas({
+      ctx,
+      text: plainText,
+      maxWidth: maxLineWidth,
+    });
+    const startX = -boxWidth / 2 + padding;
+    const startY = -boxHeight / 2 + padding - scrollOffset;
+
+    for (let index = 0; index < lines.length; index++) {
+      const y = startY + index * lineHeight;
+      if (y > boxHeight / 2 || y + lineHeight < -boxHeight / 2) {
+        continue;
+      }
+      ctx.fillText(lines[index], startX, y);
+    }
+  } catch (error) {
+    debugError("[ExportEngine] Failed to render markdown element:", error);
+  } finally {
+    ctx.restore();
+  }
 }

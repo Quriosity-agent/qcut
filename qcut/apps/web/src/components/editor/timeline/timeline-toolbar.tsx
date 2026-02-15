@@ -17,6 +17,7 @@ import {
   Bookmark,
   LayersIcon,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import { Button } from "../../ui/button";
 import {
@@ -56,6 +57,7 @@ export function TimelineToolbar({
   const tracks = useTimelineStore((s) => s.tracks);
   const addTrack = useTimelineStore((s) => s.addTrack);
   const addElementToTrack = useTimelineStore((s) => s.addElementToTrack);
+  const addMarkdownAtTime = useTimelineStore((s) => s.addMarkdownAtTime);
   const removeElementFromTrack = useTimelineStore(
     (s) => s.removeElementFromTrack
   );
@@ -199,6 +201,41 @@ export function TimelineToolbar({
     clearSelectedElements();
   };
 
+  const handleAddMarkdown = () => {
+    try {
+      addMarkdownAtTime(
+        {
+          id: `markdown-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          type: "markdown",
+          name: "Markdown",
+          markdownContent: "# Title\n\nStart writing...",
+          duration: TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+          startTime: 0,
+          trimStart: 0,
+          trimEnd: 0,
+          theme: "dark",
+          fontSize: 18,
+          fontFamily: "Arial",
+          padding: 16,
+          backgroundColor: "rgba(0, 0, 0, 0.85)",
+          textColor: "#ffffff",
+          scrollMode: "static",
+          scrollSpeed: 30,
+          x: 0,
+          y: 0,
+          width: 720,
+          height: 420,
+          rotation: 0,
+          opacity: 1,
+        },
+        currentTime
+      );
+    } catch (error) {
+      console.error("Failed to add markdown element:", error);
+      toast.error("Failed to add markdown");
+    }
+  };
+
   const handleZoomIn = () => {
     setZoomLevel(Math.min(4, zoomLevel + 0.25));
   };
@@ -247,6 +284,21 @@ export function TimelineToolbar({
     >
       <div className="flex items-center gap-1">
         <TooltipProvider delayDuration={500}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="text"
+                size="icon"
+                type="button"
+                onClick={handleAddMarkdown}
+                data-testid="add-markdown-button"
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Add markdown at playhead</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

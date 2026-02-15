@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { TimelineElementProps, TrackType } from "@/types/timeline";
 import { useTimelineElementResize } from "@/hooks/use-timeline-element-resize";
 import { withErrorBoundary } from "@/components/error-boundary";
+import { stripMarkdownSyntax } from "@/lib/markdown";
 
 // Helper function to get display name for element type
 function getElementTypeName(element: { type: string }): string {
@@ -37,6 +38,8 @@ function getElementTypeName(element: { type: string }): string {
       return "captions";
     case "sticker":
       return "sticker";
+    case "markdown":
+      return "markdown";
     default:
       return "clip";
   }
@@ -308,6 +311,21 @@ function TimelineElementComponent({
         <div className="w-full h-full flex items-center justify-start pl-2">
           <span className="text-xs text-foreground/80 truncate">
             {element.text}
+          </span>
+        </div>
+      );
+    }
+
+    if (element.type === "markdown") {
+      const previewText = stripMarkdownSyntax({
+        markdown: element.markdownContent || "",
+        maxLength: 80,
+      });
+
+      return (
+        <div className="w-full h-full flex items-center justify-start pl-2">
+          <span className="text-xs text-foreground/80 truncate">
+            {previewText || "Markdown"}
           </span>
         </div>
       );

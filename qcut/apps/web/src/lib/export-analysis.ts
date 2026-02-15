@@ -326,8 +326,8 @@ export function analyzeTimelineForExport(
       // Skip hidden elements
       if (element.hidden) continue;
 
-      // Check for text elements
-      if (element.type === "text") {
+      // Check for text-like overlay elements
+      if (element.type === "text" || element.type === "markdown") {
         hasTextElements = true;
         continue;
       }

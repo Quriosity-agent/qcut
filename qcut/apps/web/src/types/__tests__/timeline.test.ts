@@ -11,6 +11,7 @@ import {
   isStickerElement,
   isCaptionElement,
   isRemotionElement,
+  isMarkdownElement,
   getRemotionElements,
   getActiveRemotionElements,
   sortTracksByOrder,
@@ -22,6 +23,7 @@ import {
   type StickerElement,
   type CaptionElement,
   type RemotionElement,
+  type MarkdownElement,
   type TimelineTrack,
 } from "../timeline";
 
@@ -124,6 +126,36 @@ function createRemotionElement(
   };
 }
 
+function createMarkdownElement(
+  overrides: Partial<MarkdownElement> = {}
+): MarkdownElement {
+  return {
+    id: "markdown-1",
+    type: "markdown",
+    name: "Test Markdown",
+    markdownContent: "# Heading\n\nBody",
+    duration: 300,
+    startTime: 0,
+    trimStart: 0,
+    trimEnd: 0,
+    theme: "dark",
+    fontSize: 18,
+    fontFamily: "Arial",
+    padding: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    textColor: "#ffffff",
+    scrollMode: "static",
+    scrollSpeed: 30,
+    x: 0,
+    y: 0,
+    width: 720,
+    height: 420,
+    rotation: 0,
+    opacity: 1,
+    ...overrides,
+  };
+}
+
 function createTrack(
   type: TimelineTrack["type"],
   elements: TimelineElement[] = [],
@@ -154,6 +186,7 @@ describe("Type Guards", () => {
       expect(isMediaElement(createStickerElement())).toBe(false);
       expect(isMediaElement(createCaptionElement())).toBe(false);
       expect(isMediaElement(createRemotionElement())).toBe(false);
+      expect(isMediaElement(createMarkdownElement())).toBe(false);
     });
   });
 
@@ -168,6 +201,7 @@ describe("Type Guards", () => {
       expect(isTextElement(createStickerElement())).toBe(false);
       expect(isTextElement(createCaptionElement())).toBe(false);
       expect(isTextElement(createRemotionElement())).toBe(false);
+      expect(isTextElement(createMarkdownElement())).toBe(false);
     });
   });
 
@@ -182,6 +216,7 @@ describe("Type Guards", () => {
       expect(isStickerElement(createTextElement())).toBe(false);
       expect(isStickerElement(createCaptionElement())).toBe(false);
       expect(isStickerElement(createRemotionElement())).toBe(false);
+      expect(isStickerElement(createMarkdownElement())).toBe(false);
     });
   });
 
@@ -196,6 +231,7 @@ describe("Type Guards", () => {
       expect(isCaptionElement(createTextElement())).toBe(false);
       expect(isCaptionElement(createStickerElement())).toBe(false);
       expect(isCaptionElement(createRemotionElement())).toBe(false);
+      expect(isCaptionElement(createMarkdownElement())).toBe(false);
     });
   });
 
@@ -210,6 +246,22 @@ describe("Type Guards", () => {
       expect(isRemotionElement(createTextElement())).toBe(false);
       expect(isRemotionElement(createStickerElement())).toBe(false);
       expect(isRemotionElement(createCaptionElement())).toBe(false);
+      expect(isRemotionElement(createMarkdownElement())).toBe(false);
+    });
+  });
+
+  describe("isMarkdownElement", () => {
+    it("should return true for markdown elements", () => {
+      const element = createMarkdownElement();
+      expect(isMarkdownElement(element)).toBe(true);
+    });
+
+    it("should return false for non-markdown elements", () => {
+      expect(isMarkdownElement(createMediaElement())).toBe(false);
+      expect(isMarkdownElement(createTextElement())).toBe(false);
+      expect(isMarkdownElement(createStickerElement())).toBe(false);
+      expect(isMarkdownElement(createCaptionElement())).toBe(false);
+      expect(isMarkdownElement(createRemotionElement())).toBe(false);
     });
   });
 });
@@ -372,6 +424,7 @@ describe("sortTracksByOrder", () => {
       createTrack("media", [], { id: "media-1" }),
       createTrack("text", [], { id: "text-1" }),
       createTrack("remotion", [], { id: "remotion-1" }),
+      createTrack("markdown", [], { id: "markdown-1" }),
       createTrack("sticker", [], { id: "sticker-1" }),
       createTrack("captions", [], { id: "captions-1" }),
     ];
@@ -380,10 +433,11 @@ describe("sortTracksByOrder", () => {
 
     expect(sorted[0].type).toBe("text");
     expect(sorted[1].type).toBe("captions");
-    expect(sorted[2].type).toBe("remotion");
-    expect(sorted[3].type).toBe("sticker");
-    expect(sorted[4].type).toBe("media");
-    expect(sorted[5].type).toBe("audio");
+    expect(sorted[2].type).toBe("markdown");
+    expect(sorted[3].type).toBe("remotion");
+    expect(sorted[4].type).toBe("sticker");
+    expect(sorted[5].type).toBe("media");
+    expect(sorted[6].type).toBe("audio");
   });
 
   it("should place main track first within same type", () => {
@@ -459,6 +513,12 @@ describe("canElementGoOnTrack", () => {
     expect(canElementGoOnTrack("remotion", "text")).toBe(false);
     expect(canElementGoOnTrack("remotion", "sticker")).toBe(false);
   });
+
+  it("should allow markdown elements only on markdown tracks", () => {
+    expect(canElementGoOnTrack("markdown", "markdown")).toBe(true);
+    expect(canElementGoOnTrack("markdown", "text")).toBe(false);
+    expect(canElementGoOnTrack("markdown", "media")).toBe(false);
+  });
 });
 
 describe("validateElementTrackCompatibility", () => {
@@ -513,6 +573,14 @@ describe("validateElementTrackCompatibility", () => {
     );
     expect(mediaResult.errorMessage).toBe(
       "Media elements can only be placed on media or audio tracks"
+    );
+
+    const markdownResult = validateElementTrackCompatibility(
+      { type: "markdown" },
+      { type: "text" }
+    );
+    expect(markdownResult.errorMessage).toBe(
+      "Markdown elements can only be placed on markdown tracks"
     );
   });
 });

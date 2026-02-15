@@ -12,6 +12,7 @@ import type {
   ClaudeTrack,
   ClaudeElement,
 } from "../../../../electron/types/claude-api";
+import { debugLog, debugWarn, debugError } from "@/lib/debug-config";
 
 /**
  * Calculate effective duration with safe trim handling
@@ -64,9 +65,11 @@ const CLAUDE_MEDIA_ELEMENT_TYPES = {
 const DEFAULT_MEDIA_DURATION_SECONDS = 10;
 const DEFAULT_TEXT_DURATION_SECONDS = 5;
 const DEFAULT_TEXT_CONTENT = "Text";
+const CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX = "media_";
 
 type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
-type MediaStoreState = ReturnType<typeof useMediaStore.getState>;
+
+const projectMediaSyncInFlight = new Map<string, Promise<void>>();
 
 function isClaudeMediaElementType({
   type,
@@ -133,28 +136,132 @@ function findMediaItemForElement({
   }
 
   if (element.sourceId) {
-    return mediaItems.find((item) => item.id === element.sourceId) || null;
+    const mediaById = mediaItems.find((item) => item.id === element.sourceId);
+    if (mediaById) {
+      return mediaById;
+    }
+
+    const decodedSourceName = getSourceNameFromDeterministicSourceId({
+      sourceId: element.sourceId,
+    });
+    if (decodedSourceName) {
+      const mediaByDecodedName = mediaItems.find(
+        (item) => item.name === decodedSourceName
+      );
+      if (mediaByDecodedName) {
+        return mediaByDecodedName;
+      }
+    }
   }
 
   return null;
 }
 
-function addClaudeMediaElement({
+function decodeBase64UrlUtf8({ encoded }: { encoded: string }): string | null {
+  try {
+    const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = window.atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function getSourceNameFromDeterministicSourceId({
+  sourceId,
+}: {
+  sourceId: string;
+}): string | null {
+  if (!sourceId.startsWith(CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX)) {
+    return null;
+  }
+
+  const encodedName = sourceId.slice(
+    CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX.length
+  );
+  if (!encodedName) {
+    return null;
+  }
+
+  return decodeBase64UrlUtf8({ encoded: encodedName });
+}
+
+async function syncProjectMediaIfNeeded({
+  projectId,
+}: {
+  projectId: string;
+}): Promise<void> {
+  const existingSync = projectMediaSyncInFlight.get(projectId);
+  if (existingSync) {
+    await existingSync;
+    return;
+  }
+
+  const syncPromise = (async (): Promise<void> => {
+    try {
+      const { syncProjectFolder } = await import("@/lib/project-folder-sync");
+      await syncProjectFolder(projectId);
+    } catch (error) {
+      debugWarn("[ClaudeTimelineBridge] Media sync failed:", error);
+    } finally {
+      projectMediaSyncInFlight.delete(projectId);
+    }
+  })();
+
+  projectMediaSyncInFlight.set(projectId, syncPromise);
+  await syncPromise;
+}
+
+async function resolveMediaItemForElement({
+  element,
+  projectId,
+}: {
+  element: Partial<ClaudeElement>;
+  projectId: string | undefined;
+}): Promise<MediaItem | null> {
+  try {
+    const mediaBeforeSync = findMediaItemForElement({
+      element,
+      mediaItems: useMediaStore.getState().mediaItems,
+    });
+    if (mediaBeforeSync) {
+      return mediaBeforeSync;
+    }
+
+    if (!projectId || !window.electronAPI?.projectFolder) {
+      return null;
+    }
+
+    await syncProjectMediaIfNeeded({ projectId });
+
+    return findMediaItemForElement({
+      element,
+      mediaItems: useMediaStore.getState().mediaItems,
+    });
+  } catch (error) {
+    debugWarn("[ClaudeTimelineBridge] Media resolution failed:", error);
+    return null;
+  }
+}
+
+async function addClaudeMediaElement({
   element,
   timelineStore,
-  mediaStore,
+  projectId,
 }: {
   element: Partial<ClaudeElement>;
   timelineStore: TimelineStoreState;
-  mediaStore: MediaStoreState;
-}): void {
-  const mediaItem = findMediaItemForElement({
+  projectId: string | undefined;
+}): Promise<void> {
+  const mediaItem = await resolveMediaItemForElement({
     element,
-    mediaItems: mediaStore.mediaItems,
+    projectId,
   });
 
   if (!mediaItem) {
-    console.warn(
+    debugWarn(
       "[ClaudeTimelineBridge] Media not found:",
       element.sourceName || element.sourceId
     );
@@ -182,7 +289,7 @@ function addClaudeMediaElement({
     trimEnd: 0,
   });
 
-  console.log("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
+  debugLog("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
 }
 
 function addClaudeTextElement({
@@ -225,7 +332,7 @@ function addClaudeTextElement({
     opacity: 1,
   });
 
-  console.log("[ClaudeTimelineBridge] Added text element:", content);
+  debugLog("[ClaudeTimelineBridge] Added text element:", content);
 }
 
 /**
@@ -234,17 +341,17 @@ function addClaudeTextElement({
  */
 export function setupClaudeTimelineBridge(): void {
   if (!window.electronAPI?.claude?.timeline) {
-    console.warn("[ClaudeTimelineBridge] Claude Timeline API not available");
+    debugWarn("[ClaudeTimelineBridge] Claude Timeline API not available");
     return;
   }
 
   const claudeAPI = window.electronAPI.claude.timeline;
-  console.log("[ClaudeTimelineBridge] Setting up bridge...");
+  debugLog("[ClaudeTimelineBridge] Setting up bridge...");
 
   // Respond to timeline export request from main process
   claudeAPI.onRequest(() => {
     try {
-      console.log("[ClaudeTimelineBridge] Received timeline export request");
+      debugLog("[ClaudeTimelineBridge] Received timeline export request");
 
       const timelineState = useTimelineStore.getState();
       const projectState = useProjectStore.getState();
@@ -261,9 +368,9 @@ export function setupClaudeTimelineBridge(): void {
       };
 
       claudeAPI.sendResponse(timeline);
-      console.log("[ClaudeTimelineBridge] Sent timeline response");
+      debugLog("[ClaudeTimelineBridge] Sent timeline response");
     } catch (error) {
-      console.error(
+      debugError(
         "[ClaudeTimelineBridge] Failed to handle timeline export request:",
         error
       );
@@ -271,31 +378,31 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle timeline import from Claude
-  claudeAPI.onApply((timeline: ClaudeTimeline) => {
+  claudeAPI.onApply(async (timeline: ClaudeTimeline) => {
     try {
-      console.log(
+      debugLog(
         "[ClaudeTimelineBridge] Received timeline to apply:",
         timeline.name
       );
-      applyTimelineToStore(timeline);
+      await applyTimelineToStore(timeline);
     } catch (error) {
-      console.error("[ClaudeTimelineBridge] Failed to apply timeline:", error);
+      debugError("[ClaudeTimelineBridge] Failed to apply timeline:", error);
     }
   });
 
   // Handle element addition from Claude
-  claudeAPI.onAddElement((element: Partial<ClaudeElement>) => {
+  claudeAPI.onAddElement(async (element: Partial<ClaudeElement>) => {
     try {
-      console.log("[ClaudeTimelineBridge] Adding element:", element);
+      debugLog("[ClaudeTimelineBridge] Adding element:", element);
 
       const timelineStore = useTimelineStore.getState();
-      const mediaStore = useMediaStore.getState();
+      const projectId = useProjectStore.getState().activeProject?.id;
 
       if (isClaudeMediaElementType({ type: element.type })) {
-        addClaudeMediaElement({
+        await addClaudeMediaElement({
           element,
           timelineStore,
-          mediaStore,
+          projectId,
         });
         return;
       }
@@ -308,32 +415,136 @@ export function setupClaudeTimelineBridge(): void {
         return;
       }
 
-      console.warn(
+      debugWarn(
         "[ClaudeTimelineBridge] Unsupported element type:",
         element.type
       );
     } catch (error) {
-      console.error("[ClaudeTimelineBridge] Failed to add element:", error);
+      debugError("[ClaudeTimelineBridge] Failed to add element:", error);
     }
   });
 
-  /**
-   * Handle element update from Claude
-   *
-   * @stub This handler is intentionally a stub. Updating elements requires:
-   * 1. Timeline store to expose an updateElement method
-   * 2. Mapping partial ClaudeElement changes to TimelineElement fields
-   * 3. Validating changes don't create invalid state (overlaps, negative times)
-   */
+  // Handle element update from Claude
   claudeAPI.onUpdateElement(
     (data: { elementId: string; changes: Partial<ClaudeElement> }) => {
       try {
-        console.log("[ClaudeTimelineBridge] Updating element:", data.elementId);
-        console.warn(
-          "[ClaudeTimelineBridge] updateElement not implemented - needs store method"
+        debugLog("[ClaudeTimelineBridge] Updating element:", data.elementId);
+
+        const timelineStore = useTimelineStore.getState();
+        const track = findTrackByElementId(
+          timelineStore.tracks,
+          data.elementId
         );
+        if (!track) {
+          debugWarn(
+            "[ClaudeTimelineBridge] Could not find track for element:",
+            data.elementId
+          );
+          return;
+        }
+
+        const element = track.elements.find((e) => e.id === data.elementId);
+        if (!element) {
+          return;
+        }
+
+        const { changes } = data;
+
+        // Update start time
+        if (typeof changes.startTime === "number") {
+          timelineStore.updateElementStartTime(
+            track.id,
+            data.elementId,
+            changes.startTime
+          );
+        }
+
+        // Update duration (from explicit duration or endTime - startTime)
+        if (typeof changes.duration === "number" && changes.duration > 0) {
+          timelineStore.updateElementDuration(
+            track.id,
+            data.elementId,
+            changes.duration
+          );
+        } else if (typeof changes.endTime === "number") {
+          const start = changes.startTime ?? element.startTime;
+          const newDuration = changes.endTime - start;
+          if (newDuration > 0) {
+            timelineStore.updateElementDuration(
+              track.id,
+              data.elementId,
+              newDuration
+            );
+          }
+        }
+
+        // Update type-specific properties
+        if (element.type === "text") {
+          const textUpdates: Record<string, unknown> = {};
+          if (typeof changes.content === "string") {
+            textUpdates.content = changes.content;
+          }
+          if (changes.style) {
+            const s = changes.style;
+            if (typeof s.fontSize === "number")
+              textUpdates.fontSize = s.fontSize;
+            if (typeof s.fontFamily === "string")
+              textUpdates.fontFamily = s.fontFamily;
+            if (typeof s.color === "string") textUpdates.color = s.color;
+            if (typeof s.backgroundColor === "string")
+              textUpdates.backgroundColor = s.backgroundColor;
+            if (typeof s.textAlign === "string")
+              textUpdates.textAlign = s.textAlign;
+            if (typeof s.fontWeight === "string")
+              textUpdates.fontWeight = s.fontWeight;
+            if (typeof s.fontStyle === "string")
+              textUpdates.fontStyle = s.fontStyle;
+            if (typeof s.textDecoration === "string")
+              textUpdates.textDecoration = s.textDecoration;
+          }
+          if (Object.keys(textUpdates).length > 0) {
+            timelineStore.updateTextElement(
+              track.id,
+              data.elementId,
+              textUpdates
+            );
+          }
+        }
+
+        if (element.type === "markdown") {
+          const markdownUpdates: Record<string, unknown> = {};
+          if (typeof changes.content === "string") {
+            markdownUpdates.markdownContent = changes.content;
+          }
+          if (typeof changes.duration === "number" && changes.duration > 0) {
+            markdownUpdates.duration = changes.duration;
+          }
+          if (Object.keys(markdownUpdates).length > 0) {
+            timelineStore.updateMarkdownElement(
+              track.id,
+              data.elementId,
+              markdownUpdates
+            );
+          }
+        }
+
+        if (element.type === "media" && changes.style) {
+          const mediaUpdates: Record<string, unknown> = {};
+          if (typeof changes.style.volume === "number") {
+            mediaUpdates.volume = changes.style.volume;
+          }
+          if (Object.keys(mediaUpdates).length > 0) {
+            timelineStore.updateMediaElement(
+              track.id,
+              data.elementId,
+              mediaUpdates
+            );
+          }
+        }
+
+        debugLog("[ClaudeTimelineBridge] Updated element:", data.elementId);
       } catch (error) {
-        console.error(
+        debugError(
           "[ClaudeTimelineBridge] Failed to handle element update:",
           error
         );
@@ -344,7 +555,7 @@ export function setupClaudeTimelineBridge(): void {
   // Handle element removal
   claudeAPI.onRemoveElement((elementId: string) => {
     try {
-      console.log("[ClaudeTimelineBridge] Removing element:", elementId);
+      debugLog("[ClaudeTimelineBridge] Removing element:", elementId);
       const timelineStore = useTimelineStore.getState();
       const tracks = timelineStore.tracks;
 
@@ -355,19 +566,19 @@ export function setupClaudeTimelineBridge(): void {
         return;
       }
 
-      console.warn(
+      debugWarn(
         "[ClaudeTimelineBridge] Could not find track for element:",
         elementId
       );
     } catch (error) {
-      console.error(
+      debugError(
         "[ClaudeTimelineBridge] Failed to handle element removal:",
         error
       );
     }
   });
 
-  console.log("[ClaudeTimelineBridge] Bridge setup complete");
+  debugLog("[ClaudeTimelineBridge] Bridge setup complete");
 }
 
 /**
@@ -399,7 +610,7 @@ function formatElementForExport(
     startTime: element.startTime,
     endTime: element.startTime + effectiveDuration,
     duration: effectiveDuration,
-    type: element.type,
+    type: element.type === "markdown" ? "text" : element.type,
   };
 
   // Add type-specific fields
@@ -430,43 +641,70 @@ function formatElementForExport(
         ...baseElement,
         sourceId: element.componentId,
       };
+    case "markdown":
+      return {
+        ...baseElement,
+        content: element.markdownContent,
+      };
     default:
       return baseElement;
   }
 }
 
 /**
- * Apply imported Claude timeline to store
- *
- * @stub This function is intentionally a stub. Timeline import is a complex
- * operation that requires user confirmation before overwriting existing work.
- * Full implementation is tracked separately and out of scope for this PR.
- *
- * Future implementation will:
- * 1. Validate media references exist in the media store
- * 2. Map Claude elements back to internal TimelineElement types
- * 3. Handle conflicts with existing elements (prompt user)
- * 4. Update timeline store with imported data
+ * Apply imported Claude timeline to store (appends to existing timeline)
  */
-function applyTimelineToStore(timeline: ClaudeTimeline): void {
-  try {
-    // Log import details for debugging - helps verify the bridge is working
-    console.log("[ClaudeTimelineBridge] Would apply timeline:", {
-      name: timeline.name,
-      duration: timeline.duration,
-      tracks: timeline.tracks.length,
-      totalElements: timeline.tracks.reduce(
-        (sum, t) => sum + t.elements.length,
-        0
-      ),
-    });
+async function applyTimelineToStore(timeline: ClaudeTimeline): Promise<void> {
+  const totalElements = timeline.tracks.reduce(
+    (sum, t) => sum + t.elements.length,
+    0
+  );
+  debugLog("[ClaudeTimelineBridge] Applying timeline:", {
+    name: timeline.name,
+    duration: timeline.duration,
+    tracks: timeline.tracks.length,
+    totalElements,
+  });
 
-    console.warn(
-      "[ClaudeTimelineBridge] Timeline import requires user confirmation - not yet implemented"
-    );
-  } catch (error) {
-    console.error("[ClaudeTimelineBridge] Timeline import failed:", error);
+  const timelineStore = useTimelineStore.getState();
+  const projectId = useProjectStore.getState().activeProject?.id;
+  let added = 0;
+
+  for (const track of timeline.tracks) {
+    for (const element of track.elements) {
+      try {
+        if (isClaudeMediaElementType({ type: element.type })) {
+          await addClaudeMediaElement({
+            element,
+            timelineStore: useTimelineStore.getState(),
+            projectId,
+          });
+          added++;
+        } else if (element.type === "text") {
+          addClaudeTextElement({
+            element,
+            timelineStore: useTimelineStore.getState(),
+          });
+          added++;
+        } else {
+          debugWarn(
+            "[ClaudeTimelineBridge] Skipping unsupported element type:",
+            element.type
+          );
+        }
+      } catch (error) {
+        debugError(
+          "[ClaudeTimelineBridge] Failed to add element during import:",
+          element.id,
+          error
+        );
+      }
+    }
   }
+
+  debugLog(
+    `[ClaudeTimelineBridge] Timeline import complete: ${added}/${totalElements} elements added`
+  );
 }
 
 /**
@@ -476,7 +714,7 @@ export function cleanupClaudeTimelineBridge(): void {
   if (window.electronAPI?.claude?.timeline?.removeListeners) {
     window.electronAPI.claude.timeline.removeListeners();
   }
-  console.log("[ClaudeTimelineBridge] Bridge cleanup complete");
+  debugLog("[ClaudeTimelineBridge] Bridge cleanup complete");
 }
 
 /**
@@ -489,8 +727,8 @@ export function setupClaudeProjectBridge(): void {
 
   const projectAPI = window.electronAPI.claude.project;
 
-  // Respond to stats request
-  projectAPI.onStatsRequest(() => {
+  // Respond to stats request (must forward requestId for main process matching)
+  projectAPI.onStatsRequest((_projectId: string, requestId: string) => {
     const timelineState = useTimelineStore.getState();
     const projectState = useProjectStore.getState();
     const tracks = timelineState.tracks;
@@ -525,7 +763,7 @@ export function setupClaudeProjectBridge(): void {
       fileSize: 0, // Would need to calculate
     };
 
-    projectAPI.sendStatsResponse(stats);
+    projectAPI.sendStatsResponse(stats, requestId);
   });
 }
 

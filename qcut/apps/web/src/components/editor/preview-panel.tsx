@@ -58,6 +58,7 @@ import { EFFECTS_ENABLED } from "@/config/features";
 // Import Remotion preview for rendering Remotion elements
 import { RemotionPreview } from "./preview-panel/remotion-preview";
 import type { RemotionElement } from "@/types/timeline";
+import { MarkdownOverlay } from "@/components/editor/canvas/markdown-overlay";
 
 interface ActiveElement {
   element: TimelineElement;
@@ -345,7 +346,7 @@ export function PreviewPanel() {
 
   const handleTextMouseDown = (
     e: React.MouseEvent<HTMLDivElement>,
-    element: any,
+    element: Pick<TimelineElement, "id" | "x" | "y">,
     trackId: string
   ) => {
     e.preventDefault();
@@ -359,10 +360,10 @@ export function PreviewPanel() {
       trackId,
       startX: e.clientX,
       startY: e.clientY,
-      initialElementX: element.x,
-      initialElementY: element.y,
-      currentX: element.x,
-      currentY: element.y,
+      initialElementX: element.x ?? 0,
+      initialElementY: element.y ?? 0,
+      currentX: element.x ?? 0,
+      currentY: element.y ?? 0,
       elementWidth: rect.width,
       elementHeight: rect.height,
     });
@@ -816,6 +817,53 @@ export function PreviewPanel() {
           >
             {element.content}
           </div>
+        </div>
+      );
+    }
+
+    if (element.type === "markdown") {
+      const scaleRatio = previewDimensions.width / canvasSize.width;
+      const elX = element.x ?? 0;
+      const elY = element.y ?? 0;
+      const elW = element.width ?? 720;
+      const elH = element.height ?? 420;
+      const isDraggingThis =
+        dragState.isDragging && dragState.elementId === element.id;
+      const displayX = isDraggingThis ? dragState.currentX : elX;
+      const displayY = isDraggingThis ? dragState.currentY : elY;
+
+      return (
+        <div
+          key={elementKey}
+          className="absolute cursor-grab"
+          onClick={() => setSelectedElementId(element.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setSelectedElementId(element.id);
+            }
+          }}
+          onMouseDown={(e) =>
+            handleTextMouseDown(e, element, elementData.track.id)
+          }
+          tabIndex={0}
+          role="button"
+          aria-label={`Markdown: ${element.name}`}
+          style={{
+            left: `${50 + (displayX / canvasSize.width) * 100}%`,
+            top: `${50 + (displayY / canvasSize.height) * 100}%`,
+            width: `${elW * scaleRatio}px`,
+            height: `${elH * scaleRatio}px`,
+            transform: `translate(-50%, -50%) rotate(${element.rotation ?? 0}deg)`,
+            opacity: element.opacity ?? 1,
+            zIndex: 95 + index,
+          }}
+        >
+          <MarkdownOverlay
+            element={element}
+            currentTime={currentTime}
+            canvasScale={scaleRatio}
+          />
         </div>
       );
     }

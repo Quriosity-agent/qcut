@@ -19,6 +19,8 @@ import { storageService } from "@/lib/storage/storage-service";
 // import { useProjectStore } from "./project-store";
 import { generateUUID } from "@/lib/utils";
 import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { clampMarkdownDuration } from "@/lib/markdown";
+import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 
 // Import from timeline module
 import { type TimelineStore, createTrack } from "./timeline";
@@ -28,6 +30,52 @@ import { createTimelineOperations } from "./timeline-store-operations";
 
 // Module-level timer for debounced auto-save
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function normalizeMarkdownElement({
+  element,
+}: {
+  element: TimelineElement;
+}): TimelineElement {
+  if (element.type !== "markdown") {
+    return element;
+  }
+
+  return {
+    ...element,
+    markdownContent: element.markdownContent ?? "",
+    theme: element.theme ?? "dark",
+    fontSize: element.fontSize ?? 18,
+    fontFamily: element.fontFamily ?? "Arial",
+    padding: element.padding ?? 16,
+    backgroundColor: element.backgroundColor ?? "rgba(0, 0, 0, 0.85)",
+    textColor: element.textColor ?? "#ffffff",
+    scrollMode: element.scrollMode ?? "static",
+    scrollSpeed: element.scrollSpeed ?? 30,
+    x: element.x ?? 0,
+    y: element.y ?? 0,
+    width: element.width ?? 720,
+    height: element.height ?? 420,
+    rotation: element.rotation ?? 0,
+    opacity: element.opacity ?? 1,
+    duration: clampMarkdownDuration({
+      duration:
+        element.duration ?? TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+    }),
+  };
+}
+
+function normalizeLoadedTracks({
+  tracks,
+}: {
+  tracks: TimelineTrack[];
+}): TimelineTrack[] {
+  return tracks.map((track) => ({
+    ...track,
+    elements: track.elements.map((element) =>
+      normalizeMarkdownElement({ element })
+    ),
+  }));
+}
 
 export const useTimelineStore = create<TimelineStore>((set, get) => {
   // Helper to update tracks and maintain ordering
@@ -315,6 +363,23 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         return;
       }
 
+      // For markdown elements, validate required markdown content
+      if (
+        elementData.type === "markdown" &&
+        typeof elementData.markdownContent !== "string"
+      ) {
+        handleError(new Error("Markdown element must have markdownContent"), {
+          operation: "Markdown Element Validation",
+          category: ErrorCategory.VALIDATION,
+          severity: ErrorSeverity.MEDIUM,
+          metadata: {
+            elementType: "markdown",
+            trackId,
+          },
+        });
+        return;
+      }
+
       // Check if this is the first element being added to the timeline
       const currentState = get();
       const totalElementsInTimeline = currentState._tracks.reduce(
@@ -323,10 +388,22 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
       const isFirstElement = totalElementsInTimeline === 0;
 
+      const normalizedElementData =
+        elementData.type === "markdown"
+          ? {
+              ...elementData,
+              duration: clampMarkdownDuration({
+                duration:
+                  elementData.duration ??
+                  TIMELINE_CONSTANTS.MARKDOWN_DEFAULT_DURATION,
+              }),
+            }
+          : elementData;
+
       const newElement: TimelineElement = {
-        ...elementData,
+        ...normalizedElementData,
         id: generateUUID(),
-        startTime: elementData.startTime || 0,
+        startTime: normalizedElementData.startTime || 0,
         trimStart: 0,
         trimEnd: 0,
       } as TimelineElement; // Type assertion since we trust the caller passes valid data
@@ -590,6 +667,32 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
+    updateMarkdownElement: (trackId, elementId, updates) => {
+      get().pushHistory();
+      const normalizedUpdates =
+        updates.duration !== undefined
+          ? {
+              ...updates,
+              duration: clampMarkdownDuration({ duration: updates.duration }),
+            }
+          : updates;
+
+      updateTracksAndSave(
+        get()._tracks.map((track) =>
+          track.id === trackId
+            ? {
+                ...track,
+                elements: track.elements.map((element) =>
+                  element.id === elementId && element.type === "markdown"
+                    ? { ...element, ...normalizedUpdates }
+                    : element
+                ),
+              }
+            : track
+        )
+      );
+    },
+
     // Interactive element manipulation (for effects)
     updateElementTransform: (elementId, updates, options) => {
       const push = options?.pushHistory !== false;
@@ -760,7 +863,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
           sceneId,
         });
         if (tracks) {
-          updateTracks(tracks);
+          updateTracks(normalizeLoadedTracks({ tracks }));
         } else {
           // No timeline saved yet, initialize with default
           const defaultTracks = ensureMainTrack([]);
@@ -922,9 +1025,8 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     findOrCreateTrack: (trackType) => {
-      // Always create new text track to allow multiple text elements
-      // Insert text tracks at the top
-      if (trackType === "text") {
+      // Always create new text/markdown tracks to keep overlays independent.
+      if (trackType === "text" || trackType === "markdown") {
         return get().insertTrackAt(trackType, 0);
       }
 

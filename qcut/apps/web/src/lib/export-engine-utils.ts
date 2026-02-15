@@ -123,8 +123,9 @@ export function calculateElementBounds(
   const x = (canvasWidth - width) / 2;
   const y = (canvasHeight - height) / 2;
 
-  const elementX = element.type === "text" ? element.x : undefined;
-  const elementY = element.type === "text" ? element.y : undefined;
+  const isTextLike = element.type === "text" || element.type === "markdown";
+  const elementX = isTextLike ? element.x : undefined;
+  const elementY = isTextLike ? element.y : undefined;
 
   return {
     x: elementX ?? x,

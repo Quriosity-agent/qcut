@@ -2,6 +2,7 @@ import { mockVideoItem, mockImageItem, mockAudioItem } from "./media-items";
 import {
   mockMainTrack,
   mockTextTrack,
+  mockMarkdownTrack,
   mockAudioTrack,
   mockStickerTrack,
   mockCaptionTrack,
@@ -52,6 +53,9 @@ export const TestDataFactory = {
         break;
       case "text":
         base = mockTextTrack;
+        break;
+      case "markdown":
+        base = mockMarkdownTrack;
         break;
       case "audio":
         base = mockAudioTrack;
