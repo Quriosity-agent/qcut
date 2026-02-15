@@ -19,6 +19,7 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
@@ -422,15 +423,8 @@ function buildElectronApp(): void {
 }
 
 function computeChecksum(filePath: string): string {
-  if (process.platform === "win32") {
-    const output = execSync(`certutil -hashfile "${filePath}" SHA256`, {
-      encoding: "utf8",
-    });
-    return output.split("\n")[1].trim().toUpperCase();
-  }
-  // macOS / Linux: shasum -a 256
-  const output = execSync(`shasum -a 256 "${filePath}"`, { encoding: "utf8" });
-  return output.split(/\s+/)[0].toUpperCase();
+  const fileBuffer = fs.readFileSync(filePath);
+  return crypto.createHash("sha256").update(fileBuffer).digest("hex").toUpperCase();
 }
 
 function generateChecksums(): void {

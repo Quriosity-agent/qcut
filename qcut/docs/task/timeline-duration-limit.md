@@ -74,7 +74,7 @@ So the **duration value itself** can be 600s (10 minutes) or more — the proble
 
 ## Data Flow Summary
 
-```
+```text
 Track elements (startTime + duration)
     ↓
 getTotalDuration() → finds latest end time

@@ -238,11 +238,13 @@ export function TimelineToolbar({
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(Math.min(4, zoomLevel < 0.25 ? 0.25 : zoomLevel + 0.25));
+    const next = TIMELINE_CONSTANTS.ZOOM_LEVELS.find((v) => v > zoomLevel + 0.001);
+    setZoomLevel(next ?? 4);
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(Math.max(0.05, zoomLevel <= 0.25 ? zoomLevel - 0.05 : zoomLevel - 0.25));
+    const prev = [...TIMELINE_CONSTANTS.ZOOM_LEVELS].reverse().find((v) => v < zoomLevel - 0.001);
+    setZoomLevel(prev ?? 0.05);
   };
 
   const handleZoomSliderChange = (values: number[]) => {

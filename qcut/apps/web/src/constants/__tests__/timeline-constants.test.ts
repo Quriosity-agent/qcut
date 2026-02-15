@@ -31,15 +31,15 @@ describe("calculateMinimumTimelineDuration", () => {
   it("returns default when content is shorter", () => {
     expect(calculateMinimumTimelineDuration(120)).toBe(DEFAULT);
     expect(calculateMinimumTimelineDuration(600)).toBe(DEFAULT);
-    expect(calculateMinimumTimelineDuration(3600)).toBe(DEFAULT);
+    expect(calculateMinimumTimelineDuration(3_600)).toBe(DEFAULT);
   });
 
   it("returns content duration when longer than default", () => {
-    expect(calculateMinimumTimelineDuration(8000)).toBe(8000);
+    expect(calculateMinimumTimelineDuration(8_000)).toBe(8_000);
   });
 
   it("default empty timeline is 2 hours", () => {
-    expect(DEFAULT).toBe(7200);
+    expect(DEFAULT).toBe(7_200);
   });
 });
 
@@ -57,7 +57,7 @@ describe("calculateTimelineBuffer", () => {
   });
 
   it("returns 10% for long durations", () => {
-    expect(calculateTimelineBuffer(7200)).toBe(720);
+    expect(calculateTimelineBuffer(7_200)).toBe(720);
   });
 
   it("handles NaN gracefully", () => {
@@ -126,7 +126,7 @@ describe("getFrameDuration", () => {
 });
 
 describe("2-hour timeline width calculations", () => {
-  const TWO_HOURS = 7200;
+  const TWO_HOURS = 7_200;
 
   it("produces correct pixel width at 1x zoom", () => {
     const width = TWO_HOURS * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * 1;
@@ -146,7 +146,7 @@ describe("2-hour timeline width calculations", () => {
   it("all zoom levels produce widths far exceeding old Radix cap of ~6400px", () => {
     for (const zoom of TIMELINE_CONSTANTS.ZOOM_LEVELS) {
       const width = TWO_HOURS * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoom;
-      expect(width).toBeGreaterThan(6400);
+      expect(width).toBeGreaterThan(6_400);
     }
   });
 });

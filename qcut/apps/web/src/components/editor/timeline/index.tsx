@@ -392,7 +392,7 @@ export function Timeline() {
       rulerViewport.removeEventListener("scroll", handleRulerScroll);
       tracksViewport.removeEventListener("scroll", handleTracksScroll);
     };
-  }, [mediaStoreLoading]);
+  }, [mediaStoreLoading, tracks.length]);
 
   // Handle media store loading/error states
   if (mediaStoreError) {

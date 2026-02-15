@@ -214,7 +214,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
     await captureTestStep(
       page,
       SCREENSHOT_FOLDER,
-      6,
+      5,
       "wheel-scroll-test"
     );
 
@@ -246,7 +246,7 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
     await captureTestStep(
       page,
       SCREENSHOT_FOLDER,
-      7,
+      6,
       "timeline-at-200s"
     );
 
