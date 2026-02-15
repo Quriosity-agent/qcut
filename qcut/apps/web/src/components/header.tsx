@@ -23,18 +23,14 @@ export function Header() {
     <nav className="flex items-center gap-1">
       <ThemeToggle />
       <div className="flex items-center gap-4 ml-2">
-        <Link
-          to="/blog"
+        <a
+          href="https://quriosity.com.au/"
           className="text-sm p-0 text-muted-foreground hover:text-foreground transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
         >
           Blog
-        </Link>
-        <Link
-          to="/contributors"
-          className="text-sm p-0 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Contributors
-        </Link>
+        </a>
       </div>
       <Link to="/projects">
         <Button size="sm" className="text-sm ml-4">
