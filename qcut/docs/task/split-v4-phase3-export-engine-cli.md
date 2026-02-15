@@ -1,203 +1,180 @@
-# Phase 3: Split `export-engine-cli.ts` (1292 → ~780)
+# Phase 3: Split `export-engine-cli.ts` (1292 -> ~900 without behavior changes)
 
-**Risk Level:** Low-Medium — class methods extracted to standalone modules, class delegates to them
-**Estimated Time:** ~30 minutes
+**Risk Level:** Medium — this file controls export mode selection and FFmpeg option construction
+**Estimated Time:** ~45 minutes (including regression verification)
 
-## Overview
+## Goal
 
-`CLIExportEngine` is a class with clear logical sections. Two areas are independently extractable:
-1. **Audio preparation pipeline** (lines 362-564, ~200 lines) — multi-step audio extraction/validation
-2. **Electron API bridge + utilities** (lines 252-360, ~110 lines) — safe Electron access pattern + file ops
+Split `apps/web/src/lib/export-engine-cli.ts` into focused modules **without changing export behavior**.
 
-The core `export()` and `exportWithCLI()` methods stay in the class — they orchestrate the pipeline and are tightly coupled to instance state.
+Primary target extractions:
+1. Electron bridge helpers (`getOptionalInvoke`, `invokeIfAvailable`, `getFileInfo`, `fileExists`, `validateAudioWithFfprobe`)
+2. Audio preparation pipeline (`resolveAudioPreparationInputs`, `prepareAudioFiles`)
 
-## Source File
+## Non-Breaking Constraints (Must Hold)
 
-`apps/web/src/lib/export-engine-cli.ts` — 1292 lines
+- Keep `CLIExportEngine` public API unchanged.
+- Keep `export()` mode decision logic unchanged (Mode 1 / 1.5 / 2 behavior and gating).
+- Keep `exportWithCLI()` export options shape unchanged.
+- Keep all existing error messages and fallback behavior unchanged.
+- Keep audio include/exclude behavior unchanged (`includeAudio ?? true`).
+- Keep sticker/image/text filter handling unchanged.
+- Keep session lifecycle unchanged (`createExportSession` -> export -> read -> cleanup path).
+- Keep current debug logs unless explicitly removed in another task.
 
-### Current Structure
+## Source Of Truth
 
-| Section | Lines | Description |
-|---------|------:|-------------|
-| Imports & types | 1-66 | External modules, extracted module imports, type aliases |
-| Class definition & constructor | 62-95 | Instance vars, validation |
-| **Filter/source wrapper methods** | **105-235** | **Bridge to extracted modules** |
-| **Electron API bridge** | **252-360** | **Safe invoke, file ops, ffprobe** |
-| **Audio preparation pipeline** | **362-564** | **Resolve inputs, prepare audio files** |
-| Export orchestration (`export()`) | 603-758 | Session lifecycle, mode detection |
-| FFmpeg execution (`exportWithCLI()`) | 774-1220 | Filter chains, options, invocation |
-| Output & cleanup | 1222-1291 | Read file, validate duration, cleanup |
+`apps/web/src/lib/export-engine-cli.ts` (1292 lines)
 
-Bold = extraction targets.
+Current extraction candidates in file:
+- Electron bridge helpers: lines 252-360
+- Audio preparation pipeline: lines 362-564
 
----
+## Target Files
 
-## New Files
+### 1. `apps/web/src/lib/export-engine-cli-utils.ts`
 
-### 1. `apps/web/src/lib/export-engine-cli-audio.ts` (~220 lines)
+Move these methods as standalone functions:
+- `getOptionalInvoke()`
+- `invokeIfAvailable()`
+- `getFileInfo()`
+- `fileExists()`
+- `validateAudioWithFfprobe()`
 
-**Contents:** Audio file extraction, validation, and preparation pipeline.
+Export shared types used by both modules:
+- `ElectronInvoke`
+- `FileInfoLike`
+- `AudioValidationLike`
 
-| Function | Current Lines | Description |
-|----------|--------------|-------------|
-| `resolveAudioPreparationInputs()` | 362-456 | Hydrate missing audio media items from storage |
-| `prepareAudioFilesForExport()` | 458-564 | Extract and validate audio files for FFmpeg |
+### 2. `apps/web/src/lib/export-engine-cli-audio.ts`
 
-These become standalone async functions:
+Move these methods as standalone functions:
+- `resolveAudioPreparationInputs()`
+- `prepareAudioFilesForExport()`
 
-```typescript
-interface AudioPrepDeps {
-  tracks: TimelineTrack[]
-  mediaItems: MediaItem[]
-  audioOptions: AudioExportOptions
-  sessionId: string | null
-  fileExists: (path: string) => Promise<boolean>
-  validateAudioWithFfprobe: (path: string) => Promise<AudioValidationLike | null>
-  getFileInfo: (path: string) => Promise<FileInfoLike | null>
-  getOptionalInvoke: () => ElectronInvoke | null
-}
+`prepareAudioFilesForExport()` should receive explicit dependencies instead of `this`.
 
-export async function resolveAudioPreparationInputs(
-  tracks: TimelineTrack[],
-  mediaItems: MediaItem[]
-): Promise<{ tracks: TimelineTrack[]; mediaItems: MediaItem[] }>
+## Safe Migration Strategy (Wrapper-First)
 
-export async function prepareAudioFilesForExport(
-  deps: AudioPrepDeps
-): Promise<AudioFileInput[]>
+### Step 0: Baseline safety checks before edits
+
+Run and record baseline results:
+
+```bash
+bun x tsc --noEmit --pretty false
+bunx vitest run apps/web/src/lib/__tests__/export-analysis.test.ts
+bunx vitest run apps/web/src/lib/__tests__/export-engine-debug.test.ts
+bunx vitest run apps/web/src/lib/__tests__/export-engine-utils.test.ts
+bunx vitest run apps/web/src/lib/export-cli/sources/__tests__/audio-sources.test.ts
+bunx vitest run apps/web/src/lib/export-cli/sources/__tests__/audio-detection.test.ts
 ```
-
-**Dependencies:**
-- `extractAudioFileInputs`, `detectAudioSources` from `./export-cli/sources/audio-sources`
-- `debugLog`, `debugWarn` from `@/lib/debug-config`
-- `useProjectStore` (for media item hydration in resolve step)
-
-### 2. `apps/web/src/lib/export-engine-cli-utils.ts` (~200 lines)
-
-**Contents:** Electron API bridge and wrapper methods.
-
-| Function | Current Lines | Description |
-|----------|--------------|-------------|
-| `getOptionalElectronInvoke()` | 252-270 | Safe Electron invoke accessor |
-| `invokeIfAvailable()` | 272-292 | Invoke with fallback |
-| `getFileInfo()` | 294-311 | File metadata via Electron |
-| `fileExists()` | 313-336 | File existence check |
-| `validateAudioWithFfprobe()` | 338-360 | Audio format validation |
-| Filter/source wrappers | 105-235 | Bridge methods (as standalone functions) |
-
-```typescript
-export function getOptionalElectronInvoke(): ElectronInvoke | null
-export async function invokeIfAvailable(channel: string, ...args: unknown[]): Promise<unknown>
-export async function getFileInfo(filePath: string): Promise<FileInfoLike | null>
-export async function fileExists(filePath: string): Promise<boolean>
-export async function validateAudioWithFfprobe(filePath: string): Promise<AudioValidationLike | null>
-
-// Wrapper functions that take instance deps as params
-export function countVisibleVideoElements(tracks: TimelineTrack[]): number
-export function extractVideoSourcesForExport(
-  tracks: TimelineTrack[], mediaItems: MediaItem[], sessionId: string | null
-): VideoSourceInput[]
-// ... etc
-```
-
----
-
-## What Stays in `export-engine-cli.ts` (~780 lines)
-
-| Section | Lines | Description |
-|---------|------:|-------------|
-| Imports | ~40 | + imports from new modules |
-| Type aliases | ~15 | FileInfoLike, AudioValidationLike, ElectronInvoke |
-| Class definition & constructor | ~35 | Instance vars, validation |
-| `export()` method | ~155 | Session lifecycle, mode detection, orchestration |
-| `exportWithCLI()` method | ~450 | Filter chains, options building, FFmpeg invocation |
-| Output & cleanup | ~70 | Read file, validate duration, cleanup |
-| Delegating methods | ~15 | Thin wrappers calling imported functions |
-
-The class constructor stores instance state. Methods like `export()` and `exportWithCLI()` call the extracted functions with appropriate parameters:
-
-```typescript
-// In export() method
-const audioFiles = await prepareAudioFilesForExport({
-  tracks: this.tracks,
-  mediaItems: this.mediaItems,
-  audioOptions: this.audioOptions,
-  sessionId: this.sessionId,
-  fileExists: (p) => fileExists(p),
-  validateAudioWithFfprobe: (p) => validateAudioWithFfprobe(p),
-  getFileInfo: (p) => getFileInfo(p),
-  getOptionalInvoke: () => getOptionalElectronInvoke(),
-})
-```
-
----
-
-## Implementation Steps
 
 ### Step 1: Create `export-engine-cli-utils.ts`
 
-1. Create the file
-2. Move Electron bridge functions (lines 252-360):
-   - `getOptionalElectronInvoke()`, `invokeIfAvailable()`, `getFileInfo()`, `fileExists()`, `validateAudioWithFfprobe()`
-3. Move wrapper functions (lines 105-235):
-   - Convert from class methods to standalone functions
-   - Add explicit parameters for `this.tracks`, `this.mediaItems`, `this.sessionId`, etc.
-4. Move `countVisibleVideoElements()` (lines 162-186)
-5. Add necessary imports
-6. Export type aliases: `ElectronInvoke`, `FileInfoLike`, `AudioValidationLike`
+1. Copy helper method bodies exactly (no logic edits).
+2. Convert method signatures to function signatures with explicit params.
+3. Keep try/catch behavior unchanged.
+4. In `export-engine-cli.ts`, keep existing class methods but make them thin wrappers calling new utils.
+
+This step avoids touching `exportWithCLI()` call sites directly.
 
 ### Step 2: Create `export-engine-cli-audio.ts`
 
-1. Create the file
-2. Move `resolveAudioPreparationInputs()` (lines 362-456)
-   - Uses `useProjectStore.getState()` — import store directly
-3. Move `prepareAudioFiles()` → rename to `prepareAudioFilesForExport()` (lines 458-564)
-   - Convert from class method to standalone function
-   - Accept deps interface for file operations and Electron access
-4. Add imports for extracted audio modules, debug utils
+1. Move `resolveAudioPreparationInputs()` and `prepareAudioFiles()` logic into standalone functions.
+2. Rename exported function to `prepareAudioFilesForExport()`.
+3. In class, keep `private async prepareAudioFiles()` as wrapper delegating to new module.
+4. Keep return contract exactly `Promise<AudioFileInput[]>`.
+5. Preserve all fallback paths (`return []` on failure where current code does so).
 
-### Step 3: Update `export-engine-cli.ts`
+### Step 3: Keep class surface stable
 
-1. Remove moved code
-2. Add imports from new modules
-3. Update `export()` to call `prepareAudioFilesForExport()` with deps
-4. Update `exportWithCLI()` to call wrapper functions from utils module
-5. Keep type aliases exported (other files may import them)
+- Keep method names used internally by class (`prepareAudioFiles`, `fileExists`, etc.) as wrappers in this phase.
+- Do not inline new module calls into many places at once.
+- Do not modify mode-selection branches during extraction.
 
-### Step 4: Verify imports
+### Step 4: Optional cleanup (only if all checks pass)
 
-1. Check all importers of `export-engine-cli.ts`:
-   - Should only import `CLIExportEngine` class
-   - Type aliases re-exported if needed
+- If wrappers become redundant, remove them in a follow-up subtask, not in the same change.
+- No cleanup should happen if it changes stack traces, logs, or behavior.
 
----
+## What Must Not Change In This Phase
 
-## Risks
+- `analyzeTimelineForExport(...)` usage and strategy checks.
+- `useDirectCopy` computation in `exportOptions`.
+- `videoInputPath/trimStart/trimEnd` behavior.
+- Audio validation filtering semantics before FFmpeg invocation.
+- Export option keys passed to `window.electronAPI.ffmpeg.exportVideoCLI(...)`.
 
-| Risk | Mitigation |
-|------|------------|
-| Class methods use `this` properties | Convert to explicit parameters in standalone functions |
-| `resolveAudioPreparationInputs` accesses store | Import `useProjectStore` directly (same pattern as current) |
-| `prepareAudioFiles` creates temp files via Electron | Pass Electron invoke as callback in deps |
-| Circular imports | One-directional: utils module has no dependency on class |
-| `exportWithCLI` is 450 lines | Stays in class — further split could happen in v5 |
+## Risk Register
+
+| Risk | Why It Can Break Features | Mitigation |
+|------|----------------------------|------------|
+| `this` binding loss | moved methods currently depend on instance state | use explicit dependency objects and keep class wrappers |
+| subtle fallback changes | helper methods rely on specific try/catch return values | copy method bodies first, then parameterize |
+| export mode regression | small condition edits can change Mode 1/1.5/2 path | no mode logic edits in this phase |
+| audio dropouts | behavior depends on multi-step validation/filtering | preserve same validation order and null-filtering |
+| Electron optional invoke behavior | helper has graceful fallback to null | preserve `invokeIfAvailable` semantics exactly |
 
 ## Verification
 
+### Static + lint
+
 ```bash
-bun check-types
-bun lint:clean
-bun run test
-bun run electron:dev  # Export a project with:
+bun x tsc --noEmit --pretty false
+bunx @biomejs/biome check apps/web/src/lib/export-engine-cli.ts apps/web/src/lib/export-engine-cli-utils.ts apps/web/src/lib/export-engine-cli-audio.ts
 ```
 
-## Test Scenarios
+### Unit tests (relevant paths)
 
-- [ ] Export video with audio tracks (Mode 1 — direct copy)
-- [ ] Export video with text overlays (Mode 2 — direct video + filters)
-- [ ] Export with sticker overlays
-- [ ] Export with image overlays
-- [ ] Audio validation rejects invalid audio files
-- [ ] Export without audio (audio disabled in settings)
-- [ ] Cleanup runs after export completes
-- [ ] Error messages display correctly for FFmpeg failures
+```bash
+bunx vitest run apps/web/src/lib/__tests__/export-analysis.test.ts
+bunx vitest run apps/web/src/lib/__tests__/export-engine-debug.test.ts
+bunx vitest run apps/web/src/lib/__tests__/export-engine-utils.test.ts
+bunx vitest run apps/web/src/lib/export-cli/sources/__tests__/audio-sources.test.ts
+bunx vitest run apps/web/src/lib/export-cli/sources/__tests__/audio-detection.test.ts
+bunx vitest run apps/web/src/test/integration/export-settings.test.ts
+```
+
+## Implementation Status (February 15, 2026)
+
+### Completed
+
+- [x] Added `apps/web/src/lib/export-engine-cli-utils.ts` with extracted helper functions:
+  `getOptionalInvoke`, `invokeIfAvailable`, `getFileInfo`, `fileExists`, `validateAudioWithFfprobe`.
+- [x] Added `apps/web/src/lib/export-engine-cli-audio.ts` with extracted audio pipeline functions:
+  `resolveAudioPreparationInputs`, `prepareAudioFilesForExport`.
+- [x] Updated `apps/web/src/lib/export-engine-cli.ts` to use wrapper delegation to the new modules.
+- [x] Preserved export mode logic and FFmpeg options construction in `exportWithCLI()`.
+
+### Verification Results
+
+- [x] `bunx @biomejs/biome check apps/web/src/lib/export-engine-cli.ts apps/web/src/lib/export-engine-cli-utils.ts apps/web/src/lib/export-engine-cli-audio.ts`
+- [x] `bunx vitest run src/lib/__tests__/export-analysis.test.ts src/lib/__tests__/export-engine-debug.test.ts src/lib/__tests__/export-engine-utils.test.ts src/lib/export-cli/sources/__tests__/audio-sources.test.ts src/lib/export-cli/sources/__tests__/audio-detection.test.ts src/test/integration/export-settings.test.ts` (40/40 passed)
+- [x] `bunx vitest run src/lib/__tests__/export-engine-cli-audio.test.ts` (7/7 passed)
+- [ ] `bun x tsc --noEmit --pretty false` still reports an existing unrelated issue at `apps/web/src/test/mocks/electron.ts:158` (`status` missing on mock type). No new TS errors were reported for extracted files.
+
+### Manual regression scenarios
+
+- [ ] Export with `includeAudio=false` does not prepare audio files.
+- [ ] Export with valid audio tracks includes mixed audio in output.
+- [ ] Missing audio file paths are skipped, export still completes.
+- [ ] Sticker overlays still render.
+- [ ] Image overlays still render.
+- [ ] Text overlays still render.
+- [ ] Mode 1 direct copy still triggers when no overlays exist.
+- [ ] Mode 2 with filters still triggers for single-video + overlays.
+- [ ] Video normalization strategy path still works.
+
+## Rollback Plan
+
+If any regression appears:
+1. Revert only module extraction wiring in `apps/web/src/lib/export-engine-cli.ts`.
+2. Keep new files for reference but disconnect imports.
+3. Re-run baseline test list and confirm parity.
+
+## Deliverables
+
+- `apps/web/src/lib/export-engine-cli-utils.ts` added
+- `apps/web/src/lib/export-engine-cli-audio.ts` added
+- `apps/web/src/lib/export-engine-cli.ts` updated with wrapper delegation only
+- No behavior changes to export modes or FFmpeg option construction in this phase
