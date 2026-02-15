@@ -1,3 +1,4 @@
+/Users/peter/Documents/QCut/Projects/fea526ea-ff71-4329-aca9-d22b9a173982
 # AICP Nano Banana Pro Image Generation — Session Report
 
 **Date:** 2026-02-15
