@@ -162,7 +162,7 @@ vi.mock("../claude/claude-media-handler.js", () => ({
 }));
 
 // Import after all mocks are wired
-import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-handler";
+import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-ipc";
 
 // Dummy test keys — obviously fake to avoid secret-scanning false positives
 const FAKE_FAL_KEY = "test-fal-key-dummy-12345";

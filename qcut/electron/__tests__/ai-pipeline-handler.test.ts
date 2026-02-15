@@ -156,7 +156,7 @@ vi.mock("../claude/claude-media-handler.js", () => ({
   importMediaFile: mocks.mockImportMediaFile,
 }));
 
-import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-handler";
+import { cleanupAIPipeline, setupAIPipelineIPC } from "../ai-pipeline-ipc";
 
 function getHandler({ channel }: { channel: string }): IpcHandler {
   const handler = mocks.state.handlers.get(channel);

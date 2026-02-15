@@ -103,7 +103,7 @@ const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
 const {
   setupAIPipelineIPC,
   cleanupAIPipeline,
-} = require("./ai-pipeline-handler.js");
+} = require("./ai-pipeline-ipc.js");
 const { setupMediaImportIPC } = require("./media-import-handler.js");
 const {
   registerElevenLabsTranscribeHandler,

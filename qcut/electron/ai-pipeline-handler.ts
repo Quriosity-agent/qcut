@@ -11,12 +11,21 @@ import { promisify } from "util";
 import { randomUUID } from "crypto";
 
 const execAsync = promisify(exec);
-import { app, ipcMain, IpcMainInvokeEvent, BrowserWindow } from "electron";
+import { app } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import { getBinaryManager, BinaryManager } from "./binary-manager.js";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 import { importMediaFile } from "./claude/claude-media-handler.js";
+import {
+  captureOutputSnapshot,
+  classifyErrorCode,
+  dedupePaths,
+  extractOutputPathsFromJson,
+  extractOutputPathsFromText,
+  inferProjectIdFromPath,
+  recoverOutputPathsFromDirectory,
+} from "./ai-pipeline-output.js";
 
 // ============================================================================
 // Types
@@ -75,18 +84,11 @@ export interface PipelineStatus {
   error?: string;
 }
 
-const OUTPUT_FILE_EXTENSIONS_PATTERN =
-  "(?:mp4|png|jpg|jpeg|wav|mp3|webm|gif|mov|mkv|m4v)";
-const OUTPUT_FILE_REGEX = new RegExp(
-  `\\.${OUTPUT_FILE_EXTENSIONS_PATTERN}$`,
-  "i"
-);
-
 // ============================================================================
 // Pipeline Manager Class
 // ============================================================================
 
-class AIPipelineManager {
+export class AIPipelineManager {
   private config: PipelineConfig;
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private binaryManager: BinaryManager;
@@ -501,266 +503,6 @@ class AIPipelineManager {
     }
   }
 
-  private collectOutputFiles({
-    outputDir,
-  }: {
-    outputDir: string;
-  }): Map<string, number> {
-    const files = new Map<string, number>();
-
-    try {
-      const pendingDirectories = [outputDir];
-
-      while (pendingDirectories.length > 0) {
-        const currentDir = pendingDirectories.pop();
-        if (!currentDir) {
-          continue;
-        }
-
-        let entries: fs.Dirent[] = [];
-        try {
-          entries = fs.readdirSync(currentDir, { withFileTypes: true });
-        } catch {
-          continue;
-        }
-
-        for (const entry of entries) {
-          const fullPath = path.join(currentDir, entry.name);
-          if (entry.isDirectory()) {
-            pendingDirectories.push(fullPath);
-            continue;
-          }
-
-          let stat: fs.Stats;
-          try {
-            stat = fs.statSync(fullPath);
-          } catch {
-            continue;
-          }
-          files.set(fullPath, stat.mtimeMs);
-        }
-      }
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to collect output files:", error);
-    }
-
-    return files;
-  }
-
-  private captureOutputSnapshot({
-    outputDir,
-  }: {
-    outputDir: string | null;
-  }): Map<string, number> {
-    try {
-      if (!outputDir) {
-        return new Map<string, number>();
-      }
-      return this.collectOutputFiles({ outputDir });
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to capture output snapshot:", error);
-      return new Map<string, number>();
-    }
-  }
-
-  private normalizeOutputPath({
-    rawPath,
-    outputDir,
-  }: {
-    rawPath: string;
-    outputDir: string | null;
-  }): string | null {
-    try {
-      const trimmedPath = rawPath.trim().replace(/^["']+|["']+$/g, "");
-      if (!trimmedPath) {
-        return null;
-      }
-
-      const likelyAbsolutePath =
-        path.isAbsolute(trimmedPath) || /^[A-Za-z]:\\/.test(trimmedPath);
-      const normalizedPath = likelyAbsolutePath
-        ? path.normalize(trimmedPath)
-        : outputDir
-          ? path.resolve(outputDir, trimmedPath)
-          : path.resolve(trimmedPath);
-
-      if (!OUTPUT_FILE_REGEX.test(normalizedPath)) {
-        return null;
-      }
-
-      if (!fs.existsSync(normalizedPath)) {
-        return null;
-      }
-
-      return normalizedPath;
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to normalize output path:", error);
-      return null;
-    }
-  }
-
-  private dedupePaths({ paths }: { paths: string[] }): string[] {
-    try {
-      const uniquePaths = new Set<string>();
-      for (const candidatePath of paths) {
-        if (!candidatePath) {
-          continue;
-        }
-        uniquePaths.add(candidatePath);
-      }
-      return Array.from(uniquePaths);
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to de-dupe output paths:", error);
-      return [];
-    }
-  }
-
-  private extractOutputPathsFromText({
-    text,
-    outputDir,
-  }: {
-    text: string;
-    outputDir: string | null;
-  }): string[] {
-    const outputPaths: string[] = [];
-
-    try {
-      const labelledPattern = new RegExp(
-        `(?:Output|Saved|Created|File|Path):\\s*([^\\n\\r]+?\\.${OUTPUT_FILE_EXTENSIONS_PATTERN})`,
-        "gi"
-      );
-      const absolutePathPattern = new RegExp(
-        `((?:[A-Za-z]:\\\\|/)[^\\n\\r"']+?\\.${OUTPUT_FILE_EXTENSIONS_PATTERN})`,
-        "g"
-      );
-
-      for (const match of text.matchAll(labelledPattern)) {
-        const normalizedPath = this.normalizeOutputPath({
-          rawPath: match[1],
-          outputDir,
-        });
-        if (normalizedPath) {
-          outputPaths.push(normalizedPath);
-        }
-      }
-
-      for (const match of text.matchAll(absolutePathPattern)) {
-        const normalizedPath = this.normalizeOutputPath({
-          rawPath: match[1],
-          outputDir,
-        });
-        if (normalizedPath) {
-          outputPaths.push(normalizedPath);
-        }
-      }
-    } catch (error) {
-      console.warn(
-        "[AI Pipeline] Failed to parse output paths from text:",
-        error
-      );
-    }
-
-    return this.dedupePaths({ paths: outputPaths });
-  }
-
-  private extractOutputPathsFromJson({
-    jsonData,
-    outputDir,
-  }: {
-    jsonData: unknown;
-    outputDir: string | null;
-  }): string[] {
-    const resolvedPaths: string[] = [];
-
-    try {
-      const pendingValues: unknown[] = [jsonData];
-      const visitedObjects = new Set<unknown>();
-
-      while (pendingValues.length > 0) {
-        const currentValue = pendingValues.shift();
-        if (!currentValue) {
-          continue;
-        }
-
-        if (typeof currentValue === "string") {
-          const normalizedPath = this.normalizeOutputPath({
-            rawPath: currentValue,
-            outputDir,
-          });
-          if (normalizedPath) {
-            resolvedPaths.push(normalizedPath);
-          }
-          continue;
-        }
-
-        if (Array.isArray(currentValue)) {
-          for (const item of currentValue) {
-            pendingValues.push(item);
-          }
-          continue;
-        }
-
-        if (typeof currentValue !== "object") {
-          continue;
-        }
-
-        if (visitedObjects.has(currentValue)) {
-          continue;
-        }
-        visitedObjects.add(currentValue);
-
-        const objectValue = currentValue as Record<string, unknown>;
-        for (const value of Object.values(objectValue)) {
-          pendingValues.push(value);
-        }
-      }
-    } catch (error) {
-      console.warn(
-        "[AI Pipeline] Failed to parse output paths from JSON:",
-        error
-      );
-    }
-
-    return this.dedupePaths({ paths: resolvedPaths });
-  }
-
-  private recoverOutputPathsFromDirectory({
-    outputDir,
-    outputSnapshot,
-  }: {
-    outputDir: string | null;
-    outputSnapshot: Map<string, number>;
-  }): string[] {
-    try {
-      if (!outputDir) {
-        return [];
-      }
-
-      const afterRunFiles = this.collectOutputFiles({ outputDir });
-      const changedFiles: Array<{ filePath: string; mtimeMs: number }> = [];
-
-      for (const [filePath, mtimeMs] of afterRunFiles) {
-        if (!OUTPUT_FILE_REGEX.test(filePath)) {
-          continue;
-        }
-
-        const previousMtime = outputSnapshot.get(filePath);
-        if (previousMtime === undefined || previousMtime < mtimeMs) {
-          changedFiles.push({ filePath, mtimeMs });
-        }
-      }
-
-      changedFiles.sort((a, b) => b.mtimeMs - a.mtimeMs);
-      return changedFiles.map((entry) => entry.filePath);
-    } catch (error) {
-      console.warn(
-        "[AI Pipeline] Failed to recover outputs from directory:",
-        error
-      );
-      return [];
-    }
-  }
-
   private async buildSpawnEnvironment(): Promise<NodeJS.ProcessEnv> {
     const spawnEnv: NodeJS.ProcessEnv = { ...process.env };
 
@@ -778,62 +520,6 @@ class AIPipelineManager {
     }
 
     return spawnEnv;
-  }
-
-  private classifyErrorCode({
-    errorMessage,
-  }: {
-    errorMessage: string;
-  }): string {
-    try {
-      const normalizedMessage = errorMessage.toLowerCase();
-
-      if (
-        normalizedMessage.includes("fal_key") ||
-        normalizedMessage.includes("fal api key") ||
-        normalizedMessage.includes("api key not configured")
-      ) {
-        return "missing_key";
-      }
-
-      if (
-        normalizedMessage.includes("bundled binary") ||
-        normalizedMessage.includes("not available")
-      ) {
-        return "binary_missing";
-      }
-
-      if (normalizedMessage.includes("timed out")) {
-        return "generation_failed";
-      }
-
-      if (normalizedMessage.includes("import")) {
-        return "import_failed";
-      }
-
-      return "generation_failed";
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to classify error:", error);
-      return "generation_failed";
-    }
-  }
-
-  private inferProjectIdFromPath({
-    filePath,
-  }: {
-    filePath: string;
-  }): string | null {
-    try {
-      const normalizedPath = filePath.replace(/\\\\/g, "/");
-      const projectMatch = normalizedPath.match(/\/QCut\/Projects\/([^/]+)/);
-      if (!projectMatch || !projectMatch[1]) {
-        return null;
-      }
-      return projectMatch[1];
-    } catch (error) {
-      console.warn("[AI Pipeline] Failed to infer project ID:", error);
-      return null;
-    }
   }
 
   private async maybeAutoImportOutput({
@@ -854,7 +540,7 @@ class AIPipelineManager {
 
       const projectId =
         options.projectId ||
-        this.inferProjectIdFromPath({ filePath: result.outputPath });
+        inferProjectIdFromPath({ filePath: result.outputPath });
       if (!projectId) {
         return result;
       }
@@ -935,7 +621,7 @@ class AIPipelineManager {
       args.push("--output-dir", outputDir);
     }
 
-    const outputSnapshot = this.captureOutputSnapshot({ outputDir });
+    const outputSnapshot = captureOutputSnapshot({ outputDir });
     const spawnEnv = await this.buildSpawnEnvironment();
 
     if (
@@ -1089,7 +775,7 @@ class AIPipelineManager {
             const outputCandidates: string[] = [];
             if (parsedResult) {
               outputCandidates.push(
-                ...this.extractOutputPathsFromJson({
+                ...extractOutputPathsFromJson({
                   jsonData: parsedResult,
                   outputDir,
                 })
@@ -1097,19 +783,19 @@ class AIPipelineManager {
             }
 
             outputCandidates.push(
-              ...this.extractOutputPathsFromText({
+              ...extractOutputPathsFromText({
                 text: `${stdout}\n${stderr}`,
                 outputDir,
               })
             );
             outputCandidates.push(
-              ...this.recoverOutputPathsFromDirectory({
+              ...recoverOutputPathsFromDirectory({
                 outputDir,
                 outputSnapshot,
               })
             );
 
-            const dedupedOutputPaths = this.dedupePaths({
+            const dedupedOutputPaths = dedupePaths({
               paths: outputCandidates,
             });
 
@@ -1185,7 +871,7 @@ class AIPipelineManager {
           result: {
             success: false,
             error: errorMessage,
-            errorCode: this.classifyErrorCode({ errorMessage }),
+            errorCode: classifyErrorCode({ errorMessage }),
             duration,
           },
         });
@@ -1198,7 +884,7 @@ class AIPipelineManager {
           result: {
             success: false,
             error: err.message,
-            errorCode: this.classifyErrorCode({ errorMessage: err.message }),
+            errorCode: classifyErrorCode({ errorMessage: err.message }),
           },
         });
       });
@@ -1237,184 +923,3 @@ class AIPipelineManager {
     return this.activeProcesses.size;
   }
 }
-
-// ============================================================================
-// IPC Handler Registration
-// ============================================================================
-
-let pipelineManager: AIPipelineManager | null = null;
-
-/**
- * Get the current main window for sending progress updates
- */
-function getMainWindow(): BrowserWindow | null {
-  const windows = BrowserWindow.getAllWindows();
-  return windows.length > 0 ? windows[0] : null;
-}
-
-/**
- * Setup AI Pipeline IPC handlers
- */
-export function setupAIPipelineIPC(): void {
-  pipelineManager = new AIPipelineManager();
-
-  // Check availability and get status
-  ipcMain.handle(
-    "ai-pipeline:check",
-    async (): Promise<{ available: boolean; error?: string }> => {
-      if (!pipelineManager) {
-        return { available: false, error: "Pipeline manager not initialized" };
-      }
-      const status = await pipelineManager.getStatus();
-      return {
-        available: status.available,
-        error: status.error,
-      };
-    }
-  );
-
-  // Get detailed status
-  ipcMain.handle("ai-pipeline:status", async (): Promise<PipelineStatus> => {
-    if (!pipelineManager) {
-      return {
-        available: false,
-        version: null,
-        source: "unavailable",
-        compatible: false,
-        features: {},
-        error: "Pipeline manager not initialized",
-      };
-    }
-    return pipelineManager.getStatus();
-  });
-
-  // Generate content (image, video, avatar)
-  ipcMain.handle(
-    "ai-pipeline:generate",
-    async (
-      _event: IpcMainInvokeEvent,
-      options: GenerateOptions
-    ): Promise<PipelineResult> => {
-      if (!pipelineManager) {
-        return { success: false, error: "Pipeline manager not initialized" };
-      }
-      const isAvailable = await pipelineManager.isAvailable();
-      if (!isAvailable) {
-        const status = await pipelineManager.getStatus();
-        return {
-          success: false,
-          error: status.error || "AI Pipeline not available",
-        };
-      }
-
-      // Generate sessionId if not provided to ensure correlation
-      const sessionId = options.sessionId ?? `ai-${Date.now()}`;
-      return pipelineManager.execute({ ...options, sessionId }, (progress) => {
-        // Send progress to renderer
-        const mainWindow = getMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("ai-pipeline:progress", {
-            sessionId,
-            ...progress,
-          });
-        }
-      });
-    }
-  );
-
-  // List available models
-  ipcMain.handle(
-    "ai-pipeline:list-models",
-    async (): Promise<PipelineResult> => {
-      if (!pipelineManager) {
-        return { success: false, error: "Pipeline manager not initialized" };
-      }
-      const isAvailable = await pipelineManager.isAvailable();
-      if (!isAvailable) {
-        const status = await pipelineManager.getStatus();
-        return {
-          success: false,
-          error: status.error || "AI Pipeline not available",
-        };
-      }
-
-      return pipelineManager.execute(
-        { command: "list-models", args: {} },
-        () => {} // No progress for list
-      );
-    }
-  );
-
-  // Estimate cost
-  ipcMain.handle(
-    "ai-pipeline:estimate-cost",
-    async (
-      _event: IpcMainInvokeEvent,
-      options: { model: string; duration?: number; resolution?: string }
-    ): Promise<PipelineResult> => {
-      if (!pipelineManager) {
-        return { success: false, error: "Pipeline manager not initialized" };
-      }
-      const isAvailable = await pipelineManager.isAvailable();
-      if (!isAvailable) {
-        const status = await pipelineManager.getStatus();
-        return {
-          success: false,
-          error: status.error || "AI Pipeline not available",
-        };
-      }
-
-      return pipelineManager.execute(
-        {
-          command: "estimate-cost",
-          args: options,
-        },
-        () => {}
-      );
-    }
-  );
-
-  // Cancel generation
-  ipcMain.handle(
-    "ai-pipeline:cancel",
-    async (
-      _event: IpcMainInvokeEvent,
-      sessionId: string
-    ): Promise<{ success: boolean }> => {
-      if (!pipelineManager) {
-        return { success: false };
-      }
-      return { success: pipelineManager.cancel(sessionId) };
-    }
-  );
-
-  // Refresh environment detection
-  ipcMain.handle("ai-pipeline:refresh", async (): Promise<PipelineStatus> => {
-    if (!pipelineManager) {
-      return {
-        available: false,
-        version: null,
-        source: "unavailable",
-        compatible: false,
-        features: {},
-        error: "Pipeline manager not initialized",
-      };
-    }
-    await pipelineManager.refreshEnvironment();
-    return pipelineManager.getStatus();
-  });
-
-  console.log("[AI Pipeline] IPC handlers registered");
-}
-
-/**
- * Cleanup AI Pipeline resources
- */
-export function cleanupAIPipeline(): void {
-  pipelineManager?.cancelAll();
-}
-
-// Cleanup on app quit
-app.on("before-quit", () => {
-  cleanupAIPipeline();
-});
