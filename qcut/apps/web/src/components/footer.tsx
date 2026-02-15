@@ -75,14 +75,6 @@ export function Footer() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
-                    to="/roadmap"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Roadmap
-                  </Link>
-                </li>
-                <li>
-                  <Link
                     to="/privacy"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
