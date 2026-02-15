@@ -2,6 +2,14 @@
 
 **Risk Level:** Low — clear extraction boundaries, Electron-side only, no UI impact
 **Estimated Time:** ~30 minutes
+**Status:** Implemented (validated 2026-02-15)
+
+## Implementation Result (Current Code)
+
+- `electron/ai-pipeline-handler.ts` now focuses on `AIPipelineManager` orchestration and is **925 lines**
+- Output parsing/recovery helpers are extracted to `electron/ai-pipeline-output.ts` (**325 lines**)
+- IPC setup/cleanup is extracted to `electron/ai-pipeline-ipc.ts` (**184 lines**)
+- `electron/main.ts` and Electron tests consume `setupAIPipelineIPC`/`cleanupAIPipeline` from `ai-pipeline-ipc`
 
 ## Overview
 

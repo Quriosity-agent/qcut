@@ -17,7 +17,11 @@ import {
   makeFalRequest,
 } from "../core/fal-request";
 import { validateKlingPrompt } from "../validation/validators";
-import { fileToDataURL, getModelConfig, withErrorHandling } from "./base-generator";
+import {
+  fileToDataURL,
+  getModelConfig,
+  withErrorHandling,
+} from "./base-generator";
 
 /**
  * Generate video from image using Kling v2.5 Turbo Pro.
