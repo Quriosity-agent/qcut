@@ -1,70 +1,37 @@
 "use client";
 
 import { useTimelineStore } from "@/stores/timeline-store";
-import { TimelineElement, TimelineTrack } from "@/types/timeline";
+import type { RemotionElement, TimelineElement } from "@/types/timeline";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
-import type { MediaItem } from "@/stores/media-store-types";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { useEditorStore } from "@/stores/editor-store";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio";
-import { VideoPlayer } from "@/components/ui/video-player";
-import { AudioPlayer } from "@/components/ui/audio-player";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/debug-config";
-import { formatTimeCode } from "@/lib/time";
-import { EditableTimecode } from "@/components/ui/editable-timecode";
-import { FONT_CLASS_MAP } from "@/lib/font-config";
-import { getVideoSource } from "@/lib/media-source";
-import { BackgroundSettings } from "../background-settings";
-import { useProjectStore } from "@/stores/project-store";
-import { useSceneStore } from "@/stores/scene-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { debugLog } from "@/lib/debug-config";
+import { useProjectStore } from "@/stores/project-store";
 import { TextElementDragState } from "@/types/editor";
-import {
-  FullscreenToolbar,
-  FullscreenPreview,
-  PreviewToolbar,
-} from "./preview-panel-components";
-// Import the sticker overlay canvas
+import { FullscreenPreview, PreviewToolbar } from "./preview-panel-components";
 import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
-// Import captions display
 import { CaptionsDisplay } from "@/components/captions/captions-display";
-import type { TranscriptionSegment } from "@/types/captions";
-// Import canvas capture utilities for frame caching
-import { captureFrameToCanvas, captureWithFallback } from "@/lib/canvas-utils";
+import { captureWithFallback } from "@/lib/canvas-utils";
 import { useFrameCache } from "@/hooks/use-frame-cache";
-// Import effects utilities
 import { useEffectsStore } from "@/stores/effects-store";
 import {
   parametersToCSSFilters,
   mergeEffectParameters,
 } from "@/lib/effects-utils";
-// Import interactive element overlay
 import {
   InteractiveElementOverlay,
   ElementTransform,
 } from "./interactive-element-overlay";
 import { EFFECTS_ENABLED } from "@/config/features";
-// Import Remotion preview for rendering Remotion elements
-import { RemotionPreview } from "./preview-panel/remotion-preview";
-import type { RemotionElement } from "@/types/timeline";
-import { MarkdownOverlay } from "@/components/editor/canvas/markdown-overlay";
-
-interface ActiveElement {
-  element: TimelineElement;
-  track: TimelineTrack;
-  mediaItem: MediaItem | null;
-}
+import {
+  PreviewBlurBackground,
+  PreviewElementRenderer,
+} from "./preview-panel/preview-element-renderer";
+import { usePreviewMedia } from "./preview-panel/use-preview-media";
+import { usePreviewSizing } from "./preview-panel/use-preview-sizing";
+import type { ActiveElement } from "./preview-panel/types";
 
 /** Compute the aggregate CSS filter string for an element's enabled effects. */
 function useEffectsRendering(elementId: string | null, enabled = false) {
@@ -133,13 +100,13 @@ export function PreviewPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheCanvasRef = useRef<HTMLCanvasElement>(null);
   const lastSeekEventTimeRef = useRef<number | null>(null);
-  const [previewDimensions, setPreviewDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
   const [isExpanded, setIsExpanded] = useState(false);
   const { activeProject } = useProjectStore();
-  const { currentScene } = useSceneStore();
+  const previewDimensions = usePreviewSizing({
+    containerRef,
+    canvasSize,
+    isExpanded,
+  });
   const [dragState, setDragState] = useState<TextElementDragState>({
     isDragging: false,
     elementId: null,
@@ -171,86 +138,6 @@ export function PreviewPanel() {
     cacheResolution: 30,
     persist: true,
   });
-
-  useEffect(() => {
-    const updatePreviewSize = () => {
-      if (!containerRef.current) return;
-
-      let availableWidth, availableHeight;
-
-      if (isExpanded) {
-        const controlsHeight = 80;
-        const marginSpace = 24;
-        availableWidth = window.innerWidth - marginSpace;
-        availableHeight = window.innerHeight - controlsHeight - marginSpace;
-      } else {
-        const container = containerRef.current.getBoundingClientRect();
-
-        const computedStyle = getComputedStyle(containerRef.current);
-        const paddingTop = parseFloat(computedStyle.paddingTop);
-        const paddingBottom = parseFloat(computedStyle.paddingBottom);
-        const paddingLeft = parseFloat(computedStyle.paddingLeft);
-        const paddingRight = parseFloat(computedStyle.paddingRight);
-        const gap = parseFloat(computedStyle.gap) || 16;
-        const toolbar = containerRef.current.querySelector("[data-toolbar]");
-        const toolbarHeight = toolbar
-          ? toolbar.getBoundingClientRect().height
-          : 0;
-
-        availableWidth = container.width - paddingLeft - paddingRight;
-        availableHeight =
-          container.height -
-          paddingTop -
-          paddingBottom -
-          toolbarHeight -
-          (toolbarHeight > 0 ? gap : 0);
-      }
-
-      const targetRatio = canvasSize.width / canvasSize.height;
-      const containerRatio = availableWidth / availableHeight;
-      let width, height;
-
-      if (containerRatio > targetRatio) {
-        height = availableHeight * (isExpanded ? 0.95 : 1);
-        width = height * targetRatio;
-      } else {
-        width = availableWidth * (isExpanded ? 0.95 : 1);
-        height = width / targetRatio;
-      }
-
-      setPreviewDimensions({ width, height });
-    };
-
-    // Declare resizeObserver first to avoid temporal dead zone
-    const resizeObserver = new ResizeObserver(updatePreviewSize);
-
-    updatePreviewSize();
-
-    // Retry size calculation if container wasn't ready initially
-    if (!containerRef.current) {
-      const retryTimeout = setTimeout(() => {
-        updatePreviewSize();
-      }, 100);
-
-      // Return cleanup that only clears timeout (resizeObserver not connected yet)
-      return () => {
-        clearTimeout(retryTimeout);
-      };
-    }
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    if (isExpanded) {
-      window.addEventListener("resize", updatePreviewSize);
-    }
-
-    return () => {
-      resizeObserver.disconnect();
-      if (isExpanded) {
-        window.removeEventListener("resize", updatePreviewSize);
-      }
-    };
-  }, [canvasSize.width, canvasSize.height, isExpanded]);
 
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
@@ -344,30 +231,33 @@ export function PreviewPanel() {
     updateElementPosition,
   ]);
 
-  const handleTextMouseDown = (
-    e: React.MouseEvent<HTMLDivElement>,
-    element: Pick<TimelineElement, "id" | "x" | "y">,
-    trackId: string
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleTextMouseDown = useCallback(
+    (
+      e: React.MouseEvent<HTMLDivElement>,
+      element: Pick<TimelineElement, "id" | "x" | "y">,
+      trackId: string
+    ) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const rect = e.currentTarget.getBoundingClientRect();
+      const rect = e.currentTarget.getBoundingClientRect();
 
-    setDragState({
-      isDragging: true,
-      elementId: element.id,
-      trackId,
-      startX: e.clientX,
-      startY: e.clientY,
-      initialElementX: element.x ?? 0,
-      initialElementY: element.y ?? 0,
-      currentX: element.x ?? 0,
-      currentY: element.y ?? 0,
-      elementWidth: rect.width,
-      elementHeight: rect.height,
-    });
-  };
+      setDragState({
+        isDragging: true,
+        elementId: element.id,
+        trackId,
+        startX: e.clientX,
+        startY: e.clientY,
+        initialElementX: element.x ?? 0,
+        initialElementY: element.y ?? 0,
+        currentX: element.x ?? 0,
+        currentY: element.y ?? 0,
+        elementWidth: rect.width,
+        elementHeight: rect.height,
+      });
+    },
+    []
+  );
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
@@ -420,35 +310,41 @@ export function PreviewPanel() {
 
   const hasAnyElements = tracks.some((track) => track.elements.length > 0);
   const getActiveElements = useCallback((): ActiveElement[] => {
-    const activeElements: ActiveElement[] = [];
-    const totalElements = tracks.reduce(
-      (sum, track) => sum + (track.elements?.length || 0),
-      0
-    );
+    try {
+      const activeElements: ActiveElement[] = [];
 
-    tracks.forEach((track) => {
-      track.elements.forEach((element) => {
-        if (element.hidden) return;
-        const elementStart = element.startTime;
-        const elementEnd =
-          element.startTime +
-          (element.duration - element.trimStart - element.trimEnd);
+      for (const track of tracks) {
+        for (const element of track.elements) {
+          if (element.hidden) {
+            continue;
+          }
 
-        if (currentTime >= elementStart && currentTime < elementEnd) {
+          const elementStart = element.startTime;
+          const elementEnd =
+            element.startTime +
+            (element.duration - element.trimStart - element.trimEnd);
+
+          if (currentTime < elementStart || currentTime >= elementEnd) {
+            continue;
+          }
+
           let mediaItem = null;
           if (element.type === "media") {
             mediaItem =
               element.mediaId === TEST_MEDIA_ID
                 ? null
-                : mediaItems.find((item) => item.id === element.mediaId) ||
-                  null;
+                : (mediaItems.find((item) => item.id === element.mediaId) ??
+                  null);
           }
+
           activeElements.push({ element, track, mediaItem });
         }
-      });
-    });
+      }
 
-    return activeElements;
+      return activeElements;
+    } catch {
+      return [];
+    }
   }, [tracks, currentTime, mediaItems]);
 
   const activeElements = useMemo(
@@ -456,21 +352,22 @@ export function PreviewPanel() {
     [getActiveElements]
   );
 
-  // Get the current media element for effects
-  const currentMediaElement = activeElements.find(
-    (item) => item.element.type === "media" && item.mediaItem?.type === "video"
-  );
+  const {
+    captionSegments,
+    blurBackgroundElements,
+    videoSourcesById,
+    blurBackgroundSource,
+    currentMediaElement,
+  } = usePreviewMedia({
+    activeElements,
+    mediaItems,
+    activeProject,
+  });
 
-  // Use effects rendering hook
-  const { filterStyle, hasEffects } = useEffectsRendering(
-    currentMediaElement?.element.id || null,
+  const { filterStyle, hasEffects: hasEnabledEffects } = useEffectsRendering(
+    currentMediaElement?.element.id ?? null,
     EFFECTS_ENABLED
   );
-
-  // Flat list of timeline elements for diagnostics
-  const timelineElements = useMemo(() => {
-    return tracks.flatMap((track) => track.elements || []);
-  }, [tracks]);
 
   useEffect(() => {
     const seekTime = lastSeekEventTimeRef.current;
@@ -565,509 +462,102 @@ export function PreviewPanel() {
       updateElementRotation,
     ]
   );
-
-  // Extract caption segments from active elements
-  const captionSegments = useMemo(() => {
-    const segments: TranscriptionSegment[] = [];
-
-    activeElements
-      .filter((elementData) => elementData.element.type === "captions")
-      .forEach((elementData, index) => {
-        const element = elementData.element;
-        if (element.type === "captions") {
-          segments.push({
-            id: index,
-            seek: element.startTime * 1000, // Convert to milliseconds
-            start: element.startTime,
-            end: element.startTime + element.duration,
-            text: element.text,
-            tokens: [], // Empty tokens array for timeline captions
-            temperature: 0.0,
-            avg_logprob: -0.5,
-            compression_ratio: 1.0,
-            // Treat 0 as a valid confidence; default only when null/undefined
-            no_speech_prob:
-              (element.confidence ?? element.confidence === 0)
-                ? Math.min(1, Math.max(0, 1 - (element.confidence ?? 0)))
-                : 0.1,
-          });
-        }
-      });
-
-    return segments;
-  }, [activeElements]);
-
-  // Get media elements for blur background (video/image only)
-  const blurBackgroundElements = useMemo(() => {
-    return activeElements.filter(
-      ({ element, mediaItem }) =>
-        element.type === "media" &&
-        mediaItem &&
-        (mediaItem.type === "video" || mediaItem.type === "image") &&
-        element.mediaId !== TEST_MEDIA_ID // Exclude test elements
-    );
-  }, [activeElements]);
-
-  // Memoize video sources by media id to avoid recreating blob URLs each render
-  const videoSourcesById = useMemo(() => {
-    const sources = new Map<string, ReturnType<typeof getVideoSource>>();
-    let videoCount = 0;
-    const missingSourceIds: string[] = [];
-
-    mediaItems.forEach((item) => {
-      if (item.type === "video") {
-        videoCount += 1;
-        const source = getVideoSource(item);
-        sources.set(item.id, source);
-        if (!source) {
-          missingSourceIds.push(item.id);
-        }
+  const handleElementResize = useCallback(
+    ({
+      elementId,
+      width,
+      height,
+    }: {
+      elementId: string;
+      width: number;
+      height: number;
+    }) => {
+      try {
+        updateElementSize(elementId, { width, height });
+      } catch {
+        // keep preview responsive even if a resize update fails
       }
-    });
+    },
+    [updateElementSize]
+  );
 
-    return sources;
-  }, [mediaItems]);
-
-  // Revoke memoized blob URLs when they change or on unmount
-  const activeVideoSource =
-    currentMediaElement && currentMediaElement.mediaItem?.id
-      ? (videoSourcesById.get(currentMediaElement.mediaItem.id) ?? null)
-      : null;
-
-  // Memoize blur background source (first eligible media element)
-  const blurBackgroundSource = useMemo(() => {
-    if (blurBackgroundElements.length === 0) return null;
-    const { mediaItem } = blurBackgroundElements[0];
-    if (!mediaItem || mediaItem.type !== "video") return null;
-    return videoSourcesById.get(mediaItem.id) ?? null;
-  }, [blurBackgroundElements, videoSourcesById]);
-
-  // Render blur background layer
-  const renderBlurBackground = () => {
-    if (
-      !activeProject?.backgroundType ||
-      activeProject.backgroundType !== "blur" ||
-      blurBackgroundElements.length === 0
-    ) {
-      return null;
-    }
-
-    // Use the first media element for background (could be enhanced to use primary/focused element)
-    const backgroundElement = blurBackgroundElements[0];
-    const { element, mediaItem } = backgroundElement;
-
-    if (!mediaItem) return null;
-
-    const blurIntensity = activeProject.blurIntensity || 8;
-
-    if (mediaItem.type === "video") {
-      const source = blurBackgroundSource;
-      if (!source) {
-        return (
-          <div
-            key={`blur-${element.id}-${backgroundElement.track.id}`}
-            className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
-          >
-            No available video source
-          </div>
-        );
-      }
-
-      return (
-        <div
-          key={`blur-${element.id}-${backgroundElement.track.id}`}
-          className="absolute inset-0 overflow-hidden"
-          style={{
-            filter: `blur(${blurIntensity}px)`,
-            transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
-            transformOrigin: "center",
-          }}
-        >
-          <VideoPlayer
-            videoId={`${mediaItem.id}-blur-background`}
-            videoSource={source}
-            poster={mediaItem.thumbnailUrl}
-            clipStartTime={element.startTime}
-            trimStart={element.trimStart}
-            trimEnd={element.trimEnd}
-            clipDuration={element.duration}
-            className="object-cover"
-            style={
-              EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
-                ? { filter: filterStyle }
-                : undefined
-            }
-          />
-        </div>
-      );
-    }
-
-    if (mediaItem.type === "image") {
-      return (
-        <div
-          key={`blur-${element.id}-${backgroundElement.track.id}`}
-          className="absolute inset-0 overflow-hidden"
-          style={{
-            filter: `blur(${blurIntensity}px)`,
-            transform: "scale(1.1)", // Slightly zoom to avoid blur edge artifacts
-            transformOrigin: "center",
-          }}
-        >
-          <img
-            src={mediaItem.url!}
-            alt={mediaItem.name}
-            className="w-full h-full object-cover"
-            draggable={false}
-          />
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  // Track logged Remotion elements to avoid spam (Set of element IDs)
   const loggedRemotionElementsRef = useRef<Set<string>>(new Set());
 
-  // Render an element
-  const renderElement = (elementData: ActiveElement, index: number) => {
-    const { element, mediaItem } = elementData;
-    const elementEndTime =
-      element.startTime +
-      (element.duration - element.trimStart - element.trimEnd);
-    const elementKey = `${element.id}-${elementData.track.id}`;
+  useEffect(() => {
+    for (const elementData of activeElements) {
+      if (elementData.element.type !== "remotion") {
+        continue;
+      }
+      if (loggedRemotionElementsRef.current.has(elementData.element.id)) {
+        continue;
+      }
 
-    // Debug: Log element type detection - only once per element ID
-    if (
-      element.type === "remotion" &&
-      !loggedRemotionElementsRef.current.has(element.id)
-    ) {
-      loggedRemotionElementsRef.current.add(element.id);
-      const remotionEl = element as RemotionElement;
+      loggedRemotionElementsRef.current.add(elementData.element.id);
+      const remotionElement = elementData.element as RemotionElement;
       debugLog("[REMOTION] Detected Remotion element", {
-        elementId: element.id,
-        componentId: remotionEl.componentId,
+        elementId: remotionElement.id,
+        componentId: remotionElement.componentId,
       });
     }
+  }, [activeElements]);
 
-    // Text elements
-    if (element.type === "text") {
-      const fontClassName =
-        FONT_CLASS_MAP[element.fontFamily as keyof typeof FONT_CLASS_MAP] || "";
+  const renderBlurBackground = useCallback(
+    () => (
+      <PreviewBlurBackground
+        activeProject={activeProject}
+        blurBackgroundElements={blurBackgroundElements}
+        blurBackgroundSource={blurBackgroundSource}
+        currentMediaElement={currentMediaElement}
+        filterStyle={filterStyle}
+        hasEnabledEffects={hasEnabledEffects}
+      />
+    ),
+    [
+      activeProject,
+      blurBackgroundElements,
+      blurBackgroundSource,
+      currentMediaElement,
+      filterStyle,
+      hasEnabledEffects,
+    ]
+  );
 
-      const scaleRatio = previewDimensions.width / canvasSize.width;
-
-      return (
-        <div
-          key={elementKey}
-          className="absolute flex items-center justify-center cursor-grab"
-          onClick={() => setSelectedElementId(element.id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setSelectedElementId(element.id);
-            }
-          }}
-          onMouseDown={(e) =>
-            handleTextMouseDown(e, element, elementData.track.id)
-          }
-          tabIndex={0}
-          role="button"
-          aria-label={`Select ${element.type} element`}
-          style={{
-            left: `${
-              50 +
-              (
-                (dragState.isDragging && dragState.elementId === element.id
-                  ? dragState.currentX
-                  : element.x) / canvasSize.width
-              ) *
-                100
-            }%`,
-            top: `${
-              50 +
-              (
-                (dragState.isDragging && dragState.elementId === element.id
-                  ? dragState.currentY
-                  : element.y) / canvasSize.height
-              ) *
-                100
-            }%`,
-            transform: `translate(-50%, -50%) rotate(${element.rotation}deg) scale(${scaleRatio})`,
-            opacity: element.opacity,
-            zIndex: 100 + index, // Text elements on top
-          }}
-        >
-          <div
-            className={fontClassName}
-            style={{
-              fontSize: `${element.fontSize}px`,
-              color: element.color,
-              backgroundColor: element.backgroundColor,
-              textAlign: element.textAlign,
-              fontWeight: element.fontWeight,
-              fontStyle: element.fontStyle,
-              textDecoration: element.textDecoration,
-              padding: "4px 8px",
-              borderRadius: "2px",
-              whiteSpace: "nowrap",
-              // Fallback for system fonts that don't have classes
-              ...(fontClassName === "" && { fontFamily: element.fontFamily }),
-            }}
-          >
-            {element.content}
-          </div>
-        </div>
-      );
-    }
-
-    if (element.type === "markdown") {
-      const scaleRatio = previewDimensions.width / canvasSize.width;
-      const elX = element.x ?? 0;
-      const elY = element.y ?? 0;
-      const elW = element.width ?? 720;
-      const elH = element.height ?? 420;
-      const isDraggingThis =
-        dragState.isDragging && dragState.elementId === element.id;
-      const displayX = isDraggingThis ? dragState.currentX : elX;
-      const displayY = isDraggingThis ? dragState.currentY : elY;
-
-      return (
-        <div
-          key={elementKey}
-          className="absolute cursor-grab"
-          onClick={() => setSelectedElementId(element.id)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              setSelectedElementId(element.id);
-            }
-          }}
-          onMouseDown={(e) =>
-            handleTextMouseDown(e, element, elementData.track.id)
-          }
-          tabIndex={0}
-          role="button"
-          aria-label={`Markdown: ${element.name}`}
-          style={{
-            left: `${50 + (displayX / canvasSize.width) * 100}%`,
-            top: `${50 + (displayY / canvasSize.height) * 100}%`,
-            width: `${elW * scaleRatio}px`,
-            height: `${elH * scaleRatio}px`,
-            transform: `translate(-50%, -50%) rotate(${element.rotation ?? 0}deg)`,
-            opacity: element.opacity ?? 1,
-            zIndex: 95 + index,
-          }}
-        >
-          <MarkdownOverlay
-            element={element}
-            currentTime={currentTime}
-            canvasScale={scaleRatio}
-          />
-        </div>
-      );
-    }
-
-    // Media elements
-    if (element.type === "media") {
-      // Test elements
-      if (!mediaItem || element.mediaId === TEST_MEDIA_ID) {
-        return (
-          <div
-            key={elementKey}
-            className="absolute inset-0 bg-linear-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center"
-          >
-            <div className="text-center">
-              <div className="text-2xl mb-2">🎬</div>
-              <p className="text-xs text-foreground">{element.name}</p>
-            </div>
-          </div>
-        );
-      }
-
-      // Video elements
-      if (mediaItem.type === "video") {
-        const source = videoSourcesById.get(mediaItem.id) ?? null;
-
-        if (!source) {
-          return (
-            <div
-              key={elementKey}
-              className="absolute inset-0 flex items-center justify-center bg-black/60 text-white text-xs"
-              style={{
-                width: "100%",
-                height: "100%",
-              }}
-            >
-              No available video source
-            </div>
-          );
-        }
-
-        const filterValue =
-          EFFECTS_ENABLED && element.id === currentMediaElement?.element.id
-            ? filterStyle
-            : "";
-        return (
-          <div
-            key={elementKey}
-            className="absolute inset-0 flex items-center justify-center"
-            style={{
-              width: "100%",
-              height: "100%",
-            }}
-          >
-            <VideoPlayer
-              videoSource={source}
-              poster={mediaItem.thumbnailUrl}
-              clipStartTime={element.startTime}
-              trimStart={element.trimStart}
-              trimEnd={element.trimEnd}
-              clipDuration={element.duration}
-              className="object-cover"
-              videoId={mediaItem.id}
-              style={filterValue ? { filter: filterValue } : undefined}
-            />
-          </div>
-        );
-      }
-
-      // Image elements
-      if (mediaItem.type === "image") {
-        // Positioned image (sticker) — has explicit width/height transforms
-        if (element.width !== undefined) {
-          const scaleRatio = previewDimensions.width / canvasSize.width;
-          const elX = element.x ?? 0;
-          const elY = element.y ?? 0;
-          const elW = element.width ?? 200;
-          const elH = element.height ?? 200;
-          const isDraggingThis =
-            dragState.isDragging && dragState.elementId === element.id;
-          const displayX = isDraggingThis ? dragState.currentX : elX;
-          const displayY = isDraggingThis ? dragState.currentY : elY;
-
-          return (
-            <div
-              key={elementKey}
-              className="absolute cursor-grab"
-              onClick={() => setSelectedElementId(element.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setSelectedElementId(element.id);
-                }
-              }}
-              onMouseDown={(e) =>
-                handleTextMouseDown(e, element, elementData.track.id)
-              }
-              onWheel={(e) => {
-                e.stopPropagation();
-                const delta = e.deltaY > 0 ? -20 : 20;
-                const curW = element.width ?? 200;
-                const curH = element.height ?? 200;
-                const aspect = curW / curH;
-                const newW = Math.max(
-                  30,
-                  Math.min(canvasSize.width, curW + delta)
-                );
-                const newH = newW / aspect;
-                updateElementSize(element.id, {
-                  width: newW,
-                  height: newH,
-                });
-              }}
-              tabIndex={0}
-              role="button"
-              aria-label={`Sticker: ${element.name}`}
-              style={{
-                left: `${50 + (displayX / canvasSize.width) * 100}%`,
-                top: `${50 + (displayY / canvasSize.height) * 100}%`,
-                width: `${elW * scaleRatio}px`,
-                height: `${elH * scaleRatio}px`,
-                transform: `translate(-50%, -50%) rotate(${element.rotation ?? 0}deg)`,
-                zIndex: 90 + index,
-              }}
-            >
-              <img
-                src={mediaItem.url!}
-                alt={mediaItem.name}
-                className="w-full h-full object-contain"
-                draggable={false}
-              />
-            </div>
-          );
-        }
-
-        // Full-bleed background image (no transforms set)
-        return (
-          <div
-            key={elementKey}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <img
-              src={mediaItem.url!}
-              alt={mediaItem.name}
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          </div>
-        );
-      }
-
-      // Audio elements (no visual representation)
-      if (mediaItem.type === "audio") {
-        return (
-          <div key={elementKey} className="absolute inset-0">
-            <AudioPlayer
-              src={mediaItem.url!}
-              clipStartTime={element.startTime}
-              trimStart={element.trimStart}
-              trimEnd={element.trimEnd}
-              clipDuration={element.duration}
-              trackMuted={elementData.track.muted}
-            />
-          </div>
-        );
-      }
-    }
-
-    // Remotion elements
-    if (element.type === "remotion") {
-      const remotionElement = element as RemotionElement;
-
-      // Calculate the local time within the element for frame sync
-      const elementStart =
-        remotionElement.startTime + remotionElement.trimStart;
-      const localTime = currentTime - elementStart;
-      const fps = activeProject?.fps ?? 30; // Use project FPS with fallback
-      const currentFrame = Math.max(0, Math.floor(localTime * fps));
-
-      return (
-        <div
-          key={elementKey}
-          className="absolute inset-0"
-          style={{ zIndex: 50 + index }}
-        >
-          <RemotionPreview
-            elementId={remotionElement.id}
-            componentId={remotionElement.componentId}
-            inputProps={remotionElement.props}
-            showControls={false}
-            autoPlay={false}
-            loop={false}
-            width={previewDimensions.width}
-            height={previewDimensions.height}
-            maxWidth={previewDimensions.width}
-            maxHeight={previewDimensions.height}
-            externalFrame={currentFrame}
-            externalIsPlaying={isPlaying}
-          />
-        </div>
-      );
-    }
-
-    return null;
-  };
+  const renderElement = useCallback(
+    (elementData: ActiveElement, index: number) => (
+      <PreviewElementRenderer
+        key={`${elementData.element.id}-${elementData.track.id}`}
+        elementData={elementData}
+        index={index}
+        previewDimensions={previewDimensions}
+        canvasSize={canvasSize}
+        currentTime={currentTime}
+        filterStyle={filterStyle}
+        hasEnabledEffects={hasEnabledEffects}
+        videoSourcesById={videoSourcesById}
+        currentMediaElement={currentMediaElement}
+        dragState={dragState}
+        isPlaying={isPlaying}
+        activeProject={activeProject}
+        onTextMouseDown={handleTextMouseDown}
+        onElementSelect={({ elementId }) => setSelectedElementId(elementId)}
+        onElementResize={handleElementResize}
+      />
+    ),
+    [
+      activeProject,
+      canvasSize,
+      currentMediaElement,
+      currentTime,
+      dragState,
+      filterStyle,
+      handleElementResize,
+      handleTextMouseDown,
+      hasEnabledEffects,
+      isPlaying,
+      previewDimensions,
+      videoSourcesById,
+    ]
+  );
 
   // Enhanced sync check: Timeline elements exist but no media items loaded
   // If timeline has elements but media list is still empty, prefer showing normal UI and let

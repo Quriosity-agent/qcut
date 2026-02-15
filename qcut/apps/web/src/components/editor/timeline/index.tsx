@@ -477,7 +477,10 @@ export function Timeline() {
             onClick={handleTimelineContentClick}
             data-ruler-area
           >
-            <div ref={rulerScrollRef} className="w-full overflow-x-auto overflow-y-hidden scrollbar-hidden">
+            <div
+              ref={rulerScrollRef}
+              className="w-full overflow-x-auto overflow-y-hidden scrollbar-hidden"
+            >
               <div
                 ref={rulerRef}
                 className="relative h-10 select-none cursor-default"

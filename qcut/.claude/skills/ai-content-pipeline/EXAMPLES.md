@@ -51,7 +51,7 @@ input_image: "path/to/source/image.jpg"
 steps:
   - name: "transform_image"
     type: "image_to_image"
-    model: "nano_banana_pro_edit"
+    model: "nano_banana_pro_edit"  # recommended default
     params:
       prompt: "Transform into a watercolor painting style"
 ```
@@ -65,7 +65,7 @@ input_image: "path/to/image.jpg"
 steps:
   - name: "create_video"
     type: "image_to_video"
-    model: "veo3"
+    model: "wan_2_6"
     params:
       prompt: "Camera slowly pans across the landscape"
       duration: 5
@@ -87,7 +87,7 @@ steps:
 
   - name: "create_video"
     type: "image_to_video"
-    model: "veo3"
+    model: "wan_2_6"
     params:
       prompt: "Gentle waves, sun slowly setting"
       duration: 5
@@ -114,7 +114,7 @@ steps:
 
   - name: "animate_all"
     type: "image_to_video"
-    model: "kling_2_6_pro"
+    model: "kling_2_6_pro_i2v"
     params:
       parallel: true        # Process all images concurrently
       max_workers: 4        # Maximum concurrent generations

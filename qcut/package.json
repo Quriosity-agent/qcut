@@ -1,6 +1,6 @@
 {
   "name": "qcut",
-  "version": "0.3.71",
+  "version": "2026.02.15.1",
   "description": "QCut - Open-source video editor",
   "author": {
     "name": "QCut Team",
@@ -78,9 +78,7 @@
     "prebuild": "bun run setup-ffmpeg && bun run stage-ffmpeg-binaries && bun run sync-skills",
     "sync-skills": "bun scripts/sync-skills.ts",
     "build:exe": "bun run build && bun run package:win && bun run copy-ffmpeg",
-    "release:patch": "bun scripts/release.ts patch",
-    "release:minor": "bun scripts/release.ts minor",
-    "release:major": "bun scripts/release.ts major",
+    "release": "bun scripts/release.ts",
     "release:alpha": "bun scripts/release.ts alpha",
     "release:beta": "bun scripts/release.ts beta",
     "release:rc": "bun scripts/release.ts rc",

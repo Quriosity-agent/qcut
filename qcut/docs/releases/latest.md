@@ -1,9 +1,9 @@
 ---
-version: "0.3.71"
+version: "2026.02.15.1"
 date: "2026-02-15"
 channel: "stable"
 ---
 
-# QCut v0.3.71
+# QCut 2026.02.15.1
 
-- Release v0.3.71
+- Switch to date-based versioning (YYYY.MM.DD.N)

@@ -83,9 +83,11 @@ bun run db:push:prod    # Push to production DB
 
 ### Release Management
 ```bash
-bun run release:patch    # 0.3.51 → 0.3.52
-bun run release:minor    # 0.3.51 → 0.4.0
-bun run release:major    # 0.3.51 → 1.0.0
+bun run release           # Date-based version (2026.02.15.1, .2, .3...)
+bun run release:alpha     # Alpha prerelease (2026.02.15.1-alpha.1)
+bun run release:beta      # Beta prerelease (2026.02.15.1-beta.1)
+bun run release:rc        # Release candidate (2026.02.15.1-rc.1)
+bun run release:promote   # Promote prerelease to stable
 ```
 
 ## Build Commands Details
@@ -131,7 +133,7 @@ bun run release:major    # 0.3.51 → 1.0.0
 | `build:exe` | Build + package with electron-packager |
 | `setup-ffmpeg` | Copy FFmpeg WASM files to public |
 | `copy-ffmpeg` | Copy FFmpeg for packaged builds |
-| `release:patch/minor/major` | Version bump + release |
+| `release` | Date-based version bump + release |
 | `test:e2e` | Run Playwright E2E tests |
 | `test:e2e:ui` | Playwright with interactive UI |
 | `test:e2e:headed` | Playwright in headed mode |
@@ -183,7 +185,7 @@ bun run release:major    # 0.3.51 → 1.0.0
 
 ### Production Release
 1. `bun run test:e2e` - Verify E2E tests pass
-2. `bun run release:patch` - Bump version
+2. `bun run release` - Bump version
 3. `bun run dist:win:release` - Build production installer
 
 ## Environment Variables (Optional)

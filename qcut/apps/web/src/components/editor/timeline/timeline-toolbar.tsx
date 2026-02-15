@@ -238,12 +238,16 @@ export function TimelineToolbar({
   };
 
   const handleZoomIn = () => {
-    const next = TIMELINE_CONSTANTS.ZOOM_LEVELS.find((v) => v > zoomLevel + 0.001);
+    const next = TIMELINE_CONSTANTS.ZOOM_LEVELS.find(
+      (v) => v > zoomLevel + 0.001
+    );
     setZoomLevel(next ?? 4);
   };
 
   const handleZoomOut = () => {
-    const prev = [...TIMELINE_CONSTANTS.ZOOM_LEVELS].reverse().find((v) => v < zoomLevel - 0.001);
+    const prev = [...TIMELINE_CONSTANTS.ZOOM_LEVELS]
+      .reverse()
+      .find((v) => v < zoomLevel - 0.001);
     setZoomLevel(prev ?? 0.05);
   };
 

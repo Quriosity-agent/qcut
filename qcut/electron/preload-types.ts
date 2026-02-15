@@ -434,6 +434,13 @@ export interface ElectronAPI {
     get: () => Promise<ApiKeyConfig>;
     set: (keys: ApiKeyConfig) => Promise<boolean>;
     clear: () => Promise<boolean>;
+    status: () => Promise<{
+      falApiKey: { set: boolean; source: string };
+      freesoundApiKey: { set: boolean; source: string };
+      geminiApiKey: { set: boolean; source: string };
+      openRouterApiKey: { set: boolean; source: string };
+      anthropicApiKey: { set: boolean; source: string };
+    }>;
   };
 
   // Shell operations

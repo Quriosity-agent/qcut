@@ -1,74 +1,65 @@
 # Large Files Report (>800 lines)
 
-Generated: 2026-02-12 (updated after split-v3 phases 1–5)
+Generated: 2026-02-15
 
 ## Summary
 
-**Total files exceeding 800 lines:** 32
+**Total files exceeding 800 lines:** 33
 
-Previous report had 36 files. The decrease is from split-v3 completing:
-- **Phase 1** (image-edit-client): 1325 → 793 — removed from list
-- **Phase 2** (ai-image-tab): 1283 → 491 — removed from list
-- **Phase 4** (export-engine): 1404 → 641 — removed from list
-- **Phase 5** (ffmpeg-handler): 1310 → 96 — removed from list
+Previous report (2026-02-12) had 32 files. One new file crossed the threshold (`preload-types.ts` at 810), and several existing files grew significantly.
 
-Additionally, `timeline/index.tsx` was reduced from 1584 → 860 by a separate extraction (`d652c7fc`).
+### Changes Since Last Report
 
-### Split Plan v3 Impact
+| File | Before | After | Delta | Notes |
+|------|-------:|------:|------:|-------|
+| `electron/ai-pipeline-handler.ts` | 826 | 1420 | **+594** | Jumped from #26 to #1 |
+| `export-engine-cli.ts` | 921 | 1292 | **+371** | Needs urgent split |
+| `timeline-store-operations.ts` | 1047 | 1171 | +124 | |
+| `timeline-store.ts` | 946 | 1048 | +102 | Crossed 1000-line mark |
+| `timeline-track.tsx` | 1226 | 1324 | +98 | |
+| `electron/ffmpeg/utils.ts` | 947 | 1003 | +56 | Crossed 1000-line mark |
+| `preview-panel.tsx` | 1180 | 1228 | +48 | |
+| `electron.d.ts` | 1315 | 1341 | +26 | |
+| `electron/preload-types.ts` | — | 810 | **new** | Newly over threshold |
 
-| Phase | File | Before | After | Status |
-|-------|------|-------:|------:|--------|
-| Phase 1 | `image-edit-client.ts` | 1325 | 793 | **Done** — removed from list |
-| Phase 2 | `ai-image-tab.tsx` | 1283 | 491 | **Done** — removed from list |
-| Phase 3 | `ai/index.tsx` | 1281 | 979 | **Partial** — still >800 |
-| Phase 4 | `export-engine.ts` | 1404 | 641 | **Done** — removed from list |
-| Phase 5 | `ffmpeg-handler.ts` | 1310 | 96 | **Done** — removed from list |
-
-### Split Plan v2 Impact (prior round)
-
-| Phase | File | Before | After | Status |
-|-------|------|-------:|------:|--------|
-| Phase 1 | `text2image-models.ts` | 1422 | ~91 barrel | **Done** — removed from list |
-| Phase 2 | `model-handler-implementations.ts` | 1518 | 10 (shim) | **Done** — removed from list |
-| Phase 3 | `fal-ai-client.ts` | 1512 | 656 | **Done** — removed from list |
-| Phase 4 | `use-ai-generation.ts` | 1428 | 1082 | **Partial** — still >800 |
-| Phase 5 | `timeline/index.tsx` | 1584 | 860 | **Done** — reduced via separate extraction |
+`export-engine.backup.ts` (1088 lines) is still present despite being marked for deletion in the previous report.
 
 ## Files by Line Count
 
 | Lines | File | Category | Notes |
 |------:|------|----------|-------|
-| 1315 | `apps/web/src/types/electron.d.ts` | Type Definitions | |
+| 1420 | `electron/ai-pipeline-handler.ts` | Electron | Grew +594 since last report |
+| 1341 | `apps/web/src/types/electron.d.ts` | Type Definitions | |
+| 1324 | `apps/web/src/components/editor/timeline/timeline-track.tsx` | Timeline UI | |
+| 1292 | `apps/web/src/lib/export-engine-cli.ts` | Export | Grew +371 since last report |
 | 1259 | `apps/web/src/lib/ai-video/generators/image-to-video.ts` | AI Generation | |
-| 1226 | `apps/web/src/components/editor/timeline/timeline-track.tsx` | Timeline UI | |
-| 1180 | `apps/web/src/components/editor/preview-panel.tsx` | Editor UI | |
+| 1228 | `apps/web/src/components/editor/preview-panel.tsx` | Editor UI | |
+| 1171 | `apps/web/src/stores/timeline-store-operations.ts` | State Management | |
 | 1157 | `apps/web/src/stores/media-store.ts` | State Management | |
 | 1132 | `apps/web/src/components/editor/draw/canvas/drawing-canvas.tsx` | Drawing Canvas | |
 | 1088 | `apps/web/src/lib/export-engine.backup.ts` | Export (backup) | Should be deleted |
 | 1082 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | AI Generation | Split v2 Phase 4 — partial |
-| 1047 | `apps/web/src/stores/timeline-store-operations.ts` | State Management | From split v1 |
+| 1048 | `apps/web/src/stores/timeline-store.ts` | State Management | Was 946, grew +102 |
+| 1003 | `electron/ffmpeg/utils.ts` | Electron / FFmpeg | Was 947, grew +56 |
 | 983 | `apps/web/src/lib/remotion/component-loader.ts` | Remotion | |
 | 979 | `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | AI UI | Split v3 Phase 3 — partial |
 | 974 | `apps/web/src/test/e2e/project-folder-sync.e2e.ts` | Tests | |
 | 957 | `apps/web/src/lib/remotion/__tests__/component-validator.test.ts` | Tests | |
 | 956 | `apps/web/src/lib/ai-video/validation/validators.ts` | AI Validation | |
 | 956 | `apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts` | AI Types | |
-| 947 | `electron/ffmpeg/utils.ts` | Electron / FFmpeg | |
-| 946 | `apps/web/src/stores/timeline-store.ts` | State Management | Reduced from 1660 (split v1) |
-| 921 | `apps/web/src/lib/export-engine-cli.ts` | Export | Created during v3 Phase 4 |
 | 918 | `apps/web/src/stores/remotion-store.ts` | State Management | |
 | 903 | `apps/web/src/lib/ffmpeg-utils.ts` | FFmpeg Utils | |
-| 884 | `electron/main-ipc.ts` | Electron | From split v1 |
+| 884 | `electron/main-ipc.ts` | Electron | |
+| 876 | `apps/web/src/test/e2e/helpers/electron-helpers.ts` | Tests | |
 | 869 | `apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts` | AI Models Config | |
-| 866 | `apps/web/src/test/e2e/helpers/electron-helpers.ts` | Tests | |
 | 866 | `apps/web/src/lib/ai-video/generators/text-to-video.ts` | AI Generation | |
-| 860 | `apps/web/src/components/editor/timeline/index.tsx` | Timeline UI | Reduced from 1584 |
+| 853 | `apps/web/src/components/editor/timeline/index.tsx` | Timeline UI | |
 | 852 | `apps/web/src/stores/effects-store.ts` | State Management | |
 | 840 | `apps/web/src/test/e2e/auto-save-export-file-management.e2e.ts` | Tests | |
 | 829 | `apps/web/src/components/editor/draw/hooks/use-canvas-objects.ts` | Drawing Canvas | |
-| 826 | `electron/ai-pipeline-handler.ts` | Electron | |
 | 826 | `apps/web/src/lib/effects-templates.ts` | Effects | |
-| 816 | `apps/web/src/components/export-dialog.tsx` | Editor UI | |
+| 817 | `apps/web/src/components/export-dialog.tsx` | Editor UI | |
+| 810 | `electron/preload-types.ts` | Electron | Newly over threshold |
 | 801 | `apps/web/src/components/editor/media-panel/views/captions.tsx` | Editor UI | |
 
 ## Breakdown by Category
@@ -76,24 +67,34 @@ Additionally, `timeline/index.tsx` was reduced from 1584 → 860 by a separate e
 | Category | Files | Total Lines |
 |----------|------:|------------:|
 | AI Generation / UI / Config | 8 | ~8,988 |
-| State Management | 5 | ~4,920 |
-| Electron | 3 | ~2,657 |
-| Tests | 4 | ~3,637 |
-| Timeline UI | 2 | ~2,086 |
-| Editor UI | 3 | ~2,797 |
-| Export | 2 | ~2,009 |
+| State Management | 5 | ~5,146 |
+| Electron | 4 | ~4,117 |
+| Tests | 4 | ~3,647 |
+| Editor UI | 3 | ~2,846 |
+| Export | 2 | ~2,380 |
+| Timeline UI | 2 | ~2,177 |
 | Drawing Canvas | 2 | ~1,961 |
-| Type Definitions | 1 | 1,315 |
+| Type Definitions | 1 | 1,341 |
 | Remotion | 1 | 983 |
 | FFmpeg Utils | 1 | 903 |
 | Effects | 1 | 826 |
+| Export (backup) | 1 | 1,088 |
+
+## Top Priority Actions
+
+1. **Delete** `export-engine.backup.ts` (1088 lines) — still present, was flagged for removal last report.
+2. **Split** `ai-pipeline-handler.ts` (1420 lines) — grew +594 lines, now the largest file in the project.
+3. **Split** `export-engine-cli.ts` (1292 lines) — grew +371 lines, rapidly expanding.
+4. **Split** `timeline-track.tsx` (1324 lines) — large UI component, good candidate for extracting sub-components.
+5. **Split** `image-to-video.ts` (1259 lines) — stable but well over limit.
+6. **Split** `preview-panel.tsx` (1228 lines) — large editor UI component.
 
 ## Notes
 
-- `export-engine.backup.ts` (1088 lines) is a backup file from the v3 Phase 4 refactor — should be deleted now that the refactor is stable.
-- AI subsystem under `media-panel/views/ai/` remains the most complex area with the highest concentration of large files.
-- `use-ai-generation.ts` (1082 lines) still needs further extraction — settings builders and response handlers were not fully moved.
-- `ai/index.tsx` (979 lines) was reduced by v3 Phase 3 but still exceeds 800 — needs a follow-up pass.
-- `export-engine-cli.ts` (921 lines) was created during v3 Phase 4 and already exceeds 800 — should be split.
-- Several test/e2e files (974, 957, 866, 840 lines) are over 800 — less critical since they don't affect runtime.
-- Top split candidates for a future round: `image-to-video.ts` (1259), `timeline-track.tsx` (1226), `preview-panel.tsx` (1180), `media-store.ts` (1157), `drawing-canvas.tsx` (1132).
+- The Electron layer is the fastest-growing area: `ai-pipeline-handler.ts` (+594) and `preload-types.ts` (newly over 800) both landed since the last report.
+- `export-engine-cli.ts` grew +371 lines — the export subsystem needs attention.
+- `timeline-store.ts` (1048) and `timeline-store-operations.ts` (1171) are both over 1000 lines — the combined timeline state is over 2200 lines across two files.
+- AI subsystem under `media-panel/views/ai/` remains the most complex area with 8 files totaling ~9000 lines.
+- `use-ai-generation.ts` (1082) and `ai/index.tsx` (979) still need follow-up splits from v2/v3.
+- Test/e2e files (974, 957, 876, 840 lines) are over 800 — less critical since they don't affect runtime.
+- 13 files are now over 1000 lines (up from 10 in the previous report).

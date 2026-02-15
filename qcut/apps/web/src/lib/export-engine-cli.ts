@@ -31,9 +31,19 @@ import {
   extractVideoInputPath,
   extractStickerSources,
   extractImageSources,
-  extractAudioFileInputs,
-  detectAudioSources,
 } from "./export-cli/sources";
+import {
+  fileExists as fileExistsUtil,
+  getFileInfo as getFileInfoUtil,
+  invokeIfAvailable as invokeIfAvailableUtil,
+  validateAudioWithFfprobe as validateAudioWithFfprobeUtil,
+  type AudioValidationLike,
+  type FileInfoLike,
+} from "./export-engine-cli-utils";
+import {
+  prepareAudioFilesForExport,
+  resolveAudioPreparationInputs as resolveAudioPreparationInputsUtil,
+} from "./export-engine-cli-audio";
 
 // Re-export types for backward compatibility (using export from)
 export type {
@@ -43,22 +53,8 @@ export type {
 } from "./export-cli/types";
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
-type ElectronInvoke = (channel: string, ...args: unknown[]) => Promise<unknown>;
 
-interface FileInfoLike {
-  size: number;
-}
-
-interface AudioValidationLike {
-  error?: string;
-  hasAudio?: boolean;
-  duration?: number;
-  info?: {
-    streams?: unknown[];
-  };
-  valid?: boolean;
-}
-
+/** FFmpeg CLI-based export engine that renders timeline projects to video files via Electron IPC. */
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;
@@ -249,26 +245,6 @@ export class CLIExportEngine extends ExportEngine {
   // - extractStickerSources -> export-cli/sources/sticker-sources.ts (now uses wrapper)
   // - buildStickerOverlayFilters -> export-cli/filters/sticker-overlay.ts (now uses wrapper)
 
-  private getOptionalInvoke(): ElectronInvoke | null {
-    try {
-      const maybeInvoke = (
-        window.electronAPI as typeof window.electronAPI & {
-          invoke?: ElectronInvoke;
-        }
-      )?.invoke;
-      if (typeof maybeInvoke === "function") {
-        return maybeInvoke;
-      }
-      return null;
-    } catch (error) {
-      debugWarn(
-        "[CLIExportEngine] Failed to access optional invoke API:",
-        error
-      );
-      return null;
-    }
-  }
-
   private async invokeIfAvailable({
     args = [],
     channel,
@@ -276,19 +252,7 @@ export class CLIExportEngine extends ExportEngine {
     args?: unknown[];
     channel: string;
   }): Promise<unknown | null> {
-    try {
-      const invoke = this.getOptionalInvoke();
-      if (!invoke) {
-        return null;
-      }
-      return await invoke(channel, ...args);
-    } catch (error) {
-      debugWarn(
-        `[CLIExportEngine] Optional invoke call failed for channel ${channel}:`,
-        error
-      );
-      return null;
-    }
+    return invokeIfAvailableUtil({ args, channel });
   }
 
   private async getFileInfo({
@@ -296,18 +260,7 @@ export class CLIExportEngine extends ExportEngine {
   }: {
     filePath: string;
   }): Promise<FileInfoLike | null> {
-    try {
-      if (!window.electronAPI) {
-        return null;
-      }
-      const fileInfo = await window.electronAPI.getFileInfo(filePath);
-      if (!fileInfo || typeof fileInfo.size !== "number") {
-        return null;
-      }
-      return fileInfo;
-    } catch {
-      return null;
-    }
+    return getFileInfoUtil({ filePath });
   }
 
   private async fileExists({
@@ -315,24 +268,7 @@ export class CLIExportEngine extends ExportEngine {
   }: {
     filePath: string;
   }): Promise<boolean> {
-    try {
-      const fileInfo = await this.getFileInfo({ filePath });
-      if (fileInfo && fileInfo.size >= 0) {
-        return true;
-      }
-
-      const legacyExists = await this.invokeIfAvailable({
-        channel: "file-exists",
-        args: [filePath],
-      });
-      return legacyExists === true;
-    } catch (error) {
-      debugWarn(
-        `[CLIExportEngine] Failed to determine file existence for ${filePath}:`,
-        error
-      );
-      return false;
-    }
+    return fileExistsUtil({ filePath });
   }
 
   private async validateAudioWithFfprobe({
@@ -340,227 +276,29 @@ export class CLIExportEngine extends ExportEngine {
   }: {
     filePath: string;
   }): Promise<AudioValidationLike | null> {
-    try {
-      const validation = await this.invokeIfAvailable({
-        channel: "validate-audio-file",
-        args: [filePath],
-      });
-      if (!validation || typeof validation !== "object") {
-        return null;
-      }
-
-      return validation as AudioValidationLike;
-    } catch (error) {
-      debugWarn(
-        `[CLIExportEngine] Failed to run optional ffprobe validation for ${filePath}:`,
-        error
-      );
-      return null;
-    }
+    return validateAudioWithFfprobeUtil({ filePath });
   }
 
   private async resolveAudioPreparationInputs(): Promise<{
     tracks: TimelineTrack[];
     mediaItems: MediaItem[];
   }> {
-    try {
-      const tracks = this.tracks;
-      const mergedMediaById = new Map<string, MediaItem>();
-
-      for (const mediaItem of this.mediaItems) {
-        mergedMediaById.set(mediaItem.id, mediaItem);
-      }
-
-      const referencedMediaIds = new Set<string>();
-      for (const track of tracks) {
-        if (track.type !== "media" && track.type !== "audio") {
-          continue;
-        }
-
-        for (const element of track.elements) {
-          if (element.type !== "media") {
-            continue;
-          }
-          referencedMediaIds.add(element.mediaId);
-        }
-      }
-
-      const unresolvedMediaIds = Array.from(referencedMediaIds).filter((id) => {
-        const mediaItem = mergedMediaById.get(id);
-        if (!mediaItem) {
-          return true;
-        }
-
-        const hasLocalPath = typeof mediaItem.localPath === "string";
-        const hasFile = !!mediaItem.file && mediaItem.file.size > 0;
-        const hasUrl =
-          typeof mediaItem.url === "string" && mediaItem.url.length > 0;
-        return !hasLocalPath && !hasFile && !hasUrl;
-      });
-
-      if (unresolvedMediaIds.length === 0) {
-        return {
-          mediaItems: Array.from(mergedMediaById.values()),
-          tracks,
-        };
-      }
-
-      const { useProjectStore } = await import("@/stores/project-store");
-      const projectId = useProjectStore.getState().activeProject?.id;
-      if (!projectId) {
-        debugWarn(
-          "[CLIExportEngine] Cannot hydrate missing audio media items without an active project ID"
-        );
-        return {
-          mediaItems: Array.from(mergedMediaById.values()),
-          tracks,
-        };
-      }
-
-      const { storageService } = await import("@/lib/storage/storage-service");
-      const hydratedItems = await Promise.all(
-        unresolvedMediaIds.map(async (mediaId) => {
-          try {
-            return await storageService.loadMediaItem(projectId, mediaId);
-          } catch (error) {
-            debugWarn(
-              `[CLIExportEngine] Failed to hydrate media item ${mediaId} from storage:`,
-              error
-            );
-            return null;
-          }
-        })
-      );
-
-      for (const hydratedItem of hydratedItems) {
-        if (!hydratedItem) {
-          continue;
-        }
-        mergedMediaById.set(hydratedItem.id, hydratedItem);
-      }
-
-      return {
-        mediaItems: Array.from(mergedMediaById.values()),
-        tracks,
-      };
-    } catch (error) {
-      debugWarn(
-        "[CLIExportEngine] Failed to build audio preparation inputs, using in-memory snapshot:",
-        error
-      );
-      return {
-        mediaItems: this.mediaItems,
-        tracks: this.tracks,
-      };
-    }
+    return resolveAudioPreparationInputsUtil({
+      mediaItems: this.mediaItems,
+      tracks: this.tracks,
+    });
   }
 
   private async prepareAudioFiles(): Promise<AudioFileInput[]> {
-    try {
-      if (!window.electronAPI) {
-        return [];
-      }
-
-      const { tracks, mediaItems } = await this.resolveAudioPreparationInputs();
-      debugLog("[CLIExportEngine] Audio preparation inputs:", {
-        mediaItemsCount: mediaItems.length,
-        trackCount: tracks.length,
-      });
-
-      const results = await extractAudioFileInputs(
-        tracks,
-        mediaItems,
-        this.sessionId,
-        {
-          fileExists: async (filePath: string): Promise<boolean> => {
-            try {
-              return await this.fileExists({ filePath });
-            } catch (error) {
-              debugWarn(
-                `[CLIExportEngine] Failed to verify file existence for ${filePath}:`,
-                error
-              );
-              return false;
-            }
-          },
-          saveTemp: async ({
-            audioData,
-            filename,
-          }: {
-            audioData: ArrayBuffer;
-            filename: string;
-          }): Promise<{ success: boolean; path?: string; error?: string }> => {
-            try {
-              if (window.electronAPI?.audio?.saveTemp) {
-                const path = await window.electronAPI.audio.saveTemp(
-                  new Uint8Array(audioData),
-                  filename
-                );
-                if (typeof path === "string" && path.length > 0) {
-                  return {
-                    success: true,
-                    path,
-                  };
-                }
-              }
-
-              const result = await this.invokeIfAvailable({
-                channel: "save-audio-for-export",
-                args: [{ audioData, filename }],
-              });
-              const parsedResult =
-                result && typeof result === "object"
-                  ? (result as {
-                      success?: boolean;
-                      path?: string;
-                      error?: string;
-                    })
-                  : null;
-
-              if (!parsedResult) {
-                return {
-                  success: false,
-                  error: "No available API to persist audio temp file",
-                };
-              }
-
-              return {
-                success: parsedResult.success === true,
-                path: parsedResult.path,
-                error: parsedResult.error,
-              };
-            } catch (error) {
-              return {
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              };
-            }
-          },
-        },
-        debugLog
-      );
-
-      if (results.length === 0) {
-        const audioSources = detectAudioSources(tracks, mediaItems);
-        if (audioSources.hasAudio) {
-          debugWarn(
-            "[CLIExportEngine] Audio sources detected in timeline but none were resolved to exportable files",
-            {
-              embeddedVideoAudioCount: audioSources.embeddedVideoAudioCount,
-              overlayAudioCount: audioSources.overlayAudioCount,
-            }
-          );
-        }
-      }
-
-      debugLog(
-        `[CLIExportEngine] Prepared ${results.length} audio files for export`
-      );
-      return results;
-    } catch (error) {
-      debugError("[CLIExportEngine] Error preparing audio files:", error);
-      return [];
-    }
+    const { tracks, mediaItems } = await this.resolveAudioPreparationInputs();
+    return prepareAudioFilesForExport({
+      fileExists: ({ filePath }) => this.fileExists({ filePath }),
+      invokeIfAvailable: ({ args = [], channel }) =>
+        this.invokeIfAvailable({ args, channel }),
+      mediaItems,
+      sessionId: this.sessionId,
+      tracks,
+    });
   }
 
   /**

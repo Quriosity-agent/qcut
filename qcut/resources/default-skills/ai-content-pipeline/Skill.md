@@ -1,7 +1,7 @@
 ---
 name: AI Content Pipeline
 description: Generate AI content (images, videos, audio, avatars) and analyze videos with AICP in QCut. Primary mode uses QCut's bundled AICP binary with secure API key injection.
-dependencies: qcut>=0.3.67 (bundled aicp)
+dependencies: qcut>=2026.02.15.1 (bundled aicp 1.0.29+)
 ---
 
 # AI Content Pipeline Skill
@@ -12,6 +12,39 @@ Reference files:
 - `REFERENCE.md` - model specs, API endpoints, troubleshooting
 - `EXAMPLES.md` - YAML pipeline examples
 
+## FAL API Key Setup
+
+QCut resolves the FAL key from a **3-tier fallback** (highest priority wins):
+
+| Tier | Source | How to set |
+|------|--------|------------|
+| 1 | Environment variable | `export FAL_KEY=your_key` |
+| 2 | QCut Electron store | Editor -> Settings -> API Keys |
+| 3 | AICP CLI credential store | `aicp set-key FAL_KEY` |
+
+**Recommended for Claude Code / CLI workflows:**
+
+```bash
+# Set FAL key persistently (secure hidden prompt, stored at ~/.config/video-ai-studio/credentials.env)
+aicp set-key FAL_KEY
+
+# Verify the key is stored
+aicp check-keys
+
+# Or use the bundled binary directly
+./electron/resources/bin/aicp/darwin-arm64/aicp set-key FAL_KEY
+```
+
+Once set via any tier, QCut automatically injects the key when spawning AICP for generation commands. No `.env` file or GUI interaction is required.
+
+**Quick check** — verify FAL key is available before generating:
+
+```bash
+aicp check-keys
+```
+
+If `FAL_KEY` shows `not set`, set it using any method above.
+
 ## Usage Modes
 
 ### Mode 1 (Recommended): QCut Bundled AICP
@@ -20,18 +53,18 @@ Use this when working inside QCut.
 
 What QCut handles for you:
 - bundled `aicp` binary (no local Python or pip required)
-- encrypted API key storage in Electron main process
+- 3-tier API key resolution (env > Electron store > AICP CLI store)
 - `FAL_KEY` injection at spawn time for generation commands
 - output path recovery and optional media auto-import in app flow
 
 Setup steps:
-1. Open QCut and go to `Editor -> Settings -> API Keys`.
-2. Add your FAL API key once.
-3. Use AI generation features from the app.
+1. Set your FAL key via CLI (`aicp set-key FAL_KEY`) or GUI (Editor -> Settings -> API Keys).
+2. Use AI generation features from the app or CLI.
 
 Notes:
 - No `.env` file is required for normal QCut usage.
 - If key is missing, app should fail fast with actionable guidance.
+- Settings UI shows a source badge (env/app/cli) next to each key.
 
 ### Mode 2: Standalone CLI (Debug/Dev)
 
@@ -43,13 +76,29 @@ Use this for local debugging outside QCut.
 ./electron/resources/bin/aicp/darwin-arm64/aicp --help
 ```
 
-If you call remote provider models from standalone CLI, export keys manually:
+Set keys via the CLI credential store (persistent, secure):
+
+```bash
+aicp set-key FAL_KEY
+# optional
+aicp set-key GEMINI_API_KEY
+aicp set-key ELEVENLABS_API_KEY
+```
+
+Or export keys manually per session:
 
 ```bash
 export FAL_KEY=your_fal_key
-# optional
-export GEMINI_API_KEY=your_gemini_key
-export ELEVENLABS_API_KEY=your_elevenlabs_key
+```
+
+### Mode 3: QCut CLI Key Management
+
+QCut's Electron binary can also delegate key management headlessly:
+
+```bash
+./QCut set-key FAL_KEY      # Delegates to bundled aicp set-key
+./QCut check-keys           # Shows all key statuses
+./QCut delete-key FAL_KEY   # Removes a stored key
 ```
 
 ## Quick Commands
@@ -73,7 +122,7 @@ aicp generate-image \
 ### Generate Video
 
 ```bash
-aicp create-video --text "A serene mountain lake at sunset"
+aicp create-video --text "A serene mountain lake at sunset" --model wan_2_6
 ```
 
 ### Generate Avatar (Lipsync)
@@ -138,3 +187,15 @@ This aligns with organize-project conventions.
 
 For direct API calls (not via CLI), model keys still map to endpoint slugs.
 See `REFERENCE.md` for endpoint mappings.
+
+## Key Files Reference
+
+| Component | File |
+|-----------|------|
+| Key storage & fallback | `electron/api-key-handler.ts` |
+| AICP spawn + key injection | `electron/ai-pipeline-handler.ts` |
+| Binary manager | `electron/binary-manager.ts` |
+| Settings UI (key source badges) | `apps/web/src/components/editor/properties-panel/settings-view.tsx` |
+| CLI key delegation | `electron/main.ts` (CLI_KEY_COMMANDS block) |
+| Binary manifest | `resources/bin/manifest.json` |
+| Fallback tests | `electron/__tests__/api-key-aicp-fallback.test.ts` |
