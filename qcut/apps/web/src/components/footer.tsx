@@ -44,8 +44,8 @@ export function Footer() {
               <span className="font-bold text-lg">QCut</span>
             </div>
             <p className="text-sm md:text-left text-muted-foreground mb-5">
-              The open source video editor that gets the job done. Simple,
-              powerful, and works on any platform.
+              The agentic video creation platform. AI-powered editing,
+              generation, and automation on any platform.
             </p>
             <div className="flex justify-start gap-3">
               <a
