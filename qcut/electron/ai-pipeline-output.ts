@@ -8,6 +8,7 @@ const OUTPUT_FILE_REGEX = new RegExp(
   "i"
 );
 
+/** Recursively collect all files in outputDir, returning a map of path to mtime. */
 export function collectOutputFiles({
   outputDir,
 }: {
@@ -54,6 +55,7 @@ export function collectOutputFiles({
   return files;
 }
 
+/** Snapshot the current state of outputDir files before a pipeline run. */
 export function captureOutputSnapshot({
   outputDir,
 }: {
@@ -70,6 +72,7 @@ export function captureOutputSnapshot({
   }
 }
 
+/** Normalize a raw path string to an absolute path, returning null if invalid or nonexistent. */
 export function normalizeOutputPath({
   rawPath,
   outputDir,
@@ -106,6 +109,7 @@ export function normalizeOutputPath({
   }
 }
 
+/** Remove duplicate file paths from an array. */
 export function dedupePaths({ paths }: { paths: string[] }): string[] {
   try {
     const uniquePaths = new Set<string>();
@@ -122,6 +126,7 @@ export function dedupePaths({ paths }: { paths: string[] }): string[] {
   }
 }
 
+/** Extract output file paths from pipeline stdout/stderr text using regex patterns. */
 export function extractOutputPathsFromText({
   text,
   outputDir,
@@ -170,6 +175,7 @@ export function extractOutputPathsFromText({
   return dedupePaths({ paths: outputPaths });
 }
 
+/** Extract output file paths from parsed JSON pipeline output by walking all string values. */
 export function extractOutputPathsFromJson({
   jsonData,
   outputDir,
@@ -231,6 +237,7 @@ export function extractOutputPathsFromJson({
   return dedupePaths({ paths: resolvedPaths });
 }
 
+/** Find new or modified files in outputDir by comparing against a pre-run snapshot. */
 export function recoverOutputPathsFromDirectory({
   outputDir,
   outputSnapshot,
@@ -268,6 +275,7 @@ export function recoverOutputPathsFromDirectory({
   }
 }
 
+/** Classify a pipeline error message into a category (missing_key, binary_missing, etc.). */
 export function classifyErrorCode({
   errorMessage,
 }: {
@@ -306,6 +314,7 @@ export function classifyErrorCode({
   }
 }
 
+/** Extract the QCut project ID from a file path matching /QCut/Projects/{id}/. */
 export function inferProjectIdFromPath({
   filePath,
 }: {

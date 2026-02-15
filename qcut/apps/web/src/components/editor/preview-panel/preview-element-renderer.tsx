@@ -49,6 +49,7 @@ interface PreviewBlurBackgroundProps {
   hasEnabledEffects: boolean;
 }
 
+/** Renders a blurred background video layer behind the main preview content. */
 export function PreviewBlurBackground({
   activeProject,
   blurBackgroundElements,
@@ -146,6 +147,7 @@ export function PreviewBlurBackground({
   }
 }
 
+/** Renders a single timeline element (text, media, markdown, sticker) positioned on the preview canvas. */
 export function PreviewElementRenderer({
   elementData,
   index,

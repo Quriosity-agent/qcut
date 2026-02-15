@@ -23,6 +23,7 @@ interface UsePreviewMediaResult {
   currentMediaElement: ActiveElement | null;
 }
 
+/** Derives video sources, caption segments, and blur background data from active timeline elements. */
 export function usePreviewMedia({
   activeElements,
   mediaItems,

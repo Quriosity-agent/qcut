@@ -54,6 +54,7 @@ export type {
 
 type EffectsStore = ReturnType<typeof useEffectsStore.getState>;
 
+/** FFmpeg CLI-based export engine that renders timeline projects to video files via Electron IPC. */
 export class CLIExportEngine extends ExportEngine {
   private sessionId: string | null = null;
   private frameDir: string | null = null;

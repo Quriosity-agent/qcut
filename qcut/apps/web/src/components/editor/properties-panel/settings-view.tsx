@@ -30,10 +30,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { BlurIntensity } from "@/types/project";
 
+/** Top-level settings panel shown in the editor properties sidebar. */
 export function SettingsView() {
   return <ProjectSettingsTabs />;
 }
 
+/** Tabbed settings panel with Project, Background, and API Keys sections. */
 function ProjectSettingsTabs() {
   return (
     <div className="h-full flex flex-col">
@@ -80,6 +82,7 @@ function ProjectSettingsTabs() {
   );
 }
 
+/** Displays project metadata (name, resolution, FPS) with editable controls. */
 function ProjectInfoView() {
   const { activeProject, updateProjectFps } = useProjectStore();
   const { canvasSize, canvasPresets, setCanvasSize } = useEditorStore();
@@ -159,6 +162,7 @@ function ProjectInfoView() {
   );
 }
 
+/** Memoized preview of the blur background effect with a gradient sample. */
 const BlurPreview = memo(
   ({
     blur,
@@ -194,6 +198,7 @@ const BlurPreview = memo(
 
 BlurPreview.displayName = "BlurPreview";
 
+/** Background settings panel for choosing between solid color and blur background modes. */
 function BackgroundView() {
   const { activeProject, updateBackgroundType } = useProjectStore();
 
@@ -285,6 +290,7 @@ function BackgroundView() {
   );
 }
 
+/** Small badge showing the source of an API key (env, app, cli). */
 function KeySourceBadge({ source }: { source: string }) {
   if (source === "not-set") return null;
   const labels: Record<string, string> = {
@@ -299,6 +305,7 @@ function KeySourceBadge({ source }: { source: string }) {
   );
 }
 
+/** API key management panel with inputs for FAL, Freesound, Gemini, OpenRouter, and Anthropic keys. */
 function ApiKeysView() {
   const [falApiKey, setFalApiKey] = useState("");
   const [freesoundApiKey, setFreesoundApiKey] = useState("");

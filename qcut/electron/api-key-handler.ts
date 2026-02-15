@@ -65,10 +65,12 @@ const EMPTY_API_KEYS: ApiKeys = {
   anthropicApiKey: "",
 };
 
+/** Return a fresh ApiKeys object with all fields empty. */
 function getEmptyApiKeys(): ApiKeys {
   return { ...EMPTY_API_KEYS };
 }
 
+/** Resolve the path to the encrypted API keys JSON file in userData. */
 function getApiKeysFilePath(): string {
   try {
     const userDataPath = app.getPath("userData");
@@ -79,6 +81,7 @@ function getApiKeysFilePath(): string {
   }
 }
 
+/** Decrypt a single base64-encoded safeStorage value, returning empty string on failure. */
 function decryptStoredValue({
   encryptedValue,
 }: {
@@ -99,6 +102,7 @@ function decryptStoredValue({
   }
 }
 
+/** Decrypt all API keys from the encrypted storage format. */
 function decryptStoredApiKeys({
   encryptedData,
 }: {

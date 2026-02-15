@@ -19,6 +19,7 @@ export interface AudioValidationLike {
   valid?: boolean;
 }
 
+/** Get the optional Electron IPC invoke function, or null if unavailable. */
 export function getOptionalInvoke(): ElectronInvoke | null {
   try {
     const maybeInvoke = (
@@ -36,6 +37,7 @@ export function getOptionalInvoke(): ElectronInvoke | null {
   }
 }
 
+/** Invoke an Electron IPC channel if available, returning null on failure or absence. */
 export async function invokeIfAvailable({
   args = [],
   channel,
@@ -58,6 +60,7 @@ export async function invokeIfAvailable({
   }
 }
 
+/** Get file size info via Electron API, returning null if unavailable. */
 export async function getFileInfo({
   filePath,
 }: {
@@ -77,6 +80,7 @@ export async function getFileInfo({
   }
 }
 
+/** Check if a file exists via Electron API with legacy fallback. */
 export async function fileExists({
   filePath,
 }: {
@@ -102,6 +106,7 @@ export async function fileExists({
   }
 }
 
+/** Validate an audio file using ffprobe via Electron IPC. */
 export async function validateAudioWithFfprobe({
   filePath,
 }: {

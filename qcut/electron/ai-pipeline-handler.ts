@@ -100,10 +100,12 @@ export class AIPipelineManager {
     this.initialization = this.loadEnvironment();
   }
 
+  /** Return a safe default config when environment detection fails. */
   private getFallbackConfig(): PipelineConfig {
     return { useBundledBinary: false };
   }
 
+  /** Load binary manifest and detect the pipeline environment. */
   private async loadEnvironment(): Promise<void> {
     try {
       this.binaryManager.reloadManifest();
@@ -119,6 +121,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Ensure environment initialization has completed before proceeding. */
   private async ensureEnvironmentReady(): Promise<void> {
     if (!this.initialization) {
       this.initialization = this.loadEnvironment();
@@ -199,6 +202,7 @@ export class AIPipelineManager {
     return this.getFallbackConfig();
   }
 
+  /** Check if the bundled AICP binary is available and compatible. */
   private getBundledConfig(): PipelineConfig | null {
     const status = this.binaryManager.getBinaryStatus("aicp");
     if (status.available && status.compatible) {
@@ -226,6 +230,7 @@ export class AIPipelineManager {
     return null;
   }
 
+  /** Run a version command and return the output, or null on failure. */
   private async getVersionFromCommand({
     command,
     label,
@@ -248,6 +253,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Execute a shell command with timeout and return stdout. */
   private async execCommand({
     command,
     timeoutMs,
@@ -329,6 +335,7 @@ export class AIPipelineManager {
     };
   }
 
+  /** Build a user-facing error message when the pipeline is unavailable. */
   private getUnavailableErrorMessage(): string {
     try {
       if (app.isPackaged) {
@@ -365,6 +372,7 @@ export class AIPipelineManager {
     };
   }
 
+  /** Get execution timeout from env or default (10 minutes). */
   private getExecutionTimeoutMs(): number {
     const defaultTimeoutMs = 10 * 60 * 1000;
     const rawTimeout = process.env.QCUT_AICP_TIMEOUT_MS;
@@ -407,6 +415,7 @@ export class AIPipelineManager {
     throw new Error("AI Pipeline not available");
   }
 
+  /** Generate a unique session ID for pipeline execution tracking. */
   private buildSessionId(): string {
     try {
       return `ai-${randomUUID()}`;
@@ -419,6 +428,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Determine whether to request JSON output from the pipeline binary. */
   private shouldUseJsonOutput({
     command,
     args,
@@ -437,6 +447,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Check if the given command supports an --output-dir flag. */
   private commandSupportsOutputDir({
     command,
   }: {
@@ -455,6 +466,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Check if the given command requires a FAL API key to run. */
   private commandRequiresFalKey({
     command,
   }: {
@@ -473,6 +485,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Resolve and create the output directory for a pipeline run. */
   private resolveOutputDirectory({
     options,
     sessionId,
@@ -503,6 +516,7 @@ export class AIPipelineManager {
     }
   }
 
+  /** Build the environment variables for spawning the pipeline process, including decrypted API keys. */
   private async buildSpawnEnvironment(): Promise<NodeJS.ProcessEnv> {
     const spawnEnv: NodeJS.ProcessEnv = { ...process.env };
 
@@ -522,6 +536,7 @@ export class AIPipelineManager {
     return spawnEnv;
   }
 
+  /** Auto-import generated output files into the QCut project if enabled. */
   private async maybeAutoImportOutput({
     options,
     result,

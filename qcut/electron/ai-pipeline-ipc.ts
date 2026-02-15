@@ -11,6 +11,7 @@ let pipelineManager: AIPipelineManager | null = null;
 /**
  * Get the current main window for sending progress updates
  */
+/** Get the current main window for sending progress updates. */
 function getMainWindow(): BrowserWindow | null {
   const windows = BrowserWindow.getAllWindows();
   return windows.length > 0 ? windows[0] : null;

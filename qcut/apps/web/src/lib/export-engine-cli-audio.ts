@@ -7,6 +7,7 @@ import {
 } from "./export-cli/sources";
 import { AudioFileInput } from "./export-cli/types";
 
+/** Hydrate missing audio media items from storage so they can be exported. */
 export async function resolveAudioPreparationInputs({
   mediaItems,
   tracks,
@@ -108,6 +109,7 @@ export async function resolveAudioPreparationInputs({
   }
 }
 
+/** Extract and persist audio files from timeline tracks for FFmpeg export. */
 export async function prepareAudioFilesForExport({
   fileExists,
   invokeIfAvailable,

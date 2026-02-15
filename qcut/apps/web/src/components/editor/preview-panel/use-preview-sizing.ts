@@ -9,6 +9,7 @@ interface UsePreviewSizingParams {
   isExpanded: boolean;
 }
 
+/** Computes preview dimensions that fit within the container while preserving the canvas aspect ratio. */
 export function usePreviewSizing({
   containerRef,
   canvasSize,
