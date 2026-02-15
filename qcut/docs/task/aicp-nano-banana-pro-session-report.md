@@ -1,4 +1,4 @@
-/Users/peter/Documents/QCut/Projects/fea526ea-ff71-4329-aca9-d22b9a173982
+~/Documents/QCut/Projects/<project-id>
 # AICP Nano Banana Pro Image Generation — Session Report
 
 **Date:** 2026-02-15
@@ -15,7 +15,7 @@ During execution, two distinct AICP binaries were discovered on this machine:
 
 | Property | Value |
 |----------|-------|
-| **Path** | `/Users/peter/Desktop/code/qcut/qcut/electron/resources/bin/aicp/darwin-arm64/aicp` |
+| **Path** | `~/Desktop/code/qcut/qcut/electron/resources/bin/aicp/darwin-arm64/aicp` |
 | **Version** | 1.0.25 |
 | **Type** | Mach-O 64-bit executable arm64 (standalone PyInstaller binary) |
 | **Text-to-Image** | **Not available** — provider directory missing |
@@ -27,7 +27,7 @@ This binary is the one bundled inside QCut's Electron app (`electron/resources/b
 
 | Property | Value |
 |----------|-------|
-| **Path** | `/Users/peter/Desktop/code/video-agent-skill/venv/bin/aicp` |
+| **Path** | `~/Desktop/code/video-agent-skill/venv/bin/aicp` |
 | **Version** | 1.0.29 |
 | **Type** | Python script (runs via venv's Python 3.12) |
 | **Text-to-Image** | **Available** — `nano_banana_pro`, `flux_dev`, `flux_schnell`, `imagen4`, `seedream_v3`, `gpt_image_1_5` |
@@ -56,14 +56,14 @@ The AICP CLI needs the `FAL_KEY` environment variable to authenticate with FAL A
 
 ### Location 1: Environment Variable (`$FAL_KEY`)
 
-```
+```text
 Result: NOT SET
 ```
 No `FAL_KEY` was exported in the shell environment. This is the highest-priority source (Tier 1).
 
 ### Location 2: QCut Electron Store (`~/Library/Application Support/qcut/api-keys.json`)
 
-```
+```text
 Result: FOUND but ENCRYPTED (112 chars, base64-encoded safeStorage ciphertext)
 Key starts with: djEwo97o0X...
 ```
@@ -77,7 +77,7 @@ The key exists but is encrypted using Electron's `safeStorage` API, which delega
 
 ### Location 3: AICP CLI Credential Store (`~/.config/video-ai-studio/credentials.env`)
 
-```
+```text
 Result: FILE EXISTS but EMPTY (0 lines)
 ```
 
@@ -85,7 +85,7 @@ This file was created but never populated. The `syncToAicpCredentials()` functio
 
 ### Location 4: AICP's Own Credential Store
 
-```
+```text
 Result: NOT SET
 ```
 
@@ -93,7 +93,7 @@ The `aicp set-key FAL_KEY` command was never run to store a key in AICP's own co
 
 ### Root Cause
 
-```
+```text
 QCut Settings UI
      │
      ▼ (saves encrypted)
@@ -161,12 +161,12 @@ Once `FAL_KEY` is available (via any of the 3 methods above), use the **v1.0.29 
 ```bash
 export FAL_KEY="your_fal_key_here"
 
-cd /Users/peter/Desktop/code/video-agent-skill
+cd ~/Desktop/code/video-agent-skill
 
 ./venv/bin/python ./venv/bin/aicp generate-image \
   --text "Your prompt here" \
   --model nano_banana_pro \
-  --output-dir /Users/peter/Documents/QCut/Projects/fea526ea-ff71-4329-aca9-d22b9a173982/media/generated/images
+  --output-dir ~/Documents/QCut/Projects/<project-id>/media/generated/images
 ```
 
 ### The 4 Prompts That Were Attempted
@@ -192,7 +192,7 @@ cd /Users/peter/Desktop/code/video-agent-skill
 
 ### Available CLI Options
 
-```
+```text
 --text TEXT          Text prompt (required)
 --model TEXT         Model to use (default: auto)
 --aspect-ratio TEXT  21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16

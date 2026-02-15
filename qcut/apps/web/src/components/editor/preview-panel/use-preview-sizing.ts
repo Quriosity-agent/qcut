@@ -99,10 +99,22 @@ export function usePreviewSizing({
     if (!containerRef.current) {
       const retryTimeout = window.setTimeout(() => {
         updatePreviewSize();
+        // Attach observers after retry if ref is now available
+        if (containerRef.current) {
+          resizeObserver.observe(containerRef.current);
+        }
       }, 100);
+
+      if (isExpanded) {
+        window.addEventListener("resize", updatePreviewSize);
+      }
 
       return () => {
         window.clearTimeout(retryTimeout);
+        resizeObserver.disconnect();
+        if (isExpanded) {
+          window.removeEventListener("resize", updatePreviewSize);
+        }
       };
     }
 

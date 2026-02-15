@@ -117,7 +117,7 @@ export async function generateViduQ2Video(
         status: "completed",
         message: `Video generated successfully with ${request.model}`,
         estimated_time: 0,
-        video_url: result.video?.url || result.video,
+        video_url: result.video?.url || result.video || result.url,
         video_data: result,
       };
     }
@@ -212,7 +212,7 @@ export async function generateViduQ3ImageVideo(
         status: "completed",
         message: `Video generated successfully with ${request.model}`,
         estimated_time: 0,
-        video_url: result.video?.url || result.video,
+        video_url: result.video?.url || result.video || result.url,
         video_data: result,
       };
     }

@@ -402,15 +402,15 @@ export function setupApiKeyIPC(): void {
     const electronKeys = await loadElectronStoredKeys();
     const aicpKeys = loadAicpCredentials();
 
-    function resolveStatus(envName: string, field: keyof ApiKeys): KeyStatus {
-      if (process.env[envName]) return { set: true, source: "environment" };
+    function resolveStatus(envName: string, field: keyof ApiKeys, altEnvName?: string): KeyStatus {
+      if (process.env[envName] || (altEnvName && process.env[altEnvName])) return { set: true, source: "environment" };
       if (electronKeys[field]) return { set: true, source: "electron" };
       if (aicpKeys[field]) return { set: true, source: "aicp-cli" };
       return { set: false, source: "not-set" };
     }
 
     return {
-      falApiKey: resolveStatus("FAL_KEY", "falApiKey"),
+      falApiKey: resolveStatus("FAL_KEY", "falApiKey", "FAL_API_KEY"),
       freesoundApiKey: resolveStatus("FREESOUND_API_KEY", "freesoundApiKey"),
       geminiApiKey: resolveStatus("GEMINI_API_KEY", "geminiApiKey"),
       openRouterApiKey: resolveStatus("OPENROUTER_API_KEY", "openRouterApiKey"),

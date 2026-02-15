@@ -30,7 +30,7 @@ Unify key resolution into a **3-tier fallback chain** in QCut's Electron main pr
 
 ### Key Resolution Order (highest priority wins)
 
-```
+```text
 1. Environment variable   →  FAL_KEY / FAL_API_KEY in shell
 2. QCut Electron store    →  userData/api-keys.json (safeStorage)
 3. AICP credential store  →  ~/.config/video-ai-studio/credentials.env

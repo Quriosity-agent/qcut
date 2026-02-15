@@ -13,7 +13,7 @@ QCut has an Electron-only key store (`safeStorage` + `api-keys.json`). AICP has 
 
 **Resolution order** (highest priority wins):
 
-```
+```text
 1. Environment variable   →  FAL_KEY / FAL_API_KEY
 2. QCut Electron store    →  userData/api-keys.json
 3. AICP credential store  →  ~/.config/video-ai-studio/credentials.env

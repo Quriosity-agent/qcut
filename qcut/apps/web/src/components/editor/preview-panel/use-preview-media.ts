@@ -18,8 +18,8 @@ interface UsePreviewMediaResult {
   captionSegments: TranscriptionSegment[];
   blurBackgroundElements: ActiveElement[];
   videoSourcesById: Map<string, VideoSource>;
-  activeVideoSource: VideoSource;
-  blurBackgroundSource: VideoSource;
+  activeVideoSource: VideoSource | null;
+  blurBackgroundSource: VideoSource | null;
   currentMediaElement: ActiveElement | null;
 }
 

@@ -17,7 +17,7 @@ No `FAL_KEY` was exported in the shell environment.
 
 The key was saved via QCut's Settings UI, which stores it in:
 
-```
+```text
 ~/Library/Application Support/qcut/api-keys.json
 ```
 
@@ -31,7 +31,7 @@ However, the values are **encrypted with Electron's `safeStorage`** module, maki
 
 ### Tier 3: AICP CLI Credential Store — Empty
 
-```
+```text
 ~/.config/video-ai-studio/credentials.env
 ```
 

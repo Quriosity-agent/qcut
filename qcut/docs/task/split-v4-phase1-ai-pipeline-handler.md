@@ -1,4 +1,4 @@
-# Phase 1: Split `ai-pipeline-handler.ts` (1420 → ~750)
+# Phase 1: Split `ai-pipeline-handler.ts` (1420 → 925)
 
 **Risk Level:** Low — clear extraction boundaries, Electron-side only, no UI impact
 **Estimated Time:** ~30 minutes
@@ -180,8 +180,8 @@ bun run electron:dev  # Test AI pipeline generate, cancel, status check
 
 ## Test Scenarios
 
-- [ ] AI pipeline status check returns version and features
-- [ ] Image generation completes and output file is found
-- [ ] Cancel stops running generation
-- [ ] Auto-import adds generated file to project media
-- [ ] Error messages display correctly for missing API key
+- [x] AI pipeline status check returns version and features
+- [x] Image generation completes and output file is found
+- [x] Cancel stops running generation
+- [x] Auto-import adds generated file to project media
+- [x] Error messages display correctly for missing API key
