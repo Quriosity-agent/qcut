@@ -50,6 +50,13 @@ const AICP_KEY_MAP: Record<string, keyof ApiKeys> = {
   OPENROUTER_API_KEY: "openRouterApiKey",
 };
 
+// Reverse: QCut ApiKeys field → AICP env var name (for syncing to credentials.env)
+const AICP_REVERSE_MAP: Partial<Record<keyof ApiKeys, string>> = {
+  falApiKey: "FAL_KEY",
+  geminiApiKey: "GEMINI_API_KEY",
+  openRouterApiKey: "OPENROUTER_API_KEY",
+};
+
 const EMPTY_API_KEYS: ApiKeys = {
   falApiKey: "",
   freesoundApiKey: "",
@@ -164,6 +171,53 @@ function loadAicpCredentials(): Partial<ApiKeys> {
   } catch (error) {
     console.warn("[API Keys] Failed to read AICP credentials:", error);
     return {};
+  }
+}
+
+/**
+ * Sync AICP-compatible keys to the CLI credential store so external tools
+ * (Claude Code, aicp CLI) can read them without Electron's safeStorage.
+ * Preserves any existing keys in the file that QCut doesn't manage.
+ */
+function syncToAicpCredentials(keys: Partial<ApiKeys>): void {
+  try {
+    const credPath = getAicpCredentialsPath();
+
+    // Read existing lines to preserve keys not managed by QCut
+    const managedVars = new Set(Object.values(AICP_REVERSE_MAP));
+    const preserved: string[] = [];
+    if (fs.existsSync(credPath)) {
+      for (const line of fs.readFileSync(credPath, "utf-8").split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const eqIdx = trimmed.indexOf("=");
+        const varName = eqIdx > 0 ? trimmed.slice(0, eqIdx) : "";
+        if (!managedVars.has(varName)) {
+          preserved.push(line);
+        }
+      }
+    }
+
+    // Build new lines for AICP-mapped keys
+    const newLines: string[] = [];
+    for (const [field, envName] of Object.entries(AICP_REVERSE_MAP)) {
+      const value = keys[field as keyof ApiKeys];
+      if (value) {
+        newLines.push(`${envName}=${value}`);
+      }
+    }
+
+    const content = [...preserved, ...newLines].join("\n") + "\n";
+
+    const dir = path.dirname(credPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fs.writeFileSync(credPath, content, { mode: 0o600 });
+    console.log("[API Keys] Synced to AICP credential store:", credPath);
+  } catch (error) {
+    console.warn("[API Keys] Failed to sync to AICP credentials:", error);
   }
 }
 
@@ -302,6 +356,9 @@ export function setupApiKeyIPC(): void {
             mode: 0o600,
           }
         );
+
+        // Sync plaintext keys to AICP credential store so CLI tools can read them
+        syncToAicpCredentials({ falApiKey, geminiApiKey, openRouterApiKey });
 
         return true;
       } catch (error: any) {
