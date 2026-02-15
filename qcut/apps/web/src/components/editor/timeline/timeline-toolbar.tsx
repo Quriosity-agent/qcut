@@ -289,6 +289,7 @@ export function TimelineToolbar({
               <Button
                 variant="text"
                 size="icon"
+                type="button"
                 onClick={handleAddMarkdown}
                 data-testid="add-markdown-button"
               >
