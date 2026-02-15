@@ -266,6 +266,19 @@ export async function getDecryptedApiKeys(): Promise<ApiKeys> {
 export function setupApiKeyIPC(): void {
   const apiKeysFilePath = getApiKeysFilePath();
 
+  // Auto-sync existing encrypted keys to AICP credential store on startup
+  // so CLI tools can access keys saved before syncToAicpCredentials was added.
+  loadElectronStoredKeys()
+    .then((keys) => {
+      const hasKeys = keys.falApiKey || keys.geminiApiKey || keys.openRouterApiKey;
+      if (hasKeys) {
+        syncToAicpCredentials(keys);
+      }
+    })
+    .catch((error) => {
+      console.warn("[API Keys] Startup sync failed:", error);
+    });
+
   /**
    * Get stored API keys (decrypted)
    */
