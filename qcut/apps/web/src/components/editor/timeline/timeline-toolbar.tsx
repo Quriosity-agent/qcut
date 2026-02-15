@@ -44,6 +44,7 @@ import {
   TEST_MEDIA_ID,
 } from "@/constants/timeline-constants";
 import { toast } from "sonner";
+import { debugLog, debugError } from "@/lib/debug-config";
 
 export interface TimelineToolbarProps {
   zoomLevel: number;
@@ -231,7 +232,7 @@ export function TimelineToolbar({
         currentTime
       );
     } catch (error) {
-      console.error("Failed to add markdown element:", error);
+      debugError("Failed to add markdown element:", error);
       toast.error("Failed to add markdown");
     }
   };
@@ -255,7 +256,7 @@ export function TimelineToolbar({
     try {
       await toggleBookmark(currentTime);
     } catch (error) {
-      console.error("Failed to toggle bookmark:", error);
+      debugError("Failed to toggle bookmark:", error);
       toast.error("Failed to update bookmark");
     }
   };
@@ -268,7 +269,7 @@ export function TimelineToolbar({
         action: {
           label: "Learn More",
           onClick: () => {
-            console.log("Scene management documentation");
+            debugLog("Scene management documentation");
           },
         },
       }
