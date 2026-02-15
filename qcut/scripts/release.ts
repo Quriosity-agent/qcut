@@ -362,15 +362,17 @@ function buildWebApp(): void {
 }
 
 function getDistCommand(): string {
+  const stageCmd =
+    "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries";
   switch (process.platform) {
     case "darwin":
-      return "bun run dist:mac";
+      return `${stageCmd} && electron-builder --mac --publish never`;
     case "linux":
-      return "bun run dist:linux";
+      return `${stageCmd} && electron-builder --linux --publish never`;
     case "win32":
       return "bun run dist:win:release";
     default:
-      return "bun run dist:mac";
+      return `${stageCmd} && electron-builder --mac --publish never`;
   }
 }
 
@@ -388,12 +390,34 @@ function getInstallerPattern(): RegExp {
 }
 
 function buildElectronApp(): void {
+  // Compile afterPack hook (needed for all platforms)
+  try {
+    execSync("bun run compile-afterpack", { stdio: "inherit" });
+  } catch {
+    process.stdout.write("⚠️  afterPack compilation skipped (non-fatal)\n");
+  }
+
   const cmd = getDistCommand();
   try {
     execSync(cmd, { stdio: "inherit" });
     process.stdout.write("✅ Electron application built successfully\n");
   } catch (error: any) {
     throw new Error("Failed to build Electron application");
+  }
+
+  // Run post-build verification (non-fatal)
+  try {
+    execSync("bun run verify:packaged-ffmpeg", { stdio: "inherit" });
+  } catch {
+    process.stdout.write("⚠️  FFmpeg verification failed (non-fatal)\n");
+  }
+  try {
+    execSync("bun run verify:packaged-aicp", {
+      stdio: "inherit",
+      timeout: 15000,
+    });
+  } catch {
+    process.stdout.write("⚠️  AICP verification skipped (non-fatal)\n");
   }
 }
 
