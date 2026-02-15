@@ -106,7 +106,7 @@ export function Footer() {
                 </li>
                 <li>
                   <a
-                    href="https://github.com/donghaozhang/qcut/blob/main/README.md"
+                    href="https://quriosity.com.au/"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"
