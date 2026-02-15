@@ -97,14 +97,6 @@ export function Footer() {
               <h3 className="font-semibold text-foreground mb-4">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link
-                    to="/contributors"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Contributors
-                  </Link>
-                </li>
-                <li>
                   <a
                     href="https://quriosity.com.au/"
                     className="text-muted-foreground hover:text-foreground transition-colors"
