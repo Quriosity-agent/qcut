@@ -4,8 +4,8 @@
 
 This document provides a comprehensive overview of the QCut source code structure, including folder organization and line counts for all TypeScript/JavaScript source files.
 
-**Generated:** 2025-12-16
-**Total Source Files:** 568+ files in src/ + 11 in electron/
+**Generated:** 2026-02-16
+**Total Source Files:** 600+ files in src/ + 34+ in electron/
 **Main Source Directory:** `apps/web/src/`
 
 ## Project Architecture
@@ -18,7 +18,7 @@ QCut is a desktop video editor built with:
 - **Video Processing:** FFmpeg WebAssembly
 - **AI Integration:** FAL.ai (40+ models)
 - **Styling:** Tailwind CSS
-- **Testing:** Vitest 3.2.4 with 200+ tests
+- **Testing:** Vitest 3.2.4 with 145 test files
 
 ## Source Code Structure
 
@@ -35,7 +35,7 @@ apps/web/
 
 ### Main Source Directory: `apps/web/src/`
 
-#### 📁 **Routes** (`src/routes/`) - 15 files
+#### 📁 **Routes** (`src/routes/`) - 16 files
 Main application routing using TanStack Router:
 - `__root.tsx` - Root layout component
 - `index.tsx` - Home page route
@@ -45,6 +45,7 @@ Main application routing using TanStack Router:
 - `projects.lazy.tsx` - Lazy-loaded projects components
 - `blog.tsx` + `blog.$slug.tsx` - Blog functionality
 - `login.tsx` + `signup.tsx` - Authentication routes
+- `changelog.tsx` - Version changelog
 - `contributors.tsx` - Contributors page
 - `privacy.tsx` + `terms.tsx` - Legal pages
 - `roadmap.tsx` - Product roadmap
@@ -490,23 +491,55 @@ Core application bootstrap files:
 
 ### Electron Integration
 
-#### Main Process (`electron/`) - 11 TypeScript files
+#### Main Process (`electron/`) - 34+ TypeScript files
 All Electron code is 100% TypeScript:
+
+**Core:**
 - `main.ts` - Electron main process and window management
+- `main-ipc.ts` - IPC channel registration
 - `preload.ts` - Preload script for secure IPC communication
+
+**Media & Processing Handlers:**
 - `ffmpeg-handler.ts` - FFmpeg CLI integration and processing (37KB)
-- `temp-manager.ts` - Temporary file management
+- `ffmpeg-concat-handler.ts` - Video concatenation
+- `ffmpeg-scene-detect-handler.ts` - Scene detection
+- `ffmpeg-subtitle-handler.ts` - Subtitle processing
+- `ffmpeg-waveform-handler.ts` - Audio waveform generation
 - `sound-handler.ts` - Sound effects handling
-- `theme-handler.ts` - Theme management
-- `api-key-handler.ts` - Secure API key management
-- `ai-video-save-handler.ts` - AI video save functionality
-- `gemini-transcribe-handler.ts` - Gemini transcription
 - `audio-temp-handler.ts` - Audio temporary files
 - `video-temp-handler.ts` - Video temporary files
+- `ai-video-save-handler.ts` - AI video save functionality
+- `temp-manager.ts` - Temporary file management
+
+**AI & Transcription:**
+- `gemini-transcribe-handler.ts` - Gemini transcription
+- `ai-pipeline-handler.ts` - AI content pipeline
+- `ai-pipeline-ipc.ts` - AI pipeline IPC channels
+- `ai-pipeline-output.ts` - AI pipeline output handling
+
+**Configuration & Security:**
+- `api-key-handler.ts` - Secure API key management
+- `theme-handler.ts` - Theme management
+
+**Terminal & Skills:**
+- `pty-handler.ts` - PTY terminal session management
+- `skills-handler.ts` - AI skills file operations
+- `skills-sync-handler.ts` - Skills synchronization
+
+**Claude Integration (`electron/claude/`):**
+- `index.ts` - Claude integration barrel export
+- `claude-http-server.ts` - Claude HTTP API server
+- `claude-diagnostics-handler.ts` - Diagnostics
+- `claude-export-handler.ts` - Export operations
+- `claude-media-handler.ts` - Media operations
+- `claude-project-handler.ts` - Project operations
+- `claude-timeline-handler.ts` - Timeline operations
 
 #### Subdirectories:
 - `config/` - Electron configuration
 - `ffmpeg/` - FFmpeg utilities
+- `claude/` - Claude Code integration handlers
+- `claude/utils/` - Claude utility functions
 
 #### Resources (`electron/resources/`)
 - `ffmpeg.exe`, `ffplay.exe`, `ffprobe.exe` - FFmpeg binaries
@@ -546,7 +579,7 @@ The codebase contains several substantial files that form the core of the applic
 - Robust storage abstraction supporting multiple backends
 - Extensive timeline management with modular operations
 - Enhanced media panel with video editing capabilities
-- 100% TypeScript Electron integration with 38 IPC handlers
+- 100% TypeScript Electron integration with 50+ IPC handlers
 
 ## Code Organization Principles
 
@@ -610,7 +643,7 @@ The codebase contains several substantial files that form the core of the applic
 ## Testing Strategy
 
 **Framework**: Vitest 3.2.4 with JSDOM environment
-**Status**: All 200+ tests passing successfully
+**Status**: 145 test files passing successfully
 
 ### Running Tests
 ```bash

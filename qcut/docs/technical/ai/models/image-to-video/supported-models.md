@@ -4,13 +4,59 @@ This document lists all the AI models supported for image-to-video generation in
 
 ## Overview
 
-The Image-to-Video panel supports **19 different AI models** from various providers including OpenAI, ByteDance, Google, Minimax, and fal.ai. These models animate static images into dynamic videos.
+The Image-to-Video panel supports **22 different AI models** from various providers including OpenAI, ByteDance, Google, Minimax, Vidu, and fal.ai. These models animate static images into dynamic videos.
 
 ---
 
 ## Supported Models
 
-### 1. Kling v2.6 Pro I2V
+### 1. Kling v3 Pro I2V
+- **Provider:** ByteDance
+- **Price:** $0.336
+- **Resolution:** 1080p
+- **Max Duration:** 12 seconds
+- **Category:** Image-to-Video
+- **Description:** Professional image-to-video with cinematic visuals, fluid motion, native audio, and custom element support
+- **Features:**
+  - Cinematic quality motion with fluid animation
+  - Native audio generation
+  - Custom element support
+  - Negative prompt support
+- **Supported Durations:** 5s, 10s, 12s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
+- **Parameters:**
+  - Duration: 5s, 10s, 12s (default: 5s)
+  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
+  - CFG Scale: 0.5 (default)
+  - Generate Audio: true (default)
+  - Negative Prompt: "blur, distort, and low quality" (default)
+
+---
+
+### 2. Kling v3 Standard I2V
+- **Provider:** ByteDance
+- **Price:** $0.252
+- **Resolution:** 1080p
+- **Max Duration:** 12 seconds
+- **Category:** Image-to-Video
+- **Description:** Quality image-to-video with cinematic motion and native audio, cost-effective option
+- **Features:**
+  - Cinematic quality motion
+  - Native audio generation
+  - Cost-effective compared to Pro
+  - Negative prompt support
+- **Supported Durations:** 5s, 10s, 12s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
+- **Parameters:**
+  - Duration: 5s, 10s, 12s (default: 5s)
+  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
+  - CFG Scale: 0.5 (default)
+  - Generate Audio: true (default)
+  - Negative Prompt: "blur, distort, and low quality" (default)
+
+---
+
+### 3. Kling v2.6 Pro I2V
 - **Provider:** ByteDance
 - **Price:** $0.70
 - **Resolution:** 1080p
@@ -421,15 +467,37 @@ The Image-to-Video panel supports **19 different AI models** from various provid
 
 ---
 
+### 22. Vidu Q3 Image-to-Video
+- **Provider:** Vidu
+- **Price:** $0.07-0.154/s
+- **Resolution:** 360p / 540p / 720p / 1080p
+- **Max Duration:** 16 seconds
+- **Category:** Image-to-Video
+- **Description:** Animate images with audio generation and multi-resolution support
+- **Features:**
+  - Multi-resolution support (360p to 1080p)
+  - Up to 16-second duration
+  - Audio generation
+  - Per-second pricing
+- **Supported Resolutions:** 360p, 540p, 720p, 1080p
+- **Supported Durations:** 1s-16s (all increments)
+- **Parameters:**
+  - Duration: 1-16s (default: 5s)
+  - Resolution: 360p, 540p, 720p, 1080p (default: 720p)
+  - Generate Audio: true (default)
+
+---
+
 ## Comparison Tables
 
 ### By Maximum Duration
 | Model | Max Duration |
 |-------|-------------|
 | LTX Video 2.0 Fast I2V | 20s |
+| Vidu Q3 I2V | 16s |
 | WAN v2.6 I2V | 15s |
 | Sora 2 Image-to-Video (both) | 12s |
-| Seedance v1 Pro (both) | 12s |
+| Seedance v1 Pro (both), Kling v3 (both) | 12s |
 | Most Others | 10s |
 | Veo 3.1 (all variants), Vidu Q2 | 8s |
 
@@ -464,11 +532,11 @@ The Image-to-Video panel supports **19 different AI models** from various provid
 ### By Provider
 - **Google (Veo 3.1):** 4 models (I2V, Frame-to-Video, each with Fast variant)
 - **OpenAI (Sora 2):** 2 models (Standard, Pro)
-- **ByteDance:** 6 models (Kling, Seedance)
+- **ByteDance:** 8 models (Kling v2.5/v2.6/v3, Seedance)
 - **Minimax (Hailuo 2.3):** 3 models (Standard, Fast Pro, Pro)
 - **Lightricks (LTX Video 2.0):** 2 models (Standard, Fast)
 - **fal.ai (WAN):** 2 models (v2.5, v2.6)
-- **Vidu:** 1 model (Q2 Turbo)
+- **Vidu:** 2 models (Q2 Turbo, Q3)
 
 ---
 
@@ -530,25 +598,28 @@ qcut/apps/web/src/components/editor/media-panel/views/ai/constants/image2video-m
 ## Model Selection Priority Order
 
 Models are displayed in the UI in this order (premium to cost-effective):
-1. Kling v2.6 Pro I2V
-2. Sora 2 Image-to-Video Pro
-3. Veo 3.1 Image-to-Video
-4. WAN v2.6 I2V
-5. LTX Video 2.0 Fast I2V
-6. LTX Video 2.0 I2V
-7. Hailuo 2.3 Pro
-8. Seedance v1 Pro I2V
-9. Veo 3.1 Fast Image-to-Video
-10. Kling v2.5 Turbo Pro I2V
-11. Seedance v1 Pro Fast I2V
-12. Hailuo 2.3 Fast Pro
-13. Sora 2 Image-to-Video
-14. Hailuo 2.3 Standard
-15. WAN v2.5 Preview I2V
-16. Vidu Q2 Turbo I2V
-17. Veo 3.1 Frame-to-Video
-18. Veo 3.1 Fast Frame-to-Video
-19. Kling O1 I2V
+1. Kling v3 Pro I2V
+2. Kling v3 Standard I2V
+3. Kling v2.6 Pro I2V
+4. Sora 2 Image-to-Video Pro
+5. Veo 3.1 Image-to-Video
+6. WAN v2.6 I2V
+7. LTX Video 2.0 Fast I2V
+8. LTX Video 2.0 I2V
+9. Hailuo 2.3 Pro
+10. Seedance v1 Pro I2V
+11. Veo 3.1 Fast Image-to-Video
+12. Kling v2.5 Turbo Pro I2V
+13. Seedance v1 Pro Fast I2V
+14. Hailuo 2.3 Fast Pro
+15. Sora 2 Image-to-Video
+16. Hailuo 2.3 Standard
+17. WAN v2.5 Preview I2V
+18. Vidu Q2 Turbo I2V
+19. Vidu Q3 Image-to-Video
+20. Veo 3.1 Frame-to-Video
+21. Veo 3.1 Fast Frame-to-Video
+22. Kling O1 I2V
 
 ---
 

@@ -1,7 +1,7 @@
 # QCut Build Commands Guide
 
-**Last Updated:** 2025-12-16
-**Current Version:** 0.3.51
+**Last Updated:** 2026-02-16
+**Current Version:** 2026.02.16.1 (date-based versioning)
 
 ## Prerequisites
 ```bash
