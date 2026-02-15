@@ -20,15 +20,8 @@ import { EditableTimecode } from "@/components/ui/editable-timecode";
 import { BackgroundSettings } from "../background-settings";
 // Import sticker overlay for fullscreen mode
 import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
-import { TimelineElement, TimelineTrack } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
-
-// 🔴 CRITICAL - ADD THIS INTERFACE (used by FullscreenPreview)
-interface ActiveElement {
-  element: TimelineElement;
-  track: TimelineTrack;
-  mediaItem: MediaItem | null;
-}
+import type { TProject } from "@/types/project";
+import type { ActiveElement } from "./preview-panel/types";
 
 // Component 1: FullscreenToolbar (no dependencies)
 export function FullscreenToolbar({
@@ -227,7 +220,7 @@ export function FullscreenPreview({
   getTotalDuration,
 }: {
   previewDimensions: { width: number; height: number };
-  activeProject: any;
+  activeProject: TProject | null;
   renderBlurBackground: () => React.ReactNode;
   activeElements: ActiveElement[];
   renderElement: (elementData: ActiveElement, index: number) => React.ReactNode;
