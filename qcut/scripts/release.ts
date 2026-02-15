@@ -19,6 +19,7 @@
 
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
@@ -361,54 +362,99 @@ function buildWebApp(): void {
   }
 }
 
+function getDistCommand(): string {
+  const stageCmd =
+    "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries";
+  switch (process.platform) {
+    case "darwin":
+      return `${stageCmd} && electron-builder --mac --publish never`;
+    case "linux":
+      return `${stageCmd} && electron-builder --linux --publish never`;
+    case "win32":
+      return "bun run dist:win:release";
+    default:
+      return `${stageCmd} && electron-builder --mac --publish never`;
+  }
+}
+
+function getInstallerPattern(): RegExp {
+  switch (process.platform) {
+    case "darwin":
+      return /QCut.*\.(dmg|zip)$/;
+    case "linux":
+      return /QCut.*\.(AppImage|deb)$/;
+    case "win32":
+      return /QCut.*Setup.*\.exe$/;
+    default:
+      return /QCut.*\.(dmg|zip)$/;
+  }
+}
+
 function buildElectronApp(): void {
+  // Compile afterPack hook (needed for all platforms)
   try {
-    execSync("bun run dist:win:release", { stdio: "inherit" });
+    execSync("bun run compile-afterpack", { stdio: "inherit" });
+  } catch {
+    process.stdout.write("⚠️  afterPack compilation skipped (non-fatal)\n");
+  }
+
+  const cmd = getDistCommand();
+  try {
+    execSync(cmd, { stdio: "inherit" });
     process.stdout.write("✅ Electron application built successfully\n");
   } catch (error: any) {
     throw new Error("Failed to build Electron application");
   }
+
+  // Run post-build verification (non-fatal)
+  try {
+    execSync("bun run verify:packaged-ffmpeg", { stdio: "inherit" });
+  } catch {
+    process.stdout.write("⚠️  FFmpeg verification failed (non-fatal)\n");
+  }
+  try {
+    execSync("bun run verify:packaged-aicp", {
+      stdio: "inherit",
+      timeout: 15000,
+    });
+  } catch {
+    process.stdout.write("⚠️  AICP verification skipped (non-fatal)\n");
+  }
+}
+
+function computeChecksum(filePath: string): string {
+  const fileBuffer = fs.readFileSync(filePath);
+  return crypto.createHash("sha256").update(fileBuffer).digest("hex").toUpperCase();
 }
 
 function generateChecksums(): void {
   const buildDir: string = resolveBuildOutputDir();
-  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
+  const installerPattern: RegExp = getInstallerPattern();
 
   try {
     const files: string[] = fs.readdirSync(buildDir);
-    const installerFile: string | undefined = files.find((file: string) =>
+    const installerFiles: string[] = files.filter((file: string) =>
       installerPattern.test(file)
     );
 
-    if (!installerFile) {
+    if (installerFiles.length === 0) {
       throw new Error("Installer file not found");
     }
 
-    const installerPath: string = path.join(buildDir, installerFile);
+    let checksumContent = `SHA256 Checksums for QCut Release\n=================================\n\n`;
 
-    // Generate SHA256 checksum using certutil (works on all Windows versions)
-    const certutilOutput: string = execSync(
-      `certutil -hashfile "${installerPath}" SHA256`,
-      { encoding: "utf8" }
-    );
-    // certutil output: line 0 = header, line 1 = hash, line 2 = status
-    const checksum: string = certutilOutput.split("\n")[1].trim().toUpperCase();
+    for (const installerFile of installerFiles) {
+      const installerPath: string = path.join(buildDir, installerFile);
+      const checksum = computeChecksum(installerPath);
+      checksumContent += `${installerFile}\nSHA256: ${checksum}\n\n`;
+    }
 
-    // Write checksums file
-    const checksumContent: string = `SHA256 Checksums for QCut Release
-=================================
-
-${installerFile}
-SHA256: ${checksum}
-
-Verification:
-1. Download the installer
-2. Run: certutil -hashfile "${installerFile}" SHA256
-3. Compare with the hash above
-`;
+    checksumContent += `Verification:\n1. Download the installer\n2. Verify checksum with your platform's tool\n3. Compare with the hash above\n`;
 
     fs.writeFileSync(path.join(buildDir, "SHA256SUMS.txt"), checksumContent);
-    process.stdout.write(`✅ Checksums generated for ${installerFile}\n`);
+    process.stdout.write(
+      `✅ Checksums generated for ${installerFiles.length} file(s)\n`
+    );
   } catch (error: any) {
     throw new Error("Failed to generate checksums: " + error.message);
   }
@@ -433,7 +479,7 @@ function createGitTag(version: string): void {
 
 function generateReleaseNotes(version: string): void {
   const buildDir: string = resolveBuildOutputDir();
-  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
+  const installerPattern: RegExp = getInstallerPattern();
 
   try {
     const files: string[] = fs.readdirSync(buildDir);

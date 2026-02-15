@@ -225,6 +225,25 @@
   }
 }
 
+/* Timeline scrollbar styling (native scroll replacement for Radix ScrollArea) */
+.timeline-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
 /* xterm.js terminal styles */
 .xterm {
   height: 100%;

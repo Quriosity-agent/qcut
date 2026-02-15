@@ -238,11 +238,13 @@ export function TimelineToolbar({
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(Math.min(4, zoomLevel + 0.25));
+    const next = TIMELINE_CONSTANTS.ZOOM_LEVELS.find((v) => v > zoomLevel + 0.001);
+    setZoomLevel(next ?? 4);
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(Math.max(0.25, zoomLevel - 0.25));
+    const prev = [...TIMELINE_CONSTANTS.ZOOM_LEVELS].reverse().find((v) => v < zoomLevel - 0.001);
+    setZoomLevel(prev ?? 0.05);
   };
 
   const handleZoomSliderChange = (values: number[]) => {
@@ -572,9 +574,9 @@ export function TimelineToolbar({
             className="w-24"
             value={[zoomLevel]}
             onValueChange={handleZoomSliderChange}
-            min={0.25}
+            min={0.05}
             max={4}
-            step={0.25}
+            step={0.05}
             data-zoom-level={zoomLevel}
           />
           <Button

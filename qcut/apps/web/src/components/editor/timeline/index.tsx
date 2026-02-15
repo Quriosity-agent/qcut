@@ -267,18 +267,14 @@ export function Timeline() {
 
       if (isRulerClick) {
         // Calculate based on ruler position
-        const rulerContent = rulerScrollRef.current?.querySelector(
-          "[data-radix-scroll-area-viewport]"
-        ) as HTMLElement;
+        const rulerContent = rulerScrollRef.current;
         if (!rulerContent) return;
         const rect = rulerContent.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
         scrollLeft = rulerContent.scrollLeft;
       } else {
         // Calculate based on tracks content position
-        const tracksContent = tracksScrollRef.current?.querySelector(
-          "[data-radix-scroll-area-viewport]"
-        ) as HTMLElement;
+        const tracksContent = tracksScrollRef.current;
         if (!tracksContent) return;
         const rect = tracksContent.getBoundingClientRect();
         mouseX = e.clientX - rect.left;
@@ -321,13 +317,12 @@ export function Timeline() {
   // Old marquee system removed - using new SelectionBox component instead
 
   // --- Scroll synchronization effect ---
+  // Re-runs when mediaStoreLoading changes because the component renders a
+  // loading spinner (early return) until the store is ready, so refs are null
+  // on the first effect run. Without this dependency the listeners never attach.
   useEffect(() => {
-    const rulerViewport = rulerScrollRef.current?.querySelector(
-      "[data-radix-scroll-area-viewport]"
-    ) as HTMLElement;
-    const tracksViewport = tracksScrollRef.current?.querySelector(
-      "[data-radix-scroll-area-viewport]"
-    ) as HTMLElement;
+    const rulerViewport = rulerScrollRef.current;
+    const tracksViewport = tracksScrollRef.current;
     const trackLabelsViewport = trackLabelsScrollRef.current?.querySelector(
       "[data-radix-scroll-area-viewport]"
     ) as HTMLElement;
@@ -397,7 +392,7 @@ export function Timeline() {
       rulerViewport.removeEventListener("scroll", handleRulerScroll);
       tracksViewport.removeEventListener("scroll", handleTracksScroll);
     };
-  }, []);
+  }, [mediaStoreLoading, tracks.length]);
 
   // Handle media store loading/error states
   if (mediaStoreError) {
@@ -474,7 +469,7 @@ export function Timeline() {
             onWheel={(e) => {
               // Check if this is horizontal scrolling - if so, don't handle it here
               if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                return; // Let ScrollArea handle horizontal scrolling
+                return; // Let scroll container handle horizontal scrolling
               }
               handleWheel(e);
             }}
@@ -482,7 +477,7 @@ export function Timeline() {
             onClick={handleTimelineContentClick}
             data-ruler-area
           >
-            <ScrollArea className="w-full" ref={rulerScrollRef}>
+            <div ref={rulerScrollRef} className="w-full overflow-x-auto overflow-y-hidden scrollbar-hidden">
               <div
                 ref={rulerRef}
                 className="relative h-10 select-none cursor-default"
@@ -664,7 +659,7 @@ export function Timeline() {
                     );
                   })}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </div>
 
@@ -717,7 +712,7 @@ export function Timeline() {
             onWheel={(e) => {
               // Check if this is horizontal scrolling - if so, don't handle it here
               if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                return; // Let ScrollArea handle horizontal scrolling
+                return; // Let scroll container handle horizontal scrolling
               }
               handleWheel(e);
             }}
@@ -734,11 +729,9 @@ export function Timeline() {
               containerRef={tracksContainerRef}
               isActive={selectionBox?.isActive || false}
             />
-            <ScrollArea
-              className="w-full h-full"
+            <div
+              className="w-full h-full overflow-x-auto overflow-y-auto timeline-scroll"
               ref={tracksScrollRef}
-              type="scroll"
-              showHorizontalScrollbar
             >
               <div
                 className="relative flex-1"
@@ -851,7 +844,7 @@ export function Timeline() {
                   </>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         </div>
       </div>
