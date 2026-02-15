@@ -122,7 +122,7 @@ aicp generate-image \
 ### Generate Video
 
 ```bash
-aicp create-video --text "A serene mountain lake at sunset"
+aicp create-video --text "A serene mountain lake at sunset" --model wan_2_6
 ```
 
 ### Generate Avatar (Lipsync)
