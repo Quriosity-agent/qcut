@@ -114,33 +114,49 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
     }
 
     // Step 5: Verify scroll sync between ruler and tracks
+    await page.evaluate(() => {
+      const tc = document.querySelector(".timeline-scroll");
+      const rc = document.querySelector(".scrollbar-hidden");
+      if (tc) tc.scrollLeft = 0;
+      if (rc) rc.scrollLeft = 0;
+    });
+    await page.waitForTimeout(100);
+
+    // Move mouse to tracks area and scroll right with wheel
+    const syncTracksLocator = page.locator(".timeline-scroll").first();
+    const syncBox = await syncTracksLocator.boundingBox();
+    if (syncBox) {
+      await page.mouse.move(
+        syncBox.x + syncBox.width / 2,
+        syncBox.y + syncBox.height / 2
+      );
+      for (let i = 0; i < 10; i++) {
+        await page.mouse.wheel(300, 0);
+      }
+      await page.waitForTimeout(300);
+    }
+
     const syncInfo = await page.evaluate(() => {
-      const tracksContainer = document.querySelector(".timeline-scroll");
-      const rulerContainer = document.querySelector(".scrollbar-hidden");
-      if (!tracksContainer || !rulerContainer) return null;
+      const tc = document.querySelector(".timeline-scroll");
+      const rc = document.querySelector(".scrollbar-hidden");
+      if (!tc || !rc) return null;
 
-      // Scroll tracks to a specific position
-      const testPosition = 10000; // 200 seconds at 50px/s
-      tracksContainer.scrollLeft = testPosition;
-
-      // Trigger scroll event so sync handler fires
-      tracksContainer.dispatchEvent(new Event("scroll"));
-
-      return new Promise<any>((resolve) => {
-        // Wait for sync
-        setTimeout(() => {
-          resolve({
-            tracksScrollLeft: tracksContainer.scrollLeft,
-            rulerScrollLeft: rulerContainer.scrollLeft,
-            inSync:
-              Math.abs(tracksContainer.scrollLeft - rulerContainer.scrollLeft) <
-              5,
-          });
-        }, 100);
-      });
+      return {
+        tracksScrollLeft: tc.scrollLeft,
+        rulerScrollLeft: rc.scrollLeft,
+        diff: Math.abs(tc.scrollLeft - rc.scrollLeft),
+        inSync: Math.abs(tc.scrollLeft - rc.scrollLeft) < 5,
+        tracksScrolled: tc.scrollLeft > 0,
+      };
     });
 
     console.log("Scroll sync info:", JSON.stringify(syncInfo, null, 2));
+
+    // Verify tracks scrolled and ruler is in sync
+    if (syncInfo) {
+      expect(syncInfo.tracksScrolled).toBe(true);
+      expect(syncInfo.inSync).toBe(true);
+    }
 
     await captureTestStep(
       page,
@@ -149,23 +165,29 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       "scroll-sync-verified"
     );
 
-    // Step 6: Test wheel-event horizontal scrolling (simulates trackpad/shift+scroll)
+    // Step 6: Test wheel-event horizontal scrolling (simulates trackpad gesture)
     // First, reset scroll position to 0
     await page.evaluate(() => {
       const tc = document.querySelector(".timeline-scroll");
       if (tc) tc.scrollLeft = 0;
     });
+    await page.waitForTimeout(50);
 
-    // Simulate horizontal wheel events on the tracks container
+    // Move mouse to center of tracks container, then wheel horizontally
     const tracksLocator = page.locator(".timeline-scroll").first();
     const tracksBox = await tracksLocator.boundingBox();
 
     if (tracksBox) {
-      // Dispatch horizontal wheel events (shift+scroll pattern)
+      // Position mouse over the tracks scroll area
+      await page.mouse.move(
+        tracksBox.x + tracksBox.width / 2,
+        tracksBox.y + tracksBox.height / 2
+      );
+      // Dispatch horizontal wheel events (deltaX > 0, like trackpad swipe)
       for (let i = 0; i < 20; i++) {
-        await page.mouse.wheel(200, 0); // deltaX=200, deltaY=0
+        await page.mouse.wheel(200, 0);
       }
-      await page.waitForTimeout(200); // Let scroll settle
+      await page.waitForTimeout(300); // Let scroll settle
     }
 
     const wheelScrollResult = await page.evaluate(() => {
@@ -182,6 +204,12 @@ test.describe("Timeline Duration Limit - 2 Hour Support", () => {
       "Wheel scroll result:",
       JSON.stringify(wheelScrollResult, null, 2)
     );
+
+    // Verify wheel scroll moved the timeline
+    if (wheelScrollResult) {
+      expect(wheelScrollResult.scrolledByWheel).toBe(true);
+      expect(wheelScrollResult.scrollLeft).toBeGreaterThan(0);
+    }
 
     await captureTestStep(
       page,
