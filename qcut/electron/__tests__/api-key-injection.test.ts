@@ -60,44 +60,46 @@ const mocks = vi.hoisted(() => {
   };
 
   // Simulated spawn that records the env and emits close after a tick.
-  const mockSpawn = vi.fn((cmd: string, args: string[], options: { env?: NodeJS.ProcessEnv }) => {
-    state.spawnCalls.push({ cmd, args, env: { ...options?.env } });
+  const mockSpawn = vi.fn(
+    (cmd: string, args: string[], options: { env?: NodeJS.ProcessEnv }) => {
+      state.spawnCalls.push({ cmd, args, env: { ...options?.env } });
 
-    const stdoutListeners = new Map<string, (data: Buffer) => void>();
-    const stderrListeners = new Map<string, (data: Buffer) => void>();
-    const procListeners = new Map<string, (...a: unknown[]) => void>();
+      const stdoutListeners = new Map<string, (data: Buffer) => void>();
+      const stderrListeners = new Map<string, (data: Buffer) => void>();
+      const procListeners = new Map<string, (...a: unknown[]) => void>();
 
-    const proc = {
-      stdout: {
-        on: vi.fn((event: string, cb: (data: Buffer) => void) => {
-          stdoutListeners.set(event, cb);
+      const proc = {
+        stdout: {
+          on: vi.fn((event: string, cb: (data: Buffer) => void) => {
+            stdoutListeners.set(event, cb);
+          }),
+        },
+        stderr: {
+          on: vi.fn((event: string, cb: (data: Buffer) => void) => {
+            stderrListeners.set(event, cb);
+          }),
+        },
+        on: vi.fn((event: string, cb: (...a: unknown[]) => void) => {
+          procListeners.set(event, cb);
         }),
-      },
-      stderr: {
-        on: vi.fn((event: string, cb: (data: Buffer) => void) => {
-          stderrListeners.set(event, cb);
-        }),
-      },
-      on: vi.fn((event: string, cb: (...a: unknown[]) => void) => {
-        procListeners.set(event, cb);
-      }),
-      kill: vi.fn(),
-    } as unknown as ChildProcess;
+        kill: vi.fn(),
+      } as unknown as ChildProcess;
 
-    // Emit stdout/stderr then close on next tick so the promise resolves.
-    setTimeout(() => {
-      const behavior = state.spawnBehavior;
-      if (behavior.stdout) {
-        stdoutListeners.get("data")?.(Buffer.from(behavior.stdout));
-      }
-      if (behavior.stderr) {
-        stderrListeners.get("data")?.(Buffer.from(behavior.stderr));
-      }
-      procListeners.get("close")?.(behavior.exitCode);
-    }, 5);
+      // Emit stdout/stderr then close on next tick so the promise resolves.
+      setTimeout(() => {
+        const behavior = state.spawnBehavior;
+        if (behavior.stdout) {
+          stdoutListeners.get("data")?.(Buffer.from(behavior.stdout));
+        }
+        if (behavior.stderr) {
+          stderrListeners.get("data")?.(Buffer.from(behavior.stderr));
+        }
+        procListeners.get("close")?.(behavior.exitCode);
+      }, 5);
 
-    return proc;
-  });
+      return proc;
+    }
+  );
 
   const mockGetDecryptedApiKeys = vi.fn(async () => state.decryptedKeys);
   const mockImportMediaFile = vi.fn(async () => null);
@@ -257,12 +259,15 @@ describe("API key injection e2e", () => {
 
         setupAIPipelineIPC();
 
-        await getHandler({ channel: "ai-pipeline:generate" })({}, {
-          command,
-          args: { prompt: "a cat" },
-          sessionId: `test-${command}`,
-          autoImport: false,
-        });
+        await getHandler({ channel: "ai-pipeline:generate" })(
+          {},
+          {
+            command,
+            args: { prompt: "a cat" },
+            sessionId: `test-${command}`,
+            autoImport: false,
+          }
+        );
 
         expect(mocks.mockSpawn).toHaveBeenCalledTimes(1);
 
@@ -284,7 +289,9 @@ describe("API key injection e2e", () => {
 
       setupAIPipelineIPC();
 
-      const result = (await getHandler({ channel: "ai-pipeline:list-models" })()) as {
+      const result = (await getHandler({
+        channel: "ai-pipeline:list-models",
+      })()) as {
         success: boolean;
       };
 
@@ -358,12 +365,15 @@ describe("API key injection e2e", () => {
 
     setupAIPipelineIPC();
 
-    await getHandler({ channel: "ai-pipeline:generate" })({}, {
-      command: "generate-image",
-      args: { prompt: "landscape" },
-      sessionId: "multi-key-test",
-      autoImport: false,
-    });
+    await getHandler({ channel: "ai-pipeline:generate" })(
+      {},
+      {
+        command: "generate-image",
+        args: { prompt: "landscape" },
+        sessionId: "multi-key-test",
+        autoImport: false,
+      }
+    );
 
     const call = lastSpawnCall();
     expect(call.env.FAL_KEY).toBe(FAKE_FAL_KEY);
@@ -378,12 +388,15 @@ describe("API key injection e2e", () => {
 
     setupAIPipelineIPC();
 
-    await getHandler({ channel: "ai-pipeline:generate" })({}, {
-      command: "generate-image",
-      args: { prompt: "portrait" },
-      sessionId: "fal-only-test",
-      autoImport: false,
-    });
+    await getHandler({ channel: "ai-pipeline:generate" })(
+      {},
+      {
+        command: "generate-image",
+        args: { prompt: "portrait" },
+        sessionId: "fal-only-test",
+        autoImport: false,
+      }
+    );
 
     const call = lastSpawnCall();
     expect(call.env.FAL_KEY).toBe(FAKE_FAL_ONLY_KEY);
@@ -439,12 +452,15 @@ describe("API key injection e2e", () => {
 
     setupAIPipelineIPC();
 
-    await getHandler({ channel: "ai-pipeline:generate" })({}, {
-      command: "generate-image",
-      args: { prompt: "dog" },
-      sessionId: "inherit-test",
-      autoImport: false,
-    });
+    await getHandler({ channel: "ai-pipeline:generate" })(
+      {},
+      {
+        command: "generate-image",
+        args: { prompt: "dog" },
+        sessionId: "inherit-test",
+        autoImport: false,
+      }
+    );
 
     const call = lastSpawnCall();
 

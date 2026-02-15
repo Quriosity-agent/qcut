@@ -112,7 +112,10 @@ export function MarkdownProperties({
   return (
     <div className="space-y-6 p-5">
       <div className="space-y-2">
-        <Label htmlFor="markdown-content" className="text-xs text-muted-foreground">
+        <Label
+          htmlFor="markdown-content"
+          className="text-xs text-muted-foreground"
+        >
           Markdown content
         </Label>
         <Textarea
