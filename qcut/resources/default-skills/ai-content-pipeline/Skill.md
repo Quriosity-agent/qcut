@@ -119,13 +119,6 @@ aicp generate-image \
   --model MODEL_FROM_LIST_MODELS
 ```
 
-### Edit Image (Image-to-Image)
-
-```bash
-aicp run-chain --config edit.yaml
-# edit.yaml uses type: image_to_image, model: nano_banana_pro_edit (default)
-```
-
 ### Generate Video
 
 ```bash

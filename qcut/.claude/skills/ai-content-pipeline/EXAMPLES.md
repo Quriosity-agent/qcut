@@ -51,7 +51,7 @@ input_image: "path/to/source/image.jpg"
 steps:
   - name: "transform_image"
     type: "image_to_image"
-    model: "nano_banana_pro_edit"
+    model: "nano_banana_pro_edit"  # recommended default
     params:
       prompt: "Transform into a watercolor painting style"
 ```
