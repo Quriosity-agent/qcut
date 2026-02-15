@@ -361,54 +361,82 @@ function buildWebApp(): void {
   }
 }
 
+function getDistCommand(): string {
+  switch (process.platform) {
+    case "darwin":
+      return "bun run dist:mac";
+    case "linux":
+      return "bun run dist:linux";
+    case "win32":
+      return "bun run dist:win:release";
+    default:
+      return "bun run dist:mac";
+  }
+}
+
+function getInstallerPattern(): RegExp {
+  switch (process.platform) {
+    case "darwin":
+      return /QCut.*\.(dmg|zip)$/;
+    case "linux":
+      return /QCut.*\.(AppImage|deb)$/;
+    case "win32":
+      return /QCut.*Setup.*\.exe$/;
+    default:
+      return /QCut.*\.(dmg|zip)$/;
+  }
+}
+
 function buildElectronApp(): void {
+  const cmd = getDistCommand();
   try {
-    execSync("bun run dist:win:release", { stdio: "inherit" });
+    execSync(cmd, { stdio: "inherit" });
     process.stdout.write("✅ Electron application built successfully\n");
   } catch (error: any) {
     throw new Error("Failed to build Electron application");
   }
 }
 
+function computeChecksum(filePath: string): string {
+  if (process.platform === "win32") {
+    const output = execSync(`certutil -hashfile "${filePath}" SHA256`, {
+      encoding: "utf8",
+    });
+    return output.split("\n")[1].trim().toUpperCase();
+  }
+  // macOS / Linux: shasum -a 256
+  const output = execSync(`shasum -a 256 "${filePath}"`, { encoding: "utf8" });
+  return output.split(/\s+/)[0].toUpperCase();
+}
+
 function generateChecksums(): void {
   const buildDir: string = resolveBuildOutputDir();
-  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
+  const installerPattern: RegExp = getInstallerPattern();
 
   try {
     const files: string[] = fs.readdirSync(buildDir);
-    const installerFile: string | undefined = files.find((file: string) =>
+    const installerFiles: string[] = files.filter((file: string) =>
       installerPattern.test(file)
     );
 
-    if (!installerFile) {
+    if (installerFiles.length === 0) {
       throw new Error("Installer file not found");
     }
 
-    const installerPath: string = path.join(buildDir, installerFile);
+    let checksumContent = `SHA256 Checksums for QCut Release\n=================================\n\n`;
 
-    // Generate SHA256 checksum using certutil (works on all Windows versions)
-    const certutilOutput: string = execSync(
-      `certutil -hashfile "${installerPath}" SHA256`,
-      { encoding: "utf8" }
-    );
-    // certutil output: line 0 = header, line 1 = hash, line 2 = status
-    const checksum: string = certutilOutput.split("\n")[1].trim().toUpperCase();
+    for (const installerFile of installerFiles) {
+      const installerPath: string = path.join(buildDir, installerFile);
+      const checksum = computeChecksum(installerPath);
+      checksumContent += `${installerFile}\nSHA256: ${checksum}\n\n`;
+    }
 
-    // Write checksums file
-    const checksumContent: string = `SHA256 Checksums for QCut Release
-=================================
-
-${installerFile}
-SHA256: ${checksum}
-
-Verification:
-1. Download the installer
-2. Run: certutil -hashfile "${installerFile}" SHA256
-3. Compare with the hash above
-`;
+    checksumContent += `Verification:\n1. Download the installer\n2. Verify checksum with your platform's tool\n3. Compare with the hash above\n`;
 
     fs.writeFileSync(path.join(buildDir, "SHA256SUMS.txt"), checksumContent);
-    process.stdout.write(`✅ Checksums generated for ${installerFile}\n`);
+    process.stdout.write(
+      `✅ Checksums generated for ${installerFiles.length} file(s)\n`
+    );
   } catch (error: any) {
     throw new Error("Failed to generate checksums: " + error.message);
   }
@@ -433,7 +461,7 @@ function createGitTag(version: string): void {
 
 function generateReleaseNotes(version: string): void {
   const buildDir: string = resolveBuildOutputDir();
-  const installerPattern: RegExp = /QCut.*Setup.*\.exe$/;
+  const installerPattern: RegExp = getInstallerPattern();
 
   try {
     const files: string[] = fs.readdirSync(buildDir);
