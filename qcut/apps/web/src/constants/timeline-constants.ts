@@ -133,9 +133,9 @@ export const TIMELINE_CONSTANTS = {
   MARKDOWN_MAX_DURATION: 7200,
   MARKDOWN_DEFAULT_DURATION: 300,
   DEFAULT_IMAGE_DURATION: 5,
-  DEFAULT_EMPTY_TIMELINE_DURATION: 600, // Default duration for empty timeline (10 minutes)
+  DEFAULT_EMPTY_TIMELINE_DURATION: 7200, // Default duration for empty timeline (2 hours)
   MAX_EXPORT_DURATION: 7200, // 2 hours
-  ZOOM_LEVELS: [0.25, 0.5, 1, 1.5, 2, 3, 4],
+  ZOOM_LEVELS: [0.05, 0.1, 0.25, 0.5, 1, 1.5, 2, 3, 4],
 } as const;
 
 // FPS presets for project settings

@@ -10,32 +10,36 @@ import {
 } from "../timeline-constants";
 
 describe("calculateMinimumTimelineDuration", () => {
-  it("returns default 600s for zero duration", () => {
-    expect(calculateMinimumTimelineDuration(0)).toBe(600);
+  const DEFAULT = TIMELINE_CONSTANTS.DEFAULT_EMPTY_TIMELINE_DURATION; // 7200s (2 hours)
+
+  it("returns default 7200s for zero duration", () => {
+    expect(calculateMinimumTimelineDuration(0)).toBe(DEFAULT);
   });
 
-  it("returns default 600s for negative duration", () => {
-    expect(calculateMinimumTimelineDuration(-10)).toBe(600);
+  it("returns default 7200s for negative duration", () => {
+    expect(calculateMinimumTimelineDuration(-10)).toBe(DEFAULT);
   });
 
-  it("returns default 600s for NaN", () => {
-    expect(calculateMinimumTimelineDuration(NaN)).toBe(600);
+  it("returns default 7200s for NaN", () => {
+    expect(calculateMinimumTimelineDuration(NaN)).toBe(DEFAULT);
   });
 
-  it("returns default 600s for Infinity", () => {
-    expect(calculateMinimumTimelineDuration(Infinity)).toBe(600);
+  it("returns default 7200s for Infinity", () => {
+    expect(calculateMinimumTimelineDuration(Infinity)).toBe(DEFAULT);
   });
 
-  it("returns 600s when content is shorter than 600s", () => {
-    expect(calculateMinimumTimelineDuration(120)).toBe(600);
+  it("returns default when content is shorter", () => {
+    expect(calculateMinimumTimelineDuration(120)).toBe(DEFAULT);
+    expect(calculateMinimumTimelineDuration(600)).toBe(DEFAULT);
+    expect(calculateMinimumTimelineDuration(3600)).toBe(DEFAULT);
   });
 
-  it("returns content duration when longer than 600s", () => {
-    expect(calculateMinimumTimelineDuration(1200)).toBe(1200);
+  it("returns content duration when longer than default", () => {
+    expect(calculateMinimumTimelineDuration(8000)).toBe(8000);
   });
 
-  it("supports 2-hour durations (7200s)", () => {
-    expect(calculateMinimumTimelineDuration(7200)).toBe(7200);
+  it("default empty timeline is 2 hours", () => {
+    expect(DEFAULT).toBe(7200);
   });
 });
 

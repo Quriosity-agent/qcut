@@ -54,6 +54,8 @@ describe("timeline scroll limit - 2 hour support", () => {
     const clientWidth = 1000;
 
     const expected: Record<number, number> = {
+      0.05: 18_000,
+      0.1: 36_000,
       0.25: 90_000,
       0.5: 180_000,
       1: 360_000,
@@ -75,12 +77,12 @@ describe("timeline scroll limit - 2 hour support", () => {
     }
   });
 
-  it("empty timeline defaults to 600s and produces correct width", () => {
+  it("empty timeline defaults to 7200s (2 hours) and produces correct width", () => {
     const duration = calculateMinimumTimelineDuration(0);
-    expect(duration).toBe(600);
+    expect(duration).toBe(7200);
 
     const width = duration * PPS * 1;
-    expect(width).toBe(30_000);
+    expect(width).toBe(360_000);
     expect(width).toBeGreaterThan(RADIX_SCROLL_CAP);
   });
 
