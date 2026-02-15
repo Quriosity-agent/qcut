@@ -23,11 +23,32 @@ interface EncryptedApiKeyData {
   [key: string]: string;
 }
 
+interface KeyStatus {
+  set: boolean;
+  source: "environment" | "electron" | "aicp-cli" | "not-set";
+}
+
+interface ApiKeysStatus {
+  falApiKey: KeyStatus;
+  freesoundApiKey: KeyStatus;
+  geminiApiKey: KeyStatus;
+  openRouterApiKey: KeyStatus;
+  anthropicApiKey: KeyStatus;
+}
+
 interface ApiKeyHandlers {
   "api-keys:get": () => Promise<ApiKeys>;
   "api-keys:set": (keys: ApiKeyData) => Promise<boolean>;
   "api-keys:clear": () => Promise<boolean>;
+  "api-keys:status": () => Promise<ApiKeysStatus>;
 }
+
+// AICP env var name → QCut ApiKeys field mapping
+const AICP_KEY_MAP: Record<string, keyof ApiKeys> = {
+  FAL_KEY: "falApiKey",
+  GEMINI_API_KEY: "geminiApiKey",
+  OPENROUTER_API_KEY: "openRouterApiKey",
+};
 
 const EMPTY_API_KEYS: ApiKeys = {
   falApiKey: "",
@@ -100,21 +121,88 @@ function decryptStoredApiKeys({
   }
 }
 
-export async function getDecryptedApiKeys(): Promise<ApiKeys> {
-  const apiKeysFilePath = getApiKeysFilePath();
+/**
+ * Returns the platform-correct path to AICP's credential store.
+ * macOS/Linux: ~/.config/video-ai-studio/credentials.env
+ * Windows: %APPDATA%/video-ai-studio/credentials.env
+ */
+function getAicpCredentialsPath(): string {
+  const home = process.env.HOME || process.env.USERPROFILE || "";
+  if (process.platform === "win32") {
+    const appData =
+      process.env.APPDATA || path.join(home, "AppData", "Roaming");
+    return path.join(appData, "video-ai-studio", "credentials.env");
+  }
+  return path.join(home, ".config", "video-ai-studio", "credentials.env");
+}
 
+/**
+ * Read AICP CLI credential store (Tier 3 fallback).
+ * Parses ~/.config/video-ai-studio/credentials.env as KEY=VALUE lines.
+ */
+function loadAicpCredentials(): Partial<ApiKeys> {
+  try {
+    const credPath = getAicpCredentialsPath();
+    if (!fs.existsSync(credPath)) return {};
+
+    const content = fs.readFileSync(credPath, "utf-8");
+    const keys: Partial<ApiKeys> = {};
+
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx === -1) continue;
+      const name = trimmed.slice(0, eqIdx);
+      const value = trimmed.slice(eqIdx + 1);
+      const field = AICP_KEY_MAP[name];
+      if (field && value) {
+        keys[field] = value;
+      }
+    }
+    return keys;
+  } catch (error) {
+    console.warn("[API Keys] Failed to read AICP credentials:", error);
+    return {};
+  }
+}
+
+/**
+ * Load keys from QCut's Electron safeStorage store (Tier 2).
+ */
+async function loadElectronStoredKeys(): Promise<ApiKeys> {
+  const apiKeysFilePath = getApiKeysFilePath();
   try {
     if (!fs.existsSync(apiKeysFilePath)) {
       return getEmptyApiKeys();
     }
-
     const rawData = fs.readFileSync(apiKeysFilePath, "utf8");
     const encryptedData = JSON.parse(rawData) as EncryptedApiKeyData;
     return decryptStoredApiKeys({ encryptedData });
   } catch (error) {
-    console.error("[API Keys] Failed to load API keys:", error);
+    console.error("[API Keys] Failed to load Electron stored keys:", error);
     return getEmptyApiKeys();
   }
+}
+
+/**
+ * Get decrypted API keys with 3-tier fallback:
+ *   1. Environment variables (handled at spawn time by ai-pipeline-handler)
+ *   2. QCut Electron safeStorage store
+ *   3. AICP CLI credential store (~/.config/video-ai-studio/credentials.env)
+ */
+export async function getDecryptedApiKeys(): Promise<ApiKeys> {
+  const electronKeys = await loadElectronStoredKeys();
+  const aicpKeys = loadAicpCredentials();
+
+  return {
+    falApiKey: electronKeys.falApiKey || aicpKeys.falApiKey || "",
+    freesoundApiKey: electronKeys.freesoundApiKey || "",
+    geminiApiKey: electronKeys.geminiApiKey || aicpKeys.geminiApiKey || "",
+    openRouterApiKey:
+      electronKeys.openRouterApiKey || aicpKeys.openRouterApiKey || "",
+    anthropicApiKey: electronKeys.anthropicApiKey || "",
+  };
 }
 
 /**
@@ -236,11 +324,38 @@ export function setupApiKeyIPC(): void {
       throw new Error(`Failed to clear API keys: ${error?.message || error}`);
     }
   });
+
+  /**
+   * Get key status with source info (env / electron / aicp-cli / not-set)
+   */
+  ipcMain.handle("api-keys:status", async (): Promise<ApiKeysStatus> => {
+    const electronKeys = await loadElectronStoredKeys();
+    const aicpKeys = loadAicpCredentials();
+
+    function resolveStatus(envName: string, field: keyof ApiKeys): KeyStatus {
+      if (process.env[envName]) return { set: true, source: "environment" };
+      if (electronKeys[field]) return { set: true, source: "electron" };
+      if (aicpKeys[field]) return { set: true, source: "aicp-cli" };
+      return { set: false, source: "not-set" };
+    }
+
+    return {
+      falApiKey: resolveStatus("FAL_KEY", "falApiKey"),
+      freesoundApiKey: resolveStatus("FREESOUND_API_KEY", "freesoundApiKey"),
+      geminiApiKey: resolveStatus("GEMINI_API_KEY", "geminiApiKey"),
+      openRouterApiKey: resolveStatus("OPENROUTER_API_KEY", "openRouterApiKey"),
+      anthropicApiKey: resolveStatus("ANTHROPIC_API_KEY", "anthropicApiKey"),
+    };
+  });
 }
 
 // CommonJS export for backward compatibility with main.js
-module.exports = { setupApiKeyIPC, getDecryptedApiKeys };
+module.exports = {
+  setupApiKeyIPC,
+  getDecryptedApiKeys,
+  loadAicpCredentials,
+  getAicpCredentialsPath,
+};
 
-// ES6 export for TypeScript files
-export default { setupApiKeyIPC, getDecryptedApiKeys };
-export type { ApiKeys, ApiKeyData, ApiKeyHandlers };
+export { loadAicpCredentials, getAicpCredentialsPath, loadElectronStoredKeys };
+export type { ApiKeys, ApiKeyData, ApiKeyHandlers, KeyStatus, ApiKeysStatus };

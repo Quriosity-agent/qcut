@@ -285,6 +285,20 @@ function BackgroundView() {
   );
 }
 
+function KeySourceBadge({ source }: { source: string }) {
+  if (source === "not-set") return null;
+  const labels: Record<string, string> = {
+    environment: "env",
+    electron: "app",
+    "aicp-cli": "cli",
+  };
+  return (
+    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+      {labels[source] || source}
+    </span>
+  );
+}
+
 function ApiKeysView() {
   const [falApiKey, setFalApiKey] = useState("");
   const [freesoundApiKey, setFreesoundApiKey] = useState("");
@@ -307,8 +321,12 @@ function ApiKeysView() {
     success: boolean;
     message: string;
   } | null>(null);
+  const [keyStatuses, setKeyStatuses] = useState<Record<
+    string,
+    { set: boolean; source: string }
+  > | null>(null);
 
-  // Load API keys on component mount
+  // Load API keys and statuses on component mount
   const loadApiKeys = useCallback(async () => {
     try {
       if (window.electronAPI?.apiKeys) {
@@ -319,6 +337,10 @@ function ApiKeysView() {
           setGeminiApiKey(keys.geminiApiKey || "");
           setOpenRouterApiKey(keys.openRouterApiKey || "");
           setAnthropicApiKey(keys.anthropicApiKey || "");
+        }
+        if (window.electronAPI.apiKeys.status) {
+          const statuses = await window.electronAPI.apiKeys.status();
+          setKeyStatuses(statuses);
         }
       }
     } catch (error) {
@@ -356,9 +378,13 @@ function ApiKeysView() {
 
       console.log("[Settings] ✅ API keys saved successfully, result:", result);
 
-      // Clear test results after saving
+      // Clear test results and refresh statuses after saving
       setFreesoundTestResult(null);
       setFalTestResult(null);
+      if (window.electronAPI?.apiKeys?.status) {
+        const statuses = await window.electronAPI.apiKeys.status();
+        setKeyStatuses(statuses);
+      }
     } catch (error) {
       console.error("[Settings] ❌ Error saving API keys:", error);
       handleError(error, {
@@ -420,7 +446,16 @@ function ApiKeysView() {
       </div>
 
       {/* FAL API Key */}
-      <PropertyGroup title="FAL AI API Key">
+      <PropertyGroup
+        title={
+          <span className="flex items-center gap-2">
+            FAL AI API Key
+            {keyStatuses?.falApiKey && (
+              <KeySourceBadge source={keyStatuses.falApiKey.source} />
+            )}
+          </span>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
             For AI image generation. Get your key at{" "}
@@ -455,7 +490,16 @@ function ApiKeysView() {
       </PropertyGroup>
 
       {/* Freesound API Key */}
-      <PropertyGroup title="Freesound API Key">
+      <PropertyGroup
+        title={
+          <span className="flex items-center gap-2">
+            Freesound API Key
+            {keyStatuses?.freesoundApiKey && (
+              <KeySourceBadge source={keyStatuses.freesoundApiKey.source} />
+            )}
+          </span>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
             For sound effects library. Get your key at{" "}
@@ -508,7 +552,16 @@ function ApiKeysView() {
       </PropertyGroup>
 
       {/* Gemini API Key */}
-      <PropertyGroup title="Gemini API Key">
+      <PropertyGroup
+        title={
+          <span className="flex items-center gap-2">
+            Gemini API Key
+            {keyStatuses?.geminiApiKey && (
+              <KeySourceBadge source={keyStatuses.geminiApiKey.source} />
+            )}
+          </span>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
             For AI caption transcription. Get your key at{" "}
@@ -548,7 +601,16 @@ function ApiKeysView() {
       </PropertyGroup>
 
       {/* OpenRouter API Key */}
-      <PropertyGroup title="OpenRouter API Key">
+      <PropertyGroup
+        title={
+          <span className="flex items-center gap-2">
+            OpenRouter API Key
+            {keyStatuses?.openRouterApiKey && (
+              <KeySourceBadge source={keyStatuses.openRouterApiKey.source} />
+            )}
+          </span>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
             For Codex CLI (300+ AI models). Get your key at{" "}
@@ -588,7 +650,16 @@ function ApiKeysView() {
       </PropertyGroup>
 
       {/* Anthropic API Key (Optional) */}
-      <PropertyGroup title="Anthropic API Key (Optional)">
+      <PropertyGroup
+        title={
+          <span className="flex items-center gap-2">
+            Anthropic API Key (Optional)
+            {keyStatuses?.anthropicApiKey && (
+              <KeySourceBadge source={keyStatuses.anthropicApiKey.source} />
+            )}
+          </span>
+        }
+      >
         <div className="flex flex-col gap-2">
           <div className="text-xs text-muted-foreground">
             Claude Code uses your Claude Pro/Max subscription by default. Only

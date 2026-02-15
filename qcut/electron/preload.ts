@@ -238,6 +238,13 @@ const electronAPI: ElectronAPI = {
     set: (keys: ApiKeyConfig): Promise<boolean> =>
       ipcRenderer.invoke("api-keys:set", keys),
     clear: (): Promise<boolean> => ipcRenderer.invoke("api-keys:clear"),
+    status: (): Promise<{
+      falApiKey: { set: boolean; source: string };
+      freesoundApiKey: { set: boolean; source: string };
+      geminiApiKey: { set: boolean; source: string };
+      openRouterApiKey: { set: boolean; source: string };
+      anthropicApiKey: { set: boolean; source: string };
+    }> => ipcRenderer.invoke("api-keys:status"),
   },
 
   // Shell operations

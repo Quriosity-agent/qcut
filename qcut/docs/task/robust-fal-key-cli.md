@@ -1,7 +1,7 @@
 # Robust FAL Key Setup via CLI
 
 **Date**: 2026-02-15
-**Status**: Proposed
+**Status**: Implemented
 **Scope**: QCut Electron + AICP binary integration
 
 ---

@@ -49,7 +49,7 @@ export function PropertyItemValue({
 }
 
 interface PropertyGroupProps {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   defaultExpanded?: boolean;
   className?: string;

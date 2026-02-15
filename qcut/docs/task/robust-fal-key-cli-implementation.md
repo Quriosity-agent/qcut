@@ -1,8 +1,8 @@
 # Implementation Plan: Robust FAL Key Setup via CLI
 
 **Date**: 2026-02-15
-**Estimated effort**: ~45 minutes (6 subtasks)
-**Branch**: `feat/cli-key-management`
+**Status**: Implemented
+**Branch**: `date-versioning`
 **Depends on**: AICP binary v1.0.29+ (already released in `video-agent-skill`)
 
 ---
@@ -426,9 +426,9 @@ describe("AICP fallback in spawn environment", () => {
 
 After all subtasks are complete:
 
-- [ ] `bun run test` -- all tests pass
-- [ ] `bun check-types` -- no type errors
-- [ ] `bun lint:clean` -- no lint issues
+- [x] `bun run test` -- 2089 tests pass (156 files), including 21 new fallback tests
+- [x] `bun check-types` -- no type errors
+- [ ] `bun lint:clean` -- pending
 - [ ] `bun run electron:dev` -- app starts, Settings UI shows key source badges
 - [ ] Set key via CLI: `./QCut set-key FAL_KEY` -- prompts, saves, exits headless
 - [ ] Check keys via CLI: `./QCut check-keys` -- prints status, exits

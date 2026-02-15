@@ -452,159 +452,192 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(() => {
-  // Determine base path based on whether app is packaged
-  const basePath = app.isPackaged
-    ? path.join(app.getAppPath(), "apps/web/dist")
-    : path.join(__dirname, "../../apps/web/dist");
+// CLI key management — runs headless, delegates to bundled AICP binary
+const CLI_KEY_COMMANDS = ["set-key", "check-keys", "delete-key"];
+const cliArgs = process.argv.slice(app.isPackaged ? 1 : 2);
+const isCliKeyCommand = CLI_KEY_COMMANDS.includes(cliArgs[0]);
 
-  logger.log(`[Protocol] Base path: ${basePath}`);
-  logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
-
-  // Register custom protocol using the newer handle API for better ES module support
-  protocol.handle("app", async (request) => {
-    let urlPath = request.url.slice("app://".length);
-
-    // Clean up the URL path
-    if (urlPath.startsWith("./")) {
-      urlPath = urlPath.substring(2);
-    }
-    if (urlPath.startsWith("/")) {
-      urlPath = urlPath.substring(1);
-    }
-
-    // Default to index.html for root
-    if (!urlPath || urlPath === "") {
-      urlPath = "index.html";
-    }
-
-    // Security: Block path traversal attempts
-    // Check for ".." before normalization to catch traversal attempts
-    if (urlPath.includes("..")) {
-      logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
-      return new Response("Not Found", { status: 404 });
-    }
-    // Normalize path for consistent handling (converts / to \ on Windows)
-    const normalizedPath = path.normalize(urlPath);
-
+if (isCliKeyCommand) {
+  app.whenReady().then(async () => {
     try {
-      // Handle FFmpeg resources specifically
-      if (normalizedPath.startsWith("ffmpeg/")) {
-        const filename = normalizedPath.replace("ffmpeg/", "");
-        // In production, FFmpeg files are in resources/ffmpeg/
-        const ffmpegPath = path.join(
-          __dirname,
-          "resources",
-          "ffmpeg",
-          filename
+      const { spawnSync } = require("child_process");
+      const { BinaryManager } = require("./binary-manager.js");
+      const bm = new BinaryManager();
+      await bm.initialize();
+      const aicpPath = bm.getBinaryPath("aicp");
+
+      if (!aicpPath) {
+        console.error(
+          "AICP binary not found. Install QCut or set up AICP standalone."
         );
-
-        // Check if file exists in resources/ffmpeg, fallback to dist
-        if (fs.existsSync(ffmpegPath)) {
-          return await net.fetch(pathToFileURL(ffmpegPath).toString());
-        }
-
-        // Fallback to dist directory
-        const distPath = path.join(basePath, "ffmpeg", filename);
-        return await net.fetch(pathToFileURL(distPath).toString());
+        app.exit(1);
+        return;
       }
 
-      // Handle other resources with path containment check
-      const filePath = path.resolve(basePath, normalizedPath);
-      const baseResolved = path.resolve(basePath) + path.sep;
+      const result = spawnSync(aicpPath, cliArgs, { stdio: "inherit" });
+      app.exit(result.status ?? 1);
+    } catch (err: any) {
+      console.error("CLI error:", err.message);
+      app.exit(1);
+    }
+  });
+}
 
-      // Ensure resolved path stays within basePath
-      if (
-        !filePath.startsWith(baseResolved) &&
-        filePath !== path.resolve(basePath)
-      ) {
-        logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
+if (!isCliKeyCommand) {
+  app.whenReady().then(() => {
+    // Determine base path based on whether app is packaged
+    const basePath = app.isPackaged
+      ? path.join(app.getAppPath(), "apps/web/dist")
+      : path.join(__dirname, "../../apps/web/dist");
+
+    logger.log(`[Protocol] Base path: ${basePath}`);
+    logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
+
+    // Register custom protocol using the newer handle API for better ES module support
+    protocol.handle("app", async (request) => {
+      let urlPath = request.url.slice("app://".length);
+
+      // Clean up the URL path
+      if (urlPath.startsWith("./")) {
+        urlPath = urlPath.substring(2);
+      }
+      if (urlPath.startsWith("/")) {
+        urlPath = urlPath.substring(1);
+      }
+
+      // Default to index.html for root
+      if (!urlPath || urlPath === "") {
+        urlPath = "index.html";
+      }
+
+      // Security: Block path traversal attempts
+      // Check for ".." before normalization to catch traversal attempts
+      if (urlPath.includes("..")) {
+        logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
         return new Response("Not Found", { status: 404 });
       }
+      // Normalize path for consistent handling (converts / to \ on Windows)
+      const normalizedPath = path.normalize(urlPath);
 
-      if (fs.existsSync(filePath)) {
-        logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
-        return await net.fetch(pathToFileURL(filePath).toString());
-      }
+      try {
+        // Handle FFmpeg resources specifically
+        if (normalizedPath.startsWith("ffmpeg/")) {
+          const filename = normalizedPath.replace("ffmpeg/", "");
+          // In production, FFmpeg files are in resources/ffmpeg/
+          const ffmpegPath = path.join(
+            __dirname,
+            "resources",
+            "ffmpeg",
+            filename
+          );
 
-      logger.error(`[Protocol] File not found: ${filePath}`);
-      return new Response("Not Found", { status: 404 });
-    } catch (error) {
-      logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  });
+          // Check if file exists in resources/ffmpeg, fallback to dist
+          if (fs.existsSync(ffmpegPath)) {
+            return await net.fetch(pathToFileURL(ffmpegPath).toString());
+          }
 
-  // Start the static server to serve FFmpeg WASM files
-  staticServer = createStaticServer();
-
-  createWindow();
-
-  // Register all IPC handlers with try/catch to prevent cascade failures
-  const handlers: [string, () => void][] = [
-    ["FFmpegIPC", setupFFmpegIPC],
-    ["SoundIPC", setupSoundIPC],
-    ["ThemeIPC", setupThemeIPC],
-    ["ApiKeyIPC", setupApiKeyIPC],
-    ["GeminiHandlers", setupGeminiHandlers],
-    ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
-    ["GeminiChatIPC", setupGeminiChatIPC],
-    ["PtyIPC", setupPtyIPC],
-    ["AIVideoHandlers", registerAIVideoHandlers],
-    ["SkillsIPC", setupSkillsIPC],
-    ["SkillsSyncIPC", setupSkillsSyncIPC],
-    ["AIPipelineIPC", setupAIPipelineIPC],
-    ["MediaImportIPC", setupMediaImportIPC],
-    ["ProjectFolderIPC", setupProjectFolderIPC],
-    ["ClaudeIPC", setupAllClaudeIPC],
-    ["RemotionFolderIPC", setupRemotionFolderIPC],
-  ];
-
-  for (const [name, setup] of handlers) {
-    try {
-      setup();
-      console.log(`✅ ${name} registered`);
-    } catch (err: any) {
-      console.error(`❌ ${name} FAILED:`, err.message, err.stack);
-    }
-  }
-
-  initFFmpegHealthCheck();
-  migrateAIVideosToDocuments()
-    .then(
-      (result: {
-        copied: number;
-        skipped: number;
-        projectsProcessed: number;
-        errors: string[];
-      }) => {
-        console.log(
-          `[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
-        );
-        if (result.errors.length > 0) {
-          console.warn("[AI Video Migration] Errors:", result.errors);
+          // Fallback to dist directory
+          const distPath = path.join(basePath, "ffmpeg", filename);
+          return await net.fetch(pathToFileURL(distPath).toString());
         }
+
+        // Handle other resources with path containment check
+        const filePath = path.resolve(basePath, normalizedPath);
+        const baseResolved = path.resolve(basePath) + path.sep;
+
+        // Ensure resolved path stays within basePath
+        if (
+          !filePath.startsWith(baseResolved) &&
+          filePath !== path.resolve(basePath)
+        ) {
+          logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
+          return new Response("Not Found", { status: 404 });
+        }
+
+        if (fs.existsSync(filePath)) {
+          logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
+          return await net.fetch(pathToFileURL(filePath).toString());
+        }
+
+        logger.error(`[Protocol] File not found: ${filePath}`);
+        return new Response("Not Found", { status: 404 });
+      } catch (error) {
+        logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
+        return new Response("Internal Server Error", { status: 500 });
       }
-    )
-    .catch((err: Error) => {
-      console.error("[AI Video Migration] Failed:", err.message);
     });
-  // Note: font-resolver removed - handler not implemented
 
-  // Configure auto-updater for production builds
-  if (app.isPackaged) {
-    setupAutoUpdater();
-  }
+    // Start the static server to serve FFmpeg WASM files
+    staticServer = createStaticServer();
 
-  // Register inline IPC handlers (audio/video, FAL, dialogs, storage, updates, etc.)
-  registerMainIpcHandlers({
-    getMainWindow: () => mainWindow,
-    logger,
-    autoUpdater,
-    getReleasesDir,
-    readChangelogFallback,
+    createWindow();
+
+    // Register all IPC handlers with try/catch to prevent cascade failures
+    const handlers: [string, () => void][] = [
+      ["FFmpegIPC", setupFFmpegIPC],
+      ["SoundIPC", setupSoundIPC],
+      ["ThemeIPC", setupThemeIPC],
+      ["ApiKeyIPC", setupApiKeyIPC],
+      ["GeminiHandlers", setupGeminiHandlers],
+      ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
+      ["GeminiChatIPC", setupGeminiChatIPC],
+      ["PtyIPC", setupPtyIPC],
+      ["AIVideoHandlers", registerAIVideoHandlers],
+      ["SkillsIPC", setupSkillsIPC],
+      ["SkillsSyncIPC", setupSkillsSyncIPC],
+      ["AIPipelineIPC", setupAIPipelineIPC],
+      ["MediaImportIPC", setupMediaImportIPC],
+      ["ProjectFolderIPC", setupProjectFolderIPC],
+      ["ClaudeIPC", setupAllClaudeIPC],
+      ["RemotionFolderIPC", setupRemotionFolderIPC],
+    ];
+
+    for (const [name, setup] of handlers) {
+      try {
+        setup();
+        console.log(`✅ ${name} registered`);
+      } catch (err: any) {
+        console.error(`❌ ${name} FAILED:`, err.message, err.stack);
+      }
+    }
+
+    initFFmpegHealthCheck();
+    migrateAIVideosToDocuments()
+      .then(
+        (result: {
+          copied: number;
+          skipped: number;
+          projectsProcessed: number;
+          errors: string[];
+        }) => {
+          console.log(
+            `[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
+          );
+          if (result.errors.length > 0) {
+            console.warn("[AI Video Migration] Errors:", result.errors);
+          }
+        }
+      )
+      .catch((err: Error) => {
+        console.error("[AI Video Migration] Failed:", err.message);
+      });
+    // Note: font-resolver removed - handler not implemented
+
+    // Configure auto-updater for production builds
+    if (app.isPackaged) {
+      setupAutoUpdater();
+    }
+
+    // Register inline IPC handlers (audio/video, FAL, dialogs, storage, updates, etc.)
+    registerMainIpcHandlers({
+      getMainWindow: () => mainWindow,
+      logger,
+      autoUpdater,
+      getReleasesDir,
+      readChangelogFallback,
+    });
   });
-});
+} // end if (!isCliKeyCommand)
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
