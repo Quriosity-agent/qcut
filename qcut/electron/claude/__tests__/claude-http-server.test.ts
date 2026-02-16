@@ -360,9 +360,9 @@ describe("Claude HTTP Server", () => {
       webContents: { send: vi.fn() },
     } as unknown as BrowserWindow;
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
-    vi.mocked(timelineHandler.requestSelectionFromRenderer).mockResolvedValueOnce(
-      [{ trackId: "track_1", elementId: "element_abc" }]
-    );
+    vi.mocked(
+      timelineHandler.requestSelectionFromRenderer
+    ).mockResolvedValueOnce([{ trackId: "track_1", elementId: "element_abc" }]);
 
     const res = await fetch("/api/claude/timeline/proj_123/selection");
 
@@ -381,9 +381,9 @@ describe("Claude HTTP Server", () => {
       webContents: { send: vi.fn() },
     } as unknown as BrowserWindow;
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
-    vi.mocked(timelineHandler.requestSelectionFromRenderer).mockRejectedValueOnce(
-      new HttpError(504, "Renderer timed out")
-    );
+    vi.mocked(
+      timelineHandler.requestSelectionFromRenderer
+    ).mockRejectedValueOnce(new HttpError(504, "Renderer timed out"));
 
     const res = await fetch("/api/claude/timeline/proj_123/selection");
 

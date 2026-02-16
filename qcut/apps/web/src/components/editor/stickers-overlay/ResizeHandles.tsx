@@ -141,7 +141,7 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
 
         return { width: newWidth, height: newHeight, x: newX, y: newY };
       },
-      [sticker.position.x, sticker.position.y]
+      [sticker.position.x, sticker.position.y, canvasRef]
     );
 
     /**

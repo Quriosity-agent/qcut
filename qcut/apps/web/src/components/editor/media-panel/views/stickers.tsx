@@ -490,13 +490,12 @@ export function StickersView() {
 
           const currentTime = usePlaybackStore.getState().currentTime;
           const timelineStore = useTimelineStore.getState();
-          const wasAdded = timelineStore.addMediaAtTime(
-            mediaItem,
-            currentTime
-          );
+          const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
 
           if (!wasAdded) {
-            toast.error(`Could not add ${file.name} — overlaps existing element`);
+            toast.error(
+              `Could not add ${file.name} — overlaps existing element`
+            );
             continue;
           }
 

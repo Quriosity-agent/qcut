@@ -791,9 +791,7 @@ export interface ElectronAPI {
       onSelectElements: (
         callback: (data: { elements: ClaudeSelectionItem[] }) => void
       ) => void;
-      onGetSelection: (
-        callback: (data: { requestId: string }) => void
-      ) => void;
+      onGetSelection: (callback: (data: { requestId: string }) => void) => void;
       sendSelectionResponse: (
         requestId: string,
         elements: ClaudeSelectionItem[]

@@ -7,7 +7,10 @@
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore } from "@/stores/media-store";
-import type { ClaudeTimeline, ClaudeElement } from "../../../../electron/types/claude-api";
+import type {
+  ClaudeTimeline,
+  ClaudeElement,
+} from "../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug-config";
 import {
   calculateTimelineDuration,
@@ -309,9 +312,17 @@ export function setupClaudeTimelineBridge(): void {
 
         let secondElementId: string | null = null;
         if (data.mode === "keepLeft") {
-          timelineStore.splitAndKeepLeft(track.id, data.elementId, data.splitTime);
+          timelineStore.splitAndKeepLeft(
+            track.id,
+            data.elementId,
+            data.splitTime
+          );
         } else if (data.mode === "keepRight") {
-          timelineStore.splitAndKeepRight(track.id, data.elementId, data.splitTime);
+          timelineStore.splitAndKeepRight(
+            track.id,
+            data.elementId,
+            data.splitTime
+          );
         } else {
           secondElementId = timelineStore.splitElement(
             track.id,
@@ -380,9 +391,7 @@ export function setupClaudeTimelineBridge(): void {
 
   // Handle selection set (fire-and-forget)
   claudeAPI.onSelectElements(
-    (data: {
-      elements: Array<{ trackId: string; elementId: string }>;
-    }) => {
+    (data: { elements: Array<{ trackId: string; elementId: string }> }) => {
       try {
         debugLog(
           "[ClaudeTimelineBridge] Setting selection:",

@@ -219,12 +219,18 @@ export function startClaudeHTTPServer(
     "/api/claude/timeline/:projectId/elements/:elementId/split",
     async (req) => {
       if (typeof req.body?.splitTime !== "number") {
-        throw new HttpError(400, "Missing 'splitTime' (number) in request body");
+        throw new HttpError(
+          400,
+          "Missing 'splitTime' (number) in request body"
+        );
       }
       const win = getWindow();
       const mode = req.body.mode || "split";
       if (!["split", "keepLeft", "keepRight"].includes(mode)) {
-        throw new HttpError(400, "Invalid mode. Use 'split', 'keepLeft', or 'keepRight'");
+        throw new HttpError(
+          400,
+          "Invalid mode. Use 'split', 'keepLeft', or 'keepRight'"
+        );
       }
       return requestSplitFromRenderer(
         win,
