@@ -235,12 +235,11 @@ export function FolderImportDialog({
         return;
       }
 
-      // Get the dropped folder path (Electron provides .path on File objects)
+      // Get the dropped folder path via webUtils (Electron 37+ removed File.path)
       const files = e.dataTransfer.files;
       if (files.length === 0) return;
 
-      // In Electron, File objects have a .path property
-      const droppedPath = (files[0] as File & { path?: string }).path;
+      const droppedPath = window.electronAPI?.getPathForFile?.(files[0]) ?? undefined;
       if (!droppedPath) {
         setState((prev) => ({
           ...prev,

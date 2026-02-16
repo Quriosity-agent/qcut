@@ -64,6 +64,9 @@ export interface ElectronAPI {
     filePath?: string;
   }>;
 
+  // File path utility (Electron 37+ removed File.path on dropped files)
+  getPathForFile: (file: File) => string;
+
   readFile: (filePath: string) => Promise<Buffer>;
   writeFile: (
     filePath: string,

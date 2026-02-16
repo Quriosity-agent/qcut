@@ -288,11 +288,14 @@ function DropZone({
           return;
         }
 
+        // Use webUtils.getPathForFile via preload (Electron 37+ removed File.path)
+        const filePath = window.electronAPI?.getPathForFile?.(file) ?? undefined;
+
         console.log("[WordTimeline] File dropped:", {
           name: file.name,
           type: file.type,
           size: file.size,
-          path: (file as File & { path?: string }).path,
+          path: filePath,
         });
 
         if (isJsonFile(file.name)) {
@@ -302,8 +305,6 @@ function DropZone({
           onJsonSelect(file);
         } else if (isMediaFile(file.name)) {
           console.log("[WordTimeline] Detected media file");
-          // For media files, we need the file path (Electron only)
-          const filePath = (file as File & { path?: string }).path;
           console.log("[WordTimeline] File path from Electron:", filePath);
           if (filePath) {
             console.log(

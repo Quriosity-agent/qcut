@@ -327,6 +327,9 @@ export interface ElectronAPI {
   }>;
   getFileInfo: (filePath: string) => Promise<FileInfo | null>;
 
+  // File path utility (Electron 37+ removed File.path on dropped files)
+  getPathForFile: (file: File) => string;
+
   // Storage operations
   storage: {
     save: (key: string, data: any) => Promise<boolean>;

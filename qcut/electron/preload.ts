@@ -6,7 +6,7 @@
  *
  * @module preload
  */
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   ElectronAPI,
   FileDialogFilter,
@@ -343,6 +343,9 @@ const electronAPI: ElectronAPI = {
   claude: createClaudeAPI(),
   remotionFolder: createRemotionFolderAPI(),
   updates: createUpdatesAPI(),
+
+  // File path utility (Electron 37+ removed File.path)
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
   // Utility
   isElectron: true,
