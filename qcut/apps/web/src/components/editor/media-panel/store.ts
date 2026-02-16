@@ -164,7 +164,7 @@ export const tabGroups: {
   agents: {
     icon: WrenchIcon,
     label: "Agents",
-    tabs: ["remotion", "pty"],
+    tabs: ["pty", "remotion"],
   },
   edit: {
     icon: ScissorsIcon,
@@ -216,7 +216,7 @@ interface MediaPanelStore {
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
-  agents: "remotion",
+  agents: "pty",
   edit: "text",
   effects: "filters",
 };
