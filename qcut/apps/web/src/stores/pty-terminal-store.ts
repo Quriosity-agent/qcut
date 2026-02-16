@@ -11,6 +11,7 @@ import {
 // ============================================================================
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+const AUTO_CONNECT_GLOBAL_KEY = "__global__";
 
 /**
  * Active skill context for CLI agents
@@ -41,17 +42,43 @@ interface PtyTerminalState {
   // Legacy compatibility
   isGeminiMode: boolean; // Derived from cliProvider for backward compatibility
 
+  projectId: string | null;
   workingDirectory: string;
+  autoConnectOnLoad: boolean;
+  hasUserDisconnected: boolean;
+  autoConnectAttemptedProjectId: string | null;
 
   // Skill context (for running skills with CLI agents)
   activeSkill: ActiveSkillContext | null;
   skillPromptSent: boolean; // Track if initial skill prompt was sent
 }
 
+interface ConnectOptions {
+  command?: string;
+  cwd?: string;
+  projectId?: string;
+  manual?: boolean;
+}
+
+interface DisconnectOptions {
+  userInitiated?: boolean;
+}
+
+interface AutoConnectOptions {
+  cwd?: string;
+  projectId?: string;
+}
+
 interface PtyTerminalActions {
   // Session management
-  connect: (options?: { command?: string; cwd?: string }) => Promise<void>;
-  disconnect: () => Promise<void>;
+  connect: (options?: ConnectOptions) => Promise<void>;
+  disconnect: (options?: DisconnectOptions) => Promise<void>;
+  ensureAutoConnected: (options?: AutoConnectOptions) => Promise<void>;
+  setProjectContext: (options: {
+    projectId: string;
+    workingDirectory?: string;
+  }) => void;
+  setAutoConnectOnLoad: (enabled: boolean) => void;
 
   // Dimension management
   setDimensions: (cols: number, rows: number) => void;
@@ -97,7 +124,11 @@ const initialState: PtyTerminalState = {
   selectedModel: getDefaultCodexModel(), // Default Codex model
   selectedClaudeModel: getDefaultClaudeModel(), // Default Claude model
   isGeminiMode: false, // Derived from cliProvider
+  projectId: null,
   workingDirectory: "",
+  autoConnectOnLoad: true,
+  hasUserDisconnected: false,
+  autoConnectAttemptedProjectId: null,
   activeSkill: null,
   skillPromptSent: false,
 };
@@ -128,6 +159,26 @@ function escapeStringForShell(content: string, escapeNewlines = false): string {
     escaped = escaped.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
   }
   return escaped;
+}
+
+function getConnectErrorMessage({
+  cliProvider,
+  message,
+}: {
+  cliProvider: CliProvider;
+  message: string;
+}): string {
+  const normalizedMessage = message.toLowerCase();
+  const isBinaryMissing =
+    normalizedMessage.includes("enoent") ||
+    normalizedMessage.includes("not found") ||
+    normalizedMessage.includes("not recognized");
+
+  if (cliProvider === "claude" && isBinaryMissing) {
+    return "Claude Code CLI is not installed. Install `claude` and try again.";
+  }
+
+  return message;
 }
 
 /**
@@ -165,11 +216,16 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
     const {
       cliProvider,
       selectedModel,
+      projectId,
       workingDirectory,
       cols,
       rows,
       activeSkill,
     } = get();
+
+    if (options.manual) {
+      set({ hasUserDisconnected: false });
+    }
 
     set({ status: "connecting", error: null, exitCode: null });
 
@@ -186,6 +242,8 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
       const providerConfig = CLI_PROVIDERS[cliProvider];
       let command: string | undefined;
       const env: Record<string, string> = {};
+      const resolvedProjectId = options.projectId || projectId || undefined;
+      const resolvedCwd = options.cwd || workingDirectory || undefined;
 
       // Build command based on provider
       if (cliProvider === "codex") {
@@ -259,6 +317,14 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
           command += ` --model ${selectedClaudeModel}`;
         }
 
+        if (resolvedProjectId) {
+          env.QCUT_PROJECT_ID = resolvedProjectId;
+        }
+        if (resolvedCwd) {
+          env.QCUT_PROJECT_ROOT = resolvedCwd;
+        }
+        env.QCUT_API_BASE_URL = "http://127.0.0.1:8765";
+
         // Note: Skills are not auto-injected for Claude - user starts them manually
         // Claude has access to read skill files from the project directory
       } else if (cliProvider === "gemini") {
@@ -269,7 +335,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
       const spawnOptions = {
         cols,
         rows,
-        cwd: options.cwd || workingDirectory || undefined,
+        cwd: resolvedCwd,
         command: options.command || command,
         env: Object.keys(env).length > 0 ? env : undefined,
       };
@@ -277,22 +343,39 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
       const result = await window.electronAPI.pty.spawn(spawnOptions);
 
       if (result?.success && result.sessionId) {
-        set({ sessionId: result.sessionId, status: "connected" });
+        set({
+          sessionId: result.sessionId,
+          status: "connected",
+          hasUserDisconnected: false,
+          projectId: resolvedProjectId ?? projectId,
+          autoConnectAttemptedProjectId:
+            resolvedProjectId ?? projectId ?? AUTO_CONNECT_GLOBAL_KEY,
+        });
       } else {
+        const rawError = result?.error ?? "Failed to spawn PTY session";
+        const parsedError = getConnectErrorMessage({
+          cliProvider,
+          message: rawError,
+        });
         set({
           status: "error",
-          error: result?.error ?? "Failed to spawn PTY session",
+          error: parsedError,
         });
       }
     } catch (error: unknown) {
-      const message =
+      const rawMessage =
         error instanceof Error ? error.message : "Failed to spawn PTY session";
+      const message = getConnectErrorMessage({
+        cliProvider,
+        message: rawMessage,
+      });
       set({ status: "error", error: message });
     }
   },
 
-  disconnect: async () => {
+  disconnect: async (options = {}) => {
     const { sessionId } = get();
+    const userInitiated = options.userInitiated === true;
     try {
       if (sessionId) {
         await window.electronAPI?.pty?.kill(sessionId);
@@ -304,7 +387,51 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
           : "Failed to terminate PTY session";
       set({ error: message });
     } finally {
-      set({ sessionId: null, status: "disconnected" });
+      set({
+        sessionId: null,
+        status: "disconnected",
+        hasUserDisconnected: userInitiated ? true : get().hasUserDisconnected,
+      });
+    }
+  },
+
+  ensureAutoConnected: async (options = {}) => {
+    const {
+      autoConnectOnLoad,
+      hasUserDisconnected,
+      status,
+      projectId,
+      autoConnectAttemptedProjectId,
+    } = get();
+
+    if (!autoConnectOnLoad || hasUserDisconnected) {
+      return;
+    }
+
+    if (status === "connected" || status === "connecting") {
+      return;
+    }
+
+    const resolvedProjectId = options.projectId || projectId || null;
+    const attemptKey = resolvedProjectId || AUTO_CONNECT_GLOBAL_KEY;
+
+    if (autoConnectAttemptedProjectId === attemptKey) {
+      return;
+    }
+
+    set({ autoConnectAttemptedProjectId: attemptKey });
+
+    try {
+      await get().connect({
+        cwd: options.cwd,
+        projectId: resolvedProjectId || undefined,
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to auto-connect terminal session";
+      set({ status: "error", error: message });
     }
   },
 
@@ -353,6 +480,24 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
 
   setWorkingDirectory: (dir) => {
     set({ workingDirectory: dir });
+  },
+
+  setProjectContext: ({ projectId, workingDirectory }) => {
+    set((state) => {
+      const projectChanged = state.projectId !== projectId;
+      return {
+        projectId,
+        workingDirectory: workingDirectory ?? state.workingDirectory,
+        hasUserDisconnected: projectChanged ? false : state.hasUserDisconnected,
+        autoConnectAttemptedProjectId: projectChanged
+          ? null
+          : state.autoConnectAttemptedProjectId,
+      };
+    });
+  },
+
+  setAutoConnectOnLoad: (enabled) => {
+    set({ autoConnectOnLoad: enabled });
   },
 
   // Skill context management

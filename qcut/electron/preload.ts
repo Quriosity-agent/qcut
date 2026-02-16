@@ -6,7 +6,7 @@
  *
  * @module preload
  */
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   ElectronAPI,
   FileDialogFilter,
@@ -26,6 +26,7 @@ import type {
 } from "./preload-types.js";
 import {
   createPtyAPI,
+  createMcpAPI,
   createSkillsAPI,
   createAIPipelineAPI,
   createMediaImportAPI,
@@ -176,6 +177,25 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("transcribe:upload-to-fal", filePath),
   },
 
+  analyzeFillers: (options: {
+    words: Array<{
+      id: string;
+      text: string;
+      start: number;
+      end: number;
+      type: "word" | "spacing";
+      speaker_id?: string;
+    }>;
+    languageCode: string;
+  }): Promise<{
+    filteredWordIds: Array<{
+      id: string;
+      reason: string;
+      scope?: "word" | "sentence";
+    }>;
+    provider?: "gemini" | "anthropic" | "pattern";
+  }> => ipcRenderer.invoke("ai:analyze-fillers", options),
+
   // FFmpeg export operations
   ffmpeg: {
     createExportSession: (): Promise<ExportSession> =>
@@ -315,6 +335,7 @@ const electronAPI: ElectronAPI = {
 
   // Integration API groups (from preload-integrations.ts)
   pty: createPtyAPI(),
+  mcp: createMcpAPI(),
   skills: createSkillsAPI(),
   aiPipeline: createAIPipelineAPI(),
   mediaImport: createMediaImportAPI(),
@@ -322,6 +343,9 @@ const electronAPI: ElectronAPI = {
   claude: createClaudeAPI(),
   remotionFolder: createRemotionFolderAPI(),
   updates: createUpdatesAPI(),
+
+  // File path utility (Electron 37+ removed File.path)
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
   // Utility
   isElectron: true,

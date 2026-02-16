@@ -176,7 +176,7 @@ function fetch(
     body?: string;
     headers?: Record<string, string>;
   } = {}
-): Promise<{ status: number; body: any }> {
+): Promise<{ status: number; body: any; headers: http.IncomingHttpHeaders }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
       {
@@ -199,9 +199,14 @@ function fetch(
             resolve({
               status: res.statusCode || 0,
               body: JSON.parse(data),
+              headers: res.headers,
             });
           } catch {
-            resolve({ status: res.statusCode || 0, body: data });
+            resolve({
+              status: res.statusCode || 0,
+              body: data,
+              headers: res.headers,
+            });
           }
         });
       }
@@ -251,6 +256,16 @@ describe("Claude HTTP Server", () => {
     expect(res.body.data.status).toBe("ok");
     expect(res.body.data.version).toBe("1.0.0-test");
     expect(res.body.data.uptime).toBeTypeOf("number");
+    expect(res.headers["access-control-allow-origin"]).toBe("*");
+  });
+
+  it("responds to CORS preflight OPTIONS requests", async () => {
+    const res = await fetch("/api/claude/project/proj_123/settings", {
+      method: "OPTIONS",
+    });
+
+    expect(res.status).toBe(204);
+    expect(res.headers["access-control-allow-methods"]).toContain("OPTIONS");
   });
 
   it("GET /api/claude/media/:projectId returns media list", async () => {
@@ -330,6 +345,30 @@ describe("Claude HTTP Server", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.errorType).toBeDefined();
+  });
+
+  it("POST /api/claude/mcp/app validates html payload", async () => {
+    const res = await fetch("/api/claude/mcp/app", {
+      method: "POST",
+      body: JSON.stringify({ toolName: "configure-media" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("html");
+  });
+
+  it("POST /api/claude/mcp/app accepts valid payload", async () => {
+    const res = await fetch("/api/claude/mcp/app", {
+      method: "POST",
+      body: JSON.stringify({
+        toolName: "configure-media",
+        html: "<html><body>Test</body></html>",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.forwarded).toBe(false);
   });
 
   it("returns 404 for unknown routes", async () => {

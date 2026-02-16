@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Configure Media</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e1320;
+        --panel: #151f33;
+        --panel-2: #1d2940;
+        --text: #edf2ff;
+        --muted: #8ea0c2;
+        --accent: #3dd6be;
+        --accent-2: #1d8f9c;
+        --danger: #ff5e7d;
+        --border: #2c3a56;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #1b2742, var(--bg));
+        color: var(--text);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .panel {
+        max-width: 760px;
+        margin: 0 auto;
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .sub {
+        margin: 8px 0 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .section {
+        margin-bottom: 18px;
+      }
+      .label {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .ratio-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .ratio-btn {
+        width: 100%;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        padding: 10px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .ratio-btn.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+      .row {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr;
+      }
+      input[type="range"],
+      select {
+        width: 100%;
+      }
+      select,
+      input[type="range"] {
+        accent-color: var(--accent);
+      }
+      .stats {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 18px;
+      }
+      button.apply {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #051018;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .status {
+        min-height: 20px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .status.error {
+        color: var(--danger);
+      }
+      @media (max-width: 640px) {
+        .ratio-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+    <script>
+      window.__QCUT_RUNTIME__ = __QCUT_RUNTIME_CONFIG__;
+    </script>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>Media Configuration</h1>
+      <p class="sub">Pick aspect ratio, resolution, and target duration.</p>
+
+      <section class="section">
+        <div class="label">Aspect Ratio</div>
+        <div class="ratio-grid" id="ratio-grid">
+          <button type="button" class="ratio-btn active" data-ratio="16:9">16:9</button>
+          <button type="button" class="ratio-btn" data-ratio="9:16">9:16</button>
+          <button type="button" class="ratio-btn" data-ratio="1:1">1:1</button>
+          <button type="button" class="ratio-btn" data-ratio="4:3">4:3</button>
+        </div>
+      </section>
+
+      <section class="section row">
+        <div>
+          <div class="label">Duration (seconds)</div>
+          <input id="duration" type="range" min="5" max="120" step="1" value="15" />
+          <div class="stats"><span id="duration-value">15</span>s</div>
+        </div>
+        <div>
+          <div class="label">Resolution</div>
+          <select id="resolution">
+            <option value="1920">1080p</option>
+            <option value="1280">720p</option>
+            <option value="3840">4K</option>
+          </select>
+        </div>
+      </section>
+
+      <div class="stats" id="preview">Preview: 1920 x 1080</div>
+      <div class="status" id="status"></div>
+
+      <div class="actions">
+        <button type="button" class="apply" id="apply">Apply to Project</button>
+      </div>
+    </main>
+
+    <script type="module">
+      import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps";
+
+      const runtime = window.__QCUT_RUNTIME__ || {
+        apiBaseUrl: "http://127.0.0.1:8765",
+        projectId: "default",
+      };
+
+      const ratioGrid = document.getElementById("ratio-grid");
+      const durationInput = document.getElementById("duration");
+      const durationValue = document.getElementById("duration-value");
+      const resolutionSelect = document.getElementById("resolution");
+      const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
+      const applyButton = document.getElementById("apply");
+
+      let selectedRatio = "16:9";
+
+      const app = new App({ name: "QCut Configure Media", version: "1.0.0" });
+      try {
+        await app.connect();
+      } catch {
+        // Standalone mode still supports local HTTP apply.
+      }
+
+      function getDimensions({ ratio, maxDimension }) {
+        const [w, h] = ratio.split(":").map((value) => Number.parseInt(value, 10));
+        if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+          return { width: 1920, height: 1080 };
+        }
+        if (w >= h) {
+          return { width: maxDimension, height: Math.max(1, Math.round((maxDimension * h) / w)) };
+        }
+        return { width: Math.max(1, Math.round((maxDimension * w) / h)), height: maxDimension };
+      }
+
+      function renderPreview() {
+        const maxDimension = Number.parseInt(resolutionSelect.value, 10);
+        const { width, height } = getDimensions({ ratio: selectedRatio, maxDimension });
+        preview.textContent = `Preview: ${width} x ${height}`;
+        durationValue.textContent = durationInput.value;
+      }
+
+      function setStatus({ message, isError }) {
+        status.textContent = message;
+        status.classList.toggle("error", Boolean(isError));
+      }
+
+      ratioGrid.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-ratio]");
+        if (!button) {
+          return;
+        }
+        const ratio = button.getAttribute("data-ratio");
+        if (!ratio) {
+          return;
+        }
+        selectedRatio = ratio;
+        for (const candidate of ratioGrid.querySelectorAll("button[data-ratio]")) {
+          candidate.classList.toggle("active", candidate === button);
+        }
+        renderPreview();
+      });
+
+      durationInput.addEventListener("input", renderPreview);
+      resolutionSelect.addEventListener("change", renderPreview);
+
+      applyButton.addEventListener("click", async () => {
+        try {
+          setStatus({ message: "Applying settings...", isError: false });
+          const maxDimension = Number.parseInt(resolutionSelect.value, 10);
+          const { width, height } = getDimensions({ ratio: selectedRatio, maxDimension });
+
+          const payload = {
+            width,
+            height,
+            aspectRatio: selectedRatio,
+            durationSeconds: Number.parseInt(durationInput.value, 10),
+          };
+
+          const response = await fetch(
+            `${runtime.apiBaseUrl}/api/claude/project/${runtime.projectId}/settings`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Request failed with ${response.status}`);
+          }
+
+          await response.json();
+          setStatus({ message: "Project settings updated.", isError: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to apply settings";
+          setStatus({ message, isError: true });
+        }
+      });
+
+      renderPreview();
+    </script>
+  </body>
+</html>

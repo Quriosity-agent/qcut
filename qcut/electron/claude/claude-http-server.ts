@@ -10,7 +10,7 @@
  */
 
 import { createServer } from "node:http";
-import type { IncomingMessage, Server } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "./utils/http-router.js";
 import { claudeLog } from "./utils/logger.js";
@@ -40,6 +40,7 @@ import {
   getExportRecommendation,
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
+import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
 
@@ -62,6 +63,17 @@ function checkAuth(req: IncomingMessage): boolean {
   return authHeader === `Bearer ${token}`;
 }
 
+/** Set permissive CORS headers on the HTTP response. */
+function setCorsHeaders(res: ServerResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PATCH, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+}
+
+/** Start the local HTTP API server for Claude and MCP integrations. */
 export function startClaudeHTTPServer(
   port = Number.parseInt(process.env.QCUT_API_PORT ?? "8765", 10)
 ): void {
@@ -212,17 +224,6 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing settings in request body");
     }
     await updateProjectSettings(req.params.projectId, req.body);
-    // Also notify renderer if a window is available
-    try {
-      const win = getWindow();
-      win.webContents.send(
-        "claude:project:updated",
-        req.params.projectId,
-        req.body
-      );
-    } catch {
-      // No window — settings still saved to disk
-    }
     return { updated: true };
   });
 
@@ -257,9 +258,116 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
+  // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
+  // ==========================================================================
+  router.post("/api/claude/personaplex/generate", async (req) => {
+    if (!req.body?.audio_url) {
+      throw new HttpError(400, "Missing 'audio_url' in request body");
+    }
+
+    const keys = await getDecryptedApiKeys();
+    const apiKey = keys.falApiKey;
+    if (!apiKey) {
+      throw new HttpError(
+        400,
+        "FAL API key not configured. Go to Settings → API Keys to set it."
+      );
+    }
+
+    const requestBody: Record<string, unknown> = {
+      audio_url: req.body.audio_url,
+    };
+    if (req.body.prompt) requestBody.prompt = req.body.prompt;
+    if (req.body.voice) requestBody.voice = req.body.voice;
+    if (req.body.temperature_audio != null)
+      requestBody.temperature_audio = req.body.temperature_audio;
+    if (req.body.temperature_text != null)
+      requestBody.temperature_text = req.body.temperature_text;
+    if (req.body.top_k_audio != null)
+      requestBody.top_k_audio = req.body.top_k_audio;
+    if (req.body.top_k_text != null)
+      requestBody.top_k_text = req.body.top_k_text;
+    if (req.body.seed != null) requestBody.seed = req.body.seed;
+    if (req.body.output_format)
+      requestBody.output_format = req.body.output_format;
+
+    claudeLog.info("HTTP", "PersonaPlex generate request");
+
+    const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
+      signal: AbortSignal.timeout(25_000),
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!falResponse.ok) {
+      const errorText = await falResponse.text();
+      claudeLog.error(
+        "HTTP",
+        `PersonaPlex API error: ${falResponse.status} ${errorText}`
+      );
+      throw new HttpError(
+        falResponse.status,
+        `PersonaPlex API error: ${errorText}`
+      );
+    }
+
+    let result: unknown;
+    try {
+      result = await falResponse.json();
+    } catch {
+      throw new HttpError(502, "PersonaPlex API returned invalid JSON");
+    }
+    claudeLog.info("HTTP", "PersonaPlex generate complete");
+    return result;
+  });
+
+  // ==========================================================================
+  // MCP app preview forwarding
+  // ==========================================================================
+  router.post("/api/claude/mcp/app", async (req) => {
+    if (
+      !req.body ||
+      typeof req.body.html !== "string" ||
+      !req.body.html.trim()
+    ) {
+      throw new HttpError(400, "Missing 'html' in request body");
+    }
+
+    const toolName =
+      typeof req.body.toolName === "string" ? req.body.toolName : "unknown";
+    let forwarded = false;
+    let error: string | undefined;
+    try {
+      const win = getWindow();
+      win.webContents.send("mcp:app-html", {
+        html: req.body.html,
+        toolName,
+      });
+      forwarded = true;
+    } catch (err) {
+      forwarded = false;
+      error = err instanceof Error ? err.message : "Unknown error";
+    }
+
+    return { forwarded, ...(error && { error }) };
+  });
+
+  // ==========================================================================
   // Create and start the server
   // ==========================================================================
   server = createServer((req, res) => {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     // 30s request timeout
     req.setTimeout(30_000, () => {
       res.writeHead(408, { "Content-Type": "application/json" });
@@ -308,6 +416,7 @@ export function startClaudeHTTPServer(
   });
 }
 
+/** Stop the running Claude HTTP server if active. */
 export function stopClaudeHTTPServer(): void {
   if (server) {
     server.close();

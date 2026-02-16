@@ -10,6 +10,9 @@ import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug-config";
 import { useSkillsStore } from "@/stores/skills-store";
 import { cleanupPtyOnEditorExit } from "@/lib/pty-session-cleanup";
+import { useMediaPanelStore } from "@/components/editor/media-panel/store";
+import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
+import { useClaudeProjectUpdates } from "@/hooks/use-claude-project-updates";
 import "@/lib/debug-sticker-overlay"; // Load debug utilities
 import "@/lib/sticker-test-helper"; // Load sticker test helper
 import "@/lib/sticker-persistence-debug"; // Load persistence debug
@@ -27,6 +30,11 @@ export const Route = createLazyFileRoute("/editor/$project_id")({
 function EditorPage() {
   const navigate = useNavigate();
   const { project_id } = Route.useParams();
+  const setActiveTab = useMediaPanelStore((state) => state.setActiveTab);
+  const { setProjectContext, setWorkingDirectory, ensureAutoConnected } =
+    usePtyTerminalStore();
+
+  useClaudeProjectUpdates({ projectId: project_id });
 
   useEffect(() => {
     return () => {
@@ -198,6 +206,64 @@ function EditorPage() {
     isInvalidProjectId,
     markProjectIdAsInvalid,
     navigate,
+  ]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const initializeClaudeTerminal = async () => {
+      if (!project_id || activeProject?.id !== project_id) {
+        return;
+      }
+
+      setActiveTab("pty");
+
+      let projectRoot = "";
+      try {
+        projectRoot =
+          (await window.electronAPI?.projectFolder?.getRoot?.(project_id)) ||
+          "";
+      } catch {
+        projectRoot = "";
+      }
+
+      if (isCancelled) {
+        return;
+      }
+
+      if (projectRoot) {
+        setWorkingDirectory(projectRoot);
+      }
+
+      setProjectContext({
+        projectId: project_id,
+        workingDirectory: projectRoot || undefined,
+      });
+
+      try {
+        await ensureAutoConnected({
+          cwd: projectRoot || undefined,
+          projectId: project_id,
+        });
+      } catch (error) {
+        debugError("[Editor] Failed to auto-connect Claude terminal", error);
+      }
+    };
+
+    initializeClaudeTerminal().catch((error) => {
+      debugError("[Editor] Terminal initialization error", error);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    activeProject?.id,
+    ensureAutoConnected,
+    project_id,
+    setActiveTab,
+    setProjectContext,
+    setWorkingDirectory,
   ]);
 
   // Get active preset and reset counter for panel layouts

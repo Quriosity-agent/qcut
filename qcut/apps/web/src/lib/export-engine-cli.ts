@@ -8,10 +8,13 @@ import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
+import { useWordTimelineStore } from "@/stores/word-timeline-store";
+import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import {
   analyzeTimelineForExport,
   type ExportAnalysis,
 } from "./export-analysis";
+import { calculateKeepSegments } from "./transcription/segment-calculator";
 
 // Import extracted modules
 import type {
@@ -765,6 +768,15 @@ export class CLIExportEngine extends ExportEngine {
     const hasTextFilters = textFilterChain.length > 0;
     const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
 
+    // Check for word filters early — needed before mode decision
+    const wordTimelineData = useWordTimelineStore.getState().data;
+    const hasWordFilters =
+      wordTimelineData?.words.some(
+        (word) =>
+          word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE
+      ) || false;
+
     // Determine which mode to use and extract appropriate video info
     const visibleVideoCount = this.countVisibleVideoElements();
     const canUseMode2 =
@@ -772,11 +784,16 @@ export class CLIExportEngine extends ExportEngine {
         "direct-video-with-filters" ||
       (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
         visibleVideoCount === 1);
+
+    // Extract video input for Mode 2 OR when word filters need cutting
+    const needsVideoInput = canUseMode2 || hasWordFilters;
     const videoInput: {
       path: string;
       trimStart: number;
       trimEnd: number;
-    } | null = canUseMode2 ? await this.extractVideoInputPathWrapper() : null;
+    } | null = needsVideoInput
+      ? await this.extractVideoInputPathWrapper()
+      : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {
@@ -802,11 +819,67 @@ export class CLIExportEngine extends ExportEngine {
       console.log(
         "⚡ [MODE 2 EXPORT] ============================================"
       );
-    } else if (canUseMode2 && !videoInput) {
-      console.log(
-        "⚠️ [MODE 2 EXPORT] Mode 2 requested but video input extraction failed"
+    } else if (needsVideoInput && !videoInput) {
+      debugWarn("⚠️ [MODE 2 EXPORT] Video input extraction failed");
+      debugWarn("⚠️ [MODE 2 EXPORT] Falling back to standard export");
+    }
+    debugLog(
+      `[CLI Export] Word timeline data: ${wordTimelineData ? `${wordTimelineData.words.length} words` : "null"}`
+    );
+    if (wordTimelineData) {
+      const stateCounts: Record<string, number> = {};
+      for (const w of wordTimelineData.words) {
+        stateCounts[w.filterState] = (stateCounts[w.filterState] || 0) + 1;
+      }
+      debugLog("[CLI Export] Filter state breakdown:", stateCounts);
+    }
+    debugLog(
+      `[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`
+    );
+    let wordFilterSegments:
+      | Array<{
+          start: number;
+          end: number;
+        }>
+      | undefined;
+
+    if (hasWordFilters && videoInput && wordTimelineData) {
+      const filteredWords = wordTimelineData.words.filter(
+        (w) =>
+          w.filterState === WORD_FILTER_STATE.AI ||
+          w.filterState === WORD_FILTER_STATE.USER_REMOVE
       );
-      console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
+      console.log(
+        `[CLI Export] Word filters active: ${filteredWords.length} words marked for removal`
+      );
+      for (const w of filteredWords) {
+        console.log(
+          `  [REMOVE] "${w.text}" (${w.start.toFixed(2)}s–${w.end.toFixed(2)}s) state=${w.filterState}`
+        );
+      }
+
+      const keepSegments = calculateKeepSegments({
+        words: wordTimelineData.words,
+        videoDuration: this.totalDuration,
+        options: { bufferMs: 50, crossfadeMs: 30, minGapMs: 50 },
+      });
+
+      console.log(
+        `[CLI Export] Keep segments (${keepSegments.length}):`,
+        keepSegments.map((s) => `${s.start.toFixed(2)}s–${s.end.toFixed(2)}s`)
+      );
+
+      const isFullLengthSegment =
+        keepSegments.length === 1 &&
+        Math.abs(keepSegments[0].start - 0) < 0.001 &&
+        Math.abs(keepSegments[0].end - this.totalDuration) < 0.001;
+      if (!isFullLengthSegment) {
+        wordFilterSegments = keepSegments;
+      }
+    } else if (hasWordFilters && !videoInput) {
+      debugWarn(
+        "[CLI Export] Word filter cuts requested, but no single video input is available. Falling back to standard export."
+      );
     }
 
     const shouldExtractVideoSources =
@@ -858,14 +931,17 @@ export class CLIExportEngine extends ExportEngine {
         this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&
         !hasTextFilters &&
         !hasStickerFilters &&
-        !hasImageFilters
-      ), // Disable direct copy when text, stickers, images, or video-normalization mode
+        !hasImageFilters &&
+        !wordFilterSegments
+      ), // Disable direct copy when text, stickers, images, video-normalization, or word filter cuts
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
       videoInputPath: videoInput?.path,
       trimStart: videoInput?.trimStart || 0,
       trimEnd: videoInput?.trimEnd || 0,
+      wordFilterSegments,
+      crossfadeMs: 30,
       // Mode 1.5: Video normalization
       optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
     };
@@ -894,6 +970,9 @@ export class CLIExportEngine extends ExportEngine {
     );
     console.log(
       `   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`
+    );
+    console.log(
+      `   - Word filter cuts: ${wordFilterSegments ? `${wordFilterSegments.length} segments` : "NO"}`
     );
     console.log(
       `   - Video sources: ${exportOptions.videoSources?.length || 0}`

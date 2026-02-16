@@ -28,6 +28,7 @@ export const mockElectronAPI: ElectronAPI = {
     success: true,
     filePath: "/path/to/saved/file.mp4",
   }),
+  getPathForFile: vi.fn().mockReturnValue("/mock/path/to/file"),
   getFileInfo: vi.fn().mockResolvedValue({
     size: 1024,
     created: new Date(),
@@ -153,6 +154,11 @@ export const mockElectronAPI: ElectronAPI = {
       url: "https://fal.ai/storage/mock-file-url",
     }),
   },
+
+  analyzeFillers: vi.fn().mockResolvedValue({
+    filteredWordIds: [],
+    provider: "pattern",
+  }),
 
   // API key operations
   apiKeys: {

@@ -15,7 +15,11 @@ describe("cleanupPtyOnEditorExit", () => {
       selectedModel: "anthropic/claude-sonnet-4",
       selectedClaudeModel: "opus",
       isGeminiMode: false,
+      projectId: null,
       workingDirectory: "",
+      autoConnectOnLoad: true,
+      hasUserDisconnected: false,
+      autoConnectAttemptedProjectId: null,
       activeSkill: null,
       skillPromptSent: false,
     });

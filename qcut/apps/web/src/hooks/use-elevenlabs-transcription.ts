@@ -249,7 +249,7 @@ export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
           "[ElevenLabs Hook] Step 4: Loading into word timeline store..."
         );
         setProgress("Loading transcription...");
-        loadFromTranscription(result, transcriptFileName);
+        await loadFromTranscription(result, transcriptFileName);
 
         // TODO: Save transcription JSON to project folder (requires IPC handler)
 
