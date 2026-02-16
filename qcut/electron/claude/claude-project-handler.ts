@@ -17,6 +17,25 @@ import type { ProjectSettings, ProjectStats } from "../types/claude-api";
 
 const HANDLER_NAME = "Project";
 
+function parseAspectRatio({
+  aspectRatio,
+}: {
+  aspectRatio: string;
+}): { width: number; height: number } | null {
+  const [widthRaw, heightRaw] = aspectRatio.split(":");
+  const width = Number.parseFloat(widthRaw);
+  const height = Number.parseFloat(heightRaw);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    return null;
+  }
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+}
+
 /** Return a ProjectStats object with all counters at zero. */
 function getEmptyStats(): ProjectStats {
   return {
@@ -86,6 +105,8 @@ export async function updateProjectSettings(
       project.exportFormat = settings.exportFormat;
     if (settings.exportQuality !== undefined)
       project.exportQuality = settings.exportQuality;
+    if (settings.aspectRatio !== undefined)
+      project.aspectRatio = settings.aspectRatio;
 
     if (settings.width !== undefined || settings.height !== undefined) {
       if (!project.canvasSize) {
@@ -95,16 +116,74 @@ export async function updateProjectSettings(
         project.canvasSize.width = settings.width;
       if (settings.height !== undefined)
         project.canvasSize.height = settings.height;
+    } else if (typeof settings.aspectRatio === "string") {
+      const parsedAspectRatio = parseAspectRatio({
+        aspectRatio: settings.aspectRatio,
+      });
+      if (parsedAspectRatio) {
+        const currentWidth = project.canvasSize?.width ?? 1920;
+        const currentHeight = project.canvasSize?.height ?? 1080;
+
+        if (parsedAspectRatio.width >= parsedAspectRatio.height) {
+          const recalculatedHeight = Math.max(
+            1,
+            Math.round(
+              currentWidth * (parsedAspectRatio.height / parsedAspectRatio.width)
+            )
+          );
+          project.canvasSize = {
+            width: currentWidth,
+            height: recalculatedHeight,
+          };
+        } else {
+          const recalculatedWidth = Math.max(
+            1,
+            Math.round(
+              currentHeight * (parsedAspectRatio.width / parsedAspectRatio.height)
+            )
+          );
+          project.canvasSize = {
+            width: recalculatedWidth,
+            height: currentHeight,
+          };
+        }
+      }
     }
 
     project.updatedAt = new Date().toISOString();
 
     await fs.writeFile(settingsPath, JSON.stringify(project, null, 2), "utf-8");
+    broadcastProjectSettingsUpdate({ projectId, settings });
 
     claudeLog.info(HANDLER_NAME, `Successfully updated project: ${projectId}`);
   } catch (error) {
     claudeLog.error(HANDLER_NAME, "Failed to update project settings:", error);
     throw error;
+  }
+}
+
+export function broadcastProjectSettingsUpdate({
+  projectId,
+  settings,
+}: {
+  projectId: string;
+  settings: Partial<ProjectSettings>;
+}): void {
+  try {
+    const windows = BrowserWindow.getAllWindows();
+    for (const win of windows) {
+      try {
+        win.webContents.send("claude:project:updated", projectId, settings);
+      } catch {
+        // Ignore individual window dispatch failures.
+      }
+    }
+  } catch (error) {
+    claudeLog.warn(
+      HANDLER_NAME,
+      "Failed to broadcast project settings update:",
+      error
+    );
   }
 }
 
@@ -176,13 +255,11 @@ export function setupClaudeProjectIPC(): void {
   ipcMain.handle(
     "claude:project:updateSettings",
     async (
-      event: IpcMainInvokeEvent,
+      _event: IpcMainInvokeEvent,
       projectId: string,
       settings: Partial<ProjectSettings>
     ) => {
       await updateProjectSettings(projectId, settings);
-      // Notify renderer process
-      event.sender.send("claude:project:updated", projectId, settings);
     }
   );
 
@@ -205,6 +282,7 @@ module.exports = {
   setupClaudeProjectIPC,
   getProjectSettings,
   updateProjectSettings,
+  broadcastProjectSettingsUpdate,
   getProjectStats,
   getEmptyStats,
 };

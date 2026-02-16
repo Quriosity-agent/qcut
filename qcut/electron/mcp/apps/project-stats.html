@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Stats</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #081420;
+        --card: #132437;
+        --card-2: #173149;
+        --text: #f0f5ff;
+        --muted: #90a8cf;
+        --accent: #59ffbf;
+        --border: #2c4463;
+        --danger: #ff6f88;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at 20% 10%, #153353, var(--bg));
+        color: var(--text);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .panel {
+        max-width: 760px;
+        margin: 0 auto;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, var(--card), var(--card-2));
+        padding: 18px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      p {
+        margin: 8px 0 16px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .stat {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        background: rgba(7, 16, 30, 0.35);
+      }
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 8px;
+      }
+      .value {
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .status {
+        margin-top: 12px;
+        min-height: 20px;
+        color: var(--muted);
+      }
+      .status.error {
+        color: var(--danger);
+      }
+      .actions {
+        margin-top: 14px;
+      }
+      button {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        background: transparent;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+    <script>
+      window.__QCUT_RUNTIME__ = __QCUT_RUNTIME_CONFIG__;
+    </script>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>Project Metrics</h1>
+      <p>Live stats from the active QCut project.</p>
+
+      <section class="grid">
+        <article class="stat"><div class="label">Total Duration</div><div class="value" id="duration">0s</div></article>
+        <article class="stat"><div class="label">Tracks</div><div class="value" id="tracks">0</div></article>
+        <article class="stat"><div class="label">Elements</div><div class="value" id="elements">0</div></article>
+        <article class="stat"><div class="label">Media (V / A / I)</div><div class="value" id="media">0 / 0 / 0</div></article>
+      </section>
+
+      <div class="status" id="status"></div>
+
+      <div class="actions">
+        <button type="button" id="refresh">Refresh now</button>
+      </div>
+    </main>
+
+    <script type="module">
+      import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps";
+
+      const runtime = window.__QCUT_RUNTIME__ || {
+        apiBaseUrl: "http://127.0.0.1:8765",
+        projectId: "default",
+      };
+
+      const durationEl = document.getElementById("duration");
+      const tracksEl = document.getElementById("tracks");
+      const elementsEl = document.getElementById("elements");
+      const mediaEl = document.getElementById("media");
+      const status = document.getElementById("status");
+      const refreshButton = document.getElementById("refresh");
+
+      const app = new App({ name: "QCut Project Stats", version: "1.0.0" });
+      try {
+        await app.connect();
+      } catch {
+        // Standalone mode still supports local HTTP polling.
+      }
+
+      function setStatus({ message, isError }) {
+        status.textContent = message;
+        status.classList.toggle("error", Boolean(isError));
+      }
+
+      function formatDuration(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) {
+          return "0s";
+        }
+        if (seconds < 60) {
+          return `${seconds.toFixed(1)}s`;
+        }
+        const minutes = Math.floor(seconds / 60);
+        const remainder = Math.round(seconds % 60);
+        return `${minutes}m ${remainder}s`;
+      }
+
+      async function refreshStats() {
+        try {
+          setStatus({ message: "Refreshing stats...", isError: false });
+          const response = await fetch(
+            `${runtime.apiBaseUrl}/api/claude/project/${runtime.projectId}/stats`
+          );
+          if (!response.ok) {
+            throw new Error(`Request failed with ${response.status}`);
+          }
+
+          const payload = await response.json();
+          const stats = payload?.data || {};
+
+          durationEl.textContent = formatDuration(stats.totalDuration ?? 0);
+          tracksEl.textContent = String(stats.trackCount ?? 0);
+          elementsEl.textContent = String(stats.elementCount ?? 0);
+          const media = stats.mediaCount || { video: 0, audio: 0, image: 0 };
+          mediaEl.textContent = `${media.video || 0} / ${media.audio || 0} / ${media.image || 0}`;
+          setStatus({ message: `Updated ${new Date().toLocaleTimeString()}`, isError: false });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to load project stats";
+          setStatus({ message, isError: true });
+        }
+      }
+
+      refreshButton.addEventListener("click", () => {
+        refreshStats().catch(() => {
+          setStatus({ message: "Refresh failed", isError: true });
+        });
+      });
+
+      refreshStats().catch(() => {
+        setStatus({ message: "Initial stats load failed", isError: true });
+      });
+
+      setInterval(() => {
+        refreshStats().catch(() => {
+          setStatus({ message: "Auto-refresh failed", isError: true });
+        });
+      }, 7000);
+    </script>
+  </body>
+</html>

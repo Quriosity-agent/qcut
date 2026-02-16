@@ -26,7 +26,11 @@ describe("usePtyTerminalStore", () => {
       selectedModel: getDefaultCodexModel(),
       selectedClaudeModel: getDefaultClaudeModel(),
       isGeminiMode: false,
+      projectId: null,
       workingDirectory: "",
+      autoConnectOnLoad: true,
+      hasUserDisconnected: false,
+      autoConnectAttemptedProjectId: null,
       activeSkill: null,
       skillPromptSent: false,
     });
@@ -52,7 +56,11 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.cliProvider).toBe("claude");
       expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
       expect(result.current.isGeminiMode).toBe(false);
+      expect(result.current.projectId).toBeNull();
       expect(result.current.workingDirectory).toBe("");
+      expect(result.current.autoConnectOnLoad).toBe(true);
+      expect(result.current.hasUserDisconnected).toBe(false);
+      expect(result.current.autoConnectAttemptedProjectId).toBeNull();
       expect(result.current.activeSkill).toBeNull();
       expect(result.current.skillPromptSent).toBe(false);
     });
@@ -214,6 +222,22 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.status).toBe("error");
       expect(result.current.error).toBe("Spawn failed: permission denied");
       expect(result.current.sessionId).toBeNull();
+    });
+
+    it("should show a helpful Claude install message when binary is missing", async () => {
+      vi.mocked(mockElectronAPI.pty!.spawn).mockResolvedValueOnce({
+        success: false,
+        error: "spawn claude ENOENT",
+      });
+
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(result.current.status).toBe("error");
+      expect(result.current.error).toContain("Claude Code CLI is not installed");
     });
 
     it("should handle exception during spawn", async () => {
@@ -608,6 +632,56 @@ describe("usePtyTerminalStore", () => {
     });
   });
 
+  describe("auto-connect", () => {
+    it("skips auto-connect after an explicit user disconnect", async () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      await act(async () => {
+        await result.current.disconnect({ userInitiated: true });
+      });
+
+      vi.mocked(mockElectronAPI.pty!.spawn).mockClear();
+
+      await act(async () => {
+        await result.current.ensureAutoConnected({
+          projectId: "project-1",
+          cwd: "/tmp/project-1",
+        });
+      });
+
+      expect(mockElectronAPI.pty!.spawn).not.toHaveBeenCalled();
+    });
+
+    it("auto-connects once per project context", async () => {
+      const { result } = renderHook(() => usePtyTerminalStore());
+
+      await act(async () => {
+        await result.current.ensureAutoConnected({
+          projectId: "project-1",
+          cwd: "/tmp/project-1",
+        });
+      });
+
+      expect(mockElectronAPI.pty!.spawn).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        usePtyTerminalStore.setState({
+          sessionId: null,
+          status: "disconnected",
+        });
+      });
+
+      await act(async () => {
+        await result.current.ensureAutoConnected({
+          projectId: "project-1",
+          cwd: "/tmp/project-1",
+        });
+      });
+
+      expect(mockElectronAPI.pty!.spawn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("reset", () => {
     it("should reset all state to initial values", async () => {
       const { result } = renderHook(() => usePtyTerminalStore());
@@ -640,7 +714,10 @@ describe("usePtyTerminalStore", () => {
       expect(result.current.cliProvider).toBe("claude");
       expect(result.current.selectedModel).toBe("anthropic/claude-sonnet-4");
       expect(result.current.isGeminiMode).toBe(false);
+      expect(result.current.projectId).toBeNull();
       expect(result.current.workingDirectory).toBe("");
+      expect(result.current.autoConnectOnLoad).toBe(true);
+      expect(result.current.hasUserDisconnected).toBe(false);
       expect(result.current.activeSkill).toBeNull();
     });
   });

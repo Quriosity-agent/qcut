@@ -1,5 +1,7 @@
 import { ipcMain, app } from "electron";
 import { platform } from "node:os";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { createSpawnDiagnostics } from "./pty-spawn-diagnostics";
 
 // Dynamic import for node-pty to support packaged app
@@ -10,7 +12,6 @@ try {
 } catch (error) {
   console.warn("[PTY] Failed to load node-pty from standard path:", error);
   // In packaged app, load from extraResources
-  const path = require("path");
   const modulePath = path.join(process.resourcesPath, "node_modules/node-pty");
   try {
     pty = require(modulePath);
@@ -95,6 +96,83 @@ function getShellArgs(): string[] {
   return ["-l"]; // Login shell on Unix
 }
 
+function resolveQcutMcpServerEntry(): string | null {
+  const candidates = [
+    path.resolve(__dirname, "mcp", "qcut-mcp-server.js"),
+    path.resolve(app.getAppPath(), "dist", "electron", "mcp", "qcut-mcp-server.js"),
+    path.resolve(app.getAppPath(), "electron", "mcp", "qcut-mcp-server.js"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    } catch {
+      // Ignore inaccessible paths and continue searching.
+    }
+  }
+
+  return null;
+}
+
+function parseMcpServerConfig({
+  rawConfig,
+}: {
+  rawConfig?: string;
+}): Record<string, unknown> {
+  if (!rawConfig) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(rawConfig);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Invalid existing config is ignored and replaced with a valid object.
+  }
+  return {};
+}
+
+function buildClaudeMcpServersEnv({
+  existingRawConfig,
+  mcpServerPath,
+  projectId,
+  projectRoot,
+  apiBaseUrl,
+}: {
+  existingRawConfig?: string;
+  mcpServerPath: string;
+  projectId?: string;
+  projectRoot?: string;
+  apiBaseUrl?: string;
+}): string {
+  const existingConfig = parseMcpServerConfig({ rawConfig: existingRawConfig });
+  const qcutEnv: Record<string, string> = {};
+
+  if (projectId) {
+    qcutEnv.QCUT_PROJECT_ID = projectId;
+  }
+  if (projectRoot) {
+    qcutEnv.QCUT_PROJECT_ROOT = projectRoot;
+  }
+  if (apiBaseUrl) {
+    qcutEnv.QCUT_API_BASE_URL = apiBaseUrl;
+  }
+
+  const qcutConfig = {
+    command: "node",
+    args: [mcpServerPath],
+    env: qcutEnv,
+  };
+
+  return JSON.stringify({
+    ...existingConfig,
+    qcut: qcutConfig,
+  });
+}
+
 // ============================================================================
 // IPC Handlers
 // ============================================================================
@@ -174,10 +252,29 @@ export function setupPtyIPC(): void {
         console.log(`[PTY] SHELL env: ${process.env.SHELL}`);
 
         const spawnCwd = options.cwd || process.cwd();
-        const spawnEnv = {
+        const spawnEnv: NodeJS.ProcessEnv = {
           ...process.env,
           ...options.env, // Merge additional env vars (e.g., OPENROUTER_API_KEY)
         };
+
+        const isClaudeCommand =
+          typeof options.command === "string" &&
+          options.command.trim().startsWith("claude");
+
+        if (isClaudeCommand) {
+          const mcpServerPath = resolveQcutMcpServerEntry();
+          if (mcpServerPath) {
+            spawnEnv.CLAUDE_MCP_SERVERS = buildClaudeMcpServersEnv({
+              existingRawConfig: spawnEnv.CLAUDE_MCP_SERVERS,
+              mcpServerPath,
+              projectId: options.env?.QCUT_PROJECT_ID,
+              projectRoot: options.env?.QCUT_PROJECT_ROOT || spawnCwd,
+              apiBaseUrl: options.env?.QCUT_API_BASE_URL,
+            });
+          } else {
+            console.warn("[PTY] QCut MCP server entry not found; skipping MCP wiring");
+          }
+        }
 
         const diagnostics = createSpawnDiagnostics({
           shell,

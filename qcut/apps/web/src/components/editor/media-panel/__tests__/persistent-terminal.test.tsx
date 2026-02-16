@@ -122,7 +122,11 @@ describe("persistent PTY terminal in MediaPanel", () => {
       selectedModel: "anthropic/claude-sonnet-4",
       selectedClaudeModel: "opus",
       isGeminiMode: false,
+      projectId: "test-project",
       workingDirectory: "",
+      autoConnectOnLoad: true,
+      hasUserDisconnected: false,
+      autoConnectAttemptedProjectId: null,
       activeSkill: null,
       skillPromptSent: false,
     });
