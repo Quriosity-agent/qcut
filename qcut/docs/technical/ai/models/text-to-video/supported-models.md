@@ -4,13 +4,13 @@ This document lists all the AI models supported for text-to-video generation in 
 
 ## Overview
 
-The Text-to-Video panel supports **18 different AI models** from various providers including OpenAI, ByteDance, Google, Alibaba, Vidu, and Black Forest Labs.
+The Text-to-Video panel supports **18 different AI models** from various providers including OpenAI, ByteDance, Google, Minimax, Lightricks, fal.ai, and Vidu.
 
 ---
 
 ## Supported Models
 
-### 1. Kling v3 Pro T2V
+### Kling v3 Pro T2V
 - **Provider:** ByteDance
 - **Price:** $0.336
 - **Resolution:** 1080p
@@ -30,7 +30,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 2. Kling v3 Standard T2V
+### Kling v3 Standard T2V
 - **Provider:** ByteDance
 - **Price:** $0.252
 - **Resolution:** 1080p
@@ -50,7 +50,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 3. Kling v2.6 Pro T2V
+### Kling v2.6 Pro T2V
 - **Provider:** ByteDance
 - **Price:** $0.70
 - **Resolution:** 1080p
@@ -72,7 +72,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 2. Sora 2 Text-to-Video Pro
+### Sora 2 Text-to-Video Pro
 - **Provider:** OpenAI
 - **Price:** $0.30-0.50
 - **Resolution:** 720p / 1080p
@@ -97,7 +97,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 3. Veo 3.1 Text-to-Video
+### Veo 3.1 Text-to-Video
 - **Provider:** Google
 - **Price:** $3.20
 - **Resolution:** 720p / 1080p
@@ -121,7 +121,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 4. WAN v2.6 T2V
+### WAN v2.6 T2V
 - **Provider:** fal.ai
 - **Price:** $0.75 (per-second pricing: $0.10-0.15/s)
 - **Resolution:** 720p / 1080p
@@ -151,7 +151,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 5. LTX Video 2.0 Fast T2V
+### LTX Video 2.0 Fast T2V
 - **Provider:** Lightricks
 - **Price:** $0.04-0.16
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -175,7 +175,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 6. LTX Video 2.0 Pro T2V
+### LTX Video 2.0 Pro T2V
 - **Provider:** Lightricks
 - **Price:** $0.06
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -199,7 +199,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 7. Hailuo 2.3 Pro T2V
+### Hailuo 2.3 Pro T2V
 - **Provider:** Minimax
 - **Price:** $0.49
 - **Resolution:** 1080p
@@ -222,7 +222,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 8. Veo 3.1 Fast Text-to-Video
+### Veo 3.1 Fast Text-to-Video
 - **Provider:** Google
 - **Price:** $1.20
 - **Resolution:** 720p / 1080p
@@ -246,7 +246,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 9. Seedance v1 Pro
+### Seedance v1 Pro
 - **Provider:** ByteDance
 - **Price:** $0.62
 - **Resolution:** 1080p
@@ -267,7 +267,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 10. Sora 2 Text-to-Video
+### Sora 2 Text-to-Video
 - **Provider:** OpenAI
 - **Price:** $0.10/s
 - **Resolution:** 720p
@@ -292,7 +292,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 11. Hailuo 2.3 Standard T2V
+### Hailuo 2.3 Standard T2V
 - **Provider:** Minimax
 - **Price:** $0.28-0.56
 - **Resolution:** 768p
@@ -314,7 +314,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 12. Kling v2.5 Turbo Pro
+### Kling v2.5 Turbo Pro
 - **Provider:** ByteDance
 - **Price:** $0.18
 - **Resolution:** 1080p
@@ -338,7 +338,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 13. Kling v2.5 Turbo Standard
+### Kling v2.5 Turbo Standard
 - **Provider:** ByteDance
 - **Price:** $0.10
 - **Resolution:** 720p
@@ -359,7 +359,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 14. Seedance v1 Lite
+### Seedance v1 Lite
 - **Provider:** ByteDance
 - **Price:** $0.18
 - **Resolution:** 720p
@@ -381,7 +381,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 15. WAN v2.5 Preview
+### WAN v2.5 Preview
 - **Provider:** fal.ai
 - **Price:** $0.12
 - **Resolution:** 1080p
@@ -403,7 +403,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### 18. Vidu Q3 Text-to-Video
+### Vidu Q3 Text-to-Video
 - **Provider:** Vidu
 - **Price:** $0.07-0.154/s
 - **Resolution:** 360p / 540p / 720p / 1080p

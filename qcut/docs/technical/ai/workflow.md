@@ -419,12 +419,12 @@ const TEXT_TO_VIDEO_ENDPOINTS = {
   // Kling
   "kling_v3_pro": "fal-ai/kling-video/v3/pro/text-to-video",
   "kling_v3_standard": "fal-ai/kling-video/v3/standard/text-to-video",
-  "kling_v2_1": "fal-ai/kling-video/v2.1/master",
+  // Note: "kling_v2_1" ("fal-ai/kling-video/v2.1/master") was removed - endpoint no longer exists in the codebase
   "kling_v2_5": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
 
   // WAN
+  "wan_26": "fal-ai/wan/v2.6/text-to-video",
   "wan_25": "fal-ai/wan-25-preview/text-to-video",
-  "wan_turbo": "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
 
   // Vidu
   "vidu_q3": "fal-ai/vidu/q3/text-to-video",

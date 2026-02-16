@@ -10,7 +10,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ## Supported Models
 
-### 1. Kling v3 Pro I2V
+### Kling v3 Pro I2V
 - **Provider:** ByteDance
 - **Price:** $0.336
 - **Resolution:** 1080p
@@ -33,7 +33,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 2. Kling v3 Standard I2V
+### Kling v3 Standard I2V
 - **Provider:** ByteDance
 - **Price:** $0.252
 - **Resolution:** 1080p
@@ -56,7 +56,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 3. Kling v2.6 Pro I2V
+### Kling v2.6 Pro I2V
 - **Provider:** ByteDance
 - **Price:** $0.70
 - **Resolution:** 1080p
@@ -79,7 +79,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 2. Sora 2 Image-to-Video Pro
+### Sora 2 Image-to-Video Pro
 - **Provider:** OpenAI
 - **Price:** $0.30-0.50
 - **Resolution:** 720p / 1080p
@@ -99,7 +99,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 3. Veo 3.1 Image-to-Video
+### Veo 3.1 Image-to-Video
 - **Provider:** Google
 - **Price:** $3.20
 - **Resolution:** 720p / 1080p
@@ -120,7 +120,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 4. WAN v2.6 I2V
+### WAN v2.6 I2V
 - **Provider:** fal.ai
 - **Price:** $0.10-0.15/s
 - **Resolution:** 720p / 1080p
@@ -147,7 +147,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 5. LTX Video 2.0 Fast I2V
+### LTX Video 2.0 Fast I2V
 - **Provider:** Lightricks
 - **Price:** $0.04-0.16
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -171,7 +171,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 6. LTX Video 2.0 I2V
+### LTX Video 2.0 I2V
 - **Provider:** Lightricks
 - **Price:** $0.36
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -194,7 +194,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 7. Hailuo 2.3 Pro
+### Hailuo 2.3 Pro
 - **Provider:** Minimax
 - **Price:** $0.49
 - **Resolution:** 1080p
@@ -212,7 +212,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 8. Seedance v1 Pro I2V
+### Seedance v1 Pro I2V
 - **Provider:** ByteDance
 - **Price:** $0.62
 - **Resolution:** 480p / 720p / 1080p
@@ -238,7 +238,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 9. Veo 3.1 Fast Image-to-Video
+### Veo 3.1 Fast Image-to-Video
 - **Provider:** Google
 - **Price:** $1.20
 - **Resolution:** 720p / 1080p
@@ -259,7 +259,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 10. Kling v2.5 Turbo Pro I2V
+### Kling v2.5 Turbo Pro I2V
 - **Provider:** ByteDance
 - **Price:** $0.35
 - **Resolution:** 1080p
@@ -284,7 +284,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 11. Seedance v1 Pro Fast I2V
+### Seedance v1 Pro Fast I2V
 - **Provider:** ByteDance
 - **Price:** $0.24
 - **Resolution:** 480p / 720p / 1080p
@@ -309,7 +309,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 12. Hailuo 2.3 Fast Pro
+### Hailuo 2.3 Fast Pro
 - **Provider:** Minimax
 - **Price:** $0.33
 - **Resolution:** 1080p
@@ -327,7 +327,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 13. Sora 2 Image-to-Video
+### Sora 2 Image-to-Video
 - **Provider:** OpenAI
 - **Price:** $0.10/s
 - **Resolution:** 720p
@@ -345,7 +345,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 14. Hailuo 2.3 Standard
+### Hailuo 2.3 Standard
 - **Provider:** Minimax
 - **Price:** $0.28-0.56
 - **Resolution:** 768p
@@ -363,7 +363,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 15. WAN v2.5 Preview I2V
+### WAN v2.5 Preview I2V
 - **Provider:** fal.ai
 - **Price:** $0.05-0.15/s
 - **Resolution:** 480p / 720p / 1080p
@@ -387,7 +387,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 16. Vidu Q2 Turbo I2V
+### Vidu Q2 Turbo I2V
 - **Provider:** Vidu
 - **Price:** $0.05
 - **Resolution:** 720p
@@ -405,7 +405,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 17. Veo 3.1 Frame-to-Video
+### Veo 3.1 Frame-to-Video
 - **Provider:** Google
 - **Price:** $3.20
 - **Resolution:** 720p / 1080p
@@ -427,7 +427,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 18. Veo 3.1 Fast Frame-to-Video
+### Veo 3.1 Fast Frame-to-Video
 - **Provider:** Google
 - **Price:** $1.20
 - **Resolution:** 720p / 1080p
@@ -449,7 +449,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 19. Kling O1 Image-to-Video
+### Kling O1 Image-to-Video
 - **Provider:** ByteDance
 - **Price:** $0.112
 - **Resolution:** 1080p
@@ -467,7 +467,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### 22. Vidu Q3 Image-to-Video
+### Vidu Q3 Image-to-Video
 - **Provider:** Vidu
 - **Price:** $0.07-0.154/s
 - **Resolution:** 360p / 540p / 720p / 1080p
@@ -532,7 +532,7 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 ### By Provider
 - **Google (Veo 3.1):** 4 models (I2V, Frame-to-Video, each with Fast variant)
 - **OpenAI (Sora 2):** 2 models (Standard, Pro)
-- **ByteDance:** 8 models (Kling v2.5/v2.6/v3, Seedance)
+- **ByteDance:** 7 models (Kling v2.5/v2.6/v3, Seedance)
 - **Minimax (Hailuo 2.3):** 3 models (Standard, Fast Pro, Pro)
 - **Lightricks (LTX Video 2.0):** 2 models (Standard, Fast)
 - **fal.ai (WAN):** 2 models (v2.5, v2.6)

@@ -516,7 +516,7 @@ The Text-to-Image panel supports **14 different AI models** from various provide
 ## Technical Implementation
 
 All models are accessed via the FAL.ai API through the `text2image-models` module located at:
-```
+```text
 qcut/apps/web/src/lib/text2image-models/
 ├── index.ts           # Model registry and priority order
 ├── google-models.ts   # Imagen4 Ultra, Nano Banana, Gemini 3 Pro

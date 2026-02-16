@@ -294,6 +294,8 @@ The flag can be toggled dynamically in development:
 window.qcutFeatures.toggle('VIDEO_EFFECTS', false);
 ```
 
+> **Note:** Toggling a feature flag triggers an automatic page reload (`window.location.reload()`) for the change to take effect.
+
 When disabled:
 - `applyEffect()` shows error toast
 - Effects UI components are hidden
