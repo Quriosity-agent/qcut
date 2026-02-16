@@ -34,13 +34,13 @@ import { usePreviewMedia } from "./preview-panel/use-preview-media";
 import { usePreviewSizing } from "./preview-panel/use-preview-sizing";
 import type { ActiveElement } from "./preview-panel/types";
 
-const MCP_MEDIA_TOOL_NAME = "flux-2-klein-realtime";
+const MCP_MEDIA_TOOL_NAME = "personaplex";
 const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FLUX 2 Klein Realtime</title>
+    <title>PersonaPlex</title>
     <style>
       :root { color-scheme: dark; }
       body {
@@ -80,11 +80,6 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         gap: 12px;
         grid-template-columns: 1fr 1fr;
       }
-      .row-3 {
-        display: grid;
-        gap: 12px;
-        grid-template-columns: 1fr 1fr 1fr;
-      }
       input[type="text"], input[type="number"], select, textarea {
         width: 100%;
         border: 1px solid #2a2a5a;
@@ -114,46 +109,12 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         accent-color: #a78bfa;
       }
       .range-val {
-        min-width: 36px;
+        min-width: 42px;
         text-align: right;
         font-size: 14px;
         color: #eef4ff;
         font-variant-numeric: tabular-nums;
       }
-      .toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 0;
-      }
-      .toggle-label { font-size: 14px; }
-      .toggle {
-        position: relative;
-        width: 40px;
-        height: 22px;
-        cursor: pointer;
-      }
-      .toggle input { opacity: 0; width: 0; height: 0; }
-      .toggle .slider {
-        position: absolute;
-        inset: 0;
-        background: #2a2a5a;
-        border-radius: 11px;
-        transition: background 0.2s;
-      }
-      .toggle .slider::after {
-        content: "";
-        position: absolute;
-        left: 3px;
-        top: 3px;
-        width: 16px;
-        height: 16px;
-        background: #eef4ff;
-        border-radius: 50%;
-        transition: transform 0.2s;
-      }
-      .toggle input:checked + .slider { background: #a78bfa; }
-      .toggle input:checked + .slider::after { transform: translateX(18px); }
       .status {
         margin-top: 12px;
         min-height: 19px;
@@ -187,66 +148,92 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         display: none;
       }
       .result-area.visible { display: block; }
-      .result-images {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
+      .result-audio {
         margin-top: 8px;
       }
-      .result-images img {
-        max-width: 100%;
+      .result-audio audio {
+        width: 100%;
         border-radius: 10px;
+      }
+      .result-text {
+        margin-top: 10px;
+        padding: 12px;
+        background: #13132a;
         border: 1px solid #2a2a5a;
+        border-radius: 10px;
+        font-size: 14px;
+        color: #eef4ff;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .result-meta {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6b8ab5;
+      }
+      .voice-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+      }
+      .voice-group-label {
+        font-size: 11px;
+        color: #6b8ab5;
+        padding: 4px 0 2px;
+        grid-column: 1 / -1;
       }
       @media (max-width: 600px) {
-        .row, .row-3 { grid-template-columns: 1fr; }
+        .row { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <main class="card">
-      <h1>FLUX 2 Klein Realtime</h1>
-      <div class="subtitle">fal-ai/flux-2/klein/realtime</div>
-      <p>Generate and edit images in realtime with FLUX 2 Klein.</p>
+      <h1>PersonaPlex</h1>
+      <div class="subtitle">fal-ai/personaplex</div>
+      <p>Real-time speech-to-speech AI with persona control. Provide audio input and a persona prompt to generate a conversational response.</p>
 
       <div class="section">
-        <div class="label">Prompt <span class="req">required</span></div>
-        <textarea id="prompt" placeholder="Describe the image you want to generate or edit..." rows="3"></textarea>
+        <div class="label">Audio URL <span class="req">required</span></div>
+        <input type="text" id="audio-url" placeholder="https://example.com/input-speech.wav" />
       </div>
 
       <div class="section">
-        <div class="label">Image URL <span class="opt">optional &mdash; for image editing</span></div>
-        <input type="text" id="image-url" placeholder="https://example.com/photo.jpg" />
+        <div class="label">Persona Prompt <span class="opt">optional</span></div>
+        <textarea id="prompt" placeholder="You are a wise and friendly teacher who explains concepts clearly and patiently..." rows="3"></textarea>
       </div>
 
       <div class="section row">
         <div>
-          <div class="label">Image Size <span class="opt">optional</span></div>
-          <select id="image-size">
-            <option value="square_hd">Square HD (1024x1024)</option>
-            <option value="square">Square (512x512)</option>
-            <option value="landscape_4_3" selected>Landscape 4:3</option>
-            <option value="landscape_16_9">Landscape 16:9</option>
-            <option value="portrait_4_3">Portrait 4:3</option>
-            <option value="portrait_16_9">Portrait 16:9</option>
+          <div class="label">Voice <span class="opt">default: NATF2</span></div>
+          <select id="voice">
+            <optgroup label="Natural Female">
+              <option value="NATF0">NATF0</option>
+              <option value="NATF1">NATF1</option>
+              <option value="NATF2" selected>NATF2</option>
+              <option value="NATF3">NATF3</option>
+            </optgroup>
+            <optgroup label="Natural Male">
+              <option value="NATM0">NATM0</option>
+              <option value="NATM1">NATM1</option>
+              <option value="NATM2">NATM2</option>
+              <option value="NATM3">NATM3</option>
+            </optgroup>
+            <optgroup label="Variety Female">
+              <option value="VARF0">VARF0</option>
+              <option value="VARF1">VARF1</option>
+              <option value="VARF2">VARF2</option>
+              <option value="VARF3">VARF3</option>
+              <option value="VARF4">VARF4</option>
+            </optgroup>
+            <optgroup label="Variety Male">
+              <option value="VARM0">VARM0</option>
+              <option value="VARM1">VARM1</option>
+              <option value="VARM2">VARM2</option>
+              <option value="VARM3">VARM3</option>
+              <option value="VARM4">VARM4</option>
+            </optgroup>
           </select>
-        </div>
-        <div>
-          <div class="label">Num Images <span class="opt">1 &ndash; 4</span></div>
-          <div class="range-wrap">
-            <input type="range" id="num-images" min="1" max="4" value="1" />
-            <span class="range-val" id="num-images-val">1</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="section row">
-        <div>
-          <div class="label">Guidance Scale <span class="opt">0 &ndash; 20</span></div>
-          <div class="range-wrap">
-            <input type="range" id="guidance-scale" min="0" max="20" step="0.5" value="2.5" />
-            <span class="range-val" id="guidance-scale-val">2.5</span>
-          </div>
         </div>
         <div>
           <div class="label">Seed <span class="opt">optional</span></div>
@@ -254,33 +241,36 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         </div>
       </div>
 
-      <div class="section row-3">
+      <div class="section row">
         <div>
-          <div class="label">Output Format <span class="opt">optional</span></div>
-          <select id="output-format">
-            <option value="png" selected>PNG</option>
-            <option value="jpeg">JPEG</option>
-            <option value="webp">WebP</option>
-          </select>
-        </div>
-        <div>
-          <div class="label">&nbsp;</div>
-          <div class="toggle-row">
-            <span class="toggle-label">Safety Checker</span>
-            <label class="toggle">
-              <input type="checkbox" id="safety-checker" checked />
-              <span class="slider"></span>
-            </label>
+          <div class="label">Audio Temperature <span class="opt">0 &ndash; 2</span></div>
+          <div class="range-wrap">
+            <input type="range" id="temp-audio" min="0" max="2" step="0.05" value="0.8" />
+            <span class="range-val" id="temp-audio-val">0.80</span>
           </div>
         </div>
         <div>
-          <div class="label">&nbsp;</div>
-          <div class="toggle-row">
-            <span class="toggle-label">Sync Mode</span>
-            <label class="toggle">
-              <input type="checkbox" id="sync-mode" />
-              <span class="slider"></span>
-            </label>
+          <div class="label">Text Temperature <span class="opt">0 &ndash; 2</span></div>
+          <div class="range-wrap">
+            <input type="range" id="temp-text" min="0" max="2" step="0.05" value="0.7" />
+            <span class="range-val" id="temp-text-val">0.70</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section row">
+        <div>
+          <div class="label">Top-K Audio <span class="opt">1 &ndash; 2048</span></div>
+          <div class="range-wrap">
+            <input type="range" id="topk-audio" min="1" max="2048" step="1" value="250" />
+            <span class="range-val" id="topk-audio-val">250</span>
+          </div>
+        </div>
+        <div>
+          <div class="label">Top-K Text <span class="opt">1 &ndash; 1000</span></div>
+          <div class="range-wrap">
+            <input type="range" id="topk-text" min="1" max="1000" step="1" value="25" />
+            <span class="range-val" id="topk-text-val">25</span>
           </div>
         </div>
       </div>
@@ -291,73 +281,82 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       </div>
 
       <div class="result-area" id="result-area">
-        <div class="label">Result</div>
-        <div class="result-images" id="result-images"></div>
+        <div class="label">Response</div>
+        <div class="result-audio" id="result-audio"></div>
+        <div class="result-text" id="result-text"></div>
+        <div class="result-meta" id="result-meta"></div>
       </div>
     </main>
     <script>
+      const audioUrlInput = document.getElementById("audio-url");
       const promptInput = document.getElementById("prompt");
-      const imageUrlInput = document.getElementById("image-url");
-      const imageSizeSelect = document.getElementById("image-size");
-      const numImagesInput = document.getElementById("num-images");
-      const numImagesVal = document.getElementById("num-images-val");
-      const guidanceScaleInput = document.getElementById("guidance-scale");
-      const guidanceScaleVal = document.getElementById("guidance-scale-val");
+      const voiceSelect = document.getElementById("voice");
       const seedInput = document.getElementById("seed");
-      const outputFormatSelect = document.getElementById("output-format");
-      const safetyChecker = document.getElementById("safety-checker");
-      const syncMode = document.getElementById("sync-mode");
+      const tempAudioInput = document.getElementById("temp-audio");
+      const tempAudioVal = document.getElementById("temp-audio-val");
+      const tempTextInput = document.getElementById("temp-text");
+      const tempTextVal = document.getElementById("temp-text-val");
+      const topkAudioInput = document.getElementById("topk-audio");
+      const topkAudioVal = document.getElementById("topk-audio-val");
+      const topkTextInput = document.getElementById("topk-text");
+      const topkTextVal = document.getElementById("topk-text-val");
       const confirmBtn = document.getElementById("confirm-btn");
-      const status = document.getElementById("status");
+      const statusEl = document.getElementById("status");
       const resultArea = document.getElementById("result-area");
-      const resultImages = document.getElementById("result-images");
+      const resultAudio = document.getElementById("result-audio");
+      const resultText = document.getElementById("result-text");
+      const resultMeta = document.getElementById("result-meta");
 
       const projectId = "__PROJECT_ID__";
       const apiBaseUrl = "http://127.0.0.1:8765";
 
       function setStatus(message, type) {
         try {
-          if (!status) return;
-          status.textContent = message;
-          status.className = "status";
-          if (type === "error") status.classList.add("error");
-          if (type === "success") status.classList.add("success");
+          if (!statusEl) return;
+          statusEl.textContent = message;
+          statusEl.className = "status";
+          if (type === "error") statusEl.classList.add("error");
+          if (type === "success") statusEl.classList.add("success");
         } catch (e) {}
       }
 
-      numImagesInput?.addEventListener("input", () => {
-        try { if (numImagesVal) numImagesVal.textContent = numImagesInput.value; } catch (e) {}
+      tempAudioInput?.addEventListener("input", () => {
+        try { if (tempAudioVal) tempAudioVal.textContent = Number.parseFloat(tempAudioInput.value).toFixed(2); } catch (e) {}
       });
-
-      guidanceScaleInput?.addEventListener("input", () => {
-        try { if (guidanceScaleVal) guidanceScaleVal.textContent = guidanceScaleInput.value; } catch (e) {}
+      tempTextInput?.addEventListener("input", () => {
+        try { if (tempTextVal) tempTextVal.textContent = Number.parseFloat(tempTextInput.value).toFixed(2); } catch (e) {}
+      });
+      topkAudioInput?.addEventListener("input", () => {
+        try { if (topkAudioVal) topkAudioVal.textContent = topkAudioInput.value; } catch (e) {}
+      });
+      topkTextInput?.addEventListener("input", () => {
+        try { if (topkTextVal) topkTextVal.textContent = topkTextInput.value; } catch (e) {}
       });
 
       confirmBtn?.addEventListener("click", async () => {
         try {
-          const prompt = (promptInput?.value || "").trim();
-          if (!prompt) {
-            setStatus("Prompt is required.", "error");
-            promptInput?.focus();
+          const audioUrl = (audioUrlInput?.value || "").trim();
+          if (!audioUrl) {
+            setStatus("Audio URL is required.", "error");
+            audioUrlInput?.focus();
             return;
           }
 
           confirmBtn.disabled = true;
-          setStatus("Sending to FLUX 2 Klein Realtime...", "");
+          setStatus("Sending to PersonaPlex...", "");
 
           const payload = {
-            prompt: prompt,
-            num_images: Number.parseInt(numImagesInput?.value || "1", 10),
-            image_size: imageSizeSelect?.value || "landscape_4_3",
-            guidance_scale: Number.parseFloat(guidanceScaleInput?.value || "2.5"),
-            output_format: outputFormatSelect?.value || "png",
-            enable_safety_checker: safetyChecker?.checked ?? true,
-            sync_mode: syncMode?.checked ?? false,
+            audio_url: audioUrl,
+            voice: voiceSelect?.value || "NATF2",
+            temperature_audio: Number.parseFloat(tempAudioInput?.value || "0.8"),
+            temperature_text: Number.parseFloat(tempTextInput?.value || "0.7"),
+            top_k_audio: Number.parseInt(topkAudioInput?.value || "250", 10),
+            top_k_text: Number.parseInt(topkTextInput?.value || "25", 10),
           };
 
-          const imageUrl = (imageUrlInput?.value || "").trim();
-          if (imageUrl) {
-            payload.image_urls = [imageUrl];
+          const prompt = (promptInput?.value || "").trim();
+          if (prompt) {
+            payload.prompt = prompt;
           }
 
           const seedVal = (seedInput?.value || "").trim();
@@ -373,7 +372,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ flux2klein: payload }),
+              body: JSON.stringify({ personaplex: payload }),
             }
           );
 
@@ -382,7 +381,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
           }
 
           await response.json();
-          setStatus("Configuration confirmed and sent to QCut.", "success");
+          setStatus("Configuration sent to QCut.", "success");
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to submit";
           setStatus(message, "error");

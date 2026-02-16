@@ -813,12 +813,23 @@ export class CLIExportEngine extends ExportEngine {
     }
 
     const wordTimelineData = useWordTimelineStore.getState().data;
+    console.log(
+      `[CLI Export] Word timeline data: ${wordTimelineData ? `${wordTimelineData.words.length} words` : "null"}`
+    );
+    if (wordTimelineData) {
+      const stateCounts: Record<string, number> = {};
+      for (const w of wordTimelineData.words) {
+        stateCounts[w.filterState] = (stateCounts[w.filterState] || 0) + 1;
+      }
+      console.log("[CLI Export] Filter state breakdown:", stateCounts);
+    }
     const hasWordFilters =
       wordTimelineData?.words.some(
         (word) =>
           word.filterState === WORD_FILTER_STATE.AI ||
           word.filterState === WORD_FILTER_STATE.USER_REMOVE
       ) || false;
+    console.log(`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`);
     let wordFilterSegments:
       | Array<{
           start: number;
@@ -827,11 +838,32 @@ export class CLIExportEngine extends ExportEngine {
       | undefined;
 
     if (hasWordFilters && videoInput && wordTimelineData) {
+      const filteredWords = wordTimelineData.words.filter(
+        (w) =>
+          w.filterState === WORD_FILTER_STATE.AI ||
+          w.filterState === WORD_FILTER_STATE.USER_REMOVE
+      );
+      console.log(
+        `[CLI Export] Word filters active: ${filteredWords.length} words marked for removal`
+      );
+      for (const w of filteredWords) {
+        console.log(
+          `  [REMOVE] "${w.text}" (${w.start.toFixed(2)}s–${w.end.toFixed(2)}s) state=${w.filterState}`
+        );
+      }
+
       const keepSegments = calculateKeepSegments({
         words: wordTimelineData.words,
         videoDuration: this.totalDuration,
         options: { bufferMs: 50, crossfadeMs: 30, minGapMs: 50 },
       });
+
+      console.log(
+        `[CLI Export] Keep segments (${keepSegments.length}):`,
+        keepSegments.map(
+          (s) => `${s.start.toFixed(2)}s–${s.end.toFixed(2)}s`
+        )
+      );
 
       const isFullLengthSegment =
         keepSegments.length === 1 &&
