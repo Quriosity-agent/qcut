@@ -181,7 +181,7 @@ export const tabGroups: {
   effects: {
     icon: BlendIcon,
     label: "Manual Edit",
-    tabs: ["text", "stickers", "filters", "effects", "transitions"],
+    tabs: ["text", "stickers", "effects", "filters", "transitions"],
   },
 };
 
