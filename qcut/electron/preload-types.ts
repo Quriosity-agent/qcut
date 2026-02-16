@@ -83,6 +83,24 @@ export interface TranscriptionSegment {
   text: string;
 }
 
+export interface AIFillerWordItem {
+  id: string;
+  text: string;
+  start: number;
+  end: number;
+  type: "word" | "spacing";
+  speaker_id?: string;
+}
+
+export interface AnalyzeFillersResult {
+  filteredWordIds: Array<{
+    id: string;
+    reason: string;
+    scope?: "word" | "sentence";
+  }>;
+  provider?: "gemini" | "anthropic" | "pattern";
+}
+
 /** Result from a cancellation operation */
 export interface CancelResult {
   success: boolean;
@@ -128,7 +146,13 @@ export interface ExportOptions {
     | "image-pipeline"
     | "direct-copy"
     | "direct-video-with-filters"
-    | "video-normalization";
+    | "video-normalization"
+    | "image-video-composite";
+  wordFilterSegments?: Array<{
+    start: number;
+    end: number;
+  }>;
+  crossfadeMs?: number;
 }
 
 export interface AudioFile {
@@ -385,6 +409,11 @@ export interface ElectronAPI {
     }>;
     uploadToFal: (filePath: string) => Promise<{ url: string }>;
   };
+
+  analyzeFillers: (options: {
+    words: AIFillerWordItem[];
+    languageCode: string;
+  }) => Promise<AnalyzeFillersResult>;
 
   // FFmpeg export operations
   ffmpeg: {

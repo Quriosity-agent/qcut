@@ -8,10 +8,13 @@ import { MediaItem } from "@/stores/media-store";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 import { useEffectsStore } from "@/stores/effects-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
+import { useWordTimelineStore } from "@/stores/word-timeline-store";
+import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import {
   analyzeTimelineForExport,
   type ExportAnalysis,
 } from "./export-analysis";
+import { calculateKeepSegments } from "./transcription/segment-calculator";
 
 // Import extracted modules
 import type {
@@ -809,6 +812,40 @@ export class CLIExportEngine extends ExportEngine {
       console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
 
+    const wordTimelineData = useWordTimelineStore.getState().data;
+    const hasWordFilters =
+      wordTimelineData?.words.some(
+        (word) =>
+          word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE
+      ) || false;
+    let wordFilterSegments:
+      | Array<{
+          start: number;
+          end: number;
+        }>
+      | undefined;
+
+    if (hasWordFilters && videoInput && wordTimelineData) {
+      const keepSegments = calculateKeepSegments({
+        words: wordTimelineData.words,
+        videoDuration: this.totalDuration,
+        options: { bufferMs: 50, crossfadeMs: 30, minGapMs: 50 },
+      });
+
+      const isFullLengthSegment =
+        keepSegments.length === 1 &&
+        Math.abs(keepSegments[0].start - 0) < 0.001 &&
+        Math.abs(keepSegments[0].end - this.totalDuration) < 0.001;
+      if (!isFullLengthSegment) {
+        wordFilterSegments = keepSegments;
+      }
+    } else if (hasWordFilters && !videoInput) {
+      debugWarn(
+        "[CLI Export] Word filter cuts requested, but no single video input is available. Falling back to standard export."
+      );
+    }
+
     const shouldExtractVideoSources =
       this.exportAnalysis?.optimizationStrategy === "video-normalization" ||
       (this.exportAnalysis?.canUseDirectCopy &&
@@ -866,6 +903,8 @@ export class CLIExportEngine extends ExportEngine {
       videoInputPath: videoInput?.path,
       trimStart: videoInput?.trimStart || 0,
       trimEnd: videoInput?.trimEnd || 0,
+      wordFilterSegments,
+      crossfadeMs: 30,
       // Mode 1.5: Video normalization
       optimizationStrategy: this.exportAnalysis?.optimizationStrategy,
     };
@@ -894,6 +933,9 @@ export class CLIExportEngine extends ExportEngine {
     );
     console.log(
       `   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`
+    );
+    console.log(
+      `   - Word filter cuts: ${wordFilterSegments ? `${wordFilterSegments.length} segments` : "NO"}`
     );
     console.log(
       `   - Video sources: ${exportOptions.videoSources?.length || 0}`

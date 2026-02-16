@@ -37,6 +37,7 @@ import {
   calculateTimelineBuffer,
 } from "@/constants/timeline-constants";
 import { useWordTimelineStore } from "@/stores/word-timeline-store";
+import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import { TimelineToolbar } from "./timeline-toolbar";
 import { TrackIcon } from "./track-icon";
 import { useDragHandlers } from "./timeline-drag-handlers";
@@ -73,10 +74,26 @@ export function Timeline() {
   const seek = usePlaybackStore((s) => s.seek);
   const setDuration = usePlaybackStore((s) => s.setDuration);
 
-  // Get deleted words from transcription for red markers on timeline
+  // Get filtered words from transcription for timeline markers
   const wordTimelineData = useWordTimelineStore((s) => s.data);
-  const deletedWords =
-    wordTimelineData?.words.filter((w) => w.type === "word" && w.deleted) || [];
+  const aiFilteredWords =
+    wordTimelineData?.words.filter(
+      (word) =>
+        word.type === "word" && word.filterState === WORD_FILTER_STATE.AI
+    ) || [];
+  const userRemovedWords =
+    wordTimelineData?.words.filter(
+      (word) =>
+        word.type === "word" &&
+        word.filterState === WORD_FILTER_STATE.USER_REMOVE
+    ) || [];
+  const silenceGapSegments =
+    wordTimelineData?.words.filter(
+      (word) =>
+        word.type === "spacing" &&
+        (word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE)
+    ) || [];
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
@@ -623,9 +640,9 @@ export function Timeline() {
                   ));
                 })()}
 
-                {/* Deleted word markers (red regions) */}
-                {deletedWords.length > 0 &&
-                  deletedWords.map((word) => {
+                {/* AI filtered word markers (orange regions) */}
+                {aiFilteredWords.length > 0 &&
+                  aiFilteredWords.map((word) => {
                     const left =
                       word.start *
                       TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
@@ -638,15 +655,15 @@ export function Timeline() {
                     );
                     return (
                       <div
-                        key={`deleted-${word.id}`}
+                        key={`ai-filtered-${word.id}`}
                         role="button"
                         tabIndex={0}
-                        className="absolute bottom-0 h-2 bg-red-500/60 cursor-pointer hover:bg-red-500/80 focus:ring-2 focus:ring-red-400 focus:outline-none transition-colors"
+                        className="absolute bottom-0 h-2 bg-orange-500/60 cursor-pointer hover:bg-orange-500/80 focus:ring-2 focus:ring-orange-400 focus:outline-none transition-colors"
                         style={{
                           left: `${left}px`,
                           width: `${width}px`,
                         }}
-                        aria-label={`Deleted word: ${word.text}, ${word.start.toFixed(2)} to ${word.end.toFixed(2)} seconds`}
+                        aria-label={`AI filtered word: ${word.text}, ${word.start.toFixed(2)} to ${word.end.toFixed(2)} seconds`}
                         onClick={(e) => {
                           e.stopPropagation();
                           usePlaybackStore.getState().seek(word.start);
@@ -656,6 +673,84 @@ export function Timeline() {
                             e.preventDefault();
                             e.stopPropagation();
                             usePlaybackStore.getState().seek(word.start);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+
+                {/* User removed word markers (red regions) */}
+                {userRemovedWords.length > 0 &&
+                  userRemovedWords.map((word) => {
+                    const left =
+                      word.start *
+                      TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                      zoomLevel;
+                    const width = Math.max(
+                      2,
+                      (word.end - word.start) *
+                        TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                        zoomLevel
+                    );
+                    return (
+                      <div
+                        key={`user-removed-${word.id}`}
+                        role="button"
+                        tabIndex={0}
+                        className="absolute bottom-0 h-2 bg-red-500/60 cursor-pointer hover:bg-red-500/80 focus:ring-2 focus:ring-red-400 focus:outline-none transition-colors"
+                        style={{
+                          left: `${left}px`,
+                          width: `${width}px`,
+                        }}
+                        aria-label={`User removed word: ${word.text}, ${word.start.toFixed(2)} to ${word.end.toFixed(2)} seconds`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          usePlaybackStore.getState().seek(word.start);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            usePlaybackStore.getState().seek(word.start);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+
+                {/* Silence gap regions from AI filtering */}
+                {silenceGapSegments.length > 0 &&
+                  silenceGapSegments.map((gap) => {
+                    const left =
+                      gap.start *
+                      TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                      zoomLevel;
+                    const width = Math.max(
+                      4,
+                      (gap.end - gap.start) *
+                        TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
+                        zoomLevel
+                    );
+                    return (
+                      <div
+                        key={`gap-${gap.id}`}
+                        role="button"
+                        tabIndex={0}
+                        className="absolute top-0 h-full bg-orange-400/15 border-x border-orange-400/40 cursor-pointer hover:bg-orange-400/25 focus:ring-2 focus:ring-orange-400 focus:outline-none transition-colors"
+                        style={{
+                          left: `${left}px`,
+                          width: `${width}px`,
+                        }}
+                        aria-label={`Filtered silence gap ${gap.start.toFixed(2)} to ${gap.end.toFixed(2)} seconds`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          usePlaybackStore.getState().seek(gap.start);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            usePlaybackStore.getState().seek(gap.start);
                           }
                         }}
                       />

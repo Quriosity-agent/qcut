@@ -1,8 +1,8 @@
 /**
  * Word Timeline Store
  *
- * Zustand store for managing word-level transcription data.
- * Supports loading from JSON files, word deletion marking, and selection state.
+ * Zustand store for managing word-level transcription data and tri-state
+ * filtering decisions from AI + user actions.
  *
  * @module stores/word-timeline-store
  */
@@ -13,31 +13,39 @@ import type {
   WordItem,
   RawWordTimelineJson,
   RawWordItem,
+  WordFilterState,
 } from "@/types/word-timeline";
+import { WORD_FILTER_STATE } from "@/types/word-timeline";
 
-// ============================================================================
-// Types
-// ============================================================================
+interface AnalyzeFillersResponse {
+  filteredWordIds: Array<{
+    id: string;
+    reason: string;
+    scope?: "word" | "sentence";
+  }>;
+  provider?: "gemini" | "anthropic" | "pattern";
+}
+
+interface FilterHistoryChange {
+  id: string;
+  nextState: WordFilterState;
+  previousState: WordFilterState;
+}
 
 interface WordTimelineState {
-  /** Loaded word timeline data */
   data: WordTimelineData | null;
-  /** Name of the loaded file */
   fileName: string | null;
-  /** Currently selected word ID */
   selectedWordId: string | null;
-  /** Loading state */
   isLoading: boolean;
-  /** Error message if load failed */
   error: string | null;
+  isAnalyzing: boolean;
+  analysisError: string | null;
+  filterHistory: FilterHistoryChange[][];
 }
 
 interface WordTimelineActions {
-  /** Load word timeline data from a JSON file */
   loadFromJson: (file: File) => Promise<void>;
-  /** Load word timeline data from raw JSON object */
   loadFromData: (data: RawWordTimelineJson, fileName?: string) => void;
-  /** Load from ElevenLabs transcription result (API response) */
   loadFromTranscription: (
     data: {
       text: string;
@@ -52,28 +60,32 @@ interface WordTimelineActions {
       }>;
     },
     fileName: string
-  ) => void;
-  /** Toggle the deleted state of a word */
-  toggleWordDeleted: (wordId: string) => void;
-  /** Set multiple words as deleted */
-  setWordsDeleted: (wordIds: string[], deleted: boolean) => void;
-  /** Select a word by ID */
+  ) => Promise<void>;
+  analyzeFillers: () => Promise<void>;
   selectWord: (wordId: string | null) => void;
-  /** Clear all loaded data */
+  setFilterState: (wordId: string, filterState: WordFilterState) => void;
+  cycleFilterState: (wordId: string) => void;
+  setMultipleFilterStates: (
+    wordIds: string[],
+    filterState: WordFilterState
+  ) => void;
+  acceptAllAiSuggestions: () => void;
+  resetAllFilters: () => Promise<void>;
+  undoLastFilterChange: () => void;
   clearData: () => void;
-  /** Get only visible words (excluding spacing) */
   getVisibleWords: () => WordItem[];
-  /** Get word by ID */
   getWordById: (wordId: string) => WordItem | undefined;
-  /** Get non-deleted words for export */
+  getWordsForExport: () => WordItem[];
   getNonDeletedWords: () => WordItem[];
 }
 
 type WordTimelineStore = WordTimelineState & WordTimelineActions;
 
-// ============================================================================
-// Initial State
-// ============================================================================
+const MAX_HISTORY_ENTRIES = 100;
+const AI_REMOVAL_STATES = new Set<WordFilterState>([
+  WORD_FILTER_STATE.AI,
+  WORD_FILTER_STATE.USER_REMOVE,
+]);
 
 const initialState: WordTimelineState = {
   data: null,
@@ -81,89 +93,202 @@ const initialState: WordTimelineState = {
   selectedWordId: null,
   isLoading: false,
   error: null,
+  isAnalyzing: false,
+  analysisError: null,
+  filterHistory: [],
 };
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Transform raw words from JSON to include id and deleted flag.
- * Each word is assigned a unique ID based on its index and initialized
- * with deleted=false.
- *
- * @param rawWords - Array of raw word items from JSON
- * @returns Array of WordItem with id and deleted properties added
- */
-function transformWords(rawWords: RawWordItem[]): WordItem[] {
-  return rawWords.map((word, index) => ({
-    ...word,
-    id: `word-${index}`,
-    deleted: false,
-  }));
+function isValidFilterState(value: unknown): value is WordFilterState {
+  try {
+    return (
+      value === WORD_FILTER_STATE.NONE ||
+      value === WORD_FILTER_STATE.AI ||
+      value === WORD_FILTER_STATE.USER_REMOVE ||
+      value === WORD_FILTER_STATE.USER_KEEP
+    );
+  } catch {
+    return false;
+  }
 }
 
-/**
- * Validate JSON structure matches expected word timeline format.
- * Checks that the JSON has a 'text' string and 'words' array where
- * each word has text (string), start/end (finite numbers), and
- * type ("word" or "spacing").
- *
- * @param json - Unknown JSON value to validate
- * @returns Type predicate indicating if json is RawWordTimelineJson
- */
+function normalizeFilterState({
+  rawWord,
+}: {
+  rawWord: RawWordItem;
+}): WordFilterState {
+  try {
+    if (isValidFilterState(rawWord.filterState)) {
+      return rawWord.filterState;
+    }
+    if (rawWord.deleted) {
+      return WORD_FILTER_STATE.USER_REMOVE;
+    }
+    return WORD_FILTER_STATE.NONE;
+  } catch {
+    return WORD_FILTER_STATE.NONE;
+  }
+}
+
+function toWordItem({
+  index,
+  rawWord,
+}: {
+  index: number;
+  rawWord: RawWordItem;
+}): WordItem {
+  try {
+    return {
+      id: rawWord.id || `word-${index}`,
+      text: rawWord.text,
+      start: rawWord.start,
+      end: rawWord.end,
+      type: rawWord.type,
+      speaker_id: rawWord.speaker_id,
+      filterState: normalizeFilterState({ rawWord }),
+      filterReason: rawWord.filterReason,
+    };
+  } catch {
+    return {
+      id: `word-${index}`,
+      text: "",
+      start: 0,
+      end: 0,
+      type: "spacing",
+      filterState: WORD_FILTER_STATE.NONE,
+    };
+  }
+}
+
+function transformWords({
+  rawWords,
+}: {
+  rawWords: RawWordItem[];
+}): WordItem[] {
+  try {
+    return rawWords.map((rawWord, index) => toWordItem({ rawWord, index }));
+  } catch {
+    return [];
+  }
+}
+
 function validateJson(json: unknown): json is RawWordTimelineJson {
-  if (typeof json !== "object" || json === null) {
+  try {
+    if (typeof json !== "object" || json === null) {
+      return false;
+    }
+
+    const obj = json as Record<string, unknown>;
+    if (typeof obj.text !== "string") {
+      return false;
+    }
+    if (!Array.isArray(obj.words)) {
+      return false;
+    }
+
+    const words = obj.words as Array<unknown>;
+    for (const word of words) {
+      if (typeof word !== "object" || word === null) {
+        return false;
+      }
+
+      const entry = word as Record<string, unknown>;
+      if (typeof entry.text !== "string") {
+        return false;
+      }
+      if (typeof entry.start !== "number" || !Number.isFinite(entry.start)) {
+        return false;
+      }
+      if (typeof entry.end !== "number" || !Number.isFinite(entry.end)) {
+        return false;
+      }
+      if (entry.type !== "word" && entry.type !== "spacing") {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
     return false;
   }
-
-  const obj = json as Record<string, unknown>;
-
-  if (typeof obj.text !== "string") {
-    return false;
-  }
-
-  if (!Array.isArray(obj.words)) {
-    return false;
-  }
-
-  const words = obj.words as Array<unknown>;
-  for (const word of words) {
-    if (typeof word !== "object" || word === null) {
-      return false;
-    }
-
-    const entry = word as Record<string, unknown>;
-    if (typeof entry.text !== "string") {
-      return false;
-    }
-
-    if (typeof entry.start !== "number" || !Number.isFinite(entry.start)) {
-      return false;
-    }
-
-    if (typeof entry.end !== "number" || !Number.isFinite(entry.end)) {
-      return false;
-    }
-
-    if (entry.type !== "word" && entry.type !== "spacing") {
-      return false;
-    }
-  }
-
-  return true;
 }
 
-// ============================================================================
-// Store
-// ============================================================================
+function pushHistory({
+  changes,
+  history,
+}: {
+  changes: FilterHistoryChange[];
+  history: FilterHistoryChange[][];
+}): FilterHistoryChange[][] {
+  try {
+    if (changes.length === 0) {
+      return history;
+    }
+    const nextHistory = [...history, changes];
+    if (nextHistory.length <= MAX_HISTORY_ENTRIES) {
+      return nextHistory;
+    }
+    return nextHistory.slice(nextHistory.length - MAX_HISTORY_ENTRIES);
+  } catch {
+    return history;
+  }
+}
+
+function updateWordFilterStates({
+  words,
+  resolver,
+}: {
+  words: WordItem[];
+  resolver: (word: WordItem) => WordFilterState;
+}): { words: WordItem[]; changes: FilterHistoryChange[] } {
+  try {
+    const changes: FilterHistoryChange[] = [];
+    const nextWords = words.map((word) => {
+      const nextState = resolver(word);
+      if (nextState === word.filterState) {
+        return word;
+      }
+
+      changes.push({
+        id: word.id,
+        previousState: word.filterState,
+        nextState,
+      });
+      return {
+        ...word,
+        filterState: nextState,
+      };
+    });
+    return { words: nextWords, changes };
+  } catch {
+    return { words, changes: [] };
+  }
+}
+
+function getWordsForExportFromData({
+  data,
+}: {
+  data: WordTimelineData | null;
+}): WordItem[] {
+  try {
+    if (!data) {
+      return [];
+    }
+    return data.words.filter(
+      (word) =>
+        word.type === "word" &&
+        (word.filterState === WORD_FILTER_STATE.NONE ||
+          word.filterState === WORD_FILTER_STATE.USER_KEEP)
+    );
+  } catch {
+    return [];
+  }
+}
 
 export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
   ...initialState,
 
   loadFromJson: async (file: File) => {
     set({ isLoading: true, error: null });
-
     try {
       const text = await file.text();
       const json = JSON.parse(text);
@@ -174,8 +299,7 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
         );
       }
 
-      const words = transformWords(json.words);
-
+      const words = transformWords({ rawWords: json.words });
       set({
         data: {
           text: json.text,
@@ -187,10 +311,12 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
         selectedWordId: null,
         isLoading: false,
         error: null,
+        analysisError: null,
+        filterHistory: [],
       });
-    } catch (err) {
+    } catch (error) {
       const message =
-        err instanceof Error ? err.message : "Failed to load JSON file";
+        error instanceof Error ? error.message : "Failed to load JSON file";
       set({
         isLoading: false,
         error: message,
@@ -199,106 +325,355 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
   },
 
   loadFromData: (data: RawWordTimelineJson, fileName?: string) => {
-    if (!validateJson(data)) {
-      set({ error: "Invalid data format" });
+    try {
+      if (!validateJson(data)) {
+        set({ error: "Invalid data format" });
+        return;
+      }
+
+      const words = transformWords({ rawWords: data.words });
+      set({
+        data: {
+          text: data.text,
+          language_code: data.language_code || "unknown",
+          language_probability: data.language_probability || 0,
+          words,
+        },
+        fileName: fileName || "data.json",
+        selectedWordId: null,
+        isLoading: false,
+        error: null,
+        analysisError: null,
+        filterHistory: [],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Load failed";
+      set({ error: message, isLoading: false });
+    }
+  },
+
+  loadFromTranscription: async (data, fileName: string) => {
+    try {
+      const words: WordItem[] = data.words.map((word, index) => ({
+        id: `word-${index}`,
+        text: word.text,
+        start: word.start,
+        end: word.end,
+        type: word.type === "word" ? "word" : "spacing",
+        speaker_id: word.speaker_id ?? undefined,
+        filterState: WORD_FILTER_STATE.NONE,
+      }));
+
+      set({
+        data: {
+          text: data.text,
+          language_code: data.language_code || "unknown",
+          language_probability: data.language_probability || 0,
+          words,
+        },
+        fileName,
+        selectedWordId: null,
+        isLoading: false,
+        error: null,
+        analysisError: null,
+        filterHistory: [],
+      });
+
+      await get().analyzeFillers();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to load transcription data";
+      set({ error: message, isLoading: false });
+    }
+  },
+
+  analyzeFillers: async () => {
+    const { data } = get();
+    if (!data) {
       return;
     }
 
-    const words = transformWords(data.words);
+    set({ isAnalyzing: true, analysisError: null });
+    try {
+      const analyzer = window.electronAPI?.analyzeFillers;
+      if (!analyzer) {
+        set({ isAnalyzing: false });
+        return;
+      }
 
-    set({
-      data: {
-        text: data.text,
-        language_code: data.language_code || "unknown",
-        language_probability: data.language_probability || 0,
-        words,
-      },
-      fileName: fileName || "data.json",
-      selectedWordId: null,
-      isLoading: false,
-      error: null,
-    });
-  },
+      const result = (await analyzer({
+        words: data.words,
+        languageCode: data.language_code || "unknown",
+      })) as AnalyzeFillersResponse;
 
-  /**
-   * Load from ElevenLabs transcription result.
-   * This handles the API response format which may include additional word types
-   * like "audio_event" and "punctuation" beyond the standard "word" and "spacing".
-   */
-  loadFromTranscription: (data, fileName) => {
-    // Transform ElevenLabs response to our internal format
-    const words: WordItem[] = data.words.map((word, index) => ({
-      id: `word-${index}`,
-      text: word.text,
-      start: word.start,
-      end: word.end,
-      // Map ElevenLabs types to our internal types
-      // Only "word" is kept as-is; everything else (spacing, audio_event, punctuation) becomes "spacing"
-      type: word.type === "word" ? "word" : "spacing",
-      speaker_id: word.speaker_id ?? undefined,
-      deleted: false,
-    }));
+      const reasonById = new Map<string, string>();
+      for (const item of result.filteredWordIds || []) {
+        if (!item.id) {
+          continue;
+        }
+        reasonById.set(item.id, item.reason || "AI suggestion");
+      }
 
-    set({
-      data: {
-        text: data.text,
-        language_code: data.language_code,
-        language_probability: data.language_probability,
-        words,
-      },
-      fileName,
-      selectedWordId: null,
-      isLoading: false,
-      error: null,
-    });
-  },
+      const words = data.words.map((word) => {
+        const reason = reasonById.get(word.id);
+        const isUserOverride =
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE ||
+          word.filterState === WORD_FILTER_STATE.USER_KEEP;
+        if (isUserOverride) {
+          return word;
+        }
 
-  toggleWordDeleted: (wordId: string) => {
-    const { data } = get();
-    if (!data) return;
+        if (!reason) {
+          if (word.filterState !== WORD_FILTER_STATE.AI) {
+            return word;
+          }
+          return {
+            ...word,
+            filterState: WORD_FILTER_STATE.NONE,
+            filterReason: undefined,
+          };
+        }
 
-    const words = data.words.map((w) =>
-      w.id === wordId ? { ...w, deleted: !w.deleted } : w
-    );
+        return {
+          ...word,
+          filterState: WORD_FILTER_STATE.AI,
+          filterReason: reason,
+        };
+      });
 
-    set({ data: { ...data, words } });
-  },
-
-  setWordsDeleted: (wordIds: string[], deleted: boolean) => {
-    const { data } = get();
-    if (!data) return;
-
-    const wordIdSet = new Set(wordIds);
-    const words = data.words.map((w) =>
-      wordIdSet.has(w.id) ? { ...w, deleted } : w
-    );
-
-    set({ data: { ...data, words } });
+      set({
+        data: { ...data, words },
+        isAnalyzing: false,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "AI analysis failed";
+      set({
+        isAnalyzing: false,
+        analysisError: message,
+      });
+    }
   },
 
   selectWord: (wordId: string | null) => {
-    set({ selectedWordId: wordId });
+    try {
+      set({ selectedWordId: wordId });
+    } catch {
+      set({ selectedWordId: null });
+    }
+  },
+
+  setFilterState: (wordId: string, filterState: WordFilterState) => {
+    try {
+      const { data, filterHistory } = get();
+      if (!data) {
+        return;
+      }
+
+      const { words, changes } = updateWordFilterStates({
+        words: data.words,
+        resolver: (word) => {
+          if (word.id !== wordId) {
+            return word.filterState;
+          }
+          return filterState;
+        },
+      });
+
+      set({
+        data: { ...data, words },
+        filterHistory: pushHistory({ changes, history: filterHistory }),
+      });
+    } catch {
+      return;
+    }
+  },
+
+  cycleFilterState: (wordId: string) => {
+    try {
+      const word = get().getWordById(wordId);
+      if (!word) {
+        return;
+      }
+
+      if (word.filterState === WORD_FILTER_STATE.USER_KEEP) {
+        get().setFilterState(wordId, WORD_FILTER_STATE.USER_REMOVE);
+        return;
+      }
+      if (word.filterState === WORD_FILTER_STATE.AI) {
+        get().setFilterState(wordId, WORD_FILTER_STATE.USER_KEEP);
+        return;
+      }
+      if (word.filterState === WORD_FILTER_STATE.USER_REMOVE) {
+        get().setFilterState(wordId, WORD_FILTER_STATE.USER_KEEP);
+        return;
+      }
+      get().setFilterState(wordId, WORD_FILTER_STATE.USER_REMOVE);
+    } catch {
+      return;
+    }
+  },
+
+  setMultipleFilterStates: (wordIds: string[], filterState: WordFilterState) => {
+    try {
+      const { data, filterHistory } = get();
+      if (!data || wordIds.length === 0) {
+        return;
+      }
+
+      const wordIdSet = new Set(wordIds);
+      const { words, changes } = updateWordFilterStates({
+        words: data.words,
+        resolver: (word) => {
+          if (!wordIdSet.has(word.id)) {
+            return word.filterState;
+          }
+          return filterState;
+        },
+      });
+
+      set({
+        data: { ...data, words },
+        filterHistory: pushHistory({ changes, history: filterHistory }),
+      });
+    } catch {
+      return;
+    }
+  },
+
+  acceptAllAiSuggestions: () => {
+    try {
+      const { data } = get();
+      if (!data) {
+        return;
+      }
+
+      const aiWordIds = data.words
+        .filter((word) => word.filterState === WORD_FILTER_STATE.AI)
+        .map((word) => word.id);
+      get().setMultipleFilterStates(aiWordIds, WORD_FILTER_STATE.USER_REMOVE);
+    } catch {
+      return;
+    }
+  },
+
+  resetAllFilters: async () => {
+    try {
+      const { data } = get();
+      if (!data) {
+        return;
+      }
+
+      const words = data.words.map((word) => ({
+        ...word,
+        filterState: WORD_FILTER_STATE.NONE,
+        filterReason: undefined,
+      }));
+
+      set({
+        data: { ...data, words },
+        filterHistory: [],
+        analysisError: null,
+      });
+      await get().analyzeFillers();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to reset filters";
+      set({ analysisError: message });
+    }
+  },
+
+  undoLastFilterChange: () => {
+    try {
+      const { data, filterHistory } = get();
+      if (!data || filterHistory.length === 0) {
+        return;
+      }
+
+      const nextHistory = [...filterHistory];
+      const lastChanges = nextHistory.pop();
+      if (!lastChanges) {
+        return;
+      }
+
+      const changeById = new Map(
+        lastChanges.map((change) => [change.id, change.previousState])
+      );
+      const words = data.words.map((word) => {
+        const previousState = changeById.get(word.id);
+        if (!previousState) {
+          return word;
+        }
+        return {
+          ...word,
+          filterState: previousState,
+        };
+      });
+
+      set({
+        data: { ...data, words },
+        filterHistory: nextHistory,
+      });
+    } catch {
+      return;
+    }
   },
 
   clearData: () => {
-    set(initialState);
+    try {
+      set(initialState);
+    } catch {
+      set({ ...initialState });
+    }
   },
 
   getVisibleWords: () => {
-    const { data } = get();
-    if (!data) return [];
-    return data.words.filter((w) => w.type === "word");
+    try {
+      const { data } = get();
+      if (!data) {
+        return [];
+      }
+      return data.words.filter((word) => word.type === "word");
+    } catch {
+      return [];
+    }
   },
 
   getWordById: (wordId: string) => {
-    const { data } = get();
-    if (!data) return;
-    return data.words.find((w) => w.id === wordId);
+    try {
+      const { data } = get();
+      if (!data) {
+        return undefined;
+      }
+      return data.words.find((word) => word.id === wordId);
+    } catch {
+      return undefined;
+    }
+  },
+
+  getWordsForExport: () => {
+    try {
+      const { data } = get();
+      return getWordsForExportFromData({ data });
+    } catch {
+      return [];
+    }
   },
 
   getNonDeletedWords: () => {
-    const { data } = get();
-    if (!data) return [];
-    return data.words.filter((w) => w.type === "word" && !w.deleted);
+    try {
+      const { data } = get();
+      if (!data) {
+        return [];
+      }
+      return data.words.filter(
+        (word) =>
+          word.type === "word" && !AI_REMOVAL_STATES.has(word.filterState)
+      );
+    } catch {
+      return [];
+    }
   },
 }));

@@ -34,19 +34,19 @@ import { usePreviewMedia } from "./preview-panel/use-preview-media";
 import { usePreviewSizing } from "./preview-panel/use-preview-sizing";
 import type { ActiveElement } from "./preview-panel/types";
 
-const MCP_MEDIA_TOOL_NAME = "genfocus-all-in-focus";
+const MCP_MEDIA_TOOL_NAME = "flux-2-klein-realtime";
 const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GenFocus All-In-Focus</title>
+    <title>FLUX 2 Klein Realtime</title>
     <style>
       :root { color-scheme: dark; }
       body {
         margin: 0;
         font-family: "SF Pro Display", "Segoe UI", sans-serif;
-        background: radial-gradient(circle at top, #19324f, #0f1828 70%);
+        background: radial-gradient(circle at top, #1a1a2e, #0f0f1a 70%);
         color: #eef4ff;
         min-height: 100vh;
         padding: 18px;
@@ -55,14 +55,14 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       .card {
         width: min(760px, 100%);
         margin: 0 auto;
-        border: 1px solid #2a4469;
+        border: 1px solid #2a2a5a;
         border-radius: 14px;
         padding: 20px;
-        background: rgba(9, 21, 38, 0.78);
+        background: rgba(12, 12, 30, 0.82);
         backdrop-filter: blur(8px);
       }
       h1 { margin: 0 0 4px; font-size: 22px; }
-      .subtitle { margin: 0 0 6px; font-size: 13px; color: #52deff; font-family: monospace; }
+      .subtitle { margin: 0 0 6px; font-size: 13px; color: #a78bfa; font-family: monospace; }
       p { margin: 0 0 14px; color: #9fb5d8; font-size: 14px; }
       .section { margin-top: 16px; }
       .label {
@@ -85,19 +85,24 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         gap: 12px;
         grid-template-columns: 1fr 1fr 1fr;
       }
-      input[type="text"], input[type="number"], select {
+      input[type="text"], input[type="number"], select, textarea {
         width: 100%;
-        border: 1px solid #2a4469;
+        border: 1px solid #2a2a5a;
         border-radius: 10px;
         padding: 9px 10px;
-        background: #13243a;
+        background: #13132a;
         color: #eef4ff;
         font-size: 14px;
         box-sizing: border-box;
+        font-family: inherit;
       }
-      input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+      input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
         outline: none;
-        border-color: #52deff;
+        border-color: #a78bfa;
       }
       .range-wrap {
         display: flex;
@@ -106,7 +111,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       }
       .range-wrap input[type="range"] {
         flex: 1;
-        accent-color: #52deff;
+        accent-color: #a78bfa;
       }
       .range-val {
         min-width: 36px;
@@ -132,7 +137,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       .toggle .slider {
         position: absolute;
         inset: 0;
-        background: #2a4469;
+        background: #2a2a5a;
         border-radius: 11px;
         transition: background 0.2s;
       }
@@ -147,7 +152,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         border-radius: 50%;
         transition: transform 0.2s;
       }
-      .toggle input:checked + .slider { background: #52deff; }
+      .toggle input:checked + .slider { background: #a78bfa; }
       .toggle input:checked + .slider::after { transform: translateX(18px); }
       .status {
         margin-top: 12px;
@@ -163,8 +168,8 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         padding: 10px 20px;
         font-weight: 700;
         font-size: 14px;
-        color: #031720;
-        background: linear-gradient(135deg, #52deff, #34c59b);
+        color: #fff;
+        background: linear-gradient(135deg, #a78bfa, #6d28d9);
         cursor: pointer;
         transition: opacity 0.15s;
       }
@@ -177,6 +182,22 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         display: flex;
         justify-content: flex-end;
       }
+      .result-area {
+        margin-top: 16px;
+        display: none;
+      }
+      .result-area.visible { display: block; }
+      .result-images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 8px;
+      }
+      .result-images img {
+        max-width: 100%;
+        border-radius: 10px;
+        border: 1px solid #2a2a5a;
+      }
       @media (max-width: 600px) {
         .row, .row-3 { grid-template-columns: 1fr; }
       }
@@ -184,29 +205,52 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
   </head>
   <body>
     <main class="card">
-      <h1>GenFocus All-In-Focus</h1>
-      <div class="subtitle">fal-ai/genfocus/all-in-focus</div>
-      <p>Deblur and restore an image to all-in-focus using AI.</p>
+      <h1>FLUX 2 Klein Realtime</h1>
+      <div class="subtitle">fal-ai/flux-2/klein/realtime</div>
+      <p>Generate and edit images in realtime with FLUX 2 Klein.</p>
 
       <div class="section">
-        <div class="label">Image URL <span class="req">required</span></div>
+        <div class="label">Prompt <span class="req">required</span></div>
+        <textarea id="prompt" placeholder="Describe the image you want to generate or edit..." rows="3"></textarea>
+      </div>
+
+      <div class="section">
+        <div class="label">Image URL <span class="opt">optional &mdash; for image editing</span></div>
         <input type="text" id="image-url" placeholder="https://example.com/photo.jpg" />
       </div>
 
       <div class="section row">
         <div>
-          <div class="label">Inference Steps <span class="opt">8 &ndash; 50</span></div>
+          <div class="label">Image Size <span class="opt">optional</span></div>
+          <select id="image-size">
+            <option value="square_hd">Square HD (1024x1024)</option>
+            <option value="square">Square (512x512)</option>
+            <option value="landscape_4_3" selected>Landscape 4:3</option>
+            <option value="landscape_16_9">Landscape 16:9</option>
+            <option value="portrait_4_3">Portrait 4:3</option>
+            <option value="portrait_16_9">Portrait 16:9</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Num Images <span class="opt">1 &ndash; 4</span></div>
           <div class="range-wrap">
-            <input type="range" id="steps" min="8" max="50" value="28" />
-            <span class="range-val" id="steps-val">28</span>
+            <input type="range" id="num-images" min="1" max="4" value="1" />
+            <span class="range-val" id="num-images-val">1</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section row">
+        <div>
+          <div class="label">Guidance Scale <span class="opt">0 &ndash; 20</span></div>
+          <div class="range-wrap">
+            <input type="range" id="guidance-scale" min="0" max="20" step="0.5" value="2.5" />
+            <span class="range-val" id="guidance-scale-val">2.5</span>
           </div>
         </div>
         <div>
-          <div class="label">Target Long Side <span class="opt">256 &ndash; 2048</span></div>
-          <div class="range-wrap">
-            <input type="range" id="target-size" min="256" max="2048" step="64" value="512" />
-            <span class="range-val" id="target-size-val">512</span>
-          </div>
+          <div class="label">Seed <span class="opt">optional</span></div>
+          <input type="number" id="seed" placeholder="Random" min="0" />
         </div>
       </div>
 
@@ -214,13 +258,10 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         <div>
           <div class="label">Output Format <span class="opt">optional</span></div>
           <select id="output-format">
-            <option value="jpeg" selected>JPEG</option>
-            <option value="png">PNG</option>
+            <option value="png" selected>PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
           </select>
-        </div>
-        <div>
-          <div class="label">Seed <span class="opt">optional</span></div>
-          <input type="number" id="seed" placeholder="Random" min="0" />
         </div>
         <div>
           <div class="label">&nbsp;</div>
@@ -232,24 +273,44 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             </label>
           </div>
         </div>
+        <div>
+          <div class="label">&nbsp;</div>
+          <div class="toggle-row">
+            <span class="toggle-label">Sync Mode</span>
+            <label class="toggle">
+              <input type="checkbox" id="sync-mode" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="status" id="status">Ready.</div>
       <div class="actions">
-        <button type="button" id="confirm-btn" class="apply-btn">Confirm &amp; Run</button>
+        <button type="button" id="confirm-btn" class="apply-btn">Generate</button>
+      </div>
+
+      <div class="result-area" id="result-area">
+        <div class="label">Result</div>
+        <div class="result-images" id="result-images"></div>
       </div>
     </main>
     <script>
+      const promptInput = document.getElementById("prompt");
       const imageUrlInput = document.getElementById("image-url");
-      const stepsInput = document.getElementById("steps");
-      const stepsVal = document.getElementById("steps-val");
-      const targetSizeInput = document.getElementById("target-size");
-      const targetSizeVal = document.getElementById("target-size-val");
-      const outputFormatSelect = document.getElementById("output-format");
+      const imageSizeSelect = document.getElementById("image-size");
+      const numImagesInput = document.getElementById("num-images");
+      const numImagesVal = document.getElementById("num-images-val");
+      const guidanceScaleInput = document.getElementById("guidance-scale");
+      const guidanceScaleVal = document.getElementById("guidance-scale-val");
       const seedInput = document.getElementById("seed");
+      const outputFormatSelect = document.getElementById("output-format");
       const safetyChecker = document.getElementById("safety-checker");
+      const syncMode = document.getElementById("sync-mode");
       const confirmBtn = document.getElementById("confirm-btn");
       const status = document.getElementById("status");
+      const resultArea = document.getElementById("result-area");
+      const resultImages = document.getElementById("result-images");
 
       const projectId = "__PROJECT_ID__";
       const apiBaseUrl = "http://127.0.0.1:8765";
@@ -264,33 +325,40 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         } catch (e) {}
       }
 
-      stepsInput?.addEventListener("input", () => {
-        try { if (stepsVal) stepsVal.textContent = stepsInput.value; } catch (e) {}
+      numImagesInput?.addEventListener("input", () => {
+        try { if (numImagesVal) numImagesVal.textContent = numImagesInput.value; } catch (e) {}
       });
 
-      targetSizeInput?.addEventListener("input", () => {
-        try { if (targetSizeVal) targetSizeVal.textContent = targetSizeInput.value; } catch (e) {}
+      guidanceScaleInput?.addEventListener("input", () => {
+        try { if (guidanceScaleVal) guidanceScaleVal.textContent = guidanceScaleInput.value; } catch (e) {}
       });
 
       confirmBtn?.addEventListener("click", async () => {
         try {
-          const imageUrl = (imageUrlInput?.value || "").trim();
-          if (!imageUrl) {
-            setStatus("Image URL is required.", "error");
-            imageUrlInput?.focus();
+          const prompt = (promptInput?.value || "").trim();
+          if (!prompt) {
+            setStatus("Prompt is required.", "error");
+            promptInput?.focus();
             return;
           }
 
           confirmBtn.disabled = true;
-          setStatus("Submitting to GenFocus...", "");
+          setStatus("Sending to FLUX 2 Klein Realtime...", "");
 
           const payload = {
-            image_url: imageUrl,
-            num_inference_steps: Number.parseInt(stepsInput?.value || "28", 10),
-            target_long_side: Number.parseInt(targetSizeInput?.value || "512", 10),
-            output_format: outputFormatSelect?.value || "jpeg",
+            prompt: prompt,
+            num_images: Number.parseInt(numImagesInput?.value || "1", 10),
+            image_size: imageSizeSelect?.value || "landscape_4_3",
+            guidance_scale: Number.parseFloat(guidanceScaleInput?.value || "2.5"),
+            output_format: outputFormatSelect?.value || "png",
             enable_safety_checker: safetyChecker?.checked ?? true,
+            sync_mode: syncMode?.checked ?? false,
           };
+
+          const imageUrl = (imageUrlInput?.value || "").trim();
+          if (imageUrl) {
+            payload.image_urls = [imageUrl];
+          }
 
           const seedVal = (seedInput?.value || "").trim();
           if (seedVal !== "") {
@@ -305,7 +373,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ genfocus: payload }),
+              body: JSON.stringify({ flux2klein: payload }),
             }
           );
 
@@ -418,6 +486,7 @@ export function PreviewPanel() {
     : externalHtml;
   const activeToolName = localMcpActive ? MCP_MEDIA_TOOL_NAME : externalToolName;
   const isMcpMediaAppActive = localMcpActive;
+  console.log("[MCP] render — localMcpActive:", localMcpActive, "activeHtml length:", activeHtml?.length ?? 0, "toolName:", activeToolName);
   const previewDimensions = usePreviewSizing({
     containerRef,
     canvasSize,
@@ -623,12 +692,14 @@ export function PreviewPanel() {
 
   const toggleMcpMediaApp = useCallback(() => {
     try {
+      console.log("[MCP] toggle clicked, localMcpActive:", localMcpActive);
       if (localMcpActive) {
         setLocalMcpActive(false);
+        console.log("[MCP] switched OFF");
         return;
       }
-      // Clear any external MCP app and activate local MCP
       setLocalMcpActive(true);
+      console.log("[MCP] switched ON");
     } catch {
       // Ignore local MCP toggle errors to avoid blocking normal preview.
     }
@@ -1027,6 +1098,7 @@ export function PreviewPanel() {
         </div>
         <div className="flex-1 min-h-0 p-3">
           <iframe
+            key={activeHtml?.length ?? 0}
             title={activeToolName || "MCP app preview"}
             srcDoc={activeHtml}
             sandbox="allow-scripts allow-forms"

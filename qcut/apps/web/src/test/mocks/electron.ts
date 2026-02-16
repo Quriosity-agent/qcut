@@ -154,6 +154,11 @@ export const mockElectronAPI: ElectronAPI = {
     }),
   },
 
+  analyzeFillers: vi.fn().mockResolvedValue({
+    filteredWordIds: [],
+    provider: "pattern",
+  }),
+
   // API key operations
   apiKeys: {
     get: vi.fn().mockResolvedValue({

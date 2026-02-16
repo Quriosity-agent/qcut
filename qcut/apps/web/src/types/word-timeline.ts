@@ -7,6 +7,16 @@
  * @module types/word-timeline
  */
 
+export const WORD_FILTER_STATE = {
+  NONE: "none",
+  AI: "ai",
+  USER_REMOVE: "user-remove",
+  USER_KEEP: "user-keep",
+} as const;
+
+export type WordFilterState =
+  (typeof WORD_FILTER_STATE)[keyof typeof WORD_FILTER_STATE];
+
 /**
  * Individual word item from transcription JSON.
  */
@@ -23,19 +33,25 @@ export interface WordItem {
   type: "word" | "spacing";
   /** Optional speaker identification */
   speaker_id?: string;
-  /** Whether the word is marked for deletion */
-  deleted: boolean;
+  /** Tri-state filter marker from AI/user actions */
+  filterState: WordFilterState;
+  /** Optional explanation from AI analysis */
+  filterReason?: string;
 }
 
 /**
  * Raw word data from JSON file (before transformation).
  */
 export interface RawWordItem {
+  id?: string;
   text: string;
   start: number;
   end: number;
   type: "word" | "spacing";
   speaker_id?: string;
+  deleted?: boolean;
+  filterState?: WordFilterState;
+  filterReason?: string;
 }
 
 /**

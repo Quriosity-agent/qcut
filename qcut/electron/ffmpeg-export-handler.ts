@@ -34,6 +34,7 @@ import {
 } from "./ffmpeg/utils";
 
 import { buildFFmpegArgs } from "./ffmpeg-args-builder.js";
+import { buildFilterCutComplex } from "./ffmpeg-filter-cut.js";
 
 /**
  * Registers the export-video-cli IPC handler.
@@ -84,6 +85,10 @@ export function setupExportHandler(tempManager: TempManager): void {
       debugLog(
         "🔍 [FFMPEG HANDLER]   - optimizationStrategy:",
         options.optimizationStrategy
+      );
+      debugLog(
+        "🔍 [FFMPEG HANDLER]   - wordFilterSegments count:",
+        options.wordFilterSegments?.length || 0
       );
       debugLog(
         "🔍 [FFMPEG HANDLER]   - filterChain:",
@@ -235,6 +240,21 @@ export function setupExportHandler(tempManager: TempManager): void {
               resolve,
               reject
             );
+            return;
+          }
+
+          if (
+            options.wordFilterSegments &&
+            options.wordFilterSegments.length > 0
+          ) {
+            await handleWordFilterCut({
+              options,
+              ffmpegPath,
+              outputFile,
+              event,
+              resolve,
+              reject,
+            });
             return;
           }
 
@@ -392,6 +412,230 @@ export function setupExportHandler(tempManager: TempManager): void {
       });
     }
   );
+}
+
+async function runFFmpegCommand({
+  args,
+  event,
+  ffmpegPath,
+}: {
+  args: string[];
+  event?: IpcMainInvokeEvent;
+  ffmpegPath: string;
+}): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const process = spawn(ffmpegPath, args, {
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stderrOutput = "";
+    process.stderr?.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stderrOutput += text;
+      if (event) {
+        const progress = parseProgress(text);
+        if (progress) {
+          event.sender?.send?.("ffmpeg-progress", progress);
+        }
+      }
+    });
+
+    process.on("error", (error: Error) => {
+      reject(error);
+    });
+
+    process.on("close", (code: number | null) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(
+        new Error(
+          `FFmpeg failed with code ${code}. ${stderrOutput.slice(-5000)}`
+        )
+      );
+    });
+  });
+}
+
+async function handleWordFilterCut({
+  options,
+  ffmpegPath,
+  outputFile,
+  event,
+  resolve,
+  reject,
+}: {
+  options: ExportOptions;
+  ffmpegPath: string;
+  outputFile: string;
+  event: IpcMainInvokeEvent;
+  resolve: (value: ExportResult) => void;
+  reject: (reason: Error) => void;
+}): Promise<void> {
+  try {
+    if (!options.videoInputPath) {
+      throw new Error(
+        "Word filter cut mode requires useVideoInput with videoInputPath."
+      );
+    }
+
+    if (!fs.existsSync(options.videoInputPath)) {
+      throw new Error(`Video input not found: ${options.videoInputPath}`);
+    }
+
+    const keepSegments = options.wordFilterSegments || [];
+    if (keepSegments.length === 0) {
+      throw new Error("No keep segments provided for word filter cut.");
+    }
+
+    if (keepSegments.length > 100) {
+      await handleWordFilterCutFallback({
+        ffmpegPath,
+        videoPath: options.videoInputPath,
+        outputFile,
+        keepSegments,
+        event,
+      });
+      resolve({
+        success: true,
+        outputFile,
+        method: "spawn",
+      });
+      return;
+    }
+
+    const { filterComplex, outputMaps } = buildFilterCutComplex({
+      keepSegments,
+      crossfadeMs: options.crossfadeMs ?? 30,
+    });
+
+    const args: string[] = ["-y"];
+    if ((options.trimStart ?? 0) > 0) {
+      args.push("-ss", String(options.trimStart));
+    }
+    args.push(
+      "-i",
+      options.videoInputPath,
+      "-filter_complex",
+      filterComplex,
+      ...outputMaps,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "18",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-movflags",
+      "+faststart",
+      outputFile
+    );
+
+    await runFFmpegCommand({
+      args,
+      event,
+      ffmpegPath,
+    });
+
+    resolve({
+      success: true,
+      outputFile,
+      method: "spawn",
+    });
+  } catch (error) {
+    reject(error as Error);
+  }
+}
+
+async function handleWordFilterCutFallback({
+  ffmpegPath,
+  videoPath,
+  outputFile,
+  keepSegments,
+  event,
+}: {
+  ffmpegPath: string;
+  videoPath: string;
+  outputFile: string;
+  keepSegments: Array<{ start: number; end: number }>;
+  event: IpcMainInvokeEvent;
+}): Promise<void> {
+  const outputDir = path.dirname(outputFile);
+  const segmentDir = path.join(outputDir, "word-cut-segments");
+  if (!fs.existsSync(segmentDir)) {
+    fs.mkdirSync(segmentDir, { recursive: true });
+  }
+
+  const segmentPaths = keepSegments.map((_, index) =>
+    path.join(segmentDir, `segment-${String(index).padStart(4, "0")}.mp4`)
+  );
+
+  await keepSegments.reduce(async (previousPromise, segment, index) => {
+    await previousPromise;
+    const duration = Math.max(0, segment.end - segment.start);
+    const args = [
+      "-y",
+      "-ss",
+      String(segment.start),
+      "-t",
+      String(duration),
+      "-i",
+      videoPath,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "18",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      segmentPaths[index],
+    ];
+    await runFFmpegCommand({
+      args,
+      event,
+      ffmpegPath,
+    });
+  }, Promise.resolve());
+
+  const concatListPath = path.join(segmentDir, "concat-list.txt");
+  const concatContent = segmentPaths
+    .map((segmentPath) => {
+      const escapedPath = segmentPath.replace(/'/g, "'\\''").replace(/\\/g, "/");
+      return `file '${escapedPath}'`;
+    })
+    .join("\n");
+  fs.writeFileSync(concatListPath, concatContent, "utf8");
+
+  await runFFmpegCommand({
+    args: [
+      "-y",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      concatListPath,
+      "-c",
+      "copy",
+      "-movflags",
+      "+faststart",
+      outputFile,
+    ],
+    event,
+    ffmpegPath,
+  });
 }
 
 /**

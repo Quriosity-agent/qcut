@@ -259,6 +259,25 @@ export interface ElectronAPI {
     uploadToFal: (filePath: string) => Promise<{ url: string }>;
   };
 
+  analyzeFillers: (options: {
+    words: Array<{
+      id: string;
+      text: string;
+      start: number;
+      end: number;
+      type: "word" | "spacing";
+      speaker_id?: string;
+    }>;
+    languageCode: string;
+  }) => Promise<{
+    filteredWordIds: Array<{
+      id: string;
+      reason: string;
+      scope?: "word" | "sentence";
+    }>;
+    provider?: "gemini" | "anthropic" | "pattern";
+  }>;
+
   // Generic IPC invoke method
   invoke: (channel: string, ...args: any[]) => Promise<any>;
 
@@ -307,6 +326,16 @@ export interface ElectronAPI {
       videoInputPath?: string;
       trimStart?: number;
       trimEnd?: number;
+      wordFilterSegments?: Array<{
+        start: number;
+        end: number;
+      }>;
+      crossfadeMs?: number;
+      optimizationStrategy?:
+        | "direct-copy"
+        | "direct-video-with-filters"
+        | "video-normalization"
+        | "image-video-composite";
     }) => Promise<{ success: boolean; outputFile: string }>;
     readOutputFile: (path: string) => Promise<Buffer>;
     cleanupExportSession: (sessionId: string) => Promise<void>;

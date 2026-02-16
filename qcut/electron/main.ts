@@ -97,6 +97,7 @@ const {
   migrateAIVideosToDocuments,
 } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
+const { setupAIFillerIPC } = require("./ai-filler-handler.js");
 const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
@@ -611,6 +612,7 @@ if (!isCliKeyCommand) {
       ["GeminiHandlers", setupGeminiHandlers],
       ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
       ["GeminiChatIPC", setupGeminiChatIPC],
+      ["AIFillerIPC", setupAIFillerIPC],
       ["PtyIPC", setupPtyIPC],
       ["AIVideoHandlers", registerAIVideoHandlers],
       ["SkillsIPC", setupSkillsIPC],

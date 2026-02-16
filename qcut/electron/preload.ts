@@ -177,6 +177,25 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("transcribe:upload-to-fal", filePath),
   },
 
+  analyzeFillers: (options: {
+    words: Array<{
+      id: string;
+      text: string;
+      start: number;
+      end: number;
+      type: "word" | "spacing";
+      speaker_id?: string;
+    }>;
+    languageCode: string;
+  }): Promise<{
+    filteredWordIds: Array<{
+      id: string;
+      reason: string;
+      scope?: "word" | "sentence";
+    }>;
+    provider?: "gemini" | "anthropic" | "pattern";
+  }> => ipcRenderer.invoke("ai:analyze-fillers", options),
+
   // FFmpeg export operations
   ffmpeg: {
     createExportSession: (): Promise<ExportSession> =>

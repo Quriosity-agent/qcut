@@ -136,6 +136,13 @@ export interface ExportOptions {
     | "direct-video-with-filters"
     | "video-normalization"
     | "image-video-composite";
+  /** Optional keep segments for transcription-aware cut export mode */
+  wordFilterSegments?: Array<{
+    start: number;
+    end: number;
+  }>;
+  /** Audio crossfade duration used between keep segments in word filter mode */
+  crossfadeMs?: number;
 }
 
 /**

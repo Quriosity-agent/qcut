@@ -14,7 +14,7 @@
  * @module components/editor/media-panel/views/word-timeline-view
  */
 
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,11 @@ import { useElevenLabsTranscription } from "@/hooks/use-elevenlabs-transcription
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { Upload, X, Loader2, AlertCircle, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { WordItem } from "@/types/word-timeline";
+import {
+  WORD_FILTER_STATE,
+  type WordFilterState,
+  type WordItem,
+} from "@/types/word-timeline";
 import { toast } from "sonner";
 
 // ============================================================================
@@ -84,6 +88,82 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+function getChipColor({
+  filterState,
+}: {
+  filterState: WordFilterState;
+}): string {
+  if (filterState === WORD_FILTER_STATE.AI) {
+    return "bg-orange-500/20 text-orange-700 border border-dashed border-orange-400";
+  }
+  if (filterState === WORD_FILTER_STATE.USER_REMOVE) {
+    return "bg-destructive/20 text-destructive line-through decoration-2";
+  }
+  if (filterState === WORD_FILTER_STATE.USER_KEEP) {
+    return "bg-emerald-500/20 text-emerald-700 border border-emerald-400";
+  }
+  return "bg-muted hover:bg-accent hover:text-accent-foreground";
+}
+
+function getChipHelpText({
+  word,
+}: {
+  word: WordItem;
+}): string {
+  if (word.filterState === WORD_FILTER_STATE.AI) {
+    return "Left-click keep, right-click remove";
+  }
+  if (word.filterState === WORD_FILTER_STATE.USER_REMOVE) {
+    return "Left-click keep, right-click keep removed";
+  }
+  if (word.filterState === WORD_FILTER_STATE.USER_KEEP) {
+    return "Left-click remove, right-click remove";
+  }
+  return "Left-click seek, right-click remove";
+}
+
+function calculateRemovedDuration({
+  words,
+}: {
+  words: WordItem[];
+}): number {
+  try {
+    const ranges = words
+      .filter(
+        (word) =>
+          word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE
+      )
+      .map((word) => ({
+        start: Math.max(0, word.start),
+        end: Math.max(word.start, word.end),
+      }))
+      .sort((left, right) => left.start - right.start);
+
+    if (ranges.length === 0) {
+      return 0;
+    }
+
+    const merged: Array<{ start: number; end: number }> = [];
+    for (const range of ranges) {
+      const previous = merged[merged.length - 1];
+      if (!previous || range.start > previous.end) {
+        merged.push({ ...range });
+        continue;
+      }
+      previous.end = Math.max(previous.end, range.end);
+    }
+
+    let total = 0;
+    for (const range of merged) {
+      total += Math.max(0, range.end - range.start);
+    }
+    return total;
+  } catch {
+    return 0;
+  }
+}
+
 // ============================================================================
 // Word Chip Component
 // ============================================================================
@@ -91,28 +171,42 @@ function formatDuration(seconds: number): string {
 interface WordChipProps {
   word: WordItem;
   isSelected: boolean;
-  onSelect: (word: WordItem) => void;
-  onToggleDelete: (wordId: string) => void;
+  onPrimaryAction: (word: WordItem) => void;
+  onQuickRemove: (word: WordItem) => void;
 }
 
 function WordChip({
   word,
   isSelected,
-  onSelect,
-  onToggleDelete,
+  onPrimaryAction,
+  onQuickRemove,
 }: WordChipProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleClick = useCallback(() => {
-    onSelect(word);
-  }, [word, onSelect]);
+    onPrimaryAction(word);
+  }, [word, onPrimaryAction]);
 
   const handleRightClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      onToggleDelete(word.id);
+      onQuickRemove(word);
     },
-    [word.id, onToggleDelete]
+    [word, onQuickRemove]
+  );
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      try {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onPrimaryAction(word);
+        }
+      } catch {
+        return;
+      }
+    },
+    [onPrimaryAction, word]
   );
 
   // Auto-scroll into view when selected during playback
@@ -135,12 +229,11 @@ function WordChip({
             type="button"
             onClick={handleClick}
             onContextMenu={handleRightClick}
+            onKeyDown={handleKeyDown}
             className={cn(
               "inline-flex items-center px-2 py-1 text-sm rounded transition-all",
               "hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring",
-              word.deleted
-                ? "bg-destructive/20 text-destructive line-through decoration-2"
-                : "bg-muted hover:bg-accent hover:text-accent-foreground",
+              getChipColor({ filterState: word.filterState }),
               isSelected && "ring-2 ring-primary ring-offset-1"
             )}
           >
@@ -151,8 +244,11 @@ function WordChip({
           <p className="font-mono">
             {formatTime(word.start)} - {formatTime(word.end)}
           </p>
+          {word.filterReason && (
+            <p className="text-muted-foreground mt-1">{word.filterReason}</p>
+          )}
           <p className="text-muted-foreground mt-1">
-            Right-click to {word.deleted ? "restore" : "delete"}
+            {getChipHelpText({ word })}
           </p>
         </TooltipContent>
       </Tooltip>
@@ -457,15 +553,22 @@ export function WordTimelineView() {
     fileName,
     selectedWordId,
     isLoading,
+    isAnalyzing,
     error,
+    analysisError,
     loadFromJson,
     clearData,
-    toggleWordDeleted,
+    setFilterState,
+    setMultipleFilterStates,
+    acceptAllAiSuggestions,
+    resetAllFilters,
+    undoLastFilterChange,
     selectWord,
     getVisibleWords,
   } = useWordTimelineStore();
 
   const { seek, currentTime, isPlaying } = usePlaybackStore();
+  const [previewSkipFiltered, setPreviewSkipFiltered] = useState(true);
 
   // Transcription hook
   const {
@@ -478,6 +581,7 @@ export function WordTimelineView() {
 
   // Get only words (not spacing)
   const words = getVisibleWords();
+  const allWords = data?.words || [];
 
   // Auto-select word based on current playback time (karaoke-style sync)
   useEffect(() => {
@@ -492,6 +596,111 @@ export function WordTimelineView() {
       selectWord(currentWord.id);
     }
   }, [currentTime, isPlaying, words, selectedWordId, selectWord]);
+
+  useEffect(() => {
+    try {
+      if (!previewSkipFiltered || !isPlaying || allWords.length === 0) {
+        return;
+      }
+
+      const currentFilteredWord = allWords.find(
+        (word) =>
+          (word.filterState === WORD_FILTER_STATE.AI ||
+            word.filterState === WORD_FILTER_STATE.USER_REMOVE) &&
+          currentTime >= word.start &&
+          currentTime < word.end
+      );
+      if (!currentFilteredWord) {
+        return;
+      }
+
+      let skipEnd = currentFilteredWord.end;
+      const filteredWords = allWords
+        .filter(
+          (word) =>
+            word.filterState === WORD_FILTER_STATE.AI ||
+            word.filterState === WORD_FILTER_STATE.USER_REMOVE
+        )
+        .sort((left, right) => left.start - right.start);
+
+      for (const word of filteredWords) {
+        if (word.start <= skipEnd + 0.1 && word.end >= skipEnd) {
+          skipEnd = Math.max(skipEnd, word.end);
+        }
+      }
+
+      if (skipEnd > currentTime + 0.02) {
+        seek(skipEnd);
+      }
+    } catch {
+      return;
+    }
+  }, [allWords, currentTime, isPlaying, previewSkipFiltered, seek]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      try {
+        const target = event.target as HTMLElement | null;
+        const isTyping =
+          !!target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable);
+        if (isTyping) {
+          return;
+        }
+
+        const isMac = navigator.platform.toLowerCase().includes("mac");
+        const commandOrCtrl = isMac ? event.metaKey : event.ctrlKey;
+
+        if (commandOrCtrl && event.key.toLowerCase() === "a") {
+          event.preventDefault();
+          acceptAllAiSuggestions();
+          return;
+        }
+
+        if (commandOrCtrl && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          undoLastFilterChange();
+          return;
+        }
+
+        if (!selectedWordId) {
+          return;
+        }
+
+        if (event.key === "Delete" || event.key === "Backspace") {
+          event.preventDefault();
+          setFilterState(selectedWordId, WORD_FILTER_STATE.USER_REMOVE);
+          return;
+        }
+
+        if (event.key === "Enter" || event.key === " ") {
+          const selectedWord = allWords.find((word) => word.id === selectedWordId);
+          if (
+            selectedWord &&
+            selectedWord.filterState !== WORD_FILTER_STATE.NONE
+          ) {
+            event.preventDefault();
+            setFilterState(selectedWordId, WORD_FILTER_STATE.USER_KEEP);
+          }
+        }
+      } catch {
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    acceptAllAiSuggestions,
+    allWords,
+    selectedWordId,
+    setFilterState,
+    undoLastFilterChange,
+  ]);
 
   const handleJsonSelect = useCallback(
     (file: File) => {
@@ -589,20 +798,91 @@ export function WordTimelineView() {
     [transcribeMedia]
   );
 
-  const handleWordSelect = useCallback(
+  const handleWordPrimaryAction = useCallback(
     (word: WordItem) => {
-      selectWord(word.id);
-      seek(word.start);
-      toast.info(`Seeked to ${formatTime(word.start)}`);
+      try {
+        selectWord(word.id);
+        if (word.filterState === WORD_FILTER_STATE.NONE) {
+          seek(word.start);
+          toast.info(`Seeked to ${formatTime(word.start)}`);
+          return;
+        }
+
+        if (
+          word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE
+        ) {
+          setFilterState(word.id, WORD_FILTER_STATE.USER_KEEP);
+          return;
+        }
+
+        if (word.filterState === WORD_FILTER_STATE.USER_KEEP) {
+          setFilterState(word.id, WORD_FILTER_STATE.USER_REMOVE);
+        }
+      } catch {
+        return;
+      }
     },
-    [selectWord, seek]
+    [seek, selectWord, setFilterState]
   );
 
-  const handleToggleDelete = useCallback(
-    (wordId: string) => {
-      toggleWordDeleted(wordId);
+  const handleWordQuickRemove = useCallback(
+    (word: WordItem) => {
+      try {
+        setFilterState(word.id, WORD_FILTER_STATE.USER_REMOVE);
+      } catch {
+        return;
+      }
     },
-    [toggleWordDeleted]
+    [setFilterState]
+  );
+
+  const handleAcceptAllAi = useCallback(() => {
+    try {
+      acceptAllAiSuggestions();
+      toast.success("Accepted all AI suggestions");
+    } catch {
+      return;
+    }
+  }, [acceptAllAiSuggestions]);
+
+  const handleResetAll = useCallback(async () => {
+    try {
+      await resetAllFilters();
+      toast.info("Filters reset to AI defaults");
+    } catch {
+      return;
+    }
+  }, [resetAllFilters]);
+
+  const handleSelectAllAi = useCallback(() => {
+    try {
+      const aiWordIds = allWords
+        .filter((word) => word.filterState === WORD_FILTER_STATE.AI)
+        .map((word) => word.id);
+      setMultipleFilterStates(aiWordIds, WORD_FILTER_STATE.USER_REMOVE);
+      toast.success(`Marked ${aiWordIds.length} AI words for removal`);
+    } catch {
+      return;
+    }
+  }, [allWords, setMultipleFilterStates]);
+
+  const handlePreviewToggle = useCallback(() => {
+    setPreviewSkipFiltered((previous) => !previous);
+  }, []);
+
+  const handlePreviewToggleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      try {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handlePreviewToggle();
+        }
+      } catch {
+        return;
+      }
+    },
+    [handlePreviewToggle]
   );
 
   const handleClear = useCallback(() => {
@@ -612,12 +892,27 @@ export function WordTimelineView() {
   }, [clearData, clearTranscriptionError]);
 
   // Calculate stats
-  const deletedCount = words.filter((w) => w.deleted).length;
+  const aiFilteredCount = words.filter(
+    (word) => word.filterState === WORD_FILTER_STATE.AI
+  ).length;
+  const userRemovedCount = words.filter(
+    (word) => word.filterState === WORD_FILTER_STATE.USER_REMOVE
+  ).length;
+  const userKeptCount = words.filter(
+    (word) => word.filterState === WORD_FILTER_STATE.USER_KEEP
+  ).length;
+
+  const removedDuration = useMemo(() => {
+    return calculateRemovedDuration({ words: allWords });
+  }, [allWords]);
+
   const lastWord = words[words.length - 1];
   const totalDuration = lastWord?.end || 0;
+  const removedPercent =
+    totalDuration > 0 ? (removedDuration / totalDuration) * 100 : 0;
 
   // Combined error state
-  const displayError = error || transcriptionError;
+  const displayError = error || transcriptionError || analysisError;
 
   // Error state
   if (displayError && !data) {
@@ -672,19 +967,37 @@ export function WordTimelineView() {
           <span className="text-xs text-muted-foreground shrink-0">
             ({words.length} words)
           </span>
+          {isAnalyzing && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-orange-700 shrink-0">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Analyzing for fillers...
+            </span>
+          )}
         </div>
-        <Button
-          type="button"
-          variant="text"
-          size="icon"
-          onClick={handleClear}
-          className="shrink-0 h-7 w-7"
-          title="Clear"
-        >
-          <X className="w-4 h-4">
-            <title>Clear</title>
-          </X>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant={previewSkipFiltered ? "outline" : "text"}
+            size="sm"
+            onClick={handlePreviewToggle}
+            onKeyDown={handlePreviewToggleKeyDown}
+            className="h-7 px-2 text-[11px]"
+          >
+            Preview: {previewSkipFiltered ? "Skip filtered" : "Normal"}
+          </Button>
+          <Button
+            type="button"
+            variant="text"
+            size="icon"
+            onClick={handleClear}
+            className="shrink-0 h-7 w-7"
+            title="Clear"
+          >
+            <X className="w-4 h-4">
+              <title>Clear</title>
+            </X>
+          </Button>
+        </div>
       </div>
 
       {/* Word List */}
@@ -696,8 +1009,8 @@ export function WordTimelineView() {
                 key={word.id}
                 word={word}
                 isSelected={selectedWordId === word.id}
-                onSelect={handleWordSelect}
-                onToggleDelete={handleToggleDelete}
+                onPrimaryAction={handleWordPrimaryAction}
+                onQuickRemove={handleWordQuickRemove}
               />
             ))}
           </div>
@@ -706,19 +1019,53 @@ export function WordTimelineView() {
 
       {/* Footer - Stats */}
       <div className="p-2 border-t bg-muted/30 text-xs text-muted-foreground">
-        <div className="flex justify-between items-center">
-          <span>
-            {deletedCount > 0 && (
-              <span className="text-destructive font-medium">
-                {deletedCount} deleted
-              </span>
-            )}
-            {deletedCount === 0 && "No deletions"}
+        {analysisError && (
+          <p className="text-[10px] text-destructive mb-1">{analysisError}</p>
+        )}
+        <div className="flex justify-between items-center gap-2">
+          <span className="truncate">
+            {aiFilteredCount} AI, {userRemovedCount} removed, {userKeptCount} kept
           </span>
           <span>Duration: {formatDuration(totalDuration)}</span>
         </div>
+        <div className="flex justify-between items-center mt-1 gap-2">
+          <span className="truncate">
+            Removes {formatDuration(removedDuration)} ({removedPercent.toFixed(1)}
+            %)
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={handleSelectAllAi}
+            >
+              Remove AI
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={handleAcceptAllAi}
+            >
+              Accept All
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={handleResetAll}
+            >
+              Reset All
+            </Button>
+          </div>
+        </div>
         <p className="text-[10px] text-muted-foreground/70 mt-1">
-          Click word to seek, right-click to delete
+          Click toggles state-aware action, right-click quick-removes, Ctrl/Cmd+Z
+          undo
         </p>
       </div>
     </div>
