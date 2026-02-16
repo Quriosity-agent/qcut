@@ -333,6 +333,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@remotion/player": "4.0.417",
     "@remotion/renderer": "4.0.417",
     "@remotion/transitions": "4.0.417",

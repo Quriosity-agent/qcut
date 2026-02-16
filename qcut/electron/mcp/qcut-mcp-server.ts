@@ -37,6 +37,25 @@ const DEFAULT_RUNTIME_CONFIG = {
   projectRoot: process.env.QCUT_PROJECT_ROOT || process.cwd(),
 };
 
+interface McpTextContent {
+  type: "text";
+  text: string;
+}
+
+interface McpResourceContent {
+  type: "resource";
+  resource: {
+    uri: string;
+    mimeType: string;
+    text: string;
+  };
+}
+
+interface McpToolResponse {
+  [key: string]: unknown;
+  content: (McpTextContent | McpResourceContent)[];
+}
+
 function getHtmlSearchPaths({ fileName }: { fileName: string }): string[] {
   return [
     path.resolve(__dirname, "apps", fileName),
@@ -54,7 +73,11 @@ function getHtmlSearchPaths({ fileName }: { fileName: string }): string[] {
   ];
 }
 
-async function loadHtmlTemplate({ fileName }: { fileName: string }): Promise<string> {
+async function loadHtmlTemplate({
+  fileName,
+}: {
+  fileName: string;
+}): Promise<string> {
   const candidates = getHtmlSearchPaths({ fileName });
 
   const reads = candidates.map(async (candidatePath) => {
@@ -146,7 +169,7 @@ async function buildToolResponse({
   toolName: string;
   htmlFile: string;
   summary: string;
-}) {
+}): Promise<McpToolResponse> {
   const template = await loadHtmlTemplate({ fileName: htmlFile });
   const html = injectRuntimeConfig({
     html: template,
@@ -251,10 +274,12 @@ async function startServer(): Promise<void> {
     console.error("[QCut MCP] Server started on stdio transport");
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to start QCut MCP server";
+      error instanceof Error
+        ? error.message
+        : "Failed to start QCut MCP server";
     console.error(`[QCut MCP] Startup error: ${message}`);
     process.exit(1);
   }
 }
 
-void startServer();
+startServer();

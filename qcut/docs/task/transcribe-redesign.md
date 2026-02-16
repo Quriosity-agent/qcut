@@ -37,16 +37,24 @@ Redesign the word timeline transcription feature with three core improvements:
 
 ---
 
-## Subtask 1: AI Auto-Filter Detection
+## Subtask 1: AI-Powered Auto-Filter Detection
 
-**Goal**: After transcription completes, automatically analyze words and mark filler words / excessive gaps for removal.
+**Goal**: After transcription completes, send the transcription to an LLM (Gemini or Claude API) to intelligently identify filler words, false starts, repetitions, and excessive silence gaps. AI understands context - it knows "like" in "I like cats" is meaningful but "like" in "it was like, um, weird" is filler.
+
+### Why AI > Pattern Matching
+
+| Approach | "I was like um going" | "I like this song" | "so so basically" |
+|----------|----------------------|--------------------|--------------------|
+| Pattern matching | Flags "like", "um" | Wrongly flags "like" | Flags "so", "basically" but misses "so so" repetition |
+| AI analysis | Flags "like", "um" as fillers | Keeps "like" (meaningful verb) | Flags "so so basically" as filler + repetition |
+
+AI can also detect: false starts ("I was- I went to"), hesitation patterns, and contextual fillers that pattern matching would miss.
 
 ### What to Build
 
-Add a post-transcription analysis step that marks words as `filtered: "ai"` based on two criteria:
-
-1. **Filler word detection** - Common filler words: "um", "uh", "ah", "er", "like" (when used as filler), "you know", "I mean", "basically", "actually", "so" (sentence-start filler), "right", "okay" (filler usage)
-2. **Excessive gap detection** - When the gap between two words exceeds a threshold (e.g., >1.5s), mark the gap region as a silence segment to filter
+1. **IPC handler** in Electron for AI filler analysis (reuses existing Gemini SDK + adds Anthropic SDK option)
+2. **Prompt engineering** - Send word list with timestamps, get back word IDs to filter with reasons
+3. **Fallback** - If no API key or API fails, fall back to basic pattern matching as a safety net
 
 ### Implementation
 
@@ -77,60 +85,179 @@ interface WordItem {
   type: "word" | "spacing";
   speaker_id?: string;
   filterState: WordFilterState;  // replaces `deleted: boolean`
+  filterReason?: string;         // AI's explanation (e.g., "filler word", "false start", "excessive pause")
 }
 ```
 
 - `"none"` - Not filtered (default for normal words)
-- `"ai"` - AI suggested for removal (user hasn't decided)
+- `"ai"` - AI suggested for removal (user hasn't decided yet)
 - `"user-remove"` - User confirmed removal
-- `"user-keep"` - User explicitly chose to keep (overrides AI)
+- `"user-keep"` - User explicitly chose to keep (overrides AI suggestion)
 
-#### 1.2 Add filler detection logic
+#### 1.2 Add AI filler analysis IPC handler
 
-**New file**: `apps/web/src/lib/transcription/filler-detector.ts`
+**New file**: `electron/ai-filler-handler.ts`
+
+This handler sends the transcription to an LLM and gets back structured filter decisions.
 
 ```typescript
-interface FilterResult {
-  wordId: string;
-  reason: "filler-word" | "excessive-gap";
-}
+// IPC channel: "ai:analyze-fillers"
+// Input: { words: WordItem[], languageCode: string }
+// Output: { filteredWordIds: Array<{ id: string, reason: string }> }
 
-/** Analyze transcription words and return IDs of words to auto-filter */
-function detectFillers(words: WordItem[], options?: {
-  gapThresholdSeconds?: number;   // default 1.5
-  fillerWords?: string[];         // override default list
-}): FilterResult[]
+ipcMain.handle("ai:analyze-fillers", async (_, { words, languageCode }) => {
+  const apiKeys = await getDecryptedApiKeys();
+
+  // Priority: Gemini (already integrated) → Anthropic (if key exists)
+  if (apiKeys.geminiApiKey) {
+    return analyzeWithGemini(words, languageCode, apiKeys.geminiApiKey);
+  }
+  if (apiKeys.anthropicApiKey) {
+    return analyzeWithClaude(words, languageCode, apiKeys.anthropicApiKey);
+  }
+
+  // Fallback: basic pattern matching (no API key available)
+  return analyzeWithPatternMatch(words);
+});
 ```
 
-Logic:
-- Match words against filler word list (case-insensitive, trimmed)
-- Detect gaps: iterate word pairs, if `words[i+1].start - words[i].end > threshold`, mark the gap
-- Return array of word IDs + reasons
+**Gemini implementation** (reuses existing `@google/generative-ai` SDK):
+```typescript
+async function analyzeWithGemini(words, languageCode, apiKey) {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",  // Fast + cheap ($0.10/1M tokens)
+    generationConfig: { responseMimeType: "application/json" }
+  });
 
-#### 1.3 Integrate into store
+  const prompt = buildFilterPrompt(words, languageCode);
+  const result = await model.generateContent(prompt);
+  return parseFilterResponse(result.response.text());
+}
+```
+
+**Anthropic implementation** (new, uses `@anthropic-ai/sdk`):
+```typescript
+async function analyzeWithClaude(words, languageCode, apiKey) {
+  const anthropic = new Anthropic({ apiKey });
+  const prompt = buildFilterPrompt(words, languageCode);
+
+  const result = await anthropic.messages.create({
+    model: "claude-sonnet-4-5-20250929",  // Fast + capable
+    max_tokens: 4096,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return parseFilterResponse(result.content[0].text);
+}
+```
+
+#### 1.3 AI Prompt Design
+
+**File**: `electron/ai-filler-handler.ts` (same file, internal function)
+
+```typescript
+function buildFilterPrompt(words: WordItem[], languageCode: string): string {
+  // Compact format: "id|text|start|end" per line to minimize tokens
+  const wordList = words
+    .filter(w => w.type === "word")
+    .map(w => `${w.id}|${w.text}|${w.start.toFixed(2)}|${w.end.toFixed(2)}`)
+    .join("\n");
+
+  return `Analyze this transcription and identify words/phrases to remove for a clean edit.
+Language: ${languageCode}
+
+Words (format: id|text|startTime|endTime):
+${wordList}
+
+Identify these categories:
+1. **Filler words** - "um", "uh", "ah", "er", and language-specific fillers used as hesitation
+2. **Contextual fillers** - Words like "like", "so", "basically", "actually", "right", "okay" ONLY when used as verbal fillers (not when they carry meaning)
+3. **False starts** - Incomplete words or abandoned sentence beginnings before restating
+4. **Repetitions** - Unintentional word repetitions ("I I went", "the the thing")
+5. **Excessive pauses** - Gaps between consecutive words longer than 1.5 seconds (check timestamps)
+
+Return JSON array of objects: { "id": "word-X", "reason": "brief explanation" }
+Only include words that should be removed. When in doubt, keep the word.
+Return ONLY the JSON array, no other text.`;
+}
+```
+
+**Token cost estimate**: ~500 words transcription → ~2K input tokens + ~500 output tokens → ~$0.001 per analysis with Gemini Flash.
+
+#### 1.4 Pattern matching fallback
+
+**File**: `electron/ai-filler-handler.ts` (same file, fallback function)
+
+```typescript
+/** Fallback when no API key is available */
+function analyzeWithPatternMatch(words: WordItem[]): FilterResult {
+  const FILLER_WORDS = new Set(["um", "uh", "ah", "er", "hmm", "huh"]);
+  const GAP_THRESHOLD = 1.5; // seconds
+
+  const filtered = [];
+  for (const word of words) {
+    if (word.type !== "word") continue;
+    if (FILLER_WORDS.has(word.text.toLowerCase().trim())) {
+      filtered.push({ id: word.id, reason: "common filler word" });
+    }
+  }
+
+  // Gap detection between consecutive words
+  const sortedWords = words.filter(w => w.type === "word").sort((a, b) => a.start - b.start);
+  for (let i = 0; i < sortedWords.length - 1; i++) {
+    const gap = sortedWords[i + 1].start - sortedWords[i].end;
+    if (gap > GAP_THRESHOLD) {
+      // Mark as gap (creates a virtual "gap segment" between the two words)
+      filtered.push({ id: `gap-${sortedWords[i].id}`, reason: `${gap.toFixed(1)}s silence gap` });
+    }
+  }
+
+  return { filteredWordIds: filtered };
+}
+```
+
+#### 1.5 Integrate into store + UI flow
 
 **File**: `apps/web/src/stores/word-timeline-store.ts`
 
-- Add `applyAiFilters()` action that runs `detectFillers()` on loaded words and sets `filterState: "ai"` on detected words
-- Call `applyAiFilters()` automatically after `loadFromTranscription()` completes
+- Add `analyzeFillers()` async action that calls `window.electronAPI.analyzeFillers(words, languageCode)` IPC
+- On success, set `filterState: "ai"` and `filterReason` for each returned word ID
+- Add `isAnalyzing: boolean` state for loading UI
+- Call `analyzeFillers()` automatically after `loadFromTranscription()` completes
 - Update `toggleWordDeleted()` → `cycleFilterState(wordId)` to cycle through states
 - Update `getNonDeletedWords()` → `getWordsForExport()` which excludes `filterState === "ai" | "user-remove"` but includes `"user-keep"`
 - Add backward compat: map old `deleted: true` → `filterState: "user-remove"`, `deleted: false` → `filterState: "none"` when loading JSON
 
+**File**: `apps/web/src/components/editor/media-panel/views/word-timeline-view.tsx`
+
+- Show "Analyzing for fillers..." spinner after transcription completes
+- Display AI analysis results with reason tooltips
+
+**File**: `electron/preload.ts` + `src/types/electron.d.ts`
+
+- Expose `window.electronAPI.analyzeFillers()` IPC bridge
+- Add TypeScript types
+
 ### Files to Modify
 
-- `apps/web/src/types/word-timeline.ts` - Add `WordFilterState` type, update `WordItem`
-- `apps/web/src/stores/word-timeline-store.ts` - New actions, migrate from boolean to enum
-- **New**: `apps/web/src/lib/transcription/filler-detector.ts` - Detection logic
+- `apps/web/src/types/word-timeline.ts` - Add `WordFilterState` type, `filterReason`, update `WordItem`
+- `apps/web/src/stores/word-timeline-store.ts` - New async actions, migrate from boolean to enum
+- **New**: `electron/ai-filler-handler.ts` - AI analysis IPC handler (Gemini + Claude + fallback)
+- `electron/main.ts` - Register new IPC handler
+- `electron/preload.ts` - Expose `analyzeFillers` bridge
+- `apps/web/src/types/electron.d.ts` - Add type for new IPC method
+- `package.json` - Add `@anthropic-ai/sdk` dependency (optional, for Claude API support)
 
 ### Tests
 
-- `apps/web/src/lib/transcription/__tests__/filler-detector.test.ts`
-  - Detects common filler words ("um", "uh", "like", etc.)
-  - Detects excessive gaps (>1.5s between words)
-  - Respects custom threshold
-  - Does not flag normal words
-  - Case-insensitive matching
+- `electron/__tests__/ai-filler-handler.test.ts`
+  - Pattern matching fallback detects "um", "uh" etc.
+  - Pattern matching fallback detects gaps > 1.5s
+  - Does not flag meaningful words in fallback mode
+  - Prompt builder formats words correctly
+  - Response parser handles valid JSON
+  - Response parser handles malformed AI output gracefully
+  - Priority: Gemini → Claude → fallback
 
 ---
 
@@ -330,7 +457,9 @@ Subtask 4 (Polish)  ← depends on all above
 
 ## Architecture Decisions
 
-1. **Filler detection runs client-side** - No API call needed, just pattern matching on word text + gap analysis. Fast and free.
-2. **Reuse Mode 1.5 for export** - Don't build a new export mode. Convert filtered words → multiple `VideoSourceInput` segments → existing normalization + concat pipeline handles the rest.
-3. **Tri-state over binary** - `WordFilterState` enum instead of boolean gives users clear control and preserves the distinction between AI suggestions and user decisions.
-4. **No separate audio pipeline** - FFmpeg handles both video and audio streams together in each segment, so audio sync is automatic.
+1. **AI-powered filler detection via LLM API** - Uses Gemini (already integrated) or Claude API to understand context. "Like" as a verb is kept, "like" as filler is removed. Falls back to basic pattern matching if no API key is available. Cost: ~$0.001 per analysis with Gemini Flash.
+2. **Gemini first, Claude second, pattern matching fallback** - Follows existing API key priority in the codebase. Gemini SDK is already a dependency. Anthropic SDK added as optional. If neither key exists, basic filler word list + gap detection still works.
+3. **Reuse Mode 1.5 for export** - Don't build a new export mode. Convert filtered words → multiple `VideoSourceInput` segments → existing normalization + concat pipeline handles the rest.
+4. **Tri-state over binary** - `WordFilterState` enum instead of boolean gives users clear control and preserves the distinction between AI suggestions and user decisions.
+5. **No separate audio pipeline** - FFmpeg handles both video and audio streams together in each segment, so audio sync is automatic.
+6. **IPC handler for AI calls** - AI analysis runs in Electron main process (like existing Gemini chat/transcribe handlers), not in renderer. Keeps API keys secure and follows established patterns.
