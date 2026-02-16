@@ -43,7 +43,7 @@ import { ModelTypeSelector } from "./model-type-selector";
 import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
 import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
-import { getProviderLogo } from "./ai/constants/model-provider-logos";
+import { getProviderLogo, getProviderName } from "./ai/constants/model-provider-logos";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;
@@ -605,7 +605,7 @@ export function Text2ImageView() {
                         {(() => {
                           const logo = getProviderLogo(modelId);
                           return logo ? (
-                            <img src={logo} alt="" className="w-4 h-4 shrink-0 rounded-sm" />
+                            <img src={logo} alt={`${getProviderName(modelId)} logo`} className="w-4 h-4 shrink-0 rounded-sm" />
                           ) : null;
                         })()}
                         <p className="text-sm font-medium">{model.name}</p>
