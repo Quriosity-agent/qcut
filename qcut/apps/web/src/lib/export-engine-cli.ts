@@ -768,6 +768,15 @@ export class CLIExportEngine extends ExportEngine {
     const hasTextFilters = textFilterChain.length > 0;
     const hasStickerFilters = (stickerFilterChain?.length ?? 0) > 0;
 
+    // Check for word filters early — needed before mode decision
+    const wordTimelineData = useWordTimelineStore.getState().data;
+    const hasWordFilters =
+      wordTimelineData?.words.some(
+        (word) =>
+          word.filterState === WORD_FILTER_STATE.AI ||
+          word.filterState === WORD_FILTER_STATE.USER_REMOVE
+      ) || false;
+
     // Determine which mode to use and extract appropriate video info
     const visibleVideoCount = this.countVisibleVideoElements();
     const canUseMode2 =
@@ -775,11 +784,16 @@ export class CLIExportEngine extends ExportEngine {
         "direct-video-with-filters" ||
       (this.exportAnalysis?.optimizationStrategy === "image-video-composite" &&
         visibleVideoCount === 1);
+
+    // Extract video input for Mode 2 OR when word filters need cutting
+    const needsVideoInput = canUseMode2 || hasWordFilters;
     const videoInput: {
       path: string;
       trimStart: number;
       trimEnd: number;
-    } | null = canUseMode2 ? await this.extractVideoInputPathWrapper() : null;
+    } | null = needsVideoInput
+      ? await this.extractVideoInputPathWrapper()
+      : null;
 
     // Log Mode 2 detection result
     if (canUseMode2 && videoInput) {
@@ -805,14 +819,12 @@ export class CLIExportEngine extends ExportEngine {
       console.log(
         "⚡ [MODE 2 EXPORT] ============================================"
       );
-    } else if (canUseMode2 && !videoInput) {
+    } else if (needsVideoInput && !videoInput) {
       console.log(
-        "⚠️ [MODE 2 EXPORT] Mode 2 requested but video input extraction failed"
+        "⚠️ [MODE 2 EXPORT] Video input extraction failed"
       );
       console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
-
-    const wordTimelineData = useWordTimelineStore.getState().data;
     console.log(
       `[CLI Export] Word timeline data: ${wordTimelineData ? `${wordTimelineData.words.length} words` : "null"}`
     );
@@ -823,12 +835,6 @@ export class CLIExportEngine extends ExportEngine {
       }
       console.log("[CLI Export] Filter state breakdown:", stateCounts);
     }
-    const hasWordFilters =
-      wordTimelineData?.words.some(
-        (word) =>
-          word.filterState === WORD_FILTER_STATE.AI ||
-          word.filterState === WORD_FILTER_STATE.USER_REMOVE
-      ) || false;
     console.log(`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`);
     let wordFilterSegments:
       | Array<{
@@ -927,8 +933,9 @@ export class CLIExportEngine extends ExportEngine {
         this.exportAnalysis?.optimizationStrategy !== "video-normalization" &&
         !hasTextFilters &&
         !hasStickerFilters &&
-        !hasImageFilters
-      ), // Disable direct copy when text, stickers, images, or video-normalization mode
+        !hasImageFilters &&
+        !wordFilterSegments
+      ), // Disable direct copy when text, stickers, images, video-normalization, or word filter cuts
       videoSources: videoSources.length > 0 ? videoSources : undefined,
       // Mode 2: Direct video input with filters
       useVideoInput: !!videoInput,
