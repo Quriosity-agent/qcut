@@ -506,14 +506,25 @@ async function handleWordFilterCut({
       return;
     }
 
+    const trimStart = options.trimStart ?? 0;
+    const adjustedSegments =
+      trimStart > 0
+        ? keepSegments
+            .map((seg) => ({
+              start: Math.max(0, seg.start - trimStart),
+              end: Math.max(0, seg.end - trimStart),
+            }))
+            .filter((seg) => seg.end > seg.start)
+        : keepSegments;
+
     const { filterComplex, outputMaps } = buildFilterCutComplex({
-      keepSegments,
+      keepSegments: adjustedSegments,
       crossfadeMs: options.crossfadeMs ?? 30,
     });
 
     const args: string[] = ["-y"];
-    if ((options.trimStart ?? 0) > 0) {
-      args.push("-ss", String(options.trimStart));
+    if (trimStart > 0) {
+      args.push("-ss", String(trimStart));
     }
     args.push(
       "-i",

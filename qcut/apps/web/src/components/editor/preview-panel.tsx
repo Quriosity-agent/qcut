@@ -386,7 +386,13 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
 
           if (resultArea) resultArea.classList.add("visible");
           if (result.audio && result.audio.url && resultAudio) {
-            resultAudio.innerHTML = '<audio controls autoplay src="' + result.audio.url + '" style="width:100%;border-radius:10px;"></audio>';
+            resultAudio.textContent = "";
+            var audioEl = document.createElement("audio");
+            audioEl.controls = true;
+            audioEl.autoplay = true;
+            audioEl.src = result.audio.url;
+            audioEl.style.cssText = "width:100%;border-radius:10px;";
+            resultAudio.appendChild(audioEl);
           }
           if (result.text && resultText) {
             resultText.textContent = result.text;

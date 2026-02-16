@@ -152,7 +152,15 @@ async function notifyPreviewPanel({
         },
         (response) => {
           response.on("data", () => {});
-          response.on("end", () => resolve());
+          response.on("end", () => {
+            if (response.statusCode && response.statusCode >= 400) {
+              reject(
+                new Error(`MCP preview forward failed (${response.statusCode})`)
+              );
+              return;
+            }
+            resolve();
+          });
         }
       );
 

@@ -302,7 +302,12 @@ export function startClaudeHTTPServer(
       throw new HttpError(falResponse.status, `PersonaPlex API error: ${errorText}`);
     }
 
-    const result = await falResponse.json();
+    let result: unknown;
+    try {
+      result = await falResponse.json();
+    } catch {
+      throw new HttpError(502, "PersonaPlex API returned invalid JSON");
+    }
     claudeLog.info("HTTP", "PersonaPlex generate complete");
     return result;
   });

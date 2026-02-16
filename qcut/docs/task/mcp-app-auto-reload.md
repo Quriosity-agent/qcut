@@ -8,7 +8,7 @@ When the MCP media app template (`MCP_MEDIA_APP_TEMPLATE`) is updated in source 
 
 The toggle flow stores a **snapshot** of the built HTML string in Zustand:
 
-```
+```text
 User clicks "MCP Media App"
   → toggleMcpMediaApp()
   → buildMcpMediaAppHtml() builds HTML string from template

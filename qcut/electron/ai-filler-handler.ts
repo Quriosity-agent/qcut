@@ -2,6 +2,15 @@ import { ipcMain } from "electron";
 import path from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
+// Logger: use electron-log if available, fallback to console
+let log: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  log = require("electron-log");
+} catch {
+  log = console;
+}
+
 type AIProvider = "gemini" | "anthropic" | "pattern";
 
 interface AnalyzeWordItem {
@@ -53,6 +62,7 @@ interface GeminiSdkConstructor {
 const CHUNK_WORD_LIMIT = 300;
 const CHUNK_WORD_OVERLAP = 40;
 const LONG_SILENCE_SECONDS = 1.5;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export function setupAIFillerIPC(): void {
   ipcMain.handle(
@@ -73,7 +83,7 @@ export function setupAIFillerIPC(): void {
         };
         return await analyzeFillersWithPriority({ request });
       } catch (error) {
-        console.error("[AI Filler] IPC handler failed, using fallback:", error);
+        log.error("[AI Filler] IPC handler failed, using fallback:", error);
         return analyzeWithPatternMatch({ words: rawRequest.words || [] });
       }
     }
@@ -95,7 +105,7 @@ export async function analyzeFillersWithPriority({
           apiKey: apiKeys.geminiApiKey,
         });
       } catch (error) {
-        console.warn("[AI Filler] Gemini analysis failed:", error);
+        log.warn("[AI Filler] Gemini analysis failed:", error);
       }
     }
 
@@ -107,13 +117,13 @@ export async function analyzeFillersWithPriority({
           apiKey: apiKeys.anthropicApiKey,
         });
       } catch (error) {
-        console.warn("[AI Filler] Anthropic analysis failed:", error);
+        log.warn("[AI Filler] Anthropic analysis failed:", error);
       }
     }
 
     return analyzeWithPatternMatch({ words: request.words });
   } catch (error) {
-    console.warn("[AI Filler] Provider selection failed:", error);
+    log.warn("[AI Filler] Provider selection failed:", error);
     return analyzeWithPatternMatch({ words: request.words });
   }
 }
@@ -128,7 +138,7 @@ async function analyzeWithGemini({
   apiKey: string;
 }): Promise<AnalyzeFillersResult> {
   try {
-    const GoogleGenerativeAI = loadGeminiSdk();
+    const GoogleGenerativeAI = await loadGeminiSdk();
     const client = new GoogleGenerativeAI(apiKey);
     const model = client.getGenerativeModel({
       model: "gemini-2.0-flash",
@@ -145,7 +155,7 @@ async function analyzeWithGemini({
           const result = await model.generateContent(prompt);
           return parseFilterResponse({ rawText: result.response.text() });
         } catch (error) {
-          console.warn("[AI Filler] Gemini chunk failed:", error);
+          log.warn("[AI Filler] Gemini chunk failed:", error);
           return [];
         }
       })
@@ -156,7 +166,7 @@ async function analyzeWithGemini({
       provider: "gemini",
     };
   } catch (error) {
-    console.error("[AI Filler] Gemini provider failed:", error);
+    log.error("[AI Filler] Gemini provider failed:", error);
     throw error;
   }
 }
@@ -188,6 +198,7 @@ async function analyzeWithAnthropic({
               max_tokens: 4096,
               messages: [{ role: "user", content: prompt }],
             }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           });
 
           if (!response.ok) {
@@ -208,7 +219,7 @@ async function analyzeWithAnthropic({
 
           return parseFilterResponse({ rawText: messageText });
         } catch (error) {
-          console.warn("[AI Filler] Anthropic chunk failed:", error);
+          log.warn("[AI Filler] Anthropic chunk failed:", error);
           return [];
         }
       })
@@ -219,7 +230,7 @@ async function analyzeWithAnthropic({
       provider: "anthropic",
     };
   } catch (error) {
-    console.error("[AI Filler] Anthropic provider failed:", error);
+    log.error("[AI Filler] Anthropic provider failed:", error);
     throw error;
   }
 }
@@ -293,7 +304,7 @@ export function analyzeWithPatternMatch({
       provider: "pattern",
     };
   } catch (error) {
-    console.error("[AI Filler] Pattern analysis failed:", error);
+    log.error("[AI Filler] Pattern analysis failed:", error);
     return {
       filteredWordIds: [],
       provider: "pattern",
@@ -301,16 +312,17 @@ export function analyzeWithPatternMatch({
   }
 }
 
-function loadGeminiSdk(): GeminiSdkConstructor {
+async function loadGeminiSdk(): Promise<GeminiSdkConstructor> {
   try {
-    return require("@google/generative-ai")
-      .GoogleGenerativeAI as GeminiSdkConstructor;
-  } catch (error) {
+    const module = await import("@google/generative-ai");
+    return module.GoogleGenerativeAI as GeminiSdkConstructor;
+  } catch {
     const modulePath = path.join(
       process.resourcesPath,
       "node_modules/@google/generative-ai/dist/index.js"
     );
-    return require(modulePath).GoogleGenerativeAI as GeminiSdkConstructor;
+    const module = await import(modulePath);
+    return module.GoogleGenerativeAI as GeminiSdkConstructor;
   }
 }
 

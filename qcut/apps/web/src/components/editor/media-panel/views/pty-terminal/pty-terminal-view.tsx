@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { TerminalEmulator } from "./terminal-emulator";
 import { Button } from "@/components/ui/button";
@@ -54,11 +54,11 @@ export function PtyTerminalView() {
     handleError,
   } = usePtyTerminalStore();
 
-  const setAsyncActionError = ({ error }: { error: unknown }) => {
+  const setAsyncActionError = useCallback(({ error }: { error: unknown }) => {
     const message =
       error instanceof Error ? error.message : "Terminal action failed";
     handleError(message);
-  };
+  }, [handleError]);
 
   const handleStart = async () => {
     try {
@@ -100,7 +100,7 @@ export function PtyTerminalView() {
         setAsyncActionError({ error });
       }
     );
-  }, [ensureAutoConnected, isTerminalVisible, workingDirectory]);
+  }, [ensureAutoConnected, isTerminalVisible, workingDirectory, setAsyncActionError]);
 
   return (
     <div className="flex flex-col h-full" data-testid="pty-terminal-view">

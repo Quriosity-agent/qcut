@@ -32,7 +32,7 @@ Generates video from text prompts with reference images/videos using the [fal.ai
 - Queue endpoint: `https://queue.fal.run/fal-ai/wan/v2.6/reference-to-video/flash`
 - Auth: `Authorization: Key <fal-api-key>` (entered in the UI)
 
-### Test with curl
+### Test with Node.js
 
 ```bash
 # Inject runtime config and send to preview panel

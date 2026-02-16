@@ -1,7 +1,7 @@
 # Transcribe Redesign: Smart Filtering & Export Integration
 
 **Created**: 2026-02-16
-**Branch**: `transribe-improve`
+**Branch**: `transcribe-improve`
 **Estimated effort**: ~3-4 hours (4 subtasks)
 
 ## Overview
@@ -136,17 +136,25 @@ async function analyzeWithGemini(words, languageCode, apiKey) {
 }
 ```
 
-**Anthropic implementation** (new, uses `@anthropic-ai/sdk`):
+**Anthropic implementation** (new, uses direct HTTP API):
 ```typescript
-async function analyzeWithClaude(words, languageCode, apiKey) {
-  const anthropic = new Anthropic({ apiKey });
+async function analyzeWithAnthropic(words, languageCode, apiKey) {
   const prompt = buildFilterPrompt(words, languageCode);
 
-  const result = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",  // Fast + capable
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    }),
   });
+  const result = await response.json();
   return parseFilterResponse(result.content[0].text);
 }
 ```

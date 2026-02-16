@@ -1,12 +1,12 @@
-export interface KeepSegment {
+export type KeepSegment = {
   start: number;
   end: number;
-}
+};
 
-export interface FilterCutResult {
+export type FilterCutResult = {
   filterComplex: string;
   outputMaps: string[];
-}
+};
 
 function toTime({
   value,
@@ -41,9 +41,11 @@ function normalizeSegments({
 export function buildFilterCutComplex({
   keepSegments,
   crossfadeMs,
+  hasAudio = true,
 }: {
   keepSegments: KeepSegment[];
   crossfadeMs: number;
+  hasAudio?: boolean;
 }): FilterCutResult {
   const segments = normalizeSegments({ keepSegments });
   if (segments.length === 0) {
@@ -51,19 +53,22 @@ export function buildFilterCutComplex({
   }
 
   const filterSteps: string[] = [];
-  const crossfadeSeconds = Math.max(0, crossfadeMs / 1000);
 
   if (segments.length === 1) {
     const segment = segments[0];
     filterSteps.push(
       `[0:v]trim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},setpts=PTS-STARTPTS[outv]`
     );
-    filterSteps.push(
-      `[0:a]atrim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},asetpts=PTS-STARTPTS[outa]`
-    );
+    const outputMaps = ["-map", "[outv]"];
+    if (hasAudio) {
+      filterSteps.push(
+        `[0:a]atrim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},asetpts=PTS-STARTPTS[outa]`
+      );
+      outputMaps.push("-map", "[outa]");
+    }
     return {
       filterComplex: filterSteps.join(";"),
-      outputMaps: ["-map", "[outv]", "-map", "[outa]"],
+      outputMaps,
     };
   }
 
@@ -71,9 +76,11 @@ export function buildFilterCutComplex({
     filterSteps.push(
       `[0:v]trim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},setpts=PTS-STARTPTS[v${index}]`
     );
-    filterSteps.push(
-      `[0:a]atrim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},asetpts=PTS-STARTPTS[a${index}]`
-    );
+    if (hasAudio) {
+      filterSteps.push(
+        `[0:a]atrim=start=${toTime({ value: segment.start })}:end=${toTime({ value: segment.end })},asetpts=PTS-STARTPTS[a${index}]`
+      );
+    }
   }
 
   const videoInputs = segments.map((_, index) => `[v${index}]`).join("");
@@ -81,26 +88,18 @@ export function buildFilterCutComplex({
     `${videoInputs}concat=n=${segments.length}:v=1:a=0[outv]`
   );
 
-  if (crossfadeSeconds > 0) {
-    let previousAudioLabel = "a0";
-    for (let index = 1; index < segments.length; index += 1) {
-      const nextAudioLabel = `a${index}`;
-      const outputLabel =
-        index === segments.length - 1 ? "outa" : `a_mix_${index}`;
-      filterSteps.push(
-        `[${previousAudioLabel}][${nextAudioLabel}]acrossfade=d=${toTime({ value: crossfadeSeconds })}:c1=tri:c2=tri[${outputLabel}]`
-      );
-      previousAudioLabel = outputLabel;
-    }
-  } else {
+  const outputMaps = ["-map", "[outv]"];
+
+  if (hasAudio) {
     const audioInputs = segments.map((_, index) => `[a${index}]`).join("");
     filterSteps.push(
       `${audioInputs}concat=n=${segments.length}:v=0:a=1[outa]`
     );
+    outputMaps.push("-map", "[outa]");
   }
 
   return {
     filterComplex: filterSteps.join(";"),
-    outputMaps: ["-map", "[outv]", "-map", "[outa]"],
+    outputMaps,
   };
 }

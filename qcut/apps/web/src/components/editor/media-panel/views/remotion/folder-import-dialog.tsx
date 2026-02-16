@@ -239,7 +239,7 @@ export function FolderImportDialog({
       const files = e.dataTransfer.files;
       if (files.length === 0) return;
 
-      const droppedPath = window.electronAPI?.getPathForFile?.(files[0]) ?? undefined;
+      const droppedPath = window.electronAPI?.getPathForFile?.(files[0]);
       if (!droppedPath) {
         setState((prev) => ({
           ...prev,

@@ -153,7 +153,10 @@ export async function updateProjectSettings(
     project.updatedAt = new Date().toISOString();
 
     await fs.writeFile(settingsPath, JSON.stringify(project, null, 2), "utf-8");
-    broadcastProjectSettingsUpdate({ projectId, settings });
+    const broadcastSettings = project.canvasSize
+      ? { ...settings, canvasSize: project.canvasSize }
+      : settings;
+    broadcastProjectSettingsUpdate({ projectId, settings: broadcastSettings });
 
     claudeLog.info(HANDLER_NAME, `Successfully updated project: ${projectId}`);
   } catch (error) {

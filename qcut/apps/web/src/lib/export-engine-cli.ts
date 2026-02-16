@@ -820,12 +820,12 @@ export class CLIExportEngine extends ExportEngine {
         "⚡ [MODE 2 EXPORT] ============================================"
       );
     } else if (needsVideoInput && !videoInput) {
-      console.log(
+      debugWarn(
         "⚠️ [MODE 2 EXPORT] Video input extraction failed"
       );
-      console.log("⚠️ [MODE 2 EXPORT] Falling back to standard export");
+      debugWarn("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
-    console.log(
+    debugLog(
       `[CLI Export] Word timeline data: ${wordTimelineData ? `${wordTimelineData.words.length} words` : "null"}`
     );
     if (wordTimelineData) {
@@ -833,9 +833,9 @@ export class CLIExportEngine extends ExportEngine {
       for (const w of wordTimelineData.words) {
         stateCounts[w.filterState] = (stateCounts[w.filterState] || 0) + 1;
       }
-      console.log("[CLI Export] Filter state breakdown:", stateCounts);
+      debugLog("[CLI Export] Filter state breakdown:", stateCounts);
     }
-    console.log(`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`);
+    debugLog(`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`);
     let wordFilterSegments:
       | Array<{
           start: number;
