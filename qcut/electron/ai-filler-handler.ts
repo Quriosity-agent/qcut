@@ -3,7 +3,11 @@ import path from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
 // Logger: use electron-log if available, fallback to console
-let log: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
+let log: {
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+};
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   log = require("electron-log");
@@ -39,9 +43,7 @@ interface AnalyzeFillersResult {
 }
 
 interface GeminiSdkModel {
-  generateContent: (
-    prompt: string
-  ) => Promise<{
+  generateContent: (prompt: string) => Promise<{
     response: {
       text: () => string;
     };
@@ -186,20 +188,23 @@ async function analyzeWithAnthropic({
       chunks.map(async (chunk) => {
         try {
           const prompt = buildFilterPrompt({ words: chunk, languageCode });
-          const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-api-key": apiKey,
-              "anthropic-version": "2023-06-01",
-            },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-5-20250929",
-              max_tokens: 4096,
-              messages: [{ role: "user", content: prompt }],
-            }),
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-          });
+          const response = await fetch(
+            "https://api.anthropic.com/v1/messages",
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+              },
+              body: JSON.stringify({
+                model: "claude-sonnet-4-5-20250929",
+                max_tokens: 4096,
+                messages: [{ role: "user", content: prompt }],
+              }),
+              signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            }
+          );
 
           if (!response.ok) {
             const errorBody = await response.text();
@@ -406,11 +411,7 @@ function sanitizeWords({
   }
 }
 
-function normalizeWordText({
-  text,
-}: {
-  text: string;
-}): string {
+function normalizeWordText({ text }: { text: string }): string {
   try {
     return text
       .toLowerCase()
@@ -421,11 +422,10 @@ function normalizeWordText({
   }
 }
 
-function buildSentenceContext({
-  words,
-}: {
-  words: AnalyzeWordItem[];
-}): { sentences: string; wordList: string } {
+function buildSentenceContext({ words }: { words: AnalyzeWordItem[] }): {
+  sentences: string;
+  wordList: string;
+} {
   try {
     const sentences: Array<{ text: string; startIdx: number; endIdx: number }> =
       [];
@@ -533,11 +533,7 @@ For sentence-level deletions, include all word IDs in that sentence.
 Return ONLY the JSON array, no extra text.`;
 }
 
-function extractJsonArray({
-  rawText,
-}: {
-  rawText: string;
-}): string | null {
+function extractJsonArray({ rawText }: { rawText: string }): string | null {
   try {
     const trimmed = rawText.trim();
     if (trimmed.startsWith("[")) {

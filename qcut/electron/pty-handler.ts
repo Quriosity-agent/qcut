@@ -99,7 +99,13 @@ function getShellArgs(): string[] {
 function resolveQcutMcpServerEntry(): string | null {
   const candidates = [
     path.resolve(__dirname, "mcp", "qcut-mcp-server.js"),
-    path.resolve(app.getAppPath(), "dist", "electron", "mcp", "qcut-mcp-server.js"),
+    path.resolve(
+      app.getAppPath(),
+      "dist",
+      "electron",
+      "mcp",
+      "qcut-mcp-server.js"
+    ),
     path.resolve(app.getAppPath(), "electron", "mcp", "qcut-mcp-server.js"),
   ];
 
@@ -272,7 +278,9 @@ export function setupPtyIPC(): void {
               apiBaseUrl: options.env?.QCUT_API_BASE_URL,
             });
           } else {
-            console.warn("[PTY] QCut MCP server entry not found; skipping MCP wiring");
+            console.warn(
+              "[PTY] QCut MCP server entry not found; skipping MCP wiring"
+            );
           }
         }
 

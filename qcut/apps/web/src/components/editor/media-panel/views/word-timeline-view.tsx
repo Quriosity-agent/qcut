@@ -106,11 +106,7 @@ function getChipColor({
   return "bg-muted hover:bg-accent hover:text-accent-foreground";
 }
 
-function getChipHelpText({
-  word,
-}: {
-  word: WordItem;
-}): string {
+function getChipHelpText({ word }: { word: WordItem }): string {
   if (word.filterState === WORD_FILTER_STATE.AI) {
     return "Left-click keep, right-click remove";
   }
@@ -123,11 +119,7 @@ function getChipHelpText({
   return "Left-click seek, right-click remove";
 }
 
-function calculateRemovedDuration({
-  words,
-}: {
-  words: WordItem[];
-}): number {
+function calculateRemovedDuration({ words }: { words: WordItem[] }): number {
   try {
     const ranges = words
       .filter(
@@ -290,7 +282,8 @@ function DropZone({
         }
 
         // Use webUtils.getPathForFile via preload (Electron 37+ removed File.path)
-        const filePath = window.electronAPI?.getPathForFile?.(file) ?? undefined;
+        const filePath =
+          window.electronAPI?.getPathForFile?.(file) ?? undefined;
 
         console.log("[WordTimeline] File dropped:", {
           name: file.name,
@@ -678,7 +671,9 @@ export function WordTimelineView() {
         }
 
         if (event.key === "Enter" || event.key === " ") {
-          const selectedWord = allWords.find((word) => word.id === selectedWordId);
+          const selectedWord = allWords.find(
+            (word) => word.id === selectedWordId
+          );
           if (
             selectedWord &&
             selectedWord.filterState !== WORD_FILTER_STATE.NONE
@@ -752,9 +747,7 @@ export function WordTimelineView() {
       if (!mediaItem && projectId) {
         console.log("[WordTimeline] Media not in store, importing...");
         try {
-          const { processMediaFiles } = await import(
-            "@/lib/media-processing"
-          );
+          const { processMediaFiles } = await import("@/lib/media-processing");
 
           // Read file from disk via Electron to create a File object
           const fileName = filePath.split(/[/\\]/).pop() || "media";
@@ -762,7 +755,9 @@ export function WordTimelineView() {
           const isVideo = [".mp4", ".mov", ".avi", ".mkv", ".webm"].includes(
             ext
           );
-          const mimeType = isVideo ? `video/${ext.slice(1)}` : `audio/${ext.slice(1)}`;
+          const mimeType = isVideo
+            ? `video/${ext.slice(1)}`
+            : `audio/${ext.slice(1)}`;
 
           let file: File;
           if (window.electronAPI?.readFile) {
@@ -1067,13 +1062,15 @@ export function WordTimelineView() {
         )}
         <div className="flex justify-between items-center gap-2">
           <span className="truncate">
-            {aiFilteredCount} AI, {userRemovedCount} removed, {userKeptCount} kept
+            {aiFilteredCount} AI, {userRemovedCount} removed, {userKeptCount}{" "}
+            kept
           </span>
           <span>Duration: {formatDuration(totalDuration)}</span>
         </div>
         <div className="flex justify-between items-center mt-1 gap-2">
           <span className="truncate">
-            Removes {formatDuration(removedDuration)} ({removedPercent.toFixed(1)}
+            Removes {formatDuration(removedDuration)} (
+            {removedPercent.toFixed(1)}
             %)
           </span>
           <div className="flex items-center gap-1">
@@ -1107,8 +1104,8 @@ export function WordTimelineView() {
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground/70 mt-1">
-          Click toggles state-aware action, right-click quick-removes, Ctrl/Cmd+Z
-          undo
+          Click toggles state-aware action, right-click quick-removes,
+          Ctrl/Cmd+Z undo
         </p>
       </div>
     </div>

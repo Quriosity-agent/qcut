@@ -820,9 +820,7 @@ export class CLIExportEngine extends ExportEngine {
         "⚡ [MODE 2 EXPORT] ============================================"
       );
     } else if (needsVideoInput && !videoInput) {
-      debugWarn(
-        "⚠️ [MODE 2 EXPORT] Video input extraction failed"
-      );
+      debugWarn("⚠️ [MODE 2 EXPORT] Video input extraction failed");
       debugWarn("⚠️ [MODE 2 EXPORT] Falling back to standard export");
     }
     debugLog(
@@ -835,7 +833,9 @@ export class CLIExportEngine extends ExportEngine {
       }
       debugLog("[CLI Export] Filter state breakdown:", stateCounts);
     }
-    debugLog(`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`);
+    debugLog(
+      `[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`
+    );
     let wordFilterSegments:
       | Array<{
           start: number;
@@ -866,9 +866,7 @@ export class CLIExportEngine extends ExportEngine {
 
       console.log(
         `[CLI Export] Keep segments (${keepSegments.length}):`,
-        keepSegments.map(
-          (s) => `${s.start.toFixed(2)}s–${s.end.toFixed(2)}s`
-        )
+        keepSegments.map((s) => `${s.start.toFixed(2)}s–${s.end.toFixed(2)}s`)
       );
 
       const isFullLengthSegment =

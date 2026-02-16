@@ -128,7 +128,8 @@ export async function updateProjectSettings(
           const recalculatedHeight = Math.max(
             1,
             Math.round(
-              currentWidth * (parsedAspectRatio.height / parsedAspectRatio.width)
+              currentWidth *
+                (parsedAspectRatio.height / parsedAspectRatio.width)
             )
           );
           project.canvasSize = {
@@ -139,7 +140,8 @@ export async function updateProjectSettings(
           const recalculatedWidth = Math.max(
             1,
             Math.round(
-              currentHeight * (parsedAspectRatio.width / parsedAspectRatio.height)
+              currentHeight *
+                (parsedAspectRatio.width / parsedAspectRatio.height)
             )
           );
           project.canvasSize = {

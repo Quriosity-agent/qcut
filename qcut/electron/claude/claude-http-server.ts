@@ -65,7 +65,10 @@ function checkAuth(req: IncomingMessage): boolean {
 
 function setCorsHeaders(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PATCH, DELETE, OPTIONS"
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
@@ -283,7 +286,8 @@ export function startClaudeHTTPServer(
     if (req.body.top_k_text != null)
       requestBody.top_k_text = req.body.top_k_text;
     if (req.body.seed != null) requestBody.seed = req.body.seed;
-    if (req.body.output_format) requestBody.output_format = req.body.output_format;
+    if (req.body.output_format)
+      requestBody.output_format = req.body.output_format;
 
     claudeLog.info("HTTP", "PersonaPlex generate request");
 
@@ -298,8 +302,14 @@ export function startClaudeHTTPServer(
 
     if (!falResponse.ok) {
       const errorText = await falResponse.text();
-      claudeLog.error("HTTP", `PersonaPlex API error: ${falResponse.status} ${errorText}`);
-      throw new HttpError(falResponse.status, `PersonaPlex API error: ${errorText}`);
+      claudeLog.error(
+        "HTTP",
+        `PersonaPlex API error: ${falResponse.status} ${errorText}`
+      );
+      throw new HttpError(
+        falResponse.status,
+        `PersonaPlex API error: ${errorText}`
+      );
     }
 
     let result: unknown;
@@ -316,11 +326,16 @@ export function startClaudeHTTPServer(
   // MCP app preview forwarding
   // ==========================================================================
   router.post("/api/claude/mcp/app", async (req) => {
-    if (!req.body || typeof req.body.html !== "string" || !req.body.html.trim()) {
+    if (
+      !req.body ||
+      typeof req.body.html !== "string" ||
+      !req.body.html.trim()
+    ) {
       throw new HttpError(400, "Missing 'html' in request body");
     }
 
-    const toolName = typeof req.body.toolName === "string" ? req.body.toolName : "unknown";
+    const toolName =
+      typeof req.body.toolName === "string" ? req.body.toolName : "unknown";
     let forwarded = false;
     try {
       const win = getWindow();

@@ -54,11 +54,14 @@ export function PtyTerminalView() {
     handleError,
   } = usePtyTerminalStore();
 
-  const setAsyncActionError = useCallback(({ error }: { error: unknown }) => {
-    const message =
-      error instanceof Error ? error.message : "Terminal action failed";
-    handleError(message);
-  }, [handleError]);
+  const setAsyncActionError = useCallback(
+    ({ error }: { error: unknown }) => {
+      const message =
+        error instanceof Error ? error.message : "Terminal action failed";
+      handleError(message);
+    },
+    [handleError]
+  );
 
   const handleStart = async () => {
     try {
@@ -100,7 +103,12 @@ export function PtyTerminalView() {
         setAsyncActionError({ error });
       }
     );
-  }, [ensureAutoConnected, isTerminalVisible, workingDirectory, setAsyncActionError]);
+  }, [
+    ensureAutoConnected,
+    isTerminalVisible,
+    workingDirectory,
+    setAsyncActionError,
+  ]);
 
   return (
     <div className="flex flex-col h-full" data-testid="pty-terminal-view">

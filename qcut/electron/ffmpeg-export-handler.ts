@@ -623,7 +623,9 @@ async function handleWordFilterCutFallback({
   const concatListPath = path.join(segmentDir, "concat-list.txt");
   const concatContent = segmentPaths
     .map((segmentPath) => {
-      const escapedPath = segmentPath.replace(/'/g, "'\\''").replace(/\\/g, "/");
+      const escapedPath = segmentPath
+        .replace(/'/g, "'\\''")
+        .replace(/\\/g, "/");
       return `file '${escapedPath}'`;
     })
     .join("\n");

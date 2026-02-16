@@ -38,11 +38,7 @@ function clamp({
   }
 }
 
-function mergeRanges({
-  ranges,
-}: {
-  ranges: TimeRange[];
-}): TimeRange[] {
+function mergeRanges({ ranges }: { ranges: TimeRange[] }): TimeRange[] {
   try {
     if (ranges.length === 0) {
       return [];

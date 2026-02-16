@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateKeepSegments,
-  type KeepSegment,
-} from "../segment-calculator";
+import { calculateKeepSegments, type KeepSegment } from "../segment-calculator";
 import { WORD_FILTER_STATE, type WordItem } from "@/types/word-timeline";
 
 function createWord({

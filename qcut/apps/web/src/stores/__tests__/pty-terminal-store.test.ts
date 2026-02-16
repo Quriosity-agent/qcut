@@ -237,7 +237,9 @@ describe("usePtyTerminalStore", () => {
       });
 
       expect(result.current.status).toBe("error");
-      expect(result.current.error).toContain("Claude Code CLI is not installed");
+      expect(result.current.error).toContain(
+        "Claude Code CLI is not installed"
+      );
     });
 
     it("should handle exception during spawn", async () => {

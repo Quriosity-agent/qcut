@@ -159,11 +159,7 @@ function toWordItem({
   }
 }
 
-function transformWords({
-  rawWords,
-}: {
-  rawWords: RawWordItem[];
-}): WordItem[] {
+function transformWords({ rawWords }: { rawWords: RawWordItem[] }): WordItem[] {
   try {
     return rawWords.map((rawWord, index) => toWordItem({ rawWord, index }));
   } catch {
@@ -516,7 +512,10 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
     }
   },
 
-  setMultipleFilterStates: (wordIds: string[], filterState: WordFilterState) => {
+  setMultipleFilterStates: (
+    wordIds: string[],
+    filterState: WordFilterState
+  ) => {
     try {
       const { data, filterHistory } = get();
       if (!data || wordIds.length === 0) {
@@ -645,11 +644,11 @@ export const useWordTimelineStore = create<WordTimelineStore>((set, get) => ({
     try {
       const { data } = get();
       if (!data) {
-        return undefined;
+        return;
       }
       return data.words.find((word) => word.id === wordId);
     } catch {
-      return undefined;
+      return;
     }
   },
 

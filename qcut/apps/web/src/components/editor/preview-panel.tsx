@@ -414,7 +414,11 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
   </body>
 </html>`;
 
-function buildMcpMediaAppHtml({ projectId }: { projectId: string | null }): string {
+function buildMcpMediaAppHtml({
+  projectId,
+}: {
+  projectId: string | null;
+}): string {
   try {
     const resolvedProjectId = (projectId || "default").trim() || "default";
     return MCP_MEDIA_APP_TEMPLATE.replace(/__PROJECT_ID__/g, resolvedProjectId);
@@ -504,9 +508,18 @@ export function PreviewPanel() {
   const activeHtml = localMcpActive
     ? buildMcpMediaAppHtml({ projectId: activeProject?.id ?? null })
     : externalHtml;
-  const activeToolName = localMcpActive ? MCP_MEDIA_TOOL_NAME : externalToolName;
+  const activeToolName = localMcpActive
+    ? MCP_MEDIA_TOOL_NAME
+    : externalToolName;
   const isMcpMediaAppActive = localMcpActive;
-  console.log("[MCP] render — localMcpActive:", localMcpActive, "activeHtml length:", activeHtml?.length ?? 0, "toolName:", activeToolName);
+  console.log(
+    "[MCP] render — localMcpActive:",
+    localMcpActive,
+    "activeHtml length:",
+    activeHtml?.length ?? 0,
+    "toolName:",
+    activeToolName
+  );
   const previewDimensions = usePreviewSizing({
     containerRef,
     canvasSize,

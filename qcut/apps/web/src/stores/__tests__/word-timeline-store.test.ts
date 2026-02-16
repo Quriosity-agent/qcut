@@ -109,37 +109,32 @@ describe("WordTimelineStore", () => {
     const store = useWordTimelineStore.getState();
 
     store.setFilterState("word-0", WORD_FILTER_STATE.AI);
-    expect(store.getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.AI
-    );
+    expect(store.getWordById("word-0")?.filterState).toBe(WORD_FILTER_STATE.AI);
 
     store.cycleFilterState("word-0");
-    expect(useWordTimelineStore.getState().getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.USER_KEEP
-    );
+    expect(
+      useWordTimelineStore.getState().getWordById("word-0")?.filterState
+    ).toBe(WORD_FILTER_STATE.USER_KEEP);
 
     useWordTimelineStore.getState().cycleFilterState("word-0");
-    expect(useWordTimelineStore.getState().getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.USER_REMOVE
-    );
+    expect(
+      useWordTimelineStore.getState().getWordById("word-0")?.filterState
+    ).toBe(WORD_FILTER_STATE.USER_REMOVE);
   });
 
   it("supports batch updates and acceptAllAiSuggestions", () => {
     loadMockData();
     const store = useWordTimelineStore.getState();
 
-    store.setMultipleFilterStates(
-      ["word-0", "word-2"],
-      WORD_FILTER_STATE.AI
-    );
+    store.setMultipleFilterStates(["word-0", "word-2"], WORD_FILTER_STATE.AI);
     store.acceptAllAiSuggestions();
 
-    expect(useWordTimelineStore.getState().getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.USER_REMOVE
-    );
-    expect(useWordTimelineStore.getState().getWordById("word-2")?.filterState).toBe(
-      WORD_FILTER_STATE.USER_REMOVE
-    );
+    expect(
+      useWordTimelineStore.getState().getWordById("word-0")?.filterState
+    ).toBe(WORD_FILTER_STATE.USER_REMOVE);
+    expect(
+      useWordTimelineStore.getState().getWordById("word-2")?.filterState
+    ).toBe(WORD_FILTER_STATE.USER_REMOVE);
   });
 
   it("undoes the latest filter change", () => {
@@ -152,9 +147,9 @@ describe("WordTimelineStore", () => {
     );
 
     store.undoLastFilterChange();
-    expect(useWordTimelineStore.getState().getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.NONE
-    );
+    expect(
+      useWordTimelineStore.getState().getWordById("word-0")?.filterState
+    ).toBe(WORD_FILTER_STATE.NONE);
   });
 
   it("returns only keepable words for export", () => {
@@ -184,11 +179,11 @@ describe("WordTimelineStore", () => {
     store.setFilterState("word-2", WORD_FILTER_STATE.USER_REMOVE);
 
     await store.resetAllFilters();
-    expect(useWordTimelineStore.getState().getWordById("word-0")?.filterState).toBe(
-      WORD_FILTER_STATE.AI
-    );
-    expect(useWordTimelineStore.getState().getWordById("word-2")?.filterState).toBe(
-      WORD_FILTER_STATE.NONE
-    );
+    expect(
+      useWordTimelineStore.getState().getWordById("word-0")?.filterState
+    ).toBe(WORD_FILTER_STATE.AI);
+    expect(
+      useWordTimelineStore.getState().getWordById("word-2")?.filterState
+    ).toBe(WORD_FILTER_STATE.NONE);
   });
 });

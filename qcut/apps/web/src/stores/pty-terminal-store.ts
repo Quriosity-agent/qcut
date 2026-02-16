@@ -390,9 +390,7 @@ export const usePtyTerminalStore = create<PtyTerminalStore>((set, get) => ({
       set({
         sessionId: null,
         status: "disconnected",
-        hasUserDisconnected: userInitiated
-          ? true
-          : get().hasUserDisconnected,
+        hasUserDisconnected: userInitiated ? true : get().hasUserDisconnected,
       });
     }
   },

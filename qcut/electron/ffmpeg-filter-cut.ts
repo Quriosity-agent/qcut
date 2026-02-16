@@ -8,11 +8,7 @@ export type FilterCutResult = {
   outputMaps: string[];
 };
 
-function toTime({
-  value,
-}: {
-  value: number;
-}): string {
+function toTime({ value }: { value: number }): string {
   try {
     return Number(value.toFixed(6)).toString();
   } catch {
@@ -84,17 +80,13 @@ export function buildFilterCutComplex({
   }
 
   const videoInputs = segments.map((_, index) => `[v${index}]`).join("");
-  filterSteps.push(
-    `${videoInputs}concat=n=${segments.length}:v=1:a=0[outv]`
-  );
+  filterSteps.push(`${videoInputs}concat=n=${segments.length}:v=1:a=0[outv]`);
 
   const outputMaps = ["-map", "[outv]"];
 
   if (hasAudio) {
     const audioInputs = segments.map((_, index) => `[a${index}]`).join("");
-    filterSteps.push(
-      `${audioInputs}concat=n=${segments.length}:v=0:a=1[outa]`
-    );
+    filterSteps.push(`${audioInputs}concat=n=${segments.length}:v=0:a=1[outa]`);
     outputMaps.push("-map", "[outa]");
   }
 

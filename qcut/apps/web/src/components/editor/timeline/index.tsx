@@ -337,6 +337,7 @@ export function Timeline() {
   // Re-runs when mediaStoreLoading changes because the component renders a
   // loading spinner (early return) until the store is ready, so refs are null
   // on the first effect run. Without this dependency the listeners never attach.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional re-attach when loading state or track count changes
   useEffect(() => {
     const rulerViewport = rulerScrollRef.current;
     const tracksViewport = tracksScrollRef.current;
