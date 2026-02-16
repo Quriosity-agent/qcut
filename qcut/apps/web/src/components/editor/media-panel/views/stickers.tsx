@@ -516,7 +516,7 @@ export function StickersView() {
               newEl.id,
               {
                 position: { x: 0, y: 0 },
-                size: { width: 200, height: 200 },
+                size: { width: 15, height: 15 },
               },
               { pushHistory: false }
             );
