@@ -63,6 +63,7 @@ function checkAuth(req: IncomingMessage): boolean {
   return authHeader === `Bearer ${token}`;
 }
 
+/** Set permissive CORS headers on the HTTP response. */
 function setCorsHeaders(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
@@ -72,6 +73,7 @@ function setCorsHeaders(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
+/** Start the local HTTP API server for Claude and MCP integrations. */
 export function startClaudeHTTPServer(
   port = Number.parseInt(process.env.QCUT_API_PORT ?? "8765", 10)
 ): void {
@@ -414,6 +416,7 @@ export function startClaudeHTTPServer(
   });
 }
 
+/** Stop the running Claude HTTP server if active. */
 export function stopClaudeHTTPServer(): void {
   if (server) {
     server.close();

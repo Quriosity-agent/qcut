@@ -22,6 +22,7 @@ const DEFAULT_OPTIONS: Required<SegmentCalculatorOptions> = {
   minGapMs: 50,
 };
 
+/** Clamp a value between min and max bounds. */
 function clamp({
   value,
   min,
@@ -38,6 +39,7 @@ function clamp({
   }
 }
 
+/** Merge overlapping time ranges into non-overlapping intervals. */
 function mergeRanges({ ranges }: { ranges: TimeRange[] }): TimeRange[] {
   try {
     if (ranges.length === 0) {
@@ -62,6 +64,7 @@ function mergeRanges({ ranges }: { ranges: TimeRange[] }): TimeRange[] {
   }
 }
 
+/** Merge adjacent keep ranges whose gap is smaller than minGapSeconds. */
 function mergeAdjacentKeepRanges({
   ranges,
   minGapSeconds,
@@ -108,6 +111,7 @@ function mergeAdjacentKeepRanges({
   }
 }
 
+/** Calculate keep segments from word-level filter states, inverting removed ranges. */
 export function calculateKeepSegments({
   words,
   videoDuration,

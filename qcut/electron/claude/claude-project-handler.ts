@@ -17,6 +17,7 @@ import type { ProjectSettings, ProjectStats } from "../types/claude-api";
 
 const HANDLER_NAME = "Project";
 
+/** Parse an "W:H" aspect ratio string into width/height numbers, or null if invalid. */
 function parseAspectRatio({
   aspectRatio,
 }: {
@@ -171,6 +172,7 @@ export async function updateProjectSettings(
   }
 }
 
+/** Broadcast updated project settings to all renderer windows. */
 export function broadcastProjectSettingsUpdate({
   projectId,
   settings,

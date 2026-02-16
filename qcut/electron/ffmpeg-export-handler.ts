@@ -414,6 +414,7 @@ export function setupExportHandler(tempManager: TempManager): void {
   );
 }
 
+/** Execute an FFmpeg command, streaming progress events to the renderer. */
 async function runFFmpegCommand({
   args,
   event,
@@ -459,6 +460,7 @@ async function runFFmpegCommand({
   });
 }
 
+/** Export using filter_complex to cut and concatenate word-filter segments. */
 async function handleWordFilterCut({
   options,
   ffmpegPath,
@@ -564,6 +566,7 @@ async function handleWordFilterCut({
   }
 }
 
+/** Fallback export: cut individual segments then concat via demuxer. */
 async function handleWordFilterCutFallback({
   ffmpegPath,
   videoPath,

@@ -66,6 +66,7 @@ const CHUNK_WORD_OVERLAP = 40;
 const LONG_SILENCE_SECONDS = 1.5;
 const REQUEST_TIMEOUT_MS = 30_000;
 
+/** Register the IPC handler for AI-based filler word analysis. */
 export function setupAIFillerIPC(): void {
   ipcMain.handle(
     "ai:analyze-fillers",
@@ -92,6 +93,7 @@ export function setupAIFillerIPC(): void {
   );
 }
 
+/** Analyze fillers using the best available provider: Gemini > Anthropic > pattern. */
 export async function analyzeFillersWithPriority({
   request,
 }: {
@@ -130,6 +132,7 @@ export async function analyzeFillersWithPriority({
   }
 }
 
+/** Analyze filler words using the Google Gemini API. */
 async function analyzeWithGemini({
   words,
   languageCode,
@@ -182,6 +185,7 @@ async function analyzeWithGemini({
   }
 }
 
+/** Analyze filler words using the Anthropic Claude API. */
 async function analyzeWithAnthropic({
   words,
   languageCode,
@@ -249,6 +253,7 @@ async function analyzeWithAnthropic({
   }
 }
 
+/** Detect filler words and stutters using regex pattern matching (offline fallback). */
 export function analyzeWithPatternMatch({
   words,
 }: {
@@ -326,6 +331,7 @@ export function analyzeWithPatternMatch({
   }
 }
 
+/** Dynamically import the Gemini SDK, falling back to the packaged path. */
 async function loadGeminiSdk(): Promise<GeminiSdkConstructor> {
   try {
     const module = await import("@google/generative-ai");
@@ -340,6 +346,7 @@ async function loadGeminiSdk(): Promise<GeminiSdkConstructor> {
   }
 }
 
+/** Split words into overlapping chunks for parallel AI analysis. */
 function splitWordChunks({
   words,
 }: {
@@ -376,6 +383,7 @@ function splitWordChunks({
   }
 }
 
+/** Deduplicate filter decisions by word ID, keeping the first occurrence. */
 function mergeDecisions({
   decisions,
 }: {
@@ -399,6 +407,7 @@ function mergeDecisions({
   }
 }
 
+/** Validate and normalize word items, filtering out invalid entries. */
 function sanitizeWords({
   words,
 }: {
@@ -420,6 +429,7 @@ function sanitizeWords({
   }
 }
 
+/** Lowercase and strip punctuation from word text for comparison. */
 function normalizeWordText({ text }: { text: string }): string {
   try {
     return text
@@ -431,6 +441,7 @@ function normalizeWordText({ text }: { text: string }): string {
   }
 }
 
+/** Build sentence-level and word-level context strings for the AI prompt. */
 function buildSentenceContext({ words }: { words: AnalyzeWordItem[] }): {
   sentences: string;
   wordList: string;
@@ -504,6 +515,7 @@ function buildSentenceContext({ words }: { words: AnalyzeWordItem[] }): {
   }
 }
 
+/** Build the AI prompt for filler word and disfluency detection. */
 export function buildFilterPrompt({
   words,
   languageCode,
@@ -542,6 +554,7 @@ For sentence-level deletions, include all word IDs in that sentence.
 Return ONLY the JSON array, no extra text.`;
 }
 
+/** Extract a JSON array from raw AI response text, handling code blocks. */
 function extractJsonArray({ rawText }: { rawText: string }): string | null {
   try {
     const trimmed = rawText.trim();
@@ -569,6 +582,7 @@ function extractJsonArray({ rawText }: { rawText: string }): string | null {
   }
 }
 
+/** Parse the AI response text into validated filter decision objects. */
 export function parseFilterResponse({
   rawText,
 }: {

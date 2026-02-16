@@ -8,6 +8,7 @@ export type FilterCutResult = {
   outputMaps: string[];
 };
 
+/** Format a numeric time value to a precision string for FFmpeg. */
 function toTime({ value }: { value: number }): string {
   try {
     return Number(value.toFixed(6)).toString();
@@ -16,6 +17,7 @@ function toTime({ value }: { value: number }): string {
   }
 }
 
+/** Clamp, filter, and sort keep segments for valid FFmpeg ranges. */
 function normalizeSegments({
   keepSegments,
 }: {
@@ -34,6 +36,7 @@ function normalizeSegments({
   }
 }
 
+/** Build an FFmpeg filter_complex string that trims and concatenates keep segments. */
 export function buildFilterCutComplex({
   keepSegments,
   hasAudio = true,

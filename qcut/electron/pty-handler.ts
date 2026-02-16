@@ -67,6 +67,7 @@ interface OperationResult {
   error?: string;
 }
 
+/** Return a recovery hint message for common PTY spawn errors. */
 function getPtySpawnRecoveryHint({
   message,
 }: {
@@ -91,10 +92,12 @@ function getPtySpawnRecoveryHint({
 
 const sessions = new Map<string, PtySession>();
 
+/** Generate a unique PTY session identifier. */
 function generateSessionId(): string {
   return `pty-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+/** Determine the default shell executable for the current platform. */
 function getShell(): string {
   if (platform() === "win32") {
     return process.env.COMSPEC || "cmd.exe";
@@ -102,6 +105,7 @@ function getShell(): string {
   return process.env.SHELL || "/bin/bash";
 }
 
+/** Return default shell arguments for the current platform. */
 function getShellArgs(): string[] {
   if (platform() === "win32") {
     return [];
@@ -109,6 +113,7 @@ function getShellArgs(): string[] {
   return ["-l"]; // Login shell on Unix
 }
 
+/** Locate the QCut MCP server entry point in dev or packaged paths. */
 function resolveQcutMcpServerEntry(): string | null {
   const candidates = [
     path.resolve(__dirname, "mcp", "qcut-mcp-server.js"),
@@ -135,6 +140,7 @@ function resolveQcutMcpServerEntry(): string | null {
   return null;
 }
 
+/** Parse existing CLAUDE_MCP_SERVERS JSON config or return empty object. */
 function parseMcpServerConfig({
   rawConfig,
 }: {
@@ -154,6 +160,7 @@ function parseMcpServerConfig({
   return {};
 }
 
+/** Build the CLAUDE_MCP_SERVERS env variable with the QCut server injected. */
 function buildClaudeMcpServersEnv({
   existingRawConfig,
   mcpServerPath,
@@ -196,6 +203,7 @@ function buildClaudeMcpServersEnv({
 // IPC Handlers
 // ============================================================================
 
+/** Register all PTY-related IPC handlers for terminal session management. */
 export function setupPtyIPC(): void {
   console.log("[PTY] Setting up PTY IPC handlers...");
   console.log("[PTY] Platform:", platform());
@@ -488,6 +496,7 @@ export function setupPtyIPC(): void {
 }
 
 // Cleanup on app quit - call this from main.ts
+/** Kill all active PTY sessions on app quit. */
 export function cleanupPtySessions(): void {
   console.log(`[PTY] Cleaning up ${sessions.size} sessions on app quit`);
   for (const [sessionId, session] of sessions) {

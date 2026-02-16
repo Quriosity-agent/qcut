@@ -89,6 +89,7 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+/** Return Tailwind classes for a word chip based on its filter state. */
 function getChipColor({
   filterState,
 }: {
@@ -106,6 +107,7 @@ function getChipColor({
   return "bg-muted hover:bg-accent hover:text-accent-foreground";
 }
 
+/** Return contextual tooltip text based on a word's current filter state. */
 function getChipHelpText({ word }: { word: WordItem }): string {
   if (word.filterState === WORD_FILTER_STATE.AI) {
     return "Left-click keep, right-click remove";
@@ -119,6 +121,7 @@ function getChipHelpText({ word }: { word: WordItem }): string {
   return "Left-click seek, right-click remove";
 }
 
+/** Sum the duration of all words marked for removal (AI or user-removed). */
 function calculateRemovedDuration({ words }: { words: WordItem[] }): number {
   try {
     const ranges = words
@@ -168,6 +171,7 @@ interface WordChipProps {
   onQuickRemove: (word: WordItem) => void;
 }
 
+/** Individual word chip with click/right-click actions and keyboard support. */
 function WordChip({
   word,
   isSelected,
@@ -261,6 +265,7 @@ interface DropZoneProps {
   transcriptionProgress: string;
 }
 
+/** Drag-and-drop zone for importing JSON transcription or media files. */
 function DropZone({
   onJsonSelect,
   onMediaSelect,
@@ -542,6 +547,7 @@ function DropZone({
 // Main Component
 // ============================================================================
 
+/** Main word timeline view for transcription editing and filler word filtering. */
 export function WordTimelineView() {
   const {
     data,

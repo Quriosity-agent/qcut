@@ -428,6 +428,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
   </body>
 </html>`;
 
+/** Build the MCP media app HTML template with an escaped projectId injected. */
 function buildMcpMediaAppHtml({
   projectId,
 }: {
@@ -493,6 +494,7 @@ function useEffectsRendering(elementId: string | null, enabled = false) {
 }
 
 /** Canvas preview of the timeline — renders media, text, stickers, captions, and effects. */
+/** Main preview panel component for video playback, MCP apps, and element overlays. */
 export function PreviewPanel() {
   const {
     tracks,
