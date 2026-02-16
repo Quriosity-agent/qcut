@@ -165,12 +165,12 @@ export const tabGroups: {
     icon: ScissorsIcon,
     label: "Edit",
     tabs: [
-      "text",
-      "captions",
       "word-timeline",
       "video-edit",
       "draw",
+      "text",
       "stickers",
+      "captions",
     ],
   },
   effects: {

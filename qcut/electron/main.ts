@@ -418,7 +418,12 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    icon: path.join(__dirname, "../../build/icon.ico"),
+    icon: path.join(
+      __dirname,
+      process.platform === "darwin"
+        ? "../../build/icon.png"
+        : "../../build/icon.ico"
+    ),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -485,6 +490,16 @@ if (isCliKeyCommand) {
 
 if (!isCliKeyCommand) {
   app.whenReady().then(() => {
+    // Set macOS dock icon (requires PNG format)
+    if (process.platform === "darwin" && app.dock) {
+      const iconPath = app.isPackaged
+        ? path.join(process.resourcesPath, "icon.png")
+        : path.join(__dirname, "../../build/icon.png");
+      if (fs.existsSync(iconPath)) {
+        app.dock.setIcon(iconPath);
+      }
+    }
+
     // Determine base path based on whether app is packaged
     const basePath = app.isPackaged
       ? path.join(app.getAppPath(), "apps/web/dist")
@@ -557,6 +572,17 @@ if (!isCliKeyCommand) {
         if (fs.existsSync(filePath)) {
           logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
           return await net.fetch(pathToFileURL(filePath).toString());
+        }
+
+        // SPA fallback: serve index.html for navigation requests without file extensions
+        if (!path.extname(normalizedPath)) {
+          const indexPath = path.join(basePath, "index.html");
+          if (fs.existsSync(indexPath)) {
+            logger.log(
+              `[Protocol] SPA fallback: ${normalizedPath} -> index.html`
+            );
+            return await net.fetch(pathToFileURL(indexPath).toString());
+          }
         }
 
         logger.error(`[Protocol] File not found: ${filePath}`);

@@ -9,7 +9,7 @@ type ProviderInfo = {
 };
 
 const PROVIDER_MAP: Record<string, ProviderInfo> = {
-  sora: { name: "OpenAI", logo: "/model-logos/sora.svg" },
+  sora: { name: "OpenAI", logo: "/model-logos/openai.svg" },
   kling: { name: "Kling AI", logo: "/model-logos/kling.svg" },
   veo: { name: "Google", logo: "/model-logos/google.svg" },
   wan: { name: "WAN AI", logo: "/model-logos/wan.svg" },
@@ -26,7 +26,7 @@ const PROVIDER_MAP: Record<string, ProviderInfo> = {
   gemini: { name: "Google", logo: "/model-logos/google.svg" },
   nano: { name: "Google", logo: "/model-logos/google.svg" },
   gpt: { name: "OpenAI", logo: "/model-logos/openai.svg" },
-  sync: { name: "Sync Labs", logo: "/model-logos/sora.svg" },
+  sync: { name: "Sync Labs", logo: "/model-logos/openai.svg" },
 };
 
 // Pre-sorted keys by length (longest first) for prefix matching

@@ -183,6 +183,10 @@
       {
         "from": "CHANGELOG.md",
         "to": "CHANGELOG.md"
+      },
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
       }
     ],
     "asar": true,
