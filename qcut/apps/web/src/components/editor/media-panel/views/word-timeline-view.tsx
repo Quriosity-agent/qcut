@@ -27,6 +27,7 @@ import { useWordTimelineStore } from "@/stores/word-timeline-store";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useProjectStore } from "@/stores/project-store";
 import { useElevenLabsTranscription } from "@/hooks/use-elevenlabs-transcription";
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { Upload, X, Loader2, AlertCircle, Mic } from "lucide-react";
@@ -714,21 +715,15 @@ export function WordTimelineView() {
 
   const handleMediaSelect = useCallback(
     async (filePath: string) => {
-      console.log("[WordTimeline] ========================================");
-      console.log("[WordTimeline] handleMediaSelect called");
-      console.log("[WordTimeline] File path:", filePath);
-      console.log("[WordTimeline] ========================================");
+      console.log("[WordTimeline] handleMediaSelect called, path:", filePath);
 
-      // Try to find the media item in the store and add it to the timeline
       const mediaItems = useMediaStore.getState().mediaItems;
-      console.log("[WordTimeline] Media items in store:", mediaItems.length);
-
-      // Normalize path for comparison (handle both forward and back slashes)
+      const addMediaItem = useMediaStore.getState().addMediaItem;
+      const projectId = useProjectStore.getState().activeProject?.id;
       const normalizedPath = filePath.replace(/\\/g, "/").toLowerCase();
-      console.log("[WordTimeline] Normalized path:", normalizedPath);
 
-      const mediaItem = mediaItems.find((item) => {
-        // Check localPath
+      // Try to find existing media item by path or filename
+      let mediaItem = mediaItems.find((item) => {
         if (item.localPath) {
           const itemPath = item.localPath.replace(/\\/g, "/").toLowerCase();
           if (
@@ -738,7 +733,6 @@ export function WordTimelineView() {
             return true;
           }
         }
-        // Check importMetadata.originalPath
         if (item.importMetadata?.originalPath) {
           const originalPath = item.importMetadata.originalPath
             .replace(/\\/g, "/")
@@ -750,49 +744,97 @@ export function WordTimelineView() {
             return true;
           }
         }
-        // Check by filename as fallback
-        const fileName = filePath.split(/[/\\]/).pop()?.toLowerCase();
-        if (fileName && item.name.toLowerCase() === fileName) {
-          return true;
-        }
-        return false;
+        const fName = filePath.split(/[/\\]/).pop()?.toLowerCase();
+        return !!(fName && item.name.toLowerCase() === fName);
       });
 
-      console.log(
-        "[WordTimeline] Found matching media item:",
-        mediaItem ? mediaItem.name : "none"
-      );
+      // If not in media store, import it first
+      if (!mediaItem && projectId) {
+        console.log("[WordTimeline] Media not in store, importing...");
+        try {
+          const { processMediaFiles } = await import(
+            "@/lib/media-processing"
+          );
 
+          // Read file from disk via Electron to create a File object
+          const fileName = filePath.split(/[/\\]/).pop() || "media";
+          const ext = fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
+          const isVideo = [".mp4", ".mov", ".avi", ".mkv", ".webm"].includes(
+            ext
+          );
+          const mimeType = isVideo ? `video/${ext.slice(1)}` : `audio/${ext.slice(1)}`;
+
+          let file: File;
+          if (window.electronAPI?.readFile) {
+            const buffer = await window.electronAPI.readFile(filePath);
+            if (buffer) {
+              const blob = new Blob([new Uint8Array(buffer)], {
+                type: mimeType,
+              });
+              file = new File([blob], fileName, { type: mimeType });
+              // Attach path for Electron compatibility
+              Object.defineProperty(file, "path", { value: filePath });
+            } else {
+              throw new Error("Failed to read file");
+            }
+          } else {
+            throw new Error("Electron API not available");
+          }
+
+          const processedItems = await processMediaFiles([file]);
+          if (processedItems.length > 0) {
+            const newId = await addMediaItem(projectId, {
+              ...processedItems[0],
+              localPath: filePath,
+              importMetadata: {
+                importMethod: "copy",
+                originalPath: filePath,
+                importedAt: Date.now(),
+                fileSize: file.size,
+              },
+            });
+            mediaItem =
+              useMediaStore.getState().mediaItems.find((m) => m.id === newId) ??
+              undefined;
+            if (mediaItem) {
+              console.log(
+                "[WordTimeline] Imported to media store:",
+                mediaItem.name
+              );
+              toast.success(`Imported "${mediaItem.name}" to media library`);
+            }
+          }
+        } catch (err) {
+          console.error("[WordTimeline] Media import failed:", err);
+          // Continue with transcription even if import fails
+        }
+      }
+
+      // Add to timeline (skip if already present)
       if (mediaItem) {
-        // Add to timeline
-        console.log("[WordTimeline] Adding media item to timeline...");
-        const added = useTimelineStore.getState().addMediaToNewTrack(mediaItem);
-        console.log("[WordTimeline] Media added to timeline:", added);
-        if (added) {
+        const timelineState = useTimelineStore.getState();
+        const alreadyOnTimeline = timelineState.tracks.some((track) =>
+          track.elements.some(
+            (el) => el.type === "media" && el.mediaId === mediaItem!.id
+          )
+        );
+        if (!alreadyOnTimeline) {
+          timelineState.addMediaToNewTrack(mediaItem);
           toast.success(`Added "${mediaItem.name}" to timeline`);
         }
       }
 
       // Start transcription
-      console.log("[WordTimeline] Starting transcription...");
       try {
         const result = await transcribeMedia(filePath);
-        console.log(
-          "[WordTimeline] Transcription result:",
-          result ? "success" : "null"
-        );
         if (result) {
           const wordCount = result.words.filter(
             (w) => w.type === "word"
           ).length;
-          console.log("[WordTimeline] Word count:", wordCount);
           toast.success(`Transcription complete: ${wordCount} words`);
-        } else {
-          console.warn("[WordTimeline] Transcription returned null");
         }
       } catch (err) {
         console.error("[WordTimeline] Transcription error:", err);
-        // Error is already handled in the hook
         toast.error("Transcription failed");
       }
     },
