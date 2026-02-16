@@ -73,7 +73,7 @@ describe("buildFilterCutComplex", () => {
       buildFilterCutComplex({
         keepSegments: [{ start: 2, end: 2 }],
         crossfadeMs: 30,
-      }),
+      })
     ).toThrow("At least one keep segment");
   });
 });
