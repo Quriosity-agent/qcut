@@ -22,18 +22,22 @@ function parseAspectRatio({
 }: {
   aspectRatio: string;
 }): { width: number; height: number } | null {
-  const [widthRaw, heightRaw] = aspectRatio.split(":");
-  const width = Number.parseFloat(widthRaw);
-  const height = Number.parseFloat(heightRaw);
+  try {
+    const [widthRaw, heightRaw] = aspectRatio.split(":");
+    const width = Number.parseFloat(widthRaw);
+    const height = Number.parseFloat(heightRaw);
 
-  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+      return null;
+    }
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+
+    return { width, height };
+  } catch {
     return null;
   }
-  if (width <= 0 || height <= 0) {
-    return null;
-  }
-
-  return { width, height };
 }
 
 /** Return a ProjectStats object with all counters at zero. */

@@ -36,11 +36,9 @@ function normalizeSegments({
 
 export function buildFilterCutComplex({
   keepSegments,
-  crossfadeMs,
   hasAudio = true,
 }: {
   keepSegments: KeepSegment[];
-  crossfadeMs: number;
   hasAudio?: boolean;
 }): FilterCutResult {
   const segments = normalizeSegments({ keepSegments });

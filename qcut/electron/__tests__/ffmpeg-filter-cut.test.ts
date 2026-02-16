@@ -5,7 +5,6 @@ describe("buildFilterCutComplex", () => {
   it("builds single segment cut", () => {
     const result = buildFilterCutComplex({
       keepSegments: [{ start: 0, end: 10 }],
-      crossfadeMs: 30,
     });
 
     expect(result.filterComplex).toContain("[0:v]trim=start=0:end=10");
@@ -19,7 +18,6 @@ describe("buildFilterCutComplex", () => {
         { start: 0, end: 1 },
         { start: 2, end: 3 },
       ],
-      crossfadeMs: 30,
     });
 
     expect(result.filterComplex).toContain("concat=n=2:v=1:a=0[outv]");
@@ -34,7 +32,6 @@ describe("buildFilterCutComplex", () => {
         { start: 2, end: 3 },
         { start: 4, end: 5 },
       ],
-      crossfadeMs: 30,
     });
 
     expect(result.filterComplex).toContain("concat=n=3:v=1:a=0[outv]");
@@ -47,7 +44,6 @@ describe("buildFilterCutComplex", () => {
         { start: 0, end: 1 },
         { start: 2, end: 3 },
       ],
-      crossfadeMs: 0,
       hasAudio: false,
     });
 
@@ -59,7 +55,6 @@ describe("buildFilterCutComplex", () => {
   it("skips audio for single segment when hasAudio is false", () => {
     const result = buildFilterCutComplex({
       keepSegments: [{ start: 5, end: 15 }],
-      crossfadeMs: 0,
       hasAudio: false,
     });
 
@@ -72,7 +67,6 @@ describe("buildFilterCutComplex", () => {
     expect(() =>
       buildFilterCutComplex({
         keepSegments: [{ start: 2, end: 2 }],
-        crossfadeMs: 30,
       })
     ).toThrow("At least one keep segment");
   });

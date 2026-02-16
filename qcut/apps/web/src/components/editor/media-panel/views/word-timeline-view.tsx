@@ -767,8 +767,6 @@ export function WordTimelineView() {
                 type: mimeType,
               });
               file = new File([blob], fileName, { type: mimeType });
-              // Attach path for Electron compatibility
-              Object.defineProperty(file, "path", { value: filePath });
             } else {
               throw new Error("Failed to read file");
             }
@@ -1080,6 +1078,12 @@ export function WordTimelineView() {
               size="sm"
               className="h-6 text-[10px] px-2"
               onClick={handleSelectAllAi}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleSelectAllAi();
+                }
+              }}
             >
               Remove AI
             </Button>
@@ -1089,6 +1093,12 @@ export function WordTimelineView() {
               size="sm"
               className="h-6 text-[10px] px-2"
               onClick={handleAcceptAllAi}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleAcceptAllAi();
+                }
+              }}
             >
               Accept All
             </Button>
@@ -1098,6 +1108,12 @@ export function WordTimelineView() {
               size="sm"
               className="h-6 text-[10px] px-2"
               onClick={handleResetAll}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleResetAll();
+                }
+              }}
             >
               Reset All
             </Button>

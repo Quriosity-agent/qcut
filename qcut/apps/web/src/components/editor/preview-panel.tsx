@@ -307,7 +307,7 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       const resultText = document.getElementById("result-text");
       const resultMeta = document.getElementById("result-meta");
 
-      const projectId = "__PROJECT_ID__";
+      const projectId = __PROJECT_ID_JSON__;
       const apiBaseUrl = "http://127.0.0.1:8765";
 
       function setStatus(message, type) {
@@ -392,6 +392,20 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             audioEl.autoplay = true;
             audioEl.src = result.audio.url;
             audioEl.style.cssText = "width:100%;border-radius:10px;";
+            if (result.text) {
+              try {
+                var vtt = "WEBVTT\\n\\n00:00:00.000 --> 99:59:59.999\\n" + result.text;
+                var trackBlob = new Blob([vtt], { type: "text/vtt" });
+                var trackUrl = URL.createObjectURL(trackBlob);
+                var track = document.createElement("track");
+                track.kind = "captions";
+                track.srclang = "en";
+                track.label = "Response";
+                track.src = trackUrl;
+                track.default = true;
+                audioEl.appendChild(track);
+              } catch (e) {}
+            }
             resultAudio.appendChild(audioEl);
           }
           if (result.text && resultText) {
@@ -421,9 +435,16 @@ function buildMcpMediaAppHtml({
 }): string {
   try {
     const resolvedProjectId = (projectId || "default").trim() || "default";
-    return MCP_MEDIA_APP_TEMPLATE.replace(/__PROJECT_ID__/g, resolvedProjectId);
+    const safeProjectId = JSON.stringify(resolvedProjectId);
+    return MCP_MEDIA_APP_TEMPLATE.replace(
+      /__PROJECT_ID_JSON__/g,
+      safeProjectId
+    );
   } catch {
-    return MCP_MEDIA_APP_TEMPLATE.replace(/__PROJECT_ID__/g, "default");
+    return MCP_MEDIA_APP_TEMPLATE.replace(
+      /__PROJECT_ID_JSON__/g,
+      JSON.stringify("default")
+    );
   }
 }
 
@@ -512,7 +533,7 @@ export function PreviewPanel() {
     ? MCP_MEDIA_TOOL_NAME
     : externalToolName;
   const isMcpMediaAppActive = localMcpActive;
-  console.log(
+  debugLog(
     "[MCP] render — localMcpActive:",
     localMcpActive,
     "activeHtml length:",
@@ -725,14 +746,14 @@ export function PreviewPanel() {
 
   const toggleMcpMediaApp = useCallback(() => {
     try {
-      console.log("[MCP] toggle clicked, localMcpActive:", localMcpActive);
+      debugLog("[MCP] toggle clicked, localMcpActive:", localMcpActive);
       if (localMcpActive) {
         setLocalMcpActive(false);
-        console.log("[MCP] switched OFF");
+        debugLog("[MCP] switched OFF");
         return;
       }
       setLocalMcpActive(true);
-      console.log("[MCP] switched ON");
+      debugLog("[MCP] switched ON");
     } catch {
       // Ignore local MCP toggle errors to avoid blocking normal preview.
     }

@@ -4,6 +4,19 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createSpawnDiagnostics } from "./pty-spawn-diagnostics";
 
+// Logger: use electron-log if available, fallback to console
+let log: {
+  info: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+};
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  log = require("electron-log");
+} catch {
+  log = console;
+}
+
 // Dynamic import for node-pty to support packaged app
 let pty: typeof import("node-pty");
 try {
@@ -278,7 +291,7 @@ export function setupPtyIPC(): void {
               apiBaseUrl: options.env?.QCUT_API_BASE_URL,
             });
           } else {
-            console.warn(
+            log.warn(
               "[PTY] QCut MCP server entry not found; skipping MCP wiring"
             );
           }

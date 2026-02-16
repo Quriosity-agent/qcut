@@ -1,15 +1,15 @@
 import { WORD_FILTER_STATE, type WordItem } from "@/types/word-timeline";
 
-export interface KeepSegment {
+export type KeepSegment = {
   start: number;
   end: number;
-}
+};
 
-export interface SegmentCalculatorOptions {
+export type SegmentCalculatorOptions = {
   bufferMs?: number;
   crossfadeMs?: number;
   minGapMs?: number;
-}
+};
 
 interface TimeRange {
   start: number;

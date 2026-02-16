@@ -154,7 +154,16 @@ async function analyzeWithGemini({
       chunks.map(async (chunk) => {
         try {
           const prompt = buildFilterPrompt({ words: chunk, languageCode });
-          const result = await model.generateContent(prompt);
+          const generatePromise = model.generateContent(prompt);
+          const result = await Promise.race([
+            generatePromise,
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error("Gemini request timed out")),
+                REQUEST_TIMEOUT_MS
+              )
+            ),
+          ]);
           return parseFilterResponse({ rawText: result.response.text() });
         } catch (error) {
           log.warn("[AI Filler] Gemini chunk failed:", error);

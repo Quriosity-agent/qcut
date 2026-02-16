@@ -292,6 +292,7 @@ export function startClaudeHTTPServer(
     claudeLog.info("HTTP", "PersonaPlex generate request");
 
     const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
+      signal: AbortSignal.timeout(25_000),
       method: "POST",
       headers: {
         Authorization: `Key ${apiKey}`,
@@ -337,6 +338,7 @@ export function startClaudeHTTPServer(
     const toolName =
       typeof req.body.toolName === "string" ? req.body.toolName : "unknown";
     let forwarded = false;
+    let error: string | undefined;
     try {
       const win = getWindow();
       win.webContents.send("mcp:app-html", {
@@ -344,11 +346,12 @@ export function startClaudeHTTPServer(
         toolName,
       });
       forwarded = true;
-    } catch {
+    } catch (err) {
       forwarded = false;
+      error = err instanceof Error ? err.message : "Unknown error";
     }
 
-    return { forwarded };
+    return { forwarded, ...(error && { error }) };
   });
 
   // ==========================================================================

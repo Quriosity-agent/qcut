@@ -519,7 +519,6 @@ async function handleWordFilterCut({
 
     const { filterComplex, outputMaps } = buildFilterCutComplex({
       keepSegments: adjustedSegments,
-      crossfadeMs: options.crossfadeMs ?? 30,
     });
 
     const args: string[] = ["-y"];
@@ -624,8 +623,8 @@ async function handleWordFilterCutFallback({
   const concatContent = segmentPaths
     .map((segmentPath) => {
       const escapedPath = segmentPath
-        .replace(/'/g, "'\\''")
-        .replace(/\\/g, "/");
+        .replace(/\\/g, "/")
+        .replace(/'/g, "'\\''");
       return `file '${escapedPath}'`;
     })
     .join("\n");
@@ -758,7 +757,7 @@ async function handleMode1_5(
     // Escape Windows backslashes for FFmpeg concat file format
     const concatContent = normalizedPaths
       .map((p) => {
-        const escapedPath = p.replace(/'/g, "'\\''").replace(/\\/g, "/");
+        const escapedPath = p.replace(/\\/g, "/").replace(/'/g, "'\\''");
         return `file '${escapedPath}'`;
       })
       .join("\n");
