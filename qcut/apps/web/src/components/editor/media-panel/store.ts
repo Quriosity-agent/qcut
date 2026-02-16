@@ -175,15 +175,13 @@ export const tabGroups: {
       "word-timeline",
       "video-edit",
       "draw",
-      "text",
-      "stickers",
       "captions",
     ],
   },
   effects: {
     icon: BlendIcon,
     label: "Manual Edit",
-    tabs: ["filters", "effects", "transitions"],
+    tabs: ["text", "stickers", "filters", "effects", "transitions"],
   },
 };
 
