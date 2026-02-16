@@ -67,23 +67,22 @@ describe("media-panel store", () => {
     it("returns correct group for each tab", () => {
       expect(getGroupForTab("media")).toBe("media");
       expect(getGroupForTab("project-folder")).toBe("media");
-      expect(getGroupForTab("sounds")).toBe("media");
-      expect(getGroupForTab("audio")).toBe("media");
-
       expect(getGroupForTab("ai")).toBe("ai-create");
       expect(getGroupForTab("text2image")).toBe("ai-create");
       expect(getGroupForTab("adjustment")).toBe("ai-create");
       expect(getGroupForTab("nano-edit")).toBe("ai-create");
       expect(getGroupForTab("camera-selector")).toBe("ai-create");
       expect(getGroupForTab("segmentation")).toBe("ai-create");
+      expect(getGroupForTab("sounds")).toBe("ai-create");
+      expect(getGroupForTab("audio")).toBe("ai-create");
 
-      expect(getGroupForTab("text")).toBe("edit");
       expect(getGroupForTab("captions")).toBe("edit");
       expect(getGroupForTab("word-timeline")).toBe("edit");
       expect(getGroupForTab("video-edit")).toBe("edit");
       expect(getGroupForTab("draw")).toBe("edit");
-      expect(getGroupForTab("stickers")).toBe("edit");
 
+      expect(getGroupForTab("text")).toBe("effects");
+      expect(getGroupForTab("stickers")).toBe("effects");
       expect(getGroupForTab("filters")).toBe("effects");
       expect(getGroupForTab("effects")).toBe("effects");
       expect(getGroupForTab("transitions")).toBe("effects");
