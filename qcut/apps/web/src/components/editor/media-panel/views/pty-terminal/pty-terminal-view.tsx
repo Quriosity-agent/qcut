@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { TerminalEmulator } from "./terminal-emulator";
 import { Button } from "@/components/ui/button";
@@ -42,8 +43,10 @@ export function PtyTerminalView() {
     selectedModel,
     selectedClaudeModel,
     activeSkill,
+    workingDirectory,
     connect,
     disconnect,
+    ensureAutoConnected,
     setCliProvider,
     setSelectedModel,
     setSelectedClaudeModel,
@@ -59,7 +62,7 @@ export function PtyTerminalView() {
 
   const handleStart = async () => {
     try {
-      await connect();
+      await connect({ manual: true });
     } catch (error) {
       setAsyncActionError({ error });
     }
@@ -67,7 +70,7 @@ export function PtyTerminalView() {
 
   const handleStop = async () => {
     try {
-      await disconnect();
+      await disconnect({ userInitiated: true });
     } catch (error) {
       setAsyncActionError({ error });
     }
@@ -77,7 +80,7 @@ export function PtyTerminalView() {
     try {
       await disconnect();
       await new Promise((resolve) => setTimeout(resolve, 100));
-      await connect();
+      await connect({ manual: true });
     } catch (error) {
       setAsyncActionError({ error });
     }
@@ -86,6 +89,18 @@ export function PtyTerminalView() {
   const isConnected = status === "connected";
   const isConnecting = status === "connecting";
   const isTerminalVisible = activeTab === "pty";
+
+  useEffect(() => {
+    if (!isTerminalVisible) {
+      return;
+    }
+
+    ensureAutoConnected({ cwd: workingDirectory || undefined }).catch(
+      (error: unknown) => {
+        setAsyncActionError({ error });
+      }
+    );
+  }, [ensureAutoConnected, isTerminalVisible, workingDirectory]);
 
   return (
     <div className="flex flex-col h-full" data-testid="pty-terminal-view">
