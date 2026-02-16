@@ -421,8 +421,12 @@ function createWindow(): void {
     icon: path.join(
       app.isPackaged ? process.resourcesPath : __dirname,
       process.platform === "darwin"
-        ? (app.isPackaged ? "icon.png" : "../../build/icon.png")
-        : (app.isPackaged ? "icon.ico" : "../../build/icon.ico")
+        ? app.isPackaged
+          ? "icon.png"
+          : "../../build/icon.png"
+        : app.isPackaged
+          ? "icon.ico"
+          : "../../build/icon.ico"
     ),
     webPreferences: {
       nodeIntegration: false,

@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AI_MODELS } from "../constants/ai-constants";
-import { getProviderLogo, getProviderName } from "../constants/model-provider-logos";
+import {
+  getProviderLogo,
+  getProviderName,
+} from "../constants/model-provider-logos";
 import type { AIActiveTab } from "../types/ai-types";
 
 interface AIModelSelectionGridProps {

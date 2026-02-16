@@ -357,7 +357,11 @@ export function FloatingActionPanelModelOption({
         className="shrink-0"
       />
       {logo && (
-        <img src={logo} alt={`${name} logo`} className="w-4 h-4 shrink-0 rounded-sm" />
+        <img
+          src={logo}
+          alt={`${name} logo`}
+          className="w-4 h-4 shrink-0 rounded-sm"
+        />
       )}
       <label
         className={`text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-medium cursor-pointer flex-1 ${

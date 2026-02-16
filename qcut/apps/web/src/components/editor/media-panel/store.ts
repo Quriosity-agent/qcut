@@ -171,12 +171,7 @@ export const tabGroups: {
   edit: {
     icon: ScissorsIcon,
     label: "Edit",
-    tabs: [
-      "word-timeline",
-      "video-edit",
-      "draw",
-      "captions",
-    ],
+    tabs: ["word-timeline", "video-edit", "draw", "captions"],
   },
   effects: {
     icon: BlendIcon,
