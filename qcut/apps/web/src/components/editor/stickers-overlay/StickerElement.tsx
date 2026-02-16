@@ -4,7 +4,7 @@
  * Individual draggable sticker element with selection and interaction support.
  */
 
-import React, { memo, useCallback, useRef } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug-config";
 import { useStickerDrag } from "./hooks/useStickerDrag";
@@ -74,6 +74,9 @@ export const StickerElement = memo<StickerElementProps>(
      */
     const wheelSnapshotSaved = useRef(false);
     const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    useEffect(() => {
+      return () => clearTimeout(wheelTimeoutRef.current);
+    }, []);
     const handleWheel = useCallback(
       (e: React.WheelEvent) => {
         if (!isSelected) return;

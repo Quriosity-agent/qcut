@@ -61,7 +61,7 @@ export interface ElectronAPI {
 
   saveFileDialog: (
     defaultFilename?: string,
-    filters?: Array<{ name: string; extensions: string[] }>
+    filters?: Array<{ name: string; extensions: string[] }>,
   ) => Promise<{
     canceled: boolean;
     filePath?: string;
@@ -73,11 +73,11 @@ export interface ElectronAPI {
   readFile: (filePath: string) => Promise<Buffer>;
   writeFile: (
     filePath: string,
-    data: Buffer | Uint8Array
+    data: Buffer | Uint8Array,
   ) => Promise<{ success: boolean }>;
   saveBlob: (
     data: Buffer | Uint8Array,
-    defaultFilename?: string
+    defaultFilename?: string,
   ) => Promise<{
     success: boolean;
     filePath?: string;
@@ -174,7 +174,7 @@ export interface ElectronAPI {
     saveTemp: (
       videoData: Uint8Array,
       filename: string,
-      sessionId?: string
+      sessionId?: string,
     ) => Promise<string>;
 
     /**
@@ -413,7 +413,7 @@ export interface ElectronAPI {
     uploadVideo: (
       videoData: Uint8Array,
       filename: string,
-      apiKey: string
+      apiKey: string,
     ) => Promise<{
       success: boolean;
       url?: string;
@@ -431,7 +431,7 @@ export interface ElectronAPI {
     uploadImage: (
       imageData: Uint8Array,
       filename: string,
-      apiKey: string
+      apiKey: string,
     ) => Promise<{
       success: boolean;
       url?: string;
@@ -449,7 +449,7 @@ export interface ElectronAPI {
     uploadAudio: (
       audioData: Uint8Array,
       filename: string,
-      apiKey: string
+      apiKey: string,
     ) => Promise<{
       success: boolean;
       url?: string;
@@ -458,7 +458,7 @@ export interface ElectronAPI {
     /** Proxy GET request to queue.fal.run through main process (bypasses CORS) */
     queueFetch: (
       url: string,
-      apiKey: string
+      apiKey: string,
     ) => Promise<{ ok: boolean; status: number; data: unknown }>;
   };
 
@@ -531,7 +531,7 @@ export interface ElectronAPI {
      */
     write: (
       sessionId: string,
-      data: string
+      data: string,
     ) => Promise<{ success: boolean; error?: string }>;
 
     /**
@@ -543,7 +543,7 @@ export interface ElectronAPI {
     resize: (
       sessionId: string,
       cols: number,
-      rows: number
+      rows: number,
     ) => Promise<{ success: boolean; error?: string }>;
 
     /**
@@ -561,7 +561,7 @@ export interface ElectronAPI {
      * Register callback for PTY output data
      */
     onData: (
-      callback: (data: { sessionId: string; data: string }) => void
+      callback: (data: { sessionId: string; data: string }) => void,
     ) => void;
 
     /**
@@ -572,7 +572,7 @@ export interface ElectronAPI {
         sessionId: string;
         exitCode: number;
         signal?: number;
-      }) => void
+      }) => void,
     ) => void;
 
     /**
@@ -590,7 +590,7 @@ export interface ElectronAPI {
      * Listen for latest MCP app HTML payload.
      */
     onAppHtml: (
-      callback: (data: { html: string; toolName?: string }) => void
+      callback: (data: { html: string; toolName?: string }) => void,
     ) => void;
 
     /**
@@ -632,7 +632,7 @@ export interface ElectronAPI {
      */
     import: (
       projectId: string,
-      sourcePath: string
+      sourcePath: string,
     ) => Promise<{
       id: string;
       name: string;
@@ -662,7 +662,7 @@ export interface ElectronAPI {
     getContent: (
       projectId: string,
       skillId: string,
-      filename: string
+      filename: string,
     ) => Promise<string>;
 
     /**
@@ -741,7 +741,7 @@ export interface ElectronAPI {
      * @returns Result with cost estimate
      */
     estimateCost: (
-      options: AIPipelineCostEstimate
+      options: AIPipelineCostEstimate,
     ) => Promise<AIPipelineResult>;
 
     /**
@@ -763,7 +763,7 @@ export interface ElectronAPI {
      * @returns Cleanup function to remove listener
      */
     onProgress: (
-      callback: (progress: AIPipelineProgress) => void
+      callback: (progress: AIPipelineProgress) => void,
     ) => () => void;
   };
 
@@ -804,7 +804,7 @@ export interface ElectronAPI {
     relinkMedia: (
       projectId: string,
       mediaId: string,
-      newSourcePath: string
+      newSourcePath: string,
     ) => Promise<MediaImportResult>;
 
     /**
@@ -850,7 +850,7 @@ export interface ElectronAPI {
     scan: (
       projectId: string,
       subPath?: string,
-      options?: { recursive?: boolean; mediaOnly?: boolean }
+      options?: { recursive?: boolean; mediaOnly?: boolean },
     ) => Promise<ProjectFolderScanResult>;
 
     /**
@@ -861,7 +861,7 @@ export interface ElectronAPI {
      */
     list: (
       projectId: string,
-      subPath?: string
+      subPath?: string,
     ) => Promise<ProjectFolderFileInfo[]>;
 
     /**
@@ -870,7 +870,7 @@ export interface ElectronAPI {
      * @returns Created and existing folder lists
      */
     ensureStructure: (
-      projectId: string
+      projectId: string,
     ) => Promise<{ created: string[]; existing: string[] }>;
   };
 
@@ -887,7 +887,7 @@ export interface ElectronAPI {
       rename: (
         projectId: string,
         mediaId: string,
-        newName: string
+        newName: string,
       ) => Promise<boolean>;
     };
     timeline: {
@@ -895,46 +895,46 @@ export interface ElectronAPI {
       import: (
         projectId: string,
         data: string,
-        format: "json" | "md"
+        format: "json" | "md",
       ) => Promise<void>;
       addElement: (
         projectId: string,
-        element: Partial<ClaudeElement>
+        element: Partial<ClaudeElement>,
       ) => Promise<string>;
       updateElement: (
         projectId: string,
         elementId: string,
-        changes: Partial<ClaudeElement>
+        changes: Partial<ClaudeElement>,
       ) => Promise<void>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
       splitElement: (
         projectId: string,
         elementId: string,
         splitTime: number,
-        mode?: "split" | "keepLeft" | "keepRight"
+        mode?: "split" | "keepLeft" | "keepRight",
       ) => Promise<ClaudeSplitResponse>;
       moveElement: (
         projectId: string,
         elementId: string,
         toTrackId: string,
-        newStartTime?: number
+        newStartTime?: number,
       ) => Promise<void>;
       selectElements: (
         projectId: string,
-        elements: ClaudeSelectionItem[]
+        elements: ClaudeSelectionItem[],
       ) => Promise<void>;
       getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
       clearSelection: (projectId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
       onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
       onAddElement: (
-        callback: (element: Partial<ClaudeElement>) => void
+        callback: (element: Partial<ClaudeElement>) => void,
       ) => void;
       onUpdateElement: (
         callback: (data: {
           elementId: string;
           changes: Partial<ClaudeElement>;
-        }) => void
+        }) => void,
       ) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
       onSplitElement: (
@@ -943,28 +943,26 @@ export interface ElectronAPI {
           elementId: string;
           splitTime: number;
           mode: "split" | "keepLeft" | "keepRight";
-        }) => void
+        }) => void,
       ) => void;
       sendSplitResponse: (
         requestId: string,
-        result: ClaudeSplitResponse
+        result: ClaudeSplitResponse,
       ) => void;
       onMoveElement: (
         callback: (data: {
           elementId: string;
           toTrackId: string;
           newStartTime?: number;
-        }) => void
+        }) => void,
       ) => void;
       onSelectElements: (
-        callback: (data: { elements: ClaudeSelectionItem[] }) => void
+        callback: (data: { elements: ClaudeSelectionItem[] }) => void,
       ) => void;
-      onGetSelection: (
-        callback: (data: { requestId: string }) => void
-      ) => void;
+      onGetSelection: (callback: (data: { requestId: string }) => void) => void;
       sendSelectionResponse: (
         requestId: string,
-        elements: ClaudeSelectionItem[]
+        elements: ClaudeSelectionItem[],
       ) => void;
       onClearSelection: (callback: () => void) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
@@ -974,18 +972,18 @@ export interface ElectronAPI {
       getSettings: (projectId: string) => Promise<ProjectSettings>;
       updateSettings: (
         projectId: string,
-        settings: Partial<ProjectSettings>
+        settings: Partial<ProjectSettings>,
       ) => Promise<void>;
       getStats: (projectId: string) => Promise<ProjectStats>;
       onStatsRequest: (
-        callback: (projectId: string, requestId: string) => void
+        callback: (projectId: string, requestId: string) => void,
       ) => void;
       sendStatsResponse: (stats: ProjectStats, requestId: string) => void;
       onUpdated: (
         callback: (
           projectId: string,
-          settings: Partial<ProjectSettings>
-        ) => void
+          settings: Partial<ProjectSettings>,
+        ) => void,
       ) => void;
       removeListeners: () => void;
     };
@@ -993,7 +991,7 @@ export interface ElectronAPI {
       getPresets: () => Promise<ExportPreset[]>;
       recommend: (
         projectId: string,
-        target: string
+        target: string,
       ) => Promise<ExportRecommendation>;
     };
     diagnostics: {
@@ -1027,7 +1025,7 @@ export interface ElectronAPI {
      */
     bundle: (
       folderPath: string,
-      compositionIds?: string[]
+      compositionIds?: string[],
     ) => Promise<RemotionFolderBundleResult>;
 
     /**
@@ -1049,7 +1047,7 @@ export interface ElectronAPI {
      * @returns Validation result
      */
     validate: (
-      folderPath: string
+      folderPath: string,
     ) => Promise<{ isValid: boolean; error?: string }>;
   };
 
@@ -1116,7 +1114,7 @@ export interface ElectronAPI {
         version: string;
         releaseNotes?: string;
         releaseDate?: string;
-      }) => void
+      }) => void,
     ) => () => void;
     /** Listen for download progress events */
     onDownloadProgress: (
@@ -1124,11 +1122,11 @@ export interface ElectronAPI {
         percent: number;
         transferred: number;
         total: number;
-      }) => void
+      }) => void,
     ) => () => void;
     /** Listen for update-downloaded events */
     onUpdateDownloaded: (
-      callback: (data: { version: string }) => void
+      callback: (data: { version: string }) => void,
     ) => () => void;
   };
 }

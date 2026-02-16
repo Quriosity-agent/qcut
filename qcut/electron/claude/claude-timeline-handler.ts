@@ -26,7 +26,7 @@ const HANDLER_NAME = "Timeline";
  * Request timeline data from renderer process
  */
 export async function requestTimelineFromRenderer(
-  win: BrowserWindow
+  win: BrowserWindow,
 ): Promise<ClaudeTimeline> {
   return new Promise((resolve, reject) => {
     let resolved = false;
@@ -78,7 +78,7 @@ export function timelineToMarkdown(timeline: ClaudeTimeline): string {
     for (const element of track.elements) {
       const content = (element.content || element.sourceName || "-").substring(
         0,
-        25
+        25,
       );
       md += `| \`${element.id.substring(0, 8)}\` | ${formatTimeFromSeconds(element.startTime)} | ${formatTimeFromSeconds(element.endTime)} | ${formatTimeFromSeconds(element.duration)} | ${element.type} | ${element.sourceName || "-"} | ${content} |\n`;
     }
@@ -128,13 +128,13 @@ export function markdownToTimeline(md: string): ClaudeTimeline {
   // Track/element parsing not implemented - throw to prevent silent data loss
   if (md.includes("## Track")) {
     throw new Error(
-      "Markdown track parsing not yet implemented. Use JSON format for full timeline import."
+      "Markdown track parsing not yet implemented. Use JSON format for full timeline import.",
     );
   }
 
   claudeLog.warn(
     HANDLER_NAME,
-    "Imported markdown contains project metadata only - no tracks parsed"
+    "Imported markdown contains project metadata only - no tracks parsed",
   );
 
   return timeline;
@@ -180,7 +180,7 @@ export async function requestSplitFromRenderer(
   win: BrowserWindow,
   elementId: string,
   splitTime: number,
-  mode?: string
+  mode?: string,
 ): Promise<ClaudeSplitResponse> {
   return new Promise((resolve, reject) => {
     let resolved = false;
@@ -189,21 +189,18 @@ export async function requestSplitFromRenderer(
     const timeout = setTimeout(() => {
       if (resolved) return;
       resolved = true;
-      ipcMain.removeListener(
-        "claude:timeline:splitElement:response",
-        handler
-      );
+      ipcMain.removeListener("claude:timeline:splitElement:response", handler);
       reject(new Error("Timeout waiting for split result"));
     }, 5000);
 
-    const handler = (_event: any, data: { requestId: string; result: ClaudeSplitResponse }) => {
+    const handler = (
+      _event: any,
+      data: { requestId: string; result: ClaudeSplitResponse },
+    ) => {
       if (data.requestId !== requestId || resolved) return;
       resolved = true;
       clearTimeout(timeout);
-      ipcMain.removeListener(
-        "claude:timeline:splitElement:response",
-        handler
-      );
+      ipcMain.removeListener("claude:timeline:splitElement:response", handler);
       resolve(data.result);
     };
 
@@ -221,7 +218,7 @@ export async function requestSplitFromRenderer(
  * Request current selection state from the renderer
  */
 export async function requestSelectionFromRenderer(
-  win: BrowserWindow
+  win: BrowserWindow,
 ): Promise<ClaudeSelectionItem[]> {
   return new Promise((resolve, reject) => {
     let resolved = false;
@@ -230,21 +227,18 @@ export async function requestSelectionFromRenderer(
     const timeout = setTimeout(() => {
       if (resolved) return;
       resolved = true;
-      ipcMain.removeListener(
-        "claude:timeline:getSelection:response",
-        handler
-      );
+      ipcMain.removeListener("claude:timeline:getSelection:response", handler);
       reject(new Error("Timeout waiting for selection data"));
     }, 5000);
 
-    const handler = (_event: any, data: { requestId: string; elements: ClaudeSelectionItem[] }) => {
+    const handler = (
+      _event: any,
+      data: { requestId: string; elements: ClaudeSelectionItem[] },
+    ) => {
       if (data.requestId !== requestId || resolved) return;
       resolved = true;
       clearTimeout(timeout);
-      ipcMain.removeListener(
-        "claude:timeline:getSelection:response",
-        handler
-      );
+      ipcMain.removeListener("claude:timeline:getSelection:response", handler);
       resolve(data.elements);
     };
 
@@ -262,11 +256,11 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       projectId: string,
-      format: "json" | "md"
+      format: "json" | "md",
     ): Promise<string> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Exporting timeline for project: ${projectId}, format: ${format}`
+        `Exporting timeline for project: ${projectId}, format: ${format}`,
       );
 
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -280,7 +274,7 @@ export function setupClaudeTimelineIPC(): void {
         return timelineToMarkdown(timeline);
       }
       return JSON.stringify(timeline, null, 2);
-    }
+    },
   );
 
   ipcMain.handle(
@@ -289,11 +283,11 @@ export function setupClaudeTimelineIPC(): void {
       event: IpcMainInvokeEvent,
       projectId: string,
       data: string,
-      format: "json" | "md"
+      format: "json" | "md",
     ): Promise<void> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Importing timeline for project: ${projectId}, format: ${format}`
+        `Importing timeline for project: ${projectId}, format: ${format}`,
       );
 
       let timeline: ClaudeTimeline;
@@ -313,7 +307,7 @@ export function setupClaudeTimelineIPC(): void {
       event.sender.send("claude:timeline:apply", timeline);
 
       claudeLog.info(HANDLER_NAME, "Timeline import sent to renderer");
-    }
+    },
   );
 
   ipcMain.handle(
@@ -321,7 +315,7 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       projectId: string,
-      element: Partial<ClaudeElement>
+      element: Partial<ClaudeElement>,
     ): Promise<string> => {
       claudeLog.info(HANDLER_NAME, `Adding element to project: ${projectId}`);
       const elementId = element.id || generateId("element");
@@ -330,7 +324,7 @@ export function setupClaudeTimelineIPC(): void {
         id: elementId,
       });
       return elementId;
-    }
+    },
   );
 
   ipcMain.handle(
@@ -339,14 +333,14 @@ export function setupClaudeTimelineIPC(): void {
       event: IpcMainInvokeEvent,
       _projectId: string,
       elementId: string,
-      changes: Partial<ClaudeElement>
+      changes: Partial<ClaudeElement>,
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Updating element: ${elementId}`);
       event.sender.send("claude:timeline:updateElement", {
         elementId,
         changes,
       });
-    }
+    },
   );
 
   ipcMain.handle(
@@ -354,11 +348,11 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       _projectId: string,
-      elementId: string
+      elementId: string,
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Removing element: ${elementId}`);
       event.sender.send("claude:timeline:removeElement", elementId);
-    }
+    },
   );
 
   // ---- Split element (request-response to get secondElementId) ----
@@ -369,16 +363,16 @@ export function setupClaudeTimelineIPC(): void {
       _projectId: string,
       elementId: string,
       splitTime: number,
-      mode?: "split" | "keepLeft" | "keepRight"
+      mode?: "split" | "keepLeft" | "keepRight",
     ): Promise<ClaudeSplitResponse> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Splitting element: ${elementId} at ${splitTime}s (mode: ${mode || "split"})`
+        `Splitting element: ${elementId} at ${splitTime}s (mode: ${mode || "split"})`,
       );
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) throw new Error("Window not found");
       return requestSplitFromRenderer(win, elementId, splitTime, mode);
-    }
+    },
   );
 
   // ---- Move element (fire-and-forget) ----
@@ -389,18 +383,18 @@ export function setupClaudeTimelineIPC(): void {
       _projectId: string,
       elementId: string,
       toTrackId: string,
-      newStartTime?: number
+      newStartTime?: number,
     ): Promise<void> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Moving element: ${elementId} to track: ${toTrackId}`
+        `Moving element: ${elementId} to track: ${toTrackId}`,
       );
       event.sender.send("claude:timeline:moveElement", {
         elementId,
         toTrackId,
         newStartTime,
       });
-    }
+    },
   );
 
   // ---- Select elements (fire-and-forget) ----
@@ -409,14 +403,11 @@ export function setupClaudeTimelineIPC(): void {
     async (
       event: IpcMainInvokeEvent,
       _projectId: string,
-      elements: ClaudeSelectionItem[]
+      elements: ClaudeSelectionItem[],
     ): Promise<void> => {
-      claudeLog.info(
-        HANDLER_NAME,
-        `Selecting ${elements.length} element(s)`
-      );
+      claudeLog.info(HANDLER_NAME, `Selecting ${elements.length} element(s)`);
       event.sender.send("claude:timeline:selectElements", { elements });
-    }
+    },
   );
 
   // ---- Get selection (request-response) ----
@@ -427,7 +418,7 @@ export function setupClaudeTimelineIPC(): void {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) throw new Error("Window not found");
       return requestSelectionFromRenderer(win);
-    }
+    },
   );
 
   // ---- Clear selection (fire-and-forget) ----
@@ -436,7 +427,7 @@ export function setupClaudeTimelineIPC(): void {
     async (event: IpcMainInvokeEvent): Promise<void> => {
       claudeLog.info(HANDLER_NAME, "Clearing selection");
       event.sender.send("claude:timeline:clearSelection");
-    }
+    },
   );
 
   claudeLog.info(HANDLER_NAME, "Timeline IPC handlers registered");
