@@ -34,6 +34,295 @@ import { usePreviewMedia } from "./preview-panel/use-preview-media";
 import { usePreviewSizing } from "./preview-panel/use-preview-sizing";
 import type { ActiveElement } from "./preview-panel/types";
 
+const MCP_MEDIA_TOOL_NAME = "configure-media";
+const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QCut Media MCP App</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #19324f, #0f1828 70%);
+        color: #eef4ff;
+        min-height: 100vh;
+        padding: 18px;
+        box-sizing: border-box;
+      }
+      .card {
+        width: min(760px, 100%);
+        margin: 0 auto;
+        border: 1px solid #2a4469;
+        border-radius: 14px;
+        padding: 20px;
+        background: rgba(9, 21, 38, 0.78);
+        backdrop-filter: blur(8px);
+      }
+      h1 { margin: 0 0 8px; font-size: 24px; }
+      p { margin: 0 0 14px; color: #9fb5d8; }
+      .section { margin-top: 16px; }
+      .label {
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #9fb5d8;
+      }
+      .ratio-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .ratio-btn {
+        border: 1px solid #2a4469;
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: transparent;
+        color: #eef4ff;
+        cursor: pointer;
+      }
+      .ratio-btn.active {
+        border-color: #52deff;
+        box-shadow: 0 0 0 1px #52deff inset;
+      }
+      .row {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      select, input[type="color"] {
+        width: 100%;
+        border: 1px solid #2a4469;
+        border-radius: 10px;
+        padding: 8px;
+        background: #13243a;
+        color: #eef4ff;
+      }
+      .summary {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #9fb5d8;
+      }
+      .status {
+        margin-top: 12px;
+        min-height: 19px;
+        font-size: 13px;
+        color: #9fb5d8;
+      }
+      .status.error {
+        color: #ff8ea1;
+      }
+      .apply-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 700;
+        color: #031720;
+        background: linear-gradient(135deg, #52deff, #34c59b);
+        cursor: pointer;
+      }
+      .actions {
+        margin-top: 14px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      @media (max-width: 760px) {
+        .ratio-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Media Configuration</h1>
+      <p>Configure canvas style directly from the MCP app and apply to QCut.</p>
+      <div class="section">
+        <div class="label">Aspect ratio</div>
+        <div class="ratio-grid" id="ratio-grid">
+          <button type="button" class="ratio-btn active" data-ratio="16:9">16:9</button>
+          <button type="button" class="ratio-btn" data-ratio="9:16">9:16</button>
+          <button type="button" class="ratio-btn" data-ratio="1:1">1:1</button>
+          <button type="button" class="ratio-btn" data-ratio="4:3">4:3</button>
+        </div>
+      </div>
+      <div class="section row">
+        <div>
+          <div class="label">Resolution</div>
+          <select id="resolution">
+            <option value="1920">1080p</option>
+            <option value="1280">720p</option>
+            <option value="1080">1080 square/portrait</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">FPS</div>
+          <select id="fps">
+            <option value="24">24</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Background</div>
+          <input id="background-color" type="color" value="#000000" />
+        </div>
+      </div>
+      <div class="summary" id="summary">Output: 1920 x 1080 @ 30fps</div>
+      <div class="status" id="status">Ready.</div>
+      <div class="actions">
+        <button type="button" id="apply-btn" class="apply-btn">Apply to QCut</button>
+      </div>
+    </main>
+    <script>
+      const ratioGrid = document.getElementById("ratio-grid");
+      const resolutionSelect = document.getElementById("resolution");
+      const fpsSelect = document.getElementById("fps");
+      const backgroundColorInput = document.getElementById("background-color");
+      const summary = document.getElementById("summary");
+      const applyButton = document.getElementById("apply-btn");
+      const status = document.getElementById("status");
+
+      let selectedRatio = "16:9";
+      const projectId = "__PROJECT_ID__";
+      const apiBaseUrl = "http://127.0.0.1:8765";
+
+      function updateSummary() {
+        try {
+          const resolution = Number.parseInt(resolutionSelect?.value || "1920", 10);
+          const fps = Number.parseInt(fpsSelect?.value || "30", 10);
+          const dims = getDimensions(selectedRatio, resolution);
+          if (summary) {
+            summary.textContent = "Output: " + dims.width + " x " + dims.height + " @ " + fps + "fps";
+          }
+        } catch (error) {
+          if (status) {
+            status.textContent = "Failed to update preview summary.";
+            status.classList.add("error");
+          }
+        }
+      }
+
+      function getDimensions(ratio, longSide) {
+        try {
+          const parts = ratio.split(":");
+          const widthRatio = Number.parseInt(parts[0] || "16", 10);
+          const heightRatio = Number.parseInt(parts[1] || "9", 10);
+          if (!Number.isFinite(widthRatio) || !Number.isFinite(heightRatio) || widthRatio <= 0 || heightRatio <= 0) {
+            return { width: 1920, height: 1080 };
+          }
+          if (widthRatio >= heightRatio) {
+            return {
+              width: longSide,
+              height: Math.max(1, Math.round((longSide * heightRatio) / widthRatio)),
+            };
+          }
+          return {
+            width: Math.max(1, Math.round((longSide * widthRatio) / heightRatio)),
+            height: longSide,
+          };
+        } catch (error) {
+          return { width: 1920, height: 1080 };
+        }
+      }
+
+      function setStatus(message, isError) {
+        try {
+          if (!status) {
+            return;
+          }
+          status.textContent = message;
+          status.classList.toggle("error", Boolean(isError));
+        } catch (error) {}
+      }
+
+      ratioGrid?.addEventListener("click", (event) => {
+        try {
+          const button = event.target?.closest?.("button[data-ratio]");
+          if (!button) {
+            return;
+          }
+          const ratio = button.getAttribute("data-ratio");
+          if (!ratio) {
+            return;
+          }
+          selectedRatio = ratio;
+          const allButtons = ratioGrid.querySelectorAll("button[data-ratio]");
+          allButtons.forEach((candidate) => {
+            candidate.classList.toggle("active", candidate === button);
+          });
+          updateSummary();
+        } catch (error) {
+          setStatus("Failed to update ratio.", true);
+        }
+      });
+
+      resolutionSelect?.addEventListener("change", () => {
+        try {
+          updateSummary();
+        } catch (error) {
+          setStatus("Failed to update resolution.", true);
+        }
+      });
+
+      fpsSelect?.addEventListener("change", () => {
+        try {
+          updateSummary();
+        } catch (error) {
+          setStatus("Failed to update fps.", true);
+        }
+      });
+
+      applyButton?.addEventListener("click", async () => {
+        try {
+          setStatus("Applying settings...", false);
+          const resolution = Number.parseInt(resolutionSelect?.value || "1920", 10);
+          const fps = Number.parseInt(fpsSelect?.value || "30", 10);
+          const dims = getDimensions(selectedRatio, resolution);
+          const payload = {
+            width: dims.width,
+            height: dims.height,
+            fps,
+            aspectRatio: selectedRatio,
+            backgroundColor: backgroundColorInput?.value || "#000000",
+          };
+
+          const response = await fetch(apiBaseUrl + "/api/claude/project/" + projectId + "/settings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            throw new Error("Request failed with status " + response.status);
+          }
+
+          await response.json();
+          setStatus("Settings applied to project.", false);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to apply settings";
+          setStatus(message, true);
+        }
+      });
+
+      updateSummary();
+    </script>
+  </body>
+</html>`;
+
+function buildMcpMediaAppHtml({ projectId }: { projectId: string | null }): string {
+  try {
+    const resolvedProjectId = (projectId || "default").trim() || "default";
+    return MCP_MEDIA_APP_TEMPLATE.replace(/__PROJECT_ID__/g, resolvedProjectId);
+  } catch {
+    return MCP_MEDIA_APP_TEMPLATE.replace(/__PROJECT_ID__/g, "default");
+  }
+}
+
 /** Compute the aggregate CSS filter string for an element's enabled effects. */
 function useEffectsRendering(elementId: string | null, enabled = false) {
   const getElementEffects = useEffectsStore((state) => state.getElementEffects);
@@ -107,6 +396,7 @@ export function PreviewPanel() {
   const activeToolName = useMcpAppStore((state) => state.toolName);
   const setMcpApp = useMcpAppStore((state) => state.setMcpApp);
   const clearMcpApp = useMcpAppStore((state) => state.clearMcpApp);
+  const isMcpMediaAppActive = activeToolName === MCP_MEDIA_TOOL_NAME;
   const previewDimensions = usePreviewSizing({
     containerRef,
     canvasSize,
@@ -309,6 +599,36 @@ export function PreviewPanel() {
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev);
   }, []);
+
+  const toggleMcpMediaApp = useCallback(() => {
+    try {
+      if (isMcpMediaAppActive) {
+        clearMcpApp();
+        return;
+      }
+      setMcpApp({
+        html: buildMcpMediaAppHtml({ projectId: activeProject?.id ?? null }),
+        toolName: MCP_MEDIA_TOOL_NAME,
+      });
+    } catch {
+      // Ignore local MCP toggle errors to avoid blocking normal preview.
+    }
+  }, [activeProject?.id, clearMcpApp, isMcpMediaAppActive, setMcpApp]);
+
+  const handleToggleMcpKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      try {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        toggleMcpMediaApp();
+      } catch {
+        // Keep keyboard handling resilient for the preview controls.
+      }
+    },
+    [toggleMcpMediaApp]
+  );
 
   // Helper function to capture current preview frame
   const captureCurrentFrame = useCallback(async () => {
@@ -655,20 +975,36 @@ export function PreviewPanel() {
           <p className="text-sm font-medium text-foreground truncate">
             {activeToolName ? `MCP App: ${activeToolName}` : "MCP App"}
           </p>
-          <button
-            type="button"
-            className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
-            onClick={clearMcpApp}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                clearMcpApp();
-              }
-            }}
-            aria-label="Return to normal preview"
-          >
-            Return to Preview
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
+              onClick={toggleMcpMediaApp}
+              onKeyDown={handleToggleMcpKeyDown}
+              aria-label="Switch to MCP media app"
+            >
+              {isMcpMediaAppActive ? "Video Preview" : "MCP Media App"}
+            </button>
+            <button
+              type="button"
+              className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
+              onClick={clearMcpApp}
+              onKeyDown={(event) => {
+                try {
+                  if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                  }
+                  event.preventDefault();
+                  clearMcpApp();
+                } catch {
+                  // Keep dismiss action safe even if key handling fails.
+                }
+              }}
+              aria-label="Return to normal preview"
+            >
+              Return to Preview
+            </button>
+          </div>
         </div>
         <div className="flex-1 min-h-0 p-3">
           <iframe
@@ -688,6 +1024,17 @@ export function PreviewPanel() {
         className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm"
         data-testid="preview-panel"
       >
+        <div className="flex items-center justify-end px-3 py-2 border-b">
+          <button
+            type="button"
+            className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
+            onClick={toggleMcpMediaApp}
+            onKeyDown={handleToggleMcpKeyDown}
+            aria-label="Switch to MCP media app"
+          >
+            MCP Media App
+          </button>
+        </div>
         <div
           ref={containerRef}
           className="flex-1 flex flex-col items-center justify-center p-3 min-h-0 min-w-0"
