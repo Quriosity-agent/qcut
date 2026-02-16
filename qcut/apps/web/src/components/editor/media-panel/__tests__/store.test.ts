@@ -17,9 +17,9 @@ describe("media-panel store", () => {
       lastTabPerGroup: {
         media: "media",
         "ai-create": "ai",
+        agents: "remotion",
         edit: "text",
         effects: "filters",
-        tools: "remotion",
       },
       aiActiveTab: "text",
     });
