@@ -182,7 +182,7 @@ export const tabGroups: {
   },
   effects: {
     icon: BlendIcon,
-    label: "Effects",
+    label: "Manual Edit",
     tabs: ["filters", "effects", "transitions"],
   },
 };
