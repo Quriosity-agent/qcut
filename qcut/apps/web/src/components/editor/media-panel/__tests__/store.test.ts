@@ -88,8 +88,8 @@ describe("media-panel store", () => {
       expect(getGroupForTab("effects")).toBe("effects");
       expect(getGroupForTab("transitions")).toBe("effects");
 
-      expect(getGroupForTab("remotion")).toBe("tools");
-      expect(getGroupForTab("pty")).toBe("tools");
+      expect(getGroupForTab("remotion")).toBe("agents");
+      expect(getGroupForTab("pty")).toBe("agents");
     });
   });
 
@@ -127,8 +127,8 @@ describe("media-panel store", () => {
       setActiveTab("pty");
       const state = useMediaPanelStore.getState();
       expect(state.activeTab).toBe("pty");
-      expect(state.activeGroup).toBe("tools");
-      expect(state.lastTabPerGroup.tools).toBe("pty");
+      expect(state.activeGroup).toBe("agents");
+      expect(state.lastTabPerGroup.agents).toBe("pty");
     });
 
     it("does not affect other groups in lastTabPerGroup", () => {

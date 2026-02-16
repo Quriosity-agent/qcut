@@ -139,7 +139,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 
 // --- Tab Groups ---
 
-export type TabGroup = "media" | "ai-create" | "edit" | "effects" | "tools";
+export type TabGroup = "media" | "ai-create" | "agents" | "edit" | "effects";
 
 export const tabGroups: {
   [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
@@ -161,6 +161,11 @@ export const tabGroups: {
       "segmentation",
     ],
   },
+  agents: {
+    icon: WrenchIcon,
+    label: "Agents",
+    tabs: ["remotion", "pty"],
+  },
   edit: {
     icon: ScissorsIcon,
     label: "Edit",
@@ -177,11 +182,6 @@ export const tabGroups: {
     icon: BlendIcon,
     label: "Effects",
     tabs: ["filters", "effects", "transitions"],
-  },
-  tools: {
-    icon: WrenchIcon,
-    label: "Tools",
-    tabs: ["remotion", "pty"],
   },
 };
 
@@ -216,9 +216,9 @@ interface MediaPanelStore {
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
+  agents: "remotion",
   edit: "text",
   effects: "filters",
-  tools: "remotion",
 };
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
