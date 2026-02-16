@@ -521,6 +521,14 @@ export interface ElectronAPI {
     removeListeners: () => void;
   };
 
+  // MCP app bridge (renderer preview iframe updates)
+  mcp?: {
+    onAppHtml: (
+      callback: (data: { html: string; toolName?: string }) => void
+    ) => void;
+    removeListeners: () => void;
+  };
+
   // Skills operations
   skills?: {
     list: (projectId: string) => Promise<Skill[]>;

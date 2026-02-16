@@ -55,6 +55,22 @@ export function createPtyAPI(): ElectronAPI["pty"] {
 }
 
 // ============================================================================
+// MCP App Bridge
+// ============================================================================
+
+export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
+  return {
+    onAppHtml: (callback) => {
+      ipcRenderer.removeAllListeners("mcp:app-html");
+      ipcRenderer.on("mcp:app-html", (_, payload) => callback(payload));
+    },
+    removeListeners: () => {
+      ipcRenderer.removeAllListeners("mcp:app-html");
+    },
+  };
+}
+
+// ============================================================================
 // Skills
 // ============================================================================
 

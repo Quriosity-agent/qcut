@@ -547,6 +547,24 @@ export interface ElectronAPI {
   };
 
   /**
+   * MCP app preview bridge
+   * Streams interactive HTML payloads from the main process to renderer.
+   */
+  mcp?: {
+    /**
+     * Listen for latest MCP app HTML payload.
+     */
+    onAppHtml: (
+      callback: (data: { html: string; toolName?: string }) => void
+    ) => void;
+
+    /**
+     * Remove MCP app listeners.
+     */
+    removeListeners: () => void;
+  };
+
+  /**
    * Skills operations
    * Manages AI skills stored per-project
    */

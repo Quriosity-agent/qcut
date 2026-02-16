@@ -10,7 +10,7 @@
  */
 
 import { createServer } from "node:http";
-import type { IncomingMessage, Server } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "./utils/http-router.js";
 import { claudeLog } from "./utils/logger.js";
@@ -60,6 +60,12 @@ function checkAuth(req: IncomingMessage): boolean {
   if (!token) return true;
   const authHeader = req.headers.authorization;
   return authHeader === `Bearer ${token}`;
+}
+
+function setCorsHeaders(res: ServerResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 export function startClaudeHTTPServer(
@@ -212,17 +218,6 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing settings in request body");
     }
     await updateProjectSettings(req.params.projectId, req.body);
-    // Also notify renderer if a window is available
-    try {
-      const win = getWindow();
-      win.webContents.send(
-        "claude:project:updated",
-        req.params.projectId,
-        req.body
-      );
-    } catch {
-      // No window — settings still saved to disk
-    }
     return { updated: true };
   });
 
@@ -257,9 +252,41 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
+  // MCP app preview forwarding
+  // ==========================================================================
+  router.post("/api/claude/mcp/app", async (req) => {
+    if (!req.body || typeof req.body.html !== "string" || !req.body.html.trim()) {
+      throw new HttpError(400, "Missing 'html' in request body");
+    }
+
+    const toolName = typeof req.body.toolName === "string" ? req.body.toolName : "unknown";
+    let forwarded = false;
+    try {
+      const win = getWindow();
+      win.webContents.send("mcp:app-html", {
+        html: req.body.html,
+        toolName,
+      });
+      forwarded = true;
+    } catch {
+      forwarded = false;
+    }
+
+    return { forwarded };
+  });
+
+  // ==========================================================================
   // Create and start the server
   // ==========================================================================
   server = createServer((req, res) => {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     // 30s request timeout
     req.setTimeout(30_000, () => {
       res.writeHead(408, { "Content-Type": "application/json" });

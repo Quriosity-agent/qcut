@@ -26,6 +26,7 @@ import type {
 } from "./preload-types.js";
 import {
   createPtyAPI,
+  createMcpAPI,
   createSkillsAPI,
   createAIPipelineAPI,
   createMediaImportAPI,
@@ -315,6 +316,7 @@ const electronAPI: ElectronAPI = {
 
   // Integration API groups (from preload-integrations.ts)
   pty: createPtyAPI(),
+  mcp: createMcpAPI(),
   skills: createSkillsAPI(),
   aiPipeline: createAIPipelineAPI(),
   mediaImport: createMediaImportAPI(),

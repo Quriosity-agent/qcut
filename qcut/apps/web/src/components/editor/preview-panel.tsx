@@ -9,6 +9,7 @@ import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { debugLog } from "@/lib/debug-config";
 import { useProjectStore } from "@/stores/project-store";
+import { useMcpAppStore } from "@/stores/mcp-app-store";
 import { TextElementDragState } from "@/types/editor";
 import { FullscreenPreview, PreviewToolbar } from "./preview-panel-components";
 import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
@@ -102,6 +103,10 @@ export function PreviewPanel() {
   const lastSeekEventTimeRef = useRef<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { activeProject } = useProjectStore();
+  const activeHtml = useMcpAppStore((state) => state.activeHtml);
+  const activeToolName = useMcpAppStore((state) => state.toolName);
+  const setMcpApp = useMcpAppStore((state) => state.setMcpApp);
+  const clearMcpApp = useMcpAppStore((state) => state.clearMcpApp);
   const previewDimensions = usePreviewSizing({
     containerRef,
     canvasSize,
@@ -138,6 +143,48 @@ export function PreviewPanel() {
     cacheResolution: 30,
     persist: true,
   });
+
+  useEffect(() => {
+    const mcpApi = window.electronAPI?.mcp;
+    if (!mcpApi?.onAppHtml) {
+      return;
+    }
+
+    const handleAppHtml = (payload: { html: string; toolName?: string }) => {
+      try {
+        if (!payload || typeof payload.html !== "string") {
+          return;
+        }
+
+        const html = payload.html.trim();
+        if (!html) {
+          return;
+        }
+
+        setMcpApp({
+          html,
+          toolName:
+            typeof payload.toolName === "string" ? payload.toolName : null,
+        });
+      } catch {
+        // Ignore malformed payloads from external tools.
+      }
+    };
+
+    try {
+      mcpApi.onAppHtml(handleAppHtml);
+    } catch {
+      return;
+    }
+
+    return () => {
+      try {
+        mcpApi.removeListeners?.();
+      } catch {
+        // Listener cleanup best-effort
+      }
+    };
+  }, [setMcpApp]);
 
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
@@ -593,6 +640,43 @@ export function PreviewPanel() {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             <span>Loading preview...</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeHtml) {
+    return (
+      <div
+        className="h-full w-full flex flex-col min-h-0 min-w-0 bg-panel rounded-sm"
+        data-testid="preview-panel"
+      >
+        <div className="flex items-center justify-between px-3 py-2 border-b">
+          <p className="text-sm font-medium text-foreground truncate">
+            {activeToolName ? `MCP App: ${activeToolName}` : "MCP App"}
+          </p>
+          <button
+            type="button"
+            className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
+            onClick={clearMcpApp}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                clearMcpApp();
+              }
+            }}
+            aria-label="Return to normal preview"
+          >
+            Return to Preview
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 p-3">
+          <iframe
+            title={activeToolName || "MCP app preview"}
+            srcDoc={activeHtml}
+            sandbox="allow-scripts allow-forms"
+            className="h-full w-full border rounded bg-background"
+          />
         </div>
       </div>
     );
