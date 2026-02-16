@@ -108,6 +108,7 @@ export type StickerOverlayActions = {
   // History
   undo: () => void;
   redo: () => void;
+  saveHistorySnapshot: () => void;
 
   // Persistence
   saveToProject: (projectId: string) => Promise<void>;
@@ -149,7 +150,7 @@ export const Z_INDEX = {
  */
 export const STICKER_DEFAULTS = {
   position: { x: 50, y: 50 },
-  size: { width: 20, height: 20 },
+  size: { width: 15, height: 15 },
   rotation: 0,
   opacity: 1,
   maintainAspectRatio: true,

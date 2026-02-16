@@ -270,3 +270,87 @@ The export path converts percentages to pixels correctly and is unaffected by th
 6. Resize cannot push sticker outside canvas bounds
 7. All existing sticker tests pass
 8. Export produces correct sticker position/size in output video
+
+---
+
+## Code Review
+
+**Reviewer**: Claude Opus 4.6
+**Date**: 2026-02-17
+**Scope**: All 4 subtasks — ResizeHandles, StickerElement, stickers-overlay-store, and supporting files
+
+---
+
+### Subtask 1: Fix Resize Delta Calculation — PASS
+
+**ResizeHandles.tsx:58-63** — Fixed correctly. `canvasRef` prop added to interface (line 19), `getBoundingClientRect()` used for delta calculation with `window.innerWidth/Height` as fallback. The fix is exactly what was planned.
+
+**StickerElement.tsx:182** — `canvasRef` passed through correctly from props.
+
+No issues found.
+
+---
+
+### Subtask 2: Scroll-Wheel Zoom — PASS with notes
+
+**StickerElement.tsx:69-90** — `handleWheel` implemented as planned. Multiplicative 5% scaling (`1.05`/`0.95`), min/max clamping at 5%/100%, `useCallback` with correct dependencies, `preventDefault` + `stopPropagation` to avoid page scroll.
+
+**Note 1 — Missing canvas boundary clamping in wheel zoom**: The wheel handler clamps to `[5, 100]` but does not apply the same center-based boundary clamping that `ResizeHandles` does (Subtask 4). A sticker at position (90%, 50%) can be scrolled to 100% width via wheel, causing it to overflow the canvas. Should apply:
+```typescript
+const maxWidth = Math.min(100, sticker.position.x * 2, (100 - sticker.position.x) * 2);
+const maxHeight = Math.min(100, sticker.position.y * 2, (100 - sticker.position.y) * 2);
+```
+
+**Severity**: Low — the store's `updateOverlaySticker` clamps position to `[0, 100]` but does not enforce the size-vs-position relationship, so overflow is visually possible.
+
+**Note 2 — No undo history for wheel zoom**: Each scroll tick calls `updateOverlaySticker` which does NOT push to `history.past` (only `addOverlaySticker` and `removeOverlaySticker` do). This means Ctrl+Z won't undo scroll-wheel resizes. This is consistent with handle-resize behavior (also no undo per drag), so it's a pre-existing design choice, not a regression.
+
+---
+
+### Subtask 3: Default Size & Edge Handles — PASS
+
+**stickers-overlay-store.ts:24** — Default size changed to `{ width: 15, height: 15 }`. Confirmed.
+
+**ResizeHandles.tsx:271-303** — Edge handles render unconditionally (no size guard). The old conditional `{sticker.size.width > 15 && ...}` has been removed. Confirmed.
+
+**Inconsistency noted**: `STICKER_DEFAULTS` in `sticker-overlay.ts:150-151` has `size: { width: 20, height: 20 }` while the store's `DEFAULTS` uses `{ width: 15, height: 15 }`. The store's `DEFAULTS` object is what's actually used for sticker creation, so the types file constant is dead code or used elsewhere. Not a bug, but could cause confusion if someone references `STICKER_DEFAULTS` expecting it to match actual behavior.
+
+---
+
+### Subtask 4: Clamp Resize to Canvas Bounds — PASS
+
+**ResizeHandles.tsx:134-139** — Boundary clamping implemented exactly as planned. Applied after the basic `[5, 100]` clamp, using center-based `newX * 2` / `(100 - newX) * 2` math. Correct.
+
+---
+
+### Cross-cutting Observations
+
+**1. Drag boundary clamping (useStickerDrag.ts:53-87)** — Well implemented. Uses `stickerWidthPct / 2` and `stickerHeightPct / 2` to keep sticker edges within canvas. This correctly accounts for center-based positioning. The drag and resize systems now both enforce canvas bounds.
+
+**2. Export pipeline (sticker-sources.ts:192-196)** — Uses `Math.min(canvasWidth, canvasHeight)` as `baseSize` for pixel conversion, which makes sticker sizing square-biased. A sticker at 50% width on a 1920x1080 canvas gets `pixelWidth = 0.5 * 1080 = 540px` rather than `0.5 * 1920 = 960px`. This is a pre-existing design choice (consistent sizing across aspect ratios) but means preview and export may not match exactly for non-square canvases. Not introduced by this PR.
+
+**3. StickerCanvas.tsx dependency arrays** — Lines 77-80 and 295-297 include `mediaItems.find`, `mediaItems.map`, `mediaItems.some`, `overlayStickers.values` as dependencies. These are prototype methods that never change between renders — they are no-ops in the dependency array. Not harmful but unnecessary noise. Pre-existing, not introduced by this PR.
+
+**4. ResizeHandles.tsx:143 dependency array** — `calculateNewSize` depends on `[sticker.position.x, sticker.position.y]` but also reads `canvasRef` via closure. Since `canvasRef` is a stable ref object, this is correct — the ref itself doesn't change, only `.current` does. No issue.
+
+**5. Event listener cleanup in ResizeHandles** — The `handleMouseMove` and `handleMouseUp` listeners are added inside `handleResizeStart` and properly cleaned up in `handleMouseUp`. This is correct and prevents listener leaks.
+
+---
+
+### Summary
+
+| Subtask | Status | Issues |
+|---------|--------|--------|
+| 1. Fix resize delta | PASS | None |
+| 2. Scroll-wheel zoom | PASS | Low: missing canvas bounds clamping on wheel zoom |
+| 3. Default size & edge handles | PASS | Minor: `STICKER_DEFAULTS` in types file is stale (20% vs 15%) |
+| 4. Canvas bounds clamping | PASS | None |
+
+**Overall: APPROVED** — All 5 bugs from the plan are fixed. The implementation matches the spec closely. One low-severity gap exists (wheel zoom doesn't enforce canvas bounds), and one minor inconsistency in exported constants. Neither blocks shipping.
+
+### Recommended Follow-ups
+
+1. Add canvas bounds clamping to `handleWheel` in `StickerElement.tsx` to match resize behavior
+2. Sync `STICKER_DEFAULTS` in `sticker-overlay.ts` with the store's actual default (15%)
+3. Consider adding undo snapshots for resize/zoom operations (currently only add/remove are undoable)
+4. Add the test files listed in the plan (`ResizeHandles.test.ts`, `StickerElement.test.ts`) — not yet created

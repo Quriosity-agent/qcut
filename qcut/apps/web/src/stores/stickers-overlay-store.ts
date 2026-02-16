@@ -440,6 +440,17 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
         });
       },
 
+      saveHistorySnapshot: () => {
+        set((state) => {
+          const currentState = Array.from(state.overlayStickers.values());
+          const newPast = [...state.history.past, currentState];
+          if (newPast.length > 50) newPast.shift();
+          return {
+            history: { past: newPast, future: [] },
+          };
+        });
+      },
+
       // Clean up stickers with missing media items
       cleanupInvalidStickers: (availableMediaIds: string[]) => {
         const state = get();

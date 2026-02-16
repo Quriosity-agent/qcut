@@ -159,18 +159,18 @@ Document the key mapping between QCut and `video-agent-skill`:
 
 **File**: `electron/__tests__/ai-pipeline-handler.test.ts`
 
-- Test `getAicpCommand()` resolves binary → submodule → system fallback
+- Test environment resolution for bundled binary and system/Python fallbacks
 - Test `spawn` is called with correct args for each command type
 - Test JSON output parsing from `--json --quiet` flags
 - Mock `BinaryManager` and `fs.existsSync`
 
 ### 7b. Model registry sync tests
 
-**File**: `apps/web/src/lib/ai-video/__tests__/model-sync.test.ts`
+**File**: `scripts/check-submodule.sh` (script behavior validation)
 
-- Test that `aicp list-models --json` output parses correctly
-- Test model category mapping (text-to-image, image-to-video, etc.)
-- Snapshot test for the TypeScript model list
+- Test success path when `packages/video-agent-skill/setup.py` exists
+- Test failure path when submodule is not initialized
+- Verify guidance output includes `git submodule update --init --recursive`
 
 ### 7c. Submodule health check
 

@@ -10,6 +10,7 @@ import {
   Hash,
   Loader2,
   Search,
+  Upload,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -286,6 +287,7 @@ export function StickersView() {
 
   const { addMediaItem } = useMediaStore();
   const { activeProject } = useProjectStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load collections on mount
   useEffect(() => {
@@ -436,6 +438,105 @@ export function StickersView() {
     [activeProject, addMediaItem, addRecentSticker]
   );
 
+  /** Handle user-uploaded sticker files (PNG, JPG, SVG, GIF, WebP) */
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      if (!activeProject) {
+        toast.error("No project selected");
+        return;
+      }
+
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) {
+          toast.error(`${file.name} is not an image file`);
+          continue;
+        }
+
+        try {
+          const fileUrl = createObjectURL(file, "stickers-user-upload");
+
+          // Get image dimensions
+          const dimensions = await new Promise<{
+            width: number;
+            height: number;
+          }>((resolve) => {
+            const img = new Image();
+            img.onload = () =>
+              resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            img.onerror = () => resolve({ width: 512, height: 512 });
+            img.src = fileUrl;
+          });
+
+          const mediaId = await addMediaItem(activeProject.id, {
+            name: file.name,
+            type: "image" as const,
+            file,
+            url: fileUrl,
+            thumbnailUrl: fileUrl,
+            width: dimensions.width,
+            height: dimensions.height,
+            duration: 0,
+          });
+
+          const mediaItem = useMediaStore
+            .getState()
+            .mediaItems.find((item) => item.id === mediaId);
+          if (!mediaItem) {
+            toast.error(`${file.name} saved but could not be loaded`);
+            continue;
+          }
+
+          const currentTime = usePlaybackStore.getState().currentTime;
+          const timelineStore = useTimelineStore.getState();
+          const wasAdded = timelineStore.addMediaAtTime(
+            mediaItem,
+            currentTime
+          );
+
+          if (!wasAdded) {
+            toast.error(`Could not add ${file.name} — overlaps existing element`);
+            continue;
+          }
+
+          // Set initial transforms for overlay positioning
+          const newEl = timelineStore.tracks
+            .flatMap((t) => t.elements)
+            .find(
+              (el): el is import("@/types/timeline").MediaElement =>
+                el.type === "media" &&
+                el.startTime === currentTime &&
+                (el as import("@/types/timeline").MediaElement).mediaId ===
+                  mediaId &&
+                el.width === undefined
+            );
+          if (newEl) {
+            timelineStore.updateElementTransform(
+              newEl.id,
+              {
+                position: { x: 0, y: 0 },
+                size: { width: 200, height: 200 },
+              },
+              { pushHistory: false }
+            );
+          }
+
+          toast.success(`Added ${file.name} as sticker`);
+        } catch (error) {
+          debugError("[StickersView] Error uploading sticker:", error);
+          toast.error(`Failed to add ${file.name}`);
+        }
+      }
+
+      // Reset input so the same file can be re-uploaded
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    [activeProject, addMediaItem]
+  );
+
   const renderSearchResults = () => {
     if (isSearching) {
       return (
@@ -524,25 +625,50 @@ export function StickersView() {
 
   return (
     <div className="flex h-full flex-col" data-testid="stickers-panel">
-      {/* Search Bar */}
+      {/* Search Bar + Upload */}
       <div className="border-b p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-          <Input
-            placeholder="Search stickers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10"
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+            <Input
+              placeholder="Search stickers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-accent rounded"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Upload your own sticker</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp"
+            multiple
+            className="hidden"
+            onChange={handleFileUpload}
           />
-          {searchQuery && (
-            <button
-              type="button"
-              className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-accent rounded"
-              onClick={() => setSearchQuery("")}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
         </div>
       </div>
 

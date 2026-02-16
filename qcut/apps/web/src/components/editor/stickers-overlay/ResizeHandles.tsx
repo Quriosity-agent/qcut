@@ -26,7 +26,8 @@ type ResizeHandle = "tl" | "tr" | "bl" | "br" | "t" | "r" | "b" | "l";
  */
 export const ResizeHandles = memo<ResizeHandlesProps>(
   ({ stickerId, isVisible, sticker, elementRef, canvasRef }) => {
-    const { updateOverlaySticker, setIsResizing } = useStickersOverlayStore();
+    const { updateOverlaySticker, setIsResizing, saveHistorySnapshot } =
+      useStickersOverlayStore();
     const resizeState = useRef({
       isResizing: false,
       handle: null as ResizeHandle | null,
@@ -169,6 +170,9 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         e.stopPropagation();
         e.preventDefault();
 
+        // Save snapshot before resize so Ctrl+Z can undo
+        saveHistorySnapshot();
+
         resizeState.current = {
           isResizing: true,
           handle,
@@ -231,6 +235,7 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         stickerId,
         sticker,
         setIsResizing,
+        saveHistorySnapshot,
         updateOverlaySticker,
         calculateNewSize,
         getCursorForHandle,

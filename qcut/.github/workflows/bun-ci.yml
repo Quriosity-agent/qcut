@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
@@ -53,3 +55,22 @@ jobs:
       - name: Run tests
         run: bun run test
         continue-on-error: true
+
+  aicp-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install AICP dev dependencies
+        run: pip install -e "packages/video-agent-skill[dev]"
+
+      - name: Run AICP tests
+        run: python -m pytest packages/video-agent-skill/tests/ -x --tb=short

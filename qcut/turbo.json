@@ -32,6 +32,10 @@
     "test": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "aicp:test": {
+      "inputs": ["packages/video-agent-skill/**"],
+      "cache": false
     }
   }
 }
