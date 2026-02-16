@@ -61,16 +61,16 @@ Generate images from text prompts using AI models.
 
 ### Features
 - **Text-to-image generation:** Create images from text descriptions
-- **Multiple AI models:** Support for various text-to-image models (Flux, SDXL, etc.)
+- **Multiple AI models:** 13 text-to-image models from Google, OpenAI, ByteDance, Black Forest Labs, Alibaba, fal.ai, and Tongyi-MAI
 - **Upscaling:** Enhance image resolution with AI upscaling
 - **Style presets:** Quick access to different art styles
 - **Generation history:** View and reuse previous generations
 - **Add to media:** Generated images automatically added to media library
 
 ### Supported Models
-- Flux Pro/Dev
-- Stable Diffusion XL
-- Various upscale models
+- Gemini 3 Pro, GPT Image 1.5, Nano Banana
+- SeedDream v3/v4/v4.5, FLUX Pro v1.1 Ultra, FLUX 2 Flex
+- Imagen4 Ultra, WAN v2.2, Qwen Image, Z-Image Turbo, Reve
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/text2image.tsx`
@@ -345,7 +345,7 @@ Word-level transcription and timeline editing.
 
 ### Features
 - **Drag & drop import:** Import JSON transcription files
-- **Media transcription:** Transcribe video/audio using ElevenLabs Scribe v2
+- **Media transcription:** Transcribe video/audio using ElevenLabs Scribe v2 or Gemini 2.5 Pro
 - **Word-level timestamps:** Click any word to seek to that position
 - **Word deletion:** Mark words for removal (strikethrough)
 - **Timing tooltips:** Hover to see word timing info

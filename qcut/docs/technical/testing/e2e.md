@@ -1,6 +1,6 @@
 # E2E Testing Infrastructure - QCut Video Editor
 
-**Last Updated:** 2025-12-16
+**Last Updated:** 2026-02-16
 
 ## How to Run E2E Tests
 
@@ -147,7 +147,14 @@ qcut/
 │       ├── text-overlay-testing.e2e.ts     # Text overlay tests
 │       ├── auto-save-export-file-management.e2e.ts  # Auto-save tests
 │       ├── file-operations-storage-management.e2e.ts # File operations
-│       └── debug-projectid.e2e.ts          # Debug/utility tests
+│       ├── audio-video-simultaneous-export.e2e.ts   # Audio/video export
+│       ├── project-folder-sync.e2e.ts               # Project folder sync
+│       ├── remotion-folder-import.e2e.ts             # Remotion folder import
+│       ├── remotion-panel-stability.e2e.ts           # Remotion panel stability
+│       ├── sticker-overlay-export.e2e.ts             # Sticker overlay export
+│       ├── terminal-paste.e2e.ts                     # Terminal paste
+│       ├── timeline-duration-limit.e2e.ts            # Timeline duration limits
+│       └── debug-projectid.e2e.ts                    # Debug/utility tests
 │
 └── docs/completed/                         # Test results (gitignored)
     ├── test-results/                       # HTML test reports
@@ -171,6 +178,13 @@ qcut/
 | `text-overlay-testing.e2e.ts` | Text overlay features | Overlays |
 | `auto-save-export-file-management.e2e.ts` | Auto-save functionality | Persistence |
 | `file-operations-storage-management.e2e.ts` | File operations | Storage |
+| `audio-video-simultaneous-export.e2e.ts` | Audio/video simultaneous export | Export |
+| `project-folder-sync.e2e.ts` | Project folder synchronization | Sync |
+| `remotion-folder-import.e2e.ts` | Remotion folder importing | Remotion |
+| `remotion-panel-stability.e2e.ts` | Remotion panel stability | Remotion |
+| `sticker-overlay-export.e2e.ts` | Sticker overlay export | Overlays |
+| `terminal-paste.e2e.ts` | Terminal paste functionality | Terminal |
+| `timeline-duration-limit.e2e.ts` | Timeline duration limits | Timeline |
 | `debug-projectid.e2e.ts` | Debug utilities | Debug |
 
 ## Core Helper Functions (`electron-helpers.ts`)

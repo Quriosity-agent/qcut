@@ -1,6 +1,6 @@
 # Effects Workflow Sequence Diagram
 
-**Last Updated:** 2025-12-16
+**Last Updated:** 2026-02-16
 
 ## Overview
 This diagram illustrates the complete workflow for effects processing in the QCut editor, from user interaction through to final export.
@@ -88,7 +88,7 @@ Main Zustand store for effect state management.
 **State:**
 ```typescript
 interface EffectsStore {
-  presets: EffectPreset[];                    // 34 preset effects
+  presets: EffectPreset[];                    // 35 preset effects
   activeEffects: Map<string, EffectInstance[]>; // elementId -> effects
   effectChains: Map<string, EffectChain[]>;   // elementId -> chains
   selectedCategory: EffectCategory | "all";
@@ -145,13 +145,13 @@ type EffectType =
 | `transition` | Fade in/out, dissolve, wipe |
 | `composite` | Overlay, multiply, screen, color dodge |
 
-### Preset Effects (34)
+### Preset Effects (35)
 **Implemented (9):**
 - Brighten, Darken, High Contrast
 - Vibrant, Muted, Sepia
 - Black & White, Soft Blur, Invert
 
-**Not Yet Implemented (25):**
+**Not Yet Implemented (26):**
 - Vintage Film, Dramatic, Warm, Cool
 - Chromatic, Radiance, Cinematic
 - Sharpen, Emboss, Edge Detection, Pixelate
@@ -211,7 +211,7 @@ Converts effect parameters to FFmpeg filter syntax.
 
 **Example Output:**
 ```
-eq=brightness=0.2:contrast=1.3,hue=s=1.4,gblur=sigma=2
+eq=brightness=0.2,eq=contrast=1.3,hue=s=1.4,boxblur=2:1
 ```
 
 **Supported Filters:**
@@ -221,7 +221,7 @@ eq=brightness=0.2:contrast=1.3,hue=s=1.4,gblur=sigma=2
 | contrast | `eq=contrast=X` |
 | saturation | `hue=s=X` |
 | hue | `hue=h=X` |
-| blur | `gblur=sigma=X` |
+| blur | `boxblur=X:1` |
 | grayscale | `hue=s=0` |
 | invert | `negate` |
 
@@ -286,7 +286,12 @@ const filterStyle = effectsToCssFilter(effects);
 
 Effects system is controlled by `EFFECTS_ENABLED` in `config/features.ts`:
 ```typescript
-export const EFFECTS_ENABLED = true;
+export const EFFECTS_ENABLED = isFeatureEnabled("VIDEO_EFFECTS");
+```
+
+The flag can be toggled dynamically in development:
+```typescript
+window.qcutFeatures.toggle('VIDEO_EFFECTS', false);
 ```
 
 When disabled:
