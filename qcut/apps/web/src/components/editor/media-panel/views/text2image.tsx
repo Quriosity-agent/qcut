@@ -43,6 +43,7 @@ import { ModelTypeSelector } from "./model-type-selector";
 import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
 import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
+import { getProviderLogo } from "./ai/constants/model-provider-logos";
 
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;
@@ -273,6 +274,7 @@ export function Text2ImageView() {
                                 key={modelId}
                                 id={modelId}
                                 name={model.name}
+                                logo={getProviderLogo(modelId)}
                                 checked={isSelected}
                                 onCheckedChange={(checked) => {
                                   if (generationMode === "single") {
@@ -599,7 +601,15 @@ export function Text2ImageView() {
                     data-testid={`upscale-model-option-${modelId}`}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{model.name}</p>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const logo = getProviderLogo(modelId);
+                          return logo ? (
+                            <img src={logo} alt="" className="w-4 h-4 shrink-0 rounded-sm" />
+                          ) : null;
+                        })()}
+                        <p className="text-sm font-medium">{model.name}</p>
+                      </div>
                       <Badge variant={isSelected ? "default" : "outline"}>
                         {model.estimatedCost}
                       </Badge>

@@ -312,6 +312,7 @@ export interface FloatingActionPanelModelOptionProps {
   price?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  logo?: string;
 }
 
 export function FloatingActionPanelModelOption({
@@ -323,6 +324,7 @@ export function FloatingActionPanelModelOption({
   price,
   checked = false,
   onCheckedChange,
+  logo,
 }: FloatingActionPanelModelOptionProps) {
   const handleToggle = React.useCallback(() => {
     onCheckedChange?.(!checked);
@@ -354,6 +356,9 @@ export function FloatingActionPanelModelOption({
         }}
         className="shrink-0"
       />
+      {logo && (
+        <img src={logo} alt="" className="w-4 h-4 shrink-0 rounded-sm" />
+      )}
       <label
         className={`text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 font-medium cursor-pointer flex-1 ${
           checked ? "text-[#05c7c7]" : "text-gray-900 dark:text-gray-100"

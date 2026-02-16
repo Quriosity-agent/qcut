@@ -27,6 +27,9 @@ const PROVIDER_MAP: Record<string, ProviderInfo> = {
   nano: { name: "Google", logo: "/model-logos/google.svg" },
   gpt: { name: "OpenAI", logo: "/model-logos/openai.svg" },
   sync: { name: "Sync Labs", logo: "/model-logos/openai.svg" },
+  crystal: { name: "fal.ai", logo: "/model-logos/fal.svg" },
+  seedvr: { name: "ByteDance", logo: "/model-logos/bytedance.svg" },
+  topaz: { name: "Topaz Labs", logo: "/model-logos/topaz.svg" },
 };
 
 // Pre-sorted keys by length (longest first) for prefix matching
