@@ -147,7 +147,7 @@ export const tabGroups: {
   media: {
     icon: FolderOpenIcon,
     label: "Media",
-    tabs: ["media", "project-folder", "sounds", "audio"],
+    tabs: ["media", "project-folder"],
   },
   "ai-create": {
     icon: SparklesIcon,
@@ -159,6 +159,8 @@ export const tabGroups: {
       "nano-edit",
       "camera-selector",
       "segmentation",
+      "sounds",
+      "audio",
     ],
   },
   agents: {
