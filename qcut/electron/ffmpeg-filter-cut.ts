@@ -36,7 +36,12 @@ function normalizeSegments({
   }
 }
 
-/** Build an FFmpeg filter_complex string that trims and concatenates keep segments. */
+/**
+ * Build an FFmpeg filter_complex string that trims and concatenates keep segments.
+ * @param keepSegments - Array of time ranges (in seconds) to keep.
+ * @param hasAudio - Whether the input has an audio stream (default true).
+ * @returns filterComplex string and output -map args for FFmpeg.
+ */
 export function buildFilterCutComplex({
   keepSegments,
   hasAudio = true,

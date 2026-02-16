@@ -272,6 +272,7 @@ export interface VideoProbeResult {
   height: number;
   pix_fmt: string;
   fps: string;
+  hasAudio: boolean;
 }
 
 /**

@@ -2,18 +2,22 @@ import { ipcMain } from "electron";
 import path from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
-// Logger: use electron-log if available, fallback to console
-let log: {
-  info: (...args: unknown[]) => void;
-  warn: (...args: unknown[]) => void;
-  error: (...args: unknown[]) => void;
-};
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  log = require("electron-log");
-} catch {
-  log = console;
+interface Logger {
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
 }
+
+const noop = (): void => {};
+let log: Logger = { info: noop, warn: noop, error: noop };
+
+import("electron-log")
+  .then((module) => {
+    log = module.default as Logger;
+  })
+  .catch(() => {
+    // Keep no-op logger when electron-log is unavailable
+  });
 
 type AIProvider = "gemini" | "anthropic" | "pattern";
 

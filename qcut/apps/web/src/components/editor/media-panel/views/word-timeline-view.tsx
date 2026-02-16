@@ -1032,6 +1032,12 @@ export function WordTimelineView() {
             variant="text"
             size="icon"
             onClick={handleClear}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleClear();
+              }
+            }}
             className="shrink-0 h-7 w-7"
             title="Clear"
           >

@@ -492,22 +492,6 @@ async function handleWordFilterCut({
       throw new Error("No keep segments provided for word filter cut.");
     }
 
-    if (keepSegments.length > 100) {
-      await handleWordFilterCutFallback({
-        ffmpegPath,
-        videoPath: options.videoInputPath,
-        outputFile,
-        keepSegments,
-        event,
-      });
-      resolve({
-        success: true,
-        outputFile,
-        method: "spawn",
-      });
-      return;
-    }
-
     const trimStart = options.trimStart ?? 0;
     const adjustedSegments =
       trimStart > 0
@@ -519,8 +503,26 @@ async function handleWordFilterCut({
             .filter((seg) => seg.end > seg.start)
         : keepSegments;
 
+    if (adjustedSegments.length > 100) {
+      await handleWordFilterCutFallback({
+        ffmpegPath,
+        videoPath: options.videoInputPath,
+        outputFile,
+        keepSegments: adjustedSegments,
+        event,
+      });
+      resolve({
+        success: true,
+        outputFile,
+        method: "spawn",
+      });
+      return;
+    }
+
+    const probe = await probeVideoFile(options.videoInputPath);
     const { filterComplex, outputMaps } = buildFilterCutComplex({
       keepSegments: adjustedSegments,
+      hasAudio: probe.hasAudio,
     });
 
     const args: string[] = ["-y"];

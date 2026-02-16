@@ -663,6 +663,10 @@ export async function probeVideoFile(
           return;
         }
 
+        const hasAudio = probeData.streams?.some(
+          (s: any) => s.codec_type === "audio"
+        );
+
         resolve({
           path: videoPath,
           codec: videoStream.codec_name,
@@ -670,6 +674,7 @@ export async function probeVideoFile(
           height: videoStream.height,
           pix_fmt: videoStream.pix_fmt,
           fps: videoStream.r_frame_rate,
+          hasAudio: !!hasAudio,
         });
       } catch (parseErr: any) {
         reject(
