@@ -1,0 +1,3 @@
+[submodule "qcut/packages/video-agent-skill"]
+	path = qcut/packages/video-agent-skill
+	url = https://github.com/donghaozhang/video-agent-skill.git
