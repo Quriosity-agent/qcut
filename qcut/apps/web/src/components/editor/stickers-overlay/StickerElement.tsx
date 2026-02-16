@@ -4,7 +4,7 @@
  * Individual draggable sticker element with selection and interaction support.
  */
 
-import React, { memo, useRef } from "react";
+import React, { memo, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug-config";
 import { useStickerDrag } from "./hooks/useStickerDrag";
@@ -28,7 +28,8 @@ export const StickerElement = memo<StickerElementProps>(
     const elementRef = useRef<HTMLDivElement>(null);
 
     // Store hooks
-    const { selectedStickerId, selectSticker } = useStickersOverlayStore();
+    const { selectedStickerId, selectSticker, updateOverlaySticker } =
+      useStickersOverlayStore();
     const isSelected = selectedStickerId === sticker.id;
 
     // Drag functionality
@@ -61,6 +62,32 @@ export const StickerElement = memo<StickerElementProps>(
       selectSticker(sticker.id);
       handleMouseDown(e);
     };
+
+    /**
+     * Handle scroll-wheel zoom for selected sticker
+     */
+    const handleWheel = useCallback(
+      (e: React.WheelEvent) => {
+        if (!isSelected) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const scaleDelta = e.deltaY < 0 ? 1.05 : 0.95;
+        const newWidth = Math.max(
+          5,
+          Math.min(100, sticker.size.width * scaleDelta)
+        );
+        const newHeight = Math.max(
+          5,
+          Math.min(100, sticker.size.height * scaleDelta)
+        );
+
+        updateOverlaySticker(sticker.id, {
+          size: { width: newWidth, height: newHeight },
+        });
+      },
+      [isSelected, sticker, updateOverlaySticker]
+    );
 
     /**
      * Render media content based on type
@@ -133,6 +160,7 @@ export const StickerElement = memo<StickerElementProps>(
         style={elementStyle}
         onClick={handleClick}
         onMouseDown={handleMouseDownWrapper}
+        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -151,6 +179,7 @@ export const StickerElement = memo<StickerElementProps>(
           isVisible={isSelected}
           sticker={sticker}
           elementRef={elementRef}
+          canvasRef={canvasRef}
         />
 
         {/* Control buttons for selected sticker */}

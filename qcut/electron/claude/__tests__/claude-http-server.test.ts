@@ -61,6 +61,8 @@ vi.mock("../claude-media-handler.js", () => ({
 
 vi.mock("../claude-timeline-handler.js", () => ({
   requestTimelineFromRenderer: vi.fn(),
+  requestSplitFromRenderer: vi.fn(),
+  requestSelectionFromRenderer: vi.fn(),
   timelineToMarkdown: vi.fn(() => "# Timeline"),
   markdownToTimeline: vi.fn(() => ({
     name: "Test",
@@ -162,6 +164,8 @@ import {
   stopClaudeHTTPServer,
 } from "../claude-http-server";
 import { BrowserWindow } from "electron";
+import * as timelineHandler from "../claude-timeline-handler.js";
+import { HttpError } from "../utils/http-router";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -248,6 +252,161 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 
 describe("Claude HTTP Server", () => {
+  it("POST /api/claude/timeline/:projectId/elements/:elementId/split returns split result", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.requestSplitFromRenderer).mockResolvedValueOnce({
+      secondElementId: "element_split_2",
+    });
+
+    const res = await fetch(
+      "/api/claude/timeline/proj_123/elements/element_abc/split",
+      {
+        method: "POST",
+        body: JSON.stringify({ splitTime: 3.5 }),
+      }
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.secondElementId).toBe("element_split_2");
+    expect(timelineHandler.requestSplitFromRenderer).toHaveBeenCalledWith(
+      mockWindow,
+      "element_abc",
+      3.5,
+      "split"
+    );
+  });
+
+  it("POST /api/claude/timeline/:projectId/elements/:elementId/split validates splitTime", async () => {
+    const res = await fetch(
+      "/api/claude/timeline/proj_123/elements/element_abc/split",
+      {
+        method: "POST",
+        body: JSON.stringify({ mode: "split" }),
+      }
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain("splitTime");
+  });
+
+  it("POST /api/claude/timeline/:projectId/elements/:elementId/split validates mode", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+    const res = await fetch(
+      "/api/claude/timeline/proj_123/elements/element_abc/split",
+      {
+        method: "POST",
+        body: JSON.stringify({ splitTime: 3.5, mode: "invalid_mode" }),
+      }
+    );
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain("Invalid mode");
+  });
+
+  it("POST /api/claude/timeline/:projectId/elements/:elementId/move dispatches move event", async () => {
+    const send = vi.fn();
+    const mockWindow = { webContents: { send } } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+    const res = await fetch(
+      "/api/claude/timeline/proj_123/elements/element_abc/move",
+      {
+        method: "POST",
+        body: JSON.stringify({ toTrackId: "track_2", newStartTime: 5 }),
+      }
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.moved).toBe(true);
+    expect(send).toHaveBeenCalledWith("claude:timeline:moveElement", {
+      elementId: "element_abc",
+      toTrackId: "track_2",
+      newStartTime: 5,
+    });
+  });
+
+  it("POST /api/claude/timeline/:projectId/selection dispatches selection update", async () => {
+    const send = vi.fn();
+    const mockWindow = { webContents: { send } } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    const elements = [{ trackId: "track_1", elementId: "element_abc" }];
+
+    const res = await fetch("/api/claude/timeline/proj_123/selection", {
+      method: "POST",
+      body: JSON.stringify({ elements }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.selected).toBe(1);
+    expect(send).toHaveBeenCalledWith("claude:timeline:selectElements", {
+      elements,
+    });
+  });
+
+  it("GET /api/claude/timeline/:projectId/selection returns renderer selection", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.requestSelectionFromRenderer).mockResolvedValueOnce(
+      [{ trackId: "track_1", elementId: "element_abc" }]
+    );
+
+    const res = await fetch("/api/claude/timeline/proj_123/selection");
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.elements).toEqual([
+      { trackId: "track_1", elementId: "element_abc" },
+    ]);
+    expect(timelineHandler.requestSelectionFromRenderer).toHaveBeenCalledWith(
+      mockWindow
+    );
+  });
+
+  it("GET /api/claude/timeline/:projectId/selection returns 504 on renderer timeout", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.requestSelectionFromRenderer).mockRejectedValueOnce(
+      new HttpError(504, "Renderer timed out")
+    );
+
+    const res = await fetch("/api/claude/timeline/proj_123/selection");
+
+    expect(res.status).toBe(504);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain("Renderer timed out");
+  });
+
+  it("DELETE /api/claude/timeline/:projectId/selection clears selection", async () => {
+    const send = vi.fn();
+    const mockWindow = { webContents: { send } } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+    const res = await fetch("/api/claude/timeline/proj_123/selection", {
+      method: "DELETE",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.cleared).toBe(true);
+    expect(send).toHaveBeenCalledWith("claude:timeline:clearSelection");
+  });
+
   it("GET /api/claude/health returns status ok", async () => {
     const res = await fetch("/api/claude/health");
 

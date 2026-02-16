@@ -21,7 +21,7 @@ import { Z_INDEX } from "@/types/sticker-overlay";
 // Import constants
 const DEFAULTS = {
   position: { x: 50, y: 50 },
-  size: { width: 8, height: 8 }, // Changed from 20, 20 to 8, 8 (much smaller default)
+  size: { width: 15, height: 15 },
   rotation: 0,
   opacity: 1,
   maintainAspectRatio: true,

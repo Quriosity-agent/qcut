@@ -131,6 +131,29 @@ export interface ExportRecommendation {
 }
 
 // ============================================================================
+// Timeline Operation Types (split, move, selection)
+// ============================================================================
+
+export interface ClaudeSplitRequest {
+  splitTime: number;
+  mode?: "split" | "keepLeft" | "keepRight";
+}
+
+export interface ClaudeSplitResponse {
+  secondElementId: string | null;
+}
+
+export interface ClaudeMoveRequest {
+  toTrackId: string;
+  newStartTime?: number;
+}
+
+export interface ClaudeSelectionItem {
+  trackId: string;
+  elementId: string;
+}
+
+// ============================================================================
 // Diagnostics Types
 // ============================================================================
 

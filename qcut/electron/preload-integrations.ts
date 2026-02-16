@@ -18,6 +18,9 @@ import type {
   MediaFile,
   ClaudeTimeline,
   ClaudeElement,
+  ClaudeSplitResponse,
+  ClaudeMoveRequest,
+  ClaudeSelectionItem,
   ProjectSettings,
   ProjectStats,
   ExportPreset,
@@ -210,6 +213,32 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           projectId,
           elementId
         ),
+      splitElement: (projectId, elementId, splitTime, mode) =>
+        ipcRenderer.invoke(
+          "claude:timeline:splitElement",
+          projectId,
+          elementId,
+          splitTime,
+          mode
+        ),
+      moveElement: (projectId, elementId, toTrackId, newStartTime) =>
+        ipcRenderer.invoke(
+          "claude:timeline:moveElement",
+          projectId,
+          elementId,
+          toTrackId,
+          newStartTime
+        ),
+      selectElements: (projectId, elements) =>
+        ipcRenderer.invoke(
+          "claude:timeline:selectElements",
+          projectId,
+          elements
+        ),
+      getSelection: (projectId) =>
+        ipcRenderer.invoke("claude:timeline:getSelection"),
+      clearSelection: (projectId) =>
+        ipcRenderer.invoke("claude:timeline:clearSelection"),
       onRequest: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:request");
         ipcRenderer.on("claude:timeline:request", () => callback());
@@ -238,6 +267,46 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           callback(id)
         );
       },
+      onSplitElement: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+        ipcRenderer.on("claude:timeline:splitElement", (_, data) =>
+          callback(data)
+        );
+      },
+      sendSplitResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:splitElement:response", {
+          requestId,
+          result,
+        });
+      },
+      onMoveElement: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+        ipcRenderer.on("claude:timeline:moveElement", (_, data) =>
+          callback(data)
+        );
+      },
+      onSelectElements: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+        ipcRenderer.on("claude:timeline:selectElements", (_, data) =>
+          callback(data)
+        );
+      },
+      onGetSelection: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+        ipcRenderer.on("claude:timeline:getSelection", (_, data) =>
+          callback(data)
+        );
+      },
+      sendSelectionResponse: (requestId, elements) => {
+        ipcRenderer.send("claude:timeline:getSelection:response", {
+          requestId,
+          elements,
+        });
+      },
+      onClearSelection: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
+        ipcRenderer.on("claude:timeline:clearSelection", () => callback());
+      },
       sendResponse: (timeline) => {
         ipcRenderer.send("claude:timeline:response", timeline);
       },
@@ -247,6 +316,11 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
         ipcRenderer.removeAllListeners("claude:timeline:addElement");
         ipcRenderer.removeAllListeners("claude:timeline:updateElement");
         ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
       },
     },
     project: {

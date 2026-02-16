@@ -2,7 +2,7 @@
 
 > Expose split/cut, select, and move clip operations through the Claude HTTP API
 
-**Status:** Planned
+**Status:** Implemented
 **Priority:** High
 **Estimated effort:** ~30 minutes (3 subtasks)
 
