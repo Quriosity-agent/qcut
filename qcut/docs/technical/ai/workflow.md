@@ -83,8 +83,15 @@ sequenceDiagram
 #### Kuaishou Kling
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
+| **Kling v3 Pro** | 1080p | 15s | $0.336 | Latest flagship with audio generation |
+| **Kling v3 Standard** | 1080p | 15s | $0.252 | Cost-effective v3 with audio |
 | **Kling v2.1 Master** | 1080p | 10s | $0.15 | Unparalleled motion fluidity |
 | **Kling v2.5 Turbo Pro** | 1080p | 10s | $0.18 | Enhanced turbo performance |
+
+#### Vidu
+| Model | Resolution | Max Duration | Price | Best For |
+|-------|------------|--------------|-------|----------|
+| **Vidu Q3 T2V** | 360p-1080p | 16s | $0.07-0.154/s | Flexible duration, seed support |
 
 #### Alibaba WAN
 | Model | Resolution | Max Duration | Price | Best For |
@@ -123,6 +130,8 @@ sequenceDiagram
 #### Kuaishou Kling
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
+| **Kling v3 Pro I2V** | 1080p | 12s | $0.336 | Latest flagship I2V with audio |
+| **Kling v3 Standard I2V** | 1080p | 12s | $0.252 | Cost-effective v3 I2V with audio |
 | **Kling v2.5 Turbo Pro I2V** | 1080p | 10s | $0.35 | Cinematic motion |
 
 #### MiniMax Hailuo
@@ -140,6 +149,7 @@ sequenceDiagram
 #### Vidu
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
+| **Vidu Q3 I2V** | 360p-1080p | 16s | $0.07-0.154/s | Flexible duration, audio generation |
 | **Vidu Q2 Turbo I2V** | 720p | 8s | $0.05/s | Motion control |
 
 ### Avatar Models
@@ -407,12 +417,17 @@ const TEXT_TO_VIDEO_ENDPOINTS = {
   "seedance_pro": "fal-ai/bytedance/seedance/v1/pro/text-to-video",
 
   // Kling
-  "kling_v2_1": "fal-ai/kling-video/v2.1/master",
+  "kling_v3_pro": "fal-ai/kling-video/v3/pro/text-to-video",
+  "kling_v3_standard": "fal-ai/kling-video/v3/standard/text-to-video",
+  // Note: "kling_v2_1" ("fal-ai/kling-video/v2.1/master") was removed - endpoint no longer exists in the codebase
   "kling_v2_5": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
 
   // WAN
+  "wan_26": "fal-ai/wan/v2.6/text-to-video",
   "wan_25": "fal-ai/wan-25-preview/text-to-video",
-  "wan_turbo": "fal-ai/wan/v2.2-a14b/text-to-video/turbo",
+
+  // Vidu
+  "vidu_q3": "fal-ai/vidu/q3/text-to-video",
 };
 ```
 
@@ -438,6 +453,8 @@ const IMAGE_TO_VIDEO_ENDPOINTS = {
   "seedance_pro_i2v": "fal-ai/bytedance/seedance/v1/pro/image-to-video",
 
   // Kling
+  "kling_v3_pro_i2v": "fal-ai/kling-video/v3/pro/image-to-video",
+  "kling_v3_standard_i2v": "fal-ai/kling-video/v3/standard/image-to-video",
   "kling_v2_5_i2v": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
 
   // Hailuo
@@ -449,6 +466,7 @@ const IMAGE_TO_VIDEO_ENDPOINTS = {
   "wan_25_i2v": "fal-ai/wan-25-preview/image-to-video",
 
   // Vidu
+  "vidu_q3_i2v": "fal-ai/vidu/q3/image-to-video",
   "vidu_q2_i2v": "fal-ai/vidu/q2/image-to-video/turbo",
 };
 ```
@@ -720,7 +738,7 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: 2025-12-16*
+*Last Updated: 2026-02-16*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
 

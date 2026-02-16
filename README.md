@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/donghaozhang/qcut)
+
 <table width="100%">
   <tr>
     <td align="left" width="120">

@@ -44,8 +44,8 @@ export function Footer() {
               <span className="font-bold text-lg">QCut</span>
             </div>
             <p className="text-sm md:text-left text-muted-foreground mb-5">
-              The open source video editor that gets the job done. Simple,
-              powerful, and works on any platform.
+              The agentic video creation platform. AI-powered editing,
+              generation, and automation on any platform.
             </p>
             <div className="flex justify-start gap-3">
               <a
@@ -75,14 +75,6 @@ export function Footer() {
               <ul className="space-y-2 text-sm">
                 <li>
                   <Link
-                    to="/roadmap"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Roadmap
-                  </Link>
-                </li>
-                <li>
-                  <Link
                     to="/privacy"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
@@ -105,16 +97,8 @@ export function Footer() {
               <h3 className="font-semibold text-foreground mb-4">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <Link
-                    to="/contributors"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Contributors
-                  </Link>
-                </li>
-                <li>
                   <a
-                    href="https://github.com/donghaozhang/qcut/blob/main/README.md"
+                    href="https://quriosity.com.au/"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     target="_blank"
                     rel="noopener noreferrer"

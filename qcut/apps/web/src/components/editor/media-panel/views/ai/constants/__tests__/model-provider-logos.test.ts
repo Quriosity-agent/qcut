@@ -10,7 +10,7 @@ describe("model-provider-logos", () => {
     it.each([
       ["kling_v3_pro_t2v", "/model-logos/kling.svg"],
       ["kling_v3_standard_i2v", "/model-logos/kling.svg"],
-      ["sora2_text_to_video", "/model-logos/sora.svg"],
+      ["sora2_text_to_video", "/model-logos/openai.svg"],
       ["veo31_fast_text_to_video", "/model-logos/google.svg"],
       ["wan_26_t2v", "/model-logos/wan.svg"],
       ["ltxv2_pro_t2v", "/model-logos/lightricks.svg"],

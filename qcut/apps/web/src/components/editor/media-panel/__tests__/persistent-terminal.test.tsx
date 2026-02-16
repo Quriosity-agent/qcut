@@ -100,14 +100,14 @@ describe("persistent PTY terminal in MediaPanel", () => {
   beforeEach(() => {
     cleanupElectron = setupElectronMock();
     useMediaPanelStore.setState({
-      activeGroup: "tools",
+      activeGroup: "agents",
       activeTab: "pty",
       lastTabPerGroup: {
         media: "media",
         "ai-create": "ai",
+        agents: "pty",
         edit: "text",
         effects: "filters",
-        tools: "pty",
       },
       aiActiveTab: "text",
     });

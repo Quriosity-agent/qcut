@@ -470,9 +470,9 @@ export function ExportDialog() {
                     htmlFor="standard"
                     className="text-sm cursor-pointer flex-1 min-w-0"
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span className="flex-shrink-0">📹</span>
-                      <span className="truncate">Standard MediaRecorder</span>
+                      <span>Standard</span>
                     </div>
                   </Label>
                 </div>
@@ -489,8 +489,8 @@ export function ExportDialog() {
                     >
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="flex-shrink-0">🚀</span>
-                        <span className="whitespace-nowrap">FFmpeg WASM</span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <span>FFmpeg WASM</span>
+                        <span className="text-xs text-muted-foreground">
                           (5x faster)
                         </span>
                       </div>
@@ -506,10 +506,8 @@ export function ExportDialog() {
                     >
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="flex-shrink-0">⚡</span>
-                        <span className="whitespace-nowrap">
-                          Native FFmpeg CLI
-                        </span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        <span>Native CLI</span>
+                        <span className="text-xs text-muted-foreground">
                           (10x faster)
                         </span>
                       </div>

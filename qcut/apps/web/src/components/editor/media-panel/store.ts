@@ -139,7 +139,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 
 // --- Tab Groups ---
 
-export type TabGroup = "media" | "ai-create" | "edit" | "effects" | "tools";
+export type TabGroup = "media" | "ai-create" | "agents" | "edit" | "effects";
 
 export const tabGroups: {
   [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
@@ -147,7 +147,7 @@ export const tabGroups: {
   media: {
     icon: FolderOpenIcon,
     label: "Media",
-    tabs: ["media", "project-folder", "sounds", "audio"],
+    tabs: ["media", "project-folder"],
   },
   "ai-create": {
     icon: SparklesIcon,
@@ -159,29 +159,24 @@ export const tabGroups: {
       "nano-edit",
       "camera-selector",
       "segmentation",
+      "sounds",
+      "audio",
     ],
+  },
+  agents: {
+    icon: WrenchIcon,
+    label: "Agents",
+    tabs: ["pty", "remotion"],
   },
   edit: {
     icon: ScissorsIcon,
     label: "Edit",
-    tabs: [
-      "text",
-      "captions",
-      "word-timeline",
-      "video-edit",
-      "draw",
-      "stickers",
-    ],
+    tabs: ["word-timeline", "video-edit", "draw", "captions"],
   },
   effects: {
     icon: BlendIcon,
-    label: "Effects",
-    tabs: ["filters", "effects", "transitions"],
-  },
-  tools: {
-    icon: WrenchIcon,
-    label: "Tools",
-    tabs: ["remotion", "pty"],
+    label: "Manual Edit",
+    tabs: ["text", "stickers", "effects", "filters", "transitions"],
   },
 };
 
@@ -216,9 +211,9 @@ interface MediaPanelStore {
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
+  agents: "pty",
   edit: "text",
   effects: "filters",
-  tools: "remotion",
 };
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({

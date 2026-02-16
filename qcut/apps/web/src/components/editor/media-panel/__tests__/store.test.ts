@@ -17,9 +17,9 @@ describe("media-panel store", () => {
       lastTabPerGroup: {
         media: "media",
         "ai-create": "ai",
+        agents: "remotion",
         edit: "text",
         effects: "filters",
-        tools: "remotion",
       },
       aiActiveTab: "text",
     });
@@ -67,29 +67,28 @@ describe("media-panel store", () => {
     it("returns correct group for each tab", () => {
       expect(getGroupForTab("media")).toBe("media");
       expect(getGroupForTab("project-folder")).toBe("media");
-      expect(getGroupForTab("sounds")).toBe("media");
-      expect(getGroupForTab("audio")).toBe("media");
-
       expect(getGroupForTab("ai")).toBe("ai-create");
       expect(getGroupForTab("text2image")).toBe("ai-create");
       expect(getGroupForTab("adjustment")).toBe("ai-create");
       expect(getGroupForTab("nano-edit")).toBe("ai-create");
       expect(getGroupForTab("camera-selector")).toBe("ai-create");
       expect(getGroupForTab("segmentation")).toBe("ai-create");
+      expect(getGroupForTab("sounds")).toBe("ai-create");
+      expect(getGroupForTab("audio")).toBe("ai-create");
 
-      expect(getGroupForTab("text")).toBe("edit");
       expect(getGroupForTab("captions")).toBe("edit");
       expect(getGroupForTab("word-timeline")).toBe("edit");
       expect(getGroupForTab("video-edit")).toBe("edit");
       expect(getGroupForTab("draw")).toBe("edit");
-      expect(getGroupForTab("stickers")).toBe("edit");
 
+      expect(getGroupForTab("text")).toBe("effects");
+      expect(getGroupForTab("stickers")).toBe("effects");
       expect(getGroupForTab("filters")).toBe("effects");
       expect(getGroupForTab("effects")).toBe("effects");
       expect(getGroupForTab("transitions")).toBe("effects");
 
-      expect(getGroupForTab("remotion")).toBe("tools");
-      expect(getGroupForTab("pty")).toBe("tools");
+      expect(getGroupForTab("remotion")).toBe("agents");
+      expect(getGroupForTab("pty")).toBe("agents");
     });
   });
 
@@ -127,8 +126,8 @@ describe("media-panel store", () => {
       setActiveTab("pty");
       const state = useMediaPanelStore.getState();
       expect(state.activeTab).toBe("pty");
-      expect(state.activeGroup).toBe("tools");
-      expect(state.lastTabPerGroup.tools).toBe("pty");
+      expect(state.activeGroup).toBe("agents");
+      expect(state.lastTabPerGroup.agents).toBe("pty");
     });
 
     it("does not affect other groups in lastTabPerGroup", () => {

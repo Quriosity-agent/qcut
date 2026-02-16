@@ -3,7 +3,7 @@ export const SITE_URL = "https://qcut.app";
 export const SITE_INFO = {
   title: "QCut",
   description:
-    "A simple but powerful video editor that gets the job done. In your browser.",
+    "The agentic video creation platform. AI-powered editing, generation, and automation.",
   url: SITE_URL,
   openGraphImage: "/open-graph/default.jpg",
   twitterImage: "/open-graph/default.jpg",

@@ -4,13 +4,53 @@ This document lists all the AI models supported for text-to-video generation in 
 
 ## Overview
 
-The Text-to-Video panel supports **15 different AI models** from various providers including OpenAI, ByteDance, Google, Alibaba, and Black Forest Labs.
+The Text-to-Video panel supports **18 different AI models** from various providers including OpenAI, ByteDance, Google, Minimax, Lightricks, fal.ai, and Vidu.
 
 ---
 
 ## Supported Models
 
-### 1. Kling v2.6 Pro T2V
+### Kling v3 Pro T2V
+- **Provider:** ByteDance
+- **Price:** $0.336
+- **Resolution:** 1080p
+- **Max Duration:** 15 seconds
+- **Description:** Top-tier text-to-video with cinematic visuals, fluid motion, and native audio generation with multi-shot support
+- **Features:**
+  - Cinematic quality visuals with fluid motion
+  - Native audio generation
+  - Multi-shot support
+  - Up to 15 seconds duration
+- **Supported Durations:** 5s, 10s, 15s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
+- **Parameters:**
+  - Duration: 5s, 10s, 15s (default: 5s)
+  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
+  - Generate Audio: true (default)
+
+---
+
+### Kling v3 Standard T2V
+- **Provider:** ByteDance
+- **Price:** $0.252
+- **Resolution:** 1080p
+- **Max Duration:** 15 seconds
+- **Description:** High-quality text-to-video with cinematic visuals and native audio generation, cost-effective option
+- **Features:**
+  - Cinematic quality visuals
+  - Native audio generation
+  - Cost-effective compared to Pro
+  - Up to 15 seconds duration
+- **Supported Durations:** 3s, 5s, 10s, 15s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
+- **Parameters:**
+  - Duration: 3s, 5s, 10s, 15s (default: 5s)
+  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
+  - Generate Audio: true (default)
+
+---
+
+### Kling v2.6 Pro T2V
 - **Provider:** ByteDance
 - **Price:** $0.70
 - **Resolution:** 1080p
@@ -32,7 +72,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 2. Sora 2 Text-to-Video Pro
+### Sora 2 Text-to-Video Pro
 - **Provider:** OpenAI
 - **Price:** $0.30-0.50
 - **Resolution:** 720p / 1080p
@@ -57,7 +97,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 3. Veo 3.1 Text-to-Video
+### Veo 3.1 Text-to-Video
 - **Provider:** Google
 - **Price:** $3.20
 - **Resolution:** 720p / 1080p
@@ -81,7 +121,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 4. WAN v2.6 T2V
+### WAN v2.6 T2V
 - **Provider:** fal.ai
 - **Price:** $0.75 (per-second pricing: $0.10-0.15/s)
 - **Resolution:** 720p / 1080p
@@ -111,7 +151,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 5. LTX Video 2.0 Fast T2V
+### LTX Video 2.0 Fast T2V
 - **Provider:** Lightricks
 - **Price:** $0.04-0.16
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -135,7 +175,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 6. LTX Video 2.0 Pro T2V
+### LTX Video 2.0 Pro T2V
 - **Provider:** Lightricks
 - **Price:** $0.06
 - **Resolution:** 1080p / 1440p / 2160p (4K)
@@ -159,7 +199,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 7. Hailuo 2.3 Pro T2V
+### Hailuo 2.3 Pro T2V
 - **Provider:** Minimax
 - **Price:** $0.49
 - **Resolution:** 1080p
@@ -182,7 +222,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 8. Veo 3.1 Fast Text-to-Video
+### Veo 3.1 Fast Text-to-Video
 - **Provider:** Google
 - **Price:** $1.20
 - **Resolution:** 720p / 1080p
@@ -206,7 +246,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 9. Seedance v1 Pro
+### Seedance v1 Pro
 - **Provider:** ByteDance
 - **Price:** $0.62
 - **Resolution:** 1080p
@@ -227,7 +267,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 10. Sora 2 Text-to-Video
+### Sora 2 Text-to-Video
 - **Provider:** OpenAI
 - **Price:** $0.10/s
 - **Resolution:** 720p
@@ -252,7 +292,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 11. Hailuo 2.3 Standard T2V
+### Hailuo 2.3 Standard T2V
 - **Provider:** Minimax
 - **Price:** $0.28-0.56
 - **Resolution:** 768p
@@ -274,7 +314,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 12. Kling v2.5 Turbo Pro
+### Kling v2.5 Turbo Pro
 - **Provider:** ByteDance
 - **Price:** $0.18
 - **Resolution:** 1080p
@@ -298,7 +338,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 13. Kling v2.5 Turbo Standard
+### Kling v2.5 Turbo Standard
 - **Provider:** ByteDance
 - **Price:** $0.10
 - **Resolution:** 720p
@@ -319,7 +359,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 14. Seedance v1 Lite
+### Seedance v1 Lite
 - **Provider:** ByteDance
 - **Price:** $0.18
 - **Resolution:** 720p
@@ -341,7 +381,7 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
-### 15. WAN v2.5 Preview
+### WAN v2.5 Preview
 - **Provider:** fal.ai
 - **Price:** $0.12
 - **Resolution:** 1080p
@@ -363,13 +403,36 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 
 ---
 
+### Vidu Q3 Text-to-Video
+- **Provider:** Vidu
+- **Price:** $0.07-0.154/s
+- **Resolution:** 360p / 540p / 720p / 1080p
+- **Max Duration:** 16 seconds
+- **Description:** High-quality text-to-video with audio generation and multi-resolution support
+- **Features:**
+  - Multi-resolution support (360p to 1080p)
+  - Up to 16-second duration
+  - Per-second pricing
+  - Seed control for reproducibility
+- **Supported Resolutions:** 360p, 540p, 720p, 1080p
+- **Supported Durations:** 1s-16s (all increments)
+- **Supported Aspect Ratios:** 16:9, 9:16, 4:3, 3:4, 1:1
+- **Parameters:**
+  - Duration: 1-16s (default: 5s)
+  - Resolution: 360p, 540p, 720p, 1080p (default: 720p)
+  - Aspect Ratio: Multiple options (default: 16:9)
+  - Seed: supported
+
+---
+
 ## Comparison Tables
 
 ### By Maximum Duration
 | Model | Max Duration |
 |-------|-------------|
 | LTX Video 2.0 Fast T2V | 20s |
-| WAN v2.6 T2V | 15s |
+| Vidu Q3 T2V | 16s |
+| Kling v3 (both), WAN v2.6 T2V | 15s |
 | Sora 2 (both versions) | 12s |
 | Most Others | 10s |
 | Veo 3.1 (both versions) | 8s |
@@ -403,10 +466,11 @@ The Text-to-Video panel supports **15 different AI models** from various provide
 ### By Provider
 - **Google (Veo):** 2 models (Fast, Pro)
 - **OpenAI (Sora 2):** 2 models (Standard, Pro)
-- **ByteDance:** 5 models (Kling v2.5/v2.6, Seedance)
+- **ByteDance:** 7 models (Kling v2.5/v2.6/v3, Seedance)
 - **Minimax (Hailuo 2.3):** 2 models (Standard, Pro)
 - **Lightricks (LTX Video 2.0):** 2 models (Fast, Pro)
 - **fal.ai (WAN):** 2 models (v2.5, v2.6)
+- **Vidu:** 1 model (Q3)
 
 ---
 
@@ -453,21 +517,24 @@ qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-mo
 ## Model Selection Priority Order
 
 Models are displayed in the UI in this order (premium to cost-effective):
-1. Kling v2.6 Pro T2V
-2. Sora 2 Text-to-Video Pro
-3. Veo 3.1 Text-to-Video
-4. WAN v2.6 T2V
-5. LTX Video 2.0 Fast T2V
-6. LTX Video 2.0 Pro T2V
-7. Hailuo 2.3 Pro T2V
-8. Veo 3.1 Fast Text-to-Video
-9. Seedance v1 Pro
-10. Sora 2 Text-to-Video
-11. Hailuo 2.3 Standard T2V
-12. Kling v2.5 Turbo Pro
-13. Kling v2.5 Turbo Standard
-14. Seedance v1 Lite
-15. WAN v2.5 Preview
+1. Kling v3 Pro T2V
+2. Kling v3 Standard T2V
+3. Kling v2.6 Pro T2V
+4. Sora 2 Text-to-Video Pro
+5. Veo 3.1 Text-to-Video
+6. WAN v2.6 T2V
+7. LTX Video 2.0 Fast T2V
+8. LTX Video 2.0 Pro T2V
+9. Hailuo 2.3 Pro T2V
+10. Veo 3.1 Fast Text-to-Video
+11. Seedance v1 Pro
+12. Sora 2 Text-to-Video
+13. Hailuo 2.3 Standard T2V
+14. Kling v2.5 Turbo Pro
+15. Kling v2.5 Turbo Standard
+16. Seedance v1 Lite
+17. Vidu Q3 Text-to-Video
+18. WAN v2.5 Preview
 
 ---
 

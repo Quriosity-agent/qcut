@@ -1,7 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AI_MODELS } from "../constants/ai-constants";
-import { getProviderLogo } from "../constants/model-provider-logos";
+import {
+  getProviderLogo,
+  getProviderName,
+} from "../constants/model-provider-logos";
 import type { AIActiveTab } from "../types/ai-types";
 
 interface AIModelSelectionGridProps {
@@ -58,7 +61,7 @@ export function AIModelSelectionGrid({
                 return logo ? (
                   <img
                     src={logo}
-                    alt=""
+                    alt={`${getProviderName(model.id) ?? model.name} logo`}
                     className="w-5 h-5 shrink-0 rounded-sm"
                   />
                 ) : null;
