@@ -40,6 +40,7 @@ import {
   getExportRecommendation,
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
+import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
 
@@ -249,6 +250,61 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'message' in error report");
     }
     return analyzeError(req.body);
+  });
+
+  // ==========================================================================
+  // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
+  // ==========================================================================
+  router.post("/api/claude/personaplex/generate", async (req) => {
+    if (!req.body?.audio_url) {
+      throw new HttpError(400, "Missing 'audio_url' in request body");
+    }
+
+    const keys = await getDecryptedApiKeys();
+    const apiKey = keys.falApiKey;
+    if (!apiKey) {
+      throw new HttpError(
+        400,
+        "FAL API key not configured. Go to Settings → API Keys to set it."
+      );
+    }
+
+    const requestBody: Record<string, unknown> = {
+      audio_url: req.body.audio_url,
+    };
+    if (req.body.prompt) requestBody.prompt = req.body.prompt;
+    if (req.body.voice) requestBody.voice = req.body.voice;
+    if (req.body.temperature_audio != null)
+      requestBody.temperature_audio = req.body.temperature_audio;
+    if (req.body.temperature_text != null)
+      requestBody.temperature_text = req.body.temperature_text;
+    if (req.body.top_k_audio != null)
+      requestBody.top_k_audio = req.body.top_k_audio;
+    if (req.body.top_k_text != null)
+      requestBody.top_k_text = req.body.top_k_text;
+    if (req.body.seed != null) requestBody.seed = req.body.seed;
+    if (req.body.output_format) requestBody.output_format = req.body.output_format;
+
+    claudeLog.info("HTTP", "PersonaPlex generate request");
+
+    const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!falResponse.ok) {
+      const errorText = await falResponse.text();
+      claudeLog.error("HTTP", `PersonaPlex API error: ${falResponse.status} ${errorText}`);
+      throw new HttpError(falResponse.status, `PersonaPlex API error: ${errorText}`);
+    }
+
+    const result = await falResponse.json();
+    claudeLog.info("HTTP", "PersonaPlex generate complete");
+    return result;
   });
 
   // ==========================================================================

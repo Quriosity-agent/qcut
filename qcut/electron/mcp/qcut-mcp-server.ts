@@ -29,6 +29,14 @@ const MCP_TOOL_DEFINITIONS = {
     summary:
       "Project metrics dashboard is ready. It auto-refreshes and supports manual refresh.",
   },
+  wanVideo: {
+    name: "wan-reference-to-video",
+    description:
+      "Open an interactive UI to generate video using Wan v2.6 reference-to-video with fal.ai.",
+    htmlFile: "wan-video.html",
+    summary:
+      "Wan v2.6 reference-to-video generator is ready. Enter a prompt, add reference media, and generate.",
+  },
 } as const;
 
 const DEFAULT_RUNTIME_CONFIG = {
@@ -256,6 +264,29 @@ function registerTools({ server }: { server: McpServer }): void {
           error instanceof Error
             ? error.message
             : "Failed to build preview-project-stats tool response";
+        return {
+          content: [{ type: "text", text: `Error: ${message}` }],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    MCP_TOOL_DEFINITIONS.wanVideo.name,
+    MCP_TOOL_DEFINITIONS.wanVideo.description,
+    {},
+    async () => {
+      try {
+        return await buildToolResponse({
+          toolName: MCP_TOOL_DEFINITIONS.wanVideo.name,
+          htmlFile: MCP_TOOL_DEFINITIONS.wanVideo.htmlFile,
+          summary: MCP_TOOL_DEFINITIONS.wanVideo.summary,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to build wan-reference-to-video tool response";
         return {
           content: [{ type: "text", text: `Error: ${message}` }],
         };

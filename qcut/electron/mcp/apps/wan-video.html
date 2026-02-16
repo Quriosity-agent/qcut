@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wan v2.6 Reference-to-Video</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0e1320;
+        --panel: #151f33;
+        --panel-2: #1d2940;
+        --text: #edf2ff;
+        --muted: #8ea0c2;
+        --accent: #3dd6be;
+        --accent-2: #1d8f9c;
+        --danger: #ff5e7d;
+        --border: #2c3a56;
+        --warn: #f0b429;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, #1b2742, var(--bg));
+        color: var(--text);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .panel {
+        max-width: 760px;
+        margin: 0 auto;
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+      .badge {
+        display: inline-block;
+        background: var(--accent-2);
+        color: var(--text);
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .sub {
+        margin: 8px 0 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .section {
+        margin-bottom: 18px;
+      }
+      .label {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      textarea,
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: inherit;
+        resize: vertical;
+      }
+      textarea:focus,
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      textarea {
+        min-height: 80px;
+      }
+      select {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      .ratio-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .ratio-btn {
+        width: 100%;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        padding: 10px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .ratio-btn.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+      .row {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .row-3 {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .ref-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .ref-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .ref-row input {
+        flex: 1;
+      }
+      .ref-row button {
+        background: transparent;
+        border: 1px solid var(--danger);
+        color: var(--danger);
+        border-radius: 6px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      button.add-ref {
+        background: transparent;
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        width: 100%;
+        margin-top: 4px;
+      }
+      button.add-ref:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .toggle-row:last-child {
+        border-bottom: none;
+      }
+      .toggle-label {
+        font-size: 14px;
+      }
+      .toggle-desc {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .toggle {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle .slider {
+        position: absolute;
+        inset: 0;
+        background: var(--border);
+        border-radius: 11px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .toggle .slider::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        background: var(--text);
+        border-radius: 50%;
+        transition: transform 0.2s;
+      }
+      .toggle input:checked + .slider {
+        background: var(--accent);
+      }
+      .toggle input:checked + .slider::after {
+        transform: translateX(18px);
+      }
+      .collapsible {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        user-select: none;
+      }
+      .collapsible::before {
+        content: "\25B6";
+        font-size: 10px;
+        transition: transform 0.2s;
+      }
+      .collapsible.open::before {
+        transform: rotate(90deg);
+      }
+      .collapsible-content {
+        display: none;
+      }
+      .collapsible-content.open {
+        display: block;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      button.generate {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #051018;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button.generate:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .status {
+        min-height: 20px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .status.error {
+        color: var(--danger);
+      }
+      .status.warn {
+        color: var(--warn);
+      }
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        margin-top: 8px;
+        overflow: hidden;
+        display: none;
+      }
+      .progress-bar.active {
+        display: block;
+      }
+      .progress-bar .fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.3s;
+      }
+      .progress-bar.indeterminate .fill {
+        width: 30%;
+        animation: indeterminate 1.5s infinite ease-in-out;
+      }
+      @keyframes indeterminate {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(400%);
+        }
+      }
+      .result {
+        display: none;
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .result.visible {
+        display: block;
+      }
+      .result video {
+        width: 100%;
+        display: block;
+      }
+      .result-info {
+        padding: 12px;
+        font-size: 13px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      button.import-btn {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #051018;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      @media (max-width: 640px) {
+        .ratio-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .row,
+        .row-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+    <script>
+      window.__QCUT_RUNTIME__ = __QCUT_RUNTIME_CONFIG__;
+    </script>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>Wan v2.6 Reference-to-Video <span class="badge">Flash</span></h1>
+      <p class="sub">Generate video from text prompts with reference images and videos.</p>
+
+      <section class="section">
+        <div class="label">API Key</div>
+        <input type="text" id="api-key" placeholder="fal.ai API key" />
+      </section>
+
+      <section class="section">
+        <div class="label">Prompt <span style="color:var(--muted);font-size:12px">(use Character1, Character2 to reference subjects)</span></div>
+        <textarea id="prompt" placeholder="A cinematic scene of Character1 walking through a neon-lit city at night..."></textarea>
+      </section>
+
+      <section class="section">
+        <div class="label">Reference Images <span style="color:var(--muted);font-size:12px">(up to 5)</span></div>
+        <div class="ref-list" id="image-list"></div>
+        <button type="button" class="add-ref" id="add-image">+ Add image URL</button>
+      </section>
+
+      <section class="section">
+        <div class="label">Reference Videos <span style="color:var(--muted);font-size:12px">(up to 3)</span></div>
+        <div class="ref-list" id="video-list"></div>
+        <button type="button" class="add-ref" id="add-video">+ Add video URL</button>
+      </section>
+
+      <section class="section">
+        <div class="label">Aspect Ratio</div>
+        <div class="ratio-grid" id="ratio-grid">
+          <button type="button" class="ratio-btn active" data-ratio="16:9">16:9</button>
+          <button type="button" class="ratio-btn" data-ratio="9:16">9:16</button>
+          <button type="button" class="ratio-btn" data-ratio="1:1">1:1</button>
+          <button type="button" class="ratio-btn" data-ratio="4:3">4:3</button>
+          <button type="button" class="ratio-btn" data-ratio="3:4">3:4</button>
+        </div>
+      </section>
+
+      <section class="section row">
+        <div>
+          <div class="label">Resolution</div>
+          <select id="resolution">
+            <option value="1080p">1080p</option>
+            <option value="720p">720p</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Duration</div>
+          <select id="duration">
+            <option value="5">5 seconds</option>
+            <option value="10">10 seconds</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="collapsible" id="advanced-toggle">Advanced Options</div>
+        <div class="collapsible-content" id="advanced-content">
+          <div class="section">
+            <div class="label">Negative Prompt</div>
+            <textarea id="negative-prompt" placeholder="Content to avoid..." style="min-height:50px"></textarea>
+          </div>
+          <div class="section">
+            <div class="label">Seed <span style="color:var(--muted);font-size:12px">(optional, for reproducibility)</span></div>
+            <input type="number" id="seed" placeholder="Leave empty for random" />
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Prompt Expansion</div>
+              <div class="toggle-desc">LLM-based prompt rewriting for better results</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="prompt-expansion" checked /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Multi-Shot Segmentation</div>
+              <div class="toggle-desc">Intelligent scene cuts for longer videos</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="multi-shots" checked /><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Generate Audio</div>
+              <div class="toggle-desc">Include audio in output (costs more)</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="enable-audio" checked /><span class="slider"></span></label>
+          </div>
+        </div>
+      </section>
+
+      <div class="progress-bar" id="progress"><div class="fill" id="progress-fill"></div></div>
+      <div class="status" id="status"></div>
+
+      <div class="result" id="result">
+        <video id="result-video" controls></video>
+        <div class="result-info">
+          <span id="result-meta"></span>
+          <button type="button" class="import-btn" id="import-btn">Import to QCut</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="generate" id="generate">Generate Video</button>
+      </div>
+    </main>
+
+    <script type="module">
+      const runtime = window.__QCUT_RUNTIME__ || {
+        apiBaseUrl: "http://127.0.0.1:8765",
+        projectId: "default",
+      };
+
+      const FAL_MODEL = "fal-ai/wan/v2.6/reference-to-video/flash";
+      const FAL_QUEUE = `https://queue.fal.run/${FAL_MODEL}`;
+
+      const elements = {
+        apiKey: document.getElementById("api-key"),
+        prompt: document.getElementById("prompt"),
+        imageList: document.getElementById("image-list"),
+        videoList: document.getElementById("video-list"),
+        addImage: document.getElementById("add-image"),
+        addVideo: document.getElementById("add-video"),
+        ratioGrid: document.getElementById("ratio-grid"),
+        resolution: document.getElementById("resolution"),
+        duration: document.getElementById("duration"),
+        negativePrompt: document.getElementById("negative-prompt"),
+        seed: document.getElementById("seed"),
+        promptExpansion: document.getElementById("prompt-expansion"),
+        multiShots: document.getElementById("multi-shots"),
+        enableAudio: document.getElementById("enable-audio"),
+        advancedToggle: document.getElementById("advanced-toggle"),
+        advancedContent: document.getElementById("advanced-content"),
+        progress: document.getElementById("progress"),
+        progressFill: document.getElementById("progress-fill"),
+        status: document.getElementById("status"),
+        result: document.getElementById("result"),
+        resultVideo: document.getElementById("result-video"),
+        resultMeta: document.getElementById("result-meta"),
+        importBtn: document.getElementById("import-btn"),
+        generateBtn: document.getElementById("generate"),
+      };
+
+      let selectedRatio = "16:9";
+      let generatedVideoUrl = null;
+
+      // --- Collapsible ---
+      elements.advancedToggle.addEventListener("click", () => {
+        elements.advancedToggle.classList.toggle("open");
+        elements.advancedContent.classList.toggle("open");
+      });
+
+      // --- Aspect Ratio ---
+      elements.ratioGrid.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-ratio]");
+        if (!button) return;
+        selectedRatio = button.getAttribute("data-ratio");
+        for (const btn of elements.ratioGrid.querySelectorAll("button[data-ratio]")) {
+          btn.classList.toggle("active", btn === button);
+        }
+      });
+
+      // --- Reference URL management ---
+      function createRefRow(container, placeholder, maxCount, addBtn) {
+        if (container.children.length >= maxCount) return;
+        const row = document.createElement("div");
+        row.className = "ref-row";
+        row.innerHTML = `<input type="text" placeholder="${placeholder}" /><button type="button">Remove</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+          row.remove();
+          addBtn.style.display = container.children.length >= maxCount ? "none" : "";
+        });
+        container.appendChild(row);
+        addBtn.style.display = container.children.length >= maxCount ? "none" : "";
+        row.querySelector("input").focus();
+      }
+
+      function getRefUrls(container) {
+        const urls = [];
+        for (const row of container.querySelectorAll(".ref-row input")) {
+          const val = row.value.trim();
+          if (val) urls.push(val);
+        }
+        return urls;
+      }
+
+      elements.addImage.addEventListener("click", () => {
+        createRefRow(elements.imageList, "https://example.com/image.jpg", 5, elements.addImage);
+      });
+      elements.addVideo.addEventListener("click", () => {
+        createRefRow(elements.videoList, "https://example.com/video.mp4", 3, elements.addVideo);
+      });
+
+      // --- Status helpers ---
+      function setStatus(message, type) {
+        elements.status.textContent = message;
+        elements.status.className = "status" + (type ? ` ${type}` : "");
+      }
+
+      function showProgress(mode) {
+        elements.progress.classList.add("active");
+        if (mode === "indeterminate") {
+          elements.progress.classList.add("indeterminate");
+          elements.progressFill.style.width = "";
+        } else {
+          elements.progress.classList.remove("indeterminate");
+          elements.progressFill.style.width = `${mode}%`;
+        }
+      }
+
+      function hideProgress() {
+        elements.progress.classList.remove("active", "indeterminate");
+        elements.progressFill.style.width = "0%";
+      }
+
+      // --- fal.ai queue API ---
+      async function falFetch(url, options = {}) {
+        const key = elements.apiKey.value.trim();
+        if (!key) throw new Error("API key is required");
+        return fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Key ${key}`,
+            ...(options.headers || {}),
+          },
+        });
+      }
+
+      async function submitJob(payload) {
+        const response = await falFetch(FAL_QUEUE, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Submit failed (${response.status})`);
+        }
+        return response.json();
+      }
+
+      async function pollStatus(requestId) {
+        const url = `${FAL_QUEUE}/requests/${requestId}/status`;
+        const response = await falFetch(url);
+        if (!response.ok) throw new Error(`Status check failed (${response.status})`);
+        return response.json();
+      }
+
+      async function getResult(requestId) {
+        const url = `${FAL_QUEUE}/requests/${requestId}`;
+        const response = await falFetch(url);
+        if (!response.ok) throw new Error(`Result fetch failed (${response.status})`);
+        return response.json();
+      }
+
+      async function waitForCompletion(requestId) {
+        const maxAttempts = 300;
+        for (let i = 0; i < maxAttempts; i++) {
+          const status = await pollStatus(requestId);
+
+          if (status.status === "COMPLETED") {
+            return await getResult(requestId);
+          }
+
+          if (status.status === "FAILED") {
+            throw new Error(status.error || "Generation failed");
+          }
+
+          const queuePos = status.queue_position;
+          if (status.status === "IN_QUEUE" && typeof queuePos === "number") {
+            setStatus(`In queue (position ${queuePos})...`, "warn");
+            showProgress("indeterminate");
+          } else if (status.status === "IN_PROGRESS") {
+            const logs = status.logs || [];
+            const lastLog = logs.length > 0 ? logs[logs.length - 1] : null;
+            const pct = lastLog?.progress ? Math.round(lastLog.progress * 100) : null;
+            if (pct !== null) {
+              setStatus(`Generating... ${pct}%`, "");
+              showProgress(pct);
+            } else {
+              setStatus("Generating...", "");
+              showProgress("indeterminate");
+            }
+          }
+
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+        throw new Error("Generation timed out");
+      }
+
+      // --- Generate ---
+      elements.generateBtn.addEventListener("click", async () => {
+        try {
+          const prompt = elements.prompt.value.trim();
+          if (!prompt) {
+            setStatus("Prompt is required.", "error");
+            return;
+          }
+          if (!elements.apiKey.value.trim()) {
+            setStatus("API key is required.", "error");
+            return;
+          }
+
+          elements.generateBtn.disabled = true;
+          setStatus("Submitting...", "");
+          showProgress("indeterminate");
+
+          const payload = {
+            prompt,
+            aspect_ratio: selectedRatio,
+            resolution: elements.resolution.value,
+            duration: elements.duration.value,
+            enable_prompt_expansion: elements.promptExpansion.checked,
+            multi_shots: elements.multiShots.checked,
+            enable_audio: elements.enableAudio.checked,
+          };
+
+          const imageUrls = getRefUrls(elements.imageList);
+          if (imageUrls.length > 0) payload.image_urls = imageUrls;
+
+          const videoUrls = getRefUrls(elements.videoList);
+          if (videoUrls.length > 0) payload.video_urls = videoUrls;
+
+          const negPrompt = elements.negativePrompt.value.trim();
+          if (negPrompt) payload.negative_prompt = negPrompt;
+
+          const seedVal = elements.seed.value.trim();
+          if (seedVal) payload.seed = parseInt(seedVal, 10);
+
+          const { request_id } = await submitJob(payload);
+          setStatus(`Job submitted (${request_id.slice(0, 8)}...)`, "");
+
+          const result = await waitForCompletion(request_id);
+          hideProgress();
+
+          if (!result.video?.url) {
+            throw new Error("No video in response");
+          }
+
+          generatedVideoUrl = result.video.url;
+          elements.resultVideo.src = generatedVideoUrl;
+          elements.resultMeta.textContent = [
+            result.video.width && result.video.height ? `${result.video.width}x${result.video.height}` : null,
+            result.video.duration ? `${result.video.duration.toFixed(1)}s` : null,
+            result.seed != null ? `seed: ${result.seed}` : null,
+          ].filter(Boolean).join(" | ");
+          elements.result.classList.add("visible");
+          setStatus("Generation complete.", "");
+        } catch (error) {
+          hideProgress();
+          setStatus(error instanceof Error ? error.message : "Generation failed", "error");
+        } finally {
+          elements.generateBtn.disabled = false;
+        }
+      });
+
+      // --- Import to QCut ---
+      elements.importBtn.addEventListener("click", async () => {
+        if (!generatedVideoUrl) return;
+        try {
+          setStatus("Importing to QCut...", "");
+          const response = await fetch(
+            `${runtime.apiBaseUrl}/api/claude/timeline/${runtime.projectId}/import`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: generatedVideoUrl, type: "video" }),
+            }
+          );
+          if (!response.ok) throw new Error(`Import failed (${response.status})`);
+          setStatus("Imported to timeline.", "");
+        } catch (error) {
+          setStatus(error instanceof Error ? error.message : "Import failed", "error");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -343,7 +343,8 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
           }
 
           confirmBtn.disabled = true;
-          setStatus("Sending to PersonaPlex...", "");
+          setStatus("Generating speech response...", "");
+          resultArea?.classList.remove("visible");
 
           const payload = {
             audio_url: audioUrl,
@@ -368,22 +369,36 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
           }
 
           const response = await fetch(
-            apiBaseUrl + "/api/claude/project/" + projectId + "/settings",
+            apiBaseUrl + "/api/claude/personaplex/generate",
             {
-              method: "PATCH",
+              method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ personaplex: payload }),
+              body: JSON.stringify(payload),
             }
           );
 
           if (!response.ok) {
-            throw new Error("Request failed with status " + response.status);
+            const errBody = await response.text();
+            throw new Error(errBody || "Request failed: " + response.status);
           }
 
-          await response.json();
-          setStatus("Configuration sent to QCut.", "success");
+          const result = await response.json();
+
+          if (resultArea) resultArea.classList.add("visible");
+          if (result.audio && result.audio.url && resultAudio) {
+            resultAudio.innerHTML = '<audio controls autoplay src="' + result.audio.url + '" style="width:100%;border-radius:10px;"></audio>';
+          }
+          if (result.text && resultText) {
+            resultText.textContent = result.text;
+          }
+          const meta = [];
+          if (result.duration != null) meta.push("Duration: " + Number(result.duration).toFixed(2) + "s");
+          if (result.seed != null) meta.push("Seed: " + result.seed);
+          if (resultMeta) resultMeta.textContent = meta.join(" | ");
+
+          setStatus("Response received!", "success");
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to submit";
+          const message = error instanceof Error ? error.message : "Failed to generate";
           setStatus(message, "error");
         } finally {
           if (confirmBtn) confirmBtn.disabled = false;
