@@ -34,13 +34,13 @@ import { usePreviewMedia } from "./preview-panel/use-preview-media";
 import { usePreviewSizing } from "./preview-panel/use-preview-sizing";
 import type { ActiveElement } from "./preview-panel/types";
 
-const MCP_MEDIA_TOOL_NAME = "configure-media";
+const MCP_MEDIA_TOOL_NAME = "genfocus-all-in-focus";
 const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QCut Media MCP App</title>
+    <title>GenFocus All-In-Focus</title>
     <style>
       :root { color-scheme: dark; }
       body {
@@ -61,255 +61,267 @@ const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
         background: rgba(9, 21, 38, 0.78);
         backdrop-filter: blur(8px);
       }
-      h1 { margin: 0 0 8px; font-size: 24px; }
-      p { margin: 0 0 14px; color: #9fb5d8; }
+      h1 { margin: 0 0 4px; font-size: 22px; }
+      .subtitle { margin: 0 0 6px; font-size: 13px; color: #52deff; font-family: monospace; }
+      p { margin: 0 0 14px; color: #9fb5d8; font-size: 14px; }
       .section { margin-top: 16px; }
       .label {
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         font-size: 13px;
         color: #9fb5d8;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
-      .ratio-grid {
-        display: grid;
-        gap: 8px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-      .ratio-btn {
-        border: 1px solid #2a4469;
-        border-radius: 10px;
-        padding: 8px 10px;
-        background: transparent;
-        color: #eef4ff;
-        cursor: pointer;
-      }
-      .ratio-btn.active {
-        border-color: #52deff;
-        box-shadow: 0 0 0 1px #52deff inset;
-      }
+      .label .req { color: #ff8ea1; font-size: 11px; }
+      .label .opt { color: #6b8ab5; font-size: 11px; }
       .row {
         display: grid;
-        gap: 10px;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .row-3 {
+        display: grid;
+        gap: 12px;
         grid-template-columns: 1fr 1fr 1fr;
       }
-      select, input[type="color"] {
+      input[type="text"], input[type="number"], select {
         width: 100%;
         border: 1px solid #2a4469;
         border-radius: 10px;
-        padding: 8px;
+        padding: 9px 10px;
         background: #13243a;
         color: #eef4ff;
+        font-size: 14px;
+        box-sizing: border-box;
       }
-      .summary {
-        margin-top: 12px;
-        font-size: 13px;
-        color: #9fb5d8;
+      input[type="text"]:focus, input[type="number"]:focus, select:focus {
+        outline: none;
+        border-color: #52deff;
       }
+      .range-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .range-wrap input[type="range"] {
+        flex: 1;
+        accent-color: #52deff;
+      }
+      .range-val {
+        min-width: 36px;
+        text-align: right;
+        font-size: 14px;
+        color: #eef4ff;
+        font-variant-numeric: tabular-nums;
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+      }
+      .toggle-label { font-size: 14px; }
+      .toggle {
+        position: relative;
+        width: 40px;
+        height: 22px;
+        cursor: pointer;
+      }
+      .toggle input { opacity: 0; width: 0; height: 0; }
+      .toggle .slider {
+        position: absolute;
+        inset: 0;
+        background: #2a4469;
+        border-radius: 11px;
+        transition: background 0.2s;
+      }
+      .toggle .slider::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        background: #eef4ff;
+        border-radius: 50%;
+        transition: transform 0.2s;
+      }
+      .toggle input:checked + .slider { background: #52deff; }
+      .toggle input:checked + .slider::after { transform: translateX(18px); }
       .status {
         margin-top: 12px;
         min-height: 19px;
         font-size: 13px;
         color: #9fb5d8;
       }
-      .status.error {
-        color: #ff8ea1;
-      }
+      .status.error { color: #ff8ea1; }
+      .status.success { color: #34c59b; }
       .apply-btn {
         border: 0;
         border-radius: 10px;
-        padding: 10px 14px;
+        padding: 10px 20px;
         font-weight: 700;
+        font-size: 14px;
         color: #031720;
         background: linear-gradient(135deg, #52deff, #34c59b);
         cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .apply-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       .actions {
         margin-top: 14px;
         display: flex;
         justify-content: flex-end;
       }
-      @media (max-width: 760px) {
-        .ratio-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .row {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 600px) {
+        .row, .row-3 { grid-template-columns: 1fr; }
       }
     </style>
   </head>
   <body>
     <main class="card">
-      <h1>Media Configuration</h1>
-      <p>Configure canvas style directly from the MCP app and apply to QCut.</p>
+      <h1>GenFocus All-In-Focus</h1>
+      <div class="subtitle">fal-ai/genfocus/all-in-focus</div>
+      <p>Deblur and restore an image to all-in-focus using AI.</p>
+
       <div class="section">
-        <div class="label">Aspect ratio</div>
-        <div class="ratio-grid" id="ratio-grid">
-          <button type="button" class="ratio-btn active" data-ratio="16:9">16:9</button>
-          <button type="button" class="ratio-btn" data-ratio="9:16">9:16</button>
-          <button type="button" class="ratio-btn" data-ratio="1:1">1:1</button>
-          <button type="button" class="ratio-btn" data-ratio="4:3">4:3</button>
-        </div>
+        <div class="label">Image URL <span class="req">required</span></div>
+        <input type="text" id="image-url" placeholder="https://example.com/photo.jpg" />
       </div>
+
       <div class="section row">
         <div>
-          <div class="label">Resolution</div>
-          <select id="resolution">
-            <option value="1920">1080p</option>
-            <option value="1280">720p</option>
-            <option value="1080">1080 square/portrait</option>
-          </select>
+          <div class="label">Inference Steps <span class="opt">8 &ndash; 50</span></div>
+          <div class="range-wrap">
+            <input type="range" id="steps" min="8" max="50" value="28" />
+            <span class="range-val" id="steps-val">28</span>
+          </div>
         </div>
         <div>
-          <div class="label">FPS</div>
-          <select id="fps">
-            <option value="24">24</option>
-            <option value="30" selected>30</option>
-            <option value="60">60</option>
-          </select>
-        </div>
-        <div>
-          <div class="label">Background</div>
-          <input id="background-color" type="color" value="#000000" />
+          <div class="label">Target Long Side <span class="opt">256 &ndash; 2048</span></div>
+          <div class="range-wrap">
+            <input type="range" id="target-size" min="256" max="2048" step="64" value="512" />
+            <span class="range-val" id="target-size-val">512</span>
+          </div>
         </div>
       </div>
-      <div class="summary" id="summary">Output: 1920 x 1080 @ 30fps</div>
+
+      <div class="section row-3">
+        <div>
+          <div class="label">Output Format <span class="opt">optional</span></div>
+          <select id="output-format">
+            <option value="jpeg" selected>JPEG</option>
+            <option value="png">PNG</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">Seed <span class="opt">optional</span></div>
+          <input type="number" id="seed" placeholder="Random" min="0" />
+        </div>
+        <div>
+          <div class="label">&nbsp;</div>
+          <div class="toggle-row">
+            <span class="toggle-label">Safety Checker</span>
+            <label class="toggle">
+              <input type="checkbox" id="safety-checker" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="status" id="status">Ready.</div>
       <div class="actions">
-        <button type="button" id="apply-btn" class="apply-btn">Apply to QCut</button>
+        <button type="button" id="confirm-btn" class="apply-btn">Confirm &amp; Run</button>
       </div>
     </main>
     <script>
-      const ratioGrid = document.getElementById("ratio-grid");
-      const resolutionSelect = document.getElementById("resolution");
-      const fpsSelect = document.getElementById("fps");
-      const backgroundColorInput = document.getElementById("background-color");
-      const summary = document.getElementById("summary");
-      const applyButton = document.getElementById("apply-btn");
+      const imageUrlInput = document.getElementById("image-url");
+      const stepsInput = document.getElementById("steps");
+      const stepsVal = document.getElementById("steps-val");
+      const targetSizeInput = document.getElementById("target-size");
+      const targetSizeVal = document.getElementById("target-size-val");
+      const outputFormatSelect = document.getElementById("output-format");
+      const seedInput = document.getElementById("seed");
+      const safetyChecker = document.getElementById("safety-checker");
+      const confirmBtn = document.getElementById("confirm-btn");
       const status = document.getElementById("status");
 
-      let selectedRatio = "16:9";
       const projectId = "__PROJECT_ID__";
       const apiBaseUrl = "http://127.0.0.1:8765";
 
-      function updateSummary() {
+      function setStatus(message, type) {
         try {
-          const resolution = Number.parseInt(resolutionSelect?.value || "1920", 10);
-          const fps = Number.parseInt(fpsSelect?.value || "30", 10);
-          const dims = getDimensions(selectedRatio, resolution);
-          if (summary) {
-            summary.textContent = "Output: " + dims.width + " x " + dims.height + " @ " + fps + "fps";
-          }
-        } catch (error) {
-          if (status) {
-            status.textContent = "Failed to update preview summary.";
-            status.classList.add("error");
-          }
-        }
-      }
-
-      function getDimensions(ratio, longSide) {
-        try {
-          const parts = ratio.split(":");
-          const widthRatio = Number.parseInt(parts[0] || "16", 10);
-          const heightRatio = Number.parseInt(parts[1] || "9", 10);
-          if (!Number.isFinite(widthRatio) || !Number.isFinite(heightRatio) || widthRatio <= 0 || heightRatio <= 0) {
-            return { width: 1920, height: 1080 };
-          }
-          if (widthRatio >= heightRatio) {
-            return {
-              width: longSide,
-              height: Math.max(1, Math.round((longSide * heightRatio) / widthRatio)),
-            };
-          }
-          return {
-            width: Math.max(1, Math.round((longSide * widthRatio) / heightRatio)),
-            height: longSide,
-          };
-        } catch (error) {
-          return { width: 1920, height: 1080 };
-        }
-      }
-
-      function setStatus(message, isError) {
-        try {
-          if (!status) {
-            return;
-          }
+          if (!status) return;
           status.textContent = message;
-          status.classList.toggle("error", Boolean(isError));
-        } catch (error) {}
+          status.className = "status";
+          if (type === "error") status.classList.add("error");
+          if (type === "success") status.classList.add("success");
+        } catch (e) {}
       }
 
-      ratioGrid?.addEventListener("click", (event) => {
+      stepsInput?.addEventListener("input", () => {
+        try { if (stepsVal) stepsVal.textContent = stepsInput.value; } catch (e) {}
+      });
+
+      targetSizeInput?.addEventListener("input", () => {
+        try { if (targetSizeVal) targetSizeVal.textContent = targetSizeInput.value; } catch (e) {}
+      });
+
+      confirmBtn?.addEventListener("click", async () => {
         try {
-          const button = event.target?.closest?.("button[data-ratio]");
-          if (!button) {
+          const imageUrl = (imageUrlInput?.value || "").trim();
+          if (!imageUrl) {
+            setStatus("Image URL is required.", "error");
+            imageUrlInput?.focus();
             return;
           }
-          const ratio = button.getAttribute("data-ratio");
-          if (!ratio) {
-            return;
-          }
-          selectedRatio = ratio;
-          const allButtons = ratioGrid.querySelectorAll("button[data-ratio]");
-          allButtons.forEach((candidate) => {
-            candidate.classList.toggle("active", candidate === button);
-          });
-          updateSummary();
-        } catch (error) {
-          setStatus("Failed to update ratio.", true);
-        }
-      });
 
-      resolutionSelect?.addEventListener("change", () => {
-        try {
-          updateSummary();
-        } catch (error) {
-          setStatus("Failed to update resolution.", true);
-        }
-      });
+          confirmBtn.disabled = true;
+          setStatus("Submitting to GenFocus...", "");
 
-      fpsSelect?.addEventListener("change", () => {
-        try {
-          updateSummary();
-        } catch (error) {
-          setStatus("Failed to update fps.", true);
-        }
-      });
-
-      applyButton?.addEventListener("click", async () => {
-        try {
-          setStatus("Applying settings...", false);
-          const resolution = Number.parseInt(resolutionSelect?.value || "1920", 10);
-          const fps = Number.parseInt(fpsSelect?.value || "30", 10);
-          const dims = getDimensions(selectedRatio, resolution);
           const payload = {
-            width: dims.width,
-            height: dims.height,
-            fps,
-            aspectRatio: selectedRatio,
-            backgroundColor: backgroundColorInput?.value || "#000000",
+            image_url: imageUrl,
+            num_inference_steps: Number.parseInt(stepsInput?.value || "28", 10),
+            target_long_side: Number.parseInt(targetSizeInput?.value || "512", 10),
+            output_format: outputFormatSelect?.value || "jpeg",
+            enable_safety_checker: safetyChecker?.checked ?? true,
           };
 
-          const response = await fetch(apiBaseUrl + "/api/claude/project/" + projectId + "/settings", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          const seedVal = (seedInput?.value || "").trim();
+          if (seedVal !== "") {
+            const seedNum = Number.parseInt(seedVal, 10);
+            if (Number.isFinite(seedNum) && seedNum >= 0) {
+              payload.seed = seedNum;
+            }
+          }
+
+          const response = await fetch(
+            apiBaseUrl + "/api/claude/project/" + projectId + "/settings",
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ genfocus: payload }),
+            }
+          );
 
           if (!response.ok) {
             throw new Error("Request failed with status " + response.status);
           }
 
           await response.json();
-          setStatus("Settings applied to project.", false);
+          setStatus("Configuration confirmed and sent to QCut.", "success");
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to apply settings";
-          setStatus(message, true);
+          const message = error instanceof Error ? error.message : "Failed to submit";
+          setStatus(message, "error");
+        } finally {
+          if (confirmBtn) confirmBtn.disabled = false;
         }
       });
-
-      updateSummary();
     </script>
   </body>
 </html>`;
@@ -392,11 +404,20 @@ export function PreviewPanel() {
   const lastSeekEventTimeRef = useRef<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { activeProject } = useProjectStore();
-  const activeHtml = useMcpAppStore((state) => state.activeHtml);
-  const activeToolName = useMcpAppStore((state) => state.toolName);
+  const externalHtml = useMcpAppStore((state) => state.activeHtml);
+  const externalToolName = useMcpAppStore((state) => state.toolName);
+  const localMcpActive = useMcpAppStore((state) => state.localMcpActive);
   const setMcpApp = useMcpAppStore((state) => state.setMcpApp);
   const clearMcpApp = useMcpAppStore((state) => state.clearMcpApp);
-  const isMcpMediaAppActive = activeToolName === MCP_MEDIA_TOOL_NAME;
+  const setLocalMcpActive = useMcpAppStore((state) => state.setLocalMcpActive);
+
+  // Local MCP: derive HTML fresh from template every render (auto-reload on HMR)
+  // External MCP: use stored HTML from IPC
+  const activeHtml = localMcpActive
+    ? buildMcpMediaAppHtml({ projectId: activeProject?.id ?? null })
+    : externalHtml;
+  const activeToolName = localMcpActive ? MCP_MEDIA_TOOL_NAME : externalToolName;
+  const isMcpMediaAppActive = localMcpActive;
   const previewDimensions = usePreviewSizing({
     containerRef,
     canvasSize,
@@ -602,18 +623,16 @@ export function PreviewPanel() {
 
   const toggleMcpMediaApp = useCallback(() => {
     try {
-      if (isMcpMediaAppActive) {
-        clearMcpApp();
+      if (localMcpActive) {
+        setLocalMcpActive(false);
         return;
       }
-      setMcpApp({
-        html: buildMcpMediaAppHtml({ projectId: activeProject?.id ?? null }),
-        toolName: MCP_MEDIA_TOOL_NAME,
-      });
+      // Clear any external MCP app and activate local MCP
+      setLocalMcpActive(true);
     } catch {
       // Ignore local MCP toggle errors to avoid blocking normal preview.
     }
-  }, [activeProject?.id, clearMcpApp, isMcpMediaAppActive, setMcpApp]);
+  }, [localMcpActive, setLocalMcpActive]);
 
   const handleToggleMcpKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>) => {
