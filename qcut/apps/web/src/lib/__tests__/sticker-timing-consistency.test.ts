@@ -198,7 +198,10 @@ describe("Sticker Timing Consistency", () => {
       const stickers = [createStickerData()];
       const mediaItems = [createMediaItem()];
       // Timeline provides timing starting at 10
-      mockTimingMap.set("sticker-1", { startTime: 10, endTime: TOTAL_DURATION });
+      mockTimingMap.set("sticker-1", {
+        startTime: 10,
+        endTime: TOTAL_DURATION,
+      });
 
       const result = await extractStickerSources(
         mediaItems,

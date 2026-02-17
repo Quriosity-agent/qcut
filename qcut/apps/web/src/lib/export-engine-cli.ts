@@ -715,9 +715,7 @@ export class CLIExportEngine extends ExportEngine {
     let stickerSources: StickerSourceForFilter[] = [];
 
     try {
-      console.log(
-        "🎨 [STICKER EXPORT] Checking for sticker overlays..."
-      );
+      console.log("🎨 [STICKER EXPORT] Checking for sticker overlays...");
       // Extract sticker sources with local file paths (always check for stickers)
       stickerSources = await this.extractStickerSourcesWrapper();
 
@@ -738,14 +736,10 @@ export class CLIExportEngine extends ExportEngine {
         stickerFilterChain =
           this.buildStickerOverlayFiltersWrapper(stickerSources);
 
-        console.log(
-          "🎨 [STICKER EXPORT] Sticker filter chain ready"
-        );
+        console.log("🎨 [STICKER EXPORT] Sticker filter chain ready");
         debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
       } else {
-        console.log(
-          "🎨 [STICKER EXPORT] No stickers found, skipping overlay"
-        );
+        console.log("🎨 [STICKER EXPORT] No stickers found, skipping overlay");
       }
     } catch (error) {
       console.warn(

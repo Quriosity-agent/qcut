@@ -199,7 +199,8 @@ describe("Sticker Export E2E", () => {
       // SVG blobs should be rasterized to PNG before saving
       // In jsdom, Canvas API is not available, so the rasterization will fail.
       // But we verify the SVG is detected and the attempt is made.
-      const svgContent = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+      const svgContent =
+        '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
       const mockBlob = {
         arrayBuffer: vi
           .fn()
@@ -398,7 +399,7 @@ describe("Sticker Export E2E", () => {
 
       // Bottom-right: center=(1728, 972)
       expect(result[2].x).toBe(
-        Math.round((90 / 100) * 1920 - (10 / 100) * baseSize / 2)
+        Math.round((90 / 100) * 1920 - ((10 / 100) * baseSize) / 2)
       );
     });
 
@@ -438,9 +439,7 @@ describe("Sticker Export E2E", () => {
 
   describe("maintainAspectRatio passthrough", () => {
     it("should pass maintainAspectRatio=true to export source", async () => {
-      const stickers = [
-        createStickerData({ maintainAspectRatio: true }),
-      ];
+      const stickers = [createStickerData({ maintainAspectRatio: true })];
       const mediaItems = [createMediaItem()];
 
       const result = await extractStickerSources(
@@ -484,9 +483,7 @@ describe("Sticker Export E2E", () => {
 
   describe("sticker properties passthrough", () => {
     it("should pass opacity and rotation to export source", async () => {
-      const stickers = [
-        createStickerData({ opacity: 0.5, rotation: 45 }),
-      ];
+      const stickers = [createStickerData({ opacity: 0.5, rotation: 45 })];
       const mediaItems = [createMediaItem()];
 
       const result = await extractStickerSources(

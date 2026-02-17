@@ -723,9 +723,7 @@ async function handleWordFilterCut({
           event,
           ffmpegPath,
         });
-        console.log(
-          "🎨 [WORD FILTER CUT] Sticker overlay pass complete"
-        );
+        console.log("🎨 [WORD FILTER CUT] Sticker overlay pass complete");
 
         // Clean up intermediate file
         try {

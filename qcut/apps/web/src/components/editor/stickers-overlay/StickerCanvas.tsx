@@ -139,10 +139,16 @@ export const StickerCanvas: React.FC<{
         // Calculate drop position as percentage
         const rect = canvasRef.current?.getBoundingClientRect();
         const x = rect
-          ? Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100)
+          ? Math.min(
+              Math.max(((e.clientX - rect.left) / rect.width) * 100, 0),
+              100
+            )
           : 50;
         const y = rect
-          ? Math.min(Math.max(((e.clientY - rect.top) / rect.height) * 100, 0), 100)
+          ? Math.min(
+              Math.max(((e.clientY - rect.top) / rect.height) * 100, 0),
+              100
+            )
           : 50;
 
         // Create overlay sticker (position/size only — no timing)

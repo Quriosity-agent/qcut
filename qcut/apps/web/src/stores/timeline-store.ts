@@ -483,8 +483,12 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         import("@/stores/stickers-overlay-store").then(
           ({ useStickersOverlayStore }) => {
             // Guard: only remove if sticker still exists (prevents infinite loop)
-            if (useStickersOverlayStore.getState().overlayStickers.has(stickerId)) {
-              useStickersOverlayStore.getState().removeOverlaySticker(stickerId);
+            if (
+              useStickersOverlayStore.getState().overlayStickers.has(stickerId)
+            ) {
+              useStickersOverlayStore
+                .getState()
+                .removeOverlaySticker(stickerId);
             }
           }
         );
@@ -502,9 +506,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
               t.id === trackId
                 ? {
                     ...t,
-                    elements: t.elements.filter(
-                      (el) => el.id !== elementId
-                    ),
+                    elements: t.elements.filter((el) => el.id !== elementId),
                   }
                 : t
             )

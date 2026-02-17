@@ -150,8 +150,7 @@ export function useDragHandlers({
                     .getState()
                     .overlayStickers.get(stickerId);
                   if (sticker) {
-                    const currentTime =
-                      usePlaybackStore.getState().currentTime;
+                    const currentTime = usePlaybackStore.getState().currentTime;
                     await timelineStickerIntegration.addStickerToTimeline(
                       sticker,
                       currentTime,

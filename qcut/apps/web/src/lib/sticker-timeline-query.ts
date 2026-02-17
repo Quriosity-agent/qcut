@@ -57,8 +57,7 @@ export function getStickerTiming(stickerId: string): StickerTiming | null {
       if (stickerEl.stickerId === stickerId) {
         return {
           startTime: stickerEl.startTime + stickerEl.trimStart,
-          endTime:
-            stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd,
+          endTime: stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd,
         };
       }
     }

@@ -91,7 +91,10 @@ function createTestSticker(
   );
 }
 
-function runFFmpeg(ffmpegPath: string, args: string[]): { success: boolean; stderr: string } {
+function runFFmpeg(
+  ffmpegPath: string,
+  args: string[]
+): { success: boolean; stderr: string } {
   const result = spawnSync(ffmpegPath, args, {
     encoding: "utf-8",
     timeout: 60_000,
