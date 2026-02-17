@@ -36,13 +36,19 @@ describe("buildCameraPrompt", () => {
   describe("camera body type flavor", () => {
     it("should include digital flavor for DIGITAL cameras", () => {
       const digitalIdx = CAMERAS.findIndex((c) => c.type === "DIGITAL");
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, cameraIndex: digitalIdx });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        cameraIndex: digitalIdx,
+      });
       expect(prompt).toContain("digital cinema look");
     });
 
     it("should include film flavor for FILM cameras", () => {
       const filmIdx = CAMERAS.findIndex((c) => c.type === "FILM");
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, cameraIndex: filmIdx });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        cameraIndex: filmIdx,
+      });
       expect(prompt).toContain("organic film grain");
     });
   });
@@ -96,19 +102,28 @@ describe("buildCameraPrompt", () => {
   describe("aperture descriptions", () => {
     it("should describe f/1.4 as shallow depth of field", () => {
       const idx = APERTURE_OPTIONS.findIndex((a) => a.label === "f/1.4");
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, apertureIndex: idx });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        apertureIndex: idx,
+      });
       expect(prompt).toContain("shallow depth of field");
     });
 
     it("should describe f/4 as moderate depth of field", () => {
       const idx = APERTURE_OPTIONS.findIndex((a) => a.label === "f/4");
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, apertureIndex: idx });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        apertureIndex: idx,
+      });
       expect(prompt).toContain("moderate depth of field");
     });
 
     it("should describe f/11 as deep focus", () => {
       const idx = APERTURE_OPTIONS.findIndex((a) => a.label === "f/11");
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, apertureIndex: idx });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        apertureIndex: idx,
+      });
       expect(prompt).toContain("deep focus");
     });
   });
@@ -119,7 +134,9 @@ describe("buildCameraPrompt", () => {
         ...DEFAULT_OPTIONS,
         subject: "a woman walking through rain",
       });
-      expect(prompt).toMatch(/^a woman walking through rain, Cinematic shot on/);
+      expect(prompt).toMatch(
+        /^a woman walking through rain, Cinematic shot on/
+      );
     });
 
     it("should trim whitespace from subject", () => {
@@ -131,7 +148,10 @@ describe("buildCameraPrompt", () => {
     });
 
     it("should omit subject when undefined", () => {
-      const prompt = buildCameraPrompt({ ...DEFAULT_OPTIONS, subject: undefined });
+      const prompt = buildCameraPrompt({
+        ...DEFAULT_OPTIONS,
+        subject: undefined,
+      });
       expect(prompt).toMatch(/^Cinematic shot on/);
     });
 

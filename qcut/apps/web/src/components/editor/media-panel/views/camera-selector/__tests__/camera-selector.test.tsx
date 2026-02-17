@@ -45,7 +45,8 @@ describe("CameraSelectorView", () => {
     });
     vi.clearAllMocks();
     mockFetch.mockResolvedValue({
-      blob: () => Promise.resolve(new Blob(["fake-image"], { type: "image/jpeg" })),
+      blob: () =>
+        Promise.resolve(new Blob(["fake-image"], { type: "image/jpeg" })),
     });
   });
 
@@ -156,7 +157,9 @@ describe("CameraSelectorView", () => {
     });
 
     it("should display result image after generation", async () => {
-      mockGenerateImage.mockResolvedValueOnce(["https://example.com/result.jpg"]);
+      mockGenerateImage.mockResolvedValueOnce([
+        "https://example.com/result.jpg",
+      ]);
       render(<CameraSelectorView />);
 
       fireEvent.click(screen.getByTestId("camera-generate-btn"));
@@ -183,7 +186,9 @@ describe("CameraSelectorView", () => {
     });
 
     it("should auto-add to media library after generation", async () => {
-      mockGenerateImage.mockResolvedValueOnce(["https://example.com/result.jpg"]);
+      mockGenerateImage.mockResolvedValueOnce([
+        "https://example.com/result.jpg",
+      ]);
       render(<CameraSelectorView />);
 
       fireEvent.click(screen.getByTestId("camera-generate-btn"));

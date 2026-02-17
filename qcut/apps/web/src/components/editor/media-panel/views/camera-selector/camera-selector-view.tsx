@@ -143,11 +143,9 @@ function CameraGenerateSection() {
       try {
         const response = await fetch(imageUrl);
         const blob = await response.blob();
-        const file = new File(
-          [blob],
-          `camera-gen-${Date.now()}.jpeg`,
-          { type: "image/jpeg" }
-        );
+        const file = new File([blob], `camera-gen-${Date.now()}.jpeg`, {
+          type: "image/jpeg",
+        });
         const blobUrl = createObjectURL(file, "camera-gen-result");
 
         await addMediaItem(projectId, {
@@ -189,7 +187,16 @@ function CameraGenerateSection() {
     }
   }, [addToMedia]);
 
-  return { subject, setSubject, isGenerating, resultUrl, error, addedToMedia, prompt, handleGenerate };
+  return {
+    subject,
+    setSubject,
+    isGenerating,
+    resultUrl,
+    error,
+    addedToMedia,
+    prompt,
+    handleGenerate,
+  };
 }
 
 export function CameraSelectorView() {
@@ -245,7 +252,10 @@ export function CameraSelectorView() {
       )}
 
       {error && (
-        <p className="text-xs text-destructive mb-3" data-testid="camera-gen-error">
+        <p
+          className="text-xs text-destructive mb-3"
+          data-testid="camera-gen-error"
+        >
           {error}
         </p>
       )}

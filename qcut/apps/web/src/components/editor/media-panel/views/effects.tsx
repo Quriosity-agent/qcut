@@ -17,69 +17,49 @@ const EFFECT_GRADIENTS: Record<string, string> = {
     "linear-gradient(135deg, #000000 0%, #ffffff 50%, #000000 100%)",
   "saturation-boost":
     "linear-gradient(135deg, #ec4899 0%, #8b5cf6 33%, #06b6d4 66%, #10b981 100%)",
-  desaturate:
-    "linear-gradient(135deg, #6b7280 0%, #9ca3af 50%, #6b7280 100%)",
+  desaturate: "linear-gradient(135deg, #6b7280 0%, #9ca3af 50%, #6b7280 100%)",
   sepia: "linear-gradient(135deg, #92400e 0%, #b45309 50%, #d4a574 100%)",
-  grayscale:
-    "linear-gradient(135deg, #1f2937 0%, #6b7280 50%, #d1d5db 100%)",
+  grayscale: "linear-gradient(135deg, #1f2937 0%, #6b7280 50%, #d1d5db 100%)",
   "vintage-film":
     "linear-gradient(135deg, #78350f 0%, #a16207 50%, #ca8a04 100%)",
-  dramatic:
-    "linear-gradient(135deg, #0f172a 0%, #7c2d12 50%, #0f172a 100%)",
+  dramatic: "linear-gradient(135deg, #0f172a 0%, #7c2d12 50%, #0f172a 100%)",
   "warm-filter":
     "linear-gradient(135deg, #dc2626 0%, #ea580c 50%, #f59e0b 100%)",
   "cool-filter":
     "linear-gradient(135deg, #1d4ed8 0%, #0891b2 50%, #06b6d4 100%)",
   chromatic:
     "linear-gradient(135deg, #ef4444 0%, #22c55e 33%, #3b82f6 66%, #ef4444 100%)",
-  radiance:
-    "linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%)",
-  cinematic:
-    "linear-gradient(135deg, #0c0a09 0%, #292524 40%, #c2410c 100%)",
-  "blur-soft":
-    "linear-gradient(135deg, #94a3b8 0%, #cbd5e1 50%, #94a3b8 100%)",
-  sharpen:
-    "linear-gradient(135deg, #374151 0%, #e5e7eb 50%, #374151 100%)",
-  emboss:
-    "linear-gradient(135deg, #a8a29e 0%, #d6d3d1 50%, #78716c 100%)",
+  radiance: "linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fbbf24 100%)",
+  cinematic: "linear-gradient(135deg, #0c0a09 0%, #292524 40%, #c2410c 100%)",
+  "blur-soft": "linear-gradient(135deg, #94a3b8 0%, #cbd5e1 50%, #94a3b8 100%)",
+  sharpen: "linear-gradient(135deg, #374151 0%, #e5e7eb 50%, #374151 100%)",
+  emboss: "linear-gradient(135deg, #a8a29e 0%, #d6d3d1 50%, #78716c 100%)",
   "edge-detect":
     "linear-gradient(135deg, #000000 0%, #22c55e 50%, #000000 100%)",
-  pixelate:
-    "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)",
-  vignette:
-    "radial-gradient(circle, #44403c 0%, #0c0a09 100%)",
-  grain:
-    "linear-gradient(135deg, #57534e 0%, #78716c 50%, #57534e 100%)",
-  invert:
-    "linear-gradient(135deg, #ffffff 0%, #000000 100%)",
+  pixelate: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)",
+  vignette: "radial-gradient(circle, #44403c 0%, #0c0a09 100%)",
+  grain: "linear-gradient(135deg, #57534e 0%, #78716c 50%, #57534e 100%)",
+  invert: "linear-gradient(135deg, #ffffff 0%, #000000 100%)",
   wave: "linear-gradient(135deg, #0ea5e9 0%, #2563eb 50%, #7c3aed 100%)",
   twist:
     "conic-gradient(from 0deg, #7c3aed, #ec4899, #f59e0b, #10b981, #7c3aed)",
-  bulge:
-    "radial-gradient(circle, #60a5fa 0%, #1e40af 100%)",
-  fisheye:
-    "radial-gradient(circle, #a78bfa 0%, #4c1d95 100%)",
+  bulge: "radial-gradient(circle, #60a5fa 0%, #1e40af 100%)",
+  fisheye: "radial-gradient(circle, #a78bfa 0%, #4c1d95 100%)",
   "oil-painting":
     "linear-gradient(135deg, #b91c1c 0%, #15803d 33%, #1d4ed8 66%, #ca8a04 100%)",
-  watercolor:
-    "linear-gradient(135deg, #67e8f9 0%, #a5b4fc 50%, #f9a8d4 100%)",
+  watercolor: "linear-gradient(135deg, #67e8f9 0%, #a5b4fc 50%, #f9a8d4 100%)",
   "pencil-sketch":
     "linear-gradient(135deg, #e5e7eb 0%, #9ca3af 50%, #374151 100%)",
-  halftone:
-    "linear-gradient(135deg, #000000 0%, #fafafa 50%, #000000 100%)",
-  "fade-in":
-    "linear-gradient(to top, #000000 0%, #6b7280 50%, #f3f4f6 100%)",
+  halftone: "linear-gradient(135deg, #000000 0%, #fafafa 50%, #000000 100%)",
+  "fade-in": "linear-gradient(to top, #000000 0%, #6b7280 50%, #f3f4f6 100%)",
   "fade-out":
     "linear-gradient(to bottom, #f3f4f6 0%, #6b7280 50%, #000000 100%)",
   dissolve:
     "linear-gradient(135deg, #e2e8f0 0%, transparent 50%, #1e293b 100%)",
   wipe: "linear-gradient(to right, #1e293b 0%, #1e293b 50%, #f1f5f9 50%, #f1f5f9 100%)",
-  overlay:
-    "linear-gradient(135deg, #f97316 0%, #8b5cf6 100%)",
-  multiply:
-    "linear-gradient(135deg, #991b1b 0%, #1e3a5f 100%)",
-  screen:
-    "linear-gradient(135deg, #fef9c3 0%, #bfdbfe 100%)",
+  overlay: "linear-gradient(135deg, #f97316 0%, #8b5cf6 100%)",
+  multiply: "linear-gradient(135deg, #991b1b 0%, #1e3a5f 100%)",
+  screen: "linear-gradient(135deg, #fef9c3 0%, #bfdbfe 100%)",
   "color-dodge":
     "linear-gradient(135deg, #fef08a 0%, #ffffff 50%, #fde047 100%)",
 };
@@ -243,11 +223,13 @@ export default function EffectsView() {
                     className="w-full h-10 relative flex items-center gap-1.5 px-2 rounded-lg"
                     style={{
                       background:
-                        gradient ||
-                        "linear-gradient(135deg, #374151, #1f2937)",
+                        gradient || "linear-gradient(135deg, #374151, #1f2937)",
                     }}
                   >
-                    <span className="text-sm drop-shadow-md shrink-0" aria-hidden="true">
+                    <span
+                      className="text-sm drop-shadow-md shrink-0"
+                      aria-hidden="true"
+                    >
                       {preset.icon}
                     </span>
                     <span className="text-xs font-semibold text-white truncate leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_6px_rgba(0,0,0,0.7)]">

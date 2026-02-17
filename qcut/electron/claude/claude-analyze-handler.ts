@@ -241,7 +241,11 @@ export async function analyzeVideo(
     const duration = (Date.now() - startTime) / 1000;
 
     if (!result.success) {
-      return { success: false, error: result.error || "Analysis failed", duration };
+      return {
+        success: false,
+        error: result.error || "Analysis failed",
+        duration,
+      };
     }
 
     // 7. Read output files
