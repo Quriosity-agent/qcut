@@ -85,6 +85,8 @@ export interface StickerSource {
   opacity?: number;
   /** Rotation in degrees (optional) */
   rotation?: number;
+  /** Preserve original aspect ratio during scaling */
+  maintainAspectRatio?: boolean;
 }
 
 /**

@@ -28,6 +28,7 @@ interface StickerOverlayData {
   zIndex: number;
   opacity?: number;
   rotation?: number;
+  maintainAspectRatio?: boolean;
   timing?: { startTime?: number; endTime?: number };
 }
 
@@ -96,11 +97,17 @@ async function downloadStickerToTemp(
 
   // Rasterize SVG to PNG for FFmpeg compatibility
   if (isSvgContent(blob, mediaItem.url)) {
+    console.log(
+      `🎨 [STICKER EXPORT] Rasterizing SVG → PNG (${targetWidth}x${targetHeight})...`
+    );
     logger(
       `[StickerSources] Rasterizing SVG sticker ${sticker.id} to PNG (${targetWidth}x${targetHeight})`
     );
     imageBytes = await rasterizeSvgToPng(blob, targetWidth, targetHeight);
     format = "png";
+    console.log(
+      `🎨 [STICKER EXPORT] SVG rasterized (${imageBytes.length} bytes)`
+    );
   } else {
     const arrayBuffer = await blob.arrayBuffer();
     imageBytes = new Uint8Array(arrayBuffer);
@@ -179,6 +186,9 @@ export async function extractStickerSources(
     }
 
     logger(`[StickerSources] Processing ${allStickers.length} stickers`);
+    console.log(
+      `🎨 [STICKER EXPORT] Preparing ${allStickers.length} sticker(s) for export...`
+    );
 
     // Get API - use provided or default
     const api =
@@ -193,12 +203,21 @@ export async function extractStickerSources(
     // Get timing from timeline (source of truth)
     const timingMap = getStickerTimingMap();
 
+    let stickerIndex = 0;
     for (const sticker of allStickers) {
+      stickerIndex++;
       try {
+        console.log(
+          `🎨 [STICKER EXPORT] Processing sticker ${stickerIndex}/${allStickers.length} (${sticker.id})...`
+        );
+
         const mediaItem = mediaItems.find((m) => m.id === sticker.mediaItemId);
         if (!mediaItem) {
           logger(
             `[StickerSources] Media item not found for sticker ${sticker.id}`
+          );
+          console.warn(
+            `⚠️ [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} skipped — media not found`
           );
           continue;
         }
@@ -237,12 +256,20 @@ export async function extractStickerSources(
           zIndex: sticker.zIndex,
           opacity: sticker.opacity,
           rotation: sticker.rotation,
+          maintainAspectRatio: sticker.maintainAspectRatio,
         });
 
+        console.log(
+          `🎨 [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} ready — ${Math.round(pixelWidth)}x${Math.round(pixelHeight)}px at (${Math.round(topLeftX)},${Math.round(topLeftY)})`
+        );
         logger(
           `[StickerSources] Processed sticker ${sticker.id}: ${Math.round(pixelWidth)}x${Math.round(pixelHeight)} at (${Math.round(topLeftX)}, ${Math.round(topLeftY)})`
         );
       } catch (error) {
+        console.warn(
+          `⚠️ [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} failed:`,
+          error
+        );
         logger(
           `[StickerSources] Failed to process sticker ${sticker.id}:`,
           error
@@ -251,6 +278,9 @@ export async function extractStickerSources(
     }
 
     stickerSources.sort((a, b) => a.zIndex - b.zIndex);
+    console.log(
+      `🎨 [STICKER EXPORT] All stickers prepared — ${stickerSources.length}/${allStickers.length} ready for FFmpeg`
+    );
     logger(
       `[StickerSources] Extracted ${stickerSources.length} valid sticker sources`
     );

@@ -460,6 +460,132 @@ async function runFFmpegCommand({
   });
 }
 
+/**
+ * Remap an original-timeline time to the post-cut output timeline.
+ * Walks through keep segments and accumulates output duration.
+ */
+function remapTimeForCutSegments(
+  originalTime: number,
+  keepSegments: Array<{ start: number; end: number }>
+): number {
+  let outputTime = 0;
+  for (const seg of keepSegments) {
+    if (originalTime <= seg.start) break;
+    if (originalTime >= seg.end) {
+      outputTime += seg.end - seg.start;
+    } else {
+      outputTime += originalTime - seg.start;
+      break;
+    }
+  }
+  return outputTime;
+}
+
+/**
+ * Build FFmpeg args for a sticker overlay pass on an already-cut video.
+ * Returns null if no valid stickers to overlay.
+ */
+function buildStickerOverlayPass(
+  inputVideoPath: string,
+  outputPath: string,
+  stickerSources: import("./ffmpeg/types").StickerSource[],
+  keepSegments: Array<{ start: number; end: number }>
+): string[] | null {
+  // Remap sticker timing and filter out stickers with zero duration
+  const remapped = stickerSources
+    .map((sticker) => ({
+      ...sticker,
+      startTime: remapTimeForCutSegments(sticker.startTime, keepSegments),
+      endTime: remapTimeForCutSegments(sticker.endTime, keepSegments),
+    }))
+    .filter((s) => s.endTime > s.startTime);
+
+  if (remapped.length === 0) return null;
+
+  // Validate all sticker files exist
+  const validStickers = remapped.filter((s) => fs.existsSync(s.path));
+  if (validStickers.length === 0) return null;
+
+  const args: string[] = ["-y", "-i", inputVideoPath];
+
+  // Add sticker inputs
+  for (const sticker of validStickers) {
+    args.push("-loop", "1", "-i", sticker.path);
+  }
+
+  // Build filter_complex
+  const filterSteps: string[] = [];
+  let currentVideoLabel = "0:v";
+  let filterIdx = 0;
+
+  for (const [index, sticker] of validStickers.entries()) {
+    const inputIdx = 1 + index;
+    const scaledLabel = `sticker_scaled_${index}`;
+    let preparedLabel = scaledLabel;
+
+    if (sticker.maintainAspectRatio) {
+      const padLabel = `sticker_pad_${index}`;
+      filterSteps.push(
+        `[${inputIdx}:v]scale=${sticker.width}:${sticker.height}:force_original_aspect_ratio=decrease[${scaledLabel}]`
+      );
+      filterSteps.push(
+        `[${scaledLabel}]pad=${sticker.width}:${sticker.height}:(ow-iw)/2:(oh-ih)/2:color=0x00000000[${padLabel}]`
+      );
+      preparedLabel = padLabel;
+    } else {
+      filterSteps.push(
+        `[${inputIdx}:v]scale=${sticker.width}:${sticker.height}[${scaledLabel}]`
+      );
+    }
+
+    if ((sticker.rotation ?? 0) !== 0) {
+      const rotatedLabel = `sticker_rotated_${index}`;
+      filterSteps.push(
+        `[${preparedLabel}]rotate=${sticker.rotation}*PI/180:c=none[${rotatedLabel}]`
+      );
+      preparedLabel = rotatedLabel;
+    }
+
+    if ((sticker.opacity ?? 1) < 1) {
+      const alphaLabel = `sticker_alpha_${index}`;
+      filterSteps.push(
+        `[${preparedLabel}]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[${alphaLabel}]`
+      );
+      preparedLabel = alphaLabel;
+    }
+
+    const outputLabel = `v_sticker_${filterIdx++}`;
+    filterSteps.push(
+      `[${currentVideoLabel}][${preparedLabel}]overlay=x=${sticker.x}:y=${sticker.y}:enable='between(t,${sticker.startTime},${sticker.endTime})'[${outputLabel}]`
+    );
+    currentVideoLabel = outputLabel;
+  }
+
+  args.push(
+    "-filter_complex",
+    filterSteps.join(";"),
+    "-map",
+    `[${currentVideoLabel}]`,
+    "-map",
+    "0:a?",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "fast",
+    "-crf",
+    "18",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "copy",
+    "-movflags",
+    "+faststart",
+    outputPath
+  );
+
+  return args;
+}
+
 /** Export using filter_complex to cut and concatenate word-filter segments. */
 async function handleWordFilterCut({
   options,
@@ -503,60 +629,118 @@ async function handleWordFilterCut({
             .filter((seg) => seg.end > seg.start)
         : keepSegments;
 
+    const hasStickers =
+      options.stickerSources && options.stickerSources.length > 0;
+
+    console.log(
+      `🎬 [WORD FILTER CUT] Starting word filter cut — ${adjustedSegments.length} segments`
+    );
+    if (hasStickers) {
+      console.log(
+        `🎬 [WORD FILTER CUT] Will overlay ${options.stickerSources!.length} sticker(s) after cut (2-pass)`
+      );
+    }
+
+    // Determine output target: if stickers exist, cut to temp file first
+    const cutOutputFile = hasStickers
+      ? path.join(path.dirname(outputFile), "word-cut-intermediate.mp4")
+      : outputFile;
+
     if (adjustedSegments.length > 100) {
+      console.log(
+        `🎬 [WORD FILTER CUT] Using fallback concat (${adjustedSegments.length} segments > 100)`
+      );
       await handleWordFilterCutFallback({
         ffmpegPath,
         videoPath: options.videoInputPath,
-        outputFile,
+        outputFile: cutOutputFile,
         keepSegments: adjustedSegments,
         event,
       });
-      resolve({
-        success: true,
-        outputFile,
-        method: "spawn",
+    } else {
+      console.log(
+        `🎬 [WORD FILTER CUT] Pass 1: Cutting ${adjustedSegments.length} segments with filter_complex...`
+      );
+      const probe = await probeVideoFile(options.videoInputPath);
+      const { filterComplex, outputMaps } = buildFilterCutComplex({
+        keepSegments: adjustedSegments,
+        hasAudio: probe.hasAudio,
       });
-      return;
+
+      const args: string[] = ["-y"];
+      if (trimStart > 0) {
+        args.push("-ss", String(trimStart));
+      }
+      args.push(
+        "-i",
+        options.videoInputPath,
+        "-filter_complex",
+        filterComplex,
+        ...outputMaps,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        cutOutputFile
+      );
+
+      await runFFmpegCommand({
+        args,
+        event,
+        ffmpegPath,
+      });
     }
 
-    const probe = await probeVideoFile(options.videoInputPath);
-    const { filterComplex, outputMaps } = buildFilterCutComplex({
-      keepSegments: adjustedSegments,
-      hasAudio: probe.hasAudio,
-    });
+    // Pass 2: Overlay stickers onto the cut video (with remapped timing)
+    if (hasStickers && options.stickerSources) {
+      console.log(
+        `🎨 [WORD FILTER CUT] Pass 2: Overlaying ${options.stickerSources.length} sticker(s) onto cut video...`
+      );
+      debugLog(
+        `[WordFilterCut] Applying ${options.stickerSources.length} sticker overlays to cut video`
+      );
 
-    const args: string[] = ["-y"];
-    if (trimStart > 0) {
-      args.push("-ss", String(trimStart));
+      const stickerArgs = buildStickerOverlayPass(
+        cutOutputFile,
+        outputFile,
+        options.stickerSources,
+        adjustedSegments
+      );
+
+      if (stickerArgs) {
+        await runFFmpegCommand({
+          args: stickerArgs,
+          event,
+          ffmpegPath,
+        });
+        console.log(
+          "🎨 [WORD FILTER CUT] Sticker overlay pass complete"
+        );
+
+        // Clean up intermediate file
+        try {
+          fs.unlinkSync(cutOutputFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+      } else {
+        console.log(
+          "🎨 [WORD FILTER CUT] No visible stickers after timing remap — skipping overlay pass"
+        );
+        // No valid stickers after remapping — rename intermediate to final
+        fs.renameSync(cutOutputFile, outputFile);
+      }
     }
-    args.push(
-      "-i",
-      options.videoInputPath,
-      "-filter_complex",
-      filterComplex,
-      ...outputMaps,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "fast",
-      "-crf",
-      "18",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "192k",
-      "-movflags",
-      "+faststart",
-      outputFile
-    );
-
-    await runFFmpegCommand({
-      args,
-      event,
-      ffmpegPath,
-    });
 
     resolve({
       success: true,

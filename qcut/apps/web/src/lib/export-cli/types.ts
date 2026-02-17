@@ -58,6 +58,7 @@ export interface StickerSourceForFilter {
   zIndex: number;
   opacity?: number;
   rotation?: number;
+  maintainAspectRatio?: boolean;
 }
 
 /**

@@ -1,5 +1,7 @@
 # Sticker Overlay Export — Multiple Stickers
 
+**Status**: COMPLETED
+
 ## Summary
 
 Export all overlay stickers composited onto the video during FFmpeg export.

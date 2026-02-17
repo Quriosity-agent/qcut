@@ -715,18 +715,43 @@ export class CLIExportEngine extends ExportEngine {
     let stickerSources: StickerSourceForFilter[] = [];
 
     try {
+      console.log(
+        "🎨 [STICKER EXPORT] Checking for sticker overlays..."
+      );
       // Extract sticker sources with local file paths (always check for stickers)
       stickerSources = await this.extractStickerSourcesWrapper();
 
       if (stickerSources.length > 0) {
+        console.log(
+          `🎨 [STICKER EXPORT] Found ${stickerSources.length} sticker(s) to overlay`
+        );
+        for (const [i, s] of stickerSources.entries()) {
+          console.log(
+            `🎨 [STICKER EXPORT]   [${i + 1}/${stickerSources.length}] id=${s.id} ${s.width}x${s.height} at (${s.x},${s.y}) t=${s.startTime}-${s.endTime}s`
+          );
+        }
+
         // Build FFmpeg overlay filter chain
+        console.log(
+          "🎨 [STICKER EXPORT] Building FFmpeg overlay filter chain..."
+        );
         stickerFilterChain =
           this.buildStickerOverlayFiltersWrapper(stickerSources);
 
-        debugLog(`[CLI Export] Sticker sources: ${stickerSources.length}`);
+        console.log(
+          "🎨 [STICKER EXPORT] Sticker filter chain ready"
+        );
         debugLog(`[CLI Export] Sticker filter chain: ${stickerFilterChain}`);
+      } else {
+        console.log(
+          "🎨 [STICKER EXPORT] No stickers found, skipping overlay"
+        );
       }
     } catch (error) {
+      console.warn(
+        "⚠️ [STICKER EXPORT] Failed to process stickers, continuing without:",
+        error
+      );
       debugWarn(
         "[CLI Export] Failed to process stickers, continuing without:",
         error
