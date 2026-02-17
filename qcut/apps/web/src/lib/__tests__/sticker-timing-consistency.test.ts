@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractStickerSources } from "../export-cli/sources/sticker-sources";
 import type { MediaItem } from "@/stores/media-store-types";
+
+// Mock sticker-timeline-query before importing sticker-sources
+// This controls what timing values the export pipeline sees
+const mockTimingMap = new Map<string, { startTime: number; endTime: number }>();
+
+vi.mock("@/lib/sticker-timeline-query", () => ({
+  getStickerTimingMap: () => mockTimingMap,
+  getStickerTiming: (id: string) => mockTimingMap.get(id) ?? null,
+}));
+
+import { extractStickerSources } from "../export-cli/sources/sticker-sources";
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -73,6 +83,7 @@ describe("Sticker Timing Consistency", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     silentLogger.mockClear();
+    mockTimingMap.clear();
   });
 
   // -----------------------------------------------------------------------
@@ -120,13 +131,11 @@ describe("Sticker Timing Consistency", () => {
       expect(result[0].endTime).toBe(TOTAL_DURATION);
     });
 
-    it("should default startTime to 0 when timing.startTime is undefined", async () => {
-      const stickers = [
-        createStickerData({
-          timing: { startTime: undefined, endTime: 15 },
-        }),
-      ];
+    it("should use timeline timing when sticker has a timeline entry (startTime only)", async () => {
+      const stickers = [createStickerData()];
       const mediaItems = [createMediaItem()];
+      // Timeline provides timing — startTime=0, endTime=15
+      mockTimingMap.set("sticker-1", { startTime: 0, endTime: 15 });
 
       const result = await extractStickerSources(
         mediaItems,
@@ -143,13 +152,11 @@ describe("Sticker Timing Consistency", () => {
       expect(result[0].endTime).toBe(15);
     });
 
-    it("should default endTime to totalDuration when timing.endTime is undefined", async () => {
-      const stickers = [
-        createStickerData({
-          timing: { startTime: 5, endTime: undefined },
-        }),
-      ];
+    it("should use timeline timing with custom startTime", async () => {
+      const stickers = [createStickerData()];
       const mediaItems = [createMediaItem()];
+      // Timeline provides timing — startTime=5, endTime=totalDuration
+      mockTimingMap.set("sticker-1", { startTime: 5, endTime: TOTAL_DURATION });
 
       const result = await extractStickerSources(
         mediaItems,
@@ -166,13 +173,11 @@ describe("Sticker Timing Consistency", () => {
       expect(result[0].endTime).toBe(TOTAL_DURATION);
     });
 
-    it("should preserve explicit startTime and endTime values", async () => {
-      const stickers = [
-        createStickerData({
-          timing: { startTime: 3, endTime: 12 },
-        }),
-      ];
+    it("should preserve explicit timeline startTime and endTime values", async () => {
+      const stickers = [createStickerData()];
       const mediaItems = [createMediaItem()];
+      // Timeline provides explicit timing
+      mockTimingMap.set("sticker-1", { startTime: 3, endTime: 12 });
 
       const result = await extractStickerSources(
         mediaItems,
@@ -189,13 +194,11 @@ describe("Sticker Timing Consistency", () => {
       expect(result[0].endTime).toBe(12);
     });
 
-    it("should handle timing with only startTime set", async () => {
-      const stickers = [
-        createStickerData({
-          timing: { startTime: 10 },
-        }),
-      ];
+    it("should handle timeline timing with only startTime offset", async () => {
+      const stickers = [createStickerData()];
       const mediaItems = [createMediaItem()];
+      // Timeline provides timing starting at 10
+      mockTimingMap.set("sticker-1", { startTime: 10, endTime: TOTAL_DURATION });
 
       const result = await extractStickerSources(
         mediaItems,

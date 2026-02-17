@@ -105,7 +105,14 @@ function setupTimelineBridgeWithHandlers({
       ) => {}
     ),
     onRemoveElement: vi.fn((_callback: (elementId: string) => void) => {}),
+    onSplitElement: vi.fn((_callback: (...args: unknown[]) => void) => {}),
+    onMoveElement: vi.fn((_callback: (...args: unknown[]) => void) => {}),
+    onSelectElements: vi.fn((_callback: (...args: unknown[]) => void) => {}),
+    onGetSelection: vi.fn((_callback: (...args: unknown[]) => void) => {}),
+    onClearSelection: vi.fn((_callback: (...args: unknown[]) => void) => {}),
     sendResponse: vi.fn(),
+    sendSplitResponse: vi.fn(),
+    sendSelectionResponse: vi.fn(),
     removeListeners: vi.fn(),
   };
 
