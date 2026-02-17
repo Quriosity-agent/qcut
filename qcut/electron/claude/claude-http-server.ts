@@ -42,6 +42,7 @@ import {
   getExportRecommendation,
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
+import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
@@ -330,6 +331,25 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'message' in error report");
     }
     return analyzeError(req.body);
+  });
+
+  // ==========================================================================
+  // Video Analysis routes
+  // ==========================================================================
+  router.post("/api/claude/analyze/:projectId", async (req) => {
+    if (!req.body?.source) {
+      throw new HttpError(400, "Missing 'source' in request body");
+    }
+    return analyzeVideo(req.params.projectId, {
+      source: req.body.source,
+      analysisType: req.body.analysisType,
+      model: req.body.model,
+      format: req.body.format,
+    });
+  });
+
+  router.get("/api/claude/analyze/models", async () => {
+    return listAnalyzeModels();
   });
 
   // ==========================================================================
