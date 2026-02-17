@@ -28,8 +28,7 @@ import {
 import { useStickersStore } from "@/stores/stickers-store";
 import { useMediaStore } from "@/stores/media-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import {
   buildIconSvgUrl,
   getCollection,
@@ -318,45 +317,18 @@ export function StickersView() {
 
   const handleStickerSelect = useCallback(
     async (iconId: string, name: string) => {
-      console.log("[StickersView] handleStickerSelect called:", {
-        iconId,
-        name,
-      });
-      debugLog("[StickersView] handleStickerSelect called:", {
-        iconId,
-        name,
-      });
+      debugLog("[StickersView] handleStickerSelect called:", { iconId, name });
 
       if (!activeProject) {
-        console.error("[StickersView] No active project");
-        debugError("[StickersView] No active project");
         toast.error("No project selected");
         return;
       }
 
       try {
-        // Download sticker as File object (no blob URLs!)
-        console.log("[StickersView] Downloading sticker as File:", iconId);
-        debugLog("[StickersView] Downloading sticker as File:", iconId);
         const svgFile = await downloadStickerAsFile(iconId, name);
-
-        console.log("[StickersView] Sticker downloaded as File:", {
-          name: svgFile.name,
-          size: svgFile.size,
-          type: svgFile.type,
-        });
-        debugLog("[StickersView] Sticker downloaded as File:", {
-          name: svgFile.name,
-          size: svgFile.size,
-          type: svgFile.type,
-        });
-
-        // Add media item directly with File object
-        // Create URL from the File object for immediate preview
         const fileUrl = createObjectURL(svgFile, "stickers-svg-upload");
-        console.log("[StickersView] Created file URL:", fileUrl);
 
-        const mediaItemData = {
+        const mediaId = await addMediaItem(activeProject.id, {
           name: svgFile.name,
           type: "image" as const,
           file: svgFile,
@@ -365,71 +337,27 @@ export function StickersView() {
           width: 512,
           height: 512,
           duration: 0,
-        };
+        });
 
-        console.log(
-          "[StickersView] Adding media item to project:",
-          activeProject.id
-        );
-        console.log("[StickersView] Media item data:", mediaItemData);
-        debugLog(
-          "[StickersView] Adding media item to project:",
-          activeProject.id
-        );
+        // Add as overlay sticker (renders on video preview, draggable)
+        const { addOverlaySticker } = useStickersOverlayStore.getState();
+        const stickerId = addOverlaySticker(mediaId, {
+          position: { x: 50, y: 50 },
+        });
 
-        const mediaId = await addMediaItem(activeProject.id, mediaItemData);
-
-        console.log("[StickersView] Media item added successfully");
-        debugLog("[StickersView] Media item added successfully");
-
-        // Add to timeline at current playback position
-        const mediaItem = useMediaStore
+        // Add to timeline for timing control (separate sticker track)
+        const sticker = useStickersOverlayStore
           .getState()
-          .mediaItems.find((item) => item.id === mediaId);
-        if (!mediaItem) {
-          toast.error("Sticker saved but could not be loaded for timeline");
-          return;
-        }
-
-        const currentTime = usePlaybackStore.getState().currentTime;
-        const timelineStore = useTimelineStore.getState();
-        const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
-
-        if (!wasAdded) {
-          toast.error(`Could not add ${name} — overlaps existing element`);
-          return;
-        }
-
-        // Set initial transforms so sticker renders as positioned overlay.
-        // Find the just-added element by matching mediaId and startTime.
-        const newEl = timelineStore.tracks
-          .flatMap((t) => t.elements)
-          .find(
-            (e): e is import("@/types/timeline").MediaElement =>
-              e.type === "media" &&
-              e.startTime === currentTime &&
-              (e as import("@/types/timeline").MediaElement).mediaId ===
-                mediaId &&
-              e.width === undefined
+          .overlayStickers.get(stickerId);
+        if (sticker) {
+          const { timelineStickerIntegration } = await import(
+            "@/lib/timeline-sticker-integration"
           );
-        if (newEl) {
-          timelineStore.updateElementTransform(
-            newEl.id,
-            {
-              position: { x: 0, y: 0 },
-              size: { width: 200, height: 200 },
-            },
-            { pushHistory: false }
-          );
+          await timelineStickerIntegration.addStickerToTimeline(sticker, 0, 5);
         }
 
-        debugLog("[StickersView] Added sticker to timeline at", currentTime);
-
-        // Add to recent stickers
         addRecentSticker(iconId, name);
-        debugLog("[StickersView] Added to recent stickers");
-
-        toast.success(`Added ${name} to timeline`);
+        toast.success(`Added ${name} as sticker`);
       } catch (error) {
         debugError("[StickersView] Error adding sticker:", error);
         toast.error("Failed to add sticker to project");
@@ -480,44 +408,24 @@ export function StickersView() {
             duration: 0,
           });
 
-          const mediaItem = useMediaStore
+          // Add as overlay sticker (renders on video preview, draggable)
+          const { addOverlaySticker } = useStickersOverlayStore.getState();
+          const stickerId = addOverlaySticker(mediaId, {
+            position: { x: 50, y: 50 },
+          });
+
+          // Add to timeline for timing control (separate sticker track)
+          const sticker = useStickersOverlayStore
             .getState()
-            .mediaItems.find((item) => item.id === mediaId);
-          if (!mediaItem) {
-            toast.error(`${file.name} saved but could not be loaded`);
-            continue;
-          }
-
-          const currentTime = usePlaybackStore.getState().currentTime;
-          const timelineStore = useTimelineStore.getState();
-          const wasAdded = timelineStore.addMediaAtTime(mediaItem, currentTime);
-
-          if (!wasAdded) {
-            toast.error(
-              `Could not add ${file.name} — overlaps existing element`
+            .overlayStickers.get(stickerId);
+          if (sticker) {
+            const { timelineStickerIntegration } = await import(
+              "@/lib/timeline-sticker-integration"
             );
-            continue;
-          }
-
-          // Set initial transforms for overlay positioning
-          const newEl = timelineStore.tracks
-            .flatMap((t) => t.elements)
-            .find(
-              (el): el is import("@/types/timeline").MediaElement =>
-                el.type === "media" &&
-                el.startTime === currentTime &&
-                (el as import("@/types/timeline").MediaElement).mediaId ===
-                  mediaId &&
-                el.width === undefined
-            );
-          if (newEl) {
-            timelineStore.updateElementTransform(
-              newEl.id,
-              {
-                position: { x: 0, y: 0 },
-                size: { width: 15, height: 15 },
-              },
-              { pushHistory: false }
+            await timelineStickerIntegration.addStickerToTimeline(
+              sticker,
+              0,
+              5
             );
           }
 
