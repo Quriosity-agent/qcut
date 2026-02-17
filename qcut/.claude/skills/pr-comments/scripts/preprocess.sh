@@ -24,9 +24,11 @@ preprocess() {
     # Get everything before <details>, remove HTML comments, trim trailing whitespace
     content=$(sed -n '1,/<details>/p' "$INPUT_FILE" | sed '/<details>/d' | sed 's/<!--.*-->//g' | sed '/^$/N;/^\n$/d')
 
-    # Extract file path from the comment
-    local file_path=$(grep -oP '(?<=\*\*File:\*\* `)[^`]+' "$INPUT_FILE" || echo "unknown")
-    local line_num=$(grep -oP '(?<=\*\*Line:\*\* )[0-9]+' "$INPUT_FILE" || echo "unknown")
+    # Extract file path from the comment (compatible with macOS grep)
+    local file_path=$(sed -n 's/.*\*\*File:\*\* `\([^`]*\)`.*/\1/p' "$INPUT_FILE" | head -1)
+    local line_num=$(sed -n 's/.*\*\*Line:\*\* \([0-9]*\).*/\1/p' "$INPUT_FILE" | head -1)
+    [ -z "$file_path" ] && file_path="unknown"
+    [ -z "$line_num" ] && line_num="unknown"
 
     cat << PROMPT
 ## Task

@@ -828,6 +828,39 @@ export interface ElectronAPI {
     diagnostics: {
       analyze: (error: ErrorReport) => Promise<DiagnosticResult>;
     };
+    analyze: {
+      run: (
+        projectId: string,
+        options: {
+          source: {
+            type: "timeline" | "media" | "path";
+            elementId?: string;
+            mediaId?: string;
+            filePath?: string;
+          };
+          analysisType?: "timeline" | "describe" | "transcribe";
+          model?: string;
+          format?: "md" | "json" | "both";
+        }
+      ) => Promise<{
+        success: boolean;
+        markdown?: string;
+        json?: Record<string, unknown>;
+        outputFiles?: string[];
+        videoPath?: string;
+        duration?: number;
+        cost?: number;
+        error?: string;
+      }>;
+      models: () => Promise<{
+        models: Array<{
+          key: string;
+          provider: string;
+          modelId: string;
+          description: string;
+        }>;
+      }>;
+    };
   };
 
   // Remotion folder operations

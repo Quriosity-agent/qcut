@@ -43,7 +43,7 @@ If `QCUT_API_TOKEN` is set in QCut's environment:
 curl -H "Authorization: Bearer <token>" http://127.0.0.1:8765/api/claude/health
 ```
 
-## 5 API Modules — 18 Methods
+## 5 API Modules — 23 Methods
 
 ### 1. Media API — Manage project media files
 
@@ -69,6 +69,13 @@ curl -H "Authorization: Bearer <token>" http://127.0.0.1:8765/api/claude/health
 | Add element | `POST /api/claude/timeline/:projectId/elements` | `curl -X POST -H "Content-Type: application/json" -d '{"type":"text","trackIndex":0,"startTime":5,"endTime":10,"content":"Hello"}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements` |
 | Update element | `PATCH /api/claude/timeline/:projectId/elements/:elementId` | `curl -X PATCH -H "Content-Type: application/json" -d '{"startTime":2}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID` |
 | Remove element | `DELETE /api/claude/timeline/:projectId/elements/:elementId` | `curl -X DELETE http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID` |
+| Split element | `POST /api/claude/timeline/:projectId/elements/:elementId/split` | `curl -X POST -H "Content-Type: application/json" -d '{"splitTime":3.5,"mode":"split"}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID/split` |
+| Move element | `POST /api/claude/timeline/:projectId/elements/:elementId/move` | `curl -X POST -H "Content-Type: application/json" -d '{"toTrackId":"track_2","newStartTime":5.0}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID/move` |
+| Set selection | `POST /api/claude/timeline/:projectId/selection` | `curl -X POST -H "Content-Type: application/json" -d '{"elements":[{"trackId":"track_1","elementId":"element_abc"}]}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
+| Get selection | `GET /api/claude/timeline/:projectId/selection` | `curl http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
+| Clear selection | `DELETE /api/claude/timeline/:projectId/selection` | `curl -X DELETE http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
+
+**Split modes:** `split` (default, creates two clips), `keepLeft` (trim from right), `keepRight` (trim from left).
 
 **Note:** Timeline export uses a request-response IPC pattern with a 5-second timeout. QCut renderer must be active.
 

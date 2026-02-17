@@ -157,6 +157,59 @@ result = cmd_detailed_timeline_with_params(
 )
 ```
 
+### Video Analysis via HTTP API (QCut running)
+
+```bash
+# Analyze video from file path — returns markdown timeline
+curl -X POST http://localhost:8765/api/claude/analyze/my-project \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": { "type": "path", "filePath": "/Users/me/Downloads/video.mp4" },
+    "analysisType": "timeline",
+    "model": "gemini-2.5-flash"
+  }'
+
+# Analyze video from media panel by ID
+curl -X POST http://localhost:8765/api/claude/analyze/my-project \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": { "type": "media", "mediaId": "media_dmlkZW8ubXA0" },
+    "analysisType": "describe"
+  }'
+
+# Analyze video from timeline element
+curl -X POST http://localhost:8765/api/claude/analyze/my-project \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": { "type": "timeline", "elementId": "element_abc123" },
+    "analysisType": "transcribe"
+  }'
+
+# List available analysis models
+curl http://localhost:8765/api/claude/analyze/models
+```
+
+### Video Analysis via Electron IPC (Frontend)
+
+```typescript
+// Analyze a video file
+const result = await window.electronAPI.claude?.analyze.run("my-project", {
+  source: { type: "path", filePath: "/path/to/video.mp4" },
+  analysisType: "timeline",
+  model: "gemini-2.5-flash",
+  format: "both",
+});
+
+if (result?.success) {
+  console.log(result.markdown);   // Full timeline markdown
+  console.log(result.cost);       // e.g. 0.001637
+  console.log(result.outputFiles); // Saved file paths
+}
+
+// List models
+const { models } = await window.electronAPI.claude?.analyze.models();
+```
+
 ## Avatar/Lipsync Examples
 
 ### Lipsync with Audio

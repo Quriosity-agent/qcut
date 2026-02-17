@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { buildCameraPrompt } from "@/lib/camera-prompt-builder";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -93,15 +94,28 @@ interface CameraSelectorState {
   setLensIndex: (i: number) => void;
   setFocalIndex: (i: number) => void;
   setApertureIndex: (i: number) => void;
+  getCameraPrompt: (subject?: string) => string;
 }
 
-export const useCameraSelectorStore = create<CameraSelectorState>((set) => ({
-  cameraIndex: 0,
-  lensIndex: 0,
-  focalIndex: 3,
-  apertureIndex: 0,
-  setCameraIndex: (i) => set({ cameraIndex: i }),
-  setLensIndex: (i) => set({ lensIndex: i }),
-  setFocalIndex: (i) => set({ focalIndex: i }),
-  setApertureIndex: (i) => set({ apertureIndex: i }),
-}));
+export const useCameraSelectorStore = create<CameraSelectorState>(
+  (set, get) => ({
+    cameraIndex: 0,
+    lensIndex: 0,
+    focalIndex: 3,
+    apertureIndex: 0,
+    setCameraIndex: (i) => set({ cameraIndex: i }),
+    setLensIndex: (i) => set({ lensIndex: i }),
+    setFocalIndex: (i) => set({ focalIndex: i }),
+    setApertureIndex: (i) => set({ apertureIndex: i }),
+    getCameraPrompt: (subject?: string): string => {
+      const { cameraIndex, lensIndex, focalIndex, apertureIndex } = get();
+      return buildCameraPrompt({
+        cameraIndex,
+        lensIndex,
+        focalIndex,
+        apertureIndex,
+        subject,
+      });
+    },
+  })
+);

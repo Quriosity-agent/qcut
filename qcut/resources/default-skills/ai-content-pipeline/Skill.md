@@ -140,10 +140,38 @@ aicp generate-avatar \
 aicp transfer-motion -i person.jpg -v dance.mp4
 ```
 
-### Analyze Video
+### Analyze Video (CLI)
 
 ```bash
 aicp analyze-video -i video.mp4
+aicp analyze-video -i video.mp4 -t timeline -m gemini-2.5-flash
+aicp analyze-video -i video.mp4 -t transcribe
+aicp analyze-video -i video.mp4 -t describe -f json
+```
+
+### Analyze Video (HTTP API)
+
+QCut exposes video analysis through the Claude HTTP server (port 8765).
+Accepts video from timeline elements, media panel items, or file paths.
+
+```bash
+# Analyze from file path
+curl -X POST http://localhost:8765/api/claude/analyze/PROJECT_ID \
+  -H "Content-Type: application/json" \
+  -d '{"source":{"type":"path","filePath":"/path/to/video.mp4"},"analysisType":"timeline","model":"gemini-2.5-flash"}'
+
+# Analyze from media panel
+curl -X POST http://localhost:8765/api/claude/analyze/PROJECT_ID \
+  -H "Content-Type: application/json" \
+  -d '{"source":{"type":"media","mediaId":"MEDIA_ID"},"analysisType":"timeline"}'
+
+# Analyze from timeline element
+curl -X POST http://localhost:8765/api/claude/analyze/PROJECT_ID \
+  -H "Content-Type: application/json" \
+  -d '{"source":{"type":"timeline","elementId":"ELEMENT_ID"},"analysisType":"transcribe"}'
+
+# List available analysis models
+curl http://localhost:8765/api/claude/analyze/models
 ```
 
 ### Run YAML Pipeline
@@ -198,4 +226,8 @@ See `REFERENCE.md` for endpoint mappings.
 | Settings UI (key source badges) | `apps/web/src/components/editor/properties-panel/settings-view.tsx` |
 | CLI key delegation | `electron/main.ts` (CLI_KEY_COMMANDS block) |
 | Binary manifest | `resources/bin/manifest.json` |
+| Video analysis handler | `electron/claude/claude-analyze-handler.ts` |
+| Analysis types & API | `electron/types/claude-api.ts` (AnalyzeSource, AnalyzeOptions, AnalyzeResult) |
+| Analysis HTTP routes | `electron/claude/claude-http-server.ts` |
+| Analysis tests | `electron/__tests__/claude-analyze-handler.test.ts` |
 | Fallback tests | `electron/__tests__/api-key-aicp-fallback.test.ts` |

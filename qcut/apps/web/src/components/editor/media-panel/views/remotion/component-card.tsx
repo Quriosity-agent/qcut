@@ -9,7 +9,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
+import type { ErrorInfo, ReactNode } from "react";
+import { Player } from "@remotion/player";
 import { Eye, Layers, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +64,30 @@ const CATEGORY_ICON_COLORS: Record<string, string> = {
 };
 
 // ============================================================================
+// Player Error Boundary
+// ============================================================================
+
+class PlayerErrorBoundary extends Component<
+  { children: ReactNode; onError: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(_error: Error, _info: ErrorInfo) {
+    this.props.onError();
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+// ============================================================================
 // Component Card
 // ============================================================================
 
@@ -73,6 +99,30 @@ export function ComponentCard({
   className,
 }: ComponentCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
+  const [playerError, setPlayerError] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
+
+  // Clean up hover timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    setPlayerError(false);
+    hoverTimerRef.current = setTimeout(() => setShowPlayer(true), 300);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    setIsHovered(false);
+    setShowPlayer(false);
+  };
 
   const durationSeconds = (component.durationInFrames / component.fps).toFixed(
     1
@@ -94,8 +144,8 @@ export function ComponentCard({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
               className
             )}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             onClick={() => onAdd(component)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -111,12 +161,27 @@ export function ComponentCard({
             {/* Thumbnail / Preview */}
             <div
               className={cn(
-                "bg-gradient-to-br flex items-center justify-center",
+                "relative bg-gradient-to-br flex items-center justify-center",
                 gradientClass,
                 compact ? "aspect-square" : "aspect-video"
               )}
             >
-              {component.thumbnail ? (
+              {showPlayer && !playerError ? (
+                <PlayerErrorBoundary onError={() => setPlayerError(true)}>
+                  <Player
+                    component={component.component}
+                    inputProps={component.defaultProps}
+                    durationInFrames={component.durationInFrames}
+                    compositionWidth={component.width}
+                    compositionHeight={component.height}
+                    fps={component.fps}
+                    style={{ width: "100%", height: "100%" }}
+                    controls={false}
+                    loop
+                    autoPlay
+                  />
+                </PlayerErrorBoundary>
+              ) : component.thumbnail ? (
                 <img
                   src={component.thumbnail}
                   alt={component.name}
@@ -157,16 +222,18 @@ export function ComponentCard({
                 </div>
               )}
 
-              {/* Duration badge */}
-              <Badge
-                variant="secondary"
-                className={cn(
-                  "absolute top-1 right-1 text-[10px] px-1 py-0 opacity-80",
-                  isHovered && "opacity-0"
-                )}
-              >
-                {durationSeconds}s
-              </Badge>
+              {/* Duration badge — hidden while player is active */}
+              {!showPlayer && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "absolute top-1 right-1 text-[10px] px-1 py-0 opacity-80",
+                    isHovered && "opacity-0"
+                  )}
+                >
+                  {durationSeconds}s
+                </Badge>
+              )}
             </div>
 
             {/* Component Info */}

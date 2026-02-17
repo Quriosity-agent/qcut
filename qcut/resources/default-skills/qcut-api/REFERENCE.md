@@ -54,6 +54,29 @@ interface ClaudeElement {
 }
 ```
 
+### ClaudeSplitRequest / ClaudeMoveRequest / ClaudeSelectionItem
+
+```typescript
+interface ClaudeSplitRequest {
+  splitTime: number;
+  mode?: "split" | "keepLeft" | "keepRight";  // default: "split"
+}
+
+interface ClaudeSplitResponse {
+  secondElementId: string | null;
+}
+
+interface ClaudeMoveRequest {
+  toTrackId: string;
+  newStartTime?: number;
+}
+
+interface ClaudeSelectionItem {
+  trackId: string;
+  elementId: string;
+}
+```
+
 ### ProjectSettings / ProjectStats
 
 ```typescript
@@ -348,6 +371,96 @@ curl -s -X DELETE \
   http://127.0.0.1:8765/api/claude/timeline/project_123/elements/element_abc | jq
 ```
 
+#### Split timeline element
+
+```bash
+POST /api/claude/timeline/:projectId/elements/:elementId/split
+Content-Type: application/json
+
+{"splitTime": 3.5, "mode": "split"}
+```
+
+```bash
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"splitTime":3.5,"mode":"split"}' \
+  http://127.0.0.1:8765/api/claude/timeline/project_123/elements/element_abc/split | jq
+```
+
+**Modes:**
+- `split` (default) — Split into two clips at the given time. Returns `secondElementId`.
+- `keepLeft` — Keep the left portion, discard right.
+- `keepRight` — Keep the right portion, discard left.
+
+Response:
+```json
+{"success": true, "data": {"secondElementId": "element_xyz"}}
+```
+
+#### Move timeline element
+
+```bash
+POST /api/claude/timeline/:projectId/elements/:elementId/move
+Content-Type: application/json
+
+{"toTrackId": "track_2", "newStartTime": 5.0}
+```
+
+```bash
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"toTrackId":"track_2","newStartTime":5.0}' \
+  http://127.0.0.1:8765/api/claude/timeline/project_123/elements/element_abc/move | jq
+```
+
+`newStartTime` is optional. If omitted, the element keeps its current start time.
+
+Response:
+```json
+{"success": true, "data": {"moved": true}}
+```
+
+#### Set timeline selection
+
+```bash
+POST /api/claude/timeline/:projectId/selection
+Content-Type: application/json
+
+{"elements": [{"trackId": "track_1", "elementId": "element_abc"}]}
+```
+
+```bash
+curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"elements":[{"trackId":"track_1","elementId":"element_abc"}]}' \
+  http://127.0.0.1:8765/api/claude/timeline/project_123/selection | jq
+```
+
+#### Get timeline selection
+
+```bash
+GET /api/claude/timeline/:projectId/selection
+```
+
+```bash
+curl -s http://127.0.0.1:8765/api/claude/timeline/project_123/selection | jq
+```
+
+Response:
+```json
+{"success": true, "data": {"elements": [{"trackId": "track_1", "elementId": "element_abc"}]}}
+```
+
+#### Clear timeline selection
+
+```bash
+DELETE /api/claude/timeline/:projectId/selection
+```
+
+```bash
+curl -s -X DELETE http://127.0.0.1:8765/api/claude/timeline/project_123/selection | jq
+```
+
 ---
 
 ### Project Endpoints
@@ -556,6 +669,9 @@ window.electronAPI.claude.timeline.onApply(callback);
 window.electronAPI.claude.timeline.onAddElement(callback);
 window.electronAPI.claude.timeline.onUpdateElement(callback);
 window.electronAPI.claude.timeline.onRemoveElement(callback);
+window.electronAPI.claude.timeline.onSplitElement(callback);
+window.electronAPI.claude.timeline.onMoveElement(callback);
+window.electronAPI.claude.timeline.onSelectElements(callback);
 window.electronAPI.claude.timeline.sendResponse(timeline);
 window.electronAPI.claude.timeline.removeListeners();
 
@@ -592,6 +708,13 @@ await window.electronAPI.claude.diagnostics.analyze(errorReport);
 | `claude:timeline:addElement` | renderer → main | Add element |
 | `claude:timeline:updateElement` | renderer → main | Update element |
 | `claude:timeline:removeElement` | renderer → main | Remove element |
+| `claude:timeline:splitElement` | main → renderer | Split element at time |
+| `claude:timeline:splitElement:response` | renderer → main | Split result |
+| `claude:timeline:moveElement` | main → renderer | Move element to track |
+| `claude:timeline:selectElements` | main → renderer | Set selection |
+| `claude:timeline:getSelection` | main → renderer | Request current selection |
+| `claude:timeline:getSelection:response` | renderer → main | Selection result |
+| `claude:timeline:clearSelection` | main → renderer | Clear selection |
 | `claude:timeline:request` | main → renderer | Request timeline data |
 | `claude:timeline:response` | renderer → main | Send timeline data |
 | `claude:timeline:apply` | main → renderer | Apply imported timeline |

@@ -298,6 +298,103 @@ for word in result["words"]:
 **Supported Languages (99 total):**
 Common codes: `eng` (English), `spa` (Spanish), `fra` (French), `deu` (German), `ita` (Italian), `por` (Portuguese), `rus` (Russian), `zho` (Chinese), `jpn` (Japanese), `kor` (Korean), `ara` (Arabic), `hin` (Hindi)
 
+## Video Analysis HTTP API
+
+QCut's Claude HTTP server (port 8765) exposes video analysis endpoints that accept video from three sources.
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/claude/analyze/:projectId` | Analyze a video |
+| `GET` | `/api/claude/analyze/models` | List available analysis models |
+
+### POST /api/claude/analyze/:projectId
+
+**Request Body:**
+
+```json
+{
+  "source": {
+    "type": "path | media | timeline",
+    "filePath": "/absolute/path/to/video.mp4",
+    "mediaId": "media_abc123",
+    "elementId": "element_xyz"
+  },
+  "analysisType": "timeline | describe | transcribe",
+  "model": "gemini-2.5-flash",
+  "format": "md | json | both"
+}
+```
+
+**Source Types:**
+
+| Type | Required Field | Resolution |
+|------|----------------|------------|
+| `path` | `filePath` | Uses absolute file path directly |
+| `media` | `mediaId` | Looks up media file in project by ID |
+| `timeline` | `elementId` | Finds element in timeline, resolves its source media |
+
+**Analysis Types:**
+
+| Type | Description | Provider |
+|------|-------------|----------|
+| `timeline` (default) | Detailed second-by-second breakdown | FAL (Gemini via OpenRouter) |
+| `describe` | Video description and summary | Gemini direct |
+| `transcribe` | Audio transcription with timestamps | Gemini direct |
+
+**Available Models:**
+
+| Key | Provider | Model ID | Notes |
+|-----|----------|----------|-------|
+| `gemini-2.5-flash` (default) | FAL | `google/gemini-2.5-flash` | Fast, cost-effective |
+| `gemini-2.5-pro` | FAL | `google/gemini-2.5-pro` | Higher quality |
+| `gemini-3-pro` | FAL | `google/gemini-3-pro-preview` | Highest quality |
+| `gemini-direct` | Gemini | `gemini-2.0-flash-exp` | Requires GEMINI_API_KEY |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "markdown": "# Detailed Video Timeline Analysis\n\n...",
+  "json": { "timeline": "...", "provider": "fal", "model": "...", "usage": {} },
+  "outputFiles": [
+    "/Users/.../Projects/my-project/analysis/video_detailed_timeline.md",
+    "/Users/.../Projects/my-project/analysis/video_detailed_timeline.json"
+  ],
+  "videoPath": "/Users/.../Projects/my-project/media/video.mp4",
+  "duration": 12.5,
+  "cost": 0.001637
+}
+```
+
+**Output directory:** `~/Documents/QCut/Projects/{projectId}/analysis/`
+
+### Electron IPC
+
+Frontend code can also call via the preload bridge:
+
+```typescript
+const result = await window.electronAPI.claude?.analyze.run(projectId, {
+  source: { type: "path", filePath: "/path/to/video.mp4" },
+  analysisType: "timeline",
+  model: "gemini-2.5-flash",
+});
+
+const { models } = await window.electronAPI.claude?.analyze.models();
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `electron/claude/claude-analyze-handler.ts` | Core handler (resolveVideoPath, analyzeVideo, listAnalyzeModels) |
+| `electron/types/claude-api.ts` | Type definitions (AnalyzeSource, AnalyzeOptions, AnalyzeResult) |
+| `electron/claude/claude-http-server.ts` | HTTP route registration |
+| `electron/preload-integrations.ts` | IPC bridge for renderer |
+| `electron/__tests__/claude-analyze-handler.test.ts` | Unit tests |
+
 ## Pipeline Configuration Options
 
 ### Step Types
