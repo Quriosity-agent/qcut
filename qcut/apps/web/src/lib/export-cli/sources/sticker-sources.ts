@@ -9,6 +9,7 @@
 
 import type { StickerSourceForFilter } from "../types";
 import type { MediaItem } from "@/stores/media-store";
+import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
 
 /**
  * Logger function type for dependency injection.
@@ -169,6 +170,9 @@ export async function extractStickerSources(
 
     const stickerSources: StickerSourceForFilter[] = [];
 
+    // Get timing from timeline (source of truth)
+    const timingMap = getStickerTimingMap();
+
     for (const sticker of allStickers) {
       try {
         const mediaItem = mediaItems.find((m) => m.id === sticker.mediaItemId);
@@ -206,8 +210,8 @@ export async function extractStickerSources(
           y: Math.round(topLeftY),
           width: Math.round(pixelWidth),
           height: Math.round(pixelHeight),
-          startTime: sticker.timing?.startTime ?? 0,
-          endTime: sticker.timing?.endTime ?? totalDuration,
+          startTime: timingMap.get(sticker.id)?.startTime ?? 0,
+          endTime: timingMap.get(sticker.id)?.endTime ?? totalDuration,
           zIndex: sticker.zIndex,
           opacity: sticker.opacity,
           rotation: sticker.rotation,

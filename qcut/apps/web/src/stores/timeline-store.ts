@@ -475,6 +475,21 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
     },
 
     removeElementFromTrack: (trackId, elementId, pushHistory = true) => {
+      // If removing a sticker element, also clean up the overlay store
+      const track = get()._tracks.find((t) => t.id === trackId);
+      const element = track?.elements.find((el) => el.id === elementId);
+      if (element?.type === "sticker" && "stickerId" in element) {
+        const stickerId = (element as { stickerId: string }).stickerId;
+        import("@/stores/stickers-overlay-store").then(
+          ({ useStickersOverlayStore }) => {
+            // Guard: only remove if sticker still exists (prevents infinite loop)
+            if (useStickersOverlayStore.getState().overlayStickers.has(stickerId)) {
+              useStickersOverlayStore.getState().removeOverlaySticker(stickerId);
+            }
+          }
+        );
+      }
+
       const { rippleEditingEnabled } = get();
 
       if (rippleEditingEnabled) {
@@ -483,17 +498,17 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         if (pushHistory) get().pushHistory();
         updateTracksAndSave(
           get()
-            ._tracks.map((track) =>
-              track.id === trackId
+            ._tracks.map((t) =>
+              t.id === trackId
                 ? {
-                    ...track,
-                    elements: track.elements.filter(
-                      (element) => element.id !== elementId
+                    ...t,
+                    elements: t.elements.filter(
+                      (el) => el.id !== elementId
                     ),
                   }
-                : track
+                : t
             )
-            .filter((track) => track.elements.length > 0 || track.isMain)
+            .filter((t) => t.elements.length > 0 || t.isMain)
         );
       }
     },
