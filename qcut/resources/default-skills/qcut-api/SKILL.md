@@ -43,7 +43,7 @@ If `QCUT_API_TOKEN` is set in QCut's environment:
 curl -H "Authorization: Bearer <token>" http://127.0.0.1:8765/api/claude/health
 ```
 
-## 5 API Modules — 22 Methods
+## 5 API Modules — 23 Methods
 
 ### 1. Media API — Manage project media files
 
