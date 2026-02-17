@@ -1,6 +1,7 @@
 #!/bin/bash
 # Analyze PR comment task files - group by source file
 # Usage: ./analyze.sh tasks_dir
+# Compatible with macOS (bash 3) and Linux (bash 4+)
 
 set -e
 
@@ -22,28 +23,28 @@ echo ""
 echo "Tasks directory: $TASKS_DIR"
 echo ""
 
-# Extract source files and line numbers from task files
-declare -A file_comments
+# Build a temp file with "source_file line" pairs
+TEMP_FILE=$(mktemp)
+trap "rm -f $TEMP_FILE" EXIT
 
 total=0
 for task in "$TASKS_DIR"/*.md; do
     if [ -f "$task" ]; then
-        # Extract file path from task content
-        source_file=$(grep -oP '(?<=\*\*File:\*\* `)[^`]+' "$task" 2>/dev/null || echo "unknown")
-        line=$(grep -oP '(?<=\*\*Line:\*\* )[0-9]+' "$task" 2>/dev/null || echo "?")
-
-        if [ -n "${file_comments[$source_file]}" ]; then
-            file_comments[$source_file]="${file_comments[$source_file]},$line"
-        else
-            file_comments[$source_file]="$line"
-        fi
+        # Extract file path and line number (no PCRE, works on macOS)
+        source_file=$(sed -n 's/.*\*\*File:\*\* `\([^`]*\)`.*/\1/p' "$task" | head -1)
+        line=$(sed -n 's/.*\*\*Line:\*\* \([0-9]*\).*/\1/p' "$task" | head -1)
+        [ -z "$source_file" ] && source_file="unknown"
+        [ -z "$line" ] && line="?"
+        echo "$source_file $line" >> "$TEMP_FILE"
         total=$((total + 1))
     fi
 done
 
+unique_files=$(cut -d' ' -f1 "$TEMP_FILE" | sort -u | wc -l | tr -d ' ')
+
 echo "## Summary"
 echo "- Total comments: $total"
-echo "- Unique files: ${#file_comments[@]}"
+echo "- Unique files: $unique_files"
 echo ""
 
 echo "## By Source File (process in this order)"
@@ -51,12 +52,11 @@ echo ""
 echo "| Source File | Lines (fix bottom-up) | Count |"
 echo "|-------------|----------------------|-------|"
 
-for source_file in "${!file_comments[@]}"; do
-    lines="${file_comments[$source_file]}"
-    # Sort lines descending
-    sorted_lines=$(echo "$lines" | tr ',' '\n' | sort -rn | tr '\n' ',' | sed 's/,$//')
-    count=$(echo "$lines" | tr ',' '\n' | wc -l)
-    echo "| \`$source_file\` | $sorted_lines | $count |"
+# Group by source file, sort lines descending within each group
+cut -d' ' -f1 "$TEMP_FILE" | sort -u | while read -r source_file; do
+    lines=$(grep "^${source_file} " "$TEMP_FILE" | cut -d' ' -f2 | sort -rn | tr '\n' ',' | sed 's/,$//')
+    count=$(grep -c "^${source_file} " "$TEMP_FILE")
+    echo "| \`$source_file\` | $lines | $count |"
 done | sort -t'|' -k4 -rn
 
 echo ""

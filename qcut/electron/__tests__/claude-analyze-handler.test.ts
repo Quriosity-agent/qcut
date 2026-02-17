@@ -123,6 +123,7 @@ vi.mock("../claude/claude-timeline-handler", () => ({
 // Tests
 // ---------------------------------------------------------------------------
 
+import type { AnalyzeSource } from "../types/claude-api";
 import { resolveVideoPath, listAnalyzeModels } from "../claude/claude-analyze-handler";
 
 describe("listAnalyzeModels", () => {
@@ -243,7 +244,7 @@ describe("resolveVideoPath", () => {
   describe("unknown source type", () => {
     it("rejects unknown source type", async () => {
       await expect(
-        resolveVideoPath("test-project", { type: "invalid" as any })
+        resolveVideoPath("test-project", { type: "invalid" } as unknown as AnalyzeSource)
       ).rejects.toThrow("Unknown source type");
     });
   });

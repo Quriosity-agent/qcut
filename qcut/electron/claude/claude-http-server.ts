@@ -340,12 +340,24 @@ export function startClaudeHTTPServer(
     if (!req.body?.source) {
       throw new HttpError(400, "Missing 'source' in request body");
     }
-    return analyzeVideo(req.params.projectId, {
-      source: req.body.source,
-      analysisType: req.body.analysisType,
-      model: req.body.model,
-      format: req.body.format,
-    });
+    try {
+      const result = await analyzeVideo(req.params.projectId, {
+        source: req.body.source,
+        analysisType: req.body.analysisType,
+        model: req.body.model,
+        format: req.body.format,
+      });
+      if (!result.success) {
+        throw new HttpError(500, result.error);
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Analysis failed"
+      );
+    }
   });
 
   router.get("/api/claude/analyze/models", async () => {

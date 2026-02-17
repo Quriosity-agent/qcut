@@ -5,9 +5,9 @@
  */
 
 import { ipcMain, BrowserWindow } from "electron";
-import { spawn } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { basename, extname, join } from "node:path";
 import {
   getProjectPath,
   isValidSourcePath,
@@ -71,9 +71,11 @@ export async function resolveVideoPath(
         throw new Error("Missing 'filePath' for path source");
       }
       if (!isValidSourcePath(source.filePath)) {
-        throw new Error("Invalid file path: must be an absolute path without null bytes");
+        throw new Error(
+          "Invalid file path: must be an absolute path without null bytes"
+        );
       }
-      if (!fs.existsSync(source.filePath)) {
+      if (!existsSync(source.filePath)) {
         throw new Error(`File not found: ${source.filePath}`);
       }
       return source.filePath;
@@ -90,7 +92,7 @@ export async function resolveVideoPath(
       if (media.type !== "video") {
         throw new Error(`Media is not a video (type: ${media.type})`);
       }
-      if (!fs.existsSync(media.path)) {
+      if (!existsSync(media.path)) {
         throw new Error(`Media file missing on disk: ${media.path}`);
       }
       return media.path;
@@ -129,7 +131,12 @@ export async function resolveVideoPath(
       if (!media) {
         throw new Error(`Source media not found for element: ${sourceId}`);
       }
-      if (!fs.existsSync(media.path)) {
+      if (media.type !== "video") {
+        throw new Error(
+          `Timeline element is not a video (type: ${media.type})`
+        );
+      }
+      if (!existsSync(media.path)) {
         throw new Error(`Source media file missing on disk: ${media.path}`);
       }
       return media.path;
@@ -153,16 +160,7 @@ async function findAicpCommand(): Promise<{ cmd: string; baseArgs: string[] }> {
     );
   }
 
-  // Re-detect to get the command path — use status.source to determine
-  // The manager exposes getStatus but not getCommand directly,
-  // so we instantiate and check availability which triggers detection.
-  // For bundled/system: cmd is the binary path
-  // For python: cmd is python/python3 with module args
-  const available = await manager.isAvailable();
-  if (!available) {
-    throw new Error("AICP pipeline not available after status check");
-  }
-  return (manager as any).getCommand();
+  return manager.getCommand();
 }
 
 /**
@@ -204,8 +202,8 @@ export async function analyzeVideo(
     const { cmd, baseArgs } = await findAicpCommand();
 
     // 3. Prepare output directory
-    const outputDir = path.join(getProjectPath(safeProjectId), "analysis");
-    fs.mkdirSync(outputDir, { recursive: true });
+    const outputDir = join(getProjectPath(safeProjectId), "analysis");
+    mkdirSync(outputDir, { recursive: true });
 
     // 4. Build args
     const analysisType = options.analysisType || "timeline";
@@ -214,11 +212,16 @@ export async function analyzeVideo(
     const args = [
       ...baseArgs,
       "analyze-video",
-      "-i", videoPath,
-      "-t", analysisType,
-      "-m", model,
-      "-o", outputDir,
-      "-f", format === "md" || format === "json" ? format : "both",
+      "-i",
+      videoPath,
+      "-t",
+      analysisType,
+      "-m",
+      model,
+      "-o",
+      outputDir,
+      "-f",
+      format === "md" || format === "json" ? format : "both",
     ];
 
     // 5. Build environment
@@ -226,7 +229,8 @@ export async function analyzeVideo(
     if (!spawnEnv.FAL_KEY && model !== "gemini-direct") {
       return {
         success: false,
-        error: "FAL API key not configured. Go to Settings -> API Keys to set it.",
+        error:
+          "FAL API key not configured. Go to Settings -> API Keys to set it.",
       };
     }
 
@@ -237,11 +241,11 @@ export async function analyzeVideo(
     const duration = (Date.now() - startTime) / 1000;
 
     if (!result.success) {
-      return { success: false, error: result.error, duration };
+      return { success: false, error: result.error || "Analysis failed", duration };
     }
 
     // 7. Read output files
-    const videoStem = path.basename(videoPath, path.extname(videoPath));
+    const videoStem = basename(videoPath, extname(videoPath));
     const outputFiles = findOutputFiles(outputDir, videoStem);
     const { markdown, json } = readAnalysisResults(outputFiles);
 
@@ -271,7 +275,12 @@ function spawnAnalysis(
   cmd: string,
   args: string[],
   env: NodeJS.ProcessEnv
-): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  stdout: string;
+  stderr: string;
+  error?: string;
+}> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, args, {
       windowsHide: true,
@@ -286,7 +295,11 @@ function spawnAnalysis(
     const timeoutId = setTimeout(() => {
       if (!settled) {
         settled = true;
-        try { proc.kill("SIGTERM"); } catch { /* ignore */ }
+        try {
+          proc.kill("SIGTERM");
+        } catch {
+          /* ignore */
+        }
         resolve({
           success: false,
           stdout,
@@ -338,10 +351,10 @@ function spawnAnalysis(
  */
 function findOutputFiles(outputDir: string, videoStem: string): string[] {
   try {
-    const entries = fs.readdirSync(outputDir);
+    const entries = readdirSync(outputDir);
     return entries
       .filter((name) => name.startsWith(videoStem) && !name.startsWith("."))
-      .map((name) => path.join(outputDir, name))
+      .map((name) => join(outputDir, name))
       .sort();
   } catch {
     return [];
@@ -361,9 +374,9 @@ function readAnalysisResults(outputFiles: string[]): {
   for (const filePath of outputFiles) {
     try {
       if (filePath.endsWith(".md")) {
-        markdown = fs.readFileSync(filePath, "utf-8");
+        markdown = readFileSync(filePath, "utf-8");
       } else if (filePath.endsWith(".json")) {
-        const content = fs.readFileSync(filePath, "utf-8");
+        const content = readFileSync(filePath, "utf-8");
         json = JSON.parse(content);
       }
     } catch (error) {
@@ -388,7 +401,10 @@ export function setupClaudeAnalyzeIPC(): void {
   ipcMain.handle(
     "claude:analyze:run",
     async (_event, projectId: string, options: AnalyzeOptions) => {
-      claudeLog.info(HANDLER_NAME, `IPC analyze request for project ${projectId}`);
+      claudeLog.info(
+        HANDLER_NAME,
+        `IPC analyze request for project ${projectId}`
+      );
       return analyzeVideo(projectId, options);
     }
   );

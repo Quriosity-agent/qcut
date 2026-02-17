@@ -402,7 +402,7 @@ export class AIPipelineManager {
   /**
    * Get command and base arguments for execution
    */
-  private getCommand(): { cmd: string; baseArgs: string[] } {
+  getCommand(): { cmd: string; baseArgs: string[] } {
     if (this.config.binaryPath) {
       return { cmd: this.config.binaryPath, baseArgs: [] };
     }

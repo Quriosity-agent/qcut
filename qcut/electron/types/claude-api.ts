@@ -190,17 +190,12 @@ export interface DiagnosticResult {
 // Video Analysis Types
 // ============================================================================
 
-export interface AnalyzeSource {
-  type: "timeline" | "media" | "path";
-  /** Element ID when type = "timeline" */
-  elementId?: string;
-  /** Media ID when type = "media" */
-  mediaId?: string;
-  /** Absolute file path when type = "path" */
-  filePath?: string;
-}
+export type AnalyzeSource =
+  | { type: "timeline"; elementId: string }
+  | { type: "media"; mediaId: string }
+  | { type: "path"; filePath: string };
 
-export interface AnalyzeOptions {
+export type AnalyzeOptions = {
   source: AnalyzeSource;
   /** Analysis type: timeline (default), describe, or transcribe */
   analysisType?: "timeline" | "describe" | "transcribe";
@@ -208,22 +203,27 @@ export interface AnalyzeOptions {
   model?: string;
   /** Output format (default: "md") */
   format?: "md" | "json" | "both";
-}
+};
 
-export interface AnalyzeResult {
-  success: boolean;
-  markdown?: string;
-  json?: Record<string, unknown>;
-  outputFiles?: string[];
-  videoPath?: string;
-  duration?: number;
-  cost?: number;
-  error?: string;
-}
+export type AnalyzeResult =
+  | {
+      success: true;
+      markdown?: string;
+      json?: Record<string, unknown>;
+      outputFiles?: string[];
+      videoPath?: string;
+      duration?: number;
+      cost?: number;
+    }
+  | {
+      success: false;
+      error: string;
+      duration?: number;
+    };
 
-export interface AnalyzeModel {
+export type AnalyzeModel = {
   key: string;
   provider: string;
   modelId: string;
   description: string;
-}
+};
