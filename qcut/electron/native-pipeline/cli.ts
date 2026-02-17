@@ -64,6 +64,8 @@ Pipeline Options:
   --config, -c        Path to YAML pipeline config
   --input, -i         Pipeline input text or file path
   --save-intermediates Save intermediate step outputs
+  --parallel          Enable parallel step execution
+  --max-workers       Max concurrent workers (default: 8)
 
 Environment Variables:
   FAL_KEY             FAL.ai API key
@@ -114,6 +116,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       config: { type: "string", short: "c" },
       input: { type: "string", short: "i" },
       "save-intermediates": { type: "boolean", default: false },
+      parallel: { type: "boolean", default: false },
+      "max-workers": { type: "string" },
       json: { type: "boolean", default: false },
       quiet: { type: "boolean", short: "q", default: false },
       verbose: { type: "boolean", short: "v", default: false },
@@ -142,6 +146,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     config: values.config,
     input: values.input,
     saveIntermediates: values["save-intermediates"] ?? false,
+    parallel: values.parallel ?? false,
+    maxWorkers: values["max-workers"] ? parseInt(values["max-workers"], 10) : undefined,
     json: values.json ?? false,
     verbose: values.verbose ?? false,
     quiet: values.quiet ?? false,

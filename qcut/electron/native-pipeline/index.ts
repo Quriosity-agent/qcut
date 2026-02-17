@@ -30,6 +30,9 @@ export type {
 export { PipelineExecutor } from "./executor.js";
 export type { PipelineStep, PipelineChain, StepResult } from "./executor.js";
 
+export { ParallelPipelineExecutor, MergeStrategy } from "./parallel-executor.js";
+export type { ParallelConfig, ParallelStats, ParallelGroup } from "./parallel-executor.js";
+
 export { callModelApi, downloadOutput, pollQueueStatus } from "./api-caller.js";
 export type { ApiCallOptions, ApiCallResult } from "./api-caller.js";
 
@@ -37,6 +40,7 @@ export {
   parseChainConfig,
   validateChain,
   getDataTypeForCategory,
+  hasParallelGroups,
 } from "./chain-parser.js";
 
 export {

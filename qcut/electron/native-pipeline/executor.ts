@@ -33,6 +33,8 @@ export interface PipelineChain {
     outputDir?: string;
     saveIntermediates?: boolean;
     inputType?: DataType;
+    parallel?: boolean;
+    maxWorkers?: number;
   };
 }
 

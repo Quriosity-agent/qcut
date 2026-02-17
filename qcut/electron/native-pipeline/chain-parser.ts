@@ -25,13 +25,23 @@ interface YamlStep {
   retry_count?: number;
 }
 
+interface YamlParallelGroup {
+  type: "parallel_group";
+  merge_strategy?: string;
+  steps: YamlStep[];
+}
+
+type YamlStepOrGroup = YamlStep | YamlParallelGroup;
+
 interface YamlPipeline {
   name: string;
-  steps: YamlStep[];
+  steps: YamlStepOrGroup[];
   config?: {
     output_dir?: string;
     save_intermediates?: boolean;
     input_type?: string;
+    parallel?: boolean;
+    max_workers?: number;
   };
 }
 
@@ -50,18 +60,37 @@ export function parseChainConfig(yamlContent: string): PipelineChain {
     throw new Error("Pipeline must have at least one step");
   }
 
-  const steps: PipelineStep[] = raw.steps.map((s, i) => {
-    if (!s.type) throw new Error(`Step ${i + 1}: missing 'type'`);
-    if (!s.model) throw new Error(`Step ${i + 1}: missing 'model'`);
-
-    return {
-      type: s.type as ModelCategory,
-      model: s.model,
-      params: s.params ?? {},
-      enabled: s.enabled !== false,
-      retryCount: s.retry_count ?? 0,
-    };
-  });
+  const steps: PipelineStep[] = [];
+  for (let i = 0; i < raw.steps.length; i++) {
+    const s = raw.steps[i];
+    if (isParallelGroup(s)) {
+      for (const sub of s.steps) {
+        if (!sub.type) throw new Error(`Step ${i + 1} parallel sub-step: missing 'type'`);
+        if (!sub.model) throw new Error(`Step ${i + 1} parallel sub-step: missing 'model'`);
+        steps.push({
+          type: sub.type as ModelCategory,
+          model: sub.model,
+          params: {
+            ...(sub.params ?? {}),
+            __parallel_group: i,
+            __merge_strategy: s.merge_strategy || "COLLECT_ALL",
+          },
+          enabled: sub.enabled !== false,
+          retryCount: sub.retry_count ?? 0,
+        });
+      }
+    } else {
+      if (!s.type) throw new Error(`Step ${i + 1}: missing 'type'`);
+      if (!s.model) throw new Error(`Step ${i + 1}: missing 'model'`);
+      steps.push({
+        type: s.type as ModelCategory,
+        model: s.model,
+        params: s.params ?? {},
+        enabled: s.enabled !== false,
+        retryCount: s.retry_count ?? 0,
+      });
+    }
+  }
 
   return {
     name: raw.name,
@@ -70,6 +99,8 @@ export function parseChainConfig(yamlContent: string): PipelineChain {
       outputDir: raw.config?.output_dir,
       saveIntermediates: raw.config?.save_intermediates ?? false,
       inputType: raw.config?.input_type as DataType | undefined,
+      parallel: raw.config?.parallel,
+      maxWorkers: raw.config?.max_workers,
     },
   };
 }
@@ -129,6 +160,14 @@ function isTypeCompatible(outputType: DataType, inputType: DataType): boolean {
   if (outputType === inputType) return true;
   if (inputType === "text") return true;
   return false;
+}
+
+function isParallelGroup(s: YamlStepOrGroup): s is YamlParallelGroup {
+  return s.type === "parallel_group" && Array.isArray((s as YamlParallelGroup).steps);
+}
+
+export function hasParallelGroups(chain: PipelineChain): boolean {
+  return chain.steps.some((s) => s.params.__parallel_group !== undefined);
 }
 
 export function getDataTypeForCategory(category: ModelCategory): DataType {

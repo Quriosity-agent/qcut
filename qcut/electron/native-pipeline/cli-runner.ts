@@ -11,6 +11,7 @@ import * as fs from "fs";
 import { ModelRegistry } from "./registry.js";
 import { PipelineExecutor } from "./executor.js";
 import type { PipelineStep } from "./executor.js";
+import { ParallelPipelineExecutor } from "./parallel-executor.js";
 import { parseChainConfig, validateChain } from "./chain-parser.js";
 import {
   estimateCost,
@@ -35,6 +36,8 @@ export interface CLIRunOptions {
   aspectRatio?: string;
   resolution?: string;
   saveIntermediates: boolean;
+  parallel?: boolean;
+  maxWorkers?: number;
   json: boolean;
   verbose: boolean;
   quiet: boolean;
@@ -244,9 +247,21 @@ export class CLIPipelineRunner {
     chain.config.outputDir = outputDir;
     chain.config.saveIntermediates = options.saveIntermediates;
 
+    if (options.parallel) {
+      chain.config.parallel = true;
+      if (options.maxWorkers) chain.config.maxWorkers = options.maxWorkers;
+    }
+
     const input = options.input || options.text || "";
 
-    const result = await this.executor.executeChain(
+    const executor = chain.config.parallel
+      ? new ParallelPipelineExecutor({
+          enabled: true,
+          maxWorkers: chain.config.maxWorkers ?? 8,
+        })
+      : this.executor;
+
+    const result = await executor.executeChain(
       chain,
       input,
       (progress) => {
