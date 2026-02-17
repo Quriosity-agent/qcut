@@ -78,7 +78,7 @@ export interface PipelineResult {
 export interface PipelineStatus {
   available: boolean;
   version: string | null;
-  source: "bundled" | "system" | "python" | "unavailable";
+  source: "native" | "bundled" | "system" | "python" | "unavailable";
   compatible: boolean;
   features: Record<string, boolean>;
   error?: string;

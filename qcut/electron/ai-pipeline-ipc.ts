@@ -1,16 +1,24 @@
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
 import {
+  NativePipelineManager,
+  type GenerateOptions,
+  type PipelineResult,
+  type PipelineStatus,
+} from "./native-pipeline/index.js";
+import {
   AIPipelineManager,
-  GenerateOptions,
-  PipelineResult,
-  PipelineStatus,
+  type GenerateOptions as LegacyGenerateOptions,
+  type PipelineResult as LegacyPipelineResult,
+  type PipelineStatus as LegacyPipelineStatus,
 } from "./ai-pipeline-handler.js";
 
-let pipelineManager: AIPipelineManager | null = null;
+// Feature flag for gradual rollout — set QCUT_NATIVE_PIPELINE=false to use legacy binary
+const USE_NATIVE_PIPELINE = process.env.QCUT_NATIVE_PIPELINE !== "false";
 
-/**
- * Get the current main window for sending progress updates
- */
+type PipelineManagerUnion = NativePipelineManager | AIPipelineManager;
+
+let pipelineManager: PipelineManagerUnion | null = null;
+
 /** Get the current main window for sending progress updates. */
 function getMainWindow(): BrowserWindow | null {
   const windows = BrowserWindow.getAllWindows();
@@ -21,7 +29,13 @@ function getMainWindow(): BrowserWindow | null {
  * Setup AI Pipeline IPC handlers
  */
 export function setupAIPipelineIPC(): void {
-  pipelineManager = new AIPipelineManager();
+  if (USE_NATIVE_PIPELINE) {
+    pipelineManager = new NativePipelineManager();
+    console.log("[AI Pipeline] Using native TypeScript pipeline");
+  } else {
+    pipelineManager = new AIPipelineManager();
+    console.log("[AI Pipeline] Using legacy binary pipeline");
+  }
 
   // Check availability and get status
   ipcMain.handle(
@@ -39,19 +53,22 @@ export function setupAIPipelineIPC(): void {
   );
 
   // Get detailed status
-  ipcMain.handle("ai-pipeline:status", async (): Promise<PipelineStatus> => {
-    if (!pipelineManager) {
-      return {
-        available: false,
-        version: null,
-        source: "unavailable",
-        compatible: false,
-        features: {},
-        error: "Pipeline manager not initialized",
-      };
+  ipcMain.handle(
+    "ai-pipeline:status",
+    async (): Promise<PipelineStatus | LegacyPipelineStatus> => {
+      if (!pipelineManager) {
+        return {
+          available: false,
+          version: null,
+          source: "unavailable" as const,
+          compatible: false,
+          features: {},
+          error: "Pipeline manager not initialized",
+        };
+      }
+      return pipelineManager.getStatus();
     }
-    return pipelineManager.getStatus();
-  });
+  );
 
   // Generate content (image, video, avatar)
   ipcMain.handle(
@@ -59,7 +76,7 @@ export function setupAIPipelineIPC(): void {
     async (
       _event: IpcMainInvokeEvent,
       options: GenerateOptions
-    ): Promise<PipelineResult> => {
+    ): Promise<PipelineResult | LegacyPipelineResult> => {
       if (!pipelineManager) {
         return { success: false, error: "Pipeline manager not initialized" };
       }
@@ -90,7 +107,7 @@ export function setupAIPipelineIPC(): void {
   // List available models
   ipcMain.handle(
     "ai-pipeline:list-models",
-    async (): Promise<PipelineResult> => {
+    async (): Promise<PipelineResult | LegacyPipelineResult> => {
       if (!pipelineManager) {
         return { success: false, error: "Pipeline manager not initialized" };
       }
@@ -116,7 +133,7 @@ export function setupAIPipelineIPC(): void {
     async (
       _event: IpcMainInvokeEvent,
       options: { model: string; duration?: number; resolution?: string }
-    ): Promise<PipelineResult> => {
+    ): Promise<PipelineResult | LegacyPipelineResult> => {
       if (!pipelineManager) {
         return { success: false, error: "Pipeline manager not initialized" };
       }
@@ -154,20 +171,23 @@ export function setupAIPipelineIPC(): void {
   );
 
   // Refresh environment detection
-  ipcMain.handle("ai-pipeline:refresh", async (): Promise<PipelineStatus> => {
-    if (!pipelineManager) {
-      return {
-        available: false,
-        version: null,
-        source: "unavailable",
-        compatible: false,
-        features: {},
-        error: "Pipeline manager not initialized",
-      };
+  ipcMain.handle(
+    "ai-pipeline:refresh",
+    async (): Promise<PipelineStatus | LegacyPipelineStatus> => {
+      if (!pipelineManager) {
+        return {
+          available: false,
+          version: null,
+          source: "unavailable" as const,
+          compatible: false,
+          features: {},
+          error: "Pipeline manager not initialized",
+        };
+      }
+      await pipelineManager.refreshEnvironment();
+      return pipelineManager.getStatus();
     }
-    await pipelineManager.refreshEnvironment();
-    return pipelineManager.getStatus();
-  });
+  );
 
   console.log("[AI Pipeline] IPC handlers registered");
 }

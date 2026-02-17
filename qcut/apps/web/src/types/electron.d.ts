@@ -1306,8 +1306,8 @@ export interface AIPipelineStatus {
   available: boolean;
   /** Binary/module version */
   version: string | null;
-  /** Source of the pipeline (bundled, system, python, unavailable) */
-  source: "bundled" | "system" | "python" | "unavailable";
+  /** Source of the pipeline (native, bundled, system, python, unavailable) */
+  source: "native" | "bundled" | "system" | "python" | "unavailable";
   /** Whether version is compatible with QCut */
   compatible: boolean;
   /** Feature flags for available capabilities */
