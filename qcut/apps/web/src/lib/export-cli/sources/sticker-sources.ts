@@ -10,6 +10,7 @@
 import type { StickerSourceForFilter } from "../types";
 import type { MediaItem } from "@/stores/media-store";
 import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
+import { rasterizeSvgToPng, isSvgContent } from "./svg-rasterizer";
 
 /**
  * Logger function type for dependency injection.
@@ -51,11 +52,14 @@ interface StickersStoreGetter {
 
 /**
  * Download sticker blob/data URL to temp directory for FFmpeg CLI access.
+ * SVG stickers are rasterized to PNG since FFmpeg has limited SVG support.
  *
  * @param sticker - Sticker data with ID
  * @param mediaItem - Media item with URL
  * @param sessionId - Export session ID
  * @param stickerAPI - Electron sticker export API
+ * @param targetWidth - Target pixel width (used for SVG rasterization)
+ * @param targetHeight - Target pixel height (used for SVG rasterization)
  * @param logger - Logger function
  * @returns Local file path
  * @throws Error if download fails
@@ -65,10 +69,12 @@ async function downloadStickerToTemp(
   mediaItem: MediaItem,
   sessionId: string,
   stickerAPI: StickerExportAPI,
+  targetWidth: number,
+  targetHeight: number,
   logger: LogFn
 ): Promise<string> {
-  // Return existing local path if available
-  if (mediaItem.localPath) {
+  // Return existing local path if available (but not for SVGs — they need rasterization)
+  if (mediaItem.localPath && !mediaItem.localPath.endsWith(".svg")) {
     logger(`[StickerSources] Using existing path: ${mediaItem.localPath}`);
     return mediaItem.localPath;
   }
@@ -85,9 +91,23 @@ async function downloadStickerToTemp(
   }
 
   const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
-  const imageBytes = new Uint8Array(arrayBuffer);
-  const format = blob.type?.split("/")[1] || "png";
+  let imageBytes: Uint8Array;
+  let format: string;
+
+  // Rasterize SVG to PNG for FFmpeg compatibility
+  if (isSvgContent(blob, mediaItem.url)) {
+    logger(
+      `[StickerSources] Rasterizing SVG sticker ${sticker.id} to PNG (${targetWidth}x${targetHeight})`
+    );
+    imageBytes = await rasterizeSvgToPng(blob, targetWidth, targetHeight);
+    format = "png";
+  } else {
+    const arrayBuffer = await blob.arrayBuffer();
+    imageBytes = new Uint8Array(arrayBuffer);
+    format = blob.type?.split("/")[1] || "png";
+    if (format === "svg+xml") format = "png"; // Shouldn't reach here, but safety
+    if (format === "jpeg") format = "jpg";
+  }
 
   const result = await stickerAPI.saveStickerForExport({
     sessionId,
@@ -183,21 +203,23 @@ export async function extractStickerSources(
           continue;
         }
 
-        // Download sticker to temp directory if needed
-        const localPath = await downloadStickerToTemp(
-          sticker,
-          mediaItem,
-          sessionId,
-          api,
-          logger
-        );
-
         // Convert percentage positions to pixel coordinates
         const baseSize = Math.min(canvasWidth, canvasHeight);
         const pixelX = (sticker.position.x / 100) * canvasWidth;
         const pixelY = (sticker.position.y / 100) * canvasHeight;
         const pixelWidth = (sticker.size.width / 100) * baseSize;
         const pixelHeight = (sticker.size.height / 100) * baseSize;
+
+        // Download sticker to temp directory (SVGs are rasterized to PNG)
+        const localPath = await downloadStickerToTemp(
+          sticker,
+          mediaItem,
+          sessionId,
+          api,
+          Math.round(pixelWidth),
+          Math.round(pixelHeight),
+          logger
+        );
 
         // Adjust for center-based positioning (sticker position is center, not top-left)
         const topLeftX = pixelX - pixelWidth / 2;
