@@ -80,7 +80,7 @@ Examples:
 `.trim());
 }
 
-function parseCliArgs(argv: string[]): CLIRunOptions {
+export function parseCliArgs(argv: string[]): CLIRunOptions {
   const command = argv[0];
 
   if (!command || command === "--help" || command === "-h") {
