@@ -1,8 +1,8 @@
 /**
- * Unified API Caller for Electron main process
+ * Unified API Caller for native pipeline
  *
  * Supports FAL, ElevenLabs, Google/Gemini, and OpenRouter providers.
- * Replaces Python binary's HTTP calls with native Node.js fetch.
+ * Works in both Electron main process and standalone CLI (no Electron dependency).
  *
  * @module electron/native-pipeline/api-caller
  */
@@ -11,12 +11,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+
+export type ProviderName = "fal" | "elevenlabs" | "google" | "openrouter";
+export type ApiKeyProvider = (provider: ProviderName) => Promise<string>;
 
 export interface ApiCallOptions {
   endpoint: string;
   payload: Record<string, unknown>;
-  provider: "fal" | "elevenlabs" | "google" | "openrouter";
+  provider: ProviderName;
   async?: boolean;
   onProgress?: (percent: number, message: string) => void;
   timeoutMs?: number;
@@ -55,27 +57,56 @@ const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_RETRIES = 2;
 const POLL_INTERVAL_MS = 3000;
 
-async function getApiKey(
-  provider: ApiCallOptions["provider"]
-): Promise<string> {
-  const keys = await getDecryptedApiKeys();
+/** Resolve API key from environment variables only (no Electron dependency). */
+export function envApiKeyProvider(provider: ProviderName): Promise<string> {
   switch (provider) {
     case "fal":
-      return (
-        process.env.FAL_KEY || process.env.FAL_API_KEY || keys.falApiKey || ""
+      return Promise.resolve(
+        process.env.FAL_KEY || process.env.FAL_API_KEY || ""
       );
     case "elevenlabs":
-      return process.env.ELEVENLABS_API_KEY || "";
+      return Promise.resolve(process.env.ELEVENLABS_API_KEY || "");
     case "google":
-      return (
+      return Promise.resolve(
         process.env.GEMINI_API_KEY ||
-        process.env.GOOGLE_AI_API_KEY ||
-        keys.geminiApiKey ||
-        ""
+          process.env.GOOGLE_AI_API_KEY ||
+          ""
       );
     case "openrouter":
-      return process.env.OPENROUTER_API_KEY || keys.openRouterApiKey || "";
+      return Promise.resolve(process.env.OPENROUTER_API_KEY || "");
   }
+}
+
+/** Default provider: tries Electron encrypted storage, then falls back to env vars. */
+async function defaultApiKeyProvider(provider: ProviderName): Promise<string> {
+  try {
+    const { getDecryptedApiKeys } = await import("../api-key-handler.js");
+    const keys = await getDecryptedApiKeys();
+    switch (provider) {
+      case "fal":
+        return process.env.FAL_KEY || process.env.FAL_API_KEY || keys.falApiKey || "";
+      case "elevenlabs":
+        return process.env.ELEVENLABS_API_KEY || "";
+      case "google":
+        return process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || keys.geminiApiKey || "";
+      case "openrouter":
+        return process.env.OPENROUTER_API_KEY || keys.openRouterApiKey || "";
+    }
+  } catch {
+    // Not in Electron — fall through to env vars
+  }
+  return envApiKeyProvider(provider);
+}
+
+let activeKeyProvider: ApiKeyProvider = defaultApiKeyProvider;
+
+/** Override the API key provider (e.g., for CLI use with env-var-only provider). */
+export function setApiKeyProvider(provider: ApiKeyProvider): void {
+  activeKeyProvider = provider;
+}
+
+async function getApiKey(provider: ProviderName): Promise<string> {
+  return activeKeyProvider(provider);
 }
 
 function buildHeaders(

@@ -13,10 +13,10 @@ import { app } from "electron";
 import { ModelRegistry } from "./registry.js";
 import { PipelineExecutor } from "./executor.js";
 import type { PipelineChain, PipelineStep } from "./executor.js";
-import { executeStep as executeStepFn } from "./step-executors.js";
 import { downloadOutput } from "./api-caller.js";
 import { parseChainConfig, validateChain } from "./chain-parser.js";
 import { estimateCost, listModels } from "./cost-calculator.js";
+import { resolveOutputDir as resolveOutputDirShared } from "./output-utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 import { importMediaFile } from "../claude/claude-media-handler.js";
 import { inferProjectIdFromPath } from "../ai-pipeline-output.js";
@@ -437,18 +437,11 @@ export class NativePipelineManager {
     options: GenerateOptions,
     sessionId: string
   ): string {
-    if (options.outputDir) {
-      fs.mkdirSync(options.outputDir, { recursive: true });
-      return options.outputDir;
-    }
-    const dir = path.join(
-      app.getPath("temp"),
-      "qcut",
-      "aicp-output",
-      sessionId
+    return resolveOutputDirShared(
+      options.outputDir,
+      sessionId,
+      app.getPath("temp")
     );
-    fs.mkdirSync(dir, { recursive: true });
-    return dir;
   }
 
   private buildParams(

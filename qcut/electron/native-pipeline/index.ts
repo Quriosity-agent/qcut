@@ -6,18 +6,9 @@
  * @module electron/native-pipeline
  */
 
-// Initialize registry with all models
-import {
-  registerTextToVideoModels,
-  registerImageToVideoModels,
-  registerImageToImageModels,
-} from "./registry-data.js";
-import { registerAllPart2Models } from "./registry-data-2.js";
-
-registerTextToVideoModels();
-registerImageToVideoModels();
-registerImageToImageModels();
-registerAllPart2Models();
+// Initialize registry with all models (shared with CLI)
+import { initRegistry } from "./init.js";
+initRegistry();
 
 // Public exports
 export { ModelRegistry } from "./registry.js";
