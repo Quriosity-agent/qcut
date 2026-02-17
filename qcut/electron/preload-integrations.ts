@@ -33,6 +33,7 @@ import type {
 // PTY Terminal
 // ============================================================================
 
+/** Create the PTY terminal API for the renderer process. */
 export function createPtyAPI(): ElectronAPI["pty"] {
   return {
     spawn: (options?) => ipcRenderer.invoke("pty:spawn", options),
@@ -61,6 +62,7 @@ export function createPtyAPI(): ElectronAPI["pty"] {
 // MCP App Bridge
 // ============================================================================
 
+/** Create the MCP app bridge API for the renderer process. */
 export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
   return {
     onAppHtml: (callback) => {
@@ -77,6 +79,7 @@ export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
 // Skills
 // ============================================================================
 
+/** Create the skills management API for the renderer process. */
 export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
   return {
     list: (projectId) => ipcRenderer.invoke("skills:list", projectId),
@@ -98,6 +101,7 @@ export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
 // AI Pipeline
 // ============================================================================
 
+/** Create the AI content pipeline API for the renderer process. */
 export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
   return {
     check: () => ipcRenderer.invoke("ai-pipeline:check"),
@@ -132,6 +136,7 @@ export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
 // Media Import
 // ============================================================================
 
+/** Create the media import API for the renderer process. */
 export function createMediaImportAPI(): NonNullable<
   ElectronAPI["mediaImport"]
 > {
@@ -161,6 +166,7 @@ export function createMediaImportAPI(): NonNullable<
 // Project Folder
 // ============================================================================
 
+/** Create the project folder API for the renderer process. */
 export function createProjectFolderAPI(): NonNullable<
   ElectronAPI["projectFolder"]
 > {
@@ -180,6 +186,7 @@ export function createProjectFolderAPI(): NonNullable<
 // Claude Code Integration
 // ============================================================================
 
+/** Create the Claude code integration API for the renderer process. */
 export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
   return {
     media: {
@@ -371,6 +378,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 // Remotion Folder
 // ============================================================================
 
+/** Create the Remotion folder API for the renderer process. */
 export function createRemotionFolderAPI(): NonNullable<
   ElectronAPI["remotionFolder"]
 > {
@@ -392,6 +400,7 @@ export function createRemotionFolderAPI(): NonNullable<
 // Updates & Release Notes
 // ============================================================================
 
+/** Create the auto-updates and release notes API for the renderer process. */
 export function createUpdatesAPI(): NonNullable<ElectronAPI["updates"]> {
   return {
     checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

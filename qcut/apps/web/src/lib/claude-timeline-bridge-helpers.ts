@@ -71,6 +71,7 @@ export function findTrackByElementId(
   );
 }
 
+/** Check if element type is a media type (media, video, audio, image). */
 export function isClaudeMediaElementType({
   type,
 }: {
@@ -84,6 +85,7 @@ export function isClaudeMediaElementType({
   );
 }
 
+/** Get element start time, defaulting to 0 if not set. */
 function getElementStartTime({
   element,
 }: {
@@ -95,6 +97,7 @@ function getElementStartTime({
   return 0;
 }
 
+/** Derive element duration from start/end times or use fallback. */
 function getElementDuration({
   element,
   fallbackDuration,
@@ -119,6 +122,7 @@ function getElementDuration({
   return DEFAULT_MEDIA_DURATION_SECONDS;
 }
 
+/** Find matching media item by source name or ID. */
 function findMediaItemForElement({
   element,
   mediaItems,
@@ -157,6 +161,7 @@ function findMediaItemForElement({
   return null;
 }
 
+/** Decode a base64url-encoded UTF-8 string, returning null on failure. */
 function decodeBase64UrlUtf8({ encoded }: { encoded: string }): string | null {
   try {
     const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
@@ -169,6 +174,7 @@ function decodeBase64UrlUtf8({ encoded }: { encoded: string }): string | null {
   }
 }
 
+/** Extract original source name from a deterministic media ID prefix. */
 function getSourceNameFromDeterministicSourceId({
   sourceId,
 }: {
@@ -188,6 +194,7 @@ function getSourceNameFromDeterministicSourceId({
   return decodeBase64UrlUtf8({ encoded: encodedName });
 }
 
+/** Sync project media from disk if not already in flight. */
 async function syncProjectMediaIfNeeded({
   projectId,
 }: {
@@ -214,6 +221,7 @@ async function syncProjectMediaIfNeeded({
   await syncPromise;
 }
 
+/** Resolve a media item for an element, syncing project media if needed. */
 async function resolveMediaItemForElement({
   element,
   projectId,
@@ -246,6 +254,7 @@ async function resolveMediaItemForElement({
   }
 }
 
+/** Add a Claude media element to the timeline store. */
 export async function addClaudeMediaElement({
   element,
   timelineStore,
@@ -292,6 +301,7 @@ export async function addClaudeMediaElement({
   debugLog("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
 }
 
+/** Add a Claude text element to the timeline store. */
 export function addClaudeTextElement({
   element,
   timelineStore,
