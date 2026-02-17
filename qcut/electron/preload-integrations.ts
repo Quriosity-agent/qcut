@@ -18,6 +18,9 @@ import type {
   MediaFile,
   ClaudeTimeline,
   ClaudeElement,
+  ClaudeSplitResponse,
+  ClaudeMoveRequest,
+  ClaudeSelectionItem,
   ProjectSettings,
   ProjectStats,
   ExportPreset,
@@ -30,6 +33,7 @@ import type {
 // PTY Terminal
 // ============================================================================
 
+/** Create the PTY terminal API for the renderer process. */
 export function createPtyAPI(): ElectronAPI["pty"] {
   return {
     spawn: (options?) => ipcRenderer.invoke("pty:spawn", options),
@@ -58,6 +62,7 @@ export function createPtyAPI(): ElectronAPI["pty"] {
 // MCP App Bridge
 // ============================================================================
 
+/** Create the MCP app bridge API for the renderer process. */
 export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
   return {
     onAppHtml: (callback) => {
@@ -74,6 +79,7 @@ export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
 // Skills
 // ============================================================================
 
+/** Create the skills management API for the renderer process. */
 export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
   return {
     list: (projectId) => ipcRenderer.invoke("skills:list", projectId),
@@ -95,6 +101,7 @@ export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
 // AI Pipeline
 // ============================================================================
 
+/** Create the AI content pipeline API for the renderer process. */
 export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
   return {
     check: () => ipcRenderer.invoke("ai-pipeline:check"),
@@ -129,6 +136,7 @@ export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
 // Media Import
 // ============================================================================
 
+/** Create the media import API for the renderer process. */
 export function createMediaImportAPI(): NonNullable<
   ElectronAPI["mediaImport"]
 > {
@@ -158,6 +166,7 @@ export function createMediaImportAPI(): NonNullable<
 // Project Folder
 // ============================================================================
 
+/** Create the project folder API for the renderer process. */
 export function createProjectFolderAPI(): NonNullable<
   ElectronAPI["projectFolder"]
 > {
@@ -177,6 +186,7 @@ export function createProjectFolderAPI(): NonNullable<
 // Claude Code Integration
 // ============================================================================
 
+/** Create the Claude code integration API for the renderer process. */
 export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
   return {
     media: {
@@ -210,6 +220,32 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           projectId,
           elementId
         ),
+      splitElement: (projectId, elementId, splitTime, mode) =>
+        ipcRenderer.invoke(
+          "claude:timeline:splitElement",
+          projectId,
+          elementId,
+          splitTime,
+          mode
+        ),
+      moveElement: (projectId, elementId, toTrackId, newStartTime) =>
+        ipcRenderer.invoke(
+          "claude:timeline:moveElement",
+          projectId,
+          elementId,
+          toTrackId,
+          newStartTime
+        ),
+      selectElements: (projectId, elements) =>
+        ipcRenderer.invoke(
+          "claude:timeline:selectElements",
+          projectId,
+          elements
+        ),
+      getSelection: (projectId) =>
+        ipcRenderer.invoke("claude:timeline:getSelection", projectId),
+      clearSelection: (projectId) =>
+        ipcRenderer.invoke("claude:timeline:clearSelection", projectId),
       onRequest: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:request");
         ipcRenderer.on("claude:timeline:request", () => callback());
@@ -238,6 +274,46 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           callback(id)
         );
       },
+      onSplitElement: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+        ipcRenderer.on("claude:timeline:splitElement", (_, data) =>
+          callback(data)
+        );
+      },
+      sendSplitResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:splitElement:response", {
+          requestId,
+          result,
+        });
+      },
+      onMoveElement: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+        ipcRenderer.on("claude:timeline:moveElement", (_, data) =>
+          callback(data)
+        );
+      },
+      onSelectElements: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+        ipcRenderer.on("claude:timeline:selectElements", (_, data) =>
+          callback(data)
+        );
+      },
+      onGetSelection: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+        ipcRenderer.on("claude:timeline:getSelection", (_, data) =>
+          callback(data)
+        );
+      },
+      sendSelectionResponse: (requestId, elements) => {
+        ipcRenderer.send("claude:timeline:getSelection:response", {
+          requestId,
+          elements,
+        });
+      },
+      onClearSelection: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
+        ipcRenderer.on("claude:timeline:clearSelection", () => callback());
+      },
       sendResponse: (timeline) => {
         ipcRenderer.send("claude:timeline:response", timeline);
       },
@@ -247,6 +323,11 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
         ipcRenderer.removeAllListeners("claude:timeline:addElement");
         ipcRenderer.removeAllListeners("claude:timeline:updateElement");
         ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
       },
     },
     project: {
@@ -297,6 +378,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 // Remotion Folder
 // ============================================================================
 
+/** Create the Remotion folder API for the renderer process. */
 export function createRemotionFolderAPI(): NonNullable<
   ElectronAPI["remotionFolder"]
 > {
@@ -318,6 +400,7 @@ export function createRemotionFolderAPI(): NonNullable<
 // Updates & Release Notes
 // ============================================================================
 
+/** Create the auto-updates and release notes API for the renderer process. */
 export function createUpdatesAPI(): NonNullable<ElectronAPI["updates"]> {
   return {
     checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

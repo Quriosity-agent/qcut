@@ -16,6 +16,7 @@ interface ResizeHandlesProps {
   isVisible: boolean;
   sticker: OverlaySticker;
   elementRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement>;
 }
 
 type ResizeHandle = "tl" | "tr" | "bl" | "br" | "t" | "r" | "b" | "l";
@@ -24,8 +25,9 @@ type ResizeHandle = "tl" | "tr" | "bl" | "br" | "t" | "r" | "b" | "l";
  * Resize handles for sticker elements
  */
 export const ResizeHandles = memo<ResizeHandlesProps>(
-  ({ stickerId, isVisible, sticker, elementRef }) => {
-    const { updateOverlaySticker, setIsResizing } = useStickersOverlayStore();
+  ({ stickerId, isVisible, sticker, elementRef, canvasRef }) => {
+    const { updateOverlaySticker, setIsResizing, saveHistorySnapshot } =
+      useStickersOverlayStore();
     const resizeState = useRef({
       isResizing: false,
       handle: null as ResizeHandle | null,
@@ -54,9 +56,12 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         let newX = sticker.position.x;
         let newY = sticker.position.y;
 
-        // Calculate percentage changes
-        const deltaXPercent = (deltaX / window.innerWidth) * 100;
-        const deltaYPercent = (deltaY / window.innerHeight) * 100;
+        // Calculate percentage changes relative to canvas (not window)
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        const canvasWidth = canvasRect?.width ?? window.innerWidth;
+        const canvasHeight = canvasRect?.height ?? window.innerHeight;
+        const deltaXPercent = (deltaX / canvasWidth) * 100;
+        const deltaYPercent = (deltaY / canvasHeight) * 100;
 
         switch (handle) {
           case "tl": // Top-left
@@ -127,9 +132,16 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         newX = Math.max(0, Math.min(100, newX));
         newY = Math.max(0, Math.min(100, newY));
 
+        // Clamp size so sticker doesn't extend past canvas edges
+        // Position is center-based, so max size = 2× distance to nearest edge
+        const maxWidth = Math.min(100, newX * 2, (100 - newX) * 2);
+        const maxHeight = Math.min(100, newY * 2, (100 - newY) * 2);
+        newWidth = Math.max(5, Math.min(maxWidth, newWidth));
+        newHeight = Math.max(5, Math.min(maxHeight, newHeight));
+
         return { width: newWidth, height: newHeight, x: newX, y: newY };
       },
-      [sticker.position.x, sticker.position.y]
+      [sticker.position.x, sticker.position.y, canvasRef]
     );
 
     /**
@@ -157,6 +169,9 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         debugLog(`[ResizeHandles] Starting resize with handle: ${handle}`);
         e.stopPropagation();
         e.preventDefault();
+
+        // Save snapshot before resize so Ctrl+Z can undo
+        saveHistorySnapshot();
 
         resizeState.current = {
           isResizing: true,
@@ -220,6 +235,7 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
         stickerId,
         sticker,
         setIsResizing,
+        saveHistorySnapshot,
         updateOverlaySticker,
         calculateNewSize,
         getCursorForHandle,
@@ -257,43 +273,39 @@ export const ResizeHandles = memo<ResizeHandlesProps>(
           title="Resize bottom-right (hold Shift for aspect ratio)"
         />
 
-        {/* Edge handles (optional, can be enabled for more precise control) */}
-        {sticker.size.width > 15 && sticker.size.height > 15 && (
-          <>
-            <div
-              className={cn(
-                edgeHandleClass,
-                "top-1/2 -left-1 w-2 h-6 -translate-y-1/2 cursor-w-resize"
-              )}
-              onMouseDown={(e) => handleResizeStart(e, "l")}
-              title="Resize left"
-            />
-            <div
-              className={cn(
-                edgeHandleClass,
-                "top-1/2 -right-1 w-2 h-6 -translate-y-1/2 cursor-e-resize"
-              )}
-              onMouseDown={(e) => handleResizeStart(e, "r")}
-              title="Resize right"
-            />
-            <div
-              className={cn(
-                edgeHandleClass,
-                "-top-1 left-1/2 w-6 h-2 -translate-x-1/2 cursor-n-resize"
-              )}
-              onMouseDown={(e) => handleResizeStart(e, "t")}
-              title="Resize top"
-            />
-            <div
-              className={cn(
-                edgeHandleClass,
-                "-bottom-1 left-1/2 w-6 h-2 -translate-x-1/2 cursor-s-resize"
-              )}
-              onMouseDown={(e) => handleResizeStart(e, "b")}
-              title="Resize bottom"
-            />
-          </>
-        )}
+        {/* Edge handles — always visible when selected */}
+        <div
+          className={cn(
+            edgeHandleClass,
+            "top-1/2 -left-1 w-2 h-6 -translate-y-1/2 cursor-w-resize"
+          )}
+          onMouseDown={(e) => handleResizeStart(e, "l")}
+          title="Resize left"
+        />
+        <div
+          className={cn(
+            edgeHandleClass,
+            "top-1/2 -right-1 w-2 h-6 -translate-y-1/2 cursor-e-resize"
+          )}
+          onMouseDown={(e) => handleResizeStart(e, "r")}
+          title="Resize right"
+        />
+        <div
+          className={cn(
+            edgeHandleClass,
+            "-top-1 left-1/2 w-6 h-2 -translate-x-1/2 cursor-n-resize"
+          )}
+          onMouseDown={(e) => handleResizeStart(e, "t")}
+          title="Resize top"
+        />
+        <div
+          className={cn(
+            edgeHandleClass,
+            "-bottom-1 left-1/2 w-6 h-2 -translate-x-1/2 cursor-s-resize"
+          )}
+          onMouseDown={(e) => handleResizeStart(e, "b")}
+          title="Resize bottom"
+        />
       </>
     );
   }

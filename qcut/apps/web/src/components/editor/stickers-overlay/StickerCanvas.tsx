@@ -119,7 +119,7 @@ export const StickerCanvas: React.FC<{
     e.dataTransfer.dropEffect = "copy";
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
 
     const mediaItemData = e.dataTransfer.getData("application/x-media-item");
@@ -138,31 +138,49 @@ export const StickerCanvas: React.FC<{
 
         // Calculate drop position as percentage
         const rect = canvasRef.current?.getBoundingClientRect();
-        if (rect) {
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
+        const x = rect
+          ? Math.min(
+              Math.max(((e.clientX - rect.left) / rect.width) * 100, 0),
+              100
+            )
+          : 50;
+        const y = rect
+          ? Math.min(
+              Math.max(((e.clientY - rect.top) / rect.height) * 100, 0),
+              100
+            )
+          : 50;
 
-          addOverlaySticker(mediaItem.id, {
-            position: {
-              x: Math.min(Math.max(x, 0), 100),
-              y: Math.min(Math.max(y, 0), 100),
-            },
-            timing: { startTime: currentTime, endTime: currentTime + 5 }, // 5 second default duration
-          });
+        // Create overlay sticker (position/size only — no timing)
+        const stickerId = addOverlaySticker(mediaItem.id, {
+          position: { x, y },
+        });
 
-          debugLog(
-            "[StickerCanvas] ✅ DRAG-DROP FIX: Added sticker at position",
-            { x, y }
+        // Add to timeline (source of truth for timing)
+        const { timelineStickerIntegration } = await import(
+          "@/lib/timeline-sticker-integration"
+        );
+        const sticker = useStickersOverlayStore
+          .getState()
+          .overlayStickers.get(stickerId);
+        if (sticker) {
+          const result = await timelineStickerIntegration.addStickerToTimeline(
+            sticker,
+            currentTime,
+            5 // 5 second default duration
           );
-        } else {
-          // Fallback to center position
-          addOverlaySticker(mediaItem.id, {
-            timing: { startTime: currentTime, endTime: currentTime + 5 }, // 5 second default duration
-          });
-          debugLog(
-            "[StickerCanvas] ✅ DRAG-DROP FIX: Added sticker at center (fallback)"
-          );
+          if (!result.success) {
+            debugLog(
+              "[StickerCanvas] ❌ Failed to add sticker to timeline:",
+              result.error
+            );
+          }
         }
+
+        debugLog(
+          "[StickerCanvas] ✅ Added sticker at position + timeline clip",
+          { x, y }
+        );
       }
     } catch (error) {
       debugLog("[StickerCanvas] ❌ DROP ERROR:", error);

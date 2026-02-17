@@ -131,16 +131,31 @@ export function useDragHandlers({
                     activeProject.id,
                     mediaItem
                   );
-                  const { getMediaStore } = await import("@/utils/lazy-stores");
-                  const MediaStoreInstance = await getMediaStore();
-                  const currentState = MediaStoreInstance.getState() as {
-                    mediaItems: MediaItem[];
-                  };
-                  const addedItem = currentState.mediaItems.find(
-                    (item) => item.id === newItemId
+
+                  // Create overlay sticker at center position
+                  const { useStickersOverlayStore } = await import(
+                    "@/stores/stickers-overlay-store"
                   );
-                  if (addedItem) {
-                    useTimelineStore.getState().addMediaToNewTrack(addedItem);
+                  const stickerId = useStickersOverlayStore
+                    .getState()
+                    .addOverlaySticker(newItemId, {
+                      position: { x: 50, y: 50 },
+                    });
+
+                  // Add as StickerElement to timeline (not MediaElement)
+                  const { timelineStickerIntegration } = await import(
+                    "@/lib/timeline-sticker-integration"
+                  );
+                  const sticker = useStickersOverlayStore
+                    .getState()
+                    .overlayStickers.get(stickerId);
+                  if (sticker) {
+                    const currentTime = usePlaybackStore.getState().currentTime;
+                    await timelineStickerIntegration.addStickerToTimeline(
+                      sticker,
+                      currentTime,
+                      5 // 5 second default duration
+                    );
                   }
                 }
               }

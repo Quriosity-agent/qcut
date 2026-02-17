@@ -4,7 +4,7 @@
  * Individual draggable sticker element with selection and interaction support.
  */
 
-import React, { memo, useRef } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug-config";
 import { useStickerDrag } from "./hooks/useStickerDrag";
@@ -28,7 +28,12 @@ export const StickerElement = memo<StickerElementProps>(
     const elementRef = useRef<HTMLDivElement>(null);
 
     // Store hooks
-    const { selectedStickerId, selectSticker } = useStickersOverlayStore();
+    const {
+      selectedStickerId,
+      selectSticker,
+      updateOverlaySticker,
+      saveHistorySnapshot,
+    } = useStickersOverlayStore();
     const isSelected = selectedStickerId === sticker.id;
 
     // Drag functionality
@@ -61,6 +66,62 @@ export const StickerElement = memo<StickerElementProps>(
       selectSticker(sticker.id);
       handleMouseDown(e);
     };
+
+    /**
+     * Handle scroll-wheel zoom for selected sticker.
+     * Saves a history snapshot on the first wheel tick of each gesture
+     * (debounced by 300ms of inactivity) so Ctrl+Z undoes the whole zoom.
+     */
+    const wheelSnapshotSaved = useRef(false);
+    const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    useEffect(() => {
+      return () => clearTimeout(wheelTimeoutRef.current);
+    }, []);
+    const handleWheel = useCallback(
+      (e: React.WheelEvent) => {
+        if (!isSelected) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Save history once per zoom gesture
+        if (!wheelSnapshotSaved.current) {
+          saveHistorySnapshot();
+          wheelSnapshotSaved.current = true;
+        }
+        clearTimeout(wheelTimeoutRef.current);
+        wheelTimeoutRef.current = setTimeout(() => {
+          wheelSnapshotSaved.current = false;
+        }, 300);
+
+        const scaleDelta = e.deltaY < 0 ? 1.05 : 0.95;
+
+        // Clamp to canvas bounds (center-based: max size = 2x distance to nearest edge)
+        const maxWidth = Math.min(
+          100,
+          sticker.position.x * 2,
+          (100 - sticker.position.x) * 2
+        );
+        const maxHeight = Math.min(
+          100,
+          sticker.position.y * 2,
+          (100 - sticker.position.y) * 2
+        );
+
+        const newWidth = Math.max(
+          5,
+          Math.min(maxWidth, sticker.size.width * scaleDelta)
+        );
+        const newHeight = Math.max(
+          5,
+          Math.min(maxHeight, sticker.size.height * scaleDelta)
+        );
+
+        updateOverlaySticker(sticker.id, {
+          size: { width: newWidth, height: newHeight },
+        });
+      },
+      [isSelected, sticker, updateOverlaySticker, saveHistorySnapshot]
+    );
 
     /**
      * Render media content based on type
@@ -133,6 +194,7 @@ export const StickerElement = memo<StickerElementProps>(
         style={elementStyle}
         onClick={handleClick}
         onMouseDown={handleMouseDownWrapper}
+        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -151,6 +213,7 @@ export const StickerElement = memo<StickerElementProps>(
           isVisible={isSelected}
           sticker={sticker}
           elementRef={elementRef}
+          canvasRef={canvasRef}
         />
 
         {/* Control buttons for selected sticker */}

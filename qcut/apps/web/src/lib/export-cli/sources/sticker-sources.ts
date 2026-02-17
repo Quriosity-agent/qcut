@@ -9,6 +9,8 @@
 
 import type { StickerSourceForFilter } from "../types";
 import type { MediaItem } from "@/stores/media-store";
+import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
+import { rasterizeSvgToPng, isSvgContent } from "./svg-rasterizer";
 
 /**
  * Logger function type for dependency injection.
@@ -26,6 +28,7 @@ interface StickerOverlayData {
   zIndex: number;
   opacity?: number;
   rotation?: number;
+  maintainAspectRatio?: boolean;
   timing?: { startTime?: number; endTime?: number };
 }
 
@@ -50,11 +53,14 @@ interface StickersStoreGetter {
 
 /**
  * Download sticker blob/data URL to temp directory for FFmpeg CLI access.
+ * SVG stickers are rasterized to PNG since FFmpeg has limited SVG support.
  *
  * @param sticker - Sticker data with ID
  * @param mediaItem - Media item with URL
  * @param sessionId - Export session ID
  * @param stickerAPI - Electron sticker export API
+ * @param targetWidth - Target pixel width (used for SVG rasterization)
+ * @param targetHeight - Target pixel height (used for SVG rasterization)
  * @param logger - Logger function
  * @returns Local file path
  * @throws Error if download fails
@@ -64,10 +70,12 @@ async function downloadStickerToTemp(
   mediaItem: MediaItem,
   sessionId: string,
   stickerAPI: StickerExportAPI,
+  targetWidth: number,
+  targetHeight: number,
   logger: LogFn
 ): Promise<string> {
-  // Return existing local path if available
-  if (mediaItem.localPath) {
+  // Return existing local path if available (but not for SVGs — they need rasterization)
+  if (mediaItem.localPath && !mediaItem.localPath.endsWith(".svg")) {
     logger(`[StickerSources] Using existing path: ${mediaItem.localPath}`);
     return mediaItem.localPath;
   }
@@ -84,9 +92,29 @@ async function downloadStickerToTemp(
   }
 
   const blob = await response.blob();
-  const arrayBuffer = await blob.arrayBuffer();
-  const imageBytes = new Uint8Array(arrayBuffer);
-  const format = blob.type?.split("/")[1] || "png";
+  let imageBytes: Uint8Array;
+  let format: string;
+
+  // Rasterize SVG to PNG for FFmpeg compatibility
+  if (isSvgContent(blob, mediaItem.url)) {
+    console.log(
+      `🎨 [STICKER EXPORT] Rasterizing SVG → PNG (${targetWidth}x${targetHeight})...`
+    );
+    logger(
+      `[StickerSources] Rasterizing SVG sticker ${sticker.id} to PNG (${targetWidth}x${targetHeight})`
+    );
+    imageBytes = await rasterizeSvgToPng(blob, targetWidth, targetHeight);
+    format = "png";
+    console.log(
+      `🎨 [STICKER EXPORT] SVG rasterized (${imageBytes.length} bytes)`
+    );
+  } else {
+    const arrayBuffer = await blob.arrayBuffer();
+    imageBytes = new Uint8Array(arrayBuffer);
+    format = blob.type?.split("/")[1] || "png";
+    if (format === "svg+xml") format = "png"; // Shouldn't reach here, but safety
+    if (format === "jpeg") format = "jpg";
+  }
 
   const result = await stickerAPI.saveStickerForExport({
     sessionId,
@@ -158,6 +186,9 @@ export async function extractStickerSources(
     }
 
     logger(`[StickerSources] Processing ${allStickers.length} stickers`);
+    console.log(
+      `🎨 [STICKER EXPORT] Preparing ${allStickers.length} sticker(s) for export...`
+    );
 
     // Get API - use provided or default
     const api =
@@ -169,24 +200,27 @@ export async function extractStickerSources(
 
     const stickerSources: StickerSourceForFilter[] = [];
 
+    // Get timing from timeline (source of truth)
+    const timingMap = getStickerTimingMap();
+
+    let stickerIndex = 0;
     for (const sticker of allStickers) {
+      stickerIndex++;
       try {
+        console.log(
+          `🎨 [STICKER EXPORT] Processing sticker ${stickerIndex}/${allStickers.length} (${sticker.id})...`
+        );
+
         const mediaItem = mediaItems.find((m) => m.id === sticker.mediaItemId);
         if (!mediaItem) {
           logger(
             `[StickerSources] Media item not found for sticker ${sticker.id}`
           );
+          console.warn(
+            `⚠️ [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} skipped — media not found`
+          );
           continue;
         }
-
-        // Download sticker to temp directory if needed
-        const localPath = await downloadStickerToTemp(
-          sticker,
-          mediaItem,
-          sessionId,
-          api,
-          logger
-        );
 
         // Convert percentage positions to pixel coordinates
         const baseSize = Math.min(canvasWidth, canvasHeight);
@@ -194,6 +228,17 @@ export async function extractStickerSources(
         const pixelY = (sticker.position.y / 100) * canvasHeight;
         const pixelWidth = (sticker.size.width / 100) * baseSize;
         const pixelHeight = (sticker.size.height / 100) * baseSize;
+
+        // Download sticker to temp directory (SVGs are rasterized to PNG)
+        const localPath = await downloadStickerToTemp(
+          sticker,
+          mediaItem,
+          sessionId,
+          api,
+          Math.round(pixelWidth),
+          Math.round(pixelHeight),
+          logger
+        );
 
         // Adjust for center-based positioning (sticker position is center, not top-left)
         const topLeftX = pixelX - pixelWidth / 2;
@@ -206,17 +251,25 @@ export async function extractStickerSources(
           y: Math.round(topLeftY),
           width: Math.round(pixelWidth),
           height: Math.round(pixelHeight),
-          startTime: sticker.timing?.startTime ?? 0,
-          endTime: sticker.timing?.endTime ?? totalDuration,
+          startTime: timingMap.get(sticker.id)?.startTime ?? 0,
+          endTime: timingMap.get(sticker.id)?.endTime ?? totalDuration,
           zIndex: sticker.zIndex,
           opacity: sticker.opacity,
           rotation: sticker.rotation,
+          maintainAspectRatio: sticker.maintainAspectRatio,
         });
 
+        console.log(
+          `🎨 [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} ready — ${Math.round(pixelWidth)}x${Math.round(pixelHeight)}px at (${Math.round(topLeftX)},${Math.round(topLeftY)})`
+        );
         logger(
           `[StickerSources] Processed sticker ${sticker.id}: ${Math.round(pixelWidth)}x${Math.round(pixelHeight)} at (${Math.round(topLeftX)}, ${Math.round(topLeftY)})`
         );
       } catch (error) {
+        console.warn(
+          `⚠️ [STICKER EXPORT] Sticker ${stickerIndex}/${allStickers.length} failed:`,
+          error
+        );
         logger(
           `[StickerSources] Failed to process sticker ${sticker.id}:`,
           error
@@ -225,6 +278,9 @@ export async function extractStickerSources(
     }
 
     stickerSources.sort((a, b) => a.zIndex - b.zIndex);
+    console.log(
+      `🎨 [STICKER EXPORT] All stickers prepared — ${stickerSources.length}/${allStickers.length} ready for FFmpeg`
+    );
     logger(
       `[StickerSources] Extracted ${stickerSources.length} valid sticker sources`
     );

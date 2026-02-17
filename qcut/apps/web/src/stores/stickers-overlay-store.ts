@@ -14,14 +14,12 @@ import type {
   ValidatedStickerUpdate,
 } from "@/types/sticker-overlay";
 import { Z_INDEX } from "@/types/sticker-overlay";
-// Dynamic imports to break circular dependencies
-// import { useTimelineStore } from "./timeline-store";
-// import { useProjectStore } from "./project-store";
+import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
 
 // Import constants
 const DEFAULTS = {
   position: { x: 50, y: 50 },
-  size: { width: 8, height: 8 }, // Changed from 20, 20 to 8, 8 (much smaller default)
+  size: { width: 15, height: 15 },
   rotation: 0,
   opacity: 1,
   maintainAspectRatio: true,
@@ -142,7 +140,7 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
           zIndex: options.zIndex || getNextZIndex(state.overlayStickers),
           maintainAspectRatio:
             options.maintainAspectRatio ?? DEFAULTS.maintainAspectRatio,
-          timing: options.timing,
+          // timing is deprecated — timeline is the source of truth for when stickers appear
           metadata: {
             addedAt: Date.now(),
             lastModified: Date.now(),
@@ -179,25 +177,8 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
           };
         });
 
-        // Add to timeline if timing is specified (async)
-        // Using modular integration for better maintainability
-        import("@/lib/timeline-sticker-integration")
-          .then(({ addStickerToTimeline }) => {
-            addStickerToTimeline(newSticker).then((result) => {
-              if (!result.success) {
-                debugLog(
-                  "[StickerStore] ❌ Failed to add sticker to timeline:",
-                  result.error
-                );
-              }
-            });
-          })
-          .catch((error) => {
-            debugLog(
-              "[StickerStore] ❌ Failed to load timeline integration:",
-              error
-            );
-          });
+        // Timeline element creation is handled by the caller
+        // (StickerCanvas drop handler or timeline-drag-handlers)
 
         // Auto-save with a small delay to ensure state is updated
         setTimeout(() => {
@@ -207,8 +188,12 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
         return id;
       },
 
-      // Remove sticker with history tracking
+      // Remove sticker with history tracking and timeline sync
       removeOverlaySticker: (id: string) => {
+        // Guard: check if sticker exists before removing (prevents infinite loop)
+        const existsBefore = get().overlayStickers.has(id);
+        if (!existsBefore) return;
+
         set((state) => {
           const newStickers = new Map(state.overlayStickers);
           if (!newStickers.has(id)) return state;
@@ -230,6 +215,15 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
             history: newHistory,
           };
         });
+
+        // Also remove from timeline (async, fire-and-forget)
+        import("@/lib/timeline-sticker-integration")
+          .then(({ timelineStickerIntegration }) => {
+            timelineStickerIntegration.removeStickerFromTimeline(id);
+          })
+          .catch(() => {
+            // Timeline cleanup is best-effort
+          });
       },
 
       // Update sticker with validation
@@ -440,6 +434,17 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
         });
       },
 
+      saveHistorySnapshot: () => {
+        set((state) => {
+          const currentState = Array.from(state.overlayStickers.values());
+          const newPast = [...state.history.past, currentState];
+          if (newPast.length > 50) newPast.shift();
+          return {
+            history: { past: newPast, future: [] },
+          };
+        });
+      },
+
       // Clean up stickers with missing media items
       cleanupInvalidStickers: (availableMediaIds: string[]) => {
         const state = get();
@@ -626,135 +631,16 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
 
       getVisibleStickersAtTime: (time: number) => {
         const state = get();
+        // Timeline is the source of truth for timing
+        const timingMap = getStickerTimingMap();
+
         return Array.from(state.overlayStickers.values())
           .filter((sticker) => {
-            if (!sticker.timing) return true;
-            const { startTime = 0, endTime = Infinity } = sticker.timing;
-            return time >= startTime && time <= endTime;
+            const timing = timingMap.get(sticker.id);
+            if (!timing) return true; // Not on timeline → always visible (backward compat)
+            return time >= timing.startTime && time <= timing.endTime;
           })
           .sort((a, b) => a.zIndex - b.zIndex);
-      },
-
-      // Helper: Add sticker to timeline
-      addStickerToTimeline: async (sticker: OverlaySticker) => {
-        try {
-          const { useTimelineStore } = await import("./timeline-store");
-
-          // Get fresh state for initial check
-          let timelineStore = useTimelineStore.getState();
-          debugLog(
-            "[StickerStore] Timeline integration - checking timing:",
-            sticker.timing
-          );
-
-          debugLog(
-            "[StickerStore] Current timeline tracks:",
-            timelineStore.tracks.map((t) => ({ id: t.id, type: t.type }))
-          );
-
-          let stickerTrack = timelineStore.tracks.find(
-            (track) => track.type === "sticker"
-          );
-
-          if (stickerTrack) {
-            debugLog(
-              `[StickerStore] Found existing sticker track: ${stickerTrack.id}`
-            );
-          } else {
-            debugLog(
-              "[StickerStore] No sticker track found, creating new one..."
-            );
-            debugLog("[StickerStore] Calling addTrack('sticker')...");
-
-            const trackId = timelineStore.addTrack("sticker");
-            debugLog(`[StickerStore] addTrack returned trackId: ${trackId}`);
-
-            // IMPORTANT: Get fresh state after mutation
-            timelineStore = useTimelineStore.getState();
-            debugLog(
-              "[StickerStore] Fresh timeline state after addTrack:",
-              timelineStore.tracks.map((t) => ({ id: t.id, type: t.type }))
-            );
-
-            // Look for the track in both _tracks and tracks arrays
-            stickerTrack = timelineStore.tracks.find(
-              (track) => track.id === trackId
-            );
-
-            // If not found in sorted tracks, check _tracks
-            if (!stickerTrack && timelineStore._tracks) {
-              debugLog("[StickerStore] Checking _tracks array...");
-              const trackIn_tracks = timelineStore._tracks.find(
-                (track) => track.id === trackId
-              );
-              if (trackIn_tracks) {
-                debugLog(
-                  "[StickerStore] Found track in _tracks but not in sorted tracks - possible sorting issue"
-                );
-                stickerTrack = trackIn_tracks;
-              }
-            }
-
-            debugLog(
-              "[StickerStore] After creation, stickerTrack:",
-              stickerTrack
-                ? { id: stickerTrack.id, type: stickerTrack.type }
-                : "NOT FOUND"
-            );
-
-            // Also check all tracks again
-            debugLog(
-              "[StickerStore] All tracks after creation:",
-              timelineStore.tracks.map((t) => ({ id: t.id, type: t.type }))
-            );
-          }
-
-          debugLog(
-            `[StickerStore] Checking conditions - stickerTrack: ${!!stickerTrack}, timing: ${!!sticker.timing}, startTime: ${sticker.timing?.startTime}, endTime: ${sticker.timing?.endTime}`
-          );
-
-          if (
-            stickerTrack &&
-            sticker.timing?.startTime !== undefined &&
-            sticker.timing?.endTime !== undefined
-          ) {
-            const duration = sticker.timing.endTime - sticker.timing.startTime;
-            debugLog(
-              `[StickerStore] Adding sticker to timeline with duration: ${duration}s, track: ${stickerTrack.id}`
-            );
-
-            const result = timelineStore.addElementToTrack(stickerTrack.id, {
-              type: "sticker",
-              stickerId: sticker.id,
-              mediaId: sticker.mediaItemId,
-              name: `Sticker ${get().overlayStickers.size}`,
-              duration,
-              startTime: sticker.timing.startTime,
-              trimStart: 0,
-              trimEnd: 0,
-            });
-            debugLog(
-              "[StickerStore] Timeline addElementToTrack result:",
-              result
-            );
-            debugLog(
-              `[StickerStore] ✅ Added sticker to timeline track: ${duration}s duration`
-            );
-          } else {
-            debugLog(
-              "[StickerStore] ❌ Failed to add sticker to timeline - missing requirements:",
-              {
-                hasStickerTrack: !!stickerTrack,
-                stickerTrackId: stickerTrack?.id,
-                hasTiming: !!sticker.timing,
-                startTime: sticker.timing?.startTime,
-                endTime: sticker.timing?.endTime,
-              }
-            );
-          }
-        } catch (error) {
-          debugLog("[StickerStore] ❌ Timeline integration failed:", error);
-        }
       },
 
       // Helper: Auto-save sticker to project

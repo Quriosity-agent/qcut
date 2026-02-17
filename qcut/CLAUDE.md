@@ -54,7 +54,8 @@ qcut/
 │   └── lib/             # Utilities and services
 ├── packages/
 │   ├── auth/            # @qcut/auth
-│   └── db/              # @qcut/db
+│   ├── db/              # @qcut/db
+│   └── video-agent-skill/ # Git submodule: AICP source, tests, YAML pipelines
 ├── electron/            # TypeScript IPC handlers
 │   ├── main.ts          # Main process
 │   ├── preload.ts       # Renderer bridge
@@ -123,6 +124,9 @@ DATABASE_URL            # PostgreSQL
 BETTER_AUTH_SECRET      # Auth
 UPSTASH_REDIS_REST_URL  # Redis
 VITE_FAL_API_KEY        # FAL.ai API
+GOOGLE_AI_API_KEY       # Google Veo/Imagen
+OPENAI_API_KEY          # OpenRouter/Sora provider routing
+ELEVENLABS_API_KEY      # ElevenLabs TTS
 ```
 
 ## When Working on Features

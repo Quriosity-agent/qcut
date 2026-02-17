@@ -41,11 +41,11 @@ export type OverlaySticker = {
   /** Whether the sticker maintains aspect ratio when resizing */
   maintainAspectRatio: boolean;
 
-  /** Optional timing for animated stickers or timed appearances */
+  /** @deprecated Timing is now controlled by timeline StickerElement. This field is ignored. */
   timing?: {
-    startTime?: number; // In seconds
-    endTime?: number; // In seconds
-    durationMs?: number; // In milliseconds for animated stickers
+    startTime?: number;
+    endTime?: number;
+    durationMs?: number;
   };
 
   /** Metadata for tracking and debugging */
@@ -108,6 +108,7 @@ export type StickerOverlayActions = {
   // History
   undo: () => void;
   redo: () => void;
+  saveHistorySnapshot: () => void;
 
   // Persistence
   saveToProject: (projectId: string) => Promise<void>;
@@ -118,8 +119,7 @@ export type StickerOverlayActions = {
   getStickersForExport: () => OverlaySticker[];
   getVisibleStickersAtTime: (time: number) => OverlaySticker[];
 
-  // Timeline Integration
-  addStickerToTimeline: (sticker: OverlaySticker) => Promise<void>;
+  // Internal
   autoSaveSticker: (stickerId: string) => Promise<void>;
 };
 
@@ -149,7 +149,7 @@ export const Z_INDEX = {
  */
 export const STICKER_DEFAULTS = {
   position: { x: 50, y: 50 },
-  size: { width: 20, height: 20 },
+  size: { width: 15, height: 15 },
   rotation: 0,
   opacity: 1,
   maintainAspectRatio: true,

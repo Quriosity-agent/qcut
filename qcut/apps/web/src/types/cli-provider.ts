@@ -171,7 +171,7 @@ export const CLAUDE_MODELS: ClaudeModel[] = [
   },
   {
     id: "opus",
-    name: "Claude Opus 4.5",
+    name: "Claude Opus 4.6",
     description: "Maximum quality",
     contextLength: 200_000,
   },

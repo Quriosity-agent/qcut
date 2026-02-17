@@ -25,6 +25,8 @@ import {
 } from "./claude-media-handler.js";
 import {
   requestTimelineFromRenderer,
+  requestSplitFromRenderer,
+  requestSelectionFromRenderer,
   timelineToMarkdown,
   markdownToTimeline,
   validateTimeline,
@@ -211,6 +213,79 @@ export function startClaudeHTTPServer(
       return { removed: true };
     }
   );
+
+  // ---- Split element ----
+  router.post(
+    "/api/claude/timeline/:projectId/elements/:elementId/split",
+    async (req) => {
+      if (typeof req.body?.splitTime !== "number") {
+        throw new HttpError(
+          400,
+          "Missing 'splitTime' (number) in request body"
+        );
+      }
+      const win = getWindow();
+      const mode = req.body.mode || "split";
+      if (!["split", "keepLeft", "keepRight"].includes(mode)) {
+        throw new HttpError(
+          400,
+          "Invalid mode. Use 'split', 'keepLeft', or 'keepRight'"
+        );
+      }
+      return requestSplitFromRenderer(
+        win,
+        req.params.elementId,
+        req.body.splitTime,
+        mode
+      );
+    }
+  );
+
+  // ---- Move element ----
+  router.post(
+    "/api/claude/timeline/:projectId/elements/:elementId/move",
+    async (req) => {
+      if (!req.body?.toTrackId) {
+        throw new HttpError(400, "Missing 'toTrackId' in request body");
+      }
+      const win = getWindow();
+      win.webContents.send("claude:timeline:moveElement", {
+        elementId: req.params.elementId,
+        toTrackId: req.body.toTrackId,
+        newStartTime: req.body.newStartTime,
+      });
+      return { moved: true };
+    }
+  );
+
+  // ---- Selection (set, get, clear) ----
+  router.post("/api/claude/timeline/:projectId/selection", async (req) => {
+    if (!Array.isArray(req.body?.elements)) {
+      throw new HttpError(400, "Missing 'elements' array in request body");
+    }
+    const win = getWindow();
+    win.webContents.send("claude:timeline:selectElements", {
+      elements: req.body.elements,
+    });
+    return { selected: req.body.elements.length };
+  });
+
+  router.get("/api/claude/timeline/:projectId/selection", async () => {
+    const win = getWindow();
+    const elements = await Promise.race([
+      requestSelectionFromRenderer(win),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+      ),
+    ]);
+    return { elements };
+  });
+
+  router.delete("/api/claude/timeline/:projectId/selection", async () => {
+    const win = getWindow();
+    win.webContents.send("claude:timeline:clearSelection");
+    return { cleared: true };
+  });
 
   // ==========================================================================
   // Project routes

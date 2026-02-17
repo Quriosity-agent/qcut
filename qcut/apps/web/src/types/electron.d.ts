@@ -8,6 +8,9 @@ import type {
   MediaFile,
   ClaudeTimeline,
   ClaudeElement,
+  ClaudeSplitResponse,
+  ClaudeMoveRequest,
+  ClaudeSelectionItem,
   ProjectSettings,
   ProjectStats,
   ExportPreset,
@@ -904,6 +907,24 @@ export interface ElectronAPI {
         changes: Partial<ClaudeElement>
       ) => Promise<void>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
+      splitElement: (
+        projectId: string,
+        elementId: string,
+        splitTime: number,
+        mode?: "split" | "keepLeft" | "keepRight"
+      ) => Promise<ClaudeSplitResponse>;
+      moveElement: (
+        projectId: string,
+        elementId: string,
+        toTrackId: string,
+        newStartTime?: number
+      ) => Promise<void>;
+      selectElements: (
+        projectId: string,
+        elements: ClaudeSelectionItem[]
+      ) => Promise<void>;
+      getSelection: (projectId: string) => Promise<ClaudeSelectionItem[]>;
+      clearSelection: (projectId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
       onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
       onAddElement: (
@@ -916,6 +937,34 @@ export interface ElectronAPI {
         }) => void
       ) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
+      onSplitElement: (
+        callback: (data: {
+          requestId: string;
+          elementId: string;
+          splitTime: number;
+          mode: "split" | "keepLeft" | "keepRight";
+        }) => void
+      ) => void;
+      sendSplitResponse: (
+        requestId: string,
+        result: ClaudeSplitResponse
+      ) => void;
+      onMoveElement: (
+        callback: (data: {
+          elementId: string;
+          toTrackId: string;
+          newStartTime?: number;
+        }) => void
+      ) => void;
+      onSelectElements: (
+        callback: (data: { elements: ClaudeSelectionItem[] }) => void
+      ) => void;
+      onGetSelection: (callback: (data: { requestId: string }) => void) => void;
+      sendSelectionResponse: (
+        requestId: string,
+        elements: ClaudeSelectionItem[]
+      ) => void;
+      onClearSelection: (callback: () => void) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
       removeListeners: () => void;
     };

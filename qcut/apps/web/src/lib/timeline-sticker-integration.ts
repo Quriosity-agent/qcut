@@ -50,10 +50,13 @@ export class TimelineStickerIntegration {
   }
 
   /**
-   * Adds a sticker to the timeline with proper error handling and state management
+   * Adds a sticker to the timeline with proper error handling and state management.
+   * Timeline is the source of truth for timing — startTime and duration are required.
    */
   async addStickerToTimeline(
-    sticker: OverlaySticker
+    sticker: OverlaySticker,
+    startTime: number,
+    duration: number
   ): Promise<TimelineIntegrationResult> {
     try {
       // Validate input
@@ -61,6 +64,13 @@ export class TimelineStickerIntegration {
         return {
           success: false,
           error: "Invalid sticker data: missing required fields",
+        };
+      }
+
+      if (duration <= 0) {
+        return {
+          success: false,
+          error: "Invalid duration: must be positive",
         };
       }
 
@@ -77,7 +87,9 @@ export class TimelineStickerIntegration {
       const elementResult = await this.addStickerElement(
         useTimelineStore,
         trackResult.trackId,
-        sticker
+        sticker,
+        startTime,
+        duration
       );
 
       return elementResult;
@@ -96,7 +108,8 @@ export class TimelineStickerIntegration {
   }
 
   /**
-   * Validates that a sticker has all required fields for timeline integration
+   * Validates that a sticker has required fields (id, mediaItemId).
+   * Timing is now passed as separate params, not read from the sticker.
    */
   private validateSticker(sticker: OverlaySticker): boolean {
     if (!sticker.id || !sticker.mediaItemId) {
@@ -107,31 +120,6 @@ export class TimelineStickerIntegration {
       }
       return false;
     }
-
-    if (
-      !sticker.timing ||
-      sticker.timing.startTime === undefined ||
-      sticker.timing.endTime === undefined
-    ) {
-      if (this.config.enableLogging) {
-        debugLog(
-          "[TimelineIntegration] Invalid sticker: missing/invalid timing"
-        );
-      }
-      return false;
-    }
-
-    const duration = sticker.timing.endTime - sticker.timing.startTime;
-    if (duration <= 0) {
-      if (this.config.enableLogging) {
-        debugLog(
-          "[TimelineIntegration] Invalid sticker: non-positive duration",
-          { duration }
-        );
-      }
-      return false;
-    }
-
     return true;
   }
 
@@ -257,20 +245,19 @@ export class TimelineStickerIntegration {
   private async addStickerElement(
     useTimelineStore: any,
     trackId: string,
-    sticker: OverlaySticker
+    sticker: OverlaySticker,
+    startTime: number,
+    duration: number
   ): Promise<TimelineIntegrationResult> {
     try {
       const store = useTimelineStore.getState();
-      const timing = sticker.timing as { startTime: number; endTime: number };
-      const { startTime, endTime } = timing;
-      const duration = endTime - startTime;
 
       // Create timeline element from sticker
       const element = {
         type: "sticker" as const,
         stickerId: sticker.id,
         mediaId: sticker.mediaItemId,
-        name: `Sticker ${Date.now()}`, // Unique name
+        name: `Sticker ${Date.now()}`,
         duration,
         startTime,
         trimStart: 0,
@@ -376,9 +363,15 @@ export class TimelineStickerIntegration {
 // Export singleton instance for convenience
 export const timelineStickerIntegration = new TimelineStickerIntegration();
 
-// Export function for backward compatibility
+// Export function for convenience
 export async function addStickerToTimeline(
-  sticker: OverlaySticker
+  sticker: OverlaySticker,
+  startTime: number,
+  duration: number
 ): Promise<TimelineIntegrationResult> {
-  return timelineStickerIntegration.addStickerToTimeline(sticker);
+  return timelineStickerIntegration.addStickerToTimeline(
+    sticker,
+    startTime,
+    duration
+  );
 }

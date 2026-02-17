@@ -226,14 +226,35 @@ function buildCompositeEncodeArgs(
   }
 
   const validStickers: StickerSource[] = [];
+  if (stickerSources.length > 0) {
+    console.log(
+      `🎨 [FFMPEG] Adding ${stickerSources.length} sticker input(s) to FFmpeg command...`
+    );
+  }
   for (const stickerSource of stickerSources) {
     if (!fs.existsSync(stickerSource.path)) {
+      console.warn(
+        `⚠️ [FFMPEG] Sticker file not found, skipping: ${stickerSource.path}`
+      );
       debugWarn(`[FFmpeg] Sticker file not found: ${stickerSource.path}`);
       continue;
     }
 
     validStickers.push(stickerSource);
-    args.push("-loop", "1", "-i", stickerSource.path);
+    // Limit loop duration to sticker's endTime to prevent infinite input streams
+    args.push(
+      "-loop",
+      "1",
+      "-t",
+      String(stickerSource.endTime),
+      "-i",
+      stickerSource.path
+    );
+  }
+  if (validStickers.length > 0) {
+    console.log(
+      `🎨 [FFMPEG] ${validStickers.length} sticker(s) validated and added as inputs`
+    );
   }
 
   for (const audioFile of audioFiles) {
@@ -282,9 +303,21 @@ function buildCompositeEncodeArgs(
     const scaledLabel = `sticker_scaled_${index}`;
     let preparedLabel = scaledLabel;
 
-    filterSteps.push(
-      `[${stickerInputIndex}:v]scale=${sticker.width}:${sticker.height}[${scaledLabel}]`
-    );
+    if (sticker.maintainAspectRatio) {
+      // Preserve aspect ratio: scale to fit within target box, then pad with transparent pixels
+      const padLabel = `sticker_pad_${index}`;
+      filterSteps.push(
+        `[${stickerInputIndex}:v]scale=${sticker.width}:${sticker.height}:force_original_aspect_ratio=decrease[${scaledLabel}]`
+      );
+      filterSteps.push(
+        `[${scaledLabel}]pad=${sticker.width}:${sticker.height}:(ow-iw)/2:(oh-ih)/2:color=0x00000000[${padLabel}]`
+      );
+      preparedLabel = padLabel;
+    } else {
+      filterSteps.push(
+        `[${stickerInputIndex}:v]scale=${sticker.width}:${sticker.height}[${scaledLabel}]`
+      );
+    }
 
     if ((sticker.rotation ?? 0) !== 0) {
       const rotatedLabel = `sticker_rotated_${index}`;
