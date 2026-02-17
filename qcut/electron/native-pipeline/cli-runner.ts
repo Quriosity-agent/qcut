@@ -21,6 +21,9 @@ import {
 import { downloadOutput, setApiKeyProvider, envApiKeyProvider } from "./api-caller.js";
 import { resolveOutputDir } from "./output-utils.js";
 import type { ModelCategory } from "./registry.js";
+import { compositeGrid, getGridImageCount } from "./grid-generator.js";
+import { setKey, getKey, checkKeys, setupEnvTemplate, loadEnvFile } from "./key-manager.js";
+import { createExamples } from "./example-pipelines.js";
 
 export interface CLIRunOptions {
   command: string;
@@ -42,6 +45,23 @@ export interface CLIRunOptions {
   verbose: boolean;
   quiet: boolean;
   category?: string;
+  prompt?: string;
+  layout?: string;
+  upscale?: string;
+  keyName?: string;
+  keyValue?: string;
+  idea?: string;
+  script?: string;
+  novel?: string;
+  title?: string;
+  maxScenes?: number;
+  scriptsOnly?: boolean;
+  storyboardOnly?: boolean;
+  noPortraits?: boolean;
+  llmModel?: string;
+  imageModel?: string;
+  videoModel?: string;
+  image?: string;
 }
 
 export interface CLIResult {
@@ -78,6 +98,8 @@ export class CLIPipelineRunner {
   }
 
   async run(options: CLIRunOptions, onProgress: ProgressFn): Promise<CLIResult> {
+    loadEnvFile();
+
     switch (options.command) {
       case "list-models":
         return this.handleListModels(options);
@@ -89,6 +111,40 @@ export class CLIPipelineRunner {
         return this.handleGenerate(options, onProgress);
       case "run-pipeline":
         return this.handleRunPipeline(options, onProgress);
+      case "analyze-video":
+        return this.handleAnalyzeVideo(options, onProgress);
+      case "transcribe":
+        return this.handleTranscribe(options, onProgress);
+      case "transfer-motion":
+        return this.handleTransferMotion(options, onProgress);
+      case "generate-grid":
+        return this.handleGenerateGrid(options, onProgress);
+      case "upscale-image":
+        return this.handleUpscaleImage(options, onProgress);
+      case "setup":
+        return this.handleSetup();
+      case "set-key":
+        return this.handleSetKey(options);
+      case "get-key":
+        return this.handleGetKey(options);
+      case "check-keys":
+        return this.handleCheckKeys();
+      case "create-examples":
+        return this.handleCreateExamples(options);
+      case "vimax:idea2video":
+        return this.handleVimaxIdea2Video(options, onProgress);
+      case "vimax:script2video":
+        return this.handleVimaxScript2Video(options, onProgress);
+      case "vimax:novel2movie":
+        return this.handleVimaxNovel2Movie(options, onProgress);
+      case "list-avatar-models":
+        return this.handleListModels({ ...options, category: "avatar" });
+      case "list-video-models":
+        return this.handleListModels({ ...options, category: "text_to_video" });
+      case "list-motion-models":
+        return this.handleListModels({ ...options, category: "motion_transfer" });
+      case "list-speech-models":
+        return this.handleListModels({ ...options, category: "text_to_speech" });
       default:
         return { success: false, error: `Unknown command: ${options.command}` };
     }
@@ -284,6 +340,468 @@ export class CLIPipelineRunner {
       duration: (Date.now() - startTime) / 1000,
       data: { stepsCompleted: result.stepsCompleted, totalSteps: result.totalSteps },
     };
+  }
+
+  private async handleAnalyzeVideo(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const videoInput = options.input || options.videoUrl;
+    if (!videoInput) {
+      return { success: false, error: "Missing --input/-i (video path/URL)" };
+    }
+
+    const model = options.model || "gemini_qa";
+    if (!ModelRegistry.has(model)) {
+      return { success: false, error: `Unknown model '${model}'` };
+    }
+
+    const startTime = Date.now();
+    onProgress({ stage: "analyzing", percent: 0, message: "Analyzing video...", model });
+
+    const step: PipelineStep = {
+      type: "image_understanding",
+      model,
+      params: { prompt: options.prompt || options.text || "Describe this video in detail" },
+      enabled: true,
+      retryCount: 0,
+    };
+
+    const result = await this.executor.executeStep(step, { videoUrl: videoInput }, {
+      outputDir: options.outputDir,
+      signal: this.abortController.signal,
+    });
+
+    onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+    return {
+      success: result.success,
+      error: result.error,
+      data: result.text || result.data,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  private async handleTranscribe(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const audioInput = options.input || options.audioUrl;
+    if (!audioInput) {
+      return { success: false, error: "Missing --input/-i (audio path/URL)" };
+    }
+
+    const model = options.model || "scribe_v2";
+    if (!ModelRegistry.has(model)) {
+      return { success: false, error: `Unknown model '${model}'` };
+    }
+
+    const startTime = Date.now();
+    onProgress({ stage: "transcribing", percent: 0, message: "Transcribing audio...", model });
+
+    const step: PipelineStep = {
+      type: "speech_to_text",
+      model,
+      params: {},
+      enabled: true,
+      retryCount: 0,
+    };
+
+    const result = await this.executor.executeStep(step, { audioUrl: audioInput }, {
+      outputDir: options.outputDir,
+      signal: this.abortController.signal,
+    });
+
+    onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+    return {
+      success: result.success,
+      error: result.error,
+      data: result.text || result.data,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  private async handleTransferMotion(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    if (!options.imageUrl) {
+      return { success: false, error: "Missing --image-url" };
+    }
+    if (!options.videoUrl) {
+      return { success: false, error: "Missing --video-url" };
+    }
+
+    const model = options.model || "kling_motion_control";
+    if (!ModelRegistry.has(model)) {
+      return { success: false, error: `Unknown model '${model}'` };
+    }
+
+    const startTime = Date.now();
+    const sessionId = `cli-${Date.now()}`;
+    const outputDir = resolveOutputDir(options.outputDir, sessionId);
+
+    onProgress({ stage: "transferring", percent: 0, message: "Transferring motion...", model });
+
+    const step: PipelineStep = {
+      type: "avatar",
+      model,
+      params: {},
+      enabled: true,
+      retryCount: 0,
+    };
+
+    const result = await this.executor.executeStep(
+      step,
+      { imageUrl: options.imageUrl, videoUrl: options.videoUrl },
+      { outputDir, signal: this.abortController.signal }
+    );
+
+    if (!result.outputPath && result.outputUrl && outputDir) {
+      try {
+        result.outputPath = await downloadOutput(result.outputUrl, `${outputDir}/motion_${Date.now()}.mp4`);
+      } catch { /* URL still available */ }
+    }
+
+    onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+    return {
+      success: result.success,
+      outputPath: result.outputPath,
+      error: result.error,
+      cost: result.cost,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  private async handleGenerateGrid(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const text = options.text;
+    if (!text) {
+      return { success: false, error: "Missing --text/-t (prompt for grid images)" };
+    }
+
+    const model = options.model || "flux_dev";
+    if (!ModelRegistry.has(model)) {
+      return { success: false, error: `Unknown model '${model}'` };
+    }
+
+    const layout = options.layout || "2x2";
+    const count = getGridImageCount(layout);
+    const startTime = Date.now();
+    const sessionId = `cli-${Date.now()}`;
+    const outputDir = resolveOutputDir(options.outputDir, sessionId);
+
+    onProgress({ stage: "generating", percent: 0, message: `Generating ${count} images...`, model });
+
+    const imagePaths: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const step: PipelineStep = {
+        type: "text_to_image",
+        model,
+        params: { prompt: text },
+        enabled: true,
+        retryCount: 0,
+      };
+
+      const result = await this.executor.executeStep(step, { text }, {
+        outputDir,
+        signal: this.abortController.signal,
+      });
+
+      if (!result.success) {
+        return { success: false, error: `Image ${i + 1} failed: ${result.error}` };
+      }
+
+      if (result.outputPath) imagePaths.push(result.outputPath);
+      else if (result.outputUrl) {
+        const dl = await downloadOutput(result.outputUrl, `${outputDir}/grid_${i}.png`);
+        imagePaths.push(dl);
+      }
+
+      onProgress({
+        stage: "generating",
+        percent: Math.round(((i + 1) / count) * 80),
+        message: `Generated image ${i + 1}/${count}`,
+        model,
+      });
+    }
+
+    onProgress({ stage: "compositing", percent: 85, message: "Creating grid...", model });
+
+    const gridResult = await compositeGrid(imagePaths, {
+      layout: layout as "2x2" | "3x3" | "2x3" | "3x2" | "1x2" | "2x1",
+      gap: 4,
+      backgroundColor: "#000000",
+      outputPath: `${outputDir}/grid_${Date.now()}.png`,
+    });
+
+    onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+    return {
+      success: gridResult.success,
+      outputPath: gridResult.outputPath,
+      outputPaths: gridResult.imagePaths,
+      error: gridResult.error,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  private async handleUpscaleImage(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const imageInput = options.image || options.imageUrl || options.input;
+    if (!imageInput) {
+      return { success: false, error: "Missing --image or --image-url" };
+    }
+
+    const model = options.model || "topaz";
+    if (!ModelRegistry.has(model)) {
+      return { success: false, error: `Unknown model '${model}'` };
+    }
+
+    const startTime = Date.now();
+    const sessionId = `cli-${Date.now()}`;
+    const outputDir = resolveOutputDir(options.outputDir, sessionId);
+
+    onProgress({ stage: "upscaling", percent: 0, message: "Upscaling image...", model });
+
+    const params: Record<string, unknown> = {};
+    if (options.upscale) params.upscale_factor = parseInt(options.upscale, 10);
+
+    const step: PipelineStep = {
+      type: "image_to_image",
+      model,
+      params,
+      enabled: true,
+      retryCount: 0,
+    };
+
+    const result = await this.executor.executeStep(step, { imageUrl: imageInput }, {
+      outputDir,
+      signal: this.abortController.signal,
+    });
+
+    if (!result.outputPath && result.outputUrl && outputDir) {
+      try {
+        result.outputPath = await downloadOutput(result.outputUrl, `${outputDir}/upscaled_${Date.now()}.png`);
+      } catch { /* URL still available */ }
+    }
+
+    onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+    return {
+      success: result.success,
+      outputPath: result.outputPath,
+      error: result.error,
+      cost: result.cost,
+      duration: (Date.now() - startTime) / 1000,
+    };
+  }
+
+  private handleSetup(): CLIResult {
+    const envPath = setupEnvTemplate();
+    return {
+      success: true,
+      data: { envPath, message: `API key template created at ${envPath}` },
+    };
+  }
+
+  private handleSetKey(options: CLIRunOptions): CLIResult {
+    if (!options.keyName) {
+      return { success: false, error: "Missing --name" };
+    }
+    if (!options.keyValue) {
+      return { success: false, error: "Missing --value" };
+    }
+    setKey(options.keyName, options.keyValue);
+    return { success: true, data: { message: `Key '${options.keyName}' saved` } };
+  }
+
+  private handleGetKey(options: CLIRunOptions): CLIResult {
+    if (!options.keyName) {
+      return { success: false, error: "Missing --name" };
+    }
+    const value = getKey(options.keyName);
+    if (!value) {
+      return { success: false, error: `Key '${options.keyName}' not found` };
+    }
+    const masked = value.length > 8
+      ? value.slice(0, 4) + "****" + value.slice(-4)
+      : "****";
+    return { success: true, data: { name: options.keyName, masked } };
+  }
+
+  private handleCheckKeys(): CLIResult {
+    const keys = checkKeys();
+    return { success: true, data: { keys } };
+  }
+
+  private handleCreateExamples(options: CLIRunOptions): CLIResult {
+    const outputDir = options.outputDir || "./examples";
+    const created = createExamples(outputDir);
+    return {
+      success: true,
+      data: { created, count: created.length },
+    };
+  }
+
+  private async handleVimaxIdea2Video(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const idea = options.idea || options.text;
+    if (!idea) {
+      return { success: false, error: "Missing --idea or --text" };
+    }
+
+    onProgress({ stage: "starting", percent: 0, message: "Starting idea-to-video pipeline..." });
+
+    try {
+      const { Idea2VideoPipeline } = await import("./vimax/pipelines/idea2video.js");
+      const sessionId = `cli-${Date.now()}`;
+      const outputDir = resolveOutputDir(options.outputDir, sessionId);
+      const startTime = Date.now();
+
+      const pipeline = new Idea2VideoPipeline({
+        outputDir,
+        generatePortraits: !(options.noPortraits ?? false),
+        useCharacterReferences: true,
+        videoModel: options.videoModel,
+        imageModel: options.imageModel,
+        llmModel: options.llmModel,
+        targetDuration: options.duration ? parseInt(options.duration, 10) : undefined,
+      });
+
+      const result = await pipeline.run(idea);
+
+      return {
+        success: result.success,
+        outputPath: result.output?.finalVideo,
+        cost: result.totalCost,
+        duration: (Date.now() - startTime) / 1000,
+        data: {
+          idea: result.idea,
+          characters: result.characters.length,
+          errors: result.errors,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Idea2Video failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
+
+  private async handleVimaxScript2Video(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const scriptPath = options.script || options.input;
+    if (!scriptPath) {
+      return { success: false, error: "Missing --script or --input (JSON path)" };
+    }
+
+    onProgress({ stage: "starting", percent: 0, message: "Starting script-to-video pipeline..." });
+
+    try {
+      const { Script2VideoPipeline } = await import("./vimax/pipelines/script2video.js");
+      const sessionId = `cli-${Date.now()}`;
+      const outputDir = resolveOutputDir(options.outputDir, sessionId);
+      const startTime = Date.now();
+
+      let scriptData: string;
+      try {
+        scriptData = fs.readFileSync(scriptPath, "utf-8");
+      } catch {
+        return { success: false, error: `Cannot read script: ${scriptPath}` };
+      }
+
+      const pipeline = new Script2VideoPipeline({
+        outputDir,
+        videoModel: options.videoModel,
+        imageModel: options.imageModel,
+        useCharacterReferences: true,
+      });
+
+      const result = await pipeline.run(JSON.parse(scriptData));
+
+      return {
+        success: result.success,
+        outputPath: result.output?.finalVideo,
+        cost: result.totalCost,
+        duration: (Date.now() - startTime) / 1000,
+        data: { errors: result.errors },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Script2Video failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
+
+  private async handleVimaxNovel2Movie(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
+    const novelPath = options.novel || options.input;
+    if (!novelPath) {
+      return { success: false, error: "Missing --novel or --input (text file path)" };
+    }
+
+    onProgress({ stage: "starting", percent: 0, message: "Starting novel-to-movie pipeline..." });
+
+    try {
+      const { Novel2MoviePipeline } = await import("./vimax/pipelines/novel2movie.js");
+      const sessionId = `cli-${Date.now()}`;
+      const outputDir = resolveOutputDir(options.outputDir, sessionId);
+      const startTime = Date.now();
+
+      let novelText: string;
+      try {
+        novelText = fs.readFileSync(novelPath, "utf-8");
+      } catch {
+        return { success: false, error: `Cannot read novel: ${novelPath}` };
+      }
+
+      const pipeline = new Novel2MoviePipeline({
+        outputDir,
+        maxScenes: options.maxScenes,
+        generatePortraits: !(options.noPortraits ?? false),
+        useCharacterReferences: true,
+        scriptsOnly: options.scriptsOnly ?? false,
+        storyboardOnly: options.storyboardOnly ?? false,
+        videoModel: options.videoModel,
+        imageModel: options.imageModel,
+        llmModel: options.llmModel,
+      });
+
+      const result = await pipeline.run(novelText, options.title);
+
+      return {
+        success: result.success,
+        outputPath: result.output?.finalVideo,
+        cost: result.totalCost,
+        duration: (Date.now() - startTime) / 1000,
+        data: {
+          novelTitle: result.novelTitle,
+          chapters: result.chapters.length,
+          characters: result.characters.length,
+          errors: result.errors,
+        },
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Novel2Movie failed: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 }
 

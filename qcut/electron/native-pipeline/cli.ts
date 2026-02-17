@@ -25,6 +25,23 @@ const COMMANDS = [
   "run-pipeline",
   "list-models",
   "estimate-cost",
+  "analyze-video",
+  "transcribe",
+  "transfer-motion",
+  "generate-grid",
+  "upscale-image",
+  "setup",
+  "set-key",
+  "get-key",
+  "check-keys",
+  "create-examples",
+  "vimax:idea2video",
+  "vimax:script2video",
+  "vimax:novel2movie",
+  "list-avatar-models",
+  "list-video-models",
+  "list-motion-models",
+  "list-speech-models",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -42,6 +59,23 @@ Commands:
   run-pipeline        Run a multi-step YAML pipeline
   list-models         List available AI models
   estimate-cost       Estimate generation cost
+  analyze-video       Analyze a video with AI vision
+  transcribe          Transcribe audio to text
+  transfer-motion     Transfer motion from video to image
+  generate-grid       Generate an image grid
+  upscale-image       Upscale an image
+  setup               Create API key template file
+  set-key             Set an API key
+  get-key             Get an API key (masked)
+  check-keys          Check configured API keys
+  create-examples     Create example pipeline configs
+  vimax:idea2video    Generate video from an idea
+  vimax:script2video  Generate video from a script
+  vimax:novel2movie   Generate movie from a novel
+  list-avatar-models  List avatar models
+  list-video-models   List video models
+  list-motion-models  List motion transfer models
+  list-speech-models  List speech models
 
 Global Options:
   --output-dir, -o    Output directory (default: ./output)
@@ -123,8 +157,25 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       verbose: { type: "boolean", short: "v", default: false },
       help: { type: "boolean", short: "h", default: false },
       category: { type: "string" },
+      prompt: { type: "string" },
+      layout: { type: "string" },
+      upscale: { type: "string" },
+      name: { type: "string" },
+      value: { type: "string" },
+      idea: { type: "string" },
+      script: { type: "string" },
+      novel: { type: "string" },
+      title: { type: "string" },
+      "max-scenes": { type: "string" },
+      "scripts-only": { type: "boolean", default: false },
+      "storyboard-only": { type: "boolean", default: false },
+      "no-portraits": { type: "boolean", default: false },
+      "llm-model": { type: "string" },
+      "image-model": { type: "string" },
+      "video-model": { type: "string" },
+      image: { type: "string" },
     },
-    strict: true,
+    strict: false,
   });
 
   if (values.help) {
@@ -152,6 +203,23 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     verbose: values.verbose ?? false,
     quiet: values.quiet ?? false,
     category: values.category,
+    prompt: values.prompt,
+    layout: values.layout,
+    upscale: values.upscale,
+    keyName: values.name,
+    keyValue: values.value,
+    idea: values.idea,
+    script: values.script,
+    novel: values.novel,
+    title: values.title,
+    maxScenes: values["max-scenes"] ? parseInt(values["max-scenes"], 10) : undefined,
+    scriptsOnly: values["scripts-only"] ?? false,
+    storyboardOnly: values["storyboard-only"] ?? false,
+    noPortraits: values["no-portraits"] ?? false,
+    llmModel: values["llm-model"],
+    imageModel: values["image-model"],
+    videoModel: values["video-model"],
+    image: values.image,
   };
 }
 
@@ -200,6 +268,33 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       for (const b of data.breakdown) {
         console.log(`  ${b.item}: $${b.cost.toFixed(4)}`);
       }
+    }
+    if (result.data && (options.command === "analyze-video" || options.command === "transcribe")) {
+      console.log(`\n${typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)}`);
+    }
+    if (result.data && options.command === "check-keys") {
+      const data = result.data as { keys: { name: string; configured: boolean; source: string; masked?: string }[] };
+      console.log("\nAPI Key Status:\n");
+      for (const k of data.keys) {
+        const status = k.configured ? `configured (${k.source}) ${k.masked || ""}` : "not set";
+        console.log(`  ${k.name.padEnd(25)} ${status}`);
+      }
+    }
+    if (result.data && options.command === "create-examples") {
+      const data = result.data as { created: string[]; count: number };
+      console.log(`\nCreated ${data.count} example pipelines:`);
+      for (const p of data.created) {
+        console.log(`  ${p}`);
+      }
+    }
+    if (result.data && options.command === "setup") {
+      const data = result.data as { message: string };
+      console.log(`\n${data.message}`);
+    }
+    if (result.data && (options.command === "set-key" || options.command === "get-key")) {
+      const data = result.data as { message?: string; name?: string; masked?: string };
+      if (data.message) console.log(data.message);
+      if (data.masked) console.log(`${data.name}: ${data.masked}`);
     }
   } else {
     console.error(`Error: ${result.error}`);
