@@ -250,7 +250,7 @@ export default function EffectsView() {
                     <span className="text-sm drop-shadow-md shrink-0" aria-hidden="true">
                       {preset.icon}
                     </span>
-                    <span className="text-[10px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] truncate leading-tight">
+                    <span className="text-xs font-semibold text-white truncate leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.9),0_0_6px_rgba(0,0,0,0.7)]">
                       {preset.name}
                     </span>
 

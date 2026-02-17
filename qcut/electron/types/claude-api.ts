@@ -185,3 +185,45 @@ export interface DiagnosticResult {
   autoFixAction?: string;
   systemInfo: SystemInfo;
 }
+
+// ============================================================================
+// Video Analysis Types
+// ============================================================================
+
+export interface AnalyzeSource {
+  type: "timeline" | "media" | "path";
+  /** Element ID when type = "timeline" */
+  elementId?: string;
+  /** Media ID when type = "media" */
+  mediaId?: string;
+  /** Absolute file path when type = "path" */
+  filePath?: string;
+}
+
+export interface AnalyzeOptions {
+  source: AnalyzeSource;
+  /** Analysis type: timeline (default), describe, or transcribe */
+  analysisType?: "timeline" | "describe" | "transcribe";
+  /** Model key (default: "gemini-2.5-flash") */
+  model?: string;
+  /** Output format (default: "md") */
+  format?: "md" | "json" | "both";
+}
+
+export interface AnalyzeResult {
+  success: boolean;
+  markdown?: string;
+  json?: Record<string, unknown>;
+  outputFiles?: string[];
+  videoPath?: string;
+  duration?: number;
+  cost?: number;
+  error?: string;
+}
+
+export interface AnalyzeModel {
+  key: string;
+  provider: string;
+  modelId: string;
+  description: string;
+}
