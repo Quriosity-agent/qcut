@@ -243,9 +243,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           elements
         ),
       getSelection: (projectId) =>
-        ipcRenderer.invoke("claude:timeline:getSelection"),
+        ipcRenderer.invoke("claude:timeline:getSelection", projectId),
       clearSelection: (projectId) =>
-        ipcRenderer.invoke("claude:timeline:clearSelection"),
+        ipcRenderer.invoke("claude:timeline:clearSelection", projectId),
       onRequest: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:request");
         ipcRenderer.on("claude:timeline:request", () => callback());

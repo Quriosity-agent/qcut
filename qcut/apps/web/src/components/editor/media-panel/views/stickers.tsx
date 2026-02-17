@@ -557,6 +557,7 @@ export function StickersView() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
+                  type="button"
                   size="icon"
                   variant="outline"
                   className="h-9 w-9 shrink-0"

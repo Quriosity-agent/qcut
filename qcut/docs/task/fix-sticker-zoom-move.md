@@ -9,7 +9,7 @@ Stickers in the video preview should be zoomable (stretch larger/smaller) and mo
 3. **No scroll-wheel zoom** — common UX pattern missing entirely
 4. **Edge handles hidden when sticker < 15%** — small stickers can't be stretched on a single axis
 5. **Resize allows sticker to overflow canvas bounds** — no boundary clamping during resize
-6. **No double-click to reset size** — no quick way to restore original dimensions
+6. **No double-click to reset size** — no quick way to restore original dimensions *(out of scope for this task — tracked separately)*
 
 ---
 
