@@ -106,8 +106,7 @@ describe("persistent PTY terminal in MediaPanel", () => {
         media: "media",
         "ai-create": "ai",
         agents: "pty",
-        edit: "text",
-        effects: "filters",
+        edit: "word-timeline",
       },
       aiActiveTab: "text",
     });

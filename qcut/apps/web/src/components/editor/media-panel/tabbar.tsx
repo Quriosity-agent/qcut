@@ -1,17 +1,32 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { tabs, tabGroups, useMediaPanelStore } from "./store";
+import {
+  tabs,
+  tabGroups,
+  useMediaPanelStore,
+  EditSubgroup,
+} from "./store";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useRef, useEffect } from "react";
 
 export function TabBar() {
-  const { activeTab, setActiveTab, activeGroup } = useMediaPanelStore();
+  const {
+    activeTab,
+    setActiveTab,
+    activeGroup,
+    activeEditSubgroup,
+    setActiveEditSubgroup,
+  } = useMediaPanelStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const tabKeys = tabGroups[activeGroup].tabs;
+  const groupDef = tabGroups[activeGroup];
+  const hasSubgroups = activeGroup === "edit" && groupDef.subgroups;
+  const tabKeys = hasSubgroups
+    ? groupDef.subgroups![activeEditSubgroup].tabs
+    : groupDef.tabs;
   const activeIndex = tabKeys.indexOf(activeTab);
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < tabKeys.length - 1;
@@ -37,7 +52,29 @@ export function TabBar() {
   }, [activeTab]);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col">
+      {hasSubgroups && (
+        <div className="flex bg-panel-accent border-b border-border/30 px-2 gap-1 py-1">
+          {(
+            Object.keys(groupDef.subgroups!) as EditSubgroup[]
+          ).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={cn(
+                "px-3 py-1 rounded text-xs font-medium transition-colors",
+                activeEditSubgroup === key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+              )}
+              onClick={() => setActiveEditSubgroup(key)}
+            >
+              {groupDef.subgroups![key].label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex">
       <NavButton direction="left" onClick={goToPrev} isVisible={hasPrev} />
       <div
         ref={scrollContainerRef}
@@ -67,6 +104,7 @@ export function TabBar() {
         })}
       </div>
       <NavButton direction="right" onClick={goToNext} isVisible={hasNext} />
+      </div>
     </div>
   );
 }

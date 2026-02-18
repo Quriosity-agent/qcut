@@ -139,11 +139,34 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 
 // --- Tab Groups ---
 
-export type TabGroup = "media" | "ai-create" | "agents" | "edit" | "effects";
+export type TabGroup = "media" | "ai-create" | "agents" | "edit";
 
-export const tabGroups: {
-  [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
-} = {
+export type EditSubgroup = "ai-edit" | "manual-edit";
+
+export interface Subgroup {
+  label: string;
+  tabs: Tab[];
+}
+
+export interface TabGroupDef {
+  icon: LucideIcon;
+  label: string;
+  tabs: Tab[];
+  subgroups?: Record<EditSubgroup, Subgroup>;
+}
+
+const editSubgroups: Record<EditSubgroup, Subgroup> = {
+  "ai-edit": {
+    label: "AI Edit",
+    tabs: ["word-timeline", "video-edit", "draw", "captions"],
+  },
+  "manual-edit": {
+    label: "Manual Edit",
+    tabs: ["text", "stickers", "effects", "filters", "transitions"],
+  },
+};
+
+export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   "ai-create": {
     icon: SparklesIcon,
     label: "Create",
@@ -161,7 +184,11 @@ export const tabGroups: {
   edit: {
     icon: ScissorsIcon,
     label: "Edit",
-    tabs: ["word-timeline", "video-edit", "draw", "captions"],
+    tabs: [
+      ...editSubgroups["ai-edit"].tabs,
+      ...editSubgroups["manual-edit"].tabs,
+    ],
+    subgroups: editSubgroups,
   },
   media: {
     icon: FolderOpenIcon,
@@ -172,11 +199,6 @@ export const tabGroups: {
     icon: WrenchIcon,
     label: "Agents",
     tabs: ["pty", "remotion"],
-  },
-  effects: {
-    icon: BlendIcon,
-    label: "Manual Edit",
-    tabs: ["text", "stickers", "effects", "filters", "transitions"],
   },
 };
 
@@ -199,6 +221,9 @@ interface MediaPanelStore {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
 
+  activeEditSubgroup: EditSubgroup;
+  setActiveEditSubgroup: (subgroup: EditSubgroup) => void;
+
   lastTabPerGroup: Record<TabGroup, Tab>;
 
   // AI-specific state
@@ -212,8 +237,7 @@ const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
   agents: "pty",
-  edit: "text",
-  effects: "filters",
+  edit: "word-timeline",
 };
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
@@ -232,6 +256,17 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
         activeTab: tab,
         activeGroup: group,
         lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
+      };
+    }),
+
+  activeEditSubgroup: "ai-edit",
+  setActiveEditSubgroup: (subgroup) =>
+    set((state) => {
+      const firstTab = editSubgroups[subgroup].tabs[0];
+      return {
+        activeEditSubgroup: subgroup,
+        activeTab: firstTab,
+        lastTabPerGroup: { ...state.lastTabPerGroup, edit: firstTab },
       };
     }),
 

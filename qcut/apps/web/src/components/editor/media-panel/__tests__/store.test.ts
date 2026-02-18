@@ -18,8 +18,7 @@ describe("media-panel store", () => {
         media: "media",
         "ai-create": "ai",
         agents: "remotion",
-        edit: "text",
-        effects: "filters",
+        edit: "word-timeline",
       },
       aiActiveTab: "text",
     });
@@ -81,11 +80,11 @@ describe("media-panel store", () => {
       expect(getGroupForTab("video-edit")).toBe("edit");
       expect(getGroupForTab("draw")).toBe("edit");
 
-      expect(getGroupForTab("text")).toBe("effects");
-      expect(getGroupForTab("stickers")).toBe("effects");
-      expect(getGroupForTab("filters")).toBe("effects");
-      expect(getGroupForTab("effects")).toBe("effects");
-      expect(getGroupForTab("transitions")).toBe("effects");
+      expect(getGroupForTab("text")).toBe("edit");
+      expect(getGroupForTab("stickers")).toBe("edit");
+      expect(getGroupForTab("filters")).toBe("edit");
+      expect(getGroupForTab("effects")).toBe("edit");
+      expect(getGroupForTab("transitions")).toBe("edit");
 
       expect(getGroupForTab("remotion")).toBe("agents");
       expect(getGroupForTab("pty")).toBe("agents");
@@ -111,7 +110,7 @@ describe("media-panel store", () => {
 
       // Switch away to edit
       store.setActiveGroup("edit");
-      expect(useMediaPanelStore.getState().activeTab).toBe("text");
+      expect(useMediaPanelStore.getState().activeTab).toBe("word-timeline");
 
       // Switch back to ai-create — should remember text2image
       store.setActiveGroup("ai-create");
