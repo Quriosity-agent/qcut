@@ -167,6 +167,7 @@ export const mockElectronAPI: ElectronAPI = {
       freesoundApiKey: "",
       geminiApiKey: "",
       openRouterApiKey: "",
+      elevenLabsApiKey: "",
     }),
     set: vi.fn().mockResolvedValue(true),
     clear: vi.fn().mockResolvedValue(true),
@@ -176,6 +177,7 @@ export const mockElectronAPI: ElectronAPI = {
       geminiApiKey: { set: false, source: "not-set" },
       openRouterApiKey: { set: false, source: "not-set" },
       anthropicApiKey: { set: false, source: "not-set" },
+      elevenLabsApiKey: { set: false, source: "not-set" },
     }),
   },
 

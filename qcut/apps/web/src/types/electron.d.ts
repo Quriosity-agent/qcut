@@ -368,6 +368,7 @@ export interface ElectronAPI {
       geminiApiKey: string;
       openRouterApiKey: string;
       anthropicApiKey: string;
+      elevenLabsApiKey: string;
     }>;
     set: (keys: {
       falApiKey?: string;
@@ -375,6 +376,7 @@ export interface ElectronAPI {
       geminiApiKey?: string;
       openRouterApiKey?: string;
       anthropicApiKey?: string;
+      elevenLabsApiKey?: string;
     }) => Promise<boolean>;
     clear: () => Promise<boolean>;
     status: () => Promise<{
@@ -383,6 +385,7 @@ export interface ElectronAPI {
       geminiApiKey: { set: boolean; source: string };
       openRouterApiKey: { set: boolean; source: string };
       anthropicApiKey: { set: boolean; source: string };
+      elevenLabsApiKey: { set: boolean; source: string };
     }>;
   };
 

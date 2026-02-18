@@ -8,6 +8,7 @@
  */
 
 import * as fs from "fs";
+import * as path from "path";
 import { ModelRegistry } from "./registry.js";
 import { PipelineExecutor } from "./executor.js";
 import type { PipelineStep } from "./executor.js";
@@ -286,7 +287,7 @@ export class CLIPipelineRunner {
     if (!result.outputPath && result.outputUrl && outputDir) {
       const ext = guessExtFromCommand(options.command);
       const filename = `output_${Date.now()}${ext}`;
-      const destPath = `${outputDir}/${filename}`;
+      const destPath = path.join(outputDir, filename);
       try {
         result.outputPath = await downloadOutput(result.outputUrl, destPath);
       } catch {
@@ -492,7 +493,7 @@ export class CLIPipelineRunner {
 
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
-        result.outputPath = await downloadOutput(result.outputUrl, `${outputDir}/motion_${Date.now()}.mp4`);
+        result.outputPath = await downloadOutput(result.outputUrl, path.join(outputDir, `motion_${Date.now()}.mp4`));
       } catch { /* URL still available */ }
     }
 
@@ -550,7 +551,7 @@ export class CLIPipelineRunner {
 
       if (result.outputPath) imagePaths.push(result.outputPath);
       else if (result.outputUrl) {
-        const dl = await downloadOutput(result.outputUrl, `${outputDir}/grid_${i}.png`);
+        const dl = await downloadOutput(result.outputUrl, path.join(outputDir, `grid_${i}.png`));
         imagePaths.push(dl);
       }
 
@@ -568,7 +569,7 @@ export class CLIPipelineRunner {
       layout: layout as "2x2" | "3x3" | "2x3" | "3x2" | "1x2" | "2x1",
       gap: 4,
       backgroundColor: "#000000",
-      outputPath: `${outputDir}/grid_${Date.now()}.png`,
+      outputPath: path.join(outputDir, `grid_${Date.now()}.png`),
     });
 
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
@@ -620,7 +621,7 @@ export class CLIPipelineRunner {
 
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
-        result.outputPath = await downloadOutput(result.outputUrl, `${outputDir}/upscaled_${Date.now()}.png`);
+        result.outputPath = await downloadOutput(result.outputUrl, path.join(outputDir, `upscaled_${Date.now()}.png`));
       } catch { /* URL still available */ }
     }
 

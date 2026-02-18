@@ -45,8 +45,20 @@ interface YamlPipeline {
   };
 }
 
+const VALID_CATEGORIES = new Set<string>([
+  "text_to_image", "image_to_image", "text_to_video", "image_to_video",
+  "video_to_video", "avatar", "motion_transfer", "upscale", "upscale_video",
+  "add_audio", "text_to_speech", "speech_to_text", "image_understanding", "prompt_generation",
+]);
+
 export function parseChainConfig(yamlContent: string): PipelineChain {
-  const raw = yaml.load(yamlContent) as YamlPipeline;
+  let raw: YamlPipeline;
+  try {
+    raw = yaml.load(yamlContent) as YamlPipeline;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid YAML: ${message}`);
+  }
 
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid YAML: expected an object");
@@ -67,6 +79,9 @@ export function parseChainConfig(yamlContent: string): PipelineChain {
       for (const sub of s.steps) {
         if (!sub.type) throw new Error(`Step ${i + 1} parallel sub-step: missing 'type'`);
         if (!sub.model) throw new Error(`Step ${i + 1} parallel sub-step: missing 'model'`);
+        if (!VALID_CATEGORIES.has(sub.type)) {
+          throw new Error(`Step ${i + 1} parallel sub-step: invalid type '${sub.type}'`);
+        }
         steps.push({
           type: sub.type as ModelCategory,
           model: sub.model,
@@ -82,6 +97,9 @@ export function parseChainConfig(yamlContent: string): PipelineChain {
     } else {
       if (!s.type) throw new Error(`Step ${i + 1}: missing 'type'`);
       if (!s.model) throw new Error(`Step ${i + 1}: missing 'model'`);
+      if (!VALID_CATEGORIES.has(s.type)) {
+        throw new Error(`Step ${i + 1}: invalid type '${s.type}'`);
+      }
       steps.push({
         type: s.type as ModelCategory,
         model: s.model,

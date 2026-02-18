@@ -57,6 +57,7 @@ export interface PipelineResult {
   data?: unknown;
   mediaId?: string;
   importedPath?: string;
+  importWarning?: string;
 }
 
 export interface PipelineStatus {
@@ -337,7 +338,7 @@ export class NativePipelineManager {
 
     let yamlContent: string;
     try {
-      yamlContent = fs.readFileSync(configPath, "utf-8");
+      yamlContent = await fs.promises.readFile(configPath, "utf-8");
     } catch {
       return {
         success: false,
@@ -504,17 +505,13 @@ export class NativePipelineManager {
       }
       return {
         ...result,
-        success: false,
-        errorCode: "import_failed",
-        error: "Generation succeeded but import failed.",
+        importWarning: "Generation succeeded but import returned no media.",
       };
     } catch (err) {
       console.error("[NativePipeline] Auto-import failed:", err);
       return {
         ...result,
-        success: false,
-        errorCode: "import_failed",
-        error: "Generation succeeded but media import failed.",
+        importWarning: "Generation succeeded but media import failed.",
       };
     }
   }

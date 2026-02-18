@@ -11,7 +11,6 @@ import type { ModelCategory } from "./registry.js";
 import { ModelRegistry } from "./registry.js";
 import {
   executeStep,
-  getInputDataType,
   getOutputDataType,
   type StepInput,
   type StepOutput,
@@ -207,7 +206,7 @@ export class PipelineExecutor {
       signal?: AbortSignal;
     }
   ): Promise<StepResult> {
-    const maxAttempts = step.retryCount + 1;
+    const maxAttempts = Math.max(1, step.retryCount + 1);
     let lastResult: StepResult | null = null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -221,7 +220,7 @@ export class PipelineExecutor {
       if (lastResult.success) return lastResult;
     }
 
-    return lastResult!;
+    return lastResult as StepResult;
   }
 
   private buildInitialInput(input: string, chain: PipelineChain): StepInput {

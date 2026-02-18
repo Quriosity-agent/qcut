@@ -170,6 +170,9 @@ export interface ApiKeyConfig {
   freesoundApiKey?: string;
   falApiKey?: string;
   geminiApiKey?: string;
+  openRouterApiKey?: string;
+  anthropicApiKey?: string;
+  elevenLabsApiKey?: string;
 }
 
 export interface SaveAIVideoOptions {
@@ -474,6 +477,7 @@ export interface ElectronAPI {
       geminiApiKey: { set: boolean; source: string };
       openRouterApiKey: { set: boolean; source: string };
       anthropicApiKey: { set: boolean; source: string };
+      elevenLabsApiKey: { set: boolean; source: string };
     }>;
   };
 

@@ -19,6 +19,15 @@ type PipelineManagerUnion = NativePipelineManager | AIPipelineManager;
 
 let pipelineManager: PipelineManagerUnion | null = null;
 
+const UNAVAILABLE_STATUS: PipelineStatus | LegacyPipelineStatus = {
+  available: false,
+  version: null,
+  source: "unavailable" as const,
+  compatible: false,
+  features: {},
+  error: "Pipeline manager not initialized",
+};
+
 /** Get the current main window for sending progress updates. */
 function getMainWindow(): BrowserWindow | null {
   const windows = BrowserWindow.getAllWindows();
@@ -57,14 +66,7 @@ export function setupAIPipelineIPC(): void {
     "ai-pipeline:status",
     async (): Promise<PipelineStatus | LegacyPipelineStatus> => {
       if (!pipelineManager) {
-        return {
-          available: false,
-          version: null,
-          source: "unavailable" as const,
-          compatible: false,
-          features: {},
-          error: "Pipeline manager not initialized",
-        };
+        return UNAVAILABLE_STATUS;
       }
       return pipelineManager.getStatus();
     }
@@ -175,14 +177,7 @@ export function setupAIPipelineIPC(): void {
     "ai-pipeline:refresh",
     async (): Promise<PipelineStatus | LegacyPipelineStatus> => {
       if (!pipelineManager) {
-        return {
-          available: false,
-          version: null,
-          source: "unavailable" as const,
-          compatible: false,
-          features: {},
-          error: "Pipeline manager not initialized",
-        };
+        return UNAVAILABLE_STATUS;
       }
       await pipelineManager.refreshEnvironment();
       return pipelineManager.getStatus();

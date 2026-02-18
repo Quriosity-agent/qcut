@@ -9,6 +9,7 @@ interface ApiKeys {
   geminiApiKey: string;
   openRouterApiKey: string;
   anthropicApiKey: string;
+  elevenLabsApiKey: string;
 }
 
 interface ApiKeyData {
@@ -17,6 +18,7 @@ interface ApiKeyData {
   geminiApiKey?: string;
   openRouterApiKey?: string;
   anthropicApiKey?: string;
+  elevenLabsApiKey?: string;
 }
 
 interface EncryptedApiKeyData {
@@ -34,6 +36,7 @@ interface ApiKeysStatus {
   geminiApiKey: KeyStatus;
   openRouterApiKey: KeyStatus;
   anthropicApiKey: KeyStatus;
+  elevenLabsApiKey: KeyStatus;
 }
 
 interface ApiKeyHandlers {
@@ -63,6 +66,7 @@ const EMPTY_API_KEYS: ApiKeys = {
   geminiApiKey: "",
   openRouterApiKey: "",
   anthropicApiKey: "",
+  elevenLabsApiKey: "",
 };
 
 /** Return a fresh ApiKeys object with all fields empty. */
@@ -124,6 +128,9 @@ function decryptStoredApiKeys({
       }),
       anthropicApiKey: decryptStoredValue({
         encryptedValue: encryptedData.anthropicApiKey,
+      }),
+      elevenLabsApiKey: decryptStoredValue({
+        encryptedValue: encryptedData.elevenLabsApiKey,
       }),
     };
   } catch (error) {
@@ -260,6 +267,7 @@ export async function getDecryptedApiKeys(): Promise<ApiKeys> {
     openRouterApiKey:
       electronKeys.openRouterApiKey || aicpKeys.openRouterApiKey || "",
     anthropicApiKey: electronKeys.anthropicApiKey || "",
+    elevenLabsApiKey: electronKeys.elevenLabsApiKey || "",
   };
 }
 
@@ -306,6 +314,7 @@ export function setupApiKeyIPC(): void {
           geminiApiKey = "",
           openRouterApiKey = "",
           anthropicApiKey = "",
+          elevenLabsApiKey = "",
         } = keys;
 
         const dataToStore: EncryptedApiKeyData = {};
@@ -353,6 +362,15 @@ export function setupApiKeyIPC(): void {
           } else {
             dataToStore.anthropicApiKey = "";
           }
+
+          if (elevenLabsApiKey) {
+            const encryptedElevenLabs: Buffer =
+              safeStorage.encryptString(elevenLabsApiKey);
+            dataToStore.elevenLabsApiKey =
+              encryptedElevenLabs.toString("base64");
+          } else {
+            dataToStore.elevenLabsApiKey = "";
+          }
         } else {
           console.log("[API Keys] Encryption unavailable, storing plain text");
           dataToStore.falApiKey = falApiKey;
@@ -360,6 +378,7 @@ export function setupApiKeyIPC(): void {
           dataToStore.geminiApiKey = geminiApiKey;
           dataToStore.openRouterApiKey = openRouterApiKey;
           dataToStore.anthropicApiKey = anthropicApiKey;
+          dataToStore.elevenLabsApiKey = elevenLabsApiKey;
         }
 
         const dir: string = path.dirname(apiKeysFilePath);
@@ -425,6 +444,7 @@ export function setupApiKeyIPC(): void {
       geminiApiKey: resolveStatus("GEMINI_API_KEY", "geminiApiKey"),
       openRouterApiKey: resolveStatus("OPENROUTER_API_KEY", "openRouterApiKey"),
       anthropicApiKey: resolveStatus("ANTHROPIC_API_KEY", "anthropicApiKey"),
+      elevenLabsApiKey: resolveStatus("ELEVENLABS_API_KEY", "elevenLabsApiKey"),
     };
   });
 }

@@ -86,7 +86,7 @@ async function defaultApiKeyProvider(provider: ProviderName): Promise<string> {
       case "fal":
         return process.env.FAL_KEY || process.env.FAL_API_KEY || keys.falApiKey || "";
       case "elevenlabs":
-        return process.env.ELEVENLABS_API_KEY || "";
+        return process.env.ELEVENLABS_API_KEY || keys.elevenLabsApiKey || "";
       case "google":
         return process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || keys.geminiApiKey || "";
       case "openrouter":
@@ -420,6 +420,7 @@ export async function downloadOutput(
   }
 
   const fileStream = fs.createWriteStream(outputPath);
-  await pipeline(Readable.fromWeb(response.body as never), fileStream);
+  // Web ReadableStream vs Node.js stream type mismatch workaround
+  await pipeline(Readable.fromWeb(response.body as any), fileStream);
   return outputPath;
 }

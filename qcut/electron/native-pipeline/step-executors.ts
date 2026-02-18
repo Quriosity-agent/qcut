@@ -6,8 +6,8 @@
  * @module electron/native-pipeline/step-executors
  */
 
+import * as path from "path";
 import type { ModelCategory, ModelDefinition } from "./registry.js";
-import { ModelRegistry } from "./registry.js";
 import {
   callModelApi,
   downloadOutput,
@@ -478,7 +478,7 @@ async function mapApiResult(
   if (result.outputUrl && outputDir) {
     const ext = guessExtension(result.outputUrl);
     const filename = `output_${Date.now()}${ext}`;
-    const destPath = `${outputDir}/${filename}`;
+    const destPath = path.join(outputDir, filename);
     try {
       outputPath = await downloadOutput(result.outputUrl, destPath);
     } catch (err) {

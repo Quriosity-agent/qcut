@@ -264,6 +264,7 @@ const electronAPI: ElectronAPI = {
       geminiApiKey: { set: boolean; source: string };
       openRouterApiKey: { set: boolean; source: string };
       anthropicApiKey: { set: boolean; source: string };
+      elevenLabsApiKey: { set: boolean; source: string };
     }> => ipcRenderer.invoke("api-keys:status"),
   },
 
