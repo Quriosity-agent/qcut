@@ -45,6 +45,7 @@ import { useUpscaleGeneration } from "./use-upscale-generation";
 import { AiView } from "./ai";
 import { AdjustmentPanel } from "@/components/editor/adjustment";
 import { CameraSelectorView } from "./camera-selector";
+import DrawView from "./draw";
 import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
 import {
   getProviderLogo,
@@ -585,6 +586,7 @@ export function Text2ImageView() {
       {modelType === "angles" && <AiView mode="angles" />}
       {modelType === "adjustment" && <AdjustmentPanel />}
       {modelType === "camera" && <CameraSelectorView />}
+      {modelType === "draw" && <DrawView />}
       {modelType === "upscale" && (
         <div className="space-y-4" data-testid="upscale-panel">
           <Card className="border-0 shadow-none">

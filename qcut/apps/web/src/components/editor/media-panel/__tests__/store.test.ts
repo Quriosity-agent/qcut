@@ -73,10 +73,8 @@ describe("media-panel store", () => {
 
       expect(getGroupForTab("segmentation")).toBe("edit");
 
-      expect(getGroupForTab("captions")).toBe("edit");
       expect(getGroupForTab("word-timeline")).toBe("edit");
       expect(getGroupForTab("video-edit")).toBe("edit");
-      expect(getGroupForTab("draw")).toBe("edit");
 
       expect(getGroupForTab("text")).toBe("edit");
       expect(getGroupForTab("stickers")).toBe("edit");
@@ -130,9 +128,9 @@ describe("media-panel store", () => {
     it("does not affect other groups in lastTabPerGroup", () => {
       const { setActiveTab } = useMediaPanelStore.getState();
 
-      setActiveTab("draw");
+      setActiveTab("video-edit");
       const state = useMediaPanelStore.getState();
-      expect(state.lastTabPerGroup.edit).toBe("draw");
+      expect(state.lastTabPerGroup.edit).toBe("video-edit");
       // Other groups unchanged
       expect(state.lastTabPerGroup.media).toBe("media");
       expect(state.lastTabPerGroup["ai-create"]).toBe("ai");

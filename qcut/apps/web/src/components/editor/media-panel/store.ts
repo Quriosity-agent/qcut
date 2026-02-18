@@ -1,5 +1,4 @@
 import {
-  CaptionsIcon,
   ArrowLeftRightIcon,
   SparklesIcon,
   StickerIcon,
@@ -11,7 +10,6 @@ import {
   BotIcon,
   VolumeXIcon,
   PaletteIcon,
-  PenTool,
   Wand2Icon,
   ScissorsIcon,
   Layers,
@@ -31,13 +29,11 @@ export type Tab =
   | "video-edit"
   | "effects"
   | "transitions"
-  | "captions"
   | "filters"
   | "text2image"
   | "nano-edit"
   | "ai"
   | "sounds"
-  | "draw"
   | "segmentation"
   | "remotion"
   | "pty"
@@ -66,10 +62,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: PaletteIcon,
     label: "Prompt Library",
   },
-  draw: {
-    icon: PenTool,
-    label: "Draw",
-  },
   text: {
     icon: TypeIcon,
     label: "Text",
@@ -80,7 +72,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "video-edit": {
     icon: Wand2Icon,
-    label: "Video Edit",
+    label: "Audio Studio",
   },
   remotion: {
     icon: Layers,
@@ -92,7 +84,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "word-timeline": {
     icon: TextSelect,
-    label: "Transcribe",
+    label: "Smart Speech",
   },
   "project-folder": {
     icon: FolderSync,
@@ -118,10 +110,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   transitions: {
     icon: ArrowLeftRightIcon,
     label: "Transitions (WIP)",
-  },
-  captions: {
-    icon: CaptionsIcon,
-    label: "Captions (WIP)",
   },
 };
 
@@ -149,8 +137,6 @@ const editSubgroups: Record<EditSubgroup, Subgroup> = {
     tabs: [
       "word-timeline",
       "video-edit",
-      "draw",
-      "captions",
       "upscale",
       "segmentation",
     ],
