@@ -33,7 +33,7 @@ const TMP_DIR = path.join(__dirname, "../../.tmp/sticker-export-test");
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getFFmpegPath(): string {
+function getFFmpegPath(): string | null {
   try {
     const result = spawnSync("which", ["ffmpeg"], { encoding: "utf-8" });
     if (result.stdout?.trim()) return result.stdout.trim();
@@ -48,7 +48,7 @@ function getFFmpegPath(): string {
   ]) {
     if (fs.existsSync(p)) return p;
   }
-  throw new Error("FFmpeg not found on system");
+  return null;
 }
 
 function probeVideo(
@@ -112,14 +112,16 @@ function runFFmpeg(
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("Sticker Export — Real FFmpeg E2E", () => {
+const detectedFFmpeg = getFFmpegPath();
+
+describe.skipIf(!detectedFFmpeg)("Sticker Export — Real FFmpeg E2E", () => {
   let ffmpegPath: string;
   let stickerPath1: string;
   let stickerPath2: string;
   let stickerPath3: string;
 
   beforeAll(() => {
-    ffmpegPath = getFFmpegPath();
+    ffmpegPath = detectedFFmpeg!;
 
     // Ensure test fixtures exist
     if (!fs.existsSync(TEST_VIDEO)) {
