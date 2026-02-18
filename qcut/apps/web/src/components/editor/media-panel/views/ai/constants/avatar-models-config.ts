@@ -65,6 +65,7 @@ export const AVATAR_MODELS = {
   kling_avatar_v2_standard: {
     id: "kling_avatar_v2_standard",
     name: "Kling Avatar v2 Standard",
+    badge: "⚡ Fast",
     description:
       "Create talking avatar videos with realistic humans, animals, cartoons, or stylized characters. Audio-synchronized lip-sync.",
     price: "0.0562",
@@ -91,6 +92,7 @@ export const AVATAR_MODELS = {
   kling_avatar_v2_pro: {
     id: "kling_avatar_v2_pro",
     name: "Kling Avatar v2 Pro",
+    badge: "⭐ Recommended",
     description:
       "Premium avatar video generation with enhanced quality and realism. Ideal for professional productions.",
     price: "0.115",
@@ -117,6 +119,7 @@ export const AVATAR_MODELS = {
   sync_lipsync_react1: {
     id: "sync_lipsync_react1",
     name: "Sync Lipsync React-1",
+    badge: "💰 Budget",
     description:
       "Emotion-aware lip-sync: sync video to audio with expressions (happy, sad, angry, etc.)",
     price: "0.10",
@@ -207,6 +210,7 @@ export const AVATAR_MODELS = {
   bytedance_omnihuman_v1_5: {
     id: "bytedance_omnihuman_v1_5",
     name: "ByteDance OmniHuman v1.5",
+    badge: "🎬 Cinematic",
     description: "Realistic human avatar with emotion-synced audio",
     price: "0.20",
     resolution: "1080p",
@@ -323,10 +327,12 @@ export type AvatarModelId = keyof typeof AVATAR_MODELS;
  * Models are ordered by quality/capability and use-case popularity.
  */
 export const AVATAR_MODEL_ORDER: readonly AvatarModelId[] = [
-  "kling_avatar_v2_pro",
-  "kling_avatar_v2_standard",
-  "bytedance_omnihuman_v1_5",
-  "sync_lipsync_react1",
+  // Badged picks — always on top
+  "kling_avatar_v2_pro", // ⭐ Recommended
+  "kling_avatar_v2_standard", // ⚡ Fast
+  "sync_lipsync_react1", // 💰 Budget
+  "bytedance_omnihuman_v1_5", // 🎬 Cinematic
+  // Everything else
   "wan_26_ref2v",
   "kling_o1_v2v_reference",
   "kling_o1_v2v_edit",

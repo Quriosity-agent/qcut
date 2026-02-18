@@ -117,6 +117,7 @@ export function AiView({ mode }: { mode?: "upscale" | "angles" } = {}) {
       const defaults: Partial<Record<typeof activeTab, string>> = {
         text: "sora2_text_to_video_pro",
         image: "sora2_image_to_video_pro",
+        avatar: "kling_avatar_v2_pro",
       };
       const def = defaults[activeTab];
       if (def) setSelectedModels([def]);
