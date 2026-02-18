@@ -78,7 +78,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "nano-edit": {
     icon: PaletteIcon,
-    label: "Nano Edit",
+    label: "Prompt Library",
   },
   draw: {
     icon: PenTool,
