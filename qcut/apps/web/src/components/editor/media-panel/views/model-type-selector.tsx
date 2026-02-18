@@ -1,16 +1,12 @@
 /**
  * Model Type Selector Component
  *
- * Provides a segmented control for switching between different AI model workflows:
- * - Generation: Text-to-image creation
- * - Upscale: Image quality enhancement
- *
- * Note: Image editing functionality is available in the separate Adjustment panel.
+ * Scrollable pill bar for switching between AI model workflows.
+ * Descriptions appear as tooltips on hover.
  *
  * @module ModelTypeSelector
  */
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
@@ -32,7 +28,6 @@ interface ModelTypeSelectorProps {
 
 /**
  * Configuration for each model type option
- * Defines the UI labels and descriptions shown in the selector
  */
 const MODEL_TYPE_OPTIONS: Array<{
   id: ModelTypeOption;
@@ -57,22 +52,8 @@ const MODEL_TYPE_OPTIONS: Array<{
 ];
 
 /**
- * Segmented control component for selecting AI model workflow type
- *
- * Displays two options (Generation, Upscale) as buttons with visual
- * feedback for the currently selected option. Uses proper ARIA attributes for
- * accessibility.
- *
- * @param props - Component props
- * @returns A horizontal button group for model type selection
- *
- * @example
- * ```tsx
- * <ModelTypeSelector
- *   selected="generation"
- *   onChange={(type) => console.log(type)}
- * />
- * ```
+ * Scrollable pill bar for selecting AI model workflow type.
+ * Scales to many options via horizontal scroll.
  */
 export function ModelTypeSelector({
   selected,
@@ -82,32 +63,28 @@ export function ModelTypeSelector({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-lg bg-muted/40 p-2",
+        "flex items-center gap-1.5 overflow-x-auto scrollbar-x-hidden rounded-lg bg-muted/40 p-1.5",
         className
       )}
       data-testid="text2image-model-type-selector"
     >
       {MODEL_TYPE_OPTIONS.map((option) => (
-        <Button
+        <button
           key={option.id}
           type="button"
-          size="sm"
-          variant={selected === option.id ? "default" : "outline"}
+          title={option.description}
           aria-pressed={selected === option.id}
           onClick={() => onChange(option.id)}
           className={cn(
-            "flex-1 flex-col items-start gap-0.5 px-3 py-1 h-auto",
+            "whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors shrink-0",
             selected === option.id
-              ? "shadow-sm"
-              : "border border-transparent hover:border-border"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
           )}
           data-testid={`model-type-${option.id}`}
         >
-          <span className="text-sm font-medium">{option.label}</span>
-          <span className="text-xs text-muted-foreground">
-            {option.description}
-          </span>
-        </Button>
+          {option.label}
+        </button>
       ))}
     </div>
   );
