@@ -347,52 +347,56 @@ import {
 describe("XDG directory support", () => {
   it("configDir respects XDG_CONFIG_HOME", () => {
     const orig = process.env.XDG_CONFIG_HOME;
-    process.env.XDG_CONFIG_HOME = "/tmp/test-xdg-config";
+    const testPath = path.join(os.tmpdir(), "test-xdg-config");
+    process.env.XDG_CONFIG_HOME = testPath;
     const dir = configDir();
     expect(dir).toContain("qcut-pipeline");
-    expect(dir).toContain("/tmp/test-xdg-config");
+    expect(path.normalize(dir)).toContain(path.normalize(testPath));
     if (orig) process.env.XDG_CONFIG_HOME = orig;
     else delete process.env.XDG_CONFIG_HOME;
-    // Clean up
-    fs.rmSync("/tmp/test-xdg-config", { recursive: true, force: true });
+    fs.rmSync(testPath, { recursive: true, force: true });
   });
 
   it("cacheDir respects XDG_CACHE_HOME", () => {
     const orig = process.env.XDG_CACHE_HOME;
-    process.env.XDG_CACHE_HOME = "/tmp/test-xdg-cache";
+    const testPath = path.join(os.tmpdir(), "test-xdg-cache");
+    process.env.XDG_CACHE_HOME = testPath;
     const dir = cacheDir();
     expect(dir).toContain("qcut-pipeline");
-    expect(dir).toContain("/tmp/test-xdg-cache");
+    expect(path.normalize(dir)).toContain(path.normalize(testPath));
     if (orig) process.env.XDG_CACHE_HOME = orig;
     else delete process.env.XDG_CACHE_HOME;
-    fs.rmSync("/tmp/test-xdg-cache", { recursive: true, force: true });
+    fs.rmSync(testPath, { recursive: true, force: true });
   });
 
   it("stateDir respects XDG_STATE_HOME", () => {
     const orig = process.env.XDG_STATE_HOME;
-    process.env.XDG_STATE_HOME = "/tmp/test-xdg-state";
+    const testPath = path.join(os.tmpdir(), "test-xdg-state");
+    process.env.XDG_STATE_HOME = testPath;
     const dir = stateDir();
     expect(dir).toContain("qcut-pipeline");
-    expect(dir).toContain("/tmp/test-xdg-state");
+    expect(path.normalize(dir)).toContain(path.normalize(testPath));
     if (orig) process.env.XDG_STATE_HOME = orig;
     else delete process.env.XDG_STATE_HOME;
-    fs.rmSync("/tmp/test-xdg-state", { recursive: true, force: true });
+    fs.rmSync(testPath, { recursive: true, force: true });
   });
 
   it("override parameter takes priority", () => {
-    const dir = configDir("/tmp/test-override-config");
-    expect(dir).toBe("/tmp/test-override-config");
-    fs.rmSync("/tmp/test-override-config", { recursive: true, force: true });
+    const testPath = path.join(os.tmpdir(), "test-override-config");
+    const dir = configDir(testPath);
+    expect(dir).toBe(testPath);
+    fs.rmSync(testPath, { recursive: true, force: true });
   });
 
   it("defaultConfigPath returns yaml file path", () => {
-    const p = defaultConfigPath("/tmp/test-cfg-path");
+    const testPath = path.join(os.tmpdir(), "test-cfg-path");
+    const p = defaultConfigPath(testPath);
     expect(p).toContain("config.yaml");
-    fs.rmSync("/tmp/test-cfg-path", { recursive: true, force: true });
+    fs.rmSync(testPath, { recursive: true, force: true });
   });
 
   it("ensureDir creates directory", () => {
-    const dir = `/tmp/test-ensure-${Date.now()}`;
+    const dir = path.join(os.tmpdir(), `test-ensure-${Date.now()}`);
     const result = ensureDir(dir);
     expect(result).toBe(dir);
     expect(fs.existsSync(dir)).toBe(true);
