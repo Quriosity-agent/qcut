@@ -62,7 +62,7 @@ export function TabBar() {
               key={key}
               type="button"
               className={cn(
-                "px-3 py-1 rounded text-xs font-medium transition-colors",
+                "flex-1 py-1 rounded text-xs font-medium transition-colors text-center",
                 activeEditSubgroup === key
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
