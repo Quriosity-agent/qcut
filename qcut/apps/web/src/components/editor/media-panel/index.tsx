@@ -22,6 +22,7 @@ import { WordTimelineView } from "./views/word-timeline-view";
 import { ProjectFolderView } from "./views/project-folder";
 import { CameraSelectorView } from "./views/camera-selector";
 import { UpscaleView } from "./views/upscale";
+import { AnglesView } from "./views/angles";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
 
@@ -75,6 +76,7 @@ export function MediaPanel() {
     "project-folder": <ProjectFolderView />,
     "camera-selector": <CameraSelectorView />,
     upscale: <UpscaleView />,
+    angles: <AnglesView />,
   };
 
   const activeNonPtyTab = activeTab === "pty" ? null : activeTab;

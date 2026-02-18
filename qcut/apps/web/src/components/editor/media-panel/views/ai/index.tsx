@@ -82,7 +82,7 @@ import { AIValidationMessages } from "./components/ai-validation-messages";
  *
  * @returns The JSX element for the AI features panel.
  */
-export function AiView({ mode }: { mode?: "upscale" } = {}) {
+export function AiView({ mode }: { mode?: "upscale" | "angles" } = {}) {
   // ============================================
   // Shared State
   // ============================================
@@ -107,7 +107,7 @@ export function AiView({ mode }: { mode?: "upscale" } = {}) {
   // Use global AI tab state (override to "upscale" when in upscale mode)
   const { aiActiveTab: globalActiveTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
-  const activeTab = mode === "upscale" ? "upscale" : globalActiveTab;
+  const activeTab = mode ? mode : globalActiveTab;
 
   // Get project store
   const { activeProject } = useProjectStore();
@@ -449,7 +449,7 @@ export function AiView({ mode }: { mode?: "upscale" } = {}) {
             }
           >
             {!mode && (
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger
                   value="text"
                   className="text-xs"
@@ -473,14 +473,6 @@ export function AiView({ mode }: { mode?: "upscale" } = {}) {
                 >
                   <UserIcon className="size-3 mr-1" />
                   {!isCompact && "Avatar"}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="angles"
-                  className="text-xs"
-                  data-testid="ai-tab-angles"
-                >
-                  <ApertureIcon className="size-3 mr-1" />
-                  {!isCompact && "Angles"}
                 </TabsTrigger>
               </TabsList>
             )}
