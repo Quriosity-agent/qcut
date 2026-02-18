@@ -56,7 +56,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   upscale: {
     icon: ArrowUpFromLineIcon,
-    label: "Upscale",
+    label: "Video Upscale",
   },
   "nano-edit": {
     icon: PaletteIcon,
@@ -136,8 +136,8 @@ const editSubgroups: Record<EditSubgroup, Subgroup> = {
     label: "AI Assist",
     tabs: [
       "word-timeline",
-      "video-edit",
       "upscale",
+      "video-edit",
       "segmentation",
     ],
   },
