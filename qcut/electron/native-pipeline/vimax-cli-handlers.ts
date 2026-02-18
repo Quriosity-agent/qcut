@@ -377,7 +377,7 @@ export async function handleVimaxCreateRegistry(
       }
 
       registry.addPortrait(
-        portrait as import("./vimax/types/character.js").CharacterPortrait
+        portrait as unknown as import("./vimax/types/character.js").CharacterPortrait
       );
       characterCount++;
     }
@@ -488,13 +488,13 @@ export async function handleVimaxIdea2Video(
     const startTime = Date.now();
 
     const pipeline = new Idea2VideoPipeline({
-      outputDir,
-      generatePortraits: !(options.noPortraits ?? false),
-      useCharacterReferences: true,
-      videoModel: options.videoModel,
-      imageModel: options.imageModel,
-      llmModel: options.llmModel,
-      targetDuration: options.duration
+      output_dir: outputDir,
+      generate_portraits: !(options.noPortraits ?? false),
+      use_character_references: true,
+      video_model: options.videoModel,
+      image_model: options.imageModel,
+      llm_model: options.llmModel,
+      target_duration: options.duration
         ? parseInt(options.duration, 10)
         : undefined,
     });
@@ -503,8 +503,8 @@ export async function handleVimaxIdea2Video(
 
     return {
       success: result.success,
-      outputPath: result.output?.finalVideo,
-      cost: result.totalCost,
+      outputPath: result.output?.final_video?.video_path,
+      cost: result.total_cost,
       duration: (Date.now() - startTime) / 1000,
       data: {
         idea: result.idea,
@@ -552,18 +552,18 @@ export async function handleVimaxScript2Video(
     }
 
     const pipeline = new Script2VideoPipeline({
-      outputDir,
-      videoModel: options.videoModel,
-      imageModel: options.imageModel,
-      useCharacterReferences: true,
+      output_dir: outputDir,
+      video_model: options.videoModel,
+      image_model: options.imageModel,
+      use_character_references: true,
     });
 
     const result = await pipeline.run(JSON.parse(scriptData));
 
     return {
       success: result.success,
-      outputPath: result.output?.finalVideo,
-      cost: result.totalCost,
+      outputPath: result.output?.final_video?.video_path,
+      cost: result.total_cost,
       duration: (Date.now() - startTime) / 1000,
       data: { errors: result.errors },
     };
@@ -610,26 +610,26 @@ export async function handleVimaxNovel2Movie(
     }
 
     const pipeline = new Novel2MoviePipeline({
-      outputDir,
-      maxScenes: options.maxScenes,
-      generatePortraits: !(options.noPortraits ?? false),
-      useCharacterReferences: true,
-      scriptsOnly: options.scriptsOnly ?? false,
-      storyboardOnly: options.storyboardOnly ?? false,
-      videoModel: options.videoModel,
-      imageModel: options.imageModel,
-      llmModel: options.llmModel,
+      output_dir: outputDir,
+      max_scenes: options.maxScenes,
+      generate_portraits: !(options.noPortraits ?? false),
+      use_character_references: true,
+      scripts_only: options.scriptsOnly ?? false,
+      storyboard_only: options.storyboardOnly ?? false,
+      video_model: options.videoModel,
+      image_model: options.imageModel,
+      llm_model: options.llmModel,
     });
 
     const result = await pipeline.run(novelText, options.title);
 
     return {
       success: result.success,
-      outputPath: result.output?.finalVideo,
-      cost: result.totalCost,
+      outputPath: result.output?.final_video?.video_path,
+      cost: result.total_cost,
       duration: (Date.now() - startTime) / 1000,
       data: {
-        novelTitle: result.novelTitle,
+        novelTitle: result.novel_title,
         chapters: result.chapters.length,
         characters: result.characters.length,
         errors: result.errors,

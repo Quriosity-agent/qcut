@@ -362,36 +362,36 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 
 ---
 
-### Phase 1 Summary
+### Phase 1 Summary — ALL DONE
 
-| Subtask | File | Lines (est.) | Deps | Time |
+| Subtask | File | Lines (est.) | Deps | Status |
 |---------|------|:---:|------|:---:|
-| 1.1.1 Shot types | `vimax/types/shot.ts` | ~120 | - | 0.5d |
-| 1.1.2 Character types | `vimax/types/character.ts` | ~200 | - | 0.5d |
-| 1.1.3 Camera types | `vimax/types/camera.ts` | ~70 | - | 0.25d |
-| 1.1.4 Output types | `vimax/types/output.ts` | ~90 | - | 0.25d |
-| 1.1.5 Types index | `vimax/types/index.ts` | ~10 | 1.1.* | 0.1d |
-| 1.2.1 Base adapter | `vimax/adapters/base-adapter.ts` | ~60 | - | 0.25d |
-| 1.2.2 LLM adapter | `vimax/adapters/llm-adapter.ts` | ~300 | 1.2.1 | 1d |
-| 1.2.3 Image adapter | `vimax/adapters/image-adapter.ts` | ~250 | 1.2.1 | 1d |
-| 1.2.4 Video adapter | `vimax/adapters/video-adapter.ts` | ~200 | 1.2.1 | 1d |
-| 1.2.5 Adapters index | `vimax/adapters/index.ts` | ~10 | 1.2.* | 0.1d |
-| 1.3.1 Base agent | `vimax/agents/base-agent.ts` | ~150 | - | 0.5d |
-| 1.3.2 Schemas | `vimax/agents/schemas.ts` | ~120 | - | 0.5d |
-| 1.3.3 Screenwriter | `vimax/agents/screenwriter.ts` | ~250 | 1.3.1,1.2.2 | 1d |
-| 1.3.4 CharacterExtractor | `vimax/agents/character-extractor.ts` | ~130 | 1.3.1,1.2.2 | 0.5d |
-| 1.3.5 Portraits gen | `vimax/agents/character-portraits.ts` | ~200 | 1.3.1,1.2.* | 1d |
-| 1.3.6 Storyboard artist | `vimax/agents/storyboard-artist.ts` | ~350 | 1.3.1,1.3.7 | 1.5d |
-| 1.3.7 Reference selector | `vimax/agents/reference-selector.ts` | ~250 | 1.3.1,1.1.* | 0.75d |
-| 1.3.8 Camera generator | `vimax/agents/camera-generator.ts` | ~180 | 1.3.1,1.2.4 | 0.75d |
-| 1.3.9 Agents index | `vimax/agents/index.ts` | ~20 | 1.3.* | 0.1d |
-| **Phase 1 total** | **19 files** | **~2,960** | | **~11.5d** |
+| 1.1.1 Shot types | `vimax/types/shot.ts` | 136 | - | DONE |
+| 1.1.2 Character types | `vimax/types/character.ts` | 182 | - | DONE |
+| 1.1.3 Camera types | `vimax/types/camera.ts` | 77 | - | DONE |
+| 1.1.4 Output types | `vimax/types/output.ts` | 125 | - | DONE |
+| 1.1.5 Types index | `vimax/types/index.ts` | 11 | 1.1.* | DONE |
+| 1.2.1 Base adapter | `vimax/adapters/base-adapter.ts` | 61 | - | DONE |
+| 1.2.2 LLM adapter | `vimax/adapters/llm-adapter.ts` | 358 | 1.2.1 | DONE |
+| 1.2.3 Image adapter | `vimax/adapters/image-adapter.ts` | 389 | 1.2.1 | DONE |
+| 1.2.4 Video adapter | `vimax/adapters/video-adapter.ts` | 271 | 1.2.1 | DONE |
+| 1.2.5 Adapters index | `vimax/adapters/index.ts` | 8 | 1.2.* | DONE |
+| 1.3.1 Base agent | `vimax/agents/base-agent.ts` | ~150 | - | DONE |
+| 1.3.2 Schemas | `vimax/agents/schemas.ts` | ~120 | - | DONE |
+| 1.3.3 Screenwriter | `vimax/agents/screenwriter.ts` | ~250 | 1.3.1,1.2.2 | DONE |
+| 1.3.4 CharacterExtractor | `vimax/agents/character-extractor.ts` | ~130 | 1.3.1,1.2.2 | DONE |
+| 1.3.5 Portraits gen | `vimax/agents/character-portraits.ts` | ~200 | 1.3.1,1.2.* | DONE |
+| 1.3.6 Storyboard artist | `vimax/agents/storyboard-artist.ts` | ~350 | 1.3.1,1.3.7 | DONE |
+| 1.3.7 Reference selector | `vimax/agents/reference-selector.ts` | ~250 | 1.3.1,1.1.* | DONE |
+| 1.3.8 Camera generator | `vimax/agents/camera-generator.ts` | ~180 | 1.3.1,1.2.4 | DONE |
+| 1.3.9 Agents index | `vimax/agents/index.ts` | 8 | 1.3.* | DONE |
+| **Phase 1 total** | **19 files** | **~2,960** | | **ALL DONE** |
 
 ---
 
 ## Phase 2: ViMax Creative Pipelines (CRITICAL)
 
-### 2.1 Idea2Video Pipeline
+### 2.1 Idea2Video Pipeline — DONE
 
 - **Create:** `electron/native-pipeline/vimax/pipelines/idea2video.ts`
 - **Python source:** `vimax/pipelines/idea2video.py` (302 lines)
@@ -413,7 +413,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** All Phase 1 agents
 - **Est. time:** 2 days
 
-### 2.2 Script2Video Pipeline
+### 2.2 Script2Video Pipeline — DONE
 
 - **Create:** `electron/native-pipeline/vimax/pipelines/script2video.ts`
 - **Python source:** `vimax/pipelines/script2video.py` (163 lines)
@@ -430,7 +430,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Storyboard artist, Camera generator agents
 - **Est. time:** 1 day
 
-### 2.3 Novel2Movie Pipeline
+### 2.3 Novel2Movie Pipeline — DONE
 
 - **Create:** `electron/native-pipeline/vimax/pipelines/novel2movie.ts`
 - **Python source:** `vimax/pipelines/novel2movie.py` (452 lines)
@@ -451,35 +451,35 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** All Phase 1 agents, LLM adapter
 - **Est. time:** 2.5 days
 
-### 2.4 Pipelines Barrel Export
+### 2.4 Pipelines Barrel Export — DONE
 
 - **Create:** `electron/native-pipeline/vimax/pipelines/index.ts`
 - **Dependencies:** 2.1-2.3
 - **Est. time:** 0.1 day
 
-### 2.5 ViMax Module Root Export
+### 2.5 ViMax Module Root Export — DONE
 
 - **Create:** `electron/native-pipeline/vimax/index.ts`
 - Re-exports: types, adapters, agents, pipelines
 - **Dependencies:** All Phase 1 + Phase 2
 - **Est. time:** 0.1 day
 
-### Phase 2 Summary
+### Phase 2 Summary — ALL DONE
 
-| Subtask | File | Lines (est.) | Deps | Time |
+| Subtask | File | Lines (actual) | Deps | Status |
 |---------|------|:---:|------|:---:|
-| 2.1 Idea2Video | `vimax/pipelines/idea2video.ts` | ~300 | Phase 1 | 2d |
-| 2.2 Script2Video | `vimax/pipelines/script2video.ts` | ~170 | Agents | 1d |
-| 2.3 Novel2Movie | `vimax/pipelines/novel2movie.ts` | ~450 | Phase 1 | 2.5d |
-| 2.4 Pipelines index | `vimax/pipelines/index.ts` | ~10 | 2.1-2.3 | 0.1d |
-| 2.5 ViMax root | `vimax/index.ts` | ~15 | All | 0.1d |
-| **Phase 2 total** | **5 files** | **~945** | | **~5.7d** |
+| 2.1 Idea2Video | `vimax/pipelines/idea2video.ts` | 342 | Phase 1 | DONE |
+| 2.2 Script2Video | `vimax/pipelines/script2video.ts` | 210 | Agents | DONE |
+| 2.3 Novel2Movie | `vimax/pipelines/novel2movie.ts` | 521 | Phase 1 | DONE |
+| 2.4 Pipelines index | `vimax/pipelines/index.ts` | 9 | 2.1-2.3 | DONE |
+| 2.5 ViMax root | `vimax/index.ts` | 14 | All | DONE |
+| **Phase 2 total** | **5 files** | **~1,096** | | **ALL DONE** |
 
 ---
 
 ## Phase 3: Parallel Execution (HIGH)
 
-### 3.1 Parallel Step Executor
+### 3.1 Parallel Step Executor — DONE
 
 - **Create:** `electron/native-pipeline/parallel-executor.ts`
 - **Python source:** `core/parallel_executor.py` (570 lines)
@@ -502,7 +502,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `executor.ts`
 - **Est. time:** 1.5 days
 
-### 3.2 YAML Parallel Group Support
+### 3.2 YAML Parallel Group Support — DONE
 
 - **Modify:** `electron/native-pipeline/chain-parser.ts`
 - **Changes:**
@@ -525,7 +525,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** 3.1
 - **Est. time:** 0.75 day
 
-### 3.3 Executor Integration
+### 3.3 Executor Integration — DONE
 
 - **Modify:** `electron/native-pipeline/executor.ts`
 - **Changes:**
@@ -535,7 +535,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** 3.1, 3.2
 - **Est. time:** 0.5 day
 
-### 3.4 CLI Parallel Flag
+### 3.4 CLI Parallel Flag — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Changes:**
@@ -548,21 +548,23 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** 3.1, 3.3
 - **Est. time:** 0.25 day
 
-### Phase 3 Summary
+### Phase 3 Summary — ALL DONE
 
-| Subtask | File | Lines (est.) | Deps | Time |
+| Subtask | File | Lines (actual) | Deps | Status |
 |---------|------|:---:|------|:---:|
-| 3.1 Parallel executor | `parallel-executor.ts` | ~350 | executor.ts | 1.5d |
-| 3.2 YAML parallel | `chain-parser.ts` (mod) | +80 | 3.1 | 0.75d |
-| 3.3 Executor integration | `executor.ts` (mod) | +40 | 3.1, 3.2 | 0.5d |
-| 3.4 CLI parallel flag | `cli.ts` + `cli-runner.ts` (mod) | +30 | 3.1 | 0.25d |
-| **Phase 3 total** | **1 new + 3 modified** | **~500** | | **~3d** |
+| 3.1 Parallel executor | `parallel-executor.ts` | 420 | executor.ts | DONE |
+| 3.2 YAML parallel | `chain-parser.ts` (mod) | +80 | 3.1 | DONE |
+| 3.3 Executor integration | `cli-runner.ts` (mod) | +40 | 3.1, 3.2 | DONE |
+| 3.4 CLI parallel flag | `cli.ts` + `cli-runner.ts` (mod) | +30 | 3.1 | DONE |
+| **Phase 3 total** | **1 new + 3 modified** | **~570** | | **ALL DONE** |
+
+> **Note:** Delegation to `ParallelPipelineExecutor` happens in `cli-runner.ts` (not `executor.ts`), which is a cleaner architectural separation.
 
 ---
 
 ## Phase 4: Missing CLI Commands (MEDIUM)
 
-### 4.1 `analyze-video` Command
+### 4.1 `analyze-video` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts` (add command)
 - **Modify:** `electron/native-pipeline/cli-runner.ts` (add handler)
@@ -576,7 +578,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `api-caller.ts`, image understanding models
 - **Est. time:** 0.75 day
 
-### 4.2 `transcribe` Command
+### 4.2 `transcribe` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Modify:** `electron/native-pipeline/cli-runner.ts`
@@ -590,7 +592,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `api-caller.ts`, STT models
 - **Est. time:** 0.5 day
 
-### 4.3 `transfer-motion` Command
+### 4.3 `transfer-motion` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Modify:** `electron/native-pipeline/cli-runner.ts`
@@ -604,7 +606,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `api-caller.ts`, need to register motion transfer model in registry
 - **Est. time:** 0.5 day
 
-### 4.4 `generate-grid` Command
+### 4.4 `generate-grid` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Modify:** `electron/native-pipeline/cli-runner.ts`
@@ -619,7 +621,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing image generation, needs `sharp` or canvas library for compositing
 - **Est. time:** 0.75 day
 
-### 4.5 `upscale-image` Command
+### 4.5 `upscale-image` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Modify:** `electron/native-pipeline/cli-runner.ts`
@@ -633,7 +635,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `api-caller.ts`, upscale models
 - **Est. time:** 0.5 day
 
-### 4.6 `setup` / Key Management Commands
+### 4.6 `setup` / Key Management Commands — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Create:** `electron/native-pipeline/key-manager.ts` (new utility)
@@ -648,7 +650,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Node.js fs, existing Electron encrypted storage
 - **Est. time:** 0.75 day
 
-### 4.7 `create-examples` Command
+### 4.7 `create-examples` Command — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Create:** `electron/native-pipeline/example-pipelines.ts` (new utility)
@@ -665,7 +667,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** None
 - **Est. time:** 0.5 day
 
-### 4.8 ViMax CLI Commands
+### 4.8 ViMax CLI Commands — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts` (add vimax subcommands)
 - **Modify:** `electron/native-pipeline/cli-runner.ts` (add handlers)
@@ -688,7 +690,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Phase 2 pipelines
 - **Est. time:** 1.5 days
 
-### 4.9 Category-Specific List Commands
+### 4.9 Category-Specific List Commands — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Modify:** `electron/native-pipeline/cli-runner.ts`
@@ -701,26 +703,26 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Dependencies:** Existing `list-models` command
 - **Est. time:** 0.25 day
 
-### Phase 4 Summary
+### Phase 4 Summary — ALL DONE
 
-| Subtask | Files | Lines (est.) | Time |
+| Subtask | Files | Lines (est.) | Status |
 |---------|-------|:---:|:---:|
-| 4.1 analyze-video | cli.ts, cli-runner.ts (mod) | +60 | 0.75d |
-| 4.2 transcribe | cli.ts, cli-runner.ts (mod) | +50 | 0.5d |
-| 4.3 transfer-motion | cli.ts, cli-runner.ts (mod) | +50 | 0.5d |
-| 4.4 generate-grid | cli.ts (mod) + grid-generator.ts | +120 | 0.75d |
-| 4.5 upscale-image | cli.ts, cli-runner.ts (mod) | +40 | 0.5d |
-| 4.6 Key management | cli.ts (mod) + key-manager.ts | +150 | 0.75d |
-| 4.7 create-examples | cli.ts (mod) + example-pipelines.ts | +100 | 0.5d |
-| 4.8 ViMax CLI | cli.ts, cli-runner.ts (mod) | +200 | 1.5d |
-| 4.9 List filters | cli.ts, cli-runner.ts (mod) | +30 | 0.25d |
-| **Phase 4 total** | **2 new + 2 modified** | **~800** | **~6d** |
+| 4.1 analyze-video | cli.ts, cli-runner.ts (mod) | +60 | DONE |
+| 4.2 transcribe | cli.ts, cli-runner.ts (mod) | +50 | DONE |
+| 4.3 transfer-motion | cli.ts, cli-runner.ts (mod) | +50 | DONE |
+| 4.4 generate-grid | cli.ts (mod) + grid-generator.ts | +120 | DONE |
+| 4.5 upscale-image | cli.ts, cli-runner.ts (mod) | +40 | DONE |
+| 4.6 Key management | cli.ts (mod) + key-manager.ts | +150 | DONE |
+| 4.7 create-examples | cli.ts (mod) + example-pipelines.ts | +100 | DONE |
+| 4.8 ViMax CLI | cli.ts + vimax-cli-handlers.ts | +796 | DONE |
+| 4.9 List filters | cli.ts, cli-runner.ts (mod) | +30 | DONE |
+| **Phase 4 total** | **4 new + 2 modified** | **~1,400+** | **ALL DONE** |
 
 ---
 
 ## Phase 5: Missing Models & Providers (LOW)
 
-### 5.1 Runway Provider
+### 5.1 Runway Provider — DONE
 
 - **Modify:** `electron/native-pipeline/registry-data.ts` or `registry-data-2.ts`
 - **Modify:** `electron/native-pipeline/api-caller.ts` (add Runway provider headers/auth)
@@ -730,7 +732,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Auth:** Runway API key, bearer token
 - **Est. time:** 0.5 day
 
-### 5.2 HeyGen Provider
+### 5.2 HeyGen Provider — DONE
 
 - **Modify:** `electron/native-pipeline/registry-data-2.ts`
 - **Modify:** `electron/native-pipeline/api-caller.ts`
@@ -739,7 +741,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Auth:** HeyGen API key
 - **Est. time:** 0.5 day
 
-### 5.3 D-ID Provider
+### 5.3 D-ID Provider — DONE
 
 - **Modify:** `electron/native-pipeline/registry-data-2.ts`
 - **Modify:** `electron/native-pipeline/api-caller.ts`
@@ -748,7 +750,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Auth:** D-ID API key, basic auth
 - **Est. time:** 0.5 day
 
-### 5.4 Synthesia Provider
+### 5.4 Synthesia Provider — DONE
 
 - **Modify:** `electron/native-pipeline/registry-data-2.ts`
 - **Modify:** `electron/native-pipeline/api-caller.ts`
@@ -757,24 +759,26 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Auth:** Synthesia API key
 - **Est. time:** 0.5 day
 
-### Phase 5 Summary
+### Phase 5 Summary — ALL DONE
 
-| Subtask | Files | Time |
+| Subtask | Files | Status |
 |---------|-------|:---:|
-| 5.1 Runway | registry-data.ts, api-caller.ts (mod) | 0.5d |
-| 5.2 HeyGen | registry-data-2.ts, api-caller.ts (mod) | 0.5d |
-| 5.3 D-ID | registry-data-2.ts, api-caller.ts (mod) | 0.5d |
-| 5.4 Synthesia | registry-data-2.ts, api-caller.ts (mod) | 0.5d |
-| **Phase 5 total** | **4 modified** | **~2d** |
+| 5.1 Runway | registry-data-2.ts (mod) | DONE |
+| 5.2 HeyGen | registry-data-2.ts (mod) | DONE |
+| 5.3 D-ID | registry-data-2.ts (mod) | DONE |
+| 5.4 Synthesia | registry-data-2.ts (mod) | DONE |
+| **Phase 5 total** | **1 modified** | **ALL DONE** |
+
+> **Note:** All 4 providers registered via FAL.ai in `registry-data-2.ts` (`registerRunwayModels`, `registerHeyGenModels`, `registerDIDModels`, `registerSynthesiaModels`).
 
 ---
 
 ## Phase 6: Polish & Parity (LOW)
 
-### 6.1 Structured Exit Codes
+### 6.1 Structured Exit Codes — DONE
 
 - **Modify:** `electron/native-pipeline/cli.ts`
-- **Create:** `electron/native-pipeline/exit-codes.ts`
+- **Implemented in:** `electron/native-pipeline/errors.ts` (merged with error hierarchy instead of separate file)
 - **Structure:**
   ```
   enum ExitCode {
@@ -794,28 +798,27 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
   ```
 - **Est. time:** 0.25 day
 
-### 6.2 JSONL Streaming Output
+### 6.2 JSONL Streaming Output — DONE
 
-- **Modify:** `electron/native-pipeline/cli-runner.ts`
+- **Implemented in:** `electron/native-pipeline/stream-emitter.ts` (StreamEmitter + NullEmitter classes)
 - **Changes:**
   - Add `--stream` flag to CLI
   - When enabled, emit JSONL events to stdout for each step: `{ event: "step_start" | "step_complete" | "progress", data: {...} }`
   - Compatible with piping to other tools
 - **Est. time:** 0.5 day
 
-### 6.3 XDG Directory Support
+### 6.3 XDG Directory Support — DONE
 
-- **Modify:** `electron/native-pipeline/output-utils.ts`
+- **Implemented in:** `electron/native-pipeline/xdg-paths.ts` (dedicated file with configDir, cacheDir, stateDir)
 - **Changes:**
   - Add `--config-dir`, `--cache-dir`, `--state-dir` CLI options
   - Resolve paths per XDG spec on Linux, `~/Library/Application Support/` on macOS, `%APPDATA%` on Windows
   - Use for: config files, cached responses, pipeline state
 - **Est. time:** 0.5 day
 
-### 6.4 Rich Console Output
+### 6.4 Rich Console Output — DONE
 
-- **Modify:** `electron/native-pipeline/cli-runner.ts`
-- **Create:** `electron/native-pipeline/cli-formatter.ts`
+- **Implemented in:** `electron/native-pipeline/cli-output.ts` (CLIOutput class with ANSI colors, table formatting, progress bar)
 - **Structure:**
   - Table formatting for `list-models` (columns: key, name, provider, category, cost)
   - Colored output using ANSI codes (no external deps)
@@ -823,7 +826,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
   - Progress bar with percentage and ETA
 - **Est. time:** 1 day
 
-### 6.5 Interactive CLI Mode
+### 6.5 Interactive CLI Mode — NOT IMPLEMENTED
 
 - **Modify:** `electron/native-pipeline/cli.ts`
 - **Changes:**
@@ -832,27 +835,29 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
   - Menu: select command, enter parameters, confirm before execution
 - **Est. time:** 0.75 day
 
-### 6.6 Service-Level Feature Gaps
+### 6.6 Service-Level Feature Gaps — MOSTLY DONE
 
 - **Modify:** `electron/native-pipeline/step-executors.ts`
 - **Changes:**
-  - **Voice cloning:** Add `voice_id` and `voice_settings` params to ElevenLabs TTS executor
-  - **Negative prompts:** Add `negative_prompt` param to Kling 2.1 models
-  - **Frame interpolation:** Add `interpolation_frames` param to Kling 2.1 models
-  - **Prompt optimizer:** Add MiniMax Hailuo prompt optimization call before video generation
+  - **Voice cloning:** DONE — `voice_id` + `voice_settings` in `executeTTS()`
+  - **Negative prompts:** DONE — applied from model defaults in `executeTextToVideo()`
+  - **Frame interpolation:** DONE — applied from model defaults in `executeTextToVideo()`
+  - **Prompt optimizer:** PARTIAL — `prompt_optimizer: true` passed to API, no client-side optimization logic
 - **Est. time:** 1 day
 
-### Phase 6 Summary
+### Phase 6 Summary — 5/6 DONE
 
-| Subtask | Files | Time |
+| Subtask | Files | Status |
 |---------|-------|:---:|
-| 6.1 Exit codes | cli.ts (mod) + exit-codes.ts | 0.25d |
-| 6.2 JSONL streaming | cli-runner.ts (mod) | 0.5d |
-| 6.3 XDG dirs | output-utils.ts (mod) | 0.5d |
-| 6.4 Rich console | cli-runner.ts (mod) + cli-formatter.ts | 1d |
-| 6.5 Interactive mode | cli.ts (mod) | 0.75d |
-| 6.6 Service features | step-executors.ts (mod) | 1d |
-| **Phase 6 total** | **1 new + 4 modified** | **~4d** |
+| 6.1 Exit codes | errors.ts (merged) | DONE |
+| 6.2 JSONL streaming | stream-emitter.ts (new) | DONE |
+| 6.3 XDG dirs | xdg-paths.ts (new) | DONE |
+| 6.4 Rich console | cli-output.ts (new) | DONE |
+| 6.5 Interactive mode | cli.ts | NOT IMPLEMENTED |
+| 6.6 Service features | step-executors.ts (mod) | MOSTLY DONE |
+| **Phase 6 total** | **3 new + 2 modified** | **5/6 DONE** |
+
+> **Remaining:** 6.5 Interactive CLI mode (~0.75d), 6.6 prompt optimizer client-side logic (minor).
 
 ---
 

@@ -210,51 +210,51 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 
   return {
     command,
-    model: values.model,
-    text: values.text,
-    imageUrl: values["image-url"],
-    videoUrl: values["video-url"],
-    audioUrl: values["audio-url"],
-    outputDir: values["output-dir"] || "./output",
-    duration: values.duration,
-    aspectRatio: values["aspect-ratio"],
-    resolution: values.resolution,
-    config: values.config,
-    input: values.input,
-    saveIntermediates: values["save-intermediates"] ?? false,
-    parallel: values.parallel ?? false,
+    model: values.model as string | undefined,
+    text: values.text as string | undefined,
+    imageUrl: values["image-url"] as string | undefined,
+    videoUrl: values["video-url"] as string | undefined,
+    audioUrl: values["audio-url"] as string | undefined,
+    outputDir: (values["output-dir"] as string) || "./output",
+    duration: values.duration as string | undefined,
+    aspectRatio: values["aspect-ratio"] as string | undefined,
+    resolution: values.resolution as string | undefined,
+    config: values.config as string | undefined,
+    input: values.input as string | undefined,
+    saveIntermediates: (values["save-intermediates"] as boolean) ?? false,
+    parallel: (values.parallel as boolean) ?? false,
     maxWorkers: values["max-workers"]
-      ? parseInt(values["max-workers"], 10)
+      ? parseInt(values["max-workers"] as string, 10)
       : undefined,
-    json: values.json ?? false,
-    verbose: values.verbose ?? false,
-    quiet: values.quiet ?? false,
-    category: values.category,
-    prompt: values.prompt,
-    layout: values.layout,
-    upscale: values.upscale,
-    keyName: values.name,
-    keyValue: values.value,
-    idea: values.idea,
-    script: values.script,
-    novel: values.novel,
-    title: values.title,
+    json: (values.json as boolean) ?? false,
+    verbose: (values.verbose as boolean) ?? false,
+    quiet: (values.quiet as boolean) ?? false,
+    category: values.category as string | undefined,
+    prompt: values.prompt as string | undefined,
+    layout: values.layout as string | undefined,
+    upscale: values.upscale as string | undefined,
+    keyName: values.name as string | undefined,
+    keyValue: values.value as string | undefined,
+    idea: values.idea as string | undefined,
+    script: values.script as string | undefined,
+    novel: values.novel as string | undefined,
+    title: values.title as string | undefined,
     maxScenes: values["max-scenes"]
-      ? parseInt(values["max-scenes"], 10)
+      ? parseInt(values["max-scenes"] as string, 10)
       : undefined,
-    scriptsOnly: values["scripts-only"] ?? false,
-    storyboardOnly: values["storyboard-only"] ?? false,
-    noPortraits: values["no-portraits"] ?? false,
-    llmModel: values["llm-model"],
-    imageModel: values["image-model"],
-    videoModel: values["video-model"],
-    image: values.image,
-    stream: values.stream ?? false,
-    configDir: values["config-dir"],
-    cacheDir: values["cache-dir"],
-    stateDir: values["state-dir"],
-    negativePrompt: values["negative-prompt"],
-    voiceId: values["voice-id"],
+    scriptsOnly: (values["scripts-only"] as boolean) ?? false,
+    storyboardOnly: (values["storyboard-only"] as boolean) ?? false,
+    noPortraits: (values["no-portraits"] as boolean) ?? false,
+    llmModel: values["llm-model"] as string | undefined,
+    imageModel: values["image-model"] as string | undefined,
+    videoModel: values["video-model"] as string | undefined,
+    image: values.image as string | undefined,
+    stream: (values.stream as boolean) ?? false,
+    configDir: values["config-dir"] as string | undefined,
+    cacheDir: values["cache-dir"] as string | undefined,
+    stateDir: values["state-dir"] as string | undefined,
+    negativePrompt: values["negative-prompt"] as string | undefined,
+    voiceId: values["voice-id"] as string | undefined,
   };
 }
 
@@ -418,7 +418,7 @@ export async function main(
       );
       console.log(JSON.stringify(data.characters, null, 2));
     }
-    emitter.pipelineComplete({ success: true, ...result });
+    emitter.pipelineComplete({ ...result, success: true });
   } else {
     output.error(result.error || "Unknown error");
     emitter.pipelineComplete({ success: false, error: result.error });
