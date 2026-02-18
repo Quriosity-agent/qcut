@@ -144,14 +144,9 @@ export type TabGroup = "media" | "ai-create" | "agents" | "edit" | "effects";
 export const tabGroups: {
   [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
 } = {
-  media: {
-    icon: FolderOpenIcon,
-    label: "Media",
-    tabs: ["media", "project-folder"],
-  },
   "ai-create": {
     icon: SparklesIcon,
-    label: "AI Create",
+    label: "Create",
     tabs: [
       "ai",
       "text2image",
@@ -162,6 +157,11 @@ export const tabGroups: {
       "sounds",
       "audio",
     ],
+  },
+  media: {
+    icon: FolderOpenIcon,
+    label: "Media",
+    tabs: ["media", "project-folder"],
   },
   agents: {
     icon: WrenchIcon,
