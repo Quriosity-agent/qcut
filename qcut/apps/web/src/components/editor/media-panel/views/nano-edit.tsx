@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { ExternalLink } from "lucide-react";
 import ImageAssetsTab from "@/components/editor/nano-edit/tabs/ImageAssetsTab";
 
+/** Prompt library view with links to external prompt galleries and the image assets tab. */
 const NanoEditView: FC = () => {
   return (
     <div className="p-4 h-full flex flex-col">

@@ -9,6 +9,7 @@ interface ScrollTrackProps<T> {
   label: string;
 }
 
+/** Horizontally scrollable selection track with keyboard-wheel redirection and snap alignment. */
 export function ScrollTrack<T>({
   items,
   selectedIndex,

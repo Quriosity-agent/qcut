@@ -54,6 +54,7 @@ import {
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;
 
+/** AI Images panel with generation, upscale, angles, adjustment, and camera sub-views. */
 export function Text2ImageView() {
   if (DEBUG_TEXT2IMAGE) console.log("Text2ImageView rendered");
 

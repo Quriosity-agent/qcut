@@ -31,6 +31,7 @@ const EffectsView = React.lazy(() =>
       })
 );
 
+/** Root media panel component that renders the group bar, tab bar, and active tab view. */
 export function MediaPanel() {
   const activeTab = useMediaPanelStore((state) => state.activeTab);
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { useRef, useEffect } from "react";
 
+/** Tab bar displaying the active group's tabs with horizontal scrolling and prev/next navigation. */
 export function TabBar() {
   const {
     activeTab,
@@ -109,6 +110,7 @@ export function TabBar() {
   );
 }
 
+/** Chevron button for navigating between tabs in the tab bar. */
 function NavButton({
   direction,
   onClick,

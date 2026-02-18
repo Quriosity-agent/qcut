@@ -58,6 +58,7 @@ import { generateUUID } from "@/lib/utils";
 import { FolderTree } from "../folder-tree";
 import { SkillsView } from "./skills";
 
+/** Media library view with drag-and-drop upload, folder filtering, search, and context menu actions. */
 export function MediaView() {
   const {
     store: mediaStore,
