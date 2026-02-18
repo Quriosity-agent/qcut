@@ -9,7 +9,7 @@ import { Text2ImageView } from "./views/text2image";
 import { AiView } from "./views/ai";
 import { StickersView } from "./views/stickers";
 import { SoundsView } from "./views/sounds";
-import NanoEditView from "./views/nano-edit";
+import { SkillsView } from "./views/skills";
 import VideoEditView from "./views/video-edit";
 import { SegmentationPanel } from "@/components/editor/segmentation";
 import { RemotionView } from "./views/remotion";
@@ -58,7 +58,7 @@ export function MediaPanel() {
       </div>
     ),
     text2image: <Text2ImageView />,
-    "nano-edit": <NanoEditView />,
+    "nano-edit": <SkillsView />,
     ai: <AiView />,
     sounds: <SoundsView />,
     segmentation: <SegmentationPanel />,

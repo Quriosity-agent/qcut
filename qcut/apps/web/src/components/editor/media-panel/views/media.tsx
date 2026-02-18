@@ -16,6 +16,11 @@ import {
   FolderInput,
   ExternalLink,
   RefreshCw,
+  Download,
+  Trash2,
+  X,
+  MoreHorizontal,
+  ListPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
@@ -34,6 +39,12 @@ import {
   ContextMenuSeparator,
   ContextMenuCheckboxItem,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -47,16 +58,13 @@ import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { usePlaybackStore } from "@/stores/playback-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ExportAllButton } from "../export-all-button";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
 import { useText2ImageStore } from "@/stores/text2image-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useFolderStore } from "@/stores/folder-store";
-import { SKILLS_FOLDER_ID } from "@/stores/media-store-types";
-import { generateUUID } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { FolderTree } from "../folder-tree";
-import { SkillsView } from "./skills";
 
 /** Media library view with drag-and-drop upload, folder filtering, search, and context menu actions. */
 export function MediaView() {
@@ -87,6 +95,7 @@ export function MediaView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [mediaFilter, setMediaFilter] = useState("all");
   const [filteredMediaItems, setFilteredMediaItems] = useState<MediaItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSyncing, setIsSyncing] = useState(false);
   const hasSyncedRef = useRef(false);
 
@@ -124,6 +133,8 @@ export function MediaView() {
     });
 
     setFilteredMediaItems(filtered);
+    // Clear selection when filter/folder changes
+    setSelectedIds(new Set());
   }, [mediaItems, mediaFilter, searchQuery, selectedFolderId]);
 
   const processFiles = async (files: FileList | File[]) => {
@@ -218,6 +229,70 @@ export function MediaView() {
         });
     }
   }, [mediaStore?.hasInitialized, activeProject?.id]);
+
+  // Selection helpers
+  const toggleSelect = useCallback(
+    (id: string, e?: React.MouseEvent) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (e?.shiftKey && prev.size > 0) {
+          // Range select
+          const lastId = [...prev].pop()!;
+          const ids = filteredMediaItems.map((m) => m.id);
+          const a = ids.indexOf(lastId);
+          const b = ids.indexOf(id);
+          const [start, end] = a < b ? [a, b] : [b, a];
+          for (let i = start; i <= end; i++) next.add(ids[i]);
+        } else if (e?.metaKey || e?.ctrlKey) {
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+        } else {
+          if (next.size === 1 && next.has(id)) {
+            next.clear();
+          } else {
+            next.clear();
+            next.add(id);
+          }
+        }
+        return next;
+      });
+    },
+    [filteredMediaItems]
+  );
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const handleAddSelectedToTimeline = useCallback(() => {
+    const { addMediaAtTime } = useTimelineStore.getState();
+    const { currentTime } = usePlaybackStore.getState();
+    const items = mediaItems.filter((m) => selectedIds.has(m.id));
+    for (const item of items) {
+      addMediaAtTime(item, currentTime);
+    }
+    toast.success(`Added ${items.length} item(s) to timeline`);
+    clearSelection();
+  }, [selectedIds, mediaItems, clearSelection]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (!activeProject || !removeMediaItem) return;
+    const ids = [...selectedIds];
+    await Promise.all(ids.map((id) => removeMediaItem(activeProject.id, id)));
+    toast.success(`Deleted ${ids.length} item(s)`);
+    clearSelection();
+  }, [selectedIds, activeProject, removeMediaItem, clearSelection]);
+
+  const handleDownloadSelected = useCallback(async () => {
+    const items = mediaItems.filter((m) => selectedIds.has(m.id));
+    for (const item of items) {
+      const url = item.url || item.thumbnailUrl;
+      if (!url) continue;
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.name;
+      a.click();
+    }
+    toast.success(`Downloading ${items.length} item(s)`);
+  }, [selectedIds, mediaItems]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // When files are selected via file picker, process them
@@ -401,23 +476,6 @@ export function MediaView() {
     );
   };
 
-  // If Skills folder is selected, show SkillsView
-  if (selectedFolderId === SKILLS_FOLDER_ID) {
-    return (
-      <div className="flex h-full">
-        {/* Folder sidebar */}
-        <div className="w-44 min-w-[140px] max-w-[200px] flex-shrink-0">
-          <FolderTree />
-        </div>
-
-        {/* Skills content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <SkillsView />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full">
       {/* Folder sidebar */}
@@ -443,63 +501,131 @@ export function MediaView() {
           {...dragProps}
         >
           <div className="p-3 pb-2 bg-panel">
-            {/* Search and filter controls */}
-            <div className="flex gap-2">
-              <Select value={mediaFilter} onValueChange={setMediaFilter}>
-                <SelectTrigger className="w-[80px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="video">Video</SelectItem>
-                  <SelectItem value="audio">Audio</SelectItem>
-                  <SelectItem value="image">Image</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                type="text"
-                placeholder="Search media..."
-                className="min-w-[60px] flex-1 h-9 text-xs"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={handleFileSelect}
-                disabled={isProcessing}
-                className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
-                data-testid="import-media-button"
-                aria-label={isProcessing ? "Importing media" : "Import media"}
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
+            {selectedIds.size > 0 ? (
+              /* Selection toolbar */
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium whitespace-nowrap">
+                  {selectedIds.size} selected
+                </span>
+                {selectedIds.size < filteredMediaItems.length && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:text-primary/80 whitespace-nowrap"
+                    onClick={() =>
+                      setSelectedIds(
+                        new Set(filteredMediaItems.map((m) => m.id))
+                      )
+                    }
+                  >
+                    Select All
+                  </button>
                 )}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={handleSync}
-                disabled={isSyncing || isProcessing}
-                className="flex-none bg-transparent min-w-[30px] whitespace-nowrap overflow-hidden px-2 justify-center items-center h-9"
-                data-testid="sync-project-folder-button"
-                aria-label={
-                  isSyncing ? "Syncing project folder" : "Sync project folder"
-                }
-                title="Sync files from project folder"
-              >
-                {isSyncing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-              </Button>
-              <ExportAllButton variant="outline" size="sm" className="h-9" />
-            </div>
+                <div className="flex-1" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleAddSelectedToTimeline}
+                >
+                  <ListPlus className="h-3.5 w-3.5 mr-1" />
+                  Add to Timeline
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleDownloadSelected}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Download
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs text-destructive hover:text-destructive"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete
+                </Button>
+                <Button
+                  type="button"
+                  variant="text"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={clearSelection}
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Deselect
+                </Button>
+              </div>
+            ) : (
+              /* Default toolbar */
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFileSelect}
+                  disabled={isProcessing}
+                  className="h-8 text-xs"
+                  data-testid="import-media-button"
+                  aria-label={isProcessing ? "Importing media" : "Import media"}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  Import
+                </Button>
+                <Input
+                  type="text"
+                  placeholder="Search media..."
+                  className="min-w-[60px] flex-1 h-8 text-xs"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <Select value={mediaFilter} onValueChange={setMediaFilter}>
+                  <SelectTrigger className="w-[80px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="audio">Audio</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="text"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      aria-label="More actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={handleSync}
+                      disabled={isSyncing || isProcessing}
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`}
+                      />
+                      Sync Project Folder
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
 
           <ScrollArea className="h-full">
@@ -519,27 +645,38 @@ export function MediaView() {
                     gridTemplateColumns: "repeat(auto-fill, 160px)",
                   }}
                 >
-                  {/* Render each media item as a draggable button */}
+                  {/* Render each media item as a draggable, selectable button */}
                   {filteredMediaItems.map((item) => (
                     <ContextMenu key={item.id}>
                       <ContextMenuTrigger>
-                        <DraggableMediaItem
-                          name={item.name}
-                          preview={renderPreview(item)}
-                          dragData={{
-                            id: item.id,
-                            type: item.type,
-                            name: item.name,
+                        <div
+                          onClickCapture={(e) => {
+                            toggleSelect(item.id, e);
                           }}
-                          showPlusOnDrag={false}
-                          onAddToTimeline={(currentTime) =>
-                            useTimelineStore
-                              .getState()
-                              .addMediaAtTime(item, currentTime)
-                          }
-                          rounded={false}
-                          data-testid="media-item"
-                        />
+                          className={cn(
+                            "rounded-sm transition-shadow",
+                            selectedIds.has(item.id) &&
+                              "ring-2 ring-primary ring-offset-1 ring-offset-background"
+                          )}
+                        >
+                          <DraggableMediaItem
+                            name={item.name}
+                            preview={renderPreview(item)}
+                            dragData={{
+                              id: item.id,
+                              type: item.type,
+                              name: item.name,
+                            }}
+                            showPlusOnDrag={false}
+                            onAddToTimeline={(currentTime) =>
+                              useTimelineStore
+                                .getState()
+                                .addMediaAtTime(item, currentTime)
+                            }
+                            rounded={false}
+                            data-testid="media-item"
+                          />
+                        </div>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem>Export clips</ContextMenuItem>
