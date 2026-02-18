@@ -177,6 +177,17 @@ async function executeTextToVideo(
   }
 ): Promise<StepOutput> {
   payload.prompt = input.text || payload.prompt;
+
+  // Service-level features: negative prompts (Kling 2.1+)
+  if (payload.negative_prompt === undefined && model.defaults?.negative_prompt) {
+    payload.negative_prompt = model.defaults.negative_prompt;
+  }
+
+  // Service-level features: frame interpolation
+  if (payload.frame_interpolation === undefined && model.defaults?.frame_interpolation) {
+    payload.frame_interpolation = model.defaults.frame_interpolation;
+  }
+
   const result = await callModelApi({
     endpoint: model.endpoint,
     payload,
@@ -310,6 +321,22 @@ async function executeTTS(
   }
 ): Promise<StepOutput> {
   payload.text = input.text || payload.text;
+
+  // Service-level features: voice cloning (ElevenLabs voice_id)
+  // voice_id can be set via params to use a cloned/custom voice
+  if (payload.voice_id && provider === "elevenlabs") {
+    // ElevenLabs uses voice_id in the endpoint path or as a parameter
+    // The voice settings presets are applied via voice_settings
+    if (!payload.voice_settings) {
+      payload.voice_settings = {
+        stability: 0.5,
+        similarity_boost: 0.5,
+        style: 0.0,
+        use_speaker_boost: true,
+      };
+    }
+  }
+
   const result = await callModelApi({
     endpoint: model.endpoint,
     payload,

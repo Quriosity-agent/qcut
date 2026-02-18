@@ -15,6 +15,9 @@ import { parseArgs } from "node:util";
 import { initRegistry } from "./init.js";
 import { CLIPipelineRunner, createProgressReporter } from "./cli-runner.js";
 import type { CLIRunOptions } from "./cli-runner.js";
+import { getExitCode, formatErrorForCli } from "./errors.js";
+import { CLIOutput } from "./cli-output.js";
+import { StreamEmitter, NullEmitter } from "./stream-emitter.js";
 
 const VERSION = "1.0.0";
 
@@ -38,6 +41,13 @@ const COMMANDS = [
   "vimax:idea2video",
   "vimax:script2video",
   "vimax:novel2movie",
+  "vimax:extract-characters",
+  "vimax:generate-script",
+  "vimax:generate-storyboard",
+  "vimax:generate-portraits",
+  "vimax:create-registry",
+  "vimax:show-registry",
+  "vimax:list-models",
   "list-avatar-models",
   "list-video-models",
   "list-motion-models",
@@ -72,6 +82,13 @@ Commands:
   vimax:idea2video    Generate video from an idea
   vimax:script2video  Generate video from a script
   vimax:novel2movie   Generate movie from a novel
+  vimax:extract-characters  Extract characters from text
+  vimax:generate-script     Generate screenplay from idea
+  vimax:generate-storyboard Generate storyboard from script
+  vimax:generate-portraits  Generate character portraits
+  vimax:create-registry     Create portrait registry from files
+  vimax:show-registry       Display registry contents
+  vimax:list-models         List ViMax-specific models
   list-avatar-models  List avatar models
   list-video-models   List video models
   list-motion-models  List motion transfer models
@@ -174,6 +191,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       "image-model": { type: "string" },
       "video-model": { type: "string" },
       image: { type: "string" },
+      stream: { type: "boolean", default: false },
+      "config-dir": { type: "string" },
+      "cache-dir": { type: "string" },
+      "state-dir": { type: "string" },
+      "negative-prompt": { type: "string" },
+      "voice-id": { type: "string" },
     },
     strict: false,
   });
@@ -220,6 +243,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     imageModel: values["image-model"],
     videoModel: values["video-model"],
     image: values.image,
+    stream: values.stream ?? false,
+    configDir: values["config-dir"],
+    cacheDir: values["cache-dir"],
+    stateDir: values["state-dir"],
+    negativePrompt: values["negative-prompt"],
+    voiceId: values["voice-id"],
   };
 }
 
@@ -227,6 +256,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   initRegistry();
 
   const options = parseCliArgs(argv);
+  const output = new CLIOutput({
+    jsonMode: options.json,
+    quiet: options.quiet,
+    debug: options.verbose,
+  });
+  const emitter = options.stream
+    ? new StreamEmitter({ enabled: true })
+    : new NullEmitter();
   const runner = new CLIPipelineRunner();
   const reporter = createProgressReporter({
     json: options.json,
@@ -241,21 +278,26 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     runner.abort();
   });
 
+  emitter.pipelineStart(options.command, 1);
   const result = await runner.run(options, reporter);
 
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify({
+      schema_version: "1",
+      command: options.command,
+      ...result,
+    }, null, 2));
   } else if (result.success) {
     if (result.outputPath) {
-      console.log(`Output: ${result.outputPath}`);
+      output.success(`Output: ${result.outputPath}`);
     }
     if (result.cost !== undefined) {
-      console.log(`Cost: $${result.cost.toFixed(3)}`);
+      output.cost(result.cost);
     }
     if (result.duration !== undefined) {
-      console.log(`Duration: ${result.duration.toFixed(1)}s`);
+      output.info(`Duration: ${result.duration.toFixed(1)}s`);
     }
-    if (result.data && options.command === "list-models") {
+    if (result.data && (options.command === "list-models" || options.command === "vimax:list-models")) {
       const data = result.data as { models: { key: string; name: string; provider: string; categories: string[] }[]; count: number };
       console.log(`\nAvailable models (${data.count}):\n`);
       for (const m of data.models) {
@@ -296,9 +338,25 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       if (data.message) console.log(data.message);
       if (data.masked) console.log(`${data.name}: ${data.masked}`);
     }
+    if (result.data && options.command === "vimax:extract-characters") {
+      const data = result.data as { characters: unknown[]; count: number };
+      console.log(`\nExtracted ${data.count} characters`);
+    }
+    if (result.data && options.command === "vimax:generate-script") {
+      const data = result.data as { title: string; scenes: number; total_duration: number };
+      console.log(`\nGenerated script: "${data.title}" (${data.scenes} scenes, ${data.total_duration.toFixed(1)}s)`);
+    }
+    if (result.data && options.command === "vimax:show-registry") {
+      const data = result.data as { project_id: string; characters: unknown[]; total_characters: number };
+      console.log(`\nRegistry (${data.project_id}): ${data.total_characters} characters`);
+      console.log(JSON.stringify(data.characters, null, 2));
+    }
+    emitter.pipelineComplete({ success: true, ...result });
   } else {
-    console.error(`Error: ${result.error}`);
-    process.exit(1);
+    output.error(result.error || "Unknown error");
+    emitter.pipelineComplete({ success: false, error: result.error });
+    const { exitCode } = formatErrorForCli(new Error(result.error));
+    process.exit(exitCode);
   }
 }
 

@@ -24,6 +24,18 @@ import type { ModelCategory } from "./registry.js";
 import { compositeGrid, getGridImageCount } from "./grid-generator.js";
 import { setKey, getKey, checkKeys, setupEnvTemplate, loadEnvFile } from "./key-manager.js";
 import { createExamples } from "./example-pipelines.js";
+import {
+  handleVimaxExtractCharacters,
+  handleVimaxGenerateScript,
+  handleVimaxGenerateStoryboard,
+  handleVimaxGeneratePortraits,
+  handleVimaxCreateRegistry,
+  handleVimaxShowRegistry,
+  handleVimaxListModels,
+  handleVimaxIdea2Video,
+  handleVimaxScript2Video,
+  handleVimaxNovel2Movie,
+} from "./vimax-cli-handlers.js";
 
 export interface CLIRunOptions {
   command: string;
@@ -62,6 +74,12 @@ export interface CLIRunOptions {
   imageModel?: string;
   videoModel?: string;
   image?: string;
+  stream?: boolean;
+  configDir?: string;
+  cacheDir?: string;
+  stateDir?: string;
+  negativePrompt?: string;
+  voiceId?: string;
 }
 
 export interface CLIResult {
@@ -132,11 +150,25 @@ export class CLIPipelineRunner {
       case "create-examples":
         return this.handleCreateExamples(options);
       case "vimax:idea2video":
-        return this.handleVimaxIdea2Video(options, onProgress);
+        return handleVimaxIdea2Video(options, onProgress);
       case "vimax:script2video":
-        return this.handleVimaxScript2Video(options, onProgress);
+        return handleVimaxScript2Video(options, onProgress);
       case "vimax:novel2movie":
-        return this.handleVimaxNovel2Movie(options, onProgress);
+        return handleVimaxNovel2Movie(options, onProgress);
+      case "vimax:extract-characters":
+        return handleVimaxExtractCharacters(options, onProgress);
+      case "vimax:generate-script":
+        return handleVimaxGenerateScript(options, onProgress);
+      case "vimax:generate-storyboard":
+        return handleVimaxGenerateStoryboard(options, onProgress);
+      case "vimax:generate-portraits":
+        return handleVimaxGeneratePortraits(options, onProgress);
+      case "vimax:create-registry":
+        return handleVimaxCreateRegistry(options);
+      case "vimax:show-registry":
+        return handleVimaxShowRegistry(options);
+      case "vimax:list-models":
+        return handleVimaxListModels();
       case "list-avatar-models":
         return this.handleListModels({ ...options, category: "avatar" });
       case "list-video-models":
@@ -650,159 +682,6 @@ export class CLIPipelineRunner {
     };
   }
 
-  private async handleVimaxIdea2Video(
-    options: CLIRunOptions,
-    onProgress: ProgressFn
-  ): Promise<CLIResult> {
-    const idea = options.idea || options.text;
-    if (!idea) {
-      return { success: false, error: "Missing --idea or --text" };
-    }
-
-    onProgress({ stage: "starting", percent: 0, message: "Starting idea-to-video pipeline..." });
-
-    try {
-      const { Idea2VideoPipeline } = await import("./vimax/pipelines/idea2video.js");
-      const sessionId = `cli-${Date.now()}`;
-      const outputDir = resolveOutputDir(options.outputDir, sessionId);
-      const startTime = Date.now();
-
-      const pipeline = new Idea2VideoPipeline({
-        outputDir,
-        generatePortraits: !(options.noPortraits ?? false),
-        useCharacterReferences: true,
-        videoModel: options.videoModel,
-        imageModel: options.imageModel,
-        llmModel: options.llmModel,
-        targetDuration: options.duration ? parseInt(options.duration, 10) : undefined,
-      });
-
-      const result = await pipeline.run(idea);
-
-      return {
-        success: result.success,
-        outputPath: result.output?.finalVideo,
-        cost: result.totalCost,
-        duration: (Date.now() - startTime) / 1000,
-        data: {
-          idea: result.idea,
-          characters: result.characters.length,
-          errors: result.errors,
-        },
-      };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Idea2Video failed: ${err instanceof Error ? err.message : String(err)}`,
-      };
-    }
-  }
-
-  private async handleVimaxScript2Video(
-    options: CLIRunOptions,
-    onProgress: ProgressFn
-  ): Promise<CLIResult> {
-    const scriptPath = options.script || options.input;
-    if (!scriptPath) {
-      return { success: false, error: "Missing --script or --input (JSON path)" };
-    }
-
-    onProgress({ stage: "starting", percent: 0, message: "Starting script-to-video pipeline..." });
-
-    try {
-      const { Script2VideoPipeline } = await import("./vimax/pipelines/script2video.js");
-      const sessionId = `cli-${Date.now()}`;
-      const outputDir = resolveOutputDir(options.outputDir, sessionId);
-      const startTime = Date.now();
-
-      let scriptData: string;
-      try {
-        scriptData = fs.readFileSync(scriptPath, "utf-8");
-      } catch {
-        return { success: false, error: `Cannot read script: ${scriptPath}` };
-      }
-
-      const pipeline = new Script2VideoPipeline({
-        outputDir,
-        videoModel: options.videoModel,
-        imageModel: options.imageModel,
-        useCharacterReferences: true,
-      });
-
-      const result = await pipeline.run(JSON.parse(scriptData));
-
-      return {
-        success: result.success,
-        outputPath: result.output?.finalVideo,
-        cost: result.totalCost,
-        duration: (Date.now() - startTime) / 1000,
-        data: { errors: result.errors },
-      };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Script2Video failed: ${err instanceof Error ? err.message : String(err)}`,
-      };
-    }
-  }
-
-  private async handleVimaxNovel2Movie(
-    options: CLIRunOptions,
-    onProgress: ProgressFn
-  ): Promise<CLIResult> {
-    const novelPath = options.novel || options.input;
-    if (!novelPath) {
-      return { success: false, error: "Missing --novel or --input (text file path)" };
-    }
-
-    onProgress({ stage: "starting", percent: 0, message: "Starting novel-to-movie pipeline..." });
-
-    try {
-      const { Novel2MoviePipeline } = await import("./vimax/pipelines/novel2movie.js");
-      const sessionId = `cli-${Date.now()}`;
-      const outputDir = resolveOutputDir(options.outputDir, sessionId);
-      const startTime = Date.now();
-
-      let novelText: string;
-      try {
-        novelText = fs.readFileSync(novelPath, "utf-8");
-      } catch {
-        return { success: false, error: `Cannot read novel: ${novelPath}` };
-      }
-
-      const pipeline = new Novel2MoviePipeline({
-        outputDir,
-        maxScenes: options.maxScenes,
-        generatePortraits: !(options.noPortraits ?? false),
-        useCharacterReferences: true,
-        scriptsOnly: options.scriptsOnly ?? false,
-        storyboardOnly: options.storyboardOnly ?? false,
-        videoModel: options.videoModel,
-        imageModel: options.imageModel,
-        llmModel: options.llmModel,
-      });
-
-      const result = await pipeline.run(novelText, options.title);
-
-      return {
-        success: result.success,
-        outputPath: result.output?.finalVideo,
-        cost: result.totalCost,
-        duration: (Date.now() - startTime) / 1000,
-        data: {
-          novelTitle: result.novelTitle,
-          chapters: result.chapters.length,
-          characters: result.characters.length,
-          errors: result.errors,
-        },
-      };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Novel2Movie failed: ${err instanceof Error ? err.message : String(err)}`,
-      };
-    }
-  }
 }
 
 function guessExtFromCommand(command: string): string {

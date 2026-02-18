@@ -148,6 +148,27 @@ export class Idea2VideoPipeline {
     this._initAgents();
   }
 
+  /** Create pipeline from a YAML config file. */
+  static fromYaml(yamlPath: string): Idea2VideoPipeline {
+    const content = fs.readFileSync(yamlPath, 'utf-8');
+    // Simple YAML key: value parsing for pipeline config
+    const config: Record<string, unknown> = {};
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const colonIdx = trimmed.indexOf(':');
+      if (colonIdx === -1) continue;
+      const key = trimmed.slice(0, colonIdx).trim();
+      let value: unknown = trimmed.slice(colonIdx + 1).trim();
+      // Parse basic types
+      if (value === 'true') value = true;
+      else if (value === 'false') value = false;
+      else if (!isNaN(Number(value)) && value !== '') value = Number(value);
+      config[key] = value;
+    }
+    return new Idea2VideoPipeline(config as Partial<Idea2VideoConfig>);
+  }
+
   private _initAgents(): void {
     this.screenwriter = new Screenwriter({
       model: this.config.llm_model,

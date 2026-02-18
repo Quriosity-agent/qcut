@@ -153,6 +153,34 @@ export class ReferenceImageSelector extends BaseAgent<
     };
   }
 
+  /**
+   * Get ordered view preference for a shot type and camera angle.
+   * Returns an ordered list of preferred portrait views.
+   */
+  getViewPreference(
+    shotType: string,
+    cameraAngle?: string,
+  ): string[] {
+    const preferences: string[] = [];
+
+    // Camera angle takes priority
+    if (cameraAngle) {
+      const angleView = ANGLE_TO_VIEW[cameraAngle.toLowerCase()];
+      if (angleView) preferences.push(angleView);
+    }
+
+    // Then shot type preferences
+    const shotPrefs = SHOT_TYPE_PREFERENCE[shotType] ?? ['front'];
+    for (const pref of shotPrefs) {
+      if (!preferences.includes(pref)) preferences.push(pref);
+    }
+
+    // Always include front as fallback
+    if (!preferences.includes('front')) preferences.push('front');
+
+    return preferences;
+  }
+
   /** Select references for multiple shots. */
   async selectForShots(
     shots: ShotDescription[],
