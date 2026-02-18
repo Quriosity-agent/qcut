@@ -5,9 +5,7 @@ import { TabBar } from "./tabbar";
 import { MediaView } from "./views/media";
 import { useMediaPanelStore, Tab } from "./store";
 import { TextView } from "./views/text";
-import { AudioView } from "./views/audio";
 import { Text2ImageView } from "./views/text2image";
-import { AdjustmentPanel } from "@/components/editor/adjustment";
 import { AiView } from "./views/ai";
 import { StickersView } from "./views/stickers";
 import { CaptionsView } from "./views/captions";
@@ -20,7 +18,6 @@ import { RemotionView } from "./views/remotion";
 import { PtyTerminalView } from "./views/pty-terminal";
 import { WordTimelineView } from "./views/word-timeline-view";
 import { ProjectFolderView } from "./views/project-folder";
-import { CameraSelectorView } from "./views/camera-selector";
 import { UpscaleView } from "./views/upscale";
 import React from "react";
 import { EFFECTS_ENABLED } from "@/config/features";
@@ -39,7 +36,6 @@ export function MediaPanel() {
 
   const viewMap: Record<Exclude<Tab, "pty">, React.ReactNode> = {
     media: <MediaView />,
-    audio: <AudioView />,
     text: <TextView />,
     stickers: <StickersView />,
     "video-edit": <VideoEditView />,
@@ -63,7 +59,6 @@ export function MediaPanel() {
         Filters view coming soon...
       </div>
     ),
-    adjustment: <AdjustmentPanel />,
     text2image: <Text2ImageView />,
     "nano-edit": <NanoEditView />,
     ai: <AiView />,
@@ -73,7 +68,6 @@ export function MediaPanel() {
     remotion: <RemotionView />,
     "word-timeline": <WordTimelineView />,
     "project-folder": <ProjectFolderView />,
-    "camera-selector": <CameraSelectorView />,
     upscale: <UpscaleView />,
   };
 

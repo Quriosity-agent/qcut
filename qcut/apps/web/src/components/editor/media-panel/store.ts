@@ -3,10 +3,8 @@ import {
   ArrowLeftRightIcon,
   SparklesIcon,
   StickerIcon,
-  MusicIcon,
   VideoIcon,
   BlendIcon,
-  SlidersHorizontalIcon,
   LucideIcon,
   TypeIcon,
   WandIcon,
@@ -20,7 +18,6 @@ import {
   SquareTerminalIcon,
   TextSelect,
   FolderSync,
-  CameraIcon,
   FolderOpenIcon,
   WrenchIcon,
   ArrowUpFromLineIcon,
@@ -29,7 +26,6 @@ import { create } from "zustand";
 
 export type Tab =
   | "media"
-  | "audio"
   | "text"
   | "stickers"
   | "video-edit"
@@ -37,7 +33,6 @@ export type Tab =
   | "transitions"
   | "captions"
   | "filters"
-  | "adjustment"
   | "text2image"
   | "nano-edit"
   | "ai"
@@ -48,7 +43,6 @@ export type Tab =
   | "pty"
   | "word-timeline"
   | "project-folder"
-  | "camera-selector"
   | "upscale";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
@@ -60,17 +54,9 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: WandIcon,
     label: "AI Images",
   },
-  adjustment: {
-    icon: SlidersHorizontalIcon,
-    label: "Adjustment",
-  },
   ai: {
     icon: BotIcon,
     label: "AI Video",
-  },
-  "camera-selector": {
-    icon: CameraIcon,
-    label: "Camera",
   },
   upscale: {
     icon: ArrowUpFromLineIcon,
@@ -133,10 +119,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: ArrowLeftRightIcon,
     label: "Transitions (WIP)",
   },
-  audio: {
-    icon: MusicIcon,
-    label: "Audio (WIP)",
-  },
   captions: {
     icon: CaptionsIcon,
     label: "Captions (WIP)",
@@ -164,7 +146,7 @@ export interface TabGroupDef {
 const editSubgroups: Record<EditSubgroup, Subgroup> = {
   "ai-edit": {
     label: "AI Assist",
-    tabs: ["word-timeline", "video-edit", "draw", "captions", "upscale"],
+    tabs: ["word-timeline", "video-edit", "draw", "captions", "upscale", "segmentation"],
   },
   "manual-edit": {
     label: "Manual Edit",
@@ -179,12 +161,8 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
     tabs: [
       "ai",
       "text2image",
-      "adjustment",
       "nano-edit",
-      "camera-selector",
-      "segmentation",
       "sounds",
-      "audio",
     ],
   },
   edit: {

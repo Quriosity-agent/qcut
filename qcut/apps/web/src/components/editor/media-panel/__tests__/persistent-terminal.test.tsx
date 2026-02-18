@@ -164,7 +164,7 @@ describe("persistent PTY terminal in MediaPanel", () => {
 
     act(() => {
       useMediaPanelStore.getState().setActiveTab("media");
-      useMediaPanelStore.getState().setActiveTab("audio");
+      useMediaPanelStore.getState().setActiveTab("sounds");
       useMediaPanelStore.getState().setActiveTab("pty");
       useMediaPanelStore.getState().setActiveTab("media");
       useMediaPanelStore.getState().setActiveTab("pty");

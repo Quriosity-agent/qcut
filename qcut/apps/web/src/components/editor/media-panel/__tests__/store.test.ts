@@ -68,12 +68,10 @@ describe("media-panel store", () => {
       expect(getGroupForTab("project-folder")).toBe("media");
       expect(getGroupForTab("ai")).toBe("ai-create");
       expect(getGroupForTab("text2image")).toBe("ai-create");
-      expect(getGroupForTab("adjustment")).toBe("ai-create");
       expect(getGroupForTab("nano-edit")).toBe("ai-create");
-      expect(getGroupForTab("camera-selector")).toBe("ai-create");
-      expect(getGroupForTab("segmentation")).toBe("ai-create");
       expect(getGroupForTab("sounds")).toBe("ai-create");
-      expect(getGroupForTab("audio")).toBe("ai-create");
+
+      expect(getGroupForTab("segmentation")).toBe("edit");
 
       expect(getGroupForTab("captions")).toBe("edit");
       expect(getGroupForTab("word-timeline")).toBe("edit");

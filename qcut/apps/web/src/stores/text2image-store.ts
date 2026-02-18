@@ -106,7 +106,7 @@ const DEFAULT_UPSCALE_SETTINGS = createDefaultUpscaleSettings();
 const normalizeModelSelection = (models: string[]) =>
   TEXT2IMAGE_MODEL_ORDER.filter((modelId) => models.includes(modelId));
 
-export type Text2ImageModelType = "generation" | "upscale" | "angles";
+export type Text2ImageModelType = "generation" | "upscale" | "angles" | "adjustment" | "camera";
 
 export interface GenerationResult {
   status: "loading" | "success" | "error";
