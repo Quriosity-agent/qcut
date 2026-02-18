@@ -12,7 +12,12 @@ import { cn } from "@/lib/utils";
 /**
  * Available model type options for AI workflows
  */
-export type ModelTypeOption = "generation" | "upscale" | "angles" | "adjustment" | "camera";
+export type ModelTypeOption =
+  | "generation"
+  | "upscale"
+  | "angles"
+  | "adjustment"
+  | "camera";
 
 /**
  * Props for the ModelTypeSelector component

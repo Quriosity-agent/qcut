@@ -87,7 +87,9 @@ export function AiView({ mode }: { mode?: "upscale" | "angles" } = {}) {
   // Shared State
   // ============================================
   const [prompt, setPrompt] = useState("");
-  const [selectedModels, setSelectedModels] = useState<string[]>(["sora2_text_to_video_pro"]);
+  const [selectedModels, setSelectedModels] = useState<string[]>([
+    "sora2_text_to_video_pro",
+  ]);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
