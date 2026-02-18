@@ -42,6 +42,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { ModelTypeSelector } from "./model-type-selector";
 import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
+import { AiView } from "./ai";
 import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
 import {
   getProviderLogo,
@@ -578,6 +579,7 @@ export function Text2ImageView() {
           )}
         </>
       )}
+      {modelType === "angles" && <AiView mode="angles" />}
       {modelType === "upscale" && (
         <div className="space-y-4" data-testid="upscale-panel">
           <Card className="border-0 shadow-none">

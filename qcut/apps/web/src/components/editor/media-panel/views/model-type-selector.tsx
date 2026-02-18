@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 /**
  * Available model type options for AI workflows
  */
-export type ModelTypeOption = "generation" | "upscale";
+export type ModelTypeOption = "generation" | "upscale" | "angles";
 
 /**
  * Props for the ModelTypeSelector component
@@ -48,6 +48,11 @@ const MODEL_TYPE_OPTIONS: Array<{
     id: "upscale",
     label: "Upscale",
     description: "Enhance quality",
+  },
+  {
+    id: "angles",
+    label: "Angles",
+    description: "Multi-angle shots",
   },
 ];
 

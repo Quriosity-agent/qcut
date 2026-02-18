@@ -24,7 +24,6 @@ import {
   FolderOpenIcon,
   WrenchIcon,
   ArrowUpFromLineIcon,
-  ApertureIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -50,8 +49,7 @@ export type Tab =
   | "word-timeline"
   | "project-folder"
   | "camera-selector"
-  | "upscale"
-  | "angles";
+  | "upscale";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -77,10 +75,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   upscale: {
     icon: ArrowUpFromLineIcon,
     label: "Upscale",
-  },
-  angles: {
-    icon: ApertureIcon,
-    label: "Angles",
   },
   "nano-edit": {
     icon: PaletteIcon,
@@ -185,7 +179,6 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
     tabs: [
       "ai",
       "text2image",
-      "angles",
       "adjustment",
       "nano-edit",
       "camera-selector",
