@@ -170,7 +170,7 @@ The native TypeScript video agent CLI (`qcut-pipeline`) is fully implemented and
 - Zero new dependencies (uses `node:util.parseArgs`)
 
 **Dependency Graph** (CLI path only):
-```
+```text
 cli.ts
   -> init.ts -> registry-data.ts, registry-data-2.ts
   -> cli-runner.ts

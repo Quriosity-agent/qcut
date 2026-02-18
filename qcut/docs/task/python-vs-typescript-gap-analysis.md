@@ -161,7 +161,7 @@ Python has rich data models for creative pipelines:
 | **HeyGen** | 1 | 0 | Missing in TS |
 | **D-ID** | 1 | 0 | Missing in TS |
 
-**Total:** Python 73 models, TypeScript 73 models — count matches but composition differs slightly.
+**Total:** Python 73 models, TypeScript 72 models — counts nearly match but composition differs slightly.
 
 ### Model Categories
 

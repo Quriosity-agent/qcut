@@ -27,7 +27,7 @@ The native TypeScript video agent pipeline (`electron/native-pipeline/`) current
 
 ## Architecture Overview
 
-```
+```text
 Current (Electron-only):
   Renderer → IPC → NativePipelineManager → executor → API
                     ↑ uses electron app.getPath, getDecryptedApiKeys
@@ -173,7 +173,7 @@ The existing `manager.ts` calls `app.getPath("temp")` which returns `/tmp` on ma
 
 **Command Structure**:
 
-```
+```text
 qcut-pipeline <command> [options]
 
 Commands:
@@ -504,7 +504,7 @@ describe("CLI E2E (mocked API)", () => {
 
 ## File Structure (New/Modified Files)
 
-```
+```text
 electron/native-pipeline/
 ├── cli.ts              # NEW: CLI entry point + argument parser
 ├── cli-runner.ts       # NEW: CLI execution logic (Electron-free)

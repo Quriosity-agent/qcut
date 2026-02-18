@@ -24,7 +24,7 @@ Replace the Python binary with a **native TypeScript module** running inside Ele
 
 ### Architecture Overview
 
-```
+```text
 Before (Python binary):
   Renderer → IPC → AIPipelineManager → spawn("aicp") → Python → FAL API
                                       ↕ stdout/stderr

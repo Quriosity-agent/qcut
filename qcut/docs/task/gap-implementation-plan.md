@@ -29,7 +29,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/types/shot.ts`
 - **Python source:** `vimax/interfaces/shot.py` (112 lines)
 - **Structure:**
-  ```
+  ```ts
   - enum ShotType { WIDE, MEDIUM, CLOSE_UP, EXTREME_CLOSE_UP, ESTABLISHING, OVER_THE_SHOULDER, POV, TWO_SHOT, INSERT }
   - enum CameraMovement { STATIC, PAN, TILT, ZOOM, DOLLY, TRACKING, CRANE, HANDHELD }
   - interface ShotDescription { shot_id, shot_type, description, camera_movement, camera_angle, location, time_of_day, lighting, characters, duration_seconds, image_prompt?, video_prompt?, character_references, primary_reference_image? }
@@ -45,7 +45,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/types/character.ts`
 - **Python source:** `vimax/interfaces/character.py` (187 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface CharacterBase { name, description }
   - interface CharacterInNovel extends CharacterBase { age?, gender?, appearance, personality, role, relationships }
   - interface CharacterInScene extends CharacterBase { scene_id?, position?, action, emotion, dialogue? }
@@ -64,7 +64,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/types/camera.ts`
 - **Python source:** `vimax/interfaces/camera.py` (67 lines)
 - **Structure:**
-  ```
+  ```ts
   - enum CameraType { MAIN, SECONDARY, DETAIL, ACTION, DIALOGUE }
   - interface CameraPosition { x, y, z }
   - interface CameraConfig { camera_id, camera_type, position, look_at?, focal_length, aperture, movement_type, movement_speed, settings }
@@ -78,7 +78,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/types/output.ts`
 - **Python source:** `vimax/interfaces/output.py` (82 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface ImageOutput { image_path, prompt, model, width, height, generation_time, cost, metadata }
   - interface VideoOutput { video_path, source_image?, prompt, model, duration, width, height, fps, generation_time, cost, metadata }
   - interface PipelineOutput { pipeline_name, started_at, completed_at?, images, videos, final_video?, total_cost, output_directory, config_path?, errors }
@@ -106,7 +106,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/adapters/base-adapter.ts`
 - **Python source:** `vimax/adapters/base.py` (59 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface AdapterConfig { provider, model, timeout, max_retries, extra }
   - abstract class BaseAdapter<T, R> {
       config: AdapterConfig
@@ -124,7 +124,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/adapters/llm-adapter.ts`
 - **Python source:** `vimax/adapters/llm_adapter.py` (536 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface LLMAdapterConfig extends AdapterConfig { model, temperature, max_tokens, timeout, use_native_structured_output }
   - interface Message { role: "system" | "user" | "assistant", content: string }
   - interface LLMResponse { content, model, usage, cost }
@@ -146,7 +146,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/adapters/image-adapter.ts`
 - **Python source:** `vimax/adapters/image_adapter.py` (593 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface ImageAdapterConfig extends AdapterConfig { model, output_dir, reference_model?, reference_strength? }
   - class ImageGeneratorAdapter extends BaseAdapter {
       generate(prompt, options): Promise<ImageOutput>
@@ -162,7 +162,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/adapters/video-adapter.ts`
 - **Python source:** `vimax/adapters/video_adapter.py` (397 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface VideoAdapterConfig extends AdapterConfig { model, output_dir }
   - class VideoGeneratorAdapter extends BaseAdapter {
       generate(imagePath, prompt, duration, options): Promise<VideoOutput>
@@ -193,7 +193,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/base-agent.ts`
 - **Python source:** `vimax/agents/base.py` (172 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface AgentConfig { name, model, temperature, max_retries, timeout, extra }
   - interface AgentResult<T> { success, result?, error?, metadata }
     - static ok<T>(result, metadata?): AgentResult<T>
@@ -214,7 +214,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/schemas.ts`
 - **Python source:** `vimax/agents/schemas.py` (116 lines)
 - **Structure:** Use Zod for runtime validation (already in project deps, or use plain TS interfaces + JSON schema for OpenRouter `response_format`)
-  ```
+  ```ts
   - ShotResponseSchema { shot_id, shot_type, description, camera_movement, characters, duration_seconds, image_prompt, video_prompt }
   - SceneResponseSchema { scene_id, title, location, time, shots }
   - ScreenplayResponseSchema { title, logline, scenes }
@@ -231,7 +231,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/screenwriter.ts`
 - **Python source:** `vimax/agents/screenwriter.py` (291 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface Script { title, logline, scenes: Scene[], total_duration }
   - interface ScreenwriterConfig extends AgentConfig { target_duration, shots_per_scene, style }
   - SCREENPLAY_PROMPT template string
@@ -251,7 +251,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/character-extractor.ts`
 - **Python source:** `vimax/agents/character_extractor.py` (154 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface CharacterExtractorConfig extends AgentConfig { max_characters }
   - EXTRACTION_PROMPT template string
   - class CharacterExtractor extends BaseAgent<string, CharacterInNovel[]> {
@@ -267,7 +267,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/character-portraits.ts`
 - **Python source:** `vimax/agents/character_portraits.py` (214 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface PortraitsGeneratorConfig extends AgentConfig { image_model, llm_model, views, style, output_dir }
   - PORTRAIT_PROMPT_TEMPLATE template string
   - class CharacterPortraitsGenerator extends BaseAgent<CharacterInNovel, CharacterPortrait> {
@@ -285,7 +285,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/storyboard-artist.ts`
 - **Python source:** `vimax/agents/storyboard_artist.py` (446 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface StoryboardResult extends Storyboard { images: ImageOutput[], total_cost }
   - interface StoryboardArtistConfig extends AgentConfig { image_model, style_prefix, aspect_ratio, output_dir, use_character_references, reference_model, reference_strength }
   - class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
@@ -305,7 +305,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/reference-selector.ts`
 - **Python source:** `vimax/agents/reference_selector.py` (320 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface ReferenceSelectorConfig extends AgentConfig { use_llm_for_selection, llm_model }
   - interface ReferenceSelectionResult { shot_id, selected_references: Record<string, string>, primary_reference?, selection_reason }
   - class ReferenceImageSelector extends BaseAgent<ShotDescription, ReferenceSelectionResult> {
@@ -325,7 +325,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/agents/camera-generator.ts`
 - **Python source:** `vimax/agents/camera_generator.py` (211 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface CameraGeneratorConfig extends AgentConfig { video_model, default_duration, output_dir }
   - class CameraImageGenerator extends BaseAgent<StoryboardResult, PipelineOutput> {
       process(storyboard): Promise<AgentResult<PipelineOutput>>
@@ -402,7 +402,7 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 - **Create:** `electron/native-pipeline/vimax/pipelines/script2video.ts`
 - **Python source:** `vimax/pipelines/script2video.py` (163 lines)
 - **Structure:**
-  ```
+  ```ts
   - interface Script2VideoConfig { output_dir, video_model, image_model, use_character_references, storyboard_artist?, camera_generator? }
   - interface Script2VideoResult { success, script, portrait_registry?, used_references, output?, started_at, completed_at?, total_cost, errors }
   - class Script2VideoPipeline {
