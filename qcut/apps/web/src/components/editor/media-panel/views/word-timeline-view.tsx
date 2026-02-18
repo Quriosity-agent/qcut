@@ -992,7 +992,12 @@ export function WordTimelineView() {
             AI-powered speech editing for talking videos.
           </p>
           <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-            {["Remove filler", "Remove repetition", "Generate captions", "Jump by word"].map((feature) => (
+            {[
+              "Remove filler",
+              "Remove repetition",
+              "Generate captions",
+              "Jump by word",
+            ].map((feature) => (
               <span
                 key={feature}
                 className="inline-flex items-center px-2.5 py-1 rounded-full bg-muted text-[11px] text-muted-foreground"

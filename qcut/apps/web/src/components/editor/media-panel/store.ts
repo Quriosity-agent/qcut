@@ -134,12 +134,7 @@ export interface TabGroupDef {
 const editSubgroups: Record<EditSubgroup, Subgroup> = {
   "ai-edit": {
     label: "AI Assist",
-    tabs: [
-      "word-timeline",
-      "upscale",
-      "video-edit",
-      "segmentation",
-    ],
+    tabs: ["word-timeline", "upscale", "video-edit", "segmentation"],
   },
   "manual-edit": {
     label: "Manual Edit",

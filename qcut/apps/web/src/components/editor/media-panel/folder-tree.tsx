@@ -77,7 +77,6 @@ export function FolderTree({ onFolderSelect }: FolderTreeProps) {
               Click + to create one.
             </div>
           )}
-
         </div>
       </ScrollArea>
 
