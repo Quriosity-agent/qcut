@@ -66,7 +66,14 @@ export function AIModelSelectionGrid({
                   />
                 ) : null;
               })()}
-              <span className="truncate">{model.name}</span>
+              <div className="flex flex-col min-w-0">
+                <span className="truncate">{model.name}</span>
+                {model.badge && (
+                  <span className="text-[10px] text-muted-foreground/80 truncate">
+                    {model.badge}
+                  </span>
+                )}
+              </div>
             </div>
             {!isCompact && (
               <span className="ml-2 text-muted-foreground whitespace-nowrap shrink-0">

@@ -42,6 +42,9 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { ModelTypeSelector } from "./model-type-selector";
 import { UpscaleSettingsPanel } from "./upscale-settings";
 import { useUpscaleGeneration } from "./use-upscale-generation";
+import { AiView } from "./ai";
+import { AdjustmentPanel } from "@/components/editor/adjustment";
+import { CameraSelectorView } from "./camera-selector";
 import { UPLOAD_CONSTANTS } from "./ai/constants/ai-constants";
 import {
   getProviderLogo,
@@ -51,6 +54,7 @@ import {
 // Debug flag - set to false to disable console logs
 const DEBUG_TEXT2IMAGE = process.env.NODE_ENV === "development" && false;
 
+/** AI Images panel with generation, upscale, angles, adjustment, and camera sub-views. */
 export function Text2ImageView() {
   if (DEBUG_TEXT2IMAGE) console.log("Text2ImageView rendered");
 
@@ -578,6 +582,9 @@ export function Text2ImageView() {
           )}
         </>
       )}
+      {modelType === "angles" && <AiView mode="angles" />}
+      {modelType === "adjustment" && <AdjustmentPanel />}
+      {modelType === "camera" && <CameraSelectorView />}
       {modelType === "upscale" && (
         <div className="space-y-4" data-testid="upscale-panel">
           <Card className="border-0 shadow-none">

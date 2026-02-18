@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface ScrollTrackProps<T> {
@@ -9,6 +9,7 @@ interface ScrollTrackProps<T> {
   label: string;
 }
 
+/** Horizontally scrollable selection track with keyboard-wheel redirection and snap alignment. */
 export function ScrollTrack<T>({
   items,
   selectedIndex,
@@ -31,15 +32,21 @@ export function ScrollTrack<T>({
     }
   }, []);
 
-  // Convert vertical wheel → horizontal scroll
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (Math.abs(e.deltaY) > 0) {
-      e.preventDefault();
-      e.currentTarget.scrollBy({
-        left: e.deltaY * 2,
-        behavior: "smooth",
-      });
-    }
+  // Convert vertical wheel → horizontal scroll (non-passive to allow preventDefault)
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > 0) {
+        e.preventDefault();
+        track.scrollBy({
+          left: e.deltaY * 2,
+          behavior: "smooth",
+        });
+      }
+    };
+    track.addEventListener("wheel", handleWheel, { passive: false });
+    return () => track.removeEventListener("wheel", handleWheel);
   }, []);
 
   return (
@@ -49,7 +56,6 @@ export function ScrollTrack<T>({
       </div>
       <div
         ref={trackRef}
-        onWheel={handleWheel}
         className="flex gap-2.5 overflow-x-auto py-1.5 px-0.5 scroll-smooth snap-x snap-mandatory [scrollbar-width:thin] [scrollbar-color:#333_transparent]"
       >
         {items.map((item, i) => (

@@ -49,6 +49,7 @@ import { usePlaybackStore } from "@/stores/playback-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ExportAllButton } from "../export-all-button";
 import { useAdjustmentStore } from "@/stores/adjustment-store";
+import { useText2ImageStore } from "@/stores/text2image-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useFolderStore } from "@/stores/folder-store";
@@ -57,6 +58,7 @@ import { generateUUID } from "@/lib/utils";
 import { FolderTree } from "../folder-tree";
 import { SkillsView } from "./skills";
 
+/** Media library view with drag-and-drop upload, folder filtering, search, and context menu actions. */
 export function MediaView() {
   const {
     store: mediaStore,
@@ -78,6 +80,7 @@ export function MediaView() {
   const { activeProject } = useProjectStore();
   const { setOriginalImage } = useAdjustmentStore();
   const { setActiveTab } = useMediaPanelStore();
+  const setModelType = useText2ImageStore((s) => s.setModelType);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -261,10 +264,11 @@ export function MediaView() {
         createObjectURL(item.file, "adjustment-original");
       setOriginalImage(item.file, imageUrl);
 
-      // Switch to adjustment tab
-      setActiveTab("adjustment");
+      // Switch to AI Images tab with adjustment mode
+      setModelType("adjustment");
+      setActiveTab("text2image");
 
-      toast.success(`"${item.name}" loaded in adjustment panel`);
+      toast.success(`"${item.name}" loaded in AI Images`);
     } catch (error) {
       debugError("Failed to load image for editing:", error);
       toast.error("Failed to load image for editing");

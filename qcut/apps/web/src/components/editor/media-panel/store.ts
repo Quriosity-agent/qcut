@@ -3,10 +3,8 @@ import {
   ArrowLeftRightIcon,
   SparklesIcon,
   StickerIcon,
-  MusicIcon,
   VideoIcon,
   BlendIcon,
-  SlidersHorizontalIcon,
   LucideIcon,
   TypeIcon,
   WandIcon,
@@ -20,15 +18,14 @@ import {
   SquareTerminalIcon,
   TextSelect,
   FolderSync,
-  CameraIcon,
   FolderOpenIcon,
   WrenchIcon,
+  ArrowUpFromLineIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
 export type Tab =
   | "media"
-  | "audio"
   | "text"
   | "stickers"
   | "video-edit"
@@ -36,7 +33,6 @@ export type Tab =
   | "transitions"
   | "captions"
   | "filters"
-  | "adjustment"
   | "text2image"
   | "nano-edit"
   | "ai"
@@ -47,7 +43,7 @@ export type Tab =
   | "pty"
   | "word-timeline"
   | "project-folder"
-  | "camera-selector";
+  | "upscale";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -58,21 +54,17 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: WandIcon,
     label: "AI Images",
   },
-  adjustment: {
-    icon: SlidersHorizontalIcon,
-    label: "Adjustment",
-  },
   ai: {
     icon: BotIcon,
     label: "AI Video",
   },
-  "camera-selector": {
-    icon: CameraIcon,
-    label: "Camera",
+  upscale: {
+    icon: ArrowUpFromLineIcon,
+    label: "Upscale",
   },
   "nano-edit": {
     icon: PaletteIcon,
-    label: "Nano Edit",
+    label: "Prompt Library",
   },
   draw: {
     icon: PenTool,
@@ -127,10 +119,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: ArrowLeftRightIcon,
     label: "Transitions (WIP)",
   },
-  audio: {
-    icon: MusicIcon,
-    label: "Audio (WIP)",
-  },
   captions: {
     icon: CaptionsIcon,
     label: "Captions (WIP)",
@@ -139,46 +127,74 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 
 // --- Tab Groups ---
 
-export type TabGroup = "media" | "ai-create" | "agents" | "edit" | "effects";
+export type TabGroup = "media" | "ai-create" | "agents" | "edit";
 
-export const tabGroups: {
-  [key in TabGroup]: { icon: LucideIcon; label: string; tabs: Tab[] };
-} = {
-  media: {
-    icon: FolderOpenIcon,
-    label: "Media",
-    tabs: ["media", "project-folder"],
+export type EditSubgroup = "ai-edit" | "manual-edit";
+
+export interface Subgroup {
+  label: string;
+  tabs: Tab[];
+}
+
+export interface TabGroupDef {
+  icon: LucideIcon;
+  label: string;
+  tabs: Tab[];
+  subgroups?: Record<EditSubgroup, Subgroup>;
+}
+
+const editSubgroups: Record<EditSubgroup, Subgroup> = {
+  "ai-edit": {
+    label: "AI Assist",
+    tabs: [
+      "word-timeline",
+      "video-edit",
+      "draw",
+      "captions",
+      "upscale",
+      "segmentation",
+    ],
   },
+  "manual-edit": {
+    label: "Manual Edit",
+    tabs: ["text", "stickers", "effects", "filters", "transitions"],
+  },
+};
+
+export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   "ai-create": {
     icon: SparklesIcon,
-    label: "AI Create",
+    label: "Create",
+    tabs: ["ai", "text2image", "nano-edit", "sounds"],
+  },
+  edit: {
+    icon: ScissorsIcon,
+    label: "Edit",
     tabs: [
-      "ai",
-      "text2image",
-      "adjustment",
-      "nano-edit",
-      "camera-selector",
-      "segmentation",
-      "sounds",
-      "audio",
+      ...editSubgroups["ai-edit"].tabs,
+      ...editSubgroups["manual-edit"].tabs,
     ],
+    subgroups: editSubgroups,
+  },
+  media: {
+    icon: FolderOpenIcon,
+    label: "Library",
+    tabs: ["media", "project-folder"],
   },
   agents: {
     icon: WrenchIcon,
     label: "Agents",
     tabs: ["pty", "remotion"],
   },
-  edit: {
-    icon: ScissorsIcon,
-    label: "Edit",
-    tabs: ["word-timeline", "video-edit", "draw", "captions"],
-  },
-  effects: {
-    icon: BlendIcon,
-    label: "Manual Edit",
-    tabs: ["text", "stickers", "effects", "filters", "transitions"],
-  },
 };
+
+/** Reverse lookup: given a tab in the edit group, return its subgroup. */
+function getEditSubgroupForTab(tab: Tab): EditSubgroup | undefined {
+  for (const [key, sub] of Object.entries(editSubgroups)) {
+    if (sub.tabs.includes(tab)) return key as EditSubgroup;
+  }
+  return;
+}
 
 /** Reverse lookup: given a tab, return which group it belongs to. */
 export function getGroupForTab(tab: Tab): TabGroup {
@@ -199,6 +215,9 @@ interface MediaPanelStore {
   activeTab: Tab;
   setActiveTab: (tab: Tab) => void;
 
+  activeEditSubgroup: EditSubgroup;
+  setActiveEditSubgroup: (subgroup: EditSubgroup) => void;
+
   lastTabPerGroup: Record<TabGroup, Tab>;
 
   // AI-specific state
@@ -212,8 +231,7 @@ const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
   agents: "pty",
-  edit: "text",
-  effects: "filters",
+  edit: "word-timeline",
 };
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
@@ -228,10 +246,25 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
   setActiveTab: (tab) =>
     set((state) => {
       const group = getGroupForTab(tab);
+      const editSubgroup =
+        group === "edit" ? getEditSubgroupForTab(tab) : undefined;
       return {
         activeTab: tab,
         activeGroup: group,
         lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
+        ...(editSubgroup && { activeEditSubgroup: editSubgroup }),
+      };
+    }),
+
+  activeEditSubgroup: "ai-edit",
+  setActiveEditSubgroup: (subgroup) =>
+    set((state) => {
+      const firstTab = editSubgroups[subgroup].tabs[0];
+      if (!firstTab) return { activeEditSubgroup: subgroup };
+      return {
+        activeEditSubgroup: subgroup,
+        activeTab: firstTab,
+        lastTabPerGroup: { ...state.lastTabPerGroup, edit: firstTab },
       };
     }),
 

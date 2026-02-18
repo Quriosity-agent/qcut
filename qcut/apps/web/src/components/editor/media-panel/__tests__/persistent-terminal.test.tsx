@@ -106,8 +106,7 @@ describe("persistent PTY terminal in MediaPanel", () => {
         media: "media",
         "ai-create": "ai",
         agents: "pty",
-        edit: "text",
-        effects: "filters",
+        edit: "word-timeline",
       },
       aiActiveTab: "text",
     });
@@ -165,7 +164,7 @@ describe("persistent PTY terminal in MediaPanel", () => {
 
     act(() => {
       useMediaPanelStore.getState().setActiveTab("media");
-      useMediaPanelStore.getState().setActiveTab("audio");
+      useMediaPanelStore.getState().setActiveTab("sounds");
       useMediaPanelStore.getState().setActiveTab("pty");
       useMediaPanelStore.getState().setActiveTab("media");
       useMediaPanelStore.getState().setActiveTab("pty");

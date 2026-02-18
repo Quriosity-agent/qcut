@@ -2,6 +2,7 @@ import type { FC } from "react";
 import { ExternalLink } from "lucide-react";
 import ImageAssetsTab from "@/components/editor/nano-edit/tabs/ImageAssetsTab";
 
+/** Prompt library view with links to external prompt galleries and the image assets tab. */
 const NanoEditView: FC = () => {
   return (
     <div className="p-4 h-full flex flex-col">
@@ -26,6 +27,15 @@ const NanoEditView: FC = () => {
               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 rounded-md transition-colors"
             >
               PromptHero
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <a
+              href="https://youmind.com/seedance-2-0-prompts"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-400 hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 rounded-md transition-colors"
+            >
+              Seedance Prompts
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>

@@ -41,6 +41,7 @@ export const T2V_MODELS = {
   sora2_text_to_video_pro: {
     id: "sora2_text_to_video_pro",
     name: "Sora 2 Text-to-Video Pro",
+    badge: "⭐ Recommended",
     description: "High-quality text-to-video with 1080p support",
     price: "0.30-0.50",
     resolution: "720p / 1080p",
@@ -79,6 +80,7 @@ export const T2V_MODELS = {
   kling_v3_standard_t2v: {
     id: "kling_v3_standard_t2v",
     name: "Kling v3 Standard T2V",
+    badge: "🎬 Cinematic",
     description:
       "High-quality text-to-video with cinematic visuals and native audio generation, cost-effective option",
     price: "0.252",
@@ -121,6 +123,7 @@ export const T2V_MODELS = {
   wan_26_t2v: {
     id: "wan_26_t2v",
     name: "WAN v2.6 T2V",
+    badge: "💰 Budget",
     description:
       "Latest WAN model with 15s duration, multi-shot support, and audio sync",
     price: "0.75",
@@ -168,6 +171,7 @@ export const T2V_MODELS = {
   ltxv2_fast_t2v: {
     id: "ltxv2_fast_t2v",
     name: "LTX Video 2.0 Fast T2V",
+    badge: "⚡ Fast",
     description: "Text-to-video with audio generation (6-20s, up to 4K)",
     price: "0.04-0.16",
     resolution: "1080p",
@@ -391,13 +395,15 @@ export type T2VModelId = keyof typeof T2V_MODELS;
  * Models are ordered by quality/capability (highest first) to guide user selection.
  */
 export const T2V_MODEL_ORDER: readonly T2VModelId[] = [
+  // Badged picks — always on top
+  "sora2_text_to_video_pro", // ⭐ Recommended
+  "ltxv2_fast_t2v", // ⚡ Fast
+  "wan_26_t2v", // 💰 Budget
+  "kling_v3_standard_t2v", // 🎬 Cinematic
+  // Everything else
   "kling_v3_pro_t2v",
-  "kling_v3_standard_t2v",
   "kling_v26_pro_t2v",
-  "sora2_text_to_video_pro",
   "veo31_text_to_video",
-  "wan_26_t2v",
-  "ltxv2_fast_t2v",
   "ltxv2_pro_t2v",
   "hailuo23_pro_t2v",
   "veo31_fast_text_to_video",
