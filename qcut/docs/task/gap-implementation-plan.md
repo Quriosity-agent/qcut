@@ -863,50 +863,54 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
 
 ## Phase 7: Tests
 
-### 7.1 Unit Tests for ViMax Types & Agents
+### 7.1 Unit Tests for ViMax Types & Agents — DONE
 
-- **Create:** `electron/__tests__/vimax-types.test.ts`
-- **Create:** `electron/__tests__/vimax-agents.test.ts`
-- **Create:** `electron/__tests__/vimax-adapters.test.ts`
+- **Create:** `electron/__tests__/vimax-types.test.ts` (321 lines)
+- **Create:** `electron/__tests__/vimax-agents.test.ts` (246 lines)
+- **Create:** `electron/__tests__/vimax-adapters.test.ts` (81 lines)
 - **Coverage:** Type construction, JSON serialization, agent process() with mocked adapters, parseLlmJson edge cases, reference selector fuzzy matching
 - **Est. time:** 1.5 days
 
-### 7.2 Unit Tests for Pipelines
+### 7.2 Unit Tests for Pipelines — DONE
 
-- **Create:** `electron/__tests__/vimax-pipelines.test.ts`
+- **Create:** `electron/__tests__/vimax-pipelines.test.ts` (75 lines)
 - **Coverage:** Idea2Video, Script2Video, Novel2Movie with fully mocked agents, intermediate saving, error handling, config from YAML
 - **Est. time:** 1 day
 
-### 7.3 Unit Tests for Parallel Executor
+### 7.3 Unit Tests for Parallel Executor — DONE
 
-- **Create:** `electron/__tests__/parallel-executor.test.ts`
+- **Create:** `electron/__tests__/parallel-executor.test.ts` (248 lines)
 - **Coverage:** Parallel group detection, merge strategies, performance stats, YAML parallel_group parsing, abort signal handling
 - **Est. time:** 0.75 day
 
-### 7.4 CLI Command Tests
+### 7.4 CLI Command Tests — DONE
 
-- **Modify:** `electron/__tests__/cli-pipeline.test.ts` (add new command tests)
-- **Coverage:** analyze-video, transcribe, transfer-motion, generate-grid, upscale-image, key management, create-examples, vimax subcommands
+- **Modify:** `electron/__tests__/cli-pipeline.test.ts` (820 lines, includes Phase 4 commands)
+- **Coverage:** analyze-video, transcribe, generate-grid, upscale-image, key management, create-examples, vimax subcommands, parallel flags, list filters
+- **Note:** `transfer-motion` command is not covered in tests
 - **Est. time:** 0.75 day
 
-### Phase 7 Summary
+### Phase 7 Summary — ALL DONE
 
-| Subtask | Files | Time |
+| Subtask | Files | Status |
 |---------|-------|:---:|
-| 7.1 Types & agents | 3 test files | 1.5d |
-| 7.2 Pipelines | 1 test file | 1d |
-| 7.3 Parallel | 1 test file | 0.75d |
-| 7.4 CLI commands | 1 test file (mod) | 0.75d |
-| **Phase 7 total** | **5 test files** | **~4d** |
+| 7.1 Types & agents | 3 test files (648 lines) | DONE |
+| 7.2 Pipelines | 1 test file (75 lines) | DONE |
+| 7.3 Parallel | 1 test file (248 lines) | DONE |
+| 7.4 CLI commands | 1 test file (820 lines) | DONE |
+| **Phase 7 total** | **6 test files (~1,791 lines)** | **ALL DONE** |
+
+> **Minor gap:** `transfer-motion` CLI command lacks test coverage.
 
 ---
 
 ## Phase 8: Integration
 
-### 8.1 Manager Integration
+### 8.1 Manager Integration — NOT IMPLEMENTED
 
 - **Modify:** `electron/native-pipeline/manager.ts`
-- **Changes:**
+- **Status:** Manager does NOT route vimax commands. `execute()` switch has no cases for `vimax:idea2video`, `vimax:script2video`, or `vimax:novel2movie`. `PipelineStatus.features` lacks `vimaxPipelines` key.
+- **Changes needed:**
   - Add ViMax pipeline commands to `GenerateOptions.command` union type:
     `"vimax:idea2video" | "vimax:script2video" | "vimax:novel2movie"`
   - Route to pipeline instances from `execute()`
@@ -914,27 +918,30 @@ This plan closes **all gaps** identified in the gap analysis across 6 priority l
   - Update `PipelineStatus.features` with: `vimaxPipelines: true, parallelExecution: true`
 - **Est. time:** 0.75 day
 
-### 8.2 IPC Handler Integration
+### 8.2 IPC Handler Integration — BLOCKED (depends on 8.1)
 
 - **Modify:** `electron/ai-pipeline-ipc.ts`
-- **Changes:** None expected (NativePipelineManager already implements the same interface)
+- **Status:** IPC wiring exists, but vimax commands fail because `manager.ts` doesn't route them. Once 8.1 is done, IPC should work automatically.
 - **Verify:** ViMax commands work via IPC from renderer process
 - **Est. time:** 0.25 day
 
-### 8.3 Index Barrel Update
+### 8.3 Index Barrel Update — NOT IMPLEMENTED
 
 - **Modify:** `electron/native-pipeline/index.ts`
-- **Changes:** Export ViMax types, agents, pipelines, parallel executor
+- **Status:** Exports ParallelPipelineExecutor but does NOT export any vimax types, agents, or pipelines.
+- **Changes needed:** Add `export * from './vimax/index.js'` to re-export all vimax modules
 - **Est. time:** 0.1 day
 
-### Phase 8 Summary
+### Phase 8 Summary — NOT DONE (0/3)
 
-| Subtask | Files | Time |
+| Subtask | Files | Status |
 |---------|-------|:---:|
-| 8.1 Manager | manager.ts (mod) | 0.75d |
-| 8.2 IPC verification | ai-pipeline-ipc.ts (verify) | 0.25d |
-| 8.3 Index update | index.ts (mod) | 0.1d |
-| **Phase 8 total** | **3 modified** | **~1.1d** |
+| 8.1 Manager | manager.ts (mod) | NOT DONE |
+| 8.2 IPC verification | ai-pipeline-ipc.ts (verify) | BLOCKED by 8.1 |
+| 8.3 Index update | index.ts (mod) | NOT DONE |
+| **Phase 8 total** | **3 modified** | **0/3 DONE** |
+
+> **Note:** ViMax pipelines work via CLI (`vimax-cli-handlers.ts`) but NOT via the manager/IPC path used by the Electron renderer.
 
 ---
 
@@ -1022,18 +1029,22 @@ Phase 7 (Tests) ── after corresponding implementation phases
 
 ## Grand Total
 
-| Phase | Files | Est. Time | Priority |
+| Phase | Files | Status | Remaining |
 |-------|:---:|:---:|:---:|
-| **Phase 1:** Agent Framework | 19 new | 11.5 days | CRITICAL |
-| **Phase 2:** Creative Pipelines | 5 new | 5.7 days | CRITICAL |
-| **Phase 3:** Parallel Execution | 1 new + 3 mod | 3 days | HIGH |
-| **Phase 4:** CLI Commands | 2 new + 2 mod | 6 days | MEDIUM |
-| **Phase 5:** Missing Models | 4 mod | 2 days | LOW |
-| **Phase 6:** Polish & Parity | 1 new + 4 mod | 4 days | LOW |
-| **Phase 7:** Tests | 5 new | 4 days | MEDIUM |
-| **Phase 8:** Integration | 3 mod | 1.1 days | HIGH |
-| **TOTAL** | **33 new + 16 mod** | **~37 days** | |
+| **Phase 1:** Agent Framework | 19 new | **DONE** | - |
+| **Phase 2:** Creative Pipelines | 5 new | **DONE** | - |
+| **Phase 3:** Parallel Execution | 1 new + 3 mod | **DONE** | - |
+| **Phase 4:** CLI Commands | 4 new + 2 mod | **DONE** | - |
+| **Phase 5:** Missing Models | 1 mod | **DONE** | - |
+| **Phase 6:** Polish & Parity | 3 new + 2 mod | **5/6 DONE** | Interactive CLI mode |
+| **Phase 7:** Tests | 6 test files | **DONE** | transfer-motion test |
+| **Phase 8:** Integration | 3 mod | **NOT DONE** | Manager routing, barrel export |
+| **TOTAL** | **~40 files** | **~92% DONE** | **~1.1 days remaining** |
 
-### Start Here
+### Remaining Work
 
-**Day 1:** Subtasks 1.1.1-1.1.5 (all types) + 1.2.1 (base adapter) + 1.3.1 (base agent) + 1.3.2 (schemas) — all independent, can be done in parallel.
+1. **Phase 8.1** (0.75d): Add vimax command routing to `manager.ts` + `PipelineStatus.features`
+2. **Phase 8.3** (0.1d): Add vimax re-exports to `native-pipeline/index.ts`
+3. **Phase 8.2** (0.25d): Verify IPC works end-to-end after 8.1
+4. **Phase 6.5** (0.75d, optional): Interactive CLI mode with readline
+5. **Minor:** Add `transfer-motion` test coverage to `cli-pipeline.test.ts`

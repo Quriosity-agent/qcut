@@ -137,11 +137,11 @@ function scriptToText(script: Script): string {
 export class Idea2VideoPipeline {
   config: Idea2VideoConfig;
 
-  private screenwriter: Screenwriter;
-  private character_extractor: CharacterExtractor;
-  private portraits_generator: CharacterPortraitsGenerator;
-  private storyboard_artist: StoryboardArtist;
-  private camera_generator: CameraImageGenerator;
+  private screenwriter!: Screenwriter;
+  private character_extractor!: CharacterExtractor;
+  private portraits_generator!: CharacterPortraitsGenerator;
+  private storyboard_artist!: StoryboardArtist;
+  private camera_generator!: CameraImageGenerator;
 
   constructor(config?: Partial<Idea2VideoConfig>) {
     this.config = createIdea2VideoConfig(config);

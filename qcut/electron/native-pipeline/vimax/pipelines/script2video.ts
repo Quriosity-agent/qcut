@@ -71,8 +71,8 @@ export interface Script2VideoResult {
 export class Script2VideoPipeline {
   config: Script2VideoConfig;
 
-  private storyboard_artist: StoryboardArtist;
-  private camera_generator: CameraImageGenerator;
+  private storyboard_artist!: StoryboardArtist;
+  private camera_generator!: CameraImageGenerator;
 
   constructor(config?: Partial<Script2VideoConfig>) {
     this.config = createScript2VideoConfig(config);

@@ -54,9 +54,10 @@ export async function compositeGrid(
   try {
     // Dynamic import with eval to prevent Vite static analysis
     const sharpModuleName = "sharp";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sharp = (await new Function("name", "return import(name)")(
       sharpModuleName
-    ).catch(() => null)) as typeof import("sharp") | null;
+    ).catch(() => null)) as { default: (input: any) => any } | null;
     if (!sharp) {
       return {
         success: true,
