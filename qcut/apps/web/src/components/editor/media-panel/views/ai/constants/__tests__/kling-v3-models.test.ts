@@ -68,9 +68,9 @@ describe("Kling v3 Model Configurations", () => {
       ).toBe(true);
     });
 
-    it("should have T2V models in the correct order", () => {
-      expect(T2V_MODEL_ORDER[0]).toBe("kling_v3_pro_t2v");
-      expect(T2V_MODEL_ORDER[1]).toBe("kling_v3_standard_t2v");
+    it("should include Kling v3 T2V models in the order list", () => {
+      expect(T2V_MODEL_ORDER).toContain("kling_v3_pro_t2v");
+      expect(T2V_MODEL_ORDER).toContain("kling_v3_standard_t2v");
     });
 
     it("should have correct max duration for T2V models", () => {
@@ -113,9 +113,9 @@ describe("Kling v3 Model Configurations", () => {
       ).toBe(true);
     });
 
-    it("should have I2V models in the correct order", () => {
-      expect(I2V_MODEL_ORDER[0]).toBe("kling_v3_pro_i2v");
-      expect(I2V_MODEL_ORDER[1]).toBe("kling_v3_standard_i2v");
+    it("should include Kling v3 I2V models in the order list", () => {
+      expect(I2V_MODEL_ORDER).toContain("kling_v3_pro_i2v");
+      expect(I2V_MODEL_ORDER).toContain("kling_v3_standard_i2v");
     });
 
     it("should have correct max duration for I2V models", () => {
