@@ -68,15 +68,12 @@ describe("media-panel store", () => {
       expect(getGroupForTab("project-folder")).toBe("media");
       expect(getGroupForTab("ai")).toBe("ai-create");
       expect(getGroupForTab("text2image")).toBe("ai-create");
-      expect(getGroupForTab("nano-edit")).toBe("ai-create");
       expect(getGroupForTab("sounds")).toBe("ai-create");
 
       expect(getGroupForTab("segmentation")).toBe("edit");
 
-      expect(getGroupForTab("captions")).toBe("edit");
       expect(getGroupForTab("word-timeline")).toBe("edit");
       expect(getGroupForTab("video-edit")).toBe("edit");
-      expect(getGroupForTab("draw")).toBe("edit");
 
       expect(getGroupForTab("text")).toBe("edit");
       expect(getGroupForTab("stickers")).toBe("edit");
@@ -84,6 +81,7 @@ describe("media-panel store", () => {
       expect(getGroupForTab("effects")).toBe("edit");
       expect(getGroupForTab("transitions")).toBe("edit");
 
+      expect(getGroupForTab("nano-edit")).toBe("agents");
       expect(getGroupForTab("remotion")).toBe("agents");
       expect(getGroupForTab("pty")).toBe("agents");
     });
@@ -130,9 +128,9 @@ describe("media-panel store", () => {
     it("does not affect other groups in lastTabPerGroup", () => {
       const { setActiveTab } = useMediaPanelStore.getState();
 
-      setActiveTab("draw");
+      setActiveTab("video-edit");
       const state = useMediaPanelStore.getState();
-      expect(state.lastTabPerGroup.edit).toBe("draw");
+      expect(state.lastTabPerGroup.edit).toBe("video-edit");
       // Other groups unchanged
       expect(state.lastTabPerGroup.media).toBe("media");
       expect(state.lastTabPerGroup["ai-create"]).toBe("ai");

@@ -1,5 +1,4 @@
 import {
-  CaptionsIcon,
   ArrowLeftRightIcon,
   SparklesIcon,
   StickerIcon,
@@ -11,7 +10,6 @@ import {
   BotIcon,
   VolumeXIcon,
   PaletteIcon,
-  PenTool,
   Wand2Icon,
   ScissorsIcon,
   Layers,
@@ -31,13 +29,11 @@ export type Tab =
   | "video-edit"
   | "effects"
   | "transitions"
-  | "captions"
   | "filters"
   | "text2image"
   | "nano-edit"
   | "ai"
   | "sounds"
-  | "draw"
   | "segmentation"
   | "remotion"
   | "pty"
@@ -60,15 +56,11 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   upscale: {
     icon: ArrowUpFromLineIcon,
-    label: "Upscale",
+    label: "Video Upscale",
   },
   "nano-edit": {
     icon: PaletteIcon,
-    label: "Prompt Library",
-  },
-  draw: {
-    icon: PenTool,
-    label: "Draw",
+    label: "Skills",
   },
   text: {
     icon: TypeIcon,
@@ -80,7 +72,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "video-edit": {
     icon: Wand2Icon,
-    label: "Video Edit",
+    label: "Audio Studio",
   },
   remotion: {
     icon: Layers,
@@ -92,7 +84,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "word-timeline": {
     icon: TextSelect,
-    label: "Transcribe",
+    label: "Smart Speech",
   },
   "project-folder": {
     icon: FolderSync,
@@ -119,10 +111,6 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
     icon: ArrowLeftRightIcon,
     label: "Transitions (WIP)",
   },
-  captions: {
-    icon: CaptionsIcon,
-    label: "Captions (WIP)",
-  },
 };
 
 // --- Tab Groups ---
@@ -146,14 +134,7 @@ export interface TabGroupDef {
 const editSubgroups: Record<EditSubgroup, Subgroup> = {
   "ai-edit": {
     label: "AI Assist",
-    tabs: [
-      "word-timeline",
-      "video-edit",
-      "draw",
-      "captions",
-      "upscale",
-      "segmentation",
-    ],
+    tabs: ["word-timeline", "upscale", "video-edit", "segmentation"],
   },
   "manual-edit": {
     label: "Manual Edit",
@@ -165,7 +146,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   "ai-create": {
     icon: SparklesIcon,
     label: "Create",
-    tabs: ["ai", "text2image", "nano-edit", "sounds"],
+    tabs: ["ai", "text2image", "sounds"],
   },
   edit: {
     icon: ScissorsIcon,
@@ -184,7 +165,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   agents: {
     icon: WrenchIcon,
     label: "Agents",
-    tabs: ["pty", "remotion"],
+    tabs: ["nano-edit", "pty", "remotion"],
   },
 };
 
@@ -230,7 +211,7 @@ interface MediaPanelStore {
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
-  agents: "pty",
+  agents: "nano-edit",
   edit: "word-timeline",
 };
 

@@ -111,7 +111,8 @@ export type Text2ImageModelType =
   | "upscale"
   | "angles"
   | "adjustment"
-  | "camera";
+  | "camera"
+  | "draw";
 
 export interface GenerationResult {
   status: "loading" | "success" | "error";

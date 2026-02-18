@@ -93,20 +93,50 @@ export {
  * Legacy AI_MODELS array combining all video generation model categories.
  * Maintained for backward compatibility with existing code.
  *
- * Note: UPSCALE_MODELS are not included here as they use a different type structure.
- * Access them separately via the UPSCALE_MODELS export from @/lib/upscale-models.
- *
  * For new code, prefer using category-specific imports:
  * - T2V_MODELS for text-to-video models
  * - I2V_MODELS for image-to-video models
  * - AVATAR_MODELS for avatar/talking-head models
- * - UPSCALE_MODELS for upscaling models (separate type)
  */
+const UPSCALE_VIDEO_MODELS: AIModel[] = [
+  {
+    id: "bytedance_video_upscaler",
+    name: "ByteDance Upscaler",
+    description: "AI upscaling to 1080p/2K/4K with optional 60fps",
+    price: "0.05",
+    resolution: "4K",
+    max_duration: 120,
+    category: "upscale",
+    endpoints: { upscale_video: "bytedance/video-upscaler" },
+  },
+  {
+    id: "flashvsr_video_upscaler",
+    name: "FlashVSR",
+    description: "Fastest video upscaling up to 4x with quality control",
+    price: "0.03",
+    resolution: "4K",
+    max_duration: 120,
+    category: "upscale",
+    endpoints: { upscale_video: "flashvsr/video-upscaler" },
+  },
+  {
+    id: "topaz_video_upscale",
+    name: "Topaz Video AI",
+    description: "Professional upscaling up to 8x with frame interpolation",
+    price: "0.50",
+    resolution: "8K",
+    max_duration: 120,
+    category: "upscale",
+    endpoints: { upscale_video: "topaz/video-upscale" },
+  },
+];
+
 export const AI_MODELS: AIModel[] = [
   ...Object.values(T2V_MODELS),
   ...Object.values(I2V_MODELS),
   ...Object.values(AVATAR_MODELS),
   ANGLES_MODEL,
+  ...UPSCALE_VIDEO_MODELS,
 ];
 
 validateUniqueAIModelIds({

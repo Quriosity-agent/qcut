@@ -8,10 +8,8 @@ import { TextView } from "./views/text";
 import { Text2ImageView } from "./views/text2image";
 import { AiView } from "./views/ai";
 import { StickersView } from "./views/stickers";
-import { CaptionsView } from "./views/captions";
 import { SoundsView } from "./views/sounds";
-import NanoEditView from "./views/nano-edit";
-import DrawView from "./views/draw";
+import { SkillsView } from "./views/skills";
 import VideoEditView from "./views/video-edit";
 import { SegmentationPanel } from "@/components/editor/segmentation";
 import { RemotionView } from "./views/remotion";
@@ -54,17 +52,15 @@ export function MediaPanel() {
         Transitions view coming soon...
       </div>
     ),
-    captions: <CaptionsView />,
     filters: (
       <div className="p-4 text-muted-foreground">
         Filters view coming soon...
       </div>
     ),
     text2image: <Text2ImageView />,
-    "nano-edit": <NanoEditView />,
+    "nano-edit": <SkillsView />,
     ai: <AiView />,
     sounds: <SoundsView />,
-    draw: <DrawView />,
     segmentation: <SegmentationPanel />,
     remotion: <RemotionView />,
     "word-timeline": <WordTimelineView />,

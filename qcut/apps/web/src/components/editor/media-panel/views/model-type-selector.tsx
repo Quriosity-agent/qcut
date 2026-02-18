@@ -17,7 +17,8 @@ export type ModelTypeOption =
   | "upscale"
   | "angles"
   | "adjustment"
-  | "camera";
+  | "camera"
+  | "draw";
 
 /**
  * Props for the ModelTypeSelector component
@@ -63,6 +64,11 @@ const MODEL_TYPE_OPTIONS: Array<{
     id: "angles",
     label: "Angles",
     description: "Multi-angle shots",
+  },
+  {
+    id: "draw",
+    label: "Draw",
+    description: "Draw on canvas",
   },
 ];
 

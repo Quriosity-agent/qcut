@@ -1,12 +1,10 @@
 "use client";
 
 import { useFolderStore } from "@/stores/folder-store";
-import { useSkillsStore } from "@/stores/skills-store";
-import { SKILLS_FOLDER_ID } from "@/stores/media-store-types";
 import { FolderItem } from "./folder-item";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { Button } from "@/components/ui/button";
-import { FolderPlus, Brain } from "lucide-react";
+import { FolderPlus } from "lucide-react";
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -17,7 +15,6 @@ interface FolderTreeProps {
 export function FolderTree({ onFolderSelect }: FolderTreeProps) {
   const { selectedFolderId, setSelectedFolder, getChildFolders } =
     useFolderStore();
-  const { skills } = useSkillsStore();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const rootFolders = getChildFolders(null);
@@ -80,27 +77,6 @@ export function FolderTree({ onFolderSelect }: FolderTreeProps) {
               Click + to create one.
             </div>
           )}
-
-          {/* Skills System Folder - Always at bottom */}
-          <div className="mt-2 pt-2 border-t border-border">
-            <button
-              type="button"
-              className={`w-full text-left px-2 py-1.5 text-sm rounded flex items-center gap-2 transition-colors ${
-                selectedFolderId === SKILLS_FOLDER_ID
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-muted"
-              }`}
-              onClick={() => handleSelect(SKILLS_FOLDER_ID)}
-            >
-              <Brain className="h-4 w-4 text-purple-500" />
-              <span>Skills</span>
-              {skills.length > 0 && (
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {skills.length}
-                </span>
-              )}
-            </button>
-          </div>
         </div>
       </ScrollArea>
 

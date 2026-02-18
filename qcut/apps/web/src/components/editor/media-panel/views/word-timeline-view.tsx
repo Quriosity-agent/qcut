@@ -476,7 +476,7 @@ function DropZone({
   const isBusy = isLoading || isTranscribing;
 
   return (
-    <div className="h-full flex items-center justify-center p-4" {...dragProps}>
+    <div className="flex-1 flex items-center justify-center p-4" {...dragProps}>
       <input
         ref={fileInputRef}
         type="file"
@@ -982,16 +982,39 @@ export function WordTimelineView() {
     );
   }
 
-  // Empty state - show drop zone
+  // Empty state - show intro + drop zone
   if (!data) {
     return (
-      <DropZone
-        onJsonSelect={handleJsonSelect}
-        onMediaSelect={handleMediaSelect}
-        isLoading={isLoading}
-        isTranscribing={isTranscribing}
-        transcriptionProgress={transcriptionProgress}
-      />
+      <div className="h-full flex flex-col">
+        <div className="px-4 pt-4 pb-2 text-center">
+          <h2 className="text-base font-semibold">SmartEdit</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            AI-powered speech editing for talking videos.
+          </p>
+          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            {[
+              "Remove filler",
+              "Remove repetition",
+              "Generate captions",
+              "Jump by word",
+            ].map((feature) => (
+              <span
+                key={feature}
+                className="inline-flex items-center px-2.5 py-1 rounded-full bg-muted text-[11px] text-muted-foreground"
+              >
+                {feature}
+              </span>
+            ))}
+          </div>
+        </div>
+        <DropZone
+          onJsonSelect={handleJsonSelect}
+          onMediaSelect={handleMediaSelect}
+          isLoading={isLoading}
+          isTranscribing={isTranscribing}
+          transcriptionProgress={transcriptionProgress}
+        />
+      </div>
     );
   }
 
