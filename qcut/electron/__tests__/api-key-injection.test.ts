@@ -26,6 +26,15 @@ interface SpawnCall {
 // Mock setup (vi.hoisted runs before imports)
 // ---------------------------------------------------------------------------
 
+// Force legacy binary pipeline for these tests (they test spawn/env injection behavior)
+const _envSetup = vi.hoisted(() => {
+  process.env.QCUT_NATIVE_PIPELINE = "false";
+});
+
+vi.mock("../native-pipeline/index.js", () => ({
+  NativePipelineManager: class {},
+}));
+
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, IpcHandler>();
   const spawnCalls: SpawnCall[] = [];

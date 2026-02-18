@@ -33,6 +33,15 @@ type ExecMock = ((
     | undefined;
 };
 
+// Force legacy binary pipeline for these tests (they test spawn/binary behavior)
+const _envSetup = vi.hoisted(() => {
+  process.env.QCUT_NATIVE_PIPELINE = "false";
+});
+
+vi.mock("../native-pipeline/index.js", () => ({
+  NativePipelineManager: class {},
+}));
+
 const mocks = vi.hoisted(() => {
   const handlers = new Map<string, IpcHandler>();
   const execBehaviors = new Map<string, ExecBehavior>();
