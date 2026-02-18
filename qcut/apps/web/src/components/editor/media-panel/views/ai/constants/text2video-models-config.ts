@@ -395,13 +395,15 @@ export type T2VModelId = keyof typeof T2V_MODELS;
  * Models are ordered by quality/capability (highest first) to guide user selection.
  */
 export const T2V_MODEL_ORDER: readonly T2VModelId[] = [
+  // Badged picks — always on top
+  "sora2_text_to_video_pro", // ⭐ Recommended
+  "ltxv2_fast_t2v", // ⚡ Fast
+  "wan_26_t2v", // 💰 Budget
+  "kling_v3_standard_t2v", // 🎬 Cinematic
+  // Everything else
   "kling_v3_pro_t2v",
-  "kling_v3_standard_t2v",
   "kling_v26_pro_t2v",
-  "sora2_text_to_video_pro",
   "veo31_text_to_video",
-  "wan_26_t2v",
-  "ltxv2_fast_t2v",
   "ltxv2_pro_t2v",
   "hailuo23_pro_t2v",
   "veo31_fast_text_to_video",
