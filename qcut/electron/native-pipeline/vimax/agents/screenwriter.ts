@@ -14,12 +14,12 @@ import {
   createAgentConfig,
   agentOk,
   agentFail,
-} from './base-agent.js';
+} from "./base-agent.js";
 import {
   SCREENPLAY_JSON_SCHEMA,
   validateScreenplayResponse,
-} from './schemas.js';
-import { LLMAdapter, type Message } from '../adapters/llm-adapter.js';
+} from "./schemas.js";
+import { LLMAdapter, type Message } from "../adapters/llm-adapter.js";
 import {
   type Scene,
   type ShotDescription,
@@ -27,7 +27,7 @@ import {
   CameraMovement,
   createScene,
   createShotDescription,
-} from '../types/shot.js';
+} from "../types/shot.js";
 
 export interface Script {
   title: string;
@@ -43,14 +43,14 @@ export interface ScreenwriterConfig extends AgentConfig {
 }
 
 export function createScreenwriterConfig(
-  partial?: Partial<ScreenwriterConfig>,
+  partial?: Partial<ScreenwriterConfig>
 ): ScreenwriterConfig {
   return {
-    ...createAgentConfig({ name: 'Screenwriter' }),
-    model: 'kimi-k2.5',
+    ...createAgentConfig({ name: "Screenwriter" }),
+    model: "kimi-k2.5",
     target_duration: 60.0,
     shots_per_scene: 3,
-    style: 'cinematic, visually descriptive',
+    style: "cinematic, visually descriptive",
     ...partial,
   };
 }
@@ -81,39 +81,39 @@ Each video_prompt should describe the motion/animation for that shot.`;
 
 /** Camera movement aliases → valid enum values. */
 const CAMERA_MOVEMENT_ALIASES: Record<string, string> = {
-  push_in: 'dolly',
-  push_out: 'dolly',
-  slow_push_in: 'dolly',
-  pull_back: 'dolly',
-  move_forward: 'dolly',
-  move_back: 'dolly',
-  follow: 'tracking',
-  track: 'tracking',
-  pan_left: 'pan',
-  pan_right: 'pan',
-  slow_pan: 'pan',
-  tilt_up: 'tilt',
-  tilt_down: 'tilt',
-  zoom_in: 'zoom',
-  zoom_out: 'zoom',
-  crane_up: 'crane',
-  crane_down: 'crane',
-  steady: 'static',
-  fixed: 'static',
-  locked: 'static',
+  push_in: "dolly",
+  push_out: "dolly",
+  slow_push_in: "dolly",
+  pull_back: "dolly",
+  move_forward: "dolly",
+  move_back: "dolly",
+  follow: "tracking",
+  track: "tracking",
+  pan_left: "pan",
+  pan_right: "pan",
+  slow_pan: "pan",
+  tilt_up: "tilt",
+  tilt_down: "tilt",
+  zoom_in: "zoom",
+  zoom_out: "zoom",
+  crane_up: "crane",
+  crane_down: "crane",
+  steady: "static",
+  fixed: "static",
+  locked: "static",
 };
 
 function parseShotType(value: unknown): ShotType {
-  if (typeof value !== 'string') return ShotType.MEDIUM;
-  const normalized = value.toLowerCase().replace(/[\s-]/g, '_');
+  if (typeof value !== "string") return ShotType.MEDIUM;
+  const normalized = value.toLowerCase().replace(/[\s-]/g, "_");
   const valid = Object.values(ShotType) as string[];
   if (valid.includes(normalized)) return normalized as ShotType;
   return ShotType.MEDIUM;
 }
 
 function parseCameraMovement(value: unknown): CameraMovement {
-  if (typeof value !== 'string') return CameraMovement.STATIC;
-  const normalized = value.toLowerCase().replace(/[\s-]/g, '_');
+  if (typeof value !== "string") return CameraMovement.STATIC;
+  const normalized = value.toLowerCase().replace(/[\s-]/g, "_");
   const aliased = CAMERA_MOVEMENT_ALIASES[normalized] ?? normalized;
   const valid = Object.values(CameraMovement) as string[];
   if (valid.includes(aliased)) return aliased as CameraMovement;
@@ -138,35 +138,43 @@ export class Screenwriter extends BaseAgent<string, Script> {
   async process(idea: string): Promise<AgentResult<Script>> {
     await this._ensureLlm();
 
-    console.log(`[screenwriter] Generating screenplay for: ${idea.slice(0, 100)}...`);
+    console.log(
+      `[screenwriter] Generating screenplay for: ${idea.slice(0, 100)}...`
+    );
 
     try {
       if (this.config.target_duration <= 0) {
-        throw new Error(`target_duration must be > 0, got ${this.config.target_duration}`);
+        throw new Error(
+          `target_duration must be > 0, got ${this.config.target_duration}`
+        );
       }
       if (this.config.shots_per_scene <= 0) {
-        throw new Error(`shots_per_scene must be > 0, got ${this.config.shots_per_scene}`);
+        throw new Error(
+          `shots_per_scene must be > 0, got ${this.config.shots_per_scene}`
+        );
       }
 
       const avgShotDuration = 5.0;
       const totalShots = this.config.target_duration / avgShotDuration;
-      const numScenes = Math.max(1, Math.floor(totalShots / this.config.shots_per_scene));
+      const numScenes = Math.max(
+        1,
+        Math.floor(totalShots / this.config.shots_per_scene)
+      );
 
-      const prompt = SCREENPLAY_PROMPT
-        .replace('{idea}', idea)
-        .replace('{duration}', String(this.config.target_duration))
-        .replace('{style}', this.config.style)
-        .replace('{num_scenes}', String(numScenes))
-        .replace('{shots_per_scene}', String(this.config.shots_per_scene));
+      const prompt = SCREENPLAY_PROMPT.replace("{idea}", idea)
+        .replace("{duration}", String(this.config.target_duration))
+        .replace("{style}", this.config.style)
+        .replace("{num_scenes}", String(numScenes))
+        .replace("{shots_per_scene}", String(this.config.shots_per_scene));
 
-      const messages: Message[] = [{ role: 'user', content: prompt }];
+      const messages: Message[] = [{ role: "user", content: prompt }];
 
       const screenplay = await this._llm!.chatWithStructuredOutput(
         messages,
-        'screenplay',
+        "screenplay",
         SCREENPLAY_JSON_SCHEMA,
         validateScreenplayResponse,
-        { temperature: 0.7 },
+        { temperature: 0.7 }
       );
 
       // Convert to internal Script model
@@ -179,7 +187,7 @@ export class Screenwriter extends BaseAgent<string, Script> {
           const shot = createShotDescription({
             shot_id: shotData.shot_id || `shot_${shots.length + 1}`,
             shot_type: parseShotType(shotData.shot_type),
-            description: shotData.description || '',
+            description: shotData.description || "",
             camera_movement: parseCameraMovement(shotData.camera_movement),
             characters: shotData.characters || [],
             duration_seconds: shotData.duration_seconds || 5.0,
@@ -193,25 +201,25 @@ export class Screenwriter extends BaseAgent<string, Script> {
         scenes.push(
           createScene({
             scene_id: sceneData.scene_id || `scene_${scenes.length + 1}`,
-            title: sceneData.title || '',
-            description: '',
-            location: sceneData.location || '',
-            time: sceneData.time || '',
+            title: sceneData.title || "",
+            description: "",
+            location: sceneData.location || "",
+            time: sceneData.time || "",
             shots,
-          }),
+          })
         );
       }
 
       const script: Script = {
-        title: screenplay.title || 'Untitled',
-        logline: screenplay.logline || '',
+        title: screenplay.title || "Untitled",
+        logline: screenplay.logline || "",
         scenes,
         total_duration: totalDuration,
       };
 
       const shotCount = scenes.reduce((sum, s) => sum + s.shots.length, 0);
       console.log(
-        `[screenwriter] Generated: ${scenes.length} scenes, ${shotCount} shots, ${totalDuration.toFixed(1)}s`,
+        `[screenwriter] Generated: ${scenes.length} scenes, ${shotCount} shots, ${totalDuration.toFixed(1)}s`
       );
 
       return agentOk(script, {

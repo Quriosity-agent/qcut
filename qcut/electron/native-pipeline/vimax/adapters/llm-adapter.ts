@@ -7,11 +7,12 @@
  * Ported from: vimax/adapters/llm_adapter.py
  */
 
-import { BaseAdapter, type AdapterConfig, createAdapterConfig } from './base-adapter.js';
 import {
-  callModelApi,
-  type ApiCallResult,
-} from '../../api-caller.js';
+  BaseAdapter,
+  type AdapterConfig,
+  createAdapterConfig,
+} from "./base-adapter.js";
+import { callModelApi, type ApiCallResult } from "../../api-caller.js";
 
 export interface LLMAdapterConfig extends AdapterConfig {
   temperature: number;
@@ -20,10 +21,13 @@ export interface LLMAdapterConfig extends AdapterConfig {
 }
 
 export function createLLMAdapterConfig(
-  partial?: Partial<LLMAdapterConfig>,
+  partial?: Partial<LLMAdapterConfig>
 ): LLMAdapterConfig {
   return {
-    ...createAdapterConfig({ provider: 'openrouter', model: 'moonshotai/kimi-k2.5' }),
+    ...createAdapterConfig({
+      provider: "openrouter",
+      model: "moonshotai/kimi-k2.5",
+    }),
     temperature: 0.7,
     max_tokens: 8192,
     use_native_structured_output: true,
@@ -32,7 +36,7 @@ export function createLLMAdapterConfig(
 }
 
 export interface Message {
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
@@ -45,23 +49,23 @@ export interface LLMResponse {
 
 /** Common model aliases resolved to OpenRouter model IDs. */
 const MODEL_ALIASES: Record<string, string> = {
-  'kimi-k2.5': 'moonshotai/kimi-k2.5',
-  kimi: 'moonshotai/kimi-k2.5',
-  'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet',
-  'claude-3-opus': 'anthropic/claude-3-opus',
-  'gpt-4': 'openai/gpt-4-turbo',
-  'gpt-4o': 'openai/gpt-4o',
-  'gemini-pro': 'google/gemini-pro',
+  "kimi-k2.5": "moonshotai/kimi-k2.5",
+  kimi: "moonshotai/kimi-k2.5",
+  "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
+  "claude-3-opus": "anthropic/claude-3-opus",
+  "gpt-4": "openai/gpt-4-turbo",
+  "gpt-4o": "openai/gpt-4o",
+  "gemini-pro": "google/gemini-pro",
 };
 
 /** Approximate costs per 1K tokens (input, output). */
 const COST_TABLE: Record<string, [number, number]> = {
-  'moonshotai/kimi-k2.5': [0.0005, 0.0028],
-  'anthropic/claude-3.5-sonnet': [0.003, 0.015],
-  'anthropic/claude-3-opus': [0.015, 0.075],
-  'openai/gpt-4-turbo': [0.01, 0.03],
-  'openai/gpt-4o': [0.005, 0.015],
-  'google/gemini-pro': [0.00025, 0.0005],
+  "moonshotai/kimi-k2.5": [0.0005, 0.0028],
+  "anthropic/claude-3.5-sonnet": [0.003, 0.015],
+  "anthropic/claude-3-opus": [0.015, 0.075],
+  "openai/gpt-4-turbo": [0.01, 0.03],
+  "openai/gpt-4o": [0.005, 0.015],
+  "google/gemini-pro": [0.000_25, 0.0005],
 };
 
 export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
@@ -73,10 +77,10 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
   }
 
   async initialize(): Promise<boolean> {
-    const apiKey = process.env.OPENROUTER_API_KEY ?? '';
+    const apiKey = process.env.OPENROUTER_API_KEY ?? "";
     this._hasApiKey = apiKey.length > 0;
     if (!this._hasApiKey) {
-      console.warn('[vimax.llm] OPENROUTER_API_KEY not set — using mock mode');
+      console.warn("[vimax.llm] OPENROUTER_API_KEY not set — using mock mode");
     }
     return true;
   }
@@ -97,7 +101,7 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
       temperature?: number;
       max_tokens?: number;
       extra_body?: Record<string, unknown>;
-    },
+    }
   ): Promise<LLMResponse> {
     await this.ensureInitialized();
 
@@ -122,22 +126,22 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     }
 
     const result: ApiCallResult = await callModelApi({
-      endpoint: 'chat/completions',
+      endpoint: "chat/completions",
       payload,
-      provider: 'openrouter',
+      provider: "openrouter",
       async: false,
       timeoutMs: this.config.timeout * 1000,
     });
 
     if (!result.success || !result.data) {
-      throw new Error(`LLM call failed: ${result.error ?? 'unknown error'}`);
+      throw new Error(`LLM call failed: ${result.error ?? "unknown error"}`);
     }
 
     const data = result.data as Record<string, unknown>;
     const choices = data.choices as Array<Record<string, unknown>>;
     const firstChoice = choices?.[0];
     const message = firstChoice?.message as Record<string, unknown>;
-    const content = (message?.content as string) ?? '';
+    const content = (message?.content as string) ?? "";
 
     const usage = data.usage as Record<string, number> | undefined;
     const usageObj: Record<string, number> = {
@@ -165,12 +169,13 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     schemaName: string,
     jsonSchema: Record<string, unknown>,
     validator: (data: unknown) => T,
-    options?: { temperature?: number },
+    options?: { temperature?: number }
   ): Promise<T> {
-    const extra_body: Record<string, unknown> = this.config.use_native_structured_output
+    const extra_body: Record<string, unknown> = this.config
+      .use_native_structured_output
       ? {
           response_format: {
-            type: 'json_schema',
+            type: "json_schema",
             json_schema: {
               name: schemaName,
               strict: true,
@@ -185,13 +190,13 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     const messagesToSend = [...messages];
     if (!this.config.use_native_structured_output) {
       const schemaInstruction = `\nYou must respond with valid JSON matching this schema:\n${JSON.stringify(jsonSchema, null, 2)}\n\nRespond ONLY with the JSON, no other text.\n`;
-      if (messagesToSend.length > 0 && messagesToSend[0].role === 'system') {
+      if (messagesToSend.length > 0 && messagesToSend[0].role === "system") {
         messagesToSend[0] = {
-          role: 'system',
-          content: messagesToSend[0].content + '\n\n' + schemaInstruction,
+          role: "system",
+          content: messagesToSend[0].content + "\n\n" + schemaInstruction,
         };
       } else {
-        messagesToSend.unshift({ role: 'system', content: schemaInstruction });
+        messagesToSend.unshift({ role: "system", content: schemaInstruction });
       }
     }
 
@@ -204,13 +209,10 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
   }
 
   /** Simple text generation. */
-  async generateText(
-    prompt: string,
-    systemPrompt?: string,
-  ): Promise<string> {
+  async generateText(prompt: string, systemPrompt?: string): Promise<string> {
     const messages: Message[] = [];
-    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-    messages.push({ role: 'user', content: prompt });
+    if (systemPrompt) messages.push({ role: "system", content: systemPrompt });
+    messages.push({ role: "user", content: prompt });
     const response = await this.chat(messages);
     return response.content;
   }
@@ -221,10 +223,7 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     return MODEL_ALIASES[model] ?? model;
   }
 
-  private _estimateCost(
-    model: string,
-    usage: Record<string, number>,
-  ): number {
+  private _estimateCost(model: string, usage: Record<string, number>): number {
     const costs = COST_TABLE[model];
     if (!costs) return 0;
     const [inputCost, outputCost] = costs;
@@ -234,68 +233,68 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
   }
 
   private _mockChat(messages: Message[], model: string): LLMResponse {
-    const userMessages = messages.filter((m) => m.role === 'user');
-    const lastMessage = userMessages[userMessages.length - 1]?.content ?? '';
+    const userMessages = messages.filter((m) => m.role === "user");
+    const lastMessage = userMessages[userMessages.length - 1]?.content ?? "";
 
     let mockContent: string;
 
     if (
-      lastMessage.toLowerCase().includes('screenplay') ||
+      lastMessage.toLowerCase().includes("screenplay") ||
       lastMessage.includes('"scenes"')
     ) {
       mockContent = JSON.stringify({
-        title: 'Mock Screenplay',
-        logline: 'A mock screenplay for testing purposes.',
+        title: "Mock Screenplay",
+        logline: "A mock screenplay for testing purposes.",
         scenes: [
           {
-            scene_id: 'scene_001',
-            title: 'Opening Scene',
-            location: 'Mountain summit at dawn',
-            time: 'Dawn',
+            scene_id: "scene_001",
+            title: "Opening Scene",
+            location: "Mountain summit at dawn",
+            time: "Dawn",
             shots: [
               {
-                shot_id: 'shot_001',
-                shot_type: 'wide',
-                description: 'Panoramic view of misty mountains',
-                camera_movement: 'pan',
+                shot_id: "shot_001",
+                shot_type: "wide",
+                description: "Panoramic view of misty mountains",
+                camera_movement: "pan",
                 duration_seconds: 5,
                 image_prompt:
-                  'Panoramic view of misty mountains at dawn, golden light, cinematic',
+                  "Panoramic view of misty mountains at dawn, golden light, cinematic",
                 video_prompt:
-                  'Camera slowly pans across mountain range, mist rising',
+                  "Camera slowly pans across mountain range, mist rising",
               },
               {
-                shot_id: 'shot_002',
-                shot_type: 'medium',
-                description: 'Silhouette figure against sunrise',
-                camera_movement: 'static',
+                shot_id: "shot_002",
+                shot_type: "medium",
+                description: "Silhouette figure against sunrise",
+                camera_movement: "static",
                 duration_seconds: 4,
                 image_prompt:
-                  'Silhouette of person against golden sunrise, mountains background',
-                video_prompt: 'Figure stands still, wind moves their clothing',
+                  "Silhouette of person against golden sunrise, mountains background",
+                video_prompt: "Figure stands still, wind moves their clothing",
               },
             ],
           },
         ],
       });
     } else if (
-      lastMessage.toLowerCase().includes('character') &&
-      (lastMessage.toLowerCase().includes('extract') ||
-        lastMessage.toLowerCase().includes('find'))
+      lastMessage.toLowerCase().includes("character") &&
+      (lastMessage.toLowerCase().includes("extract") ||
+        lastMessage.toLowerCase().includes("find"))
     ) {
       mockContent = JSON.stringify({
         characters: [
           {
-            name: 'John',
-            description: 'A brave adventurer with kind eyes',
-            role: 'protagonist',
-            appearance: 'tall, dark hair, leather jacket',
+            name: "John",
+            description: "A brave adventurer with kind eyes",
+            role: "protagonist",
+            appearance: "tall, dark hair, leather jacket",
           },
           {
-            name: 'Mary',
-            description: 'A wise guide with ancient knowledge',
-            role: 'supporting',
-            appearance: 'silver hair, long robes, gentle smile',
+            name: "Mary",
+            description: "A wise guide with ancient knowledge",
+            role: "supporting",
+            appearance: "silver hair, long robes, gentle smile",
           },
         ],
       });
@@ -319,12 +318,12 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
    */
   private _parseJsonResponse<T>(
     content: string,
-    validator: (data: unknown) => T,
+    validator: (data: unknown) => T
   ): T {
     const trimmed = content.trim();
 
     const tryParse = (jsonStr: string): T | null => {
-      const fixed = jsonStr.replace(/,\s*([}\]])/g, '$1');
+      const fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
       try {
         const data = JSON.parse(fixed);
         return validator(data);
@@ -352,7 +351,7 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     }
 
     throw new Error(
-      `LLM response was not valid JSON: ${trimmed.slice(0, 200)}`,
+      `LLM response was not valid JSON: ${trimmed.slice(0, 200)}`
     );
   }
 }

@@ -68,9 +68,7 @@ export function envApiKeyProvider(provider: ProviderName): Promise<string> {
       return Promise.resolve(process.env.ELEVENLABS_API_KEY || "");
     case "google":
       return Promise.resolve(
-        process.env.GEMINI_API_KEY ||
-          process.env.GOOGLE_AI_API_KEY ||
-          ""
+        process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || ""
       );
     case "openrouter":
       return Promise.resolve(process.env.OPENROUTER_API_KEY || "");
@@ -84,11 +82,18 @@ async function defaultApiKeyProvider(provider: ProviderName): Promise<string> {
     const keys = await getDecryptedApiKeys();
     switch (provider) {
       case "fal":
-        return process.env.FAL_KEY || process.env.FAL_API_KEY || keys.falApiKey || "";
+        return (
+          process.env.FAL_KEY || process.env.FAL_API_KEY || keys.falApiKey || ""
+        );
       case "elevenlabs":
         return process.env.ELEVENLABS_API_KEY || keys.elevenLabsApiKey || "";
       case "google":
-        return process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || keys.geminiApiKey || "";
+        return (
+          process.env.GEMINI_API_KEY ||
+          process.env.GOOGLE_AI_API_KEY ||
+          keys.geminiApiKey ||
+          ""
+        );
       case "openrouter":
         return process.env.OPENROUTER_API_KEY || keys.openRouterApiKey || "";
     }

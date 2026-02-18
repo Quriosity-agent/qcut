@@ -7,8 +7,8 @@
  * Ported from: vimax/agents/storyboard_artist.py
  */
 
-import * as path from 'path';
-import * as fs from 'fs';
+import * as path from "path";
+import * as fs from "fs";
 import {
   BaseAgent,
   type AgentConfig,
@@ -16,27 +16,25 @@ import {
   createAgentConfig,
   agentOk,
   agentFail,
-} from './base-agent.js';
-import type { Script } from './screenwriter.js';
+} from "./base-agent.js";
+import type { Script } from "./screenwriter.js";
 import {
   ReferenceImageSelector,
   type ReferenceSelectorConfig,
-} from './reference-selector.js';
-import {
-  ImageGeneratorAdapter,
-} from '../adapters/image-adapter.js';
-import type { ImageOutput } from '../types/output.js';
-import type { Storyboard, Scene, ShotDescription } from '../types/shot.js';
-import { CharacterPortraitRegistry } from '../types/character.js';
+} from "./reference-selector.js";
+import { ImageGeneratorAdapter } from "../adapters/image-adapter.js";
+import type { ImageOutput } from "../types/output.js";
+import type { Storyboard, Scene, ShotDescription } from "../types/shot.js";
+import { CharacterPortraitRegistry } from "../types/character.js";
 
 /** Validate that a reference image path is safe (no traversal or absolute paths). */
 function isSafeReferencePath(refPath: string): boolean {
-  return !path.isAbsolute(refPath) && !refPath.split(path.sep).includes('..');
+  return !path.isAbsolute(refPath) && !refPath.split(path.sep).includes("..");
 }
 
 function safeSlug(value: string): string {
-  const safe = value.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_|_$/g, '');
-  return safe || 'untitled';
+  const safe = value.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_|_$/g, "");
+  return safe || "untitled";
 }
 
 export interface StoryboardResult extends Storyboard {
@@ -55,16 +53,16 @@ export interface StoryboardArtistConfig extends AgentConfig {
 }
 
 export function createStoryboardArtistConfig(
-  partial?: Partial<StoryboardArtistConfig>,
+  partial?: Partial<StoryboardArtistConfig>
 ): StoryboardArtistConfig {
   return {
-    ...createAgentConfig({ name: 'StoryboardArtist' }),
-    image_model: 'nano_banana_pro',
-    style_prefix: 'photorealistic, cinematic lighting, film still, ',
-    aspect_ratio: '16:9',
-    output_dir: 'media/generated/vimax/storyboard',
+    ...createAgentConfig({ name: "StoryboardArtist" }),
+    image_model: "nano_banana_pro",
+    style_prefix: "photorealistic, cinematic lighting, film still, ",
+    aspect_ratio: "16:9",
+    output_dir: "media/generated/vimax/storyboard",
     use_character_references: true,
-    reference_model: 'nano_banana_pro',
+    reference_model: "nano_banana_pro",
     reference_strength: 0.6,
     ...partial,
   };
@@ -72,10 +70,10 @@ export function createStoryboardArtistConfig(
 
 /** Shot type hints for prompt building. */
 const SHOT_TYPE_HINTS: Record<string, string> = {
-  wide: 'wide establishing shot, full scene visible',
-  medium: 'medium shot, subject framed from waist up',
-  close_up: 'close-up shot, face and expression detail',
-  extreme_close_up: 'extreme close-up, detail shot',
+  wide: "wide establishing shot, full scene visible",
+  medium: "medium shot, subject framed from waist up",
+  close_up: "close-up shot, face and expression detail",
+  extreme_close_up: "extreme close-up, detail shot",
 };
 
 export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
@@ -86,7 +84,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
 
   constructor(
     config?: Partial<StoryboardArtistConfig>,
-    portraitRegistry?: CharacterPortraitRegistry,
+    portraitRegistry?: CharacterPortraitRegistry
   ) {
     super(createStoryboardArtistConfig(config));
     this._portraitRegistry = portraitRegistry ?? null;
@@ -115,7 +113,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
   private _buildPrompt(
     shot: ShotDescription,
     scene: Scene,
-    registry?: CharacterPortraitRegistry | null,
+    registry?: CharacterPortraitRegistry | null
   ): string {
     const parts: string[] = [this.config.style_prefix];
 
@@ -129,7 +127,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
     }
 
     const shotTypeValue =
-      typeof shot.shot_type === 'string' ? shot.shot_type : shot.shot_type;
+      typeof shot.shot_type === "string" ? shot.shot_type : shot.shot_type;
     if (shotTypeValue in SHOT_TYPE_HINTS) {
       parts.push(SHOT_TYPE_HINTS[shotTypeValue]);
     }
@@ -137,7 +135,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
     // Add character appearance + reference instructions
     if (shot.character_references) {
       for (const name of Object.keys(shot.character_references)) {
-        let desc = '';
+        let desc = "";
         if (registry) {
           const portrait = registry.getPortrait(name);
           if (portrait?.description) desc = portrait.description;
@@ -149,13 +147,13 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
       }
     }
 
-    return parts.join(' ');
+    return parts.join(" ");
   }
 
   /** Pre-populate character_references on all shots from the portrait registry. */
   async resolveReferences(
     script: Script,
-    registry: CharacterPortraitRegistry,
+    registry: CharacterPortraitRegistry
   ): Promise<number> {
     await this._ensureReferenceSelector();
 
@@ -166,7 +164,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
 
         const refResult = await this._referenceSelector!.selectForShot(
           shot,
-          registry,
+          registry
         );
         if (
           refResult.selected_references &&
@@ -194,7 +192,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
   async process(
     script: Script,
     portraitRegistry?: CharacterPortraitRegistry,
-    chapterIndex?: number,
+    chapterIndex?: number
   ): Promise<AgentResult<StoryboardResult>> {
     await this._ensureAdapter();
 
@@ -202,7 +200,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
     const hasRegistry = registry != null && registry.portraits.size > 0;
 
     const hasInlineRefs = script.scenes.some((scene) =>
-      scene.shots.some((shot) => shot.primary_reference_image),
+      scene.shots.some((shot) => shot.primary_reference_image)
     );
 
     const useRefs =
@@ -211,11 +209,11 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
     if (useRefs && hasRegistry && !hasInlineRefs) {
       const resolved = await this.resolveReferences(script, registry!);
       console.log(
-        `[storyboard] Generating for: ${script.title} (resolved refs for ${resolved} shots)`,
+        `[storyboard] Generating for: ${script.title} (resolved refs for ${resolved} shots)`
       );
     } else {
       console.log(
-        `[storyboard] Generating for: ${script.title} (${useRefs ? 'with refs' : 'no refs'})`,
+        `[storyboard] Generating for: ${script.title} (${useRefs ? "with refs" : "no refs"})`
       );
     }
 
@@ -225,7 +223,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
 
       const dirName =
         chapterIndex != null
-          ? `chapter_${String(chapterIndex).padStart(3, '0')}_${safeSlug(script.title)}`
+          ? `chapter_${String(chapterIndex).padStart(3, "0")}_${safeSlug(script.title)}`
           : safeSlug(script.title);
       const outputDir = path.join(this.config.output_dir, dirName);
       if (!fs.existsSync(outputDir)) {
@@ -241,33 +239,36 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
           const prompt = this._buildPrompt(shot, scene, registry);
 
           const shotTypeStr = safeSlug(
-            typeof shot.shot_type === 'string'
-              ? shot.shot_type
-              : shot.shot_type,
+            typeof shot.shot_type === "string" ? shot.shot_type : shot.shot_type
           );
           const sceneSlug = safeSlug(scene.title).slice(0, 30);
           const outputPath = path.join(
             outputDir,
-            `scene_${String(sceneIdx + 1).padStart(3, '0')}_${shotTypeStr}_${sceneSlug}.png`,
+            `scene_${String(sceneIdx + 1).padStart(3, "0")}_${shotTypeStr}_${sceneSlug}.png`
           );
 
-          let referenceImage =
-            useRefs ? shot.primary_reference_image : undefined;
+          let referenceImage = useRefs
+            ? shot.primary_reference_image
+            : undefined;
           if (referenceImage && !isSafeReferencePath(referenceImage)) {
             console.warn(
-              `[storyboard] Skipping unsafe reference path: ${referenceImage}`,
+              `[storyboard] Skipping unsafe reference path: ${referenceImage}`
             );
             referenceImage = undefined;
           }
 
           let result: ImageOutput;
           if (referenceImage) {
-            result = await this._imageAdapter!.generateWithReference(prompt, referenceImage, {
-              model: this.config.reference_model,
-              reference_strength: this.config.reference_strength,
-              aspect_ratio: this.config.aspect_ratio,
-              output_path: outputPath,
-            });
+            result = await this._imageAdapter!.generateWithReference(
+              prompt,
+              referenceImage,
+              {
+                model: this.config.reference_model,
+                reference_strength: this.config.reference_strength,
+                aspect_ratio: this.config.aspect_ratio,
+                output_path: outputPath,
+              }
+            );
           } else {
             result = await this._imageAdapter!.generate(prompt, {
               aspect_ratio: this.config.aspect_ratio,
@@ -289,7 +290,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
       };
 
       console.log(
-        `[storyboard] Generated: ${images.length} images, $${totalCost.toFixed(3)} cost`,
+        `[storyboard] Generated: ${images.length} images, $${totalCost.toFixed(3)} cost`
       );
 
       return agentOk(storyboard, {
@@ -307,11 +308,11 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
   /** Generate storyboard with explicit portrait registry. */
   async processWithReferences(
     script: Script,
-    portraitRegistry: CharacterPortraitRegistry,
+    portraitRegistry: CharacterPortraitRegistry
   ): Promise<AgentResult<StoryboardResult>> {
     if (!portraitRegistry || portraitRegistry.portraits.size === 0) {
       console.warn(
-        '[storyboard] processWithReferences called but registry is empty',
+        "[storyboard] processWithReferences called but registry is empty"
       );
     }
     return this.process(script, portraitRegistry);
@@ -320,8 +321,8 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
   /** Generate images directly from shot descriptions. */
   async generateFromShots(
     shots: ShotDescription[],
-    title = 'Storyboard',
-    portraitRegistry?: CharacterPortraitRegistry,
+    title = "Storyboard",
+    portraitRegistry?: CharacterPortraitRegistry
   ): Promise<ImageOutput[]> {
     await this._ensureAdapter();
 
@@ -338,7 +339,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
         if (!shot.characters || shot.characters.length === 0) continue;
         const refResult = await this._referenceSelector!.selectForShot(
           shot,
-          registry!,
+          registry!
         );
         if (Object.keys(refResult.selected_references).length > 0) {
           shot.character_references = refResult.selected_references;
@@ -364,7 +365,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
 
       if (shot.character_references) {
         for (const name of Object.keys(shot.character_references)) {
-          let desc = '';
+          let desc = "";
           if (registry) {
             const portrait = registry.getPortrait(name);
             if (portrait?.description) desc = portrait.description;
@@ -378,7 +379,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
 
       const outputPath = path.join(
         outputDir,
-        `shot_${String(i + 1).padStart(3, '0')}.png`,
+        `shot_${String(i + 1).padStart(3, "0")}.png`
       );
 
       let referenceImage = useRefs ? shot.primary_reference_image : undefined;
@@ -396,7 +397,7 @@ export class StoryboardArtist extends BaseAgent<Script, StoryboardResult> {
             reference_strength: this.config.reference_strength,
             aspect_ratio: this.config.aspect_ratio,
             output_path: outputPath,
-          },
+          }
         );
       } else {
         result = await this._imageAdapter!.generate(prompt, {

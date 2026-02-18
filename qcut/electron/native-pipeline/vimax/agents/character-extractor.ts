@@ -14,25 +14,25 @@ import {
   createAgentConfig,
   agentOk,
   agentFail,
-} from './base-agent.js';
+} from "./base-agent.js";
 import {
   CHARACTER_LIST_JSON_SCHEMA,
   validateCharacterListResponse,
-} from './schemas.js';
-import { LLMAdapter, type Message } from '../adapters/llm-adapter.js';
-import type { CharacterInNovel } from '../types/character.js';
-import { createCharacterInNovel } from '../types/character.js';
+} from "./schemas.js";
+import { LLMAdapter, type Message } from "../adapters/llm-adapter.js";
+import type { CharacterInNovel } from "../types/character.js";
+import { createCharacterInNovel } from "../types/character.js";
 
 export interface CharacterExtractorConfig extends AgentConfig {
   max_characters: number;
 }
 
 export function createCharacterExtractorConfig(
-  partial?: Partial<CharacterExtractorConfig>,
+  partial?: Partial<CharacterExtractorConfig>
 ): CharacterExtractorConfig {
   return {
-    ...createAgentConfig({ name: 'CharacterExtractor' }),
-    model: 'kimi-k2.5',
+    ...createAgentConfig({ name: "CharacterExtractor" }),
+    model: "kimi-k2.5",
     max_characters: 20,
     ...partial,
   };
@@ -76,22 +76,27 @@ export class CharacterExtractor extends BaseAgent<string, CharacterInNovel[]> {
   async process(text: string): Promise<AgentResult<CharacterInNovel[]>> {
     await this._ensureLlm();
 
-    console.log(`[character_extractor] Extracting from text (${text.length} chars)`);
+    console.log(
+      `[character_extractor] Extracting from text (${text.length} chars)`
+    );
 
     try {
-      const prompt = EXTRACTION_PROMPT.replace('{text}', text.slice(0, 50000));
-      const messages: Message[] = [{ role: 'user', content: prompt }];
+      const prompt = EXTRACTION_PROMPT.replace("{text}", text.slice(0, 50_000));
+      const messages: Message[] = [{ role: "user", content: prompt }];
 
       const result = await this._llm!.chatWithStructuredOutput(
         messages,
-        'character_list',
+        "character_list",
         CHARACTER_LIST_JSON_SCHEMA,
         validateCharacterListResponse,
-        { temperature: 0.3 },
+        { temperature: 0.3 }
       );
 
       const characters: CharacterInNovel[] = [];
-      for (const item of result.characters.slice(0, this.config.max_characters)) {
+      for (const item of result.characters.slice(
+        0,
+        this.config.max_characters
+      )) {
         characters.push(
           createCharacterInNovel({
             name: item.name,
@@ -102,11 +107,13 @@ export class CharacterExtractor extends BaseAgent<string, CharacterInNovel[]> {
             personality: item.personality,
             role: item.role,
             relationships: item.relationships,
-          }),
+          })
         );
       }
 
-      console.log(`[character_extractor] Extracted ${characters.length} characters`);
+      console.log(
+        `[character_extractor] Extracted ${characters.length} characters`
+      );
 
       return agentOk(characters, {
         character_count: characters.length,
@@ -122,14 +129,14 @@ export class CharacterExtractor extends BaseAgent<string, CharacterInNovel[]> {
   /** Extract only main characters (protagonist, antagonist, supporting). */
   async extractMainCharacters(
     text: string,
-    maxCharacters = 5,
+    maxCharacters = 5
   ): Promise<CharacterInNovel[]> {
     const result = await this.process(text);
     if (!result.success || !result.result) return [];
 
-    const mainRoles = new Set(['protagonist', 'antagonist', 'supporting']);
+    const mainRoles = new Set(["protagonist", "antagonist", "supporting"]);
     return result.result
-      .filter((c) => mainRoles.has((c.role || '').toLowerCase()))
+      .filter((c) => mainRoles.has((c.role || "").toLowerCase()))
       .slice(0, maxCharacters);
   }
 }

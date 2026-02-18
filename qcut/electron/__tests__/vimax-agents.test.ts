@@ -5,9 +5,7 @@ import {
   agentFail,
   parseLlmJson,
 } from "../native-pipeline/vimax/agents/base-agent.js";
-import {
-  ReferenceImageSelector,
-} from "../native-pipeline/vimax/agents/reference-selector.js";
+import { ReferenceImageSelector } from "../native-pipeline/vimax/agents/reference-selector.js";
 import {
   CharacterPortraitRegistry,
   createCharacterPortrait,
@@ -73,7 +71,9 @@ describe("ViMax Agents", () => {
     });
 
     it("parses JSON with surrounding text", () => {
-      const result = parseLlmJson('Here is the result: {"key": "value"} hope that helps!');
+      const result = parseLlmJson(
+        'Here is the result: {"key": "value"} hope that helps!'
+      );
       expect(result).toEqual({ key: "value" });
     });
 
@@ -83,12 +83,12 @@ describe("ViMax Agents", () => {
     });
 
     it("parses arrays when expect is 'array'", () => {
-      const result = parseLlmJson('[1, 2, 3]', 'array');
+      const result = parseLlmJson("[1, 2, 3]", "array");
       expect(result).toEqual([1, 2, 3]);
     });
 
     it("parses array from markdown fences", () => {
-      const result = parseLlmJson('```\n[{"a": 1}, {"b": 2}]\n```', 'array');
+      const result = parseLlmJson('```\n[{"a": 1}, {"b": 2}]\n```', "array");
       expect(result).toEqual([{ a: 1 }, { b: 2 }]);
     });
 
@@ -123,18 +123,22 @@ Let me know if you need anything else.`;
   describe("ReferenceImageSelector", () => {
     function buildRegistry(): CharacterPortraitRegistry {
       const registry = new CharacterPortraitRegistry("test-project");
-      registry.addPortrait(createCharacterPortrait({
-        character_name: "Alice Johnson",
-        front_view: "/portraits/alice_front.png",
-        side_view: "/portraits/alice_side.png",
-        back_view: "/portraits/alice_back.png",
-        three_quarter_view: "/portraits/alice_3q.png",
-      }));
-      registry.addPortrait(createCharacterPortrait({
-        character_name: "Bob Smith",
-        front_view: "/portraits/bob_front.png",
-        side_view: "/portraits/bob_side.png",
-      }));
+      registry.addPortrait(
+        createCharacterPortrait({
+          character_name: "Alice Johnson",
+          front_view: "/portraits/alice_front.png",
+          side_view: "/portraits/alice_side.png",
+          back_view: "/portraits/alice_back.png",
+          three_quarter_view: "/portraits/alice_3q.png",
+        })
+      );
+      registry.addPortrait(
+        createCharacterPortrait({
+          character_name: "Bob Smith",
+          front_view: "/portraits/bob_front.png",
+          side_view: "/portraits/bob_side.png",
+        })
+      );
       return registry;
     }
 
@@ -150,7 +154,9 @@ Let me know if you need anything else.`;
       });
       const result = await selector.selectForShot(shot, registry);
       expect(result.shot_id).toBe("s1_shot1");
-      expect(result.selected_references["Alice Johnson"]).toBe("/portraits/alice_front.png");
+      expect(result.selected_references["Alice Johnson"]).toBe(
+        "/portraits/alice_front.png"
+      );
     });
 
     it("selects side view for profile angle", async () => {
@@ -164,7 +170,9 @@ Let me know if you need anything else.`;
         characters: ["Bob Smith"],
       });
       const result = await selector.selectForShot(shot, registry);
-      expect(result.selected_references["Bob Smith"]).toBe("/portraits/bob_side.png");
+      expect(result.selected_references["Bob Smith"]).toBe(
+        "/portraits/bob_side.png"
+      );
     });
 
     it("selects back view for over_the_shoulder", async () => {
@@ -178,7 +186,9 @@ Let me know if you need anything else.`;
         characters: ["Alice Johnson"],
       });
       const result = await selector.selectForShot(shot, registry);
-      expect(result.selected_references["Alice Johnson"]).toBe("/portraits/alice_back.png");
+      expect(result.selected_references["Alice Johnson"]).toBe(
+        "/portraits/alice_back.png"
+      );
     });
 
     it("handles fuzzy matching — case insensitive", async () => {
@@ -234,8 +244,16 @@ Let me know if you need anything else.`;
       const selector = new ReferenceImageSelector();
       const registry = buildRegistry();
       const shots = [
-        createShotDescription({ shot_id: "s1", description: "Shot 1", characters: ["Alice Johnson"] }),
-        createShotDescription({ shot_id: "s2", description: "Shot 2", characters: ["Bob Smith"] }),
+        createShotDescription({
+          shot_id: "s1",
+          description: "Shot 1",
+          characters: ["Alice Johnson"],
+        }),
+        createShotDescription({
+          shot_id: "s2",
+          description: "Shot 2",
+          characters: ["Bob Smith"],
+        }),
       ];
       const results = await selector.selectForShots(shots, registry);
       expect(results.length).toBe(2);

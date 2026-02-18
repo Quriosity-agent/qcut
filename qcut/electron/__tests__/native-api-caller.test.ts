@@ -12,7 +12,6 @@ vi.mock("../api-key-handler.js", () => ({
 // We need to dynamically import after mocking
 const { callModelApi } = await import("../native-pipeline/api-caller.js");
 
-// biome-ignore lint/performance/noDelete: process.env requires delete, not undefined assignment
 function clearEnv(key: string) {
   delete process.env[key];
 }

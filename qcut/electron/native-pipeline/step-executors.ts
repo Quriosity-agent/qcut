@@ -179,12 +179,18 @@ async function executeTextToVideo(
   payload.prompt = input.text || payload.prompt;
 
   // Service-level features: negative prompts (Kling 2.1+)
-  if (payload.negative_prompt === undefined && model.defaults?.negative_prompt) {
+  if (
+    payload.negative_prompt === undefined &&
+    model.defaults?.negative_prompt
+  ) {
     payload.negative_prompt = model.defaults.negative_prompt;
   }
 
   // Service-level features: frame interpolation
-  if (payload.frame_interpolation === undefined && model.defaults?.frame_interpolation) {
+  if (
+    payload.frame_interpolation === undefined &&
+    model.defaults?.frame_interpolation
+  ) {
     payload.frame_interpolation = model.defaults.frame_interpolation;
   }
 

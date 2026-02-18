@@ -15,11 +15,11 @@ export interface AdapterConfig {
 }
 
 export function createAdapterConfig(
-  partial?: Partial<AdapterConfig>,
+  partial?: Partial<AdapterConfig>
 ): AdapterConfig {
   return {
-    provider: 'fal',
-    model: '',
+    provider: "fal",
+    model: "",
     timeout: 120.0,
     max_retries: 3,
     extra: {},

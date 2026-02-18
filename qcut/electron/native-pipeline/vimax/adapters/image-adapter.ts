@@ -7,19 +7,16 @@
  * Ported from: vimax/adapters/image_adapter.py
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 import {
   BaseAdapter,
   type AdapterConfig,
   createAdapterConfig,
-} from './base-adapter.js';
-import {
-  callModelApi,
-  downloadOutput,
-} from '../../api-caller.js';
-import type { ImageOutput } from '../types/output.js';
-import { createImageOutput } from '../types/output.js';
+} from "./base-adapter.js";
+import { callModelApi, downloadOutput } from "../../api-caller.js";
+import type { ImageOutput } from "../types/output.js";
+import { createImageOutput } from "../types/output.js";
 
 export interface ImageAdapterConfig extends AdapterConfig {
   aspect_ratio: string;
@@ -31,15 +28,15 @@ export interface ImageAdapterConfig extends AdapterConfig {
 }
 
 export function createImageAdapterConfig(
-  partial?: Partial<ImageAdapterConfig>,
+  partial?: Partial<ImageAdapterConfig>
 ): ImageAdapterConfig {
   return {
-    ...createAdapterConfig({ provider: 'fal', model: 'nano_banana_pro' }),
-    aspect_ratio: '1:1',
+    ...createAdapterConfig({ provider: "fal", model: "nano_banana_pro" }),
+    aspect_ratio: "1:1",
     num_inference_steps: 28,
     guidance_scale: 3.5,
-    output_dir: 'media/generated/vimax/images',
-    reference_model: 'nano_banana_pro',
+    output_dir: "media/generated/vimax/images",
+    reference_model: "nano_banana_pro",
     reference_strength: 0.6,
     ...partial,
   };
@@ -47,32 +44,32 @@ export function createImageAdapterConfig(
 
 /** Model → FAL endpoint for text-to-image. */
 const MODEL_MAP: Record<string, string> = {
-  flux_dev: 'fal-ai/flux/dev',
-  flux_schnell: 'fal-ai/flux/schnell',
-  imagen4: 'google/imagen-4',
-  nano_banana_pro: 'fal-ai/nano-banana-pro',
-  gpt_image_1_5: 'fal-ai/gpt-image-1-5',
-  seedream_v3: 'fal-ai/seedream-v3',
+  flux_dev: "fal-ai/flux/dev",
+  flux_schnell: "fal-ai/flux/schnell",
+  imagen4: "google/imagen-4",
+  nano_banana_pro: "fal-ai/nano-banana-pro",
+  gpt_image_1_5: "fal-ai/gpt-image-1-5",
+  seedream_v3: "fal-ai/seedream-v3",
 };
 
 /** Model → FAL endpoint for image-to-image with reference. */
 const REFERENCE_MODEL_MAP: Record<string, string> = {
-  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
-  flux_kontext: 'fal-ai/flux-kontext/max/image-to-image',
-  flux_redux: 'fal-ai/flux-pro/v1.1-ultra/redux',
-  seededit_v3: 'fal-ai/seededit-v3',
-  photon_flash: 'fal-ai/photon/flash',
+  nano_banana_pro: "fal-ai/nano-banana-pro/edit",
+  flux_kontext: "fal-ai/flux-kontext/max/image-to-image",
+  flux_redux: "fal-ai/flux-pro/v1.1-ultra/redux",
+  seededit_v3: "fal-ai/seededit-v3",
+  photon_flash: "fal-ai/photon/flash",
 };
 
 /** Models that use image_urls array instead of image_url. */
-const ARRAY_IMAGE_MODELS = new Set(['nano_banana_pro']);
+const ARRAY_IMAGE_MODELS = new Set(["nano_banana_pro"]);
 
 /** Models that use aspect_ratio param directly. */
 const ASPECT_RATIO_MODELS = new Set([
-  'nano_banana_pro',
-  'gpt_image_1_5',
-  'seedream_v3',
-  'imagen4',
+  "nano_banana_pro",
+  "gpt_image_1_5",
+  "seedream_v3",
+  "imagen4",
 ]);
 
 /** Cost estimates per image. */
@@ -106,13 +103,13 @@ const MAX_STEPS_MAP: Record<string, number> = {
 
 function aspectToSize(aspectRatio: string): string {
   const sizes: Record<string, string> = {
-    '1:1': 'square',
-    '16:9': 'landscape_16_9',
-    '9:16': 'portrait_16_9',
-    '4:3': 'landscape_4_3',
-    '3:4': 'portrait_4_3',
+    "1:1": "square",
+    "16:9": "landscape_16_9",
+    "9:16": "portrait_16_9",
+    "4:3": "landscape_4_3",
+    "3:4": "portrait_4_3",
   };
-  return sizes[aspectRatio] ?? 'square';
+  return sizes[aspectRatio] ?? "square";
 }
 
 export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
@@ -124,10 +121,10 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
   }
 
   async initialize(): Promise<boolean> {
-    const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? '';
+    const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "";
     this._hasApiKey = apiKey.length > 0;
     if (!this._hasApiKey) {
-      console.warn('[vimax.image] FAL_KEY not set — using mock mode');
+      console.warn("[vimax.image] FAL_KEY not set — using mock mode");
     }
     return true;
   }
@@ -145,7 +142,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       output_path?: string;
       num_inference_steps?: number;
       guidance_scale?: number;
-    },
+    }
   ): Promise<ImageOutput> {
     await this.ensureInitialized();
 
@@ -153,11 +150,16 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     const aspectRatio = options?.aspect_ratio ?? this.config.aspect_ratio;
 
     if (!this._hasApiKey) {
-      return this._mockGenerate(prompt, model, aspectRatio, options?.output_path);
+      return this._mockGenerate(
+        prompt,
+        model,
+        aspectRatio,
+        options?.output_path
+      );
     }
 
     const startTime = Date.now();
-    const endpoint = MODEL_MAP[model] ?? MODEL_MAP['flux_dev'];
+    const endpoint = MODEL_MAP[model] ?? MODEL_MAP.flux_dev;
 
     const maxSteps = MAX_STEPS_MAP[model] ?? 28;
     const requestedSteps =
@@ -179,7 +181,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     const result = await callModelApi({
       endpoint,
       payload,
-      provider: 'fal',
+      provider: "fal",
     });
 
     const generationTime = (Date.now() - startTime) / 1000;
@@ -188,8 +190,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       throw new Error(`Image generation failed: ${result.error}`);
     }
 
-    const imagePath =
-      options?.output_path ?? this._defaultOutputPath(model);
+    const imagePath = options?.output_path ?? this._defaultOutputPath(model);
     this._ensureDir(imagePath);
 
     if (result.outputUrl) {
@@ -218,7 +219,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       reference_strength?: number;
       aspect_ratio?: string;
       output_path?: string;
-    },
+    }
   ): Promise<ImageOutput> {
     await this.ensureInitialized();
 
@@ -229,13 +230,18 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
 
     if (!this._hasApiKey) {
       return this._mockGenerateWithReference(
-        prompt, referenceImage, model, refStrength, aspectRatio, options?.output_path,
+        prompt,
+        referenceImage,
+        model,
+        refStrength,
+        aspectRatio,
+        options?.output_path
       );
     }
 
     const startTime = Date.now();
     const endpoint =
-      REFERENCE_MODEL_MAP[model] ?? REFERENCE_MODEL_MAP['nano_banana_pro'];
+      REFERENCE_MODEL_MAP[model] ?? REFERENCE_MODEL_MAP.nano_banana_pro;
 
     let payload: Record<string, unknown>;
 
@@ -243,7 +249,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       payload = {
         prompt,
         image_urls: [referenceImage],
-        aspect_ratio: aspectRatio || '16:9',
+        aspect_ratio: aspectRatio || "16:9",
         num_images: 1,
       };
     } else {
@@ -262,13 +268,15 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     const result = await callModelApi({
       endpoint,
       payload,
-      provider: 'fal',
+      provider: "fal",
     });
 
     const generationTime = (Date.now() - startTime) / 1000;
 
     if (!result.success) {
-      throw new Error(`Image generation with reference failed: ${result.error}`);
+      throw new Error(
+        `Image generation with reference failed: ${result.error}`
+      );
     }
 
     const imagePath =
@@ -279,9 +287,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       await downloadOutput(result.outputUrl, imagePath);
     }
 
-    const costKey = ARRAY_IMAGE_MODELS.has(model)
-      ? `${model}_edit`
-      : model;
+    const costKey = ARRAY_IMAGE_MODELS.has(model) ? `${model}_edit` : model;
 
     return createImageOutput({
       image_path: imagePath,
@@ -304,7 +310,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
   /** Generate multiple images from prompts. */
   async generateBatch(
     prompts: string[],
-    options?: { model?: string },
+    options?: { model?: string }
   ): Promise<ImageOutput[]> {
     const results: ImageOutput[] = [];
     for (const prompt of prompts) {
@@ -317,10 +323,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
   // -- Private helpers --
 
   private _defaultOutputPath(prefix: string): string {
-    return path.join(
-      this.config.output_dir,
-      `${prefix}_${Date.now()}.png`,
-    );
+    return path.join(this.config.output_dir, `${prefix}_${Date.now()}.png`);
   }
 
   private _ensureDir(filePath: string): void {
@@ -334,7 +337,7 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     prompt: string,
     model: string,
     aspectRatio: string,
-    outputPath?: string,
+    outputPath?: string
   ): ImageOutput {
     const imagePath = outputPath ?? this._defaultOutputPath(`mock_${model}`);
     this._ensureDir(imagePath);
@@ -358,14 +361,14 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     model: string,
     refStrength: number,
     aspectRatio: string,
-    outputPath?: string,
+    outputPath?: string
   ): ImageOutput {
     const imagePath =
       outputPath ?? this._defaultOutputPath(`mock_ref_${model}`);
     this._ensureDir(imagePath);
     fs.writeFileSync(
       imagePath,
-      `Mock image with reference\nPrompt: ${prompt}\nReference: ${referenceImage}\nStrength: ${refStrength}`,
+      `Mock image with reference\nPrompt: ${prompt}\nReference: ${referenceImage}\nStrength: ${refStrength}`
     );
 
     return createImageOutput({

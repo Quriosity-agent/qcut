@@ -83,8 +83,16 @@ describe("ViMax Types", () => {
       const scene = createScene({
         scene_id: "s1",
         shots: [
-          createShotDescription({ shot_id: "s1_1", description: "a", duration_seconds: 3 }),
-          createShotDescription({ shot_id: "s1_2", description: "b", duration_seconds: 7 }),
+          createShotDescription({
+            shot_id: "s1_1",
+            description: "a",
+            duration_seconds: 3,
+          }),
+          createShotDescription({
+            shot_id: "s1_2",
+            description: "b",
+            duration_seconds: 7,
+          }),
         ],
       });
       expect(getSceneTotalDuration(scene)).toBe(10);
@@ -97,7 +105,9 @@ describe("ViMax Types", () => {
         scenes: [
           createScene({
             scene_id: "s1",
-            shots: [createShotDescription({ shot_id: "s1_1", description: "a" })],
+            shots: [
+              createShotDescription({ shot_id: "s1_1", description: "a" }),
+            ],
           }),
           createScene({
             scene_id: "s2",
@@ -118,11 +128,23 @@ describe("ViMax Types", () => {
         scenes: [
           createScene({
             scene_id: "s1",
-            shots: [createShotDescription({ shot_id: "s1_1", description: "a", duration_seconds: 5 })],
+            shots: [
+              createShotDescription({
+                shot_id: "s1_1",
+                description: "a",
+                duration_seconds: 5,
+              }),
+            ],
           }),
           createScene({
             scene_id: "s2",
-            shots: [createShotDescription({ shot_id: "s2_1", description: "b", duration_seconds: 8 })],
+            shots: [
+              createShotDescription({
+                shot_id: "s2_1",
+                description: "b",
+                duration_seconds: 8,
+              }),
+            ],
           }),
         ],
       };
@@ -185,7 +207,9 @@ describe("ViMax Types", () => {
 
     it("listCharacters returns all names", () => {
       const registry = new CharacterPortraitRegistry("proj-1");
-      registry.addPortrait(createCharacterPortrait({ character_name: "Alice" }));
+      registry.addPortrait(
+        createCharacterPortrait({ character_name: "Alice" })
+      );
       registry.addPortrait(createCharacterPortrait({ character_name: "Bob" }));
       const names = registry.listCharacters();
       expect(names).toContain("Alice");
@@ -195,21 +219,25 @@ describe("ViMax Types", () => {
 
     it("getBestView returns correct view for angle", () => {
       const registry = new CharacterPortraitRegistry("proj-1");
-      registry.addPortrait(createCharacterPortrait({
-        character_name: "Alice",
-        front_view: "/front.png",
-        side_view: "/side.png",
-      }));
+      registry.addPortrait(
+        createCharacterPortrait({
+          character_name: "Alice",
+          front_view: "/front.png",
+          side_view: "/side.png",
+        })
+      );
       expect(registry.getBestView("Alice", "front")).toBe("/front.png");
       expect(registry.getBestView("Alice", "profile")).toBe("/side.png");
     });
 
     it("serializes to JSON and back", () => {
       const registry = new CharacterPortraitRegistry("proj-1");
-      registry.addPortrait(createCharacterPortrait({
-        character_name: "Alice",
-        front_view: "/front.png",
-      }));
+      registry.addPortrait(
+        createCharacterPortrait({
+          character_name: "Alice",
+          front_view: "/front.png",
+        })
+      );
       const json = registry.toJSON();
       const restored = CharacterPortraitRegistry.fromJSON(json);
       expect(restored.hasCharacter("Alice")).toBe(true);
@@ -244,8 +272,12 @@ describe("ViMax Types", () => {
         primary_camera: primary,
         secondary_cameras: [secondary],
       };
-      expect(getCameraFromHierarchy(hierarchy, "primary")?.camera_id).toBe("primary");
-      expect(getCameraFromHierarchy(hierarchy, "secondary")?.camera_id).toBe("secondary");
+      expect(getCameraFromHierarchy(hierarchy, "primary")?.camera_id).toBe(
+        "primary"
+      );
+      expect(getCameraFromHierarchy(hierarchy, "secondary")?.camera_id).toBe(
+        "secondary"
+      );
       expect(getCameraFromHierarchy(hierarchy, "nonexistent")).toBeUndefined();
     });
 

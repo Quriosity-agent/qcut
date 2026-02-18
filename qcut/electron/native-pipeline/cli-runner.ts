@@ -19,11 +19,21 @@ import {
   estimatePipelineCost,
   listModels,
 } from "./cost-calculator.js";
-import { downloadOutput, setApiKeyProvider, envApiKeyProvider } from "./api-caller.js";
+import {
+  downloadOutput,
+  setApiKeyProvider,
+  envApiKeyProvider,
+} from "./api-caller.js";
 import { resolveOutputDir } from "./output-utils.js";
 import type { ModelCategory } from "./registry.js";
 import { compositeGrid, getGridImageCount } from "./grid-generator.js";
-import { setKey, getKey, checkKeys, setupEnvTemplate, loadEnvFile } from "./key-manager.js";
+import {
+  setKey,
+  getKey,
+  checkKeys,
+  setupEnvTemplate,
+  loadEnvFile,
+} from "./key-manager.js";
 import { createExamples } from "./example-pipelines.js";
 import {
   handleVimaxExtractCharacters,
@@ -116,7 +126,10 @@ export class CLIPipelineRunner {
     this.abortController.abort();
   }
 
-  async run(options: CLIRunOptions, onProgress: ProgressFn): Promise<CLIResult> {
+  async run(
+    options: CLIRunOptions,
+    onProgress: ProgressFn
+  ): Promise<CLIResult> {
     loadEnvFile();
 
     switch (options.command) {
@@ -175,9 +188,15 @@ export class CLIPipelineRunner {
       case "list-video-models":
         return this.handleListModels({ ...options, category: "text_to_video" });
       case "list-motion-models":
-        return this.handleListModels({ ...options, category: "motion_transfer" });
+        return this.handleListModels({
+          ...options,
+          category: "motion_transfer",
+        });
       case "list-speech-models":
-        return this.handleListModels({ ...options, category: "text_to_speech" });
+        return this.handleListModels({
+          ...options,
+          category: "text_to_speech",
+        });
       default:
         return { success: false, error: `Unknown command: ${options.command}` };
     }
@@ -205,7 +224,10 @@ export class CLIPipelineRunner {
 
   private handleEstimateCost(options: CLIRunOptions): CLIResult {
     if (!options.model) {
-      return { success: false, error: "Missing --model. Run --help for usage." };
+      return {
+        success: false,
+        error: "Missing --model. Run --help for usage.",
+      };
     }
     if (!ModelRegistry.has(options.model)) {
       return {
@@ -227,7 +249,10 @@ export class CLIPipelineRunner {
     onProgress: ProgressFn
   ): Promise<CLIResult> {
     if (!options.model) {
-      return { success: false, error: "Missing --model. Run --help for usage." };
+      return {
+        success: false,
+        error: "Missing --model. Run --help for usage.",
+      };
     }
     if (!ModelRegistry.has(options.model)) {
       return {
@@ -271,7 +296,12 @@ export class CLIPipelineRunner {
     const result = await this.executor.executeStep(step, input, {
       outputDir,
       onProgress: (percent, message) => {
-        onProgress({ stage: "processing", percent, message, model: options.model });
+        onProgress({
+          stage: "processing",
+          percent,
+          message,
+          model: options.model,
+        });
       },
       signal: this.abortController.signal,
     });
@@ -295,7 +325,12 @@ export class CLIPipelineRunner {
       }
     }
 
-    onProgress({ stage: "complete", percent: 100, message: "Done", model: options.model });
+    onProgress({
+      stage: "complete",
+      percent: 100,
+      message: "Done",
+      model: options.model,
+    });
 
     return {
       success: true,
@@ -311,7 +346,10 @@ export class CLIPipelineRunner {
     onProgress: ProgressFn
   ): Promise<CLIResult> {
     if (!options.config) {
-      return { success: false, error: "Missing --config. Run --help for usage." };
+      return {
+        success: false,
+        error: "Missing --config. Run --help for usage.",
+      };
     }
 
     let yamlContent: string;
@@ -371,7 +409,10 @@ export class CLIPipelineRunner {
       error: result.error,
       cost: result.totalCost,
       duration: (Date.now() - startTime) / 1000,
-      data: { stepsCompleted: result.stepsCompleted, totalSteps: result.totalSteps },
+      data: {
+        stepsCompleted: result.stepsCompleted,
+        totalSteps: result.totalSteps,
+      },
     };
   }
 
@@ -390,20 +431,32 @@ export class CLIPipelineRunner {
     }
 
     const startTime = Date.now();
-    onProgress({ stage: "analyzing", percent: 0, message: "Analyzing video...", model });
+    onProgress({
+      stage: "analyzing",
+      percent: 0,
+      message: "Analyzing video...",
+      model,
+    });
 
     const step: PipelineStep = {
       type: "image_understanding",
       model,
-      params: { prompt: options.prompt || options.text || "Describe this video in detail" },
+      params: {
+        prompt:
+          options.prompt || options.text || "Describe this video in detail",
+      },
       enabled: true,
       retryCount: 0,
     };
 
-    const result = await this.executor.executeStep(step, { videoUrl: videoInput }, {
-      outputDir: options.outputDir,
-      signal: this.abortController.signal,
-    });
+    const result = await this.executor.executeStep(
+      step,
+      { videoUrl: videoInput },
+      {
+        outputDir: options.outputDir,
+        signal: this.abortController.signal,
+      }
+    );
 
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
 
@@ -430,7 +483,12 @@ export class CLIPipelineRunner {
     }
 
     const startTime = Date.now();
-    onProgress({ stage: "transcribing", percent: 0, message: "Transcribing audio...", model });
+    onProgress({
+      stage: "transcribing",
+      percent: 0,
+      message: "Transcribing audio...",
+      model,
+    });
 
     const step: PipelineStep = {
       type: "speech_to_text",
@@ -440,10 +498,14 @@ export class CLIPipelineRunner {
       retryCount: 0,
     };
 
-    const result = await this.executor.executeStep(step, { audioUrl: audioInput }, {
-      outputDir: options.outputDir,
-      signal: this.abortController.signal,
-    });
+    const result = await this.executor.executeStep(
+      step,
+      { audioUrl: audioInput },
+      {
+        outputDir: options.outputDir,
+        signal: this.abortController.signal,
+      }
+    );
 
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
 
@@ -475,7 +537,12 @@ export class CLIPipelineRunner {
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
-    onProgress({ stage: "transferring", percent: 0, message: "Transferring motion...", model });
+    onProgress({
+      stage: "transferring",
+      percent: 0,
+      message: "Transferring motion...",
+      model,
+    });
 
     const step: PipelineStep = {
       type: "avatar",
@@ -493,8 +560,13 @@ export class CLIPipelineRunner {
 
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
-        result.outputPath = await downloadOutput(result.outputUrl, path.join(outputDir, `motion_${Date.now()}.mp4`));
-      } catch { /* URL still available */ }
+        result.outputPath = await downloadOutput(
+          result.outputUrl,
+          path.join(outputDir, `motion_${Date.now()}.mp4`)
+        );
+      } catch {
+        /* URL still available */
+      }
     }
 
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
@@ -514,7 +586,10 @@ export class CLIPipelineRunner {
   ): Promise<CLIResult> {
     const text = options.text;
     if (!text) {
-      return { success: false, error: "Missing --text/-t (prompt for grid images)" };
+      return {
+        success: false,
+        error: "Missing --text/-t (prompt for grid images)",
+      };
     }
 
     const model = options.model || "flux_dev";
@@ -528,7 +603,12 @@ export class CLIPipelineRunner {
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
-    onProgress({ stage: "generating", percent: 0, message: `Generating ${count} images...`, model });
+    onProgress({
+      stage: "generating",
+      percent: 0,
+      message: `Generating ${count} images...`,
+      model,
+    });
 
     const imagePaths: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -540,18 +620,28 @@ export class CLIPipelineRunner {
         retryCount: 0,
       };
 
-      const result = await this.executor.executeStep(step, { text }, {
-        outputDir,
-        signal: this.abortController.signal,
-      });
+      const result = await this.executor.executeStep(
+        step,
+        { text },
+        {
+          outputDir,
+          signal: this.abortController.signal,
+        }
+      );
 
       if (!result.success) {
-        return { success: false, error: `Image ${i + 1} failed: ${result.error}` };
+        return {
+          success: false,
+          error: `Image ${i + 1} failed: ${result.error}`,
+        };
       }
 
       if (result.outputPath) imagePaths.push(result.outputPath);
       else if (result.outputUrl) {
-        const dl = await downloadOutput(result.outputUrl, path.join(outputDir, `grid_${i}.png`));
+        const dl = await downloadOutput(
+          result.outputUrl,
+          path.join(outputDir, `grid_${i}.png`)
+        );
         imagePaths.push(dl);
       }
 
@@ -563,7 +653,12 @@ export class CLIPipelineRunner {
       });
     }
 
-    onProgress({ stage: "compositing", percent: 85, message: "Creating grid...", model });
+    onProgress({
+      stage: "compositing",
+      percent: 85,
+      message: "Creating grid...",
+      model,
+    });
 
     const gridResult = await compositeGrid(imagePaths, {
       layout: layout as "2x2" | "3x3" | "2x3" | "3x2" | "1x2" | "2x1",
@@ -601,7 +696,12 @@ export class CLIPipelineRunner {
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
-    onProgress({ stage: "upscaling", percent: 0, message: "Upscaling image...", model });
+    onProgress({
+      stage: "upscaling",
+      percent: 0,
+      message: "Upscaling image...",
+      model,
+    });
 
     const params: Record<string, unknown> = {};
     if (options.upscale) params.upscale_factor = parseInt(options.upscale, 10);
@@ -614,15 +714,24 @@ export class CLIPipelineRunner {
       retryCount: 0,
     };
 
-    const result = await this.executor.executeStep(step, { imageUrl: imageInput }, {
-      outputDir,
-      signal: this.abortController.signal,
-    });
+    const result = await this.executor.executeStep(
+      step,
+      { imageUrl: imageInput },
+      {
+        outputDir,
+        signal: this.abortController.signal,
+      }
+    );
 
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
-        result.outputPath = await downloadOutput(result.outputUrl, path.join(outputDir, `upscaled_${Date.now()}.png`));
-      } catch { /* URL still available */ }
+        result.outputPath = await downloadOutput(
+          result.outputUrl,
+          path.join(outputDir, `upscaled_${Date.now()}.png`)
+        );
+      } catch {
+        /* URL still available */
+      }
     }
 
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
@@ -652,7 +761,10 @@ export class CLIPipelineRunner {
       return { success: false, error: "Missing --value" };
     }
     setKey(options.keyName, options.keyValue);
-    return { success: true, data: { message: `Key '${options.keyName}' saved` } };
+    return {
+      success: true,
+      data: { message: `Key '${options.keyName}' saved` },
+    };
   }
 
   private handleGetKey(options: CLIRunOptions): CLIResult {
@@ -663,9 +775,8 @@ export class CLIPipelineRunner {
     if (!value) {
       return { success: false, error: `Key '${options.keyName}' not found` };
     }
-    const masked = value.length > 8
-      ? value.slice(0, 4) + "****" + value.slice(-4)
-      : "****";
+    const masked =
+      value.length > 8 ? value.slice(0, 4) + "****" + value.slice(-4) : "****";
     return { success: true, data: { name: options.keyName, masked } };
   }
 
@@ -682,7 +793,6 @@ export class CLIPipelineRunner {
       data: { created, count: created.length },
     };
   }
-
 }
 
 function guessExtFromCommand(command: string): string {

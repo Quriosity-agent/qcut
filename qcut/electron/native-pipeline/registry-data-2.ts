@@ -765,7 +765,7 @@ export function registerHeyGenModels(): void {
     endpoint: "fal-ai/heygen/v2/avatar",
     categories: ["avatar"],
     description: "AI avatar generation with customizable appearances",
-    pricing: { per_second: 0.10 },
+    pricing: { per_second: 0.1 },
     defaults: { resolution: "1080p" },
     features: ["avatar_generation", "customizable", "lip_sync"],
     maxDuration: 60,

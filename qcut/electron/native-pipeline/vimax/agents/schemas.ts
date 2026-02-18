@@ -84,113 +84,113 @@ export interface ChapterCompressionResponse {
  * response_format: { type: "json_schema", json_schema: { schema } }
  */
 export const SCREENPLAY_JSON_SCHEMA: Record<string, unknown> = {
-  type: 'object',
+  type: "object",
   properties: {
-    title: { type: 'string' },
-    logline: { type: 'string' },
+    title: { type: "string" },
+    logline: { type: "string" },
     scenes: {
-      type: 'array',
+      type: "array",
       items: {
-        type: 'object',
+        type: "object",
         properties: {
-          scene_id: { type: 'string' },
-          title: { type: 'string' },
-          location: { type: 'string' },
-          time: { type: 'string' },
+          scene_id: { type: "string" },
+          title: { type: "string" },
+          location: { type: "string" },
+          time: { type: "string" },
           shots: {
-            type: 'array',
+            type: "array",
             items: {
-              type: 'object',
+              type: "object",
               properties: {
-                shot_id: { type: 'string' },
-                shot_type: { type: 'string' },
-                description: { type: 'string' },
-                camera_movement: { type: 'string' },
-                characters: { type: 'array', items: { type: 'string' } },
-                duration_seconds: { type: 'number' },
-                image_prompt: { type: 'string' },
-                video_prompt: { type: 'string' },
+                shot_id: { type: "string" },
+                shot_type: { type: "string" },
+                description: { type: "string" },
+                camera_movement: { type: "string" },
+                characters: { type: "array", items: { type: "string" } },
+                duration_seconds: { type: "number" },
+                image_prompt: { type: "string" },
+                video_prompt: { type: "string" },
               },
               required: [
-                'shot_id',
-                'shot_type',
-                'description',
-                'camera_movement',
-                'characters',
-                'duration_seconds',
-                'image_prompt',
-                'video_prompt',
+                "shot_id",
+                "shot_type",
+                "description",
+                "camera_movement",
+                "characters",
+                "duration_seconds",
+                "image_prompt",
+                "video_prompt",
               ],
               additionalProperties: false,
             },
           },
         },
-        required: ['scene_id', 'title', 'location', 'time', 'shots'],
+        required: ["scene_id", "title", "location", "time", "shots"],
         additionalProperties: false,
       },
     },
   },
-  required: ['title', 'logline', 'scenes'],
+  required: ["title", "logline", "scenes"],
   additionalProperties: false,
 };
 
 /** JSON schema for CharacterListResponse. */
 export const CHARACTER_LIST_JSON_SCHEMA: Record<string, unknown> = {
-  type: 'object',
+  type: "object",
   properties: {
     characters: {
-      type: 'array',
+      type: "array",
       items: {
-        type: 'object',
+        type: "object",
         properties: {
-          name: { type: 'string' },
-          description: { type: 'string' },
-          age: { type: 'string' },
-          gender: { type: 'string' },
-          appearance: { type: 'string' },
-          personality: { type: 'string' },
-          role: { type: 'string' },
-          relationships: { type: 'array', items: { type: 'string' } },
+          name: { type: "string" },
+          description: { type: "string" },
+          age: { type: "string" },
+          gender: { type: "string" },
+          appearance: { type: "string" },
+          personality: { type: "string" },
+          role: { type: "string" },
+          relationships: { type: "array", items: { type: "string" } },
         },
         required: [
-          'name',
-          'description',
-          'age',
-          'gender',
-          'appearance',
-          'personality',
-          'role',
-          'relationships',
+          "name",
+          "description",
+          "age",
+          "gender",
+          "appearance",
+          "personality",
+          "role",
+          "relationships",
         ],
         additionalProperties: false,
       },
     },
   },
-  required: ['characters'],
+  required: ["characters"],
   additionalProperties: false,
 };
 
 /** JSON schema for ChapterCompressionResponse. */
 export const CHAPTER_COMPRESSION_JSON_SCHEMA: Record<string, unknown> = {
-  type: 'object',
+  type: "object",
   properties: {
-    title: { type: 'string' },
+    title: { type: "string" },
     scenes: {
-      type: 'array',
+      type: "array",
       items: {
-        type: 'object',
+        type: "object",
         properties: {
-          title: { type: 'string' },
-          description: { type: 'string' },
-          characters: { type: 'array', items: { type: 'string' } },
-          setting: { type: 'string' },
+          title: { type: "string" },
+          description: { type: "string" },
+          characters: { type: "array", items: { type: "string" } },
+          setting: { type: "string" },
         },
-        required: ['title', 'description', 'characters', 'setting'],
+        required: ["title", "description", "characters", "setting"],
         additionalProperties: false,
       },
     },
   },
-  required: ['title', 'scenes'],
+  required: ["title", "scenes"],
   additionalProperties: false,
 };
 
@@ -201,8 +201,8 @@ export const CHAPTER_COMPRESSION_JSON_SCHEMA: Record<string, unknown> = {
 export function validateScreenplayResponse(data: unknown): ScreenplayResponse {
   const obj = data as Record<string, unknown>;
   return {
-    title: String(obj.title ?? ''),
-    logline: String(obj.logline ?? ''),
+    title: String(obj.title ?? ""),
+    logline: String(obj.logline ?? ""),
     scenes: Array.isArray(obj.scenes)
       ? (obj.scenes as unknown[]).map(validateSceneResponse)
       : [],
@@ -212,10 +212,10 @@ export function validateScreenplayResponse(data: unknown): ScreenplayResponse {
 function validateSceneResponse(data: unknown): SceneResponse {
   const obj = data as Record<string, unknown>;
   return {
-    scene_id: String(obj.scene_id ?? ''),
-    title: String(obj.title ?? ''),
-    location: String(obj.location ?? ''),
-    time: String(obj.time ?? ''),
+    scene_id: String(obj.scene_id ?? ""),
+    title: String(obj.title ?? ""),
+    location: String(obj.location ?? ""),
+    time: String(obj.time ?? ""),
     shots: Array.isArray(obj.shots)
       ? (obj.shots as unknown[]).map(validateShotResponse)
       : [],
@@ -225,21 +225,21 @@ function validateSceneResponse(data: unknown): SceneResponse {
 function validateShotResponse(data: unknown): ShotResponse {
   const obj = data as Record<string, unknown>;
   return {
-    shot_id: String(obj.shot_id ?? ''),
-    shot_type: String(obj.shot_type ?? 'medium'),
-    description: String(obj.description ?? ''),
-    camera_movement: String(obj.camera_movement ?? 'static'),
+    shot_id: String(obj.shot_id ?? ""),
+    shot_type: String(obj.shot_type ?? "medium"),
+    description: String(obj.description ?? ""),
+    camera_movement: String(obj.camera_movement ?? "static"),
     characters: Array.isArray(obj.characters)
       ? (obj.characters as unknown[]).map(String)
       : [],
     duration_seconds: Number(obj.duration_seconds ?? 5),
-    image_prompt: String(obj.image_prompt ?? ''),
-    video_prompt: String(obj.video_prompt ?? ''),
+    image_prompt: String(obj.image_prompt ?? ""),
+    video_prompt: String(obj.video_prompt ?? ""),
   };
 }
 
 export function validateCharacterListResponse(
-  data: unknown,
+  data: unknown
 ): CharacterListResponse {
   const obj = data as Record<string, unknown>;
   return {
@@ -252,13 +252,13 @@ export function validateCharacterListResponse(
 function validateCharacterResponse(data: unknown): CharacterResponse {
   const obj = data as Record<string, unknown>;
   return {
-    name: String(obj.name ?? ''),
-    description: String(obj.description ?? ''),
-    age: String(obj.age ?? ''),
-    gender: String(obj.gender ?? ''),
-    appearance: String(obj.appearance ?? ''),
-    personality: String(obj.personality ?? ''),
-    role: String(obj.role ?? 'minor'),
+    name: String(obj.name ?? ""),
+    description: String(obj.description ?? ""),
+    age: String(obj.age ?? ""),
+    gender: String(obj.gender ?? ""),
+    appearance: String(obj.appearance ?? ""),
+    personality: String(obj.personality ?? ""),
+    role: String(obj.role ?? "minor"),
     relationships: Array.isArray(obj.relationships)
       ? (obj.relationships as unknown[]).map(String)
       : [],
@@ -266,21 +266,21 @@ function validateCharacterResponse(data: unknown): CharacterResponse {
 }
 
 export function validateChapterCompressionResponse(
-  data: unknown,
+  data: unknown
 ): ChapterCompressionResponse {
   const obj = data as Record<string, unknown>;
   return {
-    title: String(obj.title ?? ''),
+    title: String(obj.title ?? ""),
     scenes: Array.isArray(obj.scenes)
       ? (obj.scenes as unknown[]).map((s) => {
           const scene = s as Record<string, unknown>;
           return {
-            title: String(scene.title ?? ''),
-            description: String(scene.description ?? ''),
+            title: String(scene.title ?? ""),
+            description: String(scene.description ?? ""),
             characters: Array.isArray(scene.characters)
               ? (scene.characters as unknown[]).map(String)
               : [],
-            setting: String(scene.setting ?? ''),
+            setting: String(scene.setting ?? ""),
           };
         })
       : [],

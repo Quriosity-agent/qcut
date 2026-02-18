@@ -8,10 +8,10 @@
  * @module electron/native-pipeline/validators
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { ValidationError, ConfigurationError } from './errors.js';
-import type { PipelineStep } from './executor.js';
+import * as fs from "fs";
+import * as path from "path";
+import { ValidationError, ConfigurationError } from "./errors.js";
+import type { PipelineStep } from "./executor.js";
 
 // -- Config Validator --
 
@@ -41,7 +41,7 @@ export class ConfigValidator {
       throw new ConfigurationError('Pipeline config must have a "steps" array');
     }
     if (config.steps.length === 0) {
-      throw new ConfigurationError('Pipeline must have at least one step');
+      throw new ConfigurationError("Pipeline must have at least one step");
     }
   }
 
@@ -63,9 +63,9 @@ export class ConfigValidator {
 
   private validateStepParameters(step: PipelineStep, index: number): void {
     if (step.params) {
-      if (typeof step.params !== 'object' || Array.isArray(step.params)) {
+      if (typeof step.params !== "object" || Array.isArray(step.params)) {
         throw new ConfigurationError(
-          `Step ${index}: "params" must be an object`,
+          `Step ${index}: "params" must be an object`
         );
       }
     }
@@ -76,20 +76,20 @@ export class ConfigValidator {
     const parent = path.dirname(dir);
     if (!fs.existsSync(parent)) {
       throw new ConfigurationError(
-        `Output directory parent does not exist: ${parent}`,
+        `Output directory parent does not exist: ${parent}`
       );
     }
   }
 
   private validateGlobalConfig(config: Record<string, unknown>): void {
     if (config.cost_limit !== undefined) {
-      if (typeof config.cost_limit !== 'number' || config.cost_limit <= 0) {
-        throw new ConfigurationError('cost_limit must be a positive number');
+      if (typeof config.cost_limit !== "number" || config.cost_limit <= 0) {
+        throw new ConfigurationError("cost_limit must be a positive number");
       }
     }
     if (config.timeout !== undefined) {
-      if (typeof config.timeout !== 'number' || config.timeout <= 0) {
-        throw new ConfigurationError('timeout must be a positive number');
+      if (typeof config.timeout !== "number" || config.timeout <= 0) {
+        throw new ConfigurationError("timeout must be a positive number");
       }
     }
   }
@@ -119,7 +119,7 @@ export class InputValidator {
     } catch {
       throw new ValidationError(`Invalid URL: ${url}`);
     }
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
+    if (!["http:", "https:"].includes(parsed.protocol)) {
       throw new ValidationError(`URL must use http or https: ${url}`);
     }
     return url;
@@ -132,7 +132,7 @@ export class InputValidator {
     }
     if (apiKey.length < 10) {
       throw new ValidationError(
-        `API key for ${serviceName} seems too short (${apiKey.length} chars)`,
+        `API key for ${serviceName} seems too short (${apiKey.length} chars)`
       );
     }
     return apiKey.trim();
@@ -140,7 +140,7 @@ export class InputValidator {
 
   /** Validate that a number is positive. */
   validatePositiveNumber(value: number, name: string): number {
-    if (typeof value !== 'number' || isNaN(value)) {
+    if (typeof value !== "number" || isNaN(value)) {
       throw new ValidationError(`${name} must be a number`);
     }
     if (value <= 0) {
@@ -162,15 +162,12 @@ export class InputValidator {
   }
 
   /** Validate media file by extension. */
-  validateMediaFile(
-    filePath: string,
-    allowedExtensions: string[],
-  ): string {
+  validateMediaFile(filePath: string, allowedExtensions: string[]): string {
     const resolved = this.validateFilePath(filePath);
     const ext = path.extname(resolved).toLowerCase();
     if (!allowedExtensions.includes(ext)) {
       throw new ValidationError(
-        `Unsupported file type: ${ext}. Allowed: ${allowedExtensions.join(', ')}`,
+        `Unsupported file type: ${ext}. Allowed: ${allowedExtensions.join(", ")}`
       );
     }
     return resolved;

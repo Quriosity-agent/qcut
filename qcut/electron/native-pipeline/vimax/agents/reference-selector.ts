@@ -13,14 +13,14 @@ import {
   type AgentResult,
   createAgentConfig,
   agentOk,
-} from './base-agent.js';
-import type { ShotDescription } from '../types/shot.js';
-import type { CharacterPortrait } from '../types/character.js';
+} from "./base-agent.js";
+import type { ShotDescription } from "../types/shot.js";
+import type { CharacterPortrait } from "../types/character.js";
 import {
   CharacterPortraitRegistry,
   getPortraitViews,
   hasPortraitViews,
-} from '../types/character.js';
+} from "../types/character.js";
 
 export interface ReferenceSelectorConfig extends AgentConfig {
   use_llm_for_selection: boolean;
@@ -28,12 +28,12 @@ export interface ReferenceSelectorConfig extends AgentConfig {
 }
 
 export function createReferenceSelectorConfig(
-  partial?: Partial<ReferenceSelectorConfig>,
+  partial?: Partial<ReferenceSelectorConfig>
 ): ReferenceSelectorConfig {
   return {
-    ...createAgentConfig({ name: 'ReferenceImageSelector' }),
+    ...createAgentConfig({ name: "ReferenceImageSelector" }),
     use_llm_for_selection: false,
-    llm_model: 'kimi-k2.5',
+    llm_model: "kimi-k2.5",
     ...partial,
   };
 }
@@ -47,31 +47,31 @@ export interface ReferenceSelectionResult {
 
 /** Camera angle → portrait view mapping. */
 const ANGLE_TO_VIEW: Record<string, string> = {
-  front: 'front',
-  eye_level: 'front',
-  straight_on: 'front',
-  face_on: 'front',
-  side: 'side',
-  profile: 'side',
-  left: 'side',
-  right: 'side',
-  back: 'back',
-  behind: 'back',
-  rear: 'back',
-  three_quarter: 'three_quarter',
-  '45_degree': 'three_quarter',
-  angled: 'three_quarter',
+  front: "front",
+  eye_level: "front",
+  straight_on: "front",
+  face_on: "front",
+  side: "side",
+  profile: "side",
+  left: "side",
+  right: "side",
+  back: "back",
+  behind: "back",
+  rear: "back",
+  three_quarter: "three_quarter",
+  "45_degree": "three_quarter",
+  angled: "three_quarter",
 };
 
 /** Shot type → preferred view order. */
 const SHOT_TYPE_PREFERENCE: Record<string, string[]> = {
-  close_up: ['front', 'three_quarter'],
-  extreme_close_up: ['front'],
-  medium: ['front', 'three_quarter', 'side'],
-  wide: ['front', 'side', 'back'],
-  establishing: ['front', 'side'],
-  over_the_shoulder: ['back', 'three_quarter'],
-  two_shot: ['front', 'three_quarter', 'side'],
+  close_up: ["front", "three_quarter"],
+  extreme_close_up: ["front"],
+  medium: ["front", "three_quarter", "side"],
+  wide: ["front", "side", "back"],
+  establishing: ["front", "side"],
+  over_the_shoulder: ["back", "three_quarter"],
+  two_shot: ["front", "three_quarter", "side"],
   pov: [],
   insert: [],
 };
@@ -89,21 +89,21 @@ export class ReferenceImageSelector extends BaseAgent<
   }
 
   async process(
-    shot: ShotDescription,
+    shot: ShotDescription
   ): Promise<AgentResult<ReferenceSelectionResult>> {
     // Interface compatibility — use selectForShot() with registry instead
     return agentOk({
       shot_id: shot.shot_id,
       selected_references: {},
       selection_reason:
-        'Use selectForShot() with registry for actual selection',
+        "Use selectForShot() with registry for actual selection",
     });
   }
 
   /** Select best references for a single shot. */
   async selectForShot(
     shot: ShotDescription,
-    registry: CharacterPortraitRegistry,
+    registry: CharacterPortraitRegistry
   ): Promise<ReferenceSelectionResult> {
     const selected: Record<string, string> = {};
     const reasons: string[] = [];
@@ -116,7 +116,7 @@ export class ReferenceImageSelector extends BaseAgent<
       }
       if (matchedName !== charName) {
         console.log(
-          `[ref_selector] Fuzzy matched '${charName}' -> '${matchedName}'`,
+          `[ref_selector] Fuzzy matched '${charName}' -> '${matchedName}'`
         );
       }
 
@@ -128,15 +128,13 @@ export class ReferenceImageSelector extends BaseAgent<
       const bestView = this._selectBestView(
         portrait,
         shot.camera_angle,
-        typeof shot.shot_type === 'string'
-          ? shot.shot_type
-          : shot.shot_type,
+        typeof shot.shot_type === "string" ? shot.shot_type : shot.shot_type
       );
 
       if (bestView) {
         selected[charName] = bestView;
         reasons.push(
-          `${charName}: selected '${bestView}' (angle=${shot.camera_angle}, type=${shot.shot_type})`,
+          `${charName}: selected '${bestView}' (angle=${shot.camera_angle}, type=${shot.shot_type})`
         );
       }
     }
@@ -149,7 +147,7 @@ export class ReferenceImageSelector extends BaseAgent<
       selected_references: selected,
       primary_reference: primary,
       selection_reason:
-        reasons.length > 0 ? reasons.join('; ') : 'No references selected',
+        reasons.length > 0 ? reasons.join("; ") : "No references selected",
     };
   }
 
@@ -157,10 +155,7 @@ export class ReferenceImageSelector extends BaseAgent<
    * Get ordered view preference for a shot type and camera angle.
    * Returns an ordered list of preferred portrait views.
    */
-  getViewPreference(
-    shotType: string,
-    cameraAngle?: string,
-  ): string[] {
+  getViewPreference(shotType: string, cameraAngle?: string): string[] {
     const preferences: string[] = [];
 
     // Camera angle takes priority
@@ -170,13 +165,13 @@ export class ReferenceImageSelector extends BaseAgent<
     }
 
     // Then shot type preferences
-    const shotPrefs = SHOT_TYPE_PREFERENCE[shotType] ?? ['front'];
+    const shotPrefs = SHOT_TYPE_PREFERENCE[shotType] ?? ["front"];
     for (const pref of shotPrefs) {
       if (!preferences.includes(pref)) preferences.push(pref);
     }
 
     // Always include front as fallback
-    if (!preferences.includes('front')) preferences.push('front');
+    if (!preferences.includes("front")) preferences.push("front");
 
     return preferences;
   }
@@ -184,7 +179,7 @@ export class ReferenceImageSelector extends BaseAgent<
   /** Select references for multiple shots. */
   async selectForShots(
     shots: ShotDescription[],
-    registry: CharacterPortraitRegistry,
+    registry: CharacterPortraitRegistry
   ): Promise<ReferenceSelectionResult[]> {
     const results: ReferenceSelectionResult[] = [];
     for (const shot of shots) {
@@ -200,7 +195,7 @@ export class ReferenceImageSelector extends BaseAgent<
    */
   private _findPortrait(
     charName: string,
-    registry: CharacterPortraitRegistry,
+    registry: CharacterPortraitRegistry
   ): [CharacterPortrait | undefined, string] {
     // 1. Exact match
     const exact = registry.getPortrait(charName);
@@ -223,9 +218,7 @@ export class ReferenceImageSelector extends BaseAgent<
     }
 
     // 4. Word overlap
-    const charWords = new Set(
-      charLower.replace(/[()]/g, '').split(/\s+/),
-    );
+    const charWords = new Set(charLower.replace(/[()]/g, "").split(/\s+/));
     let bestMatch: string | undefined;
     let bestOverlap = 0;
 
@@ -252,18 +245,18 @@ export class ReferenceImageSelector extends BaseAgent<
   private _selectBestView(
     portrait: CharacterPortrait,
     cameraAngle: string,
-    shotType: string,
+    shotType: string
   ): string | undefined {
     const views = getPortraitViews(portrait);
     const viewKeys = Object.keys(views);
-    if (viewKeys.length === 0) return undefined;
+    if (viewKeys.length === 0) return;
 
     // Step 1: Try to match camera angle
-    const preferredView = ANGLE_TO_VIEW[cameraAngle.toLowerCase()] ?? 'front';
+    const preferredView = ANGLE_TO_VIEW[cameraAngle.toLowerCase()] ?? "front";
     if (preferredView in views) return views[preferredView];
 
     // Step 2: Fall back to shot type preferences
-    const preferences = SHOT_TYPE_PREFERENCE[shotType] ?? ['front'];
+    const preferences = SHOT_TYPE_PREFERENCE[shotType] ?? ["front"];
     for (const pref of preferences) {
       if (pref in views) return views[pref];
     }

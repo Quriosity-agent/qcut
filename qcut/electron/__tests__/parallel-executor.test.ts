@@ -3,11 +3,17 @@ import {
   ParallelPipelineExecutor,
   MergeStrategy,
 } from "../native-pipeline/parallel-executor.js";
-import type { PipelineChain, PipelineStep } from "../native-pipeline/executor.js";
+import type {
+  PipelineChain,
+  PipelineStep,
+} from "../native-pipeline/executor.js";
 import { PipelineExecutor } from "../native-pipeline/executor.js";
 import { ModelRegistry } from "../native-pipeline/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
-import { parseChainConfig, hasParallelGroups } from "../native-pipeline/chain-parser.js";
+import {
+  parseChainConfig,
+  hasParallelGroups,
+} from "../native-pipeline/chain-parser.js";
 
 describe("Parallel Executor", () => {
   beforeEach(() => {
@@ -35,8 +41,20 @@ describe("Parallel Executor", () => {
     it("identifies independent text_to_image steps as parallelizable", () => {
       const exec = new ParallelPipelineExecutor();
       const steps: PipelineStep[] = [
-        { type: "text_to_image", model: "flux_dev", params: { prompt: "cat" }, enabled: true, retryCount: 0 },
-        { type: "text_to_image", model: "flux_schnell", params: { prompt: "dog" }, enabled: true, retryCount: 0 },
+        {
+          type: "text_to_image",
+          model: "flux_dev",
+          params: { prompt: "cat" },
+          enabled: true,
+          retryCount: 0,
+        },
+        {
+          type: "text_to_image",
+          model: "flux_schnell",
+          params: { prompt: "dog" },
+          enabled: true,
+          retryCount: 0,
+        },
       ];
       const plan = exec.analyzeParallelOpportunities(steps);
       expect(plan.groups.length).toBe(1);
@@ -47,8 +65,20 @@ describe("Parallel Executor", () => {
     it("marks dependent steps as sequential", () => {
       const exec = new ParallelPipelineExecutor();
       const steps: PipelineStep[] = [
-        { type: "text_to_image", model: "flux_dev", params: { prompt: "cat" }, enabled: true, retryCount: 0 },
-        { type: "image_to_video", model: "wan_2_6", params: {}, enabled: true, retryCount: 0 },
+        {
+          type: "text_to_image",
+          model: "flux_dev",
+          params: { prompt: "cat" },
+          enabled: true,
+          retryCount: 0,
+        },
+        {
+          type: "image_to_video",
+          model: "wan_2_6",
+          params: {},
+          enabled: true,
+          retryCount: 0,
+        },
       ];
       const plan = exec.analyzeParallelOpportunities(steps);
       const sequentialGroups = plan.groups.filter((g) => !g.parallel);
@@ -58,7 +88,13 @@ describe("Parallel Executor", () => {
     it("handles single step", () => {
       const exec = new ParallelPipelineExecutor();
       const steps: PipelineStep[] = [
-        { type: "text_to_image", model: "flux_dev", params: {}, enabled: true, retryCount: 0 },
+        {
+          type: "text_to_image",
+          model: "flux_dev",
+          params: {},
+          enabled: true,
+          retryCount: 0,
+        },
       ];
       const plan = exec.analyzeParallelOpportunities(steps);
       expect(plan.groups.length).toBe(1);
@@ -68,8 +104,20 @@ describe("Parallel Executor", () => {
     it("does not parallelize steps with template references", () => {
       const exec = new ParallelPipelineExecutor();
       const steps: PipelineStep[] = [
-        { type: "text_to_image", model: "flux_dev", params: { prompt: "cat" }, enabled: true, retryCount: 0 },
-        { type: "text_to_image", model: "flux_schnell", params: { prompt: "{{prev.output}}" }, enabled: true, retryCount: 0 },
+        {
+          type: "text_to_image",
+          model: "flux_dev",
+          params: { prompt: "cat" },
+          enabled: true,
+          retryCount: 0,
+        },
+        {
+          type: "text_to_image",
+          model: "flux_schnell",
+          params: { prompt: "{{prev.output}}" },
+          enabled: true,
+          retryCount: 0,
+        },
       ];
       const plan = exec.analyzeParallelOpportunities(steps);
       const parallelGroups = plan.groups.filter((g) => g.parallel);
@@ -128,7 +176,8 @@ describe("Parallel Executor", () => {
     it("falls back to sequential execution", async () => {
       const exec = new ParallelPipelineExecutor({ enabled: false });
 
-      const mockExecuteStep = vi.spyOn(PipelineExecutor.prototype, "executeStep")
+      const mockExecuteStep = vi
+        .spyOn(PipelineExecutor.prototype, "executeStep")
         .mockResolvedValue({
           success: true,
           outputPath: "/tmp/test.png",
@@ -139,7 +188,13 @@ describe("Parallel Executor", () => {
       const chain: PipelineChain = {
         name: "test",
         steps: [
-          { type: "text_to_image", model: "flux_dev", params: {}, enabled: true, retryCount: 0 },
+          {
+            type: "text_to_image",
+            model: "flux_dev",
+            params: {},
+            enabled: true,
+            retryCount: 0,
+          },
         ],
         config: {},
       };
@@ -157,7 +212,13 @@ describe("Parallel Executor", () => {
       const chain: PipelineChain = {
         name: "empty",
         steps: [
-          { type: "text_to_image", model: "flux_dev", params: {}, enabled: false, retryCount: 0 },
+          {
+            type: "text_to_image",
+            model: "flux_dev",
+            params: {},
+            enabled: false,
+            retryCount: 0,
+          },
         ],
         config: {},
       };
@@ -176,12 +237,23 @@ describe("Parallel Executor", () => {
       const chain: PipelineChain = {
         name: "test",
         steps: [
-          { type: "text_to_image", model: "flux_dev", params: {}, enabled: true, retryCount: 0 },
+          {
+            type: "text_to_image",
+            model: "flux_dev",
+            params: {},
+            enabled: true,
+            retryCount: 0,
+          },
         ],
         config: {},
       };
 
-      const result = await exec.executeChain(chain, "test", vi.fn(), controller.signal);
+      const result = await exec.executeChain(
+        chain,
+        "test",
+        vi.fn(),
+        controller.signal
+      );
       expect(result.success).toBe(false);
       expect(result.error).toContain("cancelled");
     });

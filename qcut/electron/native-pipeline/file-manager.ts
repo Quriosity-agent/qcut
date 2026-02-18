@@ -9,9 +9,9 @@
  * @module electron/native-pipeline/file-manager
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
 
 export interface FileInfo {
   path: string;
@@ -33,12 +33,14 @@ export class FileManager {
     url: string,
     destination?: string,
     filename?: string,
-    headers?: Record<string, string>,
+    headers?: Record<string, string>
   ): Promise<string> {
-    const destPath = destination ?? path.join(
-      this.baseDir,
-      filename ?? `download_${Date.now()}${guessExtFromUrl(url)}`,
-    );
+    const destPath =
+      destination ??
+      path.join(
+        this.baseDir,
+        filename ?? `download_${Date.now()}${guessExtFromUrl(url)}`
+      );
 
     const dir = path.dirname(destPath);
     if (!fs.existsSync(dir)) {
@@ -47,7 +49,9 @@ export class FileManager {
 
     const response = await fetch(url, { headers });
     if (!response.ok) {
-      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Download failed: ${response.status} ${response.statusText}`
+      );
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -83,9 +87,9 @@ export class FileManager {
   }
 
   /** Get file hash (md5, sha256, etc.). */
-  async getFileHash(filePath: string, algorithm = 'md5'): Promise<string> {
+  async getFileHash(filePath: string, algorithm = "md5"): Promise<string> {
     const content = fs.readFileSync(filePath);
-    return crypto.createHash(algorithm).update(content).digest('hex');
+    return crypto.createHash(algorithm).update(content).digest("hex");
   }
 
   /** Get file information. */
@@ -103,8 +107,8 @@ export class FileManager {
   /** List files in a directory with optional pattern matching. */
   async listFiles(
     directory: string,
-    pattern = '*',
-    recursive = false,
+    pattern = "*",
+    recursive = false
   ): Promise<string[]> {
     const dir = path.resolve(this.baseDir, directory);
     if (!fs.existsSync(dir)) return [];
@@ -119,7 +123,7 @@ export class FileManager {
         const subFiles = await this.listFiles(fullPath, pattern, true);
         results.push(...subFiles);
       } else if (entry.isFile()) {
-        if (pattern === '*' || matchGlob(entry.name, pattern)) {
+        if (pattern === "*" || matchGlob(entry.name, pattern)) {
           results.push(fullPath);
         }
       }
@@ -135,7 +139,7 @@ export class FileManager {
 
   /** Read file content as string. */
   readText(filePath: string): string {
-    return fs.readFileSync(filePath, 'utf-8');
+    return fs.readFileSync(filePath, "utf-8");
   }
 
   /** Write string content to file. */
@@ -144,21 +148,21 @@ export class FileManager {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, content, 'utf-8');
+    fs.writeFileSync(filePath, content, "utf-8");
   }
 }
 
 /** Simple glob matching (supports * and ? wildcards). */
 function matchGlob(filename: string, pattern: string): boolean {
   const regex = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
+    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+    .replace(/\*/g, ".*")
+    .replace(/\?/g, ".");
   return new RegExp(`^${regex}$`).test(filename);
 }
 
 function guessExtFromUrl(url: string): string {
-  const urlPath = url.split('?')[0];
+  const urlPath = url.split("?")[0];
   const ext = path.extname(urlPath);
-  return ext || '.bin';
+  return ext || ".bin";
 }

@@ -51,14 +51,14 @@ export interface CharacterPortrait {
 // -- CharacterPortrait helpers --
 
 export function getPortraitViews(
-  portrait: CharacterPortrait,
+  portrait: CharacterPortrait
 ): Record<string, string> {
   const views: Record<string, string> = {};
-  if (portrait.front_view) views['front'] = portrait.front_view;
-  if (portrait.side_view) views['side'] = portrait.side_view;
-  if (portrait.back_view) views['back'] = portrait.back_view;
+  if (portrait.front_view) views.front = portrait.front_view;
+  if (portrait.side_view) views.side = portrait.side_view;
+  if (portrait.back_view) views.back = portrait.back_view;
   if (portrait.three_quarter_view)
-    views['three_quarter'] = portrait.three_quarter_view;
+    views.three_quarter = portrait.three_quarter_view;
   return views;
 }
 
@@ -69,17 +69,17 @@ export function hasPortraitViews(portrait: CharacterPortrait): boolean {
 // -- Camera angle → portrait view mapping --
 
 const ANGLE_TO_VIEW: Record<string, string> = {
-  front: 'front',
-  eye_level: 'front',
-  straight_on: 'front',
-  side: 'side',
-  profile: 'side',
-  left: 'side',
-  right: 'side',
-  back: 'back',
-  behind: 'back',
-  three_quarter: 'three_quarter',
-  '45_degree': 'three_quarter',
+  front: "front",
+  eye_level: "front",
+  straight_on: "front",
+  side: "side",
+  profile: "side",
+  left: "side",
+  right: "side",
+  back: "back",
+  behind: "back",
+  three_quarter: "three_quarter",
+  "45_degree": "three_quarter",
 };
 
 /**
@@ -107,15 +107,15 @@ export class CharacterPortraitRegistry {
 
   getBestView(name: string, cameraAngle: string): string | undefined {
     const portrait = this.getPortrait(name);
-    if (!portrait) return undefined;
+    if (!portrait) return;
 
-    const preferredView = ANGLE_TO_VIEW[cameraAngle.toLowerCase()] ?? 'front';
+    const preferredView = ANGLE_TO_VIEW[cameraAngle.toLowerCase()] ?? "front";
     const views = getPortraitViews(portrait);
 
     // Try preferred view first
     if (preferredView in views) return views[preferredView];
     // Fall back to front view
-    if ('front' in views) return views['front'];
+    if ("front" in views) return views.front;
     // Last resort: any available view
     const values = Object.values(views);
     return values.length > 0 ? values[0] : undefined;
@@ -141,10 +141,10 @@ export class CharacterPortraitRegistry {
   }
 
   static fromJSON(data: Record<string, unknown>): CharacterPortraitRegistry {
-    const projectId = data['project_id'] as string;
+    const projectId = data.project_id as string;
     if (!projectId) throw new Error("Registry data must contain 'project_id'");
 
-    const portraitsData = (data['portraits'] ?? {}) as Record<
+    const portraitsData = (data.portraits ?? {}) as Record<
       string,
       CharacterPortrait
     >;
@@ -159,23 +159,23 @@ export class CharacterPortraitRegistry {
 // -- Factory helpers --
 
 export function createCharacterInNovel(
-  partial: Partial<CharacterInNovel> & { name: string },
+  partial: Partial<CharacterInNovel> & { name: string }
 ): CharacterInNovel {
   return {
-    description: '',
-    appearance: '',
-    personality: '',
-    role: '',
+    description: "",
+    appearance: "",
+    personality: "",
+    role: "",
     relationships: [],
     ...partial,
   };
 }
 
 export function createCharacterPortrait(
-  partial: Partial<CharacterPortrait> & { character_name: string },
+  partial: Partial<CharacterPortrait> & { character_name: string }
 ): CharacterPortrait {
   return {
-    description: '',
+    description: "",
     ...partial,
   };
 }

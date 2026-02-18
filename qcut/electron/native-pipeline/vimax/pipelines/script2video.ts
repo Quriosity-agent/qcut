@@ -10,8 +10,8 @@
  * Ported from: vimax/pipelines/script2video.py
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 import {
   type Script,
@@ -19,9 +19,9 @@ import {
   type StoryboardArtistConfig,
   CameraImageGenerator,
   type CameraGeneratorConfig,
-} from '../agents/index.js';
-import { CharacterPortraitRegistry } from '../types/character.js';
-import type { PipelineOutput } from '../types/output.js';
+} from "../agents/index.js";
+import { CharacterPortraitRegistry } from "../types/character.js";
+import type { PipelineOutput } from "../types/output.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -37,12 +37,12 @@ export interface Script2VideoConfig {
 }
 
 export function createScript2VideoConfig(
-  partial?: Partial<Script2VideoConfig>,
+  partial?: Partial<Script2VideoConfig>
 ): Script2VideoConfig {
   return {
-    output_dir: 'media/generated/vimax/script2video',
-    video_model: 'kling',
-    image_model: 'nano_banana_pro',
+    output_dir: "media/generated/vimax/script2video",
+    video_model: "kling",
+    image_model: "nano_banana_pro",
     use_character_references: true,
     ...partial,
   };
@@ -101,7 +101,7 @@ export class Script2VideoPipeline {
    */
   async run(
     script: Script | Record<string, unknown> | string,
-    portraitRegistry?: CharacterPortraitRegistry,
+    portraitRegistry?: CharacterPortraitRegistry
   ): Promise<Script2VideoResult> {
     // Parse script input
     const parsedScript = this._parseScript(script);
@@ -120,7 +120,7 @@ export class Script2VideoPipeline {
       result.portrait_registry = portraitRegistry;
       result.used_references = portraitRegistry.portraits.size > 0;
       console.log(
-        `[script2video] Using portrait registry with ${portraitRegistry.portraits.size} characters`,
+        `[script2video] Using portrait registry with ${portraitRegistry.portraits.size} characters`
       );
     }
 
@@ -130,10 +130,10 @@ export class Script2VideoPipeline {
       fs.mkdirSync(this.config.output_dir, { recursive: true });
 
       // Step 1: Generate Storyboard
-      console.log('[script2video] Step 1/2: Generating storyboard...');
+      console.log("[script2video] Step 1/2: Generating storyboard...");
       const storyboardResult = await this.storyboard_artist.process(
         parsedScript,
-        result.portrait_registry,
+        result.portrait_registry
       );
       if (!storyboardResult.success || !storyboardResult.result) {
         result.errors.push(`Storyboard failed: ${storyboardResult.error}`);
@@ -142,8 +142,10 @@ export class Script2VideoPipeline {
       result.total_cost += (storyboardResult.metadata.cost as number) ?? 0;
 
       // Step 2: Generate Videos
-      console.log('[script2video] Step 2/2: Generating videos...');
-      const videoResult = await this.camera_generator.process(storyboardResult.result);
+      console.log("[script2video] Step 2/2: Generating videos...");
+      const videoResult = await this.camera_generator.process(
+        storyboardResult.result
+      );
       if (!videoResult.success || !videoResult.result) {
         result.errors.push(`Video generation failed: ${videoResult.error}`);
         return result;
@@ -154,7 +156,9 @@ export class Script2VideoPipeline {
       result.success = true;
       result.completed_at = new Date().toISOString();
 
-      console.log(`[script2video] Pipeline completed! Cost: $${result.total_cost.toFixed(3)}`);
+      console.log(
+        `[script2video] Pipeline completed! Cost: $${result.total_cost.toFixed(3)}`
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[script2video] Pipeline failed: ${msg}`);
@@ -165,8 +169,10 @@ export class Script2VideoPipeline {
   }
 
   /** Parse script from various input formats. */
-  private _parseScript(input: Script | Record<string, unknown> | string): Script {
-    if (typeof input === 'string') {
+  private _parseScript(
+    input: Script | Record<string, unknown> | string
+  ): Script {
+    if (typeof input === "string") {
       return this._loadScript(input);
     }
 
@@ -178,9 +184,9 @@ export class Script2VideoPipeline {
     // Treat as plain object
     const obj = input as Record<string, unknown>;
     return {
-      title: String(obj.title ?? 'Untitled'),
-      logline: String(obj.logline ?? ''),
-      scenes: Array.isArray(obj.scenes) ? (obj.scenes as Script['scenes']) : [],
+      title: String(obj.title ?? "Untitled"),
+      logline: String(obj.logline ?? ""),
+      scenes: Array.isArray(obj.scenes) ? (obj.scenes as Script["scenes"]) : [],
       total_duration: Number(obj.total_duration ?? 0),
     };
   }
@@ -191,7 +197,7 @@ export class Script2VideoPipeline {
       throw new Error(`Script file not found: ${filePath}`);
     }
 
-    const raw = fs.readFileSync(filePath, 'utf-8');
+    const raw = fs.readFileSync(filePath, "utf-8");
     let data: unknown;
     try {
       data = JSON.parse(raw);
@@ -201,9 +207,9 @@ export class Script2VideoPipeline {
 
     const obj = data as Record<string, unknown>;
     return {
-      title: String(obj.title ?? 'Untitled'),
-      logline: String(obj.logline ?? ''),
-      scenes: Array.isArray(obj.scenes) ? (obj.scenes as Script['scenes']) : [],
+      title: String(obj.title ?? "Untitled"),
+      logline: String(obj.logline ?? ""),
+      scenes: Array.isArray(obj.scenes) ? (obj.scenes as Script["scenes"]) : [],
       total_duration: Number(obj.total_duration ?? 0),
     };
   }

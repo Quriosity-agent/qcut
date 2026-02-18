@@ -65,12 +65,18 @@ describe("CLI pipeline", () => {
     it("parses generate-image with all flags", () => {
       const opts = parseCliArgs([
         "generate-image",
-        "-m", "flux_dev",
-        "-t", "A cat in space",
-        "-o", "./my-output",
-        "-d", "5s",
-        "--aspect-ratio", "16:9",
-        "--resolution", "1080p",
+        "-m",
+        "flux_dev",
+        "-t",
+        "A cat in space",
+        "-o",
+        "./my-output",
+        "-d",
+        "5s",
+        "--aspect-ratio",
+        "16:9",
+        "--resolution",
+        "1080p",
         "--json",
         "--quiet",
       ]);
@@ -88,8 +94,10 @@ describe("CLI pipeline", () => {
     it("parses run-pipeline with config path", () => {
       const opts = parseCliArgs([
         "run-pipeline",
-        "-c", "pipeline.yaml",
-        "-i", "A sunset",
+        "-c",
+        "pipeline.yaml",
+        "-i",
+        "A sunset",
         "--save-intermediates",
       ]);
       expect(opts.command).toBe("run-pipeline");
@@ -115,7 +123,9 @@ describe("CLI pipeline", () => {
     });
 
     it("command-level --help prints usage and exits", () => {
-      expect(() => parseCliArgs(["generate-image", "--help"])).toThrow("process.exit");
+      expect(() => parseCliArgs(["generate-image", "--help"])).toThrow(
+        "process.exit"
+      );
       expect(exitSpy).toHaveBeenCalledWith(0);
     });
 
@@ -137,9 +147,12 @@ describe("CLI pipeline", () => {
     it("parses image-url, video-url, audio-url", () => {
       const opts = parseCliArgs([
         "generate-avatar",
-        "-m", "omnihuman_v1_5",
-        "--image-url", "https://example.com/face.jpg",
-        "--audio-url", "https://example.com/speech.wav",
+        "-m",
+        "omnihuman_v1_5",
+        "--image-url",
+        "https://example.com/face.jpg",
+        "--audio-url",
+        "https://example.com/speech.wav",
       ]);
       expect(opts.imageUrl).toBe("https://example.com/face.jpg");
       expect(opts.audioUrl).toBe("https://example.com/speech.wav");
@@ -160,7 +173,10 @@ describe("CLI pipeline", () => {
     it("returns all models", async () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
-      const result = await runner.run(defaultOptions({ command: "list-models" }), noop);
+      const result = await runner.run(
+        defaultOptions({ command: "list-models" }),
+        noop
+      );
 
       expect(result.success).toBe(true);
       const data = result.data as { models: unknown[]; count: number };
@@ -190,10 +206,18 @@ describe("CLI pipeline", () => {
     it("returns models with expected fields", async () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
-      const result = await runner.run(defaultOptions({ command: "list-models" }), noop);
+      const result = await runner.run(
+        defaultOptions({ command: "list-models" }),
+        noop
+      );
 
       const data = result.data as {
-        models: { key: string; name: string; provider: string; categories: string[] }[];
+        models: {
+          key: string;
+          name: string;
+          provider: string;
+          categories: string[];
+        }[];
       };
       const first = data.models[0];
       expect(first).toHaveProperty("key");
@@ -215,7 +239,11 @@ describe("CLI pipeline", () => {
       expect(result.success).toBe(true);
       expect(result.cost).toBeGreaterThan(0);
       expect(result.data).toBeDefined();
-      const data = result.data as { model: string; totalCost: number; currency: string };
+      const data = result.data as {
+        model: string;
+        totalCost: number;
+        currency: string;
+      };
       expect(data.model).toBe("kling_2_6_pro");
       expect(data.currency).toBe("USD");
     });
@@ -236,7 +264,10 @@ describe("CLI pipeline", () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
       const result = await runner.run(
-        defaultOptions({ command: "estimate-cost", model: "nonexistent_model" }),
+        defaultOptions({
+          command: "estimate-cost",
+          model: "nonexistent_model",
+        }),
         noop
       );
 
@@ -248,7 +279,11 @@ describe("CLI pipeline", () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
       const result = await runner.run(
-        defaultOptions({ command: "estimate-cost", model: "kling_2_6_pro", duration: "10s" }),
+        defaultOptions({
+          command: "estimate-cost",
+          model: "kling_2_6_pro",
+          duration: "10s",
+        }),
         noop
       );
 
@@ -274,7 +309,11 @@ describe("CLI pipeline", () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
       const result = await runner.run(
-        defaultOptions({ command: "create-video", model: "fake_model", text: "test" }),
+        defaultOptions({
+          command: "create-video",
+          model: "fake_model",
+          text: "test",
+        }),
         noop
       );
 
@@ -297,7 +336,8 @@ describe("CLI pipeline", () => {
 
   describe("CLIPipelineRunner — generate (mocked executor)", () => {
     it("calls executor and returns output on success", async () => {
-      const mockExecuteStep = vi.spyOn(PipelineExecutor.prototype, "executeStep")
+      const mockExecuteStep = vi
+        .spyOn(PipelineExecutor.prototype, "executeStep")
         .mockResolvedValue({
           success: true,
           outputPath: "/tmp/output.png",
@@ -329,7 +369,8 @@ describe("CLI pipeline", () => {
     });
 
     it("returns error when executor fails", async () => {
-      const mockExecuteStep = vi.spyOn(PipelineExecutor.prototype, "executeStep")
+      const mockExecuteStep = vi
+        .spyOn(PipelineExecutor.prototype, "executeStep")
         .mockResolvedValue({
           success: false,
           error: "API error 401: Invalid API key",
@@ -353,15 +394,17 @@ describe("CLI pipeline", () => {
     });
 
     it("downloads output when only URL is returned", async () => {
-      const mockExecuteStep = vi.spyOn(PipelineExecutor.prototype, "executeStep")
+      const mockExecuteStep = vi
+        .spyOn(PipelineExecutor.prototype, "executeStep")
         .mockResolvedValue({
           success: true,
           outputUrl: "https://cdn.example.com/result.mp4",
           duration: 5.0,
-          cost: 0.70,
+          cost: 0.7,
         });
 
-      const mockDownload = vi.spyOn(apiCaller, "downloadOutput")
+      const mockDownload = vi
+        .spyOn(apiCaller, "downloadOutput")
         .mockResolvedValue("/tmp/output_12345.mp4");
 
       const runner = new CLIPipelineRunner();
@@ -400,7 +443,10 @@ describe("CLI pipeline", () => {
       const runner = new CLIPipelineRunner();
       const noop = vi.fn();
       const result = await runner.run(
-        defaultOptions({ command: "run-pipeline", config: "/nonexistent/path.yaml" }),
+        defaultOptions({
+          command: "run-pipeline",
+          config: "/nonexistent/path.yaml",
+        }),
         noop
       );
 
@@ -436,7 +482,12 @@ describe("CLI pipeline", () => {
     it("produces no output in quiet mode", () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const reporter = createProgressReporter({ json: false, quiet: true });
-      reporter({ stage: "processing", percent: 50, message: "Working...", model: "test" });
+      reporter({
+        stage: "processing",
+        percent: 50,
+        message: "Working...",
+        model: "test",
+      });
       expect(consoleSpy).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
@@ -444,7 +495,12 @@ describe("CLI pipeline", () => {
     it("produces JSON output in json mode", () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const reporter = createProgressReporter({ json: true, quiet: false });
-      reporter({ stage: "processing", percent: 50, message: "Working...", model: "test" });
+      reporter({
+        stage: "processing",
+        percent: 50,
+        message: "Working...",
+        model: "test",
+      });
       expect(consoleSpy).toHaveBeenCalledTimes(1);
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
@@ -456,8 +512,13 @@ describe("CLI pipeline", () => {
 
     it("uses stdout.write for TTY inline progress", () => {
       const origIsTTY = process.stdout.isTTY;
-      Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
-      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: true,
+        writable: true,
+      });
+      const writeSpy = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true);
 
       const reporter = createProgressReporter({ json: false, quiet: false });
       reporter({ stage: "processing", percent: 50, message: "Working..." });
@@ -468,13 +529,21 @@ describe("CLI pipeline", () => {
       expect(written).toContain("Working...");
 
       writeSpy.mockRestore();
-      Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, writable: true });
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: origIsTTY,
+        writable: true,
+      });
     });
 
     it("writes newline on complete stage in TTY mode", () => {
       const origIsTTY = process.stdout.isTTY;
-      Object.defineProperty(process.stdout, "isTTY", { value: true, writable: true });
-      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: true,
+        writable: true,
+      });
+      const writeSpy = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true);
 
       const reporter = createProgressReporter({ json: false, quiet: false });
       reporter({ stage: "complete", percent: 100, message: "Done" });
@@ -484,7 +553,10 @@ describe("CLI pipeline", () => {
       expect(writeSpy.mock.calls[1][0]).toBe("\n");
 
       writeSpy.mockRestore();
-      Object.defineProperty(process.stdout, "isTTY", { value: origIsTTY, writable: true });
+      Object.defineProperty(process.stdout, "isTTY", {
+        value: origIsTTY,
+        writable: true,
+      });
     });
   });
 
@@ -492,8 +564,10 @@ describe("CLI pipeline", () => {
     it("parses analyze-video command", () => {
       const opts = parseCliArgs([
         "analyze-video",
-        "-i", "video.mp4",
-        "--prompt", "What is happening?",
+        "-i",
+        "video.mp4",
+        "--prompt",
+        "What is happening?",
       ]);
       expect(opts.command).toBe("analyze-video");
       expect(opts.input).toBe("video.mp4");
@@ -503,8 +577,10 @@ describe("CLI pipeline", () => {
     it("parses transcribe command", () => {
       const opts = parseCliArgs([
         "transcribe",
-        "-i", "audio.wav",
-        "-m", "scribe_v2",
+        "-i",
+        "audio.wav",
+        "-m",
+        "scribe_v2",
       ]);
       expect(opts.command).toBe("transcribe");
       expect(opts.input).toBe("audio.wav");
@@ -514,9 +590,12 @@ describe("CLI pipeline", () => {
     it("parses generate-grid command", () => {
       const opts = parseCliArgs([
         "generate-grid",
-        "-t", "A beautiful landscape",
-        "--layout", "3x3",
-        "-m", "flux_dev",
+        "-t",
+        "A beautiful landscape",
+        "--layout",
+        "3x3",
+        "-m",
+        "flux_dev",
       ]);
       expect(opts.command).toBe("generate-grid");
       expect(opts.text).toBe("A beautiful landscape");
@@ -526,8 +605,10 @@ describe("CLI pipeline", () => {
     it("parses upscale-image command", () => {
       const opts = parseCliArgs([
         "upscale-image",
-        "--image", "photo.png",
-        "--upscale", "4",
+        "--image",
+        "photo.png",
+        "--upscale",
+        "4",
       ]);
       expect(opts.command).toBe("upscale-image");
       expect(opts.image).toBe("photo.png");
@@ -542,8 +623,10 @@ describe("CLI pipeline", () => {
     it("parses set-key command", () => {
       const opts = parseCliArgs([
         "set-key",
-        "--name", "FAL_KEY",
-        "--value", "test-key-123",
+        "--name",
+        "FAL_KEY",
+        "--value",
+        "test-key-123",
       ]);
       expect(opts.command).toBe("set-key");
       expect(opts.keyName).toBe("FAL_KEY");
@@ -564,8 +647,10 @@ describe("CLI pipeline", () => {
     it("parses vimax:idea2video command", () => {
       const opts = parseCliArgs([
         "vimax:idea2video",
-        "--idea", "A spaceship landing on Mars",
-        "--video-model", "kling_2_6_pro",
+        "--idea",
+        "A spaceship landing on Mars",
+        "--video-model",
+        "kling_2_6_pro",
       ]);
       expect(opts.command).toBe("vimax:idea2video");
       expect(opts.idea).toBe("A spaceship landing on Mars");
@@ -575,9 +660,12 @@ describe("CLI pipeline", () => {
     it("parses vimax:novel2movie command", () => {
       const opts = parseCliArgs([
         "vimax:novel2movie",
-        "--novel", "novel.txt",
-        "--title", "My Novel",
-        "--max-scenes", "5",
+        "--novel",
+        "novel.txt",
+        "--title",
+        "My Novel",
+        "--max-scenes",
+        "5",
         "--scripts-only",
       ]);
       expect(opts.command).toBe("vimax:novel2movie");
@@ -590,9 +678,11 @@ describe("CLI pipeline", () => {
     it("parses --parallel and --max-workers flags", () => {
       const opts = parseCliArgs([
         "run-pipeline",
-        "-c", "pipeline.yaml",
+        "-c",
+        "pipeline.yaml",
         "--parallel",
-        "--max-workers", "4",
+        "--max-workers",
+        "4",
       ]);
       expect(opts.parallel).toBe(true);
       expect(opts.maxWorkers).toBe(4);
@@ -606,7 +696,10 @@ describe("CLI pipeline", () => {
         noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { models: { categories: string[] }[]; count: number };
+      const data = result.data as {
+        models: { categories: string[] }[];
+        count: number;
+      };
       expect(data.count).toBeGreaterThan(0);
       for (const m of data.models) {
         expect(m.categories).toContain("avatar");
@@ -621,7 +714,10 @@ describe("CLI pipeline", () => {
         noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { models: { categories: string[] }[]; count: number };
+      const data = result.data as {
+        models: { categories: string[] }[];
+        count: number;
+      };
       expect(data.count).toBeGreaterThan(0);
       for (const m of data.models) {
         expect(m.categories).toContain("text_to_video");
@@ -636,7 +732,10 @@ describe("CLI pipeline", () => {
         noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { models: { categories: string[] }[]; count: number };
+      const data = result.data as {
+        models: { categories: string[] }[];
+        count: number;
+      };
       expect(data.count).toBeGreaterThan(0);
       for (const m of data.models) {
         expect(m.categories).toContain("text_to_speech");
@@ -651,7 +750,9 @@ describe("CLI pipeline", () => {
         noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { keys: { name: string; configured: boolean }[] };
+      const data = result.data as {
+        keys: { name: string; configured: boolean }[];
+      };
       expect(data.keys.length).toBeGreaterThan(0);
       const falKey = data.keys.find((k) => k.name === "FAL_KEY");
       expect(falKey).toBeDefined();

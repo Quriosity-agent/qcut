@@ -5,11 +5,11 @@
  */
 
 export enum CameraType {
-  MAIN = 'main',
-  SECONDARY = 'secondary',
-  DETAIL = 'detail',
-  ACTION = 'action',
-  DIALOGUE = 'dialogue',
+  MAIN = "main",
+  SECONDARY = "secondary",
+  DETAIL = "detail",
+  ACTION = "action",
+  DIALOGUE = "dialogue",
 }
 
 export interface CameraPosition {
@@ -39,20 +39,20 @@ export interface CameraHierarchy {
 // -- Factory helpers --
 
 export function createCameraPosition(
-  partial?: Partial<CameraPosition>,
+  partial?: Partial<CameraPosition>
 ): CameraPosition {
   return { x: 0, y: 0, z: 0, ...partial };
 }
 
 export function createCameraConfig(
-  partial: Partial<CameraConfig> & { camera_id: string },
+  partial: Partial<CameraConfig> & { camera_id: string }
 ): CameraConfig {
   return {
     camera_type: CameraType.MAIN,
     position: createCameraPosition(),
     focal_length: 50.0,
     aperture: 2.8,
-    movement_type: 'static',
+    movement_type: "static",
     movement_speed: 1.0,
     settings: {},
     ...partial,
@@ -63,7 +63,7 @@ export function createCameraConfig(
 
 export function getCameraFromHierarchy(
   hierarchy: CameraHierarchy,
-  cameraId: string,
+  cameraId: string
 ): CameraConfig | undefined {
   if (hierarchy.primary_camera.camera_id === cameraId) {
     return hierarchy.primary_camera;

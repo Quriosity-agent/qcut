@@ -33,16 +33,28 @@ describe("Exception hierarchy & exit codes", () => {
   });
 
   it("subclasses carry correct exit codes", () => {
-    expect(new PipelineConfigurationError("x").exitCode).toBe(ExitCode.INVALID_ARGS);
+    expect(new PipelineConfigurationError("x").exitCode).toBe(
+      ExitCode.INVALID_ARGS
+    );
     expect(new StepExecutionError("x").exitCode).toBe(ExitCode.PIPELINE_FAILED);
-    expect(new ServiceNotAvailableError("x", "fal").exitCode).toBe(ExitCode.API_CALL_FAILED);
+    expect(new ServiceNotAvailableError("x", "fal").exitCode).toBe(
+      ExitCode.API_CALL_FAILED
+    );
     expect(new APIKeyError("x", "fal").exitCode).toBe(ExitCode.API_KEY_MISSING);
-    expect(new CostLimitExceededError("x", 10, 20).exitCode).toBe(ExitCode.PIPELINE_FAILED);
-    expect(new ParallelExecutionError("x", 2, 5).exitCode).toBe(ExitCode.PIPELINE_FAILED);
+    expect(new CostLimitExceededError("x", 10, 20).exitCode).toBe(
+      ExitCode.PIPELINE_FAILED
+    );
+    expect(new ParallelExecutionError("x", 2, 5).exitCode).toBe(
+      ExitCode.PIPELINE_FAILED
+    );
     expect(new ValidationError("x").exitCode).toBe(ExitCode.INVALID_ARGS);
     expect(new ConfigurationError("x").exitCode).toBe(ExitCode.INVALID_ARGS);
-    expect(new PipelineExecutionError("x").exitCode).toBe(ExitCode.PIPELINE_FAILED);
-    expect(new FileOperationError("x", "/tmp/foo").exitCode).toBe(ExitCode.FILE_NOT_FOUND);
+    expect(new PipelineExecutionError("x").exitCode).toBe(
+      ExitCode.PIPELINE_FAILED
+    );
+    expect(new FileOperationError("x", "/tmp/foo").exitCode).toBe(
+      ExitCode.FILE_NOT_FOUND
+    );
     expect(new CostCalculationError("x").exitCode).toBe(ExitCode.GENERAL_ERROR);
   });
 
@@ -67,14 +79,20 @@ describe("Exception hierarchy & exit codes", () => {
   });
 
   it("getExitCode maps platform errors correctly", () => {
-    expect(getExitCode(new APIKeyError("x", "fal"))).toBe(ExitCode.API_KEY_MISSING);
-    expect(getExitCode(new PipelineConfigurationError("x"))).toBe(ExitCode.INVALID_ARGS);
+    expect(getExitCode(new APIKeyError("x", "fal"))).toBe(
+      ExitCode.API_KEY_MISSING
+    );
+    expect(getExitCode(new PipelineConfigurationError("x"))).toBe(
+      ExitCode.INVALID_ARGS
+    );
     expect(getExitCode(new Error("generic"))).toBe(ExitCode.GENERAL_ERROR);
     expect(getExitCode("string error")).toBe(ExitCode.GENERAL_ERROR);
   });
 
   it("formatErrorForCli returns message and exit code", () => {
-    const { message, exitCode } = formatErrorForCli(new APIKeyError("no key", "fal"));
+    const { message, exitCode } = formatErrorForCli(
+      new APIKeyError("no key", "fal")
+    );
     expect(message).toBe("no key");
     expect(exitCode).toBe(ExitCode.API_KEY_MISSING);
   });
@@ -199,7 +217,7 @@ describe("formatTable", () => {
   it("supports right-aligned columns", () => {
     const result = formatTable(
       [{ value: "42" }],
-      [{ header: "value", width: 10, align: "right" }],
+      [{ header: "value", width: 10, align: "right" }]
     );
     expect(result).toContain("        42");
   });
@@ -226,13 +244,19 @@ describe("ANSI colors", () => {
 
 // -- Stream Emitter (Section 3.2) --
 
-import { StreamEmitter, NullEmitter } from "../native-pipeline/stream-emitter.js";
+import {
+  StreamEmitter,
+  NullEmitter,
+} from "../native-pipeline/stream-emitter.js";
 
 describe("StreamEmitter", () => {
   it("emits JSONL events when enabled", () => {
     const chunks: string[] = [];
     const mockStream = {
-      write: (data: string) => { chunks.push(data); return true; },
+      write: (data: string) => {
+        chunks.push(data);
+        return true;
+      },
     } as unknown as NodeJS.WriteStream;
 
     const emitter = new StreamEmitter({ enabled: true, stream: mockStream });
@@ -250,7 +274,10 @@ describe("StreamEmitter", () => {
   it("emits step events", () => {
     const chunks: string[] = [];
     const mockStream = {
-      write: (data: string) => { chunks.push(data); return true; },
+      write: (data: string) => {
+        chunks.push(data);
+        return true;
+      },
     } as unknown as NodeJS.WriteStream;
 
     const emitter = new StreamEmitter({ enabled: true, stream: mockStream });
@@ -269,7 +296,10 @@ describe("StreamEmitter", () => {
   it("does not emit when disabled", () => {
     const chunks: string[] = [];
     const mockStream = {
-      write: (data: string) => { chunks.push(data); return true; },
+      write: (data: string) => {
+        chunks.push(data);
+        return true;
+      },
     } as unknown as NodeJS.WriteStream;
 
     const emitter = new StreamEmitter({ enabled: false, stream: mockStream });
@@ -279,7 +309,9 @@ describe("StreamEmitter", () => {
   });
 
   it("NullEmitter never emits", () => {
-    const spy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
     const emitter = new NullEmitter();
     emitter.pipelineStart("test", 1);
     emitter.stepStart(0, "test");
@@ -288,7 +320,9 @@ describe("StreamEmitter", () => {
   });
 
   it("pipelineComplete writes to stdout", () => {
-    const spy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    const spy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
     const emitter = new StreamEmitter({ enabled: true });
     emitter.pipelineComplete({ success: true, cost: 0.1 });
     expect(spy).toHaveBeenCalled();
@@ -302,7 +336,13 @@ describe("StreamEmitter", () => {
 
 // -- XDG Paths (Section 3.3) --
 
-import { configDir, cacheDir, stateDir, defaultConfigPath, ensureDir } from "../native-pipeline/xdg-paths.js";
+import {
+  configDir,
+  cacheDir,
+  stateDir,
+  defaultConfigPath,
+  ensureDir,
+} from "../native-pipeline/xdg-paths.js";
 
 describe("XDG directory support", () => {
   it("configDir respects XDG_CONFIG_HOME", () => {
@@ -362,7 +402,10 @@ describe("XDG directory support", () => {
 
 // -- Platform Logger (Section 3.7) --
 
-import { PlatformLogger, getLogger } from "../native-pipeline/platform-logger.js";
+import {
+  PlatformLogger,
+  getLogger,
+} from "../native-pipeline/platform-logger.js";
 
 describe("PlatformLogger", () => {
   it("creates logger with name", () => {
@@ -495,26 +538,50 @@ import {
 
 describe("ConfigValidator", () => {
   it("rejects config without steps", () => {
-    expect(() => configValidator.validatePipelineConfig({
-      steps: [],
-    })).toThrow("at least one step");
+    expect(() =>
+      configValidator.validatePipelineConfig({
+        steps: [],
+      })
+    ).toThrow("at least one step");
   });
 
   it("rejects step without type", () => {
-    expect(() => configValidator.validatePipelineConfig({
-      steps: [{ type: "", model: "x", params: {}, enabled: true, retryCount: 0 }],
-    })).toThrow("type");
+    expect(() =>
+      configValidator.validatePipelineConfig({
+        steps: [
+          { type: "", model: "x", params: {}, enabled: true, retryCount: 0 },
+        ],
+      })
+    ).toThrow("type");
   });
 
   it("rejects step without model", () => {
-    expect(() => configValidator.validatePipelineConfig({
-      steps: [{ type: "text_to_image", model: "", params: {}, enabled: true, retryCount: 0 }],
-    })).toThrow("model");
+    expect(() =>
+      configValidator.validatePipelineConfig({
+        steps: [
+          {
+            type: "text_to_image",
+            model: "",
+            params: {},
+            enabled: true,
+            retryCount: 0,
+          },
+        ],
+      })
+    ).toThrow("model");
   });
 
   it("accepts valid config", () => {
     const result = configValidator.validatePipelineConfig({
-      steps: [{ type: "text_to_image", model: "flux_dev", params: {}, enabled: true, retryCount: 0 }],
+      steps: [
+        {
+          type: "text_to_image",
+          model: "flux_dev",
+          params: {},
+          enabled: true,
+          retryCount: 0,
+        },
+      ],
     });
     expect(result).toBe(true);
   });
@@ -530,23 +597,33 @@ describe("InputValidator", () => {
   });
 
   it("rejects non-existent file", () => {
-    expect(() => inputValidator.validateFilePath("/no/such/file")).toThrow("not found");
+    expect(() => inputValidator.validateFilePath("/no/such/file")).toThrow(
+      "not found"
+    );
   });
 
   it("validates HTTP URL", () => {
-    expect(inputValidator.validateUrl("https://example.com")).toBe("https://example.com");
+    expect(inputValidator.validateUrl("https://example.com")).toBe(
+      "https://example.com"
+    );
   });
 
   it("rejects invalid URL", () => {
-    expect(() => inputValidator.validateUrl("not-a-url")).toThrow("Invalid URL");
+    expect(() => inputValidator.validateUrl("not-a-url")).toThrow(
+      "Invalid URL"
+    );
   });
 
   it("rejects non-http URL", () => {
-    expect(() => inputValidator.validateUrl("ftp://example.com")).toThrow("http or https");
+    expect(() => inputValidator.validateUrl("ftp://example.com")).toThrow(
+      "http or https"
+    );
   });
 
   it("validates API key", () => {
-    expect(inputValidator.validateApiKey("sk-1234567890", "openai")).toBe("sk-1234567890");
+    expect(inputValidator.validateApiKey("sk-1234567890", "openai")).toBe(
+      "sk-1234567890"
+    );
   });
 
   it("rejects empty API key", () => {
@@ -554,7 +631,9 @@ describe("InputValidator", () => {
   });
 
   it("rejects too-short API key", () => {
-    expect(() => inputValidator.validateApiKey("abc", "openai")).toThrow("too short");
+    expect(() => inputValidator.validateApiKey("abc", "openai")).toThrow(
+      "too short"
+    );
   });
 
   it("validates positive number", () => {
@@ -562,8 +641,12 @@ describe("InputValidator", () => {
   });
 
   it("rejects non-positive number", () => {
-    expect(() => inputValidator.validatePositiveNumber(-1, "count")).toThrow("positive");
-    expect(() => inputValidator.validatePositiveNumber(0, "count")).toThrow("positive");
+    expect(() => inputValidator.validatePositiveNumber(-1, "count")).toThrow(
+      "positive"
+    );
+    expect(() => inputValidator.validatePositiveNumber(0, "count")).toThrow(
+      "positive"
+    );
   });
 });
 
@@ -601,7 +684,9 @@ describe("Config loader", () => {
 
   it("processEnvironmentVariables supports default values", () => {
     delete process.env.NONEXISTENT_VAR_FOR_TEST;
-    const result = processEnvironmentVariables({ key: "${NONEXISTENT_VAR_FOR_TEST:-fallback}" });
+    const result = processEnvironmentVariables({
+      key: "${NONEXISTENT_VAR_FOR_TEST:-fallback}",
+    });
     expect(result.key).toBe("fallback");
   });
 
@@ -684,7 +769,11 @@ describe("ViMax CLI subcommands", () => {
     });
 
     it("parses vimax:extract-characters", () => {
-      const opts = parseCliArgs(["vimax:extract-characters", "-t", "Once upon a time..."]);
+      const opts = parseCliArgs([
+        "vimax:extract-characters",
+        "-t",
+        "Once upon a time...",
+      ]);
       expect(opts.command).toBe("vimax:extract-characters");
       expect(opts.text).toBe("Once upon a time...");
       exitSpy.mockRestore();
@@ -692,7 +781,11 @@ describe("ViMax CLI subcommands", () => {
     });
 
     it("parses vimax:generate-script", () => {
-      const opts = parseCliArgs(["vimax:generate-script", "--idea", "A space adventure"]);
+      const opts = parseCliArgs([
+        "vimax:generate-script",
+        "--idea",
+        "A space adventure",
+      ]);
       expect(opts.command).toBe("vimax:generate-script");
       expect(opts.idea).toBe("A space adventure");
       exitSpy.mockRestore();
@@ -700,7 +793,11 @@ describe("ViMax CLI subcommands", () => {
     });
 
     it("parses vimax:generate-storyboard", () => {
-      const opts = parseCliArgs(["vimax:generate-storyboard", "--script", "script.json"]);
+      const opts = parseCliArgs([
+        "vimax:generate-storyboard",
+        "--script",
+        "script.json",
+      ]);
       expect(opts.command).toBe("vimax:generate-storyboard");
       expect(opts.script).toBe("script.json");
       exitSpy.mockRestore();
@@ -708,7 +805,11 @@ describe("ViMax CLI subcommands", () => {
     });
 
     it("parses vimax:generate-portraits", () => {
-      const opts = parseCliArgs(["vimax:generate-portraits", "-t", "A young hero named Alice"]);
+      const opts = parseCliArgs([
+        "vimax:generate-portraits",
+        "-t",
+        "A young hero named Alice",
+      ]);
       expect(opts.command).toBe("vimax:generate-portraits");
       expect(opts.text).toBe("A young hero named Alice");
       exitSpy.mockRestore();
@@ -753,7 +854,11 @@ describe("ViMax CLI subcommands", () => {
     });
 
     it("parses --negative-prompt flag", () => {
-      const opts = parseCliArgs(["create-video", "--negative-prompt", "blurry, low quality"]);
+      const opts = parseCliArgs([
+        "create-video",
+        "--negative-prompt",
+        "blurry, low quality",
+      ]);
       expect(opts.negativePrompt).toBe("blurry, low quality");
       exitSpy.mockRestore();
       consoleSpy.mockRestore();
@@ -773,10 +878,14 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:list-models" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { models: unknown[]; count: number; by_category: Record<string, number> };
+      const data = result.data as {
+        models: unknown[];
+        count: number;
+        by_category: Record<string, number>;
+      };
       expect(data.count).toBeGreaterThan(0);
       expect(data.by_category).toBeDefined();
       expect(data.by_category.text_to_image).toBeGreaterThan(0);
@@ -787,7 +896,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:extract-characters" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--text");
@@ -798,7 +907,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:generate-script" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--idea");
@@ -809,7 +918,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:generate-storyboard" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--script");
@@ -820,7 +929,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:generate-portraits" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--text");
@@ -831,7 +940,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:create-registry", input: undefined }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--input");
@@ -842,7 +951,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:show-registry" }),
-        noop,
+        noop
       );
       expect(result.success).toBe(false);
       expect(result.error).toContain("--input");
@@ -859,7 +968,7 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:create-registry", input: tmpDir }),
-        noop,
+        noop
       );
       expect(result.success).toBe(true);
       expect(result.outputPath).toContain("registry.json");
@@ -887,10 +996,13 @@ describe("ViMax CLI subcommands", () => {
       const noop = vi.fn();
       const result = await runner.run(
         defaultOptions({ command: "vimax:show-registry", input: tmpFile }),
-        noop,
+        noop
       );
       expect(result.success).toBe(true);
-      const data = result.data as { project_id: string; total_characters: number };
+      const data = result.data as {
+        project_id: string;
+        total_characters: number;
+      };
       expect(data.project_id).toBe("test-proj");
       expect(data.total_characters).toBe(1);
 
@@ -933,18 +1045,24 @@ describe("ReferenceImageSelector.getViewPreference", () => {
 
 // -- Idea2VideoPipeline.fromYaml (Section 3.8) --
 
-import { Idea2VideoPipeline, createIdea2VideoConfig } from "../native-pipeline/vimax/pipelines/idea2video.js";
+import {
+  Idea2VideoPipeline,
+  createIdea2VideoConfig,
+} from "../native-pipeline/vimax/pipelines/idea2video.js";
 
 describe("Idea2VideoPipeline.fromYaml", () => {
   it("creates pipeline from YAML config file", () => {
     const yamlPath = path.join(os.tmpdir(), `i2v-test-${Date.now()}.yaml`);
-    fs.writeFileSync(yamlPath, [
-      "target_duration: 30",
-      "video_model: kling_2_6_pro",
-      "generate_portraits: false",
-      "# comment line",
-      "",
-    ].join("\n"));
+    fs.writeFileSync(
+      yamlPath,
+      [
+        "target_duration: 30",
+        "video_model: kling_2_6_pro",
+        "generate_portraits: false",
+        "# comment line",
+        "",
+      ].join("\n")
+    );
 
     const pipeline = Idea2VideoPipeline.fromYaml(yamlPath);
     expect(pipeline.config.target_duration).toBe(30);

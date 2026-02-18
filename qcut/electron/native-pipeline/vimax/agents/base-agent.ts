@@ -17,10 +17,10 @@ export interface AgentConfig {
 }
 
 export function createAgentConfig(
-  partial: Partial<AgentConfig> & { name: string },
+  partial: Partial<AgentConfig> & { name: string }
 ): AgentConfig {
   return {
-    model: 'gpt-4',
+    model: "gpt-4",
     temperature: 0.7,
     max_retries: 3,
     timeout: 60.0,
@@ -43,14 +43,14 @@ export interface AgentResult<T> {
 
 export function agentOk<T>(
   result: T,
-  metadata?: Record<string, unknown>,
+  metadata?: Record<string, unknown>
 ): AgentResult<T> {
   return { success: true, result, metadata: metadata ?? {} };
 }
 
 export function agentFail<T>(
   error: string,
-  metadata?: Record<string, unknown>,
+  metadata?: Record<string, unknown>
 ): AgentResult<T> {
   return { success: false, error, metadata: metadata ?? {} };
 }
@@ -79,7 +79,7 @@ export abstract class BaseAgent<T, R> {
 
   async call(input: T): Promise<AgentResult<R>> {
     if (!this.validateInput(input)) {
-      return agentFail('Invalid input data');
+      return agentFail("Invalid input data");
     }
     return this.process(input);
   }
@@ -98,7 +98,7 @@ export abstract class BaseAgent<T, R> {
  */
 export function parseLlmJson(
   text: string,
-  expect: 'object' | 'array' = 'object',
+  expect: "object" | "array" = "object"
 ): unknown {
   // Step 1: Try parsing raw text directly
   try {
@@ -121,7 +121,7 @@ export function parseLlmJson(
   }
 
   // Step 3: Extract the outermost JSON structure
-  const pattern = expect === 'array' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+  const pattern = expect === "array" ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
   const match = textToFix.match(pattern);
 
   if (match) {
@@ -135,7 +135,7 @@ export function parseLlmJson(
     }
 
     // Step 4: Fix trailing commas
-    const fixed = jsonStr.replace(/,\s*([}\]])/g, '$1');
+    const fixed = jsonStr.replace(/,\s*([}\]])/g, "$1");
     try {
       return JSON.parse(fixed);
     } catch {
@@ -143,9 +143,8 @@ export function parseLlmJson(
     }
 
     // Step 5: Fix unescaped newlines inside strings
-    const fixed2 = fixed.replace(
-      /(?<=": ")(.*?)(?="[,}\]])/gs,
-      (match) => match.replace(/\n/g, '\\n'),
+    const fixed2 = fixed.replace(/(?<=": ")(.*?)(?="[,}\]])/gs, (match) =>
+      match.replace(/\n/g, "\\n")
     );
     try {
       return JSON.parse(fixed2);
@@ -154,14 +153,12 @@ export function parseLlmJson(
     }
 
     // Step 6: Try line-by-line repair — remove lines that break JSON
-    const lines = fixed.split('\n');
+    const lines = fixed.split("\n");
     for (let i = lines.length - 1; i >= 0; i--) {
-      const attempt = [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+      const attempt = [...lines.slice(0, i), ...lines.slice(i + 1)].join("\n");
       try {
         return JSON.parse(attempt);
-      } catch {
-        continue;
-      }
+      } catch {}
     }
   }
 

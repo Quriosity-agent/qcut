@@ -47,11 +47,11 @@ export interface PipelineOutput {
 // -- Factory helpers --
 
 export function createImageOutput(
-  partial: Partial<ImageOutput> & { image_path: string },
+  partial: Partial<ImageOutput> & { image_path: string }
 ): ImageOutput {
   return {
-    prompt: '',
-    model: '',
+    prompt: "",
+    model: "",
     width: 0,
     height: 0,
     generation_time: 0,
@@ -62,11 +62,11 @@ export function createImageOutput(
 }
 
 export function createVideoOutput(
-  partial: Partial<VideoOutput> & { video_path: string },
+  partial: Partial<VideoOutput> & { video_path: string }
 ): VideoOutput {
   return {
-    prompt: '',
-    model: '',
+    prompt: "",
+    model: "",
     duration: 0,
     width: 0,
     height: 0,
@@ -79,14 +79,14 @@ export function createVideoOutput(
 }
 
 export function createPipelineOutput(
-  partial: Partial<PipelineOutput> & { pipeline_name: string },
+  partial: Partial<PipelineOutput> & { pipeline_name: string }
 ): PipelineOutput {
   return {
     started_at: new Date().toISOString(),
     images: [],
     videos: [],
     total_cost: 0,
-    output_directory: '',
+    output_directory: "",
     errors: [],
     ...partial,
   };
@@ -109,7 +109,7 @@ export function getPipelineDuration(output: PipelineOutput): number | null {
 
 export function addImageToOutput(
   output: PipelineOutput,
-  image: ImageOutput,
+  image: ImageOutput
 ): void {
   output.images.push(image);
   output.total_cost += image.cost;
@@ -117,7 +117,7 @@ export function addImageToOutput(
 
 export function addVideoToOutput(
   output: PipelineOutput,
-  video: VideoOutput,
+  video: VideoOutput
 ): void {
   output.videos.push(video);
   output.total_cost += video.cost;

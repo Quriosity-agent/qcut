@@ -49,7 +49,9 @@ describe("ViMax Adapters", () => {
     });
 
     it("constructs with custom config", () => {
-      const adapter = new TestAdapter(createAdapterConfig({ provider: "test" }));
+      const adapter = new TestAdapter(
+        createAdapterConfig({ provider: "test" })
+      );
       expect(adapter.config.provider).toBe("test");
     });
 

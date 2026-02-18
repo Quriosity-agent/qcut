@@ -8,21 +8,18 @@
  * Ported from: vimax/adapters/video_adapter.py
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
+import * as fs from "fs";
+import * as path from "path";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import {
   BaseAdapter,
   type AdapterConfig,
   createAdapterConfig,
-} from './base-adapter.js';
-import {
-  callModelApi,
-  downloadOutput,
-} from '../../api-caller.js';
-import type { VideoOutput, ImageOutput } from '../types/output.js';
-import { createVideoOutput } from '../types/output.js';
+} from "./base-adapter.js";
+import { callModelApi, downloadOutput } from "../../api-caller.js";
+import type { VideoOutput, ImageOutput } from "../types/output.js";
+import { createVideoOutput } from "../types/output.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -33,26 +30,26 @@ export interface VideoAdapterConfig extends AdapterConfig {
 }
 
 export function createVideoAdapterConfig(
-  partial?: Partial<VideoAdapterConfig>,
+  partial?: Partial<VideoAdapterConfig>
 ): VideoAdapterConfig {
   return {
-    ...createAdapterConfig({ provider: 'fal', model: 'kling' }),
+    ...createAdapterConfig({ provider: "fal", model: "kling" }),
     duration: 5.0,
     fps: 24,
-    output_dir: 'media/generated/vimax/videos',
+    output_dir: "media/generated/vimax/videos",
     ...partial,
   };
 }
 
 /** Model → FAL endpoint for image-to-video. */
 const MODEL_MAP: Record<string, string> = {
-  kling: 'fal-ai/kling-video/v1/standard/image-to-video',
-  kling_2_1: 'fal-ai/kling-video/v2.1/standard/image-to-video',
-  kling_2_6_pro: 'fal-ai/kling-video/v2.6/pro/image-to-video',
-  veo3: 'google/veo-3',
-  veo3_fast: 'google/veo-3-fast',
-  hailuo: 'fal-ai/hailuo/image-to-video',
-  grok_imagine: 'fal-ai/grok/imagine',
+  kling: "fal-ai/kling-video/v1/standard/image-to-video",
+  kling_2_1: "fal-ai/kling-video/v2.1/standard/image-to-video",
+  kling_2_6_pro: "fal-ai/kling-video/v2.6/pro/image-to-video",
+  veo3: "google/veo-3",
+  veo3_fast: "google/veo-3-fast",
+  hailuo: "fal-ai/hailuo/image-to-video",
+  grok_imagine: "fal-ai/grok/imagine",
 };
 
 /** Cost estimates per second of video. */
@@ -78,10 +75,10 @@ export class VideoGeneratorAdapter extends BaseAdapter<
   }
 
   async initialize(): Promise<boolean> {
-    const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? '';
+    const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "";
     this._hasApiKey = apiKey.length > 0;
     if (!this._hasApiKey) {
-      console.warn('[vimax.video] FAL_KEY not set — using mock mode');
+      console.warn("[vimax.video] FAL_KEY not set — using mock mode");
     }
     return true;
   }
@@ -90,7 +87,7 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     return this.generate(
       input.image_path as string,
       input.prompt as string,
-      input,
+      input
     );
   }
 
@@ -102,7 +99,7 @@ export class VideoGeneratorAdapter extends BaseAdapter<
       model?: string;
       duration?: number;
       output_path?: string;
-    },
+    }
   ): Promise<VideoOutput> {
     await this.ensureInitialized();
 
@@ -110,11 +107,17 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     const duration = options?.duration ?? this.config.duration;
 
     if (!this._hasApiKey) {
-      return this._mockGenerate(imagePath, prompt, model, duration, options?.output_path);
+      return this._mockGenerate(
+        imagePath,
+        prompt,
+        model,
+        duration,
+        options?.output_path
+      );
     }
 
     const startTime = Date.now();
-    const endpoint = MODEL_MAP[model] ?? MODEL_MAP['kling'];
+    const endpoint = MODEL_MAP[model] ?? MODEL_MAP.kling;
 
     const payload: Record<string, unknown> = {
       prompt,
@@ -125,7 +128,7 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     const result = await callModelApi({
       endpoint,
       payload,
-      provider: 'fal',
+      provider: "fal",
     });
 
     const generationTime = (Date.now() - startTime) / 1000;
@@ -134,8 +137,7 @@ export class VideoGeneratorAdapter extends BaseAdapter<
       throw new Error(`Video generation failed: ${result.error}`);
     }
 
-    const videoPath =
-      options?.output_path ?? this._defaultOutputPath(model);
+    const videoPath = options?.output_path ?? this._defaultOutputPath(model);
     this._ensureDir(videoPath);
 
     if (result.outputUrl) {
@@ -161,17 +163,16 @@ export class VideoGeneratorAdapter extends BaseAdapter<
   async generateFromImages(
     images: Array<ImageOutput | string>,
     prompts: string[],
-    options?: { model?: string },
+    options?: { model?: string }
   ): Promise<VideoOutput[]> {
     if (images.length !== prompts.length) {
-      throw new Error('Number of images must match number of prompts');
+      throw new Error("Number of images must match number of prompts");
     }
 
     const results: VideoOutput[] = [];
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      const imagePath =
-        typeof img === 'string' ? img : img.image_path;
+      const imagePath = typeof img === "string" ? img : img.image_path;
       const result = await this.generate(imagePath, prompts[i], {
         model: options?.model,
       });
@@ -183,31 +184,35 @@ export class VideoGeneratorAdapter extends BaseAdapter<
   /** Concatenate multiple videos into one using FFmpeg. */
   async concatenateVideos(
     videos: VideoOutput[],
-    outputPath: string,
+    outputPath: string
   ): Promise<VideoOutput> {
     this._ensureDir(outputPath);
 
-    const concatFile = path.join(path.dirname(outputPath), 'concat_list.txt');
+    const concatFile = path.join(path.dirname(outputPath), "concat_list.txt");
     const concatContent = videos
-      .map((v) => `file '${v.video_path.replace(/\\/g, '/')}'`)
-      .join('\n');
+      .map((v) => `file '${v.video_path.replace(/\\/g, "/")}'`)
+      .join("\n");
     fs.writeFileSync(concatFile, concatContent);
 
     try {
-      await execFileAsync('ffmpeg', [
-        '-y',
-        '-f', 'concat',
-        '-safe', '0',
-        '-i', concatFile,
-        '-c', 'copy',
+      await execFileAsync("ffmpeg", [
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        concatFile,
+        "-c",
+        "copy",
         outputPath,
       ]);
     } catch (err) {
       console.warn(
-        `[vimax.video] FFmpeg concat may have failed: ${err instanceof Error ? err.message : err}`,
+        `[vimax.video] FFmpeg concat may have failed: ${err instanceof Error ? err.message : err}`
       );
       // Create placeholder if ffmpeg failed
-      fs.writeFileSync(outputPath, 'Concatenated video placeholder');
+      fs.writeFileSync(outputPath, "Concatenated video placeholder");
     } finally {
       if (fs.existsSync(concatFile)) {
         fs.unlinkSync(concatFile);
@@ -228,10 +233,7 @@ export class VideoGeneratorAdapter extends BaseAdapter<
   // -- Private helpers --
 
   private _defaultOutputPath(prefix: string): string {
-    return path.join(
-      this.config.output_dir,
-      `${prefix}_${Date.now()}.mp4`,
-    );
+    return path.join(this.config.output_dir, `${prefix}_${Date.now()}.mp4`);
   }
 
   private _ensureDir(filePath: string): void {
@@ -246,10 +248,9 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     prompt: string,
     model: string,
     duration: number,
-    outputPath?: string,
+    outputPath?: string
   ): VideoOutput {
-    const videoPath =
-      outputPath ?? this._defaultOutputPath(`mock_${model}`);
+    const videoPath = outputPath ?? this._defaultOutputPath(`mock_${model}`);
     this._ensureDir(videoPath);
     fs.writeFileSync(videoPath, `Mock video: ${prompt}`);
 

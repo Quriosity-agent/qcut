@@ -11,8 +11,8 @@
  * Ported from: vimax/pipelines/idea2video.py
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 import {
   Screenwriter,
@@ -27,13 +27,13 @@ import {
   type StoryboardResult,
   CameraImageGenerator,
   type CameraGeneratorConfig,
-} from '../agents/index.js';
+} from "../agents/index.js";
 import type {
   CharacterInNovel,
   CharacterPortrait,
-} from '../types/character.js';
-import { CharacterPortraitRegistry } from '../types/character.js';
-import type { PipelineOutput } from '../types/output.js';
+} from "../types/character.js";
+import { CharacterPortraitRegistry } from "../types/character.js";
+import type { PipelineOutput } from "../types/output.js";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -57,15 +57,15 @@ export interface Idea2VideoConfig {
 }
 
 export function createIdea2VideoConfig(
-  partial?: Partial<Idea2VideoConfig>,
+  partial?: Partial<Idea2VideoConfig>
 ): Idea2VideoConfig {
   return {
-    output_dir: 'media/generated/vimax/idea2video',
+    output_dir: "media/generated/vimax/idea2video",
     save_intermediate: true,
     target_duration: 60.0,
-    video_model: 'kling',
-    image_model: 'nano_banana_pro',
-    llm_model: 'kimi-k2.5',
+    video_model: "kling",
+    image_model: "nano_banana_pro",
+    llm_model: "kimi-k2.5",
     generate_portraits: true,
     use_character_references: true,
     parallel_generation: false,
@@ -109,15 +109,15 @@ function createResult(idea: string): Idea2VideoResult {
 // ---------------------------------------------------------------------------
 
 function safeSlug(value: string): string {
-  const safe = value.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_|_$/g, '');
-  return safe || 'untitled';
+  const safe = value.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_|_$/g, "");
+  return safe || "untitled";
 }
 
 function scriptToText(script: Script): string {
   const parts: string[] = [
     `Title: ${script.title}`,
     `Logline: ${script.logline}`,
-    '',
+    "",
   ];
   for (const scene of script.scenes) {
     parts.push(`Scene: ${scene.title}`);
@@ -125,9 +125,9 @@ function scriptToText(script: Script): string {
     for (const shot of scene.shots) {
       parts.push(`- ${shot.description}`);
     }
-    parts.push('');
+    parts.push("");
   }
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -150,20 +150,20 @@ export class Idea2VideoPipeline {
 
   /** Create pipeline from a YAML config file. */
   static fromYaml(yamlPath: string): Idea2VideoPipeline {
-    const content = fs.readFileSync(yamlPath, 'utf-8');
+    const content = fs.readFileSync(yamlPath, "utf-8");
     // Simple YAML key: value parsing for pipeline config
     const config: Record<string, unknown> = {};
-    for (const line of content.split('\n')) {
+    for (const line of content.split("\n")) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const colonIdx = trimmed.indexOf(':');
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const colonIdx = trimmed.indexOf(":");
       if (colonIdx === -1) continue;
       const key = trimmed.slice(0, colonIdx).trim();
       let value: unknown = trimmed.slice(colonIdx + 1).trim();
       // Parse basic types
-      if (value === 'true') value = true;
-      else if (value === 'false') value = false;
-      else if (!isNaN(Number(value)) && value !== '') value = Number(value);
+      if (value === "true") value = true;
+      else if (value === "false") value = false;
+      else if (!isNaN(Number(value)) && value !== "") value = Number(value);
       config[key] = value;
     }
     return new Idea2VideoPipeline(config as Partial<Idea2VideoConfig>);
@@ -211,7 +211,7 @@ export class Idea2VideoPipeline {
       fs.mkdirSync(outputDir, { recursive: true });
 
       // Step 1: Generate Script
-      console.log('[idea2video] Step 1/5: Generating script...');
+      console.log("[idea2video] Step 1/5: Generating script...");
       const scriptResult = await this.screenwriter.process(idea);
       if (!scriptResult.success || !scriptResult.result) {
         result.errors.push(`Script generation failed: ${scriptResult.error}`);
@@ -221,25 +221,27 @@ export class Idea2VideoPipeline {
       result.total_cost += (scriptResult.metadata.cost as number) ?? 0;
 
       if (this.config.save_intermediate) {
-        this._saveJson(result.script, path.join(outputDir, 'script.json'));
+        this._saveJson(result.script, path.join(outputDir, "script.json"));
       }
 
       // Step 2: Extract Characters
-      console.log('[idea2video] Step 2/5: Extracting characters...');
+      console.log("[idea2video] Step 2/5: Extracting characters...");
       const scriptText = scriptToText(result.script);
       const charResult = await this.character_extractor.process(scriptText);
       if (charResult.success && charResult.result) {
         result.characters = charResult.result;
         result.total_cost += (charResult.metadata.cost as number) ?? 0;
       } else {
-        console.warn(`[idea2video] Character extraction failed: ${charResult.error}`);
+        console.warn(
+          `[idea2video] Character extraction failed: ${charResult.error}`
+        );
       }
 
       // Step 3: Generate Character Portraits (optional)
       if (this.config.generate_portraits && result.characters.length > 0) {
-        console.log('[idea2video] Step 3/5: Generating character portraits...');
+        console.log("[idea2video] Step 3/5: Generating character portraits...");
         const portraitsResult = await this.portraits_generator.generateBatch(
-          result.characters.slice(0, 5),
+          result.characters.slice(0, 5)
         );
         result.portraits = portraitsResult.result ?? {};
         result.total_cost += (portraitsResult.metadata.cost as number) ?? 0;
@@ -250,33 +252,37 @@ export class Idea2VideoPipeline {
           result.script
         ) {
           result.portrait_registry = new CharacterPortraitRegistry(
-            safeSlug(result.script.title),
+            safeSlug(result.script.title)
           );
           for (const portrait of Object.values(result.portraits)) {
             result.portrait_registry.addPortrait(portrait);
           }
           console.log(
-            `[idea2video] Created portrait registry with ${Object.keys(result.portraits).length} characters`,
+            `[idea2video] Created portrait registry with ${Object.keys(result.portraits).length} characters`
           );
         }
       }
 
       // Step 4: Generate Storyboard
-      console.log('[idea2video] Step 4/5: Generating storyboard...');
+      console.log("[idea2video] Step 4/5: Generating storyboard...");
       const storyboardResult = await this.storyboard_artist.process(
         result.script,
-        result.portrait_registry,
+        result.portrait_registry
       );
       if (!storyboardResult.success || !storyboardResult.result) {
-        result.errors.push(`Storyboard generation failed: ${storyboardResult.error}`);
+        result.errors.push(
+          `Storyboard generation failed: ${storyboardResult.error}`
+        );
         return result;
       }
       result.storyboard = storyboardResult.result;
       result.total_cost += (storyboardResult.metadata.cost as number) ?? 0;
 
       // Step 5: Generate Videos
-      console.log('[idea2video] Step 5/5: Generating videos...');
-      const videoResult = await this.camera_generator.process(result.storyboard);
+      console.log("[idea2video] Step 5/5: Generating videos...");
+      const videoResult = await this.camera_generator.process(
+        result.storyboard
+      );
       if (!videoResult.success || !videoResult.result) {
         result.errors.push(`Video generation failed: ${videoResult.error}`);
         return result;
@@ -289,14 +295,15 @@ export class Idea2VideoPipeline {
       result.completed_at = new Date().toISOString();
 
       const durationMs = result.completed_at
-        ? new Date(result.completed_at).getTime() - new Date(result.started_at).getTime()
+        ? new Date(result.completed_at).getTime() -
+          new Date(result.started_at).getTime()
         : 0;
       console.log(
-        `[idea2video] Pipeline completed! Duration: ${(durationMs / 1000).toFixed(1)}s, Cost: $${result.total_cost.toFixed(3)}`,
+        `[idea2video] Pipeline completed! Duration: ${(durationMs / 1000).toFixed(1)}s, Cost: $${result.total_cost.toFixed(3)}`
       );
 
       if (this.config.save_intermediate) {
-        this._saveSummary(result, path.join(outputDir, 'summary.json'));
+        this._saveSummary(result, path.join(outputDir, "summary.json"));
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -325,7 +332,9 @@ export class Idea2VideoPipeline {
       final_video: result.output?.final_video?.video_path ?? null,
       total_cost: result.total_cost,
       duration_seconds: result.completed_at
-        ? (new Date(result.completed_at).getTime() - new Date(result.started_at).getTime()) / 1000
+        ? (new Date(result.completed_at).getTime() -
+            new Date(result.started_at).getTime()) /
+          1000
         : null,
       errors: result.errors,
     };
@@ -335,7 +344,7 @@ export class Idea2VideoPipeline {
 
 /** Factory: create pipeline from config or defaults. */
 export function createPipeline(
-  config?: Partial<Idea2VideoConfig>,
+  config?: Partial<Idea2VideoConfig>
 ): Idea2VideoPipeline {
   return new Idea2VideoPipeline(config);
 }

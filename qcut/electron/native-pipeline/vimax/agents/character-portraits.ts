@@ -7,8 +7,8 @@
  * Ported from: vimax/agents/character_portraits.py
  */
 
-import * as path from 'path';
-import * as fs from 'fs';
+import * as path from "path";
+import * as fs from "fs";
 import {
   BaseAgent,
   type AgentConfig,
@@ -16,13 +16,16 @@ import {
   createAgentConfig,
   agentOk,
   agentFail,
-} from './base-agent.js';
+} from "./base-agent.js";
 import {
   ImageGeneratorAdapter,
   type ImageAdapterConfig,
-} from '../adapters/image-adapter.js';
-import { LLMAdapter, type Message } from '../adapters/llm-adapter.js';
-import type { CharacterInNovel, CharacterPortrait } from '../types/character.js';
+} from "../adapters/image-adapter.js";
+import { LLMAdapter, type Message } from "../adapters/llm-adapter.js";
+import type {
+  CharacterInNovel,
+  CharacterPortrait,
+} from "../types/character.js";
 
 export interface PortraitsGeneratorConfig extends AgentConfig {
   image_model: string;
@@ -33,15 +36,15 @@ export interface PortraitsGeneratorConfig extends AgentConfig {
 }
 
 export function createPortraitsGeneratorConfig(
-  partial?: Partial<PortraitsGeneratorConfig>,
+  partial?: Partial<PortraitsGeneratorConfig>
 ): PortraitsGeneratorConfig {
   return {
-    ...createAgentConfig({ name: 'CharacterPortraitsGenerator' }),
-    image_model: 'nano_banana_pro',
-    llm_model: 'kimi-k2.5',
-    views: ['front', 'side', 'back', 'three_quarter'],
-    style: 'detailed character portrait, professional, consistent style',
-    output_dir: 'media/generated/vimax/portraits',
+    ...createAgentConfig({ name: "CharacterPortraitsGenerator" }),
+    image_model: "nano_banana_pro",
+    llm_model: "kimi-k2.5",
+    views: ["front", "side", "back", "three_quarter"],
+    style: "detailed character portrait, professional, consistent style",
+    output_dir: "media/generated/vimax/portraits",
     ...partial,
   };
 }
@@ -63,11 +66,14 @@ Keep the character's appearance consistent across all views.
 
 Respond with ONLY the image generation prompt, no other text.`;
 
-const SUPPORTED_VIEWS = new Set(['front', 'side', 'back', 'three_quarter']);
+const SUPPORTED_VIEWS = new Set(["front", "side", "back", "three_quarter"]);
 
 function safeSlug(value: string): string {
-  const safe = value.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_|_$/g, '').toLowerCase();
-  return safe || 'unknown';
+  const safe = value
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_|_$/g, "")
+    .toLowerCase();
+  return safe || "unknown";
 }
 
 export class CharacterPortraitsGenerator extends BaseAgent<
@@ -98,26 +104,25 @@ export class CharacterPortraitsGenerator extends BaseAgent<
 
   private async _generatePrompt(
     character: CharacterInNovel,
-    view: string,
+    view: string
   ): Promise<string> {
-    const prompt = PORTRAIT_PROMPT_TEMPLATE
-      .replace(/\{view\}/g, view)
-      .replace('{name}', character.name)
-      .replace('{description}', character.description)
-      .replace('{appearance}', character.appearance)
-      .replace('{age}', character.age ?? 'unknown')
-      .replace('{gender}', character.gender ?? 'unknown')
-      .replace('{style}', this.config.style);
+    const prompt = PORTRAIT_PROMPT_TEMPLATE.replace(/\{view\}/g, view)
+      .replace("{name}", character.name)
+      .replace("{description}", character.description)
+      .replace("{appearance}", character.appearance)
+      .replace("{age}", character.age ?? "unknown")
+      .replace("{gender}", character.gender ?? "unknown")
+      .replace("{style}", this.config.style);
 
     const response = await this._llm!.chat([
-      { role: 'user', content: prompt } as Message,
+      { role: "user", content: prompt } as Message,
     ]);
-    const result = (response.content || '').trim();
+    const result = (response.content || "").trim();
 
     // Guard against empty LLM responses
     if (result.length < 3) {
       console.warn(
-        `[portraits] LLM returned empty prompt for ${character.name} ${view} view, using fallback`,
+        `[portraits] LLM returned empty prompt for ${character.name} ${view} view, using fallback`
       );
       return `${this.config.style}, ${view} view portrait of ${character.name}, ${character.description}, ${character.appearance}`;
     }
@@ -126,7 +131,7 @@ export class CharacterPortraitsGenerator extends BaseAgent<
   }
 
   async process(
-    character: CharacterInNovel,
+    character: CharacterInNovel
   ): Promise<AgentResult<CharacterPortrait>> {
     await this._ensureAdapters();
 
@@ -135,17 +140,17 @@ export class CharacterPortraitsGenerator extends BaseAgent<
     try {
       const portrait: CharacterPortrait = {
         character_name: character.name,
-        description: '',
+        description: "",
       };
       let totalCost = 0;
 
       // Validate views
       const unknownViews = this.config.views.filter(
-        (v) => !SUPPORTED_VIEWS.has(v),
+        (v) => !SUPPORTED_VIEWS.has(v)
       );
       if (unknownViews.length > 0) {
         throw new Error(
-          `Unsupported portrait view(s): ${[...new Set(unknownViews)].sort().join(', ')}`,
+          `Unsupported portrait view(s): ${[...new Set(unknownViews)].sort().join(", ")}`
         );
       }
 
@@ -156,22 +161,24 @@ export class CharacterPortraitsGenerator extends BaseAgent<
       }
 
       for (const view of this.config.views) {
-        console.log(`[portraits] Generating ${view} view for ${character.name}`);
+        console.log(
+          `[portraits] Generating ${view} view for ${character.name}`
+        );
 
         const prompt = await this._generatePrompt(character, view);
         const outputPath = path.join(charDir, `${view}.png`);
 
         const result = await this._imageAdapter!.generate(prompt, {
-          aspect_ratio: '1:1',
+          aspect_ratio: "1:1",
           output_path: outputPath,
         });
 
         totalCost += result.cost;
 
-        if (view === 'front') portrait.front_view = result.image_path;
-        else if (view === 'side') portrait.side_view = result.image_path;
-        else if (view === 'back') portrait.back_view = result.image_path;
-        else if (view === 'three_quarter')
+        if (view === "front") portrait.front_view = result.image_path;
+        else if (view === "side") portrait.side_view = result.image_path;
+        else if (view === "back") portrait.back_view = result.image_path;
+        else if (view === "three_quarter")
           portrait.three_quarter_view = result.image_path;
       }
 
@@ -190,7 +197,7 @@ export class CharacterPortraitsGenerator extends BaseAgent<
 
   /** Generate portraits for multiple characters. */
   async generateBatch(
-    characters: CharacterInNovel[],
+    characters: CharacterInNovel[]
   ): Promise<AgentResult<Record<string, CharacterPortrait>>> {
     const portraits: Record<string, CharacterPortrait> = {};
     let totalCost = 0;
@@ -203,13 +210,13 @@ export class CharacterPortraitsGenerator extends BaseAgent<
         totalCost += (result.metadata.cost as number) ?? 0;
       } else {
         errors.push(
-          `Failed to generate portrait for ${char.name}: ${result.error}`,
+          `Failed to generate portrait for ${char.name}: ${result.error}`
         );
       }
     }
 
     if (errors.length > 0) {
-      console.warn(`[portraits] Some portraits failed: ${errors.join('; ')}`);
+      console.warn(`[portraits] Some portraits failed: ${errors.join("; ")}`);
     }
 
     return agentOk(portraits, {

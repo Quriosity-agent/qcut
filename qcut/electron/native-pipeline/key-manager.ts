@@ -51,8 +51,10 @@ function readEnvFile(): Map<string, string> {
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
     let value = trimmed.slice(eqIdx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
     entries.set(key, value);
@@ -106,10 +108,20 @@ export function checkKeys(): KeyStatus[] {
     const fileValue = envEntries.get(name);
 
     if (envValue) {
-      return { name, configured: true, source: "env" as const, masked: maskKey(envValue) };
+      return {
+        name,
+        configured: true,
+        source: "env" as const,
+        masked: maskKey(envValue),
+      };
     }
     if (fileValue) {
-      return { name, configured: true, source: "envfile" as const, masked: maskKey(fileValue) };
+      return {
+        name,
+        configured: true,
+        source: "envfile" as const,
+        masked: maskKey(fileValue),
+      };
     }
     return { name, configured: false, source: "none" as const };
   });

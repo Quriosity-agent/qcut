@@ -26,7 +26,8 @@
         "**/tmp/**",
         "docs/completed/**",
         "**/routeTree.gen.ts",
-        ".agents/**"
+        ".agents/**",
+        ".claude/**"
       ],
       "linter": {
         "enabled": false
@@ -87,11 +88,13 @@
         "useSortedClasses": "off"
       },
       "performance": {
+        "noDelete": "off",
         "noImgElement": "off",
         "noNamespaceImport": "off",
         "useTopLevelRegex": "off"
       },
       "style": {
+        "noEnum": "off",
         "noNestedTernary": "off",
         "noNonNullAssertion": "off",
         "noNegationElse": "warn",
@@ -112,6 +115,7 @@
       },
       "suspicious": {
         "noArrayIndexKey": "off",
+        "noTemplateCurlyInString": "off",
         "noAssignInExpressions": "error",
         "noAsyncPromiseExecutor": "error",
         "noConsole": "off",

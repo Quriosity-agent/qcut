@@ -8,11 +8,11 @@
  * @module electron/native-pipeline/vimax-cli-handlers
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import type { CLIRunOptions, CLIResult } from './cli-runner.js';
-import { resolveOutputDir } from './output-utils.js';
-import { listModels } from './cost-calculator.js';
+import * as fs from "fs";
+import * as path from "path";
+import type { CLIRunOptions, CLIResult } from "./cli-runner.js";
+import { resolveOutputDir } from "./output-utils.js";
+import { listModels } from "./cost-calculator.js";
 
 type ProgressFn = (progress: {
   stage: string;
@@ -24,21 +24,30 @@ type ProgressFn = (progress: {
 /** vimax:extract-characters — Extract characters from text using CharacterExtractor agent. */
 export async function handleVimaxExtractCharacters(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const text = options.text || options.input;
   if (!text) {
-    return { success: false, error: 'Missing --text or --input (text or file path)' };
+    return {
+      success: false,
+      error: "Missing --text or --input (text or file path)",
+    };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Extracting characters...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Extracting characters...",
+  });
 
   try {
-    const { CharacterExtractor } = await import('./vimax/agents/character-extractor.js');
+    const { CharacterExtractor } = await import(
+      "./vimax/agents/character-extractor.js"
+    );
 
     let inputText = text;
     if (fs.existsSync(text)) {
-      inputText = fs.readFileSync(text, 'utf-8');
+      inputText = fs.readFileSync(text, "utf-8");
     }
 
     const startTime = Date.now();
@@ -48,14 +57,17 @@ export async function handleVimaxExtractCharacters(
 
     const result = await extractor.process(inputText);
 
-    onProgress({ stage: 'complete', percent: 100, message: 'Done' });
+    onProgress({ stage: "complete", percent: 100, message: "Done" });
 
     if (!result.success) {
-      return { success: false, error: `Character extraction failed: ${result.error}` };
+      return {
+        success: false,
+        error: `Character extraction failed: ${result.error}`,
+      };
     }
 
     const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
-    const outputPath = path.join(outputDir, 'characters.json');
+    const outputPath = path.join(outputDir, "characters.json");
     fs.writeFileSync(outputPath, JSON.stringify(result.result, null, 2));
 
     return {
@@ -78,34 +90,43 @@ export async function handleVimaxExtractCharacters(
 /** vimax:generate-script — Generate screenplay from idea using Screenwriter agent. */
 export async function handleVimaxGenerateScript(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const idea = options.idea || options.text;
   if (!idea) {
-    return { success: false, error: 'Missing --idea or --text' };
+    return { success: false, error: "Missing --idea or --text" };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Generating screenplay...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Generating screenplay...",
+  });
 
   try {
-    const { Screenwriter } = await import('./vimax/agents/screenwriter.js');
+    const { Screenwriter } = await import("./vimax/agents/screenwriter.js");
 
     const startTime = Date.now();
     const writer = new Screenwriter({
       model: options.llmModel,
-      target_duration: options.duration ? parseInt(options.duration, 10) : undefined,
+      target_duration: options.duration
+        ? parseInt(options.duration, 10)
+        : undefined,
     });
 
     const result = await writer.process(idea);
 
-    onProgress({ stage: 'complete', percent: 100, message: 'Done' });
+    onProgress({ stage: "complete", percent: 100, message: "Done" });
 
     if (!result.success) {
-      return { success: false, error: `Script generation failed: ${result.error}` };
+      return {
+        success: false,
+        error: `Script generation failed: ${result.error}`,
+      };
     }
 
     const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
-    const outputPath = path.join(outputDir, 'script.json');
+    const outputPath = path.join(outputDir, "script.json");
     fs.writeFileSync(outputPath, JSON.stringify(result.result, null, 2));
 
     return {
@@ -129,21 +150,30 @@ export async function handleVimaxGenerateScript(
 /** vimax:generate-storyboard — Generate storyboard images from script using StoryboardArtist. */
 export async function handleVimaxGenerateStoryboard(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const scriptPath = options.script || options.input;
   if (!scriptPath) {
-    return { success: false, error: 'Missing --script or --input (script JSON path)' };
+    return {
+      success: false,
+      error: "Missing --script or --input (script JSON path)",
+    };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Generating storyboard...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Generating storyboard...",
+  });
 
   try {
-    const { StoryboardArtist } = await import('./vimax/agents/storyboard-artist.js');
+    const { StoryboardArtist } = await import(
+      "./vimax/agents/storyboard-artist.js"
+    );
 
     let scriptData: string;
     try {
-      scriptData = fs.readFileSync(scriptPath, 'utf-8');
+      scriptData = fs.readFileSync(scriptPath, "utf-8");
     } catch {
       return { success: false, error: `Cannot read script: ${scriptPath}` };
     }
@@ -160,10 +190,13 @@ export async function handleVimaxGenerateStoryboard(
 
     const result = await artist.process(script);
 
-    onProgress({ stage: 'complete', percent: 100, message: 'Done' });
+    onProgress({ stage: "complete", percent: 100, message: "Done" });
 
     if (!result.success) {
-      return { success: false, error: `Storyboard generation failed: ${result.error}` };
+      return {
+        success: false,
+        error: `Storyboard generation failed: ${result.error}`,
+      };
     }
 
     return {
@@ -188,18 +221,30 @@ export async function handleVimaxGenerateStoryboard(
 /** vimax:generate-portraits — Generate character portraits using CharacterPortraitsGenerator. */
 export async function handleVimaxGeneratePortraits(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const text = options.text || options.input;
   if (!text) {
-    return { success: false, error: 'Missing --text or --input (text with characters, or character JSON path)' };
+    return {
+      success: false,
+      error:
+        "Missing --text or --input (text with characters, or character JSON path)",
+    };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Generating character portraits...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Generating character portraits...",
+  });
 
   try {
-    const { CharacterExtractor } = await import('./vimax/agents/character-extractor.js');
-    const { CharacterPortraitsGenerator } = await import('./vimax/agents/character-portraits.js');
+    const { CharacterExtractor } = await import(
+      "./vimax/agents/character-extractor.js"
+    );
+    const { CharacterPortraitsGenerator } = await import(
+      "./vimax/agents/character-portraits.js"
+    );
 
     const startTime = Date.now();
     const sessionId = `cli-${Date.now()}`;
@@ -208,29 +253,36 @@ export async function handleVimaxGeneratePortraits(
     let characters;
 
     // Check if input is a JSON file with pre-extracted characters
-    if (fs.existsSync(text) && text.endsWith('.json')) {
-      const content = fs.readFileSync(text, 'utf-8');
+    if (fs.existsSync(text) && text.endsWith(".json")) {
+      const content = fs.readFileSync(text, "utf-8");
       const parsed = JSON.parse(content);
       characters = Array.isArray(parsed) ? parsed : parsed.characters;
     } else {
       // Extract characters from text first
       let inputText = text;
       if (fs.existsSync(text)) {
-        inputText = fs.readFileSync(text, 'utf-8');
+        inputText = fs.readFileSync(text, "utf-8");
       }
 
-      onProgress({ stage: 'extracting', percent: 10, message: 'Extracting characters from text...' });
+      onProgress({
+        stage: "extracting",
+        percent: 10,
+        message: "Extracting characters from text...",
+      });
       const extractor = new CharacterExtractor({ model: options.llmModel });
       const extractResult = await extractor.process(inputText);
 
       if (!extractResult.success || !extractResult.result) {
-        return { success: false, error: `Character extraction failed: ${extractResult.error}` };
+        return {
+          success: false,
+          error: `Character extraction failed: ${extractResult.error}`,
+        };
       }
       characters = extractResult.result;
     }
 
     onProgress({
-      stage: 'generating',
+      stage: "generating",
       percent: 30,
       message: `Generating portraits for ${characters.length} characters...`,
     });
@@ -238,22 +290,25 @@ export async function handleVimaxGeneratePortraits(
     const generator = new CharacterPortraitsGenerator({
       image_model: options.imageModel,
       llm_model: options.llmModel,
-      output_dir: path.join(outputDir, 'portraits'),
+      output_dir: path.join(outputDir, "portraits"),
     });
 
     const batchResult = await generator.generateBatch(characters);
 
-    onProgress({ stage: 'complete', percent: 100, message: 'Done' });
+    onProgress({ stage: "complete", percent: 100, message: "Done" });
 
     if (!batchResult.success) {
-      return { success: false, error: `Portrait generation failed: ${batchResult.error}` };
+      return {
+        success: false,
+        error: `Portrait generation failed: ${batchResult.error}`,
+      };
     }
 
     const portraitCount = Object.keys(batchResult.result ?? {}).length;
 
     return {
       success: true,
-      outputPath: path.join(outputDir, 'portraits'),
+      outputPath: path.join(outputDir, "portraits"),
       cost: (batchResult.metadata.cost as number) ?? 0,
       duration: (Date.now() - startTime) / 1000,
       data: {
@@ -271,21 +326,29 @@ export async function handleVimaxGeneratePortraits(
 
 /** vimax:create-registry — Create portrait registry from directory of portrait files. */
 export async function handleVimaxCreateRegistry(
-  options: CLIRunOptions,
+  options: CLIRunOptions
 ): Promise<CLIResult> {
   const portraitsDir = options.input;
   if (!portraitsDir) {
-    return { success: false, error: 'Missing --input (portraits directory path)' };
+    return {
+      success: false,
+      error: "Missing --input (portraits directory path)",
+    };
   }
 
   try {
-    const { CharacterPortraitRegistry } = await import('./vimax/types/character.js');
+    const { CharacterPortraitRegistry } = await import(
+      "./vimax/types/character.js"
+    );
 
     if (!fs.existsSync(portraitsDir)) {
-      return { success: false, error: `Portraits directory not found: ${portraitsDir}` };
+      return {
+        success: false,
+        error: `Portraits directory not found: ${portraitsDir}`,
+      };
     }
 
-    const registry = new CharacterPortraitRegistry('cli-project');
+    const registry = new CharacterPortraitRegistry("cli-project");
     const entries = fs.readdirSync(portraitsDir, { withFileTypes: true });
     let characterCount = 0;
 
@@ -295,27 +358,32 @@ export async function handleVimaxCreateRegistry(
       const charDir = path.join(portraitsDir, entry.name);
       const portrait: Record<string, unknown> = {
         character_name: entry.name,
-        description: '',
+        description: "",
       };
 
       for (const viewFile of fs.readdirSync(charDir)) {
-        const viewName = path.basename(viewFile, path.extname(viewFile)).toLowerCase();
+        const viewName = path
+          .basename(viewFile, path.extname(viewFile))
+          .toLowerCase();
         const viewPath = path.join(charDir, viewFile);
 
         if (!fs.statSync(viewPath).isFile()) continue;
 
-        if (viewName === 'front') portrait.front_view = viewPath;
-        else if (viewName === 'side') portrait.side_view = viewPath;
-        else if (viewName === 'back') portrait.back_view = viewPath;
-        else if (viewName === 'three_quarter') portrait.three_quarter_view = viewPath;
+        if (viewName === "front") portrait.front_view = viewPath;
+        else if (viewName === "side") portrait.side_view = viewPath;
+        else if (viewName === "back") portrait.back_view = viewPath;
+        else if (viewName === "three_quarter")
+          portrait.three_quarter_view = viewPath;
       }
 
-      registry.addPortrait(portrait as import('./vimax/types/character.js').CharacterPortrait);
+      registry.addPortrait(
+        portrait as import("./vimax/types/character.js").CharacterPortrait
+      );
       characterCount++;
     }
 
     const registryData = registry.toJSON();
-    const outputPath = path.join(portraitsDir, 'registry.json');
+    const outputPath = path.join(portraitsDir, "registry.json");
     fs.writeFileSync(outputPath, JSON.stringify(registryData, null, 2));
 
     return {
@@ -337,23 +405,29 @@ export async function handleVimaxCreateRegistry(
 
 /** vimax:show-registry — Display contents of a portrait registry file. */
 export async function handleVimaxShowRegistry(
-  options: CLIRunOptions,
+  options: CLIRunOptions
 ): Promise<CLIResult> {
   const registryPath = options.input;
   if (!registryPath) {
-    return { success: false, error: 'Missing --input (registry JSON file path)' };
+    return {
+      success: false,
+      error: "Missing --input (registry JSON file path)",
+    };
   }
 
   try {
     const { CharacterPortraitRegistry, getPortraitViews } = await import(
-      './vimax/types/character.js'
+      "./vimax/types/character.js"
     );
 
     if (!fs.existsSync(registryPath)) {
-      return { success: false, error: `Registry file not found: ${registryPath}` };
+      return {
+        success: false,
+        error: `Registry file not found: ${registryPath}`,
+      };
     }
 
-    const content = fs.readFileSync(registryPath, 'utf-8');
+    const content = fs.readFileSync(registryPath, "utf-8");
     const data = JSON.parse(content);
     const registry = CharacterPortraitRegistry.fromJSON(data);
 
@@ -367,8 +441,8 @@ export async function handleVimaxShowRegistry(
       const views = getPortraitViews(portrait);
       details.push({
         name,
-        description: portrait.description || '(none)',
-        views: Object.keys(views).join(', ') || '(none)',
+        description: portrait.description || "(none)",
+        views: Object.keys(views).join(", ") || "(none)",
         view_count: Object.keys(views).length,
       });
     }
@@ -392,17 +466,23 @@ export async function handleVimaxShowRegistry(
 /** vimax:idea2video — Full pipeline from idea to video. */
 export async function handleVimaxIdea2Video(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const idea = options.idea || options.text;
   if (!idea) {
-    return { success: false, error: 'Missing --idea or --text' };
+    return { success: false, error: "Missing --idea or --text" };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Starting idea-to-video pipeline...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Starting idea-to-video pipeline...",
+  });
 
   try {
-    const { Idea2VideoPipeline } = await import('./vimax/pipelines/idea2video.js');
+    const { Idea2VideoPipeline } = await import(
+      "./vimax/pipelines/idea2video.js"
+    );
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
     const startTime = Date.now();
@@ -414,7 +494,9 @@ export async function handleVimaxIdea2Video(
       videoModel: options.videoModel,
       imageModel: options.imageModel,
       llmModel: options.llmModel,
-      targetDuration: options.duration ? parseInt(options.duration, 10) : undefined,
+      targetDuration: options.duration
+        ? parseInt(options.duration, 10)
+        : undefined,
     });
 
     const result = await pipeline.run(idea);
@@ -441,24 +523,30 @@ export async function handleVimaxIdea2Video(
 /** vimax:script2video — Pipeline from script JSON to video. */
 export async function handleVimaxScript2Video(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const scriptPath = options.script || options.input;
   if (!scriptPath) {
-    return { success: false, error: 'Missing --script or --input (JSON path)' };
+    return { success: false, error: "Missing --script or --input (JSON path)" };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Starting script-to-video pipeline...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Starting script-to-video pipeline...",
+  });
 
   try {
-    const { Script2VideoPipeline } = await import('./vimax/pipelines/script2video.js');
+    const { Script2VideoPipeline } = await import(
+      "./vimax/pipelines/script2video.js"
+    );
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
     const startTime = Date.now();
 
     let scriptData: string;
     try {
-      scriptData = fs.readFileSync(scriptPath, 'utf-8');
+      scriptData = fs.readFileSync(scriptPath, "utf-8");
     } catch {
       return { success: false, error: `Cannot read script: ${scriptPath}` };
     }
@@ -490,24 +578,33 @@ export async function handleVimaxScript2Video(
 /** vimax:novel2movie — Pipeline from novel text to movie. */
 export async function handleVimaxNovel2Movie(
   options: CLIRunOptions,
-  onProgress: ProgressFn,
+  onProgress: ProgressFn
 ): Promise<CLIResult> {
   const novelPath = options.novel || options.input;
   if (!novelPath) {
-    return { success: false, error: 'Missing --novel or --input (text file path)' };
+    return {
+      success: false,
+      error: "Missing --novel or --input (text file path)",
+    };
   }
 
-  onProgress({ stage: 'starting', percent: 0, message: 'Starting novel-to-movie pipeline...' });
+  onProgress({
+    stage: "starting",
+    percent: 0,
+    message: "Starting novel-to-movie pipeline...",
+  });
 
   try {
-    const { Novel2MoviePipeline } = await import('./vimax/pipelines/novel2movie.js');
+    const { Novel2MoviePipeline } = await import(
+      "./vimax/pipelines/novel2movie.js"
+    );
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
     const startTime = Date.now();
 
     let novelText: string;
     try {
-      novelText = fs.readFileSync(novelPath, 'utf-8');
+      novelText = fs.readFileSync(novelPath, "utf-8");
     } catch {
       return { success: false, error: `Cannot read novel: ${novelPath}` };
     }
@@ -549,18 +646,21 @@ export async function handleVimaxNovel2Movie(
 /** vimax:list-models — List ViMax-specific models (image, video, LLM). */
 export function handleVimaxListModels(): CLIResult {
   const vimaxCategories = new Set([
-    'text_to_image',
-    'text_to_video',
-    'image_to_video',
-    'image_to_image',
+    "text_to_image",
+    "text_to_video",
+    "image_to_video",
+    "image_to_image",
   ]);
 
   const allModels = listModels();
   const vimaxModels = allModels.filter((m) =>
-    m.categories.some((c: string) => vimaxCategories.has(c)),
+    m.categories.some((c: string) => vimaxCategories.has(c))
   );
 
-  const grouped: Record<string, { key: string; name: string; provider: string }[]> = {};
+  const grouped: Record<
+    string,
+    { key: string; name: string; provider: string }[]
+  > = {};
   for (const cat of vimaxCategories) {
     grouped[cat] = [];
   }
@@ -588,7 +688,7 @@ export function handleVimaxListModels(): CLIResult {
       })),
       count: vimaxModels.length,
       by_category: Object.fromEntries(
-        Object.entries(grouped).map(([cat, models]) => [cat, models.length]),
+        Object.entries(grouped).map(([cat, models]) => [cat, models.length])
       ),
     },
   };

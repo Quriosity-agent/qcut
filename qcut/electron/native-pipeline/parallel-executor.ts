@@ -46,7 +46,11 @@ export interface ParallelGroup {
 }
 
 interface ExecutionPlan {
-  groups: Array<{ parallel: boolean; steps: PipelineStep[]; mergeStrategy: MergeStrategy }>;
+  groups: Array<{
+    parallel: boolean;
+    steps: PipelineStep[];
+    mergeStrategy: MergeStrategy;
+  }>;
 }
 
 const PARALLELIZABLE_CATEGORIES = new Set([
@@ -136,7 +140,7 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
       if (group.parallel && group.steps.length > 1) {
         this.stats.parallelGroups++;
         onProgress({
-          stage: `parallel_group`,
+          stage: "parallel_group",
           percent: Math.round((stepOffset / enabledSteps.length) * 100),
           message: `Executing ${group.steps.length} steps in parallel`,
           totalSteps: enabledSteps.length,
@@ -150,7 +154,11 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
           (p, m) => {
             onProgress({
               stage: "parallel_step",
-              percent: Math.round(((stepOffset + p * group.steps.length / 100) / enabledSteps.length) * 100),
+              percent: Math.round(
+                ((stepOffset + (p * group.steps.length) / 100) /
+                  enabledSteps.length) *
+                  100
+              ),
               message: m,
               totalSteps: enabledSteps.length,
             });
@@ -234,10 +242,14 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
 
     const totalTime = (Date.now() - startTime) / 1000;
     this.stats.parallelTime = totalTime;
-    this.stats.sequentialTime = stepResults.reduce((sum, r) => sum + r.duration, 0);
-    this.stats.speedupFactor = this.stats.sequentialTime > 0
-      ? this.stats.sequentialTime / this.stats.parallelTime
-      : 1;
+    this.stats.sequentialTime = stepResults.reduce(
+      (sum, r) => sum + r.duration,
+      0
+    );
+    this.stats.speedupFactor =
+      this.stats.sequentialTime > 0
+        ? this.stats.sequentialTime / this.stats.parallelTime
+        : 1;
 
     onProgress({
       stage: "complete",
@@ -296,8 +308,15 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
     return { groups };
   }
 
-  canParallelizeStep(step: PipelineStep, index: number, allSteps: PipelineStep[]): boolean {
-    if (!PARALLELIZABLE_CATEGORIES.has(step.type) && !IO_INTENSIVE_CATEGORIES.has(step.type)) {
+  canParallelizeStep(
+    step: PipelineStep,
+    index: number,
+    allSteps: PipelineStep[]
+  ): boolean {
+    if (
+      !PARALLELIZABLE_CATEGORIES.has(step.type) &&
+      !IO_INTENSIVE_CATEGORIES.has(step.type)
+    ) {
       return false;
     }
 
@@ -352,7 +371,10 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
     });
   }
 
-  private mergeResults(results: StepResult[], strategy: MergeStrategy): StepResult {
+  private mergeResults(
+    results: StepResult[],
+    strategy: MergeStrategy
+  ): StepResult {
     switch (strategy) {
       case MergeStrategy.FIRST_SUCCESS: {
         const first = results.find((r) => r.success);
@@ -374,7 +396,6 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
           data: successful.map((r) => r.data),
         };
       }
-      case MergeStrategy.COLLECT_ALL:
       default: {
         const allSuccess = results.every((r) => r.success);
         const failed = results.filter((r) => !r.success);
@@ -384,9 +405,7 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
           duration: Math.max(...results.map((r) => r.duration)),
           cost: results.reduce((sum, r) => sum + (r.cost || 0), 0),
           data: results.map((r) => r.data),
-          error: allSuccess
-            ? undefined
-            : failed.map((r) => r.error).join("; "),
+          error: allSuccess ? undefined : failed.map((r) => r.error).join("; "),
         };
       }
     }
@@ -396,8 +415,18 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
     step: PipelineStep,
     rawInput: string,
     previousResult?: StepResult
-  ): { text?: string; imageUrl?: string; videoUrl?: string; audioUrl?: string } {
-    const input: { text?: string; imageUrl?: string; videoUrl?: string; audioUrl?: string } = {};
+  ): {
+    text?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    audioUrl?: string;
+  } {
+    const input: {
+      text?: string;
+      imageUrl?: string;
+      videoUrl?: string;
+      audioUrl?: string;
+    } = {};
 
     const inputType = getInputDataType(step.type);
     switch (inputType) {
@@ -405,13 +434,16 @@ export class ParallelPipelineExecutor extends PipelineExecutor {
         input.text = previousResult?.text || rawInput;
         break;
       case "image":
-        input.imageUrl = previousResult?.outputUrl || previousResult?.outputPath || rawInput;
+        input.imageUrl =
+          previousResult?.outputUrl || previousResult?.outputPath || rawInput;
         break;
       case "video":
-        input.videoUrl = previousResult?.outputUrl || previousResult?.outputPath || rawInput;
+        input.videoUrl =
+          previousResult?.outputUrl || previousResult?.outputPath || rawInput;
         break;
       case "audio":
-        input.audioUrl = previousResult?.outputUrl || previousResult?.outputPath || rawInput;
+        input.audioUrl =
+          previousResult?.outputUrl || previousResult?.outputPath || rawInput;
         break;
     }
 

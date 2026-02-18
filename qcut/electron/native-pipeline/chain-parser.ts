@@ -46,9 +46,20 @@ interface YamlPipeline {
 }
 
 const VALID_CATEGORIES = new Set<string>([
-  "text_to_image", "image_to_image", "text_to_video", "image_to_video",
-  "video_to_video", "avatar", "motion_transfer", "upscale", "upscale_video",
-  "add_audio", "text_to_speech", "speech_to_text", "image_understanding", "prompt_generation",
+  "text_to_image",
+  "image_to_image",
+  "text_to_video",
+  "image_to_video",
+  "video_to_video",
+  "avatar",
+  "motion_transfer",
+  "upscale",
+  "upscale_video",
+  "add_audio",
+  "text_to_speech",
+  "speech_to_text",
+  "image_understanding",
+  "prompt_generation",
 ]);
 
 export function parseChainConfig(yamlContent: string): PipelineChain {
@@ -77,10 +88,14 @@ export function parseChainConfig(yamlContent: string): PipelineChain {
     const s = raw.steps[i];
     if (isParallelGroup(s)) {
       for (const sub of s.steps) {
-        if (!sub.type) throw new Error(`Step ${i + 1} parallel sub-step: missing 'type'`);
-        if (!sub.model) throw new Error(`Step ${i + 1} parallel sub-step: missing 'model'`);
+        if (!sub.type)
+          throw new Error(`Step ${i + 1} parallel sub-step: missing 'type'`);
+        if (!sub.model)
+          throw new Error(`Step ${i + 1} parallel sub-step: missing 'model'`);
         if (!VALID_CATEGORIES.has(sub.type)) {
-          throw new Error(`Step ${i + 1} parallel sub-step: invalid type '${sub.type}'`);
+          throw new Error(
+            `Step ${i + 1} parallel sub-step: invalid type '${sub.type}'`
+          );
         }
         steps.push({
           type: sub.type as ModelCategory,
@@ -181,7 +196,9 @@ function isTypeCompatible(outputType: DataType, inputType: DataType): boolean {
 }
 
 function isParallelGroup(s: YamlStepOrGroup): s is YamlParallelGroup {
-  return s.type === "parallel_group" && Array.isArray((s as YamlParallelGroup).steps);
+  return (
+    s.type === "parallel_group" && Array.isArray((s as YamlParallelGroup).steps)
+  );
 }
 
 export function hasParallelGroups(chain: PipelineChain): boolean {

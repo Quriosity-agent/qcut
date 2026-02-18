@@ -32,7 +32,7 @@ export class AIPlatformError extends Error {
 
   constructor(message: string, exitCode: ExitCode = ExitCode.GENERAL_ERROR) {
     super(message);
-    this.name = 'AIPlatformError';
+    this.name = "AIPlatformError";
     this.exitCode = exitCode;
   }
 }
@@ -40,7 +40,7 @@ export class AIPlatformError extends Error {
 export class PipelineConfigurationError extends AIPlatformError {
   constructor(message: string) {
     super(message, ExitCode.INVALID_ARGS);
-    this.name = 'PipelineConfigurationError';
+    this.name = "PipelineConfigurationError";
   }
 }
 
@@ -50,7 +50,7 @@ export class StepExecutionError extends AIPlatformError {
 
   constructor(message: string, stepIndex?: number, stepType?: string) {
     super(message, ExitCode.PIPELINE_FAILED);
-    this.name = 'StepExecutionError';
+    this.name = "StepExecutionError";
     this.stepIndex = stepIndex;
     this.stepType = stepType;
   }
@@ -61,7 +61,7 @@ export class ServiceNotAvailableError extends AIPlatformError {
 
   constructor(message: string, service: string) {
     super(message, ExitCode.API_CALL_FAILED);
-    this.name = 'ServiceNotAvailableError';
+    this.name = "ServiceNotAvailableError";
     this.service = service;
   }
 }
@@ -71,7 +71,7 @@ export class APIKeyError extends AIPlatformError {
 
   constructor(message: string, provider: string) {
     super(message, ExitCode.API_KEY_MISSING);
-    this.name = 'APIKeyError';
+    this.name = "APIKeyError";
     this.provider = provider;
   }
 }
@@ -82,7 +82,7 @@ export class CostLimitExceededError extends AIPlatformError {
 
   constructor(message: string, limit: number, actual: number) {
     super(message, ExitCode.PIPELINE_FAILED);
-    this.name = 'CostLimitExceededError';
+    this.name = "CostLimitExceededError";
     this.limit = limit;
     this.actual = actual;
   }
@@ -94,7 +94,7 @@ export class ParallelExecutionError extends AIPlatformError {
 
   constructor(message: string, failedSteps: number, totalSteps: number) {
     super(message, ExitCode.PIPELINE_FAILED);
-    this.name = 'ParallelExecutionError';
+    this.name = "ParallelExecutionError";
     this.failedSteps = failedSteps;
     this.totalSteps = totalSteps;
   }
@@ -103,21 +103,21 @@ export class ParallelExecutionError extends AIPlatformError {
 export class ValidationError extends AIPlatformError {
   constructor(message: string) {
     super(message, ExitCode.INVALID_ARGS);
-    this.name = 'ValidationError';
+    this.name = "ValidationError";
   }
 }
 
 export class ConfigurationError extends AIPlatformError {
   constructor(message: string) {
     super(message, ExitCode.INVALID_ARGS);
-    this.name = 'ConfigurationError';
+    this.name = "ConfigurationError";
   }
 }
 
 export class PipelineExecutionError extends AIPlatformError {
   constructor(message: string) {
     super(message, ExitCode.PIPELINE_FAILED);
-    this.name = 'PipelineExecutionError';
+    this.name = "PipelineExecutionError";
   }
 }
 
@@ -126,7 +126,7 @@ export class FileOperationError extends AIPlatformError {
 
   constructor(message: string, filePath: string) {
     super(message, ExitCode.FILE_NOT_FOUND);
-    this.name = 'FileOperationError';
+    this.name = "FileOperationError";
     this.filePath = filePath;
   }
 }
@@ -134,7 +134,7 @@ export class FileOperationError extends AIPlatformError {
 export class CostCalculationError extends AIPlatformError {
   constructor(message: string) {
     super(message, ExitCode.GENERAL_ERROR);
-    this.name = 'CostCalculationError';
+    this.name = "CostCalculationError";
   }
 }
 
@@ -154,7 +154,10 @@ export function getExitCode(error: unknown): ExitCode {
  * Print error to stderr and return the appropriate exit code.
  * Does not call process.exit — caller decides.
  */
-export function formatErrorForCli(error: unknown, debug = false): {
+export function formatErrorForCli(
+  error: unknown,
+  debug = false
+): {
   message: string;
   exitCode: ExitCode;
 } {

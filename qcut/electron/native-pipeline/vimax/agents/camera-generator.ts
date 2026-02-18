@@ -7,8 +7,8 @@
  * Ported from: vimax/agents/camera_generator.py
  */
 
-import * as path from 'path';
-import * as fs from 'fs';
+import * as path from "path";
+import * as fs from "fs";
 import {
   BaseAgent,
   type AgentConfig,
@@ -16,18 +16,16 @@ import {
   createAgentConfig,
   agentOk,
   agentFail,
-} from './base-agent.js';
-import type { StoryboardResult } from './storyboard-artist.js';
-import {
-  VideoGeneratorAdapter,
-} from '../adapters/video-adapter.js';
-import type { ShotDescription } from '../types/shot.js';
+} from "./base-agent.js";
+import type { StoryboardResult } from "./storyboard-artist.js";
+import { VideoGeneratorAdapter } from "../adapters/video-adapter.js";
+import type { ShotDescription } from "../types/shot.js";
 import type {
   ImageOutput,
   VideoOutput,
   PipelineOutput,
-} from '../types/output.js';
-import { createPipelineOutput, addVideoToOutput } from '../types/output.js';
+} from "../types/output.js";
+import { createPipelineOutput, addVideoToOutput } from "../types/output.js";
 
 export interface CameraGeneratorConfig extends AgentConfig {
   video_model: string;
@@ -36,25 +34,25 @@ export interface CameraGeneratorConfig extends AgentConfig {
 }
 
 export function createCameraGeneratorConfig(
-  partial?: Partial<CameraGeneratorConfig>,
+  partial?: Partial<CameraGeneratorConfig>
 ): CameraGeneratorConfig {
   return {
-    ...createAgentConfig({ name: 'CameraImageGenerator' }),
-    video_model: 'kling',
+    ...createAgentConfig({ name: "CameraImageGenerator" }),
+    video_model: "kling",
     default_duration: 5.0,
-    output_dir: 'media/generated/vimax/videos',
+    output_dir: "media/generated/vimax/videos",
     ...partial,
   };
 }
 
 /** Camera movement → motion prompt hints. */
 const MOVEMENT_HINTS: Record<string, string> = {
-  pan: 'smooth horizontal camera pan',
-  tilt: 'smooth vertical camera tilt',
-  zoom: 'gradual zoom',
-  dolly: 'camera moving forward/backward',
-  tracking: 'camera tracking subject movement',
-  static: 'subtle ambient motion, no camera movement',
+  pan: "smooth horizontal camera pan",
+  tilt: "smooth vertical camera tilt",
+  zoom: "gradual zoom",
+  dolly: "camera moving forward/backward",
+  tracking: "camera tracking subject movement",
+  static: "subtle ambient motion, no camera movement",
 };
 
 export class CameraImageGenerator extends BaseAgent<
@@ -89,7 +87,7 @@ export class CameraImageGenerator extends BaseAgent<
     }
 
     const movement =
-      typeof shot.camera_movement === 'string'
+      typeof shot.camera_movement === "string"
         ? shot.camera_movement
         : shot.camera_movement;
 
@@ -97,11 +95,11 @@ export class CameraImageGenerator extends BaseAgent<
       parts.push(MOVEMENT_HINTS[movement]);
     }
 
-    return parts.join(', ');
+    return parts.join(", ");
   }
 
   async process(
-    storyboard: StoryboardResult,
+    storyboard: StoryboardResult
   ): Promise<AgentResult<PipelineOutput>> {
     await this._ensureAdapter();
 
@@ -113,7 +111,7 @@ export class CameraImageGenerator extends BaseAgent<
         output_directory: this.config.output_dir,
       });
 
-      const safeTitle = storyboard.title.replace(/\s+/g, '_');
+      const safeTitle = storyboard.title.replace(/\s+/g, "_");
       const outputDir = path.join(this.config.output_dir, safeTitle);
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
@@ -137,7 +135,7 @@ export class CameraImageGenerator extends BaseAgent<
             {
               duration: shot.duration_seconds || this.config.default_duration,
               output_path: outputPath,
-            },
+            }
           );
 
           addVideoToOutput(output, video);
@@ -146,10 +144,10 @@ export class CameraImageGenerator extends BaseAgent<
 
       // Concatenate all videos
       if (output.videos.length > 0) {
-        const finalPath = path.join(outputDir, 'final_video.mp4');
+        const finalPath = path.join(outputDir, "final_video.mp4");
         const finalVideo = await this._videoAdapter!.concatenateVideos(
           output.videos,
-          finalPath,
+          finalPath
         );
         output.final_video = finalVideo;
       }
@@ -158,7 +156,7 @@ export class CameraImageGenerator extends BaseAgent<
 
       const finalDuration = output.final_video?.duration ?? 0;
       console.log(
-        `[camera_gen] Generated ${output.videos.length} videos, final: ${finalDuration.toFixed(1)}s`,
+        `[camera_gen] Generated ${output.videos.length} videos, final: ${finalDuration.toFixed(1)}s`
       );
 
       return agentOk(output, {
@@ -177,22 +175,23 @@ export class CameraImageGenerator extends BaseAgent<
   async generateFromImages(
     images: ImageOutput[],
     prompts: string[],
-    durations?: number[],
+    durations?: number[]
   ): Promise<VideoOutput[]> {
     await this._ensureAdapter();
 
     if (images.length !== prompts.length) {
-      throw new Error('Number of images must match number of prompts');
+      throw new Error("Number of images must match number of prompts");
     }
 
-    const durs = durations ?? Array(images.length).fill(this.config.default_duration);
+    const durs =
+      durations ?? new Array(images.length).fill(this.config.default_duration);
     const videos: VideoOutput[] = [];
 
     for (let i = 0; i < images.length; i++) {
       const video = await this._videoAdapter!.generate(
         images[i].image_path,
         prompts[i],
-        { duration: durs[i] },
+        { duration: durs[i] }
       );
       videos.push(video);
     }

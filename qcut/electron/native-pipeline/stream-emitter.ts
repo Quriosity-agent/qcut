@@ -9,7 +9,7 @@
  * @module electron/native-pipeline/stream-emitter
  */
 
-const SCHEMA_VERSION = '1';
+const SCHEMA_VERSION = "1";
 
 export interface StreamEvent {
   schema_version: string;
@@ -42,15 +42,17 @@ export class StreamEmitter {
       schema_version: SCHEMA_VERSION,
       event: eventType,
       timestamp: Date.now() / 1000,
-      elapsed_seconds: Number(((Date.now() - this.startTime) / 1000).toFixed(3)),
+      elapsed_seconds: Number(
+        ((Date.now() - this.startTime) / 1000).toFixed(3)
+      ),
       ...data,
     };
 
-    this.stream.write(JSON.stringify(event) + '\n');
+    this.stream.write(JSON.stringify(event) + "\n");
   }
 
   pipelineStart(name: string, totalSteps: number, config?: string): void {
-    this.emit('pipeline_start', {
+    this.emit("pipeline_start", {
       pipeline: name,
       total_steps: totalSteps,
       ...(config ? { config } : {}),
@@ -58,7 +60,7 @@ export class StreamEmitter {
   }
 
   stepStart(stepIndex: number, stepType: string, model?: string): void {
-    this.emit('step_start', {
+    this.emit("step_start", {
       step_index: stepIndex,
       step_type: stepType,
       ...(model ? { model } : {}),
@@ -66,7 +68,7 @@ export class StreamEmitter {
   }
 
   stepProgress(stepIndex: number, percent: number, message?: string): void {
-    this.emit('step_progress', {
+    this.emit("step_progress", {
       step_index: stepIndex,
       percent,
       ...(message ? { message } : {}),
@@ -77,9 +79,9 @@ export class StreamEmitter {
     stepIndex: number,
     cost = 0,
     outputPath?: string,
-    duration = 0,
+    duration = 0
   ): void {
-    this.emit('step_complete', {
+    this.emit("step_complete", {
       step_index: stepIndex,
       cost,
       duration,
@@ -88,7 +90,7 @@ export class StreamEmitter {
   }
 
   stepError(stepIndex: number, error: string, stepType?: string): void {
-    this.emit('step_error', {
+    this.emit("step_error", {
       step_index: stepIndex,
       error,
       ...(stepType ? { step_type: stepType } : {}),
@@ -101,14 +103,16 @@ export class StreamEmitter {
 
     const event: StreamEvent = {
       schema_version: SCHEMA_VERSION,
-      event: 'pipeline_complete',
+      event: "pipeline_complete",
       timestamp: Date.now() / 1000,
-      elapsed_seconds: Number(((Date.now() - this.startTime) / 1000).toFixed(3)),
+      elapsed_seconds: Number(
+        ((Date.now() - this.startTime) / 1000).toFixed(3)
+      ),
       ...result,
     };
 
     // Final result goes to stdout for piping
-    process.stdout.write(JSON.stringify(event) + '\n');
+    process.stdout.write(JSON.stringify(event) + "\n");
   }
 }
 

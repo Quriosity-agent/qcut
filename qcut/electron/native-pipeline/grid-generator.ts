@@ -54,7 +54,9 @@ export async function compositeGrid(
   try {
     // Dynamic import with eval to prevent Vite static analysis
     const sharpModuleName = "sharp";
-    const sharp = await new Function("name", "return import(name)")(sharpModuleName).catch(() => null) as typeof import("sharp") | null;
+    const sharp = (await new Function("name", "return import(name)")(
+      sharpModuleName
+    ).catch(() => null)) as typeof import("sharp") | null;
     if (!sharp) {
       return {
         success: true,

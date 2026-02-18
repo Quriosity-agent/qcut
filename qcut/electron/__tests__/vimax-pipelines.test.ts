@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  createIdea2VideoConfig,
-} from "../native-pipeline/vimax/pipelines/idea2video.js";
-import {
-  createScript2VideoConfig,
-} from "../native-pipeline/vimax/pipelines/script2video.js";
-import {
-  createNovel2MovieConfig,
-} from "../native-pipeline/vimax/pipelines/novel2movie.js";
+import { createIdea2VideoConfig } from "../native-pipeline/vimax/pipelines/idea2video.js";
+import { createScript2VideoConfig } from "../native-pipeline/vimax/pipelines/script2video.js";
+import { createNovel2MovieConfig } from "../native-pipeline/vimax/pipelines/novel2movie.js";
 
 describe("ViMax Pipelines", () => {
   describe("Idea2VideoConfig", () => {

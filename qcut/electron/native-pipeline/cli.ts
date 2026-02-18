@@ -57,7 +57,8 @@ const COMMANDS = [
 type Command = (typeof COMMANDS)[number];
 
 function printHelp(): void {
-  console.log(`
+  console.log(
+    `
 qcut-pipeline v${VERSION} — AI content generation CLI
 
 Usage: qcut-pipeline <command> [options]
@@ -130,7 +131,8 @@ Examples:
   qcut-pipeline list-models --category text_to_video
   qcut-pipeline estimate-cost -m veo3 -d 8s
   qcut-pipeline run-pipeline -c pipeline.yaml -i "A sunset"
-`.trim());
+`.trim()
+  );
 }
 
 export function parseCliArgs(argv: string[]): CLIRunOptions {
@@ -148,7 +150,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 
   if (!COMMANDS.includes(command as Command)) {
     console.error(`Unknown command: ${command}`);
-    console.error(`Run with --help for usage.`);
+    console.error("Run with --help for usage.");
     process.exit(2);
   }
 
@@ -221,7 +223,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     input: values.input,
     saveIntermediates: values["save-intermediates"] ?? false,
     parallel: values.parallel ?? false,
-    maxWorkers: values["max-workers"] ? parseInt(values["max-workers"], 10) : undefined,
+    maxWorkers: values["max-workers"]
+      ? parseInt(values["max-workers"], 10)
+      : undefined,
     json: values.json ?? false,
     verbose: values.verbose ?? false,
     quiet: values.quiet ?? false,
@@ -235,7 +239,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     script: values.script,
     novel: values.novel,
     title: values.title,
-    maxScenes: values["max-scenes"] ? parseInt(values["max-scenes"], 10) : undefined,
+    maxScenes: values["max-scenes"]
+      ? parseInt(values["max-scenes"], 10)
+      : undefined,
     scriptsOnly: values["scripts-only"] ?? false,
     storyboardOnly: values["storyboard-only"] ?? false,
     noPortraits: values["no-portraits"] ?? false,
@@ -252,7 +258,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
   };
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+export async function main(
+  argv: string[] = process.argv.slice(2)
+): Promise<void> {
   initRegistry();
 
   const options = parseCliArgs(argv);
@@ -282,11 +290,17 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   const result = await runner.run(options, reporter);
 
   if (options.json) {
-    console.log(JSON.stringify({
-      schema_version: "1",
-      command: options.command,
-      ...result,
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          schema_version: "1",
+          command: options.command,
+          ...result,
+        },
+        null,
+        2
+      )
+    );
   } else if (result.success) {
     if (result.outputPath) {
       output.success(`Output: ${result.outputPath}`);
@@ -297,28 +311,62 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     if (result.duration !== undefined) {
       output.info(`Duration: ${result.duration.toFixed(1)}s`);
     }
-    if (result.data && (options.command === "list-models" || options.command === "vimax:list-models")) {
-      const data = result.data as { models: { key: string; name: string; provider: string; categories: string[] }[]; count: number };
+    if (
+      result.data &&
+      (options.command === "list-models" ||
+        options.command === "vimax:list-models")
+    ) {
+      const data = result.data as {
+        models: {
+          key: string;
+          name: string;
+          provider: string;
+          categories: string[];
+        }[];
+        count: number;
+      };
       console.log(`\nAvailable models (${data.count}):\n`);
       for (const m of data.models) {
-        console.log(`  ${m.key.padEnd(35)} ${m.provider.padEnd(15)} ${m.categories.join(", ")}`);
+        console.log(
+          `  ${m.key.padEnd(35)} ${m.provider.padEnd(15)} ${m.categories.join(", ")}`
+        );
       }
     }
     if (result.data && options.command === "estimate-cost") {
-      const data = result.data as { model: string; totalCost: number; breakdown: { item: string; cost: number }[] };
-      console.log(`\nCost estimate for ${data.model}: $${data.totalCost.toFixed(3)}`);
+      const data = result.data as {
+        model: string;
+        totalCost: number;
+        breakdown: { item: string; cost: number }[];
+      };
+      console.log(
+        `\nCost estimate for ${data.model}: $${data.totalCost.toFixed(3)}`
+      );
       for (const b of data.breakdown) {
         console.log(`  ${b.item}: $${b.cost.toFixed(4)}`);
       }
     }
-    if (result.data && (options.command === "analyze-video" || options.command === "transcribe")) {
-      console.log(`\n${typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)}`);
+    if (
+      result.data &&
+      (options.command === "analyze-video" || options.command === "transcribe")
+    ) {
+      console.log(
+        `\n${typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)}`
+      );
     }
     if (result.data && options.command === "check-keys") {
-      const data = result.data as { keys: { name: string; configured: boolean; source: string; masked?: string }[] };
+      const data = result.data as {
+        keys: {
+          name: string;
+          configured: boolean;
+          source: string;
+          masked?: string;
+        }[];
+      };
       console.log("\nAPI Key Status:\n");
       for (const k of data.keys) {
-        const status = k.configured ? `configured (${k.source}) ${k.masked || ""}` : "not set";
+        const status = k.configured
+          ? `configured (${k.source}) ${k.masked || ""}`
+          : "not set";
         console.log(`  ${k.name.padEnd(25)} ${status}`);
       }
     }
@@ -333,8 +381,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       const data = result.data as { message: string };
       console.log(`\n${data.message}`);
     }
-    if (result.data && (options.command === "set-key" || options.command === "get-key")) {
-      const data = result.data as { message?: string; name?: string; masked?: string };
+    if (
+      result.data &&
+      (options.command === "set-key" || options.command === "get-key")
+    ) {
+      const data = result.data as {
+        message?: string;
+        name?: string;
+        masked?: string;
+      };
       if (data.message) console.log(data.message);
       if (data.masked) console.log(`${data.name}: ${data.masked}`);
     }
@@ -343,12 +398,24 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       console.log(`\nExtracted ${data.count} characters`);
     }
     if (result.data && options.command === "vimax:generate-script") {
-      const data = result.data as { title: string; scenes: number; total_duration: number };
-      console.log(`\nGenerated script: "${data.title}" (${data.scenes} scenes, ${data.total_duration.toFixed(1)}s)`);
+      const data = result.data as {
+        title: string;
+        scenes: number;
+        total_duration: number;
+      };
+      console.log(
+        `\nGenerated script: "${data.title}" (${data.scenes} scenes, ${data.total_duration.toFixed(1)}s)`
+      );
     }
     if (result.data && options.command === "vimax:show-registry") {
-      const data = result.data as { project_id: string; characters: unknown[]; total_characters: number };
-      console.log(`\nRegistry (${data.project_id}): ${data.total_characters} characters`);
+      const data = result.data as {
+        project_id: string;
+        characters: unknown[];
+        total_characters: number;
+      };
+      console.log(
+        `\nRegistry (${data.project_id}): ${data.total_characters} characters`
+      );
       console.log(JSON.stringify(data.characters, null, 2));
     }
     emitter.pipelineComplete({ success: true, ...result });
