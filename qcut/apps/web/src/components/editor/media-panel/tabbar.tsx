@@ -24,9 +24,9 @@ export function TabBar() {
   const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const groupDef = tabGroups[activeGroup];
-  const hasSubgroups = activeGroup === "edit" && groupDef.subgroups;
-  const tabKeys = hasSubgroups
-    ? groupDef.subgroups![activeEditSubgroup].tabs
+  const subgroups = activeGroup === "edit" ? groupDef.subgroups : undefined;
+  const tabKeys = subgroups
+    ? subgroups[activeEditSubgroup].tabs
     : groupDef.tabs;
   const activeIndex = tabKeys.indexOf(activeTab);
   const hasPrev = activeIndex > 0;
@@ -54,11 +54,9 @@ export function TabBar() {
 
   return (
     <div className="flex flex-col">
-      {hasSubgroups && (
+      {subgroups && (
         <div className="flex bg-panel-accent border-b border-border/30 px-2 gap-1 py-1">
-          {(
-            Object.keys(groupDef.subgroups!) as EditSubgroup[]
-          ).map((key) => (
+          {(Object.keys(subgroups) as EditSubgroup[]).map((key) => (
             <button
               key={key}
               type="button"
@@ -70,7 +68,7 @@ export function TabBar() {
               )}
               onClick={() => setActiveEditSubgroup(key)}
             >
-              {groupDef.subgroups![key].label}
+              {subgroups[key].label}
             </button>
           ))}
         </div>

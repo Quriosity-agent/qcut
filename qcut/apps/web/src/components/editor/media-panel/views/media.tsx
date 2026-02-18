@@ -268,7 +268,7 @@ export function MediaView() {
       setModelType("adjustment");
       setActiveTab("text2image");
 
-      toast.success(`"${item.name}" loaded in adjustment panel`);
+      toast.success(`"${item.name}" loaded in AI Images`);
     } catch (error) {
       debugError("Failed to load image for editing:", error);
       toast.error("Failed to load image for editing");

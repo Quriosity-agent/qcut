@@ -186,6 +186,14 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   },
 };
 
+/** Reverse lookup: given a tab in the edit group, return its subgroup. */
+function getEditSubgroupForTab(tab: Tab): EditSubgroup | undefined {
+  for (const [key, sub] of Object.entries(editSubgroups)) {
+    if (sub.tabs.includes(tab)) return key as EditSubgroup;
+  }
+  return undefined;
+}
+
 /** Reverse lookup: given a tab, return which group it belongs to. */
 export function getGroupForTab(tab: Tab): TabGroup {
   for (const [groupKey, group] of Object.entries(tabGroups)) {
@@ -236,10 +244,12 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
   setActiveTab: (tab) =>
     set((state) => {
       const group = getGroupForTab(tab);
+      const editSubgroup = group === "edit" ? getEditSubgroupForTab(tab) : undefined;
       return {
         activeTab: tab,
         activeGroup: group,
         lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
+        ...(editSubgroup && { activeEditSubgroup: editSubgroup }),
       };
     }),
 
@@ -247,6 +257,7 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
   setActiveEditSubgroup: (subgroup) =>
     set((state) => {
       const firstTab = editSubgroups[subgroup].tabs[0];
+      if (!firstTab) return { activeEditSubgroup: subgroup };
       return {
         activeEditSubgroup: subgroup,
         activeTab: firstTab,
