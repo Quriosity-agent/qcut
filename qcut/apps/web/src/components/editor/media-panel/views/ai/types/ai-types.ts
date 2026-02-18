@@ -102,6 +102,7 @@ export interface AIModel {
   endpoints: AIModelEndpoints;
   default_params?: AIModelParameters;
   category?: ModelCategory;
+  badge?: string;
   requiredInputs?: string[];
   pricingModel?: string;
   supportedResolutions?: string[]; // For models supporting multiple resolutions (e.g., Pro models)
