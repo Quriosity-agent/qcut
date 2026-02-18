@@ -158,20 +158,20 @@ export const tabGroups: {
       "audio",
     ],
   },
+  edit: {
+    icon: ScissorsIcon,
+    label: "Edit",
+    tabs: ["word-timeline", "video-edit", "draw", "captions"],
+  },
   media: {
     icon: FolderOpenIcon,
-    label: "Media",
+    label: "Library",
     tabs: ["media", "project-folder"],
   },
   agents: {
     icon: WrenchIcon,
     label: "Agents",
     tabs: ["pty", "remotion"],
-  },
-  edit: {
-    icon: ScissorsIcon,
-    label: "Edit",
-    tabs: ["word-timeline", "video-edit", "draw", "captions"],
   },
   effects: {
     icon: BlendIcon,
