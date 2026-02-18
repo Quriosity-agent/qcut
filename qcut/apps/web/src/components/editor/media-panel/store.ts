@@ -60,7 +60,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   },
   "nano-edit": {
     icon: PaletteIcon,
-    label: "Prompt Library",
+    label: "Skills",
   },
   text: {
     icon: TypeIcon,
@@ -151,7 +151,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   "ai-create": {
     icon: SparklesIcon,
     label: "Create",
-    tabs: ["ai", "text2image", "nano-edit", "sounds"],
+    tabs: ["ai", "text2image", "sounds"],
   },
   edit: {
     icon: ScissorsIcon,
@@ -170,7 +170,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   agents: {
     icon: WrenchIcon,
     label: "Agents",
-    tabs: ["pty", "remotion"],
+    tabs: ["nano-edit", "pty", "remotion"],
   },
 };
 
@@ -216,7 +216,7 @@ interface MediaPanelStore {
 const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   media: "media",
   "ai-create": "ai",
-  agents: "pty",
+  agents: "nano-edit",
   edit: "word-timeline",
 };
 
