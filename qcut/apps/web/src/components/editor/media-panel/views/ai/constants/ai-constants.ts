@@ -98,7 +98,7 @@ export {
  * - I2V_MODELS for image-to-video models
  * - AVATAR_MODELS for avatar/talking-head models
  */
-const UPSCALE_VIDEO_MODELS: AIModel[] = [
+const UPSCALE_VIDEO_MODELS = [
   {
     id: "bytedance_video_upscaler",
     name: "ByteDance Upscaler",
