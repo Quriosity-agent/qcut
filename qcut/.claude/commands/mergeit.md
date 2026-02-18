@@ -1,2 +1,4 @@
 # Create a project command
-echo "merge pr, push remote, but keeps this branching, switch to main or master branch."
+echo "1. Merge the current PR and push to remote. Keep the feature branch. Switch to main/master."
+echo "2. Trigger the GitHub Release workflow and monitor it until completion."
+echo "3. If the release fails, diagnose and fix the issue."
