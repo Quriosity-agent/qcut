@@ -23,6 +23,7 @@ import {
   CameraIcon,
   FolderOpenIcon,
   WrenchIcon,
+  ArrowUpFromLineIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -47,7 +48,8 @@ export type Tab =
   | "pty"
   | "word-timeline"
   | "project-folder"
-  | "camera-selector";
+  | "camera-selector"
+  | "upscale";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   media: {
@@ -69,6 +71,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
   "camera-selector": {
     icon: CameraIcon,
     label: "Camera",
+  },
+  upscale: {
+    icon: ArrowUpFromLineIcon,
+    label: "Upscale",
   },
   "nano-edit": {
     icon: PaletteIcon,
@@ -158,7 +164,7 @@ export interface TabGroupDef {
 const editSubgroups: Record<EditSubgroup, Subgroup> = {
   "ai-edit": {
     label: "AI Assist",
-    tabs: ["word-timeline", "video-edit", "draw", "captions"],
+    tabs: ["word-timeline", "video-edit", "draw", "captions", "upscale"],
   },
   "manual-edit": {
     label: "Manual Edit",

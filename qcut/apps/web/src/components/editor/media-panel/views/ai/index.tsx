@@ -82,7 +82,7 @@ import { AIValidationMessages } from "./components/ai-validation-messages";
  *
  * @returns The JSX element for the AI features panel.
  */
-export function AiView() {
+export function AiView({ mode }: { mode?: "upscale" } = {}) {
   // ============================================
   // Shared State
   // ============================================
@@ -104,9 +104,10 @@ export function AiView() {
       REVE_TEXT_TO_IMAGE_MODEL.defaultOutputFormat
     );
 
-  // Use global AI tab state
-  const { aiActiveTab: activeTab, setAiActiveTab: setActiveTab } =
+  // Use global AI tab state (override to "upscale" when in upscale mode)
+  const { aiActiveTab: globalActiveTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
+  const activeTab = mode === "upscale" ? "upscale" : globalActiveTab;
 
   // Get project store
   const { activeProject } = useProjectStore();
@@ -393,37 +394,39 @@ export function AiView() {
       className={`h-full flex flex-col transition-all duration-200 ${isCollapsed ? "p-2" : isCompact ? "p-3" : "p-4"}`}
       data-testid="ai-features-panel"
     >
-      {/* Header */}
-      <div
-        className={`flex items-center mb-4 ${isCollapsed ? "justify-center" : isCompact ? "flex-col gap-1" : "justify-between"}`}
-      >
+      {/* Header (hidden in upscale mode — shown in its own panel) */}
+      {!mode && (
         <div
-          className={`flex items-center ${isCompact && !isCollapsed ? "flex-col" : ""}`}
-          style={{ marginLeft: "5px", gap: "7px" }}
+          className={`flex items-center mb-4 ${isCollapsed ? "justify-center" : isCompact ? "flex-col gap-1" : "justify-between"}`}
         >
-          <BotIcon className="size-5 text-primary" />
-          {!isCollapsed && (
-            <h3
-              className={`text-sm font-medium ${isCompact ? "text-center text-xs" : ""}`}
+          <div
+            className={`flex items-center ${isCompact && !isCollapsed ? "flex-col" : ""}`}
+            style={{ marginLeft: "5px", gap: "7px" }}
+          >
+            <BotIcon className="size-5 text-primary" />
+            {!isCollapsed && (
+              <h3
+                className={`text-sm font-medium ${isCompact ? "text-center text-xs" : ""}`}
+              >
+                {isCompact ? "AI" : "AI Video Generation"}
+              </h3>
+            )}
+          </div>
+          {history.hasHistory && !isCollapsed && (
+            <Button
+              type="button"
+              size="sm"
+              variant="text"
+              onClick={history.openHistoryPanel}
+              className={`h-8 ${isCompact ? "px-1" : "px-2"}`}
             >
-              {isCompact ? "AI" : "AI Video Generation"}
-            </h3>
+              <History className="size-4 mr-1" />
+              {!isCompact && `History (${history.historyCount})`}
+              {isCompact && history.historyCount}
+            </Button>
           )}
         </div>
-        {history.hasHistory && !isCollapsed && (
-          <Button
-            type="button"
-            size="sm"
-            variant="text"
-            onClick={history.openHistoryPanel}
-            className={`h-8 ${isCompact ? "px-1" : "px-2"}`}
-          >
-            <History className="size-4 mr-1" />
-            {!isCompact && `History (${history.historyCount})`}
-            {isCompact && history.historyCount}
-          </Button>
-        )}
-      </div>
+      )}
 
       {/* Collapsed State */}
       {isCollapsed ? (
@@ -445,48 +448,42 @@ export function AiView() {
               setActiveTab(value as AIActiveTab)
             }
           >
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger
-                value="text"
-                className="text-xs"
-                data-testid="ai-tab-text"
-              >
-                <TypeIcon className="size-3 mr-1" />
-                {!isCompact && "Text"}
-              </TabsTrigger>
-              <TabsTrigger
-                value="image"
-                className="text-xs"
-                data-testid="ai-tab-image"
-              >
-                <ImageIcon className="size-3 mr-1" />
-                {!isCompact && "Image"}
-              </TabsTrigger>
-              <TabsTrigger
-                value="avatar"
-                className="text-xs"
-                data-testid="ai-tab-avatar"
-              >
-                <UserIcon className="size-3 mr-1" />
-                {!isCompact && "Avatar"}
-              </TabsTrigger>
-              <TabsTrigger
-                value="upscale"
-                className="text-xs"
-                data-testid="ai-tab-upscale"
-              >
-                <Upload className="size-3 mr-1" />
-                {!isCompact && "Upscale"}
-              </TabsTrigger>
-              <TabsTrigger
-                value="angles"
-                className="text-xs"
-                data-testid="ai-tab-angles"
-              >
-                <ApertureIcon className="size-3 mr-1" />
-                {!isCompact && "Angles"}
-              </TabsTrigger>
-            </TabsList>
+            {!mode && (
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger
+                  value="text"
+                  className="text-xs"
+                  data-testid="ai-tab-text"
+                >
+                  <TypeIcon className="size-3 mr-1" />
+                  {!isCompact && "Text"}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="image"
+                  className="text-xs"
+                  data-testid="ai-tab-image"
+                >
+                  <ImageIcon className="size-3 mr-1" />
+                  {!isCompact && "Image"}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="avatar"
+                  className="text-xs"
+                  data-testid="ai-tab-avatar"
+                >
+                  <UserIcon className="size-3 mr-1" />
+                  {!isCompact && "Avatar"}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="angles"
+                  className="text-xs"
+                  data-testid="ai-tab-angles"
+                >
+                  <ApertureIcon className="size-3 mr-1" />
+                  {!isCompact && "Angles"}
+                </TabsTrigger>
+              </TabsList>
+            )}
 
             {/* Text Tab */}
             <TabsContent value="text" className="space-y-4">
