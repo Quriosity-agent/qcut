@@ -39,8 +39,8 @@ After (Native TypeScript):
 | Component | Change |
 |-----------|--------|
 | `electron/ai-pipeline-ipc.ts` | Keep IPC channels, swap handler to native |
-| `electron/ai-pipeline-handler.ts` | Replace with native implementation |
-| `electron/ai-pipeline-output.ts` | Remove (no stdout parsing needed) |
+| `electron/ai-pipeline-handler.ts` | Keep as legacy fallback; native pipeline preferred via feature flag |
+| `electron/ai-pipeline-output.ts` | Keep (used by legacy handler and for `inferProjectIdFromPath`) |
 | `electron/binary-manager.ts` | Keep for FFmpeg; remove AICP binary logic |
 | `apps/web/src/lib/ai-video/` | Becomes the execution engine (shared) |
 | `apps/web/src/hooks/use-ai-pipeline.ts` | No changes (IPC interface unchanged) |
