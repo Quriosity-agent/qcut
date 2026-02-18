@@ -146,7 +146,14 @@ export interface TabGroupDef {
 const editSubgroups: Record<EditSubgroup, Subgroup> = {
   "ai-edit": {
     label: "AI Assist",
-    tabs: ["word-timeline", "video-edit", "draw", "captions", "upscale", "segmentation"],
+    tabs: [
+      "word-timeline",
+      "video-edit",
+      "draw",
+      "captions",
+      "upscale",
+      "segmentation",
+    ],
   },
   "manual-edit": {
     label: "Manual Edit",
@@ -158,12 +165,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
   "ai-create": {
     icon: SparklesIcon,
     label: "Create",
-    tabs: [
-      "ai",
-      "text2image",
-      "nano-edit",
-      "sounds",
-    ],
+    tabs: ["ai", "text2image", "nano-edit", "sounds"],
   },
   edit: {
     icon: ScissorsIcon,
@@ -191,7 +193,7 @@ function getEditSubgroupForTab(tab: Tab): EditSubgroup | undefined {
   for (const [key, sub] of Object.entries(editSubgroups)) {
     if (sub.tabs.includes(tab)) return key as EditSubgroup;
   }
-  return undefined;
+  return;
 }
 
 /** Reverse lookup: given a tab, return which group it belongs to. */
@@ -244,7 +246,8 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
   setActiveTab: (tab) =>
     set((state) => {
       const group = getGroupForTab(tab);
-      const editSubgroup = group === "edit" ? getEditSubgroupForTab(tab) : undefined;
+      const editSubgroup =
+        group === "edit" ? getEditSubgroupForTab(tab) : undefined;
       return {
         activeTab: tab,
         activeGroup: group,
