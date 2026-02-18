@@ -11,7 +11,7 @@ import {
   UserIcon,
   ApertureIcon,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -108,6 +108,20 @@ export function AiView({ mode }: { mode?: "upscale" | "angles" } = {}) {
   const { aiActiveTab: globalActiveTab, setAiActiveTab: setActiveTab } =
     useMediaPanelStore();
   const activeTab = mode ? mode : globalActiveTab;
+
+  // Set default recommended model when switching tabs
+  const prevTabRef = useRef(activeTab);
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      prevTabRef.current = activeTab;
+      const defaults: Partial<Record<typeof activeTab, string>> = {
+        text: "sora2_text_to_video_pro",
+        image: "sora2_image_to_video_pro",
+      };
+      const def = defaults[activeTab];
+      if (def) setSelectedModels([def]);
+    }
+  }, [activeTab]);
 
   // Get project store
   const { activeProject } = useProjectStore();

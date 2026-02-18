@@ -38,6 +38,7 @@ export const I2V_MODELS = {
   sora2_image_to_video_pro: {
     id: "sora2_image_to_video_pro",
     name: "Sora 2 Image-to-Video Pro",
+    badge: "⭐ Recommended",
     description: "High-quality image-to-video with 1080p support",
     price: "0.30-0.50",
     resolution: "720p / 1080p",
@@ -78,6 +79,7 @@ export const I2V_MODELS = {
   kling_v3_standard_i2v: {
     id: "kling_v3_standard_i2v",
     name: "Kling v3 Standard I2V",
+    badge: "🎬 Cinematic",
     description:
       "Quality image-to-video with cinematic motion and native audio, cost-effective option",
     price: "0.252",
@@ -143,6 +145,7 @@ export const I2V_MODELS = {
   ltxv2_fast_i2v: {
     id: "ltxv2_fast_i2v",
     name: "LTX Video 2.0 Fast I2V",
+    badge: "⚡ Fast",
     description: "Image-to-video with audio generation (6-20s, up to 4K)",
     price: "0.04-0.16",
     resolution: "1080p",
@@ -274,6 +277,7 @@ export const I2V_MODELS = {
   wan_26_i2v: {
     id: "wan_26_i2v",
     name: "WAN v2.6 I2V",
+    badge: "💰 Budget",
     description:
       "Animate images with WAN 2.6 - 15s duration, audio sync, multi-shot support",
     price: "0.10-0.15/s",
@@ -504,13 +508,15 @@ export type I2VModelId = keyof typeof I2V_MODELS;
  * Models are ordered by quality/capability (highest first) to guide user selection.
  */
 export const I2V_MODEL_ORDER: readonly I2VModelId[] = [
+  // Badged picks — always on top
+  "sora2_image_to_video_pro", // ⭐ Recommended
+  "ltxv2_fast_i2v", // ⚡ Fast
+  "wan_26_i2v", // 💰 Budget
+  "kling_v3_standard_i2v", // 🎬 Cinematic
+  // Everything else
   "kling_v3_pro_i2v",
-  "kling_v3_standard_i2v",
   "kling_v26_pro_i2v",
-  "sora2_image_to_video_pro",
   "veo31_image_to_video",
-  "wan_26_i2v",
-  "ltxv2_fast_i2v",
   "ltxv2_i2v",
   "hailuo23_pro",
   "seedance_pro_i2v",
