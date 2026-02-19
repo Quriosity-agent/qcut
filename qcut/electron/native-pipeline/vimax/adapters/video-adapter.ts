@@ -74,6 +74,11 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     super(createVideoAdapterConfig(config));
   }
 
+  /** Returns list of supported video model keys. */
+  static getAvailableModels(): string[] {
+    return Object.keys(MODEL_MAP);
+  }
+
   async initialize(): Promise<boolean> {
     const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "";
     this._hasApiKey = apiKey.length > 0;

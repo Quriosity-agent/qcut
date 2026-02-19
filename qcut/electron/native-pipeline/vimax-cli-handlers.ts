@@ -561,16 +561,45 @@ export async function handleVimaxIdea2Video(
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
     const startTime = Date.now();
 
+    // Load config from YAML file if --config is specified
+    const configOverrides: Record<string, unknown> = {};
+    if (options.config) {
+      try {
+        const configContent = fs.readFileSync(options.config, "utf-8");
+        // Simple YAML-like parsing for key: value pairs
+        for (const line of configContent.split("\n")) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const colonIdx = trimmed.indexOf(":");
+          if (colonIdx > 0) {
+            const key = trimmed.slice(0, colonIdx).trim();
+            const val = trimmed.slice(colonIdx + 1).trim();
+            configOverrides[key] =
+              val === "true" ? true : val === "false" ? false : val;
+          }
+        }
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read config: ${options.config}`,
+        };
+      }
+    }
+
+    // --no-references separates reference use from portrait generation
+    const useReferences = !(options.noReferences ?? false);
+
     const pipeline = new Idea2VideoPipeline({
       output_dir: outputDir,
       generate_portraits: !(options.noPortraits ?? false),
-      use_character_references: true,
+      use_character_references: useReferences,
       video_model: options.videoModel,
       image_model: options.imageModel,
       llm_model: options.llmModel,
       target_duration: options.duration
         ? parseInt(options.duration, 10)
         : undefined,
+      ...configOverrides,
     });
 
     const result = await pipeline.run(idea);

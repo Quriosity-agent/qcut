@@ -112,12 +112,43 @@ function aspectToSize(aspectRatio: string): string {
   return sizes[aspectRatio] ?? "square";
 }
 
+export interface ModelInfo {
+  key: string;
+  endpoint: string;
+  costPerImage: number;
+  maxSteps: number;
+  supportsReference: boolean;
+}
+
 export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
   declare config: ImageAdapterConfig;
   private _hasApiKey = false;
 
   constructor(config?: Partial<ImageAdapterConfig>) {
     super(createImageAdapterConfig(config));
+  }
+
+  /** Returns list of supported text-to-image model keys. */
+  static getAvailableModels(): string[] {
+    return Object.keys(MODEL_MAP);
+  }
+
+  /** Returns metadata for a specific model. */
+  static getModelInfo(model: string): ModelInfo | undefined {
+    const endpoint = MODEL_MAP[model];
+    if (!endpoint) return;
+    return {
+      key: model,
+      endpoint,
+      costPerImage: COST_MAP[model] ?? 0.003,
+      maxSteps: MAX_STEPS_MAP[model] ?? 28,
+      supportsReference: model in REFERENCE_MODEL_MAP,
+    };
+  }
+
+  /** Checks if a model supports reference-image-based generation. */
+  static supportsReferenceImages(model: string): boolean {
+    return model in REFERENCE_MODEL_MAP;
   }
 
   async initialize(): Promise<boolean> {

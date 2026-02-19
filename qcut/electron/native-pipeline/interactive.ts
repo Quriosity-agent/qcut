@@ -63,6 +63,30 @@ export async function confirm(
 }
 
 /**
+ * Read all data from stdin pipe (for `--input -` support).
+ * Returns the trimmed content. Rejects if stdin is a TTY
+ * with no piped data.
+ */
+export async function readStdin(): Promise<string> {
+  if (process.stdin.isTTY) {
+    throw new Error(
+      "No piped input detected. Use --input - with piped data, e.g.: echo 'data' | qcut-pipeline command --input -"
+    );
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    let data = "";
+    process.stdin.setEncoding("utf-8");
+    process.stdin.on("data", (chunk) => {
+      data += chunk;
+    });
+    process.stdin.on("end", () => resolve(data.trim()));
+    process.stdin.on("error", reject);
+    process.stdin.resume();
+  });
+}
+
+/**
  * Read a value from stdin with hidden input (for secrets).
  * Falls back to reading from piped stdin in non-TTY environments.
  */
