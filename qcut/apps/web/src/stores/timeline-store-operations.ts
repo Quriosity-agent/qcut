@@ -266,7 +266,7 @@ export function createTimelineOperations({
       updateTracksAndSave(updatedTracks);
     },
 
-    rippleDeleteAcrossTracks: (startTime, endTime, excludeTrackIds = []) => {
+    rippleDeleteAcrossTracks: (startTime: number, endTime: number, excludeTrackIds: string[] = []) => {
       try {
         const rippleDuration = endTime - startTime;
         if (rippleDuration <= 0) {
@@ -315,6 +315,12 @@ export function createTimelineOperations({
       trackIds,
       ripple = true,
       crossTrackRipple = false,
+    }: {
+      startTime: number;
+      endTime: number;
+      trackIds?: string[];
+      ripple?: boolean;
+      crossTrackRipple?: boolean;
     }) => {
       try {
         const clampedStartTime = Math.max(0, startTime);

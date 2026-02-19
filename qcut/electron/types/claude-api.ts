@@ -83,6 +83,8 @@ export interface ClaudeElement {
   content?: string;
   style?: Record<string, unknown>;
   effects?: string[];
+  trimStart?: number;
+  trimEnd?: number;
 }
 
 // ============================================================================

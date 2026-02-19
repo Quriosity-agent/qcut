@@ -249,25 +249,28 @@ async function waitForRecorderStop({
   }
 }
 
-async function appendChunk({
+function appendChunk({
   recordingState,
   event,
 }: {
   recordingState: ActiveRecordingRuntimeState;
   event: BlobEvent;
-}): Promise<void> {
+}): void {
   try {
-    if (!event.data || event.data.size === 0) {
-      return;
-    }
-
-    const recordingApi = getRequiredRecordingApi();
-    const chunkArrayBuffer = await event.data.arrayBuffer();
-    const chunkBytes = new Uint8Array(chunkArrayBuffer);
-
-    recordingState.chunkWriteQueue = recordingState.chunkWriteQueue.then(
-      async () => {
+    // Queue assignment must happen synchronously so stop waits the final chunk.
+    const nextChunkWrite = recordingState.chunkWriteQueue
+      .catch(() => {
+        // keep queue chain alive; chunkWriteError is checked during stop
+      })
+      .then(async () => {
         try {
+          if (!event.data || event.data.size === 0) {
+            return;
+          }
+
+          const recordingApi = getRequiredRecordingApi();
+          const chunkArrayBuffer = await event.data.arrayBuffer();
+          const chunkBytes = new Uint8Array(chunkArrayBuffer);
           const appendResult = await recordingApi.appendChunk({
             sessionId: recordingState.sessionId,
             chunk: chunkBytes,
@@ -276,14 +279,10 @@ async function appendChunk({
         } catch (error) {
           const chunkError = toError({ error });
           recordingState.chunkWriteError = chunkError;
-          throw chunkError;
         }
-      }
-    );
+      });
 
-    recordingState.chunkWriteQueue.catch(() => {
-      // chunkWriteError is stored and handled on stop
-    });
+    recordingState.chunkWriteQueue = nextChunkWrite;
   } catch (error) {
     const chunkError = toError({ error });
     recordingState.chunkWriteError = chunkError;

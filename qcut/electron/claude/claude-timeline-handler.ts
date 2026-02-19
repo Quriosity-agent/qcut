@@ -321,7 +321,7 @@ export function markdownToTimeline(md: string): ClaudeTimeline {
           rawContent && rawContent !== "-" ? rawContent.trim() : undefined;
         const generatedElementId = generateId("element");
         const elementId = rawElementId
-          ? rawElementId.replaceAll("`", "").trim() || generatedElementId
+          ? rawElementId.replace(/`/g, "").trim() || generatedElementId
           : generatedElementId;
 
         parsedElements.push({

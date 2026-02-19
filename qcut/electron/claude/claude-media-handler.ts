@@ -399,7 +399,6 @@ export async function importMediaFromUrl(
       throw new Error("Response has no body");
     }
     const writeStream = createWriteStream(destPath);
-    // @ts-expect-error - Node.js ReadableStream is compatible with pipeline
     await pipeline(response.body, writeStream);
   } catch (error: unknown) {
     clearTimeout(timeoutId);
