@@ -309,11 +309,50 @@ describe("Timeline Handler Functions", () => {
     expect(timeline.duration).toBe(120);
   });
 
-  it("markdownToTimeline throws for markdown with tracks", () => {
-    const md = "# Timeline: Test\n## Track 1: Video\n";
-    expect(() => markdownToTimeline(md)).toThrow(
-      "Markdown track parsing not yet implemented"
-    );
+  it("markdownToTimeline parses tracks and elements from markdown tables", () => {
+    const md = [
+      "# Timeline: Test",
+      "",
+      "## Project Info",
+      "",
+      "| Property | Value |",
+      "|----------|-------|",
+      "| Duration | 0:02:00 |",
+      "| Resolution | 1920x1080 |",
+      "| FPS | 30 |",
+      "| Tracks | 2 |",
+      "",
+      "## Track 1: Main (media)",
+      "",
+      "| ID | Start | End | Duration | Type | Source | Content |",
+      "|----|-------|-----|----------|------|--------|--------|",
+      "| `el_1` | 0:00:00 | 0:00:05 | 0:00:05 | video | clip1.mp4 | - |",
+      "",
+      "## Track 2: Text (text)",
+      "",
+      "| ID | Start | End | Duration | Type | Source | Content |",
+      "|----|-------|-----|----------|------|--------|--------|",
+      "| `el_2` | 0:00:00 | 0:00:03 | 0:00:03 | text | - | Title |",
+    ].join("\n");
+
+    const parsed = markdownToTimeline(md);
+    expect(parsed.tracks.length).toBe(2);
+    expect(parsed.tracks[0].type).toBe("media");
+    expect(parsed.tracks[0].elements.length).toBe(1);
+    expect(parsed.tracks[0].elements[0].sourceName).toBe("clip1.mp4");
+    expect(parsed.tracks[1].type).toBe("text");
+    expect(parsed.tracks[1].elements[0].content).toBe("Title");
+  });
+
+  it("markdownToTimeline rejects malformed rows", () => {
+    const md = [
+      "# Timeline: Test",
+      "## Track 1: Broken",
+      "| ID | Start | End | Duration | Type | Source | Content |",
+      "|----|-------|-----|----------|------|--------|--------|",
+      "| `el_1` | - | - | - | video | clip.mp4 | - |",
+    ].join("\n");
+    expect(() => markdownToTimeline(md)).toThrow("Invalid timeline markdown");
   });
 
   it("validateTimeline passes for valid timeline", () => {

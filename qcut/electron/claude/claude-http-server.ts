@@ -951,6 +951,68 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
+  // Auto-Edit routes (Stage 3)
+  // ==========================================================================
+  router.post("/api/claude/timeline/:projectId/auto-edit", async (req) => {
+    if (!req.body?.elementId || !req.body?.mediaId) {
+      throw new HttpError(
+        400,
+        "Missing 'elementId' and 'mediaId' in request body"
+      );
+    }
+    const win = getWindow();
+    try {
+      return await autoEdit(
+        req.params.projectId,
+        {
+          elementId: req.body.elementId,
+          mediaId: req.body.mediaId,
+          removeFillers: req.body.removeFillers,
+          removeSilences: req.body.removeSilences,
+          silenceThreshold: req.body.silenceThreshold,
+          keepSilencePadding: req.body.keepSilencePadding,
+          dryRun: req.body.dryRun,
+          provider: req.body.provider,
+          language: req.body.language,
+        },
+        win
+      );
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Auto-edit failed"
+      );
+    }
+  });
+
+  // ==========================================================================
+  // Cut Suggestions routes (Stage 3)
+  // ==========================================================================
+  router.post("/api/claude/analyze/:projectId/suggest-cuts", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    try {
+      return await suggestCuts(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        provider: req.body.provider,
+        language: req.body.language,
+        sceneThreshold: req.body.sceneThreshold,
+        includeFillers: req.body.includeFillers,
+        includeSilences: req.body.includeSilences,
+        includeScenes: req.body.includeScenes,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Suggest cuts failed"
+      );
+    }
+  });
+
+  // ==========================================================================
   // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
   // ==========================================================================
   router.post("/api/claude/personaplex/generate", async (req) => {
