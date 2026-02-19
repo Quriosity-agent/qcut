@@ -56,3 +56,6 @@ export {
   listModels,
 } from "./cost-calculator.js";
 export type { CostEstimate } from "./cost-calculator.js";
+
+// ViMax pipeline re-exports
+export * from "./vimax/index.js";

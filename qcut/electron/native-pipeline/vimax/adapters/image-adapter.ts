@@ -112,12 +112,43 @@ function aspectToSize(aspectRatio: string): string {
   return sizes[aspectRatio] ?? "square";
 }
 
+export interface ModelInfo {
+  key: string;
+  endpoint: string;
+  costPerImage: number;
+  maxSteps: number;
+  supportsReference: boolean;
+}
+
 export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
   declare config: ImageAdapterConfig;
   private _hasApiKey = false;
 
   constructor(config?: Partial<ImageAdapterConfig>) {
     super(createImageAdapterConfig(config));
+  }
+
+  /** Returns list of supported text-to-image model keys. */
+  static getAvailableModels(): string[] {
+    return Object.keys(MODEL_MAP);
+  }
+
+  /** Returns metadata for a specific model. */
+  static getModelInfo(model: string): ModelInfo | undefined {
+    const endpoint = MODEL_MAP[model];
+    if (!endpoint) return;
+    return {
+      key: model,
+      endpoint,
+      costPerImage: COST_MAP[model] ?? 0.003,
+      maxSteps: MAX_STEPS_MAP[model] ?? 28,
+      supportsReference: model in REFERENCE_MODEL_MAP,
+    };
+  }
+
+  /** Checks if a model supports reference-image-based generation. */
+  static supportsReferenceImages(model: string): boolean {
+    return model in REFERENCE_MODEL_MAP;
   }
 
   async initialize(): Promise<boolean> {
@@ -355,6 +386,11 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     });
   }
 
+  /** Returns keys of all models that support reference-image generation. */
+  static getAvailableReferenceModels(): string[] {
+    return Object.keys(REFERENCE_MODEL_MAP);
+  }
+
   private _mockGenerateWithReference(
     prompt: string,
     referenceImage: string,
@@ -388,4 +424,40 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       },
     });
   }
+}
+
+/**
+ * Convenience function for quick single image generation.
+ * Creates a temporary adapter, generates one image, and returns the result.
+ */
+export async function generateImage(
+  prompt: string,
+  options?: {
+    model?: string;
+    aspect_ratio?: string;
+    output_path?: string;
+  }
+): Promise<ImageOutput> {
+  const adapter = new ImageGeneratorAdapter({ model: options?.model });
+  return adapter.generate(prompt, options);
+}
+
+/**
+ * Convenience function for quick reference-based image generation.
+ * Creates a temporary adapter and generates one image using a reference.
+ */
+export async function generateImageWithReference(
+  prompt: string,
+  referenceImage: string,
+  options?: {
+    model?: string;
+    reference_strength?: number;
+    aspect_ratio?: string;
+    output_path?: string;
+  }
+): Promise<ImageOutput> {
+  const adapter = new ImageGeneratorAdapter({
+    reference_model: options?.model,
+  });
+  return adapter.generateWithReference(prompt, referenceImage, options);
 }

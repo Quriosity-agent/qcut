@@ -183,10 +183,44 @@ export async function handleVimaxGenerateStoryboard(
     const sessionId = `cli-${Date.now()}`;
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
+    // Load portrait registry if --portraits is specified
+    let portraitRegistry:
+      | import("./vimax/types/character.js").CharacterPortraitRegistry
+      | undefined;
+    if (options.portraits) {
+      try {
+        const { CharacterPortraitRegistry } = await import(
+          "./vimax/types/character.js"
+        );
+        const regContent = fs.readFileSync(options.portraits, "utf-8");
+        portraitRegistry = CharacterPortraitRegistry.fromJSON(
+          JSON.parse(regContent)
+        );
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read portrait registry: ${options.portraits}`,
+        };
+      }
+    }
+
     const artist = new StoryboardArtist({
       image_model: options.imageModel,
       output_dir: outputDir,
+      ...(options.style ? { style_prefix: options.style } : {}),
+      ...(portraitRegistry ? { use_character_references: true } : {}),
+      ...(options.referenceModel
+        ? { reference_model: options.referenceModel }
+        : {}),
+      ...(options.referenceStrength != null
+        ? { reference_strength: options.referenceStrength }
+        : {}),
     });
+
+    // If portrait registry is loaded, inject it into the script context
+    if (portraitRegistry) {
+      script._portrait_registry = portraitRegistry;
+    }
 
     const result = await artist.process(script);
 
@@ -281,6 +315,18 @@ export async function handleVimaxGeneratePortraits(
       characters = extractResult.result;
     }
 
+    // Apply --max-characters limit (guard against NaN from bad CLI input)
+    const rawMaxChars = options.maxCharacters ?? 5;
+    const maxChars = Number.isNaN(rawMaxChars) ? 5 : rawMaxChars;
+    if (characters.length > maxChars) {
+      characters = characters.slice(0, maxChars);
+    }
+
+    // Parse --views (comma-separated: front,side,back,three_quarter)
+    const views = options.views
+      ? options.views.split(",").map((v: string) => v.trim())
+      : undefined;
+
     onProgress({
       stage: "generating",
       percent: 30,
@@ -291,6 +337,7 @@ export async function handleVimaxGeneratePortraits(
       image_model: options.imageModel,
       llm_model: options.llmModel,
       output_dir: path.join(outputDir, "portraits"),
+      ...(views ? { views } : {}),
     });
 
     const batchResult = await generator.generateBatch(characters);
@@ -306,6 +353,35 @@ export async function handleVimaxGeneratePortraits(
 
     const portraitCount = Object.keys(batchResult.result ?? {}).length;
 
+    // Save portrait registry JSON (default: true, disable with --save-registry=false)
+    const shouldSaveRegistry = options.saveRegistry !== false;
+    let registryPath: string | undefined;
+    if (shouldSaveRegistry && batchResult.result) {
+      try {
+        const { CharacterPortraitRegistry } = await import(
+          "./vimax/types/character.js"
+        );
+        const registry = new CharacterPortraitRegistry(
+          options.projectId || "cli-project"
+        );
+        for (const portrait of Object.values(
+          batchResult.result as Record<
+            string,
+            import("./vimax/types/character.js").CharacterPortrait
+          >
+        )) {
+          registry.addPortrait(portrait);
+        }
+        registryPath = path.join(outputDir, "portraits", "registry.json");
+        fs.writeFileSync(
+          registryPath,
+          JSON.stringify(registry.toJSON(), null, 2)
+        );
+      } catch {
+        // Non-fatal: registry save is optional
+      }
+    }
+
     return {
       success: true,
       outputPath: path.join(outputDir, "portraits"),
@@ -314,6 +390,7 @@ export async function handleVimaxGeneratePortraits(
       data: {
         characters: portraitCount,
         portraits_generated: portraitCount,
+        registry_path: registryPath,
       },
     };
   } catch (err) {
@@ -348,7 +425,9 @@ export async function handleVimaxCreateRegistry(
       };
     }
 
-    const registry = new CharacterPortraitRegistry("cli-project");
+    const registry = new CharacterPortraitRegistry(
+      options.projectId || "cli-project"
+    );
     const entries = fs.readdirSync(portraitsDir, { withFileTypes: true });
     let characterCount = 0;
 
@@ -487,16 +566,45 @@ export async function handleVimaxIdea2Video(
     const outputDir = resolveOutputDir(options.outputDir, sessionId);
     const startTime = Date.now();
 
+    // Load config from YAML file if --config is specified
+    const configOverrides: Record<string, unknown> = {};
+    if (options.config) {
+      try {
+        const configContent = fs.readFileSync(options.config, "utf-8");
+        // Simple YAML-like parsing for key: value pairs
+        for (const line of configContent.split("\n")) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const colonIdx = trimmed.indexOf(":");
+          if (colonIdx > 0) {
+            const key = trimmed.slice(0, colonIdx).trim();
+            const val = trimmed.slice(colonIdx + 1).trim();
+            configOverrides[key] =
+              val === "true" ? true : val === "false" ? false : val;
+          }
+        }
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read config: ${options.config}`,
+        };
+      }
+    }
+
+    // --no-references separates reference use from portrait generation
+    const useReferences = !(options.noReferences ?? false);
+
     const pipeline = new Idea2VideoPipeline({
       output_dir: outputDir,
       generate_portraits: !(options.noPortraits ?? false),
-      use_character_references: true,
+      use_character_references: useReferences,
       video_model: options.videoModel,
       image_model: options.imageModel,
       llm_model: options.llmModel,
       target_duration: options.duration
         ? parseInt(options.duration, 10)
         : undefined,
+      ...configOverrides,
     });
 
     const result = await pipeline.run(idea);
@@ -551,14 +659,40 @@ export async function handleVimaxScript2Video(
       return { success: false, error: `Cannot read script: ${scriptPath}` };
     }
 
+    // Load portrait registry if --portraits is specified
+    let portraitRegistry:
+      | import("./vimax/types/character.js").CharacterPortraitRegistry
+      | undefined;
+    if (options.portraits) {
+      try {
+        const { CharacterPortraitRegistry } = await import(
+          "./vimax/types/character.js"
+        );
+        const regContent = fs.readFileSync(options.portraits, "utf-8");
+        portraitRegistry = CharacterPortraitRegistry.fromJSON(
+          JSON.parse(regContent)
+        );
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read portrait registry: ${options.portraits}`,
+        };
+      }
+    }
+
     const pipeline = new Script2VideoPipeline({
       output_dir: outputDir,
       video_model: options.videoModel,
       image_model: options.imageModel,
-      use_character_references: true,
+      use_character_references: !(options.noReferences ?? false),
     });
 
-    const result = await pipeline.run(JSON.parse(scriptData));
+    const scriptObj = JSON.parse(scriptData);
+    if (portraitRegistry) {
+      scriptObj._portrait_registry = portraitRegistry;
+    }
+
+    const result = await pipeline.run(scriptObj);
 
     return {
       success: result.success,

@@ -93,16 +93,33 @@ export function setupAIPipelineIPC(): void {
 
       // Generate sessionId if not provided to ensure correlation
       const sessionId = options.sessionId ?? `ai-${Date.now()}`;
-      return pipelineManager.execute({ ...options, sessionId }, (progress) => {
-        // Send progress to renderer
-        const mainWindow = getMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("ai-pipeline:progress", {
-            sessionId,
-            ...progress,
-          });
+
+      // Vimax commands only work with native pipeline
+      if (
+        pipelineManager instanceof AIPipelineManager &&
+        typeof options.command === "string" &&
+        options.command.startsWith("vimax:")
+      ) {
+        return {
+          success: false,
+          error:
+            "ViMax commands require the native pipeline. Enable QCUT_NATIVE_PIPELINE=true.",
+        };
+      }
+
+      return pipelineManager.execute(
+        { ...options, sessionId } as GenerateOptions & LegacyGenerateOptions,
+        (progress) => {
+          // Send progress to renderer
+          const mainWindow = getMainWindow();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("ai-pipeline:progress", {
+              sessionId,
+              ...progress,
+            });
+          }
         }
-      });
+      );
     }
   );
 

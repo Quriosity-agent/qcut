@@ -232,7 +232,6 @@ beforeAll(async () => {
   // Since startClaudeHTTPServer uses a fixed port, we set the env var
   serverPort = 18_765 + Math.floor(Math.random() * 1000);
   process.env.QCUT_API_PORT = String(serverPort);
-  // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
   delete process.env.QCUT_API_TOKEN;
 
   startClaudeHTTPServer(serverPort);
@@ -243,7 +242,6 @@ beforeAll(async () => {
 
 afterAll(() => {
   stopClaudeHTTPServer();
-  // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
   delete process.env.QCUT_API_PORT;
 });
 
@@ -560,7 +558,6 @@ describe("Claude HTTP Server - Auth", () => {
   });
 
   it("accepts requests without token when QCUT_API_TOKEN is not set", async () => {
-    // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
     delete process.env.QCUT_API_TOKEN;
     const res = await fetch("/api/claude/health");
     expect(res.status).toBe(200);
@@ -573,7 +570,6 @@ describe("Claude HTTP Server - Auth", () => {
       expect(res.status).toBe(401);
       expect(res.body.error).toBe("Unauthorized");
     } finally {
-      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });
@@ -586,7 +582,6 @@ describe("Claude HTTP Server - Auth", () => {
       });
       expect(res.status).toBe(200);
     } finally {
-      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });
@@ -599,7 +594,6 @@ describe("Claude HTTP Server - Auth", () => {
       });
       expect(res.status).toBe(401);
     } finally {
-      // biome-ignore lint/performance/noDelete: process.env stringifies undefined to "undefined"
       delete process.env.QCUT_API_TOKEN;
     }
   });

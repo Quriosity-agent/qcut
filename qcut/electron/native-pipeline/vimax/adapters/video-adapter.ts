@@ -74,6 +74,11 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     super(createVideoAdapterConfig(config));
   }
 
+  /** Returns list of supported video model keys. */
+  static getAvailableModels(): string[] {
+    return Object.keys(MODEL_MAP);
+  }
+
   async initialize(): Promise<boolean> {
     const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? "";
     this._hasApiKey = apiKey.length > 0;
@@ -268,4 +273,21 @@ export class VideoGeneratorAdapter extends BaseAdapter<
       metadata: { mock: true },
     });
   }
+}
+
+/**
+ * Convenience function for quick single video generation.
+ * Creates a temporary adapter, generates one video, and returns the result.
+ */
+export async function generateVideo(
+  imagePath: string,
+  prompt: string,
+  options?: {
+    model?: string;
+    duration?: number;
+    output_path?: string;
+  }
+): Promise<VideoOutput> {
+  const adapter = new VideoGeneratorAdapter({ model: options?.model });
+  return adapter.generate(imagePath, prompt, options);
 }
