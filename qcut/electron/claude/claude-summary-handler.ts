@@ -366,16 +366,19 @@ export async function generatePipelineReport({
     const fileName = `pipeline-report-${safeProjectId}-${datePart}.md`;
     const fullPath = join(resolvedOutputDir, fileName);
 
-    await writeFile(fullPath, markdown, "utf8");
+    try {
+      await writeFile(fullPath, markdown, "utf8");
+    } catch (writeError) {
+      throw new Error(
+        `Failed to save report to ${resolvedOutputDir}: ${writeError instanceof Error ? writeError.message : "unknown error"}`
+      );
+    }
     return {
       markdown,
       savedTo: fullPath,
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to generate report";
-    return {
-      markdown: `## Auto-Edit Pipeline Report\n\n- ${message}\n`,
-    };
+    if (error instanceof Error) throw error;
+    throw new Error("Failed to generate report");
   }
 }

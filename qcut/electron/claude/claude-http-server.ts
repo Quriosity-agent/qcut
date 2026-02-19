@@ -528,10 +528,10 @@ export function startClaudeHTTPServer(
       });
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Failed to generate summary"
-      );
+      const msg =
+        error instanceof Error ? error.message : "Failed to generate summary";
+      const status = msg.includes("Failed to read project") ? 400 : 500;
+      throw new HttpError(status, msg);
     }
   });
 
