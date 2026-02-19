@@ -118,7 +118,15 @@ export function organizeProject(
     : join(projectDir, "input");
 
   function scanDir(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true });
+    let entries: ReturnType<typeof readdirSync>;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch (err) {
+      errors.push(
+        `Failed to read directory ${dir}: ${err instanceof Error ? err.message : String(err)}`
+      );
+      return;
+    }
     for (const entry of entries) {
       const fullPath = join(dir, entry.name);
 
