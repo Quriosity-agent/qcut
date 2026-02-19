@@ -268,7 +268,8 @@ export interface TimelineStore {
   removeElementFromTrackWithRipple: (
     trackId: string,
     elementId: string,
-    pushHistory?: boolean
+    pushHistory?: boolean,
+    forceRipple?: boolean
   ) => void;
   rippleDeleteAcrossTracks: (
     startTime: number,

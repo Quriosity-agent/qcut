@@ -5,7 +5,6 @@
 
 import { app, ipcMain, IpcMainInvokeEvent } from "electron";
 import { spawn } from "node:child_process";
-import * as fs from "node:fs";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
 import { getFFmpegPath, parseProgress } from "../ffmpeg/utils.js";
