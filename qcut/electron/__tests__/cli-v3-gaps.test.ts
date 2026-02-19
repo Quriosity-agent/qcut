@@ -177,8 +177,12 @@ describe("ImageGeneratorAdapter.getAvailableReferenceModels", () => {
   it("does not include non-reference models", () => {
     const refModels = ImageGeneratorAdapter.getAvailableReferenceModels();
     const allModels = ImageGeneratorAdapter.getAvailableModels();
-    // Some text-to-image models should NOT be in reference models
-    expect(refModels.length).toBeLessThan(allModels.length + refModels.length);
+    // Reference models should be a subset, not all text-to-image models
+    const nonRefModel = allModels.find(
+      (m) => !ImageGeneratorAdapter.supportsReferenceImages(m)
+    );
+    expect(nonRefModel).toBeDefined();
+    expect(refModels).not.toContain(nonRefModel);
   });
 });
 

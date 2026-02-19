@@ -9,6 +9,7 @@
  */
 
 import {
+  type Dirent,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -118,7 +119,7 @@ export function organizeProject(
     : join(projectDir, "input");
 
   function scanDir(dir: string): void {
-    let entries: ReturnType<typeof readdirSync>;
+    let entries: Dirent<string>[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
     } catch (err) {
