@@ -222,6 +222,29 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       style: { type: "string" },
       "reference-model": { type: "string" },
       "reference-strength": { type: "string" },
+      // transcribe options
+      language: { type: "string" },
+      "no-diarize": { type: "boolean", default: false },
+      "no-tag-events": { type: "boolean", default: false },
+      keyterms: { type: "string", multiple: true },
+      srt: { type: "boolean", default: false },
+      "srt-max-words": { type: "string" },
+      "srt-max-duration": { type: "string" },
+      "raw-json": { type: "boolean", default: false },
+      // transfer-motion options
+      orientation: { type: "string" },
+      "no-sound": { type: "boolean", default: false },
+      // generate-avatar options
+      "reference-images": { type: "string", multiple: true },
+      // analyze-video options
+      "analysis-type": { type: "string" },
+      "output-format": { type: "string", short: "f" },
+      // upscale-image options
+      target: { type: "string" },
+      // vimax:idea2video options
+      "no-references": { type: "boolean", default: false },
+      // grid upscale
+      "grid-upscale": { type: "string" },
     },
     strict: false,
   });
@@ -296,6 +319,35 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     referenceModel: values["reference-model"] as string | undefined,
     referenceStrength: values["reference-strength"]
       ? parseFloat(values["reference-strength"] as string)
+      : undefined,
+    // transcribe options
+    language: values.language as string | undefined,
+    noDiarize: (values["no-diarize"] as boolean) ?? false,
+    noTagEvents: (values["no-tag-events"] as boolean) ?? false,
+    keyterms: values.keyterms as string[] | undefined,
+    srt: (values.srt as boolean) ?? false,
+    srtMaxWords: values["srt-max-words"]
+      ? parseInt(values["srt-max-words"] as string, 10)
+      : undefined,
+    srtMaxDuration: values["srt-max-duration"]
+      ? parseFloat(values["srt-max-duration"] as string)
+      : undefined,
+    rawJson: (values["raw-json"] as boolean) ?? false,
+    // transfer-motion options
+    orientation: values.orientation as string | undefined,
+    noSound: (values["no-sound"] as boolean) ?? false,
+    // generate-avatar options
+    referenceImages: values["reference-images"] as string[] | undefined,
+    // analyze-video options
+    analysisType: values["analysis-type"] as string | undefined,
+    outputFormat: values["output-format"] as string | undefined,
+    // upscale-image options
+    target: values.target as string | undefined,
+    // vimax:idea2video options
+    noReferences: (values["no-references"] as boolean) ?? false,
+    // grid upscale
+    gridUpscale: values["grid-upscale"]
+      ? parseFloat(values["grid-upscale"] as string)
       : undefined,
   };
 }
