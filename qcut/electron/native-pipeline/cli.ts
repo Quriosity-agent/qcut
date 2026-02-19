@@ -36,7 +36,11 @@ const COMMANDS = [
   "setup",
   "set-key",
   "get-key",
+  "delete-key",
   "check-keys",
+  "init-project",
+  "organize-project",
+  "structure-info",
   "create-examples",
   "vimax:idea2video",
   "vimax:script2video",
@@ -78,7 +82,11 @@ Commands:
   setup               Create API key template file
   set-key             Set an API key
   get-key             Get an API key (masked)
+  delete-key          Delete a stored API key
   check-keys          Check configured API keys
+  init-project        Initialize project directory structure
+  organize-project    Organize media files into categories
+  structure-info      Show project structure and file counts
   create-examples     Create example pipeline configs
   vimax:idea2video    Generate video from an idea
   vimax:script2video  Generate video from a script
@@ -199,6 +207,45 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       "state-dir": { type: "string" },
       "negative-prompt": { type: "string" },
       "voice-id": { type: "string" },
+      directory: { type: "string" },
+      "dry-run": { type: "boolean", default: false },
+      recursive: { type: "boolean", default: false },
+      "include-output": { type: "boolean", default: false },
+      source: { type: "string" },
+      reveal: { type: "boolean", default: false },
+      "no-confirm": { type: "boolean", default: false },
+      "prompt-file": { type: "string" },
+      portraits: { type: "string", short: "p" },
+      views: { type: "string" },
+      "max-characters": { type: "string" },
+      "save-registry": { type: "boolean", default: true },
+      style: { type: "string" },
+      "reference-model": { type: "string" },
+      "reference-strength": { type: "string" },
+      // transcribe options
+      language: { type: "string" },
+      "no-diarize": { type: "boolean", default: false },
+      "no-tag-events": { type: "boolean", default: false },
+      keyterms: { type: "string", multiple: true },
+      srt: { type: "boolean", default: false },
+      "srt-max-words": { type: "string" },
+      "srt-max-duration": { type: "string" },
+      "raw-json": { type: "boolean", default: false },
+      // transfer-motion options
+      orientation: { type: "string" },
+      "no-sound": { type: "boolean", default: false },
+      // generate-avatar options
+      "reference-images": { type: "string", multiple: true },
+      // analyze-video options
+      "analysis-type": { type: "string" },
+      "output-format": { type: "string", short: "f" },
+      // upscale-image options
+      target: { type: "string" },
+      // vimax options
+      "no-references": { type: "boolean", default: false },
+      "project-id": { type: "string" },
+      // grid upscale
+      "grid-upscale": { type: "string" },
     },
     strict: false,
   });
@@ -224,7 +271,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     saveIntermediates: (values["save-intermediates"] as boolean) ?? false,
     parallel: (values.parallel as boolean) ?? false,
     maxWorkers: values["max-workers"]
-      ? parseInt(values["max-workers"] as string, 10)
+      ? Number.isNaN(parseInt(values["max-workers"] as string, 10))
+        ? undefined
+        : parseInt(values["max-workers"] as string, 10)
       : undefined,
     json: (values.json as boolean) ?? false,
     verbose: (values.verbose as boolean) ?? false,
@@ -240,7 +289,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     novel: values.novel as string | undefined,
     title: values.title as string | undefined,
     maxScenes: values["max-scenes"]
-      ? parseInt(values["max-scenes"] as string, 10)
+      ? Number.isNaN(parseInt(values["max-scenes"] as string, 10))
+        ? undefined
+        : parseInt(values["max-scenes"] as string, 10)
       : undefined,
     scriptsOnly: (values["scripts-only"] as boolean) ?? false,
     storyboardOnly: (values["storyboard-only"] as boolean) ?? false,
@@ -255,6 +306,65 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     stateDir: values["state-dir"] as string | undefined,
     negativePrompt: values["negative-prompt"] as string | undefined,
     voiceId: values["voice-id"] as string | undefined,
+    directory: values.directory as string | undefined,
+    dryRun: (values["dry-run"] as boolean) ?? false,
+    recursive: (values.recursive as boolean) ?? false,
+    includeOutput: (values["include-output"] as boolean) ?? false,
+    source: values.source as string | undefined,
+    reveal: (values.reveal as boolean) ?? false,
+    noConfirm: (values["no-confirm"] as boolean) ?? false,
+    promptFile: values["prompt-file"] as string | undefined,
+    portraits: values.portraits as string | undefined,
+    views: values.views as string | undefined,
+    maxCharacters: values["max-characters"]
+      ? Number.isNaN(parseInt(values["max-characters"] as string, 10))
+        ? undefined
+        : parseInt(values["max-characters"] as string, 10)
+      : undefined,
+    saveRegistry: (values["save-registry"] as boolean) ?? true,
+    style: values.style as string | undefined,
+    referenceModel: values["reference-model"] as string | undefined,
+    referenceStrength: values["reference-strength"]
+      ? Number.isNaN(parseFloat(values["reference-strength"] as string))
+        ? undefined
+        : parseFloat(values["reference-strength"] as string)
+      : undefined,
+    // transcribe options
+    language: values.language as string | undefined,
+    noDiarize: (values["no-diarize"] as boolean) ?? false,
+    noTagEvents: (values["no-tag-events"] as boolean) ?? false,
+    keyterms: values.keyterms as string[] | undefined,
+    srt: (values.srt as boolean) ?? false,
+    srtMaxWords: values["srt-max-words"]
+      ? Number.isNaN(parseInt(values["srt-max-words"] as string, 10))
+        ? undefined
+        : parseInt(values["srt-max-words"] as string, 10)
+      : undefined,
+    srtMaxDuration: values["srt-max-duration"]
+      ? Number.isNaN(parseFloat(values["srt-max-duration"] as string))
+        ? undefined
+        : parseFloat(values["srt-max-duration"] as string)
+      : undefined,
+    rawJson: (values["raw-json"] as boolean) ?? false,
+    // transfer-motion options
+    orientation: values.orientation as string | undefined,
+    noSound: (values["no-sound"] as boolean) ?? false,
+    // generate-avatar options
+    referenceImages: values["reference-images"] as string[] | undefined,
+    // analyze-video options
+    analysisType: values["analysis-type"] as string | undefined,
+    outputFormat: values["output-format"] as string | undefined,
+    // upscale-image options
+    target: values.target as string | undefined,
+    // vimax options
+    noReferences: (values["no-references"] as boolean) ?? false,
+    projectId: values["project-id"] as string | undefined,
+    // grid upscale
+    gridUpscale: values["grid-upscale"]
+      ? Number.isNaN(parseFloat(values["grid-upscale"] as string))
+        ? undefined
+        : parseFloat(values["grid-upscale"] as string)
+      : undefined,
   };
 }
 
@@ -383,15 +493,52 @@ export async function main(
     }
     if (
       result.data &&
-      (options.command === "set-key" || options.command === "get-key")
+      (options.command === "set-key" ||
+        options.command === "get-key" ||
+        options.command === "delete-key")
     ) {
       const data = result.data as {
         message?: string;
         name?: string;
         masked?: string;
+        value?: string;
       };
       if (data.message) console.log(data.message);
-      if (data.masked) console.log(`${data.name}: ${data.masked}`);
+      if (data.value) console.log(`${data.name}: ${data.value}`);
+      else if (data.masked) console.log(`${data.name}: ${data.masked}`);
+    }
+    if (result.data && options.command === "init-project") {
+      const data = result.data as {
+        projectDir: string;
+        created: string[];
+        message: string;
+      };
+      console.log(`\n${data.message}`);
+      if (data.created.length > 0) {
+        console.log(`  Project: ${data.projectDir}`);
+        for (const dir of data.created) {
+          console.log(`  + ${dir}`);
+        }
+      }
+    }
+    if (result.data && options.command === "organize-project") {
+      const data = result.data as { moved: number; message: string };
+      console.log(`\n${data.message}`);
+    }
+    if (result.data && options.command === "structure-info") {
+      const data = result.data as {
+        projectDir: string;
+        directories: { path: string; fileCount: number; exists: boolean }[];
+        totalFiles: number;
+      };
+      console.log(`\nProject: ${data.projectDir}`);
+      console.log(`Total files: ${data.totalFiles}\n`);
+      for (const dir of data.directories) {
+        const status = dir.exists
+          ? `${String(dir.fileCount).padStart(4)} files`
+          : "  (missing)";
+        console.log(`  ${dir.path.padEnd(25)} ${status}`);
+      }
     }
     if (result.data && options.command === "vimax:extract-characters") {
       const data = result.data as { characters: unknown[]; count: number };

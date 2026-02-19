@@ -14,27 +14,33 @@ import { PipelineExecutor } from "./executor.js";
 import type { PipelineStep } from "./executor.js";
 import { ParallelPipelineExecutor } from "./parallel-executor.js";
 import { parseChainConfig, validateChain } from "./chain-parser.js";
-import {
-  estimateCost,
-  estimatePipelineCost,
-  listModels,
-} from "./cost-calculator.js";
+import { estimatePipelineCost } from "./cost-calculator.js";
 import {
   downloadOutput,
   setApiKeyProvider,
   envApiKeyProvider,
 } from "./api-caller.js";
 import { resolveOutputDir } from "./output-utils.js";
-import type { ModelCategory } from "./registry.js";
 import { compositeGrid, getGridImageCount } from "./grid-generator.js";
+import { loadEnvFile } from "./key-manager.js";
+import { isInteractive, confirm, readStdin } from "./interactive.js";
 import {
-  setKey,
-  getKey,
-  checkKeys,
-  setupEnvTemplate,
-  loadEnvFile,
-} from "./key-manager.js";
-import { createExamples } from "./example-pipelines.js";
+  handleAnalyzeVideo as mediaHandleAnalyzeVideo,
+  handleTranscribe as mediaHandleTranscribe,
+} from "./cli-handlers-media.js";
+import {
+  handleSetup as adminHandleSetup,
+  handleSetKey as adminHandleSetKey,
+  handleGetKey as adminHandleGetKey,
+  handleCheckKeys as adminHandleCheckKeys,
+  handleDeleteKey as adminHandleDeleteKey,
+  handleInitProject as adminHandleInitProject,
+  handleOrganizeProject as adminHandleOrganizeProject,
+  handleStructureInfo as adminHandleStructureInfo,
+  handleCreateExamples as adminHandleCreateExamples,
+  handleListModels as adminHandleListModels,
+  handleEstimateCost as adminHandleEstimateCost,
+} from "./cli-handlers-admin.js";
 import {
   handleVimaxExtractCharacters,
   handleVimaxGenerateScript,
@@ -91,6 +97,45 @@ export interface CLIRunOptions {
   stateDir?: string;
   negativePrompt?: string;
   voiceId?: string;
+  directory?: string;
+  dryRun?: boolean;
+  recursive?: boolean;
+  includeOutput?: boolean;
+  source?: string;
+  reveal?: boolean;
+  noConfirm?: boolean;
+  promptFile?: string;
+  portraits?: string;
+  views?: string;
+  maxCharacters?: number;
+  saveRegistry?: boolean;
+  style?: string;
+  referenceModel?: string;
+  referenceStrength?: number;
+  // transcribe options
+  language?: string;
+  noDiarize?: boolean;
+  noTagEvents?: boolean;
+  keyterms?: string[];
+  srt?: boolean;
+  srtMaxWords?: number;
+  srtMaxDuration?: number;
+  rawJson?: boolean;
+  // transfer-motion options
+  orientation?: string;
+  noSound?: boolean;
+  // generate-avatar options
+  referenceImages?: string[];
+  // analyze-video options
+  analysisType?: string;
+  outputFormat?: string;
+  // upscale-image options
+  target?: string;
+  // vimax options
+  noReferences?: boolean;
+  projectId?: string;
+  // grid upscale
+  gridUpscale?: number;
 }
 
 export interface CLIResult {
@@ -130,13 +175,25 @@ export class CLIPipelineRunner {
     options: CLIRunOptions,
     onProgress: ProgressFn
   ): Promise<CLIResult> {
-    loadEnvFile();
+    loadEnvFile(options.configDir);
+
+    // Stdin pipe support: when --input is "-", read from stdin
+    if (options.input === "-") {
+      try {
+        options.input = await readStdin();
+      } catch (err) {
+        return {
+          success: false,
+          error: `Failed to read stdin: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    }
 
     switch (options.command) {
       case "list-models":
-        return this.handleListModels(options);
+        return adminHandleListModels(options);
       case "estimate-cost":
-        return this.handleEstimateCost(options);
+        return adminHandleEstimateCost(options);
       case "generate-image":
       case "create-video":
       case "generate-avatar":
@@ -144,9 +201,19 @@ export class CLIPipelineRunner {
       case "run-pipeline":
         return this.handleRunPipeline(options, onProgress);
       case "analyze-video":
-        return this.handleAnalyzeVideo(options, onProgress);
+        return mediaHandleAnalyzeVideo(
+          options,
+          onProgress,
+          this.executor,
+          this.signal
+        );
       case "transcribe":
-        return this.handleTranscribe(options, onProgress);
+        return mediaHandleTranscribe(
+          options,
+          onProgress,
+          this.executor,
+          this.signal
+        );
       case "transfer-motion":
         return this.handleTransferMotion(options, onProgress);
       case "generate-grid":
@@ -154,15 +221,23 @@ export class CLIPipelineRunner {
       case "upscale-image":
         return this.handleUpscaleImage(options, onProgress);
       case "setup":
-        return this.handleSetup();
+        return adminHandleSetup();
       case "set-key":
-        return this.handleSetKey(options);
+        return adminHandleSetKey(options);
       case "get-key":
-        return this.handleGetKey(options);
+        return adminHandleGetKey(options);
       case "check-keys":
-        return this.handleCheckKeys();
+        return adminHandleCheckKeys();
+      case "delete-key":
+        return adminHandleDeleteKey(options);
+      case "init-project":
+        return adminHandleInitProject(options);
+      case "organize-project":
+        return adminHandleOrganizeProject(options);
+      case "structure-info":
+        return adminHandleStructureInfo(options);
       case "create-examples":
-        return this.handleCreateExamples(options);
+        return adminHandleCreateExamples(options);
       case "vimax:idea2video":
         return handleVimaxIdea2Video(options, onProgress);
       case "vimax:script2video":
@@ -184,64 +259,25 @@ export class CLIPipelineRunner {
       case "vimax:list-models":
         return handleVimaxListModels();
       case "list-avatar-models":
-        return this.handleListModels({ ...options, category: "avatar" });
+        return adminHandleListModels({ ...options, category: "avatar" });
       case "list-video-models":
-        return this.handleListModels({ ...options, category: "text_to_video" });
+        return adminHandleListModels({
+          ...options,
+          category: "text_to_video",
+        });
       case "list-motion-models":
-        return this.handleListModels({
+        return adminHandleListModels({
           ...options,
           category: "motion_transfer",
         });
       case "list-speech-models":
-        return this.handleListModels({
+        return adminHandleListModels({
           ...options,
           category: "text_to_speech",
         });
       default:
         return { success: false, error: `Unknown command: ${options.command}` };
     }
-  }
-
-  private handleListModels(options: CLIRunOptions): CLIResult {
-    const category = options.category as ModelCategory | undefined;
-    const models = category ? listModels({ category }) : listModels();
-
-    return {
-      success: true,
-      data: {
-        models: models.map((m) => ({
-          key: m.key,
-          name: m.name,
-          provider: m.provider,
-          categories: m.categories,
-          costEstimate: m.costEstimate,
-          description: m.description,
-        })),
-        count: models.length,
-      },
-    };
-  }
-
-  private handleEstimateCost(options: CLIRunOptions): CLIResult {
-    if (!options.model) {
-      return {
-        success: false,
-        error: "Missing --model. Run --help for usage.",
-      };
-    }
-    if (!ModelRegistry.has(options.model)) {
-      return {
-        success: false,
-        error: `Unknown model '${options.model}'. Run list-models to see available models.`,
-      };
-    }
-
-    const params: Record<string, unknown> = {};
-    if (options.duration) params.duration = options.duration;
-    if (options.resolution) params.resolution = options.resolution;
-
-    const estimate = estimateCost(options.model, params);
-    return { success: true, cost: estimate.totalCost, data: estimate };
   }
 
   private async handleGenerate(
@@ -270,6 +306,16 @@ export class CLIPipelineRunner {
     if (options.duration) params.duration = options.duration;
     if (options.aspectRatio) params.aspect_ratio = options.aspectRatio;
     if (options.resolution) params.resolution = options.resolution;
+    if (options.negativePrompt) params.negative_prompt = options.negativePrompt;
+    if (options.voiceId) params.voice_id = options.voiceId;
+
+    // Smart mode detection for generate-avatar (matches Python logic)
+    if (options.command === "generate-avatar") {
+      if (options.referenceImages && options.referenceImages.length > 0) {
+        // Reference-image-based video generation
+        params.reference_images = options.referenceImages.slice(0, 4);
+      }
+    }
 
     onProgress({
       stage: "starting",
@@ -379,7 +425,36 @@ export class CLIPipelineRunner {
       if (options.maxWorkers) chain.config.maxWorkers = options.maxWorkers;
     }
 
-    const input = options.input || options.text || "";
+    // Read input from --prompt-file if specified
+    let input = options.input || options.text || "";
+    if (options.promptFile) {
+      try {
+        input = fs.readFileSync(options.promptFile, "utf-8").trim();
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read prompt file: ${options.promptFile}`,
+        };
+      }
+    }
+
+    // Cost preview
+    const enabledSteps = chain.steps.filter((s) => s.enabled);
+    const costEstimate = estimatePipelineCost(chain);
+    if (!options.quiet) {
+      console.error(
+        `Pipeline: ${enabledSteps.length} steps, estimated cost: $${costEstimate.totalCost.toFixed(3)}`
+      );
+    }
+
+    // Interactive confirmation (skip in CI or with --no-confirm)
+    const skipConfirm = options.noConfirm || !isInteractive();
+    if (!skipConfirm) {
+      const proceed = await confirm("Proceed with execution?");
+      if (!proceed) {
+        return { success: false, error: "Execution cancelled by user" };
+      }
+    }
 
     const executor = chain.config.parallel
       ? new ParallelPipelineExecutor({
@@ -398,6 +473,18 @@ export class CLIPipelineRunner {
           message: progress.message,
           model: progress.model,
         });
+        // Stream JSONL events to stderr when --stream is enabled
+        if (options.stream) {
+          const event = {
+            type: "progress",
+            stage: progress.stage,
+            percent: progress.percent,
+            message: progress.message,
+            model: progress.model,
+            timestamp: new Date().toISOString(),
+          };
+          process.stderr.write(JSON.stringify(event) + "\n");
+        }
       },
       this.abortController.signal
     );
@@ -413,107 +500,6 @@ export class CLIPipelineRunner {
         stepsCompleted: result.stepsCompleted,
         totalSteps: result.totalSteps,
       },
-    };
-  }
-
-  private async handleAnalyzeVideo(
-    options: CLIRunOptions,
-    onProgress: ProgressFn
-  ): Promise<CLIResult> {
-    const videoInput = options.input || options.videoUrl;
-    if (!videoInput) {
-      return { success: false, error: "Missing --input/-i (video path/URL)" };
-    }
-
-    const model = options.model || "gemini_qa";
-    if (!ModelRegistry.has(model)) {
-      return { success: false, error: `Unknown model '${model}'` };
-    }
-
-    const startTime = Date.now();
-    onProgress({
-      stage: "analyzing",
-      percent: 0,
-      message: "Analyzing video...",
-      model,
-    });
-
-    const step: PipelineStep = {
-      type: "image_understanding",
-      model,
-      params: {
-        prompt:
-          options.prompt || options.text || "Describe this video in detail",
-      },
-      enabled: true,
-      retryCount: 0,
-    };
-
-    const result = await this.executor.executeStep(
-      step,
-      { videoUrl: videoInput },
-      {
-        outputDir: options.outputDir,
-        signal: this.abortController.signal,
-      }
-    );
-
-    onProgress({ stage: "complete", percent: 100, message: "Done", model });
-
-    return {
-      success: result.success,
-      error: result.error,
-      data: result.text || result.data,
-      duration: (Date.now() - startTime) / 1000,
-    };
-  }
-
-  private async handleTranscribe(
-    options: CLIRunOptions,
-    onProgress: ProgressFn
-  ): Promise<CLIResult> {
-    const audioInput = options.input || options.audioUrl;
-    if (!audioInput) {
-      return { success: false, error: "Missing --input/-i (audio path/URL)" };
-    }
-
-    const model = options.model || "scribe_v2";
-    if (!ModelRegistry.has(model)) {
-      return { success: false, error: `Unknown model '${model}'` };
-    }
-
-    const startTime = Date.now();
-    onProgress({
-      stage: "transcribing",
-      percent: 0,
-      message: "Transcribing audio...",
-      model,
-    });
-
-    const step: PipelineStep = {
-      type: "speech_to_text",
-      model,
-      params: {},
-      enabled: true,
-      retryCount: 0,
-    };
-
-    const result = await this.executor.executeStep(
-      step,
-      { audioUrl: audioInput },
-      {
-        outputDir: options.outputDir,
-        signal: this.abortController.signal,
-      }
-    );
-
-    onProgress({ stage: "complete", percent: 100, message: "Done", model });
-
-    return {
-      success: result.success,
-      error: result.error,
-      data: result.text || result.data,
-      duration: (Date.now() - startTime) / 1000,
     };
   }
 
@@ -544,10 +530,18 @@ export class CLIPipelineRunner {
       model,
     });
 
+    // Build transfer-motion params
+    const params: Record<string, unknown> = {};
+    if (options.orientation) params.orientation = options.orientation;
+    if (options.noSound) params.no_sound = true;
+    if (options.prompt || options.text) {
+      params.prompt = options.prompt || options.text;
+    }
+
     const step: PipelineStep = {
       type: "avatar",
       model,
-      params: {},
+      params,
       enabled: true,
       retryCount: 0,
     };
@@ -610,19 +604,22 @@ export class CLIPipelineRunner {
       model,
     });
 
+    // Prepend style to prompt if specified
+    const promptText = options.style ? `${options.style}, ${text}` : text;
+
     const imagePaths: string[] = [];
     for (let i = 0; i < count; i++) {
       const step: PipelineStep = {
         type: "text_to_image",
         model,
-        params: { prompt: text },
+        params: { prompt: promptText },
         enabled: true,
         retryCount: 0,
       };
 
       const result = await this.executor.executeStep(
         step,
-        { text },
+        { text: promptText },
         {
           outputDir,
           signal: this.abortController.signal,
@@ -667,13 +664,58 @@ export class CLIPipelineRunner {
       outputPath: path.join(outputDir, `grid_${Date.now()}.png`),
     });
 
+    if (!gridResult.success) {
+      return {
+        success: false,
+        error: gridResult.error,
+        duration: (Date.now() - startTime) / 1000,
+      };
+    }
+
+    // Post-generation upscale if --grid-upscale is specified
+    let finalOutputPath = gridResult.outputPath;
+    if (options.gridUpscale && gridResult.outputPath) {
+      onProgress({
+        stage: "upscaling",
+        percent: 90,
+        message: `Upscaling grid ${options.gridUpscale}x...`,
+        model,
+      });
+
+      const upscaleStep: PipelineStep = {
+        type: "image_to_image",
+        model: "topaz",
+        params: { upscale_factor: options.gridUpscale },
+        enabled: true,
+        retryCount: 0,
+      };
+
+      const upscaleResult = await this.executor.executeStep(
+        upscaleStep,
+        { imageUrl: gridResult.outputPath },
+        { outputDir, signal: this.abortController.signal }
+      );
+
+      if (upscaleResult.success && upscaleResult.outputPath) {
+        finalOutputPath = upscaleResult.outputPath;
+      } else if (upscaleResult.outputUrl) {
+        try {
+          finalOutputPath = await downloadOutput(
+            upscaleResult.outputUrl,
+            path.join(outputDir, `grid_upscaled_${Date.now()}.png`)
+          );
+        } catch {
+          /* fallback to original grid */
+        }
+      }
+    }
+
     onProgress({ stage: "complete", percent: 100, message: "Done", model });
 
     return {
-      success: gridResult.success,
-      outputPath: gridResult.outputPath,
+      success: true,
+      outputPath: finalOutputPath,
       outputPaths: gridResult.imagePaths,
-      error: gridResult.error,
       duration: (Date.now() - startTime) / 1000,
     };
   }
@@ -706,6 +748,21 @@ export class CLIPipelineRunner {
     const params: Record<string, unknown> = {};
     if (options.upscale) params.upscale_factor = parseInt(options.upscale, 10);
 
+    // --target maps resolution name to upscale parameters
+    if (options.target) {
+      const targetMap: Record<string, number> = {
+        "720p": 1,
+        "1080p": 2,
+        "1440p": 3,
+        "2160p": 4,
+      };
+      const factor = targetMap[options.target];
+      if (factor) {
+        params.upscale_factor = factor;
+        params.target_resolution = options.target;
+      }
+    }
+
     const step: PipelineStep = {
       type: "image_to_image",
       model,
@@ -723,11 +780,18 @@ export class CLIPipelineRunner {
       }
     );
 
+    // Determine output extension from --format option
+    const format = options.outputFormat?.toLowerCase();
+    if (format && !/^[a-z0-9]+$/.test(format)) {
+      return { success: false, error: "Invalid --format value" };
+    }
+    const outputExt = format ? `.${format}` : ".png";
+
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
         result.outputPath = await downloadOutput(
           result.outputUrl,
-          path.join(outputDir, `upscaled_${Date.now()}.png`)
+          path.join(outputDir, `upscaled_${Date.now()}${outputExt}`)
         );
       } catch {
         /* URL still available */
@@ -742,55 +806,6 @@ export class CLIPipelineRunner {
       error: result.error,
       cost: result.cost,
       duration: (Date.now() - startTime) / 1000,
-    };
-  }
-
-  private handleSetup(): CLIResult {
-    const envPath = setupEnvTemplate();
-    return {
-      success: true,
-      data: { envPath, message: `API key template created at ${envPath}` },
-    };
-  }
-
-  private handleSetKey(options: CLIRunOptions): CLIResult {
-    if (!options.keyName) {
-      return { success: false, error: "Missing --name" };
-    }
-    if (!options.keyValue) {
-      return { success: false, error: "Missing --value" };
-    }
-    setKey(options.keyName, options.keyValue);
-    return {
-      success: true,
-      data: { message: `Key '${options.keyName}' saved` },
-    };
-  }
-
-  private handleGetKey(options: CLIRunOptions): CLIResult {
-    if (!options.keyName) {
-      return { success: false, error: "Missing --name" };
-    }
-    const value = getKey(options.keyName);
-    if (!value) {
-      return { success: false, error: `Key '${options.keyName}' not found` };
-    }
-    const masked =
-      value.length > 8 ? value.slice(0, 4) + "****" + value.slice(-4) : "****";
-    return { success: true, data: { name: options.keyName, masked } };
-  }
-
-  private handleCheckKeys(): CLIResult {
-    const keys = checkKeys();
-    return { success: true, data: { keys } };
-  }
-
-  private handleCreateExamples(options: CLIRunOptions): CLIResult {
-    const outputDir = options.outputDir || "./examples";
-    const created = createExamples(outputDir);
-    return {
-      success: true,
-      data: { created, count: created.length },
     };
   }
 }
