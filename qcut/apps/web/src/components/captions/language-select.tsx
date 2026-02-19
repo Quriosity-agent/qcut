@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { SUPPORTED_LANGUAGES, type Language } from "@/types/captions";
 
 interface LanguageSelectProps {
