@@ -117,61 +117,13 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ## Subtask 4.4: Timeline Arrange/Sequence Endpoint
 
-**What**: `POST /api/claude/timeline/:projectId/arrange`
-**Status**: Done
+**Endpoint**: `POST /api/claude/timeline/:projectId/arrange`
 
-Automatically arranges elements on a track — sequential (end-to-end), spaced, or custom layout.
+**Implementation**: `electron/claude/claude-timeline-handler.ts` + `apps/web/src/lib/claude-timeline-bridge.ts` (`onArrange`)
 
-**Relevant files**:
-- `electron/claude/claude-timeline-handler.ts` — add arrangement logic
-- `apps/web/src/stores/timeline-store.ts` — `updateElementStartTime()`
+**Live test**: All PASS — sequential mode (gap=0.5), manual order (reversed elements, gap=1.0, startOffset=2), spaced mode (default 0.5s gap). Nonexistent track returns empty arranged[].
 
-**Implementation**:
-```typescript
-interface ArrangeRequest {
-  trackId: string;
-  mode: "sequential" | "spaced" | "manual";
-  gap?: number;              // Gap between elements (default: 0 for sequential, 0.5 for spaced)
-  order?: string[];          // Element IDs in desired order (for manual)
-  startOffset?: number;      // Where to start arranging (default: 0)
-}
-
-interface ArrangeResponse {
-  arranged: Array<{ elementId: string; newStartTime: number }>;
-}
-```
-
-**Use case**: After batch-adding 10 clips, call arrange to lay them out sequentially.
-
-```
-POST /api/claude/timeline/:projectId/arrange
-Body: {
-  "trackId": "track_1",
-  "mode": "sequential",
-  "gap": 0.5,
-  "startOffset": 0
-}
-Response: {
-  "success": true,
-  "data": {
-    "arranged": [
-      { "elementId": "el_1", "newStartTime": 0 },
-      { "elementId": "el_2", "newStartTime": 5.5 },
-      { "elementId": "el_3", "newStartTime": 14.0 }
-    ]
-  }
-}
-```
-
-**Test file**: `electron/__tests__/claude-timeline-arrange.test.ts`
-
-**Tests to write**:
-- Sequential mode places elements end-to-end
-- Spaced mode adds gap between elements
-- Manual mode respects provided order
-- Start offset shifts all placements
-- Single undo restores original positions
-- Handles empty track gracefully
+**Unit tests**: 1 HTTP server test verifies route dispatch
 
 ---
 
