@@ -192,11 +192,12 @@ export function createTimelineOperations({
     removeElementFromTrackWithRipple: (
       trackId: string,
       elementId: string,
-      pushHistory = true
+      pushHistory = true,
+      forceRipple = false
     ) => {
       const { _tracks, rippleEditingEnabled } = get();
 
-      if (!rippleEditingEnabled) {
+      if (!rippleEditingEnabled && !forceRipple) {
         // If ripple editing is disabled, use regular removal
         get().removeElementFromTrack(trackId, elementId, pushHistory);
         return;
@@ -603,7 +604,8 @@ export function createTimelineOperations({
     splitElement: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ): string | null => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -618,7 +620,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return null;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
       const firstDuration = relativeTime;
@@ -661,7 +663,8 @@ export function createTimelineOperations({
     splitAndKeepLeft: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ) => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -676,7 +679,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
       const durationToRemove =
@@ -706,7 +709,8 @@ export function createTimelineOperations({
     splitAndKeepRight: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ) => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -721,7 +725,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
 

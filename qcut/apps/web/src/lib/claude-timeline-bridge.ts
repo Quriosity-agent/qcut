@@ -7,9 +7,16 @@
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore } from "@/stores/media-store";
+import { validateElementTrackCompatibility } from "@/types/timeline";
 import type {
   ClaudeTimeline,
   ClaudeElement,
+  ClaudeBatchAddElementRequest,
+  ClaudeBatchAddResponse,
+  ClaudeBatchDeleteResponse,
+  ClaudeBatchUpdateResponse,
+  ClaudeArrangeResponse,
+  ClaudeRangeDeleteResponse,
 } from "../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug-config";
 import {
@@ -21,6 +28,105 @@ import {
   formatTracksForExport,
   applyTimelineToStore,
 } from "./claude-timeline-bridge-helpers";
+
+const MAX_TIMELINE_BATCH_ITEMS = 50;
+
+const CLAUDE_TRACK_ELEMENT_TYPES = {
+  media: "media",
+  text: "text",
+  sticker: "sticker",
+  captions: "captions",
+  remotion: "remotion",
+  markdown: "markdown",
+} as const;
+
+type ClaudeTrackElementType =
+  (typeof CLAUDE_TRACK_ELEMENT_TYPES)[keyof typeof CLAUDE_TRACK_ELEMENT_TYPES];
+
+function normalizeClaudeElementType({
+  type,
+}: {
+  type: Partial<ClaudeElement>["type"] | undefined;
+}): ClaudeTrackElementType | null {
+  if (!type) return null;
+  if (type === "video" || type === "audio" || type === "image") {
+    return CLAUDE_TRACK_ELEMENT_TYPES.media;
+  }
+  if (
+    type === CLAUDE_TRACK_ELEMENT_TYPES.media ||
+    type === CLAUDE_TRACK_ELEMENT_TYPES.text ||
+    type === CLAUDE_TRACK_ELEMENT_TYPES.sticker ||
+    type === CLAUDE_TRACK_ELEMENT_TYPES.captions ||
+    type === CLAUDE_TRACK_ELEMENT_TYPES.remotion
+  ) {
+    return type;
+  }
+  return null;
+}
+
+function decodeDeterministicMediaSourceName({
+  sourceId,
+}: {
+  sourceId: string;
+}): string | null {
+  try {
+    if (!sourceId.startsWith("media_")) {
+      return null;
+    }
+    const encodedName = sourceId.slice("media_".length);
+    if (!encodedName) {
+      return null;
+    }
+    const base64 = encodedName.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = window.atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+function resolveMediaIdForBatchElement({
+  element,
+}: {
+  element: ClaudeBatchAddElementRequest;
+}): string | null {
+  const { mediaItems } = useMediaStore.getState();
+
+  if (element.mediaId) {
+    const byMediaId = mediaItems.find((item) => item.id === element.mediaId);
+    if (byMediaId) {
+      return byMediaId.id;
+    }
+  }
+
+  if (element.sourceId) {
+    const bySourceId = mediaItems.find((item) => item.id === element.sourceId);
+    if (bySourceId) {
+      return bySourceId.id;
+    }
+
+    const decodedName = decodeDeterministicMediaSourceName({
+      sourceId: element.sourceId,
+    });
+    if (decodedName) {
+      const byDecodedName = mediaItems.find((item) => item.name === decodedName);
+      if (byDecodedName) {
+        return byDecodedName.id;
+      }
+    }
+  }
+
+  if (element.sourceName) {
+    const byName = mediaItems.find((item) => item.name === element.sourceName);
+    if (byName) {
+      return byName.id;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Setup Claude Timeline Bridge

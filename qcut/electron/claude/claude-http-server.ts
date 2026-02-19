@@ -43,6 +43,9 @@ import {
 import {
   getExportPresets,
   getExportRecommendation,
+  startExportJob,
+  getExportJobStatus,
+  listExportJobs,
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
 import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
@@ -50,6 +53,15 @@ import { transcribeMedia } from "./claude-transcribe-handler.js";
 import { detectScenes } from "./claude-scene-handler.js";
 import { analyzeFrames } from "./claude-vision-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
+import {
+  generateProjectSummary,
+  generatePipelineReport,
+} from "./claude-summary-handler.js";
+import {
+  logOperation,
+  getOperationLog,
+  clearOperationLog,
+} from "./claude-operation-log.js";
 import {
   startGenerateJob,
   getJobStatus,
@@ -130,7 +142,15 @@ export function startClaudeHTTPServer(
     if (!req.body?.source) {
       throw new HttpError(400, "Missing 'source' in request body");
     }
-    return importMediaFile(req.params.projectId, req.body.source);
+    const media = await importMediaFile(req.params.projectId, req.body.source);
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Imported media from path: ${req.body.source}`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return media;
   });
 
   router.delete("/api/claude/media/:projectId/:mediaId", async (req) => {
@@ -153,11 +173,19 @@ export function startClaudeHTTPServer(
     if (!req.body?.url) {
       throw new HttpError(400, "Missing 'url' in request body");
     }
-    return importMediaFromUrl(
+    const result = await importMediaFromUrl(
       req.params.projectId,
       req.body.url,
       req.body.filename
     );
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Imported media from URL: ${req.body.url}`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return result;
   });
 
   // ---- Batch import (paths and/or URLs) ----
@@ -165,7 +193,15 @@ export function startClaudeHTTPServer(
     if (!Array.isArray(req.body?.items)) {
       throw new HttpError(400, "Missing 'items' array in request body");
     }
-    return batchImportMedia(req.params.projectId, req.body.items);
+    const result = await batchImportMedia(req.params.projectId, req.body.items);
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Batch import processed ${req.body.items.length} item(s)`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return result;
   });
 
   // ---- Extract frame from video ----
@@ -197,7 +233,7 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'model' and 'prompt' in request body");
     }
     try {
-      return await startGenerateJob(req.params.projectId, {
+      const result = await startGenerateJob(req.params.projectId, {
         model: req.body.model,
         prompt: req.body.prompt,
         imageUrl: req.body.imageUrl,
@@ -211,6 +247,15 @@ export function startClaudeHTTPServer(
         startTime: req.body.startTime,
         projectId: req.params.projectId,
       });
+      logOperation({
+        stage: 1,
+        action: "generate",
+        details: `Started generation with model ${req.body.model}`,
+        timestamp: Date.now(),
+        projectId: req.params.projectId,
+        metadata: { jobId: result.jobId, model: req.body.model },
+      });
+      return result;
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(
@@ -454,6 +499,79 @@ export function startClaudeHTTPServer(
     }
   });
 
+  router.get("/api/claude/project/:projectId/summary", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+        ),
+      ]);
+      const [mediaFiles, settings] = await Promise.all([
+        listMediaFiles(req.params.projectId),
+        getProjectSettings(req.params.projectId),
+      ]);
+      const exportJobs = listExportJobs(req.params.projectId);
+      return generateProjectSummary({
+        timeline,
+        mediaFiles,
+        exportJobs,
+        settings,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Failed to generate summary"
+      );
+    }
+  });
+
+  router.post("/api/claude/project/:projectId/report", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+        ),
+      ]);
+      const [mediaFiles, settings] = await Promise.all([
+        listMediaFiles(req.params.projectId),
+        getProjectSettings(req.params.projectId),
+      ]);
+      const exportJobs = listExportJobs(req.params.projectId);
+      const summary = generateProjectSummary({
+        timeline,
+        mediaFiles,
+        exportJobs,
+        settings,
+      });
+      const steps = getOperationLog({ projectId: req.params.projectId });
+      const report = await generatePipelineReport({
+        steps,
+        summary,
+        saveToDisk: req.body?.saveToDisk === true,
+        outputDir:
+          typeof req.body?.outputDir === "string" ? req.body.outputDir : undefined,
+        projectId: req.params.projectId,
+      });
+
+      if (req.body?.clearLog === true) {
+        clearOperationLog({ projectId: req.params.projectId });
+      }
+
+      return report;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Failed to generate report"
+      );
+    }
+  });
+
   // ==========================================================================
   // Export routes
   // ==========================================================================
@@ -463,6 +581,43 @@ export function startClaudeHTTPServer(
 
   router.get("/api/claude/export/:projectId/recommend/:target", async (req) => {
     return getExportRecommendation(req.params.target);
+  });
+
+  router.post("/api/claude/export/:projectId/start", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+        ),
+      ]);
+      const mediaFiles = await listMediaFiles(req.params.projectId);
+      return await startExportJob({
+        projectId: req.params.projectId,
+        request: req.body || {},
+        timeline,
+        mediaFiles,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Failed to start export"
+      );
+    }
+  });
+
+  router.get("/api/claude/export/:projectId/jobs/:jobId", async (req) => {
+    const job = getExportJobStatus(req.params.jobId);
+    if (!job || job.projectId !== req.params.projectId) {
+      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+    }
+    return job;
+  });
+
+  router.get("/api/claude/export/:projectId/jobs", async (req) => {
+    return listExportJobs(req.params.projectId);
   });
 
   // ==========================================================================
@@ -514,12 +669,21 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'mediaId' in request body");
     }
     try {
-      return await transcribeMedia(req.params.projectId, {
+      const result = await transcribeMedia(req.params.projectId, {
         mediaId: req.body.mediaId,
         provider: req.body.provider,
         language: req.body.language,
         diarize: req.body.diarize,
       });
+      logOperation({
+        stage: 2,
+        action: "transcribe",
+        details: `Transcribed media ${req.body.mediaId}`,
+        timestamp: Date.now(),
+        projectId: req.params.projectId,
+        metadata: { mediaId: req.body.mediaId, provider: req.body.provider },
+      });
+      return result;
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(
@@ -537,12 +701,21 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'mediaId' in request body");
     }
     try {
-      return await detectScenes(req.params.projectId, {
+      const result = await detectScenes(req.params.projectId, {
         mediaId: req.body.mediaId,
         threshold: req.body.threshold,
         aiAnalysis: req.body.aiAnalysis,
         model: req.body.model,
       });
+      logOperation({
+        stage: 2,
+        action: "analyze-scenes",
+        details: `Detected scenes for media ${req.body.mediaId}`,
+        timestamp: Date.now(),
+        projectId: req.params.projectId,
+        metadata: { mediaId: req.body.mediaId, model: req.body.model },
+      });
+      return result;
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(
@@ -583,10 +756,18 @@ export function startClaudeHTTPServer(
       throw new HttpError(400, "Missing 'words' array in request body");
     }
     try {
-      return await analyzeFillers(req.params.projectId, {
+      const result = await analyzeFillers(req.params.projectId, {
         mediaId: req.body.mediaId,
         words: req.body.words,
       });
+      logOperation({
+        stage: 2,
+        action: "analyze-fillers",
+        details: `Analyzed filler words for media ${req.body.mediaId ?? "unknown"}`,
+        timestamp: Date.now(),
+        projectId: req.params.projectId,
+      });
+      return result;
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(
