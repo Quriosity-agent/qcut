@@ -38,7 +38,10 @@ export function validateBatchCutRequest(request: BatchCutRequest): void {
       throw new HttpError(400, `Cut[${i}]: start and end must be non-negative`);
     }
     if (cut.start >= cut.end) {
-      throw new HttpError(400, `Cut[${i}]: start (${cut.start}) must be less than end (${cut.end})`);
+      throw new HttpError(
+        400,
+        `Cut[${i}]: start (${cut.start}) must be less than end (${cut.end})`
+      );
     }
   }
 

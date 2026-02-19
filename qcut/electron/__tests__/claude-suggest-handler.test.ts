@@ -41,15 +41,12 @@ vi.mock("electron-log", () => ({
   log: vi.fn(),
 }));
 
-const {
-  mockTranscribeMedia,
-  mockAnalyzeFillers,
-  mockDetectScenes,
-} = vi.hoisted(() => ({
-  mockTranscribeMedia: vi.fn(),
-  mockAnalyzeFillers: vi.fn(),
-  mockDetectScenes: vi.fn(),
-}));
+const { mockTranscribeMedia, mockAnalyzeFillers, mockDetectScenes } =
+  vi.hoisted(() => ({
+    mockTranscribeMedia: vi.fn(),
+    mockAnalyzeFillers: vi.fn(),
+    mockDetectScenes: vi.fn(),
+  }));
 
 vi.mock("../claude/claude-transcribe-handler", () => ({
   transcribeMedia: mockTranscribeMedia,
@@ -119,9 +116,9 @@ describe("claude-suggest-handler", () => {
   });
 
   it("rejects missing mediaId", async () => {
-    await expect(
-      suggestCuts("proj_1", { mediaId: "" })
-    ).rejects.toThrow("Missing 'mediaId'");
+    await expect(suggestCuts("proj_1", { mediaId: "" })).rejects.toThrow(
+      "Missing 'mediaId'"
+    );
   });
 
   it("returns filler suggestions", async () => {
@@ -132,7 +129,9 @@ describe("claude-suggest-handler", () => {
       includeScenes: false,
     });
 
-    const fillerSuggestions = result.suggestions.filter((s) => s.type === "filler");
+    const fillerSuggestions = result.suggestions.filter(
+      (s) => s.type === "filler"
+    );
     expect(fillerSuggestions).toHaveLength(1);
     expect(fillerSuggestions[0].word).toBe("um");
     expect(fillerSuggestions[0].confidence).toBe(0.9);
@@ -147,7 +146,9 @@ describe("claude-suggest-handler", () => {
       includeScenes: false,
     });
 
-    const silenceSuggestions = result.suggestions.filter((s) => s.type === "silence");
+    const silenceSuggestions = result.suggestions.filter(
+      (s) => s.type === "silence"
+    );
     expect(silenceSuggestions).toHaveLength(1);
     expect(silenceSuggestions[0].start).toBe(1.5);
     expect(silenceSuggestions[0].end).toBe(3.5);
@@ -189,7 +190,9 @@ describe("claude-suggest-handler", () => {
       includeScenes: false,
     });
 
-    expect(result.suggestions.filter((s) => s.type === "filler")).toHaveLength(0);
+    expect(result.suggestions.filter((s) => s.type === "filler")).toHaveLength(
+      0
+    );
   });
 
   it("suppresses silences when includeSilences is false", async () => {
@@ -200,7 +203,9 @@ describe("claude-suggest-handler", () => {
       includeScenes: false,
     });
 
-    expect(result.suggestions.filter((s) => s.type === "silence")).toHaveLength(0);
+    expect(result.suggestions.filter((s) => s.type === "silence")).toHaveLength(
+      0
+    );
   });
 
   it("suppresses scenes when includeScenes is false", async () => {
@@ -226,10 +231,16 @@ describe("claude-suggest-handler", () => {
     });
 
     // Should still have scene suggestions
-    expect(result.suggestions.filter((s) => s.type === "scene_transition").length).toBeGreaterThan(0);
+    expect(
+      result.suggestions.filter((s) => s.type === "scene_transition").length
+    ).toBeGreaterThan(0);
     // No filler/silence suggestions since transcription failed
-    expect(result.suggestions.filter((s) => s.type === "filler")).toHaveLength(0);
-    expect(result.suggestions.filter((s) => s.type === "silence")).toHaveLength(0);
+    expect(result.suggestions.filter((s) => s.type === "filler")).toHaveLength(
+      0
+    );
+    expect(result.suggestions.filter((s) => s.type === "silence")).toHaveLength(
+      0
+    );
   });
 
   it("continues when scene detection fails but transcription succeeds", async () => {
@@ -243,9 +254,13 @@ describe("claude-suggest-handler", () => {
     });
 
     // Should still have filler/silence suggestions
-    expect(result.suggestions.filter((s) => s.type === "filler").length).toBeGreaterThan(0);
+    expect(
+      result.suggestions.filter((s) => s.type === "filler").length
+    ).toBeGreaterThan(0);
     // No scene suggestions
-    expect(result.suggestions.filter((s) => s.type === "scene_transition")).toHaveLength(0);
+    expect(
+      result.suggestions.filter((s) => s.type === "scene_transition")
+    ).toHaveLength(0);
   });
 
   it("sorts suggestions by start time", async () => {

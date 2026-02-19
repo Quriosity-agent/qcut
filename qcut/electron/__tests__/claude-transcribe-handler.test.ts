@@ -86,7 +86,7 @@ vi.mock("../claude/claude-media-handler", () => ({
         name: "test.mp4",
         type: "video",
         path: "/mock/Documents/QCut/Projects/test/media/test.mp4",
-        size: 10000,
+        size: 10_000,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
       };

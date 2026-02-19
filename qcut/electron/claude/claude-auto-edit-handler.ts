@@ -26,9 +26,7 @@ const HANDLER_NAME = "AutoEdit";
  * Merge overlapping or adjacent cut intervals.
  * Input must be sorted by start time ascending.
  */
-export function mergeCutIntervals(
-  cuts: AutoEditCutInfo[]
-): AutoEditCutInfo[] {
+export function mergeCutIntervals(cuts: AutoEditCutInfo[]): AutoEditCutInfo[] {
   if (cuts.length <= 1) return cuts;
 
   const sorted = [...cuts].sort((a, b) => a.start - b.start);
@@ -154,8 +152,7 @@ export async function autoEdit(
 
         if (paddedStart < paddedEnd) {
           cuts.push({
-            start:
-              paddedStart + elementStartTime + elementTrimStart,
+            start: paddedStart + elementStartTime + elementTrimStart,
             end: paddedEnd + elementStartTime + elementTrimStart,
             reason: `silence: ${silence.duration.toFixed(1)}s`,
           });

@@ -198,7 +198,11 @@ function parseBitrateForKbps({ bitrate }: { bitrate: string }): string {
   }
 }
 
-function parseTimecodeToSeconds({ timecode }: { timecode: string | null }): number {
+function parseTimecodeToSeconds({
+  timecode,
+}: {
+  timecode: string | null;
+}): number {
   try {
     if (!timecode) {
       return 0;
@@ -276,7 +280,11 @@ function getDefaultOutputPath({
   }
 }
 
-function findPresetById({ presetId }: { presetId: string }): ExportPreset | null {
+function findPresetById({
+  presetId,
+}: {
+  presetId: string;
+}): ExportPreset | null {
   try {
     return PRESETS.find((preset) => preset.id === presetId) ?? null;
   } catch {
@@ -385,11 +393,19 @@ function collectExportSegments({
   }
 }
 
-async function ensureDirectory({ directory }: { directory: string }): Promise<void> {
+async function ensureDirectory({
+  directory,
+}: {
+  directory: string;
+}): Promise<void> {
   try {
     await fsPromises.mkdir(directory, { recursive: true });
   } catch (error) {
-    claudeLog.error(HANDLER_NAME, `Failed to create directory: ${directory}`, error);
+    claudeLog.error(
+      HANDLER_NAME,
+      `Failed to create directory: ${directory}`,
+      error
+    );
     throw error;
   }
 }
@@ -429,7 +445,9 @@ async function runFFmpegCommand({
             return;
           }
 
-          const seconds = parseTimecodeToSeconds({ timecode: parsed.time ?? null });
+          const seconds = parseTimecodeToSeconds({
+            timecode: parsed.time ?? null,
+          });
           const normalizedProgress =
             estimatedDuration > 0
               ? clampProgress({ value: seconds / estimatedDuration })
@@ -471,7 +489,11 @@ async function runFFmpegCommand({
   }
 }
 
-function getActiveJobForProject({ projectId }: { projectId: string }): ExportJobInternal | null {
+function getActiveJobForProject({
+  projectId,
+}: {
+  projectId: string;
+}): ExportJobInternal | null {
   try {
     for (const job of exportJobs.values()) {
       if (job.projectId !== projectId) {
@@ -525,7 +547,11 @@ function updateJobProgress({
       job.status = EXPORT_JOB_STATUS.exporting;
     }
   } catch (error) {
-    claudeLog.warn(HANDLER_NAME, `Failed to update progress for job ${jobId}:`, error);
+    claudeLog.warn(
+      HANDLER_NAME,
+      `Failed to update progress for job ${jobId}:`,
+      error
+    );
   }
 }
 
@@ -653,7 +679,10 @@ async function executeExportJob({
     });
 
     const outputStats = await fsPromises.stat(outputPath);
-    const duration = segments.reduce((sum, segment) => sum + segment.duration, 0);
+    const duration = segments.reduce(
+      (sum, segment) => sum + segment.duration,
+      0
+    );
 
     const finishedJob = exportJobs.get(jobId);
     if (!finishedJob) {
@@ -870,7 +899,11 @@ export async function startExportJob({
       outputPath,
       segments,
     }).catch((error) => {
-      claudeLog.error(HANDLER_NAME, `Unexpected export failure for ${jobId}:`, error);
+      claudeLog.error(
+        HANDLER_NAME,
+        `Unexpected export failure for ${jobId}:`,
+        error
+      );
     });
 
     return {

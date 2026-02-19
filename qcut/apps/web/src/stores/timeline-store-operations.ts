@@ -266,7 +266,11 @@ export function createTimelineOperations({
       updateTracksAndSave(updatedTracks);
     },
 
-    rippleDeleteAcrossTracks: (startTime: number, endTime: number, excludeTrackIds: string[] = []) => {
+    rippleDeleteAcrossTracks: (
+      startTime: number,
+      endTime: number,
+      excludeTrackIds: string[] = []
+    ) => {
       try {
         const rippleDuration = endTime - startTime;
         if (rippleDuration <= 0) {

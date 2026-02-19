@@ -85,7 +85,7 @@ vi.mock("../claude/claude-media-handler", () => ({
         name: "test.mp4",
         type: "video",
         path: "/mock/Documents/QCut/Projects/test/media/test.mp4",
-        size: 10000,
+        size: 10_000,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
       };
@@ -179,7 +179,8 @@ video:0kB audio:0kB subtitle:0kB other streams:0kB global headers:0kB muxing ove
   });
 
   it("assigns confidence to detected scenes", () => {
-    const stderr = `[Parsed_showinfo_1 @ 0x1] n: 0 pts: 0 pts_time:3.0 duration: 1`;
+    const stderr =
+      "[Parsed_showinfo_1 @ 0x1] n: 0 pts: 0 pts_time:3.0 duration: 1";
     const scenes = parseShowInfoOutput(stderr);
     expect(scenes[0].confidence).toBeGreaterThan(0);
   });

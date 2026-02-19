@@ -7,11 +7,11 @@ const { mockSpawn, mockGetFFmpegPath, mockParseProgress, mockFsPromises } =
     const mockParseProgress = vi.fn(() => null);
 
     const mockFsPromises = {
-      mkdir: vi.fn(async () => undefined),
+      mkdir: vi.fn(async () => {}),
       mkdtemp: vi.fn(async () => "/tmp/qcut-claude-export-test"),
-      writeFile: vi.fn(async () => undefined),
+      writeFile: vi.fn(async () => {}),
       stat: vi.fn(async () => ({ size: 8192 })),
-      rm: vi.fn(async () => undefined),
+      rm: vi.fn(async () => {}),
     };
 
     const mockSpawn = vi.fn();

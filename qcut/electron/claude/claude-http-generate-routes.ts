@@ -72,13 +72,19 @@ export function registerGenerateRoutes(router: Router): void {
   });
 
   // Cancel a job
-  router.post("/api/claude/generate/:projectId/jobs/:jobId/cancel", async (req) => {
-    const cancelled = cancelJob(req.params.jobId);
-    if (!cancelled) {
-      throw new HttpError(400, `Job cannot be cancelled: ${req.params.jobId}`);
+  router.post(
+    "/api/claude/generate/:projectId/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelJob(req.params.jobId);
+      if (!cancelled) {
+        throw new HttpError(
+          400,
+          `Job cannot be cancelled: ${req.params.jobId}`
+        );
+      }
+      return { cancelled: true };
     }
-    return { cancelled: true };
-  });
+  );
 
   // List available generation models
   router.get("/api/claude/generate/models", async () => {

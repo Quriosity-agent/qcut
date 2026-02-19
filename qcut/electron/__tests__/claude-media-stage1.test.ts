@@ -433,9 +433,9 @@ describe("extractFrame", () => {
   });
 
   it("rejects negative timestamps", async () => {
-    await expect(
-      extractFrame("proj_1", videoMediaId, -1)
-    ).rejects.toThrow("non-negative");
+    await expect(extractFrame("proj_1", videoMediaId, -1)).rejects.toThrow(
+      "non-negative"
+    );
   });
 
   it("rejects non-video media types", async () => {

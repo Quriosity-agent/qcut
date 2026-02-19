@@ -33,7 +33,12 @@ export async function analyzeFillers(
   );
 
   if (!request.words || request.words.length === 0) {
-    return { fillers: [], silences: [], totalFillerTime: 0, totalSilenceTime: 0 };
+    return {
+      fillers: [],
+      silences: [],
+      totalFillerTime: 0,
+      totalSilenceTime: 0,
+    };
   }
 
   // Call existing tri-provider analysis

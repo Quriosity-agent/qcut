@@ -52,7 +52,11 @@ function formatDate({ timestamp }: { timestamp: number }): string {
   }
 }
 
-function getTimelineDuration({ timeline }: { timeline: ClaudeTimeline }): number {
+function getTimelineDuration({
+  timeline,
+}: {
+  timeline: ClaudeTimeline;
+}): number {
   try {
     if (timeline.duration > 0) {
       return timeline.duration;
@@ -80,7 +84,12 @@ function countTrackDurations({
   timeline,
 }: {
   timeline: ClaudeTimeline;
-}): Array<{ trackName: string; trackType: string; elementCount: number; duration: number }> {
+}): Array<{
+  trackName: string;
+  trackType: string;
+  elementCount: number;
+  duration: number;
+}> {
   try {
     const rows: Array<{
       trackName: string;
@@ -213,7 +222,8 @@ export function generateProjectSummary({
       },
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to generate summary";
+    const message =
+      error instanceof Error ? error.message : "Failed to generate summary";
     return {
       markdown: `## Project Summary\n\n- Error generating summary: ${message}\n`,
       stats: {
@@ -276,7 +286,8 @@ function buildReportMarkdown({
     markdown += "\n";
 
     if (steps.length === 0) {
-      markdown += "No recorded pipeline operations were found for this project.\n\n";
+      markdown +=
+        "No recorded pipeline operations were found for this project.\n\n";
     }
 
     for (const stageNumber of [1, 2, 3, 4, 5]) {
@@ -316,7 +327,8 @@ function buildReportMarkdown({
 
     return markdown;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to build report";
+    const message =
+      error instanceof Error ? error.message : "Failed to build report";
     return `## Auto-Edit Pipeline Report\n\n- Failed to build report: ${message}\n`;
   }
 }
@@ -360,7 +372,8 @@ export async function generatePipelineReport({
       savedTo: fullPath,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to generate report";
+    const message =
+      error instanceof Error ? error.message : "Failed to generate report";
     return {
       markdown: `## Auto-Edit Pipeline Report\n\n- ${message}\n`,
     };

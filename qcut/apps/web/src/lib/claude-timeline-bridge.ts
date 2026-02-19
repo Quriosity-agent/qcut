@@ -110,7 +110,9 @@ function resolveMediaIdForBatchElement({
       sourceId: element.sourceId,
     });
     if (decodedName) {
-      const byDecodedName = mediaItems.find((item) => item.name === decodedName);
+      const byDecodedName = mediaItems.find(
+        (item) => item.name === decodedName
+      );
       if (byDecodedName) {
         return byDecodedName.id;
       }
@@ -236,7 +238,9 @@ export function setupClaudeTimelineBridge(): void {
         return false;
       }
 
-      const element = track.elements.find((candidate) => candidate.id === elementId);
+      const element = track.elements.find(
+        (candidate) => candidate.id === elementId
+      );
       if (!element) {
         debugWarn(
           "[ClaudeTimelineBridge] Could not find element in resolved track:",
@@ -258,7 +262,10 @@ export function setupClaudeTimelineBridge(): void {
         );
       }
 
-      if (typeof changes.trimStart === "number" || typeof changes.trimEnd === "number") {
+      if (
+        typeof changes.trimStart === "number" ||
+        typeof changes.trimEnd === "number"
+      ) {
         timelineStore.updateElementTrim(
           track.id,
           elementId,
@@ -314,7 +321,8 @@ export function setupClaudeTimelineBridge(): void {
         }
         if (changes.style) {
           const style = changes.style;
-          if (typeof style.fontSize === "number") textUpdates.fontSize = style.fontSize;
+          if (typeof style.fontSize === "number")
+            textUpdates.fontSize = style.fontSize;
           if (typeof style.fontFamily === "string")
             textUpdates.fontFamily = style.fontFamily;
           if (typeof style.color === "string") textUpdates.color = style.color;
@@ -330,7 +338,12 @@ export function setupClaudeTimelineBridge(): void {
             textUpdates.textDecoration = style.textDecoration;
         }
         if (Object.keys(textUpdates).length > 0) {
-          timelineStore.updateTextElement(track.id, elementId, textUpdates, false);
+          timelineStore.updateTextElement(
+            track.id,
+            elementId,
+            textUpdates,
+            false
+          );
         }
       }
 
@@ -355,13 +368,21 @@ export function setupClaudeTimelineBridge(): void {
           mediaUpdates.volume = changes.style.volume;
         }
         if (Object.keys(mediaUpdates).length > 0) {
-          timelineStore.updateMediaElement(track.id, elementId, mediaUpdates, false);
+          timelineStore.updateMediaElement(
+            track.id,
+            elementId,
+            mediaUpdates,
+            false
+          );
         }
       }
 
       return true;
     } catch (error) {
-      debugError("[ClaudeTimelineBridge] Failed to apply element changes:", error);
+      debugError(
+        "[ClaudeTimelineBridge] Failed to apply element changes:",
+        error
+      );
       return false;
     }
   };
@@ -394,7 +415,10 @@ export function setupClaudeTimelineBridge(): void {
     typeof claudeAPI.sendBatchAddElementsResponse === "function"
   ) {
     claudeAPI.onBatchAddElements(
-      (data: { requestId: string; elements: ClaudeBatchAddElementRequest[] }) => {
+      (data: {
+        requestId: string;
+        elements: ClaudeBatchAddElementRequest[];
+      }) => {
         const defaultErrorResponse: ClaudeBatchAddResponse = {
           added: [],
           failedCount: data.elements.length,
@@ -410,7 +434,10 @@ export function setupClaudeTimelineBridge(): void {
               })),
               failedCount: data.elements.length,
             };
-            claudeAPI.sendBatchAddElementsResponse(data.requestId, failedResponse);
+            claudeAPI.sendBatchAddElementsResponse(
+              data.requestId,
+              failedResponse
+            );
             return;
           }
 
@@ -428,7 +455,9 @@ export function setupClaudeTimelineBridge(): void {
           );
 
           for (const element of data.elements) {
-            const normalizedType = normalizeClaudeElementType({ type: element.type });
+            const normalizedType = normalizeClaudeElementType({
+              type: element.type,
+            });
             if (!normalizedType) {
               throw new Error(`Unsupported element type: ${element.type}`);
             }
@@ -443,7 +472,9 @@ export function setupClaudeTimelineBridge(): void {
               Number.isNaN(element.startTime) ||
               element.startTime < 0
             ) {
-              throw new Error("Element startTime must be a non-negative number");
+              throw new Error(
+                "Element startTime must be a non-negative number"
+              );
             }
             if (
               typeof element.duration !== "number" ||
@@ -458,7 +489,9 @@ export function setupClaudeTimelineBridge(): void {
               { type: track.type }
             );
             if (!compatibility.isValid) {
-              throw new Error(compatibility.errorMessage || "Track compatibility failed");
+              throw new Error(
+                compatibility.errorMessage || "Track compatibility failed"
+              );
             }
           }
 
@@ -469,7 +502,9 @@ export function setupClaudeTimelineBridge(): void {
 
           for (const [index, element] of data.elements.entries()) {
             try {
-              const normalizedType = normalizeClaudeElementType({ type: element.type });
+              const normalizedType = normalizeClaudeElementType({
+                type: element.type,
+              });
               if (!normalizedType) {
                 throw new Error(`Unsupported element type: ${element.type}`);
               }
@@ -501,7 +536,8 @@ export function setupClaudeTimelineBridge(): void {
               } else if (normalizedType === CLAUDE_TRACK_ELEMENT_TYPES.text) {
                 const style = element.style || {};
                 const content =
-                  typeof element.content === "string" && element.content.length > 0
+                  typeof element.content === "string" &&
+                  element.content.length > 0
                     ? element.content
                     : "Text";
 
@@ -533,8 +569,7 @@ export function setupClaudeTimelineBridge(): void {
                       style.textAlign === "center"
                         ? style.textAlign
                         : "center",
-                    fontWeight:
-                      style.fontWeight === "bold" ? "bold" : "normal",
+                    fontWeight: style.fontWeight === "bold" ? "bold" : "normal",
                     fontStyle:
                       style.fontStyle === "italic" ? "italic" : "normal",
                     textDecoration:
@@ -553,7 +588,9 @@ export function setupClaudeTimelineBridge(): void {
                   }
                 );
               } else {
-                throw new Error(`Unsupported batch add type: ${normalizedType}`);
+                throw new Error(
+                  `Unsupported batch add type: ${normalizedType}`
+                );
               }
 
               if (!createdElementId) {
@@ -580,7 +617,10 @@ export function setupClaudeTimelineBridge(): void {
             failedCount,
           });
         } catch (error) {
-          debugError("[ClaudeTimelineBridge] Failed to batch add elements:", error);
+          debugError(
+            "[ClaudeTimelineBridge] Failed to batch add elements:",
+            error
+          );
           const errorMessage =
             error instanceof Error ? error.message : "Batch add failed";
           claudeAPI.sendBatchAddElementsResponse(data.requestId, {
@@ -613,7 +653,10 @@ export function setupClaudeTimelineBridge(): void {
               error: limitMessage,
             })),
           };
-          claudeAPI.sendBatchUpdateElementsResponse(data.requestId, failedResponse);
+          claudeAPI.sendBatchUpdateElementsResponse(
+            data.requestId,
+            failedResponse
+          );
           return;
         }
 
@@ -658,7 +701,10 @@ export function setupClaudeTimelineBridge(): void {
           results,
         });
       } catch (error) {
-        debugError("[ClaudeTimelineBridge] Failed to batch update elements:", error);
+        debugError(
+          "[ClaudeTimelineBridge] Failed to batch update elements:",
+          error
+        );
         const errorMessage =
           error instanceof Error ? error.message : "Batch update failed";
         claudeAPI.sendBatchUpdateElementsResponse(data.requestId, {
@@ -691,7 +737,10 @@ export function setupClaudeTimelineBridge(): void {
               error: limitMessage,
             })),
           };
-          claudeAPI.sendBatchDeleteElementsResponse(data.requestId, failedResponse);
+          claudeAPI.sendBatchDeleteElementsResponse(
+            data.requestId,
+            failedResponse
+          );
           return;
         }
 
@@ -756,7 +805,10 @@ export function setupClaudeTimelineBridge(): void {
           results,
         });
       } catch (error) {
-        debugError("[ClaudeTimelineBridge] Failed to batch delete elements:", error);
+        debugError(
+          "[ClaudeTimelineBridge] Failed to batch delete elements:",
+          error
+        );
         const errorMessage =
           error instanceof Error ? error.message : "Batch delete failed";
         claudeAPI.sendBatchDeleteElementsResponse(data.requestId, {
@@ -790,7 +842,8 @@ export function setupClaudeTimelineBridge(): void {
 
         const requestMode = data.request.mode;
         const startOffset =
-          typeof data.request.startOffset === "number" && data.request.startOffset >= 0
+          typeof data.request.startOffset === "number" &&
+          data.request.startOffset >= 0
             ? data.request.startOffset
             : 0;
         const gap =
@@ -1125,11 +1178,7 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at end → keepLeft
           if (clampedEnd >= effEnd) {
-            store.splitAndKeepLeft(
-              track.id,
-              targetElement.id,
-              clampedStart
-            );
+            store.splitAndKeepLeft(track.id, targetElement.id, clampedStart);
             totalRemovedDuration += effEnd - clampedStart;
             cutsApplied++;
             continue;
@@ -1137,11 +1186,7 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at start → keepRight
           if (clampedStart <= effStart) {
-            store.splitAndKeepRight(
-              track.id,
-              targetElement.id,
-              clampedEnd
-            );
+            store.splitAndKeepRight(track.id, targetElement.id, clampedEnd);
             totalRemovedDuration += clampedEnd - effStart;
             cutsApplied++;
             continue;

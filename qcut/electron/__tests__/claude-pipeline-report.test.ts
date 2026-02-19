@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockMkdir, mockWriteFile } = vi.hoisted(() => ({
-  mockMkdir: vi.fn(async () => undefined),
-  mockWriteFile: vi.fn(async () => undefined),
+  mockMkdir: vi.fn(async () => {}),
+  mockWriteFile: vi.fn(async () => {}),
 }));
 
 vi.mock("electron", () => ({

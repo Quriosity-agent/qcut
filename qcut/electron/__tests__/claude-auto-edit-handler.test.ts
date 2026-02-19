@@ -69,7 +69,10 @@ vi.mock("../claude/claude-timeline-handler", () => ({
 // Imports
 // ---------------------------------------------------------------------------
 
-import { autoEdit, mergeCutIntervals } from "../claude/claude-auto-edit-handler";
+import {
+  autoEdit,
+  mergeCutIntervals,
+} from "../claude/claude-auto-edit-handler";
 
 // ---------------------------------------------------------------------------
 // Test data

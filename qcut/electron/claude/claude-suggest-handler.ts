@@ -69,7 +69,10 @@ export async function suggestCuts(
   let transcription: TranscriptionResult | null = null;
   let sceneResult: SceneDetectionResult | null = null;
 
-  if (transcriptionSettled.status === "fulfilled" && transcriptionSettled.value) {
+  if (
+    transcriptionSettled.status === "fulfilled" &&
+    transcriptionSettled.value
+  ) {
     transcription = transcriptionSettled.value;
   } else if (transcriptionSettled.status === "rejected" && needTranscription) {
     claudeLog.warn(
@@ -170,7 +173,9 @@ export async function suggestCuts(
           type: "scene_transition",
           start: Math.max(0, scene.timestamp - 0.1),
           end: scene.timestamp + 0.1,
-          reason: scene.description || `Scene change at ${scene.timestamp.toFixed(1)}s`,
+          reason:
+            scene.description ||
+            `Scene change at ${scene.timestamp.toFixed(1)}s`,
           confidence: scene.confidence,
         });
       }
@@ -181,8 +186,12 @@ export async function suggestCuts(
   suggestions.sort((a, b) => a.start - b.start);
 
   // Build summary
-  const fillerSuggestions = suggestions.filter((s) => s.type === "filler").length;
-  const silenceSuggestions = suggestions.filter((s) => s.type === "silence").length;
+  const fillerSuggestions = suggestions.filter(
+    (s) => s.type === "filler"
+  ).length;
+  const silenceSuggestions = suggestions.filter(
+    (s) => s.type === "silence"
+  ).length;
   const sceneSuggestions = suggestions.filter(
     (s) => s.type === "scene_transition" || s.type === "pacing"
   ).length;

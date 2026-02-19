@@ -286,7 +286,9 @@ function validateDownloadUrl(url: string): URL {
     "169.254.",
   ];
   if (blocked.some((b) => host === b || host.startsWith(b))) {
-    throw new Error("Downloads from private/loopback addresses are not allowed");
+    throw new Error(
+      "Downloads from private/loopback addresses are not allowed"
+    );
   }
 
   return parsed;
@@ -303,7 +305,9 @@ function extractFilename(
   // Try Content-Disposition header first
   const disposition = headers.get("content-disposition");
   if (disposition) {
-    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
+    const match = disposition.match(
+      /filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i
+    );
     if (match?.[1]) {
       const decoded = decodeURIComponent(match[1].trim());
       const sanitized = sanitizeFilename(decoded);
@@ -366,7 +370,9 @@ export async function importMediaFromUrl(
 
   if (!response.ok) {
     clearTimeout(timeoutId);
-    throw new Error(`Download failed: HTTP ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Download failed: HTTP ${response.status} ${response.statusText}`
+    );
   }
 
   // Check content-length if available
@@ -470,7 +476,11 @@ export async function batchImportMedia(
       let mediaFile: MediaFile | null = null;
 
       if (item.url) {
-        mediaFile = await importMediaFromUrl(projectId, item.url, item.filename);
+        mediaFile = await importMediaFromUrl(
+          projectId,
+          item.url,
+          item.filename
+        );
       } else if (item.path) {
         mediaFile = await importMediaFile(projectId, item.path);
       } else {

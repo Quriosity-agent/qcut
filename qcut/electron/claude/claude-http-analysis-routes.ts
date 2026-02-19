@@ -240,17 +240,21 @@ export function registerAnalysisRoutes(
     }
     const win = getWindow();
     try {
-      return await autoEdit(req.params.projectId, {
-        elementId: req.body.elementId,
-        mediaId: req.body.mediaId,
-        removeFillers: req.body.removeFillers,
-        removeSilences: req.body.removeSilences,
-        silenceThreshold: req.body.silenceThreshold,
-        keepSilencePadding: req.body.keepSilencePadding,
-        dryRun: req.body.dryRun,
-        provider: req.body.provider,
-        language: req.body.language,
-      }, win);
+      return await autoEdit(
+        req.params.projectId,
+        {
+          elementId: req.body.elementId,
+          mediaId: req.body.mediaId,
+          removeFillers: req.body.removeFillers,
+          removeSilences: req.body.removeSilences,
+          silenceThreshold: req.body.silenceThreshold,
+          keepSilencePadding: req.body.keepSilencePadding,
+          dryRun: req.body.dryRun,
+          provider: req.body.provider,
+          language: req.body.language,
+        },
+        win
+      );
     } catch (error) {
       if (error instanceof HttpError) throw error;
       throw new HttpError(

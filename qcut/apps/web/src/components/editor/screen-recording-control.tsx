@@ -10,17 +10,19 @@ import {
   subscribeToScreenRecordingStatus,
 } from "@/lib/screen-recording-controller";
 import { Circle, Loader2, Square } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { toast } from "sonner";
 import type { ScreenRecordingStatus } from "@/types/electron";
 
 const RECORDING_SHORTCUT_KEY = "r";
 
-function formatDurationLabel({
-  durationMs,
-}: {
-  durationMs: number;
-}): string {
+function formatDurationLabel({ durationMs }: { durationMs: number }): string {
   try {
     const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
     const minutes = Math.floor(totalSeconds / 60)
@@ -33,11 +35,7 @@ function formatDurationLabel({
   }
 }
 
-function isEditableTarget({
-  target,
-}: {
-  target: EventTarget | null;
-}): boolean {
+function isEditableTarget({ target }: { target: EventTarget | null }): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
@@ -62,7 +60,10 @@ export function ScreenRecordingControl() {
       const nextStatus = await getScreenRecordingStatus();
       setStatus(nextStatus);
     } catch (error) {
-      console.error("[ScreenRecordingControl] Failed to refresh status:", error);
+      console.error(
+        "[ScreenRecordingControl] Failed to refresh status:",
+        error
+      );
     }
   }, []);
 
@@ -74,7 +75,12 @@ export function ScreenRecordingControl() {
           setStatus(nextStatus);
         },
       });
-      void refreshStatus();
+      refreshStatus().catch((error) => {
+        console.error(
+          "[ScreenRecordingControl] Failed to refresh initial status:",
+          error
+        );
+      });
       return () => {
         try {
           unsubscribe();
@@ -189,7 +195,12 @@ export function ScreenRecordingControl() {
         }
 
         preventDefault();
-        void handleToggleRecording();
+        handleToggleRecording().catch((error) => {
+          console.error(
+            "[ScreenRecordingControl] Failed to toggle recording via shortcut:",
+            error
+          );
+        });
       } catch (error) {
         console.error(
           "[ScreenRecordingControl] Global shortcut handler failed:",
@@ -236,7 +247,12 @@ export function ScreenRecordingControl() {
           : "h-7 text-xs"
       }
       onClick={() => {
-        void handleToggleRecording();
+        handleToggleRecording().catch((error) => {
+          console.error(
+            "[ScreenRecordingControl] Failed to toggle recording via button:",
+            error
+          );
+        });
       }}
       onKeyDown={handleButtonKeyDown}
       disabled={isBusy}

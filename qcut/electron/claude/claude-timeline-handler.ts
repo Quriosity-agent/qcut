@@ -205,7 +205,9 @@ function parseTimelineMetadataFromLine({
     return;
   }
 
-  const fpsTableMatch = trimmed.match(/^\|\s*FPS\s*\|\s*(\d+(?:\.\d+)?)\s*\|$/i);
+  const fpsTableMatch = trimmed.match(
+    /^\|\s*FPS\s*\|\s*(\d+(?:\.\d+)?)\s*\|$/i
+  );
   if (fpsTableMatch) {
     timeline.fps = Number.parseFloat(fpsTableMatch[1]);
     return;
@@ -728,9 +730,7 @@ export async function batchUpdateElements(
     return requestBatchUpdateElementsFromRenderer(win, updates);
   } catch (error) {
     throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to batch update elements"
+      error instanceof Error ? error.message : "Failed to batch update elements"
     );
   }
 }
@@ -760,9 +760,7 @@ export async function batchDeleteElements(
     return requestBatchDeleteElementsFromRenderer(win, elements, ripple);
   } catch (error) {
     throw new Error(
-      error instanceof Error
-        ? error.message
-        : "Failed to batch delete elements"
+      error instanceof Error ? error.message : "Failed to batch delete elements"
     );
   }
 }

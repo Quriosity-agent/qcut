@@ -21,7 +21,9 @@ test.describe("Screen Recording Repro", () => {
         try {
           const recordingApi = window.electronAPI?.screenRecording;
           if (!recordingApi) {
-            throw new Error("window.electronAPI.screenRecording is unavailable");
+            throw new Error(
+              "window.electronAPI.screenRecording is unavailable"
+            );
           }
           return await recordingApi.getStatus();
         } catch (error) {

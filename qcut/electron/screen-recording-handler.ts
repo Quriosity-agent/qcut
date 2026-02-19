@@ -148,11 +148,7 @@ function ensureExtension({
   }
 }
 
-function getPathExtension({
-  filePath,
-}: {
-  filePath: string;
-}): string {
+function getPathExtension({ filePath }: { filePath: string }): string {
   try {
     return path.extname(filePath).toLowerCase();
   } catch {
@@ -227,7 +223,10 @@ function resolveOutputPath({
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.join(getRecordingsDir(), filePath);
-      return ensureExtension({ filePath: absolutePath, extension: FILE_EXTENSION.MP4 });
+      return ensureExtension({
+        filePath: absolutePath,
+        extension: FILE_EXTENSION.MP4,
+      });
     }
 
     if (fileName) {
@@ -693,7 +692,10 @@ async function resolveSourceForDisplayRequest({
     }
     return { id: selectedSource.id, name: selectedSource.name };
   } catch (error) {
-    console.error("[ScreenRecordingIPC] Failed to resolve display source:", error);
+    console.error(
+      "[ScreenRecordingIPC] Failed to resolve display source:",
+      error
+    );
     return null;
   }
 }
@@ -706,7 +708,7 @@ function ensureDisplayMediaHandlerConfigured(): void {
   try {
     session.defaultSession.setDisplayMediaRequestHandler(
       (_request, callback) => {
-        void (async () => {
+        const handleDisplayMediaRequest = async (): Promise<void> => {
           try {
             if (!activeSession) {
               callback({});
@@ -729,7 +731,15 @@ function ensureDisplayMediaHandlerConfigured(): void {
             );
             callback({});
           }
-        })();
+        };
+
+        handleDisplayMediaRequest().catch((error) => {
+          console.error(
+            "[ScreenRecordingIPC] Unexpected display media request error:",
+            error
+          );
+          callback({});
+        });
       },
       { useSystemPicker: false }
     );
@@ -800,7 +810,9 @@ export function setupScreenRecordingIPC(): void {
 
         await ensureParentDirectory({ filePath: captureFilePath });
 
-        const fileStream = fs.createWriteStream(captureFilePath, { flags: "w" });
+        const fileStream = fs.createWriteStream(captureFilePath, {
+          flags: "w",
+        });
         pendingStream = fileStream;
         await waitForStreamOpen({ fileStream });
 
@@ -837,7 +849,11 @@ export function setupScreenRecordingIPC(): void {
           }
         }
 
-        if (pendingStream && !pendingStream.closed && !pendingStream.destroyed) {
+        if (
+          pendingStream &&
+          !pendingStream.closed &&
+          !pendingStream.destroyed
+        ) {
           try {
             pendingStream.destroy();
           } catch {
@@ -918,7 +934,10 @@ export function setupScreenRecordingIPC(): void {
           throw new Error("Screen recording session owner mismatch");
         }
 
-        if (options.sessionId && options.sessionId !== activeSession.sessionId) {
+        if (
+          options.sessionId &&
+          options.sessionId !== activeSession.sessionId
+        ) {
           throw new Error("Invalid screen recording session id");
         }
 
@@ -935,7 +954,9 @@ export function setupScreenRecordingIPC(): void {
           await cleanupSessionFiles({ sessionData: sessionToStop });
           finalPath = null;
         } else {
-          finalPath = await finalizeRecordingOutput({ sessionData: sessionToStop });
+          finalPath = await finalizeRecordingOutput({
+            sessionData: sessionToStop,
+          });
           finalizedBytes = await getFileSize({ filePath: finalPath });
         }
 

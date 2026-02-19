@@ -143,14 +143,17 @@ describe("claude-range-handler", () => {
 
       const sentData = send.mock.calls[0][1] as { requestId: string };
 
-      ipcCallback({}, {
-        requestId: sentData.requestId,
-        result: {
-          deletedElements: 2,
-          splitElements: 1,
-          totalRemovedDuration: 5,
-        },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: sentData.requestId,
+          result: {
+            deletedElements: 2,
+            splitElements: 1,
+            totalRemovedDuration: 5,
+          },
+        }
+      );
 
       const result = await promise;
       expect(result.deletedElements).toBe(2);
@@ -188,10 +191,17 @@ describe("claude-range-handler", () => {
       );
 
       const sentData = send.mock.calls[0][1] as { requestId: string };
-      ipcCallback({}, {
-        requestId: sentData.requestId,
-        result: { deletedElements: 0, splitElements: 0, totalRemovedDuration: 0 },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: sentData.requestId,
+          result: {
+            deletedElements: 0,
+            splitElements: 0,
+            totalRemovedDuration: 0,
+          },
+        }
+      );
 
       await promise;
     });

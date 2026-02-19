@@ -65,7 +65,6 @@ import { generatePersonaPlex } from "./claude-personaplex-handler.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 
-
 let server: Server | null = null;
 
 /**
@@ -286,7 +285,11 @@ export function startClaudeHTTPServer(
     }
     const win = getWindow();
     try {
-      return await batchAddElements(win, req.params.projectId, req.body.elements);
+      return await batchAddElements(
+        win,
+        req.params.projectId,
+        req.body.elements
+      );
     } catch (error) {
       throw new HttpError(
         400,
@@ -295,20 +298,23 @@ export function startClaudeHTTPServer(
     }
   });
 
-  router.patch("/api/claude/timeline/:projectId/elements/batch", async (req) => {
-    if (!Array.isArray(req.body?.updates)) {
-      throw new HttpError(400, "Missing 'updates' array in request body");
+  router.patch(
+    "/api/claude/timeline/:projectId/elements/batch",
+    async (req) => {
+      if (!Array.isArray(req.body?.updates)) {
+        throw new HttpError(400, "Missing 'updates' array in request body");
+      }
+      const win = getWindow();
+      try {
+        return await batchUpdateElements(win, req.body.updates);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof Error ? error.message : "Batch update failed"
+        );
+      }
     }
-    const win = getWindow();
-    try {
-      return await batchUpdateElements(win, req.body.updates);
-    } catch (error) {
-      throw new HttpError(
-        400,
-        error instanceof Error ? error.message : "Batch update failed"
-      );
-    }
-  });
+  );
 
   router.patch(
     "/api/claude/timeline/:projectId/elements/:elementId",
@@ -368,7 +374,10 @@ export function startClaudeHTTPServer(
       req.body.mode !== "spaced" &&
       req.body.mode !== "manual"
     ) {
-      throw new HttpError(400, "Invalid mode. Use sequential, spaced, or manual");
+      throw new HttpError(
+        400,
+        "Invalid mode. Use sequential, spaced, or manual"
+      );
     }
     const win = getWindow();
     try {
@@ -490,7 +499,10 @@ export function startClaudeHTTPServer(
       const timeline = await Promise.race([
         requestTimelineFromRenderer(win),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
         ),
       ]);
       const [mediaFiles, settings] = await Promise.all([
@@ -519,7 +531,10 @@ export function startClaudeHTTPServer(
       const timeline = await Promise.race([
         requestTimelineFromRenderer(win),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
         ),
       ]);
       const [mediaFiles, settings] = await Promise.all([
@@ -539,7 +554,9 @@ export function startClaudeHTTPServer(
         summary,
         saveToDisk: req.body?.saveToDisk === true,
         outputDir:
-          typeof req.body?.outputDir === "string" ? req.body.outputDir : undefined,
+          typeof req.body?.outputDir === "string"
+            ? req.body.outputDir
+            : undefined,
         projectId: req.params.projectId,
       });
 
@@ -574,7 +591,10 @@ export function startClaudeHTTPServer(
       const timeline = await Promise.race([
         requestTimelineFromRenderer(win),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
         ),
       ]);
       const mediaFiles = await listMediaFiles(req.params.projectId);

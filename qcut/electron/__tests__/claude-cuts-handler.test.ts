@@ -177,18 +177,21 @@ describe("claude-cuts-handler", () => {
       const sentData = send.mock.calls[0][1] as { requestId: string };
 
       // Simulate renderer response
-      ipcCallback({}, {
-        requestId: sentData.requestId,
-        result: {
-          cutsApplied: 1,
-          elementsRemoved: 1,
-          remainingElements: [
-            { id: "el_abc", startTime: 0, duration: 2 },
-            { id: "el_def", startTime: 2, duration: 6 },
-          ],
-          totalRemovedDuration: 2,
-        },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: sentData.requestId,
+          result: {
+            cutsApplied: 1,
+            elementsRemoved: 1,
+            remainingElements: [
+              { id: "el_abc", startTime: 0, duration: 2 },
+              { id: "el_def", startTime: 2, duration: 6 },
+            ],
+            totalRemovedDuration: 2,
+          },
+        }
+      );
 
       const result = await promise;
       expect(result.cutsApplied).toBe(1);
@@ -217,17 +220,33 @@ describe("claude-cuts-handler", () => {
       });
 
       // Send wrong requestId — should be ignored
-      ipcCallback({}, {
-        requestId: "wrong_id",
-        result: { cutsApplied: 99, elementsRemoved: 0, remainingElements: [], totalRemovedDuration: 0 },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: "wrong_id",
+          result: {
+            cutsApplied: 99,
+            elementsRemoved: 0,
+            remainingElements: [],
+            totalRemovedDuration: 0,
+          },
+        }
+      );
 
       // Send correct requestId
       const sentData = send.mock.calls[0][1] as { requestId: string };
-      ipcCallback({}, {
-        requestId: sentData.requestId,
-        result: { cutsApplied: 1, elementsRemoved: 1, remainingElements: [], totalRemovedDuration: 1 },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: sentData.requestId,
+          result: {
+            cutsApplied: 1,
+            elementsRemoved: 1,
+            remainingElements: [],
+            totalRemovedDuration: 1,
+          },
+        }
+      );
 
       const result = await promise;
       expect(result.cutsApplied).toBe(1);
@@ -258,10 +277,18 @@ describe("claude-cuts-handler", () => {
       );
 
       const sentData = send.mock.calls[0][1] as { requestId: string };
-      ipcCallback({}, {
-        requestId: sentData.requestId,
-        result: { cutsApplied: 1, elementsRemoved: 0, remainingElements: [], totalRemovedDuration: 0 },
-      });
+      ipcCallback(
+        {},
+        {
+          requestId: sentData.requestId,
+          result: {
+            cutsApplied: 1,
+            elementsRemoved: 0,
+            remainingElements: [],
+            totalRemovedDuration: 0,
+          },
+        }
+      );
 
       await promise;
     });

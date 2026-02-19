@@ -82,7 +82,10 @@ export async function generatePersonaPlex(
     }
     const errorMessage =
       error instanceof Error ? error.message : "PersonaPlex request failed";
-    claudeLog.error(HANDLER_NAME, `PersonaPlex request failed: ${errorMessage}`);
+    claudeLog.error(
+      HANDLER_NAME,
+      `PersonaPlex request failed: ${errorMessage}`
+    );
     throw new HttpError(502, `PersonaPlex request failed: ${errorMessage}`);
   }
 }
