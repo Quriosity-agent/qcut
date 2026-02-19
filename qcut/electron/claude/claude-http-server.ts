@@ -77,6 +77,8 @@ import {
 } from "./claude-generate-handler.js";
 import { executeBatchCuts } from "./claude-cuts-handler.js";
 import { executeDeleteRange } from "./claude-range-handler.js";
+import { autoEdit } from "./claude-auto-edit-handler.js";
+import { suggestCuts } from "./claude-suggest-handler.js";
 import { generatePersonaPlex } from "./claude-personaplex-handler.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 
@@ -492,6 +494,13 @@ export function startClaudeHTTPServer(
     }
     if (!req.body?.mode || typeof req.body.mode !== "string") {
       throw new HttpError(400, "Missing 'mode' in request body");
+    }
+    if (
+      req.body.mode !== "sequential" &&
+      req.body.mode !== "spaced" &&
+      req.body.mode !== "manual"
+    ) {
+      throw new HttpError(400, "Invalid mode. Use sequential, spaced, or manual");
     }
     const win = getWindow();
     try {
