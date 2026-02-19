@@ -340,3 +340,175 @@ Claude Code Workflow:
   7. DELETE /range → remove unwanted sections
   8. → Stage 4 (organize timeline)
 ```
+
+---
+
+## Manual Testing in QCut
+
+### Prerequisites
+
+1. Start QCut in dev mode: `bun run electron:dev`
+2. The HTTP API starts automatically on `http://127.0.0.1:8765`
+3. Import a video with speech (fillers/silences work best with talking-head content)
+4. Note your **project ID** from the URL bar (e.g. `editor/proj_abc123`) and an **element ID** + **media ID** from the timeline
+
+### Quick health check
+
+```bash
+curl http://127.0.0.1:8765/api/claude/health
+```
+
+### 1. Suggest Cuts (read-only — safest to test first)
+
+Analyzes a media file and returns cut suggestions without modifying the timeline.
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/analyze/{projectId}/suggest-cuts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mediaId": "YOUR_MEDIA_ID",
+    "includeFillers": true,
+    "includeSilences": true,
+    "includeScenes": true
+  }'
+```
+
+**What to verify**:
+- Response contains `suggestions` array with `type`, `start`, `end`, `reason`, `confidence`
+- `summary` shows counts for filler/silence/scene suggestions
+- `transcription` metadata (wordCount, duration) is present
+- `scenes` metadata (totalScenes, averageShotDuration) is present
+- Try with individual flags disabled (`"includeFillers": false`) to confirm filtering works
+
+### 2. Auto-Edit — Dry Run (read-only preview)
+
+Preview what fillers and silences would be removed, without executing.
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/timeline/{projectId}/auto-edit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elementId": "YOUR_ELEMENT_ID",
+    "mediaId": "YOUR_MEDIA_ID",
+    "removeFillers": true,
+    "removeSilences": true,
+    "silenceThreshold": 1.5,
+    "keepSilencePadding": 0.3,
+    "dryRun": true
+  }'
+```
+
+**What to verify**:
+- `applied` is `false`
+- `cuts` array shows what would be removed, each with `start`, `end`, `reason`
+- `transcription.wordCount` and `transcription.duration` are populated
+- `analysis.fillerCount` and `analysis.silenceCount` match expectations
+- Silence cuts have padding applied (e.g. a 1.5–3.5s silence with 0.3s padding → 1.8–3.2s cut)
+
+### 3. Batch Cuts (modifies timeline — use Ctrl+Z to undo)
+
+Remove specific time ranges from a single element. **This modifies the timeline** — the entire batch is undoable with a single Ctrl+Z.
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/timeline/{projectId}/cuts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elementId": "YOUR_ELEMENT_ID",
+    "cuts": [
+      { "start": 2.0, "end": 3.0 },
+      { "start": 8.0, "end": 9.5 }
+    ]
+  }'
+```
+
+**What to verify**:
+- Timeline visually shows the element split with gaps removed
+- `cutsApplied` matches the number of cuts sent
+- `remainingElements` lists the surviving pieces with correct `startTime` and `duration`
+- **Ctrl+Z undoes all cuts at once** (single history snapshot)
+- Try with overlapping or adjacent cuts — should be rejected with a 400 error
+
+### 4. Range Delete (modifies timeline — use Ctrl+Z to undo)
+
+Delete all content within a time range across tracks.
+
+```bash
+curl -X DELETE http://127.0.0.1:8765/api/claude/timeline/{projectId}/range \
+  -H "Content-Type: application/json" \
+  -d '{
+    "startTime": 5.0,
+    "endTime": 10.0
+  }'
+```
+
+**What to verify**:
+- Elements fully within 5.0–10.0s are deleted
+- Elements partially overlapping are trimmed (split at the boundary)
+- `elementsDeleted` and `elementsSplit` counts are correct
+- **Ctrl+Z undoes the entire range delete**
+- Try with `"trackIds": ["track_id"]` to limit to a specific track
+
+### 5. Auto-Edit — Full Execution (modifies timeline)
+
+Actually remove fillers and silences. Run the dry run first (step 2) to preview.
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/timeline/{projectId}/auto-edit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elementId": "YOUR_ELEMENT_ID",
+    "mediaId": "YOUR_MEDIA_ID",
+    "removeFillers": true,
+    "removeSilences": true,
+    "dryRun": false
+  }'
+```
+
+**What to verify**:
+- `applied` is `true`
+- `result` contains `cutsApplied` and `totalRemovedDuration`
+- Timeline shows fillers and silences removed
+- Playback sounds tighter without filler words
+- **Ctrl+Z undoes the entire auto-edit**
+
+### Finding Element and Media IDs
+
+If you don't know the IDs, use the timeline and media endpoints:
+
+```bash
+# Get timeline (shows all elements with IDs)
+curl http://127.0.0.1:8765/api/claude/timeline/{projectId}
+
+# Get media list (shows all imported media with IDs)
+curl http://127.0.0.1:8765/api/claude/media/{projectId}
+```
+
+### Error Cases to Test
+
+| Scenario | Expected |
+|----------|----------|
+| Missing `mediaId` | 400: "Missing 'mediaId'" |
+| Missing `elementId` on cuts | 400: "Missing 'elementId' and 'cuts'" |
+| Empty cuts array | 400 from validation |
+| Overlapping cut intervals | 400: "Overlapping cut intervals" |
+| `start >= end` on a cut | 400: "start must be less than end" |
+| Non-existent element ID | Timeout (504) — element not found in renderer |
+| No QCut window open | 503: "No active QCut window" |
+
+### Automated Tests
+
+All Stage 3 handlers have unit tests. Run them with:
+
+```bash
+# All Stage 3 tests (50 tests)
+bun run test -- electron/__tests__/claude-cuts-handler.test.ts \
+  electron/__tests__/claude-range-handler.test.ts \
+  electron/__tests__/claude-auto-edit-handler.test.ts \
+  electron/__tests__/claude-suggest-handler.test.ts
+
+# Timeline bridge tests (6 tests)
+bun run test -- src/lib/__tests__/claude-timeline-bridge.test.ts
+
+# Full suite
+bun run test
+```
