@@ -355,3 +355,34 @@ export class LLMAdapter extends BaseAdapter<Message[], LLMResponse> {
     );
   }
 }
+
+/**
+ * Convenience function for quick LLM chat without creating an adapter.
+ * Creates a temporary adapter and sends a chat request.
+ */
+export async function chat(
+  messages: Message[],
+  options?: {
+    model?: string;
+    temperature?: number;
+    max_tokens?: number;
+  }
+): Promise<LLMResponse> {
+  const adapter = new LLMAdapter({ model: options?.model });
+  return adapter.chat(messages, options);
+}
+
+/**
+ * Convenience function for quick text generation without creating an adapter.
+ * Creates a temporary adapter and generates text from a prompt.
+ */
+export async function generate(
+  prompt: string,
+  options?: {
+    model?: string;
+    systemPrompt?: string;
+  }
+): Promise<string> {
+  const adapter = new LLMAdapter({ model: options?.model });
+  return adapter.generateText(prompt, options?.systemPrompt);
+}

@@ -274,3 +274,20 @@ export class VideoGeneratorAdapter extends BaseAdapter<
     });
   }
 }
+
+/**
+ * Convenience function for quick single video generation.
+ * Creates a temporary adapter, generates one video, and returns the result.
+ */
+export async function generateVideo(
+  imagePath: string,
+  prompt: string,
+  options?: {
+    model?: string;
+    duration?: number;
+    output_path?: string;
+  }
+): Promise<VideoOutput> {
+  const adapter = new VideoGeneratorAdapter({ model: options?.model });
+  return adapter.generate(imagePath, prompt, options);
+}

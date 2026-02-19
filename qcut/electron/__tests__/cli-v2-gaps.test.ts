@@ -391,9 +391,9 @@ describe("Adapter utility methods", () => {
     });
 
     it("supportsReferenceImages returns false for non-reference models", () => {
-      expect(
-        ImageGeneratorAdapter.supportsReferenceImages("nonexistent")
-      ).toBe(false);
+      expect(ImageGeneratorAdapter.supportsReferenceImages("nonexistent")).toBe(
+        false
+      );
     });
   });
 

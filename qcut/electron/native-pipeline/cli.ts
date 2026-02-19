@@ -241,8 +241,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       "output-format": { type: "string", short: "f" },
       // upscale-image options
       target: { type: "string" },
-      // vimax:idea2video options
+      // vimax options
       "no-references": { type: "boolean", default: false },
+      "project-id": { type: "string" },
       // grid upscale
       "grid-upscale": { type: "string" },
     },
@@ -343,8 +344,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     outputFormat: values["output-format"] as string | undefined,
     // upscale-image options
     target: values.target as string | undefined,
-    // vimax:idea2video options
+    // vimax options
     noReferences: (values["no-references"] as boolean) ?? false,
+    projectId: values["project-id"] as string | undefined,
     // grid upscale
     gridUpscale: values["grid-upscale"]
       ? parseFloat(values["grid-upscale"] as string)

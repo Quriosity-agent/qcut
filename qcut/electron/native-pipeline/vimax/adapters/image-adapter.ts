@@ -386,6 +386,11 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
     });
   }
 
+  /** Returns keys of all models that support reference-image generation. */
+  static getAvailableReferenceModels(): string[] {
+    return Object.keys(REFERENCE_MODEL_MAP);
+  }
+
   private _mockGenerateWithReference(
     prompt: string,
     referenceImage: string,
@@ -419,4 +424,40 @@ export class ImageGeneratorAdapter extends BaseAdapter<string, ImageOutput> {
       },
     });
   }
+}
+
+/**
+ * Convenience function for quick single image generation.
+ * Creates a temporary adapter, generates one image, and returns the result.
+ */
+export async function generateImage(
+  prompt: string,
+  options?: {
+    model?: string;
+    aspect_ratio?: string;
+    output_path?: string;
+  }
+): Promise<ImageOutput> {
+  const adapter = new ImageGeneratorAdapter({ model: options?.model });
+  return adapter.generate(prompt, options);
+}
+
+/**
+ * Convenience function for quick reference-based image generation.
+ * Creates a temporary adapter and generates one image using a reference.
+ */
+export async function generateImageWithReference(
+  prompt: string,
+  referenceImage: string,
+  options?: {
+    model?: string;
+    reference_strength?: number;
+    aspect_ratio?: string;
+    output_path?: string;
+  }
+): Promise<ImageOutput> {
+  const adapter = new ImageGeneratorAdapter({
+    reference_model: options?.model,
+  });
+  return adapter.generateWithReference(prompt, referenceImage, options);
 }

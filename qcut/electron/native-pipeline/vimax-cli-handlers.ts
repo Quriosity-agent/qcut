@@ -360,7 +360,9 @@ export async function handleVimaxGeneratePortraits(
         const { CharacterPortraitRegistry } = await import(
           "./vimax/types/character.js"
         );
-        const registry = new CharacterPortraitRegistry("cli-project");
+        const registry = new CharacterPortraitRegistry(
+          options.projectId || "cli-project"
+        );
         for (const portrait of Object.values(
           batchResult.result as Record<
             string,
@@ -422,7 +424,9 @@ export async function handleVimaxCreateRegistry(
       };
     }
 
-    const registry = new CharacterPortraitRegistry("cli-project");
+    const registry = new CharacterPortraitRegistry(
+      options.projectId || "cli-project"
+    );
     const entries = fs.readdirSync(portraitsDir, { withFileTypes: true });
     let characterCount = 0;
 
@@ -679,7 +683,7 @@ export async function handleVimaxScript2Video(
       output_dir: outputDir,
       video_model: options.videoModel,
       image_model: options.imageModel,
-      use_character_references: !!portraitRegistry || true,
+      use_character_references: !(options.noReferences ?? false),
     });
 
     const scriptObj = JSON.parse(scriptData);

@@ -131,8 +131,9 @@ export interface CLIRunOptions {
   outputFormat?: string;
   // upscale-image options
   target?: string;
-  // vimax:idea2video options
+  // vimax options
   noReferences?: boolean;
+  projectId?: string;
   // grid upscale
   gridUpscale?: number;
 }
@@ -174,7 +175,7 @@ export class CLIPipelineRunner {
     options: CLIRunOptions,
     onProgress: ProgressFn
   ): Promise<CLIResult> {
-    loadEnvFile();
+    loadEnvFile(options.configDir);
 
     // Stdin pipe support: when --input is "-", read from stdin
     if (options.input === "-") {
@@ -305,6 +306,8 @@ export class CLIPipelineRunner {
     if (options.duration) params.duration = options.duration;
     if (options.aspectRatio) params.aspect_ratio = options.aspectRatio;
     if (options.resolution) params.resolution = options.resolution;
+    if (options.negativePrompt) params.negative_prompt = options.negativePrompt;
+    if (options.voiceId) params.voice_id = options.voiceId;
 
     // Smart mode detection for generate-avatar (matches Python logic)
     if (options.command === "generate-avatar") {

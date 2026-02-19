@@ -33,12 +33,13 @@ export interface KeyStatus {
   masked?: string;
 }
 
-function getEnvFilePath(): string {
+function getEnvFilePath(configDirOverride?: string): string {
+  if (configDirOverride) return path.join(configDirOverride, ".env");
   return path.join(os.homedir(), ".qcut", ".env");
 }
 
-function readEnvFile(): Map<string, string> {
-  const envPath = getEnvFilePath();
+function readEnvFile(configDirOverride?: string): Map<string, string> {
+  const envPath = getEnvFilePath(configDirOverride);
   const entries = new Map<string, string>();
 
   if (!fs.existsSync(envPath)) return entries;
@@ -155,8 +156,8 @@ export function setupEnvTemplate(): string {
   return envPath;
 }
 
-export function loadEnvFile(): void {
-  const entries = readEnvFile();
+export function loadEnvFile(configDirOverride?: string): void {
+  const entries = readEnvFile(configDirOverride);
   for (const [key, value] of entries) {
     if (value && !process.env[key]) {
       process.env[key] = value;
