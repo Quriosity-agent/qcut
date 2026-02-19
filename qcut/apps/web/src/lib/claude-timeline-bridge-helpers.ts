@@ -350,6 +350,7 @@ export function addClaudeTextElement({
  */
 export function formatTracksForExport(tracks: TimelineTrack[]): ClaudeTrack[] {
   return tracks.map((track, index) => ({
+    id: track.id,
     index,
     name: track.name || `Track ${index + 1}`,
     type: track.type,
