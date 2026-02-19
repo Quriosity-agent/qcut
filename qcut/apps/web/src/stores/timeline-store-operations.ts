@@ -273,6 +273,8 @@ export function createTimelineOperations({
           return;
         }
 
+        get().pushHistory();
+
         const excludedTrackIds = new Set(excludeTrackIds);
         const updatedTracks = get()._tracks.map((track) => {
           if (excludedTrackIds.has(track.id)) {
@@ -437,7 +439,9 @@ export function createTimelineOperations({
               continue;
             }
 
-            nextElements.push(element);
+            // All overlap cases are handled above; this point is unreachable.
+            // Defensively skip the element rather than risk timeline corruption.
+            deletedElements++;
           }
 
           return { ...track, elements: nextElements };
