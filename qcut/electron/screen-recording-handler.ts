@@ -552,7 +552,11 @@ async function transcodeWebmToMp4({
         const TRANSCODE_TIMEOUT_MS = 300_000;
         const timeout = setTimeout(() => {
           ffmpegProcess.kill();
-          reject(new Error(`FFmpeg conversion timed out after ${TRANSCODE_TIMEOUT_MS}ms`));
+          reject(
+            new Error(
+              `FFmpeg conversion timed out after ${TRANSCODE_TIMEOUT_MS}ms`
+            )
+          );
         }, TRANSCODE_TIMEOUT_MS);
 
         let stderrOutput = "";

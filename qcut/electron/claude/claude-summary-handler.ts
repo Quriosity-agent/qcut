@@ -379,4 +379,3 @@ export async function generatePipelineReport({
     };
   }
 }
-

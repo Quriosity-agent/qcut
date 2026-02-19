@@ -1178,7 +1178,12 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at end → keepLeft
           if (clampedEnd >= effEnd) {
-            store.splitAndKeepLeft(track.id, targetElement.id, clampedStart, false);
+            store.splitAndKeepLeft(
+              track.id,
+              targetElement.id,
+              clampedStart,
+              false
+            );
             totalRemovedDuration += effEnd - clampedStart;
             cutsApplied++;
             continue;
@@ -1186,7 +1191,12 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at start → keepRight
           if (clampedStart <= effStart) {
-            store.splitAndKeepRight(track.id, targetElement.id, clampedEnd, false);
+            store.splitAndKeepRight(
+              track.id,
+              targetElement.id,
+              clampedEnd,
+              false
+            );
             totalRemovedDuration += clampedEnd - effStart;
             cutsApplied++;
             continue;
