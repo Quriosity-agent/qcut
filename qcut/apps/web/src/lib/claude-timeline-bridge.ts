@@ -173,12 +173,27 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle timeline import from Claude
-  claudeAPI.onApply(async (timeline: ClaudeTimeline) => {
+  claudeAPI.onApply(async (timeline: ClaudeTimeline, replace?: boolean) => {
     try {
       debugLog(
         "[ClaudeTimelineBridge] Received timeline to apply:",
-        timeline.name
+        timeline.name,
+        "replace:",
+        replace
       );
+
+      if (replace) {
+        const timelineStore = useTimelineStore.getState();
+        timelineStore.pushHistory();
+        for (const track of [...timelineStore.tracks]) {
+          for (const element of [...track.elements]) {
+            useTimelineStore
+              .getState()
+              .removeElementFromTrack(track.id, element.id, false);
+          }
+        }
+      }
+
       await applyTimelineToStore(timeline);
     } catch (error) {
       debugError("[ClaudeTimelineBridge] Failed to apply timeline:", error);

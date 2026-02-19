@@ -371,6 +371,20 @@ export function markdownToTimeline(md: string): ClaudeTimeline {
       });
     }
 
+    if (timeline.tracks.length === 0) {
+      throw new Error("No tracks found — expected '## Track N: Name' headers");
+    }
+
+    const totalElements = timeline.tracks.reduce(
+      (sum, t) => sum + t.elements.length,
+      0
+    );
+    if (totalElements === 0) {
+      throw new Error(
+        "No elements found — expected table rows with element data"
+      );
+    }
+
     validateTimeline(timeline);
     return timeline;
   } catch (error) {
@@ -852,11 +866,12 @@ export function setupClaudeTimelineIPC(): void {
       event: IpcMainInvokeEvent,
       projectId: string,
       data: string,
-      format: "json" | "md"
+      format: "json" | "md",
+      replace?: boolean
     ): Promise<void> => {
       claudeLog.info(
         HANDLER_NAME,
-        `Importing timeline for project: ${projectId}, format: ${format}`
+        `Importing timeline for project: ${projectId}, format: ${format}, replace: ${replace}`
       );
 
       let timeline: ClaudeTimeline;
@@ -873,7 +888,10 @@ export function setupClaudeTimelineIPC(): void {
         throw new Error("Invalid timeline payload");
       }
 
-      event.sender.send("claude:timeline:apply", timeline);
+      event.sender.send("claude:timeline:apply", {
+        timeline,
+        replace: replace === true,
+      });
 
       claudeLog.info(HANDLER_NAME, "Timeline import sent to renderer");
     }

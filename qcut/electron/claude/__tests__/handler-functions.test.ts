@@ -355,6 +355,21 @@ describe("Timeline Handler Functions", () => {
     expect(() => markdownToTimeline(md)).toThrow("Invalid timeline markdown");
   });
 
+  it("markdownToTimeline rejects markdown with no tracks", () => {
+    expect(() => markdownToTimeline("# Not a timeline\n\nSome text.")).toThrow(
+      "No tracks found"
+    );
+  });
+
+  it("markdownToTimeline rejects tracks with no elements", () => {
+    const md = [
+      "# Timeline: Empty",
+      "## Track 1: Main Track",
+      "*No elements in this track*",
+    ].join("\n");
+    expect(() => markdownToTimeline(md)).toThrow("No elements found");
+  });
+
   it("validateTimeline passes for valid timeline", () => {
     expect(() => validateTimeline(validTimeline)).not.toThrow();
   });

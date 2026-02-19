@@ -261,6 +261,7 @@ export function registerAnalysisRoutes(
         endTime: req.body.endTime,
         trackIds: req.body.trackIds,
         ripple: req.body.ripple,
+        crossTrackRipple: req.body.crossTrackRipple,
       }),
       new Promise<never>((_, reject) =>
         setTimeout(
