@@ -61,8 +61,10 @@ Tested against running QCut instance (localhost:8765) with real media files.
 | JSON export/import | **Working** | `GET/POST /timeline/:pid` |
 | Selection management | **Working** | `POST/GET/DELETE .../selection` |
 | Range delete (split/remove) | **Working** | `DELETE /timeline/:pid/range` |
-| Range delete (ripple shift) | **Not working** | Elements not shifted after range removal |
-| Cross-track ripple | **Not working** | `crossTrackRipple` flag forwarded but no effect |
+| Range delete (ripple shift) | **Working** | Uses `deleteTimeRange()` store method |
+| Cross-track ripple | **Working** | `crossTrackRipple` forwarded through HTTP → IPC → store |
+| Malformed markdown rejection | **Working** | Returns error for markdown with no tracks/elements |
+| Import replace mode | **Working** | `replace: true` flag clears timeline before importing |
 
 ---
 
@@ -140,15 +142,15 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ---
 
-## Improvements Needed
+## Improvements Implemented (2026-02-20)
 
-| Priority | Issue | Fix |
-|----------|-------|-----|
-| **High** | Range delete ripple not implemented | Add element shifting in `onDeleteRange` handler in `claude-timeline-bridge.ts` — after split/delete, iterate tracks and shift elements with `startTime >= endTime` left by range duration |
-| **High** | Cross-track ripple not implemented | Same fix as above, but apply to ALL tracks (not just the one with deleted content) |
-| **Medium** | Vitest include glob misses `electron/claude/__tests__/` | Update `vitest.config.ts` include to add `../../electron/claude/__tests__/**/*.test.ts` |
-| **Low** | Malformed markdown import silently succeeds | `markdownToTimeline()` should return empty tracks when no content parsed; HTTP handler should return a warning or check if anything was actually imported |
-| **Low** | Markdown import only appends | Add optional `replace: true` flag to clear existing timeline before importing |
+| Priority | Issue | Fix | Commit |
+|----------|-------|-----|--------|
+| **High** | Range delete ripple not implemented | Replaced inline split/delete with `deleteTimeRange()` store method which handles ripple shifting | `38a75719` |
+| **High** | Cross-track ripple not implemented | Same fix — `deleteTimeRange()` handles `crossTrackRipple` flag natively | `38a75719` |
+| **Medium** | Vitest include glob misses `electron/claude/__tests__/` | Added `../../electron/claude/__tests__/**` to vitest.config.ts include | `ebb92761` |
+| **Low** | Malformed markdown import silently succeeds | `markdownToTimeline()` now throws when no tracks or elements are found; HTTP route returns 400 | `ebb92761` |
+| **Low** | Markdown import only appends | Added `replace: true` flag to import endpoint — clears existing elements before importing | `ebb92761` |
 
 ---
 
@@ -156,11 +158,11 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 | File | Lines | Purpose |
 |---|---|---|
-| `electron/claude/claude-timeline-handler.ts` | ~1000 | Batch IPC handlers, markdown parsing, arrange logic |
-| `electron/claude/claude-range-handler.ts` | 96 | Range delete handler (split/remove, no ripple) |
-| `apps/web/src/lib/claude-timeline-bridge.ts` | 1444 | Renderer-side IPC bridge for all timeline ops |
+| `electron/claude/claude-timeline-handler.ts` | ~1020 | Batch IPC handlers, markdown parsing, arrange logic |
+| `electron/claude/claude-range-handler.ts` | 96 | Range delete handler (IPC to renderer) |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | ~1390 | Renderer-side IPC bridge (uses `deleteTimeRange()` for range ops) |
 | `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | 475 | Helper functions for element resolution |
-| `electron/claude/claude-http-server.ts` | ~600 | Route registration |
+| `electron/claude/claude-http-server.ts` | ~620 | Route registration |
 
 ---
 
@@ -359,7 +361,8 @@ curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/arrange" \
 | Criterion | Status |
 |-----------|--------|
 | Batch add/update/delete with per-item result reporting | **PASS** |
-| Markdown round-trip imports full tracks/elements | **PASS** (appends, not replaces) |
-| Cross-track ripple behaves differently when toggled | **FAIL** — ripple shift not implemented |
+| Markdown round-trip imports full tracks/elements | **PASS** (supports `replace: true`) |
+| Cross-track ripple behaves differently when toggled | **PASS** — uses `deleteTimeRange()` store method |
 | Arrange works in sequential/spaced/manual modes | **PASS** |
+| Malformed markdown import rejected | **PASS** — returns 400 with error message |
 | Each operation family is single-undo atomic | **Not verified** (requires UI testing) |
