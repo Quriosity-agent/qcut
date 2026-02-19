@@ -270,6 +270,44 @@ export interface FrameExtractResult {
 }
 
 // ============================================================================
+// Generate-and-Add Types (Stage 1.2)
+// ============================================================================
+
+export interface GenerateAndAddRequest {
+  model: string;
+  prompt: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  duration?: number;
+  aspectRatio?: string;
+  resolution?: string;
+  negativePrompt?: string;
+  addToTimeline?: boolean;
+  trackId?: string;
+  startTime?: number;
+  projectId?: string;
+}
+
+export interface GenerateJobStatus {
+  jobId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  model: string;
+  result?: {
+    success: boolean;
+    outputPath?: string;
+    mediaId?: string;
+    importedPath?: string;
+    duration?: number;
+    cost?: number;
+    error?: string;
+  };
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
 // Transcription Types (Stage 2)
 // ============================================================================
 

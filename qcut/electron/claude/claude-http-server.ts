@@ -46,6 +46,18 @@ import {
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
 import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
+import { transcribeMedia } from "./claude-transcribe-handler.js";
+import { detectScenes } from "./claude-scene-handler.js";
+import { analyzeFrames } from "./claude-vision-handler.js";
+import { analyzeFillers } from "./claude-filler-handler.js";
+import {
+  startGenerateJob,
+  getJobStatus,
+  listJobs,
+  cancelJob,
+  listGenerateModels,
+  estimateGenerateCost,
+} from "./claude-generate-handler.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
@@ -174,6 +186,94 @@ export function startClaudeHTTPServer(
       );
     }
   );
+
+  // ==========================================================================
+  // Generate-and-Add routes (AI video/image generation via native pipeline)
+  // ==========================================================================
+
+  // Start a generation job (returns job ID immediately)
+  router.post("/api/claude/generate/:projectId/start", async (req) => {
+    if (!req.body?.model || !req.body?.prompt) {
+      throw new HttpError(400, "Missing 'model' and 'prompt' in request body");
+    }
+    try {
+      return await startGenerateJob(req.params.projectId, {
+        model: req.body.model,
+        prompt: req.body.prompt,
+        imageUrl: req.body.imageUrl,
+        videoUrl: req.body.videoUrl,
+        duration: req.body.duration,
+        aspectRatio: req.body.aspectRatio,
+        resolution: req.body.resolution,
+        negativePrompt: req.body.negativePrompt,
+        addToTimeline: req.body.addToTimeline,
+        trackId: req.body.trackId,
+        startTime: req.body.startTime,
+        projectId: req.params.projectId,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Generation failed"
+      );
+    }
+  });
+
+  // Poll job status
+  router.get("/api/claude/generate/:projectId/jobs/:jobId", async (req) => {
+    const job = getJobStatus(req.params.jobId);
+    if (!job) {
+      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+    }
+    return job;
+  });
+
+  // List all jobs
+  router.get("/api/claude/generate/:projectId/jobs", async () => {
+    return listJobs();
+  });
+
+  // Cancel a job
+  router.post("/api/claude/generate/:projectId/jobs/:jobId/cancel", async (req) => {
+    const cancelled = cancelJob(req.params.jobId);
+    if (!cancelled) {
+      throw new HttpError(400, `Job cannot be cancelled: ${req.params.jobId}`);
+    }
+    return { cancelled: true };
+  });
+
+  // List available generation models
+  router.get("/api/claude/generate/models", async () => {
+    try {
+      return await listGenerateModels();
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Failed to list models"
+      );
+    }
+  });
+
+  // Estimate generation cost
+  router.post("/api/claude/generate/estimate-cost", async (req) => {
+    if (!req.body?.model) {
+      throw new HttpError(400, "Missing 'model' in request body");
+    }
+    try {
+      return await estimateGenerateCost(req.body.model, {
+        duration: req.body.duration,
+        resolution: req.body.resolution,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Cost estimation failed"
+      );
+    }
+  });
 
   // ==========================================================================
   // Timeline routes (renderer-dependent for export/import)
@@ -404,6 +504,96 @@ export function startClaudeHTTPServer(
 
   router.get("/api/claude/analyze/models", async () => {
     return listAnalyzeModels();
+  });
+
+  // ==========================================================================
+  // Transcription routes (Stage 2)
+  // ==========================================================================
+  router.post("/api/claude/transcribe/:projectId", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    try {
+      return await transcribeMedia(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        provider: req.body.provider,
+        language: req.body.language,
+        diarize: req.body.diarize,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Transcription failed"
+      );
+    }
+  });
+
+  // ==========================================================================
+  // Scene Detection routes (Stage 2)
+  // ==========================================================================
+  router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    try {
+      return await detectScenes(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        threshold: req.body.threshold,
+        aiAnalysis: req.body.aiAnalysis,
+        model: req.body.model,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Scene detection failed"
+      );
+    }
+  });
+
+  // ==========================================================================
+  // Frame Analysis routes (Stage 2)
+  // ==========================================================================
+  router.post("/api/claude/analyze/:projectId/frames", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    try {
+      return await analyzeFrames(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        timestamps: req.body.timestamps,
+        interval: req.body.interval,
+        prompt: req.body.prompt,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Frame analysis failed"
+      );
+    }
+  });
+
+  // ==========================================================================
+  // Filler Detection routes (Stage 2)
+  // ==========================================================================
+  router.post("/api/claude/analyze/:projectId/fillers", async (req) => {
+    if (!Array.isArray(req.body?.words)) {
+      throw new HttpError(400, "Missing 'words' array in request body");
+    }
+    try {
+      return await analyzeFillers(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        words: req.body.words,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Filler analysis failed"
+      );
+    }
   });
 
   // ==========================================================================
