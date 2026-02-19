@@ -108,50 +108,264 @@ export function timelineToMarkdown(timeline: ClaudeTimeline): string {
 /**
  * Parse Markdown to Timeline
  */
-export function markdownToTimeline(md: string): ClaudeTimeline {
-  const timeline: ClaudeTimeline = {
-    name: "Imported Timeline",
-    duration: 0,
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    tracks: [],
-  };
-
-  const nameMatch = md.match(/# Timeline: (.+)/);
-  if (nameMatch) {
-    timeline.name = nameMatch[1].trim();
+function parseMarkdownSeconds(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error("Missing time value");
   }
 
-  const resMatch = md.match(/Resolution \| (\d+)x(\d+)/);
-  if (resMatch) {
-    timeline.width = parseInt(resMatch[1]);
-    timeline.height = parseInt(resMatch[2]);
+  if (trimmed.endsWith("s")) {
+    const seconds = Number.parseFloat(trimmed.slice(0, -1));
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      throw new Error(`Invalid seconds value: ${value}`);
+    }
+    return seconds;
   }
 
-  const fpsMatch = md.match(/FPS \| (\d+)/);
-  if (fpsMatch) {
-    timeline.fps = parseInt(fpsMatch[1]);
+  if (/^\d+:\d{2}(?::\d{2})?$/.test(trimmed)) {
+    return parseTime(trimmed);
   }
 
-  const durationMatch = md.match(/Duration \| (\d+:\d+:\d+)/);
-  if (durationMatch) {
-    timeline.duration = parseTime(durationMatch[1]);
+  const numeric = Number.parseFloat(trimmed);
+  if (Number.isFinite(numeric) && numeric >= 0) {
+    return numeric;
   }
 
-  // Track/element parsing not implemented - throw to prevent silent data loss
-  if (md.includes("## Track")) {
-    throw new Error(
-      "Markdown track parsing not yet implemented. Use JSON format for full timeline import."
-    );
+  throw new Error(`Invalid time value: ${value}`);
+}
+
+function parseMarkdownRow(line: string): string[] {
+  const normalized = line.trim();
+  if (!normalized.startsWith("|")) {
+    throw new Error(`Invalid markdown row: ${line}`);
   }
 
-  claudeLog.warn(
-    HANDLER_NAME,
-    "Imported markdown contains project metadata only - no tracks parsed"
+  const withoutLeadingPipe = normalized.slice(1);
+  const withoutTrailingPipe = withoutLeadingPipe.endsWith("|")
+    ? withoutLeadingPipe.slice(0, -1)
+    : withoutLeadingPipe;
+  return withoutTrailingPipe.split("|").map((cell) => cell.trim());
+}
+
+function isMarkdownSeparatorRow(cells: string[]): boolean {
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function normalizeElementType(typeValue: string): ClaudeElement["type"] {
+  if (
+    typeValue === "video" ||
+    typeValue === "audio" ||
+    typeValue === "image" ||
+    typeValue === "text" ||
+    typeValue === "sticker" ||
+    typeValue === "captions" ||
+    typeValue === "remotion" ||
+    typeValue === "media"
+  ) {
+    return typeValue;
+  }
+  return "media";
+}
+
+function parseTimelineMetadataFromLine({
+  line,
+  timeline,
+}: {
+  line: string;
+  timeline: ClaudeTimeline;
+}): void {
+  const trimmed = line.trim();
+  const durationTableMatch = trimmed.match(/^\|\s*Duration\s*\|\s*(.+)\s*\|$/i);
+  if (durationTableMatch) {
+    timeline.duration = parseMarkdownSeconds(durationTableMatch[1]);
+    return;
+  }
+
+  const durationBulletMatch = trimmed.match(/^-+\s*Duration:\s*(.+)$/i);
+  if (durationBulletMatch) {
+    timeline.duration = parseMarkdownSeconds(durationBulletMatch[1]);
+    return;
+  }
+
+  const resolutionTableMatch = trimmed.match(
+    /^\|\s*Resolution\s*\|\s*(\d+)\s*[x×]\s*(\d+)\s*\|$/i
   );
+  if (resolutionTableMatch) {
+    timeline.width = Number.parseInt(resolutionTableMatch[1], 10);
+    timeline.height = Number.parseInt(resolutionTableMatch[2], 10);
+    return;
+  }
 
-  return timeline;
+  const resolutionBulletMatch = trimmed.match(
+    /^-+\s*Resolution:\s*(\d+)\s*[x×]\s*(\d+)$/i
+  );
+  if (resolutionBulletMatch) {
+    timeline.width = Number.parseInt(resolutionBulletMatch[1], 10);
+    timeline.height = Number.parseInt(resolutionBulletMatch[2], 10);
+    return;
+  }
+
+  const fpsTableMatch = trimmed.match(/^\|\s*FPS\s*\|\s*(\d+(?:\.\d+)?)\s*\|$/i);
+  if (fpsTableMatch) {
+    timeline.fps = Number.parseFloat(fpsTableMatch[1]);
+    return;
+  }
+
+  const fpsBulletMatch = trimmed.match(/^-+\s*FPS:\s*(\d+(?:\.\d+)?)$/i);
+  if (fpsBulletMatch) {
+    timeline.fps = Number.parseFloat(fpsBulletMatch[1]);
+  }
+}
+
+export function markdownToTimeline(md: string): ClaudeTimeline {
+  try {
+    const timeline: ClaudeTimeline = {
+      name: "Imported Timeline",
+      duration: 0,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      tracks: [],
+    };
+
+    const lines = md.split(/\r?\n/);
+    let currentLine = 0;
+
+    const timelineNameMatch = md.match(/^#\s*Timeline:\s*(.+)$/im);
+    const projectNameMatch = md.match(/^#\s*Project:\s*(.+)$/im);
+    const resolvedName = timelineNameMatch || projectNameMatch;
+    if (resolvedName) {
+      timeline.name = resolvedName[1].trim();
+    }
+
+    for (const line of lines) {
+      parseTimelineMetadataFromLine({ line, timeline });
+    }
+
+    while (currentLine < lines.length) {
+      const headerLine = lines[currentLine].trim();
+      const trackHeaderMatch = headerLine.match(
+        /^##\s*Track\s+(\d+):\s*(.+)$/i
+      );
+      if (!trackHeaderMatch) {
+        currentLine++;
+        continue;
+      }
+
+      const trackIndex = Number.parseInt(trackHeaderMatch[1], 10) - 1;
+      const rawTrackLabel = trackHeaderMatch[2].trim();
+      const trackLabelMatch = rawTrackLabel.match(/^(.*)\(([^)]+)\)\s*$/);
+      const trackName = trackLabelMatch
+        ? trackLabelMatch[1].trim()
+        : rawTrackLabel;
+      let trackType = trackLabelMatch ? trackLabelMatch[2].trim() : "media";
+      const parsedElements: ClaudeElement[] = [];
+      let tableHeaders: string[] | null = null;
+
+      currentLine++;
+
+      while (currentLine < lines.length) {
+        const line = lines[currentLine].trim();
+        if (line.startsWith("## Track")) {
+          break;
+        }
+        if (!line || line === "*No elements in this track*") {
+          currentLine++;
+          continue;
+        }
+        if (!line.startsWith("|")) {
+          currentLine++;
+          continue;
+        }
+
+        const rowCells = parseMarkdownRow(line);
+        if (!tableHeaders) {
+          tableHeaders = rowCells.map((header) => header.toLowerCase());
+          currentLine++;
+          continue;
+        }
+        if (isMarkdownSeparatorRow(rowCells)) {
+          currentLine++;
+          continue;
+        }
+
+        const rowValueByHeader = new Map<string, string>();
+        for (const [headerIndex, header] of tableHeaders.entries()) {
+          rowValueByHeader.set(header, rowCells[headerIndex] || "");
+        }
+
+        const rawType = rowValueByHeader.get("type");
+        const rawStart = rowValueByHeader.get("start");
+        const rawEnd = rowValueByHeader.get("end");
+        const rawDuration = rowValueByHeader.get("duration");
+        const rawSource = rowValueByHeader.get("source");
+        const rawContent = rowValueByHeader.get("content");
+        const rawElementId = rowValueByHeader.get("id");
+
+        if (!rawType || !rawStart) {
+          throw new Error(`Malformed track row on line ${currentLine + 1}`);
+        }
+
+        const startTime = parseMarkdownSeconds(rawStart);
+        const duration =
+          rawDuration && rawDuration !== "-"
+            ? parseMarkdownSeconds(rawDuration)
+            : rawEnd && rawEnd !== "-"
+              ? Math.max(0, parseMarkdownSeconds(rawEnd) - startTime)
+              : 0;
+        const normalizedDuration = Math.max(0, duration);
+        const elementType = normalizeElementType(rawType.trim().toLowerCase());
+        const sourceName =
+          rawSource && rawSource !== "-" ? rawSource.trim() : undefined;
+        const content =
+          rawContent && rawContent !== "-" ? rawContent.trim() : undefined;
+        const generatedElementId = generateId("element");
+        const elementId = rawElementId
+          ? rawElementId.replaceAll("`", "").trim() || generatedElementId
+          : generatedElementId;
+
+        parsedElements.push({
+          id: elementId,
+          trackIndex: trackIndex < 0 ? 0 : trackIndex,
+          startTime,
+          endTime: startTime + normalizedDuration,
+          duration: normalizedDuration,
+          type: elementType,
+          sourceName,
+          content,
+        });
+
+        currentLine++;
+      }
+
+      if (!trackLabelMatch && parsedElements.length > 0) {
+        const firstType = parsedElements[0].type;
+        trackType = firstType === "text" ? "text" : "media";
+      }
+
+      const resolvedTrackIndex = timeline.tracks.length;
+      timeline.tracks.push({
+        id: generateId("track"),
+        index: resolvedTrackIndex,
+        name:
+          trackName && trackName.length > 0
+            ? trackName
+            : `Track ${resolvedTrackIndex + 1}`,
+        type: trackType || "media",
+        elements: parsedElements.map((element) => ({
+          ...element,
+          trackIndex: resolvedTrackIndex,
+        })),
+      });
+    }
+
+    validateTimeline(timeline);
+    return timeline;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown markdown parse error";
+    throw new Error(`Invalid timeline markdown: ${message}`);
+  }
 }
 
 /**

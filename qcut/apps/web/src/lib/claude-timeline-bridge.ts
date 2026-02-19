@@ -1057,6 +1057,281 @@ export function setupClaudeTimelineBridge(): void {
     }
   });
 
+  // Handle batch cuts (request-response: removes multiple time ranges from an element)
+  claudeAPI.onExecuteCuts(
+    (data: {
+      requestId: string;
+      elementId: string;
+      cuts: Array<{ start: number; end: number }>;
+      ripple: boolean;
+    }) => {
+      const emptyResult = {
+        cutsApplied: 0,
+        elementsRemoved: 0,
+        remainingElements: [] as Array<{
+          id: string;
+          startTime: number;
+          duration: number;
+        }>,
+        totalRemovedDuration: 0,
+      };
+
+      try {
+        debugLog(
+          "[ClaudeTimelineBridge] Batch cuts:",
+          data.cuts.length,
+          "on element:",
+          data.elementId
+        );
+        const timelineStore = useTimelineStore.getState();
+        const track = findTrackByElementId(
+          timelineStore.tracks,
+          data.elementId
+        );
+
+        if (!track) {
+          debugWarn(
+            "[ClaudeTimelineBridge] Could not find track for element:",
+            data.elementId
+          );
+          claudeAPI.sendExecuteCutsResponse(data.requestId, emptyResult);
+          return;
+        }
+
+        // Push history ONCE for atomic undo
+        timelineStore.pushHistory();
+
+        // Sort cuts descending by start — process from end to avoid offset drift
+        const sortedCuts = [...data.cuts].sort((a, b) => b.start - a.start);
+
+        let cutsApplied = 0;
+        let elementsRemoved = 0;
+        let totalRemovedDuration = 0;
+
+        for (const cut of sortedCuts) {
+          const currentTracks = useTimelineStore.getState().tracks;
+          const currentTrack = currentTracks.find((t) => t.id === track.id);
+          if (!currentTrack) break;
+
+          // Find element that contains this cut range
+          const targetElement = currentTrack.elements.find((el) => {
+            const elStart = el.startTime;
+            const elEnd =
+              el.startTime + (el.duration - el.trimStart - el.trimEnd);
+            return elStart < cut.end && elEnd > cut.start;
+          });
+
+          if (!targetElement) continue;
+
+          const effStart = targetElement.startTime;
+          const effEnd =
+            targetElement.startTime +
+            (targetElement.duration -
+              targetElement.trimStart -
+              targetElement.trimEnd);
+
+          const clampedStart = Math.max(cut.start, effStart);
+          const clampedEnd = Math.min(cut.end, effEnd);
+          if (clampedStart >= clampedEnd) continue;
+
+          const store = useTimelineStore.getState();
+
+          // Cut covers entire element → remove
+          if (clampedStart <= effStart && clampedEnd >= effEnd) {
+            store.removeElementFromTrack(track.id, targetElement.id, false);
+            elementsRemoved++;
+            totalRemovedDuration += effEnd - effStart;
+            cutsApplied++;
+            continue;
+          }
+
+          // Cut at end → keepLeft
+          if (clampedEnd >= effEnd) {
+            store.splitAndKeepLeft(
+              track.id,
+              targetElement.id,
+              clampedStart,
+              false
+            );
+            totalRemovedDuration += effEnd - clampedStart;
+            cutsApplied++;
+            continue;
+          }
+
+          // Cut at start → keepRight
+          if (clampedStart <= effStart) {
+            store.splitAndKeepRight(
+              track.id,
+              targetElement.id,
+              clampedEnd,
+              false
+            );
+            totalRemovedDuration += clampedEnd - effStart;
+            cutsApplied++;
+            continue;
+          }
+
+          // Cut in middle → split at start, split at end, remove middle
+          const rightId = store.splitElement(
+            track.id,
+            targetElement.id,
+            clampedStart,
+            false
+          );
+          if (rightId) {
+            const tailId = useTimelineStore
+              .getState()
+              .splitElement(track.id, rightId, clampedEnd, false);
+            if (tailId) {
+              useTimelineStore
+                .getState()
+                .removeElementFromTrack(track.id, rightId, false);
+              elementsRemoved++;
+            }
+          }
+          totalRemovedDuration += clampedEnd - clampedStart;
+          cutsApplied++;
+        }
+
+        // Build remaining elements list
+        const finalTracks = useTimelineStore.getState().tracks;
+        const finalTrack = finalTracks.find((t) => t.id === track.id);
+        const remainingElements = (finalTrack?.elements ?? []).map((el) => ({
+          id: el.id,
+          startTime: el.startTime,
+          duration: el.duration - el.trimStart - el.trimEnd,
+        }));
+
+        claudeAPI.sendExecuteCutsResponse(data.requestId, {
+          cutsApplied,
+          elementsRemoved,
+          remainingElements,
+          totalRemovedDuration: Math.round(totalRemovedDuration * 100) / 100,
+        });
+      } catch (error) {
+        debugError(
+          "[ClaudeTimelineBridge] Failed to execute batch cuts:",
+          error
+        );
+        claudeAPI.sendExecuteCutsResponse(data.requestId, emptyResult);
+      }
+    }
+  );
+
+  // Handle range delete (request-response: removes content in a time range)
+  claudeAPI.onDeleteRange(
+    (data: {
+      requestId: string;
+      request: {
+        startTime: number;
+        endTime: number;
+        trackIds?: string[];
+        ripple?: boolean;
+      };
+    }) => {
+      const emptyResult = {
+        deletedElements: 0,
+        splitElements: 0,
+        totalRemovedDuration: 0,
+      };
+
+      try {
+        const { startTime, endTime, trackIds } = data.request;
+        debugLog(
+          "[ClaudeTimelineBridge] Range delete:",
+          startTime,
+          "to",
+          endTime
+        );
+        const timelineStore = useTimelineStore.getState();
+        timelineStore.pushHistory();
+
+        const allTracks = timelineStore.tracks;
+        const targetTracks = trackIds
+          ? allTracks.filter((t) => trackIds.includes(t.id))
+          : allTracks;
+
+        let deletedElements = 0;
+        let splitElements = 0;
+        let totalRemovedDuration = 0;
+
+        for (const track of targetTracks) {
+          const elements = [...track.elements];
+
+          for (const element of elements) {
+            const effStart = element.startTime;
+            const effEnd =
+              element.startTime +
+              (element.duration - element.trimStart - element.trimEnd);
+
+            if (effEnd <= startTime || effStart >= endTime) continue;
+
+            const store = useTimelineStore.getState();
+
+            // Fully contained → delete
+            if (effStart >= startTime && effEnd <= endTime) {
+              store.removeElementFromTrack(track.id, element.id, false);
+              deletedElements++;
+              totalRemovedDuration += effEnd - effStart;
+              continue;
+            }
+
+            // Range inside element → split+split+remove middle
+            if (effStart < startTime && effEnd > endTime) {
+              const rightId = store.splitElement(
+                track.id,
+                element.id,
+                startTime,
+                false
+              );
+              if (rightId) {
+                const tailId = useTimelineStore
+                  .getState()
+                  .splitElement(track.id, rightId, endTime, false);
+                if (tailId) {
+                  useTimelineStore
+                    .getState()
+                    .removeElementFromTrack(track.id, rightId, false);
+                  deletedElements++;
+                  splitElements += 2;
+                }
+              }
+              totalRemovedDuration += endTime - startTime;
+              continue;
+            }
+
+            // Overlaps element end → keep left
+            if (effStart < startTime && effEnd > startTime) {
+              store.splitAndKeepLeft(track.id, element.id, startTime, false);
+              splitElements++;
+              totalRemovedDuration += effEnd - startTime;
+              continue;
+            }
+
+            // Overlaps element start → keep right
+            if (effStart < endTime && effEnd > endTime) {
+              store.splitAndKeepRight(track.id, element.id, endTime, false);
+              splitElements++;
+              totalRemovedDuration += endTime - effStart;
+            }
+          }
+        }
+
+        claudeAPI.sendDeleteRangeResponse(data.requestId, {
+          deletedElements,
+          splitElements,
+          totalRemovedDuration: Math.round(totalRemovedDuration * 100) / 100,
+        });
+      } catch (error) {
+        debugError(
+          "[ClaudeTimelineBridge] Failed to execute range delete:",
+          error
+        );
+        claudeAPI.sendDeleteRangeResponse(data.requestId, emptyResult);
+      }
+    }
+  );
+
   debugLog("[ClaudeTimelineBridge] Bridge setup complete");
 }
 

@@ -6,6 +6,49 @@
 
 ---
 
+## Implementation Status (2026-02-19)
+
+Stage 5 has been implemented.
+
+- Subtask 5.1 (Export Trigger via HTTP): Done
+- Subtask 5.2 (Export Progress Polling): Done
+- Subtask 5.3 (Edit Summary Generation): Done
+- Subtask 5.4 (Pipeline Report Export): Done
+
+### Implemented Endpoints
+
+- `POST /api/claude/export/:projectId/start`
+- `GET /api/claude/export/:projectId/jobs/:jobId`
+- `GET /api/claude/export/:projectId/jobs`
+- `GET /api/claude/project/:projectId/summary`
+- `POST /api/claude/project/:projectId/report`
+
+### Implemented Files
+
+- `electron/claude/claude-export-handler.ts` (job lifecycle + export runner + progress updates)
+- `electron/claude/claude-summary-handler.ts` (project summary + pipeline report generation)
+- `electron/claude/claude-operation-log.ts` (in-memory operation log)
+- `electron/claude/claude-http-server.ts` (new routes + operation logging hooks)
+- `electron/types/claude-api.ts` (new export/summary/report types)
+- `electron/__tests__/claude-export-trigger.test.ts`
+- `electron/__tests__/claude-export-progress.test.ts`
+- `electron/__tests__/claude-summary-handler.test.ts`
+- `electron/__tests__/claude-pipeline-report.test.ts`
+
+### Verification
+
+- `bunx vitest run electron/__tests__/claude-export-trigger.test.ts electron/__tests__/claude-export-progress.test.ts electron/__tests__/claude-summary-handler.test.ts electron/__tests__/claude-pipeline-report.test.ts electron/claude/__tests__/claude-http-server.test.ts`
+- Result: 51 tests passed
+
+### Implementation Notes
+
+- Export jobs run in the main process and are tracked in-memory by job ID.
+- Progress supports HTTP polling (`jobs/:jobId`) and job listing (`jobs`).
+- The pipeline report uses operation logs plus a generated project summary.
+- Operation logging is now recorded for key Stage 1/2/5 HTTP actions.
+
+---
+
 ## Current State
 
 | Capability | Status | File |
@@ -17,7 +60,7 @@
 | Project stats | Ready | `GET /api/claude/project/:id/stats` |
 | Timeline export (JSON/Markdown) | Ready | `GET /api/claude/timeline/:id` |
 
-**What's missing**: No HTTP endpoint to trigger export. No progress polling via HTTP. No edit summary/changelog generation.
+**What was missing (now implemented below)**: HTTP export trigger, export progress polling, edit summary generation, and pipeline report export.
 
 ---
 
