@@ -16,7 +16,6 @@ import type {
   ClaudeBatchDeleteResponse,
   ClaudeBatchUpdateResponse,
   ClaudeArrangeResponse,
-  ClaudeRangeDeleteResponse,
 } from "../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug-config";
 import {
@@ -768,27 +767,6 @@ export function setupClaudeTimelineBridge(): void {
             success: false,
             error: errorMessage,
           })),
-        });
-      }
-    });
-  }
-
-  if (
-    typeof claudeAPI.onDeleteRange === "function" &&
-    typeof claudeAPI.sendDeleteRangeResponse === "function"
-  ) {
-    claudeAPI.onDeleteRange((data) => {
-      try {
-        const result: ClaudeRangeDeleteResponse = useTimelineStore
-          .getState()
-          .deleteTimeRange(data.request);
-        claudeAPI.sendDeleteRangeResponse(data.requestId, result);
-      } catch (error) {
-        debugError("[ClaudeTimelineBridge] Failed to delete range:", error);
-        claudeAPI.sendDeleteRangeResponse(data.requestId, {
-          deletedElements: 0,
-          splitElements: 0,
-          totalRemovedDuration: 0,
         });
       }
     });

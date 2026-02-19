@@ -4,7 +4,8 @@
  * executing all cuts atomically with single-undo support.
  */
 
-import { BrowserWindow, ipcMain, IpcMainEvent } from "electron";
+import { ipcMain } from "electron";
+import type { BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "./utils/helpers.js";
 import { claudeLog } from "./utils/logger.js";
 import { HttpError } from "./utils/http-router.js";

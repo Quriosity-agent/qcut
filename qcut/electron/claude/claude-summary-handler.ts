@@ -348,7 +348,10 @@ export async function generatePipelineReport({
     await fs.mkdir(resolvedOutputDir, { recursive: true });
 
     const datePart = new Date().toISOString().slice(0, 10);
-    const fileName = `pipeline-report-${projectId}-${datePart}.md`;
+    const safeProjectId = /^[A-Za-z0-9_-]+$/.test(projectId)
+      ? projectId
+      : "unknown-project";
+    const fileName = `pipeline-report-${safeProjectId}-${datePart}.md`;
     const fullPath = path.join(resolvedOutputDir, fileName);
 
     await fs.writeFile(fullPath, markdown, "utf8");

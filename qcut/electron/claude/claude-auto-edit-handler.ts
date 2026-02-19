@@ -4,7 +4,7 @@
  * to automatically remove filler words and silences from a video element.
  */
 
-import { BrowserWindow } from "electron";
+import type { BrowserWindow } from "electron";
 import { claudeLog } from "./utils/logger.js";
 import { sanitizeProjectId } from "./utils/helpers.js";
 import { HttpError } from "./utils/http-router.js";
@@ -89,6 +89,7 @@ export async function autoEdit(
         const el = track.elements.find((e) => e.id === request.elementId);
         if (el) {
           elementStartTime = el.startTime;
+          elementTrimStart = el.trimStart ?? 0;
           break;
         }
       }
@@ -97,121 +98,131 @@ export async function autoEdit(
     }
   }
 
-  // Step 2: Transcribe
-  const transcription = await transcribeMedia(safeProjectId, {
-    mediaId: request.mediaId,
-    provider: request.provider,
-    language: request.language,
-  });
-
-  claudeLog.info(
-    HANDLER_NAME,
-    `Transcribed: ${transcription.words.length} words, ${transcription.duration}s`
-  );
-
-  // Step 3: Analyze fillers
-  const fillerInput = transcription.words.map((w, i) => ({
-    id: `w_${i}`,
-    text: w.text,
-    start: w.start,
-    end: w.end,
-    type: w.type === "word" ? ("word" as const) : ("spacing" as const),
-    speaker_id: w.speaker ?? undefined,
-  }));
-
-  const analysis = await analyzeFillers(safeProjectId, {
-    mediaId: request.mediaId,
-    words: fillerInput,
-  });
-
-  claudeLog.info(
-    HANDLER_NAME,
-    `Analysis: ${analysis.fillers.length} fillers, ${analysis.silences.length} silences`
-  );
-
-  // Step 4: Build cut list from fillers and silences
-  const cuts: AutoEditCutInfo[] = [];
-
-  if (removeFillers) {
-    for (const filler of analysis.fillers) {
-      cuts.push({
-        start: filler.start + elementStartTime + elementTrimStart,
-        end: filler.end + elementStartTime + elementTrimStart,
-        reason: `filler: ${filler.word}`,
-      });
-    }
-  }
-
-  if (removeSilences) {
-    for (const silence of analysis.silences) {
-      if (silence.duration < silenceThreshold) continue;
-
-      // Keep padding on both sides of silence
-      const paddedStart = silence.start + keepSilencePadding;
-      const paddedEnd = silence.end - keepSilencePadding;
-
-      if (paddedStart < paddedEnd) {
-        cuts.push({
-          start:
-            paddedStart + elementStartTime + elementTrimStart,
-          end: paddedEnd + elementStartTime + elementTrimStart,
-          reason: `silence: ${silence.duration.toFixed(1)}s`,
-        });
-      }
-    }
-  }
-
-  // Merge overlapping cuts
-  const mergedCuts = mergeCutIntervals(cuts);
-
-  const totalCutDuration = mergedCuts.reduce(
-    (sum, c) => sum + (c.end - c.start),
-    0
-  );
-
-  claudeLog.info(
-    HANDLER_NAME,
-    `Built ${mergedCuts.length} cuts (${totalCutDuration.toFixed(1)}s total)`
-  );
-
-  // Step 5: Optionally execute
-  let applied = false;
-  let result: BatchCutResponse | undefined;
-
-  if (!dryRun && mergedCuts.length > 0 && win) {
-    const cutIntervals: CutInterval[] = mergedCuts.map((c) => ({
-      start: c.start,
-      end: c.end,
-    }));
-
-    result = await executeBatchCuts(win, {
-      elementId: request.elementId,
-      cuts: cutIntervals,
-      ripple: true,
+  try {
+    // Step 2: Transcribe
+    const transcription = await transcribeMedia(safeProjectId, {
+      mediaId: request.mediaId,
+      provider: request.provider,
+      language: request.language,
     });
-    applied = true;
 
     claudeLog.info(
       HANDLER_NAME,
-      `Applied ${result.cutsApplied} cuts, removed ${result.totalRemovedDuration}s`
+      `Transcribed: ${transcription.words.length} words, ${transcription.duration}s`
     );
-  }
 
-  return {
-    transcription: {
-      wordCount: transcription.words.length,
-      duration: transcription.duration,
-    },
-    analysis: {
-      fillerCount: analysis.fillers.length,
-      silenceCount: analysis.silences.length,
-      totalFillerTime: analysis.totalFillerTime,
-      totalSilenceTime: analysis.totalSilenceTime,
-    },
-    cuts: mergedCuts,
-    applied,
-    result,
-  };
+    // Step 3: Analyze fillers
+    const fillerInput = transcription.words.map((w, i) => ({
+      id: `w_${i}`,
+      text: w.text,
+      start: w.start,
+      end: w.end,
+      type: w.type === "word" ? ("word" as const) : ("spacing" as const),
+      speaker_id: w.speaker ?? undefined,
+    }));
+
+    const analysis = await analyzeFillers(safeProjectId, {
+      mediaId: request.mediaId,
+      words: fillerInput,
+    });
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Analysis: ${analysis.fillers.length} fillers, ${analysis.silences.length} silences`
+    );
+
+    // Step 4: Build cut list from fillers and silences
+    const cuts: AutoEditCutInfo[] = [];
+
+    if (removeFillers) {
+      for (const filler of analysis.fillers) {
+        cuts.push({
+          start: filler.start + elementStartTime + elementTrimStart,
+          end: filler.end + elementStartTime + elementTrimStart,
+          reason: `filler: ${filler.word}`,
+        });
+      }
+    }
+
+    if (removeSilences) {
+      for (const silence of analysis.silences) {
+        if (silence.duration < silenceThreshold) continue;
+
+        // Keep padding on both sides of silence
+        const paddedStart = silence.start + keepSilencePadding;
+        const paddedEnd = silence.end - keepSilencePadding;
+
+        if (paddedStart < paddedEnd) {
+          cuts.push({
+            start:
+              paddedStart + elementStartTime + elementTrimStart,
+            end: paddedEnd + elementStartTime + elementTrimStart,
+            reason: `silence: ${silence.duration.toFixed(1)}s`,
+          });
+        }
+      }
+    }
+
+    // Merge overlapping cuts
+    const mergedCuts = mergeCutIntervals(cuts);
+
+    const totalCutDuration = mergedCuts.reduce(
+      (sum, c) => sum + (c.end - c.start),
+      0
+    );
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Built ${mergedCuts.length} cuts (${totalCutDuration.toFixed(1)}s total)`
+    );
+
+    // Step 5: Optionally execute
+    let applied = false;
+    let result: BatchCutResponse | undefined;
+
+    if (!dryRun && mergedCuts.length > 0 && win) {
+      const cutIntervals: CutInterval[] = mergedCuts.map((c) => ({
+        start: c.start,
+        end: c.end,
+      }));
+
+      result = await executeBatchCuts(win, {
+        elementId: request.elementId,
+        cuts: cutIntervals,
+        ripple: true,
+      });
+      applied = true;
+
+      claudeLog.info(
+        HANDLER_NAME,
+        `Applied ${result.cutsApplied} cuts, removed ${result.totalRemovedDuration}s`
+      );
+    }
+
+    return {
+      transcription: {
+        wordCount: transcription.words.length,
+        duration: transcription.duration,
+      },
+      analysis: {
+        fillerCount: analysis.fillers.length,
+        silenceCount: analysis.silences.length,
+        totalFillerTime: analysis.totalFillerTime,
+        totalSilenceTime: analysis.totalSilenceTime,
+      },
+      cuts: mergedCuts,
+      applied,
+      result,
+    };
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown auto-edit error";
+    claudeLog.error(HANDLER_NAME, `Auto-edit pipeline failed: ${errorMessage}`);
+    throw new HttpError(500, "Auto-edit pipeline failed");
+  }
 }
 
 // CommonJS export for compatibility

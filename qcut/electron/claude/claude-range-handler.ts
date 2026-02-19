@@ -3,7 +3,8 @@
  * Deletes all content within a time range across all tracks (or specified tracks).
  */
 
-import { BrowserWindow, ipcMain, IpcMainEvent } from "electron";
+import { ipcMain } from "electron";
+import type { BrowserWindow, IpcMainEvent } from "electron";
 import { generateId } from "./utils/helpers.js";
 import { claudeLog } from "./utils/logger.js";
 import { HttpError } from "./utils/http-router.js";
@@ -37,6 +38,12 @@ export function validateRangeDeleteRequest(
     );
   }
   if (request.trackIds && !Array.isArray(request.trackIds)) {
+    throw new HttpError(400, "trackIds must be an array of strings");
+  }
+  if (
+    request.trackIds &&
+    request.trackIds.some((trackId) => typeof trackId !== "string")
+  ) {
     throw new HttpError(400, "trackIds must be an array of strings");
   }
 }

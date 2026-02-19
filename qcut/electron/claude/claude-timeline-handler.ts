@@ -340,7 +340,17 @@ export function markdownToTimeline(md: string): ClaudeTimeline {
 
       if (!trackLabelMatch && parsedElements.length > 0) {
         const firstType = parsedElements[0].type;
-        trackType = firstType === "text" ? "text" : "media";
+        if (
+          firstType === "text" ||
+          firstType === "captions" ||
+          firstType === "sticker" ||
+          firstType === "remotion" ||
+          firstType === "audio"
+        ) {
+          trackType = firstType;
+        } else {
+          trackType = "media";
+        }
       }
 
       const resolvedTrackIndex = timeline.tracks.length;

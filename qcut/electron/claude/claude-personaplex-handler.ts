@@ -44,36 +44,47 @@ export async function generatePersonaPlex(
 
   claudeLog.info(HANDLER_NAME, "PersonaPlex generate request");
 
-  const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
-    signal: AbortSignal.timeout(25_000),
-    method: "POST",
-    headers: {
-      Authorization: `Key ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!falResponse.ok) {
-    const errorText = await falResponse.text();
-    claudeLog.error(
-      HANDLER_NAME,
-      `PersonaPlex API error: ${falResponse.status} ${errorText}`
-    );
-    throw new HttpError(
-      falResponse.status,
-      `PersonaPlex API error: ${errorText}`
-    );
-  }
-
-  let result: unknown;
   try {
-    result = await falResponse.json();
-  } catch {
-    throw new HttpError(502, "PersonaPlex API returned invalid JSON");
+    const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
+      signal: AbortSignal.timeout(25_000),
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!falResponse.ok) {
+      const errorText = await falResponse.text();
+      claudeLog.error(
+        HANDLER_NAME,
+        `PersonaPlex API error: ${falResponse.status} ${errorText}`
+      );
+      throw new HttpError(
+        falResponse.status,
+        `PersonaPlex API error: ${errorText}`
+      );
+    }
+
+    let result: unknown;
+    try {
+      result = await falResponse.json();
+    } catch {
+      throw new HttpError(502, "PersonaPlex API returned invalid JSON");
+    }
+
+    claudeLog.info(HANDLER_NAME, "PersonaPlex generate complete");
+    return result;
+  } catch (error) {
+    if (error instanceof HttpError) {
+      throw error;
+    }
+    const errorMessage =
+      error instanceof Error ? error.message : "PersonaPlex request failed";
+    claudeLog.error(HANDLER_NAME, `PersonaPlex request failed: ${errorMessage}`);
+    throw new HttpError(502, `PersonaPlex request failed: ${errorMessage}`);
   }
-  claudeLog.info(HANDLER_NAME, "PersonaPlex generate complete");
-  return result;
 }
 
 // CommonJS export for compatibility

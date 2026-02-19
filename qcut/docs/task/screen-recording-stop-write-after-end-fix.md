@@ -40,3 +40,25 @@
 
 ## Outcome
 - The `write after end` failure is resolved for the repro E2E path.
+
+## Follow-up: MP4 Default Output
+- User request: make recordings open in QuickTime by default.
+- Implemented in `electron/screen-recording-handler.ts`:
+  - Default output file extension is now `.mp4`.
+  - Capture still streams into temporary `.webm` chunks.
+  - On stop, capture is transcoded to H.264 MP4 via bundled FFmpeg.
+  - If MP4 transcode fails, output falls back to `.webm` to avoid data loss.
+- Updated E2E expectation in `apps/web/src/test/e2e/screen-recording-repro.e2e.ts`:
+  - default `startResult.filePath` now expects `.mp4`.
+
+## Follow-up Validation
+1. Rebuilt app:
+   - `bun run build`
+2. Re-ran repro test:
+   - `PLAYWRIGHT_HTML_OPEN=never bun run test:e2e -- apps/web/src/test/e2e/screen-recording-repro.e2e.ts --reporter=line`
+3. Result:
+   - `1 passed (5.7s)`
+4. Verified output artifact:
+   - `~/Movies/QCut Recordings/qcut-screen-recording-20260219-174332.mp4`
+   - container: `mov,mp4,...`
+   - codec: `h264`

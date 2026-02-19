@@ -60,31 +60,31 @@ Use this to validate Stage 5 against a real running QCut app.
 Optional fully-API setup (if timeline is empty):
 
 1. Set env vars in your shell:
-   - `export PROJECT_ID=\"<your_project_id>\"`
-   - `export API=\"http://127.0.0.1:8765/api/claude\"`
+   - `export PROJECT_ID="<your_project_id>"`
+   - `export API="http://127.0.0.1:8765/api/claude"`
 2. Import media:
-   - `curl -s -X POST \"$API/media/$PROJECT_ID/import\" -H 'Content-Type: application/json' -d '{\"source\":\"/absolute/path/to/video.mp4\"}'`
+   - `curl -s -X POST "$API/media/$PROJECT_ID/import" -H 'Content-Type: application/json' -d '{"source":"/absolute/path/to/video.mp4"}'`
 3. Add timeline element from returned media:
-   - `curl -s -X POST \"$API/timeline/$PROJECT_ID/elements\" -H 'Content-Type: application/json' -d '{\"type\":\"media\",\"sourceId\":\"<media_id>\",\"startTime\":0,\"duration\":5}'`
+   - `curl -s -X POST "$API/timeline/$PROJECT_ID/elements" -H 'Content-Type: application/json' -d '{"type":"media","sourceId":"<media_id>","startTime":0,"duration":5}'`
 
 Run Stage 5 export test:
 
 1. Start export:
-   - `curl -s -X POST \"$API/export/$PROJECT_ID/start\" -H 'Content-Type: application/json' -d '{\"preset\":\"youtube-1080p\"}'`
+   - `curl -s -X POST "$API/export/$PROJECT_ID/start" -H 'Content-Type: application/json' -d '{"preset":"youtube-1080p"}'`
 2. Capture returned `jobId`.
 3. Poll progress:
-   - `curl -s \"$API/export/$PROJECT_ID/jobs/<jobId>\"`
+   - `curl -s "$API/export/$PROJECT_ID/jobs/<jobId>"`
 4. Repeat polling until `status` is `completed` or `failed`.
 5. Verify output file exists at returned `outputPath` when completed.
 6. List recent jobs:
-   - `curl -s \"$API/export/$PROJECT_ID/jobs\"`
+   - `curl -s "$API/export/$PROJECT_ID/jobs"`
 
 Run Stage 5 summary/report test:
 
 1. Get summary:
-   - `curl -s \"$API/project/$PROJECT_ID/summary\"`
+   - `curl -s "$API/project/$PROJECT_ID/summary"`
 2. Generate report (save to disk):
-   - `curl -s -X POST \"$API/project/$PROJECT_ID/report\" -H 'Content-Type: application/json' -d '{\"saveToDisk\":true,\"outputDir\":\"docs/task\"}'`
+   - `curl -s -X POST "$API/project/$PROJECT_ID/report" -H 'Content-Type: application/json' -d '{"saveToDisk":true,"outputDir":"docs/task"}'`
 3. Verify response includes `savedTo` and markdown content.
 4. Open saved file and confirm it contains Stage 1-5 sections.
 
@@ -98,7 +98,7 @@ Expected pass criteria:
 
 If API auth is enabled (`QCUT_API_TOKEN`), add:
 
-- `-H \"Authorization: Bearer <token>\"` to all `curl` commands.
+- `-H "Authorization: Bearer <token>"` to all `curl` commands.
 
 ---
 
@@ -113,7 +113,7 @@ If API auth is enabled (`QCUT_API_TOKEN`), add:
 | Project stats | Ready | `GET /api/claude/project/:id/stats` |
 | Timeline export (JSON/Markdown) | Ready | `GET /api/claude/timeline/:id` |
 
-**What was missing (now implemented below)**: HTTP export trigger, export progress polling, edit summary generation, and pipeline report export.
+**What was missing (now implemented above)**: HTTP export trigger, export progress polling, edit summary generation, and pipeline report export.
 
 ---
 

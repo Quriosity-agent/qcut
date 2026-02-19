@@ -220,6 +220,3 @@ export async function suggestCuts(
     }),
   };
 }
-
-// CommonJS export for compatibility
-module.exports = { suggestCuts };

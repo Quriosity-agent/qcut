@@ -426,7 +426,8 @@ curl -X POST http://127.0.0.1:8765/api/claude/timeline/{projectId}/cuts \
 - `cutsApplied` matches the number of cuts sent
 - `remainingElements` lists the surviving pieces with correct `startTime` and `duration`
 - **Ctrl+Z undoes all cuts at once** (single history snapshot)
-- Try with overlapping or adjacent cuts — should be rejected with a 400 error
+- Try with overlapping cuts — should be rejected with a 400 error
+- Adjacent cuts (`end === next.start`) are allowed
 
 ### 4. Range Delete (modifies timeline — use Ctrl+Z to undo)
 
