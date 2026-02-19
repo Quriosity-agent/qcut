@@ -1,13 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.2/schema.json",
-  "extends": ["ultracite/react"],
-
-  "formatter": {
-    "enabled": true,
-    "lineEnding": "crlf",
-    "indentStyle": "space",
-    "indentWidth": 2
-  },
+  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+  "extends": ["ultracite"],
 
   "overrides": [
     {
@@ -65,16 +58,14 @@
         "useFocusableInteractive": "off",
         "useKeyWithClickEvents": "off",
         "useMediaCaption": "off",
-        "useSemanticElements": "off",
-        "noNoninteractiveElementInteractions": "off"
+        "useSemanticElements": "off"
       },
       "complexity": {
         "noExcessiveCognitiveComplexity": "off",
         "noForEach": "off",
         "noUselessFragments": "off",
         "useOptionalChain": "off",
-        "useSimplifiedLogicExpression": "off",
-        "noUselessUndefined": "error"
+        "useSimplifiedLogicExpression": "off"
       },
       "correctness": {
         "noUnusedFunctionParameters": "off",
@@ -82,12 +73,18 @@
         "noUnusedVariables": "off",
         "useExhaustiveDependencies": "warn",
         "useHookAtTopLevel": "error",
-        "useJsxKeyInIterable": "off",
-        "noNestedComponentDefinitions": "off",
-        "useParseIntRadix": "off"
+        "useJsxKeyInIterable": "off"
       },
       "nursery": {
+        "noAwaitInLoop": "off",
+        "noBitwiseOperators": "off",
+        "noNestedComponentDefinitions": "off",
+        "noNoninteractiveElementInteractions": "off",
         "noShadow": "off",
+        "noUnknownAtRule": "off",
+        "noUselessUndefined": "error",
+        "useIterableCallbackReturn": "off",
+        "useParseIntRadix": "off",
         "useSortedClasses": "off"
       },
       "performance": {
@@ -130,10 +127,7 @@
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
         "noMisplacedAssertion": "off",
-        "useAwait": "off",
-        "noBitwiseOperators": "off",
-        "noUnknownAtRules": "off",
-        "useIterableCallbackReturn": "off"
+        "useAwait": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
