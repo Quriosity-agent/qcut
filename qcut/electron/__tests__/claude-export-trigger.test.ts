@@ -26,9 +26,10 @@ const { mockSpawn, mockGetFFmpegPath, mockParseProgress, mockFsPromises } =
 
 let spawnMode: "success" | "hang" = "success";
 
-vi.mock("node:child_process", () => ({
-  spawn: (...args: unknown[]) => mockSpawn(...args),
-}));
+vi.mock("node:child_process", () => {
+  const mod = { spawn: (...args: unknown[]) => mockSpawn(...args) };
+  return { ...mod, default: mod };
+});
 
 vi.mock("node:fs/promises", () => ({
   default: mockFsPromises,
