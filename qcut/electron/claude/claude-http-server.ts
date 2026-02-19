@@ -70,6 +70,9 @@ import {
   listGenerateModels,
   estimateGenerateCost,
 } from "./claude-generate-handler.js";
+import { executeBatchCuts } from "./claude-cuts-handler.js";
+import { executeDeleteRange } from "./claude-range-handler.js";
+import { generatePersonaPlex } from "./claude-personaplex-handler.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
@@ -778,71 +781,66 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
+  // Batch Cut-List routes (Stage 3)
+  // ==========================================================================
+  router.post("/api/claude/timeline/:projectId/cuts", async (req) => {
+    if (!req.body?.elementId || !Array.isArray(req.body?.cuts)) {
+      throw new HttpError(
+        400,
+        "Missing 'elementId' and 'cuts' array in request body"
+      );
+    }
+    const win = getWindow();
+    return Promise.race([
+      executeBatchCuts(win, {
+        elementId: req.body.elementId,
+        cuts: req.body.cuts,
+        ripple: req.body.ripple,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new HttpError(504, "Renderer timed out")),
+          30_000
+        )
+      ),
+    ]);
+  });
+
+  // ==========================================================================
+  // Range Delete routes (Stage 3)
+  // ==========================================================================
+  router.delete("/api/claude/timeline/:projectId/range", async (req) => {
+    if (
+      typeof req.body?.startTime !== "number" ||
+      typeof req.body?.endTime !== "number"
+    ) {
+      throw new HttpError(
+        400,
+        "Missing 'startTime' and 'endTime' in request body"
+      );
+    }
+    const win = getWindow();
+    return Promise.race([
+      executeDeleteRange(win, {
+        startTime: req.body.startTime,
+        endTime: req.body.endTime,
+        trackIds: req.body.trackIds,
+        ripple: req.body.ripple,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new HttpError(504, "Renderer timed out")),
+          30_000
+        )
+      ),
+    ]);
+  });
+
+  // ==========================================================================
   // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
   // ==========================================================================
   router.post("/api/claude/personaplex/generate", async (req) => {
-    if (!req.body?.audio_url) {
-      throw new HttpError(400, "Missing 'audio_url' in request body");
-    }
-
-    const keys = await getDecryptedApiKeys();
-    const apiKey = keys.falApiKey;
-    if (!apiKey) {
-      throw new HttpError(
-        400,
-        "FAL API key not configured. Go to Settings → API Keys to set it."
-      );
-    }
-
-    const requestBody: Record<string, unknown> = {
-      audio_url: req.body.audio_url,
-    };
-    if (req.body.prompt) requestBody.prompt = req.body.prompt;
-    if (req.body.voice) requestBody.voice = req.body.voice;
-    if (req.body.temperature_audio != null)
-      requestBody.temperature_audio = req.body.temperature_audio;
-    if (req.body.temperature_text != null)
-      requestBody.temperature_text = req.body.temperature_text;
-    if (req.body.top_k_audio != null)
-      requestBody.top_k_audio = req.body.top_k_audio;
-    if (req.body.top_k_text != null)
-      requestBody.top_k_text = req.body.top_k_text;
-    if (req.body.seed != null) requestBody.seed = req.body.seed;
-    if (req.body.output_format)
-      requestBody.output_format = req.body.output_format;
-
-    claudeLog.info("HTTP", "PersonaPlex generate request");
-
-    const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
-      signal: AbortSignal.timeout(25_000),
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!falResponse.ok) {
-      const errorText = await falResponse.text();
-      claudeLog.error(
-        "HTTP",
-        `PersonaPlex API error: ${falResponse.status} ${errorText}`
-      );
-      throw new HttpError(
-        falResponse.status,
-        `PersonaPlex API error: ${errorText}`
-      );
-    }
-
-    let result: unknown;
-    try {
-      result = await falResponse.json();
-    } catch {
-      throw new HttpError(502, "PersonaPlex API returned invalid JSON");
-    }
-    claudeLog.info("HTTP", "PersonaPlex generate complete");
-    return result;
+    return generatePersonaPlex(req.body);
   });
 
   // ==========================================================================

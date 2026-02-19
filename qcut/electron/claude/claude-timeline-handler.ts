@@ -475,6 +475,339 @@ export async function requestSelectionFromRenderer(
   });
 }
 
+async function requestRendererResult<T>({
+  win,
+  requestChannel,
+  responseChannel,
+  payload,
+  timeoutErrorMessage,
+}: {
+  win: BrowserWindow;
+  requestChannel: string;
+  responseChannel: string;
+  payload: Record<string, unknown>;
+  timeoutErrorMessage: string;
+}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+    const requestId = generateId("req");
+
+    const timeout = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      ipcMain.removeListener(responseChannel, responseHandler);
+      reject(new Error(timeoutErrorMessage));
+    }, TIMELINE_REQUEST_TIMEOUT_MS);
+
+    const responseHandler = (
+      _event: IpcMainEvent,
+      data: { requestId: string; result: T }
+    ) => {
+      if (resolved || data.requestId !== requestId) {
+        return;
+      }
+      resolved = true;
+      clearTimeout(timeout);
+      ipcMain.removeListener(responseChannel, responseHandler);
+      resolve(data.result);
+    };
+
+    ipcMain.on(responseChannel, responseHandler);
+    win.webContents.send(requestChannel, {
+      requestId,
+      ...payload,
+    });
+  });
+}
+
+function normalizeBatchTrackElementType({
+  type,
+}: {
+  type: ClaudeBatchAddElementRequest["type"];
+}): "media" | "text" | "sticker" | "captions" | "remotion" {
+  if (type === "video" || type === "audio" || type === "image") {
+    return "media";
+  }
+  if (
+    type === "media" ||
+    type === "text" ||
+    type === "sticker" ||
+    type === "captions" ||
+    type === "remotion"
+  ) {
+    return type;
+  }
+  return "media";
+}
+
+function isTrackCompatibleWithElementType({
+  trackType,
+  elementType,
+}: {
+  trackType: string;
+  elementType: ClaudeBatchAddElementRequest["type"];
+}): boolean {
+  const normalizedElementType = normalizeBatchTrackElementType({
+    type: elementType,
+  });
+
+  if (normalizedElementType === "text") return trackType === "text";
+  if (normalizedElementType === "sticker") return trackType === "sticker";
+  if (normalizedElementType === "captions") return trackType === "captions";
+  if (normalizedElementType === "remotion") return trackType === "remotion";
+  return trackType === "media" || trackType === "audio";
+}
+
+export async function requestBatchAddElementsFromRenderer(
+  win: BrowserWindow,
+  elements: ClaudeBatchAddElementRequest[]
+): Promise<ClaudeBatchAddResponse> {
+  return requestRendererResult<ClaudeBatchAddResponse>({
+    win,
+    requestChannel: "claude:timeline:batchAddElements",
+    responseChannel: "claude:timeline:batchAddElements:response",
+    payload: { elements },
+    timeoutErrorMessage: "Timeout waiting for batch add result",
+  });
+}
+
+export async function requestBatchUpdateElementsFromRenderer(
+  win: BrowserWindow,
+  updates: ClaudeBatchUpdateItemRequest[]
+): Promise<ClaudeBatchUpdateResponse> {
+  return requestRendererResult<ClaudeBatchUpdateResponse>({
+    win,
+    requestChannel: "claude:timeline:batchUpdateElements",
+    responseChannel: "claude:timeline:batchUpdateElements:response",
+    payload: { updates },
+    timeoutErrorMessage: "Timeout waiting for batch update result",
+  });
+}
+
+export async function requestBatchDeleteElementsFromRenderer(
+  win: BrowserWindow,
+  elements: ClaudeBatchDeleteItemRequest[],
+  ripple = false
+): Promise<ClaudeBatchDeleteResponse> {
+  return requestRendererResult<ClaudeBatchDeleteResponse>({
+    win,
+    requestChannel: "claude:timeline:batchDeleteElements",
+    responseChannel: "claude:timeline:batchDeleteElements:response",
+    payload: { elements, ripple },
+    timeoutErrorMessage: "Timeout waiting for batch delete result",
+  });
+}
+
+export async function requestDeleteRangeFromRenderer(
+  win: BrowserWindow,
+  request: ClaudeRangeDeleteRequest
+): Promise<ClaudeRangeDeleteResponse> {
+  return requestRendererResult<ClaudeRangeDeleteResponse>({
+    win,
+    requestChannel: "claude:timeline:deleteRange",
+    responseChannel: "claude:timeline:deleteRange:response",
+    payload: { request },
+    timeoutErrorMessage: "Timeout waiting for range delete result",
+  });
+}
+
+export async function requestArrangeFromRenderer(
+  win: BrowserWindow,
+  request: ClaudeArrangeRequest
+): Promise<ClaudeArrangeResponse> {
+  return requestRendererResult<ClaudeArrangeResponse>({
+    win,
+    requestChannel: "claude:timeline:arrange",
+    responseChannel: "claude:timeline:arrange:response",
+    payload: { request },
+    timeoutErrorMessage: "Timeout waiting for arrange result",
+  });
+}
+
+export async function batchAddElements(
+  win: BrowserWindow,
+  _projectId: string,
+  elements: ClaudeBatchAddElementRequest[]
+): Promise<ClaudeBatchAddResponse> {
+  try {
+    if (!Array.isArray(elements)) {
+      throw new Error("elements must be an array");
+    }
+    if (elements.length > MAX_TIMELINE_BATCH_ITEMS) {
+      throw new Error(
+        `Batch add limited to ${MAX_TIMELINE_BATCH_ITEMS} elements`
+      );
+    }
+    if (elements.length === 0) {
+      return { added: [], failedCount: 0 };
+    }
+
+    for (const element of elements) {
+      if (!element.trackId || typeof element.trackId !== "string") {
+        throw new Error("Each element must include a valid trackId");
+      }
+      if (
+        typeof element.startTime !== "number" ||
+        Number.isNaN(element.startTime) ||
+        element.startTime < 0
+      ) {
+        throw new Error("Each element must include a non-negative startTime");
+      }
+      if (
+        typeof element.duration !== "number" ||
+        Number.isNaN(element.duration) ||
+        element.duration <= 0
+      ) {
+        throw new Error("Each element must include a duration > 0");
+      }
+    }
+
+    const timeline = await requestTimelineFromRenderer(win);
+    const trackById = new Map<string, string>();
+    for (const track of timeline.tracks) {
+      if (track.id) {
+        trackById.set(track.id, track.type);
+      }
+    }
+
+    if (trackById.size > 0) {
+      for (const element of elements) {
+        const trackType = trackById.get(element.trackId);
+        if (!trackType) {
+          throw new Error(`Track not found: ${element.trackId}`);
+        }
+        if (
+          !isTrackCompatibleWithElementType({
+            trackType,
+            elementType: element.type,
+          })
+        ) {
+          throw new Error(
+            `Element type '${element.type}' is not compatible with track '${element.trackId}' (${trackType})`
+          );
+        }
+      }
+    }
+
+    return requestBatchAddElementsFromRenderer(win, elements);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to batch add elements"
+    );
+  }
+}
+
+export async function batchUpdateElements(
+  win: BrowserWindow,
+  updates: ClaudeBatchUpdateItemRequest[]
+): Promise<ClaudeBatchUpdateResponse> {
+  try {
+    if (!Array.isArray(updates)) {
+      throw new Error("updates must be an array");
+    }
+    if (updates.length > MAX_TIMELINE_BATCH_ITEMS) {
+      throw new Error(
+        `Batch update limited to ${MAX_TIMELINE_BATCH_ITEMS} updates`
+      );
+    }
+    for (const update of updates) {
+      if (!update.elementId || typeof update.elementId !== "string") {
+        throw new Error("Each update must include a valid elementId");
+      }
+    }
+    return requestBatchUpdateElementsFromRenderer(win, updates);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to batch update elements"
+    );
+  }
+}
+
+export async function batchDeleteElements(
+  win: BrowserWindow,
+  elements: ClaudeBatchDeleteItemRequest[],
+  ripple = false
+): Promise<ClaudeBatchDeleteResponse> {
+  try {
+    if (!Array.isArray(elements)) {
+      throw new Error("elements must be an array");
+    }
+    if (elements.length > MAX_TIMELINE_BATCH_ITEMS) {
+      throw new Error(
+        `Batch delete limited to ${MAX_TIMELINE_BATCH_ITEMS} elements`
+      );
+    }
+    for (const element of elements) {
+      if (!element.trackId || typeof element.trackId !== "string") {
+        throw new Error("Each delete item must include a valid trackId");
+      }
+      if (!element.elementId || typeof element.elementId !== "string") {
+        throw new Error("Each delete item must include a valid elementId");
+      }
+    }
+    return requestBatchDeleteElementsFromRenderer(win, elements, ripple);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to batch delete elements"
+    );
+  }
+}
+
+export async function deleteTimelineRange(
+  win: BrowserWindow,
+  request: ClaudeRangeDeleteRequest
+): Promise<ClaudeRangeDeleteResponse> {
+  try {
+    if (
+      typeof request.startTime !== "number" ||
+      typeof request.endTime !== "number"
+    ) {
+      throw new Error("startTime and endTime must be numbers");
+    }
+    if (request.endTime <= request.startTime) {
+      throw new Error("endTime must be greater than startTime");
+    }
+    return requestDeleteRangeFromRenderer(win, request);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to delete time range"
+    );
+  }
+}
+
+export async function arrangeTimeline(
+  win: BrowserWindow,
+  request: ClaudeArrangeRequest
+): Promise<ClaudeArrangeResponse> {
+  try {
+    if (!request.trackId || typeof request.trackId !== "string") {
+      throw new Error("trackId is required");
+    }
+    if (
+      request.mode !== "sequential" &&
+      request.mode !== "spaced" &&
+      request.mode !== "manual"
+    ) {
+      throw new Error("mode must be one of: sequential, spaced, manual");
+    }
+    if (request.gap !== undefined && request.gap < 0) {
+      throw new Error("gap must be >= 0");
+    }
+    if (request.startOffset !== undefined && request.startOffset < 0) {
+      throw new Error("startOffset must be >= 0");
+    }
+    return requestArrangeFromRenderer(win, request);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to arrange timeline"
+    );
+  }
+}
+
 /** Register all Claude timeline IPC handlers for export, import, and element manipulation. */
 export function setupClaudeTimelineIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Timeline IPC handlers...");
@@ -556,6 +889,25 @@ export function setupClaudeTimelineIPC(): void {
   );
 
   ipcMain.handle(
+    "claude:timeline:batchAddElements",
+    async (
+      event: IpcMainInvokeEvent,
+      projectId: string,
+      elements: ClaudeBatchAddElementRequest[]
+    ): Promise<ClaudeBatchAddResponse> => {
+      claudeLog.info(
+        HANDLER_NAME,
+        `Batch adding ${elements.length} element(s) to project: ${projectId}`
+      );
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        throw new Error("Window not found");
+      }
+      return batchAddElements(win, projectId, elements);
+    }
+  );
+
+  ipcMain.handle(
     "claude:timeline:updateElement",
     async (
       event: IpcMainInvokeEvent,
@@ -572,6 +924,25 @@ export function setupClaudeTimelineIPC(): void {
   );
 
   ipcMain.handle(
+    "claude:timeline:batchUpdateElements",
+    async (
+      event: IpcMainInvokeEvent,
+      _projectId: string,
+      updates: ClaudeBatchUpdateItemRequest[]
+    ): Promise<ClaudeBatchUpdateResponse> => {
+      claudeLog.info(
+        HANDLER_NAME,
+        `Batch updating ${updates.length} element(s)`
+      );
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        throw new Error("Window not found");
+      }
+      return batchUpdateElements(win, updates);
+    }
+  );
+
+  ipcMain.handle(
     "claude:timeline:removeElement",
     async (
       event: IpcMainInvokeEvent,
@@ -580,6 +951,26 @@ export function setupClaudeTimelineIPC(): void {
     ): Promise<void> => {
       claudeLog.info(HANDLER_NAME, `Removing element: ${elementId}`);
       event.sender.send("claude:timeline:removeElement", elementId);
+    }
+  );
+
+  ipcMain.handle(
+    "claude:timeline:batchDeleteElements",
+    async (
+      event: IpcMainInvokeEvent,
+      _projectId: string,
+      elements: ClaudeBatchDeleteItemRequest[],
+      ripple?: boolean
+    ): Promise<ClaudeBatchDeleteResponse> => {
+      claudeLog.info(
+        HANDLER_NAME,
+        `Batch deleting ${elements.length} element(s)`
+      );
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        throw new Error("Window not found");
+      }
+      return batchDeleteElements(win, elements, ripple);
     }
   );
 
@@ -655,6 +1046,44 @@ export function setupClaudeTimelineIPC(): void {
     async (event: IpcMainInvokeEvent): Promise<void> => {
       claudeLog.info(HANDLER_NAME, "Clearing selection");
       event.sender.send("claude:timeline:clearSelection");
+    }
+  );
+
+  ipcMain.handle(
+    "claude:timeline:deleteRange",
+    async (
+      event: IpcMainInvokeEvent,
+      _projectId: string,
+      request: ClaudeRangeDeleteRequest
+    ): Promise<ClaudeRangeDeleteResponse> => {
+      claudeLog.info(
+        HANDLER_NAME,
+        `Deleting timeline range ${request.startTime}s-${request.endTime}s`
+      );
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        throw new Error("Window not found");
+      }
+      return deleteTimelineRange(win, request);
+    }
+  );
+
+  ipcMain.handle(
+    "claude:timeline:arrange",
+    async (
+      event: IpcMainInvokeEvent,
+      _projectId: string,
+      request: ClaudeArrangeRequest
+    ): Promise<ClaudeArrangeResponse> => {
+      claudeLog.info(
+        HANDLER_NAME,
+        `Arranging track ${request.trackId} (mode: ${request.mode})`
+      );
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) {
+        throw new Error("Window not found");
+      }
+      return arrangeTimeline(win, request);
     }
   );
 
