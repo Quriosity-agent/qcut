@@ -549,6 +549,12 @@ async function transcodeWebmToMp4({
           windowsHide: true,
         });
 
+        const TRANSCODE_TIMEOUT_MS = 300_000;
+        const timeout = setTimeout(() => {
+          ffmpegProcess.kill();
+          reject(new Error(`FFmpeg conversion timed out after ${TRANSCODE_TIMEOUT_MS}ms`));
+        }, TRANSCODE_TIMEOUT_MS);
+
         let stderrOutput = "";
 
         ffmpegProcess.stderr?.on("data", (chunk: Buffer) => {
@@ -556,6 +562,7 @@ async function transcodeWebmToMp4({
         });
 
         ffmpegProcess.on("error", (error) => {
+          clearTimeout(timeout);
           reject(
             new Error(
               `Failed to start FFmpeg process: ${error instanceof Error ? error.message : String(error)}`
@@ -564,6 +571,7 @@ async function transcodeWebmToMp4({
         });
 
         ffmpegProcess.on("close", (code) => {
+          clearTimeout(timeout);
           if (code === 0) {
             resolve();
             return;

@@ -147,8 +147,6 @@ export async function suggestCuts(
 
   // Scene-based suggestions
   if (includeScenes && sceneResult && sceneResult.scenes.length > 1) {
-    const avgDuration = sceneResult.averageShotDuration;
-
     for (let i = 0; i < sceneResult.scenes.length; i++) {
       const scene = sceneResult.scenes[i];
       const nextScene = sceneResult.scenes[i + 1];

@@ -3,8 +3,8 @@
  */
 
 import { app } from "electron";
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type {
   ClaudeTimeline,
   ExportJobStatus,
@@ -354,19 +354,19 @@ export async function generatePipelineReport({
     }
 
     const resolvedOutputDir = outputDir?.trim()
-      ? path.resolve(outputDir)
-      : path.join(app.getPath("documents"), "QCut", "Reports");
+      ? resolve(outputDir)
+      : join(app.getPath("documents"), "QCut", "Reports");
 
-    await fs.mkdir(resolvedOutputDir, { recursive: true });
+    await mkdir(resolvedOutputDir, { recursive: true });
 
     const datePart = new Date().toISOString().slice(0, 10);
     const safeProjectId = /^[A-Za-z0-9_-]+$/.test(projectId)
       ? projectId
       : "unknown-project";
     const fileName = `pipeline-report-${safeProjectId}-${datePart}.md`;
-    const fullPath = path.join(resolvedOutputDir, fileName);
+    const fullPath = join(resolvedOutputDir, fileName);
 
-    await fs.writeFile(fullPath, markdown, "utf8");
+    await writeFile(fullPath, markdown, "utf8");
     return {
       markdown,
       savedTo: fullPath,
@@ -380,7 +380,3 @@ export async function generatePipelineReport({
   }
 }
 
-module.exports = {
-  generateProjectSummary,
-  generatePipelineReport,
-};

@@ -161,7 +161,7 @@ const exportJobs = new Map<string, ExportJob>();
 ```
 
 **API contract**:
-```
+```text
 POST /api/claude/export/:projectId/start
 Body: { "preset": "youtube-1080p" }
 Response: {
@@ -202,7 +202,7 @@ Polls export job status and progress.
 - `electron/ffmpeg-export-handler.ts` — existing `ffmpeg-progress` event format
 
 **API contract**:
-```
+```text
 GET /api/claude/export/:projectId/jobs/:jobId
 Response: {
   "success": true,
@@ -304,7 +304,7 @@ function generateProjectSummary(
 ```
 
 **API contract**:
-```
+```text
 GET /api/claude/project/:projectId/summary
 Response: {
   "success": true,
@@ -413,7 +413,7 @@ function clearOperationLog(): void {
 Each stage handler calls `logOperation()` when completing an action. The report generator reads the log.
 
 **API contract**:
-```
+```text
 POST /api/claude/project/:projectId/report
 Body: { "saveToDisk": true, "outputDir": "docs/task/" }
 Response: {
@@ -455,7 +455,7 @@ Response: {
 
 ## Complete Pipeline: End-to-End
 
-```
+```text
 Claude Code executes:
 
   POST /media/:id/import-from-url          → Import video from URL

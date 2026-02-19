@@ -222,5 +222,3 @@ export async function autoEdit(
   }
 }
 
-// CommonJS export for compatibility
-module.exports = { autoEdit, mergeCutIntervals };

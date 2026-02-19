@@ -231,17 +231,20 @@ export interface TimelineStore {
   splitElement: (
     trackId: string,
     elementId: string,
-    splitTime: number
+    splitTime: number,
+    savePushHistory?: boolean
   ) => string | null;
   splitAndKeepLeft: (
     trackId: string,
     elementId: string,
-    splitTime: number
+    splitTime: number,
+    savePushHistory?: boolean
   ) => void;
   splitAndKeepRight: (
     trackId: string,
     elementId: string,
-    splitTime: number
+    splitTime: number,
+    savePushHistory?: boolean
   ) => void;
   separateAudio: (trackId: string, elementId: string) => string | null;
 

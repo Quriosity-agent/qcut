@@ -1178,7 +1178,7 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at end → keepLeft
           if (clampedEnd >= effEnd) {
-            store.splitAndKeepLeft(track.id, targetElement.id, clampedStart);
+            store.splitAndKeepLeft(track.id, targetElement.id, clampedStart, false);
             totalRemovedDuration += effEnd - clampedStart;
             cutsApplied++;
             continue;
@@ -1186,7 +1186,7 @@ export function setupClaudeTimelineBridge(): void {
 
           // Cut at start → keepRight
           if (clampedStart <= effStart) {
-            store.splitAndKeepRight(track.id, targetElement.id, clampedEnd);
+            store.splitAndKeepRight(track.id, targetElement.id, clampedEnd, false);
             totalRemovedDuration += clampedEnd - effStart;
             cutsApplied++;
             continue;
@@ -1196,12 +1196,13 @@ export function setupClaudeTimelineBridge(): void {
           const rightId = store.splitElement(
             track.id,
             targetElement.id,
-            clampedStart
+            clampedStart,
+            false
           );
           if (rightId) {
             const tailId = useTimelineStore
               .getState()
-              .splitElement(track.id, rightId, clampedEnd);
+              .splitElement(track.id, rightId, clampedEnd, false);
             if (tailId) {
               useTimelineStore
                 .getState()
@@ -1301,12 +1302,13 @@ export function setupClaudeTimelineBridge(): void {
               const rightId = store.splitElement(
                 track.id,
                 element.id,
-                startTime
+                startTime,
+                false
               );
               if (rightId) {
                 const tailId = useTimelineStore
                   .getState()
-                  .splitElement(track.id, rightId, endTime);
+                  .splitElement(track.id, rightId, endTime, false);
                 if (tailId) {
                   useTimelineStore
                     .getState()
@@ -1321,7 +1323,7 @@ export function setupClaudeTimelineBridge(): void {
 
             // Overlaps element end → keep left
             if (effStart < startTime && effEnd > startTime) {
-              store.splitAndKeepLeft(track.id, element.id, startTime);
+              store.splitAndKeepLeft(track.id, element.id, startTime, false);
               splitElements++;
               totalRemovedDuration += effEnd - startTime;
               continue;
@@ -1329,7 +1331,7 @@ export function setupClaudeTimelineBridge(): void {
 
             // Overlaps element start → keep right
             if (effStart < endTime && effEnd > endTime) {
-              store.splitAndKeepRight(track.id, element.id, endTime);
+              store.splitAndKeepRight(track.id, element.id, endTime, false);
               splitElements++;
               totalRemovedDuration += endTime - effStart;
             }
