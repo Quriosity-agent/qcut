@@ -33,7 +33,6 @@ import {
   batchAddElements,
   batchUpdateElements,
   batchDeleteElements,
-  deleteTimelineRange,
   arrangeTimeline,
   timelineToMarkdown,
   markdownToTimeline,
@@ -53,11 +52,6 @@ import {
   listExportJobs,
 } from "./claude-export-handler.js";
 import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
-import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
-import { transcribeMedia } from "./claude-transcribe-handler.js";
-import { detectScenes } from "./claude-scene-handler.js";
-import { analyzeFrames } from "./claude-vision-handler.js";
-import { analyzeFillers } from "./claude-filler-handler.js";
 import {
   generateProjectSummary,
   generatePipelineReport,
@@ -75,11 +69,8 @@ import {
   listGenerateModels,
   estimateGenerateCost,
 } from "./claude-generate-handler.js";
-import { executeBatchCuts } from "./claude-cuts-handler.js";
-import { executeDeleteRange } from "./claude-range-handler.js";
-import { autoEdit } from "./claude-auto-edit-handler.js";
-import { suggestCuts } from "./claude-suggest-handler.js";
 import { generatePersonaPlex } from "./claude-personaplex-handler.js";
+import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 
 let server: Server | null = null;
@@ -464,30 +455,6 @@ export function startClaudeHTTPServer(
     }
   );
 
-  router.delete("/api/claude/timeline/:projectId/range", async (req) => {
-    if (typeof req.body?.startTime !== "number") {
-      throw new HttpError(400, "Missing 'startTime' (number) in request body");
-    }
-    if (typeof req.body?.endTime !== "number") {
-      throw new HttpError(400, "Missing 'endTime' (number) in request body");
-    }
-    const win = getWindow();
-    try {
-      return await deleteTimelineRange(win, {
-        startTime: req.body.startTime,
-        endTime: req.body.endTime,
-        trackIds: Array.isArray(req.body.trackIds) ? req.body.trackIds : undefined,
-        ripple: req.body.ripple !== false,
-        crossTrackRipple: Boolean(req.body.crossTrackRipple),
-      });
-    } catch (error) {
-      throw new HttpError(
-        400,
-        error instanceof Error ? error.message : "Range delete failed"
-      );
-    }
-  });
-
   router.post("/api/claude/timeline/:projectId/arrange", async (req) => {
     if (!req.body?.trackId || typeof req.body.trackId !== "string") {
       throw new HttpError(400, "Missing 'trackId' in request body");
@@ -748,9 +715,14 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
-  // Video Analysis routes
+  // Analysis, Transcription, and Stage 3 editing routes
   // ==========================================================================
-  router.post("/api/claude/analyze/:projectId", async (req) => {
+  registerAnalysisRoutes(router, getWindow);
+
+  // ==========================================================================
+  // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
+  // ==========================================================================
+  PLACEHOLDER_INNER_MARKER
     if (!req.body?.source) {
       throw new HttpError(400, "Missing 'source' in request body");
     }
