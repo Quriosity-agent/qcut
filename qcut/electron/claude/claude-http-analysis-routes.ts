@@ -119,8 +119,9 @@ export function registerAnalysisRoutes(
     }
   );
 
-  router.get("/api/claude/transcribe/:projectId/jobs", async () => {
-    return listTranscribeJobs();
+  router.get("/api/claude/transcribe/:projectId/jobs", async (req) => {
+    const allJobs = listTranscribeJobs();
+    return allJobs.filter((job) => job.projectId === req.params.projectId);
   });
 
   router.post(
