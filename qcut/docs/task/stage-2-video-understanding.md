@@ -3,7 +3,7 @@
 > **Goal**: Let Claude Code transcribe and visually understand video content via QCut APIs
 > **Estimated effort**: ~5 hours total across 4 subtasks
 > **Dependencies**: Stage 1 Subtask 1.4 (frame extraction) recommended but not required
-> **Status**: IMPLEMENTED (2026-02-19) — All 4 subtasks complete, 28 tests passing
+> **Status**: IMPLEMENTED (2026-02-19) — All 4 subtasks complete, 40 tests passing (28 unit + 12 integration)
 
 ---
 
@@ -71,7 +71,7 @@ Response: {
 }
 ```
 
-**Test file**: `electron/__tests__/claude-transcribe-handler.test.ts` (6 tests passing)
+**Test file**: `electron/__tests__/claude-transcribe-handler.test.ts` (6 unit tests passing)
 
 | Spec'd test | Status | Notes |
 |---|---|---|
@@ -81,6 +81,8 @@ Response: {
 | Handles audio extraction from video | ✅ | Video vs audio path detection tested |
 | Rejects invalid media ID | ✅ | |
 | Times out after 5 minutes | ⚠️ | Timeout is in code (TRANSCRIPTION_TIMEOUT_MS) but not unit-tested |
+
+**Integration tests** (`stage2-integration.test.ts`): 3 tests — real FFmpeg audio extraction from video, valid MP3 output verified by magic bytes, reasonable file size for 9s audio.
 
 ---
 
@@ -105,16 +107,18 @@ Detects scene/shot boundaries by extracting keyframes and analyzing visual simil
 
 **API contract** — matches spec exactly.
 
-**Test file**: `electron/__tests__/claude-scene-handler.test.ts` (9 tests passing)
+**Test file**: `electron/__tests__/claude-scene-handler.test.ts` (9 unit tests passing)
 
 | Spec'd test | Status | Notes |
 |---|---|---|
-| Detects scene boundaries via FFmpeg filter | ⚠️ | Requires real FFmpeg binary; spawn path tested |
-| Parses FFmpeg showinfo output correctly | ✅ | Tested with realistic multi-line stderr |
-| Returns sorted timestamps with confidence | ✅ | |
+| Detects scene boundaries via FFmpeg filter | ✅ | Unit test + integration test with real FFmpeg |
+| Parses FFmpeg showinfo output correctly | ✅ | Tested with realistic multi-line stderr + real FFmpeg stderr |
+| Returns sorted timestamps with confidence | ✅ | Verified with real 3-scene video |
 | AI analysis enriches with descriptions (mock API) | ⚠️ | AI enrichment code exists; not mock-tested (needs Gemini SDK mock) |
 | Handles single-shot video (no scene changes) | ✅ | Empty showinfo output → empty array |
-| Respects threshold parameter | ✅ | Tested (spawn path validated) |
+| Respects threshold parameter | ✅ | Tested: higher threshold produces fewer scenes (real FFmpeg) |
+
+**Integration tests** (`stage2-integration.test.ts`): 5 tests — detects 2 scene boundaries at ~3s and ~6s in real video, threshold comparison, auto-insert scene 0, sorted/deduplicated results, real FFmpeg stderr parsing.
 
 ---
 
@@ -139,16 +143,18 @@ Sends extracted frames to Claude's vision API for rich content understanding (ob
 
 **API contract** — matches spec exactly.
 
-**Test file**: `electron/__tests__/claude-vision-handler.test.ts` (8 tests passing)
+**Test file**: `electron/__tests__/claude-vision-handler.test.ts` (8 unit tests passing)
 
 | Spec'd test | Status | Notes |
 |---|---|---|
-| Extracts frames at specified timestamps | ⚠️ | Requires real FFmpeg binary; spawn path tested |
+| Extracts frames at specified timestamps | ✅ | Integration test extracts real JPEG frames at multiple timestamps |
 | Sends frames to Claude Vision API (mocked) | ⚠️ | API call code exists; not mock-tested (needs fetch mock) |
 | Parses structured response into FrameAnalysis | ✅ | JSON, code-block, and malformed input tested |
 | Handles interval-based extraction | ⚠️ | `resolveTimestamps` logic exists but not directly unit-tested |
 | Respects 20-image batch limit | ✅ | Tested via parser with 25 items |
 | Falls back gracefully when API key missing | ⚠️ | Error thrown in code; not explicitly tested |
+
+**Integration tests** (`stage2-integration.test.ts`): 4 tests — extracts real JPEG frames at various timestamps, multi-frame extraction, validates JPEG magic bytes (FF D8 FF).
 
 ---
 
@@ -195,6 +201,8 @@ Exposes the existing filler word analysis over HTTP, returning word-level filter
 | `electron/__tests__/claude-scene-handler.test.ts` | **New** | ~150 | 9 tests | ✅ |
 | `electron/__tests__/claude-vision-handler.test.ts` | **New** | ~140 | 8 tests | ✅ |
 | `electron/__tests__/claude-filler-handler-http.test.ts` | **New** | ~100 | 5 tests | ✅ |
+| `electron/__tests__/stage2-integration.test.ts` | **New** | — | 12 tests | ✅ |
+| `apps/web/src/test/e2e/fixtures/media/test-scenes.mp4` | **New** | — | Test fixture | ✅ |
 
 > **Note**: Original spec didn't list `claude-transcribe-handler.ts` or `claude-filler-handler.ts` as new files (implied they'd be inline in the HTTP server), but were extracted into separate handler files following the existing codebase pattern.
 
@@ -211,4 +219,68 @@ Video File
         ↓
   Combined understanding → Stage 3 (cut list generation)
 ```
+
+---
+
+## Integration Test Suite (2026-02-19)
+
+**File**: `electron/__tests__/stage2-integration.test.ts` — 12 tests using real FFmpeg
+
+**Test video**: `apps/web/src/test/e2e/fixtures/media/test-scenes.mp4`
+- 9 seconds, 640x360, H.264 + AAC audio
+- 3 distinct color scenes: red (0-3s), blue (3-6s), green (6-9s)
+- 440Hz sine wave audio track
+
+| Test | What it verifies |
+|---|---|
+| Scene: detects 2 boundaries at ~3s and ~6s | Real FFmpeg scene filter works on color transitions |
+| Scene: higher threshold = fewer scenes | Threshold parameter affects detection sensitivity |
+| Scene: auto-inserts scene at timestamp 0 | First-frame insertion logic |
+| Scene: sorted and deduplicated results | Post-processing pipeline |
+| Scene: parses real FFmpeg stderr | `parseShowInfoOutput()` handles real `showinfo` output |
+| Frame: extracts frame at t=0 | FFmpeg frame extraction produces non-empty file |
+| Frame: extracts frame at t=4.5 (blue) | Mid-scene extraction works |
+| Frame: extracts 6 frames at multiple timestamps | Sequential multi-frame extraction |
+| Frame: valid JPEG magic bytes (FF D8 FF) | Output is a real JPEG file |
+| Audio: extracts MP3 from video | `extractAudio()` produces MP3 file |
+| Audio: valid MP3 magic bytes | Output is a real MP3 file |
+| Audio: reasonable file size (~5-100KB for 9s) | Not empty, not unreasonably large |
+
+**Mocking strategy**: Only Electron internals (app, ipcMain, electron-log) are mocked. FFmpeg, fs, and child_process are all REAL.
+
+---
+
+## Remaining Gaps
+
+### Priority 1 — Functional gaps
+
+| Gap | Severity | Details |
+|---|---|---|
+| **2.1: No async job pattern** | Medium | Transcription is synchronous. HTTP server has 30s default timeout. Long videos (>5min) will timeout. Spec called for job ID + poll pattern like Stage 1 generate. |
+| **2.3: `resolveTimestamps` not unit-tested** | Low | Interval-based frame extraction logic exists but has no dedicated test. Integration test only covers explicit timestamps. |
+| **2.3: API key missing fallback not tested** | Low | Code throws error when Anthropic API key is missing, but no test verifies this path. |
+
+### Priority 2 — API mock gaps (no live API testing)
+
+| Gap | Severity | Details |
+|---|---|---|
+| **2.1: No mocked ElevenLabs/Gemini API response** | Medium | Unit tests hit the network boundary and fail; no mock validates the full response-parsing pipeline end-to-end. |
+| **2.2: No mocked Gemini AI enrichment** | Medium | Tier 2 AI scene analysis code exists but is never exercised in tests. Needs Gemini SDK mock. |
+| **2.3: No mocked Claude Vision API call** | Medium | `analyzeFramesWithClaude()` is never tested with a mocked `fetch` response. |
+| **2.1: No word-level timestamp validation** | Low | Types are defined but no test verifies the ElevenLabs → `TranscriptionWord` mapping with realistic mock data. |
+
+### Priority 3 — Edge cases
+
+| Gap | Severity | Details |
+|---|---|---|
+| **2.1: Timeout not tested** | Low | `TRANSCRIPTION_TIMEOUT_MS` (5 min) is set but not validated in tests. |
+| **2.2: Very long video performance** | Low | Scene detection on 1hr+ video not tested. 3-minute timeout exists but untested. |
+| **2.3: 20-frame limit enforcement** | Low | `MAX_FRAMES_PER_REQUEST` is tested in parser but not in the full `analyzeFrames()` flow. |
+| **2.4: No live API filler detection test** | Low | Only pattern fallback is tested. Gemini and Claude filler detection paths require API keys. |
+
+### Not in scope (Stage 3)
+
+- Transcription → cut list automation
+- Combined understanding (transcription + scenes + frames) → edit decisions
+- Timeline manipulation based on analysis results
 

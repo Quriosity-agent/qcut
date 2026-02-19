@@ -206,3 +206,68 @@ Video generation takes 30s–3min. Instead of blocking an HTTP request:
 - 5-minute download timeout
 - Max 20 items per batch
 - Max 50 stored generation jobs
+
+---
+
+## Real API Test Results (2026-02-19)
+
+Tested against a running QCut instance (`localhost:8765`) with real media files.
+
+### What works
+
+| Feature | Endpoint | Result |
+|---------|----------|--------|
+| Batch import (local files) | `POST /media/:projectId/batch-import` | **4/4 files imported** (video, image, audio) |
+| Single timeline add | `POST /timeline/:projectId/elements` | **3/3 elements placed** on timeline |
+| Batch timeline add | `POST /timeline/:projectId/elements/batch` | **2/2 elements placed** (after media sync) |
+| Media listing | `GET /media/:projectId` | **All imported files visible** |
+| Timeline read | `GET /timeline/:projectId` | **5 elements, 39s total duration** |
+| Project summary | `GET /project/:projectId/summary` | **38 media files, 5 timeline elements** |
+
+### What fails
+
+**Batch timeline add fails with `"Media source could not be resolved"` when media was just imported.**
+
+Reproduction:
+```
+1. POST /media/:projectId/batch-import   ← imports files to disk ✓
+2. POST /timeline/:projectId/elements/batch  ← fails: "Media source could not be resolved" ✗
+```
+
+The batch import writes files to the project's `media/` folder on disk, but the renderer's `useMediaStore` doesn't know about them yet. The batch timeline add (`POST /elements/batch`) resolves media via `resolveMediaIdForBatchElement()` which reads from the renderer store only.
+
+### Why single add works but batch add doesn't
+
+The two endpoints use different media resolution paths:
+
+| Endpoint | Resolution | Syncs disk? |
+|----------|-----------|-------------|
+| `POST /elements` (single) | `resolveMediaItemForElement()` → calls `syncProjectMediaIfNeeded()` | **Yes** — refreshes renderer store from disk |
+| `POST /elements/batch` | `resolveMediaIdForBatchElement()` → reads `useMediaStore.getState()` only | **No** — stale store |
+
+**Root cause**: `resolveMediaIdForBatchElement()` in `apps/web/src/lib/claude-timeline-bridge.ts:89` reads from `useMediaStore.getState().mediaItems` without syncing first.
+
+### Workaround
+
+Call the single-element add endpoint first (which triggers media sync), then batch add works:
+```
+1. POST /media/:projectId/batch-import      ← import files to disk
+2. POST /timeline/:projectId/elements        ← single add (triggers sync)
+3. POST /timeline/:projectId/elements/batch  ← now works ✓
+```
+
+### How to fix
+
+**Option A (recommended)**: Add `syncProjectMediaIfNeeded()` call at the top of the batch add handler in `claude-timeline-bridge.ts`, before the element loop. This matches the single-add behavior.
+
+**File**: `apps/web/src/lib/claude-timeline-bridge.ts` — `batchAddElements` IPC handler (~line 498)
+
+```diff
++ await syncProjectMediaIfNeeded({ projectId });
+  timelineStore.pushHistory();
+  const added: ClaudeBatchAddResponse["added"] = [];
+```
+
+**Option B**: Have the batch import endpoint (`claude-media-handler.ts`) send an IPC event to the renderer to refresh its media store after importing. This way the store is always in sync after any import.
+
+**Option A is simpler and matches existing patterns.** Option B is more robust long-term but touches more code.
