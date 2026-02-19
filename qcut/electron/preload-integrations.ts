@@ -207,6 +207,12 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
         ipcRenderer.invoke("claude:timeline:import", projectId, data, format),
       addElement: (projectId, element) =>
         ipcRenderer.invoke("claude:timeline:addElement", projectId, element),
+      batchAddElements: (projectId, elements) =>
+        ipcRenderer.invoke(
+          "claude:timeline:batchAddElements",
+          projectId,
+          elements
+        ),
       updateElement: (projectId, elementId, changes) =>
         ipcRenderer.invoke(
           "claude:timeline:updateElement",
@@ -214,12 +220,29 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           elementId,
           changes
         ),
+      batchUpdateElements: (projectId, updates) =>
+        ipcRenderer.invoke(
+          "claude:timeline:batchUpdateElements",
+          projectId,
+          updates
+        ),
       removeElement: (projectId, elementId) =>
         ipcRenderer.invoke(
           "claude:timeline:removeElement",
           projectId,
           elementId
         ),
+      batchDeleteElements: (projectId, elements, ripple) =>
+        ipcRenderer.invoke(
+          "claude:timeline:batchDeleteElements",
+          projectId,
+          elements,
+          ripple
+        ),
+      deleteRange: (projectId, request) =>
+        ipcRenderer.invoke("claude:timeline:deleteRange", projectId, request),
+      arrange: (projectId, request) =>
+        ipcRenderer.invoke("claude:timeline:arrange", projectId, request),
       splitElement: (projectId, elementId, splitTime, mode) =>
         ipcRenderer.invoke(
           "claude:timeline:splitElement",
@@ -262,17 +285,53 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           callback(element)
         );
       },
+      onBatchAddElements: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
+        ipcRenderer.on("claude:timeline:batchAddElements", (_, data) =>
+          callback(data)
+        );
+      },
+      sendBatchAddElementsResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:batchAddElements:response", {
+          requestId,
+          result,
+        });
+      },
       onUpdateElement: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:updateElement");
         ipcRenderer.on("claude:timeline:updateElement", (_, data) =>
           callback(data)
         );
       },
+      onBatchUpdateElements: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
+        ipcRenderer.on("claude:timeline:batchUpdateElements", (_, data) =>
+          callback(data)
+        );
+      },
+      sendBatchUpdateElementsResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:batchUpdateElements:response", {
+          requestId,
+          result,
+        });
+      },
       onRemoveElement: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:removeElement");
         ipcRenderer.on("claude:timeline:removeElement", (_, id) =>
           callback(id)
         );
+      },
+      onBatchDeleteElements: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
+        ipcRenderer.on("claude:timeline:batchDeleteElements", (_, data) =>
+          callback(data)
+        );
+      },
+      sendBatchDeleteElementsResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:batchDeleteElements:response", {
+          requestId,
+          result,
+        });
       },
       onSplitElement: (callback) => {
         ipcRenderer.removeAllListeners("claude:timeline:splitElement");
@@ -314,6 +373,28 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
         ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
         ipcRenderer.on("claude:timeline:clearSelection", () => callback());
       },
+      onDeleteRange: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
+        ipcRenderer.on("claude:timeline:deleteRange", (_, data) =>
+          callback(data)
+        );
+      },
+      sendDeleteRangeResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:deleteRange:response", {
+          requestId,
+          result,
+        });
+      },
+      onArrange: (callback) => {
+        ipcRenderer.removeAllListeners("claude:timeline:arrange");
+        ipcRenderer.on("claude:timeline:arrange", (_, data) => callback(data));
+      },
+      sendArrangeResponse: (requestId, result) => {
+        ipcRenderer.send("claude:timeline:arrange:response", {
+          requestId,
+          result,
+        });
+      },
       sendResponse: (timeline) => {
         ipcRenderer.send("claude:timeline:response", timeline);
       },
@@ -321,13 +402,18 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
         ipcRenderer.removeAllListeners("claude:timeline:request");
         ipcRenderer.removeAllListeners("claude:timeline:apply");
         ipcRenderer.removeAllListeners("claude:timeline:addElement");
+        ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
         ipcRenderer.removeAllListeners("claude:timeline:updateElement");
+        ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
         ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+        ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
         ipcRenderer.removeAllListeners("claude:timeline:splitElement");
         ipcRenderer.removeAllListeners("claude:timeline:moveElement");
         ipcRenderer.removeAllListeners("claude:timeline:selectElements");
         ipcRenderer.removeAllListeners("claude:timeline:getSelection");
         ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
+        ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
+        ipcRenderer.removeAllListeners("claude:timeline:arrange");
       },
     },
     project: {

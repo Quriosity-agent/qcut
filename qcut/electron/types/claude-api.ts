@@ -56,6 +56,7 @@ export interface ClaudeTimeline {
 }
 
 export interface ClaudeTrack {
+  id?: string;
   index: number;
   name: string;
   type: string;
@@ -151,6 +152,117 @@ export interface ClaudeMoveRequest {
 export interface ClaudeSelectionItem {
   trackId: string;
   elementId: string;
+}
+
+// ============================================================================
+// Timeline Batch + Arrangement Types (Stage 4)
+// ============================================================================
+
+export interface ClaudeBatchAddElementRequest {
+  type:
+    | "video"
+    | "audio"
+    | "image"
+    | "text"
+    | "sticker"
+    | "captions"
+    | "remotion"
+    | "media";
+  trackId: string;
+  startTime: number;
+  duration: number;
+  mediaId?: string;
+  sourceId?: string;
+  sourceName?: string;
+  content?: string;
+  style?: Record<string, unknown>;
+}
+
+export interface ClaudeBatchAddItemResult {
+  index: number;
+  success: boolean;
+  elementId?: string;
+  error?: string;
+}
+
+export interface ClaudeBatchAddResponse {
+  added: ClaudeBatchAddItemResult[];
+  failedCount: number;
+}
+
+export interface ClaudeBatchDeleteItemRequest {
+  trackId: string;
+  elementId: string;
+}
+
+export interface ClaudeBatchDeleteItemResult {
+  index: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface ClaudeBatchDeleteResponse {
+  deletedCount: number;
+  failedCount: number;
+  results: ClaudeBatchDeleteItemResult[];
+}
+
+export interface ClaudeBatchUpdateItemRequest {
+  elementId: string;
+  startTime?: number;
+  endTime?: number;
+  duration?: number;
+  trimStart?: number;
+  trimEnd?: number;
+  content?: string;
+  style?: Record<string, unknown>;
+}
+
+export interface ClaudeBatchUpdateItemResult {
+  index: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface ClaudeBatchUpdateResponse {
+  updatedCount: number;
+  failedCount: number;
+  results: ClaudeBatchUpdateItemResult[];
+}
+
+export const CLAUDE_ARRANGE_MODES = {
+  SEQUENTIAL: "sequential",
+  SPACED: "spaced",
+  MANUAL: "manual",
+} as const;
+
+export type ClaudeArrangeMode =
+  (typeof CLAUDE_ARRANGE_MODES)[keyof typeof CLAUDE_ARRANGE_MODES];
+
+export interface ClaudeArrangeRequest {
+  trackId: string;
+  mode: ClaudeArrangeMode;
+  gap?: number;
+  order?: string[];
+  startOffset?: number;
+}
+
+export interface ClaudeArrangeResponse {
+  arranged: Array<{ elementId: string; newStartTime: number }>;
+}
+
+export interface ClaudeRangeDeleteRequest {
+  startTime: number;
+  endTime: number;
+  trackIds?: string[];
+  ripple?: boolean;
+  crossTrackRipple?: boolean;
+}
+
+export interface ClaudeRangeDeleteResponse {
+  deletedElements: number;
+  splitElements: number;
+  totalRemovedDuration: number;
 }
 
 // ============================================================================

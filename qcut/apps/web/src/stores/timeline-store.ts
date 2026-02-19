@@ -298,8 +298,17 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       return newTrack.id;
     },
 
-    addElementToTrack: (trackId, elementData) => {
-      get().pushHistory();
+    addElementToTrack: (
+      trackId,
+      elementData,
+      options = { pushHistory: true, selectElement: true }
+    ) => {
+      const shouldPushHistory = options.pushHistory !== false;
+      const shouldSelectElement = options.selectElement !== false;
+
+      if (shouldPushHistory) {
+        get().pushHistory();
+      }
 
       // Validate element type matches track type
       const track = get()._tracks.find((t) => t.id === trackId);
@@ -312,7 +321,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             trackId,
           },
         });
-        return;
+        return null;
       }
 
       // Use utility function for validation
@@ -332,7 +341,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             },
           }
         );
-        return;
+        return null;
       }
 
       // For media elements, validate mediaId exists
@@ -346,7 +355,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             trackId,
           },
         });
-        return;
+        return null;
       }
 
       // For text elements, validate required text properties
@@ -360,7 +369,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             trackId,
           },
         });
-        return;
+        return null;
       }
 
       // For markdown elements, validate required markdown content
@@ -377,7 +386,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
             trackId,
           },
         });
-        return;
+        return null;
       }
 
       // Check if this is the first element being added to the timeline
@@ -471,7 +480,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
         )
       );
 
-      get().selectElement(trackId, newElement.id);
+      if (shouldSelectElement) {
+        get().selectElement(trackId, newElement.id);
+      }
+
+      return newElement.id;
     },
 
     removeElementFromTrack: (trackId, elementId, pushHistory = true) => {
@@ -666,8 +679,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
-    updateTextElement: (trackId, elementId, updates) => {
-      get().pushHistory();
+    updateTextElement: (trackId, elementId, updates, pushHistory = true) => {
+      if (pushHistory) {
+        get().pushHistory();
+      }
       updateTracksAndSave(
         get()._tracks.map((track) =>
           track.id === trackId
@@ -684,8 +699,15 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
       );
     },
 
-    updateMarkdownElement: (trackId, elementId, updates) => {
-      get().pushHistory();
+    updateMarkdownElement: (
+      trackId,
+      elementId,
+      updates,
+      pushHistory = true
+    ) => {
+      if (pushHistory) {
+        get().pushHistory();
+      }
       const normalizedUpdates =
         updates.duration !== undefined
           ? {

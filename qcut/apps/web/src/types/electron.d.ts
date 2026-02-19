@@ -11,6 +11,16 @@ import type {
   ClaudeSplitResponse,
   ClaudeMoveRequest,
   ClaudeSelectionItem,
+  ClaudeBatchAddElementRequest,
+  ClaudeBatchAddResponse,
+  ClaudeBatchDeleteItemRequest,
+  ClaudeBatchDeleteResponse,
+  ClaudeBatchUpdateItemRequest,
+  ClaudeBatchUpdateResponse,
+  ClaudeArrangeRequest,
+  ClaudeArrangeResponse,
+  ClaudeRangeDeleteRequest,
+  ClaudeRangeDeleteResponse,
   ProjectSettings,
   ProjectStats,
   ExportPreset,
@@ -971,12 +981,33 @@ export interface ElectronAPI {
         projectId: string,
         element: Partial<ClaudeElement>
       ) => Promise<string>;
+      batchAddElements: (
+        projectId: string,
+        elements: ClaudeBatchAddElementRequest[]
+      ) => Promise<ClaudeBatchAddResponse>;
       updateElement: (
         projectId: string,
         elementId: string,
         changes: Partial<ClaudeElement>
       ) => Promise<void>;
+      batchUpdateElements: (
+        projectId: string,
+        updates: ClaudeBatchUpdateItemRequest[]
+      ) => Promise<ClaudeBatchUpdateResponse>;
       removeElement: (projectId: string, elementId: string) => Promise<void>;
+      batchDeleteElements: (
+        projectId: string,
+        elements: ClaudeBatchDeleteItemRequest[],
+        ripple?: boolean
+      ) => Promise<ClaudeBatchDeleteResponse>;
+      deleteRange: (
+        projectId: string,
+        request: ClaudeRangeDeleteRequest
+      ) => Promise<ClaudeRangeDeleteResponse>;
+      arrange: (
+        projectId: string,
+        request: ClaudeArrangeRequest
+      ) => Promise<ClaudeArrangeResponse>;
       splitElement: (
         projectId: string,
         elementId: string,
@@ -1000,13 +1031,44 @@ export interface ElectronAPI {
       onAddElement: (
         callback: (element: Partial<ClaudeElement>) => void
       ) => void;
+      onBatchAddElements: (
+        callback: (data: {
+          requestId: string;
+          elements: ClaudeBatchAddElementRequest[];
+        }) => void
+      ) => void;
+      sendBatchAddElementsResponse: (
+        requestId: string,
+        result: ClaudeBatchAddResponse
+      ) => void;
       onUpdateElement: (
         callback: (data: {
           elementId: string;
           changes: Partial<ClaudeElement>;
         }) => void
       ) => void;
+      onBatchUpdateElements: (
+        callback: (data: {
+          requestId: string;
+          updates: ClaudeBatchUpdateItemRequest[];
+        }) => void
+      ) => void;
+      sendBatchUpdateElementsResponse: (
+        requestId: string,
+        result: ClaudeBatchUpdateResponse
+      ) => void;
       onRemoveElement: (callback: (elementId: string) => void) => void;
+      onBatchDeleteElements: (
+        callback: (data: {
+          requestId: string;
+          elements: ClaudeBatchDeleteItemRequest[];
+          ripple?: boolean;
+        }) => void
+      ) => void;
+      sendBatchDeleteElementsResponse: (
+        requestId: string,
+        result: ClaudeBatchDeleteResponse
+      ) => void;
       onSplitElement: (
         callback: (data: {
           requestId: string;
@@ -1035,6 +1097,26 @@ export interface ElectronAPI {
         elements: ClaudeSelectionItem[]
       ) => void;
       onClearSelection: (callback: () => void) => void;
+      onDeleteRange: (
+        callback: (data: {
+          requestId: string;
+          request: ClaudeRangeDeleteRequest;
+        }) => void
+      ) => void;
+      sendDeleteRangeResponse: (
+        requestId: string,
+        result: ClaudeRangeDeleteResponse
+      ) => void;
+      onArrange: (
+        callback: (data: {
+          requestId: string;
+          request: ClaudeArrangeRequest;
+        }) => void
+      ) => void;
+      sendArrangeResponse: (
+        requestId: string,
+        result: ClaudeArrangeResponse
+      ) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
       removeListeners: () => void;
     };

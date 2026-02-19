@@ -183,7 +183,11 @@ export interface TimelineStore {
   /** Remove a track with ripple editing (affects subsequent elements) */
   removeTrackWithRipple: (trackId: string) => void;
   /** Add an element to the specified track */
-  addElementToTrack: (trackId: string, element: CreateTimelineElement) => void;
+  addElementToTrack: (
+    trackId: string,
+    element: CreateTimelineElement,
+    options?: { pushHistory?: boolean; selectElement?: boolean }
+  ) => string | null;
   /** Remove an element from a track, optionally pushing to history */
   removeElementFromTrack: (
     trackId: string,
@@ -266,6 +270,22 @@ export interface TimelineStore {
     elementId: string,
     pushHistory?: boolean
   ) => void;
+  rippleDeleteAcrossTracks: (
+    startTime: number,
+    endTime: number,
+    excludeTrackIds?: string[]
+  ) => void;
+  deleteTimeRange: (request: {
+    startTime: number;
+    endTime: number;
+    trackIds?: string[];
+    ripple?: boolean;
+    crossTrackRipple?: boolean;
+  }) => {
+    deletedElements: number;
+    splitElements: number;
+    totalRemovedDuration: number;
+  };
 
   // Computed values
   getTotalDuration: () => number;
@@ -316,7 +336,8 @@ export interface TimelineStore {
         | "rotation"
         | "opacity"
       >
-    >
+    >,
+    pushHistory?: boolean
   ) => void;
   updateMarkdownElement: (
     trackId: string,
@@ -341,7 +362,8 @@ export interface TimelineStore {
         | "rotation"
         | "opacity"
       >
-    >
+    >,
+    pushHistory?: boolean
   ) => void;
 
   // Interactive element manipulation (for effects)

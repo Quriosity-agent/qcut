@@ -189,3 +189,132 @@ The E2E suite uses a custom Electron fixture (`apps/web/src/test/e2e/helpers/ele
 
 - Keep Approach B estimate as-is.
 - Adjust Approach A estimate to include fixture wiring (for example, adding `recordVideo` in `_electron.launch(...)`), not only config changes.
+
+---
+
+## Testing Plan
+
+### Approach A: Playwright Video Recording
+
+**Manual verification only** — no new test code needed.
+
+1. Set `video: "on"` in `playwright.config.ts` and add `recordVideo` to the Electron launch fixture in `apps/web/src/test/e2e/helpers/electron-helpers.ts`:
+   ```typescript
+   const electronApp = await electron.launch({
+     args: ["dist/electron/main.js"],
+     recordVideo: { dir: "test-results/videos" },
+     env: { NODE_ENV: "test", ELECTRON_DISABLE_GPU: "1" },
+   });
+   ```
+2. Run `bun run test:e2e` and confirm `.webm` files appear in `test-results/videos/`
+3. Open a video and confirm it shows the actual test interaction (not a blank frame)
+
+### Approach B: Electron `desktopCapturer` — Unit Tests
+
+Create `electron/__tests__/screen-recording-handler.test.ts` following the existing IPC handler test pattern (see `electron/__tests__/ffmpeg-basic-handlers.test.ts`).
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock Electron before importing handler
+const mockHandle = vi.fn();
+vi.mock("electron", () => ({
+  ipcMain: { handle: mockHandle },
+  desktopCapturer: { getSources: vi.fn() },
+}));
+
+import { setupScreenRecordingIPC } from "../screen-recording-handler.js";
+
+function getHandler(channel: string) {
+  const call = mockHandle.mock.calls.find((c) => c[0] === channel);
+  return call?.[1] as (...args: unknown[]) => unknown;
+}
+```
+
+**Test cases:**
+
+| Test | What it verifies |
+|------|-----------------|
+| Registers all expected IPC channels | `screen:getSources`, `screen:startRecording`, `screen:stopRecording`, `screen:getStatus` are all registered via `ipcMain.handle` |
+| `screen:getSources` returns source list | Calls `desktopCapturer.getSources()` and returns `{ id, name, thumbnail }[]` |
+| `screen:startRecording` sets status to recording | After calling start, `screen:getStatus` returns `{ recording: true }` |
+| `screen:startRecording` rejects if already recording | Returns error when called while a recording is active |
+| `screen:stopRecording` returns file path | Returns the saved file path and resets status |
+| `screen:stopRecording` rejects if not recording | Returns error when no recording is active |
+| `screen:getStatus` returns idle by default | Returns `{ recording: false, duration: 0 }` before any recording starts |
+| File write errors are handled | Mock `fs.writeFile` to throw, confirm handler returns an error instead of crashing |
+
+### Approach B: Electron `desktopCapturer` — E2E Tests
+
+Create `apps/web/src/test/e2e/screen-recording.e2e.ts` using the existing Electron fixture.
+
+The helpers `startScreenRecordingForE2E()` and `stopScreenRecordingForE2E()` already exist in `electron-helpers.ts` — wire them to the new IPC API.
+
+```typescript
+import { test, expect } from "./helpers/electron-helpers";
+
+test("screen recording produces a video file", async ({ page }) => {
+  // Start recording via renderer bridge
+  await page.evaluate(() =>
+    window.electronAPI.screenRecording.start("screen:0:0", "/tmp/test-recording.webm")
+  );
+
+  // Perform some actions so the recording has content
+  await page.waitForTimeout(2000);
+
+  // Stop and get the output path
+  const filePath = await page.evaluate(() =>
+    window.electronAPI.screenRecording.stop()
+  );
+
+  expect(filePath).toContain(".webm");
+});
+
+test("screen recording status reflects state", async ({ page }) => {
+  const before = await page.evaluate(() =>
+    window.electronAPI.screenRecording.getStatus()
+  );
+  expect(before.recording).toBe(false);
+
+  await page.evaluate(() =>
+    window.electronAPI.screenRecording.start("screen:0:0", "/tmp/test-status.webm")
+  );
+
+  const during = await page.evaluate(() =>
+    window.electronAPI.screenRecording.getStatus()
+  );
+  expect(during.recording).toBe(true);
+
+  await page.evaluate(() =>
+    window.electronAPI.screenRecording.stop()
+  );
+
+  const after = await page.evaluate(() =>
+    window.electronAPI.screenRecording.getStatus()
+  );
+  expect(after.recording).toBe(false);
+});
+```
+
+### Optional: UI Component Tests
+
+If the recording indicator component is built, add a Vitest unit test at `apps/web/src/components/__tests__/screen-recording-indicator.test.tsx`:
+
+- Mock `window.electronAPI.screenRecording` with `vi.fn()`
+- Render the component with `@testing-library/react`
+- Test that the red dot appears when recording is active
+- Test that clicking stop calls `screenRecording.stop()`
+- Test that elapsed time displays and increments
+
+### How to Run
+
+```bash
+# Unit tests (includes IPC handler tests)
+bun run test
+
+# E2E tests (full Electron app)
+bun run test:e2e
+
+# E2E with visible window (useful for debugging recording)
+bun run test:e2e:headed
+```
