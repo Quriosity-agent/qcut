@@ -115,35 +115,39 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ---
 
-## File Impact Summary
+## Test Count Summary
 
-| File | Change Type | Lines Added (est.) |
-|---|---|---|
-| `electron/claude/claude-timeline-handler.ts` | Edit | +120 (cut-list + range ops) |
-| `electron/claude/claude-auto-edit-handler.ts` | **New** | ~230 |
-| `electron/claude/claude-suggest-handler.ts` | **New** | ~180 |
-| `electron/claude/claude-http-server.ts` | Edit | +20 (4 new routes) |
-| `electron/types/claude-api.ts` | Edit | +50 (new types) |
-| `electron/__tests__/claude-cut-list.test.ts` | **New** | ~200 |
-| `electron/__tests__/claude-auto-edit-handler.test.ts` | **New** | ~180 |
-| `electron/__tests__/claude-range-operations.test.ts` | **New** | ~160 |
-| `electron/__tests__/claude-suggest-handler.test.ts` | **New** | ~120 |
+| Test File | Tests |
+|-----------|-------|
+| `claude-cuts-handler.test.ts` | 12 |
+| `claude-auto-edit-handler.test.ts` | 15 |
+| `claude-range-handler.test.ts` | 9 |
+| `claude-suggest-handler.test.ts` | 14 |
+| `claude-timeline-bridge.test.ts` | 18 |
+| **Total** | **68** |
 
 ---
 
-## End-to-End Flow After Stage 3
+## Implementation Files
 
-```
-Claude Code Workflow:
-  1. Import video (Stage 1)
-  2. Transcribe + detect scenes (Stage 2)
-  3. GET /suggest-cuts → review suggestions
-  4. POST /auto-edit { dryRun: true } → preview filler removal
-  5. POST /auto-edit { dryRun: false } → execute
-  6. POST /cuts → additional manual cuts
-  7. DELETE /range → remove unwanted sections
-  8. → Stage 4 (organize timeline)
-```
+| File | Lines | Purpose |
+|---|---|---|
+| `electron/claude/claude-cuts-handler.ts` | 108 | Batch cut-list with validation |
+| `electron/claude/claude-auto-edit-handler.ts` | 222 | Filler/silence auto-removal pipeline |
+| `electron/claude/claude-suggest-handler.ts` | 229 | AI-powered cut suggestions |
+| `electron/claude/claude-range-handler.ts` | 96 | Time-range delete across tracks |
+| `electron/claude/claude-http-analysis-routes.ts` | — | Route registration for all 4 endpoints |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | 1444 | Renderer-side IPC bridge (batch ops) |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | 475 | Bridge helper functions |
+
+---
+
+## Remaining Issues
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| 30s HTTP timeout kills long-video suggest-cuts + auto-edit | High | Same root cause as Stage 2 — needs async job pattern |
+| HTTP server integration tests not discoverable by vitest | Low | Tests in `electron/claude/__tests__/` not matched by include glob `../../electron/__tests__/` |
 
 ---
 
@@ -288,31 +292,30 @@ curl http://127.0.0.1:8765/api/claude/timeline/{projectId}
 curl http://127.0.0.1:8765/api/claude/media/{projectId}
 ```
 
-### Error Cases to Test
+### Error Cases Verified
 
-| Scenario | Expected |
-|----------|----------|
-| Missing `mediaId` | 400: "Missing 'mediaId'" |
-| Missing `elementId` on cuts | 400: "Missing 'elementId' and 'cuts'" |
-| Empty cuts array | 400 from validation |
-| Overlapping cut intervals | 400: "Overlapping cut intervals" |
-| `start >= end` on a cut | 400: "start must be less than end" |
-| Non-existent element ID | Timeout (504) — element not found in renderer |
-| No QCut window open | 503: "No active QCut window" |
+| Scenario | Expected | Actual |
+|----------|----------|--------|
+| Missing `mediaId` on suggest-cuts | 400: "Missing 'mediaId'" | **PASS** |
+| Missing `elementId` on cuts | 400: "Missing 'elementId' and 'cuts'" | **PASS** |
+| Missing `elementId`+`mediaId` on auto-edit | 400: "Missing 'elementId' and 'mediaId'" | **PASS** |
+| Empty cuts array | 400: "Missing or empty 'cuts' array" | **PASS** |
+| Overlapping cut intervals | 400: "Overlapping cuts: [1-3] and [2.5-4]" | **PASS** |
+| `start >= end` on a cut | 400: "Cut[0]: start (5) must be less than end (3)" | **PASS** |
+| Missing `startTime`/`endTime` on range | 400: "Missing 'startTime' and 'endTime'" | **PASS** |
+| Non-existent element ID on cuts | Returns 0 cuts (no error) | **PASS** |
 
 ### Automated Tests
 
 All Stage 3 handlers have unit tests. Run them with:
 
 ```bash
-# All Stage 3 tests (50 tests)
+# All Stage 3 tests (68 tests)
 bun run test -- electron/__tests__/claude-cuts-handler.test.ts \
   electron/__tests__/claude-range-handler.test.ts \
   electron/__tests__/claude-auto-edit-handler.test.ts \
-  electron/__tests__/claude-suggest-handler.test.ts
-
-# Timeline bridge tests (6 tests)
-bun run test -- src/lib/__tests__/claude-timeline-bridge.test.ts
+  electron/__tests__/claude-suggest-handler.test.ts \
+  src/lib/__tests__/claude-timeline-bridge.test.ts
 
 # Full suite
 bun run test

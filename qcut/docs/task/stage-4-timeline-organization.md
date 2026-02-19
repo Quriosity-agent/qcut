@@ -1,9 +1,50 @@
 # Stage 4: Timeline Organization
 
 > **Goal**: Let Claude Code organize clips on the timeline efficiently with batch operations and full round-trip serialization
-> **Estimated effort**: ~4 hours total across 4 subtasks
-> **Dependencies**: Stage 1 (media imported), Stage 3 (cuts executed)
-> **Status**: Implemented on February 19, 2026
+> **Status**: IMPLEMENTED + TESTED (2026-02-20)
+> **Tests**: 18 bridge tests + 10 handler-functions tests + 10 HTTP server tests, live API tests below
+
+---
+
+## Live API Test Results (2026-02-20)
+
+Tested against running QCut instance (localhost:8765) with real media files.
+
+| # | Endpoint | Input | Result | Details |
+|---|----------|-------|--------|---------|
+| 1 | `POST /timeline/:pid/elements/batch` | 3 media elements | **PASS** | All 3 added, failedCount=0, per-item elementIds returned |
+| 2 | `POST /timeline/:pid/elements/batch` | 51 elements (over limit) | **PASS** | 400: "Batch add limited to 50 elements" |
+| 3 | `POST /timeline/:pid/elements/batch` | Media on text track | **PASS** | 400: "Element type 'media' is not compatible with track (text)" |
+| 4 | `PATCH /timeline/:pid/elements/batch` | Update 3 startTime/duration | **PASS** | updatedCount=3, failedCount=0 |
+| 5 | `PATCH /timeline/:pid/elements/batch` | Valid + nonexistent element | **PASS** | updatedCount=1, failedCount=1, per-item error |
+| 6 | `PATCH /timeline/:pid/elements/batch` | Update text content | **PASS** | Content updated to "Updated Title Card" |
+| 7 | `DELETE /timeline/:pid/elements/batch` | Delete 1 element with ripple | **PASS** | deletedCount=1, failedCount=0 |
+| 8 | `DELETE /timeline/:pid/elements/batch` | Nonexistent element | **PASS** | deletedCount=0, failedCount=1, per-item error |
+| 9 | `POST /timeline/:pid/arrange` | Sequential mode, gap=0.5 | **PASS** | 2 elements arranged, correct startTimes |
+| 10 | `POST /timeline/:pid/arrange` | Manual order (reversed) | **PASS** | Elements reordered with gap=1.0, startOffset=2 |
+| 11 | `POST /timeline/:pid/arrange` | Spaced mode (default gap) | **PASS** | Default 0.5s gap applied |
+| 12 | `POST /timeline/:pid/arrange` | Nonexistent track | **PASS** | Returns empty arranged[] (no error) |
+| 13 | `GET /timeline/:pid?format=md` | Markdown export | **PASS** | Valid markdown with project info + track tables |
+| 14 | `POST /timeline/:pid/import` | Re-import exported markdown | **PASS** | imported=true, elements appended |
+| 15 | `POST /timeline/:pid/import` | Malformed markdown | **PARTIAL** | Returns imported=true but no elements — should warn/fail |
+| 16 | `POST /timeline/:pid/import` | JSON round-trip | **PASS** | Full JSON export + import works |
+| 17 | `POST /timeline/:pid/selection` | Set 1 element selected | **PASS** | selected=1 |
+| 18 | `GET /timeline/:pid/selection` | Get selection | **PASS** | Returns trackId + elementId |
+| 19 | `DELETE /timeline/:pid/selection` | Clear selection | **PASS** | cleared=true |
+| 20 | `DELETE /timeline/:pid/range` | No cross-track ripple | **PASS** | Split/delete correct, text tracks unchanged |
+| 21 | `DELETE /timeline/:pid/range` | With crossTrackRipple=true | **ISSUE** | Split/delete works but elements NOT shifted left — ripple not applied |
+
+### Results Summary
+
+**19 PASS / 1 PARTIAL / 1 ISSUE**
+
+### Issues Found
+
+| Issue | Severity | Details |
+|-------|----------|---------|
+| **Range delete ripple not shifting elements** | High | `ripple: true` on range delete splits and removes content correctly but does NOT shift subsequent elements left to close the gap. Both same-track and cross-track ripple are missing. |
+| **Malformed markdown import silently succeeds** | Low | Importing random text (`"# Not a timeline"`) returns `imported: true` instead of a warning or error. No elements are added, but the success response is misleading. |
+| **Markdown import appends, doesn't replace** | Info | By design — `applyTimelineToStore()` appends to existing timeline. Re-importing the same markdown duplicates elements. Consider a `replace` mode option. |
 
 ---
 
@@ -11,112 +52,32 @@
 
 | Capability | Status | File |
 |---|---|---|
-| Add single element to track | Ready | `POST /api/claude/timeline/:id/elements` |
-| Split/move/update/delete element | Ready | Multiple endpoints |
-| Selection management | Ready | `POST/GET/DELETE .../selection` |
-| Ripple editing (single-track) | Ready | `timeline-store-operations.ts` |
-| Timeline export (JSON + Markdown) | Ready | `claude-timeline-handler.ts` |
-| Timeline import (JSON only) | Ready | `claude-timeline-handler.ts` |
-| Undo/redo | Ready | `timeline-store.ts` |
-
-**Implemented in this stage**: Batch add/delete/update endpoints, markdown round-trip parsing, cross-track ripple support in range delete, timeline arrange endpoint.
+| Batch add elements | **Working** | `POST /timeline/:pid/elements/batch` |
+| Batch update elements | **Working** | `PATCH /timeline/:pid/elements/batch` |
+| Batch delete elements | **Working** | `DELETE /timeline/:pid/elements/batch` |
+| Arrange/sequence elements | **Working** | `POST /timeline/:pid/arrange` |
+| Markdown export | **Working** | `GET /timeline/:pid?format=md` |
+| Markdown import | **Working** | `POST /timeline/:pid/import` (format=md) |
+| JSON export/import | **Working** | `GET/POST /timeline/:pid` |
+| Selection management | **Working** | `POST/GET/DELETE .../selection` |
+| Range delete (split/remove) | **Working** | `DELETE /timeline/:pid/range` |
+| Range delete (ripple shift) | **Not working** | Elements not shifted after range removal |
+| Cross-track ripple | **Not working** | `crossTrackRipple` flag forwarded but no effect |
 
 ---
 
 ## Subtask 4.1: Batch Element Operations
 
-**What**: Three batch endpoints for add, update, and delete.
-**Status**: Done
+**Endpoints**:
+- `POST /api/claude/timeline/:projectId/elements/batch` — batch add
+- `PATCH /api/claude/timeline/:projectId/elements/batch` — batch update
+- `DELETE /api/claude/timeline/:projectId/elements/batch` — batch delete
 
-**Relevant files**:
-- `electron/claude/claude-timeline-handler.ts` (450 lines) — add batch IPC handlers
-- `electron/claude/claude-http-server.ts` (537 lines) — register routes
-- `apps/web/src/stores/timeline-store.ts` (1066 lines) — existing `addElementToTrack()`, `removeElementFromTrack()`
-- `electron/types/claude-api.ts` — batch types
+**Implementation**: `electron/claude/claude-timeline-handler.ts` + `apps/web/src/lib/claude-timeline-bridge.ts`
 
-### 4.1a: Batch Add Elements
+**Live test**: All PASS — batch add (3 elements), update (startTime/duration/content), delete (with ripple). Limit enforced at 50. Per-item error reporting works (valid + invalid elements in same batch). Track type compatibility validated.
 
-```
-POST /api/claude/timeline/:projectId/elements/batch
-Body: {
-  "elements": [
-    { "type": "media", "mediaId": "media_...", "trackId": "track_1", "startTime": 0, "duration": 5 },
-    { "type": "text", "content": "Title", "trackId": "track_2", "startTime": 0, "duration": 3 },
-    { "type": "media", "mediaId": "media_...", "trackId": "track_1", "startTime": 5, "duration": 8 }
-  ]
-}
-Response: {
-  "success": true,
-  "data": {
-    "added": [
-      { "index": 0, "elementId": "el_abc", "success": true },
-      { "index": 1, "elementId": "el_def", "success": true },
-      { "index": 2, "elementId": "el_ghi", "success": true }
-    ],
-    "failedCount": 0
-  }
-}
-```
-
-**Implementation**:
-```typescript
-// electron/claude/claude-timeline-handler.ts
-
-async function batchAddElements(
-  win: BrowserWindow,
-  projectId: string,
-  elements: CreateTimelineElement[]
-): Promise<BatchResult> {
-  // 1. Validate all elements before adding any (fail-fast)
-  // 2. Push single history snapshot
-  // 3. Send batch to renderer via IPC
-  // 4. Renderer processes sequentially (order matters for overlaps)
-  // 5. Return per-element results
-}
-```
-
-**Limit**: Max 50 elements per batch.
-
-### 4.1b: Batch Delete Elements
-
-```
-DELETE /api/claude/timeline/:projectId/elements/batch
-Body: {
-  "elements": [
-    { "trackId": "track_1", "elementId": "el_abc" },
-    { "trackId": "track_1", "elementId": "el_def" }
-  ],
-  "ripple": true
-}
-Response: { "success": true, "data": { "deletedCount": 2 } }
-```
-
-### 4.1c: Batch Update Elements
-
-```
-PATCH /api/claude/timeline/:projectId/elements/batch
-Body: {
-  "updates": [
-    { "elementId": "el_abc", "startTime": 5.0 },
-    { "elementId": "el_def", "duration": 10.0 },
-    { "elementId": "el_ghi", "trimStart": 1.0, "trimEnd": 2.0 }
-  ]
-}
-Response: { "success": true, "data": { "updatedCount": 3, "failedCount": 0 } }
-```
-
-**All batch operations**: Single undo snapshot, sequential processing within batch, per-item error reporting.
-
-**Test file**: `electron/__tests__/claude-batch-elements.test.ts`
-
-**Tests to write**:
-- Batch adds multiple elements to multiple tracks
-- Batch deletes with ripple
-- Batch updates different properties
-- Single undo restores entire batch
-- Rejects batches exceeding 50 items
-- Reports per-item failures without aborting batch
-- Validates track compatibility before adding
+**Unit tests**: 18 passing (`src/lib/__tests__/claude-timeline-bridge.test.ts`)
 
 ---
 
