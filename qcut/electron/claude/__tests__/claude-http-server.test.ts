@@ -180,6 +180,15 @@ vi.mock(
   { virtual: true }
 );
 
+vi.mock("../claude-range-handler.js", () => ({
+  executeDeleteRange: vi.fn(async () => ({
+    deletedElements: 0,
+    splitElements: 0,
+    totalRemovedDuration: 0,
+  })),
+  validateRangeDeleteRequest: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Import the server and mocked electron after mocks
 // ---------------------------------------------------------------------------
@@ -190,6 +199,7 @@ import {
 } from "../claude-http-server";
 import { BrowserWindow } from "electron";
 import * as timelineHandler from "../claude-timeline-handler.js";
+import * as rangeHandler from "../claude-range-handler.js";
 import { HttpError } from "../utils/http-router";
 
 // ---------------------------------------------------------------------------
@@ -458,7 +468,7 @@ describe("Claude HTTP Server", () => {
       webContents: { send: vi.fn() },
     } as unknown as BrowserWindow;
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
-    vi.mocked(timelineHandler.deleteTimelineRange).mockResolvedValueOnce({
+    vi.mocked(rangeHandler.executeDeleteRange).mockResolvedValueOnce({
       deletedElements: 2,
       splitElements: 1,
       totalRemovedDuration: 5,
@@ -477,7 +487,7 @@ describe("Claude HTTP Server", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.totalRemovedDuration).toBe(5);
-    expect(timelineHandler.deleteTimelineRange).toHaveBeenCalledWith(
+    expect(rangeHandler.executeDeleteRange).toHaveBeenCalledWith(
       mockWindow,
       expect.objectContaining({
         startTime: 10,
@@ -588,6 +598,27 @@ describe("Claude HTTP Server", () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.cleared).toBe(true);
     expect(send).toHaveBeenCalledWith("claude:timeline:clearSelection");
+  });
+
+  it("POST /api/claude/timeline/:projectId/import rejects malformed markdown", async () => {
+    const send = vi.fn();
+    const mockWindow = { webContents: { send } } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.markdownToTimeline).mockImplementationOnce(() => {
+      throw new Error("Invalid timeline markdown: No tracks found");
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/import", {
+      method: "POST",
+      body: JSON.stringify({
+        format: "md",
+        data: "# Not a timeline\n\nSome text.",
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain("No tracks found");
   });
 
   it("GET /api/claude/health returns status ok", async () => {

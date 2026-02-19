@@ -24,7 +24,7 @@ const HANDLER_NAME = "AutoEdit";
 
 /**
  * Merge overlapping or adjacent cut intervals.
- * Input must be sorted by start time ascending.
+ * Inputs are sorted by start time ascending before merge.
  */
 export function mergeCutIntervals(cuts: AutoEditCutInfo[]): AutoEditCutInfo[] {
   if (cuts.length <= 1) return cuts;
@@ -73,8 +73,7 @@ export async function autoEdit(
 
   claudeLog.info(
     HANDLER_NAME,
-    `Auto-edit: project=${safeProjectId}, element=${request.elementId}, ` +
-      `fillers=${removeFillers}, silences=${removeSilences}, dryRun=${dryRun}`
+    `Auto-edit: project=${safeProjectId}, element=${request.elementId}, fillers=${removeFillers}, silences=${removeSilences}, dryRun=${dryRun}`
   );
 
   // Step 1: Get element info to map media-time → timeline-time

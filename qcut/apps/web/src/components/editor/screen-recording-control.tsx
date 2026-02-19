@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useErrorReporter } from "@/hooks/use-error-reporter";
 import {
   getCachedScreenRecordingStatus,
   getScreenRecordingStatus,
@@ -49,6 +50,7 @@ function isEditableTarget({ target }: { target: EventTarget | null }): boolean {
 }
 
 export function ScreenRecordingControl() {
+  const reportError = useErrorReporter("ScreenRecordingControl");
   const [status, setStatus] = useState<ScreenRecordingStatus>(
     getCachedScreenRecordingStatus()
   );
@@ -60,12 +62,9 @@ export function ScreenRecordingControl() {
       const nextStatus = await getScreenRecordingStatus();
       setStatus(nextStatus);
     } catch (error) {
-      console.error(
-        "[ScreenRecordingControl] Failed to refresh status:",
-        error
-      );
+      reportError(error, "refresh status", { showToast: false });
     }
-  }, []);
+  }, [reportError]);
 
   useEffect(() => {
     try {
@@ -75,30 +74,21 @@ export function ScreenRecordingControl() {
           setStatus(nextStatus);
         },
       });
-      refreshStatus().catch((error) => {
-        console.error(
-          "[ScreenRecordingControl] Failed to refresh initial status:",
-          error
-        );
-      });
+      refreshStatus().catch(() => {});
       return () => {
         try {
           unsubscribe();
         } catch (error) {
-          console.error(
-            "[ScreenRecordingControl] Failed to unsubscribe from status events:",
-            error
-          );
+          reportError(error, "unsubscribe from status events", {
+            showToast: false,
+          });
         }
       };
     } catch (error) {
-      console.error(
-        "[ScreenRecordingControl] Failed to initialize recording bridge:",
-        error
-      );
+      reportError(error, "initialize recording bridge", { showToast: false });
       return () => {};
     }
-  }, [refreshStatus]);
+  }, [refreshStatus, reportError]);
 
   useEffect(() => {
     if (!status.recording) {
@@ -151,11 +141,11 @@ export function ScreenRecordingControl() {
       toast("Screen recording failed", {
         description: message,
       });
-      console.error("[ScreenRecordingControl] Toggle failed:", error);
+      reportError(error, "toggle recording", { showToast: false });
     } finally {
       setIsBusy(false);
     }
-  }, [isBusy, refreshStatus, status.recording]);
+  }, [isBusy, refreshStatus, status.recording, reportError]);
 
   const handleButtonKeyDown = useCallback(
     ({ key }: KeyboardEvent<HTMLButtonElement>): void => {
@@ -164,13 +154,10 @@ export function ScreenRecordingControl() {
           return;
         }
       } catch (error) {
-        console.error(
-          "[ScreenRecordingControl] Button key handler failed:",
-          error
-        );
+        reportError(error, "button key handler", { showToast: false });
       }
     },
-    []
+    [reportError]
   );
 
   const handleGlobalShortcut = useCallback(
@@ -195,20 +182,12 @@ export function ScreenRecordingControl() {
         }
 
         preventDefault();
-        handleToggleRecording().catch((error) => {
-          console.error(
-            "[ScreenRecordingControl] Failed to toggle recording via shortcut:",
-            error
-          );
-        });
+        handleToggleRecording().catch(() => {});
       } catch (error) {
-        console.error(
-          "[ScreenRecordingControl] Global shortcut handler failed:",
-          error
-        );
+        reportError(error, "global shortcut handler", { showToast: false });
       }
     },
-    [handleToggleRecording]
+    [handleToggleRecording, reportError]
   );
 
   useEffect(() => {
@@ -218,20 +197,16 @@ export function ScreenRecordingControl() {
         try {
           window.removeEventListener("keydown", handleGlobalShortcut);
         } catch (error) {
-          console.error(
-            "[ScreenRecordingControl] Failed to unregister keyboard shortcut:",
-            error
-          );
+          reportError(error, "unregister keyboard shortcut", {
+            showToast: false,
+          });
         }
       };
     } catch (error) {
-      console.error(
-        "[ScreenRecordingControl] Failed to register keyboard shortcut:",
-        error
-      );
+      reportError(error, "register keyboard shortcut", { showToast: false });
       return () => {};
     }
-  }, [handleGlobalShortcut]);
+  }, [handleGlobalShortcut, reportError]);
 
   const recordingActive = status.recording;
   const buttonLabel = recordingActive ? `REC ${elapsedLabel}` : "Record";
@@ -247,12 +222,7 @@ export function ScreenRecordingControl() {
           : "h-7 text-xs"
       }
       onClick={() => {
-        handleToggleRecording().catch((error) => {
-          console.error(
-            "[ScreenRecordingControl] Failed to toggle recording via button:",
-            error
-          );
-        });
+        handleToggleRecording().catch(() => {});
       }}
       onKeyDown={handleButtonKeyDown}
       disabled={isBusy}

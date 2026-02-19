@@ -25,6 +25,7 @@ export default defineConfig({
     include: [
       "**/*.{test,spec}.?(c|m)[jt]s?(x)",
       "../../electron/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
+      "../../electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
     isolate: true,

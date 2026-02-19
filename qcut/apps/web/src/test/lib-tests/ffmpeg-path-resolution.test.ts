@@ -55,7 +55,9 @@ describe("FFmpeg staged packaging contract", () => {
   });
 
   it("keeps ffmpeg-ffprobe-static dependency for staging source metadata", () => {
-    expect(packageJson.dependencies?.["ffmpeg-ffprobe-static"]).toBeDefined();
+    expect(
+      packageJson.devDependencies?.["ffmpeg-ffprobe-static"]
+    ).toBeDefined();
   });
 
   it("has no shared libraries in electron/resources root", () => {

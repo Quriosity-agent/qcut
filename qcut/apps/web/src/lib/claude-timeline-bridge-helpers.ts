@@ -195,7 +195,7 @@ function getSourceNameFromDeterministicSourceId({
 }
 
 /** Sync project media from disk if not already in flight. */
-async function syncProjectMediaIfNeeded({
+export async function syncProjectMediaIfNeeded({
   projectId,
 }: {
   projectId: string;

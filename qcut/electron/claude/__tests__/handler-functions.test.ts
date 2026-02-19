@@ -298,7 +298,12 @@ describe("Timeline Handler Functions", () => {
       "| Duration | 0:02:00 |",
       "| Resolution | 3840x2160 |",
       "| FPS | 60 |",
-      "| Tracks | 0 |",
+      "| Tracks | 1 |",
+      "",
+      "## Track 1: Main Track",
+      "| ID | Start | End | Duration | Type | Source | Content |",
+      "|----|-------|-----|----------|------|--------|--------|",
+      "| `el_1` | 0:00:00 | 0:00:10 | 0:00:10 | video | clip.mp4 | clip.mp4 |",
     ].join("\n");
 
     const timeline = markdownToTimeline(md);
@@ -353,6 +358,21 @@ describe("Timeline Handler Functions", () => {
       "| `el_1` | - | - | - | video | clip.mp4 | - |",
     ].join("\n");
     expect(() => markdownToTimeline(md)).toThrow("Invalid timeline markdown");
+  });
+
+  it("markdownToTimeline rejects markdown with no tracks", () => {
+    expect(() => markdownToTimeline("# Not a timeline\n\nSome text.")).toThrow(
+      "No tracks found"
+    );
+  });
+
+  it("markdownToTimeline rejects tracks with no elements", () => {
+    const md = [
+      "# Timeline: Empty",
+      "## Track 1: Main Track",
+      "*No elements in this track*",
+    ].join("\n");
+    expect(() => markdownToTimeline(md)).toThrow("No elements found");
   });
 
   it("validateTimeline passes for valid timeline", () => {

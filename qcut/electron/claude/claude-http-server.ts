@@ -246,7 +246,14 @@ export function startClaudeHTTPServer(
     const format = req.body.format || "json";
     let timeline;
     if (format === "md") {
-      timeline = markdownToTimeline(req.body.data);
+      try {
+        timeline = markdownToTimeline(req.body.data);
+      } catch (e) {
+        throw new HttpError(
+          400,
+          e instanceof Error ? e.message : "Invalid markdown"
+        );
+      }
     } else {
       if (typeof req.body.data === "string") {
         try {
@@ -260,7 +267,10 @@ export function startClaudeHTTPServer(
     }
     validateTimeline(timeline);
     const win = getWindow();
-    win.webContents.send("claude:timeline:apply", timeline);
+    win.webContents.send("claude:timeline:apply", {
+      timeline,
+      replace: req.body.replace === true,
+    });
     return { imported: true };
   });
 
@@ -518,10 +528,10 @@ export function startClaudeHTTPServer(
       });
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Failed to generate summary"
-      );
+      const msg =
+        error instanceof Error ? error.message : "Failed to generate summary";
+      const status = msg.includes("Failed to read project") ? 400 : 500;
+      throw new HttpError(status, msg);
     }
   });
 

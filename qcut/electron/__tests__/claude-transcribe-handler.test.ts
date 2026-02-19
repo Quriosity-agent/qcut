@@ -106,12 +106,28 @@ vi.mock("../claude/claude-media-handler", () => ({
   }),
 }));
 
-vi.mock("../api-key-handler", () => ({
-  getDecryptedApiKeys: vi.fn(async () => ({
+const { mockGetDecryptedApiKeys } = vi.hoisted(() => ({
+  mockGetDecryptedApiKeys: vi.fn(async () => ({
     falApiKey: "test-fal-key",
     geminiApiKey: "test-gemini-key",
     anthropicApiKey: "",
   })),
+}));
+
+vi.mock("../api-key-handler", () => ({
+  getDecryptedApiKeys: mockGetDecryptedApiKeys,
+}));
+
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
+}));
+vi.stubGlobal("fetch", mockFetch);
+
+const { mockReadFile: mockFsReadFile } = vi.hoisted(() => ({
+  mockReadFile: vi.fn(),
+}));
+vi.mock("node:fs/promises", () => ({
+  readFile: mockFsReadFile,
 }));
 
 vi.mock("../ffmpeg/utils", () => ({
@@ -122,7 +138,14 @@ vi.mock("../ffmpeg/utils", () => ({
 // Tests
 // ---------------------------------------------------------------------------
 
-import { transcribeMedia } from "../claude/claude-transcribe-handler";
+import {
+  transcribeMedia,
+  startTranscribeJob,
+  getTranscribeJobStatus,
+  listTranscribeJobs,
+  cancelTranscribeJob,
+  _clearTranscribeJobs,
+} from "../claude/claude-transcribe-handler";
 
 describe("claude-transcribe-handler", () => {
   beforeEach(() => {
@@ -193,5 +216,247 @@ describe("claude-transcribe-handler", () => {
         mediaId: "valid-audio",
       })
     ).rejects.toThrow(); // sanitized project ID won't find media
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Async Job Lifecycle
+// ---------------------------------------------------------------------------
+
+describe("async transcription jobs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    _clearTranscribeJobs();
+  });
+
+  it("startTranscribeJob returns a job ID immediately", () => {
+    const { jobId } = startTranscribeJob("proj-1", {
+      mediaId: "valid-audio",
+      provider: "elevenlabs",
+    });
+
+    expect(jobId).toMatch(/^transcribe_\d+_[a-z0-9]+$/);
+  });
+
+  it("job exists immediately after creation with correct metadata", () => {
+    const { jobId } = startTranscribeJob("proj-1", {
+      mediaId: "valid-audio",
+    });
+
+    const job = getTranscribeJobStatus(jobId);
+    expect(job).toBeDefined();
+    // Status may be "queued" or "processing" depending on microtask timing
+    expect(["queued", "processing", "failed"]).toContain(job!.status);
+    expect(job!.projectId).toBe("proj-1");
+    expect(job!.mediaId).toBe("valid-audio");
+    expect(job!.provider).toBe("elevenlabs");
+  });
+
+  it("getTranscribeJobStatus returns null for unknown IDs", () => {
+    expect(getTranscribeJobStatus("transcribe_unknown")).toBeNull();
+  });
+
+  it("cancelTranscribeJob marks job as cancelled", () => {
+    const { jobId } = startTranscribeJob("proj-1", {
+      mediaId: "valid-audio",
+    });
+
+    const cancelled = cancelTranscribeJob(jobId);
+    expect(cancelled).toBe(true);
+
+    const job = getTranscribeJobStatus(jobId);
+    expect(job!.status).toBe("cancelled");
+    expect(job!.completedAt).toBeDefined();
+  });
+
+  it("cancelTranscribeJob returns false for unknown jobs", () => {
+    expect(cancelTranscribeJob("transcribe_nonexistent")).toBe(false);
+  });
+
+  it("listTranscribeJobs returns sorted by creation time", () => {
+    startTranscribeJob("proj-1", { mediaId: "valid-audio" });
+    startTranscribeJob("proj-1", { mediaId: "valid-audio" });
+    startTranscribeJob("proj-1", { mediaId: "valid-audio" });
+
+    const jobs = listTranscribeJobs();
+    expect(jobs).toHaveLength(3);
+    // Sorted newest-first
+    expect(jobs[0].createdAt).toBeGreaterThanOrEqual(jobs[1].createdAt);
+    expect(jobs[1].createdAt).toBeGreaterThanOrEqual(jobs[2].createdAt);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mocked ElevenLabs API Tests
+// ---------------------------------------------------------------------------
+
+describe("ElevenLabs transcription API (mocked)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockFetch.mockReset();
+    mockFsReadFile.mockReset();
+  });
+
+  it("full pipeline returns correct TranscriptionResult", async () => {
+    // Mock readFile for audio file upload
+    mockFsReadFile.mockResolvedValue(Buffer.from("fake-audio-data"));
+
+    // 1. FAL storage initiate
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        upload_url: "https://mock-upload-url",
+        file_url: "https://mock-cdn/audio.mp3",
+      }),
+    });
+
+    // 2. FAL storage upload
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+    });
+
+    // 3. ElevenLabs Scribe v2 response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        text: "Hello world",
+        language_code: "en",
+        words: [
+          {
+            text: "Hello",
+            start: 0.0,
+            end: 0.4,
+            type: "word",
+            speaker_id: "A",
+          },
+          {
+            text: " ",
+            start: 0.4,
+            end: 0.5,
+            type: "spacing",
+            speaker_id: null,
+          },
+          {
+            text: "world",
+            start: 0.5,
+            end: 0.9,
+            type: "word",
+            speaker_id: "A",
+          },
+        ],
+      }),
+    });
+
+    const result = await transcribeMedia("test-project", {
+      mediaId: "valid-audio",
+      provider: "elevenlabs",
+    });
+
+    expect(result.language).toBe("en");
+    expect(result.duration).toBe(0.9);
+    expect(result.words).toHaveLength(3);
+    expect(result.words[0].text).toBe("Hello");
+    expect(result.words[0].speaker).toBe("A");
+    expect(result.words[1].type).toBe("spacing");
+    expect(result.words[1].speaker).toBeUndefined();
+    expect(result.words[2].text).toBe("world");
+    expect(result.segments.length).toBeGreaterThanOrEqual(1);
+    expect(result.segments[0].text).toContain("Hello");
+  });
+
+  it("throws on FAL storage initiate failure", async () => {
+    mockFsReadFile.mockResolvedValue(Buffer.from("fake-audio"));
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => "Internal Server Error",
+    });
+
+    await expect(
+      transcribeMedia("test-project", {
+        mediaId: "valid-audio",
+        provider: "elevenlabs",
+      })
+    ).rejects.toThrow("FAL storage initiate failed");
+  });
+
+  it("throws on FAL storage upload failure", async () => {
+    mockFsReadFile.mockResolvedValue(Buffer.from("fake-audio"));
+
+    // Initiate succeeds
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        upload_url: "https://mock-upload",
+        file_url: "https://mock-cdn/audio.mp3",
+      }),
+    });
+
+    // Upload fails
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+    });
+
+    await expect(
+      transcribeMedia("test-project", {
+        mediaId: "valid-audio",
+        provider: "elevenlabs",
+      })
+    ).rejects.toThrow("FAL storage upload failed");
+  });
+
+  it("throws when FAL API key is missing", async () => {
+    mockGetDecryptedApiKeys.mockResolvedValueOnce({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "",
+    });
+
+    await expect(
+      transcribeMedia("test-project", {
+        mediaId: "valid-audio",
+        provider: "elevenlabs",
+      })
+    ).rejects.toThrow("FAL API key not configured");
+  });
+
+  it("maps speaker_id correctly", async () => {
+    mockFsReadFile.mockResolvedValue(Buffer.from("fake-audio"));
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          upload_url: "https://mock",
+          file_url: "https://mock-cdn/audio.mp3",
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          text: "Hi",
+          language_code: "en",
+          words: [
+            {
+              text: "Hi",
+              start: 0,
+              end: 0.3,
+              type: "word",
+              speaker_id: "B",
+            },
+          ],
+        }),
+      });
+
+    const result = await transcribeMedia("test-project", {
+      mediaId: "valid-audio",
+    });
+
+    expect(result.words[0].speaker).toBe("B");
   });
 });

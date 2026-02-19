@@ -106,17 +106,55 @@ vi.mock("../claude/claude-media-handler", () => ({
   }),
 }));
 
-vi.mock("../api-key-handler", () => ({
-  getDecryptedApiKeys: vi.fn(async () => ({
+const { mockGetDecryptedApiKeys } = vi.hoisted(() => ({
+  mockGetDecryptedApiKeys: vi.fn(async () => ({
     falApiKey: "",
     geminiApiKey: "",
     anthropicApiKey: "test-anthropic-key",
   })),
 }));
 
+vi.mock("../api-key-handler", () => ({
+  getDecryptedApiKeys: mockGetDecryptedApiKeys,
+}));
+
+const { mockFetch } = vi.hoisted(() => ({
+  mockFetch: vi.fn(),
+}));
+vi.stubGlobal("fetch", mockFetch);
+
+const { mockReadFile } = vi.hoisted(() => ({
+  mockReadFile: vi.fn(),
+}));
+vi.mock("node:fs/promises", () => ({
+  default: { readFile: mockReadFile },
+  readFile: mockReadFile,
+}));
+
 vi.mock("../ffmpeg/utils", () => ({
   getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
 }));
+
+// Mock child_process.spawn so extractFrame succeeds without real FFmpeg
+const { mockSpawn } = vi.hoisted(() => {
+  const { EventEmitter } = require("node:events");
+  const mockSpawn = vi.fn(() => {
+    const proc = new EventEmitter();
+    proc.kill = vi.fn();
+    process.nextTick(() => proc.emit("close", 0));
+    return proc;
+  });
+  return { mockSpawn };
+});
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    default: { ...actual, spawn: mockSpawn },
+    spawn: mockSpawn,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -125,6 +163,7 @@ vi.mock("../ffmpeg/utils", () => ({
 import {
   analyzeFrames,
   parseFrameAnalysisResponse,
+  resolveTimestamps,
 } from "../claude/claude-vision-handler";
 
 describe("parseFrameAnalysisResponse", () => {
@@ -220,6 +259,15 @@ describe("analyzeFrames", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExistsSync.mockReturnValue(true);
+    // Reset mocks with one-time overrides to prevent leakage between tests
+    mockFetch.mockReset();
+    mockReadFile.mockReset();
+    mockGetDecryptedApiKeys.mockReset();
+    mockGetDecryptedApiKeys.mockResolvedValue({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "test-anthropic-key",
+    });
   });
 
   it("rejects invalid media ID", async () => {
@@ -245,5 +293,147 @@ describe("analyzeFrames", () => {
         mediaId: "valid-video",
       })
     ).rejects.toThrow("missing on disk");
+  });
+
+  it("throws when Anthropic API key is missing", async () => {
+    mockGetDecryptedApiKeys.mockResolvedValueOnce({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "",
+    });
+
+    // Mock: existsSync true for media file, false for extracted frames
+    let callCount = 0;
+    mockExistsSync.mockImplementation(() => {
+      callCount++;
+      // First call: media file exists. Subsequent: frame paths don't exist
+      return callCount <= 1;
+    });
+
+    await expect(
+      analyzeFrames("test-project", {
+        mediaId: "valid-video",
+        timestamps: [0],
+      })
+    ).rejects.toThrow("No frames could be extracted");
+  });
+
+  it("returns analyzed frames from mocked Claude Vision API", async () => {
+    // Mock frame extraction: existsSync returns true for media + frames
+    mockExistsSync.mockReturnValue(true);
+
+    // Mock readFile for frame images
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    // Mock Claude Vision API response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify([
+              {
+                objects: ["person", "desk"],
+                text: ["TITLE"],
+                description: "Person at desk",
+                mood: "calm",
+                composition: "centered",
+              },
+            ]),
+          },
+        ],
+      }),
+    });
+
+    const result = await analyzeFrames("test-project", {
+      mediaId: "valid-video",
+      timestamps: [0],
+    });
+
+    expect(result.frames).toHaveLength(1);
+    expect(result.frames[0].objects).toEqual(["person", "desk"]);
+    expect(result.frames[0].description).toBe("Person at desk");
+    expect(result.totalFramesAnalyzed).toBe(1);
+  });
+
+  it("handles Claude Vision API error responses", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      text: async () => "Unauthorized",
+    });
+
+    await expect(
+      analyzeFrames("test-project", {
+        mediaId: "valid-video",
+        timestamps: [0],
+      })
+    ).rejects.toThrow("Claude Vision API error: 401");
+  });
+
+  it("handles Claude Vision API timeout", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    mockFetch.mockRejectedValueOnce(new DOMException("Aborted", "AbortError"));
+
+    await expect(
+      analyzeFrames("test-project", {
+        mediaId: "valid-video",
+        timestamps: [0],
+      })
+    ).rejects.toThrow("Aborted");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveTimestamps unit tests
+// ---------------------------------------------------------------------------
+
+describe("resolveTimestamps", () => {
+  it("returns explicit timestamps unchanged", () => {
+    const result = resolveTimestamps(
+      { mediaId: "x", timestamps: [1, 5, 10] },
+      60
+    );
+    expect(result).toEqual([1, 5, 10]);
+  });
+
+  it("caps explicit timestamps at 20", () => {
+    const timestamps = Array.from({ length: 25 }, (_, i) => i);
+    const result = resolveTimestamps({ mediaId: "x", timestamps }, 60);
+    expect(result).toHaveLength(20);
+    expect(result[0]).toBe(0);
+    expect(result[19]).toBe(19);
+  });
+
+  it("generates timestamps from interval and duration", () => {
+    const result = resolveTimestamps({ mediaId: "x", interval: 5 }, 20);
+    expect(result).toEqual([0, 5, 10, 15]);
+  });
+
+  it("caps interval timestamps at 20", () => {
+    const result = resolveTimestamps({ mediaId: "x", interval: 1 }, 100);
+    expect(result).toHaveLength(20);
+  });
+
+  it("clamps interval to minimum 1 second", () => {
+    const result = resolveTimestamps({ mediaId: "x", interval: 0.1 }, 5);
+    // interval clamped to 1, so: 0, 1, 2, 3, 4
+    expect(result).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("returns [0] when no timestamps, interval, or duration", () => {
+    const result = resolveTimestamps({ mediaId: "x" });
+    expect(result).toEqual([0]);
+  });
+
+  it("returns [0] when interval provided but no duration", () => {
+    const result = resolveTimestamps({ mediaId: "x", interval: 5 });
+    expect(result).toEqual([0]);
   });
 });

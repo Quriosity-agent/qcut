@@ -862,7 +862,9 @@ export interface ElectronAPI {
       clearSelection: (projectId: string) => Promise<void>;
       onRequest: (callback: () => void) => void;
       sendResponse: (timeline: ClaudeTimeline) => void;
-      onApply: (callback: (timeline: ClaudeTimeline) => void) => void;
+      onApply: (
+        callback: (timeline: ClaudeTimeline, replace?: boolean) => void
+      ) => void;
       onAddElement: (
         callback: (element: Partial<ClaudeElement>) => void
       ) => void;

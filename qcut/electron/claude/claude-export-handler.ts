@@ -12,6 +12,7 @@ import { claudeLog } from "./utils/logger.js";
 import { logOperation } from "./claude-operation-log.js";
 import type {
   ClaudeTimeline,
+  ClaudeElement,
   ExportPreset,
   ExportRecommendation,
   ExportJobRequest,
@@ -321,19 +322,49 @@ function resolveExportSettings({
   }
 }
 
-function getMediaIdFromElement({
-  sourceId,
+function findMediaForElement({
+  element,
+  mediaById,
+  mediaByName,
 }: {
-  sourceId: string | undefined;
-}): string | null {
-  try {
-    if (!sourceId || !sourceId.trim()) {
-      return null;
-    }
-    return sourceId;
-  } catch {
-    return null;
+  element: ClaudeElement;
+  mediaById: Map<string, MediaFile>;
+  mediaByName: Map<string, MediaFile>;
+}): MediaFile | null {
+  // 1. Try matching by deterministic Claude API ID (element.sourceId === mediaFile.id)
+  if (element.sourceId) {
+    const byId = mediaById.get(element.sourceId);
+    if (byId) return byId;
   }
+
+  // 2. Try matching by sourceName (filename)
+  if (element.sourceName) {
+    const byName = mediaByName.get(element.sourceName);
+    if (byName) return byName;
+  }
+
+  // 3. Try decoding sourceId as a deterministic media ID to get filename
+  if (element.sourceId?.startsWith("media_")) {
+    try {
+      const encoded = element.sourceId.slice("media_".length);
+      const decoded = Buffer.from(encoded, "base64url").toString("utf8");
+      if (decoded) {
+        const byDecoded = mediaByName.get(decoded);
+        if (byDecoded) return byDecoded;
+      }
+    } catch {
+      // Not a valid base64url — ignore
+    }
+  }
+
+  // 4. Try matching Zustand UUID sourceId against media names/paths
+  //    (when renderer provides sourceId as internal UUID, match by name instead)
+  if (element.sourceId && !mediaById.has(element.sourceId)) {
+    // sourceId is likely a Zustand internal UUID — can't match by ID.
+    // Fall through; already tried sourceName above.
+  }
+
+  return null;
 }
 
 function collectExportSegments({
@@ -344,9 +375,11 @@ function collectExportSegments({
   mediaFiles: MediaFile[];
 }): ExportSegment[] {
   try {
-    const mediaMap = new Map<string, MediaFile>();
+    const mediaById = new Map<string, MediaFile>();
+    const mediaByName = new Map<string, MediaFile>();
     for (const mediaFile of mediaFiles) {
-      mediaMap.set(mediaFile.id, mediaFile);
+      mediaById.set(mediaFile.id, mediaFile);
+      mediaByName.set(mediaFile.name, mediaFile);
     }
 
     const segments: ExportSegment[] = [];
@@ -357,12 +390,7 @@ function collectExportSegments({
           continue;
         }
 
-        const mediaId = getMediaIdFromElement({ sourceId: element.sourceId });
-        if (!mediaId) {
-          continue;
-        }
-
-        const media = mediaMap.get(mediaId);
+        const media = findMediaForElement({ element, mediaById, mediaByName });
         if (!media || media.type !== "video") {
           continue;
         }
@@ -380,7 +408,7 @@ function collectExportSegments({
           sourcePath: media.path,
           startTime: element.startTime,
           duration: durationFromElement,
-          sourceId: mediaId,
+          sourceId: media.id,
         });
       }
     }

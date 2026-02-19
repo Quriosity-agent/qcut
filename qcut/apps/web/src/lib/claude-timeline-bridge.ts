@@ -26,6 +26,7 @@ import {
   addClaudeTextElement,
   formatTracksForExport,
   applyTimelineToStore,
+  syncProjectMediaIfNeeded,
 } from "./claude-timeline-bridge-helpers";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
@@ -172,12 +173,27 @@ export function setupClaudeTimelineBridge(): void {
   });
 
   // Handle timeline import from Claude
-  claudeAPI.onApply(async (timeline: ClaudeTimeline) => {
+  claudeAPI.onApply(async (timeline: ClaudeTimeline, replace?: boolean) => {
     try {
       debugLog(
         "[ClaudeTimelineBridge] Received timeline to apply:",
-        timeline.name
+        timeline.name,
+        "replace:",
+        replace
       );
+
+      if (replace) {
+        const timelineStore = useTimelineStore.getState();
+        timelineStore.pushHistory();
+        for (const track of [...timelineStore.tracks]) {
+          for (const element of [...track.elements]) {
+            useTimelineStore
+              .getState()
+              .removeElementFromTrack(track.id, element.id, false);
+          }
+        }
+      }
+
       await applyTimelineToStore(timeline);
     } catch (error) {
       debugError("[ClaudeTimelineBridge] Failed to apply timeline:", error);
@@ -415,7 +431,7 @@ export function setupClaudeTimelineBridge(): void {
     typeof claudeAPI.sendBatchAddElementsResponse === "function"
   ) {
     claudeAPI.onBatchAddElements(
-      (data: {
+      async (data: {
         requestId: string;
         elements: ClaudeBatchAddElementRequest[];
       }) => {
@@ -493,6 +509,12 @@ export function setupClaudeTimelineBridge(): void {
                 compatibility.errorMessage || "Track compatibility failed"
               );
             }
+          }
+
+          // Sync media from disk so newly-imported files are discoverable
+          const projectId = useProjectStore.getState().activeProject?.id;
+          if (projectId) {
+            await syncProjectMediaIfNeeded({ projectId });
           }
 
           timelineStore.pushHistory();
@@ -1258,6 +1280,7 @@ export function setupClaudeTimelineBridge(): void {
         endTime: number;
         trackIds?: string[];
         ripple?: boolean;
+        crossTrackRipple?: boolean;
       };
     }) => {
       const emptyResult = {
@@ -1267,92 +1290,28 @@ export function setupClaudeTimelineBridge(): void {
       };
 
       try {
-        const { startTime, endTime, trackIds } = data.request;
+        const { startTime, endTime, trackIds, ripple, crossTrackRipple } =
+          data.request;
         debugLog(
           "[ClaudeTimelineBridge] Range delete:",
           startTime,
           "to",
-          endTime
+          endTime,
+          "ripple:",
+          ripple,
+          "crossTrackRipple:",
+          crossTrackRipple
         );
-        const timelineStore = useTimelineStore.getState();
-        timelineStore.pushHistory();
 
-        const allTracks = timelineStore.tracks;
-        const targetTracks = trackIds
-          ? allTracks.filter((t) => trackIds.includes(t.id))
-          : allTracks;
-
-        let deletedElements = 0;
-        let splitElements = 0;
-        let totalRemovedDuration = 0;
-
-        for (const track of targetTracks) {
-          const elements = [...track.elements];
-
-          for (const element of elements) {
-            const effStart = element.startTime;
-            const effEnd =
-              element.startTime +
-              (element.duration - element.trimStart - element.trimEnd);
-
-            if (effEnd <= startTime || effStart >= endTime) continue;
-
-            const store = useTimelineStore.getState();
-
-            // Fully contained → delete
-            if (effStart >= startTime && effEnd <= endTime) {
-              store.removeElementFromTrack(track.id, element.id, false);
-              deletedElements++;
-              totalRemovedDuration += effEnd - effStart;
-              continue;
-            }
-
-            // Range inside element → split+split+remove middle
-            if (effStart < startTime && effEnd > endTime) {
-              const rightId = store.splitElement(
-                track.id,
-                element.id,
-                startTime,
-                false
-              );
-              if (rightId) {
-                const tailId = useTimelineStore
-                  .getState()
-                  .splitElement(track.id, rightId, endTime, false);
-                if (tailId) {
-                  useTimelineStore
-                    .getState()
-                    .removeElementFromTrack(track.id, rightId, false);
-                  deletedElements++;
-                  splitElements += 2;
-                }
-              }
-              totalRemovedDuration += endTime - startTime;
-              continue;
-            }
-
-            // Overlaps element end → keep left
-            if (effStart < startTime && effEnd > startTime) {
-              store.splitAndKeepLeft(track.id, element.id, startTime, false);
-              splitElements++;
-              totalRemovedDuration += effEnd - startTime;
-              continue;
-            }
-
-            // Overlaps element start → keep right
-            if (effStart < endTime && effEnd > endTime) {
-              store.splitAndKeepRight(track.id, element.id, endTime, false);
-              splitElements++;
-              totalRemovedDuration += endTime - effStart;
-            }
-          }
-        }
-
-        claudeAPI.sendDeleteRangeResponse(data.requestId, {
-          deletedElements,
-          splitElements,
-          totalRemovedDuration: Math.round(totalRemovedDuration * 100) / 100,
+        const result = useTimelineStore.getState().deleteTimeRange({
+          startTime,
+          endTime,
+          trackIds,
+          ripple: ripple ?? true,
+          crossTrackRipple: crossTrackRipple ?? false,
         });
+
+        claudeAPI.sendDeleteRangeResponse(data.requestId, result);
       } catch (error) {
         debugError(
           "[ClaudeTimelineBridge] Failed to execute range delete:",

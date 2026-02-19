@@ -16,6 +16,7 @@ import { sanitizeProjectId } from "./utils/helpers.js";
 import { getFFmpegPath } from "../ffmpeg/utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 import type {
+  TranscribeJob,
   TranscribeRequest,
   TranscriptionResult,
   TranscriptionWord,
@@ -425,12 +426,144 @@ function buildSegments(words: TranscriptionWord[]): TranscriptionSegment[] {
   return segments;
 }
 
+// ============================================================================
+// Async Job Tracking
+// ============================================================================
+
+const transcribeJobs = new Map<string, TranscribeJob>();
+const MAX_TRANSCRIBE_JOBS = 50;
+
+function pruneOldTranscribeJobs(): void {
+  if (transcribeJobs.size <= MAX_TRANSCRIBE_JOBS) return;
+  const entries = [...transcribeJobs.entries()].sort(
+    (a, b) => a[1].createdAt - b[1].createdAt
+  );
+  const toRemove = entries.slice(0, entries.length - MAX_TRANSCRIBE_JOBS);
+  for (const [id] of toRemove) {
+    transcribeJobs.delete(id);
+  }
+}
+
+/**
+ * Start a transcription job. Returns immediately with a job ID.
+ * The transcription runs in the background; poll with getTranscribeJobStatus().
+ */
+export function startTranscribeJob(
+  projectId: string,
+  request: TranscribeRequest
+): { jobId: string } {
+  const jobId = `transcribe_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const provider = request.provider || "elevenlabs";
+
+  const job: TranscribeJob = {
+    jobId,
+    projectId,
+    mediaId: request.mediaId,
+    status: "queued",
+    progress: 0,
+    message: "Queued",
+    provider,
+    createdAt: Date.now(),
+  };
+
+  transcribeJobs.set(jobId, job);
+  pruneOldTranscribeJobs();
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Job ${jobId} created: ${provider} for project ${projectId}, media ${request.mediaId}`
+  );
+
+  // Fire-and-forget — run transcription in background
+  runTranscription(jobId, projectId, request).catch((err) => {
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} unexpected error:`, err);
+  });
+
+  return { jobId };
+}
+
+/**
+ * Get the current status of a transcription job.
+ */
+export function getTranscribeJobStatus(jobId: string): TranscribeJob | null {
+  return transcribeJobs.get(jobId) ?? null;
+}
+
+/**
+ * List all transcription jobs, sorted newest-first.
+ */
+export function listTranscribeJobs(): TranscribeJob[] {
+  return [...transcribeJobs.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/**
+ * Cancel a running transcription job.
+ */
+export function cancelTranscribeJob(jobId: string): boolean {
+  const job = transcribeJobs.get(jobId);
+  if (!job || job.status === "completed" || job.status === "failed") {
+    return false;
+  }
+  job.status = "cancelled";
+  job.message = "Cancelled by user";
+  job.completedAt = Date.now();
+  claudeLog.info(HANDLER_NAME, `Job ${jobId} cancelled`);
+  return true;
+}
+
+/** Run transcription in the background, updating job progress. */
+async function runTranscription(
+  jobId: string,
+  projectId: string,
+  request: TranscribeRequest
+): Promise<void> {
+  const job = transcribeJobs.get(jobId);
+  if (!job) return;
+
+  job.status = "processing";
+  job.progress = 10;
+  job.message = "Resolving media...";
+
+  try {
+    const result = await transcribeMedia(projectId, request, (progress) => {
+      if (job.status === "cancelled") return;
+      job.progress = progress.percent;
+      job.message = progress.message;
+    });
+
+    if (transcribeJobs.get(jobId)?.status === "cancelled") return;
+
+    job.status = "completed";
+    job.progress = 100;
+    job.message = "Transcription complete";
+    job.result = result;
+    job.completedAt = Date.now();
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Job ${jobId} completed: ${result.segments.length} segments, ${result.duration}s`
+    );
+  } catch (err) {
+    if (transcribeJobs.get(jobId)?.status === "cancelled") return;
+    job.status = "failed";
+    job.message = err instanceof Error ? err.message : "Transcription failed";
+    job.completedAt = Date.now();
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} failed:`, err);
+  }
+}
+
+/** For tests: clear all jobs. */
+export function _clearTranscribeJobs(): void {
+  transcribeJobs.clear();
+}
+
 /**
  * Main transcription function exposed to HTTP server.
  */
 export async function transcribeMedia(
   projectId: string,
-  request: TranscribeRequest
+  request: TranscribeRequest,
+  onProgress?: (progress: { percent: number; message: string }) => void
 ): Promise<TranscriptionResult> {
   const safeProjectId = sanitizeProjectId(projectId);
   const provider = request.provider || "elevenlabs";
@@ -441,6 +574,7 @@ export async function transcribeMedia(
   );
 
   // 1. Resolve media path
+  onProgress?.({ percent: 10, message: "Resolving media..." });
   const { path: mediaPath, needsExtraction } = await resolveMediaPath(
     safeProjectId,
     request.mediaId
@@ -450,12 +584,14 @@ export async function transcribeMedia(
   // 2. Extract audio if video
   let audioPath = mediaPath;
   if (needsExtraction) {
+    onProgress?.({ percent: 25, message: "Extracting audio from video..." });
     claudeLog.info(HANDLER_NAME, "Extracting audio from video...");
     audioPath = await extractAudio(mediaPath);
     claudeLog.info(HANDLER_NAME, `Audio extracted: ${audioPath}`);
   }
 
   // 3. Call provider
+  onProgress?.({ percent: 50, message: `Transcribing with ${provider}...` });
   if (provider === "gemini") {
     return transcribeWithGemini(audioPath, request.language);
   }
@@ -470,4 +606,9 @@ export async function transcribeMedia(
 module.exports = {
   transcribeMedia,
   extractAudio,
+  startTranscribeJob,
+  getTranscribeJobStatus,
+  listTranscribeJobs,
+  cancelTranscribeJob,
+  _clearTranscribeJobs,
 };
