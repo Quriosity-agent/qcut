@@ -30,6 +30,11 @@ import {
   requestTimelineFromRenderer,
   requestSplitFromRenderer,
   requestSelectionFromRenderer,
+  batchAddElements,
+  batchUpdateElements,
+  batchDeleteElements,
+  deleteTimelineRange,
+  arrangeTimeline,
   timelineToMarkdown,
   markdownToTimeline,
   validateTimeline,
@@ -381,6 +386,36 @@ export function startClaudeHTTPServer(
     return { elementId };
   });
 
+  router.post("/api/claude/timeline/:projectId/elements/batch", async (req) => {
+    if (!Array.isArray(req.body?.elements)) {
+      throw new HttpError(400, "Missing 'elements' array in request body");
+    }
+    const win = getWindow();
+    try {
+      return await batchAddElements(win, req.params.projectId, req.body.elements);
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Batch add failed"
+      );
+    }
+  });
+
+  router.patch("/api/claude/timeline/:projectId/elements/batch", async (req) => {
+    if (!Array.isArray(req.body?.updates)) {
+      throw new HttpError(400, "Missing 'updates' array in request body");
+    }
+    const win = getWindow();
+    try {
+      return await batchUpdateElements(win, req.body.updates);
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Batch update failed"
+      );
+    }
+  });
+
   router.patch(
     "/api/claude/timeline/:projectId/elements/:elementId",
     async (req) => {
@@ -390,6 +425,28 @@ export function startClaudeHTTPServer(
         changes: req.body || {},
       });
       return { updated: true };
+    }
+  );
+
+  router.delete(
+    "/api/claude/timeline/:projectId/elements/batch",
+    async (req) => {
+      if (!Array.isArray(req.body?.elements)) {
+        throw new HttpError(400, "Missing 'elements' array in request body");
+      }
+      const win = getWindow();
+      try {
+        return await batchDeleteElements(
+          win,
+          req.body.elements,
+          Boolean(req.body.ripple)
+        );
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof Error ? error.message : "Batch delete failed"
+        );
+      }
     }
   );
 
@@ -404,6 +461,54 @@ export function startClaudeHTTPServer(
       return { removed: true };
     }
   );
+
+  router.delete("/api/claude/timeline/:projectId/range", async (req) => {
+    if (typeof req.body?.startTime !== "number") {
+      throw new HttpError(400, "Missing 'startTime' (number) in request body");
+    }
+    if (typeof req.body?.endTime !== "number") {
+      throw new HttpError(400, "Missing 'endTime' (number) in request body");
+    }
+    const win = getWindow();
+    try {
+      return await deleteTimelineRange(win, {
+        startTime: req.body.startTime,
+        endTime: req.body.endTime,
+        trackIds: Array.isArray(req.body.trackIds) ? req.body.trackIds : undefined,
+        ripple: req.body.ripple !== false,
+        crossTrackRipple: Boolean(req.body.crossTrackRipple),
+      });
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Range delete failed"
+      );
+    }
+  });
+
+  router.post("/api/claude/timeline/:projectId/arrange", async (req) => {
+    if (!req.body?.trackId || typeof req.body.trackId !== "string") {
+      throw new HttpError(400, "Missing 'trackId' in request body");
+    }
+    if (!req.body?.mode || typeof req.body.mode !== "string") {
+      throw new HttpError(400, "Missing 'mode' in request body");
+    }
+    const win = getWindow();
+    try {
+      return await arrangeTimeline(win, {
+        trackId: req.body.trackId,
+        mode: req.body.mode,
+        gap: req.body.gap,
+        order: req.body.order,
+        startOffset: req.body.startOffset,
+      });
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Arrange request failed"
+      );
+    }
+  });
 
   // ---- Split element ----
   router.post(
