@@ -26,6 +26,7 @@ import {
   addClaudeTextElement,
   formatTracksForExport,
   applyTimelineToStore,
+  syncProjectMediaIfNeeded,
 } from "./claude-timeline-bridge-helpers";
 
 const MAX_TIMELINE_BATCH_ITEMS = 50;
@@ -415,7 +416,7 @@ export function setupClaudeTimelineBridge(): void {
     typeof claudeAPI.sendBatchAddElementsResponse === "function"
   ) {
     claudeAPI.onBatchAddElements(
-      (data: {
+      async (data: {
         requestId: string;
         elements: ClaudeBatchAddElementRequest[];
       }) => {
@@ -493,6 +494,12 @@ export function setupClaudeTimelineBridge(): void {
                 compatibility.errorMessage || "Track compatibility failed"
               );
             }
+          }
+
+          // Sync media from disk so newly-imported files are discoverable
+          const projectId = useProjectStore.getState().activeProject?.id;
+          if (projectId) {
+            await syncProjectMediaIfNeeded({ projectId });
           }
 
           timelineStore.pushHistory();

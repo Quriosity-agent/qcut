@@ -1,273 +1,228 @@
 # Stage 1: Video Import Pipeline
 
 > **Goal**: Let Claude Code generate, download, or upload video into a QCut project in one API call
-> **Status**: IMPLEMENTED
-> **Branch**: `claude-auto`
+> **Status**: IMPLEMENTED + FIXED (media sync bug resolved)
+> **Base URL**: `http://localhost:8765`
 
 ---
 
-## Implementation Summary
+## Quick Reference — Copy-Paste curl Commands
 
-All 4 subtasks are implemented and tested. **35 tests pass, 0 regressions across 597 total electron tests.**
+All endpoints use the base URL `http://localhost:8765/api/claude`. Replace `PROJECT_ID` and `TRACK_ID` with real values.
 
-| Subtask | Status | Endpoint | Tests |
-|---|---|---|---|
-| 1.1 URL-to-Import | Done | `POST /api/claude/media/:projectId/import-from-url` | 11 |
-| 1.2 Generate-and-Add | Done | `POST /api/claude/generate/:projectId/start` + polling | 15 |
-| 1.3 Batch Import | Done | `POST /api/claude/media/:projectId/batch-import` | 6 |
-| 1.4 Frame Extraction | Done | `POST /api/claude/media/:projectId/:mediaId/extract-frame` | 3 |
+### Discover project state
+
+```bash
+# List media files in project
+curl -s http://localhost:8765/api/claude/media/$PROJECT_ID | python3 -m json.tool
+
+# Get timeline (tracks, elements, durations)
+curl -s http://localhost:8765/api/claude/timeline/$PROJECT_ID | python3 -m json.tool
+
+# Project summary (media count, element count, duration)
+curl -s http://localhost:8765/api/claude/project/$PROJECT_ID/summary | python3 -m json.tool
+```
+
+### Batch upload files to media library
+
+```bash
+# Batch import from local paths (max 20 items)
+curl -s -X POST http://localhost:8765/api/claude/media/$PROJECT_ID/batch-import \
+  -H "Content-Type: application/json" \
+  -d '{"items":[
+    {"path":"/absolute/path/to/video1.mp4"},
+    {"path":"/absolute/path/to/video2.mp4"},
+    {"path":"/absolute/path/to/image.png"}
+  ]}'
+
+# Batch import from URLs
+curl -s -X POST http://localhost:8765/api/claude/media/$PROJECT_ID/batch-import \
+  -H "Content-Type: application/json" \
+  -d '{"items":[
+    {"url":"https://example.com/video.mp4"},
+    {"url":"https://cdn.example.com/clip.mp4","filename":"custom-name.mp4"}
+  ]}'
+```
+
+Response includes per-item `id`, `name`, `type` for use in timeline add.
+
+### Batch add to timeline (immediately after import)
+
+```bash
+# Use sourceId or sourceName from the batch-import response
+curl -s -X POST http://localhost:8765/api/claude/timeline/$PROJECT_ID/elements/batch \
+  -H "Content-Type: application/json" \
+  -d '{"elements":[
+    {"type":"video","trackId":"TRACK_ID","startTime":0,"duration":5,"sourceName":"video1.mp4"},
+    {"type":"video","trackId":"TRACK_ID","startTime":5,"duration":3,"sourceName":"video2.mp4"},
+    {"type":"image","trackId":"TRACK_ID","startTime":8,"duration":4,"sourceName":"image.png"}
+  ]}'
+```
+
+Media sync happens automatically — no workaround needed.
+
+### Delete elements from timeline
+
+```bash
+# Delete a single element
+curl -s -X DELETE http://localhost:8765/api/claude/timeline/$PROJECT_ID/elements/$ELEMENT_ID
+
+# Batch delete multiple elements (max 50)
+curl -s -X DELETE http://localhost:8765/api/claude/timeline/$PROJECT_ID/elements/batch \
+  -H "Content-Type: application/json" \
+  -d '{"elements":[
+    {"trackId":"TRACK_ID","elementId":"ELEMENT_ID_1"},
+    {"trackId":"TRACK_ID","elementId":"ELEMENT_ID_2"}
+  ]}'
+
+# Batch delete with ripple (shifts subsequent elements left)
+curl -s -X DELETE http://localhost:8765/api/claude/timeline/$PROJECT_ID/elements/batch \
+  -H "Content-Type: application/json" \
+  -d '{"ripple":true,"elements":[
+    {"trackId":"TRACK_ID","elementId":"ELEMENT_ID_1"}
+  ]}'
+```
+
+### Delete media from project
+
+```bash
+# Delete a single media file
+curl -s -X DELETE http://localhost:8765/api/claude/media/$PROJECT_ID/$MEDIA_ID
+```
+
+### Full workflow: import → add → verify
+
+```bash
+PROJECT_ID="your-project-id"
+TRACK_ID="your-track-id"
+
+# 1. Import files
+curl -s -X POST http://localhost:8765/api/claude/media/$PROJECT_ID/batch-import \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"path":"/path/to/clip.mp4"}]}'
+
+# 2. Add to timeline (works immediately — no delay needed)
+curl -s -X POST http://localhost:8765/api/claude/timeline/$PROJECT_ID/elements/batch \
+  -H "Content-Type: application/json" \
+  -d '{"elements":[{"type":"video","trackId":"'$TRACK_ID'","startTime":0,"duration":5,"sourceName":"clip.mp4"}]}'
+
+# 3. Verify
+curl -s http://localhost:8765/api/claude/timeline/$PROJECT_ID | python3 -m json.tool
+```
+
+### Finding project and track IDs
+
+```bash
+# Project files live at: ~/Documents/QCut/Projects/<project-id>/
+ls ~/Documents/QCut/Projects/
+
+# Get track IDs from timeline export
+curl -s http://localhost:8765/api/claude/timeline/$PROJECT_ID | \
+  python3 -c "import sys,json; [print(f'{t[\"id\"]} — {t[\"name\"]} ({t[\"type\"]})') for t in json.load(sys.stdin)['data']['tracks']]"
+```
 
 ---
 
-## Files Changed
+## All API Endpoints
 
-| File | Lines | Change |
-|---|---|---|
-| `electron/claude/claude-media-handler.ts` | 668 | +`importMediaFromUrl()`, `batchImportMedia()`, `extractFrame()`, 3 IPC handlers |
-| `electron/claude/claude-generate-handler.ts` | 331 | **New** — job tracking, `NativePipelineManager` wrapper |
-| `electron/claude/claude-http-server.ts` | 768 | +9 HTTP routes (3 media, 6 generate) |
-| `electron/types/claude-api.ts` | 426 | +`UrlImportRequest`, `BatchImport*`, `FrameExtract*`, `GenerateAndAdd*`, `GenerateJobStatus` types |
-| `electron/__tests__/claude-media-stage1.test.ts` | 464 | **New** — 20 tests for URL import, batch, frame extraction |
-| `electron/__tests__/claude-generate-handler.test.ts` | 272 | **New** — 15 tests for generate job lifecycle |
+### Media
 
----
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/media/:projectId` | List all media files |
+| GET | `/media/:projectId/:mediaId` | Get single media info |
+| POST | `/media/:projectId/import` | Import single local file |
+| POST | `/media/:projectId/import-from-url` | Import from URL |
+| POST | `/media/:projectId/batch-import` | Batch import (max 20) |
+| POST | `/media/:projectId/:mediaId/extract-frame` | Extract video frame |
+| PATCH | `/media/:projectId/:mediaId/rename` | Rename media file |
+| DELETE | `/media/:projectId/:mediaId` | Delete media file |
 
-## API Reference
+### Timeline
 
-### Subtask 1.1: URL-to-Import
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/timeline/:projectId` | Export timeline (json, `?format=md` for markdown) |
+| POST | `/timeline/:projectId/import` | Import timeline |
+| POST | `/timeline/:projectId/elements` | Add single element |
+| POST | `/timeline/:projectId/elements/batch` | Batch add (max 50) |
+| PATCH | `/timeline/:projectId/elements/:elementId` | Update single element |
+| PATCH | `/timeline/:projectId/elements/batch` | Batch update (max 50) |
+| DELETE | `/timeline/:projectId/elements/:elementId` | Delete single element |
+| DELETE | `/timeline/:projectId/elements/batch` | Batch delete (max 50) |
+| POST | `/timeline/:projectId/elements/:elementId/split` | Split element |
+| POST | `/timeline/:projectId/elements/:elementId/move` | Move to different track |
+| POST | `/timeline/:projectId/arrange` | Arrange elements on track |
+| POST | `/timeline/:projectId/selection` | Set selection |
+| GET | `/timeline/:projectId/selection` | Get selection |
+| DELETE | `/timeline/:projectId/selection` | Clear selection |
 
-```
-POST /api/claude/media/:projectId/import-from-url
-Body: { "url": "https://...", "filename": "optional-name.mp4" }
-Response: { "success": true, "data": { "id": "media_...", "name": "video.mp4", "type": "video", "path": "...", "size": 1024 } }
-```
+### Generate
 
-**Implementation**: `electron/claude/claude-media-handler.ts` — `importMediaFromUrl()`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/generate/:projectId/start` | Start generation job |
+| GET | `/generate/:projectId/jobs/:jobId` | Poll job status |
+| GET | `/generate/:projectId/jobs` | List all jobs |
+| POST | `/generate/:projectId/jobs/:jobId/cancel` | Cancel job |
+| GET | `/generate/models` | List available models |
+| POST | `/generate/estimate-cost` | Estimate cost |
 
-- Downloads via Node.js `fetch` with streaming to disk (no browser needed)
-- SSRF prevention: rejects `localhost`, `127.0.0.1`, `::1`, `169.254.*`
-- Validates URL scheme (http/https only)
-- 5GB size limit enforced from `Content-Length` header
-- 5-minute download timeout
-- Auto-detects filename from `Content-Disposition` header or URL path
-- Deduplicates filenames with `_1`, `_2` suffix (reuses existing `getUniqueFilePath()`)
-- Cleans up partial files on failure
+### Project
 
-**IPC**: `claude:media:importFromUrl`
-
----
-
-### Subtask 1.2: Generate-and-Add
-
-Wraps the existing `NativePipelineManager` (which already handles FAL.ai API calls, auto-import, and progress) with HTTP job tracking.
-
-**Start generation (returns immediately):**
-```
-POST /api/claude/generate/:projectId/start
-Body: {
-  "model": "kling_v3_pro",
-  "prompt": "A sunset over the ocean",
-  "imageUrl": "https://...",       // optional, for image-to-video
-  "duration": 5,                    // optional
-  "aspectRatio": "16:9",           // optional
-  "resolution": "1080p",           // optional
-  "negativePrompt": "...",         // optional
-  "addToTimeline": true,           // optional, adds to timeline on completion
-  "trackId": "track_1",            // optional, which track
-  "startTime": 0                   // optional, where on timeline
-}
-Response: { "success": true, "data": { "jobId": "gen_..." } }
-```
-
-**Poll job status:**
-```
-GET /api/claude/generate/:projectId/jobs/:jobId
-Response: {
-  "success": true,
-  "data": {
-    "jobId": "gen_...",
-    "status": "processing",        // queued | processing | completed | failed | cancelled
-    "progress": 65,
-    "message": "Generating with Kling v3 Pro...",
-    "model": "kling_v3_pro",
-    "result": null,                 // populated when completed
-    "createdAt": 1771477000000,
-    "completedAt": null
-  }
-}
-```
-
-**When completed**, `result` contains:
-```json
-{
-  "success": true,
-  "outputPath": "/path/to/output.mp4",
-  "mediaId": "media_...",
-  "importedPath": "/path/to/imported.mp4",
-  "duration": 12.5,
-  "cost": 0.15
-}
-```
-
-**Additional endpoints:**
-```
-GET  /api/claude/generate/:projectId/jobs           — List all jobs
-POST /api/claude/generate/:projectId/jobs/:jid/cancel — Cancel running job
-GET  /api/claude/generate/models                     — List available models
-POST /api/claude/generate/estimate-cost              — Estimate cost { "model": "...", "duration": 5 }
-```
-
-**Implementation**: `electron/claude/claude-generate-handler.ts`
-
-- Lazy-initializes a shared `NativePipelineManager` instance
-- Stores jobs in-memory (max 50, auto-pruned)
-- Background execution with progress forwarding to renderer via IPC
-- When `addToTimeline: true`, sends `claude:timeline:addElement` IPC on completion
-- Cancellation via `AbortController` (same as native pipeline)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/project/:projectId/summary` | Project summary |
+| GET | `/project/:projectId/settings` | Get settings |
+| PATCH | `/project/:projectId/settings` | Update settings |
+| GET | `/project/:projectId/stats` | Project statistics |
 
 ---
 
-### Subtask 1.3: Batch Media Import
+## Limits
 
-```
-POST /api/claude/media/:projectId/batch-import
-Body: {
-  "items": [
-    { "url": "https://example.com/video1.mp4" },
-    { "path": "/local/path/video2.mp4" },
-    { "url": "https://cdn.example.com/clip.mp4", "filename": "intro.mp4" }
-  ]
-}
-Response: {
-  "success": true,
-  "data": [
-    { "index": 0, "success": true, "mediaFile": { ... } },
-    { "index": 1, "success": true, "mediaFile": { ... } },
-    { "index": 2, "success": false, "error": "HTTP 404 Not Found" }
-  ]
-}
-```
-
-**Implementation**: `electron/claude/claude-media-handler.ts` — `batchImportMedia()`
-
-- Max 20 items per batch
-- Processes sequentially to avoid I/O contention
-- Each item must have either `url` or `path`
-- Per-item error reporting (partial failures don't abort the batch)
-- Reuses `importMediaFile()` for local paths, `importMediaFromUrl()` for URLs
-
-**IPC**: `claude:media:batchImport`
+| Limit | Value |
+|-------|-------|
+| Batch import items | 20 |
+| Batch timeline operations | 50 |
+| File size (URL import) | 5 GB |
+| Download timeout | 5 min |
+| Generation jobs stored | 50 |
 
 ---
 
-### Subtask 1.4: Frame Extraction
+## Media ID Format
+
+Media IDs use deterministic base64url encoding: `media_` + base64url(filename).
 
 ```
-POST /api/claude/media/:projectId/:mediaId/extract-frame
-Body: { "timestamp": 5.0, "format": "png" }
-Response: { "success": true, "data": { "path": "/tmp/qcut_frame_..._5000.png", "timestamp": 5.0, "format": "png" } }
+filename: "clip.mp4" → id: "media_Y2xpcC5tcDQ"
 ```
 
-**Implementation**: `electron/claude/claude-media-handler.ts` — `extractFrame()`
-
-- Uses FFmpeg directly via `child_process.execFile` (30s timeout)
-- Supports `png` and `jpg` formats
-- Validates media exists and is a video file
-- Validates timestamp is non-negative
-- Outputs to system temp directory
-- Verifies output file exists and is non-empty
-
-**IPC**: `claude:media:extractFrame`
+You can use either `sourceId` (media ID), `sourceName` (filename), or `mediaId` (renderer ID) when adding elements to the timeline.
 
 ---
 
-## Architecture Notes
+## Fixed Issues
 
-### Why job-based for generation?
+### Batch timeline add after import (FIXED)
 
-Video generation takes 30s–3min. Instead of blocking an HTTP request:
-1. `POST /start` creates a job and returns immediately
-2. Background: `NativePipelineManager.execute()` runs with progress callbacks
-3. Claude Code polls `GET /jobs/:jid` until `status === "completed"`
-4. Result includes `mediaId` (auto-imported) and optionally timeline element
+Previously, `POST /elements/batch` failed with `"Media source could not be resolved"` when called immediately after `POST /batch-import`. The batch import wrote files to disk but the renderer's media store was stale.
 
-### Reuse of existing infrastructure
+**Fix**: Added `syncProjectMediaIfNeeded()` call in the batch add handler at `apps/web/src/lib/claude-timeline-bridge.ts:499-503`, before the element resolution loop. This matches the single-add endpoint behavior.
 
-- **`NativePipelineManager`** — Already handles FAL.ai queue submission, polling, download, auto-import, cancellation, cost estimation, and 73+ model registry. The generate handler is just a 331-line HTTP wrapper.
-- **`importMediaFile()`** — Existing function reused by batch import and auto-import.
-- **`getUniqueFilePath()`** — Existing deduplication logic reused by URL import.
-- **`getMediaType()`** — Existing extension → type mapping.
-
-### Security
-
-- SSRF prevention on URL imports (blocks private/loopback IPs)
-- Path traversal prevention (via existing `sanitizeFilename()`)
-- 5GB file size limit
-- 5-minute download timeout
-- Max 20 items per batch
-- Max 50 stored generation jobs
+**Tested**: batch import → immediate batch add now works with 0 failures (verified with 5 files across 2 consecutive batches).
 
 ---
 
-## Real API Test Results (2026-02-19)
+## Key Source Files
 
-Tested against a running QCut instance (`localhost:8765`) with real media files.
-
-### What works
-
-| Feature | Endpoint | Result |
-|---------|----------|--------|
-| Batch import (local files) | `POST /media/:projectId/batch-import` | **4/4 files imported** (video, image, audio) |
-| Single timeline add | `POST /timeline/:projectId/elements` | **3/3 elements placed** on timeline |
-| Batch timeline add | `POST /timeline/:projectId/elements/batch` | **2/2 elements placed** (after media sync) |
-| Media listing | `GET /media/:projectId` | **All imported files visible** |
-| Timeline read | `GET /timeline/:projectId` | **5 elements, 39s total duration** |
-| Project summary | `GET /project/:projectId/summary` | **38 media files, 5 timeline elements** |
-
-### What fails
-
-**Batch timeline add fails with `"Media source could not be resolved"` when media was just imported.**
-
-Reproduction:
-```
-1. POST /media/:projectId/batch-import   ← imports files to disk ✓
-2. POST /timeline/:projectId/elements/batch  ← fails: "Media source could not be resolved" ✗
-```
-
-The batch import writes files to the project's `media/` folder on disk, but the renderer's `useMediaStore` doesn't know about them yet. The batch timeline add (`POST /elements/batch`) resolves media via `resolveMediaIdForBatchElement()` which reads from the renderer store only.
-
-### Why single add works but batch add doesn't
-
-The two endpoints use different media resolution paths:
-
-| Endpoint | Resolution | Syncs disk? |
-|----------|-----------|-------------|
-| `POST /elements` (single) | `resolveMediaItemForElement()` → calls `syncProjectMediaIfNeeded()` | **Yes** — refreshes renderer store from disk |
-| `POST /elements/batch` | `resolveMediaIdForBatchElement()` → reads `useMediaStore.getState()` only | **No** — stale store |
-
-**Root cause**: `resolveMediaIdForBatchElement()` in `apps/web/src/lib/claude-timeline-bridge.ts:89` reads from `useMediaStore.getState().mediaItems` without syncing first.
-
-### Workaround
-
-Call the single-element add endpoint first (which triggers media sync), then batch add works:
-```
-1. POST /media/:projectId/batch-import      ← import files to disk
-2. POST /timeline/:projectId/elements        ← single add (triggers sync)
-3. POST /timeline/:projectId/elements/batch  ← now works ✓
-```
-
-### How to fix
-
-**Option A (recommended)**: Add `syncProjectMediaIfNeeded()` call at the top of the batch add handler in `claude-timeline-bridge.ts`, before the element loop. This matches the single-add behavior.
-
-**File**: `apps/web/src/lib/claude-timeline-bridge.ts` — `batchAddElements` IPC handler (~line 498)
-
-```diff
-+ await syncProjectMediaIfNeeded({ projectId });
-  timelineStore.pushHistory();
-  const added: ClaudeBatchAddResponse["added"] = [];
-```
-
-**Option B**: Have the batch import endpoint (`claude-media-handler.ts`) send an IPC event to the renderer to refresh its media store after importing. This way the store is always in sync after any import.
-
-**Option A is simpler and matches existing patterns.** Option B is more robust long-term but touches more code.
+| File | Purpose |
+|------|---------|
+| `electron/claude/claude-http-server.ts` | HTTP route definitions |
+| `electron/claude/claude-media-handler.ts` | Import, batch import, frame extraction |
+| `electron/claude/claude-generate-handler.ts` | AI generation job tracking |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | Renderer-side timeline operations (batch add/update/delete) |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Media sync, element resolution helpers |
+| `electron/types/claude-api.ts` | TypeScript types for all requests/responses |
+| `electron/claude/utils/helpers.ts` | `getProjectPath()`, `getMediaPath()` — project dir: `~/Documents/QCut/Projects/<id>/` |

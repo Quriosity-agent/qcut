@@ -7,7 +7,13 @@
 import type { Router } from "./utils/http-router.js";
 import { HttpError } from "./utils/http-router.js";
 import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
-import { transcribeMedia } from "./claude-transcribe-handler.js";
+import {
+  transcribeMedia,
+  startTranscribeJob,
+  getTranscribeJobStatus,
+  listTranscribeJobs,
+  cancelTranscribeJob,
+} from "./claude-transcribe-handler.js";
 import { detectScenes } from "./claude-scene-handler.js";
 import { analyzeFrames } from "./claude-vision-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
@@ -87,6 +93,43 @@ export function registerAnalysisRoutes(
       );
     }
   });
+
+  // Async transcription routes (preferred — avoids 30s HTTP timeout)
+  router.post("/api/claude/transcribe/:projectId/start", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    const { jobId } = startTranscribeJob(req.params.projectId, {
+      mediaId: req.body.mediaId,
+      provider: req.body.provider,
+      language: req.body.language,
+      diarize: req.body.diarize,
+    });
+    return { jobId };
+  });
+
+  router.get(
+    "/api/claude/transcribe/:projectId/jobs/:jobId",
+    async (req) => {
+      const job = getTranscribeJobStatus(req.params.jobId);
+      if (!job) {
+        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+      }
+      return job;
+    }
+  );
+
+  router.get("/api/claude/transcribe/:projectId/jobs", async () => {
+    return listTranscribeJobs();
+  });
+
+  router.post(
+    "/api/claude/transcribe/:projectId/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelTranscribeJob(req.params.jobId);
+      return { cancelled };
+    }
+  );
 
   // ==========================================================================
   // Scene Detection routes (Stage 2)

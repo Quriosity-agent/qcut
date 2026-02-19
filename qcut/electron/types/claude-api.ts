@@ -619,6 +619,19 @@ export interface TranscribeRequest {
   diarize?: boolean;
 }
 
+export interface TranscribeJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  provider: string;
+  result?: TranscriptionResult;
+  createdAt: number;
+  completedAt?: number;
+}
+
 // ============================================================================
 // Scene Detection Types (Stage 2)
 // ============================================================================

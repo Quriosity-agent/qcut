@@ -107,7 +107,7 @@ function extractFrame(
 /**
  * Determine which timestamps to extract frames at.
  */
-function resolveTimestamps(
+export function resolveTimestamps(
   request: FrameAnalysisRequest,
   videoDuration?: number
 ): number[] {
@@ -317,4 +317,5 @@ export async function analyzeFrames(
 module.exports = {
   analyzeFrames,
   parseFrameAnalysisResponse,
+  resolveTimestamps,
 };

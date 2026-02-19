@@ -105,16 +105,64 @@ vi.mock("../claude/claude-media-handler", () => ({
   }),
 }));
 
-vi.mock("../api-key-handler", () => ({
-  getDecryptedApiKeys: vi.fn(async () => ({
+const { mockGetDecryptedApiKeys } = vi.hoisted(() => ({
+  mockGetDecryptedApiKeys: vi.fn(async () => ({
     falApiKey: "test-fal-key",
     geminiApiKey: "",
     anthropicApiKey: "",
   })),
 }));
 
+vi.mock("../api-key-handler", () => ({
+  getDecryptedApiKeys: mockGetDecryptedApiKeys,
+}));
+
 vi.mock("../ffmpeg/utils", () => ({
   getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
+}));
+
+// Mock child_process.spawn for FFmpeg scene detection
+const { mockSpawn } = vi.hoisted(() => {
+  const { EventEmitter } = require("node:events");
+  const mockSpawn = vi.fn(() => {
+    const proc = new EventEmitter();
+    proc.kill = vi.fn();
+    proc.stderr = new EventEmitter();
+    // Default: emit close(0) with no stderr (no scenes found)
+    process.nextTick(() => proc.emit("close", 0));
+    return proc;
+  });
+  return { mockSpawn };
+});
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    default: { ...actual, spawn: mockSpawn },
+    spawn: mockSpawn,
+  };
+});
+
+const { mockReadFile } = vi.hoisted(() => ({
+  mockReadFile: vi.fn(),
+}));
+vi.mock("node:fs/promises", () => ({
+  default: { readFile: mockReadFile },
+  readFile: mockReadFile,
+}));
+
+// Mock Gemini SDK
+const { mockGenerateContent } = vi.hoisted(() => ({
+  mockGenerateContent: vi.fn(),
+}));
+
+vi.mock("@google/generative-ai", () => ({
+  GoogleGenerativeAI: vi.fn(() => ({
+    getGenerativeModel: vi.fn(() => ({
+      generateContent: mockGenerateContent,
+    })),
+  })),
 }));
 
 // ---------------------------------------------------------------------------
@@ -124,6 +172,7 @@ vi.mock("../ffmpeg/utils", () => ({
 import {
   parseShowInfoOutput,
   detectScenes,
+  detectScenesWithFFmpeg,
 } from "../claude/claude-scene-handler";
 
 describe("parseShowInfoOutput", () => {
@@ -218,12 +267,183 @@ describe("detectScenes", () => {
   });
 
   it("respects threshold parameter", async () => {
-    // Will fail at FFmpeg spawn, but validates parameter passing
+    const result = await detectScenes("test-project", {
+      mediaId: "valid-video",
+      threshold: 0.5,
+    });
+    // FFmpeg spawn is mocked — returns empty stderr, so only scene 0 is added
+    expect(result.totalScenes).toBeGreaterThanOrEqual(1);
+    // Verify spawn was called with the threshold in the filter arg
+    const spawnArgs = mockSpawn.mock.calls[0][1] as string[];
+    const filterArg = spawnArgs.find((a: string) => a.includes("scene,"));
+    expect(filterArg).toContain("0.5");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mocked FFmpeg Scene Detection
+// ---------------------------------------------------------------------------
+
+describe("detectScenesWithFFmpeg (mocked)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSpawn.mockReset();
+  });
+
+  it("returns scenes from FFmpeg stderr output", async () => {
+    const { EventEmitter } = require("node:events");
+    mockSpawn.mockImplementation(() => {
+      const proc = new EventEmitter();
+      proc.kill = vi.fn();
+      proc.stderr = new EventEmitter();
+      process.nextTick(() => {
+        proc.stderr.emit(
+          "data",
+          Buffer.from(
+            "[Parsed_showinfo_1 @ 0x1] n: 0 pts: 0 pts_time:2.500 duration: 1\n" +
+              "[Parsed_showinfo_1 @ 0x1] n: 1 pts: 0 pts_time:7.800 duration: 1\n"
+          )
+        );
+        proc.emit("close", 0);
+      });
+      return proc;
+    });
+
+    const scenes = await detectScenesWithFFmpeg("/mock/video.mp4", 0.3);
+    // FFmpeg found 2 scenes, handler adds scene 0 at start
+    expect(scenes.length).toBeGreaterThanOrEqual(2);
+    expect(scenes[0].timestamp).toBe(0); // auto-added first frame
+    expect(scenes[1].timestamp).toBe(2.5);
+    expect(scenes[2].timestamp).toBe(7.8);
+  });
+
+  it("adds scene at t=0 if missing", async () => {
+    const { EventEmitter } = require("node:events");
+    mockSpawn.mockImplementation(() => {
+      const proc = new EventEmitter();
+      proc.kill = vi.fn();
+      proc.stderr = new EventEmitter();
+      process.nextTick(() => {
+        proc.stderr.emit(
+          "data",
+          Buffer.from(
+            "[Parsed_showinfo_1 @ 0x1] n: 0 pts: 0 pts_time:5.000 duration: 1\n"
+          )
+        );
+        proc.emit("close", 0);
+      });
+      return proc;
+    });
+
+    const scenes = await detectScenesWithFFmpeg("/mock/video.mp4");
+    expect(scenes[0].timestamp).toBe(0);
+    expect(scenes[0].confidence).toBe(1.0);
+    expect(scenes[1].timestamp).toBe(5);
+  });
+
+  it("handles FFmpeg spawn error", async () => {
+    const { EventEmitter } = require("node:events");
+    mockSpawn.mockImplementation(() => {
+      const proc = new EventEmitter();
+      proc.kill = vi.fn();
+      proc.stderr = new EventEmitter();
+      process.nextTick(() => proc.emit("error", new Error("spawn failed")));
+      return proc;
+    });
+
     await expect(
-      detectScenes("test-project", {
-        mediaId: "valid-video",
-        threshold: 0.5,
-      })
-    ).rejects.toThrow(); // FFmpeg not available in test env
+      detectScenesWithFFmpeg("/mock/video.mp4")
+    ).rejects.toThrow("spawn failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mocked Gemini AI Enrichment
+// ---------------------------------------------------------------------------
+
+describe("detectScenes with AI enrichment (mocked)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockSpawn.mockReset();
+    mockReadFile.mockReset();
+    mockGenerateContent.mockReset();
+    mockGetDecryptedApiKeys.mockReset();
+    mockGetDecryptedApiKeys.mockResolvedValue({
+      falApiKey: "test-fal-key",
+      geminiApiKey: "test-gemini-key",
+      anthropicApiKey: "",
+    });
+
+    // Default: FFmpeg spawn returns one scene at t=3.0
+    const { EventEmitter } = require("node:events");
+    mockSpawn.mockImplementation(() => {
+      const proc = new EventEmitter();
+      proc.kill = vi.fn();
+      proc.stderr = new EventEmitter();
+      process.nextTick(() => {
+        proc.stderr.emit(
+          "data",
+          Buffer.from(
+            "[Parsed_showinfo_1 @ 0x1] n: 0 pts: 0 pts_time:3.000 duration: 1\n"
+          )
+        );
+        proc.emit("close", 0);
+      });
+      return proc;
+    });
+  });
+
+  it("enriches scenes with Gemini AI analysis", async () => {
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            description: "Wide shot of office",
+            shotType: "wide",
+            transitionType: "cut",
+          }),
+      },
+    });
+
+    const result = await detectScenes("test-project", {
+      mediaId: "valid-video",
+      aiAnalysis: true,
+    });
+
+    expect(result.totalScenes).toBe(2); // scene 0 + scene at 3.0
+    // AI enrichment should have been called for each scene
+    expect(mockGenerateContent).toHaveBeenCalled();
+  });
+
+  it("skips AI enrichment when Gemini key is missing", async () => {
+    mockGetDecryptedApiKeys.mockResolvedValueOnce({
+      falApiKey: "test-fal-key",
+      geminiApiKey: "",
+      anthropicApiKey: "",
+    });
+
+    const result = await detectScenes("test-project", {
+      mediaId: "valid-video",
+      aiAnalysis: true,
+    });
+
+    expect(result.totalScenes).toBeGreaterThanOrEqual(1);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it("gracefully handles Gemini API errors", async () => {
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+    mockGenerateContent.mockRejectedValue(new Error("Gemini rate limited"));
+
+    const result = await detectScenes("test-project", {
+      mediaId: "valid-video",
+      aiAnalysis: true,
+    });
+
+    // Should still return FFmpeg scenes even if AI fails
+    expect(result.totalScenes).toBeGreaterThanOrEqual(1);
+    expect(result.scenes[0].timestamp).toBe(0);
   });
 });

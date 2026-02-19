@@ -8,6 +8,22 @@
  * Test video: apps/web/src/test/e2e/fixtures/media/test-scenes.mp4
  *   - 9 seconds, 640x360, H.264 + AAC audio
  *   - 3 distinct color scenes: red (0-3s), blue (3-6s), green (6-9s)
+ *
+ * ## HTTP Timeout Architecture Note
+ *
+ * The Claude HTTP server has a 30-second global timeout
+ * (see electron/claude/claude-http-server.ts), but several Stage 2
+ * handlers have much longer internal timeouts:
+ *
+ *   - Transcription: 5 min  →  client gets 408 after 30s
+ *   - Scene Detection: 3 min
+ *   - Vision API: 2 min
+ *   - Audio Extraction: 2 min
+ *
+ * This is why the async job pattern (G1) exists for transcription:
+ * `POST /transcribe/:projectId/start` returns immediately with a jobId,
+ * and the client polls `GET /jobs/:jobId` for progress. Without this,
+ * transcription of any video > ~10 seconds will always hit the HTTP timeout.
  */
 
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
