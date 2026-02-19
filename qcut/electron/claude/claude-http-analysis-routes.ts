@@ -108,16 +108,13 @@ export function registerAnalysisRoutes(
     return { jobId };
   });
 
-  router.get(
-    "/api/claude/transcribe/:projectId/jobs/:jobId",
-    async (req) => {
-      const job = getTranscribeJobStatus(req.params.jobId);
-      if (!job) {
-        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-      }
-      return job;
+  router.get("/api/claude/transcribe/:projectId/jobs/:jobId", async (req) => {
+    const job = getTranscribeJobStatus(req.params.jobId);
+    if (!job) {
+      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
     }
-  );
+    return job;
+  });
 
   router.get("/api/claude/transcribe/:projectId/jobs", async (req) => {
     const allJobs = listTranscribeJobs();

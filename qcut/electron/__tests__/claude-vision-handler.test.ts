@@ -412,26 +412,17 @@ describe("resolveTimestamps", () => {
   });
 
   it("generates timestamps from interval and duration", () => {
-    const result = resolveTimestamps(
-      { mediaId: "x", interval: 5 },
-      20
-    );
+    const result = resolveTimestamps({ mediaId: "x", interval: 5 }, 20);
     expect(result).toEqual([0, 5, 10, 15]);
   });
 
   it("caps interval timestamps at 20", () => {
-    const result = resolveTimestamps(
-      { mediaId: "x", interval: 1 },
-      100
-    );
+    const result = resolveTimestamps({ mediaId: "x", interval: 1 }, 100);
     expect(result).toHaveLength(20);
   });
 
   it("clamps interval to minimum 1 second", () => {
-    const result = resolveTimestamps(
-      { mediaId: "x", interval: 0.1 },
-      5
-    );
+    const result = resolveTimestamps({ mediaId: "x", interval: 0.1 }, 5);
     // interval clamped to 1, so: 0, 1, 2, 3, 4
     expect(result).toEqual([0, 1, 2, 3, 4]);
   });

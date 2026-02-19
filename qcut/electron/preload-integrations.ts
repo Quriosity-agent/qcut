@@ -279,7 +279,12 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
           "claude:timeline:apply",
           (_, data: { timeline: any; replace?: boolean } | any) => {
             // Support both new {timeline, replace} format and legacy raw timeline
-            if (data && data.timeline && typeof data.timeline === "object" && "tracks" in data.timeline) {
+            if (
+              data &&
+              data.timeline &&
+              typeof data.timeline === "object" &&
+              "tracks" in data.timeline
+            ) {
               callback(data.timeline, data.replace);
             } else {
               callback(data, false);

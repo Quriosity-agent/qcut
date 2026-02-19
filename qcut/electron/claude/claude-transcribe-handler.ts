@@ -493,9 +493,7 @@ export function getTranscribeJobStatus(jobId: string): TranscribeJob | null {
  * List all transcription jobs, sorted newest-first.
  */
 export function listTranscribeJobs(): TranscribeJob[] {
-  return [...transcribeJobs.values()].sort(
-    (a, b) => b.createdAt - a.createdAt
-  );
+  return [...transcribeJobs.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**
@@ -533,7 +531,7 @@ async function runTranscription(
       job.message = progress.message;
     });
 
-    if (job.status === "cancelled") return;
+    if (transcribeJobs.get(jobId)?.status === "cancelled") return;
 
     job.status = "completed";
     job.progress = 100;
@@ -546,7 +544,7 @@ async function runTranscription(
       `Job ${jobId} completed: ${result.segments.length} segments, ${result.duration}s`
     );
   } catch (err) {
-    if (job.status === "cancelled") return;
+    if (transcribeJobs.get(jobId)?.status === "cancelled") return;
     job.status = "failed";
     job.message = err instanceof Error ? err.message : "Transcription failed";
     job.completedAt = Date.now();

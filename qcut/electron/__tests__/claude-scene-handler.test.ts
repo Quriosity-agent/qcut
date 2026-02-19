@@ -351,9 +351,9 @@ describe("detectScenesWithFFmpeg (mocked)", () => {
       return proc;
     });
 
-    await expect(
-      detectScenesWithFFmpeg("/mock/video.mp4")
-    ).rejects.toThrow("spawn failed");
+    await expect(detectScenesWithFFmpeg("/mock/video.mp4")).rejects.toThrow(
+      "spawn failed"
+    );
   });
 });
 

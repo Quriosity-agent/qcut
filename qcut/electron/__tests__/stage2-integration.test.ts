@@ -151,16 +151,12 @@ describe("Scene Detection (real FFmpeg)", () => {
     expect(scenes.length).toBeGreaterThanOrEqual(2);
 
     // First scene should be near 3s (red → blue)
-    const scene1 = scenes.find(
-      (s) => s.timestamp >= 2.5 && s.timestamp <= 3.5
-    );
+    const scene1 = scenes.find((s) => s.timestamp >= 2.5 && s.timestamp <= 3.5);
     expect(scene1).toBeDefined();
     expect(scene1!.confidence).toBeGreaterThan(0);
 
     // Second scene should be near 6s (blue → green)
-    const scene2 = scenes.find(
-      (s) => s.timestamp >= 5.5 && s.timestamp <= 6.5
-    );
+    const scene2 = scenes.find((s) => s.timestamp >= 5.5 && s.timestamp <= 6.5);
     expect(scene2).toBeDefined();
   }, 15_000);
 
@@ -187,7 +183,9 @@ describe("Scene Detection (real FFmpeg)", () => {
       // Sorted
       expect(scenes[i].timestamp).toBeGreaterThan(scenes[i - 1].timestamp);
       // Deduplicated (>= 0.5s apart)
-      expect(scenes[i].timestamp - scenes[i - 1].timestamp).toBeGreaterThanOrEqual(0.5);
+      expect(
+        scenes[i].timestamp - scenes[i - 1].timestamp
+      ).toBeGreaterThanOrEqual(0.5);
     }
   }, 15_000);
 });

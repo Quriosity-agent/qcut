@@ -633,9 +633,7 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
       sendBatchAddResponse.mock.calls[0][1];
     expect(response.failedCount).toBe(1);
     expect(response.added[0].success).toBe(false);
-    expect(response.added[0].error).toBe(
-      "Media source could not be resolved"
-    );
+    expect(response.added[0].error).toBe("Media source could not be resolved");
   });
 
   it("resolves batch elements by mediaId", async () => {
@@ -815,9 +813,7 @@ describe("setupClaudeTimelineBridge - batch add elements", () => {
     expect(response.failedCount).toBe(1);
     expect(response.added[0].success).toBe(true);
     expect(response.added[1].success).toBe(false);
-    expect(response.added[1].error).toBe(
-      "Media source could not be resolved"
-    );
+    expect(response.added[1].error).toBe("Media source could not be resolved");
   });
 
   it("rejects elements with invalid track", async () => {

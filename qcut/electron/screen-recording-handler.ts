@@ -766,10 +766,7 @@ async function resolveSourceForDisplayRequest({
     }
     return { id: selectedSource.id, name: selectedSource.name };
   } catch (error) {
-    log.error(
-      "[ScreenRecordingIPC] Failed to resolve display source:",
-      error
-    );
+    log.error("[ScreenRecordingIPC] Failed to resolve display source:", error);
     return null;
   }
 }

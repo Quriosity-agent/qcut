@@ -74,7 +74,7 @@ export function ScreenRecordingControl() {
           setStatus(nextStatus);
         },
       });
-      void refreshStatus();
+      refreshStatus().catch(() => {});
       return () => {
         try {
           unsubscribe();
@@ -182,7 +182,7 @@ export function ScreenRecordingControl() {
         }
 
         preventDefault();
-        void handleToggleRecording();
+        handleToggleRecording().catch(() => {});
       } catch (error) {
         reportError(error, "global shortcut handler", { showToast: false });
       }
@@ -222,7 +222,7 @@ export function ScreenRecordingControl() {
           : "h-7 text-xs"
       }
       onClick={() => {
-        void handleToggleRecording();
+        handleToggleRecording().catch(() => {});
       }}
       onKeyDown={handleButtonKeyDown}
       disabled={isBusy}
