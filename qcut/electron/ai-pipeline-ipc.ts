@@ -93,10 +93,22 @@ export function setupAIPipelineIPC(): void {
 
       // Generate sessionId if not provided to ensure correlation
       const sessionId = options.sessionId ?? `ai-${Date.now()}`;
-      // Type assertion needed: native pipeline accepts vimax commands,
-      // legacy pipeline won't receive them (filtered by renderer)
+
+      // Vimax commands only work with native pipeline
+      if (
+        pipelineManager instanceof AIPipelineManager &&
+        typeof options.command === "string" &&
+        options.command.startsWith("vimax:")
+      ) {
+        return {
+          success: false,
+          error:
+            "ViMax commands require the native pipeline. Enable QCUT_NATIVE_PIPELINE=true.",
+        };
+      }
+
       return pipelineManager.execute(
-        { ...options, sessionId } as never,
+        { ...options, sessionId } as GenerateOptions & LegacyGenerateOptions,
         (progress) => {
           // Send progress to renderer
           const mainWindow = getMainWindow();

@@ -8,8 +8,15 @@
  * @module electron/native-pipeline/project-commands
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  unlinkSync,
+} from "node:fs";
+import { extname, join, resolve } from "node:path";
 
 /** Standard QCut project directory layout. */
 const PROJECT_DIRS = [
@@ -35,18 +42,18 @@ const MEDIA_CATEGORIES: Record<string, string[]> = {
 };
 
 function getCategoryForFile(filename: string): string | undefined {
-  const ext = path.extname(filename).toLowerCase();
+  const ext = extname(filename).toLowerCase();
   for (const [category, extensions] of Object.entries(MEDIA_CATEGORIES)) {
     if (extensions.includes(ext)) return category;
   }
   return;
 }
 
-export interface InitProjectResult {
+export type InitProjectResult = {
   created: string[];
   skipped: string[];
   projectDir: string;
-}
+};
 
 /**
  * Initialize a new project with standard directory structure.
@@ -56,17 +63,17 @@ export function initProject(
   directory: string,
   dryRun = false
 ): InitProjectResult {
-  const projectDir = path.resolve(directory);
+  const projectDir = resolve(directory);
   const created: string[] = [];
   const skipped: string[] = [];
 
   for (const dir of PROJECT_DIRS) {
-    const fullPath = path.join(projectDir, dir);
-    if (fs.existsSync(fullPath)) {
+    const fullPath = join(projectDir, dir);
+    if (existsSync(fullPath)) {
       skipped.push(dir);
     } else {
       if (!dryRun) {
-        fs.mkdirSync(fullPath, { recursive: true });
+        mkdirSync(fullPath, { recursive: true });
       }
       created.push(dir);
     }
@@ -75,11 +82,11 @@ export function initProject(
   return { created, skipped, projectDir };
 }
 
-export interface OrganizeResult {
+export type OrganizeResult = {
   moved: { from: string; to: string; category: string }[];
   skipped: string[];
   errors: string[];
-}
+};
 
 /**
  * Organize files into categorized folders based on file extension.
@@ -94,29 +101,33 @@ export function organizeProject(
     includeOutput?: boolean;
   } = {}
 ): OrganizeResult {
-  const projectDir = path.resolve(directory);
-  const sourceDir = options.sourceDir
-    ? path.resolve(options.sourceDir)
-    : projectDir;
+  const projectDir = resolve(directory);
+  const sourceDir = options.sourceDir ? resolve(options.sourceDir) : projectDir;
   const moved: OrganizeResult["moved"] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
 
-  if (!fs.existsSync(sourceDir)) {
+  if (!existsSync(sourceDir)) {
     errors.push(`Source directory not found: ${sourceDir}`);
     return { moved, skipped, errors };
   }
 
+  const outputDir = join(projectDir, "output");
   const targetBase = options.includeOutput
-    ? path.join(projectDir, "output")
-    : path.join(projectDir, "input");
+    ? outputDir
+    : join(projectDir, "input");
 
   function scanDir(dir: string): void {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
+      const fullPath = join(dir, entry.name);
 
       if (entry.isDirectory()) {
+        // Skip output/ when includeOutput is false to prevent
+        // moving output files back to input during recursive scans
+        if (!options.includeOutput && fullPath === outputDir) {
+          continue;
+        }
         if (options.recursive) {
           scanDir(fullPath);
         }
@@ -129,8 +140,8 @@ export function organizeProject(
         continue;
       }
 
-      const destDir = path.join(targetBase, category);
-      const destPath = path.join(destDir, entry.name);
+      const destDir = join(targetBase, category);
+      const destPath = join(destDir, entry.name);
 
       if (fullPath === destPath) {
         skipped.push(fullPath);
@@ -138,13 +149,13 @@ export function organizeProject(
       }
 
       if (!options.dryRun) {
-        fs.mkdirSync(destDir, { recursive: true });
+        mkdirSync(destDir, { recursive: true });
         try {
-          fs.renameSync(fullPath, destPath);
+          renameSync(fullPath, destPath);
         } catch {
           try {
-            fs.copyFileSync(fullPath, destPath);
-            fs.unlinkSync(fullPath);
+            copyFileSync(fullPath, destPath);
+            unlinkSync(fullPath);
           } catch (err) {
             errors.push(
               `Failed to move ${fullPath}: ${err instanceof Error ? err.message : String(err)}`
@@ -162,31 +173,31 @@ export function organizeProject(
   return { moved, skipped, errors };
 }
 
-export interface StructureInfoResult {
+export type StructureInfoResult = {
   projectDir: string;
   exists: boolean;
   directories: { path: string; fileCount: number; exists: boolean }[];
   totalFiles: number;
-}
+};
 
 /**
  * Display project directory structure and file counts per category.
  */
 export function getStructureInfo(directory: string): StructureInfoResult {
-  const projectDir = path.resolve(directory);
-  const exists = fs.existsSync(projectDir);
+  const projectDir = resolve(directory);
+  const exists = existsSync(projectDir);
 
   const directories: StructureInfoResult["directories"] = [];
   let totalFiles = 0;
 
   for (const dir of PROJECT_DIRS) {
-    const fullPath = path.join(projectDir, dir);
-    const dirExists = fs.existsSync(fullPath);
+    const fullPath = join(projectDir, dir);
+    const dirExists = existsSync(fullPath);
     let fileCount = 0;
 
     if (dirExists) {
       try {
-        const entries = fs.readdirSync(fullPath, { withFileTypes: true });
+        const entries = readdirSync(fullPath, { withFileTypes: true });
         fileCount = entries.filter((e) => e.isFile()).length;
       } catch {
         // Permission error, etc.

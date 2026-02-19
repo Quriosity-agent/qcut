@@ -8,8 +8,8 @@
  * @module electron/native-pipeline/cli-handlers-media
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import type { CLIRunOptions, CLIResult } from "./cli-runner.js";
 import { ModelRegistry } from "./registry.js";
 import type { PipelineStep } from "./executor.js";
@@ -87,15 +87,15 @@ export async function handleAnalyzeVideo(
     (outputFormat === "json" || outputFormat === "both")
   ) {
     const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
-    const jsonPath = path.join(outputDir, "analysis.json");
-    fs.writeFileSync(
+    const jsonPath = join(outputDir, "analysis.json");
+    writeFileSync(
       jsonPath,
       JSON.stringify({ type: analysisType, content: resultData }, null, 2)
     );
 
     if (outputFormat === "both") {
-      const mdPath = path.join(outputDir, "analysis.md");
-      fs.writeFileSync(
+      const mdPath = join(outputDir, "analysis.md");
+      writeFileSync(
         mdPath,
         typeof resultData === "string"
           ? resultData
@@ -188,8 +188,8 @@ export async function handleTranscribe(
 
   // Save raw JSON response if requested
   if (options.rawJson && result.data) {
-    const rawPath = path.join(outputDir, "transcription_raw.json");
-    fs.writeFileSync(rawPath, JSON.stringify(result.data, null, 2));
+    const rawPath = join(outputDir, "transcription_raw.json");
+    writeFileSync(rawPath, JSON.stringify(result.data, null, 2));
     outputPaths.push(rawPath);
   }
 
@@ -204,8 +204,8 @@ export async function handleTranscribe(
         maxWords: options.srtMaxWords,
         maxDuration: options.srtMaxDuration,
       });
-      const srtPath = path.join(outputDir, "transcription.srt");
-      fs.writeFileSync(srtPath, srtContent);
+      const srtPath = join(outputDir, "transcription.srt");
+      writeFileSync(srtPath, srtContent);
       outputPaths.push(srtPath);
     }
   }

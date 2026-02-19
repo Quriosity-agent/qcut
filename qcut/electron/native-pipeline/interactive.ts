@@ -7,7 +7,7 @@
  * @module electron/native-pipeline/interactive
  */
 
-import * as readline from "readline";
+import { createInterface } from "node:readline";
 
 /** Environment variables that indicate a CI/non-interactive environment. */
 const CI_ENV_VARS = [
@@ -44,7 +44,7 @@ export async function confirm(
   if (!isInteractive()) return defaultValue;
 
   const suffix = defaultValue ? " (Y/n): " : " (y/N): ";
-  const rl = readline.createInterface({
+  const rl = createInterface({
     input: process.stdin,
     output: process.stderr,
   });
@@ -107,7 +107,7 @@ export async function readHiddenInput(prompt: string): Promise<string> {
 
   // TTY: use raw mode to hide input
   return new Promise<string>((resolve) => {
-    const rl = readline.createInterface({
+    const rl = createInterface({
       input: process.stdin,
       output: process.stderr,
     });

@@ -29,16 +29,29 @@ import { createExamples } from "./example-pipelines.js";
 import { readHiddenInput } from "./interactive.js";
 
 export function handleSetup(): CLIResult {
-  const envPath = setupEnvTemplate();
-  return {
-    success: true,
-    data: { envPath, message: `API key template created at ${envPath}` },
-  };
+  try {
+    const envPath = setupEnvTemplate();
+    return {
+      success: true,
+      data: { envPath, message: `API key template created at ${envPath}` },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Setup failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 export async function handleSetKey(options: CLIRunOptions): Promise<CLIResult> {
   if (!options.keyName) {
     return { success: false, error: "Missing --name" };
+  }
+  if (!isKnownKey(options.keyName)) {
+    return {
+      success: false,
+      error: `Unknown key '${options.keyName}'. Use check-keys to see valid key names.`,
+    };
   }
 
   let value = options.keyValue;
@@ -83,7 +96,7 @@ export function handleGetKey(options: CLIRunOptions): CLIResult {
   if (options.reveal) {
     return {
       success: true,
-      data: { name: options.keyName, value, masked: value },
+      data: { name: options.keyName, value },
     };
   }
 
@@ -122,18 +135,25 @@ export function handleDeleteKey(options: CLIRunOptions): CLIResult {
 
 export function handleInitProject(options: CLIRunOptions): CLIResult {
   const directory = options.directory || options.outputDir || ".";
-  const result = initProject(directory, options.dryRun);
-  return {
-    success: true,
-    data: {
-      projectDir: result.projectDir,
-      created: result.created,
-      skipped: result.skipped,
-      message: result.created.length
-        ? `Created ${result.created.length} directories`
-        : "Project structure already exists",
-    },
-  };
+  try {
+    const result = initProject(directory, options.dryRun);
+    return {
+      success: true,
+      data: {
+        projectDir: result.projectDir,
+        created: result.created,
+        skipped: result.skipped,
+        message: result.created.length
+          ? `Created ${result.created.length} directories`
+          : "Project structure already exists",
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Init project failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 export function handleOrganizeProject(options: CLIRunOptions): CLIResult {
@@ -164,25 +184,39 @@ export function handleOrganizeProject(options: CLIRunOptions): CLIResult {
 
 export function handleStructureInfo(options: CLIRunOptions): CLIResult {
   const directory = options.directory || options.outputDir || ".";
-  const info = getStructureInfo(directory);
-  return {
-    success: true,
-    data: {
-      projectDir: info.projectDir,
-      exists: info.exists,
-      directories: info.directories,
-      totalFiles: info.totalFiles,
-    },
-  };
+  try {
+    const info = getStructureInfo(directory);
+    return {
+      success: true,
+      data: {
+        projectDir: info.projectDir,
+        exists: info.exists,
+        directories: info.directories,
+        totalFiles: info.totalFiles,
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Structure info failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 export function handleCreateExamples(options: CLIRunOptions): CLIResult {
   const outputDir = options.outputDir || "./examples";
-  const created = createExamples(outputDir);
-  return {
-    success: true,
-    data: { created, count: created.length },
-  };
+  try {
+    const created = createExamples(outputDir);
+    return {
+      success: true,
+      data: { created, count: created.length },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Create examples failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 export function handleListModels(options: CLIRunOptions): CLIResult {

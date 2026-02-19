@@ -26,7 +26,7 @@
 ### 1.1 Manager Routing for ViMax Commands
 
 **File:** `electron/native-pipeline/manager.ts`
-**Status:** NOT DONE
+**Status:** DONE
 
 `GenerateOptions.command` union type only includes 6 commands:
 
@@ -49,7 +49,7 @@ Missing all 10 vimax subcommands (`vimax:idea2video`, `vimax:script2video`, `vim
 ### 1.2 Vimax Barrel Exports
 
 **File:** `electron/native-pipeline/index.ts`
-**Status:** NOT DONE
+**Status:** DONE
 
 No `export * from "./vimax/index.js"`. The vimax module is invisible to anything importing from `native-pipeline`.
 
@@ -58,7 +58,7 @@ No `export * from "./vimax/index.js"`. The vimax module is invisible to anything
 ### 1.3 IPC End-to-End Verification
 
 **File:** `electron/ai-pipeline-ipc.ts`
-**Status:** BLOCKED by 1.1
+**Status:** DONE
 
 Once manager routing is added, verify IPC works from renderer → main → vimax pipeline → result.
 

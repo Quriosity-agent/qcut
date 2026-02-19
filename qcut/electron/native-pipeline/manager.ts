@@ -452,6 +452,16 @@ export class NativePipelineManager {
     onProgress: (progress: PipelineProgress) => void,
     startTime: number
   ): Promise<PipelineResult> {
+    const rawMaxScenes = options.args["max-scenes"]
+      ? parseInt(String(options.args["max-scenes"]), 10)
+      : undefined;
+    const rawMaxChars = options.args["max-characters"]
+      ? parseInt(String(options.args["max-characters"]), 10)
+      : undefined;
+    const rawRefStrength = options.args["reference-strength"]
+      ? parseFloat(String(options.args["reference-strength"]))
+      : undefined;
+
     const cliOptions: CLIRunOptions = {
       command: options.command,
       outputDir: this.resolveOutputDir(options, sessionId),
@@ -468,12 +478,26 @@ export class NativePipelineManager {
       imageModel: options.args["image-model"] as string | undefined,
       videoModel: options.args["video-model"] as string | undefined,
       llmModel: options.args["llm-model"] as string | undefined,
-      maxScenes: options.args["max-scenes"]
-        ? Number(options.args["max-scenes"])
-        : undefined,
+      maxScenes:
+        rawMaxScenes != null && !Number.isNaN(rawMaxScenes)
+          ? rawMaxScenes
+          : undefined,
       noPortraits: options.args["no-portraits"] as boolean | undefined,
       storyboardOnly: options.args["storyboard-only"] as boolean | undefined,
       scriptsOnly: options.args["scripts-only"] as boolean | undefined,
+      portraits: options.args.portraits as string | undefined,
+      views: options.args.views as string | undefined,
+      maxCharacters:
+        rawMaxChars != null && !Number.isNaN(rawMaxChars)
+          ? rawMaxChars
+          : undefined,
+      saveRegistry: options.args["save-registry"] as boolean | undefined,
+      style: options.args.style as string | undefined,
+      referenceModel: options.args["reference-model"] as string | undefined,
+      referenceStrength:
+        rawRefStrength != null && !Number.isNaN(rawRefStrength)
+          ? rawRefStrength
+          : undefined,
     };
 
     const progressFn = (p: {

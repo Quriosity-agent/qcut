@@ -271,7 +271,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     saveIntermediates: (values["save-intermediates"] as boolean) ?? false,
     parallel: (values.parallel as boolean) ?? false,
     maxWorkers: values["max-workers"]
-      ? parseInt(values["max-workers"] as string, 10)
+      ? (Number.isNaN(parseInt(values["max-workers"] as string, 10))
+          ? undefined
+          : parseInt(values["max-workers"] as string, 10))
       : undefined,
     json: (values.json as boolean) ?? false,
     verbose: (values.verbose as boolean) ?? false,
@@ -287,7 +289,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     novel: values.novel as string | undefined,
     title: values.title as string | undefined,
     maxScenes: values["max-scenes"]
-      ? parseInt(values["max-scenes"] as string, 10)
+      ? (Number.isNaN(parseInt(values["max-scenes"] as string, 10))
+          ? undefined
+          : parseInt(values["max-scenes"] as string, 10))
       : undefined,
     scriptsOnly: (values["scripts-only"] as boolean) ?? false,
     storyboardOnly: (values["storyboard-only"] as boolean) ?? false,
@@ -313,13 +317,17 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     portraits: values.portraits as string | undefined,
     views: values.views as string | undefined,
     maxCharacters: values["max-characters"]
-      ? parseInt(values["max-characters"] as string, 10)
+      ? (Number.isNaN(parseInt(values["max-characters"] as string, 10))
+          ? undefined
+          : parseInt(values["max-characters"] as string, 10))
       : undefined,
     saveRegistry: (values["save-registry"] as boolean) ?? true,
     style: values.style as string | undefined,
     referenceModel: values["reference-model"] as string | undefined,
     referenceStrength: values["reference-strength"]
-      ? parseFloat(values["reference-strength"] as string)
+      ? (Number.isNaN(parseFloat(values["reference-strength"] as string))
+          ? undefined
+          : parseFloat(values["reference-strength"] as string))
       : undefined,
     // transcribe options
     language: values.language as string | undefined,
@@ -328,10 +336,14 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     keyterms: values.keyterms as string[] | undefined,
     srt: (values.srt as boolean) ?? false,
     srtMaxWords: values["srt-max-words"]
-      ? parseInt(values["srt-max-words"] as string, 10)
+      ? (Number.isNaN(parseInt(values["srt-max-words"] as string, 10))
+          ? undefined
+          : parseInt(values["srt-max-words"] as string, 10))
       : undefined,
     srtMaxDuration: values["srt-max-duration"]
-      ? parseFloat(values["srt-max-duration"] as string)
+      ? (Number.isNaN(parseFloat(values["srt-max-duration"] as string))
+          ? undefined
+          : parseFloat(values["srt-max-duration"] as string))
       : undefined,
     rawJson: (values["raw-json"] as boolean) ?? false,
     // transfer-motion options
@@ -349,7 +361,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     projectId: values["project-id"] as string | undefined,
     // grid upscale
     gridUpscale: values["grid-upscale"]
-      ? parseFloat(values["grid-upscale"] as string)
+      ? (Number.isNaN(parseFloat(values["grid-upscale"] as string))
+          ? undefined
+          : parseFloat(values["grid-upscale"] as string))
       : undefined,
   };
 }

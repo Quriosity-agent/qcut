@@ -955,7 +955,7 @@ describe("CLI pipeline", () => {
       const result = await runner.run(
         defaultOptions({
           command: "init-project",
-          directory: "/tmp/test-qcut-init-" + Date.now(),
+          directory: `/tmp/test-qcut-init-${Date.now()}`,
           dryRun: true,
         }),
         noop
@@ -975,11 +975,14 @@ describe("CLI pipeline", () => {
       );
       expect(result.success).toBe(true);
       const data = result.data as {
-        directories: unknown[];
+        projectDir: string;
+        directories: { path: string; fileCount: number; exists: boolean }[];
         totalFiles: number;
       };
-      expect(data.directories).toBeDefined();
+      expect(Array.isArray(data.directories)).toBe(true);
+      expect(data.directories.length).toBeGreaterThan(0);
       expect(typeof data.totalFiles).toBe("number");
+      expect(typeof data.projectDir).toBe("string");
     });
   });
 

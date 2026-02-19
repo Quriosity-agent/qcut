@@ -315,8 +315,9 @@ export async function handleVimaxGeneratePortraits(
       characters = extractResult.result;
     }
 
-    // Apply --max-characters limit
-    const maxChars = options.maxCharacters ?? 5;
+    // Apply --max-characters limit (guard against NaN from bad CLI input)
+    const rawMaxChars = options.maxCharacters ?? 5;
+    const maxChars = Number.isNaN(rawMaxChars) ? 5 : rawMaxChars;
     if (characters.length > maxChars) {
       characters = characters.slice(0, maxChars);
     }
