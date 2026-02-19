@@ -29,6 +29,8 @@ import { FaDiscord, FaGithub } from "react-icons/fa6";
 import { useExportStore } from "@/stores/export-store";
 import { PanelPresetSelector } from "./panel-preset-selector";
 import { AutoSaveIndicator } from "./editor/auto-save-indicator";
+import { ScreenRecordingControl } from "./editor/screen-recording-control";
+import type { KeyboardEvent } from "react";
 
 export function EditorHeader() {
   const { getTotalDuration } = useTimelineStore();
@@ -40,6 +42,16 @@ export function EditorHeader() {
 
   const handleExport = () => {
     setPanelView(PanelView.EXPORT);
+  };
+
+  const handleExportKeyDown = ({ key }: KeyboardEvent<HTMLButtonElement>) => {
+    try {
+      if (key === "Enter" || key === " ") {
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to handle export keydown:", error);
+    }
   };
 
   const handleNameSave = async (newName: string) => {
@@ -142,11 +154,14 @@ export function EditorHeader() {
     <nav className="flex items-center gap-2">
       <AutoSaveIndicator className="whitespace-nowrap" />
       <PanelPresetSelector />
+      <ScreenRecordingControl />
       <KeyboardShortcutsHelp />
       <Button
+        type="button"
         size="sm"
         className="h-7 text-xs !bg-linear-to-r from-cyan-400 to-blue-500 text-white hover:opacity-85 transition-opacity"
         onClick={handleExport}
+        onKeyDown={handleExportKeyDown}
         data-testid="export-button"
       >
         <Download className="h-4 w-4" />

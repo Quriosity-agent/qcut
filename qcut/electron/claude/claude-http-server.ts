@@ -22,6 +22,9 @@ import {
   importMediaFile,
   deleteMediaFile,
   renameMediaFile,
+  importMediaFromUrl,
+  batchImportMedia,
+  extractFrame,
 } from "./claude-media-handler.js";
 import {
   requestTimelineFromRenderer,
@@ -132,6 +135,45 @@ export function startClaudeHTTPServer(
       req.body.newName
     );
   });
+
+  // ---- Import from URL ----
+  router.post("/api/claude/media/:projectId/import-from-url", async (req) => {
+    if (!req.body?.url) {
+      throw new HttpError(400, "Missing 'url' in request body");
+    }
+    return importMediaFromUrl(
+      req.params.projectId,
+      req.body.url,
+      req.body.filename
+    );
+  });
+
+  // ---- Batch import (paths and/or URLs) ----
+  router.post("/api/claude/media/:projectId/batch-import", async (req) => {
+    if (!Array.isArray(req.body?.items)) {
+      throw new HttpError(400, "Missing 'items' array in request body");
+    }
+    return batchImportMedia(req.params.projectId, req.body.items);
+  });
+
+  // ---- Extract frame from video ----
+  router.post(
+    "/api/claude/media/:projectId/:mediaId/extract-frame",
+    async (req) => {
+      if (typeof req.body?.timestamp !== "number") {
+        throw new HttpError(
+          400,
+          "Missing 'timestamp' (number) in request body"
+        );
+      }
+      return extractFrame(
+        req.params.projectId,
+        req.params.mediaId,
+        req.body.timestamp,
+        req.body.format
+      );
+    }
+  );
 
   // ==========================================================================
   // Timeline routes (renderer-dependent for export/import)

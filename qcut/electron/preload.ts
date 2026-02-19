@@ -23,6 +23,12 @@ import type {
   ThemeSource,
   SaveAIVideoOptions,
   SaveAIVideoResult,
+  ScreenCaptureSource,
+  StartScreenRecordingOptions,
+  StartScreenRecordingResult,
+  StopScreenRecordingOptions,
+  StopScreenRecordingResult,
+  ScreenRecordingStatus,
 } from "./preload-types.js";
 import {
   createPtyAPI,
@@ -130,6 +136,27 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("ai-video:delete-file", filePath),
     getProjectDir: (projectId: string): Promise<string> =>
       ipcRenderer.invoke("ai-video:get-project-dir", projectId),
+  },
+
+  // Screen recording operations
+  screenRecording: {
+    getSources: (): Promise<ScreenCaptureSource[]> =>
+      ipcRenderer.invoke("screen:getSources"),
+    start: (
+      options: StartScreenRecordingOptions = {}
+    ): Promise<StartScreenRecordingResult> =>
+      ipcRenderer.invoke("screen:startRecording", options),
+    appendChunk: (options: {
+      sessionId: string;
+      chunk: Uint8Array;
+    }): Promise<{ bytesWritten: number }> =>
+      ipcRenderer.invoke("screen:appendChunk", options),
+    stop: (
+      options: StopScreenRecordingOptions = {}
+    ): Promise<StopScreenRecordingResult> =>
+      ipcRenderer.invoke("screen:stopRecording", options),
+    getStatus: (): Promise<ScreenRecordingStatus> =>
+      ipcRenderer.invoke("screen:getStatus"),
   },
 
   // Transcription operations (Gemini API + ElevenLabs)
@@ -371,6 +398,12 @@ export type {
   ThemeSource,
   SaveAIVideoOptions,
   SaveAIVideoResult,
+  ScreenCaptureSource,
+  StartScreenRecordingOptions,
+  StartScreenRecordingResult,
+  StopScreenRecordingOptions,
+  StopScreenRecordingResult,
+  ScreenRecordingStatus,
 } from "./preload-types.js";
 
 export type {

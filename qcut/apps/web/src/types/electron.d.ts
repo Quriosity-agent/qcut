@@ -49,6 +49,58 @@ export interface ElevenLabsTranscribeResult {
   words: ElevenLabsTranscriptionWord[];
 }
 
+export type ScreenCaptureSourceType = "window" | "screen";
+
+export interface ScreenCaptureSource {
+  id: string;
+  name: string;
+  type: ScreenCaptureSourceType;
+  displayId: string;
+  isCurrentWindow: boolean;
+}
+
+export interface StartScreenRecordingOptions {
+  sourceId?: string;
+  filePath?: string;
+  fileName?: string;
+  mimeType?: string;
+}
+
+export interface StartScreenRecordingResult {
+  sessionId: string;
+  sourceId: string;
+  sourceName: string;
+  filePath: string;
+  startedAt: number;
+  mimeType: string | null;
+}
+
+export interface StopScreenRecordingOptions {
+  sessionId?: string;
+  discard?: boolean;
+}
+
+export interface StopScreenRecordingResult {
+  success: boolean;
+  filePath: string | null;
+  bytesWritten: number;
+  durationMs: number;
+  discarded: boolean;
+}
+
+export interface ScreenRecordingStatus {
+  state: "idle" | "recording";
+  recording: boolean;
+  sessionId: string | null;
+  sourceId: string | null;
+  sourceName: string | null;
+  filePath: string | null;
+  bytesWritten: number;
+  startedAt: number | null;
+  durationMs: number;
+  mimeType: string | null;
+}
+
 export interface ElectronAPI {
   // System info
   platform: string;
@@ -222,6 +274,21 @@ export interface ElectronAPI {
      * @returns Absolute path to the project's AI videos directory
      */
     getProjectDir: (projectId: string) => Promise<string>;
+  };
+
+  screenRecording?: {
+    getSources: () => Promise<ScreenCaptureSource[]>;
+    start: (
+      options?: StartScreenRecordingOptions
+    ) => Promise<StartScreenRecordingResult>;
+    appendChunk: (options: {
+      sessionId: string;
+      chunk: Uint8Array;
+    }) => Promise<{ bytesWritten: number }>;
+    stop: (
+      options?: StopScreenRecordingOptions
+    ) => Promise<StopScreenRecordingResult>;
+    getStatus: () => Promise<ScreenRecordingStatus>;
   };
 
   // Transcription operations (Gemini API + ElevenLabs)
@@ -1479,5 +1546,14 @@ export interface RemotionFolderImportResult {
 declare global {
   interface Window {
     electronAPI?: ElectronAPI;
+    qcutScreenRecording?: {
+      start: (
+        options?: StartScreenRecordingOptions
+      ) => Promise<StartScreenRecordingResult>;
+      stop: (
+        options?: StopScreenRecordingOptions
+      ) => Promise<StopScreenRecordingResult>;
+      status: () => Promise<ScreenRecordingStatus>;
+    };
   }
 }

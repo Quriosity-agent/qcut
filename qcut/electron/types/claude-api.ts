@@ -227,3 +227,162 @@ export type AnalyzeModel = {
   modelId: string;
   description: string;
 };
+
+// ============================================================================
+// URL Import Types
+// ============================================================================
+
+export interface UrlImportRequest {
+  url: string;
+  filename?: string;
+}
+
+// ============================================================================
+// Batch Import Types
+// ============================================================================
+
+export interface BatchImportItem {
+  path?: string;
+  url?: string;
+  filename?: string;
+}
+
+export interface BatchImportResult {
+  index: number;
+  success: boolean;
+  mediaFile?: MediaFile;
+  error?: string;
+}
+
+// ============================================================================
+// Frame Extraction Types
+// ============================================================================
+
+export interface FrameExtractRequest {
+  timestamp: number;
+  format?: "png" | "jpg";
+}
+
+export interface FrameExtractResult {
+  path: string;
+  timestamp: number;
+  format: string;
+}
+
+// ============================================================================
+// Transcription Types (Stage 2)
+// ============================================================================
+
+export interface TranscriptionWord {
+  text: string;
+  start: number;
+  end: number;
+  speaker?: string;
+  type: "word" | "spacing" | "audio_event" | "punctuation";
+}
+
+export interface TranscriptionSegment {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface TranscriptionResult {
+  words: TranscriptionWord[];
+  segments: TranscriptionSegment[];
+  language: string;
+  duration: number;
+}
+
+export interface TranscribeRequest {
+  mediaId: string;
+  provider?: "elevenlabs" | "gemini";
+  language?: string;
+  diarize?: boolean;
+}
+
+// ============================================================================
+// Scene Detection Types (Stage 2)
+// ============================================================================
+
+export interface SceneBoundary {
+  timestamp: number;
+  confidence: number;
+  description?: string;
+  shotType?: "wide" | "medium" | "close-up" | "cutaway" | "unknown";
+  transitionType?: "cut" | "dissolve" | "fade" | "unknown";
+}
+
+export interface SceneDetectionRequest {
+  mediaId: string;
+  threshold?: number;
+  aiAnalysis?: boolean;
+  model?: string;
+}
+
+export interface SceneDetectionResult {
+  scenes: SceneBoundary[];
+  totalScenes: number;
+  averageShotDuration: number;
+}
+
+// ============================================================================
+// Frame Analysis Types (Stage 2)
+// ============================================================================
+
+export interface FrameAnalysis {
+  timestamp: number;
+  objects: string[];
+  text: string[];
+  description: string;
+  mood: string;
+  composition: string;
+}
+
+export interface FrameAnalysisRequest {
+  mediaId: string;
+  timestamps?: number[];
+  interval?: number;
+  prompt?: string;
+}
+
+export interface FrameAnalysisResult {
+  frames: FrameAnalysis[];
+  totalFramesAnalyzed: number;
+}
+
+// ============================================================================
+// Filler Detection HTTP Types (Stage 2)
+// ============================================================================
+
+export interface FillerWord {
+  word: string;
+  start: number;
+  end: number;
+  reason: string;
+}
+
+export interface SilenceGap {
+  start: number;
+  end: number;
+  duration: number;
+}
+
+export interface FillerAnalysisRequest {
+  mediaId?: string;
+  words: Array<{
+    id: string;
+    text: string;
+    start: number;
+    end: number;
+    type: "word" | "spacing";
+    speaker_id?: string;
+  }>;
+}
+
+export interface FillerAnalysisResult {
+  fillers: FillerWord[];
+  silences: SilenceGap[];
+  totalFillerTime: number;
+  totalSilenceTime: number;
+}

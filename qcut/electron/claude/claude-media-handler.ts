@@ -6,6 +6,8 @@
 import { ipcMain } from "electron";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { pipeline } from "node:stream/promises";
+import { createWriteStream } from "node:fs";
 import {
   getMediaPath,
   isValidSourcePath,
@@ -14,7 +16,11 @@ import {
   sanitizeFilename,
 } from "./utils/helpers.js";
 import { claudeLog } from "./utils/logger.js";
-import type { MediaFile } from "../types/claude-api";
+import type {
+  MediaFile,
+  BatchImportItem,
+  BatchImportResult,
+} from "../types/claude-api";
 
 const HANDLER_NAME = "Media";
 
@@ -245,6 +251,351 @@ export async function renameMediaFile(
   }
 }
 
+// ============================================================================
+// URL Import
+// ============================================================================
+
+const MAX_DOWNLOAD_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
+const DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Validate URL is safe for download (http/https only, no private IPs)
+ */
+function validateDownloadUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("Invalid URL format");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(
+      `Unsupported URL scheme: ${parsed.protocol} (only http/https allowed)`
+    );
+  }
+
+  // Block private/loopback IPs (basic SSRF prevention)
+  const host = parsed.hostname.toLowerCase();
+  const blocked = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "[::1]",
+    "169.254.",
+  ];
+  if (blocked.some((b) => host === b || host.startsWith(b))) {
+    throw new Error("Downloads from private/loopback addresses are not allowed");
+  }
+
+  return parsed;
+}
+
+/**
+ * Extract a filename from Content-Disposition header or URL path
+ */
+function extractFilename(
+  url: URL,
+  headers: Headers,
+  fallbackFilename?: string
+): string {
+  // Try Content-Disposition header first
+  const disposition = headers.get("content-disposition");
+  if (disposition) {
+    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';\n]+)/i);
+    if (match?.[1]) {
+      const decoded = decodeURIComponent(match[1].trim());
+      const sanitized = sanitizeFilename(decoded);
+      if (sanitized) return sanitized;
+    }
+  }
+
+  // Fall back to URL path
+  const urlPath = url.pathname;
+  const basename = path.basename(urlPath);
+  if (basename && basename !== "/" && path.extname(basename)) {
+    const sanitized = sanitizeFilename(basename);
+    if (sanitized) return sanitized;
+  }
+
+  // Fall back to provided name or generate one
+  if (fallbackFilename) {
+    const sanitized = sanitizeFilename(fallbackFilename);
+    if (sanitized) return sanitized;
+  }
+
+  return `download_${Date.now()}.mp4`;
+}
+
+/**
+ * Import a media file from a URL into the project.
+ * Downloads via Node.js fetch with streaming to avoid memory spikes.
+ */
+export async function importMediaFromUrl(
+  projectId: string,
+  url: string,
+  filename?: string
+): Promise<MediaFile> {
+  claudeLog.info(HANDLER_NAME, `Importing media from URL: ${url}`);
+
+  const parsedUrl = validateDownloadUrl(url);
+  const mediaPath = getMediaPath(projectId);
+  await fs.mkdir(mediaPath, { recursive: true });
+
+  // Start download with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(parsedUrl.href, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "User-Agent": "QCut-Desktop/1.0" },
+    });
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Download timed out after 5 minutes");
+    }
+    throw new Error(
+      `Download failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+
+  if (!response.ok) {
+    clearTimeout(timeoutId);
+    throw new Error(`Download failed: HTTP ${response.status} ${response.statusText}`);
+  }
+
+  // Check content-length if available
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_DOWNLOAD_SIZE) {
+    clearTimeout(timeoutId);
+    throw new Error(
+      `File too large: ${parseInt(contentLength, 10)} bytes exceeds 5GB limit`
+    );
+  }
+
+  const resolvedFilename = extractFilename(
+    parsedUrl,
+    response.headers,
+    filename
+  );
+  const ext = path.extname(resolvedFilename);
+  const type = getMediaType(ext);
+  if (!type) {
+    clearTimeout(timeoutId);
+    throw new Error(`Unsupported media type: ${ext}`);
+  }
+
+  const destPath = await getUniqueFilePath(mediaPath, resolvedFilename);
+  const actualFileName = path.basename(destPath);
+
+  // Stream to disk
+  try {
+    if (!response.body) {
+      throw new Error("Response has no body");
+    }
+    const writeStream = createWriteStream(destPath);
+    // @ts-expect-error - Node.js ReadableStream is compatible with pipeline
+    await pipeline(response.body, writeStream);
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    // Clean up partial file
+    try {
+      await fs.unlink(destPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+    throw new Error(
+      `Failed to save file: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const stat = await fs.stat(destPath);
+  if (stat.size === 0) {
+    await fs.unlink(destPath);
+    throw new Error("Downloaded file is empty");
+  }
+
+  const mediaFile: MediaFile = {
+    id: `media_${Buffer.from(actualFileName).toString("base64url")}`,
+    name: actualFileName,
+    type,
+    path: destPath,
+    size: stat.size,
+    createdAt: stat.birthtimeMs,
+    modifiedAt: stat.mtimeMs,
+  };
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Successfully imported from URL: ${actualFileName} (${stat.size} bytes)`
+  );
+  return mediaFile;
+}
+
+// ============================================================================
+// Batch Import
+// ============================================================================
+
+const MAX_BATCH_SIZE = 20;
+
+/**
+ * Import multiple media files from local paths and/or URLs in one call.
+ * Items are processed sequentially to avoid I/O contention.
+ */
+export async function batchImportMedia(
+  projectId: string,
+  items: BatchImportItem[]
+): Promise<BatchImportResult[]> {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("Items array is required and must not be empty");
+  }
+  if (items.length > MAX_BATCH_SIZE) {
+    throw new Error(
+      `Batch size ${items.length} exceeds maximum of ${MAX_BATCH_SIZE}`
+    );
+  }
+
+  claudeLog.info(HANDLER_NAME, `Batch importing ${items.length} items`);
+
+  const results: BatchImportResult[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    try {
+      let mediaFile: MediaFile | null = null;
+
+      if (item.url) {
+        mediaFile = await importMediaFromUrl(projectId, item.url, item.filename);
+      } else if (item.path) {
+        mediaFile = await importMediaFile(projectId, item.path);
+      } else {
+        throw new Error("Each item must have either 'url' or 'path'");
+      }
+
+      if (!mediaFile) {
+        throw new Error("Import returned null");
+      }
+
+      results.push({ index: i, success: true, mediaFile });
+    } catch (error: unknown) {
+      results.push({
+        index: i,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  const successCount = results.filter((r) => r.success).length;
+  claudeLog.info(
+    HANDLER_NAME,
+    `Batch import complete: ${successCount}/${items.length} succeeded`
+  );
+  return results;
+}
+
+// ============================================================================
+// Frame Extraction
+// ============================================================================
+
+/**
+ * Extract a single frame from a video file at a given timestamp.
+ * Uses FFmpeg via child_process (avoids IPC roundtrip).
+ */
+export async function extractFrame(
+  projectId: string,
+  mediaId: string,
+  timestamp: number,
+  format: "png" | "jpg" = "png"
+): Promise<{ path: string; timestamp: number; format: string }> {
+  claudeLog.info(
+    HANDLER_NAME,
+    `Extracting frame at ${timestamp}s from ${mediaId}`
+  );
+
+  const mediaFile = await getMediaInfo(projectId, mediaId);
+  if (!mediaFile) {
+    throw new Error(`Media not found: ${mediaId}`);
+  }
+
+  if (mediaFile.type !== "video") {
+    throw new Error("Frame extraction is only supported for video files");
+  }
+
+  if (timestamp < 0) {
+    throw new Error("Timestamp must be non-negative");
+  }
+
+  // Build output path in temp directory
+  const os = await import("node:os");
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileAsync = promisify(execFile);
+
+  const outputDir = os.tmpdir();
+  const ext = format === "jpg" ? "jpg" : "png";
+  const outputFilename = `qcut_frame_${mediaId}_${Math.round(timestamp * 1000)}.${ext}`;
+  const outputPath = path.join(outputDir, outputFilename);
+
+  // Find FFmpeg path
+  let ffmpegPath: string;
+  try {
+    const ffmpegUtils = await import("../ffmpeg/utils.js");
+    ffmpegPath = ffmpegUtils.getFFmpegPath();
+  } catch {
+    ffmpegPath = "ffmpeg";
+  }
+
+  const args = [
+    "-ss",
+    String(timestamp),
+    "-i",
+    mediaFile.path,
+    "-frames:v",
+    "1",
+    "-q:v",
+    "2",
+    "-y",
+    outputPath,
+  ];
+
+  try {
+    await execFileAsync(ffmpegPath, args, { timeout: 30_000 });
+  } catch (error: unknown) {
+    throw new Error(
+      `FFmpeg frame extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+
+  // Verify output exists
+  try {
+    const stat = await fs.stat(outputPath);
+    if (stat.size === 0) {
+      throw new Error("Extracted frame is empty");
+    }
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
+      throw new Error(
+        "Frame extraction produced no output — timestamp may be beyond video duration"
+      );
+    }
+    throw error;
+  }
+
+  claudeLog.info(HANDLER_NAME, `Frame extracted: ${outputPath}`);
+  return { path: outputPath, timestamp, format: ext };
+}
+
 /** Register Claude media IPC handlers for listing, importing, deleting, and renaming media. */
 export function setupClaudeMediaIPC(): void {
   claudeLog.info(HANDLER_NAME, "Setting up Media IPC handlers...");
@@ -277,6 +628,29 @@ export function setupClaudeMediaIPC(): void {
       renameMediaFile(projectId, mediaId, newName)
   );
 
+  ipcMain.handle(
+    "claude:media:importFromUrl",
+    async (_event, projectId: string, url: string, filename?: string) =>
+      importMediaFromUrl(projectId, url, filename)
+  );
+
+  ipcMain.handle(
+    "claude:media:batchImport",
+    async (_event, projectId: string, items: BatchImportItem[]) =>
+      batchImportMedia(projectId, items)
+  );
+
+  ipcMain.handle(
+    "claude:media:extractFrame",
+    async (
+      _event,
+      projectId: string,
+      mediaId: string,
+      timestamp: number,
+      format?: "png" | "jpg"
+    ) => extractFrame(projectId, mediaId, timestamp, format)
+  );
+
   claudeLog.info(HANDLER_NAME, "Media IPC handlers registered");
 }
 
@@ -288,4 +662,7 @@ module.exports = {
   importMediaFile,
   deleteMediaFile,
   renameMediaFile,
+  importMediaFromUrl,
+  batchImportMedia,
+  extractFrame,
 };
