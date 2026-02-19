@@ -33,7 +33,7 @@ The HTTP server has a 30-second global timeout, but transcription takes up to 5 
 
 ### New API Routes
 
-```
+```text
 POST /api/claude/transcribe/:projectId/start        → { jobId }
 GET  /api/claude/transcribe/:projectId/jobs/:jobId   → TranscribeJob
 GET  /api/claude/transcribe/:projectId/jobs          → TranscribeJob[]

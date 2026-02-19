@@ -2,7 +2,7 @@
 
 > **Goal**: Let Claude Code transcribe and visually understand video content via QCut APIs
 > **Status**: IMPLEMENTED + TESTED (2026-02-20)
-> **Tests**: 63 unit/mock tests passing, live API tests below
+> **Tests**: 68 unit/mock tests passing, live API tests below
 
 ---
 
@@ -122,7 +122,7 @@ Binary rebuilt and copied to `resources/bin/aicp` and `electron/resources/bin/ai
 | `claude-vision-handler.test.ts` | 19 |
 | `claude-filler-handler-http.test.ts` | 5 |
 | `stage2-integration.test.ts` | 12 |
-| **Total** | **63** (was 40) |
+| **Total** | **68** |
 
 ---
 

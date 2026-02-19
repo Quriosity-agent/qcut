@@ -195,7 +195,7 @@ curl -s http://localhost:8765/api/claude/timeline/$PROJECT_ID | \
 
 Media IDs use deterministic base64url encoding: `media_` + base64url(filename).
 
-```
+```text
 filename: "clip.mp4" → id: "media_Y2xpcC5tcDQ"
 ```
 
