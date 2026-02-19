@@ -591,6 +591,67 @@ export async function getMainWindow(electronApp: ElectronApplication) {
 }
 
 /**
+ * Start QCut screen recording via the renderer bridge.
+ *
+ * @param page - Playwright page instance
+ * @param options - Optional output/source overrides
+ * @returns Session metadata returned by the app
+ */
+export async function startScreenRecordingForE2E(
+  page: Page,
+  options?: {
+    sourceId?: string;
+    filePath?: string;
+    fileName?: string;
+    mimeType?: string;
+  }
+) {
+  try {
+    return await page.evaluate(async (params) => {
+      const screenRecordingBridge = window.qcutScreenRecording;
+      if (!screenRecordingBridge) {
+        throw new Error(
+          "window.qcutScreenRecording bridge is unavailable in renderer"
+        );
+      }
+      return await screenRecordingBridge.start(params);
+    }, options || {});
+  } catch (error) {
+    throw new Error(
+      `Failed to start screen recording for E2E: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
+ * Stop QCut screen recording via the renderer bridge.
+ *
+ * @param page - Playwright page instance
+ * @param options - Optional stop controls
+ * @returns Final recording metadata from the app
+ */
+export async function stopScreenRecordingForE2E(
+  page: Page,
+  options?: { sessionId?: string; discard?: boolean }
+) {
+  try {
+    return await page.evaluate(async (params) => {
+      const screenRecordingBridge = window.qcutScreenRecording;
+      if (!screenRecordingBridge) {
+        throw new Error(
+          "window.qcutScreenRecording bridge is unavailable in renderer"
+        );
+      }
+      return await screenRecordingBridge.stop(params);
+    }, options || {});
+  } catch (error) {
+    throw new Error(
+      `Failed to stop screen recording for E2E: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+/**
  * Adds a sticker from the sticker panel to the canvas overlay.
  *
  * @param page - Playwright page instance

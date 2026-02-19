@@ -1,0 +1,467 @@
+/**
+ * Claude Transcription HTTP Handler
+ * Exposes ElevenLabs/Gemini transcription over HTTP for Claude Code.
+ *
+ * Resolves media from projectId + mediaId, extracts audio if video,
+ * then calls the appropriate transcription provider.
+ */
+
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { app } from "electron";
+import { getMediaInfo } from "./claude-media-handler.js";
+import { claudeLog } from "./utils/logger.js";
+import { sanitizeProjectId } from "./utils/helpers.js";
+import { getFFmpegPath } from "../ffmpeg/utils.js";
+import { getDecryptedApiKeys } from "../api-key-handler.js";
+import type {
+  TranscribeRequest,
+  TranscriptionResult,
+  TranscriptionWord,
+  TranscriptionSegment,
+} from "../types/claude-api";
+
+const HANDLER_NAME = "Transcribe";
+const TRANSCRIPTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+// Video extensions that require audio extraction
+const VIDEO_EXTENSIONS = new Set([
+  ".mp4",
+  ".mov",
+  ".avi",
+  ".mkv",
+  ".webm",
+  ".m4v",
+  ".wmv",
+]);
+
+/**
+ * Resolve a mediaId to its file path and determine if audio extraction is needed.
+ */
+async function resolveMediaPath(
+  projectId: string,
+  mediaId: string
+): Promise<{ path: string; needsExtraction: boolean }> {
+  const media = await getMediaInfo(projectId, mediaId);
+  if (!media) {
+    throw new Error(`Media not found: ${mediaId}`);
+  }
+  if (!existsSync(media.path)) {
+    throw new Error(`Media file missing on disk: ${media.path}`);
+  }
+  const ext = media.name.slice(media.name.lastIndexOf(".")).toLowerCase();
+  return {
+    path: media.path,
+    needsExtraction: VIDEO_EXTENSIONS.has(ext),
+  };
+}
+
+/**
+ * Extract audio from a video file using FFmpeg.
+ * Returns path to the extracted audio file (mp3, low bitrate for transcription).
+ */
+export function extractAudio(videoPath: string): Promise<string> {
+  const ffmpegPath = getFFmpegPath();
+  const tempDir = join(app.getPath("temp"), "qcut-transcribe");
+  if (!existsSync(tempDir)) {
+    mkdirSync(tempDir, { recursive: true });
+  }
+
+  const outputPath = join(tempDir, `audio-${Date.now()}.mp3`);
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      ffmpegPath,
+      [
+        "-i",
+        videoPath,
+        "-vn",
+        "-acodec",
+        "libmp3lame",
+        "-ab",
+        "64k",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        "-y",
+        outputPath,
+      ],
+      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+    );
+
+    let stderr = "";
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try {
+          proc.kill("SIGTERM");
+        } catch {
+          /* ignore */
+        }
+        reject(new Error("Audio extraction timed out (2 minutes)"));
+      }
+    }, 120_000);
+
+    proc.stderr?.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0 && existsSync(outputPath)) {
+        resolve(outputPath);
+      } else {
+        reject(
+          new Error(
+            `Audio extraction failed (code ${code}): ${stderr.slice(0, 300)}`
+          )
+        );
+      }
+    });
+
+    proc.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Upload a file to FAL storage for ElevenLabs transcription.
+ */
+async function uploadToFalStorage(
+  filePath: string,
+  apiKey: string
+): Promise<string> {
+  const { readFile } = await import("node:fs/promises");
+  const { basename } = await import("node:path");
+
+  const fileBuffer = await readFile(filePath);
+  const fileName = basename(filePath);
+
+  const initResponse = await fetch(
+    "https://rest.alpha.fal.ai/storage/upload/initiate?storage_type=fal-cdn-v3",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file_name: fileName,
+        content_type: "audio/mpeg",
+      }),
+    }
+  );
+
+  if (!initResponse.ok) {
+    const errorText = await initResponse.text();
+    throw new Error(`FAL storage initiate failed: ${initResponse.status} ${errorText}`);
+  }
+
+  const initData = (await initResponse.json()) as {
+    upload_url?: string;
+    file_url?: string;
+  };
+
+  if (!initData.upload_url || !initData.file_url) {
+    throw new Error("FAL storage did not return upload URLs");
+  }
+
+  const uploadResponse = await fetch(initData.upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": "audio/mpeg" },
+    body: new Uint8Array(fileBuffer),
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`FAL storage upload failed: ${uploadResponse.status}`);
+  }
+
+  return initData.file_url;
+}
+
+/**
+ * Call ElevenLabs Scribe v2 via FAL.
+ */
+async function transcribeWithElevenLabs(
+  audioPath: string,
+  language?: string,
+  diarize = true
+): Promise<TranscriptionResult> {
+  const keys = await getDecryptedApiKeys();
+  const apiKey = keys.falApiKey;
+  if (!apiKey) {
+    throw new Error(
+      "FAL API key not configured. Go to Settings → API Keys to set it."
+    );
+  }
+
+  claudeLog.info(HANDLER_NAME, "Uploading audio to FAL storage...");
+  const audioUrl = await uploadToFalStorage(audioPath, apiKey);
+
+  claudeLog.info(HANDLER_NAME, "Calling ElevenLabs Scribe v2...");
+  const requestBody: Record<string, unknown> = {
+    audio_url: audioUrl,
+    diarize,
+    tag_audio_events: true,
+  };
+  if (language) {
+    requestBody.language_code = language;
+  }
+
+  const response = await fetch(
+    "https://fal.run/fal-ai/elevenlabs/speech-to-text/scribe-v2",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(TRANSCRIPTION_TIMEOUT_MS),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
+  }
+
+  const result = (await response.json()) as {
+    text: string;
+    language_code: string;
+    words: Array<{
+      text: string;
+      start: number;
+      end: number;
+      type: string;
+      speaker_id: string | null;
+    }>;
+  };
+
+  // Convert to unified format
+  const words: TranscriptionWord[] = (result.words || []).map((w) => ({
+    text: w.text,
+    start: w.start,
+    end: w.end,
+    type: w.type as TranscriptionWord["type"],
+    speaker: w.speaker_id ?? undefined,
+  }));
+
+  const segments = buildSegments(words);
+  const duration = words.length > 0 ? words[words.length - 1].end : 0;
+
+  return {
+    words,
+    segments,
+    language: result.language_code || "unknown",
+    duration,
+  };
+}
+
+/**
+ * Call Gemini transcription.
+ */
+async function transcribeWithGemini(
+  audioPath: string,
+  language?: string
+): Promise<TranscriptionResult> {
+  const keys = await getDecryptedApiKeys();
+  const apiKey = keys.geminiApiKey;
+  if (!apiKey) {
+    throw new Error(
+      "Gemini API key not configured. Go to Settings → API Keys to set it."
+    );
+  }
+
+  const { readFile } = await import("node:fs/promises");
+  const { extname } = await import("node:path");
+
+  const audioBuffer = await readFile(audioPath);
+  const audioBase64 = audioBuffer.toString("base64");
+
+  const ext = extname(audioPath).toLowerCase();
+  const mimeTypeMap: Record<string, string> = {
+    ".wav": "audio/wav",
+    ".mp3": "audio/mp3",
+    ".webm": "audio/webm",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+  };
+  const mimeType = mimeTypeMap[ext] || "audio/mpeg";
+
+  // Load Gemini SDK
+  let GoogleGenerativeAI: any;
+  try {
+    const module = await import("@google/generative-ai");
+    GoogleGenerativeAI = module.GoogleGenerativeAI;
+  } catch {
+    const { join: pathJoin } = await import("node:path");
+    const modulePath = pathJoin(
+      process.resourcesPath,
+      "node_modules/@google/generative-ai/dist/index.js"
+    );
+    const module = await import(modulePath);
+    GoogleGenerativeAI = module.GoogleGenerativeAI;
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const prompt = `Transcribe this audio into SRT subtitle format with precise timestamps.
+
+Format requirements:
+1. Number each subtitle block sequentially (1, 2, 3...)
+2. Use timestamp format: HH:MM:SS,mmm --> HH:MM:SS,mmm
+3. Each subtitle should be 1-2 sentences maximum
+4. Add blank line between blocks
+5. Language: ${language || "auto-detect"}
+
+Provide ONLY the SRT content, no additional text.`;
+
+  const result = await model.generateContent([
+    prompt,
+    { inlineData: { mimeType, data: audioBase64 } },
+  ]);
+
+  const srtContent = result.response.text();
+  const segments = parseSrtToSegments(srtContent);
+  const fullText = segments.map((s) => s.text).join(" ");
+
+  // Gemini only provides segment-level, not word-level
+  const words: TranscriptionWord[] = segments.map((s) => ({
+    text: s.text,
+    start: s.start,
+    end: s.end,
+    type: "word" as const,
+  }));
+
+  const duration = segments.length > 0 ? segments[segments.length - 1].end : 0;
+
+  return {
+    words,
+    segments,
+    language: language || "auto",
+    duration,
+  };
+}
+
+/**
+ * Parse SRT content into segments.
+ */
+function parseSrtToSegments(srtContent: string): TranscriptionSegment[] {
+  const blocks = srtContent.trim().split(/\n\n+/);
+  const segments: TranscriptionSegment[] = [];
+
+  for (const block of blocks) {
+    const lines = block.split("\n");
+    if (lines.length < 3) continue;
+
+    const timestampMatch = lines[1]?.match(
+      /(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})/
+    );
+    if (!timestampMatch) continue;
+
+    const start = parseTimestamp(timestampMatch.slice(1, 5));
+    const end = parseTimestamp(timestampMatch.slice(5, 9));
+    const text = lines.slice(2).join(" ");
+
+    segments.push({ text, start, end });
+  }
+
+  return segments;
+}
+
+function parseTimestamp(parts: string[]): number {
+  const [h, m, s, ms] = parts.map(Number);
+  return h * 3600 + m * 60 + s + ms / 1000;
+}
+
+/**
+ * Build segments from word-level data by grouping on pauses.
+ */
+function buildSegments(words: TranscriptionWord[]): TranscriptionSegment[] {
+  const segments: TranscriptionSegment[] = [];
+  let currentText = "";
+  let segStart = -1;
+  let segEnd = 0;
+
+  for (const word of words) {
+    if (word.type !== "word" && word.type !== "punctuation") {
+      // On spacing/audio_event with gap > 0.5s, start new segment
+      if (word.end - word.start > 0.5 && currentText.trim()) {
+        segments.push({ text: currentText.trim(), start: segStart, end: segEnd });
+        currentText = "";
+        segStart = -1;
+      }
+      continue;
+    }
+    if (segStart < 0) segStart = word.start;
+    segEnd = word.end;
+    currentText += word.text;
+  }
+
+  if (currentText.trim() && segStart >= 0) {
+    segments.push({ text: currentText.trim(), start: segStart, end: segEnd });
+  }
+
+  return segments;
+}
+
+/**
+ * Main transcription function exposed to HTTP server.
+ */
+export async function transcribeMedia(
+  projectId: string,
+  request: TranscribeRequest
+): Promise<TranscriptionResult> {
+  const safeProjectId = sanitizeProjectId(projectId);
+  const provider = request.provider || "elevenlabs";
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Transcription request: project=${safeProjectId}, media=${request.mediaId}, provider=${provider}`
+  );
+
+  // 1. Resolve media path
+  const { path: mediaPath, needsExtraction } = await resolveMediaPath(
+    safeProjectId,
+    request.mediaId
+  );
+  claudeLog.info(HANDLER_NAME, `Resolved media: ${mediaPath}`);
+
+  // 2. Extract audio if video
+  let audioPath = mediaPath;
+  if (needsExtraction) {
+    claudeLog.info(HANDLER_NAME, "Extracting audio from video...");
+    audioPath = await extractAudio(mediaPath);
+    claudeLog.info(HANDLER_NAME, `Audio extracted: ${audioPath}`);
+  }
+
+  // 3. Call provider
+  if (provider === "gemini") {
+    return transcribeWithGemini(audioPath, request.language);
+  }
+  return transcribeWithElevenLabs(
+    audioPath,
+    request.language,
+    request.diarize ?? true
+  );
+}
+
+// CommonJS export for compatibility
+module.exports = {
+  transcribeMedia,
+  extractAudio,
+};
