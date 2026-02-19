@@ -215,6 +215,9 @@ function fetch(
         method: options.method || "GET",
         headers: {
           "Content-Type": "application/json",
+          ...(options.body
+            ? { "Content-Length": Buffer.byteLength(options.body) }
+            : {}),
           ...options.headers,
         },
       },

@@ -3,6 +3,7 @@
 > **Goal**: Let Claude Code organize clips on the timeline efficiently with batch operations and full round-trip serialization
 > **Estimated effort**: ~4 hours total across 4 subtasks
 > **Dependencies**: Stage 1 (media imported), Stage 3 (cuts executed)
+> **Status**: Implemented on February 19, 2026
 
 ---
 
@@ -18,13 +19,14 @@
 | Timeline import (JSON only) | Ready | `claude-timeline-handler.ts` |
 | Undo/redo | Ready | `timeline-store.ts` |
 
-**What's missing**: No batch add/delete/update. Markdown import broken (metadata only). No cross-track ripple. No timeline templates.
+**Implemented in this stage**: Batch add/delete/update endpoints, markdown round-trip parsing, cross-track ripple support in range delete, timeline arrange endpoint.
 
 ---
 
 ## Subtask 4.1: Batch Element Operations
 
 **What**: Three batch endpoints for add, update, and delete.
+**Status**: Done
 
 **Relevant files**:
 - `electron/claude/claude-timeline-handler.ts` (450 lines) — add batch IPC handlers
@@ -121,6 +123,7 @@ Response: { "success": true, "data": { "updatedCount": 3, "failedCount": 0 } }
 ## Subtask 4.2: Fix Markdown Timeline Import
 
 **What**: Make `markdownToTimeline()` parse tracks and elements from the markdown format that `timelineToMarkdown()` exports.
+**Status**: Done
 
 **Relevant files**:
 - `electron/claude/claude-timeline-handler.ts` (lines 102-146) — `markdownToTimeline()` currently throws on track data
@@ -181,6 +184,7 @@ function markdownToTimeline(md: string): ClaudeTimeline {
 ## Subtask 4.3: Cross-Track Ripple Delete
 
 **What**: When deleting a time range, optionally shift elements on ALL tracks (not just the affected track).
+**Status**: Done
 
 **Relevant files**:
 - `apps/web/src/stores/timeline-store-operations.ts` (1172 lines) — `removeElementFromTrackWithRipple()` currently single-track
@@ -234,6 +238,7 @@ Body: { "startTime": 10.0, "endTime": 15.0, "ripple": true, "crossTrackRipple": 
 ## Subtask 4.4: Timeline Arrange/Sequence Endpoint
 
 **What**: `POST /api/claude/timeline/:projectId/arrange`
+**Status**: Done
 
 Automatically arranges elements on a track — sequential (end-to-end), spaced, or custom layout.
 
@@ -294,14 +299,26 @@ Response: {
 
 | File | Change Type | Lines Added (est.) |
 |---|---|---|
-| `electron/claude/claude-timeline-handler.ts` | Edit | +150 (batch ops + arrange + markdown parse) |
-| `electron/claude/claude-http-server.ts` | Edit | +25 (5 new routes) |
-| `electron/types/claude-api.ts` | Edit | +40 (batch + arrange types) |
-| `apps/web/src/stores/timeline-store-operations.ts` | Edit | +50 (cross-track ripple) |
-| `electron/__tests__/claude-batch-elements.test.ts` | **New** | ~250 |
-| `electron/__tests__/claude-timeline-markdown.test.ts` | **New** | ~180 |
-| `electron/__tests__/claude-cross-track-ripple.test.ts` | **New** | ~140 |
-| `electron/__tests__/claude-timeline-arrange.test.ts` | **New** | ~130 |
+| `electron/claude/claude-timeline-handler.ts` | Edit | batch handlers + renderer request/response + markdown parsing |
+| `electron/claude/claude-http-server.ts` | Edit | batch routes + range + arrange routes |
+| `electron/types/claude-api.ts` | Edit | Stage 4 request/response types |
+| `electron/preload-types.ts` | Edit | preload API type updates for Stage 4 timeline methods/events |
+| `electron/preload-integrations.ts` | Edit | new Stage 4 invoke/listener bridge channels |
+| `apps/web/src/types/electron.d.ts` | Edit | renderer type updates for Stage 4 channels |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | Edit | renderer-side batch/update/delete/range/arrange handlers |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Edit | track id included in exported timeline |
+| `apps/web/src/stores/timeline-store.ts` | Edit | history-aware element add/update primitives for batching |
+| `apps/web/src/stores/timeline-store-operations.ts` | Edit | `deleteTimeRange()` + `rippleDeleteAcrossTracks()` |
+| `apps/web/src/stores/timeline/types.ts` | Edit | Stage 4 store method signatures |
+| `electron/claude/__tests__/handler-functions.test.ts` | Edit | markdown track parsing/validation coverage |
+| `electron/claude/__tests__/claude-http-server.test.ts` | Edit | Stage 4 route coverage additions |
+
+---
+
+## Verification Notes
+
+- `bunx vitest run electron/claude/__tests__/handler-functions.test.ts` passes.
+- Full workspace TypeScript compile is currently blocked by an existing environment issue: missing type definition file for `sharp`.
 
 ---
 
