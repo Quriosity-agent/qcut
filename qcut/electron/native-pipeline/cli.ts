@@ -36,7 +36,11 @@ const COMMANDS = [
   "setup",
   "set-key",
   "get-key",
+  "delete-key",
   "check-keys",
+  "init-project",
+  "organize-project",
+  "structure-info",
   "create-examples",
   "vimax:idea2video",
   "vimax:script2video",
@@ -78,7 +82,11 @@ Commands:
   setup               Create API key template file
   set-key             Set an API key
   get-key             Get an API key (masked)
+  delete-key          Delete a stored API key
   check-keys          Check configured API keys
+  init-project        Initialize project directory structure
+  organize-project    Organize media files into categories
+  structure-info      Show project structure and file counts
   create-examples     Create example pipeline configs
   vimax:idea2video    Generate video from an idea
   vimax:script2video  Generate video from a script
@@ -199,6 +207,21 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
       "state-dir": { type: "string" },
       "negative-prompt": { type: "string" },
       "voice-id": { type: "string" },
+      directory: { type: "string" },
+      "dry-run": { type: "boolean", default: false },
+      recursive: { type: "boolean", default: false },
+      "include-output": { type: "boolean", default: false },
+      source: { type: "string" },
+      reveal: { type: "boolean", default: false },
+      "no-confirm": { type: "boolean", default: false },
+      "prompt-file": { type: "string" },
+      portraits: { type: "string", short: "p" },
+      views: { type: "string" },
+      "max-characters": { type: "string" },
+      "save-registry": { type: "boolean", default: true },
+      style: { type: "string" },
+      "reference-model": { type: "string" },
+      "reference-strength": { type: "string" },
     },
     strict: false,
   });
@@ -255,6 +278,25 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
     stateDir: values["state-dir"] as string | undefined,
     negativePrompt: values["negative-prompt"] as string | undefined,
     voiceId: values["voice-id"] as string | undefined,
+    directory: values.directory as string | undefined,
+    dryRun: (values["dry-run"] as boolean) ?? false,
+    recursive: (values.recursive as boolean) ?? false,
+    includeOutput: (values["include-output"] as boolean) ?? false,
+    source: values.source as string | undefined,
+    reveal: (values.reveal as boolean) ?? false,
+    noConfirm: (values["no-confirm"] as boolean) ?? false,
+    promptFile: values["prompt-file"] as string | undefined,
+    portraits: values.portraits as string | undefined,
+    views: values.views as string | undefined,
+    maxCharacters: values["max-characters"]
+      ? parseInt(values["max-characters"] as string, 10)
+      : undefined,
+    saveRegistry: (values["save-registry"] as boolean) ?? true,
+    style: values.style as string | undefined,
+    referenceModel: values["reference-model"] as string | undefined,
+    referenceStrength: values["reference-strength"]
+      ? parseFloat(values["reference-strength"] as string)
+      : undefined,
   };
 }
 
@@ -383,15 +425,52 @@ export async function main(
     }
     if (
       result.data &&
-      (options.command === "set-key" || options.command === "get-key")
+      (options.command === "set-key" ||
+        options.command === "get-key" ||
+        options.command === "delete-key")
     ) {
       const data = result.data as {
         message?: string;
         name?: string;
         masked?: string;
+        value?: string;
       };
       if (data.message) console.log(data.message);
-      if (data.masked) console.log(`${data.name}: ${data.masked}`);
+      if (data.value) console.log(`${data.name}: ${data.value}`);
+      else if (data.masked) console.log(`${data.name}: ${data.masked}`);
+    }
+    if (result.data && options.command === "init-project") {
+      const data = result.data as {
+        projectDir: string;
+        created: string[];
+        message: string;
+      };
+      console.log(`\n${data.message}`);
+      if (data.created.length > 0) {
+        console.log(`  Project: ${data.projectDir}`);
+        for (const dir of data.created) {
+          console.log(`  + ${dir}`);
+        }
+      }
+    }
+    if (result.data && options.command === "organize-project") {
+      const data = result.data as { moved: number; message: string };
+      console.log(`\n${data.message}`);
+    }
+    if (result.data && options.command === "structure-info") {
+      const data = result.data as {
+        projectDir: string;
+        directories: { path: string; fileCount: number; exists: boolean }[];
+        totalFiles: number;
+      };
+      console.log(`\nProject: ${data.projectDir}`);
+      console.log(`Total files: ${data.totalFiles}\n`);
+      for (const dir of data.directories) {
+        const status = dir.exists
+          ? `${String(dir.fileCount).padStart(4)} files`
+          : "  (missing)";
+        console.log(`  ${dir.path.padEnd(25)} ${status}`);
+      }
     }
     if (result.data && options.command === "vimax:extract-characters") {
       const data = result.data as { characters: unknown[]; count: number };

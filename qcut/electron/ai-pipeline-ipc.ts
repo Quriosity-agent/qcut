@@ -93,16 +93,21 @@ export function setupAIPipelineIPC(): void {
 
       // Generate sessionId if not provided to ensure correlation
       const sessionId = options.sessionId ?? `ai-${Date.now()}`;
-      return pipelineManager.execute({ ...options, sessionId }, (progress) => {
-        // Send progress to renderer
-        const mainWindow = getMainWindow();
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("ai-pipeline:progress", {
-            sessionId,
-            ...progress,
-          });
+      // Type assertion needed: native pipeline accepts vimax commands,
+      // legacy pipeline won't receive them (filtered by renderer)
+      return pipelineManager.execute(
+        { ...options, sessionId } as never,
+        (progress) => {
+          // Send progress to renderer
+          const mainWindow = getMainWindow();
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("ai-pipeline:progress", {
+              sessionId,
+              ...progress,
+            });
+          }
         }
-      });
+      );
     }
   );
 

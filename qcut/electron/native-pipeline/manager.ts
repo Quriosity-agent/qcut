@@ -20,6 +20,19 @@ import { resolveOutputDir as resolveOutputDirShared } from "./output-utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 import { importMediaFile } from "../claude/claude-media-handler.js";
 import { inferProjectIdFromPath } from "../ai-pipeline-output.js";
+import {
+  handleVimaxIdea2Video,
+  handleVimaxScript2Video,
+  handleVimaxNovel2Movie,
+  handleVimaxExtractCharacters,
+  handleVimaxGenerateScript,
+  handleVimaxGenerateStoryboard,
+  handleVimaxGeneratePortraits,
+  handleVimaxCreateRegistry,
+  handleVimaxShowRegistry,
+  handleVimaxListModels,
+} from "./vimax-cli-handlers.js";
+import type { CLIRunOptions } from "./cli-runner.js";
 
 // Re-export types from the original handler for compatibility
 export interface GenerateOptions {
@@ -29,7 +42,17 @@ export interface GenerateOptions {
     | "generate-avatar"
     | "list-models"
     | "estimate-cost"
-    | "run-pipeline";
+    | "run-pipeline"
+    | "vimax:idea2video"
+    | "vimax:script2video"
+    | "vimax:novel2movie"
+    | "vimax:extract-characters"
+    | "vimax:generate-script"
+    | "vimax:generate-storyboard"
+    | "vimax:generate-portraits"
+    | "vimax:create-registry"
+    | "vimax:show-registry"
+    | "vimax:list-models";
   args: Record<string, string | number | boolean>;
   outputDir?: string;
   sessionId?: string;
@@ -122,6 +145,7 @@ export class NativePipelineManager {
       speechToText: true,
       textToSpeech: true,
       imageUnderstanding: true,
+      vimaxPipelines: true,
     };
   }
 
@@ -146,6 +170,22 @@ export class NativePipelineManager {
           return this.handleGenerate(options, sessionId, onProgress, startTime);
         case "run-pipeline":
           return this.handleRunPipeline(
+            options,
+            sessionId,
+            onProgress,
+            startTime
+          );
+        case "vimax:idea2video":
+        case "vimax:script2video":
+        case "vimax:novel2movie":
+        case "vimax:extract-characters":
+        case "vimax:generate-script":
+        case "vimax:generate-storyboard":
+        case "vimax:generate-portraits":
+        case "vimax:create-registry":
+        case "vimax:show-registry":
+        case "vimax:list-models":
+          return this.handleVimaxCommand(
             options,
             sessionId,
             onProgress,
@@ -404,6 +444,102 @@ export class NativePipelineManager {
       this.activeRequests.delete(sessionId);
       throw err;
     }
+  }
+
+  private async handleVimaxCommand(
+    options: GenerateOptions,
+    sessionId: string,
+    onProgress: (progress: PipelineProgress) => void,
+    startTime: number
+  ): Promise<PipelineResult> {
+    const cliOptions: CLIRunOptions = {
+      command: options.command,
+      outputDir: this.resolveOutputDir(options, sessionId),
+      saveIntermediates: false,
+      json: false,
+      verbose: false,
+      quiet: false,
+      text: options.args.text as string | undefined,
+      idea: options.args.idea as string | undefined,
+      script: options.args.script as string | undefined,
+      novel: options.args.novel as string | undefined,
+      input: options.args.input as string | undefined,
+      title: options.args.title as string | undefined,
+      imageModel: options.args["image-model"] as string | undefined,
+      videoModel: options.args["video-model"] as string | undefined,
+      llmModel: options.args["llm-model"] as string | undefined,
+      maxScenes: options.args["max-scenes"]
+        ? Number(options.args["max-scenes"])
+        : undefined,
+      noPortraits: options.args["no-portraits"] as boolean | undefined,
+      storyboardOnly: options.args["storyboard-only"] as boolean | undefined,
+      scriptsOnly: options.args["scripts-only"] as boolean | undefined,
+    };
+
+    const progressFn = (p: {
+      stage: string;
+      percent: number;
+      message: string;
+      model?: string;
+    }) => {
+      onProgress({ ...p, eta: undefined });
+    };
+
+    const vimaxHandlers: Record<
+      string,
+      (
+        opts: CLIRunOptions,
+        prog: typeof progressFn
+      ) => Promise<import("./cli-runner.js").CLIResult>
+    > = {
+      "vimax:idea2video": handleVimaxIdea2Video,
+      "vimax:script2video": handleVimaxScript2Video,
+      "vimax:novel2movie": handleVimaxNovel2Movie,
+      "vimax:extract-characters": handleVimaxExtractCharacters,
+      "vimax:generate-script": handleVimaxGenerateScript,
+      "vimax:generate-storyboard": handleVimaxGenerateStoryboard,
+      "vimax:generate-portraits": handleVimaxGeneratePortraits,
+    };
+
+    const noProgressHandlers: Record<
+      string,
+      (opts: CLIRunOptions) => Promise<import("./cli-runner.js").CLIResult>
+    > = {
+      "vimax:create-registry": handleVimaxCreateRegistry,
+      "vimax:show-registry": handleVimaxShowRegistry,
+    };
+
+    let result: import("./cli-runner.js").CLIResult;
+
+    if (options.command === "vimax:list-models") {
+      result = handleVimaxListModels();
+    } else if (options.command in noProgressHandlers) {
+      result = await noProgressHandlers[options.command](cliOptions);
+    } else if (options.command in vimaxHandlers) {
+      result = await vimaxHandlers[options.command](cliOptions, progressFn);
+    } else {
+      return {
+        success: false,
+        error: `Unknown vimax command: ${options.command}`,
+        errorCode: "generation_failed",
+      };
+    }
+
+    const pipelineResult: PipelineResult = {
+      success: result.success,
+      outputPath: result.outputPath,
+      outputPaths: result.outputPaths,
+      error: result.error,
+      errorCode: result.success ? undefined : "generation_failed",
+      duration: result.duration ?? (Date.now() - startTime) / 1000,
+      cost: result.cost,
+      data: result.data,
+    };
+
+    if (pipelineResult.success) {
+      return this.maybeAutoImport(options, pipelineResult);
+    }
+    return pipelineResult;
   }
 
   cancel(sessionId: string): boolean {

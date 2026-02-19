@@ -30,11 +30,19 @@ import { compositeGrid, getGridImageCount } from "./grid-generator.js";
 import {
   setKey,
   getKey,
+  deleteKey,
+  isKnownKey,
   checkKeys,
   setupEnvTemplate,
   loadEnvFile,
 } from "./key-manager.js";
 import { createExamples } from "./example-pipelines.js";
+import {
+  initProject,
+  organizeProject,
+  getStructureInfo,
+} from "./project-commands.js";
+import { isInteractive, confirm, readHiddenInput } from "./interactive.js";
 import {
   handleVimaxExtractCharacters,
   handleVimaxGenerateScript,
@@ -91,6 +99,21 @@ export interface CLIRunOptions {
   stateDir?: string;
   negativePrompt?: string;
   voiceId?: string;
+  directory?: string;
+  dryRun?: boolean;
+  recursive?: boolean;
+  includeOutput?: boolean;
+  source?: string;
+  reveal?: boolean;
+  noConfirm?: boolean;
+  promptFile?: string;
+  portraits?: string;
+  views?: string;
+  maxCharacters?: number;
+  saveRegistry?: boolean;
+  style?: string;
+  referenceModel?: string;
+  referenceStrength?: number;
 }
 
 export interface CLIResult {
@@ -161,6 +184,14 @@ export class CLIPipelineRunner {
         return this.handleGetKey(options);
       case "check-keys":
         return this.handleCheckKeys();
+      case "delete-key":
+        return this.handleDeleteKey(options);
+      case "init-project":
+        return this.handleInitProject(options);
+      case "organize-project":
+        return this.handleOrganizeProject(options);
+      case "structure-info":
+        return this.handleStructureInfo(options);
       case "create-examples":
         return this.handleCreateExamples(options);
       case "vimax:idea2video":
@@ -379,7 +410,36 @@ export class CLIPipelineRunner {
       if (options.maxWorkers) chain.config.maxWorkers = options.maxWorkers;
     }
 
-    const input = options.input || options.text || "";
+    // Read input from --prompt-file if specified
+    let input = options.input || options.text || "";
+    if (options.promptFile) {
+      try {
+        input = fs.readFileSync(options.promptFile, "utf-8").trim();
+      } catch {
+        return {
+          success: false,
+          error: `Cannot read prompt file: ${options.promptFile}`,
+        };
+      }
+    }
+
+    // Cost preview
+    const enabledSteps = chain.steps.filter((s) => s.enabled);
+    const costEstimate = estimatePipelineCost(chain);
+    if (!options.quiet) {
+      console.error(
+        `Pipeline: ${enabledSteps.length} steps, estimated cost: $${costEstimate.totalCost.toFixed(3)}`
+      );
+    }
+
+    // Interactive confirmation (skip in CI or with --no-confirm)
+    const skipConfirm = options.noConfirm || !isInteractive();
+    if (!skipConfirm) {
+      const proceed = await confirm("Proceed with execution?");
+      if (!proceed) {
+        return { success: false, error: "Execution cancelled by user" };
+      }
+    }
 
     const executor = chain.config.parallel
       ? new ParallelPipelineExecutor({
@@ -398,6 +458,18 @@ export class CLIPipelineRunner {
           message: progress.message,
           model: progress.model,
         });
+        // Stream JSONL events to stderr when --stream is enabled
+        if (options.stream) {
+          const event = {
+            type: "progress",
+            stage: progress.stage,
+            percent: progress.percent,
+            message: progress.message,
+            model: progress.model,
+            timestamp: new Date().toISOString(),
+          };
+          process.stderr.write(JSON.stringify(event) + "\n");
+        }
       },
       this.abortController.signal
     );
@@ -753,14 +825,37 @@ export class CLIPipelineRunner {
     };
   }
 
-  private handleSetKey(options: CLIRunOptions): CLIResult {
+  private async handleSetKey(options: CLIRunOptions): Promise<CLIResult> {
     if (!options.keyName) {
       return { success: false, error: "Missing --name" };
     }
-    if (!options.keyValue) {
-      return { success: false, error: "Missing --value" };
+
+    let value = options.keyValue;
+    if (!value) {
+      // Read from hidden interactive prompt or stdin pipe
+      try {
+        value = await readHiddenInput(`Enter value for ${options.keyName}: `);
+      } catch {
+        return {
+          success: false,
+          error: "Failed to read key value from input",
+        };
+      }
     }
-    setKey(options.keyName, options.keyValue);
+
+    if (!value) {
+      return { success: false, error: "Empty key value" };
+    }
+
+    if (options.keyValue) {
+      // Warn about plaintext value in shell history
+      console.error(
+        "Warning: --value passes the key in plaintext. " +
+          "Prefer interactive prompt or pipe via stdin for security."
+      );
+    }
+
+    setKey(options.keyName, value);
     return {
       success: true,
       data: { message: `Key '${options.keyName}' saved` },
@@ -775,6 +870,14 @@ export class CLIPipelineRunner {
     if (!value) {
       return { success: false, error: `Key '${options.keyName}' not found` };
     }
+
+    if (options.reveal) {
+      return {
+        success: true,
+        data: { name: options.keyName, value, masked: value },
+      };
+    }
+
     const masked =
       value.length > 8 ? value.slice(0, 4) + "****" + value.slice(-4) : "****";
     return { success: true, data: { name: options.keyName, masked } };
@@ -783,6 +886,85 @@ export class CLIPipelineRunner {
   private handleCheckKeys(): CLIResult {
     const keys = checkKeys();
     return { success: true, data: { keys } };
+  }
+
+  private handleDeleteKey(options: CLIRunOptions): CLIResult {
+    if (!options.keyName) {
+      return { success: false, error: "Missing --name" };
+    }
+    if (!isKnownKey(options.keyName)) {
+      return {
+        success: false,
+        error: `Unknown key '${options.keyName}'. Use check-keys to see valid key names.`,
+      };
+    }
+    const deleted = deleteKey(options.keyName);
+    if (!deleted) {
+      return {
+        success: false,
+        error: `Key '${options.keyName}' not found in config`,
+      };
+    }
+    return {
+      success: true,
+      data: { message: `Key '${options.keyName}' deleted` },
+    };
+  }
+
+  private handleInitProject(options: CLIRunOptions): CLIResult {
+    const directory = options.directory || options.outputDir || ".";
+    const result = initProject(directory, options.dryRun);
+    return {
+      success: true,
+      data: {
+        projectDir: result.projectDir,
+        created: result.created,
+        skipped: result.skipped,
+        message: result.created.length
+          ? `Created ${result.created.length} directories`
+          : "Project structure already exists",
+      },
+    };
+  }
+
+  private handleOrganizeProject(options: CLIRunOptions): CLIResult {
+    const directory = options.directory || options.outputDir || ".";
+    const result = organizeProject(directory, {
+      sourceDir: options.source,
+      dryRun: options.dryRun,
+      recursive: options.recursive,
+      includeOutput: options.includeOutput,
+    });
+    if (result.errors.length > 0) {
+      return {
+        success: false,
+        error: result.errors.join("; "),
+        data: { moved: result.moved.length, skipped: result.skipped.length },
+      };
+    }
+    return {
+      success: true,
+      data: {
+        moved: result.moved.length,
+        skipped: result.skipped.length,
+        files: result.moved,
+        message: `Organized ${result.moved.length} files`,
+      },
+    };
+  }
+
+  private handleStructureInfo(options: CLIRunOptions): CLIResult {
+    const directory = options.directory || options.outputDir || ".";
+    const info = getStructureInfo(directory);
+    return {
+      success: true,
+      data: {
+        projectDir: info.projectDir,
+        exists: info.exists,
+        directories: info.directories,
+        totalFiles: info.totalFiles,
+      },
+    };
   }
 
   private handleCreateExamples(options: CLIRunOptions): CLIResult {

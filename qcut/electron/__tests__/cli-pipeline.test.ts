@@ -879,6 +879,108 @@ describe("CLI pipeline", () => {
       expect(ModelRegistry.has("did_studio")).toBe(true);
       expect(ModelRegistry.has("synthesia_avatar")).toBe(true);
     });
+
+    // transfer-motion tests
+    it("transfer-motion errors on missing image-url", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({
+          command: "transfer-motion",
+          videoUrl: "https://example.com/video.mp4",
+        }),
+        noop
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("--image-url");
+    });
+
+    it("transfer-motion errors on missing video-url", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({
+          command: "transfer-motion",
+          imageUrl: "https://example.com/image.png",
+        }),
+        noop
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("--video-url");
+    });
+
+    it("transfer-motion errors on unknown model", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({
+          command: "transfer-motion",
+          imageUrl: "https://example.com/image.png",
+          videoUrl: "https://example.com/video.mp4",
+          model: "nonexistent_model_xyz",
+        }),
+        noop
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unknown model");
+    });
+
+    // delete-key tests
+    it("delete-key errors on missing name", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({ command: "delete-key" }),
+        noop
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("--name");
+    });
+
+    it("delete-key errors on unknown key name", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({ command: "delete-key", keyName: "INVALID_KEY_NAME" }),
+        noop
+      );
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Unknown key");
+    });
+
+    // init-project test
+    it("init-project returns created directories", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({
+          command: "init-project",
+          directory: "/tmp/test-qcut-init-" + Date.now(),
+          dryRun: true,
+        }),
+        noop
+      );
+      expect(result.success).toBe(true);
+      const data = result.data as { created: string[] };
+      expect(data.created.length).toBeGreaterThan(0);
+    });
+
+    // structure-info test
+    it("structure-info returns project info", async () => {
+      const runner = new CLIPipelineRunner();
+      const noop = vi.fn();
+      const result = await runner.run(
+        defaultOptions({ command: "structure-info", directory: "." }),
+        noop
+      );
+      expect(result.success).toBe(true);
+      const data = result.data as {
+        directories: unknown[];
+        totalFiles: number;
+      };
+      expect(data.directories).toBeDefined();
+      expect(typeof data.totalFiles).toBe("number");
+    });
   });
 
   describe("envApiKeyProvider", () => {

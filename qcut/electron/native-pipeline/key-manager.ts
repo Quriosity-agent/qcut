@@ -92,6 +92,20 @@ export function setKey(name: string, value: string): void {
   writeEnvFile(entries);
 }
 
+export function deleteKey(name: string): boolean {
+  const entries = readEnvFile();
+  if (!entries.has(name)) return false;
+  entries.delete(name);
+  writeEnvFile(entries);
+  return true;
+}
+
+export function isKnownKey(name: string): boolean {
+  return (KEY_NAMES as readonly string[]).includes(name);
+}
+
+export { KEY_NAMES };
+
 export function getKey(name: string): string | undefined {
   const envValue = process.env[name];
   if (envValue) return envValue;
