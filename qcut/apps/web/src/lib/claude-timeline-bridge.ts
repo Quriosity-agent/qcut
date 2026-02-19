@@ -217,136 +217,169 @@ export function setupClaudeTimelineBridge(): void {
     }
   });
 
+  const applyElementChanges = ({
+    elementId,
+    changes,
+    pushHistory,
+  }: {
+    elementId: string;
+    changes: Partial<ClaudeElement>;
+    pushHistory: boolean;
+  }): boolean => {
+    try {
+      const timelineStore = useTimelineStore.getState();
+      const track = findTrackByElementId(timelineStore.tracks, elementId);
+      if (!track) {
+        debugWarn(
+          "[ClaudeTimelineBridge] Could not find track for element:",
+          elementId
+        );
+        return false;
+      }
+
+      const element = track.elements.find((candidate) => candidate.id === elementId);
+      if (!element) {
+        debugWarn(
+          "[ClaudeTimelineBridge] Could not find element in resolved track:",
+          elementId
+        );
+        return false;
+      }
+
+      if (pushHistory) {
+        timelineStore.pushHistory();
+      }
+
+      if (typeof changes.startTime === "number") {
+        timelineStore.updateElementStartTime(
+          track.id,
+          elementId,
+          changes.startTime,
+          false
+        );
+      }
+
+      if (typeof changes.trimStart === "number" || typeof changes.trimEnd === "number") {
+        timelineStore.updateElementTrim(
+          track.id,
+          elementId,
+          changes.trimStart ?? element.trimStart,
+          changes.trimEnd ?? element.trimEnd,
+          false
+        );
+      }
+
+      const isMarkdown = element.type === "markdown";
+      if (typeof changes.duration === "number" && changes.duration > 0) {
+        if (isMarkdown) {
+          timelineStore.updateMarkdownElement(
+            track.id,
+            elementId,
+            { duration: changes.duration },
+            false
+          );
+        } else {
+          timelineStore.updateElementDuration(
+            track.id,
+            elementId,
+            changes.duration,
+            false
+          );
+        }
+      } else if (typeof changes.endTime === "number") {
+        const resolvedStart = changes.startTime ?? element.startTime;
+        const resolvedDuration = changes.endTime - resolvedStart;
+        if (resolvedDuration > 0) {
+          if (isMarkdown) {
+            timelineStore.updateMarkdownElement(
+              track.id,
+              elementId,
+              { duration: resolvedDuration },
+              false
+            );
+          } else {
+            timelineStore.updateElementDuration(
+              track.id,
+              elementId,
+              resolvedDuration,
+              false
+            );
+          }
+        }
+      }
+
+      if (element.type === "text") {
+        const textUpdates: Record<string, unknown> = {};
+        if (typeof changes.content === "string") {
+          textUpdates.content = changes.content;
+        }
+        if (changes.style) {
+          const style = changes.style;
+          if (typeof style.fontSize === "number") textUpdates.fontSize = style.fontSize;
+          if (typeof style.fontFamily === "string")
+            textUpdates.fontFamily = style.fontFamily;
+          if (typeof style.color === "string") textUpdates.color = style.color;
+          if (typeof style.backgroundColor === "string")
+            textUpdates.backgroundColor = style.backgroundColor;
+          if (typeof style.textAlign === "string")
+            textUpdates.textAlign = style.textAlign;
+          if (typeof style.fontWeight === "string")
+            textUpdates.fontWeight = style.fontWeight;
+          if (typeof style.fontStyle === "string")
+            textUpdates.fontStyle = style.fontStyle;
+          if (typeof style.textDecoration === "string")
+            textUpdates.textDecoration = style.textDecoration;
+        }
+        if (Object.keys(textUpdates).length > 0) {
+          timelineStore.updateTextElement(track.id, elementId, textUpdates, false);
+        }
+      }
+
+      if (element.type === "markdown") {
+        const markdownUpdates: Record<string, unknown> = {};
+        if (typeof changes.content === "string") {
+          markdownUpdates.markdownContent = changes.content;
+        }
+        if (Object.keys(markdownUpdates).length > 0) {
+          timelineStore.updateMarkdownElement(
+            track.id,
+            elementId,
+            markdownUpdates,
+            false
+          );
+        }
+      }
+
+      if (element.type === "media" && changes.style) {
+        const mediaUpdates: Record<string, unknown> = {};
+        if (typeof changes.style.volume === "number") {
+          mediaUpdates.volume = changes.style.volume;
+        }
+        if (Object.keys(mediaUpdates).length > 0) {
+          timelineStore.updateMediaElement(track.id, elementId, mediaUpdates, false);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      debugError("[ClaudeTimelineBridge] Failed to apply element changes:", error);
+      return false;
+    }
+  };
+
   // Handle element update from Claude
   claudeAPI.onUpdateElement(
     (data: { elementId: string; changes: Partial<ClaudeElement> }) => {
       try {
         debugLog("[ClaudeTimelineBridge] Updating element:", data.elementId);
-
-        const timelineStore = useTimelineStore.getState();
-        const track = findTrackByElementId(
-          timelineStore.tracks,
-          data.elementId
-        );
-        if (!track) {
-          debugWarn(
-            "[ClaudeTimelineBridge] Could not find track for element:",
-            data.elementId
-          );
+        const updated = applyElementChanges({
+          elementId: data.elementId,
+          changes: data.changes,
+          pushHistory: true,
+        });
+        if (!updated) {
           return;
         }
-
-        const element = track.elements.find((e) => e.id === data.elementId);
-        if (!element) {
-          return;
-        }
-
-        const { changes } = data;
-
-        // Update start time
-        if (typeof changes.startTime === "number") {
-          timelineStore.updateElementStartTime(
-            track.id,
-            data.elementId,
-            changes.startTime
-          );
-        }
-
-        // Update duration (from explicit duration or endTime - startTime)
-        // Markdown elements route through updateMarkdownElement for clamping
-        const isMarkdown = element.type === "markdown";
-
-        if (typeof changes.duration === "number" && changes.duration > 0) {
-          if (isMarkdown) {
-            timelineStore.updateMarkdownElement(track.id, data.elementId, {
-              duration: changes.duration,
-            });
-          } else {
-            timelineStore.updateElementDuration(
-              track.id,
-              data.elementId,
-              changes.duration
-            );
-          }
-        } else if (typeof changes.endTime === "number") {
-          const start = changes.startTime ?? element.startTime;
-          const newDuration = changes.endTime - start;
-          if (newDuration > 0) {
-            if (isMarkdown) {
-              timelineStore.updateMarkdownElement(track.id, data.elementId, {
-                duration: newDuration,
-              });
-            } else {
-              timelineStore.updateElementDuration(
-                track.id,
-                data.elementId,
-                newDuration
-              );
-            }
-          }
-        }
-
-        // Update type-specific properties
-        if (element.type === "text") {
-          const textUpdates: Record<string, unknown> = {};
-          if (typeof changes.content === "string") {
-            textUpdates.content = changes.content;
-          }
-          if (changes.style) {
-            const s = changes.style;
-            if (typeof s.fontSize === "number")
-              textUpdates.fontSize = s.fontSize;
-            if (typeof s.fontFamily === "string")
-              textUpdates.fontFamily = s.fontFamily;
-            if (typeof s.color === "string") textUpdates.color = s.color;
-            if (typeof s.backgroundColor === "string")
-              textUpdates.backgroundColor = s.backgroundColor;
-            if (typeof s.textAlign === "string")
-              textUpdates.textAlign = s.textAlign;
-            if (typeof s.fontWeight === "string")
-              textUpdates.fontWeight = s.fontWeight;
-            if (typeof s.fontStyle === "string")
-              textUpdates.fontStyle = s.fontStyle;
-            if (typeof s.textDecoration === "string")
-              textUpdates.textDecoration = s.textDecoration;
-          }
-          if (Object.keys(textUpdates).length > 0) {
-            timelineStore.updateTextElement(
-              track.id,
-              data.elementId,
-              textUpdates
-            );
-          }
-        }
-
-        if (element.type === "markdown") {
-          const markdownUpdates: Record<string, unknown> = {};
-          if (typeof changes.content === "string") {
-            markdownUpdates.markdownContent = changes.content;
-          }
-          if (Object.keys(markdownUpdates).length > 0) {
-            timelineStore.updateMarkdownElement(
-              track.id,
-              data.elementId,
-              markdownUpdates
-            );
-          }
-        }
-
-        if (element.type === "media" && changes.style) {
-          const mediaUpdates: Record<string, unknown> = {};
-          if (typeof changes.style.volume === "number") {
-            mediaUpdates.volume = changes.style.volume;
-          }
-          if (Object.keys(mediaUpdates).length > 0) {
-            timelineStore.updateMediaElement(
-              track.id,
-              data.elementId,
-              mediaUpdates
-            );
-          }
-        }
-
         debugLog("[ClaudeTimelineBridge] Updated element:", data.elementId);
       } catch (error) {
         debugError(
@@ -356,6 +389,492 @@ export function setupClaudeTimelineBridge(): void {
       }
     }
   );
+
+  if (
+    typeof claudeAPI.onBatchAddElements === "function" &&
+    typeof claudeAPI.sendBatchAddElementsResponse === "function"
+  ) {
+    claudeAPI.onBatchAddElements(
+      (data: { requestId: string; elements: ClaudeBatchAddElementRequest[] }) => {
+        const defaultErrorResponse: ClaudeBatchAddResponse = {
+          added: [],
+          failedCount: data.elements.length,
+        };
+        try {
+          if (data.elements.length > MAX_TIMELINE_BATCH_ITEMS) {
+            const message = `Batch add limit is ${MAX_TIMELINE_BATCH_ITEMS} elements`;
+            const failedResponse: ClaudeBatchAddResponse = {
+              added: data.elements.map((_, index) => ({
+                index,
+                success: false,
+                error: message,
+              })),
+              failedCount: data.elements.length,
+            };
+            claudeAPI.sendBatchAddElementsResponse(data.requestId, failedResponse);
+            return;
+          }
+
+          if (data.elements.length === 0) {
+            claudeAPI.sendBatchAddElementsResponse(data.requestId, {
+              added: [],
+              failedCount: 0,
+            });
+            return;
+          }
+
+          const timelineStore = useTimelineStore.getState();
+          const tracksById = new Map(
+            timelineStore.tracks.map((track) => [track.id, track])
+          );
+
+          for (const element of data.elements) {
+            const normalizedType = normalizeClaudeElementType({ type: element.type });
+            if (!normalizedType) {
+              throw new Error(`Unsupported element type: ${element.type}`);
+            }
+
+            const track = tracksById.get(element.trackId);
+            if (!track) {
+              throw new Error(`Track not found: ${element.trackId}`);
+            }
+
+            if (
+              typeof element.startTime !== "number" ||
+              Number.isNaN(element.startTime) ||
+              element.startTime < 0
+            ) {
+              throw new Error("Element startTime must be a non-negative number");
+            }
+            if (
+              typeof element.duration !== "number" ||
+              Number.isNaN(element.duration) ||
+              element.duration <= 0
+            ) {
+              throw new Error("Element duration must be greater than 0");
+            }
+
+            const compatibility = validateElementTrackCompatibility(
+              { type: normalizedType },
+              { type: track.type }
+            );
+            if (!compatibility.isValid) {
+              throw new Error(compatibility.errorMessage || "Track compatibility failed");
+            }
+          }
+
+          timelineStore.pushHistory();
+
+          const added: ClaudeBatchAddResponse["added"] = [];
+          let failedCount = 0;
+
+          for (const [index, element] of data.elements.entries()) {
+            try {
+              const normalizedType = normalizeClaudeElementType({ type: element.type });
+              if (!normalizedType) {
+                throw new Error(`Unsupported element type: ${element.type}`);
+              }
+
+              let createdElementId: string | null = null;
+
+              if (normalizedType === CLAUDE_TRACK_ELEMENT_TYPES.media) {
+                const mediaId = resolveMediaIdForBatchElement({ element });
+                if (!mediaId) {
+                  throw new Error("Media source could not be resolved");
+                }
+
+                createdElementId = timelineStore.addElementToTrack(
+                  element.trackId,
+                  {
+                    type: "media",
+                    name: element.sourceName || "Media",
+                    mediaId,
+                    startTime: element.startTime,
+                    duration: element.duration,
+                    trimStart: 0,
+                    trimEnd: 0,
+                  },
+                  {
+                    pushHistory: false,
+                    selectElement: false,
+                  }
+                );
+              } else if (normalizedType === CLAUDE_TRACK_ELEMENT_TYPES.text) {
+                const style = element.style || {};
+                const content =
+                  typeof element.content === "string" && element.content.length > 0
+                    ? element.content
+                    : "Text";
+
+                createdElementId = timelineStore.addElementToTrack(
+                  element.trackId,
+                  {
+                    type: "text",
+                    name: content,
+                    content,
+                    startTime: element.startTime,
+                    duration: element.duration,
+                    trimStart: 0,
+                    trimEnd: 0,
+                    fontSize:
+                      typeof style.fontSize === "number" ? style.fontSize : 48,
+                    fontFamily:
+                      typeof style.fontFamily === "string"
+                        ? style.fontFamily
+                        : "Inter",
+                    color:
+                      typeof style.color === "string" ? style.color : "#ffffff",
+                    backgroundColor:
+                      typeof style.backgroundColor === "string"
+                        ? style.backgroundColor
+                        : "transparent",
+                    textAlign:
+                      style.textAlign === "left" ||
+                      style.textAlign === "right" ||
+                      style.textAlign === "center"
+                        ? style.textAlign
+                        : "center",
+                    fontWeight:
+                      style.fontWeight === "bold" ? "bold" : "normal",
+                    fontStyle:
+                      style.fontStyle === "italic" ? "italic" : "normal",
+                    textDecoration:
+                      style.textDecoration === "underline" ||
+                      style.textDecoration === "line-through"
+                        ? style.textDecoration
+                        : "none",
+                    x: 0.5,
+                    y: 0.5,
+                    rotation: 0,
+                    opacity: 1,
+                  },
+                  {
+                    pushHistory: false,
+                    selectElement: false,
+                  }
+                );
+              } else {
+                throw new Error(`Unsupported batch add type: ${normalizedType}`);
+              }
+
+              if (!createdElementId) {
+                throw new Error("Failed to create timeline element");
+              }
+
+              added.push({
+                index,
+                success: true,
+                elementId: createdElementId,
+              });
+            } catch (error) {
+              failedCount++;
+              added.push({
+                index,
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+              });
+            }
+          }
+
+          claudeAPI.sendBatchAddElementsResponse(data.requestId, {
+            added,
+            failedCount,
+          });
+        } catch (error) {
+          debugError("[ClaudeTimelineBridge] Failed to batch add elements:", error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Batch add failed";
+          claudeAPI.sendBatchAddElementsResponse(data.requestId, {
+            ...defaultErrorResponse,
+            added: data.elements.map((_, index) => ({
+              index,
+              success: false,
+              error: errorMessage,
+            })),
+          });
+        }
+      }
+    );
+  }
+
+  if (
+    typeof claudeAPI.onBatchUpdateElements === "function" &&
+    typeof claudeAPI.sendBatchUpdateElementsResponse === "function"
+  ) {
+    claudeAPI.onBatchUpdateElements((data) => {
+      try {
+        if (data.updates.length > MAX_TIMELINE_BATCH_ITEMS) {
+          const limitMessage = `Batch update limit is ${MAX_TIMELINE_BATCH_ITEMS} items`;
+          const failedResponse: ClaudeBatchUpdateResponse = {
+            updatedCount: 0,
+            failedCount: data.updates.length,
+            results: data.updates.map((_, index) => ({
+              index,
+              success: false,
+              error: limitMessage,
+            })),
+          };
+          claudeAPI.sendBatchUpdateElementsResponse(data.requestId, failedResponse);
+          return;
+        }
+
+        if (data.updates.length === 0) {
+          claudeAPI.sendBatchUpdateElementsResponse(data.requestId, {
+            updatedCount: 0,
+            failedCount: 0,
+            results: [],
+          });
+          return;
+        }
+
+        useTimelineStore.getState().pushHistory();
+
+        const results: ClaudeBatchUpdateResponse["results"] = [];
+        let updatedCount = 0;
+        let failedCount = 0;
+
+        for (const [index, update] of data.updates.entries()) {
+          const success = applyElementChanges({
+            elementId: update.elementId,
+            changes: update,
+            pushHistory: false,
+          });
+          if (success) {
+            updatedCount++;
+            results.push({ index, success: true });
+            continue;
+          }
+
+          failedCount++;
+          results.push({
+            index,
+            success: false,
+            error: `Element not found: ${update.elementId}`,
+          });
+        }
+
+        claudeAPI.sendBatchUpdateElementsResponse(data.requestId, {
+          updatedCount,
+          failedCount,
+          results,
+        });
+      } catch (error) {
+        debugError("[ClaudeTimelineBridge] Failed to batch update elements:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Batch update failed";
+        claudeAPI.sendBatchUpdateElementsResponse(data.requestId, {
+          updatedCount: 0,
+          failedCount: data.updates.length,
+          results: data.updates.map((_, index) => ({
+            index,
+            success: false,
+            error: errorMessage,
+          })),
+        });
+      }
+    });
+  }
+
+  if (
+    typeof claudeAPI.onBatchDeleteElements === "function" &&
+    typeof claudeAPI.sendBatchDeleteElementsResponse === "function"
+  ) {
+    claudeAPI.onBatchDeleteElements((data) => {
+      try {
+        if (data.elements.length > MAX_TIMELINE_BATCH_ITEMS) {
+          const limitMessage = `Batch delete limit is ${MAX_TIMELINE_BATCH_ITEMS} items`;
+          const failedResponse: ClaudeBatchDeleteResponse = {
+            deletedCount: 0,
+            failedCount: data.elements.length,
+            results: data.elements.map((_, index) => ({
+              index,
+              success: false,
+              error: limitMessage,
+            })),
+          };
+          claudeAPI.sendBatchDeleteElementsResponse(data.requestId, failedResponse);
+          return;
+        }
+
+        if (data.elements.length === 0) {
+          claudeAPI.sendBatchDeleteElementsResponse(data.requestId, {
+            deletedCount: 0,
+            failedCount: 0,
+            results: [],
+          });
+          return;
+        }
+
+        const timelineStore = useTimelineStore.getState();
+        timelineStore.pushHistory();
+
+        let deletedCount = 0;
+        let failedCount = 0;
+        const results: ClaudeBatchDeleteResponse["results"] = [];
+
+        for (const [index, entry] of data.elements.entries()) {
+          try {
+            const currentTrack = useTimelineStore
+              .getState()
+              .tracks.find((track) => track.id === entry.trackId);
+            const elementExists = currentTrack?.elements.some(
+              (element) => element.id === entry.elementId
+            );
+
+            if (!elementExists) {
+              throw new Error(`Element not found: ${entry.elementId}`);
+            }
+
+            if (data.ripple) {
+              timelineStore.removeElementFromTrackWithRipple(
+                entry.trackId,
+                entry.elementId,
+                false,
+                true
+              );
+            } else {
+              timelineStore.removeElementFromTrack(
+                entry.trackId,
+                entry.elementId,
+                false
+              );
+            }
+            deletedCount++;
+            results.push({ index, success: true });
+          } catch (error) {
+            failedCount++;
+            results.push({
+              index,
+              success: false,
+              error: error instanceof Error ? error.message : "Delete failed",
+            });
+          }
+        }
+
+        claudeAPI.sendBatchDeleteElementsResponse(data.requestId, {
+          deletedCount,
+          failedCount,
+          results,
+        });
+      } catch (error) {
+        debugError("[ClaudeTimelineBridge] Failed to batch delete elements:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Batch delete failed";
+        claudeAPI.sendBatchDeleteElementsResponse(data.requestId, {
+          deletedCount: 0,
+          failedCount: data.elements.length,
+          results: data.elements.map((_, index) => ({
+            index,
+            success: false,
+            error: errorMessage,
+          })),
+        });
+      }
+    });
+  }
+
+  if (
+    typeof claudeAPI.onDeleteRange === "function" &&
+    typeof claudeAPI.sendDeleteRangeResponse === "function"
+  ) {
+    claudeAPI.onDeleteRange((data) => {
+      try {
+        const result: ClaudeRangeDeleteResponse = useTimelineStore
+          .getState()
+          .deleteTimeRange(data.request);
+        claudeAPI.sendDeleteRangeResponse(data.requestId, result);
+      } catch (error) {
+        debugError("[ClaudeTimelineBridge] Failed to delete range:", error);
+        claudeAPI.sendDeleteRangeResponse(data.requestId, {
+          deletedElements: 0,
+          splitElements: 0,
+          totalRemovedDuration: 0,
+        });
+      }
+    });
+  }
+
+  if (
+    typeof claudeAPI.onArrange === "function" &&
+    typeof claudeAPI.sendArrangeResponse === "function"
+  ) {
+    claudeAPI.onArrange((data) => {
+      try {
+        const timelineStore = useTimelineStore.getState();
+        const track = timelineStore.tracks.find(
+          (candidate) => candidate.id === data.request.trackId
+        );
+
+        if (!track || track.elements.length === 0) {
+          claudeAPI.sendArrangeResponse(data.requestId, { arranged: [] });
+          return;
+        }
+
+        const requestMode = data.request.mode;
+        const startOffset =
+          typeof data.request.startOffset === "number" && data.request.startOffset >= 0
+            ? data.request.startOffset
+            : 0;
+        const gap =
+          typeof data.request.gap === "number" && data.request.gap >= 0
+            ? data.request.gap
+            : requestMode === "spaced"
+              ? 0.5
+              : 0;
+
+        const byStartTime = [...track.elements].sort(
+          (left, right) => left.startTime - right.startTime
+        );
+
+        let orderedElements = byStartTime;
+        if (requestMode === "manual" && data.request.order?.length) {
+          const elementsById = new Map(
+            byStartTime.map((element) => [element.id, element])
+          );
+          const manualOrder: typeof byStartTime = [];
+
+          for (const elementId of data.request.order) {
+            const element = elementsById.get(elementId);
+            if (!element) {
+              continue;
+            }
+            manualOrder.push(element);
+            elementsById.delete(elementId);
+          }
+
+          orderedElements = [...manualOrder, ...elementsById.values()];
+        }
+
+        timelineStore.pushHistory();
+
+        const arranged: ClaudeArrangeResponse["arranged"] = [];
+        let currentStartTime = startOffset;
+        for (const element of orderedElements) {
+          const effectiveDuration = Math.max(
+            0,
+            element.duration - element.trimStart - element.trimEnd
+          );
+
+          timelineStore.updateElementStartTime(
+            track.id,
+            element.id,
+            currentStartTime,
+            false
+          );
+          arranged.push({
+            elementId: element.id,
+            newStartTime: currentStartTime,
+          });
+          currentStartTime += effectiveDuration + gap;
+        }
+
+        claudeAPI.sendArrangeResponse(data.requestId, { arranged });
+      } catch (error) {
+        debugError("[ClaudeTimelineBridge] Failed to arrange track:", error);
+        claudeAPI.sendArrangeResponse(data.requestId, { arranged: [] });
+      }
+    });
+  }
 
   // Handle element removal
   claudeAPI.onRemoveElement((elementId: string) => {
