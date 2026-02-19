@@ -87,35 +87,43 @@ export async function handleAnalyzeVideo(
     (outputFormat === "json" || outputFormat === "both")
   ) {
     const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
-    const jsonPath = join(outputDir, "analysis.json");
-    writeFileSync(
-      jsonPath,
-      JSON.stringify({ type: analysisType, content: resultData }, null, 2)
-    );
-
-    if (outputFormat === "both") {
-      const mdPath = join(outputDir, "analysis.md");
+    try {
+      const jsonPath = join(outputDir, "analysis.json");
       writeFileSync(
-        mdPath,
-        typeof resultData === "string"
-          ? resultData
-          : JSON.stringify(resultData, null, 2)
+        jsonPath,
+        JSON.stringify({ type: analysisType, content: resultData }, null, 2)
       );
+
+      if (outputFormat === "both") {
+        const mdPath = join(outputDir, "analysis.md");
+        writeFileSync(
+          mdPath,
+          typeof resultData === "string"
+            ? resultData
+            : JSON.stringify(resultData, null, 2)
+        );
+        return {
+          success: true,
+          outputPath: jsonPath,
+          outputPaths: [jsonPath, mdPath],
+          data: resultData,
+          duration: (Date.now() - startTime) / 1000,
+        };
+      }
+
       return {
         success: true,
         outputPath: jsonPath,
-        outputPaths: [jsonPath, mdPath],
         data: resultData,
         duration: (Date.now() - startTime) / 1000,
       };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Failed to write analysis output: ${err instanceof Error ? err.message : String(err)}`,
+        duration: (Date.now() - startTime) / 1000,
+      };
     }
-
-    return {
-      success: true,
-      outputPath: jsonPath,
-      data: resultData,
-      duration: (Date.now() - startTime) / 1000,
-    };
   }
 
   return {
@@ -186,28 +194,36 @@ export async function handleTranscribe(
   const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
   const outputPaths: string[] = [];
 
-  // Save raw JSON response if requested
-  if (options.rawJson && result.data) {
-    const rawPath = join(outputDir, "transcription_raw.json");
-    writeFileSync(rawPath, JSON.stringify(result.data, null, 2));
-    outputPaths.push(rawPath);
-  }
-
-  // Generate SRT subtitle file if requested
-  if (options.srt && result.data) {
-    const { extractWordTimestamps, generateSrt } = await import(
-      "./srt-generator.js"
-    );
-    const words = extractWordTimestamps(result.data);
-    if (words && words.length > 0) {
-      const srtContent = generateSrt(words, {
-        maxWords: options.srtMaxWords,
-        maxDuration: options.srtMaxDuration,
-      });
-      const srtPath = join(outputDir, "transcription.srt");
-      writeFileSync(srtPath, srtContent);
-      outputPaths.push(srtPath);
+  try {
+    // Save raw JSON response if requested
+    if (options.rawJson && result.data) {
+      const rawPath = join(outputDir, "transcription_raw.json");
+      writeFileSync(rawPath, JSON.stringify(result.data, null, 2));
+      outputPaths.push(rawPath);
     }
+
+    // Generate SRT subtitle file if requested
+    if (options.srt && result.data) {
+      const { extractWordTimestamps, generateSrt } = await import(
+        "./srt-generator.js"
+      );
+      const words = extractWordTimestamps(result.data);
+      if (words && words.length > 0) {
+        const srtContent = generateSrt(words, {
+          maxWords: options.srtMaxWords,
+          maxDuration: options.srtMaxDuration,
+        });
+        const srtPath = join(outputDir, "transcription.srt");
+        writeFileSync(srtPath, srtContent);
+        outputPaths.push(srtPath);
+      }
+    }
+  } catch (err) {
+    return {
+      success: false,
+      error: `Failed to write transcription output: ${err instanceof Error ? err.message : String(err)}`,
+      duration: (Date.now() - startTime) / 1000,
+    };
   }
 
   return {
