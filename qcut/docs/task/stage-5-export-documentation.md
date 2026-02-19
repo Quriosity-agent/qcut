@@ -47,6 +47,59 @@ Stage 5 has been implemented.
 - The pipeline report uses operation logs plus a generated project summary.
 - Operation logging is now recorded for key Stage 1/2/5 HTTP actions.
 
+### Real QCut E2E Test (Manual + API)
+
+Use this to validate Stage 5 against a real running QCut app.
+
+1. Start QCut in dev mode.
+   - Terminal 1: `bun run dev`
+   - Terminal 2: `bun run electron:dev`
+2. Open/create a real project in QCut UI and note the `projectId` from the editor URL.
+3. Keep the project open and ensure timeline has at least one video clip.
+
+Optional fully-API setup (if timeline is empty):
+
+1. Set env vars in your shell:
+   - `export PROJECT_ID=\"<your_project_id>\"`
+   - `export API=\"http://127.0.0.1:8765/api/claude\"`
+2. Import media:
+   - `curl -s -X POST \"$API/media/$PROJECT_ID/import\" -H 'Content-Type: application/json' -d '{\"source\":\"/absolute/path/to/video.mp4\"}'`
+3. Add timeline element from returned media:
+   - `curl -s -X POST \"$API/timeline/$PROJECT_ID/elements\" -H 'Content-Type: application/json' -d '{\"type\":\"media\",\"sourceId\":\"<media_id>\",\"startTime\":0,\"duration\":5}'`
+
+Run Stage 5 export test:
+
+1. Start export:
+   - `curl -s -X POST \"$API/export/$PROJECT_ID/start\" -H 'Content-Type: application/json' -d '{\"preset\":\"youtube-1080p\"}'`
+2. Capture returned `jobId`.
+3. Poll progress:
+   - `curl -s \"$API/export/$PROJECT_ID/jobs/<jobId>\"`
+4. Repeat polling until `status` is `completed` or `failed`.
+5. Verify output file exists at returned `outputPath` when completed.
+6. List recent jobs:
+   - `curl -s \"$API/export/$PROJECT_ID/jobs\"`
+
+Run Stage 5 summary/report test:
+
+1. Get summary:
+   - `curl -s \"$API/project/$PROJECT_ID/summary\"`
+2. Generate report (save to disk):
+   - `curl -s -X POST \"$API/project/$PROJECT_ID/report\" -H 'Content-Type: application/json' -d '{\"saveToDisk\":true,\"outputDir\":\"docs/task\"}'`
+3. Verify response includes `savedTo` and markdown content.
+4. Open saved file and confirm it contains Stage 1-5 sections.
+
+Expected pass criteria:
+
+- Export start returns `jobId` immediately.
+- Export job transitions `queued -> exporting -> completed` (or explicit `failed` with error).
+- Completed job includes `outputPath`, `duration`, and `fileSize`.
+- Summary returns markdown with settings/media/timeline/exports sections.
+- Report returns markdown with Stage 1-5 and statistics.
+
+If API auth is enabled (`QCUT_API_TOKEN`), add:
+
+- `-H \"Authorization: Bearer <token>\"` to all `curl` commands.
+
 ---
 
 ## Current State

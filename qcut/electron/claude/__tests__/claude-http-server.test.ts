@@ -172,6 +172,14 @@ vi.mock("../claude-diagnostics-handler.js", () => ({
   getSystemInfo: vi.fn(() => ({})),
 }));
 
+vi.mock(
+  "../claude-suggest-handler.js",
+  () => ({
+    suggestCuts: vi.fn(async () => ({ suggestions: [] })),
+  }),
+  { virtual: true }
+);
+
 // ---------------------------------------------------------------------------
 // Import the server and mocked electron after mocks
 // ---------------------------------------------------------------------------
