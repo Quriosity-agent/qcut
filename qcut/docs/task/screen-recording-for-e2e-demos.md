@@ -45,7 +45,7 @@ Add a screen recording capability to QCut itself using Electron's `desktopCaptur
 
 #### 1. New IPC handler: `electron/screen-recording-handler.ts` (~200-300 lines)
 
-```
+```text
 Handlers:
 - "screen:getSources"    → list available screens/windows via desktopCapturer
 - "screen:startRecording" → begin capture (returns stream ID)

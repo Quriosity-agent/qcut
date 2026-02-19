@@ -172,7 +172,6 @@ export default defineConfig({
 
           // Motion and animation libraries
           if (
-            id.includes("framer-motion") ||
             id.includes("motion") ||
             id.includes("@hello-pangea/dnd")
           ) {

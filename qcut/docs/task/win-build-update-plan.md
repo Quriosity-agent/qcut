@@ -42,7 +42,6 @@ These are patch or minor bumps within the same major version. Should be safe to 
 | zustand | 5.0.8 | 5.0.11 | Patch |
 | motion | 12.23.12 | 12.34.2 | Minor |
 | react-hook-form | 7.62.0 | 7.71.1 | Minor |
-| better-auth | 1.3.7 | 1.4.18 | Minor |
 | dayjs | 1.11.15 | 1.11.19 | Patch |
 | @fal-ai/client | 1.6.2 | 1.9.1 | Minor, AI API updates |
 | @babel/parser | 7.28.6 | 7.29.0 | Minor |
