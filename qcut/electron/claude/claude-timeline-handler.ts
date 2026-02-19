@@ -17,15 +17,24 @@ import {
 import { claudeLog } from "./utils/logger.js";
 import type {
   ClaudeTimeline,
-  ClaudeTrack,
   ClaudeElement,
-  ClaudeSplitRequest,
+  ClaudeBatchAddElementRequest,
+  ClaudeBatchAddResponse,
+  ClaudeBatchDeleteItemRequest,
+  ClaudeBatchDeleteResponse,
+  ClaudeBatchUpdateItemRequest,
+  ClaudeBatchUpdateResponse,
+  ClaudeArrangeRequest,
+  ClaudeArrangeResponse,
+  ClaudeRangeDeleteRequest,
+  ClaudeRangeDeleteResponse,
   ClaudeSplitResponse,
-  ClaudeMoveRequest,
   ClaudeSelectionItem,
 } from "../types/claude-api";
 
 const HANDLER_NAME = "Timeline";
+const MAX_TIMELINE_BATCH_ITEMS = 50;
+const TIMELINE_REQUEST_TIMEOUT_MS = 5000;
 
 /**
  * Request timeline data from renderer process
