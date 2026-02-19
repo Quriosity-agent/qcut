@@ -207,25 +207,18 @@ function normalizeOutputPathExtension({
 }: {
   filePath: string;
 }): string {
-  try {
-    const extension = getPathExtension({ filePath });
-    const isSupportedOutputExtension =
-      extension === FILE_EXTENSION.WEBM || extension === FILE_EXTENSION.MP4;
+  const extension = getPathExtension({ filePath });
+  const isSupportedOutputExtension =
+    extension === FILE_EXTENSION.WEBM || extension === FILE_EXTENSION.MP4;
 
-    if (isSupportedOutputExtension) {
-      return filePath;
-    }
-
-    return replaceExtension({
-      filePath,
-      extension: FILE_EXTENSION.MP4,
-    });
-  } catch {
-    return replaceExtension({
-      filePath,
-      extension: FILE_EXTENSION.MP4,
-    });
+  if (isSupportedOutputExtension) {
+    return filePath;
   }
+
+  return replaceExtension({
+    filePath,
+    extension: FILE_EXTENSION.MP4,
+  });
 }
 
 function getRecordingsDir(): string {
@@ -252,6 +245,23 @@ function buildDefaultRecordingPath(): string {
   return path.join(getRecordingsDir(), filename);
 }
 
+function assertPathWithinAllowedDir({
+  resolvedPath,
+  allowedDir,
+}: {
+  resolvedPath: string;
+  allowedDir: string;
+}): void {
+  const normalizedAllowed = path.resolve(allowedDir) + path.sep;
+  const normalizedPath = path.resolve(resolvedPath);
+  if (
+    !normalizedPath.startsWith(normalizedAllowed) &&
+    normalizedPath !== path.resolve(allowedDir)
+  ) {
+    throw new Error("Output path must be within the recordings directory");
+  }
+}
+
 function resolveOutputPath({
   filePath,
   fileName,
@@ -260,12 +270,19 @@ function resolveOutputPath({
   fileName?: string;
 }): string {
   try {
+    const recordingsDir = getRecordingsDir();
+
     if (filePath) {
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
-        : path.join(getRecordingsDir(), filePath);
+        : path.join(recordingsDir, filePath);
+      const resolved = path.resolve(absolutePath);
+      assertPathWithinAllowedDir({
+        resolvedPath: resolved,
+        allowedDir: recordingsDir,
+      });
       const outputPath = ensureExtension({
-        filePath: absolutePath,
+        filePath: resolved,
         extension: FILE_EXTENSION.MP4,
       });
       return normalizeOutputPathExtension({ filePath: outputPath });
@@ -280,7 +297,7 @@ function resolveOutputPath({
       const normalizedFilename = normalizeOutputPathExtension({
         filePath: filenameWithExtension,
       });
-      return path.join(getRecordingsDir(), normalizedFilename);
+      return path.join(recordingsDir, normalizedFilename);
     }
 
     return buildDefaultRecordingPath();
