@@ -51,7 +51,7 @@ import {
   getExportJobStatus,
   listExportJobs,
 } from "./claude-export-handler.js";
-import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
+import { analyzeError } from "./claude-diagnostics-handler.js";
 import {
   generateProjectSummary,
   generatePipelineReport,
@@ -61,17 +61,10 @@ import {
   getOperationLog,
   clearOperationLog,
 } from "./claude-operation-log.js";
-import {
-  startGenerateJob,
-  getJobStatus,
-  listJobs,
-  cancelJob,
-  listGenerateModels,
-  estimateGenerateCost,
-} from "./claude-generate-handler.js";
 import { generatePersonaPlex } from "./claude-personaplex-handler.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
+
 
 let server: Server | null = null;
 
