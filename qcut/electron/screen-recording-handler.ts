@@ -6,11 +6,26 @@ import {
   session,
   type IpcMainInvokeEvent,
 } from "electron";
-import { spawn } from "child_process";
-import { randomUUID } from "crypto";
-import * as fs from "fs";
-import * as path from "path";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { getFFmpegPath } from "./ffmpeg/utils";
+
+interface Logger {
+  error(message?: unknown, ...optionalParams: unknown[]): void;
+  warn(message?: unknown, ...optionalParams: unknown[]): void;
+}
+
+const noop = (): void => {};
+let log: Logger = { error: noop, warn: noop };
+import("electron-log/main")
+  .then((module) => {
+    log = module.default as Logger;
+  })
+  .catch(() => {
+    // keep noop logger when electron-log isn't available
+  });
 
 const SCREEN_SOURCE_TYPE = {
   WINDOW: "window",
@@ -187,6 +202,32 @@ function replaceExtension({
   }
 }
 
+function normalizeOutputPathExtension({
+  filePath,
+}: {
+  filePath: string;
+}): string {
+  try {
+    const extension = getPathExtension({ filePath });
+    const isSupportedOutputExtension =
+      extension === FILE_EXTENSION.WEBM || extension === FILE_EXTENSION.MP4;
+
+    if (isSupportedOutputExtension) {
+      return filePath;
+    }
+
+    return replaceExtension({
+      filePath,
+      extension: FILE_EXTENSION.MP4,
+    });
+  } catch {
+    return replaceExtension({
+      filePath,
+      extension: FILE_EXTENSION.MP4,
+    });
+  }
+}
+
 function getRecordingsDir(): string {
   try {
     return path.join(app.getPath("videos"), DEFAULT_RECORDINGS_DIR_NAME);
@@ -223,10 +264,11 @@ function resolveOutputPath({
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.join(getRecordingsDir(), filePath);
-      return ensureExtension({
+      const outputPath = ensureExtension({
         filePath: absolutePath,
         extension: FILE_EXTENSION.MP4,
       });
+      return normalizeOutputPathExtension({ filePath: outputPath });
     }
 
     if (fileName) {
@@ -235,7 +277,10 @@ function resolveOutputPath({
         filePath: safeFilename,
         extension: FILE_EXTENSION.MP4,
       });
-      return path.join(getRecordingsDir(), filenameWithExtension);
+      const normalizedFilename = normalizeOutputPathExtension({
+        filePath: filenameWithExtension,
+      });
+      return path.join(getRecordingsDir(), normalizedFilename);
     }
 
     return buildDefaultRecordingPath();
@@ -628,7 +673,7 @@ async function finalizeRecordingOutput({
         sourcePath: sessionData.captureFilePath,
         targetPath: fallbackWebmPath,
       });
-      console.error(
+      log.warn(
         "[ScreenRecordingIPC] MP4 conversion failed, falling back to WebM:",
         error
       );
@@ -704,7 +749,7 @@ async function resolveSourceForDisplayRequest({
     }
     return { id: selectedSource.id, name: selectedSource.name };
   } catch (error) {
-    console.error(
+    log.error(
       "[ScreenRecordingIPC] Failed to resolve display source:",
       error
     );
@@ -737,7 +782,7 @@ function ensureDisplayMediaHandlerConfigured(): void {
 
             callback({ video: source });
           } catch (error) {
-            console.error(
+            log.error(
               "[ScreenRecordingIPC] Display media request handler failed:",
               error
             );
@@ -746,7 +791,7 @@ function ensureDisplayMediaHandlerConfigured(): void {
         };
 
         handleDisplayMediaRequest().catch((error) => {
-          console.error(
+          log.error(
             "[ScreenRecordingIPC] Unexpected display media request error:",
             error
           );
@@ -758,7 +803,7 @@ function ensureDisplayMediaHandlerConfigured(): void {
 
     isDisplayMediaHandlerConfigured = true;
   } catch (error) {
-    console.error(
+    log.error(
       "[ScreenRecordingIPC] Failed to configure display media handler:",
       error
     );
