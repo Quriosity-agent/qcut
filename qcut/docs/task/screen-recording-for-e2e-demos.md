@@ -153,3 +153,39 @@ const { setupScreenRecordingIPC } = require("./screen-recording-handler.js");
 - `electron/main.ts` — register handler (~3 lines)
 - `apps/web/src/types/electron.d.ts` — add types (~10 lines)
 - `apps/web/src/components/screen-recording-indicator.tsx` — optional UI (~80 lines)
+
+---
+
+## Review (2026-02-19)
+
+### Verdict
+
+Partially true.
+
+### Confirmed as accurate in this repo
+
+- `playwright.config.ts` currently has `video: "retain-on-failure"` (`playwright.config.ts:19`)
+- Electron is `^37.4.0` (`package.json:31`)
+- `contextIsolation: true` is enabled (`electron/main.ts:434`)
+- FFmpeg binaries and staging are present (`package.json:353`, `package.json:354`, `package.json:179`)
+- Referenced files exist:
+  - `apps/web/src/lib/export-engine-recorder.ts`
+  - `apps/web/src/test/e2e/utils/screenshot-helper.ts`
+  - `electron/theme-handler.ts` (62 lines)
+  - `electron/preload.ts`
+
+### Corrections needed
+
+1. Approach A is not a strict one-line change in this codebase.
+The E2E suite uses a custom Electron fixture (`apps/web/src/test/e2e/helpers/electron-helpers.ts`) with `_electron.launch(...)` and does not pass `recordVideo`. So changing `use.video` in `playwright.config.ts` alone is likely insufficient for reliable Electron-window video capture.
+
+2. The doc says "configure output dir" for Approach A, but `outputDir` is already set (`playwright.config.ts:11`).
+
+3. A few file paths are shorthand; for consistency with this repo structure use full paths such as `apps/web/src/test/e2e/utils/screenshot-helper.ts`.
+
+4. In E2E tests, calling `window.electronAPI.screenRecording.start()` must happen in renderer context (for example via `page.evaluate(...)`), not directly in Node test scope.
+
+### Recommendation update
+
+- Keep Approach B estimate as-is.
+- Adjust Approach A estimate to include fixture wiring (for example, adding `recordVideo` in `_electron.launch(...)`), not only config changes.
