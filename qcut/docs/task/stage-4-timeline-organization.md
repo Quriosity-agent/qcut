@@ -127,31 +127,40 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ---
 
-## File Impact Summary
+## Test Count Summary
 
-| File | Change Type | Lines Added (est.) |
-|---|---|---|
-| `electron/claude/claude-timeline-handler.ts` | Edit | batch handlers + renderer request/response + markdown parsing |
-| `electron/claude/claude-http-server.ts` | Edit | batch routes + range + arrange routes |
-| `electron/types/claude-api.ts` | Edit | Stage 4 request/response types |
-| `electron/preload-types.ts` | Edit | preload API type updates for Stage 4 timeline methods/events |
-| `electron/preload-integrations.ts` | Edit | new Stage 4 invoke/listener bridge channels |
-| `apps/web/src/types/electron.d.ts` | Edit | renderer type updates for Stage 4 channels |
-| `apps/web/src/lib/claude-timeline-bridge.ts` | Edit | renderer-side batch/update/delete/range/arrange handlers |
-| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Edit | track id included in exported timeline |
-| `apps/web/src/stores/timeline-store.ts` | Edit | history-aware element add/update primitives for batching |
-| `apps/web/src/stores/timeline-store-operations.ts` | Edit | `deleteTimeRange()` + `rippleDeleteAcrossTracks()` |
-| `apps/web/src/stores/timeline/types.ts` | Edit | Stage 4 store method signatures |
-| `electron/claude/__tests__/handler-functions.test.ts` | Edit | markdown track parsing/validation coverage |
-| `electron/claude/__tests__/claude-http-server.test.ts` | Edit | Stage 4 route coverage additions |
+| Test File | Tests | Location |
+|-----------|-------|----------|
+| `claude-timeline-bridge.test.ts` | 18 | `src/lib/__tests__/` (runnable via `bun run test`) |
+| `handler-functions.test.ts` | 10 | `electron/claude/__tests__/` (not in vitest include glob) |
+| `claude-http-server.test.ts` | 10 (Stage 4) | `electron/claude/__tests__/` (not in vitest include glob) |
+| **Runnable total** | **18** | |
+
+**Note**: Tests in `electron/claude/__tests__/` are not discoverable by vitest because the include glob is `../../electron/__tests__/**` (not `../../electron/claude/__tests__/**`). These tests pass when run directly with `bunx vitest run` but not via `bun run test`.
 
 ---
 
-## Verification Notes
+## Improvements Needed
 
-- `bunx vitest run electron/claude/__tests__/handler-functions.test.ts` passes.
-- `bunx vitest run electron/claude/__tests__/claude-http-server.test.ts` passes.
-- Full workspace TypeScript compile is currently blocked by an existing environment issue: missing type definition file for `sharp`.
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| **High** | Range delete ripple not implemented | Add element shifting in `onDeleteRange` handler in `claude-timeline-bridge.ts` — after split/delete, iterate tracks and shift elements with `startTime >= endTime` left by range duration |
+| **High** | Cross-track ripple not implemented | Same fix as above, but apply to ALL tracks (not just the one with deleted content) |
+| **Medium** | Vitest include glob misses `electron/claude/__tests__/` | Update `vitest.config.ts` include to add `../../electron/claude/__tests__/**/*.test.ts` |
+| **Low** | Malformed markdown import silently succeeds | `markdownToTimeline()` should return empty tracks when no content parsed; HTTP handler should return a warning or check if anything was actually imported |
+| **Low** | Markdown import only appends | Add optional `replace: true` flag to clear existing timeline before importing |
+
+---
+
+## Implementation Files
+
+| File | Lines | Purpose |
+|---|---|---|
+| `electron/claude/claude-timeline-handler.ts` | ~1000 | Batch IPC handlers, markdown parsing, arrange logic |
+| `electron/claude/claude-range-handler.ts` | 96 | Range delete handler (split/remove, no ripple) |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | 1444 | Renderer-side IPC bridge for all timeline ops |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | 475 | Helper functions for element resolution |
+| `electron/claude/claude-http-server.ts` | ~600 | Route registration |
 
 ---
 
@@ -345,26 +354,12 @@ curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/arrange" \
 - Press undo once.
 - Expected: track returns to pre-arrange layout.
 
-### 7) Final Exit Criteria
+### 7) Exit Criteria Status
 
-- Batch add/update/delete work with per-item result reporting.
-- Markdown round-trip imports full tracks/elements, not metadata only.
-- Cross-track ripple behaves differently when toggled.
-- Arrange works in sequential/spaced/manual modes.
-- Each operation family is single-undo atomic in real UI.
-
----
-
-## End-to-End Flow After Stage 4
-
-```
-Claude Code Workflow:
-  1. Import 5 videos (Stage 1 batch import)
-  2. Transcribe + analyze all (Stage 2)
-  3. Auto-edit each: remove fillers/silences (Stage 3)
-  4. Batch add all edited clips to timeline (4.1a)
-  5. Arrange sequentially with 0.5s gaps (4.4)
-  6. Add text titles at scene boundaries (4.1a)
-  7. Export timeline as markdown for review (existing)
-  8. → Stage 5 (export final video)
-```
+| Criterion | Status |
+|-----------|--------|
+| Batch add/update/delete with per-item result reporting | **PASS** |
+| Markdown round-trip imports full tracks/elements | **PASS** (appends, not replaces) |
+| Cross-track ripple behaves differently when toggled | **FAIL** — ripple shift not implemented |
+| Arrange works in sequential/spaced/manual modes | **PASS** |
+| Each operation family is single-undo atomic | **Not verified** (requires UI testing) |
