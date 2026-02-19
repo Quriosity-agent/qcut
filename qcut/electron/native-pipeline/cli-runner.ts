@@ -781,9 +781,11 @@ export class CLIPipelineRunner {
     );
 
     // Determine output extension from --format option
-    const outputExt = options.outputFormat
-      ? `.${options.outputFormat}`
-      : ".png";
+    const format = options.outputFormat?.toLowerCase();
+    if (format && !/^[a-z0-9]+$/.test(format)) {
+      return { success: false, error: "Invalid --format value" };
+    }
+    const outputExt = format ? `.${format}` : ".png";
 
     if (!result.outputPath && result.outputUrl && outputDir) {
       try {
