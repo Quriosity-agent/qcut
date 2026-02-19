@@ -81,118 +81,37 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ---
 
-## Subtask 4.2: Fix Markdown Timeline Import
+## Subtask 4.2: Markdown Timeline Import/Export
 
-**What**: Make `markdownToTimeline()` parse tracks and elements from the markdown format that `timelineToMarkdown()` exports.
-**Status**: Done
+**Endpoints**:
+- `GET /api/claude/timeline/:projectId?format=md` — export as markdown
+- `POST /api/claude/timeline/:projectId/import` — import (format=md or json)
 
-**Relevant files**:
-- `electron/claude/claude-timeline-handler.ts` (lines 102-146) — `markdownToTimeline()` currently throws on track data
-- `electron/types/claude-api.ts` — `ClaudeTimeline`, `ClaudeTrack`, `ClaudeElement` types
+**Implementation**: `electron/claude/claude-timeline-handler.ts` (`timelineToMarkdown()` + `markdownToTimeline()`)
 
-**Current markdown export format** (from `timelineToMarkdown()`):
-```markdown
-# Project: My Video
-- Duration: 120.00s
-- Resolution: 1920×1080
-- FPS: 30
+**Live test**: Export PASS — produces valid markdown with project info table + per-track element tables. Import PASS — re-importing exported markdown succeeds and adds elements. JSON round-trip also works.
 
-## Track 1: Main (media)
-| # | Type | Start | End | Duration | Source | Content |
-|---|------|-------|-----|----------|--------|---------|
-| 1 | video | 0.00s | 5.00s | 5.00s | clip1.mp4 | |
-| 2 | video | 5.00s | 13.00s | 8.00s | clip2.mp4 | |
+**Issue**: Malformed markdown (`"# Not a timeline"`) returns `imported: true` instead of an error. No elements are added but the response is misleading.
 
-## Track 2: Text (text)
-| # | Type | Start | End | Duration | Source | Content |
-|---|------|-------|-----|----------|--------|---------|
-| 1 | text | 0.00s | 3.00s | 3.00s | | Title Card |
-```
+**Note**: Import appends to existing timeline (by design). Re-importing the same markdown duplicates elements. Consider adding a `replace` mode.
 
-**Implementation**:
-```typescript
-function markdownToTimeline(md: string): ClaudeTimeline {
-  // 1. Parse metadata (existing code works)
-  // 2. Find ## Track N: Name (type) headers
-  // 3. Parse markdown table rows for each track
-  // 4. Map columns → ClaudeElement properties
-  // 5. Validate all parsed elements
-  // 6. Return complete ClaudeTimeline
-}
-```
-
-**Parsing rules**:
-- `## Track N:` marks track start
-- Track type in parentheses: `(media)`, `(text)`, etc.
-- Table rows map to elements: `| # | Type | Start | End | Duration | Source | Content |`
-- Time values: parse `"5.00s"` → `5.0`
-- Source: filename for media, empty for text/sticker
-- Content: text content for text elements
-
-**Test file**: `electron/__tests__/claude-timeline-markdown.test.ts`
-
-**Tests to write**:
-- Round-trip: `timeline → markdown → timeline` produces equivalent result
-- Parses multi-track markdown
-- Handles empty tracks
-- Handles text elements with content
-- Handles media elements with source filenames
-- Rejects malformed markdown with clear error
-- Preserves timing precision (2 decimal places)
+**Unit tests**: 4 passing in `handler-functions.test.ts` (markdown parse + round-trip + malformed rejection + metadata extraction)
 
 ---
 
 ## Subtask 4.3: Cross-Track Ripple Delete
 
-**What**: When deleting a time range, optionally shift elements on ALL tracks (not just the affected track).
-**Status**: Done
+**Endpoint**: `DELETE /api/claude/timeline/:projectId/range` with `crossTrackRipple: true`
 
-**Relevant files**:
-- `apps/web/src/stores/timeline-store-operations.ts` (1172 lines) — `removeElementFromTrackWithRipple()` currently single-track
-- `apps/web/src/stores/timeline-store.ts` — store methods
-- Stage 3.3 range delete — integrates with this
+**Implementation**: `electron/claude/claude-range-handler.ts` + `apps/web/src/lib/claude-timeline-bridge.ts` (`onDeleteRange`)
 
-**Implementation**:
-```typescript
-// Add to timeline-store-operations.ts
+**Live test**: **ISSUE** — The `crossTrackRipple` flag is forwarded from HTTP server to renderer via IPC, but the renderer bridge (`onDeleteRange`) does not implement any ripple shift logic. It correctly splits and deletes content within the range, but elements after the range are NOT shifted left to close the gap.
 
-function rippleDeleteAcrossTracks(
-  state: TimelineState,
-  startTime: number,
-  endTime: number,
-  excludeTrackIds?: string[]
-): void {
-  const rippleDuration = endTime - startTime;
+**Root cause**: The `onDeleteRange` handler in `claude-timeline-bridge.ts` (lines 1260-1370) performs split/delete operations but ignores the `ripple` and `crossTrackRipple` flags. Neither same-track nor cross-track ripple shifting is implemented.
 
-  for (const track of state._tracks) {
-    if (excludeTrackIds?.includes(track.id)) continue;
+**Fix needed**: After performing the range delete, iterate all tracks (or affected tracks for same-track ripple) and shift elements with `startTime >= endTime` left by `(endTime - startTime)` seconds using `updateElementStartTime()`.
 
-    for (const element of track.elements) {
-      // Elements fully after the deleted range: shift left
-      if (element.startTime >= endTime) {
-        element.startTime -= rippleDuration;
-      }
-      // Elements spanning the range: handled by range delete (Stage 3.3)
-    }
-  }
-}
-```
-
-**API**: Add `crossTrackRipple: boolean` option to the range delete endpoint (Stage 3.3).
-
-```
-DELETE /api/claude/timeline/:projectId/range
-Body: { "startTime": 10.0, "endTime": 15.0, "ripple": true, "crossTrackRipple": true }
-```
-
-**Test file**: `electron/__tests__/claude-cross-track-ripple.test.ts`
-
-**Tests to write**:
-- Cross-track ripple shifts elements on all tracks
-- Excludes specified tracks from ripple
-- Preserves relative timing between tracks
-- Audio track stays synchronized with video track after ripple
-- Single undo restores all tracks
+**Unit tests**: 1 HTTP server test verifies the flag is forwarded; no bridge-level test for actual ripple behavior
 
 ---
 
