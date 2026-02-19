@@ -84,7 +84,7 @@
     "remark-gfm": "^4.0.1",
     "remotion": "4.0.424",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "unified": "^11.0.5",
     "vaul": "^1.1.2",
