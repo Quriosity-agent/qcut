@@ -171,10 +171,7 @@ export default defineConfig({
           }
 
           // Motion and animation libraries
-          if (
-            id.includes("motion") ||
-            id.includes("@hello-pangea/dnd")
-          ) {
+          if (id.includes("motion") || id.includes("@hello-pangea/dnd")) {
             return "vendor-motion";
           }
 
