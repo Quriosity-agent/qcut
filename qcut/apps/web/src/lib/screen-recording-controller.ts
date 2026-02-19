@@ -249,25 +249,28 @@ async function waitForRecorderStop({
   }
 }
 
-async function appendChunk({
+function appendChunk({
   recordingState,
   event,
 }: {
   recordingState: ActiveRecordingRuntimeState;
   event: BlobEvent;
-}): Promise<void> {
+}): void {
   try {
-    if (!event.data || event.data.size === 0) {
-      return;
-    }
-
-    const recordingApi = getRequiredRecordingApi();
-    const chunkArrayBuffer = await event.data.arrayBuffer();
-    const chunkBytes = new Uint8Array(chunkArrayBuffer);
-
-    recordingState.chunkWriteQueue = recordingState.chunkWriteQueue.then(
-      async () => {
+    // Queue assignment must happen synchronously so stop waits the final chunk.
+    const nextChunkWrite = recordingState.chunkWriteQueue
+      .catch(() => {
+        // keep queue chain alive; chunkWriteError is checked during stop
+      })
+      .then(async () => {
         try {
+          if (!event.data || event.data.size === 0) {
+            return;
+          }
+
+          const recordingApi = getRequiredRecordingApi();
+          const chunkArrayBuffer = await event.data.arrayBuffer();
+          const chunkBytes = new Uint8Array(chunkArrayBuffer);
           const appendResult = await recordingApi.appendChunk({
             sessionId: recordingState.sessionId,
             chunk: chunkBytes,
@@ -276,14 +279,10 @@ async function appendChunk({
         } catch (error) {
           const chunkError = toError({ error });
           recordingState.chunkWriteError = chunkError;
-          throw chunkError;
         }
-      }
-    );
+      });
 
-    recordingState.chunkWriteQueue.catch(() => {
-      // chunkWriteError is stored and handled on stop
-    });
+    recordingState.chunkWriteQueue = nextChunkWrite;
   } catch (error) {
     const chunkError = toError({ error });
     recordingState.chunkWriteError = chunkError;
@@ -337,7 +336,7 @@ export async function startScreenRecording({
     };
 
     mediaRecorder.ondataavailable = (event: BlobEvent): void => {
-      void appendChunk({ recordingState: runtimeState, event });
+      appendChunk({ recordingState: runtimeState, event });
     };
 
     mediaRecorder.onerror = (event: Event): void => {
@@ -410,7 +409,9 @@ export async function stopScreenRecording({
       // chunkWriteError is handled below
     }
 
-    const shouldDiscard = Boolean(options.discard || recordingState.chunkWriteError);
+    const shouldDiscard = Boolean(
+      options.discard || recordingState.chunkWriteError
+    );
 
     const stopResult = await recordingApi.stop({
       sessionId: recordingState.sessionId,
@@ -473,7 +474,8 @@ export function subscribeToScreenRecordingStatus({
 }): () => void {
   const handleStatusEvent = (event: Event): void => {
     try {
-      const customEvent = event as CustomEvent<ScreenRecordingStatusEventPayload>;
+      const customEvent =
+        event as CustomEvent<ScreenRecordingStatusEventPayload>;
       const nextStatus = customEvent.detail?.status ?? getLocalStatus();
       listener(nextStatus);
     } catch (error) {
@@ -484,12 +486,18 @@ export function subscribeToScreenRecordingStatus({
   try {
     window.addEventListener(SCREEN_RECORDING_EVENT_NAME, handleStatusEvent);
   } catch (error) {
-    console.error("[ScreenRecording] Failed to subscribe to status events:", error);
+    console.error(
+      "[ScreenRecording] Failed to subscribe to status events:",
+      error
+    );
   }
 
   return () => {
     try {
-      window.removeEventListener(SCREEN_RECORDING_EVENT_NAME, handleStatusEvent);
+      window.removeEventListener(
+        SCREEN_RECORDING_EVENT_NAME,
+        handleStatusEvent
+      );
     } catch (error) {
       console.error(
         "[ScreenRecording] Failed to unsubscribe status events:",

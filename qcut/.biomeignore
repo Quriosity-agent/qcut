@@ -23,6 +23,9 @@ temp-lint-output.txt
 # Build artifacts
 dist-packager*/**
 
+# External submodule code is versioned upstream
+packages/video-agent-skill/**
+
 # Specific generated files with parsing issues
 **/*-core.js
 **/ffmpeg-core.js

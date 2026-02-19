@@ -192,11 +192,12 @@ export function createTimelineOperations({
     removeElementFromTrackWithRipple: (
       trackId: string,
       elementId: string,
-      pushHistory = true
+      pushHistory = true,
+      forceRipple = false
     ) => {
       const { _tracks, rippleEditingEnabled } = get();
 
-      if (!rippleEditingEnabled) {
+      if (!rippleEditingEnabled && !forceRipple) {
         // If ripple editing is disabled, use regular removal
         get().removeElementFromTrack(trackId, elementId, pushHistory);
         return;
@@ -263,6 +264,258 @@ export function createTimelineOperations({
         .filter((track) => track.elements.length > 0 || track.isMain);
 
       updateTracksAndSave(updatedTracks);
+    },
+
+    rippleDeleteAcrossTracks: (
+      startTime: number,
+      endTime: number,
+      excludeTrackIds: string[] = []
+    ) => {
+      try {
+        const rippleDuration = endTime - startTime;
+        if (rippleDuration <= 0) {
+          return;
+        }
+
+        get().pushHistory();
+
+        const excludedTrackIds = new Set(excludeTrackIds);
+        const updatedTracks = get()._tracks.map((track) => {
+          if (excludedTrackIds.has(track.id)) {
+            return track;
+          }
+
+          const updatedElements = track.elements.map((element) => {
+            if (element.startTime < endTime) {
+              return element;
+            }
+            return {
+              ...element,
+              startTime: Math.max(0, element.startTime - rippleDuration),
+            };
+          });
+
+          return { ...track, elements: updatedElements };
+        });
+
+        updateTracksAndSave(updatedTracks);
+      } catch (error) {
+        handleError(error, {
+          operation: "Ripple Delete Across Tracks",
+          category: ErrorCategory.SYSTEM,
+          severity: ErrorSeverity.MEDIUM,
+          metadata: {
+            startTime,
+            endTime,
+            excludeTrackCount: excludeTrackIds.length,
+          },
+        });
+      }
+    },
+
+    deleteTimeRange: ({
+      startTime,
+      endTime,
+      trackIds,
+      ripple = true,
+      crossTrackRipple = false,
+    }: {
+      startTime: number;
+      endTime: number;
+      trackIds?: string[];
+      ripple?: boolean;
+      crossTrackRipple?: boolean;
+    }) => {
+      try {
+        const clampedStartTime = Math.max(0, startTime);
+        const clampedEndTime = Math.max(clampedStartTime, endTime);
+        const rangeDuration = clampedEndTime - clampedStartTime;
+
+        if (rangeDuration <= 0) {
+          return {
+            deletedElements: 0,
+            splitElements: 0,
+            totalRemovedDuration: 0,
+          };
+        }
+
+        const { _tracks } = get();
+        const targetTrackIds =
+          trackIds && trackIds.length > 0
+            ? new Set(trackIds)
+            : new Set(_tracks.map((track) => track.id));
+
+        const calculateEffectiveDuration = (element: TimelineElement) =>
+          Math.max(0, element.duration - element.trimStart - element.trimEnd);
+
+        const calculateEffectiveEnd = (element: TimelineElement) =>
+          element.startTime + calculateEffectiveDuration(element);
+
+        let deletedElements = 0;
+        let splitElements = 0;
+
+        get().pushHistory();
+
+        const rangeAdjustedTracks = _tracks.map((track) => {
+          if (!targetTrackIds.has(track.id)) {
+            return track;
+          }
+
+          const nextElements: TimelineElement[] = [];
+
+          for (const element of track.elements) {
+            const elementStart = element.startTime;
+            const elementEnd = calculateEffectiveEnd(element);
+            const overlapsRange =
+              elementStart < clampedEndTime && elementEnd > clampedStartTime;
+
+            if (!overlapsRange) {
+              nextElements.push(element);
+              continue;
+            }
+
+            const isFullyContained =
+              elementStart >= clampedStartTime && elementEnd <= clampedEndTime;
+            if (isFullyContained) {
+              deletedElements++;
+              continue;
+            }
+
+            const overlapsAtEnd =
+              elementStart < clampedStartTime &&
+              elementEnd > clampedStartTime &&
+              elementEnd <= clampedEndTime;
+            if (overlapsAtEnd) {
+              splitElements++;
+              const keptDuration = Math.max(0, clampedStartTime - elementStart);
+              const updatedTrimEnd = Math.max(
+                0,
+                element.duration - element.trimStart - keptDuration
+              );
+              nextElements.push({
+                ...element,
+                trimEnd: updatedTrimEnd,
+              });
+              continue;
+            }
+
+            const overlapsAtStart =
+              elementStart >= clampedStartTime &&
+              elementStart < clampedEndTime &&
+              elementEnd > clampedEndTime;
+            if (overlapsAtStart) {
+              splitElements++;
+              const keptDuration = Math.max(0, elementEnd - clampedEndTime);
+              const updatedTrimStart = Math.max(
+                0,
+                element.duration - element.trimEnd - keptDuration
+              );
+              nextElements.push({
+                ...element,
+                startTime: clampedEndTime,
+                trimStart: updatedTrimStart,
+              });
+              continue;
+            }
+
+            const spansEntireRange =
+              elementStart < clampedStartTime && elementEnd > clampedEndTime;
+            if (spansEntireRange) {
+              splitElements++;
+
+              const leftDuration = Math.max(0, clampedStartTime - elementStart);
+              const rightDuration = Math.max(0, elementEnd - clampedEndTime);
+
+              const leftTrimEnd = Math.max(
+                0,
+                element.duration - element.trimStart - leftDuration
+              );
+              const rightTrimStart = Math.max(
+                0,
+                element.duration - element.trimEnd - rightDuration
+              );
+
+              nextElements.push({
+                ...element,
+                trimEnd: leftTrimEnd,
+              });
+
+              nextElements.push({
+                ...element,
+                id: generateUUID(),
+                startTime: clampedEndTime,
+                trimStart: rightTrimStart,
+              });
+              continue;
+            }
+
+            // All overlap cases are handled above; this point is unreachable.
+            // Defensively skip the element rather than risk timeline corruption.
+            deletedElements++;
+          }
+
+          return { ...track, elements: nextElements };
+        });
+
+        const rippleTrackIds = new Set<string>();
+        if (ripple) {
+          if (crossTrackRipple) {
+            for (const track of rangeAdjustedTracks) {
+              rippleTrackIds.add(track.id);
+            }
+          } else {
+            for (const trackId of targetTrackIds) {
+              rippleTrackIds.add(trackId);
+            }
+          }
+        }
+
+        const finalTracks = rangeAdjustedTracks
+          .map((track) => {
+            if (!rippleTrackIds.has(track.id)) {
+              return track;
+            }
+
+            const shiftedElements = track.elements.map((element) => {
+              if (element.startTime < clampedEndTime) {
+                return element;
+              }
+              return {
+                ...element,
+                startTime: Math.max(0, element.startTime - rangeDuration),
+              };
+            });
+
+            return { ...track, elements: shiftedElements };
+          })
+          .filter((track) => track.elements.length > 0 || track.isMain);
+
+        updateTracksAndSave(finalTracks);
+
+        return {
+          deletedElements,
+          splitElements,
+          totalRemovedDuration: rangeDuration,
+        };
+      } catch (error) {
+        handleError(error, {
+          operation: "Delete Timeline Time Range",
+          category: ErrorCategory.SYSTEM,
+          severity: ErrorSeverity.HIGH,
+          metadata: {
+            startTime,
+            endTime,
+            trackCount: trackIds?.length || 0,
+            ripple,
+            crossTrackRipple,
+          },
+        });
+        return {
+          deletedElements: 0,
+          splitElements: 0,
+          totalRemovedDuration: 0,
+        };
+      }
     },
 
     // -----------------------------------------------------------------------
@@ -365,7 +618,8 @@ export function createTimelineOperations({
     splitElement: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ): string | null => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -380,7 +634,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return null;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
       const firstDuration = relativeTime;
@@ -423,7 +677,8 @@ export function createTimelineOperations({
     splitAndKeepLeft: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ) => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -438,7 +693,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
       const durationToRemove =
@@ -468,7 +723,8 @@ export function createTimelineOperations({
     splitAndKeepRight: (
       trackId: string,
       elementId: string,
-      splitTime: number
+      splitTime: number,
+      savePushHistory = true
     ) => {
       const { _tracks } = get();
       const track = _tracks.find((t) => t.id === trackId);
@@ -483,7 +739,7 @@ export function createTimelineOperations({
 
       if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-      get().pushHistory();
+      if (savePushHistory) get().pushHistory();
 
       const relativeTime = splitTime - element.startTime;
 

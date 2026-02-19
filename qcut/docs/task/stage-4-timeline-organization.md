@@ -3,6 +3,7 @@
 > **Goal**: Let Claude Code organize clips on the timeline efficiently with batch operations and full round-trip serialization
 > **Estimated effort**: ~4 hours total across 4 subtasks
 > **Dependencies**: Stage 1 (media imported), Stage 3 (cuts executed)
+> **Status**: Implemented on February 19, 2026
 
 ---
 
@@ -18,13 +19,14 @@
 | Timeline import (JSON only) | Ready | `claude-timeline-handler.ts` |
 | Undo/redo | Ready | `timeline-store.ts` |
 
-**What's missing**: No batch add/delete/update. Markdown import broken (metadata only). No cross-track ripple. No timeline templates.
+**Implemented in this stage**: Batch add/delete/update endpoints, markdown round-trip parsing, cross-track ripple support in range delete, timeline arrange endpoint.
 
 ---
 
 ## Subtask 4.1: Batch Element Operations
 
 **What**: Three batch endpoints for add, update, and delete.
+**Status**: Done
 
 **Relevant files**:
 - `electron/claude/claude-timeline-handler.ts` (450 lines) — add batch IPC handlers
@@ -121,6 +123,7 @@ Response: { "success": true, "data": { "updatedCount": 3, "failedCount": 0 } }
 ## Subtask 4.2: Fix Markdown Timeline Import
 
 **What**: Make `markdownToTimeline()` parse tracks and elements from the markdown format that `timelineToMarkdown()` exports.
+**Status**: Done
 
 **Relevant files**:
 - `electron/claude/claude-timeline-handler.ts` (lines 102-146) — `markdownToTimeline()` currently throws on track data
@@ -181,6 +184,7 @@ function markdownToTimeline(md: string): ClaudeTimeline {
 ## Subtask 4.3: Cross-Track Ripple Delete
 
 **What**: When deleting a time range, optionally shift elements on ALL tracks (not just the affected track).
+**Status**: Done
 
 **Relevant files**:
 - `apps/web/src/stores/timeline-store-operations.ts` (1172 lines) — `removeElementFromTrackWithRipple()` currently single-track
@@ -234,6 +238,7 @@ Body: { "startTime": 10.0, "endTime": 15.0, "ripple": true, "crossTrackRipple": 
 ## Subtask 4.4: Timeline Arrange/Sequence Endpoint
 
 **What**: `POST /api/claude/timeline/:projectId/arrange`
+**Status**: Done
 
 Automatically arranges elements on a track — sequential (end-to-end), spaced, or custom layout.
 
@@ -294,14 +299,227 @@ Response: {
 
 | File | Change Type | Lines Added (est.) |
 |---|---|---|
-| `electron/claude/claude-timeline-handler.ts` | Edit | +150 (batch ops + arrange + markdown parse) |
-| `electron/claude/claude-http-server.ts` | Edit | +25 (5 new routes) |
-| `electron/types/claude-api.ts` | Edit | +40 (batch + arrange types) |
-| `apps/web/src/stores/timeline-store-operations.ts` | Edit | +50 (cross-track ripple) |
-| `electron/__tests__/claude-batch-elements.test.ts` | **New** | ~250 |
-| `electron/__tests__/claude-timeline-markdown.test.ts` | **New** | ~180 |
-| `electron/__tests__/claude-cross-track-ripple.test.ts` | **New** | ~140 |
-| `electron/__tests__/claude-timeline-arrange.test.ts` | **New** | ~130 |
+| `electron/claude/claude-timeline-handler.ts` | Edit | batch handlers + renderer request/response + markdown parsing |
+| `electron/claude/claude-http-server.ts` | Edit | batch routes + range + arrange routes |
+| `electron/types/claude-api.ts` | Edit | Stage 4 request/response types |
+| `electron/preload-types.ts` | Edit | preload API type updates for Stage 4 timeline methods/events |
+| `electron/preload-integrations.ts` | Edit | new Stage 4 invoke/listener bridge channels |
+| `apps/web/src/types/electron.d.ts` | Edit | renderer type updates for Stage 4 channels |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | Edit | renderer-side batch/update/delete/range/arrange handlers |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Edit | track id included in exported timeline |
+| `apps/web/src/stores/timeline-store.ts` | Edit | history-aware element add/update primitives for batching |
+| `apps/web/src/stores/timeline-store-operations.ts` | Edit | `deleteTimeRange()` + `rippleDeleteAcrossTracks()` |
+| `apps/web/src/stores/timeline/types.ts` | Edit | Stage 4 store method signatures |
+| `electron/claude/__tests__/handler-functions.test.ts` | Edit | markdown track parsing/validation coverage |
+| `electron/claude/__tests__/claude-http-server.test.ts` | Edit | Stage 4 route coverage additions |
+
+---
+
+## Verification Notes
+
+- `bunx vitest run electron/claude/__tests__/handler-functions.test.ts` passes.
+- `bunx vitest run electron/claude/__tests__/claude-http-server.test.ts` passes.
+- Full workspace TypeScript compile is currently blocked by an existing environment issue: missing type definition file for `sharp`.
+
+---
+
+## Manual Test Plan (Real QCut)
+
+Use this checklist to validate Stage 4 behavior in the real desktop app.
+
+### 0) Setup
+
+1. Launch QCut and open a real project.
+2. Import at least 3 media files (video/audio/image) into the project.
+3. Ensure Claude HTTP API is running:
+
+```bash
+curl -s http://127.0.0.1:8765/api/claude/health | jq
+```
+
+4. Set variables for convenience:
+
+```bash
+PROJECT_ID="your_project_id"
+BASE_URL="http://127.0.0.1:8765/api/claude"
+```
+
+5. Export timeline JSON and note track IDs:
+
+```bash
+curl -s "$BASE_URL/timeline/$PROJECT_ID" | jq '.data.tracks[] | {id, index, name, type}'
+```
+
+6. List media IDs:
+
+```bash
+curl -s "$BASE_URL/media/$PROJECT_ID" | jq '.data[] | {id, name, type}'
+```
+
+### 1) Batch Add (4.1a)
+
+1. Call batch add with valid `trackId` + `mediaId`/text:
+
+```bash
+curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/elements/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elements": [
+      { "type": "media", "mediaId": "MEDIA_ID_1", "trackId": "MEDIA_TRACK_ID", "startTime": 0, "duration": 4 },
+      { "type": "text", "content": "Stage 4 Title", "trackId": "TEXT_TRACK_ID", "startTime": 0, "duration": 3 },
+      { "type": "media", "mediaId": "MEDIA_ID_2", "trackId": "MEDIA_TRACK_ID", "startTime": 5, "duration": 5 }
+    ]
+  }' | jq
+```
+
+2. Expected:
+- `success: true`
+- `data.failedCount: 0`
+- `data.added` has per-item `elementId`
+- Elements appear in timeline UI.
+
+3. Undo check:
+- Press undo once in QCut.
+- Expected: all batch-added elements are removed together.
+
+4. Negative check:
+- Send 51 items.
+- Expected: HTTP 400 with batch limit message.
+
+### 2) Batch Update (4.1c)
+
+1. Use returned element IDs and update multiple fields:
+
+```bash
+curl -s -X PATCH "$BASE_URL/timeline/$PROJECT_ID/elements/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "updates": [
+      { "elementId": "EL_ID_1", "startTime": 8 },
+      { "elementId": "EL_ID_2", "duration": 6 },
+      { "elementId": "EL_ID_3", "content": "Updated Title" }
+    ]
+  }' | jq
+```
+
+2. Expected:
+- `updatedCount` reflects successful updates
+- `failedCount` reflects invalid element IDs only
+- UI updates applied.
+
+3. Undo check:
+- Press undo once.
+- Expected: all updates revert together.
+
+### 3) Batch Delete + Ripple (4.1b)
+
+1. Delete 2 elements with ripple:
+
+```bash
+curl -s -X DELETE "$BASE_URL/timeline/$PROJECT_ID/elements/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elements": [
+      { "trackId": "MEDIA_TRACK_ID", "elementId": "EL_ID_1" },
+      { "trackId": "MEDIA_TRACK_ID", "elementId": "EL_ID_2" }
+    ],
+    "ripple": true
+  }' | jq
+```
+
+2. Expected:
+- `deletedCount` increments
+- Later elements on affected track shift left.
+
+3. Undo check:
+- Press undo once.
+- Expected: both deletes and ripple shifts restore together.
+
+### 4) Markdown Import/Export Round Trip (4.2)
+
+1. Export markdown:
+
+```bash
+curl -s "$BASE_URL/timeline/$PROJECT_ID?format=md" | jq -r '.data' > /tmp/qcut-timeline.md
+```
+
+2. Re-import the same markdown:
+
+```bash
+curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/import" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --rawfile md /tmp/qcut-timeline.md '{format:\"md\", data:$md}')" | jq
+```
+
+3. Expected:
+- `imported: true`
+- No parsing error
+- Tracks/elements preserved in UI.
+
+4. Negative check:
+- Corrupt one table row in markdown and import.
+- Expected: HTTP 400 with clear markdown parse error.
+
+### 5) Range Delete + Cross-Track Ripple (4.3)
+
+1. Run range delete without cross-track ripple:
+
+```bash
+curl -s -X DELETE "$BASE_URL/timeline/$PROJECT_ID/range" \
+  -H "Content-Type: application/json" \
+  -d '{"startTime":10,"endTime":15,"ripple":true,"crossTrackRipple":false}' | jq
+```
+
+2. Run same test with cross-track ripple enabled:
+
+```bash
+curl -s -X DELETE "$BASE_URL/timeline/$PROJECT_ID/range" \
+  -H "Content-Type: application/json" \
+  -d '{"startTime":10,"endTime":15,"ripple":true,"crossTrackRipple":true}' | jq
+```
+
+3. Expected:
+- With `false`: only targeted tracks ripple.
+- With `true`: all tracks shift for content after `endTime`.
+- `totalRemovedDuration` equals `endTime - startTime`.
+
+4. Undo check:
+- Press undo once.
+- Expected: all tracks restore.
+
+### 6) Arrange Endpoint (4.4)
+
+1. Arrange sequential:
+
+```bash
+curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/arrange" \
+  -H "Content-Type: application/json" \
+  -d '{"trackId":"MEDIA_TRACK_ID","mode":"sequential","gap":0.5,"startOffset":0}' | jq
+```
+
+2. Arrange manual order:
+
+```bash
+curl -s -X POST "$BASE_URL/timeline/$PROJECT_ID/arrange" \
+  -H "Content-Type: application/json" \
+  -d '{"trackId":"MEDIA_TRACK_ID","mode":"manual","order":["EL_ID_3","EL_ID_1","EL_ID_2"],"gap":0.25}' | jq
+```
+
+3. Expected:
+- Response contains `arranged[]` with new start times.
+- UI reflects sequential/spaced/manual order.
+
+4. Undo check:
+- Press undo once.
+- Expected: track returns to pre-arrange layout.
+
+### 7) Final Exit Criteria
+
+- Batch add/update/delete work with per-item result reporting.
+- Markdown round-trip imports full tracks/elements, not metadata only.
+- Cross-track ripple behaves differently when toggled.
+- Arrange works in sequential/spaced/manual modes.
+- Each operation family is single-undo atomic in real UI.
 
 ---
 

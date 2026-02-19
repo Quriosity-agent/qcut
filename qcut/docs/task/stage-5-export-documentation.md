@@ -6,6 +6,102 @@
 
 ---
 
+## Implementation Status (2026-02-19)
+
+Stage 5 has been implemented.
+
+- Subtask 5.1 (Export Trigger via HTTP): Done
+- Subtask 5.2 (Export Progress Polling): Done
+- Subtask 5.3 (Edit Summary Generation): Done
+- Subtask 5.4 (Pipeline Report Export): Done
+
+### Implemented Endpoints
+
+- `POST /api/claude/export/:projectId/start`
+- `GET /api/claude/export/:projectId/jobs/:jobId`
+- `GET /api/claude/export/:projectId/jobs`
+- `GET /api/claude/project/:projectId/summary`
+- `POST /api/claude/project/:projectId/report`
+
+### Implemented Files
+
+- `electron/claude/claude-export-handler.ts` (job lifecycle + export runner + progress updates)
+- `electron/claude/claude-summary-handler.ts` (project summary + pipeline report generation)
+- `electron/claude/claude-operation-log.ts` (in-memory operation log)
+- `electron/claude/claude-http-server.ts` (new routes + operation logging hooks)
+- `electron/types/claude-api.ts` (new export/summary/report types)
+- `electron/__tests__/claude-export-trigger.test.ts`
+- `electron/__tests__/claude-export-progress.test.ts`
+- `electron/__tests__/claude-summary-handler.test.ts`
+- `electron/__tests__/claude-pipeline-report.test.ts`
+
+### Verification
+
+- `bunx vitest run electron/__tests__/claude-export-trigger.test.ts electron/__tests__/claude-export-progress.test.ts electron/__tests__/claude-summary-handler.test.ts electron/__tests__/claude-pipeline-report.test.ts electron/claude/__tests__/claude-http-server.test.ts`
+- Result: 51 tests passed
+
+### Implementation Notes
+
+- Export jobs run in the main process and are tracked in-memory by job ID.
+- Progress supports HTTP polling (`jobs/:jobId`) and job listing (`jobs`).
+- The pipeline report uses operation logs plus a generated project summary.
+- Operation logging is now recorded for key Stage 1/2/5 HTTP actions.
+
+### Real QCut E2E Test (Manual + API)
+
+Use this to validate Stage 5 against a real running QCut app.
+
+1. Start QCut in dev mode.
+   - Terminal 1: `bun run dev`
+   - Terminal 2: `bun run electron:dev`
+2. Open/create a real project in QCut UI and note the `projectId` from the editor URL.
+3. Keep the project open and ensure timeline has at least one video clip.
+
+Optional fully-API setup (if timeline is empty):
+
+1. Set env vars in your shell:
+   - `export PROJECT_ID="<your_project_id>"`
+   - `export API="http://127.0.0.1:8765/api/claude"`
+2. Import media:
+   - `curl -s -X POST "$API/media/$PROJECT_ID/import" -H 'Content-Type: application/json' -d '{"source":"/absolute/path/to/video.mp4"}'`
+3. Add timeline element from returned media:
+   - `curl -s -X POST "$API/timeline/$PROJECT_ID/elements" -H 'Content-Type: application/json' -d '{"type":"media","sourceId":"<media_id>","startTime":0,"duration":5}'`
+
+Run Stage 5 export test:
+
+1. Start export:
+   - `curl -s -X POST "$API/export/$PROJECT_ID/start" -H 'Content-Type: application/json' -d '{"preset":"youtube-1080p"}'`
+2. Capture returned `jobId`.
+3. Poll progress:
+   - `curl -s "$API/export/$PROJECT_ID/jobs/<jobId>"`
+4. Repeat polling until `status` is `completed` or `failed`.
+5. Verify output file exists at returned `outputPath` when completed.
+6. List recent jobs:
+   - `curl -s "$API/export/$PROJECT_ID/jobs"`
+
+Run Stage 5 summary/report test:
+
+1. Get summary:
+   - `curl -s "$API/project/$PROJECT_ID/summary"`
+2. Generate report (save to disk):
+   - `curl -s -X POST "$API/project/$PROJECT_ID/report" -H 'Content-Type: application/json' -d '{"saveToDisk":true,"outputDir":"docs/task"}'`
+3. Verify response includes `savedTo` and markdown content.
+4. Open saved file and confirm it contains Stage 1-5 sections.
+
+Expected pass criteria:
+
+- Export start returns `jobId` immediately.
+- Export job transitions `queued -> exporting -> completed` (or explicit `failed` with error).
+- Completed job includes `outputPath`, `duration`, and `fileSize`.
+- Summary returns markdown with settings/media/timeline/exports sections.
+- Report returns markdown with Stage 1-5 and statistics.
+
+If API auth is enabled (`QCUT_API_TOKEN`), add:
+
+- `-H "Authorization: Bearer <token>"` to all `curl` commands.
+
+---
+
 ## Current State
 
 | Capability | Status | File |
@@ -17,7 +113,7 @@
 | Project stats | Ready | `GET /api/claude/project/:id/stats` |
 | Timeline export (JSON/Markdown) | Ready | `GET /api/claude/timeline/:id` |
 
-**What's missing**: No HTTP endpoint to trigger export. No progress polling via HTTP. No edit summary/changelog generation.
+**What was missing (now implemented above)**: HTTP export trigger, export progress polling, edit summary generation, and pipeline report export.
 
 ---
 
@@ -65,7 +161,7 @@ const exportJobs = new Map<string, ExportJob>();
 ```
 
 **API contract**:
-```
+```text
 POST /api/claude/export/:projectId/start
 Body: { "preset": "youtube-1080p" }
 Response: {
@@ -106,7 +202,7 @@ Polls export job status and progress.
 - `electron/ffmpeg-export-handler.ts` — existing `ffmpeg-progress` event format
 
 **API contract**:
-```
+```text
 GET /api/claude/export/:projectId/jobs/:jobId
 Response: {
   "success": true,
@@ -208,7 +304,7 @@ function generateProjectSummary(
 ```
 
 **API contract**:
-```
+```text
 GET /api/claude/project/:projectId/summary
 Response: {
   "success": true,
@@ -317,7 +413,7 @@ function clearOperationLog(): void {
 Each stage handler calls `logOperation()` when completing an action. The report generator reads the log.
 
 **API contract**:
-```
+```text
 POST /api/claude/project/:projectId/report
 Body: { "saveToDisk": true, "outputDir": "docs/task/" }
 Response: {
@@ -359,7 +455,7 @@ Response: {
 
 ## Complete Pipeline: End-to-End
 
-```
+```text
 Claude Code executes:
 
   POST /media/:id/import-from-url          → Import video from URL

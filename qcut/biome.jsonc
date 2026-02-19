@@ -24,6 +24,7 @@
         "**/coverage/**",
         "**/temp/**",
         "**/tmp/**",
+        "packages/video-agent-skill/**",
         "docs/completed/**",
         "**/routeTree.gen.ts",
         ".agents/**",

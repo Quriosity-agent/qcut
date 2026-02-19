@@ -96,7 +96,8 @@ export async function startGenerateJob(
   if (!available) {
     const status = await mgr.getStatus();
     throw new Error(
-      status.error || "AI Pipeline not available. Configure FAL API key in Settings."
+      status.error ||
+        "AI Pipeline not available. Configure FAL API key in Settings."
     );
   }
 
@@ -176,10 +177,7 @@ export function cancelJob(jobId: string): boolean {
  */
 export async function listGenerateModels(): Promise<PipelineResult> {
   const mgr = getManager();
-  return mgr.execute(
-    { command: "list-models", args: {} },
-    () => {}
-  );
+  return mgr.execute({ command: "list-models", args: {} }, () => {});
 }
 
 /**
@@ -307,10 +305,7 @@ async function runGeneration(
     } else {
       job.status = "failed";
       job.message = result.error || "Generation failed";
-      claudeLog.error(
-        HANDLER_NAME,
-        `Job ${jobId} failed: ${result.error}`
-      );
+      claudeLog.error(HANDLER_NAME, `Job ${jobId} failed: ${result.error}`);
     }
   } catch (err) {
     job.status = "failed";

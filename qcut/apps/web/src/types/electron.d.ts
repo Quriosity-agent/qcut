@@ -21,6 +21,7 @@ import type {
   ClaudeArrangeResponse,
   ClaudeRangeDeleteRequest,
   ClaudeRangeDeleteResponse,
+  BatchCutResponse,
   ProjectSettings,
   ProjectStats,
   ExportPreset,
@@ -1080,6 +1081,18 @@ export interface ElectronAPI {
       sendSplitResponse: (
         requestId: string,
         result: ClaudeSplitResponse
+      ) => void;
+      onExecuteCuts: (
+        callback: (data: {
+          requestId: string;
+          elementId: string;
+          cuts: Array<{ start: number; end: number }>;
+          ripple: boolean;
+        }) => void
+      ) => void;
+      sendExecuteCutsResponse: (
+        requestId: string,
+        result: BatchCutResponse
       ) => void;
       onMoveElement: (
         callback: (data: {

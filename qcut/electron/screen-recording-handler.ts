@@ -6,9 +6,11 @@ import {
   session,
   type IpcMainInvokeEvent,
 } from "electron";
+import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import { getFFmpegPath } from "./ffmpeg/utils";
 
 const SCREEN_SOURCE_TYPE = {
   WINDOW: "window",
@@ -20,6 +22,16 @@ const SCREEN_RECORDING_STATE = {
   RECORDING: "recording",
 } as const;
 
+const SCREEN_RECORDING_OUTPUT_FORMAT = {
+  WEBM: "webm",
+  MP4: "mp4",
+} as const;
+
+const FILE_EXTENSION = {
+  WEBM: ".webm",
+  MP4: ".mp4",
+} as const;
+
 const DEFAULT_RECORDINGS_DIR_NAME = "QCut Recordings";
 const DEFAULT_FILE_PREFIX = "qcut-screen-recording";
 
@@ -27,6 +39,8 @@ type ScreenSourceType =
   (typeof SCREEN_SOURCE_TYPE)[keyof typeof SCREEN_SOURCE_TYPE];
 type ScreenRecordingState =
   (typeof SCREEN_RECORDING_STATE)[keyof typeof SCREEN_RECORDING_STATE];
+type ScreenRecordingOutputFormat =
+  (typeof SCREEN_RECORDING_OUTPUT_FORMAT)[keyof typeof SCREEN_RECORDING_OUTPUT_FORMAT];
 
 interface ScreenCaptureSource {
   id: string;
@@ -92,11 +106,14 @@ interface ActiveScreenRecordingSession {
   sourceId: string;
   sourceName: string;
   filePath: string;
+  captureFilePath: string;
+  outputFormat: ScreenRecordingOutputFormat;
   startedAt: number;
   bytesWritten: number;
   ownerWebContentsId: number;
   fileStream: fs.WriteStream;
   mimeType: string | null;
+  writeQueue: Promise<void>;
 }
 
 let activeSession: ActiveScreenRecordingSession | null = null;
@@ -106,22 +123,67 @@ function sanitizeFilename({ filename }: { filename: string }): string {
   try {
     const trimmedFilename = filename.trim();
     if (!trimmedFilename) {
-      return "recording.webm";
+      return "recording.mp4";
     }
     return trimmedFilename.replace(/[/\\?%*:|"<>]/g, "_");
   } catch {
-    return "recording.webm";
+    return "recording.mp4";
   }
 }
 
-function ensureWebmExtension({ filePath }: { filePath: string }): string {
+function ensureExtension({
+  filePath,
+  extension,
+}: {
+  filePath: string;
+  extension: string;
+}): string {
   try {
     if (path.extname(filePath)) {
       return filePath;
     }
-    return `${filePath}.webm`;
+    return `${filePath}${extension}`;
   } catch {
-    return `${filePath}.webm`;
+    return `${filePath}${extension}`;
+  }
+}
+
+function getPathExtension({ filePath }: { filePath: string }): string {
+  try {
+    return path.extname(filePath).toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function resolveOutputFormat({
+  filePath,
+}: {
+  filePath: string;
+}): ScreenRecordingOutputFormat {
+  try {
+    const extension = getPathExtension({ filePath });
+    if (extension === FILE_EXTENSION.WEBM) {
+      return SCREEN_RECORDING_OUTPUT_FORMAT.WEBM;
+    }
+    return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
+  } catch {
+    return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
+  }
+}
+
+function replaceExtension({
+  filePath,
+  extension,
+}: {
+  filePath: string;
+  extension: string;
+}): string {
+  try {
+    const parsed = path.parse(filePath);
+    return path.join(parsed.dir, `${parsed.name}${extension}`);
+  } catch {
+    return `${filePath}${extension}`;
   }
 }
 
@@ -145,7 +207,7 @@ function formatDateSegment({ date }: { date: Date }): string {
 
 function buildDefaultRecordingPath(): string {
   const timestamp = formatDateSegment({ date: new Date() });
-  const filename = `${DEFAULT_FILE_PREFIX}-${timestamp}.webm`;
+  const filename = `${DEFAULT_FILE_PREFIX}-${timestamp}.mp4`;
   return path.join(getRecordingsDir(), filename);
 }
 
@@ -161,18 +223,46 @@ function resolveOutputPath({
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.join(getRecordingsDir(), filePath);
-      return ensureWebmExtension({ filePath: absolutePath });
+      return ensureExtension({
+        filePath: absolutePath,
+        extension: FILE_EXTENSION.MP4,
+      });
     }
 
     if (fileName) {
       const safeFilename = sanitizeFilename({ filename: fileName });
-      const filenameWithExtension = ensureWebmExtension({ filePath: safeFilename });
+      const filenameWithExtension = ensureExtension({
+        filePath: safeFilename,
+        extension: FILE_EXTENSION.MP4,
+      });
       return path.join(getRecordingsDir(), filenameWithExtension);
     }
 
     return buildDefaultRecordingPath();
   } catch {
     return buildDefaultRecordingPath();
+  }
+}
+
+function buildCaptureFilePath({
+  outputPath,
+  sessionId,
+  outputFormat,
+}: {
+  outputPath: string;
+  sessionId: string;
+  outputFormat: ScreenRecordingOutputFormat;
+}): string {
+  try {
+    if (outputFormat === SCREEN_RECORDING_OUTPUT_FORMAT.WEBM) {
+      return outputPath;
+    }
+
+    const parsedPath = path.parse(outputPath);
+    const captureFilename = `${parsedPath.name}-${sessionId}.capture.webm`;
+    return path.join(parsedPath.dir, captureFilename);
+  } catch {
+    return `${outputPath}.${sessionId}.capture.webm`;
   }
 }
 
@@ -326,6 +416,33 @@ async function writeChunk({
   });
 }
 
+async function appendChunkToSession({
+  sessionData,
+  chunk,
+}: {
+  sessionData: ActiveScreenRecordingSession;
+  chunk: Uint8Array;
+}): Promise<number> {
+  try {
+    const queueHead = sessionData.writeQueue.catch(() => {
+      // Keep queue usable even after prior append failure.
+    });
+
+    const writeTask = queueHead.then(async () => {
+      await writeChunk({ sessionData, chunk });
+      sessionData.bytesWritten += chunk.byteLength;
+    });
+
+    sessionData.writeQueue = writeTask;
+    await writeTask;
+    return sessionData.bytesWritten;
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to append session chunk: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
 async function closeStream({
   fileStream,
 }: {
@@ -361,6 +478,181 @@ async function removeFileIfExists({
     await fs.promises.unlink(filePath);
   } catch {
     // nothing to do if file does not exist
+  }
+}
+
+async function moveFile({
+  sourcePath,
+  targetPath,
+}: {
+  sourcePath: string;
+  targetPath: string;
+}): Promise<void> {
+  try {
+    await fs.promises.rename(sourcePath, targetPath);
+  } catch (error: unknown) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError?.code !== "EXDEV") {
+      throw new Error(
+        `Failed to move file: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    await fs.promises.copyFile(sourcePath, targetPath);
+    await fs.promises.unlink(sourcePath);
+  }
+}
+
+async function getFileSize({
+  filePath,
+}: {
+  filePath: string;
+}): Promise<number> {
+  try {
+    const fileStats = await fs.promises.stat(filePath);
+    return fileStats.size;
+  } catch {
+    return 0;
+  }
+}
+
+async function transcodeWebmToMp4({
+  inputPath,
+  outputPath,
+}: {
+  inputPath: string;
+  outputPath: string;
+}): Promise<void> {
+  try {
+    const ffmpegPath = getFFmpegPath();
+    const args = [
+      "-y",
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "23",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      outputPath,
+    ];
+
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const ffmpegProcess = spawn(ffmpegPath, args, {
+          stdio: ["ignore", "ignore", "pipe"],
+          windowsHide: true,
+        });
+
+        const TRANSCODE_TIMEOUT_MS = 300_000;
+        const timeout = setTimeout(() => {
+          ffmpegProcess.kill();
+          reject(
+            new Error(
+              `FFmpeg conversion timed out after ${TRANSCODE_TIMEOUT_MS}ms`
+            )
+          );
+        }, TRANSCODE_TIMEOUT_MS);
+
+        let stderrOutput = "";
+
+        ffmpegProcess.stderr?.on("data", (chunk: Buffer) => {
+          stderrOutput += chunk.toString();
+        });
+
+        ffmpegProcess.on("error", (error) => {
+          clearTimeout(timeout);
+          reject(
+            new Error(
+              `Failed to start FFmpeg process: ${error instanceof Error ? error.message : String(error)}`
+            )
+          );
+        });
+
+        ffmpegProcess.on("close", (code) => {
+          clearTimeout(timeout);
+          if (code === 0) {
+            resolve();
+            return;
+          }
+          reject(
+            new Error(
+              `FFmpeg conversion failed with code ${String(code)}: ${stderrOutput.trim() || "unknown error"}`
+            )
+          );
+        });
+      } catch (error: unknown) {
+        reject(
+          new Error(
+            `Failed to configure FFmpeg process: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
+      }
+    });
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to transcode recording to MP4: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function finalizeRecordingOutput({
+  sessionData,
+}: {
+  sessionData: ActiveScreenRecordingSession;
+}): Promise<string> {
+  try {
+    if (sessionData.outputFormat === SCREEN_RECORDING_OUTPUT_FORMAT.WEBM) {
+      return sessionData.captureFilePath;
+    }
+
+    await transcodeWebmToMp4({
+      inputPath: sessionData.captureFilePath,
+      outputPath: sessionData.filePath,
+    });
+    await removeFileIfExists({ filePath: sessionData.captureFilePath });
+    return sessionData.filePath;
+  } catch (error: unknown) {
+    const fallbackWebmPath = replaceExtension({
+      filePath: sessionData.filePath,
+      extension: FILE_EXTENSION.WEBM,
+    });
+
+    try {
+      await moveFile({
+        sourcePath: sessionData.captureFilePath,
+        targetPath: fallbackWebmPath,
+      });
+      console.error(
+        "[ScreenRecordingIPC] MP4 conversion failed, falling back to WebM:",
+        error
+      );
+      return fallbackWebmPath;
+    } catch (fallbackError: unknown) {
+      throw new Error(
+        `Failed to finalize recording output: ${error instanceof Error ? error.message : String(error)}; fallback failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
+      );
+    }
+  }
+}
+
+async function cleanupSessionFiles({
+  sessionData,
+}: {
+  sessionData: ActiveScreenRecordingSession;
+}): Promise<void> {
+  try {
+    await removeFileIfExists({ filePath: sessionData.captureFilePath });
+    if (sessionData.filePath !== sessionData.captureFilePath) {
+      await removeFileIfExists({ filePath: sessionData.filePath });
+    }
+  } catch {
+    // best-effort cleanup
   }
 }
 
@@ -412,7 +704,10 @@ async function resolveSourceForDisplayRequest({
     }
     return { id: selectedSource.id, name: selectedSource.name };
   } catch (error) {
-    console.error("[ScreenRecordingIPC] Failed to resolve display source:", error);
+    console.error(
+      "[ScreenRecordingIPC] Failed to resolve display source:",
+      error
+    );
     return null;
   }
 }
@@ -425,7 +720,7 @@ function ensureDisplayMediaHandlerConfigured(): void {
   try {
     session.defaultSession.setDisplayMediaRequestHandler(
       (_request, callback) => {
-        void (async () => {
+        const handleDisplayMediaRequest = async (): Promise<void> => {
           try {
             if (!activeSession) {
               callback({});
@@ -448,7 +743,15 @@ function ensureDisplayMediaHandlerConfigured(): void {
             );
             callback({});
           }
-        })();
+        };
+
+        handleDisplayMediaRequest().catch((error) => {
+          console.error(
+            "[ScreenRecordingIPC] Unexpected display media request error:",
+            error
+          );
+          callback({});
+        });
       },
       { useSystemPicker: false }
     );
@@ -486,6 +789,8 @@ export function setupScreenRecordingIPC(): void {
       options: StartScreenRecordingOptions = {}
     ): Promise<StartScreenRecordingResult> => {
       let pendingStream: fs.WriteStream | null = null;
+      let pendingOutputPath: string | null = null;
+      let pendingCapturePath: string | null = null;
 
       try {
         if (activeSession) {
@@ -500,28 +805,43 @@ export function setupScreenRecordingIPC(): void {
           currentWindowSourceId,
         });
 
+        const sessionId = randomUUID();
         const outputPath = resolveOutputPath({
           filePath: options.filePath,
           fileName: options.fileName,
         });
-        await ensureParentDirectory({ filePath: outputPath });
+        const outputFormat = resolveOutputFormat({ filePath: outputPath });
+        const captureFilePath = buildCaptureFilePath({
+          outputPath,
+          sessionId,
+          outputFormat,
+        });
 
-        const fileStream = fs.createWriteStream(outputPath, { flags: "w" });
+        pendingOutputPath = outputPath;
+        pendingCapturePath = captureFilePath;
+
+        await ensureParentDirectory({ filePath: captureFilePath });
+
+        const fileStream = fs.createWriteStream(captureFilePath, {
+          flags: "w",
+        });
         pendingStream = fileStream;
         await waitForStreamOpen({ fileStream });
 
-        const sessionId = randomUUID();
         const startedAt = Date.now();
         activeSession = {
           sessionId,
           sourceId: selectedSource.id,
           sourceName: selectedSource.name,
           filePath: outputPath,
+          captureFilePath,
+          outputFormat,
           startedAt,
           bytesWritten: 0,
           ownerWebContentsId: event.sender.id,
           fileStream,
           mimeType: options.mimeType ?? null,
+          writeQueue: Promise.resolve(),
         };
 
         return {
@@ -541,7 +861,11 @@ export function setupScreenRecordingIPC(): void {
           }
         }
 
-        if (pendingStream && !pendingStream.closed && !pendingStream.destroyed) {
+        if (
+          pendingStream &&
+          !pendingStream.closed &&
+          !pendingStream.destroyed
+        ) {
           try {
             pendingStream.destroy();
           } catch {
@@ -549,10 +873,17 @@ export function setupScreenRecordingIPC(): void {
           }
         }
 
-        if (activeSession?.filePath) {
-          const filePathToCleanup = activeSession.filePath;
+        if (activeSession) {
+          const sessionToCleanup = activeSession;
           activeSession = null;
-          await removeFileIfExists({ filePath: filePathToCleanup });
+          await cleanupSessionFiles({ sessionData: sessionToCleanup });
+        }
+
+        if (pendingCapturePath) {
+          await removeFileIfExists({ filePath: pendingCapturePath });
+        }
+        if (pendingOutputPath && pendingOutputPath !== pendingCapturePath) {
+          await removeFileIfExists({ filePath: pendingOutputPath });
         }
         throw new Error(
           `Failed to start screen recording: ${error instanceof Error ? error.message : String(error)}`
@@ -580,10 +911,12 @@ export function setupScreenRecordingIPC(): void {
           throw new Error("Invalid screen recording session id");
         }
 
-        await writeChunk({ sessionData: activeSession, chunk: options.chunk });
-        activeSession.bytesWritten += options.chunk.byteLength;
+        const bytesWritten = await appendChunkToSession({
+          sessionData: activeSession,
+          chunk: options.chunk,
+        });
 
-        return { bytesWritten: activeSession.bytesWritten };
+        return { bytesWritten };
       } catch (error: unknown) {
         throw new Error(
           `Failed to append recording chunk: ${error instanceof Error ? error.message : String(error)}`
@@ -613,7 +946,10 @@ export function setupScreenRecordingIPC(): void {
           throw new Error("Screen recording session owner mismatch");
         }
 
-        if (options.sessionId && options.sessionId !== activeSession.sessionId) {
+        if (
+          options.sessionId &&
+          options.sessionId !== activeSession.sessionId
+        ) {
           throw new Error("Invalid screen recording session id");
         }
 
@@ -621,19 +957,26 @@ export function setupScreenRecordingIPC(): void {
         const shouldDiscard = options.discard ?? false;
         const durationMs = Math.max(0, Date.now() - sessionToStop.startedAt);
 
+        await sessionToStop.writeQueue;
         await closeStream({ fileStream: sessionToStop.fileStream });
 
         let finalPath: string | null = sessionToStop.filePath;
+        let finalizedBytes = sessionToStop.bytesWritten;
         if (shouldDiscard) {
-          await removeFileIfExists({ filePath: sessionToStop.filePath });
+          await cleanupSessionFiles({ sessionData: sessionToStop });
           finalPath = null;
+        } else {
+          finalPath = await finalizeRecordingOutput({
+            sessionData: sessionToStop,
+          });
+          finalizedBytes = await getFileSize({ filePath: finalPath });
         }
 
         activeSession = null;
         return {
           success: true,
           filePath: finalPath,
-          bytesWritten: sessionToStop.bytesWritten,
+          bytesWritten: finalizedBytes || sessionToStop.bytesWritten,
           durationMs,
           discarded: shouldDiscard,
         };
@@ -647,11 +990,7 @@ export function setupScreenRecordingIPC(): void {
           } catch {
             // best-effort stream cleanup
           }
-          try {
-            await removeFileIfExists({ filePath: sessionToCleanup.filePath });
-          } catch {
-            // best-effort cleanup
-          }
+          await cleanupSessionFiles({ sessionData: sessionToCleanup });
         }
 
         throw new Error(

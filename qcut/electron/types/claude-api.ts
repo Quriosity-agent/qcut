@@ -83,6 +83,8 @@ export interface ClaudeElement {
   content?: string;
   style?: Record<string, unknown>;
   effects?: string[];
+  trimStart?: number;
+  trimEnd?: number;
 }
 
 // ============================================================================
@@ -129,6 +131,68 @@ export interface ExportRecommendation {
   warnings: string[];
   suggestions: string[];
   estimatedFileSize?: string;
+}
+
+export interface ExportJobRequest {
+  preset?: string;
+  settings?: {
+    width?: number;
+    height?: number;
+    fps?: number;
+    bitrate?: string;
+    format?: string;
+    codec?: string;
+  };
+  outputPath?: string;
+}
+
+export interface ExportJobStatus {
+  jobId: string;
+  projectId: string;
+  status: "queued" | "exporting" | "completed" | "failed";
+  progress: number;
+  outputPath?: string;
+  error?: string;
+  startedAt: number;
+  completedAt?: number;
+  currentFrame?: number;
+  totalFrames?: number;
+  fps?: number;
+  estimatedTimeRemaining?: number;
+  duration?: number;
+  fileSize?: number;
+  presetId?: string;
+}
+
+// ============================================================================
+// Summary & Report Types (Stage 5)
+// ============================================================================
+
+export interface ProjectSummary {
+  markdown: string;
+  stats: {
+    totalDuration: number;
+    trackCount: number;
+    elementCount: number;
+    mediaFileCount: number;
+    exportCount: number;
+    totalSourceDuration: number;
+  };
+}
+
+export interface PipelineStep {
+  stage: number;
+  action: string;
+  details: string;
+  timestamp: number;
+  duration?: number;
+  projectId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface PipelineReport {
+  markdown: string;
+  savedTo?: string;
 }
 
 // ============================================================================
@@ -263,6 +327,110 @@ export interface ClaudeRangeDeleteResponse {
   deletedElements: number;
   splitElements: number;
   totalRemovedDuration: number;
+}
+
+// ============================================================================
+// Cut List Types (Stage 3)
+// ============================================================================
+
+export interface CutInterval {
+  start: number; // seconds — start of region to remove
+  end: number; // seconds — end of region to remove
+}
+
+export interface BatchCutRequest {
+  elementId: string;
+  cuts: CutInterval[];
+  ripple?: boolean; // default true
+}
+
+export interface BatchCutResponse {
+  cutsApplied: number;
+  elementsRemoved: number;
+  remainingElements: Array<{
+    id: string;
+    startTime: number;
+    duration: number;
+  }>;
+  totalRemovedDuration: number;
+}
+
+// ============================================================================
+// Auto-Edit Types (Stage 3)
+// ============================================================================
+
+export interface AutoEditRequest {
+  elementId: string;
+  mediaId: string;
+  removeFillers?: boolean; // default true
+  removeSilences?: boolean; // default true
+  silenceThreshold?: number; // seconds, default 1.0
+  keepSilencePadding?: number; // seconds of silence to keep as breathing room (default 0.3)
+  dryRun?: boolean; // default false
+  provider?: "elevenlabs" | "gemini";
+  language?: string;
+}
+
+export interface AutoEditCutInfo extends CutInterval {
+  reason: string;
+}
+
+export interface AutoEditResponse {
+  transcription: {
+    wordCount: number;
+    duration: number;
+  };
+  analysis: {
+    fillerCount: number;
+    silenceCount: number;
+    totalFillerTime: number;
+    totalSilenceTime: number;
+  };
+  cuts: AutoEditCutInfo[];
+  applied: boolean;
+  result?: BatchCutResponse;
+}
+
+// ============================================================================
+// Cut Suggestion Types (Stage 3)
+// ============================================================================
+
+export interface CutSuggestion {
+  type: "filler" | "silence" | "scene_transition" | "pacing";
+  start: number;
+  end: number;
+  reason: string;
+  confidence: number; // 0-1
+  word?: string; // for filler type
+}
+
+export interface SuggestCutsRequest {
+  mediaId: string;
+  provider?: "elevenlabs" | "gemini";
+  language?: string;
+  sceneThreshold?: number;
+  includeFillers?: boolean; // default true
+  includeSilences?: boolean; // default true
+  includeScenes?: boolean; // default true
+}
+
+export interface SuggestCutsResponse {
+  suggestions: CutSuggestion[];
+  summary: {
+    totalSuggestions: number;
+    fillerSuggestions: number;
+    silenceSuggestions: number;
+    sceneSuggestions: number;
+    estimatedTimeRemoved: number;
+  };
+  transcription?: {
+    wordCount: number;
+    duration: number;
+  };
+  scenes?: {
+    totalScenes: number;
+    averageShotDuration: number;
+  };
 }
 
 // ============================================================================

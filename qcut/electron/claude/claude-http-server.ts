@@ -30,6 +30,10 @@ import {
   requestTimelineFromRenderer,
   requestSplitFromRenderer,
   requestSelectionFromRenderer,
+  batchAddElements,
+  batchUpdateElements,
+  batchDeleteElements,
+  arrangeTimeline,
   timelineToMarkdown,
   markdownToTimeline,
   validateTimeline,
@@ -43,22 +47,23 @@ import {
 import {
   getExportPresets,
   getExportRecommendation,
+  startExportJob,
+  getExportJobStatus,
+  listExportJobs,
 } from "./claude-export-handler.js";
-import { analyzeError, getSystemInfo } from "./claude-diagnostics-handler.js";
-import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
-import { transcribeMedia } from "./claude-transcribe-handler.js";
-import { detectScenes } from "./claude-scene-handler.js";
-import { analyzeFrames } from "./claude-vision-handler.js";
-import { analyzeFillers } from "./claude-filler-handler.js";
+import { analyzeError } from "./claude-diagnostics-handler.js";
 import {
-  startGenerateJob,
-  getJobStatus,
-  listJobs,
-  cancelJob,
-  listGenerateModels,
-  estimateGenerateCost,
-} from "./claude-generate-handler.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+  generateProjectSummary,
+  generatePipelineReport,
+} from "./claude-summary-handler.js";
+import {
+  logOperation,
+  getOperationLog,
+  clearOperationLog,
+} from "./claude-operation-log.js";
+import { generatePersonaPlex } from "./claude-personaplex-handler.js";
+import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
+import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 
 let server: Server | null = null;
 
@@ -130,7 +135,15 @@ export function startClaudeHTTPServer(
     if (!req.body?.source) {
       throw new HttpError(400, "Missing 'source' in request body");
     }
-    return importMediaFile(req.params.projectId, req.body.source);
+    const media = await importMediaFile(req.params.projectId, req.body.source);
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Imported media from path: ${req.body.source}`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return media;
   });
 
   router.delete("/api/claude/media/:projectId/:mediaId", async (req) => {
@@ -153,11 +166,19 @@ export function startClaudeHTTPServer(
     if (!req.body?.url) {
       throw new HttpError(400, "Missing 'url' in request body");
     }
-    return importMediaFromUrl(
+    const result = await importMediaFromUrl(
       req.params.projectId,
       req.body.url,
       req.body.filename
     );
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Imported media from URL: ${req.body.url}`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return result;
   });
 
   // ---- Batch import (paths and/or URLs) ----
@@ -165,7 +186,15 @@ export function startClaudeHTTPServer(
     if (!Array.isArray(req.body?.items)) {
       throw new HttpError(400, "Missing 'items' array in request body");
     }
-    return batchImportMedia(req.params.projectId, req.body.items);
+    const result = await batchImportMedia(req.params.projectId, req.body.items);
+    logOperation({
+      stage: 1,
+      action: "import",
+      details: `Batch import processed ${req.body.items.length} item(s)`,
+      timestamp: Date.now(),
+      projectId: req.params.projectId,
+    });
+    return result;
   });
 
   // ---- Extract frame from video ----
@@ -190,90 +219,7 @@ export function startClaudeHTTPServer(
   // ==========================================================================
   // Generate-and-Add routes (AI video/image generation via native pipeline)
   // ==========================================================================
-
-  // Start a generation job (returns job ID immediately)
-  router.post("/api/claude/generate/:projectId/start", async (req) => {
-    if (!req.body?.model || !req.body?.prompt) {
-      throw new HttpError(400, "Missing 'model' and 'prompt' in request body");
-    }
-    try {
-      return await startGenerateJob(req.params.projectId, {
-        model: req.body.model,
-        prompt: req.body.prompt,
-        imageUrl: req.body.imageUrl,
-        videoUrl: req.body.videoUrl,
-        duration: req.body.duration,
-        aspectRatio: req.body.aspectRatio,
-        resolution: req.body.resolution,
-        negativePrompt: req.body.negativePrompt,
-        addToTimeline: req.body.addToTimeline,
-        trackId: req.body.trackId,
-        startTime: req.body.startTime,
-        projectId: req.params.projectId,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Generation failed"
-      );
-    }
-  });
-
-  // Poll job status
-  router.get("/api/claude/generate/:projectId/jobs/:jobId", async (req) => {
-    const job = getJobStatus(req.params.jobId);
-    if (!job) {
-      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-    }
-    return job;
-  });
-
-  // List all jobs
-  router.get("/api/claude/generate/:projectId/jobs", async () => {
-    return listJobs();
-  });
-
-  // Cancel a job
-  router.post("/api/claude/generate/:projectId/jobs/:jobId/cancel", async (req) => {
-    const cancelled = cancelJob(req.params.jobId);
-    if (!cancelled) {
-      throw new HttpError(400, `Job cannot be cancelled: ${req.params.jobId}`);
-    }
-    return { cancelled: true };
-  });
-
-  // List available generation models
-  router.get("/api/claude/generate/models", async () => {
-    try {
-      return await listGenerateModels();
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Failed to list models"
-      );
-    }
-  });
-
-  // Estimate generation cost
-  router.post("/api/claude/generate/estimate-cost", async (req) => {
-    if (!req.body?.model) {
-      throw new HttpError(400, "Missing 'model' in request body");
-    }
-    try {
-      return await estimateGenerateCost(req.body.model, {
-        duration: req.body.duration,
-        resolution: req.body.resolution,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Cost estimation failed"
-      );
-    }
-  });
+  registerGenerateRoutes(router);
 
   // ==========================================================================
   // Timeline routes (renderer-dependent for export/import)
@@ -333,6 +279,43 @@ export function startClaudeHTTPServer(
     return { elementId };
   });
 
+  router.post("/api/claude/timeline/:projectId/elements/batch", async (req) => {
+    if (!Array.isArray(req.body?.elements)) {
+      throw new HttpError(400, "Missing 'elements' array in request body");
+    }
+    const win = getWindow();
+    try {
+      return await batchAddElements(
+        win,
+        req.params.projectId,
+        req.body.elements
+      );
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Batch add failed"
+      );
+    }
+  });
+
+  router.patch(
+    "/api/claude/timeline/:projectId/elements/batch",
+    async (req) => {
+      if (!Array.isArray(req.body?.updates)) {
+        throw new HttpError(400, "Missing 'updates' array in request body");
+      }
+      const win = getWindow();
+      try {
+        return await batchUpdateElements(win, req.body.updates);
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof Error ? error.message : "Batch update failed"
+        );
+      }
+    }
+  );
+
   router.patch(
     "/api/claude/timeline/:projectId/elements/:elementId",
     async (req) => {
@@ -342,6 +325,28 @@ export function startClaudeHTTPServer(
         changes: req.body || {},
       });
       return { updated: true };
+    }
+  );
+
+  router.delete(
+    "/api/claude/timeline/:projectId/elements/batch",
+    async (req) => {
+      if (!Array.isArray(req.body?.elements)) {
+        throw new HttpError(400, "Missing 'elements' array in request body");
+      }
+      const win = getWindow();
+      try {
+        return await batchDeleteElements(
+          win,
+          req.body.elements,
+          Boolean(req.body.ripple)
+        );
+      } catch (error) {
+        throw new HttpError(
+          400,
+          error instanceof Error ? error.message : "Batch delete failed"
+        );
+      }
     }
   );
 
@@ -356,6 +361,40 @@ export function startClaudeHTTPServer(
       return { removed: true };
     }
   );
+
+  router.post("/api/claude/timeline/:projectId/arrange", async (req) => {
+    if (!req.body?.trackId || typeof req.body.trackId !== "string") {
+      throw new HttpError(400, "Missing 'trackId' in request body");
+    }
+    if (!req.body?.mode || typeof req.body.mode !== "string") {
+      throw new HttpError(400, "Missing 'mode' in request body");
+    }
+    if (
+      req.body.mode !== "sequential" &&
+      req.body.mode !== "spaced" &&
+      req.body.mode !== "manual"
+    ) {
+      throw new HttpError(
+        400,
+        "Invalid mode. Use sequential, spaced, or manual"
+      );
+    }
+    const win = getWindow();
+    try {
+      return await arrangeTimeline(win, {
+        trackId: req.body.trackId,
+        mode: req.body.mode,
+        gap: req.body.gap,
+        order: req.body.order,
+        startOffset: req.body.startOffset,
+      });
+    } catch (error) {
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Arrange request failed"
+      );
+    }
+  });
 
   // ---- Split element ----
   router.post(
@@ -454,6 +493,87 @@ export function startClaudeHTTPServer(
     }
   });
 
+  router.get("/api/claude/project/:projectId/summary", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
+        ),
+      ]);
+      const [mediaFiles, settings] = await Promise.all([
+        listMediaFiles(req.params.projectId),
+        getProjectSettings(req.params.projectId),
+      ]);
+      const exportJobs = listExportJobs(req.params.projectId);
+      return generateProjectSummary({
+        timeline,
+        mediaFiles,
+        exportJobs,
+        settings,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Failed to generate summary"
+      );
+    }
+  });
+
+  router.post("/api/claude/project/:projectId/report", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
+        ),
+      ]);
+      const [mediaFiles, settings] = await Promise.all([
+        listMediaFiles(req.params.projectId),
+        getProjectSettings(req.params.projectId),
+      ]);
+      const exportJobs = listExportJobs(req.params.projectId);
+      const summary = generateProjectSummary({
+        timeline,
+        mediaFiles,
+        exportJobs,
+        settings,
+      });
+      const steps = getOperationLog({ projectId: req.params.projectId });
+      const report = await generatePipelineReport({
+        steps,
+        summary,
+        saveToDisk: req.body?.saveToDisk === true,
+        outputDir:
+          typeof req.body?.outputDir === "string"
+            ? req.body.outputDir
+            : undefined,
+        projectId: req.params.projectId,
+      });
+
+      if (req.body?.clearLog === true) {
+        clearOperationLog({ projectId: req.params.projectId });
+      }
+
+      return report;
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        500,
+        error instanceof Error ? error.message : "Failed to generate report"
+      );
+    }
+  });
+
   // ==========================================================================
   // Export routes
   // ==========================================================================
@@ -463,6 +583,46 @@ export function startClaudeHTTPServer(
 
   router.get("/api/claude/export/:projectId/recommend/:target", async (req) => {
     return getExportRecommendation(req.params.target);
+  });
+
+  router.post("/api/claude/export/:projectId/start", async (req) => {
+    try {
+      const win = getWindow();
+      const timeline = await Promise.race([
+        requestTimelineFromRenderer(win),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new HttpError(504, "Renderer timed out")),
+            5000
+          )
+        ),
+      ]);
+      const mediaFiles = await listMediaFiles(req.params.projectId);
+      return await startExportJob({
+        projectId: req.params.projectId,
+        request: req.body || {},
+        timeline,
+        mediaFiles,
+      });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      throw new HttpError(
+        400,
+        error instanceof Error ? error.message : "Failed to start export"
+      );
+    }
+  });
+
+  router.get("/api/claude/export/:projectId/jobs/:jobId", async (req) => {
+    const job = getExportJobStatus(req.params.jobId);
+    if (!job || job.projectId !== req.params.projectId) {
+      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+    }
+    return job;
+  });
+
+  router.get("/api/claude/export/:projectId/jobs", async (req) => {
+    return listExportJobs(req.params.projectId);
   });
 
   // ==========================================================================
@@ -476,192 +636,15 @@ export function startClaudeHTTPServer(
   });
 
   // ==========================================================================
-  // Video Analysis routes
+  // Analysis, Transcription, and Stage 3 editing routes
   // ==========================================================================
-  router.post("/api/claude/analyze/:projectId", async (req) => {
-    if (!req.body?.source) {
-      throw new HttpError(400, "Missing 'source' in request body");
-    }
-    try {
-      const result = await analyzeVideo(req.params.projectId, {
-        source: req.body.source,
-        analysisType: req.body.analysisType,
-        model: req.body.model,
-        format: req.body.format,
-      });
-      if (!result.success) {
-        throw new HttpError(500, result.error);
-      }
-      return result;
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Analysis failed"
-      );
-    }
-  });
-
-  router.get("/api/claude/analyze/models", async () => {
-    return listAnalyzeModels();
-  });
-
-  // ==========================================================================
-  // Transcription routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/transcribe/:projectId", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      return await transcribeMedia(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        provider: req.body.provider,
-        language: req.body.language,
-        diarize: req.body.diarize,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Transcription failed"
-      );
-    }
-  });
-
-  // ==========================================================================
-  // Scene Detection routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      return await detectScenes(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        threshold: req.body.threshold,
-        aiAnalysis: req.body.aiAnalysis,
-        model: req.body.model,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Scene detection failed"
-      );
-    }
-  });
-
-  // ==========================================================================
-  // Frame Analysis routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/frames", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      return await analyzeFrames(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        timestamps: req.body.timestamps,
-        interval: req.body.interval,
-        prompt: req.body.prompt,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Frame analysis failed"
-      );
-    }
-  });
-
-  // ==========================================================================
-  // Filler Detection routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/fillers", async (req) => {
-    if (!Array.isArray(req.body?.words)) {
-      throw new HttpError(400, "Missing 'words' array in request body");
-    }
-    try {
-      return await analyzeFillers(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        words: req.body.words,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Filler analysis failed"
-      );
-    }
-  });
+  registerAnalysisRoutes(router, getWindow);
 
   // ==========================================================================
   // PersonaPlex proxy (fal-ai/personaplex speech-to-speech)
   // ==========================================================================
   router.post("/api/claude/personaplex/generate", async (req) => {
-    if (!req.body?.audio_url) {
-      throw new HttpError(400, "Missing 'audio_url' in request body");
-    }
-
-    const keys = await getDecryptedApiKeys();
-    const apiKey = keys.falApiKey;
-    if (!apiKey) {
-      throw new HttpError(
-        400,
-        "FAL API key not configured. Go to Settings → API Keys to set it."
-      );
-    }
-
-    const requestBody: Record<string, unknown> = {
-      audio_url: req.body.audio_url,
-    };
-    if (req.body.prompt) requestBody.prompt = req.body.prompt;
-    if (req.body.voice) requestBody.voice = req.body.voice;
-    if (req.body.temperature_audio != null)
-      requestBody.temperature_audio = req.body.temperature_audio;
-    if (req.body.temperature_text != null)
-      requestBody.temperature_text = req.body.temperature_text;
-    if (req.body.top_k_audio != null)
-      requestBody.top_k_audio = req.body.top_k_audio;
-    if (req.body.top_k_text != null)
-      requestBody.top_k_text = req.body.top_k_text;
-    if (req.body.seed != null) requestBody.seed = req.body.seed;
-    if (req.body.output_format)
-      requestBody.output_format = req.body.output_format;
-
-    claudeLog.info("HTTP", "PersonaPlex generate request");
-
-    const falResponse = await fetch("https://fal.run/fal-ai/personaplex", {
-      signal: AbortSignal.timeout(25_000),
-      method: "POST",
-      headers: {
-        Authorization: `Key ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!falResponse.ok) {
-      const errorText = await falResponse.text();
-      claudeLog.error(
-        "HTTP",
-        `PersonaPlex API error: ${falResponse.status} ${errorText}`
-      );
-      throw new HttpError(
-        falResponse.status,
-        `PersonaPlex API error: ${errorText}`
-      );
-    }
-
-    let result: unknown;
-    try {
-      result = await falResponse.json();
-    } catch {
-      throw new HttpError(502, "PersonaPlex API returned invalid JSON");
-    }
-    claudeLog.info("HTTP", "PersonaPlex generate complete");
-    return result;
+    return generatePersonaPlex(req.body);
   });
 
   // ==========================================================================

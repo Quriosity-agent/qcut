@@ -85,7 +85,7 @@ vi.mock("../claude/claude-media-handler", () => ({
         name: "test.mp4",
         type: "video",
         path: "/mock/Documents/QCut/Projects/test/media/test.mp4",
-        size: 10000,
+        size: 10_000,
         duration: 30,
         createdAt: Date.now(),
         modifiedAt: Date.now(),
@@ -162,7 +162,8 @@ describe("parseFrameAnalysisResponse", () => {
   });
 
   it("handles code block wrapped response", () => {
-    const response = '```json\n[{"objects": ["cat"], "text": [], "description": "A cat", "mood": "calm", "composition": "centered"}]\n```';
+    const response =
+      '```json\n[{"objects": ["cat"], "text": [], "description": "A cat", "mood": "calm", "composition": "centered"}]\n```';
     const result = parseFrameAnalysisResponse(response, [
       { timestamp: 0, path: "/tmp/frame.jpg" },
     ]);

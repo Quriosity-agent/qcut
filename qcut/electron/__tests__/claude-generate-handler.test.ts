@@ -9,8 +9,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mocks (vi.hoisted for factory compatibility)
 // ---------------------------------------------------------------------------
 
-const { mockExecute, mockIsAvailable, mockGetStatus, mockCancel } =
-  vi.hoisted(() => ({
+const { mockExecute, mockIsAvailable, mockGetStatus, mockCancel } = vi.hoisted(
+  () => ({
     mockExecute: vi.fn(),
     mockIsAvailable: vi.fn().mockResolvedValue(true),
     mockGetStatus: vi.fn().mockResolvedValue({
@@ -21,7 +21,8 @@ const { mockExecute, mockIsAvailable, mockGetStatus, mockCancel } =
       features: {},
     }),
     mockCancel: vi.fn().mockReturnValue(true),
-  }));
+  })
+);
 
 vi.mock("../native-pipeline/index.js", () => ({
   NativePipelineManager: vi.fn().mockImplementation(() => ({

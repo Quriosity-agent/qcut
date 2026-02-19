@@ -164,7 +164,9 @@ async function uploadToFalStorage(
 
   if (!initResponse.ok) {
     const errorText = await initResponse.text();
-    throw new Error(`FAL storage initiate failed: ${initResponse.status} ${errorText}`);
+    throw new Error(
+      `FAL storage initiate failed: ${initResponse.status} ${errorText}`
+    );
   }
 
   const initData = (await initResponse.json()) as {
@@ -401,7 +403,11 @@ function buildSegments(words: TranscriptionWord[]): TranscriptionSegment[] {
     if (word.type !== "word" && word.type !== "punctuation") {
       // On spacing/audio_event with gap > 0.5s, start new segment
       if (word.end - word.start > 0.5 && currentText.trim()) {
-        segments.push({ text: currentText.trim(), start: segStart, end: segEnd });
+        segments.push({
+          text: currentText.trim(),
+          start: segStart,
+          end: segEnd,
+        });
         currentText = "";
         segStart = -1;
       }

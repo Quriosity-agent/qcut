@@ -118,7 +118,11 @@ function resolveTimestamps(
   if (request.interval && videoDuration && videoDuration > 0) {
     const interval = Math.max(1, request.interval);
     const timestamps: number[] = [];
-    for (let t = 0; t < videoDuration && timestamps.length < MAX_FRAMES_PER_REQUEST; t += interval) {
+    for (
+      let t = 0;
+      t < videoDuration && timestamps.length < MAX_FRAMES_PER_REQUEST;
+      t += interval
+    ) {
       timestamps.push(Math.round(t * 1000) / 1000);
     }
     return timestamps;
@@ -191,7 +195,9 @@ Return a JSON array with one object per frame, in the same order as the images p
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Claude Vision API error: ${response.status} ${errorText.slice(0, 300)}`);
+    throw new Error(
+      `Claude Vision API error: ${response.status} ${errorText.slice(0, 300)}`
+    );
   }
 
   const data = (await response.json()) as {
@@ -235,12 +241,9 @@ export function parseFrameAnalysisResponse(
 
     return parsed.map((item, index) => ({
       timestamp: framePaths[index]?.timestamp ?? index,
-      objects: Array.isArray(item.objects)
-        ? (item.objects as string[])
-        : [],
+      objects: Array.isArray(item.objects) ? (item.objects as string[]) : [],
       text: Array.isArray(item.text) ? (item.text as string[]) : [],
-      description:
-        typeof item.description === "string" ? item.description : "",
+      description: typeof item.description === "string" ? item.description : "",
       mood: typeof item.mood === "string" ? item.mood : "neutral",
       composition:
         typeof item.composition === "string" ? item.composition : "unknown",
@@ -293,11 +296,7 @@ export async function analyzeFrames(
         framePaths.push({ timestamp: ts, path: framePath });
       }
     } catch (err) {
-      claudeLog.warn(
-        HANDLER_NAME,
-        `Failed to extract frame at ${ts}s:`,
-        err
-      );
+      claudeLog.warn(HANDLER_NAME, `Failed to extract frame at ${ts}s:`, err);
     }
   }
 

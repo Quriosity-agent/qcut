@@ -63,6 +63,23 @@ vi.mock("../claude-timeline-handler.js", () => ({
   requestTimelineFromRenderer: vi.fn(),
   requestSplitFromRenderer: vi.fn(),
   requestSelectionFromRenderer: vi.fn(),
+  batchAddElements: vi.fn(async () => ({ added: [], failedCount: 0 })),
+  batchUpdateElements: vi.fn(async () => ({
+    updatedCount: 0,
+    failedCount: 0,
+    results: [],
+  })),
+  batchDeleteElements: vi.fn(async () => ({
+    deletedCount: 0,
+    failedCount: 0,
+    results: [],
+  })),
+  deleteTimelineRange: vi.fn(async () => ({
+    deletedElements: 0,
+    splitElements: 0,
+    totalRemovedDuration: 0,
+  })),
+  arrangeTimeline: vi.fn(async () => ({ arranged: [] })),
   timelineToMarkdown: vi.fn(() => "# Timeline"),
   markdownToTimeline: vi.fn(() => ({
     name: "Test",
@@ -155,6 +172,14 @@ vi.mock("../claude-diagnostics-handler.js", () => ({
   getSystemInfo: vi.fn(() => ({})),
 }));
 
+vi.mock(
+  "../claude-suggest-handler.js",
+  () => ({
+    suggestCuts: vi.fn(async () => ({ suggestions: [] })),
+  }),
+  { virtual: true }
+);
+
 // ---------------------------------------------------------------------------
 // Import the server and mocked electron after mocks
 // ---------------------------------------------------------------------------
@@ -190,6 +215,9 @@ function fetch(
         method: options.method || "GET",
         headers: {
           "Content-Type": "application/json",
+          ...(options.body
+            ? { "Content-Length": Buffer.byteLength(options.body) }
+            : {}),
           ...options.headers,
         },
       },
@@ -332,6 +360,163 @@ describe("Claude HTTP Server", () => {
       toTrackId: "track_2",
       newStartTime: 5,
     });
+  });
+
+  it("POST /api/claude/timeline/:projectId/elements/batch calls batch add handler", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.batchAddElements).mockResolvedValueOnce({
+      added: [{ index: 0, success: true, elementId: "el_1" }],
+      failedCount: 0,
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/elements/batch", {
+      method: "POST",
+      body: JSON.stringify({
+        elements: [
+          {
+            type: "media",
+            trackId: "track_1",
+            startTime: 0,
+            duration: 5,
+            mediaId: "media_1",
+          },
+        ],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.failedCount).toBe(0);
+    expect(timelineHandler.batchAddElements).toHaveBeenCalledWith(
+      mockWindow,
+      "proj_123",
+      expect.any(Array)
+    );
+  });
+
+  it("PATCH /api/claude/timeline/:projectId/elements/batch calls batch update handler", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.batchUpdateElements).mockResolvedValueOnce({
+      updatedCount: 1,
+      failedCount: 0,
+      results: [{ index: 0, success: true }],
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/elements/batch", {
+      method: "PATCH",
+      body: JSON.stringify({
+        updates: [{ elementId: "el_1", startTime: 3 }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.updatedCount).toBe(1);
+    expect(timelineHandler.batchUpdateElements).toHaveBeenCalledWith(
+      mockWindow,
+      [{ elementId: "el_1", startTime: 3 }]
+    );
+  });
+
+  it("DELETE /api/claude/timeline/:projectId/elements/batch calls batch delete handler", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.batchDeleteElements).mockResolvedValueOnce({
+      deletedCount: 1,
+      failedCount: 0,
+      results: [{ index: 0, success: true }],
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/elements/batch", {
+      method: "DELETE",
+      body: JSON.stringify({
+        elements: [{ trackId: "track_1", elementId: "el_1" }],
+        ripple: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.deletedCount).toBe(1);
+    expect(timelineHandler.batchDeleteElements).toHaveBeenCalledWith(
+      mockWindow,
+      [{ trackId: "track_1", elementId: "el_1" }],
+      true
+    );
+  });
+
+  it("DELETE /api/claude/timeline/:projectId/range forwards crossTrackRipple", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.deleteTimelineRange).mockResolvedValueOnce({
+      deletedElements: 2,
+      splitElements: 1,
+      totalRemovedDuration: 5,
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/range", {
+      method: "DELETE",
+      body: JSON.stringify({
+        startTime: 10,
+        endTime: 15,
+        ripple: true,
+        crossTrackRipple: true,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.totalRemovedDuration).toBe(5);
+    expect(timelineHandler.deleteTimelineRange).toHaveBeenCalledWith(
+      mockWindow,
+      expect.objectContaining({
+        startTime: 10,
+        endTime: 15,
+        ripple: true,
+        crossTrackRipple: true,
+      })
+    );
+  });
+
+  it("POST /api/claude/timeline/:projectId/arrange calls arrange handler", async () => {
+    const mockWindow = {
+      webContents: { send: vi.fn() },
+    } as unknown as BrowserWindow;
+    vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+    vi.mocked(timelineHandler.arrangeTimeline).mockResolvedValueOnce({
+      arranged: [{ elementId: "el_1", newStartTime: 0 }],
+    });
+
+    const res = await fetch("/api/claude/timeline/proj_123/arrange", {
+      method: "POST",
+      body: JSON.stringify({
+        trackId: "track_1",
+        mode: "sequential",
+        gap: 0.5,
+        startOffset: 0,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.arranged.length).toBe(1);
+    expect(timelineHandler.arrangeTimeline).toHaveBeenCalledWith(
+      mockWindow,
+      expect.objectContaining({
+        trackId: "track_1",
+        mode: "sequential",
+      })
+    );
   });
 
   it("POST /api/claude/timeline/:projectId/selection dispatches selection update", async () => {

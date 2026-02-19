@@ -221,10 +221,7 @@ async function enrichWithAI(
   const keys = await getDecryptedApiKeys();
   const apiKey = keys.geminiApiKey;
   if (!apiKey) {
-    claudeLog.warn(
-      HANDLER_NAME,
-      "No Gemini API key; skipping AI enrichment"
-    );
+    claudeLog.warn(HANDLER_NAME, "No Gemini API key; skipping AI enrichment");
     return scenes;
   }
 
@@ -264,7 +261,10 @@ async function enrichWithAI(
     const batch = scenesToAnalyze.slice(i, i + batchSize);
     await Promise.all(
       batch.map(async (scene) => {
-        const framePath = join(tempDir, `scene-${scene.timestamp.toFixed(3)}.jpg`);
+        const framePath = join(
+          tempDir,
+          `scene-${scene.timestamp.toFixed(3)}.jpg`
+        );
         try {
           await extractFrameAtTimestamp(videoPath, scene.timestamp, framePath);
           if (!existsSync(framePath)) return;
