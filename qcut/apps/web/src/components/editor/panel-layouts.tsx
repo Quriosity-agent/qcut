@@ -16,7 +16,10 @@ interface LayoutProps {
   resetCounter: number;
 }
 
-function logTerminalLayoutDebug(context: string, payload: Record<string, unknown>) {
+function logTerminalLayoutDebug(
+  context: string,
+  payload: Record<string, unknown>
+) {
   try {
     if (!import.meta.env.DEV) return;
     console.info(`[TerminalLayoutDebug:${context}]`, payload);

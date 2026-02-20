@@ -584,9 +584,8 @@ export function startClaudeHTTPServer(
       if (error instanceof HttpError) throw error;
       const msg =
         error instanceof Error ? error.message : "Failed to generate report";
-      const status = msg.includes("ENOENT") || msg.includes("Failed to save")
-        ? 400
-        : 500;
+      const status =
+        msg.includes("ENOENT") || msg.includes("Failed to save") ? 400 : 500;
       throw new HttpError(status, msg);
     }
   });

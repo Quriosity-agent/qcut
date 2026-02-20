@@ -95,7 +95,11 @@ test.describe("Terminal Paste Functionality", () => {
     await expect(page.getByTestId("pty-terminal-view")).toBeVisible();
 
     let metrics:
-      | { viewportWidth: number; mediaPanelWidth: number; mediaPanelRatio: number }
+      | {
+          viewportWidth: number;
+          mediaPanelWidth: number;
+          mediaPanelRatio: number;
+        }
       | { error: string };
     try {
       metrics = await page.evaluate(() => {
@@ -223,8 +227,10 @@ test.describe("Terminal Paste Functionality", () => {
             ptyViewRatio: ptyViewWidth / mediaPanelWidth,
             terminalEmulatorWidth,
             emulatorToPanelRatio: terminalEmulatorWidth / mediaPanelWidth,
-            xtermScreenWidth: xtermScreen?.getBoundingClientRect().width ?? null,
-            xtermCanvasWidth: xtermCanvas?.getBoundingClientRect().width ?? null,
+            xtermScreenWidth:
+              xtermScreen?.getBoundingClientRect().width ?? null,
+            xtermCanvasWidth:
+              xtermCanvas?.getBoundingClientRect().width ?? null,
           };
         });
       } catch (error) {
@@ -244,13 +250,19 @@ test.describe("Terminal Paste Functionality", () => {
       if (terminalStatus === "connected") {
         expect(metrics.emulatorToPanelRatio).toBeGreaterThan(0.95);
 
-        if (metrics.xtermScreenWidth !== null && metrics.terminalEmulatorWidth) {
+        if (
+          metrics.xtermScreenWidth !== null &&
+          metrics.terminalEmulatorWidth
+        ) {
           const screenToEmulatorRatio =
             metrics.xtermScreenWidth / metrics.terminalEmulatorWidth;
           expect(screenToEmulatorRatio).toBeGreaterThan(0.9);
         }
 
-        if (metrics.xtermCanvasWidth !== null && metrics.terminalEmulatorWidth) {
+        if (
+          metrics.xtermCanvasWidth !== null &&
+          metrics.terminalEmulatorWidth
+        ) {
           const canvasToEmulatorRatio =
             metrics.xtermCanvasWidth / metrics.terminalEmulatorWidth;
           expect(canvasToEmulatorRatio).toBeGreaterThan(0.82);
