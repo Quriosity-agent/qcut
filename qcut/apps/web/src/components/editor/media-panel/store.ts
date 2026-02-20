@@ -218,12 +218,40 @@ const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
 
 /** Trigger terminal panel auto-expand/collapse based on tab transition. */
 function handleTerminalFocusTransition(prevTab: Tab, nextTab: Tab) {
-  const wasTerminal = prevTab === "pty";
-  const isTerminal = nextTab === "pty";
-  if (isTerminal && !wasTerminal) {
-    usePanelStore.getState().enterTerminalFocus();
-  } else if (!isTerminal && wasTerminal) {
-    usePanelStore.getState().exitTerminalFocus();
+  try {
+    const wasTerminal = prevTab === "pty";
+    const isTerminal = nextTab === "pty";
+
+    const hasTerminalTransition = wasTerminal || isTerminal;
+
+    if (import.meta.env.DEV && hasTerminalTransition) {
+      console.info("[TerminalFocusTransition] before", {
+        prevTab,
+        nextTab,
+        wasTerminal,
+        isTerminal,
+        panelPreset: usePanelStore.getState().activePreset,
+      });
+    }
+
+    if (isTerminal && !wasTerminal) {
+      usePanelStore.getState().enterTerminalFocus();
+    } else if (!isTerminal && wasTerminal) {
+      usePanelStore.getState().exitTerminalFocus();
+    }
+
+    if (import.meta.env.DEV && hasTerminalTransition) {
+      const panelState = usePanelStore.getState();
+      console.info("[TerminalFocusTransition] after", {
+        panelPreset: panelState.activePreset,
+        preTerminalPreset: panelState.preTerminalPreset,
+        toolsPanel: panelState.toolsPanel,
+        previewPanel: panelState.previewPanel,
+        propertiesPanel: panelState.propertiesPanel,
+      });
+    }
+  } catch (error) {
+    console.error("[TerminalFocusTransition] failed", error);
   }
 }
 

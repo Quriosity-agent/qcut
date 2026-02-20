@@ -531,22 +531,39 @@ export const usePanelStore = create<PanelState>()(
       },
 
       enterTerminalFocus: () => {
-        const { activePreset } = get();
-        if (activePreset === "terminal") return;
-        set({ preTerminalPreset: activePreset });
-        get().setActivePreset("terminal");
-        set((s) => ({ resetCounter: s.resetCounter + 1 }));
+        try {
+          const { activePreset, getCurrentPresetSizes } = get();
+          if (activePreset === "terminal") return;
+
+          const currentPresetSizes = getCurrentPresetSizes();
+          set((state) => ({
+            preTerminalPreset: activePreset,
+            activePreset: "terminal",
+            presetCustomSizes: {
+              ...state.presetCustomSizes,
+              [activePreset]: currentPresetSizes,
+            },
+            ...PRESET_CONFIGS.terminal,
+            resetCounter: state.resetCounter + 1,
+          }));
+        } catch (error) {
+          debugError("[PanelStore] Failed to enter terminal focus", error);
+        }
       },
 
       exitTerminalFocus: () => {
-        const { preTerminalPreset, activePreset } = get();
-        if (!preTerminalPreset || activePreset !== "terminal") {
-          if (preTerminalPreset) set({ preTerminalPreset: null });
-          return;
+        try {
+          const { preTerminalPreset, activePreset } = get();
+          if (!preTerminalPreset || activePreset !== "terminal") {
+            if (preTerminalPreset) set({ preTerminalPreset: null });
+            return;
+          }
+          set({ preTerminalPreset: null });
+          get().setActivePreset(preTerminalPreset);
+          set((s) => ({ resetCounter: s.resetCounter + 1 }));
+        } catch (error) {
+          debugError("[PanelStore] Failed to exit terminal focus", error);
         }
-        set({ preTerminalPreset: null });
-        get().setActivePreset(preTerminalPreset);
-        set((s) => ({ resetCounter: s.resetCounter + 1 }));
       },
     }),
     {

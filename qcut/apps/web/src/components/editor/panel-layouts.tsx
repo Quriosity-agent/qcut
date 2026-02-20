@@ -16,6 +16,15 @@ interface LayoutProps {
   resetCounter: number;
 }
 
+function logTerminalLayoutDebug(context: string, payload: Record<string, unknown>) {
+  try {
+    if (!import.meta.env.DEV) return;
+    console.info(`[TerminalLayoutDebug:${context}]`, payload);
+  } catch (error) {
+    console.error("[TerminalLayoutDebug] failed", error);
+  }
+}
+
 export function DefaultLayout({ resetCounter }: LayoutProps) {
   const {
     toolsPanel,
@@ -127,6 +136,48 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
       normalizeHorizontalPanels();
     }
   }, [total, normalizeHorizontalPanels]);
+
+  React.useEffect(() => {
+    if (!isTerminal) return;
+
+    const mediaPanelElement = document.querySelector(
+      '[data-testid="media-panel"]'
+    ) as HTMLElement | null;
+    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
+    const viewportWidthPx = window.innerWidth;
+    const mediaPanelRatioPct =
+      mediaPanelWidthPx && viewportWidthPx > 0
+        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
+        : null;
+
+    logTerminalLayoutDebug("DefaultLayout", {
+      resetCounter,
+      activePreset,
+      toolsPanel,
+      previewPanel,
+      propertiesPanel,
+      normalizedTools,
+      normalizedPreview,
+      normalizedProperties,
+      maxToolsSize,
+      total,
+      mediaPanelWidthPx,
+      viewportWidthPx,
+      mediaPanelRatioPct,
+    });
+  }, [
+    isTerminal,
+    resetCounter,
+    activePreset,
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    normalizedTools,
+    normalizedPreview,
+    normalizedProperties,
+    maxToolsSize,
+    total,
+  ]);
 
   return (
     <ResizablePanelGroup
@@ -246,6 +297,45 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     (rightGroupPct * rightGroupTotal) / 100;
   const toGlobalProperties = (rightGroupPct: number) =>
     (rightGroupPct * rightGroupTotal) / 100;
+
+  React.useEffect(() => {
+    if (activePreset !== "terminal") return;
+
+    const mediaPanelElement = document.querySelector(
+      '[data-testid="media-panel"]'
+    ) as HTMLElement | null;
+    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
+    const viewportWidthPx = window.innerWidth;
+    const mediaPanelRatioPct =
+      mediaPanelWidthPx && viewportWidthPx > 0
+        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
+        : null;
+
+    logTerminalLayoutDebug("MediaLayout", {
+      resetCounter,
+      activePreset,
+      toolsPanel,
+      previewPanel,
+      propertiesPanel,
+      rightGroupTotal,
+      previewPanelRelative,
+      propertiesPanelRelative,
+      maxToolsSize,
+      mediaPanelWidthPx,
+      viewportWidthPx,
+      mediaPanelRatioPct,
+    });
+  }, [
+    activePreset,
+    resetCounter,
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    rightGroupTotal,
+    previewPanelRelative,
+    propertiesPanelRelative,
+    maxToolsSize,
+  ]);
 
   return (
     <ResizablePanelGroup
