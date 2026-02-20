@@ -45,23 +45,18 @@ export function EditorHeader() {
 	};
 
 	const handleExportKeyDown = ({ key }: KeyboardEvent<HTMLButtonElement>) => {
-		try {
-			if (key === "Enter" || key === " ") {
-				return;
-			}
-		} catch (error) {
-			console.error("Failed to handle export keydown:", error);
+		if (key === "Enter" || key === " ") {
+			return;
 		}
 	};
 
 	const handleNameSave = async (newName: string) => {
-		console.log("handleNameSave", newName);
 		if (activeProject && newName.trim() && newName !== activeProject.name) {
 			try {
 				await renameProject(activeProject.id, newName.trim());
 				setIsRenameDialogOpen(false);
-			} catch (error) {
-				console.error("Failed to rename project:", error);
+			} catch {
+				// Rename failure is handled by the store
 			}
 		}
 	};

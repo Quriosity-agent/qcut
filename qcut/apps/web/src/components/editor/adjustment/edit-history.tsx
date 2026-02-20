@@ -44,7 +44,7 @@ export function EditHistory() {
 			const { downloadImage } = await import("@/lib/image-utils");
 			await downloadImage(item.editedUrl, filename);
 			toast.success(`Edit ${index + 1} downloaded!`);
-		} catch (error) {
+		} catch {
 			toast.error("Failed to download image");
 		}
 	};
@@ -148,6 +148,8 @@ export function EditHistory() {
 							return (
 								<div
 									key={item.id}
+									role="button"
+									tabIndex={0}
 									className={cn(
 										"p-3 rounded-lg border cursor-pointer transition-all group",
 										isActive
@@ -157,6 +159,12 @@ export function EditHistory() {
 												: "hover:bg-muted/50 hover:border-muted-foreground/20"
 									)}
 									onClick={() => goToHistoryItem(index)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											goToHistoryItem(index);
+										}
+									}}
 								>
 									<div className="flex items-start justify-between mb-2">
 										<div className="flex items-center gap-2">

@@ -63,6 +63,8 @@ export function ImageUploader({
 		<Card>
 			<CardContent className="p-4">
 				<div
+					role="button"
+					tabIndex={0}
 					className={cn(
 						"border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer",
 						dragActive
@@ -75,6 +77,12 @@ export function ImageUploader({
 					onDragOver={handleDrag}
 					onDrop={handleDrop}
 					onClick={openFileDialog}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							openFileDialog();
+						}
+					}}
 				>
 					<input
 						ref={inputRef}
@@ -115,14 +123,12 @@ export function ImageUploader({
 								</p>
 							</div>
 
-							<Button
-								variant="outline"
-								size="sm"
-								className="h-7 text-xs !bg-transparent !border-transparent shrink-0"
-							>
-								<ImageIcon className="size-3 mr-1" />
-								Browse
-							</Button>
+							<span
+							className="inline-flex items-center h-7 text-xs shrink-0 text-muted-foreground"
+						>
+							<ImageIcon className="size-3 mr-1" />
+							Browse
+						</span>
 						</div>
 					)}
 				</div>

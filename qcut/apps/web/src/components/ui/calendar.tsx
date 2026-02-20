@@ -57,10 +57,10 @@ function Calendar({
 					buttonVariants({ variant: "text" }),
 					"h-8 w-8 p-0 font-normal aria-selected:opacity-100"
 				),
-				range_start: "day-range-start",
-				range_end: "day-range-end",
+				range_start: "day-range-start rounded-l-md",
+				range_end: "day-range-end rounded-r-md",
 				selected:
-					"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+					"bg-primary text-primary-foreground rounded-md hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
 				today: "bg-accent text-accent-foreground",
 				outside:
 					"day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",

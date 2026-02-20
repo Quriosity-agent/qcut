@@ -35,31 +35,31 @@ function testGrayscaleConversionLogic(): void {
 	console.log("   This is the method used in the QCut test file");
 	console.log("");
 
-	testPixels.forEach((pixel) => {
+	for (const pixel of testPixels) {
 		const [r, g, b] = pixel.rgb;
 		const luminance = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 		console.log(
 			`   ${pixel.name.padEnd(8)} (${r.toString().padStart(3)}, ${g.toString().padStart(3)}, ${b.toString().padStart(3)}) → ${luminance.toString().padStart(3)}`
 		);
-	});
+	}
 
 	console.log("");
 	console.log("📊 Method 2: Simple Average (R + G + B) / 3");
 	console.log("");
 
-	testPixels.forEach((pixel) => {
+	for (const pixel of testPixels) {
 		const [r, g, b] = pixel.rgb;
 		const average = Math.round((r + g + b) / 3);
 		console.log(
 			`   ${pixel.name.padEnd(8)} (${r.toString().padStart(3)}, ${g.toString().padStart(3)}, ${b.toString().padStart(3)}) → ${average.toString().padStart(3)}`
 		);
-	});
+	}
 
 	console.log("");
 	console.log("📊 Method 3: HSL Lightness (FFmpeg hue=s=0 simulation)");
 	console.log("");
 
-	testPixels.forEach((pixel) => {
+	for (const pixel of testPixels) {
 		const [r, g, b] = pixel.rgb;
 		const rNorm = r / 255;
 		const gNorm = g / 255;
@@ -73,7 +73,7 @@ function testGrayscaleConversionLogic(): void {
 		console.log(
 			`   ${pixel.name.padEnd(8)} (${r.toString().padStart(3)}, ${g.toString().padStart(3)}, ${b.toString().padStart(3)}) → ${grayValue.toString().padStart(3)}`
 		);
-	});
+	}
 
 	console.log("");
 	console.log("🎯 Key Findings from QCut Test:");

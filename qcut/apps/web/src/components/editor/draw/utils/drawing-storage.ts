@@ -131,11 +131,15 @@ export class DrawingStorage {
 
 				const entries = await Promise.all(
 					drawingKeys.map(async (key) => {
-						const raw = await window.electronAPI?.storage.load(
-							`${DrawingStorage.METADATA_PREFIX}${key}`
-						);
-						const md = typeof raw === "string" ? JSON.parse(raw) : raw;
-						return md ? { id: key, metadata: md as DrawingMetadata } : null;
+						try {
+							const raw = await window.electronAPI?.storage.load(
+								`${DrawingStorage.METADATA_PREFIX}${key}`
+							);
+							const md = typeof raw === "string" ? JSON.parse(raw) : raw;
+							return md ? { id: key, metadata: md as DrawingMetadata } : null;
+						} catch {
+							return null;
+						}
 					})
 				);
 				for (const entry of entries) {
@@ -318,8 +322,7 @@ export class DrawingStorage {
 	 */
 	static async exportDrawing(
 		drawingData: string,
-		filename: string,
-		format: "png" | "jpg" | "svg" = "png"
+		filename: string
 	): Promise<void> {
 		try {
 			const link = document.createElement("a");
