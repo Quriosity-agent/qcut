@@ -99,22 +99,22 @@ Tested against running QCut app (localhost:8765) with real project.
 
 ## Issues Found
 
-### 1. sourceId Mismatch Prevents Export (CRITICAL)
-- **Severity**: Critical — blocks all export via API
+### 1. sourceId Mismatch Prevents Export ~~(CRITICAL)~~
+- **Severity**: ~~Critical~~ → **Fixed**
 - **Details**: See "Critical Bug" section above
-- **Fix**: Update `collectExportSegments()` to match by media file path/name instead of ID
+- **Fix**: `collectExportSegments()` now uses 4-level fallback matching: ID → filename/sourceName → base64-decoded ID → skip
 
 ### 2. Project Summary Returns 500 for Nonexistent Project
-- **Severity**: Low
+- **Severity**: ~~Low~~ → **Fixed**
 - **Location**: `claude-http-server.ts` — `GET /project/:pid/summary`
-- **Details**: Returns 500 internal error instead of 400 bad request when project doesn't exist
-- **Fix**: Check project existence before attempting to read, return 400
+- **Details**: Was returning 500 internal error instead of 400 bad request when project doesn't exist
+- **Fix**: Error handler now detects `"Failed to read project"` and returns 400
 
 ### 3. Report Save Silently Succeeds on Invalid Path
-- **Severity**: Low
-- **Location**: `claude-http-server.ts` — `POST /project/:pid/report`
-- **Details**: When `saveToDisk: true` with invalid `outputDir`, returns `success: true` with the ENOENT error embedded in the markdown body rather than returning an error response
-- **Fix**: Catch file write errors and return proper error response
+- **Severity**: ~~Low~~ → **Fixed**
+- **Location**: `claude-summary-handler.ts` — `generatePipelineReport()`
+- **Details**: Was returning `success: true` with ENOENT error embedded in markdown body
+- **Fix**: `writeFile` errors are now caught and re-thrown, propagating as proper HTTP 500 errors
 
 ---
 
@@ -136,18 +136,13 @@ vi.mock("node:child_process", () => {
 
 ## Improvements Needed
 
-### Priority 1: Fix sourceId Mismatch (Critical)
-- Update `collectExportSegments()` in `claude-export-handler.ts`
-- Match timeline elements to media files by path/filename instead of ID
-- This will unblock all export functionality through the Claude API
+All 3 issues from initial testing have been fixed:
 
-### Priority 2: Error Response for Nonexistent Project
-- In `GET /project/:pid/summary` route, check if project exists first
-- Return 400 with clear error message instead of 500
+1. ~~**sourceId Mismatch**~~ — Fixed with 4-level fallback matching in `collectExportSegments()`
+2. ~~**Project Summary 500 Error**~~ — Fixed with error message detection returning 400
+3. ~~**Report Save Silent Success**~~ — Fixed with proper write error propagation
 
-### Priority 3: Report Save Error Handling
-- In `POST /project/:pid/report`, catch file write errors
-- Return `success: false` with error message when save fails
+**Remaining**: Re-run live tests #3, #13, #18 (export start) and #7a, #16 (project summary) to confirm fixes work end-to-end after QCut restart.
 
 ---
 
