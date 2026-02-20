@@ -157,9 +157,9 @@ const checkCircuitBreaker = (source: string) => {
 };
 
 const DEFAULT_PANEL_SIZES = {
-	toolsPanel: 25,
+	toolsPanel: 28,
 	previewPanel: 47,
-	propertiesPanel: 28,
+	propertiesPanel: 25,
 	mainContent: 70,
 	timeline: 30,
 	aiPanelWidth: 22,
@@ -178,9 +178,9 @@ interface PanelSizes {
 
 const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
 	default: {
-		toolsPanel: 25,
+		toolsPanel: 28,
 		previewPanel: 47,
-		propertiesPanel: 28,
+		propertiesPanel: 25,
 		mainContent: 70,
 		timeline: 30,
 		aiPanelWidth: 22,
@@ -513,7 +513,7 @@ export const usePanelStore = create<PanelState>()(
 		}),
 		{
 			name: "panel-sizes",
-			version: 9, // Increment this to force migration and reset
+			version: 10, // Increment this to force migration and reset
 			onRehydrateStorage: () => (state) => {
 				// Normalize panels after rehydration
 				if (state) {
@@ -527,9 +527,9 @@ export const usePanelStore = create<PanelState>()(
 			},
 			migrate: (persistedState: unknown, version: number) => {
 				// Reset to defaults if coming from old version or if data is corrupted
-				if (version < 9) {
+				if (version < 10) {
 					debugLog(
-						`[PanelStore] Migrating from version ${version} to version 9`
+						`[PanelStore] Migrating from version ${version} to version 10`
 					);
 					return DEFAULT_PANEL_SIZES;
 				}
