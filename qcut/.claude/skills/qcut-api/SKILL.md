@@ -1,6 +1,6 @@
 ---
 name: qcut-api
-description: Control QCut editor programmatically via its REST API and Electron IPC. Use when the user asks to manipulate media files, timeline elements, project settings, export presets, or diagnose errors in a running QCut instance.
+description: Control QCut editor programmatically via its REST API and Electron IPC. Use when the user asks to manipulate media files, timeline elements, project settings, export presets, video analysis, transcription, auto-editing, or diagnose errors in a running QCut instance.
 argument-hint: [action description or project ID]
 ---
 
@@ -14,12 +14,12 @@ Programmatically control a running QCut editor instance through its REST API (fr
 ## Architecture
 
 ```
-Claude Code CLI ──HTTP──▶ http://127.0.0.1:8765/api/claude/*
-                                    │
-                                    ▼
+Claude Code CLI ──HTTP──> http://127.0.0.1:8765/api/claude/*
+                                    |
+                                    v
                           Electron Main Process
-                                    │
-                                    ▼
+                                    |
+                                    v
                           Zustand Stores (renderer)
 ```
 
@@ -43,117 +43,259 @@ If `QCUT_API_TOKEN` is set in QCut's environment:
 curl -H "Authorization: Bearer <token>" http://127.0.0.1:8765/api/claude/health
 ```
 
-## 5 API Modules — 23 Methods
+### Find project and track IDs
+
+```bash
+# List projects
+ls ~/Documents/QCut/Projects/
+
+# Get track IDs from timeline
+curl -s http://127.0.0.1:8765/api/claude/timeline/$PROJECT_ID | \
+  python3 -c "import sys,json; [print(f'{t[\"id\"]} - {t[\"name\"]} ({t[\"type\"]})') for t in json.load(sys.stdin)['data']['tracks']]"
+
+# List media IDs
+curl -s http://127.0.0.1:8765/api/claude/media/$PROJECT_ID | jq '.data[] | {id, name, type}'
+```
+
+## 12 API Modules
 
 ### 1. Media API — Manage project media files
 
-| Action | HTTP | curl |
-|--------|------|------|
-| List files | `GET /api/claude/media/:projectId` | `curl http://127.0.0.1:8765/api/claude/media/PROJECT_ID` |
-| File info | `GET /api/claude/media/:projectId/:mediaId` | `curl http://127.0.0.1:8765/api/claude/media/PROJECT_ID/MEDIA_ID` |
-| Import | `POST /api/claude/media/:projectId/import` | `curl -X POST -H "Content-Type: application/json" -d '{"source":"/absolute/path/to/file.mp4"}' http://127.0.0.1:8765/api/claude/media/PROJECT_ID/import` |
-| Delete | `DELETE /api/claude/media/:projectId/:mediaId` | `curl -X DELETE http://127.0.0.1:8765/api/claude/media/PROJECT_ID/MEDIA_ID` |
-| Rename | `PATCH /api/claude/media/:projectId/:mediaId/rename` | `curl -X PATCH -H "Content-Type: application/json" -d '{"newName":"new-name"}' http://127.0.0.1:8765/api/claude/media/PROJECT_ID/MEDIA_ID/rename` |
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| List files | GET | `/media/:projectId` |
+| File info | GET | `/media/:projectId/:mediaId` |
+| Import local file | POST | `/media/:projectId/import` |
+| Import from URL | POST | `/media/:projectId/import-from-url` |
+| Batch import (max 20) | POST | `/media/:projectId/batch-import` |
+| Extract video frame | POST | `/media/:projectId/:mediaId/extract-frame` |
+| Rename | PATCH | `/media/:projectId/:mediaId/rename` |
+| Delete | DELETE | `/media/:projectId/:mediaId` |
 
-**Media IDs** are deterministic: `media_${base64url(filename)}`. Same filename always produces the same ID.
-
-**Supported formats:** Video (.mp4, .mov, .avi, .mkv, .webm, .m4v, .wmv), Audio (.mp3, .wav, .aac, .ogg, .m4a, .flac, .wma), Image (.jpg, .jpeg, .png, .gif, .webp, .bmp, .svg, .tiff)
+**Media IDs** are deterministic: `media_${base64url(filename)}`.
 
 ### 2. Timeline API — Read/write timeline data
 
-| Action | HTTP | curl |
-|--------|------|------|
-| Export JSON | `GET /api/claude/timeline/:projectId?format=json` | `curl "http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID?format=json"` |
-| Export Markdown | `GET /api/claude/timeline/:projectId?format=md` | `curl "http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID?format=md"` |
-| Import | `POST /api/claude/timeline/:projectId/import` | `curl -X POST -H "Content-Type: application/json" -d '{"data":"...","format":"json"}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/import` |
-| Add element | `POST /api/claude/timeline/:projectId/elements` | `curl -X POST -H "Content-Type: application/json" -d '{"type":"text","trackIndex":0,"startTime":5,"endTime":10,"content":"Hello"}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements` |
-| Update element | `PATCH /api/claude/timeline/:projectId/elements/:elementId` | `curl -X PATCH -H "Content-Type: application/json" -d '{"startTime":2}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID` |
-| Remove element | `DELETE /api/claude/timeline/:projectId/elements/:elementId` | `curl -X DELETE http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID` |
-| Split element | `POST /api/claude/timeline/:projectId/elements/:elementId/split` | `curl -X POST -H "Content-Type: application/json" -d '{"splitTime":3.5,"mode":"split"}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID/split` |
-| Move element | `POST /api/claude/timeline/:projectId/elements/:elementId/move` | `curl -X POST -H "Content-Type: application/json" -d '{"toTrackId":"track_2","newStartTime":5.0}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements/ELEMENT_ID/move` |
-| Set selection | `POST /api/claude/timeline/:projectId/selection` | `curl -X POST -H "Content-Type: application/json" -d '{"elements":[{"trackId":"track_1","elementId":"element_abc"}]}' http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
-| Get selection | `GET /api/claude/timeline/:projectId/selection` | `curl http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
-| Clear selection | `DELETE /api/claude/timeline/:projectId/selection` | `curl -X DELETE http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/selection` |
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Export (JSON or markdown) | GET | `/timeline/:projectId` (`?format=md`) |
+| Import (JSON or markdown) | POST | `/timeline/:projectId/import` |
+| Add single element | POST | `/timeline/:projectId/elements` |
+| Batch add (max 50) | POST | `/timeline/:projectId/elements/batch` |
+| Update single element | PATCH | `/timeline/:projectId/elements/:elementId` |
+| Batch update (max 50) | PATCH | `/timeline/:projectId/elements/batch` |
+| Delete single element | DELETE | `/timeline/:projectId/elements/:elementId` |
+| Batch delete (max 50) | DELETE | `/timeline/:projectId/elements/batch` |
+| Split element | POST | `/timeline/:projectId/elements/:elementId/split` |
+| Move element | POST | `/timeline/:projectId/elements/:elementId/move` |
+| Arrange elements | POST | `/timeline/:projectId/arrange` |
+| Set selection | POST | `/timeline/:projectId/selection` |
+| Get selection | GET | `/timeline/:projectId/selection` |
+| Clear selection | DELETE | `/timeline/:projectId/selection` |
 
-**Split modes:** `split` (default, creates two clips), `keepLeft` (trim from right), `keepRight` (trim from left).
+**Arrange modes:** `sequential`, `spaced`, `manual` (with custom order array).
+**Split modes:** `split` (default), `keepLeft`, `keepRight`.
+**Import options:** `replace: true` clears timeline before importing.
 
-**Note:** Timeline export uses a request-response IPC pattern with a 5-second timeout. QCut renderer must be active.
+### 3. Cut List API — Batch cuts and range operations
 
-### 3. Project API — Project settings and stats
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Batch cuts on element | POST | `/timeline/:projectId/cuts` |
+| Range delete | DELETE | `/timeline/:projectId/range` |
 
-| Action | HTTP | curl |
-|--------|------|------|
-| Get settings | `GET /api/claude/project/:projectId/settings` | `curl http://127.0.0.1:8765/api/claude/project/PROJECT_ID/settings` |
-| Update settings | `PATCH /api/claude/project/:projectId/settings` | `curl -X PATCH -H "Content-Type: application/json" -d '{"name":"My Video","fps":60,"width":3840,"height":2160}' http://127.0.0.1:8765/api/claude/project/PROJECT_ID/settings` |
-| Get stats | `GET /api/claude/project/:projectId/stats` | `curl http://127.0.0.1:8765/api/claude/project/PROJECT_ID/stats` |
+**Batch cuts**: Remove multiple time intervals from a single element. Validates overlapping/invalid intervals.
+**Range delete**: Delete all content in a time range across tracks. Supports `ripple` and `crossTrackRipple`.
 
-### 4. Export API — Platform presets and recommendations
+### 4. Auto-Edit API — AI-powered filler/silence removal
 
-| Action | HTTP | curl |
-|--------|------|------|
-| List presets | `GET /api/claude/export/presets` | `curl http://127.0.0.1:8765/api/claude/export/presets` |
-| Get recommendation | `GET /api/claude/export/:projectId/recommend/:target` | `curl http://127.0.0.1:8765/api/claude/export/PROJECT_ID/recommend/tiktok` |
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Auto-edit (sync) | POST | `/timeline/:projectId/auto-edit` |
+| Auto-edit (async start) | POST | `/timeline/:projectId/auto-edit/start` |
+| Auto-edit job status | GET | `/timeline/:projectId/auto-edit/jobs/:jobId` |
+| List auto-edit jobs | GET | `/timeline/:projectId/auto-edit/jobs` |
+| Cancel auto-edit job | POST | `/timeline/:projectId/auto-edit/jobs/:jobId/cancel` |
+
+Supports `dryRun: true` to preview cuts without applying. Use async routes for videos >30s processing time.
+
+### 5. Analysis API — Video understanding
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Analyze video (AICP) | POST | `/analyze/:projectId` |
+| List analysis models | GET | `/analyze/models` |
+| Detect scenes (sync) | POST | `/analyze/:projectId/scenes` |
+| Detect scenes (async) | POST | `/analyze/:projectId/scenes/start` |
+| Scene job status | GET | `/analyze/:projectId/scenes/jobs/:jobId` |
+| List scene jobs | GET | `/analyze/:projectId/scenes/jobs` |
+| Cancel scene job | POST | `/analyze/:projectId/scenes/jobs/:jobId/cancel` |
+| Analyze frames (sync) | POST | `/analyze/:projectId/frames` |
+| Analyze frames (async) | POST | `/analyze/:projectId/frames/start` |
+| Frame job status | GET | `/analyze/:projectId/frames/jobs/:jobId` |
+| List frame jobs | GET | `/analyze/:projectId/frames/jobs` |
+| Cancel frame job | POST | `/analyze/:projectId/frames/jobs/:jobId/cancel` |
+| Detect fillers | POST | `/analyze/:projectId/fillers` |
+| Suggest cuts (sync) | POST | `/analyze/:projectId/suggest-cuts` |
+| Suggest cuts (async) | POST | `/analyze/:projectId/suggest-cuts/start` |
+| Suggest-cuts job status | GET | `/analyze/:projectId/suggest-cuts/jobs/:jobId` |
+| List suggest-cuts jobs | GET | `/analyze/:projectId/suggest-cuts/jobs` |
+| Cancel suggest-cuts job | POST | `/analyze/:projectId/suggest-cuts/jobs/:jobId/cancel` |
+
+### 6. Transcription API — Speech to text
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Transcribe (sync) | POST | `/transcribe/:projectId` |
+| Transcribe (async start) | POST | `/transcribe/:projectId/start` |
+| Transcription job status | GET | `/transcribe/:projectId/jobs/:jobId` |
+| List transcription jobs | GET | `/transcribe/:projectId/jobs` |
+| Cancel transcription job | POST | `/transcribe/:projectId/jobs/:jobId/cancel` |
+
+Use async routes for videos >30s — sync route hits the 30s HTTP timeout.
+
+### 7. Generate API — AI video/image generation
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Start generation job | POST | `/generate/:projectId/start` |
+| Job status | GET | `/generate/:projectId/jobs/:jobId` |
+| List jobs | GET | `/generate/:projectId/jobs` |
+| Cancel job | POST | `/generate/:projectId/jobs/:jobId/cancel` |
+| List models | GET | `/generate/models` |
+| Estimate cost | POST | `/generate/estimate-cost` |
+
+### 8. Project API — Settings, stats, summary, reports
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Get settings | GET | `/project/:projectId/settings` |
+| Update settings | PATCH | `/project/:projectId/settings` |
+| Get stats | GET | `/project/:projectId/stats` |
+| Get summary (markdown) | GET | `/project/:projectId/summary` |
+| Generate pipeline report | POST | `/project/:projectId/report` |
+
+**Pipeline report** generates a markdown report of all Claude API operations performed in the session. Options: `saveTo` (path), `clearLog` (boolean).
+
+### 9. Export API — Presets, recommendations, and export jobs
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| List presets | GET | `/export/presets` |
+| Get recommendation | GET | `/export/:projectId/recommend/:target` |
+| Start export job | POST | `/export/:projectId/start` |
+| Export job status | GET | `/export/:projectId/jobs/:jobId` |
+| List export jobs | GET | `/export/:projectId/jobs` |
 
 **Targets:** `youtube`, `youtube-4k`, `youtube-1080p`, `youtube-720p`, `tiktok`, `instagram-reel`, `instagram-post`, `instagram-landscape`, `twitter`, `linkedin`, `discord`
 
-### 5. Diagnostics API — Error analysis
+### 10. Diagnostics API — Error analysis
 
-| Action | HTTP | curl |
-|--------|------|------|
-| Analyze error | `POST /api/claude/diagnostics/analyze` | `curl -X POST -H "Content-Type: application/json" -d '{"message":"ENOENT: no such file","context":"media-import","timestamp":1234567890}' http://127.0.0.1:8765/api/claude/diagnostics/analyze` |
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Analyze error | POST | `/diagnostics/analyze` |
 
-Returns error type, severity, possible causes, suggested fixes, and system info.
+### 11. PersonaPlex API — Speech-to-speech
 
-## Common Workflows
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Generate audio | POST | `/personaplex/generate` |
 
-### Inspect a project
+### 12. MCP App Preview
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Forward HTML to preview | POST | `/mcp/app` |
+
+## Async Job Pattern
+
+Long-running operations (transcription, scene detection, frame analysis, auto-edit, suggest-cuts) use an async job pattern to avoid the 30s HTTP timeout:
 
 ```bash
-# Get project settings
-curl -s http://127.0.0.1:8765/api/claude/project/PROJECT_ID/settings | jq
+# 1. Start job
+JOB=$(curl -s -X POST http://127.0.0.1:8765/api/claude/<handler>/$PROJECT_ID/start \
+  -H "Content-Type: application/json" -d '{"mediaId":"..."}' | jq -r '.data.jobId')
 
-# Get project stats
-curl -s http://127.0.0.1:8765/api/claude/project/PROJECT_ID/stats | jq
+# 2. Poll until complete
+curl -s http://127.0.0.1:8765/api/claude/<handler>/$PROJECT_ID/jobs/$JOB | jq '.data.status'
 
-# List all media
-curl -s http://127.0.0.1:8765/api/claude/media/PROJECT_ID | jq
-
-# Export timeline as readable markdown
-curl -s "http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID?format=md"
+# 3. Get result when status is "completed"
+curl -s http://127.0.0.1:8765/api/claude/<handler>/$PROJECT_ID/jobs/$JOB | jq '.data.result'
 ```
+
+Job statuses: `queued` -> `running` -> `completed` | `failed` | `cancelled`
+
+## Common Workflows
 
 ### Import media and add to timeline
 
 ```bash
-# Import a video file
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"source":"/Users/me/Videos/clip.mp4"}' \
-  http://127.0.0.1:8765/api/claude/media/PROJECT_ID/import | jq
+# Batch import files
+curl -s -X POST http://127.0.0.1:8765/api/claude/media/$PROJECT_ID/batch-import \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"path":"/path/to/clip1.mp4"},{"path":"/path/to/clip2.mp4"}]}'
 
-# Add it to the timeline
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"type":"media","trackIndex":0,"startTime":0,"endTime":15,"sourceName":"clip.mp4"}' \
-  http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements | jq
+# Add to timeline (works immediately after import)
+curl -s -X POST http://127.0.0.1:8765/api/claude/timeline/$PROJECT_ID/elements/batch \
+  -H "Content-Type: application/json" \
+  -d '{"elements":[
+    {"type":"video","trackId":"TRACK_ID","startTime":0,"duration":5,"sourceName":"clip1.mp4"},
+    {"type":"video","trackId":"TRACK_ID","startTime":5,"duration":3,"sourceName":"clip2.mp4"}
+  ]}'
 ```
 
-### Configure for a platform
+### Transcribe and auto-edit a video
 
 ```bash
-# Get TikTok recommendation
-curl -s http://127.0.0.1:8765/api/claude/export/PROJECT_ID/recommend/tiktok | jq
+# Start async transcription
+JOB=$(curl -s -X POST http://127.0.0.1:8765/api/claude/transcribe/$PROJECT_ID/start \
+  -H "Content-Type: application/json" -d '{"mediaId":"MEDIA_ID"}' | jq -r '.data.jobId')
 
-# Apply recommended settings
+# Poll until done
+curl -s http://127.0.0.1:8765/api/claude/transcribe/$PROJECT_ID/jobs/$JOB | jq '.data.status'
+
+# Auto-edit: preview cuts (dry run)
+curl -s -X POST http://127.0.0.1:8765/api/claude/timeline/$PROJECT_ID/auto-edit \
+  -H "Content-Type: application/json" \
+  -d '{"elementId":"EL_ID","mediaId":"MEDIA_ID","removeFillers":true,"removeSilences":true,"dryRun":true}'
+
+# Auto-edit: apply cuts
+curl -s -X POST http://127.0.0.1:8765/api/claude/timeline/$PROJECT_ID/auto-edit \
+  -H "Content-Type: application/json" \
+  -d '{"elementId":"EL_ID","mediaId":"MEDIA_ID","removeFillers":true,"removeSilences":true,"dryRun":false}'
+```
+
+### Export for a platform
+
+```bash
+# Get recommendation
+curl -s http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/recommend/tiktok | jq
+
+# Apply settings
 curl -s -X PATCH -H "Content-Type: application/json" \
   -d '{"width":1080,"height":1920,"fps":30}' \
-  http://127.0.0.1:8765/api/claude/project/PROJECT_ID/settings | jq
+  http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/settings
+
+# Start export
+curl -s -X POST http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start \
+  -H "Content-Type: application/json" -d '{"preset":"tiktok"}'
+
+# Poll export job
+curl -s http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/jobs/$JOB_ID | jq
 ```
 
-### Add text overlay to timeline
+### Inspect a project
 
 ```bash
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"type":"text","trackIndex":1,"startTime":2,"endTime":8,"content":"Subscribe!"}' \
-  http://127.0.0.1:8765/api/claude/timeline/PROJECT_ID/elements | jq
+# Project summary (markdown)
+curl -s http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/summary | jq -r '.data.markdown'
+
+# Timeline as readable markdown
+curl -s "http://127.0.0.1:8765/api/claude/timeline/$PROJECT_ID?format=md" | jq -r '.data'
+
+# Pipeline report of all operations
+curl -s -X POST http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/report \
+  -H "Content-Type: application/json" -d '{}' | jq -r '.data.markdown'
 ```
 
 ## Response Format
@@ -170,38 +312,56 @@ Error responses:
 {"success": false, "error": "Error message", "timestamp": 1707580800000}
 ```
 
+## Limits
+
+| Limit | Value |
+|-------|-------|
+| Batch import items | 20 |
+| Batch timeline operations | 50 |
+| File size (URL import) | 5 GB |
+| Download timeout | 5 min |
+| Generation jobs stored | 50 |
+| Transcription jobs stored | 50 |
+| HTTP request timeout | 30 seconds |
+| HTTP request body | 1 MB |
+
 ## Data Storage
 
 ```
 Documents/QCut/Projects/{projectId}/
-├── project.json     # Settings (Project API)
-├── timeline.json    # Timeline data
-└── media/           # Media files (Media API)
+  project.json     # Settings (Project API)
+  timeline.json    # Timeline data
+  media/           # Media files (Media API)
 ```
-
-Path helpers in `electron/claude/utils/helpers.ts`: `getProjectPath()`, `getMediaPath()`, `getTimelinePath()`, `getProjectSettingsPath()`
 
 ## Source Files
 
 | File | Purpose |
 |------|---------|
 | `electron/claude/index.ts` | Entry point, `setupAllClaudeIPC()` |
-| `electron/claude/claude-http-server.ts` | HTTP REST server |
-| `electron/claude/claude-media-handler.ts` | Media operations |
-| `electron/claude/claude-timeline-handler.ts` | Timeline export/import |
+| `electron/claude/claude-http-server.ts` | HTTP REST server + core routes |
+| `electron/claude/claude-http-analysis-routes.ts` | Analysis/transcription/editing routes |
+| `electron/claude/claude-media-handler.ts` | Media operations (import, batch, frame extract) |
+| `electron/claude/claude-timeline-handler.ts` | Timeline export/import, batch ops, arrange |
 | `electron/claude/claude-project-handler.ts` | Project settings/stats |
-| `electron/claude/claude-export-handler.ts` | Export presets |
+| `electron/claude/claude-export-handler.ts` | Export presets, jobs, trigger |
 | `electron/claude/claude-diagnostics-handler.ts` | Error analysis |
+| `electron/claude/claude-transcribe-handler.ts` | Transcription (sync + async jobs) |
+| `electron/claude/claude-scene-handler.ts` | Scene detection (sync + async jobs) |
+| `electron/claude/claude-vision-handler.ts` | Frame analysis (sync + async jobs) |
+| `electron/claude/claude-filler-handler.ts` | Filler word detection |
+| `electron/claude/claude-cuts-handler.ts` | Batch cut-list execution |
+| `electron/claude/claude-range-handler.ts` | Time-range delete |
+| `electron/claude/claude-auto-edit-handler.ts` | Auto-edit (sync + async jobs) |
+| `electron/claude/claude-suggest-handler.ts` | Cut suggestions (sync + async jobs) |
+| `electron/claude/claude-analyze-handler.ts` | AICP video analysis |
+| `electron/claude/claude-generate-handler.ts` | AI generation job tracking |
+| `electron/claude/claude-summary-handler.ts` | Project summary + pipeline report |
+| `electron/claude/claude-operation-log.ts` | In-memory operation log |
 | `electron/claude/utils/http-router.ts` | HTTP router utility |
 | `electron/claude/utils/helpers.ts` | Path/security utilities |
 | `electron/types/claude-api.ts` | Shared type definitions |
-| `apps/web/src/lib/claude-timeline-bridge.ts` | Frontend bridge |
+| `apps/web/src/lib/claude-timeline-bridge.ts` | Frontend IPC bridge |
+| `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Bridge helper functions |
 
-## Limitations
-
-- `timeline.import()` with Markdown only parses metadata (name, resolution, FPS). Use JSON for full import.
-- Timeline export has a 5-second timeout — QCut renderer must be active.
-- Project stats have a 3-second timeout — returns empty stats if renderer unresponsive.
-- `addElement()` and `updateElement()` depend on the Timeline Bridge being connected in the renderer.
-
-**See `REFERENCE.md` for complete type definitions, all endpoint details, and Electron IPC examples.**
+**See `REFERENCE.md` for complete type definitions, all endpoint details, and curl examples.**

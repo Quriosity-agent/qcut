@@ -17,10 +17,12 @@ import type {
   SceneBoundary,
   SceneDetectionRequest,
   SceneDetectionResult,
+  SceneDetectionJob,
 } from "../types/claude-api";
 
 const HANDLER_NAME = "SceneDetect";
 const SCENE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+const MAX_SCENE_JOBS = 20;
 
 /**
  * Resolve mediaId to a video file path.
@@ -339,9 +341,122 @@ export async function detectScenes(
   return { scenes, totalScenes, averageShotDuration };
 }
 
+// ---------------------------------------------------------------------------
+// Async job store
+// ---------------------------------------------------------------------------
+
+const sceneDetectionJobs = new Map<string, SceneDetectionJob>();
+
+function pruneOldSceneJobs(): void {
+  if (sceneDetectionJobs.size <= MAX_SCENE_JOBS) return;
+  const entries = [...sceneDetectionJobs.entries()].sort(
+    (a, b) => a[1].createdAt - b[1].createdAt
+  );
+  const toRemove = entries.slice(0, entries.length - MAX_SCENE_JOBS);
+  for (const [id] of toRemove) {
+    sceneDetectionJobs.delete(id);
+  }
+}
+
+async function runSceneDetection(
+  jobId: string,
+  projectId: string,
+  request: SceneDetectionRequest
+): Promise<void> {
+  const job = sceneDetectionJobs.get(jobId);
+  if (!job) return;
+
+  try {
+    job.status = "processing";
+    job.progress = 10;
+    job.message = "Starting scene detection...";
+
+    const result = await detectScenes(projectId, request);
+
+    // Check for external cancellation
+    const current = sceneDetectionJobs.get(jobId);
+    if (!current || current.status === "cancelled") return;
+
+    job.status = "completed";
+    job.progress = 100;
+    job.message = `Detected ${result.totalScenes} scenes`;
+    job.result = result;
+    job.completedAt = Date.now();
+  } catch (err) {
+    const current = sceneDetectionJobs.get(jobId);
+    if (!current || current.status === "cancelled") return;
+    job.status = "failed";
+    job.message = err instanceof Error ? err.message : "Scene detection failed";
+    job.completedAt = Date.now();
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} failed:`, err);
+  }
+}
+
+/**
+ * Start a scene detection job. Returns immediately with a job ID.
+ */
+export function startSceneDetectionJob(
+  projectId: string,
+  request: SceneDetectionRequest
+): { jobId: string } {
+  const jobId = `scene_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const job: SceneDetectionJob = {
+    jobId,
+    projectId,
+    mediaId: request.mediaId,
+    status: "queued",
+    progress: 0,
+    message: "Queued",
+    createdAt: Date.now(),
+  };
+
+  sceneDetectionJobs.set(jobId, job);
+  pruneOldSceneJobs();
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Job ${jobId} created for project ${projectId}, media ${request.mediaId}`
+  );
+
+  // Fire-and-forget
+  runSceneDetection(jobId, projectId, request).catch((err) => {
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} unexpected error:`, err);
+  });
+
+  return { jobId };
+}
+
+/** Get the current status of a scene detection job. */
+export function getSceneDetectionJobStatus(
+  jobId: string
+): SceneDetectionJob | null {
+  return sceneDetectionJobs.get(jobId) ?? null;
+}
+
+/** List all scene detection jobs. */
+export function listSceneDetectionJobs(): SceneDetectionJob[] {
+  return [...sceneDetectionJobs.values()];
+}
+
+/** Cancel a running scene detection job. */
+export function cancelSceneDetectionJob(jobId: string): boolean {
+  const job = sceneDetectionJobs.get(jobId);
+  if (!job) return false;
+  if (job.status === "completed" || job.status === "failed") return false;
+  job.status = "cancelled";
+  job.message = "Cancelled by user";
+  job.completedAt = Date.now();
+  return true;
+}
+
 // CommonJS export for compatibility
 module.exports = {
   detectScenes,
   detectScenesWithFFmpeg,
   parseShowInfoOutput,
+  startSceneDetectionJob,
+  getSceneDetectionJobStatus,
+  listSceneDetectionJobs,
+  cancelSceneDetectionJob,
 };

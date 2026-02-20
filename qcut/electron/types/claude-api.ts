@@ -712,6 +712,38 @@ export interface FrameAnalysisResult {
 }
 
 // ============================================================================
+// Scene Detection Async Job Types (Stage 2)
+// ============================================================================
+
+export interface SceneDetectionJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: SceneDetectionResult;
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
+// Frame Analysis Async Job Types (Stage 2)
+// ============================================================================
+
+export interface FrameAnalysisJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: FrameAnalysisResult;
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
 // Filler Detection HTTP Types (Stage 2)
 // ============================================================================
 

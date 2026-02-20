@@ -23,11 +23,13 @@ import type {
   FrameAnalysis,
   FrameAnalysisRequest,
   FrameAnalysisResult,
+  FrameAnalysisJob,
 } from "../types/claude-api";
 
 const HANDLER_NAME = "Vision";
 const MAX_FRAMES_PER_REQUEST = 20;
 const VISION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes per API call
+const MAX_FRAME_JOBS = 20;
 
 const DEFAULT_VISION_PROMPT = `Analyze each video frame. For each frame, provide a JSON object with:
 - "objects": array of objects/subjects visible
@@ -67,10 +69,14 @@ async function analyzeViaClaudeCli(
   const fullPrompt = `${prompt}\n\nAnalyze these frame images (read each file):\n${frameList}`;
 
   return new Promise((resolve, reject) => {
+    // Strip CLAUDECODE env var to avoid "nested session" rejection
+    const env = { ...process.env };
+    delete env.CLAUDECODE;
+
     const proc = spawn(
       claudePath,
       ["-p", "--model", "haiku", "--allowedTools", "Read", fullPrompt],
-      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+      { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env }
     );
 
     let stdout = "";
@@ -490,8 +496,121 @@ export async function analyzeFrames(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Async job store
+// ---------------------------------------------------------------------------
+
+const frameAnalysisJobs = new Map<string, FrameAnalysisJob>();
+
+function pruneOldFrameJobs(): void {
+  if (frameAnalysisJobs.size <= MAX_FRAME_JOBS) return;
+  const entries = [...frameAnalysisJobs.entries()].sort(
+    (a, b) => a[1].createdAt - b[1].createdAt
+  );
+  const toRemove = entries.slice(0, entries.length - MAX_FRAME_JOBS);
+  for (const [id] of toRemove) {
+    frameAnalysisJobs.delete(id);
+  }
+}
+
+async function runFrameAnalysis(
+  jobId: string,
+  projectId: string,
+  request: FrameAnalysisRequest
+): Promise<void> {
+  const job = frameAnalysisJobs.get(jobId);
+  if (!job) return;
+
+  try {
+    job.status = "processing";
+    job.progress = 10;
+    job.message = "Starting frame analysis...";
+
+    const result = await analyzeFrames(projectId, request);
+
+    // Check for external cancellation
+    const current = frameAnalysisJobs.get(jobId);
+    if (!current || current.status === "cancelled") return;
+
+    job.status = "completed";
+    job.progress = 100;
+    job.message = `Analyzed ${result.totalFramesAnalyzed} frames`;
+    job.result = result;
+    job.completedAt = Date.now();
+  } catch (err) {
+    const current = frameAnalysisJobs.get(jobId);
+    if (!current || current.status === "cancelled") return;
+    job.status = "failed";
+    job.message = err instanceof Error ? err.message : "Frame analysis failed";
+    job.completedAt = Date.now();
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} failed:`, err);
+  }
+}
+
+/**
+ * Start a frame analysis job. Returns immediately with a job ID.
+ */
+export function startFrameAnalysisJob(
+  projectId: string,
+  request: FrameAnalysisRequest
+): { jobId: string } {
+  const jobId = `frames_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const job: FrameAnalysisJob = {
+    jobId,
+    projectId,
+    mediaId: request.mediaId,
+    status: "queued",
+    progress: 0,
+    message: "Queued",
+    createdAt: Date.now(),
+  };
+
+  frameAnalysisJobs.set(jobId, job);
+  pruneOldFrameJobs();
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Job ${jobId} created for project ${projectId}, media ${request.mediaId}`
+  );
+
+  // Fire-and-forget
+  runFrameAnalysis(jobId, projectId, request).catch((err) => {
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} unexpected error:`, err);
+  });
+
+  return { jobId };
+}
+
+/** Get the current status of a frame analysis job. */
+export function getFrameAnalysisJobStatus(
+  jobId: string
+): FrameAnalysisJob | null {
+  return frameAnalysisJobs.get(jobId) ?? null;
+}
+
+/** List all frame analysis jobs. */
+export function listFrameAnalysisJobs(): FrameAnalysisJob[] {
+  return [...frameAnalysisJobs.values()];
+}
+
+/** Cancel a running frame analysis job. */
+export function cancelFrameAnalysisJob(jobId: string): boolean {
+  const job = frameAnalysisJobs.get(jobId);
+  if (!job) return false;
+  if (job.status === "completed" || job.status === "failed") return false;
+  job.status = "cancelled";
+  job.message = "Cancelled by user";
+  job.completedAt = Date.now();
+  return true;
+}
+
 module.exports = {
   analyzeFrames,
   parseFrameAnalysisResponse,
   resolveTimestamps,
+  startFrameAnalysisJob,
+  getFrameAnalysisJobStatus,
+  listFrameAnalysisJobs,
+  cancelFrameAnalysisJob,
 };
