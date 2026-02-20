@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useExportStore } from "@/stores/export-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import {
-  ExportQuality,
-  ExportFormat,
-  QUALITY_RESOLUTIONS,
-  QUALITY_SIZE_ESTIMATES,
-  getSupportedFormats,
+	ExportQuality,
+	ExportFormat,
+	QUALITY_RESOLUTIONS,
+	QUALITY_SIZE_ESTIMATES,
+	getSupportedFormats,
 } from "@/types/export";
 import { useElectron } from "@/hooks/useElectron";
 // Export engine factory and types will be imported dynamically when needed
@@ -17,145 +17,145 @@ import { debugLog, debugWarn } from "@/lib/debug-config";
  * and change handlers. `engineRecommendation` is a transient hint and may be null when unavailable.
  */
 export function useExportSettings() {
-  const { isDialogOpen, settings, updateSettings } = useExportStore();
-  const { getTotalDuration } = useTimelineStore();
-  const { isElectron } = useElectron();
+	const { isDialogOpen, settings, updateSettings } = useExportStore();
+	const { getTotalDuration } = useTimelineStore();
+	const { isElectron } = useElectron();
 
-  const [quality, setQuality] = useState<ExportQuality>(settings.quality);
-  const [format, setFormat] = useState<ExportFormat>(settings.format);
-  const [filename, setFilename] = useState(settings.filename);
-  const [engineType, setEngineType] = useState<"standard" | "ffmpeg" | "cli">(
-    isElectron() ? "cli" : "standard"
-  );
-  const [ffmpegAvailable, setFfmpegAvailable] = useState(false);
-  const [engineRecommendation, setEngineRecommendation] = useState<
-    string | null
-  >(null);
+	const [quality, setQuality] = useState<ExportQuality>(settings.quality);
+	const [format, setFormat] = useState<ExportFormat>(settings.format);
+	const [filename, setFilename] = useState(settings.filename);
+	const [engineType, setEngineType] = useState<"standard" | "ffmpeg" | "cli">(
+		isElectron() ? "cli" : "standard"
+	);
+	const [ffmpegAvailable, setFfmpegAvailable] = useState(false);
+	const [engineRecommendation, setEngineRecommendation] = useState<
+		string | null
+	>(null);
 
-  const supportedFormats = getSupportedFormats();
-  const resolution =
-    QUALITY_RESOLUTIONS[quality] || QUALITY_RESOLUTIONS[ExportQuality.HIGH];
-  const estimatedSize =
-    QUALITY_SIZE_ESTIMATES[quality] ||
-    QUALITY_SIZE_ESTIMATES[ExportQuality.HIGH];
-  const timelineDuration = getTotalDuration();
+	const supportedFormats = getSupportedFormats();
+	const resolution =
+		QUALITY_RESOLUTIONS[quality] || QUALITY_RESOLUTIONS[ExportQuality.HIGH];
+	const estimatedSize =
+		QUALITY_SIZE_ESTIMATES[quality] ||
+		QUALITY_SIZE_ESTIMATES[ExportQuality.HIGH];
+	const timelineDuration = getTotalDuration();
 
-  // Engine recommendation effect with multiple dependencies
-  useEffect(() => {
-    if (isDialogOpen && timelineDuration > 0) {
-      let aborted = false;
-      const getRecommendation = async () => {
-        try {
-          // Dynamically import export engine factory
-          const { ExportEngineFactory, ExportEngineType } = await import(
-            "@/lib/export-engine-factory"
-          );
+	// Engine recommendation effect with multiple dependencies
+	useEffect(() => {
+		if (isDialogOpen && timelineDuration > 0) {
+			let aborted = false;
+			const getRecommendation = async () => {
+				try {
+					// Dynamically import export engine factory
+					const { ExportEngineFactory, ExportEngineType } = await import(
+						"@/lib/export-engine-factory"
+					);
 
-          const factory = ExportEngineFactory.getInstance();
-          const recommendation = await factory.getEngineRecommendation(
-            {
-              ...settings,
-              quality,
-              format,
-              width: resolution.width,
-              height: resolution.height,
-            },
-            timelineDuration
-          );
+					const factory = ExportEngineFactory.getInstance();
+					const recommendation = await factory.getEngineRecommendation(
+						{
+							...settings,
+							quality,
+							format,
+							width: resolution.width,
+							height: resolution.height,
+						},
+						timelineDuration
+					);
 
-          if (aborted) return;
+					if (aborted) return;
 
-          const engineLabels = {
-            [ExportEngineType.STANDARD]: "Standard Engine",
-            [ExportEngineType.OPTIMIZED]: "Optimized Engine",
-            [ExportEngineType.WEBCODECS]: "WebCodecs Engine",
-            [ExportEngineType.FFMPEG]: "FFmpeg Engine",
-            [ExportEngineType.CLI]: "Native FFmpeg CLI",
-            [ExportEngineType.REMOTION]: "Remotion Engine",
-          };
+					const engineLabels = {
+						[ExportEngineType.STANDARD]: "Standard Engine",
+						[ExportEngineType.OPTIMIZED]: "Optimized Engine",
+						[ExportEngineType.WEBCODECS]: "WebCodecs Engine",
+						[ExportEngineType.FFMPEG]: "FFmpeg Engine",
+						[ExportEngineType.CLI]: "Native FFmpeg CLI",
+						[ExportEngineType.REMOTION]: "Remotion Engine",
+					};
 
-          const label = engineLabels[recommendation.engineType];
-          const performance =
-            recommendation.estimatedPerformance.charAt(0).toUpperCase() +
-            recommendation.estimatedPerformance.slice(1);
+					const label = engineLabels[recommendation.engineType];
+					const performance =
+						recommendation.estimatedPerformance.charAt(0).toUpperCase() +
+						recommendation.estimatedPerformance.slice(1);
 
-          setEngineRecommendation(`${label} (${performance} Performance)`);
-        } catch (error) {
-          if (!aborted) {
-            debugWarn("Failed to get engine recommendation:", error);
-            setEngineRecommendation(null);
-          }
-        }
-      };
+					setEngineRecommendation(`${label} (${performance} Performance)`);
+				} catch (error) {
+					if (!aborted) {
+						debugWarn("Failed to get engine recommendation:", error);
+						setEngineRecommendation(null);
+					}
+				}
+			};
 
-      getRecommendation();
-      return () => {
-        aborted = true;
-      };
-    }
-  }, [
-    isDialogOpen,
-    quality,
-    format,
-    timelineDuration,
-    resolution.width,
-    resolution.height,
-    settings,
-  ]);
+			getRecommendation();
+			return () => {
+				aborted = true;
+			};
+		}
+	}, [
+		isDialogOpen,
+		quality,
+		format,
+		timelineDuration,
+		resolution.width,
+		resolution.height,
+		settings,
+	]);
 
-  useEffect(() => {
-    // Dynamically import export engine factory for FFmpeg availability check
-    let cancelled = false;
-    import("@/lib/export-engine-factory")
-      .then(({ ExportEngineFactory }) =>
-        ExportEngineFactory.isFFmpegAvailable()
-      )
-      .then((available) => {
-        if (!cancelled) setFfmpegAvailable(available);
-      })
-      .catch((err) => {
-        debugWarn("FFmpeg availability check failed:", err);
-        if (!cancelled) setFfmpegAvailable(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+	useEffect(() => {
+		// Dynamically import export engine factory for FFmpeg availability check
+		let cancelled = false;
+		import("@/lib/export-engine-factory")
+			.then(({ ExportEngineFactory }) =>
+				ExportEngineFactory.isFFmpegAvailable()
+			)
+			.then((available) => {
+				if (!cancelled) setFfmpegAvailable(available);
+			})
+			.catch((err) => {
+				debugWarn("FFmpeg availability check failed:", err);
+				if (!cancelled) setFfmpegAvailable(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
-  const handleQualityChange = (newQuality: ExportQuality) => {
-    setQuality(newQuality);
-    updateSettings({ quality: newQuality });
-  };
+	const handleQualityChange = (newQuality: ExportQuality) => {
+		setQuality(newQuality);
+		updateSettings({ quality: newQuality });
+	};
 
-  const handleFormatChange = (newFormat: ExportFormat) => {
-    debugLog("Format changing from", format, "to", newFormat);
-    setFormat(newFormat);
-    updateSettings({ format: newFormat });
-  };
+	const handleFormatChange = (newFormat: ExportFormat) => {
+		debugLog("Format changing from", format, "to", newFormat);
+		setFormat(newFormat);
+		updateSettings({ format: newFormat });
+	};
 
-  const handleFilenameChange = (newFilename: string) => {
-    setFilename(newFilename);
-    updateSettings({ filename: newFilename });
-  };
+	const handleFilenameChange = (newFilename: string) => {
+		setFilename(newFilename);
+		updateSettings({ filename: newFilename });
+	};
 
-  return {
-    // State values
-    quality,
-    format,
-    filename,
-    engineType,
-    ffmpegAvailable,
-    engineRecommendation,
-    supportedFormats,
-    resolution,
-    estimatedSize,
-    timelineDuration,
-    // Handlers
-    handleQualityChange,
-    handleFormatChange,
-    handleFilenameChange,
-    setEngineType,
-    // Store integration
-    updateSettings,
-  };
+	return {
+		// State values
+		quality,
+		format,
+		filename,
+		engineType,
+		ffmpegAvailable,
+		engineRecommendation,
+		supportedFormats,
+		resolution,
+		estimatedSize,
+		timelineDuration,
+		// Handlers
+		handleQualityChange,
+		handleFormatChange,
+		handleFilenameChange,
+		setEngineType,
+		// Store integration
+		updateSettings,
+	};
 }

@@ -6,74 +6,74 @@ import { useEffectsStore } from "@/stores/effects-store";
 
 /** Interface for active elements at a specific time */
 export interface ActiveElement {
-  element: TimelineElement;
-  track: TimelineTrack;
-  mediaItem: MediaItem | null;
+	element: TimelineElement;
+	track: TimelineTrack;
+	mediaItem: MediaItem | null;
 }
 
 /** Calculate total number of frames needed for export */
 export function calculateTotalFrames(
-  totalDuration: number,
-  fps: number
+	totalDuration: number,
+	fps: number
 ): number {
-  return Math.ceil(totalDuration * fps);
+	return Math.ceil(totalDuration * fps);
 }
 
 /** Get active elements at a specific time */
 export function getActiveElements(
-  tracks: TimelineTrack[],
-  mediaItems: MediaItem[],
-  currentTime: number
+	tracks: TimelineTrack[],
+	mediaItems: MediaItem[],
+	currentTime: number
 ): ActiveElement[] {
-  const activeElements: ActiveElement[] = [];
+	const activeElements: ActiveElement[] = [];
 
-  for (const track of tracks) {
-    for (const element of track.elements) {
-      if (element.hidden) {
-        continue;
-      }
+	for (const track of tracks) {
+		for (const element of track.elements) {
+			if (element.hidden) {
+				continue;
+			}
 
-      const elementStart = element.startTime;
-      const elementEnd =
-        element.startTime +
-        (element.duration - element.trimStart - element.trimEnd);
+			const elementStart = element.startTime;
+			const elementEnd =
+				element.startTime +
+				(element.duration - element.trimStart - element.trimEnd);
 
-      if (currentTime >= elementStart && currentTime < elementEnd) {
-        let mediaItem = null;
-        if (element.type === "media" && element.mediaId !== TEST_MEDIA_ID) {
-          mediaItem =
-            mediaItems.find((item) => item.id === element.mediaId) || null;
-          if (!mediaItem) {
-            debugWarn(
-              `[ExportEngine] Media item not found: ${element.mediaId}`
-            );
-          }
-        }
-        activeElements.push({ element, track, mediaItem });
-      }
-    }
-  }
+			if (currentTime >= elementStart && currentTime < elementEnd) {
+				let mediaItem = null;
+				if (element.type === "media" && element.mediaId !== TEST_MEDIA_ID) {
+					mediaItem =
+						mediaItems.find((item) => item.id === element.mediaId) || null;
+					if (!mediaItem) {
+						debugWarn(
+							`[ExportEngine] Media item not found: ${element.mediaId}`
+						);
+					}
+				}
+				activeElements.push({ element, track, mediaItem });
+			}
+		}
+	}
 
-  // Log active elements for investigation
-  if (activeElements.length > 0 && currentTime % 1 === 0) {
-    debugLog(
-      `\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`
-    );
-    for (const { element } of activeElements) {
-      const effects = useEffectsStore.getState().getElementEffects(element.id);
-      const hasEffects = effects && effects.length > 0;
-      debugLog(
-        `  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : "none"}`
-      );
-      if (hasEffects) {
-        debugLog(
-          `    ✨ Effects applied: ${effects.map((e) => `${e.name}(${e.enabled ? "on" : "off"})`).join(", ")}`
-        );
-      }
-    }
-  }
+	// Log active elements for investigation
+	if (activeElements.length > 0 && currentTime % 1 === 0) {
+		debugLog(
+			`\n🔍 EXPORT @ ${currentTime.toFixed(1)}s: ${activeElements.length} active elements`
+		);
+		for (const { element } of activeElements) {
+			const effects = useEffectsStore.getState().getElementEffects(element.id);
+			const hasEffects = effects && effects.length > 0;
+			debugLog(
+				`  🎥 Element: ${element.id} (${element.type}) - Effects: ${hasEffects ? effects.length : "none"}`
+			);
+			if (hasEffects) {
+				debugLog(
+					`    ✨ Effects applied: ${effects.map((e) => `${e.name}(${e.enabled ? "on" : "off"})`).join(", ")}`
+				);
+			}
+		}
+	}
 
-  return activeElements;
+	return activeElements;
 }
 
 /**
@@ -87,50 +87,50 @@ export function getActiveElements(
  * 3. Always center the result
  */
 export function calculateElementBounds(
-  element: TimelineElement,
-  mediaWidth: number,
-  mediaHeight: number,
-  canvasWidth: number,
-  canvasHeight: number
+	element: TimelineElement,
+	mediaWidth: number,
+	mediaHeight: number,
+	canvasWidth: number,
+	canvasHeight: number
 ): { x: number; y: number; width: number; height: number } {
-  const canvasAspect = canvasWidth / canvasHeight;
-  const mediaAspect = mediaWidth / mediaHeight;
+	const canvasAspect = canvasWidth / canvasHeight;
+	const mediaAspect = mediaWidth / mediaHeight;
 
-  let width: number;
-  let height: number;
+	let width: number;
+	let height: number;
 
-  const isSmaller = mediaWidth <= canvasWidth && mediaHeight <= canvasHeight;
+	const isSmaller = mediaWidth <= canvasWidth && mediaHeight <= canvasHeight;
 
-  if (isSmaller) {
-    width = mediaWidth;
-    height = mediaHeight;
-    debugLog(
-      `[ExportEngine] Video smaller than canvas (${mediaWidth}x${mediaHeight} vs ${canvasWidth}x${canvasHeight}), keeping original size with padding`
-    );
-  } else {
-    if (mediaAspect > canvasAspect) {
-      width = canvasWidth;
-      height = width / mediaAspect;
-    } else {
-      width = canvasHeight * mediaAspect;
-      height = canvasHeight;
-    }
-    debugLog(
-      `[ExportEngine] Video larger than canvas, scaling down from ${mediaWidth}x${mediaHeight} to ${Math.round(width)}x${Math.round(height)}`
-    );
-  }
+	if (isSmaller) {
+		width = mediaWidth;
+		height = mediaHeight;
+		debugLog(
+			`[ExportEngine] Video smaller than canvas (${mediaWidth}x${mediaHeight} vs ${canvasWidth}x${canvasHeight}), keeping original size with padding`
+		);
+	} else {
+		if (mediaAspect > canvasAspect) {
+			width = canvasWidth;
+			height = width / mediaAspect;
+		} else {
+			width = canvasHeight * mediaAspect;
+			height = canvasHeight;
+		}
+		debugLog(
+			`[ExportEngine] Video larger than canvas, scaling down from ${mediaWidth}x${mediaHeight} to ${Math.round(width)}x${Math.round(height)}`
+		);
+	}
 
-  const x = (canvasWidth - width) / 2;
-  const y = (canvasHeight - height) / 2;
+	const x = (canvasWidth - width) / 2;
+	const y = (canvasHeight - height) / 2;
 
-  const isTextLike = element.type === "text" || element.type === "markdown";
-  const elementX = isTextLike ? element.x : undefined;
-  const elementY = isTextLike ? element.y : undefined;
+	const isTextLike = element.type === "text" || element.type === "markdown";
+	const elementX = isTextLike ? element.x : undefined;
+	const elementY = isTextLike ? element.y : undefined;
 
-  return {
-    x: elementX ?? x,
-    y: elementY ?? y,
-    width,
-    height,
-  };
+	return {
+		x: elementX ?? x,
+		y: elementY ?? y,
+		width,
+		height,
+	};
 }

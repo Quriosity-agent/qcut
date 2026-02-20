@@ -5,57 +5,57 @@ import * as textToVideoHandlers from "../text-to-video-handlers";
 import * as upscaleHandlers from "../upscale-handlers";
 
 function getHandlerExports({
-  moduleExports,
+	moduleExports,
 }: {
-  moduleExports: Record<string, unknown>;
+	moduleExports: Record<string, unknown>;
 }): string[] {
-  return Object.getOwnPropertyNames(moduleExports).flatMap((name) => {
-    const value = moduleExports[name];
-    if (!name.startsWith("handle")) {
-      return [];
-    }
+	return Object.getOwnPropertyNames(moduleExports).flatMap((name) => {
+		const value = moduleExports[name];
+		if (!name.startsWith("handle")) {
+			return [];
+		}
 
-    if (typeof value !== "function") {
-      return [];
-    }
+		if (typeof value !== "function") {
+			return [];
+		}
 
-    return [name];
-  });
+		return [name];
+	});
 }
 
 describe("handler module exports", () => {
-  it("text-to-video-handlers exports exactly 8 functions", () => {
-    const names = getHandlerExports({ moduleExports: textToVideoHandlers });
-    expect(names).toHaveLength(8);
-  });
+	it("text-to-video-handlers exports exactly 8 functions", () => {
+		const names = getHandlerExports({ moduleExports: textToVideoHandlers });
+		expect(names).toHaveLength(8);
+	});
 
-  it("image-to-video-handlers exports exactly 15 functions", () => {
-    const names = getHandlerExports({ moduleExports: imageToVideoHandlers });
-    expect(names).toHaveLength(15);
-  });
+	it("image-to-video-handlers exports exactly 15 functions", () => {
+		const names = getHandlerExports({ moduleExports: imageToVideoHandlers });
+		expect(names).toHaveLength(15);
+	});
 
-  it("upscale-handlers exports exactly 2 functions", () => {
-    const names = getHandlerExports({ moduleExports: upscaleHandlers });
-    expect(names).toHaveLength(2);
-  });
+	it("upscale-handlers exports exactly 2 functions", () => {
+		const names = getHandlerExports({ moduleExports: upscaleHandlers });
+		expect(names).toHaveLength(2);
+	});
 
-  it("avatar-handlers exports exactly 8 functions", () => {
-    const names = getHandlerExports({ moduleExports: avatarHandlers });
-    expect(names).toHaveLength(8);
-  });
+	it("avatar-handlers exports exactly 8 functions", () => {
+		const names = getHandlerExports({ moduleExports: avatarHandlers });
+		expect(names).toHaveLength(8);
+	});
 
-  it("all 33 handlers are functions", () => {
-    const allNames = [
-      ...getHandlerExports({ moduleExports: textToVideoHandlers }),
-      ...getHandlerExports({ moduleExports: imageToVideoHandlers }),
-      ...getHandlerExports({ moduleExports: upscaleHandlers }),
-      ...getHandlerExports({ moduleExports: avatarHandlers }),
-    ];
-    expect(allNames).toHaveLength(33);
-  });
+	it("all 33 handlers are functions", () => {
+		const allNames = [
+			...getHandlerExports({ moduleExports: textToVideoHandlers }),
+			...getHandlerExports({ moduleExports: imageToVideoHandlers }),
+			...getHandlerExports({ moduleExports: upscaleHandlers }),
+			...getHandlerExports({ moduleExports: avatarHandlers }),
+		];
+		expect(allNames).toHaveLength(33);
+	});
 
-  it("handleWAN26T2V is in text-to-video, not image-to-video", () => {
-    expect("handleWAN26T2V" in textToVideoHandlers).toBe(true);
-    expect("handleWAN26T2V" in imageToVideoHandlers).toBe(false);
-  });
+	it("handleWAN26T2V is in text-to-video, not image-to-video", () => {
+		expect("handleWAN26T2V" in textToVideoHandlers).toBe(true);
+		expect("handleWAN26T2V" in imageToVideoHandlers).toBe(false);
+	});
 });

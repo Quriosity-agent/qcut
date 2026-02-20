@@ -15,27 +15,27 @@ import type { FontConfig, Platform } from "../types";
  * Maps font family names to actual .ttf files in C:\Windows\Fonts
  */
 const WINDOWS_FONT_MAP: Record<
-  string,
-  { regular: string; bold?: string; italic?: string; boldItalic?: string }
+	string,
+	{ regular: string; bold?: string; italic?: string; boldItalic?: string }
 > = {
-  arial: {
-    regular: "arial.ttf",
-    bold: "arialbd.ttf",
-    italic: "ariali.ttf",
-    boldItalic: "arialbi.ttf",
-  },
-  "times new roman": {
-    regular: "times.ttf",
-    bold: "timesbd.ttf",
-    italic: "timesi.ttf",
-    boldItalic: "timesbi.ttf",
-  },
-  "courier new": {
-    regular: "cour.ttf",
-    bold: "courbd.ttf",
-    italic: "couri.ttf",
-    boldItalic: "courbi.ttf",
-  },
+	arial: {
+		regular: "arial.ttf",
+		bold: "arialbd.ttf",
+		italic: "ariali.ttf",
+		boldItalic: "arialbi.ttf",
+	},
+	"times new roman": {
+		regular: "times.ttf",
+		bold: "timesbd.ttf",
+		italic: "timesi.ttf",
+		boldItalic: "timesbi.ttf",
+	},
+	"courier new": {
+		regular: "cour.ttf",
+		bold: "courbd.ttf",
+		italic: "couri.ttf",
+		boldItalic: "courbi.ttf",
+	},
 };
 
 /**
@@ -43,9 +43,9 @@ const WINDOWS_FONT_MAP: Record<
  * Maps common Windows fonts to system equivalents.
  */
 const FONTCONFIG_MAP: Record<string, { mac: string; linux: string }> = {
-  arial: { mac: "Helvetica", linux: "Liberation Sans" },
-  "times new roman": { mac: "Times", linux: "Liberation Serif" },
-  "courier new": { mac: "Courier", linux: "Liberation Mono" },
+	arial: { mac: "Helvetica", linux: "Liberation Sans" },
+	"times new roman": { mac: "Times", linux: "Liberation Serif" },
+	"courier new": { mac: "Courier", linux: "Liberation Mono" },
 };
 
 /**
@@ -69,58 +69,58 @@ export const WINDOWS_FONT_BASE_PATH = "C:/Windows/Fonts/";
  * @throws Error if platform detection fails (Electron API unavailable)
  */
 export function resolveFontPath(
-  fontFamily: string,
-  fontWeight?: string,
-  fontStyle?: string,
-  platform?: Platform
+	fontFamily: string,
+	fontWeight?: string,
+	fontStyle?: string,
+	platform?: Platform
 ): FontConfig {
-  const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, "");
-  const isBold = fontWeight === "bold";
-  const isItalic = fontStyle === "italic";
+	const normalizedFamily = fontFamily.toLowerCase().replace(/['"]/g, "");
+	const isBold = fontWeight === "bold";
+	const isItalic = fontStyle === "italic";
 
-  // Get platform from parameter or Electron API
-  const detectedPlatform = platform ?? window.electronAPI?.platform;
-  if (!detectedPlatform) {
-    throw new Error(
-      "Platform information not available. Ensure Electron API is initialized or pass platform parameter."
-    );
-  }
+	// Get platform from parameter or Electron API
+	const detectedPlatform = platform ?? window.electronAPI?.platform;
+	if (!detectedPlatform) {
+		throw new Error(
+			"Platform information not available. Ensure Electron API is initialized or pass platform parameter."
+		);
+	}
 
-  const isWindows = detectedPlatform === "win32";
-  const isMac = detectedPlatform === "darwin";
+	const isWindows = detectedPlatform === "win32";
+	const isMac = detectedPlatform === "darwin";
 
-  // Linux/macOS: Use fontconfig
-  if (!isWindows) {
-    const fontMapping = FONTCONFIG_MAP[normalizedFamily];
-    const fontName = fontMapping
-      ? isMac
-        ? fontMapping.mac
-        : fontMapping.linux
-      : normalizedFamily;
+	// Linux/macOS: Use fontconfig
+	if (!isWindows) {
+		const fontMapping = FONTCONFIG_MAP[normalizedFamily];
+		const fontName = fontMapping
+			? isMac
+				? fontMapping.mac
+				: fontMapping.linux
+			: normalizedFamily;
 
-    const styles: string[] = [];
-    if (isBold) styles.push("Bold");
-    if (isItalic) styles.push("Italic");
-    const styleString = styles.length > 0 ? `:style=${styles.join(" ")}` : "";
+		const styles: string[] = [];
+		if (isBold) styles.push("Bold");
+		if (isItalic) styles.push("Italic");
+		const styleString = styles.length > 0 ? `:style=${styles.join(" ")}` : "";
 
-    return { useFontconfig: true, fontName: `${fontName}${styleString}` };
-  }
+		return { useFontconfig: true, fontName: `${fontName}${styleString}` };
+	}
 
-  // Windows: Use explicit font file paths
-  const fontConfig =
-    WINDOWS_FONT_MAP[normalizedFamily] || WINDOWS_FONT_MAP.arial;
-  let fontFile = fontConfig.regular;
+	// Windows: Use explicit font file paths
+	const fontConfig =
+		WINDOWS_FONT_MAP[normalizedFamily] || WINDOWS_FONT_MAP.arial;
+	let fontFile = fontConfig.regular;
 
-  if (isBold && isItalic && fontConfig.boldItalic) {
-    fontFile = fontConfig.boldItalic;
-  } else if (isBold && fontConfig.bold) {
-    fontFile = fontConfig.bold;
-  } else if (isItalic && fontConfig.italic) {
-    fontFile = fontConfig.italic;
-  }
+	if (isBold && isItalic && fontConfig.boldItalic) {
+		fontFile = fontConfig.boldItalic;
+	} else if (isBold && fontConfig.bold) {
+		fontFile = fontConfig.bold;
+	} else if (isItalic && fontConfig.italic) {
+		fontFile = fontConfig.italic;
+	}
 
-  return {
-    useFontconfig: false,
-    fontPath: `${WINDOWS_FONT_BASE_PATH}${fontFile}`,
-  };
+	return {
+		useFontconfig: false,
+		fontPath: `${WINDOWS_FONT_BASE_PATH}${fontFile}`,
+	};
 }

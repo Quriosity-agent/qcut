@@ -15,34 +15,34 @@
 
 // Types
 export type {
-  VideoSourceInput,
-  AudioFileInput,
-  StickerSourceForFilter,
-  ProgressCallback,
-  FontConfig,
-  Platform,
-  TextElement,
+	VideoSourceInput,
+	AudioFileInput,
+	StickerSourceForFilter,
+	ProgressCallback,
+	FontConfig,
+	Platform,
+	TextElement,
 } from "./types";
 
 // Filters
 export {
-  // Text escape utilities
-  escapeTextForFFmpeg,
-  escapePathForFFmpeg,
-  colorToFFmpeg,
-  // Font resolution
-  resolveFontPath,
-  WINDOWS_FONT_BASE_PATH,
-  // Text overlay
-  convertTextElementToDrawtext,
-  buildTextOverlayFilters,
-  // Sticker overlay
-  buildStickerOverlayFilters,
+	// Text escape utilities
+	escapeTextForFFmpeg,
+	escapePathForFFmpeg,
+	colorToFFmpeg,
+	// Font resolution
+	resolveFontPath,
+	WINDOWS_FONT_BASE_PATH,
+	// Text overlay
+	convertTextElementToDrawtext,
+	buildTextOverlayFilters,
+	// Sticker overlay
+	buildStickerOverlayFilters,
 } from "./filters";
 
 // Sources
 export {
-  extractVideoSources,
-  extractVideoInputPath,
-  extractStickerSources,
+	extractVideoSources,
+	extractVideoInputPath,
+	extractStickerSources,
 } from "./sources";

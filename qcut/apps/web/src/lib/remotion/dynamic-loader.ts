@@ -20,78 +20,78 @@ let optionalPackagesLoaded: Promise<void> | null = null;
 
 // Try to load optional packages (won't fail build if missing)
 async function loadOptionalPackages(): Promise<void> {
-  try {
-    const zodTypes = await import("@remotion/zod-types");
-    RemotionZodTypes = zodTypes as unknown as Record<string, unknown>;
-    debugLog("[DynamicLoader] ✅ Loaded @remotion/zod-types");
-  } catch (e) {
-    debugLog("[DynamicLoader] @remotion/zod-types not available:", e);
-  }
+	try {
+		const zodTypes = await import("@remotion/zod-types");
+		RemotionZodTypes = zodTypes as unknown as Record<string, unknown>;
+		debugLog("[DynamicLoader] ✅ Loaded @remotion/zod-types");
+	} catch (e) {
+		debugLog("[DynamicLoader] @remotion/zod-types not available:", e);
+	}
 
-  try {
-    // Load main transitions module
-    const transitions = await import("@remotion/transitions");
-    RemotionTransitions = {
-      ...(transitions as unknown as Record<string, unknown>),
-    };
+	try {
+		// Load main transitions module
+		const transitions = await import("@remotion/transitions");
+		RemotionTransitions = {
+			...(transitions as unknown as Record<string, unknown>),
+		};
 
-    // Load individual transition submodules - must be static imports for Vite to bundle them
-    // Each import is in its own try-catch so failures don't stop other imports
-    try {
-      const fadeModule = await import("@remotion/transitions/fade");
-      Object.assign(RemotionTransitions, fadeModule);
-      debugLog("[DynamicLoader] ✅ Loaded fade transition");
-    } catch (e) {
-      debugLog("[DynamicLoader] fade transition not available:", e);
-    }
+		// Load individual transition submodules - must be static imports for Vite to bundle them
+		// Each import is in its own try-catch so failures don't stop other imports
+		try {
+			const fadeModule = await import("@remotion/transitions/fade");
+			Object.assign(RemotionTransitions, fadeModule);
+			debugLog("[DynamicLoader] ✅ Loaded fade transition");
+		} catch (e) {
+			debugLog("[DynamicLoader] fade transition not available:", e);
+		}
 
-    try {
-      const slideModule = await import("@remotion/transitions/slide");
-      Object.assign(RemotionTransitions, slideModule);
-    } catch {
-      // slide not available
-    }
+		try {
+			const slideModule = await import("@remotion/transitions/slide");
+			Object.assign(RemotionTransitions, slideModule);
+		} catch {
+			// slide not available
+		}
 
-    try {
-      const wipeModule = await import("@remotion/transitions/wipe");
-      Object.assign(RemotionTransitions, wipeModule);
-    } catch {
-      // wipe not available
-    }
+		try {
+			const wipeModule = await import("@remotion/transitions/wipe");
+			Object.assign(RemotionTransitions, wipeModule);
+		} catch {
+			// wipe not available
+		}
 
-    try {
-      const flipModule = await import("@remotion/transitions/flip");
-      Object.assign(RemotionTransitions, flipModule);
-    } catch {
-      // flip not available
-    }
+		try {
+			const flipModule = await import("@remotion/transitions/flip");
+			Object.assign(RemotionTransitions, flipModule);
+		} catch {
+			// flip not available
+		}
 
-    try {
-      const clockWipeModule = await import("@remotion/transitions/clock-wipe");
-      Object.assign(RemotionTransitions, clockWipeModule);
-    } catch {
-      // clock-wipe not available
-    }
+		try {
+			const clockWipeModule = await import("@remotion/transitions/clock-wipe");
+			Object.assign(RemotionTransitions, clockWipeModule);
+		} catch {
+			// clock-wipe not available
+		}
 
-    try {
-      const noneModule = await import("@remotion/transitions/none");
-      Object.assign(RemotionTransitions, noneModule);
-    } catch {
-      // none not available
-    }
+		try {
+			const noneModule = await import("@remotion/transitions/none");
+			Object.assign(RemotionTransitions, noneModule);
+		} catch {
+			// none not available
+		}
 
-    debugLog(
-      "[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:",
-      Object.keys(RemotionTransitions)
-    );
-  } catch (e) {
-    debugLog("[DynamicLoader] @remotion/transitions not available:", e);
-  }
+		debugLog(
+			"[DynamicLoader] ✅ Loaded @remotion/transitions with submodules:",
+			Object.keys(RemotionTransitions)
+		);
+	} catch (e) {
+		debugLog("[DynamicLoader] @remotion/transitions not available:", e);
+	}
 }
 
 // Initialize optional packages and store the promise
 optionalPackagesLoaded = loadOptionalPackages().catch((e) => {
-  debugLog("[DynamicLoader] Error loading optional packages:", e);
+	debugLog("[DynamicLoader] Error loading optional packages:", e);
 });
 
 // ============================================================================
@@ -109,29 +109,29 @@ let globalsInitialized = false;
  * so we make these available as globals that the wrapped code can reference.
  */
 export function setupGlobalsForDynamicImport(): void {
-  if (typeof window === "undefined") return;
-  if (globalsInitialized) return;
+	if (typeof window === "undefined") return;
+	if (globalsInitialized) return;
 
-  try {
-    // Make React available globally
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).React = React;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).ReactJSXRuntime = {
-      jsx: React.createElement,
-      jsxs: React.createElement,
-      Fragment: React.Fragment,
-    };
+	try {
+		// Make React available globally
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(window as any).React = React;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(window as any).ReactJSXRuntime = {
+			jsx: React.createElement,
+			jsxs: React.createElement,
+			Fragment: React.Fragment,
+		};
 
-    // Make Remotion available globally
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).Remotion = Remotion;
+		// Make Remotion available globally
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(window as any).Remotion = Remotion;
 
-    globalsInitialized = true;
-    debugLog("[DynamicLoader] ✅ Globals initialized for dynamic imports");
-  } catch (e) {
-    debugError("[DynamicLoader] Failed to setup globals:", e);
-  }
+		globalsInitialized = true;
+		debugLog("[DynamicLoader] ✅ Globals initialized for dynamic imports");
+	} catch (e) {
+		debugError("[DynamicLoader] Failed to setup globals:", e);
+	}
 }
 
 /**
@@ -139,18 +139,18 @@ export function setupGlobalsForDynamicImport(): void {
  * Called internally after awaiting optionalPackagesLoaded.
  */
 function updateOptionalGlobals(): void {
-  if (typeof window === "undefined") return;
+	if (typeof window === "undefined") return;
 
-  // Make optional Remotion packages available
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).RemotionZodTypes = RemotionZodTypes;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).RemotionTransitions = RemotionTransitions;
+	// Make optional Remotion packages available
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(window as any).RemotionZodTypes = RemotionZodTypes;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(window as any).RemotionTransitions = RemotionTransitions;
 
-  debugLog(
-    "[DynamicLoader] ✅ Optional packages globals updated:",
-    "zColor" in RemotionZodTypes ? "zColor available" : "zColor not available"
-  );
+	debugLog(
+		"[DynamicLoader] ✅ Optional packages globals updated:",
+		"zColor" in RemotionZodTypes ? "zColor available" : "zColor not available"
+	);
 }
 
 /**
@@ -158,10 +158,10 @@ function updateOptionalGlobals(): void {
  * Call this before loading any component that might use zColor or transitions.
  */
 export async function ensureOptionalPackagesLoaded(): Promise<void> {
-  if (optionalPackagesLoaded) {
-    await optionalPackagesLoaded;
-  }
-  updateOptionalGlobals();
+	if (optionalPackagesLoaded) {
+		await optionalPackagesLoaded;
+	}
+	updateOptionalGlobals();
 }
 
 // Initialize globals on module load
@@ -175,24 +175,24 @@ setupGlobalsForDynamicImport();
  * Result of loading a dynamic component
  */
 export interface DynamicLoadResult {
-  /** Whether loading was successful */
-  success: boolean;
-  /** The loaded React component */
-  component?: React.ComponentType<Record<string, unknown>>;
-  /** Error message if loading failed */
-  error?: string;
+	/** Whether loading was successful */
+	success: boolean;
+	/** The loaded React component */
+	component?: React.ComponentType<Record<string, unknown>>;
+	/** Error message if loading failed */
+	error?: string;
 }
 
 /**
  * Cached component entry
  */
 interface CacheEntry {
-  /** The loaded React component */
-  component: React.ComponentType<Record<string, unknown>>;
-  /** Blob URL used to load the component (for cleanup) */
-  blobUrl: string;
-  /** When the component was cached */
-  cachedAt: number;
+	/** The loaded React component */
+	component: React.ComponentType<Record<string, unknown>>;
+	/** Blob URL used to load the component (for cleanup) */
+	blobUrl: string;
+	/** When the component was cached */
+	cachedAt: number;
 }
 
 // ============================================================================
@@ -212,10 +212,10 @@ const componentCache = new Map<string, CacheEntry>();
  * @returns The cached component or undefined
  */
 export function getCachedComponent(
-  componentId: string
+	componentId: string
 ): React.ComponentType<Record<string, unknown>> | undefined {
-  const entry = componentCache.get(componentId);
-  return entry?.component;
+	const entry = componentCache.get(componentId);
+	return entry?.component;
 }
 
 /**
@@ -225,7 +225,7 @@ export function getCachedComponent(
  * @returns Whether the component is cached
  */
 export function isComponentCached(componentId: string): boolean {
-  return componentCache.has(componentId);
+	return componentCache.has(componentId);
 }
 
 /**
@@ -234,37 +234,37 @@ export function isComponentCached(componentId: string): boolean {
  * @param componentId - The component ID to remove
  */
 export function removeCachedComponent(componentId: string): void {
-  const entry = componentCache.get(componentId);
-  if (entry) {
-    // Revoke the blob URL to free memory
-    URL.revokeObjectURL(entry.blobUrl);
-    componentCache.delete(componentId);
-    debugLog("[DynamicLoader] Removed cached component:", componentId);
-  }
+	const entry = componentCache.get(componentId);
+	if (entry) {
+		// Revoke the blob URL to free memory
+		URL.revokeObjectURL(entry.blobUrl);
+		componentCache.delete(componentId);
+		debugLog("[DynamicLoader] Removed cached component:", componentId);
+	}
 }
 
 /**
  * Clear all cached components and their blob URLs.
  */
 export function clearComponentCache(): void {
-  for (const entry of componentCache.values()) {
-    URL.revokeObjectURL(entry.blobUrl);
-  }
-  componentCache.clear();
-  debugLog("[DynamicLoader] Cleared component cache");
+	for (const entry of componentCache.values()) {
+		URL.revokeObjectURL(entry.blobUrl);
+	}
+	componentCache.clear();
+	debugLog("[DynamicLoader] Cleared component cache");
 }
 
 /**
  * Get cache statistics.
  */
 export function getCacheStats(): {
-  size: number;
-  componentIds: string[];
+	size: number;
+	componentIds: string[];
 } {
-  return {
-    size: componentCache.size,
-    componentIds: Array.from(componentCache.keys()),
-  };
+	return {
+		size: componentCache.size,
+		componentIds: Array.from(componentCache.keys()),
+	};
 }
 
 // ============================================================================
@@ -292,79 +292,79 @@ export function getCacheStats(): {
  * ```
  */
 export async function loadBundledComponent(
-  bundledCode: string,
-  compositionId: string,
-  componentId?: string
+	bundledCode: string,
+	compositionId: string,
+	componentId?: string
 ): Promise<DynamicLoadResult> {
-  const cacheId = componentId || compositionId;
+	const cacheId = componentId || compositionId;
 
-  // Ensure optional packages (zColor, transitions) are loaded before processing
-  await ensureOptionalPackagesLoaded();
+	// Ensure optional packages (zColor, transitions) are loaded before processing
+	await ensureOptionalPackagesLoaded();
 
-  // Check cache first
-  const cached = componentCache.get(cacheId);
-  if (cached) {
-    debugLog("[DynamicLoader] Using cached component:", cacheId);
-    return {
-      success: true,
-      component: cached.component,
-    };
-  }
+	// Check cache first
+	const cached = componentCache.get(cacheId);
+	if (cached) {
+		debugLog("[DynamicLoader] Using cached component:", cacheId);
+		return {
+			success: true,
+			component: cached.component,
+		};
+	}
 
-  try {
-    // Wrap the bundled code to inject React/Remotion dependencies
-    // This handles the externalized imports
-    const wrappedCode = wrapBundledCode(bundledCode);
+	try {
+		// Wrap the bundled code to inject React/Remotion dependencies
+		// This handles the externalized imports
+		const wrappedCode = wrapBundledCode(bundledCode);
 
-    // Create blob URL from bundled code
-    const blob = new Blob([wrappedCode], { type: "application/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
+		// Create blob URL from bundled code
+		const blob = new Blob([wrappedCode], { type: "application/javascript" });
+		const blobUrl = URL.createObjectURL(blob);
 
-    try {
-      // Dynamic import the module
-      // @vite-ignore comment tells Vite not to analyze this import
-      const module = await import(/* @vite-ignore */ blobUrl);
+		try {
+			// Dynamic import the module
+			// @vite-ignore comment tells Vite not to analyze this import
+			const module = await import(/* @vite-ignore */ blobUrl);
 
-      // Try common export patterns
-      const Component = findExportedComponent(module, compositionId);
+			// Try common export patterns
+			const Component = findExportedComponent(module, compositionId);
 
-      if (!Component) {
-        throw new Error(
-          "No valid React component found in exports. " +
-            `Available exports: ${Object.keys(module).join(", ")}`
-        );
-      }
+			if (!Component) {
+				throw new Error(
+					"No valid React component found in exports. " +
+						`Available exports: ${Object.keys(module).join(", ")}`
+				);
+			}
 
-      // Validate it's a function (React component)
-      if (typeof Component !== "function") {
-        throw new Error(`Export is not a function: got ${typeof Component}`);
-      }
+			// Validate it's a function (React component)
+			if (typeof Component !== "function") {
+				throw new Error(`Export is not a function: got ${typeof Component}`);
+			}
 
-      // Cache the component
-      componentCache.set(cacheId, {
-        component: Component as React.ComponentType<Record<string, unknown>>,
-        blobUrl,
-        cachedAt: Date.now(),
-      });
+			// Cache the component
+			componentCache.set(cacheId, {
+				component: Component as React.ComponentType<Record<string, unknown>>,
+				blobUrl,
+				cachedAt: Date.now(),
+			});
 
-      debugLog("[DynamicLoader] Loaded and cached component:", cacheId);
+			debugLog("[DynamicLoader] Loaded and cached component:", cacheId);
 
-      return {
-        success: true,
-        component: Component as React.ComponentType<Record<string, unknown>>,
-      };
-    } catch (importError) {
-      // Clean up blob URL on error
-      URL.revokeObjectURL(blobUrl);
-      throw importError;
-    }
-  } catch (error) {
-    debugError("[DynamicLoader] Failed to load component:", cacheId, error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+			return {
+				success: true,
+				component: Component as React.ComponentType<Record<string, unknown>>,
+			};
+		} catch (importError) {
+			// Clean up blob URL on error
+			URL.revokeObjectURL(blobUrl);
+			throw importError;
+		}
+	} catch (error) {
+		debugError("[DynamicLoader] Failed to load component:", cacheId, error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unknown error",
+		};
+	}
 }
 
 /**
@@ -384,143 +384,143 @@ export async function loadBundledComponent(
  * @returns Wrapped code with dependency injection
  */
 function wrapBundledCode(bundledCode: string): string {
-  // Ensure globals are available
-  setupGlobalsForDynamicImport();
+	// Ensure globals are available
+	setupGlobalsForDynamicImport();
 
-  // First, extract aliased import names from the bundled code
-  // esbuild produces code like: import { jsx as jsx2, jsxs as jsxs6 } from "react/jsx-runtime";
-  const jsxAliases: string[] = [];
-  const jsxsAliases: string[] = [];
-  const fragmentAliases: string[] = [];
+	// First, extract aliased import names from the bundled code
+	// esbuild produces code like: import { jsx as jsx2, jsxs as jsxs6 } from "react/jsx-runtime";
+	const jsxAliases: string[] = [];
+	const jsxsAliases: string[] = [];
+	const fragmentAliases: string[] = [];
 
-  // Find all jsx/jsxs/Fragment aliases in react/jsx-runtime imports
-  const jsxRuntimeMatches = bundledCode.matchAll(
-    /import\s*\{([^}]*)\}\s*from\s*["']react\/jsx(?:-dev)?-runtime["'];?/g
-  );
-  for (const match of jsxRuntimeMatches) {
-    const specifiers = match[1].split(",");
-    for (const spec of specifiers) {
-      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
-      if (aliasMatch) {
-        const original = aliasMatch[1];
-        const alias = aliasMatch[2] || original;
-        if (original === "jsx") jsxAliases.push(alias);
-        else if (original === "jsxs") jsxsAliases.push(alias);
-        else if (original === "Fragment") fragmentAliases.push(alias);
-      }
-    }
-  }
+	// Find all jsx/jsxs/Fragment aliases in react/jsx-runtime imports
+	const jsxRuntimeMatches = bundledCode.matchAll(
+		/import\s*\{([^}]*)\}\s*from\s*["']react\/jsx(?:-dev)?-runtime["'];?/g
+	);
+	for (const match of jsxRuntimeMatches) {
+		const specifiers = match[1].split(",");
+		for (const spec of specifiers) {
+			const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+			if (aliasMatch) {
+				const original = aliasMatch[1];
+				const alias = aliasMatch[2] || original;
+				if (original === "jsx") jsxAliases.push(alias);
+				else if (original === "jsxs") jsxsAliases.push(alias);
+				else if (original === "Fragment") fragmentAliases.push(alias);
+			}
+		}
+	}
 
-  // Find Remotion import aliases
-  const remotionAliases: Map<string, string[]> = new Map();
-  const remotionImportMatches = bundledCode.matchAll(
-    /import\s*\{([^}]*)\}\s*from\s*["']remotion["'];?/g
-  );
-  for (const match of remotionImportMatches) {
-    const specifiers = match[1].split(",");
-    for (const spec of specifiers) {
-      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
-      if (aliasMatch) {
-        const original = aliasMatch[1];
-        const alias = aliasMatch[2] || original;
-        if (!remotionAliases.has(original)) {
-          remotionAliases.set(original, []);
-        }
-        remotionAliases.get(original)?.push(alias);
-      }
-    }
-  }
+	// Find Remotion import aliases
+	const remotionAliases: Map<string, string[]> = new Map();
+	const remotionImportMatches = bundledCode.matchAll(
+		/import\s*\{([^}]*)\}\s*from\s*["']remotion["'];?/g
+	);
+	for (const match of remotionImportMatches) {
+		const specifiers = match[1].split(",");
+		for (const spec of specifiers) {
+			const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+			if (aliasMatch) {
+				const original = aliasMatch[1];
+				const alias = aliasMatch[2] || original;
+				if (!remotionAliases.has(original)) {
+					remotionAliases.set(original, []);
+				}
+				remotionAliases.get(original)?.push(alias);
+			}
+		}
+	}
 
-  // Find @remotion/zod-types import aliases (zColor, etc.)
-  const zodTypesAliases: Map<string, string[]> = new Map();
-  const zodTypesMatches = bundledCode.matchAll(
-    /import\s*\{([^}]*)\}\s*from\s*["']@remotion\/zod-types["'];?/g
-  );
-  for (const match of zodTypesMatches) {
-    const specifiers = match[1].split(",");
-    for (const spec of specifiers) {
-      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
-      if (aliasMatch) {
-        const original = aliasMatch[1];
-        const alias = aliasMatch[2] || original;
-        if (!zodTypesAliases.has(original)) {
-          zodTypesAliases.set(original, []);
-        }
-        zodTypesAliases.get(original)?.push(alias);
-      }
-    }
-  }
+	// Find @remotion/zod-types import aliases (zColor, etc.)
+	const zodTypesAliases: Map<string, string[]> = new Map();
+	const zodTypesMatches = bundledCode.matchAll(
+		/import\s*\{([^}]*)\}\s*from\s*["']@remotion\/zod-types["'];?/g
+	);
+	for (const match of zodTypesMatches) {
+		const specifiers = match[1].split(",");
+		for (const spec of specifiers) {
+			const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+			if (aliasMatch) {
+				const original = aliasMatch[1];
+				const alias = aliasMatch[2] || original;
+				if (!zodTypesAliases.has(original)) {
+					zodTypesAliases.set(original, []);
+				}
+				zodTypesAliases.get(original)?.push(alias);
+			}
+		}
+	}
 
-  // Find @remotion/transitions import aliases
-  const transitionsAliases: Map<string, string[]> = new Map();
-  const transitionsMatches = bundledCode.matchAll(
-    /import\s*\{([^}]*)\}\s*from\s*["']@remotion\/transitions["'];?/g
-  );
-  for (const match of transitionsMatches) {
-    const specifiers = match[1].split(",");
-    for (const spec of specifiers) {
-      const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
-      if (aliasMatch) {
-        const original = aliasMatch[1];
-        const alias = aliasMatch[2] || original;
-        if (!transitionsAliases.has(original)) {
-          transitionsAliases.set(original, []);
-        }
-        transitionsAliases.get(original)?.push(alias);
-      }
-    }
-  }
+	// Find @remotion/transitions import aliases
+	const transitionsAliases: Map<string, string[]> = new Map();
+	const transitionsMatches = bundledCode.matchAll(
+		/import\s*\{([^}]*)\}\s*from\s*["']@remotion\/transitions["'];?/g
+	);
+	for (const match of transitionsMatches) {
+		const specifiers = match[1].split(",");
+		for (const spec of specifiers) {
+			const aliasMatch = spec.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/);
+			if (aliasMatch) {
+				const original = aliasMatch[1];
+				const alias = aliasMatch[2] || original;
+				if (!transitionsAliases.has(original)) {
+					transitionsAliases.set(original, []);
+				}
+				transitionsAliases.get(original)?.push(alias);
+			}
+		}
+	}
 
-  // Build dynamic alias assignments for JSX
-  let jsxAliasAssignments = "";
-  for (const alias of jsxAliases) {
-    if (alias !== "jsx") {
-      jsxAliasAssignments += `const ${alias} = jsx;\n`;
-    }
-  }
-  for (const alias of jsxsAliases) {
-    if (alias !== "jsxs") {
-      jsxAliasAssignments += `const ${alias} = jsxs;\n`;
-    }
-  }
-  for (const alias of fragmentAliases) {
-    if (alias !== "Fragment") {
-      jsxAliasAssignments += `const ${alias} = Fragment;\n`;
-    }
-  }
+	// Build dynamic alias assignments for JSX
+	let jsxAliasAssignments = "";
+	for (const alias of jsxAliases) {
+		if (alias !== "jsx") {
+			jsxAliasAssignments += `const ${alias} = jsx;\n`;
+		}
+	}
+	for (const alias of jsxsAliases) {
+		if (alias !== "jsxs") {
+			jsxAliasAssignments += `const ${alias} = jsxs;\n`;
+		}
+	}
+	for (const alias of fragmentAliases) {
+		if (alias !== "Fragment") {
+			jsxAliasAssignments += `const ${alias} = Fragment;\n`;
+		}
+	}
 
-  // Build dynamic alias assignments for Remotion
-  let remotionAliasAssignments = "";
-  for (const [original, aliases] of remotionAliases) {
-    for (const alias of aliases) {
-      if (alias !== original) {
-        remotionAliasAssignments += `const ${alias} = ${original};\n`;
-      }
-    }
-  }
+	// Build dynamic alias assignments for Remotion
+	let remotionAliasAssignments = "";
+	for (const [original, aliases] of remotionAliases) {
+		for (const alias of aliases) {
+			if (alias !== original) {
+				remotionAliasAssignments += `const ${alias} = ${original};\n`;
+			}
+		}
+	}
 
-  // Build dynamic alias assignments for @remotion/zod-types
-  let zodTypesAliasAssignments = "";
-  for (const [original, aliases] of zodTypesAliases) {
-    for (const alias of aliases) {
-      if (alias !== original) {
-        zodTypesAliasAssignments += `const ${alias} = ${original};\n`;
-      }
-    }
-  }
+	// Build dynamic alias assignments for @remotion/zod-types
+	let zodTypesAliasAssignments = "";
+	for (const [original, aliases] of zodTypesAliases) {
+		for (const alias of aliases) {
+			if (alias !== original) {
+				zodTypesAliasAssignments += `const ${alias} = ${original};\n`;
+			}
+		}
+	}
 
-  // Build dynamic alias assignments for @remotion/transitions
-  let transitionsAliasAssignments = "";
-  for (const [original, aliases] of transitionsAliases) {
-    for (const alias of aliases) {
-      if (alias !== original) {
-        transitionsAliasAssignments += `const ${alias} = ${original};\n`;
-      }
-    }
-  }
+	// Build dynamic alias assignments for @remotion/transitions
+	let transitionsAliasAssignments = "";
+	for (const [original, aliases] of transitionsAliases) {
+		for (const alias of aliases) {
+			if (alias !== original) {
+				transitionsAliasAssignments += `const ${alias} = ${original};\n`;
+			}
+		}
+	}
 
-  // Preamble that provides React and Remotion from globals
-  const preamble = `
+	// Preamble that provides React and Remotion from globals
+	const preamble = `
 // Injected by dynamic-loader: provide React/Remotion from globals
 const React = globalThis.React || window.React;
 const { useState, useEffect, useCallback, useMemo, useRef, useContext, useReducer, useLayoutEffect, Fragment, createElement, forwardRef, memo, lazy, Suspense, createContext, Children, cloneElement, isValidElement, Component, PureComponent } = React;
@@ -550,63 +550,63 @@ const { TransitionSeries, linearTiming, springTiming, fade, slide, wipe, flip, c
 ${transitionsAliasAssignments}
 `;
 
-  // Remove external import statements from the bundled code
-  // These patterns match what esbuild produces with external: ["react", "remotion", ...]
-  let transformed = bundledCode;
+	// Remove external import statements from the bundled code
+	// These patterns match what esbuild produces with external: ["react", "remotion", ...]
+	let transformed = bundledCode;
 
-  // Remove React imports (various forms)
-  transformed = transformed.replace(
-    /import\s+\*\s+as\s+\w+\s+from\s*["']react["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s+\w+\s+from\s*["']react["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s*\{[^}]*\}\s*from\s*["']react["'];?\n?/g,
-    ""
-  );
+	// Remove React imports (various forms)
+	transformed = transformed.replace(
+		/import\s+\*\s+as\s+\w+\s+from\s*["']react["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s+\w+\s+from\s*["']react["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s*\{[^}]*\}\s*from\s*["']react["'];?\n?/g,
+		""
+	);
 
-  // Remove react/jsx-runtime imports
-  transformed = transformed.replace(
-    /import\s*\{[^}]*\}\s*from\s*["']react\/jsx-runtime["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s*\{[^}]*\}\s*from\s*["']react\/jsx-dev-runtime["'];?\n?/g,
-    ""
-  );
+	// Remove react/jsx-runtime imports
+	transformed = transformed.replace(
+		/import\s*\{[^}]*\}\s*from\s*["']react\/jsx-runtime["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s*\{[^}]*\}\s*from\s*["']react\/jsx-dev-runtime["'];?\n?/g,
+		""
+	);
 
-  // Remove Remotion imports (various forms)
-  transformed = transformed.replace(
-    /import\s+\*\s+as\s+\w+\s+from\s*["']remotion["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s+\w+\s+from\s*["']remotion["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s*\{[^}]*\}\s*from\s*["']remotion["'];?\n?/g,
-    ""
-  );
+	// Remove Remotion imports (various forms)
+	transformed = transformed.replace(
+		/import\s+\*\s+as\s+\w+\s+from\s*["']remotion["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s+\w+\s+from\s*["']remotion["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s*\{[^}]*\}\s*from\s*["']remotion["'];?\n?/g,
+		""
+	);
 
-  // Remove @remotion/* imports
-  transformed = transformed.replace(
-    /import\s*\{[^}]*\}\s*from\s*["']@remotion\/[^"']+["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s+\*\s+as\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
-    ""
-  );
-  transformed = transformed.replace(
-    /import\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
-    ""
-  );
+	// Remove @remotion/* imports
+	transformed = transformed.replace(
+		/import\s*\{[^}]*\}\s*from\s*["']@remotion\/[^"']+["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s+\*\s+as\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
+		""
+	);
+	transformed = transformed.replace(
+		/import\s+\w+\s+from\s*["']@remotion\/[^"']+["'];?\n?/g,
+		""
+	);
 
-  return preamble + transformed;
+	return preamble + transformed;
 }
 
 /**
@@ -618,41 +618,41 @@ ${transitionsAliasAssignments}
  * @returns The found component or null
  */
 function findExportedComponent(
-  module: Record<string, unknown>,
-  compositionId: string
+	module: Record<string, unknown>,
+	compositionId: string
 ): unknown {
-  // Priority order for finding the component:
+	// Priority order for finding the component:
 
-  // 1. Default export
-  if (module.default && typeof module.default === "function") {
-    return module.default;
-  }
+	// 1. Default export
+	if (module.default && typeof module.default === "function") {
+		return module.default;
+	}
 
-  // 2. Named export matching composition ID
-  if (module[compositionId] && typeof module[compositionId] === "function") {
-    return module[compositionId];
-  }
+	// 2. Named export matching composition ID
+	if (module[compositionId] && typeof module[compositionId] === "function") {
+		return module[compositionId];
+	}
 
-  // 3. Named export matching composition ID with common suffixes
-  const variations = [
-    compositionId,
-    `${compositionId}Composition`,
-    `${compositionId}Component`,
-  ];
-  for (const name of variations) {
-    if (module[name] && typeof module[name] === "function") {
-      return module[name];
-    }
-  }
+	// 3. Named export matching composition ID with common suffixes
+	const variations = [
+		compositionId,
+		`${compositionId}Composition`,
+		`${compositionId}Component`,
+	];
+	for (const name of variations) {
+		if (module[name] && typeof module[name] === "function") {
+			return module[name];
+		}
+	}
 
-  // 4. First function export (as fallback)
-  for (const value of Object.values(module)) {
-    if (typeof value === "function") {
-      return value;
-    }
-  }
+	// 4. First function export (as fallback)
+	for (const value of Object.values(module)) {
+		if (typeof value === "function") {
+			return value;
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -662,25 +662,25 @@ function findExportedComponent(
  * @returns Map of composition ID to load result
  */
 export async function loadBundledComponents(
-  bundles: Array<{
-    compositionId: string;
-    componentId: string;
-    bundledCode: string;
-  }>
+	bundles: Array<{
+		compositionId: string;
+		componentId: string;
+		bundledCode: string;
+	}>
 ): Promise<Map<string, DynamicLoadResult>> {
-  const results = new Map<string, DynamicLoadResult>();
+	const results = new Map<string, DynamicLoadResult>();
 
-  // Load components sequentially to avoid overwhelming the browser
-  for (const bundle of bundles) {
-    const result = await loadBundledComponent(
-      bundle.bundledCode,
-      bundle.compositionId,
-      bundle.componentId
-    );
-    results.set(bundle.componentId, result);
-  }
+	// Load components sequentially to avoid overwhelming the browser
+	for (const bundle of bundles) {
+		const result = await loadBundledComponent(
+			bundle.bundledCode,
+			bundle.compositionId,
+			bundle.componentId
+		);
+		results.set(bundle.componentId, result);
+	}
 
-  return results;
+	return results;
 }
 
 // ============================================================================
@@ -692,22 +692,22 @@ export async function loadBundledComponents(
  * Revokes all blob URLs to prevent memory leaks.
  */
 export function cleanupDynamicLoader(): void {
-  clearComponentCache();
+	clearComponentCache();
 }
 
 // Register cleanup on page unload
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", cleanupDynamicLoader);
+	window.addEventListener("beforeunload", cleanupDynamicLoader);
 }
 
 export default {
-  loadBundledComponent,
-  loadBundledComponents,
-  getCachedComponent,
-  isComponentCached,
-  removeCachedComponent,
-  clearComponentCache,
-  getCacheStats,
-  cleanupDynamicLoader,
-  setupGlobalsForDynamicImport,
+	loadBundledComponent,
+	loadBundledComponents,
+	getCachedComponent,
+	isComponentCached,
+	removeCachedComponent,
+	clearComponentCache,
+	getCacheStats,
+	cleanupDynamicLoader,
+	setupGlobalsForDynamicImport,
 };

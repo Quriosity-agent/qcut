@@ -10,8 +10,8 @@
 
 import { DEFAULT_FOLDER_IDS, type MediaItem } from "@/stores/media-store-types";
 import type {
-  ProjectFolderFileInfo,
-  ProjectFolderScanResult,
+	ProjectFolderFileInfo,
+	ProjectFolderScanResult,
 } from "@/types/electron.d";
 import { getMimeType } from "@/lib/bulk-import";
 import { getOrCreateObjectURL } from "@/lib/blob-manager";
@@ -22,16 +22,16 @@ import { debugLog, debugError } from "@/lib/debug-config";
 // ============================================================================
 
 export interface SyncResult {
-  /** Number of files successfully imported */
-  imported: number;
-  /** Number of files skipped (already in store) */
-  skipped: number;
-  /** Error messages for files that failed to import */
-  errors: string[];
-  /** Time taken for the full sync in milliseconds */
-  scanTime: number;
-  /** Total media files found on disk */
-  totalDiskFiles: number;
+	/** Number of files successfully imported */
+	imported: number;
+	/** Number of files skipped (already in store) */
+	skipped: number;
+	/** Error messages for files that failed to import */
+	errors: string[];
+	/** Time taken for the full sync in milliseconds */
+	scanTime: number;
+	/** Total media files found on disk */
+	totalDiskFiles: number;
 }
 
 // ============================================================================
@@ -43,28 +43,28 @@ export interface SyncResult {
  * based on its media type and disk location.
  */
 export function determineFolderIds(file: ProjectFolderFileInfo): string[] {
-  const folderIds: string[] = [];
+	const folderIds: string[] = [];
 
-  // Type-based assignment
-  switch (file.type) {
-    case "video":
-      folderIds.push(DEFAULT_FOLDER_IDS.VIDEOS);
-      break;
-    case "audio":
-      folderIds.push(DEFAULT_FOLDER_IDS.AUDIO);
-      break;
-    case "image":
-      folderIds.push(DEFAULT_FOLDER_IDS.IMAGES);
-      break;
-  }
+	// Type-based assignment
+	switch (file.type) {
+		case "video":
+			folderIds.push(DEFAULT_FOLDER_IDS.VIDEOS);
+			break;
+		case "audio":
+			folderIds.push(DEFAULT_FOLDER_IDS.AUDIO);
+			break;
+		case "image":
+			folderIds.push(DEFAULT_FOLDER_IDS.IMAGES);
+			break;
+	}
 
-  // Path-based: files under media/generated/ also get AI_GENERATED
-  const normalizedPath = file.relativePath.replace(/\\/g, "/");
-  if (normalizedPath.startsWith("media/generated")) {
-    folderIds.push(DEFAULT_FOLDER_IDS.AI_GENERATED);
-  }
+	// Path-based: files under media/generated/ also get AI_GENERATED
+	const normalizedPath = file.relativePath.replace(/\\/g, "/");
+	if (normalizedPath.startsWith("media/generated")) {
+		folderIds.push(DEFAULT_FOLDER_IDS.AI_GENERATED);
+	}
 
-  return folderIds;
+	return folderIds;
 }
 
 /**
@@ -72,48 +72,48 @@ export function determineFolderIds(file: ProjectFolderFileInfo): string[] {
  * Matches by localPath, importMetadata.originalPath, or name+size.
  */
 export function findUntrackedFiles(
-  diskFiles: ProjectFolderFileInfo[],
-  mediaItems: MediaItem[]
+	diskFiles: ProjectFolderFileInfo[],
+	mediaItems: MediaItem[]
 ): ProjectFolderFileInfo[] {
-  // Build lookup sets from existing media items
-  const localPaths = new Set<string>();
-  const originalPaths = new Set<string>();
-  const nameSizeKeys = new Set<string>();
+	// Build lookup sets from existing media items
+	const localPaths = new Set<string>();
+	const originalPaths = new Set<string>();
+	const nameSizeKeys = new Set<string>();
 
-  for (const item of mediaItems) {
-    if (item.localPath) {
-      localPaths.add(normalizePath(item.localPath));
-    }
-    if (item.importMetadata?.originalPath) {
-      originalPaths.add(normalizePath(item.importMetadata.originalPath));
-    }
-    // name+size as fallback for files that may have been moved
-    if (item.file?.size) {
-      nameSizeKeys.add(`${item.name}:${item.file.size}`);
-    }
-  }
+	for (const item of mediaItems) {
+		if (item.localPath) {
+			localPaths.add(normalizePath(item.localPath));
+		}
+		if (item.importMetadata?.originalPath) {
+			originalPaths.add(normalizePath(item.importMetadata.originalPath));
+		}
+		// name+size as fallback for files that may have been moved
+		if (item.file?.size) {
+			nameSizeKeys.add(`${item.name}:${item.file.size}`);
+		}
+	}
 
-  return diskFiles.filter((file) => {
-    // Skip directories and unknown types
-    if (file.isDirectory || file.type === "unknown") {
-      return false;
-    }
+	return diskFiles.filter((file) => {
+		// Skip directories and unknown types
+		if (file.isDirectory || file.type === "unknown") {
+			return false;
+		}
 
-    const normalizedFilePath = normalizePath(file.path);
-    const nameSizeKey = `${file.name}:${file.size}`;
+		const normalizedFilePath = normalizePath(file.path);
+		const nameSizeKey = `${file.name}:${file.size}`;
 
-    // Check all three match strategies
-    if (localPaths.has(normalizedFilePath)) return false;
-    if (originalPaths.has(normalizedFilePath)) return false;
-    if (nameSizeKeys.has(nameSizeKey)) return false;
+		// Check all three match strategies
+		if (localPaths.has(normalizedFilePath)) return false;
+		if (originalPaths.has(normalizedFilePath)) return false;
+		if (nameSizeKeys.has(nameSizeKey)) return false;
 
-    return true;
-  });
+		return true;
+	});
 }
 
 /** Normalize path separators for consistent comparison */
 function normalizePath(p: string): string {
-  return p.replace(/\\/g, "/").toLowerCase();
+	return p.replace(/\\/g, "/").toLowerCase();
 }
 
 // ============================================================================
@@ -125,119 +125,119 @@ function normalizePath(p: string): string {
  * into the media store with appropriate virtual folder assignments.
  */
 export async function syncProjectFolder(
-  projectId: string
+	projectId: string
 ): Promise<SyncResult> {
-  const startTime = Date.now();
-  const result: SyncResult = {
-    imported: 0,
-    skipped: 0,
-    errors: [],
-    scanTime: 0,
-    totalDiskFiles: 0,
-  };
+	const startTime = Date.now();
+	const result: SyncResult = {
+		imported: 0,
+		skipped: 0,
+		errors: [],
+		scanTime: 0,
+		totalDiskFiles: 0,
+	};
 
-  // Guard: Electron API must be available
-  if (!window.electronAPI?.projectFolder) {
-    debugLog(
-      "[ProjectFolderSync] electronAPI.projectFolder not available, skipping sync"
-    );
-    return result;
-  }
+	// Guard: Electron API must be available
+	if (!window.electronAPI?.projectFolder) {
+		debugLog(
+			"[ProjectFolderSync] electronAPI.projectFolder not available, skipping sync"
+		);
+		return result;
+	}
 
-  try {
-    // Ensure project directory structure exists
-    await window.electronAPI.projectFolder.ensureStructure(projectId);
+	try {
+		// Ensure project directory structure exists
+		await window.electronAPI.projectFolder.ensureStructure(projectId);
 
-    // Scan for all media files recursively
-    const scanResult: ProjectFolderScanResult =
-      await window.electronAPI.projectFolder.scan(projectId, "media", {
-        recursive: true,
-        mediaOnly: true,
-      });
+		// Scan for all media files recursively
+		const scanResult: ProjectFolderScanResult =
+			await window.electronAPI.projectFolder.scan(projectId, "media", {
+				recursive: true,
+				mediaOnly: true,
+			});
 
-    result.totalDiskFiles = scanResult.files.length;
-    debugLog(
-      `[ProjectFolderSync] Found ${scanResult.files.length} media files on disk (${scanResult.scanTime}ms)`
-    );
+		result.totalDiskFiles = scanResult.files.length;
+		debugLog(
+			`[ProjectFolderSync] Found ${scanResult.files.length} media files on disk (${scanResult.scanTime}ms)`
+		);
 
-    // Dynamically import media store to avoid circular dependencies
-    const { useMediaStore } = await import("@/stores/media-store");
-    const store = useMediaStore.getState();
-    const currentItems = store.mediaItems;
+		// Dynamically import media store to avoid circular dependencies
+		const { useMediaStore } = await import("@/stores/media-store");
+		const store = useMediaStore.getState();
+		const currentItems = store.mediaItems;
 
-    // Find files not yet in the store
-    const untrackedFiles = findUntrackedFiles(scanResult.files, currentItems);
-    result.skipped = result.totalDiskFiles - untrackedFiles.length;
+		// Find files not yet in the store
+		const untrackedFiles = findUntrackedFiles(scanResult.files, currentItems);
+		result.skipped = result.totalDiskFiles - untrackedFiles.length;
 
-    if (untrackedFiles.length === 0) {
-      debugLog(
-        "[ProjectFolderSync] All files already tracked, nothing to import"
-      );
-      result.scanTime = Date.now() - startTime;
-      return result;
-    }
+		if (untrackedFiles.length === 0) {
+			debugLog(
+				"[ProjectFolderSync] All files already tracked, nothing to import"
+			);
+			result.scanTime = Date.now() - startTime;
+			return result;
+		}
 
-    debugLog(
-      `[ProjectFolderSync] Importing ${untrackedFiles.length} untracked files`
-    );
+		debugLog(
+			`[ProjectFolderSync] Importing ${untrackedFiles.length} untracked files`
+		);
 
-    // Import each untracked file
-    for (const file of untrackedFiles) {
-      try {
-        // Read file bytes from disk
-        const buffer = await window.electronAPI.readFile(file.path);
-        if (!buffer) {
-          throw new Error("readFile returned null");
-        }
+		// Import each untracked file
+		for (const file of untrackedFiles) {
+			try {
+				// Read file bytes from disk
+				const buffer = await window.electronAPI.readFile(file.path);
+				if (!buffer) {
+					throw new Error("readFile returned null");
+				}
 
-        // Create File object (convert Buffer to Uint8Array for Blob compatibility)
-        const mimeType = getMimeType(file.name, file.type);
-        const uint8 = new Uint8Array(buffer);
-        const blob = new Blob([uint8], { type: mimeType });
-        const fileObj = new File([blob], file.name, { type: mimeType });
+				// Create File object (convert Buffer to Uint8Array for Blob compatibility)
+				const mimeType = getMimeType(file.name, file.type);
+				const uint8 = new Uint8Array(buffer);
+				const blob = new Blob([uint8], { type: mimeType });
+				const fileObj = new File([blob], file.name, { type: mimeType });
 
-        // Determine folder assignments
-        const folderIds = determineFolderIds(file);
+				// Determine folder assignments
+				const folderIds = determineFolderIds(file);
 
-        // Detect if this is AI-generated content for metadata
-        const normalizedRelPath = file.relativePath.replace(/\\/g, "/");
-        const isGenerated = normalizedRelPath.startsWith("media/generated");
+				// Detect if this is AI-generated content for metadata
+				const normalizedRelPath = file.relativePath.replace(/\\/g, "/");
+				const isGenerated = normalizedRelPath.startsWith("media/generated");
 
-        // Create blob URL for display so timeline elements can render the media
-        const displayUrl = getOrCreateObjectURL(fileObj, "project-folder-sync");
+				// Create blob URL for display so timeline elements can render the media
+				const displayUrl = getOrCreateObjectURL(fileObj, "project-folder-sync");
 
-        // Add to media store
-        await store.addMediaItem(projectId, {
-          name: file.name,
-          type: file.type as "video" | "audio" | "image",
-          file: fileObj,
-          url: displayUrl,
-          localPath: file.path,
-          isLocalFile: true,
-          folderIds,
-          metadata: isGenerated
-            ? { source: "project-folder-sync-generated" }
-            : { source: "project-folder-sync" },
-        });
+				// Add to media store
+				await store.addMediaItem(projectId, {
+					name: file.name,
+					type: file.type as "video" | "audio" | "image",
+					file: fileObj,
+					url: displayUrl,
+					localPath: file.path,
+					isLocalFile: true,
+					folderIds,
+					metadata: isGenerated
+						? { source: "project-folder-sync-generated" }
+						: { source: "project-folder-sync" },
+				});
 
-        result.imported++;
-      } catch (err) {
-        const msg = `${file.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-        result.errors.push(msg);
-        debugError(`[ProjectFolderSync] Failed to import ${file.name}:`, err);
-      }
-    }
+				result.imported++;
+			} catch (err) {
+				const msg = `${file.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
+				result.errors.push(msg);
+				debugError(`[ProjectFolderSync] Failed to import ${file.name}:`, err);
+			}
+		}
 
-    debugLog(
-      `[ProjectFolderSync] Sync complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`
-    );
-  } catch (err) {
-    debugError("[ProjectFolderSync] Sync failed:", err);
-    result.errors.push(
-      `Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`
-    );
-  }
+		debugLog(
+			`[ProjectFolderSync] Sync complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`
+		);
+	} catch (err) {
+		debugError("[ProjectFolderSync] Sync failed:", err);
+		result.errors.push(
+			`Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`
+		);
+	}
 
-  result.scanTime = Date.now() - startTime;
-  return result;
+	result.scanTime = Date.now() - startTime;
+	return result;
 }

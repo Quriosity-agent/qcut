@@ -8,10 +8,10 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import type {
-  AIPipelineProgress,
-  AIPipelineGenerateOptions,
-  AIPipelineResult,
-  AIPipelineStatus,
+	AIPipelineProgress,
+	AIPipelineGenerateOptions,
+	AIPipelineResult,
+	AIPipelineStatus,
 } from "@/types/electron";
 
 // ============================================================================
@@ -19,45 +19,45 @@ import type {
 // ============================================================================
 
 interface UseAIPipelineOptions {
-  /** Callback for progress updates */
-  onProgress?: (progress: AIPipelineProgress) => void;
-  /** Callback when generation completes successfully */
-  onComplete?: (result: AIPipelineResult) => void;
-  /** Callback when generation fails */
-  onError?: (error: string) => void;
+	/** Callback for progress updates */
+	onProgress?: (progress: AIPipelineProgress) => void;
+	/** Callback when generation completes successfully */
+	onComplete?: (result: AIPipelineResult) => void;
+	/** Callback when generation fails */
+	onError?: (error: string) => void;
 }
 
 interface UseAIPipelineReturn {
-  /** Whether the AI pipeline binary is available */
-  isAvailable: boolean;
-  /** Whether availability has been checked */
-  isChecked: boolean;
-  /** Whether a generation is currently in progress */
-  isGenerating: boolean;
-  /** Current progress state during generation */
-  progress: AIPipelineProgress | null;
-  /** Last result from generation */
-  result: AIPipelineResult | null;
-  /** Error message if any */
-  error: string | null;
-  /** Detailed pipeline status */
-  status: AIPipelineStatus | null;
-  /** Generate content (image, video, avatar) */
-  generate: (options: AIPipelineGenerateOptions) => Promise<AIPipelineResult>;
-  /** List available models */
-  listModels: () => Promise<AIPipelineResult>;
-  /** Estimate cost for generation */
-  estimateCost: (
-    model: string,
-    duration?: number,
-    resolution?: string
-  ) => Promise<AIPipelineResult>;
-  /** Cancel ongoing generation */
-  cancel: () => Promise<void>;
-  /** Check and refresh availability status */
-  checkAvailability: () => Promise<boolean>;
-  /** Refresh environment detection (after binary installation) */
-  refreshEnvironment: () => Promise<AIPipelineStatus | null>;
+	/** Whether the AI pipeline binary is available */
+	isAvailable: boolean;
+	/** Whether availability has been checked */
+	isChecked: boolean;
+	/** Whether a generation is currently in progress */
+	isGenerating: boolean;
+	/** Current progress state during generation */
+	progress: AIPipelineProgress | null;
+	/** Last result from generation */
+	result: AIPipelineResult | null;
+	/** Error message if any */
+	error: string | null;
+	/** Detailed pipeline status */
+	status: AIPipelineStatus | null;
+	/** Generate content (image, video, avatar) */
+	generate: (options: AIPipelineGenerateOptions) => Promise<AIPipelineResult>;
+	/** List available models */
+	listModels: () => Promise<AIPipelineResult>;
+	/** Estimate cost for generation */
+	estimateCost: (
+		model: string,
+		duration?: number,
+		resolution?: string
+	) => Promise<AIPipelineResult>;
+	/** Cancel ongoing generation */
+	cancel: () => Promise<void>;
+	/** Check and refresh availability status */
+	checkAvailability: () => Promise<boolean>;
+	/** Refresh environment detection (after binary installation) */
+	refreshEnvironment: () => Promise<AIPipelineStatus | null>;
 }
 
 // ============================================================================
@@ -84,246 +84,246 @@ interface UseAIPipelineReturn {
  * ```
  */
 export function useAIPipeline(
-  options: UseAIPipelineOptions = {}
+	options: UseAIPipelineOptions = {}
 ): UseAIPipelineReturn {
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState<AIPipelineProgress | null>(null);
-  const [result, setResult] = useState<AIPipelineResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<AIPipelineStatus | null>(null);
+	const [isAvailable, setIsAvailable] = useState(false);
+	const [isChecked, setIsChecked] = useState(false);
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [progress, setProgress] = useState<AIPipelineProgress | null>(null);
+	const [result, setResult] = useState<AIPipelineResult | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [status, setStatus] = useState<AIPipelineStatus | null>(null);
 
-  const sessionIdRef = useRef<string | null>(null);
-  const { onProgress, onComplete, onError } = options;
+	const sessionIdRef = useRef<string | null>(null);
+	const { onProgress, onComplete, onError } = options;
 
-  // Set up progress listener
-  useEffect(() => {
-    if (!window.electronAPI?.aiPipeline?.onProgress) return;
+	// Set up progress listener
+	useEffect(() => {
+		if (!window.electronAPI?.aiPipeline?.onProgress) return;
 
-    const cleanup = window.electronAPI.aiPipeline.onProgress((progressData) => {
-      // Only update if this is our session or no session filter
-      if (
-        !sessionIdRef.current ||
-        progressData.sessionId === sessionIdRef.current
-      ) {
-        setProgress(progressData);
-        onProgress?.(progressData);
-      }
-    });
+		const cleanup = window.electronAPI.aiPipeline.onProgress((progressData) => {
+			// Only update if this is our session or no session filter
+			if (
+				!sessionIdRef.current ||
+				progressData.sessionId === sessionIdRef.current
+			) {
+				setProgress(progressData);
+				onProgress?.(progressData);
+			}
+		});
 
-    return cleanup;
-  }, [onProgress]);
+		return cleanup;
+	}, [onProgress]);
 
-  /**
-   * Check if AI pipeline is available
-   */
-  const checkAvailability = useCallback(async (): Promise<boolean> => {
-    try {
-      const response = await window.electronAPI?.aiPipeline?.check();
-      const available = response?.available ?? false;
-      setIsAvailable(available);
-      setIsChecked(true);
+	/**
+	 * Check if AI pipeline is available
+	 */
+	const checkAvailability = useCallback(async (): Promise<boolean> => {
+		try {
+			const response = await window.electronAPI?.aiPipeline?.check();
+			const available = response?.available ?? false;
+			setIsAvailable(available);
+			setIsChecked(true);
 
-      if (!available && response?.error) {
-        setError(response.error);
-      } else {
-        setError(null);
-      }
+			if (!available && response?.error) {
+				setError(response.error);
+			} else {
+				setError(null);
+			}
 
-      // Also fetch detailed status
-      const statusResponse = await window.electronAPI?.aiPipeline?.status();
-      if (statusResponse) {
-        setStatus(statusResponse);
-      }
+			// Also fetch detailed status
+			const statusResponse = await window.electronAPI?.aiPipeline?.status();
+			if (statusResponse) {
+				setStatus(statusResponse);
+			}
 
-      return available;
-    } catch {
-      setIsAvailable(false);
-      setIsChecked(true);
-      setError("Failed to check AI pipeline availability");
-      return false;
-    }
-  }, []);
+			return available;
+		} catch {
+			setIsAvailable(false);
+			setIsChecked(true);
+			setError("Failed to check AI pipeline availability");
+			return false;
+		}
+	}, []);
 
-  // Check availability on mount
-  useEffect(() => {
-    checkAvailability();
-  }, [checkAvailability]);
+	// Check availability on mount
+	useEffect(() => {
+		checkAvailability();
+	}, [checkAvailability]);
 
-  /**
-   * Refresh environment detection
-   */
-  const refreshEnvironment =
-    useCallback(async (): Promise<AIPipelineStatus | null> => {
-      try {
-        const response = await window.electronAPI?.aiPipeline?.refresh();
-        if (response) {
-          setStatus(response);
-          setIsAvailable(response.available);
-          if (!response.available && response.error) {
-            setError(response.error);
-          } else {
-            setError(null);
-          }
-        }
-        return response ?? null;
-      } catch {
-        setError("Failed to refresh AI pipeline environment");
-        return null;
-      }
-    }, []);
+	/**
+	 * Refresh environment detection
+	 */
+	const refreshEnvironment =
+		useCallback(async (): Promise<AIPipelineStatus | null> => {
+			try {
+				const response = await window.electronAPI?.aiPipeline?.refresh();
+				if (response) {
+					setStatus(response);
+					setIsAvailable(response.available);
+					if (!response.available && response.error) {
+						setError(response.error);
+					} else {
+						setError(null);
+					}
+				}
+				return response ?? null;
+			} catch {
+				setError("Failed to refresh AI pipeline environment");
+				return null;
+			}
+		}, []);
 
-  /**
-   * Generate AI content
-   */
-  const generate = useCallback(
-    async (
-      generateOptions: AIPipelineGenerateOptions
-    ): Promise<AIPipelineResult> => {
-      if (!isAvailable) {
-        const unavailableResult: AIPipelineResult = {
-          success: false,
-          error: "AI Pipeline not available",
-        };
-        setResult(unavailableResult);
-        onError?.(unavailableResult.error!);
-        return unavailableResult;
-      }
+	/**
+	 * Generate AI content
+	 */
+	const generate = useCallback(
+		async (
+			generateOptions: AIPipelineGenerateOptions
+		): Promise<AIPipelineResult> => {
+			if (!isAvailable) {
+				const unavailableResult: AIPipelineResult = {
+					success: false,
+					error: "AI Pipeline not available",
+				};
+				setResult(unavailableResult);
+				onError?.(unavailableResult.error!);
+				return unavailableResult;
+			}
 
-      setIsGenerating(true);
-      setProgress({
-        stage: "starting",
-        percent: 0,
-        message: "Initializing...",
-      });
-      setError(null);
-      setResult(null);
+			setIsGenerating(true);
+			setProgress({
+				stage: "starting",
+				percent: 0,
+				message: "Initializing...",
+			});
+			setError(null);
+			setResult(null);
 
-      // Generate session ID for cancellation
-      const sessionId =
-        generateOptions.sessionId ||
-        `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      sessionIdRef.current = sessionId;
+			// Generate session ID for cancellation
+			const sessionId =
+				generateOptions.sessionId ||
+				`ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+			sessionIdRef.current = sessionId;
 
-      try {
-        const generateResult = await window.electronAPI?.aiPipeline?.generate({
-          ...generateOptions,
-          sessionId,
-        });
+			try {
+				const generateResult = await window.electronAPI?.aiPipeline?.generate({
+					...generateOptions,
+					sessionId,
+				});
 
-        if (!generateResult) {
-          throw new Error("No response from AI pipeline");
-        }
+				if (!generateResult) {
+					throw new Error("No response from AI pipeline");
+				}
 
-        setResult(generateResult);
+				setResult(generateResult);
 
-        if (generateResult.success) {
-          onComplete?.(generateResult);
-        } else if (generateResult.error) {
-          setError(generateResult.error);
-          onError?.(generateResult.error);
-        }
+				if (generateResult.success) {
+					onComplete?.(generateResult);
+				} else if (generateResult.error) {
+					setError(generateResult.error);
+					onError?.(generateResult.error);
+				}
 
-        return generateResult;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        const errorResult: AIPipelineResult = {
-          success: false,
-          error: errorMessage,
-        };
-        setError(errorMessage);
-        setResult(errorResult);
-        onError?.(errorMessage);
-        return errorResult;
-      } finally {
-        setIsGenerating(false);
-        setProgress(null);
-        sessionIdRef.current = null;
-      }
-    },
-    [isAvailable, onComplete, onError]
-  );
+				return generateResult;
+			} catch (err) {
+				const errorMessage =
+					err instanceof Error ? err.message : "Unknown error";
+				const errorResult: AIPipelineResult = {
+					success: false,
+					error: errorMessage,
+				};
+				setError(errorMessage);
+				setResult(errorResult);
+				onError?.(errorMessage);
+				return errorResult;
+			} finally {
+				setIsGenerating(false);
+				setProgress(null);
+				sessionIdRef.current = null;
+			}
+		},
+		[isAvailable, onComplete, onError]
+	);
 
-  /**
-   * List available models
-   */
-  const listModels = useCallback(async (): Promise<AIPipelineResult> => {
-    if (!isAvailable) {
-      return { success: false, error: "AI Pipeline not available" };
-    }
-    try {
-      const response = await window.electronAPI?.aiPipeline?.listModels();
-      return response ?? { success: false, error: "API not available" };
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to list models";
-      return { success: false, error: errorMessage };
-    }
-  }, [isAvailable]);
+	/**
+	 * List available models
+	 */
+	const listModels = useCallback(async (): Promise<AIPipelineResult> => {
+		if (!isAvailable) {
+			return { success: false, error: "AI Pipeline not available" };
+		}
+		try {
+			const response = await window.electronAPI?.aiPipeline?.listModels();
+			return response ?? { success: false, error: "API not available" };
+		} catch (err) {
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to list models";
+			return { success: false, error: errorMessage };
+		}
+	}, [isAvailable]);
 
-  /**
-   * Estimate generation cost
-   */
-  const estimateCost = useCallback(
-    async (
-      model: string,
-      duration?: number,
-      resolution?: string
-    ): Promise<AIPipelineResult> => {
-      if (!isAvailable) {
-        return { success: false, error: "AI Pipeline not available" };
-      }
-      try {
-        const response = await window.electronAPI?.aiPipeline?.estimateCost({
-          model,
-          duration,
-          resolution,
-        });
-        return response ?? { success: false, error: "API not available" };
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to estimate cost";
-        return { success: false, error: errorMessage };
-      }
-    },
-    [isAvailable]
-  );
+	/**
+	 * Estimate generation cost
+	 */
+	const estimateCost = useCallback(
+		async (
+			model: string,
+			duration?: number,
+			resolution?: string
+		): Promise<AIPipelineResult> => {
+			if (!isAvailable) {
+				return { success: false, error: "AI Pipeline not available" };
+			}
+			try {
+				const response = await window.electronAPI?.aiPipeline?.estimateCost({
+					model,
+					duration,
+					resolution,
+				});
+				return response ?? { success: false, error: "API not available" };
+			} catch (err) {
+				const errorMessage =
+					err instanceof Error ? err.message : "Failed to estimate cost";
+				return { success: false, error: errorMessage };
+			}
+		},
+		[isAvailable]
+	);
 
-  /**
-   * Cancel ongoing generation
-   */
-  const cancel = useCallback(async (): Promise<void> => {
-    if (!sessionIdRef.current) return;
-    try {
-      await window.electronAPI?.aiPipeline?.cancel(sessionIdRef.current);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to cancel generation";
-      setError(errorMessage);
-    } finally {
-      sessionIdRef.current = null;
-      setIsGenerating(false);
-      setProgress(null);
-    }
-  }, []);
+	/**
+	 * Cancel ongoing generation
+	 */
+	const cancel = useCallback(async (): Promise<void> => {
+		if (!sessionIdRef.current) return;
+		try {
+			await window.electronAPI?.aiPipeline?.cancel(sessionIdRef.current);
+		} catch (err) {
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to cancel generation";
+			setError(errorMessage);
+		} finally {
+			sessionIdRef.current = null;
+			setIsGenerating(false);
+			setProgress(null);
+		}
+	}, []);
 
-  return {
-    isAvailable,
-    isChecked,
-    isGenerating,
-    progress,
-    result,
-    error,
-    status,
-    generate,
-    listModels,
-    estimateCost,
-    cancel,
-    checkAvailability,
-    refreshEnvironment,
-  };
+	return {
+		isAvailable,
+		isChecked,
+		isGenerating,
+		progress,
+		result,
+		error,
+		status,
+		generate,
+		listModels,
+		estimateCost,
+		cancel,
+		checkAvailability,
+		refreshEnvironment,
+	};
 }
 
 export default useAIPipeline;

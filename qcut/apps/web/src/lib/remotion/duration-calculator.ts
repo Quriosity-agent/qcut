@@ -13,10 +13,10 @@ import type { SequenceStructure } from "./types";
  * Position information for a sequence in the timeline
  */
 export interface SequencePosition {
-  /** Starting frame (may overlap with previous sequence) */
-  from: number;
-  /** Ending frame (exclusive) */
-  to: number;
+	/** Starting frame (may overlap with previous sequence) */
+	from: number;
+	/** Ending frame (exclusive) */
+	to: number;
 }
 
 /**
@@ -35,21 +35,21 @@ export interface SequencePosition {
  * }); // Returns 70
  */
 export function calculateTotalDuration(structure: SequenceStructure): number {
-  if (!structure.sequences || structure.sequences.length === 0) {
-    return 0;
-  }
+	if (!structure.sequences || structure.sequences.length === 0) {
+		return 0;
+	}
 
-  const sequenceTotal = structure.sequences.reduce(
-    (sum, seq) => sum + seq.durationInFrames,
-    0
-  );
+	const sequenceTotal = structure.sequences.reduce(
+		(sum, seq) => sum + seq.durationInFrames,
+		0
+	);
 
-  const transitionTotal = (structure.transitions ?? []).reduce(
-    (sum, trans) => sum + trans.durationInFrames,
-    0
-  );
+	const transitionTotal = (structure.transitions ?? []).reduce(
+		(sum, trans) => sum + trans.durationInFrames,
+		0
+	);
 
-  return Math.max(0, sequenceTotal - transitionTotal);
+	return Math.max(0, sequenceTotal - transitionTotal);
 }
 
 /**
@@ -78,38 +78,38 @@ export function calculateTotalDuration(structure: SequenceStructure): number {
  * // ]
  */
 export function calculateSequencePositions(
-  structure: SequenceStructure
+	structure: SequenceStructure
 ): SequencePosition[] {
-  if (!structure.sequences || structure.sequences.length === 0) {
-    return [];
-  }
+	if (!structure.sequences || structure.sequences.length === 0) {
+		return [];
+	}
 
-  const positions: SequencePosition[] = [];
-  let currentFrame = 0;
+	const positions: SequencePosition[] = [];
+	let currentFrame = 0;
 
-  for (let i = 0; i < structure.sequences.length; i++) {
-    const seq = structure.sequences[i];
+	for (let i = 0; i < structure.sequences.length; i++) {
+		const seq = structure.sequences[i];
 
-    // Find transition that precedes this sequence (if any)
-    const prevTransition = structure.transitions?.find(
-      (t) => t.afterSequenceIndex === i - 1
-    );
+		// Find transition that precedes this sequence (if any)
+		const prevTransition = structure.transitions?.find(
+			(t) => t.afterSequenceIndex === i - 1
+		);
 
-    // Adjust start if there's an overlap from previous transition
-    if (prevTransition && i > 0) {
-      currentFrame -= prevTransition.durationInFrames;
-    }
+		// Adjust start if there's an overlap from previous transition
+		if (prevTransition && i > 0) {
+			currentFrame -= prevTransition.durationInFrames;
+		}
 
-    const from = Math.max(0, currentFrame);
-    const to = from + seq.durationInFrames;
+		const from = Math.max(0, currentFrame);
+		const to = from + seq.durationInFrames;
 
-    positions.push({ from, to });
+		positions.push({ from, to });
 
-    // Move to end of this sequence for next iteration
-    currentFrame = to;
-  }
+		// Move to end of this sequence for next iteration
+		currentFrame = to;
+	}
 
-  return positions;
+	return positions;
 }
 
 /**
@@ -117,19 +117,19 @@ export function calculateSequencePositions(
  * Useful for determining if we're in a transition region.
  */
 export function getOverlappingSequences(
-  positions: SequencePosition[],
-  frame: number
+	positions: SequencePosition[],
+	frame: number
 ): number[] {
-  const overlapping: number[] = [];
+	const overlapping: number[] = [];
 
-  for (let i = 0; i < positions.length; i++) {
-    const pos = positions[i];
-    if (frame >= pos.from && frame < pos.to) {
-      overlapping.push(i);
-    }
-  }
+	for (let i = 0; i < positions.length; i++) {
+		const pos = positions[i];
+		if (frame >= pos.from && frame < pos.to) {
+			overlapping.push(i);
+		}
+	}
 
-  return overlapping;
+	return overlapping;
 }
 
 /**
@@ -137,36 +137,36 @@ export function getOverlappingSequences(
  * Returns the transition metadata and overlap region if found.
  */
 export function findTransitionAtFrame(
-  structure: SequenceStructure,
-  positions: SequencePosition[],
-  frame: number
+	structure: SequenceStructure,
+	positions: SequencePosition[],
+	frame: number
 ): {
-  transition: import("./types").TransitionMetadata;
-  overlapStart: number;
-  overlapEnd: number;
+	transition: import("./types").TransitionMetadata;
+	overlapStart: number;
+	overlapEnd: number;
 } | null {
-  if (!structure.transitions) {
-    return null;
-  }
+	if (!structure.transitions) {
+		return null;
+	}
 
-  for (const trans of structure.transitions) {
-    const afterSeq = positions[trans.afterSequenceIndex];
-    const nextSeq = positions[trans.afterSequenceIndex + 1];
+	for (const trans of structure.transitions) {
+		const afterSeq = positions[trans.afterSequenceIndex];
+		const nextSeq = positions[trans.afterSequenceIndex + 1];
 
-    if (!afterSeq || !nextSeq) {
-      continue;
-    }
+		if (!afterSeq || !nextSeq) {
+			continue;
+		}
 
-    // Overlap region is where next sequence starts until previous sequence ends
-    const overlapStart = nextSeq.from;
-    const overlapEnd = afterSeq.to;
+		// Overlap region is where next sequence starts until previous sequence ends
+		const overlapStart = nextSeq.from;
+		const overlapEnd = afterSeq.to;
 
-    if (frame >= overlapStart && frame < overlapEnd) {
-      return { transition: trans, overlapStart, overlapEnd };
-    }
-  }
+		if (frame >= overlapStart && frame < overlapEnd) {
+			return { transition: trans, overlapStart, overlapEnd };
+		}
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -174,65 +174,65 @@ export function findTransitionAtFrame(
  * Returns array of validation errors (empty if valid).
  */
 export function validateSequenceStructure(
-  structure: SequenceStructure
+	structure: SequenceStructure
 ): string[] {
-  const errors: string[] = [];
+	const errors: string[] = [];
 
-  if (!structure.sequences || structure.sequences.length === 0) {
-    errors.push("No sequences defined");
-    return errors;
-  }
+	if (!structure.sequences || structure.sequences.length === 0) {
+		errors.push("No sequences defined");
+		return errors;
+	}
 
-  // Check each sequence has valid duration
-  for (let i = 0; i < structure.sequences.length; i++) {
-    const seq = structure.sequences[i];
-    if (seq.durationInFrames <= 0) {
-      errors.push(
-        `Sequence "${seq.name}" has invalid duration: ${seq.durationInFrames}`
-      );
-    }
-  }
+	// Check each sequence has valid duration
+	for (let i = 0; i < structure.sequences.length; i++) {
+		const seq = structure.sequences[i];
+		if (seq.durationInFrames <= 0) {
+			errors.push(
+				`Sequence "${seq.name}" has invalid duration: ${seq.durationInFrames}`
+			);
+		}
+	}
 
-  // Check transitions reference valid sequences
-  if (structure.transitions) {
-    for (let i = 0; i < structure.transitions.length; i++) {
-      const trans = structure.transitions[i];
+	// Check transitions reference valid sequences
+	if (structure.transitions) {
+		for (let i = 0; i < structure.transitions.length; i++) {
+			const trans = structure.transitions[i];
 
-      if (trans.afterSequenceIndex < 0) {
-        errors.push(
-          `Transition ${i} has invalid afterSequenceIndex: ${trans.afterSequenceIndex}`
-        );
-      }
+			if (trans.afterSequenceIndex < 0) {
+				errors.push(
+					`Transition ${i} has invalid afterSequenceIndex: ${trans.afterSequenceIndex}`
+				);
+			}
 
-      if (trans.afterSequenceIndex >= structure.sequences.length - 1) {
-        errors.push(
-          `Transition ${i} afterSequenceIndex (${trans.afterSequenceIndex}) exceeds max (${structure.sequences.length - 2})`
-        );
-      }
+			if (trans.afterSequenceIndex >= structure.sequences.length - 1) {
+				errors.push(
+					`Transition ${i} afterSequenceIndex (${trans.afterSequenceIndex}) exceeds max (${structure.sequences.length - 2})`
+				);
+			}
 
-      if (trans.durationInFrames <= 0) {
-        errors.push(
-          `Transition ${i} has invalid duration: ${trans.durationInFrames}`
-        );
-      }
+			if (trans.durationInFrames <= 0) {
+				errors.push(
+					`Transition ${i} has invalid duration: ${trans.durationInFrames}`
+				);
+			}
 
-      // Check transition doesn't exceed adjacent sequence durations
-      const prevSeq = structure.sequences[trans.afterSequenceIndex];
-      const nextSeq = structure.sequences[trans.afterSequenceIndex + 1];
+			// Check transition doesn't exceed adjacent sequence durations
+			const prevSeq = structure.sequences[trans.afterSequenceIndex];
+			const nextSeq = structure.sequences[trans.afterSequenceIndex + 1];
 
-      if (prevSeq && trans.durationInFrames > prevSeq.durationInFrames) {
-        errors.push(
-          `Transition ${i} duration (${trans.durationInFrames}) exceeds previous sequence "${prevSeq.name}" duration (${prevSeq.durationInFrames})`
-        );
-      }
+			if (prevSeq && trans.durationInFrames > prevSeq.durationInFrames) {
+				errors.push(
+					`Transition ${i} duration (${trans.durationInFrames}) exceeds previous sequence "${prevSeq.name}" duration (${prevSeq.durationInFrames})`
+				);
+			}
 
-      if (nextSeq && trans.durationInFrames > nextSeq.durationInFrames) {
-        errors.push(
-          `Transition ${i} duration (${trans.durationInFrames}) exceeds next sequence "${nextSeq.name}" duration (${nextSeq.durationInFrames})`
-        );
-      }
-    }
-  }
+			if (nextSeq && trans.durationInFrames > nextSeq.durationInFrames) {
+				errors.push(
+					`Transition ${i} duration (${trans.durationInFrames}) exceeds next sequence "${nextSeq.name}" duration (${nextSeq.durationInFrames})`
+				);
+			}
+		}
+	}
 
-  return errors;
+	return errors;
 }

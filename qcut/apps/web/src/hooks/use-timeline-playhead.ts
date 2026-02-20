@@ -4,276 +4,276 @@ import { usePlaybackStore } from "@/stores/playback-store";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface UseTimelinePlayheadProps {
-  currentTime: number;
-  duration: number;
-  zoomLevel: number;
-  seek: (time: number) => void;
-  rulerRef: React.RefObject<HTMLDivElement | null>;
-  rulerScrollRef: React.RefObject<HTMLDivElement | null>;
-  tracksScrollRef: React.RefObject<HTMLDivElement | null>;
-  playheadRef?: React.RefObject<HTMLDivElement | null>;
+	currentTime: number;
+	duration: number;
+	zoomLevel: number;
+	seek: (time: number) => void;
+	rulerRef: React.RefObject<HTMLDivElement | null>;
+	rulerScrollRef: React.RefObject<HTMLDivElement | null>;
+	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
+	playheadRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function useTimelinePlayhead({
-  currentTime,
-  duration,
-  zoomLevel,
-  seek,
-  rulerRef,
-  rulerScrollRef,
-  tracksScrollRef,
-  playheadRef,
+	currentTime,
+	duration,
+	zoomLevel,
+	seek,
+	rulerRef,
+	rulerScrollRef,
+	tracksScrollRef,
+	playheadRef,
 }: UseTimelinePlayheadProps) {
-  // Playhead scrubbing state
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  const [scrubTime, setScrubTime] = useState<number | null>(null);
+	// Playhead scrubbing state
+	const [isScrubbing, setIsScrubbing] = useState(false);
+	const [scrubTime, setScrubTime] = useState<number | null>(null);
 
-  // Ruler drag detection state
-  const [isDraggingRuler, setIsDraggingRuler] = useState(false);
-  const [hasDraggedRuler, setHasDraggedRuler] = useState(false);
-  const hasLoggedSeekRef = useRef(false);
+	// Ruler drag detection state
+	const [isDraggingRuler, setIsDraggingRuler] = useState(false);
+	const [hasDraggedRuler, setHasDraggedRuler] = useState(false);
+	const hasLoggedSeekRef = useRef(false);
 
-  // Auto-scroll state during dragging
-  const autoScrollRef = useRef<number | null>(null);
-  const lastMouseXRef = useRef<number>(0);
+	// Auto-scroll state during dragging
+	const autoScrollRef = useRef<number | null>(null);
+	const lastMouseXRef = useRef<number>(0);
 
-  const playheadPosition =
-    isScrubbing && scrubTime !== null ? scrubTime : currentTime;
+	const playheadPosition =
+		isScrubbing && scrubTime !== null ? scrubTime : currentTime;
 
-  const handleScrub = useCallback(
-    (e: MouseEvent | React.MouseEvent) => {
-      const ruler = rulerRef.current;
-      if (!ruler) return;
-      const rect = ruler.getBoundingClientRect();
-      const rawX = e.clientX - rect.left;
+	const handleScrub = useCallback(
+		(e: MouseEvent | React.MouseEvent) => {
+			const ruler = rulerRef.current;
+			if (!ruler) return;
+			const rect = ruler.getBoundingClientRect();
+			const rawX = e.clientX - rect.left;
 
-      // Get the timeline content width based on duration and zoom
-      const timelineContentWidth = duration * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
+			// Get the timeline content width based on duration and zoom
+			const timelineContentWidth = duration * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
 
-      // Constrain x to be within the timeline content bounds
-      const x = Math.max(0, Math.min(timelineContentWidth, rawX));
+			// Constrain x to be within the timeline content bounds
+			const x = Math.max(0, Math.min(timelineContentWidth, rawX));
 
-      const rawTime = Math.max(0, Math.min(duration, x / (50 * zoomLevel)));
-      // Use frame snapping for playhead scrubbing
-      const projectStore = useProjectStore.getState();
-      const projectFps = projectStore.activeProject?.fps || 30;
-      const time = snapTimeToFrame(rawTime, projectFps);
+			const rawTime = Math.max(0, Math.min(duration, x / (50 * zoomLevel)));
+			// Use frame snapping for playhead scrubbing
+			const projectStore = useProjectStore.getState();
+			const projectFps = projectStore.activeProject?.fps || 30;
+			const time = snapTimeToFrame(rawTime, projectFps);
 
-      if (!hasLoggedSeekRef.current) {
-        console.log("step 7: user initiated seek", {
-          mouseX: rawX,
-          rawTime,
-          snappedTime: time,
-          projectFps,
-        });
-        hasLoggedSeekRef.current = true;
-      }
+			if (!hasLoggedSeekRef.current) {
+				console.log("step 7: user initiated seek", {
+					mouseX: rawX,
+					rawTime,
+					snappedTime: time,
+					projectFps,
+				});
+				hasLoggedSeekRef.current = true;
+			}
 
-      setScrubTime(time);
-      seek(time); // update video preview in real time
+			setScrubTime(time);
+			seek(time); // update video preview in real time
 
-      // Store mouse position for auto-scrolling
-      lastMouseXRef.current = e.clientX;
-    },
-    [duration, zoomLevel, seek, rulerRef]
-  );
+			// Store mouse position for auto-scrolling
+			lastMouseXRef.current = e.clientX;
+		},
+		[duration, zoomLevel, seek, rulerRef]
+	);
 
-  // --- Playhead Scrubbing Handlers ---
-  const handlePlayheadMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation(); // Prevent ruler drag from triggering
-      setIsScrubbing(true);
-      hasLoggedSeekRef.current = false;
-      handleScrub(e);
-    },
-    [handleScrub]
-  );
+	// --- Playhead Scrubbing Handlers ---
+	const handlePlayheadMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation(); // Prevent ruler drag from triggering
+			setIsScrubbing(true);
+			hasLoggedSeekRef.current = false;
+			handleScrub(e);
+		},
+		[handleScrub]
+	);
 
-  // Ruler mouse down handler
-  const handleRulerMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      // Only handle left mouse button
-      if (e.button !== 0) return;
+	// Ruler mouse down handler
+	const handleRulerMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			// Only handle left mouse button
+			if (e.button !== 0) return;
 
-      // Don't interfere if clicking on the playhead itself
-      if (playheadRef?.current?.contains(e.target as Node)) return;
+			// Don't interfere if clicking on the playhead itself
+			if (playheadRef?.current?.contains(e.target as Node)) return;
 
-      e.preventDefault();
-      setIsDraggingRuler(true);
-      setHasDraggedRuler(false);
-      hasLoggedSeekRef.current = false;
+			e.preventDefault();
+			setIsDraggingRuler(true);
+			setHasDraggedRuler(false);
+			hasLoggedSeekRef.current = false;
 
-      // Start scrubbing immediately
-      setIsScrubbing(true);
-      handleScrub(e);
-    },
-    [handleScrub, playheadRef]
-  );
+			// Start scrubbing immediately
+			setIsScrubbing(true);
+			handleScrub(e);
+		},
+		[handleScrub, playheadRef]
+	);
 
-  // Auto-scroll function during dragging
-  const performAutoScroll = useCallback(() => {
-    const rulerViewport = rulerScrollRef.current;
-    const tracksViewport = tracksScrollRef.current;
+	// Auto-scroll function during dragging
+	const performAutoScroll = useCallback(() => {
+		const rulerViewport = rulerScrollRef.current;
+		const tracksViewport = tracksScrollRef.current;
 
-    if (!rulerViewport || !tracksViewport || !isScrubbing) return;
+		if (!rulerViewport || !tracksViewport || !isScrubbing) return;
 
-    const viewportRect = rulerViewport.getBoundingClientRect();
-    const mouseX = lastMouseXRef.current;
-    const mouseXRelative = mouseX - viewportRect.left;
+		const viewportRect = rulerViewport.getBoundingClientRect();
+		const mouseX = lastMouseXRef.current;
+		const mouseXRelative = mouseX - viewportRect.left;
 
-    const edgeThreshold = 100; // pixels from edge to start scrolling
-    const maxScrollSpeed = 15; // max pixels per frame
-    const viewportWidth = rulerViewport.clientWidth;
+		const edgeThreshold = 100; // pixels from edge to start scrolling
+		const maxScrollSpeed = 15; // max pixels per frame
+		const viewportWidth = rulerViewport.clientWidth;
 
-    // Calculate timeline content boundaries
-    const timelineContentWidth = duration * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
-    const scrollMax = Math.max(0, timelineContentWidth - viewportWidth);
+		// Calculate timeline content boundaries
+		const timelineContentWidth = duration * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
+		const scrollMax = Math.max(0, timelineContentWidth - viewportWidth);
 
-    let scrollSpeed = 0;
+		let scrollSpeed = 0;
 
-    // Check if near left edge (and can scroll left)
-    if (mouseXRelative < edgeThreshold && rulerViewport.scrollLeft > 0) {
-      const edgeDistance = Math.max(0, mouseXRelative);
-      const intensity = 1 - edgeDistance / edgeThreshold;
-      scrollSpeed = -maxScrollSpeed * intensity;
-    }
-    // Check if near right edge (and can scroll right, and haven't reached timeline end)
-    else if (
-      mouseXRelative > viewportWidth - edgeThreshold &&
-      rulerViewport.scrollLeft < scrollMax
-    ) {
-      const edgeDistance = Math.max(
-        0,
-        viewportWidth - edgeThreshold - mouseXRelative
-      );
-      const intensity = 1 - edgeDistance / edgeThreshold;
-      scrollSpeed = maxScrollSpeed * intensity;
-    }
+		// Check if near left edge (and can scroll left)
+		if (mouseXRelative < edgeThreshold && rulerViewport.scrollLeft > 0) {
+			const edgeDistance = Math.max(0, mouseXRelative);
+			const intensity = 1 - edgeDistance / edgeThreshold;
+			scrollSpeed = -maxScrollSpeed * intensity;
+		}
+		// Check if near right edge (and can scroll right, and haven't reached timeline end)
+		else if (
+			mouseXRelative > viewportWidth - edgeThreshold &&
+			rulerViewport.scrollLeft < scrollMax
+		) {
+			const edgeDistance = Math.max(
+				0,
+				viewportWidth - edgeThreshold - mouseXRelative
+			);
+			const intensity = 1 - edgeDistance / edgeThreshold;
+			scrollSpeed = maxScrollSpeed * intensity;
+		}
 
-    if (scrollSpeed !== 0) {
-      const newScrollLeft = Math.max(
-        0,
-        Math.min(scrollMax, rulerViewport.scrollLeft + scrollSpeed)
-      );
-      rulerViewport.scrollLeft = newScrollLeft;
-      tracksViewport.scrollLeft = newScrollLeft;
-    }
+		if (scrollSpeed !== 0) {
+			const newScrollLeft = Math.max(
+				0,
+				Math.min(scrollMax, rulerViewport.scrollLeft + scrollSpeed)
+			);
+			rulerViewport.scrollLeft = newScrollLeft;
+			tracksViewport.scrollLeft = newScrollLeft;
+		}
 
-    if (isScrubbing) {
-      autoScrollRef.current = requestAnimationFrame(performAutoScroll);
-    }
-  }, [isScrubbing, rulerScrollRef, tracksScrollRef, duration, zoomLevel]);
+		if (isScrubbing) {
+			autoScrollRef.current = requestAnimationFrame(performAutoScroll);
+		}
+	}, [isScrubbing, rulerScrollRef, tracksScrollRef, duration, zoomLevel]);
 
-  // Mouse move/up event handlers
-  useEffect(() => {
-    if (!isScrubbing) return;
+	// Mouse move/up event handlers
+	useEffect(() => {
+		if (!isScrubbing) return;
 
-    const onMouseMove = (e: MouseEvent) => {
-      handleScrub(e);
-      // Mark that we've dragged if ruler drag is active
-      if (isDraggingRuler) {
-        setHasDraggedRuler(true);
-      }
-    };
+		const onMouseMove = (e: MouseEvent) => {
+			handleScrub(e);
+			// Mark that we've dragged if ruler drag is active
+			if (isDraggingRuler) {
+				setHasDraggedRuler(true);
+			}
+		};
 
-    const onMouseUp = (e: MouseEvent) => {
-      setIsScrubbing(false);
-      if (scrubTime !== null) seek(scrubTime); // finalize seek
-      setScrubTime(null);
-      // Note: Don't reset hasLoggedSeekRef here - it's reset on mousedown
-      // Resetting here would cause double-logging for click-only ruler seeks
+		const onMouseUp = (e: MouseEvent) => {
+			setIsScrubbing(false);
+			if (scrubTime !== null) seek(scrubTime); // finalize seek
+			setScrubTime(null);
+			// Note: Don't reset hasLoggedSeekRef here - it's reset on mousedown
+			// Resetting here would cause double-logging for click-only ruler seeks
 
-      // Stop auto-scrolling
-      if (autoScrollRef.current) {
-        cancelAnimationFrame(autoScrollRef.current);
-        autoScrollRef.current = null;
-      }
+			// Stop auto-scrolling
+			if (autoScrollRef.current) {
+				cancelAnimationFrame(autoScrollRef.current);
+				autoScrollRef.current = null;
+			}
 
-      // Handle ruler click vs drag
-      if (isDraggingRuler) {
-        setIsDraggingRuler(false);
-        // If we didn't drag, treat it as a click-to-seek
-        if (!hasDraggedRuler) {
-          handleScrub(e);
-        }
-        setHasDraggedRuler(false);
-      }
-    };
+			// Handle ruler click vs drag
+			if (isDraggingRuler) {
+				setIsDraggingRuler(false);
+				// If we didn't drag, treat it as a click-to-seek
+				if (!hasDraggedRuler) {
+					handleScrub(e);
+				}
+				setHasDraggedRuler(false);
+			}
+		};
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+		window.addEventListener("mousemove", onMouseMove);
+		window.addEventListener("mouseup", onMouseUp);
 
-    // Start auto-scrolling
-    autoScrollRef.current = requestAnimationFrame(performAutoScroll);
+		// Start auto-scrolling
+		autoScrollRef.current = requestAnimationFrame(performAutoScroll);
 
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      if (autoScrollRef.current) {
-        cancelAnimationFrame(autoScrollRef.current);
-        autoScrollRef.current = null;
-      }
-    };
-  }, [
-    isScrubbing,
-    scrubTime,
-    seek,
-    handleScrub,
-    isDraggingRuler,
-    hasDraggedRuler,
-    performAutoScroll,
-  ]);
+		return () => {
+			window.removeEventListener("mousemove", onMouseMove);
+			window.removeEventListener("mouseup", onMouseUp);
+			if (autoScrollRef.current) {
+				cancelAnimationFrame(autoScrollRef.current);
+				autoScrollRef.current = null;
+			}
+		};
+	}, [
+		isScrubbing,
+		scrubTime,
+		seek,
+		handleScrub,
+		isDraggingRuler,
+		hasDraggedRuler,
+		performAutoScroll,
+	]);
 
-  // --- Playhead auto-scroll effect (only during playback) ---
-  useEffect(() => {
-    const { isPlaying } = usePlaybackStore.getState();
+	// --- Playhead auto-scroll effect (only during playback) ---
+	useEffect(() => {
+		const { isPlaying } = usePlaybackStore.getState();
 
-    // Only auto-scroll during playback, not during manual interactions
-    if (!isPlaying || isScrubbing) return;
+		// Only auto-scroll during playback, not during manual interactions
+		if (!isPlaying || isScrubbing) return;
 
-    const rulerViewport = rulerScrollRef.current;
-    const tracksViewport = tracksScrollRef.current;
-    if (!rulerViewport || !tracksViewport) return;
+		const rulerViewport = rulerScrollRef.current;
+		const tracksViewport = tracksScrollRef.current;
+		if (!rulerViewport || !tracksViewport) return;
 
-    const playheadPx = playheadPosition * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
-    const viewportWidth = rulerViewport.clientWidth;
-    const scrollMin = 0;
-    const scrollMax = rulerViewport.scrollWidth - viewportWidth;
+		const playheadPx = playheadPosition * 50 * zoomLevel; // TIMELINE_CONSTANTS.PIXELS_PER_SECOND = 50
+		const viewportWidth = rulerViewport.clientWidth;
+		const scrollMin = 0;
+		const scrollMax = rulerViewport.scrollWidth - viewportWidth;
 
-    // Only auto-scroll if playhead is completely out of view (no buffer)
-    const needsScroll =
-      playheadPx < rulerViewport.scrollLeft ||
-      playheadPx > rulerViewport.scrollLeft + viewportWidth;
+		// Only auto-scroll if playhead is completely out of view (no buffer)
+		const needsScroll =
+			playheadPx < rulerViewport.scrollLeft ||
+			playheadPx > rulerViewport.scrollLeft + viewportWidth;
 
-    if (needsScroll) {
-      console.log("step 6: timeline playhead updated", {
-        currentTime: Number(currentTime.toFixed(3)),
-        playheadPosition: Number(playheadPx.toFixed(2)),
-        shouldAutoScroll: true,
-        zoomLevel: Number(zoomLevel.toFixed(1)),
-        timelineScrollLeft: rulerViewport.scrollLeft,
-      });
-      // Center the playhead in the viewport
-      const desiredScroll = Math.max(
-        scrollMin,
-        Math.min(scrollMax, playheadPx - viewportWidth / 2)
-      );
-      rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
-    }
-  }, [
-    playheadPosition,
-    zoomLevel,
-    rulerScrollRef,
-    tracksScrollRef,
-    isScrubbing,
-    currentTime,
-  ]);
+		if (needsScroll) {
+			console.log("step 6: timeline playhead updated", {
+				currentTime: Number(currentTime.toFixed(3)),
+				playheadPosition: Number(playheadPx.toFixed(2)),
+				shouldAutoScroll: true,
+				zoomLevel: Number(zoomLevel.toFixed(1)),
+				timelineScrollLeft: rulerViewport.scrollLeft,
+			});
+			// Center the playhead in the viewport
+			const desiredScroll = Math.max(
+				scrollMin,
+				Math.min(scrollMax, playheadPx - viewportWidth / 2)
+			);
+			rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+		}
+	}, [
+		playheadPosition,
+		zoomLevel,
+		rulerScrollRef,
+		tracksScrollRef,
+		isScrubbing,
+		currentTime,
+	]);
 
-  return {
-    playheadPosition,
-    handlePlayheadMouseDown,
-    handleRulerMouseDown,
-    isDraggingRuler,
-  };
+	return {
+		playheadPosition,
+		handlePlayheadMouseDown,
+		handleRulerMouseDown,
+		isDraggingRuler,
+	};
 }

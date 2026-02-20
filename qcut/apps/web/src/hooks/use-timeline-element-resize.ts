@@ -5,285 +5,285 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 
 interface UseTimelineElementResizeProps {
-  element: TimelineElement;
-  track: TimelineTrack;
-  zoomLevel: number;
-  onUpdateTrim: (
-    trackId: string,
-    elementId: string,
-    trimStart: number,
-    trimEnd: number
-  ) => void;
-  onUpdateDuration: (
-    trackId: string,
-    elementId: string,
-    duration: number
-  ) => void;
+	element: TimelineElement;
+	track: TimelineTrack;
+	zoomLevel: number;
+	onUpdateTrim: (
+		trackId: string,
+		elementId: string,
+		trimStart: number,
+		trimEnd: number
+	) => void;
+	onUpdateDuration: (
+		trackId: string,
+		elementId: string,
+		duration: number
+	) => void;
 }
 
 export function useTimelineElementResize({
-  element,
-  track,
-  zoomLevel,
-  onUpdateTrim,
-  onUpdateDuration,
+	element,
+	track,
+	zoomLevel,
+	onUpdateTrim,
+	onUpdateDuration,
 }: UseTimelineElementResizeProps) {
-  const [resizing, setResizing] = useState<ResizeState | null>(null);
-  const {
-    mediaItems,
-    loading: mediaItemsLoading,
-    error: mediaItemsError,
-  } = useAsyncMediaItems();
-  const {
-    updateElementStartTime,
-    updateElementTrim,
-    updateElementDuration,
-    pushHistory,
-  } = useTimelineStore();
+	const [resizing, setResizing] = useState<ResizeState | null>(null);
+	const {
+		mediaItems,
+		loading: mediaItemsLoading,
+		error: mediaItemsError,
+	} = useAsyncMediaItems();
+	const {
+		updateElementStartTime,
+		updateElementTrim,
+		updateElementDuration,
+		pushHistory,
+	} = useTimelineStore();
 
-  const getMinEffectiveDuration = useCallback(() => {
-    if (element.type === "markdown") {
-      return TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION;
-    }
-    return 0.1;
-  }, [element.type]);
+	const getMinEffectiveDuration = useCallback(() => {
+		if (element.type === "markdown") {
+			return TIMELINE_CONSTANTS.MARKDOWN_MIN_DURATION;
+		}
+		return 0.1;
+	}, [element.type]);
 
-  const getMaxEffectiveDuration = useCallback(() => {
-    if (element.type === "markdown") {
-      return TIMELINE_CONSTANTS.MARKDOWN_MAX_DURATION;
-    }
-    return Number.POSITIVE_INFINITY;
-  }, [element.type]);
+	const getMaxEffectiveDuration = useCallback(() => {
+		if (element.type === "markdown") {
+			return TIMELINE_CONSTANTS.MARKDOWN_MAX_DURATION;
+		}
+		return Number.POSITIVE_INFINITY;
+	}, [element.type]);
 
-  const canExtendElementDuration = useCallback(() => {
-    // Text elements can always be extended
-    if (element.type === "text" || element.type === "markdown") {
-      return true;
-    }
+	const canExtendElementDuration = useCallback(() => {
+		// Text elements can always be extended
+		if (element.type === "text" || element.type === "markdown") {
+			return true;
+		}
 
-    // Media elements - check the media type
-    if (element.type === "media") {
-      // If media items are still loading, return false (conservative approach)
-      if (mediaItemsLoading) return false;
+		// Media elements - check the media type
+		if (element.type === "media") {
+			// If media items are still loading, return false (conservative approach)
+			if (mediaItemsLoading) return false;
 
-      const mediaItem = mediaItems.find((item) => item.id === element.mediaId);
-      if (!mediaItem) return false;
+			const mediaItem = mediaItems.find((item) => item.id === element.mediaId);
+			if (!mediaItem) return false;
 
-      // Images can be extended (static content)
-      if (mediaItem.type === "image") {
-        return true;
-      }
+			// Images can be extended (static content)
+			if (mediaItem.type === "image") {
+				return true;
+			}
 
-      // Videos and audio cannot be extended beyond their natural duration
-      // (no additional content exists)
-      return false;
-    }
+			// Videos and audio cannot be extended beyond their natural duration
+			// (no additional content exists)
+			return false;
+		}
 
-    return false;
-  }, [element.type, mediaItemsLoading, mediaItems, element]);
+		return false;
+	}, [element.type, mediaItemsLoading, mediaItems, element]);
 
-  const handleResizeEnd = useCallback(() => {
-    setResizing(null);
-  }, []);
+	const handleResizeEnd = useCallback(() => {
+		setResizing(null);
+	}, []);
 
-  const updateTrimFromMouseMove = useCallback(
-    (e: { clientX: number }) => {
-      if (!resizing) return;
+	const updateTrimFromMouseMove = useCallback(
+		(e: { clientX: number }) => {
+			if (!resizing) return;
 
-      const deltaX = e.clientX - resizing.startX;
-      // Reasonable sensitivity for resize operations - similar to timeline scale
-      const deltaTime = deltaX / (50 * zoomLevel);
+			const deltaX = e.clientX - resizing.startX;
+			// Reasonable sensitivity for resize operations - similar to timeline scale
+			const deltaTime = deltaX / (50 * zoomLevel);
 
-      if (resizing.side === "left") {
-        // Left resize - different behavior for media vs text/image elements
-        const minEffectiveDuration = getMinEffectiveDuration();
-        const maxAllowed =
-          element.duration - resizing.initialTrimEnd - minEffectiveDuration;
-        const calculated = resizing.initialTrimStart + deltaTime;
+			if (resizing.side === "left") {
+				// Left resize - different behavior for media vs text/image elements
+				const minEffectiveDuration = getMinEffectiveDuration();
+				const maxAllowed =
+					element.duration - resizing.initialTrimEnd - minEffectiveDuration;
+				const calculated = resizing.initialTrimStart + deltaTime;
 
-        if (calculated >= 0) {
-          // Normal trimming within available content
-          const newTrimStart = Math.min(maxAllowed, calculated);
-          const trimDelta = newTrimStart - resizing.initialTrimStart;
-          const newStartTime = element.startTime + trimDelta;
+				if (calculated >= 0) {
+					// Normal trimming within available content
+					const newTrimStart = Math.min(maxAllowed, calculated);
+					const trimDelta = newTrimStart - resizing.initialTrimStart;
+					const newStartTime = element.startTime + trimDelta;
 
-          updateElementTrim(
-            track.id,
-            element.id,
-            newTrimStart,
-            resizing.initialTrimEnd,
-            false
-          );
-          updateElementStartTime(track.id, element.id, newStartTime, false);
-        } else {
-          // Trying to extend beyond trimStart = 0
-          if (canExtendElementDuration()) {
-            // Text/Image: extend element to the left by moving startTime and increasing duration
-            const extensionAmount = Math.abs(calculated);
-            const maxExtension = element.startTime;
-            const maxEffectiveDuration = getMaxEffectiveDuration();
-            const maxDurationFromType = Number.isFinite(maxEffectiveDuration)
-              ? Math.max(
-                  0,
-                  maxEffectiveDuration +
-                    resizing.initialTrimEnd -
-                    element.duration
-                )
-              : Number.POSITIVE_INFINITY;
-            const actualExtension = Math.min(
-              extensionAmount,
-              maxExtension,
-              maxDurationFromType
-            );
-            const newStartTime = element.startTime - actualExtension;
-            const newDuration = element.duration + actualExtension;
+					updateElementTrim(
+						track.id,
+						element.id,
+						newTrimStart,
+						resizing.initialTrimEnd,
+						false
+					);
+					updateElementStartTime(track.id, element.id, newStartTime, false);
+				} else {
+					// Trying to extend beyond trimStart = 0
+					if (canExtendElementDuration()) {
+						// Text/Image: extend element to the left by moving startTime and increasing duration
+						const extensionAmount = Math.abs(calculated);
+						const maxExtension = element.startTime;
+						const maxEffectiveDuration = getMaxEffectiveDuration();
+						const maxDurationFromType = Number.isFinite(maxEffectiveDuration)
+							? Math.max(
+									0,
+									maxEffectiveDuration +
+										resizing.initialTrimEnd -
+										element.duration
+								)
+							: Number.POSITIVE_INFINITY;
+						const actualExtension = Math.min(
+							extensionAmount,
+							maxExtension,
+							maxDurationFromType
+						);
+						const newStartTime = element.startTime - actualExtension;
+						const newDuration = element.duration + actualExtension;
 
-            // Keep trimStart at 0 and extend the element
-            updateElementTrim(
-              track.id,
-              element.id,
-              0,
-              resizing.initialTrimEnd,
-              false
-            );
-            updateElementDuration(track.id, element.id, newDuration, false);
-            updateElementStartTime(track.id, element.id, newStartTime, false);
-          } else {
-            // Video/Audio: can't extend beyond original content - limit to trimStart = 0
-            const newTrimStart = 0;
-            const trimDelta = newTrimStart - resizing.initialTrimStart;
-            const newStartTime = element.startTime + trimDelta;
+						// Keep trimStart at 0 and extend the element
+						updateElementTrim(
+							track.id,
+							element.id,
+							0,
+							resizing.initialTrimEnd,
+							false
+						);
+						updateElementDuration(track.id, element.id, newDuration, false);
+						updateElementStartTime(track.id, element.id, newStartTime, false);
+					} else {
+						// Video/Audio: can't extend beyond original content - limit to trimStart = 0
+						const newTrimStart = 0;
+						const trimDelta = newTrimStart - resizing.initialTrimStart;
+						const newStartTime = element.startTime + trimDelta;
 
-            updateElementTrim(
-              track.id,
-              element.id,
-              newTrimStart,
-              resizing.initialTrimEnd,
-              false
-            );
-            updateElementStartTime(track.id, element.id, newStartTime, false);
-          }
-        }
-      } else {
-        // Right resize - can extend duration for supported element types
-        const calculated = resizing.initialTrimEnd - deltaTime;
+						updateElementTrim(
+							track.id,
+							element.id,
+							newTrimStart,
+							resizing.initialTrimEnd,
+							false
+						);
+						updateElementStartTime(track.id, element.id, newStartTime, false);
+					}
+				}
+			} else {
+				// Right resize - can extend duration for supported element types
+				const calculated = resizing.initialTrimEnd - deltaTime;
 
-        if (calculated < 0) {
-          // We're trying to extend beyond original duration
-          if (canExtendElementDuration()) {
-            // Extend the duration instead of reducing trimEnd further
-            const extensionNeeded = Math.abs(calculated);
-            const maxEffectiveDuration = getMaxEffectiveDuration();
-            const maxDuration = Number.isFinite(maxEffectiveDuration)
-              ? maxEffectiveDuration + resizing.initialTrimStart
-              : Number.POSITIVE_INFINITY;
-            const newDuration = Math.min(
-              element.duration + extensionNeeded,
-              maxDuration
-            );
-            const newTrimEnd = 0; // Reset trimEnd to 0 since we're extending
+				if (calculated < 0) {
+					// We're trying to extend beyond original duration
+					if (canExtendElementDuration()) {
+						// Extend the duration instead of reducing trimEnd further
+						const extensionNeeded = Math.abs(calculated);
+						const maxEffectiveDuration = getMaxEffectiveDuration();
+						const maxDuration = Number.isFinite(maxEffectiveDuration)
+							? maxEffectiveDuration + resizing.initialTrimStart
+							: Number.POSITIVE_INFINITY;
+						const newDuration = Math.min(
+							element.duration + extensionNeeded,
+							maxDuration
+						);
+						const newTrimEnd = 0; // Reset trimEnd to 0 since we're extending
 
-            // Update duration first, then trim
-            updateElementDuration(track.id, element.id, newDuration, false);
-            updateElementTrim(
-              track.id,
-              element.id,
-              resizing.initialTrimStart,
-              newTrimEnd,
-              false
-            );
-          } else {
-            // Can't extend - just set trimEnd to 0 (maximum possible extension)
-            updateElementTrim(
-              track.id,
-              element.id,
-              resizing.initialTrimStart,
-              0,
-              false
-            );
-          }
-        } else {
-          // Normal trimming within original duration
-          const minEffectiveDuration = getMinEffectiveDuration();
-          const maxTrimEnd =
-            element.duration - resizing.initialTrimStart - minEffectiveDuration;
-          const newTrimEnd = Math.max(0, Math.min(maxTrimEnd, calculated));
+						// Update duration first, then trim
+						updateElementDuration(track.id, element.id, newDuration, false);
+						updateElementTrim(
+							track.id,
+							element.id,
+							resizing.initialTrimStart,
+							newTrimEnd,
+							false
+						);
+					} else {
+						// Can't extend - just set trimEnd to 0 (maximum possible extension)
+						updateElementTrim(
+							track.id,
+							element.id,
+							resizing.initialTrimStart,
+							0,
+							false
+						);
+					}
+				} else {
+					// Normal trimming within original duration
+					const minEffectiveDuration = getMinEffectiveDuration();
+					const maxTrimEnd =
+						element.duration - resizing.initialTrimStart - minEffectiveDuration;
+					const newTrimEnd = Math.max(0, Math.min(maxTrimEnd, calculated));
 
-          updateElementTrim(
-            track.id,
-            element.id,
-            resizing.initialTrimStart,
-            newTrimEnd,
-            false
-          );
-        }
-      }
-    },
-    [
-      resizing,
-      zoomLevel,
-      element,
-      track.id,
-      updateElementTrim,
-      updateElementStartTime,
-      updateElementDuration,
-      canExtendElementDuration,
-      getMinEffectiveDuration,
-      getMaxEffectiveDuration,
-    ]
-  );
+					updateElementTrim(
+						track.id,
+						element.id,
+						resizing.initialTrimStart,
+						newTrimEnd,
+						false
+					);
+				}
+			}
+		},
+		[
+			resizing,
+			zoomLevel,
+			element,
+			track.id,
+			updateElementTrim,
+			updateElementStartTime,
+			updateElementDuration,
+			canExtendElementDuration,
+			getMinEffectiveDuration,
+			getMaxEffectiveDuration,
+		]
+	);
 
-  // Set up document-level mouse listeners during resize (like proper drag behavior)
-  useEffect(() => {
-    if (!resizing) return;
+	// Set up document-level mouse listeners during resize (like proper drag behavior)
+	useEffect(() => {
+		if (!resizing) return;
 
-    const handleDocumentMouseMove = (e: MouseEvent) => {
-      updateTrimFromMouseMove({ clientX: e.clientX });
-    };
+		const handleDocumentMouseMove = (e: MouseEvent) => {
+			updateTrimFromMouseMove({ clientX: e.clientX });
+		};
 
-    const handleDocumentMouseUp = () => {
-      handleResizeEnd();
-    };
+		const handleDocumentMouseUp = () => {
+			handleResizeEnd();
+		};
 
-    // Add document-level listeners for proper drag behavior
-    document.addEventListener("mousemove", handleDocumentMouseMove);
-    document.addEventListener("mouseup", handleDocumentMouseUp);
+		// Add document-level listeners for proper drag behavior
+		document.addEventListener("mousemove", handleDocumentMouseMove);
+		document.addEventListener("mouseup", handleDocumentMouseUp);
 
-    return () => {
-      document.removeEventListener("mousemove", handleDocumentMouseMove);
-      document.removeEventListener("mouseup", handleDocumentMouseUp);
-    };
-  }, [resizing, handleResizeEnd, updateTrimFromMouseMove]); // Re-run when resizing state changes
+		return () => {
+			document.removeEventListener("mousemove", handleDocumentMouseMove);
+			document.removeEventListener("mouseup", handleDocumentMouseUp);
+		};
+	}, [resizing, handleResizeEnd, updateTrimFromMouseMove]); // Re-run when resizing state changes
 
-  const handleResizeStart = (
-    e: React.MouseEvent,
-    elementId: string,
-    side: "left" | "right"
-  ) => {
-    e.stopPropagation();
-    e.preventDefault();
+	const handleResizeStart = (
+		e: React.MouseEvent,
+		elementId: string,
+		side: "left" | "right"
+	) => {
+		e.stopPropagation();
+		e.preventDefault();
 
-    // Push history once at the start of the resize operation
-    pushHistory();
+		// Push history once at the start of the resize operation
+		pushHistory();
 
-    setResizing({
-      elementId,
-      side,
-      startX: e.clientX,
-      initialTrimStart: element.trimStart,
-      initialTrimEnd: element.trimEnd,
-    });
-  };
+		setResizing({
+			elementId,
+			side,
+			startX: e.clientX,
+			initialTrimStart: element.trimStart,
+			initialTrimEnd: element.trimEnd,
+		});
+	};
 
-  return {
-    resizing,
-    isResizing: resizing !== null,
-    handleResizeStart,
-    // Return empty handlers since we use document listeners now
-    handleResizeMove: () => {}, // Not used anymore
-    handleResizeEnd: () => {}, // Not used anymore
-    // Loading states
-    loading: mediaItemsLoading,
-    error: mediaItemsError,
-  };
+	return {
+		resizing,
+		isResizing: resizing !== null,
+		handleResizeStart,
+		// Return empty handlers since we use document listeners now
+		handleResizeMove: () => {}, // Not used anymore
+		handleResizeEnd: () => {}, // Not used anymore
+		// Loading states
+		loading: mediaItemsLoading,
+		error: mediaItemsError,
+	};
 }

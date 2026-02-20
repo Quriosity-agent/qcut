@@ -8,24 +8,24 @@
  */
 
 import {
-  registerTextToVideoModels,
-  registerImageToVideoModels,
-  registerImageToImageModels,
+	registerTextToVideoModels,
+	registerImageToVideoModels,
+	registerImageToImageModels,
 } from "./registry-data.js";
 import { registerAllPart2Models } from "./registry-data-2.js";
 
 let initialized = false;
 
 export function initRegistry(): void {
-  if (initialized) return;
-  registerTextToVideoModels();
-  registerImageToVideoModels();
-  registerImageToImageModels();
-  registerAllPart2Models();
-  initialized = true;
+	if (initialized) return;
+	registerTextToVideoModels();
+	registerImageToVideoModels();
+	registerImageToImageModels();
+	registerAllPart2Models();
+	initialized = true;
 }
 
 /** Reset initialization state (for tests only). */
 export function resetInitState(): void {
-  initialized = false;
+	initialized = false;
 }

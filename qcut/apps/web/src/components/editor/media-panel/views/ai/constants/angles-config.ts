@@ -9,60 +9,60 @@
 import type { AIModel } from "../types/ai-types";
 
 export const CINEMATIC_ANGLES = [
-  {
-    id: "front",
-    label: "Front",
-    angle: 0,
-    prompt_suffix: "front view, direct frontal perspective",
-  },
-  {
-    id: "front_left_45",
-    label: "Front-Left 45°",
-    angle: 45,
-    prompt_suffix: "45-degree left angle view",
-  },
-  {
-    id: "left_90",
-    label: "Left 90°",
-    angle: 90,
-    prompt_suffix: "left side profile view",
-  },
-  {
-    id: "back_left_135",
-    label: "Back-Left 135°",
-    angle: 135,
-    prompt_suffix: "back-left diagonal view",
-  },
-  {
-    id: "back_180",
-    label: "Back 180°",
-    angle: 180,
-    prompt_suffix: "rear view, from behind",
-  },
-  {
-    id: "back_right_225",
-    label: "Back-Right 225°",
-    angle: 225,
-    prompt_suffix: "back-right diagonal view",
-  },
-  {
-    id: "right_270",
-    label: "Right 270°",
-    angle: 270,
-    prompt_suffix: "right side profile view",
-  },
-  {
-    id: "front_right_315",
-    label: "Front-Right 315°",
-    angle: 315,
-    prompt_suffix: "front-right diagonal view",
-  },
-  {
-    id: "top_down",
-    label: "Top-Down",
-    angle: -1,
-    prompt_suffix: "overhead aerial top-down view",
-  },
+	{
+		id: "front",
+		label: "Front",
+		angle: 0,
+		prompt_suffix: "front view, direct frontal perspective",
+	},
+	{
+		id: "front_left_45",
+		label: "Front-Left 45°",
+		angle: 45,
+		prompt_suffix: "45-degree left angle view",
+	},
+	{
+		id: "left_90",
+		label: "Left 90°",
+		angle: 90,
+		prompt_suffix: "left side profile view",
+	},
+	{
+		id: "back_left_135",
+		label: "Back-Left 135°",
+		angle: 135,
+		prompt_suffix: "back-left diagonal view",
+	},
+	{
+		id: "back_180",
+		label: "Back 180°",
+		angle: 180,
+		prompt_suffix: "rear view, from behind",
+	},
+	{
+		id: "back_right_225",
+		label: "Back-Right 225°",
+		angle: 225,
+		prompt_suffix: "back-right diagonal view",
+	},
+	{
+		id: "right_270",
+		label: "Right 270°",
+		angle: 270,
+		prompt_suffix: "right side profile view",
+	},
+	{
+		id: "front_right_315",
+		label: "Front-Right 315°",
+		angle: 315,
+		prompt_suffix: "front-right diagonal view",
+	},
+	{
+		id: "top_down",
+		label: "Top-Down",
+		angle: -1,
+		prompt_suffix: "overhead aerial top-down view",
+	},
 ] as const;
 
 export type CinematicAngleId = (typeof CINEMATIC_ANGLES)[number]["id"];
@@ -78,16 +78,16 @@ export const ANGLE_BATCH_SIZE = 3;
  * Uses Seeddream 4.5 as the backend for image generation.
  */
 export const ANGLES_MODEL = {
-  id: "shots_cinematic_angles",
-  name: "SHOTS Cinematic Angles",
-  description: "Generate 9 cinematic camera angles from a single image",
-  price: "0.40",
-  resolution: "1080p",
-  max_duration: 0,
-  category: "angles",
-  endpoints: {
-    image_edit: "fal-ai/bytedance/seedream/v4.5/edit",
-  },
-  default_params: {},
-  requiredInputs: ["sourceImage"],
+	id: "shots_cinematic_angles",
+	name: "SHOTS Cinematic Angles",
+	description: "Generate 9 cinematic camera angles from a single image",
+	price: "0.40",
+	resolution: "1080p",
+	max_duration: 0,
+	category: "angles",
+	endpoints: {
+		image_edit: "fal-ai/bytedance/seedream/v4.5/edit",
+	},
+	default_params: {},
+	requiredInputs: ["sourceImage"],
 } satisfies AIModel;

@@ -9,24 +9,24 @@
 
 import { ipcRenderer, type IpcRendererEvent } from "electron";
 import type {
-  ElectronAPI,
-  Skill,
-  MediaImportOptions,
-  MediaImportResult,
+	ElectronAPI,
+	Skill,
+	MediaImportOptions,
+	MediaImportResult,
 } from "./preload-types.js";
 import type {
-  MediaFile,
-  ClaudeTimeline,
-  ClaudeElement,
-  ClaudeSplitResponse,
-  ClaudeMoveRequest,
-  ClaudeSelectionItem,
-  ProjectSettings,
-  ProjectStats,
-  ExportPreset,
-  ExportRecommendation,
-  ErrorReport,
-  DiagnosticResult,
+	MediaFile,
+	ClaudeTimeline,
+	ClaudeElement,
+	ClaudeSplitResponse,
+	ClaudeMoveRequest,
+	ClaudeSelectionItem,
+	ProjectSettings,
+	ProjectStats,
+	ExportPreset,
+	ExportRecommendation,
+	ErrorReport,
+	DiagnosticResult,
 } from "./types/claude-api.js";
 
 // ============================================================================
@@ -35,27 +35,27 @@ import type {
 
 /** Create the PTY terminal API for the renderer process. */
 export function createPtyAPI(): ElectronAPI["pty"] {
-  return {
-    spawn: (options?) => ipcRenderer.invoke("pty:spawn", options),
-    write: (sessionId, data) =>
-      ipcRenderer.invoke("pty:write", sessionId, data),
-    resize: (sessionId, cols, rows) =>
-      ipcRenderer.invoke("pty:resize", sessionId, cols, rows),
-    kill: (sessionId) => ipcRenderer.invoke("pty:kill", sessionId),
-    killAll: () => ipcRenderer.invoke("pty:kill-all"),
-    onData: (callback) => {
-      ipcRenderer.removeAllListeners("pty:data");
-      ipcRenderer.on("pty:data", (_, data) => callback(data));
-    },
-    onExit: (callback) => {
-      ipcRenderer.removeAllListeners("pty:exit");
-      ipcRenderer.on("pty:exit", (_, data) => callback(data));
-    },
-    removeListeners: () => {
-      ipcRenderer.removeAllListeners("pty:data");
-      ipcRenderer.removeAllListeners("pty:exit");
-    },
-  };
+	return {
+		spawn: (options?) => ipcRenderer.invoke("pty:spawn", options),
+		write: (sessionId, data) =>
+			ipcRenderer.invoke("pty:write", sessionId, data),
+		resize: (sessionId, cols, rows) =>
+			ipcRenderer.invoke("pty:resize", sessionId, cols, rows),
+		kill: (sessionId) => ipcRenderer.invoke("pty:kill", sessionId),
+		killAll: () => ipcRenderer.invoke("pty:kill-all"),
+		onData: (callback) => {
+			ipcRenderer.removeAllListeners("pty:data");
+			ipcRenderer.on("pty:data", (_, data) => callback(data));
+		},
+		onExit: (callback) => {
+			ipcRenderer.removeAllListeners("pty:exit");
+			ipcRenderer.on("pty:exit", (_, data) => callback(data));
+		},
+		removeListeners: () => {
+			ipcRenderer.removeAllListeners("pty:data");
+			ipcRenderer.removeAllListeners("pty:exit");
+		},
+	};
 }
 
 // ============================================================================
@@ -64,15 +64,15 @@ export function createPtyAPI(): ElectronAPI["pty"] {
 
 /** Create the MCP app bridge API for the renderer process. */
 export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
-  return {
-    onAppHtml: (callback) => {
-      ipcRenderer.removeAllListeners("mcp:app-html");
-      ipcRenderer.on("mcp:app-html", (_, payload) => callback(payload));
-    },
-    removeListeners: () => {
-      ipcRenderer.removeAllListeners("mcp:app-html");
-    },
-  };
+	return {
+		onAppHtml: (callback) => {
+			ipcRenderer.removeAllListeners("mcp:app-html");
+			ipcRenderer.on("mcp:app-html", (_, payload) => callback(payload));
+		},
+		removeListeners: () => {
+			ipcRenderer.removeAllListeners("mcp:app-html");
+		},
+	};
 }
 
 // ============================================================================
@@ -81,20 +81,20 @@ export function createMcpAPI(): NonNullable<ElectronAPI["mcp"]> {
 
 /** Create the skills management API for the renderer process. */
 export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
-  return {
-    list: (projectId) => ipcRenderer.invoke("skills:list", projectId),
-    import: (projectId, sourcePath) =>
-      ipcRenderer.invoke("skills:import", projectId, sourcePath),
-    delete: (projectId, skillId) =>
-      ipcRenderer.invoke("skills:delete", projectId, skillId),
-    getContent: (projectId, skillId, filename) =>
-      ipcRenderer.invoke("skills:getContent", projectId, skillId, filename),
-    browse: () => ipcRenderer.invoke("skills:browse"),
-    getPath: (projectId) => ipcRenderer.invoke("skills:getPath", projectId),
-    scanGlobal: () => ipcRenderer.invoke("skills:scanGlobal"),
-    syncForClaude: (projectId) =>
-      ipcRenderer.invoke("skills:syncForClaude", projectId),
-  };
+	return {
+		list: (projectId) => ipcRenderer.invoke("skills:list", projectId),
+		import: (projectId, sourcePath) =>
+			ipcRenderer.invoke("skills:import", projectId, sourcePath),
+		delete: (projectId, skillId) =>
+			ipcRenderer.invoke("skills:delete", projectId, skillId),
+		getContent: (projectId, skillId, filename) =>
+			ipcRenderer.invoke("skills:getContent", projectId, skillId, filename),
+		browse: () => ipcRenderer.invoke("skills:browse"),
+		getPath: (projectId) => ipcRenderer.invoke("skills:getPath", projectId),
+		scanGlobal: () => ipcRenderer.invoke("skills:scanGlobal"),
+		syncForClaude: (projectId) =>
+			ipcRenderer.invoke("skills:syncForClaude", projectId),
+	};
 }
 
 // ============================================================================
@@ -103,33 +103,33 @@ export function createSkillsAPI(): NonNullable<ElectronAPI["skills"]> {
 
 /** Create the AI content pipeline API for the renderer process. */
 export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
-  return {
-    check: () => ipcRenderer.invoke("ai-pipeline:check"),
-    status: () => ipcRenderer.invoke("ai-pipeline:status"),
-    generate: (options) => ipcRenderer.invoke("ai-pipeline:generate", options),
-    listModels: () => ipcRenderer.invoke("ai-pipeline:list-models"),
-    estimateCost: (options) =>
-      ipcRenderer.invoke("ai-pipeline:estimate-cost", options),
-    cancel: (sessionId) => ipcRenderer.invoke("ai-pipeline:cancel", sessionId),
-    refresh: () => ipcRenderer.invoke("ai-pipeline:refresh"),
-    onProgress: (callback) => {
-      const handler = (
-        _event: IpcRendererEvent,
-        progress: {
-          stage: string;
-          percent: number;
-          message: string;
-          model?: string;
-          eta?: number;
-          sessionId?: string;
-        }
-      ) => callback(progress);
-      ipcRenderer.on("ai-pipeline:progress", handler);
-      return () => {
-        ipcRenderer.removeListener("ai-pipeline:progress", handler);
-      };
-    },
-  };
+	return {
+		check: () => ipcRenderer.invoke("ai-pipeline:check"),
+		status: () => ipcRenderer.invoke("ai-pipeline:status"),
+		generate: (options) => ipcRenderer.invoke("ai-pipeline:generate", options),
+		listModels: () => ipcRenderer.invoke("ai-pipeline:list-models"),
+		estimateCost: (options) =>
+			ipcRenderer.invoke("ai-pipeline:estimate-cost", options),
+		cancel: (sessionId) => ipcRenderer.invoke("ai-pipeline:cancel", sessionId),
+		refresh: () => ipcRenderer.invoke("ai-pipeline:refresh"),
+		onProgress: (callback) => {
+			const handler = (
+				_event: IpcRendererEvent,
+				progress: {
+					stage: string;
+					percent: number;
+					message: string;
+					model?: string;
+					eta?: number;
+					sessionId?: string;
+				}
+			) => callback(progress);
+			ipcRenderer.on("ai-pipeline:progress", handler);
+			return () => {
+				ipcRenderer.removeListener("ai-pipeline:progress", handler);
+			};
+		},
+	};
 }
 
 // ============================================================================
@@ -138,28 +138,28 @@ export function createAIPipelineAPI(): NonNullable<ElectronAPI["aiPipeline"]> {
 
 /** Create the media import API for the renderer process. */
 export function createMediaImportAPI(): NonNullable<
-  ElectronAPI["mediaImport"]
+	ElectronAPI["mediaImport"]
 > {
-  return {
-    import: (options) => ipcRenderer.invoke("media-import:import", options),
-    validateSymlink: (path) =>
-      ipcRenderer.invoke("media-import:validate-symlink", path),
-    locateOriginal: (mediaPath) =>
-      ipcRenderer.invoke("media-import:locate-original", mediaPath),
-    relinkMedia: (projectId, mediaId, newSourcePath) =>
-      ipcRenderer.invoke(
-        "media-import:relink",
-        projectId,
-        mediaId,
-        newSourcePath
-      ),
-    remove: (projectId, mediaId) =>
-      ipcRenderer.invoke("media-import:remove", projectId, mediaId),
-    checkSymlinkSupport: () =>
-      ipcRenderer.invoke("media-import:check-symlink-support"),
-    getMediaPath: (projectId) =>
-      ipcRenderer.invoke("media-import:get-media-path", projectId),
-  };
+	return {
+		import: (options) => ipcRenderer.invoke("media-import:import", options),
+		validateSymlink: (path) =>
+			ipcRenderer.invoke("media-import:validate-symlink", path),
+		locateOriginal: (mediaPath) =>
+			ipcRenderer.invoke("media-import:locate-original", mediaPath),
+		relinkMedia: (projectId, mediaId, newSourcePath) =>
+			ipcRenderer.invoke(
+				"media-import:relink",
+				projectId,
+				mediaId,
+				newSourcePath
+			),
+		remove: (projectId, mediaId) =>
+			ipcRenderer.invoke("media-import:remove", projectId, mediaId),
+		checkSymlinkSupport: () =>
+			ipcRenderer.invoke("media-import:check-symlink-support"),
+		getMediaPath: (projectId) =>
+			ipcRenderer.invoke("media-import:get-media-path", projectId),
+	};
 }
 
 // ============================================================================
@@ -168,18 +168,18 @@ export function createMediaImportAPI(): NonNullable<
 
 /** Create the project folder API for the renderer process. */
 export function createProjectFolderAPI(): NonNullable<
-  ElectronAPI["projectFolder"]
+	ElectronAPI["projectFolder"]
 > {
-  return {
-    getRoot: (projectId) =>
-      ipcRenderer.invoke("project-folder:get-root", projectId),
-    scan: (projectId, subPath?, options?) =>
-      ipcRenderer.invoke("project-folder:scan", projectId, subPath, options),
-    list: (projectId, subPath?) =>
-      ipcRenderer.invoke("project-folder:list", projectId, subPath),
-    ensureStructure: (projectId) =>
-      ipcRenderer.invoke("project-folder:ensure-structure", projectId),
-  };
+	return {
+		getRoot: (projectId) =>
+			ipcRenderer.invoke("project-folder:get-root", projectId),
+		scan: (projectId, subPath?, options?) =>
+			ipcRenderer.invoke("project-folder:scan", projectId, subPath, options),
+		list: (projectId, subPath?) =>
+			ipcRenderer.invoke("project-folder:list", projectId, subPath),
+		ensureStructure: (projectId) =>
+			ipcRenderer.invoke("project-folder:ensure-structure", projectId),
+	};
 }
 
 // ============================================================================
@@ -188,307 +188,307 @@ export function createProjectFolderAPI(): NonNullable<
 
 /** Create the Claude code integration API for the renderer process. */
 export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
-  return {
-    media: {
-      list: (projectId) => ipcRenderer.invoke("claude:media:list", projectId),
-      info: (projectId, mediaId) =>
-        ipcRenderer.invoke("claude:media:info", projectId, mediaId),
-      import: (projectId, source) =>
-        ipcRenderer.invoke("claude:media:import", projectId, source),
-      delete: (projectId, mediaId) =>
-        ipcRenderer.invoke("claude:media:delete", projectId, mediaId),
-      rename: (projectId, mediaId, newName) =>
-        ipcRenderer.invoke("claude:media:rename", projectId, mediaId, newName),
-    },
-    timeline: {
-      export: (projectId, format) =>
-        ipcRenderer.invoke("claude:timeline:export", projectId, format),
-      import: (projectId, data, format) =>
-        ipcRenderer.invoke("claude:timeline:import", projectId, data, format),
-      addElement: (projectId, element) =>
-        ipcRenderer.invoke("claude:timeline:addElement", projectId, element),
-      batchAddElements: (projectId, elements) =>
-        ipcRenderer.invoke(
-          "claude:timeline:batchAddElements",
-          projectId,
-          elements
-        ),
-      updateElement: (projectId, elementId, changes) =>
-        ipcRenderer.invoke(
-          "claude:timeline:updateElement",
-          projectId,
-          elementId,
-          changes
-        ),
-      batchUpdateElements: (projectId, updates) =>
-        ipcRenderer.invoke(
-          "claude:timeline:batchUpdateElements",
-          projectId,
-          updates
-        ),
-      removeElement: (projectId, elementId) =>
-        ipcRenderer.invoke(
-          "claude:timeline:removeElement",
-          projectId,
-          elementId
-        ),
-      batchDeleteElements: (projectId, elements, ripple) =>
-        ipcRenderer.invoke(
-          "claude:timeline:batchDeleteElements",
-          projectId,
-          elements,
-          ripple
-        ),
-      deleteRange: (projectId, request) =>
-        ipcRenderer.invoke("claude:timeline:deleteRange", projectId, request),
-      arrange: (projectId, request) =>
-        ipcRenderer.invoke("claude:timeline:arrange", projectId, request),
-      splitElement: (projectId, elementId, splitTime, mode) =>
-        ipcRenderer.invoke(
-          "claude:timeline:splitElement",
-          projectId,
-          elementId,
-          splitTime,
-          mode
-        ),
-      moveElement: (projectId, elementId, toTrackId, newStartTime) =>
-        ipcRenderer.invoke(
-          "claude:timeline:moveElement",
-          projectId,
-          elementId,
-          toTrackId,
-          newStartTime
-        ),
-      selectElements: (projectId, elements) =>
-        ipcRenderer.invoke(
-          "claude:timeline:selectElements",
-          projectId,
-          elements
-        ),
-      getSelection: (projectId) =>
-        ipcRenderer.invoke("claude:timeline:getSelection", projectId),
-      clearSelection: (projectId) =>
-        ipcRenderer.invoke("claude:timeline:clearSelection", projectId),
-      onRequest: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:request");
-        ipcRenderer.on("claude:timeline:request", () => callback());
-      },
-      onApply: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:apply");
-        ipcRenderer.on(
-          "claude:timeline:apply",
-          (_, data: { timeline: any; replace?: boolean } | any) => {
-            // Support both new {timeline, replace} format and legacy raw timeline
-            if (
-              data &&
-              data.timeline &&
-              typeof data.timeline === "object" &&
-              "tracks" in data.timeline
-            ) {
-              callback(data.timeline, data.replace);
-            } else {
-              callback(data, false);
-            }
-          }
-        );
-      },
-      onAddElement: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:addElement");
-        ipcRenderer.on("claude:timeline:addElement", (_, element) =>
-          callback(element)
-        );
-      },
-      onBatchAddElements: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
-        ipcRenderer.on("claude:timeline:batchAddElements", (_, data) =>
-          callback(data)
-        );
-      },
-      sendBatchAddElementsResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:batchAddElements:response", {
-          requestId,
-          result,
-        });
-      },
-      onUpdateElement: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:updateElement");
-        ipcRenderer.on("claude:timeline:updateElement", (_, data) =>
-          callback(data)
-        );
-      },
-      onBatchUpdateElements: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
-        ipcRenderer.on("claude:timeline:batchUpdateElements", (_, data) =>
-          callback(data)
-        );
-      },
-      sendBatchUpdateElementsResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:batchUpdateElements:response", {
-          requestId,
-          result,
-        });
-      },
-      onRemoveElement: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:removeElement");
-        ipcRenderer.on("claude:timeline:removeElement", (_, id) =>
-          callback(id)
-        );
-      },
-      onBatchDeleteElements: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
-        ipcRenderer.on("claude:timeline:batchDeleteElements", (_, data) =>
-          callback(data)
-        );
-      },
-      sendBatchDeleteElementsResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:batchDeleteElements:response", {
-          requestId,
-          result,
-        });
-      },
-      onSplitElement: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
-        ipcRenderer.on("claude:timeline:splitElement", (_, data) =>
-          callback(data)
-        );
-      },
-      sendSplitResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:splitElement:response", {
-          requestId,
-          result,
-        });
-      },
-      onExecuteCuts: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
-        ipcRenderer.on("claude:timeline:executeCuts", (_, data) =>
-          callback(data)
-        );
-      },
-      sendExecuteCutsResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:executeCuts:response", {
-          requestId,
-          result,
-        });
-      },
-      onMoveElement: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
-        ipcRenderer.on("claude:timeline:moveElement", (_, data) =>
-          callback(data)
-        );
-      },
-      onSelectElements: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
-        ipcRenderer.on("claude:timeline:selectElements", (_, data) =>
-          callback(data)
-        );
-      },
-      onGetSelection: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
-        ipcRenderer.on("claude:timeline:getSelection", (_, data) =>
-          callback(data)
-        );
-      },
-      sendSelectionResponse: (requestId, elements) => {
-        ipcRenderer.send("claude:timeline:getSelection:response", {
-          requestId,
-          elements,
-        });
-      },
-      onClearSelection: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
-        ipcRenderer.on("claude:timeline:clearSelection", () => callback());
-      },
-      onDeleteRange: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
-        ipcRenderer.on("claude:timeline:deleteRange", (_, data) =>
-          callback(data)
-        );
-      },
-      sendDeleteRangeResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:deleteRange:response", {
-          requestId,
-          result,
-        });
-      },
-      onArrange: (callback) => {
-        ipcRenderer.removeAllListeners("claude:timeline:arrange");
-        ipcRenderer.on("claude:timeline:arrange", (_, data) => callback(data));
-      },
-      sendArrangeResponse: (requestId, result) => {
-        ipcRenderer.send("claude:timeline:arrange:response", {
-          requestId,
-          result,
-        });
-      },
-      sendResponse: (timeline) => {
-        ipcRenderer.send("claude:timeline:response", timeline);
-      },
-      removeListeners: () => {
-        ipcRenderer.removeAllListeners("claude:timeline:request");
-        ipcRenderer.removeAllListeners("claude:timeline:apply");
-        ipcRenderer.removeAllListeners("claude:timeline:addElement");
-        ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
-        ipcRenderer.removeAllListeners("claude:timeline:updateElement");
-        ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
-        ipcRenderer.removeAllListeners("claude:timeline:removeElement");
-        ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
-        ipcRenderer.removeAllListeners("claude:timeline:splitElement");
-        ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
-        ipcRenderer.removeAllListeners("claude:timeline:moveElement");
-        ipcRenderer.removeAllListeners("claude:timeline:selectElements");
-        ipcRenderer.removeAllListeners("claude:timeline:getSelection");
-        ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
-        ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
-        ipcRenderer.removeAllListeners("claude:timeline:arrange");
-      },
-    },
-    project: {
-      getSettings: (projectId) =>
-        ipcRenderer.invoke("claude:project:getSettings", projectId),
-      updateSettings: (projectId, settings) =>
-        ipcRenderer.invoke(
-          "claude:project:updateSettings",
-          projectId,
-          settings
-        ),
-      getStats: (projectId) =>
-        ipcRenderer.invoke("claude:project:getStats", projectId),
-      onStatsRequest: (callback) => {
-        ipcRenderer.removeAllListeners("claude:project:statsRequest");
-        ipcRenderer.on(
-          "claude:project:statsRequest",
-          (_event, { projectId, requestId }) => callback(projectId, requestId)
-        );
-      },
-      sendStatsResponse: (stats, requestId) => {
-        ipcRenderer.send("claude:project:statsResponse", stats, requestId);
-      },
-      onUpdated: (callback) => {
-        ipcRenderer.removeAllListeners("claude:project:updated");
-        ipcRenderer.on("claude:project:updated", (_, projectId, settings) =>
-          callback(projectId, settings)
-        );
-      },
-      removeListeners: () => {
-        ipcRenderer.removeAllListeners("claude:project:statsRequest");
-        ipcRenderer.removeAllListeners("claude:project:updated");
-      },
-    },
-    export: {
-      getPresets: () => ipcRenderer.invoke("claude:export:getPresets"),
-      recommend: (projectId, target) =>
-        ipcRenderer.invoke("claude:export:recommend", projectId, target),
-    },
-    diagnostics: {
-      analyze: (error) =>
-        ipcRenderer.invoke("claude:diagnostics:analyze", error),
-    },
-    analyze: {
-      run: (projectId, options) =>
-        ipcRenderer.invoke("claude:analyze:run", projectId, options),
-      models: () => ipcRenderer.invoke("claude:analyze:models"),
-    },
-  };
+	return {
+		media: {
+			list: (projectId) => ipcRenderer.invoke("claude:media:list", projectId),
+			info: (projectId, mediaId) =>
+				ipcRenderer.invoke("claude:media:info", projectId, mediaId),
+			import: (projectId, source) =>
+				ipcRenderer.invoke("claude:media:import", projectId, source),
+			delete: (projectId, mediaId) =>
+				ipcRenderer.invoke("claude:media:delete", projectId, mediaId),
+			rename: (projectId, mediaId, newName) =>
+				ipcRenderer.invoke("claude:media:rename", projectId, mediaId, newName),
+		},
+		timeline: {
+			export: (projectId, format) =>
+				ipcRenderer.invoke("claude:timeline:export", projectId, format),
+			import: (projectId, data, format) =>
+				ipcRenderer.invoke("claude:timeline:import", projectId, data, format),
+			addElement: (projectId, element) =>
+				ipcRenderer.invoke("claude:timeline:addElement", projectId, element),
+			batchAddElements: (projectId, elements) =>
+				ipcRenderer.invoke(
+					"claude:timeline:batchAddElements",
+					projectId,
+					elements
+				),
+			updateElement: (projectId, elementId, changes) =>
+				ipcRenderer.invoke(
+					"claude:timeline:updateElement",
+					projectId,
+					elementId,
+					changes
+				),
+			batchUpdateElements: (projectId, updates) =>
+				ipcRenderer.invoke(
+					"claude:timeline:batchUpdateElements",
+					projectId,
+					updates
+				),
+			removeElement: (projectId, elementId) =>
+				ipcRenderer.invoke(
+					"claude:timeline:removeElement",
+					projectId,
+					elementId
+				),
+			batchDeleteElements: (projectId, elements, ripple) =>
+				ipcRenderer.invoke(
+					"claude:timeline:batchDeleteElements",
+					projectId,
+					elements,
+					ripple
+				),
+			deleteRange: (projectId, request) =>
+				ipcRenderer.invoke("claude:timeline:deleteRange", projectId, request),
+			arrange: (projectId, request) =>
+				ipcRenderer.invoke("claude:timeline:arrange", projectId, request),
+			splitElement: (projectId, elementId, splitTime, mode) =>
+				ipcRenderer.invoke(
+					"claude:timeline:splitElement",
+					projectId,
+					elementId,
+					splitTime,
+					mode
+				),
+			moveElement: (projectId, elementId, toTrackId, newStartTime) =>
+				ipcRenderer.invoke(
+					"claude:timeline:moveElement",
+					projectId,
+					elementId,
+					toTrackId,
+					newStartTime
+				),
+			selectElements: (projectId, elements) =>
+				ipcRenderer.invoke(
+					"claude:timeline:selectElements",
+					projectId,
+					elements
+				),
+			getSelection: (projectId) =>
+				ipcRenderer.invoke("claude:timeline:getSelection", projectId),
+			clearSelection: (projectId) =>
+				ipcRenderer.invoke("claude:timeline:clearSelection", projectId),
+			onRequest: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:request");
+				ipcRenderer.on("claude:timeline:request", () => callback());
+			},
+			onApply: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:apply");
+				ipcRenderer.on(
+					"claude:timeline:apply",
+					(_, data: { timeline: any; replace?: boolean } | any) => {
+						// Support both new {timeline, replace} format and legacy raw timeline
+						if (
+							data &&
+							data.timeline &&
+							typeof data.timeline === "object" &&
+							"tracks" in data.timeline
+						) {
+							callback(data.timeline, data.replace);
+						} else {
+							callback(data, false);
+						}
+					}
+				);
+			},
+			onAddElement: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:addElement");
+				ipcRenderer.on("claude:timeline:addElement", (_, element) =>
+					callback(element)
+				);
+			},
+			onBatchAddElements: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
+				ipcRenderer.on("claude:timeline:batchAddElements", (_, data) =>
+					callback(data)
+				);
+			},
+			sendBatchAddElementsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:batchAddElements:response", {
+					requestId,
+					result,
+				});
+			},
+			onUpdateElement: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:updateElement");
+				ipcRenderer.on("claude:timeline:updateElement", (_, data) =>
+					callback(data)
+				);
+			},
+			onBatchUpdateElements: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
+				ipcRenderer.on("claude:timeline:batchUpdateElements", (_, data) =>
+					callback(data)
+				);
+			},
+			sendBatchUpdateElementsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:batchUpdateElements:response", {
+					requestId,
+					result,
+				});
+			},
+			onRemoveElement: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+				ipcRenderer.on("claude:timeline:removeElement", (_, id) =>
+					callback(id)
+				);
+			},
+			onBatchDeleteElements: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
+				ipcRenderer.on("claude:timeline:batchDeleteElements", (_, data) =>
+					callback(data)
+				);
+			},
+			sendBatchDeleteElementsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:batchDeleteElements:response", {
+					requestId,
+					result,
+				});
+			},
+			onSplitElement: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+				ipcRenderer.on("claude:timeline:splitElement", (_, data) =>
+					callback(data)
+				);
+			},
+			sendSplitResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:splitElement:response", {
+					requestId,
+					result,
+				});
+			},
+			onExecuteCuts: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
+				ipcRenderer.on("claude:timeline:executeCuts", (_, data) =>
+					callback(data)
+				);
+			},
+			sendExecuteCutsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:executeCuts:response", {
+					requestId,
+					result,
+				});
+			},
+			onMoveElement: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+				ipcRenderer.on("claude:timeline:moveElement", (_, data) =>
+					callback(data)
+				);
+			},
+			onSelectElements: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+				ipcRenderer.on("claude:timeline:selectElements", (_, data) =>
+					callback(data)
+				);
+			},
+			onGetSelection: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+				ipcRenderer.on("claude:timeline:getSelection", (_, data) =>
+					callback(data)
+				);
+			},
+			sendSelectionResponse: (requestId, elements) => {
+				ipcRenderer.send("claude:timeline:getSelection:response", {
+					requestId,
+					elements,
+				});
+			},
+			onClearSelection: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
+				ipcRenderer.on("claude:timeline:clearSelection", () => callback());
+			},
+			onDeleteRange: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
+				ipcRenderer.on("claude:timeline:deleteRange", (_, data) =>
+					callback(data)
+				);
+			},
+			sendDeleteRangeResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:deleteRange:response", {
+					requestId,
+					result,
+				});
+			},
+			onArrange: (callback) => {
+				ipcRenderer.removeAllListeners("claude:timeline:arrange");
+				ipcRenderer.on("claude:timeline:arrange", (_, data) => callback(data));
+			},
+			sendArrangeResponse: (requestId, result) => {
+				ipcRenderer.send("claude:timeline:arrange:response", {
+					requestId,
+					result,
+				});
+			},
+			sendResponse: (timeline) => {
+				ipcRenderer.send("claude:timeline:response", timeline);
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:timeline:request");
+				ipcRenderer.removeAllListeners("claude:timeline:apply");
+				ipcRenderer.removeAllListeners("claude:timeline:addElement");
+				ipcRenderer.removeAllListeners("claude:timeline:batchAddElements");
+				ipcRenderer.removeAllListeners("claude:timeline:updateElement");
+				ipcRenderer.removeAllListeners("claude:timeline:batchUpdateElements");
+				ipcRenderer.removeAllListeners("claude:timeline:removeElement");
+				ipcRenderer.removeAllListeners("claude:timeline:batchDeleteElements");
+				ipcRenderer.removeAllListeners("claude:timeline:splitElement");
+				ipcRenderer.removeAllListeners("claude:timeline:executeCuts");
+				ipcRenderer.removeAllListeners("claude:timeline:moveElement");
+				ipcRenderer.removeAllListeners("claude:timeline:selectElements");
+				ipcRenderer.removeAllListeners("claude:timeline:getSelection");
+				ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
+				ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
+				ipcRenderer.removeAllListeners("claude:timeline:arrange");
+			},
+		},
+		project: {
+			getSettings: (projectId) =>
+				ipcRenderer.invoke("claude:project:getSettings", projectId),
+			updateSettings: (projectId, settings) =>
+				ipcRenderer.invoke(
+					"claude:project:updateSettings",
+					projectId,
+					settings
+				),
+			getStats: (projectId) =>
+				ipcRenderer.invoke("claude:project:getStats", projectId),
+			onStatsRequest: (callback) => {
+				ipcRenderer.removeAllListeners("claude:project:statsRequest");
+				ipcRenderer.on(
+					"claude:project:statsRequest",
+					(_event, { projectId, requestId }) => callback(projectId, requestId)
+				);
+			},
+			sendStatsResponse: (stats, requestId) => {
+				ipcRenderer.send("claude:project:statsResponse", stats, requestId);
+			},
+			onUpdated: (callback) => {
+				ipcRenderer.removeAllListeners("claude:project:updated");
+				ipcRenderer.on("claude:project:updated", (_, projectId, settings) =>
+					callback(projectId, settings)
+				);
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:project:statsRequest");
+				ipcRenderer.removeAllListeners("claude:project:updated");
+			},
+		},
+		export: {
+			getPresets: () => ipcRenderer.invoke("claude:export:getPresets"),
+			recommend: (projectId, target) =>
+				ipcRenderer.invoke("claude:export:recommend", projectId, target),
+		},
+		diagnostics: {
+			analyze: (error) =>
+				ipcRenderer.invoke("claude:diagnostics:analyze", error),
+		},
+		analyze: {
+			run: (projectId, options) =>
+				ipcRenderer.invoke("claude:analyze:run", projectId, options),
+			models: () => ipcRenderer.invoke("claude:analyze:models"),
+		},
+	};
 }
 
 // ============================================================================
@@ -497,20 +497,20 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 
 /** Create the Remotion folder API for the renderer process. */
 export function createRemotionFolderAPI(): NonNullable<
-  ElectronAPI["remotionFolder"]
+	ElectronAPI["remotionFolder"]
 > {
-  return {
-    select: () => ipcRenderer.invoke("remotion-folder:select"),
-    scan: (folderPath) =>
-      ipcRenderer.invoke("remotion-folder:scan", folderPath),
-    bundle: (folderPath, compositionIds?) =>
-      ipcRenderer.invoke("remotion-folder:bundle", folderPath, compositionIds),
-    import: (folderPath) =>
-      ipcRenderer.invoke("remotion-folder:import", folderPath),
-    checkBundler: () => ipcRenderer.invoke("remotion-folder:check-bundler"),
-    validate: (folderPath) =>
-      ipcRenderer.invoke("remotion-folder:validate", folderPath),
-  };
+	return {
+		select: () => ipcRenderer.invoke("remotion-folder:select"),
+		scan: (folderPath) =>
+			ipcRenderer.invoke("remotion-folder:scan", folderPath),
+		bundle: (folderPath, compositionIds?) =>
+			ipcRenderer.invoke("remotion-folder:bundle", folderPath, compositionIds),
+		import: (folderPath) =>
+			ipcRenderer.invoke("remotion-folder:import", folderPath),
+		checkBundler: () => ipcRenderer.invoke("remotion-folder:check-bundler"),
+		validate: (folderPath) =>
+			ipcRenderer.invoke("remotion-folder:validate", folderPath),
+	};
 }
 
 // ============================================================================
@@ -519,37 +519,37 @@ export function createRemotionFolderAPI(): NonNullable<
 
 /** Create the auto-updates and release notes API for the renderer process. */
 export function createUpdatesAPI(): NonNullable<ElectronAPI["updates"]> {
-  return {
-    checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
-    installUpdate: () => ipcRenderer.invoke("install-update"),
-    getReleaseNotes: (version?) =>
-      ipcRenderer.invoke("get-release-notes", version),
-    getChangelog: () => ipcRenderer.invoke("get-changelog"),
-    onUpdateAvailable: (callback) => {
-      const handler = (
-        _: IpcRendererEvent,
-        data: {
-          version: string;
-          releaseNotes?: string;
-          releaseDate?: string;
-        }
-      ) => callback(data);
-      ipcRenderer.on("update-available", handler);
-      return () => ipcRenderer.removeListener("update-available", handler);
-    },
-    onDownloadProgress: (callback) => {
-      const handler = (
-        _: IpcRendererEvent,
-        data: { percent: number; transferred: number; total: number }
-      ) => callback(data);
-      ipcRenderer.on("download-progress", handler);
-      return () => ipcRenderer.removeListener("download-progress", handler);
-    },
-    onUpdateDownloaded: (callback) => {
-      const handler = (_: IpcRendererEvent, data: { version: string }) =>
-        callback(data);
-      ipcRenderer.on("update-downloaded", handler);
-      return () => ipcRenderer.removeListener("update-downloaded", handler);
-    },
-  };
+	return {
+		checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
+		installUpdate: () => ipcRenderer.invoke("install-update"),
+		getReleaseNotes: (version?) =>
+			ipcRenderer.invoke("get-release-notes", version),
+		getChangelog: () => ipcRenderer.invoke("get-changelog"),
+		onUpdateAvailable: (callback) => {
+			const handler = (
+				_: IpcRendererEvent,
+				data: {
+					version: string;
+					releaseNotes?: string;
+					releaseDate?: string;
+				}
+			) => callback(data);
+			ipcRenderer.on("update-available", handler);
+			return () => ipcRenderer.removeListener("update-available", handler);
+		},
+		onDownloadProgress: (callback) => {
+			const handler = (
+				_: IpcRendererEvent,
+				data: { percent: number; transferred: number; total: number }
+			) => callback(data);
+			ipcRenderer.on("download-progress", handler);
+			return () => ipcRenderer.removeListener("download-progress", handler);
+		},
+		onUpdateDownloaded: (callback) => {
+			const handler = (_: IpcRendererEvent, data: { version: string }) =>
+				callback(data);
+			ipcRenderer.on("update-downloaded", handler);
+			return () => ipcRenderer.removeListener("update-downloaded", handler);
+		},
+	};
 }

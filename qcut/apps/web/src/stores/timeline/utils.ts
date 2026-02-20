@@ -16,17 +16,17 @@ import { generateUUID } from "@/lib/utils";
  * @returns The element name with the specified suffix
  */
 export function getElementNameWithSuffix(
-  originalName: string,
-  suffix: string
+	originalName: string,
+	suffix: string
 ): string {
-  // Remove existing suffixes to prevent accumulation
-  const baseName = originalName
-    .replace(/ \(left\)$/, "")
-    .replace(/ \(right\)$/, "")
-    .replace(/ \(audio\)$/, "")
-    .replace(/ \(split \d+\)$/, "");
+	// Remove existing suffixes to prevent accumulation
+	const baseName = originalName
+		.replace(/ \(left\)$/, "")
+		.replace(/ \(right\)$/, "")
+		.replace(/ \(audio\)$/, "")
+		.replace(/ \(split \d+\)$/, "");
 
-  return `${baseName} (${suffix})`;
+	return `${baseName} (${suffix})`;
 }
 
 /**
@@ -35,24 +35,24 @@ export function getElementNameWithSuffix(
  * @returns A descriptive track name
  */
 export function getTrackName(type: TrackType): string {
-  switch (type) {
-    case "media":
-      return "Media Track";
-    case "text":
-      return "Text Track";
-    case "markdown":
-      return "Markdown Track";
-    case "audio":
-      return "Audio Track";
-    case "sticker":
-      return "Sticker Track";
-    case "captions":
-      return "Captions Track";
-    case "remotion":
-      return "Remotion Track";
-    default:
-      return "Track";
-  }
+	switch (type) {
+		case "media":
+			return "Media Track";
+		case "text":
+			return "Text Track";
+		case "markdown":
+			return "Markdown Track";
+		case "audio":
+			return "Audio Track";
+		case "sticker":
+			return "Sticker Track";
+		case "captions":
+			return "Captions Track";
+		case "remotion":
+			return "Remotion Track";
+		default:
+			return "Track";
+	}
 }
 
 /**
@@ -61,13 +61,13 @@ export function getTrackName(type: TrackType): string {
  * @returns A new TimelineTrack object
  */
 export function createTrack(type: TrackType): TimelineTrack {
-  return {
-    id: generateUUID(),
-    name: getTrackName(type),
-    type,
-    elements: [],
-    muted: false,
-  };
+	return {
+		id: generateUUID(),
+		name: getTrackName(type),
+		type,
+		elements: [],
+		muted: false,
+	};
 }
 
 /**
@@ -76,11 +76,11 @@ export function createTrack(type: TrackType): TimelineTrack {
  * @returns The effective duration in seconds
  */
 export function getEffectiveDuration(element: {
-  duration: number;
-  trimStart: number;
-  trimEnd: number;
+	duration: number;
+	trimStart: number;
+	trimEnd: number;
 }): number {
-  return element.duration - element.trimStart - element.trimEnd;
+	return element.duration - element.trimStart - element.trimEnd;
 }
 
 /**
@@ -89,10 +89,10 @@ export function getEffectiveDuration(element: {
  * @returns The end time in seconds
  */
 export function getElementEndTime(element: {
-  startTime: number;
-  duration: number;
-  trimStart: number;
-  trimEnd: number;
+	startTime: number;
+	duration: number;
+	trimStart: number;
+	trimEnd: number;
 }): number {
-  return element.startTime + getEffectiveDuration(element);
+	return element.startTime + getEffectiveDuration(element);
 }

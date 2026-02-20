@@ -5,17 +5,17 @@ import App from "./App";
 
 // Development memory profiler
 if (import.meta.env.DEV) {
-  import("./lib/dev-memory-profiler");
+	import("./lib/dev-memory-profiler");
 }
 
 // Blob URL monitoring intentionally disabled to comply with no-console policy.
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
-  throw new Error('Root element "#root" not found');
+	throw new Error('Root element "#root" not found');
 }
 ReactDOM.createRoot(rootEl).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+	<React.StrictMode>
+		<App />
+	</React.StrictMode>
 );

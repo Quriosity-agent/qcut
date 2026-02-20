@@ -10,7 +10,7 @@ import { twMerge } from "tailwind-merge";
  * @returns Merged and deduplicated class name string
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+	return twMerge(clsx(inputs));
 }
 
 /**
@@ -18,36 +18,36 @@ export function cn(...inputs: ClassValue[]) {
  * Uses crypto.randomUUID() if available, otherwise falls back to a custom implementation
  */
 export function generateUUID(): string {
-  // Use the native crypto.randomUUID if available
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
-  }
+	// Use the native crypto.randomUUID if available
+	if (
+		typeof crypto !== "undefined" &&
+		typeof crypto.randomUUID === "function"
+	) {
+		return crypto.randomUUID();
+	}
 
-  // Secure fallback using crypto.getRandomValues
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
+	// Secure fallback using crypto.getRandomValues
+	const bytes = new Uint8Array(16);
+	crypto.getRandomValues(bytes);
 
-  // Set version 4 (UUIDv4)
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  // Set variant 10xxxxxx
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+	// Set version 4 (UUIDv4)
+	bytes[6] = (bytes[6] & 0x0f) | 0x40;
+	// Set variant 10xxxxxx
+	bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0"));
+	const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0"));
 
-  return (
-    hex.slice(0, 4).join("") +
-    "-" +
-    hex.slice(4, 6).join("") +
-    "-" +
-    hex.slice(6, 8).join("") +
-    "-" +
-    hex.slice(8, 10).join("") +
-    "-" +
-    hex.slice(10, 16).join("")
-  );
+	return (
+		hex.slice(0, 4).join("") +
+		"-" +
+		hex.slice(4, 6).join("") +
+		"-" +
+		hex.slice(6, 8).join("") +
+		"-" +
+		hex.slice(8, 10).join("") +
+		"-" +
+		hex.slice(10, 16).join("")
+	);
 }
 
 /**
@@ -56,7 +56,7 @@ export function generateUUID(): string {
  * @returns True if the value is an HTMLElement or Element instance
  */
 export function isDOMElement(el: unknown): el is HTMLElement {
-  return !!el && (el instanceof Element || el instanceof HTMLElement);
+	return !!el && (el instanceof Element || el instanceof HTMLElement);
 }
 
 /**
@@ -66,19 +66,19 @@ export function isDOMElement(el: unknown): el is HTMLElement {
  * @returns True if the element accepts keyboard text input
  */
 export function isTypableElement(el: HTMLElement): boolean {
-  // If content editable, then it is editable
-  if (el.isContentEditable || el.contentEditable === "true") return true;
+	// If content editable, then it is editable
+	if (el.isContentEditable || el.contentEditable === "true") return true;
 
-  // If element is an input and the input is enabled, then it is typable
-  if (el.tagName === "INPUT") {
-    return !(el as HTMLInputElement).disabled;
-  }
-  // If element is a textarea and the input is enabled, then it is typable
-  if (el.tagName === "TEXTAREA") {
-    return !(el as HTMLTextAreaElement).disabled;
-  }
+	// If element is an input and the input is enabled, then it is typable
+	if (el.tagName === "INPUT") {
+		return !(el as HTMLInputElement).disabled;
+	}
+	// If element is a textarea and the input is enabled, then it is typable
+	if (el.tagName === "TEXTAREA") {
+		return !(el as HTMLTextAreaElement).disabled;
+	}
 
-  return false;
+	return false;
 }
 
 /**
@@ -87,7 +87,7 @@ export function isTypableElement(el: HTMLElement): boolean {
  * @returns True if the device is running macOS or iOS
  */
 export function isAppleDevice() {
-  return /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform);
+	return /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform);
 }
 
 /**
@@ -96,7 +96,7 @@ export function isAppleDevice() {
  * @returns "⌘" on Apple devices, "Ctrl" on other platforms
  */
 export function getPlatformSpecialKey() {
-  return isAppleDevice() ? "⌘" : "Ctrl";
+	return isAppleDevice() ? "⌘" : "Ctrl";
 }
 
 /**
@@ -105,7 +105,7 @@ export function getPlatformSpecialKey() {
  * @returns "⌥" on Apple devices, "Alt" on other platforms
  */
 export function getPlatformAlternateKey() {
-  return isAppleDevice() ? "⌥" : "Alt";
+	return isAppleDevice() ? "⌥" : "Alt";
 }
 
 /**
@@ -113,12 +113,12 @@ export function getPlatformAlternateKey() {
  * No-op on the server or if the browser blocks popups.
  */
 export function openInNewTab(url: string): void {
-  if (typeof window === "undefined") return;
+	if (typeof window === "undefined") return;
 
-  const win = window.open(url, "_blank", "noopener,noreferrer");
-  if (win) {
-    win.opener = null;
-  }
+	const win = window.open(url, "_blank", "noopener,noreferrer");
+	if (win) {
+		win.opener = null;
+	}
 }
 
 /**
@@ -126,41 +126,41 @@ export function openInNewTab(url: string): void {
  * This ensures the same file always gets the same ID
  */
 export async function generateFileBasedId(file: File): Promise<string> {
-  // Ensure Web Crypto is available
-  if (
-    typeof crypto === "undefined" ||
-    !crypto.subtle ||
-    typeof crypto.subtle.digest !== "function"
-  ) {
-    // Deterministic ID is not possible without SubtleCrypto; let caller decide fallback
-    throw new Error("Web Crypto API not available for hashing file-based ID");
-  }
+	// Ensure Web Crypto is available
+	if (
+		typeof crypto === "undefined" ||
+		!crypto.subtle ||
+		typeof crypto.subtle.digest !== "function"
+	) {
+		// Deterministic ID is not possible without SubtleCrypto; let caller decide fallback
+		throw new Error("Web Crypto API not available for hashing file-based ID");
+	}
 
-  // Create a unique string from normalized file properties
-  const name = file.name.trim().toLowerCase();
-  const type = file.type.trim().toLowerCase();
-  const uniqueString = `${name}-${file.size}-${file.lastModified}-${type}`;
+	// Create a unique string from normalized file properties
+	const name = file.name.trim().toLowerCase();
+	const type = file.type.trim().toLowerCase();
+	const uniqueString = `${name}-${file.size}-${file.lastModified}-${type}`;
 
-  // Use Web Crypto API to hash the string
-  const encoder = new TextEncoder();
-  const data = encoder.encode(uniqueString);
-  const hashBuffer = await crypto.subtle.digest(
-    "SHA-256",
-    data as BufferSource
-  );
+	// Use Web Crypto API to hash the string
+	const encoder = new TextEncoder();
+	const data = encoder.encode(uniqueString);
+	const hashBuffer = await crypto.subtle.digest(
+		"SHA-256",
+		data as BufferSource
+	);
 
-  // Convert hash to hex string
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+	// Convert hash to hex string
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hashHex = hashArray
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("");
 
-  // Format as UUID-like string (take first 32 chars and format)
-  return [
-    hashHex.slice(0, 8),
-    hashHex.slice(8, 12),
-    hashHex.slice(12, 16),
-    hashHex.slice(16, 20),
-    hashHex.slice(20, 32),
-  ].join("-");
+	// Format as UUID-like string (take first 32 chars and format)
+	return [
+		hashHex.slice(0, 8),
+		hashHex.slice(8, 12),
+		hashHex.slice(12, 16),
+		hashHex.slice(16, 20),
+		hashHex.slice(20, 32),
+	].join("-");
 }

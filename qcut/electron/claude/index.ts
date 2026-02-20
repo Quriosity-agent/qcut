@@ -13,8 +13,8 @@ export { setupClaudeExportIPC } from "./claude-export-handler.js";
 export { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
 export { setupClaudeAnalyzeIPC } from "./claude-analyze-handler.js";
 export {
-  startClaudeHTTPServer,
-  stopClaudeHTTPServer,
+	startClaudeHTTPServer,
+	stopClaudeHTTPServer,
 } from "./claude-http-server.js";
 
 // Import for internal use
@@ -31,24 +31,24 @@ import { startClaudeHTTPServer } from "./claude-http-server.js";
  * Call this once during app initialization
  */
 export function setupAllClaudeIPC(): void {
-  claudeLog.info("Claude", "Initializing Claude Code Integration...");
+	claudeLog.info("Claude", "Initializing Claude Code Integration...");
 
-  setupClaudeMediaIPC();
-  setupClaudeTimelineIPC();
-  setupClaudeProjectIPC();
-  setupClaudeExportIPC();
-  setupClaudeDiagnosticsIPC();
-  setupClaudeAnalyzeIPC();
+	setupClaudeMediaIPC();
+	setupClaudeTimelineIPC();
+	setupClaudeProjectIPC();
+	setupClaudeExportIPC();
+	setupClaudeDiagnosticsIPC();
+	setupClaudeAnalyzeIPC();
 
-  // Start HTTP server for external control (non-blocking — failure is non-fatal)
-  try {
-    startClaudeHTTPServer();
-  } catch (error) {
-    claudeLog.warn(
-      "Claude",
-      `HTTP server failed to start: ${error}. External control disabled.`
-    );
-  }
+	// Start HTTP server for external control (non-blocking — failure is non-fatal)
+	try {
+		startClaudeHTTPServer();
+	} catch (error) {
+		claudeLog.warn(
+			"Claude",
+			`HTTP server failed to start: ${error}. External control disabled.`
+		);
+	}
 
-  claudeLog.info("Claude", "All handlers registered successfully");
+	claudeLog.info("Claude", "All handlers registered successfully");
 }

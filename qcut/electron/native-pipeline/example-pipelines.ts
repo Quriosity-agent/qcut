@@ -10,7 +10,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const EXAMPLES: Record<string, string> = {
-  "text-to-video-basic.yaml": `# Basic text-to-video pipeline
+	"text-to-video-basic.yaml": `# Basic text-to-video pipeline
 name: text-to-video-basic
 steps:
   - type: text_to_video
@@ -22,7 +22,7 @@ config:
   save_intermediates: false
 `,
 
-  "image-to-video-chain.yaml": `# Image generation then video creation
+	"image-to-video-chain.yaml": `# Image generation then video creation
 name: image-to-video-chain
 steps:
   - type: text_to_image
@@ -37,7 +37,7 @@ config:
   save_intermediates: true
 `,
 
-  "multi-step-pipeline.yaml": `# Multi-step: prompt enhancement + image + video
+	"multi-step-pipeline.yaml": `# Multi-step: prompt enhancement + image + video
 name: multi-step-pipeline
 steps:
   - type: prompt_generation
@@ -55,7 +55,7 @@ config:
   save_intermediates: true
 `,
 
-  "parallel-pipeline.yaml": `# Parallel image generation with different models
+	"parallel-pipeline.yaml": `# Parallel image generation with different models
 name: parallel-pipeline
 steps:
   - type: parallel_group
@@ -74,7 +74,7 @@ config:
   save_intermediates: true
 `,
 
-  "avatar-generation.yaml": `# Avatar video generation
+	"avatar-generation.yaml": `# Avatar video generation
 name: avatar-generation
 steps:
   - type: avatar
@@ -87,18 +87,18 @@ config:
 };
 
 export function createExamples(outputDir: string): string[] {
-  fs.mkdirSync(outputDir, { recursive: true });
-  const created: string[] = [];
+	fs.mkdirSync(outputDir, { recursive: true });
+	const created: string[] = [];
 
-  for (const [filename, content] of Object.entries(EXAMPLES)) {
-    const filePath = path.join(outputDir, filename);
-    fs.writeFileSync(filePath, content, "utf-8");
-    created.push(filePath);
-  }
+	for (const [filename, content] of Object.entries(EXAMPLES)) {
+		const filePath = path.join(outputDir, filename);
+		fs.writeFileSync(filePath, content, "utf-8");
+		created.push(filePath);
+	}
 
-  return created;
+	return created;
 }
 
 export function getExampleNames(): string[] {
-  return Object.keys(EXAMPLES);
+	return Object.keys(EXAMPLES);
 }

@@ -36,10 +36,10 @@ export type ModelVersion = "v3" | "v4" | "nano-banana" | "flux";
  * detectModelVersion("seededit")      // "v3" (default)
  */
 export function detectModelVersion(modelId: string): ModelVersion {
-  if (modelId === "seeddream-v4") return "v4";
-  if (modelId === "nano-banana") return "nano-banana";
-  if (modelId.includes("flux")) return "flux";
-  return "v3"; // default to V3 for backward compatibility
+	if (modelId === "seeddream-v4") return "v4";
+	if (modelId === "nano-banana") return "nano-banana";
+	if (modelId.includes("flux")) return "flux";
+	return "v3"; // default to V3 for backward compatibility
 }
 
 /**
@@ -56,20 +56,20 @@ export function detectModelVersion(modelId: string): ModelVersion {
  * });
  */
 export function convertParametersForModel(
-  modelId: string,
-  params: Record<string, unknown>
+	modelId: string,
+	params: Record<string, unknown>
 ): Record<string, unknown> {
-  const version = detectModelVersion(modelId);
+	const version = detectModelVersion(modelId);
 
-  switch (version) {
-    case "v4":
-      return convertV4Parameters(params);
-    case "nano-banana":
-      return convertNanoBananaParameters(params);
-    case "flux":
-      return convertFluxParameters(params);
-    default:
-      // v3 is the default for backward compatibility
-      return convertV3Parameters(params);
-  }
+	switch (version) {
+		case "v4":
+			return convertV4Parameters(params);
+		case "nano-banana":
+			return convertNanoBananaParameters(params);
+		case "flux":
+			return convertFluxParameters(params);
+		default:
+			// v3 is the default for backward compatibility
+			return convertV3Parameters(params);
+	}
 }

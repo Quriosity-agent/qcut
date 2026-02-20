@@ -5,15 +5,15 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
 export const Route = createFileRoute("/")({
-  component: HomePage,
+	component: HomePage,
 });
 
 function HomePage() {
-  return (
-    <div>
-      <Header />
-      <Hero />
-      <Footer />
-    </div>
-  );
+	return (
+		<div>
+			<Header />
+			<Hero />
+			<Footer />
+		</div>
+	);
 }

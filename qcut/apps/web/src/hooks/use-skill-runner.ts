@@ -20,103 +20,103 @@ import type { CliProvider } from "@/types/cli-provider";
  * 8. For Claude: Skill is injected via --append-system-prompt flag at spawn time
  */
 export function useSkillRunner() {
-  const { skills } = useSkillsStore();
-  const { activeProject } = useProjectStore();
-  const {
-    setActiveSkill,
-    setCliProvider,
-    setWorkingDirectory,
-    connect,
-    disconnect,
-    status,
-    cliProvider,
-  } = usePtyTerminalStore();
-  const { setActiveTab } = useMediaPanelStore();
+	const { skills } = useSkillsStore();
+	const { activeProject } = useProjectStore();
+	const {
+		setActiveSkill,
+		setCliProvider,
+		setWorkingDirectory,
+		connect,
+		disconnect,
+		status,
+		cliProvider,
+	} = usePtyTerminalStore();
+	const { setActiveTab } = useMediaPanelStore();
 
-  /**
-   * Run a skill with the specified or current CLI provider.
-   *
-   * @param skillId - The ID of the skill to run
-   * @param preferredProvider - Optional provider to use ("gemini", "codex", or "claude")
-   *                           If not specified, uses the currently selected provider
-   */
-  const runSkill = useCallback(
-    async (
-      skillId: string,
-      preferredProvider?: "gemini" | "codex" | "claude"
-    ) => {
-      const skill = skills.find((s) => s.id === skillId);
-      if (!skill) {
-        toast.error("Skill not found");
-        return;
-      }
+	/**
+	 * Run a skill with the specified or current CLI provider.
+	 *
+	 * @param skillId - The ID of the skill to run
+	 * @param preferredProvider - Optional provider to use ("gemini", "codex", or "claude")
+	 *                           If not specified, uses the currently selected provider
+	 */
+	const runSkill = useCallback(
+		async (
+			skillId: string,
+			preferredProvider?: "gemini" | "codex" | "claude"
+		) => {
+			const skill = skills.find((s) => s.id === skillId);
+			if (!skill) {
+				toast.error("Skill not found");
+				return;
+			}
 
-      if (!activeProject) {
-        toast.error("No active project");
-        return;
-      }
+			if (!activeProject) {
+				toast.error("No active project");
+				return;
+			}
 
-      const providerToUse: CliProvider = preferredProvider || cliProvider;
+			const providerToUse: CliProvider = preferredProvider || cliProvider;
 
-      // 1. Get the project's skills folder path
-      let skillsPath = "";
-      try {
-        if (window.electronAPI?.skills?.getPath) {
-          skillsPath = await window.electronAPI.skills.getPath(
-            activeProject.id
-          );
-        }
-      } catch {
-        // Ignore - skills path is optional
-      }
+			// 1. Get the project's skills folder path
+			let skillsPath = "";
+			try {
+				if (window.electronAPI?.skills?.getPath) {
+					skillsPath = await window.electronAPI.skills.getPath(
+						activeProject.id
+					);
+				}
+			} catch {
+				// Ignore - skills path is optional
+			}
 
-      // 2. Set skill as active context (used by both providers)
-      setActiveSkill({
-        id: skill.id,
-        name: skill.name,
-        content: skill.content,
-        folderName: skill.folderName, // For Codex --project-doc flag
-      });
+			// 2. Set skill as active context (used by both providers)
+			setActiveSkill({
+				id: skill.id,
+				name: skill.name,
+				content: skill.content,
+				folderName: skill.folderName, // For Codex --project-doc flag
+			});
 
-      // 3. Set provider if specified
-      if (preferredProvider) {
-        setCliProvider(preferredProvider);
-      }
+			// 3. Set provider if specified
+			if (preferredProvider) {
+				setCliProvider(preferredProvider);
+			}
 
-      // 4. Set working directory to project folder (parent of skills folder)
-      if (skillsPath) {
-        // Get project folder by removing the trailing "skills" directory
-        const projectPath = skillsPath.replace(/[/\\]skills$/, "");
-        setWorkingDirectory(projectPath);
-      }
+			// 4. Set working directory to project folder (parent of skills folder)
+			if (skillsPath) {
+				// Get project folder by removing the trailing "skills" directory
+				const projectPath = skillsPath.replace(/[/\\]skills$/, "");
+				setWorkingDirectory(projectPath);
+			}
 
-      // 5. Switch to PTY terminal tab
-      setActiveTab("pty");
+			// 5. Switch to PTY terminal tab
+			setActiveTab("pty");
 
-      // 6. If already connected, disconnect first to restart with new working directory/provider
-      if (status === "connected") {
-        await disconnect();
-        // Small delay before reconnecting
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        await connect();
-      } else if (status !== "connecting") {
-        // Auto-start CLI if not connected
-        await connect();
-      }
-    },
-    [
-      skills,
-      activeProject,
-      setActiveSkill,
-      setCliProvider,
-      setWorkingDirectory,
-      setActiveTab,
-      connect,
-      disconnect,
-      status,
-      cliProvider,
-    ]
-  );
+			// 6. If already connected, disconnect first to restart with new working directory/provider
+			if (status === "connected") {
+				await disconnect();
+				// Small delay before reconnecting
+				await new Promise((resolve) => setTimeout(resolve, 200));
+				await connect();
+			} else if (status !== "connecting") {
+				// Auto-start CLI if not connected
+				await connect();
+			}
+		},
+		[
+			skills,
+			activeProject,
+			setActiveSkill,
+			setCliProvider,
+			setWorkingDirectory,
+			setActiveTab,
+			connect,
+			disconnect,
+			status,
+			cliProvider,
+		]
+	);
 
-  return { runSkill };
+	return { runSkill };
 }

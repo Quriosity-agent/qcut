@@ -14,7 +14,7 @@ export { StickerOverlayAutoSave } from "./AutoSave";
 
 // Export types if needed by other components
 export type {
-  OverlaySticker,
-  StickerOverlayState,
-  StickerOverlayActions,
+	OverlaySticker,
+	StickerOverlayState,
+	StickerOverlayActions,
 } from "@/types/sticker-overlay";

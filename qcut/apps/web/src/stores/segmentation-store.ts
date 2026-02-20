@@ -10,10 +10,10 @@
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
 import type {
-  Sam3PointPrompt,
-  Sam3BoxPrompt,
-  Sam3ImageOutput,
-  Sam3SegmentationMode,
+	Sam3PointPrompt,
+	Sam3BoxPrompt,
+	Sam3ImageOutput,
+	Sam3SegmentationMode,
 } from "@/types/sam3";
 
 // ============================================
@@ -21,15 +21,15 @@ import type {
 // ============================================
 
 export const OBJECT_COLORS = [
-  { name: "Cyan", hex: "#00CED1", rgb: "0, 206, 209" },
-  { name: "Pink", hex: "#FF69B4", rgb: "255, 105, 180" },
-  { name: "Blue", hex: "#4169E1", rgb: "65, 105, 225" },
-  { name: "Orange", hex: "#FFA500", rgb: "255, 165, 0" },
-  { name: "Green", hex: "#32CD32", rgb: "50, 205, 50" },
-  { name: "Purple", hex: "#9370DB", rgb: "147, 112, 219" },
-  { name: "Yellow", hex: "#FFD700", rgb: "255, 215, 0" },
-  { name: "Lime", hex: "#7FFF00", rgb: "127, 255, 0" },
-  { name: "Red", hex: "#FF6347", rgb: "255, 99, 71" },
+	{ name: "Cyan", hex: "#00CED1", rgb: "0, 206, 209" },
+	{ name: "Pink", hex: "#FF69B4", rgb: "255, 105, 180" },
+	{ name: "Blue", hex: "#4169E1", rgb: "65, 105, 225" },
+	{ name: "Orange", hex: "#FFA500", rgb: "255, 165, 0" },
+	{ name: "Green", hex: "#32CD32", rgb: "50, 205, 50" },
+	{ name: "Purple", hex: "#9370DB", rgb: "147, 112, 219" },
+	{ name: "Yellow", hex: "#FFD700", rgb: "255, 215, 0" },
+	{ name: "Lime", hex: "#7FFF00", rgb: "127, 255, 0" },
+	{ name: "Red", hex: "#FF6347", rgb: "255, 99, 71" },
 ] as const;
 
 // ============================================
@@ -37,130 +37,130 @@ export const OBJECT_COLORS = [
 // ============================================
 
 export interface SegmentedObject {
-  /** Unique object ID */
-  id: string;
-  /** Display name (e.g., "Object 1", "Dog") */
-  name: string;
-  /** Color index from OBJECT_COLORS */
-  colorIndex: number;
-  /** Mask image URL */
-  maskUrl?: string;
-  /** Local blob URL for mask drawing (COEP-safe) */
-  maskBlobUrl?: string;
-  /** Visibility flag for mask rendering */
-  visible?: boolean;
-  /** Thumbnail crop URL */
-  thumbnailUrl?: string;
-  /** Confidence score (0-1) */
-  score?: number;
-  /** Bounding box [cx, cy, w, h] normalized */
-  boundingBox?: number[];
-  /** Point prompts used to define this object */
-  pointPrompts: Sam3PointPrompt[];
-  /** Box prompts used to define this object */
-  boxPrompts: Sam3BoxPrompt[];
-  /** Text prompt used to detect this object */
-  textPrompt?: string;
+	/** Unique object ID */
+	id: string;
+	/** Display name (e.g., "Object 1", "Dog") */
+	name: string;
+	/** Color index from OBJECT_COLORS */
+	colorIndex: number;
+	/** Mask image URL */
+	maskUrl?: string;
+	/** Local blob URL for mask drawing (COEP-safe) */
+	maskBlobUrl?: string;
+	/** Visibility flag for mask rendering */
+	visible?: boolean;
+	/** Thumbnail crop URL */
+	thumbnailUrl?: string;
+	/** Confidence score (0-1) */
+	score?: number;
+	/** Bounding box [cx, cy, w, h] normalized */
+	boundingBox?: number[];
+	/** Point prompts used to define this object */
+	pointPrompts: Sam3PointPrompt[];
+	/** Box prompts used to define this object */
+	boxPrompts: Sam3BoxPrompt[];
+	/** Text prompt used to detect this object */
+	textPrompt?: string;
 }
 
 export interface SegmentationState {
-  // Mode
-  mode: "image" | "video";
-  promptMode: Sam3SegmentationMode;
+	// Mode
+	mode: "image" | "video";
+	promptMode: Sam3SegmentationMode;
 
-  // Source media
-  sourceImageUrl: string | null;
-  sourceImageFile: File | null;
-  sourceVideoUrl: string | null;
-  sourceVideoFile: File | null;
+	// Source media
+	sourceImageUrl: string | null;
+	sourceImageFile: File | null;
+	sourceVideoUrl: string | null;
+	sourceVideoFile: File | null;
 
-  // Image dimensions (for coordinate mapping)
-  imageWidth: number;
-  imageHeight: number;
+	// Image dimensions (for coordinate mapping)
+	imageWidth: number;
+	imageHeight: number;
 
-  // Segmented objects
-  objects: SegmentedObject[];
-  selectedObjectId: string | null;
-  nextObjectId: number;
+	// Segmented objects
+	objects: SegmentedObject[];
+	selectedObjectId: string | null;
+	nextObjectId: number;
 
-  // Current prompts (before submission)
-  currentPointPrompts: Sam3PointPrompt[];
-  currentBoxPrompts: Sam3BoxPrompt[];
-  currentTextPrompt: string;
+	// Current prompts (before submission)
+	currentPointPrompts: Sam3PointPrompt[];
+	currentBoxPrompts: Sam3BoxPrompt[];
+	currentTextPrompt: string;
 
-  // Composite result
-  compositeImageUrl: string | null;
-  masks: Sam3ImageOutput[];
+	// Composite result
+	compositeImageUrl: string | null;
+	masks: Sam3ImageOutput[];
 
-  // Processing state
-  isProcessing: boolean;
-  progress: number;
-  statusMessage: string;
-  elapsedTime: number;
+	// Processing state
+	isProcessing: boolean;
+	progress: number;
+	statusMessage: string;
+	elapsedTime: number;
 
-  // UI state
-  showObjectList: boolean;
-  maskOpacity: number;
-  showBoundingBoxes: boolean;
+	// UI state
+	showObjectList: boolean;
+	maskOpacity: number;
+	showBoundingBoxes: boolean;
 
-  // Video-specific state
-  currentFrame: number;
-  totalFrames: number;
-  segmentedVideoUrl: string | null;
+	// Video-specific state
+	currentFrame: number;
+	totalFrames: number;
+	segmentedVideoUrl: string | null;
 }
 
 export interface SegmentationActions {
-  // Mode
-  setMode: (mode: "image" | "video") => void;
-  setPromptMode: (mode: Sam3SegmentationMode) => void;
+	// Mode
+	setMode: (mode: "image" | "video") => void;
+	setPromptMode: (mode: Sam3SegmentationMode) => void;
 
-  // Source media
-  setSourceImage: (file: File, url: string) => void;
-  setSourceVideo: (file: File, url: string) => void;
-  clearSource: () => void;
-  setImageDimensions: (width: number, height: number) => void;
+	// Source media
+	setSourceImage: (file: File, url: string) => void;
+	setSourceVideo: (file: File, url: string) => void;
+	clearSource: () => void;
+	setImageDimensions: (width: number, height: number) => void;
 
-  // Object management
-  addObject: (object: Omit<SegmentedObject, "id" | "colorIndex">) => string;
-  updateObject: (id: string, updates: Partial<SegmentedObject>) => void;
-  toggleObjectVisibility: (id: string) => void;
-  removeObject: (id: string) => void;
-  selectObject: (id: string | null) => void;
-  renameObject: (id: string, name: string) => void;
-  clearObjects: () => void;
+	// Object management
+	addObject: (object: Omit<SegmentedObject, "id" | "colorIndex">) => string;
+	updateObject: (id: string, updates: Partial<SegmentedObject>) => void;
+	toggleObjectVisibility: (id: string) => void;
+	removeObject: (id: string) => void;
+	selectObject: (id: string | null) => void;
+	renameObject: (id: string, name: string) => void;
+	clearObjects: () => void;
 
-  // Prompt management
-  addPointPrompt: (prompt: Sam3PointPrompt) => void;
-  removePointPrompt: (index: number) => void;
-  addBoxPrompt: (prompt: Sam3BoxPrompt) => void;
-  removeBoxPrompt: (index: number) => void;
-  setTextPrompt: (prompt: string) => void;
-  clearCurrentPrompts: () => void;
+	// Prompt management
+	addPointPrompt: (prompt: Sam3PointPrompt) => void;
+	removePointPrompt: (index: number) => void;
+	addBoxPrompt: (prompt: Sam3BoxPrompt) => void;
+	removeBoxPrompt: (index: number) => void;
+	setTextPrompt: (prompt: string) => void;
+	clearCurrentPrompts: () => void;
 
-  // Results
-  setCompositeImage: (url: string) => void;
-  setMasks: (masks: Sam3ImageOutput[]) => void;
-  setSegmentedVideo: (url: string) => void;
+	// Results
+	setCompositeImage: (url: string) => void;
+	setMasks: (masks: Sam3ImageOutput[]) => void;
+	setSegmentedVideo: (url: string) => void;
 
-  // Processing state
-  setProcessingState: (state: {
-    isProcessing: boolean;
-    progress?: number;
-    statusMessage?: string;
-    elapsedTime?: number;
-  }) => void;
+	// Processing state
+	setProcessingState: (state: {
+		isProcessing: boolean;
+		progress?: number;
+		statusMessage?: string;
+		elapsedTime?: number;
+	}) => void;
 
-  // UI state
-  toggleObjectList: () => void;
-  setMaskOpacity: (opacity: number) => void;
-  toggleBoundingBoxes: () => void;
+	// UI state
+	toggleObjectList: () => void;
+	setMaskOpacity: (opacity: number) => void;
+	toggleBoundingBoxes: () => void;
 
-  // Video controls
-  setCurrentFrame: (frame: number) => void;
-  setTotalFrames: (frames: number) => void;
+	// Video controls
+	setCurrentFrame: (frame: number) => void;
+	setTotalFrames: (frames: number) => void;
 
-  // Reset
-  resetStore: () => void;
+	// Reset
+	resetStore: () => void;
 }
 
 type SegmentationStore = SegmentationState & SegmentationActions;
@@ -170,40 +170,40 @@ type SegmentationStore = SegmentationState & SegmentationActions;
 // ============================================
 
 const initialState: SegmentationState = {
-  mode: "image",
-  promptMode: "text",
+	mode: "image",
+	promptMode: "text",
 
-  sourceImageUrl: null,
-  sourceImageFile: null,
-  sourceVideoUrl: null,
-  sourceVideoFile: null,
+	sourceImageUrl: null,
+	sourceImageFile: null,
+	sourceVideoUrl: null,
+	sourceVideoFile: null,
 
-  imageWidth: 0,
-  imageHeight: 0,
+	imageWidth: 0,
+	imageHeight: 0,
 
-  objects: [],
-  selectedObjectId: null,
-  nextObjectId: 1,
+	objects: [],
+	selectedObjectId: null,
+	nextObjectId: 1,
 
-  currentPointPrompts: [],
-  currentBoxPrompts: [],
-  currentTextPrompt: "",
+	currentPointPrompts: [],
+	currentBoxPrompts: [],
+	currentTextPrompt: "",
 
-  compositeImageUrl: null,
-  masks: [],
+	compositeImageUrl: null,
+	masks: [],
 
-  isProcessing: false,
-  progress: 0,
-  statusMessage: "",
-  elapsedTime: 0,
+	isProcessing: false,
+	progress: 0,
+	statusMessage: "",
+	elapsedTime: 0,
 
-  showObjectList: true,
-  maskOpacity: 1.0, // Full visibility of segmentation mask by default
-  showBoundingBoxes: false,
+	showObjectList: true,
+	maskOpacity: 1.0, // Full visibility of segmentation mask by default
+	showBoundingBoxes: false,
 
-  currentFrame: 0,
-  totalFrames: 0,
-  segmentedVideoUrl: null,
+	currentFrame: 0,
+	totalFrames: 0,
+	segmentedVideoUrl: null,
 };
 
 // ============================================
@@ -211,273 +211,273 @@ const initialState: SegmentationState = {
 // ============================================
 
 export const useSegmentationStore = create<SegmentationStore>()(
-  devtools(
-    subscribeWithSelector((set, get) => ({
-      ...initialState,
+	devtools(
+		subscribeWithSelector((set, get) => ({
+			...initialState,
 
-      // Mode
-      setMode: (mode) => set({ mode }, false, "segmentation/setMode"),
-      setPromptMode: (promptMode) =>
-        set({ promptMode }, false, "segmentation/setPromptMode"),
+			// Mode
+			setMode: (mode) => set({ mode }, false, "segmentation/setMode"),
+			setPromptMode: (promptMode) =>
+				set({ promptMode }, false, "segmentation/setPromptMode"),
 
-      // Source media
-      setSourceImage: (file, url) =>
-        set(
-          {
-            sourceImageFile: file,
-            sourceImageUrl: url,
-            sourceVideoFile: null,
-            sourceVideoUrl: null,
-            mode: "image",
-          },
-          false,
-          "segmentation/setSourceImage"
-        ),
+			// Source media
+			setSourceImage: (file, url) =>
+				set(
+					{
+						sourceImageFile: file,
+						sourceImageUrl: url,
+						sourceVideoFile: null,
+						sourceVideoUrl: null,
+						mode: "image",
+					},
+					false,
+					"segmentation/setSourceImage"
+				),
 
-      setSourceVideo: (file, url) =>
-        set(
-          {
-            sourceVideoFile: file,
-            sourceVideoUrl: url,
-            sourceImageFile: null,
-            sourceImageUrl: null,
-            mode: "video",
-          },
-          false,
-          "segmentation/setSourceVideo"
-        ),
+			setSourceVideo: (file, url) =>
+				set(
+					{
+						sourceVideoFile: file,
+						sourceVideoUrl: url,
+						sourceImageFile: null,
+						sourceImageUrl: null,
+						mode: "video",
+					},
+					false,
+					"segmentation/setSourceVideo"
+				),
 
-      clearSource: () =>
-        set(
-          {
-            sourceImageFile: null,
-            sourceImageUrl: null,
-            sourceVideoFile: null,
-            sourceVideoUrl: null,
-            objects: [],
-            masks: [],
-            compositeImageUrl: null,
-            segmentedVideoUrl: null,
-          },
-          false,
-          "segmentation/clearSource"
-        ),
+			clearSource: () =>
+				set(
+					{
+						sourceImageFile: null,
+						sourceImageUrl: null,
+						sourceVideoFile: null,
+						sourceVideoUrl: null,
+						objects: [],
+						masks: [],
+						compositeImageUrl: null,
+						segmentedVideoUrl: null,
+					},
+					false,
+					"segmentation/clearSource"
+				),
 
-      setImageDimensions: (width, height) =>
-        set(
-          { imageWidth: width, imageHeight: height },
-          false,
-          "segmentation/setImageDimensions"
-        ),
+			setImageDimensions: (width, height) =>
+				set(
+					{ imageWidth: width, imageHeight: height },
+					false,
+					"segmentation/setImageDimensions"
+				),
 
-      // Object management
-      addObject: (objectData) => {
-        const state = get();
-        const id = `obj-${state.nextObjectId}`;
-        const colorIndex = state.objects.length % OBJECT_COLORS.length;
+			// Object management
+			addObject: (objectData) => {
+				const state = get();
+				const id = `obj-${state.nextObjectId}`;
+				const colorIndex = state.objects.length % OBJECT_COLORS.length;
 
-        const newObject: SegmentedObject = {
-          ...objectData,
-          id,
-          colorIndex,
-          name: objectData.name || `Object ${state.nextObjectId}`,
-          pointPrompts: objectData.pointPrompts || [],
-          boxPrompts: objectData.boxPrompts || [],
-          visible: objectData.visible ?? true,
-        };
+				const newObject: SegmentedObject = {
+					...objectData,
+					id,
+					colorIndex,
+					name: objectData.name || `Object ${state.nextObjectId}`,
+					pointPrompts: objectData.pointPrompts || [],
+					boxPrompts: objectData.boxPrompts || [],
+					visible: objectData.visible ?? true,
+				};
 
-        set(
-          {
-            objects: [...state.objects, newObject],
-            nextObjectId: state.nextObjectId + 1,
-            selectedObjectId: id,
-          },
-          false,
-          "segmentation/addObject"
-        );
+				set(
+					{
+						objects: [...state.objects, newObject],
+						nextObjectId: state.nextObjectId + 1,
+						selectedObjectId: id,
+					},
+					false,
+					"segmentation/addObject"
+				);
 
-        return id;
-      },
+				return id;
+			},
 
-      updateObject: (id, updates) =>
-        set(
-          (state) => ({
-            objects: state.objects.map((obj) =>
-              obj.id === id ? { ...obj, ...updates } : obj
-            ),
-          }),
-          false,
-          "segmentation/updateObject"
-        ),
+			updateObject: (id, updates) =>
+				set(
+					(state) => ({
+						objects: state.objects.map((obj) =>
+							obj.id === id ? { ...obj, ...updates } : obj
+						),
+					}),
+					false,
+					"segmentation/updateObject"
+				),
 
-      toggleObjectVisibility: (id) =>
-        set(
-          (state) => ({
-            objects: state.objects.map((obj) =>
-              obj.id === id ? { ...obj, visible: !obj.visible } : obj
-            ),
-          }),
-          false,
-          "segmentation/toggleObjectVisibility"
-        ),
+			toggleObjectVisibility: (id) =>
+				set(
+					(state) => ({
+						objects: state.objects.map((obj) =>
+							obj.id === id ? { ...obj, visible: !obj.visible } : obj
+						),
+					}),
+					false,
+					"segmentation/toggleObjectVisibility"
+				),
 
-      removeObject: (id) =>
-        set(
-          (state) => ({
-            objects: state.objects.filter((obj) => obj.id !== id),
-            selectedObjectId:
-              state.selectedObjectId === id ? null : state.selectedObjectId,
-          }),
-          false,
-          "segmentation/removeObject"
-        ),
+			removeObject: (id) =>
+				set(
+					(state) => ({
+						objects: state.objects.filter((obj) => obj.id !== id),
+						selectedObjectId:
+							state.selectedObjectId === id ? null : state.selectedObjectId,
+					}),
+					false,
+					"segmentation/removeObject"
+				),
 
-      selectObject: (id) =>
-        set({ selectedObjectId: id }, false, "segmentation/selectObject"),
+			selectObject: (id) =>
+				set({ selectedObjectId: id }, false, "segmentation/selectObject"),
 
-      renameObject: (id, name) =>
-        set(
-          (state) => ({
-            objects: state.objects.map((obj) =>
-              obj.id === id ? { ...obj, name } : obj
-            ),
-          }),
-          false,
-          "segmentation/renameObject"
-        ),
+			renameObject: (id, name) =>
+				set(
+					(state) => ({
+						objects: state.objects.map((obj) =>
+							obj.id === id ? { ...obj, name } : obj
+						),
+					}),
+					false,
+					"segmentation/renameObject"
+				),
 
-      clearObjects: () =>
-        set(
-          { objects: [], selectedObjectId: null, nextObjectId: 1, masks: [] },
-          false,
-          "segmentation/clearObjects"
-        ),
+			clearObjects: () =>
+				set(
+					{ objects: [], selectedObjectId: null, nextObjectId: 1, masks: [] },
+					false,
+					"segmentation/clearObjects"
+				),
 
-      // Prompt management
-      addPointPrompt: (prompt) =>
-        set(
-          (state) => ({
-            currentPointPrompts: [...state.currentPointPrompts, prompt],
-          }),
-          false,
-          "segmentation/addPointPrompt"
-        ),
+			// Prompt management
+			addPointPrompt: (prompt) =>
+				set(
+					(state) => ({
+						currentPointPrompts: [...state.currentPointPrompts, prompt],
+					}),
+					false,
+					"segmentation/addPointPrompt"
+				),
 
-      removePointPrompt: (index) =>
-        set(
-          (state) => ({
-            currentPointPrompts: state.currentPointPrompts.filter(
-              (_, i) => i !== index
-            ),
-          }),
-          false,
-          "segmentation/removePointPrompt"
-        ),
+			removePointPrompt: (index) =>
+				set(
+					(state) => ({
+						currentPointPrompts: state.currentPointPrompts.filter(
+							(_, i) => i !== index
+						),
+					}),
+					false,
+					"segmentation/removePointPrompt"
+				),
 
-      addBoxPrompt: (prompt) =>
-        set(
-          (state) => ({
-            currentBoxPrompts: [...state.currentBoxPrompts, prompt],
-          }),
-          false,
-          "segmentation/addBoxPrompt"
-        ),
+			addBoxPrompt: (prompt) =>
+				set(
+					(state) => ({
+						currentBoxPrompts: [...state.currentBoxPrompts, prompt],
+					}),
+					false,
+					"segmentation/addBoxPrompt"
+				),
 
-      removeBoxPrompt: (index) =>
-        set(
-          (state) => ({
-            currentBoxPrompts: state.currentBoxPrompts.filter(
-              (_, i) => i !== index
-            ),
-          }),
-          false,
-          "segmentation/removeBoxPrompt"
-        ),
+			removeBoxPrompt: (index) =>
+				set(
+					(state) => ({
+						currentBoxPrompts: state.currentBoxPrompts.filter(
+							(_, i) => i !== index
+						),
+					}),
+					false,
+					"segmentation/removeBoxPrompt"
+				),
 
-      setTextPrompt: (prompt) =>
-        set({ currentTextPrompt: prompt }, false, "segmentation/setTextPrompt"),
+			setTextPrompt: (prompt) =>
+				set({ currentTextPrompt: prompt }, false, "segmentation/setTextPrompt"),
 
-      clearCurrentPrompts: () =>
-        set(
-          {
-            currentPointPrompts: [],
-            currentBoxPrompts: [],
-            currentTextPrompt: "",
-          },
-          false,
-          "segmentation/clearCurrentPrompts"
-        ),
+			clearCurrentPrompts: () =>
+				set(
+					{
+						currentPointPrompts: [],
+						currentBoxPrompts: [],
+						currentTextPrompt: "",
+					},
+					false,
+					"segmentation/clearCurrentPrompts"
+				),
 
-      // Results
-      setCompositeImage: (url) =>
-        set(
-          { compositeImageUrl: url },
-          false,
-          "segmentation/setCompositeImage"
-        ),
+			// Results
+			setCompositeImage: (url) =>
+				set(
+					{ compositeImageUrl: url },
+					false,
+					"segmentation/setCompositeImage"
+				),
 
-      setMasks: (masks) =>
-        set(
-          (state) => ({ masks: [...state.masks, ...masks] }),
-          false,
-          "segmentation/setMasks"
-        ),
+			setMasks: (masks) =>
+				set(
+					(state) => ({ masks: [...state.masks, ...masks] }),
+					false,
+					"segmentation/setMasks"
+				),
 
-      setSegmentedVideo: (url) =>
-        set(
-          { segmentedVideoUrl: url },
-          false,
-          "segmentation/setSegmentedVideo"
-        ),
+			setSegmentedVideo: (url) =>
+				set(
+					{ segmentedVideoUrl: url },
+					false,
+					"segmentation/setSegmentedVideo"
+				),
 
-      // Processing state
-      setProcessingState: ({
-        isProcessing,
-        progress,
-        statusMessage,
-        elapsedTime,
-      }) =>
-        set(
-          {
-            isProcessing,
-            ...(progress !== undefined && { progress }),
-            ...(statusMessage !== undefined && { statusMessage }),
-            ...(elapsedTime !== undefined && { elapsedTime }),
-          },
-          false,
-          "segmentation/setProcessingState"
-        ),
+			// Processing state
+			setProcessingState: ({
+				isProcessing,
+				progress,
+				statusMessage,
+				elapsedTime,
+			}) =>
+				set(
+					{
+						isProcessing,
+						...(progress !== undefined && { progress }),
+						...(statusMessage !== undefined && { statusMessage }),
+						...(elapsedTime !== undefined && { elapsedTime }),
+					},
+					false,
+					"segmentation/setProcessingState"
+				),
 
-      // UI state
-      toggleObjectList: () =>
-        set(
-          (state) => ({ showObjectList: !state.showObjectList }),
-          false,
-          "segmentation/toggleObjectList"
-        ),
+			// UI state
+			toggleObjectList: () =>
+				set(
+					(state) => ({ showObjectList: !state.showObjectList }),
+					false,
+					"segmentation/toggleObjectList"
+				),
 
-      setMaskOpacity: (opacity) =>
-        set({ maskOpacity: opacity }, false, "segmentation/setMaskOpacity"),
+			setMaskOpacity: (opacity) =>
+				set({ maskOpacity: opacity }, false, "segmentation/setMaskOpacity"),
 
-      toggleBoundingBoxes: () =>
-        set(
-          (state) => ({ showBoundingBoxes: !state.showBoundingBoxes }),
-          false,
-          "segmentation/toggleBoundingBoxes"
-        ),
+			toggleBoundingBoxes: () =>
+				set(
+					(state) => ({ showBoundingBoxes: !state.showBoundingBoxes }),
+					false,
+					"segmentation/toggleBoundingBoxes"
+				),
 
-      // Video controls
-      setCurrentFrame: (frame) =>
-        set({ currentFrame: frame }, false, "segmentation/setCurrentFrame"),
+			// Video controls
+			setCurrentFrame: (frame) =>
+				set({ currentFrame: frame }, false, "segmentation/setCurrentFrame"),
 
-      setTotalFrames: (frames) =>
-        set({ totalFrames: frames }, false, "segmentation/setTotalFrames"),
+			setTotalFrames: (frames) =>
+				set({ totalFrames: frames }, false, "segmentation/setTotalFrames"),
 
-      // Reset
-      resetStore: () => set(initialState, false, "segmentation/reset"),
-    })),
-    { name: "segmentation-store" }
-  )
+			// Reset
+			resetStore: () => set(initialState, false, "segmentation/reset"),
+		})),
+		{ name: "segmentation-store" }
+	)
 );
 
 // ============================================
@@ -486,10 +486,10 @@ export const useSegmentationStore = create<SegmentationStore>()(
 
 export const selectObjects = (state: SegmentationStore) => state.objects;
 export const selectSelectedObject = (state: SegmentationStore) =>
-  state.objects.find((obj) => obj.id === state.selectedObjectId);
+	state.objects.find((obj) => obj.id === state.selectedObjectId);
 export const selectIsProcessing = (state: SegmentationStore) =>
-  state.isProcessing;
+	state.isProcessing;
 export const selectSourceUrl = (state: SegmentationStore) =>
-  state.mode === "image" ? state.sourceImageUrl : state.sourceVideoUrl;
+	state.mode === "image" ? state.sourceImageUrl : state.sourceVideoUrl;
 export const selectHasSource = (state: SegmentationStore) =>
-  state.sourceImageUrl !== null || state.sourceVideoUrl !== null;
+	state.sourceImageUrl !== null || state.sourceVideoUrl !== null;

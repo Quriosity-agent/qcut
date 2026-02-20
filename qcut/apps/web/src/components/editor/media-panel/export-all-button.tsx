@@ -11,257 +11,257 @@ import { toast } from "sonner";
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 interface ExportAllButtonProps {
-  className?: string;
-  variant?:
-    | "default"
-    | "primary"
-    | "destructive"
-    | "outline"
-    | "secondary"
-    | "text"
-    | "link";
-  size?: "sm" | "default" | "lg";
+	className?: string;
+	variant?:
+		| "default"
+		| "primary"
+		| "destructive"
+		| "outline"
+		| "secondary"
+		| "text"
+		| "link";
+	size?: "sm" | "default" | "lg";
 }
 
 export function ExportAllButton({
-  className,
-  variant = "outline",
-  size = "sm",
+	className,
+	variant = "outline",
+	size = "sm",
 }: ExportAllButtonProps) {
-  const {
-    mediaItems,
-    loading: mediaItemsLoading,
-    error: mediaItemsError,
-  } = useAsyncMediaItems();
-  const { exportState, exportToZip, isExporting } = useZipExport();
+	const {
+		mediaItems,
+		loading: mediaItemsLoading,
+		error: mediaItemsError,
+	} = useAsyncMediaItems();
+	const { exportState, exportToZip, isExporting } = useZipExport();
 
-  const handleExportAll = async () => {
-    console.log("step 8: export-all clicked", {
-      totalItems: mediaItems.length,
-      isExporting,
-    });
+	const handleExportAll = async () => {
+		console.log("step 8: export-all clicked", {
+			totalItems: mediaItems.length,
+			isExporting,
+		});
 
-    debugLog("📦 EXPORT-ALL: Button clicked!");
-    debugLog("📊 EXPORT-ALL: Media items analysis", {
-      totalItems: mediaItems.length,
-      generatedImages: mediaItems.filter(
-        (item: MediaItem) => item.metadata?.source === "text2image"
-      ).length,
-      regularImages: mediaItems.filter(
-        (item: MediaItem) =>
-          item.type === "image" && item.metadata?.source !== "text2image"
-      ).length,
-      videos: mediaItems.filter((item: MediaItem) => item.type === "video")
-        .length,
-      audio: mediaItems.filter((item: MediaItem) => item.type === "audio")
-        .length,
-    });
+		debugLog("📦 EXPORT-ALL: Button clicked!");
+		debugLog("📊 EXPORT-ALL: Media items analysis", {
+			totalItems: mediaItems.length,
+			generatedImages: mediaItems.filter(
+				(item: MediaItem) => item.metadata?.source === "text2image"
+			).length,
+			regularImages: mediaItems.filter(
+				(item: MediaItem) =>
+					item.type === "image" && item.metadata?.source !== "text2image"
+			).length,
+			videos: mediaItems.filter((item: MediaItem) => item.type === "video")
+				.length,
+			audio: mediaItems.filter((item: MediaItem) => item.type === "audio")
+				.length,
+		});
 
-    const falVideos = mediaItems.filter(
-      (item: MediaItem) =>
-        item.type === "video" &&
-        (item.url?.includes("fal.media") || item.url?.includes("v3b.fal.media"))
-    );
-    debugLog(
-      "?? EXPORT-ALL: Note - videos from FAL are not included in image-only download flows",
-      {
-        falVideoCount: falVideos.length,
-        ids: falVideos.map((v) => v.id),
-      }
-    );
+		const falVideos = mediaItems.filter(
+			(item: MediaItem) =>
+				item.type === "video" &&
+				(item.url?.includes("fal.media") || item.url?.includes("v3b.fal.media"))
+		);
+		debugLog(
+			"?? EXPORT-ALL: Note - videos from FAL are not included in image-only download flows",
+			{
+				falVideoCount: falVideos.length,
+				ids: falVideos.map((v) => v.id),
+			}
+		);
 
-    // Log generated images details
-    const generatedImages = mediaItems.filter(
-      (item: MediaItem) => item.metadata?.source === "text2image"
-    );
-    if (generatedImages.length > 0) {
-      debugLog(
-        "🖼️ EXPORT-ALL: Generated images found:",
-        generatedImages.map((img: MediaItem) => ({
-          id: img.id,
-          name: img.name,
-          hasFile: !!img.file,
-          hasUrl: !!img.url,
-          urlType: img.url?.startsWith("data:")
-            ? "data"
-            : img.url?.startsWith("blob:")
-              ? "blob"
-              : "other",
-          fileSize: img.file?.size || 0,
-          metadata: img.metadata,
-        }))
-      );
-    }
+		// Log generated images details
+		const generatedImages = mediaItems.filter(
+			(item: MediaItem) => item.metadata?.source === "text2image"
+		);
+		if (generatedImages.length > 0) {
+			debugLog(
+				"🖼️ EXPORT-ALL: Generated images found:",
+				generatedImages.map((img: MediaItem) => ({
+					id: img.id,
+					name: img.name,
+					hasFile: !!img.file,
+					hasUrl: !!img.url,
+					urlType: img.url?.startsWith("data:")
+						? "data"
+						: img.url?.startsWith("blob:")
+							? "blob"
+							: "other",
+					fileSize: img.file?.size || 0,
+					metadata: img.metadata,
+				}))
+			);
+		}
 
-    if (mediaItems.length === 0 || isExporting) {
-      debugWarn("⚠️ EXPORT-ALL: Export blocked", {
-        reason:
-          mediaItems.length === 0 ? "No media items" : "Already exporting",
-        isExporting,
-      });
-      console.warn("step 8: export-all blocked", {
-        reason:
-          mediaItems.length === 0 ? "no media items" : "already exporting",
-      });
-      return;
-    }
+		if (mediaItems.length === 0 || isExporting) {
+			debugWarn("⚠️ EXPORT-ALL: Export blocked", {
+				reason:
+					mediaItems.length === 0 ? "No media items" : "Already exporting",
+				isExporting,
+			});
+			console.warn("step 8: export-all blocked", {
+				reason:
+					mediaItems.length === 0 ? "no media items" : "already exporting",
+			});
+			return;
+		}
 
-    try {
-      console.log("step 8: export-all start zipping", {
-        totalItems: mediaItems.length,
-        hasFiles: mediaItems.filter((item) => !!item.file).length,
-        remoteUrls: mediaItems
-          .filter((item) => !item.file && item.url?.startsWith("http"))
-          .map((item) => item.id),
-      });
-      debugLog("🚀 EXPORT-ALL: Starting ZIP export...");
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/[:.]/g, "-")
-        .slice(0, -5);
-      await exportToZip(mediaItems, {
-        filename: `media-export-${timestamp}.zip`,
-      });
+		try {
+			console.log("step 8: export-all start zipping", {
+				totalItems: mediaItems.length,
+				hasFiles: mediaItems.filter((item) => !!item.file).length,
+				remoteUrls: mediaItems
+					.filter((item) => !item.file && item.url?.startsWith("http"))
+					.map((item) => item.id),
+			});
+			debugLog("🚀 EXPORT-ALL: Starting ZIP export...");
+			const timestamp = new Date()
+				.toISOString()
+				.replace(/[:.]/g, "-")
+				.slice(0, -5);
+			await exportToZip(mediaItems, {
+				filename: `media-export-${timestamp}.zip`,
+			});
 
-      debugLog("✅ EXPORT-ALL: Export completed", {
-        phase: exportState.phase,
-        totalFiles: exportState.totalFiles,
-        completedFiles: exportState.completedFiles,
-      });
-      console.log("step 8: export-all zip completed", {
-        phase: exportState.phase,
-        totalFiles: mediaItems.length,
-        completedFiles: mediaItems.length,
-      });
+			debugLog("✅ EXPORT-ALL: Export completed", {
+				phase: exportState.phase,
+				totalFiles: exportState.totalFiles,
+				completedFiles: exportState.completedFiles,
+			});
+			console.log("step 8: export-all zip completed", {
+				phase: exportState.phase,
+				totalFiles: mediaItems.length,
+				completedFiles: mediaItems.length,
+			});
 
-      if (exportState.phase === "complete") {
-        toast.success(
-          `Successfully exported ${mediaItems.length} files to ZIP!`
-        );
-      }
-    } catch (error) {
-      debugError("❌ EXPORT-ALL: Export failed:", error);
-      console.error("step 8: export-all failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      toast.error("Failed to export media files");
-    }
-  };
+			if (exportState.phase === "complete") {
+				toast.success(
+					`Successfully exported ${mediaItems.length} files to ZIP!`
+				);
+			}
+		} catch (error) {
+			debugError("❌ EXPORT-ALL: Export failed:", error);
+			console.error("step 8: export-all failed", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			toast.error("Failed to export media files");
+		}
+	};
 
-  // Handle media loading states
-  if (mediaItemsError) {
-    return (
-      <Button
-        variant="outline"
-        size={size}
-        disabled
-        className={cn("text-red-500", className)}
-      >
-        Error Loading Media
-      </Button>
-    );
-  }
+	// Handle media loading states
+	if (mediaItemsError) {
+		return (
+			<Button
+				variant="outline"
+				size={size}
+				disabled
+				className={cn("text-red-500", className)}
+			>
+				Error Loading Media
+			</Button>
+		);
+	}
 
-  if (mediaItemsLoading) {
-    return (
-      <Button variant="outline" size={size} disabled className={cn(className)}>
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        Loading...
-      </Button>
-    );
-  }
+	if (mediaItemsLoading) {
+		return (
+			<Button variant="outline" size={size} disabled className={cn(className)}>
+				<Loader2 className="h-4 w-4 animate-spin mr-2" />
+				Loading...
+			</Button>
+		);
+	}
 
-  const isEmpty = mediaItems.length === 0;
-  const { phase, progress, completedFiles, totalFiles } = exportState;
+	const isEmpty = mediaItems.length === 0;
+	const { phase, progress, completedFiles, totalFiles } = exportState;
 
-  const getButtonText = () => {
-    if (isEmpty) return "No Media";
-    if (!isExporting) return `Download All (${mediaItems.length})`;
+	const getButtonText = () => {
+		if (isEmpty) return "No Media";
+		if (!isExporting) return `Download All (${mediaItems.length})`;
 
-    switch (phase) {
-      case "adding":
-        return `Adding Files... ${completedFiles}/${totalFiles}`;
-      case "compressing":
-        return "Compressing...";
-      case "downloading":
-        return "Downloading...";
-      default:
-        return `Exporting... ${progress}%`;
-    }
-  };
+		switch (phase) {
+			case "adding":
+				return `Adding Files... ${completedFiles}/${totalFiles}`;
+			case "compressing":
+				return "Compressing...";
+			case "downloading":
+				return "Downloading...";
+			default:
+				return `Exporting... ${progress}%`;
+		}
+	};
 
-  const getProgressColor = () => {
-    switch (phase) {
-      case "adding":
-        return "bg-blue-500";
-      case "compressing":
-        return "bg-yellow-500";
-      case "downloading":
-        return "bg-green-500";
-      case "complete":
-        return "bg-green-500";
-      case "error":
-        return "bg-red-500";
-      default:
-        return "bg-blue-500";
-    }
-  };
+	const getProgressColor = () => {
+		switch (phase) {
+			case "adding":
+				return "bg-blue-500";
+			case "compressing":
+				return "bg-yellow-500";
+			case "downloading":
+				return "bg-green-500";
+			case "complete":
+				return "bg-green-500";
+			case "error":
+				return "bg-red-500";
+			default:
+				return "bg-blue-500";
+		}
+	};
 
-  return (
-    <div className="relative">
-      <Button
-        variant={variant}
-        size={size}
-        onClick={handleExportAll}
-        disabled={isEmpty || isExporting}
-        data-testid="export-all-button"
-        className={cn(
-          "gap-2 transition-all duration-200 min-w-[120px] !bg-transparent hover:!bg-transparent !border-transparent",
-          isExporting && "cursor-not-allowed",
-          className
-        )}
-      >
-        {isExporting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="hidden sm:inline text-xs font-medium">
-              {getButtonText()}
-            </span>
-            <span className="sm:hidden text-xs">Export</span>
-          </>
-        ) : (
-          <>
-            <Package className="h-4 w-4" />
-            <span className="hidden sm:inline text-xs font-medium">
-              {getButtonText()}
-            </span>
-            <span className="sm:hidden text-xs">Export</span>
-          </>
-        )}
-      </Button>
+	return (
+		<div className="relative">
+			<Button
+				variant={variant}
+				size={size}
+				onClick={handleExportAll}
+				disabled={isEmpty || isExporting}
+				data-testid="export-all-button"
+				className={cn(
+					"gap-2 transition-all duration-200 min-w-[120px] !bg-transparent hover:!bg-transparent !border-transparent",
+					isExporting && "cursor-not-allowed",
+					className
+				)}
+			>
+				{isExporting ? (
+					<>
+						<Loader2 className="h-4 w-4 animate-spin" />
+						<span className="hidden sm:inline text-xs font-medium">
+							{getButtonText()}
+						</span>
+						<span className="sm:hidden text-xs">Export</span>
+					</>
+				) : (
+					<>
+						<Package className="h-4 w-4" />
+						<span className="hidden sm:inline text-xs font-medium">
+							{getButtonText()}
+						</span>
+						<span className="sm:hidden text-xs">Export</span>
+					</>
+				)}
+			</Button>
 
-      {/* Progress Bar */}
-      {isExporting && progress > 0 && (
-        <div
-          className="absolute bottom-0 left-0 h-1 rounded-b-md transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        >
-          <div
-            className={cn("h-full rounded-b-md", getProgressColor())}
-            data-testid="export-progress"
-          />
-        </div>
-      )}
+			{/* Progress Bar */}
+			{isExporting && progress > 0 && (
+				<div
+					className="absolute bottom-0 left-0 h-1 rounded-b-md transition-all duration-300"
+					style={{ width: `${progress}%` }}
+				>
+					<div
+						className={cn("h-full rounded-b-md", getProgressColor())}
+						data-testid="export-progress"
+					/>
+				</div>
+			)}
 
-      {/* Tooltip for empty state */}
-      {isEmpty && (
-        <div
-          className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none"
-          data-testid="empty-media-tooltip"
-        >
-          No media to export
-        </div>
-      )}
-    </div>
-  );
+			{/* Tooltip for empty state */}
+			{isEmpty && (
+				<div
+					className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none"
+					data-testid="empty-media-tooltip"
+				>
+					No media to export
+				</div>
+			)}
+		</div>
+	);
 }

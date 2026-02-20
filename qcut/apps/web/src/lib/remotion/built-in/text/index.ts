@@ -9,47 +9,47 @@
 
 // Typewriter
 export {
-  Typewriter,
-  TypewriterSchema,
-  TypewriterDefinition,
-  typewriterDefaultProps,
-  type TypewriterProps,
+	Typewriter,
+	TypewriterSchema,
+	TypewriterDefinition,
+	typewriterDefaultProps,
+	type TypewriterProps,
 } from "./typewriter";
 
 // Fade In Text
 export {
-  FadeInText,
-  FadeInTextSchema,
-  FadeInTextDefinition,
-  fadeInTextDefaultProps,
-  type FadeInTextProps,
+	FadeInText,
+	FadeInTextSchema,
+	FadeInTextDefinition,
+	fadeInTextDefaultProps,
+	type FadeInTextProps,
 } from "./fade-in-text";
 
 // Bounce Text
 export {
-  BounceText,
-  BounceTextSchema,
-  BounceTextDefinition,
-  bounceTextDefaultProps,
-  type BounceTextProps,
+	BounceText,
+	BounceTextSchema,
+	BounceTextDefinition,
+	bounceTextDefaultProps,
+	type BounceTextProps,
 } from "./bounce-text";
 
 // Slide Text
 export {
-  SlideText,
-  SlideTextSchema,
-  SlideTextDefinition,
-  slideTextDefaultProps,
-  type SlideTextProps,
+	SlideText,
+	SlideTextSchema,
+	SlideTextDefinition,
+	slideTextDefaultProps,
+	type SlideTextProps,
 } from "./slide-text";
 
 // Scale Text
 export {
-  ScaleText,
-  ScaleTextSchema,
-  ScaleTextDefinition,
-  scaleTextDefaultProps,
-  type ScaleTextProps,
+	ScaleText,
+	ScaleTextSchema,
+	ScaleTextDefinition,
+	scaleTextDefaultProps,
+	type ScaleTextProps,
 } from "./scale-text";
 
 // ============================================================================
@@ -67,32 +67,32 @@ import type { RemotionComponentDefinition } from "../../types";
  * Array of all built-in text component definitions
  */
 export const textComponentDefinitions: RemotionComponentDefinition[] = [
-  TypewriterDefinition,
-  FadeInTextDefinition,
-  BounceTextDefinition,
-  SlideTextDefinition,
-  ScaleTextDefinition,
+	TypewriterDefinition,
+	FadeInTextDefinition,
+	BounceTextDefinition,
+	SlideTextDefinition,
+	ScaleTextDefinition,
 ];
 
 /**
  * Map of text component definitions by ID
  */
 export const textComponentsById = new Map<string, RemotionComponentDefinition>(
-  textComponentDefinitions.map((def) => [def.id, def])
+	textComponentDefinitions.map((def) => [def.id, def])
 );
 
 /**
  * Get a text component definition by ID
  */
 export function getTextComponent(
-  id: string
+	id: string
 ): RemotionComponentDefinition | undefined {
-  return textComponentsById.get(id);
+	return textComponentsById.get(id);
 }
 
 /**
  * Check if a component ID is a built-in text component
  */
 export function isTextComponent(id: string): boolean {
-  return textComponentsById.has(id);
+	return textComponentsById.has(id);
 }

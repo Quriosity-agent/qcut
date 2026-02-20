@@ -6,22 +6,22 @@ import { keys } from "./keys";
 const { NEXT_PUBLIC_BETTER_AUTH_URL, BETTER_AUTH_SECRET } = keys();
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    usePlural: true,
-  }),
-  secret: BETTER_AUTH_SECRET,
-  user: {
-    deleteUser: {
-      enabled: true,
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-  },
-  baseURL: NEXT_PUBLIC_BETTER_AUTH_URL,
-  appName: "QCut",
-  trustedOrigins: ["http://localhost:3000"],
+	database: drizzleAdapter(db, {
+		provider: "pg",
+		usePlural: true,
+	}),
+	secret: BETTER_AUTH_SECRET,
+	user: {
+		deleteUser: {
+			enabled: true,
+		},
+	},
+	emailAndPassword: {
+		enabled: true,
+	},
+	baseURL: NEXT_PUBLIC_BETTER_AUTH_URL,
+	appName: "QCut",
+	trustedOrigins: ["http://localhost:3000"],
 });
 
 export type Auth = typeof auth;

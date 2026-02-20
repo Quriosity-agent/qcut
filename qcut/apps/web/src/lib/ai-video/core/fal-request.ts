@@ -20,7 +20,7 @@ export const FAL_QUEUE_BASE = "https://queue.fal.run";
  * @deprecated Use getFalApiKeyAsync() for production code to support Electron storage
  */
 export function getFalApiKey(): string | undefined {
-  return import.meta.env.VITE_FAL_API_KEY;
+	return import.meta.env.VITE_FAL_API_KEY;
 }
 
 /**
@@ -42,55 +42,55 @@ let electronKeyFetchPromise: Promise<string | null> | null = null;
  * @returns Promise resolving to the API key or undefined if not configured
  */
 export async function getFalApiKeyAsync(): Promise<string | undefined> {
-  // First try environment variable (instant, no async needed)
-  const envApiKey = import.meta.env.VITE_FAL_API_KEY;
-  if (envApiKey) {
-    return envApiKey;
-  }
+	// First try environment variable (instant, no async needed)
+	const envApiKey = import.meta.env.VITE_FAL_API_KEY;
+	if (envApiKey) {
+		return envApiKey;
+	}
 
-  // Return cached Electron key if available
-  if (cachedElectronApiKey) {
-    return cachedElectronApiKey;
-  }
+	// Return cached Electron key if available
+	if (cachedElectronApiKey) {
+		return cachedElectronApiKey;
+	}
 
-  // Check Electron storage (async)
-  const electronApiKeys =
-    typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
-  if (electronApiKeys) {
-    // Deduplicate concurrent calls
-    if (!electronKeyFetchPromise) {
-      electronKeyFetchPromise = (async () => {
-        try {
-          const keys = await electronApiKeys.get();
-          if (keys?.falApiKey) {
-            cachedElectronApiKey = keys.falApiKey;
-            return keys.falApiKey;
-          }
-        } catch (error) {
-          handleAIServiceError(error, "Load FAL API key", {
-            operation: "electronKeyFetch",
-          });
-        }
-        return null;
-      })();
-    }
+	// Check Electron storage (async)
+	const electronApiKeys =
+		typeof window !== "undefined" ? window.electronAPI?.apiKeys : undefined;
+	if (electronApiKeys) {
+		// Deduplicate concurrent calls
+		if (!electronKeyFetchPromise) {
+			electronKeyFetchPromise = (async () => {
+				try {
+					const keys = await electronApiKeys.get();
+					if (keys?.falApiKey) {
+						cachedElectronApiKey = keys.falApiKey;
+						return keys.falApiKey;
+					}
+				} catch (error) {
+					handleAIServiceError(error, "Load FAL API key", {
+						operation: "electronKeyFetch",
+					});
+				}
+				return null;
+			})();
+		}
 
-    const key = await electronKeyFetchPromise;
-    electronKeyFetchPromise = null; // Reset for next call
-    if (key) {
-      return key;
-    }
-  }
+		const key = await electronKeyFetchPromise;
+		electronKeyFetchPromise = null; // Reset for next call
+		if (key) {
+			return key;
+		}
+	}
 
-  return;
+	return;
 }
 
 /**
  * Clears the cached Electron API key. Useful for testing or when user updates their key.
  */
 export function clearFalApiKeyCache(): void {
-  cachedElectronApiKey = null;
-  electronKeyFetchPromise = null;
+	cachedElectronApiKey = null;
+	electronKeyFetchPromise = null;
 }
 
 /**
@@ -100,19 +100,19 @@ export function clearFalApiKeyCache(): void {
  * Example: job_abc123xyz_1699876543210
  */
 export function generateJobId(): string {
-  return `job_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+	return `job_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
 }
 
 /**
  * Options for FAL API requests
  */
 export interface FalRequestOptions {
-  /** Request timeout in milliseconds */
-  timeout?: number;
-  /** AbortSignal for cancellation */
-  signal?: AbortSignal;
-  /** Enable queue mode for long-running jobs */
-  queueMode?: boolean;
+	/** Request timeout in milliseconds */
+	timeout?: number;
+	/** AbortSignal for cancellation */
+	signal?: AbortSignal;
+	/** Enable queue mode for long-running jobs */
+	queueMode?: boolean;
 }
 
 /**
@@ -125,43 +125,43 @@ export interface FalRequestOptions {
  * @throws Error with user-friendly message if API key is missing
  */
 export async function makeFalRequest(
-  endpoint: string,
-  payload: Record<string, unknown>,
-  options?: FalRequestOptions
+	endpoint: string,
+	payload: Record<string, unknown>,
+	options?: FalRequestOptions
 ): Promise<Response> {
-  const apiKey = await getFalApiKeyAsync();
-  if (!apiKey) {
-    const error = new Error(
-      "FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
-    );
-    handleAIServiceError(error, "FAL API Request", {
-      configRequired: "VITE_FAL_API_KEY",
-      operation: "checkApiKey",
-    });
-    throw error;
-  }
+	const apiKey = await getFalApiKeyAsync();
+	if (!apiKey) {
+		const error = new Error(
+			"FAL API key not configured. Please set VITE_FAL_API_KEY environment variable or configure it in Settings."
+		);
+		handleAIServiceError(error, "FAL API Request", {
+			configRequired: "VITE_FAL_API_KEY",
+			operation: "checkApiKey",
+		});
+		throw error;
+	}
 
-  const headers: Record<string, string> = {
-    Authorization: `Key ${apiKey}`,
-    "Content-Type": "application/json",
-  };
+	const headers: Record<string, string> = {
+		Authorization: `Key ${apiKey}`,
+		"Content-Type": "application/json",
+	};
 
-  // Queue mode uses queue.fal.run subdomain for async job submission
-  if (options?.queueMode) {
-    headers["X-Fal-Queue"] = "true";
-  }
+	// Queue mode uses queue.fal.run subdomain for async job submission
+	if (options?.queueMode) {
+		headers["X-Fal-Queue"] = "true";
+	}
 
-  const base = options?.queueMode ? FAL_QUEUE_BASE : FAL_API_BASE;
-  const url = endpoint.startsWith("https://")
-    ? endpoint
-    : `${base}/${endpoint}`;
+	const base = options?.queueMode ? FAL_QUEUE_BASE : FAL_API_BASE;
+	const url = endpoint.startsWith("https://")
+		? endpoint
+		: `${base}/${endpoint}`;
 
-  return fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: options?.signal,
-  });
+	return fetch(url, {
+		method: "POST",
+		headers,
+		body: JSON.stringify(payload),
+		signal: options?.signal,
+	});
 }
 
 /**
@@ -172,34 +172,34 @@ export async function makeFalRequest(
  * @throws Error with appropriate message for different error codes
  */
 export async function handleFalResponse(
-  response: Response,
-  operation: string
+	response: Response,
+	operation: string
 ): Promise<void> {
-  if (response.ok) return;
+	if (response.ok) return;
 
-  const errorData = await response.json().catch(() => ({}));
+	const errorData = await response.json().catch(() => ({}));
 
-  if (response.status === 401) {
-    throw new Error(
-      "Invalid FAL.ai API key. Please check your API key configuration."
-    );
-  }
+	if (response.status === 401) {
+		throw new Error(
+			"Invalid FAL.ai API key. Please check your API key configuration."
+		);
+	}
 
-  if (response.status === 429) {
-    throw new Error(
-      "Rate limit exceeded. Please wait a moment before trying again."
-    );
-  }
+	if (response.status === 429) {
+		throw new Error(
+			"Rate limit exceeded. Please wait a moment before trying again."
+		);
+	}
 
-  if (response.status === 413) {
-    throw new Error(
-      "Image file too large. Maximum size is 7MB for this model."
-    );
-  }
+	if (response.status === 413) {
+		throw new Error(
+			"Image file too large. Maximum size is 7MB for this model."
+		);
+	}
 
-  throw new Error(
-    `FAL API error: ${(errorData as Record<string, unknown>).detail || response.statusText}`
-  );
+	throw new Error(
+		`FAL API error: ${(errorData as Record<string, unknown>).detail || response.statusText}`
+	);
 }
 
 /**
@@ -209,19 +209,19 @@ export async function handleFalResponse(
  * @returns User-friendly error message
  */
 export function formatQueueError(errorData: unknown): string {
-  if (typeof errorData === "object" && errorData !== null) {
-    const data = errorData as Record<string, unknown>;
-    if (data.error && typeof data.error === "string") {
-      return data.error;
-    }
-    if (data.detail && typeof data.detail === "string") {
-      return data.detail;
-    }
-    if (data.message && typeof data.message === "string") {
-      return data.message;
-    }
-  }
-  return "An unknown error occurred during video generation";
+	if (typeof errorData === "object" && errorData !== null) {
+		const data = errorData as Record<string, unknown>;
+		if (data.error && typeof data.error === "string") {
+			return data.error;
+		}
+		if (data.detail && typeof data.detail === "string") {
+			return data.detail;
+		}
+		if (data.message && typeof data.message === "string") {
+			return data.message;
+		}
+	}
+	return "An unknown error occurred during video generation";
 }
 
 /**
@@ -248,55 +248,55 @@ export const FAL_UPLOAD_URL = "https://fal.run/upload";
  * const message = parseFalErrorResponse(errorData, response.status);
  */
 export function parseFalErrorResponse(
-  errorData: unknown,
-  fallbackStatus?: number
+	errorData: unknown,
+	fallbackStatus?: number
 ): string {
-  if (typeof errorData !== "object" || errorData === null) {
-    return fallbackStatus
-      ? `API request failed: ${fallbackStatus}`
-      : "An unknown error occurred";
-  }
+	if (typeof errorData !== "object" || errorData === null) {
+		return fallbackStatus
+			? `API request failed: ${fallbackStatus}`
+			: "An unknown error occurred";
+	}
 
-  const data = errorData as Record<string, unknown>;
+	const data = errorData as Record<string, unknown>;
 
-  // Handle { error: string | object }
-  if (data.error !== undefined) {
-    if (typeof data.error === "string") {
-      return data.error;
-    }
-    if (typeof data.error === "object" && data.error !== null) {
-      return JSON.stringify(data.error, null, 2);
-    }
-  }
+	// Handle { error: string | object }
+	if (data.error !== undefined) {
+		if (typeof data.error === "string") {
+			return data.error;
+		}
+		if (typeof data.error === "object" && data.error !== null) {
+			return JSON.stringify(data.error, null, 2);
+		}
+	}
 
-  // Handle { detail: string | Array<{ msg: string }> }
-  if (data.detail !== undefined) {
-    if (typeof data.detail === "string") {
-      return data.detail;
-    }
-    if (Array.isArray(data.detail)) {
-      return data.detail
-        .map((d: unknown) => {
-          if (typeof d === "object" && d !== null && "msg" in d) {
-            return (d as { msg: string }).msg;
-          }
-          return JSON.stringify(d);
-        })
-        .join(", ");
-    }
-    if (typeof data.detail === "object") {
-      return JSON.stringify(data.detail, null, 2);
-    }
-  }
+	// Handle { detail: string | Array<{ msg: string }> }
+	if (data.detail !== undefined) {
+		if (typeof data.detail === "string") {
+			return data.detail;
+		}
+		if (Array.isArray(data.detail)) {
+			return data.detail
+				.map((d: unknown) => {
+					if (typeof d === "object" && d !== null && "msg" in d) {
+						return (d as { msg: string }).msg;
+					}
+					return JSON.stringify(d);
+				})
+				.join(", ");
+		}
+		if (typeof data.detail === "object") {
+			return JSON.stringify(data.detail, null, 2);
+		}
+	}
 
-  // Handle { message: string }
-  if (typeof data.message === "string") {
-    return data.message;
-  }
+	// Handle { message: string }
+	if (typeof data.message === "string") {
+		return data.message;
+	}
 
-  return fallbackStatus
-    ? `API request failed: ${fallbackStatus}`
-    : "An unknown error occurred";
+	return fallbackStatus
+		? `API request failed: ${fallbackStatus}`
+		: "An unknown error occurred";
 }
 
 /**
@@ -305,5 +305,5 @@ export function parseFalErrorResponse(
  * @param ms - Milliseconds to sleep
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -8,12 +8,12 @@
  * Options for streaming video downloads
  */
 export interface StreamOptions {
-  /** Whether to download video to memory (used by callers to decide whether to stream) */
-  downloadToMemory?: boolean;
-  /** Callback for each chunk of data received */
-  onDataReceived?: (data: Uint8Array) => void;
-  /** Callback when download is complete */
-  onComplete?: (totalData: Uint8Array) => void;
+	/** Whether to download video to memory (used by callers to decide whether to stream) */
+	downloadToMemory?: boolean;
+	/** Callback for each chunk of data received */
+	onDataReceived?: (data: Uint8Array) => void;
+	/** Callback when download is complete */
+	onComplete?: (totalData: Uint8Array) => void;
 }
 
 /**
@@ -28,59 +28,59 @@ export interface StreamOptions {
  * @throws Error if video URL is unreachable or streaming fails
  */
 export async function streamVideoDownload(
-  videoUrl: string,
-  options: StreamOptions
+	videoUrl: string,
+	options: StreamOptions
 ): Promise<Uint8Array> {
-  console.log("Starting streaming download from:", videoUrl);
+	console.log("Starting streaming download from:", videoUrl);
 
-  const response = await fetch(videoUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download video: ${response.status} ${response.statusText}`
-    );
-  }
+	const response = await fetch(videoUrl);
+	if (!response.ok) {
+		throw new Error(
+			`Failed to download video: ${response.status} ${response.statusText}`
+		);
+	}
 
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("Response body is not readable");
-  }
+	const reader = response.body?.getReader();
+	if (!reader) {
+		throw new Error("Response body is not readable");
+	}
 
-  const chunks: Uint8Array[] = [];
-  let receivedLength = 0;
+	const chunks: Uint8Array[] = [];
+	let receivedLength = 0;
 
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
 
-      chunks.push(value);
-      receivedLength += value.length;
+			chunks.push(value);
+			receivedLength += value.length;
 
-      // Notify progress if callback provided
-      if (options.onDataReceived) {
-        options.onDataReceived(value);
-      }
+			// Notify progress if callback provided
+			if (options.onDataReceived) {
+				options.onDataReceived(value);
+			}
 
-      console.log(`Downloaded ${receivedLength} bytes...`);
-    }
+			console.log(`Downloaded ${receivedLength} bytes...`);
+		}
 
-    // Combine all chunks into single Uint8Array
-    const totalData = new Uint8Array(receivedLength);
-    let position = 0;
-    for (const chunk of chunks) {
-      totalData.set(chunk, position);
-      position += chunk.length;
-    }
+		// Combine all chunks into single Uint8Array
+		const totalData = new Uint8Array(receivedLength);
+		let position = 0;
+		for (const chunk of chunks) {
+			totalData.set(chunk, position);
+			position += chunk.length;
+		}
 
-    console.log(`Download complete: ${totalData.length} bytes total`);
+		console.log(`Download complete: ${totalData.length} bytes total`);
 
-    // Notify completion if callback provided
-    if (options.onComplete) {
-      options.onComplete(totalData);
-    }
+		// Notify completion if callback provided
+		if (options.onComplete) {
+			options.onComplete(totalData);
+		}
 
-    return totalData;
-  } finally {
-    reader.releaseLock();
-  }
+		return totalData;
+	} finally {
+		reader.releaseLock();
+	}
 }

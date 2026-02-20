@@ -37,33 +37,33 @@ import type { ElevenLabsTranscribeResult } from "@/types/electron";
  * Options for transcription.
  */
 export interface TranscriptionOptions {
-  /** Language code (e.g., "eng", "spa"). Default: auto-detect */
-  language?: string;
-  /** Enable speaker diarization. Default: true */
-  diarize?: boolean;
-  /** Tag audio events (laughter, applause). Default: true */
-  tagAudioEvents?: boolean;
-  /** Words to bias transcription toward. +30% cost if used */
-  keyterms?: string[];
+	/** Language code (e.g., "eng", "spa"). Default: auto-detect */
+	language?: string;
+	/** Enable speaker diarization. Default: true */
+	diarize?: boolean;
+	/** Tag audio events (laughter, applause). Default: true */
+	tagAudioEvents?: boolean;
+	/** Words to bias transcription toward. +30% cost if used */
+	keyterms?: string[];
 }
 
 /**
  * Return type of the useElevenLabsTranscription hook.
  */
 export interface UseElevenLabsTranscriptionReturn {
-  /** Function to transcribe a media file */
-  transcribeMedia: (
-    filePath: string,
-    options?: TranscriptionOptions
-  ) => Promise<ElevenLabsTranscribeResult | null>;
-  /** Whether transcription is in progress */
-  isTranscribing: boolean;
-  /** Current progress message */
-  progress: string;
-  /** Error message if transcription failed */
-  error: string | null;
-  /** Clear the current error */
-  clearError: () => void;
+	/** Function to transcribe a media file */
+	transcribeMedia: (
+		filePath: string,
+		options?: TranscriptionOptions
+	) => Promise<ElevenLabsTranscribeResult | null>;
+	/** Whether transcription is in progress */
+	isTranscribing: boolean;
+	/** Current progress message */
+	progress: string;
+	/** Error message if transcription failed */
+	error: string | null;
+	/** Clear the current error */
+	clearError: () => void;
 }
 
 // ============================================================================
@@ -91,195 +91,195 @@ const AUDIO_EXTENSIONS = ["wav", "mp3", "m4a", "aac", "ogg", "flac", "wma"];
  * 5. Clean up temporary files
  */
 export function useElevenLabsTranscription(): UseElevenLabsTranscriptionReturn {
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [progress, setProgress] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
+	const [isTranscribing, setIsTranscribing] = useState(false);
+	const [progress, setProgress] = useState<string>("");
+	const [error, setError] = useState<string | null>(null);
 
-  const { loadFromTranscription } = useWordTimelineStore();
+	const { loadFromTranscription } = useWordTimelineStore();
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+	const clearError = useCallback(() => {
+		setError(null);
+	}, []);
 
-  const transcribeMedia = useCallback(
-    async (
-      filePath: string,
-      options?: TranscriptionOptions
-    ): Promise<ElevenLabsTranscribeResult | null> => {
-      console.log("[ElevenLabs Hook] transcribeMedia called");
-      console.log("[ElevenLabs Hook] File path:", filePath);
-      console.log("[ElevenLabs Hook] Options:", options);
+	const transcribeMedia = useCallback(
+		async (
+			filePath: string,
+			options?: TranscriptionOptions
+		): Promise<ElevenLabsTranscribeResult | null> => {
+			console.log("[ElevenLabs Hook] transcribeMedia called");
+			console.log("[ElevenLabs Hook] File path:", filePath);
+			console.log("[ElevenLabs Hook] Options:", options);
 
-      // Check if Electron API is available
-      console.log("[ElevenLabs Hook] Checking Electron API availability...");
-      console.log(
-        "[ElevenLabs Hook] window.electronAPI exists:",
-        !!window.electronAPI
-      );
-      console.log(
-        "[ElevenLabs Hook] transcribe namespace exists:",
-        !!window.electronAPI?.transcribe
-      );
-      console.log(
-        "[ElevenLabs Hook] elevenlabs method exists:",
-        !!window.electronAPI?.transcribe?.elevenlabs
-      );
+			// Check if Electron API is available
+			console.log("[ElevenLabs Hook] Checking Electron API availability...");
+			console.log(
+				"[ElevenLabs Hook] window.electronAPI exists:",
+				!!window.electronAPI
+			);
+			console.log(
+				"[ElevenLabs Hook] transcribe namespace exists:",
+				!!window.electronAPI?.transcribe
+			);
+			console.log(
+				"[ElevenLabs Hook] elevenlabs method exists:",
+				!!window.electronAPI?.transcribe?.elevenlabs
+			);
 
-      if (!window.electronAPI?.transcribe?.elevenlabs) {
-        console.error(
-          "[ElevenLabs Hook] Electron transcribe API not available"
-        );
-        setError("Transcription is only available in the desktop app");
-        return null;
-      }
+			if (!window.electronAPI?.transcribe?.elevenlabs) {
+				console.error(
+					"[ElevenLabs Hook] Electron transcribe API not available"
+				);
+				setError("Transcription is only available in the desktop app");
+				return null;
+			}
 
-      setIsTranscribing(true);
-      setError(null);
-      setProgress("Preparing...");
+			setIsTranscribing(true);
+			setError(null);
+			setProgress("Preparing...");
 
-      try {
-        // Get file extension
-        const ext = filePath.split(".").pop()?.toLowerCase() || "";
-        const isVideo = VIDEO_EXTENSIONS.includes(ext);
-        const isAudio = AUDIO_EXTENSIONS.includes(ext);
+			try {
+				// Get file extension
+				const ext = filePath.split(".").pop()?.toLowerCase() || "";
+				const isVideo = VIDEO_EXTENSIONS.includes(ext);
+				const isAudio = AUDIO_EXTENSIONS.includes(ext);
 
-        console.log("[ElevenLabs Hook] File extension:", ext);
-        console.log("[ElevenLabs Hook] Is video:", isVideo);
-        console.log("[ElevenLabs Hook] Is audio:", isAudio);
+				console.log("[ElevenLabs Hook] File extension:", ext);
+				console.log("[ElevenLabs Hook] Is video:", isVideo);
+				console.log("[ElevenLabs Hook] Is audio:", isAudio);
 
-        if (!isVideo && !isAudio) {
-          console.error("[ElevenLabs Hook] Unsupported file type:", ext);
-          throw new Error(
-            `Unsupported file type: .${ext}. Supported: ${[...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS].join(", ")}`
-          );
-        }
+				if (!isVideo && !isAudio) {
+					console.error("[ElevenLabs Hook] Unsupported file type:", ext);
+					throw new Error(
+						`Unsupported file type: .${ext}. Supported: ${[...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS].join(", ")}`
+					);
+				}
 
-        let audioPath = filePath;
+				let audioPath = filePath;
 
-        // Step 1: Extract audio from video if needed
-        if (isVideo) {
-          console.log(
-            "[ElevenLabs Hook] Step 1: Extracting audio from video..."
-          );
-          setProgress("Extracting audio from video...");
+				// Step 1: Extract audio from video if needed
+				if (isVideo) {
+					console.log(
+						"[ElevenLabs Hook] Step 1: Extracting audio from video..."
+					);
+					setProgress("Extracting audio from video...");
 
-          console.log("[ElevenLabs Hook] Checking FFmpeg API availability...");
-          console.log(
-            "[ElevenLabs Hook] ffmpeg namespace exists:",
-            !!window.electronAPI?.ffmpeg
-          );
-          console.log(
-            "[ElevenLabs Hook] extractAudio method exists:",
-            !!window.electronAPI?.ffmpeg?.extractAudio
-          );
+					console.log("[ElevenLabs Hook] Checking FFmpeg API availability...");
+					console.log(
+						"[ElevenLabs Hook] ffmpeg namespace exists:",
+						!!window.electronAPI?.ffmpeg
+					);
+					console.log(
+						"[ElevenLabs Hook] extractAudio method exists:",
+						!!window.electronAPI?.ffmpeg?.extractAudio
+					);
 
-          if (!window.electronAPI?.ffmpeg?.extractAudio) {
-            console.error(
-              "[ElevenLabs Hook] FFmpeg extractAudio API not available"
-            );
-            throw new Error("FFmpeg audio extraction not available");
-          }
+					if (!window.electronAPI?.ffmpeg?.extractAudio) {
+						console.error(
+							"[ElevenLabs Hook] FFmpeg extractAudio API not available"
+						);
+						throw new Error("FFmpeg audio extraction not available");
+					}
 
-          console.log("[ElevenLabs Hook] Calling ffmpeg.extractAudio with:", {
-            videoPath: filePath,
-            format: "mp3",
-          });
+					console.log("[ElevenLabs Hook] Calling ffmpeg.extractAudio with:", {
+						videoPath: filePath,
+						format: "mp3",
+					});
 
-          // Use MP3 format for smaller file size (WAV is uncompressed and too large for upload)
-          const extractResult = await window.electronAPI.ffmpeg.extractAudio({
-            videoPath: filePath,
-            format: "mp3",
-          });
+					// Use MP3 format for smaller file size (WAV is uncompressed and too large for upload)
+					const extractResult = await window.electronAPI.ffmpeg.extractAudio({
+						videoPath: filePath,
+						format: "mp3",
+					});
 
-          console.log(
-            "[ElevenLabs Hook] Audio extraction result:",
-            extractResult
-          );
-          audioPath = extractResult.audioPath;
-          console.log("[ElevenLabs Hook] Audio path set to:", audioPath);
-          // TODO: Implement temp file cleanup via Electron IPC handler
-          // Extracted audio files will accumulate in system temp directory
+					console.log(
+						"[ElevenLabs Hook] Audio extraction result:",
+						extractResult
+					);
+					audioPath = extractResult.audioPath;
+					console.log("[ElevenLabs Hook] Audio path set to:", audioPath);
+					// TODO: Implement temp file cleanup via Electron IPC handler
+					// Extracted audio files will accumulate in system temp directory
 
-          setProgress(
-            `Audio extracted (${(extractResult.fileSize / 1024 / 1024).toFixed(1)} MB)`
-          );
-        }
+					setProgress(
+						`Audio extracted (${(extractResult.fileSize / 1024 / 1024).toFixed(1)} MB)`
+					);
+				}
 
-        // Step 2: Call ElevenLabs transcription
-        console.log(
-          "[ElevenLabs Hook] Step 2: Calling ElevenLabs transcription..."
-        );
-        setProgress("Transcribing audio with ElevenLabs...");
+				// Step 2: Call ElevenLabs transcription
+				console.log(
+					"[ElevenLabs Hook] Step 2: Calling ElevenLabs transcription..."
+				);
+				setProgress("Transcribing audio with ElevenLabs...");
 
-        const transcribeOptions = {
-          audioPath,
-          language: options?.language,
-          diarize: options?.diarize ?? true,
-          tagAudioEvents: options?.tagAudioEvents ?? true,
-          keyterms: options?.keyterms,
-        };
-        console.log("[ElevenLabs Hook] Transcribe options:", transcribeOptions);
+				const transcribeOptions = {
+					audioPath,
+					language: options?.language,
+					diarize: options?.diarize ?? true,
+					tagAudioEvents: options?.tagAudioEvents ?? true,
+					keyterms: options?.keyterms,
+				};
+				console.log("[ElevenLabs Hook] Transcribe options:", transcribeOptions);
 
-        const result =
-          await window.electronAPI.transcribe.elevenlabs(transcribeOptions);
+				const result =
+					await window.electronAPI.transcribe.elevenlabs(transcribeOptions);
 
-        console.log("[ElevenLabs Hook] Transcription result received:");
-        console.log("[ElevenLabs Hook] - Text length:", result?.text?.length);
-        console.log("[ElevenLabs Hook] - Words count:", result?.words?.length);
-        console.log("[ElevenLabs Hook] - Language:", result?.language_code);
+				console.log("[ElevenLabs Hook] Transcription result received:");
+				console.log("[ElevenLabs Hook] - Text length:", result?.text?.length);
+				console.log("[ElevenLabs Hook] - Words count:", result?.words?.length);
+				console.log("[ElevenLabs Hook] - Language:", result?.language_code);
 
-        // Step 3: Generate filename with timestamp
-        const sourceFileName =
-          filePath
-            .split(/[/\\]/)
-            .pop()
-            ?.replace(/\.[^.]+$/, "") || "transcription";
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[-:]/g, "")
-          .slice(0, 15);
-        const transcriptFileName = `${sourceFileName}_${timestamp}_transcript.json`;
-        console.log(
-          "[ElevenLabs Hook] Generated filename:",
-          transcriptFileName
-        );
+				// Step 3: Generate filename with timestamp
+				const sourceFileName =
+					filePath
+						.split(/[/\\]/)
+						.pop()
+						?.replace(/\.[^.]+$/, "") || "transcription";
+				const timestamp = new Date()
+					.toISOString()
+					.replace(/[-:]/g, "")
+					.slice(0, 15);
+				const transcriptFileName = `${sourceFileName}_${timestamp}_transcript.json`;
+				console.log(
+					"[ElevenLabs Hook] Generated filename:",
+					transcriptFileName
+				);
 
-        // Step 4: Load into word timeline store
-        console.log(
-          "[ElevenLabs Hook] Step 4: Loading into word timeline store..."
-        );
-        setProgress("Loading transcription...");
-        await loadFromTranscription(result, transcriptFileName);
+				// Step 4: Load into word timeline store
+				console.log(
+					"[ElevenLabs Hook] Step 4: Loading into word timeline store..."
+				);
+				setProgress("Loading transcription...");
+				await loadFromTranscription(result, transcriptFileName);
 
-        // TODO: Save transcription JSON to project folder (requires IPC handler)
+				// TODO: Save transcription JSON to project folder (requires IPC handler)
 
-        setProgress("Complete!");
-        console.log("[ElevenLabs Hook] Transcription complete!");
+				setProgress("Complete!");
+				console.log("[ElevenLabs Hook] Transcription complete!");
 
-        return result;
-      } catch (err) {
-        console.error("[ElevenLabs Hook] Error during transcription:", err);
-        const message =
-          err instanceof Error ? err.message : "Transcription failed";
-        console.error("[ElevenLabs Hook] Error message:", message);
-        setError(message);
+				return result;
+			} catch (err) {
+				console.error("[ElevenLabs Hook] Error during transcription:", err);
+				const message =
+					err instanceof Error ? err.message : "Transcription failed";
+				console.error("[ElevenLabs Hook] Error message:", message);
+				setError(message);
 
-        return null;
-      } finally {
-        setIsTranscribing(false);
-        console.log("[ElevenLabs Hook] Finished (isTranscribing set to false)");
-      }
-    },
-    [loadFromTranscription]
-  );
+				return null;
+			} finally {
+				setIsTranscribing(false);
+				console.log("[ElevenLabs Hook] Finished (isTranscribing set to false)");
+			}
+		},
+		[loadFromTranscription]
+	);
 
-  return {
-    transcribeMedia,
-    isTranscribing,
-    progress,
-    error,
-    clearError,
-  };
+	return {
+		transcribeMedia,
+		isTranscribing,
+		progress,
+		error,
+		clearError,
+	};
 }
 
 export default useElevenLabsTranscription;

@@ -10,8 +10,8 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import type { StickerElement } from "@/types/timeline";
 
 export interface StickerTiming {
-  startTime: number;
-  endTime: number;
+	startTime: number;
+	endTime: number;
 }
 
 /**
@@ -19,25 +19,25 @@ export interface StickerTiming {
  * Accounts for trimStart/trimEnd when calculating effective timing.
  */
 export function getStickerTimingMap(): Map<string, StickerTiming> {
-  const timingMap = new Map<string, StickerTiming>();
-  const store = useTimelineStore.getState();
+	const timingMap = new Map<string, StickerTiming>();
+	const store = useTimelineStore.getState();
 
-  for (const track of store._tracks) {
-    if (track.type !== "sticker") continue;
+	for (const track of store._tracks) {
+		if (track.type !== "sticker") continue;
 
-    for (const element of track.elements) {
-      if (element.type !== "sticker") continue;
+		for (const element of track.elements) {
+			if (element.type !== "sticker") continue;
 
-      const stickerEl = element as StickerElement;
-      const startTime = stickerEl.startTime + stickerEl.trimStart;
-      const endTime =
-        stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd;
+			const stickerEl = element as StickerElement;
+			const startTime = stickerEl.startTime + stickerEl.trimStart;
+			const endTime =
+				stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd;
 
-      timingMap.set(stickerEl.stickerId, { startTime, endTime });
-    }
-  }
+			timingMap.set(stickerEl.stickerId, { startTime, endTime });
+		}
+	}
 
-  return timingMap;
+	return timingMap;
 }
 
 /**
@@ -45,23 +45,23 @@ export function getStickerTimingMap(): Map<string, StickerTiming> {
  * Returns null if sticker is not on the timeline.
  */
 export function getStickerTiming(stickerId: string): StickerTiming | null {
-  const store = useTimelineStore.getState();
+	const store = useTimelineStore.getState();
 
-  for (const track of store._tracks) {
-    if (track.type !== "sticker") continue;
+	for (const track of store._tracks) {
+		if (track.type !== "sticker") continue;
 
-    for (const element of track.elements) {
-      if (element.type !== "sticker") continue;
+		for (const element of track.elements) {
+			if (element.type !== "sticker") continue;
 
-      const stickerEl = element as StickerElement;
-      if (stickerEl.stickerId === stickerId) {
-        return {
-          startTime: stickerEl.startTime + stickerEl.trimStart,
-          endTime: stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd,
-        };
-      }
-    }
-  }
+			const stickerEl = element as StickerElement;
+			if (stickerEl.stickerId === stickerId) {
+				return {
+					startTime: stickerEl.startTime + stickerEl.trimStart,
+					endTime: stickerEl.startTime + stickerEl.duration - stickerEl.trimEnd,
+				};
+			}
+		}
+	}
 
-  return null;
+	return null;
 }

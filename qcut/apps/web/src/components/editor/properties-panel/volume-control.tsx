@@ -1,108 +1,108 @@
 import { MediaElement } from "@/types/timeline";
 import {
-  PropertyGroup,
-  PropertyItem,
-  PropertyItemLabel,
-  PropertyItemValue,
+	PropertyGroup,
+	PropertyItem,
+	PropertyItemLabel,
+	PropertyItemValue,
 } from "./property-item";
 import { Slider } from "@/components/ui/slider";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTimelineStore } from "@/stores/timeline-store";
 
 interface VolumeControlProps {
-  element: MediaElement;
-  trackId: string;
+	element: MediaElement;
+	trackId: string;
 }
 
 export function VolumeControl({ element, trackId }: VolumeControlProps) {
-  const { updateMediaElement } = useTimelineStore();
-  const [volume, setVolume] = useState(
-    element.volume !== undefined ? Math.round(element.volume * 100) : 100
-  );
+	const { updateMediaElement } = useTimelineStore();
+	const [volume, setVolume] = useState(
+		element.volume !== undefined ? Math.round(element.volume * 100) : 100
+	);
 
-  useEffect(() => {
-    setVolume(
-      element.volume !== undefined ? Math.round(element.volume * 100) : 100
-    );
-  }, [element.volume]);
+	useEffect(() => {
+		setVolume(
+			element.volume !== undefined ? Math.round(element.volume * 100) : 100
+		);
+	}, [element.volume]);
 
-  const handleVolumeChange = useCallback(
-    (newVolume: number) => {
-      setVolume(newVolume);
-      // Live update without history for smooth slider interaction
-      updateMediaElement(
-        trackId,
-        element.id,
-        { volume: newVolume / 100 },
-        false
-      );
-    },
-    [updateMediaElement, trackId, element.id]
-  );
+	const handleVolumeChange = useCallback(
+		(newVolume: number) => {
+			setVolume(newVolume);
+			// Live update without history for smooth slider interaction
+			updateMediaElement(
+				trackId,
+				element.id,
+				{ volume: newVolume / 100 },
+				false
+			);
+		},
+		[updateMediaElement, trackId, element.id]
+	);
 
-  const handleVolumeCommit = useCallback(
-    (value: number[]) => {
-      // Commit to history when user finishes dragging
-      updateMediaElement(trackId, element.id, { volume: value[0] / 100 }, true);
-    },
-    [updateMediaElement, trackId, element.id]
-  );
+	const handleVolumeCommit = useCallback(
+		(value: number[]) => {
+			// Commit to history when user finishes dragging
+			updateMediaElement(trackId, element.id, { volume: value[0] / 100 }, true);
+		},
+		[updateMediaElement, trackId, element.id]
+	);
 
-  // Fallback for history tracking if onValueCommit doesn't work
-  const isDragging = useRef(false);
-  const handleStart = useCallback(() => {
-    isDragging.current = true;
-  }, []);
+	// Fallback for history tracking if onValueCommit doesn't work
+	const isDragging = useRef(false);
+	const handleStart = useCallback(() => {
+		isDragging.current = true;
+	}, []);
 
-  const handleEnd = useCallback(() => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    handleVolumeCommit([volume]);
-  }, [handleVolumeCommit, volume]);
+	const handleEnd = useCallback(() => {
+		if (!isDragging.current) return;
+		isDragging.current = false;
+		handleVolumeCommit([volume]);
+	}, [handleVolumeCommit, volume]);
 
-  const handleKeyUp = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (
-        [
-          "Enter",
-          " ",
-          "ArrowUp",
-          "ArrowDown",
-          "ArrowLeft",
-          "ArrowRight",
-        ].includes(e.key)
-      ) {
-        handleVolumeCommit([volume]);
-      }
-    },
-    [handleVolumeCommit, volume]
-  );
+	const handleKeyUp = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (
+				[
+					"Enter",
+					" ",
+					"ArrowUp",
+					"ArrowDown",
+					"ArrowLeft",
+					"ArrowRight",
+				].includes(e.key)
+			) {
+				handleVolumeCommit([volume]);
+			}
+		},
+		[handleVolumeCommit, volume]
+	);
 
-  return (
-    <PropertyGroup title="Audio Controls" defaultExpanded={true}>
-      <PropertyItem direction="column">
-        <PropertyItemLabel>Volume</PropertyItemLabel>
-        <PropertyItemValue>
-          <div
-            className="flex items-center gap-2"
-            onPointerDown={handleStart}
-            onPointerUp={handleEnd}
-            onKeyUp={handleKeyUp}
-          >
-            <Slider
-              aria-label="Volume"
-              value={[volume]}
-              min={0}
-              max={100}
-              step={1}
-              onValueChange={([value]) => handleVolumeChange(value)}
-              onValueCommit={handleVolumeCommit}
-              className="w-full"
-            />
-            <span className="text-xs w-12">{volume}%</span>
-          </div>
-        </PropertyItemValue>
-      </PropertyItem>
-    </PropertyGroup>
-  );
+	return (
+		<PropertyGroup title="Audio Controls" defaultExpanded={true}>
+			<PropertyItem direction="column">
+				<PropertyItemLabel>Volume</PropertyItemLabel>
+				<PropertyItemValue>
+					<div
+						className="flex items-center gap-2"
+						onPointerDown={handleStart}
+						onPointerUp={handleEnd}
+						onKeyUp={handleKeyUp}
+					>
+						<Slider
+							aria-label="Volume"
+							value={[volume]}
+							min={0}
+							max={100}
+							step={1}
+							onValueChange={([value]) => handleVolumeChange(value)}
+							onValueCommit={handleVolumeCommit}
+							className="w-full"
+						/>
+						<span className="text-xs w-12">{volume}%</span>
+					</div>
+				</PropertyItemValue>
+			</PropertyItem>
+		</PropertyGroup>
+	);
 }

@@ -9,18 +9,18 @@ import type { TimelineTrack, TimelineElement } from "@/types/timeline";
 import { generateUUID } from "@/lib/utils";
 import type { OperationContext } from "./types";
 import {
-  getElementNameWithSuffix,
-  getEffectiveDuration,
-  getElementEndTime,
-  createTrack,
+	getElementNameWithSuffix,
+	getEffectiveDuration,
+	getElementEndTime,
+	createTrack,
 } from "./utils";
 
 /**
  * Result of a split operation
  */
 export interface SplitResult {
-  /** ID of the newly created second element, or null if split failed */
-  secondElementId: string | null;
+	/** ID of the newly created second element, or null if split failed */
+	secondElementId: string | null;
 }
 
 /**
@@ -32,59 +32,59 @@ export interface SplitResult {
  * @returns The ID of the newly created second element, or null if split failed
  */
 export function splitElementOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	splitTime: number
 ): string | null {
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((c) => c.id === elementId);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((c) => c.id === elementId);
 
-  if (!element) return null;
+	if (!element) return null;
 
-  const effectiveStart = element.startTime;
-  const effectiveEnd = getElementEndTime(element);
+	const effectiveStart = element.startTime;
+	const effectiveEnd = getElementEndTime(element);
 
-  // Cannot split outside the element bounds
-  if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return null;
+	// Cannot split outside the element bounds
+	if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return null;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  const relativeTime = splitTime - element.startTime;
-  const firstDuration = relativeTime;
-  const secondDuration = getEffectiveDuration(element) - relativeTime;
+	const relativeTime = splitTime - element.startTime;
+	const firstDuration = relativeTime;
+	const secondDuration = getEffectiveDuration(element) - relativeTime;
 
-  const secondElementId = generateUUID();
+	const secondElementId = generateUUID();
 
-  const leftPart = {
-    ...element,
-    trimEnd: element.trimEnd + secondDuration,
-    name: getElementNameWithSuffix(element.name, "left"),
-  };
+	const leftPart = {
+		...element,
+		trimEnd: element.trimEnd + secondDuration,
+		name: getElementNameWithSuffix(element.name, "left"),
+	};
 
-  const rightPart = {
-    ...element,
-    id: secondElementId,
-    startTime: splitTime,
-    trimStart: element.trimStart + firstDuration,
-    name: getElementNameWithSuffix(element.name, "right"),
-  };
+	const rightPart = {
+		...element,
+		id: secondElementId,
+		startTime: splitTime,
+		trimStart: element.trimStart + firstDuration,
+		name: getElementNameWithSuffix(element.name, "right"),
+	};
 
-  ctx.updateTracksAndSave(
-    tracks.map((t) =>
-      t.id === trackId
-        ? {
-            ...t,
-            elements: t.elements.flatMap((c) =>
-              c.id === elementId ? [leftPart, rightPart] : [c]
-            ),
-          }
-        : t
-    )
-  );
+	ctx.updateTracksAndSave(
+		tracks.map((t) =>
+			t.id === trackId
+				? {
+						...t,
+						elements: t.elements.flatMap((c) =>
+							c.id === elementId ? [leftPart, rightPart] : [c]
+						),
+					}
+				: t
+		)
+	);
 
-  return secondElementId;
+	return secondElementId;
 }
 
 /**
@@ -95,46 +95,46 @@ export function splitElementOperation(
  * @param splitTime - Time at which to split the element
  */
 export function splitAndKeepLeftOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	splitTime: number
 ): void {
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((c) => c.id === elementId);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((c) => c.id === elementId);
 
-  if (!element) return;
+	if (!element) return;
 
-  const effectiveStart = element.startTime;
-  const effectiveEnd = getElementEndTime(element);
+	const effectiveStart = element.startTime;
+	const effectiveEnd = getElementEndTime(element);
 
-  // Cannot split outside the element bounds
-  if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
+	// Cannot split outside the element bounds
+	if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  const relativeTime = splitTime - element.startTime;
-  const durationToRemove = getEffectiveDuration(element) - relativeTime;
+	const relativeTime = splitTime - element.startTime;
+	const durationToRemove = getEffectiveDuration(element) - relativeTime;
 
-  ctx.updateTracksAndSave(
-    tracks.map((t) =>
-      t.id === trackId
-        ? {
-            ...t,
-            elements: t.elements.map((c) =>
-              c.id === elementId
-                ? {
-                    ...c,
-                    trimEnd: c.trimEnd + durationToRemove,
-                    name: getElementNameWithSuffix(c.name, "left"),
-                  }
-                : c
-            ),
-          }
-        : t
-    )
-  );
+	ctx.updateTracksAndSave(
+		tracks.map((t) =>
+			t.id === trackId
+				? {
+						...t,
+						elements: t.elements.map((c) =>
+							c.id === elementId
+								? {
+										...c,
+										trimEnd: c.trimEnd + durationToRemove,
+										name: getElementNameWithSuffix(c.name, "left"),
+									}
+								: c
+						),
+					}
+				: t
+		)
+	);
 }
 
 /**
@@ -145,46 +145,46 @@ export function splitAndKeepLeftOperation(
  * @param splitTime - Time at which to split the element
  */
 export function splitAndKeepRightOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  splitTime: number
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	splitTime: number
 ): void {
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((c) => c.id === elementId);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((c) => c.id === elementId);
 
-  if (!element) return;
+	if (!element) return;
 
-  const effectiveStart = element.startTime;
-  const effectiveEnd = getElementEndTime(element);
+	const effectiveStart = element.startTime;
+	const effectiveEnd = getElementEndTime(element);
 
-  // Cannot split outside the element bounds
-  if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
+	// Cannot split outside the element bounds
+	if (splitTime <= effectiveStart || splitTime >= effectiveEnd) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  const relativeTime = splitTime - element.startTime;
+	const relativeTime = splitTime - element.startTime;
 
-  ctx.updateTracksAndSave(
-    tracks.map((t) =>
-      t.id === trackId
-        ? {
-            ...t,
-            elements: t.elements.map((c) =>
-              c.id === elementId
-                ? {
-                    ...c,
-                    startTime: splitTime,
-                    trimStart: c.trimStart + relativeTime,
-                    name: getElementNameWithSuffix(c.name, "right"),
-                  }
-                : c
-            ),
-          }
-        : t
-    )
-  );
+	ctx.updateTracksAndSave(
+		tracks.map((t) =>
+			t.id === trackId
+				? {
+						...t,
+						elements: t.elements.map((c) =>
+							c.id === elementId
+								? {
+										...c,
+										startTime: splitTime,
+										trimStart: c.trimStart + relativeTime,
+										name: getElementNameWithSuffix(c.name, "right"),
+									}
+								: c
+						),
+					}
+				: t
+		)
+	);
 }
 
 /**
@@ -195,59 +195,59 @@ export function splitAndKeepRightOperation(
  * @returns The ID of the newly created audio element, or null if separation failed
  */
 export function separateAudioOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string
 ): string | null {
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((c) => c.id === elementId);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((c) => c.id === elementId);
 
-  // Only allow audio separation from media tracks
-  if (!element || track?.type !== "media") return null;
+	// Only allow audio separation from media tracks
+	if (!element || track?.type !== "media") return null;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  // Find existing audio track or prepare to create one
-  const existingAudioTrack = tracks.find((t) => t.type === "audio");
-  const audioElementId = generateUUID();
+	// Find existing audio track or prepare to create one
+	const existingAudioTrack = tracks.find((t) => t.type === "audio");
+	const audioElementId = generateUUID();
 
-  if (existingAudioTrack) {
-    // Add audio element to existing audio track
-    ctx.updateTracksAndSave(
-      tracks.map((t) =>
-        t.id === existingAudioTrack.id
-          ? {
-              ...t,
-              elements: [
-                ...t.elements,
-                {
-                  ...element,
-                  id: audioElementId,
-                  name: getElementNameWithSuffix(element.name, "audio"),
-                },
-              ],
-            }
-          : t
-      )
-    );
-  } else {
-    // Create new audio track with the audio element in a single atomic update
-    const newAudioTrack: TimelineTrack = {
-      ...createTrack("audio"),
-      elements: [
-        {
-          ...element,
-          id: audioElementId,
-          name: getElementNameWithSuffix(element.name, "audio"),
-        },
-      ],
-    };
+	if (existingAudioTrack) {
+		// Add audio element to existing audio track
+		ctx.updateTracksAndSave(
+			tracks.map((t) =>
+				t.id === existingAudioTrack.id
+					? {
+							...t,
+							elements: [
+								...t.elements,
+								{
+									...element,
+									id: audioElementId,
+									name: getElementNameWithSuffix(element.name, "audio"),
+								},
+							],
+						}
+					: t
+			)
+		);
+	} else {
+		// Create new audio track with the audio element in a single atomic update
+		const newAudioTrack: TimelineTrack = {
+			...createTrack("audio"),
+			elements: [
+				{
+					...element,
+					id: audioElementId,
+					name: getElementNameWithSuffix(element.name, "audio"),
+				},
+			],
+		};
 
-    ctx.updateTracksAndSave([...tracks, newAudioTrack]);
-  }
+		ctx.updateTracksAndSave([...tracks, newAudioTrack]);
+	}
 
-  return audioElementId;
+	return audioElementId;
 }
 
 /**
@@ -256,32 +256,32 @@ export function separateAudioOperation(
  * @returns Array of audio elements with their track and position info
  */
 export function getAudioElementsOperation(tracks: TimelineTrack[]): Array<{
-  element: TimelineElement;
-  trackId: string;
-  absoluteStart: number;
+	element: TimelineElement;
+	trackId: string;
+	absoluteStart: number;
 }> {
-  const audioElements: Array<{
-    element: TimelineElement;
-    trackId: string;
-    absoluteStart: number;
-  }> = [];
+	const audioElements: Array<{
+		element: TimelineElement;
+		trackId: string;
+		absoluteStart: number;
+	}> = [];
 
-  for (const track of tracks) {
-    if (track.type === "audio" || track.type === "media") {
-      for (const element of track.elements) {
-        // Only media elements carry audio
-        if (element.type === "media") {
-          audioElements.push({
-            element,
-            trackId: track.id,
-            absoluteStart: element.startTime,
-          });
-        }
-      }
-    }
-  }
+	for (const track of tracks) {
+		if (track.type === "audio" || track.type === "media") {
+			for (const element of track.elements) {
+				// Only media elements carry audio
+				if (element.type === "media") {
+					audioElements.push({
+						element,
+						trackId: track.id,
+						absoluteStart: element.startTime,
+					});
+				}
+			}
+		}
+	}
 
-  return audioElements;
+	return audioElements;
 }
 
 /**
@@ -290,14 +290,14 @@ export function getAudioElementsOperation(tracks: TimelineTrack[]): Array<{
  * @returns Total duration in seconds
  */
 export function getTotalDurationOperation(tracks: TimelineTrack[]): number {
-  if (tracks.length === 0) return 0;
+	if (tracks.length === 0) return 0;
 
-  const trackEndTimes = tracks.map((track) =>
-    track.elements.reduce((maxEnd, element) => {
-      const elementEnd = getElementEndTime(element);
-      return Math.max(maxEnd, elementEnd);
-    }, 0)
-  );
+	const trackEndTimes = tracks.map((track) =>
+		track.elements.reduce((maxEnd, element) => {
+			const elementEnd = getElementEndTime(element);
+			return Math.max(maxEnd, elementEnd);
+		}, 0)
+	);
 
-  return Math.max(...trackEndTimes, 0);
+	return Math.max(...trackEndTimes, 0);
 }

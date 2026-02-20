@@ -7,10 +7,10 @@
 
 import { AI_MODELS } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import type {
-  GenerationStatus,
-  ModelsResponse,
-  CostEstimate,
-  VideoGenerationRequest,
+	GenerationStatus,
+	ModelsResponse,
+	CostEstimate,
+	VideoGenerationRequest,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { getFalApiKey, getFalApiKeyAsync } from "./core/fal-request";
 import { getModelConfig } from "./generators/base-generator";
@@ -31,17 +31,17 @@ import { getModelConfig } from "./generators/base-generator";
  * @deprecated Use FAL SDK's built-in polling via subscribe() instead
  */
 export async function getGenerationStatus(
-  _jobId: string
+	_jobId: string
 ): Promise<GenerationStatus> {
-  // Since we're doing direct FAL API calls, generation is synchronous
-  // This function is kept for compatibility with existing UI polling logic
-  return {
-    status: "completed",
-    progress: 100,
-    completed: true,
-    videoUrl: undefined, // Will be set by the actual generation response
-    error: undefined,
-  };
+	// Since we're doing direct FAL API calls, generation is synchronous
+	// This function is kept for compatibility with existing UI polling logic
+	return {
+		status: "completed",
+		progress: 100,
+		completed: true,
+		videoUrl: undefined, // Will be set by the actual generation response
+		error: undefined,
+	};
 }
 
 /**
@@ -56,12 +56,12 @@ export async function getGenerationStatus(
  * @returns ModelsResponse containing all configured AI models with formatted pricing
  */
 export async function getAvailableModels(): Promise<ModelsResponse> {
-  return {
-    models: AI_MODELS.map((model) => ({
-      ...model,
-      price: `$${model.price}`, // Add $ prefix for display
-    })),
-  };
+	return {
+		models: AI_MODELS.map((model) => ({
+			...model,
+			price: `$${model.price}`, // Add $ prefix for display
+		})),
+	};
 }
 
 /**
@@ -82,33 +82,33 @@ export async function getAvailableModels(): Promise<ModelsResponse> {
  * @returns CostEstimate with base_cost, duration multiplier, and final estimated_cost
  */
 export async function estimateCost(
-  request: VideoGenerationRequest
+	request: VideoGenerationRequest
 ): Promise<CostEstimate> {
-  // Use centralized model configuration
-  const modelConfig = getModelConfig(request.model);
-  const modelInfo = modelConfig
-    ? {
-        base_cost: parseFloat(modelConfig.price),
-        max_duration: modelConfig.max_duration,
-      }
-    : {
-        base_cost: 1.0,
-        max_duration: 30,
-      };
-  const actualDuration = Math.min(
-    request.duration || 5,
-    modelInfo.max_duration
-  );
-  const durationMultiplier = Math.max(1, actualDuration / 5);
-  const estimatedCost = modelInfo.base_cost * durationMultiplier;
+	// Use centralized model configuration
+	const modelConfig = getModelConfig(request.model);
+	const modelInfo = modelConfig
+		? {
+				base_cost: parseFloat(modelConfig.price),
+				max_duration: modelConfig.max_duration,
+			}
+		: {
+				base_cost: 1.0,
+				max_duration: 30,
+			};
+	const actualDuration = Math.min(
+		request.duration || 5,
+		modelInfo.max_duration
+	);
+	const durationMultiplier = Math.max(1, actualDuration / 5);
+	const estimatedCost = modelInfo.base_cost * durationMultiplier;
 
-  return {
-    model: request.model,
-    duration: actualDuration,
-    base_cost: modelInfo.base_cost,
-    estimated_cost: estimatedCost,
-    currency: "USD",
-  };
+	return {
+		model: request.model,
+		duration: actualDuration,
+		base_cost: modelInfo.base_cost,
+		estimated_cost: estimatedCost,
+		currency: "USD",
+	};
 }
 
 /**
@@ -121,10 +121,10 @@ export async function estimateCost(
  * @returns Human-readable error message suitable for display
  */
 export function handleApiError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "An unknown error occurred";
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return "An unknown error occurred";
 }
 
 /**
@@ -137,6 +137,6 @@ export function handleApiError(error: unknown): string {
  * @returns true if VITE_FAL_API_KEY is set, false otherwise
  */
 export async function isApiAvailable(): Promise<boolean> {
-  const apiKey = await getFalApiKeyAsync();
-  return !!apiKey;
+	const apiKey = await getFalApiKeyAsync();
+	return !!apiKey;
 }

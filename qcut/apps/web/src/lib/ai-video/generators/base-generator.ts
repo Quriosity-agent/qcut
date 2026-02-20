@@ -7,8 +7,8 @@
 
 import { AI_MODELS } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 import type {
-  AIModel,
-  VideoGenerationResponse,
+	AIModel,
+	VideoGenerationResponse,
 } from "@/components/editor/media-panel/views/ai/types/ai-types";
 import { handleAIServiceError } from "@/lib/error-handler";
 import { generateJobId } from "../core/fal-request";
@@ -23,7 +23,7 @@ import { generateJobId } from "../core/fal-request";
  * @returns Model configuration object or undefined if model not found
  */
 export function getModelConfig(modelId: string): AIModel | undefined {
-  return AI_MODELS.find((m) => m.id === modelId);
+	return AI_MODELS.find((m) => m.id === modelId);
 }
 
 /**
@@ -44,12 +44,12 @@ export function getModelConfig(modelId: string): AIModel | undefined {
  * @throws DOMException if file read fails or file is corrupted
  */
 export async function fileToDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
 }
 
 /**
@@ -64,12 +64,12 @@ export async function fileToDataURL(file: File): Promise<string> {
  * @returns Video URL if found, undefined otherwise
  */
 function extractVideoUrl(result: Record<string, unknown>): string | undefined {
-  const video = result.video as Record<string, unknown> | undefined;
-  return (
-    (video?.url as string | undefined) ??
-    (result.video_url as string | undefined) ??
-    (result.url as string | undefined)
-  );
+	const video = result.video as Record<string, unknown> | undefined;
+	return (
+		(video?.url as string | undefined) ??
+		(result.video_url as string | undefined) ??
+		(result.url as string | undefined)
+	);
 }
 
 /**
@@ -82,19 +82,19 @@ function extractVideoUrl(result: Record<string, unknown>): string | undefined {
  * @returns Formatted VideoGenerationResponse
  */
 export function buildVideoResponse(
-  jobId: string,
-  modelId: string,
-  result: Record<string, unknown>,
-  elapsedTime?: number
+	jobId: string,
+	modelId: string,
+	result: Record<string, unknown>,
+	elapsedTime?: number
 ): VideoGenerationResponse {
-  return {
-    job_id: jobId,
-    status: "completed",
-    message: `Video generated successfully with ${modelId}`,
-    estimated_time: elapsedTime ?? 0,
-    video_url: extractVideoUrl(result),
-    video_data: result,
-  };
+	return {
+		job_id: jobId,
+		status: "completed",
+		message: `Video generated successfully with ${modelId}`,
+		estimated_time: elapsedTime ?? 0,
+		video_url: extractVideoUrl(result),
+		video_data: result,
+	};
 }
 
 /**
@@ -107,16 +107,16 @@ export function buildVideoResponse(
  * @throws Re-throws error after logging
  */
 export async function withErrorHandling<T>(
-  operation: string,
-  metadata: Record<string, unknown>,
-  fn: () => Promise<T>
+	operation: string,
+	metadata: Record<string, unknown>,
+	fn: () => Promise<T>
 ): Promise<T> {
-  try {
-    return await fn();
-  } catch (error) {
-    handleAIServiceError(error, operation, metadata);
-    throw error;
-  }
+	try {
+		return await fn();
+	} catch (error) {
+		handleAIServiceError(error, operation, metadata);
+		throw error;
+	}
 }
 
 /**
@@ -127,15 +127,15 @@ export async function withErrorHandling<T>(
  * @returns VideoGenerationResponse
  */
 export function createSimpleResponse(
-  modelId: string,
-  result: Record<string, unknown>
+	modelId: string,
+	result: Record<string, unknown>
 ): VideoGenerationResponse {
-  return {
-    job_id: generateJobId(),
-    status: "completed",
-    message: `Video generated successfully with ${modelId}`,
-    estimated_time: 0,
-    video_url: extractVideoUrl(result),
-    video_data: result,
-  };
+	return {
+		job_id: generateJobId(),
+		status: "completed",
+		message: `Video generated successfully with ${modelId}`,
+		estimated_time: 0,
+		video_url: extractVideoUrl(result),
+		video_data: result,
+	};
 }

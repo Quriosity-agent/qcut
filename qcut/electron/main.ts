@@ -8,14 +8,14 @@
  */
 
 import {
-  app,
-  BrowserWindow,
-  protocol,
-  net,
-  session,
-  shell,
-  OnHeadersReceivedListenerDetails,
-  HeadersReceivedResponse,
+	app,
+	BrowserWindow,
+	protocol,
+	net,
+	session,
+	shell,
+	OnHeadersReceivedListenerDetails,
+	HeadersReceivedResponse,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
@@ -26,75 +26,75 @@ import { registerMainIpcHandlers } from "./main-ipc.js";
 
 // Type definitions
 interface ReleaseNote {
-  version: string;
-  date: string;
-  channel: string;
-  content: string;
+	version: string;
+	date: string;
+	channel: string;
+	content: string;
 }
 
 interface Logger {
-  log(message?: any, ...optionalParams: any[]): void;
-  error(message?: any, ...optionalParams: any[]): void;
-  warn(message?: any, ...optionalParams: any[]): void;
-  info(message?: any, ...optionalParams: any[]): void;
+	log(message?: any, ...optionalParams: any[]): void;
+	error(message?: any, ...optionalParams: any[]): void;
+	warn(message?: any, ...optionalParams: any[]): void;
+	info(message?: any, ...optionalParams: any[]): void;
 }
 
 interface AutoUpdater {
-  checkForUpdatesAndNotify(): Promise<any>;
-  on(event: string, listener: (...args: any[]) => void): void;
-  quitAndInstall(): void;
-  allowPrerelease: boolean;
-  channel: string;
+	checkForUpdatesAndNotify(): Promise<any>;
+	on(event: string, listener: (...args: any[]) => void): void;
+	quitAndInstall(): void;
+	allowPrerelease: boolean;
+	channel: string;
 }
 
 interface MimeTypeMap {
-  [key: string]: string;
+	[key: string]: string;
 }
 
 type HandlerFunction = () => void;
 interface AutoUpdaterReleaseNoteEntry {
-  note?: unknown;
+	note?: unknown;
 }
 
 // Initialize electron-log early
 let log: any = null;
 try {
-  log = require("electron-log");
+	log = require("electron-log");
 } catch (error) {
-  // electron-log not available, will use fallback
+	// electron-log not available, will use fallback
 }
 const logger: Logger = log || console;
 
 // Auto-updater - wrapped in try-catch for packaged builds
 let autoUpdater: AutoUpdater | null = null;
 try {
-  autoUpdater = require("electron-updater").autoUpdater;
+	autoUpdater = require("electron-updater").autoUpdater;
 } catch (error: any) {
-  if (log) {
-    log.warn(
-      "⚠️ [AutoUpdater] electron-updater not available: %s",
-      error.message
-    );
-  } else {
-    logger.warn(
-      "⚠️ [AutoUpdater] electron-updater not available:",
-      error.message
-    );
-  }
+	if (log) {
+		log.warn(
+			"⚠️ [AutoUpdater] electron-updater not available: %s",
+			error.message
+		);
+	} else {
+		logger.warn(
+			"⚠️ [AutoUpdater] electron-updater not available:",
+			error.message
+		);
+	}
 }
 
 // Import handlers (compiled TypeScript - relative to dist/electron output)
 const {
-  setupFFmpegIPC,
-  initFFmpegHealthCheck,
+	setupFFmpegIPC,
+	initFFmpegHealthCheck,
 } = require("./ffmpeg-handler.js");
 const { setupSoundIPC } = require("./sound-handler.js");
 const { setupThemeIPC } = require("./theme-handler.js");
 const { setupApiKeyIPC } = require("./api-key-handler.js");
 const { setupGeminiHandlers } = require("./gemini-transcribe-handler.js");
 const {
-  registerAIVideoHandlers,
-  migrateAIVideosToDocuments,
+	registerAIVideoHandlers,
+	migrateAIVideosToDocuments,
 } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupAIFillerIPC } = require("./ai-filler-handler.js");
@@ -102,12 +102,12 @@ const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
 const {
-  setupAIPipelineIPC,
-  cleanupAIPipeline,
+	setupAIPipelineIPC,
+	cleanupAIPipeline,
 } = require("./ai-pipeline-ipc.js");
 const { setupMediaImportIPC } = require("./media-import-handler.js");
 const {
-  registerElevenLabsTranscribeHandler,
+	registerElevenLabsTranscribeHandler,
 } = require("./elevenlabs-transcribe-handler.js");
 const { setupProjectFolderIPC } = require("./project-folder-handler.js");
 const { setupAllClaudeIPC } = require("./claude/index.js");
@@ -123,18 +123,18 @@ app.commandLine.appendSwitch("disable-features", "Autofill");
 
 // ① Register app:// protocol with required privileges
 protocol.registerSchemesAsPrivileged([
-  {
-    scheme: "app",
-    privileges: {
-      secure: true,
-      standard: true,
-      supportFetchAPI: true,
-      corsEnabled: true,
-      bypassCSP: false,
-      allowServiceWorkers: true,
-      stream: true,
-    },
-  },
+	{
+		scheme: "app",
+		privileges: {
+			secure: true,
+			standard: true,
+			supportFetchAPI: true,
+			corsEnabled: true,
+			bypassCSP: false,
+			allowServiceWorkers: true,
+			stream: true,
+		},
+	},
 ]);
 
 /**
@@ -145,44 +145,44 @@ protocol.registerSchemesAsPrivileged([
  * - Stable versions (e.g., 1.0.0) use the latest channel
  */
 function detectChannelFromVersion(version: string): string {
-  if (version.includes("-alpha")) return "alpha";
-  if (version.includes("-beta")) return "beta";
-  if (version.includes("-rc")) return "rc";
-  return "latest";
+	if (version.includes("-alpha")) return "alpha";
+	if (version.includes("-beta")) return "beta";
+	if (version.includes("-rc")) return "rc";
+	return "latest";
 }
 
 /** Normalise electron-updater release notes (string | array) into a plain string. */
 function normalizeAutoUpdaterReleaseNotes(releaseNotes: unknown): string {
-  try {
-    if (typeof releaseNotes === "string") {
-      return releaseNotes.trim();
-    }
+	try {
+		if (typeof releaseNotes === "string") {
+			return releaseNotes.trim();
+		}
 
-    if (!Array.isArray(releaseNotes)) {
-      return "";
-    }
+		if (!Array.isArray(releaseNotes)) {
+			return "";
+		}
 
-    const notes: string[] = [];
-    for (const entry of releaseNotes as AutoUpdaterReleaseNoteEntry[]) {
-      if (!entry || typeof entry !== "object") {
-        continue;
-      }
+		const notes: string[] = [];
+		for (const entry of releaseNotes as AutoUpdaterReleaseNoteEntry[]) {
+			if (!entry || typeof entry !== "object") {
+				continue;
+			}
 
-      const note = entry.note;
-      if (typeof note !== "string") {
-        continue;
-      }
+			const note = entry.note;
+			if (typeof note !== "string") {
+				continue;
+			}
 
-      const trimmed = note.trim();
-      if (trimmed.length > 0) {
-        notes.push(trimmed);
-      }
-    }
+			const trimmed = note.trim();
+			if (trimmed.length > 0) {
+				notes.push(trimmed);
+			}
+		}
 
-    return notes.join("\n\n");
-  } catch {
-    return "";
-  }
+		return notes.join("\n\n");
+	} catch {
+		return "";
+	}
 }
 
 /**
@@ -190,277 +190,277 @@ function normalizeAutoUpdaterReleaseNotes(releaseNotes: unknown): string {
  * Works in both development and packaged (ASAR) builds.
  */
 function getReleasesDir(): string {
-  if (app.isPackaged) {
-    return path.join(process.resourcesPath, "docs", "releases");
-  }
-  // Development: relative to project root (runtime dir is dist/electron/)
-  return path.join(__dirname, "..", "..", "docs", "releases");
+	if (app.isPackaged) {
+		return path.join(process.resourcesPath, "docs", "releases");
+	}
+	// Development: relative to project root (runtime dir is dist/electron/)
+	return path.join(__dirname, "..", "..", "docs", "releases");
 }
 
 /**
  * Fallback: parse CHANGELOG.md into release note entries.
  */
 function readChangelogFallback(): ReleaseNote[] {
-  try {
-    const changelogPath = app.isPackaged
-      ? path.join(process.resourcesPath, "CHANGELOG.md")
-      : path.join(__dirname, "..", "..", "CHANGELOG.md");
+	try {
+		const changelogPath = app.isPackaged
+			? path.join(process.resourcesPath, "CHANGELOG.md")
+			: path.join(__dirname, "..", "..", "CHANGELOG.md");
 
-    if (!fs.existsSync(changelogPath)) {
-      return [];
-    }
+		if (!fs.existsSync(changelogPath)) {
+			return [];
+		}
 
-    const raw = fs.readFileSync(changelogPath, "utf-8");
-    return parseChangelog(raw);
-  } catch (error: any) {
-    logger.error("Error reading CHANGELOG.md:", error);
-    return [];
-  }
+		const raw = fs.readFileSync(changelogPath, "utf-8");
+		return parseChangelog(raw);
+	} catch (error: any) {
+		logger.error("Error reading CHANGELOG.md:", error);
+		return [];
+	}
 }
 
 /** Configure and start the electron-updater auto-updater lifecycle. */
 function setupAutoUpdater(): void {
-  if (!autoUpdater) {
-    logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
-    return;
-  }
+	if (!autoUpdater) {
+		logger.log("⚠️ [AutoUpdater] Auto-updater not available - skipping setup");
+		return;
+	}
 
-  logger.log("🔄 [AutoUpdater] Setting up auto-updater...");
+	logger.log("🔄 [AutoUpdater] Setting up auto-updater...");
 
-  // Detect channel from app version and configure accordingly
-  const appVersion = app.getVersion();
-  const channel = detectChannelFromVersion(appVersion);
+	// Detect channel from app version and configure accordingly
+	const appVersion = app.getVersion();
+	const channel = detectChannelFromVersion(appVersion);
 
-  logger.log(
-    `🔄 [AutoUpdater] App version: ${appVersion}, Channel: ${channel}`
-  );
+	logger.log(
+		`🔄 [AutoUpdater] App version: ${appVersion}, Channel: ${channel}`
+	);
 
-  // Configure channel-specific behavior
-  if (channel !== "latest") {
-    // Prerelease users should receive prerelease updates
-    autoUpdater.allowPrerelease = true;
-    autoUpdater.channel = channel;
-    logger.log(
-      `🔄 [AutoUpdater] Configured for ${channel} channel with allowPrerelease=true`
-    );
-  } else {
-    // Stable users should NOT receive prereleases by default
-    autoUpdater.allowPrerelease = false;
-    logger.log("🔄 [AutoUpdater] Configured for stable channel (latest.yml)");
-  }
+	// Configure channel-specific behavior
+	if (channel !== "latest") {
+		// Prerelease users should receive prerelease updates
+		autoUpdater.allowPrerelease = true;
+		autoUpdater.channel = channel;
+		logger.log(
+			`🔄 [AutoUpdater] Configured for ${channel} channel with allowPrerelease=true`
+		);
+	} else {
+		// Stable users should NOT receive prereleases by default
+		autoUpdater.allowPrerelease = false;
+		logger.log("🔄 [AutoUpdater] Configured for stable channel (latest.yml)");
+	}
 
-  // Check for updates
-  autoUpdater.checkForUpdatesAndNotify();
+	// Check for updates
+	autoUpdater.checkForUpdatesAndNotify();
 
-  // Auto-updater event handlers
-  autoUpdater.on("checking-for-update", () => {
-    logger.log("🔄 [AutoUpdater] Checking for updates...");
-  });
+	// Auto-updater event handlers
+	autoUpdater.on("checking-for-update", () => {
+		logger.log("🔄 [AutoUpdater] Checking for updates...");
+	});
 
-  autoUpdater.on("update-available", (info: any) => {
-    logger.log("📦 [AutoUpdater] Update available:", info.version);
-    const normalizedReleaseNotes = normalizeAutoUpdaterReleaseNotes(
-      info.releaseNotes
-    );
+	autoUpdater.on("update-available", (info: any) => {
+		logger.log("📦 [AutoUpdater] Update available:", info.version);
+		const normalizedReleaseNotes = normalizeAutoUpdaterReleaseNotes(
+			info.releaseNotes
+		);
 
-    // Send to renderer process
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("update-available", {
-        version: info.version,
-        releaseNotes: normalizedReleaseNotes,
-        releaseDate: info.releaseDate,
-      });
-    }
-  });
+		// Send to renderer process
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("update-available", {
+				version: info.version,
+				releaseNotes: normalizedReleaseNotes,
+				releaseDate: info.releaseDate,
+			});
+		}
+	});
 
-  autoUpdater.on("update-not-available", () => {
-    logger.log("✅ [AutoUpdater] App is up to date");
-  });
+	autoUpdater.on("update-not-available", () => {
+		logger.log("✅ [AutoUpdater] App is up to date");
+	});
 
-  autoUpdater.on("error", (err: Error) => {
-    logger.error("❌ [AutoUpdater] Error:", err);
-  });
+	autoUpdater.on("error", (err: Error) => {
+		logger.error("❌ [AutoUpdater] Error:", err);
+	});
 
-  autoUpdater.on("download-progress", (progressObj: any) => {
-    const percent = Math.round(progressObj.percent);
-    logger.log(`📥 [AutoUpdater] Download progress: ${percent}%`);
+	autoUpdater.on("download-progress", (progressObj: any) => {
+		const percent = Math.round(progressObj.percent);
+		logger.log(`📥 [AutoUpdater] Download progress: ${percent}%`);
 
-    // Send progress to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("download-progress", {
-        percent,
-        transferred: progressObj.transferred,
-        total: progressObj.total,
-      });
-    }
-  });
+		// Send progress to renderer
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("download-progress", {
+				percent,
+				transferred: progressObj.transferred,
+				total: progressObj.total,
+			});
+		}
+	});
 
-  autoUpdater.on("update-downloaded", (info: any) => {
-    logger.log("✅ [AutoUpdater] Update downloaded, will install on quit");
+	autoUpdater.on("update-downloaded", (info: any) => {
+		logger.log("✅ [AutoUpdater] Update downloaded, will install on quit");
 
-    // Send to renderer process
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("update-downloaded", {
-        version: info.version,
-      });
-    }
-  });
+		// Send to renderer process
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("update-downloaded", {
+				version: info.version,
+			});
+		}
+	});
 
-  // Check for updates every hour in production
-  setInterval(
-    () => {
-      autoUpdater.checkForUpdatesAndNotify();
-    },
-    60 * 60 * 1000
-  ); // 1 hour
+	// Check for updates every hour in production
+	setInterval(
+		() => {
+			autoUpdater.checkForUpdatesAndNotify();
+		},
+		60 * 60 * 1000
+	); // 1 hour
 }
 
 /** Create a local HTTP server to serve FFmpeg WASM and other static assets. */
 function createStaticServer(): http.Server {
-  const server = http.createServer((req, res) => {
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    let filePath = url.pathname;
+	const server = http.createServer((req, res) => {
+		const url = new URL(req.url || "", `http://${req.headers.host}`);
+		let filePath = url.pathname;
 
-    // Remove leading slash and decode URI
-    filePath = decodeURIComponent(filePath.substring(1));
+		// Remove leading slash and decode URI
+		filePath = decodeURIComponent(filePath.substring(1));
 
-    // Determine the full file path based on the request
-    let fullPath: string;
-    if (filePath.startsWith("ffmpeg/")) {
-      // Serve FFmpeg files from the dist directory
-      fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
-    } else {
-      // Serve other static files from dist
-      fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
-    }
+		// Determine the full file path based on the request
+		let fullPath: string;
+		if (filePath.startsWith("ffmpeg/")) {
+			// Serve FFmpeg files from the dist directory
+			fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
+		} else {
+			// Serve other static files from dist
+			fullPath = path.join(__dirname, "../../apps/web/dist", filePath);
+		}
 
-    // Check if file exists
-    if (!fs.existsSync(fullPath)) {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("File not found");
-      return;
-    }
+		// Check if file exists
+		if (!fs.existsSync(fullPath)) {
+			res.writeHead(404, { "Content-Type": "text/plain" });
+			res.end("File not found");
+			return;
+		}
 
-    // Determine content type
-    const ext = path.extname(fullPath).toLowerCase();
-    const mimeTypes: MimeTypeMap = {
-      ".js": "application/javascript",
-      ".wasm": "application/wasm",
-      ".json": "application/json",
-      ".css": "text/css",
-      ".html": "text/html",
-    };
-    const contentType = mimeTypes[ext] || "application/octet-stream";
+		// Determine content type
+		const ext = path.extname(fullPath).toLowerCase();
+		const mimeTypes: MimeTypeMap = {
+			".js": "application/javascript",
+			".wasm": "application/wasm",
+			".json": "application/json",
+			".css": "text/css",
+			".html": "text/html",
+		};
+		const contentType = mimeTypes[ext] || "application/octet-stream";
 
-    // Set CORS headers to allow cross-origin requests
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    res.setHeader("Content-Type", contentType);
+		// Set CORS headers to allow cross-origin requests
+		res.setHeader("Access-Control-Allow-Origin", "*");
+		res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+		res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+		res.setHeader("Content-Type", contentType);
 
-    // Add Cross-Origin-Resource-Policy for COEP compatibility
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+		// Add Cross-Origin-Resource-Policy for COEP compatibility
+		res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 
-    // Stream the file
-    const fileStream = fs.createReadStream(fullPath);
-    fileStream.pipe(res);
+		// Stream the file
+		const fileStream = fs.createReadStream(fullPath);
+		fileStream.pipe(res);
 
-    fileStream.on("error", (error: Error) => {
-      logger.error("[Static Server] Error reading file:", error);
-      res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end("Internal server error");
-    });
-  });
+		fileStream.on("error", (error: Error) => {
+			logger.error("[Static Server] Error reading file:", error);
+			res.writeHead(500, { "Content-Type": "text/plain" });
+			res.end("Internal server error");
+		});
+	});
 
-  server.listen(8080, "localhost", () => {
-    logger.log("[Static Server] Started on http://localhost:8080");
-  });
+	server.listen(8080, "localhost", () => {
+		logger.log("[Static Server] Started on http://localhost:8080");
+	});
 
-  return server;
+	return server;
 }
 
 /** Create the main BrowserWindow with CSP headers and protocol handling. */
 function createWindow(): void {
-  // ③ "Replace" rather than "append" CSP - completely override all existing CSP policies
-  session.defaultSession.webRequest.onHeadersReceived(
-    (
-      details: OnHeadersReceivedListenerDetails,
-      callback: (response: HeadersReceivedResponse) => void
-    ) => {
-      const responseHeaders = { ...details.responseHeaders };
+	// ③ "Replace" rather than "append" CSP - completely override all existing CSP policies
+	session.defaultSession.webRequest.onHeadersReceived(
+		(
+			details: OnHeadersReceivedListenerDetails,
+			callback: (response: HeadersReceivedResponse) => void
+		) => {
+			const responseHeaders = { ...details.responseHeaders };
 
-      // Delete all existing CSP-related headers to ensure no conflicts
-      Object.keys(responseHeaders).forEach((key: string) => {
-        if (key.toLowerCase().includes("content-security-policy")) {
-          delete responseHeaders[key];
-        }
-      });
+			// Delete all existing CSP-related headers to ensure no conflicts
+			Object.keys(responseHeaders).forEach((key: string) => {
+				if (key.toLowerCase().includes("content-security-policy")) {
+					delete responseHeaders[key];
+				}
+			});
 
-      // Set complete new CSP policy, exactly matching index.html meta tag
-      responseHeaders["Content-Security-Policy"] = [
-        "default-src 'self' blob: data: app:; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: app:; " +
-          "worker-src 'self' blob: app:; " +
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-          "font-src 'self' https://fonts.gstatic.com; " +
-          "connect-src 'self' blob: app: http://localhost:8080 ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://fal.run https://queue.fal.run https://rest.alpha.fal.ai https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://freesound.org https://cdn.freesound.org; " +
-          "media-src 'self' blob: data: app: https://freesound.org https://cdn.freesound.org https://fal.media https://v3.fal.media https://v3b.fal.media; " +
-          "img-src 'self' blob: data: app: https://fal.run https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://avatars.githubusercontent.com;",
-      ];
+			// Set complete new CSP policy, exactly matching index.html meta tag
+			responseHeaders["Content-Security-Policy"] = [
+				"default-src 'self' blob: data: app:; " +
+					"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: app:; " +
+					"worker-src 'self' blob: app:; " +
+					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+					"font-src 'self' https://fonts.gstatic.com; " +
+					"connect-src 'self' blob: app: http://localhost:8080 ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://fal.run https://queue.fal.run https://rest.alpha.fal.ai https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://freesound.org https://cdn.freesound.org; " +
+					"media-src 'self' blob: data: app: https://freesound.org https://cdn.freesound.org https://fal.media https://v3.fal.media https://v3b.fal.media; " +
+					"img-src 'self' blob: data: app: https://fal.run https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://avatars.githubusercontent.com;",
+			];
 
-      // Add COOP/COEP headers to support SharedArrayBuffer (required for FFmpeg WASM)
-      responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
-      responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
+			// Add COOP/COEP headers to support SharedArrayBuffer (required for FFmpeg WASM)
+			responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
+			responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
 
-      callback({ responseHeaders });
-    }
-  );
+			callback({ responseHeaders });
+		}
+	);
 
-  // Create the main window
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    icon: path.join(
-      app.isPackaged ? process.resourcesPath : __dirname,
-      process.platform === "darwin"
-        ? app.isPackaged
-          ? "icon.png"
-          : "../../build/icon.png"
-        : app.isPackaged
-          ? "icon.ico"
-          : "../../build/icon.ico"
-    ),
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      preload: path.join(__dirname, "./preload.js"),
-      webSecurity: true,
-      // Allow CORS for external APIs while maintaining security
-      webviewTag: false,
-    },
-  });
+	// Create the main window
+	mainWindow = new BrowserWindow({
+		width: 1400,
+		height: 900,
+		icon: path.join(
+			app.isPackaged ? process.resourcesPath : __dirname,
+			process.platform === "darwin"
+				? app.isPackaged
+					? "icon.png"
+					: "../../build/icon.png"
+				: app.isPackaged
+					? "icon.ico"
+					: "../../build/icon.ico"
+		),
+		webPreferences: {
+			nodeIntegration: false,
+			contextIsolation: true,
+			preload: path.join(__dirname, "./preload.js"),
+			webSecurity: true,
+			// Allow CORS for external APIs while maintaining security
+			webviewTag: false,
+		},
+	});
 
-  // Load the app
-  const isDev = process.env.NODE_ENV === "development";
-  if (isDev) {
-    mainWindow.loadURL("http://localhost:5173");
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools();
-  } else {
-    // Use custom app protocol to avoid file:// restrictions
-    mainWindow.loadURL("app://./index.html");
-  }
+	// Load the app
+	const isDev = process.env.NODE_ENV === "development";
+	if (isDev) {
+		mainWindow.loadURL("http://localhost:5173");
+		// Open DevTools in development
+		mainWindow.webContents.openDevTools();
+	} else {
+		// Use custom app protocol to avoid file:// restrictions
+		mainWindow.loadURL("app://./index.html");
+	}
 
-  // Handle external links
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: "deny" };
-  });
+	// Handle external links
+	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+		shell.openExternal(url);
+		return { action: "deny" };
+	});
 
-  // Window event handlers
-  mainWindow.on("closed", () => {
-    mainWindow = null;
-  });
+	// Window event handlers
+	mainWindow.on("closed", () => {
+		mainWindow = null;
+	});
 }
 
 // CLI key management — runs headless, delegates to bundled AICP binary
@@ -469,246 +469,246 @@ const cliArgs = process.argv.slice(app.isPackaged ? 1 : 2);
 const isCliKeyCommand = CLI_KEY_COMMANDS.includes(cliArgs[0]);
 
 if (isCliKeyCommand) {
-  app.whenReady().then(async () => {
-    try {
-      const { spawnSync } = require("child_process");
-      const { BinaryManager } = require("./binary-manager.js");
-      const bm = new BinaryManager();
-      await bm.initialize();
-      const aicpPath = bm.getBinaryPath("aicp");
+	app.whenReady().then(async () => {
+		try {
+			const { spawnSync } = require("child_process");
+			const { BinaryManager } = require("./binary-manager.js");
+			const bm = new BinaryManager();
+			await bm.initialize();
+			const aicpPath = bm.getBinaryPath("aicp");
 
-      if (!aicpPath) {
-        console.error(
-          "AICP binary not found. Install QCut or set up AICP standalone."
-        );
-        app.exit(1);
-        return;
-      }
+			if (!aicpPath) {
+				console.error(
+					"AICP binary not found. Install QCut or set up AICP standalone."
+				);
+				app.exit(1);
+				return;
+			}
 
-      const result = spawnSync(aicpPath, cliArgs, { stdio: "inherit" });
-      app.exit(result.status ?? 1);
-    } catch (err: any) {
-      console.error("CLI error:", err.message);
-      app.exit(1);
-    }
-  });
+			const result = spawnSync(aicpPath, cliArgs, { stdio: "inherit" });
+			app.exit(result.status ?? 1);
+		} catch (err: any) {
+			console.error("CLI error:", err.message);
+			app.exit(1);
+		}
+	});
 }
 
 if (!isCliKeyCommand) {
-  app.whenReady().then(() => {
-    // Set macOS dock icon (requires PNG format)
-    if (process.platform === "darwin" && app.dock) {
-      const iconPath = app.isPackaged
-        ? path.join(process.resourcesPath, "icon.png")
-        : path.join(__dirname, "../../build/icon.png");
-      if (fs.existsSync(iconPath)) {
-        app.dock.setIcon(iconPath);
-      }
-    }
+	app.whenReady().then(() => {
+		// Set macOS dock icon (requires PNG format)
+		if (process.platform === "darwin" && app.dock) {
+			const iconPath = app.isPackaged
+				? path.join(process.resourcesPath, "icon.png")
+				: path.join(__dirname, "../../build/icon.png");
+			if (fs.existsSync(iconPath)) {
+				app.dock.setIcon(iconPath);
+			}
+		}
 
-    // Determine base path based on whether app is packaged
-    const basePath = app.isPackaged
-      ? path.join(app.getAppPath(), "apps/web/dist")
-      : path.join(__dirname, "../../apps/web/dist");
+		// Determine base path based on whether app is packaged
+		const basePath = app.isPackaged
+			? path.join(app.getAppPath(), "apps/web/dist")
+			: path.join(__dirname, "../../apps/web/dist");
 
-    logger.log(`[Protocol] Base path: ${basePath}`);
-    logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
+		logger.log(`[Protocol] Base path: ${basePath}`);
+		logger.log(`[Protocol] Base path exists: ${fs.existsSync(basePath)}`);
 
-    // Register custom protocol using the newer handle API for better ES module support
-    protocol.handle("app", async (request) => {
-      let urlPath = request.url.slice("app://".length);
+		// Register custom protocol using the newer handle API for better ES module support
+		protocol.handle("app", async (request) => {
+			let urlPath = request.url.slice("app://".length);
 
-      // Clean up the URL path
-      if (urlPath.startsWith("./")) {
-        urlPath = urlPath.substring(2);
-      }
-      if (urlPath.startsWith("/")) {
-        urlPath = urlPath.substring(1);
-      }
+			// Clean up the URL path
+			if (urlPath.startsWith("./")) {
+				urlPath = urlPath.substring(2);
+			}
+			if (urlPath.startsWith("/")) {
+				urlPath = urlPath.substring(1);
+			}
 
-      // Default to index.html for root
-      if (!urlPath || urlPath === "") {
-        urlPath = "index.html";
-      }
+			// Default to index.html for root
+			if (!urlPath || urlPath === "") {
+				urlPath = "index.html";
+			}
 
-      // Security: Block path traversal attempts
-      // Check for ".." before normalization to catch traversal attempts
-      if (urlPath.includes("..")) {
-        logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
-        return new Response("Not Found", { status: 404 });
-      }
-      // Normalize path for consistent handling (converts / to \ on Windows)
-      const normalizedPath = path.normalize(urlPath);
+			// Security: Block path traversal attempts
+			// Check for ".." before normalization to catch traversal attempts
+			if (urlPath.includes("..")) {
+				logger.error(`[Protocol] Path traversal blocked: ${urlPath}`);
+				return new Response("Not Found", { status: 404 });
+			}
+			// Normalize path for consistent handling (converts / to \ on Windows)
+			const normalizedPath = path.normalize(urlPath);
 
-      try {
-        // Handle FFmpeg resources specifically
-        if (normalizedPath.startsWith("ffmpeg/")) {
-          const filename = normalizedPath.replace("ffmpeg/", "");
-          // In production, FFmpeg files are in resources/ffmpeg/
-          const ffmpegPath = path.join(
-            __dirname,
-            "resources",
-            "ffmpeg",
-            filename
-          );
+			try {
+				// Handle FFmpeg resources specifically
+				if (normalizedPath.startsWith("ffmpeg/")) {
+					const filename = normalizedPath.replace("ffmpeg/", "");
+					// In production, FFmpeg files are in resources/ffmpeg/
+					const ffmpegPath = path.join(
+						__dirname,
+						"resources",
+						"ffmpeg",
+						filename
+					);
 
-          // Check if file exists in resources/ffmpeg, fallback to dist
-          if (fs.existsSync(ffmpegPath)) {
-            return await net.fetch(pathToFileURL(ffmpegPath).toString());
-          }
+					// Check if file exists in resources/ffmpeg, fallback to dist
+					if (fs.existsSync(ffmpegPath)) {
+						return await net.fetch(pathToFileURL(ffmpegPath).toString());
+					}
 
-          // Fallback to dist directory
-          const distPath = path.join(basePath, "ffmpeg", filename);
-          return await net.fetch(pathToFileURL(distPath).toString());
-        }
+					// Fallback to dist directory
+					const distPath = path.join(basePath, "ffmpeg", filename);
+					return await net.fetch(pathToFileURL(distPath).toString());
+				}
 
-        // Handle other resources with path containment check
-        const filePath = path.resolve(basePath, normalizedPath);
-        const baseResolved = path.resolve(basePath) + path.sep;
+				// Handle other resources with path containment check
+				const filePath = path.resolve(basePath, normalizedPath);
+				const baseResolved = path.resolve(basePath) + path.sep;
 
-        // Ensure resolved path stays within basePath
-        if (
-          !filePath.startsWith(baseResolved) &&
-          filePath !== path.resolve(basePath)
-        ) {
-          logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
-          return new Response("Not Found", { status: 404 });
-        }
+				// Ensure resolved path stays within basePath
+				if (
+					!filePath.startsWith(baseResolved) &&
+					filePath !== path.resolve(basePath)
+				) {
+					logger.error(`[Protocol] Path traversal blocked: ${normalizedPath}`);
+					return new Response("Not Found", { status: 404 });
+				}
 
-        if (fs.existsSync(filePath)) {
-          logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
-          return await net.fetch(pathToFileURL(filePath).toString());
-        }
+				if (fs.existsSync(filePath)) {
+					logger.log(`[Protocol] Serving: ${normalizedPath} -> ${filePath}`);
+					return await net.fetch(pathToFileURL(filePath).toString());
+				}
 
-        // SPA fallback: serve index.html for navigation requests without file extensions
-        if (!path.extname(normalizedPath)) {
-          const indexPath = path.join(basePath, "index.html");
-          if (fs.existsSync(indexPath)) {
-            logger.log(
-              `[Protocol] SPA fallback: ${normalizedPath} -> index.html`
-            );
-            return await net.fetch(pathToFileURL(indexPath).toString());
-          }
-        }
+				// SPA fallback: serve index.html for navigation requests without file extensions
+				if (!path.extname(normalizedPath)) {
+					const indexPath = path.join(basePath, "index.html");
+					if (fs.existsSync(indexPath)) {
+						logger.log(
+							`[Protocol] SPA fallback: ${normalizedPath} -> index.html`
+						);
+						return await net.fetch(pathToFileURL(indexPath).toString());
+					}
+				}
 
-        logger.error(`[Protocol] File not found: ${filePath}`);
-        return new Response("Not Found", { status: 404 });
-      } catch (error) {
-        logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
-        return new Response("Internal Server Error", { status: 500 });
-      }
-    });
+				logger.error(`[Protocol] File not found: ${filePath}`);
+				return new Response("Not Found", { status: 404 });
+			} catch (error) {
+				logger.error(`[Protocol] Error fetching ${normalizedPath}:`, error);
+				return new Response("Internal Server Error", { status: 500 });
+			}
+		});
 
-    // Start the static server to serve FFmpeg WASM files
-    staticServer = createStaticServer();
+		// Start the static server to serve FFmpeg WASM files
+		staticServer = createStaticServer();
 
-    createWindow();
+		createWindow();
 
-    // Register all IPC handlers with try/catch to prevent cascade failures
-    const handlers: [string, () => void][] = [
-      ["FFmpegIPC", setupFFmpegIPC],
-      ["SoundIPC", setupSoundIPC],
-      ["ThemeIPC", setupThemeIPC],
-      ["ApiKeyIPC", setupApiKeyIPC],
-      ["GeminiHandlers", setupGeminiHandlers],
-      ["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
-      ["GeminiChatIPC", setupGeminiChatIPC],
-      ["AIFillerIPC", setupAIFillerIPC],
-      ["PtyIPC", setupPtyIPC],
-      ["AIVideoHandlers", registerAIVideoHandlers],
-      ["SkillsIPC", setupSkillsIPC],
-      ["SkillsSyncIPC", setupSkillsSyncIPC],
-      ["AIPipelineIPC", setupAIPipelineIPC],
-      ["MediaImportIPC", setupMediaImportIPC],
-      ["ProjectFolderIPC", setupProjectFolderIPC],
-      ["ClaudeIPC", setupAllClaudeIPC],
-      ["RemotionFolderIPC", setupRemotionFolderIPC],
-      ["ScreenRecordingIPC", setupScreenRecordingIPC],
-    ];
+		// Register all IPC handlers with try/catch to prevent cascade failures
+		const handlers: [string, () => void][] = [
+			["FFmpegIPC", setupFFmpegIPC],
+			["SoundIPC", setupSoundIPC],
+			["ThemeIPC", setupThemeIPC],
+			["ApiKeyIPC", setupApiKeyIPC],
+			["GeminiHandlers", setupGeminiHandlers],
+			["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
+			["GeminiChatIPC", setupGeminiChatIPC],
+			["AIFillerIPC", setupAIFillerIPC],
+			["PtyIPC", setupPtyIPC],
+			["AIVideoHandlers", registerAIVideoHandlers],
+			["SkillsIPC", setupSkillsIPC],
+			["SkillsSyncIPC", setupSkillsSyncIPC],
+			["AIPipelineIPC", setupAIPipelineIPC],
+			["MediaImportIPC", setupMediaImportIPC],
+			["ProjectFolderIPC", setupProjectFolderIPC],
+			["ClaudeIPC", setupAllClaudeIPC],
+			["RemotionFolderIPC", setupRemotionFolderIPC],
+			["ScreenRecordingIPC", setupScreenRecordingIPC],
+		];
 
-    for (const [name, setup] of handlers) {
-      try {
-        setup();
-        console.log(`✅ ${name} registered`);
-      } catch (err: any) {
-        console.error(`❌ ${name} FAILED:`, err.message, err.stack);
-      }
-    }
+		for (const [name, setup] of handlers) {
+			try {
+				setup();
+				console.log(`✅ ${name} registered`);
+			} catch (err: any) {
+				console.error(`❌ ${name} FAILED:`, err.message, err.stack);
+			}
+		}
 
-    initFFmpegHealthCheck();
-    migrateAIVideosToDocuments()
-      .then(
-        (result: {
-          copied: number;
-          skipped: number;
-          projectsProcessed: number;
-          errors: string[];
-        }) => {
-          console.log(
-            `[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
-          );
-          if (result.errors.length > 0) {
-            console.warn("[AI Video Migration] Errors:", result.errors);
-          }
-        }
-      )
-      .catch((err: Error) => {
-        console.error("[AI Video Migration] Failed:", err.message);
-      });
-    // Note: font-resolver removed - handler not implemented
+		initFFmpegHealthCheck();
+		migrateAIVideosToDocuments()
+			.then(
+				(result: {
+					copied: number;
+					skipped: number;
+					projectsProcessed: number;
+					errors: string[];
+				}) => {
+					console.log(
+						`[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
+					);
+					if (result.errors.length > 0) {
+						console.warn("[AI Video Migration] Errors:", result.errors);
+					}
+				}
+			)
+			.catch((err: Error) => {
+				console.error("[AI Video Migration] Failed:", err.message);
+			});
+		// Note: font-resolver removed - handler not implemented
 
-    // Configure auto-updater for production builds
-    if (app.isPackaged) {
-      setupAutoUpdater();
-    }
+		// Configure auto-updater for production builds
+		if (app.isPackaged) {
+			setupAutoUpdater();
+		}
 
-    // Register inline IPC handlers (audio/video, FAL, dialogs, storage, updates, etc.)
-    registerMainIpcHandlers({
-      getMainWindow: () => mainWindow,
-      logger,
-      autoUpdater,
-      getReleasesDir,
-      readChangelogFallback,
-    });
-  });
+		// Register inline IPC handlers (audio/video, FAL, dialogs, storage, updates, etc.)
+		registerMainIpcHandlers({
+			getMainWindow: () => mainWindow,
+			logger,
+			autoUpdater,
+			getReleasesDir,
+			readChangelogFallback,
+		});
+	});
 } // end if (!isCliKeyCommand)
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    // Clean up audio temp files
-    const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
-    cleanupAllAudioFiles();
+	if (process.platform !== "darwin") {
+		// Clean up audio temp files
+		const { cleanupAllAudioFiles } = require("./audio-temp-handler.js");
+		cleanupAllAudioFiles();
 
-    // Clean up video temp files
-    const { cleanupAllVideoFiles } = require("./video-temp-handler.js");
-    cleanupAllVideoFiles();
+		// Clean up video temp files
+		const { cleanupAllVideoFiles } = require("./video-temp-handler.js");
+		cleanupAllVideoFiles();
 
-    // Clean up PTY sessions
-    cleanupPtySessions();
+		// Clean up PTY sessions
+		cleanupPtySessions();
 
-    // Clean up AI Pipeline processes
-    cleanupAIPipeline();
+		// Clean up AI Pipeline processes
+		cleanupAIPipeline();
 
-    // Close the Claude HTTP server
-    try {
-      const { stopClaudeHTTPServer } = require("./claude/index.js");
-      stopClaudeHTTPServer();
-    } catch (error: unknown) {
-      logger.warn("⚠️ [Claude] Failed to stop HTTP server:", error);
-    }
+		// Close the Claude HTTP server
+		try {
+			const { stopClaudeHTTPServer } = require("./claude/index.js");
+			stopClaudeHTTPServer();
+		} catch (error: unknown) {
+			logger.warn("⚠️ [Claude] Failed to stop HTTP server:", error);
+		}
 
-    // Close the static server when quitting
-    if (staticServer) {
-      staticServer.close();
-    }
-    app.quit();
-  }
+		// Close the static server when quitting
+		if (staticServer) {
+			staticServer.close();
+		}
+		app.quit();
+	}
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+	if (BrowserWindow.getAllWindows().length === 0) {
+		createWindow();
+	}
 });
 
 // Export types for other modules

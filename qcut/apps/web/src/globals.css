@@ -8,83 +8,83 @@
 @plugin "tailwindcss-animate";
 
 :root {
-  /* Custom colors - light mode (default) */
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(0 0% 3.9%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(0 0% 3.9%);
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(0 0% 3.9%);
-  --primary: hsl(0 0% 9%);
-  --primary-foreground: hsl(0 0% 98%);
-  --secondary: hsl(0 0% 96.1%);
-  --secondary-foreground: hsl(0 0% 9%);
-  --muted: hsl(0 0% 96.1%);
-  --muted-foreground: hsl(0 0% 45.1%);
-  --accent: hsl(0 0% 96.1%);
-  --accent-foreground: hsl(0 0% 9%);
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(0 0% 89.8%);
-  --input: hsl(0 0% 89.8%);
-  --ring: hsl(0 0% 3.9%);
-  --chart-1: hsl(12 76% 61%);
-  --chart-2: hsl(173 58% 39%);
-  --chart-3: hsl(197 37% 24%);
-  --chart-4: hsl(43 74% 66%);
-  --chart-5: hsl(27 87% 67%);
-  --sidebar-background: hsl(0 0% 100%);
-  --sidebar-foreground: hsl(0 0% 3.9%);
-  --sidebar-primary: hsl(0 0% 9%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(0 0% 96.1%);
-  --sidebar-accent-foreground: hsl(0 0% 9%);
-  --sidebar-border: hsl(0 0% 89.8%);
-  --sidebar-ring: hsl(0 0% 3.9%);
+	/* Custom colors - light mode (default) */
+	--background: hsl(0 0% 100%);
+	--foreground: hsl(0 0% 3.9%);
+	--card: hsl(0 0% 100%);
+	--card-foreground: hsl(0 0% 3.9%);
+	--popover: hsl(0 0% 100%);
+	--popover-foreground: hsl(0 0% 3.9%);
+	--primary: hsl(0 0% 9%);
+	--primary-foreground: hsl(0 0% 98%);
+	--secondary: hsl(0 0% 96.1%);
+	--secondary-foreground: hsl(0 0% 9%);
+	--muted: hsl(0 0% 96.1%);
+	--muted-foreground: hsl(0 0% 45.1%);
+	--accent: hsl(0 0% 96.1%);
+	--accent-foreground: hsl(0 0% 9%);
+	--destructive: hsl(0 84.2% 60.2%);
+	--destructive-foreground: hsl(0 0% 98%);
+	--border: hsl(0 0% 89.8%);
+	--input: hsl(0 0% 89.8%);
+	--ring: hsl(0 0% 3.9%);
+	--chart-1: hsl(12 76% 61%);
+	--chart-2: hsl(173 58% 39%);
+	--chart-3: hsl(197 37% 24%);
+	--chart-4: hsl(43 74% 66%);
+	--chart-5: hsl(27 87% 67%);
+	--sidebar-background: hsl(0 0% 100%);
+	--sidebar-foreground: hsl(0 0% 3.9%);
+	--sidebar-primary: hsl(0 0% 9%);
+	--sidebar-primary-foreground: hsl(0 0% 98%);
+	--sidebar-accent: hsl(0 0% 96.1%);
+	--sidebar-accent-foreground: hsl(0 0% 9%);
+	--sidebar-border: hsl(0 0% 89.8%);
+	--sidebar-ring: hsl(0 0% 3.9%);
 
-  /* Radius base */
-  --radius: 1rem;
+	/* Radius base */
+	--radius: 1rem;
 }
 .dark {
-  /* Custom colors - dark mode */
-  --background: hsl(0 0% 4%);
-  --foreground: hsl(0 0% 89%);
-  --card: hsl(0 0% 14.9%);
-  --card-foreground: hsl(0 0% 98%);
-  --popover: hsl(0 0% 14.9%);
-  --popover-foreground: hsl(0 0% 98%);
-  --primary: hsl(205, 84%, 53%);
-  --primary-foreground: hsl(0 0% 9%);
-  --secondary: hsl(0 0% 14.9%);
-  --secondary-foreground: hsl(0 0% 98%);
-  --muted: hsl(0 0% 14.9%);
-  --muted-foreground: hsl(0 0% 63.9%);
-  --accent: hsl(0 0% 14.9%);
-  --accent-foreground: hsl(0 0% 98%);
-  --destructive: hsl(0 100% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(0 0% 17%);
-  --input: hsl(0 0% 14.9%);
-  --ring: hsl(0 0% 83.1%);
-  --chart-1: hsl(220 70% 50%);
-  --chart-2: hsl(160 60% 45%);
-  --chart-3: hsl(30 80% 55%);
-  --chart-4: hsl(280 65% 60%);
-  --chart-5: hsl(340 75% 55%);
-  --sidebar-background: hsl(0 0% 3.9%);
-  --sidebar-foreground: hsl(0 0% 98%);
-  --sidebar-primary: hsl(0 0% 98%);
-  --sidebar-primary-foreground: hsl(0 0% 9%);
-  --sidebar-accent: hsl(0 0% 14.9%);
-  --sidebar-accent-foreground: hsl(0 0% 98%);
-  --sidebar-border: hsl(0 0% 14.9%);
-  --sidebar-ring: hsl(0 0% 83.1%);
-  --panel-background: hsl(0 0% 11%);
-  --panel-accent: hsl(0 0% 15%);
+	/* Custom colors - dark mode */
+	--background: hsl(0 0% 4%);
+	--foreground: hsl(0 0% 89%);
+	--card: hsl(0 0% 14.9%);
+	--card-foreground: hsl(0 0% 98%);
+	--popover: hsl(0 0% 14.9%);
+	--popover-foreground: hsl(0 0% 98%);
+	--primary: hsl(205, 84%, 53%);
+	--primary-foreground: hsl(0 0% 9%);
+	--secondary: hsl(0 0% 14.9%);
+	--secondary-foreground: hsl(0 0% 98%);
+	--muted: hsl(0 0% 14.9%);
+	--muted-foreground: hsl(0 0% 63.9%);
+	--accent: hsl(0 0% 14.9%);
+	--accent-foreground: hsl(0 0% 98%);
+	--destructive: hsl(0 100% 60%);
+	--destructive-foreground: hsl(0 0% 98%);
+	--border: hsl(0 0% 17%);
+	--input: hsl(0 0% 14.9%);
+	--ring: hsl(0 0% 83.1%);
+	--chart-1: hsl(220 70% 50%);
+	--chart-2: hsl(160 60% 45%);
+	--chart-3: hsl(30 80% 55%);
+	--chart-4: hsl(280 65% 60%);
+	--chart-5: hsl(340 75% 55%);
+	--sidebar-background: hsl(0 0% 3.9%);
+	--sidebar-foreground: hsl(0 0% 98%);
+	--sidebar-primary: hsl(0 0% 98%);
+	--sidebar-primary-foreground: hsl(0 0% 9%);
+	--sidebar-accent: hsl(0 0% 14.9%);
+	--sidebar-accent-foreground: hsl(0 0% 98%);
+	--sidebar-border: hsl(0 0% 14.9%);
+	--sidebar-ring: hsl(0 0% 83.1%);
+	--panel-background: hsl(0 0% 11%);
+	--panel-accent: hsl(0 0% 15%);
 }
 
 @layer base {
-  /*
+	/*
     The default border color has changed to `currentcolor` in Tailwind CSS v4,
     so we've added these compatibility styles to make sure everything still
     looks the same as it did with Tailwind CSS v3.
@@ -92,22 +92,22 @@
     If we ever want to remove these styles, we need to add an explicit border
     color utility to any element that depends on these defaults.
   */
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
-  /* Other default base styles */
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-    /* Prevent back/forward swipe */
-    overscroll-behavior-x: contain;
-  }
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: var(--color-gray-200, currentcolor);
+	}
+	/* Other default base styles */
+	* {
+		@apply border-border;
+	}
+	body {
+		@apply bg-background text-foreground;
+		/* Prevent back/forward swipe */
+		overscroll-behavior-x: contain;
+	}
 }
 
 @theme inline {
@@ -227,47 +227,47 @@
 
 /* Timeline scrollbar styling (native scroll replacement for Radix ScrollArea) */
 .timeline-scroll::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+	height: 8px;
+	width: 8px;
 }
 
 .timeline-scroll::-webkit-scrollbar-track {
-  background: var(--muted);
+	background: var(--muted);
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+	background: var(--border);
+	border-radius: 4px;
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+	background: var(--muted-foreground);
 }
 
 /* xterm.js terminal styles */
 .xterm {
-  height: 100%;
-  width: 100%;
+	height: 100%;
+	width: 100%;
 }
 
 .xterm-viewport {
-  overflow-y: auto;
+	overflow-y: auto;
 }
 
 /* Custom scrollbar for terminal */
 .xterm-viewport::-webkit-scrollbar {
-  width: 8px;
+	width: 8px;
 }
 
 .xterm-viewport::-webkit-scrollbar-track {
-  background: #1a1a1a;
+	background: #1a1a1a;
 }
 
 .xterm-viewport::-webkit-scrollbar-thumb {
-  background: #3a3a3a;
-  border-radius: 4px;
+	background: #3a3a3a;
+	border-radius: 4px;
 }
 
 .xterm-viewport::-webkit-scrollbar-thumb:hover {
-  background: #4a4a4a;
+	background: #4a4a4a;
 }

@@ -25,51 +25,51 @@ const LOG_COMPONENT = "NanoBananaParams";
  * })
  */
 export function convertNanoBananaParameters(
-  params: Record<string, unknown>
+	params: Record<string, unknown>
 ): Record<string, unknown> {
-  // Sanitize and validate image URLs - limit to max 10 URLs
-  const urls = (params.image_urls ??
-    (params.imageUrl ? [params.imageUrl] : [])) as string[];
-  const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
+	// Sanitize and validate image URLs - limit to max 10 URLs
+	const urls = (params.image_urls ??
+		(params.imageUrl ? [params.imageUrl] : [])) as string[];
+	const imageUrls = Array.isArray(urls) ? urls.slice(0, 10) : [];
 
-  if (Array.isArray(urls) && urls.length > 10) {
-    debugLogger.warn(LOG_COMPONENT, "IMAGE_URLS_TRUNCATED", {
-      originalCount: urls.length,
-      maxAllowed: 10,
-    });
-  }
+	if (Array.isArray(urls) && urls.length > 10) {
+		debugLogger.warn(LOG_COMPONENT, "IMAGE_URLS_TRUNCATED", {
+			originalCount: urls.length,
+			maxAllowed: 10,
+		});
+	}
 
-  // Clamp num_images to valid range (1-4)
-  const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
-  const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : rawNumImages;
-  const numImages = Math.max(1, Math.min(4, requestedNumImages));
+	// Clamp num_images to valid range (1-4)
+	const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
+	const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : rawNumImages;
+	const numImages = Math.max(1, Math.min(4, requestedNumImages));
 
-  if (numImages !== requestedNumImages) {
-    debugLogger.warn(LOG_COMPONENT, "NUM_IMAGES_CLAMPED", {
-      requested: requestedNumImages,
-      clamped: numImages,
-      min: 1,
-      max: 4,
-    });
-  }
+	if (numImages !== requestedNumImages) {
+		debugLogger.warn(LOG_COMPONENT, "NUM_IMAGES_CLAMPED", {
+			requested: requestedNumImages,
+			clamped: numImages,
+			min: 1,
+			max: 4,
+		});
+	}
 
-  const requestedFormat =
-    (params.output_format as string | undefined) ??
-    (params.outputFormat as string | undefined) ??
-    "png";
-  const outputFormat = normalizeOutputFormat(requestedFormat, "png");
+	const requestedFormat =
+		(params.output_format as string | undefined) ??
+		(params.outputFormat as string | undefined) ??
+		"png";
+	const outputFormat = normalizeOutputFormat(requestedFormat, "png");
 
-  // Ensure sync_mode is boolean
-  const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? false);
+	// Ensure sync_mode is boolean
+	const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? false);
 
-  // Sanitize prompt
-  const prompt = (params.prompt || "") as string;
+	// Sanitize prompt
+	const prompt = (params.prompt || "") as string;
 
-  return {
-    image_urls: imageUrls,
-    prompt,
-    num_images: numImages,
-    output_format: outputFormat,
-    sync_mode: syncMode,
-  };
+	return {
+		image_urls: imageUrls,
+		prompt,
+		num_images: numImages,
+		output_format: outputFormat,
+		sync_mode: syncMode,
+	};
 }

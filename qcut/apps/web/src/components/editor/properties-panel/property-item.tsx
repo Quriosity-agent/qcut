@@ -3,83 +3,83 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 interface PropertyItemProps {
-  direction?: "row" | "column";
-  children: React.ReactNode;
-  className?: string;
+	direction?: "row" | "column";
+	children: React.ReactNode;
+	className?: string;
 }
 
 export function PropertyItem({
-  direction = "row",
-  children,
-  className,
+	direction = "row",
+	children,
+	className,
 }: PropertyItemProps) {
-  return (
-    <div
-      className={cn(
-        "flex gap-2",
-        direction === "row"
-          ? "items-center justify-between gap-6"
-          : "flex-col gap-1",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
+	return (
+		<div
+			className={cn(
+				"flex gap-2",
+				direction === "row"
+					? "items-center justify-between gap-6"
+					: "flex-col gap-1",
+				className
+			)}
+		>
+			{children}
+		</div>
+	);
 }
 
 export function PropertyItemLabel({
-  children,
-  className,
+	children,
+	className,
 }: {
-  children: React.ReactNode;
-  className?: string;
+	children: React.ReactNode;
+	className?: string;
 }) {
-  return <label className={cn("text-xs", className)}>{children}</label>;
+	return <label className={cn("text-xs", className)}>{children}</label>;
 }
 
 export function PropertyItemValue({
-  children,
-  className,
+	children,
+	className,
 }: {
-  children: React.ReactNode;
-  className?: string;
+	children: React.ReactNode;
+	className?: string;
 }) {
-  return <div className={cn("flex-1", className)}>{children}</div>;
+	return <div className={cn("flex-1", className)}>{children}</div>;
 }
 
 interface PropertyGroupProps {
-  title: React.ReactNode;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  className?: string;
+	title: React.ReactNode;
+	children: React.ReactNode;
+	defaultExpanded?: boolean;
+	className?: string;
 }
 
 export function PropertyGroup({
-  title,
-  children,
-  defaultExpanded = true,
-  className,
+	title,
+	children,
+	defaultExpanded = true,
+	className,
 }: PropertyGroupProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+	const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  return (
-    <PropertyItem direction="column" className={cn("gap-3", className)}>
-      <button
-        type="button"
-        className="flex items-center gap-1.5"
-        onClick={() => setIsExpanded((v) => !v)}
-        aria-expanded={isExpanded}
-      >
-        <span className="text-xs">{title}</span>
-        <ChevronDown
-          className={cn(
-            "size-3 transition-transform",
-            !isExpanded && "-rotate-90"
-          )}
-        />
-      </button>
-      {isExpanded && <PropertyItemValue>{children}</PropertyItemValue>}
-    </PropertyItem>
-  );
+	return (
+		<PropertyItem direction="column" className={cn("gap-3", className)}>
+			<button
+				type="button"
+				className="flex items-center gap-1.5"
+				onClick={() => setIsExpanded((v) => !v)}
+				aria-expanded={isExpanded}
+			>
+				<span className="text-xs">{title}</span>
+				<ChevronDown
+					className={cn(
+						"size-3 transition-transform",
+						!isExpanded && "-rotate-90"
+					)}
+				/>
+			</button>
+			{isExpanded && <PropertyItemValue>{children}</PropertyItemValue>}
+		</PropertyItem>
+	);
 }

@@ -8,10 +8,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  loadComponentFromCode,
-  loadComponentFromFile,
-  DEFAULT_LOAD_OPTIONS,
-  type LoadResult,
+	loadComponentFromCode,
+	loadComponentFromFile,
+	DEFAULT_LOAD_OPTIONS,
+	type LoadResult,
 } from "../component-loader";
 
 // ============================================================================
@@ -96,8 +96,8 @@ export function MinimalComponent() {
  * Create a mock File object
  */
 function createMockFile(content: string, name: string): File {
-  const blob = new Blob([content], { type: "text/typescript" });
-  return new File([blob], name, { type: "text/typescript" });
+	const blob = new Blob([content], { type: "text/typescript" });
+	return new File([blob], name, { type: "text/typescript" });
 }
 
 // ============================================================================
@@ -105,11 +105,11 @@ function createMockFile(content: string, name: string): File {
 // ============================================================================
 
 beforeEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 // ============================================================================
@@ -117,163 +117,163 @@ afterEach(() => {
 // ============================================================================
 
 describe("loadComponentFromCode", () => {
-  describe("Valid Components", () => {
-    it("should successfully load a valid component", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+	describe("Valid Components", () => {
+		it("should successfully load a valid component", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.success).toBe(true);
-      expect(result.component).toBeDefined();
-      expect(result.error).toBeUndefined();
-    });
+			expect(result.success).toBe(true);
+			expect(result.component).toBeDefined();
+			expect(result.error).toBeUndefined();
+		});
 
-    it("should extract component name from code", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract component name from code", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.name).toBe("TestComponent");
-    });
+			expect(result.component?.name).toBe("TestComponent");
+		});
 
-    it("should extract component description", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract component description", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.description).toBe(
-        "A test component for testing"
-      );
-    });
+			expect(result.component?.description).toBe(
+				"A test component for testing"
+			);
+		});
 
-    it("should extract component category", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract component category", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.category).toBe("animation");
-    });
+			expect(result.component?.category).toBe("animation");
+		});
 
-    it("should extract component dimensions", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract component dimensions", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.width).toBe(1920);
-      expect(result.component?.height).toBe(1080);
-    });
+			expect(result.component?.width).toBe(1920);
+			expect(result.component?.height).toBe(1080);
+		});
 
-    it("should extract component timing", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract component timing", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.durationInFrames).toBe(90);
-      expect(result.component?.fps).toBe(30);
-    });
+			expect(result.component?.durationInFrames).toBe(90);
+			expect(result.component?.fps).toBe(30);
+		});
 
-    it("should extract tags", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract tags", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.tags).toEqual(["test", "demo"]);
-    });
+			expect(result.component?.tags).toEqual(["test", "demo"]);
+		});
 
-    it("should extract version and author", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should extract version and author", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.version).toBe("1.0.0");
-      expect(result.component?.author).toBe("Test Author");
-    });
+			expect(result.component?.version).toBe("1.0.0");
+			expect(result.component?.author).toBe("Test Author");
+		});
 
-    it("should set source as imported", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should set source as imported", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.source).toBe("imported");
-    });
+			expect(result.component?.source).toBe("imported");
+		});
 
-    it("should generate a unique component ID", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should generate a unique component ID", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.component?.id).toMatch(/^imported-test-component-/);
-    });
+			expect(result.component?.id).toMatch(/^imported-test-component-/);
+		});
 
-    it("should use custom ID when provided", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false, customId: "my-custom-id" }
-      );
+		it("should use custom ID when provided", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false, customId: "my-custom-id" }
+			);
 
-      expect(result.component?.id).toBe("my-custom-id");
-    });
+			expect(result.component?.id).toBe("my-custom-id");
+		});
 
-    it("should include validation result", async () => {
-      const result = await loadComponentFromCode(
-        VALID_COMPONENT_CODE,
-        "test-component.tsx",
-        { storeInDB: false }
-      );
+		it("should include validation result", async () => {
+			const result = await loadComponentFromCode(
+				VALID_COMPONENT_CODE,
+				"test-component.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.validation).toBeDefined();
-      expect(result.validation?.valid).toBe(true);
-    });
-  });
+			expect(result.validation).toBeDefined();
+			expect(result.validation?.valid).toBe(true);
+		});
+	});
 
-  describe("Invalid Components", () => {
-    it("should reject components with forbidden APIs", async () => {
-      const result = await loadComponentFromCode(
-        INVALID_COMPONENT_CODE,
-        "invalid.tsx",
-        { storeInDB: false }
-      );
+	describe("Invalid Components", () => {
+		it("should reject components with forbidden APIs", async () => {
+			const result = await loadComponentFromCode(
+				INVALID_COMPONENT_CODE,
+				"invalid.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.success).toBe(false);
-      expect(result.component).toBeUndefined();
-      expect(result.error).toBeDefined();
-    });
+			expect(result.success).toBe(false);
+			expect(result.component).toBeUndefined();
+			expect(result.error).toBeDefined();
+		});
 
-    it("should include validation errors", async () => {
-      const result = await loadComponentFromCode(
-        INVALID_COMPONENT_CODE,
-        "invalid.tsx",
-        { storeInDB: false }
-      );
+		it("should include validation errors", async () => {
+			const result = await loadComponentFromCode(
+				INVALID_COMPONENT_CODE,
+				"invalid.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.validation).toBeDefined();
-      expect(result.validation?.valid).toBe(false);
-      expect(result.validation?.errors.length).toBeGreaterThan(0);
-    });
+			expect(result.validation).toBeDefined();
+			expect(result.validation?.valid).toBe(false);
+			expect(result.validation?.errors.length).toBeGreaterThan(0);
+		});
 
-    it("should reject code with eval", async () => {
-      const codeWithEval = `
+		it("should reject code with eval", async () => {
+			const codeWithEval = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -288,16 +288,16 @@ describe("loadComponentFromCode", () => {
         }
       `;
 
-      const result = await loadComponentFromCode(codeWithEval, "test.tsx", {
-        storeInDB: false,
-      });
+			const result = await loadComponentFromCode(codeWithEval, "test.tsx", {
+				storeInDB: false,
+			});
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("eval()");
-    });
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("eval()");
+		});
 
-    it("should reject code with fetch", async () => {
-      const codeWithFetch = `
+		it("should reject code with fetch", async () => {
+			const codeWithFetch = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -312,32 +312,32 @@ describe("loadComponentFromCode", () => {
         }
       `;
 
-      const result = await loadComponentFromCode(codeWithFetch, "test.tsx", {
-        storeInDB: false,
-      });
+			const result = await loadComponentFromCode(codeWithFetch, "test.tsx", {
+				storeInDB: false,
+			});
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Network fetch");
-    });
-  });
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("Network fetch");
+		});
+	});
 
-  describe("Minimal Components", () => {
-    it("should provide default values for missing metadata", async () => {
-      const result = await loadComponentFromCode(
-        MINIMAL_COMPONENT_CODE,
-        "minimal.tsx",
-        { storeInDB: false }
-      );
+	describe("Minimal Components", () => {
+		it("should provide default values for missing metadata", async () => {
+			const result = await loadComponentFromCode(
+				MINIMAL_COMPONENT_CODE,
+				"minimal.tsx",
+				{ storeInDB: false }
+			);
 
-      expect(result.success).toBe(true);
-      expect(result.component?.name).toBe("Unknown Component");
-      expect(result.component?.category).toBe("animation");
-      expect(result.component?.durationInFrames).toBe(90);
-      expect(result.component?.fps).toBe(30);
-      expect(result.component?.width).toBe(1920);
-      expect(result.component?.height).toBe(1080);
-    });
-  });
+			expect(result.success).toBe(true);
+			expect(result.component?.name).toBe("Unknown Component");
+			expect(result.component?.category).toBe("animation");
+			expect(result.component?.durationInFrames).toBe(90);
+			expect(result.component?.fps).toBe(30);
+			expect(result.component?.width).toBe(1920);
+			expect(result.component?.height).toBe(1080);
+		});
+	});
 });
 
 // ============================================================================
@@ -345,29 +345,29 @@ describe("loadComponentFromCode", () => {
 // ============================================================================
 
 describe("loadComponentFromFile", () => {
-  it("should reject non-TypeScript files", async () => {
-    const file = createMockFile(VALID_COMPONENT_CODE, "component.js");
-    const result = await loadComponentFromFile(file, { storeInDB: false });
+	it("should reject non-TypeScript files", async () => {
+		const file = createMockFile(VALID_COMPONENT_CODE, "component.js");
+		const result = await loadComponentFromFile(file, { storeInDB: false });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Only .tsx and .ts files are supported");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("Only .tsx and .ts files are supported");
+	});
 
-  it("should reject .jsx files", async () => {
-    const file = createMockFile(VALID_COMPONENT_CODE, "component.jsx");
-    const result = await loadComponentFromFile(file, { storeInDB: false });
+	it("should reject .jsx files", async () => {
+		const file = createMockFile(VALID_COMPONENT_CODE, "component.jsx");
+		const result = await loadComponentFromFile(file, { storeInDB: false });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Only .tsx and .ts files are supported");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("Only .tsx and .ts files are supported");
+	});
 
-  it("should reject .txt files", async () => {
-    const file = createMockFile("some text", "component.txt");
-    const result = await loadComponentFromFile(file, { storeInDB: false });
+	it("should reject .txt files", async () => {
+		const file = createMockFile("some text", "component.txt");
+		const result = await loadComponentFromFile(file, { storeInDB: false });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Only .tsx and .ts files are supported");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toBe("Only .tsx and .ts files are supported");
+	});
 });
 
 // ============================================================================
@@ -375,11 +375,11 @@ describe("loadComponentFromFile", () => {
 // ============================================================================
 
 describe("DEFAULT_LOAD_OPTIONS", () => {
-  it("should have expected default values", () => {
-    expect(DEFAULT_LOAD_OPTIONS.sandbox).toBe(true);
-    expect(DEFAULT_LOAD_OPTIONS.generateThumbnail).toBe(false);
-    expect(DEFAULT_LOAD_OPTIONS.storeInDB).toBe(true);
-  });
+	it("should have expected default values", () => {
+		expect(DEFAULT_LOAD_OPTIONS.sandbox).toBe(true);
+		expect(DEFAULT_LOAD_OPTIONS.generateThumbnail).toBe(false);
+		expect(DEFAULT_LOAD_OPTIONS.storeInDB).toBe(true);
+	});
 });
 
 // ============================================================================
@@ -387,50 +387,50 @@ describe("DEFAULT_LOAD_OPTIONS", () => {
 // ============================================================================
 
 describe("Component ID Generation", () => {
-  it("should sanitize file names with special characters", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "My Component (v2).tsx",
-      {
-        storeInDB: false,
-      }
-    );
+	it("should sanitize file names with special characters", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"My Component (v2).tsx",
+			{
+				storeInDB: false,
+			}
+		);
 
-    expect(result.component?.id).toMatch(/^imported-my-component--v2--/);
-  });
+		expect(result.component?.id).toMatch(/^imported-my-component--v2--/);
+	});
 
-  it("should lowercase the file name", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "MyComponent.tsx",
-      {
-        storeInDB: false,
-      }
-    );
+	it("should lowercase the file name", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"MyComponent.tsx",
+			{
+				storeInDB: false,
+			}
+		);
 
-    expect(result.component?.id).toMatch(/^imported-mycomponent-/);
-  });
+		expect(result.component?.id).toMatch(/^imported-mycomponent-/);
+	});
 
-  it("should generate unique IDs for different timestamps", async () => {
-    const result1 = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "component.tsx",
-      {
-        storeInDB: false,
-      }
-    );
-    // Add a small delay to ensure different timestamps
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const result2 = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "component.tsx",
-      {
-        storeInDB: false,
-      }
-    );
+	it("should generate unique IDs for different timestamps", async () => {
+		const result1 = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"component.tsx",
+			{
+				storeInDB: false,
+			}
+		);
+		// Add a small delay to ensure different timestamps
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		const result2 = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"component.tsx",
+			{
+				storeInDB: false,
+			}
+		);
 
-    expect(result1.component?.id).not.toBe(result2.component?.id);
-  });
+		expect(result1.component?.id).not.toBe(result2.component?.id);
+	});
 });
 
 // ============================================================================
@@ -438,57 +438,57 @@ describe("Component ID Generation", () => {
 // ============================================================================
 
 describe("Component Definition", () => {
-  it("should create a valid RemotionComponentDefinition", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "test.tsx",
-      { storeInDB: false }
-    );
+	it("should create a valid RemotionComponentDefinition", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"test.tsx",
+			{ storeInDB: false }
+		);
 
-    expect(result.component).toMatchObject({
-      id: expect.any(String),
-      name: "TestComponent",
-      description: "A test component for testing",
-      category: "animation",
-      durationInFrames: 90,
-      fps: 30,
-      width: 1920,
-      height: 1080,
-      source: "imported",
-    });
-  });
+		expect(result.component).toMatchObject({
+			id: expect.any(String),
+			name: "TestComponent",
+			description: "A test component for testing",
+			category: "animation",
+			durationInFrames: 90,
+			fps: 30,
+			width: 1920,
+			height: 1080,
+			source: "imported",
+		});
+	});
 
-  it("should include a placeholder schema", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "test.tsx",
-      { storeInDB: false }
-    );
+	it("should include a placeholder schema", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"test.tsx",
+			{ storeInDB: false }
+		);
 
-    expect(result.component?.schema).toBeDefined();
-    expect(typeof result.component?.schema.safeParse).toBe("function");
-  });
+		expect(result.component?.schema).toBeDefined();
+		expect(typeof result.component?.schema.safeParse).toBe("function");
+	});
 
-  it("should include default props", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "test.tsx",
-      { storeInDB: false }
-    );
+	it("should include default props", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"test.tsx",
+			{ storeInDB: false }
+		);
 
-    expect(result.component?.defaultProps).toBeDefined();
-  });
+		expect(result.component?.defaultProps).toBeDefined();
+	});
 
-  it("should include a placeholder component function", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "test.tsx",
-      { storeInDB: false }
-    );
+	it("should include a placeholder component function", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"test.tsx",
+			{ storeInDB: false }
+		);
 
-    expect(result.component?.component).toBeDefined();
-    expect(typeof result.component?.component).toBe("function");
-  });
+		expect(result.component?.component).toBeDefined();
+		expect(typeof result.component?.component).toBe("function");
+	});
 });
 
 // ============================================================================
@@ -496,29 +496,29 @@ describe("Component Definition", () => {
 // ============================================================================
 
 describe("Error Handling", () => {
-  it("should handle file read errors gracefully", async () => {
-    // Create a file that will fail to read
-    const file = {
-      name: "test.tsx",
-      text: () => Promise.reject(new Error("Read error")),
-    } as unknown as File;
+	it("should handle file read errors gracefully", async () => {
+		// Create a file that will fail to read
+		const file = {
+			name: "test.tsx",
+			text: () => Promise.reject(new Error("Read error")),
+		} as unknown as File;
 
-    const result = await loadComponentFromFile(file, { storeInDB: false });
+		const result = await loadComponentFromFile(file, { storeInDB: false });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("Failed to read file");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("Failed to read file");
+	});
 
-  it("should include original error message", async () => {
-    const file = {
-      name: "test.tsx",
-      text: () => Promise.reject(new Error("Disk full")),
-    } as unknown as File;
+	it("should include original error message", async () => {
+		const file = {
+			name: "test.tsx",
+			text: () => Promise.reject(new Error("Disk full")),
+		} as unknown as File;
 
-    const result = await loadComponentFromFile(file, { storeInDB: false });
+		const result = await loadComponentFromFile(file, { storeInDB: false });
 
-    expect(result.error).toContain("Disk full");
-  });
+		expect(result.error).toContain("Disk full");
+	});
 });
 
 // ============================================================================
@@ -526,15 +526,15 @@ describe("Error Handling", () => {
 // ============================================================================
 
 describe("Load Options", () => {
-  it("should merge options with defaults", async () => {
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      "test.tsx",
-      { customId: "test-id", storeInDB: false }
-    );
+	it("should merge options with defaults", async () => {
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			"test.tsx",
+			{ customId: "test-id", storeInDB: false }
+		);
 
-    expect(result.component?.id).toBe("test-id");
-  });
+		expect(result.component?.id).toBe("test-id");
+	});
 });
 
 // ============================================================================
@@ -542,8 +542,8 @@ describe("Load Options", () => {
 // ============================================================================
 
 describe("Validation Integration", () => {
-  it("should fail validation for components without React", async () => {
-    const codeWithoutReact = `
+	it("should fail validation for components without React", async () => {
+		const codeWithoutReact = `
       import { AbsoluteFill, useCurrentFrame } from "remotion";
       import { z } from "zod";
 
@@ -556,13 +556,13 @@ describe("Validation Integration", () => {
       }
     `;
 
-    const result = await loadComponentFromCode(codeWithoutReact, "test.tsx", {
-      storeInDB: false,
-    });
+		const result = await loadComponentFromCode(codeWithoutReact, "test.tsx", {
+			storeInDB: false,
+		});
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("React");
-  });
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("React");
+	});
 });
 
 // ============================================================================
@@ -570,45 +570,45 @@ describe("Validation Integration", () => {
 // ============================================================================
 
 describe("Edge Cases", () => {
-  it("should handle empty file name", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "", {
-      storeInDB: false,
-    });
+	it("should handle empty file name", async () => {
+		const result = await loadComponentFromCode(VALID_COMPONENT_CODE, "", {
+			storeInDB: false,
+		});
 
-    expect(result.success).toBe(true);
-    expect(result.component?.id).toMatch(/^imported--/);
-  });
+		expect(result.success).toBe(true);
+		expect(result.component?.id).toMatch(/^imported--/);
+	});
 
-  it("should handle file name with only extension", async () => {
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, ".tsx", {
-      storeInDB: false,
-    });
+	it("should handle file name with only extension", async () => {
+		const result = await loadComponentFromCode(VALID_COMPONENT_CODE, ".tsx", {
+			storeInDB: false,
+		});
 
-    expect(result.success).toBe(true);
-    expect(result.component?.id).toMatch(/^imported--/);
-  });
+		expect(result.success).toBe(true);
+		expect(result.component?.id).toMatch(/^imported--/);
+	});
 
-  it("should handle very long file names", async () => {
-    const longName = "a".repeat(200) + ".tsx";
-    const result = await loadComponentFromCode(VALID_COMPONENT_CODE, longName, {
-      storeInDB: false,
-    });
+	it("should handle very long file names", async () => {
+		const longName = "a".repeat(200) + ".tsx";
+		const result = await loadComponentFromCode(VALID_COMPONENT_CODE, longName, {
+			storeInDB: false,
+		});
 
-    expect(result.success).toBe(true);
-    expect(result.component?.id).toBeDefined();
-  });
+		expect(result.success).toBe(true);
+		expect(result.component?.id).toBeDefined();
+	});
 
-  it("should handle file names with unicode characters", async () => {
-    const unicodeName = "组件-コンポーネント.tsx";
-    const result = await loadComponentFromCode(
-      VALID_COMPONENT_CODE,
-      unicodeName,
-      {
-        storeInDB: false,
-      }
-    );
+	it("should handle file names with unicode characters", async () => {
+		const unicodeName = "组件-コンポーネント.tsx";
+		const result = await loadComponentFromCode(
+			VALID_COMPONENT_CODE,
+			unicodeName,
+			{
+				storeInDB: false,
+			}
+		);
 
-    expect(result.success).toBe(true);
-    expect(result.component?.id).toMatch(/^imported-/);
-  });
+		expect(result.success).toBe(true);
+		expect(result.component?.id).toMatch(/^imported-/);
+	});
 });

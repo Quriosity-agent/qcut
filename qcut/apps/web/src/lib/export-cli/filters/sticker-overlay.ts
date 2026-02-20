@@ -27,73 +27,73 @@ type LogFn = (...args: unknown[]) => void;
  * @returns FFmpeg complex filter chain string
  */
 export function buildStickerOverlayFilters(
-  stickerSources: StickerSourceForFilter[],
-  totalDuration: number,
-  logger: LogFn = console.log
+	stickerSources: StickerSourceForFilter[],
+	totalDuration: number,
+	logger: LogFn = console.log
 ): string {
-  if (!stickerSources || stickerSources.length === 0) {
-    return "";
-  }
+	if (!stickerSources || stickerSources.length === 0) {
+		return "";
+	}
 
-  logger(
-    `[StickerOverlay] Building filters for ${stickerSources.length} stickers`
-  );
+	logger(
+		`[StickerOverlay] Building filters for ${stickerSources.length} stickers`
+	);
 
-  const filters: string[] = [];
-  let lastOutput = "0:v"; // Start with base video stream
+	const filters: string[] = [];
+	let lastOutput = "0:v"; // Start with base video stream
 
-  for (const [index, sticker] of stickerSources.entries()) {
-    const inputIndex = index + 1; // Sticker inputs start at 1 (0 is base video)
-    const isLast = index === stickerSources.length - 1;
-    const outputLabel = isLast ? "" : `[v${index + 1}]`;
+	for (const [index, sticker] of stickerSources.entries()) {
+		const inputIndex = index + 1; // Sticker inputs start at 1 (0 is base video)
+		const isLast = index === stickerSources.length - 1;
+		const outputLabel = isLast ? "" : `[v${index + 1}]`;
 
-    let currentInput = `[${inputIndex}:v]`;
+		let currentInput = `[${inputIndex}:v]`;
 
-    // Scale sticker to desired size
-    const scaleFilter = `${currentInput}scale=${sticker.width}:${sticker.height}[scaled${index}]`;
-    filters.push(scaleFilter);
-    currentInput = `[scaled${index}]`;
+		// Scale sticker to desired size
+		const scaleFilter = `${currentInput}scale=${sticker.width}:${sticker.height}[scaled${index}]`;
+		filters.push(scaleFilter);
+		currentInput = `[scaled${index}]`;
 
-    // Apply rotation if needed (before opacity)
-    if (sticker.rotation !== undefined && sticker.rotation !== 0) {
-      const rotateFilter = `${currentInput}rotate=${sticker.rotation}*PI/180:c=none[rotated${index}]`;
-      filters.push(rotateFilter);
-      currentInput = `[rotated${index}]`;
-    }
+		// Apply rotation if needed (before opacity)
+		if (sticker.rotation !== undefined && sticker.rotation !== 0) {
+			const rotateFilter = `${currentInput}rotate=${sticker.rotation}*PI/180:c=none[rotated${index}]`;
+			filters.push(rotateFilter);
+			currentInput = `[rotated${index}]`;
+		}
 
-    // Build overlay parameters
-    const overlayParams = [`x=${sticker.x}`, `y=${sticker.y}`];
+		// Build overlay parameters
+		const overlayParams = [`x=${sticker.x}`, `y=${sticker.y}`];
 
-    // Add timing constraint
-    if (sticker.startTime !== 0 || sticker.endTime !== totalDuration) {
-      overlayParams.push(
-        `enable='between(t,${sticker.startTime},${sticker.endTime})'`
-      );
-    }
+		// Add timing constraint
+		if (sticker.startTime !== 0 || sticker.endTime !== totalDuration) {
+			overlayParams.push(
+				`enable='between(t,${sticker.startTime},${sticker.endTime})'`
+			);
+		}
 
-    // Handle opacity
-    if (sticker.opacity !== undefined && sticker.opacity < 1) {
-      // Apply opacity using format and geq filters before overlay
-      const opacityFilter = `${currentInput}format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
-      filters.push(opacityFilter);
+		// Handle opacity
+		if (sticker.opacity !== undefined && sticker.opacity < 1) {
+			// Apply opacity using format and geq filters before overlay
+			const opacityFilter = `${currentInput}format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[alpha${index}]`;
+			filters.push(opacityFilter);
 
-      // Update overlay to use opacity-adjusted input
-      const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(":")}${outputLabel}`;
-      filters.push(overlayFilter);
-    } else {
-      // Direct overlay without opacity adjustment
-      const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(":")}${outputLabel}`;
-      filters.push(overlayFilter);
-    }
+			// Update overlay to use opacity-adjusted input
+			const overlayFilter = `[${lastOutput}][alpha${index}]overlay=${overlayParams.join(":")}${outputLabel}`;
+			filters.push(overlayFilter);
+		} else {
+			// Direct overlay without opacity adjustment
+			const overlayFilter = `[${lastOutput}]${currentInput}overlay=${overlayParams.join(":")}${outputLabel}`;
+			filters.push(overlayFilter);
+		}
 
-    // Update last output for chaining
-    if (outputLabel) {
-      lastOutput = outputLabel.replace("[", "").replace("]", "");
-    }
-  }
+		// Update last output for chaining
+		if (outputLabel) {
+			lastOutput = outputLabel.replace("[", "").replace("]", "");
+		}
+	}
 
-  const filterChain = filters.join(";");
-  logger(`[StickerOverlay] Generated filter chain: ${filterChain}`);
+	const filterChain = filters.join(";");
+	logger(`[StickerOverlay] Generated filter chain: ${filterChain}`);
 
-  return filterChain;
+	return filterChain;
 }

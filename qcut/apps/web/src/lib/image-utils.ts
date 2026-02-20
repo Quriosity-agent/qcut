@@ -5,202 +5,202 @@
 import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
 
 export interface ImageInfo {
-  width: number;
-  height: number;
-  size: number;
-  type: string;
-  aspectRatio: number;
+	width: number;
+	height: number;
+	size: number;
+	type: string;
+	aspectRatio: number;
 }
 
 /**
  * Get image information from a File
  */
 export async function getImageInfo(file: File): Promise<ImageInfo> {
-  // Use data URL for SVG files to avoid blob URL issues in Electron
-  let url: string;
-  if (
-    file.type === "image/svg+xml" ||
-    file.name.toLowerCase().endsWith(".svg")
-  ) {
-    try {
-      const text = await file.text();
-      // Use UTF-8 charset with URI encoding to safely embed Unicode SVGs
-      const encoded = encodeURIComponent(text);
-      url = `data:image/svg+xml;charset=utf-8,${encoded}`;
-    } catch (error) {
-      debugWarn(
-        `[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
-        error
-      );
-      url = URL.createObjectURL(file);
-    }
-  } else {
-    url = URL.createObjectURL(file);
-  }
+	// Use data URL for SVG files to avoid blob URL issues in Electron
+	let url: string;
+	if (
+		file.type === "image/svg+xml" ||
+		file.name.toLowerCase().endsWith(".svg")
+	) {
+		try {
+			const text = await file.text();
+			// Use UTF-8 charset with URI encoding to safely embed Unicode SVGs
+			const encoded = encodeURIComponent(text);
+			url = `data:image/svg+xml;charset=utf-8,${encoded}`;
+		} catch (error) {
+			debugWarn(
+				`[ImageUtils] Failed to create data URL for SVG ${file.name}, falling back to blob URL:`,
+				error
+			);
+			url = URL.createObjectURL(file);
+		}
+	} else {
+		url = URL.createObjectURL(file);
+	}
 
-  return new Promise((resolve, reject) => {
-    const img = new Image();
+	return new Promise((resolve, reject) => {
+		const img = new Image();
 
-    img.onload = () => {
-      const info: ImageInfo = {
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        size: file.size,
-        type: file.type,
-        aspectRatio: img.naturalWidth / img.naturalHeight,
-      };
-      // Only revoke blob URLs, not data URLs
-      if (url.startsWith("blob:")) {
-        URL.revokeObjectURL(url);
-      }
-      resolve(info);
-    };
+		img.onload = () => {
+			const info: ImageInfo = {
+				width: img.naturalWidth,
+				height: img.naturalHeight,
+				size: file.size,
+				type: file.type,
+				aspectRatio: img.naturalWidth / img.naturalHeight,
+			};
+			// Only revoke blob URLs, not data URLs
+			if (url.startsWith("blob:")) {
+				URL.revokeObjectURL(url);
+			}
+			resolve(info);
+		};
 
-    img.onerror = () => {
-      // Only revoke blob URLs, not data URLs
-      if (url.startsWith("blob:")) {
-        URL.revokeObjectURL(url);
-      }
-      reject(new Error("Failed to load image"));
-    };
+		img.onerror = () => {
+			// Only revoke blob URLs, not data URLs
+			if (url.startsWith("blob:")) {
+				URL.revokeObjectURL(url);
+			}
+			reject(new Error("Failed to load image"));
+		};
 
-    img.src = url;
-  });
+		img.src = url;
+	});
 }
 
 /**
  * Validate image file
  */
 export function validateImageFile(file: File): {
-  valid: boolean;
-  error?: string;
+	valid: boolean;
+	error?: string;
 } {
-  // Check file type
-  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
-    return {
-      valid: false,
-      error: "Unsupported file type. Please use JPEG, PNG, or WebP.",
-    };
-  }
+	// Check file type
+	const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+	if (!allowedTypes.includes(file.type)) {
+		return {
+			valid: false,
+			error: "Unsupported file type. Please use JPEG, PNG, or WebP.",
+		};
+	}
 
-  // Check file size (max 50MB)
-  const maxSize = 50 * 1024 * 1024;
-  if (file.size > maxSize) {
-    return {
-      valid: false,
-      error: "File too large. Maximum size is 50MB.",
-    };
-  }
+	// Check file size (max 50MB)
+	const maxSize = 50 * 1024 * 1024;
+	if (file.size > maxSize) {
+		return {
+			valid: false,
+			error: "File too large. Maximum size is 50MB.",
+		};
+	}
 
-  return { valid: true };
+	return { valid: true };
 }
 
 /**
  * Resize image to fit within max dimensions while maintaining aspect ratio
  */
 export async function resizeImage(
-  file: File,
-  maxWidth: number,
-  maxHeight: number,
-  quality = 0.8
+	file: File,
+	maxWidth: number,
+	maxHeight: number,
+	quality = 0.8
 ): Promise<File> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
 
-    if (!ctx) {
-      reject(new Error("Failed to get canvas context"));
-      return;
-    }
+		if (!ctx) {
+			reject(new Error("Failed to get canvas context"));
+			return;
+		}
 
-    img.onload = () => {
-      // Calculate new dimensions
-      let { width, height } = img;
+		img.onload = () => {
+			// Calculate new dimensions
+			let { width, height } = img;
 
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height);
-        width = Math.floor(width * ratio);
-        height = Math.floor(height * ratio);
-      }
+			if (width > maxWidth || height > maxHeight) {
+				const ratio = Math.min(maxWidth / width, maxHeight / height);
+				width = Math.floor(width * ratio);
+				height = Math.floor(height * ratio);
+			}
 
-      // Set canvas size and draw image
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
+			// Set canvas size and draw image
+			canvas.width = width;
+			canvas.height = height;
+			ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert to blob
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const resizedFile = new File([blob], file.name, {
-              type: file.type,
-              lastModified: Date.now(),
-            });
-            resolve(resizedFile);
-          } else {
-            reject(new Error("Failed to resize image"));
-          }
-        },
-        file.type,
-        quality
-      );
-    };
+			// Convert to blob
+			canvas.toBlob(
+				(blob) => {
+					if (blob) {
+						const resizedFile = new File([blob], file.name, {
+							type: file.type,
+							lastModified: Date.now(),
+						});
+						resolve(resizedFile);
+					} else {
+						reject(new Error("Failed to resize image"));
+					}
+				},
+				file.type,
+				quality
+			);
+		};
 
-    img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = URL.createObjectURL(file);
-  });
+		img.onerror = () => reject(new Error("Failed to load image"));
+		img.src = URL.createObjectURL(file);
+	});
 }
 
 /**
  * Convert image to data URL
  */
 export function imageToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        resolve(e.target.result as string);
-      } else {
-        reject(new Error("Failed to read file"));
-      }
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			if (e.target?.result) {
+				resolve(e.target.result as string);
+			} else {
+				reject(new Error("Failed to read file"));
+			}
+		};
+		reader.onerror = () => reject(new Error("Failed to read file"));
+		reader.readAsDataURL(file);
+	});
 }
 
 /**
  * Download image from URL
  */
 export async function downloadImage(
-  url: string,
-  filename: string
+	url: string,
+	filename: string
 ): Promise<void> {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
+	try {
+		const response = await fetch(url);
+		const blob = await response.blob();
 
-    const downloadUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.download = filename;
-    link.style.display = "none";
+		const downloadUrl = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = downloadUrl;
+		link.download = filename;
+		link.style.display = "none";
 
-    document.body.appendChild(link);
+		document.body.appendChild(link);
 
-    // Use setTimeout to ensure proper download without navigation
-    setTimeout(() => {
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => {
-        URL.revokeObjectURL(downloadUrl);
-      }, 100);
-    }, 10);
-  } catch (error) {
-    throw new Error(`Failed to download image: ${error}`);
-  }
+		// Use setTimeout to ensure proper download without navigation
+		setTimeout(() => {
+			link.click();
+			document.body.removeChild(link);
+			setTimeout(() => {
+				URL.revokeObjectURL(downloadUrl);
+			}, 100);
+		}, 10);
+	} catch (error) {
+		throw new Error(`Failed to download image: ${error}`);
+	}
 }
 
 /**
@@ -215,201 +215,201 @@ const blobToOriginalUrl = new Map<string, string>();
  * Useful for displaying images from external domains like fal.media
  */
 export async function convertToBlob(url: string): Promise<string> {
-  // If it's already a blob URL, return it as-is
-  if (url.startsWith("blob:")) {
-    return url;
-  }
+	// If it's already a blob URL, return it as-is
+	if (url.startsWith("blob:")) {
+		return url;
+	}
 
-  // Return cached blob URL if available
-  if (blobUrlCache.has(url)) {
-    const cachedUrl = blobUrlCache.get(url)!;
-    debugLog(`[convertToBlob] Using cached blob URL for ${url}: ${cachedUrl}`);
-    return cachedUrl;
-  }
+	// Return cached blob URL if available
+	if (blobUrlCache.has(url)) {
+		const cachedUrl = blobUrlCache.get(url)!;
+		debugLog(`[convertToBlob] Using cached blob URL for ${url}: ${cachedUrl}`);
+		return cachedUrl;
+	}
 
-  try {
-    debugLog(`[convertToBlob] Fetching image with CORS headers: ${url}`);
-    const response = await fetch(url, {
-      mode: "cors",
-      headers: {
-        "Accept": "image/*",
-      },
-    });
+	try {
+		debugLog(`[convertToBlob] Fetching image with CORS headers: ${url}`);
+		const response = await fetch(url, {
+			mode: "cors",
+			headers: {
+				"Accept": "image/*",
+			},
+		});
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
 
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
+		const blob = await response.blob();
+		const blobUrl = URL.createObjectURL(blob);
 
-    // ENHANCED LOGGING for blob URL debugging (dev only)
-    const isElectron =
-      typeof navigator !== "undefined" &&
-      navigator.userAgent?.toLowerCase().includes("electron");
-    const isFileProtocol =
-      typeof location !== "undefined" && location.protocol === "file:";
-    const isProblematic =
-      blobUrl.startsWith("blob:file:///") && !isElectron && !isFileProtocol;
+		// ENHANCED LOGGING for blob URL debugging (dev only)
+		const isElectron =
+			typeof navigator !== "undefined" &&
+			navigator.userAgent?.toLowerCase().includes("electron");
+		const isFileProtocol =
+			typeof location !== "undefined" && location.protocol === "file:";
+		const isProblematic =
+			blobUrl.startsWith("blob:file:///") && !isElectron && !isFileProtocol;
 
-    if (import.meta.env.DEV) {
-      debugLog("🔍 [IMAGE-UTILS] Created blob URL", {
-        originalUrl: url,
-        blobUrl,
-        isProblematic,
-        blobSize: blob.size,
-        blobType: blob.type,
-      });
-      if (isProblematic) {
-        debugError(
-          "❌ [IMAGE-UTILS] Unexpected file:// blob URL in web context",
-          blobUrl
-        );
-      }
-    }
+		if (import.meta.env.DEV) {
+			debugLog("🔍 [IMAGE-UTILS] Created blob URL", {
+				originalUrl: url,
+				blobUrl,
+				isProblematic,
+				blobSize: blob.size,
+				blobType: blob.type,
+			});
+			if (isProblematic) {
+				debugError(
+					"❌ [IMAGE-UTILS] Unexpected file:// blob URL in web context",
+					blobUrl
+				);
+			}
+		}
 
-    // Cache the blob URL
-    blobUrlCache.set(url, blobUrl);
-    blobToOriginalUrl.set(blobUrl, url);
-    debugLog(`[convertToBlob] Created new blob URL for ${url}: ${blobUrl}`);
+		// Cache the blob URL
+		blobUrlCache.set(url, blobUrl);
+		blobToOriginalUrl.set(blobUrl, url);
+		debugLog(`[convertToBlob] Created new blob URL for ${url}: ${blobUrl}`);
 
-    return blobUrl;
-  } catch (error) {
-    debugError(`Failed to convert image to blob URL: ${url}`, error);
-    // Return original URL as fallback
-    return url;
-  }
+		return blobUrl;
+	} catch (error) {
+		debugError(`Failed to convert image to blob URL: ${url}`, error);
+		// Return original URL as fallback
+		return url;
+	}
 }
 
 /**
  * Clean up blob URL from cache and revoke it
  */
 export function revokeBlobUrl(originalUrl: string): void {
-  const blobUrl = blobUrlCache.get(originalUrl);
-  if (blobUrl) {
-    debugLog(
-      `[revokeBlobUrl] Revoking blob URL for ${originalUrl}: ${blobUrl}`
-    );
-    URL.revokeObjectURL(blobUrl);
-    blobUrlCache.delete(originalUrl);
-    blobToOriginalUrl.delete(blobUrl);
-  }
+	const blobUrl = blobUrlCache.get(originalUrl);
+	if (blobUrl) {
+		debugLog(
+			`[revokeBlobUrl] Revoking blob URL for ${originalUrl}: ${blobUrl}`
+		);
+		URL.revokeObjectURL(blobUrl);
+		blobUrlCache.delete(originalUrl);
+		blobToOriginalUrl.delete(blobUrl);
+	}
 }
 
 /**
  * Get all cached blob URLs (for debugging)
  */
 export function getCachedBlobUrls(): Map<string, string> {
-  return new Map(blobUrlCache);
+	return new Map(blobUrlCache);
 }
 
 /**
  * Check if a URL is from fal.media domains and needs blob conversion
  */
 export function needsBlobConversion(url: string): boolean {
-  // Skip blob URLs as they're already converted
-  if (url.startsWith("blob:")) {
-    return false;
-  }
-  return url.includes("fal.media") || url.includes("v3.fal.media");
+	// Skip blob URLs as they're already converted
+	if (url.startsWith("blob:")) {
+		return false;
+	}
+	return url.includes("fal.media") || url.includes("v3.fal.media");
 }
 
 /**
  * Download image from URL and convert to File object for media library
  */
 export async function downloadImageAsFile(
-  url: string,
-  filename: string
+	url: string,
+	filename: string
 ): Promise<File> {
-  try {
-    debugLog(`[convertToBlob] Downloading image from: ${url}`);
+	try {
+		debugLog(`[convertToBlob] Downloading image from: ${url}`);
 
-    // Enhanced fetch with CORS handling for FAL.ai URLs
-    const response = await fetch(url, {
-      mode: "cors",
-      headers: {
-        "Accept": "image/*",
-      },
-    });
+		// Enhanced fetch with CORS handling for FAL.ai URLs
+		const response = await fetch(url, {
+			mode: "cors",
+			headers: {
+				"Accept": "image/*",
+			},
+		});
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
 
-    const blob = await response.blob();
-    debugLog(
-      `[convertToBlob] Downloaded blob: ${blob.size} bytes, type: ${blob.type}`
-    );
+		const blob = await response.blob();
+		debugLog(
+			`[convertToBlob] Downloaded blob: ${blob.size} bytes, type: ${blob.type}`
+		);
 
-    // Determine MIME type from blob or URL
-    let mimeType = blob.type;
-    if (!mimeType) {
-      // Fallback: guess from URL extension
-      const extension = url.split(".").pop()?.toLowerCase();
-      switch (extension) {
-        case "jpg":
-        case "jpeg":
-          mimeType = "image/jpeg";
-          break;
-        case "png":
-          mimeType = "image/png";
-          break;
-        case "webp":
-          mimeType = "image/webp";
-          break;
-        default:
-          mimeType = "image/jpeg"; // Default fallback
-      }
-    }
+		// Determine MIME type from blob or URL
+		let mimeType = blob.type;
+		if (!mimeType) {
+			// Fallback: guess from URL extension
+			const extension = url.split(".").pop()?.toLowerCase();
+			switch (extension) {
+				case "jpg":
+				case "jpeg":
+					mimeType = "image/jpeg";
+					break;
+				case "png":
+					mimeType = "image/png";
+					break;
+				case "webp":
+					mimeType = "image/webp";
+					break;
+				default:
+					mimeType = "image/jpeg"; // Default fallback
+			}
+		}
 
-    // Create File object
-    const file = new File([blob], filename, {
-      type: mimeType,
-      lastModified: Date.now(),
-    });
+		// Create File object
+		const file = new File([blob], filename, {
+			type: mimeType,
+			lastModified: Date.now(),
+		});
 
-    return file;
-  } catch (error) {
-    throw new Error(`Failed to download image as file: ${error}`);
-  }
+		return file;
+	} catch (error) {
+		throw new Error(`Failed to download image as file: ${error}`);
+	}
 }
 
 /**
  * Format file size for display
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
+	if (bytes === 0) return "0 Bytes";
 
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+	const k = 1024;
+	const sizes = ["Bytes", "KB", "MB", "GB"];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / k ** i).toFixed(2)) + " " + sizes[i];
+	return parseFloat((bytes / k ** i).toFixed(2)) + " " + sizes[i];
 }
 
 /**
  * Get optimal image dimensions for display
  */
 export function getDisplayDimensions(
-  originalWidth: number,
-  originalHeight: number,
-  containerWidth: number,
-  containerHeight: number
+	originalWidth: number,
+	originalHeight: number,
+	containerWidth: number,
+	containerHeight: number
 ): { width: number; height: number } {
-  const ratio = originalWidth / originalHeight;
-  const containerRatio = containerWidth / containerHeight;
+	const ratio = originalWidth / originalHeight;
+	const containerRatio = containerWidth / containerHeight;
 
-  let width: number, height: number;
+	let width: number, height: number;
 
-  if (ratio > containerRatio) {
-    // Image is wider than container
-    width = containerWidth;
-    height = containerWidth / ratio;
-  } else {
-    // Image is taller than container
-    height = containerHeight;
-    width = containerHeight * ratio;
-  }
+	if (ratio > containerRatio) {
+		// Image is wider than container
+		width = containerWidth;
+		height = containerWidth / ratio;
+	} else {
+		// Image is taller than container
+		height = containerHeight;
+		width = containerHeight * ratio;
+	}
 
-  return { width, height };
+	return { width, height };
 }

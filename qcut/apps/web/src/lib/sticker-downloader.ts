@@ -16,64 +16,64 @@ import { debugLog, debugError, debugWarn } from "./debug-config";
  * @returns Promise<File> - The SVG content as a File object ready for storage
  */
 export async function downloadStickerAsFile(
-  iconId: string,
-  name?: string
+	iconId: string,
+	name?: string
 ): Promise<File> {
-  try {
-    // Parse the iconId to get collection and icon name
-    const [collection, icon] = iconId.split(":");
+	try {
+		// Parse the iconId to get collection and icon name
+		const [collection, icon] = iconId.split(":");
 
-    if (!collection || !icon) {
-      throw new Error(
-        `Invalid icon ID format: ${iconId}. Expected format: "collection:icon"`
-      );
-    }
+		if (!collection || !icon) {
+			throw new Error(
+				`Invalid icon ID format: ${iconId}. Expected format: "collection:icon"`
+			);
+		}
 
-    // Download SVG content from Iconify API
-    // Using standard size for consistency with existing sticker handling
-    const svgContent = await downloadIconSvg(collection, icon, {
-      color: "#FFFFFF",
-      width: 512,
-      height: 512,
-    });
+		// Download SVG content from Iconify API
+		// Using standard size for consistency with existing sticker handling
+		const svgContent = await downloadIconSvg(collection, icon, {
+			color: "#FFFFFF",
+			width: 512,
+			height: 512,
+		});
 
-    if (!svgContent) {
-      throw new Error(`Failed to download SVG content for ${iconId}`);
-    }
+		if (!svgContent) {
+			throw new Error(`Failed to download SVG content for ${iconId}`);
+		}
 
-    // Generate filename
-    // Use provided name or fallback to iconId with proper sanitization
-    const fileName = name ? `${name}.svg` : `${collection}-${icon}.svg`;
+		// Generate filename
+		// Use provided name or fallback to iconId with proper sanitization
+		const fileName = name ? `${name}.svg` : `${collection}-${icon}.svg`;
 
-    // Sanitize filename (remove special characters that could cause issues)
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+		// Sanitize filename (remove special characters that could cause issues)
+		const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
 
-    // Create File object from SVG content
-    // Using Blob constructor first, then File to ensure proper MIME type
-    const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
-    const svgFile = new File([svgBlob], sanitizedFileName, {
-      type: "image/svg+xml",
-      lastModified: Date.now(),
-    });
+		// Create File object from SVG content
+		// Using Blob constructor first, then File to ensure proper MIME type
+		const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
+		const svgFile = new File([svgBlob], sanitizedFileName, {
+			type: "image/svg+xml",
+			lastModified: Date.now(),
+		});
 
-    // Log for debugging (can be removed in production)
-    debugLog(`[Sticker Downloader] Downloaded ${iconId} as File:`, {
-      name: svgFile.name,
-      size: svgFile.size,
-      type: svgFile.type,
-    });
+		// Log for debugging (can be removed in production)
+		debugLog(`[Sticker Downloader] Downloaded ${iconId} as File:`, {
+			name: svgFile.name,
+			size: svgFile.size,
+			type: svgFile.type,
+		});
 
-    return svgFile;
-  } catch (error) {
-    // Enhanced error handling with context
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
+		return svgFile;
+	} catch (error) {
+		// Enhanced error handling with context
+		const errorMessage =
+			error instanceof Error ? error.message : "Unknown error occurred";
 
-    debugError(`[Sticker Downloader] Failed to download ${iconId}:`, error);
+		debugError(`[Sticker Downloader] Failed to download ${iconId}:`, error);
 
-    // Re-throw with more context
-    throw new Error(`Failed to download sticker "${iconId}": ${errorMessage}`);
-  }
+		// Re-throw with more context
+		throw new Error(`Failed to download sticker "${iconId}": ${errorMessage}`);
+	}
 }
 
 /**
@@ -83,26 +83,26 @@ export async function downloadStickerAsFile(
  * @returns Promise<File[]> - Array of File objects
  */
 export async function downloadMultipleStickersAsFiles(
-  iconIds: string[]
+	iconIds: string[]
 ): Promise<File[]> {
-  try {
-    const downloadPromises = iconIds.map((iconId) =>
-      downloadStickerAsFile(iconId)
-    );
-    const files = await Promise.all(downloadPromises);
+	try {
+		const downloadPromises = iconIds.map((iconId) =>
+			downloadStickerAsFile(iconId)
+		);
+		const files = await Promise.all(downloadPromises);
 
-    debugLog(
-      `[Sticker Downloader] Downloaded ${files.length} stickers as Files`
-    );
+		debugLog(
+			`[Sticker Downloader] Downloaded ${files.length} stickers as Files`
+		);
 
-    return files;
-  } catch (error) {
-    debugError(
-      "[Sticker Downloader] Failed to download multiple stickers:",
-      error
-    );
-    throw error;
-  }
+		return files;
+	} catch (error) {
+		debugError(
+			"[Sticker Downloader] Failed to download multiple stickers:",
+			error
+		);
+		throw error;
+	}
 }
 
 /**
@@ -112,22 +112,22 @@ export async function downloadMultipleStickersAsFiles(
  * @returns Promise<boolean> - True if icon exists, false otherwise
  */
 export async function validateStickerExists(iconId: string): Promise<boolean> {
-  try {
-    const [collection, icon] = iconId.split(":");
+	try {
+		const [collection, icon] = iconId.split(":");
 
-    if (!collection || !icon) {
-      return false;
-    }
+		if (!collection || !icon) {
+			return false;
+		}
 
-    // Try to download with minimal size to check existence
-    const svgContent = await downloadIconSvg(collection, icon, {
-      width: 24,
-      height: 24,
-    });
+		// Try to download with minimal size to check existence
+		const svgContent = await downloadIconSvg(collection, icon, {
+			width: 24,
+			height: 24,
+		});
 
-    return !!svgContent && svgContent.length > 0;
-  } catch (error) {
-    debugWarn(`[Sticker Downloader] Icon ${iconId} validation failed:`, error);
-    return false;
-  }
+		return !!svgContent && svgContent.length > 0;
+	} catch (error) {
+		debugWarn(`[Sticker Downloader] Icon ${iconId} validation failed:`, error);
+		return false;
+	}
 }

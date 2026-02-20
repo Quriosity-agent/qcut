@@ -14,63 +14,63 @@ import { createObjectURL } from "@/lib/blob-manager";
  * based on the selected model's capabilities.
  */
 export function ConditionalImageUploader() {
-  const {
-    selectedModel,
-    originalImageUrl,
-    multipleImages,
-    setOriginalImage,
-    setMultipleImages,
-    removeMultipleImage,
-    clearMultipleImages,
-  } = useAdjustmentStore();
+	const {
+		selectedModel,
+		originalImageUrl,
+		multipleImages,
+		setOriginalImage,
+		setMultipleImages,
+		removeMultipleImage,
+		clearMultipleImages,
+	} = useAdjustmentStore();
 
-  const capabilities = getModelCapabilities(selectedModel);
+	const capabilities = getModelCapabilities(selectedModel);
 
-  // Handle single image selection
-  const handleSingleImageSelect = useCallback(
-    (file: File) => {
-      const url = createObjectURL(file, "adjustment-single-image");
-      setOriginalImage(file, url);
-      // Clear multiple images when using single mode
-      clearMultipleImages();
-    },
-    [setOriginalImage, clearMultipleImages]
-  );
+	// Handle single image selection
+	const handleSingleImageSelect = useCallback(
+		(file: File) => {
+			const url = createObjectURL(file, "adjustment-single-image");
+			setOriginalImage(file, url);
+			// Clear multiple images when using single mode
+			clearMultipleImages();
+		},
+		[setOriginalImage, clearMultipleImages]
+	);
 
-  // Handle multiple images change (receives both URLs and Files)
-  const handleMultipleImagesChange = useCallback(
-    (urls: string[], files: File[]) => {
-      setMultipleImages(urls, files);
-    },
-    [setMultipleImages]
-  );
+	// Handle multiple images change (receives both URLs and Files)
+	const handleMultipleImagesChange = useCallback(
+		(urls: string[], files: File[]) => {
+			setMultipleImages(urls, files);
+		},
+		[setMultipleImages]
+	);
 
-  // Handle individual image removal
-  const handleRemoveImage = useCallback(
-    (index: number) => {
-      removeMultipleImage(index);
-    },
-    [removeMultipleImage]
-  );
+	// Handle individual image removal
+	const handleRemoveImage = useCallback(
+		(index: number) => {
+			removeMultipleImage(index);
+		},
+		[removeMultipleImage]
+	);
 
-  // Show single image uploader for single-image models
-  if (!capabilities.supportsMultiple) {
-    return (
-      <ImageUploader
-        onImageSelect={handleSingleImageSelect}
-        uploading={false}
-      />
-    );
-  }
+	// Show single image uploader for single-image models
+	if (!capabilities.supportsMultiple) {
+		return (
+			<ImageUploader
+				onImageSelect={handleSingleImageSelect}
+				uploading={false}
+			/>
+		);
+	}
 
-  // Show multi-image uploader for multi-image models
-  return (
-    <MultiImageUpload
-      images={multipleImages}
-      maxImages={capabilities.maxImages}
-      onImagesChange={handleMultipleImagesChange}
-      onRemoveImage={handleRemoveImage}
-      label={`Input Images (up to ${capabilities.maxImages})`}
-    />
-  );
+	// Show multi-image uploader for multi-image models
+	return (
+		<MultiImageUpload
+			images={multipleImages}
+			maxImages={capabilities.maxImages}
+			onImagesChange={handleMultipleImagesChange}
+			onRemoveImage={handleRemoveImage}
+			label={`Input Images (up to ${capabilities.maxImages})`}
+		/>
+	);
 }
