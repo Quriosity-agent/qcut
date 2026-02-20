@@ -138,14 +138,17 @@ These require significant code changes or are pinned for compatibility.
    - @biomejs/biome 2.1.2 → 2.4.2
    Then full build + test.
 
-4. **Phase 4 — Moderate risk** (one at a time):
-   - lucide-react → 0.574.0 (check icon renames)
-   - better-auth → 1.4.18
-   - sonner → 2.0.7 (check API changes)
-   - tailwind-merge → 3.5.0
+4. **Phase 4 — Moderate risk** ✅ COMPLETED (2026-02-20):
+   - ✅ lucide-react 0.468.0 → 0.574.0 (no icon renames needed)
+   - ✅ sonner 1.7.4 → 2.0.7 (API compatible)
+   - ✅ tailwind-merge 2.6.0 → 3.5.0 (build OK)
+   - ✅ dotenv 16.6.1 → 17.3.1 (build OK)
+   - ✅ happy-dom 18.0.1 → 20.6.3 (build OK)
+   - ✅ jsdom 26.1.0 → 28.1.0 (build OK)
 
-5. **Phase 5 — Electron major** (separate PR):
-   - electron 37 → 40 (needs thorough testing on Win/Mac/Linux)
+5. **Phase 5 — Electron major** ✅ COMPLETED (2026-02-20):
+   - ✅ electron 37.4.0 → 40.6.0 (bumped in PR #145)
+   - Testing: `bun run electron:dev`, `bun run electron`, Windows EXE build
 
 6. **Phase 6 — Future** (not now):
    - React 19 migration (big project)
