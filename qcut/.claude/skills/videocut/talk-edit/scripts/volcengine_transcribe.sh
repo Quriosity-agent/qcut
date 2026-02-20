@@ -41,11 +41,18 @@ if [ -f "$DICT_FILE" ]; then
   echo "📖 加载热词: $(cat "$DICT_FILE" | grep -v '^$' | wc -l | tr -d ' ') 个"
 fi
 
+# Escape special characters for JSON
+escape_json() {
+  printf '%s\n' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\n'
+}
+
+ESCAPED_URL=$(escape_json "$AUDIO_URL")
+
 # 构建请求体
 if [ -n "$HOT_WORDS" ]; then
-  REQUEST_BODY="{\"url\": \"$AUDIO_URL\", \"hot_words\": [$HOT_WORDS]}"
+  REQUEST_BODY="{\"url\": \"$ESCAPED_URL\", \"hot_words\": [$HOT_WORDS]}"
 else
-  REQUEST_BODY="{\"url\": \"$AUDIO_URL\"}"
+  REQUEST_BODY="{\"url\": \"$ESCAPED_URL\"}"
 fi
 
 # 步骤1: 提交任务

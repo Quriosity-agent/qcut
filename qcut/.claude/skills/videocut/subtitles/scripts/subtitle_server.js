@@ -83,6 +83,11 @@ const server = http.createServer((req, res) => {
 
   // API: 保存 SRT 文件
   if (req.method === "POST" && req.url === "/api/save-srt") {
+    if (!VIDEO_PATH) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "No video path provided" }));
+      return;
+    }
     const srt = generateSRT(subtitles);
     const srtPath = "./3_输出/" + path.basename(VIDEO_PATH, ".mp4") + ".srt";
     fs.mkdirSync("./3_输出", { recursive: true });
@@ -95,6 +100,11 @@ const server = http.createServer((req, res) => {
 
   // API: 获取视频信息（时长+分辨率+帧率，用于预估烧录时间）
   if (req.url === "/api/video-info") {
+    if (!VIDEO_PATH) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "No video path provided" }));
+      return;
+    }
     try {
       const dur = parseFloat(
         execFileSync(
@@ -132,6 +142,11 @@ const server = http.createServer((req, res) => {
 
   // API: 烧录字幕（SSE 实时进度）
   if (req.method === "POST" && req.url === "/api/burn") {
+    if (!VIDEO_PATH) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "No video path provided" }));
+      return;
+    }
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
@@ -191,7 +206,7 @@ const server = http.createServer((req, res) => {
           "-i",
           VIDEO_PATH,
           "-vf",
-          `subtitles='${srtPath}':force_style='FontSize=22,FontName=PingFang SC,Bold=1,PrimaryColour=&H0000deff,OutlineColour=&H00000000,Outline=${outlineVal},Alignment=2,MarginV=30'`,
+          `subtitles='${escapeFilterPath(srtPath)}':force_style='FontSize=22,FontName=PingFang SC,Bold=1,PrimaryColour=&H0000deff,OutlineColour=&H00000000,Outline=${outlineVal},Alignment=2,MarginV=30'`,
           "-c:a",
           "copy",
           "-y",
@@ -268,6 +283,11 @@ const server = http.createServer((req, res) => {
 
   // 视频文件
   if (req.url === "/video.mp4" && VIDEO_PATH) {
+    if (!fs.existsSync(VIDEO_PATH)) {
+      res.writeHead(404);
+      res.end("Video not found");
+      return;
+    }
     const stat = fs.statSync(VIDEO_PATH);
     const range = req.headers.range;
 
@@ -282,14 +302,18 @@ const server = http.createServer((req, res) => {
         "Accept-Ranges": "bytes",
         "Content-Length": end - start + 1,
       });
-      fs.createReadStream(VIDEO_PATH, { start, end }).pipe(res);
+      const stream = fs.createReadStream(VIDEO_PATH, { start, end });
+      stream.on("error", () => { res.end(); });
+      stream.pipe(res);
     } else {
       res.writeHead(200, {
         "Content-Type": "video/mp4",
         "Content-Length": stat.size,
         "Accept-Ranges": "bytes",
       });
-      fs.createReadStream(VIDEO_PATH).pipe(res);
+      const stream = fs.createReadStream(VIDEO_PATH);
+      stream.on("error", () => { res.end(); });
+      stream.pipe(res);
     }
     return;
   }
@@ -337,6 +361,18 @@ function formatReadableTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = (seconds % 60).toFixed(2);
   return m.toString().padStart(2, "0") + ":" + s.padStart(5, "0");
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+function escapeJs(str) {
+  return str.replace(/[\\']/g, '\\$&');
+}
+
+function escapeFilterPath(p) {
+  return p.replace(/'/g, "'\\''");
 }
 
 function generateHTML() {
@@ -426,7 +462,7 @@ function generateHTML() {
       <div class="subtitle-list" id="subtitleList"></div>
       <div class="dict-panel">
         <strong>词典：</strong>
-        <span id="dictWords">${dictionary.map((w) => `<span class="dict-word" onclick="insertWord('${w}')">${w}</span>`).join("")}</span>
+        <span id="dictWords">${dictionary.map((w) => `<span class="dict-word" onclick="insertWord('${escapeJs(w)}')">${escapeHtml(w)}</span>`).join("")}</span>
       </div>
     </div>
   </div>

@@ -15,7 +15,10 @@ const fs = require("fs");
 const path = require("path");
 const { execSync, execFileSync } = require("child_process");
 
-const PORT = process.argv[2] || 8899;
+const PORT = process.argv[2] ? Number(process.argv[2]) : 8899;
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
+  throw new Error(`Invalid port: ${process.argv[2]}`);
+}
 const VIDEO_FILE = process.argv[3] || findVideoFile();
 
 function findVideoFile() {
