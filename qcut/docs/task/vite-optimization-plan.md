@@ -34,7 +34,7 @@ Vite warns when a module is **both** dynamically imported (via `import()`) and s
 
 ### 1.3 Turbo Warning: No Output Files
 
-```
+```text
 no output files found for task qcut#build
 ```
 
@@ -108,7 +108,7 @@ The editor route is already lazy-loaded via TanStack Router's `createLazyFileRou
 
 Split the editor into feature panels loaded on demand:
 
-```
+```text
 editor.$project_id.lazy.tsx (shell: header + panel container, ~100 kB)
 ├── timeline-panel (lazy)
 ├── media-panel (lazy)
