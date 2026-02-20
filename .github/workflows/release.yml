@@ -255,7 +255,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: QCut v${{ needs.prepare.outputs.version }}
-          draft: true
+          draft: false
           prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
           make_latest: ${{ needs.prepare.outputs.is_prerelease == 'false' }}
           generate_release_notes: true
