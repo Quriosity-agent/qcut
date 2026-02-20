@@ -355,7 +355,7 @@
     "electron-updater": "^6.8.3",
     "js-yaml": "^4.1.1",
     "jszip": "^3.10.1",
-    "next": "^15.5.2",
+    "next": "^16.0.0",
     "node-pty": "^1.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
