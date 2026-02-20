@@ -91,8 +91,8 @@ curl -s -X POST -H "Content-Type: application/json" \
 | 3.6 | List/cancel auto-edit | 3 | **PASS** | List returns job array with 1 entry. Cancel returns `cancelled: false` (already failed) |
 | 4.1 | Range delete (same-track) | 4 | **PASS** | `splitElements: 2`, `totalRemovedDuration: 2` — correctly split element and removed 2s |
 | 4.2 | Range delete (cross-track) | 4 | **PASS** | `splitElements: 2`, `totalRemovedDuration: 2` on multi-track timeline |
-| 4.3 | Malformed markdown import | 4 | **PASS** | `"Invalid timeline markdown: No tracks found — expected '## Track N: Name' headers"` |
-| 4.4 | Import replace mode | 4 | **PASS** | `imported: true` — element created from markdown table with correct column format |
+| 4.3 | Malformed Markdown import | 4 | **PASS** | `"Invalid timeline markdown: No tracks found — expected '## Track N: Name' headers"` |
+| 4.4 | Import replace mode | 4 | **PASS** | `imported: true` — element created from Markdown table with correct column format |
 | 5.1 | Export with preset | 5 | **PASS** | Job created with `youtube-1080p` preset, `status: queued`, completed successfully |
 | 5.2 | Export with custom settings | 5 | **PASS** | **Issue J fix confirmed**: Custom settings (1280x720@24fps) correctly applied. Poll shows `width=1280, height=720, fps=24, preset=none` |
 | 5.3 | Poll export job | 5 | **PASS** | `status: completed`, outputPath correct, settings=1920x1080@30fps (preset export) |
@@ -151,7 +151,7 @@ Both sync endpoints blocked the HTTP connection during FFmpeg analysis. On a 569
 1. Added `syncProjectMediaIfNeeded()` call at start of `applyTimelineToStore()` so media items are loaded before resolution
 2. Added case-insensitive name matching fallback in `findMediaItemForElement()`
 
-**Live verified 2026-02-21**: Import with `replace: true` and markdown table format correctly resolves source name `export_2026-02-17_03-56.mp4` to media item and creates timeline element.
+**Live verified 2026-02-21**: Import with `replace: true` and Markdown table format correctly resolves source name `export_2026-02-17_03-56.mp4` to media item and creates timeline element.
 
 ### Issue G: FFmpeg audio extraction error messaging — FIXED
 
@@ -204,7 +204,7 @@ Applied to both sync (`/auto-edit`) and async (`/auto-edit/start`) routes.
 
 3. ~~**Fix frame analysis cascade (Issue D)**~~ — **DONE & VERIFIED**. Provider cascade with descriptive error confirmed.
 
-4. ~~**Fix markdown import apply (Issue F)**~~ — **DONE & VERIFIED**. Media sync + case-insensitive match confirmed.
+4. ~~**Fix Markdown import apply (Issue F)**~~ — **DONE & VERIFIED**. Media sync + case-insensitive match confirmed.
 
 ### Medium priority
 
@@ -224,6 +224,6 @@ Applied to both sync (`/auto-edit`) and async (`/auto-edit/start`) routes.
 
 ### Nice to have
 
-11. **Timeline import needs `format:"md"` for markdown** — Without it, defaults to JSON and returns `"Invalid JSON in 'data'"`. Consider auto-detecting markdown (check for `## Track` headers).
+11. **Timeline import needs `format:"md"` for Markdown** — Without it, defaults to JSON and returns `"Invalid JSON in 'data'"`. Consider auto-detecting Markdown (check for `## Track` headers).
 
 12. **Script these tests** — A single `test-api.sh` that auto-discovers a project and runs all tests would cut retest time from 15+ minutes to ~30 seconds.

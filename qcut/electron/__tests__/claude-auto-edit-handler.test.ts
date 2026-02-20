@@ -371,8 +371,11 @@ describe("auto-edit async jobs", () => {
 
 		await vi.waitFor(() => {
 			const job = getAutoEditJobStatus(jobId);
-			expect(["failed", "completed"]).toContain(job!.status);
+			expect(job?.status).toBe("failed");
 		});
+
+		const job = getAutoEditJobStatus(jobId);
+		expect(job?.message).toBe("Auto-edit pipeline failed");
 	});
 
 	it("cancelAutoEditJob marks job as cancelled", () => {

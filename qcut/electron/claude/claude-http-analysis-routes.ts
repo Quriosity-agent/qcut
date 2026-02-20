@@ -374,7 +374,7 @@ export function registerAnalysisRoutes(
 		"/api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId",
 		async (req) => {
 			const job = getSuggestJobStatus(req.params.jobId);
-			if (!job) {
+			if (!job || job.projectId !== req.params.projectId) {
 				throw new HttpError(404, `Job not found: ${req.params.jobId}`);
 			}
 			return job;
@@ -441,7 +441,7 @@ export function registerAnalysisRoutes(
 		"/api/claude/timeline/:projectId/auto-edit/jobs/:jobId",
 		async (req) => {
 			const job = getAutoEditJobStatus(req.params.jobId);
-			if (!job) {
+			if (!job || job.projectId !== req.params.projectId) {
 				throw new HttpError(404, `Job not found: ${req.params.jobId}`);
 			}
 			return job;

@@ -109,7 +109,7 @@
 
 ---
 
-### 4. Fix markdown import apply (Issue F)
+### 4. Fix Markdown import apply (Issue F)
 
 **Problem**: `POST /api/claude/timeline/:projectId/import` with `format:"md"` returns `{ imported: true }` but elements don't appear in the timeline.
 
@@ -125,7 +125,7 @@
 
 - [ ] **4b. Verify markdownToTimeline output format**
   - File: `electron/claude/claude-timeline-handler.ts:222`
-  - Ensure parsed markdown produces valid `ClaudeTimeline` with correct track/element structure
+  - Ensure parsed Markdown produces valid `ClaudeTimeline` with correct track/element structure
   - Ensure element `sourceId` references exist in the project's media library
 
 - [ ] **4c. Fix the store update and add IPC round-trip test**
@@ -200,9 +200,9 @@
 
 ## Nice to Have
 
-### 8. Auto-detect markdown import format
+### 8. Auto-detect Markdown import format
 
-**Problem**: Timeline import requires explicit `format:"md"` for markdown. Without it, defaults to JSON and fails.
+**Problem**: Timeline import requires explicit `format:"md"` for Markdown. Without it, defaults to JSON and fails.
 
 - [ ] File: `electron/claude/claude-timeline-handler.ts:880`
 - [ ] If `data` starts with `#` or contains `## Track`, auto-set `format = "md"`
