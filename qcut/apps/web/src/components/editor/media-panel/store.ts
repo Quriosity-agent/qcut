@@ -216,37 +216,45 @@ const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   edit: "word-timeline",
 };
 
-export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
+/** Trigger terminal panel auto-expand/collapse based on tab transition. */
+function handleTerminalFocusTransition(prevTab: Tab, nextTab: Tab) {
+  const wasTerminal = prevTab === "pty";
+  const isTerminal = nextTab === "pty";
+  if (isTerminal && !wasTerminal) {
+    usePanelStore.getState().enterTerminalFocus();
+  } else if (!isTerminal && wasTerminal) {
+    usePanelStore.getState().exitTerminalFocus();
+  }
+}
+
+export const useMediaPanelStore = create<MediaPanelStore>((set, get) => ({
   activeGroup: "media",
-  setActiveGroup: (group) =>
+  setActiveGroup: (group) => {
+    const prev = get().activeTab;
+    const next = get().lastTabPerGroup[group];
     set((state) => ({
       activeGroup: group,
       activeTab: state.lastTabPerGroup[group],
-    })),
+    }));
+    handleTerminalFocusTransition(prev, next);
+  },
 
   activeTab: "media",
-  setActiveTab: (tab) =>
+  setActiveTab: (tab) => {
+    const prev = get().activeTab;
     set((state) => {
       const group = getGroupForTab(tab);
       const editSubgroup =
         group === "edit" ? getEditSubgroupForTab(tab) : undefined;
-
-      // Auto-expand/collapse panel when switching to/from terminal
-      const wasTerminal = state.activeTab === "pty";
-      const isTerminal = tab === "pty";
-      if (isTerminal && !wasTerminal) {
-        usePanelStore.getState().enterTerminalFocus();
-      } else if (!isTerminal && wasTerminal) {
-        usePanelStore.getState().exitTerminalFocus();
-      }
-
       return {
         activeTab: tab,
         activeGroup: group,
         lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
         ...(editSubgroup && { activeEditSubgroup: editSubgroup }),
       };
-    }),
+    });
+    handleTerminalFocusTransition(prev, tab);
+  },
 
   activeEditSubgroup: "ai-edit",
   setActiveEditSubgroup: (subgroup) =>

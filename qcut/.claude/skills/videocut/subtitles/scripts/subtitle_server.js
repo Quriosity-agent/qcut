@@ -9,7 +9,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { execSync, spawn } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
 
 const PORT = process.argv[2] || 8898;
 const VIDEO_PATH = process.argv[3] || "";
@@ -26,7 +26,7 @@ if (fs.existsSync(SUBTITLES_FILE)) {
 }
 
 // 读取词典
-const DICT_FILE = path.join(__dirname, "..", "词典.txt");
+const DICT_FILE = path.join(__dirname, "..", "dictionary.txt");
 let dictionary = [];
 if (fs.existsSync(DICT_FILE)) {
   dictionary = fs
@@ -97,17 +97,17 @@ const server = http.createServer((req, res) => {
   if (req.url === "/api/video-info") {
     try {
       const dur = parseFloat(
-        execSync(
-          `ffprobe -v error -show_entries format=duration -of csv=p=0 "file:${VIDEO_PATH}"`
-        )
-          .toString()
-          .trim()
+        execFileSync(
+          "ffprobe",
+          ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", `file:${VIDEO_PATH}`],
+          { encoding: "utf8" }
+        ).trim()
       );
-      const streamInfo = execSync(
-        `ffprobe -v error -show_entries stream=width,height,r_frame_rate -select_streams v:0 -of csv=p=0 "file:${VIDEO_PATH}"`
-      )
-        .toString()
-        .trim();
+      const streamInfo = execFileSync(
+        "ffprobe",
+        ["-v", "error", "-show_entries", "stream=width,height,r_frame_rate", "-select_streams", "v:0", "-of", "csv=p=0", `file:${VIDEO_PATH}`],
+        { encoding: "utf8" }
+      ).trim();
       const parts = streamInfo.split(",");
       const width = parseInt(parts[0]) || 1920;
       const height = parseInt(parts[1]) || 1080;
@@ -158,17 +158,17 @@ const server = http.createServer((req, res) => {
         let totalFrames = 0;
         try {
           const dur = parseFloat(
-            execSync(
-              `ffprobe -v error -show_entries format=duration -of csv=p=0 "file:${VIDEO_PATH}"`
-            )
-              .toString()
-              .trim()
+            execFileSync(
+              "ffprobe",
+              ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", `file:${VIDEO_PATH}`],
+              { encoding: "utf8" }
+            ).trim()
           );
-          const fpsStr = execSync(
-            `ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 "file:${VIDEO_PATH}"`
-          )
-            .toString()
-            .trim();
+          const fpsStr = execFileSync(
+            "ffprobe",
+            ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0", `file:${VIDEO_PATH}`],
+            { encoding: "utf8" }
+          ).trim();
           const fpsParts = fpsStr.split("/");
           const fps =
             fpsParts.length === 2

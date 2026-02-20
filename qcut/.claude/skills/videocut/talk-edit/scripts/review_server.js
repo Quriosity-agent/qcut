@@ -13,7 +13,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const PORT = process.argv[2] || 8899;
 const VIDEO_FILE = process.argv[3] || findVideoFile();
@@ -68,11 +68,10 @@ const server = http.createServer((req, res) => {
 
         if (fs.existsSync(scriptPath)) {
           console.log("🎬 调用 cut_video.sh...");
-          execSync(
-            `bash "${scriptPath}" "${VIDEO_FILE}" delete_segments.json "${outputFile}"`,
-            {
-              stdio: "inherit",
-            }
+          execFileSync(
+            "bash",
+            [scriptPath, VIDEO_FILE, "delete_segments.json", outputFile],
+            { stdio: "inherit" }
           );
         } else {
           // 如果没有 cut_video.sh，用内置的 ffmpeg 命令
@@ -82,18 +81,18 @@ const server = http.createServer((req, res) => {
 
         // 获取剪辑前后的时长信息
         const originalDuration = parseFloat(
-          execSync(
-            `ffprobe -v error -show_entries format=duration -of csv=p=0 "file:${VIDEO_FILE}"`
-          )
-            .toString()
-            .trim()
+          execFileSync(
+            "ffprobe",
+            ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", `file:${VIDEO_FILE}`],
+            { encoding: "utf8" }
+          ).trim()
         );
         const newDuration = parseFloat(
-          execSync(
-            `ffprobe -v error -show_entries format=duration -of csv=p=0 "file:${outputFile}"`
-          )
-            .toString()
-            .trim()
+          execFileSync(
+            "ffprobe",
+            ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", `file:${outputFile}`],
+            { encoding: "utf8" }
+          ).trim()
         );
         const deletedDuration = originalDuration - newDuration;
         const savedPercent = (
@@ -123,45 +122,61 @@ const server = http.createServer((req, res) => {
   }
 
   // 静态文件服务（从当前目录读取）
+  const baseDir = path.resolve(".");
   let filePath = req.url === "/" ? "/review.html" : req.url;
-  filePath = "." + filePath;
+  filePath = path.resolve("." + filePath);
+
+  // Block path traversal
+  if (!filePath.startsWith(baseDir + path.sep) && filePath !== baseDir) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
 
   const ext = path.extname(filePath);
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
-  // 检查文件是否存在
-  if (!fs.existsSync(filePath)) {
-    res.writeHead(404);
-    res.end("Not Found");
-    return;
-  }
+  try {
+    if (!fs.existsSync(filePath)) {
+      res.writeHead(404);
+      res.end("Not Found");
+      return;
+    }
 
-  const stat = fs.statSync(filePath);
+    const stat = fs.statSync(filePath);
 
-  // 支持 Range 请求（音频/视频拖动）
-  if (req.headers.range && (ext === ".mp3" || ext === ".mp4")) {
-    const range = req.headers.range.replace("bytes=", "").split("-");
-    const start = parseInt(range[0], 10);
-    const end = range[1] ? parseInt(range[1], 10) : stat.size - 1;
+    // 支持 Range 请求（音频/视频拖动）
+    if (req.headers.range && (ext === ".mp3" || ext === ".mp4")) {
+      const range = req.headers.range.replace("bytes=", "").split("-");
+      const start = parseInt(range[0], 10);
+      const end = range[1] ? parseInt(range[1], 10) : stat.size - 1;
 
-    res.writeHead(206, {
+      res.writeHead(206, {
+        "Content-Type": contentType,
+        "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": end - start + 1,
+      });
+
+      const stream = fs.createReadStream(filePath, { start, end });
+      stream.on("error", () => { res.end(); });
+      stream.pipe(res);
+      return;
+    }
+
+    // 普通请求
+    res.writeHead(200, {
       "Content-Type": contentType,
-      "Content-Range": `bytes ${start}-${end}/${stat.size}`,
+      "Content-Length": stat.size,
       "Accept-Ranges": "bytes",
-      "Content-Length": end - start + 1,
     });
-
-    fs.createReadStream(filePath, { start, end }).pipe(res);
-    return;
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", () => { res.end(); });
+    stream.pipe(res);
+  } catch {
+    res.writeHead(500);
+    res.end("Internal Server Error");
   }
-
-  // 普通请求
-  res.writeHead(200, {
-    "Content-Type": contentType,
-    "Content-Length": stat.size,
-    "Accept-Ranges": "bytes",
-  });
-  fs.createReadStream(filePath).pipe(res);
 });
 
 // 检测可用的硬件编码器
