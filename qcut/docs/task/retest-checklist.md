@@ -104,11 +104,15 @@ curl -s -X POST -H "Content-Type: application/json" \
 
 ## 3. Issues
 
-### Issue C (unchanged): AICP `describe` still broken
+### Issue C: AICP `describe` missing Google SDK — FIXED (spec updated, rebuild needed)
 
-`aicp analyze-video -t describe` fails due to missing `google-generativeai` in PyInstaller binary.
+`aicp analyze-video -t describe` fails due to missing `google.genai` in PyInstaller binary.
 
-**Fix**: Add `google-generativeai` to `packages/video-agent-skill/aicp.spec` hiddenimports and rebuild.
+**Root cause**: `aicp.spec` hiddenimports had no Google-related packages. The `describe` command uses `google.genai` (new SDK) via `gemini_analyzer.py`, and the legacy code uses `google.generativeai`. PyInstaller can't discover namespace packages like `google.*` through static analysis.
+
+**Fix applied** (branch `claude-cli-v3`): Added 14 Google-related hidden imports to `aicp.spec`: `google.genai`, `google.generativeai`, `google.auth`, `google.cloud`, `google.api_core`, `proto`, and their submodules.
+
+**Rebuild required**: Run `pyinstaller aicp.spec` from `packages/video-agent-skill/` to produce an updated binary.
 
 ### Issue D: Frame analysis provider cascade — VERIFIED FIXED
 
@@ -206,7 +210,7 @@ Applied to both sync (`/auto-edit`) and async (`/auto-edit/start`) routes.
 
 5. **Add `GET /api/claude/projects` endpoint** — No API way to list projects. Only option is scraping IndexedDB on disk. Makes testing and automation hard.
 
-6. **Rebuild AICP binary with `google-generativeai` (Issue C)** — Add to `aicp.spec` hiddenimports and run `pyinstaller aicp.spec`.
+6. ~~**Rebuild AICP binary with Google SDK (Issue C)**~~ — **DONE** (spec updated). Run `pyinstaller aicp.spec` from `packages/video-agent-skill/` to rebuild.
 
 7. **Export concurrency guard** — Starting a second export while one runs returned success (both completed). Consider adding a queue or concurrent guard.
 
