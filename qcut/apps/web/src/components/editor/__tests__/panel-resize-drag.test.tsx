@@ -35,9 +35,9 @@ import {
 // Mock child components to isolate panel layout testing
 vi.mock("@/stores/panel-store", () => {
 	const defaultSizes = {
-		toolsPanel: 22,
-		previewPanel: 46,
-		propertiesPanel: 32,
+		toolsPanel: 25,
+		previewPanel: 47,
+		propertiesPanel: 28,
 		mainContent: 70,
 		timeline: 30,
 		aiPanelWidth: 22,
