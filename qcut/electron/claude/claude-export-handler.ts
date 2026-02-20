@@ -312,12 +312,20 @@ function resolveExportSettings({
 
 		return {
 			presetId: preset.id,
-			width: s?.width ?? (typeof top.width === "number" ? top.width : preset.width),
-			height: s?.height ?? (typeof top.height === "number" ? top.height : preset.height),
+			width:
+				s?.width ?? (typeof top.width === "number" ? top.width : preset.width),
+			height:
+				s?.height ??
+				(typeof top.height === "number" ? top.height : preset.height),
 			fps: s?.fps ?? (typeof top.fps === "number" ? top.fps : preset.fps),
-			format: s?.format ?? (typeof top.format === "string" ? top.format : preset.format),
-			codec: s?.codec ?? (typeof top.codec === "string" ? top.codec : "libx264"),
-			bitrate: s?.bitrate ?? (typeof top.bitrate === "string" ? top.bitrate : preset.bitrate),
+			format:
+				s?.format ??
+				(typeof top.format === "string" ? top.format : preset.format),
+			codec:
+				s?.codec ?? (typeof top.codec === "string" ? top.codec : "libx264"),
+			bitrate:
+				s?.bitrate ??
+				(typeof top.bitrate === "string" ? top.bitrate : preset.bitrate),
 		};
 	} catch (error) {
 		if (error instanceof Error) {

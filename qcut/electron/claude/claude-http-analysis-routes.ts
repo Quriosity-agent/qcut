@@ -385,9 +385,7 @@ export function registerAnalysisRoutes(
 		"/api/claude/analyze/:projectId/suggest-cuts/jobs",
 		async (req) => {
 			const allJobs = listSuggestJobs();
-			return allJobs.filter(
-				(job) => job.projectId === req.params.projectId
-			);
+			return allJobs.filter((job) => job.projectId === req.params.projectId);
 		}
 	);
 
@@ -448,15 +446,10 @@ export function registerAnalysisRoutes(
 		}
 	);
 
-	router.get(
-		"/api/claude/timeline/:projectId/auto-edit/jobs",
-		async (req) => {
-			const allJobs = listAutoEditJobs();
-			return allJobs.filter(
-				(job) => job.projectId === req.params.projectId
-			);
-		}
-	);
+	router.get("/api/claude/timeline/:projectId/auto-edit/jobs", async (req) => {
+		const allJobs = listAutoEditJobs();
+		return allJobs.filter((job) => job.projectId === req.params.projectId);
+	});
 
 	router.post(
 		"/api/claude/timeline/:projectId/auto-edit/jobs/:jobId/cancel",

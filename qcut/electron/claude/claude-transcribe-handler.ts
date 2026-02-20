@@ -113,9 +113,7 @@ function hasAudioStream(videoPath: string): Promise<boolean> {
 export async function extractAudio(videoPath: string): Promise<string> {
 	const hasAudio = await hasAudioStream(videoPath);
 	if (!hasAudio) {
-		throw new Error(
-			`Video file has no audio stream to extract: ${videoPath}`
-		);
+		throw new Error(`Video file has no audio stream to extract: ${videoPath}`);
 	}
 
 	const ffmpegPath = getFFmpegPath();

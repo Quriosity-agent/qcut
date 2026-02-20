@@ -288,14 +288,10 @@ async function analyzeFramesWithClaude(
 
 	if (keys.anthropicApiKey) {
 		try {
-			const text = await callAnthropicVision(
-				keys.anthropicApiKey,
-				content
-			);
+			const text = await callAnthropicVision(keys.anthropicApiKey, content);
 			return parseFrameAnalysisResponse(text, framePaths);
 		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : "Anthropic call failed";
+			const msg = err instanceof Error ? err.message : "Anthropic call failed";
 			claudeLog.warn(HANDLER_NAME, `Anthropic provider failed: ${msg}`);
 			errors.push(`Anthropic: ${msg}`);
 		}
@@ -305,18 +301,11 @@ async function analyzeFramesWithClaude(
 
 	if (keys.openRouterApiKey) {
 		try {
-			claudeLog.info(
-				HANDLER_NAME,
-				"Falling back to OpenRouter for vision..."
-			);
-			const text = await callOpenRouterVision(
-				keys.openRouterApiKey,
-				content
-			);
+			claudeLog.info(HANDLER_NAME, "Falling back to OpenRouter for vision...");
+			const text = await callOpenRouterVision(keys.openRouterApiKey, content);
 			return parseFrameAnalysisResponse(text, framePaths);
 		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : "OpenRouter call failed";
+			const msg = err instanceof Error ? err.message : "OpenRouter call failed";
 			claudeLog.warn(HANDLER_NAME, `OpenRouter provider failed: ${msg}`);
 			errors.push(`OpenRouter: ${msg}`);
 		}

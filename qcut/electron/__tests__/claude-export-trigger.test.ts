@@ -187,7 +187,10 @@ describe("Claude export trigger", () => {
 				height: 720,
 				fps: 24,
 				format: "mp4",
-			} as Record<string, unknown> as import("../types/claude-api").ExportJobRequest,
+			} as Record<
+				string,
+				unknown
+			> as import("../types/claude-api").ExportJobRequest,
 			timeline: testTimeline,
 			mediaFiles: testMediaFiles,
 		});
