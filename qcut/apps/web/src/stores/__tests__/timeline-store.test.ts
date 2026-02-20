@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeEach, vi, afterAll, afterEach } from "vitest";
+import {
+	describe,
+	it,
+	expect,
+	beforeEach,
+	vi,
+	afterAll,
+	afterEach,
+} from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
@@ -26,7 +34,9 @@ vi.mock("@/lib/error-handler", () => ({
 
 // Mock dependencies
 vi.mock("@/utils/lazy-stores", () => ({
-	getMediaStore: vi.fn(() => Promise.resolve(() => ({ getState: () => ({ mediaItems: [] }) }))),
+	getMediaStore: vi.fn(() =>
+		Promise.resolve(() => ({ getState: () => ({ mediaItems: [] }) }))
+	),
 	getTimelineStore: vi.fn(() => Promise.resolve(() => ({}))),
 	getProjectStore: vi.fn(() => Promise.resolve(() => ({}))),
 	getSceneStore: vi.fn(() => Promise.resolve(() => ({}))),
