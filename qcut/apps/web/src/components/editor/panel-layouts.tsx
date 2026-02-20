@@ -143,8 +143,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 	}, [resetCounter]);
 
 	const rightGroupTotal = Math.max(1, 100 - toolsPanel);
-	const toGlobalPreview = (pctVal: number) =>
-		(pctVal * rightGroupTotal) / 100;
+	const toGlobalPreview = (pctVal: number) => (pctVal * rightGroupTotal) / 100;
 	const toGlobalProperties = (pctVal: number) =>
 		(pctVal * rightGroupTotal) / 100;
 
@@ -171,10 +170,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 				minSize="50%"
 				className="min-w-0 min-h-0"
 			>
-				<ResizablePanelGroup
-					orientation="vertical"
-					className="h-full w-full"
-				>
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
 					<ResizablePanel
 						defaultSize={defaults.main}
 						minSize="30%"
@@ -258,10 +254,8 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 	}, [resetCounter]);
 
 	const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
-	const toGlobalTools = (pctVal: number) =>
-		(pctVal * leftGroupTotal) / 100;
-	const toGlobalPreview = (pctVal: number) =>
-		(pctVal * leftGroupTotal) / 100;
+	const toGlobalTools = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
+	const toGlobalPreview = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
 
 	return (
 		<ResizablePanelGroup
@@ -269,14 +263,8 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 			orientation="horizontal"
 			className="h-full w-full px-3 pb-3"
 		>
-			<ResizablePanel
-				defaultSize={defaults.left}
-				minSize="50%"
-			>
-				<ResizablePanelGroup
-					orientation="vertical"
-					className="h-full w-full"
-				>
+			<ResizablePanel defaultSize={defaults.left} minSize="50%">
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
 					<ResizablePanel
 						defaultSize={defaults.main}
 						minSize="30%"
@@ -358,8 +346,7 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 	}, [resetCounter]);
 
 	const leftGroupTotal = Math.max(1, 100 - previewPanel);
-	const toGlobalTools = (pctVal: number) =>
-		(pctVal * leftGroupTotal) / 100;
+	const toGlobalTools = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
 	const toGlobalProperties = (pctVal: number) =>
 		(pctVal * leftGroupTotal) / 100;
 
@@ -369,14 +356,8 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 			orientation="horizontal"
 			className="h-full w-full px-3 pb-3"
 		>
-			<ResizablePanel
-				defaultSize={defaults.left}
-				minSize="50%"
-			>
-				<ResizablePanelGroup
-					orientation="vertical"
-					className="h-full w-full"
-				>
+			<ResizablePanel defaultSize={defaults.left} minSize="50%">
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
 					<ResizablePanel
 						defaultSize={defaults.main}
 						minSize="30%"

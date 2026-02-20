@@ -22,7 +22,8 @@ class MockResizeObserver {
 	unobserve() {}
 	disconnect() {}
 }
-globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver =
+	MockResizeObserver as unknown as typeof ResizeObserver;
 
 import { render, cleanup } from "@testing-library/react";
 import React from "react";
@@ -54,8 +55,18 @@ vi.mock("@/stores/panel-store", () => {
 
 	const PRESET_CONFIGS = {
 		default: { ...defaultSizes },
-		media: { ...defaultSizes, toolsPanel: 30, previewPanel: 40, propertiesPanel: 30 },
-		inspector: { ...defaultSizes, toolsPanel: 22, previewPanel: 44, propertiesPanel: 34 },
+		media: {
+			...defaultSizes,
+			toolsPanel: 30,
+			previewPanel: 40,
+			propertiesPanel: 30,
+		},
+		inspector: {
+			...defaultSizes,
+			toolsPanel: 22,
+			previewPanel: 44,
+			propertiesPanel: 34,
+		},
 		"vertical-preview": {
 			...defaultSizes,
 			toolsPanel: 25,
@@ -104,7 +115,7 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>Panel B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const group = container.querySelector("[data-group]");
@@ -122,7 +133,7 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const panels = container.querySelectorAll("[data-panel]");
@@ -139,7 +150,7 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector("[data-separator]");
@@ -159,7 +170,7 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const group = container.querySelector("[data-group]");
@@ -177,11 +188,11 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		expect(separator.style.touchAction).toBe("none");
 	});
@@ -196,11 +207,11 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		expect(separator.tabIndex).toBe(0);
 	});
@@ -215,11 +226,11 @@ describe("react-resizable-panels v4 DOM structure", () => {
 				<ResizablePanel defaultSize="70%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const panels = container.querySelectorAll(
-			"[data-panel]",
+			"[data-panel]"
 		) as NodeListOf<HTMLElement>;
 		// v4 uses flexGrow for sizing; flexBasis should be 0
 		for (const panel of panels) {
@@ -244,7 +255,7 @@ describe("react-resizable-panels v4 size units", () => {
 				<ResizablePanel defaultSize="75%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const panels = container.querySelectorAll("[data-panel]");
@@ -264,11 +275,11 @@ describe("react-resizable-panels v4 size units", () => {
 				<ResizablePanel defaultSize={75}>
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const panels = container.querySelectorAll(
-			"[data-panel]",
+			"[data-panel]"
 		) as NodeListOf<HTMLElement>;
 		const growA = Number.parseFloat(panels[0].style.flexGrow);
 		const growB = Number.parseFloat(panels[1].style.flexGrow);
@@ -292,7 +303,7 @@ describe("react-resizable-panels v4 size units", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		// Should render without errors — the key test is that string sizes don't crash
@@ -312,7 +323,7 @@ describe("react-resizable-panels v4 data attributes", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const group = container.querySelector("[data-group]") as HTMLElement;
@@ -332,7 +343,7 @@ describe("react-resizable-panels v4 data attributes", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const group = container.querySelector("[data-group]") as HTMLElement;
@@ -351,11 +362,11 @@ describe("Vertical group separator CSS (critical v4 fix)", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>Bottom</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		// v4: vertical group → separator aria-orientation is "horizontal"
 		expect(separator.getAttribute("aria-orientation")).toBe("horizontal");
@@ -371,11 +382,11 @@ describe("Vertical group separator CSS (critical v4 fix)", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>Right</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		expect(separator.getAttribute("aria-orientation")).toBe("vertical");
 	});
@@ -390,11 +401,11 @@ describe("Vertical group separator CSS (critical v4 fix)", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>Bottom</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		// The separator should have CSS classes that target aria-orientation
 		const classStr = separator.className;
@@ -415,11 +426,11 @@ describe("ResizableHandle wrapper", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		expect(separator.classList.contains("test-class")).toBe(true);
 	});
@@ -434,11 +445,11 @@ describe("ResizableHandle wrapper", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		// withHandle should be consumed by the wrapper, not passed to DOM
 		expect(separator.getAttribute("withHandle")).toBeNull();
@@ -455,11 +466,11 @@ describe("ResizableHandle wrapper", () => {
 				<ResizablePanel defaultSize="50%">
 					<div>B</div>
 				</ResizablePanel>
-			</ResizablePanelGroup>,
+			</ResizablePanelGroup>
 		);
 
 		const separator = container.querySelector(
-			"[data-separator]",
+			"[data-separator]"
 		) as HTMLElement;
 		// For horizontal group, separator controls vertical split → aria-orientation=vertical
 		expect(separator.getAttribute("aria-orientation")).toBe("vertical");
