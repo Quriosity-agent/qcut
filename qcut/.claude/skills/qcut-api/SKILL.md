@@ -8,8 +8,11 @@ argument-hint: [action description or project ID]
 
 Programmatically control a running QCut editor instance through its REST API (from Claude Code terminal) or Electron IPC (from renderer code).
 
-**Reference files** (load when needed):
-- `REFERENCE.md` — Complete endpoint reference, type definitions, all curl examples
+**Reference files** (load only the one you need):
+- `REF-MEDIA-TIMELINE.md` — Media + Timeline types, endpoints, curl examples
+- `REF-ANALYSIS.md` — Transcription, scenes, frames, fillers, AICP analysis
+- `REF-EDITING.md` — Cuts, auto-edit, range delete, cut suggestions
+- `REF-PROJECT-EXPORT.md` — Project, export, generate, diagnostics, security, IPC
 
 ## Architecture
 
@@ -364,4 +367,4 @@ Documents/QCut/Projects/{projectId}/
 | `apps/web/src/lib/claude-timeline-bridge.ts` | Frontend IPC bridge |
 | `apps/web/src/lib/claude-timeline-bridge-helpers.ts` | Bridge helper functions |
 
-**See `REFERENCE.md` for complete type definitions, all endpoint details, and curl examples.**
+**See REF-*.md files for types, endpoint details, and curl examples.**
