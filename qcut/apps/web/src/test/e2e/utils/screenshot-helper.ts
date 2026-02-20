@@ -16,8 +16,8 @@ import { existsSync, mkdirSync } from "fs";
  * Screenshots are stored relative to the test directory.
  */
 const SCREENSHOTS_BASE_DIR = pathResolve(
-  process.cwd(),
-  "apps/web/src/test/e2e/screenshots"
+	process.cwd(),
+	"apps/web/src/test/e2e/screenshots"
 );
 
 /**
@@ -26,9 +26,9 @@ const SCREENSHOTS_BASE_DIR = pathResolve(
  * @param dir - The directory path to ensure exists
  */
 function ensureDir(dir: string): void {
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+	if (!existsSync(dir)) {
+		mkdirSync(dir, { recursive: true });
+	}
 }
 
 /**
@@ -53,26 +53,26 @@ function ensureDir(dir: string): void {
  * ```
  */
 export async function captureScreenshot(
-  page: Page,
-  name: string,
-  subfolder?: string,
-  options?: { fullPage?: boolean }
+	page: Page,
+	name: string,
+	subfolder?: string,
+	options?: { fullPage?: boolean }
 ): Promise<string> {
-  const dir = subfolder
-    ? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
-    : SCREENSHOTS_BASE_DIR;
+	const dir = subfolder
+		? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
+		: SCREENSHOTS_BASE_DIR;
 
-  ensureDir(dir);
+	ensureDir(dir);
 
-  const filePath = pathResolve(dir, `${name}.png`);
+	const filePath = pathResolve(dir, `${name}.png`);
 
-  await page.screenshot({
-    path: filePath,
-    fullPage: options?.fullPage ?? false,
-  });
+	await page.screenshot({
+		path: filePath,
+		fullPage: options?.fullPage ?? false,
+	});
 
-  console.log(`Screenshot saved: ${filePath}`);
-  return filePath;
+	console.log(`Screenshot saved: ${filePath}`);
+	return filePath;
 }
 
 /**
@@ -94,31 +94,31 @@ export async function captureScreenshot(
  * ```
  */
 export async function captureElementScreenshot(
-  page: Page,
-  selector: string,
-  name: string,
-  subfolder?: string
+	page: Page,
+	selector: string,
+	name: string,
+	subfolder?: string
 ): Promise<string | null> {
-  const dir = subfolder
-    ? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
-    : SCREENSHOTS_BASE_DIR;
+	const dir = subfolder
+		? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
+		: SCREENSHOTS_BASE_DIR;
 
-  ensureDir(dir);
+	ensureDir(dir);
 
-  const filePath = pathResolve(dir, `${name}.png`);
+	const filePath = pathResolve(dir, `${name}.png`);
 
-  const element = page.locator(selector);
-  const count = await element.count();
+	const element = page.locator(selector);
+	const count = await element.count();
 
-  if (count === 0) {
-    console.warn(`Element not found for screenshot: ${selector}`);
-    return null;
-  }
+	if (count === 0) {
+		console.warn(`Element not found for screenshot: ${selector}`);
+		return null;
+	}
 
-  await element.first().screenshot({ path: filePath });
+	await element.first().screenshot({ path: filePath });
 
-  console.log(`Element screenshot saved: ${filePath}`);
-  return filePath;
+	console.log(`Element screenshot saved: ${filePath}`);
+	return filePath;
 }
 
 /**
@@ -139,14 +139,14 @@ export async function captureElementScreenshot(
  * ```
  */
 export async function captureTestStep(
-  page: Page,
-  testName: string,
-  stepNumber: number,
-  description: string
+	page: Page,
+	testName: string,
+	stepNumber: number,
+	description: string
 ): Promise<string> {
-  const paddedNumber = String(stepNumber).padStart(2, "0");
-  const fileName = `${paddedNumber}-${description}`;
-  return captureScreenshot(page, fileName, testName);
+	const paddedNumber = String(stepNumber).padStart(2, "0");
+	const fileName = `${paddedNumber}-${description}`;
+	return captureScreenshot(page, fileName, testName);
 }
 
 /**
@@ -158,15 +158,15 @@ export async function captureTestStep(
  * @returns The absolute path to the saved screenshot
  */
 export async function captureErrorScreenshot(
-  page: Page,
-  name: string,
-  error?: Error
+	page: Page,
+	name: string,
+	error?: Error
 ): Promise<string> {
-  if (error) {
-    console.error(`Capturing error screenshot for: ${error.message}`);
-  }
+	if (error) {
+		console.error(`Capturing error screenshot for: ${error.message}`);
+	}
 
-  return captureScreenshot(page, name, "errors");
+	return captureScreenshot(page, name, "errors");
 }
 
 /**
@@ -176,13 +176,13 @@ export async function captureErrorScreenshot(
  * @param subfolder - Optional subfolder to clean (cleans all if not specified)
  */
 export function cleanupScreenshots(subfolder?: string): void {
-  const { rmSync } = require("fs");
-  const dir = subfolder
-    ? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
-    : SCREENSHOTS_BASE_DIR;
+	const { rmSync } = require("fs");
+	const dir = subfolder
+		? pathResolve(SCREENSHOTS_BASE_DIR, subfolder)
+		: SCREENSHOTS_BASE_DIR;
 
-  if (existsSync(dir)) {
-    rmSync(dir, { recursive: true, force: true });
-    console.log(`Cleaned up screenshots: ${dir}`);
-  }
+	if (existsSync(dir)) {
+		rmSync(dir, { recursive: true, force: true });
+		console.log(`Cleaned up screenshots: ${dir}`);
+	}
 }

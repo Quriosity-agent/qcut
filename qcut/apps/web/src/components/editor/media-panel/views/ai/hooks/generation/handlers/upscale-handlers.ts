@@ -5,9 +5,9 @@
 import { falAIClient } from "@/lib/fal-ai-client";
 import { upscaleByteDanceVideo, upscaleFlashVSRVideo } from "@/lib/ai-video";
 import type {
-  ModelHandlerContext,
-  ModelHandlerResult,
-  UpscaleSettings,
+	ModelHandlerContext,
+	ModelHandlerResult,
+	UpscaleSettings,
 } from "../model-handler-types";
 
 // These aliases map UI values to generator literal unions.
@@ -19,152 +19,152 @@ type FlashVSROutputQuality = "low" | "medium" | "high" | "maximum";
 type FlashVSRWriteMode = "fast" | "balanced" | "small";
 
 export async function handleByteDanceUpscale(
-  ctx: ModelHandlerContext,
-  settings: UpscaleSettings
+	ctx: ModelHandlerContext,
+	settings: UpscaleSettings
 ): Promise<ModelHandlerResult> {
-  if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: "Video source required",
-    };
-  }
+	if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: "Video source required",
+		};
+	}
 
-  let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
+	let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
 
-  if (settings.sourceVideoFile) {
-    ctx.progressCallback({
-      status: "processing",
-      progress: 10,
-      message: `Uploading video for ${ctx.modelName}...`,
-    });
+	if (settings.sourceVideoFile) {
+		ctx.progressCallback({
+			status: "processing",
+			progress: 10,
+			message: `Uploading video for ${ctx.modelName}...`,
+		});
 
-    try {
-      videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
-    } catch (error) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  }
+		try {
+			videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
+		} catch (error) {
+			return {
+				response: undefined,
+				shouldSkip: true,
+				skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
+			};
+		}
+	}
 
-  if (!videoUrl) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: "Video URL could not be determined",
-    };
-  }
+	if (!videoUrl) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: "Video URL could not be determined",
+		};
+	}
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 30,
-    message: `Upscaling video to ${settings.bytedanceTargetResolution}...`,
-  });
+	ctx.progressCallback({
+		status: "processing",
+		progress: 30,
+		message: `Upscaling video to ${settings.bytedanceTargetResolution}...`,
+	});
 
-  try {
-    const response = await upscaleByteDanceVideo({
-      video_url: videoUrl,
-      target_resolution:
-        settings.bytedanceTargetResolution as ByteDanceResolution,
-      target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
-    });
+	try {
+		const response = await upscaleByteDanceVideo({
+			video_url: videoUrl,
+			target_resolution:
+				settings.bytedanceTargetResolution as ByteDanceResolution,
+			target_fps: settings.bytedanceTargetFPS as ByteDanceFPS,
+		});
 
-    ctx.progressCallback({
-      status: "completed",
-      progress: 100,
-      message: `Video upscaled with ${ctx.modelName}`,
-    });
+		ctx.progressCallback({
+			status: "completed",
+			progress: 100,
+			message: `Video upscaled with ${ctx.modelName}`,
+		});
 
-    return { response };
-  } catch (error) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: `ByteDance upscale failed: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+		return { response };
+	} catch (error) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: `ByteDance upscale failed: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
 }
 
 /**
  * Handle FlashVSR video upscaler
  */
 export async function handleFlashVSRUpscale(
-  ctx: ModelHandlerContext,
-  settings: UpscaleSettings
+	ctx: ModelHandlerContext,
+	settings: UpscaleSettings
 ): Promise<ModelHandlerResult> {
-  if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: "Video source required",
-    };
-  }
+	if (!settings.sourceVideoFile && !settings.sourceVideoUrl) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: "Video source required",
+		};
+	}
 
-  let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
+	let videoUrl: string | undefined = settings.sourceVideoUrl ?? undefined;
 
-  if (settings.sourceVideoFile) {
-    ctx.progressCallback({
-      status: "processing",
-      progress: 10,
-      message: `Uploading video for ${ctx.modelName}...`,
-    });
+	if (settings.sourceVideoFile) {
+		ctx.progressCallback({
+			status: "processing",
+			progress: 10,
+			message: `Uploading video for ${ctx.modelName}...`,
+		});
 
-    try {
-      videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
-    } catch (error) {
-      return {
-        response: undefined,
-        shouldSkip: true,
-        skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
-  }
+		try {
+			videoUrl = await falAIClient.uploadVideoToFal(settings.sourceVideoFile);
+		} catch (error) {
+			return {
+				response: undefined,
+				shouldSkip: true,
+				skipReason: `Failed to upload video: ${error instanceof Error ? error.message : String(error)}`,
+			};
+		}
+	}
 
-  if (!videoUrl) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: "Video URL could not be determined",
-    };
-  }
+	if (!videoUrl) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: "Video URL could not be determined",
+		};
+	}
 
-  const upscaleFactor = settings.flashvsrUpscaleFactor ?? 4;
+	const upscaleFactor = settings.flashvsrUpscaleFactor ?? 4;
 
-  ctx.progressCallback({
-    status: "processing",
-    progress: 30,
-    message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
-  });
+	ctx.progressCallback({
+		status: "processing",
+		progress: 30,
+		message: `Upscaling video with FlashVSR (${upscaleFactor}x)...`,
+	});
 
-  try {
-    const response = await upscaleFlashVSRVideo({
-      video_url: videoUrl,
-      upscale_factor: upscaleFactor,
-      acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
-      quality: settings.flashvsrQuality,
-      color_fix: settings.flashvsrColorFix,
-      preserve_audio: settings.flashvsrPreserveAudio,
-      output_format: settings.flashvsrOutputFormat as FlashVSROutputFormat,
-      output_quality: settings.flashvsrOutputQuality as FlashVSROutputQuality,
-      output_write_mode: settings.flashvsrOutputWriteMode as FlashVSRWriteMode,
-      seed: settings.flashvsrSeed ?? undefined,
-    });
+	try {
+		const response = await upscaleFlashVSRVideo({
+			video_url: videoUrl,
+			upscale_factor: upscaleFactor,
+			acceleration: settings.flashvsrAcceleration as FlashVSRAcceleration,
+			quality: settings.flashvsrQuality,
+			color_fix: settings.flashvsrColorFix,
+			preserve_audio: settings.flashvsrPreserveAudio,
+			output_format: settings.flashvsrOutputFormat as FlashVSROutputFormat,
+			output_quality: settings.flashvsrOutputQuality as FlashVSROutputQuality,
+			output_write_mode: settings.flashvsrOutputWriteMode as FlashVSRWriteMode,
+			seed: settings.flashvsrSeed ?? undefined,
+		});
 
-    ctx.progressCallback({
-      status: "completed",
-      progress: 100,
-      message: `Video upscaled with ${ctx.modelName}`,
-    });
+		ctx.progressCallback({
+			status: "completed",
+			progress: 100,
+			message: `Video upscaled with ${ctx.modelName}`,
+		});
 
-    return { response };
-  } catch (error) {
-    return {
-      response: undefined,
-      shouldSkip: true,
-      skipReason: `FlashVSR upscale failed: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+		return { response };
+	} catch (error) {
+		return {
+			response: undefined,
+			shouldSkip: true,
+			skipReason: `FlashVSR upscale failed: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
 }

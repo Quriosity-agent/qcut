@@ -10,43 +10,43 @@
 import * as path from "path";
 import * as fs from "fs";
 import {
-  BaseAgent,
-  type AgentConfig,
-  type AgentResult,
-  createAgentConfig,
-  agentOk,
-  agentFail,
+	BaseAgent,
+	type AgentConfig,
+	type AgentResult,
+	createAgentConfig,
+	agentOk,
+	agentFail,
 } from "./base-agent.js";
 import {
-  ImageGeneratorAdapter,
-  type ImageAdapterConfig,
+	ImageGeneratorAdapter,
+	type ImageAdapterConfig,
 } from "../adapters/image-adapter.js";
 import { LLMAdapter, type Message } from "../adapters/llm-adapter.js";
 import type {
-  CharacterInNovel,
-  CharacterPortrait,
+	CharacterInNovel,
+	CharacterPortrait,
 } from "../types/character.js";
 
 export interface PortraitsGeneratorConfig extends AgentConfig {
-  image_model: string;
-  llm_model: string;
-  views: string[];
-  style: string;
-  output_dir: string;
+	image_model: string;
+	llm_model: string;
+	views: string[];
+	style: string;
+	output_dir: string;
 }
 
 export function createPortraitsGeneratorConfig(
-  partial?: Partial<PortraitsGeneratorConfig>
+	partial?: Partial<PortraitsGeneratorConfig>
 ): PortraitsGeneratorConfig {
-  return {
-    ...createAgentConfig({ name: "CharacterPortraitsGenerator" }),
-    image_model: "nano_banana_pro",
-    llm_model: "kimi-k2.5",
-    views: ["front", "side", "back", "three_quarter"],
-    style: "detailed character portrait, professional, consistent style",
-    output_dir: "media/generated/vimax/portraits",
-    ...partial,
-  };
+	return {
+		...createAgentConfig({ name: "CharacterPortraitsGenerator" }),
+		image_model: "nano_banana_pro",
+		llm_model: "kimi-k2.5",
+		views: ["front", "side", "back", "three_quarter"],
+		style: "detailed character portrait, professional, consistent style",
+		output_dir: "media/generated/vimax/portraits",
+		...partial,
+	};
 }
 
 const PORTRAIT_PROMPT_TEMPLATE = `Create a detailed image generation prompt for a {view} view portrait.
@@ -69,159 +69,159 @@ Respond with ONLY the image generation prompt, no other text.`;
 const SUPPORTED_VIEWS = new Set(["front", "side", "back", "three_quarter"]);
 
 function safeSlug(value: string): string {
-  const safe = value
-    .replace(/[^A-Za-z0-9._-]+/g, "_")
-    .replace(/^_|_$/g, "")
-    .toLowerCase();
-  return safe || "unknown";
+	const safe = value
+		.replace(/[^A-Za-z0-9._-]+/g, "_")
+		.replace(/^_|_$/g, "")
+		.toLowerCase();
+	return safe || "unknown";
 }
 
 export class CharacterPortraitsGenerator extends BaseAgent<
-  CharacterInNovel,
-  CharacterPortrait
+	CharacterInNovel,
+	CharacterPortrait
 > {
-  declare config: PortraitsGeneratorConfig;
-  private _imageAdapter: ImageGeneratorAdapter | null = null;
-  private _llm: LLMAdapter | null = null;
+	declare config: PortraitsGeneratorConfig;
+	private _imageAdapter: ImageGeneratorAdapter | null = null;
+	private _llm: LLMAdapter | null = null;
 
-  constructor(config?: Partial<PortraitsGeneratorConfig>) {
-    super(createPortraitsGeneratorConfig(config));
-  }
+	constructor(config?: Partial<PortraitsGeneratorConfig>) {
+		super(createPortraitsGeneratorConfig(config));
+	}
 
-  private async _ensureAdapters(): Promise<void> {
-    if (!this._imageAdapter) {
-      this._imageAdapter = new ImageGeneratorAdapter({
-        model: this.config.image_model,
-        output_dir: this.config.output_dir,
-      } as Partial<ImageAdapterConfig>);
-      await this._imageAdapter.initialize();
-    }
-    if (!this._llm) {
-      this._llm = new LLMAdapter({ model: this.config.llm_model });
-      await this._llm.initialize();
-    }
-  }
+	private async _ensureAdapters(): Promise<void> {
+		if (!this._imageAdapter) {
+			this._imageAdapter = new ImageGeneratorAdapter({
+				model: this.config.image_model,
+				output_dir: this.config.output_dir,
+			} as Partial<ImageAdapterConfig>);
+			await this._imageAdapter.initialize();
+		}
+		if (!this._llm) {
+			this._llm = new LLMAdapter({ model: this.config.llm_model });
+			await this._llm.initialize();
+		}
+	}
 
-  private async _generatePrompt(
-    character: CharacterInNovel,
-    view: string
-  ): Promise<string> {
-    const prompt = PORTRAIT_PROMPT_TEMPLATE.replace(/\{view\}/g, view)
-      .replace("{name}", character.name)
-      .replace("{description}", character.description)
-      .replace("{appearance}", character.appearance)
-      .replace("{age}", character.age ?? "unknown")
-      .replace("{gender}", character.gender ?? "unknown")
-      .replace("{style}", this.config.style);
+	private async _generatePrompt(
+		character: CharacterInNovel,
+		view: string
+	): Promise<string> {
+		const prompt = PORTRAIT_PROMPT_TEMPLATE.replace(/\{view\}/g, view)
+			.replace("{name}", character.name)
+			.replace("{description}", character.description)
+			.replace("{appearance}", character.appearance)
+			.replace("{age}", character.age ?? "unknown")
+			.replace("{gender}", character.gender ?? "unknown")
+			.replace("{style}", this.config.style);
 
-    const response = await this._llm!.chat([
-      { role: "user", content: prompt } as Message,
-    ]);
-    const result = (response.content || "").trim();
+		const response = await this._llm!.chat([
+			{ role: "user", content: prompt } as Message,
+		]);
+		const result = (response.content || "").trim();
 
-    // Guard against empty LLM responses
-    if (result.length < 3) {
-      console.warn(
-        `[portraits] LLM returned empty prompt for ${character.name} ${view} view, using fallback`
-      );
-      return `${this.config.style}, ${view} view portrait of ${character.name}, ${character.description}, ${character.appearance}`;
-    }
+		// Guard against empty LLM responses
+		if (result.length < 3) {
+			console.warn(
+				`[portraits] LLM returned empty prompt for ${character.name} ${view} view, using fallback`
+			);
+			return `${this.config.style}, ${view} view portrait of ${character.name}, ${character.description}, ${character.appearance}`;
+		}
 
-    return result;
-  }
+		return result;
+	}
 
-  async process(
-    character: CharacterInNovel
-  ): Promise<AgentResult<CharacterPortrait>> {
-    await this._ensureAdapters();
+	async process(
+		character: CharacterInNovel
+	): Promise<AgentResult<CharacterPortrait>> {
+		await this._ensureAdapters();
 
-    console.log(`[portraits] Generating portraits for: ${character.name}`);
+		console.log(`[portraits] Generating portraits for: ${character.name}`);
 
-    try {
-      const portrait: CharacterPortrait = {
-        character_name: character.name,
-        description: "",
-      };
-      let totalCost = 0;
+		try {
+			const portrait: CharacterPortrait = {
+				character_name: character.name,
+				description: "",
+			};
+			let totalCost = 0;
 
-      // Validate views
-      const unknownViews = this.config.views.filter(
-        (v) => !SUPPORTED_VIEWS.has(v)
-      );
-      if (unknownViews.length > 0) {
-        throw new Error(
-          `Unsupported portrait view(s): ${[...new Set(unknownViews)].sort().join(", ")}`
-        );
-      }
+			// Validate views
+			const unknownViews = this.config.views.filter(
+				(v) => !SUPPORTED_VIEWS.has(v)
+			);
+			if (unknownViews.length > 0) {
+				throw new Error(
+					`Unsupported portrait view(s): ${[...new Set(unknownViews)].sort().join(", ")}`
+				);
+			}
 
-      const charSlug = safeSlug(character.name);
-      const charDir = path.join(this.config.output_dir, charSlug);
-      if (!fs.existsSync(charDir)) {
-        fs.mkdirSync(charDir, { recursive: true });
-      }
+			const charSlug = safeSlug(character.name);
+			const charDir = path.join(this.config.output_dir, charSlug);
+			if (!fs.existsSync(charDir)) {
+				fs.mkdirSync(charDir, { recursive: true });
+			}
 
-      for (const view of this.config.views) {
-        console.log(
-          `[portraits] Generating ${view} view for ${character.name}`
-        );
+			for (const view of this.config.views) {
+				console.log(
+					`[portraits] Generating ${view} view for ${character.name}`
+				);
 
-        const prompt = await this._generatePrompt(character, view);
-        const outputPath = path.join(charDir, `${view}.png`);
+				const prompt = await this._generatePrompt(character, view);
+				const outputPath = path.join(charDir, `${view}.png`);
 
-        const result = await this._imageAdapter!.generate(prompt, {
-          aspect_ratio: "1:1",
-          output_path: outputPath,
-        });
+				const result = await this._imageAdapter!.generate(prompt, {
+					aspect_ratio: "1:1",
+					output_path: outputPath,
+				});
 
-        totalCost += result.cost;
+				totalCost += result.cost;
 
-        if (view === "front") portrait.front_view = result.image_path;
-        else if (view === "side") portrait.side_view = result.image_path;
-        else if (view === "back") portrait.back_view = result.image_path;
-        else if (view === "three_quarter")
-          portrait.three_quarter_view = result.image_path;
-      }
+				if (view === "front") portrait.front_view = result.image_path;
+				else if (view === "side") portrait.side_view = result.image_path;
+				else if (view === "back") portrait.back_view = result.image_path;
+				else if (view === "three_quarter")
+					portrait.three_quarter_view = result.image_path;
+			}
 
-      console.log(`[portraits] Generated portraits for ${character.name}`);
+			console.log(`[portraits] Generated portraits for ${character.name}`);
 
-      return agentOk(portrait, {
-        views_generated: this.config.views.length,
-        cost: totalCost,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[portraits] Failed: ${msg}`);
-      return agentFail(msg);
-    }
-  }
+			return agentOk(portrait, {
+				views_generated: this.config.views.length,
+				cost: totalCost,
+			});
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.error(`[portraits] Failed: ${msg}`);
+			return agentFail(msg);
+		}
+	}
 
-  /** Generate portraits for multiple characters. */
-  async generateBatch(
-    characters: CharacterInNovel[]
-  ): Promise<AgentResult<Record<string, CharacterPortrait>>> {
-    const portraits: Record<string, CharacterPortrait> = {};
-    let totalCost = 0;
-    const errors: string[] = [];
+	/** Generate portraits for multiple characters. */
+	async generateBatch(
+		characters: CharacterInNovel[]
+	): Promise<AgentResult<Record<string, CharacterPortrait>>> {
+		const portraits: Record<string, CharacterPortrait> = {};
+		let totalCost = 0;
+		const errors: string[] = [];
 
-    for (const char of characters) {
-      const result = await this.process(char);
-      if (result.success && result.result) {
-        portraits[char.name] = result.result;
-        totalCost += (result.metadata.cost as number) ?? 0;
-      } else {
-        errors.push(
-          `Failed to generate portrait for ${char.name}: ${result.error}`
-        );
-      }
-    }
+		for (const char of characters) {
+			const result = await this.process(char);
+			if (result.success && result.result) {
+				portraits[char.name] = result.result;
+				totalCost += (result.metadata.cost as number) ?? 0;
+			} else {
+				errors.push(
+					`Failed to generate portrait for ${char.name}: ${result.error}`
+				);
+			}
+		}
 
-    if (errors.length > 0) {
-      console.warn(`[portraits] Some portraits failed: ${errors.join("; ")}`);
-    }
+		if (errors.length > 0) {
+			console.warn(`[portraits] Some portraits failed: ${errors.join("; ")}`);
+		}
 
-    return agentOk(portraits, {
-      cost: totalCost,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-  }
+		return agentOk(portraits, {
+			cost: totalCost,
+			errors: errors.length > 0 ? errors : undefined,
+		});
+	}
 }

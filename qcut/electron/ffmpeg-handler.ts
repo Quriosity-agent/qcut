@@ -12,9 +12,9 @@ import { TempManager } from "./temp-manager.js";
 import type { FFmpegHealthResult } from "./ffmpeg/types.js";
 
 import {
-  verifyFFmpegBinary,
-  getFFmpegPath,
-  getFFprobePath,
+	verifyFFmpegBinary,
+	getFFmpegPath,
+	getFFprobePath,
 } from "./ffmpeg/utils.js";
 
 // Sub-module setup functions
@@ -24,15 +24,15 @@ import { setupExportHandler } from "./ffmpeg-export-handler.js";
 
 // Re-export types for external use (using export from)
 export type {
-  AudioFile,
-  StickerSource,
-  ExportOptions,
-  FrameData,
-  ExportResult,
-  FFmpegProgress,
-  OpenFolderResult,
-  ExtractAudioOptions,
-  ExtractAudioResult,
+	AudioFile,
+	StickerSource,
+	ExportOptions,
+	FrameData,
+	ExportResult,
+	FFmpegProgress,
+	OpenFolderResult,
+	ExtractAudioOptions,
+	ExtractAudioResult,
 } from "./ffmpeg/types.js";
 
 const tempManager = new TempManager();
@@ -41,21 +41,21 @@ const tempManager = new TempManager();
 let healthCheckPromise: Promise<FFmpegHealthResult> | null = null;
 
 function getFFmpegHealth(): Promise<FFmpegHealthResult> {
-  if (!healthCheckPromise) {
-    healthCheckPromise = verifyFFmpegBinary().catch((error) => {
-      console.error("[FFmpeg Health] Health check failed:", error);
-      return {
-        ffmpegOk: false,
-        ffprobeOk: false,
-        ffmpegVersion: "",
-        ffprobeVersion: "",
-        ffmpegPath: "",
-        ffprobePath: "",
-        errors: [String(error)],
-      };
-    });
-  }
-  return healthCheckPromise;
+	if (!healthCheckPromise) {
+		healthCheckPromise = verifyFFmpegBinary().catch((error) => {
+			console.error("[FFmpeg Health] Health check failed:", error);
+			return {
+				ffmpegOk: false,
+				ffprobeOk: false,
+				ffmpegVersion: "",
+				ffprobeVersion: "",
+				ffmpegPath: "",
+				ffprobePath: "",
+				errors: [String(error)],
+			};
+		});
+	}
+	return healthCheckPromise;
 }
 
 /**
@@ -63,7 +63,7 @@ function getFFmpegHealth(): Promise<FFmpegHealthResult> {
  * Called at startup from main.ts — async, non-blocking.
  */
 export function initFFmpegHealthCheck(): void {
-  getFFmpegHealth();
+	getFFmpegHealth();
 }
 
 /**
@@ -73,9 +73,9 @@ export function initFFmpegHealthCheck(): void {
  * won't be available to renderer process until registered.
  */
 export function setupFFmpegIPC(): void {
-  setupBasicHandlers(tempManager, getFFmpegHealth);
-  setupUtilityHandlers(tempManager);
-  setupExportHandler(tempManager);
+	setupBasicHandlers(tempManager, getFFmpegHealth);
+	setupUtilityHandlers(tempManager);
+	setupExportHandler(tempManager);
 }
 
 // Re-export getFFmpegPath and getFFprobePath for backward compatibility (used by main.ts)
@@ -83,14 +83,14 @@ export { getFFmpegPath, getFFprobePath } from "./ffmpeg/utils.js";
 
 // CommonJS export for backward compatibility with main.js
 module.exports = {
-  setupFFmpegIPC,
-  initFFmpegHealthCheck,
-  getFFmpegPath,
-  getFFprobePath,
+	setupFFmpegIPC,
+	initFFmpegHealthCheck,
+	getFFmpegPath,
+	getFFprobePath,
 };
 
 // ES6 export for TypeScript files
 export default {
-  setupFFmpegIPC,
-  initFFmpegHealthCheck,
+	setupFFmpegIPC,
+	initFFmpegHealthCheck,
 };

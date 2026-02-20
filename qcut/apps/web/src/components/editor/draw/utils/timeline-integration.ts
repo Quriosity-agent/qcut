@@ -16,193 +16,193 @@ const FILENAME_SANITIZE_RE = /[-:]/g;
  */
 // biome-ignore lint/complexity/noStaticOnlyClass: This utility class provides a clean namespace for timeline integration functions
 export class TimelineIntegration {
-  /**
-   * Export drawing as regular image to timeline
-   * Uses existing media import flow - 100% safe
-   */
-  static async exportAsImage(
-    drawingData: string,
-    name?: string
-  ): Promise<void> {
-    try {
-      const filename = name || `drawing-${Date.now()}.png`;
-      const file = await dataUrlToFile(drawingData, filename);
+	/**
+	 * Export drawing as regular image to timeline
+	 * Uses existing media import flow - 100% safe
+	 */
+	static async exportAsImage(
+		drawingData: string,
+		name?: string
+	): Promise<void> {
+		try {
+			const filename = name || `drawing-${Date.now()}.png`;
+			const file = await dataUrlToFile(drawingData, filename);
 
-      // Get required stores
-      const mediaStore = useMediaStore.getState();
-      const timelineStore = useTimelineStore.getState();
-      const projectStore = useProjectStore.getState();
+			// Get required stores
+			const mediaStore = useMediaStore.getState();
+			const timelineStore = useTimelineStore.getState();
+			const projectStore = useProjectStore.getState();
 
-      const currentProject = projectStore.activeProject;
-      if (!currentProject?.id) {
-        toast.error("No active project found");
-        return;
-      }
+			const currentProject = projectStore.activeProject;
+			if (!currentProject?.id) {
+				toast.error("No active project found");
+				return;
+			}
 
-      // Step 1: Add to media store (existing pattern)
-      const mediaId = await mediaStore.addMediaItem(currentProject.id, {
-        file,
-        name: filename,
-        type: "image",
-        // Note: MediaItem interface doesn't include tags field
-      });
+			// Step 1: Add to media store (existing pattern)
+			const mediaId = await mediaStore.addMediaItem(currentProject.id, {
+				file,
+				name: filename,
+				type: "image",
+				// Note: MediaItem interface doesn't include tags field
+			});
 
-      if (!mediaId) {
-        throw new Error("Failed to add drawing to media library");
-      }
+			if (!mediaId) {
+				throw new Error("Failed to add drawing to media library");
+			}
 
-      // Step 2: Add to timeline (existing pattern)
-      // Find the main video track or create one
-      const tracks = timelineStore._tracks;
-      let targetTrack = tracks.find(
-        (track) => track.type === "media" && track.name === "Main"
-      );
+			// Step 2: Add to timeline (existing pattern)
+			// Find the main video track or create one
+			const tracks = timelineStore._tracks;
+			let targetTrack = tracks.find(
+				(track) => track.type === "media" && track.name === "Main"
+			);
 
-      if (!targetTrack) {
-        // Find any video track
-        targetTrack = tracks.find((track) => track.type === "media");
-      }
+			if (!targetTrack) {
+				// Find any video track
+				targetTrack = tracks.find((track) => track.type === "media");
+			}
 
-      if (!targetTrack) {
-        toast.error("No media track found. Please create a media track first.");
-        return;
-      }
+			if (!targetTrack) {
+				toast.error("No media track found. Please create a media track first.");
+				return;
+			}
 
-      // Get current playhead position or add at the end
-      const currentTime = timelineStore.dragState?.currentTime || 0;
+			// Get current playhead position or add at the end
+			const currentTime = timelineStore.dragState?.currentTime || 0;
 
-      // Add drawing as image element to timeline
-      timelineStore.addElementToTrack(targetTrack.id, {
-        type: "media",
-        mediaId,
-        name: filename,
-        duration: TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION, // 5 seconds default
-        startTime: currentTime,
-        trimStart: 0,
-        trimEnd: 0,
-      });
+			// Add drawing as image element to timeline
+			timelineStore.addElementToTrack(targetTrack.id, {
+				type: "media",
+				mediaId,
+				name: filename,
+				duration: TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION, // 5 seconds default
+				startTime: currentTime,
+				trimStart: 0,
+				trimEnd: 0,
+			});
 
-      toast.success(`Drawing "${filename}" added to timeline`);
-    } catch (error) {
-      handleError(error, {
-        operation: "export drawing to timeline",
-        category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM,
-      });
-    }
-  }
+			toast.success(`Drawing "${filename}" added to timeline`);
+		} catch (error) {
+			handleError(error, {
+				operation: "export drawing to timeline",
+				category: ErrorCategory.MEDIA_PROCESSING,
+				severity: ErrorSeverity.MEDIUM,
+			});
+		}
+	}
 
-  /**
-   * Export drawing as overlay element (advanced)
-   * Uses timeline overlay system if available
-   */
-  static async exportAsOverlay(
-    drawingData: string,
-    options: {
-      duration?: number;
-      opacity?: number;
-      blendMode?: string;
-      position?: { x: number; y: number };
-      name?: string;
-    } = {}
-  ): Promise<void> {
-    try {
-      const {
-        duration = TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION,
-        opacity = 1,
-        name = `drawing-overlay-${Date.now()}.png`,
-      } = options;
+	/**
+	 * Export drawing as overlay element (advanced)
+	 * Uses timeline overlay system if available
+	 */
+	static async exportAsOverlay(
+		drawingData: string,
+		options: {
+			duration?: number;
+			opacity?: number;
+			blendMode?: string;
+			position?: { x: number; y: number };
+			name?: string;
+		} = {}
+	): Promise<void> {
+		try {
+			const {
+				duration = TIMELINE_CONSTANTS.DEFAULT_IMAGE_DURATION,
+				opacity = 1,
+				name = `drawing-overlay-${Date.now()}.png`,
+			} = options;
 
-      // First export as regular image
-      await TimelineIntegration.exportAsImage(drawingData, name);
+			// First export as regular image
+			await TimelineIntegration.exportAsImage(drawingData, name);
 
-      // TODO: If QCut adds overlay/layer support in the future,
-      // this method can be enhanced to create overlay elements
-      // For now, it falls back to regular image export
+			// TODO: If QCut adds overlay/layer support in the future,
+			// this method can be enhanced to create overlay elements
+			// For now, it falls back to regular image export
 
-      toast.success(`Drawing "${name}" added as image overlay`);
-    } catch (error) {
-      handleError(error, {
-        operation: "export drawing as overlay",
-        category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM,
-      });
-    }
-  }
+			toast.success(`Drawing "${name}" added as image overlay`);
+		} catch (error) {
+			handleError(error, {
+				operation: "export drawing as overlay",
+				category: ErrorCategory.MEDIA_PROCESSING,
+				severity: ErrorSeverity.MEDIUM,
+			});
+		}
+	}
 
-  /**
-   * Quick export - adds drawing at current playhead position
-   */
-  static async quickExport(drawingData: string): Promise<void> {
-    const timestamp = new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(FILENAME_SANITIZE_RE, "");
-    const name = `drawing-${timestamp}.png`;
-    await TimelineIntegration.exportAsImage(drawingData, name);
-  }
+	/**
+	 * Quick export - adds drawing at current playhead position
+	 */
+	static async quickExport(drawingData: string): Promise<void> {
+		const timestamp = new Date()
+			.toISOString()
+			.slice(0, 19)
+			.replace(FILENAME_SANITIZE_RE, "");
+		const name = `drawing-${timestamp}.png`;
+		await TimelineIntegration.exportAsImage(drawingData, name);
+	}
 
-  /**
-   * Batch export multiple drawings
-   */
-  static async exportMultiple(
-    drawings: Array<{ data: string; name?: string }>
-  ): Promise<void> {
-    try {
-      for (let i = 0; i < drawings.length; i++) {
-        const drawing = drawings[i];
-        const name = drawing.name || `drawing-batch-${i + 1}.png`;
-        await TimelineIntegration.exportAsImage(drawing.data, name);
+	/**
+	 * Batch export multiple drawings
+	 */
+	static async exportMultiple(
+		drawings: Array<{ data: string; name?: string }>
+	): Promise<void> {
+		try {
+			for (let i = 0; i < drawings.length; i++) {
+				const drawing = drawings[i];
+				const name = drawing.name || `drawing-batch-${i + 1}.png`;
+				await TimelineIntegration.exportAsImage(drawing.data, name);
 
-        // Small delay to prevent overwhelming the system
-        if (i < drawings.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
+				// Small delay to prevent overwhelming the system
+				if (i < drawings.length - 1) {
+					await new Promise((resolve) => setTimeout(resolve, 100));
+				}
+			}
 
-      toast.success(`Exported ${drawings.length} drawings to timeline`);
-    } catch (error) {
-      handleError(error, {
-        operation: "batch export drawings",
-        category: ErrorCategory.MEDIA_PROCESSING,
-        severity: ErrorSeverity.MEDIUM,
-      });
-    }
-  }
+			toast.success(`Exported ${drawings.length} drawings to timeline`);
+		} catch (error) {
+			handleError(error, {
+				operation: "batch export drawings",
+				category: ErrorCategory.MEDIA_PROCESSING,
+				severity: ErrorSeverity.MEDIUM,
+			});
+		}
+	}
 
-  /**
-   * Check if timeline integration is available
-   * Always returns true since we use existing APIs
-   */
-  static isAvailable(): boolean {
-    try {
-      const timelineStore = useTimelineStore.getState();
-      const mediaStore = useMediaStore.getState();
-      const projectStore = useProjectStore.getState();
+	/**
+	 * Check if timeline integration is available
+	 * Always returns true since we use existing APIs
+	 */
+	static isAvailable(): boolean {
+		try {
+			const timelineStore = useTimelineStore.getState();
+			const mediaStore = useMediaStore.getState();
+			const projectStore = useProjectStore.getState();
 
-      return !!(
-        typeof timelineStore.addElementToTrack === "function" &&
-        typeof mediaStore.addMediaItem === "function" &&
-        projectStore.activeProject
-      );
-    } catch {
-      return false;
-    }
-  }
+			return !!(
+				typeof timelineStore.addElementToTrack === "function" &&
+				typeof mediaStore.addMediaItem === "function" &&
+				projectStore.activeProject
+			);
+		} catch {
+			return false;
+		}
+	}
 
-  /**
-   * Get available video tracks for drawing export
-   */
-  static getAvailableVideoTracks(): Array<{ id: string; name: string }> {
-    try {
-      const timelineStore = useTimelineStore.getState();
-      return timelineStore._tracks
-        .filter((track) => track.type === "media")
-        .map((track) => ({ id: track.id, name: track.name }));
-    } catch {
-      return [];
-    }
-  }
+	/**
+	 * Get available video tracks for drawing export
+	 */
+	static getAvailableVideoTracks(): Array<{ id: string; name: string }> {
+		try {
+			const timelineStore = useTimelineStore.getState();
+			return timelineStore._tracks
+				.filter((track) => track.type === "media")
+				.map((track) => ({ id: track.id, name: track.name }));
+		} catch {
+			return [];
+		}
+	}
 }
 
 export default TimelineIntegration;

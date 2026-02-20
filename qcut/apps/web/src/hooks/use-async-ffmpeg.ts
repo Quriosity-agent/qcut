@@ -3,93 +3,93 @@ import type { FFmpeg } from "@ffmpeg/ffmpeg";
 import { createFFmpeg } from "@/lib/ffmpeg-loader";
 
 export function useAsyncFFmpeg() {
-  const [ffmpeg, setFFmpeg] = useState<FFmpeg | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [progress, setProgress] = useState(0);
-  const ffmpegRef = useRef<FFmpeg | null>(null);
+	const [ffmpeg, setFFmpeg] = useState<FFmpeg | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<Error | null>(null);
+	const [progress, setProgress] = useState(0);
+	const ffmpegRef = useRef<FFmpeg | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+	useEffect(() => {
+		let mounted = true;
 
-    async function loadFFmpeg() {
-      try {
-        const instance = await createFFmpeg();
+		async function loadFFmpeg() {
+			try {
+				const instance = await createFFmpeg();
 
-        if (mounted) {
-          // Set up progress callback
-          instance.on("progress", ({ progress }) => {
-            if (mounted) {
-              setProgress(Math.round(progress * 100));
-            }
-          });
+				if (mounted) {
+					// Set up progress callback
+					instance.on("progress", ({ progress }) => {
+						if (mounted) {
+							setProgress(Math.round(progress * 100));
+						}
+					});
 
-          ffmpegRef.current = instance;
-          setFFmpeg(instance);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(
-            err instanceof Error ? err : new Error("Failed to load FFmpeg")
-          );
-          setLoading(false);
-        }
-      }
-    }
+					ffmpegRef.current = instance;
+					setFFmpeg(instance);
+					setLoading(false);
+				}
+			} catch (err) {
+				if (mounted) {
+					setError(
+						err instanceof Error ? err : new Error("Failed to load FFmpeg")
+					);
+					setLoading(false);
+				}
+			}
+		}
 
-    loadFFmpeg();
+		loadFFmpeg();
 
-    return () => {
-      mounted = false;
-      // Clean up FFmpeg instance if needed
-      if (ffmpegRef.current) {
-        // FFmpeg cleanup if necessary
-      }
-    };
-  }, []);
+		return () => {
+			mounted = false;
+			// Clean up FFmpeg instance if needed
+			if (ffmpegRef.current) {
+				// FFmpeg cleanup if necessary
+			}
+		};
+	}, []);
 
-  return { ffmpeg, loading, error, progress };
+	return { ffmpeg, loading, error, progress };
 }
 
 // Hook for loading FFmpeg utilities
 export function useAsyncFFmpegUtils() {
-  const [utils, setUtils] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+	const [utils, setUtils] = useState<any>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+	useEffect(() => {
+		let mounted = true;
 
-    async function loadUtils() {
-      try {
-        const { getFFmpegUtilFunctions } = await import(
-          "@/lib/ffmpeg-utils-loader"
-        );
-        const utilFunctions = await getFFmpegUtilFunctions();
+		async function loadUtils() {
+			try {
+				const { getFFmpegUtilFunctions } = await import(
+					"@/lib/ffmpeg-utils-loader"
+				);
+				const utilFunctions = await getFFmpegUtilFunctions();
 
-        if (mounted) {
-          setUtils(utilFunctions);
-          setLoading(false);
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(
-            err instanceof Error
-              ? err
-              : new Error("Failed to load FFmpeg utilities")
-          );
-          setLoading(false);
-        }
-      }
-    }
+				if (mounted) {
+					setUtils(utilFunctions);
+					setLoading(false);
+				}
+			} catch (err) {
+				if (mounted) {
+					setError(
+						err instanceof Error
+							? err
+							: new Error("Failed to load FFmpeg utilities")
+					);
+					setLoading(false);
+				}
+			}
+		}
 
-    loadUtils();
+		loadUtils();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+		return () => {
+			mounted = false;
+		};
+	}, []);
 
-  return { utils, loading, error };
+	return { utils, loading, error };
 }

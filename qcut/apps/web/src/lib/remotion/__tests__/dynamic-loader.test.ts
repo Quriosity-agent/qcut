@@ -13,12 +13,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
-  getCachedComponent,
-  clearComponentCache,
-  isComponentCached,
-  removeCachedComponent,
-  getCacheStats,
-  setupGlobalsForDynamicImport,
+	getCachedComponent,
+	clearComponentCache,
+	isComponentCached,
+	removeCachedComponent,
+	getCacheStats,
+	setupGlobalsForDynamicImport,
 } from "../dynamic-loader";
 
 // ============================================================================
@@ -26,11 +26,11 @@ import {
 // ============================================================================
 
 beforeEach(() => {
-  clearComponentCache();
+	clearComponentCache();
 });
 
 afterEach(() => {
-  clearComponentCache();
+	clearComponentCache();
 });
 
 // ============================================================================
@@ -38,59 +38,59 @@ afterEach(() => {
 // ============================================================================
 
 describe("setupGlobalsForDynamicImport", () => {
-  it("should set up React global", () => {
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).React).toBeDefined();
-  });
+	it("should set up React global", () => {
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).React).toBeDefined();
+	});
 
-  it("should set up ReactJSXRuntime global", () => {
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).ReactJSXRuntime).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).ReactJSXRuntime.jsx).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).ReactJSXRuntime.jsxs).toBeDefined();
-  });
+	it("should set up ReactJSXRuntime global", () => {
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).ReactJSXRuntime).toBeDefined();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).ReactJSXRuntime.jsx).toBeDefined();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).ReactJSXRuntime.jsxs).toBeDefined();
+	});
 
-  it("should set up Remotion global", () => {
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).Remotion).toBeDefined();
-  });
+	it("should set up Remotion global", () => {
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).Remotion).toBeDefined();
+	});
 
-  it("should be idempotent (can be called multiple times)", () => {
-    setupGlobalsForDynamicImport();
-    setupGlobalsForDynamicImport();
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((window as any).React).toBeDefined();
-  });
+	it("should be idempotent (can be called multiple times)", () => {
+		setupGlobalsForDynamicImport();
+		setupGlobalsForDynamicImport();
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((window as any).React).toBeDefined();
+	});
 
-  it("should provide common React hooks via global", () => {
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const React = (window as any).React;
-    expect(React.useState).toBeDefined();
-    expect(React.useEffect).toBeDefined();
-    expect(React.useCallback).toBeDefined();
-    expect(React.useMemo).toBeDefined();
-    expect(React.useRef).toBeDefined();
-    expect(React.createElement).toBeDefined();
-  });
+	it("should provide common React hooks via global", () => {
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const React = (window as any).React;
+		expect(React.useState).toBeDefined();
+		expect(React.useEffect).toBeDefined();
+		expect(React.useCallback).toBeDefined();
+		expect(React.useMemo).toBeDefined();
+		expect(React.useRef).toBeDefined();
+		expect(React.createElement).toBeDefined();
+	});
 
-  it("should provide Remotion hooks via global", () => {
-    setupGlobalsForDynamicImport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const Remotion = (window as any).Remotion;
-    expect(Remotion.useCurrentFrame).toBeDefined();
-    expect(Remotion.useVideoConfig).toBeDefined();
-    expect(Remotion.AbsoluteFill).toBeDefined();
-    expect(Remotion.Sequence).toBeDefined();
-    expect(Remotion.interpolate).toBeDefined();
-    expect(Remotion.spring).toBeDefined();
-  });
+	it("should provide Remotion hooks via global", () => {
+		setupGlobalsForDynamicImport();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const Remotion = (window as any).Remotion;
+		expect(Remotion.useCurrentFrame).toBeDefined();
+		expect(Remotion.useVideoConfig).toBeDefined();
+		expect(Remotion.AbsoluteFill).toBeDefined();
+		expect(Remotion.Sequence).toBeDefined();
+		expect(Remotion.interpolate).toBeDefined();
+		expect(Remotion.spring).toBeDefined();
+	});
 });
 
 // ============================================================================
@@ -98,27 +98,27 @@ describe("setupGlobalsForDynamicImport", () => {
 // ============================================================================
 
 describe("cache management", () => {
-  it("getCacheStats should return empty stats initially", () => {
-    const stats = getCacheStats();
-    expect(stats.size).toBe(0);
-    expect(stats.componentIds).toEqual([]);
-  });
+	it("getCacheStats should return empty stats initially", () => {
+		const stats = getCacheStats();
+		expect(stats.size).toBe(0);
+		expect(stats.componentIds).toEqual([]);
+	});
 
-  it("isComponentCached should return false for non-existent components", () => {
-    expect(isComponentCached("non-existent")).toBe(false);
-  });
+	it("isComponentCached should return false for non-existent components", () => {
+		expect(isComponentCached("non-existent")).toBe(false);
+	});
 
-  it("getCachedComponent should return undefined for non-existent components", () => {
-    expect(getCachedComponent("non-existent")).toBeUndefined();
-  });
+	it("getCachedComponent should return undefined for non-existent components", () => {
+		expect(getCachedComponent("non-existent")).toBeUndefined();
+	});
 
-  it("removeCachedComponent should not throw for non-existent components", () => {
-    expect(() => removeCachedComponent("non-existent")).not.toThrow();
-  });
+	it("removeCachedComponent should not throw for non-existent components", () => {
+		expect(() => removeCachedComponent("non-existent")).not.toThrow();
+	});
 
-  it("clearComponentCache should not throw when cache is empty", () => {
-    expect(() => clearComponentCache()).not.toThrow();
-  });
+	it("clearComponentCache should not throw when cache is empty", () => {
+		expect(() => clearComponentCache()).not.toThrow();
+	});
 });
 
 // ============================================================================

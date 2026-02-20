@@ -12,266 +12,266 @@ import type { MediaItem } from "@/stores/media-store-types";
  * Interface for sticker render options
  */
 export interface StickerRenderOptions {
-  canvasWidth: number;
-  canvasHeight: number;
-  currentTime?: number;
-  opacity?: number;
+	canvasWidth: number;
+	canvasHeight: number;
+	currentTime?: number;
+	opacity?: number;
 }
 
 /**
  * Result of rendering stickers to canvas
  */
 export interface StickerRenderResult {
-  attempted: number;
-  successful: number;
-  failed: Array<{ stickerId: string; error: string }>;
+	attempted: number;
+	successful: number;
+	failed: Array<{ stickerId: string; error: string }>;
 }
 
 /**
  * Helper class for rendering stickers during export
  */
 export class StickerExportHelper {
-  private imageCache = new Map<string, HTMLImageElement>();
-  private preloadedImages = new Map<string, HTMLImageElement>();
-  private lastRenderResult: StickerRenderResult | null = null;
+	private imageCache = new Map<string, HTMLImageElement>();
+	private preloadedImages = new Map<string, HTMLImageElement>();
+	private lastRenderResult: StickerRenderResult | null = null;
 
-  /**
-   * Render stickers to canvas at specified time
-   * @returns Result object with success/failure counts
-   */
-  async renderStickersToCanvas(
-    ctx: CanvasRenderingContext2D,
-    stickers: OverlaySticker[],
-    mediaItems: Map<string, MediaItem>,
-    options: StickerRenderOptions
-  ): Promise<StickerRenderResult> {
-    const { canvasWidth, canvasHeight } = options;
+	/**
+	 * Render stickers to canvas at specified time
+	 * @returns Result object with success/failure counts
+	 */
+	async renderStickersToCanvas(
+		ctx: CanvasRenderingContext2D,
+		stickers: OverlaySticker[],
+		mediaItems: Map<string, MediaItem>,
+		options: StickerRenderOptions
+	): Promise<StickerRenderResult> {
+		const { canvasWidth, canvasHeight } = options;
 
-    const result: StickerRenderResult = {
-      attempted: 0,
-      successful: 0,
-      failed: [],
-    };
+		const result: StickerRenderResult = {
+			attempted: 0,
+			successful: 0,
+			failed: [],
+		};
 
-    // Stickers are already filtered by export engine via getVisibleStickersAtTime()
-    // No need to filter again - just sort by z-index to render in correct order
-    const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
+		// Stickers are already filtered by export engine via getVisibleStickersAtTime()
+		// No need to filter again - just sort by z-index to render in correct order
+		const sortedStickers = stickers.sort((a, b) => a.zIndex - b.zIndex);
 
-    // Render each sticker
-    for (const sticker of sortedStickers) {
-      const mediaItem = mediaItems.get(sticker.mediaItemId);
-      if (!mediaItem) {
-        result.failed.push({
-          stickerId: sticker.id,
-          error: `Media item not found: ${sticker.mediaItemId}`,
-        });
-        continue;
-      }
+		// Render each sticker
+		for (const sticker of sortedStickers) {
+			const mediaItem = mediaItems.get(sticker.mediaItemId);
+			if (!mediaItem) {
+				result.failed.push({
+					stickerId: sticker.id,
+					error: `Media item not found: ${sticker.mediaItemId}`,
+				});
+				continue;
+			}
 
-      result.attempted++;
+			result.attempted++;
 
-      try {
-        await this.renderSticker(
-          ctx,
-          sticker,
-          mediaItem,
-          canvasWidth,
-          canvasHeight
-        );
-        result.successful++;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        result.failed.push({
-          stickerId: sticker.id,
-          error: errorMessage,
-        });
-        console.warn(
-          `[StickerExportHelper] Failed to render sticker ${sticker.id}:`,
-          errorMessage
-        );
-      }
-    }
+			try {
+				await this.renderSticker(
+					ctx,
+					sticker,
+					mediaItem,
+					canvasWidth,
+					canvasHeight
+				);
+				result.successful++;
+			} catch (error) {
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				result.failed.push({
+					stickerId: sticker.id,
+					error: errorMessage,
+				});
+				console.warn(
+					`[StickerExportHelper] Failed to render sticker ${sticker.id}:`,
+					errorMessage
+				);
+			}
+		}
 
-    this.lastRenderResult = result;
+		this.lastRenderResult = result;
 
-    // Log summary if there were failures
-    if (result.failed.length > 0) {
-      console.warn(
-        `[StickerExportHelper] Render summary: ${result.successful}/${result.attempted} stickers rendered successfully`
-      );
-    }
+		// Log summary if there were failures
+		if (result.failed.length > 0) {
+			console.warn(
+				`[StickerExportHelper] Render summary: ${result.successful}/${result.attempted} stickers rendered successfully`
+			);
+		}
 
-    return result;
-  }
+		return result;
+	}
 
-  /**
-   * Get the result of the last render operation
-   */
-  getLastRenderResult(): StickerRenderResult | null {
-    return this.lastRenderResult;
-  }
+	/**
+	 * Get the result of the last render operation
+	 */
+	getLastRenderResult(): StickerRenderResult | null {
+		return this.lastRenderResult;
+	}
 
-  /**
-   * Render individual sticker to canvas
-   */
-  private async renderSticker(
-    ctx: CanvasRenderingContext2D,
-    sticker: OverlaySticker,
-    mediaItem: MediaItem,
-    canvasWidth: number,
-    canvasHeight: number
-  ): Promise<void> {
-    // Skip if no URL
-    if (!mediaItem.url) {
-      return;
-    }
+	/**
+	 * Render individual sticker to canvas
+	 */
+	private async renderSticker(
+		ctx: CanvasRenderingContext2D,
+		sticker: OverlaySticker,
+		mediaItem: MediaItem,
+		canvasWidth: number,
+		canvasHeight: number
+	): Promise<void> {
+		// Skip if no URL
+		if (!mediaItem.url) {
+			return;
+		}
 
-    // Load image from cache or create new
-    const img = await this.loadImage(mediaItem.url);
+		// Load image from cache or create new
+		const img = await this.loadImage(mediaItem.url);
 
-    // FIX: Calculate dimensions preserving aspect ratio
-    // Use the smaller dimension (height) as reference to maintain square aspect ratio for stickers
-    const baseSize = Math.min(canvasWidth, canvasHeight);
-    const width = (sticker.size.width / 100) * baseSize;
-    const height = (sticker.size.height / 100) * baseSize;
+		// FIX: Calculate dimensions preserving aspect ratio
+		// Use the smaller dimension (height) as reference to maintain square aspect ratio for stickers
+		const baseSize = Math.min(canvasWidth, canvasHeight);
+		const width = (sticker.size.width / 100) * baseSize;
+		const height = (sticker.size.height / 100) * baseSize;
 
-    // Calculate pixel position from percentage
-    // IMPORTANT: position.x and position.y represent the CENTER of the sticker (not top-left)
-    // This matches the preview which uses transform: translate(-50%, -50%)
-    const centerX = (sticker.position.x / 100) * canvasWidth;
-    const centerY = (sticker.position.y / 100) * canvasHeight;
+		// Calculate pixel position from percentage
+		// IMPORTANT: position.x and position.y represent the CENTER of the sticker (not top-left)
+		// This matches the preview which uses transform: translate(-50%, -50%)
+		const centerX = (sticker.position.x / 100) * canvasWidth;
+		const centerY = (sticker.position.y / 100) * canvasHeight;
 
-    // Calculate top-left corner for positioning
-    const x = centerX - width / 2;
-    const y = centerY - height / 2;
+		// Calculate top-left corner for positioning
+		const x = centerX - width / 2;
+		const y = centerY - height / 2;
 
-    // Save context state
-    ctx.save();
+		// Save context state
+		ctx.save();
 
-    // Apply transformations
-    ctx.globalAlpha = sticker.opacity;
+		// Apply transformations
+		ctx.globalAlpha = sticker.opacity;
 
-    // Translate to center of sticker for rotation
-    // (centerX and centerY already calculated above from position percentages)
-    ctx.translate(centerX, centerY);
+		// Translate to center of sticker for rotation
+		// (centerX and centerY already calculated above from position percentages)
+		ctx.translate(centerX, centerY);
 
-    // Apply rotation
-    if (sticker.rotation !== 0) {
-      ctx.rotate((sticker.rotation * Math.PI) / 180);
-    }
+		// Apply rotation
+		if (sticker.rotation !== 0) {
+			ctx.rotate((sticker.rotation * Math.PI) / 180);
+		}
 
-    // Draw image centered at origin
-    try {
-      ctx.drawImage(img, -width / 2, -height / 2, width, height);
-    } catch (error) {
-      // Restore context before re-throwing
-      ctx.restore();
-      throw new Error(
-        `Canvas drawImage failed for sticker: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+		// Draw image centered at origin
+		try {
+			ctx.drawImage(img, -width / 2, -height / 2, width, height);
+		} catch (error) {
+			// Restore context before re-throwing
+			ctx.restore();
+			throw new Error(
+				`Canvas drawImage failed for sticker: ${error instanceof Error ? error.message : String(error)}`
+			);
+		}
 
-    // Restore context state
-    ctx.restore();
-  }
+		// Restore context state
+		ctx.restore();
+	}
 
-  /**
-   * Load and cache image
-   */
-  private async loadImage(url: string): Promise<HTMLImageElement> {
-    // Check cache first
-    if (this.imageCache.has(url)) {
-      const cached = this.imageCache.get(url)!;
-      return cached;
-    }
+	/**
+	 * Load and cache image
+	 */
+	private async loadImage(url: string): Promise<HTMLImageElement> {
+		// Check cache first
+		if (this.imageCache.has(url)) {
+			const cached = this.imageCache.get(url)!;
+			return cached;
+		}
 
-    // Load new image
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
+		// Load new image
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.crossOrigin = "anonymous";
 
-      img.onload = () => {
-        this.imageCache.set(url, img);
-        resolve(img);
-      };
+			img.onload = () => {
+				this.imageCache.set(url, img);
+				resolve(img);
+			};
 
-      img.onerror = (error) => {
-        reject(new Error(`Failed to load image: ${url}`));
-      };
+			img.onerror = (error) => {
+				reject(new Error(`Failed to load image: ${url}`));
+			};
 
-      img.src = url;
-    });
-  }
+			img.src = url;
+		});
+	}
 
-  /**
-   * Clear image cache to free memory
-   */
-  clearCache(): void {
-    this.imageCache.clear();
-  }
+	/**
+	 * Clear image cache to free memory
+	 */
+	clearCache(): void {
+		this.imageCache.clear();
+	}
 
-  /**
-   * Pre-load sticker images for better performance
-   * @returns Object with loaded count and any failed URLs
-   */
-  async preloadStickers(
-    stickers: OverlaySticker[],
-    mediaItems: Map<string, MediaItem>
-  ): Promise<{ loaded: number; failed: string[] }> {
-    const uniqueUrls = new Set<string>();
-    const stickerIdToUrl = new Map<string, string>();
+	/**
+	 * Pre-load sticker images for better performance
+	 * @returns Object with loaded count and any failed URLs
+	 */
+	async preloadStickers(
+		stickers: OverlaySticker[],
+		mediaItems: Map<string, MediaItem>
+	): Promise<{ loaded: number; failed: string[] }> {
+		const uniqueUrls = new Set<string>();
+		const stickerIdToUrl = new Map<string, string>();
 
-    for (const sticker of stickers) {
-      const mediaItem = mediaItems.get(sticker.mediaItemId);
-      if (mediaItem?.url) {
-        uniqueUrls.add(mediaItem.url);
-        stickerIdToUrl.set(sticker.id, mediaItem.url);
-      }
-    }
+		for (const sticker of stickers) {
+			const mediaItem = mediaItems.get(sticker.mediaItemId);
+			if (mediaItem?.url) {
+				uniqueUrls.add(mediaItem.url);
+				stickerIdToUrl.set(sticker.id, mediaItem.url);
+			}
+		}
 
-    const failedUrls: string[] = [];
-    let loadedCount = 0;
+		const failedUrls: string[] = [];
+		let loadedCount = 0;
 
-    // Load all images in parallel with error tracking
-    const loadPromises = Array.from(uniqueUrls).map(async (url) => {
-      try {
-        const img = await this.loadImage(url);
-        this.preloadedImages.set(url, img);
-        loadedCount++;
-      } catch (error) {
-        failedUrls.push(url);
-        console.warn(
-          `[StickerExportHelper] Failed to preload image: ${url}`,
-          error instanceof Error ? error.message : String(error)
-        );
-      }
-    });
+		// Load all images in parallel with error tracking
+		const loadPromises = Array.from(uniqueUrls).map(async (url) => {
+			try {
+				const img = await this.loadImage(url);
+				this.preloadedImages.set(url, img);
+				loadedCount++;
+			} catch (error) {
+				failedUrls.push(url);
+				console.warn(
+					`[StickerExportHelper] Failed to preload image: ${url}`,
+					error instanceof Error ? error.message : String(error)
+				);
+			}
+		});
 
-    await Promise.all(loadPromises);
+		await Promise.all(loadPromises);
 
-    console.info(
-      `[StickerExportHelper] Preloaded ${loadedCount}/${uniqueUrls.size} sticker images`
-    );
+		console.info(
+			`[StickerExportHelper] Preloaded ${loadedCount}/${uniqueUrls.size} sticker images`
+		);
 
-    return { loaded: loadedCount, failed: failedUrls };
-  }
+		return { loaded: loadedCount, failed: failedUrls };
+	}
 
-  /**
-   * Check if all sticker images are preloaded
-   */
-  areStickersPreloaded(
-    stickers: OverlaySticker[],
-    mediaItems: Map<string, MediaItem>
-  ): boolean {
-    for (const sticker of stickers) {
-      const mediaItem = mediaItems.get(sticker.mediaItemId);
-      if (mediaItem?.url && !this.imageCache.has(mediaItem.url)) {
-        return false;
-      }
-    }
-    return true;
-  }
+	/**
+	 * Check if all sticker images are preloaded
+	 */
+	areStickersPreloaded(
+		stickers: OverlaySticker[],
+		mediaItems: Map<string, MediaItem>
+	): boolean {
+		for (const sticker of stickers) {
+			const mediaItem = mediaItems.get(sticker.mediaItemId);
+			if (mediaItem?.url && !this.imageCache.has(mediaItem.url)) {
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 /**
@@ -283,10 +283,10 @@ let stickerExportHelper: StickerExportHelper | null = null;
  * Get or create sticker export helper instance
  */
 export function getStickerExportHelper(): StickerExportHelper {
-  if (!stickerExportHelper) {
-    stickerExportHelper = new StickerExportHelper();
-  }
-  return stickerExportHelper;
+	if (!stickerExportHelper) {
+		stickerExportHelper = new StickerExportHelper();
+	}
+	return stickerExportHelper;
 }
 
 /**
@@ -294,13 +294,13 @@ export function getStickerExportHelper(): StickerExportHelper {
  * @returns Result object with success/failure counts
  */
 export async function renderStickersToCanvas(
-  ctx: CanvasRenderingContext2D,
-  stickers: OverlaySticker[],
-  mediaItems: Map<string, MediaItem>,
-  options: StickerRenderOptions
+	ctx: CanvasRenderingContext2D,
+	stickers: OverlaySticker[],
+	mediaItems: Map<string, MediaItem>,
+	options: StickerRenderOptions
 ): Promise<StickerRenderResult> {
-  const helper = getStickerExportHelper();
-  return helper.renderStickersToCanvas(ctx, stickers, mediaItems, options);
+	const helper = getStickerExportHelper();
+	return helper.renderStickersToCanvas(ctx, stickers, mediaItems, options);
 }
 
 /**
@@ -308,9 +308,9 @@ export async function renderStickersToCanvas(
  * @returns Object with loaded count and any failed URLs
  */
 export async function preloadStickerImages(
-  stickers: OverlaySticker[],
-  mediaItems: Map<string, MediaItem>
+	stickers: OverlaySticker[],
+	mediaItems: Map<string, MediaItem>
 ): Promise<{ loaded: number; failed: string[] }> {
-  const helper = getStickerExportHelper();
-  return helper.preloadStickers(stickers, mediaItems);
+	const helper = getStickerExportHelper();
+	return helper.preloadStickers(stickers, mediaItems);
 }

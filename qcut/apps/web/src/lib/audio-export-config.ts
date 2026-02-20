@@ -14,20 +14,20 @@
 import type { ExportFormat, AudioCodec } from "@/types/export";
 
 export interface AudioExportConfig {
-  enabled: boolean;
-  codec?: "aac" | "opus" | "mp3";
-  bitrate?: number; // in kbps
-  sampleRate?: number; // in Hz
-  channels?: 1 | 2; // mono or stereo
+	enabled: boolean;
+	codec?: "aac" | "opus" | "mp3";
+	bitrate?: number; // in kbps
+	sampleRate?: number; // in Hz
+	channels?: 1 | 2; // mono or stereo
 }
 
 // Default configuration optimized for web delivery
 const DEFAULT_AUDIO_CONFIG: AudioExportConfig = {
-  enabled: true,
-  codec: "aac",
-  bitrate: 128,
-  sampleRate: 44_100,
-  channels: 2,
+	enabled: true,
+	codec: "aac",
+	bitrate: 128,
+	sampleRate: 44_100,
+	channels: 2,
 };
 
 // Private state management
@@ -38,9 +38,9 @@ let audioConfig: AudioExportConfig = { ...DEFAULT_AUDIO_CONFIG };
  * @param config Partial configuration to merge
  */
 export const setAudioExportConfig = (
-  config: Partial<AudioExportConfig>
+	config: Partial<AudioExportConfig>
 ): void => {
-  audioConfig = { ...audioConfig, ...config };
+	audioConfig = { ...audioConfig, ...config };
 };
 
 /**
@@ -48,14 +48,14 @@ export const setAudioExportConfig = (
  * @returns Immutable copy of current config
  */
 export const getAudioExportConfig = (): AudioExportConfig => ({
-  ...audioConfig,
+	...audioConfig,
 });
 
 /**
  * Reset audio configuration to defaults
  */
 export const resetAudioExportConfig = (): void => {
-  audioConfig = { ...DEFAULT_AUDIO_CONFIG };
+	audioConfig = { ...DEFAULT_AUDIO_CONFIG };
 };
 
 /**
@@ -64,13 +64,13 @@ export const resetAudioExportConfig = (): void => {
  * @returns Recommended audio codec
  */
 export const getCodecForFormat = (format: ExportFormat): AudioCodec => {
-  const formatCodecMap: Record<ExportFormat | "default", AudioCodec> = {
-    mp4: "aac", // MP4 works best with AAC
-    webm: "opus", // WebM prefers Opus (better compression)
-    mov: "aac", // MOV works with AAC
-    default: "aac", // Safe default
-  };
-  return formatCodecMap[format] ?? formatCodecMap.default;
+	const formatCodecMap: Record<ExportFormat | "default", AudioCodec> = {
+		mp4: "aac", // MP4 works best with AAC
+		webm: "opus", // WebM prefers Opus (better compression)
+		mov: "aac", // MOV works with AAC
+		default: "aac", // Safe default
+	};
+	return formatCodecMap[format] ?? formatCodecMap.default;
 };
 
 /**
@@ -79,14 +79,14 @@ export const getCodecForFormat = (format: ExportFormat): AudioCodec => {
  * @returns Recommended audio bitrate in kbps
  */
 export const getBitrateForQuality = (quality: string): number => {
-  const qualityBitrateMap: Record<string, number> = {
-    "1080p": 192, // Higher quality for HD
-    "720p": 128, // Standard quality
-    "480p": 96, // Lower bitrate for smaller files
-    default: 128, // Safe default
-  };
+	const qualityBitrateMap: Record<string, number> = {
+		"1080p": 192, // Higher quality for HD
+		"720p": 128, // Standard quality
+		"480p": 96, // Lower bitrate for smaller files
+		default: 128, // Safe default
+	};
 
-  return qualityBitrateMap[quality] || qualityBitrateMap.default;
+	return qualityBitrateMap[quality] || qualityBitrateMap.default;
 };
 
 /**
@@ -95,25 +95,25 @@ export const getBitrateForQuality = (quality: string): number => {
  * @returns True if valid, false otherwise
  */
 export const validateAudioConfig = (
-  config: Partial<AudioExportConfig>
+	config: Partial<AudioExportConfig>
 ): boolean => {
-  if (config.bitrate && (config.bitrate < 32 || config.bitrate > 320)) {
-    console.warn(
-      `Invalid audio bitrate: ${config.bitrate}. Must be between 32 and 320 kbps.`
-    );
-    return false;
-  }
+	if (config.bitrate && (config.bitrate < 32 || config.bitrate > 320)) {
+		console.warn(
+			`Invalid audio bitrate: ${config.bitrate}. Must be between 32 and 320 kbps.`
+		);
+		return false;
+	}
 
-  if (
-    config.sampleRate &&
-    ![22_050, 44_100, 48_000, 96_000].includes(config.sampleRate)
-  ) {
-    console.warn(
-      `Unusual sample rate: ${config.sampleRate}. Common rates are 22050, 44100, 48000, 96000 Hz.`
-    );
-  }
+	if (
+		config.sampleRate &&
+		![22_050, 44_100, 48_000, 96_000].includes(config.sampleRate)
+	) {
+		console.warn(
+			`Unusual sample rate: ${config.sampleRate}. Common rates are 22050, 44100, 48000, 96000 Hz.`
+		);
+	}
 
-  return true;
+	return true;
 };
 
 /**
@@ -121,14 +121,14 @@ export const validateAudioConfig = (
  * @returns Formatted string describing current settings
  */
 export const getAudioSettingsDescription = (): string => {
-  const config = getAudioExportConfig();
-  if (!config.enabled) return "Audio disabled";
+	const config = getAudioExportConfig();
+	if (!config.enabled) return "Audio disabled";
 
-  const codec = config.codec || "default";
-  const bitrate = config.bitrate || 128;
-  const channels = config.channels === 1 ? "Mono" : "Stereo";
+	const codec = config.codec || "default";
+	const bitrate = config.bitrate || 128;
+	const channels = config.channels === 1 ? "Mono" : "Stereo";
 
-  return `${codec.toUpperCase()} ${bitrate}kbps ${channels}`;
+	return `${codec.toUpperCase()} ${bitrate}kbps ${channels}`;
 };
 
 // Export default config for reference

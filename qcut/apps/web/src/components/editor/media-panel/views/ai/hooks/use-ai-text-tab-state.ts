@@ -12,9 +12,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LTXV2_FAST_CONFIG } from "../constants/ai-constants";
 import type {
-  LTXV2FastDuration,
-  LTXV2FastResolution,
-  LTXV2FastFps,
+	LTXV2FastDuration,
+	LTXV2FastResolution,
+	LTXV2FastFps,
 } from "../constants/ai-model-options";
 
 // ============================================
@@ -23,82 +23,82 @@ import type {
 
 /** Default values for T2V settings */
 export const T2V_DEFAULTS = {
-  aspectRatio: "16:9",
-  resolution: "1080p",
-  duration: 4,
-  negativePrompt: "low resolution, error, worst quality, low quality, defects",
-  promptExpansion: false,
-  seed: -1, // -1 = random
-  safetyChecker: false,
+	aspectRatio: "16:9",
+	resolution: "1080p",
+	duration: 4,
+	negativePrompt: "low resolution, error, worst quality, low quality, defects",
+	promptExpansion: false,
+	seed: -1, // -1 = random
+	safetyChecker: false,
 } as const;
 
 export interface TextTabState {
-  // Unified T2V settings
-  t2vAspectRatio: string;
-  t2vResolution: string;
-  t2vDuration: number;
-  t2vNegativePrompt: string;
-  t2vPromptExpansion: boolean;
-  t2vSeed: number;
-  t2vSafetyChecker: boolean;
-  t2vSettingsExpanded: boolean;
+	// Unified T2V settings
+	t2vAspectRatio: string;
+	t2vResolution: string;
+	t2vDuration: number;
+	t2vNegativePrompt: string;
+	t2vPromptExpansion: boolean;
+	t2vSeed: number;
+	t2vSafetyChecker: boolean;
+	t2vSettingsExpanded: boolean;
 
-  // Hailuo settings
-  hailuoT2VDuration: 6 | 10;
+	// Hailuo settings
+	hailuoT2VDuration: 6 | 10;
 
-  // LTX Video Pro settings
-  ltxv2Duration: 6 | 8 | 10;
-  ltxv2Resolution: "1080p" | "1440p" | "2160p";
-  ltxv2FPS: 25 | 50;
-  ltxv2GenerateAudio: boolean;
+	// LTX Video Pro settings
+	ltxv2Duration: 6 | 8 | 10;
+	ltxv2Resolution: "1080p" | "1440p" | "2160p";
+	ltxv2FPS: 25 | 50;
+	ltxv2GenerateAudio: boolean;
 
-  // LTX Video Fast settings
-  ltxv2FastDuration: LTXV2FastDuration;
-  ltxv2FastResolution: LTXV2FastResolution;
-  ltxv2FastFPS: LTXV2FastFps;
-  ltxv2FastGenerateAudio: boolean;
+	// LTX Video Fast settings
+	ltxv2FastDuration: LTXV2FastDuration;
+	ltxv2FastResolution: LTXV2FastResolution;
+	ltxv2FastFPS: LTXV2FastFps;
+	ltxv2FastGenerateAudio: boolean;
 }
 
 export interface TextTabSetters {
-  // Unified T2V settings
-  setT2vAspectRatio: (value: string) => void;
-  setT2vResolution: (value: string) => void;
-  setT2vDuration: (value: number) => void;
-  setT2vNegativePrompt: (value: string) => void;
-  setT2vPromptExpansion: (value: boolean) => void;
-  setT2vSeed: (value: number) => void;
-  setT2vSafetyChecker: (value: boolean) => void;
-  setT2vSettingsExpanded: (value: boolean) => void;
+	// Unified T2V settings
+	setT2vAspectRatio: (value: string) => void;
+	setT2vResolution: (value: string) => void;
+	setT2vDuration: (value: number) => void;
+	setT2vNegativePrompt: (value: string) => void;
+	setT2vPromptExpansion: (value: boolean) => void;
+	setT2vSeed: (value: number) => void;
+	setT2vSafetyChecker: (value: boolean) => void;
+	setT2vSettingsExpanded: (value: boolean) => void;
 
-  // Hailuo settings
-  setHailuoT2VDuration: (value: 6 | 10) => void;
+	// Hailuo settings
+	setHailuoT2VDuration: (value: 6 | 10) => void;
 
-  // LTX Video Pro settings
-  setLTXV2Duration: (value: 6 | 8 | 10) => void;
-  setLTXV2Resolution: (value: "1080p" | "1440p" | "2160p") => void;
-  setLTXV2FPS: (value: 25 | 50) => void;
-  setLTXV2GenerateAudio: (value: boolean) => void;
+	// LTX Video Pro settings
+	setLTXV2Duration: (value: 6 | 8 | 10) => void;
+	setLTXV2Resolution: (value: "1080p" | "1440p" | "2160p") => void;
+	setLTXV2FPS: (value: 25 | 50) => void;
+	setLTXV2GenerateAudio: (value: boolean) => void;
 
-  // LTX Video Fast settings
-  setLTXV2FastDuration: (value: LTXV2FastDuration) => void;
-  setLTXV2FastResolution: (value: LTXV2FastResolution) => void;
-  setLTXV2FastFPS: (value: LTXV2FastFps) => void;
-  setLTXV2FastGenerateAudio: (value: boolean) => void;
+	// LTX Video Fast settings
+	setLTXV2FastDuration: (value: LTXV2FastDuration) => void;
+	setLTXV2FastResolution: (value: LTXV2FastResolution) => void;
+	setLTXV2FastFPS: (value: LTXV2FastFps) => void;
+	setLTXV2FastGenerateAudio: (value: boolean) => void;
 }
 
 export interface TextTabHelpers {
-  /** Count of active (non-default) settings */
-  activeSettingsCount: number;
-  /** Reset all settings to defaults */
-  resetToDefaults: () => void;
-  /** Whether extended LTX Fast resolution is needed */
-  isExtendedLTXV2FastDuration: boolean;
+	/** Count of active (non-default) settings */
+	activeSettingsCount: number;
+	/** Reset all settings to defaults */
+	resetToDefaults: () => void;
+	/** Whether extended LTX Fast resolution is needed */
+	isExtendedLTXV2FastDuration: boolean;
 }
 
 export interface UseTextTabStateResult {
-  state: TextTabState;
-  setters: TextTabSetters;
-  helpers: TextTabHelpers;
+	state: TextTabState;
+	setters: TextTabSetters;
+	helpers: TextTabHelpers;
 }
 
 // ============================================
@@ -106,8 +106,8 @@ export interface UseTextTabStateResult {
 // ============================================
 
 export interface UseTextTabStateOptions {
-  /** Selected models (for reset effects) */
-  selectedModels: string[];
+	/** Selected models (for reset effects) */
+	selectedModels: string[];
 }
 
 /**
@@ -125,164 +125,164 @@ export interface UseTextTabStateOptions {
  * ```
  */
 export function useTextTabState({
-  selectedModels,
+	selectedModels,
 }: UseTextTabStateOptions): UseTextTabStateResult {
-  // Unified T2V settings
-  const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(
-    T2V_DEFAULTS.aspectRatio
-  );
-  const [t2vResolution, setT2vResolution] = useState<string>(
-    T2V_DEFAULTS.resolution
-  );
-  const [t2vDuration, setT2vDuration] = useState<number>(T2V_DEFAULTS.duration);
-  const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
-    T2V_DEFAULTS.negativePrompt
-  );
-  const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(
-    T2V_DEFAULTS.promptExpansion
-  );
-  const [t2vSeed, setT2vSeed] = useState<number>(T2V_DEFAULTS.seed);
-  const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(
-    T2V_DEFAULTS.safetyChecker
-  );
-  const [t2vSettingsExpanded, setT2vSettingsExpanded] =
-    useState<boolean>(false);
+	// Unified T2V settings
+	const [t2vAspectRatio, setT2vAspectRatio] = useState<string>(
+		T2V_DEFAULTS.aspectRatio
+	);
+	const [t2vResolution, setT2vResolution] = useState<string>(
+		T2V_DEFAULTS.resolution
+	);
+	const [t2vDuration, setT2vDuration] = useState<number>(T2V_DEFAULTS.duration);
+	const [t2vNegativePrompt, setT2vNegativePrompt] = useState<string>(
+		T2V_DEFAULTS.negativePrompt
+	);
+	const [t2vPromptExpansion, setT2vPromptExpansion] = useState<boolean>(
+		T2V_DEFAULTS.promptExpansion
+	);
+	const [t2vSeed, setT2vSeed] = useState<number>(T2V_DEFAULTS.seed);
+	const [t2vSafetyChecker, setT2vSafetyChecker] = useState<boolean>(
+		T2V_DEFAULTS.safetyChecker
+	);
+	const [t2vSettingsExpanded, setT2vSettingsExpanded] =
+		useState<boolean>(false);
 
-  // Hailuo settings
-  const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
+	// Hailuo settings
+	const [hailuoT2VDuration, setHailuoT2VDuration] = useState<6 | 10>(6);
 
-  // LTX Video Pro settings
-  const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
-  const [ltxv2Resolution, setLTXV2Resolution] = useState<
-    "1080p" | "1440p" | "2160p"
-  >("1080p");
-  const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
-  const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
+	// LTX Video Pro settings
+	const [ltxv2Duration, setLTXV2Duration] = useState<6 | 8 | 10>(6);
+	const [ltxv2Resolution, setLTXV2Resolution] = useState<
+		"1080p" | "1440p" | "2160p"
+	>("1080p");
+	const [ltxv2FPS, setLTXV2FPS] = useState<25 | 50>(25);
+	const [ltxv2GenerateAudio, setLTXV2GenerateAudio] = useState(true);
 
-  // LTX Video Fast settings
-  const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
-    LTXV2_FAST_CONFIG.DURATIONS[0]
-  );
-  const [ltxv2FastResolution, setLTXV2FastResolution] =
-    useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-  const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
-    LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
-  );
-  const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
+	// LTX Video Fast settings
+	const [ltxv2FastDuration, setLTXV2FastDuration] = useState<LTXV2FastDuration>(
+		LTXV2_FAST_CONFIG.DURATIONS[0]
+	);
+	const [ltxv2FastResolution, setLTXV2FastResolution] =
+		useState<LTXV2FastResolution>(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+	const [ltxv2FastFPS, setLTXV2FastFPS] = useState<LTXV2FastFps>(
+		LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]
+	);
+	const [ltxv2FastGenerateAudio, setLTXV2FastGenerateAudio] = useState(true);
 
-  // Model selection helpers
-  const hailuoSelected =
-    selectedModels.includes("hailuo23_standard_t2v") ||
-    selectedModels.includes("hailuo23_pro_t2v");
-  const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
-  const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
+	// Model selection helpers
+	const hailuoSelected =
+		selectedModels.includes("hailuo23_standard_t2v") ||
+		selectedModels.includes("hailuo23_pro_t2v");
+	const ltxv2ProTextSelected = selectedModels.includes("ltxv2_pro_t2v");
+	const ltxv2FastTextSelected = selectedModels.includes("ltxv2_fast_t2v");
 
-  // Reset Hailuo settings when model is deselected
-  useEffect(() => {
-    if (!hailuoSelected && hailuoT2VDuration !== 6) {
-      setHailuoT2VDuration(6);
-    }
-  }, [hailuoSelected, hailuoT2VDuration]);
+	// Reset Hailuo settings when model is deselected
+	useEffect(() => {
+		if (!hailuoSelected && hailuoT2VDuration !== 6) {
+			setHailuoT2VDuration(6);
+		}
+	}, [hailuoSelected, hailuoT2VDuration]);
 
-  // Reset LTX Pro settings when model is deselected
-  useEffect(() => {
-    if (!ltxv2ProTextSelected) {
-      setLTXV2Duration(6);
-      setLTXV2Resolution("1080p");
-      setLTXV2FPS(25);
-      setLTXV2GenerateAudio(true);
-    }
-  }, [ltxv2ProTextSelected]);
+	// Reset LTX Pro settings when model is deselected
+	useEffect(() => {
+		if (!ltxv2ProTextSelected) {
+			setLTXV2Duration(6);
+			setLTXV2Resolution("1080p");
+			setLTXV2FPS(25);
+			setLTXV2GenerateAudio(true);
+		}
+	}, [ltxv2ProTextSelected]);
 
-  // Reset LTX Fast settings when model is deselected
-  useEffect(() => {
-    if (!ltxv2FastTextSelected) {
-      setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
-      setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
-      setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
-      setLTXV2FastGenerateAudio(true);
-    }
-  }, [ltxv2FastTextSelected]);
+	// Reset LTX Fast settings when model is deselected
+	useEffect(() => {
+		if (!ltxv2FastTextSelected) {
+			setLTXV2FastDuration(LTXV2_FAST_CONFIG.DURATIONS[0]);
+			setLTXV2FastResolution(LTXV2_FAST_CONFIG.RESOLUTIONS.STANDARD[0]);
+			setLTXV2FastFPS(LTXV2_FAST_CONFIG.FPS_OPTIONS.STANDARD[0]);
+			setLTXV2FastGenerateAudio(true);
+		}
+	}, [ltxv2FastTextSelected]);
 
-  // Calculate active settings count
-  const activeSettingsCount = useMemo(() => {
-    let count = 0;
-    if (t2vAspectRatio !== T2V_DEFAULTS.aspectRatio) count++;
-    if (t2vResolution !== T2V_DEFAULTS.resolution) count++;
-    if (t2vDuration !== T2V_DEFAULTS.duration) count++;
-    if (t2vNegativePrompt !== T2V_DEFAULTS.negativePrompt) count++;
-    if (t2vPromptExpansion !== T2V_DEFAULTS.promptExpansion) count++;
-    if (t2vSeed !== T2V_DEFAULTS.seed) count++;
-    if (t2vSafetyChecker !== T2V_DEFAULTS.safetyChecker) count++;
-    return count;
-  }, [
-    t2vAspectRatio,
-    t2vResolution,
-    t2vDuration,
-    t2vNegativePrompt,
-    t2vPromptExpansion,
-    t2vSeed,
-    t2vSafetyChecker,
-  ]);
+	// Calculate active settings count
+	const activeSettingsCount = useMemo(() => {
+		let count = 0;
+		if (t2vAspectRatio !== T2V_DEFAULTS.aspectRatio) count++;
+		if (t2vResolution !== T2V_DEFAULTS.resolution) count++;
+		if (t2vDuration !== T2V_DEFAULTS.duration) count++;
+		if (t2vNegativePrompt !== T2V_DEFAULTS.negativePrompt) count++;
+		if (t2vPromptExpansion !== T2V_DEFAULTS.promptExpansion) count++;
+		if (t2vSeed !== T2V_DEFAULTS.seed) count++;
+		if (t2vSafetyChecker !== T2V_DEFAULTS.safetyChecker) count++;
+		return count;
+	}, [
+		t2vAspectRatio,
+		t2vResolution,
+		t2vDuration,
+		t2vNegativePrompt,
+		t2vPromptExpansion,
+		t2vSeed,
+		t2vSafetyChecker,
+	]);
 
-  // Reset to defaults
-  const resetToDefaults = useCallback(() => {
-    setT2vAspectRatio(T2V_DEFAULTS.aspectRatio);
-    setT2vResolution(T2V_DEFAULTS.resolution);
-    setT2vDuration(T2V_DEFAULTS.duration);
-    setT2vNegativePrompt(T2V_DEFAULTS.negativePrompt);
-    setT2vPromptExpansion(T2V_DEFAULTS.promptExpansion);
-    setT2vSeed(T2V_DEFAULTS.seed);
-    setT2vSafetyChecker(T2V_DEFAULTS.safetyChecker);
-  }, []);
+	// Reset to defaults
+	const resetToDefaults = useCallback(() => {
+		setT2vAspectRatio(T2V_DEFAULTS.aspectRatio);
+		setT2vResolution(T2V_DEFAULTS.resolution);
+		setT2vDuration(T2V_DEFAULTS.duration);
+		setT2vNegativePrompt(T2V_DEFAULTS.negativePrompt);
+		setT2vPromptExpansion(T2V_DEFAULTS.promptExpansion);
+		setT2vSeed(T2V_DEFAULTS.seed);
+		setT2vSafetyChecker(T2V_DEFAULTS.safetyChecker);
+	}, []);
 
-  // Check if extended duration is active (for LTX Fast)
-  const isExtendedLTXV2FastDuration =
-    ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
+	// Check if extended duration is active (for LTX Fast)
+	const isExtendedLTXV2FastDuration =
+		ltxv2FastDuration > LTXV2_FAST_CONFIG.EXTENDED_DURATION_THRESHOLD;
 
-  return {
-    state: {
-      t2vAspectRatio,
-      t2vResolution,
-      t2vDuration,
-      t2vNegativePrompt,
-      t2vPromptExpansion,
-      t2vSeed,
-      t2vSafetyChecker,
-      t2vSettingsExpanded,
-      hailuoT2VDuration,
-      ltxv2Duration,
-      ltxv2Resolution,
-      ltxv2FPS,
-      ltxv2GenerateAudio,
-      ltxv2FastDuration,
-      ltxv2FastResolution,
-      ltxv2FastFPS,
-      ltxv2FastGenerateAudio,
-    },
-    setters: {
-      setT2vAspectRatio,
-      setT2vResolution,
-      setT2vDuration,
-      setT2vNegativePrompt,
-      setT2vPromptExpansion,
-      setT2vSeed,
-      setT2vSafetyChecker,
-      setT2vSettingsExpanded,
-      setHailuoT2VDuration,
-      setLTXV2Duration,
-      setLTXV2Resolution,
-      setLTXV2FPS,
-      setLTXV2GenerateAudio,
-      setLTXV2FastDuration,
-      setLTXV2FastResolution,
-      setLTXV2FastFPS,
-      setLTXV2FastGenerateAudio,
-    },
-    helpers: {
-      activeSettingsCount,
-      resetToDefaults,
-      isExtendedLTXV2FastDuration,
-    },
-  };
+	return {
+		state: {
+			t2vAspectRatio,
+			t2vResolution,
+			t2vDuration,
+			t2vNegativePrompt,
+			t2vPromptExpansion,
+			t2vSeed,
+			t2vSafetyChecker,
+			t2vSettingsExpanded,
+			hailuoT2VDuration,
+			ltxv2Duration,
+			ltxv2Resolution,
+			ltxv2FPS,
+			ltxv2GenerateAudio,
+			ltxv2FastDuration,
+			ltxv2FastResolution,
+			ltxv2FastFPS,
+			ltxv2FastGenerateAudio,
+		},
+		setters: {
+			setT2vAspectRatio,
+			setT2vResolution,
+			setT2vDuration,
+			setT2vNegativePrompt,
+			setT2vPromptExpansion,
+			setT2vSeed,
+			setT2vSafetyChecker,
+			setT2vSettingsExpanded,
+			setHailuoT2VDuration,
+			setLTXV2Duration,
+			setLTXV2Resolution,
+			setLTXV2FPS,
+			setLTXV2GenerateAudio,
+			setLTXV2FastDuration,
+			setLTXV2FastResolution,
+			setLTXV2FastFPS,
+			setLTXV2FastGenerateAudio,
+		},
+		helpers: {
+			activeSettingsCount,
+			resetToDefaults,
+			isExtendedLTXV2FastDuration,
+		},
+	};
 }

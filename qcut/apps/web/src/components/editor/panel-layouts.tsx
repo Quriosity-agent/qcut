@@ -2,9 +2,9 @@
 
 import React from "react";
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
+	ResizablePanelGroup,
+	ResizablePanel,
+	ResizableHandle,
 } from "../ui/resizable";
 import { MediaPanel } from "./media-panel";
 import { PropertiesPanel } from "./properties-panel";
@@ -13,624 +13,399 @@ import { PreviewPanel } from "./preview-panel";
 import { usePanelStore } from "@/stores/panel-store";
 
 interface LayoutProps {
-  resetCounter: number;
+	resetCounter: number;
 }
 
-function logTerminalLayoutDebug(
-  context: string,
-  payload: Record<string, unknown>
-) {
-  try {
-    if (!import.meta.env.DEV) return;
-    console.info(`[TerminalLayoutDebug:${context}]`, payload);
-  } catch (error) {
-    console.error("[TerminalLayoutDebug] failed", error);
-  }
-}
+/** Convert a numeric size to a percentage string for react-resizable-panels v4+ */
+const pct = (n: number) => `${n}%`;
 
 export function DefaultLayout({ resetCounter }: LayoutProps) {
-  const {
-    toolsPanel,
-    previewPanel,
-    mainContent,
-    timeline,
-    propertiesPanel,
-    activePreset,
-    setToolsPanel,
-    setPreviewPanel,
-    setMainContent,
-    setTimeline,
-    setPropertiesPanel,
-    normalizeHorizontalPanels,
-  } = usePanelStore();
+	const {
+		toolsPanel,
+		previewPanel,
+		mainContent,
+		timeline,
+		propertiesPanel,
+		setToolsPanel,
+		setPreviewPanel,
+		setMainContent,
+		setTimeline,
+		setPropertiesPanel,
+	} = usePanelStore();
 
-  const isTerminal = activePreset === "terminal";
-  const maxToolsSize = isTerminal ? 70 : 40;
+	// Memoize initial sizes so they only change on preset reset (resetCounter).
+	// v4 re-applies defaultSize on prop changes, so we must keep it stable
+	// during drag to avoid fighting the library's internal state.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const defaults = React.useMemo(
+		() => ({
+			tools: pct(toolsPanel),
+			preview: pct(previewPanel),
+			properties: pct(propertiesPanel),
+			main: pct(mainContent),
+			time: pct(timeline),
+		}),
+		[resetCounter]
+	);
 
-  // Normalize panel sizes to ensure they sum to 100%
-  const total = toolsPanel + previewPanel + propertiesPanel;
-  const normalizationFactor = total !== 0 ? 100 / total : 1;
+	return (
+		<ResizablePanelGroup
+			key={`default-${resetCounter}`}
+			orientation="vertical"
+			className="h-full w-full"
+		>
+			<ResizablePanel
+				defaultSize={defaults.main}
+				minSize="30%"
+				maxSize="85%"
+				onResize={(size) => setMainContent(size.asPercentage)}
+				className="min-h-0"
+			>
+				<ResizablePanelGroup
+					orientation="horizontal"
+					className="h-full w-full px-2"
+				>
+					<ResizablePanel
+						defaultSize={defaults.tools}
+						minSize="10%"
+						maxSize="50%"
+						onResize={(size) => setToolsPanel(size.asPercentage)}
+						className="min-w-0"
+					>
+						<MediaPanel />
+					</ResizablePanel>
 
-  const clamp = (value: number, min: number, max: number) =>
-    Math.max(min, Math.min(max, value));
+					<ResizableHandle withHandle />
 
-  // Normalize while respecting min/max constraints and keeping a strict 100% sum.
-  const normalizePanels = (
-    rawTools: number,
-    rawPreview: number,
-    rawProperties: number
-  ) => {
-    const round2 = (v: number) => Math.round(v * 100) / 100;
-    const minTools = 15;
-    const maxTools = maxToolsSize;
-    const minPreview = 30;
-    const maxPreview = 100;
-    const minProps = 15;
-    const maxProps = 40;
+					<ResizablePanel
+						defaultSize={defaults.preview}
+						minSize="20%"
+						onResize={(size) => setPreviewPanel(size.asPercentage)}
+						className="min-w-0 min-h-0 flex-1"
+					>
+						<PreviewPanel />
+					</ResizablePanel>
 
-    const factor =
-      rawTools + rawPreview + rawProperties !== 0
-        ? 100 / (rawTools + rawPreview + rawProperties)
-        : 1;
+					<ResizableHandle withHandle />
 
-    // Start from proportionally scaled values.
-    let tools = round2(rawTools * factor);
-    let preview = round2(rawPreview * factor);
+					<ResizablePanel
+						defaultSize={defaults.properties}
+						minSize="10%"
+						maxSize="50%"
+						onResize={(size) => setPropertiesPanel(size.asPercentage)}
+						className="min-w-0"
+					>
+						<PropertiesPanel />
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</ResizablePanel>
 
-    // Apply bounds, ensuring room for properties min.
-    tools = clamp(tools, minTools, maxTools);
-    const previewMaxWithRoom = Math.min(maxPreview, 100 - tools - minProps);
-    preview = clamp(preview, minPreview, previewMaxWithRoom);
+			<ResizableHandle withHandle />
 
-    let properties = round2(100 - tools - preview);
-
-    // If properties drops below its minimum, borrow from preview then tools.
-    if (properties < minProps) {
-      const deficit = minProps - properties;
-      const previewGive = Math.min(deficit, Math.max(0, preview - minPreview));
-      preview -= previewGive;
-      const remainingDeficit = deficit - previewGive;
-      if (remainingDeficit > 0) {
-        const toolsGive = Math.min(
-          remainingDeficit,
-          Math.max(0, tools - minTools)
-        );
-        tools -= toolsGive;
-      }
-      properties = minProps;
-    }
-
-    // If properties exceeds max, push excess into preview then tools.
-    if (properties > maxProps) {
-      const excess = properties - maxProps;
-      properties = maxProps;
-      const previewTake = Math.min(excess, Math.max(0, maxPreview - preview));
-      preview += previewTake;
-      const remainingExcess = excess - previewTake;
-      if (remainingExcess > 0) {
-        const toolsTake = Math.min(
-          remainingExcess,
-          Math.max(0, maxTools - tools)
-        );
-        tools += toolsTake;
-      }
-    }
-
-    // Final reconciliation: let properties absorb rounding differences.
-    properties = round2(100 - tools - preview);
-    // Clamp properties last; if it pushes the total off 100%, we prioritize bounds.
-    properties = clamp(properties, minProps, maxProps);
-
-    return {
-      normalizedTools: tools,
-      normalizedPreview: preview,
-      normalizedProperties: properties,
-    };
-  };
-
-  const { normalizedTools, normalizedPreview, normalizedProperties } =
-    normalizePanels(toolsPanel, previewPanel, propertiesPanel);
-
-  // Panel size calculation completed
-
-  // Trigger normalization if panels are off
-  React.useEffect(() => {
-    if (Math.abs(total - 100) > 0.1) {
-      normalizeHorizontalPanels();
-    }
-  }, [total, normalizeHorizontalPanels]);
-
-  React.useEffect(() => {
-    if (!isTerminal) return;
-
-    const mediaPanelElement = document.querySelector(
-      '[data-testid="media-panel"]'
-    ) as HTMLElement | null;
-    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
-    const viewportWidthPx = window.innerWidth;
-    const mediaPanelRatioPct =
-      mediaPanelWidthPx && viewportWidthPx > 0
-        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
-        : null;
-
-    logTerminalLayoutDebug("DefaultLayout", {
-      resetCounter,
-      activePreset,
-      toolsPanel,
-      previewPanel,
-      propertiesPanel,
-      normalizedTools,
-      normalizedPreview,
-      normalizedProperties,
-      maxToolsSize,
-      total,
-      mediaPanelWidthPx,
-      viewportWidthPx,
-      mediaPanelRatioPct,
-    });
-  }, [
-    isTerminal,
-    resetCounter,
-    activePreset,
-    toolsPanel,
-    previewPanel,
-    propertiesPanel,
-    normalizedTools,
-    normalizedPreview,
-    normalizedProperties,
-    maxToolsSize,
-    total,
-  ]);
-
-  return (
-    <ResizablePanelGroup
-      key={`default-${resetCounter}`}
-      direction="vertical"
-      className="h-full w-full gap-[0.18rem]"
-    >
-      <ResizablePanel
-        defaultSize={mainContent}
-        minSize={30}
-        maxSize={85}
-        onResize={setMainContent}
-        className="min-h-0"
-      >
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="h-full w-full gap-[0.19rem] px-2"
-        >
-          <ResizablePanel
-            defaultSize={normalizedTools}
-            minSize={15}
-            maxSize={maxToolsSize}
-            onResize={setToolsPanel}
-            className="min-w-0"
-          >
-            <MediaPanel />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          <ResizablePanel
-            defaultSize={normalizedPreview}
-            minSize={30}
-            onResize={setPreviewPanel}
-            className="min-w-0 min-h-0 flex-1"
-          >
-            <PreviewPanel />
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          <ResizablePanel
-            defaultSize={normalizedProperties}
-            minSize={15}
-            maxSize={40}
-            onResize={setPropertiesPanel}
-            className="min-w-0"
-          >
-            <PropertiesPanel />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      <ResizablePanel
-        defaultSize={timeline}
-        minSize={15}
-        maxSize={70}
-        onResize={setTimeline}
-        className="min-h-0 px-2 pb-2"
-      >
-        <Timeline />
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
+			<ResizablePanel
+				defaultSize={defaults.time}
+				minSize="15%"
+				maxSize="70%"
+				onResize={(size) => setTimeline(size.asPercentage)}
+				className="min-h-0 px-2 pb-2"
+			>
+				<Timeline />
+			</ResizablePanel>
+		</ResizablePanelGroup>
+	);
 }
 
 export function MediaLayout({ resetCounter }: LayoutProps) {
-  const {
-    toolsPanel,
-    previewPanel,
-    mainContent,
-    timeline,
-    propertiesPanel,
-    activePreset,
-    setToolsPanel,
-    setPreviewPanel,
-    setMainContent,
-    setTimeline,
-    setPropertiesPanel,
-  } = usePanelStore();
+	const {
+		toolsPanel,
+		previewPanel,
+		mainContent,
+		timeline,
+		propertiesPanel,
+		setToolsPanel,
+		setPreviewPanel,
+		setMainContent,
+		setTimeline,
+		setPropertiesPanel,
+	} = usePanelStore();
 
-  const maxToolsSize = activePreset === "terminal" ? 70 : 40;
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const defaults = React.useMemo(() => {
+		const rightTotal = Math.max(1, previewPanel + propertiesPanel);
+		return {
+			tools: pct(toolsPanel),
+			right: pct(100 - toolsPanel),
+			main: pct(mainContent),
+			time: pct(timeline),
+			preview: pct((previewPanel / rightTotal) * 100),
+			properties: pct((propertiesPanel / rightTotal) * 100),
+		};
+	}, [resetCounter]);
 
-  // Calculate relative sizes for nested panels
-  // The right group contains preview + properties and its total width is (100 - toolsPanel)
-  const rightGroupTotal = Math.max(1, 100 - toolsPanel);
+	const rightGroupTotal = Math.max(1, 100 - toolsPanel);
+	const toGlobalPreview = (pctVal: number) => (pctVal * rightGroupTotal) / 100;
+	const toGlobalProperties = (pctVal: number) =>
+		(pctVal * rightGroupTotal) / 100;
 
-  // Convert from global percentages to right group percentages and ensure they sum to 100%
-  const rawPreviewRelative = (previewPanel / rightGroupTotal) * 100;
-  const rawPropertiesRelative = (propertiesPanel / rightGroupTotal) * 100;
-  const totalRaw = rawPreviewRelative + rawPropertiesRelative;
+	return (
+		<ResizablePanelGroup
+			key={`media-${resetCounter}`}
+			orientation="horizontal"
+			className="h-full w-full"
+		>
+			<ResizablePanel
+				defaultSize={defaults.tools}
+				minSize="10%"
+				maxSize="50%"
+				onResize={(size) => setToolsPanel(size.asPercentage)}
+				className="min-w-0"
+			>
+				<MediaPanel />
+			</ResizablePanel>
 
-  // Normalize to ensure total is 100%
-  const previewPanelRelative =
-    totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 60;
-  const propertiesPanelRelative =
-    totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 40;
+			<ResizableHandle withHandle />
 
-  // Debug: Verify layout normalization fix
-  if (import.meta.env.DEV) {
-    const total = previewPanelRelative + propertiesPanelRelative;
-    if (Math.abs(total - 100) > 0.01) {
-      console.warn(
-        `MediaLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
-      );
-    } else {
-      console.log(
-        `✅ MediaLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
-      );
-    }
-  }
+			<ResizablePanel
+				defaultSize={defaults.right}
+				minSize="50%"
+				className="min-w-0 min-h-0"
+			>
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
+					<ResizablePanel
+						defaultSize={defaults.main}
+						minSize="30%"
+						maxSize="85%"
+						onResize={(size) => setMainContent(size.asPercentage)}
+						className="min-h-0"
+					>
+						<ResizablePanelGroup
+							orientation="horizontal"
+							className="h-full w-full px-2"
+						>
+							<ResizablePanel
+								defaultSize={defaults.preview}
+								minSize="20%"
+								onResize={(size) =>
+									setPreviewPanel(toGlobalPreview(size.asPercentage))
+								}
+								className="min-w-0 min-h-0 flex-1"
+							>
+								<PreviewPanel />
+							</ResizablePanel>
 
-  // Convert from right group percentage back to global percentage
-  const toGlobalPreview = (rightGroupPct: number) =>
-    (rightGroupPct * rightGroupTotal) / 100;
-  const toGlobalProperties = (rightGroupPct: number) =>
-    (rightGroupPct * rightGroupTotal) / 100;
+							<ResizableHandle withHandle />
 
-  React.useEffect(() => {
-    if (activePreset !== "terminal") return;
+							<ResizablePanel
+								defaultSize={defaults.properties}
+								minSize="10%"
+								maxSize="50%"
+								onResize={(size) =>
+									setPropertiesPanel(toGlobalProperties(size.asPercentage))
+								}
+								className="min-w-0"
+							>
+								<PropertiesPanel />
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</ResizablePanel>
 
-    const mediaPanelElement = document.querySelector(
-      '[data-testid="media-panel"]'
-    ) as HTMLElement | null;
-    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
-    const viewportWidthPx = window.innerWidth;
-    const mediaPanelRatioPct =
-      mediaPanelWidthPx && viewportWidthPx > 0
-        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
-        : null;
+					<ResizableHandle withHandle />
 
-    logTerminalLayoutDebug("MediaLayout", {
-      resetCounter,
-      activePreset,
-      toolsPanel,
-      previewPanel,
-      propertiesPanel,
-      rightGroupTotal,
-      previewPanelRelative,
-      propertiesPanelRelative,
-      maxToolsSize,
-      mediaPanelWidthPx,
-      viewportWidthPx,
-      mediaPanelRatioPct,
-    });
-  }, [
-    activePreset,
-    resetCounter,
-    toolsPanel,
-    previewPanel,
-    propertiesPanel,
-    rightGroupTotal,
-    previewPanelRelative,
-    propertiesPanelRelative,
-    maxToolsSize,
-  ]);
-
-  return (
-    <ResizablePanelGroup
-      key={`media-${resetCounter}`}
-      direction="horizontal"
-      className="h-full w-full gap-[0.18rem]"
-    >
-      <ResizablePanel
-        defaultSize={toolsPanel}
-        minSize={15}
-        maxSize={maxToolsSize}
-        onResize={setToolsPanel}
-        className="min-w-0"
-      >
-        <MediaPanel />
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      <ResizablePanel
-        defaultSize={100 - toolsPanel}
-        minSize={100 - maxToolsSize}
-        className="min-w-0 min-h-0"
-      >
-        <ResizablePanelGroup
-          direction="vertical"
-          className="h-full w-full gap-[0.18rem]"
-        >
-          <ResizablePanel
-            defaultSize={mainContent}
-            minSize={30}
-            maxSize={85}
-            onResize={setMainContent}
-            className="min-h-0"
-          >
-            <ResizablePanelGroup
-              direction="horizontal"
-              className="h-full w-full gap-[0.19rem] px-2"
-            >
-              <ResizablePanel
-                defaultSize={previewPanelRelative}
-                minSize={30}
-                onResize={(pct) => setPreviewPanel(toGlobalPreview(pct))}
-                className="min-w-0 min-h-0 flex-1"
-              >
-                <PreviewPanel />
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              <ResizablePanel
-                defaultSize={propertiesPanelRelative}
-                minSize={15}
-                maxSize={40}
-                onResize={(pct) => setPropertiesPanel(toGlobalProperties(pct))}
-                className="min-w-0"
-              >
-                <PropertiesPanel />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          <ResizablePanel
-            defaultSize={timeline}
-            minSize={15}
-            maxSize={70}
-            onResize={setTimeline}
-            className="min-h-0 px-2 pb-2"
-          >
-            <Timeline />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
+					<ResizablePanel
+						defaultSize={defaults.time}
+						minSize="15%"
+						maxSize="70%"
+						onResize={(size) => setTimeline(size.asPercentage)}
+						className="min-h-0 px-2 pb-2"
+					>
+						<Timeline />
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</ResizablePanel>
+		</ResizablePanelGroup>
+	);
 }
 
 export function InspectorLayout({ resetCounter }: LayoutProps) {
-  const {
-    toolsPanel,
-    previewPanel,
-    mainContent,
-    timeline,
-    propertiesPanel,
-    setToolsPanel,
-    setPreviewPanel,
-    setMainContent,
-    setTimeline,
-    setPropertiesPanel,
-  } = usePanelStore();
+	const {
+		toolsPanel,
+		previewPanel,
+		mainContent,
+		timeline,
+		propertiesPanel,
+		setToolsPanel,
+		setPreviewPanel,
+		setMainContent,
+		setTimeline,
+		setPropertiesPanel,
+	} = usePanelStore();
 
-  // Calculate relative sizes for nested panels
-  // The left group contains tools + preview and its total width is (100 - propertiesPanel)
-  const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const defaults = React.useMemo(() => {
+		const leftTotal = Math.max(1, toolsPanel + previewPanel);
+		return {
+			left: pct(toolsPanel + previewPanel),
+			main: pct(mainContent),
+			time: pct(timeline),
+			tools: pct((toolsPanel / leftTotal) * 100),
+			preview: pct((previewPanel / leftTotal) * 100),
+			properties: pct(propertiesPanel),
+		};
+	}, [resetCounter]);
 
-  // Convert from global percentages to left group percentages and ensure they sum to 100%
-  const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
-  const rawPreviewRelative = (previewPanel / leftGroupTotal) * 100;
-  const totalRaw = rawToolsRelative + rawPreviewRelative;
+	const leftGroupTotal = Math.max(1, 100 - propertiesPanel);
+	const toGlobalTools = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
+	const toGlobalPreview = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
 
-  // Normalize to ensure total is 100%
-  const toolsPanelRelative =
-    totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 30;
-  const previewPanelRelative =
-    totalRaw > 0 ? (rawPreviewRelative / totalRaw) * 100 : 70;
-
-  // Debug: Verify layout normalization fix
-  if (import.meta.env.DEV) {
-    const total = toolsPanelRelative + previewPanelRelative;
-    if (Math.abs(total - 100) > 0.01) {
-      console.warn(
-        `InspectorLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
-      );
-    } else {
-      console.log(
-        `✅ InspectorLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
-      );
-    }
-  }
-
-  // Convert from left group percentage back to global percentage
-  const toGlobalTools = (leftGroupPct: number) =>
-    (leftGroupPct * leftGroupTotal) / 100;
-  const toGlobalPreview = (leftGroupPct: number) =>
-    (leftGroupPct * leftGroupTotal) / 100;
-
-  return (
-    <ResizablePanelGroup
-      key={`inspector-${resetCounter}`}
-      direction="horizontal"
-      className="h-full w-full gap-[0.18rem] px-3 pb-3"
-    >
-      <ResizablePanel defaultSize={toolsPanel + previewPanel} minSize={60}>
-        <ResizablePanelGroup
-          direction="vertical"
-          className="h-full w-full gap-[0.18rem]"
-        >
-          <ResizablePanel
-            defaultSize={mainContent}
-            minSize={30}
-            onResize={setMainContent}
-          >
-            <ResizablePanelGroup
-              direction="horizontal"
-              className="h-full w-full gap-[0.19rem]"
-            >
-              <ResizablePanel
-                defaultSize={toolsPanelRelative}
-                minSize={15}
-                onResize={(pct) => setToolsPanel(toGlobalTools(pct))}
-              >
-                <MediaPanel />
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel
-                defaultSize={previewPanelRelative}
-                minSize={30}
-                onResize={(pct) => setPreviewPanel(toGlobalPreview(pct))}
-              >
-                <PreviewPanel />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel
-            defaultSize={timeline}
-            minSize={15}
-            onResize={setTimeline}
-          >
-            <Timeline />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel
-        defaultSize={propertiesPanel}
-        minSize={15}
-        maxSize={40}
-        onResize={setPropertiesPanel}
-      >
-        <PropertiesPanel />
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
+	return (
+		<ResizablePanelGroup
+			key={`inspector-${resetCounter}`}
+			orientation="horizontal"
+			className="h-full w-full px-3 pb-3"
+		>
+			<ResizablePanel defaultSize={defaults.left} minSize="50%">
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
+					<ResizablePanel
+						defaultSize={defaults.main}
+						minSize="30%"
+						onResize={(size) => setMainContent(size.asPercentage)}
+					>
+						<ResizablePanelGroup
+							orientation="horizontal"
+							className="h-full w-full"
+						>
+							<ResizablePanel
+								defaultSize={defaults.tools}
+								minSize="10%"
+								onResize={(size) =>
+									setToolsPanel(toGlobalTools(size.asPercentage))
+								}
+							>
+								<MediaPanel />
+							</ResizablePanel>
+							<ResizableHandle withHandle />
+							<ResizablePanel
+								defaultSize={defaults.preview}
+								minSize="20%"
+								onResize={(size) =>
+									setPreviewPanel(toGlobalPreview(size.asPercentage))
+								}
+							>
+								<PreviewPanel />
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</ResizablePanel>
+					<ResizableHandle withHandle />
+					<ResizablePanel
+						defaultSize={defaults.time}
+						minSize="15%"
+						onResize={(size) => setTimeline(size.asPercentage)}
+					>
+						<Timeline />
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</ResizablePanel>
+			<ResizableHandle withHandle />
+			<ResizablePanel
+				defaultSize={defaults.properties}
+				minSize="10%"
+				maxSize="50%"
+				onResize={(size) => setPropertiesPanel(size.asPercentage)}
+			>
+				<PropertiesPanel />
+			</ResizablePanel>
+		</ResizablePanelGroup>
+	);
 }
 
 export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
-  const {
-    toolsPanel,
-    previewPanel,
-    mainContent,
-    timeline,
-    propertiesPanel,
-    setToolsPanel,
-    setPreviewPanel,
-    setMainContent,
-    setTimeline,
-    setPropertiesPanel,
-  } = usePanelStore();
+	const {
+		toolsPanel,
+		previewPanel,
+		mainContent,
+		timeline,
+		propertiesPanel,
+		setToolsPanel,
+		setPreviewPanel,
+		setMainContent,
+		setTimeline,
+		setPropertiesPanel,
+	} = usePanelStore();
 
-  // Calculate relative sizes for nested panels
-  // The left group contains tools + properties and its total width is (100 - previewPanel)
-  const leftGroupTotal = Math.max(1, 100 - previewPanel);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	const defaults = React.useMemo(() => {
+		const leftTotal = Math.max(1, toolsPanel + propertiesPanel);
+		return {
+			left: pct(toolsPanel + propertiesPanel),
+			main: pct(mainContent),
+			time: pct(timeline),
+			tools: pct((toolsPanel / leftTotal) * 100),
+			properties: pct((propertiesPanel / leftTotal) * 100),
+			preview: pct(previewPanel),
+		};
+	}, [resetCounter]);
 
-  // Convert from global percentages to left group percentages and ensure they sum to 100%
-  const rawToolsRelative = (toolsPanel / leftGroupTotal) * 100;
-  const rawPropertiesRelative = (propertiesPanel / leftGroupTotal) * 100;
-  const totalRaw = rawToolsRelative + rawPropertiesRelative;
+	const leftGroupTotal = Math.max(1, 100 - previewPanel);
+	const toGlobalTools = (pctVal: number) => (pctVal * leftGroupTotal) / 100;
+	const toGlobalProperties = (pctVal: number) =>
+		(pctVal * leftGroupTotal) / 100;
 
-  // Normalize to ensure total is 100%
-  const toolsPanelRelative =
-    totalRaw > 0 ? (rawToolsRelative / totalRaw) * 100 : 50;
-  const propertiesPanelRelative =
-    totalRaw > 0 ? (rawPropertiesRelative / totalRaw) * 100 : 50;
-
-  // Debug: Verify layout normalization fix
-  if (import.meta.env.DEV) {
-    const total = toolsPanelRelative + propertiesPanelRelative;
-    if (Math.abs(total - 100) > 0.01) {
-      console.warn(
-        `VerticalPreviewLayout: Panel sizes don't sum to 100%: ${total.toFixed(2)}%`
-      );
-    } else {
-      console.log(
-        `✅ VerticalPreviewLayout: Panel sizes normalized correctly: ${total.toFixed(2)}%`
-      );
-    }
-  }
-
-  // Convert from left group percentage back to global percentage
-  const toGlobalTools = (leftGroupPct: number) =>
-    (leftGroupPct * leftGroupTotal) / 100;
-  const toGlobalProperties = (leftGroupPct: number) =>
-    (leftGroupPct * leftGroupTotal) / 100;
-
-  return (
-    <ResizablePanelGroup
-      key={`vertical-preview-${resetCounter}`}
-      direction="horizontal"
-      className="h-full w-full gap-[0.18rem] px-3 pb-3"
-    >
-      <ResizablePanel defaultSize={toolsPanel + propertiesPanel} minSize={60}>
-        <ResizablePanelGroup
-          direction="vertical"
-          className="h-full w-full gap-[0.18rem]"
-        >
-          <ResizablePanel
-            defaultSize={mainContent}
-            minSize={30}
-            onResize={setMainContent}
-          >
-            <ResizablePanelGroup
-              direction="horizontal"
-              className="h-full w-full gap-[0.19rem]"
-            >
-              <ResizablePanel
-                defaultSize={toolsPanelRelative}
-                minSize={25}
-                onResize={(pct) => setToolsPanel(toGlobalTools(pct))}
-              >
-                <MediaPanel />
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel
-                defaultSize={propertiesPanelRelative}
-                minSize={25}
-                onResize={(pct) => setPropertiesPanel(toGlobalProperties(pct))}
-              >
-                <PropertiesPanel />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel
-            defaultSize={timeline}
-            minSize={15}
-            onResize={setTimeline}
-          >
-            <Timeline />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-      <ResizableHandle withHandle />
-      <ResizablePanel
-        defaultSize={previewPanel}
-        minSize={30}
-        onResize={setPreviewPanel}
-      >
-        <PreviewPanel />
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
+	return (
+		<ResizablePanelGroup
+			key={`vertical-preview-${resetCounter}`}
+			orientation="horizontal"
+			className="h-full w-full px-3 pb-3"
+		>
+			<ResizablePanel defaultSize={defaults.left} minSize="50%">
+				<ResizablePanelGroup orientation="vertical" className="h-full w-full">
+					<ResizablePanel
+						defaultSize={defaults.main}
+						minSize="30%"
+						onResize={(size) => setMainContent(size.asPercentage)}
+					>
+						<ResizablePanelGroup
+							orientation="horizontal"
+							className="h-full w-full"
+						>
+							<ResizablePanel
+								defaultSize={defaults.tools}
+								minSize="15%"
+								onResize={(size) =>
+									setToolsPanel(toGlobalTools(size.asPercentage))
+								}
+							>
+								<MediaPanel />
+							</ResizablePanel>
+							<ResizableHandle withHandle />
+							<ResizablePanel
+								defaultSize={defaults.properties}
+								minSize="15%"
+								onResize={(size) =>
+									setPropertiesPanel(toGlobalProperties(size.asPercentage))
+								}
+							>
+								<PropertiesPanel />
+							</ResizablePanel>
+						</ResizablePanelGroup>
+					</ResizablePanel>
+					<ResizableHandle withHandle />
+					<ResizablePanel
+						defaultSize={defaults.time}
+						minSize="15%"
+						onResize={(size) => setTimeline(size.asPercentage)}
+					>
+						<Timeline />
+					</ResizablePanel>
+				</ResizablePanelGroup>
+			</ResizablePanel>
+			<ResizableHandle withHandle />
+			<ResizablePanel
+				defaultSize={defaults.preview}
+				minSize="20%"
+				onResize={(size) => setPreviewPanel(size.asPercentage)}
+			>
+				<PreviewPanel />
+			</ResizablePanel>
+		</ResizablePanelGroup>
+	);
 }

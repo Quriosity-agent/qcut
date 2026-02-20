@@ -17,52 +17,52 @@ import { storageService } from "@/lib/storage/storage-service";
  * This is more reliable than beforeunload for async operations.
  */
 export function useSaveOnVisibilityChange() {
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === "hidden") {
-        try {
-          // Dynamically import stores to avoid circular dependencies
-          const { useProjectStore } = await import("@/stores/project-store");
-          const { useTimelineStore } = await import("@/stores/timeline-store");
-          const { useSceneStore } = await import("@/stores/scene-store");
+	useEffect(() => {
+		const handleVisibilityChange = async () => {
+			if (document.visibilityState === "hidden") {
+				try {
+					// Dynamically import stores to avoid circular dependencies
+					const { useProjectStore } = await import("@/stores/project-store");
+					const { useTimelineStore } = await import("@/stores/timeline-store");
+					const { useSceneStore } = await import("@/stores/scene-store");
 
-          const activeProject = useProjectStore.getState().activeProject;
-          const tracks = useTimelineStore.getState()._tracks;
-          const currentScene = useSceneStore.getState().currentScene;
+					const activeProject = useProjectStore.getState().activeProject;
+					const tracks = useTimelineStore.getState()._tracks;
+					const currentScene = useSceneStore.getState().currentScene;
 
-          if (activeProject && tracks.length > 0) {
-            // Save timeline immediately (no debounce)
-            await storageService.saveProjectTimeline({
-              projectId: activeProject.id,
-              tracks,
-              sceneId: currentScene?.id ?? activeProject.currentSceneId,
-            });
+					if (activeProject && tracks.length > 0) {
+						// Save timeline immediately (no debounce)
+						await storageService.saveProjectTimeline({
+							projectId: activeProject.id,
+							tracks,
+							sceneId: currentScene?.id ?? activeProject.currentSceneId,
+						});
 
-            // Also save project metadata
-            await storageService.saveProject({ project: activeProject });
+						// Also save project metadata
+						await storageService.saveProject({ project: activeProject });
 
-            console.log(
-              "[SaveOnVisibilityChange] Saved timeline on page hide",
-              {
-                projectId: activeProject.id,
-                trackCount: tracks.length,
-              }
-            );
-          }
-        } catch (error) {
-          // Log but don't throw - page is already hiding
-          console.error(
-            "[SaveOnVisibilityChange] Failed to save on visibility change:",
-            error
-          );
-        }
-      }
-    };
+						console.log(
+							"[SaveOnVisibilityChange] Saved timeline on page hide",
+							{
+								projectId: activeProject.id,
+								trackCount: tracks.length,
+							}
+						);
+					}
+				} catch (error) {
+					// Log but don't throw - page is already hiding
+					console.error(
+						"[SaveOnVisibilityChange] Failed to save on visibility change:",
+						error
+					);
+				}
+			}
+		};
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		};
+	}, []);
 }

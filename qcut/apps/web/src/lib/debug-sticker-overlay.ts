@@ -11,11 +11,11 @@
  * Run these directly in browser developer console
  */
 export const debugStickerOverlay = {
-  /**
-   * Instructions for using debug commands
-   */
-  help: () => {
-    console.log(`
+	/**
+	 * Instructions for using debug commands
+	 */
+	help: () => {
+		console.log(`
 === STICKER OVERLAY DEBUG HELP ===
 
 To debug sticker overlay issues, copy and paste these commands directly into the browser console:
@@ -45,13 +45,13 @@ To debug sticker overlay issues, copy and paste these commands directly into the
 
 =====================================
     `);
-  },
+	},
 
-  /**
-   * Console command strings - copy these to console
-   */
-  commands: {
-    stateSnapshot: `
+	/**
+	 * Console command strings - copy these to console
+	 */
+	commands: {
+		stateSnapshot: `
 // === STATE SNAPSHOT ===
 console.log('=== STICKER DEBUG STATE SNAPSHOT ===');
 try {
@@ -84,7 +84,7 @@ try {
 console.log('=====================================');
 `,
 
-    findOrphans: `
+		findOrphans: `
 // === FIND ORPHANED STICKERS ===
 console.log('=== ORPHANED STICKERS ANALYSIS ===');
 try {
@@ -113,12 +113,12 @@ try {
 }
 console.log('==================================');
 `,
-  },
+	},
 };
 
 // Make debug functions globally available in development
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  (window as any).debugStickerOverlay = debugStickerOverlay;
-  console.log("🐛 Sticker overlay debug utilities loaded");
-  console.log("📖 Run debugStickerOverlay.help() for instructions");
+	(window as any).debugStickerOverlay = debugStickerOverlay;
+	console.log("🐛 Sticker overlay debug utilities loaded");
+	console.log("📖 Run debugStickerOverlay.help() for instructions");
 }

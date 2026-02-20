@@ -8,43 +8,19 @@ import type { Router } from "./utils/http-router.js";
 import { HttpError } from "./utils/http-router.js";
 import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
 import {
-  transcribeMedia,
-  startTranscribeJob,
-  getTranscribeJobStatus,
-  listTranscribeJobs,
-  cancelTranscribeJob,
+	transcribeMedia,
+	startTranscribeJob,
+	getTranscribeJobStatus,
+	listTranscribeJobs,
+	cancelTranscribeJob,
 } from "./claude-transcribe-handler.js";
-import {
-  detectScenes,
-  startSceneDetectionJob,
-  getSceneDetectionJobStatus,
-  listSceneDetectionJobs,
-  cancelSceneDetectionJob,
-} from "./claude-scene-handler.js";
-import {
-  analyzeFrames,
-  startFrameAnalysisJob,
-  getFrameAnalysisJobStatus,
-  listFrameAnalysisJobs,
-  cancelFrameAnalysisJob,
-} from "./claude-vision-handler.js";
+import { detectScenes } from "./claude-scene-handler.js";
+import { analyzeFrames } from "./claude-vision-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
 import { executeBatchCuts } from "./claude-cuts-handler.js";
 import { executeDeleteRange } from "./claude-range-handler.js";
-import {
-  autoEdit,
-  startAutoEditJob,
-  getAutoEditJobStatus,
-  listAutoEditJobs,
-  cancelAutoEditJob,
-} from "./claude-auto-edit-handler.js";
-import {
-  suggestCuts,
-  startSuggestCutsJob,
-  getSuggestCutsJobStatus,
-  listSuggestCutsJobs,
-  cancelSuggestCutsJob,
-} from "./claude-suggest-handler.js";
+import { autoEdit } from "./claude-auto-edit-handler.js";
+import { suggestCuts } from "./claude-suggest-handler.js";
 import { logOperation } from "./claude-operation-log.js";
 import type { BrowserWindow } from "electron";
 
@@ -52,488 +28,309 @@ import type { BrowserWindow } from "electron";
  * Register analysis, transcription, and Stage 3 editing routes on the router.
  */
 export function registerAnalysisRoutes(
-  router: Router,
-  getWindow: () => BrowserWindow
+	router: Router,
+	getWindow: () => BrowserWindow
 ): void {
-  // ==========================================================================
-  // Video Analysis routes
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId", async (req) => {
-    if (!req.body?.source) {
-      throw new HttpError(400, "Missing 'source' in request body");
-    }
-    try {
-      const result = await analyzeVideo(req.params.projectId, {
-        source: req.body.source,
-        analysisType: req.body.analysisType,
-        model: req.body.model,
-        format: req.body.format,
-      });
-      if (!result.success) {
-        throw new HttpError(500, result.error);
-      }
-      return result;
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Analysis failed"
-      );
-    }
-  });
+	// ==========================================================================
+	// Video Analysis routes
+	// ==========================================================================
+	router.post("/api/claude/analyze/:projectId", async (req) => {
+		if (!req.body?.source) {
+			throw new HttpError(400, "Missing 'source' in request body");
+		}
+		try {
+			const result = await analyzeVideo(req.params.projectId, {
+				source: req.body.source,
+				analysisType: req.body.analysisType,
+				model: req.body.model,
+				format: req.body.format,
+			});
+			if (!result.success) {
+				throw new HttpError(500, result.error);
+			}
+			return result;
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Analysis failed"
+			);
+		}
+	});
 
-  router.get("/api/claude/analyze/models", async () => {
-    return listAnalyzeModels();
-  });
+	router.get("/api/claude/analyze/models", async () => {
+		return listAnalyzeModels();
+	});
 
-  // ==========================================================================
-  // Transcription routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/transcribe/:projectId", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      const result = await transcribeMedia(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        provider: req.body.provider,
-        language: req.body.language,
-        diarize: req.body.diarize,
-      });
-      logOperation({
-        stage: 2,
-        action: "transcribe",
-        details: `Transcribed media ${req.body.mediaId}`,
-        timestamp: Date.now(),
-        projectId: req.params.projectId,
-        metadata: { mediaId: req.body.mediaId, provider: req.body.provider },
-      });
-      return result;
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Transcription failed"
-      );
-    }
-  });
+	// ==========================================================================
+	// Transcription routes (Stage 2)
+	// ==========================================================================
+	router.post("/api/claude/transcribe/:projectId", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		try {
+			const result = await transcribeMedia(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				provider: req.body.provider,
+				language: req.body.language,
+				diarize: req.body.diarize,
+			});
+			logOperation({
+				stage: 2,
+				action: "transcribe",
+				details: `Transcribed media ${req.body.mediaId}`,
+				timestamp: Date.now(),
+				projectId: req.params.projectId,
+				metadata: { mediaId: req.body.mediaId, provider: req.body.provider },
+			});
+			return result;
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Transcription failed"
+			);
+		}
+	});
 
-  // Async transcription routes (preferred — avoids 30s HTTP timeout)
-  router.post("/api/claude/transcribe/:projectId/start", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    const { jobId } = startTranscribeJob(req.params.projectId, {
-      mediaId: req.body.mediaId,
-      provider: req.body.provider,
-      language: req.body.language,
-      diarize: req.body.diarize,
-    });
-    return { jobId };
-  });
+	// Async transcription routes (preferred — avoids 30s HTTP timeout)
+	router.post("/api/claude/transcribe/:projectId/start", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		const { jobId } = startTranscribeJob(req.params.projectId, {
+			mediaId: req.body.mediaId,
+			provider: req.body.provider,
+			language: req.body.language,
+			diarize: req.body.diarize,
+		});
+		return { jobId };
+	});
 
-  router.get("/api/claude/transcribe/:projectId/jobs/:jobId", async (req) => {
-    const job = getTranscribeJobStatus(req.params.jobId);
-    if (!job) {
-      throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-    }
-    return job;
-  });
+	router.get("/api/claude/transcribe/:projectId/jobs/:jobId", async (req) => {
+		const job = getTranscribeJobStatus(req.params.jobId);
+		if (!job) {
+			throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+		}
+		return job;
+	});
 
-  router.get("/api/claude/transcribe/:projectId/jobs", async (req) => {
-    const allJobs = listTranscribeJobs();
-    return allJobs.filter((job) => job.projectId === req.params.projectId);
-  });
+	router.get("/api/claude/transcribe/:projectId/jobs", async (req) => {
+		const allJobs = listTranscribeJobs();
+		return allJobs.filter((job) => job.projectId === req.params.projectId);
+	});
 
-  router.post(
-    "/api/claude/transcribe/:projectId/jobs/:jobId/cancel",
-    async (req) => {
-      const cancelled = cancelTranscribeJob(req.params.jobId);
-      return { cancelled };
-    }
-  );
+	router.post(
+		"/api/claude/transcribe/:projectId/jobs/:jobId/cancel",
+		async (req) => {
+			const cancelled = cancelTranscribeJob(req.params.jobId);
+			return { cancelled };
+		}
+	);
 
-  // ==========================================================================
-  // Scene Detection routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      const result = await detectScenes(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        threshold: req.body.threshold,
-        aiAnalysis: req.body.aiAnalysis,
-        model: req.body.model,
-      });
-      logOperation({
-        stage: 2,
-        action: "analyze-scenes",
-        details: `Detected scenes for media ${req.body.mediaId}`,
-        timestamp: Date.now(),
-        projectId: req.params.projectId,
-        metadata: { mediaId: req.body.mediaId, model: req.body.model },
-      });
-      return result;
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Scene detection failed"
-      );
-    }
-  });
+	// ==========================================================================
+	// Scene Detection routes (Stage 2)
+	// ==========================================================================
+	router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		try {
+			const result = await detectScenes(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				threshold: req.body.threshold,
+				aiAnalysis: req.body.aiAnalysis,
+				model: req.body.model,
+			});
+			logOperation({
+				stage: 2,
+				action: "analyze-scenes",
+				details: `Detected scenes for media ${req.body.mediaId}`,
+				timestamp: Date.now(),
+				projectId: req.params.projectId,
+				metadata: { mediaId: req.body.mediaId, model: req.body.model },
+			});
+			return result;
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Scene detection failed"
+			);
+		}
+	});
 
-  // Async scene detection routes (preferred — avoids 30s HTTP timeout)
-  router.post("/api/claude/analyze/:projectId/scenes/start", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    const { jobId } = startSceneDetectionJob(req.params.projectId, {
-      mediaId: req.body.mediaId,
-      threshold: req.body.threshold,
-      aiAnalysis: req.body.aiAnalysis,
-      model: req.body.model,
-    });
-    return { jobId };
-  });
+	// ==========================================================================
+	// Frame Analysis routes (Stage 2)
+	// ==========================================================================
+	router.post("/api/claude/analyze/:projectId/frames", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		try {
+			return await analyzeFrames(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				timestamps: req.body.timestamps,
+				interval: req.body.interval,
+				prompt: req.body.prompt,
+			});
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Frame analysis failed"
+			);
+		}
+	});
 
-  router.get(
-    "/api/claude/analyze/:projectId/scenes/jobs/:jobId",
-    async (req) => {
-      const job = getSceneDetectionJobStatus(req.params.jobId);
-      if (!job) {
-        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-      }
-      return job;
-    }
-  );
+	// ==========================================================================
+	// Filler Detection routes (Stage 2)
+	// ==========================================================================
+	router.post("/api/claude/analyze/:projectId/fillers", async (req) => {
+		if (!Array.isArray(req.body?.words)) {
+			throw new HttpError(400, "Missing 'words' array in request body");
+		}
+		try {
+			const result = await analyzeFillers(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				words: req.body.words,
+			});
+			logOperation({
+				stage: 2,
+				action: "analyze-fillers",
+				details: `Analyzed filler words for media ${req.body.mediaId ?? "unknown"}`,
+				timestamp: Date.now(),
+				projectId: req.params.projectId,
+			});
+			return result;
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Filler analysis failed"
+			);
+		}
+	});
 
-  router.get("/api/claude/analyze/:projectId/scenes/jobs", async (req) => {
-    const allJobs = listSceneDetectionJobs();
-    return allJobs.filter((job) => job.projectId === req.params.projectId);
-  });
+	// ==========================================================================
+	// Batch Cut-List routes (Stage 3)
+	// ==========================================================================
+	router.post("/api/claude/timeline/:projectId/cuts", async (req) => {
+		if (!req.body?.elementId || !Array.isArray(req.body?.cuts)) {
+			throw new HttpError(
+				400,
+				"Missing 'elementId' and 'cuts' array in request body"
+			);
+		}
+		const win = getWindow();
+		return Promise.race([
+			executeBatchCuts(win, {
+				elementId: req.body.elementId,
+				cuts: req.body.cuts,
+				ripple: req.body.ripple,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					30_000
+				)
+			),
+		]);
+	});
 
-  router.post(
-    "/api/claude/analyze/:projectId/scenes/jobs/:jobId/cancel",
-    async (req) => {
-      const cancelled = cancelSceneDetectionJob(req.params.jobId);
-      return { cancelled };
-    }
-  );
+	// ==========================================================================
+	// Range Delete routes (Stage 3)
+	// ==========================================================================
+	router.delete("/api/claude/timeline/:projectId/range", async (req) => {
+		if (
+			typeof req.body?.startTime !== "number" ||
+			typeof req.body?.endTime !== "number"
+		) {
+			throw new HttpError(
+				400,
+				"Missing 'startTime' and 'endTime' in request body"
+			);
+		}
+		const win = getWindow();
+		return Promise.race([
+			executeDeleteRange(win, {
+				startTime: req.body.startTime,
+				endTime: req.body.endTime,
+				trackIds: req.body.trackIds,
+				ripple: req.body.ripple,
+				crossTrackRipple: req.body.crossTrackRipple,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					30_000
+				)
+			),
+		]);
+	});
 
-  // ==========================================================================
-  // Frame Analysis routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/frames", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      return await analyzeFrames(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        timestamps: req.body.timestamps,
-        interval: req.body.interval,
-        prompt: req.body.prompt,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Frame analysis failed"
-      );
-    }
-  });
+	// ==========================================================================
+	// Auto-Edit routes (Stage 3)
+	// ==========================================================================
+	router.post("/api/claude/timeline/:projectId/auto-edit", async (req) => {
+		if (!req.body?.elementId || !req.body?.mediaId) {
+			throw new HttpError(
+				400,
+				"Missing 'elementId' and 'mediaId' in request body"
+			);
+		}
+		const win = getWindow();
+		try {
+			return await autoEdit(
+				req.params.projectId,
+				{
+					elementId: req.body.elementId,
+					mediaId: req.body.mediaId,
+					removeFillers: req.body.removeFillers,
+					removeSilences: req.body.removeSilences,
+					silenceThreshold: req.body.silenceThreshold,
+					keepSilencePadding: req.body.keepSilencePadding,
+					dryRun: req.body.dryRun,
+					provider: req.body.provider,
+					language: req.body.language,
+				},
+				win
+			);
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Auto-edit failed"
+			);
+		}
+	});
 
-  // Async frame analysis routes (preferred — avoids 30s HTTP timeout)
-  router.post("/api/claude/analyze/:projectId/frames/start", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    const { jobId } = startFrameAnalysisJob(req.params.projectId, {
-      mediaId: req.body.mediaId,
-      timestamps: req.body.timestamps,
-      interval: req.body.interval,
-      prompt: req.body.prompt,
-    });
-    return { jobId };
-  });
-
-  router.get(
-    "/api/claude/analyze/:projectId/frames/jobs/:jobId",
-    async (req) => {
-      const job = getFrameAnalysisJobStatus(req.params.jobId);
-      if (!job) {
-        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-      }
-      return job;
-    }
-  );
-
-  router.get("/api/claude/analyze/:projectId/frames/jobs", async (req) => {
-    const allJobs = listFrameAnalysisJobs();
-    return allJobs.filter((job) => job.projectId === req.params.projectId);
-  });
-
-  router.post(
-    "/api/claude/analyze/:projectId/frames/jobs/:jobId/cancel",
-    async (req) => {
-      const cancelled = cancelFrameAnalysisJob(req.params.jobId);
-      return { cancelled };
-    }
-  );
-
-  // ==========================================================================
-  // Filler Detection routes (Stage 2)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/fillers", async (req) => {
-    if (!Array.isArray(req.body?.words)) {
-      throw new HttpError(400, "Missing 'words' array in request body");
-    }
-    try {
-      const result = await analyzeFillers(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        words: req.body.words,
-      });
-      logOperation({
-        stage: 2,
-        action: "analyze-fillers",
-        details: `Analyzed filler words for media ${req.body.mediaId ?? "unknown"}`,
-        timestamp: Date.now(),
-        projectId: req.params.projectId,
-      });
-      return result;
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Filler analysis failed"
-      );
-    }
-  });
-
-  // ==========================================================================
-  // Batch Cut-List routes (Stage 3)
-  // ==========================================================================
-  router.post("/api/claude/timeline/:projectId/cuts", async (req) => {
-    if (!req.body?.elementId || !Array.isArray(req.body?.cuts)) {
-      throw new HttpError(
-        400,
-        "Missing 'elementId' and 'cuts' array in request body"
-      );
-    }
-    const win = getWindow();
-    return Promise.race([
-      executeBatchCuts(win, {
-        elementId: req.body.elementId,
-        cuts: req.body.cuts,
-        ripple: req.body.ripple,
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new HttpError(504, "Renderer timed out")),
-          30_000
-        )
-      ),
-    ]);
-  });
-
-  // ==========================================================================
-  // Range Delete routes (Stage 3)
-  // ==========================================================================
-  router.delete("/api/claude/timeline/:projectId/range", async (req) => {
-    if (
-      typeof req.body?.startTime !== "number" ||
-      typeof req.body?.endTime !== "number"
-    ) {
-      throw new HttpError(
-        400,
-        "Missing 'startTime' and 'endTime' in request body"
-      );
-    }
-    const win = getWindow();
-    return Promise.race([
-      executeDeleteRange(win, {
-        startTime: req.body.startTime,
-        endTime: req.body.endTime,
-        trackIds: req.body.trackIds,
-        ripple: req.body.ripple,
-        crossTrackRipple: req.body.crossTrackRipple,
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new HttpError(504, "Renderer timed out")),
-          30_000
-        )
-      ),
-    ]);
-  });
-
-  // ==========================================================================
-  // Auto-Edit routes (Stage 3)
-  // ==========================================================================
-  router.post("/api/claude/timeline/:projectId/auto-edit", async (req) => {
-    if (!req.body?.elementId || !req.body?.mediaId) {
-      throw new HttpError(
-        400,
-        "Missing 'elementId' and 'mediaId' in request body"
-      );
-    }
-    const win = getWindow();
-    try {
-      return await autoEdit(
-        req.params.projectId,
-        {
-          elementId: req.body.elementId,
-          mediaId: req.body.mediaId,
-          removeFillers: req.body.removeFillers,
-          removeSilences: req.body.removeSilences,
-          silenceThreshold: req.body.silenceThreshold,
-          keepSilencePadding: req.body.keepSilencePadding,
-          dryRun: req.body.dryRun,
-          provider: req.body.provider,
-          language: req.body.language,
-        },
-        win
-      );
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Auto-edit failed"
-      );
-    }
-  });
-
-  // ==========================================================================
-  // Cut Suggestions routes (Stage 3)
-  // ==========================================================================
-  router.post("/api/claude/analyze/:projectId/suggest-cuts", async (req) => {
-    if (!req.body?.mediaId) {
-      throw new HttpError(400, "Missing 'mediaId' in request body");
-    }
-    try {
-      return await suggestCuts(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        provider: req.body.provider,
-        language: req.body.language,
-        sceneThreshold: req.body.sceneThreshold,
-        includeFillers: req.body.includeFillers,
-        includeSilences: req.body.includeSilences,
-        includeScenes: req.body.includeScenes,
-      });
-    } catch (error) {
-      if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Suggest cuts failed"
-      );
-    }
-  });
-
-  // Async suggest-cuts routes (preferred — avoids 30s HTTP timeout)
-  router.post(
-    "/api/claude/analyze/:projectId/suggest-cuts/start",
-    async (req) => {
-      if (!req.body?.mediaId) {
-        throw new HttpError(400, "Missing 'mediaId' in request body");
-      }
-      const { jobId } = startSuggestCutsJob(req.params.projectId, {
-        mediaId: req.body.mediaId,
-        provider: req.body.provider,
-        language: req.body.language,
-        sceneThreshold: req.body.sceneThreshold,
-        includeFillers: req.body.includeFillers,
-        includeSilences: req.body.includeSilences,
-        includeScenes: req.body.includeScenes,
-      });
-      return { jobId };
-    }
-  );
-
-  router.get(
-    "/api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId",
-    async (req) => {
-      const job = getSuggestCutsJobStatus(req.params.jobId);
-      if (!job) {
-        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-      }
-      return job;
-    }
-  );
-
-  router.get(
-    "/api/claude/analyze/:projectId/suggest-cuts/jobs",
-    async (req) => {
-      const allJobs = listSuggestCutsJobs();
-      return allJobs.filter((job) => job.projectId === req.params.projectId);
-    }
-  );
-
-  router.post(
-    "/api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId/cancel",
-    async (req) => {
-      const cancelled = cancelSuggestCutsJob(req.params.jobId);
-      return { cancelled };
-    }
-  );
-
-  // ==========================================================================
-  // Async Auto-Edit routes (preferred — avoids 30s HTTP timeout)
-  // ==========================================================================
-  router.post(
-    "/api/claude/timeline/:projectId/auto-edit/start",
-    async (req) => {
-      if (!req.body?.elementId || !req.body?.mediaId) {
-        throw new HttpError(
-          400,
-          "Missing 'elementId' and 'mediaId' in request body"
-        );
-      }
-      const win = getWindow();
-      const { jobId } = startAutoEditJob(
-        req.params.projectId,
-        {
-          elementId: req.body.elementId,
-          mediaId: req.body.mediaId,
-          removeFillers: req.body.removeFillers,
-          removeSilences: req.body.removeSilences,
-          silenceThreshold: req.body.silenceThreshold,
-          keepSilencePadding: req.body.keepSilencePadding,
-          dryRun: req.body.dryRun,
-          provider: req.body.provider,
-          language: req.body.language,
-        },
-        win
-      );
-      return { jobId };
-    }
-  );
-
-  router.get(
-    "/api/claude/timeline/:projectId/auto-edit/jobs/:jobId",
-    async (req) => {
-      const job = getAutoEditJobStatus(req.params.jobId);
-      if (!job) {
-        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
-      }
-      return job;
-    }
-  );
-
-  router.get("/api/claude/timeline/:projectId/auto-edit/jobs", async (req) => {
-    const allJobs = listAutoEditJobs();
-    return allJobs.filter((job) => job.projectId === req.params.projectId);
-  });
-
-  router.post(
-    "/api/claude/timeline/:projectId/auto-edit/jobs/:jobId/cancel",
-    async (req) => {
-      const cancelled = cancelAutoEditJob(req.params.jobId);
-      return { cancelled };
-    }
-  );
+	// ==========================================================================
+	// Cut Suggestions routes (Stage 3)
+	// ==========================================================================
+	router.post("/api/claude/analyze/:projectId/suggest-cuts", async (req) => {
+		if (!req.body?.mediaId) {
+			throw new HttpError(400, "Missing 'mediaId' in request body");
+		}
+		try {
+			return await suggestCuts(req.params.projectId, {
+				mediaId: req.body.mediaId,
+				provider: req.body.provider,
+				language: req.body.language,
+				sceneThreshold: req.body.sceneThreshold,
+				includeFillers: req.body.includeFillers,
+				includeSilences: req.body.includeSilences,
+				includeScenes: req.body.includeScenes,
+			});
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Suggest cuts failed"
+			);
+		}
+	});
 }
 
 // CommonJS export for compatibility

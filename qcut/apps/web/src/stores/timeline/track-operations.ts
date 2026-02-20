@@ -17,13 +17,13 @@ import { createTrack, getElementEndTime } from "./utils";
  * @returns The ID of the newly created track
  */
 export function addTrackOperation(
-  ctx: OperationContext,
-  type: TrackType
+	ctx: OperationContext,
+	type: TrackType
 ): string {
-  ctx.pushHistory();
-  const newTrack = createTrack(type);
-  ctx.updateTracksAndSave([...ctx.getTracks(), newTrack]);
-  return newTrack.id;
+	ctx.pushHistory();
+	const newTrack = createTrack(type);
+	ctx.updateTracksAndSave([...ctx.getTracks(), newTrack]);
+	return newTrack.id;
 }
 
 /**
@@ -34,17 +34,17 @@ export function addTrackOperation(
  * @returns The ID of the newly created track
  */
 export function insertTrackAtOperation(
-  ctx: OperationContext,
-  type: TrackType,
-  index: number
+	ctx: OperationContext,
+	type: TrackType,
+	index: number
 ): string {
-  ctx.pushHistory();
-  const newTrack = createTrack(type);
-  const newTracks = [...ctx.getTracks()];
-  const clampedIndex = Math.min(Math.max(0, index), newTracks.length);
-  newTracks.splice(clampedIndex, 0, newTrack);
-  ctx.updateTracksAndSave(newTracks);
-  return newTrack.id;
+	ctx.pushHistory();
+	const newTrack = createTrack(type);
+	const newTracks = [...ctx.getTracks()];
+	const clampedIndex = Math.min(Math.max(0, index), newTracks.length);
+	newTracks.splice(clampedIndex, 0, newTrack);
+	ctx.updateTracksAndSave(newTracks);
+	return newTrack.id;
 }
 
 /**
@@ -53,26 +53,26 @@ export function insertTrackAtOperation(
  * @param trackId - ID of the track to remove
  */
 export function removeTrackSimpleOperation(
-  ctx: OperationContext,
-  trackId: string
+	ctx: OperationContext,
+	trackId: string
 ): void {
-  const trackToRemove = ctx.getTracks().find((t) => t.id === trackId);
+	const trackToRemove = ctx.getTracks().find((t) => t.id === trackId);
 
-  // Cannot remove the main track - it must always exist
-  if (!trackToRemove || trackToRemove.isMain) return;
+	// Cannot remove the main track - it must always exist
+	if (!trackToRemove || trackToRemove.isMain) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  // Clear selection for elements on the removed track to avoid dangling references
-  for (const sel of ctx.getSelectedElements()) {
-    if (sel.trackId === trackId) {
-      ctx.deselectElement(sel.trackId, sel.elementId);
-    }
-  }
+	// Clear selection for elements on the removed track to avoid dangling references
+	for (const sel of ctx.getSelectedElements()) {
+		if (sel.trackId === trackId) {
+			ctx.deselectElement(sel.trackId, sel.elementId);
+		}
+	}
 
-  ctx.updateTracksAndSave(
-    ctx.getTracks().filter((track) => track.id !== trackId)
-  );
+	ctx.updateTracksAndSave(
+		ctx.getTracks().filter((track) => track.id !== trackId)
+	);
 }
 
 /**
@@ -81,103 +81,103 @@ export function removeTrackSimpleOperation(
  * @param trackId - ID of the track to remove
  */
 export function removeTrackWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string
+	ctx: OperationContext,
+	trackId: string
 ): void {
-  const tracks = ctx.getTracks();
-  const trackToRemove = tracks.find((t) => t.id === trackId);
+	const tracks = ctx.getTracks();
+	const trackToRemove = tracks.find((t) => t.id === trackId);
 
-  // Cannot remove the main track - it must always exist
-  if (!trackToRemove || trackToRemove.isMain) return;
+	// Cannot remove the main track - it must always exist
+	if (!trackToRemove || trackToRemove.isMain) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  // Clear selection for elements on the removed track to avoid dangling references
-  for (const sel of ctx.getSelectedElements()) {
-    if (sel.trackId === trackId) {
-      ctx.deselectElement(sel.trackId, sel.elementId);
-    }
-  }
+	// Clear selection for elements on the removed track to avoid dangling references
+	for (const sel of ctx.getSelectedElements()) {
+		if (sel.trackId === trackId) {
+			ctx.deselectElement(sel.trackId, sel.elementId);
+		}
+	}
 
-  // If track has no elements, just remove it normally
-  if (trackToRemove.elements.length === 0) {
-    ctx.updateTracksAndSave(tracks.filter((track) => track.id !== trackId));
-    return;
-  }
+	// If track has no elements, just remove it normally
+	if (trackToRemove.elements.length === 0) {
+		ctx.updateTracksAndSave(tracks.filter((track) => track.id !== trackId));
+		return;
+	}
 
-  // Find all the time ranges occupied by elements in the track being removed
-  const occupiedRanges = trackToRemove.elements.map((element) => ({
-    startTime: element.startTime,
-    endTime: getElementEndTime(element),
-  }));
+	// Find all the time ranges occupied by elements in the track being removed
+	const occupiedRanges = trackToRemove.elements.map((element) => ({
+		startTime: element.startTime,
+		endTime: getElementEndTime(element),
+	}));
 
-  // Sort ranges by start time
-  occupiedRanges.sort((a, b) => a.startTime - b.startTime);
+	// Sort ranges by start time
+	occupiedRanges.sort((a, b) => a.startTime - b.startTime);
 
-  // Merge overlapping ranges to get consolidated gaps
-  const mergedRanges: Array<{
-    startTime: number;
-    endTime: number;
-    duration: number;
-  }> = [];
+	// Merge overlapping ranges to get consolidated gaps
+	const mergedRanges: Array<{
+		startTime: number;
+		endTime: number;
+		duration: number;
+	}> = [];
 
-  for (const range of occupiedRanges) {
-    if (mergedRanges.length === 0) {
-      mergedRanges.push({
-        startTime: range.startTime,
-        endTime: range.endTime,
-        duration: range.endTime - range.startTime,
-      });
-    } else {
-      const lastRange = mergedRanges[mergedRanges.length - 1];
-      if (range.startTime <= lastRange.endTime) {
-        // Overlapping or adjacent ranges, merge them
-        lastRange.endTime = Math.max(lastRange.endTime, range.endTime);
-        lastRange.duration = lastRange.endTime - lastRange.startTime;
-      } else {
-        // Non-overlapping range, add as new
-        mergedRanges.push({
-          startTime: range.startTime,
-          endTime: range.endTime,
-          duration: range.endTime - range.startTime,
-        });
-      }
-    }
-  }
+	for (const range of occupiedRanges) {
+		if (mergedRanges.length === 0) {
+			mergedRanges.push({
+				startTime: range.startTime,
+				endTime: range.endTime,
+				duration: range.endTime - range.startTime,
+			});
+		} else {
+			const lastRange = mergedRanges[mergedRanges.length - 1];
+			if (range.startTime <= lastRange.endTime) {
+				// Overlapping or adjacent ranges, merge them
+				lastRange.endTime = Math.max(lastRange.endTime, range.endTime);
+				lastRange.duration = lastRange.endTime - lastRange.startTime;
+			} else {
+				// Non-overlapping range, add as new
+				mergedRanges.push({
+					startTime: range.startTime,
+					endTime: range.endTime,
+					duration: range.endTime - range.startTime,
+				});
+			}
+		}
+	}
 
-  // Remove the track and apply ripple effects to remaining tracks
-  const updatedTracks = tracks
-    .filter((track) => track.id !== trackId)
-    .map((track) => {
-      const updatedElements = track.elements.map((element) => {
-        let newStartTime = element.startTime;
+	// Remove the track and apply ripple effects to remaining tracks
+	const updatedTracks = tracks
+		.filter((track) => track.id !== trackId)
+		.map((track) => {
+			const updatedElements = track.elements.map((element) => {
+				let newStartTime = element.startTime;
 
-        // Process gaps from right to left (latest to earliest) to avoid cumulative shifts
-        for (let i = mergedRanges.length - 1; i >= 0; i--) {
-          const gap = mergedRanges[i];
-          // If this element starts after the gap, shift it left by the gap duration
-          if (newStartTime >= gap.endTime) {
-            newStartTime -= gap.duration;
-          }
-        }
+				// Process gaps from right to left (latest to earliest) to avoid cumulative shifts
+				for (let i = mergedRanges.length - 1; i >= 0; i--) {
+					const gap = mergedRanges[i];
+					// If this element starts after the gap, shift it left by the gap duration
+					if (newStartTime >= gap.endTime) {
+						newStartTime -= gap.duration;
+					}
+				}
 
-        return {
-          ...element,
-          startTime: Math.max(0, newStartTime),
-        };
-      });
+				return {
+					...element,
+					startTime: Math.max(0, newStartTime),
+				};
+			});
 
-      // Check for overlaps and resolve them if necessary
-      const hasOverlaps = checkElementOverlaps(updatedElements);
-      if (hasOverlaps) {
-        const resolvedElements = resolveElementOverlaps(updatedElements);
-        return { ...track, elements: resolvedElements };
-      }
+			// Check for overlaps and resolve them if necessary
+			const hasOverlaps = checkElementOverlaps(updatedElements);
+			if (hasOverlaps) {
+				const resolvedElements = resolveElementOverlaps(updatedElements);
+				return { ...track, elements: resolvedElements };
+			}
 
-      return { ...track, elements: updatedElements };
-    });
+			return { ...track, elements: updatedElements };
+		});
 
-  ctx.updateTracksAndSave(updatedTracks);
+	ctx.updateTracksAndSave(updatedTracks);
 }
 
 /**
@@ -188,18 +188,18 @@ export function removeTrackWithRippleOperation(
  * @returns The ID of the found or newly created track
  */
 export function findOrCreateTrackOperation(
-  ctx: OperationContext,
-  trackType: TrackType
+	ctx: OperationContext,
+	trackType: TrackType
 ): string {
-  // Always create new text/markdown tracks to allow independent overlays
-  if (trackType === "text" || trackType === "markdown") {
-    return ctx.insertTrackAt(trackType, 0);
-  }
+	// Always create new text/markdown tracks to allow independent overlays
+	if (trackType === "text" || trackType === "markdown") {
+		return ctx.insertTrackAt(trackType, 0);
+	}
 
-  const existingTrack = ctx.getTracks().find((t) => t.type === trackType);
-  if (existingTrack) {
-    return existingTrack.id;
-  }
+	const existingTrack = ctx.getTracks().find((t) => t.type === trackType);
+	if (existingTrack) {
+		return existingTrack.id;
+	}
 
-  return ctx.addTrack(trackType);
+	return ctx.addTrack(trackType);
 }

@@ -19,64 +19,64 @@ import * as path from "path";
  * Information about a file or directory entry.
  */
 interface FileInfo {
-  /** File or folder name */
-  name: string;
-  /** Absolute path to the file */
-  path: string;
-  /** Path relative to project root */
-  relativePath: string;
-  /** Media type classification */
-  type: "video" | "audio" | "image" | "unknown";
-  /** File size in bytes (0 for directories) */
-  size: number;
-  /** Last modified timestamp in milliseconds */
-  modifiedAt: number;
-  /** Whether this entry is a directory */
-  isDirectory: boolean;
+	/** File or folder name */
+	name: string;
+	/** Absolute path to the file */
+	path: string;
+	/** Path relative to project root */
+	relativePath: string;
+	/** Media type classification */
+	type: "video" | "audio" | "image" | "unknown";
+	/** File size in bytes (0 for directories) */
+	size: number;
+	/** Last modified timestamp in milliseconds */
+	modifiedAt: number;
+	/** Whether this entry is a directory */
+	isDirectory: boolean;
 }
 
 /**
  * Result of a directory scan operation.
  */
 interface ScanResult {
-  /** List of files found */
-  files: FileInfo[];
-  /** List of folder relative paths */
-  folders: string[];
-  /** Total size of all files in bytes */
-  totalSize: number;
-  /** Time taken to scan in milliseconds */
-  scanTime: number;
+	/** List of files found */
+	files: FileInfo[];
+	/** List of folder relative paths */
+	folders: string[];
+	/** Total size of all files in bytes */
+	totalSize: number;
+	/** Time taken to scan in milliseconds */
+	scanTime: number;
 }
 
 /**
  * Options for scan operation.
  */
 interface ScanOptions {
-  /** Scan subdirectories recursively */
-  recursive?: boolean;
-  /** Only include media files (video, audio, image) */
-  mediaOnly?: boolean;
+	/** Scan subdirectories recursively */
+	recursive?: boolean;
+	/** Only include media files (video, audio, image) */
+	mediaOnly?: boolean;
 }
 
 /**
  * Result of ensure-structure operation.
  */
 interface EnsureStructureResult {
-  /** Folders that were created */
-  created: string[];
-  /** Folders that already existed */
-  existing: string[];
+	/** Folders that were created */
+	created: string[];
+	/** Folders that already existed */
+	existing: string[];
 }
 
 /**
  * Logger interface compatible with electron-log.
  */
 interface Logger {
-  info(message?: unknown, ...optionalParams: unknown[]): void;
-  warn(message?: unknown, ...optionalParams: unknown[]): void;
-  error(message?: unknown, ...optionalParams: unknown[]): void;
-  debug(message?: unknown, ...optionalParams: unknown[]): void;
+	info(message?: unknown, ...optionalParams: unknown[]): void;
+	warn(message?: unknown, ...optionalParams: unknown[]): void;
+	error(message?: unknown, ...optionalParams: unknown[]): void;
+	debug(message?: unknown, ...optionalParams: unknown[]): void;
 }
 
 // ============================================================================
@@ -85,10 +85,10 @@ interface Logger {
 
 let log: Logger;
 try {
-  log = require("electron-log");
+	log = require("electron-log");
 } catch {
-  const noop = (): void => {};
-  log = { info: noop, warn: noop, error: noop, debug: noop };
+	const noop = (): void => {};
+	log = { info: noop, warn: noop, error: noop, debug: noop };
 }
 
 const LOG_PREFIX = "[ProjectFolder]";
@@ -99,22 +99,22 @@ const LOG_PREFIX = "[ProjectFolder]";
 
 /** Supported media file extensions by type */
 const MEDIA_EXTENSIONS: Record<string, string[]> = {
-  video: [".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"],
-  audio: [".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg"],
-  image: [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"],
+	video: [".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"],
+	audio: [".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg"],
+	image: [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"],
 };
 
 /** Required project folder structure */
 const REQUIRED_FOLDERS = [
-  "media",
-  "media/imported",
-  "media/generated",
-  "media/generated/images",
-  "media/generated/videos",
-  "media/generated/audio",
-  "media/temp",
-  "output",
-  "cache",
+	"media",
+	"media/imported",
+	"media/generated",
+	"media/generated/images",
+	"media/generated/videos",
+	"media/generated/audio",
+	"media/temp",
+	"output",
+	"cache",
 ];
 
 // ============================================================================
@@ -125,8 +125,8 @@ const REQUIRED_FOLDERS = [
  * Get the base path for QCut projects in the user's Documents folder.
  */
 function getProjectsBasePath(): string {
-  const documentsPath = app.getPath("documents");
-  return path.join(documentsPath, "QCut", "Projects");
+	const documentsPath = app.getPath("documents");
+	return path.join(documentsPath, "QCut", "Projects");
 }
 
 /**
@@ -134,7 +134,7 @@ function getProjectsBasePath(): string {
  * Removes path separators and parent directory references.
  */
 function sanitizePathComponent(component: string): string {
-  return component.replace(/[/\\]/g, "").replace(/\.\./g, "");
+	return component.replace(/[/\\]/g, "").replace(/\.\./g, "");
 }
 
 /**
@@ -142,26 +142,26 @@ function sanitizePathComponent(component: string): string {
  * @throws Error if path traversal is detected
  */
 function validatePathWithinBase(resolvedPath: string, basePath: string): void {
-  const normalizedResolved = path.resolve(resolvedPath);
-  const normalizedBase = path.resolve(basePath);
+	const normalizedResolved = path.resolve(resolvedPath);
+	const normalizedBase = path.resolve(basePath);
 
-  if (
-    !normalizedResolved.startsWith(normalizedBase + path.sep) &&
-    normalizedResolved !== normalizedBase
-  ) {
-    throw new Error("Path traversal attempt detected");
-  }
+	if (
+		!normalizedResolved.startsWith(normalizedBase + path.sep) &&
+		normalizedResolved !== normalizedBase
+	) {
+		throw new Error("Path traversal attempt detected");
+	}
 }
 
 /**
  * Determine media type from file extension.
  */
 function getMediaType(ext: string): FileInfo["type"] {
-  const lower = ext.toLowerCase();
-  if (MEDIA_EXTENSIONS.video.includes(lower)) return "video";
-  if (MEDIA_EXTENSIONS.audio.includes(lower)) return "audio";
-  if (MEDIA_EXTENSIONS.image.includes(lower)) return "image";
-  return "unknown";
+	const lower = ext.toLowerCase();
+	if (MEDIA_EXTENSIONS.video.includes(lower)) return "video";
+	if (MEDIA_EXTENSIONS.audio.includes(lower)) return "audio";
+	if (MEDIA_EXTENSIONS.image.includes(lower)) return "image";
+	return "unknown";
 }
 
 // ============================================================================
@@ -172,55 +172,55 @@ function getMediaType(ext: string): FileInfo["type"] {
  * Recursively scan a directory for files.
  */
 async function scanDirectory(
-  dirPath: string,
-  relativeBase: string,
-  options: ScanOptions,
-  result: { files: FileInfo[]; folders: string[]; totalSize: number }
+	dirPath: string,
+	relativeBase: string,
+	options: ScanOptions,
+	result: { files: FileInfo[]; folders: string[]; totalSize: number }
 ): Promise<void> {
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+	try {
+		const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      const relativePath = relativeBase
-        ? path.join(relativeBase, entry.name)
-        : entry.name;
+		for (const entry of entries) {
+			const fullPath = path.join(dirPath, entry.name);
+			const relativePath = relativeBase
+				? path.join(relativeBase, entry.name)
+				: entry.name;
 
-      if (entry.isDirectory()) {
-        result.folders.push(relativePath);
-        if (options.recursive) {
-          await scanDirectory(fullPath, relativePath, options, result);
-        }
-      } else {
-        const ext = path.extname(entry.name);
-        const mediaType = getMediaType(ext);
+			if (entry.isDirectory()) {
+				result.folders.push(relativePath);
+				if (options.recursive) {
+					await scanDirectory(fullPath, relativePath, options, result);
+				}
+			} else {
+				const ext = path.extname(entry.name);
+				const mediaType = getMediaType(ext);
 
-        // Skip non-media files if mediaOnly is set
-        if (options.mediaOnly && mediaType === "unknown") {
-          continue;
-        }
+				// Skip non-media files if mediaOnly is set
+				if (options.mediaOnly && mediaType === "unknown") {
+					continue;
+				}
 
-        try {
-          const stats = await fs.stat(fullPath);
-          result.totalSize += stats.size;
+				try {
+					const stats = await fs.stat(fullPath);
+					result.totalSize += stats.size;
 
-          result.files.push({
-            name: entry.name,
-            path: fullPath,
-            relativePath,
-            type: mediaType,
-            size: stats.size,
-            modifiedAt: stats.mtimeMs,
-            isDirectory: false,
-          });
-        } catch (statError) {
-          log.warn(`${LOG_PREFIX} Failed to stat file ${fullPath}:`, statError);
-        }
-      }
-    }
-  } catch (error) {
-    log.error(`${LOG_PREFIX} Error scanning ${dirPath}:`, error);
-  }
+					result.files.push({
+						name: entry.name,
+						path: fullPath,
+						relativePath,
+						type: mediaType,
+						size: stats.size,
+						modifiedAt: stats.mtimeMs,
+						isDirectory: false,
+					});
+				} catch (statError) {
+					log.warn(`${LOG_PREFIX} Failed to stat file ${fullPath}:`, statError);
+				}
+			}
+		}
+	} catch (error) {
+		log.error(`${LOG_PREFIX} Error scanning ${dirPath}:`, error);
+	}
 }
 
 // ============================================================================
@@ -232,181 +232,181 @@ async function scanDirectory(
  * Call this function during app initialization.
  */
 export function setupProjectFolderIPC(): void {
-  log.info(`${LOG_PREFIX} Registering IPC handlers`);
+	log.info(`${LOG_PREFIX} Registering IPC handlers`);
 
-  // -------------------------------------------------------------------------
-  // Get project root path
-  // -------------------------------------------------------------------------
-  ipcMain.handle(
-    "project-folder:get-root",
-    async (_, projectId: string): Promise<string> => {
-      const sanitizedProjectId = sanitizePathComponent(projectId);
-      const basePath = getProjectsBasePath();
-      const projectPath = path.join(basePath, sanitizedProjectId);
+	// -------------------------------------------------------------------------
+	// Get project root path
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"project-folder:get-root",
+		async (_, projectId: string): Promise<string> => {
+			const sanitizedProjectId = sanitizePathComponent(projectId);
+			const basePath = getProjectsBasePath();
+			const projectPath = path.join(basePath, sanitizedProjectId);
 
-      validatePathWithinBase(projectPath, basePath);
+			validatePathWithinBase(projectPath, basePath);
 
-      log.info(`${LOG_PREFIX} Get root for project: ${sanitizedProjectId}`);
-      return projectPath;
-    }
-  );
+			log.info(`${LOG_PREFIX} Get root for project: ${sanitizedProjectId}`);
+			return projectPath;
+		}
+	);
 
-  // -------------------------------------------------------------------------
-  // Scan directory for media files
-  // -------------------------------------------------------------------------
-  ipcMain.handle(
-    "project-folder:scan",
-    async (
-      _,
-      projectId: string,
-      subPath = "",
-      options: ScanOptions = {}
-    ): Promise<ScanResult> => {
-      const startTime = Date.now();
-      const sanitizedProjectId = sanitizePathComponent(projectId);
-      const basePath = getProjectsBasePath();
-      const projectRoot = path.join(basePath, sanitizedProjectId);
+	// -------------------------------------------------------------------------
+	// Scan directory for media files
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"project-folder:scan",
+		async (
+			_,
+			projectId: string,
+			subPath = "",
+			options: ScanOptions = {}
+		): Promise<ScanResult> => {
+			const startTime = Date.now();
+			const sanitizedProjectId = sanitizePathComponent(projectId);
+			const basePath = getProjectsBasePath();
+			const projectRoot = path.join(basePath, sanitizedProjectId);
 
-      validatePathWithinBase(projectRoot, basePath);
+			validatePathWithinBase(projectRoot, basePath);
 
-      // Sanitize subPath and validate final target path
-      const sanitizedSubPath = subPath
-        .split(/[/\\]/)
-        .map(sanitizePathComponent)
-        .join(path.sep);
-      const targetPath = path.join(projectRoot, sanitizedSubPath);
+			// Sanitize subPath and validate final target path
+			const sanitizedSubPath = subPath
+				.split(/[/\\]/)
+				.map(sanitizePathComponent)
+				.join(path.sep);
+			const targetPath = path.join(projectRoot, sanitizedSubPath);
 
-      validatePathWithinBase(targetPath, projectRoot);
+			validatePathWithinBase(targetPath, projectRoot);
 
-      log.info(
-        `${LOG_PREFIX} Scanning: ${sanitizedProjectId}/${sanitizedSubPath}`
-      );
+			log.info(
+				`${LOG_PREFIX} Scanning: ${sanitizedProjectId}/${sanitizedSubPath}`
+			);
 
-      const result = {
-        files: [] as FileInfo[],
-        folders: [] as string[],
-        totalSize: 0,
-      };
+			const result = {
+				files: [] as FileInfo[],
+				folders: [] as string[],
+				totalSize: 0,
+			};
 
-      await scanDirectory(targetPath, sanitizedSubPath, options, result);
+			await scanDirectory(targetPath, sanitizedSubPath, options, result);
 
-      const scanTime = Date.now() - startTime;
-      log.info(
-        `${LOG_PREFIX} Scan complete: ${result.files.length} files, ${result.folders.length} folders in ${scanTime}ms`
-      );
+			const scanTime = Date.now() - startTime;
+			log.info(
+				`${LOG_PREFIX} Scan complete: ${result.files.length} files, ${result.folders.length} folders in ${scanTime}ms`
+			);
 
-      return {
-        ...result,
-        scanTime,
-      };
-    }
-  );
+			return {
+				...result,
+				scanTime,
+			};
+		}
+	);
 
-  // -------------------------------------------------------------------------
-  // List immediate children of a directory (non-recursive)
-  // -------------------------------------------------------------------------
-  ipcMain.handle(
-    "project-folder:list",
-    async (_, projectId: string, subPath = ""): Promise<FileInfo[]> => {
-      const sanitizedProjectId = sanitizePathComponent(projectId);
-      const basePath = getProjectsBasePath();
-      const projectRoot = path.join(basePath, sanitizedProjectId);
+	// -------------------------------------------------------------------------
+	// List immediate children of a directory (non-recursive)
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"project-folder:list",
+		async (_, projectId: string, subPath = ""): Promise<FileInfo[]> => {
+			const sanitizedProjectId = sanitizePathComponent(projectId);
+			const basePath = getProjectsBasePath();
+			const projectRoot = path.join(basePath, sanitizedProjectId);
 
-      validatePathWithinBase(projectRoot, basePath);
+			validatePathWithinBase(projectRoot, basePath);
 
-      const sanitizedSubPath = subPath
-        .split(/[/\\]/)
-        .map(sanitizePathComponent)
-        .join(path.sep);
-      const targetPath = path.join(projectRoot, sanitizedSubPath);
+			const sanitizedSubPath = subPath
+				.split(/[/\\]/)
+				.map(sanitizePathComponent)
+				.join(path.sep);
+			const targetPath = path.join(projectRoot, sanitizedSubPath);
 
-      validatePathWithinBase(targetPath, projectRoot);
+			validatePathWithinBase(targetPath, projectRoot);
 
-      log.info(
-        `${LOG_PREFIX} Listing: ${sanitizedProjectId}/${sanitizedSubPath}`
-      );
+			log.info(
+				`${LOG_PREFIX} Listing: ${sanitizedProjectId}/${sanitizedSubPath}`
+			);
 
-      const entries: FileInfo[] = [];
+			const entries: FileInfo[] = [];
 
-      try {
-        const dirEntries = await fs.readdir(targetPath, {
-          withFileTypes: true,
-        });
+			try {
+				const dirEntries = await fs.readdir(targetPath, {
+					withFileTypes: true,
+				});
 
-        for (const entry of dirEntries) {
-          const fullPath = path.join(targetPath, entry.name);
+				for (const entry of dirEntries) {
+					const fullPath = path.join(targetPath, entry.name);
 
-          try {
-            const stats = await fs.stat(fullPath);
-            const ext = path.extname(entry.name);
+					try {
+						const stats = await fs.stat(fullPath);
+						const ext = path.extname(entry.name);
 
-            entries.push({
-              name: entry.name,
-              path: fullPath,
-              relativePath: sanitizedSubPath
-                ? path.join(sanitizedSubPath, entry.name)
-                : entry.name,
-              type: entry.isDirectory() ? "unknown" : getMediaType(ext),
-              size: stats.size,
-              modifiedAt: stats.mtimeMs,
-              isDirectory: entry.isDirectory(),
-            });
-          } catch (statError) {
-            log.warn(`${LOG_PREFIX} Failed to stat ${fullPath}:`, statError);
-          }
-        }
-      } catch (error) {
-        log.error(`${LOG_PREFIX} Error listing ${targetPath}:`, error);
-      }
+						entries.push({
+							name: entry.name,
+							path: fullPath,
+							relativePath: sanitizedSubPath
+								? path.join(sanitizedSubPath, entry.name)
+								: entry.name,
+							type: entry.isDirectory() ? "unknown" : getMediaType(ext),
+							size: stats.size,
+							modifiedAt: stats.mtimeMs,
+							isDirectory: entry.isDirectory(),
+						});
+					} catch (statError) {
+						log.warn(`${LOG_PREFIX} Failed to stat ${fullPath}:`, statError);
+					}
+				}
+			} catch (error) {
+				log.error(`${LOG_PREFIX} Error listing ${targetPath}:`, error);
+			}
 
-      log.info(`${LOG_PREFIX} Listed ${entries.length} entries`);
-      return entries;
-    }
-  );
+			log.info(`${LOG_PREFIX} Listed ${entries.length} entries`);
+			return entries;
+		}
+	);
 
-  // -------------------------------------------------------------------------
-  // Ensure project folder structure exists
-  // -------------------------------------------------------------------------
-  ipcMain.handle(
-    "project-folder:ensure-structure",
-    async (_, projectId: string): Promise<EnsureStructureResult> => {
-      const sanitizedProjectId = sanitizePathComponent(projectId);
-      const basePath = getProjectsBasePath();
-      const projectRoot = path.join(basePath, sanitizedProjectId);
+	// -------------------------------------------------------------------------
+	// Ensure project folder structure exists
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"project-folder:ensure-structure",
+		async (_, projectId: string): Promise<EnsureStructureResult> => {
+			const sanitizedProjectId = sanitizePathComponent(projectId);
+			const basePath = getProjectsBasePath();
+			const projectRoot = path.join(basePath, sanitizedProjectId);
 
-      validatePathWithinBase(projectRoot, basePath);
+			validatePathWithinBase(projectRoot, basePath);
 
-      log.info(`${LOG_PREFIX} Ensuring structure for: ${sanitizedProjectId}`);
+			log.info(`${LOG_PREFIX} Ensuring structure for: ${sanitizedProjectId}`);
 
-      const created: string[] = [];
-      const existing: string[] = [];
+			const created: string[] = [];
+			const existing: string[] = [];
 
-      for (const folder of REQUIRED_FOLDERS) {
-        const folderPath = path.join(projectRoot, folder);
+			for (const folder of REQUIRED_FOLDERS) {
+				const folderPath = path.join(projectRoot, folder);
 
-        try {
-          await fs.access(folderPath);
-          existing.push(folder);
-        } catch {
-          try {
-            await fs.mkdir(folderPath, { recursive: true });
-            created.push(folder);
-            log.info(`${LOG_PREFIX} Created folder: ${folder}`);
-          } catch (mkdirError) {
-            log.error(`${LOG_PREFIX} Failed to create ${folder}:`, mkdirError);
-          }
-        }
-      }
+				try {
+					await fs.access(folderPath);
+					existing.push(folder);
+				} catch {
+					try {
+						await fs.mkdir(folderPath, { recursive: true });
+						created.push(folder);
+						log.info(`${LOG_PREFIX} Created folder: ${folder}`);
+					} catch (mkdirError) {
+						log.error(`${LOG_PREFIX} Failed to create ${folder}:`, mkdirError);
+					}
+				}
+			}
 
-      log.info(
-        `${LOG_PREFIX} Structure ensured: ${created.length} created, ${existing.length} existing`
-      );
+			log.info(
+				`${LOG_PREFIX} Structure ensured: ${created.length} created, ${existing.length} existing`
+			);
 
-      return { created, existing };
-    }
-  );
+			return { created, existing };
+		}
+	);
 
-  log.info(`${LOG_PREFIX} IPC handlers registered`);
+	log.info(`${LOG_PREFIX} IPC handlers registered`);
 }
 
 // ============================================================================

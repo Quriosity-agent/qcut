@@ -8,10 +8,10 @@
 // ============================================================================
 
 export interface ClaudeAPIResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  timestamp: number;
+	success: boolean;
+	data?: T;
+	error?: string;
+	timestamp: number;
 }
 
 // ============================================================================
@@ -19,27 +19,27 @@ export interface ClaudeAPIResponse<T> {
 // ============================================================================
 
 export interface MediaFile {
-  id: string;
-  name: string;
-  type: "video" | "audio" | "image";
-  path: string;
-  size: number;
-  duration?: number;
-  dimensions?: { width: number; height: number };
-  createdAt: number;
-  modifiedAt: number;
+	id: string;
+	name: string;
+	type: "video" | "audio" | "image";
+	path: string;
+	size: number;
+	duration?: number;
+	dimensions?: { width: number; height: number };
+	createdAt: number;
+	modifiedAt: number;
 }
 
 export interface MediaMetadata {
-  duration?: number;
-  width?: number;
-  height?: number;
-  fps?: number;
-  codec?: string;
-  bitrate?: number;
-  audioCodec?: string;
-  audioChannels?: number;
-  sampleRate?: number;
+	duration?: number;
+	width?: number;
+	height?: number;
+	fps?: number;
+	codec?: string;
+	bitrate?: number;
+	audioCodec?: string;
+	audioChannels?: number;
+	sampleRate?: number;
 }
 
 // ============================================================================
@@ -47,44 +47,44 @@ export interface MediaMetadata {
 // ============================================================================
 
 export interface ClaudeTimeline {
-  name: string;
-  duration: number;
-  width: number;
-  height: number;
-  fps: number;
-  tracks: ClaudeTrack[];
+	name: string;
+	duration: number;
+	width: number;
+	height: number;
+	fps: number;
+	tracks: ClaudeTrack[];
 }
 
 export interface ClaudeTrack {
-  id?: string;
-  index: number;
-  name: string;
-  type: string;
-  elements: ClaudeElement[];
+	id?: string;
+	index: number;
+	name: string;
+	type: string;
+	elements: ClaudeElement[];
 }
 
 export interface ClaudeElement {
-  id: string;
-  trackIndex: number;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  type:
-    | "video"
-    | "audio"
-    | "image"
-    | "text"
-    | "sticker"
-    | "captions"
-    | "remotion"
-    | "media";
-  sourceId?: string;
-  sourceName?: string;
-  content?: string;
-  style?: Record<string, unknown>;
-  effects?: string[];
-  trimStart?: number;
-  trimEnd?: number;
+	id: string;
+	trackIndex: number;
+	startTime: number;
+	endTime: number;
+	duration: number;
+	type:
+		| "video"
+		| "audio"
+		| "image"
+		| "text"
+		| "sticker"
+		| "captions"
+		| "remotion"
+		| "media";
+	sourceId?: string;
+	sourceName?: string;
+	content?: string;
+	style?: Record<string, unknown>;
+	effects?: string[];
+	trimStart?: number;
+	trimEnd?: number;
 }
 
 // ============================================================================
@@ -92,23 +92,23 @@ export interface ClaudeElement {
 // ============================================================================
 
 export interface ProjectSettings {
-  name: string;
-  width: number;
-  height: number;
-  fps: number;
-  aspectRatio: string;
-  backgroundColor: string;
-  exportFormat: string;
-  exportQuality: string;
+	name: string;
+	width: number;
+	height: number;
+	fps: number;
+	aspectRatio: string;
+	backgroundColor: string;
+	exportFormat: string;
+	exportQuality: string;
 }
 
 export interface ProjectStats {
-  totalDuration: number;
-  mediaCount: { video: number; audio: number; image: number };
-  trackCount: number;
-  elementCount: number;
-  lastModified: number;
-  fileSize: number;
+	totalDuration: number;
+	mediaCount: { video: number; audio: number; image: number };
+	trackCount: number;
+	elementCount: number;
+	lastModified: number;
+	fileSize: number;
 }
 
 // ============================================================================
@@ -116,52 +116,52 @@ export interface ProjectStats {
 // ============================================================================
 
 export interface ExportPreset {
-  id: string;
-  name: string;
-  platform: string;
-  width: number;
-  height: number;
-  fps: number;
-  bitrate: string;
-  format: string;
+	id: string;
+	name: string;
+	platform: string;
+	width: number;
+	height: number;
+	fps: number;
+	bitrate: string;
+	format: string;
 }
 
 export interface ExportRecommendation {
-  preset: ExportPreset;
-  warnings: string[];
-  suggestions: string[];
-  estimatedFileSize?: string;
+	preset: ExportPreset;
+	warnings: string[];
+	suggestions: string[];
+	estimatedFileSize?: string;
 }
 
 export interface ExportJobRequest {
-  preset?: string;
-  settings?: {
-    width?: number;
-    height?: number;
-    fps?: number;
-    bitrate?: string;
-    format?: string;
-    codec?: string;
-  };
-  outputPath?: string;
+	preset?: string;
+	settings?: {
+		width?: number;
+		height?: number;
+		fps?: number;
+		bitrate?: string;
+		format?: string;
+		codec?: string;
+	};
+	outputPath?: string;
 }
 
 export interface ExportJobStatus {
-  jobId: string;
-  projectId: string;
-  status: "queued" | "exporting" | "completed" | "failed";
-  progress: number;
-  outputPath?: string;
-  error?: string;
-  startedAt: number;
-  completedAt?: number;
-  currentFrame?: number;
-  totalFrames?: number;
-  fps?: number;
-  estimatedTimeRemaining?: number;
-  duration?: number;
-  fileSize?: number;
-  presetId?: string;
+	jobId: string;
+	projectId: string;
+	status: "queued" | "exporting" | "completed" | "failed";
+	progress: number;
+	outputPath?: string;
+	error?: string;
+	startedAt: number;
+	completedAt?: number;
+	currentFrame?: number;
+	totalFrames?: number;
+	fps?: number;
+	estimatedTimeRemaining?: number;
+	duration?: number;
+	fileSize?: number;
+	presetId?: string;
 }
 
 // ============================================================================
@@ -169,30 +169,30 @@ export interface ExportJobStatus {
 // ============================================================================
 
 export interface ProjectSummary {
-  markdown: string;
-  stats: {
-    totalDuration: number;
-    trackCount: number;
-    elementCount: number;
-    mediaFileCount: number;
-    exportCount: number;
-    totalSourceDuration: number;
-  };
+	markdown: string;
+	stats: {
+		totalDuration: number;
+		trackCount: number;
+		elementCount: number;
+		mediaFileCount: number;
+		exportCount: number;
+		totalSourceDuration: number;
+	};
 }
 
 export interface PipelineStep {
-  stage: number;
-  action: string;
-  details: string;
-  timestamp: number;
-  duration?: number;
-  projectId?: string;
-  metadata?: Record<string, unknown>;
+	stage: number;
+	action: string;
+	details: string;
+	timestamp: number;
+	duration?: number;
+	projectId?: string;
+	metadata?: Record<string, unknown>;
 }
 
 export interface PipelineReport {
-  markdown: string;
-  savedTo?: string;
+	markdown: string;
+	savedTo?: string;
 }
 
 // ============================================================================
@@ -200,22 +200,22 @@ export interface PipelineReport {
 // ============================================================================
 
 export interface ClaudeSplitRequest {
-  splitTime: number;
-  mode?: "split" | "keepLeft" | "keepRight";
+	splitTime: number;
+	mode?: "split" | "keepLeft" | "keepRight";
 }
 
 export interface ClaudeSplitResponse {
-  secondElementId: string | null;
+	secondElementId: string | null;
 }
 
 export interface ClaudeMoveRequest {
-  toTrackId: string;
-  newStartTime?: number;
+	toTrackId: string;
+	newStartTime?: number;
 }
 
 export interface ClaudeSelectionItem {
-  trackId: string;
-  elementId: string;
+	trackId: string;
+	elementId: string;
 }
 
 // ============================================================================
@@ -223,110 +223,110 @@ export interface ClaudeSelectionItem {
 // ============================================================================
 
 export interface ClaudeBatchAddElementRequest {
-  type:
-    | "video"
-    | "audio"
-    | "image"
-    | "text"
-    | "sticker"
-    | "captions"
-    | "remotion"
-    | "media";
-  trackId: string;
-  startTime: number;
-  duration: number;
-  mediaId?: string;
-  sourceId?: string;
-  sourceName?: string;
-  content?: string;
-  style?: Record<string, unknown>;
+	type:
+		| "video"
+		| "audio"
+		| "image"
+		| "text"
+		| "sticker"
+		| "captions"
+		| "remotion"
+		| "media";
+	trackId: string;
+	startTime: number;
+	duration: number;
+	mediaId?: string;
+	sourceId?: string;
+	sourceName?: string;
+	content?: string;
+	style?: Record<string, unknown>;
 }
 
 export interface ClaudeBatchAddItemResult {
-  index: number;
-  success: boolean;
-  elementId?: string;
-  error?: string;
+	index: number;
+	success: boolean;
+	elementId?: string;
+	error?: string;
 }
 
 export interface ClaudeBatchAddResponse {
-  added: ClaudeBatchAddItemResult[];
-  failedCount: number;
+	added: ClaudeBatchAddItemResult[];
+	failedCount: number;
 }
 
 export interface ClaudeBatchDeleteItemRequest {
-  trackId: string;
-  elementId: string;
+	trackId: string;
+	elementId: string;
 }
 
 export interface ClaudeBatchDeleteItemResult {
-  index: number;
-  success: boolean;
-  error?: string;
+	index: number;
+	success: boolean;
+	error?: string;
 }
 
 export interface ClaudeBatchDeleteResponse {
-  deletedCount: number;
-  failedCount: number;
-  results: ClaudeBatchDeleteItemResult[];
+	deletedCount: number;
+	failedCount: number;
+	results: ClaudeBatchDeleteItemResult[];
 }
 
 export interface ClaudeBatchUpdateItemRequest {
-  elementId: string;
-  startTime?: number;
-  endTime?: number;
-  duration?: number;
-  trimStart?: number;
-  trimEnd?: number;
-  content?: string;
-  style?: Record<string, unknown>;
+	elementId: string;
+	startTime?: number;
+	endTime?: number;
+	duration?: number;
+	trimStart?: number;
+	trimEnd?: number;
+	content?: string;
+	style?: Record<string, unknown>;
 }
 
 export interface ClaudeBatchUpdateItemResult {
-  index: number;
-  success: boolean;
-  error?: string;
+	index: number;
+	success: boolean;
+	error?: string;
 }
 
 export interface ClaudeBatchUpdateResponse {
-  updatedCount: number;
-  failedCount: number;
-  results: ClaudeBatchUpdateItemResult[];
+	updatedCount: number;
+	failedCount: number;
+	results: ClaudeBatchUpdateItemResult[];
 }
 
 export const CLAUDE_ARRANGE_MODES = {
-  SEQUENTIAL: "sequential",
-  SPACED: "spaced",
-  MANUAL: "manual",
+	SEQUENTIAL: "sequential",
+	SPACED: "spaced",
+	MANUAL: "manual",
 } as const;
 
 export type ClaudeArrangeMode =
-  (typeof CLAUDE_ARRANGE_MODES)[keyof typeof CLAUDE_ARRANGE_MODES];
+	(typeof CLAUDE_ARRANGE_MODES)[keyof typeof CLAUDE_ARRANGE_MODES];
 
 export interface ClaudeArrangeRequest {
-  trackId: string;
-  mode: ClaudeArrangeMode;
-  gap?: number;
-  order?: string[];
-  startOffset?: number;
+	trackId: string;
+	mode: ClaudeArrangeMode;
+	gap?: number;
+	order?: string[];
+	startOffset?: number;
 }
 
 export interface ClaudeArrangeResponse {
-  arranged: Array<{ elementId: string; newStartTime: number }>;
+	arranged: Array<{ elementId: string; newStartTime: number }>;
 }
 
 export interface ClaudeRangeDeleteRequest {
-  startTime: number;
-  endTime: number;
-  trackIds?: string[];
-  ripple?: boolean;
-  crossTrackRipple?: boolean;
+	startTime: number;
+	endTime: number;
+	trackIds?: string[];
+	ripple?: boolean;
+	crossTrackRipple?: boolean;
 }
 
 export interface ClaudeRangeDeleteResponse {
-  deletedElements: number;
-  splitElements: number;
-  totalRemovedDuration: number;
+	deletedElements: number;
+	splitElements: number;
+	totalRemovedDuration: number;
 }
 
 // ============================================================================
@@ -334,25 +334,25 @@ export interface ClaudeRangeDeleteResponse {
 // ============================================================================
 
 export interface CutInterval {
-  start: number; // seconds — start of region to remove
-  end: number; // seconds — end of region to remove
+	start: number; // seconds — start of region to remove
+	end: number; // seconds — end of region to remove
 }
 
 export interface BatchCutRequest {
-  elementId: string;
-  cuts: CutInterval[];
-  ripple?: boolean; // default true
+	elementId: string;
+	cuts: CutInterval[];
+	ripple?: boolean; // default true
 }
 
 export interface BatchCutResponse {
-  cutsApplied: number;
-  elementsRemoved: number;
-  remainingElements: Array<{
-    id: string;
-    startTime: number;
-    duration: number;
-  }>;
-  totalRemovedDuration: number;
+	cutsApplied: number;
+	elementsRemoved: number;
+	remainingElements: Array<{
+		id: string;
+		startTime: number;
+		duration: number;
+	}>;
+	totalRemovedDuration: number;
 }
 
 // ============================================================================
@@ -360,35 +360,35 @@ export interface BatchCutResponse {
 // ============================================================================
 
 export interface AutoEditRequest {
-  elementId: string;
-  mediaId: string;
-  removeFillers?: boolean; // default true
-  removeSilences?: boolean; // default true
-  silenceThreshold?: number; // seconds, default 1.0
-  keepSilencePadding?: number; // seconds of silence to keep as breathing room (default 0.3)
-  dryRun?: boolean; // default false
-  provider?: "elevenlabs" | "gemini";
-  language?: string;
+	elementId: string;
+	mediaId: string;
+	removeFillers?: boolean; // default true
+	removeSilences?: boolean; // default true
+	silenceThreshold?: number; // seconds, default 1.0
+	keepSilencePadding?: number; // seconds of silence to keep as breathing room (default 0.3)
+	dryRun?: boolean; // default false
+	provider?: "elevenlabs" | "gemini";
+	language?: string;
 }
 
 export interface AutoEditCutInfo extends CutInterval {
-  reason: string;
+	reason: string;
 }
 
 export interface AutoEditResponse {
-  transcription: {
-    wordCount: number;
-    duration: number;
-  };
-  analysis: {
-    fillerCount: number;
-    silenceCount: number;
-    totalFillerTime: number;
-    totalSilenceTime: number;
-  };
-  cuts: AutoEditCutInfo[];
-  applied: boolean;
-  result?: BatchCutResponse;
+	transcription: {
+		wordCount: number;
+		duration: number;
+	};
+	analysis: {
+		fillerCount: number;
+		silenceCount: number;
+		totalFillerTime: number;
+		totalSilenceTime: number;
+	};
+	cuts: AutoEditCutInfo[];
+	applied: boolean;
+	result?: BatchCutResponse;
 }
 
 // ============================================================================
@@ -396,41 +396,41 @@ export interface AutoEditResponse {
 // ============================================================================
 
 export interface CutSuggestion {
-  type: "filler" | "silence" | "scene_transition" | "pacing";
-  start: number;
-  end: number;
-  reason: string;
-  confidence: number; // 0-1
-  word?: string; // for filler type
+	type: "filler" | "silence" | "scene_transition" | "pacing";
+	start: number;
+	end: number;
+	reason: string;
+	confidence: number; // 0-1
+	word?: string; // for filler type
 }
 
 export interface SuggestCutsRequest {
-  mediaId: string;
-  provider?: "elevenlabs" | "gemini";
-  language?: string;
-  sceneThreshold?: number;
-  includeFillers?: boolean; // default true
-  includeSilences?: boolean; // default true
-  includeScenes?: boolean; // default true
+	mediaId: string;
+	provider?: "elevenlabs" | "gemini";
+	language?: string;
+	sceneThreshold?: number;
+	includeFillers?: boolean; // default true
+	includeSilences?: boolean; // default true
+	includeScenes?: boolean; // default true
 }
 
 export interface SuggestCutsResponse {
-  suggestions: CutSuggestion[];
-  summary: {
-    totalSuggestions: number;
-    fillerSuggestions: number;
-    silenceSuggestions: number;
-    sceneSuggestions: number;
-    estimatedTimeRemoved: number;
-  };
-  transcription?: {
-    wordCount: number;
-    duration: number;
-  };
-  scenes?: {
-    totalScenes: number;
-    averageShotDuration: number;
-  };
+	suggestions: CutSuggestion[];
+	summary: {
+		totalSuggestions: number;
+		fillerSuggestions: number;
+		silenceSuggestions: number;
+		sceneSuggestions: number;
+		estimatedTimeRemoved: number;
+	};
+	transcription?: {
+		wordCount: number;
+		duration: number;
+	};
+	scenes?: {
+		totalScenes: number;
+		averageShotDuration: number;
+	};
 }
 
 // ============================================================================
@@ -438,28 +438,28 @@ export interface SuggestCutsResponse {
 // ============================================================================
 
 export interface SuggestCutsJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: SuggestCutsResponse;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: SuggestCutsResponse;
+	createdAt: number;
+	completedAt?: number;
 }
 
 export interface AutoEditJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  elementId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: AutoEditResponse;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	elementId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: AutoEditResponse;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -467,32 +467,32 @@ export interface AutoEditJob {
 // ============================================================================
 
 export interface ErrorReport {
-  message: string;
-  stack?: string;
-  context: string;
-  timestamp: number;
-  componentStack?: string;
+	message: string;
+	stack?: string;
+	context: string;
+	timestamp: number;
+	componentStack?: string;
 }
 
 export interface SystemInfo {
-  platform: string;
-  arch: string;
-  osVersion: string;
-  appVersion: string;
-  nodeVersion: string;
-  electronVersion: string;
-  memory: { total: number; free: number; used: number };
-  cpuCount: number;
+	platform: string;
+	arch: string;
+	osVersion: string;
+	appVersion: string;
+	nodeVersion: string;
+	electronVersion: string;
+	memory: { total: number; free: number; used: number };
+	cpuCount: number;
 }
 
 export interface DiagnosticResult {
-  errorType: string;
-  severity: "low" | "medium" | "high" | "critical";
-  possibleCauses: string[];
-  suggestedFixes: string[];
-  canAutoFix: boolean;
-  autoFixAction?: string;
-  systemInfo: SystemInfo;
+	errorType: string;
+	severity: "low" | "medium" | "high" | "critical";
+	possibleCauses: string[];
+	suggestedFixes: string[];
+	canAutoFix: boolean;
+	autoFixAction?: string;
+	systemInfo: SystemInfo;
 }
 
 // ============================================================================
@@ -500,41 +500,41 @@ export interface DiagnosticResult {
 // ============================================================================
 
 export type AnalyzeSource =
-  | { type: "timeline"; elementId: string }
-  | { type: "media"; mediaId: string }
-  | { type: "path"; filePath: string };
+	| { type: "timeline"; elementId: string }
+	| { type: "media"; mediaId: string }
+	| { type: "path"; filePath: string };
 
 export type AnalyzeOptions = {
-  source: AnalyzeSource;
-  /** Analysis type: timeline (default), describe, or transcribe */
-  analysisType?: "timeline" | "describe" | "transcribe";
-  /** Model key (default: "gemini-2.5-flash") */
-  model?: string;
-  /** Output format (default: "md") */
-  format?: "md" | "json" | "both";
+	source: AnalyzeSource;
+	/** Analysis type: timeline (default), describe, or transcribe */
+	analysisType?: "timeline" | "describe" | "transcribe";
+	/** Model key (default: "gemini-2.5-flash") */
+	model?: string;
+	/** Output format (default: "md") */
+	format?: "md" | "json" | "both";
 };
 
 export type AnalyzeResult =
-  | {
-      success: true;
-      markdown?: string;
-      json?: Record<string, unknown>;
-      outputFiles?: string[];
-      videoPath?: string;
-      duration?: number;
-      cost?: number;
-    }
-  | {
-      success: false;
-      error: string;
-      duration?: number;
-    };
+	| {
+			success: true;
+			markdown?: string;
+			json?: Record<string, unknown>;
+			outputFiles?: string[];
+			videoPath?: string;
+			duration?: number;
+			cost?: number;
+	  }
+	| {
+			success: false;
+			error: string;
+			duration?: number;
+	  };
 
 export type AnalyzeModel = {
-  key: string;
-  provider: string;
-  modelId: string;
-  description: string;
+	key: string;
+	provider: string;
+	modelId: string;
+	description: string;
 };
 
 // ============================================================================
@@ -542,8 +542,8 @@ export type AnalyzeModel = {
 // ============================================================================
 
 export interface UrlImportRequest {
-  url: string;
-  filename?: string;
+	url: string;
+	filename?: string;
 }
 
 // ============================================================================
@@ -551,16 +551,16 @@ export interface UrlImportRequest {
 // ============================================================================
 
 export interface BatchImportItem {
-  path?: string;
-  url?: string;
-  filename?: string;
+	path?: string;
+	url?: string;
+	filename?: string;
 }
 
 export interface BatchImportResult {
-  index: number;
-  success: boolean;
-  mediaFile?: MediaFile;
-  error?: string;
+	index: number;
+	success: boolean;
+	mediaFile?: MediaFile;
+	error?: string;
 }
 
 // ============================================================================
@@ -568,14 +568,14 @@ export interface BatchImportResult {
 // ============================================================================
 
 export interface FrameExtractRequest {
-  timestamp: number;
-  format?: "png" | "jpg";
+	timestamp: number;
+	format?: "png" | "jpg";
 }
 
 export interface FrameExtractResult {
-  path: string;
-  timestamp: number;
-  format: string;
+	path: string;
+	timestamp: number;
+	format: string;
 }
 
 // ============================================================================
@@ -583,37 +583,37 @@ export interface FrameExtractResult {
 // ============================================================================
 
 export interface GenerateAndAddRequest {
-  model: string;
-  prompt: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  duration?: number;
-  aspectRatio?: string;
-  resolution?: string;
-  negativePrompt?: string;
-  addToTimeline?: boolean;
-  trackId?: string;
-  startTime?: number;
-  projectId?: string;
+	model: string;
+	prompt: string;
+	imageUrl?: string;
+	videoUrl?: string;
+	duration?: number;
+	aspectRatio?: string;
+	resolution?: string;
+	negativePrompt?: string;
+	addToTimeline?: boolean;
+	trackId?: string;
+	startTime?: number;
+	projectId?: string;
 }
 
 export interface GenerateJobStatus {
-  jobId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  model: string;
-  result?: {
-    success: boolean;
-    outputPath?: string;
-    mediaId?: string;
-    importedPath?: string;
-    duration?: number;
-    cost?: number;
-    error?: string;
-  };
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	model: string;
+	result?: {
+		success: boolean;
+		outputPath?: string;
+		mediaId?: string;
+		importedPath?: string;
+		duration?: number;
+		cost?: number;
+		error?: string;
+	};
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -621,44 +621,44 @@ export interface GenerateJobStatus {
 // ============================================================================
 
 export interface TranscriptionWord {
-  text: string;
-  start: number;
-  end: number;
-  speaker?: string;
-  type: "word" | "spacing" | "audio_event" | "punctuation";
+	text: string;
+	start: number;
+	end: number;
+	speaker?: string;
+	type: "word" | "spacing" | "audio_event" | "punctuation";
 }
 
 export interface TranscriptionSegment {
-  text: string;
-  start: number;
-  end: number;
+	text: string;
+	start: number;
+	end: number;
 }
 
 export interface TranscriptionResult {
-  words: TranscriptionWord[];
-  segments: TranscriptionSegment[];
-  language: string;
-  duration: number;
+	words: TranscriptionWord[];
+	segments: TranscriptionSegment[];
+	language: string;
+	duration: number;
 }
 
 export interface TranscribeRequest {
-  mediaId: string;
-  provider?: "elevenlabs" | "gemini";
-  language?: string;
-  diarize?: boolean;
+	mediaId: string;
+	provider?: "elevenlabs" | "gemini";
+	language?: string;
+	diarize?: boolean;
 }
 
 export interface TranscribeJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  provider: string;
-  result?: TranscriptionResult;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	provider: string;
+	result?: TranscriptionResult;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -666,24 +666,24 @@ export interface TranscribeJob {
 // ============================================================================
 
 export interface SceneBoundary {
-  timestamp: number;
-  confidence: number;
-  description?: string;
-  shotType?: "wide" | "medium" | "close-up" | "cutaway" | "unknown";
-  transitionType?: "cut" | "dissolve" | "fade" | "unknown";
+	timestamp: number;
+	confidence: number;
+	description?: string;
+	shotType?: "wide" | "medium" | "close-up" | "cutaway" | "unknown";
+	transitionType?: "cut" | "dissolve" | "fade" | "unknown";
 }
 
 export interface SceneDetectionRequest {
-  mediaId: string;
-  threshold?: number;
-  aiAnalysis?: boolean;
-  model?: string;
+	mediaId: string;
+	threshold?: number;
+	aiAnalysis?: boolean;
+	model?: string;
 }
 
 export interface SceneDetectionResult {
-  scenes: SceneBoundary[];
-  totalScenes: number;
-  averageShotDuration: number;
+	scenes: SceneBoundary[];
+	totalScenes: number;
+	averageShotDuration: number;
 }
 
 // ============================================================================
@@ -691,24 +691,24 @@ export interface SceneDetectionResult {
 // ============================================================================
 
 export interface FrameAnalysis {
-  timestamp: number;
-  objects: string[];
-  text: string[];
-  description: string;
-  mood: string;
-  composition: string;
+	timestamp: number;
+	objects: string[];
+	text: string[];
+	description: string;
+	mood: string;
+	composition: string;
 }
 
 export interface FrameAnalysisRequest {
-  mediaId: string;
-  timestamps?: number[];
-  interval?: number;
-  prompt?: string;
+	mediaId: string;
+	timestamps?: number[];
+	interval?: number;
+	prompt?: string;
 }
 
 export interface FrameAnalysisResult {
-  frames: FrameAnalysis[];
-  totalFramesAnalyzed: number;
+	frames: FrameAnalysis[];
+	totalFramesAnalyzed: number;
 }
 
 // ============================================================================
@@ -716,15 +716,15 @@ export interface FrameAnalysisResult {
 // ============================================================================
 
 export interface SceneDetectionJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: SceneDetectionResult;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: SceneDetectionResult;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -732,15 +732,15 @@ export interface SceneDetectionJob {
 // ============================================================================
 
 export interface FrameAnalysisJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: FrameAnalysisResult;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: FrameAnalysisResult;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -748,33 +748,33 @@ export interface FrameAnalysisJob {
 // ============================================================================
 
 export interface FillerWord {
-  word: string;
-  start: number;
-  end: number;
-  reason: string;
+	word: string;
+	start: number;
+	end: number;
+	reason: string;
 }
 
 export interface SilenceGap {
-  start: number;
-  end: number;
-  duration: number;
+	start: number;
+	end: number;
+	duration: number;
 }
 
 export interface FillerAnalysisRequest {
-  mediaId?: string;
-  words: Array<{
-    id: string;
-    text: string;
-    start: number;
-    end: number;
-    type: "word" | "spacing";
-    speaker_id?: string;
-  }>;
+	mediaId?: string;
+	words: Array<{
+		id: string;
+		text: string;
+		start: number;
+		end: number;
+		type: "word" | "spacing";
+		speaker_id?: string;
+	}>;
 }
 
 export interface FillerAnalysisResult {
-  fillers: FillerWord[];
-  silences: SilenceGap[];
-  totalFillerTime: number;
-  totalSilenceTime: number;
+	fillers: FillerWord[];
+	silences: SilenceGap[];
+	totalFillerTime: number;
+	totalSilenceTime: number;
 }

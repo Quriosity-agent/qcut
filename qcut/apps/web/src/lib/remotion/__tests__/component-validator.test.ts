@@ -8,10 +8,10 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  validateComponent,
-  quickValidate,
-  DEFAULT_VALIDATION_OPTIONS,
-  type ValidationResult,
+	validateComponent,
+	quickValidate,
+	DEFAULT_VALIDATION_OPTIONS,
+	type ValidationResult,
 } from "../component-validator";
 
 // ============================================================================
@@ -85,9 +85,9 @@ export function MinimalComponent() {
 // ============================================================================
 
 describe("Component Validator - Forbidden Patterns", () => {
-  describe("File System Access", () => {
-    it("should reject code using fs module", () => {
-      const code = `
+	describe("File System Access", () => {
+		it("should reject code using fs module", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         import fs from "fs";
@@ -101,13 +101,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("File system access (fs) is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("File system access (fs) is not allowed");
+		});
 
-    it("should reject code using require(fs)", () => {
-      const code = `
+		it("should reject code using require(fs)", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         const fs = require("fs");
@@ -120,13 +120,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("File system access (fs) is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("File system access (fs) is not allowed");
+		});
 
-    it("should reject code using path module", () => {
-      const code = `
+		it("should reject code using path module", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         import path from "path";
@@ -140,13 +140,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Path module access is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Path module access is not allowed");
+		});
 
-    it("should reject code using child_process", () => {
-      const code = `
+		it("should reject code using child_process", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         import { exec } from "child_process";
@@ -160,15 +160,15 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Child process access is not allowed");
-    });
-  });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Child process access is not allowed");
+		});
+	});
 
-  describe("Network Access", () => {
-    it("should reject code using fetch", () => {
-      const code = `
+	describe("Network Access", () => {
+		it("should reject code using fetch", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -181,15 +181,15 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain(
-        "Network fetch is not allowed in components"
-      );
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain(
+				"Network fetch is not allowed in components"
+			);
+		});
 
-    it("should reject code using XMLHttpRequest", () => {
-      const code = `
+		it("should reject code using XMLHttpRequest", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -202,13 +202,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("XMLHttpRequest is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("XMLHttpRequest is not allowed");
+		});
 
-    it("should reject code using WebSocket", () => {
-      const code = `
+		it("should reject code using WebSocket", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -221,13 +221,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("WebSocket is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("WebSocket is not allowed");
+		});
 
-    it("should reject code using axios", () => {
-      const code = `
+		it("should reject code using axios", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         import axios from "axios";
@@ -241,13 +241,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Axios HTTP client is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Axios HTTP client is not allowed");
+		});
 
-    it("should allow network access when option is enabled", () => {
-      const code = `
+		it("should allow network access when option is enabled", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -263,17 +263,17 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code, { allowNetwork: true });
-      // Should still validate other things, but network is now allowed
-      expect(result.errors).not.toContain(
-        "Network fetch is not allowed in components"
-      );
-    });
-  });
+			const result = validateComponent(code, { allowNetwork: true });
+			// Should still validate other things, but network is now allowed
+			expect(result.errors).not.toContain(
+				"Network fetch is not allowed in components"
+			);
+		});
+	});
 
-  describe("Dangerous Globals", () => {
-    it("should reject code using eval", () => {
-      const code = `
+	describe("Dangerous Globals", () => {
+		it("should reject code using eval", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -286,13 +286,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("eval() is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("eval() is not allowed");
+		});
 
-    it("should reject code using Function constructor", () => {
-      const code = `
+		it("should reject code using Function constructor", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -305,13 +305,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Function constructor is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Function constructor is not allowed");
+		});
 
-    it("should reject code accessing process.env", () => {
-      const code = `
+		it("should reject code accessing process.env", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -324,15 +324,15 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain(
-        "Environment variable access is not allowed"
-      );
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain(
+				"Environment variable access is not allowed"
+			);
+		});
 
-    it("should reject code using global/globalThis", () => {
-      const code = `
+		it("should reject code using global/globalThis", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -345,15 +345,15 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Global object access is not allowed");
-    });
-  });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Global object access is not allowed");
+		});
+	});
 
-  describe("DOM Manipulation", () => {
-    it("should reject code using document.write", () => {
-      const code = `
+	describe("DOM Manipulation", () => {
+		it("should reject code using document.write", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -366,13 +366,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("document.write is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("document.write is not allowed");
+		});
 
-    it("should warn about innerHTML assignment", () => {
-      const code = `
+		it("should warn about innerHTML assignment", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -390,16 +390,16 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.warnings).toContain(
-        "Direct innerHTML assignment is not recommended"
-      );
-    });
-  });
+			const result = validateComponent(code);
+			expect(result.warnings).toContain(
+				"Direct innerHTML assignment is not recommended"
+			);
+		});
+	});
 
-  describe("Electron/Node Access", () => {
-    it("should reject code requiring electron", () => {
-      const code = `
+	describe("Electron/Node Access", () => {
+		it("should reject code requiring electron", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
         const { ipcRenderer } = require("electron");
@@ -413,13 +413,13 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Electron access is not allowed");
-    });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Electron access is not allowed");
+		});
 
-    it("should reject code using window.electronAPI", () => {
-      const code = `
+		it("should reject code using window.electronAPI", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill } from "remotion";
 
@@ -432,15 +432,15 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.valid).toBe(false);
-      expect(result.errors).toContain("Electron API access is not allowed");
-    });
-  });
+			const result = validateComponent(code);
+			expect(result.valid).toBe(false);
+			expect(result.errors).toContain("Electron API access is not allowed");
+		});
+	});
 
-  describe("Storage APIs", () => {
-    it("should warn about localStorage usage", () => {
-      const code = `
+	describe("Storage APIs", () => {
+		it("should warn about localStorage usage", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -455,14 +455,14 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.warnings).toContain(
-        "localStorage access is not allowed in components"
-      );
-    });
+			const result = validateComponent(code);
+			expect(result.warnings).toContain(
+				"localStorage access is not allowed in components"
+			);
+		});
 
-    it("should warn about sessionStorage usage", () => {
-      const code = `
+		it("should warn about sessionStorage usage", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -477,14 +477,14 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.warnings).toContain(
-        "sessionStorage access is not allowed in components"
-      );
-    });
+			const result = validateComponent(code);
+			expect(result.warnings).toContain(
+				"sessionStorage access is not allowed in components"
+			);
+		});
 
-    it("should warn about indexedDB usage", () => {
-      const code = `
+		it("should warn about indexedDB usage", () => {
+			const code = `
         import React from "react";
         import { AbsoluteFill, useCurrentFrame } from "remotion";
         import { z } from "zod";
@@ -499,12 +499,12 @@ describe("Component Validator - Forbidden Patterns", () => {
         }
       `;
 
-      const result = validateComponent(code);
-      expect(result.warnings).toContain(
-        "IndexedDB access is not allowed in components"
-      );
-    });
-  });
+			const result = validateComponent(code);
+			expect(result.warnings).toContain(
+				"IndexedDB access is not allowed in components"
+			);
+		});
+	});
 });
 
 // ============================================================================
@@ -512,8 +512,8 @@ describe("Component Validator - Forbidden Patterns", () => {
 // ============================================================================
 
 describe("Component Validator - Dynamic Imports", () => {
-  it("should reject dynamic import()", () => {
-    const code = `
+	it("should reject dynamic import()", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill } from "remotion";
 
@@ -526,13 +526,13 @@ describe("Component Validator - Dynamic Imports", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("Dynamic imports are not allowed");
-  });
+		const result = validateComponent(code);
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("Dynamic imports are not allowed");
+	});
 
-  it("should reject dynamic require with variables", () => {
-    const code = `
+	it("should reject dynamic require with variables", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill } from "remotion";
 
@@ -546,13 +546,13 @@ describe("Component Validator - Dynamic Imports", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("Dynamic require is not allowed");
-  });
+		const result = validateComponent(code);
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("Dynamic require is not allowed");
+	});
 
-  it("should allow dynamic imports when option is enabled", () => {
-    const code = `
+	it("should allow dynamic imports when option is enabled", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill, useCurrentFrame } from "remotion";
       import { z } from "zod";
@@ -566,9 +566,9 @@ describe("Component Validator - Dynamic Imports", () => {
       }
     `;
 
-    const result = validateComponent(code, { allowDynamicImports: true });
-    expect(result.errors).not.toContain("Dynamic imports are not allowed");
-  });
+		const result = validateComponent(code, { allowDynamicImports: true });
+		expect(result.errors).not.toContain("Dynamic imports are not allowed");
+	});
 });
 
 // ============================================================================
@@ -576,8 +576,8 @@ describe("Component Validator - Dynamic Imports", () => {
 // ============================================================================
 
 describe("Component Validator - React Patterns", () => {
-  it("should require React import", () => {
-    const code = `
+	it("should require React import", () => {
+		const code = `
       import { AbsoluteFill, useCurrentFrame } from "remotion";
 
       export const Schema = z.object({});
@@ -589,13 +589,13 @@ describe("Component Validator - React Patterns", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("Component must import React");
-  });
+		const result = validateComponent(code);
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("Component must import React");
+	});
 
-  it("should warn if not using Remotion hooks", () => {
-    const code = `
+	it("should warn if not using Remotion hooks", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill } from "remotion";
       import { z } from "zod";
@@ -608,14 +608,14 @@ describe("Component Validator - React Patterns", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.warnings).toContain(
-      "Component does not use Remotion hooks (useCurrentFrame, useVideoConfig)"
-    );
-  });
+		const result = validateComponent(code);
+		expect(result.warnings).toContain(
+			"Component does not use Remotion hooks (useCurrentFrame, useVideoConfig)"
+		);
+	});
 
-  it("should require a component function", () => {
-    const code = `
+	it("should require a component function", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill, useCurrentFrame } from "remotion";
       import { z } from "zod";
@@ -627,10 +627,10 @@ describe("Component Validator - React Patterns", () => {
       const someValue = 42;
     `;
 
-    const result = validateComponent(code);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("No React component function found");
-  });
+		const result = validateComponent(code);
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("No React component function found");
+	});
 });
 
 // ============================================================================
@@ -638,90 +638,90 @@ describe("Component Validator - React Patterns", () => {
 // ============================================================================
 
 describe("Component Validator - Metadata Extraction", () => {
-  it("should extract component name from definition", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.valid).toBe(true);
-    expect(result.metadata?.name).toBe("TestComponent");
-  });
+	it("should extract component name from definition", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.valid).toBe(true);
+		expect(result.metadata?.name).toBe("TestComponent");
+	});
 
-  it("should extract category", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.category).toBe("animation");
-  });
+	it("should extract category", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.category).toBe("animation");
+	});
 
-  it("should extract duration", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.durationInFrames).toBe(90);
-  });
+	it("should extract duration", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.durationInFrames).toBe(90);
+	});
 
-  it("should extract fps", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.fps).toBe(30);
-  });
+	it("should extract fps", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.fps).toBe(30);
+	});
 
-  it("should extract dimensions", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.width).toBe(1920);
-    expect(result.metadata?.height).toBe(1080);
-  });
+	it("should extract dimensions", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.width).toBe(1920);
+		expect(result.metadata?.height).toBe(1080);
+	});
 
-  it("should extract description", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.description).toBe("A test component");
-  });
+	it("should extract description", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.description).toBe("A test component");
+	});
 
-  it("should extract tags", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.tags).toEqual(["test", "demo"]);
-  });
+	it("should extract tags", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.tags).toEqual(["test", "demo"]);
+	});
 
-  it("should extract version", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.version).toBe("1.0.0");
-  });
+	it("should extract version", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.version).toBe("1.0.0");
+	});
 
-  it("should extract author", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.author).toBe("Test Author");
-  });
+	it("should extract author", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.author).toBe("Test Author");
+	});
 
-  it("should detect schema export", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.hasSchema).toBe(true);
-  });
+	it("should detect schema export", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.hasSchema).toBe(true);
+	});
 
-  it("should detect default props export", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata?.hasDefaultProps).toBe(true);
-  });
+	it("should detect default props export", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata?.hasDefaultProps).toBe(true);
+	});
 
-  it("should provide default values for missing metadata", () => {
-    const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.valid).toBe(true);
-    expect(result.metadata?.name).toBe("Unknown Component");
-    expect(result.metadata?.category).toBe("animation");
-    expect(result.metadata?.durationInFrames).toBe(90);
-    expect(result.metadata?.fps).toBe(30);
-    expect(result.metadata?.width).toBe(1920);
-    expect(result.metadata?.height).toBe(1080);
-  });
+	it("should provide default values for missing metadata", () => {
+		const result = validateComponent(MINIMAL_VALID_COMPONENT);
+		expect(result.valid).toBe(true);
+		expect(result.metadata?.name).toBe("Unknown Component");
+		expect(result.metadata?.category).toBe("animation");
+		expect(result.metadata?.durationInFrames).toBe(90);
+		expect(result.metadata?.fps).toBe(30);
+		expect(result.metadata?.width).toBe(1920);
+		expect(result.metadata?.height).toBe(1080);
+	});
 
-  it("should warn about missing category", () => {
-    const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.warnings).toContain("Component category not detected");
-  });
+	it("should warn about missing category", () => {
+		const result = validateComponent(MINIMAL_VALID_COMPONENT);
+		expect(result.warnings).toContain("Component category not detected");
+	});
 
-  it("should warn about missing duration", () => {
-    const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.warnings).toContain("Duration in frames not detected");
-  });
+	it("should warn about missing duration", () => {
+		const result = validateComponent(MINIMAL_VALID_COMPONENT);
+		expect(result.warnings).toContain("Duration in frames not detected");
+	});
 
-  it("should warn about missing fps", () => {
-    const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.warnings).toContain(
-      "FPS not detected, will use project default"
-    );
-  });
+	it("should warn about missing fps", () => {
+		const result = validateComponent(MINIMAL_VALID_COMPONENT);
+		expect(result.warnings).toContain(
+			"FPS not detected, will use project default"
+		);
+	});
 });
 
 // ============================================================================
@@ -729,8 +729,8 @@ describe("Component Validator - Metadata Extraction", () => {
 // ============================================================================
 
 describe("Component Validator - Required Exports", () => {
-  it("should require schema export when option is enabled", () => {
-    const code = `
+	it("should require schema export when option is enabled", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill, useCurrentFrame } from "remotion";
 
@@ -742,13 +742,13 @@ describe("Component Validator - Required Exports", () => {
       }
     `;
 
-    const result = validateComponent(code, { requireSchema: true });
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("Component must export a Zod schema");
-  });
+		const result = validateComponent(code, { requireSchema: true });
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("Component must export a Zod schema");
+	});
 
-  it("should require default props export when option is enabled", () => {
-    const code = `
+	it("should require default props export when option is enabled", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill, useCurrentFrame } from "remotion";
       import { z } from "zod";
@@ -761,13 +761,13 @@ describe("Component Validator - Required Exports", () => {
       }
     `;
 
-    const result = validateComponent(code, { requireDefaultProps: true });
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain("Component must export default props");
-  });
+		const result = validateComponent(code, { requireDefaultProps: true });
+		expect(result.valid).toBe(false);
+		expect(result.errors).toContain("Component must export default props");
+	});
 
-  it("should not require schema when option is disabled", () => {
-    const code = `
+	it("should not require schema when option is disabled", () => {
+		const code = `
       import React from "react";
       import { AbsoluteFill, useCurrentFrame } from "remotion";
 
@@ -779,12 +779,12 @@ describe("Component Validator - Required Exports", () => {
       }
     `;
 
-    const result = validateComponent(code, {
-      requireSchema: false,
-      requireDefaultProps: false,
-    });
-    expect(result.errors).not.toContain("Component must export a Zod schema");
-  });
+		const result = validateComponent(code, {
+			requireSchema: false,
+			requireDefaultProps: false,
+		});
+		expect(result.errors).not.toContain("Component must export a Zod schema");
+	});
 });
 
 // ============================================================================
@@ -792,25 +792,25 @@ describe("Component Validator - Required Exports", () => {
 // ============================================================================
 
 describe("Component Validator - File Size", () => {
-  it("should reject files exceeding size limit", () => {
-    // Create a large string
-    const largeCode = "a".repeat(600 * 1024); // 600KB
+	it("should reject files exceeding size limit", () => {
+		// Create a large string
+		const largeCode = "a".repeat(600 * 1024); // 600KB
 
-    const result = validateComponent(largeCode, {
-      maxFileSizeBytes: 500 * 1024,
-    });
-    expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => e.includes("File size"))).toBe(true);
-  });
+		const result = validateComponent(largeCode, {
+			maxFileSizeBytes: 500 * 1024,
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.some((e) => e.includes("File size"))).toBe(true);
+	});
 
-  it("should accept files within size limit", () => {
-    const result = validateComponent(VALID_COMPONENT, {
-      maxFileSizeBytes: 500 * 1024,
-    });
-    expect(result.errors.filter((e) => e.includes("File size"))).toHaveLength(
-      0
-    );
-  });
+	it("should accept files within size limit", () => {
+		const result = validateComponent(VALID_COMPONENT, {
+			maxFileSizeBytes: 500 * 1024,
+		});
+		expect(result.errors.filter((e) => e.includes("File size"))).toHaveLength(
+			0
+		);
+	});
 });
 
 // ============================================================================
@@ -818,8 +818,8 @@ describe("Component Validator - File Size", () => {
 // ============================================================================
 
 describe("Component Validator - Remotion Imports", () => {
-  it("should warn if no Remotion imports found", () => {
-    const code = `
+	it("should warn if no Remotion imports found", () => {
+		const code = `
       import React from "react";
       import { z } from "zod";
 
@@ -831,21 +831,21 @@ describe("Component Validator - Remotion Imports", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.warnings).toContain(
-      "Component does not import from Remotion packages"
-    );
-  });
+		const result = validateComponent(code);
+		expect(result.warnings).toContain(
+			"Component does not import from Remotion packages"
+		);
+	});
 
-  it("should not warn when importing from remotion", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.warnings).not.toContain(
-      "Component does not import from Remotion packages"
-    );
-  });
+	it("should not warn when importing from remotion", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.warnings).not.toContain(
+			"Component does not import from Remotion packages"
+		);
+	});
 
-  it("should accept imports from @remotion/player", () => {
-    const code = `
+	it("should accept imports from @remotion/player", () => {
+		const code = `
       import React from "react";
       import { Player } from "@remotion/player";
       import { z } from "zod";
@@ -858,11 +858,11 @@ describe("Component Validator - Remotion Imports", () => {
       }
     `;
 
-    const result = validateComponent(code);
-    expect(result.warnings).not.toContain(
-      "Component does not import from Remotion packages"
-    );
-  });
+		const result = validateComponent(code);
+		expect(result.warnings).not.toContain(
+			"Component does not import from Remotion packages"
+		);
+	});
 });
 
 // ============================================================================
@@ -870,44 +870,44 @@ describe("Component Validator - Remotion Imports", () => {
 // ============================================================================
 
 describe("quickValidate", () => {
-  it("should reject empty code", () => {
-    const result = quickValidate("");
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe("Empty code");
-  });
+	it("should reject empty code", () => {
+		const result = quickValidate("");
+		expect(result.valid).toBe(false);
+		expect(result.error).toBe("Empty code");
+	});
 
-  it("should reject whitespace-only code", () => {
-    const result = quickValidate("   \n  \t  ");
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe("Empty code");
-  });
+	it("should reject whitespace-only code", () => {
+		const result = quickValidate("   \n  \t  ");
+		expect(result.valid).toBe(false);
+		expect(result.error).toBe("Empty code");
+	});
 
-  it("should reject files that are too large", () => {
-    const largeCode = "a".repeat(1001 * 1024);
-    const result = quickValidate(largeCode);
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe("File too large");
-  });
+	it("should reject files that are too large", () => {
+		const largeCode = "a".repeat(1001 * 1024);
+		const result = quickValidate(largeCode);
+		expect(result.valid).toBe(false);
+		expect(result.error).toBe("File too large");
+	});
 
-  it("should reject code with eval", () => {
-    const code = `const x = eval("1+1");`;
-    const result = quickValidate(code);
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe("eval() is not allowed");
-  });
+	it("should reject code with eval", () => {
+		const code = `const x = eval("1+1");`;
+		const result = quickValidate(code);
+		expect(result.valid).toBe(false);
+		expect(result.error).toBe("eval() is not allowed");
+	});
 
-  it("should reject code with child_process", () => {
-    const code = `import { exec } from "child_process";`;
-    const result = quickValidate(code);
-    expect(result.valid).toBe(false);
-    expect(result.error).toBe("child_process is not allowed");
-  });
+	it("should reject code with child_process", () => {
+		const code = `import { exec } from "child_process";`;
+		const result = quickValidate(code);
+		expect(result.valid).toBe(false);
+		expect(result.error).toBe("child_process is not allowed");
+	});
 
-  it("should pass valid code", () => {
-    const result = quickValidate(VALID_COMPONENT);
-    expect(result.valid).toBe(true);
-    expect(result.error).toBeUndefined();
-  });
+	it("should pass valid code", () => {
+		const result = quickValidate(VALID_COMPONENT);
+		expect(result.valid).toBe(true);
+		expect(result.error).toBeUndefined();
+	});
 });
 
 // ============================================================================
@@ -915,30 +915,30 @@ describe("quickValidate", () => {
 // ============================================================================
 
 describe("Component Validator - Valid Components", () => {
-  it("should validate a complete valid component", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
+	it("should validate a complete valid component", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+	});
 
-  it("should validate a minimal valid component", () => {
-    const result = validateComponent(MINIMAL_VALID_COMPONENT);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
+	it("should validate a minimal valid component", () => {
+		const result = validateComponent(MINIMAL_VALID_COMPONENT);
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+	});
 
-  it("should return complete metadata for valid component", () => {
-    const result = validateComponent(VALID_COMPONENT);
-    expect(result.metadata).toBeDefined();
-    expect(result.metadata?.name).toBe("TestComponent");
-    expect(result.metadata?.category).toBe("animation");
-    expect(result.metadata?.durationInFrames).toBe(90);
-    expect(result.metadata?.fps).toBe(30);
-    expect(result.metadata?.width).toBe(1920);
-    expect(result.metadata?.height).toBe(1080);
-    expect(result.metadata?.hasSchema).toBe(true);
-    expect(result.metadata?.hasDefaultProps).toBe(true);
-  });
+	it("should return complete metadata for valid component", () => {
+		const result = validateComponent(VALID_COMPONENT);
+		expect(result.metadata).toBeDefined();
+		expect(result.metadata?.name).toBe("TestComponent");
+		expect(result.metadata?.category).toBe("animation");
+		expect(result.metadata?.durationInFrames).toBe(90);
+		expect(result.metadata?.fps).toBe(30);
+		expect(result.metadata?.width).toBe(1920);
+		expect(result.metadata?.height).toBe(1080);
+		expect(result.metadata?.hasSchema).toBe(true);
+		expect(result.metadata?.hasDefaultProps).toBe(true);
+	});
 });
 
 // ============================================================================
@@ -946,12 +946,12 @@ describe("Component Validator - Valid Components", () => {
 // ============================================================================
 
 describe("DEFAULT_VALIDATION_OPTIONS", () => {
-  it("should have expected default values", () => {
-    expect(DEFAULT_VALIDATION_OPTIONS.allowNetwork).toBe(false);
-    expect(DEFAULT_VALIDATION_OPTIONS.allowFileSystem).toBe(false);
-    expect(DEFAULT_VALIDATION_OPTIONS.allowDynamicImports).toBe(false);
-    expect(DEFAULT_VALIDATION_OPTIONS.maxFileSizeBytes).toBe(500 * 1024);
-    expect(DEFAULT_VALIDATION_OPTIONS.requireSchema).toBe(true);
-    expect(DEFAULT_VALIDATION_OPTIONS.requireDefaultProps).toBe(true);
-  });
+	it("should have expected default values", () => {
+		expect(DEFAULT_VALIDATION_OPTIONS.allowNetwork).toBe(false);
+		expect(DEFAULT_VALIDATION_OPTIONS.allowFileSystem).toBe(false);
+		expect(DEFAULT_VALIDATION_OPTIONS.allowDynamicImports).toBe(false);
+		expect(DEFAULT_VALIDATION_OPTIONS.maxFileSizeBytes).toBe(500 * 1024);
+		expect(DEFAULT_VALIDATION_OPTIONS.requireSchema).toBe(true);
+		expect(DEFAULT_VALIDATION_OPTIONS.requireDefaultProps).toBe(true);
+	});
 });

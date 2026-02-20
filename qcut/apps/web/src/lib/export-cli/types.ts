@@ -10,11 +10,11 @@
  * Matches IPC handler expectations for video segment data.
  */
 export interface VideoSourceInput {
-  path: string;
-  startTime: number;
-  duration: number;
-  trimStart: number;
-  trimEnd: number;
+	path: string;
+	startTime: number;
+	duration: number;
+	trimStart: number;
+	trimEnd: number;
 }
 
 /**
@@ -22,9 +22,9 @@ export interface VideoSourceInput {
  * Contains path, timing, and volume information for audio mixing.
  */
 export interface AudioFileInput {
-  path: string;
-  startTime: number;
-  volume: number;
+	path: string;
+	startTime: number;
+	volume: number;
 }
 
 /**
@@ -32,14 +32,14 @@ export interface AudioFileInput {
  * Contains path, timing, and dimension data for image compositing.
  */
 export interface ImageSourceInput {
-  path: string; // Local file path for FFmpeg
-  startTime: number; // When image appears on timeline
-  duration: number; // How long image is visible
-  width?: number; // Original image width
-  height?: number; // Original image height
-  trimStart: number; // Trim start (usually 0 for images)
-  trimEnd: number; // Trim end (usually 0 for images)
-  elementId: string; // For debugging
+	path: string; // Local file path for FFmpeg
+	startTime: number; // When image appears on timeline
+	duration: number; // How long image is visible
+	width?: number; // Original image width
+	height?: number; // Original image height
+	trimStart: number; // Trim start (usually 0 for images)
+	trimEnd: number; // Trim end (usually 0 for images)
+	elementId: string; // For debugging
 }
 
 /**
@@ -47,18 +47,18 @@ export interface ImageSourceInput {
  * Contains all positioning, sizing, timing, and effect data.
  */
 export interface StickerSourceForFilter {
-  id: string;
-  path: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  startTime: number;
-  endTime: number;
-  zIndex: number;
-  opacity?: number;
-  rotation?: number;
-  maintainAspectRatio?: boolean;
+	id: string;
+	path: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	startTime: number;
+	endTime: number;
+	zIndex: number;
+	opacity?: number;
+	rotation?: number;
+	maintainAspectRatio?: boolean;
 }
 
 /**
@@ -72,8 +72,8 @@ export type ProgressCallback = (progress: number, message: string) => void;
  * - useFontconfig: false for Windows (explicit file path)
  */
 export type FontConfig =
-  | { useFontconfig: true; fontName: string }
-  | { useFontconfig: false; fontPath: string };
+	| { useFontconfig: true; fontName: string }
+	| { useFontconfig: false; fontPath: string };
 
 /**
  * Platform type from Electron API.

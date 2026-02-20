@@ -1,65 +1,65 @@
 {
-  "$schema": "./manifest.schema.json",
-  "manifestVersion": "1.0.0",
-  "generatedAt": "2026-02-15T12:00:00Z",
-  "binaries": {
-    "aicp": {
-      "version": "1.0.29",
-      "minQCutVersion": "0.3.67",
-      "maxQCutVersion": null,
-      "platforms": {
-        "win32-x64": {
-          "filename": "aicp.exe",
-          "size": 48438953,
-          "sha256": "85db3295ed00e028dbe4cc7b7521d7722ef753ab9831fce049258685878d79b5",
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-windows-x64.exe"
-        },
-        "darwin-x64": {
-          "filename": "aicp",
-          "size": 47461168,
-          "sha256": "6353fbfad247abaa37fde10010ae6cabba1b8f369a0ca73c64aec9fd5ea0580c",
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-macos-x64"
-        },
-        "darwin-arm64": {
-          "filename": "aicp",
-          "size": 45533248,
-          "sha256": "44fb6ad84626b35f1b368925296003eedceb4a847ddcde5b24e83fa2dba8aae9",
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-macos-arm64"
-        },
-        "linux-x64": {
-          "filename": "aicp",
-          "size": 49524736,
-          "sha256": "10f59a148edebf648551ed09c9378d945ec4f3e6ab4a4c5f116ed45095de30b1",
-          "downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-linux-x64"
-        }
-      },
-      "features": {
-        "textToVideo": true,
-        "imageToVideo": true,
-        "avatarGeneration": true,
-        "videoUpscale": true,
-        "yamlPipelines": true,
-        "cliKeyManagement": true
-      },
-      "requiredApiProviders": ["fal.ai"],
-      "deprecationNotice": null
-    }
-  },
-  "compatibility": {
-    "qcutVersions": {
-      "0.3.50": {
-        "aicp": ">=1.0.0"
-      },
-      "0.4.0": {
-        "aicp": ">=1.0.0"
-      },
-      "0.3.67": {
-        "aicp": ">=1.0.0"
-      }
-    }
-  },
-  "updateChannel": {
-    "stable": "https://api.github.com/repos/donghaozhang/video-agent-skill/releases/latest",
-    "beta": "https://api.github.com/repos/donghaozhang/video-agent-skill/releases?per_page=1"
-  }
+	"$schema": "./manifest.schema.json",
+	"manifestVersion": "1.0.0",
+	"generatedAt": "2026-02-15T12:00:00Z",
+	"binaries": {
+		"aicp": {
+			"version": "1.0.29",
+			"minQCutVersion": "0.3.67",
+			"maxQCutVersion": null,
+			"platforms": {
+				"win32-x64": {
+					"filename": "aicp.exe",
+					"size": 48438953,
+					"sha256": "85db3295ed00e028dbe4cc7b7521d7722ef753ab9831fce049258685878d79b5",
+					"downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-windows-x64.exe"
+				},
+				"darwin-x64": {
+					"filename": "aicp",
+					"size": 47461168,
+					"sha256": "6353fbfad247abaa37fde10010ae6cabba1b8f369a0ca73c64aec9fd5ea0580c",
+					"downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-macos-x64"
+				},
+				"darwin-arm64": {
+					"filename": "aicp",
+					"size": 45533248,
+					"sha256": "44fb6ad84626b35f1b368925296003eedceb4a847ddcde5b24e83fa2dba8aae9",
+					"downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-macos-arm64"
+				},
+				"linux-x64": {
+					"filename": "aicp",
+					"size": 49524736,
+					"sha256": "10f59a148edebf648551ed09c9378d945ec4f3e6ab4a4c5f116ed45095de30b1",
+					"downloadUrl": "https://github.com/donghaozhang/video-agent-skill/releases/download/v1.0.29/aicp-linux-x64"
+				}
+			},
+			"features": {
+				"textToVideo": true,
+				"imageToVideo": true,
+				"avatarGeneration": true,
+				"videoUpscale": true,
+				"yamlPipelines": true,
+				"cliKeyManagement": true
+			},
+			"requiredApiProviders": ["fal.ai"],
+			"deprecationNotice": null
+		}
+	},
+	"compatibility": {
+		"qcutVersions": {
+			"0.3.50": {
+				"aicp": ">=1.0.0"
+			},
+			"0.4.0": {
+				"aicp": ">=1.0.0"
+			},
+			"0.3.67": {
+				"aicp": ">=1.0.0"
+			}
+		}
+	},
+	"updateChannel": {
+		"stable": "https://api.github.com/repos/donghaozhang/video-agent-skill/releases/latest",
+		"beta": "https://api.github.com/repos/donghaozhang/video-agent-skill/releases?per_page=1"
+	}
 }

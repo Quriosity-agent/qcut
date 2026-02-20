@@ -14,14 +14,14 @@ import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
  * Context for persistence operations
  */
 export interface PersistenceContext {
-  getTracks: () => TimelineTrack[];
-  updateTracks: (tracks: TimelineTrack[]) => void;
-  setAutoSaveStatus: (
-    status: string,
-    isAutoSaving: boolean,
-    lastAt?: number
-  ) => void;
-  clearHistory: () => void;
+	getTracks: () => TimelineTrack[];
+	updateTracks: (tracks: TimelineTrack[]) => void;
+	setAutoSaveStatus: (
+		status: string,
+		isAutoSaving: boolean,
+		lastAt?: number
+	) => void;
+	clearHistory: () => void;
 }
 
 /**
@@ -33,10 +33,10 @@ let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
  * Cancel any pending auto-save timer
  */
 export function cancelAutoSaveTimer(): void {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = null;
-  }
+	if (autoSaveTimer) {
+		clearTimeout(autoSaveTimer);
+		autoSaveTimer = null;
+	}
 }
 
 /**
@@ -46,61 +46,61 @@ export function cancelAutoSaveTimer(): void {
  * @param scheduledProjectId - Project ID captured at schedule time
  */
 export async function autoSaveTimelineGuarded(
-  ctx: PersistenceContext,
-  scheduledProjectId: string
+	ctx: PersistenceContext,
+	scheduledProjectId: string
 ): Promise<void> {
-  try {
-    const { useProjectStore } = await import("../project-store");
-    const activeProject = useProjectStore.getState().activeProject;
+	try {
+		const { useProjectStore } = await import("../project-store");
+		const activeProject = useProjectStore.getState().activeProject;
 
-    // Guard: Skip save if project changed since scheduling
-    if (!activeProject || activeProject.id !== scheduledProjectId) {
-      console.log(
-        `[TimelineStore] Skipping auto-save: project changed (scheduled: ${scheduledProjectId}, current: ${activeProject?.id})`
-      );
-      ctx.setAutoSaveStatus("Auto-save idle", false);
-      return;
-    }
+		// Guard: Skip save if project changed since scheduling
+		if (!activeProject || activeProject.id !== scheduledProjectId) {
+			console.log(
+				`[TimelineStore] Skipping auto-save: project changed (scheduled: ${scheduledProjectId}, current: ${activeProject?.id})`
+			);
+			ctx.setAutoSaveStatus("Auto-save idle", false);
+			return;
+		}
 
-    try {
-      // Include current scene ID to avoid desync
-      const { useSceneStore } = await import("../scene-store");
-      const sceneId =
-        useSceneStore.getState().currentScene?.id ??
-        activeProject.currentSceneId;
+		try {
+			// Include current scene ID to avoid desync
+			const { useSceneStore } = await import("../scene-store");
+			const sceneId =
+				useSceneStore.getState().currentScene?.id ??
+				activeProject.currentSceneId;
 
-      await storageService.saveProjectTimeline({
-        projectId: activeProject.id,
-        tracks: ctx.getTracks(),
-        sceneId,
-      });
+			await storageService.saveProjectTimeline({
+				projectId: activeProject.id,
+				tracks: ctx.getTracks(),
+				sceneId,
+			});
 
-      ctx.setAutoSaveStatus("Auto-saved", false, Date.now());
-    } catch (error) {
-      ctx.setAutoSaveStatus("Auto-save failed", false);
-      handleError(error, {
-        operation: "Auto-save Timeline",
-        category: ErrorCategory.STORAGE,
-        severity: ErrorSeverity.LOW,
-        showToast: false,
-        metadata: {
-          projectId: activeProject.id,
-          trackCount: ctx.getTracks().length,
-        },
-      });
-    }
-  } catch (error) {
-    ctx.setAutoSaveStatus("Auto-save failed", false);
-    handleError(error, {
-      operation: "Access Project Store",
-      category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.LOW,
-      showToast: false,
-      metadata: {
-        operation: "timeline-autosave",
-      },
-    });
-  }
+			ctx.setAutoSaveStatus("Auto-saved", false, Date.now());
+		} catch (error) {
+			ctx.setAutoSaveStatus("Auto-save failed", false);
+			handleError(error, {
+				operation: "Auto-save Timeline",
+				category: ErrorCategory.STORAGE,
+				severity: ErrorSeverity.LOW,
+				showToast: false,
+				metadata: {
+					projectId: activeProject.id,
+					trackCount: ctx.getTracks().length,
+				},
+			});
+		}
+	} catch (error) {
+		ctx.setAutoSaveStatus("Auto-save failed", false);
+		handleError(error, {
+			operation: "Access Project Store",
+			category: ErrorCategory.STORAGE,
+			severity: ErrorSeverity.LOW,
+			showToast: false,
+			metadata: {
+				operation: "timeline-autosave",
+			},
+		});
+	}
 }
 
 /**
@@ -109,11 +109,11 @@ export async function autoSaveTimelineGuarded(
  * @param ctx - Persistence context
  */
 export async function triggerAutoSave(ctx: PersistenceContext): Promise<void> {
-  const { useProjectStore } = await import("../project-store");
-  const projectId = useProjectStore.getState().activeProject?.id;
-  if (projectId) {
-    await autoSaveTimelineGuarded(ctx, projectId);
-  }
+	const { useProjectStore } = await import("../project-store");
+	const projectId = useProjectStore.getState().activeProject?.id;
+	if (projectId) {
+		await autoSaveTimelineGuarded(ctx, projectId);
+	}
 }
 
 /**
@@ -123,30 +123,30 @@ export async function triggerAutoSave(ctx: PersistenceContext): Promise<void> {
  * @param debounceMs - Debounce delay in milliseconds (default: 50)
  */
 export async function updateTracksAndSaveOperation(
-  ctx: PersistenceContext,
-  newTracks: TimelineTrack[],
-  debounceMs = 50
+	ctx: PersistenceContext,
+	newTracks: TimelineTrack[],
+	debounceMs = 50
 ): Promise<void> {
-  ctx.updateTracks(newTracks);
+	ctx.updateTracks(newTracks);
 
-  // Capture projectId at schedule time (not at save time)
-  const { useProjectStore } = await import("../project-store");
-  const scheduledProjectId = useProjectStore.getState().activeProject?.id;
+	// Capture projectId at schedule time (not at save time)
+	const { useProjectStore } = await import("../project-store");
+	const scheduledProjectId = useProjectStore.getState().activeProject?.id;
 
-  if (!scheduledProjectId) {
-    // No active project, skip auto-save
-    return;
-  }
+	if (!scheduledProjectId) {
+		// No active project, skip auto-save
+		return;
+	}
 
-  // Auto-save in background with debouncing
-  ctx.setAutoSaveStatus("Auto-saving...", true);
+	// Auto-save in background with debouncing
+	ctx.setAutoSaveStatus("Auto-saving...", true);
 
-  // Cancel previous timer to prevent race conditions and stale saves
-  cancelAutoSaveTimer();
-  autoSaveTimer = setTimeout(
-    () => autoSaveTimelineGuarded(ctx, scheduledProjectId),
-    debounceMs
-  );
+	// Cancel previous timer to prevent race conditions and stale saves
+	cancelAutoSaveTimer();
+	autoSaveTimer = setTimeout(
+		() => autoSaveTimelineGuarded(ctx, scheduledProjectId),
+		debounceMs
+	);
 }
 
 /**
@@ -156,38 +156,38 @@ export async function updateTracksAndSaveOperation(
  * @param sceneId - Optional scene ID
  */
 export async function loadProjectTimelineOperation(
-  ctx: PersistenceContext,
-  projectId: string,
-  sceneId?: string
+	ctx: PersistenceContext,
+	projectId: string,
+	sceneId?: string
 ): Promise<void> {
-  try {
-    const tracks = await storageService.loadProjectTimeline({
-      projectId,
-      sceneId,
-    });
-    if (tracks) {
-      ctx.updateTracks(tracks);
-    } else {
-      // No timeline saved yet, initialize with default
-      const defaultTracks = ensureMainTrack([]);
-      ctx.updateTracks(defaultTracks);
-    }
-    // Clear history when loading a project
-    ctx.clearHistory();
-  } catch (error) {
-    handleError(error, {
-      operation: "Load Timeline",
-      category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.HIGH,
-      metadata: {
-        projectId,
-        sceneId,
-      },
-    });
-    // Re-throw so caller knows load failed - do NOT silently initialize
-    // with defaults as this could lead to data loss on next save
-    throw error;
-  }
+	try {
+		const tracks = await storageService.loadProjectTimeline({
+			projectId,
+			sceneId,
+		});
+		if (tracks) {
+			ctx.updateTracks(tracks);
+		} else {
+			// No timeline saved yet, initialize with default
+			const defaultTracks = ensureMainTrack([]);
+			ctx.updateTracks(defaultTracks);
+		}
+		// Clear history when loading a project
+		ctx.clearHistory();
+	} catch (error) {
+		handleError(error, {
+			operation: "Load Timeline",
+			category: ErrorCategory.STORAGE,
+			severity: ErrorSeverity.HIGH,
+			metadata: {
+				projectId,
+				sceneId,
+			},
+		});
+		// Re-throw so caller knows load failed - do NOT silently initialize
+		// with defaults as this could lead to data loss on next save
+		throw error;
+	}
 }
 
 /**
@@ -197,28 +197,28 @@ export async function loadProjectTimelineOperation(
  * @param sceneId - Optional scene ID
  */
 export async function saveProjectTimelineOperation(
-  ctx: PersistenceContext,
-  projectId: string,
-  sceneId?: string
+	ctx: PersistenceContext,
+	projectId: string,
+	sceneId?: string
 ): Promise<void> {
-  try {
-    await storageService.saveProjectTimeline({
-      projectId,
-      tracks: ctx.getTracks(),
-      sceneId,
-    });
-  } catch (error) {
-    handleError(error, {
-      operation: "Save Timeline",
-      category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.HIGH,
-      metadata: {
-        projectId,
-        sceneId,
-        trackCount: ctx.getTracks().length,
-      },
-    });
-  }
+	try {
+		await storageService.saveProjectTimeline({
+			projectId,
+			tracks: ctx.getTracks(),
+			sceneId,
+		});
+	} catch (error) {
+		handleError(error, {
+			operation: "Save Timeline",
+			category: ErrorCategory.STORAGE,
+			severity: ErrorSeverity.HIGH,
+			metadata: {
+				projectId,
+				sceneId,
+				trackCount: ctx.getTracks().length,
+			},
+		});
+	}
 }
 
 /**
@@ -227,38 +227,38 @@ export async function saveProjectTimelineOperation(
  * @param ctx - Persistence context
  */
 export async function saveImmediateOperation(
-  ctx: PersistenceContext
+	ctx: PersistenceContext
 ): Promise<void> {
-  // Cancel any pending debounced save
-  cancelAutoSaveTimer();
+	// Cancel any pending debounced save
+	cancelAutoSaveTimer();
 
-  try {
-    const { useProjectStore } = await import("../project-store");
-    const activeProject = useProjectStore.getState().activeProject;
-    if (activeProject) {
-      const { useSceneStore } = await import("../scene-store");
-      const sceneId =
-        useSceneStore.getState().currentScene?.id ??
-        activeProject.currentSceneId;
+	try {
+		const { useProjectStore } = await import("../project-store");
+		const activeProject = useProjectStore.getState().activeProject;
+		if (activeProject) {
+			const { useSceneStore } = await import("../scene-store");
+			const sceneId =
+				useSceneStore.getState().currentScene?.id ??
+				activeProject.currentSceneId;
 
-      await storageService.saveProjectTimeline({
-        projectId: activeProject.id,
-        tracks: ctx.getTracks(),
-        sceneId,
-      });
+			await storageService.saveProjectTimeline({
+				projectId: activeProject.id,
+				tracks: ctx.getTracks(),
+				sceneId,
+			});
 
-      ctx.setAutoSaveStatus("Saved", false, Date.now());
-    }
-  } catch (error) {
-    handleError(error, {
-      operation: "Immediate Save Timeline",
-      category: ErrorCategory.STORAGE,
-      severity: ErrorSeverity.HIGH,
-      metadata: {
-        trackCount: ctx.getTracks().length,
-      },
-    });
-  }
+			ctx.setAutoSaveStatus("Saved", false, Date.now());
+		}
+	} catch (error) {
+		handleError(error, {
+			operation: "Immediate Save Timeline",
+			category: ErrorCategory.STORAGE,
+			severity: ErrorSeverity.HIGH,
+			metadata: {
+				trackCount: ctx.getTracks().length,
+			},
+		});
+	}
 }
 
 /**
@@ -266,9 +266,9 @@ export async function saveImmediateOperation(
  * @param ctx - Persistence context
  */
 export function clearTimelineOperation(ctx: PersistenceContext): void {
-  const defaultTracks = ensureMainTrack([]);
-  ctx.updateTracks(defaultTracks);
-  ctx.clearHistory();
+	const defaultTracks = ensureMainTrack([]);
+	ctx.updateTracks(defaultTracks);
+	ctx.clearHistory();
 }
 
 /**
@@ -277,11 +277,11 @@ export function clearTimelineOperation(ctx: PersistenceContext): void {
  * @param tracks - Tracks to restore
  */
 export function restoreTracksOperation(
-  ctx: PersistenceContext,
-  tracks: TimelineTrack[]
+	ctx: PersistenceContext,
+	tracks: TimelineTrack[]
 ): void {
-  console.log(`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`);
-  ctx.updateTracks(tracks);
+	console.log(`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`);
+	ctx.updateTracks(tracks);
 }
 
 /**
@@ -290,10 +290,10 @@ export function restoreTracksOperation(
  * @returns Sorted tracks with main track
  */
 export function prepareTracks(tracks: TimelineTrack[]): {
-  tracksWithMain: TimelineTrack[];
-  sortedTracks: TimelineTrack[];
+	tracksWithMain: TimelineTrack[];
+	sortedTracks: TimelineTrack[];
 } {
-  const tracksWithMain = ensureMainTrack(tracks);
-  const sortedTracks = sortTracksByOrder(tracksWithMain);
-  return { tracksWithMain, sortedTracks };
+	const tracksWithMain = ensureMainTrack(tracks);
+	const sortedTracks = sortTracksByOrder(tracksWithMain);
+	return { tracksWithMain, sortedTracks };
 }

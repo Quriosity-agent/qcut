@@ -1,152 +1,152 @@
 import type {
-  ExportSettings,
-  ExportProgress,
-  ExportFormat,
-  ExportQuality,
-  ExportPurpose,
+	ExportSettings,
+	ExportProgress,
+	ExportFormat,
+	ExportQuality,
+	ExportPurpose,
 } from "@/types/export";
 
 /**
  * Mock export settings matching types/export.ts
  */
 export const mockExportSettingsHD: ExportSettings = {
-  format: "mp4" as ExportFormat,
-  quality: "1080p" as ExportQuality,
-  filename: "test-export-hd.mp4",
-  width: 1920,
-  height: 1080,
-  purpose: "final" as ExportPurpose,
+	format: "mp4" as ExportFormat,
+	quality: "1080p" as ExportQuality,
+	filename: "test-export-hd.mp4",
+	width: 1920,
+	height: 1080,
+	purpose: "final" as ExportPurpose,
 };
 
 export const mockExportSettingsMedium: ExportSettings = {
-  format: "webm" as ExportFormat,
-  quality: "720p" as ExportQuality,
-  filename: "test-export-720p.webm",
-  width: 1280,
-  height: 720,
-  purpose: "preview" as ExportPurpose,
+	format: "webm" as ExportFormat,
+	quality: "720p" as ExportQuality,
+	filename: "test-export-720p.webm",
+	width: 1280,
+	height: 720,
+	purpose: "preview" as ExportPurpose,
 };
 
 export const mockExportSettingsLow: ExportSettings = {
-  format: "mov" as ExportFormat,
-  quality: "480p" as ExportQuality,
-  filename: "test-export-480p.mov",
-  width: 854,
-  height: 480,
-  purpose: "preview" as ExportPurpose,
+	format: "mov" as ExportFormat,
+	quality: "480p" as ExportQuality,
+	filename: "test-export-480p.mov",
+	width: 854,
+	height: 480,
+	purpose: "preview" as ExportPurpose,
 };
 
 /**
  * Mock export progress states
  */
 export const mockExportProgressStart: ExportProgress = {
-  isExporting: true,
-  progress: 0,
-  currentFrame: 0,
-  totalFrames: 300,
-  estimatedTimeRemaining: 60,
-  status: "Starting export...",
-  encodingSpeed: 0,
-  processedFrames: 0,
-  startTime: new Date(),
-  elapsedTime: 0,
-  averageFrameTime: 0,
+	isExporting: true,
+	progress: 0,
+	currentFrame: 0,
+	totalFrames: 300,
+	estimatedTimeRemaining: 60,
+	status: "Starting export...",
+	encodingSpeed: 0,
+	processedFrames: 0,
+	startTime: new Date(),
+	elapsedTime: 0,
+	averageFrameTime: 0,
 };
 
 export const mockExportProgressMiddle: ExportProgress = {
-  isExporting: true,
-  progress: 50,
-  currentFrame: 150,
-  totalFrames: 300,
-  estimatedTimeRemaining: 30,
-  status: "Processing frame 150 of 300...",
-  encodingSpeed: 5,
-  processedFrames: 150,
-  startTime: new Date(Date.now() - 30_000), // 30 seconds ago
-  elapsedTime: 30,
-  averageFrameTime: 200, // 200ms per frame
+	isExporting: true,
+	progress: 50,
+	currentFrame: 150,
+	totalFrames: 300,
+	estimatedTimeRemaining: 30,
+	status: "Processing frame 150 of 300...",
+	encodingSpeed: 5,
+	processedFrames: 150,
+	startTime: new Date(Date.now() - 30_000), // 30 seconds ago
+	elapsedTime: 30,
+	averageFrameTime: 200, // 200ms per frame
 };
 
 export const mockExportProgressComplete: ExportProgress = {
-  isExporting: false,
-  progress: 100,
-  currentFrame: 300,
-  totalFrames: 300,
-  estimatedTimeRemaining: 0,
-  status: "Export complete!",
-  encodingSpeed: 5,
-  processedFrames: 300,
-  startTime: new Date(Date.now() - 60_000), // 1 minute ago
-  elapsedTime: 60,
-  averageFrameTime: 200,
+	isExporting: false,
+	progress: 100,
+	currentFrame: 300,
+	totalFrames: 300,
+	estimatedTimeRemaining: 0,
+	status: "Export complete!",
+	encodingSpeed: 5,
+	processedFrames: 300,
+	startTime: new Date(Date.now() - 60_000), // 1 minute ago
+	elapsedTime: 60,
+	averageFrameTime: 200,
 };
 
 export const mockExportProgressError: ExportProgress = {
-  isExporting: false,
-  progress: 75,
-  currentFrame: 225,
-  totalFrames: 300,
-  estimatedTimeRemaining: 0,
-  status: "Export failed: Insufficient memory",
-  encodingSpeed: 0,
-  processedFrames: 225,
-  startTime: new Date(Date.now() - 45_000),
-  elapsedTime: 45,
-  averageFrameTime: 200,
+	isExporting: false,
+	progress: 75,
+	currentFrame: 225,
+	totalFrames: 300,
+	estimatedTimeRemaining: 0,
+	status: "Export failed: Insufficient memory",
+	encodingSpeed: 0,
+	processedFrames: 225,
+	startTime: new Date(Date.now() - 45_000),
+	elapsedTime: 45,
+	averageFrameTime: 200,
 };
 
 /**
  * Create custom export settings
  */
 export function createMockExportSettings(
-  overrides: Partial<ExportSettings> = {}
+	overrides: Partial<ExportSettings> = {}
 ): ExportSettings {
-  return {
-    ...mockExportSettingsHD,
-    ...overrides,
-  };
+	return {
+		...mockExportSettingsHD,
+		...overrides,
+	};
 }
 
 /**
  * Create custom export progress
  */
 export function createMockExportProgress(
-  progress: number,
-  totalFrames = 300,
-  nowMs: number = Date.now()
+	progress: number,
+	totalFrames = 300,
+	nowMs: number = Date.now()
 ): ExportProgress {
-  const clampedProgress = Math.max(0, Math.min(100, Math.floor(progress)));
-  const safeTotalFrames =
-    Number.isFinite(totalFrames) && totalFrames > 0
-      ? Math.floor(totalFrames)
-      : 300;
-  const currentFrame =
-    clampedProgress === 0
-      ? 0
-      : Math.max(1, Math.floor((clampedProgress / 100) * safeTotalFrames));
-  const elapsedTime =
-    clampedProgress > 0 ? Math.floor(clampedProgress * 0.6) : 0; // Assume 60 seconds total
-  const remainingTime = Math.max(0, 60 - elapsedTime);
+	const clampedProgress = Math.max(0, Math.min(100, Math.floor(progress)));
+	const safeTotalFrames =
+		Number.isFinite(totalFrames) && totalFrames > 0
+			? Math.floor(totalFrames)
+			: 300;
+	const currentFrame =
+		clampedProgress === 0
+			? 0
+			: Math.max(1, Math.floor((clampedProgress / 100) * safeTotalFrames));
+	const elapsedTime =
+		clampedProgress > 0 ? Math.floor(clampedProgress * 0.6) : 0; // Assume 60 seconds total
+	const remainingTime = Math.max(0, 60 - elapsedTime);
 
-  const processedFrames = currentFrame;
+	const processedFrames = currentFrame;
 
-  return {
-    isExporting: clampedProgress < 100,
-    progress: clampedProgress,
-    currentFrame,
-    totalFrames: safeTotalFrames,
-    estimatedTimeRemaining: remainingTime,
-    status:
-      clampedProgress < 100
-        ? `Processing frame ${currentFrame} of ${safeTotalFrames}...`
-        : "Export complete!",
-    encodingSpeed: clampedProgress > 0 ? 5 : 0,
-    processedFrames,
-    startTime: new Date(nowMs - elapsedTime * 1000),
-    elapsedTime,
-    averageFrameTime:
-      processedFrames > 0 && elapsedTime > 0
-        ? (elapsedTime * 1000) / processedFrames
-        : 0,
-  };
+	return {
+		isExporting: clampedProgress < 100,
+		progress: clampedProgress,
+		currentFrame,
+		totalFrames: safeTotalFrames,
+		estimatedTimeRemaining: remainingTime,
+		status:
+			clampedProgress < 100
+				? `Processing frame ${currentFrame} of ${safeTotalFrames}...`
+				: "Export complete!",
+		encodingSpeed: clampedProgress > 0 ? 5 : 0,
+		processedFrames,
+		startTime: new Date(nowMs - elapsedTime * 1000),
+		elapsedTime,
+		averageFrameTime:
+			processedFrames > 0 && elapsedTime > 0
+				? (elapsedTime * 1000) / processedFrames
+				: 0,
+	};
 }

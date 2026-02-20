@@ -4,17 +4,17 @@
  */
 
 export interface ImageValidationConstraints {
-  maxSizeMB: number;
-  minDimensions: { width: number; height: number };
-  maxDimensions: { width: number; height: number };
-  allowedFormats: string[];
+	maxSizeMB: number;
+	minDimensions: { width: number; height: number };
+	maxDimensions: { width: number; height: number };
+	allowedFormats: string[];
 }
 
 export interface ImageValidationResult {
-  valid: boolean;
-  error?: string;
-  dimensions?: { width: number; height: number };
-  fileSize?: number;
+	valid: boolean;
+	error?: string;
+	dimensions?: { width: number; height: number };
+	fileSize?: number;
 }
 
 /**
@@ -25,64 +25,64 @@ export interface ImageValidationResult {
  * @returns Validation result with error message if invalid
  */
 export async function validateImageUpload(
-  file: File,
-  constraints: ImageValidationConstraints
+	file: File,
+	constraints: ImageValidationConstraints
 ): Promise<ImageValidationResult> {
-  // Validate file type
-  if (!constraints.allowedFormats.includes(file.type)) {
-    return {
-      valid: false,
-      error: `Invalid file type. Allowed formats: ${constraints.allowedFormats.join(", ")}`,
-    };
-  }
+	// Validate file type
+	if (!constraints.allowedFormats.includes(file.type)) {
+		return {
+			valid: false,
+			error: `Invalid file type. Allowed formats: ${constraints.allowedFormats.join(", ")}`,
+		};
+	}
 
-  // Validate file size
-  const maxSizeBytes = constraints.maxSizeMB * 1024 * 1024;
-  if (file.size > maxSizeBytes) {
-    return {
-      valid: false,
-      error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum of ${constraints.maxSizeMB}MB`,
-      fileSize: file.size,
-    };
-  }
+	// Validate file size
+	const maxSizeBytes = constraints.maxSizeMB * 1024 * 1024;
+	if (file.size > maxSizeBytes) {
+		return {
+			valid: false,
+			error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum of ${constraints.maxSizeMB}MB`,
+			fileSize: file.size,
+		};
+	}
 
-  // Validate dimensions
-  try {
-    const dimensions = await getImageDimensions(file);
+	// Validate dimensions
+	try {
+		const dimensions = await getImageDimensions(file);
 
-    if (
-      dimensions.width < constraints.minDimensions.width ||
-      dimensions.height < constraints.minDimensions.height
-    ) {
-      return {
-        valid: false,
-        error: `Image dimensions (${dimensions.width}×${dimensions.height}) are below minimum (${constraints.minDimensions.width}×${constraints.minDimensions.height})`,
-        dimensions,
-      };
-    }
+		if (
+			dimensions.width < constraints.minDimensions.width ||
+			dimensions.height < constraints.minDimensions.height
+		) {
+			return {
+				valid: false,
+				error: `Image dimensions (${dimensions.width}×${dimensions.height}) are below minimum (${constraints.minDimensions.width}×${constraints.minDimensions.height})`,
+				dimensions,
+			};
+		}
 
-    if (
-      dimensions.width > constraints.maxDimensions.width ||
-      dimensions.height > constraints.maxDimensions.height
-    ) {
-      return {
-        valid: false,
-        error: `Image dimensions (${dimensions.width}×${dimensions.height}) exceed maximum (${constraints.maxDimensions.width}×${constraints.maxDimensions.height})`,
-        dimensions,
-      };
-    }
+		if (
+			dimensions.width > constraints.maxDimensions.width ||
+			dimensions.height > constraints.maxDimensions.height
+		) {
+			return {
+				valid: false,
+				error: `Image dimensions (${dimensions.width}×${dimensions.height}) exceed maximum (${constraints.maxDimensions.width}×${constraints.maxDimensions.height})`,
+				dimensions,
+			};
+		}
 
-    return {
-      valid: true,
-      dimensions,
-      fileSize: file.size,
-    };
-  } catch (error) {
-    return {
-      valid: false,
-      error: `Failed to read image dimensions: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+		return {
+			valid: true,
+			dimensions,
+			fileSize: file.size,
+		};
+	} catch (error) {
+		return {
+			valid: false,
+			error: `Failed to read image dimensions: ${error instanceof Error ? error.message : String(error)}`,
+		};
+	}
 }
 
 /**
@@ -92,24 +92,24 @@ export async function validateImageUpload(
  * @returns Promise resolving to width and height
  */
 export function getImageDimensions(
-  file: File
+	file: File
 ): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		const url = URL.createObjectURL(file);
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.width, height: img.height });
-    };
+		img.onload = () => {
+			URL.revokeObjectURL(url);
+			resolve({ width: img.width, height: img.height });
+		};
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image"));
-    };
+		img.onerror = () => {
+			URL.revokeObjectURL(url);
+			reject(new Error("Failed to load image"));
+		};
 
-    img.src = url;
-  });
+		img.src = url;
+	});
 }
 
 /**
@@ -117,18 +117,18 @@ export function getImageDimensions(
  * Applies Reve Edit constraints (10MB, 128-4096px, PNG/JPEG/WebP/AVIF/HEIF)
  */
 export async function validateReveEditImage(
-  file: File
+	file: File
 ): Promise<ImageValidationResult> {
-  return validateImageUpload(file, {
-    maxSizeMB: 10,
-    minDimensions: { width: 128, height: 128 },
-    maxDimensions: { width: 4096, height: 4096 },
-    allowedFormats: [
-      "image/png",
-      "image/jpeg",
-      "image/webp",
-      "image/avif",
-      "image/heif",
-    ],
-  });
+	return validateImageUpload(file, {
+		maxSizeMB: 10,
+		minDimensions: { width: 128, height: 128 },
+		maxDimensions: { width: 4096, height: 4096 },
+		allowedFormats: [
+			"image/png",
+			"image/jpeg",
+			"image/webp",
+			"image/avif",
+			"image/heif",
+		],
+	});
 }

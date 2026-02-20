@@ -15,8 +15,8 @@ import type { AIModel } from "../types/ai-types";
  * @returns Formatted string or "(none)" if empty
  */
 function formatInvariantList(items: readonly string[]): string {
-  if (items.length === 0) return "(none)";
-  return items.join(", ");
+	if (items.length === 0) return "(none)";
+	return items.join(", ");
 }
 
 /**
@@ -25,19 +25,19 @@ function formatInvariantList(items: readonly string[]): string {
  * @returns Array of duplicate values (empty if no duplicates found)
  */
 function getDuplicateValues(values: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
 
-  for (const value of values) {
-    if (seen.has(value)) {
-      duplicates.add(value);
-      continue;
-    }
+	for (const value of values) {
+		if (seen.has(value)) {
+			duplicates.add(value);
+			continue;
+		}
 
-    seen.add(value);
-  }
+		seen.add(value);
+	}
 
-  return Array.from(duplicates);
+	return Array.from(duplicates);
 }
 
 /**
@@ -56,67 +56,67 @@ function getDuplicateValues(values: readonly string[]): string[] {
  * @throws {Error} If validation fails with detailed mismatch information
  */
 export function validateModelOrderInvariant({
-  category,
-  models,
-  order,
+	category,
+	models,
+	order,
 }: {
-  category: string;
-  models: Record<string, unknown>;
-  order: readonly string[];
+	category: string;
+	models: Record<string, unknown>;
+	order: readonly string[];
 }): void {
-  try {
-    const modelIds = Object.keys(models);
-    const orderIds = Array.from(order);
+	try {
+		const modelIds = Object.keys(models);
+		const orderIds = Array.from(order);
 
-    const modelIdSet = new Set(modelIds);
-    const orderIdSet = new Set(orderIds);
+		const modelIdSet = new Set(modelIds);
+		const orderIdSet = new Set(orderIds);
 
-    const missingFromOrder: string[] = [];
-    for (const modelId of modelIds) {
-      if (!orderIdSet.has(modelId)) missingFromOrder.push(modelId);
-    }
+		const missingFromOrder: string[] = [];
+		for (const modelId of modelIds) {
+			if (!orderIdSet.has(modelId)) missingFromOrder.push(modelId);
+		}
 
-    const unknownInOrder: string[] = [];
-    for (const orderId of orderIds) {
-      if (!modelIdSet.has(orderId)) unknownInOrder.push(orderId);
-    }
+		const unknownInOrder: string[] = [];
+		for (const orderId of orderIds) {
+			if (!modelIdSet.has(orderId)) unknownInOrder.push(orderId);
+		}
 
-    const duplicateOrderIds = getDuplicateValues(orderIds);
+		const duplicateOrderIds = getDuplicateValues(orderIds);
 
-    const lengthMismatch = modelIds.length !== orderIds.length;
-    const hasMismatch =
-      lengthMismatch ||
-      missingFromOrder.length > 0 ||
-      unknownInOrder.length > 0 ||
-      duplicateOrderIds.length > 0;
+		const lengthMismatch = modelIds.length !== orderIds.length;
+		const hasMismatch =
+			lengthMismatch ||
+			missingFromOrder.length > 0 ||
+			unknownInOrder.length > 0 ||
+			duplicateOrderIds.length > 0;
 
-    if (!hasMismatch) return;
+		if (!hasMismatch) return;
 
-    const details = [
-      lengthMismatch
-        ? `count mismatch: models=${modelIds.length}, order=${orderIds.length}`
-        : undefined,
-      duplicateOrderIds.length > 0
-        ? `duplicates in order: ${formatInvariantList(duplicateOrderIds)}`
-        : undefined,
-      missingFromOrder.length > 0
-        ? `missing from order: ${formatInvariantList(missingFromOrder)}`
-        : undefined,
-      unknownInOrder.length > 0
-        ? `unknown in order: ${formatInvariantList(unknownInOrder)}`
-        : undefined,
-    ]
-      .filter((detail) => detail)
-      .join("; ");
+		const details = [
+			lengthMismatch
+				? `count mismatch: models=${modelIds.length}, order=${orderIds.length}`
+				: undefined,
+			duplicateOrderIds.length > 0
+				? `duplicates in order: ${formatInvariantList(duplicateOrderIds)}`
+				: undefined,
+			missingFromOrder.length > 0
+				? `missing from order: ${formatInvariantList(missingFromOrder)}`
+				: undefined,
+			unknownInOrder.length > 0
+				? `unknown in order: ${formatInvariantList(unknownInOrder)}`
+				: undefined,
+		]
+			.filter((detail) => detail)
+			.join("; ");
 
-    throw new Error(`[${category}] Model order invariant violated: ${details}`);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
+		throw new Error(`[${category}] Model order invariant violated: ${details}`);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error;
+		}
 
-    throw new Error(`[${category}] Model order invariant violated`);
-  }
+		throw new Error(`[${category}] Model order invariant violated`);
+	}
 }
 
 /**
@@ -132,39 +132,39 @@ export function validateModelOrderInvariant({
  * @throws {Error} If any alias targets a non-existent model ID
  */
 export function validateAliasMapTargetsExist({
-  category,
-  models,
-  aliases,
+	category,
+	models,
+	aliases,
 }: {
-  category: string;
-  models: Record<string, unknown>;
-  aliases: Record<string, string>;
+	category: string;
+	models: Record<string, unknown>;
+	aliases: Record<string, string>;
 }): void {
-  try {
-    const modelIdSet = new Set(Object.keys(models));
-    const invalidTargets: Array<{ alias: string; target: string }> = [];
+	try {
+		const modelIdSet = new Set(Object.keys(models));
+		const invalidTargets: Array<{ alias: string; target: string }> = [];
 
-    for (const [alias, target] of Object.entries(aliases)) {
-      if (modelIdSet.has(target)) continue;
-      invalidTargets.push({ alias, target });
-    }
+		for (const [alias, target] of Object.entries(aliases)) {
+			if (modelIdSet.has(target)) continue;
+			invalidTargets.push({ alias, target });
+		}
 
-    if (invalidTargets.length === 0) return;
+		if (invalidTargets.length === 0) return;
 
-    const formatted = invalidTargets
-      .map(({ alias, target }) => `${alias} -> ${target}`)
-      .join(", ");
+		const formatted = invalidTargets
+			.map(({ alias, target }) => `${alias} -> ${target}`)
+			.join(", ");
 
-    throw new Error(
-      `[${category}] Alias map contains invalid targets: ${formatted}`
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
+		throw new Error(
+			`[${category}] Alias map contains invalid targets: ${formatted}`
+		);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error;
+		}
 
-    throw new Error(`[${category}] Alias map contains invalid targets`);
-  }
+		throw new Error(`[${category}] Alias map contains invalid targets`);
+	}
 }
 
 /**
@@ -178,51 +178,51 @@ export function validateAliasMapTargetsExist({
  * @throws {Error} If duplicate model IDs are detected with details about conflicts
  */
 export function validateUniqueAIModelIds({
-  categories,
+	categories,
 }: {
-  categories: Record<string, readonly AIModel[]>;
+	categories: Record<string, readonly AIModel[]>;
 }): void {
-  try {
-    const occurrences = new Map<
-      string,
-      Array<{ category: string; name: string }>
-    >();
+	try {
+		const occurrences = new Map<
+			string,
+			Array<{ category: string; name: string }>
+		>();
 
-    for (const [category, models] of Object.entries(categories)) {
-      for (const model of models) {
-        const existing = occurrences.get(model.id) ?? [];
-        existing.push({ category, name: model.name });
-        occurrences.set(model.id, existing);
-      }
-    }
+		for (const [category, models] of Object.entries(categories)) {
+			for (const model of models) {
+				const existing = occurrences.get(model.id) ?? [];
+				existing.push({ category, name: model.name });
+				occurrences.set(model.id, existing);
+			}
+		}
 
-    const duplicates: Array<{
-      id: string;
-      refs: Array<{ category: string; name: string }>;
-    }> = [];
+		const duplicates: Array<{
+			id: string;
+			refs: Array<{ category: string; name: string }>;
+		}> = [];
 
-    for (const [id, refs] of occurrences.entries()) {
-      if (refs.length <= 1) continue;
-      duplicates.push({ id, refs });
-    }
+		for (const [id, refs] of occurrences.entries()) {
+			if (refs.length <= 1) continue;
+			duplicates.push({ id, refs });
+		}
 
-    if (duplicates.length === 0) return;
+		if (duplicates.length === 0) return;
 
-    const formatted = duplicates
-      .map(({ id, refs }) => {
-        const locations = refs
-          .map(({ category, name }) => `${category}(${name})`)
-          .join(", ");
-        return `${id}: ${locations}`;
-      })
-      .join("; ");
+		const formatted = duplicates
+			.map(({ id, refs }) => {
+				const locations = refs
+					.map(({ category, name }) => `${category}(${name})`)
+					.join(", ");
+				return `${id}: ${locations}`;
+			})
+			.join("; ");
 
-    throw new Error(`Duplicate AI model ids detected: ${formatted}`);
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
+		throw new Error(`Duplicate AI model ids detected: ${formatted}`);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error;
+		}
 
-    throw new Error("Duplicate AI model ids detected");
-  }
+		throw new Error("Duplicate AI model ids detected");
+	}
 }

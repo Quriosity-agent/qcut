@@ -4,163 +4,163 @@ import { vi } from "vitest";
  * Wait for a condition to become true
  */
 export async function waitForCondition(
-  condition: () => boolean,
-  options: {
-    timeout?: number;
-    interval?: number;
-    message?: string;
-  } = {}
+	condition: () => boolean,
+	options: {
+		timeout?: number;
+		interval?: number;
+		message?: string;
+	} = {}
 ): Promise<void> {
-  const {
-    timeout = 5000,
-    interval = 100,
-    message = "Condition not met",
-  } = options;
-  const start = Date.now();
+	const {
+		timeout = 5000,
+		interval = 100,
+		message = "Condition not met",
+	} = options;
+	const start = Date.now();
 
-  while (!condition()) {
-    if (Date.now() - start > timeout) {
-      throw new Error(`Timeout: ${message}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, interval));
-  }
+	while (!condition()) {
+		if (Date.now() - start > timeout) {
+			throw new Error(`Timeout: ${message}`);
+		}
+		await new Promise((resolve) => setTimeout(resolve, interval));
+	}
 }
 
 /**
  * Wait for a value to change
  */
 export async function waitForValueChange<T>(
-  getValue: () => T,
-  initialValue: T,
-  timeout = 5000
+	getValue: () => T,
+	initialValue: T,
+	timeout = 5000
 ): Promise<T> {
-  const start = Date.now();
+	const start = Date.now();
 
-  while (getValue() === initialValue) {
-    if (Date.now() - start > timeout) {
-      throw new Error(`Value did not change from ${initialValue}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
+	while (getValue() === initialValue) {
+		if (Date.now() - start > timeout) {
+			throw new Error(`Value did not change from ${initialValue}`);
+		}
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
 
-  return getValue();
+	return getValue();
 }
 
 /**
  * Retry an async operation
  */
 export async function retry<T>(
-  operation: () => Promise<T>,
-  options: {
-    maxAttempts?: number;
-    delay?: number;
-    backoff?: number;
-  } = {}
+	operation: () => Promise<T>,
+	options: {
+		maxAttempts?: number;
+		delay?: number;
+		backoff?: number;
+	} = {}
 ): Promise<T> {
-  const { maxAttempts = 3, delay = 100, backoff = 2 } = options;
-  let lastError: Error | undefined;
+	const { maxAttempts = 3, delay = 100, backoff = 2 } = options;
+	let lastError: Error | undefined;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error as Error;
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		try {
+			return await operation();
+		} catch (error) {
+			lastError = error as Error;
 
-      if (attempt < maxAttempts - 1) {
-        const waitTime = delay * backoff ** attempt;
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      }
-    }
-  }
+			if (attempt < maxAttempts - 1) {
+				const waitTime = delay * backoff ** attempt;
+				await new Promise((resolve) => setTimeout(resolve, waitTime));
+			}
+		}
+	}
 
-  throw lastError || new Error("Retry failed");
+	throw lastError || new Error("Retry failed");
 }
 
 /**
  * Wait for next tick/microtask
  */
 export async function nextTick(): Promise<void> {
-  return new Promise((resolve) => {
-    // Use setImmediate if available (Node), otherwise setTimeout
-    if (typeof setImmediate !== "undefined") {
-      setImmediate(resolve);
-    } else {
-      setTimeout(resolve, 0);
-    }
-  });
+	return new Promise((resolve) => {
+		// Use setImmediate if available (Node), otherwise setTimeout
+		if (typeof setImmediate !== "undefined") {
+			setImmediate(resolve);
+		} else {
+			setTimeout(resolve, 0);
+		}
+	});
 }
 
 /**
  * Flush all pending promises
  */
 export async function flushPromises(): Promise<void> {
-  // Run multiple ticks to ensure all promise chains resolve
-  for (let i = 0; i < 10; i++) {
-    await nextTick();
-  }
+	// Run multiple ticks to ensure all promise chains resolve
+	for (let i = 0; i < 10; i++) {
+		await nextTick();
+	}
 }
 
 /**
  * Create a deferred promise with manual resolution
  */
 export function createDeferred<T>() {
-  let resolveRef: (value: T) => void = () => {
-    throw new Error("Deferred.resolve used before initialization");
-  };
-  let rejectRef: (reason: Error) => void = () => {
-    throw new Error("Deferred.reject used before initialization");
-  };
+	let resolveRef: (value: T) => void = () => {
+		throw new Error("Deferred.resolve used before initialization");
+	};
+	let rejectRef: (reason: Error) => void = () => {
+		throw new Error("Deferred.reject used before initialization");
+	};
 
-  const promise = new Promise<T>((res, rej) => {
-    resolveRef = res;
-    // Promise's reject accepts any, but we narrow to Error to match our usage.
-    rejectRef = rej as (reason: Error) => void;
-  });
+	const promise = new Promise<T>((res, rej) => {
+		resolveRef = res;
+		// Promise's reject accepts any, but we narrow to Error to match our usage.
+		rejectRef = rej as (reason: Error) => void;
+	});
 
-  return {
-    promise,
-    resolve: resolveRef,
-    reject: rejectRef,
-  };
+	return {
+		promise,
+		resolve: resolveRef,
+		reject: rejectRef,
+	};
 }
 
 /**
  * Wait for mock function to be called
  */
 export async function waitForMockCall(
-  mockFn: ReturnType<typeof vi.fn>,
-  options: {
-    timeout?: number;
-    callCount?: number;
-  } = {}
+	mockFn: ReturnType<typeof vi.fn>,
+	options: {
+		timeout?: number;
+		callCount?: number;
+	} = {}
 ): Promise<void> {
-  const { timeout = 5000, callCount = 1 } = options;
+	const { timeout = 5000, callCount = 1 } = options;
 
-  await waitForCondition(() => mockFn.mock.calls.length >= callCount, {
-    timeout,
-    message: `Mock not called ${callCount} time(s)`,
-  });
+	await waitForCondition(() => mockFn.mock.calls.length >= callCount, {
+		timeout,
+		message: `Mock not called ${callCount} time(s)`,
+	});
 }
 
 /**
  * Create a timeout promise for race conditions
  */
 export function createTimeout(
-  ms: number,
-  message = "Operation timed out"
+	ms: number,
+	message = "Operation timed out"
 ): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(message)), ms);
-  });
+	return new Promise((_, reject) => {
+		setTimeout(() => reject(new Error(message)), ms);
+	});
 }
 
 /**
  * Run async operation with timeout
  */
 export async function withTimeout<T>(
-  operation: Promise<T>,
-  timeout: number,
-  message?: string
+	operation: Promise<T>,
+	timeout: number,
+	message?: string
 ): Promise<T> {
-  return Promise.race([operation, createTimeout(timeout, message)]);
+	return Promise.race([operation, createTimeout(timeout, message)]);
 }

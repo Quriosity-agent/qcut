@@ -5,66 +5,66 @@ import { syncProjectSkillsForClaude } from "../project-skills-sync";
 let originalElectronAPI: ElectronAPI | undefined;
 
 beforeEach(() => {
-  originalElectronAPI = window.electronAPI;
+	originalElectronAPI = window.electronAPI;
 });
 
 afterEach(() => {
-  window.electronAPI = originalElectronAPI;
-  vi.restoreAllMocks();
+	window.electronAPI = originalElectronAPI;
+	vi.restoreAllMocks();
 });
 
 describe("syncProjectSkillsForClaude", () => {
-  it("calls skills.syncForClaude when API is available", () => {
-    const syncForClaude = vi.fn().mockResolvedValue({
-      synced: true,
-      copied: 1,
-      skipped: 0,
-      removed: 0,
-      warnings: [],
-    });
+	it("calls skills.syncForClaude when API is available", () => {
+		const syncForClaude = vi.fn().mockResolvedValue({
+			synced: true,
+			copied: 1,
+			skipped: 0,
+			removed: 0,
+			warnings: [],
+		});
 
-    const electronApi = {
-      skills: {
-        syncForClaude,
-      },
-    } as unknown as ElectronAPI;
+		const electronApi = {
+			skills: {
+				syncForClaude,
+			},
+		} as unknown as ElectronAPI;
 
-    syncProjectSkillsForClaude({
-      projectId: "project-1",
-      electronApi,
-    });
+		syncProjectSkillsForClaude({
+			projectId: "project-1",
+			electronApi,
+		});
 
-    expect(syncForClaude).toHaveBeenCalledWith("project-1");
-  });
+		expect(syncForClaude).toHaveBeenCalledWith("project-1");
+	});
 
-  it("does not throw when Electron skills API is unavailable", () => {
-    window.electronAPI = undefined;
+	it("does not throw when Electron skills API is unavailable", () => {
+		window.electronAPI = undefined;
 
-    expect(() => {
-      syncProjectSkillsForClaude({ projectId: "project-2" });
-    }).not.toThrow();
-  });
+		expect(() => {
+			syncProjectSkillsForClaude({ projectId: "project-2" });
+		}).not.toThrow();
+	});
 
-  it("warns when sync promise rejects", async () => {
-    const warningSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+	it("warns when sync promise rejects", async () => {
+		const warningSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const syncForClaude = vi.fn().mockRejectedValue(new Error("sync failed"));
-    const electronApi = {
-      skills: {
-        syncForClaude,
-      },
-    } as unknown as ElectronAPI;
+		const syncForClaude = vi.fn().mockRejectedValue(new Error("sync failed"));
+		const electronApi = {
+			skills: {
+				syncForClaude,
+			},
+		} as unknown as ElectronAPI;
 
-    syncProjectSkillsForClaude({
-      projectId: "project-3",
-      electronApi,
-    });
+		syncProjectSkillsForClaude({
+			projectId: "project-3",
+			electronApi,
+		});
 
-    await Promise.resolve();
+		await Promise.resolve();
 
-    expect(warningSpy).toHaveBeenCalledWith(
-      "[ProjectStore] skills syncForClaude failed",
-      expect.any(Error)
-    );
-  });
+		expect(warningSpy).toHaveBeenCalledWith(
+			"[ProjectStore] skills syncForClaude failed",
+			expect.any(Error)
+		);
+	});
 });

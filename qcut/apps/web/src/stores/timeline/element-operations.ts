@@ -6,9 +6,9 @@
  */
 
 import type {
-  TimelineTrack,
-  TimelineElement,
-  CreateTimelineElement,
+	TimelineTrack,
+	TimelineElement,
+	CreateTimelineElement,
 } from "@/types/timeline";
 import { validateElementTrackCompatibility } from "@/types/timeline";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
@@ -21,11 +21,11 @@ import { getEffectiveDuration, getElementEndTime } from "./utils";
  * Callbacks for side effects during element operations
  */
 export interface AddElementCallbacks {
-  selectElement: (trackId: string, elementId: string) => void;
-  onFirstMediaElement?: (
-    element: TimelineElement,
-    totalElementsInTimeline: number
-  ) => void;
+	selectElement: (trackId: string, elementId: string) => void;
+	onFirstMediaElement?: (
+		element: TimelineElement,
+		totalElementsInTimeline: number
+	) => void;
 }
 
 /**
@@ -36,31 +36,31 @@ export interface AddElementCallbacks {
  * @param pushHistory - Whether to push to undo history
  */
 export function removeElementSimpleOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  pushHistory = true
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	pushHistory = true
 ): void {
-  if (pushHistory) ctx.pushHistory();
+	if (pushHistory) ctx.pushHistory();
 
-  // Clear selection to avoid dangling references
-  ctx.deselectElement(trackId, elementId);
+	// Clear selection to avoid dangling references
+	ctx.deselectElement(trackId, elementId);
 
-  ctx.updateTracksAndSave(
-    ctx
-      .getTracks()
-      .map((track) =>
-        track.id === trackId
-          ? {
-              ...track,
-              elements: track.elements.filter(
-                (element) => element.id !== elementId
-              ),
-            }
-          : track
-      )
-      .filter((track) => track.elements.length > 0 || track.isMain)
-  );
+	ctx.updateTracksAndSave(
+		ctx
+			.getTracks()
+			.map((track) =>
+				track.id === trackId
+					? {
+							...track,
+							elements: track.elements.filter(
+								(element) => element.id !== elementId
+							),
+						}
+					: track
+			)
+			.filter((track) => track.elements.length > 0 || track.isMain)
+	);
 }
 
 /**
@@ -71,72 +71,72 @@ export function removeElementSimpleOperation(
  * @param pushHistory - Whether to push to undo history
  */
 export function removeElementWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  pushHistory = true
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	pushHistory = true
 ): void {
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((e) => e.id === elementId);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((e) => e.id === elementId);
 
-  if (!element || !track) return;
+	if (!element || !track) return;
 
-  if (pushHistory) ctx.pushHistory();
+	if (pushHistory) ctx.pushHistory();
 
-  // Clear selection to avoid dangling references
-  ctx.deselectElement(trackId, elementId);
+	// Clear selection to avoid dangling references
+	ctx.deselectElement(trackId, elementId);
 
-  const elementStartTime = element.startTime;
-  const elementDuration = getEffectiveDuration(element);
-  const elementEndTime = elementStartTime + elementDuration;
+	const elementStartTime = element.startTime;
+	const elementDuration = getEffectiveDuration(element);
+	const elementEndTime = elementStartTime + elementDuration;
 
-  // Remove the element and shift all elements that come after it
-  const updatedTracks = tracks
-    .map((currentTrack) => {
-      // Only apply ripple effects to the same track unless multi-track ripple is enabled
-      const shouldApplyRipple = currentTrack.id === trackId;
+	// Remove the element and shift all elements that come after it
+	const updatedTracks = tracks
+		.map((currentTrack) => {
+			// Only apply ripple effects to the same track unless multi-track ripple is enabled
+			const shouldApplyRipple = currentTrack.id === trackId;
 
-      const updatedElements = currentTrack.elements
-        .filter((currentElement) => {
-          // Remove the target element
-          if (currentElement.id === elementId && currentTrack.id === trackId) {
-            return false;
-          }
-          return true;
-        })
-        .map((currentElement) => {
-          // Only apply ripple effects if we should process this track
-          if (!shouldApplyRipple) {
-            return currentElement;
-          }
+			const updatedElements = currentTrack.elements
+				.filter((currentElement) => {
+					// Remove the target element
+					if (currentElement.id === elementId && currentTrack.id === trackId) {
+						return false;
+					}
+					return true;
+				})
+				.map((currentElement) => {
+					// Only apply ripple effects if we should process this track
+					if (!shouldApplyRipple) {
+						return currentElement;
+					}
 
-          // Shift elements that start after the removed element
-          if (currentElement.startTime >= elementEndTime) {
-            return {
-              ...currentElement,
-              startTime: Math.max(
-                0,
-                currentElement.startTime - elementDuration
-              ),
-            };
-          }
-          return currentElement;
-        });
+					// Shift elements that start after the removed element
+					if (currentElement.startTime >= elementEndTime) {
+						return {
+							...currentElement,
+							startTime: Math.max(
+								0,
+								currentElement.startTime - elementDuration
+							),
+						};
+					}
+					return currentElement;
+				});
 
-      // Check for overlaps and resolve them if necessary
-      const hasOverlaps = checkElementOverlaps(updatedElements);
-      if (hasOverlaps) {
-        // Resolve overlaps by adjusting element positions
-        const resolvedElements = resolveElementOverlaps(updatedElements);
-        return { ...currentTrack, elements: resolvedElements };
-      }
+			// Check for overlaps and resolve them if necessary
+			const hasOverlaps = checkElementOverlaps(updatedElements);
+			if (hasOverlaps) {
+				// Resolve overlaps by adjusting element positions
+				const resolvedElements = resolveElementOverlaps(updatedElements);
+				return { ...currentTrack, elements: resolvedElements };
+			}
 
-      return { ...currentTrack, elements: updatedElements };
-    })
-    .filter((track) => track.elements.length > 0 || track.isMain);
+			return { ...currentTrack, elements: updatedElements };
+		})
+		.filter((track) => track.elements.length > 0 || track.isMain);
 
-  ctx.updateTracksAndSave(updatedTracks);
+	ctx.updateTracksAndSave(updatedTracks);
 }
 
 /**
@@ -147,64 +147,64 @@ export function removeElementWithRippleOperation(
  * @param elementId - ID of the element to move
  */
 export function moveElementToTrackOperation(
-  ctx: OperationContext,
-  fromTrackId: string,
-  toTrackId: string,
-  elementId: string
+	ctx: OperationContext,
+	fromTrackId: string,
+	toTrackId: string,
+	elementId: string
 ): void {
-  // No-op if moving to the same track
-  if (fromTrackId === toTrackId) return;
+	// No-op if moving to the same track
+	if (fromTrackId === toTrackId) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  const tracks = ctx.getTracks();
-  const fromTrack = tracks.find((track) => track.id === fromTrackId);
-  const toTrack = tracks.find((track) => track.id === toTrackId);
-  const elementToMove = fromTrack?.elements.find(
-    (element) => element.id === elementId
-  );
+	const tracks = ctx.getTracks();
+	const fromTrack = tracks.find((track) => track.id === fromTrackId);
+	const toTrack = tracks.find((track) => track.id === toTrackId);
+	const elementToMove = fromTrack?.elements.find(
+		(element) => element.id === elementId
+	);
 
-  if (!elementToMove || !toTrack) return;
+	if (!elementToMove || !toTrack) return;
 
-  // Validate element type compatibility with target track
-  const validation = validateElementTrackCompatibility(elementToMove, toTrack);
-  if (!validation.isValid) {
-    handleError(
-      new Error(validation.errorMessage || "Invalid drag operation"),
-      {
-        operation: "Timeline Drag Validation",
-        category: ErrorCategory.VALIDATION,
-        severity: ErrorSeverity.MEDIUM,
-        metadata: {
-          targetTrackId: toTrackId,
-          elementId,
-        },
-      }
-    );
-    return;
-  }
+	// Validate element type compatibility with target track
+	const validation = validateElementTrackCompatibility(elementToMove, toTrack);
+	if (!validation.isValid) {
+		handleError(
+			new Error(validation.errorMessage || "Invalid drag operation"),
+			{
+				operation: "Timeline Drag Validation",
+				category: ErrorCategory.VALIDATION,
+				severity: ErrorSeverity.MEDIUM,
+				metadata: {
+					targetTrackId: toTrackId,
+					elementId,
+				},
+			}
+		);
+		return;
+	}
 
-  const newTracks = tracks
-    .map((track) => {
-      if (track.id === fromTrackId) {
-        return {
-          ...track,
-          elements: track.elements.filter(
-            (element) => element.id !== elementId
-          ),
-        };
-      }
-      if (track.id === toTrackId) {
-        return {
-          ...track,
-          elements: [...track.elements, elementToMove],
-        };
-      }
-      return track;
-    })
-    .filter((track) => track.elements.length > 0 || track.isMain);
+	const newTracks = tracks
+		.map((track) => {
+			if (track.id === fromTrackId) {
+				return {
+					...track,
+					elements: track.elements.filter(
+						(element) => element.id !== elementId
+					),
+				};
+			}
+			if (track.id === toTrackId) {
+				return {
+					...track,
+					elements: [...track.elements, elementToMove],
+				};
+			}
+			return track;
+		})
+		.filter((track) => track.elements.length > 0 || track.isMain);
 
-  ctx.updateTracksAndSave(newTracks);
+	ctx.updateTracksAndSave(newTracks);
 }
 
 /**
@@ -217,28 +217,28 @@ export function moveElementToTrackOperation(
  * @param pushHistory - Whether to push to undo history
  */
 export function updateElementTrimOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  trimStart: number,
-  trimEnd: number,
-  pushHistory = true
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	trimStart: number,
+	trimEnd: number,
+	pushHistory = true
 ): void {
-  if (pushHistory) ctx.pushHistory();
-  ctx.updateTracksAndSave(
-    ctx.getTracks().map((track) =>
-      track.id === trackId
-        ? {
-            ...track,
-            elements: track.elements.map((element) =>
-              element.id === elementId
-                ? { ...element, trimStart, trimEnd }
-                : element
-            ),
-          }
-        : track
-    )
-  );
+	if (pushHistory) ctx.pushHistory();
+	ctx.updateTracksAndSave(
+		ctx.getTracks().map((track) =>
+			track.id === trackId
+				? {
+						...track,
+						elements: track.elements.map((element) =>
+							element.id === elementId
+								? { ...element, trimStart, trimEnd }
+								: element
+						),
+					}
+				: track
+		)
+	);
 }
 
 /**
@@ -250,25 +250,25 @@ export function updateElementTrimOperation(
  * @param pushHistory - Whether to push to undo history
  */
 export function updateElementDurationOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  duration: number,
-  pushHistory = true
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	duration: number,
+	pushHistory = true
 ): void {
-  if (pushHistory) ctx.pushHistory();
-  ctx.updateTracksAndSave(
-    ctx.getTracks().map((track) =>
-      track.id === trackId
-        ? {
-            ...track,
-            elements: track.elements.map((element) =>
-              element.id === elementId ? { ...element, duration } : element
-            ),
-          }
-        : track
-    )
-  );
+	if (pushHistory) ctx.pushHistory();
+	ctx.updateTracksAndSave(
+		ctx.getTracks().map((track) =>
+			track.id === trackId
+				? {
+						...track,
+						elements: track.elements.map((element) =>
+							element.id === elementId ? { ...element, duration } : element
+						),
+					}
+				: track
+		)
+	);
 }
 
 /**
@@ -280,28 +280,28 @@ export function updateElementDurationOperation(
  * @param pushHistory - Whether to push to undo history
  */
 export function updateElementStartTimeOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  startTime: number,
-  pushHistory = true
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	startTime: number,
+	pushHistory = true
 ): void {
-  if (pushHistory) ctx.pushHistory();
-  const clampedStartTime = Math.max(0, startTime);
-  ctx.updateTracksAndSave(
-    ctx.getTracks().map((track) =>
-      track.id === trackId
-        ? {
-            ...track,
-            elements: track.elements.map((element) =>
-              element.id === elementId
-                ? { ...element, startTime: clampedStartTime }
-                : element
-            ),
-          }
-        : track
-    )
-  );
+	if (pushHistory) ctx.pushHistory();
+	const clampedStartTime = Math.max(0, startTime);
+	ctx.updateTracksAndSave(
+		ctx.getTracks().map((track) =>
+			track.id === trackId
+				? {
+						...track,
+						elements: track.elements.map((element) =>
+							element.id === elementId
+								? { ...element, startTime: clampedStartTime }
+								: element
+						),
+					}
+				: track
+		)
+	);
 }
 
 /**
@@ -312,84 +312,84 @@ export function updateElementStartTimeOperation(
  * @param newStartTime - New start time
  */
 export function updateElementStartTimeWithRippleOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string,
-  newStartTime: number
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string,
+	newStartTime: number
 ): void {
-  const clampedNewStartTime = Math.max(0, newStartTime);
-  const tracks = ctx.getTracks();
-  const track = tracks.find((t) => t.id === trackId);
-  const element = track?.elements.find((e) => e.id === elementId);
+	const clampedNewStartTime = Math.max(0, newStartTime);
+	const tracks = ctx.getTracks();
+	const track = tracks.find((t) => t.id === trackId);
+	const element = track?.elements.find((e) => e.id === elementId);
 
-  if (!element || !track) return;
+	if (!element || !track) return;
 
-  ctx.pushHistory();
+	ctx.pushHistory();
 
-  const oldStartTime = element.startTime;
-  const effectiveDuration = getEffectiveDuration(element);
-  const oldEndTime = oldStartTime + effectiveDuration;
-  const newEndTime = clampedNewStartTime + effectiveDuration;
-  const timeDelta = clampedNewStartTime - oldStartTime;
+	const oldStartTime = element.startTime;
+	const effectiveDuration = getEffectiveDuration(element);
+	const oldEndTime = oldStartTime + effectiveDuration;
+	const newEndTime = clampedNewStartTime + effectiveDuration;
+	const timeDelta = clampedNewStartTime - oldStartTime;
 
-  // Update tracks based on multi-track ripple setting
-  const updatedTracks = tracks.map((currentTrack) => {
-    // Only apply ripple effects to the same track unless multi-track ripple is enabled
-    const shouldApplyRipple = currentTrack.id === trackId;
+	// Update tracks based on multi-track ripple setting
+	const updatedTracks = tracks.map((currentTrack) => {
+		// Only apply ripple effects to the same track unless multi-track ripple is enabled
+		const shouldApplyRipple = currentTrack.id === trackId;
 
-    const updatedElements = currentTrack.elements.map((currentElement) => {
-      if (currentElement.id === elementId && currentTrack.id === trackId) {
-        return { ...currentElement, startTime: clampedNewStartTime };
-      }
+		const updatedElements = currentTrack.elements.map((currentElement) => {
+			if (currentElement.id === elementId && currentTrack.id === trackId) {
+				return { ...currentElement, startTime: clampedNewStartTime };
+			}
 
-      // Only apply ripple effects if we should process this track
-      if (!shouldApplyRipple) {
-        return currentElement;
-      }
+			// Only apply ripple effects if we should process this track
+			if (!shouldApplyRipple) {
+				return currentElement;
+			}
 
-      // For ripple editing, we need to move elements that come after the moved element
-      const currentElementStart = currentElement.startTime;
-      const currentElementEnd = getElementEndTime(currentElement);
+			// For ripple editing, we need to move elements that come after the moved element
+			const currentElementStart = currentElement.startTime;
+			const currentElementEnd = getElementEndTime(currentElement);
 
-      // If moving element to the right (positive delta)
-      if (timeDelta > 0) {
-        // Move elements that start after the original position of the moved element
-        if (currentElementStart >= oldEndTime) {
-          return {
-            ...currentElement,
-            startTime: currentElementStart + timeDelta,
-          };
-        }
-      }
-      // If moving element to the left (negative delta)
-      else if (timeDelta < 0) {
-        // Move elements that start after the new position of the moved element
-        if (
-          currentElementStart >= newEndTime &&
-          currentElementStart >= oldStartTime
-        ) {
-          return {
-            ...currentElement,
-            startTime: Math.max(0, currentElementStart + timeDelta),
-          };
-        }
-      }
+			// If moving element to the right (positive delta)
+			if (timeDelta > 0) {
+				// Move elements that start after the original position of the moved element
+				if (currentElementStart >= oldEndTime) {
+					return {
+						...currentElement,
+						startTime: currentElementStart + timeDelta,
+					};
+				}
+			}
+			// If moving element to the left (negative delta)
+			else if (timeDelta < 0) {
+				// Move elements that start after the new position of the moved element
+				if (
+					currentElementStart >= newEndTime &&
+					currentElementStart >= oldStartTime
+				) {
+					return {
+						...currentElement,
+						startTime: Math.max(0, currentElementStart + timeDelta),
+					};
+				}
+			}
 
-      return currentElement;
-    });
+			return currentElement;
+		});
 
-    // Check for overlaps and resolve them if necessary
-    const hasOverlaps = checkElementOverlaps(updatedElements);
-    if (hasOverlaps) {
-      // Resolve overlaps by adjusting element positions
-      const resolvedElements = resolveElementOverlaps(updatedElements);
-      return { ...currentTrack, elements: resolvedElements };
-    }
+		// Check for overlaps and resolve them if necessary
+		const hasOverlaps = checkElementOverlaps(updatedElements);
+		if (hasOverlaps) {
+			// Resolve overlaps by adjusting element positions
+			const resolvedElements = resolveElementOverlaps(updatedElements);
+			return { ...currentTrack, elements: resolvedElements };
+		}
 
-    return { ...currentTrack, elements: updatedElements };
-  });
+		return { ...currentTrack, elements: updatedElements };
+	});
 
-  ctx.updateTracksAndSave(updatedTracks);
+	ctx.updateTracksAndSave(updatedTracks);
 }
 
 /**
@@ -399,25 +399,25 @@ export function updateElementStartTimeWithRippleOperation(
  * @param elementId - ID of the element to toggle
  */
 export function toggleElementHiddenOperation(
-  ctx: OperationContext,
-  trackId: string,
-  elementId: string
+	ctx: OperationContext,
+	trackId: string,
+	elementId: string
 ): void {
-  ctx.pushHistory();
-  ctx.updateTracksAndSave(
-    ctx.getTracks().map((track) =>
-      track.id === trackId
-        ? {
-            ...track,
-            elements: track.elements.map((element) =>
-              element.id === elementId
-                ? { ...element, hidden: !element.hidden }
-                : element
-            ),
-          }
-        : track
-    )
-  );
+	ctx.pushHistory();
+	ctx.updateTracksAndSave(
+		ctx.getTracks().map((track) =>
+			track.id === trackId
+				? {
+						...track,
+						elements: track.elements.map((element) =>
+							element.id === elementId
+								? { ...element, hidden: !element.hidden }
+								: element
+						),
+					}
+				: track
+		)
+	);
 }
 
 /**
@@ -426,17 +426,17 @@ export function toggleElementHiddenOperation(
  * @param trackId - ID of the track to toggle
  */
 export function toggleTrackMuteOperation(
-  ctx: OperationContext,
-  trackId: string
+	ctx: OperationContext,
+	trackId: string
 ): void {
-  ctx.pushHistory();
-  ctx.updateTracksAndSave(
-    ctx
-      .getTracks()
-      .map((track) =>
-        track.id === trackId ? { ...track, muted: !track.muted } : track
-      )
-  );
+	ctx.pushHistory();
+	ctx.updateTracksAndSave(
+		ctx
+			.getTracks()
+			.map((track) =>
+				track.id === trackId ? { ...track, muted: !track.muted } : track
+			)
+	);
 }
 
 /**
@@ -449,27 +449,27 @@ export function toggleTrackMuteOperation(
  * @returns true if there would be an overlap
  */
 export function checkElementOverlapOperation(
-  tracks: TimelineTrack[],
-  trackId: string,
-  startTime: number,
-  duration: number,
-  excludeElementId?: string
+	tracks: TimelineTrack[],
+	trackId: string,
+	startTime: number,
+	duration: number,
+	excludeElementId?: string
 ): boolean {
-  const track = tracks.find((t) => t.id === trackId);
-  if (!track) return false;
+	const track = tracks.find((t) => t.id === trackId);
+	if (!track) return false;
 
-  return track.elements.some((element) => {
-    const elementEnd = getElementEndTime(element);
+	return track.elements.some((element) => {
+		const elementEnd = getElementEndTime(element);
 
-    if (element.id === excludeElementId) {
-      return false;
-    }
+		if (element.id === excludeElementId) {
+			return false;
+		}
 
-    return (
-      (startTime >= element.startTime && startTime < elementEnd) ||
-      (startTime + duration > element.startTime &&
-        startTime + duration <= elementEnd) ||
-      (startTime < element.startTime && startTime + duration > elementEnd)
-    );
-  });
+		return (
+			(startTime >= element.startTime && startTime < elementEnd) ||
+			(startTime + duration > element.startTime &&
+				startTime + duration <= elementEnd) ||
+			(startTime < element.startTime && startTime + duration > elementEnd)
+		);
+	});
 }

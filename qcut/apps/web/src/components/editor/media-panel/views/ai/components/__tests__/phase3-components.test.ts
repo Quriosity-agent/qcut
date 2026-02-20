@@ -8,37 +8,37 @@ import { describe, it, expect } from "vitest";
  */
 
 describe("AIModelSelectionGrid", () => {
-  it("exports a function component", async () => {
-    const mod = await import("../ai-model-selection-grid");
-    expect(typeof mod.AIModelSelectionGrid).toBe("function");
-  });
+	it("exports a function component", async () => {
+		const mod = await import("../ai-model-selection-grid");
+		expect(typeof mod.AIModelSelectionGrid).toBe("function");
+	});
 
-  it("has the expected component name", async () => {
-    const mod = await import("../ai-model-selection-grid");
-    expect(mod.AIModelSelectionGrid.name).toBe("AIModelSelectionGrid");
-  });
+	it("has the expected component name", async () => {
+		const mod = await import("../ai-model-selection-grid");
+		expect(mod.AIModelSelectionGrid.name).toBe("AIModelSelectionGrid");
+	});
 });
 
 describe("AIGenerationFeedback", () => {
-  it("exports a function component", async () => {
-    const mod = await import("../ai-generation-feedback");
-    expect(typeof mod.AIGenerationFeedback).toBe("function");
-  });
+	it("exports a function component", async () => {
+		const mod = await import("../ai-generation-feedback");
+		expect(typeof mod.AIGenerationFeedback).toBe("function");
+	});
 
-  it("has the expected component name", async () => {
-    const mod = await import("../ai-generation-feedback");
-    expect(mod.AIGenerationFeedback.name).toBe("AIGenerationFeedback");
-  });
+	it("has the expected component name", async () => {
+		const mod = await import("../ai-generation-feedback");
+		expect(mod.AIGenerationFeedback.name).toBe("AIGenerationFeedback");
+	});
 });
 
 describe("AIValidationMessages", () => {
-  it("exports a function component", async () => {
-    const mod = await import("../ai-validation-messages");
-    expect(typeof mod.AIValidationMessages).toBe("function");
-  });
+	it("exports a function component", async () => {
+		const mod = await import("../ai-validation-messages");
+		expect(typeof mod.AIValidationMessages).toBe("function");
+	});
 
-  it("has the expected component name", async () => {
-    const mod = await import("../ai-validation-messages");
-    expect(mod.AIValidationMessages.name).toBe("AIValidationMessages");
-  });
+	it("has the expected component name", async () => {
+		const mod = await import("../ai-validation-messages");
+		expect(mod.AIValidationMessages.name).toBe("AIValidationMessages");
+	});
 });

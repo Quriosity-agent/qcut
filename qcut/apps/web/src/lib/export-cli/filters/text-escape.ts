@@ -26,18 +26,18 @@
  * @returns FFmpeg-safe escaped string
  */
 export function escapeTextForFFmpeg(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\") // Escape backslashes first
-    .replace(/:/g, "\\:") // Escape colons (filter delimiter)
-    .replace(/\[/g, "\\[") // Escape opening brackets
-    .replace(/\]/g, "\\]") // Escape closing brackets
-    .replace(/,/g, "\\,") // Escape commas (filter separator)
-    .replace(/;/g, "\\;") // Escape semicolons
-    .replace(/'/g, "\\'") // Escape single quotes
-    .replace(/%/g, "\\%") // Escape percent signs (expansion tokens)
-    .replace(/\n/g, "\\n") // Convert newlines to literal \n
-    .replace(/\r/g, "") // Remove carriage returns
-    .replace(/=/g, "\\="); // Escape equals signs
+	return text
+		.replace(/\\/g, "\\\\") // Escape backslashes first
+		.replace(/:/g, "\\:") // Escape colons (filter delimiter)
+		.replace(/\[/g, "\\[") // Escape opening brackets
+		.replace(/\]/g, "\\]") // Escape closing brackets
+		.replace(/,/g, "\\,") // Escape commas (filter separator)
+		.replace(/;/g, "\\;") // Escape semicolons
+		.replace(/'/g, "\\'") // Escape single quotes
+		.replace(/%/g, "\\%") // Escape percent signs (expansion tokens)
+		.replace(/\n/g, "\\n") // Convert newlines to literal \n
+		.replace(/\r/g, "") // Remove carriage returns
+		.replace(/=/g, "\\="); // Escape equals signs
 }
 
 /**
@@ -48,19 +48,19 @@ export function escapeTextForFFmpeg(text: string): string {
  * @returns FFmpeg-safe escaped path
  */
 export function escapePathForFFmpeg(path: string): string {
-  return path
-    .replace(/\\/g, "\\\\") // Windows backslashes
-    .replace(/:/g, "\\:") // Drive letter separator
-    .replace(/ /g, "\\ ") // Spaces in path segments
-    .replace(/,/g, "\\,") // Filter delimiters
-    .replace(/;/g, "\\;")
-    .replace(/\[/g, "\\[")
-    .replace(/\]/g, "\\]")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)")
-    .replace(/'/g, "\\'")
-    .replace(/%/g, "\\%")
-    .replace(/=/g, "\\=");
+	return path
+		.replace(/\\/g, "\\\\") // Windows backslashes
+		.replace(/:/g, "\\:") // Drive letter separator
+		.replace(/ /g, "\\ ") // Spaces in path segments
+		.replace(/,/g, "\\,") // Filter delimiters
+		.replace(/;/g, "\\;")
+		.replace(/\[/g, "\\[")
+		.replace(/\]/g, "\\]")
+		.replace(/\(/g, "\\(")
+		.replace(/\)/g, "\\)")
+		.replace(/'/g, "\\'")
+		.replace(/%/g, "\\%")
+		.replace(/=/g, "\\=");
 }
 
 /**
@@ -70,6 +70,6 @@ export function escapePathForFFmpeg(path: string): string {
  * @returns FFmpeg color format (e.g., "0xffffff")
  */
 export function colorToFFmpeg(hexColor: string): string {
-  const hex = hexColor.startsWith("#") ? hexColor.substring(1) : hexColor;
-  return `0x${hex}`;
+	const hex = hexColor.startsWith("#") ? hexColor.substring(1) : hexColor;
+	return `0x${hex}`;
 }

@@ -8,34 +8,34 @@
  */
 
 import {
-  BaseAgent,
-  type AgentConfig,
-  type AgentResult,
-  createAgentConfig,
-  agentOk,
-  agentFail,
+	BaseAgent,
+	type AgentConfig,
+	type AgentResult,
+	createAgentConfig,
+	agentOk,
+	agentFail,
 } from "./base-agent.js";
 import {
-  CHARACTER_LIST_JSON_SCHEMA,
-  validateCharacterListResponse,
+	CHARACTER_LIST_JSON_SCHEMA,
+	validateCharacterListResponse,
 } from "./schemas.js";
 import { LLMAdapter, type Message } from "../adapters/llm-adapter.js";
 import type { CharacterInNovel } from "../types/character.js";
 import { createCharacterInNovel } from "../types/character.js";
 
 export interface CharacterExtractorConfig extends AgentConfig {
-  max_characters: number;
+	max_characters: number;
 }
 
 export function createCharacterExtractorConfig(
-  partial?: Partial<CharacterExtractorConfig>
+	partial?: Partial<CharacterExtractorConfig>
 ): CharacterExtractorConfig {
-  return {
-    ...createAgentConfig({ name: "CharacterExtractor" }),
-    model: "kimi-k2.5",
-    max_characters: 20,
-    ...partial,
-  };
+	return {
+		...createAgentConfig({ name: "CharacterExtractor" }),
+		model: "kimi-k2.5",
+		max_characters: 20,
+		...partial,
+	};
 }
 
 const EXTRACTION_PROMPT = `You are an expert story analyst. Extract all characters from the following text.
@@ -59,84 +59,84 @@ TEXT:
 Return a JSON object with a "characters" key containing an array of characters.`;
 
 export class CharacterExtractor extends BaseAgent<string, CharacterInNovel[]> {
-  declare config: CharacterExtractorConfig;
-  private _llm: LLMAdapter | null = null;
+	declare config: CharacterExtractorConfig;
+	private _llm: LLMAdapter | null = null;
 
-  constructor(config?: Partial<CharacterExtractorConfig>) {
-    super(createCharacterExtractorConfig(config));
-  }
+	constructor(config?: Partial<CharacterExtractorConfig>) {
+		super(createCharacterExtractorConfig(config));
+	}
 
-  private async _ensureLlm(): Promise<void> {
-    if (!this._llm) {
-      this._llm = new LLMAdapter({ model: this.config.model });
-      await this._llm.initialize();
-    }
-  }
+	private async _ensureLlm(): Promise<void> {
+		if (!this._llm) {
+			this._llm = new LLMAdapter({ model: this.config.model });
+			await this._llm.initialize();
+		}
+	}
 
-  async process(text: string): Promise<AgentResult<CharacterInNovel[]>> {
-    await this._ensureLlm();
+	async process(text: string): Promise<AgentResult<CharacterInNovel[]>> {
+		await this._ensureLlm();
 
-    console.log(
-      `[character_extractor] Extracting from text (${text.length} chars)`
-    );
+		console.log(
+			`[character_extractor] Extracting from text (${text.length} chars)`
+		);
 
-    try {
-      const prompt = EXTRACTION_PROMPT.replace("{text}", text.slice(0, 50_000));
-      const messages: Message[] = [{ role: "user", content: prompt }];
+		try {
+			const prompt = EXTRACTION_PROMPT.replace("{text}", text.slice(0, 50_000));
+			const messages: Message[] = [{ role: "user", content: prompt }];
 
-      const result = await this._llm!.chatWithStructuredOutput(
-        messages,
-        "character_list",
-        CHARACTER_LIST_JSON_SCHEMA,
-        validateCharacterListResponse,
-        { temperature: 0.3 }
-      );
+			const result = await this._llm!.chatWithStructuredOutput(
+				messages,
+				"character_list",
+				CHARACTER_LIST_JSON_SCHEMA,
+				validateCharacterListResponse,
+				{ temperature: 0.3 }
+			);
 
-      const characters: CharacterInNovel[] = [];
-      for (const item of result.characters.slice(
-        0,
-        this.config.max_characters
-      )) {
-        characters.push(
-          createCharacterInNovel({
-            name: item.name,
-            description: item.description,
-            age: item.age || undefined,
-            gender: item.gender || undefined,
-            appearance: item.appearance,
-            personality: item.personality,
-            role: item.role,
-            relationships: item.relationships,
-          })
-        );
-      }
+			const characters: CharacterInNovel[] = [];
+			for (const item of result.characters.slice(
+				0,
+				this.config.max_characters
+			)) {
+				characters.push(
+					createCharacterInNovel({
+						name: item.name,
+						description: item.description,
+						age: item.age || undefined,
+						gender: item.gender || undefined,
+						appearance: item.appearance,
+						personality: item.personality,
+						role: item.role,
+						relationships: item.relationships,
+					})
+				);
+			}
 
-      console.log(
-        `[character_extractor] Extracted ${characters.length} characters`
-      );
+			console.log(
+				`[character_extractor] Extracted ${characters.length} characters`
+			);
 
-      return agentOk(characters, {
-        character_count: characters.length,
-        cost: 0,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[character_extractor] Failed: ${msg}`);
-      return agentFail(msg);
-    }
-  }
+			return agentOk(characters, {
+				character_count: characters.length,
+				cost: 0,
+			});
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			console.error(`[character_extractor] Failed: ${msg}`);
+			return agentFail(msg);
+		}
+	}
 
-  /** Extract only main characters (protagonist, antagonist, supporting). */
-  async extractMainCharacters(
-    text: string,
-    maxCharacters = 5
-  ): Promise<CharacterInNovel[]> {
-    const result = await this.process(text);
-    if (!result.success || !result.result) return [];
+	/** Extract only main characters (protagonist, antagonist, supporting). */
+	async extractMainCharacters(
+		text: string,
+		maxCharacters = 5
+	): Promise<CharacterInNovel[]> {
+		const result = await this.process(text);
+		if (!result.success || !result.result) return [];
 
-    const mainRoles = new Set(["protagonist", "antagonist", "supporting"]);
-    return result.result
-      .filter((c) => mainRoles.has((c.role || "").toLowerCase()))
-      .slice(0, maxCharacters);
-  }
+		const mainRoles = new Set(["protagonist", "antagonist", "supporting"]);
+		return result.result
+			.filter((c) => mainRoles.has((c.role || "").toLowerCase()))
+			.slice(0, maxCharacters);
+	}
 }

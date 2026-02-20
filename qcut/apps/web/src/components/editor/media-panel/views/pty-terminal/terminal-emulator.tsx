@@ -12,12 +12,12 @@ import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
  * Props for the TerminalEmulator component.
  */
 interface TerminalEmulatorProps {
-  /** PTY session ID to connect to, null if not connected */
-  sessionId: string | null;
-  /** Callback fired when terminal is initialized and ready */
-  onReady?: () => void;
-  /** Whether the terminal is currently visible in the UI */
-  isVisible?: boolean;
+	/** PTY session ID to connect to, null if not connected */
+	sessionId: string | null;
+	/** Callback fired when terminal is initialized and ready */
+	onReady?: () => void;
+	/** Whether the terminal is currently visible in the UI */
+	isVisible?: boolean;
 }
 
 /**
@@ -26,340 +26,281 @@ interface TerminalEmulatorProps {
  * and automatic resizing. Connects to a PTY session via Electron IPC.
  */
 export function TerminalEmulator({
-  sessionId,
-  onReady,
-  isVisible = true,
+	sessionId,
+	onReady,
+	isVisible = true,
 }: TerminalEmulatorProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const pendingFitTimeoutsRef = useRef<number[]>([]);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const terminalRef = useRef<Terminal | null>(null);
+	const fitAddonRef = useRef<FitAddon | null>(null);
 
-  const { setDimensions, resize, handleDisconnected } = usePtyTerminalStore();
+	const { setDimensions, resize, handleDisconnected } = usePtyTerminalStore();
 
-  const fitTerminal = useCallback(() => {
-    const fitAddon = fitAddonRef.current;
-    const terminal = terminalRef.current;
-    if (!fitAddon || !terminal) {
-      return;
-    }
-    try {
-      fitAddon.fit();
-      setDimensions(terminal.cols, terminal.rows);
-      resize().catch(() => {
-        // Ignore resize errors (e.g., during unmount or when PTY unavailable)
-      });
-    } catch {
-      // Ignore fit/resize errors during terminal teardown
-    }
-  }, [setDimensions, resize]);
+	const fitTerminal = useCallback(() => {
+		const fitAddon = fitAddonRef.current;
+		const terminal = terminalRef.current;
+		if (!fitAddon || !terminal) {
+			return;
+		}
+		try {
+			fitAddon.fit();
+			setDimensions(terminal.cols, terminal.rows);
+			resize().catch(() => {
+				// Ignore resize errors (e.g., during unmount or when PTY unavailable)
+			});
+		} catch {
+			// Ignore fit/resize errors during terminal teardown
+		}
+	}, [setDimensions, resize]);
 
-  const clearPendingFits = useCallback(() => {
-    try {
-      for (const timeoutId of pendingFitTimeoutsRef.current) {
-        window.clearTimeout(timeoutId);
-      }
-      pendingFitTimeoutsRef.current = [];
-    } catch (error) {
-      debugError("[Terminal] Failed to clear pending fit timeouts", error);
-    }
-  }, []);
+	// Handle terminal output
+	const handleData = useCallback(
+		(data: { sessionId: string; data: string }) => {
+			if (data.sessionId === sessionId && terminalRef.current) {
+				terminalRef.current.write(data.data);
+			}
+		},
+		[sessionId]
+	);
 
-  const scheduleFitSync = useCallback(
-    ({ reason }: { reason: string }) => {
-      const runFit = () => {
-        try {
-          fitTerminal();
-          if (import.meta.env.DEV) {
-            const terminal = terminalRef.current;
-            const rect = containerRef.current?.getBoundingClientRect();
-            console.info("[TerminalFit] synced", {
-              reason,
-              sessionId,
-              cols: terminal?.cols ?? null,
-              rows: terminal?.rows ?? null,
-              containerWidthPx: rect?.width ?? null,
-              containerHeightPx: rect?.height ?? null,
-              isVisible,
-            });
-          }
-        } catch (error) {
-          debugError("[Terminal] Fit sync failed", error);
-        }
-      };
+	// Handle terminal exit
+	const handleExit = useCallback(
+		(data: { sessionId: string; exitCode: number }) => {
+			if (data.sessionId === sessionId) {
+				if (terminalRef.current) {
+					terminalRef.current.write(
+						`\r\n\x1b[90m[Process exited with code ${data.exitCode}]\x1b[0m\r\n`
+					);
+				}
+				handleDisconnected(data.exitCode);
+			}
+		},
+		[sessionId, handleDisconnected]
+	);
 
-      clearPendingFits();
-      requestAnimationFrame(() => {
-        runFit();
-      });
+	// Initialize terminal
+	useEffect(() => {
+		if (!containerRef.current) return;
+		// Create terminal instance
+		const terminal = new Terminal({
+			cursorBlink: true,
+			fontSize: 14,
+			fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
+			theme: {
+				background: "#1a1a1a",
+				foreground: "#e0e0e0",
+				cursor: "#ffffff",
+				cursorAccent: "#000000",
+				selectionBackground: "#5c5c5c",
+				black: "#000000",
+				red: "#e06c75",
+				green: "#98c379",
+				yellow: "#e5c07b",
+				blue: "#61afef",
+				magenta: "#c678dd",
+				cyan: "#56b6c2",
+				white: "#abb2bf",
+				brightBlack: "#5c6370",
+				brightRed: "#e06c75",
+				brightGreen: "#98c379",
+				brightYellow: "#e5c07b",
+				brightBlue: "#61afef",
+				brightMagenta: "#c678dd",
+				brightCyan: "#56b6c2",
+				brightWhite: "#ffffff",
+			},
+			allowProposedApi: true,
+		});
 
-      const retryDelaysMs = [50, 150, 300];
-      for (const delayMs of retryDelaysMs) {
-        const timeoutId = window.setTimeout(() => {
-          runFit();
-        }, delayMs);
-        pendingFitTimeoutsRef.current.push(timeoutId);
-      }
-    },
-    [clearPendingFits, fitTerminal, isVisible, sessionId]
-  );
+		// Load addons
+		const fitAddon = new FitAddon();
+		const webLinksAddon = new WebLinksAddon();
 
-  // Handle terminal output
-  const handleData = useCallback(
-    (data: { sessionId: string; data: string }) => {
-      if (data.sessionId === sessionId && terminalRef.current) {
-        terminalRef.current.write(data.data);
-      }
-    },
-    [sessionId]
-  );
+		terminal.loadAddon(fitAddon);
+		terminal.loadAddon(webLinksAddon);
 
-  // Handle terminal exit
-  const handleExit = useCallback(
-    (data: { sessionId: string; exitCode: number }) => {
-      if (data.sessionId === sessionId) {
-        if (terminalRef.current) {
-          terminalRef.current.write(
-            `\r\n\x1b[90m[Process exited with code ${data.exitCode}]\x1b[0m\r\n`
-          );
-        }
-        handleDisconnected(data.exitCode);
-      }
-    },
-    [sessionId, handleDisconnected]
-  );
+		// Open terminal in container
+		terminal.open(containerRef.current);
 
-  // Initialize terminal
-  useEffect(() => {
-    if (!containerRef.current) return;
-    // Create terminal instance
-    const terminal = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace',
-      theme: {
-        background: "#1a1a1a",
-        foreground: "#e0e0e0",
-        cursor: "#ffffff",
-        cursorAccent: "#000000",
-        selectionBackground: "#5c5c5c",
-        black: "#000000",
-        red: "#e06c75",
-        green: "#98c379",
-        yellow: "#e5c07b",
-        blue: "#61afef",
-        magenta: "#c678dd",
-        cyan: "#56b6c2",
-        white: "#abb2bf",
-        brightBlack: "#5c6370",
-        brightRed: "#e06c75",
-        brightGreen: "#98c379",
-        brightYellow: "#e5c07b",
-        brightBlue: "#61afef",
-        brightMagenta: "#c678dd",
-        brightCyan: "#56b6c2",
-        brightWhite: "#ffffff",
-      },
-      allowProposedApi: true,
-    });
+		// Store refs
+		terminalRef.current = terminal;
+		fitAddonRef.current = fitAddon;
 
-    // Load addons
-    const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
+		requestAnimationFrame(() => {
+			fitTerminal();
+		});
 
-    terminal.loadAddon(fitAddon);
-    terminal.loadAddon(webLinksAddon);
+		// Handle user input - send to PTY
+		terminal.onData((data) => {
+			if (sessionId) {
+				window.electronAPI?.pty?.write?.(sessionId, data)?.catch((error) => {
+					debugError("[Terminal] Failed to write to PTY:", error);
+				});
+			}
+		});
 
-    // Open terminal in container
-    terminal.open(containerRef.current);
+		// Track paste state to prevent double-writes
+		let isPasting = false;
 
-    // Store refs
-    terminalRef.current = terminal;
-    fitAddonRef.current = fitAddon;
+		// Intercept paste event on xterm's internal textarea
+		const handlePaste = (e: ClipboardEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-    scheduleFitSync({ reason: "terminal-open" });
+			if (isPasting) return;
 
-    // Handle user input - send to PTY
-    terminal.onData((data) => {
-      if (sessionId) {
-        window.electronAPI?.pty?.write?.(sessionId, data)?.catch((error) => {
-          debugError("[Terminal] Failed to write to PTY:", error);
-        });
-      }
-    });
+			const text = e.clipboardData?.getData("text");
+			if (text && sessionId) {
+				isPasting = true;
+				window.electronAPI?.pty?.write?.(sessionId, text)?.catch((error) => {
+					debugError("[Terminal] Failed to paste into PTY:", error);
+				});
+				setTimeout(() => {
+					isPasting = false;
+				}, 100);
+			}
+		};
 
-    // Track paste state to prevent double-writes
-    let isPasting = false;
+		// Add paste listener after a short delay (textarea may not be ready immediately)
+		const textareaCheckInterval = setInterval(() => {
+			if (terminal.textarea) {
+				terminal.textarea.addEventListener("paste", handlePaste, true);
+				clearInterval(textareaCheckInterval);
+			}
+		}, 10);
+		setTimeout(() => clearInterval(textareaCheckInterval), 1000);
 
-    // Intercept paste event on xterm's internal textarea
-    const handlePaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+		// Handle keyboard shortcuts
+		terminal.attachCustomKeyEventHandler((event) => {
+			// Handle paste (Ctrl+V / Cmd+V)
+			if (
+				(event.ctrlKey || event.metaKey) &&
+				event.key === "v" &&
+				event.type === "keydown"
+			) {
+				if (isPasting) return false;
 
-      if (isPasting) return;
+				isPasting = true;
 
-      const text = e.clipboardData?.getData("text");
-      if (text && sessionId) {
-        isPasting = true;
-        window.electronAPI?.pty?.write?.(sessionId, text)?.catch((error) => {
-          debugError("[Terminal] Failed to paste into PTY:", error);
-        });
-        setTimeout(() => {
-          isPasting = false;
-        }, 100);
-      }
-    };
+				// Read clipboard and write to PTY
+				if (navigator.clipboard?.readText) {
+					navigator.clipboard
+						.readText()
+						.then((text) => {
+							if (text && sessionId) {
+								window.electronAPI?.pty
+									?.write?.(sessionId, text)
+									?.catch((error) => {
+										debugError(
+											"[Terminal] Failed to write clipboard text:",
+											error
+										);
+									});
+							}
+						})
+						.catch(() => {
+							// Clipboard read failed - ignore
+						})
+						.finally(() => {
+							setTimeout(() => {
+								isPasting = false;
+							}, 100);
+						});
+				} else {
+					setTimeout(() => {
+						isPasting = false;
+					}, 100);
+				}
 
-    // Add paste listener after a short delay (textarea may not be ready immediately)
-    const textareaCheckInterval = setInterval(() => {
-      if (terminal.textarea) {
-        terminal.textarea.addEventListener("paste", handlePaste, true);
-        clearInterval(textareaCheckInterval);
-      }
-    }, 10);
-    setTimeout(() => clearInterval(textareaCheckInterval), 1000);
+				return false;
+			}
 
-    // Handle keyboard shortcuts
-    terminal.attachCustomKeyEventHandler((event) => {
-      // Handle paste (Ctrl+V / Cmd+V)
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key === "v" &&
-        event.type === "keydown"
-      ) {
-        if (isPasting) return false;
+			// Check for copy shortcut (Ctrl+C / Cmd+C) when there's a selection
+			if (
+				(event.ctrlKey || event.metaKey) &&
+				event.key === "c" &&
+				event.type === "keydown" &&
+				terminal.hasSelection()
+			) {
+				// Guard against clipboard API unavailability (non-secure contexts, tests)
+				if (!navigator.clipboard?.writeText) {
+					return true;
+				}
+				const selection = terminal.getSelection();
+				if (selection) {
+					navigator.clipboard.writeText(selection).catch((err) => {
+						debugError("[Terminal] Failed to copy:", err);
+					});
+				}
+				// Return false to prevent sending Ctrl+C to terminal when copying
+				return false;
+			}
+			// Allow all other keys
+			return true;
+		});
 
-        isPasting = true;
+		// Setup IPC listeners for PTY data
+		window.electronAPI?.pty?.onData(handleData);
+		window.electronAPI?.pty?.onExit(handleExit);
 
-        // Read clipboard and write to PTY
-        if (navigator.clipboard?.readText) {
-          navigator.clipboard
-            .readText()
-            .then((text) => {
-              if (text && sessionId) {
-                window.electronAPI?.pty
-                  ?.write?.(sessionId, text)
-                  ?.catch((error) => {
-                    debugError(
-                      "[Terminal] Failed to write clipboard text:",
-                      error
-                    );
-                  });
-              }
-            })
-            .catch(() => {
-              // Clipboard read failed - ignore
-            })
-            .finally(() => {
-              setTimeout(() => {
-                isPasting = false;
-              }, 100);
-            });
-        } else {
-          setTimeout(() => {
-            isPasting = false;
-          }, 100);
-        }
+		// Notify ready
+		onReady?.();
 
-        return false;
-      }
+		// Cleanup
+		return () => {
+			clearInterval(textareaCheckInterval);
+			terminal.textarea?.removeEventListener("paste", handlePaste, true);
+			window.electronAPI?.pty?.removeListeners();
+			terminal.dispose();
+		};
+	}, [sessionId, handleData, handleExit, fitTerminal, onReady]);
 
-      // Check for copy shortcut (Ctrl+C / Cmd+C) when there's a selection
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key === "c" &&
-        event.type === "keydown" &&
-        terminal.hasSelection()
-      ) {
-        // Guard against clipboard API unavailability (non-secure contexts, tests)
-        if (!navigator.clipboard?.writeText) {
-          return true;
-        }
-        const selection = terminal.getSelection();
-        if (selection) {
-          navigator.clipboard.writeText(selection).catch((err) => {
-            debugError("[Terminal] Failed to copy:", err);
-          });
-        }
-        // Return false to prevent sending Ctrl+C to terminal when copying
-        return false;
-      }
-      // Allow all other keys
-      return true;
-    });
+	// Handle resize
+	useEffect(() => {
+		if (!containerRef.current || !fitAddonRef.current || !terminalRef.current) {
+			return;
+		}
 
-    // Setup IPC listeners for PTY data
-    window.electronAPI?.pty?.onData(handleData);
-    window.electronAPI?.pty?.onExit(handleExit);
+		const container = containerRef.current;
+		const resizeObserver = new ResizeObserver(() => {
+			// Use requestAnimationFrame to batch resize operations
+			requestAnimationFrame(() => {
+				fitTerminal();
+			});
+		});
 
-    // Notify ready
-    onReady?.();
+		resizeObserver.observe(container);
 
-    // Cleanup
-    return () => {
-      clearPendingFits();
-      clearInterval(textareaCheckInterval);
-      terminal.textarea?.removeEventListener("paste", handlePaste, true);
-      window.electronAPI?.pty?.removeListeners();
-      terminal.dispose();
-    };
-  }, [
-    sessionId,
-    handleData,
-    handleExit,
-    fitTerminal,
-    clearPendingFits,
-    onReady,
-    scheduleFitSync,
-  ]);
+		return () => {
+			resizeObserver.disconnect();
+		};
+	}, [fitTerminal]);
 
-  // Handle resize
-  useEffect(() => {
-    if (!containerRef.current || !fitAddonRef.current || !terminalRef.current) {
-      return;
-    }
+	useEffect(() => {
+		if (!isVisible) {
+			return;
+		}
+		requestAnimationFrame(() => {
+			fitTerminal();
+			terminalRef.current?.focus();
+		});
+	}, [isVisible, fitTerminal]);
 
-    const container = containerRef.current;
-    const resizeObserver = new ResizeObserver(() => {
-      // Use requestAnimationFrame to batch resize operations
-      requestAnimationFrame(() => {
-        fitTerminal();
-      });
-    });
+	// Focus terminal when sessionId changes (new connection)
+	useEffect(() => {
+		if (sessionId && terminalRef.current) {
+			terminalRef.current.focus();
+		}
+	}, [sessionId]);
 
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [fitTerminal]);
-
-  useEffect(() => {
-    if (!isVisible) {
-      return;
-    }
-    scheduleFitSync({ reason: "became-visible" });
-    requestAnimationFrame(() => {
-      terminalRef.current?.focus();
-    });
-  }, [isVisible, scheduleFitSync]);
-
-  // Fit after session becomes available so backend PTY receives resized cols/rows.
-  useEffect(() => {
-    if (sessionId && terminalRef.current) {
-      scheduleFitSync({ reason: "session-connected" });
-      terminalRef.current.focus();
-    }
-  }, [sessionId, scheduleFitSync]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full [&_.xterm]:h-full [&_.xterm]:w-full [&_.xterm-viewport]:w-full [&_.xterm-viewport]:!bg-[#1a1a1a] [&_.xterm-screen]:!bg-[#1a1a1a]"
-      style={{ backgroundColor: "#1a1a1a" }}
-      role="application"
-      aria-label="Terminal emulator"
-      data-testid="terminal-emulator"
-    />
-  );
+	return (
+		<div
+			ref={containerRef}
+			className="h-full w-full [&_.xterm]:h-full [&_.xterm-viewport]:!bg-[#1a1a1a] [&_.xterm-screen]:!bg-[#1a1a1a]"
+			style={{ backgroundColor: "#1a1a1a" }}
+			role="application"
+			aria-label="Terminal emulator"
+			data-testid="terminal-emulator"
+		/>
+	);
 }

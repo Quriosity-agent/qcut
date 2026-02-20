@@ -15,52 +15,52 @@ const TARGET_DIR = "resources/default-skills";
 
 // Skills to sync (add new bundled skills here)
 const BUNDLED_SKILLS = [
-  "ai-content-pipeline",
-  "ffmpeg-skill",
-  "organize-project",
-  "qcut-api",
-  "qcut-toolkit",
+	"ai-content-pipeline",
+	"ffmpeg-skill",
+	"organize-project",
+	"qcut-api",
+	"qcut-toolkit",
 ];
 
 function syncSkills() {
-  process.stdout.write(
-    "📦 Syncing skills from .claude/skills/ → resources/default-skills/\n"
-  );
+	process.stdout.write(
+		"📦 Syncing skills from .claude/skills/ → resources/default-skills/\n"
+	);
 
-  // Ensure target directory exists
-  if (!existsSync(TARGET_DIR)) {
-    mkdirSync(TARGET_DIR, { recursive: true });
-  }
+	// Ensure target directory exists
+	if (!existsSync(TARGET_DIR)) {
+		mkdirSync(TARGET_DIR, { recursive: true });
+	}
 
-  for (const skillName of BUNDLED_SKILLS) {
-    const sourcePath = join(SOURCE_DIR, skillName);
-    const targetPath = join(TARGET_DIR, skillName);
+	for (const skillName of BUNDLED_SKILLS) {
+		const sourcePath = join(SOURCE_DIR, skillName);
+		const targetPath = join(TARGET_DIR, skillName);
 
-    if (!existsSync(sourcePath)) {
-      process.stderr.write(`⚠️  Skill not found: ${sourcePath}\n`);
-      continue;
-    }
+		if (!existsSync(sourcePath)) {
+			process.stderr.write(`⚠️  Skill not found: ${sourcePath}\n`);
+			continue;
+		}
 
-    // Remove existing target if it exists
-    if (existsSync(targetPath)) {
-      rmSync(targetPath, { recursive: true });
-    }
+		// Remove existing target if it exists
+		if (existsSync(targetPath)) {
+			rmSync(targetPath, { recursive: true });
+		}
 
-    // Copy skill folder
-    cpSync(sourcePath, targetPath, { recursive: true });
-    process.stdout.write(`✅ Synced: ${skillName}\n`);
-  }
+		// Copy skill folder
+		cpSync(sourcePath, targetPath, { recursive: true });
+		process.stdout.write(`✅ Synced: ${skillName}\n`);
+	}
 
-  process.stdout.write("✨ Skills sync complete!\n");
+	process.stdout.write("✨ Skills sync complete!\n");
 }
 
 try {
-  syncSkills();
+	syncSkills();
 } catch (error) {
-  process.stderr.write(
-    `sync-skills failed: ${
-      error instanceof Error ? error.message : String(error)
-    }\n`
-  );
-  process.exitCode = 1;
+	process.stderr.write(
+		`sync-skills failed: ${
+			error instanceof Error ? error.message : String(error)
+		}\n`
+	);
+	process.exitCode = 1;
 }

@@ -10,11 +10,11 @@
  */
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
@@ -27,20 +27,20 @@ export type Sora2AspectRatio = "16:9" | "9:16";
 export type Sora2Resolution = "auto" | "720p" | "1080p";
 
 export interface AISora2SettingsProps {
-  /** Current duration value */
-  duration: Sora2Duration;
-  /** Callback when duration changes */
-  onDurationChange: (value: Sora2Duration) => void;
-  /** Current aspect ratio */
-  aspectRatio: Sora2AspectRatio;
-  /** Callback when aspect ratio changes */
-  onAspectRatioChange: (value: Sora2AspectRatio) => void;
-  /** Current resolution (Pro only) */
-  resolution: Sora2Resolution;
-  /** Callback when resolution changes */
-  onResolutionChange: (value: Sora2Resolution) => void;
-  /** Whether Sora 2 Pro is selected */
-  hasSora2Pro: boolean;
+	/** Current duration value */
+	duration: Sora2Duration;
+	/** Callback when duration changes */
+	onDurationChange: (value: Sora2Duration) => void;
+	/** Current aspect ratio */
+	aspectRatio: Sora2AspectRatio;
+	/** Callback when aspect ratio changes */
+	onAspectRatioChange: (value: Sora2AspectRatio) => void;
+	/** Current resolution (Pro only) */
+	resolution: Sora2Resolution;
+	/** Callback when resolution changes */
+	onResolutionChange: (value: Sora2Resolution) => void;
+	/** Whether Sora 2 Pro is selected */
+	hasSora2Pro: boolean;
 }
 
 // ============================================
@@ -51,13 +51,13 @@ export interface AISora2SettingsProps {
  * Get price per second display string based on model and resolution
  */
 function getPricePerSecond(
-  hasSora2Pro: boolean,
-  resolution: Sora2Resolution
+	hasSora2Pro: boolean,
+	resolution: Sora2Resolution
 ): string {
-  if (!hasSora2Pro) {
-    return "($0.10/s)";
-  }
-  return resolution === "1080p" ? "($0.50/s)" : "($0.30/s)";
+	if (!hasSora2Pro) {
+		return "($0.10/s)";
+	}
+	return resolution === "1080p" ? "($0.50/s)" : "($0.30/s)";
 }
 
 // ============================================
@@ -81,80 +81,80 @@ function getPricePerSecond(
  * ```
  */
 export function AISora2Settings({
-  duration,
-  onDurationChange,
-  aspectRatio,
-  onAspectRatioChange,
-  resolution,
-  onResolutionChange,
-  hasSora2Pro,
+	duration,
+	onDurationChange,
+	aspectRatio,
+	onAspectRatioChange,
+	resolution,
+	onResolutionChange,
+	hasSora2Pro,
 }: AISora2SettingsProps) {
-  const pricePerSecond = getPricePerSecond(hasSora2Pro, resolution);
+	const pricePerSecond = getPricePerSecond(hasSora2Pro, resolution);
 
-  return (
-    <div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
-      <Label className="text-xs font-medium">Sora 2 Settings</Label>
+	return (
+		<div className="space-y-3 p-3 bg-muted/30 rounded-md border border-muted">
+			<Label className="text-xs font-medium">Sora 2 Settings</Label>
 
-      {/* Duration selector */}
-      <div className="space-y-1">
-        <Label htmlFor="sora2-duration" className="text-xs">
-          Duration
-        </Label>
-        <Select
-          value={duration.toString()}
-          onValueChange={(v) => onDurationChange(Number(v) as Sora2Duration)}
-        >
-          <SelectTrigger id="sora2-duration" className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="4">4 seconds {pricePerSecond}</SelectItem>
-            <SelectItem value="8">8 seconds {pricePerSecond}</SelectItem>
-            <SelectItem value="12">12 seconds {pricePerSecond}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+			{/* Duration selector */}
+			<div className="space-y-1">
+				<Label htmlFor="sora2-duration" className="text-xs">
+					Duration
+				</Label>
+				<Select
+					value={duration.toString()}
+					onValueChange={(v) => onDurationChange(Number(v) as Sora2Duration)}
+				>
+					<SelectTrigger id="sora2-duration" className="h-8 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="4">4 seconds {pricePerSecond}</SelectItem>
+						<SelectItem value="8">8 seconds {pricePerSecond}</SelectItem>
+						<SelectItem value="12">12 seconds {pricePerSecond}</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
 
-      {/* Aspect ratio selector */}
-      <div className="space-y-1">
-        <Label htmlFor="sora2-aspect" className="text-xs">
-          Aspect Ratio
-        </Label>
-        <Select
-          value={aspectRatio}
-          onValueChange={(v) => onAspectRatioChange(v as Sora2AspectRatio)}
-        >
-          <SelectTrigger id="sora2-aspect" className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="16:9">16:9 (Landscape)</SelectItem>
-            <SelectItem value="9:16">9:16 (Portrait)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+			{/* Aspect ratio selector */}
+			<div className="space-y-1">
+				<Label htmlFor="sora2-aspect" className="text-xs">
+					Aspect Ratio
+				</Label>
+				<Select
+					value={aspectRatio}
+					onValueChange={(v) => onAspectRatioChange(v as Sora2AspectRatio)}
+				>
+					<SelectTrigger id="sora2-aspect" className="h-8 text-xs">
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="16:9">16:9 (Landscape)</SelectItem>
+						<SelectItem value="9:16">9:16 (Portrait)</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
 
-      {/* Resolution selector - only for Pro models */}
-      {hasSora2Pro && (
-        <div className="space-y-1">
-          <Label htmlFor="sora2-resolution" className="text-xs">
-            Resolution (Pro)
-          </Label>
-          <Select
-            value={resolution}
-            onValueChange={(v) => onResolutionChange(v as Sora2Resolution)}
-          >
-            <SelectTrigger id="sora2-resolution" className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">Auto</SelectItem>
-              <SelectItem value="720p">720p ($0.30/s)</SelectItem>
-              <SelectItem value="1080p">1080p ($0.50/s)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-    </div>
-  );
+			{/* Resolution selector - only for Pro models */}
+			{hasSora2Pro && (
+				<div className="space-y-1">
+					<Label htmlFor="sora2-resolution" className="text-xs">
+						Resolution (Pro)
+					</Label>
+					<Select
+						value={resolution}
+						onValueChange={(v) => onResolutionChange(v as Sora2Resolution)}
+					>
+						<SelectTrigger id="sora2-resolution" className="h-8 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="auto">Auto</SelectItem>
+							<SelectItem value="720p">720p ($0.30/s)</SelectItem>
+							<SelectItem value="1080p">1080p ($0.50/s)</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+		</div>
+	);
 }

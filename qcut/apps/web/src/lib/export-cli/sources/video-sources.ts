@@ -20,11 +20,11 @@ type LogFn = (...args: unknown[]) => void;
  * Electron API interface for video operations.
  */
 interface VideoSaveTempAPI {
-  saveTemp: (
-    data: Uint8Array,
-    filename: string,
-    sessionId?: string
-  ) => Promise<string>;
+	saveTemp: (
+		data: Uint8Array,
+		filename: string,
+		sessionId?: string
+	) => Promise<string>;
 }
 
 /**
@@ -37,29 +37,29 @@ interface VideoSaveTempAPI {
  * @returns Local file path or undefined if creation fails
  */
 async function createTempFileFromBlob(
-  mediaItem: MediaItem,
-  sessionId: string | null,
-  videoAPI: VideoSaveTempAPI | undefined,
-  logger: LogFn
+	mediaItem: MediaItem,
+	sessionId: string | null,
+	videoAPI: VideoSaveTempAPI | undefined,
+	logger: LogFn
 ): Promise<string | undefined> {
-  if (!videoAPI?.saveTemp) return;
-  if (!mediaItem.file || mediaItem.file.size === 0) return;
+	if (!videoAPI?.saveTemp) return;
+	if (!mediaItem.file || mediaItem.file.size === 0) return;
 
-  try {
-    logger(`[VideoSources] Creating temp file for: ${mediaItem.name}`);
-    const arrayBuffer = await mediaItem.file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    const path = await videoAPI.saveTemp(
-      uint8Array,
-      mediaItem.name,
-      sessionId || undefined
-    );
-    logger(`[VideoSources] Created temp file: ${path}`);
-    return path;
-  } catch (error) {
-    logger("[VideoSources] Failed to create temp file:", error);
-    return;
-  }
+	try {
+		logger(`[VideoSources] Creating temp file for: ${mediaItem.name}`);
+		const arrayBuffer = await mediaItem.file.arrayBuffer();
+		const uint8Array = new Uint8Array(arrayBuffer);
+		const path = await videoAPI.saveTemp(
+			uint8Array,
+			mediaItem.name,
+			sessionId || undefined
+		);
+		logger(`[VideoSources] Created temp file: ${path}`);
+		return path;
+	} catch (error) {
+		logger("[VideoSources] Failed to create temp file:", error);
+		return;
+	}
 }
 
 /**
@@ -74,57 +74,57 @@ async function createTempFileFromBlob(
  * @returns Array of video sources sorted by start time
  */
 export async function extractVideoSources(
-  tracks: TimelineTrack[],
-  mediaItems: MediaItem[],
-  sessionId: string | null,
-  videoAPI?: VideoSaveTempAPI,
-  logger: LogFn = console.log
+	tracks: TimelineTrack[],
+	mediaItems: MediaItem[],
+	sessionId: string | null,
+	videoAPI?: VideoSaveTempAPI,
+	logger: LogFn = console.log
 ): Promise<VideoSourceInput[]> {
-  const api = videoAPI ?? (window.electronAPI?.video as VideoSaveTempAPI);
-  const videoSources: VideoSourceInput[] = [];
+	const api = videoAPI ?? (window.electronAPI?.video as VideoSaveTempAPI);
+	const videoSources: VideoSourceInput[] = [];
 
-  for (const track of tracks) {
-    if (track.type !== "media") continue;
+	for (const track of tracks) {
+		if (track.type !== "media") continue;
 
-    for (const element of track.elements) {
-      if (element.hidden || element.type !== "media") continue;
+		for (const element of track.elements) {
+			if (element.hidden || element.type !== "media") continue;
 
-      const mediaItem = mediaItems.find(
-        (item) =>
-          item.id === (element as TimelineElement & { mediaId: string }).mediaId
-      );
-      if (!mediaItem || mediaItem.type !== "video") continue;
+			const mediaItem = mediaItems.find(
+				(item) =>
+					item.id === (element as TimelineElement & { mediaId: string }).mediaId
+			);
+			if (!mediaItem || mediaItem.type !== "video") continue;
 
-      let localPath = mediaItem.localPath;
+			let localPath = mediaItem.localPath;
 
-      // Create temp file from blob if no localPath
-      if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
-        localPath = await createTempFileFromBlob(
-          mediaItem,
-          sessionId,
-          api,
-          logger
-        );
-      }
+			// Create temp file from blob if no localPath
+			if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
+				localPath = await createTempFileFromBlob(
+					mediaItem,
+					sessionId,
+					api,
+					logger
+				);
+			}
 
-      if (!localPath) {
-        logger(`[VideoSources] Video ${mediaItem.id} has no localPath`);
-        continue;
-      }
+			if (!localPath) {
+				logger(`[VideoSources] Video ${mediaItem.id} has no localPath`);
+				continue;
+			}
 
-      videoSources.push({
-        path: localPath,
-        startTime: element.startTime,
-        duration: element.duration,
-        trimStart: element.trimStart,
-        trimEnd: element.trimEnd,
-      });
-    }
-  }
+			videoSources.push({
+				path: localPath,
+				startTime: element.startTime,
+				duration: element.duration,
+				trimStart: element.trimStart,
+				trimEnd: element.trimEnd,
+			});
+		}
+	}
 
-  videoSources.sort((a, b) => a.startTime - b.startTime);
-  logger(`[VideoSources] Extracted ${videoSources.length} video sources`);
-  return videoSources;
+	videoSources.sort((a, b) => a.startTime - b.startTime);
+	logger(`[VideoSources] Extracted ${videoSources.length} video sources`);
+	return videoSources;
 }
 
 /**
@@ -139,61 +139,61 @@ export async function extractVideoSources(
  * @returns Video input info or null if Mode 2 not applicable
  */
 export async function extractVideoInputPath(
-  tracks: TimelineTrack[],
-  mediaItems: MediaItem[],
-  sessionId: string | null,
-  videoAPI?: VideoSaveTempAPI,
-  logger: LogFn = console.log
+	tracks: TimelineTrack[],
+	mediaItems: MediaItem[],
+	sessionId: string | null,
+	videoAPI?: VideoSaveTempAPI,
+	logger: LogFn = console.log
 ): Promise<{ path: string; trimStart: number; trimEnd: number } | null> {
-  const api = videoAPI ?? (window.electronAPI?.video as VideoSaveTempAPI);
-  logger("[VideoSources] Extracting video input path for Mode 2...");
+	const api = videoAPI ?? (window.electronAPI?.video as VideoSaveTempAPI);
+	logger("[VideoSources] Extracting video input path for Mode 2...");
 
-  let videoElement: TimelineElement | null = null;
-  let mediaItem: MediaItem | null = null;
-  let videoCount = 0;
+	let videoElement: TimelineElement | null = null;
+	let mediaItem: MediaItem | null = null;
+	let videoCount = 0;
 
-  for (const track of tracks) {
-    if (track.type !== "media") continue;
+	for (const track of tracks) {
+		if (track.type !== "media") continue;
 
-    for (const element of track.elements) {
-      if (element.hidden || element.type !== "media") continue;
+		for (const element of track.elements) {
+			if (element.hidden || element.type !== "media") continue;
 
-      const item = mediaItems.find(
-        (m) =>
-          m.id === (element as TimelineElement & { mediaId: string }).mediaId
-      );
-      if (item?.type === "video") {
-        videoCount++;
-        if (videoCount > 1) {
-          logger("[VideoSources] Multiple videos found, Mode 2 not applicable");
-          return null;
-        }
-        videoElement = element;
-        mediaItem = item;
-      }
-    }
-  }
+			const item = mediaItems.find(
+				(m) =>
+					m.id === (element as TimelineElement & { mediaId: string }).mediaId
+			);
+			if (item?.type === "video") {
+				videoCount++;
+				if (videoCount > 1) {
+					logger("[VideoSources] Multiple videos found, Mode 2 not applicable");
+					return null;
+				}
+				videoElement = element;
+				mediaItem = item;
+			}
+		}
+	}
 
-  if (!videoElement || !mediaItem) {
-    logger("[VideoSources] No video found");
-    return null;
-  }
+	if (!videoElement || !mediaItem) {
+		logger("[VideoSources] No video found");
+		return null;
+	}
 
-  let localPath = mediaItem.localPath;
+	let localPath = mediaItem.localPath;
 
-  // Create temp file from blob if needed
-  if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
-    localPath = await createTempFileFromBlob(mediaItem, sessionId, api, logger);
-  }
+	// Create temp file from blob if needed
+	if (!localPath && mediaItem.file && mediaItem.file.size > 0) {
+		localPath = await createTempFileFromBlob(mediaItem, sessionId, api, logger);
+	}
 
-  if (!localPath) {
-    logger("[VideoSources] No video with localPath found");
-    return null;
-  }
+	if (!localPath) {
+		logger("[VideoSources] No video with localPath found");
+		return null;
+	}
 
-  return {
-    path: localPath,
-    trimStart: videoElement.trimStart || 0,
-    trimEnd: videoElement.trimEnd || 0,
-  };
+	return {
+		path: localPath,
+		trimStart: videoElement.trimStart || 0,
+		trimEnd: videoElement.trimEnd || 0,
+	};
 }

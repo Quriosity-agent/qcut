@@ -1,11 +1,11 @@
 {
-  "name": "no-root-project",
-  "version": "1.0.0",
-  "description": "Remotion project without Root.tsx - used for testing error handling",
-  "dependencies": {
-    "remotion": "^4.0.0",
-    "@remotion/player": "^4.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
-  }
+	"name": "no-root-project",
+	"version": "1.0.0",
+	"description": "Remotion project without Root.tsx - used for testing error handling",
+	"dependencies": {
+		"remotion": "^4.0.0",
+		"@remotion/player": "^4.0.0",
+		"react": "^18.0.0",
+		"react-dom": "^18.0.0"
+	}
 }

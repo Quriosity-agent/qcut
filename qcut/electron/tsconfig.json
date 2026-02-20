@@ -1,28 +1,28 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "outDir": "../dist/electron",
-    "rootDir": ".",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowJs": true,
-    "types": ["node", "electron"],
-    "declaration": false,
-    "sourceMap": true
-  },
-  "include": ["**/*.ts"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "resources",
-    "**/*.js",
-    "**/*.test.ts",
-    "**/__tests__/**"
-  ]
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "commonjs",
+		"lib": ["ES2020"],
+		"outDir": "../dist/electron",
+		"rootDir": ".",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"moduleResolution": "node",
+		"allowJs": true,
+		"types": ["node", "electron"],
+		"declaration": false,
+		"sourceMap": true
+	},
+	"include": ["**/*.ts"],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"resources",
+		"**/*.js",
+		"**/*.test.ts",
+		"**/__tests__/**"
+	]
 }

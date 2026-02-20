@@ -14,23 +14,23 @@ import { useState, useCallback, useEffect, useRef } from "react";
 // ============================================
 
 export interface TabStateConfig<T> {
-  initialState: T;
-  resetDependencies?: unknown[];
+	initialState: T;
+	resetDependencies?: unknown[];
 }
 
 export interface FileWithPreviewState {
-  file: File | null;
-  preview: string | null;
-  setFile: (file: File | null) => void;
-  reset: () => void;
+	file: File | null;
+	preview: string | null;
+	setFile: (file: File | null) => void;
+	reset: () => void;
 }
 
 export interface MultipleFilesWithPreviewState {
-  files: (File | null)[];
-  previews: (string | null)[];
-  setFile: (index: number, file: File | null) => void;
-  reset: () => void;
-  resetAt: (index: number) => void;
+	files: (File | null)[];
+	previews: (string | null)[];
+	setFile: (index: number, file: File | null) => void;
+	reset: () => void;
+	resetAt: (index: number) => void;
 }
 
 // ============================================
@@ -44,10 +44,10 @@ export interface MultipleFilesWithPreviewState {
  * @returns A function that resets the state
  */
 export function createTabStateReset<T>(
-  setState: React.Dispatch<React.SetStateAction<T>>,
-  initialState: T
+	setState: React.Dispatch<React.SetStateAction<T>>,
+	initialState: T
 ): () => void {
-  return () => setState(initialState);
+	return () => setState(initialState);
 }
 
 // ============================================
@@ -70,57 +70,57 @@ export function createTabStateReset<T>(
  * ```
  */
 export function useFileWithPreview(
-  initialFile: File | null = null
+	initialFile: File | null = null
 ): FileWithPreviewState {
-  const [file, setFileInternal] = useState<File | null>(initialFile);
-  const [preview, setPreview] = useState<string | null>(null);
+	const [file, setFileInternal] = useState<File | null>(initialFile);
+	const [preview, setPreview] = useState<string | null>(null);
 
-  // Ref to track the latest preview for unmount cleanup
-  const previewRef = useRef<string | null>(null);
-  previewRef.current = preview;
+	// Ref to track the latest preview for unmount cleanup
+	const previewRef = useRef<string | null>(null);
+	previewRef.current = preview;
 
-  // Initialize preview if initial file is provided (run once on mount)
-  const initializedRef = useRef(false);
-  useEffect(() => {
-    if (initialFile && !preview && !initializedRef.current) {
-      initializedRef.current = true;
-      setPreview(URL.createObjectURL(initialFile));
-    }
-  }, [initialFile, preview]);
+	// Initialize preview if initial file is provided (run once on mount)
+	const initializedRef = useRef(false);
+	useEffect(() => {
+		if (initialFile && !preview && !initializedRef.current) {
+			initializedRef.current = true;
+			setPreview(URL.createObjectURL(initialFile));
+		}
+	}, [initialFile, preview]);
 
-  const setFile = useCallback((newFile: File | null) => {
-    setFileInternal(newFile);
+	const setFile = useCallback((newFile: File | null) => {
+		setFileInternal(newFile);
 
-    // Revoke previous preview URL inside functional update to avoid stale closure
-    setPreview((prev) => {
-      if (prev) {
-        URL.revokeObjectURL(prev);
-      }
-      return newFile ? URL.createObjectURL(newFile) : null;
-    });
-  }, []);
+		// Revoke previous preview URL inside functional update to avoid stale closure
+		setPreview((prev) => {
+			if (prev) {
+				URL.revokeObjectURL(prev);
+			}
+			return newFile ? URL.createObjectURL(newFile) : null;
+		});
+	}, []);
 
-  const reset = useCallback(() => {
-    setFileInternal(null);
-    // Revoke preview URL inside functional update to avoid stale closure
-    setPreview((prev) => {
-      if (prev) {
-        URL.revokeObjectURL(prev);
-      }
-      return null;
-    });
-  }, []);
+	const reset = useCallback(() => {
+		setFileInternal(null);
+		// Revoke preview URL inside functional update to avoid stale closure
+		setPreview((prev) => {
+			if (prev) {
+				URL.revokeObjectURL(prev);
+			}
+			return null;
+		});
+	}, []);
 
-  // Cleanup on unmount only
-  useEffect(() => {
-    return () => {
-      if (previewRef.current) {
-        URL.revokeObjectURL(previewRef.current);
-      }
-    };
-  }, []);
+	// Cleanup on unmount only
+	useEffect(() => {
+		return () => {
+			if (previewRef.current) {
+				URL.revokeObjectURL(previewRef.current);
+			}
+		};
+	}, []);
 
-  return { file, preview, setFile, reset };
+	return { file, preview, setFile, reset };
 }
 
 /**
@@ -140,90 +140,90 @@ export function useFileWithPreview(
  * ```
  */
 export function useMultipleFilesWithPreview(
-  count: number
+	count: number
 ): MultipleFilesWithPreviewState {
-  const [files, setFiles] = useState<(File | null)[]>(() =>
-    new Array(count).fill(null)
-  );
-  const [previews, setPreviews] = useState<(string | null)[]>(() =>
-    new Array(count).fill(null)
-  );
+	const [files, setFiles] = useState<(File | null)[]>(() =>
+		new Array(count).fill(null)
+	);
+	const [previews, setPreviews] = useState<(string | null)[]>(() =>
+		new Array(count).fill(null)
+	);
 
-  // Ref to track the latest previews for unmount cleanup
-  const previewsRef = useRef<(string | null)[]>([]);
-  previewsRef.current = previews;
+	// Ref to track the latest previews for unmount cleanup
+	const previewsRef = useRef<(string | null)[]>([]);
+	previewsRef.current = previews;
 
-  const setFile = useCallback(
-    (index: number, newFile: File | null) => {
-      if (index < 0 || index >= count) return;
+	const setFile = useCallback(
+		(index: number, newFile: File | null) => {
+			if (index < 0 || index >= count) return;
 
-      // Update files array
-      setFiles((prev) => {
-        const updated = [...prev];
-        updated[index] = newFile;
-        return updated;
-      });
+			// Update files array
+			setFiles((prev) => {
+				const updated = [...prev];
+				updated[index] = newFile;
+				return updated;
+			});
 
-      // Update previews array (revoke old URL inside functional update to avoid stale closure)
-      setPreviews((prev) => {
-        const updated = [...prev];
-        // Revoke previous preview URL at this index
-        const oldPreview = prev[index];
-        if (oldPreview) {
-          URL.revokeObjectURL(oldPreview);
-        }
-        updated[index] = newFile ? URL.createObjectURL(newFile) : null;
-        return updated;
-      });
-    },
-    [count]
-  );
+			// Update previews array (revoke old URL inside functional update to avoid stale closure)
+			setPreviews((prev) => {
+				const updated = [...prev];
+				// Revoke previous preview URL at this index
+				const oldPreview = prev[index];
+				if (oldPreview) {
+					URL.revokeObjectURL(oldPreview);
+				}
+				updated[index] = newFile ? URL.createObjectURL(newFile) : null;
+				return updated;
+			});
+		},
+		[count]
+	);
 
-  const resetAt = useCallback(
-    (index: number) => {
-      if (index < 0 || index >= count) return;
+	const resetAt = useCallback(
+		(index: number) => {
+			if (index < 0 || index >= count) return;
 
-      setFiles((prev) => {
-        const updated = [...prev];
-        updated[index] = null;
-        return updated;
-      });
+			setFiles((prev) => {
+				const updated = [...prev];
+				updated[index] = null;
+				return updated;
+			});
 
-      // Revoke old URL inside functional update to avoid stale closure
-      setPreviews((prev) => {
-        const updated = [...prev];
-        const oldPreview = prev[index];
-        if (oldPreview) {
-          URL.revokeObjectURL(oldPreview);
-        }
-        updated[index] = null;
-        return updated;
-      });
-    },
-    [count]
-  );
+			// Revoke old URL inside functional update to avoid stale closure
+			setPreviews((prev) => {
+				const updated = [...prev];
+				const oldPreview = prev[index];
+				if (oldPreview) {
+					URL.revokeObjectURL(oldPreview);
+				}
+				updated[index] = null;
+				return updated;
+			});
+		},
+		[count]
+	);
 
-  const reset = useCallback(() => {
-    setFiles(new Array(count).fill(null));
-    // Revoke all preview URLs inside functional update to avoid stale closure
-    setPreviews((prev) => {
-      for (const p of prev) {
-        if (p) URL.revokeObjectURL(p);
-      }
-      return new Array(count).fill(null);
-    });
-  }, [count]);
+	const reset = useCallback(() => {
+		setFiles(new Array(count).fill(null));
+		// Revoke all preview URLs inside functional update to avoid stale closure
+		setPreviews((prev) => {
+			for (const p of prev) {
+				if (p) URL.revokeObjectURL(p);
+			}
+			return new Array(count).fill(null);
+		});
+	}, [count]);
 
-  // Cleanup on unmount only
-  useEffect(() => {
-    return () => {
-      for (const p of previewsRef.current) {
-        if (p) URL.revokeObjectURL(p);
-      }
-    };
-  }, []);
+	// Cleanup on unmount only
+	useEffect(() => {
+		return () => {
+			for (const p of previewsRef.current) {
+				if (p) URL.revokeObjectURL(p);
+			}
+		};
+	}, []);
 
-  return { files, previews, setFile, reset, resetAt };
+	return { files, previews, setFile, reset, resetAt };
 }
 
 /**
@@ -239,45 +239,45 @@ export function useMultipleFilesWithPreview(
  * ```
  */
 export function useAudioFileWithDuration() {
-  const fileState = useFileWithPreview();
-  const [duration, setDuration] = useState<number | null>(null);
-  const { reset: fileReset } = fileState;
+	const fileState = useFileWithPreview();
+	const [duration, setDuration] = useState<number | null>(null);
+	const { reset: fileReset } = fileState;
 
-  useEffect(() => {
-    if (fileState.file) {
-      const audio = new Audio();
-      const objectUrl = URL.createObjectURL(fileState.file);
-      audio.src = objectUrl;
+	useEffect(() => {
+		if (fileState.file) {
+			const audio = new Audio();
+			const objectUrl = URL.createObjectURL(fileState.file);
+			audio.src = objectUrl;
 
-      audio.onloadedmetadata = () => {
-        setDuration(audio.duration);
-        URL.revokeObjectURL(objectUrl);
-      };
+			audio.onloadedmetadata = () => {
+				setDuration(audio.duration);
+				URL.revokeObjectURL(objectUrl);
+			};
 
-      audio.onerror = () => {
-        setDuration(null);
-        URL.revokeObjectURL(objectUrl);
-      };
+			audio.onerror = () => {
+				setDuration(null);
+				URL.revokeObjectURL(objectUrl);
+			};
 
-      return () => {
-        URL.revokeObjectURL(objectUrl);
-      };
-    }
-    setDuration(null);
-  }, [fileState.file]);
+			return () => {
+				URL.revokeObjectURL(objectUrl);
+			};
+		}
+		setDuration(null);
+	}, [fileState.file]);
 
-  const reset = useCallback(() => {
-    fileReset();
-    setDuration(null);
-  }, [fileReset]);
+	const reset = useCallback(() => {
+		fileReset();
+		setDuration(null);
+	}, [fileReset]);
 
-  return {
-    file: fileState.file,
-    preview: fileState.preview,
-    setFile: fileState.setFile,
-    reset,
-    duration,
-  };
+	return {
+		file: fileState.file,
+		preview: fileState.preview,
+		setFile: fileState.setFile,
+		reset,
+		duration,
+	};
 }
 
 /**
@@ -293,46 +293,46 @@ export function useAudioFileWithDuration() {
  * ```
  */
 export function useVideoFileWithDuration() {
-  const fileState = useFileWithPreview();
-  const [duration, setDuration] = useState<number | null>(null);
-  const { reset: fileReset } = fileState;
+	const fileState = useFileWithPreview();
+	const [duration, setDuration] = useState<number | null>(null);
+	const { reset: fileReset } = fileState;
 
-  useEffect(() => {
-    if (fileState.file) {
-      const video = document.createElement("video");
-      const objectUrl = URL.createObjectURL(fileState.file);
-      video.src = objectUrl;
-      video.preload = "metadata";
+	useEffect(() => {
+		if (fileState.file) {
+			const video = document.createElement("video");
+			const objectUrl = URL.createObjectURL(fileState.file);
+			video.src = objectUrl;
+			video.preload = "metadata";
 
-      video.onloadedmetadata = () => {
-        setDuration(video.duration);
-        URL.revokeObjectURL(objectUrl);
-      };
+			video.onloadedmetadata = () => {
+				setDuration(video.duration);
+				URL.revokeObjectURL(objectUrl);
+			};
 
-      video.onerror = () => {
-        setDuration(null);
-        URL.revokeObjectURL(objectUrl);
-      };
+			video.onerror = () => {
+				setDuration(null);
+				URL.revokeObjectURL(objectUrl);
+			};
 
-      return () => {
-        URL.revokeObjectURL(objectUrl);
-      };
-    }
-    setDuration(null);
-  }, [fileState.file]);
+			return () => {
+				URL.revokeObjectURL(objectUrl);
+			};
+		}
+		setDuration(null);
+	}, [fileState.file]);
 
-  const reset = useCallback(() => {
-    fileReset();
-    setDuration(null);
-  }, [fileReset]);
+	const reset = useCallback(() => {
+		fileReset();
+		setDuration(null);
+	}, [fileReset]);
 
-  return {
-    file: fileState.file,
-    preview: fileState.preview,
-    setFile: fileState.setFile,
-    reset,
-    duration,
-  };
+	return {
+		file: fileState.file,
+		preview: fileState.preview,
+		setFile: fileState.setFile,
+		reset,
+		duration,
+	};
 }
 
 /**
@@ -344,85 +344,85 @@ export function useVideoFileWithDuration() {
  * @returns Video state with metadata
  */
 export function useVideoWithMetadata<TMetadata>(
-  extractMetadataFromFile: (file: File) => Promise<TMetadata | null>,
-  extractMetadataFromUrl: (url: string) => Promise<TMetadata | null>
+	extractMetadataFromFile: (file: File) => Promise<TMetadata | null>,
+	extractMetadataFromUrl: (url: string) => Promise<TMetadata | null>
 ) {
-  const [file, setFileInternal] = useState<File | null>(null);
-  const [url, setUrl] = useState<string>("");
-  const [metadata, setMetadata] = useState<TMetadata | null>(null);
+	const [file, setFileInternal] = useState<File | null>(null);
+	const [url, setUrl] = useState<string>("");
+	const [metadata, setMetadata] = useState<TMetadata | null>(null);
 
-  // Refs to track current file/url for race condition prevention
-  const currentFileRef = useRef<File | null>(null);
-  const currentUrlRef = useRef<string>("");
+	// Refs to track current file/url for race condition prevention
+	const currentFileRef = useRef<File | null>(null);
+	const currentUrlRef = useRef<string>("");
 
-  const setFile = useCallback(
-    async (newFile: File | null) => {
-      currentFileRef.current = newFile;
-      setFileInternal(newFile);
+	const setFile = useCallback(
+		async (newFile: File | null) => {
+			currentFileRef.current = newFile;
+			setFileInternal(newFile);
 
-      if (!newFile) {
-        setMetadata(null);
-        return;
-      }
+			if (!newFile) {
+				setMetadata(null);
+				return;
+			}
 
-      // Clear URL when file is set
-      setUrl("");
-      currentUrlRef.current = "";
+			// Clear URL when file is set
+			setUrl("");
+			currentUrlRef.current = "";
 
-      try {
-        const meta = await extractMetadataFromFile(newFile);
-        // Only update if this is still the current file
-        if (currentFileRef.current === newFile) {
-          setMetadata(meta);
-        }
-      } catch (error) {
-        console.error("Failed to read video metadata", error);
-        if (currentFileRef.current === newFile) {
-          setMetadata(null);
-        }
-      }
-    },
-    [extractMetadataFromFile]
-  );
+			try {
+				const meta = await extractMetadataFromFile(newFile);
+				// Only update if this is still the current file
+				if (currentFileRef.current === newFile) {
+					setMetadata(meta);
+				}
+			} catch (error) {
+				console.error("Failed to read video metadata", error);
+				if (currentFileRef.current === newFile) {
+					setMetadata(null);
+				}
+			}
+		},
+		[extractMetadataFromFile]
+	);
 
-  const handleUrlBlur = useCallback(async () => {
-    const currentUrl = url;
-    currentUrlRef.current = currentUrl;
+	const handleUrlBlur = useCallback(async () => {
+		const currentUrl = url;
+		currentUrlRef.current = currentUrl;
 
-    if (!currentUrl) {
-      setMetadata(null);
-      return;
-    }
+		if (!currentUrl) {
+			setMetadata(null);
+			return;
+		}
 
-    try {
-      const meta = await extractMetadataFromUrl(currentUrl);
-      // Only update if this is still the current URL
-      if (currentUrlRef.current === currentUrl) {
-        setMetadata(meta);
-      }
-    } catch (error) {
-      console.error("Failed to read video metadata", error);
-      if (currentUrlRef.current === currentUrl) {
-        setMetadata(null);
-      }
-    }
-  }, [url, extractMetadataFromUrl]);
+		try {
+			const meta = await extractMetadataFromUrl(currentUrl);
+			// Only update if this is still the current URL
+			if (currentUrlRef.current === currentUrl) {
+				setMetadata(meta);
+			}
+		} catch (error) {
+			console.error("Failed to read video metadata", error);
+			if (currentUrlRef.current === currentUrl) {
+				setMetadata(null);
+			}
+		}
+	}, [url, extractMetadataFromUrl]);
 
-  const reset = useCallback(() => {
-    currentFileRef.current = null;
-    currentUrlRef.current = "";
-    setFileInternal(null);
-    setUrl("");
-    setMetadata(null);
-  }, []);
+	const reset = useCallback(() => {
+		currentFileRef.current = null;
+		currentUrlRef.current = "";
+		setFileInternal(null);
+		setUrl("");
+		setMetadata(null);
+	}, []);
 
-  return {
-    file,
-    url,
-    metadata,
-    setFile,
-    setUrl,
-    handleUrlBlur,
-    reset,
-  };
+	return {
+		file,
+		url,
+		metadata,
+		setFile,
+		setUrl,
+		handleUrlBlur,
+		reset,
+	};
 }
