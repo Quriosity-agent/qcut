@@ -434,6 +434,35 @@ export interface SuggestCutsResponse {
 }
 
 // ============================================================================
+// Async Job Types (Stage 3)
+// ============================================================================
+
+export interface SuggestCutsJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: SuggestCutsResponse;
+  createdAt: number;
+  completedAt?: number;
+}
+
+export interface AutoEditJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  elementId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: AutoEditResponse;
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
 // Diagnostics Types
 // ============================================================================
 

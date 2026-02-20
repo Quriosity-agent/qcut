@@ -15,12 +15,134 @@ import type {
   CutSuggestion,
   SuggestCutsRequest,
   SuggestCutsResponse,
+  SuggestCutsJob,
   TranscriptionResult,
   FillerAnalysisResult,
   SceneDetectionResult,
 } from "../types/claude-api";
 
 const HANDLER_NAME = "SuggestCuts";
+const MAX_SUGGEST_JOBS = 20;
+
+// ---------------------------------------------------------------------------
+// Async job store
+// ---------------------------------------------------------------------------
+
+const suggestCutsJobs = new Map<string, SuggestCutsJob>();
+
+function pruneOldSuggestJobs(): void {
+  if (suggestCutsJobs.size <= MAX_SUGGEST_JOBS) return;
+  const entries = [...suggestCutsJobs.entries()].sort(
+    (a, b) => a[1].createdAt - b[1].createdAt
+  );
+  const toRemove = entries.slice(0, entries.length - MAX_SUGGEST_JOBS);
+  for (const [id] of toRemove) {
+    suggestCutsJobs.delete(id);
+  }
+}
+
+/**
+ * Start a suggest-cuts job. Returns immediately with a job ID.
+ * The analysis runs in the background; poll with getSuggestCutsJobStatus().
+ */
+export function startSuggestCutsJob(
+  projectId: string,
+  request: SuggestCutsRequest
+): { jobId: string } {
+  const jobId = `suggest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const job: SuggestCutsJob = {
+    jobId,
+    projectId,
+    mediaId: request.mediaId,
+    status: "queued",
+    progress: 0,
+    message: "Queued",
+    createdAt: Date.now(),
+  };
+
+  suggestCutsJobs.set(jobId, job);
+  pruneOldSuggestJobs();
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Job ${jobId} created for project ${projectId}, media ${request.mediaId}`
+  );
+
+  // Fire-and-forget
+  runSuggestCuts(jobId, projectId, request).catch((err) => {
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} unexpected error:`, err);
+  });
+
+  return { jobId };
+}
+
+/** Get the current status of a suggest-cuts job. */
+export function getSuggestCutsJobStatus(jobId: string): SuggestCutsJob | null {
+  return suggestCutsJobs.get(jobId) ?? null;
+}
+
+/** List all suggest-cuts jobs, sorted newest-first. */
+export function listSuggestCutsJobs(): SuggestCutsJob[] {
+  return [...suggestCutsJobs.values()].sort(
+    (a, b) => b.createdAt - a.createdAt
+  );
+}
+
+/** Cancel a running suggest-cuts job. */
+export function cancelSuggestCutsJob(jobId: string): boolean {
+  const job = suggestCutsJobs.get(jobId);
+  if (!job || job.status === "completed" || job.status === "failed") {
+    return false;
+  }
+  job.status = "cancelled";
+  job.message = "Cancelled by user";
+  job.completedAt = Date.now();
+  claudeLog.info(HANDLER_NAME, `Job ${jobId} cancelled`);
+  return true;
+}
+
+/** Run suggest-cuts in the background, updating job progress. */
+async function runSuggestCuts(
+  jobId: string,
+  projectId: string,
+  request: SuggestCutsRequest
+): Promise<void> {
+  const job = suggestCutsJobs.get(jobId);
+  if (!job) return;
+
+  job.status = "processing";
+  job.progress = 10;
+  job.message = "Analyzing media...";
+
+  try {
+    const result = await suggestCuts(projectId, request);
+
+    if (suggestCutsJobs.get(jobId)?.status === "cancelled") return;
+
+    job.status = "completed";
+    job.progress = 100;
+    job.message = "Analysis complete";
+    job.result = result;
+    job.completedAt = Date.now();
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Job ${jobId} completed: ${result.suggestions.length} suggestions`
+    );
+  } catch (err) {
+    if (suggestCutsJobs.get(jobId)?.status === "cancelled") return;
+    job.status = "failed";
+    job.message = err instanceof Error ? err.message : "Suggest-cuts failed";
+    job.completedAt = Date.now();
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} failed:`, err);
+  }
+}
+
+/** For tests: clear all jobs. */
+export function _clearSuggestCutsJobs(): void {
+  suggestCutsJobs.clear();
+}
 
 /**
  * Generate cut suggestions by analyzing a media file.

@@ -29,7 +29,7 @@ Tested against running QCut instance (localhost:8765) with real media files.
 | Failure | Root Cause | Fix |
 |---------|-----------|-----|
 | **#3, #6: HTTP timeout** | 30s global HTTP timeout vs 5min/3min handler timeouts | Async job pattern added (code done, needs QCut restart) |
-| **#7, #8: No Anthropic key** | API key not configured in Settings | Expected — user must add key |
+| **#7, #8: No Anthropic key** | API key not configured in Settings | **Fixed** — provider cascade: Claude CLI → OpenRouter → Anthropic API |
 | **#11: Missing module** | `google-generativeai` not in PyInstaller spec | Need to add to `aicp.spec` hiddenimports |
 
 ### AICP Binary Fixes Applied
@@ -131,7 +131,7 @@ Binary rebuilt and copied to `resources/bin/aicp` and `electron/resources/bin/ai
 | Issue | Severity | Status |
 |-------|----------|--------|
 | 30s HTTP timeout kills long transcription/scene detection | High | Async job pattern coded, needs QCut restart to activate |
-| Frame analysis requires Anthropic API key | Medium | By design — user must configure |
+| Frame analysis requires Anthropic API key | Medium | **Fixed** — provider cascade uses Claude CLI or OpenRouter first |
 | AICP `describe` type missing `google-generativeai` | Low | Need to add to `aicp.spec` and rebuild |
 | Scene detection on 9.5min+ video needs async pattern too | Medium | Not yet implemented (only transcription has async) |
 | Async routes not in running QCut instance | Blocker | Need to rebuild/restart QCut electron app |

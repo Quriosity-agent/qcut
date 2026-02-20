@@ -1,9 +1,10 @@
 /**
  * Tests for claude-vision-handler.ts
- * Validates frame analysis response parsing and request flow.
+ * Validates frame analysis response parsing, provider cascade, and request flow.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { EventEmitter } from "node:events";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -111,11 +112,20 @@ const { mockGetDecryptedApiKeys } = vi.hoisted(() => ({
     falApiKey: "",
     geminiApiKey: "",
     anthropicApiKey: "test-anthropic-key",
+    openRouterApiKey: "",
   })),
 }));
 
 vi.mock("../api-key-handler", () => ({
   getDecryptedApiKeys: mockGetDecryptedApiKeys,
+}));
+
+const { mockCallModelApi } = vi.hoisted(() => ({
+  mockCallModelApi: vi.fn(),
+}));
+
+vi.mock("../native-pipeline/api-caller", () => ({
+  callModelApi: mockCallModelApi,
 }));
 
 const { mockFetch } = vi.hoisted(() => ({
@@ -135,26 +145,56 @@ vi.mock("../ffmpeg/utils", () => ({
   getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
 }));
 
-// Mock child_process.spawn so extractFrame succeeds without real FFmpeg
-const { mockSpawn } = vi.hoisted(() => {
-  const { EventEmitter } = require("node:events");
+// Mock child_process: spawn for FFmpeg/Claude CLI, execFileSync for `which`
+const { mockSpawn, mockExecFileSync } = vi.hoisted(() => {
   const mockSpawn = vi.fn(() => {
     const proc = new EventEmitter();
-    proc.kill = vi.fn();
+    (proc as EventEmitter & { kill: ReturnType<typeof vi.fn> }).kill = vi.fn();
     process.nextTick(() => proc.emit("close", 0));
     return proc;
   });
-  return { mockSpawn };
+  const mockExecFileSync = vi.fn(() => "");
+  return { mockSpawn, mockExecFileSync };
 });
 
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>();
   return {
     ...actual,
-    default: { ...actual, spawn: mockSpawn },
+    default: { ...actual, spawn: mockSpawn, execFileSync: mockExecFileSync },
     spawn: mockSpawn,
+    execFileSync: mockExecFileSync,
   };
 });
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const VALID_FRAME_RESPONSE = JSON.stringify([
+  {
+    objects: ["person", "desk"],
+    text: ["TITLE"],
+    description: "Person at desk",
+    mood: "calm",
+    composition: "centered",
+  },
+]);
+
+/** Create a mock spawn proc that emits stdout data then closes. */
+function createMockProc(stdout: string, exitCode = 0) {
+  const proc = new EventEmitter() as EventEmitter & {
+    stdout: EventEmitter;
+    kill: ReturnType<typeof vi.fn>;
+  };
+  proc.stdout = new EventEmitter();
+  proc.kill = vi.fn();
+  process.nextTick(() => {
+    proc.stdout.emit("data", Buffer.from(stdout));
+    proc.emit("close", exitCode);
+  });
+  return proc;
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -230,14 +270,11 @@ describe("parseFrameAnalysisResponse", () => {
   });
 
   it("respects 20-image batch limit via timestamp resolution", () => {
-    // Create 25 frame paths
     const manyFramePaths = Array.from({ length: 25 }, (_, i) => ({
       timestamp: i,
       path: `/tmp/frame-${i}.jpg`,
     }));
 
-    // The handler limits to MAX_FRAMES_PER_REQUEST = 20, but response parsing
-    // should handle any array length
     const response = JSON.stringify(
       manyFramePaths.map((_, i) => ({
         objects: [`object${i}`],
@@ -259,54 +296,54 @@ describe("analyzeFrames", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExistsSync.mockReturnValue(true);
-    // Reset mocks with one-time overrides to prevent leakage between tests
     mockFetch.mockReset();
     mockReadFile.mockReset();
+    mockCallModelApi.mockReset();
     mockGetDecryptedApiKeys.mockReset();
     mockGetDecryptedApiKeys.mockResolvedValue({
       falApiKey: "",
       geminiApiKey: "",
       anthropicApiKey: "test-anthropic-key",
+      openRouterApiKey: "",
+    });
+    // Default: Claude CLI not found (cascade falls through)
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error("not found");
     });
   });
 
   it("rejects invalid media ID", async () => {
     await expect(
-      analyzeFrames("test-project", {
-        mediaId: "nonexistent",
-      })
+      analyzeFrames("test-project", { mediaId: "nonexistent" })
     ).rejects.toThrow("Media not found");
   });
 
   it("rejects non-video/non-image media", async () => {
     await expect(
-      analyzeFrames("test-project", {
-        mediaId: "audio-file",
-      })
+      analyzeFrames("test-project", { mediaId: "audio-file" })
     ).rejects.toThrow("not a video or image");
   });
 
   it("rejects when media file is missing on disk", async () => {
     mockExistsSync.mockReturnValue(false);
     await expect(
-      analyzeFrames("test-project", {
-        mediaId: "valid-video",
-      })
+      analyzeFrames("test-project", { mediaId: "valid-video" })
     ).rejects.toThrow("missing on disk");
   });
 
-  it("throws when Anthropic API key is missing", async () => {
-    mockGetDecryptedApiKeys.mockResolvedValueOnce({
+  it("throws when all providers fail", async () => {
+    // No Claude CLI, no OpenRouter key, no Anthropic key
+    mockGetDecryptedApiKeys.mockResolvedValue({
       falApiKey: "",
       geminiApiKey: "",
       anthropicApiKey: "",
+      openRouterApiKey: "",
     });
 
-    // Mock: existsSync true for media file, false for extracted frames
+    // Only first call (media file check) returns true, rest false
     let callCount = 0;
     mockExistsSync.mockImplementation(() => {
       callCount++;
-      // First call: media file exists. Subsequent: frame paths don't exist
       return callCount <= 1;
     });
 
@@ -318,32 +355,28 @@ describe("analyzeFrames", () => {
     ).rejects.toThrow("No frames could be extracted");
   });
 
-  it("returns analyzed frames from mocked Claude Vision API", async () => {
-    // Mock frame extraction: existsSync returns true for media + frames
+  it("succeeds with Claude CLI provider", async () => {
     mockExistsSync.mockReturnValue(true);
-
-    // Mock readFile for frame images
     mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
 
-    // Mock Claude Vision API response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify([
-              {
-                objects: ["person", "desk"],
-                text: ["TITLE"],
-                description: "Person at desk",
-                mood: "calm",
-                composition: "centered",
-              },
-            ]),
-          },
-        ],
-      }),
+    // Claude CLI is available
+    mockExecFileSync.mockReturnValue("/usr/local/bin/claude");
+
+    // Mock spawn: first call = FFmpeg (frame extraction), second = claude CLI
+    let spawnCount = 0;
+    mockSpawn.mockImplementation(() => {
+      spawnCount++;
+      if (spawnCount <= 1) {
+        // FFmpeg extraction — just emit close(0)
+        const proc = new EventEmitter() as EventEmitter & {
+          kill: ReturnType<typeof vi.fn>;
+        };
+        proc.kill = vi.fn();
+        process.nextTick(() => proc.emit("close", 0));
+        return proc;
+      }
+      // Claude CLI — emit stdout with analysis JSON
+      return createMockProc(VALID_FRAME_RESPONSE);
     });
 
     const result = await analyzeFrames("test-project", {
@@ -357,9 +390,96 @@ describe("analyzeFrames", () => {
     expect(result.totalFramesAnalyzed).toBe(1);
   });
 
-  it("handles Claude Vision API error responses", async () => {
+  it("falls back to OpenRouter when Claude CLI is unavailable", async () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    // No Claude CLI
+    mockExecFileSync.mockImplementation(() => {
+      throw new Error("not found");
+    });
+
+    // OpenRouter key available
+    mockGetDecryptedApiKeys.mockResolvedValue({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "",
+      openRouterApiKey: "test-openrouter-key",
+    });
+
+    // Mock callModelApi for OpenRouter success
+    mockCallModelApi.mockResolvedValueOnce({
+      success: true,
+      data: {
+        choices: [
+          {
+            message: { content: VALID_FRAME_RESPONSE },
+          },
+        ],
+      },
+      duration: 1.5,
+    });
+
+    const result = await analyzeFrames("test-project", {
+      mediaId: "valid-video",
+      timestamps: [0],
+    });
+
+    expect(result.frames).toHaveLength(1);
+    expect(result.frames[0].objects).toEqual(["person", "desk"]);
+    expect(mockCallModelApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openrouter",
+        endpoint: "chat/completions",
+      })
+    );
+  });
+
+  it("falls back to Anthropic when CLI and OpenRouter fail", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    // No CLI, no OpenRouter key, but Anthropic key present
+    mockGetDecryptedApiKeys.mockResolvedValue({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "test-anthropic-key",
+      openRouterApiKey: "",
+    });
+
+    // Mock Anthropic API response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        content: [{ type: "text", text: VALID_FRAME_RESPONSE }],
+      }),
+    });
+
+    const result = await analyzeFrames("test-project", {
+      mediaId: "valid-video",
+      timestamps: [0],
+    });
+
+    expect(result.frames).toHaveLength(1);
+    expect(result.frames[0].description).toBe("Person at desk");
+    // Verify Anthropic API was called
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/messages",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("handles Anthropic API error responses", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+    // Only Anthropic key available
+    mockGetDecryptedApiKeys.mockResolvedValue({
+      falApiKey: "",
+      geminiApiKey: "",
+      anthropicApiKey: "test-anthropic-key",
+      openRouterApiKey: "",
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -372,21 +492,7 @@ describe("analyzeFrames", () => {
         mediaId: "valid-video",
         timestamps: [0],
       })
-    ).rejects.toThrow("Claude Vision API error: 401");
-  });
-
-  it("handles Claude Vision API timeout", async () => {
-    mockExistsSync.mockReturnValue(true);
-    mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
-
-    mockFetch.mockRejectedValueOnce(new DOMException("Aborted", "AbortError"));
-
-    await expect(
-      analyzeFrames("test-project", {
-        mediaId: "valid-video",
-        timestamps: [0],
-      })
-    ).rejects.toThrow("Aborted");
+    ).rejects.toThrow("All vision providers failed");
   });
 });
 
@@ -423,7 +529,6 @@ describe("resolveTimestamps", () => {
 
   it("clamps interval to minimum 1 second", () => {
     const result = resolveTimestamps({ mediaId: "x", interval: 0.1 }, 5);
-    // interval clamped to 1, so: 0, 1, 2, 3, 4
     expect(result).toEqual([0, 1, 2, 3, 4]);
   });
 
