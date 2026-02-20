@@ -11,7 +11,10 @@ import {
 } from "electron";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { getProjectPath, getProjectSettingsPath } from "./utils/helpers.js";
+import {
+  getProjectsBasePath,
+  getProjectSettingsPath,
+} from "./utils/helpers.js";
 import { claudeLog } from "./utils/logger.js";
 import type { ProjectSettings, ProjectStats } from "../types/claude-api";
 
@@ -51,6 +54,40 @@ function getEmptyStats(): ProjectStats {
     lastModified: Date.now(),
     fileSize: 0,
   };
+}
+
+/**
+ * List all projects that have a project.qcut file on disk.
+ * Returns project IDs and basic settings for each.
+ */
+export async function listProjects(): Promise<
+  Array<{ id: string; name: string; updatedAt?: string }>
+> {
+  const basePath = getProjectsBasePath();
+  let entries: string[];
+  try {
+    entries = await fs.readdir(basePath);
+  } catch {
+    return [];
+  }
+
+  const projects: Array<{ id: string; name: string; updatedAt?: string }> = [];
+  for (const entry of entries) {
+    const settingsFile = path.join(basePath, entry, "project.qcut");
+    try {
+      const content = await fs.readFile(settingsFile, "utf-8");
+      const data = JSON.parse(content);
+      projects.push({
+        id: entry,
+        name: data.name || "Untitled",
+        updatedAt: data.updatedAt,
+      });
+    } catch {
+      // Skip directories without a valid project.qcut
+    }
+  }
+
+  return projects;
 }
 
 /**
@@ -291,6 +328,7 @@ export function setupClaudeProjectIPC(): void {
 // CommonJS export for main.ts compatibility
 module.exports = {
   setupClaudeProjectIPC,
+  listProjects,
   getProjectSettings,
   updateProjectSettings,
   broadcastProjectSettingsUpdate,

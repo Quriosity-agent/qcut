@@ -14,13 +14,37 @@ import {
   listTranscribeJobs,
   cancelTranscribeJob,
 } from "./claude-transcribe-handler.js";
-import { detectScenes } from "./claude-scene-handler.js";
-import { analyzeFrames } from "./claude-vision-handler.js";
+import {
+  detectScenes,
+  startSceneDetectionJob,
+  getSceneDetectionJobStatus,
+  listSceneDetectionJobs,
+  cancelSceneDetectionJob,
+} from "./claude-scene-handler.js";
+import {
+  analyzeFrames,
+  startFrameAnalysisJob,
+  getFrameAnalysisJobStatus,
+  listFrameAnalysisJobs,
+  cancelFrameAnalysisJob,
+} from "./claude-vision-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
 import { executeBatchCuts } from "./claude-cuts-handler.js";
 import { executeDeleteRange } from "./claude-range-handler.js";
-import { autoEdit } from "./claude-auto-edit-handler.js";
-import { suggestCuts } from "./claude-suggest-handler.js";
+import {
+  autoEdit,
+  startAutoEditJob,
+  getAutoEditJobStatus,
+  listAutoEditJobs,
+  cancelAutoEditJob,
+} from "./claude-auto-edit-handler.js";
+import {
+  suggestCuts,
+  startSuggestCutsJob,
+  getSuggestCutsJobStatus,
+  listSuggestCutsJobs,
+  cancelSuggestCutsJob,
+} from "./claude-suggest-handler.js";
 import { logOperation } from "./claude-operation-log.js";
 import type { BrowserWindow } from "electron";
 
@@ -161,6 +185,44 @@ export function registerAnalysisRoutes(
     }
   });
 
+  // Async scene detection routes (preferred — avoids 30s HTTP timeout)
+  router.post("/api/claude/analyze/:projectId/scenes/start", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    const { jobId } = startSceneDetectionJob(req.params.projectId, {
+      mediaId: req.body.mediaId,
+      threshold: req.body.threshold,
+      aiAnalysis: req.body.aiAnalysis,
+      model: req.body.model,
+    });
+    return { jobId };
+  });
+
+  router.get(
+    "/api/claude/analyze/:projectId/scenes/jobs/:jobId",
+    async (req) => {
+      const job = getSceneDetectionJobStatus(req.params.jobId);
+      if (!job) {
+        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+      }
+      return job;
+    }
+  );
+
+  router.get("/api/claude/analyze/:projectId/scenes/jobs", async (req) => {
+    const allJobs = listSceneDetectionJobs();
+    return allJobs.filter((job) => job.projectId === req.params.projectId);
+  });
+
+  router.post(
+    "/api/claude/analyze/:projectId/scenes/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelSceneDetectionJob(req.params.jobId);
+      return { cancelled };
+    }
+  );
+
   // ==========================================================================
   // Frame Analysis routes (Stage 2)
   // ==========================================================================
@@ -183,6 +245,44 @@ export function registerAnalysisRoutes(
       );
     }
   });
+
+  // Async frame analysis routes (preferred — avoids 30s HTTP timeout)
+  router.post("/api/claude/analyze/:projectId/frames/start", async (req) => {
+    if (!req.body?.mediaId) {
+      throw new HttpError(400, "Missing 'mediaId' in request body");
+    }
+    const { jobId } = startFrameAnalysisJob(req.params.projectId, {
+      mediaId: req.body.mediaId,
+      timestamps: req.body.timestamps,
+      interval: req.body.interval,
+      prompt: req.body.prompt,
+    });
+    return { jobId };
+  });
+
+  router.get(
+    "/api/claude/analyze/:projectId/frames/jobs/:jobId",
+    async (req) => {
+      const job = getFrameAnalysisJobStatus(req.params.jobId);
+      if (!job) {
+        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+      }
+      return job;
+    }
+  );
+
+  router.get("/api/claude/analyze/:projectId/frames/jobs", async (req) => {
+    const allJobs = listFrameAnalysisJobs();
+    return allJobs.filter((job) => job.projectId === req.params.projectId);
+  });
+
+  router.post(
+    "/api/claude/analyze/:projectId/frames/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelFrameAnalysisJob(req.params.jobId);
+      return { cancelled };
+    }
+  );
 
   // ==========================================================================
   // Filler Detection routes (Stage 2)
@@ -331,6 +431,109 @@ export function registerAnalysisRoutes(
       );
     }
   });
+
+  // Async suggest-cuts routes (preferred — avoids 30s HTTP timeout)
+  router.post(
+    "/api/claude/analyze/:projectId/suggest-cuts/start",
+    async (req) => {
+      if (!req.body?.mediaId) {
+        throw new HttpError(400, "Missing 'mediaId' in request body");
+      }
+      const { jobId } = startSuggestCutsJob(req.params.projectId, {
+        mediaId: req.body.mediaId,
+        provider: req.body.provider,
+        language: req.body.language,
+        sceneThreshold: req.body.sceneThreshold,
+        includeFillers: req.body.includeFillers,
+        includeSilences: req.body.includeSilences,
+        includeScenes: req.body.includeScenes,
+      });
+      return { jobId };
+    }
+  );
+
+  router.get(
+    "/api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId",
+    async (req) => {
+      const job = getSuggestCutsJobStatus(req.params.jobId);
+      if (!job) {
+        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+      }
+      return job;
+    }
+  );
+
+  router.get(
+    "/api/claude/analyze/:projectId/suggest-cuts/jobs",
+    async (req) => {
+      const allJobs = listSuggestCutsJobs();
+      return allJobs.filter((job) => job.projectId === req.params.projectId);
+    }
+  );
+
+  router.post(
+    "/api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelSuggestCutsJob(req.params.jobId);
+      return { cancelled };
+    }
+  );
+
+  // ==========================================================================
+  // Async Auto-Edit routes (preferred — avoids 30s HTTP timeout)
+  // ==========================================================================
+  router.post(
+    "/api/claude/timeline/:projectId/auto-edit/start",
+    async (req) => {
+      if (!req.body?.elementId || !req.body?.mediaId) {
+        throw new HttpError(
+          400,
+          "Missing 'elementId' and 'mediaId' in request body"
+        );
+      }
+      const win = getWindow();
+      const { jobId } = startAutoEditJob(
+        req.params.projectId,
+        {
+          elementId: req.body.elementId,
+          mediaId: req.body.mediaId,
+          removeFillers: req.body.removeFillers,
+          removeSilences: req.body.removeSilences,
+          silenceThreshold: req.body.silenceThreshold,
+          keepSilencePadding: req.body.keepSilencePadding,
+          dryRun: req.body.dryRun,
+          provider: req.body.provider,
+          language: req.body.language,
+        },
+        win
+      );
+      return { jobId };
+    }
+  );
+
+  router.get(
+    "/api/claude/timeline/:projectId/auto-edit/jobs/:jobId",
+    async (req) => {
+      const job = getAutoEditJobStatus(req.params.jobId);
+      if (!job) {
+        throw new HttpError(404, `Job not found: ${req.params.jobId}`);
+      }
+      return job;
+    }
+  );
+
+  router.get("/api/claude/timeline/:projectId/auto-edit/jobs", async (req) => {
+    const allJobs = listAutoEditJobs();
+    return allJobs.filter((job) => job.projectId === req.params.projectId);
+  });
+
+  router.post(
+    "/api/claude/timeline/:projectId/auto-edit/jobs/:jobId/cancel",
+    async (req) => {
+      const cancelled = cancelAutoEditJob(req.params.jobId);
+      return { cancelled };
+    }
+  );
 }
 
 // CommonJS export for compatibility

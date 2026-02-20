@@ -15,16 +15,18 @@ export function sanitizeProjectId(projectId: string): string {
 }
 
 /**
+ * Get base path for all projects
+ */
+export function getProjectsBasePath(): string {
+  const documentsPath = app.getPath("documents");
+  return path.join(documentsPath, "QCut", "Projects");
+}
+
+/**
  * Get project folder path
  */
 export function getProjectPath(projectId: string): string {
-  const documentsPath = app.getPath("documents");
-  return path.join(
-    documentsPath,
-    "QCut",
-    "Projects",
-    sanitizeProjectId(projectId)
-  );
+  return path.join(getProjectsBasePath(), sanitizeProjectId(projectId));
 }
 
 /**
@@ -151,6 +153,7 @@ export function sanitizeFilename(filename: string): string {
 // CommonJS export for compatibility
 module.exports = {
   sanitizeProjectId,
+  getProjectsBasePath,
   getProjectPath,
   getMediaPath,
   getTimelinePath,

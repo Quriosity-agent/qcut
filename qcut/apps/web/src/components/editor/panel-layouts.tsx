@@ -16,6 +16,18 @@ interface LayoutProps {
   resetCounter: number;
 }
 
+function logTerminalLayoutDebug(
+  context: string,
+  payload: Record<string, unknown>
+) {
+  try {
+    if (!import.meta.env.DEV) return;
+    console.info(`[TerminalLayoutDebug:${context}]`, payload);
+  } catch (error) {
+    console.error("[TerminalLayoutDebug] failed", error);
+  }
+}
+
 export function DefaultLayout({ resetCounter }: LayoutProps) {
   const {
     toolsPanel,
@@ -23,6 +35,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     mainContent,
     timeline,
     propertiesPanel,
+    activePreset,
     setToolsPanel,
     setPreviewPanel,
     setMainContent,
@@ -30,6 +43,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
     normalizeHorizontalPanels,
   } = usePanelStore();
+
+  const isTerminal = activePreset === "terminal";
+  const maxToolsSize = isTerminal ? 70 : 40;
 
   // Normalize panel sizes to ensure they sum to 100%
   const total = toolsPanel + previewPanel + propertiesPanel;
@@ -46,7 +62,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   ) => {
     const round2 = (v: number) => Math.round(v * 100) / 100;
     const minTools = 15;
-    const maxTools = 40;
+    const maxTools = maxToolsSize;
     const minPreview = 30;
     const maxPreview = 100;
     const minProps = 15;
@@ -124,6 +140,48 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     }
   }, [total, normalizeHorizontalPanels]);
 
+  React.useEffect(() => {
+    if (!isTerminal) return;
+
+    const mediaPanelElement = document.querySelector(
+      '[data-testid="media-panel"]'
+    ) as HTMLElement | null;
+    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
+    const viewportWidthPx = window.innerWidth;
+    const mediaPanelRatioPct =
+      mediaPanelWidthPx && viewportWidthPx > 0
+        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
+        : null;
+
+    logTerminalLayoutDebug("DefaultLayout", {
+      resetCounter,
+      activePreset,
+      toolsPanel,
+      previewPanel,
+      propertiesPanel,
+      normalizedTools,
+      normalizedPreview,
+      normalizedProperties,
+      maxToolsSize,
+      total,
+      mediaPanelWidthPx,
+      viewportWidthPx,
+      mediaPanelRatioPct,
+    });
+  }, [
+    isTerminal,
+    resetCounter,
+    activePreset,
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    normalizedTools,
+    normalizedPreview,
+    normalizedProperties,
+    maxToolsSize,
+    total,
+  ]);
+
   return (
     <ResizablePanelGroup
       key={`default-${resetCounter}`}
@@ -144,7 +202,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
           <ResizablePanel
             defaultSize={normalizedTools}
             minSize={15}
-            maxSize={40}
+            maxSize={maxToolsSize}
             onResize={setToolsPanel}
             className="min-w-0"
           >
@@ -198,12 +256,15 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     mainContent,
     timeline,
     propertiesPanel,
+    activePreset,
     setToolsPanel,
     setPreviewPanel,
     setMainContent,
     setTimeline,
     setPropertiesPanel,
   } = usePanelStore();
+
+  const maxToolsSize = activePreset === "terminal" ? 70 : 40;
 
   // Calculate relative sizes for nested panels
   // The right group contains preview + properties and its total width is (100 - toolsPanel)
@@ -240,6 +301,45 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
   const toGlobalProperties = (rightGroupPct: number) =>
     (rightGroupPct * rightGroupTotal) / 100;
 
+  React.useEffect(() => {
+    if (activePreset !== "terminal") return;
+
+    const mediaPanelElement = document.querySelector(
+      '[data-testid="media-panel"]'
+    ) as HTMLElement | null;
+    const mediaPanelWidthPx = mediaPanelElement?.getBoundingClientRect().width;
+    const viewportWidthPx = window.innerWidth;
+    const mediaPanelRatioPct =
+      mediaPanelWidthPx && viewportWidthPx > 0
+        ? Number(((mediaPanelWidthPx / viewportWidthPx) * 100).toFixed(2))
+        : null;
+
+    logTerminalLayoutDebug("MediaLayout", {
+      resetCounter,
+      activePreset,
+      toolsPanel,
+      previewPanel,
+      propertiesPanel,
+      rightGroupTotal,
+      previewPanelRelative,
+      propertiesPanelRelative,
+      maxToolsSize,
+      mediaPanelWidthPx,
+      viewportWidthPx,
+      mediaPanelRatioPct,
+    });
+  }, [
+    activePreset,
+    resetCounter,
+    toolsPanel,
+    previewPanel,
+    propertiesPanel,
+    rightGroupTotal,
+    previewPanelRelative,
+    propertiesPanelRelative,
+    maxToolsSize,
+  ]);
+
   return (
     <ResizablePanelGroup
       key={`media-${resetCounter}`}
@@ -249,7 +349,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
       <ResizablePanel
         defaultSize={toolsPanel}
         minSize={15}
-        maxSize={40}
+        maxSize={maxToolsSize}
         onResize={setToolsPanel}
         className="min-w-0"
       >
@@ -260,7 +360,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 
       <ResizablePanel
         defaultSize={100 - toolsPanel}
-        minSize={60}
+        minSize={100 - maxToolsSize}
         className="min-w-0 min-h-0"
       >
         <ResizablePanelGroup

@@ -21,6 +21,7 @@ import {
   ArrowUpFromLineIcon,
 } from "lucide-react";
 import { create } from "zustand";
+import { usePanelStore } from "@/stores/panel-store";
 
 export type Tab =
   | "media"
@@ -215,16 +216,60 @@ const defaultLastTabPerGroup: Record<TabGroup, Tab> = {
   edit: "word-timeline",
 };
 
-export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
+/** Trigger terminal panel auto-expand/collapse based on tab transition. */
+function handleTerminalFocusTransition(prevTab: Tab, nextTab: Tab) {
+  try {
+    const wasTerminal = prevTab === "pty";
+    const isTerminal = nextTab === "pty";
+
+    const hasTerminalTransition = wasTerminal || isTerminal;
+
+    if (import.meta.env.DEV && hasTerminalTransition) {
+      console.info("[TerminalFocusTransition] before", {
+        prevTab,
+        nextTab,
+        wasTerminal,
+        isTerminal,
+        panelPreset: usePanelStore.getState().activePreset,
+      });
+    }
+
+    if (isTerminal && !wasTerminal) {
+      usePanelStore.getState().enterTerminalFocus();
+    } else if (!isTerminal && wasTerminal) {
+      usePanelStore.getState().exitTerminalFocus();
+    }
+
+    if (import.meta.env.DEV && hasTerminalTransition) {
+      const panelState = usePanelStore.getState();
+      console.info("[TerminalFocusTransition] after", {
+        panelPreset: panelState.activePreset,
+        preTerminalPreset: panelState.preTerminalPreset,
+        toolsPanel: panelState.toolsPanel,
+        previewPanel: panelState.previewPanel,
+        propertiesPanel: panelState.propertiesPanel,
+      });
+    }
+  } catch (error) {
+    console.error("[TerminalFocusTransition] failed", error);
+  }
+}
+
+export const useMediaPanelStore = create<MediaPanelStore>((set, get) => ({
   activeGroup: "media",
-  setActiveGroup: (group) =>
+  setActiveGroup: (group) => {
+    const prev = get().activeTab;
+    const next = get().lastTabPerGroup[group];
     set((state) => ({
       activeGroup: group,
       activeTab: state.lastTabPerGroup[group],
-    })),
+    }));
+    handleTerminalFocusTransition(prev, next);
+  },
 
   activeTab: "media",
-  setActiveTab: (tab) =>
+  setActiveTab: (tab) => {
+    const prev = get().activeTab;
     set((state) => {
       const group = getGroupForTab(tab);
       const editSubgroup =
@@ -235,7 +280,9 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
         lastTabPerGroup: { ...state.lastTabPerGroup, [group]: tab },
         ...(editSubgroup && { activeEditSubgroup: editSubgroup }),
       };
-    }),
+    });
+    handleTerminalFocusTransition(prev, tab);
+  },
 
   activeEditSubgroup: "ai-edit",
   setActiveEditSubgroup: (subgroup) =>

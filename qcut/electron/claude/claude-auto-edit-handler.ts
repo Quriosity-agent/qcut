@@ -15,12 +15,135 @@ import { requestTimelineFromRenderer } from "./claude-timeline-handler.js";
 import type {
   AutoEditRequest,
   AutoEditResponse,
+  AutoEditJob,
   AutoEditCutInfo,
   CutInterval,
   BatchCutResponse,
 } from "../types/claude-api";
 
 const HANDLER_NAME = "AutoEdit";
+const MAX_AUTO_EDIT_JOBS = 20;
+
+// ---------------------------------------------------------------------------
+// Async job store
+// ---------------------------------------------------------------------------
+
+const autoEditJobs = new Map<string, AutoEditJob>();
+
+function pruneOldAutoEditJobs(): void {
+  if (autoEditJobs.size <= MAX_AUTO_EDIT_JOBS) return;
+  const entries = [...autoEditJobs.entries()].sort(
+    (a, b) => a[1].createdAt - b[1].createdAt
+  );
+  const toRemove = entries.slice(0, entries.length - MAX_AUTO_EDIT_JOBS);
+  for (const [id] of toRemove) {
+    autoEditJobs.delete(id);
+  }
+}
+
+/**
+ * Start an auto-edit job. Returns immediately with a job ID.
+ * The edit runs in the background; poll with getAutoEditJobStatus().
+ */
+export function startAutoEditJob(
+  projectId: string,
+  request: AutoEditRequest,
+  win?: BrowserWindow
+): { jobId: string } {
+  const jobId = `autoedit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  const job: AutoEditJob = {
+    jobId,
+    projectId,
+    mediaId: request.mediaId,
+    elementId: request.elementId,
+    status: "queued",
+    progress: 0,
+    message: "Queued",
+    createdAt: Date.now(),
+  };
+
+  autoEditJobs.set(jobId, job);
+  pruneOldAutoEditJobs();
+
+  claudeLog.info(
+    HANDLER_NAME,
+    `Job ${jobId} created for project ${projectId}, element ${request.elementId}`
+  );
+
+  // Fire-and-forget
+  runAutoEdit(jobId, projectId, request, win).catch((err) => {
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} unexpected error:`, err);
+  });
+
+  return { jobId };
+}
+
+/** Get the current status of an auto-edit job. */
+export function getAutoEditJobStatus(jobId: string): AutoEditJob | null {
+  return autoEditJobs.get(jobId) ?? null;
+}
+
+/** List all auto-edit jobs, sorted newest-first. */
+export function listAutoEditJobs(): AutoEditJob[] {
+  return [...autoEditJobs.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Cancel a running auto-edit job. */
+export function cancelAutoEditJob(jobId: string): boolean {
+  const job = autoEditJobs.get(jobId);
+  if (!job || job.status === "completed" || job.status === "failed") {
+    return false;
+  }
+  job.status = "cancelled";
+  job.message = "Cancelled by user";
+  job.completedAt = Date.now();
+  claudeLog.info(HANDLER_NAME, `Job ${jobId} cancelled`);
+  return true;
+}
+
+/** Run auto-edit in the background, updating job progress. */
+async function runAutoEdit(
+  jobId: string,
+  projectId: string,
+  request: AutoEditRequest,
+  win?: BrowserWindow
+): Promise<void> {
+  const job = autoEditJobs.get(jobId);
+  if (!job) return;
+
+  job.status = "processing";
+  job.progress = 10;
+  job.message = "Starting auto-edit pipeline...";
+
+  try {
+    const result = await autoEdit(projectId, request, win);
+
+    if (autoEditJobs.get(jobId)?.status === "cancelled") return;
+
+    job.status = "completed";
+    job.progress = 100;
+    job.message = "Auto-edit complete";
+    job.result = result;
+    job.completedAt = Date.now();
+
+    claudeLog.info(
+      HANDLER_NAME,
+      `Job ${jobId} completed: ${result.cuts.length} cuts, applied=${result.applied}`
+    );
+  } catch (err) {
+    if (autoEditJobs.get(jobId)?.status === "cancelled") return;
+    job.status = "failed";
+    job.message = err instanceof Error ? err.message : "Auto-edit failed";
+    job.completedAt = Date.now();
+    claudeLog.error(HANDLER_NAME, `Job ${jobId} failed:`, err);
+  }
+}
+
+/** For tests: clear all jobs. */
+export function _clearAutoEditJobs(): void {
+  autoEditJobs.clear();
+}
 
 /**
  * Merge overlapping or adjacent cut intervals.

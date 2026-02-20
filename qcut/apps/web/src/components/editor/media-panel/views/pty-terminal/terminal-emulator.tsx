@@ -33,6 +33,7 @@ export function TerminalEmulator({
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const pendingFitTimeoutsRef = useRef<number[]>([]);
 
   const { setDimensions, resize, handleDisconnected } = usePtyTerminalStore();
 
@@ -52,6 +53,56 @@ export function TerminalEmulator({
       // Ignore fit/resize errors during terminal teardown
     }
   }, [setDimensions, resize]);
+
+  const clearPendingFits = useCallback(() => {
+    try {
+      for (const timeoutId of pendingFitTimeoutsRef.current) {
+        window.clearTimeout(timeoutId);
+      }
+      pendingFitTimeoutsRef.current = [];
+    } catch (error) {
+      debugError("[Terminal] Failed to clear pending fit timeouts", error);
+    }
+  }, []);
+
+  const scheduleFitSync = useCallback(
+    ({ reason }: { reason: string }) => {
+      const runFit = () => {
+        try {
+          fitTerminal();
+          if (import.meta.env.DEV) {
+            const terminal = terminalRef.current;
+            const rect = containerRef.current?.getBoundingClientRect();
+            console.info("[TerminalFit] synced", {
+              reason,
+              sessionId,
+              cols: terminal?.cols ?? null,
+              rows: terminal?.rows ?? null,
+              containerWidthPx: rect?.width ?? null,
+              containerHeightPx: rect?.height ?? null,
+              isVisible,
+            });
+          }
+        } catch (error) {
+          debugError("[Terminal] Fit sync failed", error);
+        }
+      };
+
+      clearPendingFits();
+      requestAnimationFrame(() => {
+        runFit();
+      });
+
+      const retryDelaysMs = [50, 150, 300];
+      for (const delayMs of retryDelaysMs) {
+        const timeoutId = window.setTimeout(() => {
+          runFit();
+        }, delayMs);
+        pendingFitTimeoutsRef.current.push(timeoutId);
+      }
+    },
+    [clearPendingFits, fitTerminal, isVisible, sessionId]
+  );
 
   // Handle terminal output
   const handleData = useCallback(
@@ -126,9 +177,7 @@ export function TerminalEmulator({
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    requestAnimationFrame(() => {
-      fitTerminal();
-    });
+    scheduleFitSync({ reason: "terminal-open" });
 
     // Handle user input - send to PTY
     terminal.onData((data) => {
@@ -248,12 +297,21 @@ export function TerminalEmulator({
 
     // Cleanup
     return () => {
+      clearPendingFits();
       clearInterval(textareaCheckInterval);
       terminal.textarea?.removeEventListener("paste", handlePaste, true);
       window.electronAPI?.pty?.removeListeners();
       terminal.dispose();
     };
-  }, [sessionId, handleData, handleExit, fitTerminal, onReady]);
+  }, [
+    sessionId,
+    handleData,
+    handleExit,
+    fitTerminal,
+    clearPendingFits,
+    onReady,
+    scheduleFitSync,
+  ]);
 
   // Handle resize
   useEffect(() => {
@@ -280,23 +338,24 @@ export function TerminalEmulator({
     if (!isVisible) {
       return;
     }
+    scheduleFitSync({ reason: "became-visible" });
     requestAnimationFrame(() => {
-      fitTerminal();
       terminalRef.current?.focus();
     });
-  }, [isVisible, fitTerminal]);
+  }, [isVisible, scheduleFitSync]);
 
-  // Focus terminal when sessionId changes (new connection)
+  // Fit after session becomes available so backend PTY receives resized cols/rows.
   useEffect(() => {
     if (sessionId && terminalRef.current) {
+      scheduleFitSync({ reason: "session-connected" });
       terminalRef.current.focus();
     }
-  }, [sessionId]);
+  }, [sessionId, scheduleFitSync]);
 
   return (
     <div
       ref={containerRef}
-      className="h-full w-full [&_.xterm]:h-full [&_.xterm-viewport]:!bg-[#1a1a1a] [&_.xterm-screen]:!bg-[#1a1a1a]"
+      className="h-full w-full [&_.xterm]:h-full [&_.xterm]:w-full [&_.xterm-viewport]:w-full [&_.xterm-viewport]:!bg-[#1a1a1a] [&_.xterm-screen]:!bg-[#1a1a1a]"
       style={{ backgroundColor: "#1a1a1a" }}
       role="application"
       aria-label="Terminal emulator"

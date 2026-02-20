@@ -39,6 +39,7 @@ import {
   validateTimeline,
 } from "./claude-timeline-handler.js";
 import {
+  listProjects,
   getProjectSettings,
   updateProjectSettings,
   getProjectStats,
@@ -482,6 +483,10 @@ export function startClaudeHTTPServer(
   // ==========================================================================
   // Project routes
   // ==========================================================================
+  router.get("/api/claude/projects", async () => {
+    return listProjects();
+  });
+
   router.get("/api/claude/project/:projectId/settings", async (req) => {
     return getProjectSettings(req.params.projectId);
   });
@@ -577,10 +582,11 @@ export function startClaudeHTTPServer(
       return report;
     } catch (error) {
       if (error instanceof HttpError) throw error;
-      throw new HttpError(
-        500,
-        error instanceof Error ? error.message : "Failed to generate report"
-      );
+      const msg =
+        error instanceof Error ? error.message : "Failed to generate report";
+      const status =
+        msg.includes("ENOENT") || msg.includes("Failed to save") ? 400 : 500;
+      throw new HttpError(status, msg);
     }
   });
 
