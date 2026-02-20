@@ -40,7 +40,7 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 | Failure | Root Cause | Fix |
 |---------|-----------|-----|
-| **#18, #19: HTTP timeout on 9.5min video** | 30s global HTTP timeout vs handler's internal 5min timeout. Transcription via ElevenLabs takes ~33s for 9.5min audio. | Same fix as Stage 2: async job pattern (already coded for transcription, not yet for suggest-cuts/auto-edit) |
+| **#18, #19: HTTP timeout on 9.5min video** | 30s global HTTP timeout vs handler's internal 5min timeout. Transcription via ElevenLabs takes ~33s for 9.5min audio. | **Fixed** — async job pattern added for both suggest-cuts and auto-edit endpoints |
 
 ---
 
@@ -75,13 +75,18 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ## Subtask 3.2: Auto-Edit Endpoint (Remove Fillers & Silences)
 
-**Endpoint**: `POST /api/claude/timeline/:projectId/auto-edit`
+**Endpoints**:
+- `POST /api/claude/timeline/:projectId/auto-edit` — sync (works for short videos <30s processing)
+- `POST /api/claude/timeline/:projectId/auto-edit/start` — async, returns `{ jobId }`
+- `GET /api/claude/timeline/:projectId/auto-edit/jobs/:jobId` — poll status
+- `GET /api/claude/timeline/:projectId/auto-edit/jobs` — list all jobs
+- `POST /api/claude/timeline/:projectId/auto-edit/jobs/:jobId/cancel` — cancel job
 
-**Implementation**: `electron/claude/claude-auto-edit-handler.ts` (222 lines)
+**Implementation**: `electron/claude/claude-auto-edit-handler.ts`
 
-**Route registration**: `electron/claude/claude-http-analysis-routes.ts` (line 277)
+**Route registration**: `electron/claude/claude-http-analysis-routes.ts`
 
-**Live test**: PASS on 5s video — dry run correctly identified 1 silence (4.9s, applied=false), full execution removed silence (1 cut, applied=true, 1.6s removed). FAIL on 9.5min video (30s HTTP timeout — transcription takes ~33s).
+**Live test**: PASS on 5s video — dry run correctly identified 1 silence (4.9s, applied=false), full execution removed silence (1 cut, applied=true, 1.6s removed). FAIL on 9.5min video sync route (30s HTTP timeout). Async job pattern added to fix this.
 
 **Unit tests**: 15 passing (`electron/__tests__/claude-auto-edit-handler.test.ts`)
 
@@ -103,13 +108,18 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 ## Subtask 3.4: Scene-Based Cut Suggestions
 
-**Endpoint**: `POST /api/claude/analyze/:projectId/suggest-cuts`
+**Endpoints**:
+- `POST /api/claude/analyze/:projectId/suggest-cuts` — sync (works for short videos <30s processing)
+- `POST /api/claude/analyze/:projectId/suggest-cuts/start` — async, returns `{ jobId }`
+- `GET /api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId` — poll status
+- `GET /api/claude/analyze/:projectId/suggest-cuts/jobs` — list all jobs
+- `POST /api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId/cancel` — cancel job
 
-**Implementation**: `electron/claude/claude-suggest-handler.ts` (229 lines)
+**Implementation**: `electron/claude/claude-suggest-handler.ts`
 
-**Route registration**: `electron/claude/claude-http-analysis-routes.ts` (line 313)
+**Route registration**: `electron/claude/claude-http-analysis-routes.ts`
 
-**Live test**: PASS on 5s video — correctly returned 1 silence suggestion with summary + transcription metadata. Flag filtering works (scenes only, fillers only both return correct subsets). FAIL on 9.5min video (30s HTTP timeout).
+**Live test**: PASS on 5s video — correctly returned 1 silence suggestion with summary + transcription metadata. Flag filtering works (scenes only, fillers only both return correct subsets). FAIL on 9.5min video sync route (30s HTTP timeout). Async job pattern added to fix this.
 
 **Unit tests**: 14 passing (`electron/__tests__/claude-suggest-handler.test.ts`)
 
@@ -146,7 +156,7 @@ Tested against running QCut instance (localhost:8765) with real media files.
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| 30s HTTP timeout kills long-video suggest-cuts + auto-edit | High | Same root cause as Stage 2 — needs async job pattern |
+| 30s HTTP timeout kills long-video suggest-cuts + auto-edit | High | **Fixed** — async job pattern added (POST /start, GET /jobs/:jobId, GET /jobs, POST /cancel) |
 | HTTP server integration tests not discoverable by vitest | Low | Tests in `electron/claude/__tests__/` not matched by include glob `../../electron/__tests__/` |
 
 ---

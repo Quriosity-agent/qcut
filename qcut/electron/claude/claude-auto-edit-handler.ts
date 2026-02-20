@@ -86,9 +86,7 @@ export function getAutoEditJobStatus(jobId: string): AutoEditJob | null {
 
 /** List all auto-edit jobs, sorted newest-first. */
 export function listAutoEditJobs(): AutoEditJob[] {
-  return [...autoEditJobs.values()].sort(
-    (a, b) => b.createdAt - a.createdAt
-  );
+  return [...autoEditJobs.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /** Cancel a running auto-edit job. */
