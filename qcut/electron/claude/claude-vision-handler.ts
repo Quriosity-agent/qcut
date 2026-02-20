@@ -504,10 +504,14 @@ const frameAnalysisJobs = new Map<string, FrameAnalysisJob>();
 
 function pruneOldFrameJobs(): void {
   if (frameAnalysisJobs.size <= MAX_FRAME_JOBS) return;
-  const entries = [...frameAnalysisJobs.entries()].sort(
-    (a, b) => a[1].createdAt - b[1].createdAt
+  const terminalStates = new Set(["completed", "failed", "cancelled"]);
+  const entries = [...frameAnalysisJobs.entries()]
+    .filter(([, job]) => terminalStates.has(job.status))
+    .sort((a, b) => a[1].createdAt - b[1].createdAt);
+  const toRemove = entries.slice(
+    0,
+    frameAnalysisJobs.size - MAX_FRAME_JOBS
   );
-  const toRemove = entries.slice(0, entries.length - MAX_FRAME_JOBS);
   for (const [id] of toRemove) {
     frameAnalysisJobs.delete(id);
   }

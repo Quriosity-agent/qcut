@@ -27,7 +27,7 @@ Auto-expand the left panel when the user switches to the Terminal tab. Revert wh
 
 ### Terminal preset sizes
 
-```
+```text
 toolsPanel:    55%  (was 20%)  — wide terminal
 previewPanel:  30%  (was 55%)  — minimized preview
 propertiesPanel: 15% (was 25%) — minimized properties
