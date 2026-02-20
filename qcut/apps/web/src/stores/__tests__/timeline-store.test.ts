@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterAll, afterEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
@@ -9,7 +9,48 @@ import type {
 	CreateMediaElement,
 } from "@/types/timeline";
 
+// Mock fetch globally to prevent pending requests when worker closes
+const fetchMock = vi.fn(() =>
+	Promise.resolve(new Response(JSON.stringify({}), { status: 200 }))
+);
+vi.stubGlobal("fetch", fetchMock);
+
+// Mock error handler to prevent stderr output from caught dynamic import errors
+vi.mock("@/lib/error-handler", () => ({
+	handleError: vi.fn(),
+	handleStorageError: vi.fn(),
+	handleMediaProcessingError: vi.fn(),
+	ErrorCategory: { STORAGE: "storage", MEDIA: "media", GENERAL: "general" },
+	ErrorSeverity: { LOW: "low", MEDIUM: "medium", HIGH: "high" },
+}));
+
 // Mock dependencies
+vi.mock("@/utils/lazy-stores", () => ({
+	getMediaStore: vi.fn(() => Promise.resolve(() => ({ getState: () => ({ mediaItems: [] }) }))),
+	getTimelineStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getProjectStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getSceneStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getStickersOverlayStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getPlaybackStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getExportStore: vi.fn(() => Promise.resolve(() => ({}))),
+	getEditorStore: vi.fn(() => Promise.resolve(() => ({}))),
+	preloadCriticalStores: vi.fn(() => Promise.resolve()),
+	clearStoreCache: vi.fn(),
+}));
+
+vi.mock("@/stores/media-store-loader", () => ({
+	getMediaStore: vi.fn(() => Promise.resolve({})),
+	getMediaStoreUtils: vi.fn(() =>
+		Promise.resolve({
+			getFileType: vi.fn(),
+			getImageDimensions: vi.fn(),
+			generateVideoThumbnail: vi.fn(),
+			getMediaDuration: vi.fn(),
+			getMediaAspectRatio: vi.fn(),
+		})
+	),
+}));
+
 vi.mock("@/stores/editor-store", () => ({
 	useEditorStore: {
 		getState: vi.fn(() => ({
