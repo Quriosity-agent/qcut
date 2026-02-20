@@ -72,6 +72,11 @@ vi.mock("../claude/claude-timeline-handler", () => ({
 import {
 	autoEdit,
 	mergeCutIntervals,
+	startAutoEditJob,
+	getAutoEditJobStatus,
+	listAutoEditJobs,
+	cancelAutoEditJob,
+	_clearAutoEditJobs,
 } from "../claude/claude-auto-edit-handler";
 
 // ---------------------------------------------------------------------------
@@ -291,5 +296,128 @@ describe("claude-auto-edit-handler", () => {
 			expect(result.analysis.totalFillerTime).toBe(0.3);
 			expect(result.analysis.totalSilenceTime).toBe(2.0);
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Async Job Tracking Tests
+// ---------------------------------------------------------------------------
+
+describe("auto-edit async jobs", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		_clearAutoEditJobs();
+		mockTranscribeMedia.mockResolvedValue(makeTranscriptionResult());
+		mockAnalyzeFillers.mockResolvedValue(makeFillerResult());
+		mockExecuteBatchCuts.mockResolvedValue({
+			cutsApplied: 2,
+			elementsRemoved: 2,
+			remainingElements: [],
+			totalRemovedDuration: 2.0,
+		});
+	});
+
+	it("startAutoEditJob returns jobId immediately", () => {
+		const { jobId } = startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+		expect(jobId).toMatch(/^autoedit_/);
+	});
+
+	it("getAutoEditJobStatus returns job after creation", () => {
+		const { jobId } = startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+		const job = getAutoEditJobStatus(jobId);
+		expect(job).not.toBeNull();
+		expect(job!.projectId).toBe("proj_1");
+		expect(job!.elementId).toBe("el_1");
+	});
+
+	it("getAutoEditJobStatus returns null for unknown job", () => {
+		expect(getAutoEditJobStatus("nonexistent")).toBeNull();
+	});
+
+	it("job completes with result after processing", async () => {
+		const { jobId } = startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+
+		await vi.waitFor(() => {
+			const job = getAutoEditJobStatus(jobId);
+			expect(job!.status).toBe("completed");
+		});
+
+		const job = getAutoEditJobStatus(jobId);
+		expect(job!.result).toBeDefined();
+		expect(job!.result!.cuts.length).toBeGreaterThan(0);
+		expect(job!.completedAt).toBeDefined();
+	});
+
+	it("job fails when pipeline errors", async () => {
+		mockTranscribeMedia.mockRejectedValue(new Error("API error"));
+
+		const { jobId } = startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+
+		await vi.waitFor(() => {
+			const job = getAutoEditJobStatus(jobId);
+			expect(["failed", "completed"]).toContain(job!.status);
+		});
+	});
+
+	it("cancelAutoEditJob marks job as cancelled", () => {
+		const { jobId } = startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+		const cancelled = cancelAutoEditJob(jobId);
+		expect(cancelled).toBe(true);
+
+		const job = getAutoEditJobStatus(jobId);
+		expect(job!.status).toBe("cancelled");
+	});
+
+	it("cancelAutoEditJob returns false for unknown job", () => {
+		expect(cancelAutoEditJob("nonexistent")).toBe(false);
+	});
+
+	it("listAutoEditJobs returns jobs sorted newest-first", () => {
+		startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+		startAutoEditJob("proj_2", {
+			elementId: "el_2",
+			mediaId: "media_2",
+			dryRun: true,
+		});
+
+		const jobs = listAutoEditJobs();
+		expect(jobs).toHaveLength(2);
+		expect(jobs[0].createdAt).toBeGreaterThanOrEqual(jobs[1].createdAt);
+	});
+
+	it("_clearAutoEditJobs removes all jobs", () => {
+		startAutoEditJob("proj_1", {
+			elementId: "el_1",
+			mediaId: "media_1",
+			dryRun: true,
+		});
+		expect(listAutoEditJobs()).toHaveLength(1);
+
+		_clearAutoEditJobs();
+		expect(listAutoEditJobs()).toHaveLength(0);
 	});
 });

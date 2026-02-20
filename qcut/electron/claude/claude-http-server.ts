@@ -559,14 +559,32 @@ export function startClaudeHTTPServer(
 				settings,
 			});
 			const steps = getOperationLog({ projectId: req.params.projectId });
+
+			// Resolve output directory from outputDir or outputPath
+			let outputDir: string | undefined;
+			if (typeof req.body?.outputDir === "string") {
+				outputDir = req.body.outputDir;
+			} else if (typeof req.body?.outputPath === "string") {
+				// outputPath is a full file path — extract directory
+				const lastSlash = Math.max(
+					req.body.outputPath.lastIndexOf("/"),
+					req.body.outputPath.lastIndexOf("\\")
+				);
+				outputDir =
+					lastSlash > 0
+						? req.body.outputPath.slice(0, lastSlash)
+						: req.body.outputPath;
+			}
+
+			// Infer saveToDisk when an output location is provided
+			const saveToDisk =
+				req.body?.saveToDisk === true || outputDir !== undefined;
+
 			const report = await generatePipelineReport({
 				steps,
 				summary,
-				saveToDisk: req.body?.saveToDisk === true,
-				outputDir:
-					typeof req.body?.outputDir === "string"
-						? req.body.outputDir
-						: undefined,
+				saveToDisk,
+				outputDir,
 				projectId: req.params.projectId,
 			});
 

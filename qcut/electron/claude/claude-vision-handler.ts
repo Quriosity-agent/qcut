@@ -132,25 +132,7 @@ export function resolveTimestamps(
 	return [0];
 }
 
-/**
- * Send frames to Claude Vision API for analysis.
- * Processes in batches of up to MAX_FRAMES_PER_REQUEST.
- */
-async function analyzeFramesWithClaude(
-	framePaths: Array<{ timestamp: number; path: string }>,
-	customPrompt?: string
-): Promise<FrameAnalysis[]> {
-	const keys = await getDecryptedApiKeys();
-	const apiKey = keys.anthropicApiKey;
-	if (!apiKey) {
-		throw new Error(
-			"Anthropic API key not configured. Go to Settings → API Keys to set it."
-		);
-	}
-
-	const prompt =
-		customPrompt ||
-		`Analyze each video frame. For each frame, provide a JSON object with:
+const DEFAULT_VISION_PROMPT = `Analyze each video frame. For each frame, provide a JSON object with:
 - "objects": array of objects/subjects visible
 - "text": array of any text/labels visible (OCR)
 - "description": brief natural language description
@@ -159,7 +141,14 @@ async function analyzeFramesWithClaude(
 
 Return a JSON array with one object per frame, in the same order as the images provided.`;
 
-	// Build content array: text prompt + images
+/**
+ * Build the base64 image content array from frame paths.
+ */
+async function buildImageContent(
+	framePaths: Array<{ timestamp: number; path: string }>,
+	customPrompt?: string
+): Promise<Array<Record<string, unknown>>> {
+	const prompt = customPrompt || DEFAULT_VISION_PROMPT;
 	const content: Array<Record<string, unknown>> = [
 		{ type: "text", text: prompt },
 	];
@@ -178,6 +167,16 @@ Return a JSON array with one object per frame, in the same order as the images p
 		});
 	}
 
+	return content;
+}
+
+/**
+ * Call Anthropic Vision API directly.
+ */
+async function callAnthropicVision(
+	apiKey: string,
+	content: Array<Record<string, unknown>>
+): Promise<string> {
 	const response = await fetch("https://api.anthropic.com/v1/messages", {
 		method: "POST",
 		headers: {
@@ -196,7 +195,7 @@ Return a JSON array with one object per frame, in the same order as the images p
 	if (!response.ok) {
 		const errorText = await response.text();
 		throw new Error(
-			`Claude Vision API error: ${response.status} ${errorText.slice(0, 300)}`
+			`Anthropic Vision API error: ${response.status} ${errorText.slice(0, 300)}`
 		);
 	}
 
@@ -204,12 +203,130 @@ Return a JSON array with one object per frame, in the same order as the images p
 		content?: Array<{ type: string; text?: string }>;
 	};
 
-	const textBlocks = (data.content || [])
+	return (data.content || [])
 		.filter((block) => block.type === "text")
 		.map((block) => block.text || "")
 		.join("\n");
+}
 
-	return parseFrameAnalysisResponse(textBlocks, framePaths);
+/**
+ * Call OpenRouter Vision API as fallback.
+ */
+async function callOpenRouterVision(
+	apiKey: string,
+	content: Array<Record<string, unknown>>
+): Promise<string> {
+	// Convert Anthropic content format to OpenAI-compatible format
+	const messages = [
+		{
+			role: "user" as const,
+			content: content.map((block) => {
+				if (block.type === "text") {
+					return { type: "text", text: block.text };
+				}
+				if (
+					block.type === "image" &&
+					(block.source as Record<string, unknown>)?.type === "base64"
+				) {
+					const src = block.source as Record<string, string>;
+					return {
+						type: "image_url",
+						image_url: {
+							url: `data:${src.media_type};base64,${src.data}`,
+						},
+					};
+				}
+				return block;
+			}),
+		},
+	];
+
+	const response = await fetch(
+		"https://openrouter.ai/api/v1/chat/completions",
+		{
+			method: "POST",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify({
+				model: "anthropic/claude-sonnet-4",
+				max_tokens: 4096,
+				messages,
+			}),
+			signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
+		}
+	);
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(
+			`OpenRouter Vision API error: ${response.status} ${errorText.slice(0, 300)}`
+		);
+	}
+
+	const data = (await response.json()) as {
+		choices?: Array<{ message?: { content?: string } }>;
+	};
+
+	return data.choices?.[0]?.message?.content || "";
+}
+
+/**
+ * Send frames to a vision API for analysis with provider cascade.
+ * Tries: Anthropic → OpenRouter → fail with descriptive error.
+ */
+async function analyzeFramesWithClaude(
+	framePaths: Array<{ timestamp: number; path: string }>,
+	customPrompt?: string
+): Promise<FrameAnalysis[]> {
+	const keys = await getDecryptedApiKeys();
+	const content = await buildImageContent(framePaths, customPrompt);
+
+	// Provider cascade: try Anthropic first, then OpenRouter
+	const errors: string[] = [];
+
+	if (keys.anthropicApiKey) {
+		try {
+			const text = await callAnthropicVision(
+				keys.anthropicApiKey,
+				content
+			);
+			return parseFrameAnalysisResponse(text, framePaths);
+		} catch (err) {
+			const msg =
+				err instanceof Error ? err.message : "Anthropic call failed";
+			claudeLog.warn(HANDLER_NAME, `Anthropic provider failed: ${msg}`);
+			errors.push(`Anthropic: ${msg}`);
+		}
+	} else {
+		errors.push("Anthropic: API key not configured");
+	}
+
+	if (keys.openRouterApiKey) {
+		try {
+			claudeLog.info(
+				HANDLER_NAME,
+				"Falling back to OpenRouter for vision..."
+			);
+			const text = await callOpenRouterVision(
+				keys.openRouterApiKey,
+				content
+			);
+			return parseFrameAnalysisResponse(text, framePaths);
+		} catch (err) {
+			const msg =
+				err instanceof Error ? err.message : "OpenRouter call failed";
+			claudeLog.warn(HANDLER_NAME, `OpenRouter provider failed: ${msg}`);
+			errors.push(`OpenRouter: ${msg}`);
+		}
+	} else {
+		errors.push("OpenRouter: API key not configured");
+	}
+
+	throw new Error(
+		`No vision provider available. Configure an Anthropic or OpenRouter API key in Settings → API Keys.\nProvider errors: ${errors.join("; ")}`
+	);
 }
 
 /**

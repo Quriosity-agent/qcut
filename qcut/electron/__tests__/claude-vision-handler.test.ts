@@ -295,27 +295,119 @@ describe("analyzeFrames", () => {
 		).rejects.toThrow("missing on disk");
 	});
 
-	it("throws when Anthropic API key is missing", async () => {
+	it("throws descriptive error when no API keys configured", async () => {
 		mockGetDecryptedApiKeys.mockResolvedValueOnce({
 			falApiKey: "",
 			geminiApiKey: "",
 			anthropicApiKey: "",
+			openRouterApiKey: "",
 		});
 
-		// Mock: existsSync true for media file, false for extracted frames
-		let callCount = 0;
-		mockExistsSync.mockImplementation(() => {
-			callCount++;
-			// First call: media file exists. Subsequent: frame paths don't exist
-			return callCount <= 1;
-		});
+		mockExistsSync.mockReturnValue(true);
+		mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
 
 		await expect(
 			analyzeFrames("test-project", {
 				mediaId: "valid-video",
 				timestamps: [0],
 			})
-		).rejects.toThrow("No frames could be extracted");
+		).rejects.toThrow("No vision provider available");
+	});
+
+	it("falls back to OpenRouter when Anthropic key is missing", async () => {
+		mockGetDecryptedApiKeys.mockResolvedValueOnce({
+			falApiKey: "",
+			geminiApiKey: "",
+			anthropicApiKey: "",
+			openRouterApiKey: "test-openrouter-key",
+		});
+
+		mockExistsSync.mockReturnValue(true);
+		mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({
+				choices: [
+					{
+						message: {
+							content: JSON.stringify([
+								{
+									objects: ["tree"],
+									text: [],
+									description: "A tree",
+									mood: "calm",
+									composition: "centered",
+								},
+							]),
+						},
+					},
+				],
+			}),
+		});
+
+		const result = await analyzeFrames("test-project", {
+			mediaId: "valid-video",
+			timestamps: [0],
+		});
+
+		expect(result.frames).toHaveLength(1);
+		expect(result.frames[0].objects).toEqual(["tree"]);
+		// Verify OpenRouter endpoint was called
+		expect(mockFetch).toHaveBeenCalledWith(
+			"https://openrouter.ai/api/v1/chat/completions",
+			expect.objectContaining({ method: "POST" })
+		);
+	});
+
+	it("falls back to OpenRouter when Anthropic API fails", async () => {
+		mockGetDecryptedApiKeys.mockResolvedValueOnce({
+			falApiKey: "",
+			geminiApiKey: "",
+			anthropicApiKey: "test-anthropic-key",
+			openRouterApiKey: "test-openrouter-key",
+		});
+
+		mockExistsSync.mockReturnValue(true);
+		mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
+
+		// First call (Anthropic) fails
+		mockFetch.mockResolvedValueOnce({
+			ok: false,
+			status: 500,
+			text: async () => "Internal Server Error",
+		});
+
+		// Second call (OpenRouter) succeeds
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => ({
+				choices: [
+					{
+						message: {
+							content: JSON.stringify([
+								{
+									objects: ["car"],
+									text: [],
+									description: "A car",
+									mood: "neutral",
+									composition: "rule-of-thirds",
+								},
+							]),
+						},
+					},
+				],
+			}),
+		});
+
+		const result = await analyzeFrames("test-project", {
+			mediaId: "valid-video",
+			timestamps: [0],
+		});
+
+		expect(result.frames).toHaveLength(1);
+		expect(result.frames[0].objects).toEqual(["car"]);
+		expect(mockFetch).toHaveBeenCalledTimes(2);
 	});
 
 	it("returns analyzed frames from mocked Claude Vision API", async () => {
@@ -357,7 +449,7 @@ describe("analyzeFrames", () => {
 		expect(result.totalFramesAnalyzed).toBe(1);
 	});
 
-	it("handles Claude Vision API error responses", async () => {
+	it("handles API error when only Anthropic key configured", async () => {
 		mockExistsSync.mockReturnValue(true);
 		mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
 
@@ -372,10 +464,10 @@ describe("analyzeFrames", () => {
 				mediaId: "valid-video",
 				timestamps: [0],
 			})
-		).rejects.toThrow("Claude Vision API error: 401");
+		).rejects.toThrow("No vision provider available");
 	});
 
-	it("handles Claude Vision API timeout", async () => {
+	it("handles API timeout when only Anthropic key configured", async () => {
 		mockExistsSync.mockReturnValue(true);
 		mockReadFile.mockResolvedValue(Buffer.from("fake-jpeg-data"));
 
@@ -386,7 +478,7 @@ describe("analyzeFrames", () => {
 				mediaId: "valid-video",
 				timestamps: [0],
 			})
-		).rejects.toThrow("Aborted");
+		).rejects.toThrow("No vision provider available");
 	});
 });
 

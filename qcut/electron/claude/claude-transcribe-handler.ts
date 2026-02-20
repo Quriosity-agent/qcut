@@ -118,9 +118,14 @@ export function extractAudio(videoPath: string): Promise<string> {
 			if (code === 0 && existsSync(outputPath)) {
 				resolve(outputPath);
 			} else {
+				// Extract meaningful error from stderr (skip FFmpeg banner, use last lines)
+				const stderrLines = stderr.split("\n").filter((l) => l.trim());
+				const lastLines = stderrLines.slice(-5).join("\n");
+				const errorDetail = lastLines || stderr.slice(0, 300);
 				reject(
 					new Error(
-						`Audio extraction failed (code ${code}): ${stderr.slice(0, 300)}`
+						`Audio extraction failed (FFmpeg exit code ${code}). ` +
+							`Input: ${videoPath}\n${errorDetail}`
 					)
 				);
 			}
