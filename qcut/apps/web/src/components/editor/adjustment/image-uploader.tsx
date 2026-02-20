@@ -123,12 +123,10 @@ export function ImageUploader({
 								</p>
 							</div>
 
-							<span
-							className="inline-flex items-center h-7 text-xs shrink-0 text-muted-foreground"
-						>
-							<ImageIcon className="size-3 mr-1" />
-							Browse
-						</span>
+							<span className="inline-flex items-center h-7 text-xs shrink-0 text-muted-foreground">
+								<ImageIcon className="size-3 mr-1" />
+								Browse
+							</span>
 						</div>
 					)}
 				</div>

@@ -438,28 +438,28 @@ export interface SuggestCutsResponse {
 // ============================================================================
 
 export interface SuggestCutsJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: SuggestCutsResponse;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: SuggestCutsResponse;
+	createdAt: number;
+	completedAt?: number;
 }
 
 export interface AutoEditJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  elementId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: AutoEditResponse;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	elementId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: AutoEditResponse;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -716,15 +716,15 @@ export interface FrameAnalysisResult {
 // ============================================================================
 
 export interface SceneDetectionJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: SceneDetectionResult;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: SceneDetectionResult;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
@@ -732,15 +732,15 @@ export interface SceneDetectionJob {
 // ============================================================================
 
 export interface FrameAnalysisJob {
-  jobId: string;
-  projectId: string;
-  mediaId: string;
-  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
-  progress: number;
-  message: string;
-  result?: FrameAnalysisResult;
-  createdAt: number;
-  completedAt?: number;
+	jobId: string;
+	projectId: string;
+	mediaId: string;
+	status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+	progress: number;
+	message: string;
+	result?: FrameAnalysisResult;
+	createdAt: number;
+	completedAt?: number;
 }
 
 // ============================================================================
