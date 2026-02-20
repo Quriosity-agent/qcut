@@ -153,7 +153,7 @@ describe("Claude export trigger", () => {
 		expect(result.status).toBe("queued");
 	});
 
-	it("starts export with custom settings", async () => {
+	it("starts export with nested custom settings", async () => {
 		const result = await startExportJob({
 			projectId: "project_2",
 			request: {
@@ -173,6 +173,30 @@ describe("Claude export trigger", () => {
 
 		const job = getExportJobStatus(result.jobId);
 		expect(job?.presetId).toBe("youtube-1080p");
+		expect(job?.settings?.width).toBe(1280);
+		expect(job?.settings?.height).toBe(720);
+		expect(job?.settings?.fps).toBe(24);
+		expect(["queued", "exporting", "completed"]).toContain(job?.status);
+	});
+
+	it("accepts top-level custom settings without settings key (Issue J)", async () => {
+		const result = await startExportJob({
+			projectId: "project_2b",
+			request: {
+				width: 1280,
+				height: 720,
+				fps: 24,
+				format: "mp4",
+			} as Record<string, unknown> as import("../types/claude-api").ExportJobRequest,
+			timeline: testTimeline,
+			mediaFiles: testMediaFiles,
+		});
+
+		const job = getExportJobStatus(result.jobId);
+		expect(job?.settings?.width).toBe(1280);
+		expect(job?.settings?.height).toBe(720);
+		expect(job?.settings?.fps).toBe(24);
+		expect(job?.settings?.format).toBe("mp4");
 		expect(["queued", "exporting", "completed"]).toContain(job?.status);
 	});
 

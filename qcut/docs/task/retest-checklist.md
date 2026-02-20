@@ -6,6 +6,7 @@
 > **Update 2026-02-20**: Issues D, E, F fixed in branch `claude-cli-v3`.
 > **Update 2026-02-21**: Live retested all endpoints. All fixed issues confirmed working.
 > **Update 2026-02-21**: Issues G, H, I fixed in branch `claude-cli-v3`.
+> **Update 2026-02-21 (retest #2)**: Full automated retest. **18 PASS, 1 PARTIAL, 1 SKIP, 1 REGRESS**. New issue J: custom export settings ignored.
 
 ---
 
@@ -68,34 +69,36 @@ curl -s -X POST -H "Content-Type: application/json" \
 
 ---
 
-## 2. Test Results (2026-02-21)
+## 2. Test Results (2026-02-21, retest #2)
 
 | # | Test | Stage | Result | Notes |
 |---|------|-------|--------|-------|
-| 2.1 | Async transcription start | 2 | **PASS** | Returns `jobId` immediately |
-| 2.2 | Poll transcription | 2 | **PASS** | Polling works. Job `failed` due to FFmpeg audio extraction error (env issue, not code bug) |
+| 2.1 | Async transcription start | 2 | **PASS** | Returns `jobId` immediately (`transcribe_..._yna8s`) |
+| 2.2 | Poll transcription | 2 | **PASS** | `status: processing`, `progress: 50`, `provider: elevenlabs` — polling works |
 | 2.3 | List transcription jobs | 2 | **PASS** | Returns array with job entries including status, progress, timestamps |
-| 2.4 | Cancel transcription job | 2 | **PASS** | `cancelled: false` (already completed/failed — correct behavior) |
-| 2.5 | Scene detection | 2 | **PASS** | Sync response: 1 scene detected. Returns scenes directly, no `jobId` |
+| 2.4 | Cancel transcription job | 2 | **PASS** | `cancelled: true` (job was still processing — successfully cancelled) |
+| 2.5 | Scene detection | 2 | **PASS** | Sync response: 1 scene detected at t=0, confidence=1 |
 | 2.6 | Poll scene detection | 2 | **N/A** | Scene detection is synchronous, no polling needed |
-| 2.7 | Frame analysis (cascade) | 2 | **PASS** | Cascade works: tries Anthropic → OpenRouter → descriptive aggregate error. No API keys configured = expected error message |
-| 2.8 | Frame analysis (error msg) | 2 | **PASS** | Error: `"No vision provider available. Configure an Anthropic or OpenRouter API key..."` with per-provider details |
+| 2.7 | Frame analysis (cascade) | 2 | **PASS** | Cascade returns descriptive aggregate error when no API keys configured |
+| 2.8 | Frame analysis (error msg) | 2 | **PASS** | `"No vision provider available. Configure an Anthropic or OpenRouter API key in Settings → API Keys. Provider errors: Anthropic: API key not configured; OpenRouter: API key not configured"` |
 | 2.9 | AICP describe | 2 | **SKIP** | Known — needs binary rebuild (Issue C) |
-| 3.1 | Suggest-cuts (async start) | 3 | **PASS** | `POST .../suggest-cuts/start` returns `jobId` immediately |
-| 3.2 | Poll suggest-cuts | 3 | **PASS** | `status: completed`, 0 suggestions (short test video), includes summary and scene data |
-| 3.3 | Auto-edit (async start) | 3 | **PASS** | `POST .../auto-edit/start` returns `jobId` immediately. Requires both `elementId` and `mediaId` |
-| 3.4 | Poll auto-edit | 3 | **PASS** | Polling works. Job `failed` at audio extraction (same FFmpeg env issue as transcription) |
+| 3.1 | Suggest-cuts (async start) | 3 | **PASS** | Returns `jobId` immediately (`suggest_..._sa3ki`) |
+| 3.2 | Poll suggest-cuts | 3 | **PASS** | `status: completed`, 1 silence suggestion (0.099–4.979s), summary with word count and scene data |
+| 3.3 | Auto-edit (async start) | 3 | **PASS** | Returns `jobId` immediately. Requires both `elementId` and `mediaId` |
+| 3.4 | Poll auto-edit | 3 | **PASS** | `status: completed`, 1 silence cut applied (0.399–4.679s). Job completed successfully |
 | 3.5 | List/cancel suggest-cuts | 3 | **PASS** | List returns job array. Cancel returns `cancelled: false` (already completed) |
 | 3.6 | List/cancel auto-edit | 3 | **PASS** | List returns job array. Cancel returns `cancelled: false` (already completed) |
-| 4.1 | Range delete (same-track) | 4 | **PASS** | `splitElements: 1`, `totalRemovedDuration: 2` — correctly split element and removed 2s |
-| 4.2 | Range delete (cross-track) | 4 | **PASS** | `totalRemovedDuration: 4` on multi-track timeline |
-| 4.3 | Malformed markdown import | 4 | **PASS** | HTTP 400: `"No tracks found — expected '## Track N: Name' headers"` (requires `format:"md"`) |
-| 4.4 | Import replace mode | 4 | **PASS** | `imported: true` — element appears with correct source, start, duration. Issue F fix confirmed |
+| 4.1 | Range delete (same-track) | 4 | **PASS** | `splitElements: 2`, `totalRemovedDuration: 2` — correctly split element and removed 2s |
+| 4.2 | Range delete (cross-track) | 4 | **PASS** | `splitElements: 2`, `totalRemovedDuration: 2` on multi-track timeline |
+| 4.3 | Malformed markdown import | 4 | **PASS** | `"Invalid timeline markdown: No tracks found — expected '## Track N: Name' headers"` |
+| 4.4 | Import replace mode | 4 | **PASS** | `imported: true` — element created from markdown table. Issue F fix confirmed |
 | 5.1 | Export with preset | 5 | **PASS** | Job created with `youtube-1080p` preset, `status: queued` |
-| 5.2 | Export with custom settings | 5 | **PASS** | Job created with 1280x720@24fps custom settings |
-| 5.3 | Poll export job | 5 | **PASS** | `status: completed`, output file produced (0.6MB) |
-| 5.4 | Nonexistent project summary | 5 | **PASS** | HTTP 400: `"Failed to read project"` (not 500) |
-| 5.5 | Report generation | 5 | **PARTIAL** | Returns report markdown successfully, but no longer errors on invalid `outputPath` — returns content regardless |
+| 5.2 | Export with custom settings | 5 | **REGRESS** | Custom settings (1280x720@24fps) ignored — job used `youtube-1080p` (1920x1080@30fps) instead. See Issue J |
+| 5.3 | Poll export job | 5 | **PASS** | `status: completed`, output file 85KB, outputPath correct |
+| 5.4 | Nonexistent project summary | 5 | **PASS** | `"Failed to read project: 00000000-..."` (not 500) |
+| 5.5 | Report generation | 5 | **PASS** | Returns full pipeline report markdown with stages, stats, project summary |
+| I.1 | Missing elementId only | — | **PASS** | `"Missing 'elementId' in request body"` (individual field validation) |
+| I.2 | Missing both fields | — | **PASS** | `"Missing 'elementId' and 'mediaId' in request body"` |
 
 ---
 
@@ -162,6 +165,14 @@ Transcription and auto-edit both fail at the audio extraction step with FFmpeg e
 
 **Fix applied** (branch `claude-cli-v3`): Report route in `claude-http-server.ts` now infers `saveToDisk: true` when `outputPath` or `outputDir` is provided. Also extracts directory from `outputPath` (e.g., `/foo/bar/report.md` → `/foo/bar`) for the `outputDir` parameter expected by `generatePipelineReport()`.
 
+### Issue J: Custom export settings ignored — FIXED
+
+`POST .../export/:projectId/start` with `{"width":1280,"height":720,"fps":24,"format":"mp4"}` (no `preset`) created a job that used `youtube-1080p` preset settings (1920x1080@30fps) instead of the custom values.
+
+**Root cause**: `resolveExportSettings()` in `claude-export-handler.ts` only checked `request.settings?.width` (nested under a `settings` key). Top-level properties like `request.width` were ignored, so the preset defaults were always used when `settings` was absent.
+
+**Fix applied** (branch `claude-cli-v3`): `resolveExportSettings()` now also checks for top-level properties as a fallback. Both `{"settings":{"width":1280}}` and `{"width":1280}` are accepted. Nested `settings` takes priority over top-level. Unit test added.
+
 ### Issue I: Auto-edit `/start` error message is misleading — FIXED
 
 `POST .../auto-edit/start` with only `mediaId` (no `elementId`) returned `"Missing 'elementId' and 'mediaId'"` — implying both are missing.
@@ -190,6 +201,8 @@ Applied to both sync (`/auto-edit`) and async (`/auto-edit/start`) routes.
 4. ~~**Fix markdown import apply (Issue F)**~~ — **DONE & VERIFIED**. Media sync + case-insensitive match confirmed.
 
 ### Medium priority
+
+~~**Fix custom export settings (Issue J)**~~ — **DONE**. Top-level custom settings now accepted as fallback in `resolveExportSettings()`.
 
 5. **Add `GET /api/claude/projects` endpoint** — No API way to list projects. Only option is scraping IndexedDB on disk. Makes testing and automation hard.
 
