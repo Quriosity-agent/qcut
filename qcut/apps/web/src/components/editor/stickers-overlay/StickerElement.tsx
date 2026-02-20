@@ -17,7 +17,7 @@ import type { MediaItem } from "@/stores/media-store-types";
 interface StickerElementProps {
   sticker: OverlaySticker;
   mediaItem: MediaItem;
-  canvasRef: React.RefObject<HTMLDivElement>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -73,7 +73,7 @@ export const StickerElement = memo<StickerElementProps>(
      * (debounced by 300ms of inactivity) so Ctrl+Z undoes the whole zoom.
      */
     const wheelSnapshotSaved = useRef(false);
-    const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    const wheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     useEffect(() => {
       return () => clearTimeout(wheelTimeoutRef.current);
     }, []);

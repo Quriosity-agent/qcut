@@ -7,7 +7,7 @@ import { SUPPORTED_LANGUAGES, type Language } from "@/types/captions";
 interface LanguageSelectProps {
   selectedCountry: string;
   onSelect: (country: string) => void;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
   languages?: Language[];
 }
 

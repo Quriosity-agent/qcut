@@ -173,7 +173,7 @@ function DeleteDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isValidElement(children)
-          ? cloneElement(children, { ...children.props, disabled })
+          ? cloneElement(children as React.ReactElement<{ disabled?: boolean }>, { disabled })
           : children}
       </DialogTrigger>
       <DialogContent>

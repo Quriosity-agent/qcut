@@ -4,7 +4,7 @@ import { useEffect, useState, type RefObject } from "react";
 import type { PreviewDimensions } from "./types";
 
 interface UsePreviewSizingParams {
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   canvasSize: { width: number; height: number };
   isExpanded: boolean;
 }

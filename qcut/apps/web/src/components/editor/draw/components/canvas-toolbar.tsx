@@ -28,7 +28,7 @@ const debug = (...args: unknown[]) => {
 };
 
 interface CanvasToolbarProps {
-  canvasRef: React.RefObject<DrawingCanvasHandle>;
+  canvasRef: React.RefObject<DrawingCanvasHandle | null>;
   className?: string;
   onImageUpload?: (imageFile: File) => void;
   selectedCount?: number;

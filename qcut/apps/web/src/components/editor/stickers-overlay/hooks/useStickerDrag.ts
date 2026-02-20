@@ -29,8 +29,8 @@ interface DragState {
  */
 export const useStickerDrag = (
   stickerId: string,
-  elementRef: React.RefObject<HTMLDivElement>,
-  canvasRef: React.RefObject<HTMLDivElement>
+  elementRef: React.RefObject<HTMLDivElement | null>,
+  canvasRef: React.RefObject<HTMLDivElement | null>
 ) => {
   const { updateOverlaySticker, setIsDragging } = useStickersOverlayStore();
   const [isDragging, setIsDraggingLocal] = useState(false);

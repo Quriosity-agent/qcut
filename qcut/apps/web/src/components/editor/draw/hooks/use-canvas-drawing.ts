@@ -71,7 +71,7 @@ interface DrawingOptions {
 }
 
 export const useCanvasDrawing = (
-  canvasRef: React.RefObject<HTMLCanvasElement>,
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
   options: DrawingOptions
 ) => {
   const isDrawing = useRef(false);

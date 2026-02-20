@@ -15,8 +15,8 @@ interface ResizeHandlesProps {
   stickerId: string;
   isVisible: boolean;
   sticker: OverlaySticker;
-  elementRef: React.RefObject<HTMLDivElement>;
-  canvasRef: React.RefObject<HTMLDivElement>;
+  elementRef: React.RefObject<HTMLDivElement | null>;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
 type ResizeHandle = "tl" | "tr" | "bl" | "br" | "t" | "r" | "b" | "l";
