@@ -21,6 +21,7 @@ import {
   ArrowUpFromLineIcon,
 } from "lucide-react";
 import { create } from "zustand";
+import { usePanelStore } from "@/stores/panel-store";
 
 export type Tab =
   | "media"
@@ -229,6 +230,16 @@ export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
       const group = getGroupForTab(tab);
       const editSubgroup =
         group === "edit" ? getEditSubgroupForTab(tab) : undefined;
+
+      // Auto-expand/collapse panel when switching to/from terminal
+      const wasTerminal = state.activeTab === "pty";
+      const isTerminal = tab === "pty";
+      if (isTerminal && !wasTerminal) {
+        usePanelStore.getState().enterTerminalFocus();
+      } else if (!isTerminal && wasTerminal) {
+        usePanelStore.getState().exitTerminalFocus();
+      }
+
       return {
         activeTab: tab,
         activeGroup: group,

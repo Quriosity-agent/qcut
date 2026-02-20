@@ -1,139 +1,42 @@
-# Claude Code Terminal Layout Issue
+# Claude Code Terminal Layout — Auto-Expand on Focus
 
 ## Problem
 
-The Claude Code terminal panel does not use the full horizontal width of the screen. The terminal lives inside the **MediaPanel** (left sidebar), which is hard-capped at **15–40%** of the editor width. The remaining 60–85% is consumed by the PreviewPanel and PropertiesPanel, making the terminal too narrow for comfortable CLI use.
+The terminal panel lives inside the MediaPanel (left sidebar), hard-capped at 15–40% width. On a 1440px editor that's ~288px — too narrow for CLI use.
 
-## Architecture (from code)
+## Solution Implemented (Option B)
 
-### Panel hierarchy
+Auto-expand the left panel when the user switches to the Terminal tab. Revert when switching away.
+
+### How it works
+
+1. User clicks **Terminal** tab (`"pty"`) in the Agents group
+2. `media-panel/store.ts` detects the tab transition and calls `enterTerminalFocus()`
+3. `panel-store.ts` saves the current preset, switches to the `"terminal"` preset (toolsPanel: 55%, previewPanel: 30%, propertiesPanel: 15%, mainContent: 85%), and bumps `resetCounter` to force panel re-mount
+4. `panel-layouts.tsx` reads `activePreset` and sets `maxSize={70}` (instead of 40) for the toolsPanel when in terminal mode
+5. When the user switches away from the Terminal tab, `exitTerminalFocus()` restores the previous preset and re-mounts the panels
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `stores/panel-store.ts` | Added `"terminal"` to `PanelPreset` type, `PRESET_CONFIGS`, `PRESET_LABELS`, `PRESET_DESCRIPTIONS`. Added `preTerminalPreset` state field. Added `enterTerminalFocus()` and `exitTerminalFocus()` actions. |
+| `components/editor/panel-layouts.tsx` | `DefaultLayout` and `MediaLayout` now read `activePreset` and compute `maxToolsSize` dynamically (70 for terminal, 40 otherwise). The normalization function and `<ResizablePanel maxSize>` both use this value. |
+| `components/editor/media-panel/store.ts` | `setActiveTab()` detects transitions to/from `"pty"` and calls `enterTerminalFocus()`/`exitTerminalFocus()` on the panel store. |
+| `routes/editor.$project_id.lazy.tsx` | Added `terminal` key to the layouts map (maps to `DefaultLayout`). |
+
+### Terminal preset sizes
 
 ```
-editor.$project_id.lazy.tsx
-└── DefaultLayout (panel-layouts.tsx:19)
-    └── ResizablePanelGroup (vertical)
-        ├── ResizablePanel (mainContent: 70%)
-        │   └── ResizablePanelGroup (horizontal)
-        │       ├── ResizablePanel (toolsPanel: 20%, min 15%, max 40%)  ← MediaPanel
-        │       │   └── media-panel/index.tsx
-        │       │       ├── GroupBar  [Create | Edit | Library | Agents]
-        │       │       ├── TabBar   [Skills | Terminal | Remotion]
-        │       │       └── PtyTerminalView  (when activeTab === "pty")
-        │       ├── ResizableHandle
-        │       ├── ResizablePanel (previewPanel: 55%, min 30%)         ← PreviewPanel
-        │       ├── ResizableHandle
-        │       └── ResizablePanel (propertiesPanel: 25%, min 15%, max 40%) ← PropertiesPanel
-        ├── ResizableHandle
-        └── ResizablePanel (timeline: 30%)
+toolsPanel:    55%  (was 20%)  — wide terminal
+previewPanel:  30%  (was 55%)  — minimized preview
+propertiesPanel: 15% (was 25%) — minimized properties
+mainContent:   85%  (was 70%)  — more vertical space
+timeline:      15%  (was 30%)  — shrunk timeline
 ```
 
-### Key constraints (from code)
+### Edge cases handled
 
-| File | Line | Constraint |
-|------|------|------------|
-| `panel-layouts.tsx` | 144–152 | `<ResizablePanel defaultSize={normalizedTools} minSize={15} maxSize={40}>` — MediaPanel (contains terminal) |
-| `panel-layouts.tsx` | 156–163 | `<ResizablePanel defaultSize={normalizedPreview} minSize={30}>` — PreviewPanel |
-| `panel-layouts.tsx` | 167–175 | `<ResizablePanel defaultSize={normalizedProperties} minSize={15} maxSize={40}>` — PropertiesPanel |
-| `panel-store.ts` | 159–167 | `DEFAULT_PANEL_SIZES`: toolsPanel=20, previewPanel=55, propertiesPanel=25 |
-| `media-panel/store.ts` | 165–169 | Terminal tab is `"pty"` inside the `agents` group |
-| `media-panel/index.tsx` | 80–86 | PtyTerminalView renders with `display: flex` only when `activeTab === "pty"` |
-
-### Why the terminal is narrow
-
-1. **Hard max 40%**: `panel-layouts.tsx:147` caps `toolsPanel` at `maxSize={40}`. Even dragging the handle all the way right stops at 40%.
-2. **PreviewPanel min 30%**: `panel-layouts.tsx:158` forces preview to keep at least 30%, and PropertiesPanel keeps at least 15%. Together they claim a minimum of 45%, leaving at most 55% for toolsPanel — but `maxSize={40}` kicks in first.
-3. **Default only 20%**: `panel-store.ts:160` starts toolsPanel at 20%. On a 1440px-wide editor, that's ~288px for the terminal.
-4. **GroupBar + TabBar overhead**: `media-panel/index.tsx:78-79` renders the GroupBar and TabBar above the terminal, consuming ~80px of vertical space.
-
-## Suggestions to Fix
-
-### Option A: Add "Terminal" layout preset (recommended)
-
-Add a new preset to `panel-store.ts` alongside "default", "media", "inspector", "vertical-preview":
-
-```ts
-// panel-store.ts — add to PRESET_CONFIGS
-"terminal": {
-  toolsPanel: 55,       // Terminal gets majority
-  previewPanel: 30,     // Preview at minimum
-  propertiesPanel: 15,  // Properties at minimum
-  mainContent: 85,      // Maximize vertical space (shrink timeline)
-  timeline: 15,
-  aiPanelWidth: 22,
-  aiPanelMinWidth: 4,
-},
-```
-
-Also update `maxSize` in `panel-layouts.tsx` for the terminal layout to allow toolsPanel > 40%, or create a dedicated `TerminalLayout` component with relaxed constraints:
-
-```tsx
-// panel-layouts.tsx — TerminalLayout
-<ResizablePanel defaultSize={55} minSize={30} maxSize={70}>  {/* toolsPanel */}
-  <MediaPanel />
-</ResizablePanel>
-<ResizableHandle withHandle />
-<ResizablePanel defaultSize={30} minSize={15}>               {/* previewPanel */}
-  <PreviewPanel />
-</ResizablePanel>
-<ResizableHandle withHandle />
-<ResizablePanel defaultSize={15} minSize={10} maxSize={30}>  {/* propertiesPanel */}
-  <PropertiesPanel />
-</ResizablePanel>
-```
-
-**Files to change**: `panel-store.ts` (add preset + label), `panel-layouts.tsx` (add TerminalLayout component), `editor.$project_id.lazy.tsx` (add to layouts map).
-
-### Option B: Auto-expand on terminal focus
-
-When the user switches to the `"pty"` tab, automatically widen toolsPanel and narrow the other panels. Revert when switching away.
-
-```ts
-// media-panel/store.ts — in setActiveTab action
-if (tab === "pty") {
-  usePanelStore.getState().applyPreset("terminal");
-} else if (previousTab === "pty") {
-  usePanelStore.getState().applyPreset(usePanelStore.getState().activePreset);
-}
-```
-
-**Pros**: Zero user effort, seamless.
-**Cons**: Jarring layout shift, need to track "previous preset" to restore.
-
-### Option C: Raise maxSize for toolsPanel
-
-Minimal change — just increase the cap in `panel-layouts.tsx:147`:
-
-```tsx
-// Before
-<ResizablePanel defaultSize={normalizedTools} minSize={15} maxSize={40}>
-
-// After
-<ResizablePanel defaultSize={normalizedTools} minSize={15} maxSize={60}>
-```
-
-Also update the normalization in `panel-layouts.tsx:49` and `panel-store.ts` to allow `maxTools = 60`.
-
-**Pros**: Simplest change, user can manually drag wider.
-**Cons**: Doesn't auto-optimize for terminal use; preview gets squeezed.
-
-### Option D: Full-width terminal overlay / focus mode
-
-Add a "Focus" button to `pty-terminal-view.tsx` that renders the terminal as a full-width overlay above the panel layout (similar to a maximized terminal in VS Code):
-
-```tsx
-// pty-terminal-view.tsx — add focus mode state
-const [isFocused, setIsFocused] = useState(false);
-
-if (isFocused) {
-  return createPortal(
-    <div className="fixed inset-0 z-50 bg-[#1a1a1a]">
-      <button onClick={() => setIsFocused(false)}>Exit Focus</button>
-      <TerminalEmulator sessionId={sessionId} isVisible />
-    </div>,
-    document.body
-  );
-}
-```
-
-**Pros**: Full screen, no layout disruption.
-**Cons**: Hides editor entirely; need keyboard shortcut (e.g., `Escape`) to exit.
+- **Already in terminal focus**: `enterTerminalFocus()` is a no-op if `activePreset === "terminal"`
+- **User manually changed preset while in terminal**: `exitTerminalFocus()` checks `activePreset === "terminal"` before restoring; if user already switched away, it just clears `preTerminalPreset`
+- **Panel re-mount**: `resetCounter` is bumped to force `react-resizable-panels` to re-mount with the new `defaultSize` values

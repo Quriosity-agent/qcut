@@ -185,13 +185,9 @@ export function setupClaudeTimelineBridge(): void {
       if (replace) {
         const timelineStore = useTimelineStore.getState();
         timelineStore.pushHistory();
-        for (const track of [...timelineStore.tracks]) {
-          for (const element of [...track.elements]) {
-            useTimelineStore
-              .getState()
-              .removeElementFromTrack(track.id, element.id, false);
-          }
-        }
+        // Clear all tracks — applyTimelineToStore recreates needed tracks
+        // via findOrCreateTrack, preventing duplicate text tracks
+        useTimelineStore.setState({ _tracks: [] });
       }
 
       await applyTimelineToStore(timeline);

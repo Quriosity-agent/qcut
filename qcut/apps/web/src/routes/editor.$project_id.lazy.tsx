@@ -278,6 +278,7 @@ function EditorPage() {
     media: <MediaLayout resetCounter={resetCounter} />,
     inspector: <InspectorLayout resetCounter={resetCounter} />,
     "vertical-preview": <VerticalPreviewLayout resetCounter={resetCounter} />,
+    terminal: <DefaultLayout resetCounter={resetCounter} />,
     default: <DefaultLayout resetCounter={resetCounter} />,
   };
 

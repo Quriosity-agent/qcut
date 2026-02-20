@@ -6,7 +6,8 @@ export type PanelPreset =
   | "default"
   | "media"
   | "inspector"
-  | "vertical-preview";
+  | "vertical-preview"
+  | "terminal";
 
 // DEBUG: Trace infinite loop on project click
 let updateCounter = 0;
@@ -213,6 +214,15 @@ const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
     aiPanelWidth: 22,
     aiPanelMinWidth: 4,
   },
+  terminal: {
+    toolsPanel: 55, // Wide terminal panel
+    previewPanel: 30, // Preview at minimum
+    propertiesPanel: 15, // Properties at minimum
+    mainContent: 85, // Maximize vertical space
+    timeline: 15,
+    aiPanelWidth: 22,
+    aiPanelMinWidth: 4,
+  },
 };
 
 const PRESET_LABELS: Record<PanelPreset, string> = {
@@ -220,6 +230,7 @@ const PRESET_LABELS: Record<PanelPreset, string> = {
   media: "Media",
   inspector: "Inspector",
   "vertical-preview": "Vertical Preview",
+  terminal: "Terminal",
 };
 
 const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
@@ -227,6 +238,7 @@ const PRESET_DESCRIPTIONS: Record<PanelPreset, string> = {
   media: "Full height media on left, preview and inspector on top row",
   inspector: "Full height inspector on right, media and preview on top row",
   "vertical-preview": "Full height preview on right for vertical videos",
+  terminal: "Wide terminal panel with minimized preview and properties",
 };
 
 // Export for use in other components
@@ -260,6 +272,11 @@ interface PanelState {
   setActivePreset: (preset: PanelPreset) => void;
   resetPreset: (preset: PanelPreset) => void;
   getCurrentPresetSizes: () => PanelSizes;
+
+  // Terminal focus (auto-expand when pty tab is active)
+  preTerminalPreset: PanelPreset | null;
+  enterTerminalFocus: () => void;
+  exitTerminalFocus: () => void;
 }
 
 // Debounce normalization to avoid excessive calls during resize
@@ -349,8 +366,10 @@ export const usePanelStore = create<PanelState>()(
         media: {},
         inspector: {},
         "vertical-preview": {},
+        terminal: {},
       },
       resetCounter: 0,
+      preTerminalPreset: null as PanelPreset | null,
 
       // Actions
       setToolsPanel: (size) =>
@@ -509,6 +528,25 @@ export const usePanelStore = create<PanelState>()(
           aiPanelWidth,
           aiPanelMinWidth,
         };
+      },
+
+      enterTerminalFocus: () => {
+        const { activePreset } = get();
+        if (activePreset === "terminal") return;
+        set({ preTerminalPreset: activePreset });
+        get().setActivePreset("terminal");
+        set((s) => ({ resetCounter: s.resetCounter + 1 }));
+      },
+
+      exitTerminalFocus: () => {
+        const { preTerminalPreset, activePreset } = get();
+        if (!preTerminalPreset || activePreset !== "terminal") {
+          if (preTerminalPreset) set({ preTerminalPreset: null });
+          return;
+        }
+        set({ preTerminalPreset: null });
+        get().setActivePreset(preTerminalPreset);
+        set((s) => ({ resetCounter: s.resetCounter + 1 }));
       },
     }),
     {

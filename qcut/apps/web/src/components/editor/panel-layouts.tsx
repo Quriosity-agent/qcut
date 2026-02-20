@@ -23,6 +23,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     mainContent,
     timeline,
     propertiesPanel,
+    activePreset,
     setToolsPanel,
     setPreviewPanel,
     setMainContent,
@@ -30,6 +31,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
     setPropertiesPanel,
     normalizeHorizontalPanels,
   } = usePanelStore();
+
+  const isTerminal = activePreset === "terminal";
+  const maxToolsSize = isTerminal ? 70 : 40;
 
   // Normalize panel sizes to ensure they sum to 100%
   const total = toolsPanel + previewPanel + propertiesPanel;
@@ -46,7 +50,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
   ) => {
     const round2 = (v: number) => Math.round(v * 100) / 100;
     const minTools = 15;
-    const maxTools = 40;
+    const maxTools = maxToolsSize;
     const minPreview = 30;
     const maxPreview = 100;
     const minProps = 15;
@@ -144,7 +148,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
           <ResizablePanel
             defaultSize={normalizedTools}
             minSize={15}
-            maxSize={40}
+            maxSize={maxToolsSize}
             onResize={setToolsPanel}
             className="min-w-0"
           >
@@ -198,12 +202,15 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
     mainContent,
     timeline,
     propertiesPanel,
+    activePreset,
     setToolsPanel,
     setPreviewPanel,
     setMainContent,
     setTimeline,
     setPropertiesPanel,
   } = usePanelStore();
+
+  const maxToolsSize = activePreset === "terminal" ? 70 : 40;
 
   // Calculate relative sizes for nested panels
   // The right group contains preview + properties and its total width is (100 - toolsPanel)
@@ -249,7 +256,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
       <ResizablePanel
         defaultSize={toolsPanel}
         minSize={15}
-        maxSize={40}
+        maxSize={maxToolsSize}
         onResize={setToolsPanel}
         className="min-w-0"
       >
@@ -260,7 +267,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 
       <ResizablePanel
         defaultSize={100 - toolsPanel}
-        minSize={60}
+        minSize={100 - maxToolsSize}
         className="min-w-0 min-h-0"
       >
         <ResizablePanelGroup
