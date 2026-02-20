@@ -31,12 +31,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 		setMainContent,
 		setTimeline,
 		setPropertiesPanel,
-		normalizeHorizontalPanels,
 	} = usePanelStore();
-
-	// Normalize panel sizes to ensure they sum to 100%
-	const total = toolsPanel + previewPanel + propertiesPanel;
-	const normalizationFactor = total !== 0 ? 100 / total : 1;
 
 	const clamp = (value: number, min: number, max: number) =>
 		Math.max(min, Math.min(max, value));
@@ -117,15 +112,6 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 
 	const { normalizedTools, normalizedPreview, normalizedProperties } =
 		normalizePanels(toolsPanel, previewPanel, propertiesPanel);
-
-	// Panel size calculation completed
-
-	// Trigger normalization if panels are off
-	React.useEffect(() => {
-		if (Math.abs(total - 100) > 0.1) {
-			normalizeHorizontalPanels();
-		}
-	}, [total, normalizeHorizontalPanels]);
 
 	return (
 		<ResizablePanelGroup

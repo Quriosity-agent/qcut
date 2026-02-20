@@ -295,6 +295,12 @@ const debouncedNormalize = (normalizeFunc: () => void) => {
  * @param size Target size percentage (0–100); must be finite.
  * @param source Identifier for debugging and circuit-breaker tracking.
  */
+/**
+ * Shared setter for horizontal panel sizes.
+ * In v4, the library manages panel sizing internally via flexGrow.
+ * We just store the reported percentage without normalization to avoid
+ * fighting the library during drag.
+ */
 function setPanelSize<
 	K extends "toolsPanel" | "previewPanel" | "propertiesPanel",
 >(key: K, size: number, source: string) {
@@ -304,35 +310,12 @@ function setPanelSize<
 		return;
 	}
 
-	const state = usePanelStore.getState();
-	tracePanelUpdate(`${source}:START`, {
-		incoming: size,
-		current: state[key],
-		diff: Math.abs(state[key] - size),
-	});
-
 	const rounded = Math.round(size * 100) / 100;
-	const clamped = Math.max(MIN_PANEL_SIZE, Math.min(MAX_PANEL_SIZE, rounded));
-	const current = state[key];
+	const current = usePanelStore.getState()[key];
 
-	if (Math.abs(current - clamped) > SIZE_TOLERANCE) {
-		tracePanelUpdate(`${source}:UPDATE`, {
-			from: current,
-			to: clamped,
-			diff: Math.abs(current - clamped),
-			action: "TOLERANCE-FIX-ALLOWED",
-		});
-		usePanelStore.setState({ [key]: clamped } as Pick<PanelState, K>);
-		debouncedNormalize(() =>
-			usePanelStore.getState().normalizeHorizontalPanels()
-		);
-	} else {
-		tracePanelUpdate(`${source}:SKIP`, {
-			current,
-			attempted: clamped,
-			diff: Math.abs(current - clamped),
-			reason: "TOLERANCE-FIX-BLOCKED",
-		});
+	// Only update if change exceeds tolerance to reduce re-renders
+	if (Math.abs(current - rounded) > SIZE_TOLERANCE) {
+		usePanelStore.setState({ [key]: rounded } as Pick<PanelState, K>);
 	}
 }
 
