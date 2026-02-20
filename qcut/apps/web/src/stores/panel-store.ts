@@ -157,9 +157,9 @@ const checkCircuitBreaker = (source: string) => {
 };
 
 const DEFAULT_PANEL_SIZES = {
-	toolsPanel: 20,
-	previewPanel: 55,
-	propertiesPanel: 25,
+	toolsPanel: 22,
+	previewPanel: 46,
+	propertiesPanel: 32,
 	mainContent: 70,
 	timeline: 30,
 	aiPanelWidth: 22,
@@ -178,38 +178,38 @@ interface PanelSizes {
 
 const PRESET_CONFIGS: Record<PanelPreset, PanelSizes> = {
 	default: {
-		toolsPanel: 20, // Match current DEFAULT_PANEL_SIZES
-		previewPanel: 55, // Match current DEFAULT_PANEL_SIZES
-		propertiesPanel: 25, // Match current DEFAULT_PANEL_SIZES
-		mainContent: 70, // Match current DEFAULT_PANEL_SIZES
-		timeline: 30, // Match current DEFAULT_PANEL_SIZES
-		aiPanelWidth: 22, // Match current DEFAULT_PANEL_SIZES
-		aiPanelMinWidth: 4, // Match current DEFAULT_PANEL_SIZES
+		toolsPanel: 22,
+		previewPanel: 46,
+		propertiesPanel: 32,
+		mainContent: 70,
+		timeline: 30,
+		aiPanelWidth: 22,
+		aiPanelMinWidth: 4,
 	},
 	media: {
-		toolsPanel: 30, // Larger media panel focus
-		previewPanel: 45,
-		propertiesPanel: 25,
-		mainContent: 75, // 75% main content height
-		timeline: 25, // 25% timeline height (75 + 25 = 100)
+		toolsPanel: 30,
+		previewPanel: 40,
+		propertiesPanel: 30,
+		mainContent: 75,
+		timeline: 25,
 		aiPanelWidth: 22,
 		aiPanelMinWidth: 4,
 	},
 	inspector: {
-		toolsPanel: 20,
-		previewPanel: 55,
-		propertiesPanel: 25,
-		mainContent: 75, // 75% main content height
-		timeline: 25, // 25% timeline height (75 + 25 = 100)
+		toolsPanel: 22,
+		previewPanel: 44,
+		propertiesPanel: 34,
+		mainContent: 75,
+		timeline: 25,
 		aiPanelWidth: 22,
 		aiPanelMinWidth: 4,
 	},
 	"vertical-preview": {
 		toolsPanel: 25,
-		previewPanel: 40, // Optimized for vertical videos
-		propertiesPanel: 35, // Larger properties panel
-		mainContent: 75, // 75% main content height
-		timeline: 25, // 25% timeline height (75 + 25 = 100)
+		previewPanel: 40,
+		propertiesPanel: 35,
+		mainContent: 75,
+		timeline: 25,
 		aiPanelWidth: 22,
 		aiPanelMinWidth: 4,
 	},
@@ -513,7 +513,7 @@ export const usePanelStore = create<PanelState>()(
 		}),
 		{
 			name: "panel-sizes",
-			version: 7, // Increment this to force migration and reset
+			version: 8, // Increment this to force migration and reset
 			onRehydrateStorage: () => (state) => {
 				// Normalize panels after rehydration
 				if (state) {
@@ -527,9 +527,9 @@ export const usePanelStore = create<PanelState>()(
 			},
 			migrate: (persistedState: unknown, version: number) => {
 				// Reset to defaults if coming from old version or if data is corrupted
-				if (version < 7) {
+				if (version < 8) {
 					debugLog(
-						`[PanelStore] Migrating from version ${version} to version 7`
+						`[PanelStore] Migrating from version ${version} to version 8`
 					);
 					return DEFAULT_PANEL_SIZES;
 				}
