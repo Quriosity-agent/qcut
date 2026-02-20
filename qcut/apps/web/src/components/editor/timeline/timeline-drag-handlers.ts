@@ -252,9 +252,8 @@ export function useDragHandlers({
 						)
 					);
 
-					const { getMediaStore } = await import("@/utils/lazy-stores");
-					const MediaStoreInstance = await getMediaStore();
-					const currentState = MediaStoreInstance.getState() as {
+					const { useMediaStore } = await import("@/stores/media-store");
+					const currentState = useMediaStore.getState() as {
 						mediaItems: MediaItem[];
 					};
 
