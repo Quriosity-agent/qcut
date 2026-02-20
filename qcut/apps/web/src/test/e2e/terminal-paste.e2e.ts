@@ -19,9 +19,13 @@ import { test, expect, createTestProject } from "./helpers/electron-helpers";
  */
 async function navigateToTerminalTab(page: import("@playwright/test").Page) {
   try {
-    // PTY tab lives inside the "Tools" group, so ensure that group is active first
-    const toolsGroup = page.getByTestId("group-tools");
-    await toolsGroup.click({ timeout: 5000 });
+    const agentsGroup = page.getByTestId("group-agents");
+    const legacyToolsGroup = page.getByTestId("group-tools");
+    if (await agentsGroup.isVisible()) {
+      await agentsGroup.click({ timeout: 5000 });
+    } else {
+      await legacyToolsGroup.click({ timeout: 5000 });
+    }
 
     // Click on the PTY terminal tab
     const ptyTab = page.getByTestId("pty-panel-tab");
@@ -84,6 +88,45 @@ test.describe("Terminal Paste Functionality", () => {
     await page.keyboard.press("Escape");
   });
 
+  test("should auto-expand panel width when terminal tab is active", async ({
+    page,
+  }) => {
+    await navigateToTerminalTab(page);
+    await expect(page.getByTestId("pty-terminal-view")).toBeVisible();
+
+    let metrics:
+      | { viewportWidth: number; mediaPanelWidth: number; mediaPanelRatio: number }
+      | { error: string };
+    try {
+      metrics = await page.evaluate(() => {
+        const mediaPanel = document.querySelector(
+          '[data-testid="media-panel"]'
+        ) as HTMLElement | null;
+
+        if (!mediaPanel) {
+          return { error: "Missing media panel element" };
+        }
+
+        const viewportWidth = window.innerWidth;
+        const mediaPanelWidth = mediaPanel.getBoundingClientRect().width;
+        const mediaPanelRatio = mediaPanelWidth / viewportWidth;
+        return { viewportWidth, mediaPanelWidth, mediaPanelRatio };
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to measure terminal panel width: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    if ("error" in metrics) {
+      throw new Error(metrics.error);
+    }
+
+    expect(metrics.mediaPanelRatio).toBeGreaterThan(0.45);
+  });
+
   // PTY-dependent tests - skipped by default since PTY may not be available in CI
   // Set PTY_AVAILABLE=true in your environment to run these tests
   test.describe("PTY Terminal Session (requires PTY support)", () => {
@@ -121,6 +164,86 @@ test.describe("Terminal Paste Functionality", () => {
         "disconnected",
         { timeout: 5000 }
       );
+    });
+
+    test("should fill terminal width after auto-expand", async ({ page }) => {
+      await navigateToTerminalTab(page);
+
+      await page.getByTestId("terminal-provider-selector").click();
+      await page.getByRole("option", { name: /Shell/i }).click();
+      await page.getByTestId("terminal-start-button").click();
+
+      await expect(page.getByTestId("terminal-status")).toHaveAttribute(
+        "data-status",
+        "connected",
+        { timeout: 15_000 }
+      );
+      await expect(page.getByTestId("terminal-emulator")).toBeVisible();
+
+      await page.waitForTimeout(1200);
+
+      let metrics:
+        | {
+            mediaPanelWidth: number;
+            terminalEmulatorWidth: number;
+            xtermScreenWidth: number | null;
+            xtermCanvasWidth: number | null;
+          }
+        | { error: string };
+
+      try {
+        metrics = await page.evaluate(() => {
+          const mediaPanel = document.querySelector(
+            '[data-testid="media-panel"]'
+          ) as HTMLElement | null;
+          const terminalEmulator = document.querySelector(
+            '[data-testid="terminal-emulator"]'
+          ) as HTMLElement | null;
+          const xtermScreen = document.querySelector(
+            ".xterm-screen"
+          ) as HTMLElement | null;
+          const xtermCanvas = document.querySelector(
+            ".xterm-screen canvas"
+          ) as HTMLCanvasElement | null;
+
+          if (!mediaPanel || !terminalEmulator) {
+            return { error: "Missing media panel or terminal emulator element" };
+          }
+
+          return {
+            mediaPanelWidth: mediaPanel.getBoundingClientRect().width,
+            terminalEmulatorWidth: terminalEmulator.getBoundingClientRect().width,
+            xtermScreenWidth: xtermScreen?.getBoundingClientRect().width ?? null,
+            xtermCanvasWidth: xtermCanvas?.getBoundingClientRect().width ?? null,
+          };
+        });
+      } catch (error) {
+        throw new Error(
+          `Failed to measure terminal layout: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+
+      if ("error" in metrics) {
+        throw new Error(metrics.error);
+      }
+
+      const emulatorToPanelRatio =
+        metrics.terminalEmulatorWidth / metrics.mediaPanelWidth;
+      expect(emulatorToPanelRatio).toBeGreaterThan(0.95);
+
+      if (metrics.xtermScreenWidth !== null) {
+        const screenToEmulatorRatio =
+          metrics.xtermScreenWidth / metrics.terminalEmulatorWidth;
+        expect(screenToEmulatorRatio).toBeGreaterThan(0.9);
+      }
+
+      if (metrics.xtermCanvasWidth !== null) {
+        const canvasToEmulatorRatio =
+          metrics.xtermCanvasWidth / metrics.terminalEmulatorWidth;
+        expect(canvasToEmulatorRatio).toBeGreaterThan(0.82);
+      }
     });
 
     test("should paste text only once in terminal (no double-paste bug)", async ({
