@@ -17,7 +17,8 @@ import {
  * Test suite for AI Transcription & Caption Generation (Test #4A)
  * Covers subtasks 4A.1 through 4A.6 from the E2E testing priority document.
  */
-test.describe("AI Transcription & Caption Generation", () => {
+// SKIP: captions-panel-tab no longer exists in UI - CaptionsView removed from media panel tabs
+test.describe.skip("AI Transcription & Caption Generation", () => {
 	/**
 	 * Setup for each test: Creates a fresh project and imports test video
 	 * for transcription testing.

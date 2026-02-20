@@ -14,6 +14,7 @@ import {
 	importTestVideo,
 	navigateToProjects,
 	ensureMediaTabActive,
+	ensurePanelTabActive,
 } from "./helpers/electron-helpers";
 
 /**
@@ -44,7 +45,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		).toBeVisible();
 
 		// Switch to AI panel in media panel
-		await page.click('[data-testid="ai-panel-tab"]');
+		await ensurePanelTabActive(page, 'ai-create', 'ai');
 		await page.waitForSelector('[data-testid="ai-features-panel"]', {
 			state: "visible",
 		});
@@ -69,7 +70,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		const initialMediaCount = await mediaItems.count();
 
 		// Ensure we're in AI panel
-		await page.click('[data-testid="ai-panel-tab"]');
+		await ensurePanelTabActive(page, 'ai-create', 'ai');
 		await page.waitForSelector('[data-testid="ai-enhancement-panel"]', {
 			state: "visible",
 		});
@@ -327,7 +328,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		});
 
 		// Switch to AI panel
-		await page.click('[data-testid="ai-panel-tab"]');
+		await ensurePanelTabActive(page, 'ai-create', 'ai');
 		await page.waitForSelector('[data-testid="ai-enhancement-panel"]', {
 			state: "visible",
 		});
@@ -484,7 +485,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		});
 
 		// Navigate to AI Images panel (text2image) which contains the upscale feature
-		await page.click('[data-testid="text2image-panel-tab"]');
+		await ensurePanelTabActive(page, 'ai-create', 'text2image');
 		await page.click('[data-testid="model-type-upscale"]');
 
 		const panel = page.locator('[data-testid="upscale-panel"]');
