@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
+import {
+	useAdjustmentStore,
+	type EditHistoryItem,
+} from "@/stores/adjustment-store";
 import {
 	History,
 	Undo2,
@@ -32,7 +35,7 @@ export function EditHistory() {
 		toggleHistory,
 	} = useAdjustmentStore();
 
-	const handleDownloadEdit = async (item: any, index: number) => {
+	const handleDownloadEdit = async (item: EditHistoryItem, index: number) => {
 		try {
 			const timestamp = new Date(item.timestamp)
 				.toISOString()
