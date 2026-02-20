@@ -25,16 +25,19 @@ const ResizablePanelGroup = ({
 const ResizablePanel = Panel;
 
 // Default styles for a vertical separator line (inside a horizontal group)
+// w-1.5 = 6px visible bar, after:w-3 = 12px invisible hit area for easy grabbing
 const baseHandleClasses =
-	"relative flex w-px items-center justify-center bg-transparent " +
-	"after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 " +
+	"relative flex w-1.5 items-center justify-center bg-border/40 hover:bg-primary/60 " +
+	"transition-colors cursor-col-resize " +
+	"after:absolute after:inset-y-0 after:left-1/2 after:w-3 after:-translate-x-1/2 " +
 	"focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1";
 
 // Override for a horizontal separator line (inside a vertical group)
 // v4 uses aria-orientation="horizontal" on separators in vertical groups
 const verticalGroupClasses =
-	"aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full " +
-	"aria-[orientation=horizontal]:after:left-0 aria-[orientation=horizontal]:after:h-1 " +
+	"aria-[orientation=horizontal]:h-1.5 aria-[orientation=horizontal]:w-full " +
+	"aria-[orientation=horizontal]:cursor-row-resize " +
+	"aria-[orientation=horizontal]:after:left-0 aria-[orientation=horizontal]:after:h-3 " +
 	"aria-[orientation=horizontal]:after:w-full aria-[orientation=horizontal]:after:-translate-y-1/2 " +
 	"aria-[orientation=horizontal]:after:translate-x-0";
 
