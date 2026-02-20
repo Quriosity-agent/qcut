@@ -135,7 +135,9 @@ describe("generatePipelineReport", () => {
       outputDir: "/tmp/reports",
     });
 
-    expect(mockMkdir).toHaveBeenCalledWith(resolve("/tmp/reports"), { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(resolve("/tmp/reports"), {
+      recursive: true,
+    });
     expect(mockWriteFile).toHaveBeenCalledOnce();
     expect(report.savedTo).toContain("pipeline-report-proj_1-");
   });

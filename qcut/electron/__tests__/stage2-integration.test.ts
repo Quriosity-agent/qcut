@@ -295,44 +295,47 @@ describe.skipIf(!HAS_TEST_VIDEO)("Audio Extraction (real FFmpeg)", () => {
 // parseShowInfoOutput with real FFmpeg output
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!HAS_TEST_VIDEO)("parseShowInfoOutput with real FFmpeg output", () => {
-  it("parses real FFmpeg scene detection stderr", async () => {
-    const ffmpegPath = execFileSync("which", ["ffmpeg"]).toString().trim();
+describe.skipIf(!HAS_TEST_VIDEO)(
+  "parseShowInfoOutput with real FFmpeg output",
+  () => {
+    it("parses real FFmpeg scene detection stderr", async () => {
+      const ffmpegPath = execFileSync("which", ["ffmpeg"]).toString().trim();
 
-    const stderr = await new Promise<string>((resolve, reject) => {
-      const proc = spawn(
-        ffmpegPath,
-        [
-          "-i",
-          TEST_VIDEO,
-          "-filter:v",
-          "select='gt(scene,0.3)',showinfo",
-          "-vsync",
-          "vfr",
-          "-f",
-          "null",
-          "-",
-        ],
-        { stdio: ["ignore", "pipe", "pipe"] }
-      );
+      const stderr = await new Promise<string>((resolve, reject) => {
+        const proc = spawn(
+          ffmpegPath,
+          [
+            "-i",
+            TEST_VIDEO,
+            "-filter:v",
+            "select='gt(scene,0.3)',showinfo",
+            "-vsync",
+            "vfr",
+            "-f",
+            "null",
+            "-",
+          ],
+          { stdio: ["ignore", "pipe", "pipe"] }
+        );
 
-      let output = "";
-      proc.stderr?.on("data", (chunk: Buffer) => {
-        output += chunk.toString();
+        let output = "";
+        proc.stderr?.on("data", (chunk: Buffer) => {
+          output += chunk.toString();
+        });
+
+        proc.on("close", () => resolve(output));
+        proc.on("error", reject);
       });
 
-      proc.on("close", () => resolve(output));
-      proc.on("error", reject);
-    });
+      const scenes = parseShowInfoOutput(stderr);
 
-    const scenes = parseShowInfoOutput(stderr);
-
-    // Should find 2 scene changes at ~3s and ~6s
-    expect(scenes.length).toBe(2);
-    expect(scenes[0].timestamp).toBeCloseTo(3, 0);
-    expect(scenes[1].timestamp).toBeCloseTo(6, 0);
-  }, 15_000);
-});
+      // Should find 2 scene changes at ~3s and ~6s
+      expect(scenes.length).toBe(2);
+      expect(scenes[0].timestamp).toBeCloseTo(3, 0);
+      expect(scenes[1].timestamp).toBeCloseTo(6, 0);
+    }, 15_000);
+  }
+);
 
 // ---------------------------------------------------------------------------
 // Helper: Frame extraction using real FFmpeg (mirrors vision-handler logic)
