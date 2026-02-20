@@ -107,8 +107,10 @@ test.describe("Debug ProjectId Bug", () => {
 
 		// Open stickers panel (stickers tab is in the "edit" group)
 		console.log("📍 CHECKPOINT 5: Opening stickers panel");
-		// First switch to edit group
+		// First switch to edit group, then Manual Edit subgroup
 		await page.getByTestId("group-edit").click();
+		await page.locator('button:has-text("Manual Edit")').click();
+		await page.waitForTimeout(300);
 		// Then click stickers tab
 		await page.getByTestId("stickers-panel-tab").click();
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();

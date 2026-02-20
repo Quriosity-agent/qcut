@@ -20,7 +20,7 @@ import { test, expect, createTestProject } from "./helpers/electron-helpers";
 async function navigateToTerminalTab(page: import("@playwright/test").Page) {
 	try {
 		// PTY tab lives inside the "Tools" group, so ensure that group is active first
-		const toolsGroup = page.getByTestId("group-tools");
+		const toolsGroup = page.getByTestId("group-agents");
 		await toolsGroup.click({ timeout: 5000 });
 
 		// Click on the PTY terminal tab

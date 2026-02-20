@@ -10,19 +10,24 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 - **Total Test Files**: 17
 - **Total Test Cases**: ~80+
 
-### Latest Test Run Summary (2026-02-05)
+### Latest Test Run Summary (2026-02-21)
 
 | Status | Count |
 |--------|-------|
-| ✅ Passed | 75 |
-| ❌ Failed | 1 |
-| ⏭️ Skipped | 7 |
+| ✅ Passed | 27 |
+| ❌ Failed | 53 |
+| ⏭️ Skipped | 3 |
 | **Total** | **83** |
 
-**Pass Rate**: 98.7% (excluding skipped)
+**Pass Rate**: 33.8% (excluding skipped)
+
+**Root Cause**: Most failures are due to `import-media-button`, `text-panel-tab`, `stickers-panel-tab`, and `group-tools` testids not being found — editor panel tabs/buttons appear to have been renamed or removed in the current build.
 
 **Failed Tests**:
-1. AI Enhancement: `4B.4 - Preview enhanced media with effects` (timeout on pause button)
+- Tests 3, 6, 8-14, 16-17: `import-media-button` testid not found (editor panel missing)
+- Tests 8-9, 17: `text-panel-tab` / `stickers-panel-tab` testid not found
+- Test 7: `zoom controls` waitForFunction timeout
+- Test 14: `group-tools` testid not found
 
 ---
 
@@ -30,23 +35,23 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 
 | # | File | Description | Tests | Status |
 |---|------|-------------|-------|--------|
-| 1 | `simple-navigation.e2e.ts` | Basic navigation tests | 3 | ✅ 3/3 |
-| 2 | `editor-navigation.e2e.ts` | Editor page navigation | 3 | ✅ 2/3 (1 skip) |
-| 3 | `project-workflow-part1.e2e.ts` | Project creation & media import | 2 | ✅ 2/2 |
-| 4 | `project-workflow-part2.e2e.ts` | Timeline operations | 3 | ✅ 3/3 |
-| 5 | `project-workflow-part3.e2e.ts` | Project persistence & export | 4 | ✅ 4/4 |
-| 6 | `multi-media-management-part1.e2e.ts` | Multi-media import & tracks | 5 | ✅ 5/5 |
-| 7 | `multi-media-management-part2.e2e.ts` | Timeline controls & editing | 7 | ✅ 7/7 |
-| 8 | `text-overlay-testing.e2e.ts` | Text overlay functionality | 6 | ✅ 6/6 |
-| 9 | `sticker-overlay-testing.e2e.ts` | Sticker overlay functionality | 6 | ✅ 6/6 |
-| 10 | `ai-transcription-caption-generation.e2e.ts` | AI transcription & captions | 6 | ✅ 4/6 (2 skip) |
-| 11 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 | ⚠️ 6/8 (1 fail, 1 skip) |
-| 12 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 | ✅ 8/8 |
-| 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ✅ 6/6 |
-| 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ✅ 2/4 (2 skip) |
-| 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 |
-| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ✅ 24/24 |
-| 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ✅ 1/1 |
+| 1 | `simple-navigation.e2e.ts` | Basic navigation tests | 3 | ✅ 3/3 (20.4s) |
+| 2 | `editor-navigation.e2e.ts` | Editor page navigation | 3 | ✅ 2/3 (1 skip) (11.8s) |
+| 3 | `project-workflow-part1.e2e.ts` | Project creation & media import | 2 | ❌ 0/2 (2 fail) |
+| 4 | `project-workflow-part2.e2e.ts` | Timeline operations | 3 | ❌ 2/3 (1 fail) (49.2s) |
+| 5 | `project-workflow-part3.e2e.ts` | Project persistence & export | 4 | ✅ 4/4 (24.1s) |
+| 6 | `multi-media-management-part1.e2e.ts` | Multi-media import & tracks | 5 | ❌ 3/5 (2 fail) (1.5m) |
+| 7 | `multi-media-management-part2.e2e.ts` | Timeline controls & editing | 7 | ❌ 6/7 (1 fail) (51.6s) |
+| 8 | `text-overlay-testing.e2e.ts` | Text overlay functionality | 6 | ❌ 0/6 (6 fail) (timeout) |
+| 9 | `sticker-overlay-testing.e2e.ts` | Sticker overlay functionality | 6 | ❌ 0/6 (6 fail) (timeout) |
+| 10 | `ai-transcription-caption-generation.e2e.ts` | AI transcription & captions | 6 | ❌ 0/6 (6 fail) (timeout) |
+| 11 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 | ❌ 0/8 (8 fail) (timeout) |
+| 12 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 | ❌ 2/8 (6 fail) (timeout) |
+| 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ❌ 0/6 (6 fail) (timeout) |
+| 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ❌ 0/4 (2 fail, 2 skip) |
+| 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 (25.8s) |
+| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ❌ ~12/24 (1+ fail) (timeout) |
+| 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ❌ 0/1 (1 fail) |
 
 ---
 
@@ -62,7 +67,7 @@ Basic navigation tests to verify app loads correctly.
 | `should be able to detect project creation button` | Tests header and empty state buttons | ✅ PASS |
 | `should handle project creation button click without crash` | Tests button click without navigation crash | ✅ PASS |
 
-**Run Time**: 10.6s | **Last Run**: 2026-02-05
+**Run Time**: 20.4s | **Last Run**: 2026-02-21
 
 ---
 
@@ -76,34 +81,34 @@ Tests navigation to the editor page to isolate crash issues.
 | `should attempt to open existing project without crash` | Opens project and verifies no crash | ⏭️ SKIP |
 | `should check if direct navigation to editor works` | Tests direct navigation to editor route | ✅ PASS |
 
-**Run Time**: 11.3s | **Last Run**: 2026-02-05 | **Note**: Test 2 skipped (no existing projects)
+**Run Time**: 11.8s | **Last Run**: 2026-02-21 | **Note**: Test 2 skipped (no existing projects)
 
 ---
 
-### 3. Project Workflow Part 1 - Creation & Media Import (`project-workflow-part1.e2e.ts`) ✅ ALL PASSED
+### 3. Project Workflow Part 1 - Creation & Media Import (`project-workflow-part1.e2e.ts`) ❌ ALL FAILED
 
 Tests fundamental project workflow including project creation and media import.
 
 | Test | Description | Status |
 |------|-------------|--------|
-| `should create project and import media` | Creates project (1080p, 30fps) and imports video | ✅ PASS |
-| `should handle file upload process` | Tests file upload UI feedback | ✅ PASS |
+| `should create project and import media` | Creates project (1080p, 30fps) and imports video | ❌ FAIL |
+| `should handle file upload process` | Tests file upload UI feedback | ❌ FAIL |
 
-**Run Time**: 10.4s | **Last Run**: 2026-02-05
+**Run Time**: ~60s | **Last Run**: 2026-02-21 | **Note**: Both tests fail on `import-media-button` testid not found
 
 ---
 
-### 4. Project Workflow Part 2 - Timeline Operations (`project-workflow-part2.e2e.ts`) ✅ ALL PASSED
+### 4. Project Workflow Part 2 - Timeline Operations (`project-workflow-part2.e2e.ts`) ❌ 2 PASSED, 1 FAILED
 
 Tests timeline operations and media integration.
 
 | Test | Description | Status |
 |------|-------------|--------|
-| `should add media to timeline and perform basic edits` | Adds media to timeline, tests interactions | ✅ PASS |
+| `should add media to timeline and perform basic edits` | Adds media to timeline, tests interactions | ❌ FAIL |
 | `should handle timeline element operations` | Tests timeline element interactions | ✅ PASS |
 | `should support timeline element manipulation` | Tests element selection and manipulation | ✅ PASS |
 
-**Run Time**: 14.4s | **Last Run**: 2026-02-05
+**Run Time**: 49.2s | **Last Run**: 2026-02-21 | **Note**: First test fails on `import-media-button` testid not found
 
 ---
 
@@ -118,41 +123,41 @@ Tests project persistence and export functionality.
 | `should maintain project state across sessions` | Tests state persistence after navigation | ✅ PASS |
 | `should handle export configuration` | Tests export configuration UI | ✅ PASS |
 
-**Run Time**: 19.8s | **Last Run**: 2026-02-05
+**Run Time**: 24.1s | **Last Run**: 2026-02-21
 
 ---
 
-### 6. Multi-Media Management Part 1 (`multi-media-management-part1.e2e.ts`) ✅ ALL PASSED
+### 6. Multi-Media Management Part 1 (`multi-media-management-part1.e2e.ts`) ❌ 3 PASSED, 2 FAILED
 
 Tests multi-media import and track management.
 
 | Test | Description | Status |
 |------|-------------|--------|
-| `should import multiple media types and manage tracks` | Imports video, audio, image; manages tracks | ✅ PASS |
+| `should import multiple media types and manage tracks` | Imports video, audio, image; manages tracks | ❌ FAIL |
 | `should handle drag and drop to timeline` | Tests drag-and-drop from media panel | ✅ PASS |
 | `should support multiple track types` | Verifies track type attributes | ✅ PASS |
 | `should maintain timeline state across operations` | Tests timeline state persistence | ✅ PASS |
-| `should display media items correctly` | Verifies media panel structure | ✅ PASS |
+| `should display media items correctly` | Verifies media panel structure | ❌ FAIL |
 
-**Run Time**: 22.3s | **Last Run**: 2026-02-05
+**Run Time**: 1.5m | **Last Run**: 2026-02-21 | **Note**: Tests using `import-media-button` fail
 
 ---
 
-### 7. Multi-Media Management Part 2 - Timeline Controls (`multi-media-management-part2.e2e.ts`) ✅ ALL PASSED
+### 7. Multi-Media Management Part 2 - Timeline Controls (`multi-media-management-part2.e2e.ts`) ❌ 6 PASSED, 1 FAILED
 
 Tests timeline controls and editing operations.
 
 | Test | Description | Status |
 |------|-------------|--------|
 | `should control playback with play/pause buttons` | Tests play/pause functionality | ✅ PASS |
-| `should handle zoom controls` | Tests zoom in/out buttons | ✅ PASS |
+| `should handle zoom controls` | Tests zoom in/out buttons | ❌ FAIL |
 | `should display current time and duration` | Verifies time display format | ✅ PASS |
 | `should handle split clip functionality` | Tests split button availability | ✅ PASS |
 | `should handle timeline element selection and editing` | Tests element selection and trim handles | ✅ PASS |
 | `should maintain playback state` | Tests playback state persistence | ✅ PASS |
 | `should handle timeline scrolling and navigation` | Tests timeline dimensions and scrolling | ✅ PASS |
 
-**Run Time**: 29.6s | **Last Run**: 2026-02-05
+**Run Time**: 51.6s | **Last Run**: 2026-02-21 | **Note**: Zoom controls test fails on waitForFunction timeout
 
 ---
 
@@ -285,7 +290,7 @@ Tests that Remotion panel doesn't cause infinite render loops (React Error #185)
 | `should render Remotion panel without infinite loops` | Opens Remotion panel, checks for errors | ✅ PASS |
 | `should load editor without errors` | General editor load test | ✅ PASS |
 
-**Run Time**: 20.0s | **Last Run**: 2026-02-05
+**Run Time**: 25.8s | **Last Run**: 2026-02-21
 
 ---
 
@@ -443,4 +448,4 @@ Common test utilities are in `helpers/electron-helpers.ts`:
 
 ---
 
-*Last Updated: 2026-02-05*
+*Last Updated: 2026-02-21*

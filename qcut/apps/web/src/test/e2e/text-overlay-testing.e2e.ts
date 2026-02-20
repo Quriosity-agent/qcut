@@ -1,4 +1,9 @@
-import { test, expect } from "./helpers/electron-helpers";
+import {
+	test,
+	expect,
+	ensureTextTabActive,
+	ensureMediaTabActive,
+} from "./helpers/electron-helpers";
 
 test.describe("Text Overlay Testing (Subtask 3B)", () => {
 	test("should access text panel and interact with text overlay button", async ({
@@ -11,7 +16,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 
 		// Test steps:
 		// 1. Open text panel
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 
 		// Verify text panel opens
 		await expect(page.getByTestId("text-panel")).toBeVisible();
@@ -49,7 +54,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await page.waitForSelector('[data-testid="timeline-track"]');
 
 		// Open text panel
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
 		// Get text overlay button and timeline
@@ -107,7 +112,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await page.waitForSelector('[data-testid="timeline-track"]');
 
 		// Open text panel
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
 		// Test panel structure
@@ -148,7 +153,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await page.waitForSelector('[data-testid="timeline-track"]');
 
 		// Open text panel
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
 		// Test plus button functionality (add to timeline)
@@ -183,7 +188,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await page.waitForSelector('[data-testid="timeline-track"]');
 
 		// Open text panel
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 		await expect(page.getByTestId("text-panel")).toBeVisible();
 
 		// Verify initial state
@@ -191,7 +196,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		await expect(textOverlayButton).toBeVisible();
 
 		// Switch to another panel and back
-		await page.getByTestId("media-panel-tab").click();
+		await ensureMediaTabActive(page);
 		const mediaPanel = page.getByTestId("media-panel");
 		const mediaPanelVisible = await mediaPanel
 			.waitFor({ state: "visible", timeout: 5000 })
@@ -208,7 +213,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 			).toBeVisible({ timeout: 5000 });
 		}
 
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 
 		// Verify text panel is still functional
 		await expect(page.getByTestId("text-panel")).toBeVisible({ timeout: 2000 });
@@ -251,7 +256,7 @@ test.describe("Text Overlay Testing (Subtask 3B)", () => {
 		}
 
 		// Test that text elements can be added to timeline
-		await page.getByTestId("text-panel-tab").click();
+		await ensureTextTabActive(page);
 		const textOverlayButton = page.getByTestId("text-overlay-button");
 
 		// Verify text overlay is ready for timeline integration

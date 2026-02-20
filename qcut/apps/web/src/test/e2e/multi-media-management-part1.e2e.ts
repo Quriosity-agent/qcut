@@ -12,6 +12,7 @@ import {
 	importTestVideo,
 	importTestAudio,
 	importTestImage,
+	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
 /**
@@ -154,7 +155,8 @@ test.describe("Multi-Media Import & Track Management (Test #2 Part 1)", () => {
 
 	test("should display media items correctly", async ({ page }) => {
 		await page.getByTestId("new-project-button").click();
-		await page.waitForSelector('[data-testid="import-media-button"]');
+		await page.waitForSelector('[data-testid="timeline-track"]');
+		await ensureMediaTabActive(page);
 
 		// Check media panel structure
 		const importButton = page.getByTestId("import-media-button");

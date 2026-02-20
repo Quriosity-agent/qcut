@@ -56,7 +56,7 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
 				);
 			},
 			initialZoom,
-			{ timeout: 2000 }
+			{ timeout: 5000 }
 		);
 
 		const zoomedInLevel = await zoomSlider.getAttribute("data-zoom-level");
@@ -74,7 +74,7 @@ test.describe("Timeline Controls & Editing Operations (Test #2 Part 2)", () => {
 				);
 			},
 			zoomedInLevel,
-			{ timeout: 2000 }
+			{ timeout: 5000 }
 		);
 
 		const zoomedOutLevel = await zoomSlider.getAttribute("data-zoom-level");

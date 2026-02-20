@@ -6,7 +6,13 @@
  * category navigation, and overlay rendering.
  */
 
-import { test, expect, createTestProject } from "./helpers/electron-helpers";
+import {
+	test,
+	expect,
+	createTestProject,
+	ensureStickersTabActive,
+	ensureMediaTabActive,
+} from "./helpers/electron-helpers";
 
 /**
  * Test suite for Sticker Overlay Testing (Subtask 3A)
@@ -26,7 +32,7 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 
 		// Test steps:
 		// 1. Open stickers panel
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 
 		// Verify stickers panel opens
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();
@@ -68,7 +74,7 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 		await createTestProject(page, "Sticker DnD Test Project");
 
 		// Open stickers panel
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();
 
 		// Check if sticker canvas is available
@@ -168,7 +174,7 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 		await createTestProject(page, "Sticker Manipulation Test");
 
 		// Open stickers panel and place a sticker
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();
 
 		const stickerCanvas = page.getByTestId("sticker-canvas");
@@ -252,7 +258,7 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 		await createTestProject(page, "Sticker Categories Test");
 
 		// Open stickers panel
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();
 
 		// Check for search functionality (if input exists)
@@ -341,14 +347,14 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 		await createTestProject(page, "Sticker State Test Project");
 
 		// Open stickers panel
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();
 
 		// Switch to another tab and back
-		await page.getByTestId("media-panel-tab").click();
+		await ensureMediaTabActive(page);
 		// returning to stickers tab is asserted below
 
-		await page.getByTestId("stickers-panel-tab").click();
+		await ensureStickersTabActive(page);
 
 		// Verify stickers panel is still functional
 		await expect(page.getByTestId("stickers-panel")).toBeVisible();

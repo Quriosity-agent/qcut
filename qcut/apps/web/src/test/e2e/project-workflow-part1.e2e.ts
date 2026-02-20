@@ -10,6 +10,7 @@ import {
 	expect,
 	createTestProject,
 	importTestVideo,
+	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
 /**
@@ -43,7 +44,7 @@ test.describe("Project Creation & Media Import (Subtask 1A)", () => {
 	test("should handle file upload process", async ({ page }) => {
 		// Electron app should already be loaded, create a new project
 		await createTestProject(page, "E2E Upload Test Project");
-		await page.waitForSelector('[data-testid="import-media-button"]');
+		await ensureMediaTabActive(page);
 
 		// Verify upload button is available and enabled
 		await expect(page.getByTestId("import-media-button")).toBeVisible();

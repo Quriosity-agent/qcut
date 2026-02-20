@@ -13,6 +13,7 @@ import {
 	createTestProject,
 	importTestVideo,
 	navigateToProjects,
+	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
 /**
@@ -92,7 +93,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 			await page.waitForLoadState("networkidle");
 
 			// Switch back to the media tab to validate library contents since the AI tab hides media items
-			await page.click('[data-testid="media-panel-tab"]');
+			await ensureMediaTabActive(page);
 			await expect(mediaItems.first()).toBeVisible();
 
 			// Verify enhancement was applied (new asset created or existing modified)
@@ -319,6 +320,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		page,
 	}) => {
 		// Ensure we have multiple media items
+		await ensureMediaTabActive(page);
 		await page.click('[data-testid="import-media-button"]');
 		await page.waitForSelector('[data-testid="media-item"]', {
 			state: "visible",
@@ -362,7 +364,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		}
 
 		// Switch back to media panel to verify enhanced assets since AI tab hides media grid
-		await page.click('[data-testid="media-panel-tab"]');
+		await ensureMediaTabActive(page);
 		await expect(mediaItems.first()).toBeVisible();
 		expect(await mediaItems.count()).toBeGreaterThan(0);
 	});
