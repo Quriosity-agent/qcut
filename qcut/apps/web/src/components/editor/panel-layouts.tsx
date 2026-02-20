@@ -36,7 +36,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 	// Memoize initial sizes so they only change on preset reset (resetCounter).
 	// v4 re-applies defaultSize on prop changes, so we must keep it stable
 	// during drag to avoid fighting the library's internal state.
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only recompute on preset reset, not during drag (v4 re-applies defaultSize)
 	const defaults = React.useMemo(
 		() => ({
 			tools: pct(toolsPanel),
@@ -129,7 +129,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 		setPropertiesPanel,
 	} = usePanelStore();
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only recompute on preset reset, not during drag (v4 re-applies defaultSize)
 	const defaults = React.useMemo(() => {
 		const rightTotal = Math.max(1, previewPanel + propertiesPanel);
 		return {
@@ -240,7 +240,7 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 		setPropertiesPanel,
 	} = usePanelStore();
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only recompute on preset reset, not during drag (v4 re-applies defaultSize)
 	const defaults = React.useMemo(() => {
 		const leftTotal = Math.max(1, toolsPanel + previewPanel);
 		return {
@@ -332,7 +332,7 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 		setPropertiesPanel,
 	} = usePanelStore();
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only recompute on preset reset, not during drag (v4 re-applies defaultSize)
 	const defaults = React.useMemo(() => {
 		const leftTotal = Math.max(1, toolsPanel + propertiesPanel);
 		return {

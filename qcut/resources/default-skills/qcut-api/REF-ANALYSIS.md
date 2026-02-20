@@ -17,27 +17,15 @@ interface TranscribeJob {
   result?: TranscriptionResult; createdAt: number; updatedAt: number;
 }
 
-// Scene Detection
+// Scene Detection (sync only — no async job routes)
 interface SceneBoundary { timestamp: number; confidence: number; description?: string; shotType?: "wide" | "medium" | "close-up" | "cutaway" | "unknown"; transitionType?: "cut" | "dissolve" | "fade" | "unknown" }
 interface SceneDetectionRequest { mediaId: string; threshold?: number; aiAnalysis?: boolean; model?: string }
 interface SceneDetectionResult { scenes: SceneBoundary[]; totalScenes: number; averageShotDuration: number }
-interface SceneDetectionJob {
-  jobId: string; projectId: string; mediaId: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  progress: number; message: string; result?: SceneDetectionResult;
-  createdAt: number; updatedAt: number;
-}
 
-// Frame Analysis
+// Frame Analysis (sync only — provider cascade: Anthropic → OpenRouter)
 interface FrameAnalysis { timestamp: number; objects: string[]; text: string[]; description: string; mood?: string; composition?: string }
 interface FrameAnalysisRequest { mediaId: string; timestamps?: number[]; interval?: number; prompt?: string }
 interface FrameAnalysisResult { frames: FrameAnalysis[]; totalFramesAnalyzed: number }
-interface FrameAnalysisJob {
-  jobId: string; projectId: string; mediaId: string;
-  status: "queued" | "running" | "completed" | "failed" | "cancelled";
-  progress: number; message: string; result?: FrameAnalysisResult;
-  createdAt: number; updatedAt: number;
-}
 
 // Filler Detection
 interface FillerWord { word: string; start: number; end: number; reason: string }
@@ -78,45 +66,25 @@ curl -s http://127.0.0.1:8765/api/claude/transcribe/$PROJECT_ID/jobs | jq
 curl -s -X POST http://127.0.0.1:8765/api/claude/transcribe/$PROJECT_ID/jobs/$JOB_ID/cancel | jq
 ```
 
-## Scene Detection Endpoints
+## Scene Detection Endpoint (sync only)
 
-#### Sync
 ```bash
 curl -s -X POST -H "Content-Type: application/json" \
   -d '{"mediaId":"MEDIA_ID","threshold":0.3,"aiAnalysis":true}' \
   http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/scenes | jq
 ```
 
-#### Async
-```bash
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"mediaId":"MEDIA_ID","threshold":0.3}' \
-  http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/scenes/start | jq
+Returns scenes synchronously. No async job routes available for scene detection.
 
-curl -s http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/scenes/jobs/$JOB_ID | jq
-curl -s http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/scenes/jobs | jq
-curl -s -X POST http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/scenes/jobs/$JOB_ID/cancel | jq
-```
+## Frame Analysis Endpoint (sync only)
 
-## Frame Analysis Endpoints
-
-#### Sync
 ```bash
 curl -s -X POST -H "Content-Type: application/json" \
   -d '{"mediaId":"MEDIA_ID","timestamps":[0,5,10],"prompt":"Describe what you see"}' \
   http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/frames | jq
 ```
 
-#### Async
-```bash
-curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"mediaId":"MEDIA_ID","timestamps":[0,5,10]}' \
-  http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/frames/start | jq
-
-curl -s http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/frames/jobs/$JOB_ID | jq
-curl -s http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/frames/jobs | jq
-curl -s -X POST http://127.0.0.1:8765/api/claude/analyze/$PROJECT_ID/frames/jobs/$JOB_ID/cancel | jq
-```
+**Provider cascade:** Tries Anthropic API first, falls back to OpenRouter. Requires at least one API key configured in Settings. If neither is available, returns a descriptive error listing which keys are missing.
 
 ## Filler Detection Endpoint
 
