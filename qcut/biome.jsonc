@@ -1,6 +1,6 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
-  "extends": ["ultracite"],
+  "$schema": "https://biomejs.dev/schemas/2.4.3/schema.json",
+  "extends": ["ultracite/react"],
 
   "overrides": [
     {
@@ -77,15 +77,7 @@
         "useJsxKeyInIterable": "off"
       },
       "nursery": {
-        "noAwaitInLoop": "off",
-        "noBitwiseOperators": "off",
-        "noNestedComponentDefinitions": "off",
-        "noNoninteractiveElementInteractions": "off",
         "noShadow": "off",
-        "noUnknownAtRule": "off",
-        "noUselessUndefined": "error",
-        "useIterableCallbackReturn": "off",
-        "useParseIntRadix": "off",
         "useSortedClasses": "off"
       },
       "performance": {
