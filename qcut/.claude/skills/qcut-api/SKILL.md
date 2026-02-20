@@ -129,21 +129,15 @@ Supports `dryRun: true` to preview cuts without applying. Use async routes for v
 | Analyze video (AICP) | POST | `/analyze/:projectId` |
 | List analysis models | GET | `/analyze/models` |
 | Detect scenes (sync) | POST | `/analyze/:projectId/scenes` |
-| Detect scenes (async) | POST | `/analyze/:projectId/scenes/start` |
-| Scene job status | GET | `/analyze/:projectId/scenes/jobs/:jobId` |
-| List scene jobs | GET | `/analyze/:projectId/scenes/jobs` |
-| Cancel scene job | POST | `/analyze/:projectId/scenes/jobs/:jobId/cancel` |
 | Analyze frames (sync) | POST | `/analyze/:projectId/frames` |
-| Analyze frames (async) | POST | `/analyze/:projectId/frames/start` |
-| Frame job status | GET | `/analyze/:projectId/frames/jobs/:jobId` |
-| List frame jobs | GET | `/analyze/:projectId/frames/jobs` |
-| Cancel frame job | POST | `/analyze/:projectId/frames/jobs/:jobId/cancel` |
 | Detect fillers | POST | `/analyze/:projectId/fillers` |
 | Suggest cuts (sync) | POST | `/analyze/:projectId/suggest-cuts` |
 | Suggest cuts (async) | POST | `/analyze/:projectId/suggest-cuts/start` |
 | Suggest-cuts job status | GET | `/analyze/:projectId/suggest-cuts/jobs/:jobId` |
 | List suggest-cuts jobs | GET | `/analyze/:projectId/suggest-cuts/jobs` |
 | Cancel suggest-cuts job | POST | `/analyze/:projectId/suggest-cuts/jobs/:jobId/cancel` |
+
+**Note:** Scene detection and frame analysis are sync-only (no async job routes). Frame analysis uses a provider cascade: tries Anthropic first, falls back to OpenRouter. Requires at least one API key configured.
 
 ### 6. Transcription API — Speech to text
 
@@ -178,7 +172,7 @@ Use async routes for videos >30s — sync route hits the 30s HTTP timeout.
 | Get summary (markdown) | GET | `/project/:projectId/summary` |
 | Generate pipeline report | POST | `/project/:projectId/report` |
 
-**Pipeline report** generates a markdown report of all Claude API operations performed in the session. Options: `saveTo` (path), `clearLog` (boolean).
+**Pipeline report** generates a markdown report of all Claude API operations performed in the session. Options: `outputPath` (full file path — directory is extracted automatically), `outputDir` (directory), `saveToDisk` (inferred from outputPath/outputDir), `clearLog` (boolean).
 
 ### 9. Export API — Presets, recommendations, and export jobs
 
@@ -212,7 +206,7 @@ Use async routes for videos >30s — sync route hits the 30s HTTP timeout.
 
 ## Async Job Pattern
 
-Long-running operations (transcription, scene detection, frame analysis, auto-edit, suggest-cuts) use an async job pattern to avoid the 30s HTTP timeout:
+Long-running operations (transcription, auto-edit, suggest-cuts, export, generation) use an async job pattern to avoid the 30s HTTP timeout:
 
 ```bash
 # 1. Start job
@@ -279,9 +273,13 @@ curl -s -X PATCH -H "Content-Type: application/json" \
   -d '{"width":1080,"height":1920,"fps":30}' \
   http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/settings
 
-# Start export
+# Start export (preset)
 curl -s -X POST http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start \
   -H "Content-Type: application/json" -d '{"preset":"tiktok"}'
+
+# Start export (custom settings — top-level or nested under "settings")
+curl -s -X POST http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start \
+  -H "Content-Type: application/json" -d '{"width":1280,"height":720,"fps":24,"format":"mp4"}'
 
 # Poll export job
 curl -s http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/jobs/$JOB_ID | jq

@@ -24,7 +24,8 @@ interface PipelineReport { markdown: string; savedTo?: string }
 // Export
 interface ExportPreset { id: string; name: string; platform: string; width: number; height: number; fps: number; bitrate: string; format: string }
 interface ExportRecommendation { preset: ExportPreset; warnings: string[]; suggestions: string[]; estimatedFileSize?: string }
-interface ExportJobRequest { preset?: string; settings?: { width?: number; height?: number; fps?: number; bitrate?: string; format?: string; codec?: string }; outputPath?: string }
+// Custom settings can be nested under "settings" or at the top level of the request body
+interface ExportJobRequest { preset?: string; settings?: { width?: number; height?: number; fps?: number; bitrate?: string; format?: string; codec?: string }; outputPath?: string; width?: number; height?: number; fps?: number; format?: string; codec?: string; bitrate?: string }
 interface ExportJobStatus {
   jobId: string; projectId: string;
   status: "queued" | "exporting" | "completed" | "failed";
@@ -85,13 +86,18 @@ curl -s http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/summary | jq -r '.d
 
 #### Generate pipeline report
 ```bash
-# In-memory
+# In-memory only
 curl -s -X POST -H "Content-Type: application/json" -d '{}' \
   http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/report | jq -r '.data.markdown'
 
-# Save to disk and clear log
+# Save to disk (outputPath infers saveToDisk and extracts directory)
 curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"saveTo":"/tmp/","clearLog":true}' \
+  -d '{"outputPath":"/tmp/report.md","clearLog":true}' \
+  http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/report | jq
+
+# Or use outputDir directly
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"outputDir":"/tmp/","clearLog":true}' \
   http://127.0.0.1:8765/api/claude/project/$PROJECT_ID/report | jq
 ```
 
@@ -127,11 +133,18 @@ curl -s -X POST -H "Content-Type: application/json" \
   -d '{"preset":"youtube-1080p"}' \
   http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start | jq
 
-# Custom
+# Custom (nested under "settings")
 curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"settings":{"width":1920,"height":1080,"fps":30,"format":"mp4"}}' \
+  -d '{"settings":{"width":1280,"height":720,"fps":24,"format":"mp4"}}' \
+  http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start | jq
+
+# Custom (top-level — also accepted)
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"width":1280,"height":720,"fps":24,"format":"mp4"}' \
   http://127.0.0.1:8765/api/claude/export/$PROJECT_ID/start | jq
 ```
+
+Custom settings override the default preset (`youtube-1080p`). Nested `settings` takes priority over top-level.
 
 #### Poll / List export jobs
 ```bash

@@ -64,7 +64,14 @@ vi.mock("../claude/claude-scene-handler", () => ({
 // Imports
 // ---------------------------------------------------------------------------
 
-import { suggestCuts } from "../claude/claude-suggest-handler";
+import {
+	suggestCuts,
+	startSuggestJob,
+	getSuggestJobStatus,
+	listSuggestJobs,
+	cancelSuggestJob,
+	_clearSuggestJobs,
+} from "../claude/claude-suggest-handler";
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -326,5 +333,96 @@ describe("claude-suggest-handler", () => {
 		expect(result.scenes).toBeDefined();
 		expect(result.scenes!.totalScenes).toBe(4);
 		expect(result.scenes!.averageShotDuration).toBe(4.0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Async Job Tracking Tests
+// ---------------------------------------------------------------------------
+
+describe("suggest-cuts async jobs", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		_clearSuggestJobs();
+		mockTranscribeMedia.mockResolvedValue(makeTranscriptionResult());
+		mockAnalyzeFillers.mockResolvedValue(makeFillerResult());
+		mockDetectScenes.mockResolvedValue(makeSceneResult());
+	});
+
+	it("startSuggestJob returns jobId immediately", () => {
+		const { jobId } = startSuggestJob("proj_1", { mediaId: "media_1" });
+		expect(jobId).toMatch(/^suggest_/);
+	});
+
+	it("getSuggestJobStatus returns job after creation", () => {
+		const { jobId } = startSuggestJob("proj_1", { mediaId: "media_1" });
+		const job = getSuggestJobStatus(jobId);
+		expect(job).not.toBeNull();
+		expect(job!.projectId).toBe("proj_1");
+		expect(job!.mediaId).toBe("media_1");
+	});
+
+	it("getSuggestJobStatus returns null for unknown job", () => {
+		expect(getSuggestJobStatus("nonexistent")).toBeNull();
+	});
+
+	it("job completes with result after processing", async () => {
+		const { jobId } = startSuggestJob("proj_1", { mediaId: "media_1" });
+
+		// Wait for background processing to complete
+		await vi.waitFor(() => {
+			const job = getSuggestJobStatus(jobId);
+			expect(job!.status).toBe("completed");
+		});
+
+		const job = getSuggestJobStatus(jobId);
+		expect(job!.result).toBeDefined();
+		expect(job!.result!.suggestions.length).toBeGreaterThan(0);
+		expect(job!.completedAt).toBeDefined();
+	});
+
+	it("job fails when analysis fails", async () => {
+		mockTranscribeMedia.mockRejectedValue(new Error("API error"));
+		mockDetectScenes.mockRejectedValue(new Error("FFmpeg error"));
+
+		const { jobId } = startSuggestJob("proj_1", {
+			mediaId: "media_1",
+		});
+
+		await vi.waitFor(() => {
+			const job = getSuggestJobStatus(jobId);
+			expect(job!.status).toBe("completed");
+		});
+	});
+
+	it("cancelSuggestJob marks job as cancelled", () => {
+		const { jobId } = startSuggestJob("proj_1", { mediaId: "media_1" });
+		const cancelled = cancelSuggestJob(jobId);
+		expect(cancelled).toBe(true);
+
+		const job = getSuggestJobStatus(jobId);
+		expect(job!.status).toBe("cancelled");
+		expect(job!.completedAt).toBeDefined();
+	});
+
+	it("cancelSuggestJob returns false for unknown job", () => {
+		expect(cancelSuggestJob("nonexistent")).toBe(false);
+	});
+
+	it("listSuggestJobs returns jobs sorted newest-first", () => {
+		startSuggestJob("proj_1", { mediaId: "media_1" });
+		startSuggestJob("proj_2", { mediaId: "media_2" });
+
+		const jobs = listSuggestJobs();
+		expect(jobs).toHaveLength(2);
+		expect(jobs[0].createdAt).toBeGreaterThanOrEqual(jobs[1].createdAt);
+	});
+
+	it("_clearSuggestJobs removes all jobs", () => {
+		startSuggestJob("proj_1", { mediaId: "media_1" });
+		expect(listSuggestJobs()).toHaveLength(1);
+
+		_clearSuggestJobs();
+		expect(listSuggestJobs()).toHaveLength(0);
 	});
 });

@@ -131,11 +131,21 @@ function findMediaItemForElement({
 	mediaItems: MediaItem[];
 }): MediaItem | null {
 	if (element.sourceName) {
+		// Exact match first
 		const mediaByName = mediaItems.find(
 			(item) => item.name === element.sourceName
 		);
 		if (mediaByName) {
 			return mediaByName;
+		}
+
+		// Case-insensitive fallback
+		const lowerName = element.sourceName.toLowerCase();
+		const mediaByNameCI = mediaItems.find(
+			(item) => item.name.toLowerCase() === lowerName
+		);
+		if (mediaByNameCI) {
+			return mediaByNameCI;
 		}
 	}
 
@@ -434,6 +444,12 @@ export async function applyTimelineToStore(
 	});
 
 	const projectId = useProjectStore.getState().activeProject?.id;
+
+	// Sync media from disk before resolving elements so newly-imported files are discoverable
+	if (projectId) {
+		await syncProjectMediaIfNeeded({ projectId });
+	}
+
 	let added = 0;
 
 	for (const track of timeline.tracks) {

@@ -305,14 +305,27 @@ function resolveExportSettings({
 			throw new Error(`Invalid preset ID: ${requestedPresetId}`);
 		}
 
+		// Accept settings nested under `settings` key or at the top level of the
+		// request body (e.g. `{"width":1280}` instead of `{"settings":{"width":1280}}`).
+		const s = request.settings;
+		const top = request as Record<string, unknown>;
+
 		return {
 			presetId: preset.id,
-			width: request.settings?.width ?? preset.width,
-			height: request.settings?.height ?? preset.height,
-			fps: request.settings?.fps ?? preset.fps,
-			format: request.settings?.format ?? preset.format,
-			codec: request.settings?.codec ?? "libx264",
-			bitrate: request.settings?.bitrate ?? preset.bitrate,
+			width:
+				s?.width ?? (typeof top.width === "number" ? top.width : preset.width),
+			height:
+				s?.height ??
+				(typeof top.height === "number" ? top.height : preset.height),
+			fps: s?.fps ?? (typeof top.fps === "number" ? top.fps : preset.fps),
+			format:
+				s?.format ??
+				(typeof top.format === "string" ? top.format : preset.format),
+			codec:
+				s?.codec ?? (typeof top.codec === "string" ? top.codec : "libx264"),
+			bitrate:
+				s?.bitrate ??
+				(typeof top.bitrate === "string" ? top.bitrate : preset.bitrate),
 		};
 	} catch (error) {
 		if (error instanceof Error) {

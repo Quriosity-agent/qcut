@@ -14,6 +14,7 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "./utils/http-router.js";
 import { claudeLog } from "./utils/logger.js";
+import { isValidSourcePath } from "./utils/helpers.js";
 
 // Extracted handler functions (shared with IPC handlers)
 import {
@@ -559,14 +560,37 @@ export function startClaudeHTTPServer(
 				settings,
 			});
 			const steps = getOperationLog({ projectId: req.params.projectId });
+
+			// Resolve output directory from outputDir or outputPath
+			let outputDir: string | undefined;
+			if (typeof req.body?.outputDir === "string") {
+				outputDir = req.body.outputDir;
+			} else if (typeof req.body?.outputPath === "string") {
+				// outputPath is a full file path — extract directory
+				const lastSlash = Math.max(
+					req.body.outputPath.lastIndexOf("/"),
+					req.body.outputPath.lastIndexOf("\\")
+				);
+				outputDir =
+					lastSlash > 0
+						? req.body.outputPath.slice(0, lastSlash)
+						: req.body.outputPath;
+			}
+
+			// Validate outputDir is an absolute path without null bytes
+			if (outputDir && !isValidSourcePath(outputDir)) {
+				throw new HttpError(400, "Invalid output directory path");
+			}
+
+			// Infer saveToDisk when an output location is provided
+			const saveToDisk =
+				req.body?.saveToDisk === true || outputDir !== undefined;
+
 			const report = await generatePipelineReport({
 				steps,
 				summary,
-				saveToDisk: req.body?.saveToDisk === true,
-				outputDir:
-					typeof req.body?.outputDir === "string"
-						? req.body.outputDir
-						: undefined,
+				saveToDisk,
+				outputDir,
 				projectId: req.params.projectId,
 			});
 
