@@ -146,8 +146,9 @@ These require significant code changes or are pinned for compatibility.
    - ✅ happy-dom 18.0.1 → 20.6.3 (build OK)
    - ✅ jsdom 26.1.0 → 28.1.0 (build OK)
 
-5. **Phase 5 — Electron major** (separate PR):
-   - electron 37 → 40 (needs thorough testing on Win/Mac/Linux)
+5. **Phase 5 — Electron major** ✅ COMPLETED (2026-02-20):
+   - ✅ electron 37.4.0 → 40.6.0 (bumped in PR #145)
+   - Testing: `bun run electron:dev`, `bun run electron`, Windows EXE build
 
 6. **Phase 6 — Future** (not now):
    - React 19 migration (big project)
