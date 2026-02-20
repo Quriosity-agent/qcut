@@ -434,6 +434,35 @@ export interface SuggestCutsResponse {
 }
 
 // ============================================================================
+// Async Job Types (Stage 3)
+// ============================================================================
+
+export interface SuggestCutsJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: SuggestCutsResponse;
+  createdAt: number;
+  completedAt?: number;
+}
+
+export interface AutoEditJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  elementId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: AutoEditResponse;
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
 // Diagnostics Types
 // ============================================================================
 
@@ -680,6 +709,38 @@ export interface FrameAnalysisRequest {
 export interface FrameAnalysisResult {
 	frames: FrameAnalysis[];
 	totalFramesAnalyzed: number;
+}
+
+// ============================================================================
+// Scene Detection Async Job Types (Stage 2)
+// ============================================================================
+
+export interface SceneDetectionJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: SceneDetectionResult;
+  createdAt: number;
+  completedAt?: number;
+}
+
+// ============================================================================
+// Frame Analysis Async Job Types (Stage 2)
+// ============================================================================
+
+export interface FrameAnalysisJob {
+  jobId: string;
+  projectId: string;
+  mediaId: string;
+  status: "queued" | "processing" | "completed" | "failed" | "cancelled";
+  progress: number;
+  message: string;
+  result?: FrameAnalysisResult;
+  createdAt: number;
+  completedAt?: number;
 }
 
 // ============================================================================

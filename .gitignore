@@ -1,5 +1,9 @@
 apps/web
 .claude
+!qcut/.claude/
+qcut/.claude/*
+!qcut/.claude/skills/
+!qcut/.claude/commands/
 
 # Build folders
 electron-builds/
