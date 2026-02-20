@@ -103,15 +103,16 @@ const TEST_VIDEO = join(
   "../../apps/web/src/test/e2e/fixtures/media/test-scenes.mp4"
 );
 const TEMP_DIR = join(tmpdir(), "qcut-integration-test");
+const HAS_TEST_VIDEO = existsSync(TEST_VIDEO);
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown
 // ---------------------------------------------------------------------------
 
 beforeAll(() => {
-  if (!existsSync(TEST_VIDEO)) {
-    throw new Error(
-      `Test video not found: ${TEST_VIDEO}\n` +
+  if (!HAS_TEST_VIDEO) {
+    console.warn(
+      `Skipping Stage 2 integration tests — test video not found: ${TEST_VIDEO}\n` +
         "Generate it with: ffmpeg -y -f lavfi -i 'color=c=red:size=640x360:duration=3:rate=30' " +
         "-f lavfi -i 'color=c=blue:size=640x360:duration=3:rate=30' " +
         "-f lavfi -i 'color=c=green:size=640x360:duration=3:rate=30' " +
@@ -120,6 +121,7 @@ beforeAll(() => {
         "-map '[outv]' -map 3:a -c:v libx264 -preset ultrafast -crf 28 " +
         `-pix_fmt yuv420p -c:a aac -b:a 64k -movflags +faststart ${TEST_VIDEO}`
     );
+    return;
   }
   if (!existsSync(TEMP_DIR)) {
     mkdirSync(TEMP_DIR, { recursive: true });
@@ -143,7 +145,7 @@ import {
   parseShowInfoOutput,
 } from "../claude/claude-scene-handler";
 
-describe("Scene Detection (real FFmpeg)", () => {
+describe.skipIf(!HAS_TEST_VIDEO)("Scene Detection (real FFmpeg)", () => {
   it("detects scene boundaries in test video with 3 color scenes", async () => {
     const scenes = await detectScenesWithFFmpeg(TEST_VIDEO, 0.3);
 
@@ -194,7 +196,7 @@ describe("Scene Detection (real FFmpeg)", () => {
 // Frame Extraction — Real FFmpeg
 // ---------------------------------------------------------------------------
 
-describe("Frame Extraction (real FFmpeg)", () => {
+describe.skipIf(!HAS_TEST_VIDEO)("Frame Extraction (real FFmpeg)", () => {
   it("extracts a frame at timestamp 0", async () => {
     const outputPath = join(TEMP_DIR, "frame-0.jpg");
 
@@ -249,7 +251,7 @@ describe("Frame Extraction (real FFmpeg)", () => {
 
 import { extractAudio } from "../claude/claude-transcribe-handler";
 
-describe("Audio Extraction (real FFmpeg)", () => {
+describe.skipIf(!HAS_TEST_VIDEO)("Audio Extraction (real FFmpeg)", () => {
   it("extracts audio from video to MP3", async () => {
     const audioPath = await extractAudio(TEST_VIDEO);
 
@@ -293,7 +295,7 @@ describe("Audio Extraction (real FFmpeg)", () => {
 // parseShowInfoOutput with real FFmpeg output
 // ---------------------------------------------------------------------------
 
-describe("parseShowInfoOutput with real FFmpeg output", () => {
+describe.skipIf(!HAS_TEST_VIDEO)("parseShowInfoOutput with real FFmpeg output", () => {
   it("parses real FFmpeg scene detection stderr", async () => {
     const ffmpegPath = execFileSync("which", ["ffmpeg"]).toString().trim();
 

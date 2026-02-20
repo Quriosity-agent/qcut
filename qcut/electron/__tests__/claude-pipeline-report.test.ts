@@ -20,6 +20,7 @@ vi.mock("node:fs/promises", () => ({
   writeFile: mockWriteFile,
 }));
 
+import { resolve } from "node:path";
 import { generatePipelineReport } from "../claude/claude-summary-handler";
 import {
   logOperation,
@@ -134,7 +135,7 @@ describe("generatePipelineReport", () => {
       outputDir: "/tmp/reports",
     });
 
-    expect(mockMkdir).toHaveBeenCalledWith("/tmp/reports", { recursive: true });
+    expect(mockMkdir).toHaveBeenCalledWith(resolve("/tmp/reports"), { recursive: true });
     expect(mockWriteFile).toHaveBeenCalledOnce();
     expect(report.savedTo).toContain("pipeline-report-proj_1-");
   });
