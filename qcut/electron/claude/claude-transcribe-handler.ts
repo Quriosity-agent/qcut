@@ -13,7 +13,7 @@ import { app } from "electron";
 import { getMediaInfo } from "./claude-media-handler.js";
 import { claudeLog } from "./utils/logger.js";
 import { sanitizeProjectId } from "./utils/helpers.js";
-import { getFFmpegPath } from "../ffmpeg/utils.js";
+import { getFFmpegPath, getFFprobePath } from "../ffmpeg/utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
 import type {
 	TranscribeJob,
@@ -59,10 +59,65 @@ async function resolveMediaPath(
 }
 
 /**
+ * Check whether a video file contains at least one audio stream using ffprobe.
+ */
+function hasAudioStream(videoPath: string): Promise<boolean> {
+	const ffprobePath = getFFprobePath();
+	return new Promise((resolve) => {
+		const proc = spawn(
+			ffprobePath,
+			[
+				"-v",
+				"error",
+				"-select_streams",
+				"a",
+				"-show_entries",
+				"stream=codec_type",
+				"-of",
+				"csv=p=0",
+				videoPath,
+			],
+			{ windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+		);
+
+		let stdout = "";
+		proc.stdout?.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
+
+		const timeout = setTimeout(() => {
+			try {
+				proc.kill("SIGTERM");
+			} catch {
+				/* ignore */
+			}
+			resolve(false);
+		}, 10_000);
+
+		proc.on("close", () => {
+			clearTimeout(timeout);
+			resolve(stdout.trim().length > 0);
+		});
+
+		proc.on("error", () => {
+			clearTimeout(timeout);
+			resolve(false);
+		});
+	});
+}
+
+/**
  * Extract audio from a video file using FFmpeg.
  * Returns path to the extracted audio file (mp3, low bitrate for transcription).
  */
-export function extractAudio(videoPath: string): Promise<string> {
+export async function extractAudio(videoPath: string): Promise<string> {
+	const hasAudio = await hasAudioStream(videoPath);
+	if (!hasAudio) {
+		throw new Error(
+			`Video file has no audio stream to extract: ${videoPath}`
+		);
+	}
+
 	const ffmpegPath = getFFmpegPath();
 	const tempDir = join(app.getPath("temp"), "qcut-transcribe");
 	if (!existsSync(tempDir)) {
