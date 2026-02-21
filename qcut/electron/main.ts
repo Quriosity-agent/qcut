@@ -442,12 +442,16 @@ function createWindow(): void {
 	});
 
 	// Size window to 80% of the screen and center it
-	const { width: screenW, height: screenH } =
-		screen.getPrimaryDisplay().workAreaSize;
-	const w = Math.round(screenW * 0.8);
-	const h = Math.round(screenH * 0.8);
-	mainWindow.setSize(w, h);
-	mainWindow.center();
+	try {
+		const { width: screenW, height: screenH } =
+			screen.getPrimaryDisplay().workAreaSize;
+		const w = Math.round(screenW * 0.8);
+		const h = Math.round(screenH * 0.8);
+		mainWindow.setSize(w, h);
+		mainWindow.center();
+	} catch {
+		// Fallback for headless/CI environments without a display
+	}
 
 	// Load the app
 	const isDev = process.env.NODE_ENV === "development";

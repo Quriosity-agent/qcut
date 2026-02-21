@@ -50,6 +50,17 @@ interface FalStatusResponse {
 
 const FAL_BASE = "https://queue.fal.run";
 const FAL_STATUS_BASE = "https://queue.fal.run";
+const FAL_TRUSTED_HOSTS = [".fal.run", ".fal.ai"];
+
+/** Validate that a URL belongs to a trusted FAL domain before sending auth headers. */
+function isTrustedFalUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return FAL_TRUSTED_HOSTS.some((host) => parsed.hostname.endsWith(host));
+	} catch {
+		return false;
+	}
+}
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -228,7 +239,13 @@ export async function pollQueueStatus(
 		const status = (await statusRes.json()) as FalStatusResponse;
 
 		if (status.status === "COMPLETED") {
-			const fetchUrl = status.response_url || resultUrl;
+			const candidateUrl = status.response_url || resultUrl;
+			const fetchUrl = isTrustedFalUrl(candidateUrl) ? candidateUrl : resultUrl;
+			if (status.response_url && !isTrustedFalUrl(status.response_url)) {
+				console.warn(
+					`[api-caller] Ignoring untrusted response_url in poll: ${status.response_url}`
+				);
+			}
 			const resultRes = await fetch(fetchUrl, {
 				headers,
 				signal: options?.signal,
@@ -367,18 +384,33 @@ export async function callModelApi(
 			if (queueData.request_id) {
 				// If already completed with request_id, fetch result directly
 				if (queueData.status === "COMPLETED" && queueData.response_url) {
-					const resultRes = await fetch(queueData.response_url, {
-						headers,
-						signal: combinedSignal,
-					});
-					if (resultRes.ok) {
-						const data = await resultRes.json();
-						return {
-							success: true,
-							data,
-							outputUrl: extractOutputUrl(data),
-							duration: (Date.now() - startTime) / 1000,
-						};
+					if (!isTrustedFalUrl(queueData.response_url)) {
+						console.warn(
+							`[api-caller] Skipping untrusted response_url: ${queueData.response_url}`
+						);
+					} else {
+						try {
+							const resultRes = await fetch(queueData.response_url, {
+								headers,
+								signal: combinedSignal,
+							});
+							if (resultRes.ok) {
+								const data = await resultRes.json();
+								return {
+									success: true,
+									data,
+									outputUrl: extractOutputUrl(data),
+									duration: (Date.now() - startTime) / 1000,
+								};
+							}
+							console.warn(
+								`[api-caller] response_url fetch failed (${resultRes.status}), falling back to polling`
+							);
+						} catch (fetchErr) {
+							console.warn(
+								`[api-caller] response_url fetch error: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}, falling back to polling`
+							);
+						}
 					}
 				}
 

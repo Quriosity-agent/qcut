@@ -177,7 +177,7 @@ async function copyVideosToRunDirectory({
 	sourceFilePaths: Array<string>;
 	destinationRunDirectoryPath: string;
 }): Promise<Array<VideoManifestEntry>> {
-	const copyOperations = sourceFilePaths.map(async (sourceFilePath) => {
+	const copyOperations = sourceFilePaths.map(async (sourceFilePath): Promise<VideoManifestEntry | null> => {
 		const sourceRelativePath = relative(sourceRootPath, sourceFilePath);
 		const destinationFileName = buildDestinationFileName({
 			sourceRootPath,
@@ -192,7 +192,14 @@ async function copyVideosToRunDirectory({
 		const status = await determineTestStatus({ sourceFilePath });
 		const testLabel = buildTestLabel({ testArtifactDirectoryName });
 
-		await copyFile(sourceFilePath, destinationFilePath);
+		try {
+			await copyFile(sourceFilePath, destinationFilePath);
+		} catch (error) {
+			if (!isErrnoCode({ error, code: "ENOENT" })) {
+				throw error;
+			}
+			return null;
+		}
 
 		return {
 			copiedFileName: destinationFileName,
@@ -204,7 +211,8 @@ async function copyVideosToRunDirectory({
 		} satisfies VideoManifestEntry;
 	});
 
-	return Promise.all(copyOperations);
+	const results = await Promise.all(copyOperations);
+	return results.filter((entry): entry is VideoManifestEntry => entry !== null);
 }
 
 async function writeRunMetadata({
