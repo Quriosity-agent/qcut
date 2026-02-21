@@ -1066,6 +1066,16 @@ export interface ElectronAPI {
 			outputPaths?: string[];
 			error?: string;
 		}>;
+		callLLM: (options: {
+			systemPrompt: string;
+			userPrompt: string;
+			temperature?: number;
+			maxTokens?: number;
+		}) => Promise<{
+			success: boolean;
+			text?: string;
+			error?: string;
+		}>;
 	};
 
 	// Update and release notes operations

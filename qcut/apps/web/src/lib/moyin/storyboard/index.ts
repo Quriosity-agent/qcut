@@ -31,3 +31,19 @@ export {
 	findSegments,
 } from "./image-splitter";
 export type { SplitResult, SplitOptions, SplitConfig } from "./image-splitter";
+
+export { generateScenePrompts } from "./scene-prompt-generator";
+export type {
+	ScenePromptRequest,
+	GeneratedPrompt,
+	SplitSceneInput,
+} from "./scene-prompt-generator";
+
+export {
+	generateStoryboardImage,
+	generateSceneVideos,
+} from "./storyboard-service";
+export type {
+	StoryboardGenerationConfig,
+	StoryboardGenerationResult,
+} from "./storyboard-service";

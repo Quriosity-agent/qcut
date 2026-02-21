@@ -18,8 +18,11 @@
 | Grid calculator | **Done** | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` |
 | Prompt builder | **Done** | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` |
 | Image splitter | **Done** | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` |
+| Scene prompt generator | **Done** | `apps/web/src/lib/moyin/storyboard/scene-prompt-generator.ts` |
+| Storyboard service | **Done** | `apps/web/src/lib/moyin/storyboard/storyboard-service.ts` |
 | API key manager | **Done** | `apps/web/src/lib/moyin/utils/api-key-manager.ts` |
 | Retry / rate-limiter / concurrency utils | **Done** | `apps/web/src/lib/moyin/utils/` |
+| LLM adapter | **Done** | `apps/web/src/lib/moyin/script/llm-adapter.ts` |
 | Core data types (Script, Scene, Shot, Camera) | **Done** | `apps/web/src/types/moyin-script.ts` |
 | Zustand store (moyin workflow) | **Done** | `apps/web/src/stores/moyin-store.ts` |
 | IPC handler (LLM script parsing) | **Done** | `electron/moyin-handler.ts` |
@@ -27,16 +30,21 @@
 | Moyin tab in media panel | **Done** | `apps/web/src/components/editor/media-panel/views/moyin/` (6 components) |
 | Type definitions in ElectronAPI | **Done** | `apps/web/src/types/electron.d.ts`, `electron/preload-types.ts` |
 | Unit tests | **Done** | 344 tests across 6 test files |
-| AI Provider abstraction (`packages/ai-director/`) | **Not started** | Uses existing QCut AI pipeline + direct LLM calls instead |
-| Full-script-service orchestrator | **Not started** | — |
-| Shot generator (scene → shots) | **Not started** | — |
-| Episode parser | **Not started** | — |
+| Episode parser | **Done** | `apps/web/src/lib/moyin/script/episode-parser.ts` |
+| Shot generator | **Done** | `apps/web/src/lib/moyin/script/shot-generator.ts` |
+| AI character finder | **Done** | `apps/web/src/lib/moyin/script/ai-character-finder.ts` |
+| AI scene finder | **Done** | `apps/web/src/lib/moyin/script/ai-scene-finder.ts` |
+| Character calibrator | **Done** | `apps/web/src/lib/moyin/script/character-calibrator.ts` + `character-calibrator-enrichment.ts` |
+| Scene calibrator | **Done** | `apps/web/src/lib/moyin/script/scene-calibrator.ts` |
+| Character stage analyzer | **Done** | `apps/web/src/lib/moyin/script/character-stage-analyzer.ts` |
+| AI Provider abstraction (`packages/ai-director/`) | **Skipped** | Uses existing QCut AI pipeline + direct LLM calls via `llm-adapter.ts` |
+| Full-script-service orchestrator | **Deferred** | Individual modules ported; orchestrator deferred until UI/store layer ready |
 | Director store (split into sub-stores) | **Not started** | — |
 | Character library store/UI | **Not started** | — |
 | Scene library store/UI | **Not started** | — |
 | Director panel UI (advanced storyboard) | **Not started** | — |
 
-**Files: 35 total** (24 lib + 1 store + 7 UI components + 1 type file + 1 IPC handler + 1 preload integration)
+**Files: 45 total** (34 lib + 1 store + 7 UI components + 1 type file + 1 IPC handler + 1 preload integration)
 
 ---
 
@@ -153,7 +161,7 @@ interface AIProviderConfig {
 
 ### 1.2 Script Module (Week 1, Days 3-5 + Week 2, Days 1-2) — PARTIALLY DONE
 
-> **Status:** Core script parser ported to `apps/web/src/lib/moyin/script/script-parser.ts` with system prompts. LLM-based parsing works via `electron/moyin-handler.ts` IPC channel (`moyin:parse-script`). Types in `apps/web/src/types/moyin-script.ts`. The full-script-service orchestrator, shot-generator, episode-parser, and calibrators are **not yet ported** — only the foundational parser and AI prompts are in place.
+> **Status (2026-02-22):** All library modules ported. Core script parser at `apps/web/src/lib/moyin/script/script-parser.ts` with system prompts. LLM-based parsing works via `electron/moyin-handler.ts` IPC channel (`moyin:parse-script`). Types in `apps/web/src/types/moyin-script.ts`. Shot generator, episode parser, character/scene calibrators, AI finders, and character-stage-analyzer are all ported. The full-script-service orchestrator (2320 lines) is **deferred** — it coordinates all individual modules, which are already independently usable. LLM adapter (`llm-adapter.ts`) provides `callFeatureAPI` routing through `moyin:call-llm` IPC.
 
 #### What to Port
 
@@ -164,16 +172,16 @@ The script module converts raw text/outline into a structured hierarchy: **Episo
 | Source (Moyin) | Target (QCut) | Priority | Status | Notes |
 |---|---|---|---|---|
 | `src/lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script/script-parser.ts` | P0 | **Done** | Core parser — text → structured script |
-| `src/lib/script/full-script-service.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Orchestrates full script processing |
-| `src/lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Generates shot list from scenes |
-| `src/lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Splits script into episodes |
-| `src/lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | Auto-extracts character info |
-| `src/lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | Auto-extracts scene/location info |
-| `src/lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | AI-powered character detection |
-| `src/lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | AI-powered scene detection |
-| `src/lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/` | P2 | Not started | Character pose/expression analysis |
+| `src/lib/script/full-script-service.ts` | — | P0 | **Deferred** | 2320-line orchestrator; individual modules ported, orchestrator deferred until UI/store layer ready |
+| `src/lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/shot-generator.ts` | P0 | **Done** | Image/video generation for individual shots with task polling |
+| `src/lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/episode-parser.ts` | P0 | **Done** | Splits script into episodes, extracts scenes/dialogues/actions |
+| `src/lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/character-calibrator.ts` + `character-calibrator-enrichment.ts` | P1 | **Done** | Split into 2 files (800-line limit); AI calibration + 6-layer identity enrichment |
+| `src/lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/scene-calibrator.ts` | P1 | **Done** | Scene calibration with art direction and visual prompts |
+| `src/lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/ai-character-finder.ts` | P1 | **Done** | NL character search + AI character data generation |
+| `src/lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/ai-scene-finder.ts` | P1 | **Done** | NL scene search + AI scene data generation |
+| `src/lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/character-stage-analyzer.ts` | P2 | **Done** | Multi-stage character detection + variation generation |
 | `src/lib/script/trailer-service.ts` | `apps/web/src/lib/moyin/script/` | P3 | Not started | Trailer generation (Phase 3) |
-| Remaining 4 files | Assess during porting | P2 | Not started | Port as needed |
+| LLM adapter (new) | `apps/web/src/lib/moyin/script/llm-adapter.ts` | P0 | **Done** | Routes `callFeatureAPI` through `moyin:call-llm` IPC channel |
 
 **Store:**
 
@@ -236,7 +244,7 @@ Layout: Original plan called for **two-column** — Script input / tree view on 
 
 ### 1.3 Director Module (Week 2, Days 2-5 + Week 3) — PARTIALLY DONE
 
-> **Status:** Storyboard library modules (grid calculator, prompt builder, image splitter) are ported. Director presets are ported. The director store split and advanced Director UI are **not yet implemented**. The existing `moyin-store.ts` handles basic workflow but lacks the scene management, generation queue, and UI state sub-stores described below.
+> **Status (2026-02-22):** All storyboard library modules are ported — grid calculator, prompt builder, image splitter, scene-prompt-generator, and storyboard-service (contact sheet + video gen). Director presets are ported. The director store split and advanced Director UI are **not yet implemented**. The existing `moyin-store.ts` handles basic workflow but lacks the scene management, generation queue, and UI state sub-stores described below.
 
 This is the core feature. Script output feeds in; storyboard images and videos come out.
 
@@ -256,9 +264,9 @@ The `director-store.ts` (1800+ lines) must be split:
 
 | Source (Moyin) | Target (QCut) | Priority | Status | Notes |
 |---|---|---|---|---|
-| `src/lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/` | P0 | Not started | Core orchestrator: text → storyboard image |
+| `src/lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/storyboard-service.ts` | P0 | **Done** | Contact sheet image gen + scene video gen with task polling |
 | `src/lib/storyboard/prompt-builder.ts` | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` | P0 | **Done** | Builds generation prompts from scene data |
-| `src/lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/` | P0 | Not started | Per-scene prompt construction |
+| `src/lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/scene-prompt-generator.ts` | P0 | **Done** | Three-tier prompts (image/endFrame/video) per split scene |
 | `src/lib/storyboard/image-splitter.ts` | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` | P0 | **Done** | Splits storyboard grid into individual shots |
 | `src/lib/storyboard/grid-calculator.ts` | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` | P1 | **Done** | Calculates grid layout for storyboard |
 | `src/lib/ai/image-generator.ts` | Uses QCut's existing `aiPipeline` IPC | P0 | **Done** (via existing infra) | No separate provider needed |
@@ -439,18 +447,18 @@ director/scenes/
 | 3 | `lib/ai/runninghub-client.ts` | — | 1.1 | P2 | Not started |
 | 4 | `lib/ai/worker-bridge.ts` | — | 1.1 | P1 | Not started |
 | 5 | `lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script/script-parser.ts` | 1.2 | P0 | **Done** |
-| 6 | `lib/script/full-script-service.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
-| 7 | `lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
-| 8 | `lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
-| 9 | `lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
-| 10 | `lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
-| 11 | `lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
-| 12 | `lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
-| 13 | `lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/` | 2.1 | P2 | Not started |
+| 6 | `lib/script/full-script-service.ts` | — | 1.2 | P0 | **Deferred** — 2320-line orchestrator; individual modules ported |
+| 7 | `lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/shot-generator.ts` | 1.2 | P0 | **Done** |
+| 8 | `lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/episode-parser.ts` | 1.2 | P0 | **Done** |
+| 9 | `lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/character-calibrator.ts` + `character-calibrator-enrichment.ts` | 1.2 | P1 | **Done** |
+| 10 | `lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/scene-calibrator.ts` | 1.2 | P1 | **Done** |
+| 11 | `lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/ai-character-finder.ts` | 1.2 | P1 | **Done** |
+| 12 | `lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/ai-scene-finder.ts` | 1.2 | P1 | **Done** |
+| 13 | `lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/character-stage-analyzer.ts` | 2.1 | P2 | **Done** |
 | 14 | `lib/script/trailer-service.ts` | `apps/web/src/lib/moyin/script/` | 3 | P3 | Not started |
-| 15 | `lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/` | 1.3 | P0 | Not started |
+| 15 | `lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/storyboard-service.ts` | 1.3 | P0 | **Done** |
 | 16 | `lib/storyboard/prompt-builder.ts` | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` | 1.3 | P0 | **Done** |
-| 17 | `lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/` | 1.3 | P0 | Not started |
+| 17 | `lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/scene-prompt-generator.ts` | 1.3 | P0 | **Done** |
 | 18 | `lib/storyboard/image-splitter.ts` | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` | 1.3 | P0 | **Done** |
 | 19 | `lib/storyboard/grid-calculator.ts` | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` | 1.3 | P1 | **Done** |
 
@@ -468,6 +476,7 @@ director/scenes/
 | 27 | `lib/utils/concurrency.ts` | `apps/web/src/lib/moyin/utils/concurrency.ts` | **Done** |
 | 28 | `types/script.ts` | `apps/web/src/types/moyin-script.ts` | **Done** |
 | 29 | System prompts (inline in parser) | `apps/web/src/lib/moyin/script/system-prompts.ts` | **Done** |
+| 30 | New: LLM adapter | `apps/web/src/lib/moyin/script/llm-adapter.ts` | **Done** |
 
 ### Store Files (`src/stores/`)
 
@@ -557,3 +566,15 @@ director/scenes/
 18. [x] Create IPC handler for LLM-based script parsing → `electron/moyin-handler.ts`
 19. [x] Register Moyin tab in media panel (store, preload, main.ts, electron.d.ts)
 20. [x] Write 344 unit tests across 6 test files
+21. [x] Port shot-generator.ts → `apps/web/src/lib/moyin/script/shot-generator.ts`
+22. [x] Port episode-parser.ts → `apps/web/src/lib/moyin/script/episode-parser.ts`
+23. [x] Port scene-prompt-generator.ts → `apps/web/src/lib/moyin/storyboard/scene-prompt-generator.ts`
+24. [x] Port storyboard-service.ts → `apps/web/src/lib/moyin/storyboard/storyboard-service.ts`
+25. [x] Port ai-character-finder.ts → `apps/web/src/lib/moyin/script/ai-character-finder.ts`
+26. [x] Port ai-scene-finder.ts → `apps/web/src/lib/moyin/script/ai-scene-finder.ts`
+27. [x] Port character-calibrator.ts → split into `character-calibrator.ts` + `character-calibrator-enrichment.ts`
+28. [x] Port scene-calibrator.ts → `apps/web/src/lib/moyin/script/scene-calibrator.ts`
+29. [x] Port character-stage-analyzer.ts → `apps/web/src/lib/moyin/script/character-stage-analyzer.ts`
+30. [x] Create LLM adapter → `apps/web/src/lib/moyin/script/llm-adapter.ts`
+31. [x] Update barrel exports (`script/index.ts`, `storyboard/index.ts`)
+32. [x] Pass TypeScript type-check and Biome lint
