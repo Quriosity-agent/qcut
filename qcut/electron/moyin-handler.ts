@@ -136,10 +136,9 @@ async function callLLM(
 ): Promise<string> {
 	const keys = await getDecryptedApiKeys();
 
-	// Try OpenAI-compatible key first, then Google
-	const openaiKey =
-		keys.OPENAI_API_KEY || keys.OPENROUTER_API_KEY || keys.OPENAI;
-	const googleKey = keys.GOOGLE_AI_API_KEY || keys.GEMINI_API_KEY;
+	// Try OpenRouter key first, then Gemini
+	const openaiKey = keys.openRouterApiKey;
+	const googleKey = keys.geminiApiKey;
 
 	if (openaiKey) {
 		return callOpenAICompatible(openaiKey, systemPrompt, userPrompt, options);

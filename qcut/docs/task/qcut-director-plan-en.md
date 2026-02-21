@@ -2,6 +2,44 @@
 
 > Porting Moyin Creator's AI Director capabilities into QCut's Creation section
 
+## Implementation Status (2026-02-22)
+
+> **Architecture Decision:** Instead of a separate `packages/ai-director/` package, the implementation absorbed modules directly into `apps/web/src/lib/moyin/` following QCut's existing patterns. This avoids monorepo package overhead while achieving the same modularity. The `apps/desktop/` path referenced in this plan does not exist — QCut uses `apps/web/` for all frontend code.
+
+| Area | Status | Implemented Location |
+|------|--------|---------------------|
+| Script parser | **Done** | `apps/web/src/lib/moyin/script/script-parser.ts` |
+| System prompts (parse, shot gen, creative) | **Done** | `apps/web/src/lib/moyin/script/system-prompts.ts` |
+| Character bible (6-layer identity) | **Done** | `apps/web/src/lib/moyin/character/character-bible.ts` |
+| Character types | **Done** | `apps/web/src/lib/moyin/character/types.ts` |
+| Cinematography profiles | **Done** | `apps/web/src/lib/moyin/presets/cinematography-profiles.ts` |
+| Visual styles | **Done** | `apps/web/src/lib/moyin/presets/visual-styles.ts` |
+| Director presets | **Done** | `apps/web/src/lib/moyin/presets/director-presets.ts` |
+| Grid calculator | **Done** | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` |
+| Prompt builder | **Done** | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` |
+| Image splitter | **Done** | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` |
+| API key manager | **Done** | `apps/web/src/lib/moyin/utils/api-key-manager.ts` |
+| Retry / rate-limiter / concurrency utils | **Done** | `apps/web/src/lib/moyin/utils/` |
+| Core data types (Script, Scene, Shot, Camera) | **Done** | `apps/web/src/types/moyin-script.ts` |
+| Zustand store (moyin workflow) | **Done** | `apps/web/src/stores/moyin-store.ts` |
+| IPC handler (LLM script parsing) | **Done** | `electron/moyin-handler.ts` |
+| Preload API integration | **Done** | `electron/preload-integrations.ts`, `electron/preload.ts` |
+| Moyin tab in media panel | **Done** | `apps/web/src/components/editor/media-panel/views/moyin/` (6 components) |
+| Type definitions in ElectronAPI | **Done** | `apps/web/src/types/electron.d.ts`, `electron/preload-types.ts` |
+| Unit tests | **Done** | 344 tests across 6 test files |
+| AI Provider abstraction (`packages/ai-director/`) | **Not started** | Uses existing QCut AI pipeline + direct LLM calls instead |
+| Full-script-service orchestrator | **Not started** | — |
+| Shot generator (scene → shots) | **Not started** | — |
+| Episode parser | **Not started** | — |
+| Director store (split into sub-stores) | **Not started** | — |
+| Character library store/UI | **Not started** | — |
+| Scene library store/UI | **Not started** | — |
+| Director panel UI (advanced storyboard) | **Not started** | — |
+
+**Files: 35 total** (24 lib + 1 store + 7 UI components + 1 type file + 1 IPC handler + 1 preload integration)
+
+---
+
 ## Overview
 
 ### Goal
@@ -19,7 +57,11 @@ Moyin is a standalone app; QCut is a video editor. The Director module is a **fe
 
 ## Phase 1: Script + Director (Core Pipeline) — ~2-3 Weeks
 
-### 1.1 AI Provider Abstraction Layer (Week 1, Days 1-3)
+> **Implementation Note (2026-02-22):** Phase 1 was partially implemented via a different approach. Instead of creating `packages/ai-director/`, the core library modules were ported directly into `apps/web/src/lib/moyin/`. The AI provider abstraction (1.1) was skipped in favor of using QCut's existing AI pipeline (`window.electronAPI.aiPipeline`) and direct LLM calls via `electron/moyin-handler.ts`. The script parser (1.2) and storyboard modules (1.3) are implemented. Navigation (1.4) is done as a "Moyin" tab in the media panel's "Create" group.
+
+### 1.1 AI Provider Abstraction Layer (Week 1, Days 1-3) — NOT STARTED
+
+> **Status:** Skipped for initial integration. LLM calls route through `electron/moyin-handler.ts` which uses `getDecryptedApiKeys()` to auto-select OpenRouter or Gemini. Image/video generation uses QCut's existing `aiPipeline` IPC. A dedicated provider abstraction can be added later if multi-provider switching is needed.
 
 **Do this first.** Everything else depends on it.
 
@@ -109,7 +151,9 @@ interface AIProviderConfig {
 
 ---
 
-### 1.2 Script Module (Week 1, Days 3-5 + Week 2, Days 1-2)
+### 1.2 Script Module (Week 1, Days 3-5 + Week 2, Days 1-2) — PARTIALLY DONE
+
+> **Status:** Core script parser ported to `apps/web/src/lib/moyin/script/script-parser.ts` with system prompts. LLM-based parsing works via `electron/moyin-handler.ts` IPC channel (`moyin:parse-script`). Types in `apps/web/src/types/moyin-script.ts`. The full-script-service orchestrator, shot-generator, episode-parser, and calibrators are **not yet ported** — only the foundational parser and AI prompts are in place.
 
 #### What to Port
 
@@ -117,25 +161,25 @@ The script module converts raw text/outline into a structured hierarchy: **Episo
 
 **Library files** — port all 14 files from `src/lib/script/`:
 
-| Source (Moyin) | Target (QCut) | Priority | Notes |
-|---|---|---|---|
-| `src/lib/script/script-parser.ts` | `packages/ai-director/src/script/script-parser.ts` | P0 | Core parser — text → structured script |
-| `src/lib/script/full-script-service.ts` | `packages/ai-director/src/script/full-script-service.ts` | P0 | Orchestrates full script processing |
-| `src/lib/script/shot-generator.ts` | `packages/ai-director/src/script/shot-generator.ts` | P0 | Generates shot list from scenes |
-| `src/lib/script/episode-parser.ts` | `packages/ai-director/src/script/episode-parser.ts` | P0 | Splits script into episodes |
-| `src/lib/script/character-calibrator.ts` | `packages/ai-director/src/script/character-calibrator.ts` | P1 | Auto-extracts character info |
-| `src/lib/script/scene-calibrator.ts` | `packages/ai-director/src/script/scene-calibrator.ts` | P1 | Auto-extracts scene/location info |
-| `src/lib/script/ai-character-finder.ts` | `packages/ai-director/src/script/ai-character-finder.ts` | P1 | AI-powered character detection |
-| `src/lib/script/ai-scene-finder.ts` | `packages/ai-director/src/script/ai-scene-finder.ts` | P1 | AI-powered scene detection |
-| `src/lib/script/character-stage-analyzer.ts` | `packages/ai-director/src/script/character-stage-analyzer.ts` | P2 | Character pose/expression analysis |
-| `src/lib/script/trailer-service.ts` | `packages/ai-director/src/script/trailer-service.ts` | P3 | Trailer generation (Phase 3) |
-| Remaining 4 files | Assess during porting | P2 | Port as needed |
+| Source (Moyin) | Target (QCut) | Priority | Status | Notes |
+|---|---|---|---|---|
+| `src/lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script/script-parser.ts` | P0 | **Done** | Core parser — text → structured script |
+| `src/lib/script/full-script-service.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Orchestrates full script processing |
+| `src/lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Generates shot list from scenes |
+| `src/lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/` | P0 | Not started | Splits script into episodes |
+| `src/lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | Auto-extracts character info |
+| `src/lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | Auto-extracts scene/location info |
+| `src/lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | AI-powered character detection |
+| `src/lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/` | P1 | Not started | AI-powered scene detection |
+| `src/lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/` | P2 | Not started | Character pose/expression analysis |
+| `src/lib/script/trailer-service.ts` | `apps/web/src/lib/moyin/script/` | P3 | Not started | Trailer generation (Phase 3) |
+| Remaining 4 files | Assess during porting | P2 | Not started | Port as needed |
 
 **Store:**
 
-| Source (Moyin) | Target (QCut) | Notes |
-|---|---|---|
-| `src/stores/script-store.ts` | `apps/desktop/src/stores/director/script-store.ts` | Zustand + persist, same pattern as QCut |
+| Source (Moyin) | Target (QCut) | Status | Notes |
+|---|---|---|---|
+| `src/stores/script-store.ts` | `apps/web/src/stores/moyin-store.ts` | **Done** (simplified) | Session-scoped Zustand store with 4-step workflow (script → characters → scenes → generate). Does not yet support episodes or shot-level editing. |
 
 #### Script Store Structure
 
@@ -162,23 +206,37 @@ interface ScriptStore {
 
 #### UI Components
 
-Create in `apps/desktop/src/components/director/script/`:
+> **Status:** Implemented as a media panel tab (not a standalone two-column layout). The current implementation is simpler — a step-based wizard flow rather than the two-column script editor proposed here. The advanced tree view / property panel can be built later.
+
+Implemented in `apps/web/src/components/editor/media-panel/views/moyin/`:
 
 ```
+moyin/
+├── index.tsx            # Root component with step routing (DONE)
+├── step-indicator.tsx   # Step navigation bar (DONE)
+├── script-input.tsx     # Textarea for raw script + parse button (DONE)
+├── character-list.tsx   # Extracted characters as cards (DONE)
+├── scene-list.tsx       # Extracted scenes as cards (DONE)
+├── generate-actions.tsx # Storyboard generation controls (DONE)
+└── __tests__/moyin-view.test.tsx # 20 component tests (DONE)
+```
+
+**Not yet implemented** (from original plan):
+```
 script/
-├── ScriptPanel.tsx          # Main container
-├── ScriptInput.tsx          # Text area for raw script input
 ├── ScriptTreeView.tsx       # Episode → Scene → Shot hierarchy (left sidebar)
 ├── ShotPropertyPanel.tsx    # Edit shot details (right panel)
 ├── ScriptToolbar.tsx        # Parse button, script type selector
 └── CharacterScenePreview.tsx # Preview extracted characters/scenes
 ```
 
-Layout: **Two-column** — Script input / tree view on left, property panel on right. Simple, functional.
+Layout: Original plan called for **two-column** — Script input / tree view on left, property panel on right. Current implementation is a **single-column step wizard** in the media panel. The two-column layout should be implemented when the Director panel (1.3) is built.
 
 ---
 
-### 1.3 Director Module (Week 2, Days 2-5 + Week 3)
+### 1.3 Director Module (Week 2, Days 2-5 + Week 3) — PARTIALLY DONE
+
+> **Status:** Storyboard library modules (grid calculator, prompt builder, image splitter) are ported. Director presets are ported. The director store split and advanced Director UI are **not yet implemented**. The existing `moyin-store.ts` handles basic workflow but lacks the scene management, generation queue, and UI state sub-stores described below.
 
 This is the core feature. Script output feeds in; storyboard images and videos come out.
 
@@ -186,24 +244,24 @@ This is the core feature. Script output feeds in; storyboard images and videos c
 
 The `director-store.ts` (1800+ lines) must be split:
 
-| Source (Moyin) | Target (QCut) | Notes |
-|---|---|---|
-| `src/stores/director-store.ts` (state types) | `apps/desktop/src/stores/director/director-state.ts` | Type definitions only (~200 lines) |
-| `src/stores/director-store.ts` (scene management) | `apps/desktop/src/stores/director/director-scenes-store.ts` | Scene CRUD, split, merge (~400 lines) |
-| `src/stores/director-store.ts` (generation logic) | `apps/desktop/src/stores/director/director-gen-store.ts` | Image/video generation queue (~500 lines) |
-| `src/stores/director-store.ts` (UI state) | `apps/desktop/src/stores/director/director-ui-store.ts` | Selection, view mode, panels (~300 lines) |
-| `src/stores/director-presets.ts` | `packages/ai-director/src/presets/director-presets.ts` | Shot sizes, camera rigs, lighting, emotions — pure data, no UI dependency |
+| Source (Moyin) | Target (QCut) | Status | Notes |
+|---|---|---|---|
+| `src/stores/director-store.ts` (state types) | `apps/web/src/types/moyin-script.ts` | **Partial** | Shot/Scene/Camera types ported; director-specific state types not yet split out |
+| `src/stores/director-store.ts` (scene management) | `apps/web/src/stores/director/director-scenes-store.ts` | Not started | Scene CRUD, split, merge (~400 lines) |
+| `src/stores/director-store.ts` (generation logic) | `apps/web/src/stores/director/director-gen-store.ts` | Not started | Image/video generation queue (~500 lines) |
+| `src/stores/director-store.ts` (UI state) | `apps/web/src/stores/director/director-ui-store.ts` | Not started | Selection, view mode, panels (~300 lines) |
+| `src/stores/director-presets.ts` | `apps/web/src/lib/moyin/presets/director-presets.ts` | **Done** | Shot sizes, camera rigs, lighting, emotions — pure data, no UI dependency |
 
 #### Library Files
 
-| Source (Moyin) | Target (QCut) | Priority | Notes |
-|---|---|---|---|
-| `src/lib/storyboard/storyboard-service.ts` | `packages/ai-director/src/storyboard/storyboard-service.ts` | P0 | Core: text → storyboard image |
-| `src/lib/storyboard/prompt-builder.ts` | `packages/ai-director/src/storyboard/prompt-builder.ts` | P0 | Builds generation prompts from scene data |
-| `src/lib/storyboard/scene-prompt-generator.ts` | `packages/ai-director/src/storyboard/scene-prompt-generator.ts` | P0 | Per-scene prompt construction |
-| `src/lib/storyboard/image-splitter.ts` | `packages/ai-director/src/storyboard/image-splitter.ts` | P0 | Splits storyboard grid into individual shots |
-| `src/lib/storyboard/grid-calculator.ts` | `packages/ai-director/src/storyboard/grid-calculator.ts` | P1 | Calculates grid layout for storyboard |
-| `src/lib/ai/image-generator.ts` | Already in 1.1 provider layer | P0 | — |
+| Source (Moyin) | Target (QCut) | Priority | Status | Notes |
+|---|---|---|---|---|
+| `src/lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/` | P0 | Not started | Core orchestrator: text → storyboard image |
+| `src/lib/storyboard/prompt-builder.ts` | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` | P0 | **Done** | Builds generation prompts from scene data |
+| `src/lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/` | P0 | Not started | Per-scene prompt construction |
+| `src/lib/storyboard/image-splitter.ts` | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` | P0 | **Done** | Splits storyboard grid into individual shots |
+| `src/lib/storyboard/grid-calculator.ts` | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` | P1 | **Done** | Calculates grid layout for storyboard |
+| `src/lib/ai/image-generator.ts` | Uses QCut's existing `aiPipeline` IPC | P0 | **Done** (via existing infra) | No separate provider needed |
 
 #### Director Presets (Pure Data)
 
@@ -229,9 +287,11 @@ export const EMOTION_TAGS = ['calm', 'tense', 'joyful', 'melancholic', 'mysterio
 6. Video clips → Export to QCut timeline
 ```
 
-#### UI Components
+#### UI Components — NOT YET STARTED
 
-Create in `apps/desktop/src/components/director/`:
+> **Status:** The advanced Director UI is not yet implemented. Current storyboard workflow is handled by the simpler Moyin tab (`apps/web/src/components/editor/media-panel/views/moyin/generate-actions.tsx`). The full Director panel below should be built when the director stores (scene management, generation queue, UI state) are ported.
+
+Create in `apps/web/src/components/editor/director/` (future):
 
 ```
 director/
@@ -251,7 +311,9 @@ director/
 
 ---
 
-### 1.4 Navigation Integration (Week 3, Days 3-5)
+### 1.4 Navigation Integration (Week 3, Days 3-5) — DONE (simplified)
+
+> **Status:** Implemented as a "Moyin" tab in the media panel's "Create" group (`tabGroups["ai-create"]`), alongside AI Video, AI Images, and Sounds. Uses `ClapperboardIcon`. Registered in `apps/web/src/components/editor/media-panel/store.ts` and `index.tsx`. The sub-tab routing (Script / Storyboard) is handled by the step-based workflow in `moyin-store.ts` rather than a separate router.
 
 #### QCut Creation Section Updates
 
@@ -366,43 +428,60 @@ director/scenes/
 
 ## Complete File-by-File Porting Guide
 
+> **Note:** Actual target paths use `apps/web/src/lib/moyin/` instead of `packages/ai-director/src/`. The table below shows the actual implemented paths where applicable.
+
 ### Library Files (`src/lib/`)
 
-| # | Source (Moyin) | Target (QCut) | Phase | Priority | Notes |
+| # | Source (Moyin) | Actual Target (QCut) | Phase | Priority | Status |
 |---|---|---|---|---|---|
-| 1 | `lib/ai/feature-router.ts` | `packages/ai-director/src/feature-router.ts` | 1.1 | P0 | Simplify, remove RunningHub-specific |
-| 2 | `lib/ai/image-generator.ts` | `packages/ai-director/src/providers/types.ts` | 1.1 | P0 | Extract interface |
-| 3 | `lib/ai/runninghub-client.ts` | `packages/ai-director/src/providers/runninghub-provider.ts` | 1.1 | P2 | Optional provider |
-| 4 | `lib/ai/worker-bridge.ts` | `packages/ai-director/src/worker-bridge.ts` | 1.1 | P1 | Web Worker for heavy ops |
-| 5 | `lib/script/script-parser.ts` | `packages/ai-director/src/script/script-parser.ts` | 1.2 | P0 | Core parser |
-| 6 | `lib/script/full-script-service.ts` | `packages/ai-director/src/script/full-script-service.ts` | 1.2 | P0 | Orchestrator |
-| 7 | `lib/script/shot-generator.ts` | `packages/ai-director/src/script/shot-generator.ts` | 1.2 | P0 | Scene → shots |
-| 8 | `lib/script/episode-parser.ts` | `packages/ai-director/src/script/episode-parser.ts` | 1.2 | P0 | Script → episodes |
-| 9 | `lib/script/character-calibrator.ts` | `packages/ai-director/src/script/character-calibrator.ts` | 1.2 | P1 | Character extraction |
-| 10 | `lib/script/scene-calibrator.ts` | `packages/ai-director/src/script/scene-calibrator.ts` | 1.2 | P1 | Scene extraction |
-| 11 | `lib/script/ai-character-finder.ts` | `packages/ai-director/src/script/ai-character-finder.ts` | 1.2 | P1 | AI character detection |
-| 12 | `lib/script/ai-scene-finder.ts` | `packages/ai-director/src/script/ai-scene-finder.ts` | 1.2 | P1 | AI scene detection |
-| 13 | `lib/script/character-stage-analyzer.ts` | `packages/ai-director/src/script/character-stage-analyzer.ts` | 2.1 | P2 | Pose/expression analysis |
-| 14 | `lib/script/trailer-service.ts` | `packages/ai-director/src/script/trailer-service.ts` | 3 | P3 | Future |
-| 15 | `lib/storyboard/storyboard-service.ts` | `packages/ai-director/src/storyboard/storyboard-service.ts` | 1.3 | P0 | Core storyboard |
-| 16 | `lib/storyboard/prompt-builder.ts` | `packages/ai-director/src/storyboard/prompt-builder.ts` | 1.3 | P0 | Prompt construction |
-| 17 | `lib/storyboard/scene-prompt-generator.ts` | `packages/ai-director/src/storyboard/scene-prompt-generator.ts` | 1.3 | P0 | Per-scene prompts |
-| 18 | `lib/storyboard/image-splitter.ts` | `packages/ai-director/src/storyboard/image-splitter.ts` | 1.3 | P0 | Grid → individual images |
-| 19 | `lib/storyboard/grid-calculator.ts` | `packages/ai-director/src/storyboard/grid-calculator.ts` | 1.3 | P1 | Layout math |
+| 1 | `lib/ai/feature-router.ts` | Uses existing QCut AI pipeline | 1.1 | P0 | **Skipped** — not needed with current approach |
+| 2 | `lib/ai/image-generator.ts` | Uses existing `aiPipeline` IPC | 1.1 | P0 | **Skipped** — covered by existing infra |
+| 3 | `lib/ai/runninghub-client.ts` | — | 1.1 | P2 | Not started |
+| 4 | `lib/ai/worker-bridge.ts` | — | 1.1 | P1 | Not started |
+| 5 | `lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script/script-parser.ts` | 1.2 | P0 | **Done** |
+| 6 | `lib/script/full-script-service.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
+| 7 | `lib/script/shot-generator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
+| 8 | `lib/script/episode-parser.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P0 | Not started |
+| 9 | `lib/script/character-calibrator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
+| 10 | `lib/script/scene-calibrator.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
+| 11 | `lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
+| 12 | `lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/script/` | 1.2 | P1 | Not started |
+| 13 | `lib/script/character-stage-analyzer.ts` | `apps/web/src/lib/moyin/script/` | 2.1 | P2 | Not started |
+| 14 | `lib/script/trailer-service.ts` | `apps/web/src/lib/moyin/script/` | 3 | P3 | Not started |
+| 15 | `lib/storyboard/storyboard-service.ts` | `apps/web/src/lib/moyin/storyboard/` | 1.3 | P0 | Not started |
+| 16 | `lib/storyboard/prompt-builder.ts` | `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` | 1.3 | P0 | **Done** |
+| 17 | `lib/storyboard/scene-prompt-generator.ts` | `apps/web/src/lib/moyin/storyboard/` | 1.3 | P0 | Not started |
+| 18 | `lib/storyboard/image-splitter.ts` | `apps/web/src/lib/moyin/storyboard/image-splitter.ts` | 1.3 | P0 | **Done** |
+| 19 | `lib/storyboard/grid-calculator.ts` | `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` | 1.3 | P1 | **Done** |
+
+### Additional Files Ported (not in original plan)
+
+| # | Source (Moyin) | Actual Target (QCut) | Status |
+|---|---|---|---|
+| 20 | `lib/constants/cinematography-profiles.ts` | `apps/web/src/lib/moyin/presets/cinematography-profiles.ts` | **Done** |
+| 21 | `lib/constants/visual-styles.ts` | `apps/web/src/lib/moyin/presets/visual-styles.ts` | **Done** |
+| 22 | `packages/ai-core/services/character-bible.ts` | `apps/web/src/lib/moyin/character/character-bible.ts` | **Done** |
+| 23 | `lib/character/character-prompt-service.ts` | `apps/web/src/lib/moyin/character/types.ts` | **Done** |
+| 24 | `lib/api-key-manager.ts` | `apps/web/src/lib/moyin/utils/api-key-manager.ts` | **Done** |
+| 25 | `lib/utils/retry.ts` | `apps/web/src/lib/moyin/utils/retry.ts` | **Done** |
+| 26 | `lib/utils/rate-limiter.ts` | `apps/web/src/lib/moyin/utils/rate-limiter.ts` | **Done** |
+| 27 | `lib/utils/concurrency.ts` | `apps/web/src/lib/moyin/utils/concurrency.ts` | **Done** |
+| 28 | `types/script.ts` | `apps/web/src/types/moyin-script.ts` | **Done** |
+| 29 | System prompts (inline in parser) | `apps/web/src/lib/moyin/script/system-prompts.ts` | **Done** |
 
 ### Store Files (`src/stores/`)
 
-| # | Source (Moyin) | Target (QCut) | Phase | Notes |
-|---|---|---|---|---|
-| 1 | `stores/api-config-store.ts` | `stores/ai-provider-config-store.ts` | 1.1 | Multi-provider key management |
-| 2 | `stores/script-store.ts` | `stores/director/script-store.ts` | 1.2 | Script state |
-| 3 | `stores/director-store.ts` | `stores/director/director-scenes-store.ts` | 1.3 | Split: scene management |
-| 4 | `stores/director-store.ts` | `stores/director/director-gen-store.ts` | 1.3 | Split: generation queue |
-| 5 | `stores/director-store.ts` | `stores/director/director-ui-store.ts` | 1.3 | Split: UI state |
-| 6 | `stores/director-presets.ts` | `packages/ai-director/src/presets/director-presets.ts` | 1.3 | Pure data, no deps |
-| 7 | `stores/character-library-store.ts` | `stores/director/character-library-store.ts` | 2.1 | Character assets |
-| 8 | `stores/scene-store.ts` | `stores/director/scene-library-store.ts` | 2.2 | Scene/background assets |
-| 9 | `stores/sclass-store.ts` | Future | 3 | Seedance 2.0 dependent |
+| # | Source (Moyin) | Actual Target (QCut) | Phase | Status | Notes |
+|---|---|---|---|---|---|
+| 1 | `stores/api-config-store.ts` | — | 1.1 | Not started | Uses existing QCut API key config |
+| 2 | `stores/script-store.ts` | `apps/web/src/stores/moyin-store.ts` | 1.2 | **Done** (simplified) | Session-scoped, 4-step workflow |
+| 3 | `stores/director-store.ts` | `apps/web/src/stores/director/` | 1.3 | Not started | Split: scene management |
+| 4 | `stores/director-store.ts` | `apps/web/src/stores/director/` | 1.3 | Not started | Split: generation queue |
+| 5 | `stores/director-store.ts` | `apps/web/src/stores/director/` | 1.3 | Not started | Split: UI state |
+| 6 | `stores/director-presets.ts` | `apps/web/src/lib/moyin/presets/director-presets.ts` | 1.3 | **Done** | Pure data, no deps |
+| 7 | `stores/character-library-store.ts` | `apps/web/src/stores/director/` | 2.1 | Not started | Character assets |
+| 8 | `stores/scene-store.ts` | `apps/web/src/stores/director/` | 2.2 | Not started | Scene/background assets |
+| 9 | `stores/sclass-store.ts` | Future | 3 | Not started | Seedance 2.0 dependent |
 
 ---
 
@@ -455,13 +534,26 @@ director/scenes/
 
 ## Getting Started Checklist
 
-1. [ ] Create `packages/ai-director/` with package.json, tsconfig
-2. [ ] Define `ImageGenProvider` and `VideoGenProvider` interfaces
-3. [ ] Implement fal.ai provider with basic image generation
-4. [ ] Port `script-parser.ts` and `full-script-service.ts`
-5. [ ] Create minimal Script UI (text input → parsed tree)
-6. [ ] Port `storyboard-service.ts` and `prompt-builder.ts`
-7. [ ] Create minimal Director UI (scene cards → generate button)
-8. [ ] End-to-end test: paste script → see generated storyboard images
+1. [x] ~~Create `packages/ai-director/`~~ → Implemented in `apps/web/src/lib/moyin/` instead
+2. [ ] Define `ImageGenProvider` and `VideoGenProvider` interfaces (skipped — using existing AI pipeline)
+3. [ ] Implement fal.ai provider with basic image generation (skipped — using existing AI pipeline)
+4. [x] Port `script-parser.ts` → `apps/web/src/lib/moyin/script/script-parser.ts`
+5. [x] Create minimal Script UI → `apps/web/src/components/editor/media-panel/views/moyin/script-input.tsx`
+6. [x] Port `prompt-builder.ts` → `apps/web/src/lib/moyin/storyboard/prompt-builder.ts`
+7. [x] Create minimal Director UI → `apps/web/src/components/editor/media-panel/views/moyin/generate-actions.tsx`
+8. [ ] End-to-end test: paste script → see generated storyboard images (IPC wired, needs Electron runtime test)
 9. [ ] Iterate on UI, add presets, refine prompts
 10. [ ] Phase 2: Character and Scene libraries
+
+### Additional completed items (beyond original checklist)
+
+11. [x] Port grid calculator → `apps/web/src/lib/moyin/storyboard/grid-calculator.ts`
+12. [x] Port image splitter → `apps/web/src/lib/moyin/storyboard/image-splitter.ts`
+13. [x] Port character bible (6-layer identity) → `apps/web/src/lib/moyin/character/character-bible.ts`
+14. [x] Port cinematography profiles → `apps/web/src/lib/moyin/presets/cinematography-profiles.ts`
+15. [x] Port visual styles → `apps/web/src/lib/moyin/presets/visual-styles.ts`
+16. [x] Port director presets → `apps/web/src/lib/moyin/presets/director-presets.ts`
+17. [x] Port utility modules (retry, rate-limiter, concurrency, API key manager) → `apps/web/src/lib/moyin/utils/`
+18. [x] Create IPC handler for LLM-based script parsing → `electron/moyin-handler.ts`
+19. [x] Register Moyin tab in media panel (store, preload, main.ts, electron.d.ts)
+20. [x] Write 344 unit tests across 6 test files

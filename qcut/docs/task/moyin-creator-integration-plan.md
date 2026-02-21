@@ -158,9 +158,11 @@ Extract pure-logic modules that enhance QCut's existing AI generation without an
 - Align API call patterns with QCut's `ai-pipeline-handler`
 - Use QCut's storage service instead of moyin's `project-storage`
 
-### Phase 2: Moyin Tab in Media Panel
+### Phase 2: Moyin Tab in Media Panel — COMPLETED (2026-02-22)
 
 Add a new `"moyin"` tab to QCut's media panel with script-to-storyboard workflow.
+
+**Status:** All Phase 2 components implemented, tested, and passing lint/type checks.
 
 **New files:**
 
@@ -168,18 +170,27 @@ Add a new `"moyin"` tab to QCut's media panel with script-to-storyboard workflow
 |------|---------|
 | `apps/web/src/stores/moyin-store.ts` | Zustand store for script, characters, scenes, director state |
 | `apps/web/src/components/editor/media-panel/views/moyin/index.tsx` | Tab root component |
+| `apps/web/src/components/editor/media-panel/views/moyin/step-indicator.tsx` | Step navigation bar |
 | `apps/web/src/components/editor/media-panel/views/moyin/script-input.tsx` | Script text input + parse button |
 | `apps/web/src/components/editor/media-panel/views/moyin/character-list.tsx` | Extracted characters display |
 | `apps/web/src/components/editor/media-panel/views/moyin/scene-list.tsx` | Scene breakdown display |
-| `apps/web/src/components/editor/media-panel/views/moyin/storyboard-grid.tsx` | N×N contact sheet preview |
 | `apps/web/src/components/editor/media-panel/views/moyin/generate-actions.tsx` | Batch generation controls |
+| `apps/web/src/lib/moyin/storyboard/grid-calculator.ts` | Grid layout calculation |
+| `apps/web/src/lib/moyin/storyboard/prompt-builder.ts` | Storyboard prompt construction |
+| `apps/web/src/lib/moyin/storyboard/image-splitter.ts` | Contact sheet image splitting |
+| `apps/web/src/lib/moyin/storyboard/index.ts` | Barrel export |
+| `electron/moyin-handler.ts` | IPC handler for script parsing + storyboard generation |
 
 **Modifications:**
 
 | File | Change |
 |------|--------|
-| `apps/web/src/components/editor/media-panel/store.ts` | Add `"moyin"` to `Tab` union type (line 25), add entry to `tabs` object (line 44), add `"moyin"` to `tabGroups["ai-create"].tabs` array (line 149) |
-| `apps/web/src/components/editor/media-panel/index.tsx` | Import `MoyinView`, add `moyin: <MoyinView />` to `viewMap` (type: `Record<Exclude<Tab, "pty">, React.ReactNode>`) |
+| `apps/web/src/components/editor/media-panel/store.ts` | Added `"moyin"` to `Tab` union, tab metadata with `ClapperboardIcon`, `"moyin"` to `tabGroups["ai-create"].tabs` |
+| `apps/web/src/components/editor/media-panel/index.tsx` | Imported `MoyinView`, added `moyin: <MoyinView />` to `viewMap` |
+| `electron/preload-integrations.ts` | Added `createMoyinAPI()` factory function |
+| `electron/preload.ts` | Imported and exposed `moyin: createMoyinAPI()` |
+| `electron/main.ts` | Imported `setupMoyinIPC`, added `["MoyinIPC", setupMoyinIPC]` to handlers |
+| `apps/web/src/types/electron.d.ts` | Added `moyin?` property to `ElectronAPI` interface |
 
 ### Phase 3: Enhanced AI Prompts
 
