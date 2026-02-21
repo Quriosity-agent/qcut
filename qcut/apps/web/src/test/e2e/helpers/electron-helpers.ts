@@ -487,6 +487,72 @@ export async function createTestProject(
 }
 
 /**
+ * Ensures the Library group and Media tab are active in the media panel.
+ * Clicks the Library group button and then the media tab if needed.
+ */
+export async function ensureMediaTabActive(page: Page) {
+	// Click the Library group button to switch to the media group
+	const libraryGroup = page.locator('[data-testid="group-media"]');
+	if ((await libraryGroup.count()) > 0) {
+		await libraryGroup.click();
+		await page.waitForTimeout(300);
+	}
+	// Click the media tab if it's not already active
+	const mediaTab = page.locator('[data-testid="media-panel-tab"]');
+	if ((await mediaTab.count()) > 0) {
+		await mediaTab.click();
+		await page.waitForTimeout(300);
+	}
+	// Wait for the import button to be visible
+	await page.waitForSelector('[data-testid="import-media-button"]', {
+		timeout: 5000,
+	});
+}
+
+/**
+ * Ensures the specified panel tab is active by clicking its group and tab.
+ * @param page - The Playwright page instance
+ * @param groupKey - The group key (e.g., 'media', 'edit', 'ai-create', 'agents')
+ * @param tabKey - The tab key (e.g., 'text', 'stickers', 'pty', 'remotion')
+ */
+export async function ensurePanelTabActive(
+	page: Page,
+	groupKey: string,
+	tabKey: string,
+	subgroupLabel?: string
+) {
+	const groupButton = page.locator(`[data-testid="group-${groupKey}"]`);
+	if ((await groupButton.count()) > 0) {
+		await groupButton.click();
+	}
+	// If a subgroup label is specified (e.g., "Manual Edit", "AI Assist"), click it
+	if (subgroupLabel) {
+		const subgroupButton = page.locator(`button:has-text("${subgroupLabel}")`);
+		if ((await subgroupButton.count()) > 0) {
+			await subgroupButton.click();
+		}
+	}
+	const tab = page.locator(`[data-testid="${tabKey}-panel-tab"]`);
+	if ((await tab.count()) > 0) {
+		await tab.click();
+	}
+}
+
+/** Navigate to the text panel (Edit > Manual Edit > Text). */
+export async function ensureTextTabActive(page: Page) {
+	await ensurePanelTabActive(page, "edit", "text", "Manual Edit");
+	await page.waitForSelector('[data-testid="text-panel"]', { timeout: 5000 });
+}
+
+/** Navigate to the stickers panel (Edit > Manual Edit > Stickers). */
+export async function ensureStickersTabActive(page: Page) {
+	await ensurePanelTabActive(page, "edit", "stickers", "Manual Edit");
+	await page.waitForSelector('[data-testid="stickers-panel"]', {
+		timeout: 5000,
+	});
+}
+
+/**
  * Uploads test media file through the import media interface.
  * Clicks the import button and selects the specified file.
  *
@@ -495,6 +561,9 @@ export async function createTestProject(
  * @throws {Error} When file upload fails or times out
  */
 export async function uploadTestMedia(page: Page, filePath: string) {
+	// Ensure the Library group and Media tab are active so import-media-button is visible
+	await ensureMediaTabActive(page);
+
 	// Get the current media item count before import
 	const mediaItems = page.locator('[data-testid="media-item"]');
 	const initialCount = await mediaItems.count();

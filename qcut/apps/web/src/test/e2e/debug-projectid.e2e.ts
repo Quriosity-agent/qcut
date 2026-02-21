@@ -3,7 +3,12 @@
  * This test will track projectId values throughout the sticker selection flow
  */
 
-import { test, expect, createTestProject } from "./helpers/electron-helpers";
+import {
+	test,
+	expect,
+	createTestProject,
+	ensureStickersTabActive,
+} from "./helpers/electron-helpers";
 
 test.describe("Debug ProjectId Bug", () => {
 	test("track projectId during sticker selection", async ({ page }) => {
@@ -107,11 +112,7 @@ test.describe("Debug ProjectId Bug", () => {
 
 		// Open stickers panel (stickers tab is in the "edit" group)
 		console.log("📍 CHECKPOINT 5: Opening stickers panel");
-		// First switch to edit group
-		await page.getByTestId("group-edit").click();
-		// Then click stickers tab
-		await page.getByTestId("stickers-panel-tab").click();
-		await expect(page.getByTestId("stickers-panel")).toBeVisible();
+		await ensureStickersTabActive(page);
 
 		// CHECKPOINT 6: After opening stickers panel
 		const afterStickers = await page.evaluate(async () => {

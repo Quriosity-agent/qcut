@@ -7,6 +7,8 @@ import {
 	navigateToProjects,
 	cleanupDatabase,
 	importTestVideo,
+	ensureMediaTabActive,
+	ensureTextTabActive,
 } from "./helpers/electron-helpers";
 
 test.describe("Auto-Save & Export File Management", () => {
@@ -99,6 +101,7 @@ test.describe("Auto-Save & Export File Management", () => {
 		}
 
 		// Make some changes to trigger auto-save (project already created at test start)
+		await ensureMediaTabActive(page);
 		await page.click('[data-testid="import-media-button"]');
 		// File picker input is often hidden; just ensure it exists in the DOM
 		const uploadArea = page.locator(
@@ -190,6 +193,7 @@ test.describe("Auto-Save & Export File Management", () => {
 			await createTestProject(localPage, "Recovery Test Project");
 
 			// Add content to project
+			await ensureMediaTabActive(localPage);
 			await localPage.click('[data-testid="import-media-button"]');
 			await localPage
 				.waitForSelector('[data-testid="media-item"]', {
@@ -214,7 +218,7 @@ test.describe("Auto-Save & Export File Management", () => {
 			}
 
 			// Add some text overlay to make project more substantial
-			await localPage.click('[data-testid="text-panel-tab"]');
+			await ensureTextTabActive(localPage);
 			await localPage
 				.waitForSelector('[data-testid="text-overlay-button"]', {
 					state: "visible",
@@ -633,6 +637,7 @@ test.describe("Auto-Save & Export File Management", () => {
 		// Skip manual save test - projects are auto-saved in QCut
 
 		// Test file import works
+		await ensureMediaTabActive(page);
 		await page.click('[data-testid="import-media-button"]');
 		await page
 			.waitForSelector('input[type="file"]', { timeout: 3000 })
@@ -659,6 +664,7 @@ test.describe("Auto-Save & Export File Management", () => {
 		await createTestProject(page, "Comprehensive Export Test");
 
 		// Add media
+		await ensureMediaTabActive(page);
 		await page.click('[data-testid="import-media-button"]');
 		await page
 			.waitForSelector('[data-testid="media-item"], input[type="file"]', {
@@ -680,7 +686,7 @@ test.describe("Auto-Save & Export File Management", () => {
 		}
 
 		// Add text overlay
-		await page.click('[data-testid="text-panel-tab"]');
+		await ensureTextTabActive(page);
 		await page
 			.waitForSelector('[data-testid="text-panel"]', { timeout: 3000 })
 			.catch(() => {});

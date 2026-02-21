@@ -11,6 +11,7 @@ import {
 	expect,
 	createTestProject,
 	importTestVideo,
+	ensureMediaTabActive,
 } from "./helpers/electron-helpers";
 
 /**
@@ -29,6 +30,9 @@ test.describe("File Operations & Storage Management", () => {
 		// Navigate to projects page and create new project
 
 		await createTestProject(page, "Import Progress Test Project");
+
+		// Ensure media tab is active before clicking import
+		await ensureMediaTabActive(page);
 
 		// Open import dialog
 		await page.click('[data-testid="import-media-button"]');
@@ -397,6 +401,9 @@ test.describe("File Operations & Storage Management", () => {
 		// Ensure we are inside an editor session where the import controls exist
 		await createTestProject(page, "Format Support Test Project");
 
+		// Ensure media tab is active
+		await ensureMediaTabActive(page);
+
 		// Import button should be available
 		const importButton = page
 			.locator('[data-testid="import-media-button"]')
@@ -496,10 +503,8 @@ test.describe("File Operations & Storage Management", () => {
 		const projectName = "Cross-Platform Path Test";
 		await createTestProject(page, projectName);
 
-		// Wait for editor to load
-		await page.waitForSelector('[data-testid="media-panel"]', {
-			timeout: 5000,
-		});
+		// Wait for editor to load and switch to media tab
+		await ensureMediaTabActive(page);
 
 		// Import media
 		await page.click('[data-testid="import-media-button"]');
