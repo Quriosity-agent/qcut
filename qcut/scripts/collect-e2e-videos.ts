@@ -39,12 +39,12 @@ async function findVideoFiles({
 	try {
 		const entries = await readdir(directoryPath, { withFileTypes: true });
 		const nestedResults = await Promise.all(
-				entries.map(async (entry) => {
-					const entryPath = join(directoryPath, entry.name);
+			entries.map(async (entry) => {
+				const entryPath = join(directoryPath, entry.name);
 
-					if (entry.isDirectory()) {
-						return findVideoFiles({ directoryPath: entryPath });
-					}
+				if (entry.isDirectory()) {
+					return findVideoFiles({ directoryPath: entryPath });
+				}
 
 				if (
 					entry.isFile() &&
