@@ -11,7 +11,7 @@ Generate an image from a text prompt.
 | Flag | Short | Type | Description |
 |------|-------|------|-------------|
 | `--text` | `-t` | string | Text prompt (required) |
-| `--model` | `-m` | string | Model key, e.g. `flux_dev`, `flux_schnell` (required) |
+| `--model` | `-m` | string | Model key, e.g. `flux_dev`, `flux_schnell` (default: `nano_banana_pro`) |
 | `--aspect-ratio` | | string | e.g. `16:9`, `9:16`, `1:1` |
 | `--resolution` | | string | e.g. `1080p`, `720p` |
 | `--negative-prompt` | | string | Negative prompt |
@@ -252,7 +252,7 @@ Create `.env` template with all known keys.
 
 ### `check-keys`
 
-Show status of all known keys (source: `env` / `envfile` / `none`).
+Show status of all known keys (source: `env` / `envfile` / `aicp-cli` / `none`).
 
 ---
 

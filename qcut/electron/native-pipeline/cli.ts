@@ -134,7 +134,7 @@ Environment Variables:
   ELEVENLABS_API_KEY  ElevenLabs API key
 
 Examples:
-  qcut-pipeline generate-image -m flux_dev -t "A cat in space"
+  qcut-pipeline generate-image -t "A cat in space"  (default model: nano_banana_pro)
   qcut-pipeline create-video -m kling_2_6_pro -t "Ocean waves" -d 5s
   qcut-pipeline list-models --category text_to_video
   qcut-pipeline estimate-cost -m veo3 -d 8s

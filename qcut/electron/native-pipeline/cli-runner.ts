@@ -285,10 +285,14 @@ export class CLIPipelineRunner {
 		onProgress: ProgressFn
 	): Promise<CLIResult> {
 		if (!options.model) {
-			return {
-				success: false,
-				error: "Missing --model. Run --help for usage.",
-			};
+			if (options.command === "generate-image") {
+				options.model = "nano_banana_pro";
+			} else {
+				return {
+					success: false,
+					error: "Missing --model. Run --help for usage.",
+				};
+			}
 		}
 		if (!ModelRegistry.has(options.model)) {
 			return {

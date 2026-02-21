@@ -142,8 +142,8 @@ Verify the CLI fails gracefully without keys.
 ### 2.1 Generate Without Key
 
 ```bash
-bun run pipeline generate-image -m flux_dev -t "test"
-# Expected: "No API key configured for provider: fal", exit 1
+bun run pipeline generate-image -t "test"
+# Expected: "No API key configured for provider: fal", exit 1 (uses default model: nano_banana_pro)
 # Note: A JSON progress line may appear before the error (cosmetic issue)
 ```
 
@@ -151,7 +151,7 @@ bun run pipeline generate-image -m flux_dev -t "test"
 
 ```bash
 bun run pipeline generate-image
-# Expected: "Missing --model. Run --help for usage.", exit 1
+# Expected: "Missing --text/-t (prompt for image generation).", exit 1 (model defaults to nano_banana_pro)
 
 bun run pipeline create-video -m kling_2_6_pro
 # Expected: Error about missing --text or --image-url
@@ -202,16 +202,19 @@ bun run pipeline set-key --name ELEVENLABS_API_KEY  # for avatar TTS
 ### 4.1 Generate Image
 
 ```bash
-bun run pipeline generate-image -m flux_dev -t "A red fox in snow" -o /tmp/cli-test
-# Expected: Progress bar → .png file in /tmp/cli-test/
+bun run pipeline generate-image -t "A red fox in snow" -o /tmp/cli-test
+# Expected: Progress bar → .png file in /tmp/cli-test/ (uses default model: nano_banana_pro)
 # Verify: open /tmp/cli-test/*.png
+
+bun run pipeline generate-image -m flux_dev -t "A red fox in snow" -o /tmp/cli-test
+# Expected: Same but uses flux_dev model explicitly
 ```
 
 ### 4.2 Generate Image (JSON Output)
 
 ```bash
-bun run pipeline generate-image -m flux_dev -t "A red fox in snow" -o /tmp/cli-test --json
-# Expected: JSON with success, outputPath, outputPaths, duration, cost
+bun run pipeline generate-image -t "A red fox in snow" -o /tmp/cli-test --json
+# Expected: JSON with success, outputPath, outputPaths, duration, cost (default model: nano_banana_pro)
 ```
 
 ### 4.3 Create Video
@@ -370,6 +373,7 @@ bun run pipeline init-project --directory /tmp/qcut-smoke --dry-run
 
 # 6. Error handling works
 bun run pipeline generate-image 2>&1 | head -3
+# Expected: error about missing --text (model defaults to nano_banana_pro)
 
 # 7. Unit tests pass
 bun run test

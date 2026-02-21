@@ -53,6 +53,8 @@ bun run pipeline list-models --category text_to_video
 ### Generate Image
 
 ```bash
+bun run pipeline generate-image -t "A cinematic portrait at golden hour"
+# Default model: nano_banana_pro. Override with -m:
 bun run pipeline generate-image -m flux_dev -t "A cinematic portrait at golden hour"
 ```
 
