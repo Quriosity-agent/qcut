@@ -128,7 +128,10 @@ export function checkKeys(): KeyStatus[] {
 			if (!trimmed || trimmed.startsWith("#")) continue;
 			const eqIdx = trimmed.indexOf("=");
 			if (eqIdx === -1) continue;
-			aicpEntries.set(trimmed.slice(0, eqIdx).trim(), trimmed.slice(eqIdx + 1).trim());
+			aicpEntries.set(
+				trimmed.slice(0, eqIdx).trim(),
+				trimmed.slice(eqIdx + 1).trim()
+			);
 		}
 	}
 
@@ -181,9 +184,18 @@ export function setupEnvTemplate(): string {
 
 function getAicpCredentialsPath(): string {
 	if (process.platform === "win32") {
-		return path.join(process.env.APPDATA || os.homedir(), "video-ai-studio", "credentials.env");
+		return path.join(
+			process.env.APPDATA || os.homedir(),
+			"video-ai-studio",
+			"credentials.env"
+		);
 	}
-	return path.join(os.homedir(), ".config", "video-ai-studio", "credentials.env");
+	return path.join(
+		os.homedir(),
+		".config",
+		"video-ai-studio",
+		"credentials.env"
+	);
 }
 
 export function loadEnvFile(configDirOverride?: string): void {
@@ -204,7 +216,10 @@ export function loadEnvFile(configDirOverride?: string): void {
 			if (!trimmed || trimmed.startsWith("#")) continue;
 			const eqIdx = trimmed.indexOf("=");
 			if (eqIdx === -1) continue;
-			aicpEntries.set(trimmed.slice(0, eqIdx).trim(), trimmed.slice(eqIdx + 1).trim());
+			aicpEntries.set(
+				trimmed.slice(0, eqIdx).trim(),
+				trimmed.slice(eqIdx + 1).trim()
+			);
 		}
 		for (const [key, value] of aicpEntries) {
 			if (value && !process.env[key]) {

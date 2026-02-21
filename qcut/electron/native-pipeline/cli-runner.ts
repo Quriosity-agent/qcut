@@ -312,14 +312,11 @@ export class CLIPipelineRunner {
 				error: "Missing --text/-t (prompt for image generation).",
 			};
 		}
-		if (
-			options.command === "create-video" &&
-			!hasTextInput &&
-			!hasImageInput
-		) {
+		if (options.command === "create-video" && !hasTextInput && !hasImageInput) {
 			return {
 				success: false,
-				error: "Missing --text/-t or --image-url (need a prompt or image input).",
+				error:
+					"Missing --text/-t or --image-url (need a prompt or image input).",
 			};
 		}
 		if (
@@ -329,7 +326,8 @@ export class CLIPipelineRunner {
 		) {
 			return {
 				success: false,
-				error: "Missing --text/-t or --audio-url (need a script or audio input).",
+				error:
+					"Missing --text/-t or --audio-url (need a script or audio input).",
 			};
 		}
 
@@ -415,8 +413,7 @@ export class CLIPipelineRunner {
 		});
 
 		// Use executor cost if available, otherwise estimate from model registry
-		const cost =
-			result.cost ?? estimateCost(options.model!, params).totalCost;
+		const cost = result.cost ?? estimateCost(options.model!, params).totalCost;
 
 		return {
 			success: true,
@@ -878,14 +875,14 @@ export function createProgressReporter(options: {
 		// Progress events are suppressed (use --stream for JSONL events).
 		if (options.json) return;
 
-		if (!isTTY) {
-			console.error(JSON.stringify({ type: "progress", ...progress }));
-		} else {
+		if (isTTY) {
 			const bar = renderProgressBar(progress.percent, 30);
 			process.stdout.write(`\r${bar} ${progress.message}`);
 			if (progress.stage === "complete") {
 				process.stdout.write("\n");
 			}
+		} else {
+			console.error(JSON.stringify({ type: "progress", ...progress }));
 		}
 	};
 }

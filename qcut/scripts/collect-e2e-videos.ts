@@ -184,39 +184,41 @@ async function copyVideosToRunDirectory({
 	sourceFilePaths: Array<string>;
 	destinationRunDirectoryPath: string;
 }): Promise<Array<VideoManifestEntry>> {
-	const copyOperations = sourceFilePaths.map(async (sourceFilePath): Promise<VideoManifestEntry | null> => {
-		const sourceRelativePath = relative(sourceRootPath, sourceFilePath);
-		const destinationFileName = buildDestinationFileName({
-			sourceRootPath,
-			sourceFilePath,
-		});
-		const destinationFilePath = join(
-			destinationRunDirectoryPath,
-			destinationFileName
-		);
-		const relativePathSegments = sourceRelativePath.split(sep);
-		const testArtifactDirectoryName = basename(relativePathSegments[0] ?? "");
-		const status = await determineTestStatus({ sourceFilePath });
-		const testLabel = buildTestLabel({ testArtifactDirectoryName });
+	const copyOperations = sourceFilePaths.map(
+		async (sourceFilePath): Promise<VideoManifestEntry | null> => {
+			const sourceRelativePath = relative(sourceRootPath, sourceFilePath);
+			const destinationFileName = buildDestinationFileName({
+				sourceRootPath,
+				sourceFilePath,
+			});
+			const destinationFilePath = join(
+				destinationRunDirectoryPath,
+				destinationFileName
+			);
+			const relativePathSegments = sourceRelativePath.split(sep);
+			const testArtifactDirectoryName = basename(relativePathSegments[0] ?? "");
+			const status = await determineTestStatus({ sourceFilePath });
+			const testLabel = buildTestLabel({ testArtifactDirectoryName });
 
-		try {
-			await copyFile(sourceFilePath, destinationFilePath);
-		} catch (error) {
-			if (!isErrnoCode({ error, code: "ENOENT" })) {
-				throw error;
+			try {
+				await copyFile(sourceFilePath, destinationFilePath);
+			} catch (error) {
+				if (!isErrnoCode({ error, code: "ENOENT" })) {
+					throw error;
+				}
+				return null;
 			}
-			return null;
-		}
 
-		return {
-			copiedFileName: destinationFileName,
-			copiedFilePath: destinationFilePath,
-			sourceRelativePath,
-			status,
-			testArtifactDirectoryName,
-			testLabel,
-		} satisfies VideoManifestEntry;
-	});
+			return {
+				copiedFileName: destinationFileName,
+				copiedFilePath: destinationFilePath,
+				sourceRelativePath,
+				status,
+				testArtifactDirectoryName,
+				testLabel,
+			} satisfies VideoManifestEntry;
+		}
+	);
 
 	const results = await Promise.all(copyOperations);
 	return results.filter((entry): entry is VideoManifestEntry => entry !== null);
@@ -230,24 +232,20 @@ async function writeRunMetadata({
 	latestRunMetadata: LatestRunMetadata;
 	manifest: VideoManifest;
 }): Promise<void> {
-	try {
-		const manifestPath = join(manifest.runDirectoryPath, FILE_NAMES.manifest);
-		const latestRunMetadataPath = join(
-			PATHS.videoArtifactsRoot,
-			FILE_NAMES.latestRun
-		);
+	const manifestPath = join(manifest.runDirectoryPath, FILE_NAMES.manifest);
+	const latestRunMetadataPath = join(
+		PATHS.videoArtifactsRoot,
+		FILE_NAMES.latestRun
+	);
 
-		await Promise.all([
-			writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8"),
-			writeFile(
-				latestRunMetadataPath,
-				JSON.stringify(latestRunMetadata, null, 2),
-				"utf8"
-			),
-		]);
-	} catch (error) {
-		throw error;
-	}
+	await Promise.all([
+		writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8"),
+		writeFile(
+			latestRunMetadataPath,
+			JSON.stringify(latestRunMetadata, null, 2),
+			"utf8"
+		),
+	]);
 }
 
 /** Main entry: scan raw artifacts, copy videos to a timestamped run folder, and write metadata. */

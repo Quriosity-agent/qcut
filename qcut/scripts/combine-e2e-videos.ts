@@ -107,77 +107,77 @@ function toPositiveNumber({
 }
 
 function parseCliOptions({ argv }: { argv: Array<string> }): CombineCliOptions {
-	try {
-		const parsedOptions: CombineCliOptions = {
-			failedCardDurationSeconds: VIDEO_LAYOUT.failedCardDurationSeconds,
-			introCardDurationSeconds: VIDEO_LAYOUT.introCardDurationSeconds,
-		};
-		let index = 0;
+	const parsedOptions: CombineCliOptions = {
+		failedCardDurationSeconds: VIDEO_LAYOUT.failedCardDurationSeconds,
+		introCardDurationSeconds: VIDEO_LAYOUT.introCardDurationSeconds,
+	};
+	let index = 0;
 
-		while (index < argv.length) {
-			const currentArg = argv[index];
-			const nextArg = argv[index + 1];
+	while (index < argv.length) {
+		const currentArg = argv[index];
+		const nextArg = argv[index + 1];
 
-			switch (currentArg) {
-				case "--run-dir": {
-					if (!nextArg) {
-						throw new Error("--run-dir requires a value");
-					}
-					parsedOptions.runDirectoryPath = resolve(nextArg);
-					index += 2;
-					break;
+		switch (currentArg) {
+			case "--run-dir": {
+				if (!nextArg) {
+					throw new Error("--run-dir requires a value");
 				}
-				case "--manifest": {
-					if (!nextArg) {
-						throw new Error("--manifest requires a value");
-					}
-					parsedOptions.manifestPath = resolve(nextArg);
-					index += 2;
-					break;
+				parsedOptions.runDirectoryPath = resolve(nextArg);
+				index += 2;
+				break;
+			}
+			case "--manifest": {
+				if (!nextArg) {
+					throw new Error("--manifest requires a value");
 				}
-				case "--output": {
-					if (!nextArg) {
-						throw new Error("--output requires a value");
-					}
-					parsedOptions.outputPath = resolve(nextArg);
-					index += 2;
-					break;
+				parsedOptions.manifestPath = resolve(nextArg);
+				index += 2;
+				break;
+			}
+			case "--output": {
+				if (!nextArg) {
+					throw new Error("--output requires a value");
 				}
-				case "--intro-seconds": {
-					if (!nextArg) {
-						throw new Error("--intro-seconds requires a value");
-					}
-					parsedOptions.introCardDurationSeconds = toPositiveNumber({
-						fallbackValue: VIDEO_LAYOUT.introCardDurationSeconds,
-						rawValue: nextArg,
-					});
-					index += 2;
-					break;
+				parsedOptions.outputPath = resolve(nextArg);
+				index += 2;
+				break;
+			}
+			case "--intro-seconds": {
+				if (!nextArg) {
+					throw new Error("--intro-seconds requires a value");
 				}
-				case "--failed-seconds": {
-					if (!nextArg) {
-						throw new Error("--failed-seconds requires a value");
-					}
-					parsedOptions.failedCardDurationSeconds = toPositiveNumber({
-						fallbackValue: VIDEO_LAYOUT.failedCardDurationSeconds,
-						rawValue: nextArg,
-					});
-					index += 2;
-					break;
+				parsedOptions.introCardDurationSeconds = toPositiveNumber({
+					fallbackValue: VIDEO_LAYOUT.introCardDurationSeconds,
+					rawValue: nextArg,
+				});
+				index += 2;
+				break;
+			}
+			case "--failed-seconds": {
+				if (!nextArg) {
+					throw new Error("--failed-seconds requires a value");
 				}
-				default: {
-					throw new Error(`Unknown argument: ${currentArg}`);
-				}
+				parsedOptions.failedCardDurationSeconds = toPositiveNumber({
+					fallbackValue: VIDEO_LAYOUT.failedCardDurationSeconds,
+					rawValue: nextArg,
+				});
+				index += 2;
+				break;
+			}
+			default: {
+				throw new Error(`Unknown argument: ${currentArg}`);
 			}
 		}
-
-		return parsedOptions;
-	} catch (error) {
-		throw error;
 	}
+
+	return parsedOptions;
 }
 
-async function fileExists({ filePath }: { filePath: string }): Promise<boolean> {
+async function fileExists({
+	filePath,
+}: {
+	filePath: string;
+}): Promise<boolean> {
 	try {
 		await access(filePath);
 		return true;
@@ -255,16 +255,12 @@ function buildDrawtextLine({
 	text: string;
 	yExpression: string;
 }): string {
-	try {
-		const escapedText = escapeDrawtextValue({ value: text });
-		const fontOption = fontFilePath
-			? `fontfile=${escapeDrawtextValue({ value: fontFilePath })}:`
-			: "";
+	const escapedText = escapeDrawtextValue({ value: text });
+	const fontOption = fontFilePath
+		? `fontfile=${escapeDrawtextValue({ value: fontFilePath })}:`
+		: "";
 
-		return `drawtext=${fontOption}text='${escapedText}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w-text_w)/2:y=${yExpression}`;
-	} catch (error) {
-		throw error;
-	}
+	return `drawtext=${fontOption}text='${escapedText}':fontcolor=${fontColor}:fontsize=${fontSize}:x=(w-text_w)/2:y=${yExpression}`;
 }
 
 function buildTitleCardVideoFilter({
@@ -282,53 +278,50 @@ function buildTitleCardVideoFilter({
 	testStatus: "passed" | "failed";
 	totalTests: number;
 }): string {
-	try {
-		const normalizedLabel = truncateLabel({
-			maxCharacters: 90,
-			value: testLabel,
-		});
-		const statusText = testStatus === "passed" ? "Status: PASSED" : "Status: FAILED";
-		const statusColor = testStatus === "passed" ? "#6eeb83" : "#ff6b6b";
-		const lineFilters: Array<string> = [
-			buildDrawtextLine({
-				fontColor: "white",
-				fontFilePath,
-				fontSize: 52,
-				text: `Test ${testIndex + 1}/${totalTests}`,
-				yExpression: "h*0.22",
-			}),
-			buildDrawtextLine({
-				fontColor: "white",
-				fontFilePath,
-				fontSize: 34,
-				text: `Task: ${normalizedLabel}`,
-				yExpression: "h*0.40",
-			}),
-			buildDrawtextLine({
-				fontColor: statusColor,
-				fontFilePath,
-				fontSize: 44,
-				text: statusText,
-				yExpression: "h*0.55",
-			}),
-		];
+	const normalizedLabel = truncateLabel({
+		maxCharacters: 90,
+		value: testLabel,
+	});
+	const statusText =
+		testStatus === "passed" ? "Status: PASSED" : "Status: FAILED";
+	const statusColor = testStatus === "passed" ? "#6eeb83" : "#ff6b6b";
+	const lineFilters: Array<string> = [
+		buildDrawtextLine({
+			fontColor: "white",
+			fontFilePath,
+			fontSize: 52,
+			text: `Test ${testIndex + 1}/${totalTests}`,
+			yExpression: "h*0.22",
+		}),
+		buildDrawtextLine({
+			fontColor: "white",
+			fontFilePath,
+			fontSize: 34,
+			text: `Task: ${normalizedLabel}`,
+			yExpression: "h*0.40",
+		}),
+		buildDrawtextLine({
+			fontColor: statusColor,
+			fontFilePath,
+			fontSize: 44,
+			text: statusText,
+			yExpression: "h*0.55",
+		}),
+	];
 
-		if (isFailedOnlyCard) {
-			lineFilters.push(
-				buildDrawtextLine({
-					fontColor: "#ffd166",
-					fontFilePath,
-					fontSize: 30,
-					text: "No video content for this failed test",
-					yExpression: "h*0.67",
-				})
-			);
-		}
-
-		return lineFilters.join(",");
-	} catch (error) {
-		throw error;
+	if (isFailedOnlyCard) {
+		lineFilters.push(
+			buildDrawtextLine({
+				fontColor: "#ffd166",
+				fontFilePath,
+				fontSize: 30,
+				text: "No video content for this failed test",
+				yExpression: "h*0.67",
+			})
+		);
 	}
+
+	return lineFilters.join(",");
 }
 
 function buildSegmentFileName({ testIndex }: { testIndex: number }): string {
@@ -343,41 +336,37 @@ async function runFfmpeg({
 	args: Array<string>;
 	label: string;
 }): Promise<void> {
-	try {
-		if (!ffmpegStaticPath) {
-			throw new Error("ffmpeg-static binary is unavailable");
-		}
-
-		await new Promise<void>((resolvePromise, rejectPromise) => {
-			const stderrChunks: Array<string> = [];
-			const ffmpegProcess = spawn(ffmpegStaticPath, args, {
-				stdio: ["ignore", "ignore", "pipe"],
-			});
-
-			ffmpegProcess.stderr.on("data", (chunk: Buffer) => {
-				stderrChunks.push(chunk.toString());
-			});
-
-			ffmpegProcess.on("error", (error) => {
-				rejectPromise(error);
-			});
-
-			ffmpegProcess.on("close", (exitCode) => {
-				if (exitCode === 0) {
-					resolvePromise();
-					return;
-				}
-
-				rejectPromise(
-					new Error(
-						`${label} exited with code ${exitCode ?? -1}: ${stderrChunks.join("").trim()}`
-					)
-				);
-			});
-		});
-	} catch (error) {
-		throw error;
+	if (!ffmpegStaticPath) {
+		throw new Error("ffmpeg-static binary is unavailable");
 	}
+
+	await new Promise<void>((resolvePromise, rejectPromise) => {
+		const stderrChunks: Array<string> = [];
+		const ffmpegProcess = spawn(ffmpegStaticPath, args, {
+			stdio: ["ignore", "ignore", "pipe"],
+		});
+
+		ffmpegProcess.stderr.on("data", (chunk: Buffer) => {
+			stderrChunks.push(chunk.toString());
+		});
+
+		ffmpegProcess.on("error", (error) => {
+			rejectPromise(error);
+		});
+
+		ffmpegProcess.on("close", (exitCode) => {
+			if (exitCode === 0) {
+				resolvePromise();
+				return;
+			}
+
+			rejectPromise(
+				new Error(
+					`${label} exited with code ${exitCode ?? -1}: ${stderrChunks.join("").trim()}`
+				)
+			);
+		});
+	});
 }
 
 async function resolveFontFilePath(): Promise<string | undefined> {
@@ -437,77 +426,32 @@ async function createSegmentForEntry({
 	testIndex: number;
 	totalTests: number;
 }): Promise<void> {
-	try {
-		const recordedVideoExists = await fileExists({ filePath: entry.copiedFilePath });
-		const effectiveStatus =
-			entry.status === "failed" || !recordedVideoExists ? "failed" : "passed";
-		const effectiveLabel = !recordedVideoExists
-			? `${entry.testLabel} (artifact missing)`
-			: entry.testLabel;
+	const recordedVideoExists = await fileExists({
+		filePath: entry.copiedFilePath,
+	});
+	const effectiveStatus =
+		entry.status === "failed" || !recordedVideoExists ? "failed" : "passed";
+	const effectiveLabel = recordedVideoExists
+		? entry.testLabel
+		: `${entry.testLabel} (artifact missing)`;
 
-		if (effectiveStatus === "failed") {
-			const failedCardFilter = buildTitleCardVideoFilter({
-				fontFilePath,
-				isFailedOnlyCard: true,
-				testIndex,
-				testLabel: effectiveLabel,
-				testStatus: "failed",
-				totalTests,
-			});
-			const failedCardArgs = [
-				"-y",
-				"-f",
-				"lavfi",
-				"-i",
-				`color=c=black:s=${VIDEO_LAYOUT.width}x${VIDEO_LAYOUT.height}:r=${VIDEO_LAYOUT.frameRate}:d=${failedCardDurationSeconds}`,
-				"-vf",
-				`${failedCardFilter},format=yuv420p`,
-				"-an",
-				"-c:v",
-				"libx264",
-				"-preset",
-				"veryfast",
-				"-crf",
-				"20",
-				"-pix_fmt",
-				"yuv420p",
-				"-movflags",
-				"+faststart",
-				outputSegmentPath,
-			];
-
-			await runFfmpeg({
-				args: failedCardArgs,
-				label: `Create failed card for ${entry.copiedFileName}`,
-			});
-			return;
-		}
-
-		const introCardFilter = buildTitleCardVideoFilter({
+	if (effectiveStatus === "failed") {
+		const failedCardFilter = buildTitleCardVideoFilter({
 			fontFilePath,
-			isFailedOnlyCard: false,
+			isFailedOnlyCard: true,
 			testIndex,
 			testLabel: effectiveLabel,
-			testStatus: "passed",
+			testStatus: "failed",
 			totalTests,
 		});
-		const filterComplex = [
-			`[0:v]${introCardFilter},format=yuv420p[intro]`,
-			`[1:v]fps=${VIDEO_LAYOUT.frameRate},scale=${VIDEO_LAYOUT.width}:${VIDEO_LAYOUT.height}:force_original_aspect_ratio=decrease,pad=${VIDEO_LAYOUT.width}:${VIDEO_LAYOUT.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[content]`,
-			"[intro][content]concat=n=2:v=1:a=0[outv]",
-		].join(";");
-		const passedSegmentArgs = [
+		const failedCardArgs = [
 			"-y",
 			"-f",
 			"lavfi",
 			"-i",
-			`color=c=black:s=${VIDEO_LAYOUT.width}x${VIDEO_LAYOUT.height}:r=${VIDEO_LAYOUT.frameRate}:d=${introCardDurationSeconds}`,
-			"-i",
-			entry.copiedFilePath,
-			"-filter_complex",
-			filterComplex,
-			"-map",
-			"[outv]",
+			`color=c=black:s=${VIDEO_LAYOUT.width}x${VIDEO_LAYOUT.height}:r=${VIDEO_LAYOUT.frameRate}:d=${failedCardDurationSeconds}`,
+			"-vf",
+			`${failedCardFilter},format=yuv420p`,
 			"-an",
 			"-c:v",
 			"libx264",
@@ -523,12 +467,55 @@ async function createSegmentForEntry({
 		];
 
 		await runFfmpeg({
-			args: passedSegmentArgs,
-			label: `Create segment for ${entry.copiedFileName}`,
+			args: failedCardArgs,
+			label: `Create failed card for ${entry.copiedFileName}`,
 		});
-	} catch (error) {
-		throw error;
+		return;
 	}
+
+	const introCardFilter = buildTitleCardVideoFilter({
+		fontFilePath,
+		isFailedOnlyCard: false,
+		testIndex,
+		testLabel: effectiveLabel,
+		testStatus: "passed",
+		totalTests,
+	});
+	const filterComplex = [
+		`[0:v]${introCardFilter},format=yuv420p[intro]`,
+		`[1:v]fps=${VIDEO_LAYOUT.frameRate},scale=${VIDEO_LAYOUT.width}:${VIDEO_LAYOUT.height}:force_original_aspect_ratio=decrease,pad=${VIDEO_LAYOUT.width}:${VIDEO_LAYOUT.height}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[content]`,
+		"[intro][content]concat=n=2:v=1:a=0[outv]",
+	].join(";");
+	const passedSegmentArgs = [
+		"-y",
+		"-f",
+		"lavfi",
+		"-i",
+		`color=c=black:s=${VIDEO_LAYOUT.width}x${VIDEO_LAYOUT.height}:r=${VIDEO_LAYOUT.frameRate}:d=${introCardDurationSeconds}`,
+		"-i",
+		entry.copiedFilePath,
+		"-filter_complex",
+		filterComplex,
+		"-map",
+		"[outv]",
+		"-an",
+		"-c:v",
+		"libx264",
+		"-preset",
+		"veryfast",
+		"-crf",
+		"20",
+		"-pix_fmt",
+		"yuv420p",
+		"-movflags",
+		"+faststart",
+		outputSegmentPath,
+	];
+
+	await runFfmpeg({
+		args: passedSegmentArgs,
+		label: `Create segment for ${entry.copiedFileName}`,
+	});
 }
 
 async function createSegmentFiles({
@@ -544,34 +531,30 @@ async function createSegmentFiles({
 	introCardDurationSeconds: number;
 	temporaryDirectoryPath: string;
 }): Promise<Array<string>> {
-	try {
-		const segmentPaths: Array<string> = [];
+	const segmentPaths: Array<string> = [];
 
-		await entries.reduce<Promise<void>>((chain, entry, index) => {
-			return chain.then(async () => {
-				const segmentPath = join(
-					temporaryDirectoryPath,
-					buildSegmentFileName({ testIndex: index })
-				);
+	await entries.reduce<Promise<void>>((chain, entry, index) => {
+		return chain.then(async () => {
+			const segmentPath = join(
+				temporaryDirectoryPath,
+				buildSegmentFileName({ testIndex: index })
+			);
 
-				await createSegmentForEntry({
-					entry,
-					failedCardDurationSeconds,
-					fontFilePath,
-					introCardDurationSeconds,
-					outputSegmentPath: segmentPath,
-					testIndex: index,
-					totalTests: entries.length,
-				});
-
-				segmentPaths.push(segmentPath);
+			await createSegmentForEntry({
+				entry,
+				failedCardDurationSeconds,
+				fontFilePath,
+				introCardDurationSeconds,
+				outputSegmentPath: segmentPath,
+				testIndex: index,
+				totalTests: entries.length,
 			});
-		}, Promise.resolve());
 
-		return segmentPaths;
-	} catch (error) {
-		throw error;
-	}
+			segmentPaths.push(segmentPath);
+		});
+	}, Promise.resolve());
+
+	return segmentPaths;
 }
 
 async function concatenateSegments({
@@ -583,43 +566,41 @@ async function concatenateSegments({
 	segmentPaths: Array<string>;
 	temporaryDirectoryPath: string;
 }): Promise<void> {
-	try {
-		const concatListPath = join(temporaryDirectoryPath, "concat-list.txt");
-		const concatFileContents = `${segmentPaths
-			.map((segmentPath) => `file '${escapeConcatPath({ filePath: segmentPath })}'`)
-			.join("\n")}\n`;
+	const concatListPath = join(temporaryDirectoryPath, "concat-list.txt");
+	const concatFileContents = `${segmentPaths
+		.map(
+			(segmentPath) => `file '${escapeConcatPath({ filePath: segmentPath })}'`
+		)
+		.join("\n")}\n`;
 
-		await writeFile(concatListPath, concatFileContents, "utf8");
+	await writeFile(concatListPath, concatFileContents, "utf8");
 
-		const concatArgs = [
-			"-y",
-			"-f",
-			"concat",
-			"-safe",
-			"0",
-			"-i",
-			concatListPath,
-			"-an",
-			"-c:v",
-			"libx264",
-			"-preset",
-			"veryfast",
-			"-crf",
-			"20",
-			"-pix_fmt",
-			"yuv420p",
-			"-movflags",
-			"+faststart",
-			outputPath,
-		];
+	const concatArgs = [
+		"-y",
+		"-f",
+		"concat",
+		"-safe",
+		"0",
+		"-i",
+		concatListPath,
+		"-an",
+		"-c:v",
+		"libx264",
+		"-preset",
+		"veryfast",
+		"-crf",
+		"20",
+		"-pix_fmt",
+		"yuv420p",
+		"-movflags",
+		"+faststart",
+		outputPath,
+	];
 
-		await runFfmpeg({
-			args: concatArgs,
-			label: "Concatenate all segment videos",
-		});
-	} catch (error) {
-		throw error;
-	}
+	await runFfmpeg({
+		args: concatArgs,
+		label: "Concatenate all segment videos",
+	});
 }
 
 async function readLatestRunMetadata(): Promise<LatestRunMetadata | undefined> {
@@ -647,38 +628,34 @@ async function readLatestRunMetadata(): Promise<LatestRunMetadata | undefined> {
 }
 
 async function findLatestRunDirectoryPath(): Promise<string> {
-	try {
-		const entries = await readdir(PATHS.runsRoot, { withFileTypes: true });
-		const runDirectories = entries
-			.filter((entry) => entry.isDirectory() && entry.name.startsWith("run-"))
-			.map((entry) => join(PATHS.runsRoot, entry.name));
+	const entries = await readdir(PATHS.runsRoot, { withFileTypes: true });
+	const runDirectories = entries
+		.filter((entry) => entry.isDirectory() && entry.name.startsWith("run-"))
+		.map((entry) => join(PATHS.runsRoot, entry.name));
 
-		if (runDirectories.length === 0) {
-			throw new Error(`No run-* directories found in ${PATHS.runsRoot}`);
-		}
-
-		const runDirectoryStats = await Promise.all(
-			runDirectories.map(async (runDirectoryPath) => {
-				const runDirectoryStats = await stat(runDirectoryPath);
-				return {
-					modifiedAt: runDirectoryStats.mtimeMs,
-					runDirectoryPath,
-				};
-			})
-		);
-		runDirectoryStats.sort(
-			(left, right) => right.modifiedAt - left.modifiedAt
-		);
-
-		const latestRunDirectoryPath = runDirectoryStats[0]?.runDirectoryPath;
-		if (!latestRunDirectoryPath) {
-			throw new Error(`Failed to resolve latest run directory in ${PATHS.runsRoot}`);
-		}
-
-		return latestRunDirectoryPath;
-	} catch (error) {
-		throw error;
+	if (runDirectories.length === 0) {
+		throw new Error(`No run-* directories found in ${PATHS.runsRoot}`);
 	}
+
+	const runDirectoryStats = await Promise.all(
+		runDirectories.map(async (runDirectoryPath) => {
+			const runDirectoryStats = await stat(runDirectoryPath);
+			return {
+				modifiedAt: runDirectoryStats.mtimeMs,
+				runDirectoryPath,
+			};
+		})
+	);
+	runDirectoryStats.sort((left, right) => right.modifiedAt - left.modifiedAt);
+
+	const latestRunDirectoryPath = runDirectoryStats[0]?.runDirectoryPath;
+	if (!latestRunDirectoryPath) {
+		throw new Error(
+			`Failed to resolve latest run directory in ${PATHS.runsRoot}`
+		);
+	}
+
+	return latestRunDirectoryPath;
 }
 
 async function resolveRunContext({
@@ -686,45 +663,39 @@ async function resolveRunContext({
 }: {
 	options: CombineCliOptions;
 }): Promise<RunContext> {
-	try {
-		if (options.runDirectoryPath) {
-			const manifestPath =
-				options.manifestPath ??
-				join(options.runDirectoryPath, FILE_NAMES.manifest);
-			const outputPath =
-				options.outputPath ??
-				join(options.runDirectoryPath, FILE_NAMES.combinedVideo);
+	if (options.runDirectoryPath) {
+		const manifestPath =
+			options.manifestPath ??
+			join(options.runDirectoryPath, FILE_NAMES.manifest);
+		const outputPath =
+			options.outputPath ??
+			join(options.runDirectoryPath, FILE_NAMES.combinedVideo);
 
-			return {
-				manifestPath,
-				outputPath,
-				runDirectoryPath: options.runDirectoryPath,
-			};
-		}
-
-		const latestRunMetadata = await readLatestRunMetadata();
-		if (latestRunMetadata) {
-			return {
-				manifestPath:
-					options.manifestPath ?? latestRunMetadata.manifestPath,
-				outputPath: options.outputPath ?? latestRunMetadata.combinedVideoPath,
-				runDirectoryPath: latestRunMetadata.runDirectoryPath,
-			};
-		}
-
-		const latestRunDirectoryPath = await findLatestRunDirectoryPath();
 		return {
-			manifestPath:
-				options.manifestPath ??
-				join(latestRunDirectoryPath, FILE_NAMES.manifest),
-			outputPath:
-				options.outputPath ??
-				join(latestRunDirectoryPath, FILE_NAMES.combinedVideo),
-			runDirectoryPath: latestRunDirectoryPath,
+			manifestPath,
+			outputPath,
+			runDirectoryPath: options.runDirectoryPath,
 		};
-	} catch (error) {
-		throw error;
 	}
+
+	const latestRunMetadata = await readLatestRunMetadata();
+	if (latestRunMetadata) {
+		return {
+			manifestPath: options.manifestPath ?? latestRunMetadata.manifestPath,
+			outputPath: options.outputPath ?? latestRunMetadata.combinedVideoPath,
+			runDirectoryPath: latestRunMetadata.runDirectoryPath,
+		};
+	}
+
+	const latestRunDirectoryPath = await findLatestRunDirectoryPath();
+	return {
+		manifestPath:
+			options.manifestPath ?? join(latestRunDirectoryPath, FILE_NAMES.manifest),
+		outputPath:
+			options.outputPath ??
+			join(latestRunDirectoryPath, FILE_NAMES.combinedVideo),
+		runDirectoryPath: latestRunDirectoryPath,
+	};
 }
 
 async function readManifest({
@@ -732,18 +703,14 @@ async function readManifest({
 }: {
 	manifestPath: string;
 }): Promise<VideoManifest> {
-	try {
-		const manifestRawValue = await readFile(manifestPath, "utf8");
-		const parsedManifest = JSON.parse(manifestRawValue) as VideoManifest;
+	const manifestRawValue = await readFile(manifestPath, "utf8");
+	const parsedManifest = JSON.parse(manifestRawValue) as VideoManifest;
 
-		if (!Array.isArray(parsedManifest.videos)) {
-			throw new Error("manifest.videos must be an array");
-		}
-
-		return parsedManifest;
-	} catch (error) {
-		throw error;
+	if (!Array.isArray(parsedManifest.videos)) {
+		throw new Error("manifest.videos must be an array");
 	}
+
+	return parsedManifest;
 }
 
 async function combineE2EVideos() {
@@ -752,7 +719,9 @@ async function combineE2EVideos() {
 	try {
 		const options = parseCliOptions({ argv: process.argv.slice(2) });
 		const runContext = await resolveRunContext({ options });
-		const manifest = await readManifest({ manifestPath: runContext.manifestPath });
+		const manifest = await readManifest({
+			manifestPath: runContext.manifestPath,
+		});
 
 		if (manifest.videos.length === 0) {
 			process.stdout.write(

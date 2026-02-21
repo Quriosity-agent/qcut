@@ -225,12 +225,14 @@ export async function pollQueueStatus(
 
 	const defaultStatusUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
 	const defaultResultUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
-	const statusUrl = (options?.statusUrl && isTrustedFalUrl(options.statusUrl))
-		? options.statusUrl
-		: defaultStatusUrl;
-	const resultUrl = (options?.responseUrl && isTrustedFalUrl(options.responseUrl))
-		? options.responseUrl
-		: defaultResultUrl;
+	const statusUrl =
+		options?.statusUrl && isTrustedFalUrl(options.statusUrl)
+			? options.statusUrl
+			: defaultStatusUrl;
+	const resultUrl =
+		options?.responseUrl && isTrustedFalUrl(options.responseUrl)
+			? options.responseUrl
+			: defaultResultUrl;
 
 	let lastPercent = 0;
 
@@ -409,11 +411,7 @@ export async function callModelApi(
 			if (queueData.request_id) {
 				// If already completed with request_id, fetch result directly
 				if (queueData.status === "COMPLETED" && queueData.response_url) {
-					if (!isTrustedFalUrl(queueData.response_url)) {
-						console.warn(
-							`[api-caller] Skipping untrusted response_url: ${queueData.response_url}`
-						);
-					} else {
+					if (isTrustedFalUrl(queueData.response_url)) {
 						try {
 							const resultRes = await fetch(queueData.response_url, {
 								headers,
@@ -436,6 +434,10 @@ export async function callModelApi(
 								`[api-caller] response_url fetch error: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}, falling back to polling`
 							);
 						}
+					} else {
+						console.warn(
+							`[api-caller] Skipping untrusted response_url: ${queueData.response_url}`
+						);
 					}
 				}
 
