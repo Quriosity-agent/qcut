@@ -297,6 +297,38 @@ export class CLIPipelineRunner {
 			};
 		}
 
+		// Validate required input before attempting API calls
+		const hasTextInput = !!options.text;
+		const hasImageInput = !!options.imageUrl;
+		const hasAudioInput = !!options.audioUrl;
+
+		if (options.command === "generate-image" && !hasTextInput) {
+			return {
+				success: false,
+				error: "Missing --text/-t (prompt for image generation).",
+			};
+		}
+		if (
+			options.command === "create-video" &&
+			!hasTextInput &&
+			!hasImageInput
+		) {
+			return {
+				success: false,
+				error: "Missing --text/-t or --image-url (need a prompt or image input).",
+			};
+		}
+		if (
+			options.command === "generate-avatar" &&
+			!hasTextInput &&
+			!hasAudioInput
+		) {
+			return {
+				success: false,
+				error: "Missing --text/-t or --audio-url (need a script or audio input).",
+			};
+		}
+
 		const startTime = Date.now();
 		const model = ModelRegistry.get(options.model);
 		const sessionId = `cli-${Date.now()}`;
