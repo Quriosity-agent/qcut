@@ -40,7 +40,7 @@ export interface MoyinParseResult {
 export interface MoyinGenerateOptions {
 	scenes: Array<{
 		id: string;
-		name: string;
+		name?: string;
 		location?: string;
 		visualPrompt?: string;
 		[key: string]: unknown;
@@ -168,10 +168,7 @@ async function callOpenAICompatible(
 	const model = isOpenRouter ? "google/gemini-2.5-flash" : "gpt-4o-mini";
 
 	const controller = new AbortController();
-	const timeout = setTimeout(
-		() => controller.abort(),
-		REQUEST_TIMEOUT_MS
-	);
+	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
 	try {
 		const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -219,10 +216,7 @@ async function callGemini(
 	userPrompt: string
 ): Promise<string> {
 	const controller = new AbortController();
-	const timeout = setTimeout(
-		() => controller.abort(),
-		REQUEST_TIMEOUT_MS
-	);
+	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
 	try {
 		const response = await fetch(
@@ -234,9 +228,7 @@ async function callGemini(
 					system_instruction: {
 						parts: [{ text: systemPrompt }],
 					},
-					contents: [
-						{ role: "user", parts: [{ text: userPrompt }] },
-					],
+					contents: [{ role: "user", parts: [{ text: userPrompt }] }],
 					generationConfig: {
 						temperature: 0.7,
 						maxOutputTokens: 4096,
@@ -290,16 +282,13 @@ export function setupMoyinIPC(): void {
 					userPrompt = `[Max scenes: ${options.sceneCount}]\n\n${userPrompt}`;
 				}
 
-				const response = await callLLM(
-					PARSE_SYSTEM_PROMPT,
-					userPrompt,
-					{ temperature: 0.7, maxTokens: 4096 }
-				);
+				const response = await callLLM(PARSE_SYSTEM_PROMPT, userPrompt, {
+					temperature: 0.7,
+					maxTokens: 4096,
+				});
 
 				// Extract JSON from response
-				const jsonMatch = response.match(
-					/```(?:json)?\s*([\s\S]*?)```/
-				);
+				const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
 				let cleaned = jsonMatch ? jsonMatch[1].trim() : response.trim();
 
 				// Find outermost JSON object
@@ -330,9 +319,7 @@ export function setupMoyinIPC(): void {
 				return { success: true, data: parsed };
 			} catch (error: unknown) {
 				const message =
-					error instanceof Error
-						? error.message
-						: "Unknown parse error";
+					error instanceof Error ? error.message : "Unknown parse error";
 				log.error("[Moyin] Parse failed:", message);
 				return { success: false, error: message };
 			}
@@ -360,9 +347,7 @@ export function setupMoyinIPC(): void {
 				};
 			} catch (error: unknown) {
 				const message =
-					error instanceof Error
-						? error.message
-						: "Unknown generation error";
+					error instanceof Error ? error.message : "Unknown generation error";
 				log.error("[Moyin] Generation failed:", message);
 				return { success: false, error: message };
 			}

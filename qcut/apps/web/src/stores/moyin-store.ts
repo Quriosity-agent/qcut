@@ -100,9 +100,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 		try {
 			const api = window.electronAPI?.moyin;
 			if (!api) {
-				throw new Error(
-					"Moyin API not available. Please run in Electron."
-				);
+				throw new Error("Moyin API not available. Please run in Electron.");
 			}
 
 			const result = await api.parseScript({ rawScript });
@@ -124,9 +122,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 			set({
 				parseStatus: "error",
 				parseError:
-					error instanceof Error
-						? error.message
-						: "Unknown parse error",
+					error instanceof Error ? error.message : "Unknown parse error",
 			});
 		}
 	},
@@ -154,9 +150,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 
 	updateScene: (id, updates) =>
 		set((state) => ({
-			scenes: state.scenes.map((s) =>
-				s.id === id ? { ...s, ...updates } : s
-			),
+			scenes: state.scenes.map((s) => (s.id === id ? { ...s, ...updates } : s)),
 		})),
 
 	generateStoryboard: async () => {
@@ -172,9 +166,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 		try {
 			const api = window.electronAPI?.moyin;
 			if (!api) {
-				throw new Error(
-					"Moyin API not available. Please run in Electron."
-				);
+				throw new Error("Moyin API not available. Please run in Electron.");
 			}
 
 			const result = await api.generateStoryboard({
@@ -183,9 +175,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 			});
 
 			if (!result.success) {
-				throw new Error(
-					result.error || "Failed to generate storyboard"
-				);
+				throw new Error(result.error || "Failed to generate storyboard");
 			}
 
 			set({
@@ -196,9 +186,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 			set({
 				generationStatus: "error",
 				generationError:
-					error instanceof Error
-						? error.message
-						: "Unknown generation error",
+					error instanceof Error ? error.message : "Unknown generation error",
 			});
 		}
 	},

@@ -42,10 +42,30 @@ Scene descriptions (N scenes)
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Port grid calculator | Pending | 20 min |
-| 2. Port prompt builder | Pending | 25 min |
-| 3. Port image splitter | Pending | 35 min |
-| 4. Add unit tests | Pending | 40 min |
+| 1. Port grid calculator | **Done** | 20 min |
+| 2. Port prompt builder | **Done** | 25 min |
+| 3. Port image splitter | **Done** | 35 min |
+| 4. Add unit tests | **Done** | 40 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Grid calculator:**
+- Ported to `apps/web/src/lib/moyin/storyboard/grid-calculator.ts`
+- Exports: `calculateGrid()`, `validateSceneCount()`, `getRecommendedResolution()`, `RESOLUTION_PRESETS`, `SCENE_LIMITS`
+- Supports `16:9` and `9:16` aspect ratios, `2K` and `4K` resolutions
+- Predefined optimal layouts for 4, 6, 8, 9, 10, 12 scenes
+
+**Subtask 2 — Prompt builder:**
+- Ported to `apps/web/src/lib/moyin/storyboard/prompt-builder.ts`
+- Exports: `buildStoryboardPrompt()`, `buildRegenerationPrompt()`, `getStyleTokensFromPreset()`, `getDefaultNegativePrompt()`
+
+**Subtask 3 — Image splitter:**
+- Ported to `apps/web/src/lib/moyin/storyboard/image-splitter.ts`
+- Exports: `splitStoryboardImage()`, `loadImage()`, `detectGrid()`, `trimCanvas()`, `isCellEmpty()`, `cropEdgeMargin()`, `getEnergyProfile()`, `findSegments()`
+- Pure Canvas API — runs in renderer process, no IPC needed
+
+**Barrel export:**
+- Created `apps/web/src/lib/moyin/storyboard/index.ts` re-exporting all types and functions
 
 ---
 

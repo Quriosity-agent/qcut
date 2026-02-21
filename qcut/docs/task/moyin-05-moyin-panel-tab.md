@@ -38,12 +38,41 @@ Add a `"moyin"` tab to QCut's media panel under the "Create" group. Users can:
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Register Moyin tab in media panel | Pending | 15 min |
-| 2. Create moyin-store (Zustand) | Pending | 30 min |
-| 3. Add script parsing IPC handler | Pending | 30 min |
-| 4. Build MoyinView root component | Pending | 30 min |
-| 5. Build sub-components (script, characters, scenes) | Pending | 45 min |
-| 6. Add unit tests | Pending | 30 min |
+| 1. Register Moyin tab in media panel | **Done** | 15 min |
+| 2. Create moyin-store (Zustand) | **Done** | 30 min |
+| 3. Add script parsing IPC handler | **Done** | 30 min |
+| 4. Build MoyinView root component | **Done** | 30 min |
+| 5. Build sub-components (script, characters, scenes) | **Done** | 45 min |
+| 6. Add unit tests | **Done** | 30 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Register tab:**
+- Added `ClapperboardIcon` import, `"moyin"` to `Tab` union, tab metadata, and group membership in `store.ts`
+- Added `MoyinView` import and `moyin: <MoyinView />` to `viewMap` in `index.tsx`
+
+**Subtask 2 — Zustand store:**
+- Created `apps/web/src/stores/moyin-store.ts` with full MoyinStep workflow
+- Session-scoped (no persist), types exported: `MoyinStep`, `ParseStatus`, `GenerationStatus`
+- `parseScript()` calls `window.electronAPI?.moyin.parseScript()`, casts result to `ScriptData`
+
+**Subtask 3 — IPC handler:**
+- Created `electron/moyin-handler.ts` with `setupMoyinIPC()` — two channels: `moyin:parse-script`, `moyin:generate-storyboard`
+- LLM infrastructure: `callLLM()` → `callOpenAICompatible()` / `callGemini()` with 60s timeout
+- Inlined `PARSE_SYSTEM_PROMPT` to avoid cross-app imports in Electron main process
+- Added `createMoyinAPI()` to `electron/preload-integrations.ts`
+- Imported and exposed in `electron/preload.ts`
+- Registered `["MoyinIPC", setupMoyinIPC]` in `electron/main.ts` handlers array
+- Added `moyin?` to `ElectronAPI` interface in `apps/web/src/types/electron.d.ts`
+
+**Subtask 4-5 — UI components:**
+- Created 6 files in `apps/web/src/components/editor/media-panel/views/moyin/`:
+  - `index.tsx` — root component with step routing via `STEP_COMPONENTS` map
+  - `step-indicator.tsx` — horizontal step bar with icons, clickable when parse is ready
+  - `script-input.tsx` — textarea + parse button + error display
+  - `character-list.tsx` — card list with name, gender, age, role, tags
+  - `scene-list.tsx` — card list with location, time, atmosphere, tags
+  - `generate-actions.tsx` — summary, progress bar, generate button, success/error states
 
 ---
 

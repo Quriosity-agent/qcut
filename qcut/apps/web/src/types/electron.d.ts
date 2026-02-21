@@ -1303,13 +1303,7 @@ export interface ElectronAPI {
 		}>;
 		/** Generate storyboard images from parsed scenes */
 		generateStoryboard: (options: {
-			scenes: Array<{
-				id: string;
-				name: string;
-				location?: string;
-				visualPrompt?: string;
-				[key: string]: unknown;
-			}>;
+			scenes: unknown[];
 			styleId?: string;
 		}) => Promise<{
 			success: boolean;

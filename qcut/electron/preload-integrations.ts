@@ -520,8 +520,7 @@ export function createRemotionFolderAPI(): NonNullable<
 /** Create the Moyin script/storyboard API for the renderer process. */
 export function createMoyinAPI(): NonNullable<ElectronAPI["moyin"]> {
 	return {
-		parseScript: (options) =>
-			ipcRenderer.invoke("moyin:parse-script", options),
+		parseScript: (options) => ipcRenderer.invoke("moyin:parse-script", options),
 		generateStoryboard: (options) =>
 			ipcRenderer.invoke("moyin:generate-storyboard", options),
 	};
