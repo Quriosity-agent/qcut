@@ -131,6 +131,7 @@ playwright-report/
 playwright/.cache/
 docs/completed/test-results/
 docs/completed/test-results-raw/
+docs/completed/e2e-videos/
 .git-rewrite
 test-output.json
 

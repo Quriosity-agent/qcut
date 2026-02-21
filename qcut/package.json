@@ -98,6 +98,7 @@
 		"release:promote": "bun scripts/release.ts promote",
 		"test": "cd apps/web && bunx vitest run",
 		"test:e2e": "playwright test",
+		"test:e2e:record": "bun scripts/run-e2e-record.ts",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:headed": "playwright test --headed",
 		"test:e2e:workflow": "playwright test project-workflow"

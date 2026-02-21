@@ -132,3 +132,18 @@ Validate:
   - Mitigation: Strict `try-catch` with clear error logs and deterministic exit status.
 - Risk: CI artifact bloat.
   - Mitigation: Add retention/cleanup in CI workflow if enabled there.
+
+## Implementation Status (2026-02-21)
+
+Implemented changes:
+- `playwright.config.ts`: set `use.video` to `on` for all E2E tests.
+- `scripts/collect-e2e-videos.ts`: added artifact collector to copy `.webm` files from `docs/completed/test-results-raw/` into timestamped runs under `docs/completed/e2e-videos/`.
+- `scripts/run-e2e-record.ts`: added orchestrator script that runs Playwright tests and then runs the collector.
+- `package.json`: added `test:e2e:record` script.
+- `.gitignore`: added `docs/completed/e2e-videos/`.
+- `docs/technical/testing/e2e.md`: updated commands, config snippet, artifact behavior, and paths.
+
+Validation run:
+- `bunx tsc --noEmit -p scripts/tsconfig.json`
+- `bun scripts/collect-e2e-videos.ts`
+- `bun run test:e2e:record -- --list`

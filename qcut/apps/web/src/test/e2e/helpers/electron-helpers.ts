@@ -207,8 +207,9 @@ export const test = base.extend<ElectronFixtures>({
 		await electronApp.close();
 	},
 
-	page: async ({ electronApp }, use) => {
+	page: async ({ electronApp }, use, testInfo) => {
 		const page = await electronApp.firstWindow();
+		let recordingSessionId: string | null = null;
 
 		// Enable console log capture from renderer process
 		page.on("console", (msg) => {
@@ -276,10 +277,44 @@ export const test = base.extend<ElectronFixtures>({
 		// Navigate to projects page for E2E testing
 		await navigateToProjects(page);
 
-		await use(page);
+		try {
+			const startResult = await startScreenRecordingForE2E(page, {
+				filePath: testInfo.outputPath("screen-recording.mp4"),
+			});
+			recordingSessionId = startResult.sessionId;
+		} catch (error) {
+			console.warn(
+				`⚠️  Failed to start per-test screen recording: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		}
 
-		// Clean up after test completes to ensure next test starts fresh
-		await cleanupDatabase(page);
+		try {
+			await use(page);
+		} finally {
+			if (recordingSessionId) {
+				try {
+					const stopResult = await stopScreenRecordingForE2E(page, {
+						sessionId: recordingSessionId,
+					});
+					if (!stopResult.success || stopResult.discarded) {
+						console.warn(
+							`⚠️  Screen recording stop returned non-success for ${testInfo.title}`
+						);
+					}
+				} catch (error) {
+					console.warn(
+						`⚠️  Failed to stop per-test screen recording: ${
+							error instanceof Error ? error.message : String(error)
+						}`
+					);
+				}
+			}
+
+			// Clean up after test completes to ensure next test starts fresh
+			await cleanupDatabase(page);
+		}
 	},
 });
 

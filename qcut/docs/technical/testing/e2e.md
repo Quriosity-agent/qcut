@@ -1,6 +1,6 @@
 # E2E Testing Infrastructure - QCut Video Editor
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-21
 
 ## How to Run E2E Tests
 
@@ -24,6 +24,9 @@ cd qcut
 
 # Run all E2E tests
 bun run test:e2e
+
+# Run all E2E tests and collect videos to docs/completed/e2e-videos/
+bun run test:e2e:record
 
 # Run with interactive UI
 bun run test:e2e:ui
@@ -84,7 +87,7 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',      // Capture trace on retry
     screenshot: 'only-on-failure', // Screenshot on failure
-    video: 'retain-on-failure',   // Video on failure
+    video: 'on',                  // Video for every test
   },
   projects: [{
     name: 'electron',
@@ -158,7 +161,8 @@ qcut/
 │
 └── docs/completed/                         # Test results (gitignored)
     ├── test-results/                       # HTML test reports
-    └── test-results-raw/                   # Raw test artifacts
+    ├── test-results-raw/                   # Raw Playwright artifacts
+    └── e2e-videos/                         # Collected video artifacts by run
 ```
 
 ## Test Files Summary
@@ -492,16 +496,19 @@ jobs:
 
 ## Test Artifacts
 
-On test failure, Playwright automatically captures:
-- **Screenshots**: Saved to `test-results-raw/`
-- **Videos**: Retained on failure
+Playwright captures:
+- **Screenshots**: Saved to `test-results-raw/` on failure
+- **Videos**: Recorded for every test to `test-results-raw/`
 - **Traces**: Captured on first retry (viewable via `bun x playwright show-trace`)
+
+When using `bun run test:e2e:record`, videos are also copied to `docs/completed/e2e-videos/<run-timestamp>/`.
 
 ## npm Script Reference
 
 | Script | Description |
 |--------|-------------|
 | `bun run test:e2e` | Run all E2E tests |
+| `bun run test:e2e:record` | Run all E2E tests and collect videos |
 | `bun run test:e2e:ui` | Run with Playwright UI |
 | `bun run test:e2e:headed` | Run with visible browser |
 | `bun run test:e2e:workflow` | Run project workflow tests only |
