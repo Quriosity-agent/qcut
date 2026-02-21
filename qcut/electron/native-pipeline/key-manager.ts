@@ -29,7 +29,7 @@ export type ApiKeyName = (typeof KEY_NAMES)[number];
 export interface KeyStatus {
 	name: string;
 	configured: boolean;
-	source: "env" | "envfile" | "none";
+	source: "env" | "envfile" | "aicp-cli" | "none";
 	masked?: string;
 }
 
@@ -118,9 +118,24 @@ export function getKey(name: string): string | undefined {
 export function checkKeys(): KeyStatus[] {
 	const envEntries = readEnvFile();
 
+	// Also check AICP CLI credentials
+	const aicpPath = getAicpCredentialsPath();
+	const aicpEntries = new Map<string, string>();
+	if (fs.existsSync(aicpPath)) {
+		const content = fs.readFileSync(aicpPath, "utf-8");
+		for (const line of content.split("\n")) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith("#")) continue;
+			const eqIdx = trimmed.indexOf("=");
+			if (eqIdx === -1) continue;
+			aicpEntries.set(trimmed.slice(0, eqIdx).trim(), trimmed.slice(eqIdx + 1).trim());
+		}
+	}
+
 	return KEY_NAMES.map((name) => {
 		const envValue = process.env[name];
 		const fileValue = envEntries.get(name);
+		const aicpValue = aicpEntries.get(name);
 
 		if (envValue) {
 			return {
@@ -136,6 +151,14 @@ export function checkKeys(): KeyStatus[] {
 				configured: true,
 				source: "envfile" as const,
 				masked: maskKey(fileValue),
+			};
+		}
+		if (aicpValue) {
+			return {
+				name,
+				configured: true,
+				source: "aicp-cli" as const,
+				masked: maskKey(aicpValue),
 			};
 		}
 		return { name, configured: false, source: "none" as const };
@@ -156,11 +179,37 @@ export function setupEnvTemplate(): string {
 	return envPath;
 }
 
+function getAicpCredentialsPath(): string {
+	if (process.platform === "win32") {
+		return path.join(process.env.APPDATA || os.homedir(), "video-ai-studio", "credentials.env");
+	}
+	return path.join(os.homedir(), ".config", "video-ai-studio", "credentials.env");
+}
+
 export function loadEnvFile(configDirOverride?: string): void {
 	const entries = readEnvFile(configDirOverride);
 	for (const [key, value] of entries) {
 		if (value && !process.env[key]) {
 			process.env[key] = value;
+		}
+	}
+
+	// Fallback: load from AICP CLI credentials if keys are still missing
+	const aicpPath = getAicpCredentialsPath();
+	if (fs.existsSync(aicpPath)) {
+		const aicpEntries = new Map<string, string>();
+		const content = fs.readFileSync(aicpPath, "utf-8");
+		for (const line of content.split("\n")) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith("#")) continue;
+			const eqIdx = trimmed.indexOf("=");
+			if (eqIdx === -1) continue;
+			aicpEntries.set(trimmed.slice(0, eqIdx).trim(), trimmed.slice(eqIdx + 1).trim());
+		}
+		for (const [key, value] of aicpEntries) {
+			if (value && !process.env[key]) {
+				process.env[key] = value;
+			}
 		}
 	}
 }

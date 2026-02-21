@@ -39,6 +39,7 @@ interface FalQueueResponse {
 	request_id: string;
 	status: string;
 	response_url?: string;
+	status_url?: string;
 }
 
 interface FalStatusResponse {
@@ -190,14 +191,16 @@ export async function pollQueueStatus(
 	options?: {
 		onProgress?: (percent: number, message: string) => void;
 		signal?: AbortSignal;
+		statusUrl?: string;
+		responseUrl?: string;
 	}
 ): Promise<ApiCallResult> {
 	const startTime = Date.now();
 	const apiKey = await getApiKey("fal");
 	const headers = buildHeaders("fal", apiKey);
 
-	const statusUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
-	const resultUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
+	const statusUrl = options?.statusUrl ?? `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
+	const resultUrl = options?.responseUrl ?? `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
 
 	let lastPercent = 0;
 
@@ -225,7 +228,8 @@ export async function pollQueueStatus(
 		const status = (await statusRes.json()) as FalStatusResponse;
 
 		if (status.status === "COMPLETED") {
-			const resultRes = await fetch(resultUrl, {
+			const fetchUrl = status.response_url || resultUrl;
+			const resultRes = await fetch(fetchUrl, {
 				headers,
 				signal: options?.signal,
 			});
@@ -350,10 +354,39 @@ export async function callModelApi(
 
 			const queueData = (await queueRes.json()) as FalQueueResponse;
 
+			// If queue already completed (sync response), extract result directly
+			if (queueData.status === "COMPLETED" && !queueData.request_id) {
+				return {
+					success: true,
+					data: queueData,
+					outputUrl: extractOutputUrl(queueData),
+					duration: (Date.now() - startTime) / 1000,
+				};
+			}
+
 			if (queueData.request_id) {
+				// If already completed with request_id, fetch result directly
+				if (queueData.status === "COMPLETED" && queueData.response_url) {
+					const resultRes = await fetch(queueData.response_url, {
+						headers,
+						signal: combinedSignal,
+					});
+					if (resultRes.ok) {
+						const data = await resultRes.json();
+						return {
+							success: true,
+							data,
+							outputUrl: extractOutputUrl(data),
+							duration: (Date.now() - startTime) / 1000,
+						};
+					}
+				}
+
 				return pollQueueStatus(queueData.request_id, endpoint, {
 					onProgress: options.onProgress,
 					signal: combinedSignal,
+					statusUrl: queueData.status_url,
+					responseUrl: queueData.response_url,
 				});
 			}
 

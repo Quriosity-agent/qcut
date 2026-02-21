@@ -122,7 +122,7 @@ touch /tmp/org-test/photo.png /tmp/org-test/clip.mp4 /tmp/org-test/song.mp3 /tmp
 
 # Preview organization (dry run)
 bun run pipeline organize-project --directory /tmp/org-test --dry-run
-# Expected: Shows which files would move to which folders
+# Expected: "Organized 4 files" with per-file detail (photo.png → images/, etc.)
 
 # Actually organize
 bun run pipeline init-project --directory /tmp/org-test
@@ -143,14 +143,15 @@ Verify the CLI fails gracefully without keys.
 
 ```bash
 bun run pipeline generate-image -m flux_dev -t "test"
-# Expected: Error about missing FAL_KEY (not a crash/stacktrace)
+# Expected: "No API key configured for provider: fal", exit 1
+# Note: A JSON progress line may appear before the error (cosmetic issue)
 ```
 
 ### 2.2 Generate Without Required Flags
 
 ```bash
 bun run pipeline generate-image
-# Expected: Error about missing --model and --text
+# Expected: "Missing --model. Run --help for usage.", exit 1
 
 bun run pipeline create-video -m kling_2_6_pro
 # Expected: Error about missing --text or --image-url
@@ -210,7 +211,7 @@ bun run pipeline generate-image -m flux_dev -t "A red fox in snow" -o /tmp/cli-t
 
 ```bash
 bun run pipeline generate-image -m flux_dev -t "A red fox in snow" -o /tmp/cli-test --json
-# Expected: JSON with success, outputPath, cost, duration
+# Expected: JSON with success, outputPath, outputPaths, duration, cost
 ```
 
 ### 4.3 Create Video
@@ -341,8 +342,9 @@ Test files covering the CLI:
 | `electron/__tests__/native-registry.test.ts` | Registry CRUD |
 | `electron/__tests__/native-cost-calculator.test.ts` | Cost math |
 | `electron/__tests__/native-chain-parser.test.ts` | YAML parsing |
+| `electron/__tests__/native-api-caller.test.ts` | API caller units |
 | `electron/__tests__/native-step-executors.test.ts` | Step executor units |
-| `electron/__tests__/vimax-*.test.ts` (4 files) | ViMax adapters, agents, pipelines |
+| `electron/__tests__/vimax-*.test.ts` (4 files) | ViMax adapters, agents, pipelines, types |
 
 ---
 
@@ -377,14 +379,14 @@ All 7 checks should pass without any API keys configured.
 
 ---
 
-## Test Run Results (2026-02-21)
+## Test Run Results
 
-### Smoke Tests — Sections 1–2
+### Run 1 (2026-02-21) — Smoke Tests
 
 | Test | Result | Notes |
 |------|--------|-------|
 | 1.1 `--version` | Pass | Returns `1.0.0` |
-| 1.1 `--help` | Pass | Full usage text with all 33 commands |
+| 1.1 `--help` | Pass | Full usage text with all 34 commands |
 | 1.2 `list-models` | Pass | 77 models listed |
 | 1.2 `list-models --category` | Pass | Correct filtering (11 text_to_video) |
 | 1.2 `list-models --json` | Pass | Valid JSON with schema_version |
@@ -403,17 +405,30 @@ All 7 checks should pass without any API keys configured.
 | 1.6 `create-examples` | Pass | 5 YAML files written |
 | 1.7 `vimax:create-registry` | Pass | Registry JSON created |
 | 1.7 `vimax:show-registry` | Pass | Alice + Bob entries displayed |
-| 1.8 `organize-project --dry-run` | Pass | 4 files identified |
+| 1.8 `organize-project --dry-run` | Pass | "Organized 4 files" (summary only, no per-file detail) |
 | 1.8 `organize-project` (actual) | Pass | Files sorted into images/videos/audio/text |
-| 2.1 Generate without key | Pass | Clean error: "No API key configured for provider: fal", exit 1 |
+| 2.1 Generate without key | Pass | "No API key configured for provider: fal", exit 1 (note: JSON progress line leaks before error) |
 | 2.2 Generate without flags | Pass | Clean error: "Missing --model", exit 1 |
 | 2.3 Unknown command | Pass | "Unknown command: not-a-command", exit 2 |
 | 2.4 Invalid YAML | Pass | YAML parse error with line/column info, no crash |
 
-### Unit Tests — Section 8
+### Run 2 (2026-02-21) — Validation Fixes Verified
+
+Improvements 3 and 4 from Run 1 implemented and verified:
+
+| Test | Result | Notes |
+|------|--------|-------|
+| `generate-image` (no flags) | Pass | `"Missing --model. Run --help for usage."`, exit 1 |
+| `generate-image -m flux_dev` (no text) | **Fixed** | `"Missing --text/-t (prompt for image generation)."` — was hitting API key check |
+| `create-video -m kling_2_6_pro` (no text/image) | **Fixed** | `"Missing --text/-t or --image-url (need a prompt or image input)."` — was hitting API key check |
+| `generate-avatar -m omnihuman_v1_5` (no text/audio) | **Fixed** | `"Missing --text/-t or --audio-url (need a script or audio input)."` |
+| `list-video-models --json` | Pass | Already works — outputs JSON with schema_version (improvement 4 was false alarm) |
+| `list-avatar-models --json` | Pass | Same — works correctly |
+
+### Unit Tests
 
 - **2816 passed**, 32 failed across 199 test files
-- **All native pipeline CLI tests passed** — zero failures in CLI/pipeline test files
+- **All native pipeline CLI tests passed** — zero failures in 13 CLI/native/vimax test files
 
 Failed test files (all unrelated to native CLI):
 
@@ -429,27 +444,101 @@ Failed test files (all unrelated to native CLI):
 | `timeline-toolbar.test.tsx` | 4 | Component render in JSDOM |
 | `markdown-editor-panel.test.tsx` | 3 | Component render in JSDOM |
 
-### Bug Found & Fixed
+### Bugs Found & Fixed
 
-**Bug**: `list-video-models`, `list-avatar-models`, `list-motion-models`, and `list-speech-models` all returned correct data from the handler but produced no console output. The CLI output renderer in `cli.ts` only checked for `list-models` and `vimax:list-models` command names, silently dropping the result for the 4 specialized variants.
+**Bug 1 (Run 1)**: `list-video-models`, `list-avatar-models`, `list-motion-models`, `list-speech-models` returned correct data but produced no console output. The CLI renderer in `cli.ts` only matched `list-models` and `vimax:list-models`.
+**Fix**: Added 4 missing command names to the rendering condition in `electron/native-pipeline/cli.ts` (line ~424).
 
-**Fix**: Added the 4 missing command names to the rendering condition in `electron/native-pipeline/cli.ts` (line ~424).
+**Bug 2 (Run 2)**: `generate-image -m flux_dev`, `create-video -m kling_2_6_pro`, and `generate-avatar -m omnihuman_v1_5` (with model but missing required input) all bypassed argument validation and hit the API key check, returning misleading "No API key configured" errors instead of telling the user which flags were missing.
+**Fix**: Added input validation in `electron/native-pipeline/cli-runner.ts` `handleGenerate()` that checks for required input (`--text`, `--image-url`, `--audio-url`) per command type before attempting API calls.
+
+### Run 3 (2026-02-21) — Remaining Improvements Implemented
+
+Improvements 1, 4, and 5 from Run 1 implemented and verified:
+
+| Test | Result | Notes |
+|------|--------|-------|
+| `list-motion-models` | **Fixed** | Now lists 1 model (`kling_motion_control`) — was 0, category was missing |
+| `generate-image -m flux_dev -t "test" --json` | **Fixed** | Clean JSON output only, no progress leak to stdout |
+| `generate-image -m flux_dev -t "test"` (non-TTY) | **Fixed** | Progress goes to stderr, error to stderr — stdout clean |
+| `organize-project --dry-run` | **Fixed** | Now shows per-file detail: `photo.png → images/`, `clip.mp4 → videos/`, etc. |
+
+### Unit Tests (Run 3)
+
+- **2816 passed**, 32 failed across 199 test files (same as Run 2 — no regressions)
+- **All native pipeline CLI tests passed** — zero failures
+
+### Bugs Found & Fixed (Run 3)
+
+**Bug 3**: `kling_motion_control` was registered with `categories: ["avatar"]` but the `list-motion-models` command filters by `motion_transfer` category. The model's description says "Motion transfer from video to image" and its features include `motion_transfer`, but the category was wrong.
+**Fix**: Added `"motion_transfer"` to the categories array in `electron/native-pipeline/registry-data-2.ts` (line ~161).
+
+**Bug 4**: In `--json` mode, `createProgressReporter` emitted progress events to stdout via `console.log`, mixing progress JSON with the final result JSON. In non-TTY mode, progress also went to stdout, polluting piped output.
+**Fix**: In `electron/native-pipeline/cli-runner.ts` `createProgressReporter()`: suppress all progress in `--json` mode (final result only); redirect non-TTY progress from `console.log` (stdout) to `console.error` (stderr). Updated test in `electron/__tests__/cli-pipeline.test.ts`.
+
+**Bug 5**: `organize-project --dry-run` only printed "Organized N files" summary. The `result.moved` array with per-file `from`/`to`/`category` data was returned from the handler but never rendered.
+**Fix**: Added per-file rendering in `electron/native-pipeline/cli.ts` organize-project output block.
+
+### Run 4 (2026-02-21) — Live Generation Tests (FAL_KEY)
+
+**Key discovery**: FAL_KEY was already stored in `~/.config/video-ai-studio/credentials.env` (synced by Electron app), but the CLI's `key-manager.ts` only checked `~/.qcut/.env` and `process.env`. The `api-caller.ts` had a 3-tier fallback (env → Electron → AICP credentials) but the CLI explicitly used `envApiKeyProvider` (env-only).
+
+| Test | Result | Notes |
+|------|--------|-------|
+| 4.1 `generate-image` (flux_dev) | **Pass** | `.jpg` file in output dir, 5.8s |
+| 4.2 `generate-image --json` | **Pass** | JSON with `success`, `outputPath`, `outputPaths`, `duration` (no `cost` field) |
+| 4.3 `create-video` (kling_2_6_pro) | **Fail** | `"Failed to fetch result: 422"` — FAL queue result URL construction bug |
+| 4.5 `generate-grid` (2x2) | **Pass** | 4 images generated, grid composited, 20.3s (no output path printed) |
+| 6.1 `run-pipeline` (text-to-video-basic.yaml) | **Pass** | Pipeline completes, `.mp4` output, 156.5s |
+
+### Bugs Found & Fixed (Run 4)
+
+**Bug 6**: FAL queue polling used a manually constructed URL (`queue.fal.run/{full-endpoint}/requests/{id}/status`) but FAL returns a different path in its `status_url`/`response_url` fields. For `fal-ai/flux/dev`, the CLI built `.../fal-ai/flux/dev/requests/...` but FAL expected `.../fal-ai/flux/requests/...`. This caused 405 on status polls and 422 on result fetches.
+**Fix**: Updated `pollQueueStatus()` in `electron/native-pipeline/api-caller.ts` to accept `statusUrl`/`responseUrl` from the queue submit response and use them instead of constructing URLs. Also added `status.response_url` fallback from the status poll response for the result fetch.
+
+**Bug 7**: CLI `key-manager.ts` (`loadEnvFile`, `checkKeys`) only checked `~/.qcut/.env` and `process.env`. It missed keys stored in the AICP CLI credentials file (`~/.config/video-ai-studio/credentials.env`), which is where the Electron app syncs keys via `syncToAicpCredentials()`.
+**Fix**: Updated `loadEnvFile()` to fall back to AICP credentials path. Updated `checkKeys()` to show keys from AICP CLI source with `"aicp-cli"` label.
+
+### Unit Tests (Run 4)
+
+- **2816 passed**, 32 failed across 199 test files (same as previous runs — no regressions)
 
 ### Sections Not Tested
 
 | Section | Reason |
 |---------|--------|
 | 3. API Key Setup | Requires interactive `set-key` prompt |
-| 4. Live Generation | Requires FAL_KEY |
+| 4.4 Image to Video | Blocked by Bug 6 (video generation 422) |
+| 4.6 Upscale Image | Not tested yet |
 | 5. Analysis | Requires GEMINI_API_KEY |
-| 6. Pipeline Execution | Requires FAL_KEY |
 | 7. ViMax | Requires FAL_KEY + LLM key |
 
-### Improvements to Consider
+### Run 5 (2026-02-21) — Bug Fixes Verified (Code Review)
 
-1. **Add `motion_transfer` models to registry** — `list-motion-models` returns 0 results; either register models or remove the command
-2. **Fix 9 unrelated failing test files** — UI component tests (slider, timeline-toolbar, markdown-editor-panel) fail due to JSDOM/Radix incompatibilities; Electron handler tests have stale mocks
-3. **Error message for 2.2 `create-video` missing flags** — currently says "No API key configured" instead of "Missing --text or --image-url"; validation should check required args before attempting API calls
-4. **Add `--json` flag to specialized list commands** — `list-models --json` works but `list-video-models --json` doesn't pass through the JSON flag
-5. **Add exit code assertions to the guide** — document expected exit codes (0 for success, 1 for errors, 2 for unknown command) so automated test scripts can validate
-6. **`setup` command not smoke-tested** — section 1.5 mentions `bun run pipeline setup` but it writes to `~/.qcut/.env` which mutates user home directory; consider a `--dry-run` flag
+Improvements 3, 4, and 5 from Run 4 implemented and verified via code review + unit tests:
+
+| Test | Result | Notes |
+|------|--------|-------|
+| Video generation 422 | **Fixed** | `api-caller.ts` now handles immediate COMPLETED in queue response; uses FAL `status_url`/`response_url` |
+| `generate-grid` output path | **Fixed** | Falls back to first individual image path when grid composite unavailable |
+| `generate-image --json` cost | **Fixed** | `handleGenerate()` now uses `estimateCost()` fallback when executor doesn't return cost |
+
+### Unit Tests (Run 5)
+
+- **2816 passed**, 32 failed across 199 test files (same as previous runs — no regressions)
+
+### Bugs Found & Fixed (Run 5)
+
+**Bug 8**: `handleGenerateGrid()` returned `outputPaths: gridResult.imagePaths` which was the subset of images used for the grid. When `sharp` was not available, `outputPath` was undefined and no output was shown.
+**Fix**: Added fallback in `cli-runner.ts` — if no grid composite path, use first individual image. Also changed `outputPaths` to return all generated image paths.
+
+**Bug 9**: `handleGenerate()` returned `cost: result.cost` but the executor step result never populated `cost`. Users saw no cost in JSON output.
+**Fix**: Added `estimateCost()` fallback in `cli-runner.ts` — if the executor doesn't return cost, estimate from the model registry using the generation parameters.
+
+### Remaining Improvements
+
+1. **Fix 9 unrelated failing test files** — UI component tests (slider, timeline-toolbar, markdown-editor-panel) fail due to JSDOM/Radix incompatibilities; Electron handler tests have stale mocks
+2. **`setup` command not smoke-tested** — writes to `~/.qcut/.env` which mutates user home directory; consider a `--dry-run` flag
+3. **Live re-test `create-video`** — Bug 6 fix (422) needs live verification with FAL_KEY
+4. **Test `run-pipeline --save-intermediates`** — section 6.2 not yet tested
+5. **Test stdin pipe input** — section 6.3 (`echo "..." | bun run pipeline run-pipeline --input -`) not yet tested

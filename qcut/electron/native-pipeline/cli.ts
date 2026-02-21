@@ -526,8 +526,17 @@ export async function main(
 			}
 		}
 		if (result.data && options.command === "organize-project") {
-			const data = result.data as { moved: number; message: string };
+			const data = result.data as {
+				moved: number;
+				message: string;
+				files?: { from: string; to: string; category: string }[];
+			};
 			console.log(`\n${data.message}`);
+			if (data.files && data.files.length > 0) {
+				for (const f of data.files) {
+					console.log(`  ${f.from} → ${f.category}/`);
+				}
+			}
 		}
 		if (result.data && options.command === "structure-info") {
 			const data = result.data as {

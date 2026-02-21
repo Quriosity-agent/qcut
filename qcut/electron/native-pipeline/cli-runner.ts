@@ -14,7 +14,7 @@ import { PipelineExecutor } from "./executor.js";
 import type { PipelineStep } from "./executor.js";
 import { ParallelPipelineExecutor } from "./parallel-executor.js";
 import { parseChainConfig, validateChain } from "./chain-parser.js";
-import { estimatePipelineCost } from "./cost-calculator.js";
+import { estimateCost, estimatePipelineCost } from "./cost-calculator.js";
 import {
 	downloadOutput,
 	setApiKeyProvider,
@@ -410,11 +410,15 @@ export class CLIPipelineRunner {
 			model: options.model,
 		});
 
+		// Use executor cost if available, otherwise estimate from model registry
+		const cost =
+			result.cost ?? estimateCost(options.model!, params).totalCost;
+
 		return {
 			success: true,
 			outputPath: result.outputPath,
 			outputPaths: result.outputPath ? [result.outputPath] : undefined,
-			cost: result.cost,
+			cost,
 			duration: (Date.now() - startTime) / 1000,
 		};
 	}
@@ -744,10 +748,14 @@ export class CLIPipelineRunner {
 
 		onProgress({ stage: "complete", percent: 100, message: "Done", model });
 
+		// If no grid composite path (e.g. sharp not available), use first individual image
+		const resolvedOutputPath =
+			finalOutputPath || (imagePaths.length > 0 ? imagePaths[0] : undefined);
+
 		return {
 			success: true,
-			outputPath: finalOutputPath,
-			outputPaths: gridResult.imagePaths,
+			outputPath: resolvedOutputPath,
+			outputPaths: imagePaths,
 			duration: (Date.now() - startTime) / 1000,
 		};
 	}
@@ -862,9 +870,12 @@ export function createProgressReporter(options: {
 
 	return (progress) => {
 		if (options.quiet) return;
+		// In --json mode, only the final result should go to stdout.
+		// Progress events are suppressed (use --stream for JSONL events).
+		if (options.json) return;
 
-		if (options.json || !isTTY) {
-			console.log(JSON.stringify({ type: "progress", ...progress }));
+		if (!isTTY) {
+			console.error(JSON.stringify({ type: "progress", ...progress }));
 		} else {
 			const bar = renderProgressBar(progress.percent, 30);
 			process.stdout.write(`\r${bar} ${progress.message}`);
