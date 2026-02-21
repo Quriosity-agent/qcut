@@ -13,6 +13,7 @@ import {
 	protocol,
 	net,
 	session,
+	screen,
 	shell,
 	OnHeadersReceivedListenerDetails,
 	HeadersReceivedResponse,
@@ -418,8 +419,8 @@ function createWindow(): void {
 
 	// Create the main window
 	mainWindow = new BrowserWindow({
-		width: 1400,
-		height: 900,
+		width: 1600,
+		height: 1000,
 		icon: path.join(
 			app.isPackaged ? process.resourcesPath : __dirname,
 			process.platform === "darwin"
@@ -439,6 +440,14 @@ function createWindow(): void {
 			webviewTag: false,
 		},
 	});
+
+	// Size window to 80% of the screen and center it
+	const { width: screenW, height: screenH } =
+		screen.getPrimaryDisplay().workAreaSize;
+	const w = Math.round(screenW * 0.8);
+	const h = Math.round(screenH * 0.8);
+	mainWindow.setSize(w, h);
+	mainWindow.center();
 
 	// Load the app
 	const isDev = process.env.NODE_ENV === "development";
