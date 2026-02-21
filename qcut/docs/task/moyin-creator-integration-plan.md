@@ -81,12 +81,22 @@ Rather than running Moyin Creator as a subprocess or iframe, extract its valuabl
 
 ```
 QCut Editor
-├── Media Panel Tabs (existing)
-│   ├── media          → unchanged
-│   ├── ai             → add character consistency, cinematography presets
-│   ├── text2image     → unchanged
-│   ├── stickers       → unchanged
-│   └── moyin (NEW)    → script parser + storyboard + director workflow
+├── Media Panel Tabs (17 existing + 1 new)
+│   ├── Group: "ai-create"
+│   │   ├── ai             → add character consistency, cinematography presets
+│   │   ├── text2image     → unchanged
+│   │   ├── sounds         → unchanged (WIP)
+│   │   └── moyin (NEW)    → script parser + storyboard + director workflow
+│   ├── Group: "edit"
+│   │   ├── Subgroup "ai-edit": word-timeline, upscale, video-edit, segmentation
+│   │   └── Subgroup "manual-edit": text, stickers, effects, filters, transitions
+│   ├── Group: "media"
+│   │   ├── media          → unchanged
+│   │   └── project-folder → unchanged
+│   └── Group: "agents"
+│       ├── nano-edit      → unchanged (Skills)
+│       ├── pty            → unchanged (Terminal)
+│       └── remotion       → unchanged
 │
 ├── Stores (existing)
 │   ├── timeline-store → unchanged (storyboard outputs feed into this)
@@ -166,8 +176,8 @@ Add a new `"moyin"` tab to QCut's media panel with script-to-storyboard workflow
 
 | File | Change |
 |------|--------|
-| `apps/web/src/components/editor/media-panel/store.ts` | Add `"moyin"` to Tab type, add to `"ai-create"` group |
-| `apps/web/src/components/editor/media-panel/index.tsx` | Add moyin view to `viewMap` |
+| `apps/web/src/components/editor/media-panel/store.ts` | Add `"moyin"` to `Tab` union type (line 25), add entry to `tabs` object (line 44), add `"moyin"` to `tabGroups["ai-create"].tabs` array (line 149) |
+| `apps/web/src/components/editor/media-panel/index.tsx` | Import `MoyinView`, add `moyin: <MoyinView />` to `viewMap` (type: `Record<Exclude<Tab, "pty">, React.ReactNode>`) |
 
 ### Phase 3: Enhanced AI Prompts
 
@@ -177,9 +187,9 @@ Wire the prompt compiler and character bible into QCut's existing AI Video gener
 
 | File | Change |
 |------|--------|
-| `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | Add "Use Character Bible" toggle |
-| `apps/web/src/components/editor/media-panel/views/ai/ai-text-tab/` | Integrate cinematography preset selector |
-| AI generation hooks | Pass compiled prompts through prompt-compiler before API call |
+| `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | Add "Use Character Bible" toggle to generation UI |
+| `apps/web/src/components/editor/media-panel/views/ai/tabs/ai-text-tab.tsx` | Integrate cinematography preset selector |
+| `apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts` | Pass compiled prompts through prompt-compiler before API call |
 
 ### Phase 4: Director Workflow (Future)
 
