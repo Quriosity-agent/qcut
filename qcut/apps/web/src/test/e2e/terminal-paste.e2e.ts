@@ -60,9 +60,15 @@ test.describe("Terminal Paste Functionality", () => {
 		const startButton = page.getByTestId("terminal-start-button");
 		const stopButton = page.getByTestId("terminal-stop-button");
 		const restartButton = page.getByTestId("terminal-restart-button");
-		const hasStart = await startButton.isVisible({ timeout: 2000 }).catch(() => false);
-		const hasStop = await stopButton.isVisible({ timeout: 1000 }).catch(() => false);
-		const hasRestart = await restartButton.isVisible({ timeout: 1000 }).catch(() => false);
+		const hasStart = await startButton
+			.isVisible({ timeout: 2000 })
+			.catch(() => false);
+		const hasStop = await stopButton
+			.isVisible({ timeout: 1000 })
+			.catch(() => false);
+		const hasRestart = await restartButton
+			.isVisible({ timeout: 1000 })
+			.catch(() => false);
 		// At least one control button should be visible
 		expect(hasStart || hasStop || hasRestart).toBeTruthy();
 

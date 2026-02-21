@@ -45,7 +45,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		).toBeVisible();
 
 		// Switch to AI panel in media panel
-		await ensurePanelTabActive(page, 'ai-create', 'ai');
+		await ensurePanelTabActive(page, "ai-create", "ai");
 		await page.waitForSelector('[data-testid="ai-features-panel"]', {
 			state: "visible",
 		});
@@ -70,7 +70,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		const initialMediaCount = await mediaItems.count();
 
 		// Ensure we're in AI panel
-		await ensurePanelTabActive(page, 'ai-create', 'ai');
+		await ensurePanelTabActive(page, "ai-create", "ai");
 		await page.waitForSelector('[data-testid="ai-enhancement-panel"]', {
 			state: "visible",
 		});
@@ -328,7 +328,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		});
 
 		// Switch to AI panel
-		await ensurePanelTabActive(page, 'ai-create', 'ai');
+		await ensurePanelTabActive(page, "ai-create", "ai");
 		await page.waitForSelector('[data-testid="ai-enhancement-panel"]', {
 			state: "visible",
 		});
@@ -485,7 +485,7 @@ test.describe("AI Enhancement & Export Integration", () => {
 		});
 
 		// Navigate to AI Images panel (text2image) which contains the upscale feature
-		await ensurePanelTabActive(page, 'ai-create', 'text2image');
+		await ensurePanelTabActive(page, "ai-create", "text2image");
 		await page.click('[data-testid="model-type-upscale"]');
 
 		const panel = page.locator('[data-testid="upscale-panel"]');
