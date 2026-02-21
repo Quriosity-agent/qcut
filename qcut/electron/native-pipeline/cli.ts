@@ -424,7 +424,11 @@ export async function main(
 		if (
 			result.data &&
 			(options.command === "list-models" ||
-				options.command === "vimax:list-models")
+				options.command === "vimax:list-models" ||
+				options.command === "list-video-models" ||
+				options.command === "list-avatar-models" ||
+				options.command === "list-motion-models" ||
+				options.command === "list-speech-models")
 		) {
 			const data = result.data as {
 				models: {

@@ -374,3 +374,82 @@ bun run test
 ```
 
 All 7 checks should pass without any API keys configured.
+
+---
+
+## Test Run Results (2026-02-21)
+
+### Smoke Tests — Sections 1–2
+
+| Test | Result | Notes |
+|------|--------|-------|
+| 1.1 `--version` | Pass | Returns `1.0.0` |
+| 1.1 `--help` | Pass | Full usage text with all 33 commands |
+| 1.2 `list-models` | Pass | 77 models listed |
+| 1.2 `list-models --category` | Pass | Correct filtering (11 text_to_video) |
+| 1.2 `list-models --json` | Pass | Valid JSON with schema_version |
+| 1.3 `list-video-models` | **Fixed** | Was silently empty — CLI renderer didn't match this command name |
+| 1.3 `list-avatar-models` | **Fixed** | Same bug — 13 avatar models now shown |
+| 1.3 `list-motion-models` | **Fixed** | Now prints "0 models" (correct — none registered in registry) |
+| 1.3 `list-speech-models` | **Fixed** | Now prints 3 ElevenLabs models |
+| 1.3 `vimax:list-models` | Pass | 42 models |
+| 1.4 `estimate-cost` (flux_dev) | Pass | $0.003 |
+| 1.4 `estimate-cost` (kling 5s) | Pass | $0.700 |
+| 1.4 `estimate-cost` (veo3 8s) | Pass | $6.000 |
+| 1.5 `check-keys` | Pass | 10 keys listed, all "not set" |
+| 1.6 `init-project --dry-run` | Pass | Lists 11 directories |
+| 1.6 `init-project` (actual) | Pass | Creates full tree |
+| 1.6 `structure-info` | Pass | Correct file counts (all 0) |
+| 1.6 `create-examples` | Pass | 5 YAML files written |
+| 1.7 `vimax:create-registry` | Pass | Registry JSON created |
+| 1.7 `vimax:show-registry` | Pass | Alice + Bob entries displayed |
+| 1.8 `organize-project --dry-run` | Pass | 4 files identified |
+| 1.8 `organize-project` (actual) | Pass | Files sorted into images/videos/audio/text |
+| 2.1 Generate without key | Pass | Clean error: "No API key configured for provider: fal", exit 1 |
+| 2.2 Generate without flags | Pass | Clean error: "Missing --model", exit 1 |
+| 2.3 Unknown command | Pass | "Unknown command: not-a-command", exit 2 |
+| 2.4 Invalid YAML | Pass | YAML parse error with line/column info, no crash |
+
+### Unit Tests — Section 8
+
+- **2816 passed**, 32 failed across 199 test files
+- **All native pipeline CLI tests passed** — zero failures in CLI/pipeline test files
+
+Failed test files (all unrelated to native CLI):
+
+| File | Failures | Root Cause |
+|------|----------|------------|
+| `claude-generate-handler.test.ts` | 12 | Mock setup issue with pipeline execute |
+| `claude-analyze-handler.test.ts` | 2 | resolveVideoPath mock path resolution |
+| `claude-scene-handler.test.ts` | 2 | Gemini API mock mismatch |
+| `claude-transcribe-handler.test.ts` | 1 | FAL storage upload mock (fetch undefined) |
+| `ai-video-migration.test.ts` | 1 | Migration test setup |
+| `stage2-integration.test.ts` | 3 | Real FFmpeg audio extraction (environment-dependent) |
+| `slider.test.tsx` | 4 | Radix UI render in JSDOM |
+| `timeline-toolbar.test.tsx` | 4 | Component render in JSDOM |
+| `markdown-editor-panel.test.tsx` | 3 | Component render in JSDOM |
+
+### Bug Found & Fixed
+
+**Bug**: `list-video-models`, `list-avatar-models`, `list-motion-models`, and `list-speech-models` all returned correct data from the handler but produced no console output. The CLI output renderer in `cli.ts` only checked for `list-models` and `vimax:list-models` command names, silently dropping the result for the 4 specialized variants.
+
+**Fix**: Added the 4 missing command names to the rendering condition in `electron/native-pipeline/cli.ts` (line ~424).
+
+### Sections Not Tested
+
+| Section | Reason |
+|---------|--------|
+| 3. API Key Setup | Requires interactive `set-key` prompt |
+| 4. Live Generation | Requires FAL_KEY |
+| 5. Analysis | Requires GEMINI_API_KEY |
+| 6. Pipeline Execution | Requires FAL_KEY |
+| 7. ViMax | Requires FAL_KEY + LLM key |
+
+### Improvements to Consider
+
+1. **Add `motion_transfer` models to registry** — `list-motion-models` returns 0 results; either register models or remove the command
+2. **Fix 9 unrelated failing test files** — UI component tests (slider, timeline-toolbar, markdown-editor-panel) fail due to JSDOM/Radix incompatibilities; Electron handler tests have stale mocks
+3. **Error message for 2.2 `create-video` missing flags** — currently says "No API key configured" instead of "Missing --text or --image-url"; validation should check required args before attempting API calls
+4. **Add `--json` flag to specialized list commands** — `list-models --json` works but `list-video-models --json` doesn't pass through the JSON flag
+5. **Add exit code assertions to the guide** — document expected exit codes (0 for success, 1 for errors, 2 for unknown command) so automated test scripts can validate
+6. **`setup` command not smoke-tested** — section 1.5 mentions `bun run pipeline setup` but it writes to `~/.qcut/.env` which mutates user home directory; consider a `--dry-run` flag
