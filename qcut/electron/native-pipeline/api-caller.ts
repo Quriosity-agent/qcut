@@ -210,8 +210,14 @@ export async function pollQueueStatus(
 	const apiKey = await getApiKey("fal");
 	const headers = buildHeaders("fal", apiKey);
 
-	const statusUrl = options?.statusUrl ?? `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
-	const resultUrl = options?.responseUrl ?? `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
+	const defaultStatusUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
+	const defaultResultUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
+	const statusUrl = (options?.statusUrl && isTrustedFalUrl(options.statusUrl))
+		? options.statusUrl
+		: defaultStatusUrl;
+	const resultUrl = (options?.responseUrl && isTrustedFalUrl(options.responseUrl))
+		? options.responseUrl
+		: defaultResultUrl;
 
 	let lastPercent = 0;
 

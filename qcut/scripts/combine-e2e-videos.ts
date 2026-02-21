@@ -383,9 +383,17 @@ async function runFfmpeg({
 async function resolveFontFilePath(): Promise<string | undefined> {
 	try {
 		const candidatePaths = [
+			// macOS
 			"/System/Library/Fonts/SFNS.ttf",
 			"/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
 			"/Library/Fonts/Arial.ttf",
+			// Linux
+			"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+			"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+			"/usr/share/fonts/TTF/DejaVuSans.ttf",
+			// Windows
+			"C:\\Windows\\Fonts\\arial.ttf",
+			"C:\\Windows\\Fonts\\segoeui.ttf",
 		];
 		const availabilityChecks = await Promise.all(
 			candidatePaths.map(async (candidatePath) => {
