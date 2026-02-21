@@ -122,10 +122,12 @@ export function setApiKeyProvider(provider: ApiKeyProvider): void {
 	activeKeyProvider = provider;
 }
 
+/** Resolve the API key for a provider using the currently active key provider. */
 async function getApiKey(provider: ProviderName): Promise<string> {
 	return activeKeyProvider(provider);
 }
 
+/** Build provider-specific HTTP headers for outbound API requests. */
 function buildHeaders(
 	provider: ApiCallOptions["provider"],
 	apiKey: string
@@ -150,6 +152,7 @@ function buildHeaders(
 	return headers;
 }
 
+/** Build a fully qualified provider URL from a logical endpoint path. */
 function buildUrl(
 	provider: ApiCallOptions["provider"],
 	endpoint: string
@@ -166,6 +169,11 @@ function buildUrl(
 	}
 }
 
+/**
+ * Execute fetch with retry/backoff for transient failures.
+ *
+ * Retries network errors and 5xx responses up to `retries` attempts.
+ */
 async function fetchWithRetry(
 	url: string,
 	init: RequestInit,
@@ -196,6 +204,11 @@ async function fetchWithRetry(
 	throw lastError ?? new Error("Fetch failed");
 }
 
+/**
+ * Poll FAL queue state until completion, failure, or cancellation.
+ *
+ * Uses only trusted URLs for status/result polling.
+ */
 export async function pollQueueStatus(
 	requestId: string,
 	endpoint: string,
@@ -291,6 +304,7 @@ export async function pollQueueStatus(
 	}
 }
 
+/** Extract a best-effort output URL from known provider response shapes. */
 function extractOutputUrl(data: unknown): string | undefined {
 	if (!data || typeof data !== "object") return;
 	const obj = data as Record<string, unknown>;
@@ -321,6 +335,11 @@ function extractOutputUrl(data: unknown): string | undefined {
 	return;
 }
 
+/**
+ * Call a provider endpoint and normalize the result payload.
+ *
+ * For FAL async endpoints, handles queue submission and polling.
+ */
 export async function callModelApi(
 	options: ApiCallOptions
 ): Promise<ApiCallResult> {
@@ -475,6 +494,11 @@ export async function callModelApi(
 	}
 }
 
+/**
+ * Download an output artifact URL to a local file path.
+ *
+ * Ensures the destination directory exists before streaming bytes.
+ */
 export async function downloadOutput(
 	url: string,
 	outputPath: string

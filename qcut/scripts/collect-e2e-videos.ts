@@ -43,6 +43,7 @@ interface LatestRunMetadata {
 	runDirectoryPath: string;
 }
 
+/** Check whether an unknown error has a matching Node.js errno code. */
 function isErrnoCode({
 	error,
 	code,
@@ -57,12 +58,14 @@ function isErrnoCode({
 	return (error as NodeJS.ErrnoException).code === code;
 }
 
+/** Build a filesystem-safe run directory name from a timestamp (e.g. `run-2026-02-21T10-30-00-000Z`). */
 function createRunDirectoryName({ now }: { now: Date }): string {
 	const isoValue = now.toISOString();
 	const safeIsoValue = isoValue.replaceAll(":", "-").replaceAll(".", "-");
 	return `run-${safeIsoValue}`;
 }
 
+/** Extract a human-readable test label from a Playwright artifact directory name. */
 function buildTestLabel({
 	testArtifactDirectoryName,
 }: {
@@ -93,6 +96,7 @@ function buildTestLabel({
 	}
 }
 
+/** Recursively find all `.webm` and `.mp4` files under a directory. */
 async function findVideoFiles({
 	directoryPath,
 }: {
@@ -129,6 +133,7 @@ async function findVideoFiles({
 	}
 }
 
+/** Convert a nested source path to a flat destination filename by joining segments with `__`. */
 function buildDestinationFileName({
 	sourceRootPath,
 	sourceFilePath,
@@ -140,6 +145,7 @@ function buildDestinationFileName({
 	return relativeSourcePath.split(sep).join("__");
 }
 
+/** Determine pass/fail status by checking for `test-failed-*` marker files in the same directory. */
 async function determineTestStatus({
 	sourceFilePath,
 }: {
@@ -168,6 +174,7 @@ async function determineTestStatus({
 	}
 }
 
+/** Copy video files from raw Playwright output into a flat run directory with manifest entries. */
 async function copyVideosToRunDirectory({
 	sourceRootPath,
 	sourceFilePaths,
@@ -215,6 +222,7 @@ async function copyVideosToRunDirectory({
 	return results.filter((entry): entry is VideoManifestEntry => entry !== null);
 }
 
+/** Write the run manifest and latest-run pointer to disk. */
 async function writeRunMetadata({
 	latestRunMetadata,
 	manifest,
@@ -242,6 +250,7 @@ async function writeRunMetadata({
 	}
 }
 
+/** Main entry: scan raw artifacts, copy videos to a timestamped run folder, and write metadata. */
 async function collectE2EVideos() {
 	try {
 		const videoFilePaths = await findVideoFiles({
