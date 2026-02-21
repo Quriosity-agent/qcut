@@ -3,41 +3,29 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { useMoyinStore } from "@/stores/moyin-store";
 
 // Mock lucide-react icons as simple spans
-vi.mock("lucide-react", () => ({
-	FileTextIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-file-text" {...props} />
-	),
-	UsersIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-users" {...props} />
-	),
-	MapPinIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-map-pin" {...props} />
-	),
-	SparklesIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-sparkles" {...props} />
-	),
-	Loader2: (props: Record<string, unknown>) => (
-		<span data-testid="icon-loader" {...props} />
-	),
-	Trash2Icon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-trash" {...props} />
-	),
-	ArrowLeftIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-arrow-left" {...props} />
-	),
-	ArrowRightIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-arrow-right" {...props} />
-	),
-	UserIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-user" {...props} />
-	),
-	CheckCircle2Icon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-check" {...props} />
-	),
-	RotateCcwIcon: (props: Record<string, unknown>) => (
-		<span data-testid="icon-rotate" {...props} />
-	),
-}));
+vi.mock("lucide-react", () => {
+	const icon = (name: string) => (props: Record<string, unknown>) => (
+		<span data-testid={`icon-${name}`} {...props} />
+	);
+	return {
+		FileTextIcon: icon("file-text"),
+		UsersIcon: icon("users"),
+		MapPinIcon: icon("map-pin"),
+		SparklesIcon: icon("sparkles"),
+		Loader2: icon("loader"),
+		Trash2Icon: icon("trash"),
+		ArrowLeftIcon: icon("arrow-left"),
+		ArrowRightIcon: icon("arrow-right"),
+		UserIcon: icon("user"),
+		CheckCircle2Icon: icon("check-circle"),
+		RotateCcwIcon: icon("rotate"),
+		PlusIcon: icon("plus"),
+		PencilIcon: icon("pencil"),
+		CheckIcon: icon("check"),
+		XIcon: icon("x"),
+		ChevronDown: icon("chevron-down"),
+	};
+});
 
 // Mock UI components to simple HTML elements
 vi.mock("@/components/ui/button", () => ({
@@ -106,6 +94,70 @@ vi.mock("@/components/ui/progress", () => ({
 	Progress: ({ value }: { value: number }) => (
 		<div data-testid="progress" role="progressbar" aria-valuenow={value} />
 	),
+}));
+
+vi.mock("@/components/ui/input", () => ({
+	Input: (props: Record<string, unknown>) => <input {...props} />,
+}));
+
+vi.mock("@/components/ui/label", () => ({
+	Label: ({
+		children,
+		...props
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<label {...props}>{children}</label>
+	),
+}));
+
+vi.mock("@/components/ui/select", () => ({
+	Select: ({ children }: { children: React.ReactNode }) => (
+		<div data-testid="select">{children}</div>
+	),
+	SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	SelectValue: ({ placeholder }: { placeholder?: string }) => (
+		<span>{placeholder}</span>
+	),
+	SelectContent: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	SelectItem: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	SelectGroup: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	SelectLabel: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+}));
+
+vi.mock("@/lib/moyin/presets/visual-styles", () => ({
+	VISUAL_STYLE_PRESETS: [
+		{
+			id: "2d_ghibli",
+			name: "Ghibli",
+			category: "2d",
+			mediaType: "animation",
+			prompt: "ghibli style",
+			negativePrompt: "",
+			description: "Test style",
+		},
+	],
+}));
+
+vi.mock("@/lib/moyin/presets/cinematography-profiles", () => ({
+	CINEMATOGRAPHY_PROFILES: [
+		{
+			id: "classic-cinematic",
+			name: "Classic",
+			emoji: "🎬",
+			referenceFilms: ["Test Film"],
+		},
+	],
 }));
 
 // Mock cn utility
