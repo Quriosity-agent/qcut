@@ -53,16 +53,8 @@ test.describe("Sticker Overlay Testing (Subtask 3A)", () => {
 			await expect(firstSticker).toBeVisible();
 			await expect(firstSticker).toBeEnabled();
 
-			// Click on sticker
+			// Click on sticker and verify it didn't crash
 			await firstSticker.click();
-
-			// Verify sticker is selected (should have different styling)
-			// Note: clicking a sticker may add it to canvas rather than selecting it
-			const isSelected = await firstSticker
-				.getAttribute("aria-pressed")
-				.then((v) => v === "true")
-				.catch(() => false);
-			// Just verify the click didn't crash - selection behavior may vary
 		}
 
 		// 4. Verify panel structure

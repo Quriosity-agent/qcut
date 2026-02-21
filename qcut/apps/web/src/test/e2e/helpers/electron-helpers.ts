@@ -524,20 +524,17 @@ export async function ensurePanelTabActive(
 	const groupButton = page.locator(`[data-testid="group-${groupKey}"]`);
 	if ((await groupButton.count()) > 0) {
 		await groupButton.click();
-		await page.waitForTimeout(300);
 	}
 	// If a subgroup label is specified (e.g., "Manual Edit", "AI Assist"), click it
 	if (subgroupLabel) {
 		const subgroupButton = page.locator(`button:has-text("${subgroupLabel}")`);
 		if ((await subgroupButton.count()) > 0) {
 			await subgroupButton.click();
-			await page.waitForTimeout(300);
 		}
 	}
 	const tab = page.locator(`[data-testid="${tabKey}-panel-tab"]`);
 	if ((await tab.count()) > 0) {
 		await tab.click();
-		await page.waitForTimeout(300);
 	}
 }
 
