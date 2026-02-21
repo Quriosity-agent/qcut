@@ -158,7 +158,7 @@ export function registerAvatarModels(): void {
 		name: "Kling v2.6 Motion Control",
 		provider: "Kuaishou",
 		endpoint: "fal-ai/kling-video/v2.6/standard/motion-control",
-		categories: ["avatar"],
+		categories: ["avatar", "motion_transfer"],
 		description: "Motion transfer from video to image",
 		pricing: { per_second: 0.06 },
 		defaults: { character_orientation: "video", keep_original_sound: true },

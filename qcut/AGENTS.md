@@ -3,6 +3,15 @@
 
 ## Coding Guidelines & Rules
 
+## My Engineering Preferences
+
+> Use these to guide your recommendations:
+
+- **DRY is important** — flag repetition aggressively.
+- **Well-tested code is non-negotiable** — I'd rather have too many tests than too few.
+- **"Engineered enough"** — not under-engineered (fragile, hacky) and not over-engineered (premature abstraction, unnecessary complexity).
+- **Handle more edge cases, not fewer** — thoughtfulness > speed.
+
 ### Comment Guidelines
 
  

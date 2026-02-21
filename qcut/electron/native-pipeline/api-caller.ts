@@ -39,6 +39,7 @@ interface FalQueueResponse {
 	request_id: string;
 	status: string;
 	response_url?: string;
+	status_url?: string;
 }
 
 interface FalStatusResponse {
@@ -49,6 +50,17 @@ interface FalStatusResponse {
 
 const FAL_BASE = "https://queue.fal.run";
 const FAL_STATUS_BASE = "https://queue.fal.run";
+const FAL_TRUSTED_HOSTS = [".fal.run", ".fal.ai"];
+
+/** Validate that a URL belongs to a trusted FAL domain before sending auth headers. */
+function isTrustedFalUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return FAL_TRUSTED_HOSTS.some((host) => parsed.hostname.endsWith(host));
+	} catch {
+		return false;
+	}
+}
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
@@ -110,10 +122,12 @@ export function setApiKeyProvider(provider: ApiKeyProvider): void {
 	activeKeyProvider = provider;
 }
 
+/** Resolve the API key for a provider using the currently active key provider. */
 async function getApiKey(provider: ProviderName): Promise<string> {
 	return activeKeyProvider(provider);
 }
 
+/** Build provider-specific HTTP headers for outbound API requests. */
 function buildHeaders(
 	provider: ApiCallOptions["provider"],
 	apiKey: string
@@ -138,6 +152,7 @@ function buildHeaders(
 	return headers;
 }
 
+/** Build a fully qualified provider URL from a logical endpoint path. */
 function buildUrl(
 	provider: ApiCallOptions["provider"],
 	endpoint: string
@@ -154,6 +169,11 @@ function buildUrl(
 	}
 }
 
+/**
+ * Execute fetch with retry/backoff for transient failures.
+ *
+ * Retries network errors and 5xx responses up to `retries` attempts.
+ */
 async function fetchWithRetry(
 	url: string,
 	init: RequestInit,
@@ -184,20 +204,35 @@ async function fetchWithRetry(
 	throw lastError ?? new Error("Fetch failed");
 }
 
+/**
+ * Poll FAL queue state until completion, failure, or cancellation.
+ *
+ * Uses only trusted URLs for status/result polling.
+ */
 export async function pollQueueStatus(
 	requestId: string,
 	endpoint: string,
 	options?: {
 		onProgress?: (percent: number, message: string) => void;
 		signal?: AbortSignal;
+		statusUrl?: string;
+		responseUrl?: string;
 	}
 ): Promise<ApiCallResult> {
 	const startTime = Date.now();
 	const apiKey = await getApiKey("fal");
 	const headers = buildHeaders("fal", apiKey);
 
-	const statusUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
-	const resultUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
+	const defaultStatusUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}/status`;
+	const defaultResultUrl = `${FAL_STATUS_BASE}/${endpoint}/requests/${requestId}`;
+	const statusUrl =
+		options?.statusUrl && isTrustedFalUrl(options.statusUrl)
+			? options.statusUrl
+			: defaultStatusUrl;
+	const resultUrl =
+		options?.responseUrl && isTrustedFalUrl(options.responseUrl)
+			? options.responseUrl
+			: defaultResultUrl;
 
 	let lastPercent = 0;
 
@@ -225,7 +260,14 @@ export async function pollQueueStatus(
 		const status = (await statusRes.json()) as FalStatusResponse;
 
 		if (status.status === "COMPLETED") {
-			const resultRes = await fetch(resultUrl, {
+			const candidateUrl = status.response_url || resultUrl;
+			const fetchUrl = isTrustedFalUrl(candidateUrl) ? candidateUrl : resultUrl;
+			if (status.response_url && !isTrustedFalUrl(status.response_url)) {
+				console.warn(
+					`[api-caller] Ignoring untrusted response_url in poll: ${status.response_url}`
+				);
+			}
+			const resultRes = await fetch(fetchUrl, {
 				headers,
 				signal: options?.signal,
 			});
@@ -264,6 +306,7 @@ export async function pollQueueStatus(
 	}
 }
 
+/** Extract a best-effort output URL from known provider response shapes. */
 function extractOutputUrl(data: unknown): string | undefined {
 	if (!data || typeof data !== "object") return;
 	const obj = data as Record<string, unknown>;
@@ -294,6 +337,11 @@ function extractOutputUrl(data: unknown): string | undefined {
 	return;
 }
 
+/**
+ * Call a provider endpoint and normalize the result payload.
+ *
+ * For FAL async endpoints, handles queue submission and polling.
+ */
 export async function callModelApi(
 	options: ApiCallOptions
 ): Promise<ApiCallResult> {
@@ -350,10 +398,54 @@ export async function callModelApi(
 
 			const queueData = (await queueRes.json()) as FalQueueResponse;
 
+			// If queue already completed (sync response), extract result directly
+			if (queueData.status === "COMPLETED" && !queueData.request_id) {
+				return {
+					success: true,
+					data: queueData,
+					outputUrl: extractOutputUrl(queueData),
+					duration: (Date.now() - startTime) / 1000,
+				};
+			}
+
 			if (queueData.request_id) {
+				// If already completed with request_id, fetch result directly
+				if (queueData.status === "COMPLETED" && queueData.response_url) {
+					if (isTrustedFalUrl(queueData.response_url)) {
+						try {
+							const resultRes = await fetch(queueData.response_url, {
+								headers,
+								signal: combinedSignal,
+							});
+							if (resultRes.ok) {
+								const data = await resultRes.json();
+								return {
+									success: true,
+									data,
+									outputUrl: extractOutputUrl(data),
+									duration: (Date.now() - startTime) / 1000,
+								};
+							}
+							console.warn(
+								`[api-caller] response_url fetch failed (${resultRes.status}), falling back to polling`
+							);
+						} catch (fetchErr) {
+							console.warn(
+								`[api-caller] response_url fetch error: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}, falling back to polling`
+							);
+						}
+					} else {
+						console.warn(
+							`[api-caller] Skipping untrusted response_url: ${queueData.response_url}`
+						);
+					}
+				}
+
 				return pollQueueStatus(queueData.request_id, endpoint, {
 					onProgress: options.onProgress,
 					signal: combinedSignal,
+					statusUrl: queueData.status_url,
+					responseUrl: queueData.response_url,
 				});
 			}
 
@@ -404,6 +496,11 @@ export async function callModelApi(
 	}
 }
 
+/**
+ * Download an output artifact URL to a local file path.
+ *
+ * Ensures the destination directory exists before streaming bytes.
+ */
 export async function downloadOutput(
 	url: string,
 	outputPath: string

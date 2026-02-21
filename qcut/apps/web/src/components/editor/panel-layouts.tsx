@@ -63,7 +63,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 			>
 				<ResizablePanelGroup
 					orientation="horizontal"
-					className="h-full w-full px-2"
+					className="h-full w-full px-1"
 				>
 					<ResizablePanel
 						defaultSize={defaults.tools}
@@ -107,7 +107,7 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 				minSize="15%"
 				maxSize="70%"
 				onResize={(size) => setTimeline(size.asPercentage)}
-				className="min-h-0 px-2 pb-2"
+				className="min-h-0 px-1 pb-1"
 			>
 				<Timeline />
 			</ResizablePanel>
@@ -180,7 +180,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 					>
 						<ResizablePanelGroup
 							orientation="horizontal"
-							className="h-full w-full px-2"
+							className="h-full w-full px-1"
 						>
 							<ResizablePanel
 								defaultSize={defaults.preview}
@@ -216,7 +216,7 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 						minSize="15%"
 						maxSize="70%"
 						onResize={(size) => setTimeline(size.asPercentage)}
-						className="min-h-0 px-2 pb-2"
+						className="min-h-0 px-1 pb-1"
 					>
 						<Timeline />
 					</ResizablePanel>

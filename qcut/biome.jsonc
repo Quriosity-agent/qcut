@@ -28,7 +28,13 @@
 				"docs/completed/**",
 				"**/routeTree.gen.ts",
 				".agents/**",
-				".claude/**"
+				".claude/**",
+				".turbo/**",
+				".tmp/**",
+				"output/**",
+				"dist-electron/**",
+				"dist-packager/**",
+				"**/test-output/**"
 			],
 			"linter": {
 				"enabled": false

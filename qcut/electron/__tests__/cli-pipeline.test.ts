@@ -492,7 +492,7 @@ describe("CLI pipeline", () => {
 			consoleSpy.mockRestore();
 		});
 
-		it("produces JSON output in json mode", () => {
+		it("suppresses progress output in json mode", () => {
 			const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 			const reporter = createProgressReporter({ json: true, quiet: false });
 			reporter({
@@ -501,12 +501,9 @@ describe("CLI pipeline", () => {
 				message: "Working...",
 				model: "test",
 			});
-			expect(consoleSpy).toHaveBeenCalledTimes(1);
-			const output = consoleSpy.mock.calls[0][0] as string;
-			const parsed = JSON.parse(output);
-			expect(parsed.type).toBe("progress");
-			expect(parsed.percent).toBe(50);
-			expect(parsed.model).toBe("test");
+			// In --json mode, progress is suppressed so only the final
+			// result JSON goes to stdout (use --stream for JSONL events)
+			expect(consoleSpy).toHaveBeenCalledTimes(0);
 			consoleSpy.mockRestore();
 		});
 

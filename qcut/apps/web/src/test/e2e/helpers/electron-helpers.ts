@@ -6,14 +6,106 @@
  */
 
 import { test as base, Page } from "@playwright/test";
+import { mkdir, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { ElectronApplication, _electron as electron } from "playwright";
 import { resolve as pathResolve } from "path";
+import ffmpegStaticPath from "ffmpeg-static";
 
 /**
  * Resolve media fixture paths relative to the project root
  */
 const mediaPath = (file: string) =>
 	pathResolve(process.cwd(), "apps/web/src/test/e2e/fixtures/media", file);
+
+const SCREENSHOT_VIDEO_FPS = 2;
+const SCREENSHOT_CAPTURE_INTERVAL_MS = 500;
+
+function waitForDuration({
+	durationMs,
+}: {
+	durationMs: number;
+}): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, durationMs);
+	});
+}
+
+async function buildVideoFromScreenshotFrames({
+	frameDirectoryPath,
+	outputVideoPath,
+	fps,
+}: {
+	frameDirectoryPath: string;
+	outputVideoPath: string;
+	fps: number;
+}): Promise<boolean> {
+	try {
+		if (!ffmpegStaticPath) {
+			console.warn(
+				"⚠️  ffmpeg-static path unavailable; skipping screenshot video encoding"
+			);
+			return false;
+		}
+
+		const inputPatternPath = pathResolve(frameDirectoryPath, "frame-%06d.png");
+		const ffmpegArgs = [
+			"-y",
+			"-hide_banner",
+			"-loglevel",
+			"error",
+			"-framerate",
+			String(fps),
+			"-i",
+			inputPatternPath,
+			"-c:v",
+			"libx264",
+			"-pix_fmt",
+			"yuv420p",
+			"-movflags",
+			"+faststart",
+			outputVideoPath,
+		];
+
+		const stderrLines: Array<string> = [];
+
+		await new Promise<void>((resolve, reject) => {
+			const ffmpegProcess = spawn(ffmpegStaticPath, ffmpegArgs, {
+				stdio: ["ignore", "ignore", "pipe"],
+			});
+
+			ffmpegProcess.stderr.on("data", (chunk: Buffer) => {
+				stderrLines.push(chunk.toString());
+			});
+
+			ffmpegProcess.on("error", (error) => {
+				reject(error);
+			});
+
+			ffmpegProcess.on("close", (exitCode) => {
+				if (exitCode === 0) {
+					resolve();
+					return;
+				}
+
+				reject(
+					new Error(
+						`ffmpeg exited with code ${exitCode ?? -1}: ${stderrLines.join("").trim()}`
+					)
+				);
+			});
+		});
+
+		return true;
+	} catch (error) {
+		console.warn(
+			`⚠️  Failed to encode screenshot frames into video: ${
+				error instanceof Error ? error.message : String(error)
+			}`
+		);
+		return false;
+	}
+}
 
 /**
  * Electron-specific test fixtures that extend Playwright's base fixtures
@@ -207,8 +299,12 @@ export const test = base.extend<ElectronFixtures>({
 		await electronApp.close();
 	},
 
-	page: async ({ electronApp }, use) => {
+	page: async ({ electronApp }, use, testInfo) => {
 		const page = await electronApp.firstWindow();
+		let frameCaptureLoopPromise: Promise<void> | null = null;
+		let frameCaptureActive = false;
+		let frameDirectoryPath: string | null = null;
+		let frameCount = 0;
 
 		// Enable console log capture from renderer process
 		page.on("console", (msg) => {
@@ -276,10 +372,88 @@ export const test = base.extend<ElectronFixtures>({
 		// Navigate to projects page for E2E testing
 		await navigateToProjects(page);
 
-		await use(page);
+		try {
+			frameDirectoryPath = testInfo.outputPath("screen-recording-frames");
+			await mkdir(frameDirectoryPath, { recursive: true });
+			frameCaptureActive = true;
 
-		// Clean up after test completes to ensure next test starts fresh
-		await cleanupDatabase(page);
+			frameCaptureLoopPromise = (async () => {
+				while (frameCaptureActive) {
+					try {
+						if (page.isClosed()) {
+							break;
+						}
+
+						const frameFileName = `frame-${String(frameCount).padStart(6, "0")}.png`;
+						const framePath = pathResolve(frameDirectoryPath!, frameFileName);
+						await page.screenshot({
+							path: framePath,
+							animations: "disabled",
+						});
+						frameCount += 1;
+					} catch (error) {
+						if (!page.isClosed()) {
+							console.warn(
+								`⚠️  Screenshot frame capture failed: ${
+									error instanceof Error ? error.message : String(error)
+								}`
+							);
+						}
+					}
+
+					await waitForDuration({
+						durationMs: SCREENSHOT_CAPTURE_INTERVAL_MS,
+					});
+				}
+			})();
+		} catch (error) {
+			console.warn(
+				`⚠️  Failed to initialize per-test screenshot capture: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		}
+
+		try {
+			await use(page);
+		} finally {
+			frameCaptureActive = false;
+
+			if (frameCaptureLoopPromise) {
+				try {
+					await frameCaptureLoopPromise;
+				} catch (error) {
+					console.warn(
+						`⚠️  Failed while waiting for screenshot capture loop: ${
+							error instanceof Error ? error.message : String(error)
+						}`
+					);
+				}
+			}
+
+			if (frameDirectoryPath && frameCount > 0) {
+				await buildVideoFromScreenshotFrames({
+					frameDirectoryPath,
+					outputVideoPath: testInfo.outputPath("screen-recording.mp4"),
+					fps: SCREENSHOT_VIDEO_FPS,
+				});
+			}
+
+			if (frameDirectoryPath) {
+				try {
+					await rm(frameDirectoryPath, { recursive: true, force: true });
+				} catch (error) {
+					console.warn(
+						`⚠️  Failed to remove temporary screenshot frames: ${
+							error instanceof Error ? error.message : String(error)
+						}`
+					);
+				}
+			}
+
+			// Clean up after test completes to ensure next test starts fresh
+			await cleanupDatabase(page);
+		}
 	},
 });
 

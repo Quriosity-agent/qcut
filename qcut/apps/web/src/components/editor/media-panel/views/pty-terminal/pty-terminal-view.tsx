@@ -111,7 +111,10 @@ export function PtyTerminalView() {
 	]);
 
 	return (
-		<div className="flex flex-col h-full" data-testid="pty-terminal-view">
+		<div
+			className="flex flex-col h-full w-full min-w-0"
+			data-testid="pty-terminal-view"
+		>
 			{/* Header Controls */}
 			<div className="flex items-center justify-between p-2 border-b bg-muted/30">
 				<div className="flex items-center gap-3">

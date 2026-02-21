@@ -14,7 +14,7 @@ import { PipelineExecutor } from "./executor.js";
 import type { PipelineStep } from "./executor.js";
 import { ParallelPipelineExecutor } from "./parallel-executor.js";
 import { parseChainConfig, validateChain } from "./chain-parser.js";
-import { estimatePipelineCost } from "./cost-calculator.js";
+import { estimateCost, estimatePipelineCost } from "./cost-calculator.js";
 import {
 	downloadOutput,
 	setApiKeyProvider,
@@ -285,15 +285,49 @@ export class CLIPipelineRunner {
 		onProgress: ProgressFn
 	): Promise<CLIResult> {
 		if (!options.model) {
-			return {
-				success: false,
-				error: "Missing --model. Run --help for usage.",
-			};
+			if (options.command === "generate-image") {
+				options.model = "nano_banana_pro";
+			} else {
+				return {
+					success: false,
+					error: "Missing --model. Run --help for usage.",
+				};
+			}
 		}
 		if (!ModelRegistry.has(options.model)) {
 			return {
 				success: false,
 				error: `Unknown model '${options.model}'. Run list-models to see available models.`,
+			};
+		}
+
+		// Validate required input before attempting API calls
+		const hasTextInput = !!options.text;
+		const hasImageInput = !!options.imageUrl;
+		const hasAudioInput = !!options.audioUrl;
+
+		if (options.command === "generate-image" && !hasTextInput) {
+			return {
+				success: false,
+				error: "Missing --text/-t (prompt for image generation).",
+			};
+		}
+		if (options.command === "create-video" && !hasTextInput && !hasImageInput) {
+			return {
+				success: false,
+				error:
+					"Missing --text/-t or --image-url (need a prompt or image input).",
+			};
+		}
+		if (
+			options.command === "generate-avatar" &&
+			!hasTextInput &&
+			!hasAudioInput
+		) {
+			return {
+				success: false,
+				error:
+					"Missing --text/-t or --audio-url (need a script or audio input).",
 			};
 		}
 
@@ -378,11 +412,14 @@ export class CLIPipelineRunner {
 			model: options.model,
 		});
 
+		// Use executor cost if available, otherwise estimate from model registry
+		const cost = result.cost ?? estimateCost(options.model!, params).totalCost;
+
 		return {
 			success: true,
 			outputPath: result.outputPath,
 			outputPaths: result.outputPath ? [result.outputPath] : undefined,
-			cost: result.cost,
+			cost,
 			duration: (Date.now() - startTime) / 1000,
 		};
 	}
@@ -712,10 +749,14 @@ export class CLIPipelineRunner {
 
 		onProgress({ stage: "complete", percent: 100, message: "Done", model });
 
+		// If no grid composite path (e.g. sharp not available), use first individual image
+		const resolvedOutputPath =
+			finalOutputPath || (imagePaths.length > 0 ? imagePaths[0] : undefined);
+
 		return {
 			success: true,
-			outputPath: finalOutputPath,
-			outputPaths: gridResult.imagePaths,
+			outputPath: resolvedOutputPath,
+			outputPaths: imagePaths,
 			duration: (Date.now() - startTime) / 1000,
 		};
 	}
@@ -830,15 +871,18 @@ export function createProgressReporter(options: {
 
 	return (progress) => {
 		if (options.quiet) return;
+		// In --json mode, only the final result should go to stdout.
+		// Progress events are suppressed (use --stream for JSONL events).
+		if (options.json) return;
 
-		if (options.json || !isTTY) {
-			console.log(JSON.stringify({ type: "progress", ...progress }));
-		} else {
+		if (isTTY) {
 			const bar = renderProgressBar(progress.percent, 30);
 			process.stdout.write(`\r${bar} ${progress.message}`);
 			if (progress.stage === "complete") {
 				process.stdout.write("\n");
 			}
+		} else {
+			console.error(JSON.stringify({ type: "progress", ...progress }));
 		}
 	};
 }

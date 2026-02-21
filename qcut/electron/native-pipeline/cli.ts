@@ -134,7 +134,7 @@ Environment Variables:
   ELEVENLABS_API_KEY  ElevenLabs API key
 
 Examples:
-  qcut-pipeline generate-image -m flux_dev -t "A cat in space"
+  qcut-pipeline generate-image -t "A cat in space"  (default model: nano_banana_pro)
   qcut-pipeline create-video -m kling_2_6_pro -t "Ocean waves" -d 5s
   qcut-pipeline list-models --category text_to_video
   qcut-pipeline estimate-cost -m veo3 -d 8s
@@ -424,7 +424,11 @@ export async function main(
 		if (
 			result.data &&
 			(options.command === "list-models" ||
-				options.command === "vimax:list-models")
+				options.command === "vimax:list-models" ||
+				options.command === "list-video-models" ||
+				options.command === "list-avatar-models" ||
+				options.command === "list-motion-models" ||
+				options.command === "list-speech-models")
 		) {
 			const data = result.data as {
 				models: {
@@ -522,8 +526,17 @@ export async function main(
 			}
 		}
 		if (result.data && options.command === "organize-project") {
-			const data = result.data as { moved: number; message: string };
+			const data = result.data as {
+				moved: number;
+				message: string;
+				files?: { from: string; to: string; category: string }[];
+			};
 			console.log(`\n${data.message}`);
+			if (data.files && data.files.length > 0) {
+				for (const f of data.files) {
+					console.log(`  ${f.from} → ${f.category}/`);
+				}
+			}
 		}
 		if (result.data && options.command === "structure-info") {
 			const data = result.data as {
