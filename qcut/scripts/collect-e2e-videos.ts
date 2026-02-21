@@ -1,5 +1,5 @@
-import { copyFile, mkdir, readdir } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { copyFile, mkdir, readdir, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative, sep } from "node:path";
 
 const PATHS = {
 	rawArtifactsRoot: join(
@@ -10,6 +10,38 @@ const PATHS = {
 	),
 	videoArtifactsRoot: join(process.cwd(), "docs", "completed", "e2e-videos"),
 } as const;
+
+const FILE_NAMES = {
+	combinedVideo: "combined-e2e-run.mp4",
+	latestRun: "latest-run.json",
+	manifest: "manifest.json",
+} as const;
+
+interface VideoManifestEntry {
+	copiedFileName: string;
+	copiedFilePath: string;
+	sourceRelativePath: string;
+	status: "passed" | "failed";
+	testArtifactDirectoryName: string;
+	testLabel: string;
+}
+
+interface VideoManifest {
+	createdAt: string;
+	rawArtifactsRoot: string;
+	runDirectoryName: string;
+	runDirectoryPath: string;
+	videoCount: number;
+	videos: Array<VideoManifestEntry>;
+}
+
+interface LatestRunMetadata {
+	combinedVideoPath: string;
+	createdAt: string;
+	manifestPath: string;
+	runDirectoryName: string;
+	runDirectoryPath: string;
+}
 
 function isErrnoCode({
 	error,
@@ -29,6 +61,36 @@ function createRunDirectoryName({ now }: { now: Date }): string {
 	const isoValue = now.toISOString();
 	const safeIsoValue = isoValue.replaceAll(":", "-").replaceAll(".", "-");
 	return `run-${safeIsoValue}`;
+}
+
+function buildTestLabel({
+	testArtifactDirectoryName,
+}: {
+	testArtifactDirectoryName: string;
+}): string {
+	try {
+		const withoutRuntimeSuffix = testArtifactDirectoryName.replace(
+			/-electron$/,
+			""
+		);
+		const parsedLabelMatch = withoutRuntimeSuffix.match(
+			/^(.*)-([a-f0-9]{5})-(.+)$/i
+		);
+		const rawLabel = parsedLabelMatch?.[3] ?? withoutRuntimeSuffix;
+		const normalizedLabel = rawLabel.replaceAll("-", " ").trim();
+
+		if (normalizedLabel.length > 0) {
+			return normalizedLabel;
+		}
+
+		return withoutRuntimeSuffix;
+	} catch (error) {
+		if (error) {
+			return testArtifactDirectoryName;
+		}
+
+		return testArtifactDirectoryName;
+	}
 }
 
 async function findVideoFiles({
@@ -75,8 +137,35 @@ function buildDestinationFileName({
 	sourceFilePath: string;
 }): string {
 	const relativeSourcePath = relative(sourceRootPath, sourceFilePath);
-	// Flatten nested test artifact paths while keeping file names deterministic.
 	return relativeSourcePath.split(sep).join("__");
+}
+
+async function determineTestStatus({
+	sourceFilePath,
+}: {
+	sourceFilePath: string;
+}): Promise<"passed" | "failed"> {
+	try {
+		const sourceDirectoryPath = dirname(sourceFilePath);
+		const siblingEntries = await readdir(sourceDirectoryPath, {
+			withFileTypes: true,
+		});
+		const hasFailedMarker = siblingEntries.some((entry) => {
+			if (!entry.isFile()) {
+				return false;
+			}
+
+			return /^test-failed-\d+\./.test(entry.name);
+		});
+
+		return hasFailedMarker ? "failed" : "passed";
+	} catch (error) {
+		if (isErrnoCode({ error, code: "ENOENT" })) {
+			return "passed";
+		}
+
+		throw error;
+	}
 }
 
 async function copyVideosToRunDirectory({
@@ -87,8 +176,9 @@ async function copyVideosToRunDirectory({
 	sourceRootPath: string;
 	sourceFilePaths: Array<string>;
 	destinationRunDirectoryPath: string;
-}): Promise<Array<string>> {
+}): Promise<Array<VideoManifestEntry>> {
 	const copyOperations = sourceFilePaths.map(async (sourceFilePath) => {
+		const sourceRelativePath = relative(sourceRootPath, sourceFilePath);
 		const destinationFileName = buildDestinationFileName({
 			sourceRootPath,
 			sourceFilePath,
@@ -97,12 +187,51 @@ async function copyVideosToRunDirectory({
 			destinationRunDirectoryPath,
 			destinationFileName
 		);
+		const relativePathSegments = sourceRelativePath.split(sep);
+		const testArtifactDirectoryName = basename(relativePathSegments[0] ?? "");
+		const status = await determineTestStatus({ sourceFilePath });
+		const testLabel = buildTestLabel({ testArtifactDirectoryName });
 
 		await copyFile(sourceFilePath, destinationFilePath);
-		return destinationFilePath;
+
+		return {
+			copiedFileName: destinationFileName,
+			copiedFilePath: destinationFilePath,
+			sourceRelativePath,
+			status,
+			testArtifactDirectoryName,
+			testLabel,
+		} satisfies VideoManifestEntry;
 	});
 
 	return Promise.all(copyOperations);
+}
+
+async function writeRunMetadata({
+	latestRunMetadata,
+	manifest,
+}: {
+	latestRunMetadata: LatestRunMetadata;
+	manifest: VideoManifest;
+}): Promise<void> {
+	try {
+		const manifestPath = join(manifest.runDirectoryPath, FILE_NAMES.manifest);
+		const latestRunMetadataPath = join(
+			PATHS.videoArtifactsRoot,
+			FILE_NAMES.latestRun
+		);
+
+		await Promise.all([
+			writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8"),
+			writeFile(
+				latestRunMetadataPath,
+				JSON.stringify(latestRunMetadata, null, 2),
+				"utf8"
+			),
+		]);
+	} catch (error) {
+		throw error;
+	}
 }
 
 async function collectE2EVideos() {
@@ -118,7 +247,11 @@ async function collectE2EVideos() {
 			return;
 		}
 
-		const runDirectoryName = createRunDirectoryName({ now: new Date() });
+		const sortedVideoFilePaths = [...videoFilePaths].sort((left, right) =>
+			left.localeCompare(right)
+		);
+		const now = new Date();
+		const runDirectoryName = createRunDirectoryName({ now });
 		const destinationRunDirectoryPath = join(
 			PATHS.videoArtifactsRoot,
 			runDirectoryName
@@ -126,15 +259,41 @@ async function collectE2EVideos() {
 
 		await mkdir(destinationRunDirectoryPath, { recursive: true });
 
-		const copiedVideoPaths = await copyVideosToRunDirectory({
+		const copiedVideoEntries = await copyVideosToRunDirectory({
 			sourceRootPath: PATHS.rawArtifactsRoot,
-			sourceFilePaths: videoFilePaths,
+			sourceFilePaths: sortedVideoFilePaths,
 			destinationRunDirectoryPath,
+		});
+		const createdAt = new Date().toISOString();
+		const manifestPath = join(destinationRunDirectoryPath, FILE_NAMES.manifest);
+		const manifest: VideoManifest = {
+			createdAt,
+			rawArtifactsRoot: PATHS.rawArtifactsRoot,
+			runDirectoryName,
+			runDirectoryPath: destinationRunDirectoryPath,
+			videoCount: copiedVideoEntries.length,
+			videos: copiedVideoEntries,
+		};
+		const latestRunMetadata: LatestRunMetadata = {
+			combinedVideoPath: join(
+				destinationRunDirectoryPath,
+				FILE_NAMES.combinedVideo
+			),
+			createdAt,
+			manifestPath,
+			runDirectoryName,
+			runDirectoryPath: destinationRunDirectoryPath,
+		};
+
+		await writeRunMetadata({
+			latestRunMetadata,
+			manifest,
 		});
 
 		process.stdout.write(
-			`Copied ${copiedVideoPaths.length} E2E video file(s) to ${destinationRunDirectoryPath}\n`
+			`Copied ${copiedVideoEntries.length} E2E video file(s) to ${destinationRunDirectoryPath}\n`
 		);
+		process.stdout.write(`Wrote run manifest to ${manifestPath}\n`);
 	} catch (error) {
 		process.stderr.write(
 			`collect-e2e-videos failed: ${

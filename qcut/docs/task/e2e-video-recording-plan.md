@@ -1,149 +1,174 @@
-# E2E Video Recording Plan
+# E2E Testing & Video Recording Guide
 
-**Date:** 2026-02-21  
-**Owner:** QA / Platform
+Run Playwright E2E tests against the Electron app and produce video recordings of every test.
 
-## Goal
+## Prerequisites
 
-Record video artifacts for every Playwright E2E execution and keep generated video files out of git.
+```bash
+# 1. Build the app (tests launch from dist/)
+bun run build
 
-## Context From `e2e-test-plan.md`
+# 2. Verify Electron starts
+bun run electron
+# Close the app after it launches successfully
+```
 
-- E2E framework is Playwright + Electron.
-- Test root is `apps/web/src/test/e2e/`.
-- Current main command is `bun run test:e2e`.
-- Current config is `video: "retain-on-failure"` in `playwright.config.ts`.
-- Latest run summary in `docs/task/e2e-test-plan.md` is stable, so this change should not alter test logic, only artifact behavior.
+## Quick Start
 
-## Scope
+```bash
+# Run all E2E tests with video recording + combined highlight reel
+bun run test:e2e:record
 
-This implementation covers all files matching `apps/web/src/test/e2e/**/*.e2e.ts`, including workflow, overlays, AI, terminal, remotion, sync, and debug E2E files documented in `docs/task/e2e-test-plan.md`.
+# Run a single test file
+bun run test:e2e:record -- apps/web/src/test/e2e/simple-navigation.e2e.ts
 
-## Detailed Implementation
+# Run tests matching a keyword
+bun run test:e2e:record -- --grep "navigation"
+```
 
-### 1) Always record video for all E2E tests
+## Commands
+
+| Command | What it does |
+|---------|-------------|
+| `bun run test:e2e` | Run tests only (videos saved in raw output) |
+| `bun run test:e2e:record` | Run tests + collect videos + combine into one MP4 |
+| `bun run test:e2e:combine` | Re-combine videos from an existing run |
+| `bun run test:e2e:ui` | Open Playwright's interactive UI mode |
+| `bun run test:e2e:headed` | Run tests in a visible browser window |
+| `bun run test:e2e:workflow` | Run only the project-workflow tests |
+
+## How `test:e2e:record` Works
+
+The command runs three steps in sequence:
+
+1. **Playwright tests** — Executes all `*.e2e.ts` files against the Electron app. Each test is recorded as a `.webm` video.
+2. **Video collector** (`scripts/collect-e2e-videos.ts`) — Copies `.webm`/`.mp4` files from Playwright's raw output into a timestamped run folder under `docs/completed/e2e-videos/run-<timestamp>/`. Generates a `manifest.json` listing every video with its test name and pass/fail status.
+3. **Video combiner** (`scripts/combine-e2e-videos.ts`) — Reads the manifest and stitches all recordings into a single combined MP4 highlight reel using FFmpeg. Each clip gets an intro card showing the test name and status.
+
+## Output Structure
+
+```
+docs/completed/
+├── test-results-raw/        # Playwright raw artifacts (gitignored)
+├── test-results/             # HTML report (gitignored)
+└── e2e-videos/               # Video recordings (gitignored)
+    ├── latest-run.json       # Pointer to most recent run
+    └── run-2026-02-21T10-30-00-000Z/
+        ├── manifest.json     # Test metadata + video paths
+        ├── test-1-simple-navigation--passed.webm
+        ├── test-2-editor-navigation--failed.webm
+        └── combined.mp4      # All tests stitched together
+```
+
+All output folders are gitignored — nothing gets committed.
+
+## Test Files
+
+22 test files in `apps/web/src/test/e2e/`:
+
+| File | Coverage |
+|------|----------|
+| `simple-navigation.e2e.ts` | Basic app launch and navigation |
+| `editor-navigation.e2e.ts` | Editor-specific navigation |
+| `project-workflow-part1.e2e.ts` | Project creation, media import |
+| `project-workflow-part2.e2e.ts` | Timeline operations |
+| `project-workflow-part3.e2e.ts` | Export, persistence |
+| `multi-media-management-part1.e2e.ts` | Multiple media import |
+| `multi-media-management-part2.e2e.ts` | Multi-media timeline |
+| `ai-enhancement-export-integration.e2e.ts` | AI video enhancement |
+| `ai-transcription-caption-generation.e2e.ts` | AI transcription/captions |
+| `sticker-overlay-testing.e2e.ts` | Sticker overlays |
+| `sticker-overlay-export.e2e.ts` | Sticker overlay export |
+| `text-overlay-testing.e2e.ts` | Text overlays |
+| `auto-save-export-file-management.e2e.ts` | Auto-save |
+| `file-operations-storage-management.e2e.ts` | File operations |
+| `audio-video-simultaneous-export.e2e.ts` | Audio/video export |
+| `project-folder-sync.e2e.ts` | Project folder sync |
+| `remotion-folder-import.e2e.ts` | Remotion folder import |
+| `remotion-panel-stability.e2e.ts` | Remotion panel stability |
+| `terminal-paste.e2e.ts` | Terminal paste |
+| `timeline-duration-limit.e2e.ts` | Timeline duration limits |
+| `debug-projectid.e2e.ts` | Debug/utility |
+
+## Configuration
 
 **File:** `playwright.config.ts`
 
-- Update Playwright `use.video` from:
-  - `"retain-on-failure"`
-- To:
-  - `"on"`
+| Setting | Value | Notes |
+|---------|-------|-------|
+| `video` | `"on"` | Record every test, pass or fail |
+| `workers` | `1` | Sequential — Electron uses a fixed port |
+| `screenshot` | `"only-on-failure"` | Captures on failure only |
+| `trace` | `"on-first-retry"` | Trace on retry (CI has 2 retries) |
+| `timeout` | `60000` | 60s per test |
+| `expect.timeout` | `10000` | 10s per assertion |
 
-Keep these unchanged:
-- `workers: 1`
-- `fullyParallel: false`
-- `trace: "on-first-retry"`
-- `screenshot: "only-on-failure"`
-- `testDir`, `testMatch`, and `testIgnore`
+## Combiner Options
 
-This keeps behavior stable while only changing recording policy.
+Re-combine a previous run or customize the output:
 
-### 2) Route videos to a dedicated folder
+```bash
+# Combine from a specific run directory
+bun run test:e2e:combine -- --run-dir docs/completed/e2e-videos/run-2026-02-21T10-30-00-000Z
 
-Playwright stores videos in the artifact output tree (`outputDir`). To satisfy the dedicated folder requirement, add a post-run collector.
+# Custom output path
+bun run test:e2e:combine -- --output ./my-highlight-reel.mp4
 
-**New file:** `scripts/collect-e2e-videos.ts`
+# Adjust intro card durations
+bun run test:e2e:combine -- --intro-seconds 3 --failed-seconds 5
+```
 
-Implementation details:
-- Recursively scan `docs/completed/test-results-raw/` for `*.webm`.
-- Create destination `docs/completed/e2e-videos/<run-timestamp>/`.
-- Move or copy videos preserving unique test-based names.
-- Wrap filesystem operations in `try-catch`.
-- Exit with non-zero status only on true collector failure.
+Combined video specs: 1280x720, 30fps, H.264, CRF 20.
 
-### 3) Keep existing default command behavior, add video-focused command
+## Running Individual Steps
 
-**File:** `package.json`
+```bash
+# Just collect videos from the last Playwright run (no re-run)
+bun scripts/collect-e2e-videos.ts
 
-Recommended scripts:
-- Keep `test:e2e` as `playwright test` for compatibility.
-- Add:
-  - `test:e2e:record`: runs Playwright and then runs the collector script.
+# Just combine videos from the latest collected run
+bun scripts/combine-e2e-videos.ts
+```
 
-Example flow:
-1. `playwright test` writes raw artifacts.
-2. `scripts/collect-e2e-videos.ts` moves/copies `.webm` into `docs/completed/e2e-videos/<timestamp>/`.
+## Debugging Failed Tests
 
-### 4) Ignore video folder in git
+```bash
+# Run in headed mode to watch the test live
+bun run test:e2e:headed -- apps/web/src/test/e2e/simple-navigation.e2e.ts
 
-**File:** `.gitignore`
+# Open the Playwright UI for interactive debugging
+bun run test:e2e:ui
 
-Add:
-- `docs/completed/e2e-videos/`
+# Run with Playwright debug mode (step through)
+PWDEBUG=1 bunx playwright test apps/web/src/test/e2e/simple-navigation.e2e.ts
 
-`docs/completed/test-results-raw/` is already ignored, but this explicit rule ensures the dedicated video path is always excluded.
+# View the HTML test report
+bunx playwright show-report docs/completed/test-results
+```
 
-### 5) Update testing documentation
+## Troubleshooting
 
-**File:** `docs/technical/testing/e2e.md`
+**Tests fail to start / port conflict**
+- Ensure no other Electron instance is running. Tests use a fixed port.
+- Kill stray processes: `pkill -f "electron"` then retry.
 
-Update:
-- Config snippet to show `video: "on"`.
-- Add command section for `bun run test:e2e:record`.
-- Add artifact notes for `docs/completed/e2e-videos/`.
+**No videos in output**
+- Check `docs/completed/test-results-raw/` for `.webm` files — Playwright writes there first.
+- Re-run the collector: `bun scripts/collect-e2e-videos.ts`
 
-## Subtasks
+**Combiner fails / no FFmpeg**
+- The combiner requires FFmpeg. Install: `brew install ffmpeg` (macOS) or `apt install ffmpeg` (Linux).
 
-### Subtask 1: Playwright config update
+**Tests timeout**
+- Build may be stale. Re-run `bun run build` before testing.
+- Increase timeout in `playwright.config.ts` if needed for slow machines.
 
-- Edit `playwright.config.ts`.
-- Confirm no non-video setting changes.
+## Key Source Files
 
-### Subtask 2: Video collector script
-
-- Add `scripts/collect-e2e-videos.ts` with robust `try-catch` error handling.
-- Validate path creation and recursive scan logic.
-
-### Subtask 3: Script wiring
-
-- Add `test:e2e:record` to `package.json`.
-- Keep existing scripts untouched unless explicitly requested.
-
-### Subtask 4: Git ignore and docs update
-
-- Add ignore rule in `.gitignore`.
-- Update `docs/technical/testing/e2e.md`.
-
-### Subtask 5: Verification
-
-Run:
-- `bun run test:e2e -- apps/web/src/test/e2e/simple-navigation.e2e.ts`
-- `playwright test apps/web/src/test/e2e/simple-navigation.e2e.ts && bun run scripts/collect-e2e-videos.ts`
-
-Validate:
-- Raw artifacts exist in `docs/completed/test-results-raw/`.
-- Videos exist in `docs/completed/e2e-videos/<timestamp>/`.
-- `git status` does not list files from `docs/completed/e2e-videos/`.
-- E2E pass/fail behavior is unchanged.
-
-## Acceptance Criteria
-
-- All E2E tests record video, not only failed tests.
-- A dedicated `docs/completed/e2e-videos/` folder is produced by the record flow.
-- `docs/completed/e2e-videos/` is ignored by git.
-- Existing E2E test stability and outcomes remain unchanged.
-
-## Risks and Mitigation
-
-- Risk: Increased runtime and disk usage.
-  - Mitigation: Keep `test:e2e` as-is and use `test:e2e:record` when full video artifacts are needed.
-- Risk: Collector script fails after successful tests.
-  - Mitigation: Strict `try-catch` with clear error logs and deterministic exit status.
-- Risk: CI artifact bloat.
-  - Mitigation: Add retention/cleanup in CI workflow if enabled there.
-
-## Implementation Status (2026-02-21)
-
-Implemented changes:
-- `playwright.config.ts`: set `use.video` to `on` for all E2E tests.
-- `scripts/collect-e2e-videos.ts`: added artifact collector to copy `.webm` files from `docs/completed/test-results-raw/` into timestamped runs under `docs/completed/e2e-videos/`.
-- `scripts/run-e2e-record.ts`: added orchestrator script that runs Playwright tests and then runs the collector.
-- `package.json`: added `test:e2e:record` script.
-- `.gitignore`: added `docs/completed/e2e-videos/`.
-- `docs/technical/testing/e2e.md`: updated commands, config snippet, artifact behavior, and paths.
-
-Validation run:
-- `bunx tsc --noEmit -p scripts/tsconfig.json`
-- `bun scripts/collect-e2e-videos.ts`
-- `bun run test:e2e:record -- --list`
+| File | Purpose |
+|------|---------|
+| `playwright.config.ts` | Playwright configuration |
+| `apps/web/src/test/e2e/helpers/electron-helpers.ts` | Shared test utilities |
+| `scripts/collect-e2e-videos.ts` | Video artifact collector |
+| `scripts/combine-e2e-videos.ts` | Video combiner (FFmpeg) |
+| `scripts/run-e2e-record.ts` | Orchestrator (test + collect + combine) |

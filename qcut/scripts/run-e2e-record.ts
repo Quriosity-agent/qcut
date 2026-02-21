@@ -56,6 +56,14 @@ async function runE2ERecordFlow() {
 			args: ["scripts/collect-e2e-videos.ts"],
 			label: "E2E video collector",
 		});
+		const combinerExitCode =
+			collectorExitCode === 0
+				? await runCommand({
+						command: "bun",
+						args: ["scripts/combine-e2e-videos.ts"],
+						label: "E2E video combiner",
+					})
+				: 0;
 
 		if (testExitCode !== 0) {
 			process.exit(testExitCode);
@@ -64,6 +72,11 @@ async function runE2ERecordFlow() {
 
 		if (collectorExitCode !== 0) {
 			process.exit(collectorExitCode);
+			return;
+		}
+
+		if (combinerExitCode !== 0) {
+			process.exit(combinerExitCode);
 		}
 	} catch (error) {
 		process.stderr.write(
