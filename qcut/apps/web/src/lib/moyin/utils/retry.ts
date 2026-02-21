@@ -39,7 +39,7 @@ export function isRateLimitError(error: unknown): boolean {
  */
 export async function retryOperation<T>(
 	operation: () => Promise<T>,
-	options: RetryOptions = {},
+	options: RetryOptions = {}
 ): Promise<T> {
 	const { maxRetries = 3, baseDelay = 2000, onRetry } = options;
 
@@ -57,13 +57,13 @@ export async function retryOperation<T>(
 			}
 
 			if (attempt < maxRetries - 1) {
-				const delay = baseDelay * Math.pow(2, attempt);
+				const delay = baseDelay * 2 ** attempt;
 
 				if (onRetry) {
 					onRetry(attempt + 1, delay, lastError);
 				} else {
 					console.warn(
-						`[Retry] Rate limit hit, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`,
+						`[Retry] Rate limit hit, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`
 					);
 				}
 
@@ -80,7 +80,7 @@ export async function retryOperation<T>(
  */
 export function withRetry<T extends (...args: unknown[]) => Promise<unknown>>(
 	fn: T,
-	options: RetryOptions = {},
+	options: RetryOptions = {}
 ): T {
 	return ((...args: Parameters<T>) =>
 		retryOperation(() => fn(...args), options)) as T;

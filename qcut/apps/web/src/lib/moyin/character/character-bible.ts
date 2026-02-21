@@ -15,7 +15,7 @@ export class CharacterBibleManager {
 
 	/** Add a new character */
 	addCharacter(
-		character: Omit<CharacterBible, "id" | "createdAt" | "updatedAt">,
+		character: Omit<CharacterBible, "id" | "createdAt" | "updatedAt">
 	): CharacterBible {
 		const id = `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 		const now = Date.now();
@@ -34,7 +34,7 @@ export class CharacterBibleManager {
 	/** Update character */
 	updateCharacter(
 		id: string,
-		updates: Partial<CharacterBible>,
+		updates: Partial<CharacterBible>
 	): CharacterBible | null {
 		const existing = this.characters.get(id);
 		if (!existing) return null;
@@ -59,7 +59,7 @@ export class CharacterBibleManager {
 	/** Get all characters for a screenplay */
 	getCharactersForScreenplay(screenplayId: string): CharacterBible[] {
 		return Array.from(this.characters.values()).filter(
-			(c) => c.screenplayId === screenplayId,
+			(c) => c.screenplayId === screenplayId
 		);
 	}
 
@@ -102,7 +102,7 @@ export class CharacterBibleManager {
 	createFromAnalysis(
 		screenplayId: string,
 		analysisResult: Record<string, unknown>,
-		referenceImageUrl?: string,
+		referenceImageUrl?: string
 	): CharacterBible {
 		const referenceImages: ReferenceImage[] = [];
 
@@ -118,8 +118,7 @@ export class CharacterBibleManager {
 		return this.addCharacter({
 			screenplayId,
 			name: (analysisResult.name as string) || "Unknown",
-			type:
-				(analysisResult.type as CharacterBible["type"]) || "other",
+			type: (analysisResult.type as CharacterBible["type"]) || "other",
 			visualTraits: (analysisResult.visualTraits as string) || "",
 			styleTokens: (analysisResult.styleTokens as string[]) || [],
 			colorPalette: (analysisResult.colorPalette as string[]) || [],
@@ -191,7 +190,7 @@ export function generateConsistencyPrompt(character: CharacterBible): string {
  * Useful when analyzing multiple reference images of the same character.
  */
 export function mergeCharacterAnalyses(
-	analyses: Record<string, unknown>[],
+	analyses: Record<string, unknown>[]
 ): Partial<CharacterBible> {
 	if (analyses.length === 0) return {};
 

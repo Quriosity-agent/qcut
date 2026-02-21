@@ -24,7 +24,7 @@ export async function rateLimitedBatch<T, R>(
 	items: T[],
 	operation: (item: T, index: number) => Promise<R>,
 	config: RateLimitConfig = {},
-	onProgress?: (progress: BatchProgress) => void,
+	onProgress?: (progress: BatchProgress) => void
 ): Promise<R[]> {
 	const { delayMs = 3000, delayFirst = false } = config;
 	const results: R[] = [];
@@ -90,7 +90,7 @@ export async function batchProcess<T, R>(
 		itemDelayMs?: number;
 		onBatchProgress?: (batchIndex: number, totalBatches: number) => void;
 		onItemProgress?: (progress: BatchProgress) => void;
-	} = {},
+	} = {}
 ): Promise<R[]> {
 	const {
 		batchSize = 1,
@@ -133,7 +133,7 @@ export async function batchProcess<T, R>(
 			}
 		} else {
 			const batchResults = await Promise.all(
-				batchItems.map((item, i) => operation(item, batchStart + i)),
+				batchItems.map((item, i) => operation(item, batchStart + i))
 			);
 			results.push(...batchResults);
 

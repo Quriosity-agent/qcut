@@ -29,9 +29,32 @@ Port three constant/preset modules from Moyin into QCut as pure data files. Thes
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Port cinematography profiles | Pending | 15 min |
-| 2. Port visual style presets | Pending | 15 min |
-| 3. Port director shot/camera presets | Pending | 15 min |
+| 1. Port cinematography profiles | Done | 15 min |
+| 2. Port visual style presets | Done | 15 min |
+| 3. Port director shot/camera presets | Done | 15 min |
+| 4. Add unit tests | Done | 15 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Port Cinematography Profiles:**
+- Created `apps/web/src/lib/moyin/presets/cinematography-profiles.ts` — 17 profiles across 5 categories
+- Translated all Chinese descriptions/guidance to English
+- Imports camera/lighting types from `@/types/moyin-script`
+- `buildCinematographyGuidance()` generates formatted text for AI system prompts
+
+**Subtask 2 — Port Visual Style Presets:**
+- Created `apps/web/src/lib/moyin/presets/visual-styles.ts` — 48+ style presets across 4 categories
+- Removed `thumbnail` field from `StylePreset` (moyin-specific file paths)
+- All helper functions ported: `getStyleById`, `getStylePrompt`, `getStyleNegativePrompt`, `getStyleName`, `getStylesByCategory`, `getStyleDescription`, `getMediaType`
+
+**Subtask 3 — Port Director Presets:**
+- Created `apps/web/src/lib/moyin/presets/director-presets.ts` — all preset arrays with English labels
+- Created `apps/web/src/lib/moyin/presets/index.ts` — barrel export for all presets
+- Includes: shot sizes, camera angles/movements, lighting, focal lengths, atmospheric effects, emotions, and more
+
+**Subtask 4 — Unit Tests:**
+- Created `apps/web/src/lib/moyin/presets/__tests__/presets.test.ts`
+- Covers: profile counts, required fields, lookup functions, style categories, director preset structure
 
 ---
 

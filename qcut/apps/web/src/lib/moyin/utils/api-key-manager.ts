@@ -76,10 +76,7 @@ export function classifyModelByName(modelName: string): ModelCapability[] {
 	if (/embed/.test(name)) return ["embedding"];
 
 	// Reasoning models
-	if (
-		/[- ](r1|thinking|reasoner|reason)/.test(name) ||
-		/^o[1-9]/.test(name)
-	)
+	if (/[- ](r1|thinking|reasoner|reason)/.test(name) || /^o[1-9]/.test(name))
 		return ["text", "reasoning"];
 
 	// Default: text/chat model
@@ -137,9 +134,7 @@ export class ApiKeyManager {
 		this.keys = parseApiKeys(apiKeyString);
 		// Start with a random index for load balancing
 		this.currentIndex =
-			this.keys.length > 0
-				? Math.floor(Math.random() * this.keys.length)
-				: 0;
+			this.keys.length > 0 ? Math.floor(Math.random() * this.keys.length) : 0;
 	}
 
 	/** Get the current API key */
@@ -238,9 +233,7 @@ export class ApiKeyManager {
 	reset(apiKeyString: string): void {
 		this.keys = parseApiKeys(apiKeyString);
 		this.currentIndex =
-			this.keys.length > 0
-				? Math.floor(Math.random() * this.keys.length)
-				: 0;
+			this.keys.length > 0 ? Math.floor(Math.random() * this.keys.length) : 0;
 		this.blacklist.clear();
 	}
 }

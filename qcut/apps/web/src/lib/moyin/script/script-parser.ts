@@ -15,7 +15,7 @@ import type { ScriptData } from "@/types/moyin-script";
 export type LLMAdapter = (
 	systemPrompt: string,
 	userPrompt: string,
-	options?: LLMCallOptions,
+	options?: LLMCallOptions
 ) => Promise<string>;
 
 export interface LLMCallOptions {
@@ -127,7 +127,7 @@ export function detectInputType(input: string): string {
  */
 export function countShotMarkers(input: string): number {
 	const shotMatches =
-		input.match(/\*?\*?[\[\u3010]\s*\u955c\u5934\s*\d+/g) || [];
+		input.match(/\*?\*?[[\u3010]\s*\u955c\u5934\s*\d+/g) || [];
 	const sceneMatches = input.match(/\u573a\u666f\s*\d+/g) || [];
 	return Math.max(shotMatches.length, sceneMatches.length);
 }
@@ -148,7 +148,7 @@ export function countShotMarkers(input: string): number {
 export async function parseScript(
 	rawScript: string,
 	callLLM: LLMAdapter,
-	options: ParseOptions = {},
+	options: ParseOptions = {}
 ): Promise<ScriptData> {
 	const { language = "auto", sceneCount } = options;
 
@@ -187,12 +187,13 @@ export async function parseScript(
 export async function generateScriptFromIdea(
 	idea: string,
 	callLLM: LLMAdapter,
-	options: ScriptGenerationOptions = {},
+	options: ScriptGenerationOptions = {}
 ): Promise<string> {
 	const { targetDuration = "60s", sceneCount, shotCount, styleId } = options;
 
-	const { CREATIVE_SCRIPT_PROMPT, STORYBOARD_STRUCTURE_PROMPT } =
-		await import("./system-prompts");
+	const { CREATIVE_SCRIPT_PROMPT, STORYBOARD_STRUCTURE_PROMPT } = await import(
+		"./system-prompts"
+	);
 
 	const originalShotCount = countShotMarkers(idea);
 	const inputType = detectInputType(idea);
@@ -204,14 +205,14 @@ export async function generateScriptFromIdea(
 			: CREATIVE_SCRIPT_PROMPT;
 
 	const userPrompt = [
-		`Generate a complete screenplay from this creative input:`,
-		``,
+		"Generate a complete screenplay from this creative input:",
+		"",
 		`[Input type] ${inputType}`,
-		``,
-		`[Content]`,
+		"",
+		"[Content]",
 		idea,
-		``,
-		`[Requirements]`,
+		"",
+		"[Requirements]",
 		`- Target duration: ${targetDuration}`,
 		originalShotCount > 0
 			? `- Scene count: must have ${originalShotCount} (matching original shots)`

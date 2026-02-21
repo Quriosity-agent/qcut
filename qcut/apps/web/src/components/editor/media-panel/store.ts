@@ -19,6 +19,7 @@ import {
 	FolderOpenIcon,
 	WrenchIcon,
 	ArrowUpFromLineIcon,
+	ClapperboardIcon,
 } from "lucide-react";
 import { create } from "zustand";
 
@@ -39,7 +40,8 @@ export type Tab =
 	| "pty"
 	| "word-timeline"
 	| "project-folder"
-	| "upscale";
+	| "upscale"
+	| "moyin";
 
 export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 	media: {
@@ -111,6 +113,10 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 		icon: ArrowLeftRightIcon,
 		label: "Transitions (WIP)",
 	},
+	moyin: {
+		icon: ClapperboardIcon,
+		label: "Moyin",
+	},
 };
 
 // --- Tab Groups ---
@@ -146,7 +152,7 @@ export const tabGroups: { [key in TabGroup]: TabGroupDef } = {
 	"ai-create": {
 		icon: SparklesIcon,
 		label: "Create",
-		tabs: ["ai", "text2image", "sounds"],
+		tabs: ["ai", "text2image", "sounds", "moyin"],
 	},
 	edit: {
 		icon: ScissorsIcon,

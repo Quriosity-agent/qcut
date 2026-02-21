@@ -30,10 +30,31 @@ Port Moyin's script parser — which converts raw screenplay text into structure
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Port core types | Pending | 15 min |
-| 2. Port script parser | Pending | 30 min |
-| 3. Port AI finders (scene + character) | Pending | 25 min |
-| 4. Add unit tests | Pending | 20 min |
+| 1. Port core types | Done | 15 min |
+| 2. Port script parser | Done | 30 min |
+| 3. Port AI finders (scene + character) | Deferred to Phase 2 | 25 min |
+| 4. Add unit tests | Done | 20 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Port Core Types:**
+- Created `apps/web/src/types/moyin-script.ts` with all core types
+- Includes: `ScriptCharacter`, `ScriptScene`, `ScriptData`, `Shot`, `CharacterIdentityAnchors`
+- Includes all camera/lighting union types: `LightingStyle`, `CameraAngle`, `FocalLength`, etc.
+- Removed moyin-specific fields: `CompletionStatus` on fields, `characterLibraryId`, `sceneLibraryId`, `baseCharacterId`, `stageInfo`, `ContinuityRef`, `Keyframe` types
+
+**Subtask 2 — Port Script Parser:**
+- Created `apps/web/src/lib/moyin/script/script-parser.ts` — LLM adapter pattern (`LLMAdapter` type) decouples from API
+- Created `apps/web/src/lib/moyin/script/system-prompts.ts` — 4 system prompt templates (parse, shot generation, creative, storyboard structure)
+- Created `apps/web/src/lib/moyin/script/index.ts` — barrel export
+- Pure functions ported: `normalizeTimeValue()`, `detectInputType()`, `countShotMarkers()`, `cleanJsonFromResponse()`
+- LLM-dependent functions ported: `parseScript()`, `generateScriptFromIdea()` — both accept a `callLLM` adapter
+
+**Subtask 3 — AI Finders:** Deferred. These require LLM calls and will be re-implemented in Phase 2 using QCut IPC.
+
+**Subtask 4 — Unit Tests:**
+- Created `apps/web/src/lib/moyin/script/__tests__/script-parser.test.ts`
+- Covers: `normalizeTimeValue()`, `detectInputType()`, `countShotMarkers()`, `parseScript()`, `generateScriptFromIdea()`, system prompts
 
 ---
 

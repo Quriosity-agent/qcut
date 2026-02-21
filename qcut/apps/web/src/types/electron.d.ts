@@ -1287,6 +1287,38 @@ export interface ElectronAPI {
 	};
 
 	/**
+	 * Moyin script-to-storyboard operations
+	 * Provides LLM-based screenplay parsing and storyboard generation
+	 */
+	moyin?: {
+		/** Parse raw screenplay text into structured scene/character data */
+		parseScript: (options: {
+			rawScript: string;
+			language?: string;
+			sceneCount?: number;
+		}) => Promise<{
+			success: boolean;
+			data?: Record<string, unknown>;
+			error?: string;
+		}>;
+		/** Generate storyboard images from parsed scenes */
+		generateStoryboard: (options: {
+			scenes: Array<{
+				id: string;
+				name: string;
+				location?: string;
+				visualPrompt?: string;
+				[key: string]: unknown;
+			}>;
+			styleId?: string;
+		}) => Promise<{
+			success: boolean;
+			outputPaths?: string[];
+			error?: string;
+		}>;
+	};
+
+	/**
 	 * Auto-update and release notes operations
 	 * Provides manual update control and access to bundled release notes
 	 */

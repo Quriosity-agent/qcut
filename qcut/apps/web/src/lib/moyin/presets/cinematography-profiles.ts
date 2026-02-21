@@ -149,12 +149,7 @@ const CINEMATIC_PROFILES: CinematographyProfile[] = [
 		defaultFocalLength: "35mm",
 		promptGuidance:
 			"Film noir lives in shadows. Large shadow areas with a single side light on the subject. Cool tones with fog create unease. Handheld micro-shake adds authentic tension. Keep half the face in darkness to suggest duality.",
-		referenceFilms: [
-			"Blade Runner",
-			"Chinatown",
-			"The Third Man",
-			"Sin City",
-		],
+		referenceFilms: ["Blade Runner", "Chinatown", "The Third Man", "Sin City"],
 	},
 	{
 		id: "epic-blockbuster",
@@ -279,11 +274,7 @@ const DOCUMENTARY_PROFILES: CinematographyProfile[] = [
 		defaultFocalLength: "35mm",
 		promptGuidance:
 			"Documentary style pursues presence. Handheld camera shake makes viewers feel they are there. Pure natural light, no artificial modification. Focus follows subject movement, allowing occasional focus misses for authenticity.",
-		referenceFilms: [
-			"Life Is Fruity",
-			"The Cove",
-			"Free Solo",
-		],
+		referenceFilms: ["Life Is Fruity", "The Cove", "Free Solo"],
 	},
 	{
 		id: "news-report",
@@ -473,11 +464,7 @@ const GENRE_PROFILES: CinematographyProfile[] = [
 		defaultFocalLength: "50mm",
 		promptGuidance:
 			"Family drama cinematography is like a quiet observer. Stable tripod doesn't intrude, warm light like afternoon sun through windows. Medium focus keeps family members all visible in frame, conveying togetherness. Occasional god rays through windows add poetry to ordinary family scenes.",
-		referenceFilms: [
-			"Shoplifters",
-			"Still Walking",
-			"Reply 1988",
-		],
+		referenceFilms: ["Shoplifters", "Still Walking", "Reply 1988"],
 	},
 	{
 		id: "action-intense",
@@ -667,7 +654,7 @@ export const CINEMATOGRAPHY_PROFILE_CATEGORIES: {
 
 /** Get profile by ID */
 export function getCinematographyProfile(
-	profileId: string,
+	profileId: string
 ): CinematographyProfile | undefined {
 	return CINEMATOGRAPHY_PROFILES.find((p) => p.id === profileId);
 }
@@ -707,9 +694,7 @@ export function buildCinematographyGuidance(profileId: string): string {
 		profile.defaultFocalLength
 			? `Focal length: ${profile.defaultFocalLength}`
 			: "",
-		profile.defaultTechnique
-			? `Technique: ${profile.defaultTechnique}`
-			: "",
+		profile.defaultTechnique ? `Technique: ${profile.defaultTechnique}` : "",
 		"",
 		`**Guidance:** ${profile.promptGuidance}`,
 		"",

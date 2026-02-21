@@ -40,10 +40,28 @@ Each character is described across six visual layers that AI models can use for 
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Port CharacterBible types and manager | Pending | 25 min |
-| 2. Port character prompt service | Pending | 20 min |
-| 3. Port prompt compiler (character methods) | Pending | 20 min |
-| 4. Add unit tests | Pending | 25 min |
+| 1. Port CharacterBible types and manager | Done | 25 min |
+| 2. Port character prompt service | Deferred to Phase 2 | 20 min |
+| 3. Port prompt compiler (character methods) | Deferred to Phase 2 | 20 min |
+| 4. Add unit tests | Done | 25 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Port CharacterBible Types and Manager:**
+- Created `apps/web/src/lib/moyin/character/types.ts` — `CharacterBible`, `ReferenceImage`, `CharacterType` interfaces
+- Created `apps/web/src/lib/moyin/character/character-bible.ts` — `CharacterBibleManager` class with full CRUD
+- Created `apps/web/src/lib/moyin/character/index.ts` — barrel export
+- Singleton via `getCharacterBibleManager()` + React hook `useCharacterBibleManager()`
+- Utility functions: `generateConsistencyPrompt()`, `mergeCharacterAnalyses()`
+- Adapted: Removed multi-stage character support; used `Record<string, unknown>` instead of `any`
+
+**Subtask 2 — Character Prompt Service:** Deferred. Requires multi-stage character design which depends on LLM API — will implement in Phase 2.
+
+**Subtask 3 — Prompt Compiler:** Deferred. Scene/character compilation depends on Phase 2 UI integration. The core `generateConsistencyPrompt()` function covers the main use case.
+
+**Subtask 4 — Unit Tests:**
+- Created `apps/web/src/lib/moyin/character/__tests__/character-bible.test.ts`
+- Covers: `CharacterBibleManager` CRUD, `generateConsistencyPrompt()`, `mergeCharacterAnalyses()`, singleton pattern
 
 ---
 

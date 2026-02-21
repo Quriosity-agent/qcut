@@ -34,9 +34,26 @@ These utilities are provider-agnostic and can improve QCut's existing AI pipelin
 
 | Subtask | Status | Est. |
 |---------|--------|------|
-| 1. Port API Key Manager | Pending | 25 min |
-| 2. Port retry + rate limiting utilities | Pending | 15 min |
-| 3. Add unit tests | Pending | 20 min |
+| 1. Port API Key Manager | Done | 25 min |
+| 2. Port retry + rate limiting utilities | Done | 15 min |
+| 3. Add unit tests | Done | 20 min |
+
+### Implementation Notes (2026-02-22)
+
+**Subtask 1 — Port API Key Manager:**
+- Created `apps/web/src/lib/moyin/utils/api-key-manager.ts`
+- Kept: `ApiKeyManager` class (rotation, blacklisting, `handleError`), `classifyModelByName()`, `parseApiKeys()`, `getApiKeyCount()`, `maskApiKey()`
+- Removed: `DEFAULT_PROVIDERS`, `IProvider`, `resolveImageApiFormat()`, `resolveVideoApiFormat()`, provider manager registry (`getProviderKeyManager`, `updateProviderKeys`, `clearAllManagers`), `generateId()`
+
+**Subtask 2 — Port Retry + Rate Limiting Utilities:**
+- Created `apps/web/src/lib/moyin/utils/retry.ts` — `isRateLimitError()`, `retryOperation()`, `withRetry()`
+- Created `apps/web/src/lib/moyin/utils/rate-limiter.ts` — `rateLimitedBatch()`, `delay()`, `createRateLimitedFn()`, `batchProcess()`, `RATE_LIMITS`
+- Created `apps/web/src/lib/moyin/utils/concurrency.ts` — `runStaggered()` with semaphore-based concurrency
+- Created `apps/web/src/lib/moyin/utils/index.ts` — barrel export
+
+**Subtask 3 — Unit Tests:**
+- Created `apps/web/src/lib/moyin/utils/__tests__/utils.test.ts`
+- Covers: `ApiKeyManager` rotation/blacklisting, `parseApiKeys()`, `maskApiKey()`, `classifyModelByName()`, `isRateLimitError()`, `retryOperation()`, `runStaggered()`, `rateLimitedBatch()`
 
 ---
 

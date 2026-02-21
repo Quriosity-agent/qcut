@@ -17,7 +17,7 @@
 export async function runStaggered<T>(
 	tasks: (() => Promise<T>)[],
 	maxConcurrent: number,
-	staggerMs: number = 5000,
+	staggerMs: number = 5000
 ): Promise<PromiseSettledResult<T>[]> {
 	if (tasks.length === 0) return [];
 
