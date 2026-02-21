@@ -352,6 +352,43 @@ export function setupMoyinIPC(): void {
 			}
 		}
 	);
+
+	// Generic LLM call for script analysis, calibration, etc.
+	ipcMain.handle(
+		"moyin:call-llm",
+		async (
+			_event,
+			options: {
+				systemPrompt: string;
+				userPrompt: string;
+				temperature?: number;
+				maxTokens?: number;
+			}
+		): Promise<{ success: boolean; text?: string; error?: string }> => {
+			try {
+				log.info("[Moyin] LLM call...", {
+					systemLen: options.systemPrompt.length,
+					userLen: options.userPrompt.length,
+				});
+
+				const text = await callLLM(
+					options.systemPrompt,
+					options.userPrompt,
+					{
+						temperature: options.temperature,
+						maxTokens: options.maxTokens,
+					}
+				);
+
+				return { success: true, text };
+			} catch (error: unknown) {
+				const message =
+					error instanceof Error ? error.message : "Unknown LLM error";
+				log.error("[Moyin] LLM call failed:", message);
+				return { success: false, error: message };
+			}
+		}
+	);
 }
 
 // CommonJS export for compiled JavaScript compatibility

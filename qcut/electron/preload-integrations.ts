@@ -523,6 +523,7 @@ export function createMoyinAPI(): NonNullable<ElectronAPI["moyin"]> {
 		parseScript: (options) => ipcRenderer.invoke("moyin:parse-script", options),
 		generateStoryboard: (options) =>
 			ipcRenderer.invoke("moyin:generate-storyboard", options),
+		callLLM: (options) => ipcRenderer.invoke("moyin:call-llm", options),
 	};
 }
 

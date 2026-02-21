@@ -347,3 +347,66 @@ export interface Shot {
 	videoUrl?: string;
 	videoMediaId?: string;
 }
+
+// ==================== Episode Parser Types ====================
+
+/**
+ * Raw content of a single scene parsed from screenplay text.
+ * Used by episode-parser.ts for rule-based Chinese screenplay parsing.
+ */
+export interface SceneRawContent {
+	sceneHeader: string;
+	characters: string[];
+	content: string;
+	dialogues: DialogueLine[];
+	actions: string[];
+	subtitles: string[];
+	weather?: string;
+	timeOfDay?: string;
+}
+
+/**
+ * Raw episode data from screenplay parsing.
+ * Contains the original text and parsed scenes before AI processing.
+ */
+export interface EpisodeRawScript {
+	episodeIndex: number;
+	title: string;
+	rawContent: string;
+	scenes: SceneRawContent[];
+	shotGenerationStatus: "idle" | "generating" | "done" | "error";
+	season?: string;
+}
+
+/**
+ * Project background / metadata extracted from screenplay header.
+ * Contains title, outline, character bios, and era/timeline info.
+ */
+export interface ProjectBackground {
+	title: string;
+	outline: string;
+	characterBios: string;
+	era: string;
+	timelineSetting?: string;
+	storyStartYear?: number;
+	storyEndYear?: number;
+	genre?: string;
+	worldSetting?: string;
+	themes?: string[];
+}
+
+/**
+ * Character variation data for multi-stage character representations.
+ * E.g., young version vs. middle-aged version of the same character.
+ */
+export interface CharacterVariation {
+	id: string;
+	name: string;
+	visualPrompt: string;
+	visualPromptZh?: string;
+	isStageVariation?: boolean;
+	episodeRange?: [number, number];
+	ageDescription?: string;
+	stageDescription?: string;
+	imageUrl?: string;
+}
