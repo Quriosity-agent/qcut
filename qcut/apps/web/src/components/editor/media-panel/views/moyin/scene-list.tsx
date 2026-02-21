@@ -19,8 +19,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import {
-	ArrowLeftIcon,
-	ArrowRightIcon,
 	CheckIcon,
 	Loader2,
 	MapPinIcon,
@@ -221,7 +219,6 @@ export function SceneList() {
 	const enhanceScenes = useMoyinStore((s) => s.enhanceScenes);
 	const calibrationStatus = useMoyinStore((s) => s.sceneCalibrationStatus);
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
-	const setActiveStep = useMoyinStore((s) => s.setActiveStep);
 
 	const isCalibrating = calibrationStatus === "calibrating";
 
@@ -292,26 +289,6 @@ export function SceneList() {
 					))}
 				</div>
 			)}
-
-			<div className="flex items-center gap-2 pt-1">
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => setActiveStep("characters")}
-				>
-					<ArrowLeftIcon className="mr-1 h-3.5 w-3.5" />
-					Characters
-				</Button>
-				<Button
-					size="sm"
-					className="flex-1"
-					onClick={() => setActiveStep("generate")}
-					disabled={scenes.length === 0}
-				>
-					Generate
-					<ArrowRightIcon className="ml-1 h-3.5 w-3.5" />
-				</Button>
-			</div>
 		</div>
 	);
 }

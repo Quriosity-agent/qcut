@@ -12,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-	ArrowLeftIcon,
-	ArrowRightIcon,
 	CheckIcon,
 	Loader2,
 	PencilIcon,
@@ -205,7 +203,6 @@ export function CharacterList() {
 	const enhanceCharacters = useMoyinStore((s) => s.enhanceCharacters);
 	const calibrationStatus = useMoyinStore((s) => s.characterCalibrationStatus);
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
-	const setActiveStep = useMoyinStore((s) => s.setActiveStep);
 
 	const isCalibrating = calibrationStatus === "calibrating";
 
@@ -274,25 +271,6 @@ export function CharacterList() {
 					))}
 				</div>
 			)}
-
-			<div className="flex items-center gap-2 pt-1">
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => setActiveStep("script")}
-				>
-					<ArrowLeftIcon className="mr-1 h-3.5 w-3.5" />
-					Script
-				</Button>
-				<Button
-					size="sm"
-					className="flex-1"
-					onClick={() => setActiveStep("scenes")}
-				>
-					Scenes
-					<ArrowRightIcon className="ml-1 h-3.5 w-3.5" />
-				</Button>
-			</div>
 		</div>
 	);
 }

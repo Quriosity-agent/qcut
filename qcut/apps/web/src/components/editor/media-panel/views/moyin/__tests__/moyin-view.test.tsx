@@ -8,26 +8,27 @@ vi.mock("lucide-react", () => {
 		<span data-testid={`icon-${name}`} {...props} />
 	);
 	return {
-		FileTextIcon: icon("file-text"),
-		UsersIcon: icon("users"),
-		MapPinIcon: icon("map-pin"),
-		SparklesIcon: icon("sparkles"),
-		Loader2: icon("loader"),
-		Trash2Icon: icon("trash"),
+		AlertTriangleIcon: icon("alert-triangle"),
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
-		UserIcon: icon("user"),
 		CheckCircle2Icon: icon("check-circle"),
-		RotateCcwIcon: icon("rotate"),
-		PlusIcon: icon("plus"),
-		PencilIcon: icon("pencil"),
 		CheckIcon: icon("check"),
-		XIcon: icon("x"),
 		ChevronDown: icon("chevron-down"),
+		FileTextIcon: icon("file-text"),
+		Loader2: icon("loader"),
+		MapPinIcon: icon("map-pin"),
+		PencilIcon: icon("pencil"),
+		PlusIcon: icon("plus"),
+		RotateCcwIcon: icon("rotate"),
+		SparklesIcon: icon("sparkles"),
+		Trash2Icon: icon("trash"),
+		UserIcon: icon("user"),
+		UsersIcon: icon("users"),
+		XIcon: icon("x"),
 	};
 });
 
-// Mock UI components to simple HTML elements
+// Mock UI components
 vi.mock("@/components/ui/button", () => ({
 	Button: ({
 		children,
@@ -110,7 +111,9 @@ vi.mock("@/components/ui/label", () => ({
 }));
 
 vi.mock("@/components/ui/select", () => ({
-	Select: ({ children }: { children: React.ReactNode }) => (
+	Select: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
 		<div data-testid="select">{children}</div>
 	),
 	SelectTrigger: ({ children }: { children: React.ReactNode }) => (
@@ -133,6 +136,20 @@ vi.mock("@/components/ui/select", () => ({
 	SelectLabel: ({ children }: { children: React.ReactNode }) => (
 		<div>{children}</div>
 	),
+}));
+
+vi.mock("@/components/ui/resizable", () => ({
+	ResizablePanelGroup: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div data-testid="resizable-panel-group">{children}</div>
+	),
+	ResizablePanel: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div data-testid="resizable-panel">{children}</div>
+	),
+	ResizableHandle: () => <div data-testid="resizable-handle" />,
 }));
 
 vi.mock("@/lib/moyin/presets/visual-styles", () => ({
@@ -160,7 +177,6 @@ vi.mock("@/lib/moyin/presets/cinematography-profiles", () => ({
 	],
 }));
 
-// Mock cn utility
 vi.mock("@/lib/utils", () => ({
 	cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -177,7 +193,7 @@ function resetStore() {
 }
 
 // ============================================================
-// MoyinView
+// MoyinView — Split Panel Layout
 // ============================================================
 
 describe("MoyinView", () => {
@@ -185,57 +201,46 @@ describe("MoyinView", () => {
 		resetStore();
 	});
 
-	it("renders the step indicator with all four step labels", () => {
+	it("renders the split-panel layout with header", () => {
 		render(<MoyinView />);
-		expect(screen.getByText("Script")).toBeTruthy();
-		expect(screen.getByText("Characters")).toBeTruthy();
-		expect(screen.getByText("Scenes")).toBeTruthy();
-		expect(screen.getByText("Generate")).toBeTruthy();
+		expect(screen.getByText("Script Editor")).toBeTruthy();
+		expect(screen.getByTestId("resizable-panel-group")).toBeTruthy();
 	});
 
-	it("renders the ScriptInput component by default (script step)", () => {
+	it("renders both left and right panels", () => {
 		render(<MoyinView />);
-		// ScriptInput renders a textarea
-		expect(
-			screen.getByPlaceholderText(/paste screenplay text here/i)
-		).toBeTruthy();
+		const panels = screen.getAllByTestId("resizable-panel");
+		expect(panels.length).toBe(2);
 	});
 
-	it("renders CharacterList when activeStep is characters", () => {
-		// Set store to ready + characters step
+	it("renders the resize handle between panels", () => {
+		render(<MoyinView />);
+		expect(screen.getByTestId("resizable-handle")).toBeTruthy();
+	});
+
+	it("shows status text when parsing is ready", () => {
 		useMoyinStore.setState({
-			activeStep: "characters",
 			parseStatus: "ready",
-			characters: [],
+			characters: [
+				{ id: "c1", name: "Alice" },
+				{ id: "c2", name: "Bob" },
+			],
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
 		});
 		render(<MoyinView />);
-		expect(screen.getByText("0 characters extracted")).toBeTruthy();
+		expect(screen.getByText("2 characters, 1 scenes")).toBeTruthy();
 	});
 
-	it("renders SceneList when activeStep is scenes", () => {
-		useMoyinStore.setState({
-			activeStep: "scenes",
-			parseStatus: "ready",
-			scenes: [],
-		});
+	it("shows parsing status", () => {
+		useMoyinStore.setState({ parseStatus: "parsing" });
 		render(<MoyinView />);
-		expect(screen.getByText("0 scenes extracted")).toBeTruthy();
-	});
-
-	it("renders GenerateActions when activeStep is generate", () => {
-		useMoyinStore.setState({
-			activeStep: "generate",
-			parseStatus: "ready",
-			scenes: [],
-			characters: [],
-		});
-		render(<MoyinView />);
-		expect(screen.getByText("Storyboard Summary")).toBeTruthy();
+		const matches = screen.getAllByText("Parsing...");
+		expect(matches.length).toBeGreaterThan(0);
 	});
 });
 
 // ============================================================
-// ScriptInput
+// ScriptInput — Import/Create Tabs + Config
 // ============================================================
 
 describe("ScriptInput", () => {
@@ -243,7 +248,13 @@ describe("ScriptInput", () => {
 		resetStore();
 	});
 
-	it("renders a textarea", () => {
+	it("renders Import and Create tabs", () => {
+		render(<ScriptInput />);
+		expect(screen.getByText("Import")).toBeTruthy();
+		expect(screen.getByText("Create")).toBeTruthy();
+	});
+
+	it("renders a textarea in Import tab by default", () => {
 		render(<ScriptInput />);
 		const textarea = screen.getByPlaceholderText(/paste screenplay text here/i);
 		expect(textarea).toBeTruthy();
@@ -260,7 +271,7 @@ describe("ScriptInput", () => {
 		expect(button?.disabled).toBe(true);
 	});
 
-	it("enables the Parse Script button when text is entered", async () => {
+	it("enables the Parse Script button when text is entered", () => {
 		useMoyinStore.setState({ rawScript: "Some script text" });
 		render(<ScriptInput />);
 		const button = screen.getByText("Parse Script").closest("button");
@@ -269,7 +280,6 @@ describe("ScriptInput", () => {
 
 	it("does not render clear button when textarea is empty", () => {
 		render(<ScriptInput />);
-		// The trash icon button should not be present when rawScript is empty
 		const trashIcons = screen.queryAllByTestId("icon-trash");
 		expect(trashIcons).toHaveLength(0);
 	});
@@ -308,101 +318,43 @@ describe("ScriptInput", () => {
 			)
 		).toBeTruthy();
 	});
-});
 
-// ============================================================
-// Step Navigation
-// ============================================================
-
-describe("Step Navigation", () => {
-	beforeEach(() => {
-		resetStore();
+	it("shows Create tab placeholder when clicked", () => {
+		render(<ScriptInput />);
+		fireEvent.click(screen.getByText("Create"));
+		expect(screen.getByText("AI Script Creation")).toBeTruthy();
 	});
 
-	it("clicking Script step button navigates to script step", () => {
-		// Start on characters step with ready status
-		useMoyinStore.setState({
-			activeStep: "characters",
-			parseStatus: "ready",
-		});
-		render(<MoyinView />);
-
-		// Multiple "Script" texts exist (step indicator + CharacterList back button).
-		// Target the one in the step indicator (wrapped in a <span> inside the step button).
-		const scriptButtons = screen.getAllByText("Script");
-		// The first one is in the step indicator
-		fireEvent.click(scriptButtons[0]);
-
-		expect(useMoyinStore.getState().activeStep).toBe("script");
+	it("renders language selector in configuration", () => {
+		render(<ScriptInput />);
+		expect(screen.getByText("Language")).toBeTruthy();
 	});
 
-	it("disables non-script step buttons when parse is not ready", () => {
-		useMoyinStore.setState({
-			activeStep: "script",
-			parseStatus: "idle",
-		});
-		render(<MoyinView />);
-
-		const charactersButton = screen.getByText("Characters").closest("button");
-		const scenesButton = screen.getByText("Scenes").closest("button");
-		const generateButton = screen.getByText("Generate").closest("button");
-
-		expect(charactersButton?.disabled).toBe(true);
-		expect(scenesButton?.disabled).toBe(true);
-		expect(generateButton?.disabled).toBe(true);
+	it("renders scene count and shot count selectors", () => {
+		render(<ScriptInput />);
+		expect(screen.getByText("Scene Count")).toBeTruthy();
+		expect(screen.getByText("Shot Count")).toBeTruthy();
 	});
 
-	it("enables all step buttons when parse is ready", () => {
-		useMoyinStore.setState({
-			activeStep: "script",
-			parseStatus: "ready",
-		});
-		render(<MoyinView />);
-
-		const scriptButton = screen.getByText("Script").closest("button");
-		const charactersButton = screen.getByText("Characters").closest("button");
-		const scenesButton = screen.getByText("Scenes").closest("button");
-		const generateButton = screen.getByText("Generate").closest("button");
-
-		expect(scriptButton?.disabled).toBe(false);
-		expect(charactersButton?.disabled).toBe(false);
-		expect(scenesButton?.disabled).toBe(false);
-		expect(generateButton?.disabled).toBe(false);
+	it("renders visual style selector", () => {
+		render(<ScriptInput />);
+		expect(screen.getByText("Visual Style")).toBeTruthy();
 	});
 
-	it("clicking Characters step button navigates when ready", () => {
-		useMoyinStore.setState({
-			activeStep: "script",
-			parseStatus: "ready",
-		});
-		render(<MoyinView />);
-
-		fireEvent.click(screen.getByText("Characters"));
-
-		expect(useMoyinStore.getState().activeStep).toBe("characters");
+	it("renders camera profile selector", () => {
+		render(<ScriptInput />);
+		expect(screen.getByText("Camera Profile")).toBeTruthy();
 	});
 
-	it("clicking Scenes step button navigates when ready", () => {
-		useMoyinStore.setState({
-			activeStep: "script",
-			parseStatus: "ready",
-		});
-		render(<MoyinView />);
-
-		fireEvent.click(screen.getByText("Scenes"));
-
-		expect(useMoyinStore.getState().activeStep).toBe("scenes");
+	it("shows API key warning when not configured", () => {
+		useMoyinStore.setState({ chatConfigured: false });
+		render(<ScriptInput />);
+		expect(screen.getByText("API Not Configured")).toBeTruthy();
 	});
 
-	it("clicking Generate step button navigates when ready", () => {
-		useMoyinStore.setState({
-			activeStep: "script",
-			parseStatus: "ready",
-		});
-		render(<MoyinView />);
-
-		fireEvent.click(screen.getByText("Generate"));
-
-		expect(useMoyinStore.getState().activeStep).toBe("generate");
+	it("hides API key warning when configured", () => {
+		useMoyinStore.setState({ chatConfigured: true });
+		render(<ScriptInput />);
+		expect(screen.queryByText("API Not Configured")).toBeNull();
 	});
 });

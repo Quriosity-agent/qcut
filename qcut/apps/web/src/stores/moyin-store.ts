@@ -31,11 +31,23 @@ interface MoyinState {
 	parseStatus: ParseStatus;
 	parseError: string | null;
 
+	// Script config
+	language: string;
+	sceneCount: string;
+	shotCount: string;
+
+	// API key status
+	chatConfigured: boolean;
+
 	// Characters extracted from parsed script
 	characters: ScriptCharacter[];
 
 	// Scenes extracted from parsed script
 	scenes: ScriptScene[];
+
+	// Structure panel selection
+	selectedItemId: string | null;
+	selectedItemType: "episode" | "scene" | "character" | null;
 
 	// Generation state
 	generationStatus: GenerationStatus;
@@ -69,6 +81,14 @@ interface MoyinActions {
 	parseScript: () => Promise<void>;
 	clearScript: () => void;
 
+	// Script config
+	setLanguage: (lang: string) => void;
+	setSceneCount: (count: string) => void;
+	setShotCount: (count: string) => void;
+
+	// API key status
+	checkApiKeyStatus: () => Promise<void>;
+
 	// Characters
 	updateCharacter: (id: string, updates: Partial<ScriptCharacter>) => void;
 	addCharacter: (char: ScriptCharacter) => void;
@@ -78,6 +98,12 @@ interface MoyinActions {
 	updateScene: (id: string, updates: Partial<ScriptScene>) => void;
 	addScene: (scene: ScriptScene) => void;
 	removeScene: (id: string) => void;
+
+	// Structure panel selection
+	setSelectedItem: (
+		id: string | null,
+		type: "episode" | "scene" | "character" | null
+	) => void;
 
 	// Style & profile
 	setSelectedStyleId: (id: string) => void;
@@ -104,8 +130,14 @@ const initialState: MoyinState = {
 	scriptData: null,
 	parseStatus: "idle",
 	parseError: null,
+	language: "English",
+	sceneCount: "auto",
+	shotCount: "auto",
+	chatConfigured: false,
 	characters: [],
 	scenes: [],
+	selectedItemId: null,
+	selectedItemType: null,
 	generationStatus: "idle",
 	generationProgress: 0,
 	generationError: null,
@@ -126,6 +158,28 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 	setActiveStep: (step) => set({ activeStep: step }),
 
 	setRawScript: (text) => set({ rawScript: text }),
+
+	setLanguage: (lang) => set({ language: lang }),
+	setSceneCount: (count) => set({ sceneCount: count }),
+	setShotCount: (count) => set({ shotCount: count }),
+
+	checkApiKeyStatus: async () => {
+		try {
+			const status = await window.electronAPI?.apiKeys?.status();
+			if (!status) {
+				set({ chatConfigured: false });
+				return;
+			}
+			const configured =
+				status.openRouterApiKey?.set ||
+				status.geminiApiKey?.set ||
+				status.anthropicApiKey?.set ||
+				false;
+			set({ chatConfigured: configured });
+		} catch {
+			set({ chatConfigured: false });
+		}
+	},
 
 	parseScript: async () => {
 		const { rawScript } = get();
@@ -203,6 +257,9 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 
 	removeScene: (id) =>
 		set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) })),
+
+	setSelectedItem: (id, type) =>
+		set({ selectedItemId: id, selectedItemType: type }),
 
 	setSelectedStyleId: (id) => set({ selectedStyleId: id }),
 
