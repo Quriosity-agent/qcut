@@ -14,6 +14,8 @@ import {
 	handleMediaProjectCommand,
 } from "./editor-handlers-media.js";
 import { handleTimelineEditingCommand } from "./editor-handlers-timeline.js";
+import { handleAnalysisCommand } from "./editor-handlers-analysis.js";
+import { handleGenerateExportCommand } from "./editor-handlers-generate.js";
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -63,20 +65,20 @@ export async function handleEditorCommand(
 			case "editing":
 				return await handleTimelineEditingCommand(client, options, onProgress);
 
-			// Future phases will add these imports:
-			// case "analyze":
-			// case "transcribe":
-			//   return await handleAnalysisCommand(client, options, onProgress);
-			// case "generate":
-			// case "export":
-			// case "diagnostics":
-			// case "mcp":
-			//   return await handleGenerateExportCommand(client, options, onProgress);
+			case "analyze":
+			case "transcribe":
+				return await handleAnalysisCommand(client, options, onProgress);
+
+			case "generate":
+			case "export":
+			case "diagnostics":
+			case "mcp":
+				return await handleGenerateExportCommand(client, options, onProgress);
 
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp`,
 				};
 		}
 	} catch (err) {
