@@ -28,7 +28,7 @@ export function EpisodeContextMenu({
 	onEdit: () => void;
 }) {
 	const generateShotsForEpisode = useMoyinStore(
-		(s) => s.generateShotsForEpisode,
+		(s) => s.generateShotsForEpisode
 	);
 	const removeEpisode = useMoyinStore((s) => s.removeEpisode);
 	const addScene = useMoyinStore((s) => s.addScene);

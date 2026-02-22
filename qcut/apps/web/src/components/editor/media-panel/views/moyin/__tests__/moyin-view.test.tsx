@@ -11,19 +11,30 @@ vi.mock("lucide-react", () => {
 		AlertTriangleIcon: icon("alert-triangle"),
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
+		CameraIcon: icon("camera"),
 		CheckCircle2Icon: icon("check-circle"),
 		CheckIcon: icon("check"),
 		ChevronDown: icon("chevron-down"),
+		ChevronDownIcon: icon("chevron-down"),
+		ChevronRightIcon: icon("chevron-right"),
+		CopyIcon: icon("copy"),
+		DownloadIcon: icon("download"),
 		FileTextIcon: icon("file-text"),
+		FilmIcon: icon("film"),
+		GripVerticalIcon: icon("grip-vertical"),
+		ImageIcon: icon("image"),
 		Loader2: icon("loader"),
 		MapPinIcon: icon("map-pin"),
+		MessageSquareIcon: icon("message-square"),
 		PencilIcon: icon("pencil"),
 		PlusIcon: icon("plus"),
 		RotateCcwIcon: icon("rotate"),
 		SparklesIcon: icon("sparkles"),
+		SquareIcon: icon("square"),
 		Trash2Icon: icon("trash"),
 		UserIcon: icon("user"),
 		UsersIcon: icon("users"),
+		VideoIcon: icon("video"),
 		XIcon: icon("x"),
 	};
 });
@@ -99,6 +110,12 @@ vi.mock("@/components/ui/progress", () => ({
 
 vi.mock("@/components/ui/input", () => ({
 	Input: (props: Record<string, unknown>) => <input {...props} />,
+}));
+
+vi.mock("@/components/ui/checkbox", () => ({
+	Checkbox: (props: Record<string, unknown>) => (
+		<input type="checkbox" {...props} />
+	),
 }));
 
 vi.mock("@/components/ui/label", () => ({

@@ -27,15 +27,11 @@ function StepIcon({ status }: { status: PipelineStepStatus }) {
 		case "done":
 			return <CheckCircle2Icon className="h-3.5 w-3.5 text-green-500" />;
 		case "active":
-			return (
-				<Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
-			);
+			return <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />;
 		case "error":
 			return <XCircleIcon className="h-3.5 w-3.5 text-destructive" />;
 		default:
-			return (
-				<CircleIcon className="h-3.5 w-3.5 text-muted-foreground/40" />
-			);
+			return <CircleIcon className="h-3.5 w-3.5 text-muted-foreground/40" />;
 	}
 }
 
@@ -64,7 +60,7 @@ export function ImportProgress() {
 										? "text-green-600 dark:text-green-400"
 										: status === "error"
 											? "text-destructive"
-											: "text-muted-foreground",
+											: "text-muted-foreground"
 							)}
 						>
 							<StepIcon status={status} />

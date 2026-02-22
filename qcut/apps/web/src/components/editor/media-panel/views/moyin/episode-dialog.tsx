@@ -102,11 +102,7 @@ export function EpisodeDialog({
 					>
 						Cancel
 					</Button>
-					<Button
-						size="sm"
-						onClick={handleSave}
-						disabled={!title.trim()}
-					>
+					<Button size="sm" onClick={handleSave} disabled={!title.trim()}>
 						{isEditing ? "Save" : "Create"}
 					</Button>
 				</DialogFooter>

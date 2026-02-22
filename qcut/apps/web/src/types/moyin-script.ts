@@ -67,6 +67,9 @@ export interface ScriptCharacter {
 	visualPromptEn?: string;
 	visualPromptZh?: string;
 
+	// Reference images for generation consistency
+	referenceImages?: string[];
+
 	// 6-layer identity anchors (filled during AI calibration)
 	identityAnchors?: CharacterIdentityAnchors;
 	negativePrompt?: CharacterNegativePrompt;
@@ -346,6 +349,12 @@ export interface Shot {
 	videoError?: string;
 	videoUrl?: string;
 	videoMediaId?: string;
+
+	// End frame image
+	endFrameImageUrl?: string;
+	endFrameImageStatus?: ShotStatus;
+	endFrameImageError?: string;
+	endFrameSource?: "upload" | "ai-generated" | "next-scene" | "video-extracted";
 }
 
 // ==================== Episode Parser Types ====================

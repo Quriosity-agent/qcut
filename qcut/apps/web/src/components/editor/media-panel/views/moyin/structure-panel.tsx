@@ -8,21 +8,24 @@ import { useMoyinStore } from "@/stores/moyin-store";
 import { EpisodeTree } from "./episode-tree";
 import { CharacterList } from "./character-list";
 import { SceneList } from "./scene-list";
+import { ShotBreakdown } from "./shot-breakdown";
 import { GenerateActions } from "./generate-actions";
 import { cn } from "@/lib/utils";
 import {
+	CameraIcon,
 	FileTextIcon,
 	SparklesIcon,
 	MapPinIcon,
 	UsersIcon,
 } from "lucide-react";
 
-type StructureTab = "overview" | "characters" | "scenes" | "generate";
+type StructureTab = "overview" | "characters" | "scenes" | "shots" | "generate";
 
 const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 	{ key: "overview", label: "Structure", icon: FileTextIcon },
 	{ key: "characters", label: "Characters", icon: UsersIcon },
 	{ key: "scenes", label: "Scenes", icon: MapPinIcon },
+	{ key: "shots", label: "Shots", icon: CameraIcon },
 	{ key: "generate", label: "Generate", icon: SparklesIcon },
 ];
 
@@ -50,7 +53,7 @@ export function StructurePanel() {
 									? "border-primary text-primary"
 									: disabled
 										? "border-transparent text-muted-foreground/40 cursor-not-allowed"
-										: "border-transparent text-muted-foreground hover:text-foreground",
+										: "border-transparent text-muted-foreground hover:text-foreground"
 							)}
 						>
 							<Icon className="h-3 w-3" />
@@ -64,6 +67,7 @@ export function StructurePanel() {
 			{activeTab === "overview" && <EpisodeTree />}
 			{activeTab === "characters" && <CharacterList />}
 			{activeTab === "scenes" && <SceneList />}
+			{activeTab === "shots" && <ShotBreakdown />}
 			{activeTab === "generate" && <GenerateActions />}
 		</div>
 	);

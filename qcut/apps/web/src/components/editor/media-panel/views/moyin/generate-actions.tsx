@@ -13,6 +13,11 @@ import {
 	SparklesIcon,
 } from "lucide-react";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
+import {
+	BatchGenerateButtons,
+	BatchProgressOverlay,
+	useBatchGeneration,
+} from "./batch-progress";
 
 export function GenerateActions() {
 	const scenes = useMoyinStore((s) => s.scenes);
@@ -26,6 +31,7 @@ export function GenerateActions() {
 	const storyboardImageUrl = useMoyinStore((s) => s.storyboardImageUrl);
 	const storyboardGridConfig = useMoyinStore((s) => s.storyboardGridConfig);
 
+	const { batch, startBatch, cancel } = useBatchGeneration();
 	const isGenerating = generationStatus === "generating";
 	const isDone = generationStatus === "done";
 
@@ -35,6 +41,9 @@ export function GenerateActions() {
 
 	return (
 		<div className="space-y-3">
+			{/* Batch overlay */}
+			{batch && <BatchProgressOverlay batch={batch} onCancel={cancel} />}
+
 			{/* Summary */}
 			<div className="rounded-md border bg-muted/30 p-3 space-y-1.5">
 				<p className="text-xs font-medium">Storyboard Summary</p>
@@ -84,6 +93,12 @@ export function GenerateActions() {
 					)}
 				</div>
 			)}
+
+			{/* Batch shot generation */}
+			<BatchGenerateButtons
+				onStart={startBatch}
+				disabled={isGenerating || !!batch}
+			/>
 
 			{/* Action button */}
 			{isDone ? (

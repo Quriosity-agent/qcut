@@ -36,11 +36,9 @@ export function EpisodeTree() {
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
 
 	const [expandedEpisodes, setExpandedEpisodes] = useState<Set<string>>(
-		new Set(),
+		new Set()
 	);
-	const [expandedScenes, setExpandedScenes] = useState<Set<string>>(
-		new Set(),
-	);
+	const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
 	const [filter, setFilter] = useState<FilterMode>("all");
 
 	const toggleEpisode = (id: string) => {
@@ -80,7 +78,7 @@ export function EpisodeTree() {
 	// Total stats
 	const totalShots = shots.length;
 	const totalCompleted = shots.filter(
-		(s) => s.imageStatus === "completed",
+		(s) => s.imageStatus === "completed"
 	).length;
 
 	if (parseStatus !== "ready" || !scriptData) {
@@ -89,8 +87,7 @@ export function EpisodeTree() {
 				<FileTextIcon className="mb-3 h-10 w-10 opacity-40" />
 				<p className="text-sm font-medium">No Script Parsed</p>
 				<p className="text-xs mt-1 max-w-[200px]">
-					Paste a screenplay in the left panel and click Parse Script to
-					begin.
+					Paste a screenplay in the left panel and click Parse Script to begin.
 				</p>
 			</div>
 		);
@@ -101,9 +98,7 @@ export function EpisodeTree() {
 		if (filter === "all") return true;
 		const sceneShots = shotsByScene[sceneId] || [];
 		if (sceneShots.length === 0) return filter === "pending";
-		const allCompleted = sceneShots.every(
-			(s) => s.imageStatus === "completed",
-		);
+		const allCompleted = sceneShots.every((s) => s.imageStatus === "completed");
 		return filter === "completed" ? allCompleted : !allCompleted;
 	};
 
@@ -137,7 +132,7 @@ export function EpisodeTree() {
 							"px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
 							filter === mode
 								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:bg-muted",
+								: "text-muted-foreground hover:bg-muted"
 						)}
 					>
 						{mode === "all"
@@ -163,10 +158,10 @@ export function EpisodeTree() {
 
 						const isExpanded = expandedEpisodes.has(ep.id);
 						const epShots = epSceneIds.flatMap(
-							(sid) => shotsByScene[sid] || [],
+							(sid) => shotsByScene[sid] || []
 						);
 						const epCompleted = epShots.filter(
-							(s) => s.imageStatus === "completed",
+							(s) => s.imageStatus === "completed"
 						).length;
 
 						return (
@@ -177,7 +172,7 @@ export function EpisodeTree() {
 										"group flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 										selectedItemId === ep.id
 											? "bg-primary/10 text-primary"
-											: "hover:bg-muted",
+											: "hover:bg-muted"
 									)}
 								>
 									<button
@@ -198,10 +193,7 @@ export function EpisodeTree() {
 											{ep.title || `Episode ${epIdx + 1}`}
 										</span>
 									</button>
-									<Badge
-										variant="secondary"
-										className="text-[9px] px-1 py-0"
-									>
+									<Badge variant="secondary" className="text-[9px] px-1 py-0">
 										{epCompleted}/{epShots.length}
 									</Badge>
 									<EpisodeContextMenu
@@ -230,7 +222,7 @@ export function EpisodeTree() {
 															"group flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 															selectedItemId === sceneId
 																? "bg-primary/10 text-primary"
-																: "hover:bg-muted",
+																: "hover:bg-muted"
 														)}
 													>
 														<button
@@ -255,10 +247,7 @@ export function EpisodeTree() {
 																{scene.name || scene.location}
 															</span>
 														</button>
-														<StatusIcon
-															completed={completed}
-															total={total}
-														/>
+														<StatusIcon completed={completed} total={total} />
 														{hasShots && (
 															<span className="text-[9px] text-muted-foreground">
 																{completed}/{total}
@@ -266,9 +255,7 @@ export function EpisodeTree() {
 														)}
 														<SceneContextMenu
 															sceneId={sceneId}
-															onEdit={() =>
-																setSelectedItem(sceneId, "scene")
-															}
+															onEdit={() => setSelectedItem(sceneId, "scene")}
 														/>
 													</div>
 
@@ -282,7 +269,7 @@ export function EpisodeTree() {
 																		"group flex items-center gap-1.5 w-full rounded px-1.5 py-0.5 text-[11px] transition-colors",
 																		selectedItemId === shot.id
 																			? "bg-primary/10 text-primary"
-																			: "hover:bg-muted",
+																			: "hover:bg-muted"
 																	)}
 																>
 																	<button
@@ -293,10 +280,7 @@ export function EpisodeTree() {
 																		className="flex items-center gap-1.5 flex-1 min-w-0"
 																	>
 																		<span className="w-4 text-right font-mono text-muted-foreground text-[9px]">
-																			{String(shot.index + 1).padStart(
-																				2,
-																				"0",
-																			)}
+																			{String(shot.index + 1).padStart(2, "0")}
 																		</span>
 																		{shot.shotSize && (
 																			<Badge
@@ -310,9 +294,7 @@ export function EpisodeTree() {
 																			{shot.actionSummary || "—"}
 																		</span>
 																	</button>
-																	<ShotStatusDot
-																		status={shot.imageStatus}
-																	/>
+																	<ShotStatusDot status={shot.imageStatus} />
 																	<ShotContextMenu shotId={shot.id} />
 																</div>
 															))}
@@ -343,7 +325,7 @@ export function EpisodeTree() {
 											"flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 											selectedItemId === scene.id
 												? "bg-primary/10 text-primary"
-												: "hover:bg-muted",
+												: "hover:bg-muted"
 										)}
 									>
 										<span className="text-muted-foreground text-[10px]">
@@ -370,8 +352,12 @@ export function EpisodeTree() {
 function StatusIcon({
 	completed,
 	total,
-}: { completed: number; total: number }) {
-	if (total === 0) return <CircleIcon className="h-2.5 w-2.5 text-muted-foreground/40" />;
+}: {
+	completed: number;
+	total: number;
+}) {
+	if (total === 0)
+		return <CircleIcon className="h-2.5 w-2.5 text-muted-foreground/40" />;
 	if (completed === total)
 		return <CheckCircle2Icon className="h-2.5 w-2.5 text-green-500" />;
 	if (completed > 0)
@@ -383,8 +369,12 @@ function ShotStatusDot({ status }: { status: string }) {
 	if (status === "completed")
 		return <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />;
 	if (status === "generating")
-		return <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 shrink-0 animate-pulse" />;
+		return (
+			<span className="h-1.5 w-1.5 rounded-full bg-yellow-500 shrink-0 animate-pulse" />
+		);
 	if (status === "failed")
-		return <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />;
+		return (
+			<span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+		);
 	return null;
 }

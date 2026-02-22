@@ -5,7 +5,11 @@
 
 import { useState, useCallback } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
-import type { ScriptCharacter, ScriptScene, Shot } from "@/types/moyin-script";
+import type {
+	ScriptCharacter,
+	ScriptScene,
+	CharacterIdentityAnchors,
+} from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,15 +17,42 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
 	CheckIcon,
+	CopyIcon,
 	FilmIcon,
 	ImageIcon,
-	Loader2,
 	MapPinIcon,
 	PencilIcon,
 	UserIcon,
-	VideoIcon,
 	XIcon,
 } from "lucide-react";
+import { CollapsibleSection } from "./collapsible-section";
+import { ShotDetail } from "./shot-detail";
+
+/** Reusable copy-to-clipboard button with feedback. */
+function CopyButton({ getText }: { getText: () => string }) {
+	const [copied, setCopied] = useState(false);
+	const handleCopy = async () => {
+		const text = getText();
+		if (!text) return;
+		await navigator.clipboard.writeText(text);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
+	return (
+		<Button
+			variant="text"
+			size="sm"
+			className="h-6 text-xs px-1.5"
+			onClick={handleCopy}
+		>
+			{copied ? (
+				<span className="text-[9px] text-green-600">Copied</span>
+			) : (
+				<CopyIcon className="h-3 w-3" />
+			)}
+		</Button>
+	);
+}
 
 function FieldRow({
 	label,
@@ -36,6 +67,98 @@ function FieldRow({
 			<p className="text-[10px] font-medium text-muted-foreground">{label}</p>
 			<p className="text-xs">{value}</p>
 		</div>
+	);
+}
+
+// ==================== Identity Anchors Display ====================
+
+function IdentityAnchorsDisplay({
+	anchors,
+}: {
+	anchors: CharacterIdentityAnchors;
+}) {
+	const layers: { label: string; entries: [string, string | undefined][] }[] = [
+		{
+			label: "Bone Structure",
+			entries: [
+				["Face", anchors.faceShape],
+				["Jawline", anchors.jawline],
+				["Cheekbones", anchors.cheekbones],
+			],
+		},
+		{
+			label: "Facial Features",
+			entries: [
+				["Eyes", anchors.eyeShape],
+				["Eye Detail", anchors.eyeDetails],
+				["Nose", anchors.noseShape],
+				["Lips", anchors.lipShape],
+			],
+		},
+		{
+			label: "Color Anchors",
+			entries: [
+				["Iris", anchors.colorAnchors?.iris],
+				["Hair", anchors.colorAnchors?.hair],
+				["Skin", anchors.colorAnchors?.skin],
+				["Lips", anchors.colorAnchors?.lips],
+			],
+		},
+		{
+			label: "Texture & Hair",
+			entries: [
+				["Skin Texture", anchors.skinTexture],
+				["Hair Style", anchors.hairStyle],
+				["Hairline", anchors.hairlineDetails],
+			],
+		},
+	];
+
+	const hasAnyData =
+		anchors.uniqueMarks.length > 0 ||
+		layers.some((l) => l.entries.some(([, v]) => v));
+
+	if (!hasAnyData) return null;
+
+	return (
+		<CollapsibleSection title="Identity Anchors">
+			{layers.map((layer) => {
+				const filled = layer.entries.filter(([, v]) => v);
+				if (filled.length === 0) return null;
+				return (
+					<div key={layer.label} className="space-y-0.5">
+						<p className="text-[10px] font-medium text-muted-foreground">
+							{layer.label}
+						</p>
+						<div className="flex flex-wrap gap-1">
+							{filled.map(([key, val]) => (
+								<Badge key={key} variant="outline" className="text-[10px] px-1">
+									{key}: {val}
+								</Badge>
+							))}
+						</div>
+					</div>
+				);
+			})}
+			{anchors.uniqueMarks.length > 0 && (
+				<div className="space-y-0.5">
+					<p className="text-[10px] font-medium text-muted-foreground">
+						Identifying Marks
+					</p>
+					<div className="flex flex-wrap gap-1">
+						{anchors.uniqueMarks.map((mark) => (
+							<Badge
+								key={mark}
+								variant="secondary"
+								className="text-[10px] px-1"
+							>
+								{mark}
+							</Badge>
+						))}
+					</div>
+				</div>
+			)}
+		</CollapsibleSection>
 	);
 }
 
@@ -150,14 +273,33 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 					<UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
 					<span className="text-sm font-medium">{char.name}</span>
 				</div>
-				<Button
-					variant="text"
-					size="sm"
-					className="h-6 text-xs px-1.5"
-					onClick={startEdit}
-				>
-					<PencilIcon className="h-3 w-3" />
-				</Button>
+				<div className="flex items-center gap-0.5">
+					<CopyButton
+						getText={() =>
+							JSON.stringify(
+								{
+									name: char.name,
+									gender: char.gender,
+									age: char.age,
+									role: char.role,
+									appearance: char.appearance,
+									visualPromptEn: char.visualPromptEn,
+									tags: char.tags,
+								},
+								null,
+								2
+							)
+						}
+					/>
+					<Button
+						variant="text"
+						size="sm"
+						className="h-6 text-xs px-1.5"
+						onClick={startEdit}
+					>
+						<PencilIcon className="h-3 w-3" />
+					</Button>
+				</div>
 			</div>
 			<div className="flex gap-1">
 				{char.gender && (
@@ -183,6 +325,31 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 						</Badge>
 					))}
 				</div>
+			)}
+
+			{/* Reference Images */}
+			{char.referenceImages && char.referenceImages.length > 0 && (
+				<CollapsibleSection title="Reference Images" icon={ImageIcon}>
+					<div className="grid grid-cols-3 gap-1">
+						{char.referenceImages.map((url, i) => (
+							<div
+								key={url}
+								className="rounded border overflow-hidden aspect-square"
+							>
+								<img
+									src={url}
+									alt={`${char.name} ref ${i + 1}`}
+									className="w-full h-full object-cover"
+								/>
+							</div>
+						))}
+					</div>
+				</CollapsibleSection>
+			)}
+
+			{/* Identity Anchors */}
+			{char.identityAnchors && (
+				<IdentityAnchorsDisplay anchors={char.identityAnchors} />
 			)}
 		</div>
 	);
@@ -294,14 +461,32 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 						{scene.name || scene.location}
 					</span>
 				</div>
-				<Button
-					variant="text"
-					size="sm"
-					className="h-6 text-xs px-1.5"
-					onClick={startEdit}
-				>
-					<PencilIcon className="h-3 w-3" />
-				</Button>
+				<div className="flex items-center gap-0.5">
+					<CopyButton
+						getText={() =>
+							[
+								`# ${scene.name || scene.location}`,
+								scene.location && `Location: ${scene.location}`,
+								scene.time && `Time: ${scene.time}`,
+								scene.atmosphere && `Atmosphere: ${scene.atmosphere}`,
+								scene.visualPrompt && `Visual Prompt: ${scene.visualPrompt}`,
+								scene.architectureStyle &&
+									`Architecture: ${scene.architectureStyle}`,
+								scene.lightingDesign && `Lighting: ${scene.lightingDesign}`,
+							]
+								.filter(Boolean)
+								.join("\n")
+						}
+					/>
+					<Button
+						variant="text"
+						size="sm"
+						className="h-6 text-xs px-1.5"
+						onClick={startEdit}
+					>
+						<PencilIcon className="h-3 w-3" />
+					</Button>
+				</div>
 			</div>
 			<div className="flex gap-1">
 				{scene.time && (
@@ -316,228 +501,6 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 			<FieldRow label="Architecture" value={scene.architectureStyle} />
 			<FieldRow label="Lighting" value={scene.lightingDesign} />
 			<FieldRow label="Color Palette" value={scene.colorPalette} />
-		</div>
-	);
-}
-
-// ==================== Shot Detail ====================
-
-function ShotDetail({ shot }: { shot: Shot }) {
-	const updateShot = useMoyinStore((s) => s.updateShot);
-	const generateShotImage = useMoyinStore((s) => s.generateShotImage);
-	const generateShotVideo = useMoyinStore((s) => s.generateShotVideo);
-	const [editing, setEditing] = useState(false);
-	const [draft, setDraft] = useState<Partial<Shot>>({});
-
-	const isImageGenerating = shot.imageStatus === "generating";
-	const isVideoGenerating = shot.videoStatus === "generating";
-
-	const startEdit = useCallback(() => {
-		setDraft({
-			actionSummary: shot.actionSummary,
-			shotSize: shot.shotSize,
-			cameraMovement: shot.cameraMovement,
-			dialogue: shot.dialogue,
-			imagePrompt: shot.imagePrompt,
-			videoPrompt: shot.videoPrompt,
-		});
-		setEditing(true);
-	}, [shot]);
-
-	const save = useCallback(() => {
-		updateShot(shot.id, draft);
-		setEditing(false);
-	}, [shot.id, draft, updateShot]);
-
-	if (editing) {
-		return (
-			<div className="space-y-2">
-				<div className="space-y-1">
-					<Label className="text-[10px]">Action Summary</Label>
-					<Textarea
-						className="text-xs min-h-[48px] resize-none"
-						rows={2}
-						value={draft.actionSummary ?? ""}
-						onChange={(e) =>
-							setDraft((d) => ({ ...d, actionSummary: e.target.value }))
-						}
-					/>
-				</div>
-				<div className="grid grid-cols-2 gap-2">
-					<div className="space-y-1">
-						<Label className="text-[10px]">Shot Size</Label>
-						<Input
-							className="h-7 text-xs"
-							value={draft.shotSize ?? ""}
-							onChange={(e) =>
-								setDraft((d) => ({ ...d, shotSize: e.target.value }))
-							}
-						/>
-					</div>
-					<div className="space-y-1">
-						<Label className="text-[10px]">Camera Movement</Label>
-						<Input
-							className="h-7 text-xs"
-							value={draft.cameraMovement ?? ""}
-							onChange={(e) =>
-								setDraft((d) => ({ ...d, cameraMovement: e.target.value }))
-							}
-						/>
-					</div>
-				</div>
-				<div className="space-y-1">
-					<Label className="text-[10px]">Dialogue</Label>
-					<Textarea
-						className="text-xs min-h-[36px] resize-none"
-						rows={1}
-						value={draft.dialogue ?? ""}
-						onChange={(e) =>
-							setDraft((d) => ({ ...d, dialogue: e.target.value }))
-						}
-					/>
-				</div>
-				<div className="space-y-1">
-					<Label className="text-[10px]">Image Prompt</Label>
-					<Textarea
-						className="text-xs min-h-[48px] resize-none"
-						rows={2}
-						value={draft.imagePrompt ?? ""}
-						onChange={(e) =>
-							setDraft((d) => ({ ...d, imagePrompt: e.target.value }))
-						}
-					/>
-				</div>
-				<div className="space-y-1">
-					<Label className="text-[10px]">Video Prompt</Label>
-					<Textarea
-						className="text-xs min-h-[48px] resize-none"
-						rows={2}
-						value={draft.videoPrompt ?? ""}
-						onChange={(e) =>
-							setDraft((d) => ({ ...d, videoPrompt: e.target.value }))
-						}
-					/>
-				</div>
-				<div className="flex gap-1.5">
-					<Button size="sm" className="h-6 text-xs px-2" onClick={save}>
-						<CheckIcon className="mr-1 h-3 w-3" />
-						Save
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-6 text-xs px-2"
-						onClick={() => setEditing(false)}
-					>
-						<XIcon className="mr-1 h-3 w-3" />
-						Cancel
-					</Button>
-				</div>
-			</div>
-		);
-	}
-
-	return (
-		<div className="space-y-2">
-			<div className="flex items-center justify-between">
-				<div className="flex items-center gap-1.5">
-					<VideoIcon className="h-3.5 w-3.5 text-muted-foreground" />
-					<span className="text-sm font-medium">
-						Shot {String(shot.index + 1).padStart(2, "0")}
-					</span>
-					{shot.shotSize && (
-						<Badge variant="outline" className="text-[10px] font-mono">
-							{shot.shotSize}
-						</Badge>
-					)}
-				</div>
-				<Button
-					variant="text"
-					size="sm"
-					className="h-6 text-xs px-1.5"
-					onClick={startEdit}
-				>
-					<PencilIcon className="h-3 w-3" />
-				</Button>
-			</div>
-			<FieldRow label="Action" value={shot.actionSummary} />
-			<FieldRow label="Camera" value={shot.cameraMovement} />
-			<FieldRow label="Dialogue" value={shot.dialogue} />
-			<FieldRow label="Image Prompt" value={shot.imagePrompt} />
-			<FieldRow label="Video Prompt" value={shot.videoPrompt} />
-			{shot.imageUrl && (
-				<div className="rounded border overflow-hidden">
-					<img
-						src={shot.imageUrl}
-						alt={`Shot ${shot.index + 1}`}
-						className="w-full h-auto"
-					/>
-				</div>
-			)}
-			{shot.characterNames && shot.characterNames.length > 0 && (
-				<div className="flex flex-wrap gap-1">
-					{shot.characterNames.map((name) => (
-						<Badge key={name} variant="secondary" className="text-[10px] px-1">
-							{name}
-						</Badge>
-					))}
-				</div>
-			)}
-
-			{/* Generation buttons */}
-			<div className="space-y-1.5 border-t pt-2">
-				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-					Generate
-				</p>
-				{shot.imageError && (
-					<p className="text-[10px] text-destructive">{shot.imageError}</p>
-				)}
-				{shot.videoError && (
-					<p className="text-[10px] text-destructive">{shot.videoError}</p>
-				)}
-				<div className="flex gap-1.5">
-					<Button
-						size="sm"
-						variant={shot.imageStatus === "completed" ? "outline" : "default"}
-						className="flex-1 h-7 text-xs"
-						onClick={() => generateShotImage(shot.id)}
-						disabled={isImageGenerating}
-					>
-						{isImageGenerating ? (
-							<Loader2 className="mr-1 h-3 w-3 animate-spin" />
-						) : (
-							<ImageIcon className="mr-1 h-3 w-3" />
-						)}
-						{shot.imageStatus === "completed" ? "Regenerate" : "Image"}
-					</Button>
-					<Button
-						size="sm"
-						variant={shot.videoStatus === "completed" ? "outline" : "default"}
-						className="flex-1 h-7 text-xs"
-						onClick={() => generateShotVideo(shot.id)}
-						disabled={isVideoGenerating || !shot.imageUrl}
-					>
-						{isVideoGenerating ? (
-							<Loader2 className="mr-1 h-3 w-3 animate-spin" />
-						) : (
-							<VideoIcon className="mr-1 h-3 w-3" />
-						)}
-						{shot.videoStatus === "completed" ? "Regenerate" : "Video"}
-					</Button>
-				</div>
-			</div>
-
-			{/* Video preview */}
-			{shot.videoUrl && (
-				<div className="rounded border overflow-hidden">
-					<video
-						src={shot.videoUrl}
-						controls
-						className="w-full h-auto"
-						aria-label={`Shot ${shot.index + 1} video`}
-					/>
-				</div>
-			)}
 		</div>
 	);
 }
@@ -564,9 +527,23 @@ function EpisodeDetail({ episodeId }: { episodeId: string }) {
 
 	return (
 		<div className="space-y-2">
-			<div className="flex items-center gap-1.5">
-				<FilmIcon className="h-3.5 w-3.5 text-muted-foreground" />
-				<span className="text-sm font-medium">{episode.title}</span>
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-1.5">
+					<FilmIcon className="h-3.5 w-3.5 text-muted-foreground" />
+					<span className="text-sm font-medium">{episode.title}</span>
+				</div>
+				<CopyButton
+					getText={() =>
+						[
+							`# ${episode.title}`,
+							episode.description && episode.description,
+							`Scenes: ${epScenes.length}`,
+							`Shots: ${epShots.length}`,
+						]
+							.filter(Boolean)
+							.join("\n")
+					}
+				/>
 			</div>
 			{episode.description && (
 				<p className="text-xs text-muted-foreground">{episode.description}</p>
