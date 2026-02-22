@@ -319,8 +319,15 @@ export function ShotBreakdown() {
 
 			{/* Bulk action bar */}
 			{selectedShotIds.size > 0 && (
-				<div className="flex items-center justify-between px-1.5 py-1 border-b bg-primary/5">
-					<span className="text-[10px] font-medium text-primary">
+				<div
+					role="group"
+					aria-labelledby="bulk-count"
+					className="flex items-center justify-between px-1.5 py-1 border-b bg-primary/5"
+				>
+					<span
+						id="bulk-count"
+						className="text-[10px] font-medium text-primary"
+					>
 						{selectedShotIds.size} selected
 					</span>
 					<div className="flex items-center gap-1">
@@ -433,6 +440,9 @@ export function ShotBreakdown() {
 										onDragOver={(e) => handleDragOver(shot.id, e)}
 										onDrop={() => handleDrop(shot.id, sceneShots)}
 										onDragEnd={handleDragEnd}
+										aria-current={
+											selectedItemId === shot.id ? "true" : undefined
+										}
 										className={cn(
 											"relative aspect-video rounded border overflow-hidden transition-colors cursor-grab active:cursor-grabbing",
 											selectedItemId === shot.id
@@ -475,6 +485,7 @@ export function ShotBreakdown() {
 									onDragOver={(e) => handleDragOver(shot.id, e)}
 									onDrop={() => handleDrop(shot.id, sceneShots)}
 									onDragEnd={handleDragEnd}
+									aria-current={selectedItemId === shot.id ? "true" : undefined}
 									className={cn(
 										"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors cursor-grab active:cursor-grabbing",
 										selectedItemId === shot.id

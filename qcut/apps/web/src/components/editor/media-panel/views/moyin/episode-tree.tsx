@@ -339,6 +339,7 @@ export function EpisodeTree() {
 							<div key={ep.id}>
 								{/* Episode row */}
 								<div
+									aria-current={selectedItemId === ep.id ? "true" : undefined}
 									className={cn(
 										"group flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 										selectedItemId === ep.id
@@ -446,6 +447,9 @@ export function EpisodeTree() {
 															handleSceneDrop(sceneId, ep.id, filteredSceneIds)
 														}
 														onDragEnd={handleSceneDragEnd}
+														aria-current={
+															selectedItemId === sceneId ? "true" : undefined
+														}
 														className={cn(
 															"group flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 															selectedItemId === sceneId
@@ -537,6 +541,11 @@ export function EpisodeTree() {
 															{sceneShots.map((shot) => (
 																<div
 																	key={shot.id}
+																	aria-current={
+																		selectedItemId === shot.id
+																			? "true"
+																			: undefined
+																	}
 																	className={cn(
 																		"group flex items-center gap-1.5 w-full rounded px-1.5 py-0.5 text-[11px] transition-colors",
 																		selectedItemId === shot.id

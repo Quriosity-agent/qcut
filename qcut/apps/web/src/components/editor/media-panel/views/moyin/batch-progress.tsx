@@ -103,6 +103,7 @@ export function BatchProgressOverlay({
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
 			<div
 				role="dialog"
+				aria-modal="true"
 				aria-label={`Batch ${batch.type === "image" ? "image" : "video"} generation`}
 				className="w-[320px] rounded-lg border bg-background p-5 shadow-lg space-y-4"
 			>

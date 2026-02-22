@@ -195,6 +195,7 @@ function CharacterCard({
 
 	return (
 		<Card
+			aria-current={isSelected ? "true" : undefined}
 			className={`border shadow-none group cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
 			onClick={() => onSelect(char.id)}
 		>
