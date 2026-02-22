@@ -57,6 +57,10 @@ vi.mock("lucide-react", () => {
 });
 
 // Mock UI components
+vi.mock("@/lib/utils", () => ({
+	cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
+}));
+
 vi.mock("@/components/ui/button", () => ({
 	Button: ({
 		children,
@@ -712,5 +716,87 @@ describe("SceneList — Accessibility", () => {
 	it("has aria-label on Add button", () => {
 		render(<SceneList />);
 		expect(screen.getByLabelText("Add scene")).toBeTruthy();
+	});
+});
+
+// ==================== Round 17: Shot Breakdown Enhancements ====================
+
+import { ShotBreakdown } from "../shot-breakdown";
+
+describe("ShotBreakdown — Bulk Actions", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero walks",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Villain appears",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+			selectedShotIds: new Set(["shot1"]),
+		});
+	});
+
+	it("shows Duplicate button in bulk action bar", () => {
+		render(<ShotBreakdown />);
+		expect(screen.getByLabelText("Duplicate selected shots")).toBeTruthy();
+	});
+
+	it("shows Generate button in bulk action bar", () => {
+		render(<ShotBreakdown />);
+		expect(
+			screen.getByLabelText("Generate images for selected shots"),
+		).toBeTruthy();
+	});
+});
+
+describe("ShotBreakdown — Narrative Badges", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero walks",
+					narrativeFunction: "climax",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+	});
+
+	it("shows narrative function badge in list view", () => {
+		render(<ShotBreakdown />);
+		expect(screen.getByText("CL")).toBeTruthy();
+		expect(screen.getByTitle("climax")).toBeTruthy();
 	});
 });

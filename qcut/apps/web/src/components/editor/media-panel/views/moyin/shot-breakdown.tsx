@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
 	CameraIcon,
+	CopyIcon,
 	FileTextIcon,
 	FilterIcon,
 	GridIcon,
@@ -18,6 +19,7 @@ import {
 	MessageSquareIcon,
 	PlusIcon,
 	SearchIcon,
+	SparklesIcon,
 	Trash2Icon,
 	UserIcon,
 } from "lucide-react";
@@ -49,6 +51,33 @@ function ShotStatusDot({ status, label }: { status: string; label?: string }) {
 	);
 }
 
+const NARRATIVE_BADGE: Record<string, { label: string; cls: string }> = {
+	exposition: {
+		label: "EX",
+		cls: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+	},
+	escalation: {
+		label: "ES",
+		cls: "bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200",
+	},
+	climax: {
+		label: "CL",
+		cls: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200",
+	},
+	"turning-point": {
+		label: "TP",
+		cls: "bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200",
+	},
+	transition: {
+		label: "TR",
+		cls: "bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200",
+	},
+	denouement: {
+		label: "DN",
+		cls: "bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200",
+	},
+};
+
 export function ShotBreakdown() {
 	const scenes = useMoyinStore((s) => s.scenes);
 	const shots = useMoyinStore((s) => s.shots);
@@ -60,6 +89,8 @@ export function ShotBreakdown() {
 	const toggleShotSelection = useMoyinStore((s) => s.toggleShotSelection);
 	const clearShotSelection = useMoyinStore((s) => s.clearShotSelection);
 	const deleteSelectedShots = useMoyinStore((s) => s.deleteSelectedShots);
+	const duplicateShot = useMoyinStore((s) => s.duplicateShot);
+	const generateShotImage = useMoyinStore((s) => s.generateShotImage);
 	const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 	const [filter, setFilter] = useState<
 		"all" | "has-image" | "has-video" | "incomplete"
@@ -131,6 +162,25 @@ export function ShotBreakdown() {
 		setDragOverId(null);
 		dragShotIdRef.current = null;
 	}, []);
+
+	const handleDuplicateSelected = useCallback(() => {
+		for (const id of selectedShotIds) {
+			duplicateShot(id);
+		}
+		clearShotSelection();
+	}, [selectedShotIds, duplicateShot, clearShotSelection]);
+
+	const handleBulkGenerate = useCallback(() => {
+		const pending = shots.filter(
+			(s) =>
+				selectedShotIds.has(s.id) &&
+				(s.imageStatus === "idle" || s.imageStatus === "failed")
+		);
+		for (const s of pending) {
+			generateShotImage(s.id);
+		}
+		clearShotSelection();
+	}, [shots, selectedShotIds, generateShotImage, clearShotSelection]);
 
 	const filteredShots = useMemo(() => {
 		let result = shots;
@@ -252,6 +302,24 @@ export function ShotBreakdown() {
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
+							onClick={handleDuplicateSelected}
+							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
+							aria-label="Duplicate selected shots"
+						>
+							<CopyIcon className="h-3 w-3" />
+							Duplicate
+						</button>
+						<button
+							type="button"
+							onClick={handleBulkGenerate}
+							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
+							aria-label="Generate images for selected shots"
+						>
+							<SparklesIcon className="h-3 w-3" />
+							Generate
+						</button>
+						<button
+							type="button"
 							onClick={deleteSelectedShots}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-destructive hover:bg-destructive/10 transition-colors"
 							aria-label="Delete selected shots"
@@ -368,6 +436,18 @@ export function ShotBreakdown() {
 											{shot.shotSize}
 										</Badge>
 									)}
+									{shot.narrativeFunction &&
+										NARRATIVE_BADGE[shot.narrativeFunction] && (
+											<span
+												className={cn(
+													"text-[7px] px-0.5 py-0 rounded font-bold shrink-0 leading-tight",
+													NARRATIVE_BADGE[shot.narrativeFunction].cls
+												)}
+												title={shot.narrativeFunction}
+											>
+												{NARRATIVE_BADGE[shot.narrativeFunction].label}
+											</span>
+										)}
 									{shot.cameraMovement && (
 										<CameraIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
 									)}
