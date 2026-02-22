@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
 	CameraIcon,
+	ClipboardCopyIcon,
 	CopyIcon,
 	FileTextIcon,
 	FilterIcon,
@@ -170,6 +171,15 @@ export function ShotBreakdown() {
 		clearShotSelection();
 	}, [selectedShotIds, duplicateShot, clearShotSelection]);
 
+	const handleBulkCopyPrompts = useCallback(() => {
+		const selected = shots.filter((s) => selectedShotIds.has(s.id));
+		const lines = selected.map(
+			(s) =>
+				`Shot ${s.index + 1}: ${s.imagePrompt || s.visualPrompt || s.actionSummary || "—"}`
+		);
+		navigator.clipboard.writeText(lines.join("\n"));
+	}, [shots, selectedShotIds]);
+
 	const handleBulkGenerate = useCallback(() => {
 		const pending = shots.filter(
 			(s) =>
@@ -317,6 +327,15 @@ export function ShotBreakdown() {
 						>
 							<SparklesIcon className="h-3 w-3" />
 							Generate
+						</button>
+						<button
+							type="button"
+							onClick={handleBulkCopyPrompts}
+							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
+							aria-label="Copy prompts for selected shots"
+						>
+							<ClipboardCopyIcon className="h-3 w-3" />
+							Copy
 						</button>
 						<button
 							type="button"

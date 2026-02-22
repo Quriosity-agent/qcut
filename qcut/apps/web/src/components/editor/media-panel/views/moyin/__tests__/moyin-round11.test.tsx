@@ -20,6 +20,7 @@ vi.mock("lucide-react", () => {
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
 		CameraIcon: icon("camera"),
+		ClipboardCopyIcon: icon("clipboard-copy"),
 		CheckCircle2Icon: icon("check-circle"),
 		CheckIcon: icon("check"),
 		ChevronDown: icon("chevron-down"),
@@ -798,5 +799,36 @@ describe("ShotBreakdown — Narrative Badges", () => {
 		render(<ShotBreakdown />);
 		expect(screen.getByText("CL")).toBeTruthy();
 		expect(screen.getByTitle("climax")).toBeTruthy();
+	});
+});
+
+describe("ShotBreakdown — Bulk Copy Prompts", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero walks",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+			selectedShotIds: new Set(["shot1"]),
+		});
+	});
+
+	it("shows Copy button in bulk action bar", () => {
+		render(<ShotBreakdown />);
+		expect(
+			screen.getByLabelText("Copy prompts for selected shots"),
+		).toBeTruthy();
 	});
 });

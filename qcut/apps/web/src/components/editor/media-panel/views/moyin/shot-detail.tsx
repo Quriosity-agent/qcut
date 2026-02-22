@@ -194,28 +194,21 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			soundEffect: shot.soundEffect,
 			bgm: shot.bgm,
 			audioEnabled: shot.audioEnabled,
-			// Lighting (Gaffer)
 			lightingStyle: shot.lightingStyle,
 			lightingDirection: shot.lightingDirection,
 			colorTemperature: shot.colorTemperature,
 			lightingNotes: shot.lightingNotes,
-			// Focus
 			depthOfField: shot.depthOfField,
 			focusTarget: shot.focusTarget,
 			focusTransition: shot.focusTransition,
-			// Camera Rig
 			cameraRig: shot.cameraRig,
 			movementSpeed: shot.movementSpeed,
-			// Atmosphere
 			atmosphericEffects: shot.atmosphericEffects,
 			effectIntensity: shot.effectIntensity,
-			// Speed
 			playbackSpeed: shot.playbackSpeed,
-			// Camera
 			cameraAngle: shot.cameraAngle,
 			focalLength: shot.focalLength,
 			photographyTechnique: shot.photographyTechnique,
-			// Narrative
 			narrativeFunction: shot.narrativeFunction,
 			shotPurpose: shot.shotPurpose,
 			visualFocus: shot.visualFocus,
@@ -237,7 +230,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 	if (editing) {
 		return (
 			<div className="space-y-2">
-				{/* Core fields */}
 				<div className="space-y-1">
 					<Label className="text-[10px]">Action Summary</Label>
 					<Textarea
@@ -272,9 +264,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onChange={(e) => setField({ dialogue: e.target.value })}
 					/>
 				</div>
-
-				{/* Lighting (Gaffer) */}
-				<CollapsibleSection title="Lighting">
+				<CollapsibleSection
+					title="Lighting"
+					aria-description="Style, direction, and color temperature of scene lighting"
+				>
 					<LightingSelector
 						lightingStyle={draft.lightingStyle}
 						lightingDirection={draft.lightingDirection}
@@ -292,7 +285,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						/>
 					</div>
 				</CollapsibleSection>
-				<CollapsibleSection title="Focus">
+				<CollapsibleSection
+					title="Focus"
+					aria-description="Depth of field and focus transitions"
+				>
 					<FocusSelector
 						depthOfField={draft.depthOfField}
 						focusTransition={draft.focusTransition}
@@ -309,7 +305,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						/>
 					</div>
 				</CollapsibleSection>
-				<CollapsibleSection title="Camera Rig">
+				<CollapsibleSection
+					title="Camera Rig"
+					aria-description="Stabilization and movement speed"
+				>
 					<RigSelector
 						cameraRig={draft.cameraRig}
 						movementSpeed={draft.movementSpeed}
@@ -317,7 +316,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onSpeedChange={(v) => setField({ movementSpeed: v })}
 					/>
 				</CollapsibleSection>
-				<CollapsibleSection title="Camera">
+				<CollapsibleSection
+					title="Camera"
+					aria-description="Angle, focal length, and photography technique"
+				>
 					<AngleSelector
 						cameraAngle={draft.cameraAngle}
 						onChange={(v) => setField({ cameraAngle: v })}
@@ -331,7 +333,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onChange={(v) => setField({ photographyTechnique: v })}
 					/>
 				</CollapsibleSection>
-				<CollapsibleSection title="Atmosphere">
+				<CollapsibleSection
+					title="Atmosphere"
+					aria-description="Weather effects, fog, and playback speed"
+				>
 					<AtmosphereSelector
 						atmosphericEffects={draft.atmosphericEffects}
 						effectIntensity={draft.effectIntensity}
@@ -522,8 +527,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			<FieldRow label="Dialogue" value={shot.dialogue} />
 			<ShotSizeSelector value={shot.shotSize} onChange={() => {}} readOnly />
 			<DurationSelector value={shot.duration} onChange={() => {}} readOnly />
-
-			{/* Lighting */}
 			<LightingSelector
 				lightingStyle={shot.lightingStyle}
 				lightingDirection={shot.lightingDirection}
@@ -534,8 +537,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				readOnly
 			/>
 			<FieldRow label="Lighting Notes" value={shot.lightingNotes} />
-
-			{/* Focus */}
 			<FocusSelector
 				depthOfField={shot.depthOfField}
 				focusTransition={shot.focusTransition}
@@ -544,8 +545,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				readOnly
 			/>
 			<FieldRow label="Focus Target" value={shot.focusTarget} />
-
-			{/* Camera Rig */}
 			<RigSelector
 				cameraRig={shot.cameraRig}
 				movementSpeed={shot.movementSpeed}
@@ -553,8 +552,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				onSpeedChange={() => {}}
 				readOnly
 			/>
-
-			{/* Camera Angle / Focal / Technique */}
 			<AngleSelector
 				cameraAngle={shot.cameraAngle}
 				onChange={() => {}}
@@ -570,8 +567,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				onChange={() => {}}
 				readOnly
 			/>
-
-			{/* Atmosphere */}
 			<AtmosphereSelector
 				atmosphericEffects={shot.atmosphericEffects}
 				effectIntensity={shot.effectIntensity}
