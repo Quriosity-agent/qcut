@@ -47,13 +47,13 @@ export function ShotBreakdown() {
 				id: `shot_${Date.now()}`,
 				index: shots.length,
 				sceneRefId: sceneId,
-				shotLabel: `Shot ${sceneShots.length + 1}`,
-				shotSize: "",
-				cameraMovement: "",
-				actionSummary: "",
-				characterNames: [],
+				actionSummary: `Shot ${sceneShots.length + 1}`,
+				characterIds: [],
+				characterVariations: {},
 				imageStatus: "idle" as const,
+				imageProgress: 0,
 				videoStatus: "idle" as const,
+				videoProgress: 0,
 			};
 			addShot(newShot);
 			setSelectedItem(newShot.id, "shot");

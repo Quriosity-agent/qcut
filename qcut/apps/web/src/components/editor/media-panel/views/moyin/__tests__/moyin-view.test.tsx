@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { useMoyinStore } from "@/stores/moyin-store";
 
+// Mock TanStack Router — return empty project_id to prevent loadProject from resetting state
+vi.mock("@tanstack/react-router", () => ({
+	useParams: () => ({ project_id: "" }),
+}));
+
 // Mock lucide-react icons as simple spans
 vi.mock("lucide-react", () => {
 	const icon = (name: string) => (props: Record<string, unknown>) => (
@@ -151,6 +156,52 @@ vi.mock("@/components/ui/select", () => ({
 		<div>{children}</div>
 	),
 	SelectLabel: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+}));
+
+vi.mock("@/components/ui/dropdown-menu", () => ({
+	DropdownMenu: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DropdownMenuTrigger: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DropdownMenuContent: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DropdownMenuItem: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DropdownMenuSeparator: () => <div />,
+}));
+
+vi.mock("@/components/ui/dialog", () => ({
+	Dialog: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DialogContent: ({
+		children,
+	}: { children: React.ReactNode } & Record<string, unknown>) => (
+		<div>{children}</div>
+	),
+	DialogHeader: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	DialogTitle: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	DialogFooter: ({ children }: { children: React.ReactNode }) => (
 		<div>{children}</div>
 	),
 }));

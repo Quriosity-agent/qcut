@@ -6,7 +6,11 @@
  * (identity anchors, art direction, color palette, etc.).
  */
 
-import type { ScriptCharacter, ScriptScene, ScriptData } from "@/types/moyin-script";
+import type {
+	ScriptCharacter,
+	ScriptScene,
+	ScriptData,
+} from "@/types/moyin-script";
 
 interface LLMResult {
 	success: boolean;
@@ -32,7 +36,10 @@ function getMoyinApi(): MoyinApi {
 }
 
 function parseJsonArray<T>(text: string): T[] {
-	let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+	let cleaned = text
+		.replace(/```json\n?/g, "")
+		.replace(/```\n?/g, "")
+		.trim();
 	const jsonStart = cleaned.indexOf("[");
 	const jsonEnd = cleaned.lastIndexOf("]");
 	if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -60,7 +67,7 @@ interface EnhancedCharacterData {
 
 export async function enhanceCharactersLLM(
 	characters: ScriptCharacter[],
-	scriptData: ScriptData | null,
+	scriptData: ScriptData | null
 ): Promise<ScriptCharacter[]> {
 	const api = getMoyinApi();
 	const title = scriptData?.title || "Unknown";
@@ -69,7 +76,7 @@ export async function enhanceCharactersLLM(
 	const charSummary = characters
 		.map(
 			(c) =>
-				`- ${c.id}: ${c.name}, ${c.role || "unknown role"}, ${c.gender || ""} ${c.age || ""}. Appearance: ${c.appearance || "unknown"}`,
+				`- ${c.id}: ${c.name}, ${c.role || "unknown role"}, ${c.gender || ""} ${c.age || ""}. Appearance: ${c.appearance || "unknown"}`
 		)
 		.join("\n");
 
@@ -153,7 +160,7 @@ interface EnhancedSceneData {
 
 export async function enhanceScenesLLM(
 	scenes: ScriptScene[],
-	scriptData: ScriptData | null,
+	scriptData: ScriptData | null
 ): Promise<ScriptScene[]> {
 	const api = getMoyinApi();
 	const title = scriptData?.title || "Unknown";
@@ -162,7 +169,7 @@ export async function enhanceScenesLLM(
 	const sceneSummary = scenes
 		.map(
 			(s) =>
-				`- ${s.id}: ${s.name || s.location}, time: ${s.time || ""}, atmosphere: ${s.atmosphere || ""}`,
+				`- ${s.id}: ${s.name || s.location}, time: ${s.time || ""}, atmosphere: ${s.atmosphere || ""}`
 		)
 		.join("\n");
 
@@ -210,7 +217,12 @@ Generate comprehensive art direction for each scene.`,
 			lightingDesign: e.lightingDesign || s.lightingDesign,
 			architectureStyle: e.architectureStyle || s.architectureStyle,
 			colorPalette: e.colorPalette || s.colorPalette,
-			keyProps: e.keyProps || s.keyProps,
+			keyProps: e.keyProps
+				? e.keyProps
+						.split(",")
+						.map((p) => p.trim())
+						.filter(Boolean)
+				: s.keyProps,
 			spatialLayout: e.spatialLayout || s.spatialLayout,
 			eraDetails: e.eraDetails || s.eraDetails,
 		};

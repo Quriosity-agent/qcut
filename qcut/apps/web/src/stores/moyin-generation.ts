@@ -3,7 +3,12 @@
  * Extracted from moyin-store.ts to keep it under 800 lines.
  */
 
-import type { ScriptCharacter, ScriptScene, ScriptData, Shot } from "@/types/moyin-script";
+import type {
+	ScriptCharacter,
+	ScriptScene,
+	ScriptData,
+	Shot,
+} from "@/types/moyin-script";
 import { buildStoryboardPrompt } from "@/lib/moyin/storyboard/prompt-builder";
 import { calculateGrid } from "@/lib/moyin/storyboard/grid-calculator";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
@@ -32,11 +37,13 @@ export async function generateStoryboardAction(
 	characters: ScriptCharacter[],
 	selectedStyleId: string,
 	scriptData: ScriptData | null,
-	onProgress: (progress: number) => void,
+	onProgress: (progress: number) => void
 ): Promise<StoryboardResult> {
 	onProgress(10);
 
-	const stylePreset = VISUAL_STYLE_PRESETS.find((s) => s.id === selectedStyleId);
+	const stylePreset = VISUAL_STYLE_PRESETS.find(
+		(s) => s.id === selectedStyleId
+	);
 	const styleTokens = stylePreset
 		? [stylePreset.prompt]
 		: ["Studio Ghibli style, anime, soft colors"];
@@ -44,7 +51,7 @@ export async function generateStoryboardAction(
 	const storySummary = scenes
 		.map(
 			(s, i) =>
-				`Scene ${i + 1}: ${s.visualPrompt || s.atmosphere || s.name || s.location || ""}`,
+				`Scene ${i + 1}: ${s.visualPrompt || s.atmosphere || s.name || s.location || ""}`
 		)
 		.join("\n");
 
@@ -104,7 +111,7 @@ export async function splitAndApplyAction(
 	gridConfig: { cols: number; rows: number },
 	scenes: ScriptScene[],
 	shots: Shot[],
-	scriptData: ScriptData | null,
+	scriptData: ScriptData | null
 ): Promise<SplitAndApplyResult> {
 	const { splitStoryboardImage } = await import(
 		"@/lib/moyin/storyboard/image-splitter"
@@ -141,12 +148,12 @@ export async function splitAndApplyAction(
 			actionSummary: shot.actionSummary || "",
 			cameraMovement: shot.cameraMovement || "",
 			dialogue: shot.dialogue || "",
-			sceneName: shot.shotLabel || `Shot ${idx + 1}`,
+			sceneName: shot.actionSummary || `Shot ${idx + 1}`,
 		}));
 
 		const prompts = await generateScenePrompts({
 			storyboardImage: storyboardImageUrl,
-			storyPrompt: scriptData?.synopsis || "",
+			storyPrompt: scriptData?.logline || "",
 			scenes: sceneInputs,
 			apiKey: "",
 		});
@@ -161,7 +168,8 @@ export async function splitAndApplyAction(
 					videoPrompt: p.videoPrompt || updatedShots[idx].videoPrompt,
 					videoPromptZh: p.videoPromptZh || updatedShots[idx].videoPromptZh,
 					endFramePrompt: p.endFramePrompt || updatedShots[idx].endFramePrompt,
-					endFramePromptZh: p.endFramePromptZh || updatedShots[idx].endFramePromptZh,
+					endFramePromptZh:
+						p.endFramePromptZh || updatedShots[idx].endFramePromptZh,
 				};
 			}
 		}
@@ -172,29 +180,134 @@ export async function splitAndApplyAction(
 	return { shots: updatedShots };
 }
 
+// ==================== Shot Generation for Episode ====================
+
+export async function generateShotsForEpisodeAction(
+	episodeScenes: ScriptScene[],
+	episodeTitle: string,
+	scriptTitle: string
+): Promise<Shot[]> {
+	const api = window.electronAPI?.moyin;
+	if (!api?.callLLM) {
+		throw new Error("Moyin API not available.");
+	}
+
+	const sceneDescs = episodeScenes
+		.map(
+			(s, i) =>
+				`Scene ${i + 1} (${s.id}): ${s.name || s.location}, ${s.time || ""}, ${s.atmosphere || ""}`
+		)
+		.join("\n");
+
+	const result = await api.callLLM({
+		systemPrompt: `You are a professional storyboard artist. Break each scene into 3-6 shots.
+
+Return JSON array:
+[{ "id": "shot_001", "sceneRefId": "scene_id", "index": 0, "actionSummary": "description", "shotSize": "MS/CU/WS/etc", "cameraMovement": "pan/tilt/static/etc", "characterIds": [], "characterVariations": {}, "imageStatus": "idle", "imageProgress": 0, "videoStatus": "idle", "videoProgress": 0 }]
+
+Only return the JSON array.`,
+		userPrompt: `Project: "${scriptTitle}", Episode: "${episodeTitle}"
+
+Scenes:
+${sceneDescs}
+
+Generate shots for each scene with proper camera language and visual storytelling.`,
+		temperature: 0.5,
+		maxTokens: 8192,
+	});
+
+	if (!result.success || !result.text) {
+		throw new Error(result.error || "Shot generation failed");
+	}
+
+	let cleaned = result.text
+		.replace(/```json\n?/g, "")
+		.replace(/```\n?/g, "")
+		.trim();
+	const jsonStart = cleaned.indexOf("[");
+	const jsonEnd = cleaned.lastIndexOf("]");
+	if (jsonStart !== -1 && jsonEnd !== -1) {
+		cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+	}
+
+	return JSON.parse(cleaned) as Shot[];
+}
+
+// ==================== Script Generation ====================
+
+export async function generateScriptAction(
+	idea: string,
+	options: { genre?: string; targetDuration?: string },
+	config: { sceneCount: string; shotCount: string; selectedStyleId: string }
+): Promise<string> {
+	const api = window.electronAPI?.moyin;
+	if (!api?.callLLM) {
+		throw new Error("Moyin API not available. Please run in Electron.");
+	}
+
+	const { generateScriptFromIdea } = await import(
+		"@/lib/moyin/script/script-parser"
+	);
+
+	const llmAdapter = async (
+		systemPrompt: string,
+		userPrompt: string,
+		opts?: { temperature?: number; maxTokens?: number }
+	) => {
+		const r = await api.callLLM({
+			systemPrompt,
+			userPrompt,
+			temperature: opts?.temperature,
+			maxTokens: opts?.maxTokens,
+		});
+		if (!r.success || !r.text) {
+			throw new Error(r.error || "LLM call failed");
+		}
+		return r.text;
+	};
+
+	return generateScriptFromIdea(idea, llmAdapter, {
+		targetDuration: options.targetDuration || "60s",
+		sceneCount:
+			config.sceneCount !== "auto" ? Number(config.sceneCount) : undefined,
+		shotCount:
+			config.shotCount !== "auto" ? Number(config.shotCount) : undefined,
+		styleId: config.selectedStyleId,
+	});
+}
+
 // ==================== Character Stage Analysis ====================
 
 export async function analyzeStagesAction(
 	characters: ScriptCharacter[],
 	episodeCount: number,
-	scriptData: ScriptData | null,
+	scriptData: ScriptData | null
 ): Promise<ScriptCharacter[]> {
-	const { detectMultiStageHints, analyzeCharacterStages, convertStagesToVariations } =
-		await import("@/lib/moyin/script/character-stage-analyzer");
+	const {
+		detectMultiStageHints,
+		analyzeCharacterStages,
+		convertStagesToVariations,
+	} = await import("@/lib/moyin/script/character-stage-analyzer");
 
-	const outline = scriptData?.synopsis || "";
+	const outline = scriptData?.logline || "";
 	const hints = detectMultiStageHints(outline, episodeCount);
 	if (!hints.suggestMultiStage) return characters;
 
 	const background = {
 		title: scriptData?.title || "",
 		outline,
-		characterBios: characters.map((c) => `${c.name}: ${c.role || ""}`).join("\n"),
-		era: scriptData?.era || "现代",
+		characterBios: characters
+			.map((c) => `${c.name}: ${c.role || ""}`)
+			.join("\n"),
+		era: "现代",
 		genre: scriptData?.genre || "",
 	};
 
-	const analyses = await analyzeCharacterStages(background, characters, episodeCount);
+	const analyses = await analyzeCharacterStages(
+		background,
+		characters,
+		episodeCount
+	);
 
 	return characters.map((c) => {
 		const analysis = analyses.find((a) => a.characterName === c.name);

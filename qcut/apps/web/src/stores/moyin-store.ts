@@ -25,14 +25,13 @@ import {
 	loadMoyinProject,
 	clearMoyinProject,
 } from "./moyin-persistence";
-import {
-	enhanceCharactersLLM,
-	enhanceScenesLLM,
-} from "./moyin-calibration";
+import { enhanceCharactersLLM, enhanceScenesLLM } from "./moyin-calibration";
 import {
 	generateStoryboardAction,
 	splitAndApplyAction,
 	analyzeStagesAction,
+	generateShotsForEpisodeAction,
+	generateScriptAction,
 } from "./moyin-generation";
 
 // ==================== Types ====================
@@ -239,647 +238,535 @@ const initialState: MoyinState = {
 
 // ==================== Store ====================
 
-export const useMoyinStore = create<MoyinStore>((set, get) => ({
-	...initialState,
+export const useMoyinStore = create<MoyinStore>((set, get) => {
+	const patchShot = (shotId: string, updates: Partial<Shot>) =>
+		set((state) => ({
+			shots: state.shots.map((s) =>
+				s.id === shotId ? { ...s, ...updates } : s
+			),
+		}));
 
-	setActiveStep: (step) => set({ activeStep: step }),
+	return {
+		...initialState,
 
-	setRawScript: (text) => set({ rawScript: text }),
+		setActiveStep: (step) => set({ activeStep: step }),
 
-	setLanguage: (lang) => set({ language: lang }),
-	setSceneCount: (count) => set({ sceneCount: count }),
-	setShotCount: (count) => set({ shotCount: count }),
+		setRawScript: (text) => set({ rawScript: text }),
 
-	checkApiKeyStatus: async () => {
-		try {
-			const status = await window.electronAPI?.apiKeys?.status();
-			if (!status) {
-				set({ chatConfigured: false });
-				return;
-			}
-			const configured =
-				status.openRouterApiKey?.set ||
-				status.geminiApiKey?.set ||
-				status.anthropicApiKey?.set ||
-				false;
-			set({ chatConfigured: configured });
-		} catch {
-			set({ chatConfigured: false });
-		}
-	},
+		setLanguage: (lang) => set({ language: lang }),
+		setSceneCount: (count) => set({ sceneCount: count }),
+		setShotCount: (count) => set({ shotCount: count }),
 
-	parseScript: async () => {
-		const { rawScript } = get();
-		if (!rawScript.trim()) return;
-
-		const advancePipeline = (
-			step: PipelineStep,
-			status: PipelineStepStatus,
-		) => {
-			const progress = { ...get().pipelineProgress, [step]: status };
-			set({ pipelineStep: step, pipelineProgress: progress });
-		};
-
-		set({
-			parseStatus: "parsing",
-			parseError: null,
-			pipelineStep: "import",
-			pipelineProgress: initialState.pipelineProgress,
-		});
-
-		try {
-			advancePipeline("import", "active");
-
-			const api = window.electronAPI?.moyin;
-			if (!api) {
-				throw new Error("Moyin API not available. Please run in Electron.");
-			}
-
-			const result = await api.parseScript({ rawScript });
-
-			if (!result.success || !result.data) {
-				throw new Error(result.error || "Failed to parse script");
-			}
-
-			advancePipeline("import", "done");
-
-			const data = result.data as unknown as ScriptData;
-
-			advancePipeline("title_calibration", "active");
-			// Title and metadata extracted from parse result
-			advancePipeline("title_calibration", "done");
-
-			advancePipeline("synopsis", "active");
-			// Synopsis and story paragraphs extracted
-			advancePipeline("synopsis", "done");
-
-			advancePipeline("shot_calibration", "active");
-			// Scenes contain shot breakdown info
-			advancePipeline("shot_calibration", "done");
-
-			advancePipeline("character_calibration", "active");
-			advancePipeline("character_calibration", "done");
-
-			advancePipeline("scene_calibration", "active");
-			advancePipeline("scene_calibration", "done");
-
-			set({
-				scriptData: data,
-				characters: data.characters ?? [],
-				scenes: data.scenes ?? [],
-				episodes: data.episodes ?? [],
-				parseStatus: "ready",
-				activeStep: "characters",
-			});
-		} catch (error) {
-			const currentStep = get().pipelineStep;
-			if (currentStep) advancePipeline(currentStep, "error");
-			set({
-				parseStatus: "error",
-				parseError:
-					error instanceof Error ? error.message : "Unknown parse error",
-			});
-		}
-	},
-
-	clearScript: () =>
-		set({
-			rawScript: "",
-			scriptData: null,
-			parseStatus: "idle",
-			parseError: null,
-			characters: [],
-			scenes: [],
-			shots: [],
-			shotGenerationStatus: {},
-			episodes: [],
-			selectedItemId: null,
-			selectedItemType: null,
-			pipelineStep: null,
-			pipelineProgress: initialState.pipelineProgress,
-			generationStatus: "idle",
-			generationProgress: 0,
-			generationError: null,
-			storyboardImageUrl: null,
-			storyboardGridConfig: null,
-			activeStep: "script",
-		}),
-
-	generateScript: async (idea, options = {}) => {
-		if (!idea.trim()) return;
-		set({ createStatus: "generating", createError: null });
-
-		try {
-			const api = window.electronAPI?.moyin;
-			if (!api?.callLLM) {
-				throw new Error("Moyin API not available. Please run in Electron.");
-			}
-
-			const { generateScriptFromIdea } = await import(
-				"@/lib/moyin/script/script-parser"
-			);
-
-			const llmAdapter = async (
-				systemPrompt: string,
-				userPrompt: string,
-				opts?: { temperature?: number; maxTokens?: number }
-			) => {
-				const result = await api.callLLM({
-					systemPrompt,
-					userPrompt,
-					temperature: opts?.temperature,
-					maxTokens: opts?.maxTokens,
-				});
-				if (!result.success || !result.text) {
-					throw new Error(result.error || "LLM call failed");
+		checkApiKeyStatus: async () => {
+			try {
+				const status = await window.electronAPI?.apiKeys?.status();
+				if (!status) {
+					set({ chatConfigured: false });
+					return;
 				}
-				return result.text;
+				const configured =
+					status.openRouterApiKey?.set ||
+					status.geminiApiKey?.set ||
+					status.anthropicApiKey?.set ||
+					false;
+				set({ chatConfigured: configured });
+			} catch {
+				set({ chatConfigured: false });
+			}
+		},
+
+		parseScript: async () => {
+			const { rawScript } = get();
+			if (!rawScript.trim()) return;
+
+			const advancePipeline = (
+				step: PipelineStep,
+				status: PipelineStepStatus
+			) => {
+				const progress = { ...get().pipelineProgress, [step]: status };
+				set({ pipelineStep: step, pipelineProgress: progress });
 			};
 
-			const { sceneCount, shotCount, selectedStyleId } = get();
-			const generatedText = await generateScriptFromIdea(idea, llmAdapter, {
-				targetDuration: options.targetDuration || "60s",
-				sceneCount: sceneCount !== "auto" ? Number(sceneCount) : undefined,
-				shotCount: shotCount !== "auto" ? Number(shotCount) : undefined,
-				styleId: selectedStyleId,
-			});
-
 			set({
-				rawScript: generatedText,
-				createStatus: "done",
-				createError: null,
+				parseStatus: "parsing",
+				parseError: null,
+				pipelineStep: "import",
+				pipelineProgress: initialState.pipelineProgress,
 			});
-		} catch (error) {
+
+			try {
+				advancePipeline("import", "active");
+
+				const api = window.electronAPI?.moyin;
+				if (!api) {
+					throw new Error("Moyin API not available. Please run in Electron.");
+				}
+
+				const result = await api.parseScript({ rawScript });
+
+				if (!result.success || !result.data) {
+					throw new Error(result.error || "Failed to parse script");
+				}
+
+				advancePipeline("import", "done");
+
+				const data = result.data as unknown as ScriptData;
+
+				advancePipeline("title_calibration", "active");
+				// Title and metadata extracted from parse result
+				advancePipeline("title_calibration", "done");
+
+				advancePipeline("synopsis", "active");
+				// Synopsis and story paragraphs extracted
+				advancePipeline("synopsis", "done");
+
+				advancePipeline("shot_calibration", "active");
+				// Scenes contain shot breakdown info
+				advancePipeline("shot_calibration", "done");
+
+				advancePipeline("character_calibration", "active");
+				advancePipeline("character_calibration", "done");
+
+				advancePipeline("scene_calibration", "active");
+				advancePipeline("scene_calibration", "done");
+
+				set({
+					scriptData: data,
+					characters: data.characters ?? [],
+					scenes: data.scenes ?? [],
+					episodes: data.episodes ?? [],
+					parseStatus: "ready",
+					activeStep: "characters",
+				});
+			} catch (error) {
+				const currentStep = get().pipelineStep;
+				if (currentStep) advancePipeline(currentStep, "error");
+				set({
+					parseStatus: "error",
+					parseError:
+						error instanceof Error ? error.message : "Unknown parse error",
+				});
+			}
+		},
+
+		clearScript: () =>
 			set({
-				createStatus: "error",
-				createError:
-					error instanceof Error ? error.message : "Script generation failed",
-			});
-		}
-	},
+				rawScript: "",
+				scriptData: null,
+				parseStatus: "idle",
+				parseError: null,
+				characters: [],
+				scenes: [],
+				shots: [],
+				shotGenerationStatus: {},
+				episodes: [],
+				selectedItemId: null,
+				selectedItemType: null,
+				pipelineStep: null,
+				pipelineProgress: initialState.pipelineProgress,
+				generationStatus: "idle",
+				generationProgress: 0,
+				generationError: null,
+				storyboardImageUrl: null,
+				storyboardGridConfig: null,
+				activeStep: "script",
+			}),
 
-	updateCharacter: (id, updates) =>
-		set((state) => ({
-			characters: state.characters.map((c) =>
-				c.id === id ? { ...c, ...updates } : c
-			),
-		})),
+		generateScript: async (idea, options = {}) => {
+			if (!idea.trim()) return;
+			set({ createStatus: "generating", createError: null });
 
-	addCharacter: (char) =>
-		set((state) => ({ characters: [...state.characters, char] })),
-
-	removeCharacter: (id) =>
-		set((state) => ({
-			characters: state.characters.filter((c) => c.id !== id),
-		})),
-
-	updateScene: (id, updates) =>
-		set((state) => ({
-			scenes: state.scenes.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-		})),
-
-	addScene: (scene) => set((state) => ({ scenes: [...state.scenes, scene] })),
-
-	removeScene: (id) =>
-		set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) })),
-
-	addShot: (shot) => set((state) => ({ shots: [...state.shots, shot] })),
-
-	updateShot: (id, updates) =>
-		set((state) => ({
-			shots: state.shots.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-		})),
-
-	removeShot: (id) =>
-		set((state) => ({ shots: state.shots.filter((s) => s.id !== id) })),
-
-	generateShotsForEpisode: async (episodeId) => {
-		const { episodes, scenes, scriptData } = get();
-		const episode = episodes.find((ep) => ep.id === episodeId);
-		if (!episode) return;
-
-		set((state) => ({
-			shotGenerationStatus: {
-				...state.shotGenerationStatus,
-				[episodeId]: "generating",
-			},
-		}));
-
-		try {
-			const api = window.electronAPI?.moyin;
-			if (!api?.callLLM) {
-				throw new Error("Moyin API not available.");
+			try {
+				const { sceneCount, shotCount, selectedStyleId } = get();
+				const generatedText = await generateScriptAction(idea, options, {
+					sceneCount,
+					shotCount,
+					selectedStyleId,
+				});
+				set({
+					rawScript: generatedText,
+					createStatus: "done",
+					createError: null,
+				});
+			} catch (error) {
+				set({
+					createStatus: "error",
+					createError:
+						error instanceof Error ? error.message : "Script generation failed",
+				});
 			}
+		},
 
-			const episodeScenes = scenes.filter((s) =>
-				episode.sceneIds.includes(s.id)
-			);
-			const sceneDescs = episodeScenes
-				.map(
-					(s, i) =>
-						`Scene ${i + 1} (${s.id}): ${s.name || s.location}, ${s.time || ""}, ${s.atmosphere || ""}`
-				)
-				.join("\n");
+		updateCharacter: (id, updates) =>
+			set((state) => ({
+				characters: state.characters.map((c) =>
+					c.id === id ? { ...c, ...updates } : c
+				),
+			})),
 
-			const title = scriptData?.title || "Unknown";
+		addCharacter: (char) =>
+			set((state) => ({ characters: [...state.characters, char] })),
 
-			const result = await api.callLLM({
-				systemPrompt: `You are a professional storyboard artist. Break each scene into 3-6 shots.
+		removeCharacter: (id) =>
+			set((state) => ({
+				characters: state.characters.filter((c) => c.id !== id),
+			})),
 
-Return JSON array:
-[{ "id": "shot_001", "sceneRefId": "scene_id", "index": 0, "actionSummary": "description", "shotSize": "MS/CU/WS/etc", "cameraMovement": "pan/tilt/static/etc", "characterIds": [], "characterVariations": {}, "imageStatus": "idle", "imageProgress": 0, "videoStatus": "idle", "videoProgress": 0 }]
+		updateScene: (id, updates) =>
+			set((state) => ({
+				scenes: state.scenes.map((s) =>
+					s.id === id ? { ...s, ...updates } : s
+				),
+			})),
 
-Only return the JSON array.`,
-				userPrompt: `Project: "${title}", Episode: "${episode.title}"
+		addScene: (scene) => set((state) => ({ scenes: [...state.scenes, scene] })),
 
-Scenes:
-${sceneDescs}
+		removeScene: (id) =>
+			set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) })),
 
-Generate shots for each scene with proper camera language and visual storytelling.`,
-				temperature: 0.5,
-				maxTokens: 8192,
-			});
+		addShot: (shot) => set((state) => ({ shots: [...state.shots, shot] })),
 
-			if (!result.success || !result.text) {
-				throw new Error(result.error || "Shot generation failed");
-			}
+		updateShot: (id, updates) =>
+			set((state) => ({
+				shots: state.shots.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+			})),
 
-			let cleaned = result.text
-				.replace(/```json\n?/g, "")
-				.replace(/```\n?/g, "")
-				.trim();
-			const jsonStart = cleaned.indexOf("[");
-			const jsonEnd = cleaned.lastIndexOf("]");
-			if (jsonStart !== -1 && jsonEnd !== -1) {
-				cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-			}
+		removeShot: (id) =>
+			set((state) => ({ shots: state.shots.filter((s) => s.id !== id) })),
 
-			const newShots = JSON.parse(cleaned) as Shot[];
+		generateShotsForEpisode: async (episodeId) => {
+			const { episodes, scenes, scriptData } = get();
+			const episode = episodes.find((ep) => ep.id === episodeId);
+			if (!episode) return;
 
 			set((state) => ({
-				shots: [
-					...state.shots.filter(
-						(s) => !episodeScenes.some((es) => es.id === s.sceneRefId)
-					),
-					...newShots,
-				],
 				shotGenerationStatus: {
 					...state.shotGenerationStatus,
-					[episodeId]: "done",
+					[episodeId]: "generating",
 				},
 			}));
-		} catch (error) {
-			set((state) => ({
-				shotGenerationStatus: {
-					...state.shotGenerationStatus,
-					[episodeId]: "error",
-				},
-				calibrationError:
-					error instanceof Error ? error.message : "Shot generation failed",
-			}));
-		}
-	},
 
-	generateShotImage: async (shotId) => {
-		const { shots, characters, scenes, selectedStyleId } = get();
-		const shot = shots.find((s) => s.id === shotId);
-		if (!shot) return;
+			try {
+				const episodeScenes = scenes.filter((s) =>
+					episode.sceneIds.includes(s.id)
+				);
+				const newShots = await generateShotsForEpisodeAction(
+					episodeScenes,
+					episode.title,
+					scriptData?.title || "Unknown"
+				);
 
-		set((state) => ({
-			shots: state.shots.map((s) =>
-				s.id === shotId
-					? {
-							...s,
-							imageStatus: "generating",
-							imageProgress: 0,
-							imageError: undefined,
-						}
-					: s
-			),
-		}));
-
-		try {
-			const scene = scenes.find((s) => s.id === shot.sceneRefId);
-			const prompt = buildShotImagePrompt(
-				shot,
-				scene,
-				characters,
-				selectedStyleId
-			);
-
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId ? { ...s, imageProgress: 30 } : s
-				),
-			}));
-
-			const remoteImageUrl = await generateShotImageRequest(prompt);
-			const imageUrl = await persistShotMedia(
-				remoteImageUrl,
-				`shot-${shotId}-image.png`
-			);
-
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? { ...s, imageStatus: "completed", imageProgress: 100, imageUrl }
-						: s
-				),
-			}));
-		} catch (error) {
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? {
-								...s,
-								imageStatus: "failed",
-								imageError:
-									error instanceof Error
-										? error.message
-										: "Image generation failed",
-							}
-						: s
-				),
-			}));
-		}
-	},
-
-	generateShotVideo: async (shotId) => {
-		const { shots } = get();
-		const shot = shots.find((s) => s.id === shotId);
-		if (!shot) return;
-
-		set((state) => ({
-			shots: state.shots.map((s) =>
-				s.id === shotId
-					? {
-							...s,
-							videoStatus: "generating",
-							videoProgress: 0,
-							videoError: undefined,
-						}
-					: s
-			),
-		}));
-
-		try {
-			if (!shot.imageUrl) {
-				throw new Error("Generate an image first before creating video.");
+				set((state) => ({
+					shots: [
+						...state.shots.filter(
+							(s) => !episodeScenes.some((es) => es.id === s.sceneRefId)
+						),
+						...newShots,
+					],
+					shotGenerationStatus: {
+						...state.shotGenerationStatus,
+						[episodeId]: "done",
+					},
+				}));
+			} catch (error) {
+				set((state) => ({
+					shotGenerationStatus: {
+						...state.shotGenerationStatus,
+						[episodeId]: "error",
+					},
+					calibrationError:
+						error instanceof Error ? error.message : "Shot generation failed",
+				}));
 			}
+		},
 
-			const prompt = shot.videoPrompt || shot.actionSummary || "";
+		generateShotImage: async (shotId) => {
+			const { shots, characters, scenes, selectedStyleId } = get();
+			const shot = shots.find((s) => s.id === shotId);
+			if (!shot) return;
 
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId ? { ...s, videoProgress: 20 } : s
-				),
-			}));
-
-			const remoteVideoUrl = await generateShotVideoRequest(
-				shot.imageUrl,
-				prompt
-			);
-			const videoUrl = await persistShotMedia(
-				remoteVideoUrl,
-				`shot-${shotId}-video.mp4`
-			);
-
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? { ...s, videoStatus: "completed", videoProgress: 100, videoUrl }
-						: s
-				),
-			}));
-		} catch (error) {
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? {
-								...s,
-								videoStatus: "failed",
-								videoError:
-									error instanceof Error
-										? error.message
-										: "Video generation failed",
-							}
-						: s
-				),
-			}));
-		}
-	},
-
-	generateEndFrameImage: async (shotId) => {
-		const { shots } = get();
-		const shot = shots.find((s) => s.id === shotId);
-		if (!shot) return;
-
-		set((state) => ({
-			shots: state.shots.map((s) =>
-				s.id === shotId
-					? {
-							...s,
-							endFrameImageStatus: "generating",
-							endFrameImageError: undefined,
-						}
-					: s
-			),
-		}));
-
-		try {
-			const prompt = buildEndFramePrompt(shot);
-			if (!prompt) throw new Error("No end frame prompt available.");
-
-			const remoteUrl = await generateFalImage(prompt);
-			const endFrameImageUrl = await persistShotMedia(
-				remoteUrl,
-				`shot-${shotId}-endframe.png`
-			);
-
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? {
-								...s,
-								endFrameImageStatus: "completed",
-								endFrameImageUrl,
-								endFrameSource: "ai-generated",
-							}
-						: s
-				),
-			}));
-		} catch (error) {
-			set((state) => ({
-				shots: state.shots.map((s) =>
-					s.id === shotId
-						? {
-								...s,
-								endFrameImageStatus: "failed",
-								endFrameImageError:
-									error instanceof Error
-										? error.message
-										: "End frame generation failed",
-							}
-						: s
-				),
-			}));
-		}
-	},
-
-	addEpisode: (ep) => set((state) => ({ episodes: [...state.episodes, ep] })),
-
-	updateEpisode: (id, updates) =>
-		set((state) => ({
-			episodes: state.episodes.map((ep) =>
-				ep.id === id ? { ...ep, ...updates } : ep
-			),
-		})),
-
-	removeEpisode: (id) =>
-		set((state) => ({
-			episodes: state.episodes.filter((ep) => ep.id !== id),
-		})),
-
-	setSelectedItem: (id, type) =>
-		set({ selectedItemId: id, selectedItemType: type }),
-
-	setSelectedStyleId: (id) => set({ selectedStyleId: id }),
-
-	setSelectedProfileId: (id) => set({ selectedProfileId: id }),
-
-	enhanceCharacters: async () => {
-		const { characters, scriptData } = get();
-		if (characters.length === 0) return;
-
-		set({ characterCalibrationStatus: "calibrating", calibrationError: null });
-
-		try {
-			const enhanced = await enhanceCharactersLLM(characters, scriptData);
-			set({ characters: enhanced, characterCalibrationStatus: "done" });
-		} catch (error) {
-			set({
-				characterCalibrationStatus: "error",
-				calibrationError:
-					error instanceof Error ? error.message : "Enhancement failed",
+			patchShot(shotId, {
+				imageStatus: "generating",
+				imageProgress: 0,
+				imageError: undefined,
 			});
-		}
-	},
 
-	enhanceScenes: async () => {
-		const { scenes, scriptData } = get();
-		if (scenes.length === 0) return;
+			try {
+				const scene = scenes.find((s) => s.id === shot.sceneRefId);
+				const prompt = buildShotImagePrompt(
+					shot,
+					scene,
+					characters,
+					selectedStyleId
+				);
+				patchShot(shotId, { imageProgress: 30 });
 
-		set({ sceneCalibrationStatus: "calibrating", calibrationError: null });
+				const remoteImageUrl = await generateShotImageRequest(prompt);
+				const imageUrl = await persistShotMedia(
+					remoteImageUrl,
+					`shot-${shotId}-image.png`
+				);
+				patchShot(shotId, {
+					imageStatus: "completed",
+					imageProgress: 100,
+					imageUrl,
+				});
+			} catch (error) {
+				patchShot(shotId, {
+					imageStatus: "failed",
+					imageError:
+						error instanceof Error ? error.message : "Image generation failed",
+				});
+			}
+		},
 
-		try {
-			const enhanced = await enhanceScenesLLM(scenes, scriptData);
-			set({ scenes: enhanced, sceneCalibrationStatus: "done" });
-		} catch (error) {
-			set({
-				sceneCalibrationStatus: "error",
-				calibrationError:
-					error instanceof Error ? error.message : "Enhancement failed",
+		generateShotVideo: async (shotId) => {
+			const { shots } = get();
+			const shot = shots.find((s) => s.id === shotId);
+			if (!shot) return;
+
+			patchShot(shotId, {
+				videoStatus: "generating",
+				videoProgress: 0,
+				videoError: undefined,
 			});
-		}
-	},
 
-	analyzeCharacterStages: async () => {
-		const { characters, episodes, scriptData } = get();
-		if (characters.length === 0 || episodes.length < 2) return 0;
+			try {
+				if (!shot.imageUrl) {
+					throw new Error("Generate an image first before creating video.");
+				}
+				const prompt = shot.videoPrompt || shot.actionSummary || "";
+				patchShot(shotId, { videoProgress: 20 });
 
-		try {
-			const updated = await analyzeStagesAction(characters, episodes.length, scriptData);
-			const count = updated.filter((c, i) =>
-				(c.variations?.length || 0) > (characters[i].variations?.length || 0)
-			).length;
-			set({ characters: updated });
-			return count;
-		} catch (error) {
-			console.error("[analyzeCharacterStages]", error);
-			return 0;
-		}
-	},
+				const remoteVideoUrl = await generateShotVideoRequest(
+					shot.imageUrl,
+					prompt
+				);
+				const videoUrl = await persistShotMedia(
+					remoteVideoUrl,
+					`shot-${shotId}-video.mp4`
+				);
+				patchShot(shotId, {
+					videoStatus: "completed",
+					videoProgress: 100,
+					videoUrl,
+				});
+			} catch (error) {
+				patchShot(shotId, {
+					videoStatus: "failed",
+					videoError:
+						error instanceof Error ? error.message : "Video generation failed",
+				});
+			}
+		},
 
-	generateStoryboard: async () => {
-		const { scenes, characters, selectedStyleId, scriptData } = get();
-		if (scenes.length === 0) return;
+		generateEndFrameImage: async (shotId) => {
+			const { shots } = get();
+			const shot = shots.find((s) => s.id === shotId);
+			if (!shot) return;
 
-		set({
-			generationStatus: "generating",
-			generationProgress: 0,
-			generationError: null,
-			storyboardImageUrl: null,
-			storyboardGridConfig: null,
-		});
+			patchShot(shotId, {
+				endFrameImageStatus: "generating",
+				endFrameImageError: undefined,
+			});
 
-		try {
-			const result = await generateStoryboardAction(
-				scenes,
-				characters,
-				selectedStyleId,
-				scriptData,
-				(progress) => set({ generationProgress: progress }),
-			);
+			try {
+				const prompt = buildEndFramePrompt(shot);
+				if (!prompt) throw new Error("No end frame prompt available.");
+
+				const remoteUrl = await generateFalImage(prompt);
+				const endFrameImageUrl = await persistShotMedia(
+					remoteUrl,
+					`shot-${shotId}-endframe.png`
+				);
+				patchShot(shotId, {
+					endFrameImageStatus: "completed",
+					endFrameImageUrl,
+					endFrameSource: "ai-generated",
+				});
+			} catch (error) {
+				patchShot(shotId, {
+					endFrameImageStatus: "failed",
+					endFrameImageError:
+						error instanceof Error
+							? error.message
+							: "End frame generation failed",
+				});
+			}
+		},
+
+		addEpisode: (ep) => set((state) => ({ episodes: [...state.episodes, ep] })),
+
+		updateEpisode: (id, updates) =>
+			set((state) => ({
+				episodes: state.episodes.map((ep) =>
+					ep.id === id ? { ...ep, ...updates } : ep
+				),
+			})),
+
+		removeEpisode: (id) =>
+			set((state) => ({
+				episodes: state.episodes.filter((ep) => ep.id !== id),
+			})),
+
+		setSelectedItem: (id, type) =>
+			set({ selectedItemId: id, selectedItemType: type }),
+
+		setSelectedStyleId: (id) => set({ selectedStyleId: id }),
+
+		setSelectedProfileId: (id) => set({ selectedProfileId: id }),
+
+		enhanceCharacters: async () => {
+			const { characters, scriptData } = get();
+			if (characters.length === 0) return;
 
 			set({
-				generationStatus: "done",
-				generationProgress: 100,
-				storyboardImageUrl: result.imageUrl,
-				storyboardGridConfig: result.gridConfig,
+				characterCalibrationStatus: "calibrating",
+				calibrationError: null,
 			});
-		} catch (error) {
+
+			try {
+				const enhanced = await enhanceCharactersLLM(characters, scriptData);
+				set({ characters: enhanced, characterCalibrationStatus: "done" });
+			} catch (error) {
+				set({
+					characterCalibrationStatus: "error",
+					calibrationError:
+						error instanceof Error ? error.message : "Enhancement failed",
+				});
+			}
+		},
+
+		enhanceScenes: async () => {
+			const { scenes, scriptData } = get();
+			if (scenes.length === 0) return;
+
+			set({ sceneCalibrationStatus: "calibrating", calibrationError: null });
+
+			try {
+				const enhanced = await enhanceScenesLLM(scenes, scriptData);
+				set({ scenes: enhanced, sceneCalibrationStatus: "done" });
+			} catch (error) {
+				set({
+					sceneCalibrationStatus: "error",
+					calibrationError:
+						error instanceof Error ? error.message : "Enhancement failed",
+				});
+			}
+		},
+
+		analyzeCharacterStages: async () => {
+			const { characters, episodes, scriptData } = get();
+			if (characters.length === 0 || episodes.length < 2) return 0;
+
+			try {
+				const updated = await analyzeStagesAction(
+					characters,
+					episodes.length,
+					scriptData
+				);
+				const count = updated.filter(
+					(c, i) =>
+						(c.variations?.length || 0) >
+						(characters[i].variations?.length || 0)
+				).length;
+				set({ characters: updated });
+				return count;
+			} catch (error) {
+				console.error("[analyzeCharacterStages]", error);
+				return 0;
+			}
+		},
+
+		generateStoryboard: async () => {
+			const { scenes, characters, selectedStyleId, scriptData } = get();
+			if (scenes.length === 0) return;
+
 			set({
-				generationStatus: "error",
-				generationError:
-					error instanceof Error ? error.message : "Unknown generation error",
+				generationStatus: "generating",
+				generationProgress: 0,
+				generationError: null,
+				storyboardImageUrl: null,
+				storyboardGridConfig: null,
 			});
-		}
-	},
 
-	splitAndApplyStoryboard: async () => {
-		const { storyboardImageUrl, storyboardGridConfig, scenes, shots, scriptData } = get();
-		if (!storyboardImageUrl || !storyboardGridConfig) return;
+			try {
+				const result = await generateStoryboardAction(
+					scenes,
+					characters,
+					selectedStyleId,
+					scriptData,
+					(progress) => set({ generationProgress: progress })
+				);
 
-		try {
-			const result = await splitAndApplyAction(
+				set({
+					generationStatus: "done",
+					generationProgress: 100,
+					storyboardImageUrl: result.imageUrl,
+					storyboardGridConfig: result.gridConfig,
+				});
+			} catch (error) {
+				set({
+					generationStatus: "error",
+					generationError:
+						error instanceof Error ? error.message : "Unknown generation error",
+				});
+			}
+		},
+
+		splitAndApplyStoryboard: async () => {
+			const {
 				storyboardImageUrl,
 				storyboardGridConfig,
 				scenes,
 				shots,
 				scriptData,
-			);
-			set({ shots: result.shots });
-		} catch (error) {
-			set({
-				generationError:
-					error instanceof Error ? error.message : "Failed to split storyboard",
-			});
-		}
-	},
+			} = get();
+			if (!storyboardImageUrl || !storyboardGridConfig) return;
 
-	loadProject: (projectId) => {
-		const saved = loadMoyinProject(projectId);
-		if (saved) {
-			set({ ...initialState, ...saved, projectId });
-		} else {
-			set({ ...initialState, projectId });
-		}
-	},
+			try {
+				const result = await splitAndApplyAction(
+					storyboardImageUrl,
+					storyboardGridConfig,
+					scenes,
+					shots,
+					scriptData
+				);
+				set({ shots: result.shots });
+			} catch (error) {
+				set({
+					generationError:
+						error instanceof Error
+							? error.message
+							: "Failed to split storyboard",
+				});
+			}
+		},
 
-	saveProject: () => {
-		const state = get();
-		if (!state.projectId) return;
-		saveMoyinProject(state.projectId, partializeMoyinState(state));
-	},
+		loadProject: (projectId) => {
+			const saved = loadMoyinProject(projectId);
+			if (saved) {
+				set({ ...initialState, ...saved, projectId });
+			} else {
+				set({ ...initialState, projectId });
+			}
+		},
 
-	clearProjectData: () => {
-		const { projectId } = get();
-		if (projectId) clearMoyinProject(projectId);
-		set(initialState);
-	},
+		saveProject: () => {
+			const state = get();
+			if (!state.projectId) return;
+			saveMoyinProject(state.projectId, partializeMoyinState(state));
+		},
 
-	reset: () => set(initialState),
-}));
+		clearProjectData: () => {
+			const { projectId } = get();
+			if (projectId) clearMoyinProject(projectId);
+			set(initialState);
+		},
+
+		reset: () => set(initialState),
+	};
+});
 
 // Auto-save on state changes (debounced)
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
