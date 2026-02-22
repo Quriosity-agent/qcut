@@ -35,6 +35,8 @@ import {
 	duplicateEpisodeAction,
 	duplicateSceneAction,
 	duplicateShotAction,
+	reorderShotsAction,
+	reorderScenesAction,
 } from "./moyin-generation";
 
 // Types
@@ -89,12 +91,11 @@ interface MoyinState {
 	} | null;
 	createStatus: "idle" | "generating" | "done" | "error";
 	createError: string | null;
+	selectedShotIds: Set<string>;
 }
 
 interface MoyinActions {
 	setActiveStep: (step: MoyinStep) => void;
-
-	// Script
 	setRawScript: (text: string) => void;
 	parseScript: () => Promise<void>;
 	clearScript: () => void;
@@ -102,26 +103,16 @@ interface MoyinActions {
 		idea: string,
 		options?: { genre?: string; targetDuration?: string }
 	) => Promise<void>;
-
-	// Script config
 	setLanguage: (lang: string) => void;
 	setSceneCount: (count: string) => void;
 	setShotCount: (count: string) => void;
-
-	// API key status
 	checkApiKeyStatus: () => Promise<void>;
-
-	// Characters
 	updateCharacter: (id: string, updates: Partial<ScriptCharacter>) => void;
 	addCharacter: (char: ScriptCharacter) => void;
 	removeCharacter: (id: string) => void;
-
-	// Scenes
 	updateScene: (id: string, updates: Partial<ScriptScene>) => void;
 	addScene: (scene: ScriptScene) => void;
 	removeScene: (id: string) => void;
-
-	// Shots
 	addShot: (shot: Shot) => void;
 	updateShot: (id: string, updates: Partial<Shot>) => void;
 	removeShot: (id: string) => void;
@@ -129,42 +120,38 @@ interface MoyinActions {
 	generateShotImage: (shotId: string) => Promise<void>;
 	generateShotVideo: (shotId: string) => Promise<void>;
 	generateEndFrameImage: (shotId: string) => Promise<void>;
-
-	// Episodes
 	addEpisode: (ep: Episode) => void;
 	updateEpisode: (id: string, updates: Partial<Episode>) => void;
 	removeEpisode: (id: string) => void;
-
-	// Duplicate
 	duplicateEpisode: (id: string) => void;
 	duplicateScene: (id: string) => void;
 	duplicateShot: (id: string) => void;
-
-	// Structure panel selection
+	reorderShots: (shotId: string, targetIndex: number) => void;
+	reorderScenes: (
+		episodeId: string,
+		sceneId: string,
+		targetIndex: number
+	) => void;
+	toggleShotSelection: (shotId: string) => void;
+	clearShotSelection: () => void;
+	deleteSelectedShots: () => void;
+	deleteSelectedItem: () => void;
+	selectNextItem: () => void;
+	selectPrevItem: () => void;
 	setSelectedItem: (
 		id: string | null,
 		type: "episode" | "scene" | "character" | "shot" | null
 	) => void;
-
-	// Style & profile
 	setSelectedStyleId: (id: string) => void;
 	setSelectedProfileId: (id: string) => void;
-
-	// AI Calibration
 	enhanceCharacters: () => Promise<void>;
 	enhanceScenes: () => Promise<void>;
 	analyzeCharacterStages: () => Promise<number>;
-
-	// Generation
 	generateStoryboard: () => Promise<void>;
 	splitAndApplyStoryboard: () => Promise<void>;
-
-	// Persistence
 	loadProject: (projectId: string) => void;
 	saveProject: () => void;
 	clearProjectData: () => void;
-
-	// Reset
 	reset: () => void;
 }
 
@@ -209,6 +196,7 @@ const initialState: MoyinState = {
 	storyboardGridConfig: null,
 	createStatus: "idle",
 	createError: null,
+	selectedShotIds: new Set<string>(),
 };
 
 export const useMoyinStore = create<MoyinStore>((set, get) => {
@@ -218,6 +206,21 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				s.id === shotId ? { ...s, ...updates } : s
 			),
 		}));
+
+	const selectAdjacentItem = (dir: 1 | -1) => {
+		const s = get();
+		if (!s.selectedItemType) return;
+		const list =
+			{
+				shot: s.shots,
+				scene: s.scenes,
+				character: s.characters,
+				episode: s.episodes,
+			}[s.selectedItemType] || [];
+		const idx = list.findIndex((item) => item.id === s.selectedItemId);
+		const next = idx + dir;
+		if (next >= 0 && next < list.length) set({ selectedItemId: list[next].id });
+	};
 
 	return {
 		...initialState,
@@ -315,28 +318,10 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			}
 		},
 
-		clearScript: () =>
-			set({
-				rawScript: "",
-				scriptData: null,
-				parseStatus: "idle",
-				parseError: null,
-				characters: [],
-				scenes: [],
-				shots: [],
-				shotGenerationStatus: {},
-				episodes: [],
-				selectedItemId: null,
-				selectedItemType: null,
-				pipelineStep: null,
-				pipelineProgress: initialState.pipelineProgress,
-				generationStatus: "idle",
-				generationProgress: 0,
-				generationError: null,
-				storyboardImageUrl: null,
-				storyboardGridConfig: null,
-				activeStep: "script",
-			}),
+		clearScript: () => {
+			const { projectId } = get();
+			set({ ...initialState, projectId });
+		},
 
 		generateScript: async (idea, options = {}) => {
 			if (!idea.trim()) return;
@@ -603,6 +588,52 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			set({ shots: result });
 		},
 
+		reorderShots: (shotId, targetIndex) =>
+			set({ shots: reorderShotsAction(shotId, targetIndex, get().shots) }),
+
+		reorderScenes: (episodeId, sceneId, targetIndex) =>
+			set({
+				episodes: reorderScenesAction(
+					episodeId,
+					sceneId,
+					targetIndex,
+					get().episodes
+				),
+			}),
+
+		toggleShotSelection: (shotId) =>
+			set((state) => {
+				const next = new Set(state.selectedShotIds);
+				if (next.has(shotId)) next.delete(shotId);
+				else next.add(shotId);
+				return { selectedShotIds: next };
+			}),
+		clearShotSelection: () => set({ selectedShotIds: new Set<string>() }),
+		deleteSelectedShots: () =>
+			set((state) => {
+				if (state.selectedShotIds.size === 0) return state;
+				return {
+					shots: state.shots.filter((s) => !state.selectedShotIds.has(s.id)),
+					selectedShotIds: new Set<string>(),
+				};
+			}),
+
+		deleteSelectedItem: () => {
+			const { selectedItemId: id, selectedItemType: type } = get();
+			if (!id || !type) return;
+			const actions: Record<string, (id: string) => void> = {
+				shot: get().removeShot,
+				scene: get().removeScene,
+				episode: get().removeEpisode,
+				character: get().removeCharacter,
+			};
+			actions[type]?.(id);
+			set({ selectedItemId: null, selectedItemType: null });
+		},
+
+		selectNextItem: () => selectAdjacentItem(1),
+		selectPrevItem: () => selectAdjacentItem(-1),
+
 		setSelectedItem: (id, type) =>
 			set({ selectedItemId: id, selectedItemType: type }),
 
@@ -679,7 +710,6 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		generateStoryboard: async () => {
 			const { scenes, characters, selectedStyleId, scriptData } = get();
 			if (scenes.length === 0) return;
-
 			set({
 				generationStatus: "generating",
 				generationProgress: 0,
@@ -687,16 +717,14 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				storyboardImageUrl: null,
 				storyboardGridConfig: null,
 			});
-
 			try {
 				const result = await generateStoryboardAction(
 					scenes,
 					characters,
 					selectedStyleId,
 					scriptData,
-					(progress) => set({ generationProgress: progress })
+					(p) => set({ generationProgress: p })
 				);
-
 				set({
 					generationStatus: "done",
 					generationProgress: 100,
@@ -714,18 +742,17 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 
 		splitAndApplyStoryboard: async () => {
 			const {
-				storyboardImageUrl,
-				storyboardGridConfig,
+				storyboardImageUrl: url,
+				storyboardGridConfig: grid,
 				scenes,
 				shots,
 				scriptData,
 			} = get();
-			if (!storyboardImageUrl || !storyboardGridConfig) return;
-
+			if (!url || !grid) return;
 			try {
 				const result = await splitAndApplyAction(
-					storyboardImageUrl,
-					storyboardGridConfig,
+					url,
+					grid,
 					scenes,
 					shots,
 					scriptData
@@ -743,25 +770,21 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 
 		loadProject: (projectId) => {
 			const saved = loadMoyinProject(projectId);
-			if (saved) {
-				set({ ...initialState, ...saved, projectId });
-			} else {
-				set({ ...initialState, projectId });
-			}
+			set(
+				saved
+					? { ...initialState, ...saved, projectId }
+					: { ...initialState, projectId }
+			);
 		},
-
 		saveProject: () => {
-			const state = get();
-			if (!state.projectId) return;
-			saveMoyinProject(state.projectId, partializeMoyinState(state));
+			const s = get();
+			if (s.projectId) saveMoyinProject(s.projectId, partializeMoyinState(s));
 		},
-
 		clearProjectData: () => {
 			const { projectId } = get();
 			if (projectId) clearMoyinProject(projectId);
 			set(initialState);
 		},
-
 		reset: () => set(initialState),
 	};
 });

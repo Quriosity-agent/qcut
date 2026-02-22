@@ -785,3 +785,135 @@ describe("Skeleton Loaders", () => {
 		expect(screen.queryByLabelText("Loading characters")).toBeNull();
 	});
 });
+
+// ==================== Round 8: Multi-Select & Bulk Delete ====================
+
+describe("ShotBreakdown — Multi-Select", () => {
+	const shotsData = [
+		{
+			id: "shot1",
+			index: 0,
+			sceneRefId: "s1",
+			actionSummary: "Shot 1",
+			characterIds: [],
+			characterVariations: {},
+			imageStatus: "idle" as const,
+			imageProgress: 0,
+			videoStatus: "idle" as const,
+			videoProgress: 0,
+		},
+		{
+			id: "shot2",
+			index: 1,
+			sceneRefId: "s1",
+			actionSummary: "Shot 2",
+			characterIds: [],
+			characterVariations: {},
+			imageStatus: "idle" as const,
+			imageProgress: 0,
+			videoStatus: "idle" as const,
+			videoProgress: 0,
+		},
+	];
+
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: shotsData,
+			selectedShotIds: new Set<string>(),
+		});
+	});
+
+	it("shows bulk action bar when shots are selected", () => {
+		useMoyinStore.setState({ selectedShotIds: new Set(["shot1"]) });
+		render(<ShotBreakdown />);
+		expect(screen.getByText("1 selected")).toBeTruthy();
+		expect(screen.getByText("Delete")).toBeTruthy();
+		expect(screen.getByText("Clear")).toBeTruthy();
+	});
+
+	it("hides bulk action bar when no shots are selected", () => {
+		render(<ShotBreakdown />);
+		expect(screen.queryByText("selected")).toBeNull();
+	});
+
+	it("bulk delete button has aria-label", () => {
+		useMoyinStore.setState({ selectedShotIds: new Set(["shot1"]) });
+		render(<ShotBreakdown />);
+		expect(screen.getByLabelText("Delete selected shots")).toBeTruthy();
+	});
+});
+
+// ==================== Round 8: Keyboard Shortcuts ====================
+
+import { StructurePanel } from "../structure-panel";
+
+describe("StructurePanel — Keyboard Shortcuts", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scriptData: { title: "Test", genre: "Drama" },
+			episodes: [
+				{ id: "ep1", index: 0, title: "Ep 1", sceneIds: ["s1"] },
+			],
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Shot 1",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Shot 2",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+			selectedItemId: "shot1",
+			selectedItemType: "shot",
+		});
+	});
+
+	it("Escape clears selection", () => {
+		render(<StructurePanel />);
+		fireEvent.keyDown(window, { key: "Escape" });
+		expect(useMoyinStore.getState().selectedItemId).toBeNull();
+	});
+
+	it("ArrowDown selects next item", () => {
+		render(<StructurePanel />);
+		fireEvent.keyDown(window, { key: "ArrowDown" });
+		expect(useMoyinStore.getState().selectedItemId).toBe("shot2");
+	});
+
+	it("ArrowUp selects previous item", () => {
+		useMoyinStore.setState({ selectedItemId: "shot2" });
+		render(<StructurePanel />);
+		fireEvent.keyDown(window, { key: "ArrowUp" });
+		expect(useMoyinStore.getState().selectedItemId).toBe("shot1");
+	});
+
+	it("Delete removes selected item", () => {
+		render(<StructurePanel />);
+		fireEvent.keyDown(window, { key: "Delete" });
+		const state = useMoyinStore.getState();
+		expect(state.selectedItemId).toBeNull();
+		expect(state.shots.find((s) => s.id === "shot1")).toBeUndefined();
+	});
+});

@@ -3,7 +3,7 @@
  * Compact layout for scanning many shots at a glance.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import {
 	MapPinIcon,
 	MessageSquareIcon,
 	PlusIcon,
+	Trash2Icon,
 	UserIcon,
 } from "lucide-react";
 
@@ -52,7 +53,14 @@ export function ShotBreakdown() {
 	const addShot = useMoyinStore((s) => s.addShot);
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+	const reorderShots = useMoyinStore((s) => s.reorderShots);
+	const selectedShotIds = useMoyinStore((s) => s.selectedShotIds);
+	const toggleShotSelection = useMoyinStore((s) => s.toggleShotSelection);
+	const clearShotSelection = useMoyinStore((s) => s.clearShotSelection);
+	const deleteSelectedShots = useMoyinStore((s) => s.deleteSelectedShots);
 	const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+	const [dragOverId, setDragOverId] = useState<string | null>(null);
+	const dragShotIdRef = useRef<string | null>(null);
 
 	const handleAddShot = useCallback(
 		(sceneId: string) => {
@@ -74,6 +82,49 @@ export function ShotBreakdown() {
 		},
 		[shots, addShot, setSelectedItem]
 	);
+
+	const handleShotClick = useCallback(
+		(shotId: string, e: React.MouseEvent) => {
+			if (e.shiftKey) {
+				toggleShotSelection(shotId);
+			} else {
+				clearShotSelection();
+				setSelectedItem(shotId, "shot");
+			}
+		},
+		[toggleShotSelection, clearShotSelection, setSelectedItem]
+	);
+
+	const handleDragStart = useCallback((shotId: string, e: React.DragEvent) => {
+		dragShotIdRef.current = shotId;
+		e.dataTransfer.effectAllowed = "move";
+	}, []);
+
+	const handleDragOver = useCallback((shotId: string, e: React.DragEvent) => {
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "move";
+		setDragOverId(shotId);
+	}, []);
+
+	const handleDrop = useCallback(
+		(targetShotId: string, sceneShots: { id: string }[]) => {
+			const fromId = dragShotIdRef.current;
+			if (!fromId || fromId === targetShotId) {
+				setDragOverId(null);
+				return;
+			}
+			const targetIdx = sceneShots.findIndex((s) => s.id === targetShotId);
+			reorderShots(fromId, targetIdx);
+			setDragOverId(null);
+			dragShotIdRef.current = null;
+		},
+		[reorderShots]
+	);
+
+	const handleDragEnd = useCallback(() => {
+		setDragOverId(null);
+		dragShotIdRef.current = null;
+	}, []);
 
 	const shotsByScene = useMemo(() => {
 		const map: Record<string, typeof shots> = {};
@@ -139,6 +190,33 @@ export function ShotBreakdown() {
 				</div>
 			</div>
 
+			{/* Bulk action bar */}
+			{selectedShotIds.size > 0 && (
+				<div className="flex items-center justify-between px-1.5 py-1 border-b bg-primary/5">
+					<span className="text-[10px] font-medium text-primary">
+						{selectedShotIds.size} selected
+					</span>
+					<div className="flex items-center gap-1">
+						<button
+							type="button"
+							onClick={deleteSelectedShots}
+							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-destructive hover:bg-destructive/10 transition-colors"
+							aria-label="Delete selected shots"
+						>
+							<Trash2Icon className="h-3 w-3" />
+							Delete
+						</button>
+						<button
+							type="button"
+							onClick={clearShotSelection}
+							className="px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
+						>
+							Clear
+						</button>
+					</div>
+				</div>
+			)}
+
 			{scenesWithShots.map((scene) => {
 				const sceneShots = shotsByScene[scene.id] || [];
 				return (
@@ -168,12 +246,20 @@ export function ShotBreakdown() {
 									<button
 										key={shot.id}
 										type="button"
-										onClick={() => setSelectedItem(shot.id, "shot")}
+										onClick={(e) => handleShotClick(shot.id, e)}
+										draggable
+										onDragStart={(e) => handleDragStart(shot.id, e)}
+										onDragOver={(e) => handleDragOver(shot.id, e)}
+										onDrop={() => handleDrop(shot.id, sceneShots)}
+										onDragEnd={handleDragEnd}
 										className={cn(
 											"relative aspect-video rounded border overflow-hidden transition-colors",
 											selectedItemId === shot.id
 												? "ring-2 ring-primary"
-												: "hover:ring-1 hover:ring-muted-foreground/30"
+												: selectedShotIds.has(shot.id)
+													? "ring-2 ring-blue-400"
+													: "hover:ring-1 hover:ring-muted-foreground/30",
+											dragOverId === shot.id && "ring-2 ring-yellow-400"
 										)}
 									>
 										{shot.imageUrl ? (
@@ -202,12 +288,20 @@ export function ShotBreakdown() {
 								<button
 									key={shot.id}
 									type="button"
-									onClick={() => setSelectedItem(shot.id, "shot")}
+									onClick={(e) => handleShotClick(shot.id, e)}
+									draggable
+									onDragStart={(e) => handleDragStart(shot.id, e)}
+									onDragOver={(e) => handleDragOver(shot.id, e)}
+									onDrop={() => handleDrop(shot.id, sceneShots)}
+									onDragEnd={handleDragEnd}
 									className={cn(
 										"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors",
 										selectedItemId === shot.id
 											? "bg-primary/10 text-primary"
-											: "hover:bg-muted"
+											: selectedShotIds.has(shot.id)
+												? "bg-blue-500/10 text-blue-600"
+												: "hover:bg-muted",
+										dragOverId === shot.id && "border-t-2 border-primary"
 									)}
 								>
 									<span className="text-[9px] font-mono text-muted-foreground w-5 shrink-0 text-right">

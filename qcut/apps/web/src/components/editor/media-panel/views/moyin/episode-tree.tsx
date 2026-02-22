@@ -3,7 +3,7 @@
  * Supports selection, expand/collapse, and status indicators.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function EpisodeTree() {
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
+	const reorderScenes = useMoyinStore((s) => s.reorderScenes);
 
 	const [expandedEpisodes, setExpandedEpisodes] = useState<Set<string>>(
 		new Set()
@@ -62,6 +63,49 @@ export function EpisodeTree() {
 			return next;
 		});
 	};
+
+	const [dragOverSceneId, setDragOverSceneId] = useState<string | null>(null);
+	const dragSceneRef = useRef<{ sceneId: string; episodeId: string } | null>(
+		null
+	);
+
+	const handleSceneDragStart = useCallback(
+		(sceneId: string, episodeId: string, e: React.DragEvent) => {
+			dragSceneRef.current = { sceneId, episodeId };
+			e.dataTransfer.effectAllowed = "move";
+		},
+		[]
+	);
+	const handleSceneDragOver = useCallback(
+		(sceneId: string, e: React.DragEvent) => {
+			e.preventDefault();
+			e.dataTransfer.dropEffect = "move";
+			setDragOverSceneId(sceneId);
+		},
+		[]
+	);
+	const handleSceneDrop = useCallback(
+		(targetSceneId: string, episodeId: string, sceneIds: string[]) => {
+			const from = dragSceneRef.current;
+			if (
+				!from ||
+				from.sceneId === targetSceneId ||
+				from.episodeId !== episodeId
+			) {
+				setDragOverSceneId(null);
+				return;
+			}
+			const targetIdx = sceneIds.indexOf(targetSceneId);
+			reorderScenes(episodeId, from.sceneId, targetIdx);
+			setDragOverSceneId(null);
+			dragSceneRef.current = null;
+		},
+		[reorderScenes]
+	);
+	const handleSceneDragEnd = useCallback(() => {
+		setDragOverSceneId(null);
+		dragSceneRef.current = null;
+	}, []);
 
 	// Compute shot counts per scene
 	const shotsByScene = useMemo(() => {
@@ -248,11 +292,22 @@ export function EpisodeTree() {
 												<div key={sceneId}>
 													{/* Scene row */}
 													<div
+														draggable
+														onDragStart={(e) =>
+															handleSceneDragStart(sceneId, ep.id, e)
+														}
+														onDragOver={(e) => handleSceneDragOver(sceneId, e)}
+														onDrop={() =>
+															handleSceneDrop(sceneId, ep.id, filteredSceneIds)
+														}
+														onDragEnd={handleSceneDragEnd}
 														className={cn(
 															"group flex items-center gap-1.5 w-full rounded px-1.5 py-1 text-xs transition-colors",
 															selectedItemId === sceneId
 																? "bg-primary/10 text-primary"
-																: "hover:bg-muted"
+																: "hover:bg-muted",
+															dragOverSceneId === sceneId &&
+																"border-t-2 border-primary"
 														)}
 													>
 														<button

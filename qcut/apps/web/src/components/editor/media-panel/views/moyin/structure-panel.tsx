@@ -71,6 +71,40 @@ export function StructurePanel() {
 		[setActiveStep]
 	);
 
+	// Keyboard shortcuts for navigation and deletion
+	const deleteSelectedItem = useMoyinStore((s) => s.deleteSelectedItem);
+	const selectNextItem = useMoyinStore((s) => s.selectNextItem);
+	const selectPrevItem = useMoyinStore((s) => s.selectPrevItem);
+	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			// Don't interfere with input/textarea editing
+			const tag = (e.target as HTMLElement)?.tagName;
+			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+			switch (e.key) {
+				case "Delete":
+				case "Backspace":
+					deleteSelectedItem();
+					break;
+				case "Escape":
+					setSelectedItem(null, null);
+					break;
+				case "ArrowDown":
+					e.preventDefault();
+					selectNextItem();
+					break;
+				case "ArrowUp":
+					e.preventDefault();
+					selectPrevItem();
+					break;
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [deleteSelectedItem, selectNextItem, selectPrevItem, setSelectedItem]);
+
 	return (
 		<div className="space-y-3">
 			{/* Tab bar */}

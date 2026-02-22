@@ -437,3 +437,34 @@ export function duplicateShotAction(id: string, shots: Shot[]): Shot[] | null {
 	updatedShots.splice(idx + 1, 0, newShot);
 	return updatedShots;
 }
+
+// ==================== Reorder Helpers ====================
+
+export function reorderShotsAction(
+	shotId: string,
+	targetIndex: number,
+	shots: Shot[]
+): Shot[] {
+	const shot = shots.find((s) => s.id === shotId);
+	if (!shot) return shots;
+	const scene = shots.filter((s) => s.sceneRefId === shot.sceneRefId);
+	const rest = shots.filter((s) => s.sceneRefId !== shot.sceneRefId);
+	const without = scene.filter((s) => s.id !== shotId);
+	without.splice(Math.max(0, Math.min(targetIndex, without.length)), 0, shot);
+	return [...rest, ...without.map((s, i) => ({ ...s, index: i }))];
+}
+
+export function reorderScenesAction(
+	episodeId: string,
+	sceneId: string,
+	targetIndex: number,
+	episodes: Episode[]
+): Episode[] {
+	const ep = episodes.find((e) => e.id === episodeId);
+	if (!ep) return episodes;
+	const ids = (ep.sceneIds || []).filter((id) => id !== sceneId);
+	ids.splice(Math.max(0, Math.min(targetIndex, ids.length)), 0, sceneId);
+	return episodes.map((e) =>
+		e.id === episodeId ? { ...e, sceneIds: ids } : e
+	);
+}
