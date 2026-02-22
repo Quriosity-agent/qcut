@@ -101,7 +101,11 @@ export function BatchProgressOverlay({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-			<div className="w-[320px] rounded-lg border bg-background p-5 shadow-lg space-y-4">
+			<div
+				role="dialog"
+				aria-label={`Batch ${batch.type === "image" ? "image" : "video"} generation`}
+				className="w-[320px] rounded-lg border bg-background p-5 shadow-lg space-y-4"
+			>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -114,6 +118,7 @@ export function BatchProgressOverlay({
 						size="sm"
 						className="h-6 w-6 p-0"
 						onClick={onCancel}
+						aria-label="Close batch generation"
 					>
 						<XIcon className="h-3.5 w-3.5" />
 					</Button>

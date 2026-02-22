@@ -137,13 +137,15 @@ export function StructurePanel() {
 	return (
 		<div className="space-y-3">
 			{/* Tab bar */}
-			<div className="flex items-center gap-1 border-b pb-0">
+			<div className="flex items-center gap-1 border-b pb-0" role="tablist">
 				{TABS.map((tab) => {
 					const Icon = tab.icon;
 					return (
 						<button
 							key={tab.key}
 							type="button"
+							role="tab"
+							aria-selected={activeTab === tab.key}
 							onClick={() => handleTabChange(tab.key)}
 							className={cn(
 								"flex items-center gap-1 px-2 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
