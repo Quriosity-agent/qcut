@@ -10,12 +10,14 @@ import { cn } from "@/lib/utils";
 import {
 	CameraIcon,
 	FileTextIcon,
+	FilterIcon,
 	GridIcon,
 	ImageIcon,
 	ListIcon,
 	MapPinIcon,
 	MessageSquareIcon,
 	PlusIcon,
+	SearchIcon,
 	Trash2Icon,
 	UserIcon,
 } from "lucide-react";
@@ -59,6 +61,10 @@ export function ShotBreakdown() {
 	const clearShotSelection = useMoyinStore((s) => s.clearShotSelection);
 	const deleteSelectedShots = useMoyinStore((s) => s.deleteSelectedShots);
 	const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+	const [filter, setFilter] = useState<
+		"all" | "has-image" | "has-video" | "incomplete"
+	>("all");
+	const [searchQuery, setSearchQuery] = useState("");
 	const [dragOverId, setDragOverId] = useState<string | null>(null);
 	const dragShotIdRef = useRef<string | null>(null);
 
@@ -126,14 +132,36 @@ export function ShotBreakdown() {
 		dragShotIdRef.current = null;
 	}, []);
 
+	const filteredShots = useMemo(() => {
+		let result = shots;
+		if (filter === "has-image")
+			result = result.filter((s) => s.imageStatus === "completed");
+		else if (filter === "has-video")
+			result = result.filter((s) => s.videoStatus === "completed");
+		else if (filter === "incomplete")
+			result = result.filter(
+				(s) => s.imageStatus !== "completed" || s.videoStatus !== "completed"
+			);
+		if (searchQuery.trim()) {
+			const q = searchQuery.toLowerCase();
+			result = result.filter(
+				(s) =>
+					(s.actionSummary || "").toLowerCase().includes(q) ||
+					(s.dialogue || "").toLowerCase().includes(q) ||
+					(s.characterNames || []).some((n) => n.toLowerCase().includes(q))
+			);
+		}
+		return result;
+	}, [shots, filter, searchQuery]);
+
 	const shotsByScene = useMemo(() => {
-		const map: Record<string, typeof shots> = {};
-		for (const shot of shots) {
+		const map: Record<string, typeof filteredShots> = {};
+		for (const shot of filteredShots) {
 			if (!map[shot.sceneRefId]) map[shot.sceneRefId] = [];
 			map[shot.sceneRefId].push(shot);
 		}
 		return map;
-	}, [shots]);
+	}, [filteredShots]);
 
 	// Only show scenes that have shots
 	const scenesWithShots = useMemo(
@@ -155,12 +183,37 @@ export function ShotBreakdown() {
 
 	return (
 		<div className="space-y-0">
-			{/* View mode toggle */}
-			<div className="flex items-center justify-between px-1.5 py-1 border-b">
-				<span className="text-[10px] text-muted-foreground">
-					{shots.length} shot{shots.length !== 1 ? "s" : ""}
+			{/* Toolbar: count, search, filter, view toggle */}
+			<div className="flex items-center gap-1 px-1.5 py-1 border-b">
+				<span className="text-[10px] text-muted-foreground shrink-0">
+					{filteredShots.length !== shots.length
+						? `${filteredShots.length}/`
+						: ""}
+					{shots.length}
 				</span>
-				<div className="flex items-center gap-0.5">
+				<div className="flex-1 relative">
+					<SearchIcon className="absolute left-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-muted-foreground pointer-events-none" />
+					<input
+						type="text"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						placeholder="Search shots..."
+						className="w-full h-5 pl-4 pr-1 text-[10px] rounded border bg-transparent focus:outline-none focus:ring-1 focus:ring-primary"
+						aria-label="Search shots"
+					/>
+				</div>
+				<select
+					value={filter}
+					onChange={(e) => setFilter(e.target.value as typeof filter)}
+					className="h-5 text-[10px] rounded border bg-transparent px-0.5 shrink-0"
+					aria-label="Filter shots"
+				>
+					<option value="all">All</option>
+					<option value="has-image">Has Image</option>
+					<option value="has-video">Has Video</option>
+					<option value="incomplete">Incomplete</option>
+				</select>
+				<div className="flex items-center gap-0.5 shrink-0">
 					<button
 						type="button"
 						onClick={() => setViewMode("list")}

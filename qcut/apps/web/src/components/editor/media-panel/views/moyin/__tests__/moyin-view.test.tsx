@@ -27,6 +27,7 @@ vi.mock("lucide-react", () => {
 		CopyIcon: icon("copy"),
 		DownloadIcon: icon("download"),
 		FileTextIcon: icon("file-text"),
+		FilterIcon: icon("filter"),
 		FilmIcon: icon("film"),
 		GridIcon: icon("grid"),
 		GripVerticalIcon: icon("grip-vertical"),
@@ -585,7 +586,9 @@ describe("ShotBreakdown — View Toggle", () => {
 			],
 		});
 		render(<ShotBreakdown />);
-		expect(screen.getByText("1 shot")).toBeTruthy();
+		// Shot count shown in toolbar
+		const countEls = screen.getAllByText("1");
+		expect(countEls.length).toBeGreaterThanOrEqual(1);
 	});
 });
 
@@ -916,5 +919,84 @@ describe("StructurePanel — Keyboard Shortcuts", () => {
 		const state = useMoyinStore.getState();
 		expect(state.selectedItemId).toBeNull();
 		expect(state.shots.find((s) => s.id === "shot1")).toBeUndefined();
+	});
+});
+
+// ==================== Round 10: Shot Filter & Search ====================
+
+describe("ShotBreakdown — Filter & Search", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero walks",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "completed",
+					imageProgress: 100,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Villain appears",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+	});
+
+	it("renders search input", () => {
+		render(<ShotBreakdown />);
+		expect(screen.getByLabelText("Search shots")).toBeTruthy();
+	});
+
+	it("renders filter dropdown", () => {
+		render(<ShotBreakdown />);
+		expect(screen.getByLabelText("Filter shots")).toBeTruthy();
+	});
+
+	it("shows all shots by default", () => {
+		render(<ShotBreakdown />);
+		expect(screen.getByText("Hero walks")).toBeTruthy();
+		expect(screen.getByText("Villain appears")).toBeTruthy();
+	});
+
+	it("filters to show only shots with images", () => {
+		render(<ShotBreakdown />);
+		const select = screen.getByLabelText("Filter shots");
+		fireEvent.change(select, { target: { value: "has-image" } });
+		expect(screen.getByText("Hero walks")).toBeTruthy();
+		expect(screen.queryByText("Villain appears")).toBeNull();
+	});
+
+	it("filters to show incomplete shots", () => {
+		render(<ShotBreakdown />);
+		const select = screen.getByLabelText("Filter shots");
+		fireEvent.change(select, { target: { value: "incomplete" } });
+		// Both shots are incomplete (neither has both image AND video completed)
+		expect(screen.getByText("Hero walks")).toBeTruthy();
+		expect(screen.getByText("Villain appears")).toBeTruthy();
+	});
+
+	it("searches shots by action summary", () => {
+		render(<ShotBreakdown />);
+		const search = screen.getByLabelText("Search shots");
+		fireEvent.change(search, { target: { value: "Hero" } });
+		expect(screen.getByText("Hero walks")).toBeTruthy();
+		expect(screen.queryByText("Villain appears")).toBeNull();
 	});
 });
