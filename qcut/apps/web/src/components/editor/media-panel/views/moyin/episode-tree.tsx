@@ -191,6 +191,29 @@ export function EpisodeTree() {
 				onOpenChange={setEpisodeDialogOpen}
 			/>
 
+			{/* Expand/Collapse all */}
+			{episodes.length > 1 && (
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						onClick={() => setExpandedEpisodes(new Set(episodes.map((ep) => ep.id)))}
+						className="text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+						aria-label="Expand all episodes"
+					>
+						Expand All
+					</button>
+					<span className="text-[9px] text-muted-foreground">|</span>
+					<button
+						type="button"
+						onClick={() => setExpandedEpisodes(new Set())}
+						className="text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+						aria-label="Collapse all episodes"
+					>
+						Collapse All
+					</button>
+				</div>
+			)}
+
 			{/* Episode quick-jump pills */}
 			{episodes.length > 1 && (
 				<div

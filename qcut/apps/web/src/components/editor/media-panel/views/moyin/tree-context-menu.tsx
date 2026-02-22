@@ -12,6 +12,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+	ClipboardCopyIcon,
 	CopyIcon,
 	MoreHorizontalIcon,
 	PlusIcon,
@@ -20,6 +21,7 @@ import {
 	Trash2Icon,
 	ZapIcon,
 } from "lucide-react";
+import { useState } from "react";
 
 export function EpisodeContextMenu({
 	episodeId,
@@ -93,7 +95,10 @@ export function EpisodeContextMenu({
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					variant="destructive"
-					onClick={() => removeEpisode(episodeId)}
+					onClick={() => {
+						if (window.confirm("Delete this episode? This cannot be undone."))
+							removeEpisode(episodeId);
+					}}
 				>
 					<Trash2Icon className="h-3.5 w-3.5" />
 					<span className="text-xs">Delete</span>
@@ -142,7 +147,10 @@ export function SceneContextMenu({
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					variant="destructive"
-					onClick={() => removeScene(sceneId)}
+					onClick={() => {
+						if (window.confirm("Delete this scene? This cannot be undone."))
+							removeScene(sceneId);
+					}}
 				>
 					<Trash2Icon className="h-3.5 w-3.5" />
 					<span className="text-xs">Delete</span>
@@ -155,6 +163,32 @@ export function SceneContextMenu({
 export function ShotContextMenu({ shotId }: { shotId: string }) {
 	const removeShot = useMoyinStore((s) => s.removeShot);
 	const duplicateShot = useMoyinStore((s) => s.duplicateShot);
+	const shots = useMoyinStore((s) => s.shots);
+	const scenes = useMoyinStore((s) => s.scenes);
+	const characters = useMoyinStore((s) => s.characters);
+	const [copied, setCopied] = useState(false);
+
+	const handleCopyShot = async () => {
+		const shot = shots.find((s) => s.id === shotId);
+		if (!shot) return;
+		const scene = scenes.find((s) => s.id === shot.sceneRefId);
+		const charNames = (shot.characterIds || [])
+			.map((cid) => characters.find((c) => c.id === cid)?.name)
+			.filter(Boolean);
+		const lines = [
+			`Shot #${shot.index + 1}${shot.shotSize ? ` (${shot.shotSize})` : ""}`,
+			scene ? `Scene: ${scene.name || scene.location}` : "",
+			shot.actionSummary ? `Action: ${shot.actionSummary}` : "",
+			shot.dialogue ? `Dialogue: ${shot.dialogue}` : "",
+			shot.cameraMovement ? `Camera: ${shot.cameraMovement}` : "",
+			charNames.length > 0 ? `Characters: ${charNames.join(", ")}` : "",
+			shot.emotionTags?.length ? `Emotion: ${shot.emotionTags.join(", ")}` : "",
+			shot.ambientSound ? `Ambient: ${shot.ambientSound}` : "",
+		].filter(Boolean);
+		await navigator.clipboard.writeText(lines.join("\n"));
+		setCopied(true);
+		setTimeout(() => setCopied(false), 1500);
+	};
 
 	return (
 		<DropdownMenu>
@@ -169,6 +203,10 @@ export function ShotContextMenu({ shotId }: { shotId: string }) {
 				</button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-36">
+				<DropdownMenuItem onClick={handleCopyShot}>
+					<ClipboardCopyIcon className="h-3.5 w-3.5" />
+					<span className="text-xs">{copied ? "Copied!" : "Copy Shot"}</span>
+				</DropdownMenuItem>
 				<DropdownMenuItem onClick={() => duplicateShot(shotId)}>
 					<CopyIcon className="h-3.5 w-3.5" />
 					<span className="text-xs">Duplicate</span>
@@ -176,7 +214,10 @@ export function ShotContextMenu({ shotId }: { shotId: string }) {
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					variant="destructive"
-					onClick={() => removeShot(shotId)}
+					onClick={() => {
+						if (window.confirm("Delete this shot? This cannot be undone."))
+							removeShot(shotId);
+					}}
 				>
 					<Trash2Icon className="h-3.5 w-3.5" />
 					<span className="text-xs">Delete</span>

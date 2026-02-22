@@ -95,16 +95,15 @@ vi.mock("@/components/ui/badge", () => ({
 	Badge: ({
 		children,
 		...props
-	}: { children: React.ReactNode; variant?: string; className?: string }) => (
-		<span {...props}>{children}</span>
-	),
+	}: {
+		children: React.ReactNode;
+		variant?: string;
+		className?: string;
+	}) => <span {...props}>{children}</span>,
 }));
 
 vi.mock("@/components/ui/progress", () => ({
-	Progress: ({
-		value,
-		className,
-	}: { value: number; className?: string }) => (
+	Progress: ({ value, className }: { value: number; className?: string }) => (
 		<div
 			role="progressbar"
 			aria-valuenow={value}
@@ -115,7 +114,9 @@ vi.mock("@/components/ui/progress", () => ({
 }));
 
 vi.mock("@/components/ui/select", () => ({
-	Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+	Select: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
 	SelectContent: ({ children }: { children: React.ReactNode }) => (
 		<div>{children}</div>
 	),
@@ -125,9 +126,10 @@ vi.mock("@/components/ui/select", () => ({
 	SelectItem: ({
 		children,
 		value,
-	}: { children: React.ReactNode; value: string }) => (
-		<option value={value}>{children}</option>
-	),
+	}: {
+		children: React.ReactNode;
+		value: string;
+	}) => <option value={value}>{children}</option>,
 	SelectLabel: ({ children }: { children: React.ReactNode }) => (
 		<label>{children}</label>
 	),
@@ -193,9 +195,10 @@ vi.mock("../collapsible-section", () => ({
 	CollapsibleSection: ({
 		children,
 		title,
-	}: { children: React.ReactNode; title: string }) => (
-		<div data-testid={`section-${title}`}>{children}</div>
-	),
+	}: {
+		children: React.ReactNode;
+		title: string;
+	}) => <div data-testid={`section-${title}`}>{children}</div>,
 }));
 
 vi.mock("../media-preview-modal", () => ({
@@ -205,7 +208,11 @@ vi.mock("../media-preview-modal", () => ({
 vi.mock("../batch-progress", () => ({
 	BatchGenerateButtons: () => null,
 	BatchProgressOverlay: () => null,
-	useBatchGeneration: () => ({ batch: null, startBatch: vi.fn(), cancel: vi.fn() }),
+	useBatchGeneration: () => ({
+		batch: null,
+		startBatch: vi.fn(),
+		cancel: vi.fn(),
+	}),
 }));
 
 vi.mock("@/stores/moyin-persistence", () => ({
@@ -283,10 +290,15 @@ describe("EpisodeTree — Inline Editing", () => {
 		resetStore();
 		useMoyinStore.setState({
 			parseStatus: "ready",
-			scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
-			episodes: [
-				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] },
-			],
+			scriptData: {
+				title: "Test",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			episodes: [{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] }],
 			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
 			shots: [],
 		});
@@ -329,11 +341,24 @@ describe("EpisodeTree — Scene Inline Editing", () => {
 		resetStore();
 		useMoyinStore.setState({
 			parseStatus: "ready",
-			scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
-			episodes: [
-				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] },
+			scriptData: {
+				title: "Test",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			episodes: [{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] }],
+			scenes: [
+				{
+					id: "s1",
+					location: "Park",
+					name: "Park Scene",
+					time: "Day",
+					atmosphere: "",
+				},
 			],
-			scenes: [{ id: "s1", location: "Park", name: "Park Scene", time: "Day", atmosphere: "" }],
 			shots: [],
 		});
 	});
@@ -368,6 +393,79 @@ describe("EpisodeTree — Scene Inline Editing", () => {
 		fireEvent.change(input, { target: { value: "Different" } });
 		fireEvent.keyDown(input, { key: "Escape" });
 		expect(useMoyinStore.getState().scenes[0].name).toBe("Park Scene");
+	});
+});
+
+// ==================== Round 13: Expand/Collapse All Episodes ====================
+
+describe("EpisodeTree — Expand/Collapse All", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scriptData: {
+				title: "Test",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			episodes: [
+				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] },
+				{ id: "ep2", index: 1, title: "Episode 2", sceneIds: ["s2"] },
+			],
+			scenes: [
+				{
+					id: "s1",
+					location: "Park",
+					name: "Park Scene",
+					time: "Day",
+					atmosphere: "",
+				},
+				{
+					id: "s2",
+					location: "Beach",
+					name: "Beach Scene",
+					time: "Night",
+					atmosphere: "",
+				},
+			],
+			shots: [],
+		});
+	});
+
+	it("shows expand/collapse buttons when multiple episodes", () => {
+		render(<EpisodeTree />);
+		expect(screen.getByLabelText("Expand all episodes")).toBeTruthy();
+		expect(screen.getByLabelText("Collapse all episodes")).toBeTruthy();
+	});
+
+	it("does not show buttons with single episode", () => {
+		useMoyinStore.setState({
+			episodes: [{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] }],
+		});
+		render(<EpisodeTree />);
+		expect(screen.queryByLabelText("Expand all episodes")).toBeNull();
+	});
+
+	it("expands all episodes on click", () => {
+		render(<EpisodeTree />);
+		fireEvent.click(screen.getByLabelText("Expand all episodes"));
+		// Both scenes should now be visible
+		expect(screen.getByText("Park Scene")).toBeTruthy();
+		expect(screen.getByText("Beach Scene")).toBeTruthy();
+	});
+
+	it("collapses all episodes on click", () => {
+		render(<EpisodeTree />);
+		// First expand all
+		fireEvent.click(screen.getByLabelText("Expand all episodes"));
+		expect(screen.getByText("Park Scene")).toBeTruthy();
+		// Now collapse all
+		fireEvent.click(screen.getByLabelText("Collapse all episodes"));
+		expect(screen.queryByText("Park Scene")).toBeNull();
+		expect(screen.queryByText("Beach Scene")).toBeNull();
 	});
 });
 

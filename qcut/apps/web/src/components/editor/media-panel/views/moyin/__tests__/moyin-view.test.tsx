@@ -23,6 +23,7 @@ vi.mock("lucide-react", () => {
 		ChevronDownIcon: icon("chevron-down"),
 		ChevronRightIcon: icon("chevron-right"),
 		CircleIcon: icon("circle"),
+		ClipboardCopyIcon: icon("clipboard-copy"),
 		ClockIcon: icon("clock"),
 		CopyIcon: icon("copy"),
 		DownloadIcon: icon("download"),
@@ -681,9 +682,7 @@ describe("Context Menus — Duplicate", () => {
 
 	it("EpisodeContextMenu renders Duplicate option", () => {
 		useMoyinStore.setState({
-			episodes: [
-				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: [] },
-			],
+			episodes: [{ id: "ep1", index: 0, title: "Episode 1", sceneIds: [] }],
 		});
 		render(<EpisodeContextMenu episodeId="ep1" onEdit={() => {}} />);
 		expect(screen.getByText("Duplicate")).toBeTruthy();
@@ -734,9 +733,7 @@ describe("Accessibility — Aria Labels", () => {
 
 	it("EpisodeContextMenu trigger has aria-label", () => {
 		useMoyinStore.setState({
-			episodes: [
-				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: [] },
-			],
+			episodes: [{ id: "ep1", index: 0, title: "Episode 1", sceneIds: [] }],
 		});
 		render(<EpisodeContextMenu episodeId="ep1" onEdit={() => {}} />);
 		expect(screen.getByLabelText("Episode actions")).toBeTruthy();
@@ -858,10 +855,16 @@ describe("StructurePanel — Keyboard Shortcuts", () => {
 		resetStore();
 		useMoyinStore.setState({
 			parseStatus: "ready",
-			scriptData: { title: "Test", genre: "Drama", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
-			episodes: [
-				{ id: "ep1", index: 0, title: "Ep 1", sceneIds: ["s1"] },
-			],
+			scriptData: {
+				title: "Test",
+				genre: "Drama",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			episodes: [{ id: "ep1", index: 0, title: "Ep 1", sceneIds: ["s1"] }],
 			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
 			shots: [
 				{
