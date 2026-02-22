@@ -200,6 +200,24 @@ export function GenerateActions() {
 						</span>
 					</div>
 				)}
+				{shots.length > 0 && (imagesDone > 0 || videosDone > 0) && (
+					<div className="space-y-1 pt-1">
+						<div className="flex items-center gap-1.5">
+							<span className="text-[9px] text-muted-foreground w-6">Img</span>
+							<Progress
+								value={shots.length > 0 ? (imagesDone / shots.length) * 100 : 0}
+								className="flex-1 h-1.5"
+							/>
+						</div>
+						<div className="flex items-center gap-1.5">
+							<span className="text-[9px] text-muted-foreground w-6">Vid</span>
+							<Progress
+								value={shots.length > 0 ? (videosDone / shots.length) * 100 : 0}
+								className="flex-1 h-1.5"
+							/>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Progress */}

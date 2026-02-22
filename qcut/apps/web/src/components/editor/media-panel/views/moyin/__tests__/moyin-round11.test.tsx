@@ -321,3 +321,118 @@ describe("EpisodeTree — Inline Editing", () => {
 		expect(useMoyinStore.getState().episodes[0].title).toBe("Episode 1");
 	});
 });
+
+// ==================== Round 12: Scene Inline Editing ====================
+
+describe("EpisodeTree — Scene Inline Editing", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
+			episodes: [
+				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1"] },
+			],
+			scenes: [{ id: "s1", location: "Park", name: "Park Scene", time: "Day", atmosphere: "" }],
+			shots: [],
+		});
+	});
+
+	it("shows inline edit input on scene double-click", () => {
+		render(<EpisodeTree />);
+		// Expand episode first
+		fireEvent.click(screen.getByText("Episode 1"));
+		const sceneButton = screen.getByText("Park Scene").closest("button");
+		expect(sceneButton).toBeTruthy();
+		fireEvent.doubleClick(sceneButton!);
+		expect(screen.getByLabelText("Edit scene name")).toBeTruthy();
+	});
+
+	it("saves scene name on Enter", () => {
+		render(<EpisodeTree />);
+		fireEvent.click(screen.getByText("Episode 1"));
+		const sceneButton = screen.getByText("Park Scene").closest("button");
+		fireEvent.doubleClick(sceneButton!);
+		const input = screen.getByLabelText("Edit scene name");
+		fireEvent.change(input, { target: { value: "Forest Scene" } });
+		fireEvent.keyDown(input, { key: "Enter" });
+		expect(useMoyinStore.getState().scenes[0].name).toBe("Forest Scene");
+	});
+
+	it("cancels scene rename on Escape", () => {
+		render(<EpisodeTree />);
+		fireEvent.click(screen.getByText("Episode 1"));
+		const sceneButton = screen.getByText("Park Scene").closest("button");
+		fireEvent.doubleClick(sceneButton!);
+		const input = screen.getByLabelText("Edit scene name");
+		fireEvent.change(input, { target: { value: "Different" } });
+		fireEvent.keyDown(input, { key: "Escape" });
+		expect(useMoyinStore.getState().scenes[0].name).toBe("Park Scene");
+	});
+});
+
+// ==================== Round 12: Shot Stats Progress Bars ====================
+
+import { GenerateActions } from "../generate-actions";
+
+describe("GenerateActions — Shot Stats Progress Bars", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Walk",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "completed",
+					imageProgress: 100,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Run",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+	});
+
+	it("shows image progress bar when some images completed", () => {
+		render(<GenerateActions />);
+		expect(screen.getByText("Img")).toBeTruthy();
+	});
+
+	it("does not show progress bars when no completions", () => {
+		useMoyinStore.setState({
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Walk",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+		render(<GenerateActions />);
+		expect(screen.queryByText("Img")).toBeNull();
+	});
+});

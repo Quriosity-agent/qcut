@@ -47,7 +47,10 @@ export function EpisodeTree() {
 	const [episodeDialogOpen, setEpisodeDialogOpen] = useState(false);
 	const [editingEpisodeId, setEditingEpisodeId] = useState<string | null>(null);
 	const [editingTitle, setEditingTitle] = useState("");
+	const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
+	const [editingSceneName, setEditingSceneName] = useState("");
 	const updateEpisode = useMoyinStore((s) => s.updateEpisode);
+	const updateScene = useMoyinStore((s) => s.updateScene);
 
 	const toggleEpisode = (id: string) => {
 		setExpandedEpisodes((prev) => {
@@ -381,6 +384,13 @@ export function EpisodeTree() {
 																if (hasShots) toggleScene(sceneId);
 																setSelectedItem(sceneId, "scene");
 															}}
+															onDoubleClick={(e) => {
+																e.stopPropagation();
+																setEditingSceneId(sceneId);
+																setEditingSceneName(
+																	scene.name || scene.location
+																);
+															}}
 															className="flex items-center gap-1.5 flex-1 min-w-0"
 														>
 															{hasShots ? (
@@ -393,9 +403,41 @@ export function EpisodeTree() {
 																<span className="w-2.5" />
 															)}
 															<MapPinIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-															<span className="flex-1 truncate text-left">
-																{scene.name || scene.location}
-															</span>
+															{editingSceneId === sceneId ? (
+																<input
+																	type="text"
+																	value={editingSceneName}
+																	onChange={(e) =>
+																		setEditingSceneName(e.target.value)
+																	}
+																	onBlur={() => {
+																		if (editingSceneName.trim())
+																			updateScene(sceneId, {
+																				name: editingSceneName.trim(),
+																			});
+																		setEditingSceneId(null);
+																	}}
+																	onKeyDown={(e) => {
+																		if (e.key === "Enter") {
+																			if (editingSceneName.trim())
+																				updateScene(sceneId, {
+																					name: editingSceneName.trim(),
+																				});
+																			setEditingSceneId(null);
+																		} else if (e.key === "Escape") {
+																			setEditingSceneId(null);
+																		}
+																	}}
+																	className="flex-1 min-w-0 h-4 px-1 text-[11px] border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+																	autoFocus
+																	onClick={(e) => e.stopPropagation()}
+																	aria-label="Edit scene name"
+																/>
+															) : (
+																<span className="flex-1 truncate text-left">
+																	{scene.name || scene.location}
+																</span>
+															)}
 														</button>
 														<StatusIcon completed={completed} total={total} />
 														{hasShots && (
