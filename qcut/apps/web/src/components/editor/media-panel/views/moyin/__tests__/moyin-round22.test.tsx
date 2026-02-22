@@ -29,6 +29,8 @@ vi.mock("lucide-react", () => {
 		Trash2Icon: icon("trash"),
 		UserIcon: icon("user"),
 		XIcon: icon("x"),
+		ChevronDownIcon: icon("chevron-down"),
+		ChevronRightIcon: icon("chevron-right"),
 	};
 });
 
@@ -101,6 +103,7 @@ vi.mock("@/stores/moyin-store", async () => {
 
 import { ShotBreakdown } from "../shot-breakdown";
 import { MediaPreviewModal } from "../media-preview-modal";
+import { CollapsibleSection } from "../collapsible-section";
 
 describe("ShotBreakdown — View Toggle aria-pressed", () => {
 	beforeEach(() => {
@@ -194,5 +197,57 @@ describe("MediaPreviewModal — Focus Trap", () => {
 		);
 		const dialog = screen.getByRole("dialog");
 		expect(dialog.getAttribute("aria-label")).toBe("Preview: Test Image");
+	});
+});
+
+describe("CollapsibleSection — aria-expanded", () => {
+	it("renders with aria-expanded=false by default", () => {
+		render(
+			<CollapsibleSection title="Lighting">
+				<p>Content</p>
+			</CollapsibleSection>
+		);
+		const btn = screen.getByRole("button", { name: /lighting/i });
+		expect(btn.getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("toggles aria-expanded on click", () => {
+		render(
+			<CollapsibleSection title="Lighting">
+				<p>Content</p>
+			</CollapsibleSection>
+		);
+		const btn = screen.getByRole("button", { name: /lighting/i });
+		fireEvent.click(btn);
+		expect(btn.getAttribute("aria-expanded")).toBe("true");
+	});
+});
+
+describe("ShotBreakdown — Active Filter Indicator", () => {
+	beforeEach(() => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			shots: [
+				{
+					id: "sh1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero enters",
+					imageStatus: "completed",
+					videoStatus: "idle",
+				},
+			],
+			selectedItemId: null,
+			selectedShotIds: new Set(),
+		});
+	});
+
+	it("updates aria-label when filter changes", () => {
+		render(<ShotBreakdown />);
+		const filterSelect = screen.getByLabelText("Filter shots");
+		fireEvent.change(filterSelect, { target: { value: "has-image" } });
+		expect(filterSelect.getAttribute("aria-label")).toBe(
+			"Filter shots (has-image selected)"
+		);
 	});
 });

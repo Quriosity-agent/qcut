@@ -3,7 +3,7 @@
  * Separate file to avoid mock conflicts with moyin-round11.test.tsx.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { useMoyinStore } from "@/stores/moyin-store";
 
 vi.mock("lucide-react", () => {
@@ -63,6 +63,22 @@ describe("DurationSelector — Custom Input", () => {
 		expect(btn5.getAttribute("aria-pressed")).toBe("true");
 		const btn3 = screen.getByText("3s");
 		expect(btn3.getAttribute("aria-pressed")).toBe("false");
+	});
+});
+
+describe("DurationSelector — Validation Feedback", () => {
+	it("sets aria-invalid when custom input is out of range", () => {
+		render(<DurationSelector value={5} onChange={vi.fn()} />);
+		const input = screen.getByLabelText("Custom duration in seconds");
+		fireEvent.change(input, { target: { value: "99" } });
+		expect(input.getAttribute("aria-invalid")).toBe("true");
+	});
+
+	it("does not set aria-invalid for valid custom input", () => {
+		render(<DurationSelector value={5} onChange={vi.fn()} />);
+		const input = screen.getByLabelText("Custom duration in seconds");
+		fireEvent.change(input, { target: { value: "15" } });
+		expect(input.getAttribute("aria-invalid")).toBeNull();
 	});
 });
 

@@ -137,6 +137,12 @@ export function DurationSelector({
 		if (!Number.isNaN(n) && n >= 1 && n <= 60) onChange(n);
 	};
 
+	const customInvalid =
+		customInput !== "" &&
+		(Number.isNaN(Number.parseInt(customInput, 10)) ||
+			Number.parseInt(customInput, 10) < 1 ||
+			Number.parseInt(customInput, 10) > 60);
+
 	return (
 		<div className="space-y-1">
 			<Label className="text-[10px]">Duration (seconds)</Label>
@@ -162,7 +168,10 @@ export function DurationSelector({
 				))}
 			</div>
 			<Input
-				className="h-6 text-xs w-20 font-mono"
+				className={cn(
+					"h-6 text-xs w-20 font-mono",
+					customInvalid && "border-red-500 focus:ring-red-500"
+				)}
 				type="number"
 				min={1}
 				max={60}
@@ -170,6 +179,7 @@ export function DurationSelector({
 				value={customInput}
 				onChange={(e) => handleCustom(e.target.value)}
 				aria-label="Custom duration in seconds"
+				aria-invalid={customInvalid || undefined}
 			/>
 		</div>
 	);

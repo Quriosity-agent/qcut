@@ -265,8 +265,15 @@ export function ShotBreakdown() {
 				<select
 					value={filter}
 					onChange={(e) => setFilter(e.target.value as typeof filter)}
-					className="h-5 text-[10px] rounded border bg-transparent px-0.5 shrink-0"
-					aria-label="Filter shots"
+					className={cn(
+						"h-5 text-[10px] rounded border bg-transparent px-0.5 shrink-0",
+						filter !== "all" && "border-primary text-primary"
+					)}
+					aria-label={
+						filter !== "all"
+							? `Filter shots (${filter} selected)`
+							: "Filter shots"
+					}
 				>
 					<option value="all">All</option>
 					<option value="has-image">Has Image</option>
