@@ -257,6 +257,9 @@ export function ShotBreakdown() {
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Escape") setSearchQuery("");
+						}}
 						placeholder="Search shots..."
 						className="w-full h-5 pl-4 pr-1 text-[10px] rounded border bg-transparent focus:outline-none focus:ring-1 focus:ring-primary"
 						aria-label="Search shots"

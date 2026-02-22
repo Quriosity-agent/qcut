@@ -251,3 +251,32 @@ describe("ShotBreakdown — Active Filter Indicator", () => {
 		);
 	});
 });
+
+describe("ShotBreakdown — Escape to Clear Search", () => {
+	beforeEach(() => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			shots: [
+				{
+					id: "sh1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Hero enters",
+					imageStatus: "idle",
+					videoStatus: "idle",
+				},
+			],
+			selectedItemId: null,
+			selectedShotIds: new Set(),
+		});
+	});
+
+	it("clears search query when Escape is pressed", () => {
+		render(<ShotBreakdown />);
+		const search = screen.getByLabelText("Search shots");
+		fireEvent.change(search, { target: { value: "test" } });
+		expect((search as HTMLInputElement).value).toBe("test");
+		fireEvent.keyDown(search, { key: "Escape" });
+		expect((search as HTMLInputElement).value).toBe("");
+	});
+});

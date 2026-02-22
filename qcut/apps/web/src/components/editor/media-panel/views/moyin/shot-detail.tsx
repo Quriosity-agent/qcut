@@ -367,7 +367,11 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				<CollapsibleSection title="Narrative">
 					<div className="space-y-1">
 						<Label className="text-[10px]">Narrative Function</Label>
-						<div className="flex flex-wrap gap-1">
+						<div
+							className="flex flex-wrap gap-1"
+							role="group"
+							aria-label="Narrative function selection"
+						>
 							{NARRATIVE_FUNCTIONS.map((fn) => (
 								<button
 									key={fn}
@@ -515,6 +519,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						size="sm"
 						className="h-6 text-xs px-1.5"
 						onClick={startEdit}
+						aria-label="Edit shot details"
 					>
 						<PencilIcon className="h-3 w-3" />
 					</Button>
