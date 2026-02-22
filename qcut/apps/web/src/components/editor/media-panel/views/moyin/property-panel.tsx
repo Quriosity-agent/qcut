@@ -27,6 +27,7 @@ import { CollapsibleSection } from "./collapsible-section";
 import { CharacterVariations } from "./character-variations";
 import { ShotDetail } from "./shot-detail";
 import { SceneDetail, EpisodeDetail } from "./scene-episode-detail";
+import { SceneConfigBar } from "./scene-config-bar";
 
 /** Reusable copy-to-clipboard button with feedback. */
 function CopyButton({ getText }: { getText: () => string }) {
@@ -595,7 +596,12 @@ export function PropertyPanel() {
 		case "shot": {
 			const shot = shots.find((s) => s.id === selectedItemId);
 			if (!shot) return null;
-			return <ShotDetail shot={shot} />;
+			return (
+				<>
+					<SceneConfigBar />
+					<ShotDetail shot={shot} />
+				</>
+			);
 		}
 		case "episode":
 			return <EpisodeDetail episodeId={selectedItemId} />;
