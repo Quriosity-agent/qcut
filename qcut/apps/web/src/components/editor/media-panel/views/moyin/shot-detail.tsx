@@ -40,7 +40,6 @@ import {
 import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
 import { isModerationError } from "@/stores/moyin-shot-generation";
-
 function FieldRow({
 	label,
 	value,
@@ -56,7 +55,6 @@ function FieldRow({
 		</div>
 	);
 }
-
 function CopyButton({ getText }: { getText: () => string }) {
 	const [copied, setCopied] = useState(false);
 	const handleCopy = async () => {
@@ -82,7 +80,6 @@ function CopyButton({ getText }: { getText: () => string }) {
 		</Button>
 	);
 }
-
 function ModerationErrorDisplay({
 	error,
 	onEditPrompt,
@@ -133,7 +130,6 @@ const NARRATIVE_FUNCTIONS = [
 	"transition",
 	"denouement",
 ] as const;
-
 export function ShotDetail({ shot }: { shot: Shot }) {
 	const updateShot = useMoyinStore((s) => s.updateShot);
 	const generateShotImage = useMoyinStore((s) => s.generateShotImage);
@@ -153,7 +149,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 	const isImageGenerating = shot.imageStatus === "generating";
 	const isVideoGenerating = shot.videoStatus === "generating";
 	const isEndFrameGenerating = shot.endFrameImageStatus === "generating";
-
 	const handleDragStart = useCallback(
 		(e: React.DragEvent, type: "image" | "video") => {
 			const url = type === "image" ? shot.imageUrl : shot.videoUrl;
@@ -171,7 +166,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 		},
 		[shot]
 	);
-
 	const startEdit = useCallback(() => {
 		setDraft({
 			// Core
@@ -461,7 +455,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					onClose={() => setPreview(null)}
 				/>
 			)}
-
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-1.5">
@@ -525,7 +518,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</Button>
 				</div>
 			</div>
-
 			{/* Core fields */}
 			<FieldRow label="Action" value={shot.actionSummary} />
 			<FieldRow label="Camera" value={shot.cameraMovement} />
@@ -741,7 +733,11 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				</div>
 				{isImageGenerating && shot.imageProgress > 0 && (
 					<div className="flex items-center gap-1.5">
-						<Progress value={shot.imageProgress} className="flex-1 h-1.5" />
+						<Progress
+							value={shot.imageProgress}
+							className="flex-1 h-1.5"
+							aria-label={`Image generation ${shot.imageProgress}%`}
+						/>
 						<span className="text-[9px] text-muted-foreground w-7 text-right">
 							{shot.imageProgress}%
 						</span>
@@ -749,7 +745,11 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				)}
 				{isVideoGenerating && shot.videoProgress > 0 && (
 					<div className="flex items-center gap-1.5">
-						<Progress value={shot.videoProgress} className="flex-1 h-1.5" />
+						<Progress
+							value={shot.videoProgress}
+							className="flex-1 h-1.5"
+							aria-label={`Video generation ${shot.videoProgress}%`}
+						/>
 						<span className="text-[9px] text-muted-foreground w-7 text-right">
 							{shot.videoProgress}%
 						</span>
