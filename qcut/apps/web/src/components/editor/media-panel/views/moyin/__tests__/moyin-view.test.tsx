@@ -1129,3 +1129,24 @@ describe("StructurePanel — Empty State Hints", () => {
 		).toBeTruthy();
 	});
 });
+
+// ==================== Round 20: Accessibility Pass ====================
+
+describe("StructurePanel — Tab ARIA Attributes", () => {
+	beforeEach(resetStore);
+
+	it("tabs have role=tab and aria-selected", () => {
+		render(<StructurePanel />);
+		const tabs = screen.getAllByRole("tab");
+		expect(tabs.length).toBe(5);
+		const selected = tabs.filter(
+			(t) => t.getAttribute("aria-selected") === "true",
+		);
+		expect(selected.length).toBe(1);
+	});
+
+	it("tab bar has role=tablist", () => {
+		render(<StructurePanel />);
+		expect(screen.getByRole("tablist")).toBeTruthy();
+	});
+});

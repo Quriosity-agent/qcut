@@ -64,6 +64,7 @@ function EnumSelector<T extends string>({
 					<button
 						key={opt.value}
 						type="button"
+						aria-pressed={value === opt.value}
 						onClick={() => onChange(opt.value)}
 						className={cn(
 							"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
@@ -129,6 +130,7 @@ function MultiEnumSelector<T extends string>({
 					<button
 						key={opt.value}
 						type="button"
+						aria-pressed={selected.includes(opt.value)}
 						onClick={() => toggle(opt.value)}
 						className={cn(
 							"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
