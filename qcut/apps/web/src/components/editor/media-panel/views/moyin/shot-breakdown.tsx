@@ -376,6 +376,7 @@ export function ShotBreakdown() {
 							type="button"
 							onClick={clearShotSelection}
 							className="px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
+							aria-label="Clear shot selection"
 						>
 							Clear
 						</button>

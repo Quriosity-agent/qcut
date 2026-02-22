@@ -67,6 +67,7 @@ function PromptSection({
 				type="button"
 				onClick={() => setExpanded(!expanded)}
 				aria-expanded={expanded}
+				aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
 				className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium hover:bg-muted/50 transition-colors"
 			>
 				{expanded ? (
