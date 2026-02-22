@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { Shot } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 		url: string;
 		type: "image" | "video";
 	} | null>(null);
-
 	const isImageGenerating = shot.imageStatus === "generating";
 	const isVideoGenerating = shot.videoStatus === "generating";
 	const isEndFrameGenerating = shot.endFrameImageStatus === "generating";
@@ -222,6 +222,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 	const save = useCallback(() => {
 		updateShot(shot.id, draft);
 		setEditing(false);
+		toast.success("Shot saved");
 	}, [shot.id, draft, updateShot]);
 	const setField = useCallback(
 		(updates: Partial<Shot>) => setDraft((d) => ({ ...d, ...updates })),
@@ -620,7 +621,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 
 			{/* Prompts */}
 			<PromptEditor draft={shot} onUpdate={() => {}} readOnly />
-
 			{/* Image preview */}
 			{shot.imageUrl && (
 				<div

@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { ScriptScene } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ function SceneCard({
 		onUpdate(scene.id, draft);
 		setEditing(false);
 		setDraft({});
+		toast.success("Scene saved");
 	}, [scene.id, draft, onUpdate]);
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {

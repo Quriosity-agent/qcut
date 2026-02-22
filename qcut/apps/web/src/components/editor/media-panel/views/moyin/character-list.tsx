@@ -3,6 +3,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { ScriptCharacter } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ function CharacterCard({
 		onUpdate(char.id, draft);
 		setEditing(false);
 		setDraft({});
+		toast.success("Character saved");
 	}, [char.id, draft, onUpdate]);
 
 	if (editing) {
