@@ -25,12 +25,12 @@ const { mockExecute, mockIsAvailable, mockGetStatus, mockCancel } = vi.hoisted(
 );
 
 vi.mock("../native-pipeline/index.js", () => ({
-	NativePipelineManager: vi.fn().mockImplementation(() => ({
-		execute: mockExecute,
-		isAvailable: mockIsAvailable,
-		getStatus: mockGetStatus,
-		cancel: mockCancel,
-	})),
+	NativePipelineManager: class {
+		execute = mockExecute;
+		isAvailable = mockIsAvailable;
+		getStatus = mockGetStatus;
+		cancel = mockCancel;
+	},
 }));
 
 vi.mock("electron", () => ({

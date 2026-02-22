@@ -66,6 +66,24 @@ vi.mock("fs", async (importOriginal) => {
 	};
 });
 
+vi.mock("node:fs", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:fs")>();
+	return {
+		...actual,
+		default: {
+			...actual,
+			existsSync: mockExistsSync,
+			mkdirSync: vi.fn(),
+			readdirSync: vi.fn(() => []),
+			readFileSync: vi.fn(() => ""),
+		},
+		existsSync: mockExistsSync,
+		mkdirSync: vi.fn(),
+		readdirSync: vi.fn(() => []),
+		readFileSync: vi.fn(() => ""),
+	};
+});
+
 vi.mock("../api-key-handler", () => ({
 	getDecryptedApiKeys: vi.fn(async () => ({
 		falApiKey: "test-fal-key",
