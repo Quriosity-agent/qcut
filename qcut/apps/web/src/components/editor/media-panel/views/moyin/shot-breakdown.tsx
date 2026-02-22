@@ -430,7 +430,7 @@ export function ShotBreakdown() {
 										onDrop={() => handleDrop(shot.id, sceneShots)}
 										onDragEnd={handleDragEnd}
 										className={cn(
-											"relative aspect-video rounded border overflow-hidden transition-colors",
+											"relative aspect-video rounded border overflow-hidden transition-colors cursor-grab active:cursor-grabbing",
 											selectedItemId === shot.id
 												? "ring-2 ring-primary"
 												: selectedShotIds.has(shot.id)
@@ -472,7 +472,7 @@ export function ShotBreakdown() {
 									onDrop={() => handleDrop(shot.id, sceneShots)}
 									onDragEnd={handleDragEnd}
 									className={cn(
-										"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors",
+										"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors cursor-grab active:cursor-grabbing",
 										selectedItemId === shot.id
 											? "bg-primary/10 text-primary"
 											: selectedShotIds.has(shot.id)

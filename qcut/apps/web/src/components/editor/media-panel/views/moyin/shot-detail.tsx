@@ -682,7 +682,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</div>
 				</div>
 			)}
-
 			{/* Generation buttons */}
 			<div className="space-y-1.5 border-t pt-2">
 				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -730,6 +729,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						className="flex-1 h-7 text-xs"
 						onClick={() => generateShotVideo(shot.id)}
 						disabled={isVideoGenerating || !shot.imageUrl}
+						title={!shot.imageUrl ? "Generate image first" : undefined}
 					>
 						{isVideoGenerating ? (
 							<Loader2 className="mr-1 h-3 w-3 animate-spin" />
