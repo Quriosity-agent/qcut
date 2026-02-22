@@ -81,8 +81,11 @@ function SceneCard({
 			>
 				<CardContent className="px-3 py-3 space-y-2">
 					<div className="space-y-1">
-						<Label className="text-[10px]">Name</Label>
+						<Label htmlFor="scene-name" className="text-[10px]">
+							Name
+						</Label>
 						<Input
+							id="scene-name"
 							className="h-7 text-xs"
 							value={draft.name ?? ""}
 							placeholder="Scene name"
@@ -93,8 +96,11 @@ function SceneCard({
 					</div>
 					<div className="grid grid-cols-2 gap-2">
 						<div className="space-y-1">
-							<Label className="text-[10px]">Location</Label>
+							<Label htmlFor="scene-location" className="text-[10px]">
+								Location
+							</Label>
 							<Input
+								id="scene-location"
 								className="h-7 text-xs"
 								value={draft.location ?? ""}
 								onChange={(e) =>
@@ -122,8 +128,11 @@ function SceneCard({
 						</div>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[10px]">Atmosphere</Label>
+						<Label htmlFor="scene-atmosphere" className="text-[10px]">
+							Atmosphere
+						</Label>
 						<Textarea
+							id="scene-atmosphere"
 							className="text-xs min-h-[48px] resize-none"
 							rows={2}
 							value={draft.atmosphere ?? ""}
@@ -133,8 +142,11 @@ function SceneCard({
 						/>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[10px]">Visual Prompt (EN)</Label>
+						<Label htmlFor="scene-visual-prompt" className="text-[10px]">
+							Visual Prompt (EN)
+						</Label>
 						<Textarea
+							id="scene-visual-prompt"
 							className="text-xs min-h-[48px] resize-none"
 							rows={2}
 							placeholder="English prompt for image generation"
@@ -303,6 +315,7 @@ export function SceneList() {
 							type="button"
 							onClick={() => setSearchQuery("")}
 							className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+							aria-label="Clear search"
 						>
 							<XIcon className="h-3 w-3 text-muted-foreground" />
 						</button>

@@ -80,8 +80,11 @@ function CharacterCard({
 			>
 				<CardContent className="px-3 py-3 space-y-2">
 					<div className="space-y-1">
-						<Label className="text-[10px]">Name</Label>
+						<Label htmlFor="char-name" className="text-[10px]">
+							Name
+						</Label>
 						<Input
+							id="char-name"
 							className="h-7 text-xs"
 							value={draft.name ?? ""}
 							onChange={(e) =>
@@ -91,8 +94,11 @@ function CharacterCard({
 					</div>
 					<div className="grid grid-cols-2 gap-2">
 						<div className="space-y-1">
-							<Label className="text-[10px]">Gender</Label>
+							<Label htmlFor="char-gender" className="text-[10px]">
+								Gender
+							</Label>
 							<Input
+								id="char-gender"
 								className="h-7 text-xs"
 								value={draft.gender ?? ""}
 								placeholder="男/女"
@@ -102,8 +108,11 @@ function CharacterCard({
 							/>
 						</div>
 						<div className="space-y-1">
-							<Label className="text-[10px]">Age</Label>
+							<Label htmlFor="char-age" className="text-[10px]">
+								Age
+							</Label>
 							<Input
+								id="char-age"
 								className="h-7 text-xs"
 								value={draft.age ?? ""}
 								placeholder="e.g. 30s"
@@ -114,8 +123,11 @@ function CharacterCard({
 						</div>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[10px]">Role</Label>
+						<Label htmlFor="char-role" className="text-[10px]">
+							Role
+						</Label>
 						<Input
+							id="char-role"
 							className="h-7 text-xs"
 							value={draft.role ?? ""}
 							onChange={(e) =>
@@ -124,8 +136,11 @@ function CharacterCard({
 						/>
 					</div>
 					<div className="space-y-1">
-						<Label className="text-[10px]">Appearance</Label>
+						<Label htmlFor="char-appearance" className="text-[10px]">
+							Appearance
+						</Label>
 						<Textarea
+							id="char-appearance"
 							className="text-xs min-h-[48px] resize-none"
 							rows={2}
 							value={draft.appearance ?? ""}
@@ -347,6 +362,7 @@ export function CharacterList() {
 							type="button"
 							onClick={() => setSearchQuery("")}
 							className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+							aria-label="Clear search"
 						>
 							<XIcon className="h-3 w-3 text-muted-foreground" />
 						</button>
