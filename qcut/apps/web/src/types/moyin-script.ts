@@ -73,6 +73,9 @@ export interface ScriptCharacter {
 	// 6-layer identity anchors (filled during AI calibration)
 	identityAnchors?: CharacterIdentityAnchors;
 	negativePrompt?: CharacterNegativePrompt;
+
+	// Wardrobe / stage variations
+	variations?: CharacterVariation[];
 }
 
 // ==================== Scene Types ====================
@@ -293,6 +296,8 @@ export interface Shot {
 	dialogue?: string;
 	ambientSound?: string;
 	soundEffect?: string;
+	bgm?: string;
+	audioEnabled?: boolean;
 
 	// Character info
 	characterNames?: string[];

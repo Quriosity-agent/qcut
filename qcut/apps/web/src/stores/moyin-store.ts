@@ -11,15 +11,29 @@ import type {
 	ScriptScene,
 	Shot,
 } from "@/types/moyin-script";
-import { buildStoryboardPrompt } from "@/lib/moyin/storyboard/prompt-builder";
-import { calculateGrid } from "@/lib/moyin/storyboard/grid-calculator";
-import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
 import {
 	buildShotImagePrompt,
+	buildEndFramePrompt,
 	generateFalImage,
 	generateShotImageRequest,
 	generateShotVideoRequest,
+	persistShotMedia,
 } from "./moyin-shot-generation";
+import {
+	partializeMoyinState,
+	saveMoyinProject,
+	loadMoyinProject,
+	clearMoyinProject,
+} from "./moyin-persistence";
+import {
+	enhanceCharactersLLM,
+	enhanceScenesLLM,
+} from "./moyin-calibration";
+import {
+	generateStoryboardAction,
+	splitAndApplyAction,
+	analyzeStagesAction,
+} from "./moyin-generation";
 
 // ==================== Types ====================
 
@@ -37,6 +51,9 @@ export type PipelineStep =
 export type PipelineStepStatus = "pending" | "active" | "done" | "error";
 
 interface MoyinState {
+	// Project scope
+	projectId: string | null;
+
 	// Workflow navigation
 	activeStep: MoyinStep;
 
@@ -97,6 +114,10 @@ interface MoyinState {
 		cellWidth: number;
 		cellHeight: number;
 	} | null;
+
+	// Create mode
+	createStatus: "idle" | "generating" | "done" | "error";
+	createError: string | null;
 }
 
 interface MoyinActions {
@@ -106,6 +127,10 @@ interface MoyinActions {
 	setRawScript: (text: string) => void;
 	parseScript: () => Promise<void>;
 	clearScript: () => void;
+	generateScript: (
+		idea: string,
+		options?: { genre?: string; targetDuration?: string }
+	) => Promise<void>;
 
 	// Script config
 	setLanguage: (lang: string) => void;
@@ -132,6 +157,7 @@ interface MoyinActions {
 	generateShotsForEpisode: (episodeId: string) => Promise<void>;
 	generateShotImage: (shotId: string) => Promise<void>;
 	generateShotVideo: (shotId: string) => Promise<void>;
+	generateEndFrameImage: (shotId: string) => Promise<void>;
 
 	// Episodes
 	addEpisode: (ep: Episode) => void;
@@ -151,9 +177,16 @@ interface MoyinActions {
 	// AI Calibration
 	enhanceCharacters: () => Promise<void>;
 	enhanceScenes: () => Promise<void>;
+	analyzeCharacterStages: () => Promise<number>;
 
 	// Generation
 	generateStoryboard: () => Promise<void>;
+	splitAndApplyStoryboard: () => Promise<void>;
+
+	// Persistence
+	loadProject: (projectId: string) => void;
+	saveProject: () => void;
+	clearProjectData: () => void;
 
 	// Reset
 	reset: () => void;
@@ -164,6 +197,7 @@ export type MoyinStore = MoyinState & MoyinActions;
 // ==================== Initial State ====================
 
 const initialState: MoyinState = {
+	projectId: null,
 	activeStep: "script",
 	rawScript: "",
 	scriptData: null,
@@ -199,6 +233,8 @@ const initialState: MoyinState = {
 	selectedProfileId: "classic-cinematic",
 	storyboardImageUrl: null,
 	storyboardGridConfig: null,
+	createStatus: "idle",
+	createError: null,
 };
 
 // ==================== Store ====================
@@ -236,9 +272,24 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 		const { rawScript } = get();
 		if (!rawScript.trim()) return;
 
-		set({ parseStatus: "parsing", parseError: null });
+		const advancePipeline = (
+			step: PipelineStep,
+			status: PipelineStepStatus,
+		) => {
+			const progress = { ...get().pipelineProgress, [step]: status };
+			set({ pipelineStep: step, pipelineProgress: progress });
+		};
+
+		set({
+			parseStatus: "parsing",
+			parseError: null,
+			pipelineStep: "import",
+			pipelineProgress: initialState.pipelineProgress,
+		});
 
 		try {
+			advancePipeline("import", "active");
+
 			const api = window.electronAPI?.moyin;
 			if (!api) {
 				throw new Error("Moyin API not available. Please run in Electron.");
@@ -250,7 +301,27 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 				throw new Error(result.error || "Failed to parse script");
 			}
 
+			advancePipeline("import", "done");
+
 			const data = result.data as unknown as ScriptData;
+
+			advancePipeline("title_calibration", "active");
+			// Title and metadata extracted from parse result
+			advancePipeline("title_calibration", "done");
+
+			advancePipeline("synopsis", "active");
+			// Synopsis and story paragraphs extracted
+			advancePipeline("synopsis", "done");
+
+			advancePipeline("shot_calibration", "active");
+			// Scenes contain shot breakdown info
+			advancePipeline("shot_calibration", "done");
+
+			advancePipeline("character_calibration", "active");
+			advancePipeline("character_calibration", "done");
+
+			advancePipeline("scene_calibration", "active");
+			advancePipeline("scene_calibration", "done");
 
 			set({
 				scriptData: data,
@@ -261,6 +332,8 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 				activeStep: "characters",
 			});
 		} catch (error) {
+			const currentStep = get().pipelineStep;
+			if (currentStep) advancePipeline(currentStep, "error");
 			set({
 				parseStatus: "error",
 				parseError:
@@ -291,6 +364,59 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 			storyboardGridConfig: null,
 			activeStep: "script",
 		}),
+
+	generateScript: async (idea, options = {}) => {
+		if (!idea.trim()) return;
+		set({ createStatus: "generating", createError: null });
+
+		try {
+			const api = window.electronAPI?.moyin;
+			if (!api?.callLLM) {
+				throw new Error("Moyin API not available. Please run in Electron.");
+			}
+
+			const { generateScriptFromIdea } = await import(
+				"@/lib/moyin/script/script-parser"
+			);
+
+			const llmAdapter = async (
+				systemPrompt: string,
+				userPrompt: string,
+				opts?: { temperature?: number; maxTokens?: number }
+			) => {
+				const result = await api.callLLM({
+					systemPrompt,
+					userPrompt,
+					temperature: opts?.temperature,
+					maxTokens: opts?.maxTokens,
+				});
+				if (!result.success || !result.text) {
+					throw new Error(result.error || "LLM call failed");
+				}
+				return result.text;
+			};
+
+			const { sceneCount, shotCount, selectedStyleId } = get();
+			const generatedText = await generateScriptFromIdea(idea, llmAdapter, {
+				targetDuration: options.targetDuration || "60s",
+				sceneCount: sceneCount !== "auto" ? Number(sceneCount) : undefined,
+				shotCount: shotCount !== "auto" ? Number(shotCount) : undefined,
+				styleId: selectedStyleId,
+			});
+
+			set({
+				rawScript: generatedText,
+				createStatus: "done",
+				createError: null,
+			});
+		} catch (error) {
+			set({
+				createStatus: "error",
+				createError:
+					error instanceof Error ? error.message : "Script generation failed",
+			});
+		}
+	},
 
 	updateCharacter: (id, updates) =>
 		set((state) => ({
@@ -447,7 +573,11 @@ Generate shots for each scene with proper camera language and visual storytellin
 				),
 			}));
 
-			const imageUrl = await generateShotImageRequest(prompt);
+			const remoteImageUrl = await generateShotImageRequest(prompt);
+			const imageUrl = await persistShotMedia(
+				remoteImageUrl,
+				`shot-${shotId}-image.png`
+			);
 
 			set((state) => ({
 				shots: state.shots.map((s) =>
@@ -505,7 +635,14 @@ Generate shots for each scene with proper camera language and visual storytellin
 				),
 			}));
 
-			const videoUrl = await generateShotVideoRequest(shot.imageUrl, prompt);
+			const remoteVideoUrl = await generateShotVideoRequest(
+				shot.imageUrl,
+				prompt
+			);
+			const videoUrl = await persistShotMedia(
+				remoteVideoUrl,
+				`shot-${shotId}-video.mp4`
+			);
 
 			set((state) => ({
 				shots: state.shots.map((s) =>
@@ -525,6 +662,63 @@ Generate shots for each scene with proper camera language and visual storytellin
 									error instanceof Error
 										? error.message
 										: "Video generation failed",
+							}
+						: s
+				),
+			}));
+		}
+	},
+
+	generateEndFrameImage: async (shotId) => {
+		const { shots } = get();
+		const shot = shots.find((s) => s.id === shotId);
+		if (!shot) return;
+
+		set((state) => ({
+			shots: state.shots.map((s) =>
+				s.id === shotId
+					? {
+							...s,
+							endFrameImageStatus: "generating",
+							endFrameImageError: undefined,
+						}
+					: s
+			),
+		}));
+
+		try {
+			const prompt = buildEndFramePrompt(shot);
+			if (!prompt) throw new Error("No end frame prompt available.");
+
+			const remoteUrl = await generateFalImage(prompt);
+			const endFrameImageUrl = await persistShotMedia(
+				remoteUrl,
+				`shot-${shotId}-endframe.png`
+			);
+
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? {
+								...s,
+								endFrameImageStatus: "completed",
+								endFrameImageUrl,
+								endFrameSource: "ai-generated",
+							}
+						: s
+				),
+			}));
+		} catch (error) {
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? {
+								...s,
+								endFrameImageStatus: "failed",
+								endFrameImageError:
+									error instanceof Error
+										? error.message
+										: "End frame generation failed",
 							}
 						: s
 				),
@@ -560,73 +754,8 @@ Generate shots for each scene with proper camera language and visual storytellin
 		set({ characterCalibrationStatus: "calibrating", calibrationError: null });
 
 		try {
-			const api = window.electronAPI?.moyin;
-			if (!api?.callLLM) {
-				throw new Error("Moyin API not available. Please run in Electron.");
-			}
-
-			const title = scriptData?.title || "Unknown";
-			const genre = scriptData?.genre || "Drama";
-
-			const charSummary = characters
-				.map(
-					(c) =>
-						`- ${c.name}: ${c.role || "unknown role"}, ${c.gender || ""} ${c.age || ""}`
-				)
-				.join("\n");
-
-			const result = await api.callLLM({
-				systemPrompt: `You are a professional character designer. For each character, generate a detailed English visual description suitable for AI image generation.
-
-Return JSON array:
-[{ "id": "char_id", "visualPromptEn": "detailed English appearance description for AI image generation", "appearance": "concise appearance summary" }]
-
-Only return the JSON array, no other text.`,
-				userPrompt: `Project: "${title}" (${genre})
-
-Characters:
-${charSummary}
-
-Generate visual prompts for each character. Include: face shape, hair style/color, eye details, build, clothing style, distinguishing features.`,
-				temperature: 0.5,
-				maxTokens: 4096,
-			});
-
-			if (!result.success || !result.text) {
-				throw new Error(result.error || "AI enhancement failed");
-			}
-
-			// Parse enhanced data
-			let cleaned = result.text
-				.replace(/```json\n?/g, "")
-				.replace(/```\n?/g, "")
-				.trim();
-			const jsonStart = cleaned.indexOf("[");
-			const jsonEnd = cleaned.lastIndexOf("]");
-			if (jsonStart !== -1 && jsonEnd !== -1) {
-				cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-			}
-
-			const enhanced = JSON.parse(cleaned) as Array<{
-				id: string;
-				visualPromptEn?: string;
-				appearance?: string;
-			}>;
-
-			// Merge enhanced data into characters
-			const enhancedMap = new Map(enhanced.map((e) => [e.id, e]));
-			set((state) => ({
-				characters: state.characters.map((c) => {
-					const e = enhancedMap.get(c.id);
-					if (!e) return c;
-					return {
-						...c,
-						visualPromptEn: e.visualPromptEn || c.visualPromptEn,
-						appearance: e.appearance || c.appearance,
-					};
-				}),
-				characterCalibrationStatus: "done",
-			}));
+			const enhanced = await enhanceCharactersLLM(characters, scriptData);
+			set({ characters: enhanced, characterCalibrationStatus: "done" });
 		} catch (error) {
 			set({
 				characterCalibrationStatus: "error",
@@ -643,77 +772,31 @@ Generate visual prompts for each character. Include: face shape, hair style/colo
 		set({ sceneCalibrationStatus: "calibrating", calibrationError: null });
 
 		try {
-			const api = window.electronAPI?.moyin;
-			if (!api?.callLLM) {
-				throw new Error("Moyin API not available. Please run in Electron.");
-			}
-
-			const title = scriptData?.title || "Unknown";
-			const genre = scriptData?.genre || "Drama";
-
-			const sceneSummary = scenes
-				.map(
-					(s) =>
-						`- ${s.name || s.location}: ${s.time || ""}, ${s.atmosphere || ""}`
-				)
-				.join("\n");
-
-			const result = await api.callLLM({
-				systemPrompt: `You are a professional art director. For each scene, generate a detailed English visual description suitable for AI concept art generation.
-
-Return JSON array:
-[{ "id": "scene_id", "visualPrompt": "detailed English scene description for AI image generation", "lightingDesign": "lighting description" }]
-
-Only return the JSON array, no other text.`,
-				userPrompt: `Project: "${title}" (${genre})
-
-Scenes:
-${sceneSummary}
-
-Generate visual prompts for each scene. Include: architecture style, lighting conditions, weather, color palette, atmosphere, key props, camera perspective.`,
-				temperature: 0.5,
-				maxTokens: 4096,
-			});
-
-			if (!result.success || !result.text) {
-				throw new Error(result.error || "AI enhancement failed");
-			}
-
-			let cleaned = result.text
-				.replace(/```json\n?/g, "")
-				.replace(/```\n?/g, "")
-				.trim();
-			const jsonStart = cleaned.indexOf("[");
-			const jsonEnd = cleaned.lastIndexOf("]");
-			if (jsonStart !== -1 && jsonEnd !== -1) {
-				cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-			}
-
-			const enhanced = JSON.parse(cleaned) as Array<{
-				id: string;
-				visualPrompt?: string;
-				lightingDesign?: string;
-			}>;
-
-			const enhancedMap = new Map(enhanced.map((e) => [e.id, e]));
-			set((state) => ({
-				scenes: state.scenes.map((s) => {
-					const e = enhancedMap.get(s.id);
-					if (!e) return s;
-					return {
-						...s,
-						visualPrompt: e.visualPrompt || s.visualPrompt,
-						lightingDesign: e.lightingDesign || s.lightingDesign,
-					};
-				}),
-				sceneCalibrationStatus: "done",
-			}));
+			const enhanced = await enhanceScenesLLM(scenes, scriptData);
+			set({ scenes: enhanced, sceneCalibrationStatus: "done" });
 		} catch (error) {
 			set({
 				sceneCalibrationStatus: "error",
 				calibrationError:
 					error instanceof Error ? error.message : "Enhancement failed",
 			});
+		}
+	},
+
+	analyzeCharacterStages: async () => {
+		const { characters, episodes, scriptData } = get();
+		if (characters.length === 0 || episodes.length < 2) return 0;
+
+		try {
+			const updated = await analyzeStagesAction(characters, episodes.length, scriptData);
+			const count = updated.filter((c, i) =>
+				(c.variations?.length || 0) > (characters[i].variations?.length || 0)
+			).length;
+			set({ characters: updated });
+			return count;
+		} catch (error) {
+			console.error("[analyzeCharacterStages]", error);
+			return 0;
 		}
 	},
 
@@ -730,70 +813,19 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 		});
 
 		try {
-			set({ generationProgress: 10 });
-
-			const stylePreset = VISUAL_STYLE_PRESETS.find(
-				(s) => s.id === selectedStyleId
+			const result = await generateStoryboardAction(
+				scenes,
+				characters,
+				selectedStyleId,
+				scriptData,
+				(progress) => set({ generationProgress: progress }),
 			);
-			const styleTokens = stylePreset
-				? [stylePreset.prompt]
-				: ["Studio Ghibli style, anime, soft colors"];
-
-			const storySummary = scenes
-				.map(
-					(s, i) =>
-						`Scene ${i + 1}: ${s.visualPrompt || s.atmosphere || s.name || s.location || ""}`
-				)
-				.join("\n");
-
-			const title = scriptData?.title || "";
-			const storyPrompt = title ? `${title}\n\n${storySummary}` : storySummary;
-
-			const characterDescriptions = characters
-				.filter((c) => c.visualPromptEn || c.appearance)
-				.map((c) => c.visualPromptEn || c.appearance || "");
-
-			const aspectRatio = "16:9" as const;
-			const resolution = "2K" as const;
-
-			const gridConfig = calculateGrid({
-				sceneCount: scenes.length,
-				aspectRatio,
-				resolution,
-			});
-
-			const prompt = buildStoryboardPrompt({
-				story: storyPrompt,
-				sceneCount: scenes.length,
-				aspectRatio,
-				resolution,
-				styleTokens,
-				characters:
-					characterDescriptions.length > 0
-						? characterDescriptions.map((desc, i) => ({
-								name: characters[i]?.name || `Character ${i + 1}`,
-								visualTraits: desc,
-							}))
-						: undefined,
-			});
-
-			set({ generationProgress: 20 });
-
-			const imageUrl = await generateFalImage(prompt, {
-				width: gridConfig.canvasWidth,
-				height: gridConfig.canvasHeight,
-			});
 
 			set({
 				generationStatus: "done",
 				generationProgress: 100,
-				storyboardImageUrl: imageUrl,
-				storyboardGridConfig: {
-					cols: gridConfig.cols,
-					rows: gridConfig.rows,
-					cellWidth: gridConfig.cellWidth,
-					cellHeight: gridConfig.cellHeight,
-				},
+				storyboardImageUrl: result.imageUrl,
+				storyboardGridConfig: result.gridConfig,
 			});
 		} catch (error) {
 			set({
@@ -804,5 +836,57 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 		}
 	},
 
+	splitAndApplyStoryboard: async () => {
+		const { storyboardImageUrl, storyboardGridConfig, scenes, shots, scriptData } = get();
+		if (!storyboardImageUrl || !storyboardGridConfig) return;
+
+		try {
+			const result = await splitAndApplyAction(
+				storyboardImageUrl,
+				storyboardGridConfig,
+				scenes,
+				shots,
+				scriptData,
+			);
+			set({ shots: result.shots });
+		} catch (error) {
+			set({
+				generationError:
+					error instanceof Error ? error.message : "Failed to split storyboard",
+			});
+		}
+	},
+
+	loadProject: (projectId) => {
+		const saved = loadMoyinProject(projectId);
+		if (saved) {
+			set({ ...initialState, ...saved, projectId });
+		} else {
+			set({ ...initialState, projectId });
+		}
+	},
+
+	saveProject: () => {
+		const state = get();
+		if (!state.projectId) return;
+		saveMoyinProject(state.projectId, partializeMoyinState(state));
+	},
+
+	clearProjectData: () => {
+		const { projectId } = get();
+		if (projectId) clearMoyinProject(projectId);
+		set(initialState);
+	},
+
 	reset: () => set(initialState),
 }));
+
+// Auto-save on state changes (debounced)
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+useMoyinStore.subscribe((state) => {
+	if (!state.projectId) return;
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = setTimeout(() => {
+		saveMoyinProject(state.projectId!, partializeMoyinState(state));
+	}, 1000);
+});

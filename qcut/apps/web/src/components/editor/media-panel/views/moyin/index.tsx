@@ -10,6 +10,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useParams } from "@tanstack/react-router";
 import { useMoyinStore } from "@/stores/moyin-store";
 import {
 	ResizablePanelGroup,
@@ -22,16 +23,23 @@ import { PropertyPanel } from "./property-panel";
 import { FileTextIcon, XIcon } from "lucide-react";
 
 export function MoyinView() {
+	const params = useParams({ from: "/editor/$project_id" });
+	const projectId = params.project_id;
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
 	const characters = useMoyinStore((s) => s.characters);
 	const scenes = useMoyinStore((s) => s.scenes);
 	const checkApiKeyStatus = useMoyinStore((s) => s.checkApiKeyStatus);
+	const loadProject = useMoyinStore((s) => s.loadProject);
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
 
 	useEffect(() => {
 		checkApiKeyStatus();
 	}, [checkApiKeyStatus]);
+
+	useEffect(() => {
+		if (projectId) loadProject(projectId);
+	}, [projectId, loadProject]);
 
 	const hasSelection = !!selectedItemId;
 

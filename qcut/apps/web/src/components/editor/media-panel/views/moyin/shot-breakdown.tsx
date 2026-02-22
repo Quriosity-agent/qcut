@@ -3,7 +3,7 @@
  * Compact layout for scanning many shots at a glance.
  */
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import {
 	FileTextIcon,
 	MapPinIcon,
 	MessageSquareIcon,
+	PlusIcon,
 	UserIcon,
 } from "lucide-react";
 
@@ -35,8 +36,30 @@ function ShotStatusDot({ status }: { status: string }) {
 export function ShotBreakdown() {
 	const scenes = useMoyinStore((s) => s.scenes);
 	const shots = useMoyinStore((s) => s.shots);
+	const addShot = useMoyinStore((s) => s.addShot);
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+
+	const handleAddShot = useCallback(
+		(sceneId: string) => {
+			const sceneShots = shots.filter((s) => s.sceneRefId === sceneId);
+			const newShot = {
+				id: `shot_${Date.now()}`,
+				index: shots.length,
+				sceneRefId: sceneId,
+				shotLabel: `Shot ${sceneShots.length + 1}`,
+				shotSize: "",
+				cameraMovement: "",
+				actionSummary: "",
+				characterNames: [],
+				imageStatus: "idle" as const,
+				videoStatus: "idle" as const,
+			};
+			addShot(newShot);
+			setSelectedItem(newShot.id, "shot");
+		},
+		[shots, addShot, setSelectedItem]
+	);
 
 	const shotsByScene = useMemo(() => {
 		const map: Record<string, typeof shots> = {};
@@ -77,6 +100,14 @@ export function ShotBreakdown() {
 							<span className="text-[10px] font-medium truncate flex-1">
 								{scene.name || scene.location}
 							</span>
+							<button
+								type="button"
+								onClick={() => handleAddShot(scene.id)}
+								className="p-0.5 rounded hover:bg-muted transition-colors"
+								aria-label={`Add shot to ${scene.name || scene.location}`}
+							>
+								<PlusIcon className="h-3 w-3 text-muted-foreground" />
+							</button>
 							<Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
 								{sceneShots.length}
 							</Badge>

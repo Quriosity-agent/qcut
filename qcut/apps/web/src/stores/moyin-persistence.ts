@@ -1,0 +1,112 @@
+/**
+ * Moyin per-project persistence helpers.
+ * Handles save/load of Moyin state to localStorage scoped by project ID.
+ * Extracted from moyin-store.ts to keep it under 800 lines.
+ */
+
+import type {
+	Episode,
+	ScriptCharacter,
+	ScriptScene,
+	Shot,
+	ScriptData,
+} from "@/types/moyin-script";
+import type { ParseStatus } from "./moyin-store";
+
+/** Fields that get persisted per project. */
+export interface MoyinPersistedState {
+	rawScript: string;
+	scriptData: ScriptData | null;
+	parseStatus: ParseStatus;
+	characters: ScriptCharacter[];
+	scenes: ScriptScene[];
+	shots: Shot[];
+	episodes: Episode[];
+	selectedStyleId: string;
+	selectedProfileId: string;
+	language: string;
+	sceneCount: string;
+	shotCount: string;
+}
+
+const STORAGE_VERSION = 1;
+const STORAGE_PREFIX = "moyin-project-";
+
+export function getMoyinStorageKey(projectId: string): string {
+	return `${STORAGE_PREFIX}${projectId}`;
+}
+
+/** Extract only the fields we want to persist from full state. */
+export function partializeMoyinState(state: {
+	rawScript: string;
+	scriptData: ScriptData | null;
+	parseStatus: ParseStatus;
+	characters: ScriptCharacter[];
+	scenes: ScriptScene[];
+	shots: Shot[];
+	episodes: Episode[];
+	selectedStyleId: string;
+	selectedProfileId: string;
+	language: string;
+	sceneCount: string;
+	shotCount: string;
+}): MoyinPersistedState {
+	return {
+		rawScript: state.rawScript,
+		scriptData: state.scriptData,
+		parseStatus: state.parseStatus,
+		characters: state.characters,
+		scenes: state.scenes,
+		shots: state.shots,
+		episodes: state.episodes,
+		selectedStyleId: state.selectedStyleId,
+		selectedProfileId: state.selectedProfileId,
+		language: state.language,
+		sceneCount: state.sceneCount,
+		shotCount: state.shotCount,
+	};
+}
+
+interface StorageEnvelope {
+	version: number;
+	data: MoyinPersistedState;
+}
+
+/** Save project state to localStorage. */
+export function saveMoyinProject(
+	projectId: string,
+	state: MoyinPersistedState
+): void {
+	if (!projectId) return;
+	try {
+		const envelope: StorageEnvelope = { version: STORAGE_VERSION, data: state };
+		localStorage.setItem(
+			getMoyinStorageKey(projectId),
+			JSON.stringify(envelope)
+		);
+	} catch {
+		// localStorage full or unavailable — silently skip
+	}
+}
+
+/** Load project state from localStorage. Returns null if not found. */
+export function loadMoyinProject(
+	projectId: string
+): MoyinPersistedState | null {
+	if (!projectId) return null;
+	try {
+		const raw = localStorage.getItem(getMoyinStorageKey(projectId));
+		if (!raw) return null;
+		const envelope = JSON.parse(raw) as StorageEnvelope;
+		if (envelope.version !== STORAGE_VERSION) return null;
+		return envelope.data;
+	} catch {
+		return null;
+	}
+}
+
+/** Remove persisted data for a project. */
+export function clearMoyinProject(projectId: string): void {
+	if (!projectId) return;
+	localStorage.removeItem(getMoyinStorageKey(projectId));
+}

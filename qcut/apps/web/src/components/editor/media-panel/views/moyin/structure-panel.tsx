@@ -3,7 +3,9 @@
  * episode tree, characters, scenes, and generation controls.
  */
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useMoyinStore } from "@/stores/moyin-store";
+import type { MoyinStep } from "@/stores/moyin-store";
 import { EpisodeTree } from "./episode-tree";
 import { CharacterList } from "./character-list";
 import { SceneList } from "./scene-list";
@@ -20,6 +22,21 @@ import {
 
 type StructureTab = "overview" | "characters" | "scenes" | "shots" | "generate";
 
+const stepToTab: Record<MoyinStep, StructureTab> = {
+	script: "overview",
+	characters: "characters",
+	scenes: "scenes",
+	generate: "generate",
+};
+
+const tabToStep: Record<StructureTab, MoyinStep> = {
+	overview: "script",
+	characters: "characters",
+	scenes: "scenes",
+	shots: "scenes",
+	generate: "generate",
+};
+
 const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 	{ key: "overview", label: "Structure", icon: FileTextIcon },
 	{ key: "characters", label: "Characters", icon: UsersIcon },
@@ -29,7 +46,30 @@ const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 ];
 
 export function StructurePanel() {
-	const [activeTab, setActiveTab] = useState<StructureTab>("overview");
+	const activeStep = useMoyinStore((s) => s.activeStep);
+	const setActiveStep = useMoyinStore((s) => s.setActiveStep);
+	const [activeTab, setActiveTab] = useState<StructureTab>(
+		stepToTab[activeStep] || "overview"
+	);
+
+	// Sync tab when store step changes externally (e.g. on project load)
+	useEffect(() => {
+		const mappedTab = stepToTab[activeStep];
+		// Don't override "shots" with "scenes" if user explicitly chose shots
+		if (mappedTab && activeTab !== "shots") {
+			setActiveTab(mappedTab);
+		} else if (mappedTab && activeTab === "shots" && activeStep !== "scenes") {
+			setActiveTab(mappedTab);
+		}
+	}, [activeStep, activeTab]);
+
+	const handleTabChange = useCallback(
+		(tab: StructureTab) => {
+			setActiveTab(tab);
+			setActiveStep(tabToStep[tab]);
+		},
+		[setActiveStep]
+	);
 
 	return (
 		<div className="space-y-3">
@@ -41,7 +81,7 @@ export function StructurePanel() {
 						<button
 							key={tab.key}
 							type="button"
-							onClick={() => setActiveTab(tab.key)}
+							onClick={() => handleTabChange(tab.key)}
 							className={cn(
 								"flex items-center gap-1 px-2 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
 								activeTab === tab.key

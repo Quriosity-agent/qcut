@@ -217,6 +217,8 @@ export function CharacterList() {
 	const addCharacter = useMoyinStore((s) => s.addCharacter);
 	const removeCharacter = useMoyinStore((s) => s.removeCharacter);
 	const enhanceCharacters = useMoyinStore((s) => s.enhanceCharacters);
+	const analyzeCharacterStages = useMoyinStore((s) => s.analyzeCharacterStages);
+	const episodes = useMoyinStore((s) => s.episodes);
 	const calibrationStatus = useMoyinStore((s) => s.characterCalibrationStatus);
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
@@ -224,6 +226,16 @@ export function CharacterList() {
 
 	const isCalibrating = calibrationStatus === "calibrating";
 	const [extrasExpanded, setExtrasExpanded] = useState(false);
+	const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+	const handleAnalyzeStages = useCallback(async () => {
+		setIsAnalyzing(true);
+		try {
+			await analyzeCharacterStages();
+		} finally {
+			setIsAnalyzing(false);
+		}
+	}, [analyzeCharacterStages]);
 
 	const { mainChars, extraChars } = useMemo(() => {
 		const main: ScriptCharacter[] = [];
@@ -264,6 +276,22 @@ export function CharacterList() {
 						)}
 						{calibrationStatus === "done" ? "Enhanced" : "AI Enhance"}
 					</Button>
+					{episodes.length > 1 && (
+						<Button
+							variant="text"
+							size="sm"
+							className="h-6 text-xs px-2"
+							onClick={handleAnalyzeStages}
+							disabled={isAnalyzing || characters.length === 0}
+						>
+							{isAnalyzing ? (
+								<Loader2 className="mr-1 h-3 w-3 animate-spin" />
+							) : (
+								<SparklesIcon className="mr-1 h-3 w-3" />
+							)}
+							Stages
+						</Button>
+					)}
 					<Button
 						variant="text"
 						size="sm"

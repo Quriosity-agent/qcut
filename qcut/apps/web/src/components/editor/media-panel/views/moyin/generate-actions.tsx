@@ -6,8 +6,10 @@
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useState } from "react";
 import {
 	CheckCircle2Icon,
+	GridIcon,
 	Loader2,
 	RotateCcwIcon,
 	SparklesIcon,
@@ -31,9 +33,25 @@ export function GenerateActions() {
 	const storyboardImageUrl = useMoyinStore((s) => s.storyboardImageUrl);
 	const storyboardGridConfig = useMoyinStore((s) => s.storyboardGridConfig);
 
+	const shots = useMoyinStore((s) => s.shots);
+	const splitAndApplyStoryboard = useMoyinStore(
+		(s) => s.splitAndApplyStoryboard
+	);
+
+	const [isSplitting, setIsSplitting] = useState(false);
+
 	const { batch, startBatch, cancel } = useBatchGeneration();
 	const isGenerating = generationStatus === "generating";
 	const isDone = generationStatus === "done";
+
+	const handleSplit = async () => {
+		setIsSplitting(true);
+		try {
+			await splitAndApplyStoryboard();
+		} finally {
+			setIsSplitting(false);
+		}
+	};
 
 	const selectedStyle = VISUAL_STYLE_PRESETS.find(
 		(s) => s.id === selectedStyleId
@@ -83,13 +101,36 @@ export function GenerateActions() {
 							` (${storyboardGridConfig.cols}x${storyboardGridConfig.rows} grid)`}
 					</div>
 					{storyboardImageUrl && (
-						<div className="rounded-md border overflow-hidden">
-							<img
-								src={storyboardImageUrl}
-								alt="Generated storyboard"
-								className="w-full h-auto"
-							/>
-						</div>
+						<>
+							<div className="rounded-md border overflow-hidden">
+								<img
+									src={storyboardImageUrl}
+									alt="Generated storyboard"
+									className="w-full h-auto"
+								/>
+							</div>
+							{shots.length > 0 && (
+								<Button
+									size="sm"
+									variant="outline"
+									className="w-full"
+									onClick={handleSplit}
+									disabled={isSplitting}
+								>
+									{isSplitting ? (
+										<>
+											<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+											Splitting...
+										</>
+									) : (
+										<>
+											<GridIcon className="mr-1.5 h-3.5 w-3.5" />
+											Split & Apply to Shots
+										</>
+									)}
+								</Button>
+							)}
+						</>
 					)}
 				</div>
 			)}

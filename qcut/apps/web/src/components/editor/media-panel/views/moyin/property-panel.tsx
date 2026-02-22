@@ -26,6 +26,7 @@ import {
 	XIcon,
 } from "lucide-react";
 import { CollapsibleSection } from "./collapsible-section";
+import { CharacterVariations } from "./character-variations";
 import { ShotDetail } from "./shot-detail";
 
 /** Reusable copy-to-clipboard button with feedback. */
@@ -535,6 +536,12 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 			{char.identityAnchors && (
 				<IdentityAnchorsDisplay anchors={char.identityAnchors} />
 			)}
+
+			{/* Variations */}
+			<CharacterVariations
+				variations={char.variations || []}
+				onChange={(variations) => updateCharacter(char.id, { variations })}
+			/>
 		</div>
 	);
 }
@@ -553,6 +560,13 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 			time: scene.time,
 			atmosphere: scene.atmosphere,
 			visualPrompt: scene.visualPrompt,
+			visualPromptEn: scene.visualPromptEn,
+			architectureStyle: scene.architectureStyle,
+			lightingDesign: scene.lightingDesign,
+			colorPalette: scene.colorPalette,
+			keyProps: scene.keyProps,
+			spatialLayout: scene.spatialLayout,
+			eraDetails: scene.eraDetails,
 		});
 		setEditing(true);
 	}, [scene]);
@@ -607,7 +621,7 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 					/>
 				</div>
 				<div className="space-y-1">
-					<Label className="text-[10px]">Visual Prompt (EN)</Label>
+					<Label className="text-[10px]">Visual Prompt</Label>
 					<Textarea
 						className="text-xs min-h-[48px] resize-none"
 						rows={2}
@@ -617,6 +631,85 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 						}
 					/>
 				</div>
+				<CollapsibleSection title="Art Direction" defaultOpen={false}>
+					<div className="space-y-2">
+						<div className="space-y-1">
+							<Label className="text-[10px]">Visual Prompt (EN)</Label>
+							<Textarea
+								className="text-xs min-h-[48px] resize-none"
+								rows={2}
+								value={draft.visualPromptEn ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, visualPromptEn: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Architecture Style</Label>
+							<Input
+								className="h-7 text-xs"
+								value={draft.architectureStyle ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, architectureStyle: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Lighting Design</Label>
+							<Textarea
+								className="text-xs min-h-[36px] resize-none"
+								rows={2}
+								value={draft.lightingDesign ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, lightingDesign: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Color Palette</Label>
+							<Input
+								className="h-7 text-xs"
+								placeholder="comma-separated colors"
+								value={draft.colorPalette ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, colorPalette: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Key Props</Label>
+							<Input
+								className="h-7 text-xs"
+								placeholder="comma-separated props"
+								value={draft.keyProps ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, keyProps: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Spatial Layout</Label>
+							<Textarea
+								className="text-xs min-h-[36px] resize-none"
+								rows={2}
+								value={draft.spatialLayout ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, spatialLayout: e.target.value }))
+								}
+							/>
+						</div>
+						<div className="space-y-1">
+							<Label className="text-[10px]">Era Details</Label>
+							<Input
+								className="h-7 text-xs"
+								value={draft.eraDetails ?? ""}
+								onChange={(e) =>
+									setDraft((d) => ({ ...d, eraDetails: e.target.value }))
+								}
+							/>
+						</div>
+					</div>
+				</CollapsibleSection>
 				<div className="flex gap-1.5">
 					<Button size="sm" className="h-6 text-xs px-2" onClick={save}>
 						<CheckIcon className="mr-1 h-3 w-3" />
@@ -685,6 +778,10 @@ function SceneDetail({ scene }: { scene: ScriptScene }) {
 			<FieldRow label="Architecture" value={scene.architectureStyle} />
 			<FieldRow label="Lighting" value={scene.lightingDesign} />
 			<FieldRow label="Color Palette" value={scene.colorPalette} />
+			<FieldRow label="Key Props" value={scene.keyProps} />
+			<FieldRow label="Spatial Layout" value={scene.spatialLayout} />
+			<FieldRow label="Era Details" value={scene.eraDetails} />
+			<FieldRow label="Visual Prompt (EN)" value={scene.visualPromptEn} />
 		</div>
 	);
 }

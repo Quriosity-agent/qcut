@@ -120,3 +120,60 @@ export async function generateShotVideoRequest(
 	if (!videoUrl) throw new Error("No video returned from API");
 	return videoUrl;
 }
+
+/**
+ * Persist a remote media URL to local Electron storage.
+ * Falls back to the original URL if Electron is unavailable or save fails.
+ */
+export async function persistShotMedia(
+	url: string,
+	filename: string
+): Promise<string> {
+	try {
+		const electronAPI = (window as unknown as Record<string, unknown>)
+			.electronAPI as
+			| {
+					saveBlob?: (
+						data: Uint8Array,
+						filename: string
+					) => Promise<string>;
+			  }
+			| undefined;
+		if (!electronAPI?.saveBlob) return url;
+
+		const response = await fetch(url);
+		if (!response.ok) return url;
+
+		const buffer = await response.arrayBuffer();
+		const localPath = await electronAPI.saveBlob(
+			new Uint8Array(buffer),
+			filename
+		);
+		return localPath || url;
+	} catch {
+		// Persistence failed — keep remote URL
+		return url;
+	}
+}
+
+/** Check if an error is a content moderation rejection. */
+export function isModerationError(error: unknown): boolean {
+	const msg =
+		error instanceof Error ? error.message : String(error ?? "");
+	const patterns = [
+		"content policy",
+		"moderation",
+		"nsfw",
+		"safety",
+		"banned",
+		"restricted content",
+		"inappropriate",
+	];
+	const lower = msg.toLowerCase();
+	return patterns.some((p) => lower.includes(p));
+}
+
+/** Build a prompt for end frame image generation. */
+export function buildEndFramePrompt(shot: Shot): string {
+	return shot.endFramePrompt || shot.imagePrompt || shot.actionSummary || "";
+}

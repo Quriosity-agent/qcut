@@ -6,6 +6,7 @@
 import { useState, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
 	ChevronDownIcon,
@@ -16,12 +17,14 @@ import {
 	FilmIcon,
 	FileTextIcon,
 	MapPinIcon,
+	PlusIcon,
 } from "lucide-react";
 import {
 	EpisodeContextMenu,
 	SceneContextMenu,
 	ShotContextMenu,
 } from "./tree-context-menu";
+import { EpisodeDialog } from "./episode-dialog";
 
 type FilterMode = "all" | "pending" | "completed";
 
@@ -40,6 +43,7 @@ export function EpisodeTree() {
 	);
 	const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
 	const [filter, setFilter] = useState<FilterMode>("all");
+	const [episodeDialogOpen, setEpisodeDialogOpen] = useState(false);
 
 	const toggleEpisode = (id: string) => {
 		setExpandedEpisodes((prev) => {
@@ -116,10 +120,26 @@ export function EpisodeTree() {
 						</Badge>
 					)}
 				</div>
-				<span className="text-xs text-muted-foreground">
-					{totalCompleted}/{totalShots}
-				</span>
+				<div className="flex items-center gap-1">
+					<Button
+						variant="text"
+						size="sm"
+						className="h-5 text-[10px] px-1.5"
+						onClick={() => setEpisodeDialogOpen(true)}
+					>
+						<PlusIcon className="mr-0.5 h-2.5 w-2.5" />
+						Episode
+					</Button>
+					<span className="text-xs text-muted-foreground">
+						{totalCompleted}/{totalShots}
+					</span>
+				</div>
 			</div>
+
+			<EpisodeDialog
+				open={episodeDialogOpen}
+				onOpenChange={setEpisodeDialogOpen}
+			/>
 
 			{/* Filter tabs */}
 			<div className="flex items-center gap-1">

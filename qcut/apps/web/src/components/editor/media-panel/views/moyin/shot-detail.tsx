@@ -41,6 +41,7 @@ import {
 } from "./cinema-selectors";
 import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
+import { isModerationError } from "@/stores/moyin-shot-generation";
 
 // ==================== Helpers ====================
 
@@ -85,6 +86,34 @@ function CopyButton({ getText }: { getText: () => string }) {
 	);
 }
 
+function ModerationErrorDisplay({
+	error,
+	onEditPrompt,
+}: {
+	error: string;
+	onEditPrompt: () => void;
+}) {
+	if (isModerationError(error)) {
+		return (
+			<div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-2 text-[10px] text-yellow-700 dark:text-yellow-400 space-y-1">
+				<p className="font-medium">Content Moderation</p>
+				<p>
+					This prompt was flagged by the safety filter. Try editing the prompt
+					to adjust the content.
+				</p>
+				<button
+					type="button"
+					onClick={onEditPrompt}
+					className="text-[10px] underline hover:no-underline"
+				>
+					Edit Prompt
+				</button>
+			</div>
+		);
+	}
+	return <p className="text-[10px] text-destructive">{error}</p>;
+}
+
 // Narrative function presets
 const NARRATIVE_FUNCTIONS = [
 	"exposition",
@@ -101,6 +130,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 	const updateShot = useMoyinStore((s) => s.updateShot);
 	const generateShotImage = useMoyinStore((s) => s.generateShotImage);
 	const generateShotVideo = useMoyinStore((s) => s.generateShotVideo);
+	const generateEndFrameImage = useMoyinStore((s) => s.generateEndFrameImage);
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState<Partial<Shot>>({});
 	const [preview, setPreview] = useState<{
@@ -150,6 +180,8 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			emotionTags: shot.emotionTags,
 			ambientSound: shot.ambientSound,
 			soundEffect: shot.soundEffect,
+			bgm: shot.bgm,
+			audioEnabled: shot.audioEnabled,
 			// Lighting (Gaffer)
 			lightingStyle: shot.lightingStyle,
 			lightingDirection: shot.lightingDirection,
@@ -320,8 +352,12 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					<SoundDesignInput
 						ambientSound={draft.ambientSound}
 						soundEffect={draft.soundEffect}
+						bgm={draft.bgm}
+						audioEnabled={draft.audioEnabled}
 						onAmbientChange={(v) => setField({ ambientSound: v })}
 						onSfxChange={(v) => setField({ soundEffect: v })}
+						onBgmChange={(v) => setField({ bgm: v })}
+						onAudioEnabledChange={(v) => setField({ audioEnabled: v })}
 					/>
 				</CollapsibleSection>
 
@@ -540,6 +576,8 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			<SoundDesignInput
 				ambientSound={shot.ambientSound}
 				soundEffect={shot.soundEffect}
+				bgm={shot.bgm}
+				audioEnabled={shot.audioEnabled}
 				onAmbientChange={() => {}}
 				onSfxChange={() => {}}
 				readOnly
@@ -632,15 +670,22 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					Generate
 				</p>
 				{shot.imageError && (
-					<p className="text-[10px] text-destructive">{shot.imageError}</p>
+					<ModerationErrorDisplay
+						error={shot.imageError}
+						onEditPrompt={() => startEdit()}
+					/>
 				)}
 				{shot.videoError && (
-					<p className="text-[10px] text-destructive">{shot.videoError}</p>
+					<ModerationErrorDisplay
+						error={shot.videoError}
+						onEditPrompt={() => startEdit()}
+					/>
 				)}
 				{shot.endFrameImageError && (
-					<p className="text-[10px] text-destructive">
-						{shot.endFrameImageError}
-					</p>
+					<ModerationErrorDisplay
+						error={shot.endFrameImageError}
+						onEditPrompt={() => startEdit()}
+					/>
 				)}
 				<div className="flex gap-1.5">
 					<Button
@@ -672,6 +717,26 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						{shot.videoStatus === "completed" ? "Regenerate" : "Video"}
 					</Button>
 				</div>
+				{(shot.needsEndFrame || shot.endFramePrompt) && (
+					<Button
+						size="sm"
+						variant={
+							shot.endFrameImageStatus === "completed" ? "outline" : "default"
+						}
+						className="w-full h-7 text-xs"
+						onClick={() => generateEndFrameImage(shot.id)}
+						disabled={isEndFrameGenerating}
+					>
+						{isEndFrameGenerating ? (
+							<Loader2 className="mr-1 h-3 w-3 animate-spin" />
+						) : (
+							<ImageIcon className="mr-1 h-3 w-3" />
+						)}
+						{shot.endFrameImageStatus === "completed"
+							? "Regenerate End Frame"
+							: "End Frame"}
+					</Button>
+				)}
 			</div>
 
 			{/* Video preview */}

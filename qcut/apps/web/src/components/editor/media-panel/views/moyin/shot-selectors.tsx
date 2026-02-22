@@ -216,20 +216,41 @@ export function EmotionTagSelector({
 export function SoundDesignInput({
 	ambientSound,
 	soundEffect,
+	bgm,
+	audioEnabled,
 	onAmbientChange,
 	onSfxChange,
+	onBgmChange,
+	onAudioEnabledChange,
 	readOnly,
 }: {
 	ambientSound?: string;
 	soundEffect?: string;
+	bgm?: string;
+	audioEnabled?: boolean;
 	onAmbientChange: (value: string) => void;
 	onSfxChange: (value: string) => void;
+	onBgmChange?: (value: string) => void;
+	onAudioEnabledChange?: (value: boolean) => void;
 	readOnly?: boolean;
 }) {
+	const isEnabled = audioEnabled !== false;
+
 	if (readOnly) {
-		if (!ambientSound && !soundEffect) return null;
+		if (!ambientSound && !soundEffect && !bgm) return null;
 		return (
 			<div className="space-y-1">
+				{!isEnabled && (
+					<p className="text-[10px] text-muted-foreground italic">
+						Audio disabled
+					</p>
+				)}
+				{bgm && (
+					<div className="space-y-0.5">
+						<p className="text-[10px] font-medium text-muted-foreground">BGM</p>
+						<p className="text-xs">{bgm}</p>
+					</div>
+				)}
 				{ambientSound && (
 					<div className="space-y-0.5">
 						<p className="text-[10px] font-medium text-muted-foreground">
@@ -263,6 +284,32 @@ export function SoundDesignInput({
 
 	return (
 		<div className="space-y-2">
+			{onAudioEnabledChange && (
+				<label className="flex items-center gap-2 text-[10px] cursor-pointer">
+					<input
+						type="checkbox"
+						checked={isEnabled}
+						onChange={(e) => onAudioEnabledChange(e.target.checked)}
+						className="h-3 w-3 rounded border-muted-foreground"
+					/>
+					<span className="font-medium text-muted-foreground">
+						Audio Enabled
+					</span>
+				</label>
+			)}
+			{onBgmChange && (
+				<div className="space-y-1">
+					<Label className="text-[10px]">BGM / Music</Label>
+					<Textarea
+						className="text-xs min-h-[32px] resize-none"
+						rows={1}
+						value={bgm ?? ""}
+						onChange={(e) => onBgmChange(e.target.value)}
+						placeholder="e.g. soft piano, upbeat pop"
+						disabled={!isEnabled}
+					/>
+				</div>
+			)}
 			<div className="space-y-1">
 				<Label className="text-[10px]">Ambient Sound</Label>
 				<Textarea
@@ -271,6 +318,7 @@ export function SoundDesignInput({
 					value={ambientSound ?? ""}
 					onChange={(e) => onAmbientChange(e.target.value)}
 					placeholder="e.g. quiet office, distant traffic"
+					disabled={!isEnabled}
 				/>
 			</div>
 			<div className="space-y-1">
@@ -281,11 +329,13 @@ export function SoundDesignInput({
 							key={sfx}
 							type="button"
 							onClick={() => addSfxPreset(sfx)}
+							disabled={!isEnabled}
 							className={cn(
 								"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
 								activeSfx.includes(sfx)
 									? "bg-primary text-primary-foreground"
-									: "bg-muted text-muted-foreground hover:bg-muted/80"
+									: "bg-muted text-muted-foreground hover:bg-muted/80",
+								!isEnabled && "opacity-50 cursor-not-allowed"
 							)}
 						>
 							{sfx}

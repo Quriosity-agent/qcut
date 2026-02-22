@@ -336,10 +336,12 @@ describe("ScriptInput", () => {
 		).toBeTruthy();
 	});
 
-	it("shows Create tab placeholder when clicked", () => {
+	it("shows Create tab with genre and synopsis when clicked", () => {
 		render(<ScriptInput />);
 		fireEvent.click(screen.getByText("Create"));
-		expect(screen.getByText("AI Script Creation")).toBeTruthy();
+		expect(screen.getByText("Genre")).toBeTruthy();
+		expect(screen.getByText("Synopsis / Idea")).toBeTruthy();
+		expect(screen.getByText("Generate Script")).toBeTruthy();
 	});
 
 	it("renders language selector in configuration", () => {

@@ -3,7 +3,7 @@
  * language/scene/shot config, visual style picker, and API key warning.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { ImportProgress } from "./import-progress";
 import { Button } from "@/components/ui/button";
@@ -26,9 +26,31 @@ import {
 } from "lucide-react";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
 import { CINEMATOGRAPHY_PROFILES } from "@/lib/moyin/presets/cinematography-profiles";
-import { useMemo } from "react";
 
 type InputTab = "import" | "create";
+
+const GENRE_OPTIONS = [
+	{ value: "drama", label: "Drama" },
+	{ value: "comedy", label: "Comedy" },
+	{ value: "thriller", label: "Thriller" },
+	{ value: "romance", label: "Romance" },
+	{ value: "sci-fi", label: "Sci-Fi" },
+	{ value: "horror", label: "Horror" },
+	{ value: "action", label: "Action" },
+	{ value: "documentary", label: "Documentary" },
+	{ value: "commercial", label: "Commercial / Ad" },
+	{ value: "music-video", label: "Music Video" },
+];
+
+const DURATION_OPTIONS = [
+	{ value: "15s", label: "15s" },
+	{ value: "30s", label: "30s" },
+	{ value: "60s", label: "60s" },
+	{ value: "90s", label: "90s" },
+	{ value: "120s", label: "2 min" },
+	{ value: "180s", label: "3 min" },
+	{ value: "300s", label: "5 min" },
+];
 
 const LANGUAGE_OPTIONS = [
 	{ value: "English", label: "English" },
@@ -73,6 +95,9 @@ function useGroupedStyles() {
 
 export function ScriptInput() {
 	const [activeTab, setActiveTab] = useState<InputTab>("import");
+	const [createIdea, setCreateIdea] = useState("");
+	const [createGenre, setCreateGenre] = useState("drama");
+	const [createDuration, setCreateDuration] = useState("60s");
 
 	const rawScript = useMoyinStore((s) => s.rawScript);
 	const setRawScript = useMoyinStore((s) => s.setRawScript);
@@ -81,6 +106,9 @@ export function ScriptInput() {
 	const parseScript = useMoyinStore((s) => s.parseScript);
 	const clearScript = useMoyinStore((s) => s.clearScript);
 	const chatConfigured = useMoyinStore((s) => s.chatConfigured);
+	const generateScript = useMoyinStore((s) => s.generateScript);
+	const createStatus = useMoyinStore((s) => s.createStatus);
+	const createError = useMoyinStore((s) => s.createError);
 
 	const language = useMoyinStore((s) => s.language);
 	const setLanguage = useMoyinStore((s) => s.setLanguage);
@@ -202,11 +230,93 @@ export function ScriptInput() {
 					<ImportProgress />
 				</div>
 			) : (
-				<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-					<SparklesIcon className="mb-2 h-8 w-8" />
-					<p className="text-sm">AI Script Creation</p>
-					<p className="text-xs">
-						Coming soon - describe your idea and AI will generate a screenplay.
+				<div className="space-y-3">
+					<div className="space-y-1">
+						<Label className="text-xs">Genre</Label>
+						<Select value={createGenre} onValueChange={setCreateGenre}>
+							<SelectTrigger className="h-7 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{GENRE_OPTIONS.map((opt) => (
+									<SelectItem
+										key={opt.value}
+										value={opt.value}
+										className="text-xs"
+									>
+										{opt.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="space-y-1">
+						<Label className="text-xs">Target Duration</Label>
+						<Select value={createDuration} onValueChange={setCreateDuration}>
+							<SelectTrigger className="h-7 text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{DURATION_OPTIONS.map((opt) => (
+									<SelectItem
+										key={opt.value}
+										value={opt.value}
+										className="text-xs"
+									>
+										{opt.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="space-y-1">
+						<Label className="text-xs">Synopsis / Idea</Label>
+						<Textarea
+							value={createIdea}
+							onChange={(e) => setCreateIdea(e.target.value)}
+							placeholder="Describe your story idea, concept, or synopsis..."
+							className="min-h-[120px] resize-y text-sm"
+							disabled={createStatus === "generating"}
+						/>
+					</div>
+
+					{createError && (
+						<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+							{createError}
+						</div>
+					)}
+
+					<Button
+						onClick={async () => {
+							const idea = `[Genre: ${createGenre}]\n\n${createIdea}`;
+							await generateScript(idea, {
+								genre: createGenre,
+								targetDuration: createDuration,
+							});
+							setActiveTab("import");
+						}}
+						disabled={!createIdea.trim() || createStatus === "generating"}
+						className="w-full"
+						size="sm"
+					>
+						{createStatus === "generating" ? (
+							<>
+								<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+								Generating...
+							</>
+						) : (
+							<>
+								<SparklesIcon className="mr-1.5 h-3.5 w-3.5" />
+								Generate Script
+							</>
+						)}
+					</Button>
+
+					<p className="text-xs text-muted-foreground">
+						AI will generate a screenplay from your idea, then switch to Import
+						for review and parsing.
 					</p>
 				</div>
 			)}
