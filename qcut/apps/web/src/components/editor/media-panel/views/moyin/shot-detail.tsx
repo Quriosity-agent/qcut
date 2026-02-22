@@ -125,7 +125,6 @@ function ModerationErrorDisplay({
 		</div>
 	);
 }
-
 const NARRATIVE_FUNCTIONS = [
 	"exposition",
 	"escalation",
@@ -451,7 +450,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			</div>
 		);
 	}
-
 	// ==================== Read Mode ====================
 	return (
 		<div className="space-y-2">
@@ -602,7 +600,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				onSfxChange={() => {}}
 				readOnly
 			/>
-
 			{/* Narrative */}
 			{shot.narrativeFunction && (
 				<div className="space-y-0.5">
@@ -637,12 +634,15 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						alt={`Shot ${shot.index + 1}`}
 						className="w-full h-auto"
 					/>
-					<div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+					<div
+						className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity"
+						aria-hidden="true"
+					>
 						<GripVerticalIcon className="h-4 w-4 text-white drop-shadow" />
 					</div>
+					<span className="sr-only">Drag to timeline</span>
 				</div>
 			)}
-
 			{/* Characters */}
 			{shot.characterNames && shot.characterNames.length > 0 && (
 				<div className="flex flex-wrap gap-1">

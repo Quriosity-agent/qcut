@@ -674,6 +674,8 @@ function ShotStatusDot({ status }: { status: string }) {
 			<span
 				className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0"
 				title="Completed"
+				aria-label="Completed"
+				role="status"
 			/>
 		);
 	if (status === "generating")
@@ -681,6 +683,8 @@ function ShotStatusDot({ status }: { status: string }) {
 			<span
 				className="h-1.5 w-1.5 rounded-full bg-yellow-500 shrink-0 animate-pulse"
 				title="Generating"
+				aria-label="Generating"
+				role="status"
 			/>
 		);
 	if (status === "failed")
@@ -688,6 +692,8 @@ function ShotStatusDot({ status }: { status: string }) {
 			<span
 				className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0"
 				title="Failed"
+				aria-label="Failed"
+				role="status"
 			/>
 		);
 	return null;
