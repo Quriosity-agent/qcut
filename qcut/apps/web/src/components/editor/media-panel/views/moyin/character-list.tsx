@@ -165,6 +165,9 @@ function CharacterCard({
 							<XIcon className="mr-1 h-3 w-3" />
 							Cancel
 						</Button>
+						<span className="text-[9px] text-muted-foreground/60">
+							⌘↵ Save · Esc Cancel
+						</span>
 						<div className="flex-1" />
 						<Button
 							variant="text"
@@ -175,8 +178,10 @@ function CharacterCard({
 									window.confirm(
 										"Delete this character? This cannot be undone."
 									)
-								)
+								) {
 									onRemove(char.id);
+									toast.success("Character deleted");
+								}
 							}}
 						>
 							<Trash2Icon className="h-3 w-3" />

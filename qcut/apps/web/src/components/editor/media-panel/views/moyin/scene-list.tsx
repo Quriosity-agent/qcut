@@ -172,14 +172,21 @@ function SceneCard({
 							<XIcon className="mr-1 h-3 w-3" />
 							Cancel
 						</Button>
+						<span className="text-[9px] text-muted-foreground/60">
+							⌘↵ Save · Esc Cancel
+						</span>
 						<div className="flex-1" />
 						<Button
 							variant="text"
 							size="sm"
 							className="h-6 text-xs px-2 text-destructive hover:text-destructive"
 							onClick={() => {
-								if (window.confirm("Delete this scene? This cannot be undone."))
+								if (
+									window.confirm("Delete this scene? This cannot be undone.")
+								) {
 									onRemove(scene.id);
+									toast.success("Scene deleted");
+								}
 							}}
 						>
 							<Trash2Icon className="h-3 w-3" />

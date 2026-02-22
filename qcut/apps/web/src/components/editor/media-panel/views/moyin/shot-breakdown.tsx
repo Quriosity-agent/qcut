@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -351,7 +352,10 @@ export function ShotBreakdown() {
 						</button>
 						<button
 							type="button"
-							onClick={deleteSelectedShots}
+							onClick={() => {
+								deleteSelectedShots();
+								toast.success("Shots deleted");
+							}}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-destructive hover:bg-destructive/10 transition-colors"
 							aria-label="Delete selected shots"
 						>
