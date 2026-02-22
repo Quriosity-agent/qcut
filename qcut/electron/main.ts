@@ -114,6 +114,7 @@ const { setupProjectFolderIPC } = require("./project-folder-handler.js");
 const { setupAllClaudeIPC } = require("./claude/index.js");
 const { setupRemotionFolderIPC } = require("./remotion-folder-handler.js");
 const { setupScreenRecordingIPC } = require("./screen-recording-handler.js");
+const { setupMoyinIPC } = require("./moyin-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -637,6 +638,7 @@ if (!isCliKeyCommand) {
 			["ClaudeIPC", setupAllClaudeIPC],
 			["RemotionFolderIPC", setupRemotionFolderIPC],
 			["ScreenRecordingIPC", setupScreenRecordingIPC],
+			["MoyinIPC", setupMoyinIPC],
 		];
 
 		for (const [name, setup] of handlers) {

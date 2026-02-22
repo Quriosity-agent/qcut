@@ -40,6 +40,7 @@ import {
 	createClaudeAPI,
 	createRemotionFolderAPI,
 	createUpdatesAPI,
+	createMoyinAPI,
 } from "./preload-integrations.js";
 
 // Expose the API to the renderer process
@@ -370,6 +371,7 @@ const electronAPI: ElectronAPI = {
 	projectFolder: createProjectFolderAPI(),
 	claude: createClaudeAPI(),
 	remotionFolder: createRemotionFolderAPI(),
+	moyin: createMoyinAPI(),
 	updates: createUpdatesAPI(),
 
 	// File path utility (Electron 37+ removed File.path)

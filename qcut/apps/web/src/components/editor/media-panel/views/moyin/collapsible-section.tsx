@@ -1,0 +1,54 @@
+/**
+ * CollapsibleSection — reusable collapsible section for property panels.
+ * Compact header with chevron toggle.
+ */
+
+import { useId, useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export function CollapsibleSection({
+	title,
+	icon: Icon,
+	defaultOpen = false,
+	children,
+	className,
+	"aria-description": ariaDescription,
+}: {
+	title: string;
+	icon?: React.ElementType;
+	defaultOpen?: boolean;
+	children: React.ReactNode;
+	className?: string;
+	"aria-description"?: string;
+}) {
+	const [open, setOpen] = useState(defaultOpen);
+	const contentId = useId();
+
+	return (
+		<div className={cn("border-t pt-1.5", className)}>
+			<button
+				type="button"
+				onClick={() => setOpen(!open)}
+				aria-expanded={open}
+				aria-controls={contentId}
+				aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+				aria-description={ariaDescription}
+				className="flex items-center gap-1 w-full text-left py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+			>
+				{open ? (
+					<ChevronDownIcon className="h-3 w-3 shrink-0" />
+				) : (
+					<ChevronRightIcon className="h-3 w-3 shrink-0" />
+				)}
+				{Icon && <Icon className="h-3 w-3 shrink-0" />}
+				{title}
+			</button>
+			{open && (
+				<div id={contentId} className="space-y-1.5 pt-1">
+					{children}
+				</div>
+			)}
+		</div>
+	);
+}

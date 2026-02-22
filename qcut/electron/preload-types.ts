@@ -1047,6 +1047,37 @@ export interface ElectronAPI {
 		) => Promise<{ isValid: boolean; error?: string }>;
 	};
 
+	// Moyin script-to-storyboard operations
+	moyin?: {
+		parseScript: (options: {
+			rawScript: string;
+			language?: string;
+			sceneCount?: number;
+		}) => Promise<{
+			success: boolean;
+			data?: Record<string, unknown>;
+			error?: string;
+		}>;
+		generateStoryboard: (options: {
+			scenes: unknown[];
+			styleId?: string;
+		}) => Promise<{
+			success: boolean;
+			outputPaths?: string[];
+			error?: string;
+		}>;
+		callLLM: (options: {
+			systemPrompt: string;
+			userPrompt: string;
+			temperature?: number;
+			maxTokens?: number;
+		}) => Promise<{
+			success: boolean;
+			text?: string;
+			error?: string;
+		}>;
+	};
+
 	// Update and release notes operations
 	updates?: {
 		checkForUpdates: () => Promise<{
