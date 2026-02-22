@@ -13,7 +13,7 @@ export interface RetryOptions {
  * Check if an error is a rate limit error (429 or quota exceeded)
  */
 export function isRateLimitError(error: unknown): boolean {
-	if (!error) return false;
+	if (!error || typeof error !== "object") return false;
 
 	const err = error as Record<string, unknown>;
 
@@ -42,6 +42,10 @@ export async function retryOperation<T>(
 	options: RetryOptions = {}
 ): Promise<T> {
 	const { maxRetries = 3, baseDelay = 2000, onRetry } = options;
+
+	if (maxRetries <= 0) {
+		throw new Error("maxRetries must be greater than 0");
+	}
 
 	let lastError: Error | undefined;
 

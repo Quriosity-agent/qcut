@@ -108,7 +108,7 @@ import { CollapsibleSection } from "../collapsible-section";
 describe("ShotBreakdown — View Toggle aria-pressed", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
 			shots: [
 				{
 					id: "sh1",
@@ -117,6 +117,10 @@ describe("ShotBreakdown — View Toggle aria-pressed", () => {
 					actionSummary: "Hero enters",
 					imageStatus: "idle",
 					videoStatus: "idle",
+					characterIds: [],
+					characterVariations: {},
+					imageProgress: 0,
+					videoProgress: 0,
 				},
 			],
 			selectedItemId: null,
@@ -145,7 +149,7 @@ describe("ShotBreakdown — View Toggle aria-pressed", () => {
 describe("ShotBreakdown — No Results Message", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
 			shots: [
 				{
 					id: "sh1",
@@ -154,6 +158,10 @@ describe("ShotBreakdown — No Results Message", () => {
 					actionSummary: "Hero enters",
 					imageStatus: "idle",
 					videoStatus: "idle",
+					characterIds: [],
+					characterVariations: {},
+					imageProgress: 0,
+					videoProgress: 0,
 				},
 			],
 			selectedItemId: null,
@@ -226,7 +234,7 @@ describe("CollapsibleSection — aria-expanded", () => {
 describe("ShotBreakdown — Active Filter Indicator", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
 			shots: [
 				{
 					id: "sh1",
@@ -235,6 +243,10 @@ describe("ShotBreakdown — Active Filter Indicator", () => {
 					actionSummary: "Hero enters",
 					imageStatus: "completed",
 					videoStatus: "idle",
+					characterIds: [],
+					characterVariations: {},
+					imageProgress: 0,
+					videoProgress: 0,
 				},
 			],
 			selectedItemId: null,
@@ -255,7 +267,7 @@ describe("ShotBreakdown — Active Filter Indicator", () => {
 describe("ShotBreakdown — Escape to Clear Search", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe" }],
+			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
 			shots: [
 				{
 					id: "sh1",
@@ -264,6 +276,10 @@ describe("ShotBreakdown — Escape to Clear Search", () => {
 					actionSummary: "Hero enters",
 					imageStatus: "idle",
 					videoStatus: "idle",
+					characterIds: [],
+					characterVariations: {},
+					imageProgress: 0,
+					videoProgress: 0,
 				},
 			],
 			selectedItemId: null,

@@ -261,19 +261,10 @@ function cleanJsonFromResponse(response: string): string {
 				? firstBrace
 				: Math.min(firstBrace, firstBracket);
 	const isArray = cleaned[start] === "[";
-	const closeChar = isArray ? "]" : "}";
+	const end = isArray ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
 
-	// Find matching close
-	let depth = 0;
-	let end = start;
-	for (let i = start; i < cleaned.length; i++) {
-		const ch = cleaned[i];
-		if (ch === "{" || ch === "[") depth++;
-		if (ch === "}" || ch === "]") depth--;
-		if (depth === 0 && ch === closeChar) {
-			end = i;
-			break;
-		}
+	if (end === -1 || end < start) {
+		throw new Error("Invalid JSON structure in LLM response");
 	}
 
 	return cleaned.substring(start, end + 1);
