@@ -164,6 +164,7 @@ export function ScriptInput() {
 					type="button"
 					role="tab"
 					aria-selected={activeTab === "import"}
+					aria-controls="tab-import"
 					onClick={() => setActiveTab("import")}
 					className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
 						activeTab === "import"
@@ -177,6 +178,7 @@ export function ScriptInput() {
 					type="button"
 					role="tab"
 					aria-selected={activeTab === "create"}
+					aria-controls="tab-create"
 					onClick={() => setActiveTab("create")}
 					className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
 						activeTab === "create"
@@ -190,7 +192,7 @@ export function ScriptInput() {
 
 			{/* Tab content */}
 			{activeTab === "import" ? (
-				<div className="space-y-3">
+				<div id="tab-import" role="tabpanel" className="space-y-3">
 					<Textarea
 						id="moyin-script-input"
 						value={rawScript}
@@ -248,7 +250,7 @@ export function ScriptInput() {
 					<ImportProgress />
 				</div>
 			) : (
-				<div className="space-y-3">
+				<div id="tab-create" role="tabpanel" className="space-y-3">
 					<div className="space-y-1">
 						<Label className="text-xs">Genre</Label>
 						<Select value={createGenre} onValueChange={setCreateGenre}>

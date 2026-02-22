@@ -326,6 +326,7 @@ export function GenerateActions() {
 					type="file"
 					accept=".json"
 					className="hidden"
+					aria-label="Import project JSON file"
 					onChange={handleImportJSON}
 				/>
 			</div>
@@ -353,6 +354,11 @@ export function GenerateActions() {
 					className="w-full"
 					onClick={generateStoryboard}
 					disabled={isGenerating || scenes.length === 0}
+					title={
+						scenes.length === 0
+							? "Add scenes first to generate storyboard"
+							: undefined
+					}
 				>
 					{isGenerating ? (
 						<>

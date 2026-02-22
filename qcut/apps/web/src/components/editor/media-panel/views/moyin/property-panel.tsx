@@ -383,6 +383,7 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 							type="file"
 							accept="image/*"
 							className="hidden"
+							aria-label="Add reference image"
 							onChange={(e) => {
 								const file = e.target.files?.[0];
 								if (!file) return;
