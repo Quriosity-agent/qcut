@@ -147,8 +147,7 @@ describe("retryOperation", () => {
 		expect(operation).toHaveBeenCalledTimes(1);
 	});
 
-	it("logs warning when no onRetry callback is provided", async () => {
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+	it("retries silently when no onRetry callback is provided", async () => {
 		const rateLimitError = Object.assign(new Error("Rate limit"), {
 			status: 429,
 		});
@@ -163,12 +162,10 @@ describe("retryOperation", () => {
 		});
 
 		await vi.advanceTimersByTimeAsync(1000);
-		await promise;
+		const result = await promise;
 
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("[Retry] Rate limit hit")
-		);
-		warnSpy.mockRestore();
+		expect(result).toBe("ok");
+		expect(operation).toHaveBeenCalledTimes(2);
 	});
 });
 

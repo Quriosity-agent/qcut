@@ -62,15 +62,7 @@ export async function retryOperation<T>(
 
 			if (attempt < maxRetries - 1) {
 				const delay = baseDelay * 2 ** attempt;
-
-				if (onRetry) {
-					onRetry(attempt + 1, delay, lastError);
-				} else {
-					console.warn(
-						`[Retry] Rate limit hit, retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`
-					);
-				}
-
+				onRetry?.(attempt + 1, delay, lastError);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 		}

@@ -168,10 +168,10 @@ describe("buildCinematographyGuidance", () => {
 
 	it("includes the promptGuidance text", () => {
 		const profile = getCinematographyProfile("classic-cinematic");
-		expect(profile).toBeDefined();
+		if (!profile) throw new Error("Expected profile to be defined");
 
 		const guidance = buildCinematographyGuidance("classic-cinematic");
-		expect(guidance).toContain(profile!.promptGuidance);
+		expect(guidance).toContain(profile.promptGuidance);
 	});
 
 	it("includes reference films", () => {

@@ -90,11 +90,11 @@ describe("CharacterBibleManager", () => {
 				name: "Updated Name",
 			});
 
-			expect(updated).not.toBeNull();
-			expect(updated!.name).toBe("Updated Name");
-			expect(updated!.visualTraits).toBe("tall, dark hair");
-			expect(updated!.screenplayId).toBe("sp_1");
-			expect(updated!.styleTokens).toEqual(["hero", "warrior"]);
+			if (!updated) throw new Error("Expected updated character");
+			expect(updated.name).toBe("Updated Name");
+			expect(updated.visualTraits).toBe("tall, dark hair");
+			expect(updated.screenplayId).toBe("sp_1");
+			expect(updated.styleTokens).toEqual(["hero", "warrior"]);
 		});
 
 		it("updates the updatedAt timestamp", () => {
@@ -106,9 +106,9 @@ describe("CharacterBibleManager", () => {
 				name: "New Name",
 			});
 
-			expect(updated).not.toBeNull();
-			expect(updated!.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
-			expect(updated!.createdAt).toBe(added.createdAt);
+			if (!updated) throw new Error("Expected updated character");
+			expect(updated.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
+			expect(updated.createdAt).toBe(added.createdAt);
 		});
 
 		it("returns null for unknown ID", () => {
@@ -125,9 +125,9 @@ describe("CharacterBibleManager", () => {
 				createdAt: 0,
 			});
 
-			expect(updated).not.toBeNull();
-			expect(updated!.id).toBe(added.id);
-			expect(updated!.createdAt).toBe(added.createdAt);
+			if (!updated) throw new Error("Expected updated character");
+			expect(updated.id).toBe(added.id);
+			expect(updated.createdAt).toBe(added.createdAt);
 		});
 	});
 

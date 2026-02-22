@@ -108,8 +108,8 @@ export function getApiKeyCount(apiKey: string): number {
  */
 export function maskApiKey(key: string): string {
 	if (!key || key.length === 0) return "(not set)";
-	if (key.length <= 10) return `${key.substring(0, 4)}***`;
-	return `${key.substring(0, 8)}...${key.substring(key.length - 4)}`;
+	if (key.length <= 10) return `${key.slice(0, 4)}***`;
+	return `${key.slice(0, 8)}...${key.slice(-4)}`;
 }
 
 // ==================== ApiKeyManager ====================

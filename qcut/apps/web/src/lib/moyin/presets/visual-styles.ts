@@ -617,13 +617,13 @@ export function getStyleById(styleId: string): StylePreset | undefined {
 /** Get style prompt text */
 export function getStylePrompt(styleId: string): string {
 	const style = getStyleById(styleId);
-	return style?.prompt || VISUAL_STYLE_PRESETS[0].prompt;
+	return style?.prompt ?? VISUAL_STYLE_PRESETS.at(0)?.prompt ?? "";
 }
 
 /** Get style negative prompt text */
 export function getStyleNegativePrompt(styleId: string): string {
 	const style = getStyleById(styleId);
-	return style?.negativePrompt || VISUAL_STYLE_PRESETS[0].negativePrompt;
+	return style?.negativePrompt ?? VISUAL_STYLE_PRESETS.at(0)?.negativePrompt ?? "";
 }
 
 /** Get style name */
