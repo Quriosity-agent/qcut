@@ -21,6 +21,7 @@ import { ScriptInput } from "./script-input";
 import { StructurePanel } from "./structure-panel";
 import { PropertyPanel } from "./property-panel";
 import { FileTextIcon, XIcon } from "lucide-react";
+import { EXAMPLE_SCRIPTS } from "@/lib/moyin/script/example-scripts";
 
 export function MoyinView() {
 	const params = useParams({ from: "/editor/$project_id" });
@@ -43,6 +44,30 @@ export function MoyinView() {
 	useEffect(() => {
 		if (projectId) loadProject(projectId);
 	}, [projectId, loadProject]);
+
+	// Auto-load the first example when the store is empty after project load
+	const rawScript = useMoyinStore((s) => s.rawScript);
+	useEffect(() => {
+		if (
+			parseStatus === "idle" &&
+			!rawScript.trim() &&
+			characters.length === 0 &&
+			EXAMPLE_SCRIPTS.length > 0
+		) {
+			const ex = EXAMPLE_SCRIPTS[0];
+			useMoyinStore.setState({
+				rawScript: ex.content,
+				language: ex.language,
+				scriptData: ex.structure.scriptData,
+				characters: ex.structure.characters,
+				scenes: ex.structure.scenes,
+				episodes: ex.structure.episodes,
+				shots: ex.structure.shots,
+				parseStatus: "ready",
+				activeStep: "characters",
+			});
+		}
+	}, [parseStatus, rawScript, characters.length]);
 
 	const hasSelection = !!selectedItemId;
 
