@@ -22,18 +22,23 @@ vi.mock("lucide-react", () => {
 		ChevronDown: icon("chevron-down"),
 		ChevronDownIcon: icon("chevron-down"),
 		ChevronRightIcon: icon("chevron-right"),
+		CircleIcon: icon("circle"),
+		ClockIcon: icon("clock"),
 		CopyIcon: icon("copy"),
 		DownloadIcon: icon("download"),
 		FileTextIcon: icon("file-text"),
 		FilmIcon: icon("film"),
+		GridIcon: icon("grid"),
 		GripVerticalIcon: icon("grip-vertical"),
 		ImageIcon: icon("image"),
+		ListIcon: icon("list"),
 		Loader2: icon("loader"),
 		MapPinIcon: icon("map-pin"),
 		MessageSquareIcon: icon("message-square"),
 		PencilIcon: icon("pencil"),
 		PlusIcon: icon("plus"),
 		RotateCcwIcon: icon("rotate"),
+		SearchIcon: icon("search"),
 		SparklesIcon: icon("sparkles"),
 		SquareIcon: icon("square"),
 		Trash2Icon: icon("trash"),
@@ -249,9 +254,28 @@ vi.mock("@/lib/utils", () => ({
 	cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
+vi.mock("../batch-progress", () => ({
+	BatchGenerateButtons: ({
+		disabled,
+	}: {
+		onStart: () => void;
+		disabled: boolean;
+	}) => <div data-testid="batch-buttons" data-disabled={disabled} />,
+	BatchProgressOverlay: () => <div data-testid="batch-overlay" />,
+	useBatchGeneration: () => ({
+		batch: null,
+		startBatch: () => {},
+		cancel: () => {},
+	}),
+}));
+
 // Import components after mocks
 import { MoyinView } from "../index";
 import { ScriptInput } from "../script-input";
+import { CharacterList } from "../character-list";
+import { SceneList } from "../scene-list";
+import { ShotBreakdown } from "../shot-breakdown";
+import { GenerateActions } from "../generate-actions";
 
 // ============================================================
 // Helper to reset Zustand store between tests
@@ -426,5 +450,200 @@ describe("ScriptInput", () => {
 		useMoyinStore.setState({ chatConfigured: true });
 		render(<ScriptInput />);
 		expect(screen.queryByText("API Not Configured")).toBeNull();
+	});
+});
+
+// ============================================================
+// CharacterList — Search Filter
+// ============================================================
+
+describe("CharacterList — Search", () => {
+	beforeEach(() => {
+		resetStore();
+	});
+
+	it("renders search input when characters exist", () => {
+		useMoyinStore.setState({
+			characters: [
+				{ id: "c1", name: "Alice" },
+				{ id: "c2", name: "Bob" },
+			],
+		});
+		render(<CharacterList />);
+		expect(screen.getByPlaceholderText("Search characters...")).toBeTruthy();
+	});
+
+	it("does not render search when no characters", () => {
+		render(<CharacterList />);
+		expect(screen.queryByPlaceholderText("Search characters...")).toBeNull();
+	});
+
+	it("filters characters by name", () => {
+		useMoyinStore.setState({
+			characters: [
+				{ id: "c1", name: "Alice" },
+				{ id: "c2", name: "Bob" },
+			],
+		});
+		render(<CharacterList />);
+		const input = screen.getByPlaceholderText("Search characters...");
+		fireEvent.change(input, { target: { value: "alice" } });
+		expect(screen.getByText("Alice")).toBeTruthy();
+		expect(screen.queryByText("Bob")).toBeNull();
+	});
+});
+
+// ============================================================
+// SceneList — Search Filter
+// ============================================================
+
+describe("SceneList — Search", () => {
+	beforeEach(() => {
+		resetStore();
+	});
+
+	it("renders search input when scenes exist", () => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+		});
+		render(<SceneList />);
+		expect(screen.getByPlaceholderText("Search scenes...")).toBeTruthy();
+	});
+
+	it("filters scenes by location", () => {
+		useMoyinStore.setState({
+			scenes: [
+				{ id: "s1", location: "Park", time: "Day", atmosphere: "" },
+				{ id: "s2", location: "Office", time: "Night", atmosphere: "" },
+			],
+		});
+		render(<SceneList />);
+		const input = screen.getByPlaceholderText("Search scenes...");
+		fireEvent.change(input, { target: { value: "park" } });
+		expect(screen.getByText("Park")).toBeTruthy();
+		expect(screen.queryByText("Office")).toBeNull();
+	});
+});
+
+// ============================================================
+// ShotBreakdown — Grid/List Toggle
+// ============================================================
+
+describe("ShotBreakdown — View Toggle", () => {
+	beforeEach(() => {
+		resetStore();
+	});
+
+	it("renders view toggle buttons when shots exist", () => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Test shot",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+		render(<ShotBreakdown />);
+		expect(screen.getByLabelText("List view")).toBeTruthy();
+		expect(screen.getByLabelText("Grid view")).toBeTruthy();
+	});
+
+	it("shows shot count text", () => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Test shot",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+		render(<ShotBreakdown />);
+		expect(screen.getByText("1 shot")).toBeTruthy();
+	});
+});
+
+// ============================================================
+// GenerateActions — Export & Completion Stats
+// ============================================================
+
+describe("GenerateActions — Export & Stats", () => {
+	beforeEach(() => {
+		resetStore();
+	});
+
+	it("shows completion stats when shots exist", () => {
+		useMoyinStore.setState({
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Test",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "completed",
+					imageProgress: 100,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Test 2",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+		render(<GenerateActions />);
+		expect(screen.getByText("Images: 1/2")).toBeTruthy();
+		expect(screen.getByText("Videos: 0/2")).toBeTruthy();
+	});
+
+	it("shows export button when done", () => {
+		useMoyinStore.setState({
+			generationStatus: "done",
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Test",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+		render(<GenerateActions />);
+		expect(screen.getByText("Export")).toBeTruthy();
 	});
 });

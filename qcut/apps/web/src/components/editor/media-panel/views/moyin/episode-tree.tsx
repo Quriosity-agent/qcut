@@ -214,18 +214,18 @@ export function EpisodeTree() {
 										</span>
 									</button>
 									<Badge
-									variant="secondary"
-									className={cn(
-										"text-[9px] px-1 py-0",
-										epShots.length > 0 && epCompleted === epShots.length
-											? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-											: epCompleted > 0
-												? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-												: ""
-									)}
-								>
-									{epCompleted}/{epShots.length}
-								</Badge>
+										variant="secondary"
+										className={cn(
+											"text-[9px] px-1 py-0",
+											epShots.length > 0 && epCompleted === epShots.length
+												? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+												: epCompleted > 0
+													? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+													: ""
+										)}
+									>
+										{epCompleted}/{epShots.length}
+									</Badge>
 									<EpisodeContextMenu
 										episodeId={ep.id}
 										onEdit={() => setSelectedItem(ep.id, "episode")}

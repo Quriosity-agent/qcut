@@ -86,10 +86,8 @@ export function GenerateActions() {
 				);
 				const sceneShots = shots.filter((s) => s.sceneRefId === scene.id);
 				for (const shot of sceneShots) {
-					const status =
-						shot.imageStatus === "completed" ? "[img]" : "[   ]";
-					const video =
-						shot.videoStatus === "completed" ? "[vid]" : "[   ]";
+					const status = shot.imageStatus === "completed" ? "[img]" : "[   ]";
+					const video = shot.videoStatus === "completed" ? "[vid]" : "[   ]";
 					lines.push(
 						`- ${status}${video} **${shot.shotSize || "—"}** ${shot.actionSummary || "—"}${shot.cameraMovement ? ` (${shot.cameraMovement})` : ""}`
 					);
@@ -107,10 +105,8 @@ export function GenerateActions() {
 				);
 				const sceneShots = shots.filter((s) => s.sceneRefId === scene.id);
 				for (const shot of sceneShots) {
-					const status =
-						shot.imageStatus === "completed" ? "[img]" : "[   ]";
-					const video =
-						shot.videoStatus === "completed" ? "[vid]" : "[   ]";
+					const status = shot.imageStatus === "completed" ? "[img]" : "[   ]";
+					const video = shot.videoStatus === "completed" ? "[vid]" : "[   ]";
 					lines.push(
 						`- ${status}${video} **${shot.shotSize || "—"}** ${shot.actionSummary || "—"}`
 					);
