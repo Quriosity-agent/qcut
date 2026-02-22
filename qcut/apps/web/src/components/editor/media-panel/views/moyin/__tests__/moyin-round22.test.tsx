@@ -108,7 +108,15 @@ import { CollapsibleSection } from "../collapsible-section";
 describe("ShotBreakdown — View Toggle aria-pressed", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
+			scenes: [
+				{
+					id: "s1",
+					name: "Cafe",
+					location: "Cafe",
+					time: "day",
+					atmosphere: "warm",
+				},
+			],
 			shots: [
 				{
 					id: "sh1",
@@ -149,7 +157,15 @@ describe("ShotBreakdown — View Toggle aria-pressed", () => {
 describe("ShotBreakdown — No Results Message", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
+			scenes: [
+				{
+					id: "s1",
+					name: "Cafe",
+					location: "Cafe",
+					time: "day",
+					atmosphere: "warm",
+				},
+			],
 			shots: [
 				{
 					id: "sh1",
@@ -234,7 +250,15 @@ describe("CollapsibleSection — aria-expanded", () => {
 describe("ShotBreakdown — Active Filter Indicator", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
+			scenes: [
+				{
+					id: "s1",
+					name: "Cafe",
+					location: "Cafe",
+					time: "day",
+					atmosphere: "warm",
+				},
+			],
 			shots: [
 				{
 					id: "sh1",
@@ -267,7 +291,15 @@ describe("ShotBreakdown — Active Filter Indicator", () => {
 describe("ShotBreakdown — Escape to Clear Search", () => {
 	beforeEach(() => {
 		useMoyinStore.setState({
-			scenes: [{ id: "s1", name: "Cafe", location: "Cafe", time: "day", atmosphere: "warm" }],
+			scenes: [
+				{
+					id: "s1",
+					name: "Cafe",
+					location: "Cafe",
+					time: "day",
+					atmosphere: "warm",
+				},
+			],
 			shots: [
 				{
 					id: "sh1",

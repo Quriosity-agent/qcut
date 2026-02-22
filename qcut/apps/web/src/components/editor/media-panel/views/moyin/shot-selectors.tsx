@@ -115,6 +115,11 @@ export function DurationSelector({
 	onChange: (duration: number) => void;
 	readOnly?: boolean;
 }) {
+	const isCustom =
+		value != null &&
+		!DURATION_OPTIONS.includes(value as (typeof DURATION_OPTIONS)[number]);
+	const [customInput, setCustomInput] = useState(isCustom ? String(value) : "");
+
 	if (readOnly) {
 		if (!value) return null;
 		return (
@@ -126,11 +131,6 @@ export function DurationSelector({
 			</div>
 		);
 	}
-
-	const isCustom =
-		value != null &&
-		!DURATION_OPTIONS.includes(value as (typeof DURATION_OPTIONS)[number]);
-	const [customInput, setCustomInput] = useState(isCustom ? String(value) : "");
 
 	const handleCustom = (raw: string) => {
 		setCustomInput(raw);
@@ -377,7 +377,7 @@ export function SoundDesignInput({
 							onClick={() => addSfxPreset(sfx)}
 							disabled={!isEnabled}
 							title={
-								!isEnabled ? "Enable audio to use sound effects" : undefined
+								isEnabled ? undefined : "Enable audio to use sound effects"
 							}
 							className={cn(
 								"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",

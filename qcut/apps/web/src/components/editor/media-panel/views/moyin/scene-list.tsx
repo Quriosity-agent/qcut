@@ -355,10 +355,7 @@ export function SceneList() {
 				<div className="space-y-2" aria-label="Loading scenes" aria-busy="true">
 					{Array.from({ length: Math.min(scenes.length, 3) }).map((_, i) => (
 						<div
-							key={`skel-${
-								// biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
-								i
-							}`}
+							key={`skel-${i}`}
 							className="rounded-lg border p-3 space-y-2 animate-pulse"
 						>
 							<div className="flex items-center gap-2">

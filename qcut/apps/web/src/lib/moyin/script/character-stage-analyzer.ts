@@ -216,7 +216,7 @@ export function detectMultiStageHints(
 		const yearMatch = outline.match(pattern);
 		if (yearMatch) {
 			const span =
-				Number.parseInt(yearMatch[2]) - Number.parseInt(yearMatch[1]);
+				Number.parseInt(yearMatch[2], 10) - Number.parseInt(yearMatch[1], 10);
 			if (span >= 5) {
 				hasTimeSpan = true;
 				hints.push(`时间跨度${span}年（${yearMatch[1]}-${yearMatch[2]}）`);
@@ -237,7 +237,7 @@ export function detectMultiStageHints(
 		const ageMatch = outline.match(pattern);
 		if (ageMatch) {
 			const ageSpan =
-				Number.parseInt(ageMatch[2]) - Number.parseInt(ageMatch[1]);
+				Number.parseInt(ageMatch[2], 10) - Number.parseInt(ageMatch[1], 10);
 			if (ageSpan >= 10) {
 				hasAgeChange = true;
 				hints.push(`年龄跨度${ageMatch[1]}岁到${ageMatch[2]}岁`);

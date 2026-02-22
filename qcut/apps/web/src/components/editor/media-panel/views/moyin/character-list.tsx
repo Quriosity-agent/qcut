@@ -406,10 +406,7 @@ export function CharacterList() {
 					{Array.from({ length: Math.min(characters.length, 3) }).map(
 						(_, i) => (
 							<div
-								key={`skel-${
-									// biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
-									i
-								}`}
+								key={`skel-${i}`}
 								className="rounded-lg border p-3 space-y-2 animate-pulse"
 							>
 								<div className="flex items-center gap-2">

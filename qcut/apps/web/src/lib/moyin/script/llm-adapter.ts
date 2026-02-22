@@ -25,12 +25,12 @@ export async function callFeatureAPI(
 	_feature: string,
 	systemPrompt: string,
 	userPrompt: string,
-	options?: LLMCallOptions,
+	options?: LLMCallOptions
 ): Promise<string> {
 	const api = window.electronAPI?.moyin;
 	if (!api?.callLLM) {
 		throw new Error(
-			"LLM not available. Please configure an API key in Settings.",
+			"LLM not available. Please configure an API key in Settings."
 		);
 	}
 

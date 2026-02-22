@@ -133,10 +133,7 @@ export async function persistShotMedia(
 		const electronAPI = (window as unknown as Record<string, unknown>)
 			.electronAPI as
 			| {
-					saveBlob?: (
-						data: Uint8Array,
-						filename: string
-					) => Promise<string>;
+					saveBlob?: (data: Uint8Array, filename: string) => Promise<string>;
 			  }
 			| undefined;
 		if (!electronAPI?.saveBlob) return url;
@@ -158,8 +155,7 @@ export async function persistShotMedia(
 
 /** Check if an error is a content moderation rejection. */
 export function isModerationError(error: unknown): boolean {
-	const msg =
-		error instanceof Error ? error.message : String(error ?? "");
+	const msg = error instanceof Error ? error.message : String(error ?? "");
 	const patterns = [
 		"content policy",
 		"moderation",

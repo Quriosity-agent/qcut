@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScriptCharacter, ScriptData, ScriptScene } from "@/types/moyin-script";
-import { enhanceCharactersLLM, enhanceScenesLLM } from "@/stores/moyin-calibration";
+import type {
+	ScriptCharacter,
+	ScriptData,
+	ScriptScene,
+} from "@/types/moyin-script";
+import {
+	enhanceCharactersLLM,
+	enhanceScenesLLM,
+} from "@/stores/moyin-calibration";
 
 const parseFullScriptMock = vi.fn();
 const calibrateCharactersMock = vi.fn();
@@ -187,10 +194,17 @@ describe("moyin-calibration", () => {
 		];
 		convertToScriptScenesMock.mockReturnValue(convertedScenes);
 
-		const result = await enhanceScenesLLM(scenes, scriptData, "《Test Project》\n第1集");
+		const result = await enhanceScenesLLM(
+			scenes,
+			scriptData,
+			"《Test Project》\n第1集"
+		);
 
 		expect(calibrateScenesMock).toHaveBeenCalledTimes(1);
-		expect(convertToScriptScenesMock).toHaveBeenCalledWith(calibratedScenes, scenes);
+		expect(convertToScriptScenesMock).toHaveBeenCalledWith(
+			calibratedScenes,
+			scenes
+		);
 		expect(callLLMMock).not.toHaveBeenCalled();
 		expect(result).toEqual(convertedScenes);
 	});

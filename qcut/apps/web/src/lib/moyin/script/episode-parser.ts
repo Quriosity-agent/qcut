@@ -45,16 +45,14 @@ export function parseFullScript(fullText: string): {
 	const title = titleMatch ? titleMatch[1] : "未命名剧本";
 
 	const outlineMatch = fullText.match(
-		/(?:\*{0,2}大纲[：:]?\*{0,2}|【大纲】)([\s\S]*?)(?=(?:\*{0,2}人物小传[：:]|【人物|第[一二三四五六七八九十\d]+集))/i,
+		/(?:\*{0,2}大纲[：:]?\*{0,2}|【大纲】)([\s\S]*?)(?=(?:\*{0,2}人物小传[：:]|【人物|第[一二三四五六七八九十\d]+集))/i
 	);
 	const outline = outlineMatch ? outlineMatch[1].trim() : "";
 
 	const characterBiosMatch = fullText.match(
-		/(?:\*{0,2}人物小传[：:]\*{0,2}|【人物小传】)([\s\S]*?)(?=\*{0,2}第[一二三四五六七八九十\d]+集)/i,
+		/(?:\*{0,2}人物小传[：:]\*{0,2}|【人物小传】)([\s\S]*?)(?=\*{0,2}第[一二三四五六七八九十\d]+集)/i
 	);
-	const characterBios = characterBiosMatch
-		? characterBiosMatch[1].trim()
-		: "";
+	const characterBios = characterBiosMatch ? characterBiosMatch[1].trim() : "";
 
 	const { era, timelineSetting, storyStartYear, storyEndYear } =
 		extractTimelineInfo(outline, characterBios);
@@ -84,7 +82,7 @@ export function parseFullScript(fullText: string): {
 
 function extractTimelineInfo(
 	outline: string,
-	characterBios: string,
+	characterBios: string
 ): {
 	era: string;
 	timelineSetting?: string;
@@ -97,19 +95,15 @@ function extractTimelineInfo(
 	let storyEndYear: number | undefined;
 	let timelineSetting: string | undefined;
 
-	const rangeMatch = fullText.match(
-		/(\d{4})\s*[-至到~]\s*(\d{4})\s*年?/,
-	);
+	const rangeMatch = fullText.match(/(\d{4})\s*[-至到~]\s*(\d{4})\s*年?/);
 	if (rangeMatch) {
-		storyStartYear = Number.parseInt(rangeMatch[1]);
-		storyEndYear = Number.parseInt(rangeMatch[2]);
+		storyStartYear = Number.parseInt(rangeMatch[1], 10);
+		storyEndYear = Number.parseInt(rangeMatch[2], 10);
 		timelineSetting = `${storyStartYear}年 - ${storyEndYear}年`;
 	} else {
-		const singleYearMatch = fullText.match(
-			/(\d{4})年([\u4e00-\u9fa5]{0,6})/,
-		);
+		const singleYearMatch = fullText.match(/(\d{4})年([\u4e00-\u9fa5]{0,6})/);
 		if (singleYearMatch) {
-			storyStartYear = Number.parseInt(singleYearMatch[1]);
+			storyStartYear = Number.parseInt(singleYearMatch[1], 10);
 			const season = singleYearMatch[2] || "";
 			timelineSetting = season
 				? `${storyStartYear}年${season}`
@@ -227,7 +221,7 @@ function extractThemes(outline: string, characterBios: string): string[] {
 export function parseEpisodes(text: string): EpisodeRawScript[] {
 	const episodes: EpisodeRawScript[] = [];
 	const episodeRegex =
-		/\*{0,2}第([\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\d]+)集[\uff1a:]?\s*([^\n\*]*?)\*{0,2}(?=\n|$)/g;
+		/\*{0,2}第([\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\d]+)集[\uff1a:]?\s*([^\n*]*?)\*{0,2}(?=\n|$)/g;
 	const matches = [...text.matchAll(episodeRegex)];
 
 	if (matches.length === 0) {
@@ -246,10 +240,11 @@ export function parseEpisodes(text: string): EpisodeRawScript[] {
 	for (let i = 0; i < matches.length; i++) {
 		const match = matches[i];
 		const episodeIndex = chineseToNumber(match[1]);
-		const rawTitle = match[2]
-			?.trim()
-			.replace(/^\*+|\*+$/g, "")
-			.trim() || "";
+		const rawTitle =
+			match[2]
+				?.trim()
+				.replace(/^\*+|\*+$/g, "")
+				.trim() || "";
 		const episodeTitle = rawTitle
 			? `第${episodeIndex}集：${rawTitle}`
 			: `第${episodeIndex}集`;
@@ -279,7 +274,7 @@ export function parseEpisodes(text: string): EpisodeRawScript[] {
 export function parseScenes(episodeText: string): SceneRawContent[] {
 	const scenes: SceneRawContent[] = [];
 	const sceneHeaderRegex =
-		/\*{0,2}(\d+-\d+)\s*(日|夜|晨|暮|黄昏|黎明|清晨|傍晚)\s*(内|外|内\/外)\s+([^\*\n]+)\*{0,2}/g;
+		/\*{0,2}(\d+-\d+)\s*(日|夜|晨|暮|黄昏|黎明|清晨|傍晚)\s*(内|外|内\/外)\s+([^*\n]+)\*{0,2}/g;
 	const sceneMatches = [...episodeText.matchAll(sceneHeaderRegex)];
 
 	if (sceneMatches.length === 0) {
@@ -315,7 +310,7 @@ export function parseScenes(episodeText: string): SceneRawContent[] {
 
 function parseAlternativeSceneFormat(text: string): SceneRawContent[] {
 	const scenes: SceneRawContent[] = [];
-	const altRegex = /(?:场景\s*(\d+)|【场景[：:]?\s*([^\】]+)】)/g;
+	const altRegex = /(?:场景\s*(\d+)|【场景[：:]?\s*([^】]+)】)/g;
 	const matches = [...text.matchAll(altRegex)];
 
 	if (matches.length > 0) {
@@ -366,12 +361,12 @@ function detectWeather(content: string): string | undefined {
 }
 
 function extractSeasonFromScenes(
-	scenes: SceneRawContent[],
+	scenes: SceneRawContent[]
 ): string | undefined {
 	for (const scene of scenes) {
 		for (const subtitle of scene.subtitles) {
 			const seasonMatch = subtitle.match(
-				/(春天?|夏天?|秋天?|冬天?|初春|仲夏|深秋|隆冬|盛夏|暖春|寒冬)/,
+				/(春天?|夏天?|秋天?|冬天?|初春|仲夏|深秋|隆冬|盛夏|暖春|寒冬)/
 			);
 			if (seasonMatch) {
 				const s = seasonMatch[1];
@@ -395,7 +390,7 @@ function parseCharacterNames(text: string): string[] {
 		}
 	}
 	const dialogueRegex =
-		/^([^：:（\(【\n]{1,10})[：:](?:\s*[（\(][^）\)]+[）\)])?/gm;
+		/^([^：:（(【\n]{1,10})[：:](?:\s*[（(][^）)]+[）)])?/gm;
 	for (const m of text.matchAll(dialogueRegex)) {
 		const name = m[1].trim();
 		if (name && !name.match(/^[△【字幕旁白VO场景]/)) {
@@ -408,7 +403,7 @@ function parseCharacterNames(text: string): string[] {
 function parseDialogues(text: string): DialogueLine[] {
 	const dialogues: DialogueLine[] = [];
 	const dialogueRegex =
-		/^([^：:（\(【\n△]{1,10})[：:]\s*(?:[（\(]([^）\)]+)[）\)])?\s*(.+)$/gm;
+		/^([^：:（(【\n△]{1,10})[：:]\s*(?:[（(]([^）)]+)[）)])?\s*(.+)$/gm;
 
 	for (const match of text.matchAll(dialogueRegex)) {
 		const character = match[1].trim();
@@ -444,9 +439,19 @@ function chineseToNumber(chinese: string): number {
 	if (/^\d+$/.test(chinese)) return Number.parseInt(chinese, 10);
 
 	const chineseNums: Record<string, number> = {
-		零: 0, 一: 1, 二: 2, 三: 3, 四: 4,
-		五: 5, 六: 6, 七: 7, 八: 8, 九: 9,
-		十: 10, 百: 100, 千: 1000,
+		零: 0,
+		一: 1,
+		二: 2,
+		三: 3,
+		四: 4,
+		五: 5,
+		六: 6,
+		七: 7,
+		八: 8,
+		九: 9,
+		十: 10,
+		百: 100,
+		千: 1000,
 	};
 
 	let result = 0;
@@ -474,15 +479,14 @@ function chineseToNumber(chinese: string): number {
 export function parseCharacterBios(bios: string): ScriptCharacter[] {
 	const characters: ScriptCharacter[] = [];
 	const charRegex =
-		/([^：:\n，,]+?)(?:[（\(](\d+岁?)[）\)])?[：:]\s*([^\n]+(?:\n(?![^：:\n]+[：:])[^\n]+)*)/g;
+		/([^：:\n，,]+?)(?:[（(](\d+岁?)[）)])?[：:]\s*([^\n]+(?:\n(?![^：:\n]+[：:])[^\n]+)*)/g;
 
 	let index = 1;
 	for (const match of bios.matchAll(charRegex)) {
 		const name = match[1].trim();
 		const age = match[2]?.replace("岁", "") || "";
 		const description = match[3].trim();
-		if (name.length > 10 || name.match(/^[第一二三四五六七八九十\d]/))
-			continue;
+		if (name.length > 10 || name.match(/^[第一二三四五六七八九十\d]/)) continue;
 
 		characters.push({
 			id: `char_${index}`,
@@ -532,12 +536,12 @@ function extractTraits(description: string): string {
  */
 export function convertToScriptData(
 	background: ProjectBackground,
-	episodeScripts: EpisodeRawScript[],
+	episodeScripts: EpisodeRawScript[]
 ): ScriptData {
 	const mainCharacters = parseCharacterBios(background.characterBios);
 	const additionalCharacters = extractCharactersFromScenes(
 		episodeScripts,
-		mainCharacters,
+		mainCharacters
 	);
 	const characters = [...mainCharacters, ...additionalCharacters];
 	const episodes: Episode[] = [];
@@ -573,7 +577,11 @@ export function convertToScriptData(
 			id: episodeId,
 			index: ep.episodeIndex,
 			title: ep.title,
-			description: ep.rawContent.replace(/\*{1,2}/g, "").slice(0, 100).trim() + "...",
+			description:
+				ep.rawContent
+					.replace(/\*{1,2}/g, "")
+					.slice(0, 100)
+					.trim() + "...",
 			sceneIds,
 		});
 	}
@@ -594,7 +602,7 @@ export function convertToScriptData(
 
 function extractCharactersFromScenes(
 	episodeScripts: EpisodeRawScript[],
-	existingCharacters: ScriptCharacter[],
+	existingCharacters: ScriptCharacter[]
 ): ScriptCharacter[] {
 	const existingNames = new Set(existingCharacters.map((c) => c.name));
 	const appearanceCount = new Map<string, number>();
@@ -604,19 +612,13 @@ function extractCharactersFromScenes(
 			for (const charName of scene.characters) {
 				const name = charName.trim();
 				if (name && name.length >= 1 && name.length <= 6) {
-					appearanceCount.set(
-						name,
-						(appearanceCount.get(name) || 0) + 1,
-					);
+					appearanceCount.set(name, (appearanceCount.get(name) || 0) + 1);
 				}
 			}
 			for (const dialogue of scene.dialogues) {
 				const name = dialogue.character.trim();
 				if (name && name.length >= 1 && name.length <= 6) {
-					appearanceCount.set(
-						name,
-						(appearanceCount.get(name) || 0) + 1,
-					);
+					appearanceCount.set(name, (appearanceCount.get(name) || 0) + 1);
 				}
 			}
 		}
@@ -631,9 +633,7 @@ function extractCharactersFromScenes(
 		id: `char_${index++}`,
 		name,
 		role:
-			count > 5
-				? `重要配角（出场${count}次）`
-				: `次要角色（出场${count}次）`,
+			count > 5 ? `重要配角（出场${count}次）` : `次要角色（出场${count}次）`,
 	}));
 }
 

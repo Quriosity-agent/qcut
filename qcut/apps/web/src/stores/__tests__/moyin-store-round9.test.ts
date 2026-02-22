@@ -179,7 +179,11 @@ describe("moyin-persistence: JSON export/import", () => {
 		const partial = partializeMoyinState(fullState);
 		expect(partial.rawScript).toBe("test script");
 		expect(partial.characters).toHaveLength(1);
-		expect((partial as unknown as Record<string, unknown>).projectId).toBeUndefined();
-		expect((partial as unknown as Record<string, unknown>).activeStep).toBeUndefined();
+		expect(
+			(partial as unknown as Record<string, unknown>).projectId
+		).toBeUndefined();
+		expect(
+			(partial as unknown as Record<string, unknown>).activeStep
+		).toBeUndefined();
 	});
 });

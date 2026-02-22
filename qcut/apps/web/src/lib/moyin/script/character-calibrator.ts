@@ -446,7 +446,7 @@ ${dialogueSamples.slice(0, 100).join("\n")}
 			const maxId = Math.max(
 				...finalCharacters.map((c) => {
 					const match = c.id.match(/char_(\d+)/);
-					return match ? Number.parseInt(match[1]) : 0;
+					return match ? Number.parseInt(match[1], 10) : 0;
 				})
 			);
 

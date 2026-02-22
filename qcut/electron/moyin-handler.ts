@@ -371,14 +371,10 @@ export function setupMoyinIPC(): void {
 					userLen: options.userPrompt.length,
 				});
 
-				const text = await callLLM(
-					options.systemPrompt,
-					options.userPrompt,
-					{
-						temperature: options.temperature,
-						maxTokens: options.maxTokens,
-					}
-				);
+				const text = await callLLM(options.systemPrompt, options.userPrompt, {
+					temperature: options.temperature,
+					maxTokens: options.maxTokens,
+				});
 
 				return { success: true, text };
 			} catch (error: unknown) {

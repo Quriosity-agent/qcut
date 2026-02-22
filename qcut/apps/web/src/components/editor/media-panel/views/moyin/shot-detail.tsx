@@ -721,7 +721,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onClick={() => generateShotVideo(shot.id)}
 						disabled={isVideoGenerating || !shot.imageUrl}
 						aria-busy={isVideoGenerating || undefined}
-						title={!shot.imageUrl ? "Generate image first" : undefined}
+						title={shot.imageUrl ? undefined : "Generate image first"}
 					>
 						{isVideoGenerating ? (
 							<Loader2 className="mr-1 h-3 w-3 animate-spin" />

@@ -292,9 +292,9 @@ export function EpisodeTree() {
 						onClick={() => setCharacterFilter(null)}
 						className={cn(
 							"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border",
-							!characterFilter
-								? "bg-primary text-primary-foreground border-primary"
-								: "text-muted-foreground border-muted hover:bg-muted"
+							characterFilter
+								? "text-muted-foreground border-muted hover:bg-muted"
+								: "bg-primary text-primary-foreground border-primary"
 						)}
 					>
 						All
@@ -392,7 +392,6 @@ export function EpisodeTree() {
 													}
 												}}
 												className="flex-1 min-w-0 h-5 px-1 text-xs font-medium border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-												autoFocus
 												onClick={(e) => e.stopPropagation()}
 												aria-label="Edit episode title"
 											/>
@@ -513,7 +512,6 @@ export function EpisodeTree() {
 																		}
 																	}}
 																	className="flex-1 min-w-0 h-4 px-1 text-[11px] border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-																	autoFocus
 																	onClick={(e) => e.stopPropagation()}
 																	aria-label="Edit scene name"
 																/>

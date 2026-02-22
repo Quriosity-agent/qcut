@@ -49,7 +49,8 @@ function parseSceneQuery(query: string): {
 	);
 	if (episodeMatch) {
 		episodeNumber = Number.parseInt(
-			episodeMatch[1] || episodeMatch[2] || episodeMatch[3]
+			episodeMatch[1] || episodeMatch[2] || episodeMatch[3],
+			10
 		);
 	}
 

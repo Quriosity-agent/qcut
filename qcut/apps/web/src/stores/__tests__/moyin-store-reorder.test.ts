@@ -2,10 +2,7 @@
  * Tests for Round 8: reorder, multi-select, and keyboard helper actions.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-	reorderShotsAction,
-	reorderScenesAction,
-} from "../moyin-generation";
+import { reorderShotsAction, reorderScenesAction } from "../moyin-generation";
 import type { Shot, Episode } from "@/types/moyin-script";
 
 function makeShot(id: string, sceneRefId: string, index: number): Shot {
@@ -23,11 +20,7 @@ function makeShot(id: string, sceneRefId: string, index: number): Shot {
 	};
 }
 
-function makeEpisode(
-	id: string,
-	sceneIds: string[],
-	index = 0
-): Episode {
+function makeEpisode(id: string, sceneIds: string[], index = 0): Episode {
 	return { id, index, title: `Episode ${id}`, sceneIds };
 }
 

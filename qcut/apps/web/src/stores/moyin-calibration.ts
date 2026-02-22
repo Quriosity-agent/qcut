@@ -65,7 +65,9 @@ async function getCalibrationContext({
 	}
 
 	try {
-		const { parseFullScript } = await import("@/lib/moyin/script/episode-parser");
+		const { parseFullScript } = await import(
+			"@/lib/moyin/script/episode-parser"
+		);
 		const parsed = parseFullScript(rawScript);
 		if (!parsed.episodes.length) {
 			return null;
@@ -113,7 +115,10 @@ export async function enhanceCharactersLLM(
 	scriptData: ScriptData | null,
 	rawScript?: string
 ): Promise<ScriptCharacter[]> {
-	const calibrationContext = await getCalibrationContext({ rawScript, scriptData });
+	const calibrationContext = await getCalibrationContext({
+		rawScript,
+		scriptData,
+	});
 	if (calibrationContext) {
 		try {
 			const { calibrateCharacters, convertToScriptCharacters } = await import(
@@ -228,7 +233,10 @@ export async function enhanceScenesLLM(
 	scriptData: ScriptData | null,
 	rawScript?: string
 ): Promise<ScriptScene[]> {
-	const calibrationContext = await getCalibrationContext({ rawScript, scriptData });
+	const calibrationContext = await getCalibrationContext({
+		rawScript,
+		scriptData,
+	});
 	if (calibrationContext) {
 		try {
 			const { calibrateScenes, convertToScriptScenes } = await import(

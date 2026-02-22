@@ -123,7 +123,7 @@ export function GenerateActions() {
 		}
 
 		lines.push(
-			`---`,
+			"---",
 			`Images: ${imagesDone}/${shots.length} | Videos: ${videosDone}/${shots.length}`,
 			`Style: ${selectedStyle?.name || selectedStyleId}`
 		);
