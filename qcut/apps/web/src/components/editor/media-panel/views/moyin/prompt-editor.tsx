@@ -132,6 +132,7 @@ function PromptSection({
 							<Textarea
 								className="text-xs min-h-[48px] resize-none"
 								rows={3}
+								lang={lang === "en" ? "en" : "zh"}
 								value={value}
 								onChange={(e) => onChange(e.target.value)}
 								placeholder={`${label} (${lang === "en" ? "English" : "Chinese"})`}

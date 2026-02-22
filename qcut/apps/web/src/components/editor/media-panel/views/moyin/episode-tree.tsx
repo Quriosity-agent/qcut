@@ -484,7 +484,7 @@ export function EpisodeTree() {
 																	<ChevronRightIcon className="h-2.5 w-2.5 shrink-0" />
 																)
 															) : (
-																<span className="w-2.5" />
+																<span className="w-2.5" aria-hidden="true" />
 															)}
 															<MapPinIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
 															{editingSceneId === sceneId ? (

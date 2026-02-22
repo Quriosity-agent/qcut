@@ -174,6 +174,7 @@ function CharacterCard({
 							variant="text"
 							size="sm"
 							className="h-6 text-xs px-2 text-destructive hover:text-destructive"
+							aria-label="Delete character"
 							onClick={() => {
 								if (
 									window.confirm(
