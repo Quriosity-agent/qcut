@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { ScriptScene } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ export function SceneDetail({ scene }: { scene: ScriptScene }) {
 		};
 		updateScene(scene.id, updates);
 		setEditing(false);
+		toast.success("Scene saved");
 	}, [scene.id, draft, keyPropsText, updateScene]);
 
 	if (editing) {

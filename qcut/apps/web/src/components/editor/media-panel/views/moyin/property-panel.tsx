@@ -3,7 +3,8 @@
  * Shows different fields based on selectedItemType (character/scene/shot/episode).
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { toast } from "sonner";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type {
 	ScriptCharacter,
@@ -191,7 +192,22 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 	const save = useCallback(() => {
 		updateCharacter(char.id, draft);
 		setEditing(false);
+		toast.success("Character saved");
 	}, [char.id, draft, updateCharacter]);
+
+	useEffect(() => {
+		if (!editing) return;
+		const handleKey = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+				e.preventDefault();
+				save();
+			} else if (e.key === "Escape") {
+				setEditing(false);
+			}
+		};
+		document.addEventListener("keydown", handleKey);
+		return () => document.removeEventListener("keydown", handleKey);
+	}, [editing, save]);
 
 	if (editing) {
 		return (
