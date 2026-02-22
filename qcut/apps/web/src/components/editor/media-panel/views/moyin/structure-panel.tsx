@@ -48,9 +48,22 @@ const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 export function StructurePanel() {
 	const activeStep = useMoyinStore((s) => s.activeStep);
 	const setActiveStep = useMoyinStore((s) => s.setActiveStep);
+	const characters = useMoyinStore((s) => s.characters);
+	const scenes = useMoyinStore((s) => s.scenes);
+	const shots = useMoyinStore((s) => s.shots);
+	const imagesDone = shots.filter((s) => s.imageStatus === "completed").length;
 	const [activeTab, setActiveTab] = useState<StructureTab>(
 		stepToTab[activeStep] || "overview"
 	);
+
+	const tabBadge = (key: StructureTab): string | null => {
+		if (key === "characters" && characters.length > 0)
+			return String(characters.length);
+		if (key === "scenes" && scenes.length > 0) return String(scenes.length);
+		if (key === "shots" && shots.length > 0)
+			return `${imagesDone}/${shots.length}`;
+		return null;
+	};
 
 	// Sync tab when store step changes externally (e.g. on project load)
 	useEffect(() => {
@@ -141,6 +154,11 @@ export function StructurePanel() {
 						>
 							<Icon className="h-3 w-3" />
 							{tab.label}
+							{tabBadge(tab.key) && (
+								<span className="text-[9px] text-muted-foreground ml-0.5">
+									{tabBadge(tab.key)}
+								</span>
+							)}
 						</button>
 					);
 				})}
@@ -152,6 +170,28 @@ export function StructurePanel() {
 			{activeTab === "scenes" && <SceneList />}
 			{activeTab === "shots" && <ShotBreakdown />}
 			{activeTab === "generate" && <GenerateActions />}
+
+			{/* Keyboard shortcut hints */}
+			<div
+				className="flex items-center gap-2 text-[9px] text-muted-foreground/60 pt-1 border-t"
+				aria-label="Keyboard shortcuts"
+			>
+				<span>
+					<kbd className="px-1 py-0.5 rounded border text-[8px]">↑↓</kbd>{" "}
+					Navigate
+				</span>
+				<span>
+					<kbd className="px-1 py-0.5 rounded border text-[8px]">Del</kbd>{" "}
+					Remove
+				</span>
+				<span>
+					<kbd className="px-1 py-0.5 rounded border text-[8px]">Esc</kbd>{" "}
+					Deselect
+				</span>
+				<span>
+					<kbd className="px-1 py-0.5 rounded border text-[8px]">⌘Z</kbd> Undo
+				</span>
+			</div>
 		</div>
 	);
 }

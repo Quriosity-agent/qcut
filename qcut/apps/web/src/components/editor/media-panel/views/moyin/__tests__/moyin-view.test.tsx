@@ -1003,3 +1003,76 @@ describe("ShotBreakdown — Filter & Search", () => {
 		expect(screen.queryByText("Villain appears")).toBeNull();
 	});
 });
+
+// ==================== Round 15: Tab Badges & Keyboard Hints ====================
+
+describe("StructurePanel — Tab Badges", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scriptData: {
+				title: "Test",
+				genre: "Drama",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			characters: [{ id: "c1", name: "Alice", role: "lead" }],
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Walk",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "completed",
+					imageProgress: 100,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s1",
+					actionSummary: "Run",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+	});
+
+	it("shows shot count badge on Shots tab", () => {
+		render(<StructurePanel />);
+		// Badge shows imagesDone/total next to Shots tab
+		const allText = screen.getAllByText(/1\/2/);
+		expect(allText.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("shows scene count badge on Scenes tab", () => {
+		render(<StructurePanel />);
+		// Scenes tab should show "1" badge for 1 scene
+		const badges = screen.getAllByText("1");
+		expect(badges.length).toBeGreaterThanOrEqual(1);
+	});
+});
+
+describe("StructurePanel — Keyboard Hints", () => {
+	beforeEach(resetStore);
+
+	it("shows keyboard shortcut hints", () => {
+		render(<StructurePanel />);
+		expect(screen.getByLabelText("Keyboard shortcuts")).toBeTruthy();
+		expect(screen.getByText("Navigate")).toBeTruthy();
+		expect(screen.getByText("Undo")).toBeTruthy();
+	});
+});

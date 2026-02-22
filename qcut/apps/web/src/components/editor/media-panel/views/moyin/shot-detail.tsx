@@ -1,9 +1,3 @@
-/**
- * ShotDetail — detailed view for a selected shot.
- * Includes cinematic vocabulary, narrative fields, and collapsible sections.
- * Extracted from property-panel.tsx to keep files under 800 lines.
- */
-
 import { useState, useCallback } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { Shot } from "@/types/moyin-script";
@@ -14,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
 	CheckIcon,
 	CopyIcon,
 	GripVerticalIcon,
@@ -43,8 +39,6 @@ import {
 import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
 import { isModerationError } from "@/stores/moyin-shot-generation";
-
-// ==================== Helpers ====================
 
 function FieldRow({
 	label,
@@ -130,7 +124,6 @@ function ModerationErrorDisplay({
 	);
 }
 
-// Narrative function presets
 const NARRATIVE_FUNCTIONS = [
 	"exposition",
 	"escalation",
@@ -140,13 +133,16 @@ const NARRATIVE_FUNCTIONS = [
 	"denouement",
 ] as const;
 
-// ==================== Shot Detail ====================
-
 export function ShotDetail({ shot }: { shot: Shot }) {
 	const updateShot = useMoyinStore((s) => s.updateShot);
 	const generateShotImage = useMoyinStore((s) => s.generateShotImage);
 	const generateShotVideo = useMoyinStore((s) => s.generateShotVideo);
 	const generateEndFrameImage = useMoyinStore((s) => s.generateEndFrameImage);
+	const allShots = useMoyinStore((s) => s.shots);
+	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+	const shotIdx = allShots.findIndex((s) => s.id === shot.id);
+	const prevShot = shotIdx > 0 ? allShots[shotIdx - 1] : null;
+	const nextShot = shotIdx < allShots.length - 1 ? allShots[shotIdx + 1] : null;
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState<Partial<Shot>>({});
 	const [preview, setPreview] = useState<{
@@ -229,18 +225,15 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 		});
 		setEditing(true);
 	}, [shot]);
-
 	const save = useCallback(() => {
 		updateShot(shot.id, draft);
 		setEditing(false);
 	}, [shot.id, draft, updateShot]);
-
 	const setField = useCallback(
 		(updates: Partial<Shot>) => setDraft((d) => ({ ...d, ...updates })),
 		[]
 	);
 
-	// ==================== Edit Mode ====================
 	if (editing) {
 		return (
 			<div className="space-y-2">
@@ -299,8 +292,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						/>
 					</div>
 				</CollapsibleSection>
-
-				{/* Focus */}
 				<CollapsibleSection title="Focus">
 					<FocusSelector
 						depthOfField={draft.depthOfField}
@@ -318,8 +309,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						/>
 					</div>
 				</CollapsibleSection>
-
-				{/* Camera Rig */}
 				<CollapsibleSection title="Camera Rig">
 					<RigSelector
 						cameraRig={draft.cameraRig}
@@ -328,8 +317,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onSpeedChange={(v) => setField({ movementSpeed: v })}
 					/>
 				</CollapsibleSection>
-
-				{/* Camera Angle / Focal / Technique */}
 				<CollapsibleSection title="Camera">
 					<AngleSelector
 						cameraAngle={draft.cameraAngle}
@@ -344,8 +331,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onChange={(v) => setField({ photographyTechnique: v })}
 					/>
 				</CollapsibleSection>
-
-				{/* Atmosphere */}
 				<CollapsibleSection title="Atmosphere">
 					<AtmosphereSelector
 						atmosphericEffects={draft.atmosphericEffects}
@@ -358,8 +343,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onChange={(v) => setField({ playbackSpeed: v })}
 					/>
 				</CollapsibleSection>
-
-				{/* Emotion & Sound */}
 				<CollapsibleSection title="Emotion & Sound" defaultOpen>
 					<EmotionTagSelector
 						value={draft.emotionTags}
@@ -376,8 +359,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onAudioEnabledChange={(v) => setField({ audioEnabled: v })}
 					/>
 				</CollapsibleSection>
-
-				{/* Narrative */}
 				<CollapsibleSection title="Narrative">
 					<div className="space-y-1">
 						<Label className="text-[10px]">Narrative Function</Label>
@@ -475,10 +456,31 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-1.5">
+					<button
+						type="button"
+						onClick={() => prevShot && setSelectedItem(prevShot.id, "shot")}
+						disabled={!prevShot}
+						className="p-0.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+						aria-label="Previous shot"
+					>
+						<ArrowLeftIcon className="h-3 w-3" />
+					</button>
 					<VideoIcon className="h-3.5 w-3.5 text-muted-foreground" />
 					<span className="text-sm font-medium">
 						Shot {String(shot.index + 1).padStart(2, "0")}
 					</span>
+					<span className="text-[9px] text-muted-foreground">
+						/{allShots.length}
+					</span>
+					<button
+						type="button"
+						onClick={() => nextShot && setSelectedItem(nextShot.id, "shot")}
+						disabled={!nextShot}
+						className="p-0.5 rounded hover:bg-muted disabled:opacity-30 transition-colors"
+						aria-label="Next shot"
+					>
+						<ArrowRightIcon className="h-3 w-3" />
+					</button>
 					{shot.shotSize && (
 						<Badge variant="outline" className="text-[10px] font-mono">
 							{shot.shotSize}
