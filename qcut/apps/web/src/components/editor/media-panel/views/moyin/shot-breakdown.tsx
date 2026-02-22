@@ -19,7 +19,15 @@ import {
 	UserIcon,
 } from "lucide-react";
 
-function ShotStatusDot({ status }: { status: string }) {
+function ShotStatusDot({ status, label }: { status: string; label?: string }) {
+	const statusLabel =
+		status === "completed"
+			? "Completed"
+			: status === "generating"
+				? "Generating"
+				: status === "failed"
+					? "Failed"
+					: "Pending";
 	return (
 		<span
 			className={cn(
@@ -32,6 +40,8 @@ function ShotStatusDot({ status }: { status: string }) {
 							? "bg-red-500"
 							: "bg-muted-foreground/30"
 			)}
+			title={label ? `${label}: ${statusLabel}` : statusLabel}
+			aria-label={label ? `${label}: ${statusLabel}` : statusLabel}
 		/>
 	);
 }
@@ -181,8 +191,8 @@ export function ShotBreakdown() {
 											{String(shot.index + 1).padStart(2, "0")}
 										</span>
 										<span className="absolute bottom-0.5 right-0.5 flex items-center gap-0.5">
-											<ShotStatusDot status={shot.imageStatus} />
-											<ShotStatusDot status={shot.videoStatus} />
+											<ShotStatusDot status={shot.imageStatus} label="Image" />
+											<ShotStatusDot status={shot.videoStatus} label="Video" />
 										</span>
 									</button>
 								))}
@@ -229,8 +239,8 @@ export function ShotBreakdown() {
 										</span>
 									)}
 									<span className="flex items-center gap-0.5 shrink-0">
-										<ShotStatusDot status={shot.imageStatus} />
-										<ShotStatusDot status={shot.videoStatus} />
+										<ShotStatusDot status={shot.imageStatus} label="Image" />
+										<ShotStatusDot status={shot.videoStatus} label="Video" />
 									</span>
 								</button>
 							))
