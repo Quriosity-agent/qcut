@@ -343,9 +343,12 @@ export function GenerateActions() {
 						variant="outline"
 						onClick={handleExport}
 						disabled={shots.length === 0}
+						aria-label={exportCopied ? "Copied to clipboard" : "Export summary"}
 					>
 						<CopyIcon className="mr-1.5 h-3.5 w-3.5" />
-						{exportCopied ? "Copied!" : "Export"}
+						<span aria-live="polite">
+							{exportCopied ? "Copied!" : "Export"}
+						</span>
 					</Button>
 				</div>
 			) : (

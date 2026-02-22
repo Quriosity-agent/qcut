@@ -221,7 +221,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 		(updates: Partial<Shot>) => setDraft((d) => ({ ...d, ...updates })),
 		[]
 	);
-
 	if (editing) {
 		return (
 			<div className="space-y-2">
@@ -422,7 +421,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						/>
 					</div>
 				</CollapsibleSection>
-
 				{/* Prompts */}
 				<PromptEditor draft={draft} onUpdate={setField} />
 				{/* Save / Cancel */}
@@ -576,8 +574,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				onChange={() => {}}
 				readOnly
 			/>
-
-			{/* Emotion & Sound */}
 			<EmotionTagSelector
 				value={shot.emotionTags}
 				onChange={() => {}}
@@ -607,19 +603,22 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 			<FieldRow label="Visual Focus" value={shot.visualFocus} />
 			<FieldRow label="Blocking" value={shot.characterBlocking} />
 			<FieldRow label="Rhythm" value={shot.rhythm} />
-
-			{/* Prompts */}
 			<PromptEditor draft={shot} onUpdate={() => {}} readOnly />
-			{/* Image preview */}
 			{shot.imageUrl && (
 				<div
 					className="rounded border overflow-hidden cursor-pointer relative group"
 					draggable
 					onDragStart={(e) => handleDragStart(e, "image")}
 					onClick={() => setPreview({ url: shot.imageUrl!, type: "image" })}
-					onKeyDown={() => {}}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							setPreview({ url: shot.imageUrl!, type: "image" });
+						}
+					}}
 					role="button"
 					tabIndex={0}
+					aria-label={`Preview shot ${shot.index + 1} image`}
 				>
 					<img
 						src={shot.imageUrl}
@@ -635,7 +634,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					<span className="sr-only">Drag to timeline</span>
 				</div>
 			)}
-			{/* Characters */}
 			{shot.characterNames && shot.characterNames.length > 0 && (
 				<div className="flex flex-wrap gap-1">
 					{shot.characterNames.map((name) => (
@@ -645,8 +643,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					))}
 				</div>
 			)}
-
-			{/* End frame image */}
 			{shot.endFrameImageUrl && (
 				<div className="space-y-0.5">
 					<p className="text-[10px] font-medium text-muted-foreground">
@@ -662,9 +658,15 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						onClick={() =>
 							setPreview({ url: shot.endFrameImageUrl!, type: "image" })
 						}
-						onKeyDown={() => {}}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								setPreview({ url: shot.endFrameImageUrl!, type: "image" });
+							}
+						}}
 						role="button"
 						tabIndex={0}
+						aria-label="Preview end frame image"
 					>
 						<img
 							src={shot.endFrameImageUrl}
@@ -674,7 +676,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</div>
 				</div>
 			)}
-			{/* Generation buttons */}
 			<div className="space-y-1.5 border-t pt-2">
 				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					Generate
@@ -776,7 +777,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</Button>
 				)}
 			</div>
-
 			{/* Video preview */}
 			{shot.videoUrl && (
 				<div

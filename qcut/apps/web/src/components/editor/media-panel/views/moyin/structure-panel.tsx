@@ -146,6 +146,7 @@ export function StructurePanel() {
 							type="button"
 							role="tab"
 							aria-selected={activeTab === tab.key}
+							aria-controls={`tabpanel-${tab.key}`}
 							onClick={() => handleTabChange(tab.key)}
 							className={cn(
 								"flex items-center gap-1 px-2 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
@@ -167,11 +168,31 @@ export function StructurePanel() {
 			</div>
 
 			{/* Tab content */}
-			{activeTab === "overview" && <EpisodeTree />}
-			{activeTab === "characters" && <CharacterList />}
-			{activeTab === "scenes" && <SceneList />}
-			{activeTab === "shots" && <ShotBreakdown />}
-			{activeTab === "generate" && <GenerateActions />}
+			{activeTab === "overview" && (
+				<div id="tabpanel-overview" role="tabpanel">
+					<EpisodeTree />
+				</div>
+			)}
+			{activeTab === "characters" && (
+				<div id="tabpanel-characters" role="tabpanel">
+					<CharacterList />
+				</div>
+			)}
+			{activeTab === "scenes" && (
+				<div id="tabpanel-scenes" role="tabpanel">
+					<SceneList />
+				</div>
+			)}
+			{activeTab === "shots" && (
+				<div id="tabpanel-shots" role="tabpanel">
+					<ShotBreakdown />
+				</div>
+			)}
+			{activeTab === "generate" && (
+				<div id="tabpanel-generate" role="tabpanel">
+					<GenerateActions />
+				</div>
+			)}
 
 			{/* Empty state hints when no data exists for current tab */}
 			{activeTab === "overview" &&
