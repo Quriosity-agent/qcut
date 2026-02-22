@@ -832,3 +832,5 @@ describe("ShotBreakdown — Bulk Copy Prompts", () => {
 		).toBeTruthy();
 	});
 });
+
+// Round 21 tests are in moyin-round21.test.tsx (separate file to avoid mock conflicts)

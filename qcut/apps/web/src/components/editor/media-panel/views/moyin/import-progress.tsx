@@ -46,9 +46,17 @@ export function ImportProgress() {
 			<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 				Import Pipeline
 			</p>
-			<div className="space-y-1">
+			<div className="space-y-1" aria-live="polite" aria-atomic="true">
 				{PIPELINE_STEPS.map((step) => {
 					const status = pipelineProgress[step.key];
+					const statusLabel =
+						status === "done"
+							? "completed"
+							: status === "active"
+								? "in progress"
+								: status === "error"
+									? "failed"
+									: "pending";
 					return (
 						<div
 							key={step.key}
@@ -62,6 +70,7 @@ export function ImportProgress() {
 											? "text-destructive"
 											: "text-muted-foreground"
 							)}
+							aria-label={`${step.label}: ${statusLabel}`}
 						>
 							<StepIcon status={status} />
 							<span>{step.label}</span>

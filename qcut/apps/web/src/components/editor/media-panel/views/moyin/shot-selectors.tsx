@@ -3,7 +3,9 @@
  * Used in ShotDetail for both read and edit modes.
  */
 
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -124,6 +126,17 @@ export function DurationSelector({
 		);
 	}
 
+	const isCustom =
+		value != null &&
+		!DURATION_OPTIONS.includes(value as (typeof DURATION_OPTIONS)[number]);
+	const [customInput, setCustomInput] = useState(isCustom ? String(value) : "");
+
+	const handleCustom = (raw: string) => {
+		setCustomInput(raw);
+		const n = Number.parseInt(raw, 10);
+		if (!Number.isNaN(n) && n >= 1 && n <= 60) onChange(n);
+	};
+
 	return (
 		<div className="space-y-1">
 			<Label className="text-[10px]">Duration (seconds)</Label>
@@ -132,7 +145,11 @@ export function DurationSelector({
 					<button
 						key={d}
 						type="button"
-						onClick={() => onChange(d)}
+						aria-pressed={value === d}
+						onClick={() => {
+							onChange(d);
+							setCustomInput("");
+						}}
 						className={cn(
 							"px-1.5 py-0.5 rounded text-[9px] font-mono font-medium transition-colors",
 							value === d
@@ -144,6 +161,16 @@ export function DurationSelector({
 					</button>
 				))}
 			</div>
+			<Input
+				className="h-6 text-xs w-20 font-mono"
+				type="number"
+				min={1}
+				max={60}
+				placeholder="Custom"
+				value={customInput}
+				onChange={(e) => handleCustom(e.target.value)}
+				aria-label="Custom duration in seconds"
+			/>
 		</div>
 	);
 }
