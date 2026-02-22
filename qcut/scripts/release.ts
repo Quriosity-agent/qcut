@@ -362,7 +362,7 @@ function bumpVersion(releaseType: ReleaseType): string {
 	}
 
 	packageJson.version = newVersion;
-	fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2) + "\n");
+	fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, "\t") + "\n");
 
 	process.stdout.write(
 		`✅ Version bumped: ${currentVersion} -> ${newVersion}\n`
