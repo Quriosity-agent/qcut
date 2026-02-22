@@ -89,6 +89,7 @@ function SceneCard({
 						<Input
 							id="scene-name"
 							className="h-7 text-xs"
+							autoFocus
 							value={draft.name ?? ""}
 							placeholder="Scene name"
 							onChange={(e) =>

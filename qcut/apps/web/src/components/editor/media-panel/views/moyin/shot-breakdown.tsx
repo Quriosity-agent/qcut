@@ -353,8 +353,14 @@ export function ShotBreakdown() {
 						<button
 							type="button"
 							onClick={() => {
-								deleteSelectedShots();
-								toast.success("Shots deleted");
+								if (
+									window.confirm(
+										`Delete ${selectedShotIds.size} shot(s)? This cannot be undone.`
+									)
+								) {
+									deleteSelectedShots();
+									toast.success("Shots deleted");
+								}
 							}}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-destructive hover:bg-destructive/10 transition-colors"
 							aria-label="Delete selected shots"

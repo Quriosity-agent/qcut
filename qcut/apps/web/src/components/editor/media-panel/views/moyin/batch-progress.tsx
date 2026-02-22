@@ -175,6 +175,13 @@ export function BatchGenerateButtons({
 					className="flex-1 h-7 text-xs"
 					onClick={() => onStart("image")}
 					disabled={disabled || pendingImages === 0}
+					title={
+						disabled
+							? "Batch running…"
+							: pendingImages === 0
+								? "All images generated"
+								: undefined
+					}
 				>
 					<ImageIcon className="mr-1 h-3 w-3" />
 					Images ({pendingImages})
@@ -185,6 +192,13 @@ export function BatchGenerateButtons({
 					className="flex-1 h-7 text-xs"
 					onClick={() => onStart("video")}
 					disabled={disabled || pendingVideos === 0}
+					title={
+						disabled
+							? "Batch running…"
+							: pendingVideos === 0
+								? "All videos generated"
+								: undefined
+					}
 				>
 					<VideoIcon className="mr-1 h-3 w-3" />
 					Videos ({pendingVideos})

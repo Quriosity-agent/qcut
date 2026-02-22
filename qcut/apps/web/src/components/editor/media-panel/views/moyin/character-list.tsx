@@ -88,6 +88,7 @@ function CharacterCard({
 						<Input
 							id="char-name"
 							className="h-7 text-xs"
+							autoFocus
 							value={draft.name ?? ""}
 							onChange={(e) =>
 								setDraft((d) => ({ ...d, name: e.target.value }))
