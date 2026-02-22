@@ -105,6 +105,7 @@ export function BatchProgressOverlay({
 				role="dialog"
 				aria-modal="true"
 				aria-label={`Batch ${batch.type === "image" ? "image" : "video"} generation`}
+				aria-describedby="batch-message"
 				className="w-[320px] rounded-lg border bg-background p-5 shadow-lg space-y-4"
 			>
 				<div className="flex items-center justify-between">
@@ -126,7 +127,9 @@ export function BatchProgressOverlay({
 				</div>
 
 				<div className="space-y-2">
-					<p className="text-xs text-muted-foreground">{batch.message}</p>
+					<p id="batch-message" className="text-xs text-muted-foreground">
+						{batch.message}
+					</p>
 					<Progress
 						value={percent}
 						aria-label={`Batch ${batch.type} generation: ${percent}%`}

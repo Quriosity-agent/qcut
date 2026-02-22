@@ -374,7 +374,11 @@ export function SceneList() {
 			)}
 
 			{searchQuery && filteredScenes.length === 0 ? (
-				<div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+				<div
+					role="status"
+					aria-live="polite"
+					className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground"
+				>
 					<SearchIcon className="mb-2 h-6 w-6 opacity-40" />
 					<p className="text-xs">No scenes match "{searchQuery}"</p>
 				</div>
