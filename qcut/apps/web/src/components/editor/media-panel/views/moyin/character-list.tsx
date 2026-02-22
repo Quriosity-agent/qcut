@@ -18,6 +18,7 @@ import {
 	Loader2,
 	PencilIcon,
 	PlusIcon,
+	SearchIcon,
 	SparklesIcon,
 	Trash2Icon,
 	UserIcon,
@@ -227,6 +228,7 @@ export function CharacterList() {
 	const isCalibrating = calibrationStatus === "calibrating";
 	const [extrasExpanded, setExtrasExpanded] = useState(false);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
 
 	const handleAnalyzeStages = useCallback(async () => {
 		setIsAnalyzing(true);
@@ -237,15 +239,26 @@ export function CharacterList() {
 		}
 	}, [analyzeCharacterStages]);
 
+	const filteredCharacters = useMemo(() => {
+		if (!searchQuery.trim()) return characters;
+		const q = searchQuery.toLowerCase();
+		return characters.filter(
+			(c) =>
+				c.name.toLowerCase().includes(q) ||
+				c.role?.toLowerCase().includes(q) ||
+				c.tags?.some((t) => t.toLowerCase().includes(q))
+		);
+	}, [characters, searchQuery]);
+
 	const { mainChars, extraChars } = useMemo(() => {
 		const main: ScriptCharacter[] = [];
 		const extras: ScriptCharacter[] = [];
-		for (const c of characters) {
+		for (const c of filteredCharacters) {
 			if (isExtra(c)) extras.push(c);
 			else main.push(c);
 		}
 		return { mainChars: main, extraChars: extras };
-	}, [characters]);
+	}, [filteredCharacters]);
 
 	const handleAdd = useCallback(() => {
 		addCharacter({
@@ -304,13 +317,39 @@ export function CharacterList() {
 				</div>
 			</div>
 
+			{characters.length > 0 && (
+				<div className="relative">
+					<SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+					<Input
+						className="h-7 text-xs pl-7 pr-7"
+						placeholder="Search characters..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
+					{searchQuery && (
+						<button
+							type="button"
+							onClick={() => setSearchQuery("")}
+							className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+						>
+							<XIcon className="h-3 w-3 text-muted-foreground" />
+						</button>
+					)}
+				</div>
+			)}
+
 			{calibrationError && calibrationStatus === "error" && (
 				<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
 					{calibrationError}
 				</div>
 			)}
 
-			{characters.length === 0 ? (
+			{searchQuery && filteredCharacters.length === 0 ? (
+				<div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+					<SearchIcon className="mb-2 h-6 w-6 opacity-40" />
+					<p className="text-xs">No characters match "{searchQuery}"</p>
+				</div>
+			) : characters.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
 					<UserIcon className="mb-2 h-8 w-8" />
 					<p className="text-sm">No characters found</p>

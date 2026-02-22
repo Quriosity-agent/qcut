@@ -2,7 +2,7 @@
  * SceneList — step 3: review and edit extracted scenes before generation.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { ScriptScene } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
 	MapPinIcon,
 	PencilIcon,
 	PlusIcon,
+	SearchIcon,
 	SparklesIcon,
 	Trash2Icon,
 	XIcon,
@@ -221,6 +222,18 @@ export function SceneList() {
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
 
 	const isCalibrating = calibrationStatus === "calibrating";
+	const [searchQuery, setSearchQuery] = useState("");
+
+	const filteredScenes = useMemo(() => {
+		if (!searchQuery.trim()) return scenes;
+		const q = searchQuery.toLowerCase();
+		return scenes.filter(
+			(s) =>
+				(s.name || "").toLowerCase().includes(q) ||
+				(s.location || "").toLowerCase().includes(q) ||
+				(s.time || "").toLowerCase().includes(q)
+		);
+	}, [scenes, searchQuery]);
 
 	const handleAdd = useCallback(() => {
 		addScene({
@@ -264,13 +277,39 @@ export function SceneList() {
 				</div>
 			</div>
 
+			{scenes.length > 0 && (
+				<div className="relative">
+					<SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+					<Input
+						className="h-7 text-xs pl-7 pr-7"
+						placeholder="Search scenes..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
+					{searchQuery && (
+						<button
+							type="button"
+							onClick={() => setSearchQuery("")}
+							className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+						>
+							<XIcon className="h-3 w-3 text-muted-foreground" />
+						</button>
+					)}
+				</div>
+			)}
+
 			{calibrationError && calibrationStatus === "error" && (
 				<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
 					{calibrationError}
 				</div>
 			)}
 
-			{scenes.length === 0 ? (
+			{searchQuery && filteredScenes.length === 0 ? (
+				<div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+					<SearchIcon className="mb-2 h-6 w-6 opacity-40" />
+					<p className="text-xs">No scenes match "{searchQuery}"</p>
+				</div>
+			) : scenes.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
 					<MapPinIcon className="mb-2 h-8 w-8" />
 					<p className="text-sm">No scenes found</p>
@@ -278,7 +317,7 @@ export function SceneList() {
 				</div>
 			) : (
 				<div className="space-y-2">
-					{scenes.map((scene, idx) => (
+					{filteredScenes.map((scene, idx) => (
 						<SceneCard
 							key={scene.id}
 							scene={scene}

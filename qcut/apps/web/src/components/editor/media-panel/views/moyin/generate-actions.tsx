@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import {
 	CheckCircle2Icon,
+	CopyIcon,
 	GridIcon,
 	Loader2,
 	RotateCcwIcon,
@@ -39,6 +40,9 @@ export function GenerateActions() {
 	);
 
 	const [isSplitting, setIsSplitting] = useState(false);
+	const [exportCopied, setExportCopied] = useState(false);
+	const episodes = useMoyinStore((s) => s.episodes);
+	const scriptData = useMoyinStore((s) => s.scriptData);
 
 	const { batch, startBatch, cancel } = useBatchGeneration();
 	const isGenerating = generationStatus === "generating";
@@ -57,6 +61,75 @@ export function GenerateActions() {
 		(s) => s.id === selectedStyleId
 	);
 
+	const imagesDone = shots.filter((s) => s.imageStatus === "completed").length;
+	const videosDone = shots.filter((s) => s.videoStatus === "completed").length;
+
+	const handleExport = async () => {
+		const title = scriptData?.title || "Untitled Project";
+		const lines: string[] = [`# ${title}`, ""];
+
+		if (characters.length > 0) {
+			lines.push("## Characters", "");
+			for (const c of characters) {
+				lines.push(`- **${c.name}**${c.role ? ` — ${c.role}` : ""}`);
+			}
+			lines.push("");
+		}
+
+		for (const ep of episodes) {
+			lines.push(`## ${ep.title}`, "");
+			const epScenes = scenes.filter((s) => ep.sceneIds.includes(s.id));
+			for (const scene of epScenes) {
+				lines.push(
+					`### ${scene.name || scene.location}${scene.time ? ` (${scene.time})` : ""}`,
+					""
+				);
+				const sceneShots = shots.filter((s) => s.sceneRefId === scene.id);
+				for (const shot of sceneShots) {
+					const status =
+						shot.imageStatus === "completed" ? "[img]" : "[   ]";
+					const video =
+						shot.videoStatus === "completed" ? "[vid]" : "[   ]";
+					lines.push(
+						`- ${status}${video} **${shot.shotSize || "—"}** ${shot.actionSummary || "—"}${shot.cameraMovement ? ` (${shot.cameraMovement})` : ""}`
+					);
+				}
+				lines.push("");
+			}
+		}
+
+		if (episodes.length === 0 && scenes.length > 0) {
+			lines.push("## Scenes", "");
+			for (const scene of scenes) {
+				lines.push(
+					`### ${scene.name || scene.location}${scene.time ? ` (${scene.time})` : ""}`,
+					""
+				);
+				const sceneShots = shots.filter((s) => s.sceneRefId === scene.id);
+				for (const shot of sceneShots) {
+					const status =
+						shot.imageStatus === "completed" ? "[img]" : "[   ]";
+					const video =
+						shot.videoStatus === "completed" ? "[vid]" : "[   ]";
+					lines.push(
+						`- ${status}${video} **${shot.shotSize || "—"}** ${shot.actionSummary || "—"}`
+					);
+				}
+				lines.push("");
+			}
+		}
+
+		lines.push(
+			`---`,
+			`Images: ${imagesDone}/${shots.length} | Videos: ${videosDone}/${shots.length}`,
+			`Style: ${selectedStyle?.name || selectedStyleId}`
+		);
+
+		await navigator.clipboard.writeText(lines.join("\n"));
+		setExportCopied(true);
+		setTimeout(() => setExportCopied(false), 1500);
+	};
+
 	return (
 		<div className="space-y-3">
 			{/* Batch overlay */}
@@ -71,6 +144,32 @@ export function GenerateActions() {
 					<span>Style: {selectedStyle?.name || selectedStyleId}</span>
 					<span>Status: {generationStatus}</span>
 				</div>
+				{shots.length > 0 && (
+					<div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-dashed">
+						<span
+							className={
+								imagesDone === shots.length
+									? "text-green-600"
+									: imagesDone > 0
+										? "text-amber-600"
+										: "text-muted-foreground"
+							}
+						>
+							Images: {imagesDone}/{shots.length}
+						</span>
+						<span
+							className={
+								videosDone === shots.length
+									? "text-green-600"
+									: videosDone > 0
+										? "text-amber-600"
+										: "text-muted-foreground"
+							}
+						>
+							Videos: {videosDone}/{shots.length}
+						</span>
+					</div>
+				)}
 			</div>
 
 			{/* Progress */}
@@ -141,12 +240,23 @@ export function GenerateActions() {
 				disabled={isGenerating || !!batch}
 			/>
 
-			{/* Action button */}
+			{/* Action buttons */}
 			{isDone ? (
-				<Button size="sm" className="w-full" onClick={reset}>
-					<RotateCcwIcon className="mr-1.5 h-3.5 w-3.5" />
-					New Script
-				</Button>
+				<div className="flex gap-1.5">
+					<Button size="sm" className="flex-1" onClick={reset}>
+						<RotateCcwIcon className="mr-1.5 h-3.5 w-3.5" />
+						New Script
+					</Button>
+					<Button
+						size="sm"
+						variant="outline"
+						onClick={handleExport}
+						disabled={shots.length === 0}
+					>
+						<CopyIcon className="mr-1.5 h-3.5 w-3.5" />
+						{exportCopied ? "Copied!" : "Export"}
+					</Button>
+				</div>
 			) : (
 				<Button
 					size="sm"

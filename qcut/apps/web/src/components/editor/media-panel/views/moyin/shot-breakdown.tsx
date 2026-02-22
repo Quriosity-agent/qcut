@@ -3,13 +3,16 @@
  * Compact layout for scanning many shots at a glance.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
 	CameraIcon,
 	FileTextIcon,
+	GridIcon,
+	ImageIcon,
+	ListIcon,
 	MapPinIcon,
 	MessageSquareIcon,
 	PlusIcon,
@@ -39,6 +42,7 @@ export function ShotBreakdown() {
 	const addShot = useMoyinStore((s) => s.addShot);
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+	const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
 	const handleAddShot = useCallback(
 		(sceneId: string) => {
@@ -90,6 +94,41 @@ export function ShotBreakdown() {
 
 	return (
 		<div className="space-y-0">
+			{/* View mode toggle */}
+			<div className="flex items-center justify-between px-1.5 py-1 border-b">
+				<span className="text-[10px] text-muted-foreground">
+					{shots.length} shot{shots.length !== 1 ? "s" : ""}
+				</span>
+				<div className="flex items-center gap-0.5">
+					<button
+						type="button"
+						onClick={() => setViewMode("list")}
+						className={cn(
+							"p-0.5 rounded transition-colors",
+							viewMode === "list"
+								? "bg-primary/10 text-primary"
+								: "text-muted-foreground hover:bg-muted"
+						)}
+						aria-label="List view"
+					>
+						<ListIcon className="h-3.5 w-3.5" />
+					</button>
+					<button
+						type="button"
+						onClick={() => setViewMode("grid")}
+						className={cn(
+							"p-0.5 rounded transition-colors",
+							viewMode === "grid"
+								? "bg-primary/10 text-primary"
+								: "text-muted-foreground hover:bg-muted"
+						)}
+						aria-label="Grid view"
+					>
+						<GridIcon className="h-3.5 w-3.5" />
+					</button>
+				</div>
+			</div>
+
 			{scenesWithShots.map((scene) => {
 				const sceneShots = shotsByScene[scene.id] || [];
 				return (
@@ -113,66 +152,89 @@ export function ShotBreakdown() {
 							</Badge>
 						</div>
 
-						{/* Shot rows */}
-						{sceneShots.map((shot) => (
-							<button
-								key={shot.id}
-								type="button"
-								onClick={() => setSelectedItem(shot.id, "shot")}
-								className={cn(
-									"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors",
-									selectedItemId === shot.id
-										? "bg-primary/10 text-primary"
-										: "hover:bg-muted"
-								)}
-							>
-								{/* Index */}
-								<span className="text-[9px] font-mono text-muted-foreground w-5 shrink-0 text-right">
-									{String(shot.index + 1).padStart(2, "0")}
-								</span>
-
-								{/* Shot size badge */}
-								{shot.shotSize && (
-									<Badge
-										variant="outline"
-										className="text-[8px] px-1 py-0 h-3.5 font-mono shrink-0"
+						{viewMode === "grid" ? (
+							<div className="grid grid-cols-4 gap-1 p-1">
+								{sceneShots.map((shot) => (
+									<button
+										key={shot.id}
+										type="button"
+										onClick={() => setSelectedItem(shot.id, "shot")}
+										className={cn(
+											"relative aspect-video rounded border overflow-hidden transition-colors",
+											selectedItemId === shot.id
+												? "ring-2 ring-primary"
+												: "hover:ring-1 hover:ring-muted-foreground/30"
+										)}
 									>
-										{shot.shotSize}
-									</Badge>
-								)}
-
-								{/* Camera movement */}
-								{shot.cameraMovement && (
-									<CameraIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-								)}
-
-								{/* Action summary */}
-								<span className="text-[10px] truncate flex-1 min-w-0">
-									{shot.actionSummary || "—"}
-								</span>
-
-								{/* Dialogue indicator */}
-								{shot.dialogue && (
-									<MessageSquareIcon className="h-2.5 w-2.5 shrink-0 text-blue-500" />
-								)}
-
-								{/* Character count */}
-								{shot.characterNames && shot.characterNames.length > 0 && (
-									<span className="flex items-center gap-0.5 shrink-0">
-										<UserIcon className="h-2.5 w-2.5 text-muted-foreground" />
-										<span className="text-[9px] text-muted-foreground">
-											{shot.characterNames.length}
+										{shot.imageUrl ? (
+											<img
+												src={shot.imageUrl}
+												alt={shot.actionSummary || `Shot ${shot.index + 1}`}
+												className="w-full h-full object-cover"
+											/>
+										) : (
+											<div className="w-full h-full bg-muted flex items-center justify-center">
+												<ImageIcon className="h-4 w-4 text-muted-foreground/40" />
+											</div>
+										)}
+										<span className="absolute top-0.5 left-0.5 bg-black/60 text-white text-[8px] px-1 rounded font-mono">
+											{String(shot.index + 1).padStart(2, "0")}
 										</span>
+										<span className="absolute bottom-0.5 right-0.5 flex items-center gap-0.5">
+											<ShotStatusDot status={shot.imageStatus} />
+											<ShotStatusDot status={shot.videoStatus} />
+										</span>
+									</button>
+								))}
+							</div>
+						) : (
+							sceneShots.map((shot) => (
+								<button
+									key={shot.id}
+									type="button"
+									onClick={() => setSelectedItem(shot.id, "shot")}
+									className={cn(
+										"flex items-center gap-1.5 w-full px-1.5 py-1 text-left transition-colors",
+										selectedItemId === shot.id
+											? "bg-primary/10 text-primary"
+											: "hover:bg-muted"
+									)}
+								>
+									<span className="text-[9px] font-mono text-muted-foreground w-5 shrink-0 text-right">
+										{String(shot.index + 1).padStart(2, "0")}
 									</span>
-								)}
-
-								{/* Status dots */}
-								<span className="flex items-center gap-0.5 shrink-0">
-									<ShotStatusDot status={shot.imageStatus} />
-									<ShotStatusDot status={shot.videoStatus} />
-								</span>
-							</button>
-						))}
+									{shot.shotSize && (
+										<Badge
+											variant="outline"
+											className="text-[8px] px-1 py-0 h-3.5 font-mono shrink-0"
+										>
+											{shot.shotSize}
+										</Badge>
+									)}
+									{shot.cameraMovement && (
+										<CameraIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+									)}
+									<span className="text-[10px] truncate flex-1 min-w-0">
+										{shot.actionSummary || "—"}
+									</span>
+									{shot.dialogue && (
+										<MessageSquareIcon className="h-2.5 w-2.5 shrink-0 text-blue-500" />
+									)}
+									{shot.characterNames && shot.characterNames.length > 0 && (
+										<span className="flex items-center gap-0.5 shrink-0">
+											<UserIcon className="h-2.5 w-2.5 text-muted-foreground" />
+											<span className="text-[9px] text-muted-foreground">
+												{shot.characterNames.length}
+											</span>
+										</span>
+									)}
+									<span className="flex items-center gap-0.5 shrink-0">
+										<ShotStatusDot status={shot.imageStatus} />
+										<ShotStatusDot status={shot.videoStatus} />
+									</span>
+								</button>
+							))
+						)}
 					</div>
 				);
 			})}
