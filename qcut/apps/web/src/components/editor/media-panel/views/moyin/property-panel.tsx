@@ -177,6 +177,13 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 			role: char.role,
 			appearance: char.appearance,
 			personality: char.personality,
+			visualPromptEn: char.visualPromptEn,
+			visualPromptZh: char.visualPromptZh,
+			traits: char.traits,
+			relationships: char.relationships,
+			notes: char.notes,
+			tags: char.tags,
+			referenceImages: char.referenceImages,
 		});
 		setEditing(true);
 	}, [char]);
@@ -247,6 +254,136 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 						}
 					/>
 				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Traits</Label>
+					<Input
+						className="h-7 text-xs"
+						value={draft.traits ?? ""}
+						onChange={(e) =>
+							setDraft((d) => ({ ...d, traits: e.target.value }))
+						}
+						placeholder="brave, cunning, loyal..."
+					/>
+				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Relationships</Label>
+					<Textarea
+						className="text-xs min-h-[36px] resize-none"
+						rows={1}
+						value={draft.relationships ?? ""}
+						onChange={(e) =>
+							setDraft((d) => ({ ...d, relationships: e.target.value }))
+						}
+						placeholder="Father of X, rival of Y..."
+					/>
+				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Visual Prompt (EN)</Label>
+					<Textarea
+						className="text-xs min-h-[48px] resize-none"
+						rows={2}
+						value={draft.visualPromptEn ?? ""}
+						onChange={(e) =>
+							setDraft((d) => ({ ...d, visualPromptEn: e.target.value }))
+						}
+						placeholder="Detailed visual description for AI image generation..."
+					/>
+				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Visual Prompt (ZH)</Label>
+					<Textarea
+						className="text-xs min-h-[48px] resize-none"
+						rows={2}
+						value={draft.visualPromptZh ?? ""}
+						onChange={(e) =>
+							setDraft((d) => ({ ...d, visualPromptZh: e.target.value }))
+						}
+						placeholder="中文视觉描述..."
+					/>
+				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Notes</Label>
+					<Textarea
+						className="text-xs min-h-[36px] resize-none"
+						rows={1}
+						value={draft.notes ?? ""}
+						onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+					/>
+				</div>
+				<div className="space-y-1">
+					<Label className="text-[10px]">Tags (comma-separated)</Label>
+					<Input
+						className="h-7 text-xs"
+						value={(draft.tags ?? []).join(", ")}
+						onChange={(e) =>
+							setDraft((d) => ({
+								...d,
+								tags: e.target.value
+									.split(",")
+									.map((t) => t.trim())
+									.filter(Boolean),
+							}))
+						}
+						placeholder="protagonist, warrior, noble..."
+					/>
+				</div>
+
+				{/* Reference Images */}
+				<div className="space-y-1">
+					<Label className="text-[10px]">Reference Images</Label>
+					<div className="grid grid-cols-3 gap-1">
+						{(draft.referenceImages ?? []).map((url, i) => (
+							<div
+								key={url}
+								className="rounded border overflow-hidden aspect-square relative group"
+							>
+								<img
+									src={url}
+									alt={`Ref ${i + 1}`}
+									className="w-full h-full object-cover"
+								/>
+								<button
+									type="button"
+									onClick={() =>
+										setDraft((d) => ({
+											...d,
+											referenceImages: (d.referenceImages ?? []).filter(
+												(_, idx) => idx !== i
+											),
+										}))
+									}
+									className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+								>
+									<XIcon className="h-2.5 w-2.5" />
+								</button>
+							</div>
+						))}
+					</div>
+					<label className="inline-flex items-center gap-1 px-2 py-1 rounded border text-[10px] cursor-pointer hover:bg-muted transition-colors">
+						<ImageIcon className="h-3 w-3" />
+						Add Image
+						<input
+							type="file"
+							accept="image/*"
+							className="hidden"
+							onChange={(e) => {
+								const file = e.target.files?.[0];
+								if (!file) return;
+								const reader = new FileReader();
+								reader.onload = () => {
+									const dataUrl = reader.result as string;
+									setDraft((d) => ({
+										...d,
+										referenceImages: [...(d.referenceImages ?? []), dataUrl],
+									}));
+								};
+								reader.readAsDataURL(file);
+								e.target.value = "";
+							}}
+						/>
+					</label>
+				</div>
+
 				<div className="flex gap-1.5">
 					<Button size="sm" className="h-6 text-xs px-2" onClick={save}>
 						<CheckIcon className="mr-1 h-3 w-3" />
@@ -316,7 +453,11 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 			<FieldRow label="Role" value={char.role} />
 			<FieldRow label="Appearance" value={char.appearance} />
 			<FieldRow label="Personality" value={char.personality} />
+			<FieldRow label="Traits" value={char.traits} />
+			<FieldRow label="Relationships" value={char.relationships} />
 			<FieldRow label="Visual Prompt (EN)" value={char.visualPromptEn} />
+			<FieldRow label="Visual Prompt (ZH)" value={char.visualPromptZh} />
+			<FieldRow label="Notes" value={char.notes} />
 			{char.tags && char.tags.length > 0 && (
 				<div className="flex flex-wrap gap-1">
 					{char.tags.map((tag) => (
@@ -325,6 +466,49 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 						</Badge>
 					))}
 				</div>
+			)}
+
+			{/* Negative Prompt */}
+			{char.negativePrompt && (
+				<CollapsibleSection title="Negative Prompt">
+					{char.negativePrompt.avoid.length > 0 && (
+						<div className="space-y-0.5">
+							<p className="text-[10px] font-medium text-muted-foreground">
+								Avoid
+							</p>
+							<div className="flex flex-wrap gap-1">
+								{char.negativePrompt.avoid.map((item) => (
+									<Badge
+										key={item}
+										variant="destructive"
+										className="text-[10px] px-1"
+									>
+										{item}
+									</Badge>
+								))}
+							</div>
+						</div>
+					)}
+					{char.negativePrompt.styleExclusions &&
+						char.negativePrompt.styleExclusions.length > 0 && (
+							<div className="space-y-0.5">
+								<p className="text-[10px] font-medium text-muted-foreground">
+									Style Exclusions
+								</p>
+								<div className="flex flex-wrap gap-1">
+									{char.negativePrompt.styleExclusions.map((item) => (
+										<Badge
+											key={item}
+											variant="outline"
+											className="text-[10px] px-1"
+										>
+											{item}
+										</Badge>
+									))}
+								</div>
+							</div>
+						)}
+				</CollapsibleSection>
 			)}
 
 			{/* Reference Images */}
