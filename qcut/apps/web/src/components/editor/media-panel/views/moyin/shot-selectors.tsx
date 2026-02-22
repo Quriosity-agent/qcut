@@ -180,7 +180,13 @@ export function DurationSelector({
 				onChange={(e) => handleCustom(e.target.value)}
 				aria-label="Custom duration in seconds"
 				aria-invalid={customInvalid || undefined}
+				aria-describedby={customInvalid ? "duration-error" : undefined}
 			/>
+			{customInvalid && (
+				<p id="duration-error" className="text-[9px] text-red-500">
+					1–60s
+				</p>
+			)}
 		</div>
 	);
 }

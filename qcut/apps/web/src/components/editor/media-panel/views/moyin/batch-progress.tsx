@@ -126,7 +126,10 @@ export function BatchProgressOverlay({
 
 				<div className="space-y-2">
 					<p className="text-xs text-muted-foreground">{batch.message}</p>
-					<Progress value={percent} />
+					<Progress
+						value={percent}
+						aria-label={`Batch ${batch.type} generation: ${percent}%`}
+					/>
 					<p className="text-[10px] text-muted-foreground text-right">
 						{batch.current} / {batch.total} ({percent}%)
 					</p>

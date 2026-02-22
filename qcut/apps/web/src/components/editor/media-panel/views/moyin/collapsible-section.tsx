@@ -13,12 +13,14 @@ export function CollapsibleSection({
 	defaultOpen = false,
 	children,
 	className,
+	"aria-description": ariaDescription,
 }: {
 	title: string;
 	icon?: React.ElementType;
 	defaultOpen?: boolean;
 	children: React.ReactNode;
 	className?: string;
+	"aria-description"?: string;
 }) {
 	const [open, setOpen] = useState(defaultOpen);
 	const contentId = useId();
@@ -31,6 +33,7 @@ export function CollapsibleSection({
 				aria-expanded={open}
 				aria-controls={contentId}
 				aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
+				aria-description={ariaDescription}
 				className="flex items-center gap-1 w-full text-left py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
 			>
 				{open ? (
