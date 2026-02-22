@@ -4,7 +4,6 @@
  */
 
 import { useState } from "react";
-import { useMoyinStore } from "@/stores/moyin-store";
 import { EpisodeTree } from "./episode-tree";
 import { CharacterList } from "./character-list";
 import { SceneList } from "./scene-list";
@@ -31,8 +30,6 @@ const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 
 export function StructurePanel() {
 	const [activeTab, setActiveTab] = useState<StructureTab>("overview");
-	const parseStatus = useMoyinStore((s) => s.parseStatus);
-	const isReady = parseStatus === "ready";
 
 	return (
 		<div className="space-y-3">
@@ -40,20 +37,16 @@ export function StructurePanel() {
 			<div className="flex items-center gap-1 border-b pb-0">
 				{TABS.map((tab) => {
 					const Icon = tab.icon;
-					const disabled = tab.key !== "overview" && !isReady;
 					return (
 						<button
 							key={tab.key}
 							type="button"
-							disabled={disabled}
-							onClick={() => !disabled && setActiveTab(tab.key)}
+							onClick={() => setActiveTab(tab.key)}
 							className={cn(
 								"flex items-center gap-1 px-2 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors",
 								activeTab === tab.key
 									? "border-primary text-primary"
-									: disabled
-										? "border-transparent text-muted-foreground/40 cursor-not-allowed"
-										: "border-transparent text-muted-foreground hover:text-foreground"
+									: "border-transparent text-muted-foreground hover:text-foreground"
 							)}
 						>
 							<Icon className="h-3 w-3" />

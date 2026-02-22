@@ -32,10 +32,14 @@ function CharacterCard({
 	char,
 	onUpdate,
 	onRemove,
+	onSelect,
+	isSelected,
 }: {
 	char: ScriptCharacter;
 	onUpdate: (id: string, updates: Partial<ScriptCharacter>) => void;
 	onRemove: (id: string) => void;
+	onSelect: (id: string) => void;
+	isSelected: boolean;
 }) {
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState<Partial<ScriptCharacter>>({});
@@ -151,7 +155,10 @@ function CharacterCard({
 	}
 
 	return (
-		<Card className="border shadow-none group">
+		<Card
+			className={`border shadow-none group cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
+			onClick={() => onSelect(char.id)}
+		>
 			<CardHeader className="pb-1 pt-3 px-3">
 				<CardTitle className="text-sm flex items-center gap-2">
 					<UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -168,7 +175,10 @@ function CharacterCard({
 					)}
 					<button
 						type="button"
-						onClick={startEdit}
+						onClick={(e) => {
+							e.stopPropagation();
+							startEdit();
+						}}
 						className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
 						aria-label={`Edit ${char.name}`}
 					>
@@ -209,6 +219,8 @@ export function CharacterList() {
 	const enhanceCharacters = useMoyinStore((s) => s.enhanceCharacters);
 	const calibrationStatus = useMoyinStore((s) => s.characterCalibrationStatus);
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
+	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
 
 	const isCalibrating = calibrationStatus === "calibrating";
 	const [extrasExpanded, setExtrasExpanded] = useState(false);
@@ -290,6 +302,8 @@ export function CharacterList() {
 									char={char}
 									onUpdate={updateCharacter}
 									onRemove={removeCharacter}
+									onSelect={(id) => setSelectedItem(id, "character")}
+									isSelected={selectedItemId === char.id}
 								/>
 							))}
 						</div>
@@ -317,6 +331,8 @@ export function CharacterList() {
 										char={char}
 										onUpdate={updateCharacter}
 										onRemove={removeCharacter}
+										onSelect={(id) => setSelectedItem(id, "character")}
+										isSelected={selectedItemId === char.id}
 									/>
 								))}
 						</div>
