@@ -466,6 +466,7 @@ export function CharacterList() {
 								type="button"
 								onClick={() => setExtrasExpanded(!extrasExpanded)}
 								aria-expanded={extrasExpanded}
+								aria-controls="extras-content"
 								className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
 							>
 								{extrasExpanded ? (
@@ -475,17 +476,20 @@ export function CharacterList() {
 								)}
 								Extras ({extraChars.length})
 							</button>
-							{extrasExpanded &&
-								extraChars.map((char) => (
-									<CharacterCard
-										key={char.id}
-										char={char}
-										onUpdate={updateCharacter}
-										onRemove={removeCharacter}
-										onSelect={(id) => setSelectedItem(id, "character")}
-										isSelected={selectedItemId === char.id}
-									/>
-								))}
+							{extrasExpanded && (
+								<div id="extras-content">
+									{extraChars.map((char) => (
+										<CharacterCard
+											key={char.id}
+											char={char}
+											onUpdate={updateCharacter}
+											onRemove={removeCharacter}
+											onSelect={(id) => setSelectedItem(id, "character")}
+											isSelected={selectedItemId === char.id}
+										/>
+									))}
+								</div>
+							)}
 						</div>
 					)}
 				</div>

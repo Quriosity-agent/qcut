@@ -145,6 +145,7 @@ export function StructurePanel() {
 							key={tab.key}
 							type="button"
 							role="tab"
+							id={`tab-${tab.key}`}
 							aria-selected={activeTab === tab.key}
 							aria-controls={`tabpanel-${tab.key}`}
 							onClick={() => handleTabChange(tab.key)}
@@ -169,27 +170,39 @@ export function StructurePanel() {
 
 			{/* Tab content */}
 			{activeTab === "overview" && (
-				<div id="tabpanel-overview" role="tabpanel">
+				<div
+					id="tabpanel-overview"
+					role="tabpanel"
+					aria-labelledby="tab-overview"
+				>
 					<EpisodeTree />
 				</div>
 			)}
 			{activeTab === "characters" && (
-				<div id="tabpanel-characters" role="tabpanel">
+				<div
+					id="tabpanel-characters"
+					role="tabpanel"
+					aria-labelledby="tab-characters"
+				>
 					<CharacterList />
 				</div>
 			)}
 			{activeTab === "scenes" && (
-				<div id="tabpanel-scenes" role="tabpanel">
+				<div id="tabpanel-scenes" role="tabpanel" aria-labelledby="tab-scenes">
 					<SceneList />
 				</div>
 			)}
 			{activeTab === "shots" && (
-				<div id="tabpanel-shots" role="tabpanel">
+				<div id="tabpanel-shots" role="tabpanel" aria-labelledby="tab-shots">
 					<ShotBreakdown />
 				</div>
 			)}
 			{activeTab === "generate" && (
-				<div id="tabpanel-generate" role="tabpanel">
+				<div
+					id="tabpanel-generate"
+					role="tabpanel"
+					aria-labelledby="tab-generate"
+				>
 					<GenerateActions />
 				</div>
 			)}

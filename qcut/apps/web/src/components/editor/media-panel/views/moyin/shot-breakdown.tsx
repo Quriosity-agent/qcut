@@ -393,7 +393,11 @@ export function ShotBreakdown() {
 
 			{filteredShots.length === 0 &&
 				(searchQuery.trim() || filter !== "all") && (
-					<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+					<div
+						role="status"
+						aria-live="polite"
+						className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground"
+					>
 						<SearchIcon className="mb-2 h-6 w-6 opacity-40" />
 						<p className="text-xs font-medium">No matching shots</p>
 						<p className="text-[10px] mt-0.5">
