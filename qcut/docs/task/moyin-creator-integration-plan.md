@@ -2,7 +2,7 @@
 
 > **Date:** 2026-02-22
 > **Feature:** Integrate Moyin Creator (魔因漫创) capabilities into QCut
-> **Source repo:** `/Users/peter/Desktop/code/moyin/moyin-creator`
+> **Source repo:** `moyin/moyin-creator` (sibling repo)
 > **Scope:** Identify reusable modules, integration strategy, and implementation phases
 
 ---
