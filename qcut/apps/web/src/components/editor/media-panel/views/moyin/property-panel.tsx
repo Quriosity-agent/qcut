@@ -355,7 +355,7 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 							>
 								<img
 									src={url}
-									alt={`Ref ${i + 1}`}
+									alt={`${char.name} reference ${i + 1}`}
 									className="w-full h-full object-cover"
 								/>
 								<button

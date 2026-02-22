@@ -396,7 +396,11 @@ export function CharacterList() {
 			)}
 
 			{isCalibrating && characters.length > 0 && (
-				<div className="space-y-2" aria-label="Loading characters">
+				<div
+					className="space-y-2"
+					aria-label="Loading characters"
+					aria-busy="true"
+				>
 					{Array.from({ length: Math.min(characters.length, 3) }).map(
 						(_, i) => (
 							<div
@@ -457,6 +461,7 @@ export function CharacterList() {
 							<button
 								type="button"
 								onClick={() => setExtrasExpanded(!extrasExpanded)}
+								aria-expanded={extrasExpanded}
 								className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
 							>
 								{extrasExpanded ? (
