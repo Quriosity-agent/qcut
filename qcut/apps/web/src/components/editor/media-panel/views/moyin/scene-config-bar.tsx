@@ -35,7 +35,7 @@ function ToggleButton({
 				active
 					? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
 					: "bg-muted/40 text-muted-foreground hover:bg-muted/60 border border-transparent",
-				className,
+				className
 			)}
 		>
 			{children}
@@ -68,7 +68,7 @@ function DropdownPill({
 			className={cn(
 				"appearance-none px-2 py-1 rounded text-[10px] font-medium border cursor-pointer",
 				"bg-transparent focus:outline-none focus:ring-1 focus:ring-purple-500/50",
-				colors[color],
+				colors[color]
 			)}
 		>
 			{options.map((opt) => (

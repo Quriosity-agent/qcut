@@ -9,6 +9,5 @@ export const DEMO_IMAGES = {
 	shot2: "https://i.ibb.co/HTpPQxNH/scene-4-first-frame-1770394131696.png",
 	shot3: "https://i.ibb.co/B5K7MCGD/scene-5-first-frame-1770394136820.png",
 	shot4: "https://i.ibb.co/bRmQjL7L/scene-6-first-frame-1770394141840.png",
-	shot0EndFrame:
-		"https://i.ibb.co/67xGbxhX/scene-2-endframe-1770394543751.jpg",
+	shot0EndFrame: "https://i.ibb.co/67xGbxhX/scene-2-endframe-1770394543751.jpg",
 } as const;

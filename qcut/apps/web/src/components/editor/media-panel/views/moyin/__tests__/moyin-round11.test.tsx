@@ -211,7 +211,14 @@ vi.mock("@/lib/moyin/script/example-scripts", () => ({
 			description: "Test script",
 			content: "Test content",
 			structure: {
-				scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
+				scriptData: {
+					title: "Test",
+					language: "English",
+					characters: [],
+					scenes: [],
+					episodes: [],
+					storyParagraphs: [],
+				},
 				characters: [],
 				scenes: [],
 				episodes: [],

@@ -3,8 +3,17 @@
 > **Date:** 2026-02-22
 > **Goal:** Implement `editor:generate:*` (6 commands), `editor:export:*` (5 commands), `editor:diagnostics:*` (1 command), `editor:mcp:*` (1 command), integrate all commands into cli.ts/cli-runner.ts, and write comprehensive tests.
 > **Reference:** [editor-cli-overview.md](editor-cli-overview.md), `electron/claude/claude-generate-handler.ts`, `electron/claude/claude-export-handler.ts`, `electron/claude/claude-diagnostics-handler.ts`
-> **Status:** Not started
+> **Status:** DONE
 > **Depends on:** Phase 1 (Subtasks 1.1-1.3)
+>
+> | Subtask | File | Lines | Tests |
+> |---------|------|-------|-------|
+> | 4.1 Generate commands | `editor-handlers-generate.ts` | ~400 | 7 (start validation+sync+poll, status, models, cancel, estimate-cost) |
+> | 4.2 Export commands | (same file) | — | 5 (presets, recommend, start, status, list-jobs) |
+> | 4.3 Diagnostics + MCP | (same file) | — | 4 (analyze validation+send, forward-html validation+send) |
+> | 4.4 Wire + CLI | `cli-handlers-editor.ts`, `cli.ts` | ~40 added | — |
+> | 4.5 Output formatters | `cli-output-formatters.ts` | ~211 | — (extracted from cli.ts) |
+> | 4.6 Tests | `editor-handlers-generate.test.ts` | ~512 | 20 passing |
 
 ---
 

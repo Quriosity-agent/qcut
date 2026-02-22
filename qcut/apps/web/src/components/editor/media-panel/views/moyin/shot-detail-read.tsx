@@ -95,7 +95,7 @@ function ParamPill({
 		<div
 			className={cn(
 				"inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium",
-				value ? PILL_COLORS[color] : "bg-muted/40 text-muted-foreground/40",
+				value ? PILL_COLORS[color] : "bg-muted/40 text-muted-foreground/40"
 			)}
 			title={label}
 		>
@@ -123,7 +123,7 @@ function AudioRow({
 			<span
 				className={cn(
 					"inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-medium shrink-0",
-					color,
+					color
 				)}
 			>
 				<Icon className="h-2.5 w-2.5" />
@@ -132,7 +132,7 @@ function AudioRow({
 			<span
 				className={cn(
 					"pt-0.5",
-					value ? "text-foreground" : "text-muted-foreground/40",
+					value ? "text-foreground" : "text-muted-foreground/40"
 				)}
 			>
 				{value || "\u2014"}
@@ -188,9 +188,7 @@ function PromptBlock({
 				) : (
 					<ChevronRightIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
 				)}
-				<span className={cn("text-[10px] font-medium", color)}>
-					{label}
-				</span>
+				<span className={cn("text-[10px] font-medium", color)}>{label}</span>
 				{sublabel && (
 					<span className="text-[9px] text-muted-foreground/60">
 						{sublabel}
@@ -235,8 +233,18 @@ type ImageTab = "first-frame" | "end-frame";
 // ── Prompt tab pill colors ───────────────────────────────────────
 
 const PROMPT_TABS = [
-	{ key: "script", label: "Script", bg: "bg-purple-500/20", text: "text-purple-400" },
-	{ key: "first", label: "First Frame", bg: "bg-green-500/20", text: "text-green-400" },
+	{
+		key: "script",
+		label: "Script",
+		bg: "bg-purple-500/20",
+		text: "text-purple-400",
+	},
+	{
+		key: "first",
+		label: "First Frame",
+		bg: "bg-green-500/20",
+		text: "text-green-400",
+	},
 	{ key: "end", label: "End Frame", bg: "bg-red-500/20", text: "text-red-400" },
 	{ key: "video", label: "Video", bg: "bg-blue-500/20", text: "text-blue-400" },
 ] as const;
@@ -267,13 +275,20 @@ export function ShotDetailRead({ shot, onPreview }: ShotDetailReadProps) {
 				<div className="flex items-center gap-1">
 					{(
 						[
-							{ key: "first-frame" as const, label: "First Frame", color: "orange" },
-							{ key: "end-frame" as const, label: "End Frame", color: "orange" },
+							{
+								key: "first-frame" as const,
+								label: "First Frame",
+								color: "orange",
+							},
+							{
+								key: "end-frame" as const,
+								label: "End Frame",
+								color: "orange",
+							},
 						] as const
 					).map((tab) => {
 						const isActive = imageTab === tab.key;
-						const disabled =
-							tab.key === "end-frame" && !hasEndFrame;
+						const disabled = tab.key === "end-frame" && !hasEndFrame;
 						return (
 							<button
 								key={tab.key}
@@ -285,7 +300,7 @@ export function ShotDetailRead({ shot, onPreview }: ShotDetailReadProps) {
 									isActive
 										? "bg-orange-500/20 text-orange-400"
 										: "text-muted-foreground hover:bg-muted/50",
-									disabled && "opacity-30 cursor-not-allowed",
+									disabled && "opacity-30 cursor-not-allowed"
 								)}
 							>
 								<ImageIcon className="h-3 w-3" />
@@ -351,7 +366,7 @@ export function ShotDetailRead({ shot, onPreview }: ShotDetailReadProps) {
 								className={cn(
 									"px-1.5 py-0.5 rounded text-[8px] font-medium",
 									tab.bg,
-									tab.text,
+									tab.text
 								)}
 							>
 								{tab.label}
@@ -448,11 +463,7 @@ export function ShotDetailRead({ shot, onPreview }: ShotDetailReadProps) {
 			{shot.characterNames && shot.characterNames.length > 0 && (
 				<div className="flex flex-wrap gap-1">
 					{shot.characterNames.map((name) => (
-						<Badge
-							key={name}
-							variant="secondary"
-							className="text-[10px] px-1"
-						>
+						<Badge key={name} variant="secondary" className="text-[10px] px-1">
 							{name}
 						</Badge>
 					))}

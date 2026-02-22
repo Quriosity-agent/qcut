@@ -3,8 +3,15 @@
 > **Date:** 2026-02-22
 > **Goal:** Implement `editor:analyze:*` (5 commands) and `editor:transcribe:*` (5 commands) wrapping 10 HTTP endpoints for video understanding and speech-to-text.
 > **Reference:** [editor-cli-overview.md](editor-cli-overview.md), `electron/claude/claude-analyze-handler.ts`, `electron/claude/claude-transcribe-handler.ts`, `electron/claude/claude-scene-handler.ts`, `electron/claude/claude-vision-handler.ts`, `electron/claude/claude-filler-handler.ts`
-> **Status:** Not started
+> **Status:** DONE
 > **Depends on:** Phase 1 (Subtasks 1.1-1.3)
+>
+> | Subtask | File | Lines | Tests |
+> |---------|------|-------|-------|
+> | 3.1 Analyze commands | `editor-handlers-analysis.ts` | ~349 | 9 (video, models, scenes, frames, fillers) |
+> | 3.2 Transcribe commands | (same file) | — | 8 (run, start sync+poll, status, list-jobs, cancel) |
+> | 3.3 Wire + CLI | `cli-handlers-editor.ts`, `cli.ts` | ~30 added | — |
+> | 3.4 Tests | `editor-handlers-analysis.test.ts` | ~506 | 21 passing |
 
 ---
 

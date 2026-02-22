@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import {
 	EditorApiClient,
 	EditorApiError,
@@ -20,12 +28,7 @@ import * as path from "path";
 
 const routes = new Map<string, { status: number; body: unknown }>();
 
-function mockRoute(
-	method: string,
-	path: string,
-	body: unknown,
-	status = 200,
-) {
+function mockRoute(method: string, path: string, body: unknown, status = 200) {
 	routes.set(`${method} ${path}`, { status, body });
 }
 
@@ -50,7 +53,7 @@ function installFetchMock(baseUrl: string) {
 					error: "Not found",
 					timestamp: Date.now(),
 				}),
-				{ status: 404, headers: { "Content-Type": "application/json" } },
+				{ status: 404, headers: { "Content-Type": "application/json" } }
 			);
 		}
 
@@ -97,7 +100,7 @@ describe("EditorApiClient", () => {
 				"GET",
 				"/api/claude/health",
 				{ success: false, error: "down" },
-				500,
+				500
 			);
 			expect(await client.checkHealth()).toBe(false);
 		});
@@ -119,7 +122,7 @@ describe("EditorApiClient", () => {
 				error: "Project not found",
 			});
 			await expect(client.get("/api/claude/media/bad")).rejects.toThrow(
-				EditorApiError,
+				EditorApiError
 			);
 		});
 
@@ -128,10 +131,9 @@ describe("EditorApiClient", () => {
 			const origFetch = globalThis.fetch;
 			globalThis.fetch = async (input: RequestInfo | URL) => {
 				capturedUrl = input.toString();
-				return new Response(
-					JSON.stringify({ success: true, data: "ok" }),
-					{ headers: { "Content-Type": "application/json" } },
-				);
+				return new Response(JSON.stringify({ success: true, data: "ok" }), {
+					headers: { "Content-Type": "application/json" },
+				});
 			};
 
 			await client.get("/api/claude/timeline/p1", { format: "md" });
@@ -149,15 +151,15 @@ describe("EditorApiClient", () => {
 			const origFetch = globalThis.fetch;
 			globalThis.fetch = async (
 				_input: RequestInfo | URL,
-				init?: RequestInit,
+				init?: RequestInit
 			) => {
 				capturedBody = init?.body as string;
 				capturedHeaders = Object.fromEntries(
-					Object.entries(init?.headers ?? {}),
+					Object.entries(init?.headers ?? {})
 				);
 				return new Response(
 					JSON.stringify({ success: true, data: { imported: true } }),
-					{ headers: { "Content-Type": "application/json" } },
+					{ headers: { "Content-Type": "application/json" } }
 				);
 			};
 
@@ -180,15 +182,14 @@ describe("EditorApiClient", () => {
 			const origFetch = globalThis.fetch;
 			globalThis.fetch = async (
 				_input: RequestInfo | URL,
-				init?: RequestInit,
+				init?: RequestInit
 			) => {
 				capturedHeaders = Object.fromEntries(
-					Object.entries(init?.headers ?? {}),
+					Object.entries(init?.headers ?? {})
 				);
-				return new Response(
-					JSON.stringify({ success: true, data: {} }),
-					{ headers: { "Content-Type": "application/json" } },
-				);
+				return new Response(JSON.stringify({ success: true, data: {} }), {
+					headers: { "Content-Type": "application/json" },
+				});
 			};
 
 			const authedClient = new EditorApiClient({
@@ -217,10 +218,9 @@ describe("EditorApiClient", () => {
 								progress: 100,
 								result: { output: "done" },
 							};
-				return new Response(
-					JSON.stringify({ success: true, data: status }),
-					{ headers: { "Content-Type": "application/json" } },
-				);
+				return new Response(JSON.stringify({ success: true, data: status }), {
+					headers: { "Content-Type": "application/json" },
+				});
 			};
 
 			const result = await client.pollJob("/api/claude/jobs/j1", {
@@ -244,12 +244,12 @@ describe("EditorApiClient", () => {
 							message: "Model unavailable",
 						},
 					}),
-					{ headers: { "Content-Type": "application/json" } },
+					{ headers: { "Content-Type": "application/json" } }
 				);
 			};
 
 			await expect(
-				client.pollJob("/api/claude/jobs/j2", { interval: 10 }),
+				client.pollJob("/api/claude/jobs/j2", { interval: 10 })
 			).rejects.toThrow("Model unavailable");
 
 			globalThis.fetch = origFetch;
@@ -264,7 +264,7 @@ describe("EditorApiClient", () => {
 						success: true,
 						data: { status: "running", progress: 10 },
 					}),
-					{ headers: { "Content-Type": "application/json" } },
+					{ headers: { "Content-Type": "application/json" } }
 				);
 			};
 
@@ -272,7 +272,7 @@ describe("EditorApiClient", () => {
 				client.pollJob("/api/claude/jobs/j3", {
 					interval: 10,
 					timeout: 50,
-				}),
+				})
 			).rejects.toThrow("timed out");
 
 			globalThis.fetch = origFetch;
@@ -308,7 +308,7 @@ describe("resolveJsonInput", () => {
 	});
 
 	it("parses inline JSON array", async () => {
-		const result = await resolveJsonInput('[1, 2, 3]');
+		const result = await resolveJsonInput("[1, 2, 3]");
 		expect(result).toEqual([1, 2, 3]);
 	});
 
@@ -324,15 +324,13 @@ describe("resolveJsonInput", () => {
 	});
 
 	it("throws on invalid JSON", async () => {
-		await expect(resolveJsonInput("not-json")).rejects.toThrow(
-			"Invalid JSON",
-		);
+		await expect(resolveJsonInput("not-json")).rejects.toThrow("Invalid JSON");
 	});
 
 	it("throws on missing file", async () => {
-		await expect(
-			resolveJsonInput("@/nonexistent/file.json"),
-		).rejects.toThrow("Cannot read file");
+		await expect(resolveJsonInput("@/nonexistent/file.json")).rejects.toThrow(
+			"Cannot read file"
+		);
 	});
 });
 
@@ -352,9 +350,7 @@ describe("Media handlers", () => {
 		globalThis.fetch = originalFetch;
 	});
 
-	function makeOpts(
-		overrides: Partial<CLIRunOptions>,
-	): CLIRunOptions {
+	function makeOpts(overrides: Partial<CLIRunOptions>): CLIRunOptions {
 		return {
 			command: "editor:media:list",
 			outputDir: "./output",
@@ -382,7 +378,7 @@ describe("Media handlers", () => {
 		const result = await handleMediaProjectCommand(
 			client,
 			makeOpts({ command: "editor:media:list" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("--project-id");
@@ -399,7 +395,7 @@ describe("Media handlers", () => {
 				command: "editor:media:list",
 				projectId: "test-proj",
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -412,7 +408,7 @@ describe("Media handlers", () => {
 				projectId: "test-proj",
 				source: "/nonexistent/video.mp4",
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("File not found");
@@ -429,7 +425,7 @@ describe("Media handlers", () => {
 				projectId: "test-proj",
 				items: JSON.stringify(items),
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("Batch limit");
@@ -452,9 +448,7 @@ describe("Project handlers", () => {
 		globalThis.fetch = originalFetch;
 	});
 
-	function makeOpts(
-		overrides: Partial<CLIRunOptions>,
-	): CLIRunOptions {
+	function makeOpts(overrides: Partial<CLIRunOptions>): CLIRunOptions {
 		return {
 			command: "editor:project:settings",
 			outputDir: "./output",
@@ -479,7 +473,7 @@ describe("Project handlers", () => {
 				command: "editor:project:settings",
 				projectId: "proj1",
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 		expect((result.data as { name: string }).name).toBe("My Project");
@@ -497,7 +491,7 @@ describe("Project handlers", () => {
 				projectId: "proj1",
 				data: '{"fps":60}',
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -506,7 +500,7 @@ describe("Project handlers", () => {
 		const result = await handleMediaProjectCommand(
 			client,
 			makeOpts({ command: "editor:project:stats" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("--project-id");

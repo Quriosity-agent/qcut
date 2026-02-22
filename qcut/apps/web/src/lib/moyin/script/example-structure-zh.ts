@@ -231,9 +231,12 @@ export const ZH_SHOTS: Shot[] = [
 		ambient: "车厢内嘈杂的低语声，持续的车行驶噪音",
 		angle: "eye-level",
 		lens: "35mm",
-		imgPrompt: "A battered old bus lurches along a winding mountain road. Inside, a young woman in casual travel clothes dozes against the window. Her suitcase slides open with a bump, and an orange basketball rolls down the aisle. Warm afternoon light filters through dusty windows. Medium shot, 35mm lens, natural lighting.",
-		vidPrompt: "The bus jolts on a rough mountain road. Camera tracks the rolling basketball from the opened suitcase down the aisle. The sleeping woman stirs slightly. Dust motes float in warm sunlight beams. Handheld camera movement with gentle sway matching the bus motion.",
-		endPrompt: "The basketball rests against the bus door. The woman opens one eye, noticing the ball. Golden hour light streams through the window behind her.",
+		imgPrompt:
+			"A battered old bus lurches along a winding mountain road. Inside, a young woman in casual travel clothes dozes against the window. Her suitcase slides open with a bump, and an orange basketball rolls down the aisle. Warm afternoon light filters through dusty windows. Medium shot, 35mm lens, natural lighting.",
+		vidPrompt:
+			"The bus jolts on a rough mountain road. Camera tracks the rolling basketball from the opened suitcase down the aisle. The sleeping woman stirs slightly. Dust motes float in warm sunlight beams. Handheld camera movement with gentle sway matching the bus motion.",
+		endPrompt:
+			"The basketball rests against the bus door. The woman opens one eye, noticing the ball. Golden hour light streams through the window behind her.",
 	}),
 	mkShot(1, S1, "村民说话", {
 		size: "CU",
@@ -245,8 +248,10 @@ export const ZH_SHOTS: Shot[] = [
 		ambient: "车厢内嘈杂的低语声，持续的车行驶噪音",
 		angle: "over-shoulder",
 		lens: "85mm",
-		imgPrompt: "Over-the-shoulder shot of an elderly villager in a straw hat turning back to speak. Weathered face with kind eyes and deep smile lines. Rural bus interior with worn vinyl seats. Close-up, 85mm lens, shallow depth of field.",
-		vidPrompt: "The villager turns in his seat to face the camera, speaking with animated gestures. His dialect is thick and friendly. Background passengers blur as focus stays on his expressive face.",
+		imgPrompt:
+			"Over-the-shoulder shot of an elderly villager in a straw hat turning back to speak. Weathered face with kind eyes and deep smile lines. Rural bus interior with worn vinyl seats. Close-up, 85mm lens, shallow depth of field.",
+		vidPrompt:
+			"The villager turns in his seat to face the camera, speaking with animated gestures. His dialect is thick and friendly. Background passengers blur as focus stays on his expressive face.",
 	}),
 	mkShot(2, S1, "沈星晴睁眼，捡球，球面“MVP”字样已磨损", {
 		size: "MS",
@@ -258,8 +263,10 @@ export const ZH_SHOTS: Shot[] = [
 		sfx: "篮球在地板上滚动",
 		angle: "eye-level",
 		lens: "50mm",
-		imgPrompt: "A young woman opens her eyes on the bus, reaching down to pick up an orange basketball. Close-up on her hands reveals worn MVP letters etched into the ball surface. Medium shot, 50mm lens, soft interior lighting.",
-		vidPrompt: "She slowly opens her eyes and reaches down for the basketball. Camera follows her hand, transitioning to a close-up of the worn MVP lettering as her fingers trace the letters. Smooth dolly movement.",
+		imgPrompt:
+			"A young woman opens her eyes on the bus, reaching down to pick up an orange basketball. Close-up on her hands reveals worn MVP letters etched into the ball surface. Medium shot, 50mm lens, soft interior lighting.",
+		vidPrompt:
+			"She slowly opens her eyes and reaches down for the basketball. Camera follows her hand, transitioning to a close-up of the worn MVP lettering as her fingers trace the letters. Smooth dolly movement.",
 	}),
 	mkShot(3, S1, "沈星晴说话", {
 		size: "CU",
@@ -271,8 +278,10 @@ export const ZH_SHOTS: Shot[] = [
 		ambient: "车厢内嘈杂的低语声，持续的车行驶噪音",
 		angle: "eye-level",
 		lens: "85mm",
-		imgPrompt: "Close-up of a young woman with slightly messy hair, looking directly ahead with a casual, unbothered expression. Bus interior background blurred. 85mm portrait lens, eye-level angle, warm natural sidelight.",
-		vidPrompt: "She replies casually without looking up, still holding the basketball. Camera holds steady on her face as she speaks. A slight smile plays at the corner of her mouth.",
+		imgPrompt:
+			"Close-up of a young woman with slightly messy hair, looking directly ahead with a casual, unbothered expression. Bus interior background blurred. 85mm portrait lens, eye-level angle, warm natural sidelight.",
+		vidPrompt:
+			"She replies casually without looking up, still holding the basketball. Camera holds steady on her face as she speaks. A slight smile plays at the corner of her mouth.",
 	}),
 	mkShot(4, S1, "她把球塞回包里，看向窗外。字幕：湖南 · 青石镇", {
 		size: "MS",
@@ -282,8 +291,10 @@ export const ZH_SHOTS: Shot[] = [
 		bgm: "轻柔忧郁的钢琴，淡入",
 		angle: "eye-level",
 		lens: "35mm",
-		imgPrompt: "Medium shot of a young woman stuffing a basketball back into her suitcase, then turning to stare out the bus window. Lush green mountains and terraced fields pass by outside. 35mm lens, warm golden hour lighting.",
-		vidPrompt: "She pushes the ball into the suitcase and turns to the window. Camera slowly pushes in as she stares at the passing landscape. The bus engine sound fades as melancholic piano begins. Slow dolly towards window.",
+		imgPrompt:
+			"Medium shot of a young woman stuffing a basketball back into her suitcase, then turning to stare out the bus window. Lush green mountains and terraced fields pass by outside. 35mm lens, warm golden hour lighting.",
+		vidPrompt:
+			"She pushes the ball into the suitcase and turns to the window. Camera slowly pushes in as she stares at the passing landscape. The bus engine sound fades as melancholic piano begins. Slow dolly towards window.",
 	}),
 
 	// Scene 2: 中学操场 (6 shots)

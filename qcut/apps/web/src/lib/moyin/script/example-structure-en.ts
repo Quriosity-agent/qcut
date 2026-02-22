@@ -237,9 +237,12 @@ export const EN_SHOTS: Shot[] = [
 			ambient: "Rattling bus engine, muffled chatter, gravel under tires",
 			angle: "eye-level",
 			lens: "35mm",
-			imgPrompt: "A battered old bus lurches along a winding mountain road. Inside, a young woman in casual travel clothes dozes against the window. Her suitcase slides open with a bump, and an orange basketball rolls down the aisle. Warm afternoon light filters through dusty windows. Medium shot, 35mm lens, natural lighting.",
-			vidPrompt: "The bus jolts on a rough mountain road. Camera tracks the rolling basketball from the opened suitcase down the aisle. The sleeping woman stirs slightly. Dust motes float in warm sunlight beams. Handheld camera movement with gentle sway matching the bus motion.",
-			endPrompt: "The basketball rests against the bus door. The woman opens one eye, noticing the ball. Golden hour light streams through the window behind her. The aisle is empty except for the bright orange ball in the foreground.",
+			imgPrompt:
+				"A battered old bus lurches along a winding mountain road. Inside, a young woman in casual travel clothes dozes against the window. Her suitcase slides open with a bump, and an orange basketball rolls down the aisle. Warm afternoon light filters through dusty windows. Medium shot, 35mm lens, natural lighting.",
+			vidPrompt:
+				"The bus jolts on a rough mountain road. Camera tracks the rolling basketball from the opened suitcase down the aisle. The sleeping woman stirs slightly. Dust motes float in warm sunlight beams. Handheld camera movement with gentle sway matching the bus motion.",
+			endPrompt:
+				"The basketball rests against the bus door. The woman opens one eye, noticing the ball. Golden hour light streams through the window behind her. The aisle is empty except for the bright orange ball in the foreground.",
 		}
 	),
 	mkShot(1, S1, "Villager speaks", {
@@ -252,8 +255,10 @@ export const EN_SHOTS: Shot[] = [
 		ambient: "Bus interior murmur, continuous road noise",
 		angle: "over-shoulder",
 		lens: "85mm",
-		imgPrompt: "Over-the-shoulder shot of an elderly villager in a straw hat turning back to speak. Weathered face with kind eyes and deep smile lines. Rural bus interior with worn vinyl seats. Close-up, 85mm lens, shallow depth of field on the villager's face.",
-		vidPrompt: "The villager turns in his seat to face the camera, speaking with animated gestures. His dialect is thick and friendly. Background passengers blur as focus stays on his expressive face. Slight camera movement as the bus bounces.",
+		imgPrompt:
+			"Over-the-shoulder shot of an elderly villager in a straw hat turning back to speak. Weathered face with kind eyes and deep smile lines. Rural bus interior with worn vinyl seats. Close-up, 85mm lens, shallow depth of field on the villager's face.",
+		vidPrompt:
+			"The villager turns in his seat to face the camera, speaking with animated gestures. His dialect is thick and friendly. Background passengers blur as focus stays on his expressive face. Slight camera movement as the bus bounces.",
 	}),
 	mkShot(2, S1, "Xingqing opens eyes, picks up ball, MVP letters worn smooth", {
 		size: "MS",
@@ -265,8 +270,10 @@ export const EN_SHOTS: Shot[] = [
 		sfx: "Ball rolling on floor",
 		angle: "eye-level",
 		lens: "50mm",
-		imgPrompt: "A young woman opens her eyes on the bus, reaching down to pick up an orange basketball. Close-up on her hands reveals worn MVP letters etched into the ball's surface. Medium shot, 50mm lens, soft interior lighting with dust particles visible.",
-		vidPrompt: "She slowly opens her eyes and reaches down for the basketball. Camera follows her hand, transitioning to a close-up of the worn MVP lettering on the ball as her fingers trace the letters. She holds it up, studying it with a distant expression. Smooth dolly movement.",
+		imgPrompt:
+			"A young woman opens her eyes on the bus, reaching down to pick up an orange basketball. Close-up on her hands reveals worn MVP letters etched into the ball's surface. Medium shot, 50mm lens, soft interior lighting with dust particles visible.",
+		vidPrompt:
+			"She slowly opens her eyes and reaches down for the basketball. Camera follows her hand, transitioning to a close-up of the worn MVP lettering on the ball as her fingers trace the letters. She holds it up, studying it with a distant expression. Smooth dolly movement.",
 	}),
 	mkShot(3, S1, "Xingqing replies", {
 		size: "CU",
@@ -278,8 +285,10 @@ export const EN_SHOTS: Shot[] = [
 		ambient: "Bus interior murmur, continuous road noise",
 		angle: "eye-level",
 		lens: "85mm",
-		imgPrompt: "Close-up of a young woman with slightly messy hair, looking directly ahead with a casual, unbothered expression. Bus interior background blurred. 85mm portrait lens, eye-level angle, warm natural sidelight from the window.",
-		vidPrompt: "She replies casually without looking up, still holding the basketball. Camera holds steady on her face as she speaks. A slight smile plays at the corner of her mouth. The bus continues to sway gently.",
+		imgPrompt:
+			"Close-up of a young woman with slightly messy hair, looking directly ahead with a casual, unbothered expression. Bus interior background blurred. 85mm portrait lens, eye-level angle, warm natural sidelight from the window.",
+		vidPrompt:
+			"She replies casually without looking up, still holding the basketball. Camera holds steady on her face as she speaks. A slight smile plays at the corner of her mouth. The bus continues to sway gently.",
 	}),
 	mkShot(
 		4,
@@ -293,8 +302,10 @@ export const EN_SHOTS: Shot[] = [
 			bgm: "Soft melancholic piano, fading in",
 			angle: "eye-level",
 			lens: "35mm",
-			imgPrompt: "Medium shot of a young woman stuffing a basketball back into her suitcase, then turning to stare out the bus window. Lush green mountains and terraced fields pass by outside. Title card overlay reads: Hunan - Qingshi Town. 35mm lens, warm golden hour lighting.",
-			vidPrompt: "She pushes the ball into the suitcase and turns to the window. Camera slowly pushes in as she stares at the passing landscape. Text fades in: Hunan - Qingshi Town. The bus engine sound fades as melancholic piano begins. Slow dolly towards window.",
+			imgPrompt:
+				"Medium shot of a young woman stuffing a basketball back into her suitcase, then turning to stare out the bus window. Lush green mountains and terraced fields pass by outside. Title card overlay reads: Hunan - Qingshi Town. 35mm lens, warm golden hour lighting.",
+			vidPrompt:
+				"She pushes the ball into the suitcase and turns to the window. Camera slowly pushes in as she stares at the passing landscape. Text fades in: Hunan - Qingshi Town. The bus engine sound fades as melancholic piano begins. Slow dolly towards window.",
 		}
 	),
 
