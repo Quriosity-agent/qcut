@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => {
 	);
 	return {
 		AlertTriangleIcon: icon("alert-triangle"),
+		BookOpenIcon: icon("book-open"),
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
 		CameraIcon: icon("camera"),
@@ -26,7 +27,9 @@ vi.mock("lucide-react", () => {
 		ClipboardCopyIcon: icon("clipboard-copy"),
 		ClockIcon: icon("clock"),
 		CopyIcon: icon("copy"),
+		CrosshairIcon: icon("crosshair"),
 		DownloadIcon: icon("download"),
+		EyeIcon: icon("eye"),
 		FileTextIcon: icon("file-text"),
 		FilterIcon: icon("filter"),
 		FilmIcon: icon("film"),
@@ -37,11 +40,16 @@ vi.mock("lucide-react", () => {
 		Loader2: icon("loader"),
 		MapPinIcon: icon("map-pin"),
 		MessageSquareIcon: icon("message-square"),
+		MicIcon: icon("mic"),
+		MonitorIcon: icon("monitor"),
 		MoreHorizontalIcon: icon("more-horizontal"),
+		MusicIcon: icon("music"),
 		PencilIcon: icon("pencil"),
 		PlusIcon: icon("plus"),
 		RotateCcwIcon: icon("rotate"),
 		SearchIcon: icon("search"),
+		SmartphoneIcon: icon("smartphone"),
+		SpeechIcon: icon("speech"),
 		SparklesIcon: icon("sparkles"),
 		SquareIcon: icon("square"),
 		Trash2Icon: icon("trash"),
@@ -49,6 +57,7 @@ vi.mock("lucide-react", () => {
 		UserIcon: icon("user"),
 		UsersIcon: icon("users"),
 		VideoIcon: icon("video"),
+		Volume2Icon: icon("volume2"),
 		XIcon: icon("x"),
 		ZapIcon: icon("zap"),
 	};
@@ -228,6 +237,32 @@ vi.mock("@/components/ui/resizable", () => ({
 		<div data-testid="resizable-panel">{children}</div>
 	),
 	ResizableHandle: () => <div data-testid="resizable-handle" />,
+}));
+
+vi.mock("@/lib/moyin/script/example-scripts", () => ({
+	EXAMPLE_SCRIPTS: [
+		{
+			id: "test-example",
+			label: "Test Example",
+			language: "English",
+			description: "Test script",
+			content: "Test content",
+			structure: {
+				scriptData: {
+					title: "Test",
+					language: "English",
+					characters: [],
+					scenes: [],
+					episodes: [],
+					storyParagraphs: [],
+				},
+				characters: [],
+				scenes: [],
+				episodes: [],
+				shots: [],
+			},
+		},
+	],
 }));
 
 vi.mock("@/lib/moyin/presets/visual-styles", () => ({

@@ -18,6 +18,7 @@ import type { CLIRunOptions } from "./cli-runner.js";
 import { getExitCode, formatErrorForCli } from "./errors.js";
 import { CLIOutput } from "./cli-output.js";
 import { StreamEmitter, NullEmitter } from "./stream-emitter.js";
+import { formatCommandOutput } from "./cli-output-formatters.js";
 
 const VERSION = "1.0.0";
 
@@ -56,6 +57,67 @@ const COMMANDS = [
 	"list-video-models",
 	"list-motion-models",
 	"list-speech-models",
+	// Editor commands — proxy to running QCut HTTP API
+	"editor:health",
+	"editor:media:list",
+	"editor:media:info",
+	"editor:media:import",
+	"editor:media:import-url",
+	"editor:media:batch-import",
+	"editor:media:extract-frame",
+	"editor:media:rename",
+	"editor:media:delete",
+	"editor:project:settings",
+	"editor:project:update-settings",
+	"editor:project:stats",
+	"editor:project:summary",
+	"editor:project:report",
+	"editor:timeline:export",
+	"editor:timeline:import",
+	"editor:timeline:add-element",
+	"editor:timeline:batch-add",
+	"editor:timeline:update-element",
+	"editor:timeline:batch-update",
+	"editor:timeline:delete-element",
+	"editor:timeline:batch-delete",
+	"editor:timeline:split",
+	"editor:timeline:move",
+	"editor:timeline:arrange",
+	"editor:timeline:select",
+	"editor:timeline:get-selection",
+	"editor:timeline:clear-selection",
+	"editor:editing:batch-cuts",
+	"editor:editing:delete-range",
+	"editor:editing:auto-edit",
+	"editor:editing:auto-edit-status",
+	"editor:editing:auto-edit-list",
+	"editor:editing:suggest-cuts",
+	"editor:editing:suggest-status",
+	// Analysis + transcription commands
+	"editor:analyze:video",
+	"editor:analyze:models",
+	"editor:analyze:scenes",
+	"editor:analyze:frames",
+	"editor:analyze:fillers",
+	"editor:transcribe:run",
+	"editor:transcribe:start",
+	"editor:transcribe:status",
+	"editor:transcribe:list-jobs",
+	"editor:transcribe:cancel",
+	// Generate + export + diagnostics + MCP commands
+	"editor:generate:start",
+	"editor:generate:status",
+	"editor:generate:list-jobs",
+	"editor:generate:cancel",
+	"editor:generate:models",
+	"editor:generate:estimate-cost",
+	"editor:export:presets",
+	"editor:export:recommend",
+	"editor:export:start",
+	"editor:export:status",
+	"editor:export:list-jobs",
+	"editor:diagnostics:analyze",
+	"editor:mcp:forward-html",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -98,10 +160,51 @@ Commands:
   vimax:create-registry     Create portrait registry from files
   vimax:show-registry       Display registry contents
   vimax:list-models         List ViMax-specific models
-  list-avatar-models  List avatar models
-  list-video-models   List video models
-  list-motion-models  List motion transfer models
-  list-speech-models  List speech models
+  list-avatar-models  List avatar/video/motion/speech models
+  list-video-models   list-motion-models  list-speech-models
+
+Editor Commands (requires running QCut — use --project-id for all):
+  editor:health              Check editor connectivity
+  editor:media:list/info     List or inspect media files
+  editor:media:import        Import local file (--source)
+  editor:media:import-url    Import from URL (--url)
+  editor:media:batch-import  Batch import (--items, max 20)
+  editor:media:extract-frame Extract video frame (--timestamp)
+  editor:media:rename/delete Rename or delete media
+  editor:project:settings    Get/update project settings
+  editor:project:stats       Get project statistics
+  editor:project:summary     Get project summary (markdown)
+  editor:project:report      Generate pipeline report
+  editor:timeline:export     Export timeline (--output-format)
+  editor:timeline:import     Import timeline data (--data)
+  editor:timeline:add-element    Add element (--data)
+  editor:timeline:batch-add      Batch add (--elements, max 50)
+  editor:timeline:update-element/batch-update   Update elements
+  editor:timeline:delete-element/batch-delete   Delete elements
+  editor:timeline:split/move/arrange  Manipulate elements
+  editor:timeline:select/get-selection/clear-selection
+  editor:editing:batch-cuts/delete-range  Cut operations
+  editor:editing:auto-edit   Auto-edit (fillers/silences)
+  editor:editing:auto-edit-status/list  Check or list jobs
+  editor:editing:suggest-cuts/status    AI-suggest cuts
+  editor:analyze:video       Analyze video with AI vision
+  editor:analyze:models      List analysis models
+  editor:analyze:scenes      Detect scene changes
+  editor:analyze:frames      Analyze video frames
+  editor:analyze:fillers     Detect filler words/silences
+  editor:transcribe:run      Transcribe media (sync)
+  editor:transcribe:start    Transcribe media (async, --poll)
+  editor:transcribe:status/list-jobs/cancel  Job management
+  editor:generate:start      Start AI generation (--poll)
+  editor:generate:status/list-jobs/cancel    Job management
+  editor:generate:models     List generation models
+  editor:generate:estimate-cost  Estimate generation cost
+  editor:export:presets      List export presets
+  editor:export:recommend    Recommend settings (--target)
+  editor:export:start        Export project (--poll)
+  editor:export:status/list-jobs  Job management
+  editor:diagnostics:analyze Analyze error (--message)
+  editor:mcp:forward-html    Forward HTML to MCP preview
 
 Global Options:
   --output-dir, -o    Output directory (default: ./output)
@@ -127,6 +230,17 @@ Pipeline Options:
   --parallel          Enable parallel step execution
   --max-workers       Max concurrent workers (default: 8)
 
+Editor Options (see docs for full list):
+  --project-id   Project ID    --media-id   Media ID
+  --element-id   Element ID    --track-id   Track ID
+  --job-id       Job ID        --data       JSON input (@file/inline/-)
+  --to-track     Target track  --split-time Split point (s)
+  --start-time   Start (s)     --end-time   End (s)
+  --mode         Arrange mode  --replace    Replace on import
+  --ripple       Ripple edit   --poll       Auto-poll async jobs
+  --host/--port  API endpoint (default: 127.0.0.1:8765)
+  --token        API auth      --timeout    Job timeout (s)
+
 Environment Variables:
   FAL_KEY             FAL.ai API key
   GEMINI_API_KEY      Google Gemini API key
@@ -134,11 +248,10 @@ Environment Variables:
   ELEVENLABS_API_KEY  ElevenLabs API key
 
 Examples:
-  qcut-pipeline generate-image -t "A cat in space"  (default model: nano_banana_pro)
+  qcut-pipeline generate-image -t "A cat in space"
   qcut-pipeline create-video -m kling_2_6_pro -t "Ocean waves" -d 5s
-  qcut-pipeline list-models --category text_to_video
-  qcut-pipeline estimate-cost -m veo3 -d 8s
   qcut-pipeline run-pipeline -c pipeline.yaml -i "A sunset"
+  qcut-pipeline editor:timeline:export --project-id my-proj --json
 `.trim()
 	);
 }
@@ -246,6 +359,50 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"project-id": { type: "string" },
 			// grid upscale
 			"grid-upscale": { type: "string" },
+			// editor flags
+			"media-id": { type: "string" },
+			"element-id": { type: "string" },
+			"job-id": { type: "string" },
+			"track-id": { type: "string" },
+			"to-track": { type: "string" },
+			"split-time": { type: "string" },
+			"start-time": { type: "string" },
+			"end-time": { type: "string" },
+			"new-name": { type: "string" },
+			changes: { type: "string" },
+			updates: { type: "string" },
+			elements: { type: "string" },
+			cuts: { type: "string" },
+			items: { type: "string" },
+			preset: { type: "string" },
+			threshold: { type: "string" },
+			timestamps: { type: "string" },
+			host: { type: "string" },
+			port: { type: "string" },
+			token: { type: "string" },
+			poll: { type: "boolean", default: false },
+			"poll-interval": { type: "string" },
+			replace: { type: "boolean", default: false },
+			ripple: { type: "boolean", default: false },
+			"cross-track-ripple": { type: "boolean", default: false },
+			"remove-fillers": { type: "boolean", default: false },
+			"remove-silences": { type: "boolean", default: false },
+			html: { type: "string" },
+			message: { type: "string" },
+			stack: { type: "string" },
+			"add-to-timeline": { type: "boolean", default: false },
+			"include-fillers": { type: "boolean", default: false },
+			"include-silences": { type: "boolean", default: false },
+			"include-scenes": { type: "boolean", default: false },
+			"tool-name": { type: "string" },
+			"clear-log": { type: "boolean", default: false },
+			data: { type: "string" },
+			url: { type: "string" },
+			filename: { type: "string" },
+			mode: { type: "string" },
+			gap: { type: "string" },
+			timeout: { type: "string" },
+			provider: { type: "string" },
 		},
 		strict: false,
 	});
@@ -365,6 +522,78 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				? undefined
 				: parseFloat(values["grid-upscale"] as string)
 			: undefined,
+		// editor options
+		mediaId: values["media-id"] as string | undefined,
+		elementId: values["element-id"] as string | undefined,
+		jobId: values["job-id"] as string | undefined,
+		trackId: values["track-id"] as string | undefined,
+		toTrack: values["to-track"] as string | undefined,
+		splitTime: values["split-time"]
+			? Number.isNaN(parseFloat(values["split-time"] as string))
+				? undefined
+				: parseFloat(values["split-time"] as string)
+			: undefined,
+		startTime: values["start-time"]
+			? Number.isNaN(parseFloat(values["start-time"] as string))
+				? undefined
+				: parseFloat(values["start-time"] as string)
+			: undefined,
+		endTime: values["end-time"]
+			? Number.isNaN(parseFloat(values["end-time"] as string))
+				? undefined
+				: parseFloat(values["end-time"] as string)
+			: undefined,
+		newName: values["new-name"] as string | undefined,
+		changes: values.changes as string | undefined,
+		updates: values.updates as string | undefined,
+		elements: values.elements as string | undefined,
+		cuts: values.cuts as string | undefined,
+		items: values.items as string | undefined,
+		preset: values.preset as string | undefined,
+		threshold: values.threshold
+			? Number.isNaN(parseFloat(values.threshold as string))
+				? undefined
+				: parseFloat(values.threshold as string)
+			: undefined,
+		timestamps: values.timestamps as string | undefined,
+		host: values.host as string | undefined,
+		port: values.port as string | undefined,
+		token: values.token as string | undefined,
+		poll: (values.poll as boolean) ?? false,
+		pollInterval: values["poll-interval"]
+			? Number.isNaN(parseFloat(values["poll-interval"] as string))
+				? undefined
+				: parseFloat(values["poll-interval"] as string)
+			: undefined,
+		replace: (values.replace as boolean) ?? false,
+		ripple: (values.ripple as boolean) ?? false,
+		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,
+		removeFillers: (values["remove-fillers"] as boolean) ?? false,
+		removeSilences: (values["remove-silences"] as boolean) ?? false,
+		html: values.html as string | undefined,
+		message: values.message as string | undefined,
+		stack: values.stack as string | undefined,
+		addToTimeline: (values["add-to-timeline"] as boolean) ?? false,
+		includeFillers: (values["include-fillers"] as boolean) ?? false,
+		includeSilences: (values["include-silences"] as boolean) ?? false,
+		includeScenes: (values["include-scenes"] as boolean) ?? false,
+		toolName: values["tool-name"] as string | undefined,
+		clearLog: (values["clear-log"] as boolean) ?? false,
+		data: values.data as string | undefined,
+		url: values.url as string | undefined,
+		filename: values.filename as string | undefined,
+		mode: values.mode as string | undefined,
+		gap: values.gap
+			? Number.isNaN(parseFloat(values.gap as string))
+				? undefined
+				: parseFloat(values.gap as string)
+			: undefined,
+		timeout: values.timeout
+			? Number.isNaN(parseFloat(values.timeout as string))
+				? undefined
+				: parseFloat(values.timeout as string)
+			: undefined,
+		provider: values.provider as string | undefined,
 	};
 }
 
@@ -421,163 +650,7 @@ export async function main(
 		if (result.duration !== undefined) {
 			output.info(`Duration: ${result.duration.toFixed(1)}s`);
 		}
-		if (
-			result.data &&
-			(options.command === "list-models" ||
-				options.command === "vimax:list-models" ||
-				options.command === "list-video-models" ||
-				options.command === "list-avatar-models" ||
-				options.command === "list-motion-models" ||
-				options.command === "list-speech-models")
-		) {
-			const data = result.data as {
-				models: {
-					key: string;
-					name: string;
-					provider: string;
-					categories: string[];
-				}[];
-				count: number;
-			};
-			console.log(`\nAvailable models (${data.count}):\n`);
-			for (const m of data.models) {
-				console.log(
-					`  ${m.key.padEnd(35)} ${m.provider.padEnd(15)} ${m.categories.join(", ")}`
-				);
-			}
-		}
-		if (result.data && options.command === "estimate-cost") {
-			const data = result.data as {
-				model: string;
-				totalCost: number;
-				breakdown: { item: string; cost: number }[];
-			};
-			console.log(
-				`\nCost estimate for ${data.model}: $${data.totalCost.toFixed(3)}`
-			);
-			for (const b of data.breakdown) {
-				console.log(`  ${b.item}: $${b.cost.toFixed(4)}`);
-			}
-		}
-		if (
-			result.data &&
-			(options.command === "analyze-video" || options.command === "transcribe")
-		) {
-			console.log(
-				`\n${typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2)}`
-			);
-		}
-		if (result.data && options.command === "check-keys") {
-			const data = result.data as {
-				keys: {
-					name: string;
-					configured: boolean;
-					source: string;
-					masked?: string;
-				}[];
-			};
-			console.log("\nAPI Key Status:\n");
-			for (const k of data.keys) {
-				const status = k.configured
-					? `configured (${k.source}) ${k.masked || ""}`
-					: "not set";
-				console.log(`  ${k.name.padEnd(25)} ${status}`);
-			}
-		}
-		if (result.data && options.command === "create-examples") {
-			const data = result.data as { created: string[]; count: number };
-			console.log(`\nCreated ${data.count} example pipelines:`);
-			for (const p of data.created) {
-				console.log(`  ${p}`);
-			}
-		}
-		if (result.data && options.command === "setup") {
-			const data = result.data as { message: string };
-			console.log(`\n${data.message}`);
-		}
-		if (
-			result.data &&
-			(options.command === "set-key" ||
-				options.command === "get-key" ||
-				options.command === "delete-key")
-		) {
-			const data = result.data as {
-				message?: string;
-				name?: string;
-				masked?: string;
-				value?: string;
-			};
-			if (data.message) console.log(data.message);
-			if (data.value) console.log(`${data.name}: ${data.value}`);
-			else if (data.masked) console.log(`${data.name}: ${data.masked}`);
-		}
-		if (result.data && options.command === "init-project") {
-			const data = result.data as {
-				projectDir: string;
-				created: string[];
-				message: string;
-			};
-			console.log(`\n${data.message}`);
-			if (data.created.length > 0) {
-				console.log(`  Project: ${data.projectDir}`);
-				for (const dir of data.created) {
-					console.log(`  + ${dir}`);
-				}
-			}
-		}
-		if (result.data && options.command === "organize-project") {
-			const data = result.data as {
-				moved: number;
-				message: string;
-				files?: { from: string; to: string; category: string }[];
-			};
-			console.log(`\n${data.message}`);
-			if (data.files && data.files.length > 0) {
-				for (const f of data.files) {
-					console.log(`  ${f.from} → ${f.category}/`);
-				}
-			}
-		}
-		if (result.data && options.command === "structure-info") {
-			const data = result.data as {
-				projectDir: string;
-				directories: { path: string; fileCount: number; exists: boolean }[];
-				totalFiles: number;
-			};
-			console.log(`\nProject: ${data.projectDir}`);
-			console.log(`Total files: ${data.totalFiles}\n`);
-			for (const dir of data.directories) {
-				const status = dir.exists
-					? `${String(dir.fileCount).padStart(4)} files`
-					: "  (missing)";
-				console.log(`  ${dir.path.padEnd(25)} ${status}`);
-			}
-		}
-		if (result.data && options.command === "vimax:extract-characters") {
-			const data = result.data as { characters: unknown[]; count: number };
-			console.log(`\nExtracted ${data.count} characters`);
-		}
-		if (result.data && options.command === "vimax:generate-script") {
-			const data = result.data as {
-				title: string;
-				scenes: number;
-				total_duration: number;
-			};
-			console.log(
-				`\nGenerated script: "${data.title}" (${data.scenes} scenes, ${data.total_duration.toFixed(1)}s)`
-			);
-		}
-		if (result.data && options.command === "vimax:show-registry") {
-			const data = result.data as {
-				project_id: string;
-				characters: unknown[];
-				total_characters: number;
-			};
-			console.log(
-				`\nRegistry (${data.project_id}): ${data.total_characters} characters`
-			);
-			console.log(JSON.stringify(data.characters, null, 2));
-		}
+		formatCommandOutput(options.command, result);
 		emitter.pipelineComplete({ ...result, success: true });
 	} else {
 		output.error(result.error || "Unknown error");

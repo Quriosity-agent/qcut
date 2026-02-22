@@ -20,10 +20,21 @@ import {
 } from "@/components/ui/select";
 import {
 	AlertTriangleIcon,
+	BookOpenIcon,
 	Loader2,
 	SparklesIcon,
 	Trash2Icon,
 } from "lucide-react";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+	EXAMPLE_SCRIPTS,
+	type ExampleScriptStructure,
+} from "@/lib/moyin/script/example-scripts";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
 import { CINEMATOGRAPHY_PROFILES } from "@/lib/moyin/presets/cinematography-profiles";
 
@@ -127,6 +138,25 @@ export function ScriptInput() {
 	const isParsing = parseStatus === "parsing";
 	const canParse = rawScript.trim().length > 0 && !isParsing;
 
+	/** Load an example with pre-parsed structure into the store */
+	const loadExample = (
+		content: string,
+		lang: string,
+		structure: ExampleScriptStructure
+	) => {
+		useMoyinStore.setState({
+			rawScript: content,
+			language: lang,
+			scriptData: structure.scriptData,
+			characters: structure.characters,
+			scenes: structure.scenes,
+			episodes: structure.episodes,
+			shots: structure.shots,
+			parseStatus: "ready",
+			activeStep: "characters",
+		});
+	};
+
 	const selectedStyle = VISUAL_STYLE_PRESETS.find(
 		(s) => s.id === selectedStyleId
 	);
@@ -208,6 +238,34 @@ export function ScriptInput() {
 						className="min-h-[160px] resize-y text-sm font-mono"
 						disabled={isParsing}
 					/>
+
+					{!rawScript.trim() && !isParsing && (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="outline" size="sm" className="w-full">
+									<BookOpenIcon className="mr-1.5 h-3.5 w-3.5" />
+									Load Example Script
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start" className="w-64">
+								{EXAMPLE_SCRIPTS.map((ex) => (
+									<DropdownMenuItem
+										key={ex.id}
+										onClick={() => {
+											loadExample(ex.content, ex.language, ex.structure);
+										}}
+									>
+										<div className="flex flex-col gap-0.5">
+											<span className="text-xs font-medium">{ex.label}</span>
+											<span className="text-[10px] text-muted-foreground">
+												{ex.description}
+											</span>
+										</div>
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
 
 					{parseError && (
 						<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">

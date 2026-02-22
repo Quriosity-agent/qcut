@@ -29,7 +29,7 @@ export interface MoyinPersistedState {
 	shotCount: string;
 }
 
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 4;
 const STORAGE_PREFIX = "moyin-project-";
 
 export function getMoyinStorageKey(projectId: string): string {
