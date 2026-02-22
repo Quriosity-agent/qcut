@@ -274,11 +274,13 @@ export function ShotContextMenu({ shotId }: { shotId: string }) {
 			<DropdownMenuContent align="end" className="w-40">
 				<DropdownMenuItem onClick={handleCopyShot}>
 					<ClipboardCopyIcon className="h-3.5 w-3.5" />
-					<span className="text-xs">{copied ? "Copied!" : "Copy Shot"}</span>
+					<span className="text-xs" aria-live="polite">
+						{copied ? "Copied!" : "Copy Shot"}
+					</span>
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={handleCopySettings}>
 					<CopyIcon className="h-3.5 w-3.5" />
-					<span className="text-xs">
+					<span className="text-xs" aria-live="polite">
 						{settingsCopied ? "Copied!" : "Copy Settings"}
 					</span>
 				</DropdownMenuItem>
