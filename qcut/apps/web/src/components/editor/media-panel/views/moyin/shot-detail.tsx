@@ -39,6 +39,7 @@ import {
 } from "./cinema-selectors";
 import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
+import { ShotDetailRead } from "./shot-detail-read";
 import { isModerationError } from "@/stores/moyin-shot-generation";
 function FieldRow({
 	label,
@@ -516,163 +517,11 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				</div>
 			</div>
 			<FieldRow label="Action" value={shot.actionSummary} />
-			<FieldRow label="Camera" value={shot.cameraMovement} />
-			<FieldRow label="Dialogue" value={shot.dialogue} />
-			<ShotSizeSelector value={shot.shotSize} onChange={() => {}} readOnly />
-			<DurationSelector value={shot.duration} onChange={() => {}} readOnly />
-			<LightingSelector
-				lightingStyle={shot.lightingStyle}
-				lightingDirection={shot.lightingDirection}
-				colorTemperature={shot.colorTemperature}
-				onStyleChange={() => {}}
-				onDirectionChange={() => {}}
-				onTempChange={() => {}}
-				readOnly
+			<ShotDetailRead
+				shot={shot}
+				onPreview={(url, type) => setPreview({ url, type })}
 			/>
-			<FieldRow label="Lighting Notes" value={shot.lightingNotes} />
-			<FocusSelector
-				depthOfField={shot.depthOfField}
-				focusTransition={shot.focusTransition}
-				onDofChange={() => {}}
-				onTransitionChange={() => {}}
-				readOnly
-			/>
-			<FieldRow label="Focus Target" value={shot.focusTarget} />
-			<RigSelector
-				cameraRig={shot.cameraRig}
-				movementSpeed={shot.movementSpeed}
-				onRigChange={() => {}}
-				onSpeedChange={() => {}}
-				readOnly
-			/>
-			<AngleSelector
-				cameraAngle={shot.cameraAngle}
-				onChange={() => {}}
-				readOnly
-			/>
-			<FocalLengthSelector
-				focalLength={shot.focalLength}
-				onChange={() => {}}
-				readOnly
-			/>
-			<TechniqueSelector
-				photographyTechnique={shot.photographyTechnique}
-				onChange={() => {}}
-				readOnly
-			/>
-			<AtmosphereSelector
-				atmosphericEffects={shot.atmosphericEffects}
-				effectIntensity={shot.effectIntensity}
-				onEffectsChange={() => {}}
-				onIntensityChange={() => {}}
-				readOnly
-			/>
-			<SpeedSelector
-				playbackSpeed={shot.playbackSpeed}
-				onChange={() => {}}
-				readOnly
-			/>
-			<EmotionTagSelector
-				value={shot.emotionTags}
-				onChange={() => {}}
-				readOnly
-			/>
-			<SoundDesignInput
-				ambientSound={shot.ambientSound}
-				soundEffect={shot.soundEffect}
-				bgm={shot.bgm}
-				audioEnabled={shot.audioEnabled}
-				onAmbientChange={() => {}}
-				onSfxChange={() => {}}
-				readOnly
-			/>
-			{shot.narrativeFunction && (
-				<div className="space-y-0.5">
-					<p className="text-[10px] font-medium text-muted-foreground">
-						Narrative Function
-					</p>
-					<Badge variant="outline" className="text-[10px]">
-						{shot.narrativeFunction}
-					</Badge>
-				</div>
-			)}
-			<FieldRow label="Shot Purpose" value={shot.shotPurpose} />
-			<FieldRow label="Visual Focus" value={shot.visualFocus} />
-			<FieldRow label="Blocking" value={shot.characterBlocking} />
-			<FieldRow label="Rhythm" value={shot.rhythm} />
 			<PromptEditor draft={shot} onUpdate={() => {}} readOnly />
-			{shot.imageUrl && (
-				<div
-					className="rounded border overflow-hidden cursor-pointer relative group"
-					draggable
-					onDragStart={(e) => handleDragStart(e, "image")}
-					onClick={() => setPreview({ url: shot.imageUrl!, type: "image" })}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							setPreview({ url: shot.imageUrl!, type: "image" });
-						}
-					}}
-					role="button"
-					tabIndex={0}
-					aria-label={`Preview shot ${shot.index + 1} image`}
-				>
-					<img
-						src={shot.imageUrl}
-						alt={`Shot ${shot.index + 1}`}
-						className="w-full h-auto"
-					/>
-					<div
-						className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity"
-						aria-hidden="true"
-					>
-						<GripVerticalIcon className="h-4 w-4 text-white drop-shadow" />
-					</div>
-					<span className="sr-only">Drag to timeline</span>
-				</div>
-			)}
-			{shot.characterNames && shot.characterNames.length > 0 && (
-				<div className="flex flex-wrap gap-1">
-					{shot.characterNames.map((name) => (
-						<Badge key={name} variant="secondary" className="text-[10px] px-1">
-							{name}
-						</Badge>
-					))}
-				</div>
-			)}
-			{shot.endFrameImageUrl && (
-				<div className="space-y-0.5">
-					<p className="text-[10px] font-medium text-muted-foreground">
-						End Frame
-						{shot.endFrameSource && (
-							<Badge variant="outline" className="text-[9px] ml-1 px-1 py-0">
-								{shot.endFrameSource}
-							</Badge>
-						)}
-					</p>
-					<div
-						className="rounded border overflow-hidden cursor-pointer"
-						onClick={() =>
-							setPreview({ url: shot.endFrameImageUrl!, type: "image" })
-						}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								setPreview({ url: shot.endFrameImageUrl!, type: "image" });
-							}
-						}}
-						role="button"
-						tabIndex={0}
-						aria-label="Preview end frame image"
-					>
-						<img
-							src={shot.endFrameImageUrl}
-							alt={`Shot ${shot.index + 1} end frame`}
-							className="w-full h-auto"
-						/>
-					</div>
-				</div>
-			)}
 			<div className="space-y-1.5 border-t pt-2">
 				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					Generate

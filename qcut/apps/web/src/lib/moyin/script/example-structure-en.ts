@@ -12,6 +12,7 @@ import type {
 	ScriptScene,
 	Shot,
 } from "@/types/moyin-script";
+import { DEMO_IMAGES } from "./example-demo-images";
 
 // ── Helper ──────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ function mkShot(
 		chars?: string[];
 		charIds?: string[];
 		dialogue?: string;
+		imageUrl?: string;
+		endFrameImageUrl?: string;
 	} = {}
 ): Shot {
 	return {
@@ -37,8 +40,10 @@ function mkShot(
 		characterNames: opts.chars,
 		characterIds: opts.charIds ?? [],
 		characterVariations: {},
-		imageStatus: "idle",
-		imageProgress: 0,
+		imageStatus: opts.imageUrl ? "completed" : "idle",
+		imageProgress: opts.imageUrl ? 100 : 0,
+		imageUrl: opts.imageUrl,
+		endFrameImageUrl: opts.endFrameImageUrl,
 		videoStatus: "idle",
 		videoProgress: 0,
 	};
@@ -211,6 +216,8 @@ export const EN_SHOTS: Shot[] = [
 			dur: 5,
 			chars: ["Shen Xingqing"],
 			charIds: [C.sxq],
+			imageUrl: DEMO_IMAGES.shot0,
+			endFrameImageUrl: DEMO_IMAGES.shot0EndFrame,
 		}
 	),
 	mkShot(1, S1, "Villager speaks", {
@@ -219,12 +226,14 @@ export const EN_SHOTS: Shot[] = [
 		chars: ["Villager"],
 		charIds: [C.cm],
 		dialogue: "VILLAGER: (in thick dialect) Hey miss — here to teach?",
+		imageUrl: DEMO_IMAGES.shot1,
 	}),
 	mkShot(2, S1, "Xingqing opens eyes, picks up ball, MVP letters worn smooth", {
 		size: "MS",
 		dur: 5,
 		chars: ["Shen Xingqing"],
 		charIds: [C.sxq],
+		imageUrl: DEMO_IMAGES.shot2,
 	}),
 	mkShot(3, S1, "Xingqing replies", {
 		size: "CU",
@@ -232,6 +241,7 @@ export const EN_SHOTS: Shot[] = [
 		chars: ["Shen Xingqing"],
 		charIds: [C.sxq],
 		dialogue: "XINGQING: Here for grad-school credits.",
+		imageUrl: DEMO_IMAGES.shot3,
 	}),
 	mkShot(
 		4,
@@ -240,6 +250,7 @@ export const EN_SHOTS: Shot[] = [
 		{
 			size: "MS",
 			dur: 4,
+			imageUrl: DEMO_IMAGES.shot4,
 		}
 	),
 

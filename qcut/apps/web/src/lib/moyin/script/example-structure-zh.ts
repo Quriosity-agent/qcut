@@ -12,6 +12,7 @@ import type {
 	ScriptScene,
 	Shot,
 } from "@/types/moyin-script";
+import { DEMO_IMAGES } from "./example-demo-images";
 
 // ── Helper ──────────────────────────────────────────────────────────
 
@@ -25,6 +26,8 @@ function mkShot(
 		chars?: string[];
 		charIds?: string[];
 		dialogue?: string;
+		imageUrl?: string;
+		endFrameImageUrl?: string;
 	} = {}
 ): Shot {
 	return {
@@ -37,8 +40,10 @@ function mkShot(
 		characterNames: opts.chars,
 		characterIds: opts.charIds ?? [],
 		characterVariations: {},
-		imageStatus: "idle",
-		imageProgress: 0,
+		imageStatus: opts.imageUrl ? "completed" : "idle",
+		imageProgress: opts.imageUrl ? 100 : 0,
+		imageUrl: opts.imageUrl,
+		endFrameImageUrl: opts.endFrameImageUrl,
 		videoStatus: "idle",
 		videoProgress: 0,
 	};
@@ -205,6 +210,8 @@ export const ZH_SHOTS: Shot[] = [
 		dur: 5,
 		chars: ["沈星晴"],
 		charIds: [C.sxq],
+		imageUrl: DEMO_IMAGES.shot0,
+		endFrameImageUrl: DEMO_IMAGES.shot0EndFrame,
 	}),
 	mkShot(1, S1, "村民说话", {
 		size: "CU",
@@ -212,12 +219,14 @@ export const ZH_SHOTS: Shot[] = [
 		chars: ["村民"],
 		charIds: [C.cm],
 		dialogue: "村民（操着方言）：妹子，支教的？",
+		imageUrl: DEMO_IMAGES.shot1,
 	}),
 	mkShot(2, S1, "沈星晴睁眼，捡球，球面“MVP”字样已磨损", {
 		size: "MS",
 		dur: 5,
 		chars: ["沈星晴"],
 		charIds: [C.sxq],
+		imageUrl: DEMO_IMAGES.shot2,
 	}),
 	mkShot(3, S1, "沈星晴说话", {
 		size: "CU",
@@ -225,10 +234,12 @@ export const ZH_SHOTS: Shot[] = [
 		chars: ["沈星晴"],
 		charIds: [C.sxq],
 		dialogue: "沈星晴：来保研的。",
+		imageUrl: DEMO_IMAGES.shot3,
 	}),
 	mkShot(4, S1, "她把球塞回包里，看向窗外。字幕：湖南 · 青石镇", {
 		size: "MS",
 		dur: 4,
+		imageUrl: DEMO_IMAGES.shot4,
 	}),
 
 	// Scene 2: 中学操场 (6 shots)
