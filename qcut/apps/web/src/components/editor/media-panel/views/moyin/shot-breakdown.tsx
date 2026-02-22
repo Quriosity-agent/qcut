@@ -179,6 +179,7 @@ export function ShotBreakdown() {
 				`Shot ${s.index + 1}: ${s.imagePrompt || s.visualPrompt || s.actionSummary || "—"}`
 		);
 		navigator.clipboard.writeText(lines.join("\n"));
+		toast.success("Copied to clipboard");
 	}, [shots, selectedShotIds]);
 
 	const handleBulkGenerate = useCallback(() => {
@@ -397,7 +398,10 @@ export function ShotBreakdown() {
 						{/* Sticky scene header */}
 						<div className="sticky top-0 z-10 flex items-center gap-1.5 bg-background border-b px-1.5 py-1.5">
 							<MapPinIcon className="h-3 w-3 text-muted-foreground shrink-0" />
-							<span className="text-[10px] font-medium truncate flex-1">
+							<span
+								className="text-[10px] font-medium truncate flex-1"
+								title={scene.name || scene.location}
+							>
 								{scene.name || scene.location}
 							</span>
 							<button
@@ -503,7 +507,10 @@ export function ShotBreakdown() {
 									{shot.cameraMovement && (
 										<CameraIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
 									)}
-									<span className="text-[10px] truncate flex-1 min-w-0">
+									<span
+										className="text-[10px] truncate flex-1 min-w-0"
+										title={shot.actionSummary || undefined}
+									>
 										{shot.actionSummary || "—"}
 									</span>
 									{shot.dialogue && (

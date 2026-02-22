@@ -227,12 +227,18 @@ function CharacterCard({
 			</CardHeader>
 			<CardContent className="px-3 pb-3 pt-1">
 				{char.role && (
-					<p className="text-xs text-muted-foreground line-clamp-2">
+					<p
+						className="text-xs text-muted-foreground line-clamp-2"
+						title={char.role}
+					>
 						{char.role}
 					</p>
 				)}
 				{char.visualPromptEn && (
-					<p className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 line-clamp-2">
+					<p
+						className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 line-clamp-2"
+						title={char.visualPromptEn}
+					>
 						{char.visualPromptEn}
 					</p>
 				)}

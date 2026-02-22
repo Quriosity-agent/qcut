@@ -219,12 +219,18 @@ function SceneCard({
 					<p className="text-xs text-muted-foreground">{scene.location}</p>
 				)}
 				{scene.atmosphere && (
-					<p className="text-xs text-muted-foreground line-clamp-2">
+					<p
+						className="text-xs text-muted-foreground line-clamp-2"
+						title={scene.atmosphere}
+					>
 						{scene.atmosphere}
 					</p>
 				)}
 				{scene.visualPrompt && (
-					<p className="text-[10px] text-blue-600 dark:text-blue-400 line-clamp-2">
+					<p
+						className="text-[10px] text-blue-600 dark:text-blue-400 line-clamp-2"
+						title={scene.visualPrompt}
+					>
 						{scene.visualPrompt}
 					</p>
 				)}

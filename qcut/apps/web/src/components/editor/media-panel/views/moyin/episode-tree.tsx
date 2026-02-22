@@ -394,7 +394,10 @@ export function EpisodeTree() {
 												aria-label="Edit episode title"
 											/>
 										) : (
-											<span className="flex-1 truncate text-left font-medium">
+											<span
+												className="flex-1 truncate text-left font-medium"
+												title={ep.title || `Episode ${epIdx + 1}`}
+											>
 												{ep.title || `Episode ${epIdx + 1}`}
 											</span>
 										)}
@@ -508,7 +511,10 @@ export function EpisodeTree() {
 																	aria-label="Edit scene name"
 																/>
 															) : (
-																<span className="flex-1 truncate text-left">
+																<span
+																	className="flex-1 truncate text-left"
+																	title={scene.name || scene.location}
+																>
 																	{scene.name || scene.location}
 																</span>
 															)}
@@ -556,7 +562,10 @@ export function EpisodeTree() {
 																				{shot.shotSize}
 																			</Badge>
 																		)}
-																		<span className="flex-1 truncate text-left text-muted-foreground">
+																		<span
+																			className="flex-1 truncate text-left text-muted-foreground"
+																			title={shot.actionSummary || undefined}
+																		>
 																			{shot.actionSummary || "—"}
 																		</span>
 																	</button>
@@ -598,7 +607,10 @@ export function EpisodeTree() {
 											#{i + 1}
 										</span>
 										<MapPinIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-										<span className="flex-1 truncate text-left">
+										<span
+											className="flex-1 truncate text-left"
+											title={scene.name || scene.location}
+										>
 											{scene.name || scene.location}
 										</span>
 										<StatusIcon
