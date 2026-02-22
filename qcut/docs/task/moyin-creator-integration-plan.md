@@ -138,7 +138,7 @@ Extract pure-logic modules that enhance QCut's existing AI generation without an
 
 | Source (moyin-creator) | Target (QCut) | Purpose |
 |------------------------|----------------|---------|
-| `src/lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script-parser.ts` | Parse screenplay text |
+| `src/lib/script/script-parser.ts` | `apps/web/src/lib/moyin/script/script-parser.ts` | Parse screenplay text |
 | `src/lib/script/ai-scene-finder.ts` | `apps/web/src/lib/moyin/ai-scene-finder.ts` | LLM scene extraction |
 | `src/lib/script/ai-character-finder.ts` | `apps/web/src/lib/moyin/ai-character-finder.ts` | Character detection |
 | `src/packages/ai-core/services/prompt-compiler.ts` | `apps/web/src/lib/moyin/prompt-compiler.ts` | Multi-layer prompt building |

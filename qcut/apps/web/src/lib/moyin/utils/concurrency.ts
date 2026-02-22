@@ -20,6 +20,12 @@ export async function runStaggered<T>(
 	staggerMs: number = 5000
 ): Promise<PromiseSettledResult<T>[]> {
 	if (tasks.length === 0) return [];
+	if (maxConcurrent <= 0) {
+		throw new Error("maxConcurrent must be greater than 0");
+	}
+	if (staggerMs < 0) {
+		throw new Error("staggerMs must be non-negative");
+	}
 
 	const results: PromiseSettledResult<T>[] = new Array(tasks.length);
 

@@ -678,7 +678,7 @@ export function buildCinematographyGuidance(profileId: string): string {
 		defaultSpeed,
 	} = profile;
 
-	const lines = [
+	const lines: (string | null)[] = [
 		`[Cinematography Profile: ${profile.name} (${profile.nameEn})]`,
 		`${profile.description}`,
 		"",
@@ -690,16 +690,16 @@ export function buildCinematographyGuidance(profileId: string): string {
 			? `Atmosphere: ${defaultAtmosphere.effects.join("+")} (${defaultAtmosphere.intensity})`
 			: "Atmosphere: none",
 		`Speed: ${defaultSpeed.playbackSpeed}`,
-		profile.defaultAngle ? `Angle: ${profile.defaultAngle}` : "",
+		profile.defaultAngle ? `Angle: ${profile.defaultAngle}` : null,
 		profile.defaultFocalLength
 			? `Focal length: ${profile.defaultFocalLength}`
-			: "",
-		profile.defaultTechnique ? `Technique: ${profile.defaultTechnique}` : "",
+			: null,
+		profile.defaultTechnique ? `Technique: ${profile.defaultTechnique}` : null,
 		"",
 		`**Guidance:** ${profile.promptGuidance}`,
 		"",
 		`**Reference films:** ${profile.referenceFilms.join(", ")}`,
-	].filter(Boolean);
+	].filter((line) => line !== null && line !== undefined);
 
 	return lines.join("\n");
 }
