@@ -38,6 +38,7 @@ import {
 	reorderShotsAction,
 	reorderScenesAction,
 } from "./moyin-generation";
+import { pushUndo, popUndo, popRedo } from "./moyin-undo";
 
 // Types
 
@@ -149,6 +150,8 @@ interface MoyinActions {
 	analyzeCharacterStages: () => Promise<number>;
 	generateStoryboard: () => Promise<void>;
 	splitAndApplyStoryboard: () => Promise<void>;
+	undo: () => void;
+	redo: () => void;
 	loadProject: (projectId: string) => void;
 	saveProject: () => void;
 	clearProjectData: () => void;
@@ -206,6 +209,12 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				s.id === shotId ? { ...s, ...updates } : s
 			),
 		}));
+
+	const snapshot = () => ({
+		characters: get().characters,
+		scenes: get().scenes,
+		shots: get().shots,
+	});
 
 	const selectAdjacentItem = (dir: 1 | -1) => {
 		const s = get();
@@ -348,42 +357,47 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			}
 		},
 
-		updateCharacter: (id, updates) =>
+		updateCharacter: (id, updates) => {
+			pushUndo(snapshot());
 			set((state) => ({
 				characters: state.characters.map((c) =>
 					c.id === id ? { ...c, ...updates } : c
 				),
-			})),
-
+			}));
+		},
 		addCharacter: (char) =>
 			set((state) => ({ characters: [...state.characters, char] })),
-
-		removeCharacter: (id) =>
+		removeCharacter: (id) => {
+			pushUndo(snapshot());
 			set((state) => ({
 				characters: state.characters.filter((c) => c.id !== id),
-			})),
+			}));
+		},
 
-		updateScene: (id, updates) =>
+		updateScene: (id, updates) => {
+			pushUndo(snapshot());
 			set((state) => ({
 				scenes: state.scenes.map((s) =>
 					s.id === id ? { ...s, ...updates } : s
 				),
-			})),
-
+			}));
+		},
 		addScene: (scene) => set((state) => ({ scenes: [...state.scenes, scene] })),
-
-		removeScene: (id) =>
-			set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) })),
-
+		removeScene: (id) => {
+			pushUndo(snapshot());
+			set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) }));
+		},
 		addShot: (shot) => set((state) => ({ shots: [...state.shots, shot] })),
-
-		updateShot: (id, updates) =>
+		updateShot: (id, updates) => {
+			pushUndo(snapshot());
 			set((state) => ({
 				shots: state.shots.map((s) => (s.id === id ? { ...s, ...updates } : s)),
-			})),
-
-		removeShot: (id) =>
-			set((state) => ({ shots: state.shots.filter((s) => s.id !== id) })),
+			}));
+		},
+		removeShot: (id) => {
+			pushUndo(snapshot());
+			set((state) => ({ shots: state.shots.filter((s) => s.id !== id) }));
+		},
 
 		generateShotsForEpisode: async (episodeId) => {
 			const { episodes, scenes, scriptData } = get();
@@ -435,13 +449,11 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			const { shots, characters, scenes, selectedStyleId } = get();
 			const shot = shots.find((s) => s.id === shotId);
 			if (!shot) return;
-
 			patchShot(shotId, {
 				imageStatus: "generating",
 				imageProgress: 0,
 				imageError: undefined,
 			});
-
 			try {
 				const scene = scenes.find((s) => s.id === shot.sceneRefId);
 				const prompt = buildShotImagePrompt(
@@ -451,7 +463,6 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 					selectedStyleId
 				);
 				patchShot(shotId, { imageProgress: 30 });
-
 				const remoteImageUrl = await generateShotImageRequest(prompt);
 				const imageUrl = await persistShotMedia(
 					remoteImageUrl,
@@ -470,25 +481,20 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				});
 			}
 		},
-
 		generateShotVideo: async (shotId) => {
 			const { shots } = get();
 			const shot = shots.find((s) => s.id === shotId);
 			if (!shot) return;
-
 			patchShot(shotId, {
 				videoStatus: "generating",
 				videoProgress: 0,
 				videoError: undefined,
 			});
-
 			try {
-				if (!shot.imageUrl) {
+				if (!shot.imageUrl)
 					throw new Error("Generate an image first before creating video.");
-				}
 				const prompt = shot.videoPrompt || shot.actionSummary || "";
 				patchShot(shotId, { videoProgress: 20 });
-
 				const remoteVideoUrl = await generateShotVideoRequest(
 					shot.imageUrl,
 					prompt
@@ -510,21 +516,17 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				});
 			}
 		},
-
 		generateEndFrameImage: async (shotId) => {
 			const { shots } = get();
 			const shot = shots.find((s) => s.id === shotId);
 			if (!shot) return;
-
 			patchShot(shotId, {
 				endFrameImageStatus: "generating",
 				endFrameImageError: undefined,
 			});
-
 			try {
 				const prompt = buildEndFramePrompt(shot);
 				if (!prompt) throw new Error("No end frame prompt available.");
-
 				const remoteUrl = await generateFalImage(prompt);
 				const endFrameImageUrl = await persistShotMedia(
 					remoteUrl,
@@ -545,21 +547,17 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				});
 			}
 		},
-
 		addEpisode: (ep) => set((state) => ({ episodes: [...state.episodes, ep] })),
-
 		updateEpisode: (id, updates) =>
 			set((state) => ({
 				episodes: state.episodes.map((ep) =>
 					ep.id === id ? { ...ep, ...updates } : ep
 				),
 			})),
-
 		removeEpisode: (id) =>
 			set((state) => ({
 				episodes: state.episodes.filter((ep) => ep.id !== id),
 			})),
-
 		duplicateEpisode: (id) => {
 			const { episodes, scenes, shots } = get();
 			const result = duplicateEpisodeAction(id, episodes, scenes, shots);
@@ -644,12 +642,10 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		enhanceCharacters: async () => {
 			const { characters, scriptData, rawScript } = get();
 			if (characters.length === 0) return;
-
 			set({
 				characterCalibrationStatus: "calibrating",
 				calibrationError: null,
 			});
-
 			try {
 				const enhanced = await enhanceCharactersLLM(
 					characters,
@@ -665,13 +661,10 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				});
 			}
 		},
-
 		enhanceScenes: async () => {
 			const { scenes, scriptData, rawScript } = get();
 			if (scenes.length === 0) return;
-
 			set({ sceneCalibrationStatus: "calibrating", calibrationError: null });
-
 			try {
 				const enhanced = await enhanceScenesLLM(scenes, scriptData, rawScript);
 				set({ scenes: enhanced, sceneCalibrationStatus: "done" });
@@ -687,7 +680,6 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		analyzeCharacterStages: async () => {
 			const { characters, episodes, scriptData } = get();
 			if (characters.length === 0 || episodes.length < 2) return 0;
-
 			try {
 				const updated = await analyzeStagesAction(
 					characters,
@@ -739,7 +731,6 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				});
 			}
 		},
-
 		splitAndApplyStoryboard: async () => {
 			const {
 				storyboardImageUrl: url,
@@ -766,6 +757,15 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 							: "Failed to split storyboard",
 				});
 			}
+		},
+
+		undo: () => {
+			const entry = popUndo(snapshot());
+			if (entry) set(entry);
+		},
+		redo: () => {
+			const entry = popRedo(snapshot());
+			if (entry) set(entry);
 		},
 
 		loadProject: (projectId) => {

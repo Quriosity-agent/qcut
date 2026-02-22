@@ -110,3 +110,40 @@ export function clearMoyinProject(projectId: string): void {
 	if (!projectId) return;
 	localStorage.removeItem(getMoyinStorageKey(projectId));
 }
+
+/** Export project state as a downloadable JSON file. */
+export function exportProjectJSON(
+	state: MoyinPersistedState,
+	title?: string
+): void {
+	const envelope: StorageEnvelope = { version: STORAGE_VERSION, data: state };
+	const json = JSON.stringify(envelope, null, 2);
+	const blob = new Blob([json], { type: "application/json" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `moyin-project-${title || "export"}-${Date.now()}.json`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+/** Validate and parse an imported JSON project file. Returns null if invalid. */
+export function parseImportedProjectJSON(
+	json: string
+): MoyinPersistedState | null {
+	try {
+		const envelope = JSON.parse(json) as StorageEnvelope;
+		if (!envelope || typeof envelope.version !== "number" || !envelope.data)
+			return null;
+		const d = envelope.data;
+		if (
+			!Array.isArray(d.characters) ||
+			!Array.isArray(d.scenes) ||
+			!Array.isArray(d.shots)
+		)
+			return null;
+		return d;
+	} catch {
+		return null;
+	}
+}

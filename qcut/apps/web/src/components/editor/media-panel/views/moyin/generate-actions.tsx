@@ -4,16 +4,23 @@
  */
 
 import { useMoyinStore } from "@/stores/moyin-store";
+import {
+	exportProjectJSON,
+	parseImportedProjectJSON,
+	partializeMoyinState,
+} from "@/stores/moyin-persistence";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
 	CheckCircle2Icon,
 	CopyIcon,
+	DownloadIcon,
 	GridIcon,
 	Loader2,
 	RotateCcwIcon,
 	SparklesIcon,
+	UploadIcon,
 } from "lucide-react";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
 import {
@@ -125,6 +132,33 @@ export function GenerateActions() {
 		setExportCopied(true);
 		setTimeout(() => setExportCopied(false), 1500);
 	};
+
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const handleExportJSON = useCallback(() => {
+		const state = useMoyinStore.getState();
+		exportProjectJSON(partializeMoyinState(state), scriptData?.title);
+	}, [scriptData?.title]);
+
+	const handleImportJSON = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (!file) return;
+			const reader = new FileReader();
+			reader.onload = () => {
+				const result = parseImportedProjectJSON(reader.result as string);
+				if (result) {
+					useMoyinStore.setState({
+						...result,
+						parseStatus: result.parseStatus || "ready",
+					});
+				}
+			};
+			reader.readAsText(file);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+		},
+		[]
+	);
 
 	return (
 		<div className="space-y-3">
@@ -243,6 +277,35 @@ export function GenerateActions() {
 				onStart={startBatch}
 				disabled={isGenerating || !!batch}
 			/>
+
+			{/* JSON Export/Import */}
+			<div className="flex gap-1.5">
+				<Button
+					size="sm"
+					variant="outline"
+					className="flex-1"
+					onClick={handleExportJSON}
+				>
+					<DownloadIcon className="mr-1 h-3.5 w-3.5" />
+					Export JSON
+				</Button>
+				<Button
+					size="sm"
+					variant="outline"
+					className="flex-1"
+					onClick={() => fileInputRef.current?.click()}
+				>
+					<UploadIcon className="mr-1 h-3.5 w-3.5" />
+					Import JSON
+				</Button>
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept=".json"
+					className="hidden"
+					onChange={handleImportJSON}
+				/>
+			</div>
 
 			{/* Action buttons */}
 			{isDone ? (

@@ -76,12 +76,21 @@ export function StructurePanel() {
 	const selectNextItem = useMoyinStore((s) => s.selectNextItem);
 	const selectPrevItem = useMoyinStore((s) => s.selectPrevItem);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
+	const undo = useMoyinStore((s) => s.undo);
+	const redo = useMoyinStore((s) => s.redo);
 
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			// Don't interfere with input/textarea editing
 			const tag = (e.target as HTMLElement)?.tagName;
 			if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+			// Ctrl+Z / Ctrl+Shift+Z for undo/redo
+			if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+				e.preventDefault();
+				if (e.shiftKey) redo();
+				else undo();
+				return;
+			}
 
 			switch (e.key) {
 				case "Delete":
@@ -103,7 +112,14 @@ export function StructurePanel() {
 		};
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
-	}, [deleteSelectedItem, selectNextItem, selectPrevItem, setSelectedItem]);
+	}, [
+		deleteSelectedItem,
+		selectNextItem,
+		selectPrevItem,
+		setSelectedItem,
+		undo,
+		redo,
+	]);
 
 	return (
 		<div className="space-y-3">

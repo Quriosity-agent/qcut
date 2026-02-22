@@ -43,6 +43,7 @@ vi.mock("lucide-react", () => {
 		SparklesIcon: icon("sparkles"),
 		SquareIcon: icon("square"),
 		Trash2Icon: icon("trash"),
+		UploadIcon: icon("upload"),
 		UserIcon: icon("user"),
 		UsersIcon: icon("users"),
 		VideoIcon: icon("video"),
@@ -854,7 +855,7 @@ describe("StructurePanel — Keyboard Shortcuts", () => {
 		resetStore();
 		useMoyinStore.setState({
 			parseStatus: "ready",
-			scriptData: { title: "Test", genre: "Drama" },
+			scriptData: { title: "Test", genre: "Drama", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
 			episodes: [
 				{ id: "ep1", index: 0, title: "Ep 1", sceneIds: ["s1"] },
 			],

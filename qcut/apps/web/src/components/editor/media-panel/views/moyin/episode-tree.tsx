@@ -185,6 +185,33 @@ export function EpisodeTree() {
 				onOpenChange={setEpisodeDialogOpen}
 			/>
 
+			{/* Episode quick-jump pills */}
+			{episodes.length > 1 && (
+				<div
+					className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin"
+					aria-label="Episode navigation"
+				>
+					{episodes.map((ep) => (
+						<button
+							key={ep.id}
+							type="button"
+							onClick={() => {
+								setExpandedEpisodes(new Set([ep.id]));
+								setSelectedItem(ep.id, "episode");
+							}}
+							className={cn(
+								"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border",
+								selectedItemId === ep.id
+									? "bg-primary text-primary-foreground border-primary"
+									: "text-muted-foreground border-muted hover:bg-muted"
+							)}
+						>
+							{ep.title}
+						</button>
+					))}
+				</div>
+			)}
+
 			{/* Filter tabs */}
 			<div className="flex items-center gap-1">
 				{(["all", "pending", "completed"] as const).map((mode) => (
