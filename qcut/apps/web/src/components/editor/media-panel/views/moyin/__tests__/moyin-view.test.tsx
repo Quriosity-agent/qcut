@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => {
 	);
 	return {
 		AlertTriangleIcon: icon("alert-triangle"),
+		BookOpenIcon: icon("book-open"),
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
 		CameraIcon: icon("camera"),
@@ -228,6 +229,25 @@ vi.mock("@/components/ui/resizable", () => ({
 		<div data-testid="resizable-panel">{children}</div>
 	),
 	ResizableHandle: () => <div data-testid="resizable-handle" />,
+}));
+
+vi.mock("@/lib/moyin/script/example-scripts", () => ({
+	EXAMPLE_SCRIPTS: [
+		{
+			id: "test-example",
+			label: "Test Example",
+			language: "English",
+			description: "Test script",
+			content: "Test content",
+			structure: {
+				scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
+				characters: [],
+				scenes: [],
+				episodes: [],
+				shots: [],
+			},
+		},
+	],
 }));
 
 vi.mock("@/lib/moyin/presets/visual-styles", () => ({

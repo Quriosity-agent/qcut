@@ -17,6 +17,7 @@ vi.mock("lucide-react", () => {
 	);
 	return {
 		AlertTriangleIcon: icon("alert-triangle"),
+		BookOpenIcon: icon("book-open"),
 		ArrowLeftIcon: icon("arrow-left"),
 		ArrowRightIcon: icon("arrow-right"),
 		CameraIcon: icon("camera"),
@@ -176,6 +177,48 @@ vi.mock("@/components/ui/select", () => ({
 	SelectValue: ({ placeholder }: { placeholder?: string }) => (
 		<span>{placeholder}</span>
 	),
+}));
+
+vi.mock("@/components/ui/dropdown-menu", () => ({
+	DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+	DropdownMenuItem: ({
+		children,
+		onClick,
+	}: {
+		children: React.ReactNode;
+		onClick?: () => void;
+	}) => (
+		<button type="button" onClick={onClick}>
+			{children}
+		</button>
+	),
+	DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => (
+		<div>{children}</div>
+	),
+}));
+
+vi.mock("@/lib/moyin/script/example-scripts", () => ({
+	EXAMPLE_SCRIPTS: [
+		{
+			id: "test-example",
+			label: "Test Example",
+			language: "English",
+			description: "Test script",
+			content: "Test content",
+			structure: {
+				scriptData: { title: "Test", language: "English", characters: [], scenes: [], episodes: [], storyParagraphs: [] },
+				characters: [],
+				scenes: [],
+				episodes: [],
+				shots: [],
+			},
+		},
+	],
 }));
 
 vi.mock("@/lib/moyin/presets/visual-styles", () => ({
