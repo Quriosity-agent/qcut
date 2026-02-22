@@ -223,22 +223,11 @@ export class EditorApiClient {
 
 /** Create an EditorApiClient from CLI options + environment variables. */
 export function createEditorClient(options: CLIRunOptions): EditorApiClient {
-	const host =
-		(options as Record<string, unknown>).host ??
-		process.env.QCUT_API_HOST ??
-		"127.0.0.1";
-	const port =
-		(options as Record<string, unknown>).port ??
-		process.env.QCUT_API_PORT ??
-		"8765";
-	const token =
-		(options as Record<string, unknown>).token ??
-		process.env.QCUT_API_TOKEN ??
-		undefined;
+	const host = options.host ?? process.env.QCUT_API_HOST ?? "127.0.0.1";
+	const port = options.port ?? process.env.QCUT_API_PORT ?? "8765";
+	const token = options.token ?? process.env.QCUT_API_TOKEN ?? undefined;
 	const timeout =
-		(options as Record<string, unknown>).timeout !== undefined
-			? Number((options as Record<string, unknown>).timeout) * 1000
-			: 30_000;
+		options.timeout !== undefined ? Number(options.timeout) * 1000 : 30_000;
 
 	return new EditorApiClient({
 		baseUrl: `http://${host}:${port}`,

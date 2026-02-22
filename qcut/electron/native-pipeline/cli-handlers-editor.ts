@@ -38,9 +38,8 @@ export async function handleEditorCommand(
 	if (options.command !== "editor:health") {
 		const healthy = await client.checkHealth();
 		if (!healthy) {
-			const o = options as Record<string, unknown>;
-			const host = o.host ?? process.env.QCUT_API_HOST ?? "127.0.0.1";
-			const port = o.port ?? process.env.QCUT_API_PORT ?? "8765";
+			const host = options.host ?? process.env.QCUT_API_HOST ?? "127.0.0.1";
+			const port = options.port ?? process.env.QCUT_API_PORT ?? "8765";
 			return {
 				success: false,
 				error: `QCut editor not running at http://${host}:${port}\nStart QCut with: bun run electron:dev`,
