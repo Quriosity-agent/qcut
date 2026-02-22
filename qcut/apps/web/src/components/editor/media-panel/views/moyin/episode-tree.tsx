@@ -257,6 +257,7 @@ export function EpisodeTree() {
 					<button
 						key={mode}
 						type="button"
+						aria-pressed={filter === mode}
 						onClick={() => setFilter(mode)}
 						className={cn(
 							"px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
@@ -286,6 +287,7 @@ export function EpisodeTree() {
 				>
 					<button
 						type="button"
+						aria-pressed={!characterFilter}
 						onClick={() => setCharacterFilter(null)}
 						className={cn(
 							"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border",
@@ -300,6 +302,7 @@ export function EpisodeTree() {
 						<button
 							key={ch.id}
 							type="button"
+							aria-pressed={characterFilter === ch.id}
 							onClick={() =>
 								setCharacterFilter(characterFilter === ch.id ? null : ch.id)
 							}

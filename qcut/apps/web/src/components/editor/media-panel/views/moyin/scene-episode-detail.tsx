@@ -38,6 +38,7 @@ function CopyButton({ getText }: { getText: () => string }) {
 			size="sm"
 			className="h-6 text-xs px-1.5"
 			onClick={handleCopy}
+			aria-label="Copy to clipboard"
 		>
 			{copied ? (
 				<span className="text-[9px] text-green-600">Copied</span>

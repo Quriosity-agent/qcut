@@ -71,6 +71,7 @@ function CopyButton({ getText }: { getText: () => string }) {
 			size="sm"
 			className="h-6 text-xs px-1.5"
 			onClick={handleCopy}
+			aria-label="Copy to clipboard"
 		>
 			{copied ? (
 				<span className="text-[9px] text-green-600">Copied</span>
@@ -376,6 +377,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 								<button
 									key={fn}
 									type="button"
+									aria-pressed={draft.narrativeFunction === fn}
 									onClick={() => setField({ narrativeFunction: fn })}
 									className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors ${
 										draft.narrativeFunction === fn
@@ -429,7 +431,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 
 				{/* Prompts */}
 				<PromptEditor draft={draft} onUpdate={setField} />
-
 				{/* Save / Cancel */}
 				<div className="flex gap-1.5">
 					<Button size="sm" className="h-6 text-xs px-2" onClick={save}>
