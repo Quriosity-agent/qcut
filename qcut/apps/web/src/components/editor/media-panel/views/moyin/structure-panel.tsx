@@ -171,6 +171,21 @@ export function StructurePanel() {
 			{activeTab === "shots" && <ShotBreakdown />}
 			{activeTab === "generate" && <GenerateActions />}
 
+			{/* Empty state hints when no data exists for current tab */}
+			{activeTab === "overview" &&
+				characters.length === 0 &&
+				scenes.length === 0 &&
+				shots.length === 0 && (
+					<p className="text-[10px] text-muted-foreground/50 text-center pt-2">
+						Upload or paste a script to begin.
+					</p>
+				)}
+			{activeTab === "generate" && shots.length === 0 && (
+				<p className="text-[10px] text-muted-foreground/50 text-center pt-2">
+					Generate shots from the Structure tab first.
+				</p>
+			)}
+
 			{/* Keyboard shortcut hints */}
 			<div
 				className="flex items-center gap-2 text-[9px] text-muted-foreground/60 pt-1 border-t"

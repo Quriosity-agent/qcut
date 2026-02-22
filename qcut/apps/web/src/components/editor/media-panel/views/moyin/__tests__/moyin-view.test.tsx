@@ -1076,3 +1076,56 @@ describe("StructurePanel — Keyboard Hints", () => {
 		expect(screen.getByText("Undo")).toBeTruthy();
 	});
 });
+
+// ==================== Round 19: Contextual Details, Empty States ====================
+
+describe("MoyinView — Contextual Details Header", () => {
+	beforeEach(resetStore);
+
+	it("shows character name in details header when character selected", () => {
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			characters: [{ id: "c1", name: "Alice" }],
+			selectedItemId: "c1",
+			selectedItemType: "character",
+		});
+		render(<MoyinView />);
+		expect(screen.getByText("Character: Alice")).toBeTruthy();
+	});
+
+	it("shows shot position in details header when shot selected", () => {
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Walk",
+					characterIds: [],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+			selectedItemId: "shot1",
+			selectedItemType: "shot",
+		});
+		render(<MoyinView />);
+		expect(screen.getByText("Shot 1 of 1")).toBeTruthy();
+	});
+});
+
+describe("StructurePanel — Empty State Hints", () => {
+	beforeEach(resetStore);
+
+	it("shows upload hint when overview tab is empty", () => {
+		render(<StructurePanel />);
+		expect(
+			screen.getByText("Upload or paste a script to begin."),
+		).toBeTruthy();
+	});
+});

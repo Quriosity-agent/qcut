@@ -28,9 +28,12 @@ export function MoyinView() {
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
 	const characters = useMoyinStore((s) => s.characters);
 	const scenes = useMoyinStore((s) => s.scenes);
+	const shots = useMoyinStore((s) => s.shots);
+	const episodes = useMoyinStore((s) => s.episodes);
 	const checkApiKeyStatus = useMoyinStore((s) => s.checkApiKeyStatus);
 	const loadProject = useMoyinStore((s) => s.loadProject);
 	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
+	const selectedItemType = useMoyinStore((s) => s.selectedItemType);
 	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
 
 	useEffect(() => {
@@ -42,6 +45,27 @@ export function MoyinView() {
 	}, [projectId, loadProject]);
 
 	const hasSelection = !!selectedItemId;
+
+	const detailsLabel = (() => {
+		if (!selectedItemId || !selectedItemType) return "Details";
+		if (selectedItemType === "character") {
+			const c = characters.find((ch) => ch.id === selectedItemId);
+			return c ? `Character: ${c.name}` : "Character";
+		}
+		if (selectedItemType === "scene") {
+			const s = scenes.find((sc) => sc.id === selectedItemId);
+			return s ? `Scene: ${s.name || s.location}` : "Scene";
+		}
+		if (selectedItemType === "shot") {
+			const idx = shots.findIndex((sh) => sh.id === selectedItemId);
+			return idx >= 0 ? `Shot ${idx + 1} of ${shots.length}` : "Shot";
+		}
+		if (selectedItemType === "episode") {
+			const ep = episodes.find((e) => e.id === selectedItemId);
+			return ep ? `Episode: ${ep.title}` : "Episode";
+		}
+		return "Details";
+	})();
 
 	const statusText =
 		parseStatus === "parsing"
@@ -91,8 +115,8 @@ export function MoyinView() {
 							<ResizablePanel defaultSize="30%" minSize="20%">
 								<div className="h-full overflow-y-auto">
 									<div className="flex items-center justify-between px-3 py-2 border-b">
-										<span className="text-xs font-medium text-muted-foreground">
-											Details
+										<span className="text-xs font-medium text-muted-foreground truncate">
+											{detailsLabel}
 										</span>
 										<button
 											type="button"
