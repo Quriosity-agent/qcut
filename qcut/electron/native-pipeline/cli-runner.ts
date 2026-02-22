@@ -41,6 +41,7 @@ import {
 	handleListModels as adminHandleListModels,
 	handleEstimateCost as adminHandleEstimateCost,
 } from "./cli-handlers-admin.js";
+import { handleEditorCommand } from "./cli-handlers-editor.js";
 import {
 	handleVimaxExtractCharacters,
 	handleVimaxGenerateScript,
@@ -136,6 +137,50 @@ export interface CLIRunOptions {
 	projectId?: string;
 	// grid upscale
 	gridUpscale?: number;
+	// editor options
+	mediaId?: string;
+	elementId?: string;
+	jobId?: string;
+	trackId?: string;
+	toTrack?: string;
+	splitTime?: number;
+	startTime?: number;
+	endTime?: number;
+	newName?: string;
+	changes?: string;
+	updates?: string;
+	elements?: string;
+	cuts?: string;
+	items?: string;
+	preset?: string;
+	threshold?: number;
+	timestamps?: string;
+	host?: string;
+	port?: string;
+	token?: string;
+	poll?: boolean;
+	pollInterval?: number;
+	replace?: boolean;
+	ripple?: boolean;
+	crossTrackRipple?: boolean;
+	removeFillers?: boolean;
+	removeSilences?: boolean;
+	html?: string;
+	message?: string;
+	stack?: string;
+	addToTimeline?: boolean;
+	includeFillers?: boolean;
+	includeSilences?: boolean;
+	includeScenes?: boolean;
+	toolName?: string;
+	clearLog?: boolean;
+	data?: string;
+	url?: string;
+	filename?: string;
+	mode?: string;
+	gap?: number;
+	timeout?: number;
+	provider?: string;
 }
 
 export interface CLIResult {
@@ -276,6 +321,9 @@ export class CLIPipelineRunner {
 					category: "text_to_speech",
 				});
 			default:
+				if (options.command.startsWith("editor:")) {
+					return handleEditorCommand(options, onProgress);
+				}
 				return { success: false, error: `Unknown command: ${options.command}` };
 		}
 	}

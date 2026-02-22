@@ -3,8 +3,24 @@
 > **Date:** 2026-02-22
 > **Goal:** Build the shared HTTP client, type definitions, and command dispatcher, then implement `editor:health`, `editor:media:*` (8 commands), and `editor:project:*` (5 commands).
 > **Reference:** [editor-cli-overview.md](editor-cli-overview.md), `electron/claude/claude-http-server.ts`, `electron/claude/claude-media-handler.ts`, `electron/claude/claude-project-handler.ts`
-> **Status:** Not started
+> **Status:** DONE
 > **Depends on:** Nothing (first phase)
+> **Implemented:** 2026-02-22
+
+### Implementation Status
+
+| Subtask | Status | File |
+|---------|--------|------|
+| 1.1 EditorApiClient | DONE | `electron/native-pipeline/editor-api-client.ts` (216 lines) |
+| 1.2 Editor API Types | DONE | `electron/native-pipeline/editor-api-types.ts` (108 lines) |
+| 1.3 Editor Command Dispatcher | DONE | `electron/native-pipeline/cli-handlers-editor.ts` (80 lines) |
+| 1.4 Media Handlers | DONE | `electron/native-pipeline/editor-handlers-media.ts` (278 lines) |
+| 1.5 Project Handlers | DONE | `electron/native-pipeline/editor-handlers-media.ts` (same file) |
+| 1.6 Unit Tests | DONE | `electron/__tests__/editor-api-client.test.ts` (24/24 passing) |
+
+### Additional Changes
+- `electron/native-pipeline/cli.ts` — Added 14 editor commands to COMMANDS array, 45 new parseArgs flags, help text, TTY output handling
+- `electron/native-pipeline/cli-runner.ts` — Added import + `editor:*` catch-all dispatch in default case, 30+ new fields on CLIRunOptions
 
 ---
 

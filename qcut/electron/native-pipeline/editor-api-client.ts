@@ -84,7 +84,7 @@ export class EditorApiClient {
 
 	async get<T = unknown>(
 		path: string,
-		query?: Record<string, string>,
+		query?: Record<string, string>
 	): Promise<T> {
 		let url = `${this.config.baseUrl}${path}`;
 		if (query) {
@@ -95,27 +95,15 @@ export class EditorApiClient {
 	}
 
 	async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-		return this.request<T>(
-			"POST",
-			`${this.config.baseUrl}${path}`,
-			body,
-		);
+		return this.request<T>("POST", `${this.config.baseUrl}${path}`, body);
 	}
 
 	async patch<T = unknown>(path: string, body?: unknown): Promise<T> {
-		return this.request<T>(
-			"PATCH",
-			`${this.config.baseUrl}${path}`,
-			body,
-		);
+		return this.request<T>("PATCH", `${this.config.baseUrl}${path}`, body);
 	}
 
 	async delete<T = unknown>(path: string, body?: unknown): Promise<T> {
-		return this.request<T>(
-			"DELETE",
-			`${this.config.baseUrl}${path}`,
-			body,
-		);
+		return this.request<T>("DELETE", `${this.config.baseUrl}${path}`, body);
 	}
 
 	/**
@@ -124,7 +112,7 @@ export class EditorApiClient {
 	 */
 	async pollJob<T = unknown>(
 		statusPath: string,
-		options: PollOptions = {},
+		options: PollOptions = {}
 	): Promise<T> {
 		const interval = options.interval ?? 3_000;
 		const timeout = options.timeout ?? 300_000;
@@ -152,7 +140,7 @@ export class EditorApiClient {
 				throw new EditorApiError(
 					job.message ?? "Job failed",
 					undefined,
-					job.message,
+					job.message
 				);
 			}
 			if (job.status === "cancelled") {
@@ -161,7 +149,7 @@ export class EditorApiClient {
 
 			if (Date.now() - start > timeout) {
 				throw new EditorApiError(
-					`Polling timed out after ${Math.round(timeout / 1000)}s`,
+					`Polling timed out after ${Math.round(timeout / 1000)}s`
 				);
 			}
 
@@ -176,7 +164,7 @@ export class EditorApiClient {
 	private async request<T>(
 		method: string,
 		url: string,
-		body?: unknown,
+		body?: unknown
 	): Promise<T> {
 		const headers: Record<string, string> = {};
 		if (this.config.token) {
@@ -198,11 +186,10 @@ export class EditorApiClient {
 		try {
 			response = await fetch(url, init);
 		} catch (err) {
-			const msg =
-				err instanceof Error ? err.message : String(err);
+			const msg = err instanceof Error ? err.message : String(err);
 			if (msg.includes("ECONNREFUSED") || msg.includes("fetch failed")) {
 				throw new EditorApiError(
-					`Cannot connect to QCut at ${this.config.baseUrl}`,
+					`Cannot connect to QCut at ${this.config.baseUrl}`
 				);
 			}
 			throw new EditorApiError(`HTTP request failed: ${msg}`);
@@ -214,7 +201,7 @@ export class EditorApiClient {
 		} catch {
 			throw new EditorApiError(
 				`Invalid JSON response (HTTP ${response.status})`,
-				response.status,
+				response.status
 			);
 		}
 
@@ -222,7 +209,7 @@ export class EditorApiClient {
 			throw new EditorApiError(
 				envelope.error ?? `Request failed (HTTP ${response.status})`,
 				response.status,
-				envelope.error,
+				envelope.error
 			);
 		}
 

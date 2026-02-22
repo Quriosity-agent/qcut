@@ -3,8 +3,25 @@
 > **Date:** 2026-02-22
 > **Goal:** Implement `editor:timeline:*` (14 commands) and `editor:editing:*` (7 commands) wrapping 25 HTTP endpoints for live timeline manipulation.
 > **Reference:** [editor-cli-overview.md](editor-cli-overview.md), `electron/claude/claude-timeline-handler.ts`, `electron/claude/claude-cuts-handler.ts`, `electron/claude/claude-range-handler.ts`, `electron/claude/claude-auto-edit-handler.ts`, `electron/claude/claude-suggest-handler.ts`
-> **Status:** Not started
+> **Status:** DONE
 > **Depends on:** Phase 1 (Subtasks 1.1-1.3)
+> **Implemented:** 2026-02-22
+
+### Implementation Status
+
+| Subtask | Status | File |
+|---------|--------|------|
+| 2.1 Timeline Read/Export | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.2 Element CRUD | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.3 Timeline Manipulation | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.4 Editing — Cuts & Range | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.5 Editing — Auto-Edit | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.6 Editing — Suggest Cuts | DONE | `electron/native-pipeline/editor-handlers-timeline.ts` |
+| 2.7 Unit Tests | DONE | `electron/__tests__/editor-handlers-timeline.test.ts` (32/32 passing) |
+
+### Additional Changes
+- `electron/native-pipeline/cli.ts` — Added 21 timeline/editing commands to COMMANDS array, help text
+- `electron/native-pipeline/cli-handlers-editor.ts` — Added import + `timeline`/`editing` case dispatch
 
 ---
 
@@ -305,9 +322,11 @@ GET /api/claude/analyze/:projectId/suggest-cuts/jobs/:jobId
 
 | File | Action | Lines |
 |------|--------|-------|
-| `electron/native-pipeline/editor-handlers-timeline.ts` | Create | ~350 |
-| `electron/native-pipeline/__tests__/editor-handlers.test.ts` | Create/extend | ~150 |
-| **Total** | | **~500** |
+| `electron/native-pipeline/editor-handlers-timeline.ts` | Create | 743 |
+| `electron/__tests__/editor-handlers-timeline.test.ts` | Create | 772 |
+| `electron/native-pipeline/cli.ts` | Modify | +21 commands, help text |
+| `electron/native-pipeline/cli-handlers-editor.ts` | Modify | +import, +dispatch cases |
+| **Total new** | | **~1515** |
 
 ## API Endpoint Coverage
 

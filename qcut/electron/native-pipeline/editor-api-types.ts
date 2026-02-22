@@ -124,7 +124,7 @@ export async function resolveJsonInput(value: string): Promise<unknown> {
 			raw = fs.readFileSync(filePath, "utf-8");
 		} catch (err) {
 			throw new Error(
-				`Cannot read file: ${filePath} — ${err instanceof Error ? err.message : String(err)}`,
+				`Cannot read file: ${filePath} — ${err instanceof Error ? err.message : String(err)}`
 			);
 		}
 	} else {
@@ -135,7 +135,7 @@ export async function resolveJsonInput(value: string): Promise<unknown> {
 		return JSON.parse(raw);
 	} catch {
 		throw new Error(
-			`Invalid JSON input. Use inline JSON, @file.json, or - for stdin.`,
+			"Invalid JSON input. Use inline JSON, @file.json, or - for stdin."
 		);
 	}
 }
