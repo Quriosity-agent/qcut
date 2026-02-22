@@ -534,3 +534,108 @@ describe("GenerateActions — Shot Stats Progress Bars", () => {
 		expect(screen.queryByText("Img")).toBeNull();
 	});
 });
+
+// ==================== Round 14: Character Filter Pills ====================
+
+describe("EpisodeTree — Character Filter Pills", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scriptData: {
+				title: "Test",
+				language: "English",
+				characters: [],
+				scenes: [],
+				episodes: [],
+				storyParagraphs: [],
+			},
+			episodes: [
+				{ id: "ep1", index: 0, title: "Episode 1", sceneIds: ["s1", "s2"] },
+			],
+			scenes: [
+				{
+					id: "s1",
+					location: "Park",
+					name: "Park Scene",
+					time: "Day",
+					atmosphere: "",
+				},
+				{
+					id: "s2",
+					location: "Beach",
+					name: "Beach Scene",
+					time: "Night",
+					atmosphere: "",
+				},
+			],
+			characters: [
+				{ id: "c1", name: "Alice", role: "lead" },
+				{ id: "c2", name: "Bob", role: "support" },
+			],
+			shots: [
+				{
+					id: "shot1",
+					index: 0,
+					sceneRefId: "s1",
+					actionSummary: "Walk",
+					characterIds: ["c1"],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+				{
+					id: "shot2",
+					index: 1,
+					sceneRefId: "s2",
+					actionSummary: "Swim",
+					characterIds: ["c2"],
+					characterVariations: {},
+					imageStatus: "idle",
+					imageProgress: 0,
+					videoStatus: "idle",
+					videoProgress: 0,
+				},
+			],
+		});
+	});
+
+	it("renders character filter pills when characters exist", () => {
+		render(<EpisodeTree />);
+		expect(screen.getByLabelText("Character filter")).toBeTruthy();
+		expect(screen.getByText("Alice")).toBeTruthy();
+		expect(screen.getByText("Bob")).toBeTruthy();
+	});
+
+	it("filters tree by character when pill is clicked", () => {
+		render(<EpisodeTree />);
+		// Expand the episode
+		fireEvent.click(screen.getByText("Episode 1"));
+		// Both scenes visible before filter
+		expect(screen.getByText("Park Scene")).toBeTruthy();
+		expect(screen.getByText("Beach Scene")).toBeTruthy();
+		// Click Alice filter — only scenes with Alice's shots should show
+		fireEvent.click(screen.getByText("Alice"));
+		expect(screen.getByText("Park Scene")).toBeTruthy();
+		expect(screen.queryByText("Beach Scene")).toBeNull();
+	});
+
+	it("clears character filter on All click", () => {
+		render(<EpisodeTree />);
+		fireEvent.click(screen.getByText("Episode 1"));
+		// Apply filter
+		fireEvent.click(screen.getByText("Alice"));
+		expect(screen.queryByText("Beach Scene")).toBeNull();
+		// Clear filter by clicking All
+		const allButtons = screen.getAllByText("All");
+		// The character filter "All" button
+		const charFilterAll = allButtons.find(
+			(el) => el.closest("[aria-label='Character filter']") !== null
+		);
+		expect(charFilterAll).toBeTruthy();
+		fireEvent.click(charFilterAll!);
+		expect(screen.getByText("Beach Scene")).toBeTruthy();
+	});
+});

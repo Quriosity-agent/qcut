@@ -49,6 +49,7 @@ export function EpisodeTree() {
 	const [editingTitle, setEditingTitle] = useState("");
 	const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
 	const [editingSceneName, setEditingSceneName] = useState("");
+	const [characterFilter, setCharacterFilter] = useState<string | null>(null);
 	const updateEpisode = useMoyinStore((s) => s.updateEpisode);
 	const updateScene = useMoyinStore((s) => s.updateScene);
 
@@ -147,10 +148,17 @@ export function EpisodeTree() {
 		);
 	}
 
-	// Filter scenes based on filter mode
+	// Filter scenes based on filter mode + character filter
 	const filterScene = (sceneId: string): boolean => {
-		if (filter === "all") return true;
 		const sceneShots = shotsByScene[sceneId] || [];
+		// Character filter
+		if (characterFilter) {
+			const hasChar = sceneShots.some((s) =>
+				s.characterIds?.includes(characterFilter)
+			);
+			if (!hasChar) return false;
+		}
+		if (filter === "all") return true;
 		if (sceneShots.length === 0) return filter === "pending";
 		const allCompleted = sceneShots.every((s) => s.imageStatus === "completed");
 		return filter === "completed" ? allCompleted : !allCompleted;
@@ -196,7 +204,9 @@ export function EpisodeTree() {
 				<div className="flex items-center gap-1">
 					<button
 						type="button"
-						onClick={() => setExpandedEpisodes(new Set(episodes.map((ep) => ep.id)))}
+						onClick={() =>
+							setExpandedEpisodes(new Set(episodes.map((ep) => ep.id)))
+						}
 						className="text-[9px] text-muted-foreground hover:text-foreground transition-colors"
 						aria-label="Expand all episodes"
 					>
@@ -267,6 +277,44 @@ export function EpisodeTree() {
 					{characters.length} chars, {scenes.length} scenes
 				</span>
 			</div>
+
+			{/* Character filter pills */}
+			{characters.length > 0 && (
+				<div
+					className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin"
+					aria-label="Character filter"
+				>
+					<button
+						type="button"
+						onClick={() => setCharacterFilter(null)}
+						className={cn(
+							"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border",
+							!characterFilter
+								? "bg-primary text-primary-foreground border-primary"
+								: "text-muted-foreground border-muted hover:bg-muted"
+						)}
+					>
+						All
+					</button>
+					{characters.map((ch) => (
+						<button
+							key={ch.id}
+							type="button"
+							onClick={() =>
+								setCharacterFilter(characterFilter === ch.id ? null : ch.id)
+							}
+							className={cn(
+								"shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors border",
+								characterFilter === ch.id
+									? "bg-primary text-primary-foreground border-primary"
+									: "text-muted-foreground border-muted hover:bg-muted"
+							)}
+						>
+							{ch.name}
+						</button>
+					))}
+				</div>
+			)}
 
 			{/* Tree */}
 			<div className="space-y-0.5">
