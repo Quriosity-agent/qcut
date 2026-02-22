@@ -25,6 +25,7 @@ export function MediaPreviewModal({
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent) => {
 			if (e.key === "Escape") {
+				e.preventDefault();
 				onClose();
 				return;
 			}
@@ -75,7 +76,6 @@ export function MediaPreviewModal({
 			onClick={(e) => {
 				if (e.target === e.currentTarget) onClose();
 			}}
-			onKeyDown={() => {}}
 			role="dialog"
 			aria-label={`Preview: ${title}`}
 			aria-modal="true"

@@ -349,6 +349,7 @@ export function EpisodeTree() {
 								>
 									<button
 										type="button"
+										aria-expanded={isExpanded}
 										onClick={() => {
 											toggleEpisode(ep.id);
 											setSelectedItem(ep.id, "episode");
@@ -461,6 +462,7 @@ export function EpisodeTree() {
 													>
 														<button
 															type="button"
+															aria-expanded={sceneExpanded}
 															onClick={() => {
 																if (hasShots) toggleScene(sceneId);
 																setSelectedItem(sceneId, "scene");

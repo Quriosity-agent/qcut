@@ -88,6 +88,7 @@ export function ShotSizeSelector({
 						type="button"
 						onClick={() => onChange(size.value)}
 						title={size.desc}
+						aria-label={`${size.label} — ${size.desc}`}
 						className={cn(
 							"px-1.5 py-0.5 rounded text-[9px] font-mono font-medium transition-colors",
 							value === size.value
