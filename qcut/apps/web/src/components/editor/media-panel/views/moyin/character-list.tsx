@@ -2,7 +2,7 @@
  * CharacterList — step 2: review and edit extracted characters.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
 import type { ScriptCharacter } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
 	CheckIcon,
+	ChevronDownIcon,
+	ChevronRightIcon,
 	Loader2,
 	PencilIcon,
 	PlusIcon,
@@ -21,6 +23,10 @@ import {
 	UserIcon,
 	XIcon,
 } from "lucide-react";
+
+const EXTRA_TAGS = ["minor", "extra", "background", "群演", "配角"];
+const isExtra = (c: ScriptCharacter) =>
+	c.tags?.some((t) => EXTRA_TAGS.includes(t.toLowerCase())) ?? false;
 
 function CharacterCard({
 	char,
@@ -205,6 +211,17 @@ export function CharacterList() {
 	const calibrationError = useMoyinStore((s) => s.calibrationError);
 
 	const isCalibrating = calibrationStatus === "calibrating";
+	const [extrasExpanded, setExtrasExpanded] = useState(false);
+
+	const { mainChars, extraChars } = useMemo(() => {
+		const main: ScriptCharacter[] = [];
+		const extras: ScriptCharacter[] = [];
+		for (const c of characters) {
+			if (isExtra(c)) extras.push(c);
+			else main.push(c);
+		}
+		return { mainChars: main, extraChars: extras };
+	}, [characters]);
 
 	const handleAdd = useCallback(() => {
 		addCharacter({
@@ -260,15 +277,50 @@ export function CharacterList() {
 					<p className="text-xs">Go back and try a different script</p>
 				</div>
 			) : (
-				<div className="space-y-2">
-					{characters.map((char) => (
-						<CharacterCard
-							key={char.id}
-							char={char}
-							onUpdate={updateCharacter}
-							onRemove={removeCharacter}
-						/>
-					))}
+				<div className="space-y-3">
+					{/* Main characters */}
+					{mainChars.length > 0 && (
+						<div className="space-y-2">
+							<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+								Characters ({mainChars.length})
+							</p>
+							{mainChars.map((char) => (
+								<CharacterCard
+									key={char.id}
+									char={char}
+									onUpdate={updateCharacter}
+									onRemove={removeCharacter}
+								/>
+							))}
+						</div>
+					)}
+
+					{/* Extras / minor characters */}
+					{extraChars.length > 0 && (
+						<div className="space-y-2 border-t border-dashed pt-2">
+							<button
+								type="button"
+								onClick={() => setExtrasExpanded(!extrasExpanded)}
+								className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+							>
+								{extrasExpanded ? (
+									<ChevronDownIcon className="h-3 w-3" />
+								) : (
+									<ChevronRightIcon className="h-3 w-3" />
+								)}
+								Extras ({extraChars.length})
+							</button>
+							{extrasExpanded &&
+								extraChars.map((char) => (
+									<CharacterCard
+										key={char.id}
+										char={char}
+										onUpdate={updateCharacter}
+										onRemove={removeCharacter}
+									/>
+								))}
+						</div>
+					)}
 				</div>
 			)}
 		</div>

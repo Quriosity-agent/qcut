@@ -5,6 +5,7 @@
 
 import { useState } from "react";
 import { useMoyinStore } from "@/stores/moyin-store";
+import { ImportProgress } from "./import-progress";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -197,6 +198,8 @@ export function ScriptInput() {
 						AI will extract characters, scenes, and story structure from your
 						text.
 					</p>
+
+					<ImportProgress />
 				</div>
 			) : (
 				<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">

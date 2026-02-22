@@ -5,14 +5,21 @@
 
 import { create } from "zustand";
 import type {
+	Episode,
 	ScriptCharacter,
 	ScriptData,
 	ScriptScene,
+	Shot,
 } from "@/types/moyin-script";
-import { getFalApiKeyAsync } from "@/lib/ai-video/core/fal-request";
 import { buildStoryboardPrompt } from "@/lib/moyin/storyboard/prompt-builder";
 import { calculateGrid } from "@/lib/moyin/storyboard/grid-calculator";
 import { VISUAL_STYLE_PRESETS } from "@/lib/moyin/presets/visual-styles";
+import {
+	buildShotImagePrompt,
+	generateFalImage,
+	generateShotImageRequest,
+	generateShotVideoRequest,
+} from "./moyin-shot-generation";
 
 // ==================== Types ====================
 
@@ -20,6 +27,14 @@ export type MoyinStep = "script" | "characters" | "scenes" | "generate";
 export type ParseStatus = "idle" | "parsing" | "ready" | "error";
 export type GenerationStatus = "idle" | "generating" | "done" | "error";
 export type CalibrationStatus = "idle" | "calibrating" | "done" | "error";
+export type PipelineStep =
+	| "import"
+	| "title_calibration"
+	| "synopsis"
+	| "shot_calibration"
+	| "character_calibration"
+	| "scene_calibration";
+export type PipelineStepStatus = "pending" | "active" | "done" | "error";
 
 interface MoyinState {
 	// Workflow navigation
@@ -45,9 +60,20 @@ interface MoyinState {
 	// Scenes extracted from parsed script
 	scenes: ScriptScene[];
 
+	// Shots broken down from scenes
+	shots: Shot[];
+	shotGenerationStatus: Record<string, GenerationStatus>;
+
+	// Episodes
+	episodes: Episode[];
+
 	// Structure panel selection
 	selectedItemId: string | null;
-	selectedItemType: "episode" | "scene" | "character" | null;
+	selectedItemType: "episode" | "scene" | "character" | "shot" | null;
+
+	// Import pipeline
+	pipelineStep: PipelineStep | null;
+	pipelineProgress: Record<PipelineStep, PipelineStepStatus>;
 
 	// Generation state
 	generationStatus: GenerationStatus;
@@ -99,10 +125,23 @@ interface MoyinActions {
 	addScene: (scene: ScriptScene) => void;
 	removeScene: (id: string) => void;
 
+	// Shots
+	addShot: (shot: Shot) => void;
+	updateShot: (id: string, updates: Partial<Shot>) => void;
+	removeShot: (id: string) => void;
+	generateShotsForEpisode: (episodeId: string) => Promise<void>;
+	generateShotImage: (shotId: string) => Promise<void>;
+	generateShotVideo: (shotId: string) => Promise<void>;
+
+	// Episodes
+	addEpisode: (ep: Episode) => void;
+	updateEpisode: (id: string, updates: Partial<Episode>) => void;
+	removeEpisode: (id: string) => void;
+
 	// Structure panel selection
 	setSelectedItem: (
 		id: string | null,
-		type: "episode" | "scene" | "character" | null
+		type: "episode" | "scene" | "character" | "shot" | null
 	) => void;
 
 	// Style & profile
@@ -136,8 +175,20 @@ const initialState: MoyinState = {
 	chatConfigured: false,
 	characters: [],
 	scenes: [],
+	shots: [],
+	shotGenerationStatus: {},
+	episodes: [],
 	selectedItemId: null,
 	selectedItemType: null,
+	pipelineStep: null,
+	pipelineProgress: {
+		import: "pending",
+		title_calibration: "pending",
+		synopsis: "pending",
+		shot_calibration: "pending",
+		character_calibration: "pending",
+		scene_calibration: "pending",
+	},
 	generationStatus: "idle",
 	generationProgress: 0,
 	generationError: null,
@@ -205,6 +256,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 				scriptData: data,
 				characters: data.characters ?? [],
 				scenes: data.scenes ?? [],
+				episodes: data.episodes ?? [],
 				parseStatus: "ready",
 				activeStep: "characters",
 			});
@@ -225,6 +277,13 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 			parseError: null,
 			characters: [],
 			scenes: [],
+			shots: [],
+			shotGenerationStatus: {},
+			episodes: [],
+			selectedItemId: null,
+			selectedItemType: null,
+			pipelineStep: null,
+			pipelineProgress: initialState.pipelineProgress,
 			generationStatus: "idle",
 			generationProgress: 0,
 			generationError: null,
@@ -258,6 +317,235 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 	removeScene: (id) =>
 		set((state) => ({ scenes: state.scenes.filter((s) => s.id !== id) })),
 
+	addShot: (shot) => set((state) => ({ shots: [...state.shots, shot] })),
+
+	updateShot: (id, updates) =>
+		set((state) => ({
+			shots: state.shots.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+		})),
+
+	removeShot: (id) =>
+		set((state) => ({ shots: state.shots.filter((s) => s.id !== id) })),
+
+	generateShotsForEpisode: async (episodeId) => {
+		const { episodes, scenes, scriptData } = get();
+		const episode = episodes.find((ep) => ep.id === episodeId);
+		if (!episode) return;
+
+		set((state) => ({
+			shotGenerationStatus: {
+				...state.shotGenerationStatus,
+				[episodeId]: "generating",
+			},
+		}));
+
+		try {
+			const api = window.electronAPI?.moyin;
+			if (!api?.callLLM) {
+				throw new Error("Moyin API not available.");
+			}
+
+			const episodeScenes = scenes.filter((s) =>
+				episode.sceneIds.includes(s.id)
+			);
+			const sceneDescs = episodeScenes
+				.map(
+					(s, i) =>
+						`Scene ${i + 1} (${s.id}): ${s.name || s.location}, ${s.time || ""}, ${s.atmosphere || ""}`
+				)
+				.join("\n");
+
+			const title = scriptData?.title || "Unknown";
+
+			const result = await api.callLLM({
+				systemPrompt: `You are a professional storyboard artist. Break each scene into 3-6 shots.
+
+Return JSON array:
+[{ "id": "shot_001", "sceneRefId": "scene_id", "index": 0, "actionSummary": "description", "shotSize": "MS/CU/WS/etc", "cameraMovement": "pan/tilt/static/etc", "characterIds": [], "characterVariations": {}, "imageStatus": "idle", "imageProgress": 0, "videoStatus": "idle", "videoProgress": 0 }]
+
+Only return the JSON array.`,
+				userPrompt: `Project: "${title}", Episode: "${episode.title}"
+
+Scenes:
+${sceneDescs}
+
+Generate shots for each scene with proper camera language and visual storytelling.`,
+				temperature: 0.5,
+				maxTokens: 8192,
+			});
+
+			if (!result.success || !result.text) {
+				throw new Error(result.error || "Shot generation failed");
+			}
+
+			let cleaned = result.text
+				.replace(/```json\n?/g, "")
+				.replace(/```\n?/g, "")
+				.trim();
+			const jsonStart = cleaned.indexOf("[");
+			const jsonEnd = cleaned.lastIndexOf("]");
+			if (jsonStart !== -1 && jsonEnd !== -1) {
+				cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
+			}
+
+			const newShots = JSON.parse(cleaned) as Shot[];
+
+			set((state) => ({
+				shots: [
+					...state.shots.filter(
+						(s) => !episodeScenes.some((es) => es.id === s.sceneRefId)
+					),
+					...newShots,
+				],
+				shotGenerationStatus: {
+					...state.shotGenerationStatus,
+					[episodeId]: "done",
+				},
+			}));
+		} catch (error) {
+			set((state) => ({
+				shotGenerationStatus: {
+					...state.shotGenerationStatus,
+					[episodeId]: "error",
+				},
+				calibrationError:
+					error instanceof Error ? error.message : "Shot generation failed",
+			}));
+		}
+	},
+
+	generateShotImage: async (shotId) => {
+		const { shots, characters, scenes, selectedStyleId } = get();
+		const shot = shots.find((s) => s.id === shotId);
+		if (!shot) return;
+
+		set((state) => ({
+			shots: state.shots.map((s) =>
+				s.id === shotId
+					? {
+							...s,
+							imageStatus: "generating",
+							imageProgress: 0,
+							imageError: undefined,
+						}
+					: s
+			),
+		}));
+
+		try {
+			const scene = scenes.find((s) => s.id === shot.sceneRefId);
+			const prompt = buildShotImagePrompt(
+				shot,
+				scene,
+				characters,
+				selectedStyleId
+			);
+
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId ? { ...s, imageProgress: 30 } : s
+				),
+			}));
+
+			const imageUrl = await generateShotImageRequest(prompt);
+
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? { ...s, imageStatus: "completed", imageProgress: 100, imageUrl }
+						: s
+				),
+			}));
+		} catch (error) {
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? {
+								...s,
+								imageStatus: "failed",
+								imageError:
+									error instanceof Error
+										? error.message
+										: "Image generation failed",
+							}
+						: s
+				),
+			}));
+		}
+	},
+
+	generateShotVideo: async (shotId) => {
+		const { shots } = get();
+		const shot = shots.find((s) => s.id === shotId);
+		if (!shot) return;
+
+		set((state) => ({
+			shots: state.shots.map((s) =>
+				s.id === shotId
+					? {
+							...s,
+							videoStatus: "generating",
+							videoProgress: 0,
+							videoError: undefined,
+						}
+					: s
+			),
+		}));
+
+		try {
+			if (!shot.imageUrl) {
+				throw new Error("Generate an image first before creating video.");
+			}
+
+			const prompt = shot.videoPrompt || shot.actionSummary || "";
+
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId ? { ...s, videoProgress: 20 } : s
+				),
+			}));
+
+			const videoUrl = await generateShotVideoRequest(shot.imageUrl, prompt);
+
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? { ...s, videoStatus: "completed", videoProgress: 100, videoUrl }
+						: s
+				),
+			}));
+		} catch (error) {
+			set((state) => ({
+				shots: state.shots.map((s) =>
+					s.id === shotId
+						? {
+								...s,
+								videoStatus: "failed",
+								videoError:
+									error instanceof Error
+										? error.message
+										: "Video generation failed",
+							}
+						: s
+				),
+			}));
+		}
+	},
+
+	addEpisode: (ep) => set((state) => ({ episodes: [...state.episodes, ep] })),
+
+	updateEpisode: (id, updates) =>
+		set((state) => ({
+			episodes: state.episodes.map((ep) =>
+				ep.id === id ? { ...ep, ...updates } : ep
+			),
+		})),
+
+	removeEpisode: (id) =>
+		set((state) => ({
+			episodes: state.episodes.filter((ep) => ep.id !== id),
+		})),
+
 	setSelectedItem: (id, type) =>
 		set({ selectedItemId: id, selectedItemType: type }),
 
@@ -277,10 +565,8 @@ export const useMoyinStore = create<MoyinStore>((set, get) => ({
 				throw new Error("Moyin API not available. Please run in Electron.");
 			}
 
-			const title =
-				(scriptData as Record<string, unknown> | null)?.title || "Unknown";
-			const genre =
-				(scriptData as Record<string, unknown> | null)?.genre || "Drama";
+			const title = scriptData?.title || "Unknown";
+			const genre = scriptData?.genre || "Drama";
 
 			const charSummary = characters
 				.map(
@@ -362,10 +648,8 @@ Generate visual prompts for each character. Include: face shape, hair style/colo
 				throw new Error("Moyin API not available. Please run in Electron.");
 			}
 
-			const title =
-				(scriptData as Record<string, unknown> | null)?.title || "Unknown";
-			const genre =
-				(scriptData as Record<string, unknown> | null)?.genre || "Drama";
+			const title = scriptData?.title || "Unknown";
+			const genre = scriptData?.genre || "Drama";
 
 			const sceneSummary = scenes
 				.map(
@@ -446,17 +730,8 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 		});
 
 		try {
-			// Get API key
-			const apiKey = await getFalApiKeyAsync();
-			if (!apiKey) {
-				throw new Error(
-					"FAL API key not configured. Please set it in Settings."
-				);
-			}
-
 			set({ generationProgress: 10 });
 
-			// Build storyboard prompt from scenes and style
 			const stylePreset = VISUAL_STYLE_PRESETS.find(
 				(s) => s.id === selectedStyleId
 			);
@@ -464,7 +739,6 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 				? [stylePreset.prompt]
 				: ["Studio Ghibli style, anime, soft colors"];
 
-			// Build a story summary from scene visual prompts
 			const storySummary = scenes
 				.map(
 					(s, i) =>
@@ -472,7 +746,7 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 				)
 				.join("\n");
 
-			const title = (scriptData as Record<string, unknown> | null)?.title || "";
+			const title = scriptData?.title || "";
 			const storyPrompt = title ? `${title}\n\n${storySummary}` : storySummary;
 
 			const characterDescriptions = characters
@@ -505,43 +779,10 @@ Generate visual prompts for each scene. Include: architecture style, lighting co
 
 			set({ generationProgress: 20 });
 
-			// Call fal.ai image generation directly
-			const falEndpoint = "fal-ai/flux-pro/v1.1-ultra";
-			const response = await fetch(`https://fal.run/${falEndpoint}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Key ${apiKey}`,
-				},
-				body: JSON.stringify({
-					prompt,
-					num_images: 1,
-					image_size: {
-						width: gridConfig.canvasWidth,
-						height: gridConfig.canvasHeight,
-					},
-					safety_tolerance: "6",
-				}),
+			const imageUrl = await generateFalImage(prompt, {
+				width: gridConfig.canvasWidth,
+				height: gridConfig.canvasHeight,
 			});
-
-			set({ generationProgress: 60 });
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				const detail =
-					(errorData as Record<string, unknown>).detail ||
-					(errorData as Record<string, unknown>).error ||
-					response.statusText;
-				throw new Error(`Image generation failed: ${detail}`);
-			}
-
-			const data = (await response.json()) as {
-				images?: Array<{ url: string }>;
-			};
-			const imageUrl = data.images?.[0]?.url;
-			if (!imageUrl) {
-				throw new Error("No image returned from generation API");
-			}
 
 			set({
 				generationStatus: "done",

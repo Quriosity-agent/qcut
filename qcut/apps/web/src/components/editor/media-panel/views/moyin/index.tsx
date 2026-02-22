@@ -2,8 +2,9 @@
  * MoyinView — Root component for the Moyin script-to-storyboard workflow.
  *
  * Split-panel layout:
- * - Left (~40%): ScriptInputPanel — script input + config
- * - Right (~60%): StructurePanel — episode/character/scene hierarchy
+ * - Left (~30%): ScriptInputPanel — script input + config
+ * - Center (~40%): StructurePanel — episode/character/scene hierarchy
+ * - Right (~30%): PropertyPanel — detail view for selected item (shown on selection)
  */
 
 "use client";
@@ -17,17 +18,22 @@ import {
 } from "@/components/ui/resizable";
 import { ScriptInput } from "./script-input";
 import { StructurePanel } from "./structure-panel";
-import { FileTextIcon } from "lucide-react";
+import { PropertyPanel } from "./property-panel";
+import { FileTextIcon, XIcon } from "lucide-react";
 
 export function MoyinView() {
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
 	const characters = useMoyinStore((s) => s.characters);
 	const scenes = useMoyinStore((s) => s.scenes);
 	const checkApiKeyStatus = useMoyinStore((s) => s.checkApiKeyStatus);
+	const selectedItemId = useMoyinStore((s) => s.selectedItemId);
+	const setSelectedItem = useMoyinStore((s) => s.setSelectedItem);
 
 	useEffect(() => {
 		checkApiKeyStatus();
 	}, [checkApiKeyStatus]);
+
+	const hasSelection = !!selectedItemId;
 
 	const statusText =
 		parseStatus === "parsing"
@@ -54,17 +60,48 @@ export function MoyinView() {
 			{/* Split panels */}
 			<div className="flex-1 min-h-0">
 				<ResizablePanelGroup orientation="horizontal">
-					<ResizablePanel defaultSize="40%" minSize="25%">
+					<ResizablePanel
+						defaultSize={hasSelection ? "30%" : "40%"}
+						minSize="20%"
+					>
 						<div className="h-full overflow-y-auto p-3">
 							<ScriptInput />
 						</div>
 					</ResizablePanel>
 					<ResizableHandle />
-					<ResizablePanel defaultSize="60%" minSize="30%">
+					<ResizablePanel
+						defaultSize={hasSelection ? "40%" : "60%"}
+						minSize="25%"
+					>
 						<div className="h-full overflow-y-auto p-3">
 							<StructurePanel />
 						</div>
 					</ResizablePanel>
+					{hasSelection && (
+						<>
+							<ResizableHandle />
+							<ResizablePanel defaultSize="30%" minSize="20%">
+								<div className="h-full overflow-y-auto">
+									<div className="flex items-center justify-between px-3 py-2 border-b">
+										<span className="text-xs font-medium text-muted-foreground">
+											Details
+										</span>
+										<button
+											type="button"
+											onClick={() => setSelectedItem(null, null)}
+											className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+											aria-label="Close details"
+										>
+											<XIcon className="h-3.5 w-3.5" />
+										</button>
+									</div>
+									<div className="p-3">
+										<PropertyPanel />
+									</div>
+								</div>
+							</ResizablePanel>
+						</>
+					)}
 				</ResizablePanelGroup>
 			</div>
 		</div>
