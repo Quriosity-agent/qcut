@@ -88,6 +88,7 @@ export function MediaPreviewModal({
 						size="sm"
 						className="h-7 text-xs bg-background/80"
 						onClick={handleDownload}
+						aria-label={`Download ${type}`}
 					>
 						<DownloadIcon className="mr-1 h-3 w-3" />
 						Download
@@ -97,6 +98,7 @@ export function MediaPreviewModal({
 						size="sm"
 						className="h-7 w-7 p-0 bg-background/80"
 						onClick={onClose}
+						aria-label="Close preview"
 					>
 						<XIcon className="h-3.5 w-3.5" />
 					</Button>

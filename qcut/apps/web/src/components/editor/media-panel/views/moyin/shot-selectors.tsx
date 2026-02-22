@@ -367,6 +367,9 @@ export function SoundDesignInput({
 							type="button"
 							onClick={() => addSfxPreset(sfx)}
 							disabled={!isEnabled}
+							title={
+								!isEnabled ? "Enable audio to use sound effects" : undefined
+							}
 							className={cn(
 								"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
 								activeSfx.includes(sfx)

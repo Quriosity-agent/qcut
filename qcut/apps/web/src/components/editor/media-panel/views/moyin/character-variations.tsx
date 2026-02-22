@@ -144,7 +144,7 @@ function VariationReadView({
 						type="button"
 						onClick={onEdit}
 						className="p-0.5 rounded hover:bg-muted text-muted-foreground"
-						aria-label="Edit variation"
+						aria-label={`Edit "${variation.name}" variation`}
 					>
 						<PencilIcon className="h-3 w-3" />
 					</button>
@@ -152,7 +152,7 @@ function VariationReadView({
 						type="button"
 						onClick={onRemove}
 						className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-						aria-label="Remove variation"
+						aria-label={`Remove "${variation.name}" variation`}
 					>
 						<Trash2Icon className="h-3 w-3" />
 					</button>
