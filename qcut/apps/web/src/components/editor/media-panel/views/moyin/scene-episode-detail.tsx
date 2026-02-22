@@ -305,6 +305,7 @@ export function SceneDetail({ scene }: { scene: ScriptScene }) {
 						size="sm"
 						className="h-6 text-xs px-1.5"
 						onClick={startEdit}
+						aria-label="Edit scene"
 					>
 						<PencilIcon className="h-3 w-3" />
 					</Button>

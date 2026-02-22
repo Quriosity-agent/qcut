@@ -353,6 +353,7 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 										}))
 									}
 									className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+									aria-label="Remove reference image"
 								>
 									<XIcon className="h-2.5 w-2.5" />
 								</button>
@@ -433,6 +434,7 @@ function CharacterDetail({ char }: { char: ScriptCharacter }) {
 						size="sm"
 						className="h-6 text-xs px-1.5"
 						onClick={startEdit}
+						aria-label="Edit character"
 					>
 						<PencilIcon className="h-3 w-3" />
 					</Button>
