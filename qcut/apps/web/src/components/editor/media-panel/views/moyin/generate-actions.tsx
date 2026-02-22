@@ -181,8 +181,16 @@ export function GenerateActions() {
 
 			{/* Error */}
 			{generationError && (
-				<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
-					{generationError}
+				<div className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive flex items-start gap-2">
+					<span className="flex-1">{generationError}</span>
+					<button
+						type="button"
+						onClick={generateStoryboard}
+						className="shrink-0 underline hover:no-underline"
+						disabled={isGenerating}
+					>
+						Retry
+					</button>
 				</div>
 			)}
 

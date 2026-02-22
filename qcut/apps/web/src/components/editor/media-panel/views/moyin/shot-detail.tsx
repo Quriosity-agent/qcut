@@ -89,9 +89,11 @@ function CopyButton({ getText }: { getText: () => string }) {
 function ModerationErrorDisplay({
 	error,
 	onEditPrompt,
+	onRetry,
 }: {
 	error: string;
 	onEditPrompt: () => void;
+	onRetry?: () => void;
 }) {
 	if (isModerationError(error)) {
 		return (
@@ -111,7 +113,20 @@ function ModerationErrorDisplay({
 			</div>
 		);
 	}
-	return <p className="text-[10px] text-destructive">{error}</p>;
+	return (
+		<div className="flex items-center gap-1.5 text-[10px] text-destructive">
+			<span className="flex-1 truncate">{error}</span>
+			{onRetry && (
+				<button
+					type="button"
+					onClick={onRetry}
+					className="shrink-0 underline hover:no-underline text-destructive"
+				>
+					Retry
+				</button>
+			)}
+		</div>
+	);
 }
 
 // Narrative function presets
@@ -673,18 +688,21 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					<ModerationErrorDisplay
 						error={shot.imageError}
 						onEditPrompt={() => startEdit()}
+						onRetry={() => generateShotImage(shot.id)}
 					/>
 				)}
 				{shot.videoError && (
 					<ModerationErrorDisplay
 						error={shot.videoError}
 						onEditPrompt={() => startEdit()}
+						onRetry={() => generateShotVideo(shot.id)}
 					/>
 				)}
 				{shot.endFrameImageError && (
 					<ModerationErrorDisplay
 						error={shot.endFrameImageError}
 						onEditPrompt={() => startEdit()}
+						onRetry={() => generateEndFrameImage(shot.id)}
 					/>
 				)}
 				<div className="flex gap-1.5">

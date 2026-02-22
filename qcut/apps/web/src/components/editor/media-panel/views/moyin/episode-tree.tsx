@@ -386,25 +386,61 @@ function StatusIcon({
 	completed: number;
 	total: number;
 }) {
+	const label =
+		total === 0
+			? "No shots"
+			: completed === total
+				? "All completed"
+				: completed > 0
+					? `${completed}/${total} completed`
+					: "Pending";
 	if (total === 0)
-		return <CircleIcon className="h-2.5 w-2.5 text-muted-foreground/40" />;
+		return (
+			<CircleIcon
+				className="h-2.5 w-2.5 text-muted-foreground/40"
+				aria-label={label}
+			/>
+		);
 	if (completed === total)
-		return <CheckCircle2Icon className="h-2.5 w-2.5 text-green-500" />;
+		return (
+			<CheckCircle2Icon
+				className="h-2.5 w-2.5 text-green-500"
+				aria-label={label}
+			/>
+		);
 	if (completed > 0)
-		return <ClockIcon className="h-2.5 w-2.5 text-yellow-500" />;
-	return <CircleIcon className="h-2.5 w-2.5 text-muted-foreground/40" />;
+		return (
+			<ClockIcon className="h-2.5 w-2.5 text-yellow-500" aria-label={label} />
+		);
+	return (
+		<CircleIcon
+			className="h-2.5 w-2.5 text-muted-foreground/40"
+			aria-label={label}
+		/>
+	);
 }
 
 function ShotStatusDot({ status }: { status: string }) {
 	if (status === "completed")
-		return <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />;
+		return (
+			<span
+				className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0"
+				title="Completed"
+			/>
+		);
 	if (status === "generating")
 		return (
-			<span className="h-1.5 w-1.5 rounded-full bg-yellow-500 shrink-0 animate-pulse" />
+			<span
+				className="h-1.5 w-1.5 rounded-full bg-yellow-500 shrink-0 animate-pulse"
+				title="Generating"
+			/>
 		);
 	if (status === "failed")
 		return (
-			<span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+			<span
+				className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0"
+				title="Failed"
+			/>
 		);
 	return null;
 }

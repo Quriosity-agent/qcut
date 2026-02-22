@@ -10,6 +10,8 @@ import type {
 	ScriptCharacter,
 	ScriptScene,
 	ScriptData,
+	ProjectBackground,
+	EpisodeRawScript,
 } from "@/types/moyin-script";
 
 interface LLMResult {
@@ -48,6 +50,47 @@ function parseJsonArray<T>(text: string): T[] {
 	return JSON.parse(cleaned) as T[];
 }
 
+async function getCalibrationContext({
+	rawScript,
+	scriptData,
+}: {
+	rawScript?: string;
+	scriptData: ScriptData | null;
+}): Promise<{
+	background: ProjectBackground;
+	episodeScripts: EpisodeRawScript[];
+} | null> {
+	if (!rawScript?.trim()) {
+		return null;
+	}
+
+	try {
+		const { parseFullScript } = await import("@/lib/moyin/script/episode-parser");
+		const parsed = parseFullScript(rawScript);
+		if (!parsed.episodes.length) {
+			return null;
+		}
+
+		const background: ProjectBackground = {
+			...parsed.background,
+			title: parsed.background.title || scriptData?.title || "未命名剧本",
+			outline: parsed.background.outline || scriptData?.logline || "",
+			characterBios: parsed.background.characterBios || "",
+			era: parsed.background.era || "现代",
+			genre: parsed.background.genre || scriptData?.genre,
+		};
+
+		return { background, episodeScripts: parsed.episodes };
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		console.warn(
+			"[moyin-calibration] failed to build calibrator context, using legacy enhancement:",
+			err.message
+		);
+		return null;
+	}
+}
+
 // ==================== Character Enhancement ====================
 
 interface EnhancedCharacterData {
@@ -67,8 +110,30 @@ interface EnhancedCharacterData {
 
 export async function enhanceCharactersLLM(
 	characters: ScriptCharacter[],
-	scriptData: ScriptData | null
+	scriptData: ScriptData | null,
+	rawScript?: string
 ): Promise<ScriptCharacter[]> {
+	const calibrationContext = await getCalibrationContext({ rawScript, scriptData });
+	if (calibrationContext) {
+		try {
+			const { calibrateCharacters, convertToScriptCharacters } = await import(
+				"@/lib/moyin/script/character-calibrator"
+			);
+			const result = await calibrateCharacters(
+				characters,
+				calibrationContext.background,
+				calibrationContext.episodeScripts
+			);
+			return convertToScriptCharacters(result.characters, characters);
+		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			console.warn(
+				"[moyin-calibration] character calibrator failed, falling back to legacy enhancement:",
+				err.message
+			);
+		}
+	}
+
 	const api = getMoyinApi();
 	const title = scriptData?.title || "Unknown";
 	const genre = scriptData?.genre || "Drama";
@@ -160,8 +225,30 @@ interface EnhancedSceneData {
 
 export async function enhanceScenesLLM(
 	scenes: ScriptScene[],
-	scriptData: ScriptData | null
+	scriptData: ScriptData | null,
+	rawScript?: string
 ): Promise<ScriptScene[]> {
+	const calibrationContext = await getCalibrationContext({ rawScript, scriptData });
+	if (calibrationContext) {
+		try {
+			const { calibrateScenes, convertToScriptScenes } = await import(
+				"@/lib/moyin/script/scene-calibrator"
+			);
+			const result = await calibrateScenes(
+				scenes,
+				calibrationContext.background,
+				calibrationContext.episodeScripts
+			);
+			return convertToScriptScenes(result.scenes, scenes);
+		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			console.warn(
+				"[moyin-calibration] scene calibrator failed, falling back to legacy enhancement:",
+				err.message
+			);
+		}
+	}
+
 	const api = getMoyinApi();
 	const title = scriptData?.title || "Unknown";
 	const genre = scriptData?.genre || "Drama";

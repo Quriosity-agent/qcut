@@ -304,6 +304,30 @@ export function SceneList() {
 				</div>
 			)}
 
+			{isCalibrating && scenes.length > 0 && (
+				<div className="space-y-2" aria-label="Loading scenes">
+					{Array.from({ length: Math.min(scenes.length, 3) }).map((_, i) => (
+						<div
+							key={`skel-${
+								// biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
+								i
+							}`}
+							className="rounded-lg border p-3 space-y-2 animate-pulse"
+						>
+							<div className="flex items-center gap-2">
+								<div className="h-3 w-6 rounded bg-muted" />
+								<div className="h-3 w-32 rounded bg-muted" />
+							</div>
+							<div className="h-2.5 w-full rounded bg-muted" />
+							<div className="flex gap-1">
+								<div className="h-3 w-12 rounded bg-muted" />
+								<div className="h-3 w-16 rounded bg-muted" />
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
 			{searchQuery && filteredScenes.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
 					<SearchIcon className="mb-2 h-6 w-6 opacity-40" />

@@ -4,6 +4,7 @@
  */
 
 import type {
+	Episode,
 	ScriptCharacter,
 	ScriptScene,
 	ScriptData,
@@ -322,4 +323,117 @@ export async function analyzeStagesAction(
 			variations: [...(c.variations || []), ...newVariations],
 		};
 	});
+}
+
+// ==================== Duplicate Helpers ====================
+
+export function duplicateEpisodeAction(
+	id: string,
+	episodes: Episode[],
+	scenes: ScriptScene[],
+	shots: Shot[]
+): {
+	episodes: Episode[];
+	newScenes: ScriptScene[];
+	newShots: Shot[];
+} | null {
+	const ep = episodes.find((e) => e.id === id);
+	if (!ep) return null;
+	const newEpId = `ep_${Date.now()}`;
+	const sceneIdMap: Record<string, string> = {};
+	const newScenes: ScriptScene[] = [];
+	const newShots: Shot[] = [];
+	for (const sid of ep.sceneIds || []) {
+		const scene = scenes.find((s) => s.id === sid);
+		if (!scene) continue;
+		const newSid = `scene_dup_${Date.now()}_${sid}`;
+		sceneIdMap[sid] = newSid;
+		newScenes.push({
+			...scene,
+			id: newSid,
+			name: scene.name ? `${scene.name} (copy)` : undefined,
+		});
+		for (const shot of shots.filter((s) => s.sceneRefId === sid)) {
+			newShots.push({
+				...shot,
+				id: `shot_dup_${Date.now()}_${shot.id}`,
+				sceneRefId: newSid,
+				imageStatus: "idle",
+				videoStatus: "idle",
+				imageUrl: undefined,
+				videoUrl: undefined,
+			});
+		}
+	}
+	const newEp: Episode = {
+		...ep,
+		id: newEpId,
+		title: `${ep.title} (copy)`,
+		sceneIds: (ep.sceneIds || []).map((sid) => sceneIdMap[sid] || sid),
+	};
+	const idx = episodes.findIndex((e) => e.id === id);
+	const updatedEpisodes = [...episodes];
+	updatedEpisodes.splice(idx + 1, 0, newEp);
+	return { episodes: updatedEpisodes, newScenes, newShots };
+}
+
+export function duplicateSceneAction(
+	id: string,
+	scenes: ScriptScene[],
+	shots: Shot[],
+	episodes: Episode[]
+): {
+	scenes: ScriptScene[];
+	newShots: Shot[];
+	episodes: Episode[];
+} | null {
+	const scene = scenes.find((s) => s.id === id);
+	if (!scene) return null;
+	const newId = `scene_dup_${Date.now()}`;
+	const newScene: ScriptScene = {
+		...scene,
+		id: newId,
+		name: scene.name ? `${scene.name} (copy)` : `${scene.location} (copy)`,
+	};
+	const newShots: Shot[] = shots
+		.filter((s) => s.sceneRefId === id)
+		.map((shot) => ({
+			...shot,
+			id: `shot_dup_${Date.now()}_${shot.id}`,
+			sceneRefId: newId,
+			imageStatus: "idle" as const,
+			videoStatus: "idle" as const,
+			imageUrl: undefined,
+			videoUrl: undefined,
+		}));
+	const idx = scenes.findIndex((s) => s.id === id);
+	const updatedScenes = [...scenes];
+	updatedScenes.splice(idx + 1, 0, newScene);
+	const updatedEpisodes = episodes.map((ep) => {
+		const sceneIdx = (ep.sceneIds || []).indexOf(id);
+		if (sceneIdx === -1) return ep;
+		const newSceneIds = [...(ep.sceneIds || [])];
+		newSceneIds.splice(sceneIdx + 1, 0, newId);
+		return { ...ep, sceneIds: newSceneIds };
+	});
+	return { scenes: updatedScenes, newShots, episodes: updatedEpisodes };
+}
+
+export function duplicateShotAction(id: string, shots: Shot[]): Shot[] | null {
+	const shot = shots.find((s) => s.id === id);
+	if (!shot) return null;
+	const newShot: Shot = {
+		...shot,
+		id: `shot_dup_${Date.now()}`,
+		imageStatus: "idle",
+		videoStatus: "idle",
+		imageUrl: undefined,
+		videoUrl: undefined,
+		imageProgress: 0,
+		videoProgress: 0,
+	};
+	const idx = shots.findIndex((s) => s.id === id);
+	const updatedShots = [...shots];
+	updatedShots.splice(idx + 1, 0, newShot);
+	return updatedShots;
 }

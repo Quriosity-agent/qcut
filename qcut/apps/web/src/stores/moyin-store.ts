@@ -32,9 +32,12 @@ import {
 	analyzeStagesAction,
 	generateShotsForEpisodeAction,
 	generateScriptAction,
+	duplicateEpisodeAction,
+	duplicateSceneAction,
+	duplicateShotAction,
 } from "./moyin-generation";
 
-// ==================== Types ====================
+// Types
 
 export type MoyinStep = "script" | "characters" | "scenes" | "generate";
 export type ParseStatus = "idle" | "parsing" | "ready" | "error";
@@ -50,62 +53,33 @@ export type PipelineStep =
 export type PipelineStepStatus = "pending" | "active" | "done" | "error";
 
 interface MoyinState {
-	// Project scope
 	projectId: string | null;
-
-	// Workflow navigation
 	activeStep: MoyinStep;
-
-	// Script input & parsing
 	rawScript: string;
 	scriptData: ScriptData | null;
 	parseStatus: ParseStatus;
 	parseError: string | null;
-
-	// Script config
 	language: string;
 	sceneCount: string;
 	shotCount: string;
-
-	// API key status
 	chatConfigured: boolean;
-
-	// Characters extracted from parsed script
 	characters: ScriptCharacter[];
-
-	// Scenes extracted from parsed script
 	scenes: ScriptScene[];
-
-	// Shots broken down from scenes
 	shots: Shot[];
 	shotGenerationStatus: Record<string, GenerationStatus>;
-
-	// Episodes
 	episodes: Episode[];
-
-	// Structure panel selection
 	selectedItemId: string | null;
 	selectedItemType: "episode" | "scene" | "character" | "shot" | null;
-
-	// Import pipeline
 	pipelineStep: PipelineStep | null;
 	pipelineProgress: Record<PipelineStep, PipelineStepStatus>;
-
-	// Generation state
 	generationStatus: GenerationStatus;
 	generationProgress: number;
 	generationError: string | null;
-
-	// AI calibration state
 	characterCalibrationStatus: CalibrationStatus;
 	sceneCalibrationStatus: CalibrationStatus;
 	calibrationError: string | null;
-
-	// Style & cinematography selections
 	selectedStyleId: string;
 	selectedProfileId: string;
-
-	// Storyboard result
 	storyboardImageUrl: string | null;
 	storyboardGridConfig: {
 		cols: number;
@@ -113,8 +87,6 @@ interface MoyinState {
 		cellWidth: number;
 		cellHeight: number;
 	} | null;
-
-	// Create mode
 	createStatus: "idle" | "generating" | "done" | "error";
 	createError: string | null;
 }
@@ -163,6 +135,11 @@ interface MoyinActions {
 	updateEpisode: (id: string, updates: Partial<Episode>) => void;
 	removeEpisode: (id: string) => void;
 
+	// Duplicate
+	duplicateEpisode: (id: string) => void;
+	duplicateScene: (id: string) => void;
+	duplicateShot: (id: string) => void;
+
 	// Structure panel selection
 	setSelectedItem: (
 		id: string | null,
@@ -192,8 +169,6 @@ interface MoyinActions {
 }
 
 export type MoyinStore = MoyinState & MoyinActions;
-
-// ==================== Initial State ====================
 
 const initialState: MoyinState = {
 	projectId: null,
@@ -235,8 +210,6 @@ const initialState: MoyinState = {
 	createStatus: "idle",
 	createError: null,
 };
-
-// ==================== Store ====================
 
 export const useMoyinStore = create<MoyinStore>((set, get) => {
 	const patchShot = (shotId: string, updates: Partial<Shot>) =>
@@ -312,23 +285,16 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 
 				const data = result.data as unknown as ScriptData;
 
-				advancePipeline("title_calibration", "active");
-				// Title and metadata extracted from parse result
-				advancePipeline("title_calibration", "done");
-
-				advancePipeline("synopsis", "active");
-				// Synopsis and story paragraphs extracted
-				advancePipeline("synopsis", "done");
-
-				advancePipeline("shot_calibration", "active");
-				// Scenes contain shot breakdown info
-				advancePipeline("shot_calibration", "done");
-
-				advancePipeline("character_calibration", "active");
-				advancePipeline("character_calibration", "done");
-
-				advancePipeline("scene_calibration", "active");
-				advancePipeline("scene_calibration", "done");
+				for (const step of [
+					"title_calibration",
+					"synopsis",
+					"shot_calibration",
+					"character_calibration",
+					"scene_calibration",
+				] as PipelineStep[]) {
+					advancePipeline(step, "active");
+					advancePipeline(step, "done");
+				}
 
 				set({
 					scriptData: data,
@@ -609,6 +575,34 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				episodes: state.episodes.filter((ep) => ep.id !== id),
 			})),
 
+		duplicateEpisode: (id) => {
+			const { episodes, scenes, shots } = get();
+			const result = duplicateEpisodeAction(id, episodes, scenes, shots);
+			if (!result) return;
+			set((state) => ({
+				episodes: result.episodes,
+				scenes: [...state.scenes, ...result.newScenes],
+				shots: [...state.shots, ...result.newShots],
+			}));
+		},
+
+		duplicateScene: (id) => {
+			const { scenes, shots, episodes } = get();
+			const result = duplicateSceneAction(id, scenes, shots, episodes);
+			if (!result) return;
+			set(() => ({
+				scenes: result.scenes,
+				shots: [...get().shots, ...result.newShots],
+				episodes: result.episodes,
+			}));
+		},
+
+		duplicateShot: (id) => {
+			const result = duplicateShotAction(id, get().shots);
+			if (!result) return;
+			set({ shots: result });
+		},
+
 		setSelectedItem: (id, type) =>
 			set({ selectedItemId: id, selectedItemType: type }),
 
@@ -617,7 +611,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		setSelectedProfileId: (id) => set({ selectedProfileId: id }),
 
 		enhanceCharacters: async () => {
-			const { characters, scriptData } = get();
+			const { characters, scriptData, rawScript } = get();
 			if (characters.length === 0) return;
 
 			set({
@@ -626,7 +620,11 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			});
 
 			try {
-				const enhanced = await enhanceCharactersLLM(characters, scriptData);
+				const enhanced = await enhanceCharactersLLM(
+					characters,
+					scriptData,
+					rawScript
+				);
 				set({ characters: enhanced, characterCalibrationStatus: "done" });
 			} catch (error) {
 				set({
@@ -638,13 +636,13 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		},
 
 		enhanceScenes: async () => {
-			const { scenes, scriptData } = get();
+			const { scenes, scriptData, rawScript } = get();
 			if (scenes.length === 0) return;
 
 			set({ sceneCalibrationStatus: "calibrating", calibrationError: null });
 
 			try {
-				const enhanced = await enhanceScenesLLM(scenes, scriptData);
+				const enhanced = await enhanceScenesLLM(scenes, scriptData, rawScript);
 				set({ scenes: enhanced, sceneCalibrationStatus: "done" });
 			} catch (error) {
 				set({

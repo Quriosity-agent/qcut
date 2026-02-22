@@ -344,6 +344,30 @@ export function CharacterList() {
 				</div>
 			)}
 
+			{isCalibrating && characters.length > 0 && (
+				<div className="space-y-2" aria-label="Loading characters">
+					{Array.from({ length: Math.min(characters.length, 3) }).map(
+						(_, i) => (
+							<div
+								key={`skel-${
+									// biome-ignore lint/suspicious/noArrayIndexKey: skeleton placeholders
+									i
+								}`}
+								className="rounded-lg border p-3 space-y-2 animate-pulse"
+							>
+								<div className="flex items-center gap-2">
+									<div className="h-3.5 w-3.5 rounded bg-muted" />
+									<div className="h-3 w-24 rounded bg-muted" />
+									<div className="h-3 w-10 rounded bg-muted" />
+								</div>
+								<div className="h-2.5 w-full rounded bg-muted" />
+								<div className="h-2.5 w-3/4 rounded bg-muted" />
+							</div>
+						)
+					)}
+				</div>
+			)}
+
 			{searchQuery && filteredCharacters.length === 0 ? (
 				<div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
 					<SearchIcon className="mb-2 h-6 w-6 opacity-40" />

@@ -216,6 +216,8 @@ export function ScriptInput() {
 								size="sm"
 								onClick={clearScript}
 								disabled={isParsing}
+								title="Clear script"
+								aria-label="Clear script"
 							>
 								<Trash2Icon className="h-3.5 w-3.5" />
 							</Button>
