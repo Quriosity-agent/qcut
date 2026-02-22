@@ -108,6 +108,7 @@ function PromptSection({
 								type="button"
 								onClick={() => setLang(l)}
 								aria-pressed={lang === l}
+								aria-label={l === "en" ? "English prompt" : "Chinese prompt"}
 								className={cn(
 									"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
 									lang === l

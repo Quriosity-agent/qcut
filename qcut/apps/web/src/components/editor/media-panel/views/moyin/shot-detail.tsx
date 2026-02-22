@@ -453,7 +453,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					onClose={() => setPreview(null)}
 				/>
 			)}
-			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-1.5">
 					<button
@@ -516,7 +515,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</Button>
 				</div>
 			</div>
-			{/* Core fields */}
 			<FieldRow label="Action" value={shot.actionSummary} />
 			<FieldRow label="Camera" value={shot.cameraMovement} />
 			<FieldRow label="Dialogue" value={shot.dialogue} />
@@ -588,7 +586,6 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 				onSfxChange={() => {}}
 				readOnly
 			/>
-			{/* Narrative */}
 			{shot.narrativeFunction && (
 				<div className="space-y-0.5">
 					<p className="text-[10px] font-medium text-muted-foreground">
@@ -708,6 +705,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						className="flex-1 h-7 text-xs"
 						onClick={() => generateShotImage(shot.id)}
 						disabled={isImageGenerating}
+						aria-busy={isImageGenerating || undefined}
 					>
 						{isImageGenerating ? (
 							<Loader2 className="mr-1 h-3 w-3 animate-spin" />
@@ -722,6 +720,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						className="flex-1 h-7 text-xs"
 						onClick={() => generateShotVideo(shot.id)}
 						disabled={isVideoGenerating || !shot.imageUrl}
+						aria-busy={isVideoGenerating || undefined}
 						title={!shot.imageUrl ? "Generate image first" : undefined}
 					>
 						{isVideoGenerating ? (
@@ -765,6 +764,7 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						className="w-full h-7 text-xs"
 						onClick={() => generateEndFrameImage(shot.id)}
 						disabled={isEndFrameGenerating}
+						aria-busy={isEndFrameGenerating || undefined}
 					>
 						{isEndFrameGenerating ? (
 							<Loader2 className="mr-1 h-3 w-3 animate-spin" />

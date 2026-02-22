@@ -108,6 +108,7 @@ export function CharacterVariations({
 					onClick={handleAdd}
 					className="w-full text-xs"
 					disabled={editingId !== null}
+					aria-label="Add a new character variation"
 				>
 					<PlusIcon className="mr-1 h-3 w-3" />
 					Add Variation
