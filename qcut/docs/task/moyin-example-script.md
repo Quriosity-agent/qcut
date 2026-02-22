@@ -1,182 +1,340 @@
-# Moyin Script Format — Default Example
+# Moyin Script Format — Default Examples
 
-This document provides a ready-to-paste example script for the Moyin (魔因漫创) script editor.
-Copy the content inside the code block and paste it into the **Script Editor > Import** panel.
+Ready-to-paste example scripts for the Moyin script editor.
+Copy the content inside a code block and paste it into the **Script Editor > Import** panel.
 
-Based on the original demo project 《灌篮少女》(Slam Dunk Girl).
+Based on the original demo project from [moyin-creator](../../packages/video-agent-skill).
 
 ## Format Reference
 
-The episode parser (`episode-parser.ts`) expects:
+The episode parser (`episode-parser.ts`) handles Chinese screenplay format via regex.
+The script parser (`script-parser.ts`) handles any language via LLM.
 
-| Element | Format | Example |
-|---------|--------|---------|
-| Title | `《Title》` | `《灌篮少女》` |
-| Outline | `大纲：` block before character bios | Free-form synopsis |
-| Character bios | `人物小传：` block before episodes | `Name（Age）：Description` |
-| Episode | `第X集 Title` | `第一集 手办血案` |
-| Scene header | `**N-N Time Int/Ext Location**` | `**1-1 日 内 中学操场**` |
-| Character list | `人物：CharA、CharB` | Inside scene block |
-| Action line | `△Description` | `△阳光照在操场上` |
-| Dialogue | `Name：（Action）Line` | `马一花：（笑）我来了！` |
-| Subtitle/note | `【字幕：Text】` | `【字幕：三年前】` |
+| Element | Chinese Format | English Format |
+|---------|---------------|----------------|
+| Title | `《灌篮少女》` | `"Basketball Girls"` or `《Basketball Girls》` |
+| Outline | `大纲：...` | `Synopsis:...` |
+| Character bios | `人物小传：Name（Age）：Desc` | `Characters: Name (Age): Desc` |
+| Episode | `第一集：手办血案` | `Episode 1: Figurine Bloodshed` |
+| Scene header | `1-1 日 外 中学操场` | `Scene 1-1: EXT. SCHOOL COURT - DAY` |
+| Characters | `人物：马一花、陈茉莉` | `Characters: Yihua, Moli` |
+| Action line | `△篮球滚到过道中间` | `A basketball rolls into the aisle.` |
+| Dialogue | `马一花：（运球）闭嘴！` | `YIHUA: (dribbling) Shut up!` |
+| Subtitle | `【字幕：湖南 · 青石镇】` | `[TITLE CARD: Hunan — Qingshi Town]` |
 
-## Default Example Script — Slam Dunk Girl (灌篮少女)
+## Example 1: Chinese (Original Demo) — 灌篮少女
+
+Set language to **中文** in the import panel.
 
 ```
 《灌篮少女》
 
-大纲：三个因家庭变故从大城市"流放"回湖南山村的少女，带着格格不入的傲气与失落，意外撞上了一心想保研的"剃头"女老师。当都市篮球技术遇见乡村野路子怪力，在破碎手办引发的冲突中，这群被生活放逐的少女决定在尘土飞扬的操场上，用一颗篮球赢回属于自己的尊严。
+大纲： 三个因家庭变故从大城市"流放"回湖南山村的少女，带着格格不入的傲气与失落，意外撞上了一心想保研的"刺头"女老师。当都市篮球技术遇见乡村野路子怪力，在破碎手办引发的冲突中，这群被生活放逐的少女决定在尘土飞扬的操场上，用一颗篮球赢回属于自己的尊严。
 
 人物小传：
-马一花（17）：暴躁体委/手办狂魔。强悍直率，热爱篮球和收藏手办。从城市转学到乡村中学，不服输的性格让她在新环境中处处碰壁，但也因此结交了志同道合的伙伴。
-赵思楠（25）：乡村中学体育老师，一心想保研离开山村。表面冷漠严厉，内心对学生有着深深的责任感。曾是省队篮球运动员，因伤退役后被分配到这所偏远中学。
-陈茉莉（17）：马一花的同班同学，性格温柔但内心坚韧。家境贫寒，父母在外打工，由奶奶抚养长大。虽然身材瘦小，但有着惊人的速度和灵活性。
-叶小玲（17）：班上的文静女生，戴眼镜，喜欢读书。被同学们认为是"书呆子"，但其实有着过目不忘的记忆力，后来成为球队的战术分析师。
-刘娜（30）：中学教导主任，严肃刻板，反对学生把时间花在"不务正业"的篮球上。是赵思楠保研路上的最大阻碍。
+马一花（17）： 暴躁体委/手办狂魔。强悍直率，极度缺乏安全感，视球星手办为命根。
+陈茉莉（17）： 戏精"墙头草"。心思缜密，早熟敏感，擅长装傻充愣，打球只为合群。
+叶小玲（17）： 毒舌学霸。心高气傲，事事要强，对乡村环境充满抵触。
+沈星晴（22）： 热血支教老师。名牌大学毕业生，前篮球队主力，叛逆不羁。
+赵思楠（18）： 留级"野孩子"。外冷内热，身体素质极佳，视刘娜为唯一的守护对象。
+刘娜（16）： 告状小能手。胆小且重男轻女家庭受害者，虚张声势的"主任侄女"。
 
-第一集 手办血案
+第一集：手办血案
 
-**1-1 日 外 乡村公路/大巴车**
-人物：马一花
+1-1 日 外 乡村公路/大巴车
+人物：沈星晴、村民
 
-△一辆老旧的乡村大巴沿着蜿蜒山路行驶，车窗外是连绵的稻田和远处的青山。
+△一辆破旧的大巴车在蜿蜒的山路上剧烈颠簸。窗外是连绵的梯田。
+△沈星晴靠在椅背上睡觉，一记重响，她的行李箱滑开，一颗橘色的篮球滚到了过道中间。
 
-【字幕：湖南，某山村中学】
+村民：（操着方言）妹子，支教的？
 
-△马一花坐在大巴最后一排，怀里紧紧抱着一个装满手办的纸箱。耳机里放着嘈杂的音乐，她面无表情地看着窗外陌生的风景。
+△沈星晴睁眼，眼神里透着一丝冷淡的英气。她起身捡球，球面上"MVP"的字样已经磨损。
 
-△大巴颠簸了一下，箱子差点滑落。马一花赶紧抓住，低头看了眼箱子里的手办，眼神有一瞬间的柔软。
+沈星晴：来保研的。
 
-马一花：（自言自语）就这破路……要是摔坏了我跟他们拼命。
+△她把球塞回包里，看向窗外。
+【字幕：湖南 · 青石镇】
 
-**1-2 日 外 中学操场**
-人物：马一花、赵思楠、陈茉莉、叶小玲、刘娜、男同学
+1-2 日 外 中学操场
+人物：马一花、陈茉莉、叶小玲
 
-△中午的操场，水泥地上篮板是木头做的，边缘已经开裂。几个男生在打篮球，动作粗野。
+△水泥地操场，篮板是木头做的，边缘已经开裂。
+△马一花小心翼翼地把一个精美的NBA球星手办放在篮球架的底座上，还垫了一张干净的纸巾。
 
-△马一花抱着纸箱从教学楼走出来，经过操场时停下脚步，看着男生们打球。
+马一花：老公保佑，今天投篮命中率必须过五十。
 
-△一个男生投篮失误，球砸在篮框上弹飞，直直朝马一花飞来。
+陈茉莉：（拿着小镜子补防晒）一花，这地儿太阳毒得能脱皮，你那手办都要晒化了。
 
-马一花：（下意识单手接住球，纸箱夹在另一臂下）喂！长没长眼睛？
+叶小玲：（靠在架子旁翻英语单词手册）根据紫外线强度，该模型涂料在两小时内会发生不可逆的褪色。马一花，你的行为很幼稚。
 
-△男生们愣了一下，随即嬉笑起来。
+马一花：（运球，动作利落）闭嘴！这叫精神支柱！看好了，给你们这群土包子展示一下什么叫城市联赛级后仰！
 
-男同学：哟，新来的还会打球？女生就该在旁边看着。
+△马一花起跳，投篮。篮球在铁框上弹了一下，飞向操场边的草丛。
 
-△马一花眼睛一眯，把纸箱放在地上，拍了拍球，一个变向过掉两个男生，轻松上篮得分。
+1-3 日 外 操场边缘树荫
+人物：赵思楠、刘娜、几个捣乱的男同学
 
-△操场边，赵思楠抱着篮球教案走过，看到这一幕，微微顿了一下脚步。
+△赵思楠枕着胳膊躺在草地上闭目养神，草帽盖在脸上。
+△刘娜正被几个男生围着，书包被抢来抢去。
 
-陈茉莉：（小声跟叶小玲说）新来的转学生好厉害……
-叶小玲：（推了推眼镜）嗯，基本功很扎实。
+刘娜：还给我！信不信我告诉我叔……告教导主任去！
 
-△马一花捡回球，准备走，却发现纸箱被一个男生不小心踩了一脚。她蹲下打开箱子，一个限量版手办的手臂断了。
+男同学：告啊！假侄女！你那个留级生表姐呢？让她出来啊！
 
-马一花：（脸色骤变，声音发抖）你……踩了我的手办……
+△篮球"砰"地一声砸在男生脚下。
+△草帽被掀开，赵思楠坐起身，眼神像狼一样冷。
 
-△男同学们看情况不对，开始后退。
+赵思楠：球，捡起来。
 
-马一花：（站起来，眼眶发红，攥紧拳头）这是绝版的！你赔得起吗？！
+△男生们对视一眼，被赵思楠的气场震住，丢下书包一哄而散。
+△刘娜赶紧捡起球，顺手往后一抛。
 
-△冲突一触即发。
+刘娜：谁乱扔球啊！没素质！
 
-**1-3 日 外 操场边缘树荫**
-人物：赵思楠、马一花、刘娜、男同学
+1-4 日 外 操场篮球架下
+人物：前场所有人
 
-△操场边的大树下，赵思楠躺在草地上闭目养神，草帽盖在脸上。
+△篮球划出一道歪歪扭扭的弧线，精准地砸在篮球架底座上。
+△"啪嗒"一声，那个球星手办被球砸中，整流罩断裂，头滚到了水泥地上。
 
-△远处传来争吵声。赵思楠掀开草帽，看到马一花揪住一个男生的衣领。
+△马一花僵在原地，世界静止了三秒。
 
-刘娜：（急匆匆赶来）又怎么了！马一花，你第一天就打架？
-男同学：老师，她先动手的！
-马一花：（不松手）他踩坏了我的东西！
+马一花：（爆发出尖叫）我的老公——！
 
-△赵思楠慢悠悠走过来，看了看地上的碎手办，又看了看马一花通红的眼睛。
+△她疯了一样冲过去捡起断头的手办，眼眶瞬间红了。
 
-△篮球"砰"地一声砸在男生脚下。男生们吓了一跳。
+马一花：（指向刘娜）你赔！你知不知道这是绝版！
 
-赵思楠：（冷漠地）散了。
+刘娜：（吓得往赵思楠身后钻）谁让你把玩具放那儿的……这、这儿是操场！
 
-△男生们对视一眼，被赵思楠的气场震住，丢下篮球跑了。
+陈茉莉：（收起镜子，声音尖利）哎哟，弄坏了东西还挺横？别以为你姓刘就有后台。
 
-刘娜：（严厉地）赵老师，你不能这样纵容——
-赵思楠：（对马一花说）球，捡起来。
-马一花：（愣住）什么？
-赵思楠：（转身走了）你的手办我赔不了，但那个上篮——不错。明天下午操场见。
+叶小玲：（合上书，冷冷地走过来）故意损坏他人财物，金额超过五百元可以报案。马一花，别废话，让她赔。
 
-△马一花怔怔地站在原地，手里攥着断掉的手办，看着赵思楠远去的背影。
+△赵思楠挡在刘娜身前，个头比马一花还高半个头，浑身透着一股常年干农活的爆发力。
 
-**1-4 日 外 操场篮球架下**
-人物：赵思楠、马一花、陈茉莉、叶小玲
+赵思楠：球是我妹扔的，想要钱，没有。
 
-△放学后的操场，夕阳将一切染成金色。赵思楠一个人在篮球架下练球，动作干脆利落。
+马一花：没钱？没钱你给我跪下给它道歉！
 
-△马一花远远站在操场边，犹豫了一会儿，最终走了过去。
+△马一花一记推搡。赵思楠纹丝不动。
 
-马一花：（别扭地）你说……明天来，但我今天就来了。
-赵思楠：（投篮，球空心入网）你来早了。
-马一花：我不想欠你人情。你帮我解了围，我——
+1-5 日 外 操场中央
+人物：全员、沈星晴
 
-△赵思楠把球传给马一花。
+△马一花抡起篮球直接砸向赵思楠。
+△赵思楠单手一挡，顺势抓住球。她虽然没学过球，但反应极快。
 
-赵思楠：少废话。一对一，你赢了，我帮你修手办。你输了，加入篮球队。
-马一花：（接住球，傻眼了）你这里哪来的篮球队？
-赵思楠：（微微一笑）还没有。所以需要你。
+赵思楠：有力气，留着干活。
 
-△两人开始一对一。马一花技术花哨但体力不足，赵思楠基本功扎实且经验丰富。
+△赵思楠运球，虽然姿势极不规范，但速度惊人，直接冲到篮下。
+△马一花从侧面拦截，两人撞在一起。赵思楠像块铁板，马一花直接被弹开。
 
-△操场边，陈茉莉和叶小玲偷偷在看。
+△赵思楠跳起，将球重重砸向篮筐。
+△由于用力过猛，篮球砸在铁圈上弹得老高。
 
-陈茉莉：（眼睛发亮）好想加入啊……
-叶小玲：（记笔记）马一花的变向速度0.8秒，突破成功率73%……
+沈星晴：（突然出现，高举右手接住落下的球）姿势不及格，但爆发力不错。
 
-△最终，马一花气喘吁吁地输了。
+△众人愣住。沈星晴穿着简单的白T恤，骑着一辆共享单车，包里露出一截哨子。
 
-马一花：（不服气）再来一局！
-赵思楠：（丢过来一瓶水）明天再来。带上那两个偷看的。
+沈星晴：我是新来的体育老师。
 
-△陈茉莉和叶小玲吓得缩回墙角。
+马一花：（抹了一把眼泪，不服气）老师？她弄坏了我的手办！
 
-**1-5 日 外 操场中央**
-人物：马一花、陈茉莉、叶小玲、赵思楠
+沈星晴：我看出来了，你们这儿解决问题的方式只有打架？
 
-△第二天下午，操场中央。马一花、陈茉莉、叶小玲三人站成一排，面对赵思楠。
+△沈星晴看向马一花，又看向赵思楠。
 
-赵思楠：（扫视三人）就你们三个？
-马一花：（双手抱胸）三个怎么了？三个也能打球。
-陈茉莉：（紧张地举手）那个……我其实不太会打球……
-叶小玲：（推眼镜）我负责数据分析可以吗？
+沈星晴：这样，既然都觉得自己厉害。三对三。
 
-△赵思楠沉默了一会儿，从包里掏出四件旧球衣。
+沈星晴：（指向赵思楠）你，去拉两个人。
 
-赵思楠：这是我大学时省队的训练服。（把球衣分别扔给三人）从今天起，每天放学，操场集合。
-马一花：（看着球衣上的号码，愣住）你是省队的？
-赵思楠：（转身走向球场）曾经是。
+沈星晴：（看向马一花）你们三个，别顶着"城里回来的"名号丢人。
 
-△夕阳下，四个身影在操场上拉长。赵思楠开始教她们基础运球。
+沈星晴：谁输了，谁负责洗全校一个月的体育器材，并且，输的那方要公开道歉。
 
-△远处教学楼的窗口，刘娜皱着眉看着操场上的一切。
+马一花：（咬牙）打就打！怕你这个乡巴佬？
 
-【字幕：灌篮少女，正式开始】
+赵思楠：（冷漠）随你。
 
-第二集 魔鬼训练
+△沈星晴把球扔给马一花，嘴角勾起一抹玩味的笑。
+
+沈星晴：明天下午，这个框。
+
+【字幕：青石镇中学 · 篮球赛首战 倒计时24小时】
+```
+
+## Example 2: English — Basketball Girls
+
+Set language to **English** in the import panel. This is the same story translated for the LLM-based parser.
+
+```
+"Basketball Girls"
+
+Synopsis: Three teenage girls, banished from big-city life back to a remote Hunan village after family upheavals, carry their urban pride and quiet desperation into a crumbling rural middle school. There they collide with a fierce young teacher chasing her own graduate-school ticket out. When city-league basketball skills meet raw village strength — and a prized collectible figurine shatters in the crossfire — these outcasts decide that on a dust-choked concrete court, one basketball can win back the dignity the world took from them.
+
+Characters:
+Ma Yihua (17): Hotheaded class athletic rep and figurine fanatic. Tough, blunt, deeply insecure. She treats her NBA star figurine as a lifeline. Transferred from a city school and refuses to back down in her hostile new environment.
+Chen Moli (17): The drama queen "fence-sitter." Sharp-minded, precociously perceptive, skilled at playing dumb. She only plays basketball to fit in, but her cunning makes her a natural point guard.
+Ye Xiaoling (17): Acid-tongued bookworm. Proud, competitive, openly hostile toward rural life. Behind her cold exterior lies a photographic memory that will make her the team's tactical analyst.
+Shen Xingqing (22): Passionate volunteer teacher. Elite-university graduate, former provincial basketball team starter, rebellious and unconventional. She came to this village school only to earn graduate-school credits — but these girls might change her plans.
+Zhao Sinan (18): The held-back "wild child." Cold on the outside, fiercely loyal within. She has extraordinary physical strength from years of farm work and sees Liu Na as the only person worth protecting.
+Liu Na (16): The school tattletale. Timid, scarred by a family that favors boys. She hides behind her claim of being the dean's niece, but her bravado crumbles under pressure.
+
+Episode 1: Figurine Bloodshed
+
+Scene 1-1: EXT. RURAL ROAD / BUS - DAY
+Characters: Shen Xingqing, Villager
+
+A battered bus lurches along a winding mountain road. Terraced rice paddies stretch to the horizon outside the windows.
+Shen Xingqing dozes against her seat. A hard jolt sends her suitcase sliding open. An orange basketball rolls into the aisle.
+
+VILLAGER: (in thick dialect) Hey miss — here to teach?
+
+Xingqing opens her eyes, a flicker of cool detachment in her gaze. She picks up the ball. The letters "MVP" on its surface are worn nearly smooth.
+
+XINGQING: Here for grad-school credits.
+
+She stuffs the ball back into her bag and stares out the window.
+[TITLE CARD: Hunan — Qingshi Town]
+
+Scene 1-2: EXT. SCHOOL BASKETBALL COURT - DAY
+Characters: Ma Yihua, Chen Moli, Ye Xiaoling
+
+A concrete court baking in the sun. The backboard is plywood, its edges split and peeling.
+Ma Yihua carefully places a pristine NBA star figurine on the base of the basketball hoop, setting it on a clean tissue.
+
+YIHUA: Bless me, babe. Fifty-percent shooting today — minimum.
+
+MOLI: (holding a compact mirror, reapplying sunscreen) Yihua, this sun could peel paint off a wall. Your figurine's going to melt.
+
+XIAOLING: (leaning against the hoop post, flipping through a vocabulary book) Given the UV index, the model's paint coating will undergo irreversible fading within two hours. Yihua, this is childish.
+
+YIHUA: (dribbling, crisp crossover) Shut up! This is called a spiritual anchor! Watch and learn — I'll show you country bumpkins what a city-league fadeaway looks like!
+
+Yihua jumps. She shoots. The ball clangs off the iron rim and bounces toward the grass at the edge of the court.
+
+Scene 1-3: EXT. COURTSIDE TREE SHADE - DAY
+Characters: Zhao Sinan, Liu Na, Troublemaking Boys
+
+Zhao Sinan lies in the grass under a tree, arms behind her head, a straw hat over her face.
+Nearby, a group of boys circles Liu Na, tossing her backpack between them.
+
+LIU NA: Give it back! I swear I'll tell my uncle — I'll tell the dean!
+
+BOY: Go ahead! Fake niece! Where's your held-back cousin? Tell her to come out!
+
+BANG — a basketball slams into the ground at the boy's feet.
+The straw hat flips off. Zhao Sinan sits up. Her eyes are wolf-cold.
+
+SINAN: Ball. Pick it up.
+
+The boys exchange a look, frozen by her presence. They drop the backpack and scatter.
+Liu Na snatches up the basketball and, without looking, tosses it behind her.
+
+LIU NA: Who just throws a ball around? No manners!
+
+Scene 1-4: EXT. UNDER THE BASKETBALL HOOP - DAY
+Characters: All from previous scenes
+
+The basketball sails in a wobbly arc and smashes dead-center into the base of the hoop.
+CRACK — the NBA star figurine takes the hit. Its body snaps apart. The head rolls across the concrete.
+
+Ma Yihua freezes. The world stops for three full seconds.
+
+YIHUA: (screaming) MY BABY—!
+
+She lunges for the decapitated figurine, eyes instantly red.
+
+YIHUA: (pointing at Liu Na) You're paying for this! Do you have any idea — this is a limited edition!
+
+LIU NA: (scrambling behind Sinan) Who told you to put a toy there? This — this is a basketball court!
+
+MOLI: (snapping her mirror shut, voice shrill) Oh, so you break someone's stuff and cop an attitude? Don't think your last name buys you connections.
+
+XIAOLING: (closing her book, walking over, ice-cold) Intentional destruction of personal property exceeding five hundred yuan is a police matter. Yihua, skip the talk. Make her pay.
+
+Zhao Sinan steps in front of Liu Na. She's half a head taller than Yihua, radiating the explosive power of someone who's hauled rice sacks since childhood.
+
+SINAN: My sister threw the ball. You want money? Don't have any.
+
+YIHUA: No money? Then get on your knees and apologize to it!
+
+Yihua shoves her. Sinan doesn't budge an inch.
+
+Scene 1-5: EXT. CENTER COURT - DAY
+Characters: Everyone, Shen Xingqing
+
+Yihua hurls the basketball straight at Sinan.
+Sinan catches it one-handed without flinching. She's never trained, but her reflexes are terrifying.
+
+SINAN: Save your energy. You'll need it for farm work.
+
+Sinan starts dribbling — terrible form, but blinding speed. She charges to the basket.
+Yihua cuts in from the side. They collide. Sinan is like a wall of iron. Yihua bounces off.
+
+Sinan leaps and slams the ball at the rim.
+Too much force. The ball ricochets off the iron ring and rockets skyward.
+
+XINGQING: (appearing out of nowhere, right hand raised, catching the falling ball) Terrible form. But the explosiveness — not bad.
+
+Everyone freezes. Shen Xingqing stands in a plain white T-shirt, a shared bicycle behind her, a whistle poking out of her bag.
+
+XINGQING: I'm the new PE teacher.
+
+YIHUA: (wiping tears, defiant) Teacher? She wrecked my figurine!
+
+XINGQING: I can see that. So the only way you people solve problems here is fighting?
+
+Xingqing looks at Yihua, then at Sinan.
+
+XINGQING: Alright. Since you both think you're tough. Three on three.
+
+XINGQING: (pointing at Sinan) You — go find two more.
+
+XINGQING: (looking at Yihua) You three — don't embarrass the "city girls" reputation.
+
+XINGQING: Losers wash all the school's sports equipment for a month. And — the losing side apologizes. Publicly.
+
+YIHUA: (through gritted teeth) Fine! You think I'm scared of you hicks?
+
+SINAN: (flat) Whatever.
+
+Xingqing tosses the ball to Yihua. A sly smile curls at the corner of her mouth.
+
+XINGQING: Tomorrow afternoon. This hoop.
+
+[TITLE CARD: Qingshi Town Middle School — First Game: 24 Hours]
+
+Episode 2: Boot Camp
 ```
 
 ## Parser Compatibility Notes
 
-1. **Title extraction**: Uses `《》` or `「」` brackets
-2. **Outline section**: Must appear before `人物小传` and before `第X集`
-3. **Character bios**: Format is `Name（Age）：Description`; parser extracts personality and traits automatically
-4. **Episode markers**: Supports Chinese numerals (`第一集`) and Arabic (`第1集`)
-5. **Scene headers**: Standard format is `**N-N Time Int/Ext Location**`
-   - Time values: `日`/`夜`/`晨`/`暮`/`黄昏`/`黎明`/`清晨`/`傍晚`
-   - Interior/exterior: `内`/`外`/`内/外`
+### Chinese (rule-based, `episode-parser.ts`)
+1. **Title**: `《》` brackets — regex: `/[《「]([^》」]+)[》」]/`
+2. **Outline**: `大纲：` must appear before `人物小传` and before `第X集`
+3. **Character bios**: `Name（Age）：Description`
+4. **Episode markers**: `第X集` with Chinese numerals or Arabic digits
+5. **Scene headers**: `N-N Time Int/Ext Location` — Time: `日`/`夜`/`晨`/`暮`/`黄昏`/`黎明`/`清晨`/`傍晚` — Int/Ext: `内`/`外`/`内/外`
 6. **Character line**: `人物：` followed by names separated by `、`
-7. **Action lines**: Start with `△` (triangle marker)
-8. **Dialogue**: `Name：（parenthetical）dialogue text`
-9. **Subtitles**: Wrapped in `【】` brackets
+7. **Action lines**: Start with `△`
+8. **Dialogue**: `Name：（parenthetical）line`
+9. **Subtitles**: `【text】` brackets
+
+### English (LLM-based, `script-parser.ts`)
+1. **Title**: Quoted string or `《》` brackets
+2. **Synopsis**: `Synopsis:` free-form block
+3. **Character bios**: `Name (Age): Description`
+4. **Episode markers**: `Episode N: Title`
+5. **Scene headers**: `Scene N-N: EXT./INT. LOCATION - TIME`
+6. **Character line**: `Characters:` followed by names
+7. **Action lines**: Plain prose paragraphs (no `△` needed)
+8. **Dialogue**: `NAME: (parenthetical) line` — standard screenplay format
+9. **Title cards**: `[TITLE CARD: text]`
+
+The LLM parser auto-detects format via `detectInputType()` and supports: `storyboard_script`, `mv_concept`, `ad_brief`, `trailer_script`, `short_video`, `one_liner`, `story_outline`, `detailed_story`.
 
 ## What Happens After Import
 
@@ -185,9 +343,9 @@ The episode parser (`episode-parser.ts`) expects:
 3. **AI Scene Calibration** enriches scenes with visual prompts, architecture, lighting
 4. **AI Character Calibration** generates identity anchors and visual descriptions
 5. **Shot Generation** creates per-scene shot breakdowns (CU/MS/WS) with camera, audio, and visual design
-6. **Storyboard View** displays the tree: Episodes > Scenes > Shots (as shown in the UI)
+6. **Storyboard View** displays the tree: Episodes > Scenes > Shots
 
-## UI Mapping (from screenshot)
+## UI Mapping
 
 | UI Panel | Data Source |
 |----------|------------|
@@ -195,5 +353,5 @@ The episode parser (`episode-parser.ts`) expects:
 | Center: Episode Structure (剧集结构) | Parsed episodes > scenes > shots tree |
 | Right: Shot Detail (分镜 N) | Individual shot with CU/MS/WS, visual, action, audio, characters |
 | Shot types | CU = Close-Up, MS = Medium Shot, WS = Wide Shot |
-| Status badges | Static / Dynamic, duration (e.g. 3s) |
-| Bottom buttons | "Go to AI Generation" (去AI导演生成), "Copy 3-layer prompt data" (复制三层提词数据) |
+| Status | Static / Dynamic, duration (e.g. 3s) |
+| Actions | "Go to AI Generation" (去AI导演生成), "Copy 3-layer prompt" (复制三层提词数据) |
