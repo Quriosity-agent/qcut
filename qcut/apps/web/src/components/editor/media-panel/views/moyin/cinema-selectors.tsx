@@ -59,7 +59,7 @@ function EnumSelector<T extends string>({
 	return (
 		<div className="space-y-1">
 			<Label className="text-[10px]">{label}</Label>
-			<div className="flex flex-wrap gap-1">
+			<div className="flex flex-wrap gap-1" role="group" aria-label={label}>
 				{options.map((opt) => (
 					<button
 						key={opt.value}
@@ -125,7 +125,7 @@ function MultiEnumSelector<T extends string>({
 	return (
 		<div className="space-y-1">
 			<Label className="text-[10px]">{label}</Label>
-			<div className="flex flex-wrap gap-1">
+			<div className="flex flex-wrap gap-1" role="group" aria-label={label}>
 				{options.map((opt) => (
 					<button
 						key={opt.value}

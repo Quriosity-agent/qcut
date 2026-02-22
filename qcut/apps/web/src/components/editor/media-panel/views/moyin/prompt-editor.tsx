@@ -87,11 +87,13 @@ function PromptSection({
 						className="p-0.5 rounded hover:bg-muted text-muted-foreground"
 						aria-label={`Copy ${label}`}
 					>
-						{copied ? (
-							<span className="text-[9px] text-green-600">Copied</span>
-						) : (
-							<CopyIcon className="h-2.5 w-2.5" />
-						)}
+						<span aria-live="polite">
+							{copied ? (
+								<span className="text-[9px] text-green-600">Copied</span>
+							) : (
+								<CopyIcon className="h-2.5 w-2.5" />
+							)}
+						</span>
 					</button>
 				)}
 			</button>

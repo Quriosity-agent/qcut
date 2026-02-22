@@ -239,6 +239,7 @@ export function EmotionTagSelector({
 					<button
 						key={tag}
 						type="button"
+						aria-pressed={selected.includes(tag)}
 						onClick={() => toggle(tag)}
 						className={cn(
 							"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
@@ -372,6 +373,7 @@ export function SoundDesignInput({
 						<button
 							key={sfx}
 							type="button"
+							aria-pressed={activeSfx.includes(sfx)}
 							onClick={() => addSfxPreset(sfx)}
 							disabled={!isEnabled}
 							title={
