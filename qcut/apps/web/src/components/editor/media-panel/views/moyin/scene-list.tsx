@@ -302,7 +302,11 @@ export function SceneList() {
 						) : (
 							<SparklesIcon className="mr-1 h-3 w-3" />
 						)}
-						{calibrationStatus === "done" ? "Enhanced" : "AI Enhance"}
+						{isCalibrating
+							? "Enhancing…"
+							: calibrationStatus === "done"
+								? "Enhanced"
+								: "AI Enhance"}
 					</Button>
 					<Button
 						variant="text"

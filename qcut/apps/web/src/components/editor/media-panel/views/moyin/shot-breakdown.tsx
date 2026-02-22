@@ -329,6 +329,7 @@ export function ShotBreakdown() {
 							onClick={handleDuplicateSelected}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
 							aria-label="Duplicate selected shots"
+							title="Duplicate selected shots into the same scene"
 						>
 							<CopyIcon className="h-3 w-3" />
 							Duplicate
@@ -338,6 +339,7 @@ export function ShotBreakdown() {
 							onClick={handleBulkGenerate}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
 							aria-label="Generate images for selected shots"
+							title="Queue image generation for selected shots"
 						>
 							<SparklesIcon className="h-3 w-3" />
 							Generate
@@ -347,6 +349,7 @@ export function ShotBreakdown() {
 							onClick={handleBulkCopyPrompts}
 							className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:bg-muted transition-colors"
 							aria-label="Copy prompts for selected shots"
+							title="Copy all prompts to clipboard"
 						>
 							<ClipboardCopyIcon className="h-3 w-3" />
 							Copy

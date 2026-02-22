@@ -331,7 +331,11 @@ export function CharacterList() {
 						) : (
 							<SparklesIcon className="mr-1 h-3 w-3" />
 						)}
-						{calibrationStatus === "done" ? "Enhanced" : "AI Enhance"}
+						{isCalibrating
+							? "Enhancing…"
+							: calibrationStatus === "done"
+								? "Enhanced"
+								: "AI Enhance"}
 					</Button>
 					{episodes.length > 1 && (
 						<Button
