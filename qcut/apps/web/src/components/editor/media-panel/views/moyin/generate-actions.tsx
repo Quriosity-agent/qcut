@@ -207,6 +207,7 @@ export function GenerateActions() {
 							<Progress
 								value={shots.length > 0 ? (imagesDone / shots.length) * 100 : 0}
 								className="flex-1 h-1.5"
+								aria-label={`Images: ${imagesDone} of ${shots.length}`}
 							/>
 						</div>
 						<div className="flex items-center gap-1.5">
@@ -214,6 +215,7 @@ export function GenerateActions() {
 							<Progress
 								value={shots.length > 0 ? (videosDone / shots.length) * 100 : 0}
 								className="flex-1 h-1.5"
+								aria-label={`Videos: ${videosDone} of ${shots.length}`}
 							/>
 						</div>
 					</div>
@@ -227,7 +229,10 @@ export function GenerateActions() {
 						<Loader2 className="h-3.5 w-3.5 animate-spin" />
 						Generating storyboard...
 					</div>
-					<Progress value={generationProgress} />
+					<Progress
+						value={generationProgress}
+						aria-label="Storyboard generation progress"
+					/>
 				</div>
 			)}
 

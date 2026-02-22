@@ -66,6 +66,7 @@ function PromptSection({
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
+				aria-expanded={expanded}
 				className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium hover:bg-muted/50 transition-colors"
 			>
 				{expanded ? (
@@ -103,6 +104,7 @@ function PromptSection({
 								key={l}
 								type="button"
 								onClick={() => setLang(l)}
+								aria-pressed={lang === l}
 								className={cn(
 									"px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors",
 									lang === l

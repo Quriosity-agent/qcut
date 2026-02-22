@@ -159,9 +159,11 @@ export function ScriptInput() {
 			)}
 
 			{/* Import / Create tabs */}
-			<div className="flex border-b">
+			<div className="flex border-b" role="tablist">
 				<button
 					type="button"
+					role="tab"
+					aria-selected={activeTab === "import"}
 					onClick={() => setActiveTab("import")}
 					className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
 						activeTab === "import"
@@ -173,6 +175,8 @@ export function ScriptInput() {
 				</button>
 				<button
 					type="button"
+					role="tab"
+					aria-selected={activeTab === "create"}
 					onClick={() => setActiveTab("create")}
 					className={`px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
 						activeTab === "create"
