@@ -412,7 +412,7 @@ function createWindow(): void {
 
 			// Add COOP/COEP headers to support SharedArrayBuffer (required for FFmpeg WASM)
 			responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
-			responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
+			responseHeaders["Cross-Origin-Embedder-Policy"] = ["credentialless"];
 
 			callback({ responseHeaders });
 		}

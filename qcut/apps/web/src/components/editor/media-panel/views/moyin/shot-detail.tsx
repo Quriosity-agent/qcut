@@ -41,21 +41,6 @@ import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
 import { ShotDetailRead } from "./shot-detail-read";
 import { isModerationError } from "@/stores/moyin-shot-generation";
-function FieldRow({
-	label,
-	value,
-}: {
-	label: string;
-	value: string | undefined;
-}) {
-	if (!value) return null;
-	return (
-		<div className="space-y-0.5">
-			<p className="text-[10px] font-medium text-muted-foreground">{label}</p>
-			<p className="text-xs">{value}</p>
-		</div>
-	);
-}
 function CopyButton({ getText }: { getText: () => string }) {
 	const [copied, setCopied] = useState(false);
 	const handleCopy = async () => {
@@ -516,12 +501,10 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 					</Button>
 				</div>
 			</div>
-			<FieldRow label="Action" value={shot.actionSummary} />
 			<ShotDetailRead
 				shot={shot}
 				onPreview={(url, type) => setPreview({ url, type })}
 			/>
-			<PromptEditor draft={shot} onUpdate={() => {}} readOnly />
 			<div className="space-y-1.5 border-t pt-2">
 				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					Generate
