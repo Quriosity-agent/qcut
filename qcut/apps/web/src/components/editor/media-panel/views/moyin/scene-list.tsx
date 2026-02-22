@@ -329,6 +329,7 @@ export function SceneList() {
 						placeholder="Search scenes..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
+						aria-label="Search scenes"
 					/>
 					{searchQuery && (
 						<button

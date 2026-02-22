@@ -91,7 +91,10 @@ export function MoyinView() {
 
 			{/* Split panels */}
 			<div className="flex-1 min-h-0">
-				<ResizablePanelGroup orientation="horizontal">
+				<ResizablePanelGroup
+					orientation="horizontal"
+					aria-label="Script editor workspace"
+				>
 					<ResizablePanel
 						defaultSize={hasSelection ? "30%" : "40%"}
 						minSize="20%"
@@ -100,7 +103,7 @@ export function MoyinView() {
 							<ScriptInput />
 						</div>
 					</ResizablePanel>
-					<ResizableHandle />
+					<ResizableHandle aria-label="Resize script and structure panels" />
 					<ResizablePanel
 						defaultSize={hasSelection ? "40%" : "60%"}
 						minSize="25%"
@@ -111,7 +114,7 @@ export function MoyinView() {
 					</ResizablePanel>
 					{hasSelection && (
 						<>
-							<ResizableHandle />
+							<ResizableHandle aria-label="Resize structure and properties panels" />
 							<ResizablePanel defaultSize="30%" minSize="20%">
 								<div className="h-full overflow-y-auto">
 									<div className="flex items-center justify-between px-3 py-2 border-b">

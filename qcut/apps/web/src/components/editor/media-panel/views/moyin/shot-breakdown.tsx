@@ -246,7 +246,11 @@ export function ShotBreakdown() {
 	return (
 		<div className="space-y-0">
 			{/* Toolbar: count, search, filter, view toggle */}
-			<div className="flex items-center gap-1 px-1.5 py-1 border-b">
+			<div
+				role="toolbar"
+				aria-label="Shot controls"
+				className="flex items-center gap-1 px-1.5 py-1 border-b"
+			>
 				<span className="text-[10px] text-muted-foreground shrink-0">
 					{filteredShots.length !== shots.length
 						? `${filteredShots.length}/`
