@@ -45,6 +45,9 @@ export function EpisodeTree() {
 	const [expandedScenes, setExpandedScenes] = useState<Set<string>>(new Set());
 	const [filter, setFilter] = useState<FilterMode>("all");
 	const [episodeDialogOpen, setEpisodeDialogOpen] = useState(false);
+	const [editingEpisodeId, setEditingEpisodeId] = useState<string | null>(null);
+	const [editingTitle, setEditingTitle] = useState("");
+	const updateEpisode = useMoyinStore((s) => s.updateEpisode);
 
 	const toggleEpisode = (id: string) => {
 		setExpandedEpisodes((prev) => {
@@ -272,6 +275,11 @@ export function EpisodeTree() {
 											toggleEpisode(ep.id);
 											setSelectedItem(ep.id, "episode");
 										}}
+										onDoubleClick={(e) => {
+											e.stopPropagation();
+											setEditingEpisodeId(ep.id);
+											setEditingTitle(ep.title || `Episode ${epIdx + 1}`);
+										}}
 										className="flex items-center gap-1.5 flex-1 min-w-0"
 									>
 										{isExpanded ? (
@@ -280,9 +288,39 @@ export function EpisodeTree() {
 											<ChevronRightIcon className="h-3 w-3 shrink-0" />
 										)}
 										<FilmIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
-										<span className="flex-1 truncate text-left font-medium">
-											{ep.title || `Episode ${epIdx + 1}`}
-										</span>
+										{editingEpisodeId === ep.id ? (
+											<input
+												type="text"
+												value={editingTitle}
+												onChange={(e) => setEditingTitle(e.target.value)}
+												onBlur={() => {
+													if (editingTitle.trim())
+														updateEpisode(ep.id, {
+															title: editingTitle.trim(),
+														});
+													setEditingEpisodeId(null);
+												}}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														if (editingTitle.trim())
+															updateEpisode(ep.id, {
+																title: editingTitle.trim(),
+															});
+														setEditingEpisodeId(null);
+													} else if (e.key === "Escape") {
+														setEditingEpisodeId(null);
+													}
+												}}
+												className="flex-1 min-w-0 h-5 px-1 text-xs font-medium border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+												autoFocus
+												onClick={(e) => e.stopPropagation()}
+												aria-label="Edit episode title"
+											/>
+										) : (
+											<span className="flex-1 truncate text-left font-medium">
+												{ep.title || `Episode ${epIdx + 1}`}
+											</span>
+										)}
 									</button>
 									<Badge
 										variant="secondary"

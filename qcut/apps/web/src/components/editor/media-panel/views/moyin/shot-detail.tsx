@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
 	CheckIcon,
 	CopyIcon,
@@ -735,6 +736,22 @@ export function ShotDetail({ shot }: { shot: Shot }) {
 						{shot.videoStatus === "completed" ? "Regenerate" : "Video"}
 					</Button>
 				</div>
+				{isImageGenerating && shot.imageProgress > 0 && (
+					<div className="flex items-center gap-1.5">
+						<Progress value={shot.imageProgress} className="flex-1 h-1.5" />
+						<span className="text-[9px] text-muted-foreground w-7 text-right">
+							{shot.imageProgress}%
+						</span>
+					</div>
+				)}
+				{isVideoGenerating && shot.videoProgress > 0 && (
+					<div className="flex items-center gap-1.5">
+						<Progress value={shot.videoProgress} className="flex-1 h-1.5" />
+						<span className="text-[9px] text-muted-foreground w-7 text-right">
+							{shot.videoProgress}%
+						</span>
+					</div>
+				)}
 				{(shot.needsEndFrame || shot.endFramePrompt) && (
 					<Button
 						size="sm"

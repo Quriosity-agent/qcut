@@ -146,6 +146,18 @@ export function ScriptInput() {
 				</div>
 			)}
 
+			{/* Workflow guide — shows only on initial empty state */}
+			{parseStatus === "idle" && !rawScript.trim() && (
+				<div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+					<p className="text-[10px] font-medium">Quick Start</p>
+					<ol className="text-[10px] text-muted-foreground space-y-0.5 list-decimal list-inside">
+						<li>Import a screenplay or create one with AI</li>
+						<li>Review extracted characters & scenes</li>
+						<li>Generate storyboard & shot images/videos</li>
+					</ol>
+				</div>
+			)}
+
 			{/* Import / Create tabs */}
 			<div className="flex border-b">
 				<button
