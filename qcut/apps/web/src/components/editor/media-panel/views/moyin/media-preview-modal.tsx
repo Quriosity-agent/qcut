@@ -3,7 +3,7 @@
  * Click on image/video thumbnails in ShotDetail to open.
  */
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { DownloadIcon, XIcon } from "lucide-react";
 
@@ -20,9 +20,29 @@ export function MediaPreviewModal({
 	title,
 	onClose,
 }: MediaPreviewModalProps) {
+	const overlayRef = useRef<HTMLDivElement>(null);
+
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent) => {
-			if (e.key === "Escape") onClose();
+			if (e.key === "Escape") {
+				onClose();
+				return;
+			}
+			if (e.key === "Tab" && overlayRef.current) {
+				const focusable = overlayRef.current.querySelectorAll<HTMLElement>(
+					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+				);
+				if (focusable.length === 0) return;
+				const first = focusable[0];
+				const last = focusable[focusable.length - 1];
+				if (e.shiftKey && document.activeElement === first) {
+					e.preventDefault();
+					last.focus();
+				} else if (!e.shiftKey && document.activeElement === last) {
+					e.preventDefault();
+					first.focus();
+				}
+			}
 		},
 		[onClose]
 	);
@@ -31,6 +51,13 @@ export function MediaPreviewModal({
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, [handleKeyDown]);
+
+	useEffect(() => {
+		const focusable = overlayRef.current?.querySelectorAll<HTMLElement>(
+			'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+		);
+		if (focusable && focusable.length > 0) focusable[0].focus();
+	}, []);
 
 	const handleDownload = async () => {
 		const ext = type === "image" ? "png" : "mp4";
@@ -43,6 +70,7 @@ export function MediaPreviewModal({
 
 	return (
 		<div
+			ref={overlayRef}
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
 			onClick={(e) => {
 				if (e.target === e.currentTarget) onClose();
@@ -50,6 +78,7 @@ export function MediaPreviewModal({
 			onKeyDown={() => {}}
 			role="dialog"
 			aria-label={`Preview: ${title}`}
+			aria-modal="true"
 		>
 			<div className="relative max-w-[90vw] max-h-[90vh]">
 				{/* Header controls */}

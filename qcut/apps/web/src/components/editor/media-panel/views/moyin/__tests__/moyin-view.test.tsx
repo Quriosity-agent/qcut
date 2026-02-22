@@ -1124,9 +1124,7 @@ describe("StructurePanel — Empty State Hints", () => {
 
 	it("shows upload hint when overview tab is empty", () => {
 		render(<StructurePanel />);
-		expect(
-			screen.getByText("Upload or paste a script to begin."),
-		).toBeTruthy();
+		expect(screen.getByText("Upload or paste a script to begin.")).toBeTruthy();
 	});
 });
 
@@ -1140,7 +1138,7 @@ describe("StructurePanel — Tab ARIA Attributes", () => {
 		const tabs = screen.getAllByRole("tab");
 		expect(tabs.length).toBe(5);
 		const selected = tabs.filter(
-			(t) => t.getAttribute("aria-selected") === "true",
+			(t) => t.getAttribute("aria-selected") === "true"
 		);
 		expect(selected.length).toBe(1);
 	});

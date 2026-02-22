@@ -54,9 +54,7 @@ import { ImportProgress } from "../import-progress";
 describe("DurationSelector — Custom Input", () => {
 	it("renders custom duration input field", () => {
 		render(<DurationSelector value={5} onChange={vi.fn()} />);
-		expect(
-			screen.getByLabelText("Custom duration in seconds"),
-		).toBeTruthy();
+		expect(screen.getByLabelText("Custom duration in seconds")).toBeTruthy();
 	});
 
 	it("renders preset buttons with aria-pressed", () => {
@@ -82,11 +80,9 @@ describe("ImportProgress — Accessibility", () => {
 			},
 		});
 		render(<ImportProgress />);
+		expect(screen.getByLabelText("Import Script: completed")).toBeTruthy();
 		expect(
-			screen.getByLabelText("Import Script: completed"),
-		).toBeTruthy();
-		expect(
-			screen.getByLabelText("Title Calibration: in progress"),
+			screen.getByLabelText("Title Calibration: in progress")
 		).toBeTruthy();
 	});
 });

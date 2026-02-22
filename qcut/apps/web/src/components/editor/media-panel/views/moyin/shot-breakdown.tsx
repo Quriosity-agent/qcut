@@ -277,6 +277,7 @@ export function ShotBreakdown() {
 					<button
 						type="button"
 						onClick={() => setViewMode("list")}
+						aria-pressed={viewMode === "list"}
 						className={cn(
 							"p-0.5 rounded transition-colors",
 							viewMode === "list"
@@ -290,6 +291,7 @@ export function ShotBreakdown() {
 					<button
 						type="button"
 						onClick={() => setViewMode("grid")}
+						aria-pressed={viewMode === "grid"}
 						className={cn(
 							"p-0.5 rounded transition-colors",
 							viewMode === "grid"
@@ -356,6 +358,17 @@ export function ShotBreakdown() {
 					</div>
 				</div>
 			)}
+
+			{filteredShots.length === 0 &&
+				(searchQuery.trim() || filter !== "all") && (
+					<div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+						<SearchIcon className="mb-2 h-6 w-6 opacity-40" />
+						<p className="text-xs font-medium">No matching shots</p>
+						<p className="text-[10px] mt-0.5">
+							Try adjusting your search or filter.
+						</p>
+					</div>
+				)}
 
 			{scenesWithShots.map((scene) => {
 				const sceneShots = shotsByScene[scene.id] || [];

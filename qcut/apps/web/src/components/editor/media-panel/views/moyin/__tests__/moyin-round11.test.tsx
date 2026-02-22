@@ -767,7 +767,7 @@ describe("ShotBreakdown — Bulk Actions", () => {
 	it("shows Generate button in bulk action bar", () => {
 		render(<ShotBreakdown />);
 		expect(
-			screen.getByLabelText("Generate images for selected shots"),
+			screen.getByLabelText("Generate images for selected shots")
 		).toBeTruthy();
 	});
 });
@@ -828,7 +828,7 @@ describe("ShotBreakdown — Bulk Copy Prompts", () => {
 	it("shows Copy button in bulk action bar", () => {
 		render(<ShotBreakdown />);
 		expect(
-			screen.getByLabelText("Copy prompts for selected shots"),
+			screen.getByLabelText("Copy prompts for selected shots")
 		).toBeTruthy();
 	});
 });
