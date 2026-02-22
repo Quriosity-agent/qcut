@@ -85,7 +85,13 @@ export function MoyinView() {
 					Script Editor
 				</div>
 				{statusText && (
-					<span className="text-xs text-muted-foreground">{statusText}</span>
+					<span
+						role="status"
+						aria-live="polite"
+						className="text-xs text-muted-foreground"
+					>
+						{statusText}
+					</span>
 				)}
 			</div>
 

@@ -282,6 +282,7 @@ export function EpisodeTree() {
 			{/* Character filter pills */}
 			{characters.length > 0 && (
 				<div
+					role="group"
 					className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin"
 					aria-label="Character filter"
 				>

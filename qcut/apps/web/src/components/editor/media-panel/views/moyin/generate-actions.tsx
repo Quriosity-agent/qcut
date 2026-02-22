@@ -254,7 +254,11 @@ export function GenerateActions() {
 			{/* Done */}
 			{isDone && (
 				<div className="space-y-2">
-					<div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 p-2 text-xs text-green-700 dark:text-green-400">
+					<div
+						role="status"
+						aria-live="polite"
+						className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 p-2 text-xs text-green-700 dark:text-green-400"
+					>
 						<CheckCircle2Icon className="h-3.5 w-3.5" />
 						Storyboard generated
 						{storyboardGridConfig &&

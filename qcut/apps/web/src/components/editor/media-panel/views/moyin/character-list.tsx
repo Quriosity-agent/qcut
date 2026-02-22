@@ -375,6 +375,7 @@ export function CharacterList() {
 						placeholder="Search characters..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
+						aria-label="Search characters"
 					/>
 					{searchQuery && (
 						<button
