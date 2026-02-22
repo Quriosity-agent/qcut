@@ -68,8 +68,16 @@ function CharacterCard({
 	}, [char.id, draft, onUpdate]);
 
 	if (editing) {
+		const handleKeyDown = (e: React.KeyboardEvent) => {
+			if (e.key === "Escape") cancelEdit();
+			if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveEdit();
+		};
+
 		return (
-			<Card className="border border-primary/30 shadow-none">
+			<Card
+				className="border border-primary/30 shadow-none"
+				onKeyDown={handleKeyDown}
+			>
 				<CardContent className="px-3 py-3 space-y-2">
 					<div className="space-y-1">
 						<Label className="text-[10px]">Name</Label>
@@ -145,7 +153,14 @@ function CharacterCard({
 							variant="text"
 							size="sm"
 							className="h-6 text-xs px-2 text-destructive hover:text-destructive"
-							onClick={() => onRemove(char.id)}
+							onClick={() => {
+								if (
+									window.confirm(
+										"Delete this character? This cannot be undone."
+									)
+								)
+									onRemove(char.id);
+							}}
 						>
 							<Trash2Icon className="h-3 w-3" />
 						</Button>
@@ -310,6 +325,7 @@ export function CharacterList() {
 						size="sm"
 						className="h-6 text-xs px-2"
 						onClick={handleAdd}
+						aria-label="Add character"
 					>
 						<PlusIcon className="mr-1 h-3 w-3" />
 						Add

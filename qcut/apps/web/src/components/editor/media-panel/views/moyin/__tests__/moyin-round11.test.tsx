@@ -91,6 +91,38 @@ vi.mock("@/components/ui/label", () => ({
 	),
 }));
 
+vi.mock("@/components/ui/card", () => ({
+	Card: ({
+		children,
+		...props
+	}: {
+		children: React.ReactNode;
+		className?: string;
+		onKeyDown?: (e: React.KeyboardEvent) => void;
+	}) => <div {...props}>{children}</div>,
+	CardContent: ({
+		children,
+		...props
+	}: {
+		children: React.ReactNode;
+		className?: string;
+	}) => <div {...props}>{children}</div>,
+	CardHeader: ({
+		children,
+		...props
+	}: {
+		children: React.ReactNode;
+		className?: string;
+	}) => <div {...props}>{children}</div>,
+	CardTitle: ({
+		children,
+		...props
+	}: {
+		children: React.ReactNode;
+		className?: string;
+	}) => <div {...props}>{children}</div>,
+}));
+
 vi.mock("@/components/ui/badge", () => ({
 	Badge: ({
 		children,
@@ -637,5 +669,48 @@ describe("EpisodeTree — Character Filter Pills", () => {
 		expect(charFilterAll).toBeTruthy();
 		fireEvent.click(charFilterAll!);
 		expect(screen.getByText("Beach Scene")).toBeTruthy();
+	});
+});
+
+// ==================== Round 16: CharacterList & SceneList Improvements ====================
+
+import { CharacterList } from "../character-list";
+import { SceneList } from "../scene-list";
+
+describe("CharacterList — Accessibility & Keyboard", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			characters: [{ id: "c1", name: "Alice", role: "lead" }],
+		});
+	});
+
+	it("has aria-label on Add button", () => {
+		render(<CharacterList />);
+		expect(screen.getByLabelText("Add character")).toBeTruthy();
+	});
+
+	it("shows edit form with cancel on edit click", () => {
+		render(<CharacterList />);
+		const editBtn = screen.getByLabelText("Edit Alice");
+		fireEvent.click(editBtn);
+		expect(screen.getByText("Save")).toBeTruthy();
+		expect(screen.getByText("Cancel")).toBeTruthy();
+	});
+});
+
+describe("SceneList — Accessibility", () => {
+	beforeEach(() => {
+		resetStore();
+		useMoyinStore.setState({
+			parseStatus: "ready",
+			scenes: [{ id: "s1", location: "Park", time: "Day", atmosphere: "" }],
+		});
+	});
+
+	it("has aria-label on Add button", () => {
+		render(<SceneList />);
+		expect(screen.getByLabelText("Add scene")).toBeTruthy();
 	});
 });
