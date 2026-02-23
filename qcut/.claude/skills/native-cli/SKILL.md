@@ -10,6 +10,7 @@ Run QCut's built-in TypeScript pipeline CLI (`qcut-pipeline` / `bun run pipeline
 
 Reference files:
 - `REFERENCE.md` - full command reference with all flags and options
+- `EDITOR-CLI.md` - editor CLI commands (`editor:*`) for controlling a running QCut instance
 
 ## How to Run
 
