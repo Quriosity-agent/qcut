@@ -17,6 +17,21 @@ import type { PipelineExecutor } from "../execution/executor.js";
 import { resolveOutputDir } from "../output/output-utils.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 
+function isUrl(input: string): boolean {
+	return /^https?:\/\//i.test(input);
+}
+
+/** Extract a clean filename from a URL, stripping query params. */
+function filenameFromUrl(url: string): string {
+	try {
+		const pathname = new URL(url).pathname;
+		const name = pathname.split("/").pop() || "video";
+		return name.split("?")[0].split("#")[0] || "video";
+	} catch {
+		return "video";
+	}
+}
+
 type ProgressFn = (progress: {
 	stage: string;
 	percent: number;
@@ -90,12 +105,17 @@ export async function handleAnalyzeVideo(
 	}
 
 	// Always save JSON alongside the video (same name, .json extension)
-	// Output dir: explicit -o flag > video's directory
-	const videoBasename = basename(
-		videoInput,
-		`.${videoInput.split(".").pop()}`
-	);
-	const outputDir = options.outputDir || dirname(videoInput);
+	// Output dir: explicit -o flag > video's directory (use cwd for URLs)
+	const videoFilename = isUrl(videoInput)
+		? filenameFromUrl(videoInput)
+		: basename(videoInput);
+	const extWithDot = videoFilename.includes(".")
+		? `.${videoFilename.split(".").pop()}`
+		: "";
+	const videoBasename = extWithDot
+		? videoFilename.slice(0, -extWithDot.length)
+		: videoFilename;
+	const outputDir = options.outputDir || (isUrl(videoInput) ? process.cwd() : dirname(videoInput));
 	const jsonPath = join(outputDir, `${videoBasename}.json`);
 
 	// Parse structured JSON from model response if possible
@@ -186,10 +206,10 @@ async function addAnalysisToTimeline(
 	});
 
 	// 1. Import video into media library
-	const absPath = resolve(videoPath);
+	const source = isUrl(videoPath) ? videoPath : resolve(videoPath);
 	const media = (await client.post(
 		`/api/claude/media/${projectId}/import`,
-		{ source: absPath }
+		{ source }
 	)) as { id?: string; name?: string; duration?: number };
 
 	if (!media?.id) {

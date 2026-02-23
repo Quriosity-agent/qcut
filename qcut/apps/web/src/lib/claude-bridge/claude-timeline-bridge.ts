@@ -152,10 +152,14 @@ export function setupClaudeTimelineBridge(): void {
 				const projectId = useProjectStore.getState().activeProject?.id;
 				if (!projectId || !window.electronAPI?.readFile) return;
 
-				// Check if already in store (avoid duplicates)
+				// Check if already in store by ID or path (avoid duplicates)
 				const existing = useMediaStore
 					.getState()
-					.mediaItems.find((item) => item.name === data.name);
+					.mediaItems.find(
+						(item) =>
+							item.id === data.id ||
+							(item.localPath && item.localPath === data.path)
+					);
 				if (existing?.file) return;
 
 				debugLog(

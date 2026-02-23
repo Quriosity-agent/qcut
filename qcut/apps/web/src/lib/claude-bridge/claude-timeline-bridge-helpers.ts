@@ -386,9 +386,13 @@ export function addClaudeMarkdownElement({
 		element,
 		fallbackDuration: DEFAULT_MARKDOWN_DURATION_SECONDS,
 	});
+	const rawMarkdown =
+		typeof element.markdownContent === "string"
+			? element.markdownContent
+			: element.content;
 	const markdownContent =
-		typeof element.content === "string" && element.content.trim().length > 0
-			? element.content
+		typeof rawMarkdown === "string" && rawMarkdown.trim().length > 0
+			? rawMarkdown
 			: DEFAULT_MARKDOWN_CONTENT;
 
 	// Clamp any existing element whose end time would overlap this one's start

@@ -83,56 +83,75 @@ const MIME_TYPES: Record<string, string> = {
 export async function uploadToFalStorage(
 	filePath: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-	const apiKey = await getApiKey("fal");
-	if (!apiKey) {
-		return { success: false, error: "No FAL API key configured" };
-	}
+	try {
+		const apiKey = await getApiKey("fal");
+		if (!apiKey) {
+			return { success: false, error: "No FAL API key configured" };
+		}
 
-	const filename = path.basename(filePath);
-	const ext = path.extname(filePath).toLowerCase();
-	const contentType = MIME_TYPES[ext] || "application/octet-stream";
+		const filename = path.basename(filePath);
+		const ext = path.extname(filePath).toLowerCase();
+		const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
-	// Step 1: Initiate upload to get signed URL
-	const initRes = await fetch(FAL_STORAGE_INITIATE, {
-		method: "POST",
-		headers: {
-			Authorization: `Key ${apiKey}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({ file_name: filename, content_type: contentType }),
-	});
+		// Step 1: Initiate upload to get signed URL
+		const initRes = await fetch(FAL_STORAGE_INITIATE, {
+			method: "POST",
+			headers: {
+				Authorization: `Key ${apiKey}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				file_name: filename,
+				content_type: contentType,
+			}),
+		});
 
-	if (!initRes.ok) {
+		if (!initRes.ok) {
+			return {
+				success: false,
+				error: `FAL upload initiate failed: ${initRes.status}`,
+			};
+		}
+
+		const initData = (await initRes.json()) as {
+			upload_url?: string;
+			file_url?: string;
+		};
+		if (!initData.upload_url || !initData.file_url) {
+			return { success: false, error: "FAL API did not return upload URLs" };
+		}
+
+		// Step 2: Read file and PUT to signed URL
+		let fileBuffer: Buffer;
+		try {
+			fileBuffer = fs.readFileSync(filePath);
+		} catch (err) {
+			return {
+				success: false,
+				error: `Failed to read file ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+			};
+		}
+
+		const uploadRes = await fetch(initData.upload_url, {
+			method: "PUT",
+			headers: { "Content-Type": contentType },
+			body: fileBuffer,
+		});
+
+		if (!uploadRes.ok) {
+			return {
+				success: false,
+				error: `FAL upload failed: ${uploadRes.status}`,
+			};
+		}
+
+		return { success: true, url: initData.file_url };
+	} catch (err) {
 		return {
 			success: false,
-			error: `FAL upload initiate failed: ${initRes.status}`,
+			error: `FAL upload error: ${err instanceof Error ? err.message : String(err)}`,
 		};
 	}
-
-	const initData = (await initRes.json()) as {
-		upload_url?: string;
-		file_url?: string;
-	};
-	if (!initData.upload_url || !initData.file_url) {
-		return { success: false, error: "FAL API did not return upload URLs" };
-	}
-
-	// Step 2: PUT file to signed URL
-	const fileBuffer = fs.readFileSync(filePath);
-	const uploadRes = await fetch(initData.upload_url, {
-		method: "PUT",
-		headers: { "Content-Type": contentType },
-		body: fileBuffer,
-	});
-
-	if (!uploadRes.ok) {
-		return {
-			success: false,
-			error: `FAL upload failed: ${uploadRes.status}`,
-		};
-	}
-
-	return { success: true, url: initData.file_url };
 }
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
