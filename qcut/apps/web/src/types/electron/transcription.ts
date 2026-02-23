@@ -5,7 +5,7 @@
 /**
  * Word-level transcription item from ElevenLabs Scribe v2.
  */
-export interface ElevenLabsTranscriptionWord {
+export type ElevenLabsTranscriptionWord = {
 	/** The transcribed word or event text */
 	text: string;
 	/** Start time in seconds */
@@ -16,12 +16,12 @@ export interface ElevenLabsTranscriptionWord {
 	type: "word" | "spacing" | "audio_event" | "punctuation";
 	/** Speaker identifier (if diarization enabled) */
 	speaker_id: string | null;
-}
+};
 
 /**
  * Full transcription result from ElevenLabs Scribe v2.
  */
-export interface ElevenLabsTranscribeResult {
+export type ElevenLabsTranscribeResult = {
 	/** Full transcription text */
 	text: string;
 	/** Detected/specified language code */
@@ -30,4 +30,4 @@ export interface ElevenLabsTranscribeResult {
 	language_probability: number;
 	/** Word-level transcription data */
 	words: ElevenLabsTranscriptionWord[];
-}
+};

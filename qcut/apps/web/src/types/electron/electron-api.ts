@@ -84,7 +84,7 @@ export interface ElectronAPI {
 	// File path utility (Electron 37+ removed File.path on dropped files)
 	getPathForFile: (file: File) => string;
 
-	readFile: (filePath: string) => Promise<Buffer>;
+	readFile: (filePath: string) => Promise<Buffer | null>;
 	writeFile: (
 		filePath: string,
 		data: Buffer | Uint8Array
@@ -372,8 +372,8 @@ export interface ElectronAPI {
 				| "video-normalization"
 				| "image-video-composite";
 		}) => Promise<{ success: boolean; outputFile: string }>;
-		readOutputFile: (path: string) => Promise<Buffer>;
-		cleanupExportSession: (sessionId: string) => Promise<void>;
+		readOutputFile: (path: string) => Promise<Buffer | null>;
+		cleanupExportSession: (sessionId: string) => Promise<boolean>;
 		validateFilterChain: (filterChain: string) => Promise<boolean>;
 		processFrame: (options: {
 			sessionId: string;
@@ -1226,7 +1226,7 @@ export interface ElectronAPI {
 			onProgress?: (frame: number) => void;
 		}) => Promise<{
 			success: boolean;
-			frames: Map<number, string>;
+			frames: Record<string, string>;
 			error?: string;
 		}>;
 

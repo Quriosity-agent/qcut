@@ -16,7 +16,7 @@ export function validateKlingAvatarV2Audio(
 		throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_LARGE);
 	}
 
-	if (audioDuration !== undefined) {
+	if (audioDuration !== undefined && Number.isFinite(audioDuration)) {
 		if (audioDuration < MIN_DURATION_SEC) {
 			throw new Error(ERROR_MESSAGES.KLING_AVATAR_V2_AUDIO_TOO_SHORT);
 		}

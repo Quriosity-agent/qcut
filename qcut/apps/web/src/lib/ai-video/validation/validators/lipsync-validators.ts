@@ -35,6 +35,8 @@ export function validateSyncLipsyncReact1VideoDuration(
 	if (
 		duration !== null &&
 		duration !== undefined &&
+		Number.isFinite(duration) &&
+		duration >= 0 &&
 		duration > SYNC_LIPSYNC_REACT1_MAX_DURATION
 	) {
 		throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_VIDEO_TOO_LONG);
@@ -47,6 +49,8 @@ export function validateSyncLipsyncReact1AudioDuration(
 	if (
 		duration !== null &&
 		duration !== undefined &&
+		Number.isFinite(duration) &&
+		duration >= 0 &&
 		duration > SYNC_LIPSYNC_REACT1_MAX_DURATION
 	) {
 		throw new Error(ERROR_MESSAGES.SYNC_LIPSYNC_REACT1_AUDIO_TOO_LONG);

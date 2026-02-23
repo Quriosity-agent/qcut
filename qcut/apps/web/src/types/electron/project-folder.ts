@@ -2,7 +2,7 @@
  * Project folder types.
  */
 
-export interface ProjectFolderFileInfo {
+export type ProjectFolderFileInfo = {
 	name: string;
 	path: string;
 	relativePath: string;
@@ -10,11 +10,11 @@ export interface ProjectFolderFileInfo {
 	size: number;
 	modifiedAt: number;
 	isDirectory: boolean;
-}
+};
 
-export interface ProjectFolderScanResult {
+export type ProjectFolderScanResult = {
 	files: ProjectFolderFileInfo[];
 	folders: string[];
 	totalSize: number;
 	scanTime: number;
-}
+};

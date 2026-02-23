@@ -108,7 +108,7 @@ export interface LTXV2I2VRequest {
 	model: string;
 	prompt: string;
 	image_url: string;
-	duration?: 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
+	duration?: 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20;
 	resolution?: "1080p" | "1440p" | "2160p";
 	aspect_ratio?: "16:9";
 	fps?: 25 | 50;

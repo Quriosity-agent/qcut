@@ -2,7 +2,7 @@
  * Release note types.
  */
 
-export interface ReleaseNote {
+export type ReleaseNote = {
 	/** Semver version string */
 	version: string;
 	/** Release date in ISO format */
@@ -11,4 +11,4 @@ export interface ReleaseNote {
 	channel: "stable" | "alpha" | "beta" | "rc";
 	/** Raw Markdown content (excluding frontmatter) */
 	content: string;
-}
+};
