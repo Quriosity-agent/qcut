@@ -404,7 +404,9 @@ Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"star
 	const videoFile = isUrl(videoInput)
 		? filenameFromUrl(videoInput)
 		: basename(videoInput);
-	const extDot = videoFile.includes(".") ? `.${videoFile.split(".").pop()}` : "";
+	const extDot = videoFile.includes(".")
+		? `.${videoFile.split(".").pop()}`
+		: "";
 	const videoFilename = extDot ? videoFile.slice(0, -extDot.length) : videoFile;
 	const outputDir =
 		options.outputDir ||
