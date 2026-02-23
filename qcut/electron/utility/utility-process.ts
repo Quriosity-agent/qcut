@@ -27,7 +27,11 @@ const logger = {
 // We cast via `unknown` because Electron's utility process augments the
 // global `process` with `parentPort`, but the base Node.js types don't
 // include it.
-const maybeParentPort = (process as unknown as { parentPort?: import("node:worker_threads").MessagePort }).parentPort;
+const maybeParentPort = (
+	process as unknown as {
+		parentPort?: import("node:worker_threads").MessagePort;
+	}
+).parentPort;
 
 if (!maybeParentPort) {
 	logger.error(
@@ -51,7 +55,10 @@ const pendingRequests = new Map<
  * Send a request to the main process and await response.
  * Used for operations that need BrowserWindow access.
  */
-export function requestFromMain(channel: string, data: Record<string, unknown>): Promise<unknown> {
+export function requestFromMain(
+	channel: string,
+	data: Record<string, unknown>
+): Promise<unknown> {
 	return new Promise((resolve, reject) => {
 		const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 		const timer = setTimeout(() => {
@@ -75,65 +82,70 @@ export function requestFromMain(channel: string, data: Record<string, unknown>):
 }
 
 // Handle messages from main process
-parentPort.on("message", (e: { data?: MainToUtilityMessage } | MainToUtilityMessage) => {
-	const msg: MainToUtilityMessage = (e as { data?: MainToUtilityMessage }).data ?? (e as MainToUtilityMessage);
+parentPort.on(
+	"message",
+	(e: { data?: MainToUtilityMessage } | MainToUtilityMessage) => {
+		const msg: MainToUtilityMessage =
+			(e as { data?: MainToUtilityMessage }).data ??
+			(e as MainToUtilityMessage);
 
-	switch (msg.type) {
-		case "init": {
-			// Initialize HTTP server and PTY manager
-			const { httpPort, appVersion } = msg.config;
-			startUtilityHttpServer({
-				port: httpPort,
-				appVersion,
-				requestFromMain,
-			});
-			logger.info("[UtilityProcess] Initialized");
-			parentPort.postMessage({ type: "ready" });
-			break;
-		}
-
-		case "main-response": {
-			// Response to a requestFromMain call
-			const pending = pendingRequests.get(msg.id);
-			if (pending) {
-				pendingRequests.delete(msg.id);
-				if (msg.error) {
-					pending.reject(new Error(msg.error));
-				} else {
-					pending.resolve(msg.result);
-				}
+		switch (msg.type) {
+			case "init": {
+				// Initialize HTTP server and PTY manager
+				const { httpPort, appVersion } = msg.config;
+				startUtilityHttpServer({
+					port: httpPort,
+					appVersion,
+					requestFromMain,
+				});
+				logger.info("[UtilityProcess] Initialized");
+				parentPort.postMessage({ type: "ready" });
+				break;
 			}
-			break;
+
+			case "main-response": {
+				// Response to a requestFromMain call
+				const pending = pendingRequests.get(msg.id);
+				if (pending) {
+					pendingRequests.delete(msg.id);
+					if (msg.error) {
+						pending.reject(new Error(msg.error));
+					} else {
+						pending.resolve(msg.result);
+					}
+				}
+				break;
+			}
+
+			// PTY operations forwarded from main process IPC handlers
+			case "pty:spawn":
+				ptyManager.spawn(msg);
+				break;
+			case "pty:write":
+				ptyManager.write(msg.sessionId, msg.data);
+				break;
+			case "pty:resize":
+				ptyManager.resize(msg.sessionId, msg.cols, msg.rows);
+				break;
+			case "pty:kill":
+				ptyManager.kill(msg.sessionId);
+				break;
+			case "pty:kill-all":
+				ptyManager.killAll();
+				break;
+
+			case "ping":
+				// Health check heartbeat -- respond immediately
+				parentPort.postMessage({ type: "pong" });
+				break;
+
+			case "shutdown":
+				stopUtilityHttpServer();
+				ptyManager.killAll();
+				parentPort.postMessage({ type: "shutdown-complete" });
+				break;
 		}
-
-		// PTY operations forwarded from main process IPC handlers
-		case "pty:spawn":
-			ptyManager.spawn(msg);
-			break;
-		case "pty:write":
-			ptyManager.write(msg.sessionId, msg.data);
-			break;
-		case "pty:resize":
-			ptyManager.resize(msg.sessionId, msg.cols, msg.rows);
-			break;
-		case "pty:kill":
-			ptyManager.kill(msg.sessionId);
-			break;
-		case "pty:kill-all":
-			ptyManager.killAll();
-			break;
-
-		case "ping":
-			// Health check heartbeat -- respond immediately
-			parentPort.postMessage({ type: "pong" });
-			break;
-
-		case "shutdown":
-			stopUtilityHttpServer();
-			ptyManager.killAll();
-			parentPort.postMessage({ type: "shutdown-complete" });
-			break;
 	}
-});
+);
 
 logger.info("[UtilityProcess] Started, waiting for init...");

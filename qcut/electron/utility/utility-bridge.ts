@@ -210,7 +210,10 @@ function resolveQcutMcpServerEntry(): string | null {
 /**
  * Handle a request from the utility process that needs main-process APIs.
  */
-async function handleMainRequest(channel: string, data: Record<string, unknown>): Promise<unknown> {
+async function handleMainRequest(
+	channel: string,
+	data: Record<string, unknown>
+): Promise<unknown> {
 	const win = getWindow();
 	if (!win) throw new Error("No active window");
 

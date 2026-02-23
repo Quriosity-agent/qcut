@@ -86,8 +86,7 @@ export function startClaudeHTTPServer(
 		getAppVersion: () => app.getVersion(),
 		batchAddElements: (projectId, elements) =>
 			batchAddElements(getWindow(), projectId, elements),
-		batchUpdateElements: (updates) =>
-			batchUpdateElements(getWindow(), updates),
+		batchUpdateElements: (updates) => batchUpdateElements(getWindow(), updates),
 		batchDeleteElements: (elements, ripple) =>
 			batchDeleteElements(getWindow(), elements, ripple),
 		arrangeTimeline: (data) => arrangeTimeline(getWindow(), data),

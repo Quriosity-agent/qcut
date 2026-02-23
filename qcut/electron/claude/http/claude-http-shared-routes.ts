@@ -69,7 +69,11 @@ export interface WindowAccessor {
 	/** Request current selection from renderer */
 	requestSelection(): Promise<any>;
 	/** Request an element split from renderer */
-	requestSplit(elementId: string, splitTime: number, mode: string): Promise<any>;
+	requestSplit(
+		elementId: string,
+		splitTime: number,
+		mode: string
+	): Promise<any>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<any>;
 	/** Get the app version string */
