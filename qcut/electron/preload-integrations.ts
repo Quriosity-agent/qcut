@@ -519,6 +519,8 @@ export function createRemotionFolderAPI(): NonNullable<
 		checkBundler: () => ipcRenderer.invoke("remotion-folder:check-bundler"),
 		validate: (folderPath) =>
 			ipcRenderer.invoke("remotion-folder:validate", folderPath),
+		bundleFile: (filePath: string, compositionId: string) =>
+			ipcRenderer.invoke("remotion-file:bundle", filePath, compositionId),
 	};
 }
 

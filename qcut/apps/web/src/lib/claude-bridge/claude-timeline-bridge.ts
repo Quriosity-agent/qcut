@@ -303,7 +303,7 @@ export function setupClaudeTimelineBridge(): void {
 			}
 
 			if (element.type === "remotion") {
-				addClaudeRemotionElement({
+				await addClaudeRemotionElement({
 					element,
 					timelineStore,
 				});

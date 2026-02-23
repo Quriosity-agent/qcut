@@ -445,14 +445,116 @@ export function addClaudeMarkdownElement({
 
 const DEFAULT_REMOTION_DURATION_SECONDS = 5;
 
+/**
+ * Bundle, load, and register a Remotion component from a .tsx file path.
+ * Returns the registered componentId on success, or null on failure.
+ */
+async function bundleAndRegisterComponent({
+	componentPath,
+	componentId,
+	componentName,
+}: {
+	componentPath: string;
+	componentId: string;
+	componentName: string;
+}): Promise<string | null> {
+	try {
+		const api = window.electronAPI?.remotionFolder;
+		if (!api?.bundleFile) {
+			debugWarn(
+				"[ClaudeTimelineBridge] remotionFolder.bundleFile not available"
+			);
+			return null;
+		}
+
+		debugLog("[ClaudeTimelineBridge] Bundling component:", componentPath);
+		const bundleResult = await api.bundleFile(componentPath, componentId);
+
+		if (!bundleResult.success || !bundleResult.code) {
+			debugError(
+				"[ClaudeTimelineBridge] Bundle failed:",
+				bundleResult.error
+			);
+			return null;
+		}
+
+		debugLog("[ClaudeTimelineBridge] Loading bundled component...");
+		const { loadBundledComponent } = await import(
+			"@/lib/remotion/dynamic-loader"
+		);
+		const loadResult = await loadBundledComponent(
+			bundleResult.code,
+			componentId
+		);
+
+		if (!loadResult.success || !loadResult.component) {
+			debugError(
+				"[ClaudeTimelineBridge] Dynamic load failed:",
+				loadResult.error
+			);
+			return null;
+		}
+
+		debugLog("[ClaudeTimelineBridge] Registering component in store...");
+		const { useRemotionStore } = await import(
+			"@/stores/ai/remotion-store"
+		);
+		useRemotionStore.getState().registerComponent({
+			id: componentId,
+			name: componentName,
+			description: `Generated component: ${componentName}`,
+			category: "custom",
+			durationInFrames: 150,
+			fps: 30,
+			width: 1920,
+			height: 1080,
+			schema: { safeParse: () => ({ success: true }) } as never,
+			defaultProps: {},
+			component: loadResult.component,
+			source: "imported",
+			tags: ["claude-generated"],
+		});
+
+		debugLog(
+			"[ClaudeTimelineBridge] Component registered:",
+			componentId
+		);
+		return componentId;
+	} catch (error) {
+		debugError(
+			"[ClaudeTimelineBridge] Bundle/register failed:",
+			error
+		);
+		return null;
+	}
+}
+
 /** Add a Claude remotion element to the timeline store. */
-export function addClaudeRemotionElement({
+export async function addClaudeRemotionElement({
 	element,
 	timelineStore,
 }: {
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
-}): void {
+}): Promise<void> {
+	const componentId = element.sourceId || `remotion-${Date.now()}`;
+	const componentName = element.sourceName || "Remotion";
+
+	// If componentPath is provided, bundle and register the component first
+	if (element.componentPath) {
+		const registeredId = await bundleAndRegisterComponent({
+			componentPath: element.componentPath,
+			componentId,
+			componentName,
+		});
+
+		if (!registeredId) {
+			debugWarn(
+				"[ClaudeTimelineBridge] Component registration failed, adding element without preview"
+			);
+		}
+	}
+
 	const trackId = timelineStore.findOrCreateTrack("remotion");
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
@@ -462,8 +564,8 @@ export function addClaudeRemotionElement({
 
 	timelineStore.addElementToTrack(trackId, {
 		type: "remotion",
-		name: element.sourceName || "Remotion",
-		componentId: element.sourceId || "",
+		name: componentName,
+		componentId,
 		componentPath: element.componentPath,
 		props: element.props || {},
 		renderMode: "live",
@@ -476,7 +578,7 @@ export function addClaudeRemotionElement({
 
 	debugLog(
 		"[ClaudeTimelineBridge] Added remotion element:",
-		element.sourceName || element.sourceId
+		componentName
 	);
 }
 
@@ -600,7 +702,7 @@ export async function applyTimelineToStore(
 					});
 					added++;
 				} else if (element.type === "remotion") {
-					addClaudeRemotionElement({
+					await addClaudeRemotionElement({
 						element,
 						timelineStore: useTimelineStore.getState(),
 					});

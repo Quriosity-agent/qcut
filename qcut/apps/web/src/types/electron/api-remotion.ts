@@ -22,6 +22,15 @@ export interface ElectronRemotionFolderOps {
 		validate: (
 			folderPath: string
 		) => Promise<{ isValid: boolean; error?: string }>;
+		bundleFile: (
+			filePath: string,
+			compositionId: string
+		) => Promise<{
+			compositionId: string;
+			success: boolean;
+			code?: string;
+			error?: string;
+		}>;
 	};
 }
 

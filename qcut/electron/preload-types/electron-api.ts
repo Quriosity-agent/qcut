@@ -768,6 +768,15 @@ export interface ElectronAPI {
 		validate: (
 			folderPath: string
 		) => Promise<{ isValid: boolean; error?: string }>;
+		bundleFile: (
+			filePath: string,
+			compositionId: string
+		) => Promise<{
+			compositionId: string;
+			success: boolean;
+			code?: string;
+			error?: string;
+		}>;
 	};
 
 	// Moyin script-to-storyboard operations
