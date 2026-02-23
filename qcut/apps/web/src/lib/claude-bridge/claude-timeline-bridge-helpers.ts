@@ -479,10 +479,7 @@ async function bundleAndRegisterComponent({
 		const bundleResult = await api.bundleFile(componentPath, componentId);
 
 		if (!bundleResult.success || !bundleResult.code) {
-			debugError(
-				"[ClaudeTimelineBridge] Bundle failed:",
-				bundleResult.error
-			);
+			debugError("[ClaudeTimelineBridge] Bundle failed:", bundleResult.error);
 			return null;
 		}
 
@@ -504,9 +501,7 @@ async function bundleAndRegisterComponent({
 		}
 
 		debugLog("[ClaudeTimelineBridge] Registering component in store...");
-		const { useRemotionStore } = await import(
-			"@/stores/ai/remotion-store"
-		);
+		const { useRemotionStore } = await import("@/stores/ai/remotion-store");
 		useRemotionStore.getState().registerComponent({
 			id: componentId,
 			name: componentName,
@@ -525,16 +520,10 @@ async function bundleAndRegisterComponent({
 			tags: ["claude-generated"],
 		});
 
-		debugLog(
-			"[ClaudeTimelineBridge] Component registered:",
-			componentId
-		);
+		debugLog("[ClaudeTimelineBridge] Component registered:", componentId);
 		return componentId;
 	} catch (error) {
-		debugError(
-			"[ClaudeTimelineBridge] Bundle/register failed:",
-			error
-		);
+		debugError("[ClaudeTimelineBridge] Bundle/register failed:", error);
 		return null;
 	}
 }
@@ -552,9 +541,7 @@ async function importRemotionFolder({
 	try {
 		const api = window.electronAPI?.remotionFolder;
 		if (!api?.import) {
-			debugWarn(
-				"[ClaudeTimelineBridge] remotionFolder.import not available"
-			);
+			debugWarn("[ClaudeTimelineBridge] remotionFolder.import not available");
 			return [];
 		}
 
@@ -590,27 +577,19 @@ async function importRemotionFolder({
 			return [];
 		}
 
-		const { useRemotionStore } = await import(
-			"@/stores/ai/remotion-store"
-		);
+		const { useRemotionStore } = await import("@/stores/ai/remotion-store");
 		const store = useRemotionStore.getState();
 		const registeredIds: string[] = [];
 
 		for (const component of loadResult.components) {
 			store.registerComponent(component);
 			registeredIds.push(component.id);
-			debugLog(
-				"[ClaudeTimelineBridge] Registered component:",
-				component.id
-			);
+			debugLog("[ClaudeTimelineBridge] Registered component:", component.id);
 		}
 
 		return registeredIds;
 	} catch (error) {
-		debugError(
-			"[ClaudeTimelineBridge] Folder import/register failed:",
-			error
-		);
+		debugError("[ClaudeTimelineBridge] Folder import/register failed:", error);
 		return [];
 	}
 }
@@ -632,9 +611,7 @@ export async function addClaudeRemotionElement({
 		});
 
 		if (registeredIds.length === 0) {
-			debugWarn(
-				"[ClaudeTimelineBridge] No components imported from folder"
-			);
+			debugWarn("[ClaudeTimelineBridge] No components imported from folder");
 			return;
 		}
 
@@ -713,10 +690,7 @@ export async function addClaudeRemotionElement({
 		opacity: 1,
 	});
 
-	debugLog(
-		"[ClaudeTimelineBridge] Added remotion element:",
-		componentName
-	);
+	debugLog("[ClaudeTimelineBridge] Added remotion element:", componentName);
 }
 
 /**

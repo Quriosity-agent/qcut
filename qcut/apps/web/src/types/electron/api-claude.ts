@@ -308,10 +308,7 @@ export interface ElectronClaudeOps {
 				}
 			) => void;
 			onOpenRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => void;
 			sendOpenResponse: (
 				requestId: string,

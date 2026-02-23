@@ -8,7 +8,12 @@
  * @module electron/remotion-folder-handler
  */
 
-import { ipcMain, dialog, BrowserWindow, type IpcMainInvokeEvent } from "electron";
+import {
+	ipcMain,
+	dialog,
+	BrowserWindow,
+	type IpcMainInvokeEvent,
+} from "electron";
 import * as path from "path";
 import * as fs from "fs/promises";
 import {
@@ -547,7 +552,9 @@ export function setupRemotionFolderIPC(): void {
 			filePath: string,
 			compositionId: string
 		): Promise<BundleResult> => {
-			log.info(`${LOG_PREFIX} Bundling single file: ${filePath} (${compositionId})`);
+			log.info(
+				`${LOG_PREFIX} Bundling single file: ${filePath} (${compositionId})`
+			);
 
 			try {
 				const bundlerAvailable = await checkBundlerAvailable();

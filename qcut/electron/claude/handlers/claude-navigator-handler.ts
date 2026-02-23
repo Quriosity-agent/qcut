@@ -30,7 +30,7 @@ export interface NavigatorProjectsResponse {
  * Request project list from renderer process.
  */
 export async function requestProjectsFromRenderer(
-	win: BrowserWindow,
+	win: BrowserWindow
 ): Promise<NavigatorProjectsResponse> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -39,24 +39,18 @@ export async function requestProjectsFromRenderer(
 		const timeout = setTimeout(() => {
 			if (resolved) return;
 			resolved = true;
-			ipcMain.removeListener(
-				"claude:navigator:projects:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:navigator:projects:response", handler);
 			reject(new Error("Timeout waiting for project list"));
 		}, REQUEST_TIMEOUT_MS);
 
 		const handler = (
 			_event: IpcMainEvent,
-			data: { requestId: string; result: NavigatorProjectsResponse },
+			data: { requestId: string; result: NavigatorProjectsResponse }
 		) => {
 			if (data.requestId !== requestId || resolved) return;
 			resolved = true;
 			clearTimeout(timeout);
-			ipcMain.removeListener(
-				"claude:navigator:projects:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:navigator:projects:response", handler);
 			resolve(data.result);
 		};
 
@@ -72,7 +66,7 @@ export async function requestProjectsFromRenderer(
  */
 export async function requestNavigateToProject(
 	win: BrowserWindow,
-	projectId: string,
+	projectId: string
 ): Promise<{ navigated: boolean; projectId: string }> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -81,10 +75,7 @@ export async function requestNavigateToProject(
 		const timeout = setTimeout(() => {
 			if (resolved) return;
 			resolved = true;
-			ipcMain.removeListener(
-				"claude:navigator:open:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:navigator:open:response", handler);
 			reject(new Error("Timeout waiting for navigation confirmation"));
 		}, REQUEST_TIMEOUT_MS);
 
@@ -93,15 +84,12 @@ export async function requestNavigateToProject(
 			data: {
 				requestId: string;
 				result: { navigated: boolean; projectId: string };
-			},
+			}
 		) => {
 			if (data.requestId !== requestId || resolved) return;
 			resolved = true;
 			clearTimeout(timeout);
-			ipcMain.removeListener(
-				"claude:navigator:open:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:navigator:open:response", handler);
 			resolve(data.result);
 		};
 

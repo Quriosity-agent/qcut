@@ -499,12 +499,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		},
 		navigator: {
 			onProjectsRequest: (callback) => {
-				ipcRenderer.removeAllListeners(
-					"claude:navigator:projects:request",
-				);
-				ipcRenderer.on(
-					"claude:navigator:projects:request",
-					(_, data) => callback(data),
+				ipcRenderer.removeAllListeners("claude:navigator:projects:request");
+				ipcRenderer.on("claude:navigator:projects:request", (_, data) =>
+					callback(data)
 				);
 			},
 			sendProjectsResponse: (requestId, result) => {
@@ -514,11 +511,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			onOpenRequest: (callback) => {
-				ipcRenderer.removeAllListeners(
-					"claude:navigator:open:request",
-				);
+				ipcRenderer.removeAllListeners("claude:navigator:open:request");
 				ipcRenderer.on("claude:navigator:open:request", (_, data) =>
-					callback(data),
+					callback(data)
 				);
 			},
 			sendOpenResponse: (requestId, result) => {
@@ -528,12 +523,8 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			removeListeners: () => {
-				ipcRenderer.removeAllListeners(
-					"claude:navigator:projects:request",
-				);
-				ipcRenderer.removeAllListeners(
-					"claude:navigator:open:request",
-				);
+				ipcRenderer.removeAllListeners("claude:navigator:projects:request");
+				ipcRenderer.removeAllListeners("claude:navigator:open:request");
 			},
 		},
 	};

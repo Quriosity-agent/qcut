@@ -755,7 +755,7 @@ export interface ElectronAPI {
 		};
 		navigator: {
 			onProjectsRequest: (
-				callback: (data: { requestId: string }) => void,
+				callback: (data: { requestId: string }) => void
 			) => void;
 			sendProjectsResponse: (
 				requestId: string,
@@ -767,17 +767,14 @@ export interface ElectronAPI {
 						updatedAt: string;
 					}>;
 					activeProjectId: string | null;
-				},
+				}
 			) => void;
 			onOpenRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void,
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => void;
 			sendOpenResponse: (
 				requestId: string,
-				result: { navigated: boolean; projectId: string },
+				result: { navigated: boolean; projectId: string }
 			) => void;
 			removeListeners: () => void;
 		};

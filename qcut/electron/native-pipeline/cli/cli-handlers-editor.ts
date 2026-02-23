@@ -99,7 +99,7 @@ export async function handleEditorCommand(
  */
 async function handleNavigatorCommand(
 	client: EditorApiClient,
-	options: CLIRunOptions,
+	options: CLIRunOptions
 ): Promise<CLIResult> {
 	const parts = options.command.split(":");
 	const action = parts[2]; // "projects" or "open"

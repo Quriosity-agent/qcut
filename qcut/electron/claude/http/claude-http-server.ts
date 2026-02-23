@@ -741,10 +741,7 @@ export function startClaudeHTTPServer(
 		return await Promise.race([
 			requestProjectsFromRenderer(win),
 			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Renderer timed out")),
-					5000,
-				),
+				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
 			),
 		]);
 	});
@@ -757,10 +754,7 @@ export function startClaudeHTTPServer(
 		return await Promise.race([
 			requestNavigateToProject(win, req.body.projectId),
 			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Renderer timed out")),
-					5000,
-				),
+				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
 			),
 		]);
 	});

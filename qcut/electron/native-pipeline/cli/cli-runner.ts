@@ -277,12 +277,7 @@ export class CLIPipelineRunner {
 					this.signal
 				);
 			case "generate-remotion":
-				return handleGenerateRemotion(
-					options,
-					onProgress,
-					null,
-					this.signal
-				);
+				return handleGenerateRemotion(options, onProgress, null, this.signal);
 			case "transfer-motion":
 				return this.handleTransferMotion(options, onProgress);
 			case "generate-grid":

@@ -91,7 +91,7 @@ export function setupClaudeNavigatorBridge(): void {
 				}
 
 				const project = projectStore.savedProjects.find(
-					(p) => p.id === data.projectId,
+					(p) => p.id === data.projectId
 				);
 
 				if (!project) {
@@ -118,7 +118,7 @@ export function setupClaudeNavigatorBridge(): void {
 					projectId: data.projectId,
 				});
 			}
-		},
+		}
 	);
 
 	debugLog("Bridge setup complete");

@@ -51,20 +51,19 @@ function findSkillPath(): string | null {
 	const skillRelPath = ".agents/skills/remotion-best-practices/SKILL.md";
 	const candidates: string[] = [
 		// 1. Electron app path (works in packaged builds)
-		...((() => {
+		...(() => {
 			try {
 				const { app } = require("electron");
 				if (app?.getAppPath) return [join(app.getAppPath(), skillRelPath)];
-			} catch { /* not running under Electron */ }
+			} catch {
+				/* not running under Electron */
+			}
 			return [];
-		})()),
+		})(),
 		// 2. process.cwd() (works when CLI invoked from project root)
 		join(process.cwd(), skillRelPath),
 		// 3. __filename traversal (works in dev with source layout)
-		join(
-			dirname(dirname(dirname(dirname(__filename)))),
-			skillRelPath,
-		),
+		join(dirname(dirname(dirname(dirname(__filename)))), skillRelPath),
 	];
 
 	for (const candidate of candidates) {
@@ -133,14 +132,18 @@ Write the files now.`;
 function invokeClaude(
 	prompt: string,
 	cwd: string,
-	signal: AbortSignal,
+	signal: AbortSignal
 ): Promise<string> {
 	return new Promise((resolvePromise, reject) => {
-		const child = spawn("claude", ["-p", "--permission-mode", "bypassPermissions"], {
-			cwd,
-			stdio: ["pipe", "pipe", "pipe"],
-			env: { ...process.env, CLAUDECODE: "" },
-		});
+		const child = spawn(
+			"claude",
+			["-p", "--permission-mode", "bypassPermissions"],
+			{
+				cwd,
+				stdio: ["pipe", "pipe", "pipe"],
+				env: { ...process.env, CLAUDECODE: "" },
+			}
+		);
 
 		let stdout = "";
 		let stderr = "";
@@ -165,9 +168,7 @@ function invokeClaude(
 			settled = true;
 			clearTimeout(timeoutId);
 			if (code !== 0) {
-				reject(
-					new Error(`claude -p failed (exit ${code}): ${stderr.trim()}`),
-				);
+				reject(new Error(`claude -p failed (exit ${code}): ${stderr.trim()}`));
 			} else {
 				resolvePromise(stdout);
 			}
@@ -205,7 +206,7 @@ export async function handleGenerateRemotion(
 	options: CLIRunOptions,
 	onProgress: ProgressFn,
 	_executor: unknown,
-	signal: AbortSignal,
+	signal: AbortSignal
 ): Promise<CLIResult> {
 	// 1. Validate
 	const userPrompt = options.prompt || options.text;
@@ -247,12 +248,13 @@ export async function handleGenerateRemotion(
 	if (skillPath) {
 		process.stderr.write(`[generate-remotion] Using skill: ${skillPath}\n`);
 	} else {
-		process.stderr.write("[generate-remotion] Remotion skill not found, proceeding without it\n");
+		process.stderr.write(
+			"[generate-remotion] Remotion skill not found, proceeding without it\n"
+		);
 	}
 
 	// 5. Output directory — project folder per generation
-	const baseOutputDir =
-		options.outputDir || join(process.cwd(), "output");
+	const baseOutputDir = options.outputDir || join(process.cwd(), "output");
 	const projectDir = resolve(join(baseOutputDir, componentName));
 	mkdirSync(join(projectDir, "src"), { recursive: true });
 
@@ -298,8 +300,8 @@ export async function handleGenerateRemotion(
 					dependencies: { remotion: "*", react: "*" },
 				},
 				null,
-				2,
-			),
+				2
+			)
 		);
 	}
 
@@ -333,7 +335,7 @@ export async function handleGenerateRemotion(
 		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
 	} catch {
 		process.stderr.write(
-			`[generate-remotion] Could not write metadata to ${jsonPath}\n`,
+			`[generate-remotion] Could not write metadata to ${jsonPath}\n`
 		);
 	}
 
@@ -345,16 +347,16 @@ export async function handleGenerateRemotion(
 				componentName,
 				srcDir,
 				durationSeconds,
-				onProgress,
+				onProgress
 			);
 			if (!timelineResult.success) {
 				process.stderr.write(
-					`[generate-remotion] Timeline integration failed: ${timelineResult.error}\n`,
+					`[generate-remotion] Timeline integration failed: ${timelineResult.error}\n`
 				);
 			}
 		} catch (err) {
 			process.stderr.write(
-				`[generate-remotion] Timeline integration failed: ${err instanceof Error ? err.message : String(err)}\n`,
+				`[generate-remotion] Timeline integration failed: ${err instanceof Error ? err.message : String(err)}\n`
 			);
 		}
 	}
@@ -379,7 +381,7 @@ async function addRemotionToTimeline(
 	componentName: string,
 	folderPath: string,
 	durationSeconds: number,
-	onProgress: ProgressFn,
+	onProgress: ProgressFn
 ): Promise<{ success: boolean; error?: string }> {
 	const projectId = options.projectId!;
 	const client = createEditorClient(options);

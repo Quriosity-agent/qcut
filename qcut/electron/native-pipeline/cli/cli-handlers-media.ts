@@ -520,9 +520,7 @@ async function addQuerySegmentsToTimeline(
 				content: `**[${isKeep ? "KEEP" : "CUT"}]** ${segment.label}`,
 				startTime: segment.start,
 				duration,
-				backgroundColor: isKeep
-					? "rgba(34,197,94,0.7)"
-					: "rgba(239,68,68,0.7)",
+				backgroundColor: isKeep ? "rgba(34,197,94,0.7)" : "rgba(239,68,68,0.7)",
 				textColor: "#ffffff",
 			});
 			added++;
