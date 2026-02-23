@@ -199,6 +199,10 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.invoke("claude:media:delete", projectId, mediaId),
 			rename: (projectId, mediaId, newName) =>
 				ipcRenderer.invoke("claude:media:rename", projectId, mediaId, newName),
+			onMediaImported: (callback) => {
+				ipcRenderer.removeAllListeners("claude:media:imported");
+				ipcRenderer.on("claude:media:imported", (_, data) => callback(data));
+			},
 		},
 		timeline: {
 			export: (projectId, format) =>

@@ -8,13 +8,29 @@
  * @module electron/native-pipeline/cli-handlers-media
  */
 
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
 import { ModelRegistry } from "../infra/registry.js";
 import type { PipelineStep } from "../execution/executor.js";
 import type { PipelineExecutor } from "../execution/executor.js";
 import { resolveOutputDir } from "../output/output-utils.js";
+import { createEditorClient } from "../editor/editor-api-client.js";
+
+function isUrl(input: string): boolean {
+	return /^https?:\/\//i.test(input);
+}
+
+/** Extract a clean filename from a URL, stripping query params. */
+function filenameFromUrl(url: string): string {
+	try {
+		const pathname = new URL(url).pathname;
+		const name = pathname.split("/").pop() || "video";
+		return name.split("?")[0].split("#")[0] || "video";
+	} catch {
+		return "video";
+	}
+}
 
 type ProgressFn = (progress: {
 	stage: string;
@@ -34,7 +50,7 @@ export async function handleAnalyzeVideo(
 		return { success: false, error: "Missing --input/-i (video path/URL)" };
 	}
 
-	const model = options.model || "gemini_qa";
+	const model = options.model || "fal_video_qa";
 	if (!ModelRegistry.has(model)) {
 		return { success: false, error: `Unknown model '${model}'` };
 	}
@@ -50,7 +66,8 @@ export async function handleAnalyzeVideo(
 	// Analysis type determines the default prompt
 	const analysisType = options.analysisType || "timeline";
 	const promptMap: Record<string, string> = {
-		timeline: "Create a detailed timeline of events in this video",
+		timeline:
+			'Analyze this video and return a JSON array of timestamped events. Each entry should have "start" (seconds), "end" (seconds), "label" (short description), and "tags" (array of keywords). Example: [{"start":0,"end":2.5,"label":"City skyline establishing shot","tags":["establishing","city"]}]. Return ONLY valid JSON, no markdown.',
 		summary: "Provide a comprehensive summary of this video",
 		description: "Describe this video in detail",
 		transcript: "Transcribe all spoken words in this video",
@@ -79,59 +96,196 @@ export async function handleAnalyzeVideo(
 
 	const resultData = result.text || result.data;
 
-	// Output format handling (md, json, both)
-	const outputFormat = options.outputFormat || "md";
-	if (
-		result.success &&
-		resultData &&
-		(outputFormat === "json" || outputFormat === "both")
-	) {
-		const outputDir = resolveOutputDir(options.outputDir, `cli-${Date.now()}`);
+	if (!result.success) {
+		return {
+			success: false,
+			error: result.error,
+			duration: (Date.now() - startTime) / 1000,
+		};
+	}
+
+	// Always save JSON alongside the video (same name, .json extension)
+	// Output dir: explicit -o flag > video's directory (use cwd for URLs)
+	const videoFilename = isUrl(videoInput)
+		? filenameFromUrl(videoInput)
+		: basename(videoInput);
+	const extWithDot = videoFilename.includes(".")
+		? `.${videoFilename.split(".").pop()}`
+		: "";
+	const videoBasename = extWithDot
+		? videoFilename.slice(0, -extWithDot.length)
+		: videoFilename;
+	const outputDir =
+		options.outputDir ||
+		(isUrl(videoInput) ? process.cwd() : dirname(videoInput));
+	const jsonPath = join(outputDir, `${videoBasename}.json`);
+
+	// Parse structured JSON from model response if possible
+	let parsed: unknown = resultData;
+	if (typeof resultData === "string") {
 		try {
-			const jsonPath = join(outputDir, "analysis.json");
-			writeFileSync(
-				jsonPath,
-				JSON.stringify({ type: analysisType, content: resultData }, null, 2)
+			// Strip markdown code fences if present
+			const cleaned = resultData
+				.replace(/^```(?:json)?\n?/m, "")
+				.replace(/\n?```$/m, "")
+				.trim();
+			parsed = JSON.parse(cleaned);
+		} catch {
+			// Keep as-is if not valid JSON
+		}
+	}
+
+	const output = {
+		type: analysisType,
+		video: basename(videoInput),
+		model,
+		duration: (Date.now() - startTime) / 1000,
+		content: parsed,
+	};
+
+	try {
+		mkdirSync(outputDir, { recursive: true });
+		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
+	} catch (err) {
+		return {
+			success: false,
+			error: `Failed to write ${jsonPath}: ${err instanceof Error ? err.message : String(err)}`,
+			duration: output.duration,
+		};
+	}
+
+	// Add video + scene markdown to editor timeline if requested
+	if (options.addToTimeline && options.projectId) {
+		const timelineResult = await addAnalysisToTimeline(
+			options,
+			videoInput,
+			parsed,
+			onProgress
+		);
+		if (!timelineResult.success) {
+			// Non-fatal: analysis succeeded, timeline push failed
+			console.error(
+				`[analyze-video] Timeline integration failed: ${timelineResult.error}`
 			);
-
-			if (outputFormat === "both") {
-				const mdPath = join(outputDir, "analysis.md");
-				writeFileSync(
-					mdPath,
-					typeof resultData === "string"
-						? resultData
-						: JSON.stringify(resultData, null, 2)
-				);
-				return {
-					success: true,
-					outputPath: jsonPath,
-					outputPaths: [jsonPath, mdPath],
-					data: resultData,
-					duration: (Date.now() - startTime) / 1000,
-				};
-			}
-
-			return {
-				success: true,
-				outputPath: jsonPath,
-				data: resultData,
-				duration: (Date.now() - startTime) / 1000,
-			};
-		} catch (err) {
-			return {
-				success: false,
-				error: `Failed to write analysis output: ${err instanceof Error ? err.message : String(err)}`,
-				duration: (Date.now() - startTime) / 1000,
-			};
 		}
 	}
 
 	return {
-		success: result.success,
-		error: result.error,
-		data: resultData,
-		duration: (Date.now() - startTime) / 1000,
+		success: true,
+		outputPath: jsonPath,
+		data: output,
+		duration: output.duration,
 	};
+}
+
+interface TimelineEvent {
+	start: number;
+	end: number;
+	label: string;
+	tags?: string[];
+}
+
+/** Import video + markdown scene annotations into the editor timeline. */
+async function addAnalysisToTimeline(
+	options: CLIRunOptions,
+	videoPath: string,
+	analysisContent: unknown,
+	onProgress: ProgressFn
+): Promise<{ success: boolean; error?: string }> {
+	const projectId = options.projectId!;
+	const client = createEditorClient(options);
+
+	// Check editor is running
+	const healthy = await client.checkHealth();
+	if (!healthy) {
+		return { success: false, error: "QCut editor not reachable" };
+	}
+
+	onProgress({
+		stage: "timeline",
+		percent: 80,
+		message: "Importing video to editor...",
+	});
+
+	// 1. Import video into media library
+	const source = isUrl(videoPath) ? videoPath : resolve(videoPath);
+	const media = (await client.post(`/api/claude/media/${projectId}/import`, {
+		source,
+	})) as { id?: string; name?: string; duration?: number };
+
+	if (!media?.id) {
+		return { success: false, error: "Failed to import video to media library" };
+	}
+
+	// 2. Get timeline to find track IDs
+	const timeline = (await client.get(`/api/claude/timeline/${projectId}`)) as {
+		tracks?: { id: string; type: string; name: string }[];
+	};
+
+	const tracks = timeline?.tracks || [];
+	const mediaTrack = tracks.find((t) => t.type === "media");
+	const markdownTrack = tracks.find((t) => t.type === "markdown");
+
+	if (!mediaTrack) {
+		return { success: false, error: "No media track found in timeline" };
+	}
+
+	// 3. Build media element
+	const events = Array.isArray(analysisContent)
+		? (analysisContent as TimelineEvent[])
+		: [];
+
+	const videoDuration =
+		media.duration ||
+		(events.length > 0 ? Math.max(...events.map((e) => e.end)) : 10);
+
+	onProgress({
+		stage: "timeline",
+		percent: 85,
+		message: "Adding video to timeline...",
+	});
+
+	// 4. Add media element via single-element endpoint
+	//    (auto-resolves media from store and creates track if needed)
+	await client.post(`/api/claude/timeline/${projectId}/elements`, {
+		type: "media",
+		sourceId: media.id,
+		sourceName: media.name || basename(videoPath),
+		startTime: 0,
+		duration: videoDuration,
+	});
+
+	// 5. Add markdown scene annotations via single-element endpoint
+	//    (auto-creates markdown track via findOrCreateTrack)
+	let addedMarkdown = 0;
+	if (events.length > 0) {
+		onProgress({
+			stage: "timeline",
+			percent: 90,
+			message: "Adding scene annotations...",
+		});
+
+		for (const event of events) {
+			const duration = event.end - event.start;
+			if (duration <= 0) continue;
+
+			await client.post(`/api/claude/timeline/${projectId}/elements`, {
+				type: "markdown",
+				content: event.label,
+				startTime: event.start,
+				duration,
+			});
+			addedMarkdown++;
+		}
+	}
+
+	onProgress({
+		stage: "timeline",
+		percent: 100,
+		message: `Added video + ${addedMarkdown} scene annotations to timeline`,
+	});
+
+	return { success: true };
 }
 
 export async function handleTranscribe(

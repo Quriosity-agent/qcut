@@ -77,10 +77,12 @@ export interface ClaudeElement {
 		| "sticker"
 		| "captions"
 		| "remotion"
-		| "media";
+		| "media"
+		| "markdown";
 	sourceId?: string;
 	sourceName?: string;
 	content?: string;
+	markdownContent?: string;
 	style?: Record<string, unknown>;
 	effects?: string[];
 	trimStart?: number;
@@ -231,7 +233,8 @@ export interface ClaudeBatchAddElementRequest {
 		| "sticker"
 		| "captions"
 		| "remotion"
-		| "media";
+		| "media"
+		| "markdown";
 	trackId: string;
 	startTime: number;
 	duration: number;
@@ -239,6 +242,7 @@ export interface ClaudeBatchAddElementRequest {
 	sourceId?: string;
 	sourceName?: string;
 	content?: string;
+	markdownContent?: string;
 	style?: Record<string, unknown>;
 }
 

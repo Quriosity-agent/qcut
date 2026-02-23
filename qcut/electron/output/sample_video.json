@@ -1,0 +1,50 @@
+{
+	"type": "timeline",
+	"video": "sample_video.mp4",
+	"model": "fal_video_qa",
+	"duration": 30.912,
+	"content": [
+		{
+			"start": 0,
+			"end": 0.96,
+			"label": "The giant monster stands towering over the cityscape, its menacing presence emphasized by the surrounding destruction.",
+			"tags": ["giant monster", "cityscape", "destruction", "menacing"]
+		},
+		{
+			"start": 0.96,
+			"end": 2.24,
+			"label": "The monster roars, conveying its immense power and destructive intent.",
+			"tags": ["monster roaring", "power", "destruction"]
+		},
+		{
+			"start": 2.24,
+			"end": 3.76,
+			"label": "As the camera pans back, details of the devastated city, including collapsed buildings and smoke, highlight the scale of the monster's rampage.",
+			"tags": ["devastated city", "collapsed buildings", "smoke", "rampage"]
+		},
+		{
+			"start": 3.76,
+			"end": 4.56,
+			"label": "Fire erupts from the ground, adding to the chaotic scene and suggesting ongoing destruction.",
+			"tags": ["fire", "chaos", "destruction"]
+		},
+		{
+			"start": 4.56,
+			"end": 5.4,
+			"label": "The monster raises its clawed hand, poised to strike, indicating an impending attack.",
+			"tags": ["monster hand", "clawed", "impending attack"]
+		},
+		{
+			"start": 5.4,
+			"end": 6.84,
+			"label": "The monster strikes down, causing a massive explosion of debris and dust, further emphasizing its destructive force.",
+			"tags": [
+				"monster strike",
+				"explosion",
+				"debris",
+				"dust",
+				"destructive force"
+			]
+		}
+	]
+}

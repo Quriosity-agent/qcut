@@ -90,26 +90,26 @@ class BlobManager {
 		// Second, try file key cache (property-based match)
 		const fileKey = this.getFileKey(file);
 		const existingFromKeyCache = this.fileKeyToUrl.get(fileKey);
-		const entry2 = existingFromKeyCache
-			? this.blobs.get(existingFromKeyCache)
-			: undefined;
-		if (entry2) {
-			entry2.refCount++;
+		if (existingFromKeyCache) {
+			const entry2 = this.blobs.get(existingFromKeyCache);
+			if (entry2) {
+				entry2.refCount++;
 
-			// Also add to WeakMap for faster future lookups with this instance
-			this.fileToUrl.set(file, existingFromKeyCache);
+				// Also add to WeakMap for faster future lookups with this instance
+				this.fileToUrl.set(file, existingFromKeyCache);
 
-			if (import.meta.env.DEV) {
-				console.log(
-					`[BlobManager] ♻️ Reusing URL (key match): ${(file as File).name || "blob"}`
-				);
-				console.log(`  📍 Original source: ${entry.source}`);
-				console.log(`  🔄 Requested by: ${source}`);
-				console.log(`  📊 Ref count: ${entry.refCount}`);
-				console.log(`  🔑 File key: ${fileKey}`);
+				if (import.meta.env.DEV) {
+					console.log(
+						`[BlobManager] ♻️ Reusing URL (key match): ${(file as File).name || "blob"}`
+					);
+					console.log(`  📍 Original source: ${entry2.source}`);
+					console.log(`  🔄 Requested by: ${source}`);
+					console.log(`  📊 Ref count: ${entry2.refCount}`);
+					console.log(`  🔑 File key: ${fileKey}`);
+				}
+
+				return existingFromKeyCache;
 			}
-
-			return existingFromKeyCache;
 		}
 
 		// No existing URL found, create new one

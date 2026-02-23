@@ -115,6 +115,10 @@ function getElementDuration({
 		}
 	}
 
+	if (typeof element.duration === "number" && element.duration > 0) {
+		return element.duration;
+	}
+
 	if (fallbackDuration > 0) {
 		return fallbackDuration;
 	}
@@ -281,7 +285,7 @@ export async function addClaudeMediaElement({
 		projectId,
 	});
 
-	if (!mediaItem) {
+	if (!mediaItem && !element.sourceId) {
 		debugWarn(
 			"[ClaudeTimelineBridge] Media not found:",
 			element.sourceName || element.sourceId
@@ -290,8 +294,10 @@ export async function addClaudeMediaElement({
 	}
 
 	const trackId = timelineStore.findOrCreateTrack("media");
+	const resolvedId = mediaItem?.id ?? element.sourceId!;
+	const resolvedName = mediaItem?.name ?? element.sourceName ?? "Media";
 	const fallbackDuration =
-		typeof mediaItem.duration === "number" && mediaItem.duration > 0
+		typeof mediaItem?.duration === "number" && mediaItem.duration > 0
 			? mediaItem.duration
 			: DEFAULT_MEDIA_DURATION_SECONDS;
 	const startTime = getElementStartTime({ element });
@@ -302,15 +308,15 @@ export async function addClaudeMediaElement({
 
 	timelineStore.addElementToTrack(trackId, {
 		type: "media",
-		name: mediaItem.name,
-		mediaId: mediaItem.id,
+		name: resolvedName,
+		mediaId: resolvedId,
 		startTime,
 		duration,
 		trimStart: 0,
 		trimEnd: 0,
 	});
 
-	debugLog("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
+	debugLog("[ClaudeTimelineBridge] Added media element:", resolvedName);
 }
 
 /** Add a Claude text element to the timeline store. */
@@ -355,6 +361,86 @@ export function addClaudeTextElement({
 	});
 
 	debugLog("[ClaudeTimelineBridge] Added text element:", content);
+}
+
+const DEFAULT_MARKDOWN_DURATION_SECONDS = 120;
+const DEFAULT_MARKDOWN_CONTENT = "Markdown";
+
+/** Add a Claude markdown element to the timeline store. */
+export function addClaudeMarkdownElement({
+	element,
+	timelineStore,
+}: {
+	element: Partial<ClaudeElement>;
+	timelineStore: TimelineStoreState;
+}): void {
+	// Reuse existing markdown track instead of creating one per element
+	const existingTrack = timelineStore.tracks.find((t) => t.type === "markdown");
+	const trackId = existingTrack?.id ?? timelineStore.addTrack("markdown");
+
+	const startTime = getElementStartTime({ element });
+	const duration = getElementDuration({
+		element,
+		fallbackDuration: DEFAULT_MARKDOWN_DURATION_SECONDS,
+	});
+	const rawMarkdown =
+		typeof element.markdownContent === "string"
+			? element.markdownContent
+			: element.content;
+	const markdownContent =
+		typeof rawMarkdown === "string" && rawMarkdown.trim().length > 0
+			? rawMarkdown
+			: DEFAULT_MARKDOWN_CONTENT;
+
+	// Clamp any existing element whose end time would overlap this one's start
+	const track = timelineStore.tracks.find((t) => t.id === trackId);
+	if (track) {
+		const endTime = startTime + duration;
+		for (const existing of track.elements) {
+			const existingEnd = existing.startTime + getEffectiveDuration(existing);
+			if (existing.startTime < endTime && existingEnd > startTime) {
+				const clampedDuration = startTime - existing.startTime;
+				if (clampedDuration > 0) {
+					timelineStore.updateElementDuration(
+						trackId,
+						existing.id,
+						clampedDuration,
+						false
+					);
+				}
+			}
+		}
+	}
+
+	// Subtitle-style: positioned at bottom center, compact height
+	timelineStore.addElementToTrack(trackId, {
+		type: "markdown",
+		name: markdownContent.slice(0, 50),
+		markdownContent,
+		startTime,
+		duration,
+		trimStart: 0,
+		trimEnd: 0,
+		theme: "transparent",
+		fontSize: 24,
+		fontFamily: "Inter",
+		padding: 8,
+		backgroundColor: "rgba(0,0,0,0.6)",
+		textColor: "#ffffff",
+		scrollMode: "static",
+		scrollSpeed: 50,
+		x: 0,
+		y: 480,
+		width: 1600,
+		height: 80,
+		rotation: 0,
+		opacity: 1,
+	});
+
+	debugLog(
+		"[ClaudeTimelineBridge] Added markdown element:",
+		markdownContent.slice(0, 50)
+	);
 }
 
 /**
@@ -466,6 +552,12 @@ export async function applyTimelineToStore(
 					added++;
 				} else if (element.type === "text") {
 					addClaudeTextElement({
+						element,
+						timelineStore: useTimelineStore.getState(),
+					});
+					added++;
+				} else if (element.type === "markdown") {
+					addClaudeMarkdownElement({
 						element,
 						timelineStore: useTimelineStore.getState(),
 					});

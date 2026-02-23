@@ -24,6 +24,7 @@ import {
 	isClaudeMediaElementType,
 	addClaudeMediaElement,
 	addClaudeTextElement,
+	addClaudeMarkdownElement,
 	formatTracksForExport,
 	applyTimelineToStore,
 	syncProjectMediaIfNeeded,
@@ -57,7 +58,8 @@ function normalizeClaudeElementType({
 		type === CLAUDE_TRACK_ELEMENT_TYPES.text ||
 		type === CLAUDE_TRACK_ELEMENT_TYPES.sticker ||
 		type === CLAUDE_TRACK_ELEMENT_TYPES.captions ||
-		type === CLAUDE_TRACK_ELEMENT_TYPES.remotion
+		type === CLAUDE_TRACK_ELEMENT_TYPES.remotion ||
+		type === CLAUDE_TRACK_ELEMENT_TYPES.markdown
 	) {
 		return type;
 	}
@@ -143,6 +145,72 @@ export function setupClaudeTimelineBridge(): void {
 	const claudeAPI = window.electronAPI.claude.timeline;
 	debugLog("[ClaudeTimelineBridge] Setting up bridge...");
 
+	// Listen for media imports so the renderer store gets the File object (needed for preview)
+	if (window.electronAPI.claude.media?.onMediaImported) {
+		window.electronAPI.claude.media.onMediaImported(async (data) => {
+			try {
+				const projectId = useProjectStore.getState().activeProject?.id;
+				if (!projectId || !window.electronAPI?.readFile) return;
+
+				// Check if already in store by ID or path (avoid duplicates)
+				const existing = useMediaStore
+					.getState()
+					.mediaItems.find(
+						(item) =>
+							item.id === data.id ||
+							(item.localPath && item.localPath === data.path)
+					);
+				if (existing?.file) return;
+
+				debugLog(
+					"[ClaudeTimelineBridge] Loading imported media into store:",
+					data.name
+				);
+
+				const buffer = await window.electronAPI.readFile(data.path);
+				if (!buffer) return;
+
+				const ext = data.name.split(".").pop()?.toLowerCase() || "";
+				const mimeMap: Record<string, string> = {
+					mp4: "video/mp4",
+					webm: "video/webm",
+					mov: "video/quicktime",
+					mp3: "audio/mpeg",
+					wav: "audio/wav",
+					png: "image/png",
+					jpg: "image/jpeg",
+					jpeg: "image/jpeg",
+				};
+				const mimeType = mimeMap[ext] || `${data.type || "application"}/${ext}`;
+
+				const uint8 = new Uint8Array(buffer);
+				const blob = new Blob([uint8], { type: mimeType });
+				const fileObj = new File([blob], data.name, { type: mimeType });
+
+				const { getOrCreateObjectURL } = await import(
+					"@/lib/media/blob-manager"
+				);
+				const displayUrl = getOrCreateObjectURL(fileObj, "claude-media-import");
+
+				await useMediaStore.getState().addMediaItem(projectId, {
+					name: data.name,
+					type: (data.type as "video" | "audio" | "image") || "video",
+					file: fileObj,
+					url: displayUrl,
+					localPath: data.path,
+					isLocalFile: true,
+				});
+
+				debugLog("[ClaudeTimelineBridge] Media loaded into store:", data.name);
+			} catch (error) {
+				debugWarn(
+					"[ClaudeTimelineBridge] Failed to load imported media:",
+					error
+				);
+			}
+		});
+	}
+
 	// Respond to timeline export request from main process
 	claudeAPI.onRequest(() => {
 		try {
@@ -219,6 +287,14 @@ export function setupClaudeTimelineBridge(): void {
 
 			if (element.type === "text") {
 				addClaudeTextElement({
+					element,
+					timelineStore,
+				});
+				return;
+			}
+
+			if (element.type === "markdown") {
+				addClaudeMarkdownElement({
 					element,
 					timelineStore,
 				});
@@ -601,6 +677,63 @@ export function setupClaudeTimelineBridge(): void {
 												: "none",
 										x: 0.5,
 										y: 0.5,
+										rotation: 0,
+										opacity: 1,
+									},
+									{
+										pushHistory: false,
+										selectElement: false,
+									}
+								);
+							} else if (
+								normalizedType === CLAUDE_TRACK_ELEMENT_TYPES.markdown
+							) {
+								const markdownContent =
+									typeof element.markdownContent === "string" &&
+									element.markdownContent.length > 0
+										? element.markdownContent
+										: typeof element.content === "string" &&
+												element.content.length > 0
+											? element.content
+											: "Markdown";
+								const style = element.style || {};
+
+								createdElementId = timelineStore.addElementToTrack(
+									element.trackId,
+									{
+										type: "markdown",
+										name: markdownContent.slice(0, 50),
+										markdownContent,
+										startTime: element.startTime,
+										duration: element.duration,
+										trimStart: 0,
+										trimEnd: 0,
+										theme:
+											style.theme === "light" || style.theme === "transparent"
+												? style.theme
+												: "dark",
+										fontSize:
+											typeof style.fontSize === "number" ? style.fontSize : 14,
+										fontFamily:
+											typeof style.fontFamily === "string"
+												? style.fontFamily
+												: "Inter",
+										padding:
+											typeof style.padding === "number" ? style.padding : 16,
+										backgroundColor:
+											typeof style.backgroundColor === "string"
+												? style.backgroundColor
+												: "#1a1a2e",
+										textColor:
+											typeof style.textColor === "string"
+												? style.textColor
+												: "#e0e0e0",
+										scrollMode: "static",
+										scrollSpeed: 50,
+										x: 0,
+										y: 0,
+										width: 400,
+										height: 300,
 										rotation: 0,
 										opacity: 1,
 									},
