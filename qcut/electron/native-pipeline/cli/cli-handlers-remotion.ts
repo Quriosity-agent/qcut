@@ -134,6 +134,7 @@ function invokeClaude(
 
 		let stdout = "";
 		let stderr = "";
+		let settled = false;
 
 		child.stdout.on("data", (chunk: Buffer) => {
 			stdout += chunk.toString();
@@ -142,7 +143,17 @@ function invokeClaude(
 			stderr += chunk.toString();
 		});
 
+		// Timeout after 5 minutes (folder generation is more complex)
+		const timeoutId = setTimeout(() => {
+			if (!settled) {
+				child.kill("SIGTERM");
+				reject(new Error("claude -p timed out after 300s"));
+			}
+		}, 300_000);
+
 		child.on("close", (code) => {
+			settled = true;
+			clearTimeout(timeoutId);
 			if (code !== 0) {
 				reject(
 					new Error(`claude -p failed (exit ${code}): ${stderr.trim()}`),
@@ -153,6 +164,8 @@ function invokeClaude(
 		});
 
 		child.on("error", (err) => {
+			settled = true;
+			clearTimeout(timeoutId);
 			reject(new Error(`claude -p failed: ${err.message}`));
 		});
 
@@ -160,21 +173,21 @@ function invokeClaude(
 		child.stdin.end();
 
 		const onAbort = () => {
-			child.kill("SIGTERM");
-			reject(new Error("Aborted"));
+			if (!settled) {
+				settled = true;
+				clearTimeout(timeoutId);
+				child.kill("SIGTERM");
+				reject(new Error("Aborted"));
+			}
 		};
 		if (signal.aborted) {
+			settled = true;
+			clearTimeout(timeoutId);
 			child.kill("SIGTERM");
 			reject(new Error("Aborted"));
 		} else {
 			signal.addEventListener("abort", onAbort, { once: true });
 		}
-
-		// Timeout after 5 minutes (folder generation is more complex)
-		setTimeout(() => {
-			child.kill("SIGTERM");
-			reject(new Error("claude -p timed out after 300s"));
-		}, 300_000);
 	});
 }
 
@@ -201,9 +214,9 @@ export async function handleGenerateRemotion(
 
 	// 3. Parse options
 	const durationSeconds = options.duration ? Number(options.duration) : 5;
-	const fps = 30;
-	const width = 1920;
-	const height = 1080;
+	const fps = options.fps ? Number(options.fps) : 30;
+	const width = options.width ? Number(options.width) : 1920;
+	const height = options.height ? Number(options.height) : 1080;
 
 	if (Number.isNaN(durationSeconds) || durationSeconds <= 0) {
 		return {
@@ -316,16 +329,22 @@ export async function handleGenerateRemotion(
 
 	// 10. Timeline integration
 	if (options.addToTimeline && options.projectId) {
-		const timelineResult = await addRemotionToTimeline(
-			options,
-			componentName,
-			srcDir,
-			durationSeconds,
-			onProgress,
-		);
-		if (!timelineResult.success) {
-			console.error(
-				`[generate-remotion] Timeline integration failed: ${timelineResult.error}`,
+		try {
+			const timelineResult = await addRemotionToTimeline(
+				options,
+				componentName,
+				srcDir,
+				durationSeconds,
+				onProgress,
+			);
+			if (!timelineResult.success) {
+				process.stderr.write(
+					`[generate-remotion] Timeline integration failed: ${timelineResult.error}\n`,
+				);
+			}
+		} catch (err) {
+			process.stderr.write(
+				`[generate-remotion] Timeline integration failed: ${err instanceof Error ? err.message : String(err)}\n`,
 			);
 		}
 	}

@@ -387,7 +387,9 @@ Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"star
 				}));
 			}
 		} catch {
-			console.error("[query-video] Failed to parse model response as JSON");
+			process.stderr.write(
+				"[query-video] Failed to parse model response as JSON\n"
+			);
 		}
 	}
 
@@ -422,15 +424,21 @@ Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"star
 
 	// Add colored segments to editor timeline if requested
 	if (options.addToTimeline && options.projectId) {
-		const timelineResult = await addQuerySegmentsToTimeline(
-			options,
-			videoInput,
-			segments,
-			onProgress
-		);
-		if (!timelineResult.success) {
-			console.error(
-				`[query-video] Timeline integration failed: ${timelineResult.error}`
+		try {
+			const timelineResult = await addQuerySegmentsToTimeline(
+				options,
+				videoInput,
+				segments,
+				onProgress
+			);
+			if (!timelineResult.success) {
+				process.stderr.write(
+					`[query-video] Timeline integration failed: ${timelineResult.error}\n`
+				);
+			}
+		} catch (err) {
+			process.stderr.write(
+				`[query-video] Timeline integration failed: ${err instanceof Error ? err.message : String(err)}\n`
 			);
 		}
 	}

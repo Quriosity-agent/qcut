@@ -453,10 +453,18 @@ async function bundleAndRegisterComponent({
 	componentPath,
 	componentId,
 	componentName,
+	durationInFrames = 150,
+	fps = 30,
+	width = 1920,
+	height = 1080,
 }: {
 	componentPath: string;
 	componentId: string;
 	componentName: string;
+	durationInFrames?: number;
+	fps?: number;
+	width?: number;
+	height?: number;
 }): Promise<string | null> {
 	try {
 		const api = window.electronAPI?.remotionFolder;
@@ -504,11 +512,13 @@ async function bundleAndRegisterComponent({
 			name: componentName,
 			description: `Generated component: ${componentName}`,
 			category: "custom",
-			durationInFrames: 150,
-			fps: 30,
-			width: 1920,
-			height: 1080,
-			schema: { safeParse: () => ({ success: true }) } as never,
+			durationInFrames,
+			fps,
+			width,
+			height,
+			// Dynamically generated components don't export a Zod schema;
+			// accept any props since the component handles its own defaults.
+			schema: { safeParse: () => ({ success: true, data: {} }) } as never,
 			defaultProps: {},
 			component: loadResult.component,
 			source: "imported",
