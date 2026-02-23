@@ -391,6 +391,26 @@ export function addClaudeMarkdownElement({
 			? element.content
 			: DEFAULT_MARKDOWN_CONTENT;
 
+	// Clamp any existing element whose end time would overlap this one's start
+	const track = timelineStore.tracks.find((t) => t.id === trackId);
+	if (track) {
+		const endTime = startTime + duration;
+		for (const existing of track.elements) {
+			const existingEnd = existing.startTime + getEffectiveDuration(existing);
+			if (existing.startTime < endTime && existingEnd > startTime) {
+				const clampedDuration = startTime - existing.startTime;
+				if (clampedDuration > 0) {
+					timelineStore.updateElementDuration(
+						trackId,
+						existing.id,
+						clampedDuration,
+						false
+					);
+				}
+			}
+		}
+	}
+
 	// Subtitle-style: positioned at bottom center, compact height
 	timelineStore.addElementToTrack(trackId, {
 		type: "markdown",
