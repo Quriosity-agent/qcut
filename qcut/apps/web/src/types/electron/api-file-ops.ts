@@ -16,10 +16,7 @@ export interface ElectronFileOps {
 	getPathForFile: (file: File) => string;
 
 	readFile: (filePath: string) => Promise<Buffer | null>;
-	writeFile: (
-		filePath: string,
-		data: Buffer | string
-	) => Promise<boolean>;
+	writeFile: (filePath: string, data: Buffer | string) => Promise<boolean>;
 	saveBlob: (
 		data: Buffer | Uint8Array,
 		defaultFilename?: string
