@@ -6,7 +6,7 @@ vi.mock("electron", () => ({
 	},
 }));
 
-import { generateProjectSummary } from "../claude/claude-summary-handler";
+import { generateProjectSummary } from "../claude/handlers/claude-summary-handler";
 
 const settings = {
 	name: "My Video",

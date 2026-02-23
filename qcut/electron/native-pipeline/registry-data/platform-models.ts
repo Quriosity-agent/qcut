@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/platform-models
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerRunwayModels(): void {
 	ModelRegistry.register({

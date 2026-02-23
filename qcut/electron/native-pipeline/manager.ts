@@ -10,15 +10,15 @@
 import * as path from "path";
 import * as fs from "fs";
 import { app } from "electron";
-import { ModelRegistry } from "./registry.js";
-import { PipelineExecutor } from "./executor.js";
-import type { PipelineChain, PipelineStep } from "./executor.js";
-import { downloadOutput } from "./api-caller.js";
-import { parseChainConfig, validateChain } from "./chain-parser.js";
-import { estimateCost, listModels } from "./cost-calculator.js";
-import { resolveOutputDir as resolveOutputDirShared } from "./output-utils.js";
+import { ModelRegistry } from "./infra/registry.js";
+import { PipelineExecutor } from "./execution/executor.js";
+import type { PipelineChain, PipelineStep } from "./execution/executor.js";
+import { downloadOutput } from "./infra/api-caller.js";
+import { parseChainConfig, validateChain } from "./execution/chain-parser.js";
+import { estimateCost, listModels } from "./infra/cost-calculator.js";
+import { resolveOutputDir as resolveOutputDirShared } from "./output/output-utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
-import { importMediaFile } from "../claude/claude-media-handler.js";
+import { importMediaFile } from "../claude/handlers/claude-media-handler.js";
 import { inferProjectIdFromPath } from "../ai-pipeline-output.js";
 import {
 	handleVimaxIdea2Video,
@@ -31,8 +31,8 @@ import {
 	handleVimaxCreateRegistry,
 	handleVimaxShowRegistry,
 	handleVimaxListModels,
-} from "./vimax-cli-handlers.js";
-import type { CLIRunOptions } from "./cli-runner.js";
+} from "./cli/vimax-cli-handlers.js";
+import type { CLIRunOptions } from "./cli/cli-runner.js";
 
 // Re-export types from the original handler for compatibility
 export interface GenerateOptions {
@@ -518,7 +518,7 @@ export class NativePipelineManager {
 			(
 				opts: CLIRunOptions,
 				prog: typeof progressFn
-			) => Promise<import("./cli-runner.js").CLIResult>
+			) => Promise<import("./cli/cli-runner.js").CLIResult>
 		> = {
 			"vimax:idea2video": handleVimaxIdea2Video,
 			"vimax:script2video": handleVimaxScript2Video,
@@ -531,13 +531,13 @@ export class NativePipelineManager {
 
 		const noProgressHandlers: Record<
 			string,
-			(opts: CLIRunOptions) => Promise<import("./cli-runner.js").CLIResult>
+			(opts: CLIRunOptions) => Promise<import("./cli/cli-runner.js").CLIResult>
 		> = {
 			"vimax:create-registry": handleVimaxCreateRegistry,
 			"vimax:show-registry": handleVimaxShowRegistry,
 		};
 
-		let result: import("./cli-runner.js").CLIResult;
+		let result: import("./cli/cli-runner.js").CLIResult;
 
 		if (options.command === "vimax:list-models") {
 			result = handleVimaxListModels();

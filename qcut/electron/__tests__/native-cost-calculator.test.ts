@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import {
 	estimateCost,
 	estimatePipelineCost,
 	listModels,
-} from "../native-pipeline/cost-calculator.js";
-import type { PipelineChain } from "../native-pipeline/executor.js";
+} from "../native-pipeline/infra/cost-calculator.js";
+import type { PipelineChain } from "../native-pipeline/execution/executor.js";
 
 describe("cost-calculator", () => {
 	beforeEach(() => {

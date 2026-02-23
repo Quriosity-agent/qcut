@@ -4,7 +4,7 @@ import { AudioPlayer } from "@/components/ui/audio-player";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { FONT_CLASS_MAP } from "@/lib/font-config";
-import type { VideoSource } from "@/lib/media-source";
+import type { VideoSource } from "@/lib/media/media-source";
 import type { TextElementDragState } from "@/types/editor";
 import type { TProject } from "@/types/project";
 import type { TimelineElement } from "@/types/timeline";

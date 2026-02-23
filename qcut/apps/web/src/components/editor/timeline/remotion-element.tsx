@@ -15,7 +15,7 @@ import {
 	useRemotionComponent,
 	useRemotionInstance,
 	useComponentAnalysis,
-} from "@/stores/remotion-store";
+} from "@/stores/ai/remotion-store";
 import { RemotionSequences } from "./remotion-sequences";
 import { ParsedSequenceOverlay } from "./parsed-sequence-overlay";
 import { calculateTotalDuration } from "@/lib/remotion/duration-calculator";

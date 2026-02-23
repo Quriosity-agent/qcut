@@ -49,7 +49,7 @@ import { ipcMain, BrowserWindow } from "electron";
 import {
 	executeDeleteRange,
 	validateRangeDeleteRequest,
-} from "../claude/claude-range-handler";
+} from "../claude/handlers/claude-range-handler";
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -1,5 +1,5 @@
 import React, { useId, useState } from "react";
-import { useNanoEditStore } from "@/stores/nano-edit-store";
+import { useNanoEditStore } from "@/stores/editor/nano-edit-store";
 
 interface PromptInputProps {
 	onGenerate: (prompt: string) => Promise<void>;

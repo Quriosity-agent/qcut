@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractStickerSources } from "../export-cli/sources/sticker-sources";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 // ---------------------------------------------------------------------------
 // Factories

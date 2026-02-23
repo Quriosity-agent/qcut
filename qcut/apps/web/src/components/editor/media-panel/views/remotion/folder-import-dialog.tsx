@@ -34,7 +34,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { isFolderImportAvailable } from "@/lib/remotion/component-loader";
-import { useRemotionStore } from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/ai/remotion-store";
 import type {
 	FolderImportResult,
 	ImportedFolderInfo,

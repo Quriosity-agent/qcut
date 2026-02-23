@@ -9,7 +9,7 @@ import {
 	Film,
 	FolderOpen,
 } from "lucide-react";
-import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { useWhiteDrawStore } from "@/stores/editor/white-draw-store";
 import { useProjectStore } from "@/stores/project-store";
 import { TimelineIntegration } from "../utils/timeline-integration";
 import { DrawingStorage } from "../utils/drawing-storage";

@@ -7,9 +7,9 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { buildIconSvgUrl } from "@/lib/iconify-api";
+import { buildIconSvgUrl } from "@/lib/stickers/iconify-api";
 import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 import type { StickerItemProps } from "../types/stickers.types";
 
 export function StickerItem({

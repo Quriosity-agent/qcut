@@ -2,8 +2,8 @@
 
 import { useDragDrop } from "@/hooks/use-drag-drop";
 // Media processing utilities will be imported dynamically when needed
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
-import type { MediaItem } from "@/stores/media-store-types";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import {
 	Image,
 	Loader2,
@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { toast } from "sonner";
-import { debugLog, debugError } from "@/lib/debug-config";
-import { createObjectURL } from "@/lib/blob-manager";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { createObjectURL } from "@/lib/media/blob-manager";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import {
@@ -55,11 +55,11 @@ import {
 } from "@/components/ui/select";
 import { DraggableMediaItem } from "@/components/ui/draggable-item";
 import { useProjectStore } from "@/stores/project-store";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
-import { useText2ImageStore } from "@/stores/text2image-store";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
+import { useText2ImageStore } from "@/stores/ai/text2image-store";
 import { useMediaPanelStore } from "../store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useFolderStore } from "@/stores/folder-store";
@@ -154,7 +154,9 @@ export function MediaView() {
 			const filesArray = Array.from(files);
 
 			// Dynamically import media processing utilities
-			const { processMediaFiles } = await import("@/lib/media-processing");
+			const { processMediaFiles } = await import(
+				"@/lib/media/media-processing"
+			);
 			const processedItems = await processMediaFiles(filesArray, (p) => {
 				setProgress(p);
 			});
@@ -189,7 +191,9 @@ export function MediaView() {
 		if (!activeProject?.id || isSyncing) return;
 		setIsSyncing(true);
 		try {
-			const { syncProjectFolder } = await import("@/lib/project-folder-sync");
+			const { syncProjectFolder } = await import(
+				"@/lib/project/project-folder-sync"
+			);
 			const result = await syncProjectFolder(activeProject.id);
 			if (result.imported > 0) {
 				toast.success(`Synced ${result.imported} file(s) from project folder`);
@@ -215,7 +219,7 @@ export function MediaView() {
 			window.electronAPI?.projectFolder
 		) {
 			hasSyncedRef.current = true;
-			import("@/lib/project-folder-sync")
+			import("@/lib/project/project-folder-sync")
 				.then(({ syncProjectFolder }) => syncProjectFolder(activeProject.id))
 				.then((result) => {
 					if (result.imported > 0) {

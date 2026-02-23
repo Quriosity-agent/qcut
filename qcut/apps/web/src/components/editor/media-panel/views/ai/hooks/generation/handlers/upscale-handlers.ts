@@ -2,7 +2,7 @@
  * Split from model-handler-implementations.ts by handler category.
  */
 
-import { falAIClient } from "@/lib/fal-ai-client";
+import { falAIClient } from "@/lib/ai-clients/fal-ai-client";
 import { upscaleByteDanceVideo, upscaleFlashVSRVideo } from "@/lib/ai-video";
 import type {
 	ModelHandlerContext,

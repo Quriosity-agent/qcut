@@ -4,8 +4,8 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { useMoyinStore } from "@/stores/moyin-store";
-import type { MoyinStep } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
+import type { MoyinStep } from "@/stores/moyin/moyin-store";
 import { EpisodeTree } from "./episode-tree";
 import { CharacterList } from "./character-list";
 import { SceneList } from "./scene-list";

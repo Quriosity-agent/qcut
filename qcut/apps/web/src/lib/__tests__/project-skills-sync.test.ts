@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ElectronAPI } from "@/types/electron";
-import { syncProjectSkillsForClaude } from "../project-skills-sync";
+import { syncProjectSkillsForClaude } from "../claude-bridge/project-skills-sync";
 
 let originalElectronAPI: ElectronAPI | undefined;
 

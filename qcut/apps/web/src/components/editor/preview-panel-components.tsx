@@ -9,11 +9,11 @@ import {
 	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useEditorStore } from "@/stores/editor-store";
+import { useState } from "react";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio"; // 🔴 CRITICAL - WAS MISSING
+import { useAspectRatio } from "@/hooks/media/use-aspect-ratio";
 import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";

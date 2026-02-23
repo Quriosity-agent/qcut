@@ -161,7 +161,7 @@ vi.mock("../api-key-handler.js", () => ({
 	getDecryptedApiKeys: mocks.mockGetDecryptedApiKeys,
 }));
 
-vi.mock("../claude/claude-media-handler.js", () => ({
+vi.mock("../claude/handlers/claude-media-handler.js", () => ({
 	importMediaFile: mocks.mockImportMediaFile,
 }));
 

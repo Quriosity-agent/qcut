@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
-import { getModelCapabilities } from "@/lib/image-edit-capabilities";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
+import { getModelCapabilities } from "@/lib/ai-clients/image-edit-capabilities";
 import {
 	ImageIcon,
 	SplitSquareVertical,

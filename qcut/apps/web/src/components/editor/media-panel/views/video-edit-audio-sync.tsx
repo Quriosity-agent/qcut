@@ -31,7 +31,7 @@ import {
 } from "./video-edit-constants";
 import type { MMAudioV2Params } from "./video-edit-types";
 import { openInNewTab } from "@/lib/utils";
-import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/media/blob-manager";
 
 const DEFAULT_ESTIMATED_DURATION_SECONDS = 10;
 

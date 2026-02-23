@@ -1,4 +1,4 @@
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 
 export function resetPlaybackStore(): void {
 	const store = usePlaybackStore.getState();

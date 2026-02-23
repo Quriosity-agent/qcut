@@ -3,7 +3,7 @@
 import {
 	useSegmentationStore,
 	OBJECT_COLORS,
-} from "@/stores/segmentation-store";
+} from "@/stores/ai/segmentation-store";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";

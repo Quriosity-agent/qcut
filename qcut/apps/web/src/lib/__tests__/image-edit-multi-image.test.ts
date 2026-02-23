@@ -7,7 +7,7 @@ import {
 	getMultiImageModelIds,
 	getSingleImageModelIds,
 	type ImageEditModelId,
-} from "../image-edit-capabilities";
+} from "../ai-clients/image-edit-capabilities";
 
 describe("Multi-Image Support", () => {
 	describe("getModelCapabilities", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,11 @@ import { MessageItem } from "./gemini-terminal/message-item";
 import { AttachmentPreview } from "./gemini-terminal/attachment-preview";
 import { cn } from "@/lib/utils";
 import { generateUUID } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { toast } from "sonner";
 import type { AttachedFile } from "@/stores/gemini-terminal-store";
 

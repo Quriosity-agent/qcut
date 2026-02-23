@@ -1,4 +1,4 @@
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 /**
  * Mock media items matching MediaItem interface from media-store-types.ts

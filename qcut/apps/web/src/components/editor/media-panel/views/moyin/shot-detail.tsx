@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import type { Shot } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ import {
 import { CollapsibleSection } from "./collapsible-section";
 import { MediaPreviewModal } from "./media-preview-modal";
 import { ShotDetailRead } from "./shot-detail-read";
-import { isModerationError } from "@/stores/moyin-shot-generation";
+import { isModerationError } from "@/stores/moyin/moyin-shot-generation";
 function CopyButton({ getText }: { getText: () => string }) {
 	const [copied, setCopied] = useState(false);
 	const handleCopy = async () => {

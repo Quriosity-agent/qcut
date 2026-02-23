@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/text-to-image
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerTextToImageModels(): void {
 	ModelRegistry.register({

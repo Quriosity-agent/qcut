@@ -1,4 +1,4 @@
-import { MediaType } from "@/stores/media-store";
+import { MediaType } from "@/stores/media/media-store";
 import { generateUUID } from "@/lib/utils";
 
 /** Valid track types in the video editor timeline */

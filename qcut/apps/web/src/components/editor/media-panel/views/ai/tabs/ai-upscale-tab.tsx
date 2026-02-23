@@ -27,7 +27,7 @@ import { Slider } from "@/components/ui/slider";
 
 import { UPLOAD_CONSTANTS } from "../constants/ai-constants";
 import { calculateTopazUpscaleCost } from "../utils/ai-cost-calculators";
-import type { VideoMetadata } from "@/lib/video-metadata";
+import type { VideoMetadata } from "@/lib/media/video-metadata";
 
 // ============================================
 // Types

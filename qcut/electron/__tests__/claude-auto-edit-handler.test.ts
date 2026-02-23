@@ -48,20 +48,20 @@ const { mockTranscribeMedia, mockAnalyzeFillers, mockExecuteBatchCuts } =
 		mockExecuteBatchCuts: vi.fn(),
 	}));
 
-vi.mock("../claude/claude-transcribe-handler", () => ({
+vi.mock("../claude/handlers/claude-transcribe-handler", () => ({
 	transcribeMedia: mockTranscribeMedia,
 }));
 
-vi.mock("../claude/claude-filler-handler", () => ({
+vi.mock("../claude/handlers/claude-filler-handler", () => ({
 	analyzeFillers: mockAnalyzeFillers,
 }));
 
-vi.mock("../claude/claude-cuts-handler", () => ({
+vi.mock("../claude/handlers/claude-cuts-handler", () => ({
 	executeBatchCuts: mockExecuteBatchCuts,
 	validateBatchCutRequest: vi.fn(),
 }));
 
-vi.mock("../claude/claude-timeline-handler", () => ({
+vi.mock("../claude/handlers/claude-timeline-handler", () => ({
 	requestTimelineFromRenderer: vi.fn().mockRejectedValue(new Error("no win")),
 }));
 
@@ -77,7 +77,7 @@ import {
 	listAutoEditJobs,
 	cancelAutoEditJob,
 	_clearAutoEditJobs,
-} from "../claude/claude-auto-edit-handler";
+} from "../claude/handlers/claude-auto-edit-handler";
 
 // ---------------------------------------------------------------------------
 // Test data

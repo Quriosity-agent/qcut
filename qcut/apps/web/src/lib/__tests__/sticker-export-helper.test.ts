@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StickerExportHelper } from "../stickers/sticker-export-helper";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import type { StickerRenderOptions } from "../stickers/sticker-export-helper";
 
 // ---------------------------------------------------------------------------

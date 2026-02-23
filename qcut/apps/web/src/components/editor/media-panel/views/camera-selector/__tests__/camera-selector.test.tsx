@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CameraSelectorView } from "../camera-selector-view";
-import { useCameraSelectorStore } from "@/stores/camera-selector-store";
+import { useCameraSelectorStore } from "@/stores/editor/camera-selector-store";
 
 // Mock router
 vi.mock("@tanstack/react-router", () => ({
@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 // Mock media store actions
 const mockAddMediaItem = vi.fn().mockResolvedValue("new-item-id");
-vi.mock("@/hooks/use-async-media-store", () => ({
+vi.mock("@/hooks/media/use-async-media-store", () => ({
 	useAsyncMediaStoreActions: () => ({
 		addMediaItem: mockAddMediaItem,
 	}),
@@ -25,7 +25,7 @@ vi.mock("@/services/ai/fal-ai-service", () => ({
 }));
 
 // Mock blob-manager
-vi.mock("@/lib/blob-manager", () => ({
+vi.mock("@/lib/media/blob-manager", () => ({
 	createObjectURL: () => "blob:test-url",
 }));
 

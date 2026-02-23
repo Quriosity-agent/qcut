@@ -1,6 +1,6 @@
-import { getGenerationStatus } from "@/lib/ai-video-client";
-import { debugLogger } from "@/lib/debug-logger";
-import type { MediaStore } from "@/stores/media-store-types";
+import { getGenerationStatus } from "@/lib/ai-clients/ai-video-client";
+import { debugLogger } from "@/lib/debug/debug-logger";
+import type { MediaStore } from "@/stores/media/media-store-types";
 import {
 	PROGRESS_CONSTANTS,
 	STATUS_MESSAGES,

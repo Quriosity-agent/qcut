@@ -8,7 +8,11 @@
 import type { TimelineTrack } from "@/types/timeline";
 import { ensureMainTrack, sortTracksByOrder } from "@/types/timeline";
 import { storageService } from "@/lib/storage/storage-service";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 /**
  * Context for persistence operations
@@ -64,7 +68,7 @@ export async function autoSaveTimelineGuarded(
 
 		try {
 			// Include current scene ID to avoid desync
-			const { useSceneStore } = await import("../scene-store");
+			const { useSceneStore } = await import("./scene-store");
 			const sceneId =
 				useSceneStore.getState().currentScene?.id ??
 				activeProject.currentSceneId;
@@ -236,7 +240,7 @@ export async function saveImmediateOperation(
 		const { useProjectStore } = await import("../project-store");
 		const activeProject = useProjectStore.getState().activeProject;
 		if (activeProject) {
-			const { useSceneStore } = await import("../scene-store");
+			const { useSceneStore } = await import("./scene-store");
 			const sceneId =
 				useSceneStore.getState().currentScene?.id ??
 				activeProject.currentSceneId;

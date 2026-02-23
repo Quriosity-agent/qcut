@@ -93,7 +93,7 @@ const persistFolders = () => {
 };
 ```
 
-### 2. Media Store Integration (`apps/web/src/stores/media-store.ts`)
+### 2. Media Store Integration (`apps/web/src/stores/media/media-store.ts`)
 
 **Folder Assignment Methods:**
 ```typescript

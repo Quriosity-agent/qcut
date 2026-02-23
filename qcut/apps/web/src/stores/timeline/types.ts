@@ -36,7 +36,7 @@ import type {
 	RemotionElement,
 	DragData,
 } from "@/types/timeline";
-import type { MediaItem } from "../media-store";
+import type { MediaItem } from "../media/media-store";
 
 /**
  * Selected element reference for multi-selection

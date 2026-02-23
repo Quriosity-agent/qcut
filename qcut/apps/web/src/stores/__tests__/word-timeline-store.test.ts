@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useWordTimelineStore } from "../word-timeline-store";
+import { useWordTimelineStore } from "../timeline/word-timeline-store";
 import {
 	WORD_FILTER_STATE,
 	type RawWordTimelineJson,

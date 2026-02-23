@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 
 vi.mock("lucide-react", () => {
 	const icon = (name: string) => (props: Record<string, unknown>) => (
@@ -69,7 +69,7 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }));
 
-vi.mock("@/stores/moyin-store", async () => {
+vi.mock("@/stores/moyin/moyin-store", async () => {
 	const { create } = await import("zustand");
 	const store = create(() => ({
 		scenes: [] as { id: string; name: string; location: string }[],

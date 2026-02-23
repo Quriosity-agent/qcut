@@ -11,7 +11,7 @@
 
 import { useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import {
 	ResizablePanelGroup,
 	ResizablePanel,

@@ -24,10 +24,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useProjectStore } from "@/stores/project-store";
-import { usePanelStore } from "@/stores/panel-store";
+import { usePanelStore } from "@/stores/editor/panel-store";
 import { useMediaPanelStore } from "../../store";
 import { AIHistoryPanel } from "./components/ai-history-panel";
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 
 // Import extracted hooks
 import { useAIGeneration } from "./hooks/use-ai-generation";

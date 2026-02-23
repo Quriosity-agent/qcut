@@ -54,7 +54,7 @@ const mockProjectStore = {
 	activeProject: { fps: 30 },
 };
 
-vi.mock("@/stores/remotion-store", () => ({
+vi.mock("@/stores/ai/remotion-store", () => ({
 	useRemotionStore: Object.assign(
 		(selectorOrUndefined?: (state: typeof mockRemotionStore) => unknown) => {
 			if (typeof selectorOrUndefined === "function") {
@@ -75,7 +75,7 @@ vi.mock("zustand/react/shallow", () => ({
 	useShallow: <T,>(fn: (state: unknown) => T) => fn,
 }));
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: () => mockTimelineStore,
 }));
 

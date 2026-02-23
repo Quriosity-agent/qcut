@@ -4,7 +4,7 @@ import {
 	getChannelColor,
 	isVersionDismissed,
 	dismissVersion,
-} from "../release-notes";
+} from "../project/release-notes";
 
 describe("Release Notes Utilities", () => {
 	describe("extractHighlights", () => {

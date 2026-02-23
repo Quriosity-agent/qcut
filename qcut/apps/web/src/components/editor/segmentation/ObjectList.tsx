@@ -5,13 +5,13 @@ import {
 	useSegmentationStore,
 	OBJECT_COLORS,
 	type SegmentedObject,
-} from "@/stores/segmentation-store";
+} from "@/stores/ai/segmentation-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useBlobImage } from "@/hooks/use-blob-image";
+import { useBlobImage } from "@/hooks/media/use-blob-image";
 
 /**
  * ObjectListItem

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useFolderStore } from "@/stores/folder-store";
-import type { MediaFolder } from "@/stores/media-store-types";
+import type { MediaFolder } from "@/stores/media/media-store-types";
 import {
 	FOLDER_NAME_MAX_LENGTH,
 	FOLDER_NAME_MIN_LENGTH,
-} from "@/stores/media-store-types";
+} from "@/stores/media/media-store-types";
 import { toast } from "sonner";
 import {
 	ChevronDown,

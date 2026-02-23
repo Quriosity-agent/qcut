@@ -105,7 +105,7 @@ vi.mock("../ai-pipeline-handler", () => ({
 	})),
 }));
 
-vi.mock("../claude/claude-media-handler", () => ({
+vi.mock("../claude/handlers/claude-media-handler", () => ({
 	getMediaInfo: vi.fn(async (_projectId: string, mediaId: string) => {
 		if (mediaId === "valid-media") {
 			return {
@@ -133,7 +133,7 @@ vi.mock("../claude/claude-media-handler", () => ({
 	}),
 }));
 
-vi.mock("../claude/claude-timeline-handler", () => ({
+vi.mock("../claude/handlers/claude-timeline-handler", () => ({
 	requestTimelineFromRenderer: vi.fn(),
 }));
 
@@ -145,7 +145,7 @@ import type { AnalyzeSource } from "../types/claude-api";
 import {
 	resolveVideoPath,
 	listAnalyzeModels,
-} from "../claude/claude-analyze-handler";
+} from "../claude/handlers/claude-analyze-handler";
 
 describe("listAnalyzeModels", () => {
 	it("returns available models", () => {

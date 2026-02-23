@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { TimelineTrack } from "@/types/timeline";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { useTimelinePlayhead } from "@/hooks/use-timeline-playhead";
+import { useTimelinePlayhead } from "@/hooks/timeline/use-timeline-playhead";
 
 interface TimelinePlayheadProps {
 	currentTime: number;

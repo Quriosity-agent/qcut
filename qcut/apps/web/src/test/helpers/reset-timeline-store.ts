@@ -1,4 +1,4 @@
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 
 export function resetTimelineStore() {
 	const store = useTimelineStore.getState();

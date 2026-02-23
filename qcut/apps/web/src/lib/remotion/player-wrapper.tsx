@@ -17,9 +17,9 @@ import React, {
 	forwardRef,
 } from "react";
 import { Player, type PlayerRef } from "@remotion/player";
-import { useRemotionStore } from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/ai/remotion-store";
 import type { RemotionComponentDefinition } from "./types";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 
 // ============================================================================
 // Types

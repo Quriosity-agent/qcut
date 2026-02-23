@@ -1,4 +1,4 @@
-import { useSoundsStore } from "@/stores/sounds-store";
+import { useSoundsStore } from "@/stores/media/sounds-store";
 import { useEffect } from "react";
 
 export function TestSoundsStore() {

@@ -77,7 +77,7 @@ vi.mock("node:fs", async (importOriginal) => {
 	};
 });
 
-vi.mock("../claude/claude-media-handler", () => ({
+vi.mock("../claude/handlers/claude-media-handler", () => ({
 	getMediaInfo: vi.fn(async (_projectId: string, mediaId: string) => {
 		if (mediaId === "valid-video") {
 			return {
@@ -173,7 +173,7 @@ import {
 	parseShowInfoOutput,
 	detectScenes,
 	detectScenesWithFFmpeg,
-} from "../claude/claude-scene-handler";
+} from "../claude/handlers/claude-scene-handler";
 
 describe("parseShowInfoOutput", () => {
 	it("parses pts_time from showinfo output", () => {

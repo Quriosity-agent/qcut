@@ -32,11 +32,11 @@ import {
 	UPSCALE_MODELS,
 	type UpscaleModelId,
 	type UpscaleScaleFactor,
-} from "@/lib/upscale-models";
+} from "@/lib/ai-models/upscale-models";
 import {
 	type UpscaleSettings,
 	useText2ImageStore,
-} from "@/stores/text2image-store";
+} from "@/stores/ai/text2image-store";
 
 /**
  * Props for the UpscaleSettingsPanel component

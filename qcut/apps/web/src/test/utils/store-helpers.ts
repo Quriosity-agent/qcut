@@ -1,7 +1,7 @@
-import { useMediaStore } from "@/stores/media-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useMediaStore } from "@/stores/media/media-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useExportStore } from "@/stores/export-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 

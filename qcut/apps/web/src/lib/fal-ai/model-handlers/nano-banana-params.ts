@@ -5,7 +5,7 @@
  * Enforces count limits and normalizes format specifications.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 import { normalizeOutputFormat } from "@/lib/ai-video/validation/validators";
 
 const LOG_COMPONENT = "NanoBananaParams";

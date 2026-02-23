@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getCollection, POPULAR_COLLECTIONS } from "@/lib/iconify-api";
-import { debugLog } from "@/lib/debug-config";
+import { getCollection, POPULAR_COLLECTIONS } from "@/lib/stickers/iconify-api";
+import { debugLog } from "@/lib/debug/debug-config";
 import { StickerItem } from "./sticker-item";
 import type { CollectionContentProps } from "../types/stickers.types";
 

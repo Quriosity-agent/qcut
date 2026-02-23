@@ -7,7 +7,7 @@ import type {
 import {
 	enhanceCharactersLLM,
 	enhanceScenesLLM,
-} from "@/stores/moyin-calibration";
+} from "@/stores/moyin/moyin-calibration";
 
 const parseFullScriptMock = vi.fn();
 const calibrateCharactersMock = vi.fn();

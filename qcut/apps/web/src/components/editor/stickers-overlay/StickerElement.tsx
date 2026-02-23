@@ -6,13 +6,13 @@
 
 import React, { memo, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 import { useStickerDrag } from "./hooks/useStickerDrag";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { ResizeHandles } from "./ResizeHandles";
 import { StickerControls, SimpleStickerControls } from "./StickerControls";
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 interface StickerElementProps {
 	sticker: OverlaySticker;

@@ -4,7 +4,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import { ImportProgress } from "./import-progress";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

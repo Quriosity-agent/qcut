@@ -1,21 +1,21 @@
 import React, { useEffect, useRef } from "react";
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { EditorHeader } from "@/components/editor-header";
-import { usePanelStore } from "@/stores/panel-store";
+import { usePanelStore } from "@/stores/editor/panel-store";
 import { EditorProvider } from "@/components/editor-provider";
 import { useProjectStore, NotFoundError } from "@/stores/project-store";
-import { usePlaybackControls } from "@/hooks/use-playback-controls";
+import { usePlaybackControls } from "@/hooks/timeline/use-playback-controls";
 import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change";
 import { Onboarding } from "@/components/onboarding";
-import { debugError, debugLog } from "@/lib/debug-config";
+import { debugError, debugLog } from "@/lib/debug/debug-config";
 import { useSkillsStore } from "@/stores/skills-store";
-import { cleanupPtyOnEditorExit } from "@/lib/pty-session-cleanup";
+import { cleanupPtyOnEditorExit } from "@/lib/debug/pty-session-cleanup";
 import { useMediaPanelStore } from "@/components/editor/media-panel/store";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 import { useClaudeProjectUpdates } from "@/hooks/use-claude-project-updates";
-import "@/lib/debug-sticker-overlay"; // Load debug utilities
-import "@/lib/sticker-test-helper"; // Load sticker test helper
-import "@/lib/sticker-persistence-debug"; // Load persistence debug
+import "@/lib/stickers/debug-sticker-overlay"; // Load debug utilities
+import "@/lib/stickers/sticker-test-helper"; // Load sticker test helper
+import "@/lib/stickers/sticker-persistence-debug"; // Load persistence debug
 import {
 	DefaultLayout,
 	MediaLayout,

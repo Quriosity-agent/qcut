@@ -1,8 +1,8 @@
 "use client";
 
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
-import { getVideoSource, type VideoSource } from "@/lib/media-source";
-import type { MediaItem } from "@/stores/media-store-types";
+import { getVideoSource, type VideoSource } from "@/lib/media/media-source";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TranscriptionSegment } from "@/types/captions";
 import type { TProject } from "@/types/project";
 import { useMemo } from "react";

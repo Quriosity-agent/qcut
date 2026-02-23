@@ -5,8 +5,8 @@ import type {
 	ClaudeElement,
 	ClaudeTimeline,
 } from "../../../../../electron/types/claude-api";
-import { setupClaudeTimelineBridge } from "@/lib/claude-timeline-bridge";
-import type { MediaItem } from "@/stores/media-store";
+import { setupClaudeTimelineBridge } from "@/lib/claude-bridge/claude-timeline-bridge";
+import type { MediaItem } from "@/stores/media/media-store";
 
 const storeMocks = vi.hoisted(() => {
 	const timelineStoreState = {
@@ -44,13 +44,13 @@ const storeMocks = vi.hoisted(() => {
 
 const syncProjectFolderMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: {
 		getState: storeMocks.timelineGetState,
 	},
 }));
 
-vi.mock("@/stores/media-store", () => ({
+vi.mock("@/stores/media/media-store", () => ({
 	useMediaStore: {
 		getState: storeMocks.mediaGetState,
 	},
@@ -62,7 +62,7 @@ vi.mock("@/stores/project-store", () => ({
 	},
 }));
 
-vi.mock("@/lib/project-folder-sync", () => ({
+vi.mock("@/lib/project/project-folder-sync", () => ({
 	syncProjectFolder: syncProjectFolderMock,
 }));
 
@@ -72,7 +72,7 @@ const debugMocks = vi.hoisted(() => ({
 	debugError: vi.fn(),
 }));
 
-vi.mock("@/lib/debug-config", () => debugMocks);
+vi.mock("@/lib/debug/debug-config", () => debugMocks);
 
 vi.mock("@/types/timeline", () => ({
 	validateElementTrackCompatibility: vi.fn(() => ({ isValid: true })),

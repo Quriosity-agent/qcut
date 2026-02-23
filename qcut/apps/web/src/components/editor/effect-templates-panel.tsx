@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -26,7 +26,7 @@ import {
 	Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/blob-manager";
+import { revokeObjectURL as revokeManagedObjectURL } from "@/lib/media/blob-manager";
 
 interface EffectTemplatesPanelProps {
 	elementId: string;

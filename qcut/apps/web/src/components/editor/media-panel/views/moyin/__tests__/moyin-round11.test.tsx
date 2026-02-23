@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 
 // Mock TanStack Router
 vi.mock("@tanstack/react-router", () => ({
@@ -238,7 +238,7 @@ vi.mock("@/lib/moyin/presets/cinematography-profiles", () => ({
 	],
 }));
 
-vi.mock("@/stores/moyin-shot-generation", () => ({
+vi.mock("@/stores/moyin/moyin-shot-generation", () => ({
 	isModerationError: () => false,
 }));
 
@@ -302,7 +302,7 @@ vi.mock("../batch-progress", () => ({
 	}),
 }));
 
-vi.mock("@/stores/moyin-persistence", () => ({
+vi.mock("@/stores/moyin/moyin-persistence", () => ({
 	exportProjectJSON: vi.fn(),
 	parseImportedProjectJSON: vi.fn(),
 	partializeMoyinState: vi.fn(),

@@ -26,7 +26,7 @@ const {
 	};
 });
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: mockedTimelineStore,
 }));
 

@@ -78,7 +78,7 @@ vi.mock("node:fs", async (importOriginal) => {
 	};
 });
 
-vi.mock("../claude/claude-media-handler", () => ({
+vi.mock("../claude/handlers/claude-media-handler", () => ({
 	getMediaInfo: vi.fn(async (_projectId: string, mediaId: string) => {
 		if (mediaId === "valid-video") {
 			return {
@@ -152,7 +152,7 @@ import {
 	listTranscribeJobs,
 	cancelTranscribeJob,
 	_clearTranscribeJobs,
-} from "../claude/claude-transcribe-handler";
+} from "../claude/handlers/claude-transcribe-handler";
 
 describe("claude-transcribe-handler", () => {
 	beforeEach(() => {

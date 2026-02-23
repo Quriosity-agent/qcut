@@ -17,8 +17,8 @@ import { useCallback, useState } from "react";
 import {
 	uploadImageToFAL,
 	type ImageEditProgressCallback,
-} from "@/lib/image-edit-client";
-import { useText2ImageStore } from "@/stores/text2image-store";
+} from "@/lib/ai-clients/image-edit-client";
+import { useText2ImageStore } from "@/stores/ai/text2image-store";
 
 /**
  * Hook for handling AI image upscaling operations

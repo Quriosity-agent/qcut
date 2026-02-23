@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 import { generateUUID } from "@/lib/utils";
 import type { MediaFolder } from "./media-store-types";
 import {

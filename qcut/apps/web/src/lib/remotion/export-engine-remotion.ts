@@ -14,14 +14,14 @@
  * @module lib/remotion/export-engine-remotion
  */
 
-import { ExportEngine } from "@/lib/export-engine";
+import { ExportEngine } from "@/lib/export/export-engine";
 import type { ExportSettings, ExportProgress } from "@/types/export";
 import type {
 	TimelineTrack,
 	TimelineElement,
 	RemotionElement,
 } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import {
 	RemotionPreRenderer,
 	createPreRenderer,
@@ -37,7 +37,7 @@ import {
 	getVisibleRemotionElements,
 	type CompositeLayer,
 } from "./compositor";
-import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 
 // ============================================================================
 // Types

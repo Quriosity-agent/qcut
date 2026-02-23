@@ -1,5 +1,5 @@
 // Sticker-related type definitions
-import type { IconSet } from "@/lib/iconify-api";
+import type { IconSet } from "@/lib/stickers/iconify-api";
 
 export type StickerItemProps = {
 	icon: string;

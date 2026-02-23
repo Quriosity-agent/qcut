@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { Button } from "@/components/ui/button";
 import {
 	Select,

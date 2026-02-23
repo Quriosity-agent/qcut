@@ -12,7 +12,7 @@ import {
 	createRemotionAudioMixer,
 	type RemotionAudioSource,
 	type RemotionAudioMixResult,
-} from "../audio-mixer";
+} from "../ffmpeg/audio-mixer";
 
 // ============================================================================
 // Mocks

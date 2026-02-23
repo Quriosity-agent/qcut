@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type {
 	ModelCategory,
 	ModelDefinitionInput,
-} from "../native-pipeline/registry.js";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+} from "../native-pipeline/infra/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 
 describe("ModelRegistry", () => {
 	beforeEach(() => {

@@ -10,7 +10,7 @@ import React, {
 import {
 	useWhiteDrawStore,
 	selectCurrentTool,
-} from "@/stores/white-draw-store";
+} from "@/stores/editor/white-draw-store";
 import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import { useCanvasDrawing } from "../hooks/use-canvas-drawing";
 import type {
@@ -24,7 +24,11 @@ import {
 } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 // Debug logging function that only logs in development mode when enabled
 const debug = (...args: unknown[]) => {

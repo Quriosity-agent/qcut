@@ -5,7 +5,7 @@ import {
 	calculateTotalFrames,
 	getActiveElements,
 	calculateElementBounds,
-} from "../export-engine-utils";
+} from "../export/export-engine-utils";
 import type {
 	TimelineTrack,
 	MediaElement,
@@ -13,7 +13,7 @@ import type {
 } from "@/types/timeline";
 
 // Mock stores
-vi.mock("@/stores/effects-store", () => ({
+vi.mock("@/stores/ai/effects-store", () => ({
 	useEffectsStore: {
 		getState: () => ({
 			getElementEffects: () => [],
@@ -21,7 +21,7 @@ vi.mock("@/stores/effects-store", () => ({
 	},
 }));
 
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugWarn: vi.fn(),
 }));

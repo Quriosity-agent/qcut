@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { TimelineElement } from "@/types/timeline";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { cn } from "@/lib/utils";
 import { Move, RotateCw } from "lucide-react";
 

@@ -17,7 +17,7 @@ const mockUseRemotionComponent = vi.fn();
 const mockUseRemotionInstance = vi.fn();
 const mockUseComponentAnalysis = vi.fn();
 
-vi.mock("@/stores/remotion-store", () => ({
+vi.mock("@/stores/ai/remotion-store", () => ({
 	useRemotionComponent: () => mockUseRemotionComponent(),
 	useRemotionInstance: () => mockUseRemotionInstance(),
 	useComponentAnalysis: () => mockUseComponentAnalysis(),

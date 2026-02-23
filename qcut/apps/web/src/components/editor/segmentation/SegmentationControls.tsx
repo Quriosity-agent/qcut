@@ -1,6 +1,6 @@
 "use client";
 
-import { useSegmentationStore } from "@/stores/segmentation-store";
+import { useSegmentationStore } from "@/stores/ai/segmentation-store";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Trash2 } from "lucide-react";
 

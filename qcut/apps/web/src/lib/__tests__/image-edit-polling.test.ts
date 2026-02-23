@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { mapEditStatusToProgress, sleep } from "../image-edit-polling";
+import {
+	mapEditStatusToProgress,
+	sleep,
+} from "../ai-clients/image-edit-polling";
 
 describe("image-edit-polling", () => {
 	describe("mapEditStatusToProgress", () => {

@@ -6,11 +6,11 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { CreateMediaElement } from "@/types/timeline";
 
 // Mock dependencies (same as timeline-store.test.ts)
-vi.mock("@/stores/editor-store", () => ({
+vi.mock("@/stores/editor/editor-store", () => ({
 	useEditorStore: {
 		getState: vi.fn(() => ({
 			currentTime: 0,
@@ -19,7 +19,7 @@ vi.mock("@/stores/editor-store", () => ({
 	},
 }));
 
-vi.mock("@/stores/media-store", () => ({
+vi.mock("@/stores/media/media-store", () => ({
 	useMediaStore: {
 		getState: vi.fn(() => ({
 			mediaItems: [],

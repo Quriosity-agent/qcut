@@ -9,7 +9,7 @@ import {
 	SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useSceneStore } from "@/stores/scene-store";
+import { useSceneStore } from "@/stores/timeline/scene-store";
 import { Check, ListCheck, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, cloneElement, isValidElement } from "react";

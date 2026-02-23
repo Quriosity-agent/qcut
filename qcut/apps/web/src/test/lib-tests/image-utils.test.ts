@@ -10,10 +10,10 @@ import {
 	convertToBlob,
 	revokeBlobUrl,
 	getCachedBlobUrls,
-} from "@/lib/image-utils";
+} from "@/lib/media/image-utils";
 
 // Mock the debug functions
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugError: vi.fn(),
 	debugWarn: vi.fn(),

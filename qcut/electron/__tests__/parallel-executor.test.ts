@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	ParallelPipelineExecutor,
 	MergeStrategy,
-} from "../native-pipeline/parallel-executor.js";
+} from "../native-pipeline/execution/parallel-executor.js";
 import type {
 	PipelineChain,
 	PipelineStep,
-} from "../native-pipeline/executor.js";
-import { PipelineExecutor } from "../native-pipeline/executor.js";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+} from "../native-pipeline/execution/executor.js";
+import { PipelineExecutor } from "../native-pipeline/execution/executor.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
 import {
 	parseChainConfig,
 	hasParallelGroups,
-} from "../native-pipeline/chain-parser.js";
+} from "../native-pipeline/execution/chain-parser.js";
 
 describe("Parallel Executor", () => {
 	beforeEach(() => {

@@ -11,13 +11,13 @@ import {
 	EditorApiClient,
 	EditorApiError,
 	createEditorClient,
-} from "../native-pipeline/editor-api-client.js";
-import { resolveJsonInput } from "../native-pipeline/editor-api-types.js";
+} from "../native-pipeline/editor/editor-api-client.js";
+import { resolveJsonInput } from "../native-pipeline/editor/editor-api-types.js";
 import {
 	handleEditorHealth,
 	handleMediaProjectCommand,
-} from "../native-pipeline/editor-handlers-media.js";
-import type { CLIRunOptions } from "../native-pipeline/cli-runner.js";
+} from "../native-pipeline/editor/editor-handlers-media.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";

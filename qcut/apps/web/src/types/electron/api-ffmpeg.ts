@@ -7,7 +7,7 @@ import type { FFmpegHealthResult } from "../../../../../electron/ffmpeg/types";
 import type {
 	VideoSourceInput,
 	AudioFileInput,
-} from "../../lib/export-engine-cli";
+} from "../../lib/export/export-engine-cli";
 
 export interface ElectronFFmpegOps {
 	ffmpeg: {

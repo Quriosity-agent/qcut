@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useStickersStore } from "@/stores/stickers-store";
-import { POPULAR_COLLECTIONS } from "@/lib/iconify-api";
+import { POPULAR_COLLECTIONS } from "@/lib/stickers/iconify-api";
 import { StickersSearch } from "./components/stickers-search";
 import { StickersSearchResults } from "./components/stickers-search-results";
 import { StickersRecent } from "./components/stickers-recent";

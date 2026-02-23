@@ -8,8 +8,8 @@
  */
 
 import type { StickerSourceForFilter } from "../types";
-import type { MediaItem } from "@/stores/media-store";
-import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
+import type { MediaItem } from "@/stores/media/media-store";
+import { getStickerTimingMap } from "@/lib/stickers/sticker-timeline-query";
 import { rasterizeSvgToPng, isSvgContent } from "./svg-rasterizer";
 
 /**

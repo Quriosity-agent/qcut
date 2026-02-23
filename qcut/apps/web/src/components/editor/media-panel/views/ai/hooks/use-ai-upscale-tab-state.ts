@@ -15,7 +15,7 @@ import {
 	extractVideoMetadataFromFile,
 	extractVideoMetadataFromUrl,
 	type VideoMetadata,
-} from "@/lib/video-metadata";
+} from "@/lib/media/video-metadata";
 import {
 	calculateByteDanceUpscaleCost,
 	calculateFlashVSRUpscaleCost,

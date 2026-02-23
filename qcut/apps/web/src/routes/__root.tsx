@@ -8,10 +8,10 @@ import { UpdateNotification } from "@/components/update-notification";
 import { FFmpegHealthNotification } from "@/components/ffmpeg-health-notification";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { BlobUrlCleanup } from "@/components/providers/migrators/blob-url-cleanup";
-import { initializeRemotionStore } from "@/stores/remotion-store";
-import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge-lifecycle";
-import { debugLog } from "@/lib/debug-config";
-import "@/lib/blob-url-debug"; // Enable blob URL debugging in development
+import { initializeRemotionStore } from "@/stores/ai/remotion-store";
+import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge/claude-bridge-lifecycle";
+import { debugLog } from "@/lib/debug/debug-config";
+import "@/lib/media/blob-url-debug"; // Enable blob URL debugging in development
 
 /**
  * Remotion Store Initializer

@@ -4,7 +4,7 @@ import {
 	simulateMemoryPressure,
 	getMemoryUsage,
 } from "@/test/mocks/performance";
-import { formatFileSize } from "@/lib/image-utils";
+import { formatFileSize } from "@/lib/media/image-utils";
 
 describe("Memory Utilities", () => {
 	let cleanup: () => void;

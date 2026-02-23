@@ -26,12 +26,15 @@ import {
 	Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useText2ImageStore } from "@/stores/text2image-store";
+import { useText2ImageStore } from "@/stores/ai/text2image-store";
 import {
 	TEXT2IMAGE_MODELS,
 	TEXT2IMAGE_MODEL_ORDER,
-} from "@/lib/text2image-models";
-import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/upscale-models";
+} from "@/lib/ai-models/text2image-models";
+import {
+	UPSCALE_MODEL_ORDER,
+	UPSCALE_MODELS,
+} from "@/lib/ai-models/upscale-models";
 import {
 	FloatingActionPanelRoot,
 	FloatingActionPanelTrigger,

@@ -4,9 +4,9 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
 	useSegmentationStore,
 	OBJECT_COLORS,
-} from "@/stores/segmentation-store";
+} from "@/stores/ai/segmentation-store";
 import type { Sam3PointPrompt, Sam3BoxPrompt } from "@/types/sam3";
-import { useBlobImage } from "@/hooks/use-blob-image";
+import { useBlobImage } from "@/hooks/media/use-blob-image";
 
 const loadImage = (src: string) =>
 	new Promise<HTMLImageElement>((resolve, reject) => {

@@ -5,7 +5,7 @@
  * Currently supports Seeddream 4.5 text-to-image and edit.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 import type {
 	Seeddream45ImageSize,
 	Seeddream45TextToImageParams,

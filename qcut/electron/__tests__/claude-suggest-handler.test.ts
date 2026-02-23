@@ -48,15 +48,15 @@ const { mockTranscribeMedia, mockAnalyzeFillers, mockDetectScenes } =
 		mockDetectScenes: vi.fn(),
 	}));
 
-vi.mock("../claude/claude-transcribe-handler", () => ({
+vi.mock("../claude/handlers/claude-transcribe-handler", () => ({
 	transcribeMedia: mockTranscribeMedia,
 }));
 
-vi.mock("../claude/claude-filler-handler", () => ({
+vi.mock("../claude/handlers/claude-filler-handler", () => ({
 	analyzeFillers: mockAnalyzeFillers,
 }));
 
-vi.mock("../claude/claude-scene-handler", () => ({
+vi.mock("../claude/handlers/claude-scene-handler", () => ({
 	detectScenes: mockDetectScenes,
 }));
 
@@ -71,7 +71,7 @@ import {
 	listSuggestJobs,
 	cancelSuggestJob,
 	_clearSuggestJobs,
-} from "../claude/claude-suggest-handler";
+} from "../claude/handlers/claude-suggest-handler";
 
 // ---------------------------------------------------------------------------
 // Test data

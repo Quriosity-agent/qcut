@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { useWhiteDrawStore } from "@/stores/editor/white-draw-store";
 import { TOOL_CATEGORIES, ALL_DRAWING_TOOLS } from "../constants/drawing-tools";
 import { cn } from "@/lib/utils";
 

@@ -21,7 +21,7 @@ import {
 	CostCalculationError,
 	getExitCode,
 	formatErrorForCli,
-} from "../native-pipeline/errors.js";
+} from "../native-pipeline/output/errors.js";
 
 describe("Exception hierarchy & exit codes", () => {
 	it("AIPlatformError has default exit code GENERAL_ERROR", () => {
@@ -125,7 +125,7 @@ import {
 	formatTable,
 	colorize,
 	ansi,
-} from "../native-pipeline/cli-output.js";
+} from "../native-pipeline/cli/cli-output.js";
 
 describe("CLIOutput", () => {
 	it("info suppressed in json mode", () => {
@@ -247,7 +247,7 @@ describe("ANSI colors", () => {
 import {
 	StreamEmitter,
 	NullEmitter,
-} from "../native-pipeline/stream-emitter.js";
+} from "../native-pipeline/infra/stream-emitter.js";
 
 describe("StreamEmitter", () => {
 	it("emits JSONL events when enabled", () => {
@@ -342,7 +342,7 @@ import {
 	stateDir,
 	defaultConfigPath,
 	ensureDir,
-} from "../native-pipeline/xdg-paths.js";
+} from "../native-pipeline/infra/xdg-paths.js";
 
 describe("XDG directory support", () => {
 	it("configDir respects XDG_CONFIG_HOME", () => {
@@ -409,7 +409,7 @@ describe("XDG directory support", () => {
 import {
 	PlatformLogger,
 	getLogger,
-} from "../native-pipeline/platform-logger.js";
+} from "../native-pipeline/infra/platform-logger.js";
 
 describe("PlatformLogger", () => {
 	it("creates logger with name", () => {
@@ -443,7 +443,7 @@ describe("PlatformLogger", () => {
 
 // -- File Manager (Section 3.7) --
 
-import { FileManager } from "../native-pipeline/file-manager.js";
+import { FileManager } from "../native-pipeline/infra/file-manager.js";
 
 describe("FileManager", () => {
 	const tmpDir = path.join(os.tmpdir(), `fm-test-${Date.now()}`);
@@ -538,7 +538,7 @@ import {
 	InputValidator,
 	configValidator,
 	inputValidator,
-} from "../native-pipeline/validators.js";
+} from "../native-pipeline/execution/validators.js";
 
 describe("ConfigValidator", () => {
 	it("rejects config without steps", () => {
@@ -662,7 +662,7 @@ import {
 	loadEnvironmentConfig,
 	loadJsonConfig,
 	saveJsonConfig,
-} from "../native-pipeline/config-loader.js";
+} from "../native-pipeline/execution/config-loader.js";
 
 describe("Config loader", () => {
 	it("mergeConfigs deep merges objects", () => {
@@ -736,11 +736,11 @@ describe("Config loader", () => {
 
 // -- ViMax CLI Subcommands (Section 2.1) --
 
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
-import { CLIPipelineRunner } from "../native-pipeline/cli-runner.js";
-import type { CLIRunOptions } from "../native-pipeline/cli-runner.js";
-import { parseCliArgs } from "../native-pipeline/cli.js";
+import { CLIPipelineRunner } from "../native-pipeline/cli/cli-runner.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
+import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 
 function defaultOptions(overrides: Partial<CLIRunOptions> = {}): CLIRunOptions {
 	return {
@@ -1081,21 +1081,22 @@ describe("Idea2VideoPipeline.fromYaml", () => {
 
 describe("Service-level features", () => {
 	it("step-executors module exports executeStep", async () => {
-		const mod = await import("../native-pipeline/step-executors.js");
+		const mod = await import("../native-pipeline/execution/step-executors.js");
 		expect(typeof mod.executeStep).toBe("function");
 		expect(typeof mod.getInputDataType).toBe("function");
 		expect(typeof mod.getOutputDataType).toBe("function");
 	});
 
 	it("StepInput type supports all fields", async () => {
-		const mod = await import("../native-pipeline/step-executors.js");
+		const mod = await import("../native-pipeline/execution/step-executors.js");
 		// Verify the type supports voice and negative prompt via params
-		const input: import("../native-pipeline/step-executors.js").StepInput = {
-			text: "test",
-			imageUrl: "https://example.com/img.png",
-			videoUrl: "https://example.com/vid.mp4",
-			audioUrl: "https://example.com/audio.wav",
-		};
+		const input: import("../native-pipeline/execution/step-executors.js").StepInput =
+			{
+				text: "test",
+				imageUrl: "https://example.com/img.png",
+				videoUrl: "https://example.com/vid.mp4",
+				audioUrl: "https://example.com/audio.wav",
+			};
 		expect(input.text).toBe("test");
 	});
 });

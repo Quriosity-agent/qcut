@@ -11,13 +11,13 @@ import { initRegistry } from "./init.js";
 initRegistry();
 
 // Public exports
-export { ModelRegistry } from "./registry.js";
+export { ModelRegistry } from "./infra/registry.js";
 export type {
 	ModelDefinition,
 	ModelCategory,
 	ModelPricing,
 	ModelDefinitionInput,
-} from "./registry.js";
+} from "./infra/registry.js";
 
 export { NativePipelineManager } from "./manager.js";
 export type {
@@ -27,35 +27,43 @@ export type {
 	PipelineStatus,
 } from "./manager.js";
 
-export { PipelineExecutor } from "./executor.js";
-export type { PipelineStep, PipelineChain, StepResult } from "./executor.js";
+export { PipelineExecutor } from "./execution/executor.js";
+export type {
+	PipelineStep,
+	PipelineChain,
+	StepResult,
+} from "./execution/executor.js";
 
 export {
 	ParallelPipelineExecutor,
 	MergeStrategy,
-} from "./parallel-executor.js";
+} from "./execution/parallel-executor.js";
 export type {
 	ParallelConfig,
 	ParallelStats,
 	ParallelGroup,
-} from "./parallel-executor.js";
+} from "./execution/parallel-executor.js";
 
-export { callModelApi, downloadOutput, pollQueueStatus } from "./api-caller.js";
-export type { ApiCallOptions, ApiCallResult } from "./api-caller.js";
+export {
+	callModelApi,
+	downloadOutput,
+	pollQueueStatus,
+} from "./infra/api-caller.js";
+export type { ApiCallOptions, ApiCallResult } from "./infra/api-caller.js";
 
 export {
 	parseChainConfig,
 	validateChain,
 	getDataTypeForCategory,
 	hasParallelGroups,
-} from "./chain-parser.js";
+} from "./execution/chain-parser.js";
 
 export {
 	estimateCost,
 	estimatePipelineCost,
 	listModels,
-} from "./cost-calculator.js";
-export type { CostEstimate } from "./cost-calculator.js";
+} from "./infra/cost-calculator.js";
+export type { CostEstimate } from "./infra/cost-calculator.js";
 
 // ViMax pipeline re-exports
 export * from "./vimax/index.js";

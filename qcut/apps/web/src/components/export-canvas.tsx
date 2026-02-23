@@ -4,7 +4,7 @@ import React, {
 	useImperativeHandle,
 	useEffect,
 } from "react";
-import { useEditorStore } from "@/stores/editor-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import { useExportStore } from "@/stores/export-store";
 
 // Export ref interface for parent components

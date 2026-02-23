@@ -4,10 +4,10 @@ import {
 	cleanupClaudeTimelineBridge,
 	setupClaudeProjectBridge,
 	setupClaudeTimelineBridge,
-} from "@/lib/claude-timeline-bridge";
-import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge-lifecycle";
+} from "@/lib/claude-bridge/claude-timeline-bridge";
+import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge/claude-bridge-lifecycle";
 
-vi.mock("@/lib/claude-timeline-bridge", () => ({
+vi.mock("@/lib/claude-bridge/claude-timeline-bridge", () => ({
 	setupClaudeTimelineBridge: vi.fn(),
 	setupClaudeProjectBridge: vi.fn(),
 	cleanupClaudeTimelineBridge: vi.fn(),

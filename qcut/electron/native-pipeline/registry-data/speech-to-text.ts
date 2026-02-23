@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/speech-to-text
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerSpeechToTextModels(): void {
 	ModelRegistry.register({

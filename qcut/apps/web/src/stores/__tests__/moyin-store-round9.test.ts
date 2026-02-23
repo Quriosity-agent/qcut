@@ -10,14 +10,14 @@ import {
 	canRedo,
 	clearUndoHistory,
 	getStackSizes,
-} from "../moyin-undo";
-import type { UndoEntry } from "../moyin-undo";
+} from "../moyin/moyin-undo";
+import type { UndoEntry } from "../moyin/moyin-undo";
 import {
 	exportProjectJSON,
 	parseImportedProjectJSON,
 	partializeMoyinState,
-} from "../moyin-persistence";
-import type { MoyinPersistedState } from "../moyin-persistence";
+} from "../moyin/moyin-persistence";
+import type { MoyinPersistedState } from "../moyin/moyin-persistence";
 
 function makeEntry(label: string): UndoEntry {
 	return {

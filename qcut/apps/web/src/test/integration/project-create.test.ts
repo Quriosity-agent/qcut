@@ -4,7 +4,7 @@ import { TestDataFactory } from "@/test/fixtures/factory";
 import { waitFor } from "@testing-library/react";
 
 // Mock the media store loader to prevent dynamic import issues
-vi.mock("@/stores/media-store-loader", () => ({
+vi.mock("@/stores/media/media-store-loader", () => ({
 	getMediaStore: vi.fn(async () => ({
 		useMediaStore: {
 			getState: () => ({

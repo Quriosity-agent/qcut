@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import {
 	registerTextToVideoModels,
 	registerImageToVideoModels,
@@ -9,15 +9,15 @@ import {
 import {
 	estimateCost,
 	listModels,
-} from "../native-pipeline/cost-calculator.js";
+} from "../native-pipeline/infra/cost-calculator.js";
 import {
 	parseChainConfig,
 	validateChain,
-} from "../native-pipeline/chain-parser.js";
+} from "../native-pipeline/execution/chain-parser.js";
 import {
 	getInputDataType,
 	getOutputDataType,
-} from "../native-pipeline/step-executors.js";
+} from "../native-pipeline/execution/step-executors.js";
 
 describe("native-pipeline end-to-end", () => {
 	beforeEach(() => {

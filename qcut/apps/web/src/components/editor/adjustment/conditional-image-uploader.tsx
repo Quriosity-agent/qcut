@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
-import { getModelCapabilities } from "@/lib/image-edit-capabilities";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
+import { getModelCapabilities } from "@/lib/ai-clients/image-edit-capabilities";
 import { ImageUploader } from "./image-uploader";
 import { MultiImageUpload } from "./multi-image-upload";
-import { createObjectURL } from "@/lib/blob-manager";
+import { createObjectURL } from "@/lib/media/blob-manager";
 
 /**
  * Conditional Image Uploader

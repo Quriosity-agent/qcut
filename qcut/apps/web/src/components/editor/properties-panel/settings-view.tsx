@@ -18,9 +18,13 @@ import {
 } from "./property-item";
 import { FPS_PRESETS } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
-import { useEditorStore } from "@/stores/editor-store";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
+import { useEditorStore } from "@/stores/editor/editor-store";
+import { useAspectRatio } from "@/hooks/media/use-aspect-ratio";
 // import Image from "next/image"; // Not needed in Vite
 import { cn } from "@/lib/utils";
 import { colors } from "@/data/colors";

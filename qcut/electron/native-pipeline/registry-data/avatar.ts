@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/avatar
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerAvatarModels(): void {
 	ModelRegistry.register({

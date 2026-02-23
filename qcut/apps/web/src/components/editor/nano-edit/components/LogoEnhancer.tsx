@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNanoEditStore } from "@/stores/nano-edit-store";
+import { useNanoEditStore } from "@/stores/editor/nano-edit-store";
 import { FalAiService } from "@/services/ai/fal-ai-service";
 import { PromptInput } from "./PromptInput";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";

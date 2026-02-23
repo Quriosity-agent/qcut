@@ -6,7 +6,7 @@
  */
 
 import type { AIModel, APIConfiguration } from "../types/ai-types";
-import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/upscale-models";
+import { UPSCALE_MODEL_ENDPOINTS as UPSCALE_MODEL_ENDPOINT_MAP } from "@/lib/ai-models/upscale-models";
 
 // Import model configurations from category-specific files
 import { T2V_MODELS } from "./text2video-models-config";
@@ -14,7 +14,7 @@ import { I2V_MODELS } from "./image2video-models-config";
 import { AVATAR_MODELS } from "./avatar-models-config";
 import { ANGLES_MODEL } from "./angles-config";
 import { validateUniqueAIModelIds } from "./model-config-validation";
-import { UPSCALE_MODELS } from "@/lib/upscale-models";
+import { UPSCALE_MODELS } from "@/lib/ai-models/upscale-models";
 import { ERROR_MESSAGES as ERROR_MESSAGES_INTERNAL } from "./error-messages";
 
 // FAL API Configuration
@@ -24,7 +24,7 @@ export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 export const FAL_API_BASE = "https://fal.run";
 /**
  * Map of upscale model IDs to their FAL.ai endpoint paths
- * Re-exported from @/lib/upscale-models for convenient access alongside AI model constants
+ * Re-exported from @/lib/ai-models/upscale-models for convenient access alongside AI model constants
  */
 export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 
@@ -75,7 +75,7 @@ export {
 	UPSCALE_MODELS,
 	UPSCALE_MODEL_ORDER,
 	type UpscaleModelId,
-} from "@/lib/upscale-models";
+} from "@/lib/ai-models/upscale-models";
 
 // Re-export Angles config
 export {

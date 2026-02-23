@@ -3,7 +3,7 @@ import {
 	validateImageUpload,
 	validateReveEditImage,
 	getImageDimensions,
-} from "../image-validation";
+} from "../ai-models/image-validation";
 
 describe("Image Validation", () => {
 	beforeEach(() => {

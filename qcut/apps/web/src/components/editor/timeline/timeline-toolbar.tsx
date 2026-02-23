@@ -33,10 +33,10 @@ import {
 	SplitButtonSeparator,
 } from "../../ui/split-button";
 import { Slider } from "@/components/ui/slider";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useSceneStore } from "@/stores/scene-store";
+import { useSceneStore } from "@/stores/timeline/scene-store";
 import { ScenesView } from "../scenes-view";
 import { EFFECTS_ENABLED } from "@/config/features";
 import {
@@ -44,7 +44,7 @@ import {
 	TEST_MEDIA_ID,
 } from "@/constants/timeline-constants";
 import { toast } from "sonner";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 
 export interface TimelineToolbarProps {
 	zoomLevel: number;

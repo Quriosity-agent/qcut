@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanupPtyOnEditorExit } from "@/lib/pty-session-cleanup";
+import { cleanupPtyOnEditorExit } from "@/lib/debug/pty-session-cleanup";
 import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
 
 describe("cleanupPtyOnEditorExit", () => {

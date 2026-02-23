@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { detectAudioSources } from "../audio-detection";
 import type { TimelineTrack } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 // ---------------------------------------------------------------------------
 // Minimal factories

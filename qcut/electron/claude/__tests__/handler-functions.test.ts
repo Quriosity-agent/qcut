@@ -52,7 +52,7 @@ import {
 	PRESETS,
 	getExportPresets,
 	getExportRecommendation,
-} from "../claude-export-handler";
+} from "../handlers/claude-export-handler";
 
 describe("Export Handler Functions", () => {
 	it("getExportPresets returns all presets", () => {
@@ -110,7 +110,10 @@ describe("Export Handler Functions", () => {
 // Diagnostics handler tests
 // ---------------------------------------------------------------------------
 
-import { analyzeError, getSystemInfo } from "../claude-diagnostics-handler";
+import {
+	analyzeError,
+	getSystemInfo,
+} from "../handlers/claude-diagnostics-handler";
 import * as os from "node:os";
 
 describe("Diagnostics Handler Functions", () => {
@@ -250,7 +253,7 @@ import {
 	timelineToMarkdown,
 	markdownToTimeline,
 	validateTimeline,
-} from "../claude-timeline-handler";
+} from "../handlers/claude-timeline-handler";
 
 describe("Timeline Handler Functions", () => {
 	const validTimeline = {

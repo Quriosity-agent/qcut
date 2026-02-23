@@ -1,9 +1,9 @@
 // Location: apps/web/src/lib/__tests__/export-engine-recorder.test.ts
 
 import { describe, it, expect, vi } from "vitest";
-import { getVideoBitrate } from "../export-engine-recorder";
+import { getVideoBitrate } from "../export/export-engine-recorder";
 
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugWarn: vi.fn(),
 }));

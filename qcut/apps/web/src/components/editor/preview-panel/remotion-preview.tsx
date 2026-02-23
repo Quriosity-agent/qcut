@@ -23,7 +23,7 @@ import {
 	useRemotionStore,
 	useRemotionComponent,
 	useRemotionInstance,
-} from "@/stores/remotion-store";
+} from "@/stores/ai/remotion-store";
 import {
 	RemotionPlayerWrapper,
 	RemotionPlayerLoading,
@@ -31,7 +31,7 @@ import {
 	type RemotionPlayerHandle,
 } from "@/lib/remotion/player-wrapper";
 import type { RemotionComponentDefinition } from "@/lib/remotion/types";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 
 // ============================================================================
 // Types

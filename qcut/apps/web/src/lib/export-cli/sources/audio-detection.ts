@@ -6,7 +6,7 @@
  */
 
 import type { TimelineTrack } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 export interface AudioSourceInfo {
 	/** Audio elements placed on dedicated audio tracks */

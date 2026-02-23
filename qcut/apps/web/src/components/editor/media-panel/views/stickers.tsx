@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { debugLog, debugError } from "@/lib/debug-config";
-import { createObjectURL } from "@/lib/blob-manager";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { createObjectURL } from "@/lib/media/blob-manager";
 import {
 	AlertCircle,
 	Clock,
@@ -26,16 +26,16 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useStickersStore } from "@/stores/stickers-store";
-import { useMediaStore } from "@/stores/media-store";
+import { useMediaStore } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import {
 	buildIconSvgUrl,
 	getCollection,
 	POPULAR_COLLECTIONS,
-} from "@/lib/iconify-api";
-import { downloadStickerAsFile } from "@/lib/sticker-downloader";
-import type { IconSet } from "@/lib/iconify-api";
+} from "@/lib/stickers/iconify-api";
+import { downloadStickerAsFile } from "@/lib/stickers/sticker-downloader";
+import type { IconSet } from "@/lib/stickers/iconify-api";
 import { cn } from "@/lib/utils";
 
 // Types
@@ -351,7 +351,7 @@ export function StickersView() {
 					.overlayStickers.get(stickerId);
 				if (sticker) {
 					const { timelineStickerIntegration } = await import(
-						"@/lib/timeline-sticker-integration"
+						"@/lib/stickers/timeline-sticker-integration"
 					);
 					await timelineStickerIntegration.addStickerToTimeline(sticker, 0, 5);
 				}
@@ -420,7 +420,7 @@ export function StickersView() {
 						.overlayStickers.get(stickerId);
 					if (sticker) {
 						const { timelineStickerIntegration } = await import(
-							"@/lib/timeline-sticker-integration"
+							"@/lib/stickers/timeline-sticker-integration"
 						);
 						await timelineStickerIntegration.addStickerToTimeline(
 							sticker,

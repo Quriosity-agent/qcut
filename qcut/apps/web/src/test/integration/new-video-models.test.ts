@@ -10,7 +10,7 @@ import {
 	generateVideoFromImage,
 	estimateCost,
 	getAvailableModels,
-} from "../../lib/ai-video-client";
+} from "../../lib/ai-clients/ai-video-client";
 import { AI_MODELS } from "../../components/editor/media-panel/views/ai/constants/ai-constants";
 
 describe("New Video Models Integration", () => {

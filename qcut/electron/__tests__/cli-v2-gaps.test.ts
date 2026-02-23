@@ -9,15 +9,15 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
-import { parseCliArgs } from "../native-pipeline/cli.js";
-import type { CLIRunOptions } from "../native-pipeline/cli-runner.js";
+import { parseCliArgs } from "../native-pipeline/cli/cli.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 import {
 	generateSrt,
 	extractWordTimestamps,
 	type WordTimestamp,
-} from "../native-pipeline/srt-generator.js";
+} from "../native-pipeline/output/srt-generator.js";
 import { ImageGeneratorAdapter } from "../native-pipeline/vimax/adapters/image-adapter.js";
 import { VideoGeneratorAdapter } from "../native-pipeline/vimax/adapters/video-adapter.js";
 

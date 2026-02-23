@@ -1,9 +1,9 @@
 // Location: apps/web/src/lib/__tests__/export-engine-debug.test.ts
 
 import { describe, it, expect, vi } from "vitest";
-import { validateRenderedFrame } from "../export-engine-debug";
+import { validateRenderedFrame } from "../export/export-engine-debug";
 
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugWarn: vi.fn(),
 }));

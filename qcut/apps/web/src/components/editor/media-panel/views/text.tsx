@@ -1,7 +1,7 @@
 import { DraggableMediaItem } from "@/components/ui/draggable-item";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { type MarkdownElement, type TextElement } from "@/types/timeline";
 
 const textData: TextElement = {

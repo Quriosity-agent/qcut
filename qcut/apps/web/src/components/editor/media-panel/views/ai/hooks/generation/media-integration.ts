@@ -10,7 +10,7 @@
  * duplicated 3x in use-ai-generation.ts handleGenerate function.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 import type { GeneratedVideo } from "../../types/ai-types";
 
 /**

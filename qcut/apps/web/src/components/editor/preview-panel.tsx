@@ -1,26 +1,26 @@
 "use client";
 
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { RemotionElement, TimelineElement } from "@/types/timeline";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useEditorStore } from "@/stores/editor-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 import { useProjectStore } from "@/stores/project-store";
 import { useMcpAppStore } from "@/stores/mcp-app-store";
 import { TextElementDragState } from "@/types/editor";
 import { FullscreenPreview, PreviewToolbar } from "./preview-panel-components";
 import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
 import { CaptionsDisplay } from "@/components/captions/captions-display";
-import { captureWithFallback } from "@/lib/canvas-utils";
-import { useFrameCache } from "@/hooks/use-frame-cache";
-import { useEffectsStore } from "@/stores/effects-store";
+import { captureWithFallback } from "@/lib/effects/canvas-utils";
+import { useFrameCache } from "@/hooks/timeline/use-frame-cache";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import {
 	parametersToCSSFilters,
 	mergeEffectParameters,
-} from "@/lib/effects-utils";
+} from "@/lib/effects/effects-utils";
 import {
 	InteractiveElementOverlay,
 	ElementTransform,

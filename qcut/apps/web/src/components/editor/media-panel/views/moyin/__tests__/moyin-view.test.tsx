@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 
 // Mock TanStack Router — return empty project_id to prevent loadProject from resetting state
 vi.mock("@tanstack/react-router", () => ({

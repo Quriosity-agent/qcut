@@ -4,7 +4,7 @@ import {
 	UPSCALE_MODEL_ORDER,
 	UPSCALE_MODEL_ENDPOINTS,
 	getUpscaleModelEntriesInPriorityOrder,
-} from "@/lib/upscale-models";
+} from "@/lib/ai-models/upscale-models";
 
 describe("Upscale model catalog", () => {
 	it("keeps the catalog in sync with the curated order", () => {

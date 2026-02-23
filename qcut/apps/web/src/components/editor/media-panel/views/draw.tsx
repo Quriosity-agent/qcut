@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
-import { useWhiteDrawStore } from "@/stores/white-draw-store";
+import { useWhiteDrawStore } from "@/stores/editor/white-draw-store";
 import { PenTool } from "lucide-react";
 import {
 	DrawingCanvas,

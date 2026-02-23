@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateJobId } from "../image-edit-utils";
+import { generateJobId } from "../ai-clients/image-edit-utils";
 
 describe("image-edit-utils", () => {
 	describe("generateJobId", () => {

@@ -16,7 +16,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { getBinaryManager, BinaryManager } from "./binary-manager.js";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
-import { importMediaFile } from "./claude/claude-media-handler.js";
+import { importMediaFile } from "./claude/handlers/claude-media-handler.js";
 import {
 	captureOutputSnapshot,
 	classifyErrorCode,

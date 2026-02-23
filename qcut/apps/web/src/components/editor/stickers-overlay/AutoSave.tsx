@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from "react";
 import { useProjectStore } from "@/stores/project-store";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 
 /**
  * Auto-save component that monitors overlay changes and saves to storage

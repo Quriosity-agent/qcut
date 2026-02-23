@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
 import {
 	CLIPipelineRunner,
 	createProgressReporter,
-} from "../native-pipeline/cli-runner.js";
-import type { CLIRunOptions } from "../native-pipeline/cli-runner.js";
-import { parseCliArgs } from "../native-pipeline/cli.js";
-import { PipelineExecutor } from "../native-pipeline/executor.js";
-import * as apiCaller from "../native-pipeline/api-caller.js";
+} from "../native-pipeline/cli/cli-runner.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
+import { parseCliArgs } from "../native-pipeline/cli/cli.js";
+import { PipelineExecutor } from "../native-pipeline/execution/executor.js";
+import * as apiCaller from "../native-pipeline/infra/api-caller.js";
 
 function defaultOptions(overrides: Partial<CLIRunOptions> = {}): CLIRunOptions {
 	return {

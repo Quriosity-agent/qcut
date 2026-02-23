@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/prompt-generation
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerPromptGenerationModels(): void {
 	ModelRegistry.register({

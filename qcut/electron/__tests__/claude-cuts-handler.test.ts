@@ -49,7 +49,7 @@ import { ipcMain, BrowserWindow } from "electron";
 import {
 	executeBatchCuts,
 	validateBatchCutRequest,
-} from "../claude/claude-cuts-handler";
+} from "../claude/handlers/claude-cuts-handler";
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -51,7 +51,7 @@ vi.mock("electron-log", () => ({
 }));
 
 // Mock the handler functions so we don't need real file system
-vi.mock("../claude-media-handler.js", () => ({
+vi.mock("../handlers/claude-media-handler.js", () => ({
 	listMediaFiles: vi.fn(async () => []),
 	getMediaInfo: vi.fn(async () => null),
 	importMediaFile: vi.fn(async () => null),
@@ -59,7 +59,7 @@ vi.mock("../claude-media-handler.js", () => ({
 	renameMediaFile: vi.fn(async () => false),
 }));
 
-vi.mock("../claude-timeline-handler.js", () => ({
+vi.mock("../handlers/claude-timeline-handler.js", () => ({
 	requestTimelineFromRenderer: vi.fn(),
 	requestSplitFromRenderer: vi.fn(),
 	requestSelectionFromRenderer: vi.fn(),
@@ -92,7 +92,7 @@ vi.mock("../claude-timeline-handler.js", () => ({
 	validateTimeline: vi.fn(),
 }));
 
-vi.mock("../claude-project-handler.js", () => ({
+vi.mock("../handlers/claude-project-handler.js", () => ({
 	getProjectSettings: vi.fn(async () => ({
 		name: "Test",
 		width: 1920,
@@ -122,7 +122,7 @@ vi.mock("../claude-project-handler.js", () => ({
 	})),
 }));
 
-vi.mock("../claude-export-handler.js", () => ({
+vi.mock("../handlers/claude-export-handler.js", () => ({
 	getExportPresets: vi.fn(() => [
 		{
 			id: "youtube-1080p",
@@ -151,7 +151,7 @@ vi.mock("../claude-export-handler.js", () => ({
 	})),
 }));
 
-vi.mock("../claude-diagnostics-handler.js", () => ({
+vi.mock("../handlers/claude-diagnostics-handler.js", () => ({
 	analyzeError: vi.fn(() => ({
 		errorType: "unknown",
 		severity: "medium",
@@ -180,7 +180,7 @@ vi.mock(
 	{ virtual: true }
 );
 
-vi.mock("../claude-range-handler.js", () => ({
+vi.mock("../handlers/claude-range-handler.js", () => ({
 	executeDeleteRange: vi.fn(async () => ({
 		deletedElements: 0,
 		splitElements: 0,
@@ -196,10 +196,10 @@ vi.mock("../claude-range-handler.js", () => ({
 import {
 	startClaudeHTTPServer,
 	stopClaudeHTTPServer,
-} from "../claude-http-server";
+} from "../http/claude-http-server";
 import { BrowserWindow } from "electron";
-import * as timelineHandler from "../claude-timeline-handler.js";
-import * as rangeHandler from "../claude-range-handler.js";
+import * as timelineHandler from "../handlers/claude-timeline-handler.js";
+import * as rangeHandler from "../handlers/claude-range-handler.js";
 import { HttpError } from "../utils/http-router";
 
 // ---------------------------------------------------------------------------

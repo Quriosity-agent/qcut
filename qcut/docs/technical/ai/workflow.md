@@ -738,7 +738,7 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: 2026-02-16*
+*Last Updated: 2026-02-23*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
 
@@ -807,7 +807,7 @@ Generation downloads the video, creates a media item, and adds it to the media s
 - **Function**: `handleGenerate` (inside success block), `addMediaItem` (store action)
 - **Files**:
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
-  - `qcut/apps/web/src/stores/media-store.ts`
+  - `qcut/apps/web/src/stores/media/media-store.ts`
 - **Console Logs** (in order):
   - `step 6a: media integration condition check`
   - `step 6b: executing media integration block`
@@ -833,7 +833,7 @@ Generation downloads the video, creates a media item, and adds it to the media s
 The media store persists the item; generation updates UI progress to 100% and fires onComplete; the UI shows the generated video to the user.
 - **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
 - **Files**:
-  - `qcut/apps/web/src/stores/media-store.ts`
+  - `qcut/apps/web/src/stores/media/media-store.ts`
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console**: `step 7: generation flow complete; updating UI and callbacks`
 - **Sub-steps**:
@@ -853,7 +853,7 @@ Individual download and export-all ZIP functionality from the media panel.
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/index.tsx`
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/components/ai-history-panel.tsx`
   - `qcut/apps/web/src/components/editor/media-panel/export-all-button.tsx`
-  - `qcut/apps/web/src/hooks/use-zip-export.ts`
+  - `qcut/apps/web/src/hooks/export/use-zip-export.ts`
 
 #### Individual Download
 - **Console**: `step 8: media panel download` / `step 8: history panel download`
@@ -883,7 +883,7 @@ Individual download and export-all ZIP functionality from the media panel.
 
 ### Step 9 - ZIP Item Processing
 Processing individual media items for ZIP inclusion.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 9: zip-manager starting addMediaItems`
   - `step 9a: processing item`
@@ -910,14 +910,14 @@ Processing individual media items for ZIP inclusion.
 
 ### Step 10 - ZIP Generation
 Generating the final ZIP blob from processed items.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 10: generating ZIP blob`
   - `step 10a: ZIP blob generated`
 
 ### Step 11 - ZIP Download
 Saving the ZIP file to disk via Electron or browser fallback.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 11: downloadZipSafely called`
   - `step 11a: converting blob to array buffer`
@@ -932,7 +932,7 @@ Saving the ZIP file to disk via Electron or browser fallback.
 ## Timeline Playback Steps (Separate Flow)
 
 These step logs are for timeline playback, not AI generation:
-- **File**: `qcut/apps/web/src/hooks/use-timeline-playhead.ts`
+- **File**: `qcut/apps/web/src/hooks/timeline/use-timeline-playhead.ts`
 - **Console Logs**:
   - `step 6: timeline playhead updated` - Playhead position updates
   - `step 7: user initiated seek` - User seeks to new position

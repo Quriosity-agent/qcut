@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useEffectsStore } from "@/stores/effects-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";

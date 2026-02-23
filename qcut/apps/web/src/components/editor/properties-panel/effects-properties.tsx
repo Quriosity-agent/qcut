@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";

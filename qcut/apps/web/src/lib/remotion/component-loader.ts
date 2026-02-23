@@ -21,7 +21,7 @@ import {
 	type AnalysisResult,
 } from "./sequence-analysis-service";
 import { loadBundledComponent } from "./dynamic-loader";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 
 // ============================================================================
 // Types

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { handleMediaProcessingError } from "@/lib/error-handler";
+import { handleMediaProcessingError } from "@/lib/debug/error-handler";
 import { Button } from "../../ui/button";
 import {
 	MoreVertical,
@@ -19,13 +19,13 @@ import {
 	Volume2,
 	VolumeX,
 } from "lucide-react";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import AudioWaveform from "../audio-waveform";
 import { toast } from "sonner";
 import { TimelineElementProps, TrackType } from "@/types/timeline";
-import { useTimelineElementResize } from "@/hooks/use-timeline-element-resize";
+import { useTimelineElementResize } from "@/hooks/timeline/use-timeline-element-resize";
 import { withErrorBoundary } from "@/components/error-boundary";
 import { stripMarkdownSyntax } from "@/lib/markdown";
 

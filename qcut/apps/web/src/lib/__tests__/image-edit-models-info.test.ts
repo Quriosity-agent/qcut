@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getImageEditModels } from "../image-edit-models-info";
+import { getImageEditModels } from "../ai-clients/image-edit-models-info";
 
 describe("image-edit-models-info", () => {
 	describe("getImageEditModels", () => {

@@ -3,7 +3,7 @@ import { useFolderStore } from "../folder-store";
 import { FOLDER_MAX_DEPTH, FOLDER_NAME_MAX_LENGTH } from "../media-store-types";
 
 // Mock the debug utilities
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugError: vi.fn(),
 }));

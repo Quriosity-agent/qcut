@@ -7,7 +7,7 @@
 
 import React, { memo, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import type { OverlaySticker } from "@/types/sticker-overlay";
 
