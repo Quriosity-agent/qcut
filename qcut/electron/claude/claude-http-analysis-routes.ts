@@ -52,7 +52,7 @@ interface RawWord {
 
 function buildTextFromWords(words: RawWord[]): string {
 	return words
-		.filter((w) => w.type === "word" || w.type === "spacing")
+		.filter((w) => (w.type ?? "word") === "word" || w.type === "spacing")
 		.map((w) => w.text)
 		.join("");
 }
@@ -187,6 +187,9 @@ export function registerAnalysisRoutes(
 		if (!req.body?.words || !Array.isArray(req.body.words)) {
 			throw new HttpError(400, "Missing 'words' array in request body");
 		}
+		if (req.body.words.length === 0) {
+			throw new HttpError(400, "Empty 'words' array in request body");
+		}
 		try {
 			const win = getWindow();
 			const words: RawWord[] = req.body.words;
@@ -284,7 +287,8 @@ export function registerAnalysisRoutes(
 				});
 				return {
 					loaded: true,
-					wordCount: result.words.filter((w) => w.type === "word").length,
+					wordCount: result.words.filter((w) => (w.type ?? "word") === "word")
+						.length,
 					duration: result.duration,
 				};
 			} catch (error) {
