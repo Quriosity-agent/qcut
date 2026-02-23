@@ -1,7 +1,7 @@
 # Large Files Refactoring Plan — Low Risk Files
 
 > Generated: 2026-02-23 | Branch: win-7
-> **STATUS: PLAN ONLY — No code changes yet**
+> **STATUS: ALL DONE ✅**
 
 ---
 
@@ -11,7 +11,7 @@
 - **Dead code confirmed.** No file in the entire codebase imports `export-engine.backup`.
 - It's a `.backup.ts` file — clearly a manual backup of the export engine before a rewrite.
 
-### Action: **DELETE**
+### Action: **DELETE** ✅ DONE
 - Simply delete the file. Zero risk — nothing references it.
 - If we want a safety net, `git log` already has the history.
 
@@ -26,7 +26,7 @@
   - `registerImageToImageModels()` (line 904, ~210 lines) — image-to-image models
 - **Single consumer:** `electron/native-pipeline/init.ts` imports all 3 functions.
 
-### Plan: Split into 3 files by category
+### Plan: Split into 3 files by category ✅ DONE
 ```
 electron/native-pipeline/registry-data/
   text-to-video.ts    → registerTextToVideoModels()
@@ -58,7 +58,7 @@ electron/native-pipeline/registry-data/
   - `registerAllPart2Models()` (line 812) — calls all of the above
 - **Single consumer:** `init.ts` imports only `registerAllPart2Models`.
 
-### Plan: Split into category files under same directory
+### Plan: Split into category files under same directory ✅ DONE
 ```
 electron/native-pipeline/registry-data/
   avatar.ts              → registerAvatarModels()
@@ -104,7 +104,7 @@ electron/native-pipeline/registry-data/
   - Utility functions: `applyTemplate`, `saveCustomTemplate`, `loadCustomTemplates`, `deleteCustomTemplate`, `exportTemplate`, `importTemplate`, `getTemplatesByCategory`, `searchTemplates` (lines 538-827)
 - **Single consumer:** `apps/web/src/components/editor/effect-templates-panel.tsx`
 
-### Plan: Split into template data + functions
+### Plan: Split into template data + functions ✅ DONE
 ```
 apps/web/src/lib/effects-templates/
   types.ts              → EffectTemplate, TemplateEffect interfaces
@@ -142,7 +142,7 @@ apps/web/src/lib/effects-templates/
   - Helper functions: `getCombinedCapabilities`, `getT2VModelsInOrder`, `resolveT2VModelId` (lines 766-876)
 - **Consumers (7 files):** `ai-constants.ts`, `use-ai-generation-helpers.ts`, `use-ai-panel-effects.ts`, `ai-text-tab.tsx`, `index.tsx`, plus 2 test files.
 
-### Plan: Split by concern
+### Plan: Split by concern ✅ DONE
 ```
 text2video-models-config/
   models.ts          → T2V_MODELS object + T2VModelId type
@@ -168,7 +168,7 @@ text2video-models-config/
   - **Video Normalization** (lines 693-end): `normalizeVideo()`, `probeVideoFile()`
 - **Many consumers (10+ files):** Various electron handlers import different subsets.
 
-### Plan: Split by section
+### Plan: Split by section ✅ DONE
 ```
 electron/ffmpeg/
   constants.ts       → MAX_EXPORT_DURATION, QUALITY_SETTINGS, debug logging functions
