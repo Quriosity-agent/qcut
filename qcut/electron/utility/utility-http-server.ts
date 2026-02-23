@@ -8,7 +8,7 @@
 
 import * as path from "node:path";
 import { createServer } from "node:http";
-import type { Server } from "node:http";
+import type { Server, IncomingMessage, ServerResponse } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
 import { isValidSourcePath } from "../claude/utils/helpers.js";
@@ -62,10 +62,14 @@ import { registerGenerateRoutes } from "../claude/http/claude-http-generate-rout
 let server: Server | null = null;
 
 // Type for the requestFromMain function passed in from the utility process entry
-type RequestFromMainFn = (channel: string, data: any) => Promise<any>;
+type RequestFromMainFn = (channel: string, data: unknown) => Promise<unknown>;
 
 /** Fake BrowserWindow-like object that proxies calls through main process */
-function createWindowProxy(requestFromMain: RequestFromMainFn): any {
+interface WindowProxy {
+	webContents: { send(channel: string, ...args: unknown[]): void };
+}
+
+function createWindowProxy(requestFromMain: RequestFromMainFn): WindowProxy {
 	return {
 		webContents: {
 			send(channel: string, ...args: any[]) {
@@ -100,7 +104,7 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	const router = createRouter();
 
 	// Helper: get a window proxy for routes that need renderer communication
-	function getWindow(): any {
+	function getWindow(): WindowProxy {
 		return createWindowProxy(requestFromMain);
 	}
 
@@ -129,14 +133,14 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	}
 
 	// Auth check
-	function checkAuth(req: any): boolean {
+	function checkAuth(req: IncomingMessage): boolean {
 		const token = process.env.QCUT_API_TOKEN;
 		if (!token) return true;
 		return req.headers.authorization === `Bearer ${token}`;
 	}
 
 	// CORS
-	function setCorsHeaders(res: any): void {
+	function setCorsHeaders(res: ServerResponse): void {
 		res.setHeader("Access-Control-Allow-Origin", "*");
 		res.setHeader(
 			"Access-Control-Allow-Methods",

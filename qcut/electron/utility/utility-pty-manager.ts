@@ -8,6 +8,7 @@
 import { platform } from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { MessagePort } from "node:worker_threads";
 
 // Dynamic import for node-pty (same strategy as original pty-handler.ts)
 let pty: typeof import("node-pty");
@@ -113,9 +114,9 @@ function buildClaudeMcpServersEnv(opts: {
 
 export class UtilityPtyManager {
 	private sessions = new Map<string, PtySession>();
-	private parentPort: any;
+	private parentPort: MessagePort;
 
-	constructor(parentPort: any) {
+	constructor(parentPort: MessagePort) {
 		this.parentPort = parentPort;
 	}
 
