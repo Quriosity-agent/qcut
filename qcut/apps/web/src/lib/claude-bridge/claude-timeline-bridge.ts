@@ -24,6 +24,7 @@ import {
 	isClaudeMediaElementType,
 	addClaudeMediaElement,
 	addClaudeTextElement,
+	addClaudeMarkdownElement,
 	formatTracksForExport,
 	applyTimelineToStore,
 	syncProjectMediaIfNeeded,
@@ -57,7 +58,8 @@ function normalizeClaudeElementType({
 		type === CLAUDE_TRACK_ELEMENT_TYPES.text ||
 		type === CLAUDE_TRACK_ELEMENT_TYPES.sticker ||
 		type === CLAUDE_TRACK_ELEMENT_TYPES.captions ||
-		type === CLAUDE_TRACK_ELEMENT_TYPES.remotion
+		type === CLAUDE_TRACK_ELEMENT_TYPES.remotion ||
+		type === CLAUDE_TRACK_ELEMENT_TYPES.markdown
 	) {
 		return type;
 	}
@@ -219,6 +221,14 @@ export function setupClaudeTimelineBridge(): void {
 
 			if (element.type === "text") {
 				addClaudeTextElement({
+					element,
+					timelineStore,
+				});
+				return;
+			}
+
+			if (element.type === "markdown") {
+				addClaudeMarkdownElement({
 					element,
 					timelineStore,
 				});
@@ -601,6 +611,62 @@ export function setupClaudeTimelineBridge(): void {
 												: "none",
 										x: 0.5,
 										y: 0.5,
+										rotation: 0,
+										opacity: 1,
+									},
+									{
+										pushHistory: false,
+										selectElement: false,
+									}
+								);
+							} else if (
+								normalizedType === CLAUDE_TRACK_ELEMENT_TYPES.markdown
+							) {
+								const markdownContent =
+									typeof element.markdownContent === "string" &&
+									element.markdownContent.length > 0
+										? element.markdownContent
+										: typeof element.content === "string" &&
+												element.content.length > 0
+											? element.content
+											: "Markdown";
+								const style = element.style || {};
+
+								createdElementId = timelineStore.addElementToTrack(
+									element.trackId,
+									{
+										type: "markdown",
+										name: markdownContent.slice(0, 50),
+										markdownContent,
+										startTime: element.startTime,
+										duration: element.duration,
+										trimStart: 0,
+										trimEnd: 0,
+										theme:
+											style.theme === "light" || style.theme === "transparent"
+												? style.theme
+												: "dark",
+										fontSize:
+											typeof style.fontSize === "number" ? style.fontSize : 14,
+										fontFamily:
+											typeof style.fontFamily === "string"
+												? style.fontFamily
+												: "Inter",
+										padding: typeof style.padding === "number" ? style.padding : 16,
+										backgroundColor:
+											typeof style.backgroundColor === "string"
+												? style.backgroundColor
+												: "#1a1a2e",
+										textColor:
+											typeof style.textColor === "string"
+												? style.textColor
+												: "#e0e0e0",
+										scrollMode: "static",
+										scrollSpeed: 50,
+										x: 0,
+										y: 0,
+										width: 400,
+										height: 300,
 										rotation: 0,
 										opacity: 1,
 									},

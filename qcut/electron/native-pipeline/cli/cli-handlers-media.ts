@@ -8,7 +8,7 @@
  * @module electron/native-pipeline/cli-handlers-media
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
 import { ModelRegistry } from "../infra/registry.js";
@@ -122,6 +122,7 @@ export async function handleAnalyzeVideo(
 	};
 
 	try {
+		mkdirSync(outputDir, { recursive: true });
 		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
 	} catch (err) {
 		return {
@@ -210,7 +211,7 @@ async function addAnalysisToTimeline(
 		return { success: false, error: "No media track found in timeline" };
 	}
 
-	// 3. Build elements batch
+	// 3. Build media element
 	const events = Array.isArray(analysisContent)
 		? (analysisContent as TimelineEvent[])
 		: [];
@@ -219,19 +220,35 @@ async function addAnalysisToTimeline(
 		? Math.max(...events.map((e) => e.end))
 		: 10);
 
-	const elements: Record<string, unknown>[] = [
+	onProgress({
+		stage: "timeline",
+		percent: 85,
+		message: "Adding video to timeline...",
+	});
+
+	// 4. Add media element via single-element endpoint
+	//    (auto-resolves media from store and creates track if needed)
+	await client.post(
+		`/api/claude/timeline/${projectId}/elements`,
 		{
 			type: "media",
-			mediaId: media.id,
-			name: basename(videoPath),
+			sourceId: media.id,
+			sourceName: basename(videoPath),
 			startTime: 0,
 			duration: videoDuration,
-			trackId: mediaTrack.id,
-		},
-	];
+		}
+	);
 
-	// Add markdown scene elements if we have events and a markdown track
-	if (markdownTrack && events.length > 0) {
+	// 5. Add markdown scene annotations via single-element endpoint
+	//    (auto-creates markdown track via findOrCreateTrack)
+	let addedMarkdown = 0;
+	if (events.length > 0) {
+		onProgress({
+			stage: "timeline",
+			percent: 90,
+			message: "Adding scene annotations...",
+		});
+
 		for (const event of events) {
 			const duration = event.end - event.start;
 			if (duration <= 0) continue;
@@ -240,50 +257,23 @@ async function addAnalysisToTimeline(
 				? `\n\n*${event.tags.join(", ")}*`
 				: "";
 
-			elements.push({
-				type: "markdown",
-				markdownContent: `## ${event.label}${tags}`,
-				startTime: event.start,
-				duration,
-				trackId: markdownTrack.id,
-				theme: "dark",
-				fontSize: 14,
-				fontFamily: "Arial",
-				padding: 10,
-				backgroundColor: "rgba(0,0,0,0.7)",
-				textColor: "#FFFFFF",
-				scrollMode: "static",
-				scrollSpeed: 0,
-				x: 0,
-				y: -300,
-				width: 800,
-				height: 200,
-				rotation: 0,
-				opacity: 0.9,
-			});
+			await client.post(
+				`/api/claude/timeline/${projectId}/elements`,
+				{
+					type: "markdown",
+					content: `## ${event.label}${tags}`,
+					startTime: event.start,
+					duration,
+				}
+			);
+			addedMarkdown++;
 		}
-	} else if (!markdownTrack && events.length > 0) {
-		console.error(
-			"[analyze-video] No markdown track in timeline — scene annotations skipped. Create a markdown track in the editor first."
-		);
 	}
 
 	onProgress({
 		stage: "timeline",
-		percent: 90,
-		message: "Adding elements to timeline...",
-	});
-
-	// 4. Batch add to timeline
-	await client.post(
-		`/api/claude/timeline/${projectId}/elements/batch`,
-		{ elements }
-	);
-
-	onProgress({
-		stage: "timeline",
 		percent: 100,
-		message: `Added ${elements.length} elements to timeline`,
+		message: `Added video + ${addedMarkdown} scene annotations to timeline`,
 	});
 
 	return { success: true };

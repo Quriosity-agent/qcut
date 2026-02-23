@@ -115,6 +115,10 @@ function getElementDuration({
 		}
 	}
 
+	if (typeof element.duration === "number" && element.duration > 0) {
+		return element.duration;
+	}
+
 	if (fallbackDuration > 0) {
 		return fallbackDuration;
 	}
@@ -357,6 +361,55 @@ export function addClaudeTextElement({
 	debugLog("[ClaudeTimelineBridge] Added text element:", content);
 }
 
+const DEFAULT_MARKDOWN_DURATION_SECONDS = 120;
+const DEFAULT_MARKDOWN_CONTENT = "Markdown";
+
+/** Add a Claude markdown element to the timeline store. */
+export function addClaudeMarkdownElement({
+	element,
+	timelineStore,
+}: {
+	element: Partial<ClaudeElement>;
+	timelineStore: TimelineStoreState;
+}): void {
+	const trackId = timelineStore.findOrCreateTrack("markdown");
+	const startTime = getElementStartTime({ element });
+	const duration = getElementDuration({
+		element,
+		fallbackDuration: DEFAULT_MARKDOWN_DURATION_SECONDS,
+	});
+	const markdownContent =
+		typeof element.content === "string" && element.content.trim().length > 0
+			? element.content
+			: DEFAULT_MARKDOWN_CONTENT;
+
+	timelineStore.addElementToTrack(trackId, {
+		type: "markdown",
+		name: markdownContent.slice(0, 50),
+		markdownContent,
+		startTime,
+		duration,
+		trimStart: 0,
+		trimEnd: 0,
+		theme: "dark",
+		fontSize: 14,
+		fontFamily: "Inter",
+		padding: 16,
+		backgroundColor: "#1a1a2e",
+		textColor: "#e0e0e0",
+		scrollMode: "static",
+		scrollSpeed: 50,
+		x: 0,
+		y: 0,
+		width: 400,
+		height: 300,
+		rotation: 0,
+		opacity: 1,
+	});
+
+	debugLog("[ClaudeTimelineBridge] Added markdown element:", markdownContent.slice(0, 50));
+}
+
 /**
  * Format internal tracks for Claude export
  */
@@ -466,6 +519,12 @@ export async function applyTimelineToStore(
 					added++;
 				} else if (element.type === "text") {
 					addClaudeTextElement({
+						element,
+						timelineStore: useTimelineStore.getState(),
+					});
+					added++;
+				} else if (element.type === "markdown") {
+					addClaudeMarkdownElement({
 						element,
 						timelineStore: useTimelineStore.getState(),
 					});
