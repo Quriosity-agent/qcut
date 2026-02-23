@@ -350,16 +350,10 @@ export function getFFprobePath(): string {
 
 	const ffprobeFromFFmpegDir = path.join(ffmpegDir, binaryName);
 	if (fs.existsSync(ffprobeFromFFmpegDir)) {
-		debugLog(
-			"Using FFprobe from FFmpeg directory:",
-			ffprobeFromFFmpegDir
-		);
+		debugLog("Using FFprobe from FFmpeg directory:", ffprobeFromFFmpegDir);
 		return ffprobeFromFFmpegDir;
 	}
 
-	debugLog(
-		"Falling back to system PATH FFprobe binary name:",
-		binaryName
-	);
+	debugLog("Falling back to system PATH FFprobe binary name:", binaryName);
 	return binaryName;
 }

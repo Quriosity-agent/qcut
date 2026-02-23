@@ -236,7 +236,10 @@ export async function normalizeVideo(
 					verifyOutputDuration(outputPath, effectiveDuration)
 						.then(() => resolve())
 						.catch((err) => {
-							debugWarn("Duration verification failed:", err instanceof Error ? err.message : String(err));
+							debugWarn(
+								"Duration verification failed:",
+								err instanceof Error ? err.message : String(err)
+							);
 							resolve();
 						});
 				} else {
