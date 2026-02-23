@@ -32,7 +32,6 @@ import type {
 	FileInfo,
 	SoundSearchParams,
 	SoundDownloadParams,
-	TranscriptionRequestData,
 	TranscriptionResult,
 	TranscriptionSegment,
 	AIFillerWordItem,
@@ -100,8 +99,8 @@ export interface ElectronAPI {
 
 	// Storage operations
 	storage: {
-		save: (key: string, data: unknown) => Promise<boolean>;
-		load: (key: string) => Promise<unknown>;
+		save: <T = unknown>(key: string, data: T) => Promise<boolean>;
+		load: <T = unknown>(key: string) => Promise<T | null>;
 		remove: (key: string) => Promise<boolean>;
 		list: () => Promise<string[]>;
 		clear: () => Promise<boolean>;

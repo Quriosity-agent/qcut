@@ -44,7 +44,11 @@ export interface TranscriptionRequestData {
 	language?: string;
 	decryptionKey?: string;
 	iv?: string;
-	controller?: AbortController;
+	/**
+	 * Serializable cancel token ID (replaces AbortController which can't cross IPC).
+	 * Use this ID to call transcribe.cancel(cancelToken) to abort the operation.
+	 */
+	cancelToken?: string;
 }
 
 /** Result from a transcription operation */
