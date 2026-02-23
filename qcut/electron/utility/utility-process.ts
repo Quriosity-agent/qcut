@@ -27,14 +27,17 @@ const logger = {
 // We cast via `unknown` because Electron's utility process augments the
 // global `process` with `parentPort`, but the base Node.js types don't
 // include it.
-const parentPort = (process as unknown as { parentPort?: import("node:worker_threads").MessagePort }).parentPort;
+const maybeParentPort = (process as unknown as { parentPort?: import("node:worker_threads").MessagePort }).parentPort;
 
-if (!parentPort) {
+if (!maybeParentPort) {
 	logger.error(
 		"[UtilityProcess] No parentPort available — must run as utilityProcess"
 	);
 	process.exit(1);
 }
+
+// After the guard above, parentPort is guaranteed to be defined
+const parentPort: import("node:worker_threads").MessagePort = maybeParentPort;
 
 const ptyManager = new UtilityPtyManager(parentPort);
 

@@ -10,25 +10,40 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { MessagePort } from "node:worker_threads";
 
-// Dynamic import for node-pty (same strategy as original pty-handler.ts)
+// Simple logger for the utility process (electron-log may not be available here)
+const logger = {
+	info: (...args: unknown[]) => console.log(...args),
+	warn: (...args: unknown[]) => console.warn(...args),
+	error: (...args: unknown[]) => console.error(...args),
+};
+
+// Dynamic import for node-pty using require() instead of ESM import.
+// This is intentional: node-pty is a native Node addon (.node file) that
+// must be loaded via require() in Electron's packaged environment. Native
+// modules cannot be loaded with static ESM imports because Electron
+// resolves them from app.asar / resources at runtime, and the two-stage
+// fallback (standard path → production resourcesPath) cannot be expressed
+// with static imports.
 let pty: typeof import("node-pty");
 try {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	pty = require("node-pty");
-	console.log("[UtilityPTY] Loaded node-pty from standard path");
+	logger.info("[UtilityPTY] Loaded node-pty from standard path");
 } catch (error) {
-	console.warn(
+	logger.warn(
 		"[UtilityPTY] Failed to load node-pty from standard path:",
 		error
 	);
 	const modulePath = path.join(process.resourcesPath, "node_modules/node-pty");
 	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		pty = require(modulePath);
-		console.log(
+		logger.info(
 			"[UtilityPTY] Loaded node-pty from production path:",
 			modulePath
 		);
 	} catch (prodError) {
-		console.error(
+		logger.error(
 			"[UtilityPTY] Failed to load node-pty from production path:",
 			prodError
 		);
@@ -248,7 +263,7 @@ export class UtilityPtyManager {
 	}
 
 	killAll(): void {
-		for (const [id, session] of this.sessions) {
+		for (const [, session] of this.sessions) {
 			try {
 				session.process.kill();
 			} catch {

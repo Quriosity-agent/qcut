@@ -246,6 +246,7 @@ async function handleMainRequest(channel: string, data: Record<string, unknown>)
 
 		case "batch-add-elements": {
 			const req = data as unknown as BatchAddElementsRequest;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- IPC boundary cast
 			return batchAddElements(win, req.projectId, req.elements as any);
 		}
 
