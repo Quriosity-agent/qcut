@@ -371,7 +371,14 @@ Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"star
 	// Parse structured segments from model response
 	const resultData = result.text || result.data;
 	let segments: QueryVideoSegment[] = [];
-	if (typeof resultData === "string") {
+	if (Array.isArray(resultData)) {
+		segments = resultData.map((s: Record<string, unknown>) => ({
+			start: Number(s.start) || 0,
+			end: Number(s.end) || 0,
+			label: String(s.label || ""),
+			action: s.action === "cut" ? ("cut" as const) : ("keep" as const),
+		}));
+	} else if (typeof resultData === "string") {
 		try {
 			const cleaned = resultData
 				.replace(/^```(?:json)?\n?/m, "")
@@ -394,9 +401,11 @@ Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"star
 	}
 
 	// Save output JSON
-	const videoFilename = isUrl(videoInput)
-		? "video"
-		: basename(videoInput, `.${videoInput.split(".").pop()}`);
+	const videoFile = isUrl(videoInput)
+		? filenameFromUrl(videoInput)
+		: basename(videoInput);
+	const extDot = videoFile.includes(".") ? `.${videoFile.split(".").pop()}` : "";
+	const videoFilename = extDot ? videoFile.slice(0, -extDot.length) : videoFile;
 	const outputDir =
 		options.outputDir ||
 		(isUrl(videoInput) ? process.cwd() : dirname(videoInput));

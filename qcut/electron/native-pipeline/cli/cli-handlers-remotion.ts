@@ -50,11 +50,15 @@ function toComponentName(input: string): string {
 function findSkillPath(): string | null {
 	const skillRelPath = ".agents/skills/remotion-best-practices/SKILL.md";
 	const candidates: string[] = [
-		// 1. Electron app path (works in packaged builds)
+		// 1. Electron app paths (works in packaged builds)
 		...(() => {
 			try {
 				const { app } = require("electron");
-				if (app?.getAppPath) return [join(app.getAppPath(), skillRelPath)];
+				const paths: string[] = [];
+				if (app?.getAppPath) paths.push(join(app.getAppPath(), skillRelPath));
+				if (process.resourcesPath)
+					paths.push(join(process.resourcesPath, "app", skillRelPath));
+				return paths;
 			} catch {
 				/* not running under Electron */
 			}
@@ -235,6 +239,15 @@ export async function handleGenerateRemotion(
 			error: "--duration must be a positive number (seconds)",
 		};
 	}
+	if (Number.isNaN(fps) || fps <= 0) {
+		return { success: false, error: "--fps must be a positive number" };
+	}
+	if (Number.isNaN(width) || width <= 0) {
+		return { success: false, error: "--width must be a positive number" };
+	}
+	if (Number.isNaN(height) || height <= 0) {
+		return { success: false, error: "--height must be a positive number" };
+	}
 
 	const startTime = Date.now();
 	onProgress({
@@ -291,18 +304,26 @@ export async function handleGenerateRemotion(
 	// 8. Ensure package.json exists for folder import validation
 	const pkgJsonPath = join(projectDir, "src", "package.json");
 	if (!existsSync(pkgJsonPath)) {
-		writeFileSync(
-			pkgJsonPath,
-			JSON.stringify(
-				{
-					name: componentName.toLowerCase(),
-					version: "1.0.0",
-					dependencies: { remotion: "*", react: "*" },
-				},
-				null,
-				2
-			)
-		);
+		try {
+			writeFileSync(
+				pkgJsonPath,
+				JSON.stringify(
+					{
+						name: componentName.toLowerCase(),
+						version: "1.0.0",
+						dependencies: { remotion: "*", react: "*" },
+					},
+					null,
+					2
+				)
+			);
+		} catch (err) {
+			return {
+				success: false,
+				error: `Failed to write package.json: ${err instanceof Error ? err.message : String(err)}`,
+				duration: (Date.now() - startTime) / 1000,
+			};
+		}
 	}
 
 	// Verify Root.tsx was created
