@@ -37,6 +37,42 @@ import { logOperation } from "./claude-operation-log.js";
 import { getMediaInfo } from "./claude-media-handler.js";
 import type { BrowserWindow } from "electron";
 
+// ---------------------------------------------------------------------------
+// Helpers for word normalization (used by load-speech + transcribe-and-load)
+// ---------------------------------------------------------------------------
+
+interface RawWord {
+	text: string;
+	start: number;
+	end: number;
+	type?: string;
+	speaker_id?: string | null;
+	speaker?: string;
+}
+
+function buildTextFromWords(words: RawWord[]): string {
+	return words
+		.filter((w) => w.type === "word" || w.type === "spacing")
+		.map((w) => w.text)
+		.join("");
+}
+
+function normalizeWords(words: RawWord[]): Array<{
+	text: string;
+	start: number;
+	end: number;
+	type: string;
+	speaker_id: string | null;
+}> {
+	return words.map((w) => ({
+		text: w.text,
+		start: w.start,
+		end: w.end,
+		type: w.type ?? "word",
+		speaker_id: w.speaker_id ?? w.speaker ?? null,
+	}));
+}
+
 /**
  * Register analysis, transcription, and Stage 3 editing routes on the router.
  */
@@ -152,34 +188,12 @@ export function registerAnalysisRoutes(
 			throw new HttpError(400, "Missing 'words' array in request body");
 		}
 		const win = getWindow();
-		const text =
-			req.body.text ??
-			req.body.words
-				.filter(
-					(w: { type?: string }) => w.type === "word" || w.type === "spacing"
-				)
-				.map((w: { text: string }) => w.text)
-				.join("");
+		const words: RawWord[] = req.body.words;
 		win.webContents.send("claude:speech:load", {
-			text,
+			text: req.body.text ?? buildTextFromWords(words),
 			language_code: req.body.language_code ?? req.body.language ?? "unknown",
 			language_probability: req.body.language_probability ?? 0,
-			words: req.body.words.map(
-				(w: {
-					text: string;
-					start: number;
-					end: number;
-					type?: string;
-					speaker_id?: string | null;
-					speaker?: string;
-				}) => ({
-					text: w.text,
-					start: w.start,
-					end: w.end,
-					type: w.type ?? "word",
-					speaker_id: w.speaker_id ?? w.speaker ?? null,
-				})
-			),
+			words: normalizeWords(words),
 			fileName:
 				req.body.fileName ?? `transcription_${req.params.projectId}.json`,
 		});
@@ -224,22 +238,12 @@ export function registerAnalysisRoutes(
 				) {
 					throw new HttpError(500, "Transcription produced no words");
 				}
-				const text = result.words
-					.filter((w) => w.type === "word" || w.type === "spacing")
-					.map((w) => w.text)
-					.join("");
 				const win = getWindow();
 				win.webContents.send("claude:speech:load", {
-					text,
+					text: buildTextFromWords(result.words),
 					language_code: result.language ?? "unknown",
 					language_probability: 0,
-					words: result.words.map((w) => ({
-						text: w.text,
-						start: w.start,
-						end: w.end,
-						type: w.type ?? "word",
-						speaker_id: w.speaker ?? null,
-					})),
+					words: normalizeWords(result.words),
 					fileName: `transcription_${req.body.mediaId}.json`,
 				});
 				// Add media to timeline

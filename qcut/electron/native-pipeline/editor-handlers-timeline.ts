@@ -211,11 +211,11 @@ async function timelineBatchAdd(
 
 	// Validate trackId is present on each element
 	for (const el of elements) {
-		if (!el.trackId) {
+		if (typeof el !== "object" || el === null || !el.trackId) {
 			return {
 				success: false,
 				error:
-					"Each element must include 'trackId'. Use editor:timeline:export to find track IDs.",
+					"Each element must be an object with 'trackId'. Use editor:timeline:export to find track IDs.",
 			};
 		}
 	}

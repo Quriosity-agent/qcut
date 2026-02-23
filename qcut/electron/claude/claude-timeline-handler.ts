@@ -414,6 +414,10 @@ export function validateTimeline(timeline: ClaudeTimeline): void {
 	for (let i = 0; i < timeline.tracks.length; i++) {
 		const track = timeline.tracks[i];
 		if (typeof track.index !== "number") {
+			claudeLog.warn(
+				HANDLER_NAME,
+				`Auto-assigning index ${i} for track ${track.id ?? `at position ${i}`}`
+			);
 			track.index = i;
 		}
 		if (!Array.isArray(track.elements)) {
