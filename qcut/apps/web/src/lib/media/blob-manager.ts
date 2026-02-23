@@ -93,7 +93,7 @@ class BlobManager {
 		const entry2 = existingFromKeyCache
 			? this.blobs.get(existingFromKeyCache)
 			: undefined;
-		if (entry2) {
+		if (entry2 && existingFromKeyCache) {
 			entry2.refCount++;
 
 			// Also add to WeakMap for faster future lookups with this instance
@@ -103,9 +103,9 @@ class BlobManager {
 				console.log(
 					`[BlobManager] ♻️ Reusing URL (key match): ${(file as File).name || "blob"}`
 				);
-				console.log(`  📍 Original source: ${entry.source}`);
+				console.log(`  📍 Original source: ${entry2.source}`);
 				console.log(`  🔄 Requested by: ${source}`);
-				console.log(`  📊 Ref count: ${entry.refCount}`);
+				console.log(`  📊 Ref count: ${entry2.refCount}`);
 				console.log(`  🔑 File key: ${fileKey}`);
 			}
 
