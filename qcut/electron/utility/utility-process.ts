@@ -14,12 +14,23 @@ import {
 	stopUtilityHttpServer,
 } from "./utility-http-server.js";
 import { UtilityPtyManager } from "./utility-pty-manager.js";
+import type { MainToUtilityMessage } from "./utility-ipc-types.js";
 
-// Utility process has process.parentPort for communicating with main
-const parentPort = (process as any).parentPort;
+// Simple logger for the utility process (electron-log may not be available here)
+const logger = {
+	info: (...args: unknown[]) => console.log(...args),
+	warn: (...args: unknown[]) => console.warn(...args),
+	error: (...args: unknown[]) => console.error(...args),
+};
+
+// Utility process has process.parentPort for communicating with main.
+// We cast via `unknown` because Electron's utility process augments the
+// global `process` with `parentPort`, but the base Node.js types don't
+// include it.
+const parentPort = (process as unknown as { parentPort?: import("node:worker_threads").MessagePort }).parentPort;
 
 if (!parentPort) {
-	console.error(
+	logger.error(
 		"[UtilityProcess] No parentPort available — must run as utilityProcess"
 	);
 	process.exit(1);
@@ -30,14 +41,14 @@ const ptyManager = new UtilityPtyManager(parentPort);
 // Pending request callbacks for main process responses
 const pendingRequests = new Map<
 	string,
-	{ resolve: (value: any) => void; reject: (err: Error) => void }
+	{ resolve: (value: unknown) => void; reject: (err: Error) => void }
 >();
 
 /**
  * Send a request to the main process and await response.
  * Used for operations that need BrowserWindow access.
  */
-export function requestFromMain(channel: string, data: any): Promise<any> {
+export function requestFromMain(channel: string, data: Record<string, unknown>): Promise<unknown> {
 	return new Promise((resolve, reject) => {
 		const id = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 		const timer = setTimeout(() => {
@@ -46,7 +57,7 @@ export function requestFromMain(channel: string, data: any): Promise<any> {
 		}, 10_000);
 
 		pendingRequests.set(id, {
-			resolve: (value: any) => {
+			resolve: (value: unknown) => {
 				clearTimeout(timer);
 				resolve(value);
 			},
@@ -61,8 +72,8 @@ export function requestFromMain(channel: string, data: any): Promise<any> {
 }
 
 // Handle messages from main process
-parentPort.on("message", (e: any) => {
-	const msg = e.data ?? e;
+parentPort.on("message", (e: { data?: MainToUtilityMessage } | MainToUtilityMessage) => {
+	const msg: MainToUtilityMessage = (e as { data?: MainToUtilityMessage }).data ?? (e as MainToUtilityMessage);
 
 	switch (msg.type) {
 		case "init": {
@@ -73,7 +84,7 @@ parentPort.on("message", (e: any) => {
 				appVersion,
 				requestFromMain,
 			});
-			console.log("[UtilityProcess] Initialized");
+			logger.info("[UtilityProcess] Initialized");
 			parentPort.postMessage({ type: "ready" });
 			break;
 		}
@@ -109,6 +120,11 @@ parentPort.on("message", (e: any) => {
 			ptyManager.killAll();
 			break;
 
+		case "ping":
+			// Health check heartbeat -- respond immediately
+			parentPort.postMessage({ type: "pong" });
+			break;
+
 		case "shutdown":
 			stopUtilityHttpServer();
 			ptyManager.killAll();
@@ -117,4 +133,4 @@ parentPort.on("message", (e: any) => {
 	}
 });
 
-console.log("[UtilityProcess] Started, waiting for init...");
+logger.info("[UtilityProcess] Started, waiting for init...");

@@ -4,9 +4,11 @@
  * Launches and manages the utility process from the main process.
  * Handles:
  * - Starting/stopping the utility process
- * - Proxying BrowserWindow operations from utility → main
- * - Forwarding PTY IPC from renderer → utility and back
- * - Crash recovery
+ * - Proxying BrowserWindow operations from utility -> main
+ * - Forwarding PTY IPC from renderer -> utility and back
+ * - Crash recovery with session persistence
+ * - Health check heartbeat system
+ * - Message queue for offline utility process
  */
 
 import {
@@ -28,6 +30,17 @@ import {
 } from "../claude/handlers/claude-timeline-handler.js";
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
 import * as fs from "node:fs";
+import type {
+	UtilityToMainMessage,
+	WebContentsSendRequest,
+	SplitElementRequest,
+	BatchAddElementsRequest,
+	BatchUpdateElementsRequest,
+	BatchDeleteElementsRequest,
+	GetProjectStatsRequest,
+	PtySpawnOptions,
+	PtySpawnResult,
+} from "./utility-ipc-types.js";
 
 // Use electron-log when available, fall back to console
 let logger: {
@@ -45,13 +58,126 @@ try {
 
 let utilityChild: ReturnType<typeof utilityProcess.fork> | null = null;
 
-// Track PTY session → webContents mapping for forwarding data back
+// Track PTY session -> webContents mapping for forwarding data back
 const sessionToWebContentsId = new Map<string, number>();
 // Track pending PTY spawn requests
 const pendingPtySpawns = new Map<
 	string,
-	{ resolve: (value: any) => void; reject: (err: Error) => void }
+	{ resolve: (value: PtySpawnResult) => void; reject: (err: Error) => void }
 >();
+
+// ============================================================================
+// Feature 1: Session persistence -- track PTY session metadata for re-spawn
+// ============================================================================
+
+/** Metadata needed to re-create a PTY session after utility process restart */
+interface PtySessionMetadata {
+	sessionId: string;
+	webContentsId: number;
+	cwd?: string;
+	command?: string;
+	env?: Record<string, string>;
+	cols?: number;
+	rows?: number;
+	mcpServerPath?: string | null;
+	projectId?: string;
+	projectRoot?: string;
+	apiBaseUrl?: string;
+}
+
+/** Registry of active PTY sessions for crash recovery */
+const sessionRegistry = new Map<string, PtySessionMetadata>();
+
+// ============================================================================
+// Feature 2: Health check heartbeat system
+// ============================================================================
+
+const HEARTBEAT_INTERVAL_MS = 30_000;
+const HEARTBEAT_TIMEOUT_MS = 5_000;
+
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+let heartbeatPending = false;
+let heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+function startHeartbeat(): void {
+	stopHeartbeat();
+	heartbeatTimer = setInterval(() => {
+		if (!utilityChild) return;
+		if (heartbeatPending) {
+			// Previous heartbeat was not answered -- utility is hung
+			logger.error(
+				"[UtilityBridge] Heartbeat timeout -- utility process unresponsive, restarting..."
+			);
+			heartbeatPending = false;
+			forceRestartUtility();
+			return;
+		}
+		heartbeatPending = true;
+		utilityChild.postMessage({ type: "ping" });
+		heartbeatTimeoutTimer = setTimeout(() => {
+			if (heartbeatPending && utilityChild) {
+				logger.error(
+					"[UtilityBridge] Heartbeat timeout -- utility process unresponsive, restarting..."
+				);
+				heartbeatPending = false;
+				forceRestartUtility();
+			}
+		}, HEARTBEAT_TIMEOUT_MS);
+	}, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat(): void {
+	if (heartbeatTimer) {
+		clearInterval(heartbeatTimer);
+		heartbeatTimer = null;
+	}
+	if (heartbeatTimeoutTimer) {
+		clearTimeout(heartbeatTimeoutTimer);
+		heartbeatTimeoutTimer = null;
+	}
+	heartbeatPending = false;
+}
+
+function forceRestartUtility(): void {
+	if (utilityChild) {
+		try {
+			utilityChild.kill();
+		} catch {
+			/* ignore */
+		}
+		// The exit handler will trigger restart and session recovery
+	}
+}
+
+// ============================================================================
+// Feature 4: Message queue for offline utility process
+// ============================================================================
+
+interface QueuedMessage {
+	type: string;
+	[key: string]: unknown;
+}
+
+const messageQueue: QueuedMessage[] = [];
+let utilityReady = false;
+
+/** Send a message to utility process, or queue it if utility is down */
+function sendToUtility(msg: QueuedMessage): void {
+	if (utilityChild && utilityReady) {
+		utilityChild.postMessage(msg);
+	} else {
+		messageQueue.push(msg);
+	}
+}
+
+/** Flush queued messages to the utility process once it is ready */
+function flushMessageQueue(): void {
+	if (!utilityChild) return;
+	while (messageQueue.length > 0) {
+		const msg = messageQueue.shift()!;
+		utilityChild.postMessage(msg);
+	}
+}
 
 /** Get the first active BrowserWindow */
 function getWindow(): BrowserWindow | null {
@@ -84,13 +210,14 @@ function resolveQcutMcpServerEntry(): string | null {
 /**
  * Handle a request from the utility process that needs main-process APIs.
  */
-async function handleMainRequest(channel: string, data: any): Promise<any> {
+async function handleMainRequest(channel: string, data: Record<string, unknown>): Promise<unknown> {
 	const win = getWindow();
 	if (!win) throw new Error("No active window");
 
 	switch (channel) {
 		case "webcontents-send": {
-			win.webContents.send(data.channel, ...data.args);
+			const req = data as unknown as WebContentsSendRequest;
+			win.webContents.send(req.channel, ...req.args);
 			return { sent: true };
 		}
 
@@ -103,36 +230,123 @@ async function handleMainRequest(channel: string, data: any): Promise<any> {
 		}
 
 		case "split-element": {
+			const req = data as unknown as SplitElementRequest;
 			return requestSplitFromRenderer(
 				win,
-				data.elementId,
-				data.splitTime,
-				data.mode
+				req.elementId,
+				req.splitTime,
+				req.mode
 			);
 		}
 
 		case "get-project-stats": {
-			return getProjectStats(win, data.projectId);
+			const req = data as unknown as GetProjectStatsRequest;
+			return getProjectStats(win, req.projectId);
 		}
 
 		case "batch-add-elements": {
-			return batchAddElements(win, data.projectId, data.elements);
+			const req = data as unknown as BatchAddElementsRequest;
+			return batchAddElements(win, req.projectId, req.elements as any);
 		}
 
 		case "batch-update-elements": {
-			return batchUpdateElements(win, data.updates);
+			const req = data as unknown as BatchUpdateElementsRequest;
+			return batchUpdateElements(win, req.updates as any);
 		}
 
 		case "batch-delete-elements": {
-			return batchDeleteElements(win, data.elements, data.ripple);
+			const req = data as unknown as BatchDeleteElementsRequest;
+			return batchDeleteElements(win, req.elements as any, req.ripple);
 		}
 
 		case "arrange-timeline": {
-			return arrangeTimeline(win, data);
+			return arrangeTimeline(win, data as any);
 		}
 
 		default:
 			throw new Error(`Unknown main-request channel: ${channel}`);
+	}
+}
+
+/** Re-spawn PTY sessions from the session registry after crash recovery */
+function respawnSessions(): void {
+	if (sessionRegistry.size === 0) return;
+
+	logger.info(
+		`[UtilityBridge] Re-spawning ${sessionRegistry.size} PTY session(s) after crash recovery...`
+	);
+
+	for (const [sessionId, meta] of sessionRegistry) {
+		// Verify the webContents is still alive
+		try {
+			const contents = webContents.fromId(meta.webContentsId);
+			if (!contents || contents.isDestroyed()) {
+				logger.warn(
+					`[UtilityBridge] Skipping session ${sessionId} -- webContents destroyed`
+				);
+				sessionRegistry.delete(sessionId);
+				sessionToWebContentsId.delete(sessionId);
+				continue;
+			}
+		} catch {
+			sessionRegistry.delete(sessionId);
+			sessionToWebContentsId.delete(sessionId);
+			continue;
+		}
+
+		// Re-register the session -> webContents mapping
+		sessionToWebContentsId.set(sessionId, meta.webContentsId);
+
+		const requestId = `respawn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+		// Set up a pending spawn handler
+		pendingPtySpawns.set(requestId, {
+			resolve: (value: PtySpawnResult) => {
+				if (value.success) {
+					logger.info(
+						`[UtilityBridge] Re-spawned session ${sessionId} successfully`
+					);
+				} else {
+					logger.warn(
+						`[UtilityBridge] Failed to re-spawn session ${sessionId}: ${value.error}`
+					);
+					sessionRegistry.delete(sessionId);
+					sessionToWebContentsId.delete(sessionId);
+					// Notify renderer about the failed re-spawn
+					try {
+						const contents = webContents.fromId(meta.webContentsId);
+						if (contents && !contents.isDestroyed()) {
+							contents.send("pty:exit", {
+								sessionId,
+								exitCode: -1,
+								signal: "RESPAWN_FAILED",
+							});
+						}
+					} catch {
+						/* ignore */
+					}
+				}
+			},
+			reject: () => {
+				sessionRegistry.delete(sessionId);
+				sessionToWebContentsId.delete(sessionId);
+			},
+		});
+
+		sendToUtility({
+			type: "pty:spawn",
+			requestId,
+			sessionId,
+			command: meta.command,
+			cols: meta.cols,
+			rows: meta.rows,
+			cwd: meta.cwd,
+			env: meta.env,
+			mcpServerPath: meta.mcpServerPath,
+			projectId: meta.projectId,
+			projectRoot: meta.projectRoot,
+			apiBaseUrl: meta.apiBaseUrl,
+		});
 	}
 }
 
@@ -143,16 +357,32 @@ export function startUtilityProcess(): void {
 		return;
 	}
 
+	utilityReady = false;
+
 	const utilityPath = path.join(__dirname, "utility-process.js");
 	logger.info(`[UtilityBridge] Forking utility process: ${utilityPath}`);
 
 	utilityChild = utilityProcess.fork(utilityPath);
 
 	// Handle messages from utility process
-	utilityChild.on("message", async (msg: any) => {
+	utilityChild.on("message", async (msg: UtilityToMainMessage) => {
 		switch (msg.type) {
 			case "ready":
 				logger.info("[UtilityBridge] Utility process ready");
+				utilityReady = true;
+				flushMessageQueue();
+				startHeartbeat();
+				// Re-spawn sessions if this is a restart after crash
+				respawnSessions();
+				break;
+
+			case "pong":
+				// Heartbeat response received
+				heartbeatPending = false;
+				if (heartbeatTimeoutTimer) {
+					clearTimeout(heartbeatTimeoutTimer);
+					heartbeatTimeoutTimer = null;
+				}
 				break;
 
 			case "main-request": {
@@ -164,11 +394,12 @@ export function startUtilityProcess(): void {
 						id: msg.id,
 						result,
 					});
-				} catch (err: any) {
+				} catch (err: unknown) {
+					const errMessage = err instanceof Error ? err.message : String(err);
 					utilityChild?.postMessage({
 						type: "main-response",
 						id: msg.id,
-						error: err.message,
+						error: errMessage,
 					});
 				}
 				break;
@@ -190,6 +421,7 @@ export function startUtilityProcess(): void {
 				}
 				if (msg.type === "pty:exit") {
 					sessionToWebContentsId.delete(msg.sessionId);
+					sessionRegistry.delete(msg.sessionId);
 				}
 				break;
 			}
@@ -204,6 +436,7 @@ export function startUtilityProcess(): void {
 						// Clean up session mapping on spawn failure
 						if (msg.sessionId) {
 							sessionToWebContentsId.delete(msg.sessionId);
+							sessionRegistry.delete(msg.sessionId);
 						}
 						pending.resolve({ success: false, error: msg.error });
 					}
@@ -222,23 +455,28 @@ export function startUtilityProcess(): void {
 	utilityChild.on("exit", (code) => {
 		logger.error(`[UtilityBridge] Utility process exited with code ${code}`);
 		utilityChild = null;
+		utilityReady = false;
+		stopHeartbeat();
 
-		// Notify all renderers that PTY sessions are gone
+		// Do not clear sessionRegistry -- we need it for re-spawning!
+		// But do notify renderers that sessions are temporarily unavailable
 		for (const [sessionId, webContentsId] of sessionToWebContentsId) {
-			try {
-				const contents = webContents.fromId(webContentsId);
-				if (contents && !contents.isDestroyed()) {
-					contents.send("pty:exit", {
-						sessionId,
-						exitCode: -1,
-						signal: "CRASHED",
-					});
+			// Only notify if we are NOT going to try to re-spawn
+			if (!sessionRegistry.has(sessionId)) {
+				try {
+					const contents = webContents.fromId(webContentsId);
+					if (contents && !contents.isDestroyed()) {
+						contents.send("pty:exit", {
+							sessionId,
+							exitCode: -1,
+							signal: "CRASHED",
+						});
+					}
+				} catch {
+					/* ignore */
 				}
-			} catch {
-				/* ignore */
 			}
 		}
-		sessionToWebContentsId.clear();
 
 		// Resolve any pending spawns with failure
 		for (const [, pending] of pendingPtySpawns) {
@@ -250,6 +488,10 @@ export function startUtilityProcess(): void {
 		if (code !== 0 && code !== null) {
 			logger.info("[UtilityBridge] Restarting utility process in 1s...");
 			setTimeout(() => startUtilityProcess(), 1000);
+		} else {
+			// Clean exit -- clear session registry too
+			sessionRegistry.clear();
+			sessionToWebContentsId.clear();
 		}
 	});
 
@@ -267,6 +509,7 @@ export function startUtilityProcess(): void {
 /** Stop the utility process */
 export function stopUtilityProcess(): void {
 	if (utilityChild) {
+		stopHeartbeat();
 		utilityChild.postMessage({ type: "shutdown" });
 		// Give it a moment to clean up, then kill if needed
 		setTimeout(() => {
@@ -292,16 +535,16 @@ export function setupUtilityPtyIPC(): void {
 			}
 			for (const sessionId of sessionsToKill) {
 				sessionToWebContentsId.delete(sessionId);
-				utilityChild?.postMessage({ type: "pty:kill", sessionId });
+				sessionRegistry.delete(sessionId);
+				sendToUtility({ type: "pty:kill", sessionId });
 			}
 		});
 	});
 
 	ipcMain.handle(
 		"pty:spawn",
-		async (event, options: any = {}): Promise<any> => {
-			const child = utilityChild;
-			if (!child)
+		async (event, options: PtySpawnOptions = {}): Promise<PtySpawnResult> => {
+			if (!utilityChild && messageQueue.length === 0 && !utilityReady)
 				return { success: false, error: "Utility process not running" };
 
 			const sessionId = `pty-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -309,28 +552,49 @@ export function setupUtilityPtyIPC(): void {
 
 			sessionToWebContentsId.set(sessionId, event.sender.id);
 
+			// Resolve MCP server path in main process (needs app.getAppPath())
+			const mcpServerPath = resolveQcutMcpServerEntry();
+
+			// Store session metadata for crash recovery
+			const metadata: PtySessionMetadata = {
+				sessionId,
+				webContentsId: event.sender.id,
+				cwd: options.cwd,
+				command: options.command,
+				env: options.env,
+				cols: options.cols,
+				rows: options.rows,
+				mcpServerPath,
+				projectId: options.env?.QCUT_PROJECT_ID,
+				projectRoot: options.env?.QCUT_PROJECT_ROOT || options.cwd,
+				apiBaseUrl: options.env?.QCUT_API_BASE_URL,
+			};
+			sessionRegistry.set(sessionId, metadata);
+
 			return new Promise((resolve) => {
 				const timer = setTimeout(() => {
 					pendingPtySpawns.delete(requestId);
 					sessionToWebContentsId.delete(sessionId);
+					sessionRegistry.delete(sessionId);
 					resolve({ success: false, error: "PTY spawn timed out" });
 				}, 10_000);
 
 				pendingPtySpawns.set(requestId, {
-					resolve: (value: any) => {
+					resolve: (value: PtySpawnResult) => {
 						clearTimeout(timer);
+						if (!value.success) {
+							sessionRegistry.delete(sessionId);
+						}
 						resolve(value);
 					},
 					reject: () => {
 						clearTimeout(timer);
+						sessionRegistry.delete(sessionId);
 						resolve({ success: false, error: "PTY spawn failed" });
 					},
 				});
 
-				// Resolve MCP server path in main process (needs app.getAppPath())
-				const mcpServerPath = resolveQcutMcpServerEntry();
-
-				child.postMessage({
+				sendToUtility({
 					type: "pty:spawn",
 					requestId,
 					sessionId,
@@ -349,34 +613,35 @@ export function setupUtilityPtyIPC(): void {
 	);
 
 	ipcMain.handle("pty:write", async (_, sessionId: string, data: string) => {
-		if (!utilityChild)
+		if (!utilityChild && !utilityReady)
 			return { success: false, error: "Utility process not running" };
-		utilityChild.postMessage({ type: "pty:write", sessionId, data });
+		sendToUtility({ type: "pty:write", sessionId, data });
 		return { success: true };
 	});
 
 	ipcMain.handle(
 		"pty:resize",
 		async (_, sessionId: string, cols: number, rows: number) => {
-			if (!utilityChild)
+			if (!utilityChild && !utilityReady)
 				return { success: false, error: "Utility process not running" };
-			utilityChild.postMessage({ type: "pty:resize", sessionId, cols, rows });
+			sendToUtility({ type: "pty:resize", sessionId, cols, rows });
 			return { success: true };
 		}
 	);
 
 	ipcMain.handle("pty:kill", async (_, sessionId: string) => {
-		if (!utilityChild)
+		if (!utilityChild && !utilityReady)
 			return { success: false, error: "Utility process not running" };
-		utilityChild.postMessage({ type: "pty:kill", sessionId });
+		sendToUtility({ type: "pty:kill", sessionId });
 		sessionToWebContentsId.delete(sessionId);
+		sessionRegistry.delete(sessionId);
 		return { success: true };
 	});
 
 	ipcMain.handle("pty:kill-all", async () => {
-		if (!utilityChild) return { success: true };
-		utilityChild.postMessage({ type: "pty:kill-all" });
+		sendToUtility({ type: "pty:kill-all" });
 		sessionToWebContentsId.clear();
+		sessionRegistry.clear();
 		return { success: true };
 	});
 
@@ -385,11 +650,14 @@ export function setupUtilityPtyIPC(): void {
 
 /** Clean up everything on app quit */
 export function cleanupUtilityProcess(): void {
+	stopHeartbeat();
 	if (utilityChild) {
 		utilityChild.postMessage({ type: "pty:kill-all" });
 		utilityChild.kill();
 		utilityChild = null;
 	}
 	sessionToWebContentsId.clear();
+	sessionRegistry.clear();
 	pendingPtySpawns.clear();
+	messageQueue.length = 0;
 }
