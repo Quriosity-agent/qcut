@@ -103,4 +103,19 @@ export function registerImageUnderstandingModels(): void {
 		costEstimate: 0.001,
 		processingTime: 4,
 	});
+
+	ModelRegistry.register({
+		key: "fal_video_qa",
+		name: "FAL Video Q&A",
+		provider: "fal",
+		endpoint: "openrouter/router/video/enterprise",
+		categories: ["image_understanding"],
+		description:
+			"Video analysis via FAL-hosted OpenRouter VLM (Gemini 2.5 Flash)",
+		pricing: { per_request: 0.003 },
+		defaults: { model: "google/gemini-2.5-flash" },
+		features: ["qa", "video_analysis", "interactive"],
+		costEstimate: 0.003,
+		processingTime: 15,
+	});
 }

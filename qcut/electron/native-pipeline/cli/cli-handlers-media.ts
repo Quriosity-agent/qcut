@@ -34,7 +34,7 @@ export async function handleAnalyzeVideo(
 		return { success: false, error: "Missing --input/-i (video path/URL)" };
 	}
 
-	const model = options.model || "gemini_qa";
+	const model = options.model || "fal_video_qa";
 	if (!ModelRegistry.has(model)) {
 		return { success: false, error: `Unknown model '${model}'` };
 	}

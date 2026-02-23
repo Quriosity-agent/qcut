@@ -11,6 +11,7 @@ import type { ModelCategory, ModelDefinition } from "../infra/registry.js";
 import {
 	callModelApi,
 	downloadOutput,
+	uploadToFalStorage,
 	type ApiCallResult,
 } from "../infra/api-caller.js";
 
@@ -87,7 +88,11 @@ function getProviderForEndpoint(
 ): "fal" | "elevenlabs" | "google" | "openrouter" {
 	if (endpoint.startsWith("elevenlabs/")) return "elevenlabs";
 	if (endpoint.startsWith("google/")) return "google";
-	if (endpoint.startsWith("openrouter/")) return "openrouter";
+	if (
+		endpoint.startsWith("openrouter/") &&
+		!endpoint.startsWith("openrouter/router/")
+	)
+		return "openrouter";
 	return "fal";
 }
 
@@ -399,6 +404,23 @@ async function executeImageUnderstanding(
 ): Promise<StepOutput> {
 	if (input.imageUrl) {
 		payload.image_url = input.imageUrl;
+	}
+	if (input.videoUrl) {
+		// Upload local files to FAL storage for FAL-routed endpoints
+		if (provider === "fal" && !input.videoUrl.startsWith("http")) {
+			options.onProgress?.(10, "Uploading video to FAL storage...");
+			const upload = await uploadToFalStorage(input.videoUrl);
+			if (!upload.success || !upload.url) {
+				return {
+					success: false,
+					error: upload.error || "Failed to upload video",
+					duration: 0,
+				};
+			}
+			payload.video_url = upload.url;
+		} else {
+			payload.video_url = input.videoUrl;
+		}
 	}
 	const result = await callModelApi({
 		endpoint: model.endpoint,
