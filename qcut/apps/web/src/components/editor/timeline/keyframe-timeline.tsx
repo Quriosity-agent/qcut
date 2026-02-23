@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useEffectsStore } from "@/stores/ai/effects-store";
-import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { cn } from "@/lib/utils";
 import {

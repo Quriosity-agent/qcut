@@ -1,10 +1,7 @@
 import { useState, useCallback } from "react";
-import {
-	ZipManager,
-	downloadZipSafely,
-	ZipExportOptions,
-} from "@/lib/project/zip-manager";
-import { MediaItem } from "@/stores/media/media-store";
+import { ZipManager, downloadZipSafely } from "@/lib/project/zip-manager";
+import type { ZipExportOptions } from "@/lib/project/zip-manager";
+import type { MediaItem } from "@/stores/media/media-store";
 
 export interface ExportProgress {
 	phase:

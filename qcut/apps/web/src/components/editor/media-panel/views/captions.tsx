@@ -42,7 +42,6 @@ import type {
 	TranscriptionResult,
 	TranscriptionSegment,
 } from "@/types/captions";
-import { extractAudio } from "@/lib/ffmpeg/ffmpeg-utils";
 // REMOVED: import { r2Client } from "@/lib/storage/r2-client";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";

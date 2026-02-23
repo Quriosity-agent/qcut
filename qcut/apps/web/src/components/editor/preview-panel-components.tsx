@@ -9,7 +9,7 @@ import {
 	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState } from "react";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useEditorStore } from "@/stores/editor/editor-store";
 import { useProjectStore } from "@/stores/project-store";
