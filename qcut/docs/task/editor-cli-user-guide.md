@@ -1,260 +1,24 @@
-# QCut CLI User Guide
+# QCut Editor CLI User Guide
 
-Complete reference for the `qcut-pipeline` CLI tool covering all pipeline, ViMax, and editor commands.
+Complete reference for `editor:*` commands that control a running QCut desktop instance via its HTTP API.
 
 ## Quick Start
 
 ```bash
-# Run from the qcut/ directory
-bun run pipeline <command> [options]
+# Start QCut first
+bun run electron:dev
+
+# Run editor commands
+bun run pipeline editor:<command> [options]
 
 # Or directly
-bun run electron/native-pipeline/cli.ts <command> [options]
+bun run electron/native-pipeline/cli.ts editor:<command> [options]
 
-# Get help
-bun run pipeline --help
+# Check connection
+bun run pipeline editor:health
 ```
 
-## Global Options
-
-| Flag | Short | Description | Default |
-|------|-------|-------------|---------|
-| `--output-dir` | `-o` | Output directory | `./output` |
-| `--model` | `-m` | AI model key (e.g. `kling_2_6_pro`, `flux_dev`) | - |
-| `--json` | | Output results as JSON | `false` |
-| `--quiet` | `-q` | Suppress progress output | `false` |
-| `--verbose` | `-v` | Enable debug output | `false` |
-| `--help` | `-h` | Show help | - |
-| `--version` | | Show version | - |
-
----
-
-## Part 1: Pipeline Commands
-
-### Image Generation
-
-```bash
-# Generate an image from text
-bun run pipeline generate-image --text "A cat in space" --model flux_dev
-
-# With aspect ratio and negative prompt
-bun run pipeline generate-image \
-  --text "A sunset over mountains" \
-  --model flux_dev \
-  --aspect-ratio "16:9" \
-  --negative-prompt "blurry, low quality"
-```
-
-### Video Creation
-
-```bash
-# Create a video from text
-bun run pipeline create-video --text "Ocean waves crashing" --model kling_2_6_pro --duration 5s
-
-# From an image (image-to-video)
-bun run pipeline create-video \
-  --model kling_2_6_pro \
-  --image-url "/path/to/image.png" \
-  --text "The scene comes alive" \
-  --duration 5s \
-  --aspect-ratio "16:9"
-```
-
-### Avatar Generation
-
-```bash
-# Generate a talking avatar video
-bun run pipeline generate-avatar \
-  --text "Hello, welcome to QCut!" \
-  --model avatar_model \
-  --audio-url "/path/to/speech.mp3"
-```
-
-### Video Analysis
-
-```bash
-# Analyze a video with AI vision
-bun run pipeline analyze-video \
-  --source "/path/to/video.mp4" \
-  --analysis-type "describe" \
-  --output-format json
-```
-
-### Transcription
-
-```bash
-# Transcribe audio to text
-bun run pipeline transcribe \
-  --source "/path/to/video.mp4" \
-  --language en \
-  --srt \
-  --srt-max-words 10
-```
-
-### Motion Transfer
-
-```bash
-# Transfer motion from video to image
-bun run pipeline transfer-motion \
-  --video-url "/path/to/motion.mp4" \
-  --image-url "/path/to/still.png" \
-  --orientation landscape
-```
-
-### Image Upscaling
-
-```bash
-bun run pipeline upscale-image \
-  --image-url "/path/to/image.png" \
-  --target "2x"
-```
-
-### Image Grid
-
-```bash
-bun run pipeline generate-grid \
-  --text "Four seasons landscapes" \
-  --model flux_dev \
-  --layout "2x2"
-```
-
-### YAML Pipelines
-
-```bash
-# Run a multi-step pipeline from a YAML config
-bun run pipeline run-pipeline \
-  --config pipeline.yaml \
-  --input "A sunset beach scene" \
-  --save-intermediates \
-  --parallel \
-  --max-workers 4
-```
-
-### Model Listing
-
-```bash
-bun run pipeline list-models              # All models
-bun run pipeline list-avatar-models       # Avatar models
-bun run pipeline list-video-models        # Video models
-bun run pipeline list-motion-models       # Motion transfer models
-bun run pipeline list-speech-models       # Speech/TTS models
-```
-
-### Cost Estimation
-
-```bash
-bun run pipeline estimate-cost --model kling_2_6_pro --duration 10 --resolution 1080p
-```
-
-### API Key Management
-
-```bash
-bun run pipeline setup                    # Create API key template file
-bun run pipeline set-key --name FAL_KEY --value "your-api-key"
-bun run pipeline get-key --name FAL_KEY   # Shows masked key
-bun run pipeline delete-key --name FAL_KEY
-bun run pipeline check-keys               # Check all configured keys
-```
-
-### Project Management
-
-```bash
-bun run pipeline init-project --directory ./my-project
-bun run pipeline organize-project --directory ./my-project --recursive
-bun run pipeline structure-info --directory ./my-project
-bun run pipeline create-examples --directory ./my-project
-```
-
----
-
-## Part 2: ViMax Commands
-
-ViMax is the agentic video production system for end-to-end video creation.
-
-```bash
-# Full idea-to-video pipeline
-bun run pipeline vimax:idea2video \
-  --idea "A documentary about ocean life" \
-  --video-model kling_2_6_pro \
-  --image-model flux_dev
-
-# Script to video
-bun run pipeline vimax:script2video \
-  --script "Scene 1: A sunrise. Scene 2: Birds flying." \
-  --video-model kling_2_6_pro
-
-# Novel to movie
-bun run pipeline vimax:novel2movie \
-  --novel "/path/to/novel.txt" \
-  --max-scenes 10 \
-  --title "My Movie"
-
-# Extract characters from text
-bun run pipeline vimax:extract-characters \
-  --script "Alice met Bob at the park..." \
-  --max-characters 5
-
-# Generate screenplay
-bun run pipeline vimax:generate-script \
-  --idea "A comedy about robots" \
-  --llm-model gemini
-
-# Generate storyboard from script
-bun run pipeline vimax:generate-storyboard \
-  --script "/path/to/script.txt" \
-  --image-model flux_dev
-
-# Generate character portraits
-bun run pipeline vimax:generate-portraits \
-  --script "/path/to/script.txt" \
-  --image-model flux_dev \
-  --portraits 3 \
-  --views "front,side"
-
-# Create portrait registry from files
-bun run pipeline vimax:create-registry --directory ./portraits
-
-# Show registry contents
-bun run pipeline vimax:show-registry
-
-# List ViMax-specific models
-bun run pipeline vimax:list-models
-```
-
-### ViMax Options
-
-| Flag | Description |
-|------|-------------|
-| `--idea` | Text idea for generation |
-| `--script` | Script text or file path |
-| `--novel` | Novel text or file path |
-| `--title` | Project title |
-| `--max-scenes` | Maximum number of scenes |
-| `--llm-model` | LLM model for text generation |
-| `--image-model` | Image generation model |
-| `--video-model` | Video generation model |
-| `--portraits` | Number of portraits to generate |
-| `--views` | Portrait views (comma-separated) |
-| `--max-characters` | Maximum characters to extract |
-| `--scripts-only` | Only generate scripts |
-| `--storyboard-only` | Only generate storyboard |
-| `--no-portraits` | Skip portrait generation |
-| `--no-references` | Skip reference images |
-| `--save-registry` | Save portrait registry (default: true) |
-
----
-
-## Part 3: Editor Commands
-
-Editor commands control a running QCut desktop instance via its HTTP API. QCut must be running with `bun run electron:dev` or `bun run electron`.
-
-### Prerequisites
-
-1. Start QCut: `bun run electron:dev`
-2. The HTTP API starts on `http://127.0.0.1:8765` by default
-3. All editor commands start with `editor:`
-
-### Editor Connection Options
+## Connection Options
 
 | Flag | Description | Default |
 |------|-------------|---------|
@@ -265,7 +29,7 @@ Editor commands control a running QCut desktop instance via its HTTP API. QCut m
 | `--poll` | Auto-poll async jobs until complete | `false` |
 | `--poll-interval` | Poll interval in seconds | `3` |
 
-### JSON Input Modes
+## JSON Input Modes
 
 Many commands accept JSON data via `--data`, `--elements`, `--cuts`, etc. Three input modes are supported:
 
@@ -282,38 +46,37 @@ echo '{"type":"text"}' | bun run pipeline editor:timeline:add-element --data -
 
 ---
 
-### Health Check
+## Health Check
 
 ```bash
-# Check if QCut is running and API is accessible
 bun run pipeline editor:health
 ```
 
 ---
 
-### Media Commands
+## Media Commands
 
 Manage media files in the QCut media panel.
 
-#### List media
+### List media
 
 ```bash
 bun run pipeline editor:media:list --project-id <id>
 ```
 
-#### Get media info
+### Get media info
 
 ```bash
 bun run pipeline editor:media:info --project-id <id> --media-id <id>
 ```
 
-#### Import local file
+### Import local file
 
 ```bash
 bun run pipeline editor:media:import --project-id <id> --source /path/to/video.mp4
 ```
 
-#### Import from URL
+### Import from URL
 
 ```bash
 bun run pipeline editor:media:import-url \
@@ -322,7 +85,7 @@ bun run pipeline editor:media:import-url \
   --filename "my-video.mp4"
 ```
 
-#### Batch import (max 20 items)
+### Batch import (max 20 items)
 
 ```bash
 # Inline
@@ -336,7 +99,7 @@ bun run pipeline editor:media:batch-import \
   --items @imports.json
 ```
 
-#### Extract a frame
+### Extract a frame
 
 ```bash
 bun run pipeline editor:media:extract-frame \
@@ -346,7 +109,7 @@ bun run pipeline editor:media:extract-frame \
   --output-format png
 ```
 
-#### Rename media
+### Rename media
 
 ```bash
 bun run pipeline editor:media:rename \
@@ -355,7 +118,7 @@ bun run pipeline editor:media:rename \
   --new-name "final-cut.mp4"
 ```
 
-#### Delete media
+### Delete media
 
 ```bash
 bun run pipeline editor:media:delete --project-id <id> --media-id <id>
@@ -363,17 +126,17 @@ bun run pipeline editor:media:delete --project-id <id> --media-id <id>
 
 ---
 
-### Project Commands
+## Project Commands
 
 Manage project settings and metadata.
 
-#### Get settings
+### Get settings
 
 ```bash
 bun run pipeline editor:project:settings --project-id <id>
 ```
 
-#### Update settings
+### Update settings
 
 ```bash
 bun run pipeline editor:project:update-settings \
@@ -386,19 +149,19 @@ bun run pipeline editor:project:update-settings \
   --data @settings.json
 ```
 
-#### Get statistics
+### Get statistics
 
 ```bash
 bun run pipeline editor:project:stats --project-id <id>
 ```
 
-#### Get summary (markdown)
+### Get summary (markdown)
 
 ```bash
 bun run pipeline editor:project:summary --project-id <id>
 ```
 
-#### Generate pipeline report
+### Generate pipeline report
 
 ```bash
 bun run pipeline editor:project:report \
@@ -409,11 +172,11 @@ bun run pipeline editor:project:report \
 
 ---
 
-### Timeline Commands
+## Timeline Commands
 
 Read and manipulate the editor timeline.
 
-#### Export timeline
+### Export timeline
 
 ```bash
 # Default format
@@ -426,7 +189,7 @@ bun run pipeline editor:timeline:export --project-id <id> --json
 bun run pipeline editor:timeline:export --project-id <id> --output-format json
 ```
 
-#### Import timeline
+### Import timeline
 
 ```bash
 # Import JSON timeline data
@@ -443,7 +206,7 @@ bun run pipeline editor:timeline:import --project-id <id> --data @timeline.json 
 
 **Important**: When importing elements that reference media files, use `sourceName` (the filename) in element data, not `mediaId`. The renderer resolves media by filename.
 
-#### Add element
+### Add element
 
 ```bash
 # Add a media element (use sourceName to link to imported media)
@@ -457,7 +220,7 @@ bun run pipeline editor:timeline:add-element \
   --data '{"type":"text","content":"Hello World","startTime":0,"duration":5}'
 ```
 
-#### Batch add elements (max 50)
+### Batch add elements (max 50)
 
 ```bash
 bun run pipeline editor:timeline:batch-add \
@@ -465,7 +228,7 @@ bun run pipeline editor:timeline:batch-add \
   --elements '[{"type":"text","content":"Title","startTime":0},{"type":"text","content":"End","startTime":10}]'
 ```
 
-#### Update element
+### Update element
 
 ```bash
 bun run pipeline editor:timeline:update-element \
@@ -480,7 +243,7 @@ bun run pipeline editor:timeline:update-element \
   --data '{"startTime":5}'
 ```
 
-#### Batch update elements (max 50)
+### Batch update elements (max 50)
 
 ```bash
 bun run pipeline editor:timeline:batch-update \
@@ -488,7 +251,7 @@ bun run pipeline editor:timeline:batch-update \
   --updates '[{"elementId":"e1","changes":{"startTime":0}},{"elementId":"e2","changes":{"startTime":10}}]'
 ```
 
-#### Delete element
+### Delete element
 
 ```bash
 bun run pipeline editor:timeline:delete-element \
@@ -496,7 +259,7 @@ bun run pipeline editor:timeline:delete-element \
   --element-id <id>
 ```
 
-#### Batch delete elements (max 50)
+### Batch delete elements (max 50)
 
 ```bash
 # With ripple (close gaps)
@@ -506,7 +269,7 @@ bun run pipeline editor:timeline:batch-delete \
   --ripple
 ```
 
-#### Split element
+### Split element
 
 ```bash
 # Split at 10 seconds into the element
@@ -516,7 +279,7 @@ bun run pipeline editor:timeline:split \
   --split-time 10
 ```
 
-#### Move element
+### Move element
 
 ```bash
 # Move to a different track
@@ -535,7 +298,7 @@ bun run pipeline editor:timeline:move \
 
 **Known issue**: Moving an element within the same track may cause the element to disappear. Use different `--to-track` values.
 
-#### Arrange elements on a track
+### Arrange elements on a track
 
 ```bash
 # Sequential arrangement (end-to-end, no gaps)
@@ -562,7 +325,7 @@ bun run pipeline editor:timeline:arrange \
 
 Modes: `sequential`, `spaced`, `manual`
 
-#### Selection
+### Selection
 
 ```bash
 # Select elements
@@ -579,11 +342,11 @@ bun run pipeline editor:timeline:clear-selection --project-id <id>
 
 ---
 
-### Editing Commands
+## Editing Commands
 
 Advanced editing operations.
 
-#### Batch cuts
+### Batch cuts
 
 ```bash
 # Apply multiple cuts to an element
@@ -594,7 +357,7 @@ bun run pipeline editor:editing:batch-cuts \
   --ripple
 ```
 
-#### Delete time range
+### Delete time range
 
 ```bash
 # Delete a time range across tracks
@@ -613,7 +376,7 @@ bun run pipeline editor:editing:delete-range \
   --cross-track-ripple
 ```
 
-#### Auto-edit (remove fillers/silences)
+### Auto-edit (remove fillers/silences)
 
 ```bash
 # Synchronous auto-edit
@@ -643,7 +406,7 @@ bun run pipeline editor:editing:auto-edit \
   --dry-run
 ```
 
-#### Auto-edit job management
+### Auto-edit job management
 
 ```bash
 # Check job status
@@ -655,7 +418,7 @@ bun run pipeline editor:editing:auto-edit-status \
 bun run pipeline editor:editing:auto-edit-list --project-id <id>
 ```
 
-#### AI-suggested cuts
+### AI-suggested cuts
 
 ```bash
 # Get AI-suggested cuts (sync)
@@ -681,11 +444,11 @@ bun run pipeline editor:editing:suggest-status \
 
 ---
 
-### Analysis Commands
+## Analysis Commands
 
 AI-powered video and audio analysis.
 
-#### Analyze video
+### Analyze video
 
 ```bash
 # Using a media ID
@@ -708,13 +471,13 @@ bun run pipeline editor:analyze:video \
 
 Source format: `media:<id>`, `path:/file/path`, `timeline:<elementId>`, or bare path `/file/path`
 
-#### List analysis models
+### List analysis models
 
 ```bash
 bun run pipeline editor:analyze:models
 ```
 
-#### Detect scenes
+### Detect scenes
 
 ```bash
 bun run pipeline editor:analyze:scenes \
@@ -724,7 +487,7 @@ bun run pipeline editor:analyze:scenes \
   --model gemini
 ```
 
-#### Analyze frames
+### Analyze frames
 
 ```bash
 # At specific timestamps
@@ -741,7 +504,7 @@ bun run pipeline editor:analyze:frames \
   --prompt "Describe the mood of this frame"
 ```
 
-#### Detect filler words
+### Detect filler words
 
 ```bash
 bun run pipeline editor:analyze:fillers \
@@ -756,11 +519,11 @@ bun run pipeline editor:analyze:fillers \
 
 ---
 
-### Transcription Commands
+## Transcription Commands
 
 Speech-to-text transcription.
 
-#### Transcribe (synchronous)
+### Transcribe (synchronous)
 
 ```bash
 bun run pipeline editor:transcribe:run \
@@ -770,7 +533,7 @@ bun run pipeline editor:transcribe:run \
   --provider deepgram
 ```
 
-#### Transcribe (async with polling)
+### Transcribe (async with polling)
 
 ```bash
 # Start and poll until complete
@@ -787,7 +550,7 @@ bun run pipeline editor:transcribe:start \
   --media-id <id>
 ```
 
-#### Job management
+### Job management
 
 ```bash
 # Check status
@@ -804,7 +567,7 @@ bun run pipeline editor:transcribe:cancel \
   --job-id <id>
 ```
 
-#### Transcription Options
+### Transcription Options
 
 | Flag | Description |
 |------|-------------|
@@ -814,11 +577,11 @@ bun run pipeline editor:transcribe:cancel \
 
 ---
 
-### Generate Commands
+## Generate Commands
 
 AI content generation within the editor.
 
-#### Start generation
+### Start generation
 
 ```bash
 # Text-to-image/video
@@ -854,7 +617,7 @@ bun run pipeline editor:generate:start \
   --start-time 0
 ```
 
-#### Job management
+### Job management
 
 ```bash
 # Check status
@@ -871,13 +634,13 @@ bun run pipeline editor:generate:cancel \
   --job-id <id>
 ```
 
-#### List generation models
+### List generation models
 
 ```bash
 bun run pipeline editor:generate:models
 ```
 
-#### Estimate cost
+### Estimate cost
 
 ```bash
 bun run pipeline editor:generate:estimate-cost \
@@ -888,17 +651,17 @@ bun run pipeline editor:generate:estimate-cost \
 
 ---
 
-### Export Commands
+## Export Commands
 
 Export the final project.
 
-#### List presets
+### List presets
 
 ```bash
 bun run pipeline editor:export:presets
 ```
 
-#### Get recommended settings
+### Get recommended settings
 
 ```bash
 bun run pipeline editor:export:recommend \
@@ -908,7 +671,7 @@ bun run pipeline editor:export:recommend \
 
 Targets: `youtube`, `tiktok`, `instagram-reel`, `twitter`, etc.
 
-#### Start export
+### Start export
 
 ```bash
 # With preset
@@ -926,7 +689,7 @@ bun run pipeline editor:export:start \
   --timeout 600
 ```
 
-#### Job management
+### Job management
 
 ```bash
 # Check status
@@ -940,7 +703,7 @@ bun run pipeline editor:export:list-jobs --project-id <id>
 
 ---
 
-### Diagnostics Commands
+## Diagnostics Commands
 
 Error analysis and debugging.
 
@@ -958,7 +721,7 @@ bun run pipeline editor:diagnostics:analyze \
 
 ---
 
-### MCP Commands
+## MCP Commands
 
 Forward HTML to the MCP preview panel.
 
@@ -979,9 +742,7 @@ bun run pipeline editor:mcp:forward-html \
 
 ---
 
-## Reference Tables
-
-### All Editor Flags
+## All Editor Flags
 
 | Flag | Type | Description |
 |------|------|-------------|
@@ -1033,7 +794,7 @@ bun run pipeline editor:mcp:forward-html \
 | `--language` | string | Language code |
 | `--no-diarize` | boolean | Disable speaker diarization |
 
-### Batch Limits
+## Batch Limits
 
 | Operation | Max Items |
 |-----------|-----------|
@@ -1042,7 +803,7 @@ bun run pipeline editor:mcp:forward-html \
 | `editor:timeline:batch-update` | 50 |
 | `editor:timeline:batch-delete` | 50 |
 
-### Async Job Statuses
+## Async Job Statuses
 
 | Status | Description |
 |--------|-------------|
@@ -1052,14 +813,10 @@ bun run pipeline editor:mcp:forward-html \
 | `failed` | Job encountered an error |
 | `cancelled` | Job was cancelled |
 
-### Environment Variables
+## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `FAL_KEY` | FAL.ai API key |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `OPENROUTER_API_KEY` | OpenRouter API key |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key |
 | `QCUT_API_HOST` | Override editor API host (default: `127.0.0.1`) |
 | `QCUT_API_PORT` | Override editor API port (default: `8765`) |
 
