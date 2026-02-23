@@ -3,7 +3,7 @@
 > **Date:** 2026-02-22
 > **Goal:** Add `editor:*` commands to the native pipeline CLI that proxy to QCut's HTTP API, giving LLMs a single unified CLI interface for both standalone generation and live editor control.
 > **Reference:** `.claude/skills/qcut-api/SKILL.md`, `.claude/skills/native-cli/SKILL.md`
-> **Status:** Planning
+> **Status:** Implemented & Tested (157 tests passing)
 
 ## Problem
 
@@ -219,8 +219,11 @@ Start QCut with: bun run electron:dev
 | `electron/native-pipeline/editor-handlers-timeline.ts` | `editor:timeline:*`, `editor:editing:*` handlers | ~350 |
 | `electron/native-pipeline/editor-handlers-analysis.ts` | `editor:analyze:*`, `editor:transcribe:*` handlers | ~300 |
 | `electron/native-pipeline/editor-handlers-generate.ts` | `editor:generate:*`, `editor:export:*`, `editor:diagnostics:*` handlers | ~250 |
-| `electron/native-pipeline/__tests__/editor-api-client.test.ts` | HTTP client unit tests with mock server | ~200 |
-| `electron/native-pipeline/__tests__/editor-handlers.test.ts` | Handler unit tests with mocked client | ~300 |
+| `electron/__tests__/editor-api-client.test.ts` | HTTP client + resolveJsonInput + media/project handler tests (97 tests) | 509 |
+| `electron/__tests__/editor-handlers-timeline.test.ts` | Timeline + editing handler tests | 765 |
+| `electron/__tests__/editor-handlers-analysis.test.ts` | Analysis + transcription handler tests | 506 |
+| `electron/__tests__/editor-handlers-generate.test.ts` | Generate + export + diagnostics + MCP handler tests | 512 |
+| `electron/__tests__/editor-cli-integration.test.ts` | Full dispatcher integration + uncovered handler coverage (60 tests) | 560 |
 
 ### Modified Files (2)
 
@@ -229,7 +232,7 @@ Start QCut with: bun run electron:dev
 | `electron/native-pipeline/cli.ts` | Add 59 commands to `COMMANDS` array, add new flags to `parseArgs`, add help text |
 | `electron/native-pipeline/cli-runner.ts` | Add import + `editor:*` catch-all dispatch |
 
-### Total: 11 files (9 new + 2 modified), ~2,100 lines of new code
+### Total: 14 files (12 new + 2 modified), ~4,900 lines of new code + tests
 
 ## Dependency Graph
 
@@ -256,9 +259,12 @@ Phase 1 contd.     Phase 2            Phase 3
            5.1 cli.ts modifications
            5.2 cli-runner.ts modifications
               ↓
-           Phase 6: Tests
-           6.1 editor-api-client.test.ts
-           6.2 editor-handlers.test.ts
+           Phase 6: Tests ✅ (157 tests passing)
+           6.1 editor-api-client.test.ts ✅
+           6.2 editor-handlers-timeline.test.ts ✅
+           6.3 editor-handlers-analysis.test.ts ✅
+           6.4 editor-handlers-generate.test.ts ✅
+           6.5 editor-cli-integration.test.ts ✅
 ```
 
 ## New CLI Flags (added to cli.ts parseArgs)
@@ -300,6 +306,45 @@ Phase 1 contd.     Phase 2            Phase 3
 | `--stack` | string | Error stack trace |
 
 Note: `--format`, `--source`, `--data`, `--timeout`, `--url`, `--filename`, `--prompt`, `--model`, `--duration`, `--json`, `--quiet`, `--verbose` already exist in cli.ts.
+
+## Real CLI Test Results (2026-02-23)
+
+End-to-end CLI tests against a running QCut instance:
+
+| Test | Command | Result |
+|------|---------|--------|
+| Health check | `editor:health` | **PASS** — returns version, uptime |
+| Import media | `editor:media:import --source /path/to/video.mp4` | **PASS** — file copied, media ID returned |
+| List media | `editor:media:list` | **PASS** — shows imported file |
+| Media info | `editor:media:info --media-id ...` | **PASS** — returns metadata |
+| Timeline import | `editor:timeline:import --data '{"name":"...","tracks":[...]}'` | **PASS** — elements must use `sourceName` (filename), not `mediaId` |
+| Timeline export | `editor:timeline:export` | **PASS** — returns tracks + elements with correct times |
+| Add text element | `editor:timeline:add-element --data '{"type":"text",...}'` | **PASS** — text elements don't need media resolution |
+| Split element | `editor:timeline:split --element-id ... --split-time 10` | **PASS** — creates left (0-10s) + right (10-30s) |
+| Delete element | `editor:timeline:delete-element --element-id ...` | **PASS** — element removed, duration updated |
+| Project stats | `editor:project:stats` | **PASS** — returns counts, duration |
+| Add media element | `editor:timeline:add-element --data '{"type":"video",...}'` | **PARTIAL** — API returns success+elementId, but renderer silently drops element if `sourceName` field missing |
+| Move (same track) | `editor:timeline:move --to-track <same-track>` | **BUG** — element disappears (see bug below) |
+
+### Bug: `moveElementToTrack()` loses element on same-track move
+
+**File:** `apps/web/src/stores/timeline-store.ts:531-584`
+
+When `fromTrackId === toTrackId`, the `.map()` only processes each track once. The first `if (track.id === fromTrackId)` removes the element, but the second `if (track.id === toTrackId)` never executes for the same track object. The element is removed and never added back.
+
+**Fix:** Add an `else if` guard or handle the same-track case separately:
+```typescript
+if (fromTrackId === toTrackId) {
+  // Same track: just reposition, don't remove+re-add
+  // ... update startTime directly
+} else {
+  // Cross-track: remove from source, add to target
+}
+```
+
+### Note: Element field naming
+
+The renderer's `findMediaItemForElement()` resolves media by `sourceName` (filename) or `sourceId`, NOT by `mediaId` or `name`. When adding media elements via CLI, always use `sourceName: "filename.mp4"` to ensure the renderer can find the matching media file.
 
 ## Out of Scope
 
