@@ -12,8 +12,8 @@ After analyzing the codebase, the situation is better than expected:
 |-----------|--------------|---------------|
 | FFmpeg Export | ✅ Already uses `child_process.spawn()` | None (already offloaded) |
 | AI Pipeline | ✅ Already uses `child_process.spawn()` | None (already offloaded) |
-| Claude HTTP Server | ⚠️ Runs in main process | Move to `utilityProcess` |
-| PTY Handler | ⚠️ Runs in main process (node-pty) | Move to `utilityProcess` |
+| Claude HTTP Server | ✅ Moved to utility process | Done |
+| PTY Handler | ✅ Moved to utility process | Done |
 
 **Only the Claude HTTP server and PTY handler need migration.** FFmpeg and AI Pipeline are already properly architected.
 
@@ -88,7 +88,42 @@ These are all main-process-only APIs, but they're only called during setup, not 
 
 ---
 
-## 3. Claude HTTP Server — ⚠️ Needs Migration
+## Implementation Summary (2026-02-23)
+
+### Files Created
+- `electron/utility/utility-process.ts` — Utility process entry point (handles init, message routing, shutdown)
+- `electron/utility/utility-pty-manager.ts` — PTY session management in utility process (node-pty spawn/write/resize/kill)
+- `electron/utility/utility-http-server.ts` — Claude HTTP server running in utility process (all routes, BrowserWindow proxied)
+- `electron/utility/utility-bridge.ts` — Main process bridge (launches utility, proxies BrowserWindow ops, PTY IPC forwarding)
+
+### Files Modified
+- `electron/main.ts` — Uses utility-bridge instead of direct pty-handler; starts utility process after handler registration; cleanup uses utility process
+- `electron/claude/index.ts` — Removed HTTP server startup (now in utility process)
+
+### Architecture
+```
+Main Process (lightweight)
+├── Window management, menus, dialog
+├── IPC routing (thin proxy via utility-bridge.ts)
+├── BrowserWindow proxy handler (timeline, selection, etc.)
+├── FFmpeg spawn orchestration (already child_process)
+└── AI Pipeline spawn orchestration (already child_process)
+
+Utility Process (heavy I/O) — electron/utility/utility-process.ts
+├── Claude HTTP Server on port 8765 (utility-http-server.ts)
+├── PTY Session Manager with node-pty (utility-pty-manager.ts)
+└── Crash recovery: auto-restart, renderer notification
+```
+
+### Backward Compatibility
+- All HTTP API endpoints unchanged (same routes, same ports)
+- All PTY IPC channels unchanged (pty:spawn, pty:write, pty:resize, pty:kill, pty:kill-all)
+- Health endpoint now includes `process: "utility"` field
+- Original pty-handler.ts and claude-http-server.ts preserved (not deleted) for reference
+
+---
+
+## 3. Claude HTTP Server — ✅ Migrated to Utility Process
 
 ### Current Architecture
 
@@ -235,7 +270,7 @@ export function startClaudeHTTPServer(port = 8765): void {
 
 ---
 
-## 4. PTY Handler — ⚠️ Needs Migration
+## 4. PTY Handler — ✅ Migrated to Utility Process
 
 ### Current Architecture
 

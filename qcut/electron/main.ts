@@ -99,7 +99,8 @@ const {
 } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupAIFillerIPC } = require("./ai-filler-handler.js");
-const { setupPtyIPC, cleanupPtySessions } = require("./pty-handler.js");
+// PTY and HTTP server now run in utility process via utility-bridge
+const { startUtilityProcess, stopUtilityProcess, setupUtilityPtyIPC, cleanupUtilityProcess } = require("./utility/utility-bridge.js");
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
 const {
@@ -628,7 +629,7 @@ if (!isCliKeyCommand) {
 			["ElevenLabsTranscribe", registerElevenLabsTranscribeHandler],
 			["GeminiChatIPC", setupGeminiChatIPC],
 			["AIFillerIPC", setupAIFillerIPC],
-			["PtyIPC", setupPtyIPC],
+			["PtyIPC", setupUtilityPtyIPC],
 			["AIVideoHandlers", registerAIVideoHandlers],
 			["SkillsIPC", setupSkillsIPC],
 			["SkillsSyncIPC", setupSkillsSyncIPC],
@@ -672,6 +673,14 @@ if (!isCliKeyCommand) {
 			});
 		// Note: font-resolver removed - handler not implemented
 
+		// Start utility process (HTTP server + PTY sessions)
+		try {
+			startUtilityProcess();
+			console.log("✅ Utility process started (HTTP server + PTY)");
+		} catch (err: any) {
+			console.error("❌ Utility process failed to start:", err.message);
+		}
+
 		// Configure auto-updater for production builds
 		if (app.isPackaged) {
 			setupAutoUpdater();
@@ -698,19 +707,11 @@ app.on("window-all-closed", () => {
 		const { cleanupAllVideoFiles } = require("./video-temp-handler.js");
 		cleanupAllVideoFiles();
 
-		// Clean up PTY sessions
-		cleanupPtySessions();
+		// Clean up utility process (PTY sessions + HTTP server)
+		cleanupUtilityProcess();
 
 		// Clean up AI Pipeline processes
 		cleanupAIPipeline();
-
-		// Close the Claude HTTP server
-		try {
-			const { stopClaudeHTTPServer } = require("./claude/index.js");
-			stopClaudeHTTPServer();
-		} catch (error: unknown) {
-			logger.warn("⚠️ [Claude] Failed to stop HTTP server:", error);
-		}
 
 		// Close the static server when quitting
 		if (staticServer) {
