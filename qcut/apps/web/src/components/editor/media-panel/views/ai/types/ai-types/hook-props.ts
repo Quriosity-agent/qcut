@@ -3,8 +3,16 @@
  */
 
 import type { TProject } from "@/types/project";
-import type { GeneratedVideo, GeneratedVideoResult, ProgressUpdate } from "./generation";
-import type { SyncLipsyncEmotion, SyncLipsyncModelMode, SyncLipsyncSyncMode } from "./lipsync-types";
+import type {
+	GeneratedVideo,
+	GeneratedVideoResult,
+	ProgressUpdate,
+} from "./generation";
+import type {
+	SyncLipsyncEmotion,
+	SyncLipsyncModelMode,
+	SyncLipsyncSyncMode,
+} from "./lipsync-types";
 import type { Seeddream45ImageSize } from "./seeddream-types";
 
 // Hook Interface Definitions (Enhanced based on validation findings)

@@ -28,7 +28,9 @@ export async function debugStickerPersistence() {
 
 	try {
 		if (window.electronAPI?.storage) {
-			savedStickers = (await window.electronAPI.storage.load(storageKey)) || [];
+			savedStickers =
+				((await window.electronAPI.storage.load(storageKey)) as any[] | null) ||
+				[];
 			console.log("📦 Storage type: Electron IPC");
 		} else {
 			const stored = localStorage.getItem(storageKey);

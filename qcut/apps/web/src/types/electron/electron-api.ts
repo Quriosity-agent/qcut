@@ -44,7 +44,10 @@ import type {
 	ScreenRecordingStatus,
 } from "./screen-recording";
 import type { ReleaseNote } from "./release-notes";
-import type { ProjectFolderFileInfo, ProjectFolderScanResult } from "./project-folder";
+import type {
+	ProjectFolderFileInfo,
+	ProjectFolderScanResult,
+} from "./project-folder";
 import type {
 	AIPipelineProgress,
 	AIPipelineGenerateOptions,

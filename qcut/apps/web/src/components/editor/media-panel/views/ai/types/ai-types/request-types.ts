@@ -3,7 +3,11 @@
  */
 
 import type { AIModel } from "./model-config";
-import type { SyncLipsyncEmotion, SyncLipsyncModelMode, SyncLipsyncSyncMode } from "./lipsync-types";
+import type {
+	SyncLipsyncEmotion,
+	SyncLipsyncModelMode,
+	SyncLipsyncSyncMode,
+} from "./lipsync-types";
 
 // ============================================
 // Video Generation Request/Response Types

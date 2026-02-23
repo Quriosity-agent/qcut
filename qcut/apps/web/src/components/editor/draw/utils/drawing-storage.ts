@@ -82,7 +82,9 @@ export class DrawingStorage {
 			let metadata: DrawingMetadata | null = null;
 
 			if (window.electronAPI?.storage?.load) {
-				data = await window.electronAPI.storage.load(drawingId);
+				data = (await window.electronAPI.storage.load(drawingId)) as
+					| string
+					| null;
 				const rawMeta = await window.electronAPI.storage.load(
 					`${DrawingStorage.METADATA_PREFIX}${drawingId}`
 				);
@@ -283,7 +285,9 @@ export class DrawingStorage {
 			const autosaveKey = `${DrawingStorage.AUTOSAVE_PREFIX}${projectId}`;
 
 			if (window.electronAPI?.storage?.load) {
-				return await window.electronAPI.storage.load(autosaveKey);
+				return (await window.electronAPI.storage.load(autosaveKey)) as
+					| string
+					| null;
 			}
 			return localStorage.getItem(autosaveKey);
 		} catch (error) {

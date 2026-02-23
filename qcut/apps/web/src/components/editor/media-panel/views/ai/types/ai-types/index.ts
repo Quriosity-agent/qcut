@@ -88,9 +88,7 @@ export type {
 } from "./seeddream-types";
 
 // Convenience aliases
-export type {
-	AIModel as Model,
-} from "./model-config";
+export type { AIModel as Model } from "./model-config";
 export type {
 	GeneratedVideo as Video,
 	GeneratedVideoResult as VideoResult,

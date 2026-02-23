@@ -193,12 +193,12 @@ export async function generateAvatarVideo(
 						request.duration || modelConfig.default_params?.duration || 5
 					),
 					aspect_ratio: modelConfig.default_params?.aspect_ratio || "16:9",
-					...(modelConfig.default_params?.cfg_scale && {
+					...((modelConfig.default_params?.cfg_scale && {
 						cfg_scale: modelConfig.default_params.cfg_scale,
-					}),
-					...(modelConfig.default_params?.negative_prompt && {
+					}) as Record<string, unknown>),
+					...((modelConfig.default_params?.negative_prompt && {
 						negative_prompt: modelConfig.default_params.negative_prompt,
-					}),
+					}) as Record<string, unknown>),
 				};
 			} else if (request.model === "sync_lipsync_react1") {
 				// Sync Lipsync React-1 requires pre-uploaded URLs (like Kling Avatar V2)
