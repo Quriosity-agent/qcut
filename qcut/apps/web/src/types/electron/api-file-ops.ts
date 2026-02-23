@@ -10,10 +10,7 @@ export interface ElectronFileOps {
 	saveFileDialog: (
 		defaultFilename?: string,
 		filters?: Array<{ name: string; extensions: string[] }>
-	) => Promise<{
-		canceled: boolean;
-		filePath?: string;
-	}>;
+	) => Promise<string | null>;
 
 	/** File path utility (Electron 37+ removed File.path on dropped files) */
 	getPathForFile: (file: File) => string;
@@ -21,8 +18,8 @@ export interface ElectronFileOps {
 	readFile: (filePath: string) => Promise<Buffer | null>;
 	writeFile: (
 		filePath: string,
-		data: Buffer | Uint8Array
-	) => Promise<{ success: boolean }>;
+		data: Buffer | string
+	) => Promise<boolean>;
 	saveBlob: (
 		data: Buffer | Uint8Array,
 		defaultFilename?: string
@@ -33,10 +30,10 @@ export interface ElectronFileOps {
 		error?: string;
 	}>;
 	getFileInfo: (filePath: string) => Promise<{
+		name: string;
+		path: string;
 		size: number;
-		created: Date;
-		modified: Date;
-		isFile: boolean;
-		isDirectory: boolean;
-	}>;
+		lastModified: Date;
+		type: string;
+	} | null>;
 }

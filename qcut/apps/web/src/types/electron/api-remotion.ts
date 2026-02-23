@@ -38,12 +38,15 @@ export interface ElectronRemotionOps {
 			height: number;
 			fps: number;
 			totalFrames: number;
-			onProgress?: (frame: number) => void;
 		}) => Promise<{
 			success: boolean;
 			frames: Record<string, string>;
 			error?: string;
 		}>;
+		/** Register callback for pre-render progress (IPC-safe event listener pattern) */
+		onPreRenderProgress: (
+			callback: (data: { elementId: string; frame: number }) => void
+		) => () => void;
 		cleanup: (sessionId: string) => Promise<void>;
 	};
 }

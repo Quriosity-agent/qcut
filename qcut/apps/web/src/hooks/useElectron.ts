@@ -48,7 +48,7 @@ export const useElectron = () => {
 	);
 
 	const writeFile = useCallback(
-		async (filePath: string, data: Buffer | Uint8Array) => {
+		async (filePath: string, data: Buffer | string) => {
 			if (!electronAPI) {
 				throw new Error("Electron API not available");
 			}
@@ -113,20 +113,20 @@ export const useElectron = () => {
 		) => {
 			if (isElectron()) {
 				// In Electron mode, use native save dialog
-				const result = await saveFileDialog(defaultFilename, filters);
-				if (result.canceled || !result.filePath) {
+				const filePath = await saveFileDialog(defaultFilename, filters);
+				if (!filePath) {
 					return { success: false, canceled: true };
 				}
 
 				const buffer =
 					data instanceof Blob
-						? new Uint8Array(await data.arrayBuffer())
+						? Buffer.from(await data.arrayBuffer())
 						: data instanceof Buffer
 							? data
-							: data;
+							: Buffer.from(data);
 
-				await writeFile(result.filePath, buffer);
-				return { success: true, filePath: result.filePath };
+				await writeFile(filePath, buffer);
+				return { success: true, filePath };
 			}
 			// In browser mode, use download link
 			const blob =

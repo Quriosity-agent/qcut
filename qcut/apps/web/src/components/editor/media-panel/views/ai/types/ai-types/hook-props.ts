@@ -231,7 +231,7 @@ export interface AIGenerationState {
 	generatedVideos: GeneratedVideoResult[];
 
 	// ⚠️ CRITICAL: Polling state management
-	pollingInterval: NodeJS.Timeout | null;
+	pollingInterval: ReturnType<typeof setInterval> | null;
 }
 
 export type UseAIHistoryProps = Record<string, never>;

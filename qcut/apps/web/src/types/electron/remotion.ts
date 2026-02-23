@@ -1,54 +1,14 @@
 /**
  * Remotion folder import types.
+ *
+ * Re-exported from preload-types to maintain a single source of truth.
  */
 
-export interface RemotionCompositionInfo {
-	id: string;
-	name: string;
-	durationInFrames: number;
-	fps: number;
-	width: number;
-	height: number;
-	componentPath: string;
-	importPath: string;
-	line: number;
-}
-
-export interface RemotionFolderSelectResult {
-	success: boolean;
-	folderPath?: string;
-	cancelled?: boolean;
-	error?: string;
-}
-
-export interface RemotionFolderScanResult {
-	isValid: boolean;
-	rootFilePath: string | null;
-	compositions: RemotionCompositionInfo[];
-	errors: string[];
-	folderPath: string;
-}
-
-export interface RemotionBundleResult {
-	compositionId: string;
-	success: boolean;
-	code?: string;
-	sourceMap?: string;
-	error?: string;
-}
-
-export interface RemotionFolderBundleResult {
-	success: boolean;
-	results: RemotionBundleResult[];
-	successCount: number;
-	errorCount: number;
-	folderPath: string;
-}
-
-export interface RemotionFolderImportResult {
-	success: boolean;
-	scan: RemotionFolderScanResult;
-	bundle: RemotionFolderBundleResult | null;
-	importTime: number;
-	error?: string;
-}
+export type {
+	RemotionCompositionInfo,
+	RemotionFolderSelectResult,
+	RemotionFolderScanResult,
+	RemotionBundleResult,
+	RemotionFolderBundleResult,
+	RemotionFolderImportResult,
+} from "../../../../../electron/preload-types/supporting-types";

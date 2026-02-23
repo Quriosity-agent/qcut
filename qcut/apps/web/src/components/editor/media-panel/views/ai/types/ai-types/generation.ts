@@ -23,7 +23,7 @@ export interface GeneratedVideoResult {
 
 // ⚠️ CRITICAL ADDITION: Polling state interface (identified in validation)
 export interface PollingState {
-	interval: NodeJS.Timeout | null;
+	interval: ReturnType<typeof setInterval> | null;
 	jobId: string | null;
 	isPolling: boolean;
 }
