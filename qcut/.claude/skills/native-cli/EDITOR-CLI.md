@@ -88,10 +88,15 @@ bun run pipeline editor:media:import-url \
 ### Batch import (max 20 items)
 
 ```bash
-# Inline
+# Inline — use "path" for local files, "url" for remote
 bun run pipeline editor:media:batch-import \
   --project-id <id> \
-  --items '[{"source":"/path/to/a.mp4"},{"source":"/path/to/b.mp4"}]'
+  --items '[{"path":"/path/to/a.mp4"},{"path":"/path/to/b.mp4"}]'
+
+# "source" is also accepted as an alias for "path"
+bun run pipeline editor:media:batch-import \
+  --project-id <id> \
+  --items '[{"source":"/path/to/a.mp4"},{"url":"https://example.com/b.mp4"}]'
 
 # From file
 bun run pipeline editor:media:batch-import \
@@ -192,7 +197,7 @@ bun run pipeline editor:timeline:export --project-id <id> --output-format json
 ### Import timeline
 
 ```bash
-# Import JSON timeline data
+# Import JSON timeline data (track "index" is auto-assigned if omitted)
 bun run pipeline editor:timeline:import \
   --project-id <id> \
   --data '{"name":"My Timeline","tracks":[{"id":"t1","type":"video","elements":[]}]}'
@@ -204,7 +209,9 @@ bun run pipeline editor:timeline:import --project-id <id> --data @timeline.json
 bun run pipeline editor:timeline:import --project-id <id> --data @timeline.json --replace
 ```
 
-**Important**: When importing elements that reference media files, use `sourceName` (the filename) in element data, not `mediaId`. The renderer resolves media by filename.
+**Notes**:
+- Track `index` is optional — auto-assigned from array position if omitted.
+- When importing elements that reference media files, use `sourceName` (the filename) in element data, not `mediaId`. The renderer resolves media by filename.
 
 ### Add element
 
@@ -222,10 +229,12 @@ bun run pipeline editor:timeline:add-element \
 
 ### Batch add elements (max 50)
 
+Each element **must** include `trackId`. Use `editor:timeline:export` to find track IDs.
+
 ```bash
 bun run pipeline editor:timeline:batch-add \
   --project-id <id> \
-  --elements '[{"type":"text","content":"Title","startTime":0},{"type":"text","content":"End","startTime":10}]'
+  --elements '[{"type":"text","content":"Title","startTime":0,"trackId":"track-1"},{"type":"text","content":"End","startTime":10,"trackId":"track-1"}]'
 ```
 
 ### Update element
@@ -262,10 +271,16 @@ bun run pipeline editor:timeline:delete-element \
 ### Batch delete elements (max 50)
 
 ```bash
-# With ripple (close gaps)
+# Simple: plain element ID array (track IDs auto-resolved from timeline)
 bun run pipeline editor:timeline:batch-delete \
   --project-id <id> \
   --elements '["elem1","elem2","elem3"]' \
+  --ripple
+
+# Explicit: with trackId per element
+bun run pipeline editor:timeline:batch-delete \
+  --project-id <id> \
+  --elements '[{"trackId":"t1","elementId":"elem1"},{"trackId":"t1","elementId":"elem2"}]' \
   --ripple
 ```
 
@@ -506,12 +521,15 @@ bun run pipeline editor:analyze:frames \
 
 ### Detect filler words
 
+Two modes: provide a `mediaId` for auto-transcription, or provide a pre-existing `words` array.
+
 ```bash
+# Mode 1: Auto-transcribe from media (recommended)
 bun run pipeline editor:analyze:fillers \
   --project-id <id> \
   --media-id <id>
 
-# With pre-existing word data
+# Mode 2: With pre-existing word data
 bun run pipeline editor:analyze:fillers \
   --project-id <id> \
   --data @words.json
@@ -531,6 +549,12 @@ bun run pipeline editor:transcribe:run \
   --media-id <id> \
   --language en \
   --provider deepgram
+
+# Transcribe and load into Smart Speech panel
+bun run pipeline editor:transcribe:run \
+  --project-id <id> \
+  --media-id <id> \
+  --load-speech
 ```
 
 ### Transcribe (async with polling)
@@ -544,11 +568,20 @@ bun run pipeline editor:transcribe:start \
   --poll-interval 2 \
   --timeout 120
 
+# Transcribe, poll, and load into Smart Speech panel
+bun run pipeline editor:transcribe:start \
+  --project-id <id> \
+  --media-id <id> \
+  --poll \
+  --load-speech
+
 # Start without polling (returns jobId)
 bun run pipeline editor:transcribe:start \
   --project-id <id> \
   --media-id <id>
 ```
+
+The `--load-speech` flag sends the transcription result to the editor's Smart Speech panel after completion. Words appear as clickable chips — click to jump to that timestamp.
 
 ### Job management
 
@@ -793,6 +826,7 @@ bun run pipeline editor:mcp:forward-html \
 | `--provider` | string | Service provider |
 | `--language` | string | Language code |
 | `--no-diarize` | boolean | Disable speaker diarization |
+| `--load-speech` | boolean | Load transcription into Smart Speech panel |
 
 ## Batch Limits
 

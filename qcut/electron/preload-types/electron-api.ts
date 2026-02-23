@@ -665,6 +665,21 @@ export interface ElectronAPI {
 				requestId: string,
 				result: ClaudeArrangeResponse
 			) => void;
+			onLoadSpeech: (
+				callback: (data: {
+					text: string;
+					language_code: string;
+					language_probability: number;
+					words: Array<{
+						text: string;
+						start: number;
+						end: number;
+						type: string;
+						speaker_id: string | null;
+					}>;
+					fileName: string;
+				}) => void
+			) => void;
 			removeListeners: () => void;
 		};
 		project: {

@@ -181,6 +181,7 @@ export interface CLIRunOptions {
 	gap?: number;
 	timeout?: number;
 	provider?: string;
+	loadSpeech?: boolean;
 }
 
 export interface CLIResult {

@@ -1322,6 +1322,28 @@ export function setupClaudeTimelineBridge(): void {
 		}
 	);
 
+	// Load transcription into Smart Speech panel
+	if (typeof claudeAPI.onLoadSpeech === "function") {
+		claudeAPI.onLoadSpeech(async (data) => {
+			try {
+				debugLog("[ClaudeTimelineBridge] Loading speech data:", data.fileName);
+				const { useWordTimelineStore } = await import(
+					"@/stores/word-timeline-store"
+				);
+				const { useMediaPanelStore } = await import(
+					"@/components/editor/media-panel/store"
+				);
+				await useWordTimelineStore
+					.getState()
+					.loadFromTranscription(data, data.fileName);
+				useMediaPanelStore.getState().setActiveTab("word-timeline");
+				debugLog("[ClaudeTimelineBridge] Speech data loaded successfully");
+			} catch (error) {
+				debugError("[ClaudeTimelineBridge] Failed to load speech data:", error);
+			}
+		});
+	}
+
 	debugLog("[ClaudeTimelineBridge] Bridge setup complete");
 }
 
