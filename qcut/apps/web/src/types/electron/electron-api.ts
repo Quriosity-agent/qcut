@@ -8,7 +8,11 @@
 import type { ElectronFileOps } from "./api-file-ops";
 import type { ElectronStorageOps } from "./api-storage";
 import type { ElectronSoundOps } from "./api-sounds";
-import type { ElectronAudioOps, ElectronVideoOps, ElectronScreenRecordingOps } from "./api-audio-video";
+import type {
+	ElectronAudioOps,
+	ElectronVideoOps,
+	ElectronScreenRecordingOps,
+} from "./api-audio-video";
 import type { ElectronTranscriptionOps } from "./api-transcription";
 import type { ElectronFFmpegOps } from "./api-ffmpeg";
 import type {
@@ -24,7 +28,10 @@ import type {
 } from "./api-gemini-pty-mcp";
 import type { ElectronSkillsOps } from "./api-skills";
 import type { ElectronClaudeOps } from "./api-claude";
-import type { ElectronRemotionFolderOps, ElectronRemotionOps } from "./api-remotion";
+import type {
+	ElectronRemotionFolderOps,
+	ElectronRemotionOps,
+} from "./api-remotion";
 import type { ElectronMoyinOps } from "./api-moyin";
 import type { ElectronUpdateOps } from "./api-updates";
 import type {
