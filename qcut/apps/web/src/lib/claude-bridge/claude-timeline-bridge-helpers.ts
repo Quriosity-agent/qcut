@@ -671,10 +671,14 @@ export async function addClaudeRemotionElement({
 	const componentId = element.sourceId || `remotion-${Date.now()}`;
 
 	if (element.componentPath) {
+		const fps = 30;
+		const durationSec = element.duration || DEFAULT_REMOTION_DURATION_SECONDS;
 		const registeredId = await bundleAndRegisterComponent({
 			componentPath: element.componentPath,
 			componentId,
 			componentName,
+			durationInFrames: Math.round(durationSec * fps),
+			fps,
 		});
 
 		if (!registeredId) {

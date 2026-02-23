@@ -235,9 +235,9 @@ export async function handleGenerateRemotion(
 	// 4. Find Remotion skill
 	const skillPath = findSkillPath();
 	if (skillPath) {
-		console.log(`[generate-remotion] Using skill: ${skillPath}`);
+		process.stderr.write(`[generate-remotion] Using skill: ${skillPath}\n`);
 	} else {
-		console.warn("[generate-remotion] Remotion skill not found, proceeding without it");
+		process.stderr.write("[generate-remotion] Remotion skill not found, proceeding without it\n");
 	}
 
 	// 5. Output directory — project folder per generation
@@ -322,8 +322,8 @@ export async function handleGenerateRemotion(
 	try {
 		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
 	} catch {
-		console.warn(
-			`[generate-remotion] Could not write metadata to ${jsonPath}`,
+		process.stderr.write(
+			`[generate-remotion] Could not write metadata to ${jsonPath}\n`,
 		);
 	}
 

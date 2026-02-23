@@ -410,6 +410,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			data: { type: "string" },
 			url: { type: "string" },
 			filename: { type: "string" },
+			fps: { type: "string" },
+			width: { type: "string" },
+			height: { type: "string" },
 			mode: { type: "string" },
 			gap: { type: "string" },
 			timeout: { type: "string" },
@@ -593,6 +596,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		data: values.data as string | undefined,
 		url: values.url as string | undefined,
 		filename: values.filename as string | undefined,
+		fps: values.fps ? Number(values.fps) : undefined,
+		width: values.width ? Number(values.width) : undefined,
+		height: values.height ? Number(values.height) : undefined,
 		mode: values.mode as string | undefined,
 		gap: values.gap
 			? Number.isNaN(parseFloat(values.gap as string))

@@ -184,6 +184,10 @@ export interface CLIRunOptions {
 	filename?: string;
 	mode?: string;
 	gap?: number;
+	// generate-remotion options
+	fps?: number;
+	width?: number;
+	height?: number;
 	timeout?: number;
 	provider?: string;
 	loadSpeech?: boolean;
