@@ -4,7 +4,7 @@ import { EditorHeader } from "@/components/editor-header";
 import { usePanelStore } from "@/stores/editor/panel-store";
 import { EditorProvider } from "@/components/editor-provider";
 import { useProjectStore, NotFoundError } from "@/stores/project-store";
-import { usePlaybackControls } from "@/hooks/use-playback-controls";
+import { usePlaybackControls } from "@/hooks/timeline/use-playback-controls";
 import { useSaveOnVisibilityChange } from "@/hooks/use-save-on-visibility-change";
 import { Onboarding } from "@/components/onboarding";
 import { debugError, debugLog } from "@/lib/debug/debug-config";

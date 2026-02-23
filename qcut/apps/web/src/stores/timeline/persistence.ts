@@ -64,7 +64,7 @@ export async function autoSaveTimelineGuarded(
 
 		try {
 			// Include current scene ID to avoid desync
-			const { useSceneStore } = await import("../scene-store");
+			const { useSceneStore } = await import("./scene-store");
 			const sceneId =
 				useSceneStore.getState().currentScene?.id ??
 				activeProject.currentSceneId;
@@ -236,7 +236,7 @@ export async function saveImmediateOperation(
 		const { useProjectStore } = await import("../project-store");
 		const activeProject = useProjectStore.getState().activeProject;
 		if (activeProject) {
-			const { useSceneStore } = await import("../scene-store");
+			const { useSceneStore } = await import("./scene-store");
 			const sceneId =
 				useSceneStore.getState().currentScene?.id ??
 				activeProject.currentSceneId;

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useExportStore } from "@/stores/export-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 // Export engine factory and engine types will be imported dynamically when needed
 import type {
 	ExportFormat,

@@ -12,9 +12,9 @@
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
-import { createRouter, HttpError } from "./utils/http-router.js";
-import { claudeLog } from "./utils/logger.js";
-import { isValidSourcePath } from "./utils/helpers.js";
+import { createRouter, HttpError } from "../utils/http-router.js";
+import { claudeLog } from "../utils/logger.js";
+import { isValidSourcePath } from "../utils/helpers.js";
 
 // Extracted handler functions (shared with IPC handlers)
 import {
@@ -26,7 +26,7 @@ import {
 	importMediaFromUrl,
 	batchImportMedia,
 	extractFrame,
-} from "./claude-media-handler.js";
+} from "../handlers/claude-media-handler.js";
 import {
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
@@ -38,31 +38,31 @@ import {
 	timelineToMarkdown,
 	markdownToTimeline,
 	validateTimeline,
-} from "./claude-timeline-handler.js";
+} from "../handlers/claude-timeline-handler.js";
 import {
 	getProjectSettings,
 	updateProjectSettings,
 	getProjectStats,
 	getEmptyStats,
-} from "./claude-project-handler.js";
+} from "../handlers/claude-project-handler.js";
 import {
 	getExportPresets,
 	getExportRecommendation,
 	startExportJob,
 	getExportJobStatus,
 	listExportJobs,
-} from "./claude-export-handler.js";
-import { analyzeError } from "./claude-diagnostics-handler.js";
+} from "../handlers/claude-export-handler.js";
+import { analyzeError } from "../handlers/claude-diagnostics-handler.js";
 import {
 	generateProjectSummary,
 	generatePipelineReport,
-} from "./claude-summary-handler.js";
+} from "../handlers/claude-summary-handler.js";
 import {
 	logOperation,
 	getOperationLog,
 	clearOperationLog,
-} from "./claude-operation-log.js";
-import { generatePersonaPlex } from "./claude-personaplex-handler.js";
+} from "../claude-operation-log.js";
+import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 

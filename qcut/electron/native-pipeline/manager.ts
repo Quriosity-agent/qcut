@@ -18,7 +18,7 @@ import { parseChainConfig, validateChain } from "./execution/chain-parser.js";
 import { estimateCost, listModels } from "./infra/cost-calculator.js";
 import { resolveOutputDir as resolveOutputDirShared } from "./output/output-utils.js";
 import { getDecryptedApiKeys } from "../api-key-handler.js";
-import { importMediaFile } from "../claude/claude-media-handler.js";
+import { importMediaFile } from "../claude/handlers/claude-media-handler.js";
 import { inferProjectIdFromPath } from "../ai-pipeline-output.js";
 import {
 	handleVimaxIdea2Video,

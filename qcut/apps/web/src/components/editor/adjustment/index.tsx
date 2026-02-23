@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
-import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStoreActions } from "@/hooks/media/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Wand2, Loader2 } from "lucide-react";

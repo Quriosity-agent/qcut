@@ -12,19 +12,19 @@ import {
 	getProjectPath,
 	isValidSourcePath,
 	sanitizeProjectId,
-} from "./utils/helpers.js";
-import { claudeLog } from "./utils/logger.js";
+} from "../utils/helpers.js";
+import { claudeLog } from "../utils/logger.js";
 import { getMediaInfo } from "./claude-media-handler.js";
 import { requestTimelineFromRenderer } from "./claude-timeline-handler.js";
-import { AIPipelineManager } from "../ai-pipeline-handler.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { AIPipelineManager } from "../../ai-pipeline-handler.js";
+import { getDecryptedApiKeys } from "../../api-key-handler.js";
 import type {
 	AnalyzeSource,
 	AnalyzeOptions,
 	AnalyzeResult,
 	AnalyzeModel,
 	ClaudeTimeline,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Analyze";
 

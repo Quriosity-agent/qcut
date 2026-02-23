@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useRemotionStore, useComponentAnalysis } from "../remotion-store";
+import { useRemotionStore, useComponentAnalysis } from "../ai/remotion-store";
 import type { AnalysisResult } from "@/lib/remotion/sequence-analysis-service";
 
 // Mock the analysis service

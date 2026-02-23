@@ -2,7 +2,7 @@
 
 import { useDragDrop } from "@/hooks/use-drag-drop";
 // Media processing utilities will be imported dynamically when needed
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
 import type { MediaItem } from "@/stores/media/media-store-types";
 import {
 	Image,

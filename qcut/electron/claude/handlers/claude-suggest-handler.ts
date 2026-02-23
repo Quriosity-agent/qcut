@@ -5,9 +5,9 @@
  * Does NOT modify the timeline — just returns ranked suggestions.
  */
 
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { HttpError } from "./utils/http-router.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { HttpError } from "../utils/http-router.js";
 import { transcribeMedia } from "./claude-transcribe-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
 import { detectScenes } from "./claude-scene-handler.js";
@@ -19,7 +19,7 @@ import type {
 	TranscriptionResult,
 	FillerAnalysisResult,
 	SceneDetectionResult,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "SuggestCuts";
 

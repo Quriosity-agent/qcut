@@ -12,7 +12,7 @@
  * ## HTTP Timeout Architecture Note
  *
  * The Claude HTTP server has a 30-second global timeout
- * (see electron/claude/claude-http-server.ts), but several Stage 2
+ * (see electron/claude/http/claude-http-server.ts), but several Stage 2
  * handlers have much longer internal timeouts:
  *
  *   - Transcription: 5 min  →  client gets 408 after 30s
@@ -148,7 +148,7 @@ afterAll(() => {
 import {
 	detectScenesWithFFmpeg,
 	parseShowInfoOutput,
-} from "../claude/claude-scene-handler";
+} from "../claude/handlers/claude-scene-handler";
 
 describe.skipIf(!HAS_TEST_VIDEO)("Scene Detection (real FFmpeg)", () => {
 	it("detects scene boundaries in test video with 3 color scenes", async () => {
@@ -254,7 +254,7 @@ describe.skipIf(!HAS_TEST_VIDEO)("Frame Extraction (real FFmpeg)", () => {
 // 2.1: Audio Extraction — Real FFmpeg
 // ---------------------------------------------------------------------------
 
-import { extractAudio } from "../claude/claude-transcribe-handler";
+import { extractAudio } from "../claude/handlers/claude-transcribe-handler";
 
 describe.skipIf(!HAS_TEST_VIDEO)("Audio Extraction (real FFmpeg)", () => {
 	it("extracts audio from video to MP3", async () => {

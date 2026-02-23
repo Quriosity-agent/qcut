@@ -1,8 +1,8 @@
 "use client";
 
 import { FPS_PRESETS } from "@/constants/timeline-constants";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAspectRatio } from "@/hooks/media/use-aspect-ratio";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { TimelineElement } from "@/types/timeline";

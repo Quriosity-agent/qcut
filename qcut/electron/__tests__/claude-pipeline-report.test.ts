@@ -21,7 +21,7 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 import { resolve } from "node:path";
-import { generatePipelineReport } from "../claude/claude-summary-handler";
+import { generatePipelineReport } from "../claude/handlers/claude-summary-handler";
 import {
 	logOperation,
 	getOperationLog,

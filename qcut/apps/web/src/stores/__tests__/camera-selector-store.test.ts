@@ -5,7 +5,7 @@ import {
 	LENSES,
 	FOCAL_LENGTHS,
 	APERTURE_OPTIONS,
-} from "../camera-selector-store";
+} from "../editor/camera-selector-store";
 
 describe("camera-selector-store", () => {
 	beforeEach(() => {

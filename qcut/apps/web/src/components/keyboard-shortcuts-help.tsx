@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
 	type KeyboardShortcut,
 	useKeyboardShortcutsHelp,
-} from "@/hooks/use-keyboard-shortcuts-help";
+} from "@/hooks/keyboard/use-keyboard-shortcuts-help";
 import { useKeybindingsStore } from "@/stores/editor/keybindings-store";
 import { Button } from "./ui/button";
 import {

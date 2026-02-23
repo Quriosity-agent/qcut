@@ -420,7 +420,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 			// If this is the first element and it's a media element, automatically set the project canvas size
 			// to match the media's aspect ratio and FPS (for videos)
 			if (isFirstElement && newElement.type === "media") {
-				import("./media-store")
+				import("../media/media-store")
 					.then(({ useMediaStore, getMediaAspectRatio }) => {
 						const mediaStore = useMediaStore.getState();
 						const mediaItem = mediaStore.mediaItems.find(
@@ -431,7 +431,7 @@ export const useTimelineStore = create<TimelineStore>((set, get) => {
 							mediaItem &&
 							(mediaItem.type === "image" || mediaItem.type === "video")
 						) {
-							import("./editor-store").then(({ useEditorStore }) => {
+							import("../editor/editor-store").then(({ useEditorStore }) => {
 								const editorStore = useEditorStore.getState();
 								editorStore.setCanvasSizeFromAspectRatio(
 									getMediaAspectRatio(mediaItem)

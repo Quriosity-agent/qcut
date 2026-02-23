@@ -3,9 +3,9 @@
  * Proxies speech-to-speech requests to fal-ai/personaplex API.
  */
 
-import { claudeLog } from "./utils/logger.js";
-import { HttpError } from "./utils/http-router.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { claudeLog } from "../utils/logger.js";
+import { HttpError } from "../utils/http-router.js";
+import { getDecryptedApiKeys } from "../../api-key-handler.js";
 
 const HANDLER_NAME = "PersonaPlex";
 

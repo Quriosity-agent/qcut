@@ -1,6 +1,6 @@
 "use client";
 import { useSegmentationStore } from "@/stores/ai/segmentation-store";
-import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStoreActions } from "@/hooks/media/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Wand2, Loader2, ImagePlus, Video } from "lucide-react";

@@ -6,7 +6,7 @@ import { useEditorStore } from "@/stores/editor/editor-store";
 import {
 	useKeybindingsListener,
 	useKeybindingDisabler,
-} from "@/hooks/use-keybindings";
+} from "@/hooks/keyboard/use-keybindings";
 import { useEditorActions } from "@/hooks/use-editor-actions";
 import { ScenesMigrator } from "@/components/providers/migrators/scenes-migrator";
 

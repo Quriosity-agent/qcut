@@ -1,7 +1,7 @@
 "use client";
 
 import { useGeminiTerminalStore } from "@/stores/gemini-terminal-store";
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

@@ -13,7 +13,7 @@ import type {
 	PipelineStep,
 	ProjectSettings,
 	ProjectSummary,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const STAGE_LABELS = {
 	1: "Import",

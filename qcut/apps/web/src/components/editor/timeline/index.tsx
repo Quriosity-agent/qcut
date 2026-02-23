@@ -9,12 +9,12 @@ import {
 	ContextMenuTrigger,
 } from "../../ui/context-menu";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
-import { useFrameCache } from "@/hooks/use-frame-cache";
+import { useFrameCache } from "@/hooks/timeline/use-frame-cache";
 import { TimelineCacheIndicator } from "./timeline-cache-indicator";
 import { useProjectStore } from "@/stores/project-store";
-import { useTimelineZoom } from "@/hooks/use-timeline-zoom";
+import { useTimelineZoom } from "@/hooks/timeline/use-timeline-zoom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { TimelineTrackContent } from "./timeline-track";
 import {
@@ -22,9 +22,9 @@ import {
 	useTimelinePlayheadRuler,
 } from "./timeline-playhead";
 import { SelectionBox } from "../selection-box";
-import { useSelectionBox } from "@/hooks/use-selection-box";
+import { useSelectionBox } from "@/hooks/timeline/use-selection-box";
 import { SnapIndicator } from "../snap-indicator";
-import { SnapPoint } from "@/hooks/use-timeline-snapping";
+import { SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
 import { EffectsTimeline } from "./effects-timeline";
 import { EFFECTS_ENABLED } from "@/config/features";
 import {

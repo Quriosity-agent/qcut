@@ -5,9 +5,9 @@
  */
 
 import type { BrowserWindow } from "electron";
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { HttpError } from "./utils/http-router.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { HttpError } from "../utils/http-router.js";
 import { transcribeMedia } from "./claude-transcribe-handler.js";
 import { analyzeFillers } from "./claude-filler-handler.js";
 import { executeBatchCuts } from "./claude-cuts-handler.js";
@@ -19,7 +19,7 @@ import type {
 	AutoEditCutInfo,
 	CutInterval,
 	BatchCutResponse,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "AutoEdit";
 

@@ -3,8 +3,8 @@
  * Registers AI video/image generation routes on the HTTP router.
  */
 
-import type { Router } from "./utils/http-router.js";
-import { HttpError } from "./utils/http-router.js";
+import type { Router } from "../utils/http-router.js";
+import { HttpError } from "../utils/http-router.js";
 import {
 	startGenerateJob,
 	getJobStatus,
@@ -12,8 +12,8 @@ import {
 	cancelJob,
 	listGenerateModels,
 	estimateGenerateCost,
-} from "./claude-generate-handler.js";
-import { logOperation } from "./claude-operation-log.js";
+} from "../handlers/claude-generate-handler.js";
+import { logOperation } from "../claude-operation-log.js";
 
 /**
  * Register AI generation routes on the router.

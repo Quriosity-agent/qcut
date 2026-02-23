@@ -2,7 +2,7 @@
 
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { RemotionElement, TimelineElement } from "@/types/timeline";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useEditorStore } from "@/stores/editor/editor-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
@@ -15,7 +15,7 @@ import { FullscreenPreview, PreviewToolbar } from "./preview-panel-components";
 import { StickerCanvas } from "./stickers-overlay/StickerCanvas";
 import { CaptionsDisplay } from "@/components/captions/captions-display";
 import { captureWithFallback } from "@/lib/effects/canvas-utils";
-import { useFrameCache } from "@/hooks/use-frame-cache";
+import { useFrameCache } from "@/hooks/timeline/use-frame-cache";
 import { useEffectsStore } from "@/stores/ai/effects-store";
 import {
 	parametersToCSSFilters,

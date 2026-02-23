@@ -14,8 +14,8 @@ import {
 	type GenerateOptions,
 	type PipelineResult,
 	type PipelineProgress,
-} from "../native-pipeline/index.js";
-import { claudeLog } from "./utils/logger.js";
+} from "../../native-pipeline/index.js";
+import { claudeLog } from "../utils/logger.js";
 
 const HANDLER_NAME = "Generate";
 

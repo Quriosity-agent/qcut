@@ -28,7 +28,7 @@ import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useMediaStore } from "@/stores/media/media-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useElevenLabsTranscription } from "@/hooks/use-elevenlabs-transcription";
+import { useElevenLabsTranscription } from "@/hooks/media/use-elevenlabs-transcription";
 import { useDragDrop } from "@/hooks/use-drag-drop";
 import { Upload, X, Loader2, AlertCircle, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";

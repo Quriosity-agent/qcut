@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ResizeState, TimelineElement, TimelineTrack } from "@/types/timeline";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 

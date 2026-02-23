@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback } from "react";
 import { handleApiError, ProgressCallback } from "@/lib/ai-clients/ai-video-client";
 import { AIVideoOutputManager } from "@/lib/ai-clients/ai-video-output";
 import { debugLogger } from "@/lib/debug/debug-logger";
-import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStoreActions } from "@/hooks/media/use-async-media-store";
 
 import {
 	routeTextToVideoHandler,

@@ -12,7 +12,7 @@ import {
 } from "@/stores/editor/camera-selector-store";
 import { buildCameraPrompt } from "@/lib/ai-models/camera-prompt-builder";
 import { FalAiService } from "@/services/ai/fal-ai-service";
-import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStoreActions } from "@/hooks/media/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { createObjectURL } from "@/lib/media/blob-manager";
 import { ScrollTrack } from "./scroll-track";

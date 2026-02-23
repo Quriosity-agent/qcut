@@ -4,15 +4,15 @@
  * Returns filler words, silence gaps, and timing summaries.
  */
 
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { analyzeFillersWithPriority } from "../ai-filler-handler.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { analyzeFillersWithPriority } from "../../ai-filler-handler.js";
 import type {
 	FillerAnalysisRequest,
 	FillerAnalysisResult,
 	FillerWord,
 	SilenceGap,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Filler";
 const LONG_SILENCE_THRESHOLD = 1.0; // seconds

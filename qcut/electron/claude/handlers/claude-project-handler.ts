@@ -11,9 +11,9 @@ import {
 } from "electron";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { getProjectPath, getProjectSettingsPath } from "./utils/helpers.js";
-import { claudeLog } from "./utils/logger.js";
-import type { ProjectSettings, ProjectStats } from "../types/claude-api";
+import { getProjectPath, getProjectSettingsPath } from "../utils/helpers.js";
+import { claudeLog } from "../utils/logger.js";
+import type { ProjectSettings, ProjectStats } from "../../types/claude-api";
 
 const HANDLER_NAME = "Project";
 

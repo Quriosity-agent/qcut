@@ -55,7 +55,7 @@ vi.mock("../api-key-handler", () => ({
 // Tests
 // ---------------------------------------------------------------------------
 
-import { analyzeFillers } from "../claude/claude-filler-handler";
+import { analyzeFillers } from "../claude/handlers/claude-filler-handler";
 
 describe("claude-filler-handler (HTTP)", () => {
 	beforeEach(() => {

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trash2, Plus, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useBlobImage } from "@/hooks/use-blob-image";
+import { useBlobImage } from "@/hooks/media/use-blob-image";
 
 /**
  * ObjectListItem

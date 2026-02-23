@@ -13,8 +13,8 @@ import {
 	formatTimeFromSeconds,
 	parseTime,
 	generateId,
-} from "./utils/helpers.js";
-import { claudeLog } from "./utils/logger.js";
+} from "../utils/helpers.js";
+import { claudeLog } from "../utils/logger.js";
 import type {
 	ClaudeTimeline,
 	ClaudeElement,
@@ -30,7 +30,7 @@ import type {
 	ClaudeRangeDeleteResponse,
 	ClaudeSplitResponse,
 	ClaudeSelectionItem,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Timeline";
 const MAX_TIMELINE_BATCH_ITEMS = 50;

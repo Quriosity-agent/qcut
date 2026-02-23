@@ -9,15 +9,15 @@ import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import { getMediaInfo } from "./claude-media-handler.js";
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { getFFmpegPath } from "../ffmpeg/utils.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { getFFmpegPath } from "../../ffmpeg/utils.js";
+import { getDecryptedApiKeys } from "../../api-key-handler.js";
 import type {
 	SceneBoundary,
 	SceneDetectionRequest,
 	SceneDetectionResult,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "SceneDetect";
 const SCENE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes

@@ -3,7 +3,7 @@ import { useExportStore } from "@/stores/export-store";
 import { PanelView } from "@/types/panel";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { ExportCanvas, ExportCanvasRef } from "@/components/export-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,11 +35,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 
 // NEW: Custom hook imports
-import { useExportSettings } from "@/hooks/use-export-settings";
-import { useExportProgress } from "@/hooks/use-export-progress";
+import { useExportSettings } from "@/hooks/export/use-export-settings";
+import { useExportProgress } from "@/hooks/export/use-export-progress";
 import { debugLog, debugWarn } from "@/lib/debug/debug-config";
-import { useExportValidation } from "@/hooks/use-export-validation";
-import { useExportPresets } from "@/hooks/use-export-presets";
+import { useExportValidation } from "@/hooks/export/use-export-validation";
+import { useExportPresets } from "@/hooks/export/use-export-presets";
 
 // Audio export configuration
 import {

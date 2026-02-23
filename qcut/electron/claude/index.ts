@@ -6,25 +6,25 @@
 import { claudeLog } from "./utils/logger.js";
 
 // Re-export individual setup functions for selective use
-export { setupClaudeMediaIPC } from "./claude-media-handler.js";
-export { setupClaudeTimelineIPC } from "./claude-timeline-handler.js";
-export { setupClaudeProjectIPC } from "./claude-project-handler.js";
-export { setupClaudeExportIPC } from "./claude-export-handler.js";
-export { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
-export { setupClaudeAnalyzeIPC } from "./claude-analyze-handler.js";
+export { setupClaudeMediaIPC } from "./handlers/claude-media-handler.js";
+export { setupClaudeTimelineIPC } from "./handlers/claude-timeline-handler.js";
+export { setupClaudeProjectIPC } from "./handlers/claude-project-handler.js";
+export { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
+export { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
+export { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
 export {
 	startClaudeHTTPServer,
 	stopClaudeHTTPServer,
-} from "./claude-http-server.js";
+} from "./http/claude-http-server.js";
 
 // Import for internal use
-import { setupClaudeMediaIPC } from "./claude-media-handler.js";
-import { setupClaudeTimelineIPC } from "./claude-timeline-handler.js";
-import { setupClaudeProjectIPC } from "./claude-project-handler.js";
-import { setupClaudeExportIPC } from "./claude-export-handler.js";
-import { setupClaudeDiagnosticsIPC } from "./claude-diagnostics-handler.js";
-import { setupClaudeAnalyzeIPC } from "./claude-analyze-handler.js";
-import { startClaudeHTTPServer } from "./claude-http-server.js";
+import { setupClaudeMediaIPC } from "./handlers/claude-media-handler.js";
+import { setupClaudeTimelineIPC } from "./handlers/claude-timeline-handler.js";
+import { setupClaudeProjectIPC } from "./handlers/claude-project-handler.js";
+import { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
+import { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
+import { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
+import { startClaudeHTTPServer } from "./http/claude-http-server.js";
 
 /**
  * Setup all Claude Code Integration IPC handlers

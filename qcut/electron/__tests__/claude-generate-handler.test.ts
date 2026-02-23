@@ -79,7 +79,7 @@ import {
 	cancelJob,
 	listGenerateModels,
 	estimateGenerateCost,
-} from "../claude/claude-generate-handler";
+} from "../claude/handlers/claude-generate-handler";
 
 // ---------------------------------------------------------------------------
 // Tests

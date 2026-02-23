@@ -655,7 +655,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 		// 2) Cascade into the timeline: remove any elements using this media ID
 		// Use dynamic import to avoid circular dependency and improve code splitting
-		const { useTimelineStore } = await import("./timeline-store");
+		const { useTimelineStore } = await import("../timeline/timeline-store");
 		const timeline = useTimelineStore.getState();
 		const {
 			tracks,

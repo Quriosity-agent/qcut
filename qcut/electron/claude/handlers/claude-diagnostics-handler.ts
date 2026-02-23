@@ -5,12 +5,12 @@
 
 import { ipcMain, app, IpcMainInvokeEvent } from "electron";
 import * as os from "os";
-import { claudeLog } from "./utils/logger.js";
+import { claudeLog } from "../utils/logger.js";
 import type {
 	ErrorReport,
 	DiagnosticResult,
 	SystemInfo,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Diagnostics";
 

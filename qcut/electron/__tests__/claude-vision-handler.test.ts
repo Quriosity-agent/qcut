@@ -77,7 +77,7 @@ vi.mock("node:fs", async (importOriginal) => {
 	};
 });
 
-vi.mock("../claude/claude-media-handler", () => ({
+vi.mock("../claude/handlers/claude-media-handler", () => ({
 	getMediaInfo: vi.fn(async (_projectId: string, mediaId: string) => {
 		if (mediaId === "valid-video") {
 			return {
@@ -164,7 +164,7 @@ import {
 	analyzeFrames,
 	parseFrameAnalysisResponse,
 	resolveTimestamps,
-} from "../claude/claude-vision-handler";
+} from "../claude/handlers/claude-vision-handler";
 
 describe("parseFrameAnalysisResponse", () => {
 	const framePaths = [

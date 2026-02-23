@@ -874,9 +874,9 @@ export function createTimelineOperations({
 			}
 
 			try {
-				const { useMediaStore } = await import("./media-store");
+				const { useMediaStore } = await import("../media/media-store");
 				const mediaStore = useMediaStore.getState();
-				const { useProjectStore } = await import("./project-store");
+				const { useProjectStore } = await import("../project-store");
 				const projectStore = useProjectStore.getState();
 
 				if (!projectStore.activeProject) {
@@ -889,7 +889,7 @@ export function createTimelineOperations({
 					getImageDimensions,
 					generateVideoThumbnail,
 					getMediaDuration,
-				} = await import("./media-store-loader").then((m) =>
+				} = await import("../media/media-store-loader").then((m) =>
 					m.getMediaStoreUtils()
 				);
 

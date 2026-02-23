@@ -6,14 +6,14 @@
 
 import { ipcMain } from "electron";
 import type { BrowserWindow, IpcMainEvent } from "electron";
-import { generateId } from "./utils/helpers.js";
-import { claudeLog } from "./utils/logger.js";
-import { HttpError } from "./utils/http-router.js";
+import { generateId } from "../utils/helpers.js";
+import { claudeLog } from "../utils/logger.js";
+import { HttpError } from "../utils/http-router.js";
 import type {
 	CutInterval,
 	BatchCutRequest,
 	BatchCutResponse,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Cuts";
 const BATCH_CUT_TIMEOUT = 30_000;

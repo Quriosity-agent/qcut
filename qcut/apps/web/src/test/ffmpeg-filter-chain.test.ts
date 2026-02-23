@@ -1,4 +1,4 @@
-import { FFmpegFilterChain } from "../lib/ffmpeg-filter-chain";
+import { FFmpegFilterChain } from "../lib/ffmpeg/ffmpeg-filter-chain";
 
 describe("FFmpegFilterChain", () => {
 	it("should convert brightness correctly", () => {

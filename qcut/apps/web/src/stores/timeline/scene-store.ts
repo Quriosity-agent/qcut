@@ -18,7 +18,7 @@ import type { SerializedScene } from "@/lib/storage/types";
  * @returns The project store hook
  */
 const getProjectStore = async () => {
-	const { useProjectStore } = await import("./project-store");
+	const { useProjectStore } = await import("../project-store");
 	return useProjectStore;
 };
 

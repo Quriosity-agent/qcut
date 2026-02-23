@@ -3,7 +3,7 @@ import { TRANSFORMATIONS, CUSTOM_PROMPT } from "../constants/transformations";
 import type { Transformation } from "@/types/nano-edit";
 import { FalAiService } from "@/services/ai/fal-ai-service";
 import { useNanoEditStore } from "@/stores/editor/nano-edit-store";
-import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStoreActions } from "@/hooks/media/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { createObjectURL } from "@/lib/media/blob-manager";
 import { openInNewTab } from "@/lib/utils";

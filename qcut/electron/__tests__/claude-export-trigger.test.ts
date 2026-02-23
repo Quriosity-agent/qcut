@@ -65,7 +65,7 @@ import {
 	startExportJob,
 	getExportJobStatus,
 	clearExportJobsForTests,
-} from "../claude/claude-export-handler";
+} from "../claude/handlers/claude-export-handler";
 
 const testTimeline = {
 	name: "Test Timeline",

@@ -1,5 +1,5 @@
 import { useEditorStore } from "@/stores/editor/editor-store";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import {
 	getMediaStoreUtils,
 	type MediaItem,

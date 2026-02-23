@@ -14,7 +14,7 @@ import type { PlaybackState, PlaybackControls } from "@/types/playback";
 // Lazy import getters to avoid circular dependencies
 type TimelineStoreHook =
 	typeof import("@/stores/timeline/timeline-store")["useTimelineStore"];
-type ProjectStoreHook = typeof import("./project-store")["useProjectStore"];
+type ProjectStoreHook = typeof import("../project-store")["useProjectStore"];
 
 let _timelineStore: TimelineStoreHook | null = null;
 let _projectStore: ProjectStoreHook | null = null;
@@ -43,7 +43,7 @@ const getTimelineStoreSync = () => {
  */
 const getProjectStoreSync = () => {
 	if (!_projectStore) {
-		import("./project-store")
+		import("../project-store")
 			.then((m) => {
 				_projectStore = m.useProjectStore;
 			})
@@ -58,7 +58,7 @@ import("@/stores/timeline/timeline-store")
 		_timelineStore = m.useTimelineStore;
 	})
 	.catch((err) => console.error("Failed to pre-load timeline store:", err));
-import("./project-store")
+import("../project-store")
 	.then((m) => {
 		_projectStore = m.useProjectStore;
 	})

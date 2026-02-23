@@ -11,17 +11,17 @@ import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import { getMediaInfo } from "./claude-media-handler.js";
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { getFFmpegPath, getFFprobePath } from "../ffmpeg/utils.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { getFFmpegPath, getFFprobePath } from "../../ffmpeg/utils.js";
+import { getDecryptedApiKeys } from "../../api-key-handler.js";
 import type {
 	TranscribeJob,
 	TranscribeRequest,
 	TranscriptionResult,
 	TranscriptionWord,
 	TranscriptionSegment,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Transcribe";
 const TRANSCRIPTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes

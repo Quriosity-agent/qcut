@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 // Mock media store actions
 const mockAddMediaItem = vi.fn().mockResolvedValue("new-item-id");
-vi.mock("@/hooks/use-async-media-store", () => ({
+vi.mock("@/hooks/media/use-async-media-store", () => ({
 	useAsyncMediaStoreActions: () => ({
 		addMediaItem: mockAddMediaItem,
 	}),

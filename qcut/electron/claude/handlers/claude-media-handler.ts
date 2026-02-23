@@ -14,13 +14,13 @@ import {
 	getMediaType,
 	generateId,
 	sanitizeFilename,
-} from "./utils/helpers.js";
-import { claudeLog } from "./utils/logger.js";
+} from "../utils/helpers.js";
+import { claudeLog } from "../utils/logger.js";
 import type {
 	MediaFile,
 	BatchImportItem,
 	BatchImportResult,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Media";
 
@@ -555,7 +555,7 @@ export async function extractFrame(
 	// Find FFmpeg path
 	let ffmpegPath: string;
 	try {
-		const ffmpegUtils = await import("../ffmpeg/utils.js");
+		const ffmpegUtils = await import("../../ffmpeg/utils.js");
 		ffmpegPath = ffmpegUtils.getFFmpegPath();
 	} catch {
 		ffmpegPath = "ffmpeg";

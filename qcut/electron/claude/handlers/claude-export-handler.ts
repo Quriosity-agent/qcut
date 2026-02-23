@@ -7,9 +7,9 @@ import { app, ipcMain, IpcMainInvokeEvent } from "electron";
 import { spawn } from "node:child_process";
 import * as fsPromises from "node:fs/promises";
 import * as path from "node:path";
-import { getFFmpegPath, parseProgress } from "../ffmpeg/utils.js";
-import { claudeLog } from "./utils/logger.js";
-import { logOperation } from "./claude-operation-log.js";
+import { getFFmpegPath, parseProgress } from "../../ffmpeg/utils.js";
+import { claudeLog } from "../utils/logger.js";
+import { logOperation } from "../claude-operation-log.js";
 import type {
 	ClaudeTimeline,
 	ClaudeElement,
@@ -18,7 +18,7 @@ import type {
 	ExportJobRequest,
 	ExportJobStatus,
 	MediaFile,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Export";
 

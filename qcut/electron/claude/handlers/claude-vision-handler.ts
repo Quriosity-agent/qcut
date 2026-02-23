@@ -10,15 +10,15 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app } from "electron";
 import { getMediaInfo } from "./claude-media-handler.js";
-import { claudeLog } from "./utils/logger.js";
-import { sanitizeProjectId } from "./utils/helpers.js";
-import { getFFmpegPath } from "../ffmpeg/utils.js";
-import { getDecryptedApiKeys } from "../api-key-handler.js";
+import { claudeLog } from "../utils/logger.js";
+import { sanitizeProjectId } from "../utils/helpers.js";
+import { getFFmpegPath } from "../../ffmpeg/utils.js";
+import { getDecryptedApiKeys } from "../../api-key-handler.js";
 import type {
 	FrameAnalysis,
 	FrameAnalysisRequest,
 	FrameAnalysisResult,
-} from "../types/claude-api";
+} from "../../types/claude-api";
 
 const HANDLER_NAME = "Vision";
 const MAX_FRAMES_PER_REQUEST = 20;

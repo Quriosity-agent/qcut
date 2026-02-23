@@ -1,5 +1,5 @@
 import React from "react";
-import { useBlobImage } from "@/hooks/use-blob-image";
+import { useBlobImage } from "@/hooks/media/use-blob-image";
 import { Loader2 } from "lucide-react";
 
 interface BlobImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {

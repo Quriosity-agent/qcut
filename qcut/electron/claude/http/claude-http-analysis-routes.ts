@@ -4,37 +4,37 @@
  * and Stage 3 cut/edit routes on the HTTP router.
  */
 
-import type { Router } from "./utils/http-router.js";
-import { HttpError } from "./utils/http-router.js";
-import { analyzeVideo, listAnalyzeModels } from "./claude-analyze-handler.js";
+import type { Router } from "../utils/http-router.js";
+import { HttpError } from "../utils/http-router.js";
+import { analyzeVideo, listAnalyzeModels } from "../handlers/claude-analyze-handler.js";
 import {
 	transcribeMedia,
 	startTranscribeJob,
 	getTranscribeJobStatus,
 	listTranscribeJobs,
 	cancelTranscribeJob,
-} from "./claude-transcribe-handler.js";
-import { detectScenes } from "./claude-scene-handler.js";
-import { analyzeFrames } from "./claude-vision-handler.js";
-import { analyzeFillers } from "./claude-filler-handler.js";
-import { executeBatchCuts } from "./claude-cuts-handler.js";
-import { executeDeleteRange } from "./claude-range-handler.js";
+} from "../handlers/claude-transcribe-handler.js";
+import { detectScenes } from "../handlers/claude-scene-handler.js";
+import { analyzeFrames } from "../handlers/claude-vision-handler.js";
+import { analyzeFillers } from "../handlers/claude-filler-handler.js";
+import { executeBatchCuts } from "../handlers/claude-cuts-handler.js";
+import { executeDeleteRange } from "../handlers/claude-range-handler.js";
 import {
 	autoEdit,
 	startAutoEditJob,
 	getAutoEditJobStatus,
 	listAutoEditJobs,
 	cancelAutoEditJob,
-} from "./claude-auto-edit-handler.js";
+} from "../handlers/claude-auto-edit-handler.js";
 import {
 	suggestCuts,
 	startSuggestJob,
 	getSuggestJobStatus,
 	listSuggestJobs,
 	cancelSuggestJob,
-} from "./claude-suggest-handler.js";
-import { logOperation } from "./claude-operation-log.js";
-import { getMediaInfo } from "./claude-media-handler.js";
+} from "../handlers/claude-suggest-handler.js";
+import { logOperation } from "../claude-operation-log.js";
+import { getMediaInfo } from "../handlers/claude-media-handler.js";
 import type { BrowserWindow } from "electron";
 
 // ---------------------------------------------------------------------------

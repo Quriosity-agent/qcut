@@ -7,7 +7,7 @@
 
 import React, { useRef, useEffect, memo } from "react";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
-import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
+import { useAsyncMediaStore } from "@/hooks/media/use-async-media-store";
 import { cn } from "@/lib/utils";
 import { debugLog } from "@/lib/debug/debug-config";
 import { StickerElement } from "./StickerElement";

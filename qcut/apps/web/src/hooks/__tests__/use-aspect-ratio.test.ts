@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio";
+import { useAspectRatio } from "@/hooks/media/use-aspect-ratio";
 
 // Mock the store hooks
 vi.mock("@/stores/editor/editor-store", () => ({
 	useEditorStore: vi.fn(),
 }));
 
-vi.mock("@/hooks/use-async-media-store", () => ({
+vi.mock("@/hooks/media/use-async-media-store", () => ({
 	useAsyncMediaItems: vi.fn(),
 }));
 
@@ -20,7 +20,7 @@ vi.mock("@/stores/media/media-store-loader", () => ({
 }));
 
 import { useEditorStore } from "@/stores/editor/editor-store";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { getMediaStoreUtils } from "@/stores/media/media-store-loader";
 

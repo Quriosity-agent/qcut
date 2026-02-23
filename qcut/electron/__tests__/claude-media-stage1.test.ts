@@ -108,7 +108,7 @@ import {
 	listMediaFiles,
 	importMediaFile,
 	getMediaInfo,
-} from "../claude/claude-media-handler";
+} from "../claude/handlers/claude-media-handler";
 
 // ---------------------------------------------------------------------------
 // Helpers

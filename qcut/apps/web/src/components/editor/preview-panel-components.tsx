@@ -13,7 +13,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useEditorStore } from "@/stores/editor/editor-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useAspectRatio } from "@/hooks/use-aspect-ratio"; // 🔴 CRITICAL - WAS MISSING
+import { useAspectRatio } from "@/hooks/media/use-aspect-ratio"; // 🔴 CRITICAL - WAS MISSING
 import { cn } from "@/lib/utils";
 import { formatTimeCode } from "@/lib/time";
 import { EditableTimecode } from "@/components/ui/editable-timecode";

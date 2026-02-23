@@ -3,7 +3,7 @@ import { CanvasSize, CanvasMode } from "@/types/editor";
 import { create } from "zustand";
 import { storageService } from "@/lib/storage/storage-service";
 import { toast } from "sonner";
-import { getMediaStore } from "./media-store-loader";
+import { getMediaStore } from "./media/media-store-loader";
 // Dynamic import to break circular dependency
 // import { useTimelineStore } from "./timeline-store";
 // Dynamic import to break circular dependency
@@ -234,7 +234,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 		const { useStickersOverlayStore } = await import(
 			"./stickers-overlay-store"
 		);
-		const { useSceneStore } = await import("./scene-store");
+		const { useSceneStore } = await import("./timeline/scene-store");
 		const stickersStore = useStickersOverlayStore.getState();
 		const sceneStore = useSceneStore.getState();
 

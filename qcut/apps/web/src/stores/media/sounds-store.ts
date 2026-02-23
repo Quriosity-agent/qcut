@@ -280,10 +280,10 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
 			{ useTimelineStore },
 			{ usePlaybackStore },
 		] = await Promise.all([
-			import("./project-store"),
+			import("../project-store"),
 			import("./media-store"),
-			import("./timeline-store"),
-			import("./playback-store"),
+			import("../timeline/timeline-store"),
+			import("../editor/playback-store"),
 		]);
 
 		const activeProject = useProjectStore.getState().activeProject;

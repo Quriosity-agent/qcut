@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
+import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { toast } from "sonner";
 import { TimelineElement } from "./timeline-element";
 import {
@@ -22,7 +22,7 @@ import {
 	TIMELINE_CONSTANTS,
 } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
-import { useTimelineSnapping, SnapPoint } from "@/hooks/use-timeline-snapping";
+import { useTimelineSnapping, SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
 import { withErrorBoundary } from "@/components/error-boundary";
 
 function TimelineTrackContentComponent({
