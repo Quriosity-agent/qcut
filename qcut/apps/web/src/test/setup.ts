@@ -1,6 +1,9 @@
 // Test setup file for Vitest - enhanced DOM setup for jsdom
 console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 
+// Skip DOM setup when not in jsdom environment (e.g. electron tests with @vitest-environment node)
+const IS_JSDOM = typeof window !== "undefined" && typeof document !== "undefined";
+
 // CRITICAL: Import polyfills FIRST before anything else
 import "./polyfills";
 
@@ -159,6 +162,17 @@ mockPresence();
 // Load Radix UI focus scope mock to avoid MutationObserver issues
 import { mockFocusScope } from "./mocks/radix-focus-scope";
 mockFocusScope();
+
+// Guard: skip all window/document setup when not in jsdom
+if (typeof window === "undefined") {
+	// Node environment (electron tests) — skip DOM mocks
+	afterEach(() => { vi.clearAllMocks(); });
+	beforeAll(() => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
+	afterAll(() => { vi.restoreAllMocks(); });
+} else {
 
 // Mock window.matchMedia and window.history for jsdom environment
 Object.defineProperty(window, "matchMedia", {
@@ -331,3 +345,5 @@ beforeAll(() => {
 afterAll(() => {
 	vi.restoreAllMocks();
 });
+
+} // end of jsdom guard

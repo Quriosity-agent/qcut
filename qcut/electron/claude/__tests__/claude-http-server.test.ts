@@ -288,6 +288,11 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 
 describe("Claude HTTP Server", () => {
+	beforeEach(() => {
+		vi.mocked(BrowserWindow.getAllWindows).mockReset();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([]);
+	});
+
 	it("POST /api/claude/timeline/:projectId/elements/:elementId/split returns split result", async () => {
 		const mockWindow = {
 			webContents: { send: vi.fn() },

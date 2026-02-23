@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for claude-analyze-handler.ts
  * Validates video path resolution, model listing, and analysis orchestration.
