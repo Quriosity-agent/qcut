@@ -753,7 +753,9 @@ export function WordTimelineView() {
 			if (!mediaItem && projectId) {
 				console.log("[WordTimeline] Media not in store, importing...");
 				try {
-					const { processMediaFiles } = await import("@/lib/media/media-processing");
+					const { processMediaFiles } = await import(
+						"@/lib/media/media-processing"
+					);
 
 					// Read file from disk via Electron to create a File object
 					const fileName = filePath.split(/[/\\]/).pop() || "media";

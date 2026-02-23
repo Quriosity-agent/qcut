@@ -102,7 +102,9 @@ const getUserFriendlyMessage = (
 		}
 
 		// If no specific pattern matches, return the original message if it's user-friendly
+		// Only in DEV to avoid leaking internal details in production
 		if (
+			import.meta.env.DEV &&
 			message.length < 100 &&
 			!message.includes("stack") &&
 			!message.includes("TypeError")
@@ -436,12 +438,14 @@ export const safeBatchAsync = async <T>(
 	options?: {
 		continueOnError?: boolean;
 		showProgress?: boolean;
+		suppressToasts?: boolean;
 	}
 ): Promise<Array<T | null>> => {
 	const continueOnError = options?.continueOnError ?? true;
 	const tasks = operations.map(({ fn, context }, i) =>
 		safeAsync(fn, {
 			...context,
+			showToast: options?.suppressToasts ? false : context.showToast,
 			metadata: {
 				...context.metadata,
 				batchIndex: i,

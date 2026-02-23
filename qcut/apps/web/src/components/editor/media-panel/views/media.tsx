@@ -154,7 +154,9 @@ export function MediaView() {
 			const filesArray = Array.from(files);
 
 			// Dynamically import media processing utilities
-			const { processMediaFiles } = await import("@/lib/media/media-processing");
+			const { processMediaFiles } = await import(
+				"@/lib/media/media-processing"
+			);
 			const processedItems = await processMediaFiles(filesArray, (p) => {
 				setProgress(p);
 			});
@@ -189,7 +191,9 @@ export function MediaView() {
 		if (!activeProject?.id || isSyncing) return;
 		setIsSyncing(true);
 		try {
-			const { syncProjectFolder } = await import("@/lib/project/project-folder-sync");
+			const { syncProjectFolder } = await import(
+				"@/lib/project/project-folder-sync"
+			);
 			const result = await syncProjectFolder(activeProject.id);
 			if (result.imported > 0) {
 				toast.success(`Synced ${result.imported} file(s) from project folder`);
