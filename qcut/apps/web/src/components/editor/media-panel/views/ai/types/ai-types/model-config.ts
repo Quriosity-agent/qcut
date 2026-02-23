@@ -33,7 +33,7 @@ export interface AIModelParameters {
 	quality?: string;
 	style_preset?: string;
 	enhance_prompt?: boolean;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 /**
@@ -54,7 +54,7 @@ export interface UpscaleModelParameters {
 	/** Output image format */
 	output_format?: "png" | "jpeg" | "webp";
 	/** Allow additional model-specific parameters */
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 /**

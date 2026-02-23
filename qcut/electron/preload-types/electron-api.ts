@@ -100,8 +100,8 @@ export interface ElectronAPI {
 
 	// Storage operations
 	storage: {
-		save: (key: string, data: any) => Promise<boolean>;
-		load: (key: string) => Promise<any>;
+		save: (key: string, data: unknown) => Promise<boolean>;
+		load: (key: string) => Promise<unknown>;
 		remove: (key: string) => Promise<boolean>;
 		list: () => Promise<string[]>;
 		clear: () => Promise<boolean>;
@@ -117,7 +117,7 @@ export interface ElectronAPI {
 
 	// Sound operations
 	sounds: {
-		search: (params: SoundSearchParams) => Promise<any>;
+		search: (params: SoundSearchParams) => Promise<unknown>;
 		downloadPreview: (
 			params: SoundDownloadParams
 		) => Promise<{ success: boolean; path?: string; error?: string }>;

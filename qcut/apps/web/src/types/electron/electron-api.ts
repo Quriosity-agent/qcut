@@ -105,8 +105,8 @@ export interface ElectronAPI {
 
 	// Storage operations
 	storage: {
-		save: (key: string, data: any) => Promise<void>;
-		load: (key: string) => Promise<any | null>;
+		save: (key: string, data: unknown) => Promise<void>;
+		load: (key: string) => Promise<unknown>;
 		remove: (key: string) => Promise<void>;
 		list: () => Promise<string[]>;
 		clear: () => Promise<void>;
@@ -311,7 +311,7 @@ export interface ElectronAPI {
 	}>;
 
 	// Generic IPC invoke method
-	invoke: (channel: string, ...args: any[]) => Promise<any>;
+	invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
 
 	// FFmpeg export operations
 	ffmpeg: {

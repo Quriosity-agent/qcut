@@ -2,7 +2,7 @@
  * Generation state, progress, and service manager types
  */
 
-import { AIVideoOutputManager } from "@/lib/ai-video-output";
+import type { AIVideoOutputManager } from "@/lib/ai-video-output";
 
 // Generated Video Interfaces
 export interface GeneratedVideo {

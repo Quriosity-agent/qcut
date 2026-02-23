@@ -14,7 +14,7 @@
 - **Consumers (2 files):** `presets/index.ts` (barrel), `presets/__tests__/presets.test.ts`
 
 ### Plan: Split into category files
-```
+```text
 apps/web/src/lib/moyin/presets/director-presets/
   shot-size.ts           → SHOT_SIZE_PRESETS, ShotSizeType
   duration.ts            → DURATION_PRESETS
@@ -34,7 +34,7 @@ apps/web/src/lib/moyin/presets/director-presets/
 ```
 
 **Simpler alternative (recommended — 4 files):**
-```
+```text
 director-presets/
   shot-and-camera.ts     → SHOT_SIZE_PRESETS, CAMERA_ANGLE_PRESETS, CAMERA_MOVEMENT_PRESETS,
                             CAMERA_RIG_PRESETS, FOCAL_LENGTH_PRESETS, MOVEMENT_SPEED_PRESETS + types
@@ -64,7 +64,7 @@ director-presets/
 - **Consumers (33 files):** Widely imported across the AI feature. All use named imports.
 
 ### Plan: Split by concern
-```
+```text
 ai-types/
   model-config.ts        → AIModelEndpoints, UpscaleModelEndpoints, AIModelParameters,
                             UpscaleModelParameters, ModelCategory, AIModel (~120 lines)
@@ -102,7 +102,7 @@ ai-types/
 - The ElectronAPI interface is a single monolith but splitting it would require `interface merging` or `intersection types`, which adds complexity.
 
 ### Plan: Split supporting types out, keep ElectronAPI intact
-```
+```text
 electron/preload-types/
   supporting-types.ts    → All 30+ small interfaces (FileDialogFilter, FileInfo,
                             SoundSearchParams, TranscriptionRequestData, ExportSession,
@@ -116,7 +116,7 @@ electron/preload-types/
 ```
 
 **Alternative (more granular supporting types):**
-```
+```text
 electron/preload-types/
   file-types.ts          → FileDialogFilter, FileInfo, VideoSource, FrameData, AudioFile
   transcription-types.ts → TranscriptionRequestData, TranscriptionResult, TranscriptionSegment,
@@ -153,7 +153,7 @@ electron/preload-types/
 - **Consumers (12 files):** Various generator files + fal-ai client files.
 
 ### Plan: Split by model/feature
-```
+```text
 apps/web/src/lib/ai-video/validation/
   ltxv2-validators.ts      → LTXV2 constants + all LTXV2 validation functions (~160 lines)
   hailuo-validators.ts     → Hailuo 2.3 validators (~50 lines)
@@ -189,7 +189,7 @@ apps/web/src/lib/ai-video/validation/
 - **Note:** This file mirrors `electron/preload-types.ts` for the web side. The ElectronAPI interface is a single declaration.
 
 ### Plan: Split surrounding types out, keep ElectronAPI intact
-```
+```text
 apps/web/src/types/electron/
   screen-recording.ts    → ScreenCaptureSourceType, ScreenCaptureSource, StartScreenRecording*,
                             StopScreenRecording*, ScreenRecordingStatus (~55 lines)
