@@ -64,36 +64,26 @@ function buildRemotionPrompt({
 }): string {
 	const totalFrames = Math.round(durationSeconds * fps);
 
-	return `You are a Remotion component generator. Generate a single React component as a .tsx file.
+	return `Output ONLY raw TypeScript/TSX code. No markdown, no explanation, no commentary, no questions. Start your response with "import" and end with the export default statement.
+
+Generate a Remotion React component (.tsx file).
 
 Component name: "${name}"
 User description: "${userPrompt}"
 Duration: ${durationSeconds} seconds at ${fps}fps (${totalFrames} frames total)
 Canvas: ${width}x${height}
 
-STRICT RULES — follow ALL of these:
-1. Import useCurrentFrame and useVideoConfig from "remotion".
-2. ALL animations MUST use useCurrentFrame() + interpolate(). CSS animations and Tailwind animation classes are FORBIDDEN.
-3. Use interpolate() from "remotion" for smooth value transitions. Always use { extrapolateRight: "clamp" }.
-4. Export the component as the default export.
-5. Use inline styles (style={{ ... }}) for all styling. Do NOT import external CSS.
-6. The component must fill ${width}x${height} exactly (use width: "100%", height: "100%").
-7. Use simple, self-contained code with no external dependencies beyond "remotion" and "react".
-8. Make it visually impressive within the constraints.
+Rules:
+- Import useCurrentFrame, useVideoConfig, interpolate from "remotion"
+- ALL animations use useCurrentFrame() + interpolate() with { extrapolateRight: "clamp" }
+- CSS animations and Tailwind animation classes are FORBIDDEN
+- Export default the component
+- Inline styles only (style={{ ... }}), no external CSS
+- Fill ${width}x${height} (use width: "100%", height: "100%")
+- No dependencies beyond "remotion" and "react"
+- Make it visually impressive
 
-Return ONLY the .tsx file content. No markdown fences, no explanation, no file path comments.
-
-Example structure:
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion";
-
-const ${name}: React.FC = () => {
-  const frame = useCurrentFrame();
-  const { fps, width, height } = useVideoConfig();
-  // animations using interpolate(frame, ...)
-  return <div style={{ width: "100%", height: "100%", ... }}>...</div>;
-};
-
-export default ${name};`;
+Your entire response must be valid TSX code starting with "import" — nothing else.`;
 }
 
 /**
@@ -135,7 +125,7 @@ function invokeClaude(
 	signal: AbortSignal,
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const child = spawn("claude", ["-p"], {
+		const child = spawn("claude", ["-p", "--allowedTools", ""], {
 			cwd,
 			stdio: ["pipe", "pipe", "pipe"],
 			env: { ...process.env, CLAUDECODE: "" },
@@ -271,14 +261,14 @@ export async function handleGenerateRemotion(
 
 	const tsxSource = extractTsxSource(responseText);
 
-	// Basic validation: check for required Remotion imports
-	if (
-		!tsxSource.includes("useCurrentFrame") &&
-		!tsxSource.includes("remotion")
-	) {
-		console.warn(
-			"[generate-remotion] Warning: generated code may not contain valid Remotion imports",
-		);
+	// Validate that we got actual code, not a description
+	if (!tsxSource.includes("import ") || !tsxSource.includes("remotion")) {
+		return {
+			success: false,
+			error:
+				"Claude did not return valid Remotion code. Try running again.",
+			duration: (Date.now() - startTime) / 1000,
+		};
 	}
 
 	// 7. Write component file
