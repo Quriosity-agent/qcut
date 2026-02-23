@@ -561,7 +561,11 @@ async function importRemotionFolder({
 		debugLog("[ClaudeTimelineBridge] Importing folder:", folderPath);
 		const importResult = await api.import(folderPath);
 
-		if (!importResult.success || !importResult.bundle) {
+		if (
+			!importResult.success ||
+			!importResult.bundle ||
+			!importResult.scan?.compositions
+		) {
 			debugError(
 				"[ClaudeTimelineBridge] Folder import failed:",
 				importResult.error

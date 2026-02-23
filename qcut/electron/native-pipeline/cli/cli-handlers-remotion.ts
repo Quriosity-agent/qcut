@@ -48,12 +48,22 @@ function toComponentName(input: string): string {
  * then checks `.agents/skills/remotion-best-practices/SKILL.md`.
  */
 function findSkillPath(): string | null {
-	// Try relative to process.cwd() first
-	const candidates = [
-		join(process.cwd(), ".agents/skills/remotion-best-practices/SKILL.md"),
+	const skillRelPath = ".agents/skills/remotion-best-practices/SKILL.md";
+	const candidates: string[] = [
+		// 1. Electron app path (works in packaged builds)
+		...((() => {
+			try {
+				const { app } = require("electron");
+				if (app?.getAppPath) return [join(app.getAppPath(), skillRelPath)];
+			} catch { /* not running under Electron */ }
+			return [];
+		})()),
+		// 2. process.cwd() (works when CLI invoked from project root)
+		join(process.cwd(), skillRelPath),
+		// 3. __filename traversal (works in dev with source layout)
 		join(
 			dirname(dirname(dirname(dirname(__filename)))),
-			".agents/skills/remotion-best-practices/SKILL.md",
+			skillRelPath,
 		),
 	];
 
