@@ -369,9 +369,7 @@ export const T2V_MODELS = {
 			aspect_ratio: "16:9",
 		},
 		supportedResolutions: ["360p", "540p", "720p", "1080p"],
-		supportedDurations: [
-			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-		],
+		supportedDurations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
 		supportedAspectRatios: ["16:9", "9:16", "4:3", "3:4", "1:1"],
 		perSecondPricing: {
 			"360p": 0.07,

@@ -5,7 +5,10 @@ import { handleTimelineEditingCommand } from "../native-pipeline/editor-handlers
 import { handleAnalysisCommand } from "../native-pipeline/editor-handlers-analysis.js";
 import { handleGenerateExportCommand } from "../native-pipeline/editor-handlers-generate.js";
 import { EditorApiClient } from "../native-pipeline/editor-api-client.js";
-import type { CLIRunOptions, CLIResult } from "../native-pipeline/cli-runner.js";
+import type {
+	CLIRunOptions,
+	CLIResult,
+} from "../native-pipeline/cli-runner.js";
 
 // ---------------------------------------------------------------------------
 // Mock HTTP server
@@ -52,7 +55,7 @@ function installFetchMock(baseUrl: string) {
 					error: `Not found: ${key}`,
 					timestamp: Date.now(),
 				}),
-				{ status: 404, headers: { "Content-Type": "application/json" } },
+				{ status: 404, headers: { "Content-Type": "application/json" } }
 			);
 		}
 
@@ -107,7 +110,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:health" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 		expect((result.data as { status: string }).status).toBe("ok");
@@ -117,7 +120,7 @@ describe("handleEditorCommand dispatcher", () => {
 		// No health route mocked — will return 404 with success:false
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:media:list", projectId: "p1" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("QCut editor not running");
@@ -135,7 +138,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:media:list", projectId: "proj1" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -151,7 +154,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:project:stats", projectId: "proj1" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -167,7 +170,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:timeline:export", projectId: "p1" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -183,7 +186,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:analyze:models" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -199,7 +202,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:generate:models" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -215,7 +218,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:export:presets" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -234,7 +237,7 @@ describe("handleEditorCommand dispatcher", () => {
 				command: "editor:diagnostics:analyze",
 				message: "render failed",
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -253,7 +256,7 @@ describe("handleEditorCommand dispatcher", () => {
 				command: "editor:mcp:forward-html",
 				html: "<div>test</div>",
 			}),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(true);
 	});
@@ -265,7 +268,7 @@ describe("handleEditorCommand dispatcher", () => {
 		});
 		const result = await handleEditorCommand(
 			makeOpts({ command: "editor:foobar:action" }),
-			noopProgress,
+			noopProgress
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("Unknown editor module: foobar");
@@ -297,7 +300,7 @@ describe("Media handlers — uncovered actions", () => {
 			const result = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:media:info" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--project-id");
@@ -305,7 +308,7 @@ describe("Media handlers — uncovered actions", () => {
 			const result2 = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:media:info", projectId: "p1" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result2.success).toBe(false);
 			expect(result2.error).toContain("--media-id");
@@ -323,7 +326,7 @@ describe("Media handlers — uncovered actions", () => {
 					projectId: "p1",
 					mediaId: "m1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			expect((result.data as { name: string }).name).toBe("video.mp4");
@@ -335,7 +338,7 @@ describe("Media handlers — uncovered actions", () => {
 			const result = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:media:import-url", projectId: "p1" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--url");
@@ -353,7 +356,7 @@ describe("Media handlers — uncovered actions", () => {
 					projectId: "p1",
 					imageUrl: "https://example.com/video.mp4",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 		});
@@ -371,7 +374,7 @@ describe("Media handlers — uncovered actions", () => {
 					imageUrl: "https://example.com/video.mp4",
 					filename: "my-video.mp4",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			const body = JSON.parse(lastCapturedBody!);
 			expect(body.filename).toBe("my-video.mp4");
@@ -387,7 +390,7 @@ describe("Media handlers — uncovered actions", () => {
 					projectId: "p1",
 					mediaId: "m1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--timestamp");
@@ -406,7 +409,7 @@ describe("Media handlers — uncovered actions", () => {
 					mediaId: "m1",
 					startTime: 5.5,
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 		});
@@ -421,7 +424,7 @@ describe("Media handlers — uncovered actions", () => {
 					projectId: "p1",
 					mediaId: "m1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--new-name");
@@ -440,7 +443,7 @@ describe("Media handlers — uncovered actions", () => {
 					mediaId: "m1",
 					newName: "new-video-name.mp4",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			const body = JSON.parse(lastCapturedBody!);
@@ -453,7 +456,7 @@ describe("Media handlers — uncovered actions", () => {
 			const result = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:media:delete", projectId: "p1" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--media-id");
@@ -471,7 +474,7 @@ describe("Media handlers — uncovered actions", () => {
 					projectId: "p1",
 					mediaId: "m1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			expect(lastCapturedMethod).toBe("DELETE");
@@ -486,7 +489,7 @@ describe("Media handlers — uncovered actions", () => {
 					command: "editor:media:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown media action");
@@ -519,7 +522,7 @@ describe("Project handlers — uncovered actions", () => {
 			const result = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:project:summary" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--project-id");
@@ -536,7 +539,7 @@ describe("Project handlers — uncovered actions", () => {
 					command: "editor:project:summary",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			expect((result.data as { name: string }).name).toBe("My Project");
@@ -548,7 +551,7 @@ describe("Project handlers — uncovered actions", () => {
 			const result = await handleMediaProjectCommand(
 				client,
 				makeOpts({ command: "editor:project:report" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--project-id");
@@ -565,7 +568,7 @@ describe("Project handlers — uncovered actions", () => {
 					command: "editor:project:report",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 		});
@@ -579,7 +582,7 @@ describe("Project handlers — uncovered actions", () => {
 					command: "editor:project:update-settings",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--data");
@@ -594,7 +597,7 @@ describe("Project handlers — uncovered actions", () => {
 					command: "editor:project:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown project action");
@@ -630,7 +633,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					command: "editor:timeline:delete-element",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--element-id");
@@ -648,7 +651,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					projectId: "p1",
 					elementId: "e1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			expect(lastCapturedMethod).toBe("DELETE");
@@ -663,7 +666,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					command: "editor:timeline:batch-update",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--updates");
@@ -681,7 +684,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					projectId: "p1",
 					updates: JSON.stringify(updates),
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Batch limit");
@@ -703,7 +706,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					projectId: "p1",
 					updates: JSON.stringify(updates),
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			const body = JSON.parse(lastCapturedBody!);
@@ -719,7 +722,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					command: "editor:timeline:select",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--elements");
@@ -738,7 +741,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					elements:
 						'[{"trackId":"t1","elementId":"e1"},{"trackId":"t1","elementId":"e2"}]',
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			const body = JSON.parse(lastCapturedBody!);
@@ -754,7 +757,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					command: "editor:timeline:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown timeline action");
@@ -769,7 +772,7 @@ describe("Timeline handlers — uncovered actions", () => {
 					command: "editor:editing:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown editing action");
@@ -805,7 +808,7 @@ describe("Editing handlers — uncovered actions", () => {
 					command: "editor:editing:auto-edit-status",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--job-id");
@@ -823,7 +826,7 @@ describe("Editing handlers — uncovered actions", () => {
 					projectId: "p1",
 					jobId: "j1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 			expect((result.data as { status: string }).status).toBe("completed");
@@ -846,7 +849,7 @@ describe("Editing handlers — uncovered actions", () => {
 					ripple: true,
 					crossTrackRipple: true,
 				}),
-				noopProgress,
+				noopProgress
 			);
 			const body = JSON.parse(lastCapturedBody!);
 			expect(body.ripple).toBe(true);
@@ -880,7 +883,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:generate:list-jobs" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--project-id");
@@ -897,7 +900,7 @@ describe("Generate handlers — uncovered actions", () => {
 					command: "editor:generate:list-jobs",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(true);
 		});
@@ -920,7 +923,7 @@ describe("Generate handlers — uncovered actions", () => {
 					duration: "5",
 					aspectRatio: "16:9",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			const body = JSON.parse(lastCapturedBody!);
 			expect(body.model).toBe("kling_pro");
@@ -940,7 +943,7 @@ describe("Generate handlers — uncovered actions", () => {
 					projectId: "p1",
 					model: "flux_dev",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--prompt");
@@ -955,7 +958,7 @@ describe("Generate handlers — uncovered actions", () => {
 					command: "editor:export:status",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--job-id");
@@ -967,7 +970,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:generate:nonexistent" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown generate action");
@@ -977,7 +980,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:export:nonexistent" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown export action");
@@ -987,7 +990,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:diagnostics:nonexistent" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown diagnostics action");
@@ -997,7 +1000,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:mcp:nonexistent" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown mcp action");
@@ -1007,7 +1010,7 @@ describe("Generate handlers — uncovered actions", () => {
 			const result = await handleGenerateExportCommand(
 				client,
 				makeOpts({ command: "editor:unknown:action" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown module");
@@ -1043,7 +1046,7 @@ describe("Analysis handlers — edge cases", () => {
 					command: "editor:analyze:video",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--source");
@@ -1058,7 +1061,7 @@ describe("Analysis handlers — edge cases", () => {
 					command: "editor:analyze:frames",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("--media-id");
@@ -1073,7 +1076,7 @@ describe("Analysis handlers — edge cases", () => {
 					command: "editor:analyze:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown analyze action");
@@ -1088,7 +1091,7 @@ describe("Analysis handlers — edge cases", () => {
 					command: "editor:transcribe:nonexistent",
 					projectId: "p1",
 				}),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown transcribe action");
@@ -1100,7 +1103,7 @@ describe("Analysis handlers — edge cases", () => {
 			const result = await handleAnalysisCommand(
 				client,
 				makeOpts({ command: "editor:unknown:action" }),
-				noopProgress,
+				noopProgress
 			);
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unknown module");
@@ -1170,12 +1173,12 @@ describe("EditorApiClient — error edge cases", () => {
 					success: true,
 					data: { status: "cancelled" },
 				}),
-				{ headers: { "Content-Type": "application/json" } },
+				{ headers: { "Content-Type": "application/json" } }
 			);
 		};
 
 		await expect(
-			client.pollJob("/api/claude/jobs/cancelled1", { interval: 10 }),
+			client.pollJob("/api/claude/jobs/cancelled1", { interval: 10 })
 		).rejects.toThrow("cancelled");
 
 		globalThis.fetch = origFetch;
