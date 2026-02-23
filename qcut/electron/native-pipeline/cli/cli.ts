@@ -35,6 +35,7 @@ const COMMANDS = [
 	"analyze-video",
 	"query-video",
 	"transcribe",
+	"generate-remotion",
 	"transfer-motion",
 	"generate-grid",
 	"upscale-image",
@@ -143,6 +144,7 @@ Commands:
   analyze-video       Analyze a video with AI vision
   query-video         Query a video with a custom prompt (keep/cut segments)
   transcribe          Transcribe audio to text
+  generate-remotion   Generate a Remotion component from a prompt
   transfer-motion     Transfer motion from video to image
   generate-grid       Generate an image grid
   upscale-image       Upscale an image

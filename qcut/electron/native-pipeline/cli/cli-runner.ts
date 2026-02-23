@@ -32,6 +32,7 @@ import {
 	handleTranscribe as mediaHandleTranscribe,
 	handleQueryVideo as mediaHandleQueryVideo,
 } from "./cli-handlers-media.js";
+import { handleGenerateRemotion } from "./cli-handlers-remotion.js";
 import {
 	handleSetup as adminHandleSetup,
 	handleSetKey as adminHandleSetKey,
@@ -266,6 +267,13 @@ export class CLIPipelineRunner {
 				);
 			case "transcribe":
 				return mediaHandleTranscribe(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
+			case "generate-remotion":
+				return handleGenerateRemotion(
 					options,
 					onProgress,
 					this.executor,
