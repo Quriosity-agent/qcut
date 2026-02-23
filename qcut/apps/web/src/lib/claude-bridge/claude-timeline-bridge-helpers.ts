@@ -529,6 +529,78 @@ async function bundleAndRegisterComponent({
 	}
 }
 
+/**
+ * Import a Remotion folder using the existing folder import pipeline.
+ * Scans Root.tsx, bundles all compositions, loads components, registers in store.
+ * Returns the list of registered component IDs.
+ */
+async function importRemotionFolder({
+	folderPath,
+}: {
+	folderPath: string;
+}): Promise<string[]> {
+	try {
+		const api = window.electronAPI?.remotionFolder;
+		if (!api?.import) {
+			debugWarn(
+				"[ClaudeTimelineBridge] remotionFolder.import not available"
+			);
+			return [];
+		}
+
+		debugLog("[ClaudeTimelineBridge] Importing folder:", folderPath);
+		const importResult = await api.import(folderPath);
+
+		if (!importResult.success || !importResult.bundle) {
+			debugError(
+				"[ClaudeTimelineBridge] Folder import failed:",
+				importResult.error
+			);
+			return [];
+		}
+
+		const { loadComponentsFromFolder } = await import(
+			"@/lib/remotion/component-loader"
+		);
+		const loadResult = await loadComponentsFromFolder(
+			folderPath,
+			importResult.scan.compositions,
+			importResult.bundle.results
+		);
+
+		if (!loadResult.success || loadResult.components.length === 0) {
+			debugError(
+				"[ClaudeTimelineBridge] Component loading failed:",
+				loadResult.errors
+			);
+			return [];
+		}
+
+		const { useRemotionStore } = await import(
+			"@/stores/ai/remotion-store"
+		);
+		const store = useRemotionStore.getState();
+		const registeredIds: string[] = [];
+
+		for (const component of loadResult.components) {
+			store.registerComponent(component);
+			registeredIds.push(component.id);
+			debugLog(
+				"[ClaudeTimelineBridge] Registered component:",
+				component.id
+			);
+		}
+
+		return registeredIds;
+	} catch (error) {
+		debugError(
+			"[ClaudeTimelineBridge] Folder import/register failed:",
+			error
+		);
+		return [];
+	}
+}
+
 /** Add a Claude remotion element to the timeline store. */
 export async function addClaudeRemotionElement({
 	element,
@@ -537,10 +609,57 @@ export async function addClaudeRemotionElement({
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
 }): Promise<void> {
-	const componentId = element.sourceId || `remotion-${Date.now()}`;
 	const componentName = element.sourceName || "Remotion";
 
-	// If componentPath is provided, bundle and register the component first
+	// Folder-based import: use the existing remotion-folder pipeline
+	if (element.folderPath) {
+		const registeredIds = await importRemotionFolder({
+			folderPath: element.folderPath,
+		});
+
+		if (registeredIds.length === 0) {
+			debugWarn(
+				"[ClaudeTimelineBridge] No components imported from folder"
+			);
+			return;
+		}
+
+		const trackId = timelineStore.findOrCreateTrack("remotion");
+		const startTime = getElementStartTime({ element });
+		const duration = getElementDuration({
+			element,
+			fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
+		});
+
+		// Add a timeline element for each imported composition
+		let offset = startTime;
+		for (const compId of registeredIds) {
+			timelineStore.addElementToTrack(trackId, {
+				type: "remotion",
+				name: compId,
+				componentId: compId,
+				props: element.props || {},
+				renderMode: "live",
+				startTime: offset,
+				duration,
+				trimStart: 0,
+				trimEnd: 0,
+				opacity: 1,
+			});
+			offset += duration;
+		}
+
+		debugLog(
+			"[ClaudeTimelineBridge] Added",
+			registeredIds.length,
+			"remotion elements from folder"
+		);
+		return;
+	}
+
+	// Single-file fallback: bundle one .tsx file
+	const componentId = element.sourceId || `remotion-${Date.now()}`;
+
 	if (element.componentPath) {
 		const registeredId = await bundleAndRegisterComponent({
 			componentPath: element.componentPath,

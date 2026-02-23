@@ -1,16 +1,17 @@
 /**
  * CLI Remotion Component Generation Handler
  *
- * Generates Remotion .tsx components from text prompts using Claude CLI
- * (`claude -p`), writes them to the project's remotion/generated/ folder,
- * and optionally registers + adds them to the editor timeline.
+ * Generates Remotion project folders from text prompts using Claude CLI
+ * (`claude -p`) with full tool access. Claude reads the Remotion skills
+ * (SKILL.md) and writes a proper folder structure (Root.tsx + components).
+ * The folder can then be imported via the existing remotion-folder pipeline.
  *
  * @module electron/native-pipeline/cli-handlers-remotion
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 
@@ -23,8 +24,6 @@ type ProgressFn = (progress: {
 
 /**
  * Sanitize a string into a valid PascalCase React component name.
- * Strips non-alphanumeric chars, capitalizes word boundaries, ensures
- * it starts with an uppercase letter.
  */
 function toComponentName(input: string): string {
 	const words = input
@@ -44,8 +43,29 @@ function toComponentName(input: string): string {
 }
 
 /**
- * Build the prompt for Claude CLI that wraps the user's description
- * with Remotion best-practice constraints.
+ * Locate the Remotion best-practices SKILL.md file.
+ * Walks up from the CLI handler's directory to find the project root,
+ * then checks `.agents/skills/remotion-best-practices/SKILL.md`.
+ */
+function findSkillPath(): string | null {
+	// Try relative to process.cwd() first
+	const candidates = [
+		join(process.cwd(), ".agents/skills/remotion-best-practices/SKILL.md"),
+		join(
+			dirname(dirname(dirname(dirname(__filename)))),
+			".agents/skills/remotion-best-practices/SKILL.md",
+		),
+	];
+
+	for (const candidate of candidates) {
+		if (existsSync(candidate)) return resolve(candidate);
+	}
+	return null;
+}
+
+/**
+ * Build the prompt that instructs Claude to read the Remotion skills
+ * and generate a proper project folder.
  */
 function buildRemotionPrompt({
 	userPrompt,
@@ -54,6 +74,8 @@ function buildRemotionPrompt({
 	fps,
 	width,
 	height,
+	outputDir,
+	skillPath,
 }: {
 	userPrompt: string;
 	name: string;
@@ -61,71 +83,50 @@ function buildRemotionPrompt({
 	fps: number;
 	width: number;
 	height: number;
+	outputDir: string;
+	skillPath: string | null;
 }): string {
 	const totalFrames = Math.round(durationSeconds * fps);
+	const skillInstruction = skillPath
+		? `First, read the Remotion skill file at "${skillPath}" to learn Remotion best practices. It references rule files — read whichever rules are relevant to this task (animations, timing, compositions, sequencing, transitions, text-animations, etc.).`
+		: "";
 
-	return `Output ONLY raw TypeScript/TSX code. No markdown, no explanation, no commentary, no questions. Start your response with "import" and end with the export default statement.
+	return `You are a Remotion video component generator.
 
-Generate a Remotion React component (.tsx file).
+${skillInstruction}
 
+Generate a Remotion project folder at "${outputDir}/src/".
+
+User request: "${userPrompt}"
 Component name: "${name}"
-User description: "${userPrompt}"
-Duration: ${durationSeconds} seconds at ${fps}fps (${totalFrames} frames total)
+Duration: ${durationSeconds}s at ${fps}fps (${totalFrames} frames)
 Canvas: ${width}x${height}
 
-Rules:
-- Import useCurrentFrame, useVideoConfig, interpolate from "remotion"
-- ALL animations use useCurrentFrame() + interpolate() with { extrapolateRight: "clamp" }
+Create these files:
+
+1. "${outputDir}/src/Root.tsx" — exports RemotionRoot with <Composition> declaration(s)
+2. "${outputDir}/src/${name}.tsx" — the main animation component
+3. Any additional component files if needed for complex animations
+
+Requirements:
+- ALL animations driven by useCurrentFrame() + interpolate() with { extrapolateRight: "clamp" }
 - CSS animations and Tailwind animation classes are FORBIDDEN
-- Export default the component
 - Inline styles only (style={{ ... }}), no external CSS
-- Fill ${width}x${height} (use width: "100%", height: "100%")
 - No dependencies beyond "remotion" and "react"
-- Make it visually impressive
+- Root.tsx must use <Composition id="..." component={...} durationInFrames={${totalFrames}} fps={${fps}} width={${width}} height={${height}} />
+- Make it visually impressive and production-quality
 
-Your entire response must be valid TSX code starting with "import" — nothing else.`;
+Write the files now.`;
 }
 
-/**
- * Extract .tsx source code from Claude CLI response.
- * Strips markdown fences, preamble text, and trailing commentary.
- */
-function extractTsxSource(responseText: string): string {
-	let source = responseText.trim();
-
-	// Strip ```tsx ... ``` or ```typescript ... ``` fences
-	source = source
-		.replace(/^```(?:tsx|typescript|jsx|js)?\s*\n?/m, "")
-		.replace(/\n?```\s*$/m, "")
-		.trim();
-
-	// Strip any preamble text before the first import statement
-	const importIndex = source.indexOf("import ");
-	if (importIndex > 0) {
-		source = source.slice(importIndex);
-	}
-
-	// Strip trailing text after the last export default or closing semicolon
-	const lastExportDefault = source.lastIndexOf("export default ");
-	if (lastExportDefault >= 0) {
-		// Find the end of the export default statement (semicolon + newline)
-		const afterExport = source.indexOf(";", lastExportDefault);
-		if (afterExport >= 0) {
-			source = source.slice(0, afterExport + 1);
-		}
-	}
-
-	return source.trim();
-}
-
-/** Invoke `claude -p` with prompt via stdin, return stdout. */
+/** Invoke `claude -p` with all tools enabled, CWD set to output folder. */
 function invokeClaude(
 	prompt: string,
 	cwd: string,
 	signal: AbortSignal,
 ): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const child = spawn("claude", ["-p", "--allowedTools", ""], {
+	return new Promise((resolvePromise, reject) => {
+		const child = spawn("claude", ["-p", "--permission-mode", "bypassPermissions"], {
 			cwd,
 			stdio: ["pipe", "pipe", "pipe"],
 			env: { ...process.env, CLAUDECODE: "" },
@@ -143,9 +144,11 @@ function invokeClaude(
 
 		child.on("close", (code) => {
 			if (code !== 0) {
-				reject(new Error(`claude -p failed (exit ${code}): ${stderr.trim()}`));
+				reject(
+					new Error(`claude -p failed (exit ${code}): ${stderr.trim()}`),
+				);
 			} else {
-				resolve(stdout);
+				resolvePromise(stdout);
 			}
 		});
 
@@ -153,11 +156,9 @@ function invokeClaude(
 			reject(new Error(`claude -p failed: ${err.message}`));
 		});
 
-		// Write prompt via stdin then close
 		child.stdin.write(prompt);
 		child.stdin.end();
 
-		// Forward abort signal
 		const onAbort = () => {
 			child.kill("SIGTERM");
 			reject(new Error("Aborted"));
@@ -169,11 +170,11 @@ function invokeClaude(
 			signal.addEventListener("abort", onAbort, { once: true });
 		}
 
-		// Timeout after 2 minutes
+		// Timeout after 5 minutes (folder generation is more complex)
 		setTimeout(() => {
 			child.kill("SIGTERM");
-			reject(new Error("claude -p timed out after 120s"));
-		}, 120_000);
+			reject(new Error("claude -p timed out after 300s"));
+		}, 300_000);
 	});
 }
 
@@ -183,7 +184,7 @@ export async function handleGenerateRemotion(
 	_executor: unknown,
 	signal: AbortSignal,
 ): Promise<CLIResult> {
-	// 1. Validate: prompt is required
+	// 1. Validate
 	const userPrompt = options.prompt || options.text;
 	if (!userPrompt) {
 		return {
@@ -198,7 +199,7 @@ export async function handleGenerateRemotion(
 		? toComponentName(options.filename)
 		: toComponentName(userPrompt.slice(0, 60));
 
-	// 3. Parse dimension/duration options
+	// 3. Parse options
 	const durationSeconds = options.duration ? Number(options.duration) : 5;
 	const fps = 30;
 	const width = 1920;
@@ -215,28 +216,39 @@ export async function handleGenerateRemotion(
 	onProgress({
 		stage: "generating",
 		percent: 0,
-		message: `Generating Remotion component "${componentName}" via Claude...`,
+		message: `Generating Remotion project "${componentName}" via Claude...`,
 	});
 
-	// 4. Build prompt with Remotion constraints
-	const wrappedPrompt = buildRemotionPrompt({
+	// 4. Find Remotion skill
+	const skillPath = findSkillPath();
+	if (skillPath) {
+		console.log(`[generate-remotion] Using skill: ${skillPath}`);
+	} else {
+		console.warn("[generate-remotion] Remotion skill not found, proceeding without it");
+	}
+
+	// 5. Output directory — project folder per generation
+	const baseOutputDir =
+		options.outputDir || join(process.cwd(), "output");
+	const projectDir = resolve(join(baseOutputDir, componentName));
+	mkdirSync(join(projectDir, "src"), { recursive: true });
+
+	// 6. Build prompt
+	const prompt = buildRemotionPrompt({
 		userPrompt,
 		name: componentName,
 		durationSeconds,
 		fps,
 		width,
 		height,
+		outputDir: projectDir,
+		skillPath,
 	});
 
-	// 5. Output directory
-	const outputDir =
-		options.outputDir || join(process.cwd(), "remotion", "generated");
-	mkdirSync(outputDir, { recursive: true });
-
-	// 6. Call Claude CLI
+	// 7. Call Claude CLI with all tools
 	let responseText: string;
 	try {
-		responseText = await invokeClaude(wrappedPrompt, outputDir, signal);
+		responseText = await invokeClaude(prompt, projectDir, signal);
 	} catch (err) {
 		return {
 			success: false,
@@ -247,56 +259,44 @@ export async function handleGenerateRemotion(
 
 	onProgress({
 		stage: "processing",
-		percent: 60,
-		message: "Parsing generated component...",
-	});
-
-	if (!responseText.trim()) {
-		return {
-			success: false,
-			error: "Claude returned empty response",
-			duration: (Date.now() - startTime) / 1000,
-		};
-	}
-
-	const tsxSource = extractTsxSource(responseText);
-
-	// Validate that we got actual code, not a description
-	if (!tsxSource.includes("import ") || !tsxSource.includes("remotion")) {
-		return {
-			success: false,
-			error:
-				"Claude did not return valid Remotion code. Try running again.",
-			duration: (Date.now() - startTime) / 1000,
-		};
-	}
-
-	// 7. Write component file
-	const tsxFilename = `${componentName}.tsx`;
-	const tsxPath = join(outputDir, tsxFilename);
-
-	onProgress({
-		stage: "writing",
 		percent: 70,
-		message: `Writing ${tsxFilename}...`,
+		message: "Verifying generated project...",
 	});
 
-	try {
-		writeFileSync(tsxPath, tsxSource, "utf-8");
-	} catch (err) {
+	// 8. Ensure package.json exists for folder import validation
+	const pkgJsonPath = join(projectDir, "src", "package.json");
+	if (!existsSync(pkgJsonPath)) {
+		writeFileSync(
+			pkgJsonPath,
+			JSON.stringify(
+				{
+					name: componentName.toLowerCase(),
+					version: "1.0.0",
+					dependencies: { remotion: "*", react: "*" },
+				},
+				null,
+				2,
+			),
+		);
+	}
+
+	// Verify Root.tsx was created
+	const rootPath = join(projectDir, "src", "Root.tsx");
+	if (!existsSync(rootPath)) {
 		return {
 			success: false,
-			error: `Failed to write ${tsxPath}: ${err instanceof Error ? err.message : String(err)}`,
+			error: `Claude did not create Root.tsx at ${rootPath}. Response: ${responseText.slice(0, 200)}`,
 			duration: (Date.now() - startTime) / 1000,
 		};
 	}
 
-	// 8. Save metadata JSON
+	// 9. Save metadata JSON
+	const srcDir = resolve(join(projectDir, "src"));
 	const output = {
 		type: "remotion",
 		name: componentName,
 		prompt: userPrompt,
-		componentPath: tsxPath,
+		folderPath: srcDir,
 		duration: durationSeconds,
 		width,
 		height,
@@ -305,19 +305,21 @@ export async function handleGenerateRemotion(
 		generationDuration: (Date.now() - startTime) / 1000,
 	};
 
-	const jsonPath = join(outputDir, `${componentName}.json`);
+	const jsonPath = join(projectDir, `${componentName}.json`);
 	try {
 		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
 	} catch {
-		console.warn(`[generate-remotion] Could not write metadata to ${jsonPath}`);
+		console.warn(
+			`[generate-remotion] Could not write metadata to ${jsonPath}`,
+		);
 	}
 
-	// 9. Timeline integration
+	// 10. Timeline integration
 	if (options.addToTimeline && options.projectId) {
 		const timelineResult = await addRemotionToTimeline(
 			options,
 			componentName,
-			tsxPath,
+			srcDir,
 			durationSeconds,
 			onProgress,
 		);
@@ -331,22 +333,22 @@ export async function handleGenerateRemotion(
 	onProgress({
 		stage: "complete",
 		percent: 100,
-		message: `Generated ${tsxFilename}`,
+		message: `Generated Remotion project: ${componentName}/src/`,
 	});
 
 	return {
 		success: true,
-		outputPath: tsxPath,
+		outputPath: srcDir,
 		data: output,
 		duration: output.generationDuration,
 	};
 }
 
-/** Add generated Remotion component to editor timeline. */
+/** Add generated Remotion folder to editor timeline via folder import. */
 async function addRemotionToTimeline(
 	options: CLIRunOptions,
 	componentName: string,
-	componentPath: string,
+	folderPath: string,
 	durationSeconds: number,
 	onProgress: ProgressFn,
 ): Promise<{ success: boolean; error?: string }> {
@@ -361,7 +363,7 @@ async function addRemotionToTimeline(
 	onProgress({
 		stage: "timeline",
 		percent: 85,
-		message: "Adding Remotion component to timeline...",
+		message: "Importing Remotion project to timeline...",
 	});
 
 	try {
@@ -369,7 +371,7 @@ async function addRemotionToTimeline(
 			type: "remotion",
 			sourceId: `generated-${componentName}`,
 			sourceName: componentName,
-			componentPath,
+			folderPath,
 			startTime: 0,
 			duration: durationSeconds,
 		});
