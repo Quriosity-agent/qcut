@@ -9,6 +9,7 @@
 
 import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
+import type { EditorApiClient } from "../editor/editor-api-client.js";
 import {
 	handleEditorHealth,
 	handleMediaProjectCommand,
@@ -74,10 +75,13 @@ export async function handleEditorCommand(
 			case "mcp":
 				return await handleGenerateExportCommand(client, options, onProgress);
 
+			case "navigator":
+				return await handleNavigatorCommand(client, options);
+
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, navigator`,
 				};
 		}
 	} catch (err) {
@@ -85,5 +89,42 @@ export async function handleEditorCommand(
 			success: false,
 			error: err instanceof Error ? err.message : String(err),
 		};
+	}
+}
+
+/**
+ * Handle `editor:navigator:*` commands.
+ * - `projects` — list all saved projects
+ * - `open` — navigate the editor to a specific project
+ */
+async function handleNavigatorCommand(
+	client: EditorApiClient,
+	options: CLIRunOptions,
+): Promise<CLIResult> {
+	const parts = options.command.split(":");
+	const action = parts[2]; // "projects" or "open"
+
+	switch (action) {
+		case "projects": {
+			const data = await client.get("/api/claude/navigator/projects");
+			return { success: true, data };
+		}
+		case "open": {
+			if (!options.projectId) {
+				return {
+					success: false,
+					error: "Missing --project-id",
+				};
+			}
+			const data = await client.post("/api/claude/navigator/open", {
+				projectId: options.projectId,
+			});
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown navigator action: ${action}. Available: projects, open`,
+			};
 	}
 }

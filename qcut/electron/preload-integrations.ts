@@ -497,6 +497,45 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.invoke("claude:analyze:run", projectId, options),
 			models: () => ipcRenderer.invoke("claude:analyze:models"),
 		},
+		navigator: {
+			onProjectsRequest: (callback) => {
+				ipcRenderer.removeAllListeners(
+					"claude:navigator:projects:request",
+				);
+				ipcRenderer.on(
+					"claude:navigator:projects:request",
+					(_, data) => callback(data),
+				);
+			},
+			sendProjectsResponse: (requestId, result) => {
+				ipcRenderer.send("claude:navigator:projects:response", {
+					requestId,
+					result,
+				});
+			},
+			onOpenRequest: (callback) => {
+				ipcRenderer.removeAllListeners(
+					"claude:navigator:open:request",
+				);
+				ipcRenderer.on("claude:navigator:open:request", (_, data) =>
+					callback(data),
+				);
+			},
+			sendOpenResponse: (requestId, result) => {
+				ipcRenderer.send("claude:navigator:open:response", {
+					requestId,
+					result,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners(
+					"claude:navigator:projects:request",
+				);
+				ipcRenderer.removeAllListeners(
+					"claude:navigator:open:request",
+				);
+			},
+		},
 	};
 }
 

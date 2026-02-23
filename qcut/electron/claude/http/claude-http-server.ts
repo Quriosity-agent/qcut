@@ -63,6 +63,10 @@ import {
 	clearOperationLog,
 } from "../claude-operation-log.js";
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
+import {
+	requestProjectsFromRenderer,
+	requestNavigateToProject,
+} from "../handlers/claude-navigator-handler.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
 
@@ -727,6 +731,38 @@ export function startClaudeHTTPServer(
 		}
 
 		return { forwarded, ...(error && { error }) };
+	});
+
+	// ==========================================================================
+	// Navigator routes (project listing + editor navigation)
+	// ==========================================================================
+	router.get("/api/claude/navigator/projects", async () => {
+		const win = getWindow();
+		return await Promise.race([
+			requestProjectsFromRenderer(win),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					5000,
+				),
+			),
+		]);
+	});
+
+	router.post("/api/claude/navigator/open", async (req) => {
+		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
+			throw new HttpError(400, "Missing 'projectId' in request body");
+		}
+		const win = getWindow();
+		return await Promise.race([
+			requestNavigateToProject(win, req.body.projectId),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					5000,
+				),
+			),
+		]);
 	});
 
 	// ==========================================================================

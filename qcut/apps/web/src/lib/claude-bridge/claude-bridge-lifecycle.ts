@@ -5,6 +5,10 @@ import {
 	setupClaudeProjectBridge,
 	setupClaudeTimelineBridge,
 } from "@/lib/claude-bridge/claude-timeline-bridge";
+import {
+	cleanupClaudeNavigatorBridge,
+	setupClaudeNavigatorBridge,
+} from "@/lib/claude-bridge/claude-navigator-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -39,6 +43,11 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeProjectBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup navigator bridge",
+		step: setupClaudeNavigatorBridge,
+		onError,
+	});
 
 	return () => {
 		runBridgeStep({
@@ -49,6 +58,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup project bridge",
 			step: cleanupClaudeProjectBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup navigator bridge",
+			step: cleanupClaudeNavigatorBridge,
 			onError,
 		});
 	};

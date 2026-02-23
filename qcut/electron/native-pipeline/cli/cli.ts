@@ -123,6 +123,9 @@ const COMMANDS = [
 	"editor:export:list-jobs",
 	"editor:diagnostics:analyze",
 	"editor:mcp:forward-html",
+	// Navigator commands — project listing + editor navigation
+	"editor:navigator:projects",
+	"editor:navigator:open",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
