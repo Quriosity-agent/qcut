@@ -276,7 +276,7 @@ export class CLIPipelineRunner {
 				return handleGenerateRemotion(
 					options,
 					onProgress,
-					this.executor,
+					null,
 					this.signal
 				);
 			case "transfer-motion":

@@ -86,6 +86,8 @@ export interface ClaudeElement {
 	style?: Record<string, unknown>;
 	backgroundColor?: string;
 	textColor?: string;
+	componentPath?: string;
+	props?: Record<string, unknown>;
 	effects?: string[];
 	trimStart?: number;
 	trimEnd?: number;

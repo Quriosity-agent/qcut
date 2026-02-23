@@ -443,6 +443,43 @@ export function addClaudeMarkdownElement({
 	);
 }
 
+const DEFAULT_REMOTION_DURATION_SECONDS = 5;
+
+/** Add a Claude remotion element to the timeline store. */
+export function addClaudeRemotionElement({
+	element,
+	timelineStore,
+}: {
+	element: Partial<ClaudeElement>;
+	timelineStore: TimelineStoreState;
+}): void {
+	const trackId = timelineStore.findOrCreateTrack("remotion");
+	const startTime = getElementStartTime({ element });
+	const duration = getElementDuration({
+		element,
+		fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
+	});
+
+	timelineStore.addElementToTrack(trackId, {
+		type: "remotion",
+		name: element.sourceName || "Remotion",
+		componentId: element.sourceId || "",
+		componentPath: element.componentPath,
+		props: element.props || {},
+		renderMode: "live",
+		startTime,
+		duration,
+		trimStart: 0,
+		trimEnd: 0,
+		opacity: 1,
+	});
+
+	debugLog(
+		"[ClaudeTimelineBridge] Added remotion element:",
+		element.sourceName || element.sourceId
+	);
+}
+
 /**
  * Format internal tracks for Claude export
  */
@@ -558,6 +595,12 @@ export async function applyTimelineToStore(
 					added++;
 				} else if (element.type === "markdown") {
 					addClaudeMarkdownElement({
+						element,
+						timelineStore: useTimelineStore.getState(),
+					});
+					added++;
+				} else if (element.type === "remotion") {
+					addClaudeRemotionElement({
 						element,
 						timelineStore: useTimelineStore.getState(),
 					});
