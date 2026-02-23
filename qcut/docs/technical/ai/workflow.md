@@ -807,7 +807,7 @@ Generation downloads the video, creates a media item, and adds it to the media s
 - **Function**: `handleGenerate` (inside success block), `addMediaItem` (store action)
 - **Files**:
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
-  - `qcut/apps/web/src/stores/media-store.ts`
+  - `qcut/apps/web/src/stores/media/media-store.ts`
 - **Console Logs** (in order):
   - `step 6a: media integration condition check`
   - `step 6b: executing media integration block`
@@ -833,7 +833,7 @@ Generation downloads the video, creates a media item, and adds it to the media s
 The media store persists the item; generation updates UI progress to 100% and fires onComplete; the UI shows the generated video to the user.
 - **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
 - **Files**:
-  - `qcut/apps/web/src/stores/media-store.ts`
+  - `qcut/apps/web/src/stores/media/media-store.ts`
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
 - **Console**: `step 7: generation flow complete; updating UI and callbacks`
 - **Sub-steps**:
@@ -853,7 +853,7 @@ Individual download and export-all ZIP functionality from the media panel.
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/index.tsx`
   - `qcut/apps/web/src/components/editor/media-panel/views/ai/components/ai-history-panel.tsx`
   - `qcut/apps/web/src/components/editor/media-panel/export-all-button.tsx`
-  - `qcut/apps/web/src/hooks/use-zip-export.ts`
+  - `qcut/apps/web/src/hooks/export/use-zip-export.ts`
 
 #### Individual Download
 - **Console**: `step 8: media panel download` / `step 8: history panel download`

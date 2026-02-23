@@ -18,7 +18,7 @@ QCut is a desktop video editor built with:
 - **Video Processing:** FFmpeg WebAssembly
 - **AI Integration:** FAL.ai (40+ models)
 - **Styling:** Tailwind CSS
-- **Testing:** Vitest 3.2.4 with 145 test files
+- **Testing:** Vitest 3.2.4 with 217 test files
 
 ## Source Code Structure
 
@@ -339,56 +339,53 @@ Core functionality and utilities:
 - `gemini/` - Gemini AI utilities
 - `transcription/` - Transcription segment calculator
 
-#### 📁 **Hooks** (`src/hooks/`) - 41 files
-Custom React hooks:
+#### 📁 **Hooks** (`src/hooks/`) - 37 files
+Custom React hooks, organized into domain subdirectories:
 
-**Timeline & Editor Hooks:**
+**`hooks/timeline/`** — Timeline interaction hooks (7 files):
 - `use-timeline-zoom.ts` - Timeline zoom controls
 - `use-timeline-snapping.ts` - Element snapping logic
 - `use-timeline-element-resize.ts` - Element resizing
 - `use-timeline-playhead.ts` - Playhead positioning
 - `use-selection-box.ts` - Multi-selection functionality
-- `use-editor-actions.ts` - Core editor operations
 - `use-drag-drop.ts` - Drag and drop interactions
 - `use-effect-keyboard-shortcuts.ts` - Effect keyboard shortcuts
 
-**Playback & Media Hooks:**
-- `use-playback-controls.ts` - Video playback controls
-- `use-async-ffmpeg.ts` - Asynchronous FFmpeg operations
-- `use-async-media-store.ts` - Media loading and caching
-- `use-async-module-loading.tsx` - Dynamic module loading
-- `use-blob-image.ts` - Blob URL image handling
-- `use-aspect-ratio.ts` - Aspect ratio calculations
-- `use-sound-search.ts` - Sound search functionality
-- `use-infinite-scroll.ts` - Infinite scrolling support
-- `use-frame-cache.ts` - Frame caching
-
-**UI & Interaction Hooks:**
-- `use-keybindings.ts` - Keyboard shortcut handling
-- `use-keybinding-conflicts.ts` - Shortcut conflict detection
-- `use-keyboard-shortcuts-help.ts` - Help system integration
-- `use-mobile.tsx` - Mobile device detection
-- `use-toast.ts` - Toast notification system
-- `use-debounce.ts` - Debounce functionality
-
-**Export Hooks:**
+**`hooks/export/`** — Export workflow hooks (5 files):
 - `use-export-presets.ts` - Export preset management
 - `use-export-progress.ts` - Export progress tracking
 - `use-export-settings.ts` - Export settings management
 - `use-export-validation.ts` - Export validation logic
 - `use-zip-export.ts` - Project export to ZIP
 
-**Error & Monitoring Hooks:**
+**`hooks/keyboard/`** — Keyboard shortcut hooks (4 files):
+- `use-keybindings.ts` - Keyboard shortcut handling
+- `use-keybinding-conflicts.ts` - Shortcut conflict detection
+- `use-keyboard-shortcuts-help.ts` - Help system integration
+- `use-editor-actions.ts` - Core editor operations
+
+**`hooks/media/`** — Media and playback hooks (6 files):
+- `use-playback-controls.ts` - Video playback controls
+- `use-async-ffmpeg.ts` - Asynchronous FFmpeg operations
+- `use-async-media-store.ts` - Media loading and caching
+- `use-blob-image.ts` - Blob URL image handling
+- `use-sound-search.ts` - Sound search functionality
+- `use-frame-cache.ts` - Frame caching
+
+**`hooks/` (root)** — General-purpose hooks (15 files):
+- `use-aspect-ratio.ts` - Aspect ratio calculations
+- `use-infinite-scroll.ts` - Infinite scrolling support
+- `use-async-module-loading.tsx` - Dynamic module loading
+- `use-mobile.tsx` - Mobile device detection
+- `use-toast.ts` - Toast notification system
+- `use-debounce.ts` - Debounce functionality
 - `use-error-reporter.ts` - Error reporting
 - `use-memory-monitor.ts` - Memory monitoring
-
-**Persistence Hooks:**
 - `use-save-on-visibility-change.ts` - Auto-save on visibility change
-
-**Utility Hooks:**
 - `useElectron.ts` - Electron integration
+- And others
 
-**Authentication Hooks (`auth/`):**
+**`hooks/auth/`** — Authentication hooks:
 - `useLogin.ts` - User login functionality
 - `useSignUp.ts` - User registration
 
@@ -485,26 +482,78 @@ All Electron code is 100% TypeScript:
 - `skills-handler.ts` - AI skills file operations
 - `skills-sync-handler.ts` - Skills synchronization
 
-**Claude Integration (`electron/claude/`):**
-- `index.ts` - Claude integration barrel export
-- `claude-http-server.ts` - Claude HTTP API server
-- `claude-diagnostics-handler.ts` - Diagnostics
-- `claude-export-handler.ts` - Export operations
-- `claude-media-handler.ts` - Media operations
-- `claude-project-handler.ts` - Project operations
-- `claude-timeline-handler.ts` - Timeline operations
+**Claude Integration (`electron/claude/`)** — organized into subdirectories:
 
-#### Subdirectories:
+*Root (2 files):*
+- `index.ts` - Claude integration barrel export
+- `claude-operation-log.ts` - Operation logging
+
+*`claude/handlers/`* — IPC handler modules (17 files):
+- `claude-media-handler.ts` - Media operations
+- `claude-timeline-handler.ts` - Timeline operations
+- `claude-project-handler.ts` - Project operations
+- `claude-export-handler.ts` - Export operations
+- `claude-diagnostics-handler.ts` - Diagnostics
+- `claude-playback-handler.ts` - Playback control
+- `claude-effects-handler.ts` - Effects management
+- `claude-captions-handler.ts` - Caption operations
+- `claude-stickers-handler.ts` - Sticker operations
+- `claude-text-handler.ts` - Text element handling
+- `claude-selection-handler.ts` - Selection management
+- `claude-ai-generation-handler.ts` - AI generation
+- `claude-mcp-handler.ts` - MCP integration
+- And others
+
+*`claude/http/`* — HTTP server for Claude API (3 files):
+- `claude-http-server.ts` - Claude HTTP API server
+- `claude-http-routes.ts` - HTTP route definitions
+- `claude-http-utils.ts` - HTTP utility functions
+
+*`claude/utils/`* — Shared Claude utilities
+
+**Native Pipeline (`electron/native-pipeline/`)** — AI content pipeline, organized into subdirectories:
+
+*Root (3 files):*
+- `index.ts` - Pipeline barrel export
+- `init.ts` - Pipeline initialization
+- `manager.ts` - Pipeline manager
+
+*`native-pipeline/cli/`* — CLI interface (10 files):
+- CLI command builders, argument parsers, and process spawners
+
+*`native-pipeline/editor/`* — Editor API integration (7 files):
+- Bridge between pipeline and editor state
+
+*`native-pipeline/execution/`* — Pipeline execution engine (6 files):
+- Job scheduling, progress tracking, and result handling
+
+*`native-pipeline/infra/`* — Infrastructure utilities (8 files):
+- Binary management, logging, configuration, and health checks
+
+*`native-pipeline/output/`* — Output generation (4 files):
+- Output file handling, format conversion, and delivery
+
+#### Other Electron Subdirectories:
 - `config/` - Electron configuration
 - `ffmpeg/` - FFmpeg utilities
-- `claude/` - Claude Code integration handlers
-- `claude/utils/` - Claude utility functions
 
 #### Resources (`electron/resources/`)
 - `ffmpeg.exe`, `ffplay.exe`, `ffprobe.exe` - FFmpeg binaries
 - `avcodec-62.dll`, `avdevice-62.dll`, etc. - FFmpeg dependencies
 
-## Architecture Updates (2025-12-16)
+## Architecture Updates (2026-02-23)
+
+### Folder Reorganization (February 2026)
+
+Five oversized flat directories were reorganized into logical subdirectories (target: 5-15 files each):
+
+1. **`src/lib/`** (89 files → 10 subdirectories): export/, ffmpeg/, ai-clients/, ai-models/, effects/, stickers/, claude-bridge/, media/, project/, debug/
+2. **`electron/native-pipeline/`** (38 files → 5 subdirectories): cli/, editor/, execution/, infra/, output/
+3. **`src/stores/`** (37 files → 5 subdirectories): timeline/, media/, moyin/, editor/, ai/
+4. **`electron/claude/`** (22 files → 2 subdirectories): handlers/, http/
+5. **`src/hooks/`** (37 files → 4 subdirectories): timeline/, export/, keyboard/, media/
+
+Re-export shims preserve backward compatibility for high-importer files (e.g., `stores/timeline-store.ts` → `stores/timeline/timeline-store.ts`).
 
 ### New Features Added Since Last Documentation (August 2025):
 
@@ -602,7 +651,7 @@ The codebase contains several substantial files that form the core of the applic
 ## Testing Strategy
 
 **Framework**: Vitest 3.2.4 with JSDOM environment
-**Status**: 145 test files passing successfully
+**Status**: 217 test files passing successfully
 
 ### Running Tests
 ```bash
