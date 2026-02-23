@@ -293,7 +293,16 @@ describe("CLI pipeline", () => {
 	});
 
 	describe("CLIPipelineRunner — generate validation", () => {
-		it("errors on missing model for generate-image", async () => {
+		it("defaults to nano_banana_pro when model is missing for generate-image", async () => {
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockResolvedValue({
+					success: true,
+					outputPath: "/tmp/output.png",
+					duration: 1.0,
+					cost: 0.01,
+				});
+
 			const runner = new CLIPipelineRunner();
 			const noop = vi.fn();
 			const result = await runner.run(
@@ -301,8 +310,8 @@ describe("CLI pipeline", () => {
 				noop
 			);
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain("--model");
+			expect(result.success).toBe(true);
+			mockExecuteStep.mockRestore();
 		});
 
 		it("errors on unknown model for create-video", async () => {

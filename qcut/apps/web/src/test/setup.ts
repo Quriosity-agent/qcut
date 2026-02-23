@@ -191,30 +191,32 @@ Object.defineProperty(window, "history", {
 });
 
 // Mock global APIs for jsdom environment
-const makeObserver = () => ({
-	observe: vi.fn(),
-	unobserve: vi.fn(),
-	disconnect: vi.fn(),
-});
+// Must use class-based mocks (not arrow functions) so `new` works correctly
+class MockObserver {
+	observe = vi.fn();
+	unobserve = vi.fn();
+	disconnect = vi.fn();
+	takeRecords = vi.fn(() => []);
+}
 
 // Mock IntersectionObserver
 Object.defineProperty(window, "IntersectionObserver", {
 	writable: true,
-	value: vi.fn().mockImplementation(makeObserver),
+	value: MockObserver,
 });
 Object.defineProperty(globalThis, "IntersectionObserver", {
 	writable: true,
-	value: window.IntersectionObserver,
+	value: MockObserver,
 });
 
 // Mock ResizeObserver
 Object.defineProperty(window, "ResizeObserver", {
 	writable: true,
-	value: vi.fn().mockImplementation(makeObserver),
+	value: MockObserver,
 });
 Object.defineProperty(globalThis, "ResizeObserver", {
 	writable: true,
-	value: window.ResizeObserver,
+	value: MockObserver,
 });
 
 // Browser mocks are already installed at the top of this file

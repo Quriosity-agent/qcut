@@ -132,7 +132,13 @@ vi.mock("node:fs/promises", () => ({
 
 vi.mock("../ffmpeg/utils", () => ({
 	getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
+	getFFprobePath: vi.fn(() => "/usr/bin/ffprobe"),
 }));
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:child_process")>();
+	return { ...actual, default: { ...actual, spawn: vi.fn() }, spawn: vi.fn() };
+});
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -296,6 +302,13 @@ describe("ElevenLabs transcription API (mocked)", () => {
 		vi.clearAllMocks();
 		mockExistsSync.mockReturnValue(true);
 		mockFetch.mockReset();
+		// Provide a default that fails clearly instead of returning undefined
+		mockFetch.mockResolvedValue({
+			ok: false,
+			status: 999,
+			text: async () => "Unexpected fetch call in test",
+			json: async () => ({}),
+		});
 		mockFsReadFile.mockReset();
 	});
 
