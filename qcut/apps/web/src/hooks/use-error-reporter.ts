@@ -6,8 +6,8 @@
  */
 
 import { useCallback, useRef } from "react";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
-import { getErrorContext, getMinimalErrorContext } from "@/lib/error-context";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import { getErrorContext, getMinimalErrorContext } from "@/lib/debug/error-context";
 
 interface ErrorReportOptions {
 	category?: ErrorCategory;

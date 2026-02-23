@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import type { FFmpeg } from "@ffmpeg/ffmpeg";
-import { createFFmpeg } from "@/lib/ffmpeg-loader";
+import { createFFmpeg } from "@/lib/ffmpeg/ffmpeg-loader";
 
 export function useAsyncFFmpeg() {
 	const [ffmpeg, setFFmpeg] = useState<FFmpeg | null>(null);
@@ -64,7 +64,7 @@ export function useAsyncFFmpegUtils() {
 		async function loadUtils() {
 			try {
 				const { getFFmpegUtilFunctions } = await import(
-					"@/lib/ffmpeg-utils-loader"
+					"@/lib/ffmpeg/ffmpeg-utils-loader"
 				);
 				const utilFunctions = await getFFmpegUtilFunctions();
 

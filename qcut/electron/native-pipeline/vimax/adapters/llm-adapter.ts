@@ -12,7 +12,7 @@ import {
 	type AdapterConfig,
 	createAdapterConfig,
 } from "./base-adapter.js";
-import { callModelApi, type ApiCallResult } from "../../api-caller.js";
+import { callModelApi, type ApiCallResult } from "../../infra/api-caller.js";
 
 export interface LLMAdapterConfig extends AdapterConfig {
 	temperature: number;

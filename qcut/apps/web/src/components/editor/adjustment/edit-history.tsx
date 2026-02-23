@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	useAdjustmentStore,
 	type EditHistoryItem,
-} from "@/stores/adjustment-store";
+} from "@/stores/ai/adjustment-store";
 import {
 	History,
 	Undo2,
@@ -44,7 +44,7 @@ export function EditHistory() {
 			const filename = `edit-${index + 1}-${item.model}-${timestamp}.png`;
 
 			// Dynamically import image utilities
-			const { downloadImage } = await import("@/lib/image-utils");
+			const { downloadImage } = await import("@/lib/media/image-utils");
 			await downloadImage(item.editedUrl, filename);
 			toast.success(`Edit ${index + 1} downloaded!`);
 		} catch {

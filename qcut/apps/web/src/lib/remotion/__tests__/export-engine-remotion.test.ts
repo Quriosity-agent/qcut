@@ -29,7 +29,7 @@ import type {
 	RemotionElement,
 	MediaElement,
 } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 // Mock canvas for JSDOM environment
 beforeAll(() => {

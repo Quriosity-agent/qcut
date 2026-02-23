@@ -1,4 +1,4 @@
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type {
 	TimelineElement,
 	TimelineTrack,

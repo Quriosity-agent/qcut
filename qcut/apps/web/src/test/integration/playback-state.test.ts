@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 
 // Mock browser APIs
 let rafCallbacks: any[] = [];

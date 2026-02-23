@@ -5,7 +5,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {

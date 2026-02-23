@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { extractAudioFileInputs, type AudioSourceAPI } from "../audio-sources";
 import type { TimelineTrack } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 const makeMediaElement = (params: {
 	id: string;

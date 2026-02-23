@@ -2,14 +2,14 @@
 
 import { useRef, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { usePlaybackStore } from "@/stores/playback-store";
-import type { VideoSource } from "@/lib/media-source";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import type { VideoSource } from "@/lib/media/media-source";
 import {
 	getOrCreateObjectURL,
 	releaseObjectURL,
 	revokeObjectURL,
 	createObjectURL,
-} from "@/lib/blob-manager";
+} from "@/lib/media/blob-manager";
 
 interface VideoPlayerProps {
 	videoId?: string;

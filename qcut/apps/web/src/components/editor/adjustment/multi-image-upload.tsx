@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Upload, Image as ImageIcon, Plus } from "lucide-react";
-import { createObjectURL, revokeObjectURL } from "@/lib/blob-manager";
+import { createObjectURL, revokeObjectURL } from "@/lib/media/blob-manager";
 
 interface MultiImageUploadProps {
 	images: string[];

@@ -11,7 +11,7 @@ import type {
 	TouchEvent as ReactTouchEvent,
 } from "react";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 
 interface DragState {
 	isDragging: boolean;

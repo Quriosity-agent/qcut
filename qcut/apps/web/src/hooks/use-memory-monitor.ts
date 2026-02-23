@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { debugLog, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 
 /**
  * Hook for monitoring memory usage in React components during development

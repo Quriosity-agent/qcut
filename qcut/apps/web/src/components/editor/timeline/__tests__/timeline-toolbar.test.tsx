@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { TimelineTrack } from "@/types/timeline";
 import { TimelineToolbar } from "../timeline-toolbar";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
-import { useSceneStore } from "@/stores/scene-store";
+import { useSceneStore } from "@/stores/timeline/scene-store";
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: vi.fn(),
 }));
 
-vi.mock("@/stores/playback-store", () => ({
+vi.mock("@/stores/editor/playback-store", () => ({
 	usePlaybackStore: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock("@/stores/project-store", () => ({
 	useProjectStore: vi.fn(),
 }));
 
-vi.mock("@/stores/scene-store", () => ({
+vi.mock("@/stores/timeline/scene-store", () => ({
 	useSceneStore: vi.fn(),
 }));
 

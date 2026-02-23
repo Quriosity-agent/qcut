@@ -3,8 +3,8 @@ import {
 	ZipManager,
 	downloadZipSafely,
 	ZipExportOptions,
-} from "@/lib/zip-manager";
-import { MediaItem } from "@/stores/media-store";
+} from "@/lib/project/zip-manager";
+import { MediaItem } from "@/stores/media/media-store";
 
 export interface ExportProgress {
 	phase:

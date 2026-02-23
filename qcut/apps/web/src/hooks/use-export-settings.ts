@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useExportStore } from "@/stores/export-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import {
 	ExportQuality,
 	ExportFormat,
@@ -10,7 +10,7 @@ import {
 } from "@/types/export";
 import { useElectron } from "@/hooks/useElectron";
 // Export engine factory and types will be imported dynamically when needed
-import { debugLog, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 
 /**
  * Hook for managing export settings state, derived metadata (supported formats, resolution, size estimates),
@@ -48,7 +48,7 @@ export function useExportSettings() {
 				try {
 					// Dynamically import export engine factory
 					const { ExportEngineFactory, ExportEngineType } = await import(
-						"@/lib/export-engine-factory"
+						"@/lib/export/export-engine-factory"
 					);
 
 					const factory = ExportEngineFactory.getInstance();
@@ -106,7 +106,7 @@ export function useExportSettings() {
 	useEffect(() => {
 		// Dynamically import export engine factory for FFmpeg availability check
 		let cancelled = false;
-		import("@/lib/export-engine-factory")
+		import("@/lib/export/export-engine-factory")
 			.then(({ ExportEngineFactory }) =>
 				ExportEngineFactory.isFFmpegAvailable()
 			)

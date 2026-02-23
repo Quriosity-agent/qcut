@@ -9,14 +9,14 @@ import { getMediaStore } from "./media-store-loader";
 // Dynamic import to break circular dependency
 // import { useStickersOverlayStore } from "./stickers-overlay-store";
 import { generateUUID } from "@/lib/utils";
-import { debugError, debugLog } from "@/lib/debug-config";
-import { syncProjectSkillsForClaude } from "@/lib/project-skills-sync";
+import { debugError, debugLog } from "@/lib/debug/debug-config";
+import { syncProjectSkillsForClaude } from "@/lib/claude-bridge/project-skills-sync";
 import {
 	handleError,
 	ErrorCategory,
 	ErrorSeverity,
 	handleStorageError,
-} from "@/lib/error-handler";
+} from "@/lib/debug/error-handler";
 
 export const DEFAULT_CANVAS_SIZE: CanvasSize = { width: 1920, height: 1080 };
 export const DEFAULT_FPS = 30;

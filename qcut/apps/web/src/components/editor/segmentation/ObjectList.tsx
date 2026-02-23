@@ -5,7 +5,7 @@ import {
 	useSegmentationStore,
 	OBJECT_COLORS,
 	type SegmentedObject,
-} from "@/stores/segmentation-store";
+} from "@/stores/ai/segmentation-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";

@@ -1,4 +1,4 @@
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 import { AI_MODELS } from "../constants/ai-constants";
 import {
 	buildUnifiedParams,

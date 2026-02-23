@@ -17,7 +17,7 @@ import {
 	type AdapterConfig,
 	createAdapterConfig,
 } from "./base-adapter.js";
-import { callModelApi, downloadOutput } from "../../api-caller.js";
+import { callModelApi, downloadOutput } from "../../infra/api-caller.js";
 import type { VideoOutput, ImageOutput } from "../types/output.js";
 import { createVideoOutput } from "../types/output.js";
 

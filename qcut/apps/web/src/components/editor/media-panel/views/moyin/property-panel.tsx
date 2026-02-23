@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import type {
 	ScriptCharacter,
 	CharacterIdentityAnchors,

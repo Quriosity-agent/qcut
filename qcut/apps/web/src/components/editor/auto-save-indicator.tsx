@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { cn } from "@/lib/utils";
 
 interface AutoSaveIndicatorProps {

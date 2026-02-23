@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 
 interface AudioPlayerProps {
 	src: string;

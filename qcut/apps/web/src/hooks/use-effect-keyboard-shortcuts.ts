@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { useActionHandler } from "@/constants/actions";
-import { useEffectsStore } from "@/stores/effects-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { toast } from "sonner";
 import { EFFECTS_ENABLED } from "@/config/features";
 import type { EffectParameters } from "@/types/effects";

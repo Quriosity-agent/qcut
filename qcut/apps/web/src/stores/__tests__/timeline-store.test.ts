@@ -8,7 +8,7 @@ import {
 	afterEach,
 } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
 import type {
 	TimelineTrack,
@@ -24,7 +24,7 @@ const fetchMock = vi.fn(() =>
 vi.stubGlobal("fetch", fetchMock);
 
 // Mock error handler to prevent stderr output from caught dynamic import errors
-vi.mock("@/lib/error-handler", () => ({
+vi.mock("@/lib/debug/error-handler", () => ({
 	handleError: vi.fn(),
 	handleStorageError: vi.fn(),
 	handleMediaProcessingError: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock("@/utils/lazy-stores", () => ({
 	clearStoreCache: vi.fn(),
 }));
 
-vi.mock("@/stores/media-store-loader", () => ({
+vi.mock("@/stores/media/media-store-loader", () => ({
 	getMediaStore: vi.fn(() => Promise.resolve({})),
 	getMediaStoreUtils: vi.fn(() =>
 		Promise.resolve({
@@ -61,7 +61,7 @@ vi.mock("@/stores/media-store-loader", () => ({
 	),
 }));
 
-vi.mock("@/stores/editor-store", () => ({
+vi.mock("@/stores/editor/editor-store", () => ({
 	useEditorStore: {
 		getState: vi.fn(() => ({
 			currentTime: 0,
@@ -70,7 +70,7 @@ vi.mock("@/stores/editor-store", () => ({
 	},
 }));
 
-vi.mock("@/stores/media-store", () => ({
+vi.mock("@/stores/media/media-store", () => ({
 	useMediaStore: {
 		getState: vi.fn(() => ({
 			mediaItems: [],

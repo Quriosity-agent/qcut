@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import { useExportStore } from "@/stores/export-store";
 import { PanelView } from "@/types/panel";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useCaptionsStore } from "@/stores/captions-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { ExportCanvas, ExportCanvasRef } from "@/components/export-canvas";
@@ -37,7 +37,7 @@ import { useState } from "react";
 // NEW: Custom hook imports
 import { useExportSettings } from "@/hooks/use-export-settings";
 import { useExportProgress } from "@/hooks/use-export-progress";
-import { debugLog, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 import { useExportValidation } from "@/hooks/use-export-validation";
 import { useExportPresets } from "@/hooks/use-export-presets";
 
@@ -45,7 +45,7 @@ import { useExportPresets } from "@/hooks/use-export-presets";
 import {
 	setAudioExportConfig,
 	getCodecForFormat,
-} from "@/lib/audio-export-config";
+} from "@/lib/export/audio-export-config";
 import { detectAudioSources } from "@/lib/export-cli/sources";
 
 export function ExportDialog() {

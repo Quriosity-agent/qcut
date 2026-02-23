@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useAspectRatio } from "@/hooks/use-aspect-ratio";
 
 // Mock stores
-vi.mock("@/stores/editor-store", () => ({
+vi.mock("@/stores/editor/editor-store", () => ({
 	useEditorStore: vi.fn(() => ({
 		canvasSize: { width: 1920, height: 1080 },
 		canvasMode: "preset",
@@ -17,7 +17,7 @@ vi.mock("@/stores/editor-store", () => ({
 	})),
 }));
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: vi.fn(() => ({
 		tracks: [],
 	})),
@@ -31,7 +31,7 @@ vi.mock("@/hooks/use-async-media-store", () => ({
 	})),
 }));
 
-vi.mock("@/stores/media-store-loader", () => ({
+vi.mock("@/stores/media/media-store-loader", () => ({
 	getMediaStoreUtils: vi.fn(() =>
 		Promise.resolve({
 			getMediaAspectRatio: (item: any) => item.width / item.height,
@@ -107,7 +107,7 @@ describe("useAspectRatio - Advanced Features", () => {
 	});
 
 	it("provides original mode display name", async () => {
-		const { useEditorStore } = await import("@/stores/editor-store");
+		const { useEditorStore } = await import("@/stores/editor/editor-store");
 		(useEditorStore as any).mockReturnValue({
 			canvasSize: { width: 1920, height: 1080 },
 			canvasMode: "original",

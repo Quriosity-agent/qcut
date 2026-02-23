@@ -6,7 +6,7 @@
  */
 
 import type { OverlaySticker } from "@/types/sticker-overlay";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 /**
  * Interface for sticker render options

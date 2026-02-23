@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 import { STORAGE_KEYS, ERROR_MESSAGES } from "../constants/ai-constants";
 import type {
 	GeneratedVideo,

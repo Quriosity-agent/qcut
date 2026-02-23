@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { falAIClient } from "@/lib/fal-ai-client";
-import { validateReveEditImage } from "@/lib/image-validation";
+import { falAIClient } from "@/lib/ai-clients/fal-ai-client";
+import { validateReveEditImage } from "@/lib/ai-models/image-validation";
 
 export function useReveEditState() {
 	const [uploadedImageForEdit, setUploadedImageForEdit] = useState<File | null>(

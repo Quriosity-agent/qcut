@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { TimelineTrack } from "@/types/timeline";
-import { MediaItem } from "@/stores/media-store-types";
+import { MediaItem } from "@/stores/media/media-store-types";
 import { TProject } from "@/types/project";
 
 interface CacheSegment {

@@ -1,10 +1,10 @@
 // Location: apps/web/src/lib/__tests__/export-analysis.test.ts
 
 import { describe, it, expect } from "vitest";
-import { analyzeTimelineForExport } from "../export-analysis";
-import { ExportUnsupportedError } from "../export-errors";
+import { analyzeTimelineForExport } from "../export/export-analysis";
+import { ExportUnsupportedError } from "../export/export-errors";
 import type { TimelineTrack } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 describe("Export Analysis", () => {
 	// Helper to create mock timeline elements

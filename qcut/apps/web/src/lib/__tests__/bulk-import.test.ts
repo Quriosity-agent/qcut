@@ -10,7 +10,7 @@ import {
 	getMimeType,
 	formatFileSize,
 	type BulkImportProgress,
-} from "../bulk-import";
+} from "../media/bulk-import";
 import type { ProjectFolderFileInfo } from "@/types/electron";
 
 describe("bulk-import", () => {

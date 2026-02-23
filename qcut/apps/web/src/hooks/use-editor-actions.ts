@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { useActionHandler } from "@/constants/actions";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 import { toast } from "sonner";
 

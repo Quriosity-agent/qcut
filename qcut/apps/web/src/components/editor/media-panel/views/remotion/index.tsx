@@ -24,13 +24,13 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useRemotionStore, selectAllComponents } from "@/stores/remotion-store";
+import { useRemotionStore, selectAllComponents } from "@/stores/ai/remotion-store";
 import { useShallow } from "zustand/react/shallow";
 import type {
 	RemotionComponentDefinition,
 	RemotionComponentCategory,
 } from "@/lib/remotion/types";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { ComponentCard } from "./component-card";
 import { ComponentPreviewModal } from "./component-preview-modal";

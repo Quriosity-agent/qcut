@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/tts
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerTTSModels(): void {
 	ModelRegistry.register({

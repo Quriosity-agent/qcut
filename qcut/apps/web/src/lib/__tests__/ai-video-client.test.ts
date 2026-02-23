@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { TextToVideoRequest } from "@/lib/ai-video-client";
+import type { TextToVideoRequest } from "@/lib/ai-clients/ai-video-client";
 
 const originalFetch = globalThis.fetch;
 
 describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
 	// Module-level variable to hold dynamically imported function
-	let generateVideoFromText: typeof import("@/lib/ai-video-client")["generateVideoFromText"];
+	let generateVideoFromText: typeof import("@/lib/ai-clients/ai-video-client")["generateVideoFromText"];
 
 	beforeEach(async () => {
 		// Clear and restore all mocks first
@@ -17,7 +17,7 @@ describe("generateVideoFromText - Hailuo 2.3 Text-to-Video", () => {
 		(import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
 
 		// Dynamically import the module AFTER setting the environment
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 		generateVideoFromText = aiVideoClient.generateVideoFromText;
 
 		globalThis.fetch = originalFetch as typeof globalThis.fetch;

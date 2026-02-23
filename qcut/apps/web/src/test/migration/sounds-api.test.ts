@@ -3,7 +3,7 @@ import { searchSounds } from "@/lib/api-adapter";
 import { setRuntimeFlags, isFeatureEnabled } from "@/lib/feature-flags";
 
 // Mock the error handler to prevent interference during tests
-vi.mock("@/lib/error-handler", () => ({
+vi.mock("@/lib/debug/error-handler", () => ({
 	handleError: vi.fn(),
 	ErrorCategory: {
 		NETWORK: "network",

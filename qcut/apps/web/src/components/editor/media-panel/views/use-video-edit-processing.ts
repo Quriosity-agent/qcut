@@ -11,8 +11,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
-import { debugLog, debugError } from "@/lib/debug-config";
-import { videoEditClient } from "@/lib/video-edit-client";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { videoEditClient } from "@/lib/ai-clients/video-edit-client";
 import type {
 	VideoEditTab,
 	VideoEditResult,

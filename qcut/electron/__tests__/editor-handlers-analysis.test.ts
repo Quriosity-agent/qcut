@@ -1,10 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { EditorApiClient } from "../native-pipeline/editor-api-client.js";
+import { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
 import {
 	handleAnalysisCommand,
 	parseSource,
-} from "../native-pipeline/editor-handlers-analysis.js";
-import type { CLIRunOptions } from "../native-pipeline/cli-runner.js";
+} from "../native-pipeline/editor/editor-handlers-analysis.js";
+import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 
 // ---------------------------------------------------------------------------
 // Mock HTTP server using global fetch mock

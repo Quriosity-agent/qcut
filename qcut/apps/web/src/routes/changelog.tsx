@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { fetchChangelog } from "@/lib/release-notes";
+import { fetchChangelog } from "@/lib/project/release-notes";
 import type { ReleaseNote } from "@/types/electron";
 
 export const Route = createFileRoute("/changelog")({

@@ -1,5 +1,5 @@
 import { StorageAdapter } from "./types";
-import { handleStorageError } from "@/lib/error-handler";
+import { handleStorageError } from "@/lib/debug/error-handler";
 
 export class LocalStorageAdapter<T> implements StorageAdapter<T> {
 	private prefix: string;

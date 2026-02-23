@@ -23,10 +23,10 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useWordTimelineStore } from "@/stores/word-timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useMediaStore } from "@/stores/media-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useWordTimelineStore } from "@/stores/timeline/word-timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { useMediaStore } from "@/stores/media/media-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useElevenLabsTranscription } from "@/hooks/use-elevenlabs-transcription";
 import { useDragDrop } from "@/hooks/use-drag-drop";
@@ -753,7 +753,7 @@ export function WordTimelineView() {
 			if (!mediaItem && projectId) {
 				console.log("[WordTimeline] Media not in store, importing...");
 				try {
-					const { processMediaFiles } = await import("@/lib/media-processing");
+					const { processMediaFiles } = await import("@/lib/media/media-processing");
 
 					// Read file from disk via Electron to create a File object
 					const fileName = filePath.split(/[/\\]/).pop() || "media";

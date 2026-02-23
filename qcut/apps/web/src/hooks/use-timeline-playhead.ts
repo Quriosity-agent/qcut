@@ -1,6 +1,6 @@
 import { snapTimeToFrame } from "@/constants/timeline-constants";
 import { useProjectStore } from "@/stores/project-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useState, useEffect, useCallback, useRef } from "react";
 
 interface UseTimelinePlayheadProps {

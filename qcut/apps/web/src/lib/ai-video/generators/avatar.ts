@@ -4,7 +4,7 @@
  * Functions for generating avatar/talking-head videos.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 import type {
 	AvatarVideoRequest,
 	VideoGenerationResponse,

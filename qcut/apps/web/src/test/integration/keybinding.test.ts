@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
 	useKeybindingsStore,
 	defaultKeybindings,
-} from "@/stores/keybindings-store";
+} from "@/stores/editor/keybindings-store";
 
 describe("Keybinding", () => {
 	beforeEach(() => {

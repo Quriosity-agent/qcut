@@ -3,8 +3,8 @@
  * Shows current step, completed steps, and pending steps.
  */
 
-import { useMoyinStore } from "@/stores/moyin-store";
-import type { PipelineStep, PipelineStepStatus } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
+import type { PipelineStep, PipelineStepStatus } from "@/stores/moyin/moyin-store";
 import { cn } from "@/lib/utils";
 import {
 	CheckCircle2Icon,

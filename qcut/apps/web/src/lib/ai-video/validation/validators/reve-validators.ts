@@ -2,7 +2,7 @@
  * Reve/image generation validators and constants.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 
 const VALIDATOR_LOG_COMPONENT = "Validators";
 

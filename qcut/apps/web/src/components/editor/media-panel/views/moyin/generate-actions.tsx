@@ -3,12 +3,12 @@
  * Style/profile selectors are now in ScriptInput panel.
  */
 
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import {
 	exportProjectJSON,
 	parseImportedProjectJSON,
 	partializeMoyinState,
-} from "@/stores/moyin-persistence";
+} from "@/stores/moyin/moyin-persistence";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useCallback, useRef, useState } from "react";

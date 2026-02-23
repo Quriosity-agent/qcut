@@ -5,7 +5,7 @@ import { MarkdownEditorPanel } from "../markdown-editor-panel";
 
 const updateMarkdownElement = vi.fn();
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: (
 		selector: (state: {
 			updateMarkdownElement: typeof updateMarkdownElement;

@@ -5,7 +5,7 @@
  * Ensures consistency with other model parameter converters.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 
 const LOG_COMPONENT = "FluxParams";
 

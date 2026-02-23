@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { invokeAction } from "../constants/actions";
-import { useKeybindingsStore } from "@/stores/keybindings-store";
+import { useKeybindingsStore } from "@/stores/editor/keybindings-store";
 
 /**
  * A composable that hooks to the caller component's

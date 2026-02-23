@@ -3,7 +3,7 @@
  * Provides contextual actions for episodes, scenes, and shots.
  */
 
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import {
 	DropdownMenu,
 	DropdownMenuContent,

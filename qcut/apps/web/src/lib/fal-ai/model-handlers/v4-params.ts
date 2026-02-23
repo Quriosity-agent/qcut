@@ -5,7 +5,7 @@
  * Enforces documented limits to prevent invalid requests.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
+import { debugLogger } from "@/lib/debug/debug-logger";
 
 const LOG_COMPONENT = "V4Params";
 

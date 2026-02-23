@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { findUntrackedFiles, determineFolderIds } from "../project-folder-sync";
+import { findUntrackedFiles, determineFolderIds } from "../project/project-folder-sync";
 import type { ProjectFolderFileInfo } from "@/types/electron";
-import type { MediaItem } from "@/stores/media-store-types";
-import { DEFAULT_FOLDER_IDS } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
+import { DEFAULT_FOLDER_IDS } from "@/stores/media/media-store-types";
 
 // Helper to create a mock ProjectFolderFileInfo
 function mockDiskFile(
@@ -224,7 +224,7 @@ describe("project-folder-sync", () => {
 		it("returns zero imported when electronAPI.projectFolder is unavailable", async () => {
 			(window as any).electronAPI = undefined;
 
-			const { syncProjectFolder } = await import("../project-folder-sync");
+			const { syncProjectFolder } = await import("../project/project-folder-sync");
 			const result = await syncProjectFolder("test-project");
 			expect(result.imported).toBe(0);
 			expect(result.skipped).toBe(0);
@@ -249,7 +249,7 @@ describe("project-folder-sync", () => {
 			};
 
 			// Mock media store with empty items
-			vi.doMock("@/stores/media-store", () => ({
+			vi.doMock("@/stores/media/media-store", () => ({
 				useMediaStore: {
 					getState: () => ({
 						mediaItems: [],
@@ -258,7 +258,7 @@ describe("project-folder-sync", () => {
 				},
 			}));
 
-			const { syncProjectFolder } = await import("../project-folder-sync");
+			const { syncProjectFolder } = await import("../project/project-folder-sync");
 			const result = await syncProjectFolder("test-project");
 			expect(result.imported).toBe(0);
 			expect(result.totalDiskFiles).toBe(0);

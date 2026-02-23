@@ -14,7 +14,7 @@ import {
 	type PanelPreset,
 	PRESET_LABELS,
 	PRESET_DESCRIPTIONS,
-} from "@/stores/panel-store";
+} from "@/stores/editor/panel-store";
 
 const presets = Object.keys(PRESET_LABELS) as PanelPreset[];
 

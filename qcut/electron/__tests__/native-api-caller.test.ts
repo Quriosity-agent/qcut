@@ -10,7 +10,7 @@ vi.mock("../api-key-handler.js", () => ({
 }));
 
 // We need to dynamically import after mocking
-const { callModelApi } = await import("../native-pipeline/api-caller.js");
+const { callModelApi } = await import("../native-pipeline/infra/api-caller.js");
 
 function clearEnv(key: string) {
 	delete process.env[key];

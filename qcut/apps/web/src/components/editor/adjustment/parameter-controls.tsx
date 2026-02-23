@@ -14,9 +14,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
-import { getImageEditModels } from "@/lib/image-edit-client";
-import { getModelCapabilities } from "@/lib/model-utils";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
+import { getImageEditModels } from "@/lib/ai-clients/image-edit-client";
+import { getModelCapabilities } from "@/lib/ai-models/model-utils";
 import { MultiImageUpload } from "./multi-image-upload";
 import { RotateCcw } from "lucide-react";
 

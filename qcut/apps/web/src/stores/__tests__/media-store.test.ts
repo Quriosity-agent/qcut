@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useMediaStore } from "@/stores/media-store";
-import type { MediaItem } from "@/stores/media-store-types";
+import { useMediaStore } from "@/stores/media/media-store";
+import type { MediaItem } from "@/stores/media/media-store-types";
 
 // Mock dependencies
 vi.mock("@/lib/storage/storage-service", () => ({
@@ -15,7 +15,7 @@ vi.mock("@/lib/storage/storage-service", () => ({
 	},
 }));
 
-vi.mock("@/lib/ffmpeg-utils", () => ({
+vi.mock("@/lib/ffmpeg/ffmpeg-utils", () => ({
 	getVideoInfo: vi.fn(() =>
 		Promise.resolve({
 			duration: 10,
@@ -27,7 +27,7 @@ vi.mock("@/lib/ffmpeg-utils", () => ({
 	generateThumbnail: vi.fn(() => Promise.resolve("thumbnail-url")),
 }));
 
-vi.mock("@/lib/image-utils", () => ({
+vi.mock("@/lib/media/image-utils", () => ({
 	convertToBlob: vi.fn((url) => Promise.resolve(url)),
 	needsBlobConversion: vi.fn(() => false),
 	downloadImageAsFile: vi.fn((url, name) =>
@@ -44,7 +44,7 @@ vi.mock("@/stores/project-store", () => ({
 	},
 }));
 
-vi.mock("@/stores/timeline-store", () => ({
+vi.mock("@/stores/timeline/timeline-store", () => ({
 	useTimelineStore: {
 		getState: vi.fn(() => ({
 			tracks: [],

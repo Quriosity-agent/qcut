@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode, DragEvent } from "react";
 import { cn } from "@/lib/utils";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { toast } from "sonner";
 import { EFFECTS_ENABLED } from "@/config/features";
 import type { TimelineElement } from "@/types/timeline";

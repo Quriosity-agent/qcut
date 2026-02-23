@@ -2,8 +2,8 @@
  * Split from model-handler-implementations.ts by handler category.
  */
 
-import { falAIClient } from "@/lib/fal-ai-client";
-import { debugLogger } from "@/lib/debug-logger";
+import { falAIClient } from "@/lib/ai-clients/fal-ai-client";
+import { debugLogger } from "@/lib/debug/debug-logger";
 import {
 	generateAvatarVideo,
 	generateKlingO1Video,

@@ -4,5 +4,5 @@
  */
 
 // Video Edit Client
-export { videoEditClient } from "./video-edit-client";
-export type { VideoEditClient } from "./video-edit-client";
+export { videoEditClient } from "./ai-clients/video-edit-client";
+export type { VideoEditClient } from "./ai-clients/video-edit-client";

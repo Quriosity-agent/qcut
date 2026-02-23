@@ -5,7 +5,7 @@
  * Centralizes authentication, error handling, and response parsing.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 
 // Direct FAL AI integration - no backend needed
 export const FAL_API_BASE = "https://fal.run";

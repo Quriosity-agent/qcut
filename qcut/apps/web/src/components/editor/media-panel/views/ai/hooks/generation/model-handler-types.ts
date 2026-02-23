@@ -2,7 +2,7 @@
  * Shared model handler types
  */
 
-import type { ProgressCallback } from "@/lib/ai-video-client";
+import type { ProgressCallback } from "@/lib/ai-clients/ai-video-client";
 import type {
 	SyncLipsyncEmotion,
 	SyncLipsyncModelMode,

@@ -8,7 +8,7 @@ import {
 	type AspectRatio,
 	type Resolution,
 	type GenMode,
-} from "@/stores/moyin-gen-config";
+} from "@/stores/moyin/moyin-gen-config";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { MonitorIcon, SmartphoneIcon } from "lucide-react";

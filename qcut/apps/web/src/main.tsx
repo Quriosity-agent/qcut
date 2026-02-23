@@ -5,7 +5,7 @@ import App from "./App";
 
 // Development memory profiler
 if (import.meta.env.DEV) {
-	import("./lib/dev-memory-profiler");
+	import("./lib/debug/dev-memory-profiler");
 }
 
 // Blob URL monitoring intentionally disabled to comply with no-console policy.

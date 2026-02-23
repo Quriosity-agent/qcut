@@ -7,14 +7,14 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { debugLog, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 import type {
 	StickerOverlayStore,
 	OverlaySticker,
 	ValidatedStickerUpdate,
 } from "@/types/sticker-overlay";
 import { Z_INDEX } from "@/types/sticker-overlay";
-import { getStickerTimingMap } from "@/lib/sticker-timeline-query";
+import { getStickerTimingMap } from "@/lib/stickers/sticker-timeline-query";
 
 // Import constants
 const DEFAULTS = {
@@ -217,7 +217,7 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
 				});
 
 				// Also remove from timeline (async, fire-and-forget)
-				import("@/lib/timeline-sticker-integration")
+				import("@/lib/stickers/timeline-sticker-integration")
 					.then(({ timelineStickerIntegration }) => {
 						timelineStickerIntegration.removeStickerFromTimeline(id);
 					})

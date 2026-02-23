@@ -6,7 +6,7 @@
  */
 
 import type { TimelineTrack, TimelineElement } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store";
+import type { MediaItem } from "@/stores/media/media-store";
 import type { AudioFileInput } from "../types";
 
 type LogFn = (...args: unknown[]) => void;

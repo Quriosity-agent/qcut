@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { useEditorStore } from "@/stores/editor-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import {
 	useKeybindingsListener,
 	useKeybindingDisabler,

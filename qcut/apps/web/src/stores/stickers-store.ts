@@ -5,8 +5,8 @@ import {
 	searchIcons,
 	downloadIconSvg,
 	createSvgBlob,
-} from "@/lib/iconify-api";
-import type { IconSet, IconSearchResult } from "@/lib/iconify-api";
+} from "@/lib/stickers/iconify-api";
+import type { IconSet, IconSearchResult } from "@/lib/stickers/iconify-api";
 import { STICKERS_CONSTANTS } from "@/components/editor/media-panel/views/stickers/constants";
 import type { RecentSticker } from "@/components/editor/media-panel/views/stickers/types/stickers.types";
 

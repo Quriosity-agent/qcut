@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import {
 	calculateMemoryUsage,
 	getMemoryWarningMessage,
-} from "@/lib/memory-utils";
+} from "@/lib/ffmpeg/memory-utils";
 import { isValidFilename } from "@/types/export";
 import type { ExportSettings } from "@/types/export";
 

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import {
 	parseChainConfig,
 	validateChain,
 	getDataTypeForCategory,
-} from "../native-pipeline/chain-parser.js";
+} from "../native-pipeline/execution/chain-parser.js";
 
 describe("chain-parser", () => {
 	beforeEach(() => {

@@ -9,7 +9,7 @@
 
 import * as React from "react";
 import * as Remotion from "remotion";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 
 // Optional Remotion packages - loaded dynamically if available
 let RemotionZodTypes: Record<string, unknown> = {};

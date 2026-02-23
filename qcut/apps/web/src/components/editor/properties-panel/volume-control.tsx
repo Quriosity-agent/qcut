@@ -7,7 +7,7 @@ import {
 } from "./property-item";
 import { Slider } from "@/components/ui/slider";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 
 interface VolumeControlProps {
 	element: MediaElement;

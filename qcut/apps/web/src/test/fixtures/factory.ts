@@ -9,7 +9,7 @@ import {
 	mockTimelineElements,
 } from "./timeline-data";
 import { mockProject } from "./project-data";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import type { TimelineTrack, TimelineElement } from "@/types/timeline";
 import type { TProject } from "@/types/project";
 

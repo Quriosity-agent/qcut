@@ -34,8 +34,8 @@ import {
 import {
 	useRemotionStore,
 	useRemotionComponent,
-} from "@/stores/remotion-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+} from "@/stores/ai/remotion-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import type { RemotionElement } from "@/types/timeline";
 
 // ============================================================================

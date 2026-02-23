@@ -1,10 +1,10 @@
-import { useEditorStore } from "@/stores/editor-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import {
 	getMediaStoreUtils,
 	type MediaItem,
-} from "@/stores/media-store-loader";
-import { useTimelineStore } from "@/stores/timeline-store";
+} from "@/stores/media/media-store-loader";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useMemo, useState, useEffect } from "react";
 
 export function useAspectRatio() {

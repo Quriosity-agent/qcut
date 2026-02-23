@@ -1,5 +1,5 @@
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { debugError } from "@/lib/debug-config";
+import { debugError } from "@/lib/debug/debug-config";
 
 interface StripMarkdownSyntaxParams {
 	markdown: string;

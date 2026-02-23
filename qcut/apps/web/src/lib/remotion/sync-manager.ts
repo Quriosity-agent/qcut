@@ -9,7 +9,7 @@
 
 import type { TimelineTrack, RemotionElement } from "@/types/timeline";
 import { getActiveRemotionElements, isRemotionElement } from "@/types/timeline";
-import { useRemotionStore } from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/ai/remotion-store";
 
 import type { SyncConfig, SyncState } from "./types";
 
@@ -330,8 +330,8 @@ export class SyncManager {
 // ============================================================================
 
 import { useRef, useEffect, useCallback } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useProjectStore } from "@/stores/project-store";
 
 /**

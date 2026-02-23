@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { useMoyinStore } from "@/stores/moyin-store";
+import { useMoyinStore } from "@/stores/moyin/moyin-store";
 import type { ScriptScene } from "@/types/moyin-script";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -5,7 +5,7 @@ import {
 	fetchReleaseNotes,
 	isVersionDismissed,
 	dismissVersion,
-} from "@/lib/release-notes";
+} from "@/lib/project/release-notes";
 
 interface UpdateState {
 	phase: "idle" | "available" | "downloading" | "ready";

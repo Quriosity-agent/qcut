@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getGenerationStatus } from "@/lib/ai-video-client";
+import { getGenerationStatus } from "@/lib/ai-clients/ai-video-client";
 import { UI_CONSTANTS, STATUS_MESSAGES } from "../../constants/ai-constants";
 import {
 	createStatusPoller,
@@ -7,7 +7,7 @@ import {
 	type PollingContext,
 } from "../use-ai-polling";
 
-vi.mock("@/lib/ai-video-client", () => ({
+vi.mock("@/lib/ai-clients/ai-video-client", () => ({
 	getGenerationStatus: vi.fn(),
 }));
 

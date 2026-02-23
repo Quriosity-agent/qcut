@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { TimelineElement } from "@/types/timeline";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

@@ -10,14 +10,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import type { StickerSourceForFilter } from "../export-cli/types";
 import { isSvgContent } from "../export-cli/sources/svg-rasterizer";
 
 // Mock sticker-timeline-query
 const mockTimingMap = new Map<string, { startTime: number; endTime: number }>();
 
-vi.mock("@/lib/sticker-timeline-query", () => ({
+vi.mock("@/lib/stickers/sticker-timeline-query", () => ({
 	getStickerTimingMap: () => mockTimingMap,
 	getStickerTiming: (id: string) => mockTimingMap.get(id) ?? null,
 }));

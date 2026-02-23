@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { buildCameraPrompt } from "../camera-prompt-builder";
+import { buildCameraPrompt } from "../ai-models/camera-prompt-builder";
 import {
 	CAMERAS,
 	LENSES,
 	FOCAL_LENGTHS,
 	APERTURE_OPTIONS,
-} from "@/stores/camera-selector-store";
+} from "@/stores/editor/camera-selector-store";
 
 const DEFAULT_OPTIONS = {
 	cameraIndex: 0,

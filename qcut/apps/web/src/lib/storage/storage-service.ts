@@ -1,5 +1,5 @@
 import { TProject } from "@/types/project";
-import { MediaItem } from "@/stores/media-store";
+import { MediaItem } from "@/stores/media/media-store";
 import { IndexedDBAdapter } from "./indexeddb-adapter";
 import { LocalStorageAdapter } from "./localstorage-adapter";
 import { ElectronStorageAdapter } from "./electron-adapter";
@@ -13,9 +13,9 @@ import {
 	StorageAdapter,
 	FolderData,
 } from "./types";
-import type { MediaFolder } from "@/stores/media-store-types";
+import type { MediaFolder } from "@/stores/media/media-store-types";
 import { TimelineTrack } from "@/types/timeline";
-import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 
 class StorageService {
 	private projectsAdapter!: StorageAdapter<SerializedProject>;

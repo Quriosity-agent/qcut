@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useMediaStore } from "@/stores/media-store";
+import { useMediaStore } from "@/stores/media/media-store";
 import { mockVideoItem, mockImageItem } from "@/test/fixtures/media-items";
 
 // Mock navigator.storage API

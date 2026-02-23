@@ -3,7 +3,7 @@ import { useSkillsStore } from "../skills-store";
 import type { Skill } from "@/types/skill";
 
 // Mock the debug utilities
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugError: vi.fn(),
 }));

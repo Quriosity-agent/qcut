@@ -12,7 +12,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
 
 interface ErrorBoundaryState {
 	hasError: boolean;

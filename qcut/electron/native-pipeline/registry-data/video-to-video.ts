@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/registry-data/video-to-video
  */
 
-import { ModelRegistry } from "../registry.js";
+import { ModelRegistry } from "../infra/registry.js";
 
 export function registerVideoToVideoModels(): void {
 	ModelRegistry.register({

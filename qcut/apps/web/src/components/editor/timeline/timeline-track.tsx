@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { toast } from "sonner";
 import { TimelineElement } from "./timeline-element";
@@ -12,7 +12,7 @@ import {
 	getMainTrack,
 	canElementGoOnTrack,
 } from "@/types/timeline";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import type {
 	TimelineElement as TimelineElementType,
 	DragData,

@@ -40,7 +40,7 @@ import {
 	validateComponent,
 	type ValidationResult,
 } from "@/lib/remotion/component-validator";
-import { useRemotionStore } from "@/stores/remotion-store";
+import { useRemotionStore } from "@/stores/ai/remotion-store";
 
 // ============================================================================
 // Types

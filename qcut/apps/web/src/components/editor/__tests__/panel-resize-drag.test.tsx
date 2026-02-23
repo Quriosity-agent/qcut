@@ -34,7 +34,7 @@ import {
 } from "../../ui/resizable";
 
 // Mock child components to isolate panel layout testing
-vi.mock("@/stores/panel-store", () => {
+vi.mock("@/stores/editor/panel-store", () => {
 	const defaultSizes = {
 		toolsPanel: 32,
 		previewPanel: 47,

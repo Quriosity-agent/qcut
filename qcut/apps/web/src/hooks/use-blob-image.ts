@@ -3,8 +3,8 @@ import {
 	convertToBlob,
 	needsBlobConversion,
 	revokeBlobUrl,
-} from "@/lib/image-utils";
-import { handleMediaProcessingError } from "@/lib/error-handler";
+} from "@/lib/media/image-utils";
+import { handleMediaProcessingError } from "@/lib/debug/error-handler";
 
 /**
  * Hook to convert external image URLs (like fal.media) to blob URLs

@@ -9,11 +9,11 @@ import React, { useRef, useEffect, memo } from "react";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
 import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/debug-config";
+import { debugLog } from "@/lib/debug/debug-config";
 import { StickerElement } from "./StickerElement";
 import { StickerOverlayAutoSave } from "./AutoSave";
 import { useProjectStore } from "@/stores/project-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -158,7 +158,7 @@ export const StickerCanvas: React.FC<{
 
 				// Add to timeline (source of truth for timing)
 				const { timelineStickerIntegration } = await import(
-					"@/lib/timeline-sticker-integration"
+					"@/lib/stickers/timeline-sticker-integration"
 				);
 				const sticker = useStickersOverlayStore
 					.getState()

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { useEffectsStore } from "@/stores/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
 import { toast } from "sonner";
 import type {
 	TimelineTrack,

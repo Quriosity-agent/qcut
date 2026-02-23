@@ -12,7 +12,7 @@ import type {
 } from "@/types/timeline";
 import { validateElementTrackCompatibility } from "@/types/timeline";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
 import { generateUUID } from "@/lib/utils";
 import type { OperationContext } from "./types";
 import { getEffectiveDuration, getElementEndTime } from "./utils";

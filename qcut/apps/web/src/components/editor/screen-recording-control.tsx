@@ -9,7 +9,7 @@ import {
 	startScreenRecording,
 	stopScreenRecording,
 	subscribeToScreenRecordingStatus,
-} from "@/lib/screen-recording-controller";
+} from "@/lib/project/screen-recording-controller";
 import { Circle, Loader2, Square } from "lucide-react";
 import {
 	useCallback,

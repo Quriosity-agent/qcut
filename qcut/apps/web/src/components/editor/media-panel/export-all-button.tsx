@@ -5,10 +5,10 @@ import { Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 import { useZipExport } from "@/hooks/use-zip-export";
-import type { MediaItem } from "@/stores/media-store-types";
+import type { MediaItem } from "@/stores/media/media-store-types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
+import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 
 interface ExportAllButtonProps {
 	className?: string;

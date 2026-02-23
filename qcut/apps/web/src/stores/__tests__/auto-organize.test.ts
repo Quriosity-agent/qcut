@@ -3,7 +3,7 @@ import { useMediaStore } from "../media-store";
 import { DEFAULT_FOLDER_IDS } from "../media-store-types";
 
 // Mock the debug utilities
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugError: vi.fn(),
 }));

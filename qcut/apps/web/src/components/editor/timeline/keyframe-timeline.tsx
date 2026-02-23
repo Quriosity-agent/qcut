@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useEffectsStore } from "@/stores/effects-store";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { useEffectsStore } from "@/stores/ai/effects-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { cn } from "@/lib/utils";
 import {
 	Diamond,
@@ -39,7 +39,7 @@ import {
 	removeKeyframe,
 	updateKeyframe,
 	createTransition,
-} from "@/lib/effects-keyframes";
+} from "@/lib/effects/effects-keyframes";
 
 interface KeyframeTimelineProps {
 	elementId: string;

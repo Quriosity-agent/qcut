@@ -5,9 +5,9 @@
  * These have no React hook dependencies and can be tested independently.
  */
 
-import { debugLogger } from "@/lib/debug-logger";
-import { debugLog, debugError } from "@/lib/debug-config";
-import { falAIClient } from "@/lib/fal-ai-client";
+import { debugLogger } from "@/lib/debug/debug-logger";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
+import { falAIClient } from "@/lib/ai-clients/fal-ai-client";
 
 import {
 	integrateVideoToMediaStore,

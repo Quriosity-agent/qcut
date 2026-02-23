@@ -10,7 +10,7 @@ import { MediaPanel } from "./media-panel";
 import { PropertiesPanel } from "./properties-panel";
 import { Timeline } from "./timeline";
 import { PreviewPanel } from "./preview-panel";
-import { usePanelStore } from "@/stores/panel-store";
+import { usePanelStore } from "@/stores/editor/panel-store";
 
 interface LayoutProps {
 	resetCounter: number;

@@ -1,10 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import { createObjectURL } from "@/lib/blob-manager";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { createObjectURL } from "@/lib/media/blob-manager";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { toast } from "sonner";
 import type { DragData } from "@/types/timeline";
-import type { MediaItem, MediaStore } from "@/stores/media-store-types";
+import type { MediaItem, MediaStore } from "@/stores/media/media-store-types";
 
 interface UseDragHandlersParams {
 	mediaItems: MediaItem[];
@@ -144,7 +144,7 @@ export function useDragHandlers({
 
 									// Add as StickerElement to timeline (not MediaElement)
 									const { timelineStickerIntegration } = await import(
-										"@/lib/timeline-sticker-integration"
+										"@/lib/stickers/timeline-sticker-integration"
 									);
 									const sticker = useStickersOverlayStore
 										.getState()
@@ -236,7 +236,7 @@ export function useDragHandlers({
 				setProgress(0);
 
 				try {
-					const { processMediaFiles } = await import("@/lib/media-processing");
+					const { processMediaFiles } = await import("@/lib/media/media-processing");
 					const processedItems = await processMediaFiles(
 						e.dataTransfer.files,
 						(nextProgress) => setProgress(nextProgress)
@@ -252,7 +252,7 @@ export function useDragHandlers({
 						)
 					);
 
-					const { useMediaStore } = await import("@/stores/media-store");
+					const { useMediaStore } = await import("@/stores/media/media-store");
 					const currentState = useMediaStore.getState() as {
 						mediaItems: MediaItem[];
 					};

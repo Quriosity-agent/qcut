@@ -1,11 +1,11 @@
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { useMediaStore } from "@/stores/media-store";
+import { useMediaStore } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useStickersStore } from "@/stores/stickers-store";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
-import { downloadIconSvg, createSvgBlob } from "@/lib/iconify-api";
-import { debugLog, debugError } from "@/lib/debug-config";
+import { downloadIconSvg, createSvgBlob } from "@/lib/stickers/iconify-api";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 
 export function useStickerSelect() {
 	const addMediaItem = useMediaStore((s) => s.addMediaItem);

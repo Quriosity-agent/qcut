@@ -2,12 +2,12 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
 import {
 	getImageEditModels,
 	getModelCapabilities,
 	type ImageEditModelId,
-} from "@/lib/image-edit-client";
+} from "@/lib/ai-clients/image-edit-client";
 import { cn } from "@/lib/utils";
 import { Check, Images } from "lucide-react";
 import { getProviderLogo } from "../media-panel/views/ai/constants/model-provider-logos";

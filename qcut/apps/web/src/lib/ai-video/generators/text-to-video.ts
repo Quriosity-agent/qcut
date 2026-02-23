@@ -5,7 +5,7 @@
  * Includes support for multiple AI models with different capabilities.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 import type {
 	VideoGenerationRequest,
 	VideoGenerationResponse,

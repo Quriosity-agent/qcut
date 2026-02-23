@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useEditorStore } from "@/stores/editor-store";
+import { useEditorStore } from "@/stores/editor/editor-store";
 import { useProjectStore } from "@/stores/project-store";
 
 interface ClaudeProjectSettingsUpdate {

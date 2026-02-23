@@ -1,6 +1,6 @@
 "use client";
 
-import { useSegmentationStore } from "@/stores/segmentation-store";
+import { useSegmentationStore } from "@/stores/ai/segmentation-store";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Type, MousePointer, Square, Sparkles } from "lucide-react";

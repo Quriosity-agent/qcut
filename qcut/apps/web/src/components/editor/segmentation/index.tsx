@@ -1,12 +1,12 @@
 "use client";
-import { useSegmentationStore } from "@/stores/segmentation-store";
+import { useSegmentationStore } from "@/stores/ai/segmentation-store";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Wand2, Loader2, ImagePlus, Video } from "lucide-react";
-import { segmentWithText } from "@/lib/sam3-client";
-import { debugLog } from "@/lib/debug-config";
-import { createObjectURL } from "@/lib/blob-manager";
+import { segmentWithText } from "@/lib/ai-clients/sam3-client";
+import { debugLog } from "@/lib/debug/debug-config";
+import { createObjectURL } from "@/lib/media/blob-manager";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Export individual components
@@ -81,7 +81,7 @@ export function SegmentationPanel() {
 
 			// Upload image to FAL
 			debugLog("Uploading image to FAL for segmentation...");
-			const { uploadImageToFAL } = await import("@/lib/image-edit-client");
+			const { uploadImageToFAL } = await import("@/lib/ai-clients/image-edit-client");
 			const uploadedImageUrl = await uploadImageToFAL(sourceImageFile);
 
 			setProcessingState({

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAdjustmentStore } from "@/stores/adjustment-store";
+import { useAdjustmentStore } from "@/stores/ai/adjustment-store";
 import { useAsyncMediaStoreActions } from "@/hooks/use-async-media-store";
 import { useParams } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,9 @@ import {
 	uploadImagesToFAL,
 	getModelCapabilities,
 	type ImageEditRequest,
-} from "@/lib/image-edit-client";
-import { debugLog } from "@/lib/debug-config";
-import { createObjectURL } from "@/lib/blob-manager";
+} from "@/lib/ai-clients/image-edit-client";
+import { debugLog } from "@/lib/debug/debug-config";
+import { createObjectURL } from "@/lib/media/blob-manager";
 
 // Export individual components
 export { EditHistory } from "./edit-history";
@@ -181,7 +181,7 @@ export function AdjustmentPanel() {
 
 					// Dynamically import image utilities
 					const { downloadImageAsFile, getImageInfo } = await import(
-						"@/lib/image-utils"
+						"@/lib/media/image-utils"
 					);
 
 					const downloadedFile = await downloadImageAsFile(

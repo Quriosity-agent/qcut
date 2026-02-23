@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const originalFetch = globalThis.fetch;
 
 describe("Seeddream 4.5 Text-to-Image", () => {
-	let generateSeeddream45Image: typeof import("@/lib/ai-video-client")["generateSeeddream45Image"];
+	let generateSeeddream45Image: typeof import("@/lib/ai-clients/ai-video-client")["generateSeeddream45Image"];
 
 	beforeEach(async () => {
 		vi.restoreAllMocks();
@@ -13,7 +13,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
 		(import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
 
 		// Dynamically import the module AFTER setting the environment
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 		generateSeeddream45Image = aiVideoClient.generateSeeddream45Image;
 
 		globalThis.fetch = originalFetch as typeof globalThis.fetch;
@@ -272,7 +272,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
 
 			// Re-import to get the function with cleared key
 			vi.resetModules();
-			const aiVideoClient = await import("@/lib/ai-video-client");
+			const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 
 			// Mock fetch to prevent real API calls
 			const fetchMock = vi.fn();
@@ -289,7 +289,7 @@ describe("Seeddream 4.5 Text-to-Image", () => {
 });
 
 describe("Seeddream 4.5 Image Edit", () => {
-	let editSeeddream45Image: typeof import("@/lib/ai-video-client")["editSeeddream45Image"];
+	let editSeeddream45Image: typeof import("@/lib/ai-clients/ai-video-client")["editSeeddream45Image"];
 
 	beforeEach(async () => {
 		vi.restoreAllMocks();
@@ -297,7 +297,7 @@ describe("Seeddream 4.5 Image Edit", () => {
 
 		(import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
 
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 		editSeeddream45Image = aiVideoClient.editSeeddream45Image;
 
 		globalThis.fetch = originalFetch as typeof globalThis.fetch;
@@ -449,7 +449,7 @@ describe("Seeddream 4.5 Image Edit", () => {
 });
 
 describe("uploadImageForSeeddream45Edit", () => {
-	let uploadImageForSeeddream45Edit: typeof import("@/lib/ai-video-client")["uploadImageForSeeddream45Edit"];
+	let uploadImageForSeeddream45Edit: typeof import("@/lib/ai-clients/ai-video-client")["uploadImageForSeeddream45Edit"];
 
 	// Helper to create a mock File with arrayBuffer method
 	function createMockFile(content: string, name: string, type: string): File {
@@ -470,7 +470,7 @@ describe("uploadImageForSeeddream45Edit", () => {
 
 		(import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
 
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 		uploadImageForSeeddream45Edit = aiVideoClient.uploadImageForSeeddream45Edit;
 	});
 
@@ -483,7 +483,7 @@ describe("uploadImageForSeeddream45Edit", () => {
 		(import.meta.env as any).VITE_FAL_API_KEY = "";
 
 		vi.resetModules();
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 
 		const mockFile = createMockFile("test", "test.png", "image/png");
 

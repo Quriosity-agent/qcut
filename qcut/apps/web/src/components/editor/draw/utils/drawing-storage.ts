@@ -1,4 +1,4 @@
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
 
 interface DrawingMetadata {
 	filename: string;

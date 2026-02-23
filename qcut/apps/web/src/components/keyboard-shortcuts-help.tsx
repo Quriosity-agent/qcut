@@ -7,7 +7,7 @@ import {
 	type KeyboardShortcut,
 	useKeyboardShortcutsHelp,
 } from "@/hooks/use-keyboard-shortcuts-help";
-import { useKeybindingsStore } from "@/stores/keybindings-store";
+import { useKeybindingsStore } from "@/stores/editor/keybindings-store";
 import { Button } from "./ui/button";
 import {
 	Dialog,

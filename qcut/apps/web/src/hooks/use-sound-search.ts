@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useSoundsStore } from "@/stores/sounds-store";
+import { useSoundsStore } from "@/stores/media/sounds-store";
 import { searchSounds } from "@/lib/api-adapter";
 
 /**

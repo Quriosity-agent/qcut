@@ -9,7 +9,7 @@
 
 import type { ImageSourceInput } from "../types";
 import type { TimelineTrack, TimelineElement } from "@/types/timeline";
-import type { MediaItem } from "@/stores/media-store";
+import type { MediaItem } from "@/stores/media/media-store";
 
 /**
  * Logger function type for dependency injection.

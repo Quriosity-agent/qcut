@@ -1,7 +1,7 @@
 import { Slider } from "../ui/slider";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 
 const SPEED_PRESETS = [
 	{ label: "0.5x", value: 0.5 },

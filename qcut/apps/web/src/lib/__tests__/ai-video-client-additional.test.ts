@@ -3,16 +3,16 @@ import type {
 	ViduQ2I2VRequest,
 	LTXV2T2VRequest,
 	LTXV2I2VRequest,
-} from "@/lib/ai-video-client";
+} from "@/lib/ai-clients/ai-video-client";
 import { ERROR_MESSAGES } from "@/components/editor/media-panel/views/ai/constants/ai-constants";
 
 const originalFetch = globalThis.fetch;
 
 describe("AI video client – additional models", () => {
 	// Module-level variables to hold dynamically imported functions
-	let generateViduQ2Video: typeof import("@/lib/ai-video-client")["generateViduQ2Video"];
-	let generateLTXV2Video: typeof import("@/lib/ai-video-client")["generateLTXV2Video"];
-	let generateLTXV2ImageVideo: typeof import("@/lib/ai-video-client")["generateLTXV2ImageVideo"];
+	let generateViduQ2Video: typeof import("@/lib/ai-clients/ai-video-client")["generateViduQ2Video"];
+	let generateLTXV2Video: typeof import("@/lib/ai-clients/ai-video-client")["generateLTXV2Video"];
+	let generateLTXV2ImageVideo: typeof import("@/lib/ai-clients/ai-video-client")["generateLTXV2ImageVideo"];
 
 	beforeEach(async () => {
 		// Clear all mocks first
@@ -23,7 +23,7 @@ describe("AI video client – additional models", () => {
 		(import.meta.env as any).VITE_FAL_API_KEY = "test-api-key";
 
 		// Dynamically import the module AFTER setting the environment
-		const aiVideoClient = await import("@/lib/ai-video-client");
+		const aiVideoClient = await import("@/lib/ai-clients/ai-video-client");
 		generateViduQ2Video = aiVideoClient.generateViduQ2Video;
 		generateLTXV2Video = aiVideoClient.generateLTXV2Video;
 		generateLTXV2ImageVideo = aiVideoClient.generateLTXV2ImageVideo;

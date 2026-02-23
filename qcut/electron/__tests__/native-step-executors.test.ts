@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	getInputDataType,
 	getOutputDataType,
-} from "../native-pipeline/step-executors.js";
+} from "../native-pipeline/execution/step-executors.js";
 
 describe("step-executors data types", () => {
 	describe("getInputDataType", () => {

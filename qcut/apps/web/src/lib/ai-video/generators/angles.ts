@@ -8,7 +8,7 @@
  * FAL.ai rate limits while maximising parallelism.
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 import {
 	CINEMATIC_ANGLES,
 	ANGLE_BATCH_SIZE,

@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEXT2IMAGE_MODELS } from "@/lib/text2image-models";
+import { TEXT2IMAGE_MODELS } from "@/lib/ai-models/text2image-models";
 import {
 	MAX_REVE_IMAGES,
 	MAX_REVE_PROMPT_LENGTH,
 } from "@/lib/ai-video/validation/validators";
-import { convertSettingsToParams } from "@/lib/fal-ai-client-generation";
-import { reveTextToImage } from "@/lib/fal-ai-client-reve";
-import { veo31FastTextToVideo } from "@/lib/fal-ai-client-veo31";
-import type { FalAIClientRequestDelegate } from "@/lib/fal-ai-client-internal-types";
+import { convertSettingsToParams } from "@/lib/ai-clients/fal-ai-client-generation";
+import { reveTextToImage } from "@/lib/ai-clients/fal-ai-client-reve";
+import { veo31FastTextToVideo } from "@/lib/ai-clients/fal-ai-client-veo31";
+import type { FalAIClientRequestDelegate } from "@/lib/ai-clients/fal-ai-client-internal-types";
 
 const originalFetch = globalThis.fetch;
 
@@ -28,7 +28,7 @@ describe("fal-ai-client split compatibility", () => {
 	});
 
 	it("fal-ai-client named exports remain available", async () => {
-		const module = await import("@/lib/fal-ai-client");
+		const module = await import("@/lib/ai-clients/fal-ai-client");
 
 		expect(typeof module.falAIClient).toBe("object");
 		expect(typeof module.generateWithModel).toBe("function");
@@ -46,14 +46,14 @@ describe("fal-ai-client split compatibility", () => {
 			imageUrl: "https://example.com/image.png",
 		});
 
-		vi.doMock("@/lib/fal-ai-client-generation", () => {
+		vi.doMock("@/lib/ai-clients/fal-ai-client-generation", () => {
 			return {
 				generateWithModel: mockGenerateWithModel,
 				generateWithMultipleModels: vi.fn(),
 			};
 		});
 
-		const module = await import("@/lib/fal-ai-client");
+		const module = await import("@/lib/ai-clients/fal-ai-client");
 		await module.generateWithModel("qwen-image", "delegate test", {
 			imageSize: "square",
 		});
@@ -67,7 +67,7 @@ describe("fal-ai-client split compatibility", () => {
 		];
 		expect(typeof delegate.makeRequest).toBe("function");
 
-		vi.doUnmock("@/lib/fal-ai-client-generation");
+		vi.doUnmock("@/lib/ai-clients/fal-ai-client-generation");
 	});
 
 	it("reveTextToImage validates and sanitizes prompt inputs", async () => {
@@ -127,7 +127,7 @@ describe("fal-ai-client split compatibility", () => {
 		});
 		globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
-		const module = await import("@/lib/fal-ai-client");
+		const module = await import("@/lib/ai-clients/fal-ai-client");
 		const result = await module.falAIClient.generateWithModel(
 			"qwen-image",
 			"proxy generation",
@@ -154,7 +154,7 @@ describe("fal-ai-client split compatibility", () => {
 		});
 		globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
 
-		const module = await import("@/lib/fal-ai-client");
+		const module = await import("@/lib/ai-clients/fal-ai-client");
 		const results = await module.batchGenerate(
 			[
 				{
@@ -180,7 +180,7 @@ describe("fal-ai-client split compatibility", () => {
 	});
 
 	it("text2image-store dynamic import target generateWithMultipleModels still resolves", async () => {
-		const module = await import("@/lib/fal-ai-client");
+		const module = await import("@/lib/ai-clients/fal-ai-client");
 		expect(typeof module.generateWithMultipleModels).toBe("function");
 	});
 });

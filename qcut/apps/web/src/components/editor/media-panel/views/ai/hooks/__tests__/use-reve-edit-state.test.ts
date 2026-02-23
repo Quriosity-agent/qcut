@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useReveEditState } from "../use-reve-edit-state";
-import { validateReveEditImage } from "@/lib/image-validation";
-import { falAIClient } from "@/lib/fal-ai-client";
+import { validateReveEditImage } from "@/lib/ai-models/image-validation";
+import { falAIClient } from "@/lib/ai-clients/fal-ai-client";
 
-vi.mock("@/lib/image-validation", () => ({
+vi.mock("@/lib/ai-models/image-validation", () => ({
 	validateReveEditImage: vi.fn(),
 }));
 
-vi.mock("@/lib/fal-ai-client", () => ({
+vi.mock("@/lib/ai-clients/fal-ai-client", () => ({
 	falAIClient: {
 		uploadImageToFal: vi.fn(),
 	},

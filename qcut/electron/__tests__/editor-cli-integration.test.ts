@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { handleEditorCommand } from "../native-pipeline/cli-handlers-editor.js";
-import { handleMediaProjectCommand } from "../native-pipeline/editor-handlers-media.js";
-import { handleTimelineEditingCommand } from "../native-pipeline/editor-handlers-timeline.js";
-import { handleAnalysisCommand } from "../native-pipeline/editor-handlers-analysis.js";
-import { handleGenerateExportCommand } from "../native-pipeline/editor-handlers-generate.js";
-import { EditorApiClient } from "../native-pipeline/editor-api-client.js";
+import { handleEditorCommand } from "../native-pipeline/cli/cli-handlers-editor.js";
+import { handleMediaProjectCommand } from "../native-pipeline/editor/editor-handlers-media.js";
+import { handleTimelineEditingCommand } from "../native-pipeline/editor/editor-handlers-timeline.js";
+import { handleAnalysisCommand } from "../native-pipeline/editor/editor-handlers-analysis.js";
+import { handleGenerateExportCommand } from "../native-pipeline/editor/editor-handlers-generate.js";
+import { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
 import type {
 	CLIRunOptions,
 	CLIResult,
-} from "../native-pipeline/cli-runner.js";
+} from "../native-pipeline/cli/cli-runner.js";
 
 // ---------------------------------------------------------------------------
 // Mock HTTP server

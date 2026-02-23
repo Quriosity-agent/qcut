@@ -4,7 +4,7 @@ import { useFolderStore } from "../folder-store";
 import { DEFAULT_FOLDER_IDS, type MediaFolder } from "../media-store-types";
 
 // Mock the debug utilities
-vi.mock("@/lib/debug-config", () => ({
+vi.mock("@/lib/debug/debug-config", () => ({
 	debugLog: vi.fn(),
 	debugError: vi.fn(),
 }));

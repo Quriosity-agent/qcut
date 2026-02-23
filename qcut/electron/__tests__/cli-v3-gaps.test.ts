@@ -7,9 +7,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ModelRegistry } from "../native-pipeline/registry.js";
+import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
-import { parseCliArgs } from "../native-pipeline/cli.js";
+import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import {
 	ImageGeneratorAdapter,
 	generateImage,

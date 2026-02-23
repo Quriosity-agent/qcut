@@ -7,7 +7,7 @@
  * @module ai-video/core/fal-upload
  */
 
-import { handleAIServiceError } from "@/lib/error-handler";
+import { handleAIServiceError } from "@/lib/debug/error-handler";
 import { FAL_UPLOAD_URL } from "./fal-request";
 
 /**

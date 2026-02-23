@@ -8,9 +8,9 @@ import {
 	ContextMenuItem,
 	ContextMenuTrigger,
 } from "../../ui/context-menu";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useAsyncMediaStore } from "@/hooks/use-async-media-store";
-import { usePlaybackStore } from "@/stores/playback-store";
+import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useFrameCache } from "@/hooks/use-frame-cache";
 import { TimelineCacheIndicator } from "./timeline-cache-indicator";
 import { useProjectStore } from "@/stores/project-store";
@@ -36,7 +36,7 @@ import {
 	calculateMinimumTimelineDuration,
 	calculateTimelineBuffer,
 } from "@/constants/timeline-constants";
-import { useWordTimelineStore } from "@/stores/word-timeline-store";
+import { useWordTimelineStore } from "@/stores/timeline/word-timeline-store";
 import { WORD_FILTER_STATE } from "@/types/word-timeline";
 import { TimelineToolbar } from "./timeline-toolbar";
 import { TrackIcon } from "./track-icon";

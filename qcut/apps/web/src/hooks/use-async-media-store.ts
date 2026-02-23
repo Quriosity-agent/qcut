@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getMediaStore } from "@/stores/media-store-loader";
-import type { MediaStore } from "@/stores/media-store-types";
+import { getMediaStore } from "@/stores/media/media-store-loader";
+import type { MediaStore } from "@/stores/media/media-store-types";
 
 interface AsyncMediaStoreState {
 	store: MediaStore | null;

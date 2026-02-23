@@ -1,5 +1,5 @@
 import { isFeatureEnabled } from "./feature-flags";
-import { handleError, ErrorCategory, ErrorSeverity } from "./error-handler";
+import { handleError, ErrorCategory, ErrorSeverity } from "./debug/error-handler";
 
 // Helper function for legacy sound search with retry logic
 async function legacySoundSearch(

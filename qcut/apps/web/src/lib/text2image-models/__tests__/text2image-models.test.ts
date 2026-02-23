@@ -6,7 +6,7 @@ import {
 	getModelById,
 	getModelsByProvider,
 	getText2ImageModelEntriesInPriorityOrder,
-} from "@/lib/text2image-models";
+} from "@/lib/ai-models/text2image-models";
 
 describe("text2image-models registry", () => {
 	it("TEXT2IMAGE_MODELS has exactly 14 models", () => {

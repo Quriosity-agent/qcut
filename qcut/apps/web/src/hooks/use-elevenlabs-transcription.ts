@@ -26,7 +26,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { useWordTimelineStore } from "@/stores/word-timeline-store";
+import { useWordTimelineStore } from "@/stores/timeline/word-timeline-store";
 import type { ElevenLabsTranscribeResult } from "@/types/electron";
 
 // ============================================================================

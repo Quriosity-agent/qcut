@@ -1,5 +1,5 @@
 import { StorageAdapter } from "./types";
-import { handleStorageError } from "@/lib/error-handler";
+import { handleStorageError } from "@/lib/debug/error-handler";
 
 /**
  * Electron IPC-based storage adapter for desktop application

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useExportStore } from "@/stores/export-store";
-import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useAsyncMediaItems } from "@/hooks/use-async-media-store";
 // Export engine factory and engine types will be imported dynamically when needed
 import type {
@@ -9,15 +9,15 @@ import type {
 	AudioCodec,
 	ExportSettingsWithAudio,
 } from "@/types/export";
-import type { ExportEngine } from "@/lib/export-engine";
+import type { ExportEngine } from "@/lib/export/export-engine";
 import type {
 	ExportEngineFactory,
 	ExportEngineType,
-} from "@/lib/export-engine-factory";
+} from "@/lib/export/export-engine-factory";
 import { toast } from "sonner";
 import { useElectron } from "@/hooks/useElectron";
-import { debugLog, debugError, debugWarn } from "@/lib/debug-config";
-import { lockForExport, unlockFromExport } from "@/lib/blob-manager";
+import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
+import { lockForExport, unlockFromExport } from "@/lib/media/blob-manager";
 
 export function useExportProgress() {
 	const { progress, updateProgress, setError, resetExport, addToHistory } =
@@ -93,7 +93,7 @@ export function useExportProgress() {
 			// Create export engine using factory for optimal performance
 			// Dynamically import export engine factory
 			const { ExportEngineFactory, ExportEngineType } = await import(
-				"@/lib/export-engine-factory"
+				"@/lib/export/export-engine-factory"
 			);
 			const factory = ExportEngineFactory.getInstance();
 
