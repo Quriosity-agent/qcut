@@ -84,6 +84,8 @@ export interface ClaudeElement {
 	content?: string;
 	markdownContent?: string;
 	style?: Record<string, unknown>;
+	backgroundColor?: string;
+	textColor?: string;
 	effects?: string[];
 	trimStart?: number;
 	trimEnd?: number;

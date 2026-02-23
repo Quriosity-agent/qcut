@@ -33,6 +33,7 @@ const COMMANDS = [
 	"list-models",
 	"estimate-cost",
 	"analyze-video",
+	"query-video",
 	"transcribe",
 	"transfer-motion",
 	"generate-grid",
@@ -140,6 +141,7 @@ Commands:
   list-models         List available AI models
   estimate-cost       Estimate generation cost
   analyze-video       Analyze a video with AI vision
+  query-video         Query a video with a custom prompt (keep/cut segments)
   transcribe          Transcribe audio to text
   transfer-motion     Transfer motion from video to image
   generate-grid       Generate an image grid

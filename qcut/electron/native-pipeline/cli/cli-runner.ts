@@ -30,6 +30,7 @@ import { isInteractive, confirm, readStdin } from "../cli/interactive.js";
 import {
 	handleAnalyzeVideo as mediaHandleAnalyzeVideo,
 	handleTranscribe as mediaHandleTranscribe,
+	handleQueryVideo as mediaHandleQueryVideo,
 } from "./cli-handlers-media.js";
 import {
 	handleSetup as adminHandleSetup,
@@ -251,6 +252,13 @@ export class CLIPipelineRunner {
 				return this.handleRunPipeline(options, onProgress);
 			case "analyze-video":
 				return mediaHandleAnalyzeVideo(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
+			case "query-video":
+				return mediaHandleQueryVideo(
 					options,
 					onProgress,
 					this.executor,

@@ -288,6 +288,248 @@ async function addAnalysisToTimeline(
 	return { success: true };
 }
 
+// ---------------------------------------------------------------------------
+// query-video: user-prompted video analysis with keep/cut segments
+// ---------------------------------------------------------------------------
+
+interface QueryVideoSegment {
+	start: number;
+	end: number;
+	label: string;
+	action: "keep" | "cut";
+}
+
+export async function handleQueryVideo(
+	options: CLIRunOptions,
+	onProgress: ProgressFn,
+	executor: PipelineExecutor,
+	signal: AbortSignal
+): Promise<CLIResult> {
+	const videoInput = options.input || options.videoUrl;
+	if (!videoInput) {
+		return { success: false, error: "Missing --input/-i (video path/URL)" };
+	}
+
+	const userPrompt = options.prompt || options.text;
+	if (!userPrompt) {
+		return {
+			success: false,
+			error: "Missing --prompt or --text/-t (query for the video)",
+		};
+	}
+
+	const model = options.model || "fal_video_qa";
+	if (!ModelRegistry.has(model)) {
+		return { success: false, error: `Unknown model '${model}'` };
+	}
+
+	const startTime = Date.now();
+	onProgress({
+		stage: "querying",
+		percent: 0,
+		message: "Querying video...",
+		model,
+	});
+
+	const wrappedPrompt = `You are a video editing assistant. Analyze this video and identify segments to keep or cut.
+
+User request: "${userPrompt}"
+
+Return a JSON array of segments that covers the ENTIRE video without gaps or overlaps. Each segment must have:
+- "start": start time in seconds (number)
+- "end": end time in seconds (number)
+- "label": short description of what happens in this segment (string)
+- "action": either "keep" or "cut" (string)
+
+Return ONLY a valid JSON array, no markdown fences, no explanation.
+Example: [{"start":0,"end":5.2,"label":"Intro title card","action":"cut"},{"start":5.2,"end":25.0,"label":"Best highlight moment","action":"keep"}]`;
+
+	const step: PipelineStep = {
+		type: "image_understanding",
+		model,
+		params: { prompt: wrappedPrompt },
+		enabled: true,
+		retryCount: 0,
+	};
+
+	const result = await executor.executeStep(
+		step,
+		{ videoUrl: videoInput },
+		{ outputDir: options.outputDir, signal }
+	);
+
+	onProgress({ stage: "complete", percent: 100, message: "Done", model });
+
+	if (!result.success) {
+		return {
+			success: false,
+			error: result.error,
+			duration: (Date.now() - startTime) / 1000,
+		};
+	}
+
+	// Parse structured segments from model response
+	const resultData = result.text || result.data;
+	let segments: QueryVideoSegment[] = [];
+	if (typeof resultData === "string") {
+		try {
+			const cleaned = resultData
+				.replace(/^```(?:json)?\n?/m, "")
+				.replace(/\n?```$/m, "")
+				.trim();
+			const parsed = JSON.parse(cleaned);
+			if (Array.isArray(parsed)) {
+				segments = parsed.map((s: Record<string, unknown>) => ({
+					start: Number(s.start) || 0,
+					end: Number(s.end) || 0,
+					label: String(s.label || ""),
+					action: s.action === "cut" ? ("cut" as const) : ("keep" as const),
+				}));
+			}
+		} catch {
+			console.error("[query-video] Failed to parse model response as JSON");
+		}
+	}
+
+	// Save output JSON
+	const videoFilename = isUrl(videoInput)
+		? "video"
+		: basename(videoInput, `.${videoInput.split(".").pop()}`);
+	const outputDir =
+		options.outputDir ||
+		(isUrl(videoInput) ? process.cwd() : dirname(videoInput));
+	const jsonPath = join(outputDir, `${videoFilename}_query.json`);
+
+	const output = {
+		type: "query",
+		video: basename(videoInput),
+		model,
+		prompt: userPrompt,
+		duration: (Date.now() - startTime) / 1000,
+		segments,
+	};
+
+	try {
+		mkdirSync(outputDir, { recursive: true });
+		writeFileSync(jsonPath, JSON.stringify(output, null, 2));
+	} catch (err) {
+		return {
+			success: false,
+			error: `Failed to write ${jsonPath}: ${err instanceof Error ? err.message : String(err)}`,
+			duration: output.duration,
+		};
+	}
+
+	// Add colored segments to editor timeline if requested
+	if (options.addToTimeline && options.projectId) {
+		const timelineResult = await addQuerySegmentsToTimeline(
+			options,
+			videoInput,
+			segments,
+			onProgress
+		);
+		if (!timelineResult.success) {
+			console.error(
+				`[query-video] Timeline integration failed: ${timelineResult.error}`
+			);
+		}
+	}
+
+	return {
+		success: true,
+		outputPath: jsonPath,
+		data: output,
+		duration: output.duration,
+	};
+}
+
+/** Import video + colored keep/cut segments into the editor timeline. */
+async function addQuerySegmentsToTimeline(
+	options: CLIRunOptions,
+	videoPath: string,
+	segments: QueryVideoSegment[],
+	onProgress: ProgressFn
+): Promise<{ success: boolean; error?: string }> {
+	const projectId = options.projectId!;
+	const client = createEditorClient(options);
+
+	const healthy = await client.checkHealth();
+	if (!healthy) {
+		return { success: false, error: "QCut editor not reachable" };
+	}
+
+	onProgress({
+		stage: "timeline",
+		percent: 80,
+		message: "Importing video to editor...",
+	});
+
+	// 1. Import video into media library
+	const source = isUrl(videoPath) ? videoPath : resolve(videoPath);
+	const media = (await client.post(`/api/claude/media/${projectId}/import`, {
+		source,
+	})) as { id?: string; name?: string; duration?: number };
+
+	if (!media?.id) {
+		return { success: false, error: "Failed to import video to media library" };
+	}
+
+	const videoDuration =
+		media.duration ||
+		(segments.length > 0 ? Math.max(...segments.map((s) => s.end)) : 10);
+
+	onProgress({
+		stage: "timeline",
+		percent: 85,
+		message: "Adding video to timeline...",
+	});
+
+	// 2. Add video element
+	await client.post(`/api/claude/timeline/${projectId}/elements`, {
+		type: "media",
+		sourceId: media.id,
+		sourceName: media.name || basename(videoPath),
+		startTime: 0,
+		duration: videoDuration,
+	});
+
+	// 3. Add colored keep/cut segments as markdown elements
+	let added = 0;
+	if (segments.length > 0) {
+		onProgress({
+			stage: "timeline",
+			percent: 90,
+			message: "Adding keep/cut segments...",
+		});
+
+		for (const segment of segments) {
+			const duration = segment.end - segment.start;
+			if (duration <= 0) continue;
+
+			const isKeep = segment.action === "keep";
+			await client.post(`/api/claude/timeline/${projectId}/elements`, {
+				type: "markdown",
+				content: `**[${isKeep ? "KEEP" : "CUT"}]** ${segment.label}`,
+				startTime: segment.start,
+				duration,
+				backgroundColor: isKeep
+					? "rgba(34,197,94,0.7)"
+					: "rgba(239,68,68,0.7)",
+				textColor: "#ffffff",
+			});
+			added++;
+		}
+	}
+
+	onProgress({
+		stage: "timeline",
+		percent: 100,
+		message: `Added video + ${added} keep/cut segments to timeline`,
+	});
+
+	return { success: true };
+}
+
 export async function handleTranscribe(
 	options: CLIRunOptions,
 	onProgress: ProgressFn,
