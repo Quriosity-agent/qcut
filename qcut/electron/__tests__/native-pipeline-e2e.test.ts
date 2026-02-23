@@ -4,8 +4,8 @@ import {
 	registerTextToVideoModels,
 	registerImageToVideoModels,
 	registerImageToImageModels,
-} from "../native-pipeline/registry-data.js";
-import { registerAllPart2Models } from "../native-pipeline/registry-data-2.js";
+	registerAllPart2Models,
+} from "../native-pipeline/registry-data/index.js";
 import {
 	estimateCost,
 	listModels,
