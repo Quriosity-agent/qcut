@@ -428,8 +428,14 @@ export const isExportLocked = (): boolean => {
 };
 
 // Development helper to monitor blob usage
+declare global {
+	interface Window {
+		debugBlobs?: () => void;
+	}
+}
+
 if (import.meta.env.DEV && typeof window !== "undefined") {
-	(window as any).debugBlobs = () => {
+	window.debugBlobs = () => {
 		const stats = blobManager.getStats();
 		console.log("[BlobManager] Stats:", stats);
 		console.log("[BlobManager] Active blobs:", blobManager.getActiveBlobs());
