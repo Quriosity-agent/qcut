@@ -231,7 +231,8 @@ describe("Timeline handlers", () => {
 				makeOpts({
 					command: "editor:timeline:batch-add",
 					projectId: "p1",
-					elements: '[{"type":"video"},{"type":"audio"}]',
+					elements:
+						'[{"type":"video","trackId":"t1"},{"type":"audio","trackId":"t1"}]',
 				}),
 				noopProgress
 			);

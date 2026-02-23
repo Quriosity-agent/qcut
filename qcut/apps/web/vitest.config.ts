@@ -32,6 +32,14 @@ export default defineConfig({
 		pool: "forks",
 		testTimeout: 5000,
 		hookTimeout: 5000,
+		server: {
+			deps: {
+				// Ensure Node built-in modules resolve correctly in jsdom environment
+				// (fixes Windows CI where node:fs, node:child_process, crypto resolve
+				// as file:///@id/__vite-browser-external:... instead of real modules)
+				inline: [/^node:/, "crypto"],
+			},
+		},
 	},
 	resolve: {
 		alias: {

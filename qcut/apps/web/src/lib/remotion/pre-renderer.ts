@@ -224,6 +224,20 @@ export class RemotionPreRenderer {
 			throw new Error("Electron Remotion API not available");
 		}
 
+		// Register progress listener (IPC-safe event pattern)
+		const cleanupProgress = electronAPI.onPreRenderProgress(
+			(data: { elementId: string; frame: number }) => {
+				if (data.elementId === element.id) {
+					onProgress?.(
+						element.id,
+						(data.frame / totalFrames) * 100,
+						data.frame,
+						totalFrames
+					);
+				}
+			}
+		);
+
 		// Call Electron to render frames
 		const result = await electronAPI.preRender({
 			elementId: element.id,
@@ -236,15 +250,10 @@ export class RemotionPreRenderer {
 			height: this.config.height,
 			fps: this.config.fps,
 			totalFrames,
-			onProgress: (frame: number) => {
-				onProgress?.(
-					element.id,
-					(frame / totalFrames) * 100,
-					frame,
-					totalFrames
-				);
-			},
 		});
+
+		// Clean up progress listener
+		cleanupProgress();
 
 		// Convert result to Map
 		if (result.frames) {

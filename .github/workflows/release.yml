@@ -151,10 +151,19 @@ jobs:
           magick 'build/icon.ico[0]' -resize 1024x1024 -background none -gravity center -extent 1024x1024 build/icon.iconset/icon_512x512@2x.png
           iconutil -c icns build/icon.iconset -o build/icon.icns
 
+      - name: Cache Electron binary
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('qcut/node_modules/electron/package.json') }}
+
       - name: Build Electron application
         run: |
           rm -rf dist-electron
-          npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
+          echo "::group::Electron Builder"
+          time npx electron-builder --mac --config.publish.channel=${{ needs.prepare.outputs.channel }}
+          echo "::endgroup::"
+          ls -lah dist-electron/
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_HARD_LINKS: false

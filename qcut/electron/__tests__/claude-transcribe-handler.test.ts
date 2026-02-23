@@ -3,7 +3,7 @@
  * Validates media resolution, audio extraction, and provider dispatch.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -127,12 +127,19 @@ const { mockReadFile: mockFsReadFile } = vi.hoisted(() => ({
 	mockReadFile: vi.fn(),
 }));
 vi.mock("node:fs/promises", () => ({
+	default: { readFile: mockFsReadFile },
 	readFile: mockFsReadFile,
 }));
 
 vi.mock("../ffmpeg/utils", () => ({
 	getFFmpegPath: vi.fn(() => "/usr/bin/ffmpeg"),
+	getFFprobePath: vi.fn(() => "/usr/bin/ffprobe"),
 }));
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:child_process")>();
+	return { ...actual, default: { ...actual, spawn: vi.fn() }, spawn: vi.fn() };
+});
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -230,6 +237,12 @@ describe("async transcription jobs", () => {
 		_clearTranscribeJobs();
 	});
 
+	afterEach(() => {
+		// Clear job map so fire-and-forget background promises exit early
+		// when they check transcribeJobs.get(jobId) and find nothing.
+		_clearTranscribeJobs();
+	});
+
 	it("startTranscribeJob returns a job ID immediately", () => {
 		const { jobId } = startTranscribeJob("proj-1", {
 			mediaId: "valid-audio",
@@ -292,11 +305,26 @@ describe("async transcription jobs", () => {
 // ---------------------------------------------------------------------------
 
 describe("ElevenLabs transcription API (mocked)", () => {
-	beforeEach(() => {
+	beforeEach(async () => {
+		// Clear lingering fire-and-forget background jobs from startTranscribeJob
+		_clearTranscribeJobs();
+
 		vi.clearAllMocks();
 		mockExistsSync.mockReturnValue(true);
 		mockFetch.mockReset();
 		mockFsReadFile.mockReset();
+
+		// Flush microtasks so any pending background promises from previous
+		// test suites settle before we set up mock return values.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Provide a default that fails clearly instead of returning undefined
+		mockFetch.mockResolvedValue({
+			ok: false,
+			status: 999,
+			text: async () => "Unexpected fetch call in test",
+			json: async () => ({}),
+		});
 	});
 
 	it("full pipeline returns correct TranscriptionResult", async () => {

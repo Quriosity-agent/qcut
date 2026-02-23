@@ -543,7 +543,10 @@ export const useStickersOverlayStore = create<StickerOverlayStore>()(
 
 				try {
 					if (window.electronAPI?.storage) {
-						data = (await window.electronAPI.storage.load(key)) || [];
+						data =
+							((await window.electronAPI.storage.load(key)) as
+								| OverlaySticker[]
+								| null) || [];
 						debugLog(
 							`[StickerStore] Loaded via Electron IPC: ${data.length} stickers`
 						);

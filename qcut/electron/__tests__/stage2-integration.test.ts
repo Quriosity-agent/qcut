@@ -73,15 +73,20 @@ vi.mock("electron-log", () => ({
 	log: vi.fn(),
 }));
 
-// Return the REAL ffmpeg path
+// Return the REAL ffmpeg/ffprobe paths
 vi.mock("../ffmpeg/utils", () => ({
 	getFFmpegPath: vi.fn(() => {
-		// Find real ffmpeg
 		try {
-			const result = execFileSync("which", ["ffmpeg"]).toString().trim();
-			return result;
+			return execFileSync("which", ["ffmpeg"]).toString().trim();
 		} catch {
-			return "ffmpeg"; // fallback to PATH
+			return "ffmpeg";
+		}
+	}),
+	getFFprobePath: vi.fn(() => {
+		try {
+			return execFileSync("which", ["ffprobe"]).toString().trim();
+		} catch {
+			return "ffprobe";
 		}
 	}),
 }));
