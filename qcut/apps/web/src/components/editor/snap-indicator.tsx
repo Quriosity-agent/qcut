@@ -1,6 +1,6 @@
 "use client";
 
-import { SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
+import type { SnapPoint } from "@/hooks/timeline/use-timeline-snapping";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import type { TimelineTrack } from "@/types/timeline";
 import { useState, useEffect } from "react";

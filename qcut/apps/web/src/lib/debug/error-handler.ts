@@ -486,14 +486,10 @@ export const safeAsyncWithRetry = async <T>(
 	const baseBackoffMs = options?.backoffMs ?? 1000;
 	const exponentialBackoff = options?.exponentialBackoff ?? true;
 
-	let lastError: unknown;
-
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
 			return await fn();
 		} catch (error) {
-			lastError = error;
-
 			if (attempt === maxRetries) {
 				// Final attempt failed, handle error
 				handleError(error, {

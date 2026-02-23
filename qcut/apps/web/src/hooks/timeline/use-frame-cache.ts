@@ -1,8 +1,8 @@
 import { useRef, useCallback, useEffect } from "react";
 import { openDB, type IDBPDatabase } from "idb";
-import { TimelineTrack, TimelineElement } from "@/types/timeline";
-import { MediaItem } from "@/stores/media/media-store-types";
-import { TProject } from "@/types/project";
+import type { TimelineTrack, TimelineElement } from "@/types/timeline";
+import type { MediaItem } from "@/stores/media/media-store-types";
+import type { TProject } from "@/types/project";
 
 interface CachedFrame {
 	imageData: ImageData;

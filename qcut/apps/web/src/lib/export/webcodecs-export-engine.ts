@@ -1,7 +1,7 @@
 import { ExportEngine } from "./export-engine";
 import { ExportSettings } from "@/types/export";
 import { TimelineElement, TimelineTrack } from "@/types/timeline";
-import { MediaItem } from "@/stores/media/media-store";
+import type { MediaItem } from "@/stores/media/media-store";
 import { WebCodecsDetector, CodecSupport } from "./webcodecs-detector";
 
 // Progress callback type

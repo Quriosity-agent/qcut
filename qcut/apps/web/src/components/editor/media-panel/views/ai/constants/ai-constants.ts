@@ -24,7 +24,7 @@ export const FAL_API_KEY = import.meta.env.VITE_FAL_API_KEY;
 export const FAL_API_BASE = "https://fal.run";
 /**
  * Map of upscale model IDs to their FAL.ai endpoint paths
- * Re-exported from @/lib/upscale-models for convenient access alongside AI model constants
+ * Re-exported from @/lib/ai-models/upscale-models for convenient access alongside AI model constants
  */
 export const UPSCALE_MODEL_ENDPOINTS = UPSCALE_MODEL_ENDPOINT_MAP;
 

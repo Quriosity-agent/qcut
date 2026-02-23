@@ -389,19 +389,31 @@ class BlobManager {
 	}
 }
 
-// Global singleton instance
+/** Global singleton BlobManager instance for centralized blob URL lifecycle management */
 export const blobManager = new BlobManager();
 
-// Convenience exports that use the managed instance
+/**
+ * Create a tracked blob URL that will be automatically cleaned up.
+ * Always creates a NEW URL — use for temporary operations that revoke immediately.
+ * For long-lived URLs, use {@link getOrCreateObjectURL} instead.
+ */
 export const createObjectURL = (file: File | Blob, source?: string): string => {
 	return blobManager.createObjectURL(file, source);
 };
 
+/**
+ * Manually revoke a blob URL immediately (ignores refCount).
+ * Use for temporary URLs created with {@link createObjectURL}.
+ * For cached URLs, prefer {@link releaseObjectURL} instead.
+ */
 export const revokeObjectURL = (url: string, context?: string): boolean => {
 	return blobManager.revokeObjectURL(url, context);
 };
 
-// NEW: For long-lived URLs (display, playback) - returns cached URL if available
+/**
+ * Get existing URL for a file if available, or create a new cached one.
+ * Use for long-lived URLs (display, playback) to avoid duplicates.
+ */
 export const getOrCreateObjectURL = (
 	file: File | Blob,
 	source?: string
@@ -409,20 +421,26 @@ export const getOrCreateObjectURL = (
 	return blobManager.getOrCreateObjectURL(file, source);
 };
 
-// NEW: For releasing refs (instead of immediate revoke) - only revokes when refCount reaches 0
+/**
+ * Release a reference to a cached blob URL.
+ * Only actually revokes the URL when refCount reaches 0.
+ * Use for URLs obtained via {@link getOrCreateObjectURL}.
+ */
 export const releaseObjectURL = (url: string, context?: string): boolean => {
 	return blobManager.releaseObjectURL(url, context);
 };
 
-// Export lock functions - prevent auto-cleanup during export operations
+/** Lock blob URLs from auto-cleanup during export operations */
 export const lockForExport = (): void => {
 	blobManager.lockForExport();
 };
 
+/** Release export lock after export completes or fails */
 export const unlockFromExport = (): void => {
 	blobManager.unlockFromExport();
 };
 
+/** Check if export is in progress (blob URLs should not be auto-cleaned) */
 export const isExportLocked = (): boolean => {
 	return blobManager.isExportLocked();
 };
