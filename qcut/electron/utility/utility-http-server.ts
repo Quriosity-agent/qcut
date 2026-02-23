@@ -6,6 +6,7 @@
  * to proxy renderer-dependent operations through the main process.
  */
 
+import * as path from "node:path";
 import { createServer } from "node:http";
 import type { Server } from "node:http";
 import { createRouter, HttpError } from "../claude/utils/http-router.js";
@@ -377,8 +378,7 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			if (typeof req.body?.outputDir === "string") {
 				outputDir = req.body.outputDir;
 			} else if (typeof req.body?.outputPath === "string") {
-				const lastSlash = Math.max(req.body.outputPath.lastIndexOf("/"), req.body.outputPath.lastIndexOf("\\"));
-				outputDir = lastSlash > 0 ? req.body.outputPath.slice(0, lastSlash) : req.body.outputPath;
+				outputDir = path.dirname(req.body.outputPath);
 			}
 			if (outputDir && !isValidSourcePath(outputDir)) throw new HttpError(400, "Invalid output directory path");
 			const saveToDisk = req.body?.saveToDisk === true || outputDir !== undefined;

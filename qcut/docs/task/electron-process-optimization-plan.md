@@ -154,7 +154,7 @@ Move the HTTP server to an Electron `utilityProcess`. The utility process commun
 
 #### Step 1: Create the utility process entry point
 
-**New file:** `electron/claude/http/claude-http-utility.ts`
+**New file:** `electron/utility/utility-http-server.ts`
 
 ```typescript
 // Runs in utilityProcess — no access to BrowserWindow/app
@@ -197,7 +197,7 @@ function setupServer(mainPort: MessagePort, config: { port: number; version: str
 
 #### Step 2: Launch from main process
 
-**Modified:** `electron/claude/http/claude-http-server.ts`
+**Modified:** `electron/utility/utility-bridge.ts`
 
 ```typescript
 import { utilityProcess, MessageChannelMain, BrowserWindow } from "electron";
@@ -311,7 +311,7 @@ Renderer  ──IPC──>  Main Process (thin proxy)  ──MessagePort──> 
 
 #### Step 1: Create combined utility process
 
-**New file:** `electron/utility/claude-utility.ts`
+**New file:** `electron/utility/utility-process.ts`
 
 ```typescript
 // Combined utility process for PTY + HTTP server

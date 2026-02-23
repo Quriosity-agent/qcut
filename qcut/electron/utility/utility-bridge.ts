@@ -9,7 +9,7 @@
  * - Crash recovery
  */
 
-import { utilityProcess, BrowserWindow, ipcMain, app } from "electron";
+import { utilityProcess, BrowserWindow, ipcMain, app, webContents } from "electron";
 import * as path from "node:path";
 import {
 	requestTimelineFromRenderer,
@@ -53,51 +53,43 @@ function resolveQcutMcpServerEntry(): string | null {
  */
 async function handleMainRequest(channel: string, data: any): Promise<any> {
 	const win = getWindow();
+	if (!win) throw new Error("No active window");
 
 	switch (channel) {
 		case "webcontents-send": {
-			if (!win) throw new Error("No active window");
 			win.webContents.send(data.channel, ...data.args);
 			return { sent: true };
 		}
 
 		case "get-timeline": {
-			if (!win) throw new Error("No active window");
 			return requestTimelineFromRenderer(win);
 		}
 
 		case "get-selection": {
-			if (!win) throw new Error("No active window");
 			return requestSelectionFromRenderer(win);
 		}
 
 		case "split-element": {
-			if (!win) throw new Error("No active window");
 			return requestSplitFromRenderer(win, data.elementId, data.splitTime, data.mode);
 		}
 
 		case "get-project-stats": {
-			if (!win) throw new Error("No active window");
 			return getProjectStats(win, data.projectId);
 		}
 
 		case "batch-add-elements": {
-			if (!win) throw new Error("No active window");
 			return batchAddElements(win, data.projectId, data.elements);
 		}
 
 		case "batch-update-elements": {
-			if (!win) throw new Error("No active window");
 			return batchUpdateElements(win, data.updates);
 		}
 
 		case "batch-delete-elements": {
-			if (!win) throw new Error("No active window");
 			return batchDeleteElements(win, data.elements, data.ripple);
 		}
 
 		case "arrange-timeline": {
-			if (!win) throw new Error("No active window");
 			return arrangeTimeline(win, data);
 		}
 
@@ -142,7 +134,7 @@ export function startUtilityProcess(): void {
 				const webContentsId = sessionToWebContentsId.get(msg.sessionId);
 				if (webContentsId != null) {
 					try {
-						const contents = require("electron").webContents.fromId(webContentsId);
+						const contents = webContents.fromId(webContentsId);
 						if (contents && !contents.isDestroyed()) {
 							contents.send(msg.type, msg);
 						}
@@ -182,7 +174,7 @@ export function startUtilityProcess(): void {
 		// Notify all renderers that PTY sessions are gone
 		for (const [sessionId, webContentsId] of sessionToWebContentsId) {
 			try {
-				const contents = require("electron").webContents.fromId(webContentsId);
+				const contents = webContents.fromId(webContentsId);
 				if (contents && !contents.isDestroyed()) {
 					contents.send("pty:exit", { sessionId, exitCode: -1, signal: "CRASHED" });
 				}
