@@ -25,6 +25,7 @@ import {
 	addClaudeMediaElement,
 	addClaudeTextElement,
 	addClaudeMarkdownElement,
+	addClaudeRemotionElement,
 	formatTracksForExport,
 	applyTimelineToStore,
 	syncProjectMediaIfNeeded,
@@ -295,6 +296,14 @@ export function setupClaudeTimelineBridge(): void {
 
 			if (element.type === "markdown") {
 				addClaudeMarkdownElement({
+					element,
+					timelineStore,
+				});
+				return;
+			}
+
+			if (element.type === "remotion") {
+				await addClaudeRemotionElement({
 					element,
 					timelineStore,
 				});

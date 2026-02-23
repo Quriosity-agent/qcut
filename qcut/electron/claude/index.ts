@@ -12,6 +12,7 @@ export { setupClaudeProjectIPC } from "./handlers/claude-project-handler.js";
 export { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
 export { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
 export { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
+export { setupClaudeNavigatorIPC } from "./handlers/claude-navigator-handler.js";
 export {
 	startClaudeHTTPServer,
 	stopClaudeHTTPServer,
@@ -24,6 +25,7 @@ import { setupClaudeProjectIPC } from "./handlers/claude-project-handler.js";
 import { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
 import { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
 import { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
+import { setupClaudeNavigatorIPC } from "./handlers/claude-navigator-handler.js";
 import { startClaudeHTTPServer } from "./http/claude-http-server.js";
 
 /**
@@ -39,6 +41,7 @@ export function setupAllClaudeIPC(): void {
 	setupClaudeExportIPC();
 	setupClaudeDiagnosticsIPC();
 	setupClaudeAnalyzeIPC();
+	setupClaudeNavigatorIPC();
 
 	// Start HTTP server for external control (non-blocking — failure is non-fatal)
 	try {

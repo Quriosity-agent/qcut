@@ -753,6 +753,31 @@ export interface ElectronAPI {
 				}>;
 			}>;
 		};
+		navigator: {
+			onProjectsRequest: (
+				callback: (data: { requestId: string }) => void
+			) => void;
+			sendProjectsResponse: (
+				requestId: string,
+				result: {
+					projects: Array<{
+						id: string;
+						name: string;
+						createdAt: string;
+						updatedAt: string;
+					}>;
+					activeProjectId: string | null;
+				}
+			) => void;
+			onOpenRequest: (
+				callback: (data: { requestId: string; projectId: string }) => void
+			) => void;
+			sendOpenResponse: (
+				requestId: string,
+				result: { navigated: boolean; projectId: string }
+			) => void;
+			removeListeners: () => void;
+		};
 	};
 
 	// Remotion folder operations
@@ -768,6 +793,15 @@ export interface ElectronAPI {
 		validate: (
 			folderPath: string
 		) => Promise<{ isValid: boolean; error?: string }>;
+		bundleFile: (
+			filePath: string,
+			compositionId: string
+		) => Promise<{
+			compositionId: string;
+			success: boolean;
+			code?: string;
+			error?: string;
+		}>;
 	};
 
 	// Moyin script-to-storyboard operations

@@ -33,7 +33,9 @@ const COMMANDS = [
 	"list-models",
 	"estimate-cost",
 	"analyze-video",
+	"query-video",
 	"transcribe",
+	"generate-remotion",
 	"transfer-motion",
 	"generate-grid",
 	"upscale-image",
@@ -121,6 +123,9 @@ const COMMANDS = [
 	"editor:export:list-jobs",
 	"editor:diagnostics:analyze",
 	"editor:mcp:forward-html",
+	// Navigator commands — project listing + editor navigation
+	"editor:navigator:projects",
+	"editor:navigator:open",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -140,7 +145,9 @@ Commands:
   list-models         List available AI models
   estimate-cost       Estimate generation cost
   analyze-video       Analyze a video with AI vision
+  query-video         Query a video with a custom prompt (keep/cut segments)
   transcribe          Transcribe audio to text
+  generate-remotion   Generate a Remotion component from a prompt
   transfer-motion     Transfer motion from video to image
   generate-grid       Generate an image grid
   upscale-image       Upscale an image
@@ -403,6 +410,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			data: { type: "string" },
 			url: { type: "string" },
 			filename: { type: "string" },
+			fps: { type: "string" },
+			width: { type: "string" },
+			height: { type: "string" },
 			mode: { type: "string" },
 			gap: { type: "string" },
 			timeout: { type: "string" },
@@ -586,6 +596,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		data: values.data as string | undefined,
 		url: values.url as string | undefined,
 		filename: values.filename as string | undefined,
+		fps: values.fps ? Number(values.fps) : undefined,
+		width: values.width ? Number(values.width) : undefined,
+		height: values.height ? Number(values.height) : undefined,
 		mode: values.mode as string | undefined,
 		gap: values.gap
 			? Number.isNaN(parseFloat(values.gap as string))

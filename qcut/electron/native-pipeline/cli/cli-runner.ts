@@ -30,7 +30,9 @@ import { isInteractive, confirm, readStdin } from "../cli/interactive.js";
 import {
 	handleAnalyzeVideo as mediaHandleAnalyzeVideo,
 	handleTranscribe as mediaHandleTranscribe,
+	handleQueryVideo as mediaHandleQueryVideo,
 } from "./cli-handlers-media.js";
+import { handleGenerateRemotion } from "./cli-handlers-remotion.js";
 import {
 	handleSetup as adminHandleSetup,
 	handleSetKey as adminHandleSetKey,
@@ -182,6 +184,10 @@ export interface CLIRunOptions {
 	filename?: string;
 	mode?: string;
 	gap?: number;
+	// generate-remotion options
+	fps?: number;
+	width?: number;
+	height?: number;
 	timeout?: number;
 	provider?: string;
 	loadSpeech?: boolean;
@@ -256,6 +262,13 @@ export class CLIPipelineRunner {
 					this.executor,
 					this.signal
 				);
+			case "query-video":
+				return mediaHandleQueryVideo(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
 			case "transcribe":
 				return mediaHandleTranscribe(
 					options,
@@ -263,6 +276,8 @@ export class CLIPipelineRunner {
 					this.executor,
 					this.signal
 				);
+			case "generate-remotion":
+				return handleGenerateRemotion(options, onProgress, null, this.signal);
 			case "transfer-motion":
 				return this.handleTransferMotion(options, onProgress);
 			case "generate-grid":
