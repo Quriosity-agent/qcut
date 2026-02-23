@@ -181,8 +181,7 @@ export function setupClaudeTimelineBridge(): void {
 					jpg: "image/jpeg",
 					jpeg: "image/jpeg",
 				};
-				const mimeType =
-					mimeMap[ext] || `${data.type || "application"}/${ext}`;
+				const mimeType = mimeMap[ext] || `${data.type || "application"}/${ext}`;
 
 				const uint8 = new Uint8Array(buffer);
 				const blob = new Blob([uint8], { type: mimeType });
@@ -191,10 +190,7 @@ export function setupClaudeTimelineBridge(): void {
 				const { getOrCreateObjectURL } = await import(
 					"@/lib/media/blob-manager"
 				);
-				const displayUrl = getOrCreateObjectURL(
-					fileObj,
-					"claude-media-import"
-				);
+				const displayUrl = getOrCreateObjectURL(fileObj, "claude-media-import");
 
 				await useMediaStore.getState().addMediaItem(projectId, {
 					name: data.name,
@@ -205,10 +201,7 @@ export function setupClaudeTimelineBridge(): void {
 					isLocalFile: true,
 				});
 
-				debugLog(
-					"[ClaudeTimelineBridge] Media loaded into store:",
-					data.name
-				);
+				debugLog("[ClaudeTimelineBridge] Media loaded into store:", data.name);
 			} catch (error) {
 				debugWarn(
 					"[ClaudeTimelineBridge] Failed to load imported media:",
@@ -725,7 +718,8 @@ export function setupClaudeTimelineBridge(): void {
 											typeof style.fontFamily === "string"
 												? style.fontFamily
 												: "Inter",
-										padding: typeof style.padding === "number" ? style.padding : 16,
+										padding:
+											typeof style.padding === "number" ? style.padding : 16,
 										backgroundColor:
 											typeof style.backgroundColor === "string"
 												? style.backgroundColor

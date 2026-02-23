@@ -295,8 +295,7 @@ export async function addClaudeMediaElement({
 
 	const trackId = timelineStore.findOrCreateTrack("media");
 	const resolvedId = mediaItem?.id ?? element.sourceId!;
-	const resolvedName =
-		mediaItem?.name ?? element.sourceName ?? "Media";
+	const resolvedName = mediaItem?.name ?? element.sourceName ?? "Media";
 	const fallbackDuration =
 		typeof mediaItem?.duration === "number" && mediaItem.duration > 0
 			? mediaItem.duration
@@ -376,9 +375,7 @@ export function addClaudeMarkdownElement({
 	timelineStore: TimelineStoreState;
 }): void {
 	// Reuse existing markdown track instead of creating one per element
-	const existingTrack = timelineStore.tracks.find(
-		(t) => t.type === "markdown"
-	);
+	const existingTrack = timelineStore.tracks.find((t) => t.type === "markdown");
 	const trackId = existingTrack?.id ?? timelineStore.addTrack("markdown");
 
 	const startTime = getElementStartTime({ element });

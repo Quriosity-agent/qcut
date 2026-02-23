@@ -115,7 +115,9 @@ export async function handleAnalyzeVideo(
 	const videoBasename = extWithDot
 		? videoFilename.slice(0, -extWithDot.length)
 		: videoFilename;
-	const outputDir = options.outputDir || (isUrl(videoInput) ? process.cwd() : dirname(videoInput));
+	const outputDir =
+		options.outputDir ||
+		(isUrl(videoInput) ? process.cwd() : dirname(videoInput));
 	const jsonPath = join(outputDir, `${videoBasename}.json`);
 
 	// Parse structured JSON from model response if possible
@@ -207,19 +209,16 @@ async function addAnalysisToTimeline(
 
 	// 1. Import video into media library
 	const source = isUrl(videoPath) ? videoPath : resolve(videoPath);
-	const media = (await client.post(
-		`/api/claude/media/${projectId}/import`,
-		{ source }
-	)) as { id?: string; name?: string; duration?: number };
+	const media = (await client.post(`/api/claude/media/${projectId}/import`, {
+		source,
+	})) as { id?: string; name?: string; duration?: number };
 
 	if (!media?.id) {
 		return { success: false, error: "Failed to import video to media library" };
 	}
 
 	// 2. Get timeline to find track IDs
-	const timeline = (await client.get(
-		`/api/claude/timeline/${projectId}`
-	)) as {
+	const timeline = (await client.get(`/api/claude/timeline/${projectId}`)) as {
 		tracks?: { id: string; type: string; name: string }[];
 	};
 
@@ -236,9 +235,9 @@ async function addAnalysisToTimeline(
 		? (analysisContent as TimelineEvent[])
 		: [];
 
-	const videoDuration = media.duration || (events.length > 0
-		? Math.max(...events.map((e) => e.end))
-		: 10);
+	const videoDuration =
+		media.duration ||
+		(events.length > 0 ? Math.max(...events.map((e) => e.end)) : 10);
 
 	onProgress({
 		stage: "timeline",
@@ -248,16 +247,13 @@ async function addAnalysisToTimeline(
 
 	// 4. Add media element via single-element endpoint
 	//    (auto-resolves media from store and creates track if needed)
-	await client.post(
-		`/api/claude/timeline/${projectId}/elements`,
-		{
-			type: "media",
-			sourceId: media.id,
-			sourceName: media.name || basename(videoPath),
-			startTime: 0,
-			duration: videoDuration,
-		}
-	);
+	await client.post(`/api/claude/timeline/${projectId}/elements`, {
+		type: "media",
+		sourceId: media.id,
+		sourceName: media.name || basename(videoPath),
+		startTime: 0,
+		duration: videoDuration,
+	});
 
 	// 5. Add markdown scene annotations via single-element endpoint
 	//    (auto-creates markdown track via findOrCreateTrack)
@@ -273,15 +269,12 @@ async function addAnalysisToTimeline(
 			const duration = event.end - event.start;
 			if (duration <= 0) continue;
 
-			await client.post(
-				`/api/claude/timeline/${projectId}/elements`,
-				{
-					type: "markdown",
-					content: event.label,
-					startTime: event.start,
-					duration,
-				}
-			);
+			await client.post(`/api/claude/timeline/${projectId}/elements`, {
+				type: "markdown",
+				content: event.label,
+				startTime: event.start,
+				duration,
+			});
 			addedMarkdown++;
 		}
 	}
