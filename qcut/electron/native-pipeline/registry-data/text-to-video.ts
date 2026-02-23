@@ -149,7 +149,7 @@ export function registerTextToVideoModels(): void {
 			"cfg_scale",
 			"multilingual",
 		],
-		maxDuration: 12,
+		maxDuration: 15,
 		costEstimate: 0.84,
 		processingTime: 90,
 	});
@@ -205,7 +205,7 @@ export function registerTextToVideoModels(): void {
 			"multilingual",
 			"professional_quality",
 		],
-		maxDuration: 12,
+		maxDuration: 15,
 		costEstimate: 1.12,
 		processingTime: 90,
 	});
@@ -265,7 +265,7 @@ export function registerTextToVideoModels(): void {
 		aspectRatios: ["16:9", "9:16"],
 		resolutions: ["720p"],
 		defaults: {
-			duration: 4,
+			duration: "4",
 			resolution: "720p",
 			aspect_ratio: "16:9",
 			delete_video: true,
@@ -288,7 +288,7 @@ export function registerTextToVideoModels(): void {
 		aspectRatios: ["16:9", "9:16"],
 		resolutions: ["720p", "1080p"],
 		defaults: {
-			duration: 4,
+			duration: "4",
 			resolution: "1080p",
 			aspect_ratio: "16:9",
 			delete_video: true,
@@ -331,7 +331,7 @@ export function registerTextToVideoModels(): void {
 		],
 		aspectRatios: ["16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16"],
 		resolutions: ["480p", "720p"],
-		defaults: { duration: 6, resolution: "720p", aspect_ratio: "16:9" },
+		defaults: { duration: "6", resolution: "720p", aspect_ratio: "16:9" },
 		features: [
 			"audio_generation",
 			"flexible_duration",

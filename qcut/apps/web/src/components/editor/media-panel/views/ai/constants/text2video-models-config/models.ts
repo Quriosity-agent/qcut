@@ -288,6 +288,7 @@ export const T2V_MODELS = {
 		price: "0.62",
 		resolution: "1080p",
 		max_duration: 10,
+		category: "text",
 		endpoints: {
 			text_to_video: "fal-ai/bytedance/seedance/v1/pro/text-to-video",
 		},
@@ -303,6 +304,7 @@ export const T2V_MODELS = {
 		price: "0.12",
 		resolution: "1080p",
 		max_duration: 10,
+		category: "text",
 		endpoints: {
 			text_to_video: "wan-25-preview/text-to-video",
 			image_to_video: "wan-25-preview/image-to-video",
