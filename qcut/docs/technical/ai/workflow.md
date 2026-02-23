@@ -738,7 +738,7 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: 2026-02-16*
+*Last Updated: 2026-02-23*
 *QCut AI Video Models: 40+ models via FAL.ai*
 *Price Range: $0.04 - $3.20+ per video*
 
@@ -883,7 +883,7 @@ Individual download and export-all ZIP functionality from the media panel.
 
 ### Step 9 - ZIP Item Processing
 Processing individual media items for ZIP inclusion.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 9: zip-manager starting addMediaItems`
   - `step 9a: processing item`
@@ -910,14 +910,14 @@ Processing individual media items for ZIP inclusion.
 
 ### Step 10 - ZIP Generation
 Generating the final ZIP blob from processed items.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 10: generating ZIP blob`
   - `step 10a: ZIP blob generated`
 
 ### Step 11 - ZIP Download
 Saving the ZIP file to disk via Electron or browser fallback.
-- **File**: `qcut/apps/web/src/lib/zip-manager.ts`
+- **File**: `qcut/apps/web/src/lib/project/zip-manager.ts`
 - **Console Logs**:
   - `step 11: downloadZipSafely called`
   - `step 11a: converting blob to array buffer`
@@ -932,7 +932,7 @@ Saving the ZIP file to disk via Electron or browser fallback.
 ## Timeline Playback Steps (Separate Flow)
 
 These step logs are for timeline playback, not AI generation:
-- **File**: `qcut/apps/web/src/hooks/use-timeline-playhead.ts`
+- **File**: `qcut/apps/web/src/hooks/timeline/use-timeline-playhead.ts`
 - **Console Logs**:
   - `step 6: timeline playhead updated` - Playhead position updates
   - `step 7: user initiated seek` - User seeks to new position

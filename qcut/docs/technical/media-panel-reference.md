@@ -153,7 +153,7 @@ Virtual cinema camera configurator for AI video workflows. Lets users select cam
 - `ScrollTrack` — Reusable horizontal scroll track with snap scrolling
 
 ### Store
-- `useCameraSelectorStore` — `apps/web/src/stores/camera-selector-store.ts`
+- `useCameraSelectorStore` — `apps/web/src/stores/editor/camera-selector-store.ts`
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/camera-selector/`
