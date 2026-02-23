@@ -34,6 +34,7 @@ import {
 	cancelSuggestJob,
 } from "./claude-suggest-handler.js";
 import { logOperation } from "./claude-operation-log.js";
+import { getMediaInfo } from "./claude-media-handler.js";
 import type { BrowserWindow } from "electron";
 
 /**
@@ -182,6 +183,23 @@ export function registerAnalysisRoutes(
 			fileName:
 				req.body.fileName ?? `transcription_${req.params.projectId}.json`,
 		});
+
+		// Add media to timeline if mediaId provided
+		if (req.body.mediaId) {
+			const media = await getMediaInfo(req.params.projectId, req.body.mediaId);
+			if (media) {
+				const elementId = `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+				win.webContents.send("claude:timeline:addElement", {
+					id: elementId,
+					type: "media",
+					mediaId: req.body.mediaId,
+					startTime: 0,
+					duration: media.duration ?? 0,
+					sourceName: media.name,
+				});
+			}
+		}
+
 		return { loaded: true };
 	});
 
@@ -224,6 +242,23 @@ export function registerAnalysisRoutes(
 					})),
 					fileName: `transcription_${req.body.mediaId}.json`,
 				});
+				// Add media to timeline
+				const media = await getMediaInfo(
+					req.params.projectId,
+					req.body.mediaId
+				);
+				if (media) {
+					const elementId = `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+					win.webContents.send("claude:timeline:addElement", {
+						id: elementId,
+						type: "media",
+						mediaId: req.body.mediaId,
+						startTime: 0,
+						duration: media.duration ?? result.duration ?? 0,
+						sourceName: media.name,
+					});
+				}
+
 				logOperation({
 					stage: 2,
 					action: "transcribe-and-load",

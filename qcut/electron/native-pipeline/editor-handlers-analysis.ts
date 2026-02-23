@@ -316,6 +316,7 @@ async function transcribeStart(
 			words: innerResult.words,
 			language: innerResult.language,
 			fileName: `transcription_${opts.mediaId}.json`,
+			mediaId: opts.mediaId,
 		});
 	}
 
