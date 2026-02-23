@@ -29,6 +29,20 @@ import {
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
 import * as fs from "node:fs";
 
+// Use electron-log when available, fall back to console
+let logger: {
+	info: (...args: unknown[]) => void;
+	warn: (...args: unknown[]) => void;
+	error: (...args: unknown[]) => void;
+	log: (...args: unknown[]) => void;
+};
+try {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	logger = require("electron-log");
+} catch {
+	logger = console;
+}
+
 let utilityChild: ReturnType<typeof utilityProcess.fork> | null = null;
 
 // Track PTY session → webContents mapping for forwarding data back
@@ -125,12 +139,12 @@ async function handleMainRequest(channel: string, data: any): Promise<any> {
 /** Start the utility process */
 export function startUtilityProcess(): void {
 	if (utilityChild) {
-		console.warn("[UtilityBridge] Utility process already running");
+		logger.warn("[UtilityBridge] Utility process already running");
 		return;
 	}
 
 	const utilityPath = path.join(__dirname, "utility-process.js");
-	console.log(`[UtilityBridge] Forking utility process: ${utilityPath}`);
+	logger.info(`[UtilityBridge] Forking utility process: ${utilityPath}`);
 
 	utilityChild = utilityProcess.fork(utilityPath);
 
@@ -138,7 +152,7 @@ export function startUtilityProcess(): void {
 	utilityChild.on("message", async (msg: any) => {
 		switch (msg.type) {
 			case "ready":
-				console.log("[UtilityBridge] Utility process ready");
+				logger.info("[UtilityBridge] Utility process ready");
 				break;
 
 			case "main-request": {
@@ -206,7 +220,7 @@ export function startUtilityProcess(): void {
 
 	// Crash recovery
 	utilityChild.on("exit", (code) => {
-		console.error(`[UtilityBridge] Utility process exited with code ${code}`);
+		logger.error(`[UtilityBridge] Utility process exited with code ${code}`);
 		utilityChild = null;
 
 		// Notify all renderers that PTY sessions are gone
@@ -234,7 +248,7 @@ export function startUtilityProcess(): void {
 
 		// Auto-restart after crash (not on clean exit)
 		if (code !== 0 && code !== null) {
-			console.log("[UtilityBridge] Restarting utility process in 1s...");
+			logger.info("[UtilityBridge] Restarting utility process in 1s...");
 			setTimeout(() => startUtilityProcess(), 1000);
 		}
 	});
@@ -266,7 +280,7 @@ export function stopUtilityProcess(): void {
 
 /** Setup PTY IPC handlers that proxy to utility process */
 export function setupUtilityPtyIPC(): void {
-	console.log("[UtilityBridge] Setting up PTY IPC handlers (proxy mode)...");
+	logger.info("[UtilityBridge] Setting up PTY IPC handlers (proxy mode)...");
 
 	// Clean up PTY sessions when renderer is destroyed
 	app.on("web-contents-created", (_, contents) => {
@@ -366,7 +380,7 @@ export function setupUtilityPtyIPC(): void {
 		return { success: true };
 	});
 
-	console.log("[UtilityBridge] PTY IPC handlers registered (proxy mode)");
+	logger.info("[UtilityBridge] PTY IPC handlers registered (proxy mode)");
 }
 
 /** Clean up everything on app quit */
