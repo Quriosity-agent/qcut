@@ -145,6 +145,75 @@ export function setupClaudeTimelineBridge(): void {
 	const claudeAPI = window.electronAPI.claude.timeline;
 	debugLog("[ClaudeTimelineBridge] Setting up bridge...");
 
+	// Listen for media imports so the renderer store gets the File object (needed for preview)
+	if (window.electronAPI.claude.media?.onMediaImported) {
+		window.electronAPI.claude.media.onMediaImported(async (data) => {
+			try {
+				const projectId = useProjectStore.getState().activeProject?.id;
+				if (!projectId || !window.electronAPI?.readFile) return;
+
+				// Check if already in store (avoid duplicates)
+				const existing = useMediaStore
+					.getState()
+					.mediaItems.find((item) => item.name === data.name);
+				if (existing?.file) return;
+
+				debugLog(
+					"[ClaudeTimelineBridge] Loading imported media into store:",
+					data.name
+				);
+
+				const buffer = await window.electronAPI.readFile(data.path);
+				if (!buffer) return;
+
+				const ext = data.name.split(".").pop()?.toLowerCase() || "";
+				const mimeMap: Record<string, string> = {
+					mp4: "video/mp4",
+					webm: "video/webm",
+					mov: "video/quicktime",
+					mp3: "audio/mpeg",
+					wav: "audio/wav",
+					png: "image/png",
+					jpg: "image/jpeg",
+					jpeg: "image/jpeg",
+				};
+				const mimeType =
+					mimeMap[ext] || `${data.type || "application"}/${ext}`;
+
+				const uint8 = new Uint8Array(buffer);
+				const blob = new Blob([uint8], { type: mimeType });
+				const fileObj = new File([blob], data.name, { type: mimeType });
+
+				const { getOrCreateObjectURL } = await import(
+					"@/lib/media/blob-manager"
+				);
+				const displayUrl = getOrCreateObjectURL(
+					fileObj,
+					"claude-media-import"
+				);
+
+				await useMediaStore.getState().addMediaItem(projectId, {
+					name: data.name,
+					type: (data.type as "video" | "audio" | "image") || "video",
+					file: fileObj,
+					url: displayUrl,
+					localPath: data.path,
+					isLocalFile: true,
+				});
+
+				debugLog(
+					"[ClaudeTimelineBridge] Media loaded into store:",
+					data.name
+				);
+			} catch (error) {
+				debugWarn(
+					"[ClaudeTimelineBridge] Failed to load imported media:",
+					error
+				);
+			}
+		});
+	}
+
 	// Respond to timeline export request from main process
 	claudeAPI.onRequest(() => {
 		try {

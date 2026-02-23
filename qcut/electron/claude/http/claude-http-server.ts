@@ -144,6 +144,23 @@ export function startClaudeHTTPServer(
 			timestamp: Date.now(),
 			projectId: req.params.projectId,
 		});
+
+		// Notify renderer so it can load the file into its media store (for preview)
+		try {
+			const win = BrowserWindow.getAllWindows()[0];
+			if (win && media) {
+				win.webContents.send("claude:media:imported", {
+					path: media.path,
+					name: media.name,
+					id: media.id,
+					type: media.type,
+					size: media.size,
+				});
+			}
+		} catch {
+			// Non-fatal: import succeeded even if renderer notification fails
+		}
+
 		return media;
 	});
 

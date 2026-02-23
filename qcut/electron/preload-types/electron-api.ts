@@ -502,6 +502,15 @@ export interface ElectronAPI {
 				mediaId: string,
 				newName: string
 			) => Promise<boolean>;
+			onMediaImported: (
+				callback: (data: {
+					path: string;
+					name: string;
+					id: string;
+					type: string;
+					size: number;
+				}) => void
+			) => void;
 		};
 		timeline: {
 			export: (projectId: string, format: "json" | "md") => Promise<string>;
