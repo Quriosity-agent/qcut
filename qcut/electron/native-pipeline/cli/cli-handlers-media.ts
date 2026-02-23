@@ -190,7 +190,7 @@ async function addAnalysisToTimeline(
 	const media = (await client.post(
 		`/api/claude/media/${projectId}/import`,
 		{ source: absPath }
-	)) as { id?: string; duration?: number };
+	)) as { id?: string; name?: string; duration?: number };
 
 	if (!media?.id) {
 		return { success: false, error: "Failed to import video to media library" };
@@ -233,7 +233,7 @@ async function addAnalysisToTimeline(
 		{
 			type: "media",
 			sourceId: media.id,
-			sourceName: basename(videoPath),
+			sourceName: media.name || basename(videoPath),
 			startTime: 0,
 			duration: videoDuration,
 		}

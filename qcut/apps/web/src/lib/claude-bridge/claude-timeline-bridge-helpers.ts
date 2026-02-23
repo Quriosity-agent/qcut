@@ -285,7 +285,7 @@ export async function addClaudeMediaElement({
 		projectId,
 	});
 
-	if (!mediaItem) {
+	if (!mediaItem && !element.sourceId) {
 		debugWarn(
 			"[ClaudeTimelineBridge] Media not found:",
 			element.sourceName || element.sourceId
@@ -294,8 +294,11 @@ export async function addClaudeMediaElement({
 	}
 
 	const trackId = timelineStore.findOrCreateTrack("media");
+	const resolvedId = mediaItem?.id ?? element.sourceId!;
+	const resolvedName =
+		mediaItem?.name ?? element.sourceName ?? "Media";
 	const fallbackDuration =
-		typeof mediaItem.duration === "number" && mediaItem.duration > 0
+		typeof mediaItem?.duration === "number" && mediaItem.duration > 0
 			? mediaItem.duration
 			: DEFAULT_MEDIA_DURATION_SECONDS;
 	const startTime = getElementStartTime({ element });
@@ -306,15 +309,15 @@ export async function addClaudeMediaElement({
 
 	timelineStore.addElementToTrack(trackId, {
 		type: "media",
-		name: mediaItem.name,
-		mediaId: mediaItem.id,
+		name: resolvedName,
+		mediaId: resolvedId,
 		startTime,
 		duration,
 		trimStart: 0,
 		trimEnd: 0,
 	});
 
-	debugLog("[ClaudeTimelineBridge] Added media element:", mediaItem.name);
+	debugLog("[ClaudeTimelineBridge] Added media element:", resolvedName);
 }
 
 /** Add a Claude text element to the timeline store. */
