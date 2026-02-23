@@ -253,15 +253,11 @@ async function addAnalysisToTimeline(
 			const duration = event.end - event.start;
 			if (duration <= 0) continue;
 
-			const tags = event.tags?.length
-				? `\n\n*${event.tags.join(", ")}*`
-				: "";
-
 			await client.post(
 				`/api/claude/timeline/${projectId}/elements`,
 				{
 					type: "markdown",
-					content: `## ${event.label}${tags}`,
+					content: event.label,
 					startTime: event.start,
 					duration,
 				}

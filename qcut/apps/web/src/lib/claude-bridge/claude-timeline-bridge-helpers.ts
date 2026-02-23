@@ -375,7 +375,12 @@ export function addClaudeMarkdownElement({
 	element: Partial<ClaudeElement>;
 	timelineStore: TimelineStoreState;
 }): void {
-	const trackId = timelineStore.findOrCreateTrack("markdown");
+	// Reuse existing markdown track instead of creating one per element
+	const existingTrack = timelineStore.tracks.find(
+		(t) => t.type === "markdown"
+	);
+	const trackId = existingTrack?.id ?? timelineStore.addTrack("markdown");
+
 	const startTime = getElementStartTime({ element });
 	const duration = getElementDuration({
 		element,
@@ -386,6 +391,7 @@ export function addClaudeMarkdownElement({
 			? element.content
 			: DEFAULT_MARKDOWN_CONTENT;
 
+	// Subtitle-style: positioned at bottom center, compact height
 	timelineStore.addElementToTrack(trackId, {
 		type: "markdown",
 		name: markdownContent.slice(0, 50),
@@ -394,23 +400,26 @@ export function addClaudeMarkdownElement({
 		duration,
 		trimStart: 0,
 		trimEnd: 0,
-		theme: "dark",
-		fontSize: 14,
+		theme: "transparent",
+		fontSize: 24,
 		fontFamily: "Inter",
-		padding: 16,
-		backgroundColor: "#1a1a2e",
-		textColor: "#e0e0e0",
+		padding: 8,
+		backgroundColor: "rgba(0,0,0,0.6)",
+		textColor: "#ffffff",
 		scrollMode: "static",
 		scrollSpeed: 50,
 		x: 0,
-		y: 0,
-		width: 400,
-		height: 300,
+		y: 480,
+		width: 1600,
+		height: 80,
 		rotation: 0,
 		opacity: 1,
 	});
 
-	debugLog("[ClaudeTimelineBridge] Added markdown element:", markdownContent.slice(0, 50));
+	debugLog(
+		"[ClaudeTimelineBridge] Added markdown element:",
+		markdownContent.slice(0, 50)
+	);
 }
 
 /**
