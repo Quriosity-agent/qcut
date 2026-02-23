@@ -4,8 +4,8 @@
 
 This document provides a comprehensive overview of the QCut source code structure, including folder organization and line counts for all TypeScript/JavaScript source files.
 
-**Generated:** 2026-02-16
-**Total Source Files:** 600+ files in src/ + 34+ in electron/
+**Generated:** 2026-02-23
+**Total Source Files:** 600+ files in src/ + 60+ in electron/
 **Main Source Directory:** `apps/web/src/`
 
 ## Project Architecture
@@ -218,167 +218,126 @@ Core video editor interface:
 - `landing/hero.tsx`, `landing/handlebars.tsx` - Landing page components
 - `test-sounds-store.tsx` - Testing component for sounds store
 
-#### 📁 **Stores** (`src/stores/`) - 31 files
-Zustand state management:
+#### 📁 **Stores** (`src/stores/`) - 37 files
+Zustand state management, organized into domain subdirectories:
 
-**Core Stores:**
-- `timeline-store.ts` - Timeline operations and state management (59KB - largest store)
-- `project-store.ts` - Project persistence and management
-- `media-store.ts` - Media file handling and organization
-- `editor-store.ts` - Main editor state and settings
-- `playback-store.ts` - Video playback controls and state
-
-**Timeline Store Modules (`timeline/`) - 7 files:**
-- `index.ts` - Timeline store barrel export
-- `types.ts` - Timeline type definitions
-- `utils.ts` - Timeline utilities
-- `element-operations.ts` - Element manipulation
-- `track-operations.ts` - Track management
-- `split-operations.ts` - Split functionality
-- `persistence.ts` - Timeline persistence
-
-**Feature-Specific Stores:**
-- `export-store.ts` - Video export functionality
-- `text2image-store.ts` - AI image generation
-- `adjustment-store.ts` - Image adjustment tools
-- `keybindings-store.ts` - Keyboard shortcut management
-- `panel-store.ts` - UI panel visibility and layout
-- `captions-store.ts` - Caption management and state
-- `sounds-store.ts` - Sound effects library state
-- `stickers-store.ts` - Sticker library and state
-- `stickers-overlay-store.ts` - Sticker overlay management
-- `effects-store.ts` - Effects system state (23KB)
+**`stores/timeline/`** — Timeline state (4 stores + 7 modules):
+- `timeline-store.ts` - Timeline operations and state management
+- `timeline-store-operations.ts` - Extended timeline operations
+- `word-timeline-store.ts` - Word-level timeline editing
 - `scene-store.ts` - Scene management
-- `segmentation-store.ts` - AI segmentation state
-- `nano-edit-store.ts` - Nano edit state
-- `white-draw-store.ts` - Drawing tool state
+- `index.ts`, `types.ts`, `utils.ts` - Barrel export and shared types
+- `element-operations.ts`, `track-operations.ts`, `split-operations.ts`, `persistence.ts` - Modular operations
 
-**Supporting Files:**
+**`stores/media/`** — Media management (4 files):
+- `media-store.ts` - Media file handling and organization
 - `media-store-types.ts` - Media type definitions
 - `media-store-loader.ts` - Media loading utilities
+- `sounds-store.ts` - Sound effects library state
 
-#### 📁 **Library** (`src/lib/`) - 65+ root files + subdirectories
+**`stores/moyin/`** — Moyin workflow (7 files):
+- `moyin-store.ts`, `moyin-generation.ts`, `moyin-calibration.ts`
+- `moyin-shot-generation.ts`, `moyin-persistence.ts`
+- `moyin-gen-config.ts`, `moyin-undo.ts`
+
+**`stores/editor/`** — Editor UI state (7 files):
+- `editor-store.ts` - Main editor state and settings
+- `panel-store.ts` - UI panel visibility and layout
+- `keybindings-store.ts` - Keyboard shortcut management
+- `playback-store.ts` - Video playback controls and state
+- `camera-selector-store.ts`, `white-draw-store.ts`, `nano-edit-store.ts`
+
+**`stores/ai/`** — AI feature stores (5 files):
+- `text2image-store.ts` - AI image generation
+- `remotion-store.ts` - Remotion integration
+- `segmentation-store.ts` - AI segmentation state
+- `adjustment-store.ts` - Image adjustment tools
+- `effects-store.ts` - Effects system state
+
+**`stores/` (root)** — Shared stores (10 files):
+- `project-store.ts` - Project persistence and management
+- `export-store.ts`, `folder-store.ts`, `captions-store.ts`
+- `stickers-store.ts`, `stickers-overlay-store.ts`
+- `pty-terminal-store.ts`, `gemini-terminal-store.ts`
+- `skills-store.ts`, `mcp-app-store.ts`
+
+#### 📁 **Library** (`src/lib/`) - 89 root files organized into domain subdirectories
 Core functionality and utilities:
 
-**AI Video System (`ai-video/`) - Modular Architecture:**
-
-*Core (`ai-video/core/`):**
-- `fal-request.ts` - FAL API request utilities
-- `fal-upload.ts` - File upload handling
-- `polling.ts` - Queue polling with progress updates
-- `streaming.ts` - Video streaming download
-
-*Generators (`ai-video/generators/`):**
-- `base-generator.ts` - Base generator class
-- `text-to-video.ts` - T2V generators (Sora 2, Veo, Kling, etc.)
-- `image-to-video.ts` - I2V generators
-- `avatar.ts` - Avatar/talking head generation
-- `image.ts` - Image generation
-- `upscale.ts` - Video upscaling
-
-*Models (`ai-video/models/`):**
-- Model-specific parameter conversion
-
-*Validation (`ai-video/validation/`):**
-- Input validation utilities
-
-**FAL AI Integration (`fal-ai/`):**
-- Extended FAL.ai client utilities
-
-**Export System:**
-- `export-engine.ts` - Main export engine (46KB)
+**`lib/export/`** — Export engine and related (15 files):
+- `export-engine.ts` - Main export engine
 - `export-engine-optimized.ts` - Performance-optimized export
 - `export-engine-factory.ts` - Export strategy factory
 - `export-engine-cli.ts` - Command-line export interface
-- `export-cli/` - CLI export utilities
-- `webcodecs-export-engine.ts` - Modern WebCodecs export
-- `export-analysis.ts` - Export analysis utilities
-- `export-errors.ts` - Export error handling
-
-**Video Processing:**
-- `ffmpeg-utils.ts` - FFmpeg WebAssembly integration (27KB)
-- `ffmpeg-utils-encode.ts` - Video encoding utilities
-- `ffmpeg-utils-loader.ts` - Dynamic FFmpeg loading
-- `ffmpeg-loader.ts` - FFmpeg initialization
-- `ffmpeg-video-recorder.ts` - Screen recording functionality
-- `ffmpeg-filter-chain.ts` - FFmpeg filter chain building
-- `media-processing.ts` - General media processing
-- `webcodecs-detector.ts` - WebCodecs capability detection
-
-**AI Integration:**
-- `ai-video-client.ts` - AI video processing client
-- `fal-ai-client.ts` - FAL AI service integration (39KB)
-- `image-edit-client.ts` - AI image editing (31KB)
-- `text2image-models.ts` - Text-to-image AI models (32KB)
-- `ai-video-output.ts` - AI processing output handling
-- `sam3-client.ts` - SAM3 segmentation client
-- `sam3-models.ts` - SAM3 model definitions
-- `video-edit-client.ts` - Video editing AI client
-- `upscale-models.ts` - Upscale model definitions
-- `model-utils.ts` - Model utility functions
-
-**Effects System:**
-- `effects-utils.ts` - Effects utilities
-- `effects-canvas-advanced.ts` - Advanced canvas effects
-- `effects-chaining.ts` - Effect chaining logic
-- `effects-keyframes.ts` - Keyframe animation
-- `effects-templates.ts` - Effect templates
-
-**Storage System (`storage/`) - 7 files:**
-- `storage-service.ts` - Storage abstraction layer
-- `indexeddb-adapter.ts` - IndexedDB implementation
-- `localstorage-adapter.ts` - LocalStorage fallback
-- `opfs-adapter.ts` - Origin Private File System
-- `electron-adapter.ts` - Electron file system
-- `r2-client.ts` - R2 cloud storage client
-- `types.ts` - Storage interface definitions
-
-**Error Handling:**
-- `error-handler.ts` - Global error handling
-- `error-context.ts` - Error context utilities
-
-**Media & Image:**
-- `image-utils.ts` - Image processing helpers
-- `image-validation.ts` - Image validation
-- `blob-manager.ts` - Blob URL management
-- `blob-url-debug.ts` - Blob debugging utilities
-- `media-source.ts` - Media source utilities
-- `video-metadata.ts` - Video metadata extraction
-- `canvas-utils.ts` - Canvas utilities
-- `audio-mixer.ts` - Audio mixing
+- `export-engine-cli-audio.ts`, `export-engine-cli-utils.ts` - CLI helpers
+- `export-engine-debug.ts`, `export-engine-recorder.ts`, `export-engine-renderer.ts`, `export-engine-utils.ts`
+- `export-analysis.ts`, `export-errors.ts` - Analysis and errors
+- `webcodecs-export-engine.ts`, `webcodecs-detector.ts` - WebCodecs support
 - `audio-export-config.ts` - Audio export configuration
 
-**Utilities & Services:**
-- `time.ts` - Time formatting and parsing
-- `timeline.ts` - Timeline calculation utilities
-- `utils.ts` - General utility functions
-- `asset-path.ts` - Asset path resolution helper
-- `memory-utils.ts` - Memory management utilities
-- `zip-manager.ts` - ZIP file handling
-- `font-config.ts` - Font configuration
-- `debug-logger.ts` - Debug logging system
-- `debug-config.ts` - Debug configuration
-- `blog-query.ts` - Blog content queries
-- `waitlist.ts` - Waitlist management
-- `rate-limit.ts` - API rate limiting
-- `fetch-github-stars.ts` - GitHub integration
-- `iconify-api.ts` - Iconify icon service
-- `sticker-downloader.ts` - Sticker download utility
-- `feature-flags.ts` - Feature flag management
-- `api-adapter.ts` - API adapter utilities
-- `dev-memory-profiler.ts` - Development memory profiling
+**`lib/ffmpeg/`** — FFmpeg utilities (8 files):
+- `ffmpeg-utils.ts` - FFmpeg WebAssembly integration
+- `ffmpeg-utils-encode.ts`, `ffmpeg-utils-loader.ts`, `ffmpeg-loader.ts`
+- `ffmpeg-filter-chain.ts`, `ffmpeg-video-recorder.ts`
+- `audio-mixer.ts`, `memory-utils.ts`
 
-**Gemini Integration (`gemini/`):**
-- Gemini AI integration utilities
+**`lib/ai-clients/`** — AI service clients (15 files):
+- `fal-ai-client.ts` - FAL AI service integration
+- `fal-ai-client-generation.ts`, `fal-ai-client-reve.ts`, `fal-ai-client-veo31.ts`
+- `fal-ai-client-internal-types.ts`
+- `image-edit-client.ts`, `image-edit-models-info.ts`, `image-edit-polling.ts`
+- `image-edit-capabilities.ts`, `image-edit-utils.ts`
+- `video-edit-client.ts`, `sam3-client.ts`, `sam3-models.ts`
+- `ai-video-client.ts`, `ai-video-output.ts`
 
-**Caption Processing (`captions/`):**
-- `caption-export.ts` - Caption export functionality
+**`lib/ai-models/`** — Model definitions (5 files):
+- `model-utils.ts`, `upscale-models.ts`, `text2image-models.ts`
+- `camera-prompt-builder.ts`, `image-validation.ts`
 
-**Stickers Support (`stickers/`):**
-- `sticker-export-helper.ts` - Sticker export utilities
+**`lib/effects/`** — Visual effects system (5 files):
+- `effects-utils.ts`, `effects-chaining.ts`, `effects-keyframes.ts`
+- `effects-canvas-advanced.ts`, `canvas-utils.ts`
 
-**Other Utilities (`utils/`):**
-- Additional utility functions
+**`lib/stickers/`** — Sticker system (8 files):
+- `sticker-downloader.ts`, `sticker-persistence-debug.ts`
+- `sticker-test-helper.ts`, `sticker-timeline-query.ts`
+- `timeline-sticker-integration.ts`, `debug-sticker-overlay.ts`
+- `iconify-api.ts`, `sticker-export-helper.ts`
+
+**`lib/claude-bridge/`** — Claude ↔ renderer bridge (4 files):
+- `claude-timeline-bridge.ts`, `claude-timeline-bridge-helpers.ts`
+- `claude-bridge-lifecycle.ts`, `project-skills-sync.ts`
+
+**`lib/media/`** — Media processing and metadata (7 files):
+- `media-processing.ts`, `media-source.ts`, `video-metadata.ts`
+- `image-utils.ts`, `blob-manager.ts`, `blob-url-debug.ts`, `bulk-import.ts`
+
+**`lib/project/`** — Project management (4 files):
+- `project-folder-sync.ts`, `zip-manager.ts`
+- `screen-recording-controller.ts`, `release-notes.ts`
+
+**`lib/debug/`** — Debug and error utilities (6 files):
+- `debug-config.ts`, `debug-logger.ts`, `dev-memory-profiler.ts`
+- `error-handler.ts`, `error-context.ts`, `pty-session-cleanup.ts`
+
+**`lib/` (root)** — Core utilities (13 files):
+- `utils.ts`, `time.ts`, `timeline.ts`, `markdown.ts`
+- `font-config.ts`, `feature-flags.ts`, `rate-limit.ts`, `asset-path.ts`
+- `api-adapter.ts`, `blog-query.ts`, `fetch-github-stars.ts`, `waitlist.ts`
+- `index.ts`
+
+**Pre-existing subdirectories:**
+- `ai-video/` - Modular AI video system (core, generators, models, validation)
+- `fal-ai/` - Extended FAL.ai model handlers
+- `export-cli/` - CLI export filters and sources
+- `effects-templates/` - Effect template data
+- `storage/` - Storage abstraction (IndexedDB, localStorage, OPFS, Electron, R2)
+- `text2image-models/` - Text-to-image model definitions
+- `remotion/` - Remotion integration
+- `moyin/` - Moyin workflow (character, presets, script, storyboard)
+- `captions/` - Caption export
+- `gemini/` - Gemini AI utilities
+- `transcription/` - Transcription segment calculator
 
 #### 📁 **Hooks** (`src/hooks/`) - 41 files
 Custom React hooks:
