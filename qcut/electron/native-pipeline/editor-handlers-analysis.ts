@@ -311,10 +311,13 @@ async function transcribeStart(
 	// Load transcription into Smart Speech panel if requested
 	const jobResult: { result?: { words?: unknown[]; language?: string } } =
 		(result as { result?: { words?: unknown[]; language?: string } }) ?? {};
-	if (opts.loadSpeech && jobResult.result?.words) {
+	const words = Array.isArray(jobResult.result?.words)
+		? jobResult.result.words
+		: undefined;
+	if (opts.loadSpeech && words?.length) {
 		await client.post(`/api/claude/transcribe/${opts.projectId}/load-speech`, {
-			words: jobResult.result.words,
-			language: jobResult.result.language,
+			words,
+			language: jobResult.result?.language,
 			fileName: `transcription_${opts.mediaId}.json`,
 			mediaId: opts.mediaId,
 		});

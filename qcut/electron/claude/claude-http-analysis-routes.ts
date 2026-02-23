@@ -187,34 +187,45 @@ export function registerAnalysisRoutes(
 		if (!req.body?.words || !Array.isArray(req.body.words)) {
 			throw new HttpError(400, "Missing 'words' array in request body");
 		}
-		const win = getWindow();
-		const words: RawWord[] = req.body.words;
-		win.webContents.send("claude:speech:load", {
-			text: req.body.text ?? buildTextFromWords(words),
-			language_code: req.body.language_code ?? req.body.language ?? "unknown",
-			language_probability: req.body.language_probability ?? 0,
-			words: normalizeWords(words),
-			fileName:
-				req.body.fileName ?? `transcription_${req.params.projectId}.json`,
-		});
+		try {
+			const win = getWindow();
+			const words: RawWord[] = req.body.words;
+			win.webContents.send("claude:speech:load", {
+				text: req.body.text ?? buildTextFromWords(words),
+				language_code: req.body.language_code ?? req.body.language ?? "unknown",
+				language_probability: req.body.language_probability ?? 0,
+				words: normalizeWords(words),
+				fileName:
+					req.body.fileName ?? `transcription_${req.params.projectId}.json`,
+			});
 
-		// Add media to timeline if mediaId provided
-		if (req.body.mediaId) {
-			const media = await getMediaInfo(req.params.projectId, req.body.mediaId);
-			if (media) {
-				const elementId = `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-				win.webContents.send("claude:timeline:addElement", {
-					id: elementId,
-					type: "media",
-					mediaId: req.body.mediaId,
-					startTime: 0,
-					duration: media.duration ?? 0,
-					sourceName: media.name,
-				});
+			// Add media to timeline if mediaId provided
+			if (req.body.mediaId) {
+				const media = await getMediaInfo(
+					req.params.projectId,
+					req.body.mediaId
+				);
+				if (media) {
+					const elementId = `element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+					win.webContents.send("claude:timeline:addElement", {
+						id: elementId,
+						type: "media",
+						mediaId: req.body.mediaId,
+						startTime: 0,
+						duration: media.duration ?? 0,
+						sourceName: media.name,
+					});
+				}
 			}
-		}
 
-		return { loaded: true };
+			return { loaded: true };
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(
+				500,
+				error instanceof Error ? error.message : "Load speech failed"
+			);
+		}
 	});
 
 	// Transcribe media and load result directly into Smart Speech panel
