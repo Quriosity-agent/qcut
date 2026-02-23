@@ -90,9 +90,11 @@ class BlobManager {
 		// Second, try file key cache (property-based match)
 		const fileKey = this.getFileKey(file);
 		const existingFromKeyCache = this.fileKeyToUrl.get(fileKey);
-		if (existingFromKeyCache && this.blobs.has(existingFromKeyCache)) {
-			const entry = this.blobs.get(existingFromKeyCache)!;
-			entry.refCount++;
+		const entry2 = existingFromKeyCache
+			? this.blobs.get(existingFromKeyCache)
+			: undefined;
+		if (entry2) {
+			entry2.refCount++;
 
 			// Also add to WeakMap for faster future lookups with this instance
 			this.fileToUrl.set(file, existingFromKeyCache);
@@ -248,9 +250,8 @@ class BlobManager {
 	revokeObjectURL(url: string, context?: string): boolean {
 		const contextTag = context ? ` [from: ${context}]` : "";
 
-		if (this.blobs.has(url)) {
-			const entry = this.blobs.get(url)!;
-
+		const entry = this.blobs.get(url);
+		if (entry) {
 			if (import.meta.env.DEV) {
 				const revokeStack = new Error(
 					"Stack trace for blob URL revocation"
