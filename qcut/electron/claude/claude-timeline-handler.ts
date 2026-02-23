@@ -411,9 +411,10 @@ export function validateTimeline(timeline: ClaudeTimeline): void {
 		throw new Error("Timeline must have valid FPS");
 	}
 
-	for (const track of timeline.tracks) {
+	for (let i = 0; i < timeline.tracks.length; i++) {
+		const track = timeline.tracks[i];
 		if (typeof track.index !== "number") {
-			throw new Error("Track must have an index");
+			track.index = i;
 		}
 		if (!Array.isArray(track.elements)) {
 			throw new Error("Track must have elements array");

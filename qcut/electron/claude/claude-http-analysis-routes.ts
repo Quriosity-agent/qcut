@@ -142,6 +142,112 @@ export function registerAnalysisRoutes(
 	);
 
 	// ==========================================================================
+	// Smart Speech (load transcription into Word Timeline panel)
+	// ==========================================================================
+
+	// Load pre-existing transcription data into the Smart Speech panel
+	router.post("/api/claude/transcribe/:projectId/load-speech", async (req) => {
+		if (!req.body?.words || !Array.isArray(req.body.words)) {
+			throw new HttpError(400, "Missing 'words' array in request body");
+		}
+		const win = getWindow();
+		const text =
+			req.body.text ??
+			req.body.words
+				.filter(
+					(w: { type?: string }) => w.type === "word" || w.type === "spacing"
+				)
+				.map((w: { text: string }) => w.text)
+				.join("");
+		win.webContents.send("claude:speech:load", {
+			text,
+			language_code: req.body.language_code ?? req.body.language ?? "unknown",
+			language_probability: req.body.language_probability ?? 0,
+			words: req.body.words.map(
+				(w: {
+					text: string;
+					start: number;
+					end: number;
+					type?: string;
+					speaker_id?: string | null;
+					speaker?: string;
+				}) => ({
+					text: w.text,
+					start: w.start,
+					end: w.end,
+					type: w.type ?? "word",
+					speaker_id: w.speaker_id ?? w.speaker ?? null,
+				})
+			),
+			fileName:
+				req.body.fileName ?? `transcription_${req.params.projectId}.json`,
+		});
+		return { loaded: true };
+	});
+
+	// Transcribe media and load result directly into Smart Speech panel
+	router.post(
+		"/api/claude/transcribe/:projectId/transcribe-and-load",
+		async (req) => {
+			if (!req.body?.mediaId) {
+				throw new HttpError(400, "Missing 'mediaId' in request body");
+			}
+			try {
+				const result = await transcribeMedia(req.params.projectId, {
+					mediaId: req.body.mediaId,
+					provider: req.body.provider,
+					language: req.body.language,
+					diarize: req.body.diarize,
+				});
+				if (
+					!result?.words ||
+					!Array.isArray(result.words) ||
+					result.words.length === 0
+				) {
+					throw new HttpError(500, "Transcription produced no words");
+				}
+				const text = result.words
+					.filter((w) => w.type === "word" || w.type === "spacing")
+					.map((w) => w.text)
+					.join("");
+				const win = getWindow();
+				win.webContents.send("claude:speech:load", {
+					text,
+					language_code: result.language ?? "unknown",
+					language_probability: 0,
+					words: result.words.map((w) => ({
+						text: w.text,
+						start: w.start,
+						end: w.end,
+						type: w.type ?? "word",
+						speaker_id: w.speaker ?? null,
+					})),
+					fileName: `transcription_${req.body.mediaId}.json`,
+				});
+				logOperation({
+					stage: 2,
+					action: "transcribe-and-load",
+					details: `Transcribed and loaded to Smart Speech: ${req.body.mediaId}`,
+					timestamp: Date.now(),
+					projectId: req.params.projectId,
+					metadata: { mediaId: req.body.mediaId },
+				});
+				return {
+					loaded: true,
+					wordCount: result.words.filter((w) => w.type === "word").length,
+					duration: result.duration,
+				};
+			} catch (error) {
+				if (error instanceof HttpError) throw error;
+				throw new HttpError(
+					500,
+					error instanceof Error ? error.message : "Transcribe and load failed"
+				);
+			}
+		}
+	);
+
+	// ==========================================================================
 	// Scene Detection routes (Stage 2)
 	// ==========================================================================
 	router.post("/api/claude/analyze/:projectId/scenes", async (req) => {
@@ -200,20 +306,43 @@ export function registerAnalysisRoutes(
 	// Filler Detection routes (Stage 2)
 	// ==========================================================================
 	router.post("/api/claude/analyze/:projectId/fillers", async (req) => {
-		if (!Array.isArray(req.body?.words)) {
-			throw new HttpError(400, "Missing 'words' array in request body");
-		}
+		const projectId = req.params.projectId;
 		try {
-			const result = await analyzeFillers(req.params.projectId, {
+			let words = req.body?.words;
+
+			// Mode 1: words provided directly
+			// Mode 2: auto-transcribe from mediaId
+			if (!Array.isArray(words)) {
+				if (!req.body?.mediaId) {
+					throw new HttpError(
+						400,
+						"Provide 'words' array or 'mediaId' for auto-transcription"
+					);
+				}
+				const transcription = await transcribeMedia(projectId, {
+					mediaId: req.body.mediaId,
+					provider: req.body.provider,
+					language: req.body.language,
+				});
+				words = transcription?.words;
+				if (!Array.isArray(words) || words.length === 0) {
+					throw new HttpError(
+						400,
+						"Transcription produced no words for filler analysis"
+					);
+				}
+			}
+
+			const result = await analyzeFillers(projectId, {
 				mediaId: req.body.mediaId,
-				words: req.body.words,
+				words,
 			});
 			logOperation({
 				stage: 2,
 				action: "analyze-fillers",
 				details: `Analyzed filler words for media ${req.body.mediaId ?? "unknown"}`,
 				timestamp: Date.now(),
-				projectId: req.params.projectId,
+				projectId,
 			});
 			return result;
 		} catch (error) {

@@ -209,6 +209,17 @@ async function timelineBatchAdd(
 			error: `Batch limit: ${BATCH_LIMIT} elements (got ${elements.length})`,
 		};
 
+	// Validate trackId is present on each element
+	for (const el of elements) {
+		if (!el.trackId) {
+			return {
+				success: false,
+				error:
+					"Each element must include 'trackId'. Use editor:timeline:export to find track IDs.",
+			};
+		}
+	}
+
 	const data = await client.post(
 		`/api/claude/timeline/${opts.projectId}/elements/batch`,
 		{ elements }
@@ -295,7 +306,7 @@ async function timelineBatchDelete(
 		};
 
 	const parsed = await resolveJsonInput(opts.elements);
-	const elements = Array.isArray(parsed)
+	let elements = Array.isArray(parsed)
 		? parsed
 		: (parsed as { elements?: unknown[] }).elements;
 	if (!Array.isArray(elements))
@@ -305,6 +316,24 @@ async function timelineBatchDelete(
 			success: false,
 			error: `Batch limit: ${BATCH_LIMIT} elements (got ${elements.length})`,
 		};
+
+	// If plain string IDs, resolve trackId from current timeline
+	if (elements.length > 0 && typeof elements[0] === "string") {
+		const timeline = await client.get<{
+			tracks: Array<{
+				id: string;
+				elements: Array<{ id: string }>;
+			}>;
+		}>(`/api/claude/timeline/${opts.projectId}`);
+		elements = (elements as string[]).map((id) => {
+			for (const track of timeline.tracks) {
+				if (track.elements.some((e) => e.id === id)) {
+					return { trackId: track.id, elementId: id };
+				}
+			}
+			return { trackId: "", elementId: id };
+		});
+	}
 
 	const body: Record<string, unknown> = { elements };
 	if (opts.ripple) body.ripple = true;

@@ -218,3 +218,19 @@ bun run pipeline editor:analyze:fillers --project-id <id> --media-id <id>
 ```
 
 Target: **58/58 commands passing** (up from 51/58).
+
+---
+
+## Status: COMPLETE
+
+All 5 subtasks implemented and verified on 2026-02-23:
+
+| Subtask | Status | Result |
+|---------|--------|--------|
+| 1. batch-import `source` → `path` | Done | `source` accepted as alias, no 400 error |
+| 2. batch-delete plain string IDs | Done | String IDs auto-resolved from timeline |
+| 3. timeline import auto-index | Done | `index` auto-assigned, import succeeds |
+| 4. batch-add trackId validation | Done | Clear error: "Each element must include 'trackId'" |
+| 5. fillers auto-transcribe | Done | `mediaId`-only mode triggers auto-transcription |
+
+Documentation updated in `.claude/skills/native-cli/EDITOR-CLI.md`.

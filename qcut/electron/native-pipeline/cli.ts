@@ -396,6 +396,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"include-scenes": { type: "boolean", default: false },
 			"tool-name": { type: "string" },
 			"clear-log": { type: "boolean", default: false },
+			"load-speech": { type: "boolean", default: false },
 			data: { type: "string" },
 			url: { type: "string" },
 			filename: { type: "string" },
@@ -594,6 +595,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseFloat(values.timeout as string)
 			: undefined,
 		provider: values.provider as string | undefined,
+		loadSpeech: (values["load-speech"] as boolean) ?? false,
 	};
 }
 
