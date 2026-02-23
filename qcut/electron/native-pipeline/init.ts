@@ -11,8 +11,8 @@ import {
 	registerTextToVideoModels,
 	registerImageToVideoModels,
 	registerImageToImageModels,
-} from "./registry-data.js";
-import { registerAllPart2Models } from "./registry-data-2.js";
+	registerAllPart2Models,
+} from "./registry-data/index.js";
 
 let initialized = false;
 
