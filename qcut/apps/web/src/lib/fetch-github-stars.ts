@@ -1,4 +1,8 @@
-import { handleError, ErrorCategory, ErrorSeverity } from "./debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "./debug/error-handler";
 
 export async function getStars(): Promise<string> {
 	try {

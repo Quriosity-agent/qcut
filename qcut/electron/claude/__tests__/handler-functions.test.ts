@@ -110,7 +110,10 @@ describe("Export Handler Functions", () => {
 // Diagnostics handler tests
 // ---------------------------------------------------------------------------
 
-import { analyzeError, getSystemInfo } from "../handlers/claude-diagnostics-handler";
+import {
+	analyzeError,
+	getSystemInfo,
+} from "../handlers/claude-diagnostics-handler";
 import * as os from "node:os";
 
 describe("Diagnostics Handler Functions", () => {

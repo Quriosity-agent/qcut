@@ -8,7 +8,11 @@
 import type { TimelineTrack } from "@/types/timeline";
 import { ensureMainTrack, sortTracksByOrder } from "@/types/timeline";
 import { storageService } from "@/lib/storage/storage-service";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 /**
  * Context for persistence operations

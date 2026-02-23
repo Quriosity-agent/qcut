@@ -157,7 +157,8 @@ export interface ReveEditOutput {
 	}>;
 }
 
-export type UpscaleModelId = import("@/lib/ai-models/upscale-models").UpscaleModelId;
+export type UpscaleModelId =
+	import("@/lib/ai-models/upscale-models").UpscaleModelId;
 export interface UpscaleResult {
 	url: string;
 	scale: number;

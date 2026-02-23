@@ -218,7 +218,9 @@ export async function syncProjectMediaIfNeeded({
 
 	const syncPromise = (async (): Promise<void> => {
 		try {
-			const { syncProjectFolder } = await import("@/lib/project/project-folder-sync");
+			const { syncProjectFolder } = await import(
+				"@/lib/project/project-folder-sync"
+			);
 			await syncProjectFolder(projectId);
 		} catch (error) {
 			debugWarn("[ClaudeTimelineBridge] Media sync failed:", error);

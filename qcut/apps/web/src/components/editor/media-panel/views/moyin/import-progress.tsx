@@ -4,7 +4,10 @@
  */
 
 import { useMoyinStore } from "@/stores/moyin/moyin-store";
-import type { PipelineStep, PipelineStepStatus } from "@/stores/moyin/moyin-store";
+import type {
+	PipelineStep,
+	PipelineStepStatus,
+} from "@/stores/moyin/moyin-store";
 import { cn } from "@/lib/utils";
 import {
 	CheckCircle2Icon,

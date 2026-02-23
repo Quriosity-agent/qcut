@@ -236,7 +236,9 @@ export function useDragHandlers({
 				setProgress(0);
 
 				try {
-					const { processMediaFiles } = await import("@/lib/media/media-processing");
+					const { processMediaFiles } = await import(
+						"@/lib/media/media-processing"
+					);
 					const processedItems = await processMediaFiles(
 						e.dataTransfer.files,
 						(nextProgress) => setProgress(nextProgress)

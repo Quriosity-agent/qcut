@@ -5,7 +5,10 @@
  */
 
 import { handleAIServiceError } from "../debug/error-handler";
-import { UPSCALE_MODEL_ENDPOINTS, type UpscaleModelId } from "../ai-models/upscale-models";
+import {
+	UPSCALE_MODEL_ENDPOINTS,
+	type UpscaleModelId,
+} from "../ai-models/upscale-models";
 import {
 	getModelCapabilities,
 	type ImageEditModelId,

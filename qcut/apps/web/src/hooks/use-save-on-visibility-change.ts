@@ -23,8 +23,12 @@ export function useSaveOnVisibilityChange() {
 				try {
 					// Dynamically import stores to avoid circular dependencies
 					const { useProjectStore } = await import("@/stores/project-store");
-					const { useTimelineStore } = await import("@/stores/timeline/timeline-store");
-					const { useSceneStore } = await import("@/stores/timeline/scene-store");
+					const { useTimelineStore } = await import(
+						"@/stores/timeline/timeline-store"
+					);
+					const { useSceneStore } = await import(
+						"@/stores/timeline/scene-store"
+					);
 
 					const activeProject = useProjectStore.getState().activeProject;
 					const tracks = useTimelineStore.getState()._tracks;

@@ -15,7 +15,11 @@ import { toast } from "sonner";
 import { LanguageSelect } from "@/components/captions/language-select";
 // REMOVED: UploadProgress component (Gemini migration - no R2 upload needed)
 // import { UploadProgress } from "@/components/captions/upload-progress";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import {
 	Upload,
 	Download,

@@ -3,7 +3,11 @@
  * Extracted from image-edit-client.ts for modularity
  */
 
-import { handleError, ErrorCategory, ErrorSeverity } from "../debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "../debug/error-handler";
 
 export const FAL_API_BASE = "https://fal.run";
 

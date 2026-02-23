@@ -31,7 +31,10 @@ import {
 	TEXT2IMAGE_MODELS,
 	TEXT2IMAGE_MODEL_ORDER,
 } from "@/lib/ai-models/text2image-models";
-import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/ai-models/upscale-models";
+import {
+	UPSCALE_MODEL_ORDER,
+	UPSCALE_MODELS,
+} from "@/lib/ai-models/upscale-models";
 import {
 	FloatingActionPanelRoot,
 	FloatingActionPanelTrigger,

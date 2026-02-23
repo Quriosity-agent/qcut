@@ -26,7 +26,11 @@ import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 import { clampMarkdownDuration } from "@/lib/markdown";
 import { toast } from "sonner";
 import { checkElementOverlaps, resolveElementOverlaps } from "@/lib/timeline";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { createObjectURL } from "@/lib/media/blob-manager";
 
 /**

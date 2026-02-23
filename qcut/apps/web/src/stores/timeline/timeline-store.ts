@@ -18,7 +18,11 @@ import { storageService } from "@/lib/storage/storage-service";
 // Dynamic import to break circular dependency
 // import { useProjectStore } from "../project-store";
 import { generateUUID } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { clampMarkdownDuration } from "@/lib/markdown";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 

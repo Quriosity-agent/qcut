@@ -8,7 +8,10 @@
  * @module lib/project-folder-sync
  */
 
-import { DEFAULT_FOLDER_IDS, type MediaItem } from "@/stores/media/media-store-types";
+import {
+	DEFAULT_FOLDER_IDS,
+	type MediaItem,
+} from "@/stores/media/media-store-types";
 import type {
 	ProjectFolderFileInfo,
 	ProjectFolderScanResult,

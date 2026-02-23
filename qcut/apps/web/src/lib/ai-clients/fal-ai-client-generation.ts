@@ -1,4 +1,7 @@
-import { TEXT2IMAGE_MODELS, type Text2ImageModel } from "../ai-models/text2image-models";
+import {
+	TEXT2IMAGE_MODELS,
+	type Text2ImageModel,
+} from "../ai-models/text2image-models";
 import { debugLogger } from "../debug/debug-logger";
 import { handleAIServiceError } from "../debug/error-handler";
 import {

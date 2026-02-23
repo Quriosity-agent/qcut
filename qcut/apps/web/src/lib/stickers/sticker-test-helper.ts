@@ -11,7 +11,9 @@ export function setupStickerTest() {
 		const { useStickersOverlayStore } = await import(
 			"@/stores/stickers-overlay-store"
 		);
-		const { useTimelineStore } = await import("@/stores/timeline/timeline-store");
+		const { useTimelineStore } = await import(
+			"@/stores/timeline/timeline-store"
+		);
 		const { useMediaStore } = await import("@/stores/media/media-store");
 
 		// Clean up orphaned stickers

@@ -208,7 +208,9 @@ export const getDetailedErrorContext = async () => {
 
 	// Try to get timeline store context
 	try {
-		const { useTimelineStore } = await import("@/stores/timeline/timeline-store");
+		const { useTimelineStore } = await import(
+			"@/stores/timeline/timeline-store"
+		);
 		const timelineState = useTimelineStore.getState();
 		timelineContext = {
 			trackCount: timelineState._tracks.length,

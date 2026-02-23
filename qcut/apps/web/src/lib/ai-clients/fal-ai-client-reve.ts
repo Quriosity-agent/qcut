@@ -107,7 +107,9 @@ export async function reveEdit(
 			image_url: trimmedImageUrl,
 		};
 
-		const { MODEL_ENDPOINTS } = await import("@/lib/ai-clients/image-edit-client");
+		const { MODEL_ENDPOINTS } = await import(
+			"@/lib/ai-clients/image-edit-client"
+		);
 		const modelConfig = MODEL_ENDPOINTS["reve-edit"];
 		if (!modelConfig) {
 			throw new Error("Reve edit model not found in configuration");

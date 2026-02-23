@@ -22,7 +22,11 @@ import {
 	DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 export function SoundsView() {
 	return (

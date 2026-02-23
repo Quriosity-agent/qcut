@@ -5,7 +5,11 @@ import { persist } from "zustand/middleware";
 import { ActionWithOptionalArgs } from "@/constants/actions";
 import { isAppleDevice, isDOMElement, isTypableElement } from "@/lib/utils";
 import { KeybindingConfig, ShortcutKey } from "@/types/keybinding";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 // One-time migration: copy opencut-keybindings → qcut-keybindings
 if (typeof window !== "undefined") {

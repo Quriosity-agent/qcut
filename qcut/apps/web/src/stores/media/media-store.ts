@@ -1141,7 +1141,9 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 
 	syncFromProjectFolder: async (projectId) => {
 		try {
-			const { syncProjectFolder } = await import("@/lib/project/project-folder-sync");
+			const { syncProjectFolder } = await import(
+				"@/lib/project/project-folder-sync"
+			);
 			return syncProjectFolder(projectId);
 		} catch (error) {
 			debugError("[MediaStore] Failed to sync from project folder:", error);

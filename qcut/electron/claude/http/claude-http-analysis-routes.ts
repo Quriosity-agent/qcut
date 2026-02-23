@@ -6,7 +6,10 @@
 
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
-import { analyzeVideo, listAnalyzeModels } from "../handlers/claude-analyze-handler.js";
+import {
+	analyzeVideo,
+	listAnalyzeModels,
+} from "../handlers/claude-analyze-handler.js";
 import {
 	transcribeMedia,
 	startTranscribeJob,

@@ -81,7 +81,9 @@ export function SegmentationPanel() {
 
 			// Upload image to FAL
 			debugLog("Uploading image to FAL for segmentation...");
-			const { uploadImageToFAL } = await import("@/lib/ai-clients/image-edit-client");
+			const { uploadImageToFAL } = await import(
+				"@/lib/ai-clients/image-edit-client"
+			);
 			const uploadedImageUrl = await uploadImageToFAL(sourceImageFile);
 
 			setProcessingState({

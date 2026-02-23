@@ -75,7 +75,9 @@ export class TimelineStickerIntegration {
 			}
 
 			// Dynamically import timeline store to avoid circular dependencies
-			const { useTimelineStore } = await import("@/stores/timeline/timeline-store");
+			const { useTimelineStore } = await import(
+				"@/stores/timeline/timeline-store"
+			);
 
 			// Get or create sticker track
 			const trackResult = await this.ensureStickerTrack(useTimelineStore);
@@ -319,7 +321,9 @@ export class TimelineStickerIntegration {
 		stickerId: string
 	): Promise<TimelineIntegrationResult> {
 		try {
-			const { useTimelineStore } = await import("@/stores/timeline/timeline-store");
+			const { useTimelineStore } = await import(
+				"@/stores/timeline/timeline-store"
+			);
 			const store = useTimelineStore.getState();
 
 			// Find the sticker element in any track

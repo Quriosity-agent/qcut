@@ -11,7 +11,11 @@ import { MessageItem } from "./gemini-terminal/message-item";
 import { AttachmentPreview } from "./gemini-terminal/attachment-preview";
 import { cn } from "@/lib/utils";
 import { generateUUID } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { toast } from "sonner";
 import type { AttachedFile } from "@/stores/gemini-terminal-store";
 

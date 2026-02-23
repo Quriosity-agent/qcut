@@ -13,7 +13,10 @@
 
 import { parseArgs } from "node:util";
 import { initRegistry } from "../init.js";
-import { CLIPipelineRunner, createProgressReporter } from "../cli/cli-runner.js";
+import {
+	CLIPipelineRunner,
+	createProgressReporter,
+} from "../cli/cli-runner.js";
 import type { CLIRunOptions } from "../cli/cli-runner.js";
 import { getExitCode, formatErrorForCli } from "../output/errors.js";
 import { CLIOutput } from "../cli/cli-output.js";

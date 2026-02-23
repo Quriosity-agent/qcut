@@ -24,7 +24,10 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useRemotionStore, selectAllComponents } from "@/stores/ai/remotion-store";
+import {
+	useRemotionStore,
+	selectAllComponents,
+} from "@/stores/ai/remotion-store";
 import { useShallow } from "zustand/react/shallow";
 import type {
 	RemotionComponentDefinition,

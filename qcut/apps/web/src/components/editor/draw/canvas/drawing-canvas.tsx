@@ -24,7 +24,11 @@ import {
 } from "../hooks/use-canvas-objects";
 import { TextInputModal } from "../components/text-input-modal";
 import { cn } from "@/lib/utils";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 // Debug logging function that only logs in development mode when enabled
 const debug = (...args: unknown[]) => {

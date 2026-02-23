@@ -4,7 +4,11 @@ import { useProjectStore } from "@/stores/project-store";
 import { dataUrlToFile } from "./canvas-utils";
 import { generateUUID } from "@/lib/utils";
 import { toast } from "sonner";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
 
 // Regex for sanitizing filename timestamps - dash must be first or escaped

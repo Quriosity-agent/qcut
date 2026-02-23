@@ -1,9 +1,19 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
-import { handleError, ErrorCategory, ErrorSeverity } from "@/lib/debug/error-handler";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 import { TEXT2IMAGE_MODEL_ORDER } from "@/lib/ai-models/text2image-models";
-import { UPSCALE_MODEL_ORDER, UPSCALE_MODELS } from "@/lib/ai-models/upscale-models";
-import type { UpscaleModelId, UpscaleScaleFactor } from "@/lib/ai-models/upscale-models";
+import {
+	UPSCALE_MODEL_ORDER,
+	UPSCALE_MODELS,
+} from "@/lib/ai-models/upscale-models";
+import type {
+	UpscaleModelId,
+	UpscaleScaleFactor,
+} from "@/lib/ai-models/upscale-models";
 import { upscaleImage as runUpscaleImage } from "@/lib/ai-clients/image-edit-client";
 import type {
 	ImageEditProgressCallback,

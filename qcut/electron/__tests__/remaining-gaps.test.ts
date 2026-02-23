@@ -1090,12 +1090,13 @@ describe("Service-level features", () => {
 	it("StepInput type supports all fields", async () => {
 		const mod = await import("../native-pipeline/execution/step-executors.js");
 		// Verify the type supports voice and negative prompt via params
-		const input: import("../native-pipeline/execution/step-executors.js").StepInput = {
-			text: "test",
-			imageUrl: "https://example.com/img.png",
-			videoUrl: "https://example.com/vid.mp4",
-			audioUrl: "https://example.com/audio.wav",
-		};
+		const input: import("../native-pipeline/execution/step-executors.js").StepInput =
+			{
+				text: "test",
+				imageUrl: "https://example.com/img.png",
+				videoUrl: "https://example.com/vid.mp4",
+				audioUrl: "https://example.com/audio.wav",
+			};
 		expect(input.text).toBe("test");
 	});
 });
