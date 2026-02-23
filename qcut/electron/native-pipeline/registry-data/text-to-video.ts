@@ -261,7 +261,7 @@ export function registerTextToVideoModels(): void {
 		categories: ["text_to_video"],
 		description: "OpenAI's text-to-video model",
 		pricing: { type: "per_second", cost: 0.1 },
-		durationOptions: [4, 8, 12],
+		durationOptions: ["4", "8", "12"],
 		aspectRatios: ["16:9", "9:16"],
 		resolutions: ["720p"],
 		defaults: {
@@ -284,7 +284,7 @@ export function registerTextToVideoModels(): void {
 		categories: ["text_to_video"],
 		description: "Professional Sora with 1080p support",
 		pricing: { type: "per_second", cost_720p: 0.3, cost_1080p: 0.5 },
-		durationOptions: [4, 8, 12],
+		durationOptions: ["4", "8", "12"],
 		aspectRatios: ["16:9", "9:16"],
 		resolutions: ["720p", "1080p"],
 		defaults: {
@@ -312,7 +312,7 @@ export function registerTextToVideoModels(): void {
 			base_cost_6s: 0.3,
 			cost_per_additional_second: 0.05,
 		},
-		durationOptions: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+		durationOptions: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"],
 		aspectRatios: ["16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16"],
 		resolutions: ["480p", "720p"],
 		defaults: { duration: 6, resolution: "720p", aspect_ratio: "16:9" },

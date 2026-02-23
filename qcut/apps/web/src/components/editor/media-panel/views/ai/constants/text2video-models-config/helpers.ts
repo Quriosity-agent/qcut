@@ -111,7 +111,7 @@ export function getT2VModelsInOrder(): Array<[T2VModelId, AIModel]> {
  * Normalize an AI model id to the canonical T2VModelId used by capability lookups.
  */
 export function resolveT2VModelId(modelId: string): T2VModelId | undefined {
-	if (modelId in T2V_MODEL_CAPABILITIES) {
+	if (Object.hasOwn(T2V_MODEL_CAPABILITIES, modelId)) {
 		return modelId as T2VModelId;
 	}
 

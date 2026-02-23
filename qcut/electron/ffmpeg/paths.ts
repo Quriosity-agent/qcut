@@ -2,11 +2,11 @@
  * FFmpeg/FFprobe Path Resolution
  */
 
-import { spawnSync } from "child_process";
+import { spawnSync } from "node:child_process";
 import { app } from "electron";
-import path from "path";
-import fs from "fs";
-import { debugWarn } from "./constants";
+import path from "node:path";
+import fs from "node:fs";
+import { debugLog, debugWarn } from "./constants";
 
 // ============================================================================
 // Path Resolution Internals
@@ -115,8 +115,8 @@ function resolvePackagedStagedBinaryOrThrow({
 	});
 
 	if (result.resolvedPath) {
-		console.log(
-			`[FFmpeg] Using staged ${toolName} binary from packaged resources:`,
+		debugLog(
+			`Using staged ${toolName} binary from packaged resources:`,
 			result.resolvedPath
 		);
 		return result.resolvedPath;
@@ -250,8 +250,8 @@ export function getFFmpegPath(): string {
 		binaryName,
 	});
 	if (devStagedResult.resolvedPath) {
-		console.log(
-			"[FFmpeg] Using staged FFmpeg binary in development:",
+		debugLog(
+			"Using staged FFmpeg binary in development:",
 			devStagedResult.resolvedPath
 		);
 		return devStagedResult.resolvedPath;
@@ -260,22 +260,22 @@ export function getFFmpegPath(): string {
 	try {
 		const staticPath: string = require("ffmpeg-static");
 		if (fs.existsSync(staticPath)) {
-			console.log("[FFmpeg] Found ffmpeg-static:", staticPath);
+			debugLog("Found ffmpeg-static:", staticPath);
 			return staticPath;
 		}
 	} catch {
-		console.log("[FFmpeg] ffmpeg-static package not available in development");
+		debugLog("ffmpeg-static package not available in development");
 	}
 
 	const systemPaths = getSystemFFmpegPaths(platform, binaryName);
 	for (const searchPath of systemPaths) {
 		if (fs.existsSync(searchPath)) {
-			console.log("[FFmpeg] Found FFmpeg at system path:", searchPath);
+			debugLog("Found FFmpeg at system path:", searchPath);
 			return searchPath;
 		}
 	}
 
-	console.log("[FFmpeg] Falling back to system PATH:", binaryName);
+	debugLog("Falling back to system PATH:", binaryName);
 	return binaryName;
 }
 
@@ -303,14 +303,14 @@ export function getFFprobePath(): string {
 	});
 	if (devStagedResult.resolvedPath) {
 		if (isBinaryExecutable({ binaryPath: devStagedResult.resolvedPath })) {
-			console.log(
-				"[FFmpeg] Using staged FFprobe binary in development:",
+			debugLog(
+				"Using staged FFprobe binary in development:",
 				devStagedResult.resolvedPath
 			);
 			return devStagedResult.resolvedPath;
 		}
-		console.log(
-			"[FFmpeg] Staged FFprobe binary exists but failed executable check:",
+		debugWarn(
+			"Staged FFprobe binary exists but failed executable check:",
 			devStagedResult.resolvedPath
 		);
 	}
@@ -321,11 +321,11 @@ export function getFFprobePath(): string {
 			fs.existsSync(staticPath) &&
 			isBinaryExecutable({ binaryPath: staticPath })
 		) {
-			console.log("[FFmpeg] Found ffprobe-static:", staticPath);
+			debugLog("Found ffprobe-static:", staticPath);
 			return staticPath;
 		}
 	} catch {
-		console.log("[FFmpeg] ffprobe-static package not available in development");
+		debugLog("ffprobe-static package not available in development");
 	}
 
 	const systemPaths = getSystemFFmpegPaths(platform, binaryName);
@@ -336,7 +336,7 @@ export function getFFprobePath(): string {
 		if (!isBinaryExecutable({ binaryPath: searchPath })) {
 			continue;
 		}
-		console.log("[FFmpeg] Found FFprobe at system path:", searchPath);
+		debugLog("Found FFprobe at system path:", searchPath);
 		return searchPath;
 	}
 
@@ -344,21 +344,21 @@ export function getFFprobePath(): string {
 	const ffmpegDir = path.dirname(ffmpegPath);
 
 	if (ffmpegPath === "ffmpeg" || ffmpegPath === "ffmpeg.exe") {
-		console.log("[FFmpeg] Falling back to system PATH FFprobe");
+		debugLog("Falling back to system PATH FFprobe");
 		return binaryName;
 	}
 
 	const ffprobeFromFFmpegDir = path.join(ffmpegDir, binaryName);
 	if (fs.existsSync(ffprobeFromFFmpegDir)) {
-		console.log(
-			"[FFmpeg] Using FFprobe from FFmpeg directory:",
+		debugLog(
+			"Using FFprobe from FFmpeg directory:",
 			ffprobeFromFFmpegDir
 		);
 		return ffprobeFromFFmpegDir;
 	}
 
-	console.log(
-		"[FFmpeg] Falling back to system PATH FFprobe binary name:",
+	debugLog(
+		"Falling back to system PATH FFprobe binary name:",
 		binaryName
 	);
 	return binaryName;

@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import type { VideoProbeResult, FFmpegProgress } from "./types";
 import { getFFmpegPath, getFFprobePath } from "./paths";
+import { debugWarn } from "./constants";
 import { parseProgress } from "./progress";
 
 /**
@@ -234,7 +235,10 @@ export async function normalizeVideo(
 
 					verifyOutputDuration(outputPath, effectiveDuration)
 						.then(() => resolve())
-						.catch(() => resolve());
+						.catch((err) => {
+							debugWarn("Duration verification failed:", err instanceof Error ? err.message : String(err));
+							resolve();
+						});
 				} else {
 					const error = `Output file not created: ${outputPath}`;
 					console.error(`❌ [MODE 1.5 NORMALIZE] ${error}`);

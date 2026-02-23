@@ -31,6 +31,7 @@ Vite reports modules that are both dynamically and statically imported, preventi
 | `media-store.ts` | 11 dynamic importers | 7 static importers |
 
 ### 3. Large Chunks (>1000 kB)
+
 | Chunk | Size | Gzip |
 |-------|------|------|
 | `index-D2ne_XqM.js` | 1,879 kB | 483 kB |

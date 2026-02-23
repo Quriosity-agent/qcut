@@ -2,9 +2,10 @@
  * FFmpeg Health Check
  */
 
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 import type { FFmpegHealthResult } from "./types";
 import { getFFmpegPath, getFFprobePath } from "./paths";
+import { debugError, debugLog } from "./constants";
 
 // ============================================================================
 // Health Check
@@ -69,11 +70,11 @@ function checkBinaryVersion(
 					error: `${binaryName} spawn error: ${err.message}`,
 				});
 			});
-		} catch (err: any) {
+		} catch (err: unknown) {
 			resolve({
 				ok: false,
 				version: "",
-				error: `${binaryName} check failed: ${err.message}`,
+				error: `${binaryName} check failed: ${err instanceof Error ? err.message : String(err)}`,
 			});
 		}
 	});
@@ -86,9 +87,9 @@ export async function verifyFFmpegBinary(): Promise<FFmpegHealthResult> {
 	const ffmpegPath = getFFmpegPath();
 	const ffprobePath = getFFprobePath();
 
-	console.log("[FFmpeg Health] Checking binary availability...");
-	console.log(`[FFmpeg Health] FFmpeg path: ${ffmpegPath}`);
-	console.log(`[FFmpeg Health] FFprobe path: ${ffprobePath}`);
+	debugLog("Health: Checking binary availability...");
+	debugLog(`Health: FFmpeg path: ${ffmpegPath}`);
+	debugLog(`Health: FFprobe path: ${ffprobePath}`);
 
 	const [ffmpegResult, ffprobeResult] = await Promise.all([
 		checkBinaryVersion(ffmpegPath, "FFmpeg"),
@@ -110,11 +111,11 @@ export async function verifyFFmpegBinary(): Promise<FFmpegHealthResult> {
 	};
 
 	if (result.ffmpegOk && result.ffprobeOk) {
-		console.log(
-			`[FFmpeg Health] OK — FFmpeg ${result.ffmpegVersion}, FFprobe ${result.ffprobeVersion}`
+		debugLog(
+			`Health: OK — FFmpeg ${result.ffmpegVersion}, FFprobe ${result.ffprobeVersion}`
 		);
 	} else {
-		console.error("[FFmpeg Health] FAILED:", errors.join("; "));
+		debugError("Health: FAILED:", errors.join("; "));
 	}
 
 	return result;
