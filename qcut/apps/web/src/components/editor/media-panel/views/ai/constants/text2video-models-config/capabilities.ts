@@ -1,0 +1,314 @@
+/**
+ * Text-to-Video Model Capabilities
+ */
+
+import type { T2VModelId } from "./models";
+
+/**
+ * Defines the capabilities and supported parameters for a text-to-video model.
+ * Used to dynamically show/hide UI controls and validate user input.
+ */
+export interface T2VModelCapabilities {
+	supportsAspectRatio: boolean;
+	supportedAspectRatios?: string[];
+	supportsResolution: boolean;
+	supportedResolutions?: string[];
+	supportsDuration: boolean;
+	supportedDurations?: number[];
+	supportsNegativePrompt: boolean;
+	supportsPromptExpansion: boolean;
+	supportsSeed: boolean;
+	supportsSafetyChecker: boolean;
+	defaultAspectRatio?: string;
+	defaultResolution?: string;
+	defaultDuration?: number;
+}
+
+/**
+ * Complete capability definitions for all text-to-video models.
+ * Maps each T2V model ID to its supported features and parameter ranges.
+ */
+export const T2V_MODEL_CAPABILITIES: Record<T2VModelId, T2VModelCapabilities> =
+	{
+		sora2_text_to_video: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [4, 8, 12],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: true,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 4,
+		},
+
+		sora2_text_to_video_pro: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: true,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 5,
+		},
+
+		wan_25_preview: {
+			supportsAspectRatio: false,
+			supportsResolution: true,
+			supportedResolutions: ["480p", "720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 10],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultResolution: "1080p",
+			defaultDuration: 5,
+		},
+
+		wan_26_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 10, 15],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: true,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 5,
+		},
+
+		ltxv2_pro_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9"],
+			supportsResolution: true,
+			supportedResolutions: ["1080p", "1440p", "2160p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 6,
+		},
+
+		ltxv2_fast_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9"],
+			supportsResolution: true,
+			supportedResolutions: ["1080p", "1440p", "2160p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5, 6, 8, 10],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 6,
+		},
+
+		veo31_fast_text_to_video: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 6, 8],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: true,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 8,
+		},
+
+		veo31_text_to_video: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 6, 8],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: true,
+			supportsSeed: true,
+			supportsSafetyChecker: true,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 8,
+		},
+
+		hailuo23_standard_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 5,
+		},
+
+		seedance: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+			supportsResolution: true,
+			supportedResolutions: ["480p", "720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 5,
+		},
+
+		kling_v2_5_turbo: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 10],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 5,
+		},
+
+		kling_v2_5_turbo_standard: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [5, 10],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 5,
+		},
+
+		kling_v3_pro_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1"],
+			supportsResolution: false,
+			supportsDuration: true,
+			supportedDurations: [5, 10, 15],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: false,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultDuration: 5,
+		},
+
+		kling_v3_standard_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1"],
+			supportsResolution: false,
+			supportsDuration: true,
+			supportedDurations: [3, 5, 10, 15],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: false,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultDuration: 5,
+		},
+
+		kling_v26_pro_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1"],
+			supportsResolution: false,
+			supportsDuration: true,
+			supportedDurations: [5, 10],
+			supportsNegativePrompt: true,
+			supportsPromptExpansion: false,
+			supportsSeed: false,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultDuration: 5,
+		},
+
+		seedance_pro: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"],
+			supportsResolution: true,
+			supportedResolutions: ["480p", "720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 5,
+		},
+
+		hailuo23_pro_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+			supportsResolution: true,
+			supportedResolutions: ["720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [2, 3, 4, 5],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "1080p",
+			defaultDuration: 6,
+		},
+
+		vidu_q3_t2v: {
+			supportsAspectRatio: true,
+			supportedAspectRatios: ["16:9", "9:16", "4:3", "3:4", "1:1"],
+			supportsResolution: true,
+			supportedResolutions: ["360p", "540p", "720p", "1080p"],
+			supportsDuration: true,
+			supportedDurations: [
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+			],
+			supportsNegativePrompt: false,
+			supportsPromptExpansion: false,
+			supportsSeed: true,
+			supportsSafetyChecker: false,
+			defaultAspectRatio: "16:9",
+			defaultResolution: "720p",
+			defaultDuration: 5,
+		},
+	};
