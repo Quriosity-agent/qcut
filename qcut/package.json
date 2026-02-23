@@ -161,7 +161,7 @@
 			"!**/packages/**/*",
 			"!**/apps/landing/**/*"
 		],
-		"compression": "maximum",
+		"compression": "normal",
 		"npmRebuild": false,
 		"nodeGypRebuild": false,
 		"extraResources": [
@@ -171,14 +171,6 @@
 				"filter": [
 					"**/*"
 				]
-			},
-			{
-				"from": "node_modules/@google/generative-ai",
-				"to": "node_modules/@google/generative-ai"
-			},
-			{
-				"from": "node_modules/node-pty",
-				"to": "node_modules/node-pty"
 			},
 			{
 				"from": "electron/resources/ffmpeg",
@@ -207,10 +199,6 @@
 		"asar": true,
 		"asarUnpack": [
 			"**/node_modules/sharp/**/*",
-			"**/node_modules/@ffmpeg/**/*",
-			"**/node_modules/electron-updater/**/*",
-			"**/node_modules/electron-log/**/*",
-			"**/node_modules/@google/generative-ai/**/*",
 			"**/node_modules/node-pty/**/*",
 			"**/electron/resources/**/*"
 		],
