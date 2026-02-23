@@ -181,9 +181,18 @@ async function mediaBatchImport(
 		};
 	}
 
+	// Normalize: accept "source" field as alias for "path"
+	const normalizedItems = items.map((item: Record<string, unknown>) => {
+		if (item.source && !item.path && !item.url) {
+			const { source, ...rest } = item;
+			return { ...rest, path: source };
+		}
+		return item;
+	});
+
 	const data = await client.post(
 		`/api/claude/media/${opts.projectId}/batch-import`,
-		{ items }
+		{ items: normalizedItems }
 	);
 	return { success: true, data };
 }

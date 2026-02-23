@@ -252,9 +252,20 @@ async function transcribeRun(
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	if (!opts.mediaId) return { success: false, error: "Missing --media-id" };
 
+	const body = buildTranscribeBody(opts);
+
+	// Use transcribe-and-load endpoint when --load-speech is set
+	if (opts.loadSpeech) {
+		const data = await client.post(
+			`/api/claude/transcribe/${opts.projectId}/transcribe-and-load`,
+			body
+		);
+		return { success: true, data };
+	}
+
 	const data = await client.post(
 		`/api/claude/transcribe/${opts.projectId}`,
-		buildTranscribeBody(opts)
+		body
 	);
 	return { success: true, data };
 }
@@ -296,6 +307,21 @@ async function transcribeStart(
 			},
 		}
 	);
+
+	// Load transcription into Smart Speech panel if requested
+	const jobResult: { result?: { words?: unknown[]; language?: string } } =
+		(result as { result?: { words?: unknown[]; language?: string } }) ?? {};
+	const words = Array.isArray(jobResult.result?.words)
+		? jobResult.result.words
+		: undefined;
+	if (opts.loadSpeech && words?.length) {
+		await client.post(`/api/claude/transcribe/${opts.projectId}/load-speech`, {
+			words,
+			language: jobResult.result?.language,
+			fileName: `transcription_${opts.mediaId}.json`,
+			mediaId: opts.mediaId,
+		});
+	}
 
 	return { success: true, data: result };
 }

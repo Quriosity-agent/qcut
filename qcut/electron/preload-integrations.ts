@@ -420,6 +420,10 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 					result,
 				});
 			},
+			onLoadSpeech: (callback) => {
+				ipcRenderer.removeAllListeners("claude:speech:load");
+				ipcRenderer.on("claude:speech:load", (_, data) => callback(data));
+			},
 			sendResponse: (timeline) => {
 				ipcRenderer.send("claude:timeline:response", timeline);
 			},
@@ -440,6 +444,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:timeline:clearSelection");
 				ipcRenderer.removeAllListeners("claude:timeline:deleteRange");
 				ipcRenderer.removeAllListeners("claude:timeline:arrange");
+				ipcRenderer.removeAllListeners("claude:speech:load");
 			},
 		},
 		project: {
