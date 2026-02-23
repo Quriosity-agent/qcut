@@ -9,7 +9,13 @@
  * - Crash recovery
  */
 
-import { utilityProcess, BrowserWindow, ipcMain, app, webContents } from "electron";
+import {
+	utilityProcess,
+	BrowserWindow,
+	ipcMain,
+	app,
+	webContents,
+} from "electron";
 import * as path from "node:path";
 import {
 	requestTimelineFromRenderer,
@@ -28,7 +34,10 @@ let utilityChild: ReturnType<typeof utilityProcess.fork> | null = null;
 // Track PTY session → webContents mapping for forwarding data back
 const sessionToWebContentsId = new Map<string, number>();
 // Track pending PTY spawn requests
-const pendingPtySpawns = new Map<string, { resolve: (value: any) => void; reject: (err: Error) => void }>();
+const pendingPtySpawns = new Map<
+	string,
+	{ resolve: (value: any) => void; reject: (err: Error) => void }
+>();
 
 /** Get the first active BrowserWindow */
 function getWindow(): BrowserWindow | null {
@@ -39,11 +48,21 @@ function getWindow(): BrowserWindow | null {
 function resolveQcutMcpServerEntry(): string | null {
 	const candidates = [
 		path.resolve(__dirname, "mcp", "qcut-mcp-server.js"),
-		path.resolve(app.getAppPath(), "dist", "electron", "mcp", "qcut-mcp-server.js"),
+		path.resolve(
+			app.getAppPath(),
+			"dist",
+			"electron",
+			"mcp",
+			"qcut-mcp-server.js"
+		),
 		path.resolve(app.getAppPath(), "electron", "mcp", "qcut-mcp-server.js"),
 	];
 	for (const c of candidates) {
-		try { if (fs.existsSync(c)) return c; } catch { /* ignore */ }
+		try {
+			if (fs.existsSync(c)) return c;
+		} catch {
+			/* ignore */
+		}
 	}
 	return null;
 }
@@ -70,7 +89,12 @@ async function handleMainRequest(channel: string, data: any): Promise<any> {
 		}
 
 		case "split-element": {
-			return requestSplitFromRenderer(win, data.elementId, data.splitTime, data.mode);
+			return requestSplitFromRenderer(
+				win,
+				data.elementId,
+				data.splitTime,
+				data.mode
+			);
 		}
 
 		case "get-project-stats": {
@@ -105,7 +129,7 @@ export function startUtilityProcess(): void {
 		return;
 	}
 
-	const utilityPath = path.join(__dirname, "utility", "utility-process.js");
+	const utilityPath = path.join(__dirname, "utility-process.js");
 	console.log(`[UtilityBridge] Forking utility process: ${utilityPath}`);
 
 	utilityChild = utilityProcess.fork(utilityPath);
@@ -121,9 +145,17 @@ export function startUtilityProcess(): void {
 				// Utility process needs something from main
 				try {
 					const result = await handleMainRequest(msg.channel, msg.data);
-					utilityChild?.postMessage({ type: "main-response", id: msg.id, result });
+					utilityChild?.postMessage({
+						type: "main-response",
+						id: msg.id,
+						result,
+					});
 				} catch (err: any) {
-					utilityChild?.postMessage({ type: "main-response", id: msg.id, error: err.message });
+					utilityChild?.postMessage({
+						type: "main-response",
+						id: msg.id,
+						error: err.message,
+					});
 				}
 				break;
 			}
@@ -138,7 +170,9 @@ export function startUtilityProcess(): void {
 						if (contents && !contents.isDestroyed()) {
 							contents.send(msg.type, msg);
 						}
-					} catch { /* renderer gone */ }
+					} catch {
+						/* renderer gone */
+					}
 				}
 				if (msg.type === "pty:exit") {
 					sessionToWebContentsId.delete(msg.sessionId);
@@ -153,6 +187,10 @@ export function startUtilityProcess(): void {
 					if (msg.success) {
 						pending.resolve({ success: true, sessionId: msg.sessionId });
 					} else {
+						// Clean up session mapping on spawn failure
+						if (msg.sessionId) {
+							sessionToWebContentsId.delete(msg.sessionId);
+						}
 						pending.resolve({ success: false, error: msg.error });
 					}
 				}
@@ -176,9 +214,15 @@ export function startUtilityProcess(): void {
 			try {
 				const contents = webContents.fromId(webContentsId);
 				if (contents && !contents.isDestroyed()) {
-					contents.send("pty:exit", { sessionId, exitCode: -1, signal: "CRASHED" });
+					contents.send("pty:exit", {
+						sessionId,
+						exitCode: -1,
+						signal: "CRASHED",
+					});
 				}
-			} catch { /* ignore */ }
+			} catch {
+				/* ignore */
+			}
 		}
 		sessionToWebContentsId.clear();
 
@@ -239,59 +283,77 @@ export function setupUtilityPtyIPC(): void {
 		});
 	});
 
-	ipcMain.handle("pty:spawn", async (event, options: any = {}): Promise<any> => {
-		if (!utilityChild) return { success: false, error: "Utility process not running" };
+	ipcMain.handle(
+		"pty:spawn",
+		async (event, options: any = {}): Promise<any> => {
+			const child = utilityChild;
+			if (!child)
+				return { success: false, error: "Utility process not running" };
 
-		const sessionId = `pty-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-		const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+			const sessionId = `pty-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+			const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-		sessionToWebContentsId.set(sessionId, event.sender.id);
+			sessionToWebContentsId.set(sessionId, event.sender.id);
 
-		return new Promise((resolve) => {
-			const timer = setTimeout(() => {
-				pendingPtySpawns.delete(requestId);
-				resolve({ success: false, error: "PTY spawn timed out" });
-			}, 10_000);
+			return new Promise((resolve) => {
+				const timer = setTimeout(() => {
+					pendingPtySpawns.delete(requestId);
+					sessionToWebContentsId.delete(sessionId);
+					resolve({ success: false, error: "PTY spawn timed out" });
+				}, 10_000);
 
-			pendingPtySpawns.set(requestId, {
-				resolve: (value: any) => { clearTimeout(timer); resolve(value); },
-				reject: () => { clearTimeout(timer); resolve({ success: false, error: "PTY spawn failed" }); },
+				pendingPtySpawns.set(requestId, {
+					resolve: (value: any) => {
+						clearTimeout(timer);
+						resolve(value);
+					},
+					reject: () => {
+						clearTimeout(timer);
+						resolve({ success: false, error: "PTY spawn failed" });
+					},
+				});
+
+				// Resolve MCP server path in main process (needs app.getAppPath())
+				const mcpServerPath = resolveQcutMcpServerEntry();
+
+				child.postMessage({
+					type: "pty:spawn",
+					requestId,
+					sessionId,
+					command: options.command,
+					cols: options.cols,
+					rows: options.rows,
+					cwd: options.cwd,
+					env: options.env,
+					mcpServerPath,
+					projectId: options.env?.QCUT_PROJECT_ID,
+					projectRoot: options.env?.QCUT_PROJECT_ROOT || options.cwd,
+					apiBaseUrl: options.env?.QCUT_API_BASE_URL,
+				});
 			});
-
-			// Resolve MCP server path in main process (needs app.getAppPath())
-			const mcpServerPath = resolveQcutMcpServerEntry();
-
-			utilityChild!.postMessage({
-				type: "pty:spawn",
-				requestId,
-				sessionId,
-				command: options.command,
-				cols: options.cols,
-				rows: options.rows,
-				cwd: options.cwd,
-				env: options.env,
-				mcpServerPath,
-				projectId: options.env?.QCUT_PROJECT_ID,
-				projectRoot: options.env?.QCUT_PROJECT_ROOT || options.cwd,
-				apiBaseUrl: options.env?.QCUT_API_BASE_URL,
-			});
-		});
-	});
+		}
+	);
 
 	ipcMain.handle("pty:write", async (_, sessionId: string, data: string) => {
-		if (!utilityChild) return { success: false, error: "Utility process not running" };
+		if (!utilityChild)
+			return { success: false, error: "Utility process not running" };
 		utilityChild.postMessage({ type: "pty:write", sessionId, data });
 		return { success: true };
 	});
 
-	ipcMain.handle("pty:resize", async (_, sessionId: string, cols: number, rows: number) => {
-		if (!utilityChild) return { success: false, error: "Utility process not running" };
-		utilityChild.postMessage({ type: "pty:resize", sessionId, cols, rows });
-		return { success: true };
-	});
+	ipcMain.handle(
+		"pty:resize",
+		async (_, sessionId: string, cols: number, rows: number) => {
+			if (!utilityChild)
+				return { success: false, error: "Utility process not running" };
+			utilityChild.postMessage({ type: "pty:resize", sessionId, cols, rows });
+			return { success: true };
+		}
+	);
 
 	ipcMain.handle("pty:kill", async (_, sessionId: string) => {
-		if (!utilityChild) return { success: false, error: "Utility process not running" };
+		if (!utilityChild)
+			return { success: false, error: "Utility process not running" };
 		utilityChild.postMessage({ type: "pty:kill", sessionId });
 		sessionToWebContentsId.delete(sessionId);
 		return { success: true };

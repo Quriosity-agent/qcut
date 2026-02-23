@@ -15,13 +15,22 @@ try {
 	pty = require("node-pty");
 	console.log("[UtilityPTY] Loaded node-pty from standard path");
 } catch (error) {
-	console.warn("[UtilityPTY] Failed to load node-pty from standard path:", error);
+	console.warn(
+		"[UtilityPTY] Failed to load node-pty from standard path:",
+		error
+	);
 	const modulePath = path.join(process.resourcesPath, "node_modules/node-pty");
 	try {
 		pty = require(modulePath);
-		console.log("[UtilityPTY] Loaded node-pty from production path:", modulePath);
+		console.log(
+			"[UtilityPTY] Loaded node-pty from production path:",
+			modulePath
+		);
 	} catch (prodError) {
-		console.error("[UtilityPTY] Failed to load node-pty from production path:", prodError);
+		console.error(
+			"[UtilityPTY] Failed to load node-pty from production path:",
+			prodError
+		);
 		// Don't throw — PTY will be unavailable but HTTP server can still run
 	}
 }
@@ -75,8 +84,11 @@ function parseMcpServerConfig(rawConfig?: string): Record<string, unknown> {
 	if (!rawConfig) return {};
 	try {
 		const parsed = JSON.parse(rawConfig);
-		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-	} catch { /* ignore */ }
+		if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+			return parsed as Record<string, unknown>;
+	} catch {
+		/* ignore */
+	}
 	return {};
 }
 
@@ -93,7 +105,10 @@ function buildClaudeMcpServersEnv(opts: {
 	if (opts.projectId) qcutEnv.QCUT_PROJECT_ID = opts.projectId;
 	if (opts.projectRoot) qcutEnv.QCUT_PROJECT_ROOT = opts.projectRoot;
 	if (opts.apiBaseUrl) qcutEnv.QCUT_API_BASE_URL = opts.apiBaseUrl;
-	return JSON.stringify({ ...existing, qcut: { command: "node", args: [opts.mcpServerPath], env: qcutEnv } });
+	return JSON.stringify({
+		...existing,
+		qcut: { command: "node", args: [opts.mcpServerPath], env: qcutEnv },
+	});
 }
 
 export class UtilityPtyManager {
@@ -136,7 +151,9 @@ export class UtilityPtyManager {
 			const spawnEnv: NodeJS.ProcessEnv = { ...process.env, ...msg.env };
 
 			// Wire up MCP server for Claude commands
-			const isClaudeCommand = typeof msg.command === "string" && msg.command.trim().startsWith("claude");
+			const isClaudeCommand =
+				typeof msg.command === "string" &&
+				msg.command.trim().startsWith("claude");
 			if (isClaudeCommand && msg.mcpServerPath) {
 				spawnEnv.CLAUDE_MCP_SERVERS = buildClaudeMcpServersEnv({
 					existingRawConfig: spawnEnv.CLAUDE_MCP_SERVERS,
@@ -159,13 +176,24 @@ export class UtilityPtyManager {
 			this.sessions.set(msg.sessionId, session);
 
 			ptyProcess.onData((data: string) => {
-				this.parentPort.postMessage({ type: "pty:data", sessionId: msg.sessionId, data });
+				this.parentPort.postMessage({
+					type: "pty:data",
+					sessionId: msg.sessionId,
+					data,
+				});
 			});
 
-			ptyProcess.onExit(({ exitCode, signal }: { exitCode: number; signal?: number }) => {
-				this.parentPort.postMessage({ type: "pty:exit", sessionId: msg.sessionId, exitCode, signal });
-				this.sessions.delete(msg.sessionId);
-			});
+			ptyProcess.onExit(
+				({ exitCode, signal }: { exitCode: number; signal?: number }) => {
+					this.parentPort.postMessage({
+						type: "pty:exit",
+						sessionId: msg.sessionId,
+						exitCode,
+						signal,
+					});
+					this.sessions.delete(msg.sessionId);
+				}
+			);
 
 			this.parentPort.postMessage({
 				type: "pty:spawn-result",
@@ -174,7 +202,8 @@ export class UtilityPtyManager {
 				sessionId: msg.sessionId,
 			});
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "PTY spawn failed";
+			const message =
+				error instanceof Error ? error.message : "PTY spawn failed";
 			const hint = getPtySpawnRecoveryHint(message);
 			this.parentPort.postMessage({
 				type: "pty:spawn-result",
@@ -196,7 +225,11 @@ export class UtilityPtyManager {
 	kill(sessionId: string): void {
 		const session = this.sessions.get(sessionId);
 		if (session) {
-			try { session.process.kill(); } catch { /* ignore */ }
+			try {
+				session.process.kill();
+			} catch {
+				/* ignore */
+			}
 			this.sessions.delete(sessionId);
 			this.parentPort.postMessage({
 				type: "pty:kill-result",
@@ -215,7 +248,11 @@ export class UtilityPtyManager {
 
 	killAll(): void {
 		for (const [id, session] of this.sessions) {
-			try { session.process.kill(); } catch { /* ignore */ }
+			try {
+				session.process.kill();
+			} catch {
+				/* ignore */
+			}
 		}
 		const count = this.sessions.size;
 		this.sessions.clear();

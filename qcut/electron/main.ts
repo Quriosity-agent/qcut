@@ -24,6 +24,12 @@ import * as http from "http";
 import { pathToFileURL } from "url";
 import { parseChangelog } from "./release-notes-utils.js";
 import { registerMainIpcHandlers } from "./main-ipc.js";
+import {
+	startUtilityProcess,
+	stopUtilityProcess,
+	setupUtilityPtyIPC,
+	cleanupUtilityProcess,
+} from "./utility/utility-bridge.js";
 
 // Type definitions
 interface ReleaseNote {
@@ -99,8 +105,7 @@ const {
 } = require("./ai-video-save-handler.js");
 const { setupGeminiChatIPC } = require("./gemini-chat-handler.js");
 const { setupAIFillerIPC } = require("./ai-filler-handler.js");
-// PTY and HTTP server now run in utility process via utility-bridge
-const { startUtilityProcess, stopUtilityProcess, setupUtilityPtyIPC, cleanupUtilityProcess } = require("./utility/utility-bridge.js");
+// PTY and HTTP server now run in utility process via utility-bridge (imported at top)
 const { setupSkillsIPC } = require("./skills-handler.js");
 const { setupSkillsSyncIPC } = require("./skills-sync-handler.js");
 const {
@@ -676,9 +681,9 @@ if (!isCliKeyCommand) {
 		// Start utility process (HTTP server + PTY sessions)
 		try {
 			startUtilityProcess();
-			console.log("✅ Utility process started (HTTP server + PTY)");
+			logger.log("✅ Utility process started (HTTP server + PTY)");
 		} catch (err: any) {
-			console.error("❌ Utility process failed to start:", err.message);
+			logger.error("❌ Utility process failed to start:", err.message);
 		}
 
 		// Configure auto-updater for production builds

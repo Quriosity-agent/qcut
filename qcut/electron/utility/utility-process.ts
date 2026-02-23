@@ -9,21 +9,29 @@
 
 /// <reference types="node" />
 
-import { startUtilityHttpServer, stopUtilityHttpServer } from "./utility-http-server.js";
+import {
+	startUtilityHttpServer,
+	stopUtilityHttpServer,
+} from "./utility-http-server.js";
 import { UtilityPtyManager } from "./utility-pty-manager.js";
 
 // Utility process has process.parentPort for communicating with main
 const parentPort = (process as any).parentPort;
 
 if (!parentPort) {
-	console.error("[UtilityProcess] No parentPort available — must run as utilityProcess");
+	console.error(
+		"[UtilityProcess] No parentPort available — must run as utilityProcess"
+	);
 	process.exit(1);
 }
 
 const ptyManager = new UtilityPtyManager(parentPort);
 
 // Pending request callbacks for main process responses
-const pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (err: Error) => void }>();
+const pendingRequests = new Map<
+	string,
+	{ resolve: (value: any) => void; reject: (err: Error) => void }
+>();
 
 /**
  * Send a request to the main process and await response.

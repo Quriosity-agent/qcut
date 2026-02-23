@@ -101,7 +101,7 @@ These are all main-process-only APIs, but they're only called during setup, not 
 - `electron/claude/index.ts` — Removed HTTP server startup (now in utility process)
 
 ### Architecture
-```
+```text
 Main Process (lightweight)
 ├── Window management, menus, dialog
 ├── IPC routing (thin proxy via utility-bridge.ts)
@@ -301,7 +301,7 @@ Move PTY session management to a utility process. The main process keeps thin IP
 
 #### Architecture After Migration
 
-```
+```text
 Renderer  ──IPC──>  Main Process (thin proxy)  ──MessagePort──>  Utility Process
                                                                    └── node-pty sessions
                                                                    └── Claude HTTP server
@@ -428,7 +428,7 @@ export function setupPtyIPC(): void {
 
 Combine PTY and HTTP server into one utility process to minimize overhead:
 
-```
+```text
 Main Process (lightweight)
 ├── Window management, menus, dialog
 ├── IPC routing (thin proxy)
@@ -450,12 +450,12 @@ Utility Process (heavy I/O)
 ### IPC Pattern Changes
 
 **Before (current):**
-```
+```text
 Renderer ──ipcRenderer.invoke──> Main Process ──handler──> Result
 ```
 
 **After:**
-```
+```text
 Renderer ──ipcRenderer.invoke──> Main Process ──MessagePort──> Utility Process
                                       ↑                              │
                                       └──────MessagePort─────────────┘
