@@ -1,17 +1,20 @@
 /**
- * AI View Types and Interfaces — barrel re-export for backward compatibility
- * This file has been split into ai-types/ directory.
- * All imports from this path continue to work unchanged.
+ * AI Types — barrel re-export
+ * Split from ai-types.ts into focused modules
  */
+
+// Model configuration
 export type {
-	// Model config
 	AIModelEndpoints,
 	UpscaleModelEndpoints,
 	AIModelParameters,
 	UpscaleModelParameters,
 	ModelCategory,
 	AIModel,
-	// Generation
+} from "./model-config";
+
+// Generation state and progress
+export type {
 	GeneratedVideo,
 	GeneratedVideoResult,
 	PollingState,
@@ -21,7 +24,10 @@ export type {
 	GenerationStatus,
 	APIConfiguration,
 	AIError,
-	// Hook props & state
+} from "./generation";
+
+// Hook props and state
+export type {
 	UseAIGenerationProps,
 	AIGenerationState,
 	UseAIHistoryProps,
@@ -29,7 +35,10 @@ export type {
 	AIActiveTab,
 	AvatarUploadState,
 	ImageUploadState,
-	// Request types
+} from "./hook-props";
+
+// Request/response types
+export type {
 	VideoGenerationRequest,
 	ImageToVideoRequest,
 	TextToVideoRequest,
@@ -54,25 +63,41 @@ export type {
 	ByteDanceUpscaleRequest,
 	FlashVSRUpscaleRequest,
 	TopazUpscaleRequest,
-	// Lipsync
+} from "./request-types";
+
+// Lipsync types
+export type {
 	SyncLipsyncEmotion,
 	SyncLipsyncModelMode,
 	SyncLipsyncSyncMode,
 	SyncLipsyncReact1Request,
-	// Sora 2
+} from "./lipsync-types";
+
+// Sora 2 types
+export type {
 	Sora2ModelType,
 	Sora2BasePayload,
 	Sora2Payload,
-	// Seeddream
+} from "./sora2-types";
+
+// Seeddream types
+export type {
 	Seeddream45ImageSize,
 	Seeddream45TextToImageParams,
 	Seeddream45EditParams,
-	// Convenience aliases
-	Model,
-	Video,
-	VideoResult,
-	Polling,
-	ServiceManager,
-	GenerationState,
-	HistoryState,
-} from "./ai-types/index";
+} from "./seeddream-types";
+
+// Convenience aliases
+export type {
+	AIModel as Model,
+} from "./model-config";
+export type {
+	GeneratedVideo as Video,
+	GeneratedVideoResult as VideoResult,
+	PollingState as Polling,
+	AIServiceManager as ServiceManager,
+} from "./generation";
+export type {
+	AIGenerationState as GenerationState,
+	AIHistoryState as HistoryState,
+} from "./hook-props";
