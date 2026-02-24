@@ -575,7 +575,7 @@ export function registerSharedRoutes(
 		} catch (error) {
 			if (error instanceof HttpError) throw error;
 			throw new HttpError(
-				400,
+				500,
 				error instanceof Error ? error.message : "Failed to start export"
 			);
 		}
