@@ -14,6 +14,3 @@ export {
 	applyProgressEvent,
 	clearExportJobsForTests,
 } from "./claude-export-handler/index.js";
-
-// CommonJS export for main.ts compatibility
-module.exports = require("./claude-export-handler/index.js");

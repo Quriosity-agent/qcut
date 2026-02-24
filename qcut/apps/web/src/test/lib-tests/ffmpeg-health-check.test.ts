@@ -36,7 +36,7 @@ function resolveStagedBinaryPath({
 				targetKey,
 				binaryName
 			);
-			if (existsSync(candidate)) {
+			if (existsSync(candidate) && isExecutable({ binaryPath: candidate })) {
 				return candidate;
 			}
 		}
