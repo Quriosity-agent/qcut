@@ -816,6 +816,55 @@ export interface ElectronAPI {
 			) => void;
 			removeListeners: () => void;
 		};
+		projectCrud: {
+			onCreateRequest: (
+				callback: (data: { requestId: string; name: string }) => void
+			) => void;
+			sendCreateResponse: (
+				requestId: string,
+				result?: { projectId: string; name: string },
+				error?: string
+			) => void;
+			onDeleteRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+				}) => void
+			) => void;
+			sendDeleteResponse: (
+				requestId: string,
+				result?: { deleted: boolean; projectId: string },
+				error?: string
+			) => void;
+			onRenameRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+					name: string;
+				}) => void
+			) => void;
+			sendRenameResponse: (
+				requestId: string,
+				result?: { renamed: boolean; projectId: string; name: string },
+				error?: string
+			) => void;
+			onDuplicateRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+				}) => void
+			) => void;
+			sendDuplicateResponse: (
+				requestId: string,
+				result?: {
+					projectId: string;
+					name: string;
+					sourceProjectId: string;
+				},
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
 		ui: {
 			onSwitchPanelRequest: (
 				callback: (data: { requestId: string; panel: string }) => void

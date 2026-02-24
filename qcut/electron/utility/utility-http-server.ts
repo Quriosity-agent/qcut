@@ -177,6 +177,77 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	});
 
 	// ==========================================================================
+	// Project CRUD routes
+	// ==========================================================================
+	router.post("/api/claude/project/create", async (req) => {
+		const name = req.body?.name as string | undefined;
+		return await Promise.race([
+			requestFromMain("project:create", { name: name || "New Project" }),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Create project timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/project/delete", async (req) => {
+		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
+			throw new HttpError(400, "Missing 'projectId' in request body");
+		}
+		return await Promise.race([
+			requestFromMain("project:delete", {
+				projectId: req.body.projectId,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Delete project timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/project/rename", async (req) => {
+		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
+			throw new HttpError(400, "Missing 'projectId' in request body");
+		}
+		if (!req.body?.name || typeof req.body.name !== "string") {
+			throw new HttpError(400, "Missing 'name' in request body");
+		}
+		return await Promise.race([
+			requestFromMain("project:rename", {
+				projectId: req.body.projectId,
+				name: req.body.name,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Rename project timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/project/duplicate", async (req) => {
+		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
+			throw new HttpError(400, "Missing 'projectId' in request body");
+		}
+		return await Promise.race([
+			requestFromMain("project:duplicate", {
+				projectId: req.body.projectId,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Duplicate project timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	// ==========================================================================
 	// UI Panel Navigation routes
 	// ==========================================================================
 	router.post("/api/claude/ui/switch-panel", async (req) => {

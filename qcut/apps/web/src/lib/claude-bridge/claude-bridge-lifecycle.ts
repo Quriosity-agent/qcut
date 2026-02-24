@@ -17,6 +17,10 @@ import {
 	cleanupClaudeUiBridge,
 	setupClaudeUiBridge,
 } from "@/lib/claude-bridge/claude-ui-bridge";
+import {
+	cleanupClaudeProjectCrudBridge,
+	setupClaudeProjectCrudBridge,
+} from "@/lib/claude-bridge/claude-project-crud-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -66,6 +70,11 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeUiBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup project CRUD bridge",
+		step: setupClaudeProjectCrudBridge,
+		onError,
+	});
 
 	return () => {
 		runBridgeStep({
@@ -91,6 +100,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup UI bridge",
 			step: cleanupClaudeUiBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup project CRUD bridge",
+			step: cleanupClaudeProjectCrudBridge,
 			onError,
 		});
 	};

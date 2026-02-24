@@ -279,10 +279,18 @@ async function dispatchProject(
 			return projectSummary(client, opts);
 		case "report":
 			return projectReport(client, opts);
+		case "create":
+			return projectCreate(client, opts);
+		case "delete":
+			return projectDelete(client, opts);
+		case "rename":
+			return projectRename(client, opts);
+		case "duplicate":
+			return projectDuplicate(client, opts);
 		default:
 			return {
 				success: false,
-				error: `Unknown project action: ${action}`,
+				error: `Unknown project action: ${action}. Available: settings, update-settings, stats, summary, report, create, delete, rename, duplicate`,
 			};
 	}
 }
@@ -357,5 +365,52 @@ async function projectReport(
 		`/api/claude/project/${opts.projectId}/report`,
 		body
 	);
+	return { success: true, data };
+}
+
+async function projectCreate(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	const name = opts.newName || "New Project";
+	const data = await client.post("/api/claude/project/create", { name });
+	return { success: true, data };
+}
+
+async function projectDelete(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId)
+		return { success: false, error: "Missing --project-id" };
+	const data = await client.post("/api/claude/project/delete", {
+		projectId: opts.projectId,
+	});
+	return { success: true, data };
+}
+
+async function projectRename(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId)
+		return { success: false, error: "Missing --project-id" };
+	if (!opts.newName) return { success: false, error: "Missing --new-name" };
+	const data = await client.post("/api/claude/project/rename", {
+		projectId: opts.projectId,
+		name: opts.newName,
+	});
+	return { success: true, data };
+}
+
+async function projectDuplicate(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId)
+		return { success: false, error: "Missing --project-id" };
+	const data = await client.post("/api/claude/project/duplicate", {
+		projectId: opts.projectId,
+	});
 	return { success: true, data };
 }

@@ -132,6 +132,10 @@ const COMMANDS = [
 	"editor:screen-recording:stop",
 	"editor:screen-recording:status",
 	"editor:ui:switch-panel",
+	"editor:project:create",
+	"editor:project:delete",
+	"editor:project:rename",
+	"editor:project:duplicate",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];

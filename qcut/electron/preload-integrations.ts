@@ -599,6 +599,130 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				);
 			},
 		},
+		projectCrud: {
+			onCreateRequest: (
+				callback: (data: { requestId: string; name: string }) => void
+			) => {
+				ipcRenderer.removeAllListeners("claude:project:create:request");
+				ipcRenderer.on(
+					"claude:project:create:request",
+					(_: unknown, data: { requestId: string; name: string }) =>
+						callback(data),
+				);
+			},
+			sendCreateResponse: (
+				requestId: string,
+				result?: { projectId: string; name: string },
+				error?: string
+			) => {
+				ipcRenderer.send("claude:project:create:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			onDeleteRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+				}) => void
+			) => {
+				ipcRenderer.removeAllListeners("claude:project:delete:request");
+				ipcRenderer.on(
+					"claude:project:delete:request",
+					(
+						_: unknown,
+						data: { requestId: string; projectId: string },
+					) => callback(data),
+				);
+			},
+			sendDeleteResponse: (
+				requestId: string,
+				result?: { deleted: boolean; projectId: string },
+				error?: string
+			) => {
+				ipcRenderer.send("claude:project:delete:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			onRenameRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+					name: string;
+				}) => void
+			) => {
+				ipcRenderer.removeAllListeners("claude:project:rename:request");
+				ipcRenderer.on(
+					"claude:project:rename:request",
+					(
+						_: unknown,
+						data: {
+							requestId: string;
+							projectId: string;
+							name: string;
+						},
+					) => callback(data),
+				);
+			},
+			sendRenameResponse: (
+				requestId: string,
+				result?: {
+					renamed: boolean;
+					projectId: string;
+					name: string;
+				},
+				error?: string
+			) => {
+				ipcRenderer.send("claude:project:rename:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			onDuplicateRequest: (
+				callback: (data: {
+					requestId: string;
+					projectId: string;
+				}) => void
+			) => {
+				ipcRenderer.removeAllListeners(
+					"claude:project:duplicate:request",
+				);
+				ipcRenderer.on(
+					"claude:project:duplicate:request",
+					(
+						_: unknown,
+						data: { requestId: string; projectId: string },
+					) => callback(data),
+				);
+			},
+			sendDuplicateResponse: (
+				requestId: string,
+				result?: {
+					projectId: string;
+					name: string;
+					sourceProjectId: string;
+				},
+				error?: string
+			) => {
+				ipcRenderer.send("claude:project:duplicate:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:project:create:request");
+				ipcRenderer.removeAllListeners("claude:project:delete:request");
+				ipcRenderer.removeAllListeners("claude:project:rename:request");
+				ipcRenderer.removeAllListeners(
+					"claude:project:duplicate:request",
+				);
+			},
+		},
 	};
 }
 

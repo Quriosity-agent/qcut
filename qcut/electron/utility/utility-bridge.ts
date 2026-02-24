@@ -43,6 +43,12 @@ import {
 	getAvailablePanels,
 } from "../claude/handlers/claude-ui-handler.js";
 import {
+	requestCreateProject,
+	requestDeleteProject,
+	requestRenameProject,
+	requestDuplicateProject,
+} from "../claude/handlers/claude-project-crud-handler.js";
+import {
 	listCaptureSources,
 	buildStatus as buildScreenRecordingStatus,
 } from "../screen-recording-handler.js";
@@ -326,6 +332,26 @@ async function handleMainRequest(
 				);
 			}
 			return requestSwitchPanel(win, panelId);
+		}
+
+		case "project:create": {
+			const req = data as { name: string };
+			return requestCreateProject(win, req.name);
+		}
+
+		case "project:delete": {
+			const req = data as { projectId: string };
+			return requestDeleteProject(win, req.projectId);
+		}
+
+		case "project:rename": {
+			const req = data as { projectId: string; name: string };
+			return requestRenameProject(win, req.projectId, req.name);
+		}
+
+		case "project:duplicate": {
+			const req = data as { projectId: string };
+			return requestDuplicateProject(win, req.projectId);
 		}
 
 		default:
