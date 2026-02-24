@@ -23,20 +23,27 @@ export async function handleRemotionCommand(
 	const parts = options.command.split(":");
 	const action = parts[2]; // "list", "inspect", "update-props", "export"
 
-	switch (action) {
-		case "list":
-			return remotionList(client, options);
-		case "inspect":
-			return remotionInspect(client, options);
-		case "update-props":
-			return remotionUpdateProps(client, options);
-		case "export":
-			return remotionExport(client, options);
-		default:
-			return {
-				success: false,
-				error: `Unknown remotion action: ${action}. Available: list, inspect, update-props, export`,
-			};
+	try {
+		switch (action) {
+			case "list":
+				return await remotionList(client, options);
+			case "inspect":
+				return await remotionInspect(client, options);
+			case "update-props":
+				return await remotionUpdateProps(client, options);
+			case "export":
+				return await remotionExport(client, options);
+			default:
+				return {
+					success: false,
+					error: `Unknown remotion action: ${action}. Available: list, inspect, update-props, export`,
+				};
+		}
+	} catch (err) {
+		return {
+			success: false,
+			error: `editor:remotion:${action} failed: ${err instanceof Error ? err.message : String(err)}`,
+		};
 	}
 }
 

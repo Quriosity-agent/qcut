@@ -114,7 +114,7 @@ Existing CLI has 21 timeline commands but no Remotion-specific operations. The `
 - `electron/native-pipeline/cli/cli.ts` (lines 80-100, command registration)
 
 **Commands to add**:
-```
+```text
 editor:remotion:list          — List registered Remotion components
 editor:remotion:inspect       — Show component details (props schema, source path)
 editor:remotion:update-props  — Update props on a timeline Remotion element

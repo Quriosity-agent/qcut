@@ -173,18 +173,27 @@ export function useExportProgress() {
 
 			// Check if this is a RemotionExportEngine and use its specialized export method
 			let blob: Blob;
-			const engineName = exportEngine.constructor.name;
-			if (engineName === "RemotionExportEngine" && "exportWithRemotion" in exportEngine) {
+			if (
+				"exportWithRemotion" in exportEngine &&
+				typeof (exportEngine as Record<string, unknown>).exportWithRemotion ===
+					"function"
+			) {
 				debugLog("[ExportPanel] 🎬 Using Remotion export pipeline");
-				blob = await (exportEngine as any).exportWithRemotion(
-					(remotionProgress: { overallProgress: number; statusMessage: string }) => {
-						updateProgress({
-							progress: remotionProgress.overallProgress,
-							status: remotionProgress.statusMessage,
-							isExporting: true,
-						});
-					}
-				);
+				const remotionEngine = exportEngine as ExportEngine & {
+					exportWithRemotion: (
+						onProgress: (p: {
+							overallProgress: number;
+							statusMessage: string;
+						}) => void
+					) => Promise<Blob>;
+				};
+				blob = await remotionEngine.exportWithRemotion((remotionProgress) => {
+					updateProgress({
+						progress: remotionProgress.overallProgress,
+						status: remotionProgress.statusMessage,
+						isExporting: true,
+					});
+				});
 			} else {
 				blob = await exportEngine.export((progress, status) => {
 					updateProgress({

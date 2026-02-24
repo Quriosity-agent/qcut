@@ -248,11 +248,10 @@ describe("Remotion CLI handlers", () => {
 
 	describe("editor:remotion:update-props", () => {
 		it("sends PATCH with props", async () => {
-			mockRoute(
-				"PATCH",
-				"/api/claude/timeline/proj-1/elements/el-r1",
-				{ success: true, data: { updated: true } }
-			);
+			mockRoute("PATCH", "/api/claude/timeline/proj-1/elements/el-r1", {
+				success: true,
+				data: { updated: true },
+			});
 
 			const result = await handleRemotionCommand(
 				client,
@@ -295,11 +294,10 @@ describe("Remotion CLI handlers", () => {
 
 	describe("editor:remotion:export", () => {
 		it("sends POST with remotion engine type", async () => {
-			mockRoute(
-				"POST",
-				"/api/claude/export/proj-1/start",
-				{ success: true, data: { jobId: "export-1", status: "queued" } }
-			);
+			mockRoute("POST", "/api/claude/export/proj-1/start", {
+				success: true,
+				data: { jobId: "export-1", status: "queued" },
+			});
 
 			const result = await handleRemotionCommand(
 				client,

@@ -33,7 +33,6 @@ export default defineConfig({
 			reporter: ["text", "lcov", "json"],
 			reportsDirectory: "./coverage",
 			exclude: [
-				"node_modules/",
 				"src/test/",
 				"*.config.*",
 				"**/*.d.ts",

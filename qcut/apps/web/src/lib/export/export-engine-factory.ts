@@ -86,16 +86,15 @@ export class ExportEngineFactory {
 		// Check before detectCapabilities() to avoid unnecessary browser API calls
 		if (tracks) {
 			const hasRemotionElements = tracks.some(
-				(t) =>
-					t.type === "remotion" &&
-					t.elements.length > 0
+				(t) => t.type === "remotion" && t.elements.length > 0
 			);
 			if (hasRemotionElements) {
-				console.log(
-					"🎬 EXPORT ENGINE SELECTION: Remotion engine auto-selected (timeline has Remotion elements)"
+				debugLog(
+					"[ExportEngineFactory] 🎬 Remotion engine auto-selected (timeline has Remotion elements)"
 				);
 				// Use cached capabilities if available, otherwise detect
-				const capabilities = this.capabilities ?? await this.detectCapabilities();
+				const capabilities =
+					this.capabilities ?? (await this.detectCapabilities());
 				return {
 					engineType: ExportEngineType.REMOTION,
 					reason:

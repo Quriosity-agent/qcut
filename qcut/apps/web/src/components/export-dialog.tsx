@@ -613,7 +613,8 @@ export function ExportDialog() {
 								)}
 								{hasRemotionElements && (
 									<div className="text-xs text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950 rounded px-2 py-1 mt-1">
-										Timeline contains Remotion elements — Remotion Engine will be used
+										Timeline contains Remotion elements — Remotion Engine will
+										be used
 									</div>
 								)}
 							</div>

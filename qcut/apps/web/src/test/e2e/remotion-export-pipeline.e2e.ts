@@ -126,10 +126,9 @@ test.describe("Remotion Export Pipeline", () => {
 			}, VALID_PROJECT);
 
 			expect(importResult).not.toBeNull();
-			if (!importResult.error) {
-				expect(importResult.success).toBe(true);
-				expect(importResult.scan?.isValid).toBe(true);
-			}
+			expect(importResult.error).toBeUndefined();
+			expect(importResult.success).toBe(true);
+			expect(importResult.scan?.isValid).toBe(true);
 
 			await captureTestStep(page, "remotion-export", 2, "folder-imported");
 
@@ -196,9 +195,8 @@ test.describe("Remotion Export Pipeline", () => {
 				.isVisible({ timeout: 5000 })
 				.catch(() => false);
 
-			if (hasIndicator) {
-				expect(hasIndicator).toBe(true);
-			}
+			// These UI elements should appear when Remotion elements are on the timeline
+			expect(hasIndicator).toBe(true);
 
 			// Also verify "Remotion Engine" text appears
 			const engineLabel = page.locator('text="Remotion Engine"');
@@ -206,9 +204,7 @@ test.describe("Remotion Export Pipeline", () => {
 				.isVisible({ timeout: 3000 })
 				.catch(() => false);
 
-			if (hasEngineLabel) {
-				expect(hasEngineLabel).toBe(true);
-			}
+			expect(hasEngineLabel).toBe(true);
 
 			// Close dialog
 			await page.keyboard.press("Escape");
@@ -380,21 +376,20 @@ test.describe("Remotion Export Pipeline", () => {
 			expect(apiResult.data).toBeDefined();
 			expect(apiResult.data.success).toBe(true);
 
-			if (apiResult.data.data?.tracks) {
-				const remotionTracks = apiResult.data.data.tracks.filter(
-					(t: any) => t.type === "remotion"
-				);
-				expect(remotionTracks.length).toBeGreaterThanOrEqual(1);
+			expect(apiResult.data.data?.tracks).toBeDefined();
+			const remotionTracks = apiResult.data.data.tracks.filter(
+				(t: any) => t.type === "remotion"
+			);
+			expect(remotionTracks.length).toBeGreaterThanOrEqual(1);
 
-				// Verify at least one remotion element exists
-				const remotionElements = remotionTracks.flatMap((t: any) => t.elements);
-				expect(remotionElements.length).toBeGreaterThanOrEqual(1);
+			// Verify at least one remotion element exists
+			const remotionElements = remotionTracks.flatMap((t: any) => t.elements);
+			expect(remotionElements.length).toBeGreaterThanOrEqual(1);
 
-				// Verify element shape
-				const firstElement = remotionElements[0];
-				expect(firstElement.type).toBe("remotion");
-				expect(firstElement.componentId).toBe("HelloWorld");
-			}
+			// Verify element shape
+			const firstElement = remotionElements[0];
+			expect(firstElement.type).toBe("remotion");
+			expect(firstElement.componentId).toBe("HelloWorld");
 
 			await captureTestStep(page, "remotion-export", 7, "api-validated");
 		});

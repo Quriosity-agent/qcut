@@ -58,25 +58,24 @@ vi.mock("@/config/features", () => ({
 }));
 
 // Mock browser APIs not available in test environment
+const g = globalThis as Record<string, unknown>;
 if (typeof globalThis.MediaRecorder === "undefined") {
-	(globalThis as any).MediaRecorder = {
-		isTypeSupported: () => false,
-	};
+	g.MediaRecorder = { isTypeSupported: () => false };
 }
 if (typeof globalThis.VideoEncoder === "undefined") {
-	(globalThis as any).VideoEncoder = undefined;
+	g.VideoEncoder = undefined;
 }
 if (typeof globalThis.VideoDecoder === "undefined") {
-	(globalThis as any).VideoDecoder = undefined;
+	g.VideoDecoder = undefined;
 }
 if (typeof globalThis.VideoFrame === "undefined") {
-	(globalThis as any).VideoFrame = undefined;
+	g.VideoFrame = undefined;
 }
 if (typeof globalThis.OffscreenCanvas === "undefined") {
-	(globalThis as any).OffscreenCanvas = undefined;
+	g.OffscreenCanvas = undefined;
 }
 if (typeof globalThis.SharedWorker === "undefined") {
-	(globalThis as any).SharedWorker = undefined;
+	g.SharedWorker = undefined;
 }
 
 // --- Helpers ---
@@ -114,9 +113,7 @@ const createMediaElement = (
 	trimEnd: 0,
 });
 
-const createRemotionTrack = (
-	elements: RemotionElement[]
-): TimelineTrack => ({
+const createRemotionTrack = (elements: RemotionElement[]): TimelineTrack => ({
 	id: "remotion-track-1",
 	name: "Remotion Track",
 	type: "remotion",
@@ -181,9 +178,7 @@ describe("requiresRemotionExport", () => {
 
 describe("Export engine renderer - remotion element skip", () => {
 	it("does not render remotion elements in standard canvas render", async () => {
-		const { renderFrame } = await import(
-			"@/lib/export/export-engine-renderer"
-		);
+		const { renderFrame } = await import("@/lib/export/export-engine-renderer");
 
 		// Create mock canvas context (jsdom doesn't provide real 2d context)
 		const mockCtx = {
@@ -249,7 +244,13 @@ describe("Export engine factory - remotion auto-selection", () => {
 		];
 
 		const recommendation = await factory.getEngineRecommendation(
-			{ quality: "1080p", format: "mp4", width: 1920, height: 1080, filename: "test.mp4" },
+			{
+				quality: "1080p",
+				format: "mp4",
+				width: 1920,
+				height: 1080,
+				filename: "test.mp4",
+			},
 			10,
 			"medium",
 			tracks
@@ -271,7 +272,13 @@ describe("Export engine factory - remotion auto-selection", () => {
 		];
 
 		const recommendation = await factory.getEngineRecommendation(
-			{ quality: "1080p", format: "mp4", width: 1920, height: 1080, filename: "test.mp4" },
+			{
+				quality: "1080p",
+				format: "mp4",
+				width: 1920,
+				height: 1080,
+				filename: "test.mp4",
+			},
 			10,
 			"medium",
 			tracks
@@ -288,7 +295,13 @@ describe("Export engine factory - remotion auto-selection", () => {
 		const factory = ExportEngineFactory.getInstance();
 
 		const recommendation = await factory.getEngineRecommendation(
-			{ quality: "1080p", format: "mp4", width: 1920, height: 1080, filename: "test.mp4" },
+			{
+				quality: "1080p",
+				format: "mp4",
+				width: 1920,
+				height: 1080,
+				filename: "test.mp4",
+			},
 			10,
 			"medium"
 			// no tracks parameter
