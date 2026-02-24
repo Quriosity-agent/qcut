@@ -113,26 +113,21 @@ function decryptStoredApiKeys({
 	encryptedData: EncryptedApiKeyData;
 }): ApiKeys {
 	try {
-		return {
-			falApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.falApiKey,
-			}),
-			freesoundApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.freesoundApiKey,
-			}),
-			geminiApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.geminiApiKey,
-			}),
-			openRouterApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.openRouterApiKey,
-			}),
-			anthropicApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.anthropicApiKey,
-			}),
-			elevenLabsApiKey: decryptStoredValue({
-				encryptedValue: encryptedData.elevenLabsApiKey,
-			}),
-		};
+		const result = getEmptyApiKeys();
+		const apiKeyFields = [
+			"falApiKey",
+			"freesoundApiKey",
+			"geminiApiKey",
+			"openRouterApiKey",
+			"anthropicApiKey",
+			"elevenLabsApiKey",
+		] as const;
+		for (const field of apiKeyFields) {
+			result[field] = decryptStoredValue({
+				encryptedValue: encryptedData[field],
+			});
+		}
+		return result;
 	} catch (error) {
 		console.error("[API Keys] Failed to decrypt API keys:", error);
 		return getEmptyApiKeys();
@@ -308,77 +303,32 @@ export function setupApiKeyIPC(): void {
 			console.log("[API Keys] Save request received");
 
 			try {
-				const {
-					falApiKey = "",
-					freesoundApiKey = "",
-					geminiApiKey = "",
-					openRouterApiKey = "",
-					anthropicApiKey = "",
-					elevenLabsApiKey = "",
-				} = keys;
-
 				const dataToStore: EncryptedApiKeyData = {};
 
 				const encryptionAvailable = safeStorage.isEncryptionAvailable();
 				console.log("[API Keys] Encryption available:", encryptionAvailable);
 
+				const apiKeyFields = [
+						"falApiKey",
+						"freesoundApiKey",
+						"geminiApiKey",
+						"openRouterApiKey",
+						"anthropicApiKey",
+						"elevenLabsApiKey",
+					] as const;
+
 				if (encryptionAvailable) {
-					if (falApiKey) {
-						const encryptedFal: Buffer = safeStorage.encryptString(falApiKey);
-						dataToStore.falApiKey = encryptedFal.toString("base64");
-					} else {
-						dataToStore.falApiKey = "";
-					}
-
-					if (freesoundApiKey) {
-						const encryptedFreesound: Buffer =
-							safeStorage.encryptString(freesoundApiKey);
-						dataToStore.freesoundApiKey = encryptedFreesound.toString("base64");
-					} else {
-						dataToStore.freesoundApiKey = "";
-					}
-
-					if (geminiApiKey) {
-						const encryptedGemini: Buffer =
-							safeStorage.encryptString(geminiApiKey);
-						dataToStore.geminiApiKey = encryptedGemini.toString("base64");
-					} else {
-						dataToStore.geminiApiKey = "";
-					}
-
-					if (openRouterApiKey) {
-						const encryptedOpenRouter: Buffer =
-							safeStorage.encryptString(openRouterApiKey);
-						dataToStore.openRouterApiKey =
-							encryptedOpenRouter.toString("base64");
-					} else {
-						dataToStore.openRouterApiKey = "";
-					}
-
-					if (anthropicApiKey) {
-						const encryptedAnthropic: Buffer =
-							safeStorage.encryptString(anthropicApiKey);
-						dataToStore.anthropicApiKey = encryptedAnthropic.toString("base64");
-					} else {
-						dataToStore.anthropicApiKey = "";
-					}
-
-					if (elevenLabsApiKey) {
-						const encryptedElevenLabs: Buffer =
-							safeStorage.encryptString(elevenLabsApiKey);
-						dataToStore.elevenLabsApiKey =
-							encryptedElevenLabs.toString("base64");
-					} else {
-						dataToStore.elevenLabsApiKey = "";
+					for (const field of apiKeyFields) {
+						const value = keys[field] || "";
+						dataToStore[field] = value
+							? safeStorage.encryptString(value).toString("base64")
+							: "";
 					}
 				} else {
 					console.log("[API Keys] Encryption unavailable, storing plain text");
-					dataToStore.falApiKey = falApiKey;
-					dataToStore.freesoundApiKey = freesoundApiKey;
-					dataToStore.geminiApiKey = geminiApiKey;
-					dataToStore.openRouterApiKey = openRouterApiKey;
-					dataToStore.anthropicApiKey = anthropicApiKey;
-					dataToStore.elevenLabsApiKey = elevenLabsApiKey;
+					for (const field of apiKeyFields) {
+						dataToStore[field] = keys[field] || "";
+					}
 				}
 
 				const dir: string = path.dirname(apiKeysFilePath);
@@ -395,7 +345,7 @@ export function setupApiKeyIPC(): void {
 				);
 
 				// Sync plaintext keys to AICP credential store so CLI tools can read them
-				syncToAicpCredentials({ falApiKey, geminiApiKey, openRouterApiKey });
+				syncToAicpCredentials(keys);
 
 				return true;
 			} catch (error: any) {
