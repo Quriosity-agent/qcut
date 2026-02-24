@@ -126,6 +126,11 @@ const COMMANDS = [
 	// Navigator commands — project listing + editor navigation
 	"editor:navigator:projects",
 	"editor:navigator:open",
+	// Screen recording commands
+	"editor:screen-recording:sources",
+	"editor:screen-recording:start",
+	"editor:screen-recording:stop",
+	"editor:screen-recording:status",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -417,6 +422,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			gap: { type: "string" },
 			timeout: { type: "string" },
 			provider: { type: "string" },
+			// screen-recording options
+			"source-id": { type: "string" },
+			discard: { type: "boolean", default: false },
 		},
 		strict: false,
 	});
@@ -612,6 +620,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			: undefined,
 		provider: values.provider as string | undefined,
 		loadSpeech: (values["load-speech"] as boolean) ?? false,
+		// screen-recording options
+		sourceId: values["source-id"] as string | undefined,
+		discard: (values.discard as boolean) ?? false,
 	};
 }
 

@@ -778,6 +778,44 @@ export interface ElectronAPI {
 			) => void;
 			removeListeners: () => void;
 		};
+		screenRecordingBridge: {
+			onStartRequest: (
+				callback: (data: {
+					requestId: string;
+					options: { sourceId?: string; fileName?: string };
+				}) => void
+			) => void;
+			sendStartResponse: (
+				requestId: string,
+				result?: {
+					sessionId: string;
+					sourceId: string;
+					sourceName: string;
+					filePath: string;
+					startedAt: number;
+					mimeType: string | null;
+				},
+				error?: string
+			) => void;
+			onStopRequest: (
+				callback: (data: {
+					requestId: string;
+					options: { discard?: boolean };
+				}) => void
+			) => void;
+			sendStopResponse: (
+				requestId: string,
+				result?: {
+					success: boolean;
+					filePath: string | null;
+					bytesWritten: number;
+					durationMs: number;
+					discarded: boolean;
+				},
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
 	};
 
 	// Remotion folder operations

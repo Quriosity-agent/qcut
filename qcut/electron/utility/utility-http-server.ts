@@ -11,7 +11,7 @@
 
 import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
-import { createRouter } from "../claude/utils/http-router.js";
+import { createRouter, HttpError } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
 import {
 	registerSharedRoutes,
@@ -89,6 +89,92 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor);
+
+	// ==========================================================================
+	// Navigator routes (project listing + editor navigation)
+	// ==========================================================================
+	router.get("/api/claude/navigator/projects", async () => {
+		return await Promise.race([
+			requestFromMain("get-projects", {}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/navigator/open", async (req) => {
+		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
+			throw new HttpError(400, "Missing 'projectId' in request body");
+		}
+		return await Promise.race([
+			requestFromMain("navigate-to-project", {
+				projectId: req.body.projectId,
+			}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Renderer timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	// ==========================================================================
+	// Screen Recording routes
+	// ==========================================================================
+	router.get("/api/claude/screen-recording/sources", async () => {
+		return await Promise.race([
+			requestFromMain("screen-recording:sources", {}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Timed out listing sources")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.get("/api/claude/screen-recording/status", async () => {
+		return await Promise.race([
+			requestFromMain("screen-recording:status", {}),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Timed out getting status")),
+					10_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/screen-recording/start", async (req) => {
+		const sourceId = req.body?.sourceId as string | undefined;
+		const fileName = req.body?.fileName as string | undefined;
+		return await Promise.race([
+			requestFromMain("screen-recording:start", { sourceId, fileName }),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Recording start timed out")),
+					30_000
+				)
+			),
+		]);
+	});
+
+	router.post("/api/claude/screen-recording/stop", async (req) => {
+		const discard = req.body?.discard as boolean | undefined;
+		return await Promise.race([
+			requestFromMain("screen-recording:stop", { discard }),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Recording stop timed out")),
+					60_000
+				)
+			),
+		]);
+	});
 
 	// Auth check
 	function checkAuth(req: IncomingMessage): boolean {

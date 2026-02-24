@@ -29,6 +29,18 @@ import {
 	arrangeTimeline,
 } from "../claude/handlers/claude-timeline-handler.js";
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
+import {
+	requestProjectsFromRenderer,
+	requestNavigateToProject,
+} from "../claude/handlers/claude-navigator-handler.js";
+import {
+	requestStartRecordingFromRenderer,
+	requestStopRecordingFromRenderer,
+} from "../claude/handlers/claude-screen-recording-handler.js";
+import {
+	listCaptureSources,
+	buildStatus as buildScreenRecordingStatus,
+} from "../screen-recording-handler.js";
 import * as fs from "node:fs";
 import type {
 	UtilityToMainMessage,
@@ -266,6 +278,38 @@ async function handleMainRequest(
 
 		case "arrange-timeline": {
 			return arrangeTimeline(win, data as any);
+		}
+
+		case "get-projects": {
+			return requestProjectsFromRenderer(win);
+		}
+
+		case "navigate-to-project": {
+			const req = data as { projectId: string };
+			return requestNavigateToProject(win, req.projectId);
+		}
+
+		case "screen-recording:sources": {
+			return listCaptureSources({ currentWindowSourceId: null });
+		}
+
+		case "screen-recording:status": {
+			return buildScreenRecordingStatus();
+		}
+
+		case "screen-recording:start": {
+			const req = data as { sourceId?: string; fileName?: string };
+			return requestStartRecordingFromRenderer(win, {
+				sourceId: req.sourceId,
+				fileName: req.fileName,
+			});
+		}
+
+		case "screen-recording:stop": {
+			const req = data as { discard?: boolean };
+			return requestStopRecordingFromRenderer(win, {
+				discard: req.discard,
+			});
 		}
 
 		default:

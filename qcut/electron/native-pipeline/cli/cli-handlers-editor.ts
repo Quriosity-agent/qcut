@@ -78,10 +78,13 @@ export async function handleEditorCommand(
 			case "navigator":
 				return await handleNavigatorCommand(client, options);
 
+			case "screen-recording":
+				return await handleScreenRecordingCommand(client, options);
+
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, navigator`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, navigator, screen-recording`,
 				};
 		}
 	} catch (err) {
@@ -125,6 +128,56 @@ async function handleNavigatorCommand(
 			return {
 				success: false,
 				error: `Unknown navigator action: ${action}. Available: projects, open`,
+			};
+	}
+}
+
+/**
+ * Handle `editor:screen-recording:*` commands.
+ * - `sources` — list available capture sources
+ * - `start` — start screen recording
+ * - `stop` — stop screen recording
+ * - `status` — get current recording status
+ */
+async function handleScreenRecordingCommand(
+	client: EditorApiClient,
+	options: CLIRunOptions,
+): Promise<CLIResult> {
+	const parts = options.command.split(":");
+	const action = parts[2];
+
+	switch (action) {
+		case "sources": {
+			const data = await client.get("/api/claude/screen-recording/sources");
+			return { success: true, data };
+		}
+		case "start": {
+			const body: Record<string, unknown> = {};
+			if (options.sourceId) body.sourceId = options.sourceId;
+			if (options.filename) body.fileName = options.filename;
+			const data = await client.post(
+				"/api/claude/screen-recording/start",
+				body,
+			);
+			return { success: true, data };
+		}
+		case "stop": {
+			const body: Record<string, unknown> = {};
+			if (options.discard) body.discard = true;
+			const data = await client.post(
+				"/api/claude/screen-recording/stop",
+				body,
+			);
+			return { success: true, data };
+		}
+		case "status": {
+			const data = await client.get("/api/claude/screen-recording/status");
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, status`,
 			};
 	}
 }

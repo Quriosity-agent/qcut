@@ -527,6 +527,48 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:navigator:open:request");
 			},
 		},
+		screenRecordingBridge: {
+			onStartRequest: (callback) => {
+				ipcRenderer.removeAllListeners(
+					"claude:screen-recording:start:request",
+				);
+				ipcRenderer.on(
+					"claude:screen-recording:start:request",
+					(_, data) => callback(data),
+				);
+			},
+			sendStartResponse: (requestId, result, error) => {
+				ipcRenderer.send("claude:screen-recording:start:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			onStopRequest: (callback) => {
+				ipcRenderer.removeAllListeners(
+					"claude:screen-recording:stop:request",
+				);
+				ipcRenderer.on(
+					"claude:screen-recording:stop:request",
+					(_, data) => callback(data),
+				);
+			},
+			sendStopResponse: (requestId, result, error) => {
+				ipcRenderer.send("claude:screen-recording:stop:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners(
+					"claude:screen-recording:start:request",
+				);
+				ipcRenderer.removeAllListeners(
+					"claude:screen-recording:stop:request",
+				);
+			},
+		},
 	};
 }
 
