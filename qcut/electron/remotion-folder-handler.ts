@@ -8,7 +8,12 @@
  * @module electron/remotion-folder-handler
  */
 
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import {
+	ipcMain,
+	dialog,
+	BrowserWindow,
+	type IpcMainInvokeEvent,
+} from "electron";
 import * as path from "path";
 import * as fs from "fs/promises";
 import {
@@ -533,6 +538,72 @@ export function setupRemotionFolderIPC(): void {
 				const message = error instanceof Error ? error.message : String(error);
 				console.log(`${LOG_PREFIX} ❌ Validation error: ${message}`);
 				return { isValid: false, error: message };
+			}
+		}
+	);
+
+	// -------------------------------------------------------------------------
+	// Bundle a single .tsx file (no Root.tsx or folder scanning needed)
+	// -------------------------------------------------------------------------
+	ipcMain.handle(
+		"remotion-file:bundle",
+		async (
+			_event: IpcMainInvokeEvent,
+			filePath: string,
+			compositionId: string
+		): Promise<BundleResult> => {
+			log.info(
+				`${LOG_PREFIX} Bundling single file: ${filePath} (${compositionId})`
+			);
+
+			try {
+				const bundlerAvailable = await checkBundlerAvailable();
+				if (!bundlerAvailable) {
+					return {
+						compositionId,
+						success: false,
+						error: "esbuild bundler not available",
+					};
+				}
+
+				// Verify file exists
+				try {
+					await fs.access(filePath);
+				} catch {
+					return {
+						compositionId,
+						success: false,
+						error: `File not found: ${filePath}`,
+					};
+				}
+
+				const composition: CompositionInfo = {
+					id: compositionId,
+					name: compositionId,
+					durationInFrames: 150,
+					fps: 30,
+					width: 1920,
+					height: 1080,
+					componentPath: filePath,
+					importPath: filePath,
+					line: 0,
+				};
+
+				const folderPath = path.dirname(filePath);
+				const result = await bundleComposition(composition, folderPath);
+
+				console.log(
+					`${LOG_PREFIX} ${result.success ? "✅" : "❌"} Bundle result for ${compositionId}: ${result.success ? "success" : result.error}`
+				);
+				return result;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				log.error(`${LOG_PREFIX} Single file bundle error:`, error);
+				return {
+					compositionId,
+					success: false,
+					error: message,
+				};
 			}
 		}
 	);
