@@ -4,8 +4,8 @@
  */
 
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	parseReleaseNote,
 	readReleaseNotesFromDir,
@@ -36,13 +36,13 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 					filename = `v${version}.md`;
 				}
 
-				const filePath = path.join(releasesDir, filename);
+				const filePath = join(releasesDir, filename);
 
-				if (!fs.existsSync(filePath)) {
+				if (!existsSync(filePath)) {
 					return null;
 				}
 
-				const raw = fs.readFileSync(filePath, "utf-8");
+				const raw = readFileSync(filePath, "utf-8");
 				return parseReleaseNote(raw);
 			} catch (error: unknown) {
 				logger.error("Error reading release notes:", error);

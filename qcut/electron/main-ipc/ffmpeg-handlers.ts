@@ -4,56 +4,63 @@
  */
 
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
-import * as fs from "fs";
-import * as path from "path";
+import { existsSync } from "node:fs";
+import { basename, join } from "node:path";
 import type { MainIpcDeps } from "./types.js";
 
-export function registerFfmpegHandlers(_deps: MainIpcDeps): void {
+export function registerFfmpegHandlers(deps: MainIpcDeps): void {
+	const { logger } = deps;
+
 	ipcMain.handle(
 		"get-ffmpeg-resource-path",
 		(_event: IpcMainInvokeEvent, filename: string): string => {
-			// Sanitize filename to prevent path traversal
-			const safeFilename = path.basename(filename);
-			const resourcesPath = path.join(
-				__dirname,
-				"resources",
-				"ffmpeg",
-				safeFilename
-			);
-			if (fs.existsSync(resourcesPath)) {
-				return resourcesPath;
-			}
+			try {
+				// Sanitize filename to prevent path traversal
+				const safeFilename = basename(filename);
+				const resourcesPath = join(
+					__dirname,
+					"resources",
+					"ffmpeg",
+					safeFilename
+				);
+				if (existsSync(resourcesPath)) {
+					return resourcesPath;
+				}
 
-			const distPath = path.join(
-				__dirname,
-				"../../apps/web/dist/ffmpeg",
-				safeFilename
-			);
-			return distPath;
+				return join(__dirname, "../../apps/web/dist/ffmpeg", safeFilename);
+			} catch (error: unknown) {
+				logger.error("Failed to get FFmpeg resource path:", error);
+				return "";
+			}
 		}
 	);
 
 	ipcMain.handle(
 		"check-ffmpeg-resource",
 		(_event: IpcMainInvokeEvent, filename: string): boolean => {
-			// Sanitize filename to prevent path traversal
-			const safeFilename = path.basename(filename);
-			const resourcesPath = path.join(
-				__dirname,
-				"resources",
-				"ffmpeg",
-				safeFilename
-			);
-			if (fs.existsSync(resourcesPath)) {
-				return true;
-			}
+			try {
+				// Sanitize filename to prevent path traversal
+				const safeFilename = basename(filename);
+				const resourcesPath = join(
+					__dirname,
+					"resources",
+					"ffmpeg",
+					safeFilename
+				);
+				if (existsSync(resourcesPath)) {
+					return true;
+				}
 
-			const distPath = path.join(
-				__dirname,
-				"../../apps/web/dist/ffmpeg",
-				safeFilename
-			);
-			return fs.existsSync(distPath);
+				const distPath = join(
+					__dirname,
+					"../../apps/web/dist/ffmpeg",
+					safeFilename
+				);
+				return existsSync(distPath);
+			} catch (error: unknown) {
+				logger.error("Failed to check FFmpeg resource:", error);
+				return false;
+			}
 		}
 	);
 }

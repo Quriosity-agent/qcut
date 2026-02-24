@@ -35,7 +35,7 @@ export async function handleRunPipeline(
 		return { success: false, error: `Cannot read config: ${options.config}` };
 	}
 
-	let chain;
+	let chain: ReturnType<typeof parseChainConfig>;
 	try {
 		chain = parseChainConfig(yamlContent);
 	} catch (error: unknown) {
@@ -100,41 +100,50 @@ export async function handleRunPipeline(
 			})
 		: executor;
 
-	const result = await activeExecutor.executeChain(
-		chain,
-		input,
-		(progress) => {
-			onProgress({
-				stage: progress.stage,
-				percent: progress.percent,
-				message: progress.message,
-				model: progress.model,
-			});
-			if (options.stream) {
-				const event = {
-					type: "progress",
+	try {
+		const result = await activeExecutor.executeChain(
+			chain,
+			input,
+			(progress) => {
+				onProgress({
 					stage: progress.stage,
 					percent: progress.percent,
 					message: progress.message,
 					model: progress.model,
-					timestamp: new Date().toISOString(),
-				};
-				process.stderr.write(JSON.stringify(event) + "\n");
-			}
-		},
-		signal
-	);
+				});
+				if (options.stream) {
+					const event = {
+						type: "progress",
+						stage: progress.stage,
+						percent: progress.percent,
+						message: progress.message,
+						model: progress.model,
+						timestamp: new Date().toISOString(),
+					};
+					process.stderr.write(`${JSON.stringify(event)}\n`);
+				}
+			},
+			signal
+		);
 
-	return {
-		success: result.success,
-		outputPath: result.outputPath,
-		outputPaths: result.outputPaths,
-		error: result.error,
-		cost: result.totalCost,
-		duration: (Date.now() - startTime) / 1000,
-		data: {
-			stepsCompleted: result.stepsCompleted,
-			totalSteps: result.totalSteps,
-		},
-	};
+		return {
+			success: result.success,
+			outputPath: result.outputPath,
+			outputPaths: result.outputPaths,
+			error: result.error,
+			cost: result.totalCost,
+			duration: (Date.now() - startTime) / 1000,
+			data: {
+				stepsCompleted: result.stepsCompleted,
+				totalSteps: result.totalSteps,
+			},
+		};
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		return {
+			success: false,
+			error: `Pipeline execution failed: ${message}`,
+			duration: (Date.now() - startTime) / 1000,
+		};
+	}
 }

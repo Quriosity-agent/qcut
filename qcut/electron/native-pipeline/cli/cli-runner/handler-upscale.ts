@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/cli/cli-runner/handler-upscale
  */
 
-import * as path from "path";
+import { join } from "node:path";
 import { ModelRegistry } from "../../infra/registry.js";
 import { PipelineExecutor } from "../../execution/executor.js";
 import type { PipelineStep } from "../../execution/executor.js";
@@ -58,10 +58,14 @@ export async function handleUpscaleImage(
 			"2160p": 4,
 		};
 		const factor = targetMap[options.target];
-		if (factor) {
-			params.upscale_factor = factor;
-			params.target_resolution = options.target;
+		if (!factor) {
+			return {
+				success: false,
+				error: `Unknown target '${options.target}'. Valid targets: ${Object.keys(targetMap).join(", ")}`,
+			};
 		}
+		params.upscale_factor = factor;
+		params.target_resolution = options.target;
 	}
 
 	const step: PipelineStep = {
@@ -91,7 +95,7 @@ export async function handleUpscaleImage(
 		try {
 			result.outputPath = await downloadOutput(
 				result.outputUrl,
-				path.join(outputDir, `upscaled_${Date.now()}${outputExt}`)
+				join(outputDir, `upscaled_${Date.now()}${outputExt}`)
 			);
 		} catch {
 			/* URL still available */
