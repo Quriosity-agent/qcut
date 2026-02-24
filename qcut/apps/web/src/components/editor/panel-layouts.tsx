@@ -11,6 +11,41 @@ import { PropertiesPanel } from "./properties-panel";
 import { Timeline } from "./timeline";
 import { PreviewPanel } from "./preview-panel";
 import { usePanelStore } from "@/stores/editor/panel-store";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { PanelErrorFallback } from "./panel-error-fallback";
+
+const MediaBoundary = ({ children }: { children: React.ReactNode }) => (
+	<ErrorBoundary
+		isolate
+		fallback={(props) => <PanelErrorFallback {...props} name="Media" />}
+	>
+		{children}
+	</ErrorBoundary>
+);
+const PreviewBoundary = ({ children }: { children: React.ReactNode }) => (
+	<ErrorBoundary
+		isolate
+		fallback={(props) => <PanelErrorFallback {...props} name="Preview" />}
+	>
+		{children}
+	</ErrorBoundary>
+);
+const PropertiesBoundary = ({ children }: { children: React.ReactNode }) => (
+	<ErrorBoundary
+		isolate
+		fallback={(props) => <PanelErrorFallback {...props} name="Properties" />}
+	>
+		{children}
+	</ErrorBoundary>
+);
+const TimelineBoundary = ({ children }: { children: React.ReactNode }) => (
+	<ErrorBoundary
+		isolate
+		fallback={(props) => <PanelErrorFallback {...props} name="Timeline" />}
+	>
+		{children}
+	</ErrorBoundary>
+);
 
 interface LayoutProps {
 	resetCounter: number;
@@ -72,7 +107,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 						onResize={(size) => setToolsPanel(size.asPercentage)}
 						className="min-w-0"
 					>
-						<MediaPanel />
+						<MediaBoundary>
+							<MediaPanel />
+						</MediaBoundary>
 					</ResizablePanel>
 
 					<ResizableHandle withHandle />
@@ -83,7 +120,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 						onResize={(size) => setPreviewPanel(size.asPercentage)}
 						className="min-w-0 min-h-0 flex-1"
 					>
-						<PreviewPanel />
+						<PreviewBoundary>
+							<PreviewPanel />
+						</PreviewBoundary>
 					</ResizablePanel>
 
 					<ResizableHandle withHandle />
@@ -95,7 +134,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 						onResize={(size) => setPropertiesPanel(size.asPercentage)}
 						className="min-w-0"
 					>
-						<PropertiesPanel />
+						<PropertiesBoundary>
+							<PropertiesPanel />
+						</PropertiesBoundary>
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>
@@ -109,7 +150,9 @@ export function DefaultLayout({ resetCounter }: LayoutProps) {
 				onResize={(size) => setTimeline(size.asPercentage)}
 				className="min-h-0 px-1 pb-1"
 			>
-				<Timeline />
+				<TimelineBoundary>
+					<Timeline />
+				</TimelineBoundary>
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);
@@ -160,7 +203,9 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 				onResize={(size) => setToolsPanel(size.asPercentage)}
 				className="min-w-0"
 			>
-				<MediaPanel />
+				<MediaBoundary>
+					<MediaPanel />
+				</MediaBoundary>
 			</ResizablePanel>
 
 			<ResizableHandle withHandle />
@@ -190,7 +235,9 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 								}
 								className="min-w-0 min-h-0 flex-1"
 							>
-								<PreviewPanel />
+								<PreviewBoundary>
+									<PreviewPanel />
+								</PreviewBoundary>
 							</ResizablePanel>
 
 							<ResizableHandle withHandle />
@@ -204,7 +251,9 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 								}
 								className="min-w-0"
 							>
-								<PropertiesPanel />
+								<PropertiesBoundary>
+									<PropertiesPanel />
+								</PropertiesBoundary>
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					</ResizablePanel>
@@ -218,7 +267,9 @@ export function MediaLayout({ resetCounter }: LayoutProps) {
 						onResize={(size) => setTimeline(size.asPercentage)}
 						className="min-h-0 px-1 pb-1"
 					>
-						<Timeline />
+						<TimelineBoundary>
+							<Timeline />
+						</TimelineBoundary>
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>
@@ -281,7 +332,9 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 									setToolsPanel(toGlobalTools(size.asPercentage))
 								}
 							>
-								<MediaPanel />
+								<MediaBoundary>
+									<MediaPanel />
+								</MediaBoundary>
 							</ResizablePanel>
 							<ResizableHandle withHandle />
 							<ResizablePanel
@@ -291,7 +344,9 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 									setPreviewPanel(toGlobalPreview(size.asPercentage))
 								}
 							>
-								<PreviewPanel />
+								<PreviewBoundary>
+									<PreviewPanel />
+								</PreviewBoundary>
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					</ResizablePanel>
@@ -301,7 +356,9 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 						minSize="15%"
 						onResize={(size) => setTimeline(size.asPercentage)}
 					>
-						<Timeline />
+						<TimelineBoundary>
+							<Timeline />
+						</TimelineBoundary>
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>
@@ -312,7 +369,9 @@ export function InspectorLayout({ resetCounter }: LayoutProps) {
 				maxSize="50%"
 				onResize={(size) => setPropertiesPanel(size.asPercentage)}
 			>
-				<PropertiesPanel />
+				<PropertiesBoundary>
+					<PropertiesPanel />
+				</PropertiesBoundary>
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);
@@ -374,7 +433,9 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 									setToolsPanel(toGlobalTools(size.asPercentage))
 								}
 							>
-								<MediaPanel />
+								<MediaBoundary>
+									<MediaPanel />
+								</MediaBoundary>
 							</ResizablePanel>
 							<ResizableHandle withHandle />
 							<ResizablePanel
@@ -384,7 +445,9 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 									setPropertiesPanel(toGlobalProperties(size.asPercentage))
 								}
 							>
-								<PropertiesPanel />
+								<PropertiesBoundary>
+									<PropertiesPanel />
+								</PropertiesBoundary>
 							</ResizablePanel>
 						</ResizablePanelGroup>
 					</ResizablePanel>
@@ -394,7 +457,9 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 						minSize="15%"
 						onResize={(size) => setTimeline(size.asPercentage)}
 					>
-						<Timeline />
+						<TimelineBoundary>
+							<Timeline />
+						</TimelineBoundary>
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>
@@ -404,7 +469,9 @@ export function VerticalPreviewLayout({ resetCounter }: LayoutProps) {
 				minSize="20%"
 				onResize={(size) => setPreviewPanel(size.asPercentage)}
 			>
-				<PreviewPanel />
+				<PreviewBoundary>
+					<PreviewPanel />
+				</PreviewBoundary>
 			</ResizablePanel>
 		</ResizablePanelGroup>
 	);
