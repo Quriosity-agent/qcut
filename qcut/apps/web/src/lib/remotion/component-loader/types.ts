@@ -4,7 +4,10 @@
  */
 
 import type { RemotionComponentCategory } from "../types";
-import type { ComponentMetadata, ValidationResult } from "../component-validator";
+import type {
+	ComponentMetadata,
+	ValidationResult,
+} from "../component-validator";
 import type { AnalysisResult } from "../sequence-analysis-service";
 
 // ============================================================================

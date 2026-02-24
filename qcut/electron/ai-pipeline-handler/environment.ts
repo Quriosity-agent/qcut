@@ -17,7 +17,9 @@ export function getFallbackConfig(): PipelineConfig {
 }
 
 /** Check if the bundled AICP binary is available and compatible. */
-export function getBundledConfig(binaryManager: BinaryManager): PipelineConfig | null {
+export function getBundledConfig(
+	binaryManager: BinaryManager
+): PipelineConfig | null {
 	const status = binaryManager.getBinaryStatus("aicp");
 	if (status.available && status.compatible) {
 		console.log(
@@ -32,9 +34,7 @@ export function getBundledConfig(binaryManager: BinaryManager): PipelineConfig |
 	}
 
 	if (!status.available) {
-		console.log(
-			"[AI Pipeline] Bundled binary not found, trying fallbacks..."
-		);
+		console.log("[AI Pipeline] Bundled binary not found, trying fallbacks...");
 	} else if (!status.compatible) {
 		console.warn(
 			`[AI Pipeline] Bundled binary v${status.version} not compatible with QCut v${app.getVersion()}`
@@ -87,7 +87,9 @@ export async function execCommand({
  * Detect available AI pipeline binary/module
  * Priority: Bundled binary > System aicp > Python module
  */
-export async function detectEnvironment(binaryManager: BinaryManager): Promise<PipelineConfig> {
+export async function detectEnvironment(
+	binaryManager: BinaryManager
+): Promise<PipelineConfig> {
 	try {
 		const bundledConfig = getBundledConfig(binaryManager);
 		if (bundledConfig) {

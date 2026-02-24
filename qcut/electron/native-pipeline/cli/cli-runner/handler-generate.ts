@@ -49,8 +49,7 @@ export async function handleGenerate(
 	if (options.command === "create-video" && !hasTextInput && !hasImageInput) {
 		return {
 			success: false,
-			error:
-				"Missing --text/-t or --image-url (need a prompt or image input).",
+			error: "Missing --text/-t or --image-url (need a prompt or image input).",
 		};
 	}
 	if (
@@ -60,8 +59,7 @@ export async function handleGenerate(
 	) {
 		return {
 			success: false,
-			error:
-				"Missing --text/-t or --audio-url (need a script or audio input).",
+			error: "Missing --text/-t or --audio-url (need a script or audio input).",
 		};
 	}
 

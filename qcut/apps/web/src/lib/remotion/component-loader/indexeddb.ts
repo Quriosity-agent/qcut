@@ -36,7 +36,9 @@ export function openDatabase(): Promise<IDBDatabase> {
 /**
  * Store a component in IndexedDB
  */
-export async function storeComponent(component: StoredComponent): Promise<void> {
+export async function storeComponent(
+	component: StoredComponent
+): Promise<void> {
 	const db = await openDatabase();
 
 	return new Promise((resolve, reject) => {
@@ -62,7 +64,9 @@ export async function storeComponent(component: StoredComponent): Promise<void> 
 /**
  * Get a component from IndexedDB by ID
  */
-export async function getStoredComponent(id: string): Promise<StoredComponent | null> {
+export async function getStoredComponent(
+	id: string
+): Promise<StoredComponent | null> {
 	const db = await openDatabase();
 
 	return new Promise((resolve, reject) => {

@@ -6,7 +6,11 @@
 import { ipcMain, IpcMainInvokeEvent } from "electron";
 import { claudeLog } from "../../utils/logger.js";
 import { HANDLER_NAME, type ProgressEventPayload } from "./types.js";
-import { getExportPresets, getExportRecommendation, applyProgressEvent } from "./public-api.js";
+import {
+	getExportPresets,
+	getExportRecommendation,
+	applyProgressEvent,
+} from "./public-api.js";
 
 /** Register Claude export IPC handlers for presets and recommendations. */
 export function setupClaudeExportIPC(): void {

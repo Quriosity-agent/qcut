@@ -4,7 +4,10 @@
  */
 
 import { PipelineExecutor } from "../../execution/executor.js";
-import { setApiKeyProvider, envApiKeyProvider } from "../../infra/api-caller.js";
+import {
+	setApiKeyProvider,
+	envApiKeyProvider,
+} from "../../infra/api-caller.js";
 import { loadEnvFile } from "../../infra/key-manager.js";
 import { readStdin } from "../interactive.js";
 import {
@@ -89,7 +92,12 @@ export class CLIPipelineRunner {
 			case "generate-avatar":
 				return handleGenerate(options, onProgress, this.executor, this.signal);
 			case "run-pipeline":
-				return handleRunPipeline(options, onProgress, this.executor, this.signal);
+				return handleRunPipeline(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
 			case "analyze-video":
 				return mediaHandleAnalyzeVideo(
 					options,
@@ -114,11 +122,26 @@ export class CLIPipelineRunner {
 			case "generate-remotion":
 				return handleGenerateRemotion(options, onProgress, null, this.signal);
 			case "transfer-motion":
-				return handleTransferMotion(options, onProgress, this.executor, this.signal);
+				return handleTransferMotion(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
 			case "generate-grid":
-				return handleGenerateGrid(options, onProgress, this.executor, this.signal);
+				return handleGenerateGrid(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
 			case "upscale-image":
-				return handleUpscaleImage(options, onProgress, this.executor, this.signal);
+				return handleUpscaleImage(
+					options,
+					onProgress,
+					this.executor,
+					this.signal
+				);
 			case "setup":
 				return adminHandleSetup();
 			case "set-key":

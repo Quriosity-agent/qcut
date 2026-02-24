@@ -309,13 +309,13 @@ export function setupApiKeyIPC(): void {
 				console.log("[API Keys] Encryption available:", encryptionAvailable);
 
 				const apiKeyFields = [
-						"falApiKey",
-						"freesoundApiKey",
-						"geminiApiKey",
-						"openRouterApiKey",
-						"anthropicApiKey",
-						"elevenLabsApiKey",
-					] as const;
+					"falApiKey",
+					"freesoundApiKey",
+					"geminiApiKey",
+					"openRouterApiKey",
+					"anthropicApiKey",
+					"elevenLabsApiKey",
+				] as const;
 
 				if (encryptionAvailable) {
 					for (const field of apiKeyFields) {

@@ -21,10 +21,7 @@ import type {
 	PipelineResult,
 	PipelineStatus,
 } from "./types.js";
-import {
-	getFallbackConfig,
-	detectEnvironment,
-} from "./environment.js";
+import { getFallbackConfig, detectEnvironment } from "./environment.js";
 import {
 	buildSessionId,
 	shouldUseJsonOutput,
@@ -186,9 +183,7 @@ export class AIPipelineManager {
 		const sessionId = options.sessionId || buildSessionId();
 		const args = [...baseArgs, options.command];
 
-		if (
-			shouldUseJsonOutput({ command: options.command, args: options.args })
-		) {
+		if (shouldUseJsonOutput({ command: options.command, args: options.args })) {
 			args.push("--json");
 		}
 

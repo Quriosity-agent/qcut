@@ -9,7 +9,10 @@ import { PipelineExecutor } from "../../execution/executor.js";
 import type { PipelineStep } from "../../execution/executor.js";
 import { downloadOutput } from "../../infra/api-caller.js";
 import { resolveOutputDir } from "../../output/output-utils.js";
-import { compositeGrid, getGridImageCount } from "../../output/grid-generator.js";
+import {
+	compositeGrid,
+	getGridImageCount,
+} from "../../output/grid-generator.js";
 import type { CLIRunOptions, CLIResult, ProgressFn } from "./types.js";
 
 export async function handleGenerateGrid(
