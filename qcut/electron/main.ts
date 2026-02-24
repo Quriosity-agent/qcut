@@ -125,6 +125,7 @@ const { setupMoyinIPC } = require("./moyin-handler.js");
 
 let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
+let staticServerPort = 8080;
 
 // Suppress Electron DevTools Autofill errors
 app.commandLine.appendSwitch("disable-features", "Autofill");
@@ -324,7 +325,7 @@ function setupAutoUpdater(): void {
 }
 
 /** Create a local HTTP server to serve FFmpeg WASM and other static assets. */
-function createStaticServer(): http.Server {
+function createStaticServer(): Promise<http.Server> {
 	const server = http.createServer((req, res) => {
 		const url = new URL(req.url || "", `http://${req.headers.host}`);
 		let filePath = url.pathname;
@@ -380,11 +381,28 @@ function createStaticServer(): http.Server {
 		});
 	});
 
-	server.listen(8080, "localhost", () => {
-		logger.log("[Static Server] Started on http://localhost:8080");
-	});
+	return new Promise<http.Server>((resolve, reject) => {
+		const BASE_PORT = 8080;
+		const MAX_PORT = 8090;
 
-	return server;
+		function tryListen(port: number): void {
+			server.once("error", (err: NodeJS.ErrnoException) => {
+				if (err.code === "EADDRINUSE" && port < MAX_PORT) {
+					logger.log(`[Static Server] Port ${port} in use, trying ${port + 1}...`);
+					tryListen(port + 1);
+				} else {
+					reject(err);
+				}
+			});
+			server.listen(port, "localhost", () => {
+				staticServerPort = port;
+				logger.log(`[Static Server] Started on http://localhost:${port}`);
+				resolve(server);
+			});
+		}
+
+		tryListen(BASE_PORT);
+	});
 }
 
 /** Create the main BrowserWindow with CSP headers and protocol handling. */
@@ -411,7 +429,7 @@ function createWindow(): void {
 					"worker-src 'self' blob: app:; " +
 					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
 					"font-src 'self' https://fonts.gstatic.com; " +
-					"connect-src 'self' blob: app: http://localhost:8080 ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://fal.run https://queue.fal.run https://rest.alpha.fal.ai https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://freesound.org https://cdn.freesound.org; " +
+					`connect-src 'self' blob: app: http://localhost:${staticServerPort} ws: wss: https://fonts.googleapis.com https://fonts.gstatic.com https://api.github.com https://fal.run https://queue.fal.run https://rest.alpha.fal.ai https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://freesound.org https://cdn.freesound.org; " +
 					"media-src 'self' blob: data: app: https://freesound.org https://cdn.freesound.org https://fal.media https://v3.fal.media https://v3b.fal.media; " +
 					"img-src 'self' blob: data: app: https://fal.run https://fal.media https://v3.fal.media https://v3b.fal.media https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://avatars.githubusercontent.com https://i.ibb.co;",
 			];
@@ -620,7 +638,7 @@ if (!isCliKeyCommand) {
 		});
 
 		// Start the static server to serve FFmpeg WASM files
-		staticServer = createStaticServer();
+		staticServer = await createStaticServer();
 
 		createWindow();
 
