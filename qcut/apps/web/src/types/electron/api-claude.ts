@@ -354,6 +354,17 @@ export interface ElectronClaudeOps {
 			) => void;
 			removeListeners: () => void;
 		};
+		ui: {
+			onSwitchPanelRequest: (
+				callback: (data: { requestId: string; panel: string }) => void
+			) => void;
+			sendSwitchPanelResponse: (
+				requestId: string,
+				result?: { switched: boolean; panel: string; group: string },
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
 	};
 }
 

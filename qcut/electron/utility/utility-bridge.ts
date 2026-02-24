@@ -38,6 +38,11 @@ import {
 	requestStopRecordingFromRenderer,
 } from "../claude/handlers/claude-screen-recording-handler.js";
 import {
+	requestSwitchPanel,
+	resolvePanelId,
+	getAvailablePanels,
+} from "../claude/handlers/claude-ui-handler.js";
+import {
 	listCaptureSources,
 	buildStatus as buildScreenRecordingStatus,
 } from "../screen-recording-handler.js";
@@ -310,6 +315,17 @@ async function handleMainRequest(
 			return requestStopRecordingFromRenderer(win, {
 				discard: req.discard,
 			});
+		}
+
+		case "switch-panel": {
+			const req = data as { panel: string };
+			const panelId = resolvePanelId(req.panel);
+			if (!panelId) {
+				throw new Error(
+					`Unknown panel: ${req.panel}. Available: ${getAvailablePanels().join(", ")}`
+				);
+			}
+			return requestSwitchPanel(win, panelId);
 		}
 
 		default:

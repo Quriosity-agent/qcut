@@ -131,6 +131,7 @@ const COMMANDS = [
 	"editor:screen-recording:start",
 	"editor:screen-recording:stop",
 	"editor:screen-recording:status",
+	"editor:ui:switch-panel",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -425,6 +426,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// screen-recording options
 			"source-id": { type: "string" },
 			discard: { type: "boolean", default: false },
+			// ui options
+			panel: { type: "string" },
 		},
 		strict: false,
 	});
@@ -623,6 +626,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// screen-recording options
 		sourceId: values["source-id"] as string | undefined,
 		discard: (values.discard as boolean) ?? false,
+		// ui options
+		panel: values.panel as string | undefined,
 	};
 }
 

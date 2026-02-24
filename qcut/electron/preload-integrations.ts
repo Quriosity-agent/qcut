@@ -569,6 +569,36 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				);
 			},
 		},
+		ui: {
+			onSwitchPanelRequest: (
+				callback: (data: { requestId: string; panel: string }) => void
+			) => {
+				ipcRenderer.removeAllListeners(
+					"claude:ui:switch-panel:request",
+				);
+				ipcRenderer.on(
+					"claude:ui:switch-panel:request",
+					(_: unknown, data: { requestId: string; panel: string }) =>
+						callback(data),
+				);
+			},
+			sendSwitchPanelResponse: (
+				requestId: string,
+				result?: { switched: boolean; panel: string; group: string },
+				error?: string
+			) => {
+				ipcRenderer.send("claude:ui:switch-panel:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners(
+					"claude:ui:switch-panel:request",
+				);
+			},
+		},
 	};
 }
 

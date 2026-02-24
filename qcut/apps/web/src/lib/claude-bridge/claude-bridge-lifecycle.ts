@@ -13,6 +13,10 @@ import {
 	cleanupClaudeScreenRecordingBridge,
 	setupClaudeScreenRecordingBridge,
 } from "@/lib/claude-bridge/claude-screen-recording-bridge";
+import {
+	cleanupClaudeUiBridge,
+	setupClaudeUiBridge,
+} from "@/lib/claude-bridge/claude-ui-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -57,6 +61,11 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeScreenRecordingBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup UI bridge",
+		step: setupClaudeUiBridge,
+		onError,
+	});
 
 	return () => {
 		runBridgeStep({
@@ -77,6 +86,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup screen recording bridge",
 			step: cleanupClaudeScreenRecordingBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup UI bridge",
+			step: cleanupClaudeUiBridge,
 			onError,
 		});
 	};

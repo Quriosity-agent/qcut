@@ -176,6 +176,24 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		]);
 	});
 
+	// ==========================================================================
+	// UI Panel Navigation routes
+	// ==========================================================================
+	router.post("/api/claude/ui/switch-panel", async (req) => {
+		if (!req.body?.panel || typeof req.body.panel !== "string") {
+			throw new HttpError(400, "Missing 'panel' in request body");
+		}
+		return await Promise.race([
+			requestFromMain("switch-panel", { panel: req.body.panel }),
+			new Promise<never>((_, reject) =>
+				setTimeout(
+					() => reject(new HttpError(504, "Panel switch timed out")),
+					10_000
+				)
+			),
+		]);
+	});
+
 	// Auth check
 	function checkAuth(req: IncomingMessage): boolean {
 		const token = process.env.QCUT_API_TOKEN;

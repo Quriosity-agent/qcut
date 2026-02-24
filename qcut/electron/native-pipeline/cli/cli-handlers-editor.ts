@@ -81,10 +81,13 @@ export async function handleEditorCommand(
 			case "screen-recording":
 				return await handleScreenRecordingCommand(client, options);
 
+			case "ui":
+				return await handleUiCommand(client, options);
+
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, navigator, screen-recording`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, navigator, screen-recording, ui`,
 				};
 		}
 	} catch (err) {
@@ -178,6 +181,39 @@ async function handleScreenRecordingCommand(
 			return {
 				success: false,
 				error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, status`,
+			};
+	}
+}
+
+/**
+ * Handle `editor:ui:*` commands.
+ * - `switch-panel` — switch to a specific editor panel
+ */
+async function handleUiCommand(
+	client: EditorApiClient,
+	options: CLIRunOptions
+): Promise<CLIResult> {
+	const parts = options.command.split(":");
+	const action = parts[2]; // "switch-panel"
+
+	switch (action) {
+		case "switch-panel": {
+			const panel = options.panel;
+			if (!panel) {
+				return {
+					success: false,
+					error: "Missing --panel. Available: remotion, terminal, skills, media, ai, text2image, pty, nano-edit, upscale, word-timeline, project-folder, moyin, video-edit",
+				};
+			}
+			const data = await client.post("/api/claude/ui/switch-panel", {
+				panel,
+			});
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown ui action: ${action}. Available: switch-panel`,
 			};
 	}
 }

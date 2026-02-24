@@ -816,6 +816,17 @@ export interface ElectronAPI {
 			) => void;
 			removeListeners: () => void;
 		};
+		ui: {
+			onSwitchPanelRequest: (
+				callback: (data: { requestId: string; panel: string }) => void
+			) => void;
+			sendSwitchPanelResponse: (
+				requestId: string,
+				result?: { switched: boolean; panel: string; group: string },
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
 	};
 
 	// Remotion folder operations

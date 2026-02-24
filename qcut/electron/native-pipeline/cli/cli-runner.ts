@@ -194,6 +194,8 @@ export interface CLIRunOptions {
 	// screen-recording options
 	sourceId?: string;
 	discard?: boolean;
+	// ui options
+	panel?: string;
 }
 
 export interface CLIResult {
