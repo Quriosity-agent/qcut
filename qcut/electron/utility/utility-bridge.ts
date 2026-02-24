@@ -57,6 +57,7 @@ try {
 }
 
 let utilityChild: ReturnType<typeof utilityProcess.fork> | null = null;
+let stoppingUtility = false;
 
 // Track PTY session -> webContents mapping for forwarding data back
 const sessionToWebContentsId = new Map<string, number>();
@@ -361,15 +362,19 @@ export function startUtilityProcess(): void {
 		return;
 	}
 
+	stoppingUtility = false;
 	utilityReady = false;
 
 	const utilityPath = path.join(__dirname, "utility-process.js");
 	logger.info(`[UtilityBridge] Forking utility process: ${utilityPath}`);
 
-	utilityChild = utilityProcess.fork(utilityPath);
+	const child = utilityProcess.fork(utilityPath);
+	utilityChild = child;
 
 	// Handle messages from utility process
-	utilityChild.on("message", async (msg: UtilityToMainMessage) => {
+	// Use local `child` ref so responses aren't misrouted if the global
+	// `utilityChild` is reassigned during an async handler.
+	child.on("message", async (msg: UtilityToMainMessage) => {
 		switch (msg.type) {
 			case "ready":
 				logger.info("[UtilityBridge] Utility process ready");
@@ -393,14 +398,14 @@ export function startUtilityProcess(): void {
 				// Utility process needs something from main
 				try {
 					const result = await handleMainRequest(msg.channel, msg.data);
-					utilityChild?.postMessage({
+					child.postMessage({
 						type: "main-response",
 						id: msg.id,
 						result,
 					});
 				} catch (err: unknown) {
 					const errMessage = err instanceof Error ? err.message : String(err);
-					utilityChild?.postMessage({
+					child.postMessage({
 						type: "main-response",
 						id: msg.id,
 						error: errMessage,
@@ -452,11 +457,14 @@ export function startUtilityProcess(): void {
 			case "pty:kill-all-result":
 				// Fire-and-forget acknowledgments
 				break;
+
+			default:
+				break;
 		}
 	});
 
 	// Crash recovery
-	utilityChild.on("exit", (code) => {
+	child.on("exit", (code) => {
 		logger.error(`[UtilityBridge] Utility process exited with code ${code}`);
 		utilityChild = null;
 		utilityReady = false;
@@ -488,8 +496,8 @@ export function startUtilityProcess(): void {
 		}
 		pendingPtySpawns.clear();
 
-		// Auto-restart after crash (not on clean exit)
-		if (code !== 0 && code !== null) {
+		// Auto-restart after crash (not on intentional stop or clean exit)
+		if (!stoppingUtility && code !== 0 && code !== null) {
 			logger.info("[UtilityBridge] Restarting utility process in 1s...");
 			setTimeout(() => startUtilityProcess(), 1000);
 		} else {
@@ -513,6 +521,7 @@ export function startUtilityProcess(): void {
 /** Stop the utility process */
 export function stopUtilityProcess(): void {
 	if (utilityChild) {
+		stoppingUtility = true;
 		stopHeartbeat();
 		utilityChild.postMessage({ type: "shutdown" });
 		// Give it a moment to clean up, then kill if needed
