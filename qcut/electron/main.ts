@@ -533,7 +533,7 @@ if (isCliKeyCommand) {
 }
 
 if (!isCliKeyCommand) {
-	app.whenReady().then(() => {
+	app.whenReady().then(async () => {
 		// Set macOS dock icon (requires PNG format)
 		if (process.platform === "darwin" && app.dock) {
 			const iconPath = app.isPackaged

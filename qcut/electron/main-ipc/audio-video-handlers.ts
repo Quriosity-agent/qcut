@@ -33,8 +33,8 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 			_event: IpcMainInvokeEvent,
 			{ audioData, filename }: { audioData: any; filename: string }
 		) => {
-			const { saveAudioToTemp } = require("../audio-temp-handler.js");
 			try {
+				const { saveAudioToTemp } = require("../audio-temp-handler.js");
 				const filePath = await saveAudioToTemp(audioData, filename);
 				return { success: true, path: filePath };
 			} catch (error: any) {

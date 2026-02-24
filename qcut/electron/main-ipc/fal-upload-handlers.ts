@@ -134,6 +134,10 @@ export function registerFalUploadHandlers(deps: MainIpcDeps): void {
 			apiKey: string
 		): Promise<{ ok: boolean; status: number; data: unknown }> => {
 			try {
+				const parsed = new URL(url);
+				if (parsed.protocol !== "https:" || !parsed.hostname.endsWith(".fal.ai")) {
+					return { ok: false, status: 403, data: { error: "URL must be an https://*.fal.ai endpoint" } };
+				}
 				const response = await fetch(url, {
 					headers: { Authorization: `Key ${apiKey}` },
 				});

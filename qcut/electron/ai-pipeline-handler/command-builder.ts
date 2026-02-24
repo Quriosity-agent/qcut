@@ -124,6 +124,12 @@ export async function buildSpawnEnvironment(): Promise<NodeJS.ProcessEnv> {
 		if (storedKeys.geminiApiKey) {
 			spawnEnv.GEMINI_API_KEY = storedKeys.geminiApiKey;
 		}
+		if (storedKeys.openRouterApiKey) {
+			spawnEnv.OPENROUTER_API_KEY = storedKeys.openRouterApiKey;
+		}
+		if (storedKeys.elevenLabsApiKey) {
+			spawnEnv.ELEVENLABS_API_KEY = storedKeys.elevenLabsApiKey;
+		}
 	} catch (error) {
 		console.warn("[AI Pipeline] Failed to load stored API keys:", error);
 	}

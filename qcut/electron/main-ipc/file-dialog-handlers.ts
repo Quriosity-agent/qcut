@@ -12,7 +12,9 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"open-file-dialog",
 		async (): Promise<Electron.OpenDialogReturnValue> => {
-			const result = await dialog.showOpenDialog(getMainWindow()!, {
+			const win = getMainWindow();
+			if (!win) return { canceled: true, filePaths: [] };
+			const result = await dialog.showOpenDialog(win, {
 				properties: ["openFile"],
 				filters: [
 					{
@@ -47,7 +49,9 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"open-multiple-files-dialog",
 		async (): Promise<Electron.OpenDialogReturnValue> => {
-			const result = await dialog.showOpenDialog(getMainWindow()!, {
+			const win = getMainWindow();
+			if (!win) return { canceled: true, filePaths: [] };
+			const result = await dialog.showOpenDialog(win, {
 				properties: ["openFile", "multiSelections"],
 				filters: [
 					{
@@ -80,7 +84,9 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 			defaultFilename?: string,
 			filters?: Electron.FileFilter[]
 		): Promise<Electron.SaveDialogReturnValue> => {
-			const result = await dialog.showSaveDialog(getMainWindow()!, {
+			const win = getMainWindow();
+			if (!win) return { canceled: true, filePath: "" };
+			const result = await dialog.showSaveDialog(win, {
 				defaultPath: defaultFilename,
 				filters: filters || [
 					{ name: "Video Files", extensions: ["mp4"] },

@@ -45,19 +45,22 @@ export async function storeComponent(
 		const transaction = db.transaction([STORE_NAME], "readwrite");
 		const store = transaction.objectStore(STORE_NAME);
 
-		const request = store.put(component);
-
-		request.onerror = () => {
-			reject(new Error("Failed to store component"));
-		};
-
-		request.onsuccess = () => {
+		transaction.oncomplete = () => {
+			db.close();
 			resolve();
 		};
 
-		transaction.oncomplete = () => {
+		transaction.onerror = () => {
 			db.close();
+			reject(new Error("Failed to store component"));
 		};
+
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Failed to store component"));
+		};
+
+		store.put(component);
 	});
 }
 
@@ -72,19 +75,21 @@ export async function getStoredComponent(
 	return new Promise((resolve, reject) => {
 		const transaction = db.transaction([STORE_NAME], "readonly");
 		const store = transaction.objectStore(STORE_NAME);
-
 		const request = store.get(id);
-
-		request.onerror = () => {
-			reject(new Error("Failed to get component"));
-		};
-
-		request.onsuccess = () => {
-			resolve(request.result || null);
-		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve(request.result || null);
+		};
+
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Failed to get component"));
+		};
+
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Failed to get component"));
 		};
 	});
 }
@@ -98,19 +103,21 @@ export async function getAllStoredComponents(): Promise<StoredComponent[]> {
 	return new Promise((resolve, reject) => {
 		const transaction = db.transaction([STORE_NAME], "readonly");
 		const store = transaction.objectStore(STORE_NAME);
-
 		const request = store.getAll();
-
-		request.onerror = () => {
-			reject(new Error("Failed to get components"));
-		};
-
-		request.onsuccess = () => {
-			resolve(request.result || []);
-		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve(request.result || []);
+		};
+
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Failed to get components"));
+		};
+
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Failed to get components"));
 		};
 	});
 }
@@ -125,18 +132,21 @@ export async function deleteStoredComponent(id: string): Promise<void> {
 		const transaction = db.transaction([STORE_NAME], "readwrite");
 		const store = transaction.objectStore(STORE_NAME);
 
-		const request = store.delete(id);
-
-		request.onerror = () => {
-			reject(new Error("Failed to delete component"));
-		};
-
-		request.onsuccess = () => {
+		transaction.oncomplete = () => {
+			db.close();
 			resolve();
 		};
 
-		transaction.oncomplete = () => {
+		transaction.onerror = () => {
 			db.close();
+			reject(new Error("Failed to delete component"));
 		};
+
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Failed to delete component"));
+		};
+
+		store.delete(id);
 	});
 }

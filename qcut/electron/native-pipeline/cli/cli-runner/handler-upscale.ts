@@ -39,7 +39,13 @@ export async function handleUpscaleImage(
 	});
 
 	const params: Record<string, unknown> = {};
-	if (options.upscale) params.upscale_factor = parseInt(options.upscale, 10);
+	if (options.upscale) {
+		const factor = parseInt(options.upscale, 10);
+		if (Number.isNaN(factor) || factor <= 0) {
+			return { success: false, error: `Invalid --upscale value: ${options.upscale}` };
+		}
+		params.upscale_factor = factor;
+	}
 
 	if (options.target) {
 		const targetMap: Record<string, number> = {

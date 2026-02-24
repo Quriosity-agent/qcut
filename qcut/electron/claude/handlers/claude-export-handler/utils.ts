@@ -80,12 +80,15 @@ export function pruneOldJobs(exportJobs: Map<string, ExportJobInternal>): void {
 		if (exportJobs.size <= MAX_JOBS) {
 			return;
 		}
-		const oldest = [...exportJobs.entries()].sort(
+		const terminal = [...exportJobs.entries()].filter(
+			([, job]) => job.status === "completed" || job.status === "failed"
+		);
+		const sorted = terminal.sort(
 			(a, b) => a[1].startedAt - b[1].startedAt
 		);
-		const removeCount = oldest.length - MAX_JOBS;
-		for (let i = 0; i < removeCount; i++) {
-			exportJobs.delete(oldest[i][0]);
+		const removeCount = exportJobs.size - MAX_JOBS;
+		for (let i = 0; i < removeCount && i < sorted.length; i++) {
+			exportJobs.delete(sorted[i][0]);
 		}
 	} catch (error) {
 		claudeLog.warn(HANDLER_NAME, "Failed to prune old export jobs:", error);

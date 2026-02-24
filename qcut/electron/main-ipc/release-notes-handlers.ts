@@ -23,6 +23,9 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 		): Promise<ReleaseNote | null> => {
 			try {
 				const releasesDir = getReleasesDir();
+				if (version && !/^[\d.]+(?:-[\w.]+)?$/.test(version)) {
+					return null;
+				}
 				const filename = version ? `v${version}.md` : "latest.md";
 				const filePath = path.join(releasesDir, filename);
 

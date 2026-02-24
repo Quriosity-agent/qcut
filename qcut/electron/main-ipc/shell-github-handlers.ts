@@ -20,11 +20,12 @@ export function registerShellGithubHandlers(deps: MainIpcDeps): void {
 		try {
 			const https = require("https");
 			return new Promise((resolve) => {
-				https
+				const req = https
 					.get(
 						"https://api.github.com/repos/donghaozhang/qcut",
 						{
 							headers: { "User-Agent": "QCut-Video-Editor" },
+							timeout: 10000,
 						},
 						(res: any) => {
 							let data = "";
@@ -45,6 +46,10 @@ export function registerShellGithubHandlers(deps: MainIpcDeps): void {
 						logger.error("Failed to fetch GitHub stars:", error);
 						resolve({ stars: 0 });
 					});
+				req.on("timeout", () => {
+					req.destroy();
+					resolve({ stars: 0 });
+				});
 			});
 		} catch (error: any) {
 			logger.error("Error fetching GitHub stars:", error);

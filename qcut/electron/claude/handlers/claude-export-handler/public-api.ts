@@ -59,7 +59,7 @@ export function getExportPresets(): ExportPreset[] {
 export function getExportRecommendation(target: string): ExportRecommendation {
 	claudeLog.info(HANDLER_NAME, `Recommending export for target: ${target}`);
 
-	const defaultPreset = PRESETS.find((p) => p.id === "youtube-1080p")!;
+	const defaultPreset = PRESETS.find((p) => p.id === "youtube-1080p") ?? PRESETS[0];
 	const preset =
 		PRESETS.find((p) => p.platform === target || p.id === target) ||
 		defaultPreset;
