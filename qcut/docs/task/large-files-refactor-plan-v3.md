@@ -1,11 +1,11 @@
 # Large Files Refactoring Plan v3 — Next 5 Low-Risk Files
 
 > Generated: 2026-02-24 | Continues from: large-files-refactor-plan-v2.md (5 files DONE)
-> **STATUS: PENDING**
+> **STATUS: ✅ ALL 5 DONE**
 
 ---
 
-## 1. `electron/main-ipc.ts` (801 lines)
+## 1. ✅ DONE `electron/main-ipc.ts` (801 lines)
 
 ### Analysis
 - **IPC registration hub.** Single exported function `registerMainIpcHandlers(deps)` that registers ~25 `ipcMain.handle()` calls.
@@ -47,7 +47,7 @@ export function registerMainIpcHandlers(deps: MainIpcDeps): void {
 
 ---
 
-## 2. `electron/claude/handlers/claude-export-handler.ts` (938 lines)
+## 2. ✅ DONE `electron/claude/handlers/claude-export-handler.ts` (938 lines)
 
 ### Analysis
 - **Export presets data + export job engine.** Contains:
@@ -83,7 +83,7 @@ electron/claude/handlers/claude-export-handler/
 
 ---
 
-## 3. `apps/web/src/lib/remotion/component-loader.ts` (874 lines)
+## 3. ✅ DONE `apps/web/src/lib/remotion/component-loader.ts` (874 lines)
 
 ### Analysis
 - **Remotion component loading utility.** Clearly sectioned:
@@ -121,7 +121,7 @@ apps/web/src/lib/remotion/component-loader/
 
 ---
 
-## 4. `electron/ai-pipeline-handler.ts` (848 lines)
+## 4. ✅ DONE `electron/ai-pipeline-handler.ts` (848 lines)
 
 ### Analysis
 - **Single class `AIPipelineManager`** (~750 lines) + types (~85 lines at top).
@@ -156,7 +156,7 @@ electron/ai-pipeline-handler/
 
 ---
 
-## 5. `electron/native-pipeline/cli/cli-runner.ts` (877 lines)
+## 5. ✅ DONE `electron/native-pipeline/cli/cli-runner.ts` (877 lines)
 
 ### Analysis
 - **Single class `CLIPipelineRunner`** (~710 lines) + 2 standalone utility functions + types/imports.
