@@ -1,13 +1,17 @@
 import { desktopCapturer, session } from "electron";
 import {
 	SCREEN_RECORDING_STATE,
-	log,
 	type ActiveScreenRecordingSession,
 	type ScreenRecordingStatus,
 } from "./types.js";
+import { log } from "./logger.js";
 
-export let activeSession: ActiveScreenRecordingSession | null = null;
-export let isDisplayMediaHandlerConfigured = false;
+let activeSession: ActiveScreenRecordingSession | null = null;
+let isDisplayMediaHandlerConfigured = false;
+
+export function getActiveSession(): ActiveScreenRecordingSession | null {
+	return activeSession;
+}
 
 export function setActiveSession(
 	value: ActiveScreenRecordingSession | null

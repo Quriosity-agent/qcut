@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useExportStore } from "@/stores/export-store";
 import { PanelView } from "@/types/panel";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import { useCaptionsStore } from "@/stores/captions-store";
 import { useAsyncMediaItems } from "@/hooks/media/use-async-media-store";
 import { ExportCanvas, ExportCanvasRef } from "@/components/export-canvas";
 import { Button } from "@/components/ui/button";
@@ -45,12 +44,7 @@ import { ExportWarnings } from "./export-warnings";
 export function ExportDialog() {
 	const { error } = useExportStore();
 	const { getTotalDuration, tracks } = useTimelineStore();
-	const { captionTracks } = useCaptionsStore();
-	const {
-		mediaItems,
-		loading: mediaItemsLoading,
-		error: mediaItemsError,
-	} = useAsyncMediaItems();
+	const { mediaItems, loading: mediaItemsLoading } = useAsyncMediaItems();
 
 	// Caption export state
 	const [exportCaptionsEnabled, setExportCaptionsEnabled] = useState(false);

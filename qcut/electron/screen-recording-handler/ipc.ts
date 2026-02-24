@@ -26,7 +26,7 @@ import {
 } from "./file-ops.js";
 import { finalizeRecordingOutput, cleanupSessionFiles } from "./transcoder.js";
 import {
-	activeSession,
+	getActiveSession,
 	setActiveSession,
 	ensureDisplayMediaHandlerConfigured,
 	buildStatus,
@@ -60,7 +60,7 @@ export function setupScreenRecordingIPC(): void {
 			let pendingCapturePath: string | null = null;
 
 			try {
-				if (activeSession) {
+				if (getActiveSession()) {
 					throw new Error("Screen recording is already active");
 				}
 
@@ -120,9 +120,10 @@ export function setupScreenRecordingIPC(): void {
 					mimeType: options.mimeType ?? null,
 				};
 			} catch (error: unknown) {
-				if (activeSession?.fileStream) {
+				const currentSession = getActiveSession();
+				if (currentSession?.fileStream) {
 					try {
-						await closeStream({ fileStream: activeSession.fileStream });
+						await closeStream({ fileStream: currentSession.fileStream });
 					} catch {
 						// best-effort stream cleanup
 					}
@@ -140,10 +141,9 @@ export function setupScreenRecordingIPC(): void {
 					}
 				}
 
-				if (activeSession) {
-					const sessionToCleanup = activeSession;
+				if (currentSession) {
 					setActiveSession(null);
-					await cleanupSessionFiles({ sessionData: sessionToCleanup });
+					await cleanupSessionFiles({ sessionData: currentSession });
 				}
 
 				if (pendingCapturePath) {
@@ -166,20 +166,21 @@ export function setupScreenRecordingIPC(): void {
 			options: AppendScreenRecordingChunkOptions
 		): Promise<AppendScreenRecordingChunkResult> => {
 			try {
-				if (!activeSession) {
+				const session = getActiveSession();
+				if (!session) {
 					throw new Error("No active screen recording session");
 				}
 
-				if (event.sender.id !== activeSession.ownerWebContentsId) {
+				if (event.sender.id !== session.ownerWebContentsId) {
 					throw new Error("Screen recording session owner mismatch");
 				}
 
-				if (options.sessionId !== activeSession.sessionId) {
+				if (options.sessionId !== session.sessionId) {
 					throw new Error("Invalid screen recording session id");
 				}
 
 				const bytesWritten = await appendChunkToSession({
-					sessionData: activeSession,
+					sessionData: session,
 					chunk: options.chunk,
 				});
 
@@ -198,7 +199,8 @@ export function setupScreenRecordingIPC(): void {
 			event: IpcMainInvokeEvent,
 			options: StopScreenRecordingOptions = {}
 		): Promise<StopScreenRecordingResult> => {
-			if (!activeSession) {
+			const sessionToStop = getActiveSession();
+			if (!sessionToStop) {
 				return {
 					success: true,
 					filePath: null,
@@ -209,18 +211,16 @@ export function setupScreenRecordingIPC(): void {
 			}
 
 			try {
-				if (event.sender.id !== activeSession.ownerWebContentsId) {
+				if (event.sender.id !== sessionToStop.ownerWebContentsId) {
 					throw new Error("Screen recording session owner mismatch");
 				}
 
 				if (
 					options.sessionId &&
-					options.sessionId !== activeSession.sessionId
+					options.sessionId !== sessionToStop.sessionId
 				) {
 					throw new Error("Invalid screen recording session id");
 				}
-
-				const sessionToStop = activeSession;
 				const shouldDiscard = options.discard ?? false;
 				const durationMs = Math.max(0, Date.now() - sessionToStop.startedAt);
 
@@ -248,7 +248,7 @@ export function setupScreenRecordingIPC(): void {
 					discarded: shouldDiscard,
 				};
 			} catch (error: unknown) {
-				const sessionToCleanup = activeSession;
+				const sessionToCleanup = getActiveSession();
 				setActiveSession(null);
 
 				if (sessionToCleanup) {

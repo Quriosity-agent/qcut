@@ -58,11 +58,7 @@ export async function generateVideo(
 				);
 			}
 
-			console.log(
-				`FAL API Key present: ${falApiKey ? "Yes (length: " + falApiKey.length + ")" : "No"}`
-			);
-
-			// Get model configuration from centralized config
+				// Get model configuration from centralized config
 			const modelConfig = getModelConfig(request.model);
 			if (!modelConfig) {
 				throw new Error(`Unknown model: ${request.model}`);
@@ -77,13 +73,8 @@ export async function generateVideo(
 
 			const jobId = generateJobId();
 
-			console.log(`Generating video with FAL AI: ${endpoint}`);
-			console.log(`Prompt: ${request.prompt}`);
-
 			// Build request payload
 			const payload = buildTextToVideoPayload(request, modelConfig);
-
-			console.log(`Sending request to ${endpoint} with payload:`, payload);
 
 			// Track start time for elapsed time calculation
 			const startTime = Date.now();
@@ -128,13 +119,11 @@ export async function generateVideo(
 			}
 
 			const queueResult = await queueResponse.json();
-			console.log("FAL Response received:", queueResult);
 
 			// Check if we got a request_id (queue mode) or direct result
 			const requestId = queueResult.request_id;
 
 			if (requestId) {
-				console.log("Queue mode: polling for result...");
 				return await pollQueueStatus(requestId, {
 					endpoint,
 					startTime,
@@ -148,7 +137,6 @@ export async function generateVideo(
 			}
 
 			if (queueResult.video && queueResult.video.url) {
-				console.log("Direct mode: video ready immediately");
 
 				// Parse Sora 2 response if needed
 				let videoUrl = queueResult.video.url;
@@ -193,7 +181,6 @@ export async function generateVideo(
 			}
 
 			// Fallback: Try direct API call without queue headers
-			console.warn("Queue mode failed, trying direct API call...");
 
 			const directResponse = await makeFalRequest(endpoint, payload);
 

@@ -7,6 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import type { CLIRunOptions, CLIResult } from "../cli-runner/types.js";
+import type { CharacterInNovel } from "../../vimax/types/character.js";
 import { resolveOutputDir } from "../../output/output-utils.js";
 
 type ProgressFn = (progress: {
@@ -114,7 +115,7 @@ export async function handleVimaxGeneratePortraits(
 		const sessionId = `cli-${Date.now()}`;
 		const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
-		let characters;
+		let characters: CharacterInNovel[];
 
 		// Check if input is a JSON file with pre-extracted characters
 		if (fs.existsSync(text) && text.endsWith(".json")) {

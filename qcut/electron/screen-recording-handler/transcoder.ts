@@ -3,9 +3,9 @@ import { getFFmpegPath } from "../ffmpeg/utils.js";
 import {
 	SCREEN_RECORDING_OUTPUT_FORMAT,
 	FILE_EXTENSION,
-	log,
 	type ActiveScreenRecordingSession,
 } from "./types.js";
+import { log } from "./logger.js";
 import { replaceExtension } from "./path-utils.js";
 import { removeFileIfExists, moveFile } from "./file-ops.js";
 
