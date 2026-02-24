@@ -10,7 +10,7 @@ import React, { useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { BasePropEditorProps } from "./index";
+import type { BasePropEditorProps } from "./types";
 
 export interface BooleanPropProps extends BasePropEditorProps<boolean> {
 	/** Label shown when true */

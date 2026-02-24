@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { BasePropEditorProps } from "./index";
+import type { BasePropEditorProps } from "./types";
 
 export interface TextPropProps extends BasePropEditorProps<string> {
 	/** Whether to use multiline textarea */

@@ -24,6 +24,7 @@ import {
 	saveMoyinProject,
 	loadMoyinProject,
 	clearMoyinProject,
+	type ParseStatus,
 } from "./moyin-persistence";
 import { enhanceCharactersLLM, enhanceScenesLLM } from "./moyin-calibration";
 import {
@@ -43,7 +44,7 @@ import { pushUndo, popUndo, popRedo } from "./moyin-undo";
 // Types
 
 export type MoyinStep = "script" | "characters" | "scenes" | "generate";
-export type ParseStatus = "idle" | "parsing" | "ready" | "error";
+export type { ParseStatus } from "./moyin-persistence";
 export type GenerationStatus = "idle" | "generating" | "done" | "error";
 export type CalibrationStatus = "idle" | "calibrating" | "done" | "error";
 export type PipelineStep =

@@ -32,7 +32,7 @@ import {
 	handleVimaxShowRegistry,
 	handleVimaxListModels,
 } from "./cli/vimax-cli-handlers.js";
-import type { CLIRunOptions } from "./cli/cli-runner.js";
+import type { CLIRunOptions } from "./cli/cli-runner/types.js";
 
 // Re-export types from the original handler for compatibility
 export interface GenerateOptions {

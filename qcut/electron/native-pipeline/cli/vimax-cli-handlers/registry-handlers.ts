@@ -6,7 +6,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { CLIRunOptions, CLIResult } from "../cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "../cli-runner/types.js";
 
 /** vimax:create-registry — Create portrait registry from directory of portrait files. */
 export async function handleVimaxCreateRegistry(

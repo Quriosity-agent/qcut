@@ -7,7 +7,7 @@
  * @module electron/native-pipeline/cli-output-formatters
  */
 
-import type { CLIResult } from "../cli/cli-runner.js";
+import type { CLIResult } from "./cli-runner/types.js";
 
 /**
  * Format and print command-specific output for TTY mode.

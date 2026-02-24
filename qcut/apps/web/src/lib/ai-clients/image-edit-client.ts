@@ -18,6 +18,10 @@ import {
 } from "./image-edit-capabilities";
 import { getFalApiKey, generateJobId, FAL_API_BASE } from "./image-edit-utils";
 import { pollImageEditStatus } from "./image-edit-polling";
+import type {
+	ImageEditResponse,
+	ImageEditProgressCallback,
+} from "./image-edit-types";
 
 // Re-export capabilities for convenience
 export {
@@ -36,6 +40,10 @@ export {
 	sleep,
 } from "./image-edit-polling";
 export { getImageEditModels } from "./image-edit-models-info";
+export type {
+	ImageEditResponse,
+	ImageEditProgressCallback,
+} from "./image-edit-types";
 
 export interface ImageEditRequest {
 	/** @deprecated Use imageUrls instead for multi-image support */
@@ -76,23 +84,6 @@ export interface ImageUpscaleRequest {
 	overlappingTiles?: boolean;
 	outputFormat?: "png" | "jpeg" | "webp";
 }
-
-export interface ImageEditResponse {
-	job_id: string;
-	status: "processing" | "completed" | "failed";
-	message: string;
-	result_url?: string;
-	seed_used?: number;
-	processing_time?: number;
-}
-
-export type ImageEditProgressCallback = (status: {
-	status: "queued" | "processing" | "completed" | "failed";
-	progress?: number;
-	message?: string;
-	elapsedTime?: number;
-	estimatedTime?: number;
-}) => void;
 
 interface ModelEndpoint {
 	endpoint: string;

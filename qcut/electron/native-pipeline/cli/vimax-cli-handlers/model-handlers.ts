@@ -4,7 +4,7 @@
  * list-models
  */
 
-import type { CLIResult } from "../cli-runner.js";
+import type { CLIResult } from "../cli-runner/types.js";
 import { listModels } from "../../infra/cost-calculator.js";
 
 /** vimax:list-models — List ViMax-specific models (image, video, LLM). */

@@ -16,7 +16,7 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import type { BasePropEditorProps } from "./index";
+import type { BasePropEditorProps } from "./types";
 
 export interface ColorPropProps extends BasePropEditorProps<string> {
 	/** Preset colors to show in picker */

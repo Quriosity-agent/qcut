@@ -16,7 +16,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { BasePropEditorProps } from "./index";
+import type { BasePropEditorProps } from "./types";
 
 export interface SelectOption {
 	label: string;

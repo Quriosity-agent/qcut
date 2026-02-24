@@ -8,7 +8,7 @@
  */
 
 import type { ProjectBackground, EpisodeRawScript } from "@/types/moyin-script";
-import type { CalibratedCharacter } from "./character-calibrator";
+import type { CalibratedCharacter } from "./character-calibrator-types";
 import { callFeatureAPI } from "./llm-adapter";
 
 // ==================== Era Fashion Guidance ====================

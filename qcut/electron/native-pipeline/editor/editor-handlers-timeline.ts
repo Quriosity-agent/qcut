@@ -8,7 +8,7 @@
  */
 
 import type { EditorApiClient } from "../editor/editor-api-client.js";
-import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "../cli/cli-runner/types.js";
 import { resolveJsonInput } from "./editor-api-types.js";
 
 type ProgressFn = (progress: {

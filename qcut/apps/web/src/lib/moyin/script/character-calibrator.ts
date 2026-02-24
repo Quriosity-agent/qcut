@@ -16,61 +16,26 @@ import type {
 	ScriptCharacter,
 	ProjectBackground,
 	EpisodeRawScript,
-	CharacterIdentityAnchors,
-	CharacterNegativePrompt,
 } from "@/types/moyin-script";
 import { callFeatureAPI } from "./llm-adapter";
 import { enrichCharactersWithVisualPrompts } from "./character-calibrator-enrichment";
 
-// ==================== Types ====================
+// Re-export types from dedicated types file
+export type {
+	CalibratedCharacter,
+	CharacterCalibrationResult,
+	MergeRecord,
+	CalibrationOptions,
+	CharacterStats,
+} from "./character-calibrator-types";
 
-export interface CharacterCalibrationResult {
-	characters: CalibratedCharacter[];
-	filteredWords: string[];
-	mergeRecords: MergeRecord[];
-	analysisNotes: string;
-}
-
-export interface CalibratedCharacter {
-	id: string;
-	name: string;
-	importance: "protagonist" | "supporting" | "minor" | "extra";
-	episodeRange?: [number, number];
-	appearanceCount: number;
-	role?: string;
-	age?: string;
-	gender?: string;
-	relationships?: string;
-	nameVariants: string[];
-	visualPromptEn?: string;
-	visualPromptZh?: string;
-	facialFeatures?: string;
-	uniqueMarks?: string;
-	clothingStyle?: string;
-	identityAnchors?: CharacterIdentityAnchors;
-	negativePrompt?: CharacterNegativePrompt;
-}
-
-export interface MergeRecord {
-	finalName: string;
-	variants: string[];
-	reason: string;
-}
-
-export interface CalibrationOptions {
-	previousCharacters?: CalibratedCharacter[];
-}
-
-export interface CharacterStats {
-	name: string;
-	sceneCount: number;
-	dialogueCount: number;
-	episodes: number[];
-	firstEpisode: number;
-	lastEpisode: number;
-	dialogueSamples: string[];
-	sceneSamples: string[];
-}
+import type {
+	CalibratedCharacter,
+	CharacterCalibrationResult,
+	MergeRecord,
+	CalibrationOptions,
+	CharacterStats,
+} from "./character-calibrator-types";
 
 // ==================== Extraction ====================
 

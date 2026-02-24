@@ -6,7 +6,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { CLIRunOptions, CLIResult } from "../cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "../cli-runner/types.js";
 import { resolveOutputDir } from "../../output/output-utils.js";
 
 type ProgressFn = (progress: {

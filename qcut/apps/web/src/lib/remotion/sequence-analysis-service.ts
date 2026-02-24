@@ -13,29 +13,10 @@ import {
 	hasDynamicValues,
 	type ParsedStructure,
 } from "./sequence-parser";
-import type { SequenceStructure } from "./types";
+import type { SequenceAnalysisResult } from "./types";
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Result of analyzing a component's source code.
- */
-export interface AnalysisResult {
-	/** Unique identifier for this analysis */
-	componentId: string;
-	/** Raw parsed structure from AST */
-	parsed: ParsedStructure;
-	/** Converted structure for visualization (may have estimated values) */
-	structure: SequenceStructure | null;
-	/** Whether any values are computed at runtime */
-	hasDynamicValues: boolean;
-	/** Timestamp when analysis was performed */
-	analyzedAt: number;
-	/** Hash of source code for cache invalidation */
-	sourceHash: string;
-}
+/** @deprecated Use SequenceAnalysisResult from ./types instead */
+export type AnalysisResult = SequenceAnalysisResult;
 
 /**
  * Options for the analysis service.

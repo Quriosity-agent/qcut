@@ -7,7 +7,7 @@
  * @module electron/native-pipeline/editor-api-client
  */
 
-import type { CLIRunOptions } from "../cli/cli-runner.js";
+import type { CLIRunOptions } from "../cli/cli-runner/types.js";
 
 // ---------------------------------------------------------------------------
 // Types

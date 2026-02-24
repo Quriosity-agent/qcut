@@ -8,7 +8,7 @@ import { getFalApiKey } from "./image-edit-utils";
 import type {
 	ImageEditResponse,
 	ImageEditProgressCallback,
-} from "./image-edit-client";
+} from "./image-edit-types";
 
 /**
  * Poll for image edit status
