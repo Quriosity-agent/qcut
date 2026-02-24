@@ -121,7 +121,17 @@ export async function handleVimaxGeneratePortraits(
 		if (fs.existsSync(text) && text.endsWith(".json")) {
 			const content = fs.readFileSync(text, "utf-8");
 			const parsed = JSON.parse(content);
-			characters = Array.isArray(parsed) ? parsed : parsed.characters;
+			const parsedCharacters = Array.isArray(parsed)
+				? parsed
+				: parsed.characters;
+			if (!Array.isArray(parsedCharacters)) {
+				return {
+					success: false,
+					error:
+						"Invalid character JSON: expected an array or { characters: [...] }",
+				};
+			}
+			characters = parsedCharacters;
 		} else {
 			// Extract characters from text first
 			let inputText = text;
@@ -216,7 +226,7 @@ export async function handleVimaxGeneratePortraits(
 		return {
 			success: true,
 			outputPath: path.join(outputDir, "portraits"),
-			cost: (batchResult.metadata.cost as number) ?? 0,
+			cost: (batchResult.metadata?.cost as number) ?? 0,
 			duration: (Date.now() - startTime) / 1000,
 			data: {
 				characters: portraitCount,

@@ -85,7 +85,7 @@ export function MediaView() {
 	// Clear selection when filters change
 	useEffect(() => {
 		setSelectedIds(new Set());
-	}, [mediaItems, mediaFilter, searchQuery, selectedFolderId]);
+	}, [mediaFilter, searchQuery, selectedFolderId]);
 
 	const {
 		fileInputRef,

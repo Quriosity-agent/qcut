@@ -58,6 +58,7 @@ export function setupScreenRecordingIPC(): void {
 			let pendingStream: fs.WriteStream | null = null;
 			let pendingOutputPath: string | null = null;
 			let pendingCapturePath: string | null = null;
+			let createdSession = false;
 
 			try {
 				if (getActiveSession()) {
@@ -110,6 +111,7 @@ export function setupScreenRecordingIPC(): void {
 					mimeType: options.mimeType ?? null,
 					writeQueue: Promise.resolve(),
 				});
+				createdSession = true;
 
 				return {
 					sessionId,
@@ -121,7 +123,7 @@ export function setupScreenRecordingIPC(): void {
 				};
 			} catch (error: unknown) {
 				const currentSession = getActiveSession();
-				if (currentSession?.fileStream) {
+				if (createdSession && currentSession?.fileStream) {
 					try {
 						await closeStream({ fileStream: currentSession.fileStream });
 					} catch {
@@ -141,7 +143,7 @@ export function setupScreenRecordingIPC(): void {
 					}
 				}
 
-				if (currentSession) {
+				if (createdSession && currentSession) {
 					setActiveSession(null);
 					await cleanupSessionFiles({ sessionData: currentSession });
 				}
@@ -249,9 +251,11 @@ export function setupScreenRecordingIPC(): void {
 				};
 			} catch (error: unknown) {
 				const sessionToCleanup = getActiveSession();
-				setActiveSession(null);
+				const isOwner =
+					sessionToCleanup?.ownerWebContentsId === event.sender.id;
 
-				if (sessionToCleanup) {
+				if (isOwner && sessionToCleanup) {
+					setActiveSession(null);
 					try {
 						await closeStream({ fileStream: sessionToCleanup.fileStream });
 					} catch {

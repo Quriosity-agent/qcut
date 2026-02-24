@@ -192,9 +192,11 @@ export function MediaItemCard({
 					<ContextMenuItem
 						onClick={(e) => {
 							e.stopPropagation();
+							const localPath = item.localPath;
+							if (!localPath) return;
 							if (window.electronAPI?.shell?.showItemInFolder) {
 								try {
-									window.electronAPI.shell.showItemInFolder(item.localPath!);
+									window.electronAPI.shell.showItemInFolder(localPath);
 								} catch (error) {
 									debugError("[Media View] Open in Explorer failed:", error);
 									toast.error("Failed to open in Explorer");

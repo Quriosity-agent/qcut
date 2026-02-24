@@ -195,15 +195,20 @@ export function useMediaActions({
 
 	const handleDownloadSelected = useCallback(async () => {
 		const items = mediaItems.filter((m) => selectedIds.has(m.id));
-		for (const item of items) {
-			const url = item.url || item.thumbnailUrl;
-			if (!url) continue;
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = item.name;
-			a.click();
+		try {
+			for (const item of items) {
+				const url = item.url || item.thumbnailUrl;
+				if (!url) continue;
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = item.name;
+				a.click();
+			}
+			toast.success(`Downloading ${items.length} item(s)`);
+		} catch (error) {
+			debugError("[MediaActions] Download failed:", error);
+			toast.error("Failed to download selected items");
 		}
-		toast.success(`Downloading ${items.length} item(s)`);
 	}, [selectedIds, mediaItems]);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
