@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for AI video storage migration and path helpers.
  * Mocks Electron's `app` module to test path construction and migration logic.

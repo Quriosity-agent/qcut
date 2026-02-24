@@ -1,6 +1,10 @@
 // Test setup file for Vitest - enhanced DOM setup for jsdom
 console.log("🔧 SETUP.TS EXECUTING - Starting jsdom environment setup...");
 
+// Skip DOM setup when not in jsdom environment (e.g. electron tests with @vitest-environment node)
+const IS_JSDOM =
+	typeof window !== "undefined" && typeof document !== "undefined";
+
 // CRITICAL: Import polyfills FIRST before anything else
 import "./polyfills";
 
@@ -160,146 +164,136 @@ mockPresence();
 import { mockFocusScope } from "./mocks/radix-focus-scope";
 mockFocusScope();
 
-// Mock window.matchMedia and window.history for jsdom environment
-Object.defineProperty(window, "matchMedia", {
-	writable: true,
-	value: vi.fn().mockImplementation((query: string) => ({
-		matches: false,
-		media: query,
-		onchange: null,
-		addListener: vi.fn(),
-		removeListener: vi.fn(),
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		dispatchEvent: vi.fn(),
-	})),
-});
+// Guard: skip all window/document setup when not in jsdom
+if (typeof window === "undefined") {
+	// Node environment (electron tests) — skip DOM mocks
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+	beforeAll(() => {
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
+	afterAll(() => {
+		vi.restoreAllMocks();
+	});
+} else {
+	// Mock window.matchMedia and window.history for jsdom environment
+	Object.defineProperty(window, "matchMedia", {
+		writable: true,
+		value: vi.fn().mockImplementation((query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn(),
+		})),
+	});
 
-// Mock window.history for TanStack Router
-Object.defineProperty(window, "history", {
-	writable: true,
-	value: {
-		pushState: vi.fn(),
-		replaceState: vi.fn(),
-		back: vi.fn(),
-		forward: vi.fn(),
-		go: vi.fn(),
-		length: 1,
-		scrollRestoration: "auto",
-		state: null,
-	},
-});
+	// Mock window.history for TanStack Router
+	Object.defineProperty(window, "history", {
+		writable: true,
+		value: {
+			pushState: vi.fn(),
+			replaceState: vi.fn(),
+			back: vi.fn(),
+			forward: vi.fn(),
+			go: vi.fn(),
+			length: 1,
+			scrollRestoration: "auto",
+			state: null,
+		},
+	});
 
-// Mock global APIs for jsdom environment
-// Must use class-based mocks (not arrow functions) so `new` works correctly
-class MockObserver {
-	observe = vi.fn();
-	unobserve = vi.fn();
-	disconnect = vi.fn();
-	takeRecords = vi.fn(() => []);
-}
-
-// Mock IntersectionObserver
-Object.defineProperty(window, "IntersectionObserver", {
-	writable: true,
-	value: MockObserver,
-});
-Object.defineProperty(globalThis, "IntersectionObserver", {
-	writable: true,
-	value: MockObserver,
-});
-
-// Mock ResizeObserver
-Object.defineProperty(window, "ResizeObserver", {
-	writable: true,
-	value: MockObserver,
-});
-Object.defineProperty(globalThis, "ResizeObserver", {
-	writable: true,
-	value: MockObserver,
-});
-
-// Browser mocks are already installed at the top of this file
-
-// Mock URL methods
-Object.defineProperty(URL, "createObjectURL", {
-	writable: true,
-	value: vi.fn(() => "blob:mock-url"),
-});
-Object.defineProperty(URL, "revokeObjectURL", {
-	writable: true,
-	value: vi.fn(),
-});
-
-// getComputedStyle mock is already set up earlier in JSDOM setup
-
-// Mock localStorage (should be available in jsdom but ensure it's mocked)
-const localStorageMock: Storage = {
-	getItem: vi.fn(),
-	setItem: vi.fn(),
-	removeItem: vi.fn(),
-	clear: vi.fn(),
-	key: vi.fn(),
-	length: 0,
-};
-Object.defineProperty(window, "localStorage", {
-	value: localStorageMock,
-	writable: true,
-});
-
-// Mock IndexedDB
-const indexedDBMock: IDBFactory = {
-	open: vi.fn(() => ({}) as IDBOpenDBRequest),
-	deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest),
-	cmp: vi.fn(() => 0),
-	databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
-};
-Object.defineProperty(window, "indexedDB", {
-	value: indexedDBMock,
-	writable: true,
-});
-
-// Mock navigator.clipboard
-Object.defineProperty(navigator, "clipboard", {
-	value: {
-		writeText: vi.fn(() => Promise.resolve()),
-		readText: vi.fn(() => Promise.resolve("")),
-	},
-	writable: true,
-});
-
-// Mock window.location methods without replacing the Location object
-try {
-	const loc = window.location;
-	vi.spyOn(loc, "reload").mockImplementation(() => {});
-	vi.spyOn(loc, "assign").mockImplementation(() => {});
-	vi.spyOn(loc, "replace").mockImplementation(() => {});
-
-	// Also set globalThis.location to match window.location for consistency
-	if (typeof globalThis !== "undefined" && !globalThis.location) {
-		Object.defineProperty(globalThis, "location", {
-			value: window.location,
-			writable: true,
-			configurable: true,
-		});
+	// Mock global APIs for jsdom environment
+	// Must use class-based mocks (not arrow functions) so `new` works correctly
+	class MockObserver {
+		observe = vi.fn();
+		unobserve = vi.fn();
+		disconnect = vi.fn();
+		takeRecords = vi.fn(() => []);
 	}
-} catch {
-	// Fallback for environments where spying is not possible
-	try {
-		Object.defineProperty(window.location, "reload", {
-			value: vi.fn(),
-			configurable: true,
-		});
-		Object.defineProperty(window.location, "assign", {
-			value: vi.fn(),
-			configurable: true,
-		});
-		Object.defineProperty(window.location, "replace", {
-			value: vi.fn(),
-			configurable: true,
-		});
 
-		// Also set globalThis.location in fallback
+	// Mock IntersectionObserver
+	Object.defineProperty(window, "IntersectionObserver", {
+		writable: true,
+		value: MockObserver,
+	});
+	Object.defineProperty(globalThis, "IntersectionObserver", {
+		writable: true,
+		value: MockObserver,
+	});
+
+	// Mock ResizeObserver
+	Object.defineProperty(window, "ResizeObserver", {
+		writable: true,
+		value: MockObserver,
+	});
+	Object.defineProperty(globalThis, "ResizeObserver", {
+		writable: true,
+		value: MockObserver,
+	});
+
+	// Browser mocks are already installed at the top of this file
+
+	// Mock URL methods
+	Object.defineProperty(URL, "createObjectURL", {
+		writable: true,
+		value: vi.fn(() => "blob:mock-url"),
+	});
+	Object.defineProperty(URL, "revokeObjectURL", {
+		writable: true,
+		value: vi.fn(),
+	});
+
+	// getComputedStyle mock is already set up earlier in JSDOM setup
+
+	// Mock localStorage (should be available in jsdom but ensure it's mocked)
+	const localStorageMock: Storage = {
+		getItem: vi.fn(),
+		setItem: vi.fn(),
+		removeItem: vi.fn(),
+		clear: vi.fn(),
+		key: vi.fn(),
+		length: 0,
+	};
+	Object.defineProperty(window, "localStorage", {
+		value: localStorageMock,
+		writable: true,
+	});
+
+	// Mock IndexedDB
+	const indexedDBMock: IDBFactory = {
+		open: vi.fn(() => ({}) as IDBOpenDBRequest),
+		deleteDatabase: vi.fn(() => ({}) as IDBOpenDBRequest),
+		cmp: vi.fn(() => 0),
+		databases: vi.fn(async () => [] as IDBDatabaseInfo[]),
+	};
+	Object.defineProperty(window, "indexedDB", {
+		value: indexedDBMock,
+		writable: true,
+	});
+
+	// Mock navigator.clipboard
+	Object.defineProperty(navigator, "clipboard", {
+		value: {
+			writeText: vi.fn(() => Promise.resolve()),
+			readText: vi.fn(() => Promise.resolve("")),
+		},
+		writable: true,
+	});
+
+	// Mock window.location methods without replacing the Location object
+	try {
+		const loc = window.location;
+		vi.spyOn(loc, "reload").mockImplementation(() => {});
+		vi.spyOn(loc, "assign").mockImplementation(() => {});
+		vi.spyOn(loc, "replace").mockImplementation(() => {});
+
+		// Also set globalThis.location to match window.location for consistency
 		if (typeof globalThis !== "undefined" && !globalThis.location) {
 			Object.defineProperty(globalThis, "location", {
 				value: window.location,
@@ -308,26 +302,51 @@ try {
 			});
 		}
 	} catch {
-		// Last-resort: leave as-is; tests that rely on navigation should stub per-test.
+		// Fallback for environments where spying is not possible
+		try {
+			Object.defineProperty(window.location, "reload", {
+				value: vi.fn(),
+				configurable: true,
+			});
+			Object.defineProperty(window.location, "assign", {
+				value: vi.fn(),
+				configurable: true,
+			});
+			Object.defineProperty(window.location, "replace", {
+				value: vi.fn(),
+				configurable: true,
+			});
+
+			// Also set globalThis.location in fallback
+			if (typeof globalThis !== "undefined" && !globalThis.location) {
+				Object.defineProperty(globalThis, "location", {
+					value: window.location,
+					writable: true,
+					configurable: true,
+				});
+			}
+		} catch {
+			// Last-resort: leave as-is; tests that rely on navigation should stub per-test.
+		}
 	}
-}
 
-// Clean up after each test
-afterEach(() => {
-	vi.clearAllMocks();
-	if (typeof localStorage !== "undefined") {
-		localStorage.clear();
-	}
-});
+	// Clean up after each test
+	afterEach(() => {
+		vi.clearAllMocks();
+		if (typeof localStorage !== "undefined") {
+			localStorage.clear();
+		}
+	});
 
-// Setup before all tests
-beforeAll(() => {
-	// Suppress console errors in tests unless explicitly testing error handling
-	vi.spyOn(console, "error").mockImplementation(() => {});
-	vi.spyOn(console, "warn").mockImplementation(() => {});
-});
+	// Setup before all tests
+	beforeAll(() => {
+		// Suppress console errors in tests unless explicitly testing error handling
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+	});
 
-// Cleanup after all tests
-afterAll(() => {
-	vi.restoreAllMocks();
-});
+	// Cleanup after all tests
+	afterAll(() => {
+		vi.restoreAllMocks();
+	});
+} // end of jsdom guard

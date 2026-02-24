@@ -15,7 +15,7 @@ defaults:
 jobs:
   # Extract version info once, share across jobs
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
       is_prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
@@ -49,7 +49,7 @@ jobs:
   # Windows build
   build-windows:
     needs: prepare
-    runs-on: windows-latest
+    runs-on: blacksmith-4vcpu-windows-2025
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -182,7 +182,7 @@ jobs:
   # Linux build
   build-linux:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -242,7 +242,7 @@ jobs:
   # Create release with all artifacts
   release:
     needs: [prepare, build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

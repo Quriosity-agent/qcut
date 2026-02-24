@@ -6,7 +6,7 @@
 		"name": "QCut Team",
 		"email": "support@qcut.app"
 	},
-	"homepage": "https://github.com/donghaozhang/qcut",
+	"homepage": "https://github.com/Quriosity-agent/qcut",
 	"main": "dist/electron/main.js",
 	"bin": {
 		"qcut-pipeline": "dist/electron/native-pipeline/cli.js"
@@ -118,7 +118,7 @@
 		},
 		"publish": {
 			"provider": "github",
-			"owner": "donghaozhang",
+			"owner": "Quriosity-agent",
 			"repo": "qcut",
 			"private": false,
 			"releaseType": "release"

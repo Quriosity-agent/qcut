@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for claude-scene-handler.ts
  * Validates FFmpeg scene detection, showinfo output parsing, and scene detection flow.

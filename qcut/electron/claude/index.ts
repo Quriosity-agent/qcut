@@ -43,15 +43,8 @@ export function setupAllClaudeIPC(): void {
 	setupClaudeAnalyzeIPC();
 	setupClaudeNavigatorIPC();
 
-	// Start HTTP server for external control (non-blocking — failure is non-fatal)
-	try {
-		startClaudeHTTPServer();
-	} catch (error) {
-		claudeLog.warn(
-			"Claude",
-			`HTTP server failed to start: ${error}. External control disabled.`
-		);
-	}
+	// HTTP server now runs in utility process (started via utility-bridge.ts)
+	// See electron/utility/utility-http-server.ts
 
 	claudeLog.info("Claude", "All handlers registered successfully");
 }

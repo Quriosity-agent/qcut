@@ -67,14 +67,14 @@ describe("MarkdownEditorPanel", () => {
 		render(<MarkdownEditorPanel element={createElement()} trackId="track-1" />);
 
 		const durationInput = screen.getByTestId("markdown-duration-input");
-		fireEvent.change(durationInput, { target: { value: "10" } });
+		fireEvent.change(durationInput, { target: { value: "0.1" } });
 		fireEvent.blur(durationInput);
 
 		expect(updateMarkdownElement).toHaveBeenCalledWith(
 			"track-1",
 			"markdown-1",
 			{
-				duration: 120,
+				duration: 0.5,
 			}
 		);
 	});

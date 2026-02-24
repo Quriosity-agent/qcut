@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for claude-vision-handler.ts
  * Validates frame analysis response parsing and request flow.

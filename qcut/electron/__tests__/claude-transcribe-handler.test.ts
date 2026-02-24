@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Tests for claude-transcribe-handler.ts
  * Validates media resolution, audio extraction, and provider dispatch.
