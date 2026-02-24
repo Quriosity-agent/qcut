@@ -128,6 +128,8 @@ export interface CLIRunOptions {
 	mode?: string;
 	gap?: number;
 	// generate-remotion options
+	exportAfterGenerate?: boolean;
+	exportFormat?: string;
 	fps?: number;
 	width?: number;
 	height?: number;

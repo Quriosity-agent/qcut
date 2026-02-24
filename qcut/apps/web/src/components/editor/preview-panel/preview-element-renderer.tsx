@@ -431,10 +431,14 @@ export function PreviewElementRenderer({
 		}
 
 		if (element.type === "remotion") {
-			const elementStart = element.startTime + element.trimStart;
-			const localTime = currentTime - elementStart;
+			// Offset into the Remotion composition by trimStart so a trimmed/split
+			// element starts playback at the correct internal frame.
+			const localTime = currentTime - element.startTime;
 			const fps = activeProject?.fps ?? 30;
-			const currentFrame = Math.max(0, Math.floor(localTime * fps));
+			const currentFrame = Math.max(
+				0,
+				Math.floor((localTime + element.trimStart) * fps)
+			);
 
 			return (
 				<div

@@ -79,8 +79,33 @@ export class ExportEngineFactory {
 	async getEngineRecommendation(
 		settings: ExportSettings,
 		duration: number,
-		complexity: "low" | "medium" | "high" = "medium"
+		complexity: "low" | "medium" | "high" = "medium",
+		tracks?: TimelineTrack[]
 	): Promise<EngineRecommendation> {
+		// Auto-select Remotion engine when timeline contains Remotion elements
+		// Check before detectCapabilities() to avoid unnecessary browser API calls
+		if (tracks) {
+			const hasRemotionElements = tracks.some(
+				(t) =>
+					t.type === "remotion" &&
+					t.elements.length > 0
+			);
+			if (hasRemotionElements) {
+				console.log(
+					"🎬 EXPORT ENGINE SELECTION: Remotion engine auto-selected (timeline has Remotion elements)"
+				);
+				// Use cached capabilities if available, otherwise detect
+				const capabilities = this.capabilities ?? await this.detectCapabilities();
+				return {
+					engineType: ExportEngineType.REMOTION,
+					reason:
+						"Timeline contains Remotion elements — using Remotion export engine for frame pre-rendering and compositing",
+					capabilities,
+					estimatedPerformance: "medium",
+				};
+			}
+		}
+
 		const capabilities = await this.detectCapabilities();
 
 		// 🚀 FORCE CLI FFmpeg in Electron - most stable and performant
@@ -206,7 +231,9 @@ export class ExportEngineFactory {
 			console.log("  - No engine type specified, getting recommendation...");
 			const recommendation = await this.getEngineRecommendation(
 				settings,
-				totalDuration
+				totalDuration,
+				"medium",
+				tracks
 			);
 			selectedEngineType = recommendation.engineType;
 			console.log("  - Recommended engine:", selectedEngineType);

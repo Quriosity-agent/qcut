@@ -361,6 +361,7 @@ export async function handleGenerateRemotion(
 	}
 
 	// 10. Timeline integration
+	let timelineAdded = false;
 	if (options.addToTimeline && options.projectId) {
 		try {
 			const timelineResult = await addRemotionToTimeline(
@@ -374,10 +375,49 @@ export async function handleGenerateRemotion(
 				process.stderr.write(
 					`[generate-remotion] Timeline integration failed: ${timelineResult.error}\n`
 				);
+			} else {
+				timelineAdded = true;
 			}
 		} catch (err) {
 			process.stderr.write(
 				`[generate-remotion] Timeline integration failed: ${err instanceof Error ? err.message : String(err)}\n`
+			);
+		}
+	}
+
+	// 11. Export chaining: if --export is set and timeline was populated, trigger export
+	if (options.exportAfterGenerate && options.projectId && timelineAdded) {
+		try {
+			onProgress({
+				stage: "export",
+				percent: 90,
+				message: "Triggering Remotion export...",
+			});
+
+			const client = createEditorClient(options);
+			const exportBody: Record<string, unknown> = {
+				engineType: "remotion",
+			};
+			if (options.exportFormat) {
+				exportBody.format = options.exportFormat;
+			}
+			if (options.filename) {
+				exportBody.filename = options.filename;
+			}
+
+			await client.post(
+				`/api/claude/export/${encodeURIComponent(options.projectId)}/start`,
+				exportBody
+			);
+
+			onProgress({
+				stage: "export",
+				percent: 95,
+				message: "Export started — use editor:export:status to monitor",
+			});
+		} catch (err) {
+			process.stderr.write(
+				`[generate-remotion] Export trigger failed: ${err instanceof Error ? err.message : String(err)}\n`
 			);
 		}
 	}

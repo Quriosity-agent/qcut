@@ -171,13 +171,29 @@ export function useExportProgress() {
 				isExporting: true,
 			});
 
-			const blob = await exportEngine.export((progress, status) => {
-				updateProgress({
-					progress,
-					status,
-					isExporting: true,
+			// Check if this is a RemotionExportEngine and use its specialized export method
+			let blob: Blob;
+			const engineName = exportEngine.constructor.name;
+			if (engineName === "RemotionExportEngine" && "exportWithRemotion" in exportEngine) {
+				debugLog("[ExportPanel] 🎬 Using Remotion export pipeline");
+				blob = await (exportEngine as any).exportWithRemotion(
+					(remotionProgress: { overallProgress: number; statusMessage: string }) => {
+						updateProgress({
+							progress: remotionProgress.overallProgress,
+							status: remotionProgress.statusMessage,
+							isExporting: true,
+						});
+					}
+				);
+			} else {
+				blob = await exportEngine.export((progress, status) => {
+					updateProgress({
+						progress,
+						status,
+						isExporting: true,
+					});
 				});
-			});
+			}
 
 			debugLog("[ExportPanel] ✅ Export completed successfully");
 
