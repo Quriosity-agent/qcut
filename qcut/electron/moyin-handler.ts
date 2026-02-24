@@ -4,6 +4,7 @@
  */
 
 import { ipcMain } from "electron";
+import { spawn, execSync } from "node:child_process";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
 interface Logger {
@@ -148,9 +149,9 @@ async function callLLM(
 		return callGemini(googleKey, systemPrompt, userPrompt);
 	}
 
-	throw new Error(
-		"No API key found. Please configure an OpenAI or Google AI API key."
-	);
+	// Fallback to Claude CLI (no API key required)
+	log.info("[Moyin] No API keys configured, using Claude CLI fallback");
+	return callClaudeCLI(systemPrompt, userPrompt);
 }
 
 async function callOpenAICompatible(
@@ -257,6 +258,103 @@ async function callGemini(
 		return text;
 	} finally {
 		clearTimeout(timeout);
+	}
+}
+
+// ==================== Claude CLI Fallback ====================
+
+const CLAUDE_CLI_TIMEOUT_MS = 300_000;
+
+async function callClaudeCLI(
+	systemPrompt: string,
+	userPrompt: string
+): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const args = [
+			"-p",
+			"--model",
+			"sonnet",
+			"--system-prompt",
+			systemPrompt,
+		];
+
+		log.info("[Moyin] Spawning claude -p (sonnet, 300s timeout)...");
+
+		const env = { ...process.env };
+		delete env.CLAUDECODE;
+		delete env.CLAUDE_CODE_ENTRYPOINT;
+		delete env.CLAUDE_CODE_SSE_PORT;
+
+		const child = spawn("claude", args, {
+			stdio: ["pipe", "pipe", "pipe"],
+			env,
+		});
+
+		let stdout = "";
+		let stderr = "";
+		let settled = false;
+
+		child.stdout.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString();
+		});
+
+		const timeoutId = setTimeout(() => {
+			if (!settled) {
+				settled = true;
+				child.kill("SIGTERM");
+				log.error("[Moyin] Claude CLI timed out after 300s");
+				reject(new Error("Claude CLI timed out after 300s"));
+			}
+		}, CLAUDE_CLI_TIMEOUT_MS);
+
+		child.on("close", (code) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutId);
+			if (code !== 0) {
+				log.error(`[Moyin] Claude CLI exit ${code}: ${stderr.trim().slice(0, 200)}`);
+				reject(
+					new Error(
+						`Claude CLI failed (exit ${code}): ${stderr.trim().slice(0, 200)}`
+					)
+				);
+			} else {
+				const text = stdout.trim();
+				if (!text) {
+					reject(new Error("Empty response from Claude CLI"));
+				} else {
+					log.info(`[Moyin] Claude CLI returned ${text.length} chars`);
+					resolve(text);
+				}
+			}
+		});
+
+		child.on("error", (err) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutId);
+			reject(
+				new Error(
+					`Claude CLI not found: ${err.message}. Install with: npm install -g @anthropic-ai/claude-code`
+				)
+			);
+		});
+
+		child.stdin.write(userPrompt);
+		child.stdin.end();
+	});
+}
+
+/** Check if claude CLI is available on PATH. */
+function isClaudeCLIAvailable(): boolean {
+	try {
+		execSync("claude --version", { timeout: 5000, stdio: "pipe" });
+		return true;
+	} catch {
+		return false;
 	}
 }
 
@@ -383,6 +481,14 @@ export function setupMoyinIPC(): void {
 				log.error("[Moyin] LLM call failed:", message);
 				return { success: false, error: message };
 			}
+		}
+	);
+
+	// Check if Claude CLI is available (for fallback LLM)
+	ipcMain.handle(
+		"moyin:is-claude-available",
+		async (): Promise<boolean> => {
+			return isClaudeCLIAvailable();
 		}
 	);
 }

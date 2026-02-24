@@ -139,13 +139,18 @@ function invokeClaude(
 	signal: AbortSignal
 ): Promise<string> {
 	return new Promise((resolvePromise, reject) => {
+		const env = { ...process.env };
+		delete env.CLAUDECODE;
+		delete env.CLAUDE_CODE_ENTRYPOINT;
+		delete env.CLAUDE_CODE_SSE_PORT;
+
 		const child = spawn(
 			"claude",
 			["-p", "--permission-mode", "bypassPermissions"],
 			{
 				cwd,
 				stdio: ["pipe", "pipe", "pipe"],
-				env: { ...process.env, CLAUDECODE: "" },
+				env,
 			}
 		);
 

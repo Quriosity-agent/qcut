@@ -925,6 +925,9 @@ export interface ElectronAPI {
 			text?: string;
 			error?: string;
 		}>;
+		isClaudeAvailable: () => Promise<boolean>;
+		onParsed: (callback: (data: Record<string, unknown>) => void) => void;
+		removeParseListener: () => void;
 	};
 
 	// Update and release notes operations

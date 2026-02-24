@@ -48,6 +48,8 @@ const COMMANDS = [
 	"organize-project",
 	"structure-info",
 	"create-examples",
+	// Moyin commands — script parsing
+	"moyin:parse-script",
 	"vimax:idea2video",
 	"vimax:script2video",
 	"vimax:novel2movie",
@@ -175,6 +177,10 @@ Commands:
   organize-project    Organize media files into categories
   structure-info      Show project structure and file counts
   create-examples     Create example pipeline configs
+Moyin Commands:
+  moyin:parse-script  Parse screenplay into structured data (characters/scenes)
+
+ViMax Commands:
   vimax:idea2video    Generate video from an idea
   vimax:script2video  Generate video from a script
   vimax:novel2movie   Generate movie from a novel
