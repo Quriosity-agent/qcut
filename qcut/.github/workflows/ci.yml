@@ -80,7 +80,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: qcut/apps/web/coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
