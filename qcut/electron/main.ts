@@ -388,13 +388,15 @@ function createStaticServer(): Promise<http.Server> {
 		function tryListen(port: number): void {
 			const errorHandler = (err: NodeJS.ErrnoException) => {
 				if (err.code === "EADDRINUSE" && port < MAX_PORT) {
-					logger.log(`[Static Server] Port ${port} in use, trying ${port + 1}...`);
+					logger.log(
+						`[Static Server] Port ${port} in use, trying ${port + 1}...`
+					);
 					tryListen(port + 1);
 				} else {
 					reject(err);
 				}
 			};
-			
+
 			server.once("error", errorHandler);
 			server.listen(port, "localhost", () => {
 				// Remove the error listener on successful bind
