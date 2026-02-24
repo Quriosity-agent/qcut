@@ -7,7 +7,7 @@
  * @module electron/native-pipeline/cli-handlers-editor
  */
 
-import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 import type { EditorApiClient } from "../editor/editor-api-client.js";
 import {

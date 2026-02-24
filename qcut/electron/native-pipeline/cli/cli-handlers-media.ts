@@ -10,7 +10,7 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { ModelRegistry } from "../infra/registry.js";
 import type { PipelineStep } from "../execution/executor.js";
 import type { PipelineExecutor } from "../execution/executor.js";

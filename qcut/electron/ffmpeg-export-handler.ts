@@ -1085,8 +1085,8 @@ async function mixOverlayAudio(
 	}
 
 	// Check if the concat output has an audio stream
+	const probePath = await getFFprobePath();
 	const hasBaseAudio = await new Promise<boolean>((resolve) => {
-		const probePath = getFFprobePath();
 		const probe = spawn(
 			probePath,
 			[

@@ -12,7 +12,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
-import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 
 type ProgressFn = (progress: {

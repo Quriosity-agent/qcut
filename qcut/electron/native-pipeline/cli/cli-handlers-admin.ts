@@ -8,7 +8,7 @@
  * @module electron/native-pipeline/cli-handlers-admin
  */
 
-import type { CLIRunOptions, CLIResult } from "../cli/cli-runner.js";
+import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { ModelRegistry } from "../infra/registry.js";
 import type { ModelCategory } from "../infra/registry.js";
 import { estimateCost, listModels } from "../infra/cost-calculator.js";

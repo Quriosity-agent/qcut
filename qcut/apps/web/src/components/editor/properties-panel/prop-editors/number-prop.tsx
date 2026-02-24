@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { BasePropEditorProps } from "./index";
+import type { BasePropEditorProps } from "./types";
 
 export interface NumberPropProps extends BasePropEditorProps<number> {
 	/** Minimum value */

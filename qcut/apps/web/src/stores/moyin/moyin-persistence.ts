@@ -11,7 +11,7 @@ import type {
 	Shot,
 	ScriptData,
 } from "@/types/moyin-script";
-import type { ParseStatus } from "./moyin-store";
+export type ParseStatus = "idle" | "parsing" | "ready" | "error";
 
 /** Fields that get persisted per project. */
 export interface MoyinPersistedState {

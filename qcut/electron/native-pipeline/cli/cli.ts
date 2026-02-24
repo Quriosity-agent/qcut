@@ -17,7 +17,7 @@ import {
 	CLIPipelineRunner,
 	createProgressReporter,
 } from "../cli/cli-runner.js";
-import type { CLIRunOptions } from "../cli/cli-runner.js";
+import type { CLIRunOptions } from "./cli-runner/types.js";
 import { getExitCode, formatErrorForCli } from "../output/errors.js";
 import { CLIOutput } from "../cli/cli-output.js";
 import { StreamEmitter, NullEmitter } from "../infra/stream-emitter.js";

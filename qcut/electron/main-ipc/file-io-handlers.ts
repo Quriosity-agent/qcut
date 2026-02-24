@@ -96,7 +96,7 @@ export function registerFileIoHandlers(deps: MainIpcDeps): void {
 
 			try {
 				const { getFFprobePath } = require("../ffmpeg-handler.js");
-				const ffprobePath = getFFprobePath();
+				const ffprobePath = await getFFprobePath();
 
 				return new Promise((resolve) => {
 					logger.log(`[Main] Running ffprobe on: ${filePath}`);

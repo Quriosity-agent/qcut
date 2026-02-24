@@ -85,7 +85,7 @@ function checkBinaryVersion(
  */
 export async function verifyFFmpegBinary(): Promise<FFmpegHealthResult> {
 	const ffmpegPath = getFFmpegPath();
-	const ffprobePath = getFFprobePath();
+	const ffprobePath = await getFFprobePath();
 
 	debugLog("Health: Checking binary availability...");
 	debugLog(`Health: FFmpeg path: ${ffmpegPath}`);

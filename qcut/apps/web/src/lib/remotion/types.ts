@@ -434,6 +434,56 @@ export interface CompositeLayer {
 // ============================================================================
 
 /**
+ * Parsed sequence from AST analysis (mirrors ParsedSequence from sequence-parser).
+ */
+export interface SequenceAnalysisParsedSequence {
+	name: string | null;
+	from: number | "dynamic";
+	durationInFrames: number | "dynamic";
+	line: number;
+	isTransitionSequence: boolean;
+}
+
+/**
+ * Parsed transition from AST analysis (mirrors ParsedTransition from sequence-parser).
+ */
+export interface SequenceAnalysisParsedTransition {
+	durationInFrames: number | "dynamic";
+	presentation: string | null;
+	afterSequenceIndex: number;
+	line: number;
+}
+
+/**
+ * Parsed structure from AST analysis (mirrors ParsedStructure from sequence-parser).
+ */
+export interface SequenceAnalysisParsedStructure {
+	sequences: SequenceAnalysisParsedSequence[];
+	transitions: SequenceAnalysisParsedTransition[];
+	usesTransitionSeries: boolean;
+	errors: string[];
+}
+
+/**
+ * Sequence analysis result type.
+ * Moved here from sequence-analysis-service.ts to break circular dependency.
+ */
+export interface SequenceAnalysisResult {
+	/** Unique identifier for this analysis */
+	componentId: string;
+	/** Raw parsed structure from AST */
+	parsed: SequenceAnalysisParsedStructure;
+	/** Converted structure for visualization (may have estimated values) */
+	structure: SequenceStructure | null;
+	/** Whether any values are computed at runtime */
+	hasDynamicValues: boolean;
+	/** Timestamp when analysis was performed */
+	analyzedAt: number;
+	/** Hash of source code for cache invalidation */
+	sourceHash: string;
+}
+
+/**
  * State interface for the Remotion Zustand store
  */
 export interface RemotionStoreState {
@@ -452,10 +502,7 @@ export interface RemotionStoreState {
 	/** Recent errors for debugging */
 	recentErrors: RemotionError[];
 	/** Cached sequence analysis results by componentId */
-	analyzedSequences: Map<
-		string,
-		import("./sequence-analysis-service").AnalysisResult
-	>;
+	analyzedSequences: Map<string, SequenceAnalysisResult>;
 	/** Imported folder metadata by folder path */
 	importedFolders: Map<string, ImportedFolderInfo>;
 	/** Whether a folder import is in progress */
@@ -557,19 +604,19 @@ export interface RemotionStoreActions {
 	/** Store analysis result for a component */
 	setAnalysisResult: (
 		componentId: string,
-		result: import("./sequence-analysis-service").AnalysisResult
+		result: SequenceAnalysisResult
 	) => void;
 	/** Get analysis result for a component */
 	getAnalysisResult: (
 		componentId: string
-	) => import("./sequence-analysis-service").AnalysisResult | undefined;
+	) => SequenceAnalysisResult | undefined;
 	/** Clear analysis for a component */
 	clearAnalysisResult: (componentId: string) => void;
 	/** Analyze a component's source code and store result */
 	analyzeComponentSource: (
 		componentId: string,
 		sourceCode: string
-	) => Promise<import("./sequence-analysis-service").AnalysisResult>;
+	) => Promise<SequenceAnalysisResult>;
 
 	// Folder Import
 	/** Import components from a Remotion folder */
