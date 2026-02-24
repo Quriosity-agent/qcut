@@ -74,6 +74,14 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Run tests
-        run: bun run test
+      - name: Run tests with coverage
+        run: bun run test -- --coverage
         continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          files: qcut/apps/web/coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

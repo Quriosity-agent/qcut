@@ -1,0 +1,13 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        informational: true
+    patch:
+      default:
+        informational: true
+
+ignore:
+  - "docs/"
+  - "scripts/"
