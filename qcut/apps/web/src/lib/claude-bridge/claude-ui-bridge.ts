@@ -10,6 +10,7 @@
 import {
 	useMediaPanelStore,
 	getGroupForTab,
+	tabs,
 	type Tab,
 } from "@/components/editor/media-panel/store";
 
@@ -20,6 +21,14 @@ export function setupClaudeUiBridge(): void {
 	bridge.onSwitchPanelRequest((data) => {
 		try {
 			const tab = data.panel as Tab;
+			if (!(tab in tabs)) {
+				bridge.sendSwitchPanelResponse(
+					data.requestId,
+					undefined,
+					`Unknown panel: ${data.panel}. Available: ${Object.keys(tabs).join(", ")}`
+				);
+				return;
+			}
 			const store = useMediaPanelStore.getState();
 			const group = getGroupForTab(tab);
 

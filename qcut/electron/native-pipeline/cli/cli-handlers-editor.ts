@@ -144,7 +144,7 @@ async function handleNavigatorCommand(
  */
 async function handleScreenRecordingCommand(
 	client: EditorApiClient,
-	options: CLIRunOptions,
+	options: CLIRunOptions
 ): Promise<CLIResult> {
 	const parts = options.command.split(":");
 	const action = parts[2];
@@ -160,17 +160,14 @@ async function handleScreenRecordingCommand(
 			if (options.filename) body.fileName = options.filename;
 			const data = await client.post(
 				"/api/claude/screen-recording/start",
-				body,
+				body
 			);
 			return { success: true, data };
 		}
 		case "stop": {
 			const body: Record<string, unknown> = {};
 			if (options.discard) body.discard = true;
-			const data = await client.post(
-				"/api/claude/screen-recording/stop",
-				body,
-			);
+			const data = await client.post("/api/claude/screen-recording/stop", body);
 			return { success: true, data };
 		}
 		case "status": {
@@ -202,7 +199,8 @@ async function handleUiCommand(
 			if (!panel) {
 				return {
 					success: false,
-					error: "Missing --panel. Available: remotion, terminal, skills, media, ai, text2image, pty, nano-edit, upscale, word-timeline, project-folder, moyin, video-edit",
+					error:
+						"Missing --panel. Available: remotion, terminal, skills, media, ai, text2image, pty, nano-edit, upscale, word-timeline, project-folder, moyin, video-edit",
 				};
 			}
 			const data = await client.post("/api/claude/ui/switch-panel", {

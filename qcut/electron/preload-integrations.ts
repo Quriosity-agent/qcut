@@ -529,12 +529,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		},
 		screenRecordingBridge: {
 			onStartRequest: (callback) => {
-				ipcRenderer.removeAllListeners(
-					"claude:screen-recording:start:request",
-				);
-				ipcRenderer.on(
-					"claude:screen-recording:start:request",
-					(_, data) => callback(data),
+				ipcRenderer.removeAllListeners("claude:screen-recording:start:request");
+				ipcRenderer.on("claude:screen-recording:start:request", (_, data) =>
+					callback(data)
 				);
 			},
 			sendStartResponse: (requestId, result, error) => {
@@ -545,12 +542,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			onStopRequest: (callback) => {
-				ipcRenderer.removeAllListeners(
-					"claude:screen-recording:stop:request",
-				);
-				ipcRenderer.on(
-					"claude:screen-recording:stop:request",
-					(_, data) => callback(data),
+				ipcRenderer.removeAllListeners("claude:screen-recording:stop:request");
+				ipcRenderer.on("claude:screen-recording:stop:request", (_, data) =>
+					callback(data)
 				);
 			},
 			sendStopResponse: (requestId, result, error) => {
@@ -561,25 +555,19 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			removeListeners: () => {
-				ipcRenderer.removeAllListeners(
-					"claude:screen-recording:start:request",
-				);
-				ipcRenderer.removeAllListeners(
-					"claude:screen-recording:stop:request",
-				);
+				ipcRenderer.removeAllListeners("claude:screen-recording:start:request");
+				ipcRenderer.removeAllListeners("claude:screen-recording:stop:request");
 			},
 		},
 		ui: {
 			onSwitchPanelRequest: (
 				callback: (data: { requestId: string; panel: string }) => void
 			) => {
-				ipcRenderer.removeAllListeners(
-					"claude:ui:switch-panel:request",
-				);
+				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
 				ipcRenderer.on(
 					"claude:ui:switch-panel:request",
 					(_: unknown, data: { requestId: string; panel: string }) =>
-						callback(data),
+						callback(data)
 				);
 			},
 			sendSwitchPanelResponse: (
@@ -594,9 +582,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			removeListeners: () => {
-				ipcRenderer.removeAllListeners(
-					"claude:ui:switch-panel:request",
-				);
+				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
 			},
 		},
 		projectCrud: {
@@ -607,7 +593,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.on(
 					"claude:project:create:request",
 					(_: unknown, data: { requestId: string; name: string }) =>
-						callback(data),
+						callback(data)
 				);
 			},
 			sendCreateResponse: (
@@ -622,18 +608,13 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			onDeleteRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => {
 				ipcRenderer.removeAllListeners("claude:project:delete:request");
 				ipcRenderer.on(
 					"claude:project:delete:request",
-					(
-						_: unknown,
-						data: { requestId: string; projectId: string },
-					) => callback(data),
+					(_: unknown, data: { requestId: string; projectId: string }) =>
+						callback(data)
 				);
 			},
 			sendDeleteResponse: (
@@ -663,8 +644,8 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 							requestId: string;
 							projectId: string;
 							name: string;
-						},
-					) => callback(data),
+						}
+					) => callback(data)
 				);
 			},
 			sendRenameResponse: (
@@ -683,20 +664,13 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				});
 			},
 			onDuplicateRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => {
-				ipcRenderer.removeAllListeners(
-					"claude:project:duplicate:request",
-				);
+				ipcRenderer.removeAllListeners("claude:project:duplicate:request");
 				ipcRenderer.on(
 					"claude:project:duplicate:request",
-					(
-						_: unknown,
-						data: { requestId: string; projectId: string },
-					) => callback(data),
+					(_: unknown, data: { requestId: string; projectId: string }) =>
+						callback(data)
 				);
 			},
 			sendDuplicateResponse: (
@@ -718,9 +692,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:project:create:request");
 				ipcRenderer.removeAllListeners("claude:project:delete:request");
 				ipcRenderer.removeAllListeners("claude:project:rename:request");
-				ipcRenderer.removeAllListeners(
-					"claude:project:duplicate:request",
-				);
+				ipcRenderer.removeAllListeners("claude:project:duplicate:request");
 			},
 		},
 	};

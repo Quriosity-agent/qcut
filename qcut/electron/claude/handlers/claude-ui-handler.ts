@@ -100,8 +100,10 @@ export async function requestSwitchPanel(
 			ipcMain.removeListener("claude:ui:switch-panel:response", handler);
 			if (data.error) {
 				reject(new Error(data.error));
+			} else if (data.result) {
+				resolve(data.result);
 			} else {
-				resolve(data.result!);
+				reject(new Error("Renderer returned empty result for panel switch"));
 			}
 		};
 

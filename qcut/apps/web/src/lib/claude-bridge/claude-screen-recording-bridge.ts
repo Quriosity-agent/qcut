@@ -12,7 +12,7 @@ import {
 	stopScreenRecording,
 } from "@/lib/project/screen-recording-controller";
 
-const DEBUG = true;
+const DEBUG = false;
 const PREFIX = "[ClaudeScreenRecordingBridge]";
 
 function debugLog(...args: unknown[]): void {
@@ -60,17 +60,14 @@ export function setupClaudeScreenRecordingBridge(): void {
 				srAPI.sendStartResponse(
 					data.requestId,
 					undefined,
-					error instanceof Error ? error.message : String(error),
+					error instanceof Error ? error.message : String(error)
 				);
 			}
-		},
+		}
 	);
 
 	srAPI.onStopRequest(
-		async (data: {
-			requestId: string;
-			options: { discard?: boolean };
-		}) => {
+		async (data: { requestId: string; options: { discard?: boolean } }) => {
 			try {
 				debugLog("Received stop recording request", data.options);
 				const result = await stopScreenRecording({
@@ -83,10 +80,10 @@ export function setupClaudeScreenRecordingBridge(): void {
 				srAPI.sendStopResponse(
 					data.requestId,
 					undefined,
-					error instanceof Error ? error.message : String(error),
+					error instanceof Error ? error.message : String(error)
 				);
 			}
-		},
+		}
 	);
 
 	debugLog("Bridge setup complete");

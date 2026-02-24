@@ -52,6 +52,20 @@ function createWindowProxy(requestFromMain: RequestFromMainFn): WindowProxy {
 	};
 }
 
+/** Race a promise against a timeout, rejecting with HttpError 504 on expiry. */
+function withTimeout<T>(
+	promise: Promise<T>,
+	ms: number,
+	message: string
+): Promise<T> {
+	return Promise.race([
+		promise,
+		new Promise<never>((_, reject) =>
+			setTimeout(() => reject(new HttpError(504, message)), ms)
+		),
+	]);
+}
+
 interface UtilityHttpConfig {
 	port: number;
 	appVersion: string;
@@ -94,86 +108,62 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	// Navigator routes (project listing + editor navigation)
 	// ==========================================================================
 	router.get("/api/claude/navigator/projects", async () => {
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("get-projects", {}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Renderer timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Renderer timed out"
+		);
 	});
 
 	router.post("/api/claude/navigator/open", async (req) => {
 		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("navigate-to-project", {
 				projectId: req.body.projectId,
 			}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Renderer timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Renderer timed out"
+		);
 	});
 
 	// ==========================================================================
 	// Screen Recording routes
 	// ==========================================================================
 	router.get("/api/claude/screen-recording/sources", async () => {
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("screen-recording:sources", {}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Timed out listing sources")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Timed out listing sources"
+		);
 	});
 
 	router.get("/api/claude/screen-recording/status", async () => {
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("screen-recording:status", {}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Timed out getting status")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Timed out getting status"
+		);
 	});
 
 	router.post("/api/claude/screen-recording/start", async (req) => {
 		const sourceId = req.body?.sourceId as string | undefined;
 		const fileName = req.body?.fileName as string | undefined;
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("screen-recording:start", { sourceId, fileName }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Recording start timed out")),
-					30_000
-				)
-			),
-		]);
+			30_000,
+			"Recording start timed out"
+		);
 	});
 
 	router.post("/api/claude/screen-recording/stop", async (req) => {
 		const discard = req.body?.discard as boolean | undefined;
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("screen-recording:stop", { discard }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Recording stop timed out")),
-					60_000
-				)
-			),
-		]);
+			60_000,
+			"Recording stop timed out"
+		);
 	});
 
 	// ==========================================================================
@@ -181,32 +171,24 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	// ==========================================================================
 	router.post("/api/claude/project/create", async (req) => {
 		const name = req.body?.name as string | undefined;
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("project:create", { name: name || "New Project" }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Create project timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Create project timed out"
+		);
 	});
 
 	router.post("/api/claude/project/delete", async (req) => {
 		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("project:delete", {
 				projectId: req.body.projectId,
 			}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Delete project timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Delete project timed out"
+		);
 	});
 
 	router.post("/api/claude/project/rename", async (req) => {
@@ -216,35 +198,27 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.name || typeof req.body.name !== "string") {
 			throw new HttpError(400, "Missing 'name' in request body");
 		}
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("project:rename", {
 				projectId: req.body.projectId,
 				name: req.body.name,
 			}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Rename project timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Rename project timed out"
+		);
 	});
 
 	router.post("/api/claude/project/duplicate", async (req) => {
 		if (!req.body?.projectId || typeof req.body.projectId !== "string") {
 			throw new HttpError(400, "Missing 'projectId' in request body");
 		}
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("project:duplicate", {
 				projectId: req.body.projectId,
 			}),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Duplicate project timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Duplicate project timed out"
+		);
 	});
 
 	// ==========================================================================
@@ -254,15 +228,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.panel || typeof req.body.panel !== "string") {
 			throw new HttpError(400, "Missing 'panel' in request body");
 		}
-		return await Promise.race([
+		return await withTimeout(
 			requestFromMain("switch-panel", { panel: req.body.panel }),
-			new Promise<never>((_, reject) =>
-				setTimeout(
-					() => reject(new HttpError(504, "Panel switch timed out")),
-					10_000
-				)
-			),
-		]);
+			10_000,
+			"Panel switch timed out"
+		);
 	});
 
 	// Auth check
@@ -295,7 +265,7 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			res.end();
 			return;
 		}
-		req.setTimeout(30_000, () => {
+		req.setTimeout(120_000, () => {
 			res.writeHead(408, { "Content-Type": "application/json" });
 			res.end(
 				JSON.stringify({

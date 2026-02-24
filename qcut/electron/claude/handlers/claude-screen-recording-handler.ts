@@ -46,7 +46,7 @@ export interface StopRecordingResponse {
  */
 export async function requestStartRecordingFromRenderer(
 	win: BrowserWindow,
-	options: StartRecordingRequest,
+	options: StartRecordingRequest
 ): Promise<StartRecordingResponse> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -55,10 +55,7 @@ export async function requestStartRecordingFromRenderer(
 		const timeout = setTimeout(() => {
 			if (resolved) return;
 			resolved = true;
-			ipcMain.removeListener(
-				"claude:screen-recording:start:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:screen-recording:start:response", handler);
 			reject(new Error("Timeout waiting for screen recording to start"));
 		}, START_TIMEOUT_MS);
 
@@ -68,19 +65,18 @@ export async function requestStartRecordingFromRenderer(
 				requestId: string;
 				result?: StartRecordingResponse;
 				error?: string;
-			},
+			}
 		) => {
 			if (data.requestId !== requestId || resolved) return;
 			resolved = true;
 			clearTimeout(timeout);
-			ipcMain.removeListener(
-				"claude:screen-recording:start:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:screen-recording:start:response", handler);
 			if (data.error) {
 				reject(new Error(data.error));
+			} else if (data.result) {
+				resolve(data.result);
 			} else {
-				resolve(data.result!);
+				reject(new Error("Renderer returned empty result for start recording"));
 			}
 		};
 
@@ -97,7 +93,7 @@ export async function requestStartRecordingFromRenderer(
  */
 export async function requestStopRecordingFromRenderer(
 	win: BrowserWindow,
-	options: StopRecordingRequest,
+	options: StopRecordingRequest
 ): Promise<StopRecordingResponse> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -106,10 +102,7 @@ export async function requestStopRecordingFromRenderer(
 		const timeout = setTimeout(() => {
 			if (resolved) return;
 			resolved = true;
-			ipcMain.removeListener(
-				"claude:screen-recording:stop:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:screen-recording:stop:response", handler);
 			reject(new Error("Timeout waiting for screen recording to stop"));
 		}, STOP_TIMEOUT_MS);
 
@@ -119,19 +112,18 @@ export async function requestStopRecordingFromRenderer(
 				requestId: string;
 				result?: StopRecordingResponse;
 				error?: string;
-			},
+			}
 		) => {
 			if (data.requestId !== requestId || resolved) return;
 			resolved = true;
 			clearTimeout(timeout);
-			ipcMain.removeListener(
-				"claude:screen-recording:stop:response",
-				handler,
-			);
+			ipcMain.removeListener("claude:screen-recording:stop:response", handler);
 			if (data.error) {
 				reject(new Error(data.error));
+			} else if (data.result) {
+				resolve(data.result);
 			} else {
-				resolve(data.result!);
+				reject(new Error("Renderer returned empty result for stop recording"));
 			}
 		};
 
