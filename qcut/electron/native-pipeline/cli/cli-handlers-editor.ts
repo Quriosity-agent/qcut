@@ -200,7 +200,7 @@ async function handleUiCommand(
 				return {
 					success: false,
 					error:
-						"Missing --panel. Available: remotion, terminal, skills, media, ai, text2image, pty, nano-edit, upscale, word-timeline, project-folder, moyin, video-edit",
+						"Missing --panel. Available: media, text, stickers, video-edit, effects, transitions, filters, text2image, nano-edit, ai, sounds, segmentation, remotion, pty, word-timeline, project-folder, upscale, moyin. Aliases: terminal, skills, library, ai-video, ai-images, audio-studio, smart-speech, project",
 				};
 			}
 			const data = await client.post("/api/claude/ui/switch-panel", {

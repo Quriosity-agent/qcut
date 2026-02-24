@@ -225,6 +225,17 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:export:status/list-jobs  Job management
   editor:diagnostics:analyze Analyze error (--message)
   editor:mcp:forward-html    Forward HTML to MCP preview
+  editor:navigator:projects  List saved projects
+  editor:navigator:open      Open a project (--project-id)
+  editor:screen-recording:sources  List capture sources
+  editor:screen-recording:start    Start recording (--source-id)
+  editor:screen-recording:stop     Stop recording (--discard)
+  editor:screen-recording:status   Get recording status
+  editor:ui:switch-panel     Switch editor panel (--panel)
+  editor:project:create      Create project (--new-name)
+  editor:project:delete      Delete project (--project-id)
+  editor:project:rename      Rename project (--project-id --new-name)
+  editor:project:duplicate   Duplicate project (--project-id)
 
 Global Options:
   --output-dir, -o    Output directory (default: ./output)

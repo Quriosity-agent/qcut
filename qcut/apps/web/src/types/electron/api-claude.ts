@@ -364,10 +364,7 @@ export interface ElectronClaudeOps {
 				error?: string
 			) => void;
 			onDeleteRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => void;
 			sendDeleteResponse: (
 				requestId: string,
@@ -387,10 +384,7 @@ export interface ElectronClaudeOps {
 				error?: string
 			) => void;
 			onDuplicateRequest: (
-				callback: (data: {
-					requestId: string;
-					projectId: string;
-				}) => void
+				callback: (data: { requestId: string; projectId: string }) => void
 			) => void;
 			sendDuplicateResponse: (
 				requestId: string,

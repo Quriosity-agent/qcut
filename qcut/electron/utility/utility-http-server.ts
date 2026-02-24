@@ -158,7 +158,7 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	});
 
 	router.post("/api/claude/screen-recording/stop", async (req) => {
-		const discard = req.body?.discard as boolean | undefined;
+		const discard = req.body?.discard === true;
 		return await withTimeout(
 			requestFromMain("screen-recording:stop", { discard }),
 			60_000,

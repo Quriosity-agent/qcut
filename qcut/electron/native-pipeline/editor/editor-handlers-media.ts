@@ -381,8 +381,7 @@ async function projectDelete(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId)
-		return { success: false, error: "Missing --project-id" };
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	const data = await client.post("/api/claude/project/delete", {
 		projectId: opts.projectId,
 	});
@@ -393,8 +392,7 @@ async function projectRename(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId)
-		return { success: false, error: "Missing --project-id" };
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	if (!opts.newName) return { success: false, error: "Missing --new-name" };
 	const data = await client.post("/api/claude/project/rename", {
 		projectId: opts.projectId,
@@ -407,8 +405,7 @@ async function projectDuplicate(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	if (!opts.projectId)
-		return { success: false, error: "Missing --project-id" };
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	const data = await client.post("/api/claude/project/duplicate", {
 		projectId: opts.projectId,
 	});
