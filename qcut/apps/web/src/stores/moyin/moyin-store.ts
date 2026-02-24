@@ -250,11 +250,17 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 					set({ chatConfigured: false });
 					return;
 				}
-				const configured =
+				let configured =
 					status.openRouterApiKey?.set ||
 					status.geminiApiKey?.set ||
 					status.anthropicApiKey?.set ||
 					false;
+				if (!configured) {
+					// Claude CLI is available as fallback (no API key required)
+					const claudeAvailable =
+						await window.electronAPI?.moyin?.isClaudeAvailable?.();
+					configured = !!claudeAvailable;
+				}
 				set({ chatConfigured: configured });
 			} catch {
 				set({ chatConfigured: false });
@@ -799,3 +805,18 @@ useMoyinStore.subscribe((state) => {
 		saveMoyinProject(state.projectId!, partializeMoyinState(state));
 	}, 1000);
 });
+
+// Listen for parsed script data pushed from CLI via HTTP API
+if (typeof window !== "undefined") {
+	window.electronAPI?.moyin?.onParsed?.((data: Record<string, unknown>) => {
+		const scriptData = data as unknown as ScriptData;
+		useMoyinStore.setState({
+			scriptData,
+			characters: scriptData.characters ?? [],
+			scenes: scriptData.scenes ?? [],
+			episodes: scriptData.episodes ?? [],
+			parseStatus: "ready",
+			activeStep: "characters",
+		});
+	});
+}

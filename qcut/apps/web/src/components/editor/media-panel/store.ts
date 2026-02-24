@@ -115,7 +115,7 @@ export const tabs: { [key in Tab]: { icon: LucideIcon; label: string } } = {
 	},
 	moyin: {
 		icon: ClapperboardIcon,
-		label: "Moyin",
+		label: "Director",
 	},
 };
 

@@ -16,6 +16,7 @@ import {
 	handleQueryVideo as mediaHandleQueryVideo,
 } from "../cli-handlers-media.js";
 import { handleGenerateRemotion } from "../cli-handlers-remotion.js";
+import { handleMoyinParseScript } from "../cli-handlers-moyin.js";
 import {
 	handleSetup as adminHandleSetup,
 	handleSetKey as adminHandleSetKey,
@@ -121,6 +122,8 @@ export class CLIPipelineRunner {
 				);
 			case "generate-remotion":
 				return handleGenerateRemotion(options, onProgress, null, this.signal);
+			case "moyin:parse-script":
+				return handleMoyinParseScript(options, onProgress);
 			case "transfer-motion":
 				return handleTransferMotion(
 					options,
