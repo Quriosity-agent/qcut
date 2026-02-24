@@ -87,9 +87,10 @@ async function falUpload(
 
 		logger.info(`[FAL ${tag}] Success! File URL: ${file_url}`);
 		return { success: true, url: file_url };
-	} catch (error: any) {
-		logger.error(`[FAL ${tag}] Error: ${error.message}`);
-		return { success: false, error: error.message };
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error(`[FAL ${tag}] Error: ${message}`);
+		return { success: false, error: message };
 	}
 }
 
@@ -136,21 +137,22 @@ export function registerFalUploadHandlers(deps: MainIpcDeps): void {
 			try {
 				// Validate URL to prevent SSRF
 				const parsedUrl = new URL(url);
-				if (parsedUrl.protocol !== 'https:') {
-					throw new Error('Only HTTPS URLs are allowed');
+				if (parsedUrl.protocol !== "https:") {
+					throw new Error("Only HTTPS URLs are allowed");
 				}
-				if (!parsedUrl.hostname.endsWith('.fal.ai')) {
-					throw new Error('Only fal.ai domains are allowed');
+				if (!parsedUrl.hostname.endsWith(".fal.ai")) {
+					throw new Error("Only fal.ai domains are allowed");
 				}
-				
+
 				const response = await fetch(url, {
 					headers: { Authorization: `Key ${apiKey}` },
 				});
 				const data = await response.json().catch(() => ({}));
 				return { ok: response.ok, status: response.status, data };
-			} catch (error: any) {
-				logger.error(`[FAL Queue] Fetch error: ${error.message}`);
-				return { ok: false, status: 0, data: { error: error.message } };
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error(`[FAL Queue] Fetch error: ${message}`);
+				return { ok: false, status: 0, data: { error: message } };
 			}
 		}
 	);

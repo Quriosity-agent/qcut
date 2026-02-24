@@ -3,7 +3,7 @@
  * @module electron/native-pipeline/cli/cli-runner/handler-pipeline
  */
 
-import * as fs from "fs";
+import * as fs from "node:fs";
 import { PipelineExecutor } from "../../execution/executor.js";
 import { ParallelPipelineExecutor } from "../../execution/parallel-executor.js";
 import {
@@ -38,10 +38,11 @@ export async function handleRunPipeline(
 	let chain;
 	try {
 		chain = parseChainConfig(yamlContent);
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
 		return {
 			success: false,
-			error: `Failed to parse pipeline config: ${error.message}`,
+			error: `Failed to parse pipeline config: ${message}`,
 		};
 	}
 

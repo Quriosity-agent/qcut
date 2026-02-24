@@ -20,9 +20,10 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 				const { saveAudioToTemp } = require("../audio-temp-handler.js");
 				const filePath = await saveAudioToTemp(audioData, filename);
 				return filePath;
-			} catch (error: any) {
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
 				logger.error("Failed to save audio to temp:", error);
-				throw new Error(`Failed to save audio: ${error.message}`);
+				throw new Error(`Failed to save audio: ${message}`);
 			}
 		}
 	);
@@ -37,9 +38,10 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 				const { saveAudioToTemp } = require("../audio-temp-handler.js");
 				const filePath = await saveAudioToTemp(audioData, filename);
 				return { success: true, path: filePath };
-			} catch (error: any) {
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
 				logger.error("Failed to save audio file:", error);
-				return { success: false, error: error.message };
+				return { success: false, error: message };
 			}
 		}
 	);
@@ -57,9 +59,10 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 				const filePath = await saveVideoToTemp(videoData, filename, sessionId);
 				logger.log(`[Video Temp] Saved video to: ${filePath}`);
 				return filePath;
-			} catch (error: any) {
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
 				logger.error("[Video Temp] Failed to save video:", error);
-				throw new Error(`Failed to save video: ${error.message}`);
+				throw new Error(`Failed to save video: ${message}`);
 			}
 		}
 	);

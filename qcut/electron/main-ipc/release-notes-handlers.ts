@@ -4,8 +4,8 @@
  */
 
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
 	parseReleaseNote,
 	readReleaseNotesFromDir,
@@ -23,18 +23,19 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 		): Promise<ReleaseNote | null> => {
 			try {
 				const releasesDir = getReleasesDir();
-				
+
 				// Validate version parameter to prevent path traversal
 				let filename = "latest.md";
 				if (version) {
 					// Validate semver format (basic regex)
-					const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.-]+))?(?:\+([a-zA-Z0-9.-]+))?$/;
+					const semverRegex =
+						/^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.-]+))?(?:\+([a-zA-Z0-9.-]+))?$/;
 					if (!semverRegex.test(version)) {
 						throw new Error("Invalid version format");
 					}
 					filename = `v${version}.md`;
 				}
-				
+
 				const filePath = path.join(releasesDir, filename);
 
 				if (!fs.existsSync(filePath)) {
@@ -43,7 +44,7 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 
 				const raw = fs.readFileSync(filePath, "utf-8");
 				return parseReleaseNote(raw);
-			} catch (error: any) {
+			} catch (error: unknown) {
 				logger.error("Error reading release notes:", error);
 				return null;
 			}
@@ -60,7 +61,7 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 			}
 
 			return notes;
-		} catch (error: any) {
+		} catch (error: unknown) {
 			logger.error("Error reading changelog:", error);
 			return readChangelogFallback();
 		}

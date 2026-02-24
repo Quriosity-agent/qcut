@@ -85,12 +85,14 @@ export function pruneOldJobs(exportJobs: Map<string, ExportJobInternal>): void {
 		}
 		// Only prune terminal jobs (completed/failed), never in-progress jobs
 		const terminalJobs = [...exportJobs.entries()]
-			.filter(([, job]) => job.status === "completed" || job.status === "failed")
+			.filter(
+				([, job]) => job.status === "completed" || job.status === "failed"
+			)
 			.sort((a, b) => a[1].startedAt - b[1].startedAt);
-		
+
 		const removeCount = exportJobs.size - MAX_JOBS;
 		const toRemove = Math.min(removeCount, terminalJobs.length);
-		
+
 		for (let i = 0; i < toRemove; i++) {
 			exportJobs.delete(terminalJobs[i][0]);
 		}

@@ -67,7 +67,7 @@ export function getExportRecommendation({
 	if (!defaultPreset) {
 		throw new Error("Default preset 'youtube-1080p' not found");
 	}
-	
+
 	const preset =
 		PRESETS.find((p) => p.platform === target || p.id === target) ||
 		defaultPreset;
