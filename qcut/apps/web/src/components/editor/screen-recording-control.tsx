@@ -218,7 +218,7 @@ export function ScreenRecordingControl() {
 			variant="outline"
 			className={
 				recordingActive
-					? "h-7 text-xs border-red-500/60 text-red-600 hover:bg-red-50"
+					? "h-7 text-xs border-red-500/60 text-red-500 hover:bg-red-500/10 hover:text-red-400"
 					: "h-7 text-xs"
 			}
 			onClick={() => {

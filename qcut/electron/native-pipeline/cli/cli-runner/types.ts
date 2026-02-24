@@ -134,6 +134,11 @@ export interface CLIRunOptions {
 	timeout?: number;
 	provider?: string;
 	loadSpeech?: boolean;
+	// screen-recording options
+	sourceId?: string;
+	discard?: boolean;
+	// ui options
+	panel?: string;
 }
 
 export interface CLIResult {

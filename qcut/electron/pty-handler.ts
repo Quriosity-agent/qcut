@@ -290,6 +290,8 @@ export function setupPtyIPC(): void {
 					options.command.trim().startsWith("claude");
 
 				if (isClaudeCommand) {
+					// Prevent "nested session" detection when QCut is launched from Claude Code
+					delete spawnEnv.CLAUDECODE;
 					const mcpServerPath = resolveQcutMcpServerEntry();
 					if (mcpServerPath) {
 						spawnEnv.CLAUDE_MCP_SERVERS = buildClaudeMcpServersEnv({
