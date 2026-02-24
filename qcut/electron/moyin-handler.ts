@@ -270,13 +270,7 @@ async function callClaudeCLI(
 	userPrompt: string
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const args = [
-			"-p",
-			"--model",
-			"sonnet",
-			"--system-prompt",
-			systemPrompt,
-		];
+		const args = ["-p", "--model", "sonnet", "--system-prompt", systemPrompt];
 
 		log.info("[Moyin] Spawning claude -p (sonnet, 300s timeout)...");
 
@@ -315,7 +309,9 @@ async function callClaudeCLI(
 			settled = true;
 			clearTimeout(timeoutId);
 			if (code !== 0) {
-				log.error(`[Moyin] Claude CLI exit ${code}: ${stderr.trim().slice(0, 200)}`);
+				log.error(
+					`[Moyin] Claude CLI exit ${code}: ${stderr.trim().slice(0, 200)}`
+				);
 				reject(
 					new Error(
 						`Claude CLI failed (exit ${code}): ${stderr.trim().slice(0, 200)}`
@@ -485,12 +481,9 @@ export function setupMoyinIPC(): void {
 	);
 
 	// Check if Claude CLI is available (for fallback LLM)
-	ipcMain.handle(
-		"moyin:is-claude-available",
-		async (): Promise<boolean> => {
-			return isClaudeCLIAvailable();
-		}
-	);
+	ipcMain.handle("moyin:is-claude-available", async (): Promise<boolean> => {
+		return isClaudeCLIAvailable();
+	});
 }
 
 // CommonJS export for compiled JavaScript compatibility

@@ -733,8 +733,7 @@ export function createMoyinAPI(): NonNullable<ElectronAPI["moyin"]> {
 		generateStoryboard: (options) =>
 			ipcRenderer.invoke("moyin:generate-storyboard", options),
 		callLLM: (options) => ipcRenderer.invoke("moyin:call-llm", options),
-		isClaudeAvailable: () =>
-			ipcRenderer.invoke("moyin:is-claude-available"),
+		isClaudeAvailable: () => ipcRenderer.invoke("moyin:is-claude-available"),
 		onParsed: (callback) => {
 			ipcRenderer.removeAllListeners("claude:moyin:parsed");
 			ipcRenderer.on("claude:moyin:parsed", (_, data) => callback(data));

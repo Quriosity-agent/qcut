@@ -15,7 +15,11 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
-import type { CLIRunOptions, CLIResult, ProgressFn } from "./cli-runner/types.js";
+import type {
+	CLIRunOptions,
+	CLIResult,
+	ProgressFn,
+} from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 
 const CLAUDE_CLI_TIMEOUT_MS = 300_000;
