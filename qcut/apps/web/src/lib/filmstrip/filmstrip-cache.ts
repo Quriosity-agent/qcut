@@ -87,7 +87,7 @@ export class FilmstripCache {
 
 		// Sort entries by access time (oldest first) and evict ~20%
 		const entries = [...this.cache.entries()].sort(
-			(a, b) => a[1].accessedAt - b[1].accessedAt,
+			(a, b) => a[1].accessedAt - b[1].accessedAt
 		);
 		const toRemove = Math.max(1, Math.floor(entries.length * 0.2));
 		for (let i = 0; i < toRemove; i++) {

@@ -69,17 +69,15 @@ export function useFilmstripThumbnails({
 			const timestamps: number[] = [];
 			for (let i = 0; i < tileCount; i++) {
 				// Sample the center of each tile's time range
-				const t =
-					trimStart + ((i + 0.5) / tileCount) * trimmedDuration;
+				const t = trimStart + ((i + 0.5) / tileCount) * trimmedDuration;
 				// Quantize to 3 decimal places for cache key stability
 				timestamps.push(
-					Math.round(Math.max(0, Math.min(t, duration)) * 1000) /
-						1000,
+					Math.round(Math.max(0, Math.min(t, duration)) * 1000) / 1000
 				);
 			}
 			return timestamps;
 		},
-		[duration, trimStart, trimEnd],
+		[duration, trimStart, trimEnd]
 	);
 
 	// Trigger extraction when parameters change (debounced)
@@ -134,7 +132,7 @@ export function useFilmstripThumbnails({
 						timestamps.map((t) => ({
 							time: t,
 							url: result.get(t) ?? filmstripCache.get(mediaId, t),
-						})),
+						}))
 					);
 					setIsLoading(false);
 				})
