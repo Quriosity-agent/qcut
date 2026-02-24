@@ -9,9 +9,12 @@ import { claudeLog } from "../../utils/logger.js";
 import { HANDLER_NAME, MAX_JOBS } from "./types.js";
 import type { ExportJobInternal } from "./types.js";
 
+const NON_FILENAME_CHARS = /[^a-zA-Z0-9_-]+/g;
+const TRIM_DASHES = /^-+|-+$/g;
+
 export function sanitizeFileName({ input }: { input: string }): string {
 	try {
-		return input.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+		return input.replace(NON_FILENAME_CHARS, "-").replace(TRIM_DASHES, "");
 	} catch {
 		return "export";
 	}

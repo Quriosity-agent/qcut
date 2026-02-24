@@ -56,7 +56,11 @@ export function getExportPresets(): ExportPreset[] {
 /**
  * Get export recommendation for a specific platform/target
  */
-export function getExportRecommendation(target: string): ExportRecommendation {
+export function getExportRecommendation({
+	target,
+}: {
+	target: string;
+}): ExportRecommendation {
 	claudeLog.info(HANDLER_NAME, `Recommending export for target: ${target}`);
 
 	const defaultPreset = PRESETS.find((p) => p.id === "youtube-1080p");
@@ -111,6 +115,8 @@ export function getExportRecommendation(target: string): ExportRecommendation {
 			suggestions.push("Consider lower resolution for longer videos");
 			suggestions.push("Nitro users can upload up to 100MB");
 			break;
+		default:
+			break;
 	}
 
 	return { preset, warnings, suggestions };
@@ -153,7 +159,7 @@ export async function startExportJob({
 					format: settings.format,
 				});
 
-		const jobId = `export_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+		const jobId = `export_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 		const now = Date.now();
 
 		const newJob: ExportJobInternal = {

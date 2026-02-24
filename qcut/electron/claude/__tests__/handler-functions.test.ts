@@ -73,7 +73,7 @@ describe("Export Handler Functions", () => {
 	});
 
 	it("getExportRecommendation returns matching preset for tiktok", () => {
-		const result = getExportRecommendation("tiktok");
+		const result = getExportRecommendation({ target: "tiktok" });
 		expect(result.preset.platform).toBe("tiktok");
 		expect(result.preset.width).toBe(1080);
 		expect(result.preset.height).toBe(1920);
@@ -82,13 +82,13 @@ describe("Export Handler Functions", () => {
 	});
 
 	it("getExportRecommendation returns default for unknown platform", () => {
-		const result = getExportRecommendation("unknown_platform");
+		const result = getExportRecommendation({ target: "unknown_platform" });
 		// Falls back to PRESETS[1] (YouTube 1080p)
 		expect(result.preset.id).toBe("youtube-1080p");
 	});
 
 	it("getExportRecommendation matches by preset id", () => {
-		const result = getExportRecommendation("instagram-reel");
+		const result = getExportRecommendation({ target: "instagram-reel" });
 		expect(result.preset.id).toBe("instagram-reel");
 	});
 

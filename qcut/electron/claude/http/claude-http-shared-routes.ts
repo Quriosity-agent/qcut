@@ -551,7 +551,7 @@ export function registerSharedRoutes(
 	router.get("/api/claude/export/presets", async () => getExportPresets());
 
 	router.get("/api/claude/export/:projectId/recommend/:target", async (req) =>
-		getExportRecommendation(req.params.target)
+		getExportRecommendation({ target: req.params.target })
 	);
 
 	router.post("/api/claude/export/:projectId/start", async (req) => {

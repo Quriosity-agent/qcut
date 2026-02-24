@@ -21,7 +21,7 @@ export function setupClaudeExportIPC(): void {
 	ipcMain.handle(
 		"claude:export:recommend",
 		async (_event: IpcMainInvokeEvent, _projectId: string, target: string) =>
-			getExportRecommendation(target)
+			getExportRecommendation({ target })
 	);
 
 	ipcMain.on("ffmpeg-progress", (_event, data: ProgressEventPayload) => {
