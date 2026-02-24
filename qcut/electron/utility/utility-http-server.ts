@@ -10,7 +10,7 @@
  */
 
 import { createServer } from "node:http";
-import type { Server } from "node:http";
+import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRouter } from "../claude/utils/http-router.js";
 import { claudeLog } from "../claude/utils/logger.js";
 import {
@@ -21,13 +21,23 @@ import {
 let server: Server | null = null;
 
 // Type for the requestFromMain function passed in from the utility process entry
-type RequestFromMainFn = (channel: string, data: any) => Promise<any>;
+type RequestFromMainFn = (
+	channel: string,
+	data: Record<string, unknown>
+) => Promise<unknown>;
+
+/** Window proxy shape returned by createWindowProxy */
+interface WindowProxy {
+	webContents: {
+		send(channel: string, ...args: unknown[]): void;
+	};
+}
 
 /** Fake BrowserWindow-like object that proxies calls through main process */
-function createWindowProxy(requestFromMain: RequestFromMainFn): any {
+function createWindowProxy(requestFromMain: RequestFromMainFn): WindowProxy {
 	return {
 		webContents: {
-			send(channel: string, ...args: any[]) {
+			send(channel: string, ...args: unknown[]) {
 				// Fire-and-forget to main process
 				requestFromMain("webcontents-send", { channel, args }).catch(
 					(err: Error) => {
@@ -81,14 +91,14 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	registerSharedRoutes(router, accessor);
 
 	// Auth check
-	function checkAuth(req: any): boolean {
+	function checkAuth(req: IncomingMessage): boolean {
 		const token = process.env.QCUT_API_TOKEN;
 		if (!token) return true;
 		return req.headers.authorization === `Bearer ${token}`;
 	}
 
 	// CORS
-	function setCorsHeaders(res: any): void {
+	function setCorsHeaders(res: ServerResponse): void {
 		res.setHeader("Access-Control-Allow-Origin", "*");
 		res.setHeader(
 			"Access-Control-Allow-Methods",

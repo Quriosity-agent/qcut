@@ -16,12 +16,18 @@ import {
 import { UtilityPtyManager } from "./utility-pty-manager.js";
 import type { MainToUtilityMessage } from "./utility-ipc-types.js";
 
-// Simple logger for the utility process (electron-log may not be available here)
-const logger = {
-	info: (...args: unknown[]) => console.log(...args),
-	warn: (...args: unknown[]) => console.warn(...args),
-	error: (...args: unknown[]) => console.error(...args),
+// Use electron-log when available, fall back to console
+let logger: {
+	info: (...args: unknown[]) => void;
+	warn: (...args: unknown[]) => void;
+	error: (...args: unknown[]) => void;
 };
+try {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	logger = require("electron-log");
+} catch {
+	logger = console;
+}
 
 // Utility process has process.parentPort for communicating with main.
 // We cast via `unknown` because Electron's utility process augments the
