@@ -16,7 +16,7 @@ import { parseProgress } from "./progress";
 export async function probeVideoFile(
 	videoPath: string
 ): Promise<VideoProbeResult> {
-	const ffprobePath = getFFprobePath();
+	const ffprobePath = await getFFprobePath();
 
 	return new Promise<VideoProbeResult>((resolve, reject) => {
 		const args = [
@@ -278,10 +278,10 @@ async function verifyOutputDuration(
 	outputPath: string,
 	expectedDuration: number
 ): Promise<void> {
-	return new Promise<void>((resolve, reject) => {
-		console.log("⚡ [MODE 1.5 NORMALIZE] 📏 VERIFYING OUTPUT DURATION...");
-		const ffprobePath = getFFprobePath();
+	console.log("⚡ [MODE 1.5 NORMALIZE] 📏 VERIFYING OUTPUT DURATION...");
+	const ffprobePath = await getFFprobePath();
 
+	return new Promise<void>((resolve) => {
 		const probeProcess = spawn(
 			ffprobePath,
 			[

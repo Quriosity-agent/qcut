@@ -2,7 +2,7 @@
  * FFmpeg/FFprobe Path Resolution
  */
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { app } from "electron";
 import path from "node:path";
 import fs from "node:fs";
@@ -88,17 +88,36 @@ function resolveStagedBinaryFromCandidates({
 	return { resolvedPath: null, searchedPaths };
 }
 
-function isBinaryExecutable({ binaryPath }: { binaryPath: string }): boolean {
-	try {
-		const result = spawnSync(binaryPath, ["-version"], {
-			timeout: 2500,
-			windowsHide: true,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
-		return result.status === 0;
-	} catch {
-		return false;
-	}
+function isBinaryExecutable({
+	binaryPath,
+}: {
+	binaryPath: string;
+}): Promise<boolean> {
+	return new Promise((resolve) => {
+		try {
+			const proc = spawn(binaryPath, ["-version"], {
+				windowsHide: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+
+			const timeoutId = setTimeout(() => {
+				proc.kill();
+				resolve(false);
+			}, 2500);
+
+			proc.on("close", (code) => {
+				clearTimeout(timeoutId);
+				resolve(code === 0);
+			});
+
+			proc.on("error", () => {
+				clearTimeout(timeoutId);
+				resolve(false);
+			});
+		} catch {
+			resolve(false);
+		}
+	});
 }
 
 function resolvePackagedStagedBinaryOrThrow({
@@ -286,7 +305,7 @@ export function getFFmpegPath(): string {
  * - Packaged: staged binary only (`process.resourcesPath/ffmpeg/<platform>-<arch>/`)
  * - Development: staged binary → ffprobe-static (executable) → system install → FFmpeg dir → PATH
  */
-export function getFFprobePath(): string {
+export async function getFFprobePath(): Promise<string> {
 	const platform = process.platform;
 	const binaryName = getBinaryName({ tool: "ffprobe", platform });
 
@@ -302,7 +321,11 @@ export function getFFprobePath(): string {
 		binaryName,
 	});
 	if (devStagedResult.resolvedPath) {
-		if (isBinaryExecutable({ binaryPath: devStagedResult.resolvedPath })) {
+		if (
+			await isBinaryExecutable({
+				binaryPath: devStagedResult.resolvedPath,
+			})
+		) {
 			debugLog(
 				"Using staged FFprobe binary in development:",
 				devStagedResult.resolvedPath
@@ -319,7 +342,7 @@ export function getFFprobePath(): string {
 		const staticPath: string = require("ffprobe-static").path;
 		if (
 			fs.existsSync(staticPath) &&
-			isBinaryExecutable({ binaryPath: staticPath })
+			(await isBinaryExecutable({ binaryPath: staticPath }))
 		) {
 			debugLog("Found ffprobe-static:", staticPath);
 			return staticPath;
@@ -333,7 +356,7 @@ export function getFFprobePath(): string {
 		if (!fs.existsSync(searchPath)) {
 			continue;
 		}
-		if (!isBinaryExecutable({ binaryPath: searchPath })) {
+		if (!(await isBinaryExecutable({ binaryPath: searchPath }))) {
 			continue;
 		}
 		debugLog("Found FFprobe at system path:", searchPath);

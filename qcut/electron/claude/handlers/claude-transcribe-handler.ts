@@ -61,8 +61,8 @@ async function resolveMediaPath(
 /**
  * Check whether a video file contains at least one audio stream using ffprobe.
  */
-function hasAudioStream(videoPath: string): Promise<boolean> {
-	const ffprobePath = getFFprobePath();
+async function hasAudioStream(videoPath: string): Promise<boolean> {
+	const ffprobePath = await getFFprobePath();
 	return new Promise((resolve) => {
 		const proc = spawn(
 			ffprobePath,
