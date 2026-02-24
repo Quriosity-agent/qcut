@@ -17,7 +17,10 @@ import { PanelErrorFallback } from "./panel-error-fallback";
 const PanelBoundary = ({
 	name,
 	children,
-}: { name: string; children: React.ReactNode }) => (
+}: {
+	name: string;
+	children: React.ReactNode;
+}) => (
 	<ErrorBoundary
 		isolate
 		fallback={(props) => <PanelErrorFallback {...props} name={name} />}

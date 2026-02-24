@@ -137,7 +137,6 @@ export async function generateVideo(
 			}
 
 			if (queueResult.video && queueResult.video.url) {
-
 				// Parse Sora 2 response if needed
 				let videoUrl = queueResult.video.url;
 				if (isSora2Model(request.model)) {
