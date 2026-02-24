@@ -43,7 +43,7 @@ function dequeue(): void {
 function seekTo(
 	video: HTMLVideoElement,
 	time: number,
-	signal?: AbortSignal,
+	signal?: AbortSignal
 ): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
 		if (signal?.aborted) {
@@ -84,7 +84,7 @@ function captureFrame(
 	canvas: HTMLCanvasElement,
 	ctx: CanvasRenderingContext2D,
 	width: number,
-	height: number,
+	height: number
 ): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		try {
@@ -100,7 +100,7 @@ function captureFrame(
 					resolve(URL.createObjectURL(blob));
 				},
 				"image/jpeg",
-				0.7,
+				0.7
 			);
 		} catch (err) {
 			reject(err);
@@ -111,7 +111,7 @@ function captureFrame(
 /** Load a video element from a File and wait for metadata */
 function loadVideo(
 	file: File,
-	signal?: AbortSignal,
+	signal?: AbortSignal
 ): Promise<{ video: HTMLVideoElement; blobUrl: string }> {
 	return new Promise((resolve, reject) => {
 		if (signal?.aborted) {
@@ -230,10 +230,7 @@ export async function extractFrames({
 			}
 
 			// Clamp time to valid range
-			const clampedTime = Math.max(
-				0,
-				Math.min(time, video.duration - 0.01),
-			);
+			const clampedTime = Math.max(0, Math.min(time, video.duration - 0.01));
 
 			await seekTo(video, clampedTime, signal);
 			const frameUrl = await captureFrame(video, canvas, ctx, width, height);

@@ -32,12 +32,7 @@ export default defineConfig({
 			provider: "v8",
 			reporter: ["text", "lcov", "json"],
 			reportsDirectory: "./coverage",
-			exclude: [
-				"src/test/",
-				"*.config.*",
-				"**/*.d.ts",
-				"src/routeTree.gen.ts",
-			],
+			exclude: ["src/test/", "*.config.*", "**/*.d.ts", "src/routeTree.gen.ts"],
 		},
 		environmentMatchGlobs: [["**/electron/**", "node"]],
 		isolate: true,
