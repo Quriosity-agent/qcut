@@ -449,6 +449,12 @@ export function startUtilityProcess(): void {
 						}
 						pending.resolve({ success: false, error: msg.error });
 					}
+				} else if (msg.success && msg.sessionId) {
+					// Orphan: spawn succeeded after timeout — kill it
+					logger.warn(
+						`[UtilityBridge] Killing orphan PTY ${msg.sessionId} (spawn arrived after timeout)`
+					);
+					sendToUtility({ type: "pty:kill", sessionId: msg.sessionId });
 				}
 				break;
 			}
@@ -589,6 +595,13 @@ export function setupUtilityPtyIPC(): void {
 					pendingPtySpawns.delete(requestId);
 					sessionToWebContentsId.delete(sessionId);
 					sessionRegistry.delete(sessionId);
+					// Remove queued spawn message if it hasn't been flushed yet
+					const queueIdx = messageQueue.findIndex(
+						(m) => m.type === "pty:spawn" && m.requestId === requestId
+					);
+					if (queueIdx !== -1) messageQueue.splice(queueIdx, 1);
+					// Best-effort kill in case it was already flushed and spawned
+					sendToUtility({ type: "pty:kill", sessionId });
 					resolve({ success: false, error: "PTY spawn timed out" });
 				}, 10_000);
 
