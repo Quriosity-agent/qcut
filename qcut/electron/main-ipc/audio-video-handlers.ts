@@ -16,8 +16,8 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 			audioData: Uint8Array,
 			filename: string
 		): Promise<string> => {
-			const { saveAudioToTemp } = require("../audio-temp-handler.js");
 			try {
+				const { saveAudioToTemp } = require("../audio-temp-handler.js");
 				const filePath = await saveAudioToTemp(audioData, filename);
 				return filePath;
 			} catch (error: any) {
@@ -33,8 +33,8 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 			_event: IpcMainInvokeEvent,
 			{ audioData, filename }: { audioData: any; filename: string }
 		) => {
-			const { saveAudioToTemp } = require("../audio-temp-handler.js");
 			try {
+				const { saveAudioToTemp } = require("../audio-temp-handler.js");
 				const filePath = await saveAudioToTemp(audioData, filename);
 				return { success: true, path: filePath };
 			} catch (error: any) {
@@ -52,8 +52,8 @@ export function registerAudioVideoHandlers(deps: MainIpcDeps): void {
 			filename: string,
 			sessionId?: string
 		): Promise<string> => {
-			const { saveVideoToTemp } = require("../video-temp-handler.js");
 			try {
+				const { saveVideoToTemp } = require("../video-temp-handler.js");
 				const filePath = await saveVideoToTemp(videoData, filename, sessionId);
 				logger.log(`[Video Temp] Saved video to: ${filePath}`);
 				return filePath;

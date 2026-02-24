@@ -23,7 +23,18 @@ export function registerReleaseNotesHandlers(deps: MainIpcDeps): void {
 		): Promise<ReleaseNote | null> => {
 			try {
 				const releasesDir = getReleasesDir();
-				const filename = version ? `v${version}.md` : "latest.md";
+				
+				// Validate version parameter to prevent path traversal
+				let filename = "latest.md";
+				if (version) {
+					// Validate semver format (basic regex)
+					const semverRegex = /^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9.-]+))?(?:\+([a-zA-Z0-9.-]+))?$/;
+					if (!semverRegex.test(version)) {
+						throw new Error("Invalid version format");
+					}
+					filename = `v${version}.md`;
+				}
+				
 				const filePath = path.join(releasesDir, filename);
 
 				if (!fs.existsSync(filePath)) {

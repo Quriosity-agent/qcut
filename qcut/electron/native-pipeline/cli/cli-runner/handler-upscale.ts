@@ -39,7 +39,16 @@ export async function handleUpscaleImage(
 	});
 
 	const params: Record<string, unknown> = {};
-	if (options.upscale) params.upscale_factor = parseInt(options.upscale, 10);
+	if (options.upscale) {
+		const upscaleFactor = parseInt(options.upscale, 10);
+		if (isNaN(upscaleFactor) || upscaleFactor <= 0) {
+			return {
+				success: false,
+				error: `Invalid upscale factor: ${options.upscale}`,
+			};
+		}
+		params.upscale_factor = upscaleFactor;
+	}
 
 	if (options.target) {
 		const targetMap: Record<string, number> = {

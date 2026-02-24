@@ -35,7 +35,16 @@ export async function handleRunPipeline(
 		return { success: false, error: `Cannot read config: ${options.config}` };
 	}
 
-	const chain = parseChainConfig(yamlContent);
+	let chain;
+	try {
+		chain = parseChainConfig(yamlContent);
+	} catch (error: any) {
+		return {
+			success: false,
+			error: `Failed to parse pipeline config: ${error.message}`,
+		};
+	}
+
 	const validation = validateChain(chain);
 	if (!validation.valid) {
 		return {

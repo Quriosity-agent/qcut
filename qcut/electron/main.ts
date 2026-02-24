@@ -386,15 +386,19 @@ function createStaticServer(): Promise<http.Server> {
 		const MAX_PORT = 8090;
 
 		function tryListen(port: number): void {
-			server.once("error", (err: NodeJS.ErrnoException) => {
+			const errorHandler = (err: NodeJS.ErrnoException) => {
 				if (err.code === "EADDRINUSE" && port < MAX_PORT) {
 					logger.log(`[Static Server] Port ${port} in use, trying ${port + 1}...`);
 					tryListen(port + 1);
 				} else {
 					reject(err);
 				}
-			});
+			};
+			
+			server.once("error", errorHandler);
 			server.listen(port, "localhost", () => {
+				// Remove the error listener on successful bind
+				server.removeListener("error", errorHandler);
 				staticServerPort = port;
 				logger.log(`[Static Server] Started on http://localhost:${port}`);
 				resolve(server);
@@ -533,7 +537,7 @@ if (isCliKeyCommand) {
 }
 
 if (!isCliKeyCommand) {
-	app.whenReady().then(() => {
+	app.whenReady().then(async () => {
 		// Set macOS dock icon (requires PNG format)
 		if (process.platform === "darwin" && app.dock) {
 			const iconPath = app.isPackaged

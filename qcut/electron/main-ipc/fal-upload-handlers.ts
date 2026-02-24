@@ -134,6 +134,15 @@ export function registerFalUploadHandlers(deps: MainIpcDeps): void {
 			apiKey: string
 		): Promise<{ ok: boolean; status: number; data: unknown }> => {
 			try {
+				// Validate URL to prevent SSRF
+				const parsedUrl = new URL(url);
+				if (parsedUrl.protocol !== 'https:') {
+					throw new Error('Only HTTPS URLs are allowed');
+				}
+				if (!parsedUrl.hostname.endsWith('.fal.ai')) {
+					throw new Error('Only fal.ai domains are allowed');
+				}
+				
 				const response = await fetch(url, {
 					headers: { Authorization: `Key ${apiKey}` },
 				});

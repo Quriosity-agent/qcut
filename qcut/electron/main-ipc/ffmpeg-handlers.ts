@@ -12,11 +12,13 @@ export function registerFfmpegHandlers(_deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"get-ffmpeg-resource-path",
 		(_event: IpcMainInvokeEvent, filename: string): string => {
+			// Sanitize filename to prevent path traversal
+			const safeFilename = path.basename(filename);
 			const resourcesPath = path.join(
 				__dirname,
 				"resources",
 				"ffmpeg",
-				filename
+				safeFilename
 			);
 			if (fs.existsSync(resourcesPath)) {
 				return resourcesPath;
@@ -25,7 +27,7 @@ export function registerFfmpegHandlers(_deps: MainIpcDeps): void {
 			const distPath = path.join(
 				__dirname,
 				"../../apps/web/dist/ffmpeg",
-				filename
+				safeFilename
 			);
 			return distPath;
 		}
@@ -34,11 +36,13 @@ export function registerFfmpegHandlers(_deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"check-ffmpeg-resource",
 		(_event: IpcMainInvokeEvent, filename: string): boolean => {
+			// Sanitize filename to prevent path traversal
+			const safeFilename = path.basename(filename);
 			const resourcesPath = path.join(
 				__dirname,
 				"resources",
 				"ffmpeg",
-				filename
+				safeFilename
 			);
 			if (fs.existsSync(resourcesPath)) {
 				return true;
@@ -47,7 +51,7 @@ export function registerFfmpegHandlers(_deps: MainIpcDeps): void {
 			const distPath = path.join(
 				__dirname,
 				"../../apps/web/dist/ffmpeg",
-				filename
+				safeFilename
 			);
 			return fs.existsSync(distPath);
 		}

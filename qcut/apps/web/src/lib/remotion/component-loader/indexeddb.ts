@@ -47,16 +47,23 @@ export async function storeComponent(
 
 		const request = store.put(component);
 
-		request.onerror = () => {
-			reject(new Error("Failed to store component"));
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Transaction failed"));
 		};
 
-		request.onsuccess = () => {
-			resolve();
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Transaction aborted"));
 		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve();
+		};
+
+		request.onerror = () => {
+			// Error will be handled by transaction.onerror
 		};
 	});
 }
@@ -74,17 +81,29 @@ export async function getStoredComponent(
 		const store = transaction.objectStore(STORE_NAME);
 
 		const request = store.get(id);
+		let result: StoredComponent | null = null;
 
-		request.onerror = () => {
-			reject(new Error("Failed to get component"));
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Transaction failed"));
 		};
 
-		request.onsuccess = () => {
-			resolve(request.result || null);
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Transaction aborted"));
 		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve(result);
+		};
+
+		request.onsuccess = () => {
+			result = request.result || null;
+		};
+
+		request.onerror = () => {
+			// Error will be handled by transaction.onerror
 		};
 	});
 }
@@ -100,17 +119,29 @@ export async function getAllStoredComponents(): Promise<StoredComponent[]> {
 		const store = transaction.objectStore(STORE_NAME);
 
 		const request = store.getAll();
+		let result: StoredComponent[] = [];
 
-		request.onerror = () => {
-			reject(new Error("Failed to get components"));
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Transaction failed"));
 		};
 
-		request.onsuccess = () => {
-			resolve(request.result || []);
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Transaction aborted"));
 		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve(result);
+		};
+
+		request.onsuccess = () => {
+			result = request.result || [];
+		};
+
+		request.onerror = () => {
+			// Error will be handled by transaction.onerror
 		};
 	});
 }
@@ -127,16 +158,23 @@ export async function deleteStoredComponent(id: string): Promise<void> {
 
 		const request = store.delete(id);
 
-		request.onerror = () => {
-			reject(new Error("Failed to delete component"));
+		transaction.onerror = () => {
+			db.close();
+			reject(new Error("Transaction failed"));
 		};
 
-		request.onsuccess = () => {
-			resolve();
+		transaction.onabort = () => {
+			db.close();
+			reject(new Error("Transaction aborted"));
 		};
 
 		transaction.oncomplete = () => {
 			db.close();
+			resolve();
+		};
+
+		request.onerror = () => {
+			// Error will be handled by transaction.onerror
 		};
 	});
 }

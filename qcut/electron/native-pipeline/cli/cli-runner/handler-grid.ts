@@ -77,11 +77,18 @@ export async function handleGenerateGrid(
 
 		if (result.outputPath) imagePaths.push(result.outputPath);
 		else if (result.outputUrl) {
-			const dl = await downloadOutput(
-				result.outputUrl,
-				path.join(outputDir, `grid_${i}.png`)
-			);
-			imagePaths.push(dl);
+			try {
+				const dl = await downloadOutput(
+					result.outputUrl,
+					path.join(outputDir, `grid_${i}.png`)
+				);
+				imagePaths.push(dl);
+			} catch (error: any) {
+				return {
+					success: false,
+					error: `Failed to download image ${i + 1}: ${error.message}`,
+				};
+			}
 		}
 
 		onProgress({

@@ -12,7 +12,11 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"open-file-dialog",
 		async (): Promise<Electron.OpenDialogReturnValue> => {
-			const result = await dialog.showOpenDialog(getMainWindow()!, {
+			const mainWindow = getMainWindow();
+			if (!mainWindow) {
+				throw new Error("Main window not available");
+			}
+			const result = await dialog.showOpenDialog(mainWindow, {
 				properties: ["openFile"],
 				filters: [
 					{
@@ -47,7 +51,11 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 	ipcMain.handle(
 		"open-multiple-files-dialog",
 		async (): Promise<Electron.OpenDialogReturnValue> => {
-			const result = await dialog.showOpenDialog(getMainWindow()!, {
+			const mainWindow = getMainWindow();
+			if (!mainWindow) {
+				throw new Error("Main window not available");
+			}
+			const result = await dialog.showOpenDialog(mainWindow, {
 				properties: ["openFile", "multiSelections"],
 				filters: [
 					{
@@ -80,7 +88,11 @@ export function registerFileDialogHandlers(deps: MainIpcDeps): void {
 			defaultFilename?: string,
 			filters?: Electron.FileFilter[]
 		): Promise<Electron.SaveDialogReturnValue> => {
-			const result = await dialog.showSaveDialog(getMainWindow()!, {
+			const mainWindow = getMainWindow();
+			if (!mainWindow) {
+				throw new Error("Main window not available");
+			}
+			const result = await dialog.showSaveDialog(mainWindow, {
 				defaultPath: defaultFilename,
 				filters: filters || [
 					{ name: "Video Files", extensions: ["mp4"] },
