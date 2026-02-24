@@ -1,6 +1,6 @@
 # Filmstrip Timeline Thumbnails
 
-**Status**: Planned
+**Status**: Implemented
 **Estimated effort**: ~3-4 hours (multi-subtask)
 **Priority**: High — core UX improvement for professional editing experience
 
