@@ -183,9 +183,14 @@ export function useMediaActions({
 	const handleDeleteSelected = useCallback(async () => {
 		if (!activeProjectId || !removeMediaItem) return;
 		const ids = [...selectedIds];
-		await Promise.all(ids.map((id) => removeMediaItem(activeProjectId, id)));
-		toast.success(`Deleted ${ids.length} item(s)`);
-		clearSelection();
+		try {
+			await Promise.all(ids.map((id) => removeMediaItem(activeProjectId, id)));
+			toast.success(`Deleted ${ids.length} item(s)`);
+			clearSelection();
+		} catch (error) {
+			debugError("[MediaActions] Delete selected failed:", error);
+			toast.error("Failed to delete selected items");
+		}
 	}, [selectedIds, activeProjectId, removeMediaItem, clearSelection]);
 
 	const handleDownloadSelected = useCallback(async () => {
@@ -213,7 +218,12 @@ export function useMediaActions({
 			return;
 		}
 		if (removeMediaItem) {
-			await removeMediaItem(activeProjectId, id);
+			try {
+				await removeMediaItem(activeProjectId, id);
+			} catch (error) {
+				debugError("[MediaActions] Remove item failed:", error);
+				toast.error("Failed to remove media item");
+			}
 		} else {
 			toast.error("Media store not loaded");
 		}

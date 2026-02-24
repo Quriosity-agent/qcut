@@ -76,7 +76,7 @@ export function MediaItemCard({
 				</div>
 			</ContextMenuTrigger>
 			<ContextMenuContent>
-				<ContextMenuItem>Export clips</ContextMenuItem>
+				<ContextMenuItem disabled>Export clips</ContextMenuItem>
 				{(item.type === "image" || item.type === "video") && (
 					<ContextMenuItem
 						aria-label="Add as overlay"

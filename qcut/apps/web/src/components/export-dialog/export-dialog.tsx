@@ -207,11 +207,13 @@ export function ExportDialog() {
 					</p>
 				</div>
 				<Button
+					type="button"
 					variant="text"
 					size="icon"
 					onClick={handleClose}
 					disabled={isExporting}
 					className="h-8 w-8"
+					aria-label="Close export dialog"
 				>
 					<X className="h-4 w-4" />
 				</Button>
@@ -221,6 +223,7 @@ export function ExportDialog() {
 				{isExporting ? (
 					<div className="space-y-2">
 						<Button
+							type="button"
 							onClick={exportProgress.handleCancel}
 							variant="destructive"
 							className="w-full"

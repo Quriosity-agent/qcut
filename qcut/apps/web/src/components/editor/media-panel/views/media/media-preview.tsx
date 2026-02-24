@@ -17,6 +17,15 @@ export function MediaPreview({ item }: MediaPreviewProps) {
 	if (item.type === "image") {
 		const imageUrl = item.url || item.thumbnailUrl;
 
+		if (!imageUrl) {
+			return (
+				<div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
+					<Image className="h-6 w-6" />
+					<span className="text-xs mt-1">Image</span>
+				</div>
+			);
+		}
+
 		return (
 			<div className="w-full h-full flex items-center justify-center">
 				<img

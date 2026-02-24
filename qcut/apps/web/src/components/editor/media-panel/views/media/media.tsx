@@ -13,7 +13,7 @@ import {
 	MoreHorizontal,
 	ListPlus,
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MediaDragOverlay } from "@/components/editor/media-panel/drag-overlay";
 import {
@@ -61,26 +61,29 @@ export function MediaView() {
 
 	const [searchQuery, setSearchQuery] = useState("");
 	const [mediaFilter, setMediaFilter] = useState("all");
-	const [filteredMediaItems, setFilteredMediaItems] = useState<MediaItem[]>([]);
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-	useEffect(() => {
-		const filtered = mediaItems.filter((item) => {
-			if (item.ephemeral) return false;
-			if (mediaFilter && mediaFilter !== "all" && item.type !== mediaFilter)
-				return false;
-			if (
-				searchQuery &&
-				!item.name.toLowerCase().includes(searchQuery.toLowerCase())
-			)
-				return false;
-			if (selectedFolderId !== null) {
-				if (!(item.folderIds || []).includes(selectedFolderId)) return false;
-			}
-			return true;
-		});
+	const filteredMediaItems = useMemo(
+		() =>
+			mediaItems.filter((item) => {
+				if (item.ephemeral) return false;
+				if (mediaFilter && mediaFilter !== "all" && item.type !== mediaFilter)
+					return false;
+				if (
+					searchQuery &&
+					!item.name.toLowerCase().includes(searchQuery.toLowerCase())
+				)
+					return false;
+				if (selectedFolderId !== null) {
+					if (!(item.folderIds || []).includes(selectedFolderId)) return false;
+				}
+				return true;
+			}),
+		[mediaItems, mediaFilter, searchQuery, selectedFolderId]
+	);
 
-		setFilteredMediaItems(filtered);
+	// Clear selection when filters change
+	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [mediaItems, mediaFilter, searchQuery, selectedFolderId]);
 

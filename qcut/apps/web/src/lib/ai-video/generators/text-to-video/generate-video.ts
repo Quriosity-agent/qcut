@@ -58,7 +58,7 @@ export async function generateVideo(
 				);
 			}
 
-				// Get model configuration from centralized config
+			// Get model configuration from centralized config
 			const modelConfig = getModelConfig(request.model);
 			if (!modelConfig) {
 				throw new Error(`Unknown model: ${request.model}`);

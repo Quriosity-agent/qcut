@@ -4,8 +4,8 @@
  * extract-characters, generate-portraits
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { CLIRunOptions, CLIResult } from "../cli-runner/types.js";
 import type { CharacterInNovel } from "../../vimax/types/character.js";
 import { resolveOutputDir } from "../../output/output-utils.js";

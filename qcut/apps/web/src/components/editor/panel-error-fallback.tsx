@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 
 interface PanelErrorFallbackProps {
 	error: Error;
-	errorInfo: React.ErrorInfo;
 	errorId: string;
 	resetError: () => void;
-	isolate?: boolean;
 	name: string;
 }
 
