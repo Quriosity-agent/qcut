@@ -126,6 +126,16 @@ const COMMANDS = [
 	// Navigator commands — project listing + editor navigation
 	"editor:navigator:projects",
 	"editor:navigator:open",
+	// Screen recording commands
+	"editor:screen-recording:sources",
+	"editor:screen-recording:start",
+	"editor:screen-recording:stop",
+	"editor:screen-recording:status",
+	"editor:ui:switch-panel",
+	"editor:project:create",
+	"editor:project:delete",
+	"editor:project:rename",
+	"editor:project:duplicate",
 ] as const;
 
 type Command = (typeof COMMANDS)[number];
@@ -215,6 +225,17 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:export:status/list-jobs  Job management
   editor:diagnostics:analyze Analyze error (--message)
   editor:mcp:forward-html    Forward HTML to MCP preview
+  editor:navigator:projects  List saved projects
+  editor:navigator:open      Open a project (--project-id)
+  editor:screen-recording:sources  List capture sources
+  editor:screen-recording:start    Start recording (--source-id)
+  editor:screen-recording:stop     Stop recording (--discard)
+  editor:screen-recording:status   Get recording status
+  editor:ui:switch-panel     Switch editor panel (--panel)
+  editor:project:create      Create project (--new-name)
+  editor:project:delete      Delete project (--project-id)
+  editor:project:rename      Rename project (--project-id --new-name)
+  editor:project:duplicate   Duplicate project (--project-id)
 
 Global Options:
   --output-dir, -o    Output directory (default: ./output)
@@ -417,6 +438,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			gap: { type: "string" },
 			timeout: { type: "string" },
 			provider: { type: "string" },
+			// screen-recording options
+			"source-id": { type: "string" },
+			discard: { type: "boolean", default: false },
+			// ui options
+			panel: { type: "string" },
 		},
 		strict: false,
 	});
@@ -612,6 +638,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			: undefined,
 		provider: values.provider as string | undefined,
 		loadSpeech: (values["load-speech"] as boolean) ?? false,
+		// screen-recording options
+		sourceId: values["source-id"] as string | undefined,
+		discard: (values.discard as boolean) ?? false,
+		// ui options
+		panel: values.panel as string | undefined,
 	};
 }
 

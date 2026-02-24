@@ -176,6 +176,10 @@ export class UtilityPtyManager {
 			const isClaudeCommand =
 				typeof msg.command === "string" &&
 				msg.command.trim().startsWith("claude");
+			if (isClaudeCommand) {
+				// Prevent "nested session" detection when QCut is launched from Claude Code
+				delete spawnEnv.CLAUDECODE;
+			}
 			if (isClaudeCommand && msg.mcpServerPath) {
 				spawnEnv.CLAUDE_MCP_SERVERS = buildClaudeMcpServersEnv({
 					existingRawConfig: spawnEnv.CLAUDE_MCP_SERVERS,

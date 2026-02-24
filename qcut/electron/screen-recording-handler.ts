@@ -350,7 +350,7 @@ function mapSourceType({ sourceId }: { sourceId: string }): ScreenSourceType {
 	return SCREEN_SOURCE_TYPE.WINDOW;
 }
 
-async function listCaptureSources({
+export async function listCaptureSources({
 	currentWindowSourceId,
 }: {
 	currentWindowSourceId: string | null;
@@ -718,7 +718,7 @@ async function cleanupSessionFiles({
 	}
 }
 
-function buildStatus(): ScreenRecordingStatus {
+export function buildStatus(): ScreenRecordingStatus {
 	if (!activeSession) {
 		return {
 			state: SCREEN_RECORDING_STATE.IDLE,
@@ -1070,6 +1070,6 @@ export function setupScreenRecordingIPC(): void {
 	});
 }
 
-module.exports = { setupScreenRecordingIPC };
+module.exports = { setupScreenRecordingIPC, listCaptureSources, buildStatus };
 
-export default { setupScreenRecordingIPC };
+export default { setupScreenRecordingIPC, listCaptureSources, buildStatus };
