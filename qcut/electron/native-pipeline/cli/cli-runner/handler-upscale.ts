@@ -42,7 +42,10 @@ export async function handleUpscaleImage(
 	if (options.upscale) {
 		const factor = parseInt(options.upscale, 10);
 		if (Number.isNaN(factor) || factor <= 0) {
-			return { success: false, error: `Invalid --upscale value: ${options.upscale}` };
+			return {
+				success: false,
+				error: `Invalid --upscale value: ${options.upscale}`,
+			};
 		}
 		params.upscale_factor = factor;
 	}

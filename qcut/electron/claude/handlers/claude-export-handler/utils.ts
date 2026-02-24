@@ -83,9 +83,7 @@ export function pruneOldJobs(exportJobs: Map<string, ExportJobInternal>): void {
 		const terminal = [...exportJobs.entries()].filter(
 			([, job]) => job.status === "completed" || job.status === "failed"
 		);
-		const sorted = terminal.sort(
-			(a, b) => a[1].startedAt - b[1].startedAt
-		);
+		const sorted = terminal.sort((a, b) => a[1].startedAt - b[1].startedAt);
 		const removeCount = exportJobs.size - MAX_JOBS;
 		for (let i = 0; i < removeCount && i < sorted.length; i++) {
 			exportJobs.delete(sorted[i][0]);

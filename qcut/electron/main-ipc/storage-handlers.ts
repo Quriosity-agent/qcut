@@ -78,7 +78,7 @@ export function registerStorageHandlers(deps: MainIpcDeps): void {
 			const files = await fs.promises.readdir(projectsDir);
 			return files
 				.filter((f) => f.endsWith(".json"))
-				.map((f) => f.endsWith(".json") ? f.slice(0, -5) : f);
+				.map((f) => (f.endsWith(".json") ? f.slice(0, -5) : f));
 		} catch (error: any) {
 			if (error.code === "ENOENT") return [];
 			throw error;
