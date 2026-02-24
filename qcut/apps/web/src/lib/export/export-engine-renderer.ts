@@ -102,6 +102,10 @@ async function renderElement(
 			element,
 			currentTime,
 		});
+	} else if (element.type === "remotion") {
+		// Remotion elements are handled by RemotionExportEngine.compositeRemotionFrames()
+		// Skip in standard canvas render to avoid double-rendering
+		return;
 	}
 }
 

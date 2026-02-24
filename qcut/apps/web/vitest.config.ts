@@ -28,6 +28,12 @@ export default defineConfig({
 			"../../electron/claude/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)",
 		],
 		exclude: ["**/node_modules/**", "**/dist/**", "tests/e2e/**"],
+		coverage: {
+			provider: "v8",
+			reporter: ["text", "lcov", "json"],
+			reportsDirectory: "./coverage",
+			exclude: ["src/test/", "*.config.*", "**/*.d.ts", "src/routeTree.gen.ts"],
+		},
 		environmentMatchGlobs: [["**/electron/**", "node"]],
 		isolate: true,
 		pool: "forks",

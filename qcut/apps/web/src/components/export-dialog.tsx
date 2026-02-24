@@ -73,6 +73,11 @@ export function ExportDialog() {
 	// Check if there are audio sources available (audio tracks + video audio)
 	const { hasAudio } = detectAudioSources(tracks, mediaItems);
 
+	// Check if timeline has Remotion elements (uses dedicated export engine)
+	const hasRemotionElements = tracks.some(
+		(track) => track.type === "remotion" && track.elements.length > 0
+	);
+
 	const captionFormats: {
 		value: CaptionFormat;
 		label: string;
@@ -600,8 +605,16 @@ export function ExportDialog() {
 									<div className="flex justify-between items-center gap-2">
 										<span className="font-medium flex-shrink-0">Engine:</span>
 										<span className="text-muted-foreground text-right truncate">
-											{exportSettings.engineRecommendation}
+											{hasRemotionElements
+												? "Remotion Engine"
+												: exportSettings.engineRecommendation}
 										</span>
+									</div>
+								)}
+								{hasRemotionElements && (
+									<div className="text-xs text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950 rounded px-2 py-1 mt-1">
+										Timeline contains Remotion elements — Remotion Engine will
+										be used
 									</div>
 								)}
 							</div>

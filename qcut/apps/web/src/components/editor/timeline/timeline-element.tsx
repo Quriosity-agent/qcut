@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { handleMediaProcessingError } from "@/lib/debug/error-handler";
+import { useFilmstripThumbnails } from "@/hooks/timeline/use-filmstrip-thumbnails";
 import { Button } from "../../ui/button";
 import {
 	MoreVertical,
@@ -128,8 +129,46 @@ function TimelineElementComponent({
 	// Use the media item URL directly - it's already been converted to blob if needed
 	const mediaItemUrl = mediaItem?.url;
 
-	// Blob URLs are expected and working correctly in Electron
-	// Removed incorrect warning about blob URLs being "unexpected"
+	const isAudio = mediaItem?.type === "audio";
+
+	// Compute element dimensions (needed by filmstrip hook, must be before conditional returns)
+	const effectiveDuration =
+		element.duration - element.trimStart - element.trimEnd;
+	const elementWidth = Math.max(
+		TIMELINE_CONSTANTS.ELEMENT_MIN_WIDTH,
+		effectiveDuration * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
+	);
+
+	// Viewport-aware filmstrip: only extract frames for visible clips
+	const elementRef = useRef<HTMLDivElement>(null);
+	const [isVisible, setIsVisible] = useState(true);
+
+	useEffect(() => {
+		const el = elementRef.current;
+		if (!el) return;
+		const observer = new IntersectionObserver(
+			([entry]) => setIsVisible(entry.isIntersecting),
+			{ threshold: 0 }
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, []);
+
+	// Filmstrip thumbnails for video clips
+	const filmstrip = useFilmstripThumbnails({
+		mediaId: "mediaId" in element ? element.mediaId : "",
+		file: mediaItem?.type === "video" ? mediaItem.file : undefined,
+		duration: element.duration,
+		trimStart: element.trimStart,
+		trimEnd: element.trimEnd,
+		zoomLevel,
+		trackHeight: getTrackHeight(track.type),
+		clipWidthPx: elementWidth,
+		enabled:
+			mediaItem?.type === "video" &&
+			mediaItem?.thumbnailStatus === "ready" &&
+			isVisible,
+	});
 
 	// Log if we have a media item but no URL
 	if (mediaItem && !mediaItemUrl) {
@@ -157,16 +196,7 @@ function TimelineElementComponent({
 		);
 	}
 
-	const isAudio = mediaItem?.type === "audio";
-
 	// resizing hooks already declared earlier to maintain stable hook order.
-
-	const effectiveDuration =
-		element.duration - element.trimStart - element.trimEnd;
-	const elementWidth = Math.max(
-		TIMELINE_CONSTANTS.ELEMENT_MIN_WIDTH,
-		effectiveDuration * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel
-	);
 
 	// Use real-time position during drag, otherwise use stored position
 	const isBeingDragged = dragState.elementId === element.id;
@@ -393,14 +423,7 @@ function TimelineElementComponent({
 			);
 		}
 
-		const VIDEO_TILE_PADDING = 16;
-		const OVERLAY_SPACE_MULTIPLIER = 1.5;
-
 		if (mediaItem.type === "video") {
-			const trackHeight = getTrackHeight(track.type);
-			const tileHeight = trackHeight - 8; // Match image padding
-			const tileWidth = tileHeight * TILE_ASPECT_RATIO;
-
 			// Show loading indicator while thumbnail generates
 			if (
 				mediaItem.thumbnailStatus === "loading" ||
@@ -415,37 +438,49 @@ function TimelineElementComponent({
 				);
 			}
 
-			// Show tiled thumbnails if available
-			if (mediaItem.thumbnailUrl) {
+			const { frames, tileWidth, tileHeight } = filmstrip;
+			const hasFilmstrip = frames.length > 0;
+
+			// Show filmstrip tiles (or single-thumbnail fallback)
+			if (hasFilmstrip || mediaItem.thumbnailUrl) {
 				return (
 					<div className="w-full h-full flex items-center justify-center">
 						<div className="bg-[#004D52] py-3 w-full h-full relative">
-							{/* Background with tiled thumbnails */}
+							{/* Filmstrip frame tiles */}
 							<div
-								className="absolute top-3 bottom-3 left-0 right-0"
-								style={{
-									backgroundImage: `url(${mediaItem.thumbnailUrl})`,
-									backgroundRepeat: "repeat-x",
-									backgroundSize: `${tileWidth}px ${tileHeight}px`,
-									backgroundPosition: "left center",
-									pointerEvents: "none",
-								}}
-								aria-label={`Tiled thumbnail of ${mediaItem.name}`}
-							/>
-							{/* Overlay with vertical borders */}
-							<div
-								className="absolute top-3 bottom-3 left-0 right-0 pointer-events-none"
-								style={{
-									backgroundImage: `repeating-linear-gradient(
-                    to right,
-                    transparent 0px,
-                    transparent ${tileWidth - 1}px,
-                    rgba(255, 255, 255, 0.6) ${tileWidth - 1}px,
-                    rgba(255, 255, 255, 0.6) ${tileWidth}px
-                  )`,
-									backgroundPosition: "left center",
-								}}
-							/>
+								className="absolute top-3 bottom-3 left-0 right-0 flex flex-row overflow-hidden pointer-events-none"
+								aria-label={`Filmstrip thumbnails of ${mediaItem.name}`}
+							>
+								{hasFilmstrip ? (
+									frames.map((frame, i) => (
+										<div
+											key={`${frame.time}-${i}`}
+											style={{
+												width: tileWidth,
+												height: tileHeight,
+												backgroundImage: `url(${frame.url || mediaItem.thumbnailUrl})`,
+												backgroundSize: "cover",
+												backgroundPosition: "center",
+												flexShrink: 0,
+												borderRight:
+													i < frames.length - 1
+														? "1px solid rgba(255, 255, 255, 0.3)"
+														: "none",
+											}}
+										/>
+									))
+								) : (
+									<div
+										className="w-full h-full"
+										style={{
+											backgroundImage: `url(${mediaItem.thumbnailUrl})`,
+											backgroundRepeat: "repeat-x",
+											backgroundSize: `${tileWidth}px ${tileHeight}px`,
+											backgroundPosition: "left center",
+										}}
+									/>
+								)}
+							</div>
 						</div>
 					</div>
 				);
@@ -493,6 +528,7 @@ function TimelineElementComponent({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>
 				<div
+					ref={elementRef}
 					className={`absolute top-0 h-full select-none timeline-element ${
 						isBeingDragged ? "z-50" : "z-10"
 					}`}

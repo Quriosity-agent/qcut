@@ -48,6 +48,8 @@ const COMMANDS = [
 	"organize-project",
 	"structure-info",
 	"create-examples",
+	// Moyin commands — script parsing
+	"moyin:parse-script",
 	"vimax:idea2video",
 	"vimax:script2video",
 	"vimax:novel2movie",
@@ -131,6 +133,11 @@ const COMMANDS = [
 	"editor:screen-recording:start",
 	"editor:screen-recording:stop",
 	"editor:screen-recording:status",
+	// Remotion element commands
+	"editor:remotion:list",
+	"editor:remotion:inspect",
+	"editor:remotion:update-props",
+	"editor:remotion:export",
 	"editor:ui:switch-panel",
 	"editor:project:create",
 	"editor:project:delete",
@@ -170,6 +177,10 @@ Commands:
   organize-project    Organize media files into categories
   structure-info      Show project structure and file counts
   create-examples     Create example pipeline configs
+Moyin Commands:
+  moyin:parse-script  Parse screenplay into structured data (characters/scenes)
+
+ViMax Commands:
   vimax:idea2video    Generate video from an idea
   vimax:script2video  Generate video from a script
   vimax:novel2movie   Generate movie from a novel
@@ -231,6 +242,10 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:screen-recording:start    Start recording (--source-id)
   editor:screen-recording:stop     Stop recording (--discard)
   editor:screen-recording:status   Get recording status
+  editor:remotion:list       List Remotion elements on timeline
+  editor:remotion:inspect    Inspect a Remotion element (--element-id)
+  editor:remotion:update-props  Update element props (--element-id --data)
+  editor:remotion:export     Export with Remotion engine (--preset)
   editor:ui:switch-panel     Switch editor panel (--panel)
   editor:project:create      Create project (--new-name)
   editor:project:delete      Delete project (--project-id)
@@ -422,6 +437,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			message: { type: "string" },
 			stack: { type: "string" },
 			"add-to-timeline": { type: "boolean", default: false },
+			"export": { type: "boolean", default: false },
+			"export-format": { type: "string" },
 			"include-fillers": { type: "boolean", default: false },
 			"include-silences": { type: "boolean", default: false },
 			"include-scenes": { type: "boolean", default: false },
@@ -614,6 +631,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		message: values.message as string | undefined,
 		stack: values.stack as string | undefined,
 		addToTimeline: (values["add-to-timeline"] as boolean) ?? false,
+		exportAfterGenerate: (values["export"] as boolean) ?? false,
+		exportFormat: values["export-format"] as string | undefined,
 		includeFillers: (values["include-fillers"] as boolean) ?? false,
 		includeSilences: (values["include-silences"] as boolean) ?? false,
 		includeScenes: (values["include-scenes"] as boolean) ?? false,

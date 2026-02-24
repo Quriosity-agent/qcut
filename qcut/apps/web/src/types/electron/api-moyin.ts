@@ -31,5 +31,8 @@ export interface ElectronMoyinOps {
 			text?: string;
 			error?: string;
 		}>;
+		isClaudeAvailable: () => Promise<boolean>;
+		onParsed: (callback: (data: Record<string, unknown>) => void) => void;
+		removeParseListener: () => void;
 	};
 }

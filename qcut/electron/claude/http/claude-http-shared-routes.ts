@@ -632,4 +632,13 @@ export function registerSharedRoutes(
 			};
 		}
 	});
+
+	// ── Moyin (Director) ───────────────────────────────────────────────
+	router.post("/api/claude/moyin/parse-result", async (req) => {
+		if (!req.body?.scriptData)
+			throw new HttpError(400, "Missing 'scriptData' in request body");
+		const win = accessor.getWindow();
+		win.webContents.send("claude:moyin:parsed", req.body.scriptData);
+		return { imported: true };
+	});
 }
