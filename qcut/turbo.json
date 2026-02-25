@@ -36,6 +36,10 @@
 		"aicp:test": {
 			"inputs": ["packages/video-agent-skill/**"],
 			"cache": false
+		},
+		"ao:build": {
+			"inputs": ["packages/agent-orchestrator/**"],
+			"cache": false
 		}
 	}
 }

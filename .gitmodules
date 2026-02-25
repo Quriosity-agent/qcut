@@ -2,3 +2,7 @@
 	path = qcut/packages/video-agent-skill
 	url = https://github.com/donghaozhang/video-agent-skill.git
 	branch = main
+[submodule "qcut/packages/agent-orchestrator"]
+	path = qcut/packages/agent-orchestrator
+	url = https://github.com/donghaozhang/agent-orchestrator-setup.git
+	branch = main
