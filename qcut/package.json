@@ -52,7 +52,8 @@
 	},
 	"workspaces": [
 		"apps/*",
-		"packages/*"
+		"packages/auth",
+		"packages/db"
 	],
 	"scripts": {
 		"dev": "turbo run dev",
@@ -90,7 +91,7 @@
 		"aicp:list-models": "cd packages/video-agent-skill && python -m ai_content_pipeline list-models",
 		"submodule:init": "git submodule update --init --recursive",
 		"submodule:update": "git submodule update --remote --recursive",
-		"ao:init": "cd packages/agent-orchestrator && pnpm install && pnpm build",
+		"ao:init": "cd packages/agent-orchestrator && bun install && bun run build",
 		"ao:setup": "git submodule update --init --recursive && bun run ao:init",
 		"predev": "bun run setup-ffmpeg",
 		"prebuild": "bun run setup-ffmpeg && bun run stage-ffmpeg-binaries && bun run sync-skills",
