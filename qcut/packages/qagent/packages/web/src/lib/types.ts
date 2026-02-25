@@ -9,27 +9,27 @@
 
 // Re-export core types used directly by the dashboard
 export type {
-  SessionStatus,
-  ActivityState,
-  CIStatus,
-  ReviewDecision,
-  MergeReadiness,
-  PRState,
+	SessionStatus,
+	ActivityState,
+	CIStatus,
+	ReviewDecision,
+	MergeReadiness,
+	PRState,
 } from "@composio/ao-core/types";
 
 import {
-  ACTIVITY_STATE,
-  SESSION_STATUS,
-  CI_STATUS,
-  TERMINAL_STATUSES,
-  TERMINAL_ACTIVITIES,
-  NON_RESTORABLE_STATUSES,
-  type CICheck as CoreCICheck,
-  type MergeReadiness,
-  type CIStatus,
-  type SessionStatus,
-  type ActivityState,
-  type ReviewDecision,
+	ACTIVITY_STATE,
+	SESSION_STATUS,
+	CI_STATUS,
+	TERMINAL_STATUSES,
+	TERMINAL_ACTIVITIES,
+	NON_RESTORABLE_STATUSES,
+	type CICheck as CoreCICheck,
+	type MergeReadiness,
+	type CIStatus,
+	type SessionStatus,
+	type ActivityState,
+	type ReviewDecision,
 } from "@composio/ao-core/types";
 
 // Re-export for use in client components
@@ -45,7 +45,13 @@ export { TERMINAL_STATUSES, TERMINAL_ACTIVITIES, NON_RESTORABLE_STATUSES };
  * 5. working — Agents doing their thing. Don't interrupt.
  * 6. done    — Merged or terminated. Archive.
  */
-export type AttentionLevel = "merge" | "respond" | "review" | "pending" | "working" | "done";
+export type AttentionLevel =
+	| "merge"
+	| "respond"
+	| "review"
+	| "pending"
+	| "working"
+	| "done";
 
 /**
  * Flattened session for dashboard rendering.
@@ -56,22 +62,22 @@ export type AttentionLevel = "merge" | "respond" | "review" | "pending" | "worki
  * core Session (Date objects) → DashboardSession (string dates).
  */
 export interface DashboardSession {
-  id: string;
-  projectId: string;
-  status: SessionStatus;
-  activity: ActivityState | null;
-  branch: string | null;
-  issueId: string | null; // Deprecated: use issueUrl instead
-  issueUrl: string | null; // Full issue URL
-  issueLabel: string | null; // Human-readable label (e.g., "INT-1327", "#42")
-  issueTitle: string | null; // Full issue title (e.g., "Add user authentication flow")
-  summary: string | null;
-  /** True when the summary is a low-quality fallback (e.g. truncated spawn prompt) */
-  summaryIsFallback: boolean;
-  createdAt: string;
-  lastActivityAt: string;
-  pr: DashboardPR | null;
-  metadata: Record<string, string>;
+	id: string;
+	projectId: string;
+	status: SessionStatus;
+	activity: ActivityState | null;
+	branch: string | null;
+	issueId: string | null; // Deprecated: use issueUrl instead
+	issueUrl: string | null; // Full issue URL
+	issueLabel: string | null; // Human-readable label (e.g., "INT-1327", "#42")
+	issueTitle: string | null; // Full issue title (e.g., "Add user authentication flow")
+	summary: string | null;
+	/** True when the summary is a low-quality fallback (e.g. truncated spawn prompt) */
+	summaryIsFallback: boolean;
+	createdAt: string;
+	lastActivityAt: string;
+	pr: DashboardPR | null;
+	metadata: Record<string, string>;
 }
 
 /**
@@ -79,23 +85,23 @@ export interface DashboardSession {
  * Aggregates core PRInfo + PRState + CICheck[] + MergeReadiness + ReviewComment[].
  */
 export interface DashboardPR {
-  number: number;
-  url: string;
-  title: string;
-  owner: string;
-  repo: string;
-  branch: string;
-  baseBranch: string;
-  isDraft: boolean;
-  state: "open" | "merged" | "closed";
-  additions: number;
-  deletions: number;
-  ciStatus: CIStatus;
-  ciChecks: DashboardCICheck[];
-  reviewDecision: ReviewDecision;
-  mergeability: DashboardMergeability;
-  unresolvedThreads: number;
-  unresolvedComments: DashboardUnresolvedComment[];
+	number: number;
+	url: string;
+	title: string;
+	owner: string;
+	repo: string;
+	branch: string;
+	baseBranch: string;
+	isDraft: boolean;
+	state: "open" | "merged" | "closed";
+	additions: number;
+	deletions: number;
+	ciStatus: CIStatus;
+	ciChecks: DashboardCICheck[];
+	reviewDecision: ReviewDecision;
+	mergeability: DashboardMergeability;
+	unresolvedThreads: number;
+	unresolvedComments: DashboardUnresolvedComment[];
 }
 
 /**
@@ -103,9 +109,9 @@ export interface DashboardPR {
  * Core CICheck also has conclusion, startedAt, completedAt.
  */
 export interface DashboardCICheck {
-  name: string;
-  status: CoreCICheck["status"];
-  url?: string;
+	name: string;
+	status: CoreCICheck["status"];
+	url?: string;
 }
 
 /**
@@ -114,39 +120,39 @@ export interface DashboardCICheck {
 export type DashboardMergeability = MergeReadiness;
 
 export interface DashboardUnresolvedComment {
-  url: string;
-  path: string;
-  author: string;
-  body: string;
+	url: string;
+	path: string;
+	author: string;
+	body: string;
 }
 
 export interface DashboardStats {
-  totalSessions: number;
-  workingSessions: number;
-  openPRs: number;
-  needsReview: number;
+	totalSessions: number;
+	workingSessions: number;
+	openPRs: number;
+	needsReview: number;
 }
 
 /** SSE snapshot event from /api/events */
 export interface SSESnapshotEvent {
-  type: "snapshot";
-  sessions: Array<{
-    id: string;
-    status: SessionStatus;
-    activity: ActivityState | null;
-    attentionLevel: AttentionLevel;
-    lastActivityAt: string;
-  }>;
+	type: "snapshot";
+	sessions: Array<{
+		id: string;
+		status: SessionStatus;
+		activity: ActivityState | null;
+		attentionLevel: AttentionLevel;
+		lastActivityAt: string;
+	}>;
 }
 
 /** SSE activity update event from /api/events */
 export interface SSEActivityEvent {
-  type: "session.activity";
-  sessionId: string;
-  activity: ActivityState | null;
-  status: SessionStatus;
-  attentionLevel: AttentionLevel;
-  timestamp: string;
+	type: "session.activity";
+	sessionId: string;
+	activity: ActivityState | null;
+	status: SessionStatus;
+	attentionLevel: AttentionLevel;
+	timestamp: string;
 }
 
 /**
@@ -155,79 +161,85 @@ export interface SSEActivityEvent {
  * may be stale defaults — don't make decisions based on them.
  */
 export function isPRRateLimited(pr: DashboardPR): boolean {
-  return pr.mergeability.blockers.includes("API rate limited or unavailable");
+	return pr.mergeability.blockers.includes("API rate limited or unavailable");
 }
 
 /** Determines which attention zone a session belongs to */
 export function getAttentionLevel(session: DashboardSession): AttentionLevel {
-  // ── Done: terminal states ─────────────────────────────────────────
-  if (
-    session.status === "merged" ||
-    session.status === "killed" ||
-    session.status === "cleanup" ||
-    session.status === "done" ||
-    session.status === "terminated"
-  ) {
-    return "done";
-  }
-  if (session.pr) {
-    if (session.pr.state === "merged" || session.pr.state === "closed") {
-      return "done";
-    }
-  }
+	// ── Done: terminal states ─────────────────────────────────────────
+	if (
+		session.status === "merged" ||
+		session.status === "killed" ||
+		session.status === "cleanup" ||
+		session.status === "done" ||
+		session.status === "terminated"
+	) {
+		return "done";
+	}
+	if (session.pr) {
+		if (session.pr.state === "merged" || session.pr.state === "closed") {
+			return "done";
+		}
+	}
 
-  // ── Merge: PR is ready — one click to clear ───────────────────────
-  // Check this early: if the PR is mergeable, that's the most valuable
-  // action for the human regardless of agent activity.
-  if (session.status === "mergeable" || session.status === "approved") {
-    return "merge";
-  }
-  if (session.pr?.mergeability.mergeable) {
-    return "merge";
-  }
+	// ── Merge: PR is ready — one click to clear ───────────────────────
+	// Check this early: if the PR is mergeable, that's the most valuable
+	// action for the human regardless of agent activity.
+	if (session.status === "mergeable" || session.status === "approved") {
+		return "merge";
+	}
+	if (session.pr?.mergeability.mergeable) {
+		return "merge";
+	}
 
-  // ── Respond: agent is waiting for human input ─────────────────────
-  if (
-    session.activity === ACTIVITY_STATE.WAITING_INPUT ||
-    session.activity === ACTIVITY_STATE.BLOCKED
-  ) {
-    return "respond";
-  }
-  if (
-    session.status === SESSION_STATUS.NEEDS_INPUT ||
-    session.status === SESSION_STATUS.STUCK ||
-    session.status === SESSION_STATUS.ERRORED
-  ) {
-    return "respond";
-  }
-  // Exited agent with non-terminal status = crashed, needs human attention
-  if (session.activity === ACTIVITY_STATE.EXITED) {
-    return "respond";
-  }
+	// ── Respond: agent is waiting for human input ─────────────────────
+	if (
+		session.activity === ACTIVITY_STATE.WAITING_INPUT ||
+		session.activity === ACTIVITY_STATE.BLOCKED
+	) {
+		return "respond";
+	}
+	if (
+		session.status === SESSION_STATUS.NEEDS_INPUT ||
+		session.status === SESSION_STATUS.STUCK ||
+		session.status === SESSION_STATUS.ERRORED
+	) {
+		return "respond";
+	}
+	// Exited agent with non-terminal status = crashed, needs human attention
+	if (session.activity === ACTIVITY_STATE.EXITED) {
+		return "respond";
+	}
 
-  // ── Review: problems that need investigation ──────────────────────
-  if (session.status === "ci_failed" || session.status === "changes_requested") {
-    return "review";
-  }
-  if (session.pr && !isPRRateLimited(session.pr)) {
-    const pr = session.pr;
-    if (pr.ciStatus === CI_STATUS.FAILING) return "review";
-    if (pr.reviewDecision === "changes_requested") return "review";
-    if (!pr.mergeability.noConflicts) return "review";
-  }
+	// ── Review: problems that need investigation ──────────────────────
+	if (
+		session.status === "ci_failed" ||
+		session.status === "changes_requested"
+	) {
+		return "review";
+	}
+	if (session.pr && !isPRRateLimited(session.pr)) {
+		const pr = session.pr;
+		if (pr.ciStatus === CI_STATUS.FAILING) return "review";
+		if (pr.reviewDecision === "changes_requested") return "review";
+		if (!pr.mergeability.noConflicts) return "review";
+	}
 
-  // ── Pending: waiting on external (reviewer, CI) ───────────────────
-  if (session.status === "review_pending") {
-    return "pending";
-  }
-  if (session.pr && !isPRRateLimited(session.pr)) {
-    const pr = session.pr;
-    if (!pr.isDraft && pr.unresolvedThreads > 0) return "pending";
-    if (!pr.isDraft && (pr.reviewDecision === "pending" || pr.reviewDecision === "none")) {
-      return "pending";
-    }
-  }
+	// ── Pending: waiting on external (reviewer, CI) ───────────────────
+	if (session.status === "review_pending") {
+		return "pending";
+	}
+	if (session.pr && !isPRRateLimited(session.pr)) {
+		const pr = session.pr;
+		if (!pr.isDraft && pr.unresolvedThreads > 0) return "pending";
+		if (
+			!pr.isDraft &&
+			(pr.reviewDecision === "pending" || pr.reviewDecision === "none")
+		) {
+			return "pending";
+		}
+	}
 
-  // ── Working: agents doing their thing ─────────────────────────────
-  return "working";
+	// ── Working: agents doing their thing ─────────────────────────────
+	return "working";
 }

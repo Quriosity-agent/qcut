@@ -1,4 +1,9 @@
-import { loadConfig, createSessionManager, createPluginRegistry, createLifecycleManager } from "./packages/core/dist/index.js";
+import {
+	loadConfig,
+	createSessionManager,
+	createPluginRegistry,
+	createLifecycleManager,
+} from "./packages/core/dist/index.js";
 
 // Import plugins directly since workspace links aren't at the root
 import runtimeTmux from "./packages/plugins/runtime-tmux/dist/index.js";
@@ -25,11 +30,13 @@ const sessionManager = createSessionManager({ config, registry });
 
 const lm = createLifecycleManager({ config, registry, sessionManager });
 
-console.log(`[${new Date().toISOString()}] Lifecycle manager started (30s polling)`);
+console.log(
+	`[${new Date().toISOString()}] Lifecycle manager started (30s polling)`
+);
 console.log(`Watching ${Object.keys(config.projects).length} project(s)...`);
 lm.start(30_000);
 
 // Log each cycle
 setInterval(() => {
-  console.log(`[${new Date().toISOString()}] poll cycle`);
+	console.log(`[${new Date().toISOString()}] poll cycle`);
 }, 30_000);

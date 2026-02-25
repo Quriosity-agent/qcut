@@ -114,91 +114,127 @@
 /* ── Base styles ─────────────────────────────────────────────────────── */
 
 body {
-  font-family: var(--font-sans);
-  background: var(--color-bg-base);
-  color: var(--color-text-primary);
-  min-height: 100vh;
-  /* Verified from Linear: negative letter-spacing at most sizes */
-  letter-spacing: -0.011em;
+	font-family: var(--font-sans);
+	background: var(--color-bg-base);
+	color: var(--color-text-primary);
+	min-height: 100vh;
+	/* Verified from Linear: negative letter-spacing at most sizes */
+	letter-spacing: -0.011em;
 }
 
 a {
-  color: var(--color-accent);
-  text-decoration: none;
+	color: var(--color-accent);
+	text-decoration: none;
 }
 a:hover {
-  text-decoration: underline;
+	text-decoration: underline;
 }
 
 /* ── Scrollbar styling ───────────────────────────────────────────────── */
 /* Verified from Linear's CSS: thin, barely visible at rest */
 
 ::-webkit-scrollbar {
-  width: var(--scrollbar-width);
-  height: var(--scrollbar-width);
+	width: var(--scrollbar-width);
+	height: var(--scrollbar-width);
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+	background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-color-default);
-  border-radius: 3px;
+	background: var(--scrollbar-color-default);
+	border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-color-hover);
+	background: var(--scrollbar-color-hover);
 }
 ::-webkit-scrollbar-thumb:active {
-  background: var(--scrollbar-color-active);
+	background: var(--scrollbar-color-active);
 }
 
 /* Firefox */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-color-default) transparent;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color-default) transparent;
 }
 
 /* ── Animations ──────────────────────────────────────────────────────── */
 
 /* Working state: ring pulse on the activity dot — the ONLY continuous animation */
 @keyframes activity-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(91, 126, 248, 0.4); }
-  50%       { box-shadow: 0 0 0 4px rgba(91, 126, 248, 0); }
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 rgba(91, 126, 248, 0.4);
+	}
+	50% {
+		box-shadow: 0 0 0 4px rgba(91, 126, 248, 0);
+	}
 }
 
 /* CI pending spinner */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* Generic opacity pulse (for loading/connecting states) */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
 }
 
 /* Card entrance — used when new session appears */
 @keyframes slide-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 /* ── Utility classes ─────────────────────────────────────────────────── */
 
 /* Activity dot — 8×8px CSS circle, replaces Unicode emoji */
 .activity-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
 }
-.activity-dot--working   { background: var(--color-status-working); animation: activity-pulse 2s ease-in-out infinite; }
-.activity-dot--ready     { background: var(--color-status-ready); }
-.activity-dot--attention { background: var(--color-status-attention); }
-.activity-dot--idle      { background: var(--color-status-idle); }
-.activity-dot--error     { background: var(--color-status-error); }
-.activity-dot--done      { background: var(--color-status-done); }
-.activity-dot--exited    { background: var(--color-status-done); border: 1px solid var(--color-status-idle); }
+.activity-dot--working {
+	background: var(--color-status-working);
+	animation: activity-pulse 2s ease-in-out infinite;
+}
+.activity-dot--ready {
+	background: var(--color-status-ready);
+}
+.activity-dot--attention {
+	background: var(--color-status-attention);
+}
+.activity-dot--idle {
+	background: var(--color-status-idle);
+}
+.activity-dot--error {
+	background: var(--color-status-error);
+}
+.activity-dot--done {
+	background: var(--color-status-done);
+}
+.activity-dot--exited {
+	background: var(--color-status-done);
+	border: 1px solid var(--color-status-idle);
+}
 
 /*
  * ── Reference: xterm.js terminal theme ───────────────────────────────

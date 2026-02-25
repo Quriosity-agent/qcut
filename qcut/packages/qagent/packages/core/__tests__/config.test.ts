@@ -5,140 +5,140 @@ import { tmpdir } from "node:os";
 import { loadConfig, findConfigFile } from "../src/config.js";
 
 describe("Config Loading", () => {
-  let testDir: string;
-  let originalCwd: string;
-  let originalEnv: NodeJS.ProcessEnv;
+	let testDir: string;
+	let originalCwd: string;
+	let originalEnv: NodeJS.ProcessEnv;
 
-  beforeEach(() => {
-    // Create temp test directory
-    testDir = join(tmpdir(), `ao-test-${Date.now()}`);
-    mkdirSync(testDir, { recursive: true });
+	beforeEach(() => {
+		// Create temp test directory
+		testDir = join(tmpdir(), `ao-test-${Date.now()}`);
+		mkdirSync(testDir, { recursive: true });
 
-    // Save original state
-    originalCwd = process.cwd();
-    originalEnv = { ...process.env };
+		// Save original state
+		originalCwd = process.cwd();
+		originalEnv = { ...process.env };
 
-    // Change to test directory
-    process.chdir(testDir);
-  });
+		// Change to test directory
+		process.chdir(testDir);
+	});
 
-  afterEach(() => {
-    // Restore original state
-    process.chdir(originalCwd);
-    process.env = originalEnv;
+	afterEach(() => {
+		// Restore original state
+		process.chdir(originalCwd);
+		process.env = originalEnv;
 
-    // Cleanup test directory
-    try {
-      rmSync(testDir, { recursive: true, force: true });
-    } catch {
-      // Best effort cleanup
-    }
-  });
+		// Cleanup test directory
+		try {
+			rmSync(testDir, { recursive: true, force: true });
+		} catch {
+			// Best effort cleanup
+		}
+	});
 
-  describe("findConfigFile", () => {
-    it("should find config in current directory", () => {
-      const configPath = join(testDir, "qagent.yaml");
-      writeFileSync(configPath, "projects: {}");
+	describe("findConfigFile", () => {
+		it("should find config in current directory", () => {
+			const configPath = join(testDir, "qagent.yaml");
+			writeFileSync(configPath, "projects: {}");
 
-      const found = findConfigFile();
-      // Use realpathSync to handle macOS /var -> /private/var symlink
-      expect(realpathSync(found!)).toBe(realpathSync(configPath));
-    });
+			const found = findConfigFile();
+			// Use realpathSync to handle macOS /var -> /private/var symlink
+			expect(realpathSync(found!)).toBe(realpathSync(configPath));
+		});
 
-    it("should prioritize QAGENT_CONFIG_PATH env var", () => {
-      // Create config in a different location
-      const customDir = join(testDir, "custom");
-      mkdirSync(customDir);
-      const customConfig = join(customDir, "custom-config.yaml");
-      writeFileSync(customConfig, "projects: {}");
+		it("should prioritize QAGENT_CONFIG_PATH env var", () => {
+			// Create config in a different location
+			const customDir = join(testDir, "custom");
+			mkdirSync(customDir);
+			const customConfig = join(customDir, "custom-config.yaml");
+			writeFileSync(customConfig, "projects: {}");
 
-      // Create config in current directory too
-      const localConfig = join(testDir, "qagent.yaml");
-      writeFileSync(localConfig, "projects: {}");
+			// Create config in current directory too
+			const localConfig = join(testDir, "qagent.yaml");
+			writeFileSync(localConfig, "projects: {}");
 
-      // Set env var to point to custom location
-      process.env["QAGENT_CONFIG_PATH"] = customConfig;
+			// Set env var to point to custom location
+			process.env.QAGENT_CONFIG_PATH = customConfig;
 
-      const found = findConfigFile();
-      expect(found).toBe(customConfig);
-    });
+			const found = findConfigFile();
+			expect(found).toBe(customConfig);
+		});
 
-    it("should return null if no config found", () => {
-      const found = findConfigFile();
-      expect(found).toBeNull();
-    });
-  });
+		it("should return null if no config found", () => {
+			const found = findConfigFile();
+			expect(found).toBeNull();
+		});
+	});
 
-  describe("loadConfig", () => {
-    it("should load config from QAGENT_CONFIG_PATH env var", () => {
-      const configPath = join(testDir, "test-config.yaml");
-      writeFileSync(
-        configPath,
-        `
+	describe("loadConfig", () => {
+		it("should load config from QAGENT_CONFIG_PATH env var", () => {
+			const configPath = join(testDir, "test-config.yaml");
+			writeFileSync(
+				configPath,
+				`
 port: 4000
 projects:
   test-project:
     repo: test/repo
     path: ${testDir}
     defaultBranch: main
-`,
-      );
+`
+			);
 
-      process.env["QAGENT_CONFIG_PATH"] = configPath;
+			process.env.QAGENT_CONFIG_PATH = configPath;
 
-      const config = loadConfig();
-      expect(config.port).toBe(4000);
-      expect(config.projects["test-project"]).toBeDefined();
-    });
+			const config = loadConfig();
+			expect(config.port).toBe(4000);
+			expect(config.projects["test-project"]).toBeDefined();
+		});
 
-    it("should load config from explicit path parameter", () => {
-      const configPath = join(testDir, "explicit-config.yaml");
-      writeFileSync(
-        configPath,
-        `
+		it("should load config from explicit path parameter", () => {
+			const configPath = join(testDir, "explicit-config.yaml");
+			writeFileSync(
+				configPath,
+				`
 port: 5000
 projects:
   explicit-project:
     repo: test/repo
     path: ${testDir}
     defaultBranch: main
-`,
-      );
+`
+			);
 
-      const config = loadConfig(configPath);
-      expect(config.port).toBe(5000);
-    });
+			const config = loadConfig(configPath);
+			expect(config.port).toBe(5000);
+		});
 
-    it("should throw error if config not found", () => {
-      expect(() => loadConfig()).toThrow("No qagent.yaml found");
-    });
-  });
+		it("should throw error if config not found", () => {
+			expect(() => loadConfig()).toThrow("No qagent.yaml found");
+		});
+	});
 
-  describe("Config Discovery Priority", () => {
-    it("should use explicit path over env var", () => {
-      const envConfig = join(testDir, "env-config.yaml");
-      const explicitConfig = join(testDir, "explicit-config.yaml");
+	describe("Config Discovery Priority", () => {
+		it("should use explicit path over env var", () => {
+			const envConfig = join(testDir, "env-config.yaml");
+			const explicitConfig = join(testDir, "explicit-config.yaml");
 
-      writeFileSync(envConfig, "port: 3001\nprojects: {}");
-      writeFileSync(explicitConfig, "port: 3002\nprojects: {}");
+			writeFileSync(envConfig, "port: 3001\nprojects: {}");
+			writeFileSync(explicitConfig, "port: 3002\nprojects: {}");
 
-      process.env["QAGENT_CONFIG_PATH"] = envConfig;
+			process.env.QAGENT_CONFIG_PATH = envConfig;
 
-      const config = loadConfig(explicitConfig);
-      expect(config.port).toBe(3002); // Should use explicit, not env
-    });
+			const config = loadConfig(explicitConfig);
+			expect(config.port).toBe(3002); // Should use explicit, not env
+		});
 
-    it("should use env var over default search", () => {
-      const envConfig = join(testDir, "env-config.yaml");
-      const localConfig = join(testDir, "qagent.yaml");
+		it("should use env var over default search", () => {
+			const envConfig = join(testDir, "env-config.yaml");
+			const localConfig = join(testDir, "qagent.yaml");
 
-      writeFileSync(envConfig, "port: 3001\nprojects: {}");
-      writeFileSync(localConfig, "port: 3002\nprojects: {}");
+			writeFileSync(envConfig, "port: 3001\nprojects: {}");
+			writeFileSync(localConfig, "port: 3002\nprojects: {}");
 
-      process.env["QAGENT_CONFIG_PATH"] = envConfig;
+			process.env.QAGENT_CONFIG_PATH = envConfig;
 
-      const config = loadConfig();
-      expect(config.port).toBe(3001); // Should use env, not local
-    });
-  });
+			const config = loadConfig();
+			expect(config.port).toBe(3001); // Should use env, not local
+		});
+	});
 });

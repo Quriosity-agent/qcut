@@ -12,16 +12,16 @@ import type { DashboardSession } from "./types.js";
  *       "session/ao-52"         → "ao-52"
  */
 export function humanizeBranch(branch: string): string {
-  // Remove common prefixes
-  const withoutPrefix = branch.replace(
-    /^(?:feat|fix|chore|refactor|docs|test|ci|session|release|hotfix|feature|bugfix|build|wip|improvement)\//,
-    "",
-  );
-  // Replace hyphens and underscores with spaces, then title-case each word
-  return withoutPrefix
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
+	// Remove common prefixes
+	const withoutPrefix = branch.replace(
+		/^(?:feat|fix|chore|refactor|docs|test|ci|session|release|hotfix|feature|bugfix|build|wip|improvement)\//,
+		""
+	);
+	// Replace hyphens and underscores with spaces, then title-case each word
+	return withoutPrefix
+		.replace(/[-_]/g, " ")
+		.replace(/\b\w/g, (c) => c.toUpperCase())
+		.trim();
 }
 
 /**
@@ -36,23 +36,23 @@ export function humanizeBranch(branch: string): string {
  *   6. Status text       — absolute fallback
  */
 export function getSessionTitle(session: DashboardSession): string {
-  // 1. PR title — always best
-  if (session.pr?.title) return session.pr.title;
+	// 1. PR title — always best
+	if (session.pr?.title) return session.pr.title;
 
-  // 2. Quality summary — skip fallback summaries (truncated spawn prompts)
-  if (session.summary && !session.summaryIsFallback) {
-    return session.summary;
-  }
+	// 2. Quality summary — skip fallback summaries (truncated spawn prompts)
+	if (session.summary && !session.summaryIsFallback) {
+		return session.summary;
+	}
 
-  // 3. Issue title — human-written task description
-  if (session.issueTitle) return session.issueTitle;
+	// 3. Issue title — human-written task description
+	if (session.issueTitle) return session.issueTitle;
 
-  // 4. Any summary — even fallback excerpts beat branch names
-  if (session.summary) return session.summary;
+	// 4. Any summary — even fallback excerpts beat branch names
+	if (session.summary) return session.summary;
 
-  // 5. Humanized branch
-  if (session.branch) return humanizeBranch(session.branch);
+	// 5. Humanized branch
+	if (session.branch) return humanizeBranch(session.branch);
 
-  // 6. Status
-  return session.status;
+	// 6. Status
+	return session.status;
 }

@@ -15,9 +15,9 @@ import { registerPRComments } from "./commands/pr-comments.js";
 const program = new Command();
 
 program
-  .name("qagent")
-  .description("Agent Orchestrator — manage parallel AI coding agents")
-  .version("0.1.0");
+	.name("qagent")
+	.description("Agent Orchestrator — manage parallel AI coding agents")
+	.version("0.1.0");
 
 registerInit(program);
 registerStart(program);

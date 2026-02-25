@@ -11,14 +11,14 @@
  */
 
 import {
-  loadConfig,
-  createPluginRegistry,
-  createSessionManager,
-  type OrchestratorConfig,
-  type PluginRegistry,
-  type SessionManager,
-  type SCM,
-  type ProjectConfig,
+	loadConfig,
+	createPluginRegistry,
+	createSessionManager,
+	type OrchestratorConfig,
+	type PluginRegistry,
+	type SessionManager,
+	type SCM,
+	type ProjectConfig,
 } from "@composio/ao-core";
 
 // Static plugin imports — webpack needs these to be string literals
@@ -30,55 +30,57 @@ import pluginTrackerGithub from "@composio/ao-plugin-tracker-github";
 import pluginTrackerLinear from "@composio/ao-plugin-tracker-linear";
 
 export interface Services {
-  config: OrchestratorConfig;
-  registry: PluginRegistry;
-  sessionManager: SessionManager;
+	config: OrchestratorConfig;
+	registry: PluginRegistry;
+	sessionManager: SessionManager;
 }
 
 // Cache in globalThis for Next.js HMR stability
 const globalForServices = globalThis as typeof globalThis & {
-  _aoServices?: Services;
-  _aoServicesInit?: Promise<Services>;
+	_aoServices?: Services;
+	_aoServicesInit?: Promise<Services>;
 };
 
 /** Get (or lazily initialize) the core services singleton. */
 export function getServices(): Promise<Services> {
-  if (globalForServices._aoServices) {
-    return Promise.resolve(globalForServices._aoServices);
-  }
-  if (!globalForServices._aoServicesInit) {
-    globalForServices._aoServicesInit = initServices().catch((err) => {
-      // Clear the cached promise so the next call retries instead of
-      // permanently returning a rejected promise.
-      globalForServices._aoServicesInit = undefined;
-      throw err;
-    });
-  }
-  return globalForServices._aoServicesInit;
+	if (globalForServices._aoServices) {
+		return Promise.resolve(globalForServices._aoServices);
+	}
+	if (!globalForServices._aoServicesInit) {
+		globalForServices._aoServicesInit = initServices().catch((err) => {
+			// Clear the cached promise so the next call retries instead of
+			// permanently returning a rejected promise.
+			globalForServices._aoServicesInit = undefined;
+			throw err;
+		});
+	}
+	return globalForServices._aoServicesInit;
 }
 
 async function initServices(): Promise<Services> {
-  const config = loadConfig();
-  const registry = createPluginRegistry();
+	const config = loadConfig();
+	const registry = createPluginRegistry();
 
-  // Register plugins explicitly (webpack can't handle dynamic import() in core)
-  registry.register(pluginRuntimeTmux);
-  registry.register(pluginAgentClaudeCode);
-  registry.register(pluginWorkspaceWorktree);
-  registry.register(pluginScmGithub);
-  registry.register(pluginTrackerGithub);
-  registry.register(pluginTrackerLinear);
+	// Register plugins explicitly (webpack can't handle dynamic import() in core)
+	registry.register(pluginRuntimeTmux);
+	registry.register(pluginAgentClaudeCode);
+	registry.register(pluginWorkspaceWorktree);
+	registry.register(pluginScmGithub);
+	registry.register(pluginTrackerGithub);
+	registry.register(pluginTrackerLinear);
 
-  const sessionManager = createSessionManager({ config, registry });
+	const sessionManager = createSessionManager({ config, registry });
 
-  const services = { config, registry, sessionManager };
-  globalForServices._aoServices = services;
-  return services;
+	const services = { config, registry, sessionManager };
+	globalForServices._aoServices = services;
+	return services;
 }
 
 /** Resolve the SCM plugin for a project. Returns null if not configured. */
-export function getSCM(registry: PluginRegistry, project: ProjectConfig | undefined): SCM | null {
-  if (!project?.scm) return null;
-  return registry.get<SCM>("scm", project.scm.plugin);
+export function getSCM(
+	registry: PluginRegistry,
+	project: ProjectConfig | undefined
+): SCM | null {
+	if (!project?.scm) return null;
+	return registry.get<SCM>("scm", project.scm.plugin);
 }
-

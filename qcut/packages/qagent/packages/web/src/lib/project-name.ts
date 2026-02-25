@@ -10,15 +10,15 @@ import { loadConfig } from "@composio/ao-core";
  * call this, but config is only read once per request).
  */
 export const getProjectName = cache((): string => {
-  try {
-    const config = loadConfig();
-    const firstKey = Object.keys(config.projects)[0];
-    if (firstKey) {
-      const name = config.projects[firstKey].name ?? firstKey;
-      return name || firstKey || "qagent";
-    }
-  } catch {
-    // Config not available
-  }
-  return "qagent";
+	try {
+		const config = loadConfig();
+		const firstKey = Object.keys(config.projects)[0];
+		if (firstKey) {
+			const name = config.projects[firstKey].name ?? firstKey;
+			return name || firstKey || "qagent";
+		}
+	} catch {
+		// Config not available
+	}
+	return "qagent";
 });

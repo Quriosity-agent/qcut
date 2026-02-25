@@ -8,11 +8,11 @@
  */
 
 import {
-  createPluginRegistry,
-  createSessionManager,
-  type OrchestratorConfig,
-  type SessionManager,
-  type PluginRegistry,
+	createPluginRegistry,
+	createSessionManager,
+	type OrchestratorConfig,
+	type SessionManager,
+	type PluginRegistry,
 } from "@composio/ao-core";
 
 let registryPromise: Promise<PluginRegistry> | null = null;
@@ -22,26 +22,29 @@ let registryPromise: Promise<PluginRegistry> | null = null;
  * Caches the Promise (not the resolved value) so concurrent callers
  * await the same initialization rather than racing.
  */
-async function getRegistry(config: OrchestratorConfig): Promise<PluginRegistry> {
-  if (!registryPromise) {
-    registryPromise = (async () => {
-      const registry = createPluginRegistry();
-      // Pass CLI's import context so pnpm strict resolution can find plugin packages.
-      // Core can't resolve @composio/ao-plugin-* from its own module context because
-      // they aren't in core's dependencies. The CLI has them as workspace deps.
-      await registry.loadFromConfig(config, (pkg: string) => import(pkg));
-      return registry;
-    })();
-  }
-  return registryPromise;
+async function getRegistry(
+	config: OrchestratorConfig
+): Promise<PluginRegistry> {
+	if (!registryPromise) {
+		registryPromise = (async () => {
+			const registry = createPluginRegistry();
+			// Pass CLI's import context so pnpm strict resolution can find plugin packages.
+			// Core can't resolve @composio/ao-plugin-* from its own module context because
+			// they aren't in core's dependencies. The CLI has them as workspace deps.
+			await registry.loadFromConfig(config, (pkg: string) => import(pkg));
+			return registry;
+		})();
+	}
+	return registryPromise;
 }
 
 /**
  * Create a SessionManager backed by core's implementation.
  * Initializes the plugin registry from config and wires everything up.
  */
-export async function getSessionManager(config: OrchestratorConfig): Promise<SessionManager> {
-  const registry = await getRegistry(config);
-  return createSessionManager({ config, registry });
+export async function getSessionManager(
+	config: OrchestratorConfig
+): Promise<SessionManager> {
+	const registry = await getRegistry(config);
+	return createSessionManager({ config, registry });
 }
-

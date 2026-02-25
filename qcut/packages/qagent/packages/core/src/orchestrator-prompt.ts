@@ -8,9 +8,9 @@
 import type { OrchestratorConfig, ProjectConfig } from "./types.js";
 
 export interface OrchestratorPromptConfig {
-  config: OrchestratorConfig;
-  projectId: string;
-  project: ProjectConfig;
+	config: OrchestratorConfig;
+	projectId: string;
+	project: ProjectConfig;
 }
 
 /**
@@ -18,19 +18,21 @@ export interface OrchestratorPromptConfig {
  * Provides orchestrator agent with context about available commands,
  * session management workflows, and project configuration.
  */
-export function generateOrchestratorPrompt(opts: OrchestratorPromptConfig): string {
-  const { config, projectId, project } = opts;
-  const sections: string[] = [];
+export function generateOrchestratorPrompt(
+	opts: OrchestratorPromptConfig
+): string {
+	const { config, projectId, project } = opts;
+	const sections: string[] = [];
 
-  // Header
-  sections.push(`# ${project.name} Orchestrator
+	// Header
+	sections.push(`# ${project.name} Orchestrator
 
 You are the **orchestrator agent** for the ${project.name} project.
 
 Your role is to coordinate and manage worker agent sessions. You do NOT write code yourself — you spawn worker agents to do the implementation work, monitor their progress, and intervene when they need help.`);
 
-  // Project Info
-  sections.push(`## Project Info
+	// Project Info
+	sections.push(`## Project Info
 
 - **Name**: ${project.name}
 - **Repository**: ${project.repo}
@@ -39,8 +41,8 @@ Your role is to coordinate and manage worker agent sessions. You do NOT write co
 - **Local Path**: ${project.path}
 - **Dashboard Port**: ${config.port ?? 3000}`);
 
-  // Quick Start
-  sections.push(`## Quick Start
+	// Quick Start
+	sections.push(`## Quick Start
 
 \`\`\`bash
 # See all sessions at a glance
@@ -63,8 +65,8 @@ ao session kill ${project.sessionPrefix}-1
 ao open ${projectId}
 \`\`\``);
 
-  // Available Commands
-  sections.push(`## Available Commands
+	// Available Commands
+	sections.push(`## Available Commands
 
 | Command | Description |
 |---------|-------------|
@@ -79,8 +81,8 @@ ao open ${projectId}
 | \`ao dashboard\` | Start the web dashboard (http://localhost:${config.port ?? 3000}) |
 | \`ao open <project>\` | Open all project sessions in terminal tabs |`);
 
-  // Session Management
-  sections.push(`## Session Management
+	// Session Management
+	sections.push(`## Session Management
 
 ### Spawning Sessions
 
@@ -114,8 +116,8 @@ Remove completed sessions:
 ao session cleanup -p ${projectId}  # Kill sessions where PR is merged or issue is closed
 \`\`\``);
 
-  // Dashboard
-  sections.push(`## Dashboard
+	// Dashboard
+	sections.push(`## Dashboard
 
 The web dashboard runs at **http://localhost:${config.port ?? 3000}**.
 
@@ -126,32 +128,32 @@ Features:
 - One-click actions (send message, kill, merge PR)
 - Real-time updates via Server-Sent Events`);
 
-  // Reactions (if configured)
-  if (project.reactions && Object.keys(project.reactions).length > 0) {
-    const reactionLines: string[] = [];
-    for (const [event, reaction] of Object.entries(project.reactions)) {
-      if (reaction.auto && reaction.action === "send-to-agent") {
-        reactionLines.push(
-          `- **${event}**: Auto-sends instruction to agent (retries: ${reaction.retries ?? "none"}, escalates after: ${reaction.escalateAfter ?? "never"})`,
-        );
-      } else if (reaction.auto && reaction.action === "notify") {
-        reactionLines.push(
-          `- **${event}**: Notifies human (priority: ${reaction.priority ?? "info"})`,
-        );
-      }
-    }
+	// Reactions (if configured)
+	if (project.reactions && Object.keys(project.reactions).length > 0) {
+		const reactionLines: string[] = [];
+		for (const [event, reaction] of Object.entries(project.reactions)) {
+			if (reaction.auto && reaction.action === "send-to-agent") {
+				reactionLines.push(
+					`- **${event}**: Auto-sends instruction to agent (retries: ${reaction.retries ?? "none"}, escalates after: ${reaction.escalateAfter ?? "never"})`
+				);
+			} else if (reaction.auto && reaction.action === "notify") {
+				reactionLines.push(
+					`- **${event}**: Notifies human (priority: ${reaction.priority ?? "info"})`
+				);
+			}
+		}
 
-    if (reactionLines.length > 0) {
-      sections.push(`## Automated Reactions
+		if (reactionLines.length > 0) {
+			sections.push(`## Automated Reactions
 
 The system automatically handles these events:
 
 ${reactionLines.join("\n")}`);
-    }
-  }
+		}
+	}
 
-  // Workflows
-  sections.push(`## Common Workflows
+	// Workflows
+	sections.push(`## Common Workflows
 
 ### Bulk Issue Processing
 1. Get list of issues from tracker (GitHub/Linear/etc.)
@@ -181,8 +183,8 @@ When an agent needs human judgment:
 4. Send instructions: \`ao send <session> '...'\`
 5. Or handle it yourself (merge PR, close issue, etc.)`);
 
-  // Tips
-  sections.push(`## Tips
+	// Tips
+	sections.push(`## Tips
 
 1. **Use batch-spawn for multiple issues** — Much faster than spawning one at a time.
 
@@ -200,12 +202,12 @@ When an agent needs human judgment:
 
 8. **Don't micro-manage** — Spawn agents, walk away, let notifications bring you back when needed.`);
 
-  // Project-specific rules (if any)
-  if (project.orchestratorRules) {
-    sections.push(`## Project-Specific Rules
+	// Project-specific rules (if any)
+	if (project.orchestratorRules) {
+		sections.push(`## Project-Specific Rules
 
 ${project.orchestratorRules}`);
-  }
+	}
 
-  return sections.join("\n\n");
+	return sections.join("\n\n");
 }

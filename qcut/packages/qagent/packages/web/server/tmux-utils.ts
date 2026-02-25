@@ -18,7 +18,7 @@ const HASH_PREFIX_PATTERN = /^[a-f0-9]{12}-/;
  * Prevents path traversal, shell injection, and other attacks.
  */
 export function validateSessionId(sessionId: string): boolean {
-  return SESSION_ID_PATTERN.test(sessionId);
+	return SESSION_ID_PATTERN.test(sessionId);
 }
 
 /**
@@ -30,23 +30,19 @@ export function validateSessionId(sessionId: string): boolean {
  *
  * @param execFn - Injectable execFileSync for testing. Defaults to child_process.execFileSync.
  */
-export function findTmux(
-  execFn: typeof execFileSync = execFileSync,
-): string {
-  const candidates = [
-    "/opt/homebrew/bin/tmux", // macOS ARM (Homebrew)
-    "/usr/local/bin/tmux", // macOS Intel (Homebrew)
-    "/usr/bin/tmux", // Linux
-  ];
-  for (const p of candidates) {
-    try {
-      execFn(p, ["-V"], { timeout: 5000 });
-      return p;
-    } catch {
-      continue;
-    }
-  }
-  return "tmux"; // Fall back to bare name
+export function findTmux(execFn: typeof execFileSync = execFileSync): string {
+	const candidates = [
+		"/opt/homebrew/bin/tmux", // macOS ARM (Homebrew)
+		"/usr/local/bin/tmux", // macOS Intel (Homebrew)
+		"/usr/bin/tmux", // Linux
+	];
+	for (const p of candidates) {
+		try {
+			execFn(p, ["-V"], { timeout: 5000 });
+			return p;
+		} catch {}
+	}
+	return "tmux"; // Fall back to bare name
 }
 
 /**
@@ -66,37 +62,41 @@ export function findTmux(
  * @returns The actual tmux session name, or null if not found
  */
 export function resolveTmuxSession(
-  sessionId: string,
-  tmuxPath: string,
-  execFn: typeof execFileSync = execFileSync,
+	sessionId: string,
+	tmuxPath: string,
+	execFn: typeof execFileSync = execFileSync
 ): string | null {
-  // Try exact match first using = prefix for exact matching (e.g., "ao-orchestrator")
-  // Without =, tmux uses prefix matching: "ao-1" would match "ao-15"
-  try {
-    execFn(tmuxPath, ["has-session", "-t", `=${sessionId}`], { timeout: 5000 });
-    return sessionId;
-  } catch {
-    // Not an exact match
-  }
+	// Try exact match first using = prefix for exact matching (e.g., "ao-orchestrator")
+	// Without =, tmux uses prefix matching: "ao-1" would match "ao-15"
+	try {
+		execFn(tmuxPath, ["has-session", "-t", `=${sessionId}`], { timeout: 5000 });
+		return sessionId;
+	} catch {
+		// Not an exact match
+	}
 
-  // Search for hash-prefixed tmux session (e.g., "8474d6f29887-ao-15" for "ao-15")
-  // Validate the 12-char hex prefix to avoid ambiguous suffix matches where
-  // "hash-my-app-1" could falsely match a lookup for "app-1".
-  try {
-    const output = execFn(tmuxPath, ["list-sessions", "-F", "#{session_name}"], {
-      timeout: 5000,
-      encoding: "utf8",
-    }) as string;
-    const sessions = output.split("\n").filter(Boolean);
-    const match = sessions.find((s) =>
-      HASH_PREFIX_PATTERN.test(s) && s.substring(13) === sessionId,
-    );
-    if (match) {
-      return match;
-    }
-  } catch {
-    // tmux not running or no sessions
-  }
+	// Search for hash-prefixed tmux session (e.g., "8474d6f29887-ao-15" for "ao-15")
+	// Validate the 12-char hex prefix to avoid ambiguous suffix matches where
+	// "hash-my-app-1" could falsely match a lookup for "app-1".
+	try {
+		const output = execFn(
+			tmuxPath,
+			["list-sessions", "-F", "#{session_name}"],
+			{
+				timeout: 5000,
+				encoding: "utf8",
+			}
+		) as string;
+		const sessions = output.split("\n").filter(Boolean);
+		const match = sessions.find(
+			(s) => HASH_PREFIX_PATTERN.test(s) && s.substring(13) === sessionId
+		);
+		if (match) {
+			return match;
+		}
+	} catch {
+		// tmux not running or no sessions
+	}
 
-  return null;
+	return null;
 }

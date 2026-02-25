@@ -10,12 +10,12 @@ export * from "./types.js";
 
 // Config — YAML loader + validation
 export {
-  loadConfig,
-  loadConfigWithPath,
-  validateConfig,
-  getDefaultConfig,
-  findConfig,
-  findConfigFile,
+	loadConfig,
+	loadConfigWithPath,
+	validateConfig,
+	getDefaultConfig,
+	findConfig,
+	findConfigFile,
 } from "./config.js";
 
 // Plugin registry
@@ -23,24 +23,24 @@ export { createPluginRegistry } from "./plugin-registry.js";
 
 // Metadata — flat-file session metadata read/write
 export {
-  readMetadata,
-  readMetadataRaw,
-  writeMetadata,
-  updateMetadata,
-  deleteMetadata,
-  listMetadata,
+	readMetadata,
+	readMetadataRaw,
+	writeMetadata,
+	updateMetadata,
+	deleteMetadata,
+	listMetadata,
 } from "./metadata.js";
 
 // tmux — command wrappers
 export {
-  isTmuxAvailable,
-  listSessions as listTmuxSessions,
-  hasSession as hasTmuxSession,
-  newSession as newTmuxSession,
-  sendKeys as tmuxSendKeys,
-  capturePane as tmuxCapturePane,
-  killSession as killTmuxSession,
-  getPaneTTY as getTmuxPaneTTY,
+	isTmuxAvailable,
+	listSessions as listTmuxSessions,
+	hasSession as hasTmuxSession,
+	newSession as newTmuxSession,
+	sendKeys as tmuxSendKeys,
+	capturePane as tmuxCapturePane,
+	killSession as killTmuxSession,
+	getPaneTTY as getTmuxPaneTTY,
 } from "./tmux.js";
 
 // Session manager — session CRUD
@@ -60,22 +60,27 @@ export { generateOrchestratorPrompt } from "./orchestrator-prompt.js";
 export type { OrchestratorPromptConfig } from "./orchestrator-prompt.js";
 
 // Shared utilities
-export { shellEscape, escapeAppleScript, validateUrl, readLastJsonlEntry } from "./utils.js";
+export {
+	shellEscape,
+	escapeAppleScript,
+	validateUrl,
+	readLastJsonlEntry,
+} from "./utils.js";
 
 // Path utilities — hash-based directory structure
 export {
-  generateConfigHash,
-  generateProjectId,
-  generateInstanceId,
-  generateSessionPrefix,
-  getProjectBaseDir,
-  getSessionsDir,
-  getWorktreesDir,
-  getArchiveDir,
-  getOriginFilePath,
-  generateSessionName,
-  generateTmuxName,
-  parseTmuxName,
-  expandHome,
-  validateAndStoreOrigin,
+	generateConfigHash,
+	generateProjectId,
+	generateInstanceId,
+	generateSessionPrefix,
+	getProjectBaseDir,
+	getSessionsDir,
+	getWorktreesDir,
+	getArchiveDir,
+	getOriginFilePath,
+	generateSessionName,
+	generateTmuxName,
+	parseTmuxName,
+	expandHome,
+	validateAndStoreOrigin,
 } from "./paths.js";
