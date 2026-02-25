@@ -1,0 +1,87 @@
+# Agent Orchestrator — Qcut Configuration
+# Manages parallel AI coding agents for Qcut development.
+# Usage: ao spawn qcut <issue-number>
+
+# Session metadata storage
+dataDir: ~/.agent-orchestrator
+
+# Where to create git worktrees for agent sessions
+worktreeDir: ~/.worktrees
+
+# Web dashboard port
+port: 3000
+
+# Default plugins
+defaults:
+  runtime: tmux
+  agent: claude-code
+  workspace: worktree
+  notifiers: [desktop]
+
+# Projects
+projects:
+  qcut:
+    name: Qcut Video Editor
+    repo: Quriosity-agent/qcut
+    path: ~/Desktop/code/qcut/qcut
+    defaultBranch: master
+    sessionPrefix: qcut
+
+    # Files to symlink into worktrees (so agents get env vars and config)
+    symlinks: [.env, .claude]
+
+    # Run after worktree creation
+    postCreate:
+      - "bun install"
+
+    # Agent configuration
+    agentConfig:
+      permissions: skip
+      model: opus
+
+    # Rules injected into every agent session prompt
+    agentRules: |
+      You are working on Qcut, an open-source desktop video editor (Electron + React + Vite).
+
+      ## Tech stack
+      - Bun (not npm/pnpm) — always use `bun install`, `bun run`, `bunx`
+      - Biome for linting/formatting (not ESLint/Prettier) — run `bun run lint:clean`
+      - Turborepo for monorepo tasks
+      - TypeScript strict mode
+      - React 19 + Vite + Tailwind + Radix UI
+      - Electron 40 with TypeScript IPC handlers
+
+      ## Before pushing
+      - Run `bun run lint:clean` (Biome check)
+      - Run `bun run check-types` (TypeScript)
+      - Run `bun run check:circular` (no circular imports)
+      - Keep files under 800 lines — split by domain if needed
+
+      ## Conventions
+      - Use conventional commits: feat:, fix:, refactor:, docs:, test:, chore:
+      - Electron handlers go in electron/*-handler.ts
+      - React components in apps/web/src/components/
+      - State management with Zustand stores
+
+# Reactions — auto-responses to events
+reactions:
+  ci-failed:
+    auto: true
+    action: send-to-agent
+    retries: 2
+    escalateAfter: 2
+
+  changes-requested:
+    auto: true
+    action: send-to-agent
+    escalateAfter: 30m
+
+  approved-and-green:
+    auto: false
+    action: notify
+    priority: action
+
+  agent-stuck:
+    threshold: 10m
+    action: notify
+    priority: urgent
