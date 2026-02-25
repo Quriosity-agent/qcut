@@ -92,15 +92,12 @@ When `qagent start` is running, the orchestrator:
 ## Setup (first time)
 
 ```bash
-bun run qagent:setup    # Init submodule + install + build qagent
+bun run qagent:setup    # Install deps + build qagent
 ```
 
 Or manually:
 ```bash
-git submodule update --init --recursive
 cd packages/qagent
 bun install
 bun run build
 ```
-
-The `qagent` CLI should be installed globally: `npm install -g @composio/ao-cli`

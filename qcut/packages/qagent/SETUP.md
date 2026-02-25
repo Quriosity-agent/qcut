@@ -1,0 +1,794 @@
+# Agent Orchestrator Setup Guide
+
+Comprehensive guide to installing, configuring, and troubleshooting Agent Orchestrator.
+
+## Prerequisites
+
+### Required
+
+- **Node.js 20+** - Runtime for the orchestrator and CLI
+
+  ```bash
+  node --version  # Should be v20.0.0 or higher
+  ```
+
+- **Git 2.25+** - For repository management and worktrees
+
+  ```bash
+  git --version
+  ```
+
+- **tmux** (for tmux runtime) - Terminal multiplexer for session management
+
+  ```bash
+  tmux -V
+
+  # Install on macOS
+  brew install tmux
+
+  # Install on Ubuntu/Debian
+  sudo apt install tmux
+
+  # Install on Fedora/RHEL
+  sudo dnf install tmux
+  ```
+
+- **GitHub CLI** (for GitHub integration) - Required for PR creation, issue management
+
+  ```bash
+  gh --version
+
+  # Install on macOS
+  brew install gh
+
+  # Install on Linux
+  # See: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+  ```
+
+### Optional
+
+- **Linear API Key** - If using Linear for issue tracking
+  - Get it from: https://linear.app/settings/api
+  - Set environment variable: `export LINEAR_API_KEY="lin_api_..."`
+
+- **Slack Webhook** - If using Slack notifications
+  - Create incoming webhook: https://api.slack.com/messaging/webhooks
+  - Set environment variable: `export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."`
+
+## Installation
+
+### Build from Source (Current Method)
+
+QAgent lives inside the QCut monorepo at `packages/qagent/`. Build from the qcut root:
+
+```bash
+# From the qcut root directory
+bun run qagent:setup
+
+# Or manually
+cd packages/qagent
+bun install
+bun run build
+
+# Link CLI globally (optional)
+npm link -g packages/cli
+
+# Verify
+qagent --version
+```
+
+**If you don't have bun:**
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+## First-Time Configuration
+
+### Quick Setup with `qagent init`
+
+The easiest way to get started:
+
+```bash
+cd ~/your-repo
+qagent init
+```
+
+The wizard will prompt you for:
+
+1. **Data directory** - Where to store session metadata (default: `~/.qagent`)
+2. **Worktree directory** - Where to create isolated workspaces (default: `~/.worktrees`)
+3. **Dashboard port** - Web interface port (default: `3000`)
+4. **Runtime plugin** - Session runtime (default: `tmux`)
+5. **Agent plugin** - AI coding assistant (default: `claude-code`)
+6. **Workspace plugin** - Workspace isolation method (default: `worktree`)
+7. **Notifiers** - Notification channels (default: `desktop`)
+8. **Project ID** - Short name for your project
+9. **GitHub repo** - Repository in `owner/repo` format
+10. **Local path** - Path to your repository
+11. **Default branch** - Main branch name (usually `main` or `master`)
+
+### What `qagent init` Detects Automatically
+
+The wizard is smart and tries to help:
+
+- **Git repository** - Detects if you're in a git repo
+- **GitHub remote** - Parses `owner/repo` from git remote
+- **Current branch** - Suggests default branch from git
+- **API keys** - Checks for `LINEAR_API_KEY` in environment
+- **GitHub auth** - Verifies `gh` CLI authentication status
+- **tmux availability** - Warns if tmux is not installed
+
+### Manual Configuration
+
+If you prefer to write the config manually:
+
+```bash
+cp qagent.yaml.example qagent.yaml
+nano qagent.yaml
+```
+
+Or start from an example:
+
+```bash
+cp examples/simple-github.yaml qagent.yaml
+nano qagent.yaml
+```
+
+## Configuration Reference
+
+### Minimal Configuration
+
+The absolute minimum needed:
+
+```yaml
+dataDir: ~/.qagent
+worktreeDir: ~/.worktrees
+port: 3000
+
+projects:
+  my-app:
+    repo: owner/my-app
+    path: ~/my-app
+    defaultBranch: main
+```
+
+### Full Configuration Schema
+
+See [qagent.yaml.example](./qagent.yaml.example) for a fully commented example with all options.
+
+### Plugin Slots
+
+Agent Orchestrator has 8 plugin slots. All are swappable:
+
+| Slot          | Purpose              | Default       | Alternatives                                    |
+| ------------- | -------------------- | ------------- | ----------------------------------------------- |
+| **Runtime**   | How sessions run     | `tmux`        | `process`, `docker`, `kubernetes`, `ssh`, `e2b` |
+| **Agent**     | AI coding assistant  | `claude-code` | `codex`, `aider`, `goose`, custom               |
+| **Workspace** | Workspace isolation  | `worktree`    | `clone`, `copy`                                 |
+| **Tracker**   | Issue tracking       | `github`      | `linear`, `jira`, custom                        |
+| **SCM**       | Source control       | `github`      | GitLab, Bitbucket (future)                      |
+| **Notifier**  | Notifications        | `desktop`     | `slack`, `discord`, `webhook`, `email`          |
+| **Terminal**  | Terminal integration | `iterm2`      | `web`, custom                                   |
+| **Lifecycle** | Session lifecycle    | (core)        | Non-pluggable                                   |
+
+### Reactions
+
+Reactions are auto-responses to events. Configure how the orchestrator handles common scenarios:
+
+#### CI Failed
+
+```yaml
+reactions:
+  ci-failed:
+    auto: true # Enable auto-handling
+    action: send-to-agent # Send failure logs to agent
+    retries: 2 # Retry up to 2 times
+    escalateAfter: 2 # Notify human after 2 failures
+```
+
+#### Changes Requested (Review Comments)
+
+```yaml
+reactions:
+  changes-requested:
+    auto: true
+    action: send-to-agent
+    escalateAfter: 30m # Notify human if not resolved in 30 minutes
+```
+
+#### Approved and Green (Auto-merge)
+
+```yaml
+reactions:
+  approved-and-green:
+    auto: true # Enable auto-merge
+    action: auto-merge # Merge when approved + CI passes
+    priority: action # Notification priority
+```
+
+**Warning:** Only enable auto-merge if you trust your CI pipeline and agents!
+
+#### Agent Stuck
+
+```yaml
+reactions:
+  agent-stuck:
+    threshold: 10m # Consider stuck after 10 minutes of inactivity
+    action: notify
+    priority: urgent
+```
+
+### Notification Routing
+
+Route notifications by priority:
+
+```yaml
+notificationRouting:
+  urgent: [desktop, slack] # Agent stuck, needs input, errored
+  action: [desktop, slack] # PR ready to merge
+  warning: [slack] # Auto-fix failed
+  info: [slack] # Summary, all done
+```
+
+### Agent Rules
+
+Inline rules included in every agent prompt:
+
+```yaml
+projects:
+  my-app:
+    agentRules: |
+      Always run tests before pushing.
+      Use conventional commits (feat:, fix:, chore:).
+      Link issue numbers in commit messages.
+```
+
+Or reference an external file:
+
+```yaml
+projects:
+  my-app:
+    agentRulesFile: .agent-rules.md
+```
+
+### Per-Project Overrides
+
+Override defaults per project:
+
+```yaml
+projects:
+  frontend:
+    runtime: tmux
+    agent: claude-code
+    workspace: worktree
+
+  backend:
+    runtime: docker # Use Docker for backend
+    agent: codex # Use Codex instead of Claude
+```
+
+## Integration Guides
+
+### GitHub Issues
+
+**Authentication:**
+
+```bash
+gh auth login
+```
+
+**Required scopes:**
+
+- `repo` - Full repository access
+- `read:org` - Read organization membership (for team mentions)
+
+**Verification:**
+
+```bash
+gh auth status
+```
+
+### Linear
+
+**Setup:**
+
+1. Get your API key: https://linear.app/settings/api
+2. Add to environment:
+
+   ```bash
+   echo 'export LINEAR_API_KEY="lin_api_..."' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+3. Find your team ID:
+   - Go to https://linear.app/settings/api
+   - Click "Create new key" or use existing key
+   - Team ID is visible in your Linear workspace URL or via API
+
+4. Configure in `qagent.yaml`:
+   ```yaml
+   projects:
+     my-app:
+       tracker:
+         plugin: linear
+         teamId: "your-team-id"
+   ```
+
+**Verification:**
+
+```bash
+echo $LINEAR_API_KEY  # Should print your key
+```
+
+### Slack
+
+**Setup:**
+
+1. Create incoming webhook: https://api.slack.com/messaging/webhooks
+2. Add to environment:
+
+   ```bash
+   echo 'export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+3. Configure in `qagent.yaml`:
+   ```yaml
+   notifiers:
+     slack:
+       plugin: slack
+       webhook: ${SLACK_WEBHOOK_URL}
+       channel: "#agent-updates"
+   ```
+
+**Verification:**
+
+```bash
+# Send test message
+curl -X POST -H 'Content-type: application/json' \
+  --data '{"text":"Agent Orchestrator test"}' \
+  $SLACK_WEBHOOK_URL
+```
+
+### Custom Trackers
+
+To add a custom tracker (Jira, Asana, etc.), create a plugin:
+
+1. See plugin examples in `packages/plugins/tracker-*/`
+2. Implement the `Tracker` interface from `@composio/ao-core`
+3. Register your plugin in the config
+
+See [CLAUDE.md](./CLAUDE.md) for plugin development guidelines.
+
+## Troubleshooting
+
+### "No qagent.yaml found"
+
+**Problem:** The orchestrator can't find your config file.
+
+**Solution:**
+
+```bash
+# Run init wizard
+qagent init
+
+# Or copy an example
+cp examples/simple-github.yaml qagent.yaml
+```
+
+### "tmux not found"
+
+**Problem:** tmux is not installed (required for tmux runtime).
+
+**Solution:**
+
+```bash
+# macOS
+brew install tmux
+
+# Ubuntu/Debian
+sudo apt install tmux
+
+# Fedora/RHEL
+sudo dnf install tmux
+```
+
+### "gh auth failed"
+
+**Problem:** GitHub CLI is not authenticated.
+
+**Solution:**
+
+```bash
+gh auth login
+
+# Select:
+# - GitHub.com (not Enterprise)
+# - HTTPS (recommended)
+# - Authenticate with browser
+# - Include repo scope
+```
+
+**Verify:**
+
+```bash
+gh auth status
+```
+
+### "LINEAR_API_KEY not found"
+
+**Problem:** Linear API key is not set in environment.
+
+**Solution:**
+
+```bash
+# Get your key from: https://linear.app/settings/api
+
+# Add to shell profile
+echo 'export LINEAR_API_KEY="lin_api_..."' >> ~/.zshrc
+source ~/.zshrc
+
+# Verify
+echo $LINEAR_API_KEY
+```
+
+### "Port already in use"
+
+**Problem:** Another service is using the dashboard port (default 3000).
+
+**Solution:**
+
+```bash
+# Option 1: Change port in qagent.yaml
+port: 3001
+
+# Option 2: Find and kill the process using the port
+lsof -ti:3000 | xargs kill
+```
+
+**Note:** When running multiple projects, each needs a different `port:` value in its config.
+
+### "Workspace creation failed"
+
+**Problem:** Orchestrator can't create worktrees or clones.
+
+**Solution:**
+
+```bash
+# Check worktreeDir permissions
+ls -la ~/.worktrees
+
+# Create directory if missing
+mkdir -p ~/.worktrees
+
+# Check disk space
+df -h
+```
+
+### "Session not found"
+
+**Problem:** Session ID doesn't exist or was already destroyed.
+
+**Solution:**
+
+```bash
+# List active sessions
+qagent session ls
+
+# Check status dashboard
+qagent status
+```
+
+### "Agent not responding"
+
+**Problem:** Agent session is stuck or frozen.
+
+**Solution:**
+
+```bash
+# Check session status
+qagent status
+
+# Attach to session to investigate
+qagent open <session-name>
+
+# Send message to agent
+qagent send <session-name> "Please report your current status"
+
+# Kill and respawn if necessary
+qagent session kill <session-name>
+qagent spawn <project-id> <issue-id>
+```
+
+### "Permission denied" when spawning
+
+**Problem:** Agent doesn't have permissions for git operations.
+
+**Solution:**
+
+```bash
+# Check SSH keys are added
+ssh -T git@github.com
+
+# Add SSH key if needed
+ssh-add ~/.ssh/id_ed25519
+
+# Or use HTTPS and authenticate gh CLI
+gh auth login
+```
+
+### "YAML parse error"
+
+**Problem:** Syntax error in `qagent.yaml`.
+
+**Solution:**
+
+```bash
+# Validate YAML syntax online: https://www.yamllint.com/
+
+# Common issues:
+# - Incorrect indentation (use 2 spaces, not tabs)
+# - Missing quotes around strings with special characters
+# - Typo in field names
+```
+
+### "Node version too old"
+
+**Problem:** Node.js version is below 20.
+
+**Solution:**
+
+```bash
+# Check version
+node --version
+
+# Upgrade with nvm (recommended)
+nvm install 20
+nvm use 20
+nvm alias default 20
+
+# Or download from: https://nodejs.org/
+```
+
+## Advanced Configuration
+
+### Multi-Project Setup
+
+Manage multiple repositories:
+
+```yaml
+projects:
+  frontend:
+    repo: org/frontend
+    path: ~/frontend
+    sessionPrefix: fe
+
+  backend:
+    repo: org/backend
+    path: ~/backend
+    sessionPrefix: api
+
+  mobile:
+    repo: org/mobile
+    path: ~/mobile
+    sessionPrefix: mob
+```
+
+See [examples/multi-project.yaml](./examples/multi-project.yaml) for full example.
+
+### Custom Plugin Development
+
+Create custom plugins for:
+
+- Different runtimes (Docker, Kubernetes, SSH, cloud VMs)
+- Different agents (custom AI assistants)
+- Different trackers (Jira, Asana, custom systems)
+- Different notifiers (email, webhooks, custom integrations)
+
+See [CLAUDE.md](./CLAUDE.md) for plugin development guidelines.
+
+### Docker Runtime
+
+Run agents in Docker containers:
+
+```yaml
+defaults:
+  runtime: docker
+
+# Plugin will use official images or build from Dockerfile
+```
+
+### Kubernetes Runtime
+
+Run agents in Kubernetes pods:
+
+```yaml
+defaults:
+  runtime: kubernetes
+
+# Requires kubectl configured with cluster access
+```
+
+### Custom Notifiers
+
+Send notifications to custom webhooks:
+
+```yaml
+notifiers:
+  webhook:
+    plugin: webhook
+    url: https://your-service.com/webhook
+    method: POST
+    headers:
+      Authorization: "Bearer ${WEBHOOK_TOKEN}"
+```
+
+## FAQ
+
+### What's a session?
+
+A session is an isolated workspace where an agent works on a single issue. Each session has:
+
+- Its own git worktree or clone
+- Its own tmux session (or Docker container, etc.)
+- Its own metadata (branch, PR, status)
+- Its own event log
+
+Sessions are ephemeral — they're created for an issue and destroyed when merged.
+
+### What's a worktree vs clone?
+
+**Worktree** (default):
+
+- Shares `.git` directory with main repo
+- Fast to create (no cloning)
+- Efficient disk usage
+- Best for local development
+
+**Clone**:
+
+- Full independent repository clone
+- Slower to create
+- More disk space
+- Better for isolation, remote work
+
+### How do reactions work?
+
+Reactions are event handlers that run automatically:
+
+1. Event occurs (CI fails, review comment added, PR approved)
+2. Orchestrator checks reaction config
+3. If `auto: true`, performs the action automatically
+4. If escalation threshold reached, notifies human
+
+Actions can be:
+
+- `send-to-agent` - Forward event to agent to handle
+- `auto-merge` - Merge PR automatically
+- `notify` - Send notification to human
+
+### When should I enable auto-merge?
+
+Enable auto-merge if:
+
+- ✅ You have comprehensive CI/CD tests
+- ✅ You require code review approval
+- ✅ You trust your agents to write correct code
+- ✅ You want maximum automation
+
+Don't enable auto-merge if:
+
+- ❌ You have incomplete test coverage
+- ❌ You want manual review of every change
+- ❌ You're still evaluating agent quality
+- ❌ You work on critical systems (finance, healthcare, etc.)
+
+Start with `auto: false` and enable after building confidence.
+
+### How do I add custom agent rules?
+
+**Inline:**
+
+```yaml
+projects:
+  my-app:
+    agentRules: |
+      Always run tests before pushing.
+      Use conventional commits.
+```
+
+**External file:**
+
+```yaml
+projects:
+  my-app:
+    agentRulesFile: .agent-rules.md
+```
+
+Rules are included in every agent prompt for that project.
+
+### Can I use multiple trackers?
+
+Yes! Different projects can use different trackers:
+
+```yaml
+projects:
+  frontend:
+    tracker:
+      plugin: github
+
+  backend:
+    tracker:
+      plugin: linear
+      teamId: "..."
+```
+
+### How do I monitor agent progress?
+
+Three ways:
+
+1. **Dashboard** - `qagent start` then visit http://localhost:3000 (or your configured `port:`)
+2. **CLI status** - `qagent status` (text-based dashboard)
+3. **Attach to session** - `qagent open <session-name>` (live terminal)
+
+### What if an agent gets stuck?
+
+```bash
+# Check status
+qagent status
+
+# Send message
+qagent send <session-name> "What's your current status?"
+
+# Attach to investigate
+qagent open <session-name>
+
+# Kill and respawn if necessary
+qagent session kill <session-name>
+qagent spawn <project-id> <issue-id>
+```
+
+Agents also send "stuck" notifications automatically after inactivity threshold.
+
+### How do I clean up old sessions?
+
+```bash
+# List all sessions
+qagent session ls
+
+# Kill specific session
+qagent session kill <session-name>
+
+# Cleanup script (example)
+qagent session ls --json | jq -r '.[] | select(.status == "merged") | .id' | xargs -I{} qagent session kill {}
+```
+
+### Can I run multiple orchestrators?
+
+Yes! Each orchestrator instance should have:
+
+- Different data directory (`dataDir`)
+- Different dashboard port (`port`) — e.g., 3000 for project A, 3001 for project B
+- Different config file
+
+Terminal WebSocket ports are auto-detected by default, so you typically only need to set `port:` differently. If you need explicit control, you can also set `terminalPort:` and `directTerminalPort:` per config.
+
+Useful for:
+
+- Separating projects
+- Different teams
+- Testing new configs
+
+## Next Steps
+
+1. **Run `qagent init`** - Create your first config
+2. **Spawn an agent** - `qagent spawn my-app ISSUE-123`
+3. **Monitor progress** - `qagent status` or dashboard
+4. **Read [CLAUDE.md](./CLAUDE.md)** - Code conventions and architecture
+5. **Explore examples** - See [examples/](./examples/) for more configs
+6. **Join the community** - Report issues, share configs, contribute plugins
+
+---
+
+**Need help?** Open an issue at: https://github.com/ComposioHQ/agent-orchestrator/issues

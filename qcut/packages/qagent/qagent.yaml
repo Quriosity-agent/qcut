@@ -1,0 +1,122 @@
+# Agent Orchestrator Configuration
+# Copy to agent-orchestrator.yaml and customize.
+
+# Where to store session metadata
+dataDir: ~/.agent-orchestrator
+
+# Where to create workspaces (git worktrees, clones)
+worktreeDir: ~/.worktrees
+
+# Web dashboard port
+port: 3001
+
+# Terminal server ports (defaults: 14800/14801 — chosen to avoid conflicts with dev tools)
+# Override when running multiple dashboards to avoid EADDRINUSE
+# terminalPort: 14800
+# directTerminalPort: 14801
+
+# Default plugins (these are the defaults — you can omit this section)
+defaults:
+  runtime: tmux           # tmux | process | docker | kubernetes | ssh | e2b
+  agent: claude-code      # claude-code | codex | aider | goose | custom
+  workspace: worktree     # worktree | clone | copy
+  notifiers: [desktop]    # desktop | slack | discord | webhook | email
+
+# Projects — at minimum, specify repo and path
+projects:
+  qcut:
+    name: QCut
+    repo: Quriosity-agent/qcut
+    path: ~/Desktop/code/qcut/qcut
+    defaultBranch: master
+    sessionPrefix: qcut
+    agent: codex
+    agentRules: |
+      Use bun as package manager. Follow CLAUDE.md conventions.
+      Use conventional commits (feat:, fix:, chore:).
+      No file longer than 800 lines.
+    agentConfig:
+      permissions: skip
+
+  game:
+    name: Game Project
+    repo: donghaozhang/game-project
+    path: ~/Desktop/code/agent/game-project
+    defaultBranch: main
+    sessionPrefix: game
+    agent: codex
+    agentRules: |
+      Build a fun browser-based game using HTML, CSS, and JavaScript.
+      Create a single index.html file with everything inline.
+      Make it visually appealing with smooth animations.
+      The game should be fully playable in a browser.
+
+    # Issue tracker (defaults to github issues)
+    # tracker:
+    #   plugin: linear
+    #   teamId: "your-team-id"
+
+    # Files to symlink into workspaces
+    # symlinks: [.env, .claude]
+
+    # Commands to run after workspace creation
+    # postCreate:
+    #   - "pnpm install"
+
+    # Agent-specific config
+    agentConfig:
+      permissions: skip    # --full-auto (YOLO mode)
+
+    # Inline rules included in every agent prompt for this project
+    # agentRules: |
+    #   Always run tests before pushing.
+    #   Use conventional commits (feat:, fix:, chore:).
+
+    # Path to a rules file (relative to project path)
+    # agentRulesFile: .agent-rules.md
+
+    # Rules for the orchestrator agent (reserved for future use)
+    # orchestratorRules: |
+    #   Prefer to batch-spawn related issues together.
+
+    # Per-project reaction overrides
+    # reactions:
+    #   approved-and-green:
+    #     auto: true         # enable auto-merge for this project
+
+# Notification channels
+# notifiers:
+#   slack:
+#     plugin: slack
+#     webhook: ${SLACK_WEBHOOK_URL}
+#     channel: "#agent-updates"
+
+# Notification routing by priority
+# notificationRouting:
+#   urgent: [desktop, slack]   # agent stuck, needs input, errored
+#   action: [desktop, slack]   # PR ready to merge
+#   warning: [slack]           # auto-fix failed
+#   info: [slack]              # summary, all done
+
+# Reactions — auto-responses to events (these are the defaults)
+# reactions:
+#   ci-failed:
+#     auto: true
+#     action: send-to-agent
+#     retries: 2
+#     escalateAfter: 2
+#
+#   changes-requested:
+#     auto: true
+#     action: send-to-agent
+#     escalateAfter: 30m
+#
+#   approved-and-green:
+#     auto: false              # set to true for auto-merge
+#     action: notify
+#     priority: action
+#
+#   agent-stuck:
+#     threshold: 10m
+#     action: notify
+#     priority: urgent

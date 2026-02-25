@@ -93,7 +93,7 @@
 		"submodule:update": "git submodule update --remote --recursive",
 		"qagent:build": "cd packages/qagent && bun run build",
 		"qagent:init": "cd packages/qagent && bun install && bun run build",
-		"qagent:setup": "bun run submodule:init && bun run qagent:init",
+		"qagent:setup": "bun run qagent:init",
 		"predev": "bun run setup-ffmpeg",
 		"prebuild": "bun run setup-ffmpeg && bun run stage-ffmpeg-binaries && bun run sync-skills",
 		"sync-skills": "bun scripts/sync-skills.ts",
