@@ -159,7 +159,7 @@ const sortParam = query
 
 ## Agent Orchestrator (ao) Session
 
-You are running inside an Agent Orchestrator managed workspace.
+You are running inside an Agent Orchestrator-managed workspace.
 Session metadata is updated automatically via shell wrappers.
 
 If automatic updates fail, you can manually update metadata:

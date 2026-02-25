@@ -68,12 +68,12 @@ With:
 - `packages/agent-orchestrator/package.json` — keep `postinstall` hook
 
 **Current issue:** The rebuild script hardcodes the pnpm store path:
-```
+```text
 node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty
 ```
 
 Bun uses a flat `node_modules` layout. Update to:
-```
+```text
 node_modules/node-pty
 ```
 

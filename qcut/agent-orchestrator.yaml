@@ -27,8 +27,8 @@ projects:
     defaultBranch: master
     sessionPrefix: qcut
 
-    # Files to symlink into worktrees (so agents get env vars and config)
-    symlinks: [.env, .claude]
+    # Files to symlink into worktrees (share agent config only; avoid symlinking secrets like .env)
+    symlinks: [.claude]
 
     # Run after worktree creation
     postCreate:
@@ -36,6 +36,7 @@ projects:
 
     # Agent configuration
     agentConfig:
+      # Local dev convenience only: skips permission prompts in orchestrated sessions.
       permissions: skip
       model: opus
 
