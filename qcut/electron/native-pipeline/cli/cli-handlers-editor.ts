@@ -204,12 +204,14 @@ async function handleUiCommand(
 				return {
 					success: false,
 					error:
-						"Missing --panel. Available: media, text, stickers, video-edit, effects, transitions, filters, text2image, nano-edit, ai, sounds, segmentation, remotion, pty, word-timeline, project-folder, upscale, moyin. Aliases: terminal, skills, library, ai-video, ai-images, audio-studio, smart-speech, project",
+						"Missing --panel. Available: media, text, stickers, video-edit, effects, transitions, filters, text2image, nano-edit, ai, sounds, segmentation, remotion, pty, word-timeline, project-folder, upscale, moyin. Aliases: terminal, skills, library, ai-video, ai-images, audio-studio, smart-speech, project. Use --tab for moyin inner tabs: overview (structure), characters, scenes, shots, generate",
 				};
 			}
-			const data = await client.post("/api/claude/ui/switch-panel", {
-				panel,
-			});
+			const body: Record<string, string> = { panel };
+			if (options.tab) {
+				body.tab = options.tab;
+			}
+			const data = await client.post("/api/claude/ui/switch-panel", body);
 			return { success: true, data };
 		}
 		default:

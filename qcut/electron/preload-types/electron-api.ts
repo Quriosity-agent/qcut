@@ -861,7 +861,11 @@ export interface ElectronAPI {
 		};
 		ui: {
 			onSwitchPanelRequest: (
-				callback: (data: { requestId: string; panel: string }) => void
+				callback: (data: {
+					requestId: string;
+					panel: string;
+					tab?: string;
+				}) => void
 			) => void;
 			sendSwitchPanelResponse: (
 				requestId: string,

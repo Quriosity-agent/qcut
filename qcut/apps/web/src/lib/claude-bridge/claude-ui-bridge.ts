@@ -20,8 +20,8 @@ export function setupClaudeUiBridge(): void {
 
 	bridge.onSwitchPanelRequest((data) => {
 		try {
-			const tab = data.panel as Tab;
-			if (!(tab in tabs)) {
+			const panelTab = data.panel as Tab;
+			if (!(panelTab in tabs)) {
 				bridge.sendSwitchPanelResponse(
 					data.requestId,
 					undefined,
@@ -30,14 +30,23 @@ export function setupClaudeUiBridge(): void {
 				return;
 			}
 			const store = useMediaPanelStore.getState();
-			const group = getGroupForTab(tab);
+			const group = getGroupForTab(panelTab);
 
 			store.setActiveGroup(group);
-			store.setActiveTab(tab);
+			store.setActiveTab(panelTab);
+
+			// Switch inner tab if requested (e.g. moyin sub-tabs)
+			if (data.tab) {
+				window.dispatchEvent(
+					new CustomEvent("moyin:switch-tab", {
+						detail: { tab: data.tab },
+					})
+				);
+			}
 
 			bridge.sendSwitchPanelResponse(data.requestId, {
 				switched: true,
-				panel: tab,
+				panel: panelTab,
 				group,
 			});
 		} catch (err) {

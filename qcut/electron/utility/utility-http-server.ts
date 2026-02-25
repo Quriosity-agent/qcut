@@ -228,8 +228,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.panel || typeof req.body.panel !== "string") {
 			throw new HttpError(400, "Missing 'panel' in request body");
 		}
+		const payload: Record<string, string> = { panel: req.body.panel };
+		if (req.body.tab && typeof req.body.tab === "string") {
+			payload.tab = req.body.tab;
+		}
 		return await withTimeout(
-			requestFromMain("switch-panel", { panel: req.body.panel }),
+			requestFromMain("switch-panel", payload),
 			10_000,
 			"Panel switch timed out"
 		);

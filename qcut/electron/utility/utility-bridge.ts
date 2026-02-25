@@ -41,6 +41,8 @@ import {
 	requestSwitchPanel,
 	resolvePanelId,
 	getAvailablePanels,
+	resolveTabId,
+	getAvailableTabs,
 } from "../claude/handlers/claude-ui-handler.js";
 import {
 	requestCreateProject,
@@ -324,14 +326,24 @@ async function handleMainRequest(
 		}
 
 		case "switch-panel": {
-			const req = data as { panel: string };
+			const req = data as { panel: string; tab?: string };
 			const panelId = resolvePanelId(req.panel);
 			if (!panelId) {
 				throw new Error(
 					`Unknown panel: ${req.panel}. Available: ${getAvailablePanels().join(", ")}`
 				);
 			}
-			return requestSwitchPanel(win, panelId);
+			// Resolve tab alias if provided
+			let resolvedTab: string | undefined;
+			if (req.tab) {
+				resolvedTab = resolveTabId(panelId, req.tab) ?? undefined;
+				if (!resolvedTab) {
+					throw new Error(
+						`Unknown tab: ${req.tab}. Available for ${panelId}: ${getAvailableTabs(panelId).join(", ")}`
+					);
+				}
+			}
+			return requestSwitchPanel(win, panelId, resolvedTab);
 		}
 
 		case "project:create": {

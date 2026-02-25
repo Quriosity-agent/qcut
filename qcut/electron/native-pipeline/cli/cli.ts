@@ -246,7 +246,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:remotion:inspect    Inspect a Remotion element (--element-id)
   editor:remotion:update-props  Update element props (--element-id --data)
   editor:remotion:export     Export with Remotion engine (--preset)
-  editor:ui:switch-panel     Switch editor panel (--panel)
+  editor:ui:switch-panel     Switch editor panel (--panel, --tab for moyin)
   editor:project:create      Create project (--new-name)
   editor:project:delete      Delete project (--project-id)
   editor:project:rename      Rename project (--project-id --new-name)
@@ -460,6 +460,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			discard: { type: "boolean", default: false },
 			// ui options
 			panel: { type: "string" },
+			tab: { type: "string" },
 		},
 		strict: false,
 	});
@@ -662,6 +663,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		discard: (values.discard as boolean) ?? false,
 		// ui options
 		panel: values.panel as string | undefined,
+		tab: values.tab as string | undefined,
 	};
 }
 

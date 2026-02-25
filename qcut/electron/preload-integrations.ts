@@ -561,13 +561,19 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		},
 		ui: {
 			onSwitchPanelRequest: (
-				callback: (data: { requestId: string; panel: string }) => void
+				callback: (data: {
+					requestId: string;
+					panel: string;
+					tab?: string;
+				}) => void
 			) => {
 				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
 				ipcRenderer.on(
 					"claude:ui:switch-panel:request",
-					(_: unknown, data: { requestId: string; panel: string }) =>
-						callback(data)
+					(
+						_: unknown,
+						data: { requestId: string; panel: string; tab?: string }
+					) => callback(data)
 				);
 			},
 			sendSwitchPanelResponse: (

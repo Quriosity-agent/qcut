@@ -46,6 +46,16 @@ const PANEL_ALIASES: Record<string, string> = {
 	project: "project-folder",
 };
 
+/** Valid inner tab IDs per panel (only moyin has inner tabs for now). */
+const PANEL_TABS: Record<string, readonly string[]> = {
+	moyin: ["overview", "characters", "scenes", "shots", "generate"],
+};
+
+/** Friendly aliases → actual tab IDs. */
+const TAB_ALIASES: Record<string, string> = {
+	structure: "overview",
+};
+
 export interface SwitchPanelResponse {
 	switched: boolean;
 	panel: string;
@@ -69,11 +79,32 @@ export function getAvailablePanels(): string[] {
 }
 
 /**
+ * Resolve a tab name (or alias) to a valid tab ID for the given panel.
+ * Returns null if the panel has no tabs or the tab is not recognized.
+ */
+export function resolveTabId(panel: string, name: string): string | null {
+	const lower = name.toLowerCase();
+	const resolved = lower in TAB_ALIASES ? TAB_ALIASES[lower] : lower;
+	const validTabs = PANEL_TABS[panel];
+	if (!validTabs) return null;
+	return validTabs.includes(resolved) ? resolved : null;
+}
+
+/** Return available tabs for a panel (empty array if none). */
+export function getAvailableTabs(panel: string): string[] {
+	const tabs = PANEL_TABS[panel];
+	if (!tabs) return [];
+	return [...tabs, ...Object.keys(TAB_ALIASES)];
+}
+
+/**
  * Request panel switch from renderer process.
+ * Optionally switch an inner tab (e.g. moyin sub-tabs).
  */
 export async function requestSwitchPanel(
 	win: BrowserWindow,
-	panel: string
+	panel: string,
+	tab?: string
 ): Promise<SwitchPanelResponse> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -111,6 +142,7 @@ export async function requestSwitchPanel(
 		win.webContents.send("claude:ui:switch-panel:request", {
 			requestId,
 			panel,
+			...(tab ? { tab } : {}),
 		});
 	});
 }
