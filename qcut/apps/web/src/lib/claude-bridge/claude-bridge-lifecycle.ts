@@ -21,6 +21,10 @@ import {
 	cleanupClaudeProjectCrudBridge,
 	setupClaudeProjectCrudBridge,
 } from "@/lib/claude-bridge/claude-project-crud-bridge";
+import {
+	cleanupClaudeMoyinBridge,
+	setupClaudeMoyinBridge,
+} from "@/lib/claude-bridge/claude-moyin-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -75,6 +79,11 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeProjectCrudBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup moyin bridge",
+		step: setupClaudeMoyinBridge,
+		onError,
+	});
 
 	return () => {
 		runBridgeStep({
@@ -105,6 +114,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup project CRUD bridge",
 			step: cleanupClaudeProjectCrudBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup moyin bridge",
+			step: cleanupClaudeMoyinBridge,
 			onError,
 		});
 	};

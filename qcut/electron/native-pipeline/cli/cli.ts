@@ -139,6 +139,9 @@ const COMMANDS = [
 	"editor:remotion:update-props",
 	"editor:remotion:export",
 	"editor:ui:switch-panel",
+	"editor:moyin:set-script",
+	"editor:moyin:parse",
+	"editor:moyin:status",
 	"editor:project:create",
 	"editor:project:delete",
 	"editor:project:rename",
@@ -247,6 +250,9 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:remotion:update-props  Update element props (--element-id --data)
   editor:remotion:export     Export with Remotion engine (--preset)
   editor:ui:switch-panel     Switch editor panel (--panel, --tab for moyin)
+  editor:moyin:set-script    Push script text to director panel (--text/--script)
+  editor:moyin:parse         Trigger "Parse Script" button
+  editor:moyin:status        Get pipeline progress (parseStatus, steps)
   editor:project:create      Create project (--new-name)
   editor:project:delete      Delete project (--project-id)
   editor:project:rename      Rename project (--project-id --new-name)

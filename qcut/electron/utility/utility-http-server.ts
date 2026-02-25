@@ -239,6 +239,36 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		);
 	});
 
+	// ==========================================================================
+	// Moyin (Director) CLI routes
+	// ==========================================================================
+	router.post("/api/claude/moyin/set-script", async (req) => {
+		if (!req.body?.text || typeof req.body.text !== "string") {
+			throw new HttpError(400, "Missing 'text' in request body");
+		}
+		return await withTimeout(
+			requestFromMain("moyin:set-script", { text: req.body.text }),
+			10_000,
+			"Set script timed out"
+		);
+	});
+
+	router.post("/api/claude/moyin/parse", async () => {
+		return await withTimeout(
+			requestFromMain("moyin:trigger-parse", {}),
+			10_000,
+			"Trigger parse timed out"
+		);
+	});
+
+	router.get("/api/claude/moyin/status", async () => {
+		return await withTimeout(
+			requestFromMain("moyin:status", {}),
+			10_000,
+			"Moyin status timed out"
+		);
+	});
+
 	// Auth check
 	function checkAuth(req: IncomingMessage): boolean {
 		const token = process.env.QCUT_API_TOKEN;

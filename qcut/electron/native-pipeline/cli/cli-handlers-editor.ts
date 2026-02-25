@@ -88,10 +88,13 @@ export async function handleEditorCommand(
 			case "ui":
 				return await handleUiCommand(client, options);
 
+			case "moyin":
+				return await handleMoyinCommand(client, options);
+
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, remotion, navigator, screen-recording, ui`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, remotion, navigator, screen-recording, ui, moyin`,
 				};
 		}
 	} catch (err) {
@@ -218,6 +221,63 @@ async function handleUiCommand(
 			return {
 				success: false,
 				error: `Unknown ui action: ${action}. Available: switch-panel`,
+			};
+	}
+}
+
+/**
+ * Handle `editor:moyin:*` commands.
+ * - `set-script` — push script text into the moyin textarea
+ * - `parse` — trigger the "Parse Script" button
+ * - `status` — poll pipeline progress
+ */
+async function handleMoyinCommand(
+	client: EditorApiClient,
+	options: CLIRunOptions
+): Promise<CLIResult> {
+	const parts = options.command.split(":");
+	const action = parts[2]; // "set-script", "parse", "status"
+
+	switch (action) {
+		case "set-script": {
+			const text = options.text || options.script;
+			if (!text) {
+				return {
+					success: false,
+					error:
+						"Missing --text or --script. Provide script text inline or as a file path.",
+				};
+			}
+			// If --script is a file path, read it
+			let scriptText = text;
+			if (options.script) {
+				try {
+					const fs = await import("node:fs/promises");
+					scriptText = await fs.readFile(options.script, "utf-8");
+				} catch {
+					return {
+						success: false,
+						error: `Failed to read script file: ${options.script}`,
+					};
+				}
+			}
+			const data = await client.post("/api/claude/moyin/set-script", {
+				text: scriptText,
+			});
+			return { success: true, data };
+		}
+		case "parse": {
+			const data = await client.post("/api/claude/moyin/parse", {});
+			return { success: true, data };
+		}
+		case "status": {
+			const data = await client.get("/api/claude/moyin/status");
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown moyin action: ${action}. Available: set-script, parse, status`,
 			};
 	}
 }

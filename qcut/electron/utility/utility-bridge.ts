@@ -45,6 +45,11 @@ import {
 	getAvailableTabs,
 } from "../claude/handlers/claude-ui-handler.js";
 import {
+	requestSetScript,
+	requestTriggerParse,
+	requestMoyinStatus,
+} from "../claude/handlers/claude-moyin-handler.js";
+import {
 	requestCreateProject,
 	requestDeleteProject,
 	requestRenameProject,
@@ -344,6 +349,21 @@ async function handleMainRequest(
 				}
 			}
 			return requestSwitchPanel(win, panelId, resolvedTab);
+		}
+
+		case "moyin:set-script": {
+			const req = data as { text: string };
+			requestSetScript(win, req.text);
+			return { updated: true };
+		}
+
+		case "moyin:trigger-parse": {
+			requestTriggerParse(win);
+			return { triggered: true };
+		}
+
+		case "moyin:status": {
+			return requestMoyinStatus(win);
 		}
 
 		case "project:create": {

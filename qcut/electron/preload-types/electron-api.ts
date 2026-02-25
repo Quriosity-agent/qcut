@@ -932,6 +932,15 @@ export interface ElectronAPI {
 		isClaudeAvailable: () => Promise<boolean>;
 		onParsed: (callback: (data: Record<string, unknown>) => void) => void;
 		removeParseListener: () => void;
+		onSetScript: (callback: (data: { text: string }) => void) => void;
+		onTriggerParse: (callback: () => void) => void;
+		onStatusRequest: (callback: (data: { requestId: string }) => void) => void;
+		sendStatusResponse: (
+			requestId: string,
+			result?: Record<string, unknown>,
+			error?: string
+		) => void;
+		removeMoyinBridgeListeners: () => void;
 	};
 
 	// Update and release notes operations

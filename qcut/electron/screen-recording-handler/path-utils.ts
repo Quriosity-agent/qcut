@@ -50,15 +50,9 @@ export function resolveOutputFormat({
 }: {
 	filePath: string;
 }): ScreenRecordingOutputFormat {
-	try {
-		const extension = getPathExtension({ filePath });
-		if (extension === FILE_EXTENSION.WEBM) {
-			return SCREEN_RECORDING_OUTPUT_FORMAT.WEBM;
-		}
-		return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
-	} catch {
-		return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
-	}
+	// Always default to MP4 — WebM cannot be opened on most platforms.
+	// The capture is always WebM internally; MP4 triggers FFmpeg transcoding.
+	return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
 }
 
 export function replaceExtension({
@@ -82,10 +76,9 @@ function normalizeOutputPathExtension({
 	filePath: string;
 }): string {
 	const extension = getPathExtension({ filePath });
-	const isSupportedOutputExtension =
-		extension === FILE_EXTENSION.WEBM || extension === FILE_EXTENSION.MP4;
 
-	if (isSupportedOutputExtension) {
+	// Always use MP4 output — convert .webm extensions to .mp4
+	if (extension === FILE_EXTENSION.MP4) {
 		return filePath;
 	}
 
