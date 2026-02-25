@@ -37,8 +37,8 @@
 			"inputs": ["packages/video-agent-skill/**"],
 			"cache": false
 		},
-		"ao:build": {
-			"inputs": ["packages/agent-orchestrator/**"],
+		"qagent:build": {
+			"inputs": ["packages/qagent/**"],
 			"cache": false
 		}
 	}
