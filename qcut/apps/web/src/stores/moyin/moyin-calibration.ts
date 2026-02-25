@@ -93,6 +93,79 @@ async function getCalibrationContext({
 	}
 }
 
+// ==================== Title Calibration ====================
+
+export async function calibrateTitleLLM(
+	scriptData: ScriptData,
+	rawScript: string
+): Promise<{ title: string; logline: string }> {
+	const api = getMoyinApi();
+
+	const result = await api.callLLM({
+		systemPrompt: `You are a screenplay development expert. Refine the title and logline for a screenplay.
+
+Return JSON only:
+{"title": "refined title", "logline": "compelling one-sentence logline"}`,
+		userPrompt: `Current title: "${scriptData.title}"
+Current logline: "${scriptData.logline || ""}"
+Genre: ${scriptData.genre || "Drama"}
+
+Script excerpt (first 500 chars):
+${rawScript.slice(0, 500)}
+
+Refine the title and logline. Keep the original if it's already strong.`,
+		temperature: 0.5,
+		maxTokens: 256,
+	});
+
+	if (!result.success || !result.text) {
+		throw new Error(result.error || "Title calibration failed");
+	}
+
+	const cleaned = result.text
+		.replace(/```json\n?/g, "")
+		.replace(/```\n?/g, "")
+		.trim();
+	return JSON.parse(cleaned) as { title: string; logline: string };
+}
+
+// ==================== Synopsis Generation ====================
+
+export async function generateSynopsisLLM(
+	scriptData: ScriptData,
+	rawScript: string
+): Promise<string> {
+	const api = getMoyinApi();
+
+	const charNames = scriptData.characters
+		.slice(0, 5)
+		.map((c) => c.name)
+		.join(", ");
+
+	const result = await api.callLLM({
+		systemPrompt: `You are a screenplay development expert. Write a concise 2-3 sentence synopsis for the screenplay.
+Return only the synopsis text, no JSON wrapping.`,
+		userPrompt: `Title: "${scriptData.title}"
+Genre: ${scriptData.genre || "Drama"}
+Logline: ${scriptData.logline || ""}
+Main characters: ${charNames}
+Scenes: ${scriptData.scenes.length}
+
+Script excerpt (first 800 chars):
+${rawScript.slice(0, 800)}
+
+Write a compelling 2-3 sentence synopsis.`,
+		temperature: 0.7,
+		maxTokens: 512,
+	});
+
+	if (!result.success || !result.text) {
+		throw new Error(result.error || "Synopsis generation failed");
+	}
+
+	return result.text.trim();
+}
+
 // ==================== Character Enhancement ====================
 
 interface EnhancedCharacterData {

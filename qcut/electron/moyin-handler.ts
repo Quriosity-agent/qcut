@@ -141,6 +141,9 @@ async function callLLM(
 	const openaiKey = keys.openRouterApiKey;
 	const googleKey = keys.geminiApiKey;
 
+	const provider = openaiKey ? "OpenRouter" : googleKey ? "Gemini" : "Claude CLI";
+	log.info(`[Moyin] callLLM using ${provider} (prompt: ${userPrompt.length} chars)`);
+
 	if (openaiKey) {
 		return callOpenAICompatible(openaiKey, systemPrompt, userPrompt, options);
 	}
@@ -150,7 +153,6 @@ async function callLLM(
 	}
 
 	// Fallback to Claude CLI (no API key required)
-	log.info("[Moyin] No API keys configured, using Claude CLI fallback");
 	return callClaudeCLI(systemPrompt, userPrompt);
 }
 
@@ -263,16 +265,22 @@ async function callGemini(
 
 // ==================== Claude CLI Fallback ====================
 
-const CLAUDE_CLI_TIMEOUT_MS = 300_000;
+const CLAUDE_CLI_TIMEOUT_MS = 600_000;
 
 async function callClaudeCLI(
 	systemPrompt: string,
 	userPrompt: string
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const args = ["-p", "--model", "sonnet", "--system-prompt", systemPrompt];
+		const args = [
+			"-p",
+			"--model", "haiku",
+			"--output-format", "json",
+			"--max-turns", "1",
+			"--system-prompt", systemPrompt,
+		];
 
-		log.info("[Moyin] Spawning claude -p (sonnet, 300s timeout)...");
+		log.info("[Moyin] Spawning claude -p (haiku, 600s timeout)...");
 
 		const env = { ...process.env };
 		delete env.CLAUDECODE;
@@ -284,23 +292,27 @@ async function callClaudeCLI(
 			env,
 		});
 
+		log.info("[Moyin] Claude CLI spawned, PID:", child.pid);
+
 		let stdout = "";
 		let stderr = "";
 		let settled = false;
 
 		child.stdout.on("data", (chunk: Buffer) => {
 			stdout += chunk.toString();
+			log.info(`[Moyin] Claude CLI stdout chunk: +${chunk.length} bytes (total: ${stdout.length})`);
 		});
 		child.stderr.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString();
+			log.warn(`[Moyin] Claude CLI stderr: ${chunk.toString().trim().slice(0, 200)}`);
 		});
 
 		const timeoutId = setTimeout(() => {
 			if (!settled) {
 				settled = true;
 				child.kill("SIGTERM");
-				log.error("[Moyin] Claude CLI timed out after 300s");
-				reject(new Error("Claude CLI timed out after 300s"));
+				log.error("[Moyin] Claude CLI timed out after 600s");
+				reject(new Error("Claude CLI timed out after 600s. Configure an API key in Settings for faster parsing."));
 			}
 		}, CLAUDE_CLI_TIMEOUT_MS);
 
@@ -318,13 +330,34 @@ async function callClaudeCLI(
 					)
 				);
 			} else {
-				const text = stdout.trim();
-				if (!text) {
+				const raw = stdout.trim();
+				if (!raw) {
 					reject(new Error("Empty response from Claude CLI"));
-				} else {
-					log.info(`[Moyin] Claude CLI returned ${text.length} chars`);
-					resolve(text);
+					return;
 				}
+
+				// --output-format json wraps result in {type, result, ...}
+				let text = raw;
+				try {
+					const envelope = JSON.parse(raw) as {
+						result?: string;
+						is_error?: boolean;
+						duration_ms?: number;
+					};
+					if (envelope.is_error) {
+						reject(new Error(`Claude CLI error: ${envelope.result || "unknown"}`));
+						return;
+					}
+					if (envelope.result) {
+						log.info(`[Moyin] Claude CLI envelope: ${envelope.duration_ms}ms`);
+						text = envelope.result;
+					}
+				} catch {
+					// Not JSON envelope — use raw stdout as-is
+				}
+
+				log.info(`[Moyin] Claude CLI returned ${text.length} chars`);
+				resolve(text);
 			}
 		});
 
