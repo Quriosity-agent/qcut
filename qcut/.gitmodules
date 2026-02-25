@@ -1,3 +1,4 @@
 [submodule "packages/video-agent-skill"]
 	path = packages/video-agent-skill
 	url = https://github.com/donghaozhang/video-agent-skill.git
+	branch = main
