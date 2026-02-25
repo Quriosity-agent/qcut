@@ -23,7 +23,7 @@ projects:
   qcut:
     name: Qcut Video Editor
     repo: Quriosity-agent/qcut
-    path: ~/Desktop/code/qcut/qcut
+    path: .
     defaultBranch: master
     sessionPrefix: qcut
 
