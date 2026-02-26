@@ -15,6 +15,11 @@ import type { ClaudeTimeline, ClaudeElement } from "../../types/claude-api";
 
 const HANDLER_NAME = "Timeline";
 
+/** Escape pipe and newline characters so they don't break markdown table cells. */
+function escapeMarkdownCell(value: string): string {
+	return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
 /**
  * Convert Timeline to Markdown format
  */
@@ -41,11 +46,11 @@ export function timelineToMarkdown(timeline: ClaudeTimeline): string {
 		md += "|----|-------|-----|----------|------|--------|--------|\n";
 
 		for (const element of track.elements) {
-			const content = (element.content || element.sourceName || "-").substring(
-				0,
-				25
+			const content = escapeMarkdownCell(
+				(element.content || element.sourceName || "-").substring(0, 25)
 			);
-			md += `| \`${element.id.substring(0, 8)}\` | ${formatTimeFromSeconds(element.startTime)} | ${formatTimeFromSeconds(element.endTime)} | ${formatTimeFromSeconds(element.duration)} | ${element.type} | ${element.sourceName || "-"} | ${content} |\n`;
+			const source = escapeMarkdownCell(element.sourceName || "-");
+			md += `| \`${element.id.substring(0, 8)}\` | ${formatTimeFromSeconds(element.startTime)} | ${formatTimeFromSeconds(element.endTime)} | ${formatTimeFromSeconds(element.duration)} | ${element.type} | ${source} | ${content} |\n`;
 		}
 		md += "\n";
 	}
