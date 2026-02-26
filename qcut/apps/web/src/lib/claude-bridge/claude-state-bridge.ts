@@ -139,27 +139,6 @@ function getUnknownString({
 	}
 }
 
-function getUnknownRecord({
-	record,
-	key,
-}: {
-	record: Record<string, unknown>;
-	key: string;
-}): Record<string, unknown> | undefined {
-	try {
-		const value = record[key];
-		if (value && typeof value === "object" && !Array.isArray(value)) {
-			return toJsonSafe({
-				value: value as Record<string, unknown>,
-				fallback: {},
-			});
-		}
-		return;
-	} catch {
-		return;
-	}
-}
-
 function buildMediaItemsSnapshot(): {
 	items: MediaStateSnapshotItem[];
 	unsavedCount: number;
@@ -495,4 +474,3 @@ export function setupClaudeStateBridge(): void {
 export function cleanupClaudeStateBridge(): void {
 	window.electronAPI?.claude?.state?.removeListeners();
 }
-

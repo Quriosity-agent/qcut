@@ -27,6 +27,7 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
 	EditorStateRequest,
 	EditorStateSnapshot,
 } from "./types/claude-api.js";
@@ -498,6 +499,14 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			run: (projectId, options) =>
 				ipcRenderer.invoke("claude:analyze:run", projectId, options),
 			models: () => ipcRenderer.invoke("claude:analyze:models"),
+		},
+		events: {
+			emit: (
+				event: Omit<EditorEvent, "eventId" | "timestamp"> &
+					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
+			) => {
+				ipcRenderer.send("claude:events:emit", event);
+			},
 		},
 		navigator: {
 			onProjectsRequest: (callback) => {

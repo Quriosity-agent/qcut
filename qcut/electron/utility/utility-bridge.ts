@@ -28,6 +28,8 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 } from "../claude/handlers/claude-timeline-handler.js";
+import { requestEditorStateSnapshotFromRenderer } from "../claude/handlers/claude-state-handler.js";
+import type { EditorStateRequest } from "../types/claude-api.js";
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
 import {
 	requestProjectsFromRenderer,
@@ -263,6 +265,11 @@ async function handleMainRequest(
 
 		case "get-selection": {
 			return requestSelectionFromRenderer(win);
+		}
+
+		case "get-editor-state-snapshot": {
+			const req = data as { request?: EditorStateRequest };
+			return requestEditorStateSnapshotFromRenderer(win, req.request);
 		}
 
 		case "split-element": {

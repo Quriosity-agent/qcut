@@ -788,12 +788,8 @@ export interface FillerAnalysisResult {
 	totalFillerTime: number;
 	totalSilenceTime: number;
 }
-
-export type {
-	ApiVersionInfo,
-	Capability,
-	CapabilityManifest,
-	CommandRegistryEntry,
-} from "./claude-api-capabilities.js";
-export * from "./claude-events-api";
-export * from "./claude-state-api";
+export const TRANSACTION_STATE = { active: "active", committed: "committed", rolledBack: "rolledBack", timedOut: "timedOut" } as const;
+export type TransactionState = (typeof TRANSACTION_STATE)[keyof typeof TRANSACTION_STATE];
+export interface TransactionRequest { label?: string; timeoutMs?: number; }
+export interface Transaction { id: string; label?: string; state: TransactionState; createdAt: number; updatedAt: number; expiresAt: number; error?: string; }
+export type { ApiVersionInfo, Capability, CapabilityManifest, CommandRegistryEntry } from "./claude-api-capabilities.js"; export * from "./claude-events-api"; export * from "./claude-state-api";

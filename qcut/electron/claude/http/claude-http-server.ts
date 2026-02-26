@@ -14,6 +14,7 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "../utils/http-router.js";
 import { claudeLog } from "../utils/logger.js";
+import { generateId } from "../utils/helpers.js";
 import {
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
@@ -32,6 +33,8 @@ import {
 	requestProjectsFromRenderer,
 	requestNavigateToProject,
 } from "../handlers/claude-navigator-handler.js";
+import { registerStateRoutes } from "./claude-http-state-routes.js";
+import { requestEditorStateSnapshotFromRenderer } from "../handlers/claude-state-handler.js";
 
 let server: Server | null = null;
 
@@ -98,6 +101,10 @@ export function startClaudeHTTPServer(
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor);
+	registerStateRoutes(router, {
+		requestSnapshot: (request) =>
+			requestEditorStateSnapshotFromRenderer(getWindow(), request),
+	});
 
 	// ==========================================================================
 	// Navigator routes (project listing + editor navigation)
@@ -128,35 +135,50 @@ export function startClaudeHTTPServer(
 	// ==========================================================================
 	// Create and start the server
 	// ==========================================================================
-	server = createServer((req, res) => {
+server = createServer((req, res) => {
 		setCorsHeaders(res);
+		let requestCorrelationId = "";
+		try {
+			requestCorrelationId = generateId("corr");
+		} catch {
+			requestCorrelationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+		}
+		res.setHeader("X-Correlation-Id", requestCorrelationId);
 
 		if (req.method === "OPTIONS") {
-			res.writeHead(204);
+			res.writeHead(204, { "X-Correlation-Id": requestCorrelationId });
 			res.end();
 			return;
 		}
 
 		// 30s request timeout
 		req.setTimeout(30_000, () => {
-			res.writeHead(408, { "Content-Type": "application/json" });
+			res.writeHead(408, {
+				"Content-Type": "application/json",
+				"X-Correlation-Id": requestCorrelationId,
+			});
 			res.end(
 				JSON.stringify({
 					success: false,
 					error: "Request timeout",
 					timestamp: Date.now(),
+					correlationId: requestCorrelationId,
 				})
 			);
 		});
 
 		// Auth check
 		if (!checkAuth(req)) {
-			res.writeHead(401, { "Content-Type": "application/json" });
+			res.writeHead(401, {
+				"Content-Type": "application/json",
+				"X-Correlation-Id": requestCorrelationId,
+			});
 			res.end(
 				JSON.stringify({
 					success: false,
 					error: "Unauthorized",
 					timestamp: Date.now(),
+					correlationId: requestCorrelationId,
 				})
 			);
 			return;

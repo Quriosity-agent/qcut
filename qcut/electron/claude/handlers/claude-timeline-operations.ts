@@ -61,7 +61,8 @@ export async function requestSplitFromRenderer(
 	win: BrowserWindow,
 	elementId: string,
 	splitTime: number,
-	mode?: string
+	mode?: string,
+	correlationId?: string
 ): Promise<ClaudeSplitResponse> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -88,6 +89,7 @@ export async function requestSplitFromRenderer(
 		ipcMain.on("claude:timeline:splitElement:response", handler);
 		win.webContents.send("claude:timeline:splitElement", {
 			requestId,
+			correlationId,
 			elementId,
 			splitTime,
 			mode: mode || "split",
@@ -99,7 +101,8 @@ export async function requestSplitFromRenderer(
  * Request current selection state from the renderer
  */
 export async function requestSelectionFromRenderer(
-	win: BrowserWindow
+	win: BrowserWindow,
+	correlationId?: string
 ): Promise<ClaudeSelectionItem[]> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -124,7 +127,10 @@ export async function requestSelectionFromRenderer(
 		};
 
 		ipcMain.on("claude:timeline:getSelection:response", handler);
-		win.webContents.send("claude:timeline:getSelection", { requestId });
+		win.webContents.send("claude:timeline:getSelection", {
+			requestId,
+			correlationId,
+		});
 	});
 }
 
@@ -134,12 +140,14 @@ async function requestRendererResult<T>({
 	responseChannel,
 	payload,
 	timeoutErrorMessage,
+	correlationId,
 }: {
 	win: BrowserWindow;
 	requestChannel: string;
 	responseChannel: string;
 	payload: Record<string, unknown>;
 	timeoutErrorMessage: string;
+	correlationId?: string;
 }): Promise<T> {
 	return new Promise((resolve, reject) => {
 		let resolved = false;
@@ -168,6 +176,7 @@ async function requestRendererResult<T>({
 		ipcMain.on(responseChannel, responseHandler);
 		win.webContents.send(requestChannel, {
 			requestId,
+			correlationId,
 			...payload,
 		});
 	});
@@ -215,7 +224,8 @@ function isTrackCompatibleWithElementType({
 
 export async function requestBatchAddElementsFromRenderer(
 	win: BrowserWindow,
-	elements: ClaudeBatchAddElementRequest[]
+	elements: ClaudeBatchAddElementRequest[],
+	correlationId?: string
 ): Promise<ClaudeBatchAddResponse> {
 	return requestRendererResult<ClaudeBatchAddResponse>({
 		win,
@@ -223,12 +233,14 @@ export async function requestBatchAddElementsFromRenderer(
 		responseChannel: "claude:timeline:batchAddElements:response",
 		payload: { elements },
 		timeoutErrorMessage: "Timeout waiting for batch add result",
+		correlationId,
 	});
 }
 
 export async function requestBatchUpdateElementsFromRenderer(
 	win: BrowserWindow,
-	updates: ClaudeBatchUpdateItemRequest[]
+	updates: ClaudeBatchUpdateItemRequest[],
+	correlationId?: string
 ): Promise<ClaudeBatchUpdateResponse> {
 	return requestRendererResult<ClaudeBatchUpdateResponse>({
 		win,
@@ -236,13 +248,15 @@ export async function requestBatchUpdateElementsFromRenderer(
 		responseChannel: "claude:timeline:batchUpdateElements:response",
 		payload: { updates },
 		timeoutErrorMessage: "Timeout waiting for batch update result",
+		correlationId,
 	});
 }
 
 export async function requestBatchDeleteElementsFromRenderer(
 	win: BrowserWindow,
 	elements: ClaudeBatchDeleteItemRequest[],
-	ripple = false
+	ripple = false,
+	correlationId?: string
 ): Promise<ClaudeBatchDeleteResponse> {
 	return requestRendererResult<ClaudeBatchDeleteResponse>({
 		win,
@@ -250,12 +264,14 @@ export async function requestBatchDeleteElementsFromRenderer(
 		responseChannel: "claude:timeline:batchDeleteElements:response",
 		payload: { elements, ripple },
 		timeoutErrorMessage: "Timeout waiting for batch delete result",
+		correlationId,
 	});
 }
 
 export async function requestDeleteRangeFromRenderer(
 	win: BrowserWindow,
-	request: ClaudeRangeDeleteRequest
+	request: ClaudeRangeDeleteRequest,
+	correlationId?: string
 ): Promise<ClaudeRangeDeleteResponse> {
 	return requestRendererResult<ClaudeRangeDeleteResponse>({
 		win,
@@ -263,12 +279,14 @@ export async function requestDeleteRangeFromRenderer(
 		responseChannel: "claude:timeline:deleteRange:response",
 		payload: { request },
 		timeoutErrorMessage: "Timeout waiting for range delete result",
+		correlationId,
 	});
 }
 
 export async function requestArrangeFromRenderer(
 	win: BrowserWindow,
-	request: ClaudeArrangeRequest
+	request: ClaudeArrangeRequest,
+	correlationId?: string
 ): Promise<ClaudeArrangeResponse> {
 	return requestRendererResult<ClaudeArrangeResponse>({
 		win,
@@ -276,13 +294,15 @@ export async function requestArrangeFromRenderer(
 		responseChannel: "claude:timeline:arrange:response",
 		payload: { request },
 		timeoutErrorMessage: "Timeout waiting for arrange result",
+		correlationId,
 	});
 }
 
 export async function batchAddElements(
 	win: BrowserWindow,
 	_projectId: string,
-	elements: ClaudeBatchAddElementRequest[]
+	elements: ClaudeBatchAddElementRequest[],
+	correlationId?: string
 ): Promise<ClaudeBatchAddResponse> {
 	try {
 		if (!Array.isArray(elements)) {
@@ -344,7 +364,7 @@ export async function batchAddElements(
 			}
 		}
 
-		return requestBatchAddElementsFromRenderer(win, elements);
+		return requestBatchAddElementsFromRenderer(win, elements, correlationId);
 	} catch (error) {
 		throw new Error(
 			error instanceof Error ? error.message : "Failed to batch add elements"
@@ -354,7 +374,8 @@ export async function batchAddElements(
 
 export async function batchUpdateElements(
 	win: BrowserWindow,
-	updates: ClaudeBatchUpdateItemRequest[]
+	updates: ClaudeBatchUpdateItemRequest[],
+	correlationId?: string
 ): Promise<ClaudeBatchUpdateResponse> {
 	try {
 		if (!Array.isArray(updates)) {
@@ -370,7 +391,7 @@ export async function batchUpdateElements(
 				throw new Error("Each update must include a valid elementId");
 			}
 		}
-		return requestBatchUpdateElementsFromRenderer(win, updates);
+		return requestBatchUpdateElementsFromRenderer(win, updates, correlationId);
 	} catch (error) {
 		throw new Error(
 			error instanceof Error ? error.message : "Failed to batch update elements"
@@ -381,7 +402,8 @@ export async function batchUpdateElements(
 export async function batchDeleteElements(
 	win: BrowserWindow,
 	elements: ClaudeBatchDeleteItemRequest[],
-	ripple = false
+	ripple = false,
+	correlationId?: string
 ): Promise<ClaudeBatchDeleteResponse> {
 	try {
 		if (!Array.isArray(elements)) {
@@ -400,7 +422,12 @@ export async function batchDeleteElements(
 				throw new Error("Each delete item must include a valid elementId");
 			}
 		}
-		return requestBatchDeleteElementsFromRenderer(win, elements, ripple);
+		return requestBatchDeleteElementsFromRenderer(
+			win,
+			elements,
+			ripple,
+			correlationId
+		);
 	} catch (error) {
 		throw new Error(
 			error instanceof Error ? error.message : "Failed to batch delete elements"
@@ -410,7 +437,8 @@ export async function batchDeleteElements(
 
 export async function deleteTimelineRange(
 	win: BrowserWindow,
-	request: ClaudeRangeDeleteRequest
+	request: ClaudeRangeDeleteRequest,
+	correlationId?: string
 ): Promise<ClaudeRangeDeleteResponse> {
 	try {
 		if (
@@ -422,7 +450,7 @@ export async function deleteTimelineRange(
 		if (request.endTime <= request.startTime) {
 			throw new Error("endTime must be greater than startTime");
 		}
-		return requestDeleteRangeFromRenderer(win, request);
+		return requestDeleteRangeFromRenderer(win, request, correlationId);
 	} catch (error) {
 		throw new Error(
 			error instanceof Error ? error.message : "Failed to delete time range"
@@ -432,7 +460,8 @@ export async function deleteTimelineRange(
 
 export async function arrangeTimeline(
 	win: BrowserWindow,
-	request: ClaudeArrangeRequest
+	request: ClaudeArrangeRequest,
+	correlationId?: string
 ): Promise<ClaudeArrangeResponse> {
 	try {
 		if (!request.trackId || typeof request.trackId !== "string") {
@@ -451,7 +480,7 @@ export async function arrangeTimeline(
 		if (request.startOffset !== undefined && request.startOffset < 0) {
 			throw new Error("startOffset must be >= 0");
 		}
-		return requestArrangeFromRenderer(win, request);
+		return requestArrangeFromRenderer(win, request, correlationId);
 	} catch (error) {
 		throw new Error(
 			error instanceof Error ? error.message : "Failed to arrange timeline"

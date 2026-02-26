@@ -25,6 +25,7 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
 	EditorStateRequest,
 	EditorStateSnapshot,
 } from "../types/claude-api";
@@ -764,6 +765,12 @@ export interface ElectronAPI {
 					description: string;
 				}>;
 			}>;
+		};
+		events: {
+			emit: (
+				event: Omit<EditorEvent, "eventId" | "timestamp"> &
+					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
+			) => void;
 		};
 		navigator: {
 			onProjectsRequest: (

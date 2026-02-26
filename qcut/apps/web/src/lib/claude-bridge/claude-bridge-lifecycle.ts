@@ -29,6 +29,10 @@ import {
 	cleanupClaudeStateBridge,
 	setupClaudeStateBridge,
 } from "@/lib/claude-bridge/claude-state-bridge";
+import {
+	cleanupClaudeEventsBridge,
+	setupClaudeEventsBridge,
+} from "@/lib/claude-bridge/claude-events-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -95,6 +99,11 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeStateBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup events bridge",
+		step: setupClaudeEventsBridge,
+		onError,
+	});
 
 	return () => {
 		runBridgeStep({
@@ -135,6 +144,11 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup state bridge",
 			step: cleanupClaudeStateBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup events bridge",
+			step: cleanupClaudeEventsBridge,
 			onError,
 		});
 	};

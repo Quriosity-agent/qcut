@@ -8,6 +8,10 @@
  */
 
 import type { CLIRunOptions } from "../cli/cli-runner/types.js";
+import type {
+	ApiVersionInfo,
+	CapabilityManifest,
+} from "../../types/claude-api.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +48,17 @@ interface JobStatus {
 	message?: string;
 	result?: unknown;
 	[key: string]: unknown;
+}
+
+interface HealthResponse extends Partial<ApiVersionInfo> {
+	status?: string;
+	version?: string;
+	uptime?: number;
+}
+
+interface EndpointCapabilityRequirement {
+	name: string;
+	minVersion?: string;
 }
 
 export interface PollOptions {

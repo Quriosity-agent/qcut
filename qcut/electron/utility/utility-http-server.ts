@@ -17,6 +17,8 @@ import {
 	registerSharedRoutes,
 	type WindowAccessor,
 } from "../claude/http/claude-http-shared-routes.js";
+import { registerStateRoutes } from "../claude/http/claude-http-state-routes.js";
+import type { EditorStateSnapshot } from "../types/claude-api.js";
 
 let server: Server | null = null;
 
@@ -104,6 +106,13 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor);
+	registerStateRoutes(router, {
+		requestSnapshot: async (request) =>
+			(await requestFromMain("get-editor-state-snapshot", {
+				request,
+			})) as EditorStateSnapshot,
+		timeoutMs: 10_000,
+	});
 
 	// ==========================================================================
 	// Navigator routes (project listing + editor navigation)
