@@ -141,9 +141,9 @@ const electronAPI: ElectronAPI = {
 
 	// Screenshot capture
 	screenshot: {
-		capture: (
-			options?: { fileName?: string }
-		): Promise<{
+		capture: (options?: {
+			fileName?: string;
+		}): Promise<{
 			filePath: string;
 			width: number;
 			height: number;
