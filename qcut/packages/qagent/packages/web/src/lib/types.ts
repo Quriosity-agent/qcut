@@ -78,6 +78,7 @@ export interface DashboardSession {
 	lastActivityAt: string;
 	pr: DashboardPR | null;
 	metadata: Record<string, string>;
+	managed: boolean;
 }
 
 /**
@@ -166,6 +167,7 @@ export function isPRRateLimited(pr: DashboardPR): boolean {
 
 /** Determines which attention zone a session belongs to */
 export function getAttentionLevel(session: DashboardSession): AttentionLevel {
+	if (!session.managed) return "working";
 	// ── Done: terminal states ─────────────────────────────────────────
 	if (
 		session.status === "merged" ||

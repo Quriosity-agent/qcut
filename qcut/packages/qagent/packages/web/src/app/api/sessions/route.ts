@@ -8,6 +8,7 @@ import {
 	enrichSessionsMetadata,
 	computeStats,
 } from "@/lib/serialize";
+import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
 
 /** GET /api/sessions — List all sessions with full state
  * Query params:
@@ -64,6 +65,11 @@ export async function GET(request: Request) {
 			setTimeout(resolve, 4_000)
 		);
 		await Promise.race([Promise.allSettled(enrichPromises), enrichTimeout]);
+
+		// Merge with unmanaged tmux sessions (skip when filtering active-only)
+		if (!activeOnly) {
+			dashboardSessions = await mergeWithUnmanagedTmux(dashboardSessions);
+		}
 
 		return NextResponse.json({
 			sessions: dashboardSessions,

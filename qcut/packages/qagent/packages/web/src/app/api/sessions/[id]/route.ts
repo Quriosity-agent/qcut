@@ -1,3 +1,4 @@
+import { listTmuxSessions } from "@composio/ao-core";
 import { NextResponse, type NextRequest } from "next/server";
 import { getServices, getSCM } from "@/lib/services";
 import {
@@ -17,6 +18,37 @@ export async function GET(
 
 		const coreSession = await sessionManager.get(id);
 		if (!coreSession) {
+			// Check if this is an unmanaged tmux session
+			try {
+				const tmuxSessions = await listTmuxSessions();
+				const tmuxMatch = tmuxSessions.find((t) => t.name === id);
+				if (tmuxMatch) {
+					const now = new Date().toISOString();
+					return NextResponse.json({
+						id: tmuxMatch.name,
+						projectId: "",
+						status: "working",
+						activity: null,
+						branch: null,
+						issueId: null,
+						issueUrl: null,
+						issueLabel: null,
+						issueTitle: null,
+						summary: null,
+						summaryIsFallback: false,
+						createdAt: tmuxMatch.created || now,
+						lastActivityAt: tmuxMatch.created || now,
+						pr: null,
+						metadata: {
+							windows: String(tmuxMatch.windows),
+							attached: tmuxMatch.attached ? "true" : "false",
+						},
+						managed: false,
+					});
+				}
+			} catch {
+				// tmux unavailable - fall through to 404
+			}
 			return NextResponse.json({ error: "Session not found" }, { status: 404 });
 		}
 

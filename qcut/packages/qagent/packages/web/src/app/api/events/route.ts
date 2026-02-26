@@ -1,5 +1,6 @@
 import { getServices } from "@/lib/services";
 import { sessionToDashboard } from "@/lib/serialize";
+import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
 import { getAttentionLevel } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +24,11 @@ export async function GET(): Promise<Response> {
 					const { sessionManager } = await getServices();
 					const sessions = await sessionManager.list();
 					const dashboardSessions = sessions.map(sessionToDashboard);
+					const allSessions = await mergeWithUnmanagedTmux(dashboardSessions);
 
 					const initialEvent = {
 						type: "snapshot",
-						sessions: dashboardSessions.map((s) => ({
+						sessions: allSessions.map((s) => ({
 							id: s.id,
 							status: s.status,
 							activity: s.activity,
@@ -65,6 +67,9 @@ export async function GET(): Promise<Response> {
 						const { sessionManager } = await getServices();
 						const sessions = await sessionManager.list();
 						dashboardSessions = sessions.map(sessionToDashboard);
+						dashboardSessions = await mergeWithUnmanagedTmux(
+							dashboardSessions
+						);
 					} catch {
 						// Transient service error — skip this poll, retry on next interval
 						return;

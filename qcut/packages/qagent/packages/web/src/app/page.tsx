@@ -11,6 +11,7 @@ import {
 } from "@/lib/serialize";
 import { prCache, prCacheKey } from "@/lib/cache";
 import { getProjectName } from "@/lib/project-name";
+import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,9 @@ export default async function Home() {
 			setTimeout(resolve, 4_000)
 		);
 		await Promise.race([Promise.allSettled(enrichPromises), enrichTimeout]);
+
+		// Merge with unmanaged tmux sessions
+		sessions = await mergeWithUnmanagedTmux(sessions);
 	} catch {
 		// Config not found or services unavailable — show empty dashboard
 	}

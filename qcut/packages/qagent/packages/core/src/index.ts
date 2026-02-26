@@ -42,6 +42,7 @@ export {
 	killSession as killTmuxSession,
 	getPaneTTY as getTmuxPaneTTY,
 } from "./tmux.js";
+export type { TmuxSessionInfo } from "./tmux.js";
 
 // Session manager — session CRUD
 export { createSessionManager } from "./session-manager.js";

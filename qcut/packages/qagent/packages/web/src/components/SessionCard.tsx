@@ -100,8 +100,13 @@ export function SessionCard({
 				<span className="font-[var(--font-mono)] text-[11px] tracking-wide text-[var(--color-text-muted)]">
 					{session.id}
 				</span>
+				{!session.managed && (
+					<span className="rounded-sm bg-[rgba(139,92,246,0.15)] px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wider text-[rgba(139,92,246,0.8)]">
+						tmux
+					</span>
+				)}
 				<div className="flex-1" />
-				{isRestorable && (
+				{isRestorable && session.managed && (
 					<button
 						onClick={(e) => {
 							e.stopPropagation();
@@ -112,7 +117,7 @@ export function SessionCard({
 						restore
 					</button>
 				)}
-				{!isTerminal && (
+				{(!isTerminal || !session.managed) && (
 					<a
 						href={`/sessions/${encodeURIComponent(session.id)}`}
 						onClick={(e) => e.stopPropagation()}
@@ -325,7 +330,20 @@ export function SessionCard({
 						</p>
 					)}
 
-					<div className="mt-3 flex gap-2 border-t border-[var(--color-border-subtle)] pt-3">
+					{!session.managed && (
+						<div className="mb-2.5">
+							<p className="text-[12px] text-[var(--color-text-tertiary)]">
+								Unmanaged tmux session — not tracked by qagent.
+							</p>
+							<p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+								{session.metadata.windows} window
+								{session.metadata.windows !== "1" ? "s" : ""}
+								{session.metadata.attached === "true" ? " · attached" : ""}
+							</p>
+						</div>
+					)}
+
+					{session.managed && <div className="mt-3 flex gap-2 border-t border-[var(--color-border-subtle)] pt-3">
 						{isRestorable && (
 							<button
 								onClick={(e) => {
@@ -348,7 +366,7 @@ export function SessionCard({
 								terminate
 							</button>
 						)}
-					</div>
+					</div>}
 				</div>
 			)}
 		</div>
