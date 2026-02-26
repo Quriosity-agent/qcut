@@ -47,7 +47,7 @@ and the FFmpeg invocation (~40 lines). These are clearly separable concerns.
 
 ### Proposed Split
 
-```
+```text
 apps/web/src/lib/export/
   export-engine-cli.ts           → Slim class: constructor, export(), wrappers (~350 lines)
   export-engine-cli-validation.ts → Audio file validation pipeline (~120 lines)
@@ -61,7 +61,7 @@ apps/web/src/lib/export/
 ### File Details
 
 #### `export-engine-cli-validation.ts` (~120 lines) — NEW
-```
+```text
 Exports:
   validateAudioFiles(audioFiles, deps) → AudioFileInput[]
 
@@ -73,9 +73,9 @@ Contents:
 ```
 
 #### `export-engine-cli-mode.ts` (~200 lines) — NEW
-```
+```text
 Exports:
-  determinExportMode(analysis, tracks, ...) → ExportModeDecision
+  determineExportMode(analysis, tracks, ...) → ExportModeDecision
   buildExportOptions(decision, sessionId, ...) → ExportOptions
 
 Contents:
@@ -86,7 +86,7 @@ Contents:
 ```
 
 #### `export-engine-cli-ffmpeg.ts` (~130 lines) — NEW
-```
+```text
 Exports:
   invokeFFmpegExport(options) → string (outputFile)
   logExportConfiguration(options) → void
@@ -98,7 +98,7 @@ Contents:
 ```
 
 #### `export-engine-cli-debug.ts` (~120 lines) — EXTEND EXISTING
-```
+```text
 Additions:
   logActualVideoDurationCLI(videoBlob, totalDuration) → void
 
@@ -165,7 +165,7 @@ What remains is:
 
 ### Proposed Split
 
-```
+```text
 apps/web/src/stores/timeline/
   timeline-store.ts              → Slim store: initial state + compose slices (~350 lines)
   timeline-store-autosave.ts     → Auto-save helpers and debounce logic (~130 lines)
@@ -182,7 +182,7 @@ apps/web/src/stores/timeline/
 ### File Details
 
 #### `timeline-store-autosave.ts` (~130 lines) — NEW
-```
+```text
 Exports:
   createAutoSaveHelpers(set, get) → { updateTracks, autoSaveTimeline, autoSaveTimelineGuarded, updateTracksAndSave }
 
@@ -195,7 +195,7 @@ Contents:
 ```
 
 #### `timeline-store-crud.ts` (~340 lines) — NEW
-```
+```text
 Exports:
   createCrudOperations(get, set, deps) → Partial<TimelineStore>
 
@@ -213,7 +213,7 @@ Contents:
 ```
 
 #### `timeline-store-persistence.ts` (~160 lines) — NEW
-```
+```text
 Exports:
   createPersistenceOperations(get, set, deps) → Partial<TimelineStore>
 
@@ -230,7 +230,7 @@ Contents:
 ```
 
 #### `timeline-store-normalization.ts` (~50 lines) — NEW
-```
+```text
 Exports:
   normalizeMarkdownElement(element) → TimelineElement
   normalizeLoadedTracks(tracks) → TimelineTrack[]
@@ -319,7 +319,7 @@ sub-state hooks into sibling modules. What remains is:
 
 ### Proposed Split
 
-```
+```text
 apps/web/src/components/editor/media-panel/views/ai/hooks/
   use-ai-generation.ts              → Slim orchestrator: compose sub-hooks, return API (~280 lines)
   use-ai-generation-core.ts         → handleGenerate logic (~350 lines)
@@ -333,7 +333,7 @@ apps/web/src/components/editor/media-panel/views/ai/hooks/
 ### File Details
 
 #### `use-ai-generation-state.ts` (~180 lines) — NEW
-```
+```text
 Exports:
   useAIGenerationState(props) → AIGenerationInternalState
 
@@ -351,7 +351,7 @@ Contents:
 ```
 
 #### `use-ai-generation-core.ts` (~350 lines) — NEW
-```
+```text
 Exports:
   useHandleGenerate(state, props) → () => Promise<void>
 
@@ -366,7 +366,7 @@ Contents:
 ```
 
 #### `use-ai-generation-can-generate.ts` (~100 lines) — NEW
-```
+```text
 Exports:
   useCanGenerate(props, state) → boolean
 
