@@ -633,8 +633,65 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.status).toBe("ok");
 		expect(res.body.data.version).toBe("1.0.0-test");
+		expect(res.body.data.appVersion).toBe("1.0.0-test");
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.protocolVersion).toBeTypeOf("string");
+		expect(Array.isArray(res.body.data.capabilities)).toBe(true);
+		expect(res.body.data.capabilities.length).toBeGreaterThan(0);
+		expect(res.body.data.capabilities[0]).toHaveProperty("name");
+		expect(res.body.data.capabilities[0]).toHaveProperty("version");
 		expect(res.body.data.uptime).toBeTypeOf("number");
 		expect(res.headers["access-control-allow-origin"]).toBe("*");
+	});
+
+	it("GET /api/claude/capabilities returns capability manifest", async () => {
+		const res = await fetch("/api/claude/capabilities");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.protocolVersion).toBeTypeOf("string");
+		expect(res.body.data.appVersion).toBe("1.0.0-test");
+		expect(Array.isArray(res.body.data.capabilities)).toBe(true);
+		expect(
+			res.body.data.capabilities.some(
+				(cap: { name: string }) => cap.name === "state.health"
+			)
+		).toBe(true);
+	});
+
+	it("GET /api/claude/capabilities/:name checks support and version", async () => {
+		const supported = await fetch("/api/claude/capabilities/state.health");
+		expect(supported.status).toBe(200);
+		expect(supported.body.success).toBe(true);
+		expect(supported.body.data.supported).toBe(true);
+		expect(supported.body.data.version).toBeTypeOf("string");
+		expect(supported.body.data.since).toBeTypeOf("string");
+
+		const unsupported = await fetch(
+			"/api/claude/capabilities/state.health?minVersion=99.0.0"
+		);
+		expect(unsupported.status).toBe(200);
+		expect(unsupported.body.success).toBe(true);
+		expect(unsupported.body.data.supported).toBe(false);
+		expect(unsupported.body.data.version).toBeTypeOf("string");
+	});
+
+	it("GET /api/claude/commands/registry returns command metadata", async () => {
+		const res = await fetch("/api/claude/commands/registry");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.count).toBeGreaterThan(0);
+		expect(Array.isArray(res.body.data.commands)).toBe(true);
+		expect(
+			res.body.data.commands.some(
+				(cmd: { name: string }) => cmd.name === "editor:health"
+			)
+		).toBe(true);
+		expect(res.body.data.commands[0]).toHaveProperty("paramsSchema");
+		expect(res.body.data.commands[0]).toHaveProperty("requiredCapability");
 	});
 
 	it("responds to CORS preflight OPTIONS requests", async () => {

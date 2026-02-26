@@ -24,6 +24,15 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 } from "../handlers/claude-timeline-handler.js";
+import {
+	beginTransaction,
+	commitTransaction,
+	rollbackTransaction,
+	getTransactionStatus,
+	undoTimeline,
+	redoTimeline,
+	getHistorySummary,
+} from "../handlers/claude-transaction-handler.js";
 import { getProjectStats } from "../handlers/claude-project-handler.js";
 import {
 	registerSharedRoutes,
@@ -114,6 +123,15 @@ export function startClaudeHTTPServer(
 			batchDeleteElements(getWindow(), elements, ripple, correlationId),
 		arrangeTimeline: (data, correlationId) =>
 			arrangeTimeline(getWindow(), data, correlationId),
+		beginTransaction: (request) => beginTransaction({ win: getWindow(), request }),
+		commitTransaction: (transactionId) => commitTransaction({ transactionId }),
+		rollbackTransaction: (transactionId, reason) =>
+			rollbackTransaction({ transactionId, reason }),
+		getTransactionStatus: (transactionId) =>
+			Promise.resolve(getTransactionStatus({ transactionId })),
+		undoTimeline: () => undoTimeline({ win: getWindow() }),
+		redoTimeline: () => redoTimeline({ win: getWindow() }),
+		getHistorySummary: () => getHistorySummary({ win: getWindow() }),
 	};
 
 	// Register all shared routes

@@ -28,6 +28,15 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 } from "../claude/handlers/claude-timeline-handler.js";
+import {
+	beginTransaction,
+	commitTransaction,
+	rollbackTransaction,
+	getTransactionStatus,
+	undoTimeline,
+	redoTimeline,
+	getHistorySummary,
+} from "../claude/handlers/claude-transaction-handler.js";
 import { requestEditorStateSnapshotFromRenderer } from "../claude/handlers/claude-state-handler.js";
 import type { EditorStateRequest } from "../types/claude-api.js";
 import { getProjectStats } from "../claude/handlers/claude-project-handler.js";
@@ -58,6 +67,7 @@ import {
 	requestRenameProject,
 	requestDuplicateProject,
 } from "../claude/handlers/claude-project-crud-handler.js";
+import { getClaudeEvents } from "../claude/handlers/claude-events-handler.js";
 import {
 	listCaptureSources,
 	buildStatus as buildScreenRecordingStatus,
@@ -71,6 +81,9 @@ import type {
 	BatchUpdateElementsRequest,
 	BatchDeleteElementsRequest,
 	GetProjectStatsRequest,
+	TransactionBeginRequest,
+	TransactionFinalizeRequest,
+	TransactionStatusRequest,
 	PtySpawnOptions,
 	PtySpawnResult,
 } from "./utility-ipc-types.js";
@@ -249,6 +262,21 @@ async function handleMainRequest(
 	channel: string,
 	data: Record<string, unknown>
 ): Promise<unknown> {
+	if (channel === "events:list") {
+		const req = data as {
+			limit?: number;
+			category?: string;
+			after?: string;
+			source?: string;
+		};
+		return getClaudeEvents({
+			limit: req.limit,
+			category: req.category,
+			after: req.after,
+			source: req.source,
+		});
+	}
+
 	const win = getWindow();
 	if (!win) throw new Error("No active window");
 
@@ -305,6 +333,41 @@ async function handleMainRequest(
 
 		case "arrange-timeline": {
 			return arrangeTimeline(win, data as any);
+		}
+
+		case "transaction:begin": {
+			const req = data as TransactionBeginRequest;
+			return beginTransaction({ win, request: req.request });
+		}
+
+		case "transaction:commit": {
+			const req = data as TransactionFinalizeRequest;
+			return commitTransaction({ transactionId: req.transactionId });
+		}
+
+		case "transaction:rollback": {
+			const req = data as TransactionFinalizeRequest;
+			return rollbackTransaction({
+				transactionId: req.transactionId,
+				reason: req.reason,
+			});
+		}
+
+		case "transaction:status": {
+			const req = data as TransactionStatusRequest;
+			return getTransactionStatus({ transactionId: req.transactionId });
+		}
+
+		case "timeline:undo": {
+			return undoTimeline({ win });
+		}
+
+		case "timeline:redo": {
+			return redoTimeline({ win });
+		}
+
+		case "timeline:history": {
+			return getHistorySummary({ win });
 		}
 
 		case "get-projects": {

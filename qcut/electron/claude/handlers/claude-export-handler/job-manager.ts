@@ -4,6 +4,7 @@
  */
 
 import { claudeLog } from "../../utils/logger.js";
+import { emitClaudeEvent } from "../claude-events-handler.js";
 import {
 	HANDLER_NAME,
 	EXPORT_JOB_STATUS,
@@ -11,6 +12,10 @@ import {
 } from "./types.js";
 import { clampProgress } from "./utils.js";
 import type { ExportJobStatus } from "../../../types/claude-api";
+import {
+	CLAUDE_EDITOR_EVENT_ACTION,
+	CLAUDE_EDITOR_EVENT_CATEGORY,
+} from "../../../types/claude-api.js";
 
 // In-memory job tracking (cleared on app restart)
 export const exportJobs = new Map<string, ExportJobInternal>();
@@ -72,6 +77,23 @@ export function updateJobProgress({
 		} else if (job.status !== EXPORT_JOB_STATUS.failed) {
 			job.status = EXPORT_JOB_STATUS.exporting;
 		}
+
+		emitClaudeEvent({
+			category: CLAUDE_EDITOR_EVENT_CATEGORY.exportProgress,
+			action: CLAUDE_EDITOR_EVENT_ACTION.progress,
+			correlationId: jobId,
+			source: "main.export-handler",
+			data: {
+				jobId,
+				projectId: job.projectId,
+				status: job.status,
+				progress: job.progress,
+				currentFrame: job.currentFrame,
+				totalFrames: job.totalFrames,
+				fps: job.fps,
+				estimatedTimeRemaining: job.estimatedTimeRemaining,
+			},
+		});
 	} catch (error) {
 		claudeLog.warn(
 			HANDLER_NAME,

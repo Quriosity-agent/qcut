@@ -27,6 +27,18 @@ const STATE_SECTION_VALUES = new Set<StateSectionType>(
 
 type SectionSet = Set<StateSectionType>;
 
+interface ClaudeStateRendererBridgeAPI {
+	onSnapshotRequest: (
+		callback: (data: { requestId: string; request?: EditorStateRequest }) => void
+	) => void;
+	sendSnapshotResponse: (
+		requestId: string,
+		result?: EditorStateSnapshot,
+		error?: string
+	) => void;
+	removeListeners: () => void;
+}
+
 function toJsonSafe<T>({
 	value,
 	fallback,
@@ -453,11 +465,24 @@ function buildEditorStateSnapshot({
 	return snapshot;
 }
 
+function getClaudeStateBridge(): ClaudeStateRendererBridgeAPI | null {
+	try {
+		const claude =
+			window.electronAPI?.claude as
+				| ({ state?: ClaudeStateRendererBridgeAPI } & Record<string, unknown>)
+				| undefined;
+		return claude?.state ?? null;
+	} catch {
+		return null;
+	}
+}
+
 export function setupClaudeStateBridge(): void {
-	const bridge = window.electronAPI?.claude?.state;
+	const bridge = getClaudeStateBridge();
 	if (!bridge) return;
 
-	bridge.onSnapshotRequest((data) => {
+	bridge.onSnapshotRequest(
+		(data: { requestId: string; request?: EditorStateRequest }) => {
 		try {
 			const snapshot = buildEditorStateSnapshot({ request: data.request });
 			bridge.sendSnapshotResponse(data.requestId, snapshot);
@@ -468,9 +493,10 @@ export function setupClaudeStateBridge(): void {
 				error instanceof Error ? error.message : String(error)
 			);
 		}
-	});
+		}
+	);
 }
 
 export function cleanupClaudeStateBridge(): void {
-	window.electronAPI?.claude?.state?.removeListeners();
+	getClaudeStateBridge()?.removeListeners();
 }

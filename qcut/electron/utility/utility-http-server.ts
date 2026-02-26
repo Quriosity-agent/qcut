@@ -18,7 +18,19 @@ import {
 	type WindowAccessor,
 } from "../claude/http/claude-http-shared-routes.js";
 import { registerStateRoutes } from "../claude/http/claude-http-state-routes.js";
-import type { EditorStateSnapshot } from "../types/claude-api.js";
+import {
+	handleClaudeEventsStreamRequest,
+	registerClaudeEventsRoutes,
+} from "../claude/http/claude-http-events-routes.js";
+import type {
+	EditorEvent,
+	EditorStateSnapshot,
+	Transaction,
+} from "../types/claude-api.js";
+import type {
+	ClaudeHistorySummary,
+	ClaudeUndoRedoResponse,
+} from "../claude/handlers/claude-transaction-handler.js";
 
 let server: Server | null = null;
 
@@ -101,8 +113,29 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			requestFromMain("batch-update-elements", { updates }),
 		batchDeleteElements: (elements, ripple) =>
 			requestFromMain("batch-delete-elements", { elements, ripple }),
-		arrangeTimeline: (data) => requestFromMain("arrange-timeline", data),
-	};
+			arrangeTimeline: (data) => requestFromMain("arrange-timeline", data),
+			beginTransaction: (request) =>
+				requestFromMain("transaction:begin", { request }) as Promise<Transaction>,
+			commitTransaction: (transactionId) =>
+				requestFromMain("transaction:commit", {
+					transactionId,
+				}) as Promise<{ transaction: Transaction; historyEntryAdded: boolean }>,
+			rollbackTransaction: (transactionId, reason) =>
+				requestFromMain("transaction:rollback", {
+					transactionId,
+					reason,
+				}) as Promise<{ transaction: Transaction }>,
+			getTransactionStatus: (transactionId) =>
+				requestFromMain("transaction:status", {
+					transactionId,
+				}) as Promise<Transaction | null>,
+			undoTimeline: () =>
+				requestFromMain("timeline:undo", {}) as Promise<ClaudeUndoRedoResponse>,
+			redoTimeline: () =>
+				requestFromMain("timeline:redo", {}) as Promise<ClaudeUndoRedoResponse>,
+			getHistorySummary: () =>
+				requestFromMain("timeline:history", {}) as Promise<ClaudeHistorySummary>,
+		};
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor);
@@ -112,6 +145,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 				request,
 			})) as EditorStateSnapshot,
 		timeoutMs: 10_000,
+	});
+	registerClaudeEventsRoutes(router, {
+		listEvents: async (filter) =>
+			(await requestFromMain("events:list", {
+				...(filter as unknown as Record<string, unknown>),
+			})) as EditorEvent[],
 	});
 
 	// ==========================================================================
@@ -341,6 +380,18 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 					timestamp: Date.now(),
 				})
 			);
+			return;
+		}
+		if (
+			handleClaudeEventsStreamRequest({
+				req,
+				res,
+				listEvents: async (filter) =>
+					(await requestFromMain("events:list", {
+						...(filter as unknown as Record<string, unknown>),
+					})) as EditorEvent[],
+			})
+		) {
 			return;
 		}
 		router.handle(req, res);

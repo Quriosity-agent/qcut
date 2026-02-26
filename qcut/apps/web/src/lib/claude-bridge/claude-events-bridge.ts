@@ -4,7 +4,7 @@ import { usePlaybackStore } from "@/stores/editor/playback-store";
 import { useMediaStore, type MediaItem } from "@/stores/media/media-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
-import type { TimelineElement, TimelineTrack } from "@/types/timeline";
+import type { TimelineTrack } from "@/types/timeline";
 import {
 	CLAUDE_EDITOR_EVENT_ACTION,
 	CLAUDE_EDITOR_EVENT_CATEGORY,
@@ -584,4 +584,3 @@ export function cleanupClaudeEventsBridge(): void {
 		debugError("[ClaudeEventsBridge] Failed to cleanup", error);
 	}
 }
-

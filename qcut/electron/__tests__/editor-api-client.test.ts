@@ -104,6 +104,131 @@ describe("EditorApiClient", () => {
 			);
 			expect(await client.checkHealth()).toBe(false);
 		});
+
+		it("stays healthy when capability endpoint is unavailable", async () => {
+			const freshClient = new EditorApiClient({ baseUrl: BASE_URL });
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			mockRoute("GET", "/api/claude/health", {
+				success: true,
+				data: { status: "ok", version: "1.0.0", uptime: 100 },
+			});
+			mockRoute(
+				"GET",
+				"/api/claude/capabilities",
+				{ success: false, error: "Not found" },
+				404
+			);
+
+			expect(await freshClient.checkHealth()).toBe(true);
+			expect(warnSpy).toHaveBeenCalled();
+
+			warnSpy.mockRestore();
+		});
+	});
+
+	describe("capability negotiation", () => {
+		it("caches capability manifest after first fetch", async () => {
+			let capabilityFetchCount = 0;
+			const freshClient = new EditorApiClient({ baseUrl: BASE_URL });
+			const origFetch = globalThis.fetch;
+
+			globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = typeof input === "string" ? input : input.toString();
+				const method = init?.method ?? "GET";
+				const pathname = url.replace(BASE_URL, "").split("?")[0];
+
+				if (method === "GET" && pathname === "/api/claude/capabilities") {
+					capabilityFetchCount++;
+					return new Response(
+						JSON.stringify({
+							success: true,
+							data: {
+								apiVersion: "1.1.0",
+								protocolVersion: "1.0.0",
+								capabilities: [
+									{
+										name: "state.health",
+										version: "1.0.0",
+										description: "Health",
+										since: "1.0.0",
+										category: "state",
+									},
+								],
+							},
+						}),
+						{ headers: { "Content-Type": "application/json" } }
+					);
+				}
+
+				return new Response(
+					JSON.stringify({
+						success: true,
+						data: { status: "ok", version: "1.0.0" },
+					}),
+					{ headers: { "Content-Type": "application/json" } }
+				);
+			};
+
+			const first = await freshClient.negotiateCapabilities();
+			const second = await freshClient.negotiateCapabilities();
+
+			expect(first?.apiVersion).toBe("1.1.0");
+			expect(second?.apiVersion).toBe("1.1.0");
+			expect(capabilityFetchCount).toBe(1);
+
+			globalThis.fetch = origFetch;
+			installFetchMock(BASE_URL);
+		});
+
+		it("warns before calling an endpoint when required capability is missing", async () => {
+			const freshClient = new EditorApiClient({ baseUrl: BASE_URL });
+			const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			mockRoute("GET", "/api/claude/capabilities", {
+				success: true,
+				data: {
+					apiVersion: "1.1.0",
+					protocolVersion: "1.0.0",
+					capabilities: [
+						{
+							name: "state.health",
+							version: "1.0.0",
+							description: "Health",
+							since: "1.0.0",
+							category: "state",
+						},
+					],
+				},
+			});
+			mockRoute("GET", "/api/claude/media/proj1", {
+				success: true,
+				data: [],
+			});
+
+			await freshClient.get("/api/claude/media/proj1");
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("media.library")
+			);
+
+			warnSpy.mockRestore();
+		});
+
+		it("getApiVersion returns negotiated api version", async () => {
+			const freshClient = new EditorApiClient({ baseUrl: BASE_URL });
+
+			mockRoute("GET", "/api/claude/capabilities", {
+				success: true,
+				data: {
+					apiVersion: "1.2.3",
+					protocolVersion: "1.0.0",
+					capabilities: [],
+				},
+			});
+
+			await expect(freshClient.getApiVersion()).resolves.toBe("1.2.3");
+		});
 	});
 
 	describe("get", () => {
