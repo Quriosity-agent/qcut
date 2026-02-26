@@ -169,7 +169,11 @@ Write a compelling 2-3 sentence synopsis.`,
 		throw new Error(result.error || "Synopsis generation failed");
 	}
 
-	return result.text.trim();
+	const synopsis = result.text.trim();
+	if (!synopsis) {
+		throw new Error("Synopsis generation returned empty text");
+	}
+	return synopsis;
 }
 
 // ==================== Character Enhancement ====================
