@@ -376,6 +376,7 @@ function getRequiredCapability({ command }: { command: string }): string {
 		if (command === "editor:screenshot:capture") return "media.screenshot";
 		if (command.startsWith("editor:remotion:")) {
 			if (command === "editor:remotion:export") return "export.remotion";
+			if (command === "editor:remotion:update-props") return "timeline.elements";
 			return "timeline.read";
 		}
 		if (command.startsWith("editor:media:")) {
@@ -624,8 +625,10 @@ function getCommandParamsSchema({ command }: { command: string }): CommandRegist
 		}
 
 		if (module === "transcribe") {
-			required.push("mediaId");
-			add("provider", "language", "loadSpeech");
+			if (action === "run" || action === "start") {
+				required.push("mediaId");
+				add("provider", "language", "loadSpeech");
+			}
 			if (action === "status" || action === "cancel") required.push("jobId");
 			if (action === "list-jobs") {
 				/* project only */

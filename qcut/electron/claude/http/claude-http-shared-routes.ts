@@ -22,7 +22,12 @@ import {
 	claudeCorrelationTracker,
 	toCommandLifecycle,
 } from "../handlers/claude-correlation.js";
-import type { CommandRecord, CorrelationId } from "../../types/claude-api.js";
+import type {
+	CommandRecord,
+	CorrelationId,
+	Transaction,
+	TransactionRequest,
+} from "../../types/claude-api.js";
 
 import {
 	listMediaFiles,
@@ -75,6 +80,56 @@ import { getClaudeCommandRegistry } from "../handlers/claude-command-registry.js
 
 const COMMAND_WAIT_TIMEOUT_MS = 29_000;
 
+interface ClaudeHistoryEntry {
+	label: string;
+	timestamp: number;
+	transactionId?: string;
+}
+
+interface ClaudeHistorySummary {
+	undoCount: number;
+	redoCount: number;
+	entries: ClaudeHistoryEntry[];
+	redoEntries?: ClaudeHistoryEntry[];
+}
+
+interface ClaudeUndoRedoResponse {
+	applied: boolean;
+	undoCount: number;
+	redoCount: number;
+}
+
+function toHttpError({
+	error,
+	fallbackMessage,
+}: {
+	error: unknown;
+	fallbackMessage: string;
+}): HttpError {
+	try {
+		if (error instanceof HttpError) {
+			return error;
+		}
+		if (
+			error &&
+			typeof error === "object" &&
+			"statusCode" in error &&
+			typeof (error as { statusCode: unknown }).statusCode === "number"
+		) {
+			return new HttpError(
+				(error as { statusCode: number }).statusCode,
+				error instanceof Error ? error.message : fallbackMessage
+			);
+		}
+		return new HttpError(
+			500,
+			error instanceof Error ? error.message : fallbackMessage
+		);
+	} catch {
+		return new HttpError(500, fallbackMessage);
+	}
+}
+
 function shouldSkipCorrelationTracking({
 	pathname,
 }: {
@@ -82,6 +137,9 @@ function shouldSkipCorrelationTracking({
 }): boolean {
 	try {
 		if (pathname.startsWith("/api/claude/commands")) {
+			return true;
+		}
+		if (pathname.startsWith("/api/claude/capabilities")) {
 			return true;
 		}
 		return pathname === "/api/claude/health";
@@ -237,7 +295,7 @@ export interface WindowAccessor {
 	/** Request full timeline data from renderer */
 	requestTimeline(): Promise<any>;
 	/** Request current selection from renderer */
-	requestSelection(): Promise<any>;
+	requestSelection(correlationId?: string): Promise<any>;
 	/** Request an element split from renderer */
 	requestSplit(
 		elementId: string,
@@ -265,6 +323,25 @@ export interface WindowAccessor {
 	): Promise<any>;
 	/** Arrange timeline */
 	arrangeTimeline(data: any, correlationId?: string): Promise<any>;
+	/** Begin a grouped transaction */
+	beginTransaction(request?: TransactionRequest): Promise<Transaction>;
+	/** Commit a grouped transaction */
+	commitTransaction(
+		transactionId: string
+	): Promise<{ transaction: Transaction; historyEntryAdded: boolean }>;
+	/** Rollback a grouped transaction */
+	rollbackTransaction(
+		transactionId: string,
+		reason?: string
+	): Promise<{ transaction: Transaction }>;
+	/** Get transaction status */
+	getTransactionStatus(transactionId: string): Promise<Transaction | null>;
+	/** Trigger undo */
+	undoTimeline(): Promise<ClaudeUndoRedoResponse>;
+	/** Trigger redo */
+	redoTimeline(): Promise<ClaudeUndoRedoResponse>;
+	/** Read renderer history summary */
+	getHistorySummary(): Promise<ClaudeHistorySummary>;
 }
 
 /**
@@ -578,7 +655,9 @@ export function registerSharedRoutes(
 		}
 		validateTimeline(timeline);
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		win.webContents.send("claude:timeline:apply", {
+			correlationId,
 			timeline,
 			replace: req.body.replace === true,
 		});
@@ -589,10 +668,12 @@ export function registerSharedRoutes(
 		if (!req.body)
 			throw new HttpError(400, "Missing element data in request body");
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		const elementId =
 			req.body.id ||
 			`element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		win.webContents.send("claude:timeline:addElement", {
+			correlationId,
 			...req.body,
 			id: elementId,
 		});
@@ -605,7 +686,8 @@ export function registerSharedRoutes(
 		try {
 			return await accessor.batchAddElements(
 				req.params.projectId,
-				req.body.elements
+				req.body.elements,
+				getRequestCorrelationId({ req })
 			);
 		} catch (error) {
 			throw new HttpError(
@@ -621,7 +703,10 @@ export function registerSharedRoutes(
 			if (!Array.isArray(req.body?.updates))
 				throw new HttpError(400, "Missing 'updates' array in request body");
 			try {
-				return await accessor.batchUpdateElements(req.body.updates);
+				return await accessor.batchUpdateElements(
+					req.body.updates,
+					getRequestCorrelationId({ req })
+				);
 			} catch (error) {
 				throw new HttpError(
 					400,
@@ -635,7 +720,9 @@ export function registerSharedRoutes(
 		"/api/claude/timeline/:projectId/elements/:elementId",
 		async (req) => {
 			const win = accessor.getWindow();
+			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:updateElement", {
+				correlationId,
 				elementId: req.params.elementId,
 				changes: req.body || {},
 			});
@@ -651,7 +738,8 @@ export function registerSharedRoutes(
 			try {
 				return await accessor.batchDeleteElements(
 					req.body.elements,
-					Boolean(req.body.ripple)
+					Boolean(req.body.ripple),
+					getRequestCorrelationId({ req })
 				);
 			} catch (error) {
 				throw new HttpError(
@@ -666,10 +754,7 @@ export function registerSharedRoutes(
 		"/api/claude/timeline/:projectId/elements/:elementId",
 		async (req) => {
 			const win = accessor.getWindow();
-			win.webContents.send(
-				"claude:timeline:removeElement",
-				req.params.elementId
-			);
+			win.webContents.send("claude:timeline:removeElement", req.params.elementId);
 			return { removed: true };
 		}
 	);
@@ -685,13 +770,16 @@ export function registerSharedRoutes(
 				"Invalid mode. Use sequential, spaced, or manual"
 			);
 		try {
-			return await accessor.arrangeTimeline({
-				trackId: req.body.trackId,
-				mode: req.body.mode,
-				gap: req.body.gap,
-				order: req.body.order,
-				startOffset: req.body.startOffset,
-			});
+			return await accessor.arrangeTimeline(
+				{
+					trackId: req.body.trackId,
+					mode: req.body.mode,
+					gap: req.body.gap,
+					order: req.body.order,
+					startOffset: req.body.startOffset,
+				},
+				getRequestCorrelationId({ req })
+			);
 		} catch (error) {
 			throw new HttpError(
 				400,
@@ -717,7 +805,8 @@ export function registerSharedRoutes(
 			return accessor.requestSplit(
 				req.params.elementId,
 				req.body.splitTime,
-				mode
+				mode,
+				getRequestCorrelationId({ req })
 			);
 		}
 	);
@@ -728,7 +817,9 @@ export function registerSharedRoutes(
 			if (!req.body?.toTrackId)
 				throw new HttpError(400, "Missing 'toTrackId' in request body");
 			const win = accessor.getWindow();
+			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:moveElement", {
+				correlationId,
 				elementId: req.params.elementId,
 				toTrackId: req.body.toTrackId,
 				newStartTime: req.body.newStartTime,
@@ -741,15 +832,17 @@ export function registerSharedRoutes(
 		if (!Array.isArray(req.body?.elements))
 			throw new HttpError(400, "Missing 'elements' array in request body");
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		win.webContents.send("claude:timeline:selectElements", {
+			correlationId,
 			elements: req.body.elements,
 		});
 		return { selected: req.body.elements.length };
 	});
 
-	router.get("/api/claude/timeline/:projectId/selection", async () => {
+	router.get("/api/claude/timeline/:projectId/selection", async (req) => {
 		const elements = await Promise.race([
-			accessor.requestSelection(),
+			accessor.requestSelection(getRequestCorrelationId({ req })),
 			new Promise<never>((_, reject) =>
 				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
 			),
@@ -761,6 +854,90 @@ export function registerSharedRoutes(
 		const win = accessor.getWindow();
 		win.webContents.send("claude:timeline:clearSelection");
 		return { cleared: true };
+	});
+
+	router.post("/api/claude/transaction/begin", async (req) => {
+		try {
+			if (req.body?.label !== undefined && typeof req.body.label !== "string") {
+				throw new HttpError(400, "Optional 'label' must be a string");
+			}
+			const transaction = await accessor.beginTransaction({
+				label: typeof req.body?.label === "string" ? req.body.label : undefined,
+			});
+			return { transactionId: transaction.id };
+		} catch (error) {
+			throw toHttpError({
+				error,
+				fallbackMessage: "Failed to begin transaction",
+			});
+		}
+	});
+
+	router.post("/api/claude/transaction/:id/commit", async (req) => {
+		try {
+			return await accessor.commitTransaction(req.params.id);
+		} catch (error) {
+			throw toHttpError({
+				error,
+				fallbackMessage: "Failed to commit transaction",
+			});
+		}
+	});
+
+	router.post("/api/claude/transaction/:id/rollback", async (req) => {
+		try {
+			if (
+				req.body?.reason !== undefined &&
+				typeof req.body.reason !== "string"
+			) {
+				throw new HttpError(400, "Optional 'reason' must be a string");
+			}
+			return await accessor.rollbackTransaction(req.params.id, req.body?.reason);
+		} catch (error) {
+			throw toHttpError({
+				error,
+				fallbackMessage: "Failed to rollback transaction",
+			});
+		}
+	});
+
+	router.get("/api/claude/transaction/:id", async (req) => {
+		try {
+			const transaction = await accessor.getTransactionStatus(req.params.id);
+			if (!transaction) {
+				throw new HttpError(404, `Transaction not found: ${req.params.id}`);
+			}
+			return transaction;
+		} catch (error) {
+			throw toHttpError({
+				error,
+				fallbackMessage: "Failed to get transaction status",
+			});
+		}
+	});
+
+	router.post("/api/claude/undo", async () => {
+		try {
+			return await accessor.undoTimeline();
+		} catch (error) {
+			throw toHttpError({ error, fallbackMessage: "Undo failed" });
+		}
+	});
+
+	router.post("/api/claude/redo", async () => {
+		try {
+			return await accessor.redoTimeline();
+		} catch (error) {
+			throw toHttpError({ error, fallbackMessage: "Redo failed" });
+		}
+	});
+
+	router.get("/api/claude/history", async () => {
+		try {
+			return await accessor.getHistorySummary();
+		} catch (error) {
+			throw toHttpError({ error, fallbackMessage: "Failed to get history" });
+		}
 	});
 
 	// ==========================================================================

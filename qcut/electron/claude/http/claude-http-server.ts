@@ -35,6 +35,14 @@ import {
 } from "../handlers/claude-navigator-handler.js";
 import { registerStateRoutes } from "./claude-http-state-routes.js";
 import { requestEditorStateSnapshotFromRenderer } from "../handlers/claude-state-handler.js";
+import {
+	getClaudeEvents,
+	subscribeClaudeEvents,
+} from "../handlers/claude-events-handler.js";
+import {
+	handleClaudeEventsStreamRequest,
+	registerClaudeEventsRoutes,
+} from "./claude-http-events-routes.js";
 
 let server: Server | null = null;
 
@@ -86,17 +94,26 @@ export function startClaudeHTTPServer(
 	const accessor: WindowAccessor = {
 		getWindow,
 		requestTimeline: () => requestTimelineFromRenderer(getWindow()),
-		requestSelection: () => requestSelectionFromRenderer(getWindow()),
-		requestSplit: (elementId, splitTime, mode) =>
-			requestSplitFromRenderer(getWindow(), elementId, splitTime, mode),
+		requestSelection: (correlationId) =>
+			requestSelectionFromRenderer(getWindow(), correlationId),
+		requestSplit: (elementId, splitTime, mode, correlationId) =>
+			requestSplitFromRenderer(
+				getWindow(),
+				elementId,
+				splitTime,
+				mode,
+				correlationId
+			),
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		getAppVersion: () => app.getVersion(),
-		batchAddElements: (projectId, elements) =>
-			batchAddElements(getWindow(), projectId, elements),
-		batchUpdateElements: (updates) => batchUpdateElements(getWindow(), updates),
-		batchDeleteElements: (elements, ripple) =>
-			batchDeleteElements(getWindow(), elements, ripple),
-		arrangeTimeline: (data) => arrangeTimeline(getWindow(), data),
+		batchAddElements: (projectId, elements, correlationId) =>
+			batchAddElements(getWindow(), projectId, elements, correlationId),
+		batchUpdateElements: (updates, correlationId) =>
+			batchUpdateElements(getWindow(), updates, correlationId),
+		batchDeleteElements: (elements, ripple, correlationId) =>
+			batchDeleteElements(getWindow(), elements, ripple, correlationId),
+		arrangeTimeline: (data, correlationId) =>
+			arrangeTimeline(getWindow(), data, correlationId),
 	};
 
 	// Register all shared routes
@@ -104,6 +121,9 @@ export function startClaudeHTTPServer(
 	registerStateRoutes(router, {
 		requestSnapshot: (request) =>
 			requestEditorStateSnapshotFromRenderer(getWindow(), request),
+	});
+	registerClaudeEventsRoutes(router, {
+		listEvents: async (filter) => getClaudeEvents(filter),
 	});
 
 	// ==========================================================================
@@ -181,6 +201,17 @@ server = createServer((req, res) => {
 					correlationId: requestCorrelationId,
 				})
 			);
+			return;
+		}
+
+		if (
+			handleClaudeEventsStreamRequest({
+				req,
+				res,
+				listEvents: async (filter) => getClaudeEvents(filter),
+				subscribeToEvents: ({ listener }) => subscribeClaudeEvents({ listener }),
+			})
+		) {
 			return;
 		}
 
