@@ -159,7 +159,7 @@ export const generateVideoThumbnailBrowser = (
 			}
 		});
 
-		video.addEventListener("error", (event) => {
+		video.addEventListener("error", () => {
 			clearTimeout(timeout);
 			cleanup();
 			reject(
@@ -201,16 +201,15 @@ export const getMediaDuration = (file: File): Promise<number> => {
 			}
 			element.remove();
 			if (blobUrl) {
-				// Delay cleanup to prevent timing conflicts
+				const urlToRevoke = blobUrl;
 				setTimeout(() => {
-					revokeMediaBlob(blobUrl!, "getMediaDuration");
+					revokeMediaBlob(urlToRevoke, "getMediaDuration");
 				}, 100);
 			}
 		};
 
 		// Set a reasonable timeout for media loading
 		const timeoutId = setTimeout(() => {
-			console.warn("[getMediaDuration] Timeout loading media:", file.name);
 			cleanup();
 			reject(new Error("Media loading timeout"));
 		}, 10_000);
@@ -231,9 +230,8 @@ export const getMediaDuration = (file: File): Promise<number> => {
 			}, 50);
 		});
 
-		element.addEventListener("error", (e) => {
+		element.addEventListener("error", () => {
 			clearTimeout(timeoutId);
-			console.warn("[getMediaDuration] Media loading failed:", e);
 			cleanup();
 			reject(new Error("Could not load media"));
 		});

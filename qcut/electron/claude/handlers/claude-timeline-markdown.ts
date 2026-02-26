@@ -35,7 +35,10 @@ export function timelineToMarkdown(timeline: ClaudeTimeline): string {
 	md += `| Tracks | ${timeline.tracks.length} |\n\n`;
 
 	for (const track of timeline.tracks) {
-		md += `## Track ${track.index + 1}: ${track.name || track.type}\n\n`;
+		const trackLabel = track.name
+			? `${track.name} (${track.type})`
+			: track.type;
+		md += `## Track ${track.index + 1}: ${trackLabel}\n\n`;
 
 		if (track.elements.length === 0) {
 			md += "*No elements in this track*\n\n";
@@ -100,7 +103,23 @@ function parseMarkdownRow(line: string): string[] {
 	const withoutTrailingPipe = withoutLeadingPipe.endsWith("|")
 		? withoutLeadingPipe.slice(0, -1)
 		: withoutLeadingPipe;
-	return withoutTrailingPipe.split("|").map((cell) => cell.trim());
+
+	// Split on unescaped pipes only, then unescape \| in each cell
+	const cells: string[] = [];
+	let current = "";
+	for (let i = 0; i < withoutTrailingPipe.length; i++) {
+		if (withoutTrailingPipe[i] === "\\" && withoutTrailingPipe[i + 1] === "|") {
+			current += "|";
+			i++; // skip the escaped pipe
+		} else if (withoutTrailingPipe[i] === "|") {
+			cells.push(current.trim());
+			current = "";
+		} else {
+			current += withoutTrailingPipe[i];
+		}
+	}
+	cells.push(current.trim());
+	return cells;
 }
 
 function isMarkdownSeparatorRow(cells: string[]): boolean {

@@ -147,25 +147,31 @@ function buildStickerOverlayPass(
 			);
 		}
 
-		if ((sticker.rotation ?? 0) !== 0) {
+		const rotation = Number(sticker.rotation) || 0;
+		if (rotation !== 0) {
 			const rotatedLabel = `sticker_rotated_${index}`;
 			filterSteps.push(
-				`[${preparedLabel}]rotate=${sticker.rotation}*PI/180:c=none[${rotatedLabel}]`
+				`[${preparedLabel}]rotate=${rotation}*PI/180:c=none[${rotatedLabel}]`
 			);
 			preparedLabel = rotatedLabel;
 		}
 
-		if ((sticker.opacity ?? 1) < 1) {
+		const opacity = Math.max(0, Math.min(1, Number(sticker.opacity) || 1));
+		if (opacity < 1) {
 			const alphaLabel = `sticker_alpha_${index}`;
 			filterSteps.push(
-				`[${preparedLabel}]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${sticker.opacity}*alpha(X,Y)'[${alphaLabel}]`
+				`[${preparedLabel}]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${opacity}*alpha(X,Y)'[${alphaLabel}]`
 			);
 			preparedLabel = alphaLabel;
 		}
 
 		const outputLabel = `v_sticker_${filterIdx++}`;
+		const sx = Number(sticker.x) || 0;
+		const sy = Number(sticker.y) || 0;
+		const sStart = Number(sticker.startTime) || 0;
+		const sEnd = Number(sticker.endTime) || 0;
 		filterSteps.push(
-			`[${currentVideoLabel}][${preparedLabel}]overlay=x=${sticker.x}:y=${sticker.y}:enable='between(t,${sticker.startTime},${sticker.endTime})'[${outputLabel}]`
+			`[${currentVideoLabel}][${preparedLabel}]overlay=x=${sx}:y=${sy}:enable='between(t,${sStart},${sEnd})'[${outputLabel}]`
 		);
 		currentVideoLabel = outputLabel;
 	}
