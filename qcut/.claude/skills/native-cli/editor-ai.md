@@ -234,6 +234,11 @@ bun run pipeline editor:generate:estimate-cost \
 | `--add-to-timeline` | boolean | Auto-add result to timeline |
 | `--track-id` | string | Target track (with `--add-to-timeline`) |
 | `--start-time` | number | Timeline position (with `--add-to-timeline`) |
+
+**Suggest-cuts flags** (used with `editor:suggest-cuts`, not generation):
+
+| Flag | Type | Description |
+|------|------|-------------|
 | `--include-fillers` | boolean | Include filler detection in suggest-cuts |
 | `--include-silences` | boolean | Include silence detection in suggest-cuts |
 | `--include-scenes` | boolean | Include scene detection in suggest-cuts |

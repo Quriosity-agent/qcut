@@ -192,19 +192,23 @@ export async function startExportJob({
 				preset: settings.presetId,
 			},
 		});
-		emitClaudeEvent({
-			category: CLAUDE_EDITOR_EVENT_CATEGORY.exportStarted,
-			action: CLAUDE_EDITOR_EVENT_ACTION.started,
-			correlationId: jobId,
-			source: "main.export-handler",
-			data: {
-				jobId,
-				projectId,
-				presetId: settings.presetId,
-				outputPath,
-				status: EXPORT_JOB_STATUS.queued,
-			},
-		});
+		try {
+			emitClaudeEvent({
+				category: CLAUDE_EDITOR_EVENT_CATEGORY.exportStarted,
+				action: CLAUDE_EDITOR_EVENT_ACTION.started,
+				correlationId: jobId,
+				source: "main.export-handler",
+				data: {
+					jobId,
+					projectId,
+					presetId: settings.presetId,
+					outputPath,
+					status: EXPORT_JOB_STATUS.queued,
+				},
+			});
+		} catch {
+			// Telemetry emission must not block export execution
+		}
 
 		executeExportJob({
 			jobId,

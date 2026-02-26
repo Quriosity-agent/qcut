@@ -324,11 +324,3 @@ export function setupClaudeEventsIPC(): void {
 		claudeLog.warn(HANDLER_NAME, "Failed to setup Claude events IPC:", error);
 	}
 }
-
-module.exports = {
-	setupClaudeEventsIPC,
-	emitClaudeEvent,
-	getClaudeEvents,
-	subscribeClaudeEvents,
-	clearClaudeEventsForTests,
-};

@@ -66,10 +66,8 @@ export async function GET(request: Request) {
 		);
 		await Promise.race([Promise.allSettled(enrichPromises), enrichTimeout]);
 
-		// Merge with unmanaged tmux sessions (skip when filtering active-only)
-		if (!activeOnly) {
-			dashboardSessions = await mergeWithUnmanagedTmux(dashboardSessions);
-		}
+		// Merge with unmanaged tmux sessions (always include — they are active by definition)
+		dashboardSessions = await mergeWithUnmanagedTmux(dashboardSessions);
 
 		return NextResponse.json({
 			sessions: dashboardSessions,

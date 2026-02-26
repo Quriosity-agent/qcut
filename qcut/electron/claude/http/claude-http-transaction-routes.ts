@@ -168,8 +168,11 @@ export function registerTransactionRoutes({
 				throw toHttpError({ error, fallbackMessage: "Failed to get history" });
 			}
 		});
-	} catch {
-		// no-op
+	} catch (error) {
+		console.error(
+			"[claude-transaction-routes] Failed to register transaction routes:",
+			error
+		);
 	}
 }
 

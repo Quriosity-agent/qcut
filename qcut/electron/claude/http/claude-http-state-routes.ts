@@ -76,16 +76,21 @@ export function registerStateRoutes(
 				include: req.query.include,
 			});
 			const timeoutMs = options.timeoutMs ?? 5000;
+			let timer: ReturnType<typeof setTimeout> | undefined;
 
-			return await Promise.race([
-				options.requestSnapshot(request),
-				new Promise<never>((_, reject) =>
-					setTimeout(
-						() => reject(new HttpError(504, "Renderer timed out")),
-						timeoutMs
-					)
-				),
-			]);
+			try {
+				return await Promise.race([
+					options.requestSnapshot(request),
+					new Promise<never>((_, reject) => {
+						timer = setTimeout(
+							() => reject(new HttpError(504, "Renderer timed out")),
+							timeoutMs
+						);
+					}),
+				]);
+			} finally {
+				if (timer !== undefined) clearTimeout(timer);
+			}
 		} catch (error) {
 			if (error instanceof HttpError) {
 				throw error;

@@ -9,7 +9,7 @@ Per CLAUDE.md: "No code file should exceed 800 lines; if it does, split it into 
 
 ## Refactored Since Last Report (no longer over 800)
 
-These 9 files were successfully refactored below the 800-line limit:
+These 8 files were successfully refactored below the 800-line limit:
 
 | Was | Now | File |
 |-----|-----|------|
@@ -21,7 +21,6 @@ These 9 files were successfully refactored below the 800-line limit:
 | 1128 | 589 | `apps/web/src/lib/export/export-engine-cli.ts` |
 | 1091 | 209 | `apps/web/src/stores/timeline/timeline-store.ts` |
 | 1085 | 206 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` |
-| 900 | 901 | `apps/web/src/stores/moyin/moyin-store.ts` *(unchanged, still over)* |
 
 ---
 

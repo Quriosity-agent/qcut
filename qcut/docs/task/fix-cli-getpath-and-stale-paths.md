@@ -25,7 +25,7 @@ Two related issues prevent the native CLI from importing media:
 
 ### Call Chain
 
-```
+```text
 CLI: bun run pipeline editor:media:import
   → editor-api-client.ts:187 — HTTP fetch to localhost:8765
     → utility-http-server.ts — receives request in utility process

@@ -88,13 +88,14 @@ function writeSseEvent({
 }: {
 	res: ServerResponse;
 	event: EditorEvent;
-}): void {
+}): boolean {
 	try {
 		res.write(`id: ${event.eventId}\n`);
 		res.write(`event: ${event.category}\n`);
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
+		return true;
 	} catch {
-		// no-op
+		return false;
 	}
 }
 
@@ -115,7 +116,7 @@ async function writeInitialEvents({
 			limit: filter.limit ?? DEFAULT_EVENTS_LIMIT,
 		});
 		for (const event of initialEvents) {
-			writeSseEvent({ res, event });
+			if (!writeSseEvent({ res, event })) break;
 			updateLastEventId(event.eventId);
 		}
 	} catch {
@@ -155,8 +156,11 @@ export function registerClaudeEventsRoutes(
 				limit: filter.limit ?? DEFAULT_EVENTS_LIMIT,
 			});
 		});
-	} catch {
-		// no-op
+	} catch (error) {
+		console.error(
+			"[claude-events-routes] Failed to register events routes:",
+			error
+		);
 	}
 }
 

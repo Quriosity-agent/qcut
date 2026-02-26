@@ -182,7 +182,9 @@ export class EditorApiClient {
 
 		try {
 			const health = await this.get<HealthResponse>("/api/claude/health");
-			return typeof health.apiVersion === "string" ? health.apiVersion : null;
+			if (typeof health.apiVersion === "string") return health.apiVersion;
+			if (typeof health.version === "string") return health.version;
+			return null;
 		} catch {
 			return null;
 		}
@@ -192,69 +194,49 @@ export class EditorApiClient {
 		path: string,
 		query?: Record<string, string>
 	): Promise<T> {
-		try {
-			await this.warnIfCapabilityLikelyUnsupported({
-				method: "GET",
-				path,
-			});
+		await this.warnIfCapabilityLikelyUnsupported({
+			method: "GET",
+			path,
+		});
 
-			let url = `${this.config.baseUrl}${path}`;
-			if (query) {
-				const params = new URLSearchParams(query);
-				url += `?${params.toString()}`;
-			}
-			return await this.request<T>("GET", url);
-		} catch (error) {
-			throw error;
+		let url = `${this.config.baseUrl}${path}`;
+		if (query) {
+			const params = new URLSearchParams(query);
+			url += `?${params.toString()}`;
 		}
+		return await this.request<T>("GET", url);
 	}
 
 	async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-		try {
-			await this.warnIfCapabilityLikelyUnsupported({
-				method: "POST",
-				path,
-			});
-			return await this.request<T>(
-				"POST",
-				`${this.config.baseUrl}${path}`,
-				body
-			);
-		} catch (error) {
-			throw error;
-		}
+		await this.warnIfCapabilityLikelyUnsupported({
+			method: "POST",
+			path,
+		});
+		return await this.request<T>("POST", `${this.config.baseUrl}${path}`, body);
 	}
 
 	async patch<T = unknown>(path: string, body?: unknown): Promise<T> {
-		try {
-			await this.warnIfCapabilityLikelyUnsupported({
-				method: "PATCH",
-				path,
-			});
-			return await this.request<T>(
-				"PATCH",
-				`${this.config.baseUrl}${path}`,
-				body
-			);
-		} catch (error) {
-			throw error;
-		}
+		await this.warnIfCapabilityLikelyUnsupported({
+			method: "PATCH",
+			path,
+		});
+		return await this.request<T>(
+			"PATCH",
+			`${this.config.baseUrl}${path}`,
+			body
+		);
 	}
 
 	async delete<T = unknown>(path: string, body?: unknown): Promise<T> {
-		try {
-			await this.warnIfCapabilityLikelyUnsupported({
-				method: "DELETE",
-				path,
-			});
-			return await this.request<T>(
-				"DELETE",
-				`${this.config.baseUrl}${path}`,
-				body
-			);
-		} catch (error) {
-			throw error;
-		}
+		await this.warnIfCapabilityLikelyUnsupported({
+			method: "DELETE",
+			path,
+		});
+		return await this.request<T>(
+			"DELETE",
+			`${this.config.baseUrl}${path}`,
+			body
+		);
 	}
 
 	/**

@@ -170,8 +170,11 @@ export function wrapRouterWithCorrelationTracking({
 				pathname,
 				wrapHandler({ method: "DELETE", pathname, handler })
 			);
-	} catch {
-		// no-op
+	} catch (error) {
+		console.error(
+			"[claude-meta-routes] Failed to wrap router with correlation tracking:",
+			error
+		);
 	}
 }
 
@@ -343,8 +346,11 @@ export function registerMetaRoutes({
 				);
 			}
 		});
-	} catch {
-		// no-op
+	} catch (error) {
+		console.error(
+			"[claude-meta-routes] Failed to register meta routes:",
+			error
+		);
 	}
 }
 
