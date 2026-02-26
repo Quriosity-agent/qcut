@@ -82,7 +82,6 @@ describe("Auto-Organize Media", () => {
 			useMediaStore.getState().autoOrganizeByType();
 
 			// Wait for async operations
-			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const updatedItems = useMediaStore.getState().mediaItems;
 			expect(updatedItems.find((m) => m.id === "video-1")?.folderIds).toContain(
@@ -102,8 +101,6 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().autoOrganizeByType();
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
 			const updatedItems = useMediaStore.getState().mediaItems;
 			expect(updatedItems.find((m) => m.id === "audio-1")?.folderIds).toContain(
 				DEFAULT_FOLDER_IDS.AUDIO
@@ -121,8 +118,6 @@ describe("Auto-Organize Media", () => {
 			useMediaStore.setState({ mediaItems });
 
 			useMediaStore.getState().autoOrganizeByType();
-
-			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const updatedItems = useMediaStore.getState().mediaItems;
 			expect(updatedItems.find((m) => m.id === "image-1")?.folderIds).toContain(
@@ -146,8 +141,6 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().autoOrganizeByType();
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
 			const updatedItems = useMediaStore.getState().mediaItems;
 			// AI-generated items should go to AI Generated folder, not by type
 			expect(
@@ -170,8 +163,6 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().autoOrganizeByType();
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
 			const updatedItems = useMediaStore.getState().mediaItems;
 			// Already organized item should keep its folder
 			expect(
@@ -191,8 +182,6 @@ describe("Auto-Organize Media", () => {
 			useMediaStore.setState({ mediaItems });
 
 			useMediaStore.getState().autoOrganizeByType();
-
-			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const updatedItems = useMediaStore.getState().mediaItems;
 			// Ephemeral items should not be organized
@@ -217,8 +206,6 @@ describe("Auto-Organize Media", () => {
 			useMediaStore.setState({ mediaItems });
 
 			useMediaStore.getState().autoOrganizeByType();
-
-			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const updatedItems = useMediaStore.getState().mediaItems;
 			expect(updatedItems.find((m) => m.id === "video-1")?.folderIds).toContain(
@@ -340,19 +327,19 @@ describe("Auto-Organize Media", () => {
 	});
 
 	describe("addToFolder", () => {
-		it("should add media to a folder", async () => {
+		it("should add media to a folder", () => {
 			const mediaItems = [createMockMediaItem("item-1", "video")];
 			useMediaStore.setState({ mediaItems });
 
 			useMediaStore.getState().addToFolder("item-1", "folder-A");
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toContain("folder-A");
 		});
 
-		it("should dedupe folder IDs when adding to same folder twice", async () => {
+		it("should dedupe folder IDs when adding to same folder twice", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
 			];
@@ -360,15 +347,15 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().addToFolder("item-1", "folder-A");
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toEqual(["folder-A"]);
 		});
 	});
 
 	describe("removeFromFolder", () => {
-		it("should remove media from a folder", async () => {
+		it("should remove media from a folder", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", {
 					folderIds: ["folder-A", "folder-B"],
@@ -378,15 +365,15 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().removeFromFolder("item-1", "folder-A");
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toEqual(["folder-B"]);
 		});
 	});
 
 	describe("moveToFolder", () => {
-		it("should replace all folder IDs with target folder", async () => {
+		it("should replace all folder IDs with target folder", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", {
 					folderIds: ["old-folder-1", "old-folder-2"],
@@ -396,13 +383,13 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().moveToFolder("item-1", "new-folder");
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toEqual(["new-folder"]);
 		});
 
-		it("should clear folder IDs when target is null", async () => {
+		it("should clear folder IDs when target is null", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
 			];
@@ -410,15 +397,15 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().moveToFolder("item-1", null);
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toEqual([]);
 		});
 	});
 
 	describe("bulkAddToFolder", () => {
-		it("should add multiple items to a folder", async () => {
+		it("should add multiple items to a folder", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video"),
 				createMockMediaItem("item-2", "audio"),
@@ -429,8 +416,6 @@ describe("Auto-Organize Media", () => {
 			useMediaStore
 				.getState()
 				.bulkAddToFolder(["item-1", "item-2"], "bulk-folder");
-
-			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const items = useMediaStore.getState().mediaItems;
 			expect(items.find((m) => m.id === "item-1")?.folderIds).toContain(
@@ -446,7 +431,7 @@ describe("Auto-Organize Media", () => {
 	});
 
 	describe("bulkMoveToFolder", () => {
-		it("should move multiple items to a folder", async () => {
+		it("should move multiple items to a folder", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", { folderIds: ["old"] }),
 				createMockMediaItem("item-2", "audio", { folderIds: ["old"] }),
@@ -457,8 +442,6 @@ describe("Auto-Organize Media", () => {
 				.getState()
 				.bulkMoveToFolder(["item-1", "item-2"], "new-folder");
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
 			const items = useMediaStore.getState().mediaItems;
 			expect(items.find((m) => m.id === "item-1")?.folderIds).toEqual([
 				"new-folder",
@@ -468,7 +451,7 @@ describe("Auto-Organize Media", () => {
 			]);
 		});
 
-		it("should clear folder IDs when target is null", async () => {
+		it("should clear folder IDs when target is null", () => {
 			const mediaItems = [
 				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
 			];
@@ -476,9 +459,9 @@ describe("Auto-Organize Media", () => {
 
 			useMediaStore.getState().bulkMoveToFolder(["item-1"], null);
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
-
-			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			const item = useMediaStore
+				.getState()
+				.mediaItems.find((m) => m.id === "item-1");
 			expect(item?.folderIds).toEqual([]);
 		});
 	});

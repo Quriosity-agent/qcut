@@ -85,7 +85,9 @@ describe("media-store-helpers", () => {
 			expect(
 				getFileType(new File([""], "data.json", { type: "application/json" }))
 			).toBeNull();
-			expect(getFileType(new File([""], "file.txt", { type: "text/plain" }))).toBeNull();
+			expect(
+				getFileType(new File([""], "file.txt", { type: "text/plain" }))
+			).toBeNull();
 		});
 	});
 
@@ -163,9 +165,8 @@ describe("media-store-helpers", () => {
 			};
 			originalImage = window.Image;
 			// Replace Image constructor with a factory that returns our mock
-			(window as Record<string, unknown>).Image = function () {
-				return mockImg;
-			} as unknown as typeof Image;
+			(window as Record<string, unknown>).Image = (() =>
+				mockImg) as unknown as typeof Image;
 		});
 
 		afterEach(() => {
@@ -246,14 +247,11 @@ describe("media-store-helpers", () => {
 				error: null,
 			};
 
-			vi.spyOn(document, "createElement").mockImplementation(
-				(tag: string) => {
-					if (tag === "video") return mockVideo as unknown as HTMLVideoElement;
-					if (tag === "canvas")
-						return mockCanvas as unknown as HTMLCanvasElement;
-					return document.createElement(tag);
-				}
-			);
+			vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+				if (tag === "video") return mockVideo as unknown as HTMLVideoElement;
+				if (tag === "canvas") return mockCanvas as unknown as HTMLCanvasElement;
+				return document.createElement(tag);
+			});
 		});
 
 		afterEach(() => {
@@ -306,9 +304,7 @@ describe("media-store-helpers", () => {
 		});
 
 		it("rejects when canvas context is null", async () => {
-			(mockCanvas.getContext as ReturnType<typeof vi.fn>).mockReturnValue(
-				null
-			);
+			(mockCanvas.getContext as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
 			const file = new File([""], "video.mp4", { type: "video/mp4" });
 			await expect(generateVideoThumbnailBrowser(file)).rejects.toThrow(
