@@ -298,6 +298,39 @@ bun run pipeline generate-remotion \
 
 ---
 
+## Editor Remotion Commands
+
+Manage Remotion animation elements on the timeline.
+
+### List Remotion elements
+
+```bash
+bun run pipeline editor:remotion:list --project-id <id>
+```
+
+### Inspect element
+
+```bash
+bun run pipeline editor:remotion:inspect --project-id <id> --element-id <id>
+```
+
+### Update element props
+
+```bash
+bun run pipeline editor:remotion:update-props \
+  --project-id <id> \
+  --element-id <id> \
+  --data '{"color":"#ff0000","speed":2}'
+```
+
+### Export with Remotion engine
+
+```bash
+bun run pipeline editor:remotion:export --project-id <id> --preset default
+```
+
+---
+
 ## Editor Navigator Commands
 
 List projects and navigate the running QCut editor.

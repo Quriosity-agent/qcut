@@ -140,6 +140,30 @@ bun run pipeline editor:project:report \
   --clear-log
 ```
 
+### Create project
+
+```bash
+bun run pipeline editor:project:create --new-name "My New Project"
+```
+
+### Delete project
+
+```bash
+bun run pipeline editor:project:delete --project-id <id>
+```
+
+### Rename project
+
+```bash
+bun run pipeline editor:project:rename --project-id <id> --new-name "New Name"
+```
+
+### Duplicate project
+
+```bash
+bun run pipeline editor:project:duplicate --project-id <id>
+```
+
 ---
 
 ## Timeline Commands
@@ -486,6 +510,86 @@ bun run pipeline editor:mcp:forward-html \
 |----------|-------------|
 | `QCUT_API_HOST` | Override editor API host (default: `127.0.0.1`) |
 | `QCUT_API_PORT` | Override editor API port (default: `8765`) |
+
+---
+
+## Screen Recording Commands
+
+### List capture sources
+
+```bash
+bun run pipeline editor:screen-recording:sources
+```
+
+### Start recording
+
+```bash
+bun run pipeline editor:screen-recording:start --source-id <id> --filename "recording.mp4"
+```
+
+### Stop recording
+
+```bash
+bun run pipeline editor:screen-recording:stop
+bun run pipeline editor:screen-recording:stop --discard   # discard recording
+```
+
+### Get recording status
+
+```bash
+bun run pipeline editor:screen-recording:status
+```
+
+---
+
+## UI Commands
+
+### Switch editor panel
+
+```bash
+bun run pipeline editor:ui:switch-panel --panel media
+```
+
+Available panels: `media`, `text`, `stickers`, `video-edit`, `effects`, `transitions`, `filters`, `text2image`, `nano-edit`, `ai`, `sounds`, `segmentation`, `remotion`, `pty`, `word-timeline`, `project-folder`, `upscale`, `moyin`
+
+---
+
+## Moyin Script Direction Commands
+
+### Set script
+
+```bash
+bun run pipeline editor:moyin:set-script --text "Scene 1: A dark room..."
+bun run pipeline editor:moyin:set-script --script @screenplay.txt
+```
+
+### Parse script
+
+```bash
+bun run pipeline editor:moyin:parse
+```
+
+Triggers the "Parse Script" button in the director panel.
+
+### Get pipeline status
+
+```bash
+bun run pipeline editor:moyin:status
+```
+
+Returns `parseStatus` and pipeline step progress.
+
+---
+
+## Screenshot Commands
+
+### Capture screenshot
+
+```bash
+bun run pipeline editor:screenshot:capture --filename "qcut-screenshot.png"
+```
+
+Takes a screenshot of the QCut editor window.
 
 ---
 

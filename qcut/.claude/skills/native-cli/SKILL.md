@@ -90,9 +90,12 @@ bun run pipeline editor:export:start --project-id <id> --preset youtube-1080p --
 
 | Component | File |
 |-----------|------|
-| CLI entry point | `electron/native-pipeline/cli.ts` |
-| Command router | `electron/native-pipeline/cli-runner.ts` |
-| ViMax handlers | `electron/native-pipeline/vimax-cli-handlers.ts` |
-| Admin handlers | `electron/native-pipeline/cli-handlers-admin.ts` |
-| Media handlers | `electron/native-pipeline/cli-handlers-media.ts` |
+| CLI entry point | `electron/native-pipeline/cli/cli.ts` |
+| Command router | `electron/native-pipeline/cli/cli-runner/runner.ts` |
+| Editor dispatch | `electron/native-pipeline/cli/cli-handlers-editor.ts` |
+| Admin handlers | `electron/native-pipeline/cli/cli-handlers-admin.ts` |
+| Media handlers | `electron/native-pipeline/cli/cli-handlers-media.ts` |
+| ViMax handlers | `electron/native-pipeline/cli/vimax-cli-handlers.ts` |
+| Remotion handler | `electron/native-pipeline/cli/cli-handlers-remotion.ts` |
+| Moyin handler | `electron/native-pipeline/cli/cli-handlers-moyin.ts` |
 | Key manager | `electron/native-pipeline/key-manager.ts` |
