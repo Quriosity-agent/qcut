@@ -26,7 +26,12 @@ import {
 	clearMoyinProject,
 	type ParseStatus,
 } from "./moyin-persistence";
-import { enhanceCharactersLLM, enhanceScenesLLM } from "./moyin-calibration";
+import {
+	calibrateTitleLLM,
+	generateSynopsisLLM,
+	enhanceCharactersLLM,
+	enhanceScenesLLM,
+} from "./moyin-calibration";
 import {
 	generateStoryboardAction,
 	splitAndApplyAction,
@@ -304,25 +309,96 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 
 				const data = result.data as unknown as ScriptData;
 
-				for (const step of [
-					"title_calibration",
-					"synopsis",
-					"shot_calibration",
-					"character_calibration",
-					"scene_calibration",
-				] as PipelineStep[]) {
-					advancePipeline(step, "active");
-					advancePipeline(step, "done");
-				}
-
+				// Set data immediately so user can see results while calibration runs
 				set({
 					scriptData: data,
 					characters: data.characters ?? [],
 					scenes: data.scenes ?? [],
 					episodes: data.episodes ?? [],
-					parseStatus: "ready",
 					activeStep: "characters",
 				});
+
+				// --- Title Calibration ---
+				advancePipeline("title_calibration", "active");
+				try {
+					const { title, logline } = await calibrateTitleLLM(data, rawScript);
+					const updated = { ...data, title, logline };
+					set({ scriptData: updated });
+					advancePipeline("title_calibration", "done");
+				} catch (err) {
+					console.warn("[Moyin] Title calibration failed:", err);
+					advancePipeline("title_calibration", "error");
+				}
+
+				// --- Synopsis Generation ---
+				advancePipeline("synopsis", "active");
+				try {
+					const synopsis = await generateSynopsisLLM(
+						get().scriptData ?? data,
+						rawScript
+					);
+					const current = get().scriptData;
+					if (current) {
+						set({ scriptData: { ...current, logline: synopsis } });
+					}
+					advancePipeline("synopsis", "done");
+				} catch (err) {
+					console.warn("[Moyin] Synopsis generation failed:", err);
+					advancePipeline("synopsis", "error");
+				}
+
+				// --- Shot Calibration ---
+				advancePipeline("shot_calibration", "active");
+				try {
+					const { episodes, scenes, scriptData: sd } = get();
+					for (const ep of episodes) {
+						const epScenes = scenes.filter((s) => ep.sceneIds.includes(s.id));
+						if (epScenes.length === 0) continue;
+						const newShots = await generateShotsForEpisodeAction(
+							epScenes,
+							ep.title,
+							sd?.title || "Unknown"
+						);
+						set((state) => ({
+							shots: [
+								...state.shots.filter(
+									(s) => !newShots.some((ns) => ns.id === s.id)
+								),
+								...newShots,
+							],
+						}));
+					}
+					advancePipeline("shot_calibration", "done");
+				} catch (err) {
+					console.warn("[Moyin] Shot calibration failed:", err);
+					advancePipeline("shot_calibration", "error");
+				}
+
+				// --- Character Calibration ---
+				advancePipeline("character_calibration", "active");
+				try {
+					const { characters: chars, scriptData: sd2 } = get();
+					const enhanced = await enhanceCharactersLLM(chars, sd2, rawScript);
+					set({ characters: enhanced });
+					advancePipeline("character_calibration", "done");
+				} catch (err) {
+					console.warn("[Moyin] Character calibration failed:", err);
+					advancePipeline("character_calibration", "error");
+				}
+
+				// --- Scene Calibration ---
+				advancePipeline("scene_calibration", "active");
+				try {
+					const { scenes: scns, scriptData: sd3 } = get();
+					const enhanced = await enhanceScenesLLM(scns, sd3, rawScript);
+					set({ scenes: enhanced });
+					advancePipeline("scene_calibration", "done");
+				} catch (err) {
+					console.warn("[Moyin] Scene calibration failed:", err);
+					advancePipeline("scene_calibration", "error");
+				}
+
+				set({ parseStatus: "ready" });
 			} catch (error) {
 				const currentStep = get().pipelineStep;
 				if (currentStep) advancePipeline(currentStep, "error");

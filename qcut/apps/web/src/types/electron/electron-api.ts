@@ -12,6 +12,7 @@ import type {
 	ElectronAudioOps,
 	ElectronVideoOps,
 	ElectronScreenRecordingOps,
+	ElectronScreenshotOps,
 } from "./api-audio-video";
 import type { ElectronTranscriptionOps } from "./api-transcription";
 import type { ElectronFFmpegOps } from "./api-ffmpeg";
@@ -54,6 +55,7 @@ export interface ElectronAPI
 		ElectronAudioOps,
 		ElectronVideoOps,
 		ElectronScreenRecordingOps,
+		ElectronScreenshotOps,
 		ElectronTranscriptionOps,
 		ElectronFFmpegOps,
 		ElectronApiKeyOps,

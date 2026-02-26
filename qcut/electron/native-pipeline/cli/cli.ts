@@ -139,6 +139,10 @@ const COMMANDS = [
 	"editor:remotion:update-props",
 	"editor:remotion:export",
 	"editor:ui:switch-panel",
+	"editor:moyin:set-script",
+	"editor:moyin:parse",
+	"editor:moyin:status",
+	"editor:screenshot:capture",
 	"editor:project:create",
 	"editor:project:delete",
 	"editor:project:rename",
@@ -246,7 +250,11 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:remotion:inspect    Inspect a Remotion element (--element-id)
   editor:remotion:update-props  Update element props (--element-id --data)
   editor:remotion:export     Export with Remotion engine (--preset)
-  editor:ui:switch-panel     Switch editor panel (--panel)
+  editor:ui:switch-panel     Switch editor panel (--panel, --tab for moyin)
+  editor:moyin:set-script    Push script text to director panel (--text/--script)
+  editor:moyin:parse         Trigger "Parse Script" button
+  editor:moyin:status        Get pipeline progress (parseStatus, steps)
+  editor:screenshot:capture  Take a screenshot of QCut window (--filename)
   editor:project:create      Create project (--new-name)
   editor:project:delete      Delete project (--project-id)
   editor:project:rename      Rename project (--project-id --new-name)
@@ -460,6 +468,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			discard: { type: "boolean", default: false },
 			// ui options
 			panel: { type: "string" },
+			tab: { type: "string" },
 		},
 		strict: false,
 	});
@@ -631,7 +640,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		message: values.message as string | undefined,
 		stack: values.stack as string | undefined,
 		addToTimeline: (values["add-to-timeline"] as boolean) ?? false,
-		exportAfterGenerate: (values["export"] as boolean) ?? false,
+		exportAfterGenerate: (values.export as boolean) ?? false,
 		exportFormat: values["export-format"] as string | undefined,
 		includeFillers: (values["include-fillers"] as boolean) ?? false,
 		includeSilences: (values["include-silences"] as boolean) ?? false,
@@ -662,6 +671,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		discard: (values.discard as boolean) ?? false,
 		// ui options
 		panel: values.panel as string | undefined,
+		tab: values.tab as string | undefined,
 	};
 }
 

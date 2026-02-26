@@ -41,7 +41,15 @@ import {
 	requestSwitchPanel,
 	resolvePanelId,
 	getAvailablePanels,
+	resolveTabId,
+	getAvailableTabs,
 } from "../claude/handlers/claude-ui-handler.js";
+import {
+	requestSetScript,
+	requestTriggerParse,
+	requestMoyinStatus,
+} from "../claude/handlers/claude-moyin-handler.js";
+import { captureScreenshot } from "../claude/handlers/claude-screenshot-handler.js";
 import {
 	requestCreateProject,
 	requestDeleteProject,
@@ -123,6 +131,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatPending = false;
 let heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Start periodic heartbeat pings to detect an unresponsive utility process. */
 function startHeartbeat(): void {
 	stopHeartbeat();
 	heartbeatTimer = setInterval(() => {
@@ -323,15 +332,45 @@ async function handleMainRequest(
 			});
 		}
 
+		case "screenshot:capture": {
+			const req = data as { fileName?: string };
+			return captureScreenshot(win, { fileName: req.fileName });
+		}
+
 		case "switch-panel": {
-			const req = data as { panel: string };
+			const req = data as { panel: string; tab?: string };
 			const panelId = resolvePanelId(req.panel);
 			if (!panelId) {
 				throw new Error(
 					`Unknown panel: ${req.panel}. Available: ${getAvailablePanels().join(", ")}`
 				);
 			}
-			return requestSwitchPanel(win, panelId);
+			// Resolve tab alias if provided
+			let resolvedTab: string | undefined;
+			if (req.tab) {
+				resolvedTab = resolveTabId(panelId, req.tab) ?? undefined;
+				if (!resolvedTab) {
+					throw new Error(
+						`Unknown tab: ${req.tab}. Available for ${panelId}: ${getAvailableTabs(panelId).join(", ")}`
+					);
+				}
+			}
+			return requestSwitchPanel(win, panelId, resolvedTab);
+		}
+
+		case "moyin:set-script": {
+			const req = data as { text: string };
+			requestSetScript(win, req.text);
+			return { updated: true };
+		}
+
+		case "moyin:trigger-parse": {
+			requestTriggerParse(win);
+			return { triggered: true };
+		}
+
+		case "moyin:status": {
+			return requestMoyinStatus(win);
 		}
 
 		case "project:create": {

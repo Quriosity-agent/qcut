@@ -141,6 +141,7 @@ export interface CLIRunOptions {
 	discard?: boolean;
 	// ui options
 	panel?: string;
+	tab?: string;
 }
 
 export interface CLIResult {

@@ -30,8 +30,10 @@ import { useExportStore } from "@/stores/export-store";
 import { PanelPresetSelector } from "./panel-preset-selector";
 import { AutoSaveIndicator } from "./editor/auto-save-indicator";
 import { ScreenRecordingControl } from "./editor/screen-recording-control";
+import { ScreenshotControl } from "./editor/screenshot-control";
 import type { KeyboardEvent } from "react";
 
+/** Editor header bar with project name, export, screenshot, and recording controls. */
 export function EditorHeader() {
 	const { getTotalDuration } = useTimelineStore();
 	const { activeProject, renameProject, deleteProject } = useProjectStore();
@@ -149,6 +151,7 @@ export function EditorHeader() {
 		<nav className="flex items-center gap-2">
 			<AutoSaveIndicator className="whitespace-nowrap" />
 			<PanelPresetSelector />
+			<ScreenshotControl />
 			<ScreenRecordingControl />
 			<KeyboardShortcutsHelp />
 			<Button

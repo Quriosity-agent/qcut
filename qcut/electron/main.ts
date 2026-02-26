@@ -10,6 +10,7 @@
 import {
 	app,
 	BrowserWindow,
+	ipcMain,
 	protocol,
 	net,
 	session,
@@ -121,6 +122,9 @@ const { setupAllClaudeIPC } = require("./claude/index.js");
 const { setupRemotionFolderIPC } = require("./remotion-folder-handler.js");
 const { setupScreenRecordingIPC } = require("./screen-recording-handler.js");
 const { setupMoyinIPC } = require("./moyin-handler.js");
+const {
+	captureScreenshot,
+} = require("./claude/handlers/claude-screenshot-handler.js");
 // Note: font-resolver-handler removed - not implemented
 
 let mainWindow: BrowserWindow | null = null;
@@ -679,6 +683,15 @@ if (!isCliKeyCommand) {
 				console.error(`❌ ${name} FAILED:`, err.message, err.stack);
 			}
 		}
+
+		// Screenshot capture (needs mainWindow reference)
+		ipcMain.handle(
+			"screenshot:capture",
+			async (_event: unknown, options?: { fileName?: string }) => {
+				if (!mainWindow) throw new Error("No active window");
+				return captureScreenshot(mainWindow, options);
+			}
+		);
 
 		initFFmpegHealthCheck();
 		migrateAIVideosToDocuments()

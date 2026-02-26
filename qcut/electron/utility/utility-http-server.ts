@@ -72,6 +72,7 @@ interface UtilityHttpConfig {
 	requestFromMain: RequestFromMainFn;
 }
 
+/** Start the HTTP server in the utility process that proxies Claude API routes. */
 export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	const { port, appVersion, requestFromMain } = config;
 
@@ -125,6 +126,19 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			}),
 			10_000,
 			"Renderer timed out"
+		);
+	});
+
+	// ==========================================================================
+	// Screenshot capture
+	// ==========================================================================
+	router.post("/api/claude/screenshot/capture", async (req) => {
+		const fileName =
+			typeof req.body?.fileName === "string" ? req.body.fileName : undefined;
+		return await withTimeout(
+			requestFromMain("screenshot:capture", { fileName }),
+			10_000,
+			"Screenshot capture timed out"
 		);
 	});
 
@@ -228,10 +242,44 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		if (!req.body?.panel || typeof req.body.panel !== "string") {
 			throw new HttpError(400, "Missing 'panel' in request body");
 		}
+		const payload: Record<string, string> = { panel: req.body.panel };
+		if (req.body.tab && typeof req.body.tab === "string") {
+			payload.tab = req.body.tab;
+		}
 		return await withTimeout(
-			requestFromMain("switch-panel", { panel: req.body.panel }),
+			requestFromMain("switch-panel", payload),
 			10_000,
 			"Panel switch timed out"
+		);
+	});
+
+	// ==========================================================================
+	// Moyin (Director) CLI routes
+	// ==========================================================================
+	router.post("/api/claude/moyin/set-script", async (req) => {
+		if (!req.body?.text || typeof req.body.text !== "string") {
+			throw new HttpError(400, "Missing 'text' in request body");
+		}
+		return await withTimeout(
+			requestFromMain("moyin:set-script", { text: req.body.text }),
+			10_000,
+			"Set script timed out"
+		);
+	});
+
+	router.post("/api/claude/moyin/parse", async () => {
+		return await withTimeout(
+			requestFromMain("moyin:trigger-parse", {}),
+			10_000,
+			"Trigger parse timed out"
+		);
+	});
+
+	router.get("/api/claude/moyin/status", async () => {
+		return await withTimeout(
+			requestFromMain("moyin:status", {}),
+			10_000,
+			"Moyin status timed out"
 		);
 	});
 

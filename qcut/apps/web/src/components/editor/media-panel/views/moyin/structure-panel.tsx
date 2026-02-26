@@ -20,7 +20,20 @@ import {
 	UsersIcon,
 } from "lucide-react";
 
-type StructureTab = "overview" | "characters" | "scenes" | "shots" | "generate";
+export type StructureTab =
+	| "overview"
+	| "characters"
+	| "scenes"
+	| "shots"
+	| "generate";
+
+export const VALID_STRUCTURE_TABS: readonly StructureTab[] = [
+	"overview",
+	"characters",
+	"scenes",
+	"shots",
+	"generate",
+];
 
 const stepToTab: Record<MoyinStep, StructureTab> = {
 	script: "overview",
@@ -29,7 +42,7 @@ const stepToTab: Record<MoyinStep, StructureTab> = {
 	generate: "generate",
 };
 
-const tabToStep: Record<StructureTab, MoyinStep> = {
+export const tabToStep: Record<StructureTab, MoyinStep> = {
 	overview: "script",
 	characters: "characters",
 	scenes: "scenes",
@@ -45,6 +58,7 @@ const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 	{ key: "generate", label: "Generate", icon: SparklesIcon },
 ];
 
+/** Tabbed panel displaying parsed script structure: overview, characters, scenes, shots, and generate. */
 export function StructurePanel() {
 	const activeStep = useMoyinStore((s) => s.activeStep);
 	const setActiveStep = useMoyinStore((s) => s.setActiveStep);
@@ -83,6 +97,18 @@ export function StructurePanel() {
 		},
 		[setActiveStep]
 	);
+
+	// Listen for programmatic tab switches from CLI/API
+	useEffect(() => {
+		const handler = (e: Event) => {
+			const tab = (e as CustomEvent<{ tab: string }>).detail?.tab;
+			if (tab && VALID_STRUCTURE_TABS.includes(tab as StructureTab)) {
+				handleTabChange(tab as StructureTab);
+			}
+		};
+		window.addEventListener("moyin:switch-tab", handler);
+		return () => window.removeEventListener("moyin:switch-tab", handler);
+	}, [handleTabChange]);
 
 	// Keyboard shortcuts for navigation and deletion
 	const deleteSelectedItem = useMoyinStore((s) => s.deleteSelectedItem);

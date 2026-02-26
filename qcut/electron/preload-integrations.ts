@@ -561,13 +561,19 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 		},
 		ui: {
 			onSwitchPanelRequest: (
-				callback: (data: { requestId: string; panel: string }) => void
+				callback: (data: {
+					requestId: string;
+					panel: string;
+					tab?: string;
+				}) => void
 			) => {
 				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
 				ipcRenderer.on(
 					"claude:ui:switch-panel:request",
-					(_: unknown, data: { requestId: string; panel: string }) =>
-						callback(data)
+					(
+						_: unknown,
+						data: { requestId: string; panel: string; tab?: string }
+					) => callback(data)
 				);
 			},
 			sendSwitchPanelResponse: (
@@ -740,6 +746,40 @@ export function createMoyinAPI(): NonNullable<ElectronAPI["moyin"]> {
 		},
 		removeParseListener: () => {
 			ipcRenderer.removeAllListeners("claude:moyin:parsed");
+		},
+		onSetScript: (callback: (data: { text: string }) => void) => {
+			ipcRenderer.removeAllListeners("claude:moyin:set-script");
+			ipcRenderer.on(
+				"claude:moyin:set-script",
+				(_: unknown, data: { text: string }) => callback(data)
+			);
+		},
+		onTriggerParse: (callback: () => void) => {
+			ipcRenderer.removeAllListeners("claude:moyin:trigger-parse");
+			ipcRenderer.on("claude:moyin:trigger-parse", () => callback());
+		},
+		onStatusRequest: (callback: (data: { requestId: string }) => void) => {
+			ipcRenderer.removeAllListeners("claude:moyin:status:request");
+			ipcRenderer.on(
+				"claude:moyin:status:request",
+				(_: unknown, data: { requestId: string }) => callback(data)
+			);
+		},
+		sendStatusResponse: (
+			requestId: string,
+			result?: Record<string, unknown>,
+			error?: string
+		) => {
+			ipcRenderer.send("claude:moyin:status:response", {
+				requestId,
+				result,
+				error,
+			});
+		},
+		removeMoyinBridgeListeners: () => {
+			ipcRenderer.removeAllListeners("claude:moyin:set-script");
+			ipcRenderer.removeAllListeners("claude:moyin:trigger-parse");
+			ipcRenderer.removeAllListeners("claude:moyin:status:request");
 		},
 	};
 }
