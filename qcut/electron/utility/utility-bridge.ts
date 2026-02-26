@@ -341,12 +341,12 @@ async function handleMainRequest(
 		}
 
 		case "transaction:commit": {
-			const req = data as TransactionFinalizeRequest;
+			const req = data as unknown as TransactionFinalizeRequest;
 			return commitTransaction({ transactionId: req.transactionId });
 		}
 
 		case "transaction:rollback": {
-			const req = data as TransactionFinalizeRequest;
+			const req = data as unknown as TransactionFinalizeRequest;
 			return rollbackTransaction({
 				transactionId: req.transactionId,
 				reason: req.reason,
@@ -354,7 +354,7 @@ async function handleMainRequest(
 		}
 
 		case "transaction:status": {
-			const req = data as TransactionStatusRequest;
+			const req = data as unknown as TransactionStatusRequest;
 			return getTransactionStatus({ transactionId: req.transactionId });
 		}
 

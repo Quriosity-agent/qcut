@@ -26,6 +26,10 @@ import {
 	setupClaudeMoyinBridge,
 } from "@/lib/claude-bridge/claude-moyin-bridge";
 import {
+	cleanupClaudeTransactionBridge,
+	setupClaudeTransactionBridge,
+} from "@/lib/claude-bridge/claude-transaction-bridge";
+import {
 	cleanupClaudeStateBridge,
 	setupClaudeStateBridge,
 } from "@/lib/claude-bridge/claude-state-bridge";
@@ -59,6 +63,11 @@ function runBridgeStep({ message, step, onError }: RunBridgeStepInput): void {
 export function setupClaudeBridgeLifecycle({
 	onError = debugError,
 }: SetupClaudeBridgeLifecycleOptions = {}): () => void {
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup transaction bridge",
+		step: setupClaudeTransactionBridge,
+		onError,
+	});
 	runBridgeStep({
 		message: "[ClaudeBridge] Failed to setup timeline bridge",
 		step: setupClaudeTimelineBridge,
@@ -106,6 +115,11 @@ export function setupClaudeBridgeLifecycle({
 	});
 
 	return () => {
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup transaction bridge",
+			step: cleanupClaudeTransactionBridge,
+			onError,
+		});
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup timeline bridge",
 			step: cleanupClaudeTimelineBridge,
