@@ -1,6 +1,6 @@
 # Files Over 800 Lines — Refactor Candidates
 
-Per CLAUDE.md: "No code file longer than 800 lines, longer consider a new code file."
+Per CLAUDE.md: "No code file should exceed 800 lines; if it does, split it into a new file."
 
 **Generated**: 2026-02-26
 **Total files over 800 lines**: 49

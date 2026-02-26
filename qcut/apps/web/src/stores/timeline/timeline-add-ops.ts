@@ -3,8 +3,8 @@ import { clampMarkdownDuration } from "@/lib/markdown";
 import type { DragData, MarkdownElement, TextElement } from "@/types/timeline";
 import { toast } from "sonner";
 import type { MediaItem } from "../media/media-store";
-import { INITIAL_DRAG_STATE } from "./index";
-import type { DragState, TimelineStore } from "./index";
+import { INITIAL_DRAG_STATE } from "./types";
+import type { DragState, TimelineStore } from "./types";
 import type {
 	OperationDeps,
 	StoreGet,

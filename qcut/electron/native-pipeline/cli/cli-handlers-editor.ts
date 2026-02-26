@@ -263,10 +263,11 @@ async function handleMoyinCommand(
 				try {
 					const fs = await import("node:fs/promises");
 					scriptText = await fs.readFile(options.script, "utf-8");
-				} catch {
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
 					return {
 						success: false,
-						error: `Failed to read script file: ${options.script}`,
+						error: `Failed to read script file: ${options.script}. ${reason}`,
 					};
 				}
 			}

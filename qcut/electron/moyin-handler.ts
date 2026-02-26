@@ -285,7 +285,7 @@ async function callClaudeCLI(
 		const args = [
 			"-p",
 			"--model",
-			"haiku",
+			"claude-haiku-4-5-20251001",
 			"--output-format",
 			"json",
 			"--max-turns",
@@ -294,7 +294,9 @@ async function callClaudeCLI(
 			systemPrompt,
 		];
 
-		log.info("[Moyin] Spawning claude -p (haiku, 600s timeout)...");
+		log.info(
+			"[Moyin] Spawning claude -p (claude-haiku-4-5-20251001, 600s timeout)..."
+		);
 
 		const env = { ...process.env };
 		delete env.CLAUDECODE;
@@ -376,8 +378,10 @@ async function callClaudeCLI(
 						log.info(`[Moyin] Claude CLI envelope: ${envelope.duration_ms}ms`);
 						text = envelope.result;
 					}
-				} catch {
-					// Not JSON envelope — use raw stdout as-is
+				} catch (e) {
+					log.info(
+						`[Moyin] Could not parse Claude CLI output as JSON envelope, using raw output. Error: ${e instanceof Error ? e.message : String(e)}`
+					);
 				}
 
 				log.info(`[Moyin] Claude CLI returned ${text.length} chars`);

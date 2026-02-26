@@ -101,8 +101,12 @@ export function StructurePanel() {
 	// Listen for programmatic tab switches from CLI/API
 	useEffect(() => {
 		const handler = (e: Event) => {
-			const tab = (e as CustomEvent<{ tab: string }>).detail?.tab;
-			if (tab && VALID_STRUCTURE_TABS.includes(tab as StructureTab)) {
+			if (!(e instanceof CustomEvent)) return;
+			const tab = e.detail?.tab;
+			if (
+				typeof tab === "string" &&
+				VALID_STRUCTURE_TABS.includes(tab as StructureTab)
+			) {
 				handleTabChange(tab as StructureTab);
 			}
 		};

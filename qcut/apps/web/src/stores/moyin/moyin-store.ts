@@ -315,6 +315,9 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 					characters: data.characters ?? [],
 					scenes: data.scenes ?? [],
 					episodes: data.episodes ?? [],
+					shots: [],
+					shotGenerationStatus: {},
+					selectedShotIds: new Set<string>(),
 					activeStep: "characters",
 				});
 

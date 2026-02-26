@@ -130,13 +130,21 @@ Refine the title and logline. Keep the original if it's already strong.`,
 		.replace(/```json\n?/g, "")
 		.replace(/```\n?/g, "")
 		.trim();
-	const parsed = JSON.parse(cleaned) as { title?: string; logline?: string };
-	if (!parsed.title || !parsed.logline) {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(cleaned);
+	} catch (e) {
+		throw new Error(
+			`Failed to parse LLM response as JSON: ${e instanceof Error ? e.message : String(e)}`
+		);
+	}
+	const obj = parsed as { title?: string; logline?: string };
+	if (typeof obj.title !== "string" || typeof obj.logline !== "string") {
 		throw new Error(
 			"Title calibration returned invalid data: missing title or logline"
 		);
 	}
-	return { title: parsed.title, logline: parsed.logline };
+	return { title: obj.title, logline: obj.logline };
 }
 
 // ==================== Synopsis Generation ====================

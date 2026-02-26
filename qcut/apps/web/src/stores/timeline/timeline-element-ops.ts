@@ -460,10 +460,10 @@ export function createElementOps(
 					};
 				}
 
-				// Find the newly created media item using the returned ID
-				const newMediaItem = mediaStore.mediaItems.find(
-					(item) => item.id === newMediaItemId
-				);
+				// Re-acquire state after addMediaItem to avoid stale snapshot
+				const newMediaItem = useMediaStore
+					.getState()
+					.mediaItems.find((item) => item.id === newMediaItemId);
 
 				if (!newMediaItem) {
 					return {
