@@ -1,41 +1,29 @@
-# Video Analysis, Remotion Generation & Editor Navigation CLI
+# QCut Editor CLI — AI & Analysis Commands
 
-Commands for AI video analysis, Remotion component generation, and programmatic editor navigation.
+AI-powered `editor:*` commands: video analysis, transcription, content generation, Remotion generation, and editor navigation.
 
-## Prerequisites
-
-```bash
-# Start QCut editor (required for editor:* and generate-remotion --add-to-timeline)
-bun run electron:dev
-
-# Run commands
-bun run pipeline <command> [options]
-# Or directly:
-bun electron/native-pipeline/cli/cli.ts <command> [options]
-```
+Requires QCut running (`bun run electron:dev`). See [editor-core.md](editor-core.md) for connection options and JSON input modes.
 
 ---
 
 ## Video Analysis Commands
 
-AI-powered video analysis via the running QCut editor.
-
 ### Analyze video
 
 ```bash
-# Analyze by media ID
+# By media ID
 bun run pipeline editor:analyze:video \
   --project-id <id> \
   --source "media:<media-id>" \
   --analysis-type describe \
   --model gemini
 
-# Analyze by file path
+# By file path
 bun run pipeline editor:analyze:video \
   --project-id <id> \
   --source "path:/path/to/video.mp4"
 
-# Analyze a timeline element
+# By timeline element
 bun run pipeline editor:analyze:video \
   --project-id <id> \
   --source "timeline:<element-id>"
@@ -44,7 +32,7 @@ bun run pipeline editor:analyze:video \
 bun run pipeline editor:analyze:video \
   --project-id <id> \
   --source "media:<id>" \
-  --prompt "Count the number of people in each scene" \
+  --prompt "Count people in each scene" \
   --output-format json
 ```
 
@@ -71,7 +59,7 @@ bun run pipeline editor:analyze:scenes \
 ### Analyze frames
 
 ```bash
-# At specific timestamps (comma-separated seconds)
+# At specific timestamps
 bun run pipeline editor:analyze:frames \
   --project-id <id> \
   --media-id <id> \
@@ -103,23 +91,19 @@ bun run pipeline editor:analyze:fillers \
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `--project-id` | string | Project identifier (required) |
-| `--source` | string | Source specifier: `media:<id>`, `path:/file`, `timeline:<id>` |
+| `--source` | string | Source: `media:<id>`, `path:/file`, `timeline:<id>` |
 | `--media-id` | string | Media file identifier |
-| `--analysis-type` | string | Analysis type: `describe`, `summary`, custom |
+| `--analysis-type` | string | `describe`, `summary`, custom |
 | `--model` | string | AI model key (e.g., `gemini`) |
-| `--output-format` | string | Output format: `json`, `md` |
+| `--output-format` | string | `json`, `md` |
 | `--prompt` | string | Custom analysis prompt |
 | `--threshold` | number | Scene detection threshold (0-1) |
 | `--timestamps` | string | Comma-separated frame timestamps |
 | `--gap` | number | Interval in seconds between frames |
-| `--data` | string | JSON input (inline, `@file.json`, or `-` for stdin) |
 
 ---
 
 ## Transcription Commands
-
-Speech-to-text transcription via the running QCut editor.
 
 ### Transcribe (synchronous)
 
@@ -156,6 +140,8 @@ bun run pipeline editor:transcribe:start \
   --load-speech
 ```
 
+The `--load-speech` flag sends the result to the Smart Speech panel. Words appear as clickable chips for timestamp navigation.
+
 ### Job management
 
 ```bash
@@ -178,14 +164,89 @@ bun run pipeline editor:transcribe:cancel --project-id <id> --job-id <id>
 
 ---
 
+## Generation Commands
+
+AI content generation within the editor.
+
+### Start generation
+
+```bash
+# Text-to-image/video
+bun run pipeline editor:generate:start \
+  --project-id <id> \
+  --model flux_dev \
+  --text "A beautiful sunset" \
+  --aspect-ratio "16:9"
+
+# Image-to-video
+bun run pipeline editor:generate:start \
+  --project-id <id> \
+  --model kling_2_6_pro \
+  --text "The scene comes alive" \
+  --image-url "/path/to/image.png" \
+  --duration 5s
+
+# With polling
+bun run pipeline editor:generate:start \
+  --project-id <id> \
+  --model flux_dev \
+  --text "Ocean waves" \
+  --poll --poll-interval 5
+
+# Auto-add to timeline
+bun run pipeline editor:generate:start \
+  --project-id <id> \
+  --model flux_dev \
+  --text "Title card" \
+  --add-to-timeline --track-id track-1 --start-time 0
+```
+
+### Job management
+
+```bash
+bun run pipeline editor:generate:status --project-id <id> --job-id <id>
+bun run pipeline editor:generate:list-jobs --project-id <id>
+bun run pipeline editor:generate:cancel --project-id <id> --job-id <id>
+```
+
+### List generation models
+
+```bash
+bun run pipeline editor:generate:models
+```
+
+### Estimate cost
+
+```bash
+bun run pipeline editor:generate:estimate-cost \
+  --model kling_2_6_pro --duration 10 --resolution 1080p
+```
+
+### Generation flags
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--model` | string | Model key (required) |
+| `--text` | string | Generation prompt |
+| `--image-url` | string | Input image for image-to-video |
+| `--aspect-ratio` | string | e.g., `16:9` |
+| `--duration` | string | Duration, e.g., `5s` |
+| `--add-to-timeline` | boolean | Auto-add result to timeline |
+| `--track-id` | string | Target track (with `--add-to-timeline`) |
+| `--start-time` | number | Timeline position (with `--add-to-timeline`) |
+| `--include-fillers` | boolean | Include filler detection in suggest-cuts |
+| `--include-silences` | boolean | Include silence detection in suggest-cuts |
+| `--include-scenes` | boolean | Include scene detection in suggest-cuts |
+
+---
+
 ## Remotion Generation Command
 
-Generate Remotion animation projects from text prompts using Claude Code with Remotion best-practice skills.
+Generate Remotion animation projects from text prompts using Claude Code with best-practice skills.
 
 ### Basic generation
 
 ```bash
-# Generate a Remotion project folder
 bun run pipeline generate-remotion \
   --prompt "a bouncing ball with trail effect"
 
@@ -198,12 +259,9 @@ bun run pipeline generate-remotion \
 
 ### Generate and add to timeline
 
-Requires QCut editor to be running.
-
 ```bash
-# Generate and import to timeline in one step
 bun run pipeline generate-remotion \
-  --prompt "A sleek QCut promotional demo with animated UI elements" \
+  --prompt "A sleek QCut promotional demo" \
   --duration 8 \
   --add-to-timeline \
   --project-id <id>
@@ -216,19 +274,8 @@ bun run pipeline generate-remotion \
 3. Generates a folder at `output/<ComponentName>/src/`:
    - `Root.tsx` — `<Composition>` declarations
    - `<ComponentName>.tsx` — main animation component
-   - `package.json` — minimal dependencies for validation
-4. When `--add-to-timeline` is set: imports folder via `remotion-folder:import` pipeline (scan, bundle with esbuild, load, register)
-
-### Output structure
-
-```
-output/<ComponentName>/
-  ├── <ComponentName>.json     # Generation metadata
-  └── src/
-      ├── Root.tsx              # Composition declarations
-      ├── <ComponentName>.tsx   # Animation component(s)
-      └── package.json          # Dependencies
-```
+   - `package.json` — minimal dependencies
+4. When `--add-to-timeline` is set: imports via `remotion-folder:import` pipeline
 
 ### Remotion options
 
@@ -241,10 +288,10 @@ output/<ComponentName>/
 | `--add-to-timeline` | boolean | `false` | Import to editor timeline |
 | `--project-id` | string | - | Project ID (required with `--add-to-timeline`) |
 
-### Remotion constraints enforced
+### Remotion constraints
 
-- All animations driven by `useCurrentFrame()` + `interpolate()` with `extrapolateRight: "clamp"`
-- CSS animations and Tailwind animation classes are forbidden
+- Animations driven by `useCurrentFrame()` + `interpolate()` with `extrapolateRight: "clamp"`
+- CSS animations and Tailwind animation classes forbidden
 - Inline styles only — no external CSS
 - No dependencies beyond `remotion` and `react`
 - Fixed canvas: 1920x1080 at 30fps
@@ -253,7 +300,7 @@ output/<ComponentName>/
 
 ## Editor Navigator Commands
 
-List projects and navigate the running QCut editor to a specific project. Essential for automated end-to-end testing.
+List projects and navigate the running QCut editor.
 
 ### List all projects
 
@@ -261,37 +308,15 @@ List projects and navigate the running QCut editor to a specific project. Essent
 bun run pipeline editor:navigator:projects
 ```
 
-Returns:
-```json
-{
-  "projects": [
-    {
-      "id": "fea526ea-ff71-4329-aca9-d22b9a173982",
-      "name": "My Project",
-      "createdAt": "2026-02-13T00:05:24.783Z",
-      "updatedAt": "2026-02-23T10:45:43.383Z"
-    }
-  ],
-  "activeProjectId": "fea526ea-ff71-4329-aca9-d22b9a173982"
-}
-```
+Returns project list with `id`, `name`, `createdAt`, `updatedAt`, and `activeProjectId`.
 
 ### Open project in editor
 
 ```bash
-bun run pipeline editor:navigator:open \
-  --project-id fea526ea-ff71-4329-aca9-d22b9a173982
+bun run pipeline editor:navigator:open --project-id <id>
 ```
 
-Returns:
-```json
-{
-  "navigated": true,
-  "projectId": "fea526ea-ff71-4329-aca9-d22b9a173982"
-}
-```
-
-The editor navigates to the project view, loads the timeline, media, and skills.
+Navigates the editor to the project, loads timeline, media, and skills.
 
 ---
 
@@ -300,49 +325,34 @@ The editor navigates to the project view, loads the timeline, media, and skills.
 ### End-to-end: Generate Remotion and preview
 
 ```bash
-# 1. Start QCut
-bun run electron:dev
-
-# 2. List projects to get an ID
 bun run pipeline editor:navigator:projects
-
-# 3. Open the project
 bun run pipeline editor:navigator:open --project-id <id>
-
-# 4. Generate Remotion and add to timeline
 bun run pipeline generate-remotion \
-  --prompt "a bouncing ball with trail effect" \
-  --duration 5 \
-  --add-to-timeline \
-  --project-id <id>
-
-# 5. Export timeline to verify
+  --prompt "a bouncing ball" --duration 5 \
+  --add-to-timeline --project-id <id>
 bun run pipeline editor:timeline:export --project-id <id>
 ```
 
 ### Analyze video, then auto-edit
 
 ```bash
-PROJECT=<project-id>
-MEDIA=<media-id>
-ELEMENT=<element-id>
+PROJECT=<id>  MEDIA=<media-id>  ELEMENT=<element-id>
 
-# 1. Detect scenes
-bun run pipeline editor:analyze:scenes \
-  --project-id $PROJECT --media-id $MEDIA --threshold 0.3
-
-# 2. Analyze specific frames
-bun run pipeline editor:analyze:frames \
-  --project-id $PROJECT --media-id $MEDIA --gap 10
-
-# 3. Transcribe
-bun run pipeline editor:transcribe:start \
-  --project-id $PROJECT --media-id $MEDIA --poll --load-speech
-
-# 4. Auto-remove fillers and silences
+bun run pipeline editor:analyze:scenes --project-id $PROJECT --media-id $MEDIA --threshold 0.3
+bun run pipeline editor:analyze:frames --project-id $PROJECT --media-id $MEDIA --gap 10
+bun run pipeline editor:transcribe:start --project-id $PROJECT --media-id $MEDIA --poll --load-speech
 bun run pipeline editor:editing:auto-edit \
   --project-id $PROJECT --element-id $ELEMENT --media-id $MEDIA \
   --remove-fillers --remove-silences --poll
+```
+
+### Generate AI content and add to timeline
+
+```bash
+bun run pipeline editor:generate:start \
+  --project-id <id> --model flux_dev \
+  --text "Professional title card: QCut Tutorial" \
+  --add-to-timeline --poll
 ```
 
 ---
@@ -351,11 +361,10 @@ bun run pipeline editor:editing:auto-edit \
 
 | Component | File |
 |-----------|------|
-| CLI entry point | `electron/native-pipeline/cli.ts` |
 | Editor command dispatch | `electron/native-pipeline/cli/cli-handlers-editor.ts` |
 | Analysis handlers | `electron/native-pipeline/editor/editor-handlers-analysis.ts` |
 | Remotion handler | `electron/native-pipeline/cli/cli-handlers-remotion.ts` |
 | Navigator IPC handler | `electron/claude/handlers/claude-navigator-handler.ts` |
-| Navigator bridge (renderer) | `apps/web/src/lib/claude-bridge/claude-navigator-bridge.ts` |
+| Navigator bridge | `apps/web/src/lib/claude-bridge/claude-navigator-bridge.ts` |
 | Remotion skills | `.agents/skills/remotion-best-practices/SKILL.md` |
 | HTTP API server | `electron/claude/http/claude-http-server.ts` |
