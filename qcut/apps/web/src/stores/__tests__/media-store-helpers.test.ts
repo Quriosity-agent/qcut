@@ -11,14 +11,16 @@ import {
 import type { MediaItem } from "../media/media-store-types";
 
 // Mock blob-manager
-const mockCreateObjectURL = vi.fn(() => "blob:mock-url");
-const mockRevokeObjectURL = vi.fn(() => true);
+const mockCreateObjectURL = vi.fn(
+	(_blob: unknown, _context: unknown) => "blob:mock-url"
+);
+const mockRevokeObjectURL = vi.fn((_url: unknown, _context: unknown) => true);
 
 vi.mock("@/lib/media/blob-manager", () => ({
 	createObjectURL: (...args: unknown[]) =>
-		mockCreateObjectURL(...(args as [unknown, unknown])),
+		mockCreateObjectURL(args[0], args[1]),
 	revokeObjectURL: (...args: unknown[]) =>
-		mockRevokeObjectURL(...(args as [unknown, unknown])),
+		mockRevokeObjectURL(args[0], args[1]),
 	getOrCreateObjectURL: vi.fn(() => "blob:mock-url"),
 }));
 
@@ -344,7 +346,7 @@ describe("media-store-helpers", () => {
 
 			vi.spyOn(document, "createElement").mockImplementation(
 				(() =>
-					mockElement as unknown as HTMLMediaElement) as typeof document.createElement
+					mockElement as unknown as HTMLMediaElement) as unknown as typeof document.createElement
 			);
 		});
 
