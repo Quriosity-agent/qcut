@@ -123,8 +123,16 @@ vi.mock("../handlers/claude-transaction-handler.js", () => ({
 		},
 	})),
 	getTransactionStatus: vi.fn(() => null),
-	undoTimeline: vi.fn(async () => ({ applied: true, undoCount: 1, redoCount: 0 })),
-	redoTimeline: vi.fn(async () => ({ applied: true, undoCount: 2, redoCount: 0 })),
+	undoTimeline: vi.fn(async () => ({
+		applied: true,
+		undoCount: 1,
+		redoCount: 0,
+	})),
+	redoTimeline: vi.fn(async () => ({
+		applied: true,
+		undoCount: 2,
+		redoCount: 0,
+	})),
 	getHistorySummary: vi.fn(async () => ({
 		undoCount: 2,
 		redoCount: 1,

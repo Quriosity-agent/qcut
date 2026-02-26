@@ -92,7 +92,9 @@ export function registerStateRoutes(
 			}
 			throw new HttpError(
 				500,
-				error instanceof Error ? error.message : "Failed to capture editor state"
+				error instanceof Error
+					? error.message
+					: "Failed to capture editor state"
 			);
 		}
 	});

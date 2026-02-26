@@ -12,21 +12,24 @@ const CAPABILITIES: Capability[] = [
 	{
 		name: "state.health",
 		version: "1.0.0",
-		description: "Health checks for editor connectivity and version inspection.",
+		description:
+			"Health checks for editor connectivity and version inspection.",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.STATE,
 	},
 	{
 		name: "state.capabilities",
 		version: "1.0.0",
-		description: "Capability manifest and feature/version negotiation endpoints.",
+		description:
+			"Capability manifest and feature/version negotiation endpoints.",
 		since: "1.1.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.STATE,
 	},
 	{
 		name: "state.commandRegistry",
 		version: "1.0.0",
-		description: "Machine-readable CLI command registry with parameter schemas.",
+		description:
+			"Machine-readable CLI command registry with parameter schemas.",
 		since: "1.1.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.STATE,
 	},
@@ -40,7 +43,8 @@ const CAPABILITIES: Capability[] = [
 	{
 		name: "state.moyin.pipeline",
 		version: "1.0.0",
-		description: "Moyin/director panel script injection and parse status actions.",
+		description:
+			"Moyin/director panel script injection and parse status actions.",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.STATE,
 	},
@@ -145,7 +149,8 @@ const CAPABILITIES: Capability[] = [
 	{
 		name: "timeline.elements",
 		version: "1.0.0",
-		description: "Single-element create, update, delete, split, and move operations.",
+		description:
+			"Single-element create, update, delete, split, and move operations.",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.TIMELINE,
 	},
@@ -208,14 +213,16 @@ const CAPABILITIES: Capability[] = [
 	{
 		name: "analysis.video",
 		version: "1.0.0",
-		description: "Video analysis endpoints (timeline, scenes, frames, fillers).",
+		description:
+			"Video analysis endpoints (timeline, scenes, frames, fillers).",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.ANALYSIS,
 	},
 	{
 		name: "analysis.models",
 		version: "1.0.0",
-		description: "Model listing endpoints for analysis and generation workflows.",
+		description:
+			"Model listing endpoints for analysis and generation workflows.",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.ANALYSIS,
 	},
@@ -271,7 +278,8 @@ const CAPABILITIES: Capability[] = [
 	{
 		name: "transactions.asyncJobs",
 		version: "1.0.0",
-		description: "Asynchronous job lifecycle endpoints (start/status/list/cancel).",
+		description:
+			"Asynchronous job lifecycle endpoints (start/status/list/cancel).",
 		since: "1.0.0",
 		category: CLAUDE_CAPABILITY_CATEGORIES.TRANSACTIONS,
 	},
@@ -291,7 +299,11 @@ type ParsedSemver = {
 	patch: number;
 };
 
-function cloneCapability({ capability }: { capability: Capability }): Capability {
+function cloneCapability({
+	capability,
+}: {
+	capability: Capability;
+}): Capability {
 	try {
 		return { ...capability, alternatives: capability.alternatives?.slice() };
 	} catch {
@@ -315,7 +327,13 @@ function parseSemver({ value }: { value: string }): ParsedSemver | null {
 	}
 }
 
-function compareSemver({ left, right }: { left: string; right: string }): number {
+function compareSemver({
+	left,
+	right,
+}: {
+	left: string;
+	right: string;
+}): number {
 	try {
 		const leftParsed = parseSemver({ value: left });
 		const rightParsed = parseSemver({ value: right });

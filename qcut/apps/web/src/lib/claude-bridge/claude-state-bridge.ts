@@ -29,7 +29,10 @@ type SectionSet = Set<StateSectionType>;
 
 interface ClaudeStateRendererBridgeAPI {
 	onSnapshotRequest: (
-		callback: (data: { requestId: string; request?: EditorStateRequest }) => void
+		callback: (data: {
+			requestId: string;
+			request?: EditorStateRequest;
+		}) => void
 	) => void;
 	sendSnapshotResponse: (
 		requestId: string,
@@ -39,13 +42,7 @@ interface ClaudeStateRendererBridgeAPI {
 	removeListeners: () => void;
 }
 
-function toJsonSafe<T>({
-	value,
-	fallback,
-}: {
-	value: T;
-	fallback: T;
-}): T {
+function toJsonSafe<T>({ value, fallback }: { value: T; fallback: T }): T {
 	try {
 		return JSON.parse(JSON.stringify(value)) as T;
 	} catch {
@@ -213,7 +210,9 @@ function buildProjectMetadataSnapshot(): ProjectMetadataSnapshot | null {
 			backgroundType: activeProject.backgroundType,
 			blurIntensity: activeProject.blurIntensity,
 			fps: activeProject.fps,
-			bookmarks: activeProject.bookmarks ? [...activeProject.bookmarks] : undefined,
+			bookmarks: activeProject.bookmarks
+				? [...activeProject.bookmarks]
+				: undefined,
 			canvasSize: {
 				width: activeProject.canvasSize.width,
 				height: activeProject.canvasSize.height,
@@ -241,7 +240,9 @@ function collectOpenDialogs(): ModalSnapshotItem[] {
 		}
 
 		return Array.from(unique)
-			.filter((node) => node.offsetParent !== null || node.getClientRects().length > 0)
+			.filter(
+				(node) => node.offsetParent !== null || node.getClientRects().length > 0
+			)
 			.map((node) => ({
 				role: node.getAttribute("role"),
 				ariaLabel: node.getAttribute("aria-label"),
@@ -272,7 +273,9 @@ function collectBlockingOverlays(): BlockerSnapshotItem[] {
 		}
 
 		return Array.from(unique)
-			.filter((node) => node.offsetParent !== null || node.getClientRects().length > 0)
+			.filter(
+				(node) => node.offsetParent !== null || node.getClientRects().length > 0
+			)
 			.map((node) => {
 				const testId = node.getAttribute("data-testid");
 				const className = node.className || null;
@@ -345,10 +348,12 @@ function buildEditorStateSnapshot({
 		}
 
 		if (shouldIncludeTimelineField({ include, field: "selection" })) {
-			timelineSnapshot.selection = timelineStore.selectedElements.map((item) => ({
-				trackId: item.trackId,
-				elementId: item.elementId,
-			}));
+			timelineSnapshot.selection = timelineStore.selectedElements.map(
+				(item) => ({
+					trackId: item.trackId,
+					elementId: item.elementId,
+				})
+			);
 		}
 
 		if (shouldIncludeTimelineField({ include, field: "playhead" })) {
@@ -380,7 +385,13 @@ function buildEditorStateSnapshot({
 		const { items, unsavedCount } = buildMediaItemsSnapshot();
 		mediaUnsavedCount = unsavedCount;
 
-		const counts = { total: 0, video: 0, audio: 0, image: 0, unsaved: unsavedCount };
+		const counts = {
+			total: 0,
+			video: 0,
+			audio: 0,
+			image: 0,
+			unsaved: unsavedCount,
+		};
 		for (const item of items) {
 			counts.total += 1;
 			if (item.type === "video") counts.video += 1;
@@ -414,8 +425,10 @@ function buildEditorStateSnapshot({
 		}
 		if (mediaUnsavedCount > 0) dirtySources.push("media:unsaved-items");
 
-		const currentToolRecord =
-			whiteDrawStore.currentTool as unknown as Record<string, unknown>;
+		const currentToolRecord = whiteDrawStore.currentTool as unknown as Record<
+			string,
+			unknown
+		>;
 
 		snapshot.state.editor = {
 			activePanel: {
@@ -426,7 +439,8 @@ function buildEditorStateSnapshot({
 			},
 			activeTool: {
 				id: getUnknownString({ record: currentToolRecord, key: "id" }) ?? null,
-				name: getUnknownString({ record: currentToolRecord, key: "name" }) ?? null,
+				name:
+					getUnknownString({ record: currentToolRecord, key: "name" }) ?? null,
 				source: whiteDrawStore.currentTool ? "white-draw" : null,
 			},
 			modals: {
@@ -467,10 +481,9 @@ function buildEditorStateSnapshot({
 
 function getClaudeStateBridge(): ClaudeStateRendererBridgeAPI | null {
 	try {
-		const claude =
-			window.electronAPI?.claude as
-				| ({ state?: ClaudeStateRendererBridgeAPI } & Record<string, unknown>)
-				| undefined;
+		const claude = window.electronAPI?.claude as
+			| ({ state?: ClaudeStateRendererBridgeAPI } & Record<string, unknown>)
+			| undefined;
 		return claude?.state ?? null;
 	} catch {
 		return null;
@@ -483,16 +496,16 @@ export function setupClaudeStateBridge(): void {
 
 	bridge.onSnapshotRequest(
 		(data: { requestId: string; request?: EditorStateRequest }) => {
-		try {
-			const snapshot = buildEditorStateSnapshot({ request: data.request });
-			bridge.sendSnapshotResponse(data.requestId, snapshot);
-		} catch (error) {
-			bridge.sendSnapshotResponse(
-				data.requestId,
-				undefined,
-				error instanceof Error ? error.message : String(error)
-			);
-		}
+			try {
+				const snapshot = buildEditorStateSnapshot({ request: data.request });
+				bridge.sendSnapshotResponse(data.requestId, snapshot);
+			} catch (error) {
+				bridge.sendSnapshotResponse(
+					data.requestId,
+					undefined,
+					error instanceof Error ? error.message : String(error)
+				);
+			}
 		}
 	);
 }

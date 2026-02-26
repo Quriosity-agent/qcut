@@ -81,11 +81,7 @@ export function getRequestCorrelationId({
 	}
 }
 
-function isTerminalCommand({
-	record,
-}: {
-	record: CommandRecord;
-}): boolean {
+function isTerminalCommand({ record }: { record: CommandRecord }): boolean {
 	try {
 		return record.state === "applied" || record.state === "failed";
 	} catch {
@@ -148,7 +144,9 @@ export function wrapRouterWithCorrelationTracking({
 					const failed = claudeCorrelationTracker.failCommand({
 						correlationId: started.correlationId,
 						error:
-							error instanceof Error ? error.message : "Unknown command failure",
+							error instanceof Error
+								? error.message
+								: "Unknown command failure",
 					});
 					setRequestCommandMeta({ req, record: failed });
 					throw error;
@@ -158,9 +156,15 @@ export function wrapRouterWithCorrelationTracking({
 		router.get = (pathname, handler) =>
 			originalGet(pathname, wrapHandler({ method: "GET", pathname, handler }));
 		router.post = (pathname, handler) =>
-			originalPost(pathname, wrapHandler({ method: "POST", pathname, handler }));
+			originalPost(
+				pathname,
+				wrapHandler({ method: "POST", pathname, handler })
+			);
 		router.patch = (pathname, handler) =>
-			originalPatch(pathname, wrapHandler({ method: "PATCH", pathname, handler }));
+			originalPatch(
+				pathname,
+				wrapHandler({ method: "PATCH", pathname, handler })
+			);
 		router.delete = (pathname, handler) =>
 			originalDelete(
 				pathname,

@@ -133,7 +133,10 @@ describe("EditorApiClient", () => {
 			const freshClient = new EditorApiClient({ baseUrl: BASE_URL });
 			const origFetch = globalThis.fetch;
 
-			globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+			globalThis.fetch = async (
+				input: RequestInfo | URL,
+				init?: RequestInit
+			) => {
 				const url = typeof input === "string" ? input : input.toString();
 				const method = init?.method ?? "GET";
 				const pathname = url.replace(BASE_URL, "").split("?")[0];

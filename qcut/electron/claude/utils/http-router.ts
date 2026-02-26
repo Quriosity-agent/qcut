@@ -6,7 +6,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parse } from "node:url";
 import { generateId } from "./helpers.js";
-import type { CommandLifecycle, CorrelationId } from "../../types/claude-api.js";
+import type {
+	CommandLifecycle,
+	CorrelationId,
+} from "../../types/claude-api.js";
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 

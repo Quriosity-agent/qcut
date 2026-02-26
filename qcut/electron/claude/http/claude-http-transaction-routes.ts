@@ -1,6 +1,9 @@
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
-import type { Transaction, TransactionRequest } from "../../types/claude-api.js";
+import type {
+	Transaction,
+	TransactionRequest,
+} from "../../types/claude-api.js";
 
 interface ClaudeHistoryEntry {
 	label: string;
@@ -77,11 +80,15 @@ export function registerTransactionRoutes({
 	try {
 		router.post("/api/claude/transaction/begin", async (req) => {
 			try {
-				if (req.body?.label !== undefined && typeof req.body.label !== "string") {
+				if (
+					req.body?.label !== undefined &&
+					typeof req.body.label !== "string"
+				) {
 					throw new HttpError(400, "Optional 'label' must be a string");
 				}
 				const transaction = await accessor.beginTransaction({
-					label: typeof req.body?.label === "string" ? req.body.label : undefined,
+					label:
+						typeof req.body?.label === "string" ? req.body.label : undefined,
 				});
 				return { transactionId: transaction.id };
 			} catch (error) {
@@ -111,7 +118,10 @@ export function registerTransactionRoutes({
 				) {
 					throw new HttpError(400, "Optional 'reason' must be a string");
 				}
-				return await accessor.rollbackTransaction(req.params.id, req.body?.reason);
+				return await accessor.rollbackTransaction(
+					req.params.id,
+					req.body?.reason
+				);
 			} catch (error) {
 				throw toHttpError({
 					error,

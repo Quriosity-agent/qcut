@@ -186,4 +186,3 @@ export interface ProjectMetadataSnapshot {
 	};
 	canvasMode: "preset" | "original" | "custom";
 }
-

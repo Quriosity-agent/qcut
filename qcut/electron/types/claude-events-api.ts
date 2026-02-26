@@ -54,4 +54,3 @@ export interface EventFilter {
 	after?: string;
 	source?: string;
 }
-

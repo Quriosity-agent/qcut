@@ -15,84 +15,198 @@ type ParamsSchemaSpec = {
 };
 
 const PARAM_PROPERTIES: Record<string, ParamProperty> = {
-	projectId: { type: "string", description: "Target project ID (--project-id)." },
+	projectId: {
+		type: "string",
+		description: "Target project ID (--project-id).",
+	},
 	mediaId: { type: "string", description: "Target media ID (--media-id)." },
-	elementId: { type: "string", description: "Target timeline element ID (--element-id)." },
+	elementId: {
+		type: "string",
+		description: "Target timeline element ID (--element-id).",
+	},
 	trackId: { type: "string", description: "Target track ID (--track-id)." },
 	jobId: { type: "string", description: "Async job ID (--job-id)." },
-	source: { type: "string", description: "Local file path or analysis source (--source)." },
+	source: {
+		type: "string",
+		description: "Local file path or analysis source (--source).",
+	},
 	url: { type: "string", description: "Remote URL to import (--url)." },
-	filename: { type: "string", description: "Optional output/import filename (--filename)." },
-	newName: { type: "string", description: "New project/media name (--new-name)." },
+	filename: {
+		type: "string",
+		description: "Optional output/import filename (--filename).",
+	},
+	newName: {
+		type: "string",
+		description: "New project/media name (--new-name).",
+	},
 	data: {
 		type: ["string", "object", "array"],
 		description: "JSON payload or @file input (--data).",
 	},
-	input: { type: "string", description: "CLI input alias used by some commands (--input)." },
-	items: { type: ["string", "array"], description: "Batch import items JSON (--items)." },
+	input: {
+		type: "string",
+		description: "CLI input alias used by some commands (--input).",
+	},
+	items: {
+		type: ["string", "array"],
+		description: "Batch import items JSON (--items).",
+	},
 	elements: {
 		type: ["string", "array"],
 		description: "Timeline elements or selection items JSON (--elements).",
 	},
-	updates: { type: ["string", "array"], description: "Batch update JSON payload (--updates)." },
-	changes: { type: ["string", "object"], description: "Element changes JSON (--changes)." },
-	cuts: { type: ["string", "array"], description: "Cut intervals JSON (--cuts)." },
-	timestamp: { type: ["number", "string"], description: "Timestamp in seconds (--timestamp)." },
-	timestamps: { type: "string", description: "Comma-separated frame timestamps (--timestamps)." },
-	outputFormat: { type: "string", description: "Requested output format (--output-format)." },
-	mode: { type: "string", description: "Command mode (e.g. arrange mode) (--mode)." },
+	updates: {
+		type: ["string", "array"],
+		description: "Batch update JSON payload (--updates).",
+	},
+	changes: {
+		type: ["string", "object"],
+		description: "Element changes JSON (--changes).",
+	},
+	cuts: {
+		type: ["string", "array"],
+		description: "Cut intervals JSON (--cuts).",
+	},
+	timestamp: {
+		type: ["number", "string"],
+		description: "Timestamp in seconds (--timestamp).",
+	},
+	timestamps: {
+		type: "string",
+		description: "Comma-separated frame timestamps (--timestamps).",
+	},
+	outputFormat: {
+		type: "string",
+		description: "Requested output format (--output-format).",
+	},
+	mode: {
+		type: "string",
+		description: "Command mode (e.g. arrange mode) (--mode).",
+	},
 	replace: { type: "boolean", description: "Replace on import (--replace)." },
-	ripple: { type: "boolean", description: "Enable ripple behavior (--ripple)." },
+	ripple: {
+		type: "boolean",
+		description: "Enable ripple behavior (--ripple).",
+	},
 	crossTrackRipple: {
 		type: "boolean",
 		description: "Enable cross-track ripple delete (--cross-track-ripple).",
 	},
-	splitTime: { type: "number", description: "Split point in seconds (--split-time)." },
-	toTrack: { type: "string", description: "Destination track ID (--to-track)." },
-	startTime: { type: "number", description: "Start time in seconds (--start-time)." },
+	splitTime: {
+		type: "number",
+		description: "Split point in seconds (--split-time).",
+	},
+	toTrack: {
+		type: "string",
+		description: "Destination track ID (--to-track).",
+	},
+	startTime: {
+		type: "number",
+		description: "Start time in seconds (--start-time).",
+	},
 	endTime: { type: "number", description: "End time in seconds (--end-time)." },
-	gap: { type: "number", description: "Gap or interval value in seconds (--gap)." },
-	poll: { type: "boolean", description: "Poll async job to completion (--poll)." },
-	pollInterval: { type: "number", description: "Polling interval seconds (--poll-interval)." },
+	gap: {
+		type: "number",
+		description: "Gap or interval value in seconds (--gap).",
+	},
+	poll: {
+		type: "boolean",
+		description: "Poll async job to completion (--poll).",
+	},
+	pollInterval: {
+		type: "number",
+		description: "Polling interval seconds (--poll-interval).",
+	},
 	timeout: { type: "number", description: "Timeout in seconds (--timeout)." },
 	model: { type: "string", description: "Model key (--model)." },
 	prompt: { type: "string", description: "Prompt text (--prompt)." },
 	text: { type: "string", description: "Text prompt or content (--text)." },
-	analysisType: { type: "string", description: "Analysis type (--analysis-type)." },
+	analysisType: {
+		type: "string",
+		description: "Analysis type (--analysis-type).",
+	},
 	imageUrl: { type: "string", description: "Input image URL (--image-url)." },
 	videoUrl: { type: "string", description: "Input video URL (--video-url)." },
-	duration: { type: ["number", "string"], description: "Duration in seconds (--duration)." },
-	aspectRatio: { type: "string", description: "Aspect ratio (--aspect-ratio)." },
-	resolution: { type: "string", description: "Output resolution (--resolution)." },
-	negativePrompt: { type: "string", description: "Negative prompt (--negative-prompt)." },
+	duration: {
+		type: ["number", "string"],
+		description: "Duration in seconds (--duration).",
+	},
+	aspectRatio: {
+		type: "string",
+		description: "Aspect ratio (--aspect-ratio).",
+	},
+	resolution: {
+		type: "string",
+		description: "Output resolution (--resolution).",
+	},
+	negativePrompt: {
+		type: "string",
+		description: "Negative prompt (--negative-prompt).",
+	},
 	addToTimeline: {
 		type: "boolean",
 		description: "Add generated result to timeline (--add-to-timeline).",
 	},
-	preset: { type: "string", description: "Export preset identifier (--preset)." },
+	preset: {
+		type: "string",
+		description: "Export preset identifier (--preset).",
+	},
 	target: { type: "string", description: "Recommendation target (--target)." },
-	message: { type: "string", description: "Diagnostic message text (--message)." },
+	message: {
+		type: "string",
+		description: "Diagnostic message text (--message).",
+	},
 	html: { type: "string", description: "HTML payload or @file path (--html)." },
-	toolName: { type: "string", description: "MCP preview tool label (--tool-name)." },
-	sourceId: { type: "string", description: "Screen capture source ID (--source-id)." },
-	discard: { type: "boolean", description: "Discard current recording on stop (--discard)." },
+	toolName: {
+		type: "string",
+		description: "MCP preview tool label (--tool-name).",
+	},
+	sourceId: {
+		type: "string",
+		description: "Screen capture source ID (--source-id).",
+	},
+	discard: {
+		type: "boolean",
+		description: "Discard current recording on stop (--discard).",
+	},
 	panel: { type: "string", description: "UI panel name (--panel)." },
 	tab: { type: "string", description: "Nested panel tab key (--tab)." },
 	script: { type: "string", description: "Script file path (--script)." },
 	language: { type: "string", description: "Language code (--language)." },
 	provider: { type: "string", description: "Provider key (--provider)." },
 	threshold: { type: "number", description: "Threshold value (--threshold)." },
-	includeFillers: { type: "boolean", description: "Include filler suggestions (--include-fillers)." },
-	includeSilences: { type: "boolean", description: "Include silence suggestions (--include-silences)." },
-	includeScenes: { type: "boolean", description: "Include scene suggestions (--include-scenes)." },
-	removeFillers: { type: "boolean", description: "Remove filler words (--remove-fillers)." },
-	removeSilences: { type: "boolean", description: "Remove silence intervals (--remove-silences)." },
-	dryRun: { type: "boolean", description: "Compute edits without applying (--dry-run)." },
+	includeFillers: {
+		type: "boolean",
+		description: "Include filler suggestions (--include-fillers).",
+	},
+	includeSilences: {
+		type: "boolean",
+		description: "Include silence suggestions (--include-silences).",
+	},
+	includeScenes: {
+		type: "boolean",
+		description: "Include scene suggestions (--include-scenes).",
+	},
+	removeFillers: {
+		type: "boolean",
+		description: "Remove filler words (--remove-fillers).",
+	},
+	removeSilences: {
+		type: "boolean",
+		description: "Remove silence intervals (--remove-silences).",
+	},
+	dryRun: {
+		type: "boolean",
+		description: "Compute edits without applying (--dry-run).",
+	},
 	loadSpeech: {
 		type: "boolean",
 		description: "Load transcription into speech panel (--load-speech).",
 	},
-	outputDir: { type: "string", description: "Output path/directory (--output-dir)." },
+	outputDir: {
+		type: "string",
+		description: "Output path/directory (--output-dir).",
+	},
 	host: { type: "string", description: "QCut API host (--host)." },
 	port: { type: ["string", "number"], description: "QCut API port (--port)." },
 	token: { type: "string", description: "QCut API bearer token (--token)." },
@@ -269,13 +383,7 @@ function uniqKeys({ values }: { values: string[] }): string[] {
 	}
 }
 
-function removeKey({
-	values,
-	key,
-}: {
-	values: string[];
-	key: string;
-}): void {
+function removeKey({ values, key }: { values: string[]; key: string }): void {
 	try {
 		const index = values.indexOf(key);
 		if (index >= 0) {
@@ -286,7 +394,10 @@ function removeKey({
 	}
 }
 
-function createParamsSchema({ required, optional }: ParamsSchemaSpec): CommandRegistryEntry["paramsSchema"] {
+function createParamsSchema({
+	required,
+	optional,
+}: ParamsSchemaSpec): CommandRegistryEntry["paramsSchema"] {
 	try {
 		const safeRequired = uniqKeys({ values: required ?? [] });
 		const safeOptional = uniqKeys({ values: optional ?? [] }).filter(
@@ -329,10 +440,18 @@ function parseCommand({ command }: { command: string }): {
 	}
 }
 
-function getCommandCategory({ command }: { command: string }): ClaudeCapabilityCategory {
+function getCommandCategory({
+	command,
+}: {
+	command: string;
+}): ClaudeCapabilityCategory {
 	try {
 		const { module } = parseCommand({ command });
-		if (module === "media" || module === "screen-recording" || module === "screenshot") {
+		if (
+			module === "media" ||
+			module === "screen-recording" ||
+			module === "screenshot"
+		) {
 			return CLAUDE_CAPABILITY_CATEGORIES.MEDIA;
 		}
 		if (module === "project" || module === "navigator") {
@@ -372,11 +491,13 @@ function getRequiredCapability({ command }: { command: string }): string {
 		if (command.startsWith("editor:moyin:")) return "state.moyin.pipeline";
 		if (command === "editor:mcp:forward-html") return "events.mcpPreview";
 		if (command.startsWith("editor:navigator:")) return "project.navigator";
-		if (command.startsWith("editor:screen-recording:")) return "media.screenRecording";
+		if (command.startsWith("editor:screen-recording:"))
+			return "media.screenRecording";
 		if (command === "editor:screenshot:capture") return "media.screenshot";
 		if (command.startsWith("editor:remotion:")) {
 			if (command === "editor:remotion:export") return "export.remotion";
-			if (command === "editor:remotion:update-props") return "timeline.elements";
+			if (command === "editor:remotion:update-props")
+				return "timeline.elements";
 			return "timeline.read";
 		}
 		if (command.startsWith("editor:media:")) {
@@ -387,11 +508,17 @@ function getRequiredCapability({ command }: { command: string }): string {
 			return "media.library";
 		}
 		if (command.startsWith("editor:project:")) {
-			if (command === "editor:project:settings" || command === "editor:project:update-settings") {
+			if (
+				command === "editor:project:settings" ||
+				command === "editor:project:update-settings"
+			) {
 				return "project.settings";
 			}
 			if (command === "editor:project:stats") return "project.stats";
-			if (command === "editor:project:summary" || command === "editor:project:report") {
+			if (
+				command === "editor:project:summary" ||
+				command === "editor:project:report"
+			) {
 				return "project.summary";
 			}
 			return "project.crud";
@@ -417,7 +544,10 @@ function getRequiredCapability({ command }: { command: string }): string {
 			return "timeline.elements";
 		}
 		if (command.startsWith("editor:editing:")) {
-			if (command === "editor:editing:suggest-cuts" || command === "editor:editing:suggest-status") {
+			if (
+				command === "editor:editing:suggest-cuts" ||
+				command === "editor:editing:suggest-status"
+			) {
 				return "analysis.suggestCuts";
 			}
 			if (
@@ -430,14 +560,22 @@ function getRequiredCapability({ command }: { command: string }): string {
 			return "timeline.cuts";
 		}
 		if (command.startsWith("editor:analyze:")) {
-			return command === "editor:analyze:models" ? "analysis.models" : "analysis.video";
+			return command === "editor:analyze:models"
+				? "analysis.models"
+				: "analysis.video";
 		}
-		if (command.startsWith("editor:transcribe:")) return "analysis.transcription";
+		if (command.startsWith("editor:transcribe:"))
+			return "analysis.transcription";
 		if (command.startsWith("editor:generate:")) {
-			return command === "editor:generate:models" ? "analysis.models" : "analysis.generate";
+			return command === "editor:generate:models"
+				? "analysis.models"
+				: "analysis.generate";
 		}
 		if (command.startsWith("editor:export:")) {
-			if (command === "editor:export:presets" || command === "editor:export:recommend") {
+			if (
+				command === "editor:export:presets" ||
+				command === "editor:export:recommend"
+			) {
 				return "export.presets";
 			}
 			return "export.jobs";
@@ -464,7 +602,11 @@ function getCommandDescription({ command }: { command: string }): string {
 	}
 }
 
-function withCommonConnectionOptions({ optional }: { optional?: string[] }): string[] {
+function withCommonConnectionOptions({
+	optional,
+}: {
+	optional?: string[];
+}): string[] {
 	try {
 		return uniqKeys({
 			values: ["host", "port", "token", "timeout", "json", ...(optional ?? [])],
@@ -474,11 +616,17 @@ function withCommonConnectionOptions({ optional }: { optional?: string[] }): str
 	}
 }
 
-function getCommandParamsSchema({ command }: { command: string }): CommandRegistryEntry["paramsSchema"] {
+function getCommandParamsSchema({
+	command,
+}: {
+	command: string;
+}): CommandRegistryEntry["paramsSchema"] {
 	try {
 		switch (command) {
 			case "editor:health":
-				return createParamsSchema({ optional: withCommonConnectionOptions({}) });
+				return createParamsSchema({
+					optional: withCommonConnectionOptions({}),
+				});
 			case "editor:media:list":
 				return createParamsSchema({
 					required: ["projectId"],
@@ -553,7 +701,11 @@ function getCommandParamsSchema({ command }: { command: string }): CommandRegist
 				add("input", "outputFormat", "mode", "replace");
 			}
 			if (action === "add-element") required.push("data");
-			if (action === "batch-add" || action === "batch-delete" || action === "select") {
+			if (
+				action === "batch-add" ||
+				action === "batch-delete" ||
+				action === "select"
+			) {
 				required.push("elements");
 			}
 			if (action === "batch-update") required.push("updates");
@@ -572,7 +724,8 @@ function getCommandParamsSchema({ command }: { command: string }): CommandRegist
 			if (action === "batch-cuts") required.push("elementId", "cuts");
 			if (action === "batch-cuts") add("ripple");
 			if (action === "delete-range") required.push("startTime", "endTime");
-			if (action === "delete-range") add("trackId", "ripple", "crossTrackRipple");
+			if (action === "delete-range")
+				add("trackId", "ripple", "crossTrackRipple");
 			if (action === "auto-edit") {
 				required.push("elementId", "mediaId");
 				add(
@@ -671,7 +824,8 @@ function getCommandParamsSchema({ command }: { command: string }): CommandRegist
 				removeKey({ values: required, key: "projectId" });
 			}
 			if (action === "recommend") required.push("target");
-			if (action === "start") add("preset", "data", "outputDir", "poll", "pollInterval");
+			if (action === "start")
+				add("preset", "data", "outputDir", "poll", "pollInterval");
 			if (action === "status") required.push("jobId");
 		}
 
@@ -732,15 +886,21 @@ function getCommandParamsSchema({ command }: { command: string }): CommandRegist
 	}
 }
 
-const COMMAND_REGISTRY: CommandRegistryEntry[] = EDITOR_COMMANDS.map((name) => ({
-	name,
-	description: getCommandDescription({ command: name }),
-	paramsSchema: getCommandParamsSchema({ command: name }),
-	requiredCapability: getRequiredCapability({ command: name }),
-	category: getCommandCategory({ command: name }),
-}));
+const COMMAND_REGISTRY: CommandRegistryEntry[] = EDITOR_COMMANDS.map(
+	(name) => ({
+		name,
+		description: getCommandDescription({ command: name }),
+		paramsSchema: getCommandParamsSchema({ command: name }),
+		requiredCapability: getRequiredCapability({ command: name }),
+		category: getCommandCategory({ command: name }),
+	})
+);
 
-function cloneEntry({ entry }: { entry: CommandRegistryEntry }): CommandRegistryEntry {
+function cloneEntry({
+	entry,
+}: {
+	entry: CommandRegistryEntry;
+}): CommandRegistryEntry {
 	try {
 		return {
 			...entry,

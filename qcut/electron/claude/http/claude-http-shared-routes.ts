@@ -392,7 +392,10 @@ export function registerSharedRoutes(
 		"/api/claude/timeline/:projectId/elements/:elementId",
 		async (req) => {
 			const win = accessor.getWindow();
-			win.webContents.send("claude:timeline:removeElement", req.params.elementId);
+			win.webContents.send(
+				"claude:timeline:removeElement",
+				req.params.elementId
+			);
 			return { removed: true };
 		}
 	);

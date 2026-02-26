@@ -158,11 +158,7 @@ function trimStoredTransactions(): void {
 	}
 }
 
-function normalizeTimeoutMs({
-	timeoutMs,
-}: {
-	timeoutMs?: number;
-}): number {
+function normalizeTimeoutMs({ timeoutMs }: { timeoutMs?: number }): number {
 	if (typeof timeoutMs !== "number" || Number.isNaN(timeoutMs)) {
 		return DEFAULT_TRANSACTION_TIMEOUT_MS;
 	}
@@ -200,7 +196,10 @@ function ensureActiveTransactionMatches({
 			code: "TRANSACTION_NOT_FOUND",
 		});
 	}
-	if (activeTransactionId !== transactionId || transaction.state !== TRANSACTION_STATE.active) {
+	if (
+		activeTransactionId !== transactionId ||
+		transaction.state !== TRANSACTION_STATE.active
+	) {
 		throw new ClaudeTransactionError({
 			message: `Transaction is not active: ${transactionId}`,
 			statusCode: 409,
@@ -440,7 +439,11 @@ function scheduleTransactionTimeout({
 			void timeoutActiveTransaction({ transaction });
 		}, transaction.timeoutMs);
 	} catch (error) {
-		claudeLog.error(HANDLER_NAME, "Failed to schedule transaction timeout", error);
+		claudeLog.error(
+			HANDLER_NAME,
+			"Failed to schedule transaction timeout",
+			error
+		);
 	}
 }
 
@@ -457,7 +460,10 @@ export async function beginTransaction({
 		const timeoutMs = normalizeTimeoutMs({ timeoutMs: request?.timeoutMs });
 		const transactionId = generateId("txn");
 		const expiresAt = createdAt + timeoutMs;
-		const label = typeof request?.label === "string" ? request.label.trim() || undefined : undefined;
+		const label =
+			typeof request?.label === "string"
+				? request.label.trim() || undefined
+				: undefined;
 
 		const transaction: ManagedTransaction = {
 			id: transactionId,
@@ -523,7 +529,8 @@ export async function beginTransaction({
 			throw error;
 		}
 		throw new ClaudeTransactionError({
-			message: error instanceof Error ? error.message : "Failed to begin transaction",
+			message:
+				error instanceof Error ? error.message : "Failed to begin transaction",
 			statusCode: 500,
 			code: "TRANSACTION_BEGIN_FAILED",
 		});
@@ -578,7 +585,8 @@ export async function commitTransaction({
 			throw error;
 		}
 		throw new ClaudeTransactionError({
-			message: error instanceof Error ? error.message : "Failed to commit transaction",
+			message:
+				error instanceof Error ? error.message : "Failed to commit transaction",
 			statusCode: 500,
 			code: "TRANSACTION_COMMIT_FAILED",
 		});
@@ -632,7 +640,10 @@ export async function rollbackTransaction({
 			throw error;
 		}
 		throw new ClaudeTransactionError({
-			message: error instanceof Error ? error.message : "Failed to rollback transaction",
+			message:
+				error instanceof Error
+					? error.message
+					: "Failed to rollback transaction",
 			statusCode: 500,
 			code: "TRANSACTION_ROLLBACK_FAILED",
 		});
@@ -730,7 +741,8 @@ export async function getHistorySummary({
 		return await requestHistoryFromRendererInternal({ win });
 	} catch (error) {
 		throw new ClaudeTransactionError({
-			message: error instanceof Error ? error.message : "History request failed",
+			message:
+				error instanceof Error ? error.message : "History request failed",
 			statusCode: 500,
 			code: "HISTORY_FAILED",
 		});

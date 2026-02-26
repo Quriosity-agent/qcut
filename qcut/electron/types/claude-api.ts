@@ -11,8 +11,15 @@ export interface ClaudeAPIResponse<T> {
 }
 
 export type CorrelationId = string;
-export const CLAUDE_COMMAND_STATES = { PENDING: "pending", ACCEPTED: "accepted", APPLYING: "applying", APPLIED: "applied", FAILED: "failed" } as const;
-export type CommandState = (typeof CLAUDE_COMMAND_STATES)[keyof typeof CLAUDE_COMMAND_STATES];
+export const CLAUDE_COMMAND_STATES = {
+	PENDING: "pending",
+	ACCEPTED: "accepted",
+	APPLYING: "applying",
+	APPLIED: "applied",
+	FAILED: "failed",
+} as const;
+export type CommandState =
+	(typeof CLAUDE_COMMAND_STATES)[keyof typeof CLAUDE_COMMAND_STATES];
 
 export interface CommandLifecycle {
 	state: CommandState;
@@ -788,8 +795,32 @@ export interface FillerAnalysisResult {
 	totalFillerTime: number;
 	totalSilenceTime: number;
 }
-export const TRANSACTION_STATE = { active: "active", committed: "committed", rolledBack: "rolledBack", timedOut: "timedOut" } as const;
-export type TransactionState = (typeof TRANSACTION_STATE)[keyof typeof TRANSACTION_STATE];
-export interface TransactionRequest { label?: string; timeoutMs?: number; }
-export interface Transaction { id: string; label?: string; state: TransactionState; createdAt: number; updatedAt: number; expiresAt: number; error?: string; }
-export type { ApiVersionInfo, Capability, CapabilityManifest, CommandRegistryEntry } from "./claude-api-capabilities.js"; export * from "./claude-events-api"; export * from "./claude-state-api";
+export const TRANSACTION_STATE = {
+	active: "active",
+	committed: "committed",
+	rolledBack: "rolledBack",
+	timedOut: "timedOut",
+} as const;
+export type TransactionState =
+	(typeof TRANSACTION_STATE)[keyof typeof TRANSACTION_STATE];
+export interface TransactionRequest {
+	label?: string;
+	timeoutMs?: number;
+}
+export interface Transaction {
+	id: string;
+	label?: string;
+	state: TransactionState;
+	createdAt: number;
+	updatedAt: number;
+	expiresAt: number;
+	error?: string;
+}
+export type {
+	ApiVersionInfo,
+	Capability,
+	CapabilityManifest,
+	CommandRegistryEntry,
+} from "./claude-api-capabilities.js";
+export * from "./claude-events-api";
+export * from "./claude-state-api";

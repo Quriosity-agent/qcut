@@ -22,7 +22,10 @@ type ActiveTransactionContext = {
 	preSelection: TimelineStore["selectedElements"];
 };
 
-type TimelineHistoryPatches = Pick<TimelineStore, "pushHistory" | "undo" | "redo">;
+type TimelineHistoryPatches = Pick<
+	TimelineStore,
+	"pushHistory" | "undo" | "redo"
+>;
 
 type TransactionResponse = {
 	success: boolean;
@@ -57,7 +60,10 @@ function createHistoryEntry({
 	timestamp?: number;
 }): TransactionHistoryEntry {
 	return {
-		label: typeof label === "string" && label.trim() ? label.trim() : DEFAULT_HISTORY_LABEL,
+		label:
+			typeof label === "string" && label.trim()
+				? label.trim()
+				: DEFAULT_HISTORY_LABEL,
 		timestamp: typeof timestamp === "number" ? timestamp : Date.now(),
 		transactionId,
 	};
@@ -79,7 +85,10 @@ function syncHistoryMetadataWithStore(): void {
 			redoEntries.push(createHistoryEntry({ label: DEFAULT_HISTORY_LABEL }));
 		}
 	} catch (error) {
-		debugWarn("[ClaudeTransactionBridge] Failed to sync history metadata:", error);
+		debugWarn(
+			"[ClaudeTransactionBridge] Failed to sync history metadata:",
+			error
+		);
 	}
 }
 
@@ -217,7 +226,10 @@ function installHistoryPatches(): void {
 		syncHistoryMetadataWithStore();
 		debugLog("[ClaudeTransactionBridge] Installed timeline history patches");
 	} catch (error) {
-		debugError("[ClaudeTransactionBridge] Failed to install history patches:", error);
+		debugError(
+			"[ClaudeTransactionBridge] Failed to install history patches:",
+			error
+		);
 	}
 }
 
@@ -235,7 +247,10 @@ function restoreHistoryPatches(): void {
 		originalHistoryPatches = null;
 		debugLog("[ClaudeTransactionBridge] Restored timeline history patches");
 	} catch (error) {
-		debugError("[ClaudeTransactionBridge] Failed to restore history patches:", error);
+		debugError(
+			"[ClaudeTransactionBridge] Failed to restore history patches:",
+			error
+		);
 	}
 }
 
@@ -258,7 +273,10 @@ function sendBeginResponse({
 	try {
 		api.sendBeginResponse(requestId, result);
 	} catch (error) {
-		debugError("[ClaudeTransactionBridge] Failed to send begin response:", error);
+		debugError(
+			"[ClaudeTransactionBridge] Failed to send begin response:",
+			error
+		);
 	}
 }
 
@@ -274,7 +292,10 @@ function sendCommitResponse({
 	try {
 		api.sendCommitResponse(requestId, result);
 	} catch (error) {
-		debugError("[ClaudeTransactionBridge] Failed to send commit response:", error);
+		debugError(
+			"[ClaudeTransactionBridge] Failed to send commit response:",
+			error
+		);
 	}
 }
 
@@ -345,7 +366,9 @@ export function setupClaudeTransactionBridge(): void {
 	try {
 		const api = getTransactionAPI();
 		if (!api) {
-			debugWarn("[ClaudeTransactionBridge] Claude Transaction API not available");
+			debugWarn(
+				"[ClaudeTransactionBridge] Claude Transaction API not available"
+			);
 			return;
 		}
 

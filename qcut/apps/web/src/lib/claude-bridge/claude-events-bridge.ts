@@ -334,7 +334,9 @@ function setupTimelineSubscriptions(): void {
 
 	const unsubscribe = useTimelineStore.subscribe((state) => {
 		try {
-			const nextTimeline = buildTimelineElementSnapshotMap({ tracks: state.tracks });
+			const nextTimeline = buildTimelineElementSnapshotMap({
+				tracks: state.tracks,
+			});
 			const projectId = getActiveProjectId();
 
 			for (const [elementId, nextSnapshot] of nextTimeline) {

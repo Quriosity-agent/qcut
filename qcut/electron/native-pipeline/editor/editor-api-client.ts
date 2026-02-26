@@ -215,7 +215,11 @@ export class EditorApiClient {
 				method: "POST",
 				path,
 			});
-			return await this.request<T>("POST", `${this.config.baseUrl}${path}`, body);
+			return await this.request<T>(
+				"POST",
+				`${this.config.baseUrl}${path}`,
+				body
+			);
 		} catch (error) {
 			throw error;
 		}
@@ -227,7 +231,11 @@ export class EditorApiClient {
 				method: "PATCH",
 				path,
 			});
-			return await this.request<T>("PATCH", `${this.config.baseUrl}${path}`, body);
+			return await this.request<T>(
+				"PATCH",
+				`${this.config.baseUrl}${path}`,
+				body
+			);
 		} catch (error) {
 			throw error;
 		}
@@ -239,7 +247,11 @@ export class EditorApiClient {
 				method: "DELETE",
 				path,
 			});
-			return await this.request<T>("DELETE", `${this.config.baseUrl}${path}`, body);
+			return await this.request<T>(
+				"DELETE",
+				`${this.config.baseUrl}${path}`,
+				body
+			);
 		} catch (error) {
 			throw error;
 		}
@@ -393,7 +405,10 @@ export class EditorApiClient {
 			if (path.startsWith("/api/claude/diagnostics/")) {
 				return { name: "analysis.diagnostics" };
 			}
-			if (path === "/api/claude/analyze/models" || path === "/api/claude/generate/models") {
+			if (
+				path === "/api/claude/analyze/models" ||
+				path === "/api/claude/generate/models"
+			) {
 				return { name: "analysis.models" };
 			}
 			if (path.startsWith("/api/claude/transcribe/")) {
@@ -408,7 +423,10 @@ export class EditorApiClient {
 				}
 				return { name: "analysis.video" };
 			}
-			if (path === "/api/claude/export/presets" || path.includes("/recommend/")) {
+			if (
+				path === "/api/claude/export/presets" ||
+				path.includes("/recommend/")
+			) {
 				return { name: "export.presets" };
 			}
 			if (path.startsWith("/api/claude/export/")) {
@@ -531,7 +549,11 @@ export class EditorApiClient {
 		}
 	}
 
-	private parseSemver({ value }: { value: string }): [number, number, number] | null {
+	private parseSemver({
+		value,
+	}: {
+		value: string;
+	}): [number, number, number] | null {
 		try {
 			const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
 			if (!match) {

@@ -155,7 +155,10 @@ function sanitizeRendererEventPayload({
 		const category = payload.category;
 		const source = payload.source;
 
-		if (typeof category !== "string" || !allowedCategories.has(category as EventCategory)) {
+		if (
+			typeof category !== "string" ||
+			!allowedCategories.has(category as EventCategory)
+		) {
 			return null;
 		}
 
@@ -164,13 +167,17 @@ function sanitizeRendererEventPayload({
 		}
 
 		const data = isObjectRecord(payload.data) ? payload.data : {};
-		const eventId = typeof payload.eventId === "string" ? payload.eventId : undefined;
+		const eventId =
+			typeof payload.eventId === "string" ? payload.eventId : undefined;
 		const timestamp =
-			typeof payload.timestamp === "number" && Number.isFinite(payload.timestamp)
+			typeof payload.timestamp === "number" &&
+			Number.isFinite(payload.timestamp)
 				? payload.timestamp
 				: undefined;
 		const correlationId =
-			typeof payload.correlationId === "string" ? payload.correlationId : undefined;
+			typeof payload.correlationId === "string"
+				? payload.correlationId
+				: undefined;
 		const action =
 			typeof payload.action === "string"
 				? (payload.action as EditorEventAction)
@@ -196,7 +203,8 @@ export function emitClaudeEvent(input: ClaudeEventEmitInput): EditorEvent {
 			throw new Error(`Unsupported event category: ${input.category}`);
 		}
 
-		const action = input.action ?? getActionFromCategory({ category: input.category });
+		const action =
+			input.action ?? getActionFromCategory({ category: input.category });
 		const timestamp =
 			typeof input.timestamp === "number" && Number.isFinite(input.timestamp)
 				? input.timestamp
@@ -206,7 +214,9 @@ export function emitClaudeEvent(input: ClaudeEventEmitInput): EditorEvent {
 			timestamp,
 			category: input.category,
 			action,
-			correlationId: input.correlationId?.trim() ? input.correlationId : undefined,
+			correlationId: input.correlationId?.trim()
+				? input.correlationId
+				: undefined,
 			data: isObjectRecord(input.data) ? input.data : {},
 			source: input.source,
 		};
@@ -216,7 +226,8 @@ export function emitClaudeEvent(input: ClaudeEventEmitInput): EditorEvent {
 		claudeEventsEmitter.emit(CLAUDE_EVENTS_EMITTED, nextEvent);
 		return nextEvent;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Unknown emit error";
+		const message =
+			error instanceof Error ? error.message : "Unknown emit error";
 		claudeLog.warn(HANDLER_NAME, `Failed to emit event: ${message}`);
 		throw error instanceof Error ? error : new Error(message);
 	}
@@ -321,4 +332,3 @@ module.exports = {
 	subscribeClaudeEvents,
 	clearClaudeEventsForTests,
 };
-

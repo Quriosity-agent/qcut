@@ -8,7 +8,9 @@ const MAX_EVENTS_LIMIT = 1000;
 const DEFAULT_SSE_POLL_MS = 100;
 const SSE_HEARTBEAT_MS = 15_000;
 
-type ListEventsFn = (filter: EventFilter) => Promise<EditorEvent[]> | EditorEvent[];
+type ListEventsFn = (
+	filter: EventFilter
+) => Promise<EditorEvent[]> | EditorEvent[];
 
 type SubscribeEventsFn = (args: {
 	listener: (event: EditorEvent) => void;
@@ -25,11 +27,7 @@ interface ClaudeEventsStreamOptions extends ClaudeEventsRouteOptions {
 	pollIntervalMs?: number;
 }
 
-function parseLimit({
-	value,
-}: {
-	value?: string;
-}): number | undefined {
+function parseLimit({ value }: { value?: string }): number | undefined {
 	try {
 		if (!value) {
 			return undefined;
@@ -53,7 +51,8 @@ function parseFilterFromQuery({
 }): EventFilter {
 	try {
 		const limit = parseLimit({ value: query.limit });
-		const category = typeof query.category === "string" ? query.category : undefined;
+		const category =
+			typeof query.category === "string" ? query.category : undefined;
 		const source = typeof query.source === "string" ? query.source : undefined;
 		const afterRaw =
 			typeof query.after === "string" && query.after.trim()
@@ -285,35 +284,38 @@ export function handleClaudeEventsStreamRequest({
 				},
 			});
 		} else {
-			pollTimer = setInterval(() => {
-				if (pollInFlight || closed) {
-					return;
-				}
-
-				pollInFlight = true;
-				void (async () => {
-					try {
-						const events = await listEvents({
-							...baseFilter,
-							after: lastEventId,
-							limit: baseFilter.limit ?? DEFAULT_EVENTS_LIMIT,
-						});
-
-						for (const event of events) {
-							if (closed || res.writableEnded) {
-								cleanup();
-								return;
-							}
-							writeSseEvent({ res, event });
-							updateLastEventId(event.eventId);
-						}
-					} catch {
-						cleanup();
-					} finally {
-						pollInFlight = false;
+			pollTimer = setInterval(
+				() => {
+					if (pollInFlight || closed) {
+						return;
 					}
-				})();
-			}, Math.max(50, pollIntervalMs));
+
+					pollInFlight = true;
+					void (async () => {
+						try {
+							const events = await listEvents({
+								...baseFilter,
+								after: lastEventId,
+								limit: baseFilter.limit ?? DEFAULT_EVENTS_LIMIT,
+							});
+
+							for (const event of events) {
+								if (closed || res.writableEnded) {
+									cleanup();
+									return;
+								}
+								writeSseEvent({ res, event });
+								updateLastEventId(event.eventId);
+							}
+						} catch {
+							cleanup();
+						} finally {
+							pollInFlight = false;
+						}
+					})();
+				},
+				Math.max(50, pollIntervalMs)
+			);
 		}
 
 		req.on("close", cleanup);
@@ -337,4 +339,3 @@ export function handleClaudeEventsStreamRequest({
 		return true;
 	}
 }
-

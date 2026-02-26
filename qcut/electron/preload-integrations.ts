@@ -467,7 +467,9 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			},
 			onCommit: (callback) => {
 				ipcRenderer.removeAllListeners("claude:transaction:commit");
-				ipcRenderer.on("claude:transaction:commit", (_, data) => callback(data));
+				ipcRenderer.on("claude:transaction:commit", (_, data) =>
+					callback(data)
+				);
 			},
 			sendCommitResponse: (requestId, result) => {
 				ipcRenderer.send("claude:transaction:commit:response", {

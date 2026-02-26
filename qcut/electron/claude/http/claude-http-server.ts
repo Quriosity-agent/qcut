@@ -123,7 +123,8 @@ export function startClaudeHTTPServer(
 			batchDeleteElements(getWindow(), elements, ripple, correlationId),
 		arrangeTimeline: (data, correlationId) =>
 			arrangeTimeline(getWindow(), data, correlationId),
-		beginTransaction: (request) => beginTransaction({ win: getWindow(), request }),
+		beginTransaction: (request) =>
+			beginTransaction({ win: getWindow(), request }),
 		commitTransaction: (transactionId) => commitTransaction({ transactionId }),
 		rollbackTransaction: (transactionId, reason) =>
 			rollbackTransaction({ transactionId, reason }),
@@ -173,7 +174,7 @@ export function startClaudeHTTPServer(
 	// ==========================================================================
 	// Create and start the server
 	// ==========================================================================
-server = createServer((req, res) => {
+	server = createServer((req, res) => {
 		setCorsHeaders(res);
 		let requestCorrelationId = "";
 		try {
@@ -227,7 +228,8 @@ server = createServer((req, res) => {
 				req,
 				res,
 				listEvents: async (filter) => getClaudeEvents(filter),
-				subscribeToEvents: ({ listener }) => subscribeClaudeEvents({ listener }),
+				subscribeToEvents: ({ listener }) =>
+					subscribeClaudeEvents({ listener }),
 			})
 		) {
 			return;

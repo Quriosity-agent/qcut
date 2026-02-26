@@ -76,4 +76,3 @@ export function setupClaudeStateIPC(): void {
 	claudeLog.info(HANDLER_NAME, "Setting up State IPC handlers...");
 	claudeLog.info(HANDLER_NAME, "State IPC handlers registered");
 }
-

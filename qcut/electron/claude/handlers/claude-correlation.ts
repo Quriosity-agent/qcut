@@ -11,11 +11,7 @@ const DEFAULT_WAIT_TIMEOUT_MS = 30_000;
 
 type CommandWaiter = (record: CommandRecord | null) => void;
 
-function isTerminalState({
-	state,
-}: {
-	state: CommandState;
-}): boolean {
+function isTerminalState({ state }: { state: CommandState }): boolean {
 	try {
 		return state === "applied" || state === "failed";
 	} catch {
@@ -31,11 +27,7 @@ function cloneValue<T>({ value }: { value: T }): T {
 	}
 }
 
-function cloneRecord({
-	record,
-}: {
-	record: CommandRecord;
-}): CommandRecord {
+function cloneRecord({ record }: { record: CommandRecord }): CommandRecord {
 	try {
 		return {
 			...record,
@@ -129,8 +121,8 @@ export class CorrelationTracker {
 			return cloneRecord({ record });
 		} catch (error) {
 			return {
-				correlationId:
-					(correlationId ?? generateCorrelationId()) as CorrelationId,
+				correlationId: (correlationId ??
+					generateCorrelationId()) as CorrelationId,
 				command,
 				params: params ?? {},
 				state: "failed",
@@ -233,11 +225,7 @@ export class CorrelationTracker {
 		}
 	}
 
-	listCommands({
-		limit,
-	}: {
-		limit?: number;
-	} = {}): CommandRecord[] {
+	listCommands({ limit }: { limit?: number } = {}): CommandRecord[] {
 		try {
 			const resolvedLimit =
 				typeof limit === "number" && Number.isFinite(limit) && limit > 0
@@ -276,7 +264,9 @@ export class CorrelationTracker {
 			}
 
 			const safeTimeout =
-				typeof timeoutMs === "number" && timeoutMs > 0 ? timeoutMs : DEFAULT_WAIT_TIMEOUT_MS;
+				typeof timeoutMs === "number" && timeoutMs > 0
+					? timeoutMs
+					: DEFAULT_WAIT_TIMEOUT_MS;
 
 			return await new Promise<CommandRecord | null>((resolve) => {
 				const waiter: CommandWaiter = (updatedRecord) => {
@@ -315,7 +305,9 @@ export class CorrelationTracker {
 					try {
 						cleanup();
 						const currentRecord = this.records.get(correlationId);
-						resolve(currentRecord ? cloneRecord({ record: currentRecord }) : null);
+						resolve(
+							currentRecord ? cloneRecord({ record: currentRecord }) : null
+						);
 					} catch {
 						resolve(null);
 					}
