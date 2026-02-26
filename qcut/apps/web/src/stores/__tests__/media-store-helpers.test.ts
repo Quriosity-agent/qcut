@@ -15,8 +15,10 @@ const mockCreateObjectURL = vi.fn(() => "blob:mock-url");
 const mockRevokeObjectURL = vi.fn(() => true);
 
 vi.mock("@/lib/media/blob-manager", () => ({
-	createObjectURL: (...args: unknown[]) => mockCreateObjectURL(...args),
-	revokeObjectURL: (...args: unknown[]) => mockRevokeObjectURL(...args),
+	createObjectURL: (...args: unknown[]) =>
+		mockCreateObjectURL(...(args as [unknown, unknown])),
+	revokeObjectURL: (...args: unknown[]) =>
+		mockRevokeObjectURL(...(args as [unknown, unknown])),
 	getOrCreateObjectURL: vi.fn(() => "blob:mock-url"),
 }));
 
@@ -165,7 +167,7 @@ describe("media-store-helpers", () => {
 			};
 			originalImage = window.Image;
 			// Replace Image constructor with a factory that returns our mock
-			(window as Record<string, unknown>).Image = (() =>
+			(window as unknown as Record<string, unknown>).Image = (() =>
 				mockImg) as unknown as typeof Image;
 		});
 
@@ -247,11 +249,11 @@ describe("media-store-helpers", () => {
 				error: null,
 			};
 
-			vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+			vi.spyOn(document, "createElement").mockImplementation(((tag: string) => {
 				if (tag === "video") return mockVideo as unknown as HTMLVideoElement;
 				if (tag === "canvas") return mockCanvas as unknown as HTMLCanvasElement;
 				return document.createElement(tag);
-			});
+			}) as typeof document.createElement);
 		});
 
 		afterEach(() => {
@@ -341,7 +343,8 @@ describe("media-store-helpers", () => {
 			};
 
 			vi.spyOn(document, "createElement").mockImplementation(
-				() => mockElement as unknown as HTMLMediaElement
+				(() =>
+					mockElement as unknown as HTMLMediaElement) as typeof document.createElement
 			);
 		});
 
