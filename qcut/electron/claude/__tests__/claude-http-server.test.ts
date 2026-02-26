@@ -128,7 +128,7 @@ vi.mock("../handlers/claude-transaction-handler.js", () => ({
 	getHistorySummary: vi.fn(async () => ({
 		undoCount: 2,
 		redoCount: 1,
-		entries: [{ label: \"Edit\", timestamp: 123 }],
+		entries: [{ label: "Edit", timestamp: 123 }],
 	})),
 }));
 
@@ -358,7 +358,8 @@ describe("Claude HTTP Server", () => {
 			mockWindow,
 			"element_abc",
 			3.5,
-			"split"
+			"split",
+			expect.any(String)
 		);
 	});
 
@@ -411,11 +412,14 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.moved).toBe(true);
-		expect(send).toHaveBeenCalledWith("claude:timeline:moveElement", {
-			elementId: "element_abc",
-			toTrackId: "track_2",
-			newStartTime: 5,
-		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:moveElement",
+			expect.objectContaining({
+				elementId: "element_abc",
+				toTrackId: "track_2",
+				newStartTime: 5,
+			})
+		);
 	});
 
 	it("POST /api/claude/timeline/:projectId/elements/batch calls batch add handler", async () => {
@@ -449,7 +453,8 @@ describe("Claude HTTP Server", () => {
 		expect(timelineHandler.batchAddElements).toHaveBeenCalledWith(
 			mockWindow,
 			"proj_123",
-			expect.any(Array)
+			expect.any(Array),
+			expect.any(String)
 		);
 	});
 
@@ -476,7 +481,8 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.data.updatedCount).toBe(1);
 		expect(timelineHandler.batchUpdateElements).toHaveBeenCalledWith(
 			mockWindow,
-			[{ elementId: "el_1", startTime: 3 }]
+			[{ elementId: "el_1", startTime: 3 }],
+			expect.any(String)
 		);
 	});
 
@@ -505,7 +511,8 @@ describe("Claude HTTP Server", () => {
 		expect(timelineHandler.batchDeleteElements).toHaveBeenCalledWith(
 			mockWindow,
 			[{ trackId: "track_1", elementId: "el_1" }],
-			true
+			true,
+			expect.any(String)
 		);
 	});
 
@@ -571,7 +578,8 @@ describe("Claude HTTP Server", () => {
 			expect.objectContaining({
 				trackId: "track_1",
 				mode: "sequential",
-			})
+			}),
+			expect.any(String)
 		);
 	});
 
@@ -589,9 +597,12 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.selected).toBe(1);
-		expect(send).toHaveBeenCalledWith("claude:timeline:selectElements", {
-			elements,
-		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:selectElements",
+			expect.objectContaining({
+				elements,
+			})
+		);
 	});
 
 	it("GET /api/claude/timeline/:projectId/selection returns renderer selection", async () => {
@@ -611,7 +622,8 @@ describe("Claude HTTP Server", () => {
 			{ trackId: "track_1", elementId: "element_abc" },
 		]);
 		expect(timelineHandler.requestSelectionFromRenderer).toHaveBeenCalledWith(
-			mockWindow
+			mockWindow,
+			expect.any(String)
 		);
 	});
 
