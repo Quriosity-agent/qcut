@@ -126,7 +126,13 @@ Refine the title and logline. Keep the original if it's already strong.`,
 		.replace(/```json\n?/g, "")
 		.replace(/```\n?/g, "")
 		.trim();
-	return JSON.parse(cleaned) as { title: string; logline: string };
+	const parsed = JSON.parse(cleaned) as { title?: string; logline?: string };
+	if (!parsed.title || !parsed.logline) {
+		throw new Error(
+			"Title calibration returned invalid data: missing title or logline"
+		);
+	}
+	return { title: parsed.title, logline: parsed.logline };
 }
 
 // ==================== Synopsis Generation ====================

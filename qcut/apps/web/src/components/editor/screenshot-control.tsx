@@ -43,6 +43,7 @@ export function ScreenshotControl() {
 			}}
 			disabled={isBusy}
 			title="Take screenshot (Ctrl/Cmd + Shift + S)"
+			aria-label="Take screenshot"
 			data-testid="screenshot-button"
 		>
 			{isBusy ? (

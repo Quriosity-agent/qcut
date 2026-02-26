@@ -31,7 +31,11 @@ export function setupClaudeMoyinBridge(): void {
 			return;
 		}
 		toast.info("Parse Script triggered via CLI");
-		state.parseScript();
+		state.parseScript().catch((err: unknown) => {
+			const message =
+				err instanceof Error ? err.message : "Unknown parse error";
+			toast.error(`Parse failed: ${message}`);
+		});
 	});
 
 	moyin.onStatusRequest((data) => {

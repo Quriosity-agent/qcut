@@ -141,8 +141,14 @@ async function callLLM(
 	const openaiKey = keys.openRouterApiKey;
 	const googleKey = keys.geminiApiKey;
 
-	const provider = openaiKey ? "OpenRouter" : googleKey ? "Gemini" : "Claude CLI";
-	log.info(`[Moyin] callLLM using ${provider} (prompt: ${userPrompt.length} chars)`);
+	const provider = openaiKey
+		? "OpenRouter"
+		: googleKey
+			? "Gemini"
+			: "Claude CLI";
+	log.info(
+		`[Moyin] callLLM using ${provider} (prompt: ${userPrompt.length} chars)`
+	);
 
 	if (openaiKey) {
 		return callOpenAICompatible(openaiKey, systemPrompt, userPrompt, options);
@@ -274,10 +280,14 @@ async function callClaudeCLI(
 	return new Promise((resolve, reject) => {
 		const args = [
 			"-p",
-			"--model", "haiku",
-			"--output-format", "json",
-			"--max-turns", "1",
-			"--system-prompt", systemPrompt,
+			"--model",
+			"haiku",
+			"--output-format",
+			"json",
+			"--max-turns",
+			"1",
+			"--system-prompt",
+			systemPrompt,
 		];
 
 		log.info("[Moyin] Spawning claude -p (haiku, 600s timeout)...");
@@ -300,11 +310,15 @@ async function callClaudeCLI(
 
 		child.stdout.on("data", (chunk: Buffer) => {
 			stdout += chunk.toString();
-			log.info(`[Moyin] Claude CLI stdout chunk: +${chunk.length} bytes (total: ${stdout.length})`);
+			log.info(
+				`[Moyin] Claude CLI stdout chunk: +${chunk.length} bytes (total: ${stdout.length})`
+			);
 		});
 		child.stderr.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString();
-			log.warn(`[Moyin] Claude CLI stderr: ${chunk.toString().trim().slice(0, 200)}`);
+			log.warn(
+				`[Moyin] Claude CLI stderr: ${chunk.toString().trim().slice(0, 200)}`
+			);
 		});
 
 		const timeoutId = setTimeout(() => {
@@ -312,7 +326,11 @@ async function callClaudeCLI(
 				settled = true;
 				child.kill("SIGTERM");
 				log.error("[Moyin] Claude CLI timed out after 600s");
-				reject(new Error("Claude CLI timed out after 600s. Configure an API key in Settings for faster parsing."));
+				reject(
+					new Error(
+						"Claude CLI timed out after 600s. Configure an API key in Settings for faster parsing."
+					)
+				);
 			}
 		}, CLAUDE_CLI_TIMEOUT_MS);
 
@@ -345,7 +363,9 @@ async function callClaudeCLI(
 						duration_ms?: number;
 					};
 					if (envelope.is_error) {
-						reject(new Error(`Claude CLI error: ${envelope.result || "unknown"}`));
+						reject(
+							new Error(`Claude CLI error: ${envelope.result || "unknown"}`)
+						);
 						return;
 					}
 					if (envelope.result) {

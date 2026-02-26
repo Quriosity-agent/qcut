@@ -243,8 +243,14 @@ async function handleMoyinCommand(
 
 	switch (action) {
 		case "set-script": {
-			const text = options.text || options.script;
-			if (!text) {
+			if (options.text && options.script) {
+				return {
+					success: false,
+					error:
+						"--text and --script are mutually exclusive. Use --text for inline text or --script for a file path.",
+				};
+			}
+			if (!options.text && !options.script) {
 				return {
 					success: false,
 					error:
@@ -252,7 +258,7 @@ async function handleMoyinCommand(
 				};
 			}
 			// If --script is a file path, read it
-			let scriptText = text;
+			let scriptText = options.text ?? "";
 			if (options.script) {
 				try {
 					const fs = await import("node:fs/promises");
@@ -300,10 +306,7 @@ async function handleScreenshotCommand(
 		case "capture": {
 			const body: Record<string, unknown> = {};
 			if (options.filename) body.fileName = options.filename;
-			const data = await client.post(
-				"/api/claude/screenshot/capture",
-				body
-			);
+			const data = await client.post("/api/claude/screenshot/capture", body);
 			return { success: true, data };
 		}
 		default:
