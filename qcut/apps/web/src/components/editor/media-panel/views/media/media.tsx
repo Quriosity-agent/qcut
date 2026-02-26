@@ -83,6 +83,7 @@ export function MediaView() {
 	);
 
 	// Clear selection when filters change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: setSelectedIds is a stable state setter
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [mediaFilter, searchQuery, selectedFolderId]);

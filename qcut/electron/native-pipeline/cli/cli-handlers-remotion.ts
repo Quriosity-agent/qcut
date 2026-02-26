@@ -376,12 +376,12 @@ export async function handleGenerateRemotion(
 				durationSeconds,
 				onProgress
 			);
-			if (!timelineResult.success) {
+			if (timelineResult.success) {
+				timelineAdded = true;
+			} else {
 				process.stderr.write(
 					`[generate-remotion] Timeline integration failed: ${timelineResult.error}\n`
 				);
-			} else {
-				timelineAdded = true;
 			}
 		} catch (err) {
 			process.stderr.write(
