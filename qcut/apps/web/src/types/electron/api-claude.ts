@@ -26,10 +26,17 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
 } from "../../../../../electron/types/claude-api";
+
+type EmitPayload = Omit<EditorEvent, "eventId" | "timestamp"> &
+	Partial<Pick<EditorEvent, "eventId" | "timestamp">>;
 
 export interface ElectronClaudeOps {
 	claude?: {
+		events: {
+			emit: (event: EmitPayload) => void;
+		};
 		media: {
 			list: (projectId: string) => Promise<MediaFile[]>;
 			info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;

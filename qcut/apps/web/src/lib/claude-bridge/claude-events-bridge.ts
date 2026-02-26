@@ -141,7 +141,6 @@ function buildMediaItemSnapshot({
 			type: item.type,
 			localPath: item.localPath,
 			url: item.url,
-			size: typeof item.size === "number" ? item.size : undefined,
 		};
 	} catch {
 		return {
