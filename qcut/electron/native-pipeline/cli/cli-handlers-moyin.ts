@@ -125,10 +125,14 @@ function callClaudeCLI(
 	return new Promise((resolveP, reject) => {
 		const args = [
 			"-p",
-			"--model", "haiku",
-			"--output-format", "json",
-			"--max-turns", "1",
-			"--system-prompt", systemPrompt,
+			"--model",
+			"haiku",
+			"--output-format",
+			"json",
+			"--max-turns",
+			"1",
+			"--system-prompt",
+			systemPrompt,
 		];
 
 		const env = { ...process.env };
@@ -156,7 +160,11 @@ function callClaudeCLI(
 			if (!settled) {
 				settled = true;
 				child.kill("SIGTERM");
-				reject(new Error("Claude CLI timed out after 600s. Configure an API key for faster parsing."));
+				reject(
+					new Error(
+						"Claude CLI timed out after 600s. Configure an API key for faster parsing."
+					)
+				);
 			}
 		}, CLAUDE_CLI_TIMEOUT_MS);
 
@@ -185,7 +193,9 @@ function callClaudeCLI(
 						is_error?: boolean;
 					};
 					if (envelope.is_error) {
-						reject(new Error(`Claude CLI error: ${envelope.result || "unknown"}`));
+						reject(
+							new Error(`Claude CLI error: ${envelope.result || "unknown"}`)
+						);
 						return;
 					}
 					if (envelope.result) {

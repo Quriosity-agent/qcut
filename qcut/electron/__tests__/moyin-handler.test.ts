@@ -107,7 +107,8 @@ describe("moyin-handler: Claude CLI output parsing", () => {
 
 describe("moyin-handler: JSON extraction from LLM response", () => {
 	it("extracts JSON from markdown code block", () => {
-		const response = '```json\n{"title": "Basketball Girls", "genre": "drama"}\n```';
+		const response =
+			'```json\n{"title": "Basketball Girls", "genre": "drama"}\n```';
 		const result = extractJsonFromResponse(response);
 		expect(result.title).toBe("Basketball Girls");
 		expect(result.genre).toBe("drama");
@@ -130,7 +131,9 @@ describe("moyin-handler: JSON extraction from LLM response", () => {
 			'```json\n{"title": "Test", "characters": [{"id": "char_1", "name": "Alice"}]}\n```';
 		const result = extractJsonFromResponse(response);
 		expect(result.title).toBe("Test");
-		expect((result.characters as Array<{ name: string }>)[0].name).toBe("Alice");
+		expect((result.characters as Array<{ name: string }>)[0].name).toBe(
+			"Alice"
+		);
 	});
 
 	it("throws when no JSON found", () => {
@@ -179,10 +182,14 @@ describe("moyin-handler: Claude CLI args", () => {
 	it("uses haiku model for speed", () => {
 		const args = [
 			"-p",
-			"--model", "haiku",
-			"--output-format", "json",
-			"--max-turns", "1",
-			"--system-prompt", "test prompt",
+			"--model",
+			"haiku",
+			"--output-format",
+			"json",
+			"--max-turns",
+			"1",
+			"--system-prompt",
+			"test prompt",
 		];
 
 		expect(args).toContain("haiku");

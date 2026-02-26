@@ -352,9 +352,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				try {
 					const { episodes, scenes, scriptData: sd } = get();
 					for (const ep of episodes) {
-						const epScenes = scenes.filter((s) =>
-							ep.sceneIds.includes(s.id)
-						);
+						const epScenes = scenes.filter((s) => ep.sceneIds.includes(s.id));
 						if (epScenes.length === 0) continue;
 						const newShots = await generateShotsForEpisodeAction(
 							epScenes,

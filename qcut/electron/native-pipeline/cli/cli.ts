@@ -638,7 +638,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		message: values.message as string | undefined,
 		stack: values.stack as string | undefined,
 		addToTimeline: (values["add-to-timeline"] as boolean) ?? false,
-		exportAfterGenerate: (values["export"] as boolean) ?? false,
+		exportAfterGenerate: (values.export as boolean) ?? false,
 		exportFormat: values["export-format"] as string | undefined,
 		includeFillers: (values["include-fillers"] as boolean) ?? false,
 		includeSilences: (values["include-silences"] as boolean) ?? false,

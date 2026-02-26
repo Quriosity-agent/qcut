@@ -75,8 +75,8 @@ async function main() {
 		},
 	});
 
-	console.log(`\r  Progress: 100% — Done!\n`);
-	console.log(`=== Export complete ===`);
+	console.log("\r  Progress: 100% — Done!\n");
+	console.log("=== Export complete ===");
 	console.log(`Video: ${OUTPUT_FILE}`);
 }
 

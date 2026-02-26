@@ -83,6 +83,7 @@ export function MediaView() {
 	);
 
 	// Clear selection when filters change
+	// biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentional triggers to reset selection
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [mediaFilter, searchQuery, selectedFolderId]);
