@@ -1,17 +1,17 @@
 ---
-name: Native CLI
+name: native-cli
 description: Run QCut's native TypeScript pipeline CLI for AI content generation, video analysis, transcription, YAML pipelines, ViMax agentic video production, and project management. Use when user asks to generate images/videos, run pipelines, manage API keys, or use ViMax commands.
-dependencies: bun (package manager)
 ---
 
 # Native Pipeline CLI Skill
 
 Run QCut's built-in TypeScript pipeline CLI (`qcut-pipeline` / `bun run pipeline`).
 
-Reference files:
-- `REFERENCE.md` - full command reference with all flags and options
-- `EDITOR-CLI.md` - editor CLI commands (`editor:*`) for controlling a running QCut instance
-- `ANALYSIS-REMOTION-NAVIGATOR.md` - video analysis, Remotion generation, and editor navigation commands
+## Additional resources
+
+- For standalone CLI commands (generate, analyze, transcribe, pipelines, ViMax, project management, API keys), see [REFERENCE.md](REFERENCE.md)
+- For editor commands: media, project, timeline, editing, export, diagnostics, MCP, see [editor-core.md](editor-core.md)
+- For editor AI commands: video analysis, transcription, AI generation, Remotion, navigator, see [editor-ai.md](editor-ai.md)
 
 ## How to Run
 
@@ -31,141 +31,47 @@ qcut-pipeline <command> [options]
 Keys are stored in `~/.qcut/.env` (mode `0600`).
 
 ```bash
-# Create .env template
-bun run pipeline setup
-
-# Set a key (interactive hidden prompt - preferred)
-bun run pipeline set-key --name FAL_KEY
-
-# Check which keys are configured
-bun run pipeline check-keys
+bun run pipeline setup          # Create .env template
+bun run pipeline set-key --name FAL_KEY   # Set a key (interactive)
+bun run pipeline check-keys     # Check configured keys
 ```
 
 **Supported keys:** `FAL_KEY`, `GEMINI_API_KEY`, `GOOGLE_AI_API_KEY`, `OPENROUTER_API_KEY`, `ELEVENLABS_API_KEY`, `OPENAI_API_KEY`, `RUNWAY_API_KEY`, `HEYGEN_API_KEY`, `DID_API_KEY`, `SYNTHESIA_API_KEY`
 
 ## Quick Commands
 
-Always check available models first:
-
 ```bash
-bun run pipeline list-models
-bun run pipeline list-models --category text_to_video
-```
-
-### Generate Image
-
-```bash
+bun run pipeline list-models                          # List all models
+bun run pipeline list-models --category text_to_video # Filter by category
 bun run pipeline generate-image -t "A cinematic portrait at golden hour"
-# Default model: nano_banana_pro. Override with -m:
-bun run pipeline generate-image -m flux_dev -t "A cinematic portrait at golden hour"
-```
-
-### Generate Video
-
-```bash
 bun run pipeline create-video -m kling_2_6_pro -t "Ocean waves at sunset" -d 5s
-```
-
-### Generate Avatar
-
-```bash
 bun run pipeline generate-avatar -m omnihuman_v1_5 -t "Hello world" --image-url avatar.png
-```
-
-### Transfer Motion
-
-```bash
-bun run pipeline transfer-motion --image-url subject.png --video-url motion.mp4
-```
-
-### Image Grid
-
-```bash
-bun run pipeline generate-grid -t "Forest at dawn" --layout 2x2 --style "cinematic"
-```
-
-### Upscale Image
-
-```bash
-bun run pipeline upscale-image --image photo.jpg --target 1080p
-```
-
-### Analyze Video
-
-```bash
 bun run pipeline analyze-video -i video.mp4 --analysis-type summary
-bun run pipeline analyze-video -i video.mp4 --prompt "Count people in each scene" -f json
-```
-
-### Transcribe Audio
-
-```bash
-bun run pipeline transcribe -i audio.mp3 --srt --srt-max-words 8
-```
-
-### Run YAML Pipeline
-
-```bash
-bun run pipeline run-pipeline -c pipeline.yaml -i "A sunset over mountains" --no-confirm
-```
-
-### Cost Estimation
-
-```bash
+bun run pipeline transcribe -i audio.mp3 --srt
+bun run pipeline run-pipeline -c pipeline.yaml -i "A sunset" --no-confirm
 bun run pipeline estimate-cost -m veo3 -d 8s
 ```
 
-## ViMax — Agentic Video Production
-
-### Full Pipelines
+## ViMax Quick Start
 
 ```bash
-# Idea to video (end-to-end)
 bun run pipeline vimax:idea2video --idea "A detective in 1920s Paris" -d 120
-
-# Script to video (from existing script.json)
 bun run pipeline vimax:script2video --script script.json --portraits registry.json
-
-# Novel to movie
 bun run pipeline vimax:novel2movie --novel book.txt --max-scenes 20
-```
-
-### Individual Steps
-
-```bash
-# Extract characters from text
-bun run pipeline vimax:extract-characters --input story.txt
-
-# Generate screenplay
-bun run pipeline vimax:generate-script --idea "A robot learns to paint" -d 60
-
-# Generate character portraits
-bun run pipeline vimax:generate-portraits --input story.txt --views front,side
-
-# Generate storyboard from script
-bun run pipeline vimax:generate-storyboard --script script.json --portraits registry.json
-
-# Build portrait registry from files
-bun run pipeline vimax:create-registry --input ./portraits
-
-# List ViMax models
 bun run pipeline vimax:list-models
 ```
 
-## Project Management
+## Editor Quick Start
+
+Requires QCut running (`bun run electron:dev`).
 
 ```bash
-# Initialize project structure
-bun run pipeline init-project --directory ./my-project
-
-# Organize loose files into categories
-bun run pipeline organize-project --directory ./my-project --recursive
-
-# Show file counts
-bun run pipeline structure-info --directory ./my-project
-
-# Get example YAML pipelines
-bun run pipeline create-examples -o ./my-pipelines
+bun run pipeline editor:health                                    # Check connection
+bun run pipeline editor:media:import --project-id <id> --source video.mp4
+bun run pipeline editor:timeline:export --project-id <id> --json
+bun run pipeline editor:analyze:video --project-id <id> --source "media:<id>"
+bun run pipeline editor:transcribe:run --project-id <id> --media-id <id>
+bun run pipeline editor:export:start --project-id <id> --preset youtube-1080p --poll
 ```
 
 ## Global Options
@@ -190,4 +96,3 @@ bun run pipeline create-examples -o ./my-pipelines
 | Admin handlers | `electron/native-pipeline/cli-handlers-admin.ts` |
 | Media handlers | `electron/native-pipeline/cli-handlers-media.ts` |
 | Key manager | `electron/native-pipeline/key-manager.ts` |
-| Example pipelines | `electron/native-pipeline/example-pipelines.ts` |
