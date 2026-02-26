@@ -54,7 +54,7 @@ Now you have the IDs needed for all other editor commands.
 
 ```bash
 bun run pipeline <command> [options]            # Dev (recommended)
-bun run electron/native-pipeline/cli.ts <command> [options]  # Direct source
+bun run electron/native-pipeline/cli/cli.ts <command> [options]  # Direct source
 qcut-pipeline <command> [options]               # Production binary
 ```
 

@@ -4,6 +4,7 @@
  */
 
 import { app } from "electron";
+import * as os from "os";
 import * as path from "path";
 
 /**
@@ -14,11 +15,20 @@ export function sanitizeProjectId(projectId: string): string {
 	return projectId.replace(/[/\\]/g, "").replace(/\.\./g, "");
 }
 
+function getDocumentsPath(): string {
+	try {
+		return app.getPath("documents");
+	} catch {
+		// Utility process does not expose Electron app path helpers.
+		return path.join(os.homedir(), "Documents");
+	}
+}
+
 /**
  * Get project folder path
  */
 export function getProjectPath(projectId: string): string {
-	const documentsPath = app.getPath("documents");
+	const documentsPath = getDocumentsPath();
 	return path.join(
 		documentsPath,
 		"QCut",
