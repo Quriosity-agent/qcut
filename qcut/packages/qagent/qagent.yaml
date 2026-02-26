@@ -1,122 +1,88 @@
-# Agent Orchestrator Configuration
-# Copy to agent-orchestrator.yaml and customize.
+# Agent Orchestrator — Qcut Configuration
+# Manages parallel AI coding agents for Qcut development.
+# Usage: ao spawn qcut <issue-number>
 
-# Where to store session metadata
+# Session metadata storage
 dataDir: ~/.agent-orchestrator
 
-# Where to create workspaces (git worktrees, clones)
+# Where to create git worktrees for agent sessions
 worktreeDir: ~/.worktrees
 
 # Web dashboard port
-port: 3001
+port: 3000
 
-# Terminal server ports (defaults: 14800/14801 — chosen to avoid conflicts with dev tools)
-# Override when running multiple dashboards to avoid EADDRINUSE
-# terminalPort: 14800
-# directTerminalPort: 14801
-
-# Default plugins (these are the defaults — you can omit this section)
+# Default plugins
 defaults:
-  runtime: tmux           # tmux | process | docker | kubernetes | ssh | e2b
-  agent: claude-code      # claude-code | codex | aider | goose | custom
-  workspace: worktree     # worktree | clone | copy
-  notifiers: [desktop]    # desktop | slack | discord | webhook | email
+  runtime: tmux
+  agent: claude-code
+  workspace: worktree
+  notifiers: [desktop]
 
-# Projects — at minimum, specify repo and path
+# Projects
 projects:
   qcut:
-    name: QCut
+    name: Qcut Video Editor
     repo: Quriosity-agent/qcut
-    path: ~/Desktop/code/qcut/qcut
+    path: .
     defaultBranch: master
     sessionPrefix: qcut
-    agent: codex
-    agentRules: |
-      Use bun as package manager. Follow CLAUDE.md conventions.
-      Use conventional commits (feat:, fix:, chore:).
-      No file longer than 800 lines.
+
+    # Files to symlink into worktrees (share agent config only; avoid symlinking secrets like .env)
+    symlinks: [.claude]
+
+    # Run after worktree creation
+    postCreate:
+      - "bun install"
+
+    # Agent configuration
     agentConfig:
+      # Local dev convenience only: skips permission prompts in orchestrated sessions.
       permissions: skip
+      model: opus
 
-  game:
-    name: Game Project
-    repo: donghaozhang/game-project
-    path: ~/Desktop/code/agent/game-project
-    defaultBranch: main
-    sessionPrefix: game
-    agent: codex
+    # Rules injected into every agent session prompt
     agentRules: |
-      Build a fun browser-based game using HTML, CSS, and JavaScript.
-      Create a single index.html file with everything inline.
-      Make it visually appealing with smooth animations.
-      The game should be fully playable in a browser.
+      You are working on Qcut, an open-source desktop video editor (Electron + React + Vite).
 
-    # Issue tracker (defaults to github issues)
-    # tracker:
-    #   plugin: linear
-    #   teamId: "your-team-id"
+      ## Tech stack
+      - Bun (not npm/pnpm) — always use `bun install`, `bun run`, `bunx`
+      - Biome for linting/formatting (not ESLint/Prettier) — run `bun run lint:clean`
+      - Turborepo for monorepo tasks
+      - TypeScript strict mode
+      - React 19 + Vite + Tailwind + Radix UI
+      - Electron 40 with TypeScript IPC handlers
 
-    # Files to symlink into workspaces
-    # symlinks: [.env, .claude]
+      ## Before pushing
+      - Run `bun run lint:clean` (Biome check)
+      - Run `bun run check-types` (TypeScript)
+      - Run `bun run check:circular` (no circular imports)
+      - Keep files under 800 lines — split by domain if needed
 
-    # Commands to run after workspace creation
-    # postCreate:
-    #   - "pnpm install"
+      ## Conventions
+      - Use conventional commits: feat:, fix:, refactor:, docs:, test:, chore:
+      - Electron handlers go in electron/*-handler.ts
+      - React components in apps/web/src/components/
+      - State management with Zustand stores
 
-    # Agent-specific config
-    agentConfig:
-      permissions: skip    # --full-auto (YOLO mode)
+# Reactions — auto-responses to events
+reactions:
+  ci-failed:
+    auto: true
+    action: send-to-agent
+    retries: 2
+    escalateAfter: 2
 
-    # Inline rules included in every agent prompt for this project
-    # agentRules: |
-    #   Always run tests before pushing.
-    #   Use conventional commits (feat:, fix:, chore:).
+  changes-requested:
+    auto: true
+    action: send-to-agent
+    escalateAfter: 30m
 
-    # Path to a rules file (relative to project path)
-    # agentRulesFile: .agent-rules.md
+  approved-and-green:
+    auto: false
+    action: notify
+    priority: action
 
-    # Rules for the orchestrator agent (reserved for future use)
-    # orchestratorRules: |
-    #   Prefer to batch-spawn related issues together.
-
-    # Per-project reaction overrides
-    # reactions:
-    #   approved-and-green:
-    #     auto: true         # enable auto-merge for this project
-
-# Notification channels
-# notifiers:
-#   slack:
-#     plugin: slack
-#     webhook: ${SLACK_WEBHOOK_URL}
-#     channel: "#agent-updates"
-
-# Notification routing by priority
-# notificationRouting:
-#   urgent: [desktop, slack]   # agent stuck, needs input, errored
-#   action: [desktop, slack]   # PR ready to merge
-#   warning: [slack]           # auto-fix failed
-#   info: [slack]              # summary, all done
-
-# Reactions — auto-responses to events (these are the defaults)
-# reactions:
-#   ci-failed:
-#     auto: true
-#     action: send-to-agent
-#     retries: 2
-#     escalateAfter: 2
-#
-#   changes-requested:
-#     auto: true
-#     action: send-to-agent
-#     escalateAfter: 30m
-#
-#   approved-and-green:
-#     auto: false              # set to true for auto-merge
-#     action: notify
-#     priority: action
-#
-#   agent-stuck:
-#     threshold: 10m
-#     action: notify
-#     priority: urgent
+  agent-stuck:
+    threshold: 10m
+    action: notify
+    priority: urgent

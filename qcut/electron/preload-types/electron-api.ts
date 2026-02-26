@@ -25,6 +25,8 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorStateRequest,
+	EditorStateSnapshot,
 } from "../types/claude-api";
 
 import type {
@@ -880,6 +882,20 @@ export interface ElectronAPI {
 			sendSwitchPanelResponse: (
 				requestId: string,
 				result?: { switched: boolean; panel: string; group: string },
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
+		state: {
+			onSnapshotRequest: (
+				callback: (data: {
+					requestId: string;
+					request?: EditorStateRequest;
+				}) => void
+			) => void;
+			sendSnapshotResponse: (
+				requestId: string,
+				result?: EditorStateSnapshot,
 				error?: string
 			) => void;
 			removeListeners: () => void;

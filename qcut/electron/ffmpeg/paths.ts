@@ -6,6 +6,15 @@ import { spawn } from "node:child_process";
 import { app } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+
+/** Safe check for Electron packaged mode — returns false in utility process. */
+function isPackaged(): boolean {
+	try {
+		return app.isPackaged;
+	} catch {
+		return false;
+	}
+}
 import { debugLog, debugWarn } from "./constants";
 
 // ============================================================================
@@ -257,7 +266,7 @@ export function getFFmpegPath(): string {
 	const platform = process.platform;
 	const binaryName = getBinaryName({ tool: "ffmpeg", platform });
 
-	if (app.isPackaged) {
+	if (isPackaged()) {
 		return resolvePackagedStagedBinaryOrThrow({
 			binaryName,
 			toolName: "FFmpeg",
@@ -309,7 +318,7 @@ export async function getFFprobePath(): Promise<string> {
 	const platform = process.platform;
 	const binaryName = getBinaryName({ tool: "ffprobe", platform });
 
-	if (app.isPackaged) {
+	if (isPackaged()) {
 		return resolvePackagedStagedBinaryOrThrow({
 			binaryName,
 			toolName: "FFprobe",

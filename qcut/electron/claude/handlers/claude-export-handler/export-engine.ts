@@ -6,6 +6,7 @@
 import { app } from "electron";
 import { spawn } from "node:child_process";
 import * as fsPromises from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { getFFmpegPath, parseProgress } from "../../../ffmpeg/utils.js";
 import { claudeLog } from "../../utils/logger.js";
@@ -283,8 +284,14 @@ export async function executeExportJob({
 
 		await ensureDirectory({ directory: path.dirname(outputPath) });
 
+		let tempBase: string;
+		try {
+			tempBase = app.getPath("temp");
+		} catch {
+			tempBase = os.tmpdir();
+		}
 		tempDir = await fsPromises.mkdtemp(
-			path.join(app.getPath("temp"), "qcut-claude-export-")
+			path.join(tempBase, "qcut-claude-export-")
 		);
 
 		const segmentOutputs: string[] = [];

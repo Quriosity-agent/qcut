@@ -27,6 +27,8 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorStateRequest,
+	EditorStateSnapshot,
 } from "./types/claude-api.js";
 
 // ============================================================================
@@ -589,6 +591,40 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			},
 			removeListeners: () => {
 				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
+			},
+		},
+		state: {
+			onSnapshotRequest: (
+				callback: (data: {
+					requestId: string;
+					request?: EditorStateRequest;
+				}) => void
+			) => {
+				ipcRenderer.removeAllListeners("claude:state:snapshot");
+				ipcRenderer.on(
+					"claude:state:snapshot",
+					(
+						_: unknown,
+						data: {
+							requestId: string;
+							request?: EditorStateRequest;
+						}
+					) => callback(data)
+				);
+			},
+			sendSnapshotResponse: (
+				requestId: string,
+				result?: EditorStateSnapshot,
+				error?: string
+			) => {
+				ipcRenderer.send("claude:state:snapshot:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:state:snapshot");
 			},
 		},
 		projectCrud: {
