@@ -91,10 +91,13 @@ export async function handleEditorCommand(
 			case "moyin":
 				return await handleMoyinCommand(client, options);
 
+			case "screenshot":
+				return await handleScreenshotCommand(client, options);
+
 			default:
 				return {
 					success: false,
-					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, remotion, navigator, screen-recording, ui, moyin`,
+					error: `Unknown editor module: ${module}. Available: health, media, project, timeline, editing, analyze, transcribe, generate, export, diagnostics, mcp, remotion, navigator, screen-recording, ui, moyin, screenshot`,
 				};
 		}
 	} catch (err) {
@@ -240,8 +243,14 @@ async function handleMoyinCommand(
 
 	switch (action) {
 		case "set-script": {
-			const text = options.text || options.script;
-			if (!text) {
+			if (options.text && options.script) {
+				return {
+					success: false,
+					error:
+						"--text and --script are mutually exclusive. Use --text for inline text or --script for a file path.",
+				};
+			}
+			if (!options.text && !options.script) {
 				return {
 					success: false,
 					error:
@@ -249,7 +258,7 @@ async function handleMoyinCommand(
 				};
 			}
 			// If --script is a file path, read it
-			let scriptText = text;
+			let scriptText = options.text ?? "";
 			if (options.script) {
 				try {
 					const fs = await import("node:fs/promises");
@@ -278,6 +287,32 @@ async function handleMoyinCommand(
 			return {
 				success: false,
 				error: `Unknown moyin action: ${action}. Available: set-script, parse, status`,
+			};
+	}
+}
+
+/**
+ * Handle `editor:screenshot:*` commands.
+ * - `capture` — take a screenshot of the QCut window
+ */
+async function handleScreenshotCommand(
+	client: EditorApiClient,
+	options: CLIRunOptions
+): Promise<CLIResult> {
+	const parts = options.command.split(":");
+	const action = parts[2]; // "capture"
+
+	switch (action) {
+		case "capture": {
+			const body: Record<string, unknown> = {};
+			if (options.filename) body.fileName = options.filename;
+			const data = await client.post("/api/claude/screenshot/capture", body);
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown screenshot action: ${action}. Available: capture`,
 			};
 	}
 }

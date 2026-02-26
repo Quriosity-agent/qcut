@@ -72,6 +72,7 @@ interface UtilityHttpConfig {
 	requestFromMain: RequestFromMainFn;
 }
 
+/** Start the HTTP server in the utility process that proxies Claude API routes. */
 export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	const { port, appVersion, requestFromMain } = config;
 
@@ -125,6 +126,19 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			}),
 			10_000,
 			"Renderer timed out"
+		);
+	});
+
+	// ==========================================================================
+	// Screenshot capture
+	// ==========================================================================
+	router.post("/api/claude/screenshot/capture", async (req) => {
+		const fileName =
+			typeof req.body?.fileName === "string" ? req.body.fileName : undefined;
+		return await withTimeout(
+			requestFromMain("screenshot:capture", { fileName }),
+			10_000,
+			"Screenshot capture timed out"
 		);
 	});
 

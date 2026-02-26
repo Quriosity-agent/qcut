@@ -31,13 +31,21 @@ export function setupClaudeMoyinBridge(): void {
 			return;
 		}
 		toast.info("Parse Script triggered via CLI");
-		state.parseScript();
+		state.parseScript().catch((err: unknown) => {
+			const message =
+				err instanceof Error ? err.message : "Unknown parse error";
+			toast.error(`Parse failed: ${message}`);
+		});
 	});
 
 	moyin.onStatusRequest((data) => {
+		const requestId = typeof data?.requestId === "string" ? data.requestId : "";
 		try {
+			if (!requestId) {
+				throw new Error("Invalid status request: missing requestId");
+			}
 			const state = useMoyinStore.getState();
-			moyin.sendStatusResponse(data.requestId, {
+			moyin.sendStatusResponse(requestId, {
 				parseStatus: state.parseStatus,
 				activeStep: state.activeStep,
 				pipelineProgress: state.pipelineProgress,
@@ -47,11 +55,13 @@ export function setupClaudeMoyinBridge(): void {
 				shots: state.shots.length,
 			});
 		} catch (err) {
-			moyin.sendStatusResponse(
-				data.requestId,
-				undefined,
-				err instanceof Error ? err.message : String(err)
-			);
+			if (requestId) {
+				moyin.sendStatusResponse(
+					requestId,
+					undefined,
+					err instanceof Error ? err.message : String(err)
+				);
+			}
 		}
 	});
 }

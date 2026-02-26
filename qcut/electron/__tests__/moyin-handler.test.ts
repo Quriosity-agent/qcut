@@ -1,6 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { spawn } from "node:child_process";
-import type { ChildProcess } from "node:child_process";
+import { describe, expect, it } from "vitest";
 
 /**
  * Tests for moyin-handler LLM call chain.

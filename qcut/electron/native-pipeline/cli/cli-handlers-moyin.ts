@@ -189,16 +189,16 @@ function callClaudeCLI(
 				let text = raw;
 				try {
 					const envelope = JSON.parse(raw) as {
-						result?: string;
-						is_error?: boolean;
+						result?: unknown;
+						is_error?: unknown;
 					};
-					if (envelope.is_error) {
+					if (envelope.is_error === true) {
 						reject(
 							new Error(`Claude CLI error: ${envelope.result || "unknown"}`)
 						);
 						return;
 					}
-					if (envelope.result) {
+					if (typeof envelope.result === "string") {
 						text = envelope.result;
 					}
 				} catch {

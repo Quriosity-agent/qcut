@@ -29,6 +29,7 @@ interface MoyinApi {
 	}) => Promise<LLMResult>;
 }
 
+/** Get the Moyin Electron API, throwing if unavailable. */
 function getMoyinApi(): MoyinApi {
 	const api = window.electronAPI?.moyin;
 	if (!api?.callLLM) {
@@ -37,6 +38,7 @@ function getMoyinApi(): MoyinApi {
 	return api as MoyinApi;
 }
 
+/** Parse a JSON array from LLM text, stripping markdown fences. */
 function parseJsonArray<T>(text: string): T[] {
 	let cleaned = text
 		.replace(/```json\n?/g, "")
@@ -50,6 +52,7 @@ function parseJsonArray<T>(text: string): T[] {
 	return JSON.parse(cleaned) as T[];
 }
 
+/** Build calibration context from raw script by parsing episodes and background. */
 async function getCalibrationContext({
 	rawScript,
 	scriptData,
@@ -95,6 +98,7 @@ async function getCalibrationContext({
 
 // ==================== Title Calibration ====================
 
+/** Refine the screenplay title and logline using an LLM. */
 export async function calibrateTitleLLM(
 	scriptData: ScriptData,
 	rawScript: string
@@ -126,11 +130,18 @@ Refine the title and logline. Keep the original if it's already strong.`,
 		.replace(/```json\n?/g, "")
 		.replace(/```\n?/g, "")
 		.trim();
-	return JSON.parse(cleaned) as { title: string; logline: string };
+	const parsed = JSON.parse(cleaned) as { title?: string; logline?: string };
+	if (!parsed.title || !parsed.logline) {
+		throw new Error(
+			"Title calibration returned invalid data: missing title or logline"
+		);
+	}
+	return { title: parsed.title, logline: parsed.logline };
 }
 
 // ==================== Synopsis Generation ====================
 
+/** Generate a 2-3 sentence synopsis for the screenplay via LLM. */
 export async function generateSynopsisLLM(
 	scriptData: ScriptData,
 	rawScript: string
@@ -163,7 +174,11 @@ Write a compelling 2-3 sentence synopsis.`,
 		throw new Error(result.error || "Synopsis generation failed");
 	}
 
-	return result.text.trim();
+	const synopsis = result.text.trim();
+	if (!synopsis) {
+		throw new Error("Synopsis generation returned empty text");
+	}
+	return synopsis;
 }
 
 // ==================== Character Enhancement ====================
@@ -183,6 +198,7 @@ interface EnhancedCharacterData {
 	};
 }
 
+/** Enhance character visual descriptions and identity anchors via LLM or calibrator. */
 export async function enhanceCharactersLLM(
 	characters: ScriptCharacter[],
 	scriptData: ScriptData | null,
@@ -301,6 +317,7 @@ interface EnhancedSceneData {
 	eraDetails?: string;
 }
 
+/** Enhance scene art direction (lighting, color, spatial layout) via LLM or calibrator. */
 export async function enhanceScenesLLM(
 	scenes: ScriptScene[],
 	scriptData: ScriptData | null,

@@ -49,6 +49,7 @@ import {
 	requestTriggerParse,
 	requestMoyinStatus,
 } from "../claude/handlers/claude-moyin-handler.js";
+import { captureScreenshot } from "../claude/handlers/claude-screenshot-handler.js";
 import {
 	requestCreateProject,
 	requestDeleteProject,
@@ -130,6 +131,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatPending = false;
 let heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Start periodic heartbeat pings to detect an unresponsive utility process. */
 function startHeartbeat(): void {
 	stopHeartbeat();
 	heartbeatTimer = setInterval(() => {
@@ -328,6 +330,11 @@ async function handleMainRequest(
 			return requestStopRecordingFromRenderer(win, {
 				discard: req.discard,
 			});
+		}
+
+		case "screenshot:capture": {
+			const req = data as { fileName?: string };
+			return captureScreenshot(win, { fileName: req.fileName });
 		}
 
 		case "switch-panel": {

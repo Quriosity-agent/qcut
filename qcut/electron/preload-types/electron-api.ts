@@ -140,6 +140,16 @@ export interface ElectronAPI {
 		getProjectDir: (projectId: string) => Promise<string>;
 	};
 
+	// Screenshot capture
+	screenshot?: {
+		capture: (options?: { fileName?: string }) => Promise<{
+			filePath: string;
+			width: number;
+			height: number;
+			timestamp: number;
+		}>;
+	};
+
 	// Screen recording operations
 	screenRecording?: {
 		getSources: () => Promise<ScreenCaptureSource[]>;
