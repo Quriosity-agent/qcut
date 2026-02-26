@@ -139,6 +139,18 @@ const electronAPI: ElectronAPI = {
 			ipcRenderer.invoke("ai-video:get-project-dir", projectId),
 	},
 
+	// Screenshot capture
+	screenshot: {
+		capture: (
+			options?: { fileName?: string }
+		): Promise<{
+			filePath: string;
+			width: number;
+			height: number;
+			timestamp: number;
+		}> => ipcRenderer.invoke("screenshot:capture", options),
+	},
+
 	// Screen recording operations
 	screenRecording: {
 		getSources: (): Promise<ScreenCaptureSource[]> =>

@@ -64,3 +64,14 @@ export interface ElectronScreenRecordingOps {
 		getStatus: () => Promise<ScreenRecordingStatus>;
 	};
 }
+
+export interface ElectronScreenshotOps {
+	screenshot?: {
+		capture: (options?: { fileName?: string }) => Promise<{
+			filePath: string;
+			width: number;
+			height: number;
+			timestamp: number;
+		}>;
+	};
+}

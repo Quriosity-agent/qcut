@@ -129,6 +129,18 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	});
 
 	// ==========================================================================
+	// Screenshot capture
+	// ==========================================================================
+	router.post("/api/claude/screenshot/capture", async (req) => {
+		const fileName = req.body?.fileName as string | undefined;
+		return await withTimeout(
+			requestFromMain("screenshot:capture", { fileName }),
+			10_000,
+			"Screenshot capture timed out"
+		);
+	});
+
+	// ==========================================================================
 	// Screen Recording routes
 	// ==========================================================================
 	router.get("/api/claude/screen-recording/sources", async () => {

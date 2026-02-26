@@ -49,6 +49,7 @@ import {
 	requestTriggerParse,
 	requestMoyinStatus,
 } from "../claude/handlers/claude-moyin-handler.js";
+import { captureScreenshot } from "../claude/handlers/claude-screenshot-handler.js";
 import {
 	requestCreateProject,
 	requestDeleteProject,
@@ -328,6 +329,11 @@ async function handleMainRequest(
 			return requestStopRecordingFromRenderer(win, {
 				discard: req.discard,
 			});
+		}
+
+		case "screenshot:capture": {
+			const req = data as { fileName?: string };
+			return captureScreenshot(win, { fileName: req.fileName });
 		}
 
 		case "switch-panel": {
