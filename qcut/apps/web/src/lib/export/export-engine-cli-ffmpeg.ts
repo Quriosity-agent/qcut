@@ -29,59 +29,41 @@ export function logExportConfiguration(
 		textFilterChainLength: number;
 	}
 ): void {
-	console.log(
-		"🚀 [FFMPEG EXPORT DEBUG] ============================================"
-	);
-	console.log("🚀 [FFMPEG EXPORT DEBUG] Starting FFmpeg CLI export process");
-	console.log("🚀 [FFMPEG EXPORT DEBUG] Export configuration:");
-	console.log(`   - Session ID: ${exportOptions.sessionId}`);
-	console.log(
-		`   - Dimensions: ${exportOptions.width}x${exportOptions.height}`
-	);
-	console.log(`   - FPS: ${exportOptions.fps}`);
-	console.log(`   - Duration: ${exportOptions.duration}s`);
-	console.log(`   - Quality: ${exportOptions.quality}`);
-	console.log(`   - Audio files: ${exportOptions.audioFiles?.length || 0}`);
-	console.log(
-		`   - Text elements: ${context.hasTextFilters ? "YES (using FFmpeg drawtext)" : "NO"}`
-	);
-	console.log(
-		`   - Sticker overlays: ${context.hasStickerFilters ? `YES (${context.stickerCount} stickers)` : "NO"}`
-	);
-	console.log(
-		`   - Image overlays: ${context.hasImageFilters ? `YES (${context.imageCount} images)` : "NO"}`
-	);
-	console.log(
-		`   - Direct copy mode: ${exportOptions.useDirectCopy ? "ENABLED" : "DISABLED"}`
-	);
-	console.log(
-		`   - Word filter cuts: ${exportOptions.wordFilterSegments ? `${(exportOptions.wordFilterSegments as unknown[]).length} segments` : "NO"}`
-	);
-	console.log(`   - Video sources: ${exportOptions.videoSources?.length || 0}`);
+	debugLog("[FFMPEG EXPORT] Starting FFmpeg CLI export process");
+	debugLog("[FFMPEG EXPORT] Export configuration:", {
+		sessionId: exportOptions.sessionId,
+		dimensions: `${exportOptions.width}x${exportOptions.height}`,
+		fps: exportOptions.fps,
+		duration: `${exportOptions.duration}s`,
+		quality: exportOptions.quality,
+		audioFiles: exportOptions.audioFiles?.length || 0,
+		textElements: context.hasTextFilters,
+		stickerOverlays: context.hasStickerFilters ? context.stickerCount : 0,
+		imageOverlays: context.hasImageFilters ? context.imageCount : 0,
+		directCopy: !!exportOptions.useDirectCopy,
+		wordFilterSegments: exportOptions.wordFilterSegments
+			? (exportOptions.wordFilterSegments as unknown[]).length
+			: 0,
+		videoSources: exportOptions.videoSources?.length || 0,
+	});
 	if (context.hasTextFilters) {
-		console.log(
-			"📝 [TEXT RENDERING] Text will be rendered directly by FFmpeg (not canvas)"
-		);
-		console.log(
-			`📝 [TEXT RENDERING] Text filter chain length: ${context.textFilterChainLength} characters`
+		debugLog(
+			`[FFMPEG EXPORT] Text rendered by FFmpeg, filter chain: ${context.textFilterChainLength} chars`
 		);
 	}
-	console.log(
-		"🚀 [FFMPEG EXPORT DEBUG] ============================================"
-	);
 }
 
 export async function invokeFFmpegExport(
 	exportOptions: Record<string, any>
 ): Promise<string> {
-	if (!window.electronAPI) {
+	if (!window.electronAPI?.ffmpeg?.exportVideoCLI) {
 		throw new Error("CLI export only available in Electron");
 	}
 
 	debugLog("[CLI Export] Starting FFmpeg export with options:", exportOptions);
 
 	try {
-		console.log("⏳ [FFMPEG EXPORT DEBUG] Invoking FFmpeg CLI...");
+		debugLog("[CLI Export] Invoking FFmpeg CLI...");
 		const startTime = Date.now();
 
 		const result = await window.electronAPI.ffmpeg.exportVideoCLI(
@@ -89,27 +71,10 @@ export async function invokeFFmpegExport(
 		);
 
 		const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-		console.log(
-			`✅ [FFMPEG EXPORT DEBUG] FFmpeg export completed in ${duration}s`
-		);
-		console.log(
-			"✅ [EXPORT OPTIMIZATION] FFmpeg export completed successfully!"
-		);
-		debugLog("[CLI Export] FFmpeg export completed successfully:", result);
+		debugLog(`[CLI Export] FFmpeg export completed in ${duration}s`);
 		return result.outputFile;
 	} catch (error) {
-		console.error("❌ [EXPORT OPTIMIZATION] FFmpeg export FAILED!", error);
-		console.error(
-			"❌ [EXPORT OPTIMIZATION] Error message:",
-			error instanceof Error ? error.message : String(error)
-		);
-		console.error("❌ [EXPORT OPTIMIZATION] Error details:", {
-			message: error instanceof Error ? error.message : String(error),
-			code: (error as any)?.code,
-			stderr: (error as any)?.stderr,
-			stdout: (error as any)?.stdout,
-		});
-		debugError("[CLI Export] FFmpeg export failed:", error);
+		debugError("[CLI Export] FFmpeg export FAILED:", error);
 		debugError("[CLI Export] Error details:", {
 			message: error instanceof Error ? error.message : String(error),
 			code: (error as any)?.code,

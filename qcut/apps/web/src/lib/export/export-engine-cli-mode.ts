@@ -55,14 +55,9 @@ export function resolveWordFilters(
 				w.filterState === WORD_FILTER_STATE.AI ||
 				w.filterState === WORD_FILTER_STATE.USER_REMOVE
 		);
-		console.log(
+		debugLog(
 			`[CLI Export] Word filters active: ${filteredWords.length} words marked for removal`
 		);
-		for (const w of filteredWords) {
-			console.log(
-				`  [REMOVE] "${w.text}" (${w.start.toFixed(2)}s\u2013${w.end.toFixed(2)}s) state=${w.filterState}`
-			);
-		}
 
 		const keepSegments = calculateKeepSegments({
 			words: wordTimelineData.words,
@@ -70,12 +65,7 @@ export function resolveWordFilters(
 			options: { bufferMs: 50, crossfadeMs: 30, minGapMs: 50 },
 		});
 
-		console.log(
-			`[CLI Export] Keep segments (${keepSegments.length}):`,
-			keepSegments.map(
-				(s) => `${s.start.toFixed(2)}s\u2013${s.end.toFixed(2)}s`
-			)
-		);
+		debugLog(`[CLI Export] Keep segments: ${keepSegments.length}`);
 
 		const isFullLengthSegment =
 			keepSegments.length === 1 &&

@@ -60,33 +60,39 @@ export async function validateAudioFiles(
 				const audioValidation = await validateAudioWithFfprobe({
 					filePath: audioFile.path,
 				});
-				if (audioValidation) {
-					debugLog(
-						`[CLI Export] Audio file ${index} validation result:`,
-						audioValidation
+				if (!audioValidation) {
+					debugWarn(
+						`[CLI Export] Skipping audio file with indeterminate probe result: ${audioFile.path}`
 					);
-
-					if (!audioValidation.valid) {
-						debugWarn(
-							`[CLI Export] Skipping invalid audio file: ${audioFile.path} (${audioValidation.error || "Unknown validation error"})`
-						);
-						return null;
-					}
-
-					debugLog(`[CLI Export] Audio file ${index} validated successfully:`, {
-						path: audioFile.path,
-						hasAudio: audioValidation.hasAudio,
-						duration: audioValidation.duration,
-						streams: audioValidation.info?.streams?.length || 0,
-					});
-
-					if (!audioValidation.hasAudio) {
-						debugWarn(
-							`[CLI Export] File has no audio streams: ${audioFile.path}`
-						);
-						return null;
-					}
+					return null;
 				}
+
+				debugLog(
+					`[CLI Export] Audio file ${index} validation result:`,
+					audioValidation
+				);
+
+				if (!audioValidation.valid) {
+					debugWarn(
+						`[CLI Export] Skipping invalid audio file: ${audioFile.path} (${audioValidation.error || "Unknown validation error"})`
+					);
+					return null;
+				}
+
+				debugLog(`[CLI Export] Audio file ${index} validated successfully:`, {
+					path: audioFile.path,
+					hasAudio: audioValidation.hasAudio,
+					duration: audioValidation.duration,
+					streams: audioValidation.info?.streams?.length || 0,
+				});
+
+				if (!audioValidation.hasAudio) {
+					debugWarn(
+						`[CLI Export] File has no audio streams: ${audioFile.path}`
+					);
+					return null;
+				}
+
 				return audioFile;
 			} catch (error) {
 				debugWarn(

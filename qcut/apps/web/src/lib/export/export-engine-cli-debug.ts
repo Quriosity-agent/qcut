@@ -52,28 +52,15 @@ export function logMode2Detection(
 	hasStickerFilters: boolean
 ): void {
 	if (canUseMode2 && videoInput) {
-		console.log(
-			"⚡ [MODE 2 EXPORT] ============================================"
+		debugLog("[MODE 2 EXPORT] Mode 2 optimization enabled!");
+		debugLog(`[MODE 2 EXPORT] Video input: ${videoInput.path}`);
+		debugLog(
+			`[MODE 2 EXPORT] Trim: ${videoInput.trimStart}s - ${videoInput.trimEnd}s`
 		);
-		console.log("⚡ [MODE 2 EXPORT] Mode 2 optimization enabled!");
-		console.log(`⚡ [MODE 2 EXPORT] Video input: ${videoInput.path}`);
-		console.log(`⚡ [MODE 2 EXPORT] Trim start: ${videoInput.trimStart}s`);
-		console.log(`⚡ [MODE 2 EXPORT] Trim end: ${videoInput.trimEnd}s`);
-		console.log(
-			`⚡ [MODE 2 EXPORT] Text filters: ${hasTextFilters ? "YES" : "NO"}`
+		debugLog(
+			`[MODE 2 EXPORT] Text filters: ${hasTextFilters}, Sticker filters: ${hasStickerFilters}`
 		);
-		console.log(
-			`⚡ [MODE 2 EXPORT] Sticker filters: ${hasStickerFilters ? "YES" : "NO"}`
-		);
-		console.log(
-			"⚡ [MODE 2 EXPORT] Frame rendering: SKIPPED (using direct video)"
-		);
-		console.log(
-			"⚡ [MODE 2 EXPORT] Expected speedup: 3-5x faster than frame rendering"
-		);
-		console.log(
-			"⚡ [MODE 2 EXPORT] ============================================"
-		);
+		debugLog("[MODE 2 EXPORT] Frame rendering: SKIPPED (using direct video)");
 	} else if (needsVideoInput && !videoInput) {
 		debugWarn("⚠️ [MODE 2 EXPORT] Video input extraction failed");
 		debugWarn("⚠️ [MODE 2 EXPORT] Falling back to standard export");

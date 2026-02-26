@@ -15,6 +15,7 @@ import {
 	ErrorCategory,
 	ErrorSeverity,
 } from "@/lib/debug/error-handler";
+import { debugLog } from "@/lib/debug/debug-config";
 import type { TimelineStore } from "./index";
 import type { StoreGet, StoreSet } from "./timeline-store-operations";
 import { normalizeLoadedTracks } from "./timeline-store-normalization";
@@ -194,9 +195,7 @@ export function createPersistenceOperations(
 		},
 
 		restoreTracks: (tracks: TimelineTrack[]) => {
-			console.log(
-				`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`
-			);
+			debugLog(`[TimelineStore] Restoring ${tracks.length} tracks (rollback)`);
 			updateTracks(tracks);
 		},
 	} satisfies Partial<TimelineStore>;

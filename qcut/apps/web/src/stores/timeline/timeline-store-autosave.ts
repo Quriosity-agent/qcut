@@ -15,6 +15,7 @@ import {
 	ErrorCategory,
 	ErrorSeverity,
 } from "@/lib/debug/error-handler";
+import { debugLog } from "@/lib/debug/debug-config";
 import type { StoreGet, StoreSet } from "./timeline-store-operations";
 
 // Module-level timer for debounced auto-save
@@ -54,7 +55,7 @@ export function createAutoSaveHelpers(get: StoreGet, set: StoreSet) {
 
 			// Guard: Skip save if project changed since scheduling
 			if (!activeProject || activeProject.id !== scheduledProjectId) {
-				console.log(
+				debugLog(
 					`[TimelineStore] Skipping auto-save: project changed (scheduled: ${scheduledProjectId}, current: ${activeProject?.id})`
 				);
 				set({

@@ -58,10 +58,6 @@ export function createCrudOperations(
 			const shouldPushHistory = options.pushHistory !== false;
 			const shouldSelectElement = options.selectElement !== false;
 
-			if (shouldPushHistory) {
-				get().pushHistory();
-			}
-
 			// Validate element type matches track type
 			const track = get()._tracks.find((t) => t.id === trackId);
 			if (!track) {
@@ -128,6 +124,11 @@ export function createCrudOperations(
 					metadata: { elementType: "markdown", trackId },
 				});
 				return null;
+			}
+
+			// Push history after all validations pass
+			if (shouldPushHistory) {
+				get().pushHistory();
 			}
 
 			// Check if this is the first element being added to the timeline
@@ -266,8 +267,6 @@ export function createCrudOperations(
 		},
 
 		moveElementToTrack: (fromTrackId, toTrackId, elementId) => {
-			get().pushHistory();
-
 			const fromTrack = get()._tracks.find((t) => t.id === fromTrackId);
 			const toTrack = get()._tracks.find((t) => t.id === toTrackId);
 			const elementToMove = fromTrack?.elements.find(
@@ -293,6 +292,9 @@ export function createCrudOperations(
 				);
 				return;
 			}
+
+			// Push history after validation passes
+			get().pushHistory();
 
 			const newTracks = get()
 				._tracks.map((t) => {
