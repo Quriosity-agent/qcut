@@ -38,6 +38,7 @@ interface RunBridgeStepInput {
 	onError: ClaudeBridgeErrorHandler;
 }
 
+/** Execute a single bridge setup/cleanup step, catching and reporting errors. */
 function runBridgeStep({ message, step, onError }: RunBridgeStepInput): void {
 	try {
 		step();
@@ -46,6 +47,7 @@ function runBridgeStep({ message, step, onError }: RunBridgeStepInput): void {
 	}
 }
 
+/** Register all Claude IPC bridges and return a cleanup function to tear them down. */
 export function setupClaudeBridgeLifecycle({
 	onError = debugError,
 }: SetupClaudeBridgeLifecycleOptions = {}): () => void {

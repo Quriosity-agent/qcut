@@ -58,6 +58,7 @@ const TABS: { key: StructureTab; label: string; icon: React.ElementType }[] = [
 	{ key: "generate", label: "Generate", icon: SparklesIcon },
 ];
 
+/** Tabbed panel displaying parsed script structure: overview, characters, scenes, shots, and generate. */
 export function StructurePanel() {
 	const activeStep = useMoyinStore((s) => s.activeStep);
 	const setActiveStep = useMoyinStore((s) => s.setActiveStep);

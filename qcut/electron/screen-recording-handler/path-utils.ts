@@ -8,6 +8,7 @@ import {
 	type ScreenRecordingOutputFormat,
 } from "./types.js";
 
+/** Strip unsafe characters from a filename, falling back to "recording.mp4". */
 export function sanitizeFilename({ filename }: { filename: string }): string {
 	try {
 		const trimmedFilename = filename.trim();
@@ -20,6 +21,7 @@ export function sanitizeFilename({ filename }: { filename: string }): string {
 	}
 }
 
+/** Append the given extension if the file path has none. */
 export function ensureExtension({
 	filePath,
 	extension,
@@ -37,6 +39,7 @@ export function ensureExtension({
 	}
 }
 
+/** Return the lowercase file extension (e.g. ".mp4") of the given path. */
 export function getPathExtension({ filePath }: { filePath: string }): string {
 	try {
 		return path.extname(filePath).toLowerCase();
@@ -45,6 +48,7 @@ export function getPathExtension({ filePath }: { filePath: string }): string {
 	}
 }
 
+/** Resolve the output format for a recording — always MP4. */
 export function resolveOutputFormat({
 	filePath,
 }: {
@@ -55,6 +59,7 @@ export function resolveOutputFormat({
 	return SCREEN_RECORDING_OUTPUT_FORMAT.MP4;
 }
 
+/** Replace the file extension of the given path. */
 export function replaceExtension({
 	filePath,
 	extension,
@@ -70,6 +75,7 @@ export function replaceExtension({
 	}
 }
 
+/** Normalize any recording path extension to .mp4. */
 function normalizeOutputPathExtension({
 	filePath,
 }: {
@@ -88,6 +94,7 @@ function normalizeOutputPathExtension({
 	});
 }
 
+/** Return the directory for saved recordings (~/Movies/QCut Recordings). */
 export function getRecordingsDir(): string {
 	try {
 		return path.join(app.getPath("videos"), DEFAULT_RECORDINGS_DIR_NAME);
@@ -96,6 +103,7 @@ export function getRecordingsDir(): string {
 	}
 }
 
+/** Format a Date as a compact `YYYYMMDD-HHmmss` segment for recording filenames. */
 function formatDateSegment({ date }: { date: Date }): string {
 	const year = date.getFullYear().toString().padStart(4, "0");
 	const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -106,12 +114,14 @@ function formatDateSegment({ date }: { date: Date }): string {
 	return `${year}${month}${day}-${hours}${minutes}${seconds}`;
 }
 
+/** Build a timestamped default recording file path. */
 function buildDefaultRecordingPath(): string {
 	const timestamp = formatDateSegment({ date: new Date() });
 	const filename = `${DEFAULT_FILE_PREFIX}-${timestamp}.mp4`;
 	return path.join(getRecordingsDir(), filename);
 }
 
+/** Throw if the resolved path escapes the allowed recordings directory. */
 function assertPathWithinAllowedDir({
 	resolvedPath,
 	allowedDir,
@@ -129,6 +139,7 @@ function assertPathWithinAllowedDir({
 	}
 }
 
+/** Resolve the final output path from an optional filePath or fileName, defaulting to a timestamped recording. */
 export function resolveOutputPath({
 	filePath,
 	fileName,

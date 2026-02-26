@@ -20,6 +20,7 @@ export interface ScreenshotResult {
 	timestamp: number;
 }
 
+/** Format a Date into a compact `YYYYMMDD-HHmmss-SSS` string for filenames. */
 function formatTimestamp(date: Date): string {
 	const y = date.getFullYear().toString().padStart(4, "0");
 	const mo = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -31,6 +32,7 @@ function formatTimestamp(date: Date): string {
 	return `${y}${mo}${d}-${h}${mi}${s}-${ms}`;
 }
 
+/** Build the absolute PNG file path inside the recordings directory. */
 function resolveScreenshotPath(fileName?: string): string {
 	const dir = getRecordingsDir();
 	if (fileName) {

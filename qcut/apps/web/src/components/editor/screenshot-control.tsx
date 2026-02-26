@@ -5,6 +5,7 @@ import { Camera, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
+/** Button that captures a screenshot of the QCut window and saves it as PNG. */
 export function ScreenshotControl() {
 	const [isBusy, setIsBusy] = useState(false);
 

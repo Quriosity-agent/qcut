@@ -33,6 +33,7 @@ import { ScreenRecordingControl } from "./editor/screen-recording-control";
 import { ScreenshotControl } from "./editor/screenshot-control";
 import type { KeyboardEvent } from "react";
 
+/** Editor header bar with project name, export, screenshot, and recording controls. */
 export function EditorHeader() {
 	const { getTotalDuration } = useTimelineStore();
 	const { activeProject, renameProject, deleteProject } = useProjectStore();

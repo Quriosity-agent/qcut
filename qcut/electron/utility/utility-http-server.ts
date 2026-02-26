@@ -72,6 +72,7 @@ interface UtilityHttpConfig {
 	requestFromMain: RequestFromMainFn;
 }
 
+/** Start the HTTP server in the utility process that proxies Claude API routes. */
 export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 	const { port, appVersion, requestFromMain } = config;
 

@@ -131,6 +131,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let heartbeatPending = false;
 let heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Start periodic heartbeat pings to detect an unresponsive utility process. */
 function startHeartbeat(): void {
 	stopHeartbeat();
 	heartbeatTimer = setInterval(() => {

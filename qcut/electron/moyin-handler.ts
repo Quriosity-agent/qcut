@@ -130,6 +130,7 @@ Important requirements:
 
 const REQUEST_TIMEOUT_MS = 60_000;
 
+/** Route an LLM call to OpenRouter, Gemini, or Claude CLI based on available keys. */
 async function callLLM(
 	systemPrompt: string,
 	userPrompt: string,
@@ -162,6 +163,7 @@ async function callLLM(
 	return callClaudeCLI(systemPrompt, userPrompt);
 }
 
+/** Call an OpenAI-compatible API (OpenRouter or direct OpenAI). */
 async function callOpenAICompatible(
 	apiKey: string,
 	systemPrompt: string,
@@ -218,6 +220,7 @@ async function callOpenAICompatible(
 	}
 }
 
+/** Call the Google Gemini generative language API. */
 async function callGemini(
 	apiKey: string,
 	systemPrompt: string,
@@ -273,6 +276,7 @@ async function callGemini(
 
 const CLAUDE_CLI_TIMEOUT_MS = 600_000;
 
+/** Spawn the Claude CLI as a child process for LLM inference (no API key needed). */
 async function callClaudeCLI(
 	systemPrompt: string,
 	userPrompt: string
@@ -409,6 +413,7 @@ function isClaudeCLIAvailable(): boolean {
 
 // ==================== IPC Setup ====================
 
+/** Register all moyin-related IPC handlers (parse, generate, call-llm, claude check). */
 export function setupMoyinIPC(): void {
 	// Parse screenplay text into structured data
 	ipcMain.handle(
