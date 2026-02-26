@@ -37,9 +37,7 @@ export function logActualVideoDurationCLI(
 	};
 
 	video.onerror = () => {
-		debugWarn(
-			"[CLIExportEngine] ⚠️  Could not determine actual video duration"
-		);
+		debugWarn("[CLIExportEngine] ⚠️  Could not determine actual video duration");
 		URL.revokeObjectURL(url);
 	};
 

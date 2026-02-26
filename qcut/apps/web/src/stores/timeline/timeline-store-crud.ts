@@ -213,9 +213,7 @@ export function createCrudOperations(
 
 			updateTracksAndSave(
 				get()._tracks.map((t) =>
-					t.id === trackId
-						? { ...t, elements: [...t.elements, newElement] }
-						: t
+					t.id === trackId ? { ...t, elements: [...t.elements, newElement] } : t
 				)
 			);
 
@@ -331,9 +329,7 @@ export function createCrudOperations(
 						? {
 								...t,
 								elements: t.elements.map((el) =>
-									el.id === elementId
-										? { ...el, trimStart, trimEnd }
-										: el
+									el.id === elementId ? { ...el, trimStart, trimEnd } : el
 								),
 							}
 						: t
@@ -403,9 +399,7 @@ export function createCrudOperations(
 						? {
 								...t,
 								elements: t.elements.map((el) =>
-									el.id === elementId
-										? { ...el, hidden: !el.hidden }
-										: el
+									el.id === elementId ? { ...el, hidden: !el.hidden } : el
 								),
 							}
 						: t

@@ -81,9 +81,7 @@ export function computeCanGenerate(params: CanGenerateParams): boolean {
 			if (modelId === "sync_lipsync_react1" && !sourceVideo) return false;
 
 			if (modelId === "kling_o1_ref2video") {
-				const hasReferenceImage = referenceImages?.some(
-					(img) => img !== null
-				);
+				const hasReferenceImage = referenceImages?.some((img) => img !== null);
 				if (!hasReferenceImage) return false;
 				continue;
 			}

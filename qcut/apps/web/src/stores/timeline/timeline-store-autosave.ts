@@ -8,10 +8,7 @@
  */
 
 import type { TimelineTrack } from "@/types/timeline";
-import {
-	sortTracksByOrder,
-	ensureMainTrack,
-} from "@/types/timeline";
+import { sortTracksByOrder, ensureMainTrack } from "@/types/timeline";
 import { storageService } from "@/lib/storage/storage-service";
 import {
 	handleError,
@@ -40,10 +37,7 @@ export function clearAutoSaveTimer(): void {
 /**
  * Creates auto-save closure helpers for the timeline store.
  */
-export function createAutoSaveHelpers(
-	get: StoreGet,
-	set: StoreSet
-) {
+export function createAutoSaveHelpers(get: StoreGet, set: StoreSet) {
 	const updateTracks = (newTracks: TimelineTrack[]) => {
 		const tracksWithMain = ensureMainTrack(newTracks);
 		const sortedTracks = sortTracksByOrder(tracksWithMain);

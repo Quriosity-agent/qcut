@@ -73,15 +73,12 @@ export async function validateAudioFiles(
 						return null;
 					}
 
-					debugLog(
-						`[CLI Export] Audio file ${index} validated successfully:`,
-						{
-							path: audioFile.path,
-							hasAudio: audioValidation.hasAudio,
-							duration: audioValidation.duration,
-							streams: audioValidation.info?.streams?.length || 0,
-						}
-					);
+					debugLog(`[CLI Export] Audio file ${index} validated successfully:`, {
+						path: audioFile.path,
+						hasAudio: audioValidation.hasAudio,
+						duration: audioValidation.duration,
+						streams: audioValidation.info?.streams?.length || 0,
+					});
 
 					if (!audioValidation.hasAudio) {
 						debugWarn(

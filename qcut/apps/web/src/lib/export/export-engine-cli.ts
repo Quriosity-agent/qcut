@@ -43,7 +43,10 @@ import {
 
 // Import split modules
 import { validateAudioFiles } from "./export-engine-cli-validation";
-import { resolveWordFilters, buildExportOptions } from "./export-engine-cli-mode";
+import {
+	resolveWordFilters,
+	buildExportOptions,
+} from "./export-engine-cli-mode";
 import {
 	logExportConfiguration,
 	invokeFFmpegExport,

@@ -46,9 +46,9 @@ export function useAIGenerationState(props: UseAIGenerationProps) {
 	const [estimatedTime, setEstimatedTime] = useState<number | undefined>();
 	const [currentModelIndex, setCurrentModelIndex] = useState(0);
 	const [progressLogs, setProgressLogs] = useState<string[]>([]);
-	const [generationStartTime, setGenerationStartTime] = useState<
-		number | null
-	>(null);
+	const [generationStartTime, setGenerationStartTime] = useState<number | null>(
+		null
+	);
 
 	// Critical state variables
 	const [jobId, setJobId] = useState<string | null>(null);

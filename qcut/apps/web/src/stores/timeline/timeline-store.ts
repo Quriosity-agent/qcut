@@ -16,10 +16,7 @@
  */
 
 import { create } from "zustand";
-import {
-	sortTracksByOrder,
-	ensureMainTrack,
-} from "@/types/timeline";
+import { sortTracksByOrder, ensureMainTrack } from "@/types/timeline";
 
 import { type TimelineStore } from "./index";
 import { createTimelineOperations } from "./timeline-store-operations";

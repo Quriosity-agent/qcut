@@ -47,9 +47,7 @@ export function resolveWordFilters(
 		`[CLI Export] hasWordFilters: ${hasWordFilters}, videoInput: ${!!videoInput}`
 	);
 
-	let wordFilterSegments:
-		| Array<{ start: number; end: number }>
-		| undefined;
+	let wordFilterSegments: Array<{ start: number; end: number }> | undefined;
 
 	if (hasWordFilters && videoInput && wordTimelineData) {
 		const filteredWords = wordTimelineData.words.filter(
