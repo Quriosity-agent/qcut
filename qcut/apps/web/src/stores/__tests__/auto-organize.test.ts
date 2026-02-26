@@ -338,4 +338,148 @@ describe("Auto-Organize Media", () => {
 			expect(result[0].id).toBe("regular");
 		});
 	});
+
+	describe("addToFolder", () => {
+		it("should add media to a folder", async () => {
+			const mediaItems = [createMockMediaItem("item-1", "video")];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().addToFolder("item-1", "folder-A");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toContain("folder-A");
+		});
+
+		it("should dedupe folder IDs when adding to same folder twice", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().addToFolder("item-1", "folder-A");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toEqual(["folder-A"]);
+		});
+	});
+
+	describe("removeFromFolder", () => {
+		it("should remove media from a folder", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", {
+					folderIds: ["folder-A", "folder-B"],
+				}),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().removeFromFolder("item-1", "folder-A");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toEqual(["folder-B"]);
+		});
+	});
+
+	describe("moveToFolder", () => {
+		it("should replace all folder IDs with target folder", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", {
+					folderIds: ["old-folder-1", "old-folder-2"],
+				}),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().moveToFolder("item-1", "new-folder");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toEqual(["new-folder"]);
+		});
+
+		it("should clear folder IDs when target is null", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().moveToFolder("item-1", null);
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toEqual([]);
+		});
+	});
+
+	describe("bulkAddToFolder", () => {
+		it("should add multiple items to a folder", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video"),
+				createMockMediaItem("item-2", "audio"),
+				createMockMediaItem("item-3", "image"),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore
+				.getState()
+				.bulkAddToFolder(["item-1", "item-2"], "bulk-folder");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const items = useMediaStore.getState().mediaItems;
+			expect(items.find((m) => m.id === "item-1")?.folderIds).toContain(
+				"bulk-folder"
+			);
+			expect(items.find((m) => m.id === "item-2")?.folderIds).toContain(
+				"bulk-folder"
+			);
+			expect(
+				items.find((m) => m.id === "item-3")?.folderIds || []
+			).not.toContain("bulk-folder");
+		});
+	});
+
+	describe("bulkMoveToFolder", () => {
+		it("should move multiple items to a folder", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", { folderIds: ["old"] }),
+				createMockMediaItem("item-2", "audio", { folderIds: ["old"] }),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore
+				.getState()
+				.bulkMoveToFolder(["item-1", "item-2"], "new-folder");
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const items = useMediaStore.getState().mediaItems;
+			expect(items.find((m) => m.id === "item-1")?.folderIds).toEqual([
+				"new-folder",
+			]);
+			expect(items.find((m) => m.id === "item-2")?.folderIds).toEqual([
+				"new-folder",
+			]);
+		});
+
+		it("should clear folder IDs when target is null", async () => {
+			const mediaItems = [
+				createMockMediaItem("item-1", "video", { folderIds: ["folder-A"] }),
+			];
+			useMediaStore.setState({ mediaItems });
+
+			useMediaStore.getState().bulkMoveToFolder(["item-1"], null);
+
+			await new Promise((resolve) => setTimeout(resolve, 50));
+
+			const item = useMediaStore.getState().mediaItems.find((m) => m.id === "item-1");
+			expect(item?.folderIds).toEqual([]);
+		});
+	});
 });
