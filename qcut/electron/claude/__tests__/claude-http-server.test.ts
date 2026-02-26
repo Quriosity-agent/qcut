@@ -92,6 +92,46 @@ vi.mock("../handlers/claude-timeline-handler.js", () => ({
 	validateTimeline: vi.fn(),
 }));
 
+vi.mock("../handlers/claude-transaction-handler.js", () => ({
+	beginTransaction: vi.fn(async () => ({
+		id: "txn_test_1",
+		label: "Test Txn",
+		state: "active",
+		createdAt: Date.now(),
+		updatedAt: Date.now(),
+		expiresAt: Date.now() + 30_000,
+	})),
+	commitTransaction: vi.fn(async () => ({
+		transaction: {
+			id: "txn_test_1",
+			label: "Test Txn",
+			state: "committed",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		},
+		historyEntryAdded: true,
+	})),
+	rollbackTransaction: vi.fn(async () => ({
+		transaction: {
+			id: "txn_test_1",
+			label: "Test Txn",
+			state: "rolledBack",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		},
+	})),
+	getTransactionStatus: vi.fn(() => null),
+	undoTimeline: vi.fn(async () => ({ applied: true, undoCount: 1, redoCount: 0 })),
+	redoTimeline: vi.fn(async () => ({ applied: true, undoCount: 2, redoCount: 0 })),
+	getHistorySummary: vi.fn(async () => ({
+		undoCount: 2,
+		redoCount: 1,
+		entries: [{ label: \"Edit\", timestamp: 123 }],
+	})),
+}));
+
 vi.mock("../handlers/claude-project-handler.js", () => ({
 	getProjectSettings: vi.fn(async () => ({
 		name: "Test",
@@ -199,6 +239,7 @@ import {
 } from "../http/claude-http-server";
 import { BrowserWindow } from "electron";
 import * as timelineHandler from "../handlers/claude-timeline-handler.js";
+import * as transactionHandler from "../handlers/claude-transaction-handler.js";
 import * as rangeHandler from "../handlers/claude-range-handler.js";
 import { HttpError } from "../utils/http-router";
 
@@ -603,6 +644,69 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.cleared).toBe(true);
 		expect(send).toHaveBeenCalledWith("claude:timeline:clearSelection");
+	});
+
+	it("POST /api/claude/transaction/begin returns transactionId", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/transaction/begin", {
+			method: "POST",
+			body: JSON.stringify({ label: "Batch add" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.transactionId).toBe("txn_test_1");
+		expect(transactionHandler.beginTransaction).toHaveBeenCalled();
+	});
+
+	it("POST /api/claude/transaction/:id/commit proxies to handler", async () => {
+		const res = await fetch("/api/claude/transaction/txn_test_1/commit", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.historyEntryAdded).toBe(true);
+		expect(transactionHandler.commitTransaction).toHaveBeenCalledWith({
+			transactionId: "txn_test_1",
+		});
+	});
+
+	it("POST /api/claude/undo proxies to handler", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/undo", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.applied).toBe(true);
+		expect(transactionHandler.undoTimeline).toHaveBeenCalled();
+	});
+
+	it("GET /api/claude/history returns history summary", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/history");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.undoCount).toBe(2);
+		expect(Array.isArray(res.body.data.entries)).toBe(true);
+		expect(transactionHandler.getHistorySummary).toHaveBeenCalled();
 	});
 
 	it("POST /api/claude/timeline/:projectId/import rejects malformed markdown", async () => {
