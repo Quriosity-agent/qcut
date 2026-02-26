@@ -28,6 +28,7 @@ export function getAutoSaveTimer(): ReturnType<typeof setTimeout> | null {
 	return autoSaveTimer;
 }
 
+/** Cancels any pending debounced auto-save timer. */
 export function clearAutoSaveTimer(): void {
 	if (autoSaveTimer) {
 		clearTimeout(autoSaveTimer);

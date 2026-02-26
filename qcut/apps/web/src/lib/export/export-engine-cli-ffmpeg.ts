@@ -7,6 +7,7 @@
 
 import { debugLog, debugError } from "@/lib/debug/debug-config";
 
+/** Logs the full export configuration (dimensions, quality, filters, sources) via debug logger. */
 export function logExportConfiguration(
 	exportOptions: {
 		sessionId: string;
@@ -53,6 +54,7 @@ export function logExportConfiguration(
 	}
 }
 
+/** Invokes FFmpeg CLI export via Electron IPC and returns the output file path. */
 export async function invokeFFmpegExport(
 	exportOptions: Record<string, any>
 ): Promise<string> {

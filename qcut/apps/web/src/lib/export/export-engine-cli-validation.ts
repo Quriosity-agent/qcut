@@ -13,6 +13,7 @@ import {
 	validateAudioWithFfprobe,
 } from "./export-engine-cli-utils";
 
+/** Validates audio files in parallel via ffprobe, filtering out missing, empty, or invalid files. */
 export async function validateAudioFiles(
 	audioFiles: AudioFileInput[]
 ): Promise<AudioFileInput[]> {

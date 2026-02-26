@@ -26,6 +26,7 @@ export interface PersistenceDeps {
 	updateTracksAndSave: (tracks: TimelineTrack[]) => void;
 }
 
+/** Creates persistence operations (load, save, redo, thumbnail, clear) for the timeline store. */
 export function createPersistenceOperations(
 	get: StoreGet,
 	set: StoreSet,

@@ -7,6 +7,7 @@
 
 import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 
+/** Logs actual video duration from a blob and compares against expected timeline duration. */
 export function logActualVideoDurationCLI(
 	videoBlob: Blob,
 	totalDuration: number
@@ -44,6 +45,7 @@ export function logActualVideoDurationCLI(
 	video.src = url;
 }
 
+/** Logs Mode 2 (direct video copy) detection status and export parameters. */
 export function logMode2Detection(
 	canUseMode2: boolean,
 	videoInput: { path: string; trimStart: number; trimEnd: number } | null,

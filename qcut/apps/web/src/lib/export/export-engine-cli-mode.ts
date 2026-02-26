@@ -21,6 +21,7 @@ export interface WordFilterResult {
 	wordFilterSegments?: Array<{ start: number; end: number }>;
 }
 
+/** Resolves word filter state from the word timeline store and computes keep-segments for export. */
 export function resolveWordFilters(
 	totalDuration: number,
 	videoInput: { path: string; trimStart: number; trimEnd: number } | null
@@ -104,6 +105,7 @@ export interface BuildExportOptionsParams {
 	videoInput: { path: string; trimStart: number; trimEnd: number } | null;
 }
 
+/** Assembles the final FFmpeg export options object from analysis results and filter chains. */
 export function buildExportOptions(params: BuildExportOptionsParams) {
 	const {
 		sessionId,

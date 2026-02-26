@@ -25,6 +25,7 @@ export interface CrudDeps {
 	updateTracksAndSave: (tracks: TimelineTrack[]) => void;
 }
 
+/** Creates track/element CRUD operations (add, remove, move, update) for the timeline store. */
 export function createCrudOperations(
 	get: StoreGet,
 	set: StoreSet,
