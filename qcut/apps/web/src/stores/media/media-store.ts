@@ -11,29 +11,36 @@ import { create } from "zustand";
 import { debugLog, debugError } from "@/lib/debug/debug-config";
 import { storageService } from "@/lib/storage/storage-service";
 import { generateUUID, generateFileBasedId } from "@/lib/utils";
-import { getVideoInfo, generateThumbnail } from "@/lib/ffmpeg/ffmpeg-utils";
+import { getOrCreateObjectURL } from "@/lib/media/blob-manager";
 import {
-	createObjectURL,
-	revokeObjectURL,
-	getOrCreateObjectURL,
-} from "@/lib/media/blob-manager";
-import {
-	handleError,
-	ErrorCategory,
-	ErrorSeverity,
 	handleStorageError,
 	handleMediaProcessingError,
 } from "@/lib/debug/error-handler";
 import type { MediaItem, MediaType } from "./media-store-types";
-import { DEFAULT_FOLDER_IDS } from "./media-store-types";
 
-// Re-export types for backward compatibility
+import {
+	revokeMediaBlob,
+	cloneFileForTemporaryUse,
+	generateVideoThumbnailBrowser as generateVideoThumbnailBrowserImpl,
+	getMediaDuration as getMediaDurationImpl,
+} from "./media-store-helpers";
+
+import { createFolderActions, type FolderActions } from "./media-store-folders";
+
+// Re-export types and helpers for backward compatibility
 export type { MediaItem, MediaType } from "./media-store-types";
+export {
+	getFileType,
+	getImageDimensions,
+	generateVideoThumbnailBrowser,
+	getMediaDuration,
+	getMediaAspectRatio,
+} from "./media-store-helpers";
 
-interface MediaStore {
+interface MediaStore extends FolderActions {
 	mediaItems: MediaItem[];
 	isLoading: boolean;
-	hasInitialized: boolean; // Track if the store has completed at least one load attempt
+	hasInitialized: boolean;
 
 	// Actions - now require projectId
 	addMediaItem: (
@@ -57,78 +64,14 @@ interface MediaStore {
 	removeMediaItem: (projectId: string, id: string) => Promise<void>;
 	loadProjectMedia: (projectId: string) => Promise<void>;
 	clearProjectMedia: (projectId: string) => Promise<void>;
-	clearAllMedia: () => void; // Clear local state only
-	restoreMediaItems: (items: MediaItem[]) => void; // Restore media items (for rollback)
-
-	// Folder assignment methods
-	addToFolder: (mediaId: string, folderId: string) => void;
-	removeFromFolder: (mediaId: string, folderId: string) => void;
-	moveToFolder: (mediaId: string, targetFolderId: string | null) => void;
-	getMediaByFolder: (folderId: string | null) => MediaItem[];
-
-	// Bulk folder operations (for skills/automation)
-	bulkAddToFolder: (mediaIds: string[], folderId: string) => void;
-	bulkMoveToFolder: (mediaIds: string[], folderId: string | null) => void;
-	autoOrganizeByType: () => void;
+	clearAllMedia: () => void;
+	restoreMediaItems: (items: MediaItem[]) => void;
 
 	// Project folder sync
 	syncFromProjectFolder: (
 		projectId: string
 	) => Promise<import("@/lib/project/project-folder-sync").SyncResult>;
 }
-
-// Helper function to determine file type
-export const getFileType = (file: File): MediaType | null => {
-	const { type } = file;
-
-	if (type.startsWith("image/")) {
-		return "image";
-	}
-	if (type.startsWith("video/")) {
-		return "video";
-	}
-	if (type.startsWith("audio/")) {
-		return "audio";
-	}
-
-	return null;
-};
-
-const revokeMediaBlob = (url: string, context: string): boolean => {
-	if (!url) return false;
-	return revokeObjectURL(url, `media-store:${context}`);
-};
-
-// Helper function to get image dimensions
-export const getImageDimensions = (
-	file: File
-): Promise<{ width: number; height: number }> => {
-	return new Promise((resolve, reject) => {
-		const img = new window.Image();
-		const blobUrl = createObjectURL(file, "getImageDimensions");
-
-		const cleanup = () => {
-			img.remove();
-			if (blobUrl) {
-				revokeMediaBlob(blobUrl, "getImageDimensions");
-			}
-		};
-
-		img.addEventListener("load", () => {
-			const width = img.naturalWidth;
-			const height = img.naturalHeight;
-			cleanup();
-			resolve({ width, height });
-		});
-
-		img.addEventListener("error", () => {
-			cleanup();
-			reject(new Error("Could not load image"));
-		});
-
-		img.src = blobUrl;
-	});
-};
 
 // Helper to update a single field on a media item (in-memory only)
 const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
@@ -175,24 +118,6 @@ const updateMediaMetadataAndPersist = async (
 	}
 };
 
-/**
- * Clone a File to create an isolated instance for temporary operations.
- * This prevents ERR_UPLOAD_FILE_CHANGED when blob URLs are revoked.
- *
- * When multiple blob URLs are created from the same File instance and some
- * are revoked, Chromium may invalidate the File's snapshot, causing other
- * blob URLs from the same File to fail with ERR_UPLOAD_FILE_CHANGED.
- *
- * By cloning the File, temporary operations (thumbnail/duration extraction)
- * use a separate File instance, isolating the display URL from side effects.
- */
-const cloneFileForTemporaryUse = (file: File): File => {
-	return new File([file], file.name, {
-		type: file.type,
-		lastModified: file.lastModified,
-	});
-};
-
 // Background metadata extraction without blocking UI
 const extractVideoMetadataBackground = async (
 	file: File,
@@ -204,13 +129,12 @@ const extractVideoMetadataBackground = async (
 		updateMediaItemField(itemId, { thumbnailStatus: "loading" });
 
 		// Clone file to isolate temporary operations from display URL
-		// This prevents ERR_UPLOAD_FILE_CHANGED when temporary URLs are revoked
 		const fileClone = cloneFileForTemporaryUse(file);
 
 		// Try browser processing first - it's fast and reliable
 		const [thumbnailData, duration] = await Promise.all([
-			generateVideoThumbnailBrowser(fileClone),
-			getMediaDuration(fileClone),
+			generateVideoThumbnailBrowserImpl(fileClone),
+			getMediaDurationImpl(fileClone),
 		]);
 
 		const result = {
@@ -230,171 +154,6 @@ const extractVideoMetadataBackground = async (
 		updateMediaItemField(itemId, { thumbnailStatus: "failed" });
 		debugError("[MediaStore] Thumbnail generation failed:", browserError);
 	}
-};
-
-// Helper function to generate video thumbnail using browser APIs (primary method)
-export const generateVideoThumbnailBrowser = (
-	file: File
-): Promise<{ thumbnailUrl: string; width: number; height: number }> => {
-	return new Promise((resolve, reject) => {
-		const video = document.createElement("video") as HTMLVideoElement;
-		const canvas = document.createElement("canvas") as HTMLCanvasElement;
-		const ctx = canvas.getContext("2d");
-
-		if (!ctx) {
-			reject(new Error("Could not get canvas context"));
-			return;
-		}
-
-		let blobUrl: string;
-		let cleanupScheduled = false;
-
-		const cleanup = () => {
-			if (cleanupScheduled) return; // Prevent double cleanup
-			cleanupScheduled = true;
-
-			// Explicitly release the video source to prevent race conditions
-			// This tells the browser to release its reference to the blob URL
-			video.src = "";
-			video.load();
-
-			// Remove elements immediately
-			video.remove();
-			canvas.remove();
-
-			// Delay blob URL revocation to allow browser to process the release
-			if (blobUrl) {
-				setTimeout(() => {
-					revokeMediaBlob(blobUrl, "generateVideoThumbnailBrowser");
-				}, 50); // Shorter delay sufficient after explicit source release
-			}
-		};
-
-		// Set timeout to prevent hanging
-		const timeout = setTimeout(() => {
-			cleanup();
-			reject(new Error("Video thumbnail generation timed out"));
-		}, 10_000);
-
-		video.addEventListener("loadedmetadata", () => {
-			canvas.width = video.videoWidth;
-			canvas.height = video.videoHeight;
-
-			// Seek to 1 second or 10% of duration, whichever is smaller
-			video.currentTime = Math.min(1, video.duration * 0.1);
-		});
-
-		video.addEventListener("seeked", () => {
-			try {
-				clearTimeout(timeout);
-				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-				const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.8);
-				const width = video.videoWidth;
-				const height = video.videoHeight;
-
-				resolve({ thumbnailUrl, width, height });
-				cleanup();
-			} catch (drawError) {
-				cleanup();
-				reject(
-					new Error(
-						`Canvas drawing failed: ${drawError instanceof Error ? drawError.message : String(drawError)}`
-					)
-				);
-			}
-		});
-
-		video.addEventListener("error", (event) => {
-			clearTimeout(timeout);
-			cleanup();
-			reject(
-				new Error(
-					`Video loading failed: ${video.error?.message || "Unknown error"}`
-				)
-			);
-		});
-
-		try {
-			blobUrl = createObjectURL(file, "processVideoFile");
-			video.src = blobUrl;
-			video.load();
-		} catch (urlError) {
-			clearTimeout(timeout);
-			cleanup();
-			reject(
-				new Error(
-					`Failed to create object URL: ${urlError instanceof Error ? urlError.message : String(urlError)}`
-				)
-			);
-		}
-	});
-};
-
-// Helper function to get media duration
-export const getMediaDuration = (file: File): Promise<number> => {
-	return new Promise((resolve, reject) => {
-		const element = document.createElement(
-			file.type.startsWith("video/") ? "video" : "audio"
-		) as HTMLMediaElement;
-		let blobUrl: string | null = null;
-		let cleanupTimeout: number | null = null;
-
-		const cleanup = () => {
-			if (cleanupTimeout) {
-				clearTimeout(cleanupTimeout);
-				cleanupTimeout = null;
-			}
-			element.remove();
-			if (blobUrl) {
-				// Delay cleanup to prevent timing conflicts
-				setTimeout(() => {
-					revokeMediaBlob(blobUrl!, "getMediaDuration");
-				}, 100);
-			}
-		};
-
-		// Set a reasonable timeout for media loading
-		const timeoutId = setTimeout(() => {
-			console.warn("[getMediaDuration] Timeout loading media:", file.name);
-			cleanup();
-			reject(new Error("Media loading timeout"));
-		}, 10_000);
-
-		element.addEventListener("loadedmetadata", () => {
-			clearTimeout(timeoutId);
-			const duration = element.duration;
-			if (isNaN(duration) || duration <= 0) {
-				cleanup();
-				reject(new Error("Invalid media duration"));
-				return;
-			}
-
-			// Delay cleanup to allow other processes to finish using the blob URL
-			cleanupTimeout = window.setTimeout(() => {
-				cleanup();
-				resolve(duration);
-			}, 50);
-		});
-
-		element.addEventListener("error", (e) => {
-			clearTimeout(timeoutId);
-			console.warn("[getMediaDuration] Media loading failed:", e);
-			cleanup();
-			reject(new Error("Could not load media"));
-		});
-
-		blobUrl = createObjectURL(file, "getMediaDuration");
-		element.src = blobUrl;
-		element.load();
-	});
-};
-
-// Helper to get aspect ratio from MediaItem
-export const getMediaAspectRatio = (item: MediaItem): number => {
-	if (item.width && item.height) {
-		return item.width / item.height;
-	}
-	return 16 / 9; // Default aspect ratio
 };
 
 export const useMediaStore = create<MediaStore>((set, get) => ({
@@ -480,7 +239,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			});
 
 			// Trigger thumbnail generation for videos AFTER storage save succeeds
-			// This avoids race condition where thumbnail persist could be overwritten
 			if (newItem.type === "video" && newItem.file && !newItem.thumbnailUrl) {
 				extractVideoMetadataBackground(newItem.file, newItem.id, projectId);
 			}
@@ -601,7 +359,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 		}));
 
 		// Save each generated image to persistent storage
-		// Get the current project ID from the store
 		try {
 			const { useProjectStore } = await import("@/stores/project-store");
 			const currentProject = useProjectStore.getState().activeProject;
@@ -654,7 +411,6 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 		}));
 
 		// 2) Cascade into the timeline: remove any elements using this media ID
-		// Use dynamic import to avoid circular dependency and improve code splitting
 		const { useTimelineStore } = await import("../timeline/timeline-store");
 		const timeline = useTimelineStore.getState();
 		const {
@@ -714,7 +470,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 			// Process media items with enhanced error handling
 			const updatedMediaItems = await Promise.all(
 				mediaItems.map(async (item) => {
-					// LAZY URL CREATION: Create display URL if missing (StorageService no longer creates them)
+					// LAZY URL CREATION: Create display URL if missing
 					let displayUrl = item.url;
 					if (!displayUrl && item.file && item.file.size > 0) {
 						displayUrl = getOrCreateObjectURL(item.file, "media-store-display");
@@ -737,7 +493,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 						// No stored thumbnail - need to generate
 						debugLog(`[MediaStore] Generating thumbnail for ${item.name}`);
 
-						// Start background generation (will update store and persist when done)
+						// Start background generation
 						extractVideoMetadataBackground(item.file, item.id, projectId);
 
 						// Return item with pending status for now
@@ -749,7 +505,7 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 					}
 					return {
 						...item,
-						url: displayUrl, // Include for non-video items too
+						url: displayUrl,
 					};
 				})
 			);
@@ -858,286 +614,8 @@ export const useMediaStore = create<MediaStore>((set, get) => ({
 		set({ mediaItems: items });
 	},
 
-	// ============================================================================
-	// Folder Assignment Methods
-	// ============================================================================
-
-	addToFolder: (mediaId, folderId) => {
-		set((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				item.id === mediaId
-					? {
-							...item,
-							folderIds: [...(item.folderIds || []), folderId].filter(
-								(id, index, arr) => arr.indexOf(id) === index // dedupe
-							),
-						}
-					: item
-			),
-		}));
-		debugLog("[MediaStore] Added media to folder:", { mediaId, folderId });
-
-		// Persist the change to storage
-		const { mediaItems } = get();
-		const item = mediaItems.find((m) => m.id === mediaId);
-		if (item) {
-			import("@/stores/project-store")
-				.then(({ useProjectStore }) => {
-					const projectId = useProjectStore.getState().activeProject?.id;
-					if (projectId) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError(
-								"[MediaStore] Failed to persist folder assignment:",
-								error
-							);
-						});
-					}
-				})
-				.catch((error) => {
-					debugError("[MediaStore] Failed to import project-store:", error);
-				});
-		}
-	},
-
-	removeFromFolder: (mediaId, folderId) => {
-		set((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				item.id === mediaId
-					? {
-							...item,
-							folderIds: (item.folderIds || []).filter((id) => id !== folderId),
-						}
-					: item
-			),
-		}));
-		debugLog("[MediaStore] Removed media from folder:", { mediaId, folderId });
-
-		// Persist the change to storage
-		const { mediaItems } = get();
-		const item = mediaItems.find((m) => m.id === mediaId);
-		if (item) {
-			import("@/stores/project-store")
-				.then(({ useProjectStore }) => {
-					const projectId = useProjectStore.getState().activeProject?.id;
-					if (projectId) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError(
-								"[MediaStore] Failed to persist folder removal:",
-								error
-							);
-						});
-					}
-				})
-				.catch((error) => {
-					debugError("[MediaStore] Failed to import project-store:", error);
-				});
-		}
-	},
-
-	moveToFolder: (mediaId, targetFolderId) => {
-		set((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				item.id === mediaId
-					? {
-							...item,
-							folderIds: targetFolderId ? [targetFolderId] : [],
-						}
-					: item
-			),
-		}));
-		debugLog("[MediaStore] Moved media to folder:", {
-			mediaId,
-			targetFolderId,
-		});
-
-		// Persist the change to storage
-		const { mediaItems } = get();
-		const item = mediaItems.find((m) => m.id === mediaId);
-		if (item) {
-			import("@/stores/project-store")
-				.then(({ useProjectStore }) => {
-					const projectId = useProjectStore.getState().activeProject?.id;
-					if (projectId) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError("[MediaStore] Failed to persist folder move:", error);
-						});
-					}
-				})
-				.catch((error) => {
-					debugError("[MediaStore] Failed to import project-store:", error);
-				});
-		}
-	},
-
-	getMediaByFolder: (folderId) => {
-		const { mediaItems } = get();
-		if (folderId === null) {
-			// "All Media" - return everything (excluding ephemeral)
-			return mediaItems.filter((item) => !item.ephemeral);
-		}
-		return mediaItems.filter(
-			(item) => !item.ephemeral && (item.folderIds || []).includes(folderId)
-		);
-	},
-
-	// ============================================================================
-	// Bulk Folder Operations (for skills/automation)
-	// ============================================================================
-
-	bulkAddToFolder: (mediaIds, folderId) => {
-		set((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				mediaIds.includes(item.id)
-					? {
-							...item,
-							folderIds: [...new Set([...(item.folderIds || []), folderId])],
-						}
-					: item
-			),
-		}));
-		debugLog("[MediaStore] Bulk added to folder:", {
-			count: mediaIds.length,
-			folderId,
-		});
-
-		// Persist all changed items
-		const { mediaItems } = get();
-		import("@/stores/project-store")
-			.then(({ useProjectStore }) => {
-				const projectId = useProjectStore.getState().activeProject?.id;
-				if (projectId) {
-					const changedItems = mediaItems.filter((m) =>
-						mediaIds.includes(m.id)
-					);
-					for (const item of changedItems) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError(
-								"[MediaStore] Failed to persist bulk folder add:",
-								error
-							);
-						});
-					}
-				}
-			})
-			.catch((error) => {
-				debugError("[MediaStore] Failed to import project-store:", error);
-			});
-	},
-
-	bulkMoveToFolder: (mediaIds, folderId) => {
-		set((state) => ({
-			mediaItems: state.mediaItems.map((item) =>
-				mediaIds.includes(item.id)
-					? {
-							...item,
-							folderIds: folderId ? [folderId] : [],
-						}
-					: item
-			),
-		}));
-		debugLog("[MediaStore] Bulk moved to folder:", {
-			count: mediaIds.length,
-			folderId,
-		});
-
-		// Persist all changed items
-		const { mediaItems } = get();
-		import("@/stores/project-store")
-			.then(({ useProjectStore }) => {
-				const projectId = useProjectStore.getState().activeProject?.id;
-				if (projectId) {
-					const changedItems = mediaItems.filter((m) =>
-						mediaIds.includes(m.id)
-					);
-					for (const item of changedItems) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError(
-								"[MediaStore] Failed to persist bulk folder move:",
-								error
-							);
-						});
-					}
-				}
-			})
-			.catch((error) => {
-				debugError("[MediaStore] Failed to import project-store:", error);
-			});
-	},
-
-	autoOrganizeByType: () => {
-		const { mediaItems } = get();
-
-		const typeToFolder: Record<string, string> = {
-			video: DEFAULT_FOLDER_IDS.VIDEOS,
-			audio: DEFAULT_FOLDER_IDS.AUDIO,
-			image: DEFAULT_FOLDER_IDS.IMAGES,
-		};
-
-		let organizedCount = 0;
-		const updatedItems = mediaItems.map((item) => {
-			// Skip if already organized or ephemeral
-			if (item.ephemeral || (item.folderIds && item.folderIds.length > 0)) {
-				return item;
-			}
-
-			// AI-generated content goes to AI Generated folder
-			// Check for explicit AI sources (not uploads or other non-AI sources)
-			const source = item.metadata?.source;
-			const isAiGenerated =
-				source &&
-				(source.includes("ai") ||
-					source === "text2image" ||
-					source === "fal-ai" ||
-					source.startsWith("fal-"));
-			if (isAiGenerated) {
-				organizedCount++;
-				return { ...item, folderIds: [DEFAULT_FOLDER_IDS.AI_GENERATED] };
-			}
-
-			// Organize by media type
-			const targetFolder = typeToFolder[item.type];
-			if (targetFolder) {
-				organizedCount++;
-				return { ...item, folderIds: [targetFolder] };
-			}
-
-			return item;
-		});
-
-		set({ mediaItems: updatedItems });
-		debugLog("[MediaStore] Auto-organized media by type:", { organizedCount });
-
-		// Persist all organized items
-		import("@/stores/project-store")
-			.then(({ useProjectStore }) => {
-				const projectId = useProjectStore.getState().activeProject?.id;
-				if (projectId) {
-					const changedItems = updatedItems.filter(
-						(item) =>
-							!item.ephemeral &&
-							item.folderIds &&
-							item.folderIds.length > 0 &&
-							!mediaItems.find(
-								(orig) =>
-									orig.id === item.id &&
-									orig.folderIds &&
-									orig.folderIds.length > 0
-							)
-					);
-					for (const item of changedItems) {
-						storageService.saveMediaItem(projectId, item).catch((error) => {
-							debugError(
-								"[MediaStore] Failed to persist auto-organize:",
-								error
-							);
-						});
-					}
-				}
-			})
-			.catch((error) => {
-				debugError("[MediaStore] Failed to import project-store:", error);
-			});
-	},
+	// Spread folder actions slice
+	...createFolderActions(set, get),
 
 	syncFromProjectFolder: async (projectId) => {
 		try {
