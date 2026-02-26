@@ -308,7 +308,10 @@ export function handleClaudeEventsStreamRequest({
 									cleanup();
 									return;
 								}
-								writeSseEvent({ res, event });
+								if (!writeSseEvent({ res, event })) {
+									cleanup();
+									return;
+								}
 								updateLastEventId(event.eventId);
 							}
 						} catch {

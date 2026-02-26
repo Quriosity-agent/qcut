@@ -2,7 +2,7 @@
 
 AI-powered `editor:*` commands: video analysis, transcription, content generation, Remotion generation, and editor navigation.
 
-Requires QCut running (`bun run electron:dev`). See [editor-core.md](editor-core.md) for connection options and JSON input modes.
+Requires QCut running (e.g., `bun run electron:dev` for dev or `bun run electron` for packaged mode). See [editor-core.md](editor-core.md) for connection options and JSON input modes.
 
 ---
 
@@ -184,7 +184,7 @@ bun run pipeline editor:generate:start \
   --model kling_2_6_pro \
   --text "The scene comes alive" \
   --image-url "/path/to/image.png" \
-  --duration 5s
+  --duration 5
 
 # With polling
 bun run pipeline editor:generate:start \
@@ -230,7 +230,7 @@ bun run pipeline editor:generate:estimate-cost \
 | `--text` | string | Generation prompt |
 | `--image-url` | string | Input image for image-to-video |
 | `--aspect-ratio` | string | e.g., `16:9` |
-| `--duration` | string | Duration, e.g., `5s` |
+| `--duration` | string | Duration in seconds, e.g., `5` |
 | `--add-to-timeline` | boolean | Auto-add result to timeline |
 | `--track-id` | string | Target track (with `--add-to-timeline`) |
 | `--start-time` | number | Timeline position (with `--add-to-timeline`) |
