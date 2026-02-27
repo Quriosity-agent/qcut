@@ -335,14 +335,18 @@ export const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             }
           }
 
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           const response = await fetch(
             apiBaseUrl + "/api/claude/personaplex/generate",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
+              signal: controller.signal,
             }
           );
+          clearTimeout(timeoutId);
 
           if (!response.ok) {
             const errBody = await response.text();
@@ -351,9 +355,13 @@ export const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
 
           const result = await response.json();
 
+          // Reset previous results before applying new ones
+          if (resultAudio) resultAudio.textContent = "";
+          if (resultText) resultText.textContent = "";
+          if (resultMeta) resultMeta.textContent = "";
+
           if (resultArea) resultArea.classList.add("visible");
           if (result.audio && result.audio.url && resultAudio) {
-            resultAudio.textContent = "";
             var audioEl = document.createElement("audio");
             audioEl.controls = true;
             audioEl.autoplay = true;
