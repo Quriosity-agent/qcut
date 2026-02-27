@@ -162,8 +162,29 @@ await finalizeRecordingOutput(...);  // Transcode what we have
 | `apps/web/src/lib/project/screen-recording-controller.ts` | 30s timeout on `waitForRecorderStop()` |
 | `electron/claude/handlers/claude-screen-recording-handler.ts` | 15s renderer timeout + force-stop fallback |
 | `electron/screen-recording-handler/ipc.ts` | Force-stop uses `destroy()`, skips writeQueue |
-| `electron/utility/utility-http-server.ts` | Reduced force-stop HTTP timeout to 15s |
+| `electron/utility/utility-http-server.ts` | Increased stop timeout to 90s, reduced force-stop to 15s |
 | `electron/native-pipeline/cli/cli-handlers-editor.ts` | Reverted CLI-level fallback (now handled in main process) |
+| `electron/native-pipeline/editor/editor-api-client.ts` | Added per-request timeout override to `post()` |
+
+---
+
+## Bug 4: CLI Timeout for Stop Recording (Cascading Timeout Issue)
+
+**Symptom**: Stop recording succeeds in the main process (force-stop fallback works), but the CLI still reports "Main process request timed out" because the HTTP client times out first.
+
+**Root Cause**: Three cascading timeouts were too tight:
+1. CLI HTTP client: 30s default (via `AbortSignal.timeout`)
+2. Utility HTTP server: 60s for stop endpoint
+3. Main process: 15s renderer timeout + force-stop (which includes FFmpeg transcode)
+
+When the renderer times out (15s) and force-stop triggers FFmpeg transcode (10-30s depending on file size), the total can exceed both the 30s CLI timeout and the 60s utility timeout.
+
+**Fix**:
+1. **`electron/native-pipeline/editor/editor-api-client.ts`** — Added optional `timeout` parameter to `post()` and `request()` methods
+2. **`electron/native-pipeline/cli/cli-handlers-editor.ts`** — Stop recording uses `{ timeout: 90_000 }`
+3. **`electron/utility/utility-http-server.ts`** — Increased stop endpoint timeout from 60s to 90s
+
+---
 
 ## Verification
 
@@ -175,9 +196,9 @@ All 8 steps pass after fixes:
 | 2 | `editor:navigator:open` | PASS |
 | 3 | `editor:screen-recording:start` | PASS |
 | 4 | `generate-image` x2 (nano_banana_pro) | PASS |
-| 5 | `editor:media:import` + `editor:timeline:add-element` | PASS (images visible in timeline) |
+| 5 | `editor:media:import` + `editor:timeline:add-element` | PASS (images added with deterministic media IDs) |
 | 6 | `editor:timeline:seek` + `editor:timeline:play` | PASS |
-| 7 | `editor:screen-recording:stop` | PASS (2.4MB, ~15s, force-stop fallback) |
+| 7 | `editor:screen-recording:stop` | PASS (1.1MB, 1.8s clean stop) |
 | 8 | File verification | PASS |
 
-Build: clean. TypeScript: 0 errors. Tests: 3602/3605 pass (3 pre-existing failures in `media-store-helpers.test.ts`).
+Build: clean. TypeScript: 0 errors.

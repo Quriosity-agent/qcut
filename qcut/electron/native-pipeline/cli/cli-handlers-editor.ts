@@ -184,7 +184,11 @@ async function handleScreenRecordingCommand(
 		case "stop": {
 			const body: Record<string, unknown> = {};
 			if (options.discard) body.discard = true;
-			const data = await client.post("/api/claude/screen-recording/stop", body);
+			const data = await client.post(
+				"/api/claude/screen-recording/stop",
+				body,
+				{ timeout: 90_000 }
+			);
 			return { success: true, data };
 		}
 		case "status": {

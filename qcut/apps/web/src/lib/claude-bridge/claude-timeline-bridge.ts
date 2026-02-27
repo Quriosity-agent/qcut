@@ -433,12 +433,12 @@ export function setupClaudeTimelineBridge(): void {
 							data.action
 						);
 				}
-				debugLog("[ClaudeTimelineBridge] Playback action applied:", data.action);
-			} catch (error) {
-				debugError(
-					"[ClaudeTimelineBridge] Failed to handle playback:",
-					error
+				debugLog(
+					"[ClaudeTimelineBridge] Playback action applied:",
+					data.action
 				);
+			} catch (error) {
+				debugError("[ClaudeTimelineBridge] Failed to handle playback:", error);
 			}
 		});
 	}
