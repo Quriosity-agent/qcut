@@ -79,11 +79,19 @@ export async function activateDevice(
 	return activation;
 }
 
-export async function deactivateDevice(activationId: string) {
+export async function deactivateDevice(
+	activationId: string,
+	licenseId: string
+) {
 	const [updated] = await db
 		.update(deviceActivations)
 		.set({ isActive: false })
-		.where(eq(deviceActivations.id, activationId))
+		.where(
+			and(
+				eq(deviceActivations.id, activationId),
+				eq(deviceActivations.licenseId, licenseId)
+			)
+		)
 		.returning();
 	return updated;
 }

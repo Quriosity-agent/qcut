@@ -6,12 +6,18 @@ const LICENSE_SERVER_URL = "https://qcut-license-server.workers.dev"; // TODO: u
 const CACHE_FILE = "license-cache.enc";
 const OFFLINE_GRACE_DAYS = 7;
 
+interface CreditBalance {
+	planCredits: number;
+	topUpCredits: number;
+	totalCredits: number;
+	planCreditsResetAt: string;
+}
+
 interface LicenseInfo {
 	plan: "free" | "pro" | "team";
 	status: "active" | "past_due" | "cancelled" | "expired";
 	currentPeriodEnd?: string;
-	aiGenerationsUsed: number;
-	aiGenerationsLimit: number;
+	credits: CreditBalance;
 	cachedAt?: number;
 }
 
@@ -43,13 +49,21 @@ function cacheLicense(license: LicenseInfo): void {
 	}
 }
 
+const FREE_FALLBACK: LicenseInfo = {
+	plan: "free",
+	status: "active",
+	credits: {
+		planCredits: 50,
+		topUpCredits: 0,
+		totalCredits: 50,
+		planCreditsResetAt: new Date(
+			Date.now() + 30 * 24 * 60 * 60 * 1000
+		).toISOString(),
+	},
+};
+
 function getCachedLicense(): LicenseInfo {
-	const fallback: LicenseInfo = {
-		plan: "free",
-		status: "active",
-		aiGenerationsUsed: 0,
-		aiGenerationsLimit: 5,
-	};
+	const fallback = FREE_FALLBACK;
 	const cachePath = getCachePath();
 	if (!fs.existsSync(cachePath)) return fallback;
 
@@ -148,6 +162,34 @@ export function setupLicenseIPC(): void {
 				});
 			} catch {
 				// Queue for later if offline — TODO: implement offline queue
+			}
+		}
+	);
+
+	// license:deduct-credits
+	ipcMain.handle(
+		"license:deduct-credits",
+		async (
+			_event: IpcMainInvokeEvent,
+			amount: number,
+			modelKey: string,
+			description: string
+		): Promise<boolean> => {
+			try {
+				const response = await fetch(
+					`${LICENSE_SERVER_URL}/api/credits/deduct`,
+					{
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${getAuthToken()}`,
+						},
+						body: JSON.stringify({ amount, modelKey, description }),
+					}
+				);
+				return response.ok;
+			} catch {
+				return false;
 			}
 		}
 	);

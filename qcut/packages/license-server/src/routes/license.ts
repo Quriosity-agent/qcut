@@ -40,12 +40,14 @@ licenseRoutes.post("/activate", async (c) => {
 });
 
 licenseRoutes.delete("/deactivate", async (c) => {
+	const userId = c.get("userId") as string;
 	const { deviceId } = await c.req.json();
 	if (!deviceId) {
 		return c.json({ error: "deviceId required" }, 400);
 	}
 
-	const device = await deactivateDevice(deviceId);
+	const license = await getLicenseByUserId(userId);
+	const device = await deactivateDevice(deviceId, license.id);
 	return c.json({ device });
 });
 

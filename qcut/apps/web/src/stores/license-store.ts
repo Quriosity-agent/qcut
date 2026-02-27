@@ -1,13 +1,19 @@
-﻿import { create } from "zustand";
+import { create } from "zustand";
+import { FEATURE_GATES } from "@/lib/feature-gates";
+import type { Plan } from "@/lib/feature-gates";
 
-type Plan = "free" | "pro" | "team";
+interface CreditBalance {
+	planCredits: number;
+	topUpCredits: number;
+	totalCredits: number;
+	planCreditsResetAt: string;
+}
 
 interface LicenseInfo {
 	plan: Plan;
 	status: "active" | "past_due" | "cancelled" | "expired";
 	currentPeriodEnd?: string;
-	aiGenerationsUsed: number;
-	aiGenerationsLimit: number;
+	credits: CreditBalance;
 }
 
 interface LicenseState {
@@ -19,19 +25,15 @@ interface LicenseState {
 	clearLicense: () => void;
 }
 
-const FEATURE_GATES: Record<string, Plan[]> = {
-	"ai-generation": ["free", "pro", "team"],
-	"export-4k": ["pro", "team"],
-	"no-watermark": ["pro", "team"],
-	"all-templates": ["pro", "team"],
-	"team-collab": ["team"],
-	"api-access": ["team"],
-};
-
-const USAGE_LIMITS: Record<Plan, Record<string, number>> = {
-	free: { ai_generation: 5, render: 10 },
-	pro: { ai_generation: Infinity, render: Infinity },
-	team: { ai_generation: Infinity, render: Infinity },
+const FREE_FALLBACK: LicenseInfo = {
+	plan: "free",
+	status: "active",
+	credits: {
+		planCredits: 50,
+		topUpCredits: 0,
+		totalCredits: 50,
+		planCreditsResetAt: "",
+	},
 };
 
 export const useLicenseStore = create<LicenseState>((set, get) => ({
@@ -46,24 +48,10 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 				set({ license });
 			} else {
 				// Web fallback — call license server directly
-				set({
-					license: {
-						plan: "free",
-						status: "active",
-						aiGenerationsUsed: 0,
-						aiGenerationsLimit: 5,
-					},
-				});
+				set({ license: FREE_FALLBACK });
 			}
 		} catch {
-			set({
-				license: {
-					plan: "free",
-					status: "active",
-					aiGenerationsUsed: 0,
-					aiGenerationsLimit: 5,
-				},
-			});
+			set({ license: FREE_FALLBACK });
 		} finally {
 			set({ isLoading: false });
 		}
@@ -72,7 +60,7 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 	canUseFeature: (feature: string) => {
 		const { license } = get();
 		if (!license) return false;
-		const allowed = FEATURE_GATES[feature];
+		const allowed = FEATURE_GATES[feature as keyof typeof FEATURE_GATES];
 		if (!allowed) return true;
 		return allowed.includes(license.plan);
 	},
