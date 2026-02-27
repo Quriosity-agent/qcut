@@ -1,7 +1,7 @@
 /**
  * Image Editing API Client for FAL.ai Models
  * Supports SeedEdit v3, FLUX Pro Kontext, FLUX Pro Kontext Max, FLUX 2 Flex Edit,
- * SeedDream v4, Nano Banana, Reve Edit, and Gemini 3 Pro Edit
+ * SeedDream v4, Nano Banana, Nano Banana 2, Reve Edit, and Gemini 3 Pro Edit
  */
 
 import { handleAIServiceError } from "../debug/error-handler";
@@ -65,9 +65,13 @@ export interface ImageEditRequest {
 	enableSafetyChecker?: boolean; // V4
 	outputFormat?: "jpeg" | "png" | "webp"; // Nano Banana, Reve Edit, and Gemini 3 Pro Edit (lowercase required by FAL API)
 
-	// Gemini 3 Pro Edit specific parameters
-	resolution?: "1K" | "2K" | "4K";
+	// Gemini 3 Pro Edit / Nano Banana 2 specific parameters
+	resolution?: "0.5K" | "1K" | "2K" | "4K";
 	aspectRatio?: string; // auto, 21:9, 16:9, 3:2, 4:3, 5:4, 1:1, 4:5, 3:4, 2:3, 9:16
+
+	// Nano Banana 2 specific parameters
+	enableWebSearch?: boolean;
+	limitGenerations?: boolean;
 
 	// GPT Image 1.5 Edit specific parameters
 	background?: "auto" | "transparent" | "opaque";
@@ -147,6 +151,18 @@ export const MODEL_ENDPOINTS: Record<string, ModelEndpoint> = {
 			num_images: 1,
 			output_format: "png",
 			sync_mode: false,
+		},
+	},
+
+	// Add Nano Banana 2 endpoint (Google's latest image editing model)
+	"nano-banana-2": {
+		endpoint: "fal-ai/nano-banana-2/edit",
+		defaultParams: {
+			num_images: 1,
+			output_format: "png",
+			resolution: "1K",
+			aspect_ratio: "auto",
+			sync_mode: true,
 		},
 	},
 
@@ -415,6 +431,16 @@ export async function editImage(
 	}
 	if (request.aspectRatio !== undefined) {
 		payload.aspect_ratio = request.aspectRatio;
+	}
+
+	// Nano Banana 2 specific parameters
+	if (request.model === "nano-banana-2") {
+		if (request.enableWebSearch !== undefined) {
+			payload.enable_web_search = request.enableWebSearch;
+		}
+		if (request.limitGenerations !== undefined) {
+			payload.limit_generations = request.limitGenerations;
+		}
 	}
 
 	// GPT Image 1.5 Edit specific parameters

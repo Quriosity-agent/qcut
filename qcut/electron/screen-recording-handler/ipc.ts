@@ -9,6 +9,7 @@ import type {
 	AppendScreenRecordingChunkResult,
 	StopScreenRecordingOptions,
 	StopScreenRecordingResult,
+	ForceStopScreenRecordingResult,
 	ScreenRecordingStatus,
 } from "./types.js";
 import { resolveOutputPath, resolveOutputFormat } from "./path-utils.js";
@@ -31,6 +32,78 @@ import {
 	ensureDisplayMediaHandlerConfigured,
 	buildStatus,
 } from "./session.js";
+
+async function discardActiveSession({
+	sessionData,
+}: {
+	sessionData: NonNullable<ReturnType<typeof getActiveSession>>;
+}): Promise<{
+	filePath: string;
+	bytesWritten: number;
+	durationMs: number;
+}> {
+	try {
+		const durationMs = Math.max(0, Date.now() - sessionData.startedAt);
+		await sessionData.writeQueue;
+		await closeStream({ fileStream: sessionData.fileStream });
+		await cleanupSessionFiles({ sessionData });
+		return {
+			filePath: sessionData.filePath,
+			bytesWritten: sessionData.bytesWritten,
+			durationMs,
+		};
+	} catch (error: unknown) {
+		throw new Error(
+			`Failed to discard active screen recording session: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+export async function forceStopActiveScreenRecordingSession(): Promise<ForceStopScreenRecordingResult> {
+	const sessionToStop = getActiveSession();
+	if (!sessionToStop) {
+		return {
+			success: true,
+			wasRecording: false,
+		};
+	}
+
+	// Clear session immediately to reject incoming chunks
+	setActiveSession(null);
+
+	const durationMs = Math.max(0, Date.now() - sessionToStop.startedAt);
+
+	try {
+		// Destroy the stream immediately — don't use end() which waits for
+		// pending writes and hangs if the renderer is still sending chunks
+		sessionToStop.fileStream.destroy();
+		// Transcode whatever was written so far
+		await finalizeRecordingOutput({ sessionData: sessionToStop });
+		return {
+			success: true,
+			wasRecording: true,
+			filePath: sessionToStop.filePath,
+			bytesWritten: sessionToStop.bytesWritten,
+			durationMs,
+			discarded: false,
+		};
+	} catch {
+		// Finalization failed — clean up temp files
+		try {
+			await cleanupSessionFiles({ sessionData: sessionToStop });
+		} catch {
+			// best-effort cleanup
+		}
+		return {
+			success: true,
+			wasRecording: true,
+			filePath: sessionToStop.filePath,
+			bytesWritten: sessionToStop.bytesWritten,
+			durationMs,
+			discarded: true,
+		};
+	}
+}
 
 export function setupScreenRecordingIPC(): void {
 	ensureDisplayMediaHandlerConfigured();
@@ -204,11 +277,12 @@ export function setupScreenRecordingIPC(): void {
 			const sessionToStop = getActiveSession();
 			if (!sessionToStop) {
 				return {
-					success: true,
+					success: false,
 					filePath: null,
 					bytesWritten: 0,
 					durationMs: 0,
-					discarded: true,
+					discarded: false,
+					error: "No active screen recording session",
 				};
 			}
 
@@ -268,6 +342,13 @@ export function setupScreenRecordingIPC(): void {
 					`Failed to stop screen recording: ${error instanceof Error ? error.message : String(error)}`
 				);
 			}
+		}
+	);
+
+	ipcMain.handle(
+		"screen:forceStopRecording",
+		async (): Promise<ForceStopScreenRecordingResult> => {
+			return await forceStopActiveScreenRecordingSession();
 		}
 	);
 

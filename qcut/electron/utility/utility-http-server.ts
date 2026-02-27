@@ -223,8 +223,16 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		const discard = req.body?.discard === true;
 		return await withTimeout(
 			requestFromMain("screen-recording:stop", { discard }),
-			60_000,
+			90_000,
 			"Recording stop timed out"
+		);
+	});
+
+	router.post("/api/claude/screen-recording/force-stop", async () => {
+		return await withTimeout(
+			requestFromMain("screen-recording:force-stop", {}),
+			15_000,
+			"Recording force-stop timed out"
 		);
 	});
 

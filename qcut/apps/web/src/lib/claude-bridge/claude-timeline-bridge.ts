@@ -93,6 +93,18 @@ export function resolveMediaIdForBatchElement({
 		if (byMediaId) {
 			return byMediaId.id;
 		}
+
+		const decodedMediaIdName = decodeDeterministicMediaSourceName({
+			sourceId: element.mediaId,
+		});
+		if (decodedMediaIdName) {
+			const byDecodedMediaIdName = mediaItems.find(
+				(item) => item.name === decodedMediaIdName
+			);
+			if (byDecodedMediaIdName) {
+				return byDecodedMediaIdName.id;
+			}
+		}
 	}
 
 	if (element.sourceId) {
@@ -190,6 +202,7 @@ export function setupClaudeTimelineBridge(): void {
 				const displayUrl = getOrCreateObjectURL(fileObj, "claude-media-import");
 
 				await useMediaStore.getState().addMediaItem(projectId, {
+					id: data.id,
 					name: data.name,
 					type: (data.type as "video" | "audio" | "image") || "video",
 					file: fileObj,
@@ -390,6 +403,45 @@ export function setupClaudeTimelineBridge(): void {
 			claudeAPI.sendSelectionResponse(data.requestId, []);
 		}
 	});
+
+	// Handle playback commands (fire-and-forget)
+	if (typeof claudeAPI.onPlayback === "function") {
+		claudeAPI.onPlayback(async (data: { action: string; time?: number }) => {
+			try {
+				const { usePlaybackStore } = await import(
+					"@/stores/editor/playback-store"
+				);
+				const store = usePlaybackStore.getState();
+				switch (data.action) {
+					case "play":
+						store.play();
+						break;
+					case "pause":
+						store.pause();
+						break;
+					case "toggle":
+						store.toggle();
+						break;
+					case "seek":
+						if (typeof data.time === "number") {
+							store.seek(data.time);
+						}
+						break;
+					default:
+						debugWarn(
+							"[ClaudeTimelineBridge] Unknown playback action:",
+							data.action
+						);
+				}
+				debugLog(
+					"[ClaudeTimelineBridge] Playback action applied:",
+					data.action
+				);
+			} catch (error) {
+				debugError("[ClaudeTimelineBridge] Failed to handle playback:", error);
+			}
+		});
+	}
 
 	// Handle clear selection (fire-and-forget)
 	claudeAPI.onClearSelection(() => {

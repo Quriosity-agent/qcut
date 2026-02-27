@@ -214,6 +214,8 @@ function stopMediaTracks({ mediaStream }: { mediaStream: MediaStream }): void {
 	}
 }
 
+const RECORDER_STOP_TIMEOUT_MS = 30_000;
+
 async function waitForRecorderStop({
 	mediaRecorder,
 }: {
@@ -225,6 +227,16 @@ async function waitForRecorderStop({
 		}
 
 		await new Promise<void>((resolve, reject) => {
+			const timer = setTimeout(() => {
+				cleanup();
+				console.warn(
+					"[ScreenRecording] MediaRecorder stop timed out after",
+					RECORDER_STOP_TIMEOUT_MS,
+					"ms, forcing inactive"
+				);
+				resolve();
+			}, RECORDER_STOP_TIMEOUT_MS);
+
 			const handleStop = (): void => {
 				cleanup();
 				resolve();
@@ -234,6 +246,7 @@ async function waitForRecorderStop({
 				reject(new Error(`MediaRecorder error: ${event.type}`));
 			};
 			const cleanup = (): void => {
+				clearTimeout(timer);
 				mediaRecorder.removeEventListener("stop", handleStop);
 				mediaRecorder.removeEventListener("error", handleError);
 			};

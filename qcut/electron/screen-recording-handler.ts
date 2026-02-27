@@ -5,6 +5,7 @@
 
 export {
 	setupScreenRecordingIPC,
+	forceStopActiveScreenRecordingSession,
 	listCaptureSources,
 	buildStatus,
 } from "./screen-recording-handler/index.js";

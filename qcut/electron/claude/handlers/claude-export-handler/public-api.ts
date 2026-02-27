@@ -154,7 +154,9 @@ export async function startExportJob({
 		const segments = collectExportSegments({ timeline, mediaFiles });
 
 		if (segments.length === 0) {
-			throw new Error("No video segments found to export");
+			throw new Error(
+				"No exportable segments found (no video or image media on timeline)"
+			);
 		}
 
 		const outputPath = request.outputPath?.trim()

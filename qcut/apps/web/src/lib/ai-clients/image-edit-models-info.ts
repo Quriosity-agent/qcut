@@ -76,6 +76,53 @@ export function getImageEditModels() {
 			},
 		},
 		{
+			id: "nano-banana-2",
+			name: "Nano Banana 2",
+			description:
+				"Google's state-of-the-art image editing with resolution control and web search",
+			provider: "Google",
+			estimatedCost: "$0.08",
+			features: [
+				"Up to 4K resolution",
+				"11 aspect ratio options",
+				"Optional web search enhancement",
+				"Multi-image input (up to 4)",
+			],
+			parameters: {
+				numImages: { min: 1, max: 4, default: 1, step: 1 },
+				resolution: {
+					type: "select",
+					options: ["0.5K", "1K", "2K", "4K"],
+					default: "1K",
+				},
+				aspectRatio: {
+					type: "select",
+					options: [
+						"auto",
+						"1:1",
+						"4:3",
+						"3:4",
+						"16:9",
+						"9:16",
+						"21:9",
+						"3:2",
+						"2:3",
+						"5:4",
+						"4:5",
+					],
+					default: "auto",
+				},
+				outputFormat: {
+					type: "select",
+					options: ["jpeg", "png", "webp"],
+					default: "png",
+				},
+				safetyTolerance: { min: 1, max: 6, default: 4, step: 1 },
+				enableWebSearch: { type: "boolean", default: false },
+				syncMode: { type: "boolean", default: true },
+			},
+		},
+		{
 			id: "seeddream-v4-5-edit",
 			name: "SeedDream v4.5 Edit",
 			description:

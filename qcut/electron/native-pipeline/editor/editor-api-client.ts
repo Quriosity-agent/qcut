@@ -207,12 +207,21 @@ export class EditorApiClient {
 		return await this.request<T>("GET", url);
 	}
 
-	async post<T = unknown>(path: string, body?: unknown): Promise<T> {
+	async post<T = unknown>(
+		path: string,
+		body?: unknown,
+		options?: { timeout?: number }
+	): Promise<T> {
 		await this.warnIfCapabilityLikelyUnsupported({
 			method: "POST",
 			path,
 		});
-		return await this.request<T>("POST", `${this.config.baseUrl}${path}`, body);
+		return await this.request<T>(
+			"POST",
+			`${this.config.baseUrl}${path}`,
+			body,
+			options?.timeout
+		);
 	}
 
 	async patch<T = unknown>(path: string, body?: unknown): Promise<T> {
@@ -566,7 +575,8 @@ export class EditorApiClient {
 	private async request<T>(
 		method: string,
 		url: string,
-		body?: unknown
+		body?: unknown,
+		timeoutOverride?: number
 	): Promise<T> {
 		const headers: Record<string, string> = {};
 		if (this.config.token) {
@@ -576,7 +586,7 @@ export class EditorApiClient {
 		const init: RequestInit = {
 			method,
 			headers,
-			signal: AbortSignal.timeout(this.config.timeout),
+			signal: AbortSignal.timeout(timeoutOverride ?? this.config.timeout),
 		};
 
 		if (body !== undefined) {

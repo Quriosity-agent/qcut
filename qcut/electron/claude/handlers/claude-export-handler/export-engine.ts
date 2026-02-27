@@ -132,12 +132,18 @@ export function collectExportSegments({
 
 		for (const track of timeline.tracks) {
 			for (const element of track.elements) {
-				if (!(element.type === "media" || element.type === "video")) {
+				if (
+					!(
+						element.type === "media" ||
+						element.type === "video" ||
+						element.type === "image"
+					)
+				) {
 					continue;
 				}
 
 				const media = findMediaForElement({ element, mediaById, mediaByName });
-				if (!media || media.type !== "video") {
+				if (!media || (media.type !== "video" && media.type !== "image")) {
 					continue;
 				}
 
@@ -155,6 +161,7 @@ export function collectExportSegments({
 					startTime: element.startTime,
 					duration: durationFromElement,
 					sourceId: media.id,
+					isImage: media.type === "image",
 				});
 			}
 		}
@@ -309,13 +316,21 @@ export async function executeExportJob({
 				`segment-${String(index).padStart(4, "0")}.mp4`
 			);
 
+			const inputArgs: string[] = segment.isImage
+				? [
+						"-loop",
+						"1",
+						"-t",
+						String(segment.duration),
+						"-i",
+						segment.sourcePath,
+					]
+				: ["-i", segment.sourcePath, "-t", String(segment.duration)];
+
 			await runFFmpegCommand({
 				args: [
 					"-y",
-					"-i",
-					segment.sourcePath,
-					"-t",
-					String(segment.duration),
+					...inputArgs,
 					"-vf",
 					scaleFilter,
 					"-r",
@@ -328,10 +343,8 @@ export async function executeExportJob({
 					parseBitrateForKbps({ bitrate: settings.bitrate }),
 					"-pix_fmt",
 					"yuv420p",
-					"-c:a",
-					"aac",
-					"-b:a",
-					"192k",
+					...(segment.isImage ? [] : ["-c:a", "aac", "-b:a", "192k"]),
+					"-shortest",
 					outputSegmentPath,
 				],
 				estimatedDuration: segment.duration,

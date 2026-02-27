@@ -74,6 +74,7 @@ describe("Multi-Image Support", () => {
 				"seeddream-v4-5-edit",
 				"seeddream-v4",
 				"nano-banana",
+				"nano-banana-2",
 				"gemini-3-pro-edit",
 				"flux-2-flex-edit",
 				"seededit",
@@ -96,6 +97,7 @@ describe("Multi-Image Support", () => {
 				"seeddream-v4-5-edit",
 				"seeddream-v4",
 				"nano-banana",
+				"nano-banana-2",
 				"gemini-3-pro-edit",
 				"flux-2-flex-edit",
 				"gpt-image-1-5-edit",
@@ -123,8 +125,8 @@ describe("Multi-Image Support", () => {
 	});
 
 	describe("IMAGE_EDIT_MODEL_IDS", () => {
-		it("contains all 10 models", () => {
-			expect(IMAGE_EDIT_MODEL_IDS).toHaveLength(10);
+		it("contains all 11 models", () => {
+			expect(IMAGE_EDIT_MODEL_IDS).toHaveLength(11);
 		});
 
 		it("includes all expected model IDs", () => {
@@ -135,6 +137,7 @@ describe("Multi-Image Support", () => {
 			expect(IMAGE_EDIT_MODEL_IDS).toContain("seeddream-v4");
 			expect(IMAGE_EDIT_MODEL_IDS).toContain("seeddream-v4-5-edit");
 			expect(IMAGE_EDIT_MODEL_IDS).toContain("nano-banana");
+			expect(IMAGE_EDIT_MODEL_IDS).toContain("nano-banana-2");
 			expect(IMAGE_EDIT_MODEL_IDS).toContain("reve-edit");
 			expect(IMAGE_EDIT_MODEL_IDS).toContain("gemini-3-pro-edit");
 		});
@@ -161,6 +164,7 @@ describe("Multi-Image Support", () => {
 			expect(multiImageModels).toContain("seeddream-v4-5-edit");
 			expect(multiImageModels).toContain("seeddream-v4");
 			expect(multiImageModels).toContain("nano-banana");
+			expect(multiImageModels).toContain("nano-banana-2");
 			expect(multiImageModels).toContain("gemini-3-pro-edit");
 			expect(multiImageModels).toContain("flux-2-flex-edit");
 			expect(multiImageModels).toContain("gpt-image-1-5-edit");
@@ -171,8 +175,8 @@ describe("Multi-Image Support", () => {
 			expect(multiImageModels).not.toContain("reve-edit");
 		});
 
-		it("returns 6 multi-image models", () => {
-			expect(getMultiImageModelIds()).toHaveLength(6);
+		it("returns 7 multi-image models", () => {
+			expect(getMultiImageModelIds()).toHaveLength(7);
 		});
 	});
 

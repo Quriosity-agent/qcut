@@ -605,7 +605,7 @@ export class NativePipelineManager {
 		return resolveOutputDirShared(
 			options.outputDir,
 			sessionId,
-			app.getPath("temp")
+			app?.getPath("temp")
 		);
 	}
 

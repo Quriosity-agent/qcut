@@ -93,6 +93,10 @@ const COMMANDS = [
 	"editor:timeline:select",
 	"editor:timeline:get-selection",
 	"editor:timeline:clear-selection",
+	"editor:timeline:play",
+	"editor:timeline:pause",
+	"editor:timeline:toggle-play",
+	"editor:timeline:seek",
 	"editor:editing:batch-cuts",
 	"editor:editing:delete-range",
 	"editor:editing:auto-edit",
@@ -218,6 +222,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:timeline:delete-element/batch-delete   Delete elements
   editor:timeline:split/move/arrange  Manipulate elements
   editor:timeline:select/get-selection/clear-selection
+  editor:timeline:play/pause/toggle-play/seek  Playback controls
   editor:editing:batch-cuts/delete-range  Cut operations
   editor:editing:auto-edit   Auto-edit (fillers/silences)
   editor:editing:auto-edit-status/list  Check or list jobs
@@ -243,7 +248,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:navigator:projects  List saved projects
   editor:navigator:open      Open a project (--project-id)
   editor:screen-recording:sources  List capture sources
-  editor:screen-recording:start    Start recording (--source-id)
+  editor:screen-recording:start    Start recording (--source-id, --force)
   editor:screen-recording:stop     Stop recording (--discard)
   editor:screen-recording:status   Get recording status
   editor:remotion:list       List Remotion elements on timeline
@@ -289,7 +294,8 @@ Editor Options (see docs for full list):
   --element-id   Element ID    --track-id   Track ID
   --job-id       Job ID        --data       JSON input (@file/inline/-)
   --to-track     Target track  --split-time Split point (s)
-  --start-time   Start (s)     --end-time   End (s)
+  --time         Seek time (s) --start-time Start (s)
+  --end-time     End (s)
   --mode         Arrange mode  --replace    Replace on import
   --ripple       Ripple edit   --poll       Auto-poll async jobs
   --host/--port  API endpoint (default: 127.0.0.1:8765)
@@ -420,6 +426,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"track-id": { type: "string" },
 			"to-track": { type: "string" },
 			"split-time": { type: "string" },
+			time: { type: "string" },
 			"start-time": { type: "string" },
 			"end-time": { type: "string" },
 			"new-name": { type: "string" },
@@ -466,6 +473,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// screen-recording options
 			"source-id": { type: "string" },
 			discard: { type: "boolean", default: false },
+			force: { type: "boolean", default: false },
 			// ui options
 			panel: { type: "string" },
 			tab: { type: "string" },
@@ -599,6 +607,11 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				? undefined
 				: parseFloat(values["split-time"] as string)
 			: undefined,
+		seekTime: values.time
+			? Number.isNaN(parseFloat(values.time as string))
+				? undefined
+				: parseFloat(values.time as string)
+			: undefined,
 		startTime: values["start-time"]
 			? Number.isNaN(parseFloat(values["start-time"] as string))
 				? undefined
@@ -669,6 +682,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// screen-recording options
 		sourceId: values["source-id"] as string | undefined,
 		discard: (values.discard as boolean) ?? false,
+		force: (values.force as boolean) ?? false,
 		// ui options
 		panel: values.panel as string | undefined,
 		tab: values.tab as string | undefined,

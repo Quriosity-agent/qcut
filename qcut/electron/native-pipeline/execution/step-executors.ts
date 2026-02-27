@@ -236,6 +236,12 @@ async function executeImageToVideo(
 	return mapApiResult(result, options.outputDir);
 }
 
+/** Endpoints that accept image_urls (array) instead of image_url (string). */
+const ARRAY_IMAGE_URL_ENDPOINTS = new Set([
+	"fal-ai/nano-banana-pro/edit",
+	"fal-ai/nano-banana-2/edit",
+]);
+
 async function executeImageToImage(
 	model: ModelDefinition,
 	input: StepInput,
@@ -248,7 +254,28 @@ async function executeImageToImage(
 	}
 ): Promise<StepOutput> {
 	if (input.imageUrl) {
-		payload.image_url = input.imageUrl;
+		let resolvedUrl = input.imageUrl;
+
+		// Upload local files to FAL storage for FAL-routed endpoints
+		if (provider === "fal" && !input.imageUrl.startsWith("http")) {
+			options.onProgress?.(10, "Uploading image to FAL storage...");
+			const upload = await uploadToFalStorage(input.imageUrl);
+			if (!upload.success || !upload.url) {
+				return {
+					success: false,
+					error: upload.error || "Failed to upload image",
+					duration: 0,
+				};
+			}
+			resolvedUrl = upload.url;
+		}
+
+		// Some models expect image_urls array instead of image_url string
+		if (ARRAY_IMAGE_URL_ENDPOINTS.has(model.endpoint)) {
+			payload.image_urls = [resolvedUrl];
+		} else {
+			payload.image_url = resolvedUrl;
+		}
 	}
 	if (input.text) {
 		payload.prompt = input.text;

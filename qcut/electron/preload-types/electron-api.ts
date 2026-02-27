@@ -667,6 +667,9 @@ export interface ElectronAPI {
 				elements: ClaudeSelectionItem[]
 			) => void;
 			onClearSelection: (callback: () => void) => void;
+			onPlayback: (
+				callback: (data: { action: string; time?: number }) => void
+			) => void;
 			onDeleteRange: (
 				callback: (data: {
 					requestId: string;

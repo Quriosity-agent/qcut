@@ -126,7 +126,7 @@ function getElementDuration({
 	return DEFAULT_MEDIA_DURATION_SECONDS;
 }
 
-/** Find matching media item by source name or ID. */
+/** Find matching media item by source name, source ID, or media ID. */
 function findMediaItemForElement({
 	element,
 	mediaItems,
@@ -134,6 +134,16 @@ function findMediaItemForElement({
 	element: Partial<ClaudeElement>;
 	mediaItems: MediaItem[];
 }): MediaItem | null {
+	// Check mediaId first (used by CLI add-element)
+	if (element.mediaId) {
+		const mediaByMediaId = mediaItems.find(
+			(item) => item.id === element.mediaId
+		);
+		if (mediaByMediaId) {
+			return mediaByMediaId;
+		}
+	}
+
 	if (element.sourceName) {
 		// Exact match first
 		const mediaByName = mediaItems.find(
@@ -285,16 +295,16 @@ export async function addClaudeMediaElement({
 		projectId,
 	});
 
-	if (!mediaItem && !element.sourceId) {
+	if (!mediaItem && !element.sourceId && !element.mediaId) {
 		debugWarn(
 			"[ClaudeTimelineBridge] Media not found:",
-			element.sourceName || element.sourceId
+			element.sourceName || element.sourceId || element.mediaId
 		);
 		return;
 	}
 
 	const trackId = timelineStore.findOrCreateTrack("media");
-	const resolvedId = mediaItem?.id ?? element.sourceId!;
+	const resolvedId = mediaItem?.id ?? element.mediaId ?? element.sourceId!;
 	const resolvedName = mediaItem?.name ?? element.sourceName ?? "Media";
 	const fallbackDuration =
 		typeof mediaItem?.duration === "number" && mediaItem.duration > 0
@@ -728,12 +738,23 @@ function formatElementForExport(
 
 	// Add type-specific fields
 	switch (element.type) {
-		case "media":
+		case "media": {
+			// Resolve the actual media file name from the store for reliable export matching
+			let sourceName = element.name;
+			if (element.mediaId) {
+				const mediaItem = useMediaStore
+					.getState()
+					.mediaItems.find((item) => item.id === element.mediaId);
+				if (mediaItem?.name) {
+					sourceName = mediaItem.name;
+				}
+			}
 			return {
 				...baseElement,
 				sourceId: element.mediaId,
-				sourceName: element.name,
+				sourceName,
 			};
+		}
 		case "text":
 			return {
 				...baseElement,

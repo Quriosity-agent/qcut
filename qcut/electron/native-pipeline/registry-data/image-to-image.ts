@@ -196,6 +196,49 @@ export function registerImageToImageModels(): void {
 	});
 
 	ModelRegistry.register({
+		key: "nano_banana_2_edit",
+		name: "Nano Banana 2 Edit",
+		provider: "Google (via FAL)",
+		endpoint: "fal-ai/nano-banana-2/edit",
+		categories: ["image_to_image"],
+		description:
+			"Google's state-of-the-art image editing with resolution control and web search",
+		pricing: { "0.5K": 0.06, "1K": 0.08, "2K": 0.12, "4K": 0.16 },
+		aspectRatios: [
+			"auto",
+			"21:9",
+			"16:9",
+			"3:2",
+			"4:3",
+			"5:4",
+			"1:1",
+			"4:5",
+			"3:4",
+			"2:3",
+			"9:16",
+		],
+		resolutions: ["0.5K", "1K", "2K", "4K"],
+		defaults: {
+			aspect_ratio: "auto",
+			resolution: "1K",
+			output_format: "png",
+			num_images: 1,
+			sync_mode: true,
+			safety_tolerance: 4,
+		},
+		features: [
+			"Multi-image input (up to 4)",
+			"11 aspect ratio options",
+			"Up to 4K resolution",
+			"Optional web search enhancement",
+			"Safety tolerance control",
+			"Commercial use ready",
+		],
+		costEstimate: 0.08,
+		processingTime: 10,
+	});
+
+	ModelRegistry.register({
 		key: "gpt_image_1_5_edit",
 		name: "GPT Image 1.5 Edit",
 		provider: "OpenAI (via FAL)",

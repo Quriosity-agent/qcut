@@ -98,6 +98,7 @@ export interface ClaudeElement {
 		| "markdown";
 	sourceId?: string;
 	sourceName?: string;
+	mediaId?: string;
 	content?: string;
 	markdownContent?: string;
 	style?: Record<string, unknown>;
