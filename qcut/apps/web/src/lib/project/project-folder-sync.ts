@@ -119,6 +119,32 @@ function normalizePath(p: string): string {
 	return p.replace(/\\/g, "/").toLowerCase();
 }
 
+function encodeDeterministicMediaId({
+	fileName,
+}: {
+	fileName: string;
+}): string | null {
+	try {
+		const bytes = new TextEncoder().encode(fileName);
+		let binary = "";
+		for (const byte of bytes) {
+			binary += String.fromCharCode(byte);
+		}
+		const base64 = window.btoa(binary);
+		const base64Url = base64
+			.replace(/\+/g, "-")
+			.replace(/\//g, "_")
+			.replace(/=+$/u, "");
+		return `media_${base64Url}`;
+	} catch (error) {
+		debugError("[ProjectFolderSync] Failed to encode deterministic media ID:", {
+			fileName,
+			error,
+		});
+		return null;
+	}
+}
+
 // ============================================================================
 // Main sync function
 // ============================================================================
@@ -208,9 +234,13 @@ export async function syncProjectFolder(
 
 				// Create blob URL for display so timeline elements can render the media
 				const displayUrl = getOrCreateObjectURL(fileObj, "project-folder-sync");
+				const deterministicId = encodeDeterministicMediaId({
+					fileName: file.name,
+				});
 
 				// Add to media store
 				await store.addMediaItem(projectId, {
+					id: deterministicId ?? undefined,
 					name: file.name,
 					type: file.type as "video" | "audio" | "image",
 					file: fileObj,

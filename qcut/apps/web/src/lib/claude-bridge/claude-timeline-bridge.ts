@@ -93,6 +93,18 @@ export function resolveMediaIdForBatchElement({
 		if (byMediaId) {
 			return byMediaId.id;
 		}
+
+		const decodedMediaIdName = decodeDeterministicMediaSourceName({
+			sourceId: element.mediaId,
+		});
+		if (decodedMediaIdName) {
+			const byDecodedMediaIdName = mediaItems.find(
+				(item) => item.name === decodedMediaIdName
+			);
+			if (byDecodedMediaIdName) {
+				return byDecodedMediaIdName.id;
+			}
+		}
 	}
 
 	if (element.sourceId) {
@@ -190,6 +202,7 @@ export function setupClaudeTimelineBridge(): void {
 				const displayUrl = getOrCreateObjectURL(fileObj, "claude-media-import");
 
 				await useMediaStore.getState().addMediaItem(projectId, {
+					id: data.id,
 					name: data.name,
 					type: (data.type as "video" | "audio" | "image") || "video",
 					file: fileObj,
