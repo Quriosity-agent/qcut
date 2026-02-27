@@ -23,6 +23,8 @@ interface LicenseState {
 	trackUsage: (type: "ai_generation" | "export" | "render") => Promise<void>;
 	canUseFeature: (feature: string) => boolean;
 	clearLicense: () => void;
+	openBuyCreditsPage: () => void;
+	openPricingPage: () => void;
 }
 
 const FREE_FALLBACK: LicenseInfo = {
@@ -72,4 +74,18 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 	},
 
 	clearLicense: () => set({ license: null }),
+
+	openBuyCreditsPage: () => {
+		window.open(
+			"https://donghaozhang.github.io/nexusai-website/account/credits.html",
+			"_blank"
+		);
+	},
+
+	openPricingPage: () => {
+		window.open(
+			"https://donghaozhang.github.io/nexusai-website/account/pricing.html",
+			"_blank"
+		);
+	},
 }));

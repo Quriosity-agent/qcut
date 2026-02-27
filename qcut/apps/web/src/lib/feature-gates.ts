@@ -11,7 +11,7 @@ export type FeatureName =
 	| "api-access";
 
 /** Which plans have access to each feature. Free AI generation has credit limits. */
-const FEATURE_GATES: Record<FeatureName, Plan[]> = {
+export const FEATURE_GATES: Record<FeatureName, Plan[]> = {
 	"ai-generation": ["free", "pro", "team"],
 	"export-4k": ["pro", "team"],
 	"no-watermark": ["pro", "team"],
