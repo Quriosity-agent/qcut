@@ -1,6 +1,6 @@
 ﻿import { ipcMain, safeStorage, app, IpcMainInvokeEvent } from "electron";
-import path from "path";
-import fs from "fs";
+import path from "node:path";
+import fs from "node:fs";
 
 const LICENSE_SERVER_URL = "https://qcut-license-server.workers.dev"; // TODO: update with real URL
 const CACHE_FILE = "license-cache.enc";
@@ -93,8 +93,12 @@ function getCachedLicense(): LicenseInfo {
 }
 
 function clearCachedLicense(): void {
-	const cachePath = getCachePath();
-	if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+	try {
+		const cachePath = getCachePath();
+		if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+	} catch (error) {
+		console.error("[License] Failed to clear cache:", error);
+	}
 }
 
 export function setupLicenseIPC(): void {
@@ -120,6 +124,7 @@ export function setupLicenseIPC(): void {
 	ipcMain.handle(
 		"license:activate",
 		async (_event: IpcMainInvokeEvent, token: string): Promise<boolean> => {
+			if (typeof token !== "string" || token.trim().length === 0) return false;
 			try {
 				const response = await fetch(
 					`${LICENSE_SERVER_URL}/api/license/activate`,
@@ -151,6 +156,7 @@ export function setupLicenseIPC(): void {
 	ipcMain.handle(
 		"license:track-usage",
 		async (_event: IpcMainInvokeEvent, type: string): Promise<void> => {
+			if (typeof type !== "string" || type.trim().length === 0) return;
 			try {
 				await fetch(`${LICENSE_SERVER_URL}/api/usage/track`, {
 					method: "POST",
@@ -175,6 +181,11 @@ export function setupLicenseIPC(): void {
 			modelKey: string,
 			description: string
 		): Promise<boolean> => {
+			if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)
+				return false;
+			if (typeof modelKey !== "string" || modelKey.trim().length === 0)
+				return false;
+			if (typeof description !== "string") return false;
 			try {
 				const response = await fetch(
 					`${LICENSE_SERVER_URL}/api/credits/deduct`,

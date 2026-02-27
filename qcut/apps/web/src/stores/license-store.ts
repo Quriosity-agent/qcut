@@ -63,13 +63,17 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 		const { license } = get();
 		if (!license) return false;
 		const allowed = FEATURE_GATES[feature as keyof typeof FEATURE_GATES];
-		if (!allowed) return true;
+		if (!allowed) return false;
 		return allowed.includes(license.plan);
 	},
 
 	trackUsage: async (type) => {
-		if ((window as any).electronAPI) {
-			await (window as any).electronAPI.license.trackUsage(type);
+		try {
+			if ((window as any).electronAPI?.license) {
+				await (window as any).electronAPI.license.trackUsage(type);
+			}
+		} catch {
+			// Usage tracking is non-critical — silently fail
 		}
 	},
 
@@ -78,14 +82,16 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 	openBuyCreditsPage: () => {
 		window.open(
 			"https://donghaozhang.github.io/nexusai-website/account/credits.html",
-			"_blank"
+			"_blank",
+			"noopener,noreferrer"
 		);
 	},
 
 	openPricingPage: () => {
 		window.open(
 			"https://donghaozhang.github.io/nexusai-website/account/pricing.html",
-			"_blank"
+			"_blank",
+			"noopener,noreferrer"
 		);
 	},
 }));
