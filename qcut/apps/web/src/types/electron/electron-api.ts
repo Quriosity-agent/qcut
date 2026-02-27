@@ -35,6 +35,7 @@ import type {
 } from "./api-remotion";
 import type { ElectronMoyinOps } from "./api-moyin";
 import type { ElectronUpdateOps } from "./api-updates";
+import type { ElectronLicenseOps } from "./api-license";
 import type {
 	AIPipelineProgress,
 	AIPipelineGenerateOptions,
@@ -70,7 +71,8 @@ export interface ElectronAPI
 		ElectronRemotionFolderOps,
 		ElectronRemotionOps,
 		ElectronMoyinOps,
-		ElectronUpdateOps {
+		ElectronUpdateOps,
+		ElectronLicenseOps {
 	// System info
 	platform: string;
 	isElectron: boolean;
