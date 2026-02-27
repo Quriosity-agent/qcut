@@ -379,7 +379,12 @@ const electronAPI: ElectronAPI = {
 		check: () => ipcRenderer.invoke("license:check"),
 		activate: (token: string) => ipcRenderer.invoke("license:activate", token),
 		deductCredits: (amount: number, modelKey: string, description: string) =>
-			ipcRenderer.invoke("license:deduct-credits", amount, modelKey, description),
+			ipcRenderer.invoke(
+				"license:deduct-credits",
+				amount,
+				modelKey,
+				description
+			),
 		deactivate: () => ipcRenderer.invoke("license:deactivate"),
 	},
 
