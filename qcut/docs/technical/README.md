@@ -44,7 +44,7 @@ docs/technical/
 | Image-to-Video | [ai/models/image-to-video/](ai/models/image-to-video/) | 22 models: Sora 2, Veo 3.1, Kling v2-v3, Hailuo, Seedance, LTX, WAN, Vidu |
 | Avatar | [ai/models/avatar/](ai/models/avatar/) | 14 models: Kling, OmniHuman, Hailuo, WAN, Sora 2 |
 | Transcription | [ai/models/transcription/](ai/models/transcription/) | Gemini 2.5 Pro |
-| Text-to-Image | [ai/models/text-to-image/](ai/models/text-to-image/) | 14 models: Gemini 3, GPT Image, SeedDream, FLUX, Imagen4, WAN |
+| Text-to-Image | [ai/models/text-to-image/](ai/models/text-to-image/) | 13 models: Gemini 3, GPT Image, SeedDream, FLUX, Imagen4, WAN |
 | Image Upscale | [ai/models/image-upscale/](ai/models/image-upscale/) | 3 models: ByteDance, FlashVSR, Topaz |
 | Segmentation | [ai/models/segmentation/](ai/models/segmentation/) | SAM-3 |
 | Adjustment | [ai/models/adjustment-panel/](ai/models/adjustment-panel/) | 10 models: AI image editing and color grading |
@@ -60,6 +60,16 @@ docs/technical/
 |----------|-------------|
 | [effects-sequence.md](workflows/effects-sequence.md) | Video effects pipeline flow |
 | [drawing-canvas-sequence.md](workflows/drawing-canvas-sequence.md) | Canvas drawing implementation |
+
+### Reference
+| Document | Description |
+|----------|-------------|
+| [media-panel-reference.md](media-panel-reference.md) | All 20 editor panels documented |
+
+### AI Content Pipeline
+| Document | Description |
+|----------|-------------|
+| [ai-content-pipeline-submodule.md](ai/ai-content-pipeline-submodule.md) | AICP git submodule integration |
 
 ### Guides
 | Document | Description |

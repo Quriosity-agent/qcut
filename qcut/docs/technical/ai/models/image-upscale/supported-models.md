@@ -227,7 +227,7 @@ The Image Upscale feature supports **3 different AI upscaling models** from vari
 
 All models are accessed via the FAL.ai API through the `upscale-models.ts` module located at:
 ```
-qcut/apps/web/src/lib/upscale-models.ts
+qcut/apps/web/src/lib/ai-models/upscale-models.ts
 ```
 
 ### API Endpoints
@@ -319,9 +319,9 @@ Models are displayed in this order (fastest/cheapest to professional):
 
 ## Related Documentation
 
-- [Upscale Models Library](../../apps/web/src/lib/upscale-models.ts)
-- [Upscale Settings Panel](../../apps/web/src/components/editor/media-panel/views/upscale-settings.tsx)
-- [Upscale Model Tests](../../apps/web/src/test/upscale-models.test.ts)
+- [Upscale Models Library](../../../../../apps/web/src/lib/ai-models/upscale-models.ts)
+- [Upscale Settings Panel](../../../../../apps/web/src/components/editor/media-panel/views/upscale-settings.tsx)
+- [Upscale Model Tests](../../../../../apps/web/src/test/upscale-models.test.ts)
 
 ---
 

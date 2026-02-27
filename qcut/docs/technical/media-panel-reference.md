@@ -1,39 +1,71 @@
 # QCut Media Panel Reference
 
-This document provides a comprehensive overview of all 21 panels available in the QCut video editor's media panel sidebar.
+This document provides a comprehensive overview of all 18 tabs registered in the QCut video editor's media panel sidebar, plus the tab grouping architecture.
 
 > **Note:** All file paths in this document are relative to the `qcut/` project root directory.
+
+## Tab Grouping Architecture
+
+The media panel uses a two-level navigation system: **groups** (top bar) and **tabs** (second bar). Groups are defined in `store.ts` via `tabGroups` and rendered by `GroupBar`. The Edit group additionally has **sub-groups** that split its tabs into two categories.
+
+### Groups
+
+| Group Key | Label | Icon | Tabs |
+|-----------|-------|------|------|
+| `ai-create` | Create | `SparklesIcon` | ai, text2image, sounds, moyin |
+| `edit` | Edit | `ScissorsIcon` | word-timeline, upscale, video-edit, segmentation, text, stickers, effects, filters, transitions |
+| `media` | Library | `FolderOpenIcon` | media, project-folder |
+| `agents` | Agents | `WrenchIcon` | nano-edit, pty, remotion |
+
+### Edit Sub-groups
+
+The Edit group has two sub-groups, toggled via a segmented control above the tab bar:
+
+| Sub-group Key | Label | Tabs |
+|---------------|-------|------|
+| `ai-edit` | AI Assist | word-timeline, upscale, video-edit, segmentation |
+| `manual-edit` | Manual Edit | text, stickers, effects, filters, transitions |
+
+### Navigation Flow
+
+1. **GroupBar** (`group-bar.tsx`) renders four group buttons at the top
+2. Selecting a group switches to the last-used tab within that group
+3. **TabBar** (`tabbar.tsx`) renders the tabs for the active group
+4. For the Edit group, a sub-group toggle appears above the tab icons
+5. State is managed by `useMediaPanelStore` in `store.ts`
+
+---
 
 ## Table of Contents
 
 1. [Media](#1-media)
-2. [AI Images](#2-ai-images)
-3. [Adjustment](#3-adjustment)
-4. [AI Video](#4-ai-video)
-5. [Camera](#5-camera)
-6. [Nano Edit](#6-nano-edit)
-7. [Draw](#7-draw)
-8. [Text](#8-text)
-9. [Stickers](#9-stickers)
-10. [Video Edit](#10-video-edit)
-11. [Remotion](#11-remotion)
-12. [Terminal](#12-terminal)
-13. [Transcribe](#13-transcribe)
-14. [Project](#14-project)
-15. [Filters (WIP)](#15-filters-wip)
-16. [Segment (WIP)](#16-segment-wip)
-17. [Sounds (WIP)](#17-sounds-wip)
-18. [Effects (WIP)](#18-effects-wip)
-19. [Transitions (WIP)](#19-transitions-wip)
-20. [Audio (WIP)](#20-audio-wip)
-21. [Captions (WIP)](#21-captions-wip)
+2. [AI Images (Text2Image)](#2-ai-images-text2image)
+3. [AI Video](#3-ai-video)
+4. [Video Upscale](#4-video-upscale)
+5. [Skills](#5-skills)
+6. [Text](#6-text)
+7. [Stickers](#7-stickers)
+8. [Audio Studio](#8-audio-studio)
+9. [Remotion](#9-remotion)
+10. [Terminal](#10-terminal)
+11. [Smart Speech](#11-smart-speech)
+12. [Project](#12-project)
+13. [Filters (WIP)](#13-filters-wip)
+14. [Segment (WIP)](#14-segment-wip)
+15. [Sounds (WIP)](#15-sounds-wip)
+16. [Effects (WIP)](#16-effects-wip)
+17. [Transitions (WIP)](#17-transitions-wip)
+18. [Director (Moyin)](#18-director-moyin)
 
 ---
 
 ## 1. Media
 
+**Tab key:** `media`
+**Label:** "Media"
 **Icon:** `VideoIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/media.tsx`
+**Group:** media (Library)
+**View:** `apps/web/src/components/editor/media-panel/views/media/media.tsx`
 
 ### Summary
 The central hub for managing all media assets in your project.
@@ -46,46 +78,49 @@ The central hub for managing all media assets in your project.
 - **Context menu:** Right-click for options like duplicate, open folder, export
 - **Sorting:** Sort by name, date, type, or duration
 
-### File Path
-`apps/web/src/components/editor/media-panel/views/media.tsx`
-
 ---
 
-## 2. AI Images
+## 2. AI Images (Text2Image)
 
+**Tab key:** `text2image`
+**Label:** "AI Images"
 **Icon:** `WandIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/text2image.tsx`
+**Group:** ai-create (Create)
+**View:** `apps/web/src/components/editor/media-panel/views/text2image.tsx`
 
 ### Summary
-Generate images from text prompts using AI models.
+Multi-view hub for AI image workflows. Uses a `ModelTypeSelector` pill bar to switch between six sub-views: Generation, Adjustment, Camera, Upscale, Angles, and Draw.
 
-### Features
+### Sub-views (via ModelTypeSelector)
+
+| Sub-view | Component | Description |
+|----------|-----------|-------------|
+| `generation` | Inline in `text2image.tsx` | Text-to-image generation with 13 models |
+| `adjustment` | `AdjustmentPanel` (`components/editor/adjustment/`) | AI-powered image editing with text prompts |
+| `camera` | `CameraSelectorView` (`views/camera-selector/`) | Virtual cinema camera configurator |
+| `upscale` | Inline in `text2image.tsx` | Image upscaling with multiple AI models |
+| `angles` | `AiView` (mode="angles") | Multi-angle cinematic shot generation |
+| `draw` | `DrawView` (`views/draw.tsx`) | Freehand drawing and annotation canvas |
+
+### Generation Sub-view Features
 - **Text-to-image generation:** Create images from text descriptions
 - **Multiple AI models:** 13 text-to-image models from Google, OpenAI, ByteDance, Black Forest Labs, Alibaba, fal.ai, and Tongyi-MAI
-- **Upscaling:** Enhance image resolution with AI upscaling
-- **Style presets:** Quick access to different art styles
+- **Generation modes:** Single model or multi-model comparison
+- **Style presets:** Image size options (square, landscape, portrait)
 - **Generation history:** View and reuse previous generations
 - **Add to media:** Generated images automatically added to media library
 
-### Supported Models
-- Gemini 3 Pro, GPT Image 1.5, Nano Banana
-- SeedDream v3/v4/v4.5, FLUX Pro v1.1 Ultra, FLUX 2 Flex
-- Imagen4 Ultra, WAN v2.2, Qwen Image, Z-Image Turbo, Reve
+### Supported Models (Generation)
+Gemini 3 Pro, GPT Image 1.5, Nano Banana, SeedDream v3/v4/v4.5, FLUX Pro v1.1 Ultra, FLUX 2 Flex, Imagen4 Ultra, WAN v2.2, Qwen Image, Z-Image Turbo, Reve
 
-### File Path
-`apps/web/src/components/editor/media-panel/views/text2image.tsx`
+### Upscale Sub-view Features
+- **Image upscaling:** Enhance resolution using AI models
+- **Model selection:** Multiple upscale model options with cost estimates
+- **Settings panel:** Scale factor, denoise, creativity, output format controls
+- **File upload:** Upload source image for upscaling
+- **Progress tracking:** View upscale progress with percentage
 
----
-
-## 3. Adjustment
-
-**Icon:** `SlidersHorizontalIcon`
-**File:** `apps/web/src/components/editor/adjustment/index.tsx`
-
-### Summary
-AI-powered image editing and manipulation panel.
-
-### Features
+### Adjustment Sub-view Features
 - **Image editing:** Transform images using AI with text prompts
 - **Multiple model support:** Choose from various image editing models
 - **Parameter controls:** Fine-tune generation settings (strength, guidance, etc.)
@@ -93,54 +128,7 @@ AI-powered image editing and manipulation panel.
 - **Multi-image support:** Some models support multiple input images
 - **Preview panel:** Compare before/after results
 
-### Use Cases
-- Background replacement
-- Object removal/addition
-- Style transfer
-- Color adjustments
-
-### File Path
-`apps/web/src/components/editor/adjustment/index.tsx`
-
----
-
-## 4. AI Video
-
-**Icon:** `BotIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/ai/index.tsx`
-
-### Summary
-Generate videos using AI from text, images, or existing videos.
-
-### Features
-- **Text-to-video:** Generate video clips from text descriptions
-- **Image-to-video:** Animate static images
-- **Avatar generation:** Create AI talking head videos
-- **Video upscaling:** Enhance video resolution
-- **Multiple AI providers:** Support for Sora, Veo, LTX Video, Kling, etc.
-- **Generation history:** Track all AI video generations
-
-### Tabs
-- **Text:** Text-to-video generation
-- **Image:** Image-to-video animation
-- **Avatar:** AI avatar/talking head creation
-- **Upscale:** Video resolution enhancement
-
-### File Path
-`apps/web/src/components/editor/media-panel/views/ai/index.tsx`
-
----
-
-## 5. Camera
-
-**Icon:** `CameraIcon`
-**Tab key:** `camera-selector`
-**File:** `apps/web/src/components/editor/media-panel/views/camera-selector/camera-selector-view.tsx`
-
-### Summary
-Virtual cinema camera configurator for AI video workflows. Lets users select camera body, lens, focal length, and aperture.
-
-### Features
+### Camera Sub-view Features
 - **Camera body selection:** 6 cameras (Red V-Raptor, Sony Venice, IMAX Film Camera, Arri Alexa 35, Arriflex 16SR, Panavision DXL2)
 - **Lens selection:** 11 lenses across spherical, anamorphic, and special types
 - **Focal length:** 4 options (8mm, 14mm, 35mm, 50mm)
@@ -148,73 +136,114 @@ Virtual cinema camera configurator for AI video workflows. Lets users select cam
 - **Current setup display:** Shows selected camera thumbnail and focal length
 - **Horizontal scroll tracks:** Snap-scrolling with mouse wheel support
 
-### Components
-- `CameraSelectorView` — Main panel component
-- `ScrollTrack` — Reusable horizontal scroll track with snap scrolling
-
-### Store
-- `useCameraSelectorStore` — `apps/web/src/stores/editor/camera-selector-store.ts`
-
-### File Path
-`apps/web/src/components/editor/media-panel/views/camera-selector/`
-
----
-
-## 6. Nano Edit
-
-**Icon:** `PaletteIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/nano-edit.tsx`
-
-### Summary
-AI-powered quick image and video enhancements.
-
-### Features
-- **Image assets management:** View and manage project images
-- **Quick AI enhancements:** One-click image improvements
-- **Batch processing:** Apply edits to multiple images
-
-### File Path
-`apps/web/src/components/editor/media-panel/views/nano-edit.tsx`
-
----
-
-## 7. Draw
-
-**Icon:** `PenTool`
-**File:** `apps/web/src/components/editor/media-panel/views/draw.tsx`
-
-### Summary
-Freehand drawing and annotation canvas.
-
-### Features
+### Draw Sub-view Features
 - **Drawing tools:** Pencil, brush, shapes, and more
 - **Color picker:** Choose colors for drawing
 - **Canvas toolbar:** Undo, redo, clear, save operations
-- **Tool selector:** Switch between different drawing tools
 - **Saved drawings:** Load and manage saved drawings
 - **Image upload:** Import images to draw over
 - **Selection tools:** Select, group, and manipulate objects
 
-### Use Cases
-- Create custom graphics
-- Annotate video frames
-- Design overlays and stickers
+---
 
-### File Path
-`apps/web/src/components/editor/media-panel/views/draw.tsx`
+## 3. AI Video
+
+**Tab key:** `ai`
+**Label:** "AI Video"
+**Icon:** `BotIcon`
+**Group:** ai-create (Create)
+**View:** `apps/web/src/components/editor/media-panel/views/ai/index.tsx`
+
+### Summary
+Generate videos using AI from text, images, or existing videos. Features a tabbed interface with five internal tabs.
+
+### Tabs
+- **Text:** Text-to-video generation with multiple providers
+- **Image:** Image-to-video animation (first frame, last frame, source video inputs)
+- **Avatar:** AI talking head / lipsync video creation
+- **Upscale:** Video resolution enhancement (also available as standalone tab)
+- **Angles:** Multi-angle cinematic shot generation from a source image
+
+The active tab is controlled by `aiActiveTab` in the media panel store, which accepts: `"text" | "image" | "avatar" | "upscale" | "angles"`.
+
+### Features
+- **Multi-model selection:** Select and compare results across models
+- **Cost estimation:** Real-time cost calculation for selected models
+- **Per-model settings:** Dedicated settings panels for Sora 2, Veo 3.1, Reve, Kling, WAN, LTX, Seedance, Vidu Q2
+- **Generation history:** Track all AI video generations with history panel
+- **Validation messages:** Contextual guidance for required inputs per tab/model
+- **Progress tracking:** Real-time progress, elapsed time, and status messages
+
+### Supported Providers
+Sora 2, Veo 3.1, Kling v2.5/v2.6, WAN 2.5, LTX Video Pro, LTX Fast, Seedance, Vidu Q2, Hailuo, Reve, and more
 
 ---
 
-## 8. Text
+## 4. Video Upscale
 
-**Icon:** `TypeIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/text.tsx`
+**Tab key:** `upscale`
+**Label:** "Video Upscale"
+**Icon:** `ArrowUpFromLineIcon`
+**Group:** edit > ai-edit (AI Assist)
+**View:** `apps/web/src/components/editor/media-panel/views/upscale.tsx`
 
 ### Summary
-Add text overlays to your video timeline.
+Standalone video upscaling panel. Renders the `AiView` component in `mode="upscale"`, showing only the Upscale tab with ByteDance, FlashVSR, and Topaz upscaler settings.
+
+### Features
+- **Video upload:** Upload source video file for upscaling
+- **Video URL input:** Provide a URL to a video to upscale
+- **ByteDance upscaler:** Target resolution and FPS controls
+- **FlashVSR upscaler:** Scale factor (2x-4x), acceleration, quality, color fix, preserve audio, output format settings
+- **Topaz upscaler:** Scale factor, target FPS, H.264 output toggle
+- **Cost estimation:** Per-model cost calculation based on video metadata
+
+### File Path
+`apps/web/src/components/editor/media-panel/views/upscale.tsx`
+
+---
+
+## 5. Skills
+
+**Tab key:** `nano-edit`
+**Label:** "Skills"
+**Icon:** `PaletteIcon`
+**Group:** agents (Agents)
+**View:** `apps/web/src/components/editor/media-panel/views/skills.tsx`
+
+### Summary
+Manage and import AI skills for the active project. Skills are loaded from `.claude/skills` folders and displayed as cards.
+
+### Features
+- **Skills list:** Browse all imported skills with card UI
+- **Import dialog:** Import new skills from `.claude/skills` folder
+- **Delete skills:** Remove skills from the project
+- **Project-scoped:** Skills are loaded per-project
+
+### Store
+- `useSkillsStore` -- `stores/skills-store.ts`
+
+### File Path
+`apps/web/src/components/editor/media-panel/views/skills.tsx`
+
+> **Note:** The old `nano-edit.tsx` view (prompt library + image assets) still exists in the codebase but is no longer wired into the tab system. The `nano-edit` tab key now maps to `SkillsView`.
+
+---
+
+## 6. Text
+
+**Tab key:** `text`
+**Label:** "Text"
+**Icon:** `TypeIcon`
+**Group:** edit > manual-edit (Manual Edit)
+**View:** `apps/web/src/components/editor/media-panel/views/text.tsx`
+
+### Summary
+Add text and markdown overlays to your video timeline.
 
 ### Features
 - **Default text template:** Quick-add text with default styling
+- **Markdown template:** Add markdown-rendered content blocks
 - **Drag to timeline:** Position text at specific timestamps
 - **Click to add:** Add text at current playhead position
 - **Customization:** Style text after adding to timeline (font, size, color, etc.)
@@ -224,10 +253,13 @@ Add text overlays to your video timeline.
 
 ---
 
-## 9. Stickers
+## 7. Stickers
 
+**Tab key:** `stickers`
+**Label:** "Stickers"
 **Icon:** `StickerIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/stickers/stickers-view.tsx`
+**Group:** edit > manual-edit (Manual Edit)
+**View:** `apps/web/src/components/editor/media-panel/views/stickers/stickers-view.tsx`
 
 ### Summary
 Browse and add stickers/icons to your video as overlays.
@@ -240,48 +272,46 @@ Browse and add stickers/icons to your video as overlays.
 - **Categories:** Browse by icon collection/category
 - **SVG support:** High-quality scalable vector graphics
 
-### Popular Collections
-- Material Design Icons
-- Font Awesome
-- Heroicons
-- Tabler Icons
-
 ### File Path
-`apps/web/src/components/editor/media-panel/views/stickers/stickers-view.tsx`
+`apps/web/src/components/editor/media-panel/views/stickers/`
 
 ---
 
-## 10. Video Edit
+## 8. Audio Studio
 
+**Tab key:** `video-edit`
+**Label:** "Audio Studio"
 **Icon:** `Wand2Icon`
-**File:** `apps/web/src/components/editor/media-panel/views/video-edit.tsx`
+**Group:** edit > ai-edit (AI Assist)
+**View:** `apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
 ### Summary
-AI-powered video enhancement and audio tools.
+AI-powered audio generation and sync for video. Contains two audio models selectable via a pill bar.
+
+### Audio Models
+
+| Model | Label | Description |
+|-------|-------|-------------|
+| `kling` | Kling Audio | Auto-generate audio from video -- $0.035/video |
+| `mmaudio` | MMAudio V2 | Prompt-controlled audio sync -- $0.001/sec |
 
 ### Features
-
-#### Audio Gen Tab
-- Generate audio/sound effects for video using AI
-- Kling Video-to-Audio model
-
-#### Audio Sync Tab
-- Sync generated audio to video content
-- MMAudio V2 model support
-
-#### Upscale Tab
-- Enhance video resolution
-- Topaz-style upscaling
+- **Audio generation (Kling):** Generate audio/sound effects for video automatically
+- **Audio sync (MMAudio V2):** Sync generated audio to video content with prompt control
+- **Model selector:** Toggle between Kling Audio and MMAudio V2
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/video-edit.tsx`
 
 ---
 
-## 11. Remotion
+## 9. Remotion
 
+**Tab key:** `remotion`
+**Label:** "Remotion"
 **Icon:** `Layers`
-**File:** `apps/web/src/components/editor/media-panel/views/remotion/index.tsx`
+**Group:** agents (Agents)
+**View:** `apps/web/src/components/editor/media-panel/views/remotion/index.tsx`
 
 ### Summary
 Browse and add Remotion components to the timeline.
@@ -306,17 +336,20 @@ Browse and add Remotion components to the timeline.
 - Custom imports
 
 ### File Path
-`apps/web/src/components/editor/media-panel/views/remotion/index.tsx`
+`apps/web/src/components/editor/media-panel/views/remotion/`
 
 ---
 
-## 12. Terminal
+## 10. Terminal
 
+**Tab key:** `pty`
+**Label:** "Terminal"
 **Icon:** `SquareTerminalIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/pty-terminal/pty-terminal-view.tsx`
+**Group:** agents (Agents)
+**View:** `apps/web/src/components/editor/media-panel/views/pty-terminal/pty-terminal-view.tsx`
 
 ### Summary
-Integrated terminal with AI CLI assistant support.
+Integrated terminal with AI CLI assistant support. The PTY terminal view is always mounted (not unmounted on tab switch) for session persistence.
 
 ### Features
 - **PTY terminal:** Full pseudo-terminal emulator
@@ -326,7 +359,7 @@ Integrated terminal with AI CLI assistant support.
 - **Skill context:** Context-aware AI assistance
 
 ### Supported CLI Providers
-- Claude Code
+- Claude Code (with model selection)
 - Aider
 - OpenRouter (various models)
 
@@ -335,19 +368,24 @@ Integrated terminal with AI CLI assistant support.
 
 ---
 
-## 13. Transcribe
+## 11. Smart Speech
 
+**Tab key:** `word-timeline`
+**Label:** "Smart Speech"
 **Icon:** `TextSelect`
-**File:** `apps/web/src/components/editor/media-panel/views/word-timeline-view.tsx`
+**Group:** edit > ai-edit (AI Assist)
+**View:** `apps/web/src/components/editor/media-panel/views/word-timeline-view.tsx`
 
 ### Summary
-Word-level transcription and timeline editing.
+Word-level transcription and timeline editing with AI-powered filler word detection.
 
 ### Features
 - **Drag & drop import:** Import JSON transcription files
 - **Media transcription:** Transcribe video/audio using ElevenLabs Scribe v2 or Gemini 2.5 Pro
 - **Word-level timestamps:** Click any word to seek to that position
 - **Word deletion:** Mark words for removal (strikethrough)
+- **AI filler word analysis:** Detect and suggest removal of filler words
+- **Batch operations:** Accept all AI suggestions, reset all filters, undo last change
 - **Timing tooltips:** Hover to see word timing info
 - **Supported formats:** MP4, MOV, AVI, MKV, WebM, WAV, MP3, M4A, AAC
 
@@ -362,10 +400,13 @@ Word-level transcription and timeline editing.
 
 ---
 
-## 14. Project
+## 12. Project
 
+**Tab key:** `project-folder`
+**Label:** "Project"
 **Icon:** `FolderSync`
-**File:** `apps/web/src/components/editor/media-panel/views/project-folder.tsx`
+**Group:** media (Library)
+**View:** `apps/web/src/components/editor/media-panel/views/project-folder.tsx`
 
 ### Summary
 Browse and import files from the project folder structure.
@@ -384,29 +425,28 @@ Browse and import files from the project folder structure.
 
 ---
 
-## 15. Filters (WIP)
+## 13. Filters (WIP)
 
+**Tab key:** `filters`
+**Label:** "Filters (WIP)"
 **Icon:** `BlendIcon`
-**File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
+**Group:** edit > manual-edit (Manual Edit)
 
 ### Summary
 Apply visual filters to video clips.
 
 ### Status
-**Work in progress** - Placeholder view currently displayed.
-
-### Planned Features
-- Color grading presets
-- Film grain effects
-- Vignette and blur filters
-- Custom LUT support
+**Work in progress** -- Placeholder view currently displayed ("Filters view coming soon...").
 
 ---
 
-## 16. Segment (WIP)
+## 14. Segment (WIP)
 
+**Tab key:** `segmentation`
+**Label:** "Segment (WIP)"
 **Icon:** `ScissorsIcon`
-**File:** `apps/web/src/components/editor/segmentation/index.tsx`
+**Group:** edit > ai-edit (AI Assist)
+**View:** `apps/web/src/components/editor/segmentation/index.tsx`
 
 ### Summary
 AI-powered image and video segmentation using SAM-3.
@@ -426,17 +466,20 @@ AI-powered image and video segmentation using SAM-3.
 - Green screen replacement
 
 ### Status
-Work in progress - core functionality implemented.
+Work in progress -- core functionality implemented.
 
 ### File Path
 `apps/web/src/components/editor/segmentation/index.tsx`
 
 ---
 
-## 17. Sounds (WIP)
+## 15. Sounds (WIP)
 
+**Tab key:** `sounds`
+**Label:** "Sounds (WIP)"
 **Icon:** `VolumeXIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/sounds.tsx`
+**Group:** ai-create (Create)
+**View:** `apps/web/src/components/editor/media-panel/views/sounds.tsx`
 
 ### Summary
 Browse and add sound effects and music to your project.
@@ -451,111 +494,82 @@ Browse and add sound effects and music to your project.
 - **Infinite scroll:** Load more results as you browse
 
 ### Status
-Work in progress - basic functionality available.
+Work in progress -- basic functionality available.
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/sounds.tsx`
 
 ---
 
-## 18. Effects (WIP)
+## 16. Effects (WIP)
 
+**Tab key:** `effects`
+**Label:** "Effects (WIP)"
 **Icon:** `SparklesIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/effects.tsx`
+**Group:** edit > manual-edit (Manual Edit)
+**View:** `apps/web/src/components/editor/media-panel/views/effects.tsx`
 
 ### Summary
-Apply visual effects to timeline elements.
+Apply visual effects to timeline elements. Lazy-loaded and gated behind `EFFECTS_ENABLED` feature flag.
 
 ### Features
-- **Effect presets:** Browse pre-configured effects
+- **Effect presets:** Browse pre-configured effects with gradient previews
 - **Categories:** Basic, color, artistic, vintage, cinematic, distortion
 - **Search:** Find effects by name or description
 - **Apply to selection:** Apply effects to selected timeline elements
 - **Drag & drop:** Drag effects onto timeline elements
 - **Effects track:** Auto-show effects track when applied
 
-### Effect Categories
-- Basic transformations
-- Color adjustments
-- Artistic styles
-- Vintage/retro looks
-- Cinematic effects
-- Distortion effects
-
 ### Status
-Work in progress - requires feature flag to enable.
+Work in progress -- requires `EFFECTS_ENABLED` feature flag.
 
 ### File Path
 `apps/web/src/components/editor/media-panel/views/effects.tsx`
 
 ---
 
-## 19. Transitions (WIP)
+## 17. Transitions (WIP)
 
+**Tab key:** `transitions`
+**Label:** "Transitions (WIP)"
 **Icon:** `ArrowLeftRightIcon`
-**File:** `apps/web/src/components/editor/media-panel/index.tsx` (placeholder)
+**Group:** edit > manual-edit (Manual Edit)
 
 ### Summary
 Add transitions between clips on the timeline.
 
 ### Status
-**Coming soon** - Placeholder view currently displayed.
-
-### Planned Features
-- Fade in/out
-- Cross dissolve
-- Wipe transitions
-- Zoom transitions
-- Custom transition timing
+**Coming soon** -- Placeholder view currently displayed ("Transitions view coming soon...").
 
 ---
 
-## 20. Audio (WIP)
+## 18. Director (Moyin)
 
-**Icon:** `MusicIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/audio.tsx`
-
-### Summary
-Search and add music/audio tracks to your project.
-
-### Features
-- **Search:** Search for songs and artists
-- **Music library:** Browse available tracks
-
-### Status
-Work in progress - basic search UI implemented.
-
-### File Path
-`apps/web/src/components/editor/media-panel/views/audio.tsx`
-
----
-
-## 21. Captions (WIP)
-
-**Icon:** `CaptionsIcon`
-**File:** `apps/web/src/components/editor/media-panel/views/captions.tsx`
+**Tab key:** `moyin`
+**Label:** "Director"
+**Icon:** `ClapperboardIcon`
+**Group:** ai-create (Create)
+**View:** `apps/web/src/components/editor/media-panel/views/moyin/index.tsx`
 
 ### Summary
-Generate and manage video captions using AI transcription.
+Script-to-storyboard workflow powered by Moyin. Parse scripts into structured episodes, characters, scenes, and shots with AI-assisted prompt generation.
 
 ### Features
-- **File upload:** Upload video/audio for transcription
-- **Gemini integration:** AI-powered transcription
-- **Language selection:** Choose transcription language
-- **Progress tracking:** View transcription progress
-- **Segment editing:** Edit individual caption segments
-- **Timeline integration:** Add captions to timeline
-- **Export options:** Export captions in various formats
+- **Script input:** Paste or type scripts with example templates
+- **Script parsing:** AI-powered parsing into episodes, characters, scenes, and shots
+- **Split-panel layout:** Script input (left), structure hierarchy (center), property detail (right)
+- **Episode/character/scene management:** Browse and edit the parsed hierarchy
+- **Shot detail editing:** Three-tier prompt editing per shot (image, video, end frame) with EN/ZH toggle
+- **Character variations:** Manage character visual variants
+- **Cinema selectors:** Camera/shot type configuration per shot
+- **Media preview:** Preview generated media in a modal
+- **Project persistence:** Load/save per project
 
-### Supported File Types
-- Video: MP4, MOV, AVI, MKV, WebM
-- Audio: WAV, MP3, M4A, AAC
-
-### Status
-Work in progress - migrating from Modal Whisper to Gemini.
+### Store
+- `useMoyinStore` -- `stores/moyin/moyin-store.ts`
 
 ### File Path
-`apps/web/src/components/editor/media-panel/views/captions.tsx`
+`apps/web/src/components/editor/media-panel/views/moyin/`
 
 ---
 
@@ -566,25 +580,57 @@ Each panel typically has an associated Zustand store for state management:
 
 | Panel | Store File |
 |-------|------------|
-| Media | `stores/media-store.ts` |
-| AI Video | `stores/ai-generation-store.ts` |
-| Adjustment | `stores/adjustment-store.ts` |
+| Media | `stores/media/media-store.ts` |
+| AI Video | (local state in `views/ai/index.tsx` + extracted hooks) |
+| Adjustment | `stores/ai/adjustment-store.ts` |
+| Text2Image | `stores/ai/text2image-store.ts` |
 | Stickers | `stores/stickers-store.ts` |
-| Draw | `stores/white-draw-store.ts` |
-| Segmentation | `stores/segmentation-store.ts` |
-| Sounds | `stores/sounds-store.ts` |
-| Captions | `stores/captions-store.ts` |
-| Text2Image | `stores/text2image-store.ts` |
-| Effects | `stores/effects-store.ts` |
+| Draw | `stores/editor/white-draw-store.ts` |
+| Camera Selector | `stores/editor/camera-selector-store.ts` |
+| Segmentation | `stores/ai/segmentation-store.ts` |
+| Sounds | `stores/media/sounds-store.ts` |
+| Effects | `stores/ai/effects-store.ts` |
 | Terminal | `stores/pty-terminal-store.ts` |
-| Remotion | `stores/remotion-store.ts` |
-| Transcribe | `stores/word-timeline-store.ts` |
+| Remotion | `stores/ai/remotion-store.ts` |
+| Smart Speech | `stores/timeline/word-timeline-store.ts` |
+| Skills | `stores/skills-store.ts` |
+| Director (Moyin) | `stores/moyin/moyin-store.ts` |
 
 ### Tab Configuration
 Panel tabs are configured in:
-- **Tab definitions:** `apps/web/src/components/editor/media-panel/store.ts`
+- **Tab & group definitions:** `apps/web/src/components/editor/media-panel/store.ts`
+- **Group bar rendering:** `apps/web/src/components/editor/media-panel/group-bar.tsx`
 - **Tab bar rendering:** `apps/web/src/components/editor/media-panel/tabbar.tsx`
 - **View mapping:** `apps/web/src/components/editor/media-panel/index.tsx`
+
+### Tab Type Definition
+```typescript
+export type Tab =
+  | "media"
+  | "text"
+  | "stickers"
+  | "video-edit"
+  | "effects"
+  | "transitions"
+  | "filters"
+  | "text2image"
+  | "nano-edit"
+  | "ai"
+  | "sounds"
+  | "segmentation"
+  | "remotion"
+  | "pty"
+  | "word-timeline"
+  | "project-folder"
+  | "upscale"
+  | "moyin";
+```
+
+### Panels Not Wired into Tab System
+The following views exist in the codebase but are **not** registered as tabs in `store.ts`:
+- **Audio** (`views/audio.tsx`) -- standalone search UI, not a tab
+- **Captions** (`stores/captions-store.ts`) -- store exists but no tab registration
+- **Nano Edit** (`views/nano-edit.tsx`) -- old prompt library view, replaced by `SkillsView` under the `nano-edit` tab key
 
 ---
 

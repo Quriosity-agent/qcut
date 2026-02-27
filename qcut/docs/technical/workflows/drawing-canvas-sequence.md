@@ -55,12 +55,16 @@ sequenceDiagram
   - Calculate shape bounds
   - Trigger object creation callbacks
 
-### 3. Callbacks (onCreate*)
+### 3. Callbacks (onCreate* and interaction callbacks)
 - **Location**: Drawing canvas component
 - **Types**:
   - `onCreateStroke`: For brush/pencil/eraser tools
   - `onCreateShape`: For rectangle/circle/line tools
   - `onCreateText`: For text tool
+  - `onSelectObject`: For selecting objects at a position (supports multi-select)
+  - `onMoveObject`: For dragging selected objects to a new position
+  - `onEndMove`: Called when a move/drag operation finishes
+  - `onTextInput`: Triggered when the user taps to place text
 - **Role**: Bridge between drawing hook and object store
 
 ### 4. Object Store / Model
@@ -70,6 +74,8 @@ sequenceDiagram
   - Store stroke, shape, text, and image objects
   - Manage object selection and manipulation
   - Trigger re-renders when objects change
+  - Manage object groups via `ObjectGroup` interface (id, objectIds, createdAt)
+  - Group/ungroup operations for multi-object manipulation
 
 ### 5. Renderer
 - **Location**: Drawing canvas useEffect hooks
@@ -123,3 +129,60 @@ The system includes extensive debug logging:
 - `🎨 CANVAS` rendering
 
 Enable with: `VITE_DEBUG_DRAW=1`
+
+## DrawingCanvasHandle (Exposed Methods)
+
+The `DrawingCanvas` component exposes an imperative handle via `forwardRef` with the following methods:
+
+| Method | Description |
+|--------|-------------|
+| `handleImageUpload(file)` | Upload and place an image onto the canvas |
+| `loadDrawingFromDataUrl(dataUrl)` | Restore a saved drawing from a data URL |
+| `getSelectedCount()` | Return the number of currently selected objects |
+| `getHasGroups()` | Return whether any object groups exist |
+| `getCanvasDataUrl()` | Export the current canvas as a data URL |
+| `handleCreateGroup()` | Group the currently selected objects |
+| `handleUngroup()` | Ungroup the currently selected group |
+| `clearAll()` | Remove all objects and clear the canvas |
+
+## Group System
+
+Objects can be grouped together using the `ObjectGroup` interface defined in `use-canvas-objects.ts`:
+
+```typescript
+interface ObjectGroup {
+  id: string;
+  objectIds: string[];
+  createdAt: number;
+}
+```
+
+Group operations are exposed through the `DrawingCanvasHandle` (`handleCreateGroup`, `handleUngroup`) and managed internally by the object store hooks (`use-canvas-objects.ts`, `use-canvas-images.ts`). The `group-controls.tsx` component provides the UI for group/ungroup actions.
+
+## Additional Files
+
+### Components (`components/editor/draw/components/`)
+| File | Purpose |
+|------|---------|
+| `group-controls.tsx` | UI for group/ungroup actions |
+| `saved-drawings.tsx` | Saved drawings list and restore |
+| `text-input-modal.tsx` | Modal for entering text on canvas |
+| `canvas-toolbar.tsx` | Toolbar with drawing actions (save, clear, etc.) |
+| `tool-selector.tsx` | Tool picker (brush, shape, eraser, etc.) |
+
+### Utils (`components/editor/draw/utils/`)
+| File | Purpose |
+|------|---------|
+| `canvas-utils.ts` | Canvas rendering and coordinate helpers |
+| `drawing-storage.ts` | Save/load drawings to storage |
+| `timeline-integration.ts` | Bridge between canvas and timeline |
+
+### Hooks
+| File | Purpose |
+|------|---------|
+| `hooks/use-canvas-images.ts` | Image upload, placement, and group management for image objects |
+
+### Constants
+| File | Purpose |
+|------|---------|
+| `constants/drawing-tools.tsx` | Tool definitions and icon mappings |

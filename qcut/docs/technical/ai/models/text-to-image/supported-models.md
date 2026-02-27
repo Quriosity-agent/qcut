@@ -4,7 +4,7 @@ This document lists all the AI models supported for text-to-image generation in 
 
 ## Overview
 
-The Text-to-Image panel supports **14 different AI models** from various providers including Google, ByteDance, Black Forest Labs, OpenAI, Alibaba, fal.ai, and Tongyi-MAI.
+The Text-to-Image panel supports **13 different AI models** from various providers including Google, ByteDance, Black Forest Labs, OpenAI, Alibaba, fal.ai, and Tongyi-MAI.
 
 ---
 
@@ -417,35 +417,6 @@ The Text-to-Image panel supports **14 different AI models** from various provide
 
 ---
 
-### 14. SeedDream v4.5 Edit
-- **Provider:** ByteDance
-- **Quality Rating:** 5/5
-- **Speed Rating:** 4/5
-- **Estimated Cost:** $0.04-0.08
-- **Max Resolution:** 4096x4096 (4K)
-- **Description:** ByteDance's image editing model with multi-image compositing support (up to 10 images)
-- **Best For:**
-  - Image editing and adjustment
-  - Multi-image compositing
-  - Background replacement
-  - Object manipulation
-  - Style transfer
-- **Strengths:**
-  - Supports up to 10 input images
-  - Multi-image compositing
-  - Up to 4K output
-  - Unified architecture with generation
-  - Commercial license
-- **Limitations:**
-  - Requires image upload to FAL
-  - Higher latency for multiple images
-- **Parameters:**
-  - Image Size: square_hd, square, portrait_4_3, portrait_16_9, landscape_4_3, landscape_16_9, auto_2K, auto_4K (default: auto_2K)
-  - Number of images: 1-6 (default: 1)
-  - Seed: optional
-
----
-
 ## Model Categories
 
 ### Photorealistic
@@ -467,7 +438,6 @@ The Text-to-Image panel supports **14 different AI models** from various provide
 - Nano Banana
 - Reve Text-to-Image
 - Z-Image Turbo
-- SeedDream v4.5 Edit
 
 ### Fast
 - SeedDream v3
@@ -518,12 +488,15 @@ The Text-to-Image panel supports **14 different AI models** from various provide
 All models are accessed via the FAL.ai API through the `text2image-models` module located at:
 ```text
 qcut/apps/web/src/lib/text2image-models/
-├── index.ts           # Model registry and priority order
-├── google-models.ts   # Imagen4 Ultra, Nano Banana, Gemini 3 Pro
-├── bytedance-models.ts # SeedDream v3/v4/v4.5
-├── flux-models.ts     # FLUX Pro v1.1 Ultra, FLUX 2 Flex
-└── other-models.ts    # WAN v2.2, Qwen Image, Reve, Z-Image Turbo, GPT Image 1.5
+├── index.ts             # Model registry and priority order
+├── types.ts             # Text2ImageModel type definition
+├── google-models.ts     # Imagen4 Ultra, Nano Banana, Gemini 3 Pro
+├── bytedance-models.ts  # SeedDream v3/v4/v4.5 (+ v4.5 Edit, used by adjustment panel)
+├── flux-models.ts       # FLUX Pro v1.1 Ultra, FLUX 2 Flex
+└── other-models.ts      # WAN v2.2, Qwen Image, Reve, Z-Image Turbo, GPT Image 1.5
 ```
+
+A re-export alias exists at `qcut/apps/web/src/lib/ai-models/text2image-models.ts` for backward compatibility.
 
 The Text-to-Image UI is located at:
 ```
@@ -534,7 +507,7 @@ qcut/apps/web/src/components/editor/media-panel/views/text2image.tsx
 
 ## Model Selection Priority Order
 
-Models are prioritized in this order (premium to cost-effective):
+Models are prioritized in this order (as defined by `TEXT2IMAGE_MODEL_ORDER` in `index.ts`):
 1. Gemini 3 Pro
 2. GPT Image 1.5
 3. Nano Banana
@@ -553,6 +526,6 @@ Models are prioritized in this order (premium to cost-effective):
 
 ## Related Documentation
 
-- [Text2Image Models API](../../apps/web/src/lib/text2image-models.ts)
-- [Text2Image View Component](../../apps/web/src/components/editor/media-panel/views/text2image.tsx)
-- [Text2Image Store](../../apps/web/src/stores/text2image-store.ts)
+- [Text2Image Models Module](../../../../apps/web/src/lib/text2image-models/)
+- [Text2Image View Component](../../../../apps/web/src/components/editor/media-panel/views/text2image.tsx)
+- [Text2Image Store](../../../../apps/web/src/stores/ai/text2image-store.ts)

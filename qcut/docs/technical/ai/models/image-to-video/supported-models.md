@@ -10,17 +10,93 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ## Supported Models
 
-### Kling v3 Pro I2V
+### Sora 2 Image-to-Video Pro
+- **Provider:** OpenAI
+- **Badge:** Recommended
+- **Price:** $0.30-0.50
+- **Resolution:** 720p / 1080p
+- **Max Duration:** 12 seconds
+- **Category:** Image-to-Video
+- **Description:** High-quality image-to-video with 1080p support
+- **Features:**
+  - Multiple resolution options
+  - Extended duration support
+  - Auto aspect ratio detection
+  - Advanced motion synthesis
+- **Supported Resolutions:** 720p, 1080p
+- **Parameters:**
+  - Duration: 4s (default)
+  - Resolution: auto (default)
+  - Aspect Ratio: auto (default)
+
+---
+
+### LTX Video 2.0 Fast I2V
+- **Provider:** Lightricks
+- **Badge:** Fast
+- **Price:** $0.04-0.16
+- **Resolution:** 1080p / 1440p / 2160p (4K)
+- **Max Duration:** 20 seconds
+- **Category:** Image-to-Video
+- **Description:** Image-to-video with audio generation (6-20s, up to 4K)
+- **Features:**
+  - Up to 4K resolution (2160p)
+  - 20-second maximum duration
+  - Audio generation
+  - Variable FPS support
+  - Cost-effective pricing
+- **Supported Resolutions:** 1080p, 1440p, 2160p
+- **Supported Durations:** 6s, 8s, 10s, 12s, 14s, 16s, 18s, 20s
+- **Parameters:**
+  - Duration: 6-20s (default: 6s)
+  - Resolution: 1080p, 1440p, 2160p (default: 1080p)
+  - Aspect Ratio: 16:9 only
+  - FPS: 25 (default)
+  - Generate Audio: true (default)
+
+---
+
+### WAN v2.6 I2V
+- **Provider:** fal.ai
+- **Badge:** Budget
+- **Price:** $0.10-0.15/s
+- **Resolution:** 720p / 1080p
+- **Max Duration:** 15 seconds
+- **Category:** Image-to-Video
+- **Description:** Animate images with WAN 2.6 - 15s duration, audio sync, multi-shot support
+- **Features:**
+  - 15-second maximum duration (longest)
+  - Audio synchronization support
+  - Multi-shot mode
+  - Prompt expansion
+  - Per-second pricing
+- **Supported Resolutions:** 720p, 1080p
+- **Supported Durations:** 5s, 10s, 15s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4
+- **Per-Second Pricing:**
+  - 720p: $0.10/s
+  - 1080p: $0.15/s
+- **Endpoint:** `wan/v2.6/image-to-video`
+- **Parameters:**
+  - Duration: 5s, 10s, 15s (default: 5s)
+  - Resolution: 720p, 1080p (default: 1080p)
+  - Aspect Ratio: Multiple options (default: 16:9)
+  - Enable Prompt Expansion: true (default)
+
+---
+
+### Kling v3 Standard I2V
 - **Provider:** ByteDance
-- **Price:** $0.336
+- **Badge:** Cinematic
+- **Price:** $0.252
 - **Resolution:** 1080p
 - **Max Duration:** 12 seconds
 - **Category:** Image-to-Video
-- **Description:** Professional image-to-video with cinematic visuals, fluid motion, native audio, and custom element support
+- **Description:** Quality image-to-video with cinematic motion and native audio, cost-effective option
 - **Features:**
-  - Cinematic quality motion with fluid animation
+  - Cinematic quality motion
   - Native audio generation
-  - Custom element support
+  - Cost-effective compared to Pro
   - Negative prompt support
 - **Supported Durations:** 5s, 10s, 12s
 - **Supported Aspect Ratios:** 16:9, 9:16, 1:1
@@ -33,17 +109,17 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### Kling v3 Standard I2V
+### Kling v3 Pro I2V
 - **Provider:** ByteDance
-- **Price:** $0.252
+- **Price:** $0.336
 - **Resolution:** 1080p
 - **Max Duration:** 12 seconds
 - **Category:** Image-to-Video
-- **Description:** Quality image-to-video with cinematic motion and native audio, cost-effective option
+- **Description:** Professional image-to-video with cinematic visuals, fluid motion, native audio, and custom element support
 - **Features:**
-  - Cinematic quality motion
+  - Cinematic quality motion with fluid animation
   - Native audio generation
-  - Cost-effective compared to Pro
+  - Custom element support
   - Negative prompt support
 - **Supported Durations:** 5s, 10s, 12s
 - **Supported Aspect Ratios:** 16:9, 9:16, 1:1
@@ -79,26 +155,6 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### Sora 2 Image-to-Video Pro
-- **Provider:** OpenAI
-- **Price:** $0.30-0.50
-- **Resolution:** 720p / 1080p
-- **Max Duration:** 12 seconds
-- **Category:** Image-to-Video
-- **Description:** High-quality image-to-video with 1080p support
-- **Features:**
-  - Multiple resolution options
-  - Extended duration support
-  - Auto aspect ratio detection
-  - Advanced motion synthesis
-- **Supported Resolutions:** 720p, 1080p
-- **Parameters:**
-  - Duration: 4s (default)
-  - Resolution: auto (default)
-  - Aspect Ratio: auto (default)
-
----
-
 ### Veo 3.1 Image-to-Video
 - **Provider:** Google
 - **Price:** $3.20
@@ -116,57 +172,6 @@ The Image-to-Video panel supports **22 different AI models** from various provid
   - Duration: 8s (default)
   - Resolution: 720p (default)
   - Aspect Ratio: 16:9 (default)
-  - Generate Audio: true (default)
-
----
-
-### WAN v2.6 I2V
-- **Provider:** fal.ai
-- **Price:** $0.10-0.15/s
-- **Resolution:** 720p / 1080p
-- **Max Duration:** 15 seconds
-- **Category:** Image-to-Video
-- **Description:** Animate images with WAN 2.6 - 15s duration, audio sync, multi-shot support
-- **Features:**
-  - 15-second maximum duration (longest)
-  - Audio synchronization support
-  - Multi-shot mode
-  - Prompt expansion
-  - Per-second pricing
-- **Supported Resolutions:** 720p, 1080p
-- **Supported Durations:** 5s, 10s, 15s
-- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4
-- **Per-Second Pricing:**
-  - 720p: $0.10/s
-  - 1080p: $0.15/s
-- **Parameters:**
-  - Duration: 5s, 10s, 15s (default: 5s)
-  - Resolution: 720p, 1080p (default: 1080p)
-  - Aspect Ratio: Multiple options (default: 16:9)
-  - Enable Prompt Expansion: true (default)
-
----
-
-### LTX Video 2.0 Fast I2V
-- **Provider:** Lightricks
-- **Price:** $0.04-0.16
-- **Resolution:** 1080p / 1440p / 2160p (4K)
-- **Max Duration:** 20 seconds
-- **Category:** Image-to-Video
-- **Description:** Image-to-video with audio generation (6-20s, up to 4K)
-- **Features:**
-  - Up to 4K resolution (2160p)
-  - 20-second maximum duration
-  - Audio generation
-  - Variable FPS support
-  - Cost-effective pricing
-- **Supported Resolutions:** 1080p, 1440p, 2160p
-- **Supported Durations:** 6s, 8s, 10s, 12s, 14s, 16s, 18s, 20s
-- **Parameters:**
-  - Duration: 6-20s (default: 6s)
-  - Resolution: 1080p, 1440p, 2160p (default: 1080p)
-  - Aspect Ratio: 16:9 only
-  - FPS: 25 (default)
   - Generate Audio: true (default)
 
 ---
@@ -405,6 +410,27 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
+### Vidu Q3 Image-to-Video
+- **Provider:** Vidu
+- **Price:** $0.07-0.154/s
+- **Resolution:** 360p / 540p / 720p / 1080p
+- **Max Duration:** 16 seconds
+- **Category:** Image-to-Video
+- **Description:** Animate images with audio generation and multi-resolution support
+- **Features:**
+  - Multi-resolution support (360p to 1080p)
+  - Up to 16-second duration
+  - Audio generation
+  - Per-second pricing
+- **Supported Resolutions:** 360p, 540p, 720p, 1080p
+- **Supported Durations:** 1s-16s (all increments)
+- **Parameters:**
+  - Duration: 1-16s (default: 5s)
+  - Resolution: 360p, 540p, 720p, 1080p (default: 720p)
+  - Generate Audio: true (default)
+
+---
+
 ### Veo 3.1 Frame-to-Video
 - **Provider:** Google
 - **Price:** $3.20
@@ -467,27 +493,6 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 
 ---
 
-### Vidu Q3 Image-to-Video
-- **Provider:** Vidu
-- **Price:** $0.07-0.154/s
-- **Resolution:** 360p / 540p / 720p / 1080p
-- **Max Duration:** 16 seconds
-- **Category:** Image-to-Video
-- **Description:** Animate images with audio generation and multi-resolution support
-- **Features:**
-  - Multi-resolution support (360p to 1080p)
-  - Up to 16-second duration
-  - Audio generation
-  - Per-second pricing
-- **Supported Resolutions:** 360p, 540p, 720p, 1080p
-- **Supported Durations:** 1s-16s (all increments)
-- **Parameters:**
-  - Duration: 1-16s (default: 5s)
-  - Resolution: 360p, 540p, 720p, 1080p (default: 720p)
-  - Generate Audio: true (default)
-
----
-
 ## Comparison Tables
 
 ### By Maximum Duration
@@ -518,21 +523,23 @@ The Image-to-Video panel supports **22 different AI models** from various provid
 5. WAN v2.6 I2V - $0.10-0.15/s
 6. Kling O1 I2V - $0.112
 7. Seedance v1 Pro Fast I2V - $0.24
-8. Hailuo 2.3 Standard - $0.28-0.56
-9. Sora 2 Image-to-Video Pro - $0.30-0.50
-10. Hailuo 2.3 Fast Pro - $0.33
-11. Kling v2.5 Turbo Pro I2V - $0.35
-12. LTX Video 2.0 I2V - $0.36
-13. Hailuo 2.3 Pro - $0.49
-14. Seedance v1 Pro I2V - $0.62
-15. Kling v2.6 Pro I2V - $0.70
-16. Veo 3.1 Fast (both) - $1.20
-17. Veo 3.1 (both) - $3.20
+8. Kling v3 Standard I2V - $0.252
+9. Hailuo 2.3 Standard - $0.28-0.56
+10. Sora 2 Image-to-Video Pro - $0.30-0.50
+11. Hailuo 2.3 Fast Pro - $0.33
+12. Kling v3 Pro I2V - $0.336
+13. Kling v2.5 Turbo Pro I2V - $0.35
+14. LTX Video 2.0 I2V - $0.36
+15. Hailuo 2.3 Pro - $0.49
+16. Seedance v1 Pro I2V - $0.62
+17. Kling v2.6 Pro I2V - $0.70
+18. Veo 3.1 Fast (both) - $1.20
+19. Veo 3.1 (both) - $3.20
 
 ### By Provider
 - **Google (Veo 3.1):** 4 models (I2V, Frame-to-Video, each with Fast variant)
 - **OpenAI (Sora 2):** 2 models (Standard, Pro)
-- **ByteDance:** 7 models (Kling v2.5/v2.6/v3, Seedance)
+- **ByteDance:** 7 models (Kling v2.5/v2.6/v3/O1, Seedance)
 - **Minimax (Hailuo 2.3):** 3 models (Standard, Fast Pro, Pro)
 - **Lightricks (LTX Video 2.0):** 2 models (Standard, Fast)
 - **fal.ai (WAN):** 2 models (v2.5, v2.6)
@@ -557,11 +564,13 @@ These models support optional end frames:
 ## Feature Comparison
 
 ### Audio Generation Support
+- Kling v3 Pro I2V
+- Kling v3 Standard I2V
 - Kling v2.6 Pro I2V
-- Kling v2.6 Pro T2V
 - Veo 3.1 (all variants)
 - LTX Video 2.0 (both variants)
-- WAN v2.6 I2V
+- Vidu Q3 I2V
+- WAN v2.6 I2V (audio sync)
 
 ### Prompt Expansion
 - WAN v2.6 I2V
@@ -569,6 +578,8 @@ These models support optional end frames:
 - Kling v2.5 Turbo Pro I2V
 
 ### Negative Prompt Support
+- Kling v3 Pro I2V
+- Kling v3 Standard I2V
 - Kling v2.6 Pro I2V
 - Kling v2.5 Turbo Pro I2V
 
@@ -597,14 +608,18 @@ qcut/apps/web/src/components/editor/media-panel/views/ai/constants/image2video-m
 
 ## Model Selection Priority Order
 
-Models are displayed in the UI in this order (premium to cost-effective):
-1. Kling v3 Pro I2V
-2. Kling v3 Standard I2V
-3. Kling v2.6 Pro I2V
-4. Sora 2 Image-to-Video Pro
-5. Veo 3.1 Image-to-Video
-6. WAN v2.6 I2V
-7. LTX Video 2.0 Fast I2V
+Models are displayed in the UI using a badge-first ordering system. Badged models always appear at the top, followed by the remaining models ordered by quality/capability.
+
+### Badged Picks (always on top)
+1. Sora 2 Image-to-Video Pro - **Recommended**
+2. LTX Video 2.0 Fast I2V - **Fast**
+3. WAN v2.6 I2V - **Budget**
+4. Kling v3 Standard I2V - **Cinematic**
+
+### Remaining Models
+5. Kling v3 Pro I2V
+6. Kling v2.6 Pro I2V
+7. Veo 3.1 Image-to-Video
 8. LTX Video 2.0 I2V
 9. Hailuo 2.3 Pro
 10. Seedance v1 Pro I2V

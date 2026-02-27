@@ -10,6 +10,110 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ## Supported Models
 
+### Sora 2 Text-to-Video Pro
+- **Provider:** OpenAI
+- **Badge:** Recommended
+- **Price:** $0.30-0.50
+- **Resolution:** 720p / 1080p
+- **Max Duration:** 12 seconds
+- **Description:** High-quality text-to-video with 1080p support
+- **Features:**
+  - Multiple resolution options
+  - Extended duration support
+  - Wide aspect ratio support
+  - Advanced prompt adherence
+- **Supported Resolutions:** 720p, 1080p
+- **Supported Durations:** 2s, 3s, 4s, 5s, 6s, 8s, 10s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4, 21:9
+- **Parameters:**
+  - Duration: 2-10s (default: 5s)
+  - Resolution: 720p, 1080p (default: 1080p)
+  - Aspect Ratio: Multiple options (default: 16:9)
+  - Negative Prompt: supported
+  - Prompt Expansion: supported
+  - Seed: supported
+  - Safety Checker: supported
+
+---
+
+### LTX Video 2.0 Fast T2V
+- **Provider:** Lightricks
+- **Badge:** Fast
+- **Price:** $0.04-0.16
+- **Resolution:** 1080p / 1440p / 2160p (4K)
+- **Max Duration:** 20 seconds
+- **Description:** Text-to-video with audio generation (6-20s, up to 4K)
+- **Features:**
+  - Up to 4K resolution (2160p)
+  - 20-second maximum duration
+  - Audio generation
+  - Variable FPS support
+  - Cost-effective pricing
+- **Supported Resolutions:** 1080p, 1440p, 2160p
+- **Supported Durations:** 2s, 3s, 4s, 5s, 6s, 8s, 10s
+- **Parameters:**
+  - Duration: 2-10s (default: 6s)
+  - Resolution: 1080p, 1440p, 2160p (default: 1080p)
+  - Aspect Ratio: 16:9 only
+  - FPS: 25 (default)
+  - Generate Audio: true (default)
+  - Seed: supported
+
+---
+
+### WAN v2.6 T2V
+- **Provider:** fal.ai
+- **Badge:** Budget
+- **Price:** $0.75 (per-second pricing: $0.10-0.15/s)
+- **Resolution:** 720p / 1080p
+- **Max Duration:** 15 seconds
+- **Description:** Latest WAN model with 15s duration, multi-shot support, and audio sync
+- **Features:**
+  - 15-second maximum duration (longest)
+  - Multi-shot support
+  - Audio synchronization
+  - Prompt expansion
+  - Per-second pricing based on resolution
+- **Supported Resolutions:** 720p, 1080p
+- **Supported Durations:** 5s, 10s, 15s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4
+- **Per-Second Pricing:**
+  - 720p: $0.10/s
+  - 1080p: $0.15/s
+- **Endpoint:** `wan/v2.6/text-to-video`
+- **Parameters:**
+  - Duration: 5s, 10s, 15s (default: 5s)
+  - Resolution: 720p, 1080p (default: 1080p)
+  - Aspect Ratio: Multiple options (default: 16:9)
+  - Enable Prompt Expansion: true (default)
+  - Multi Shots: false (default)
+  - Negative Prompt: supported
+  - Seed: supported
+  - Safety Checker: supported
+
+---
+
+### Kling v3 Standard T2V
+- **Provider:** ByteDance
+- **Badge:** Cinematic
+- **Price:** $0.252
+- **Resolution:** 1080p
+- **Max Duration:** 15 seconds
+- **Description:** High-quality text-to-video with cinematic visuals and native audio generation, cost-effective option
+- **Features:**
+  - Cinematic quality visuals
+  - Native audio generation
+  - Cost-effective compared to Pro
+  - Up to 15 seconds duration
+- **Supported Durations:** 3s, 5s, 10s, 15s
+- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
+- **Parameters:**
+  - Duration: 3s, 5s, 10s, 15s (default: 5s)
+  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
+  - Generate Audio: true (default)
+
+---
+
 ### Kling v3 Pro T2V
 - **Provider:** ByteDance
 - **Price:** $0.336
@@ -25,26 +129,6 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 - **Supported Aspect Ratios:** 16:9, 9:16, 1:1
 - **Parameters:**
   - Duration: 5s, 10s, 15s (default: 5s)
-  - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
-  - Generate Audio: true (default)
-
----
-
-### Kling v3 Standard T2V
-- **Provider:** ByteDance
-- **Price:** $0.252
-- **Resolution:** 1080p
-- **Max Duration:** 15 seconds
-- **Description:** High-quality text-to-video with cinematic visuals and native audio generation, cost-effective option
-- **Features:**
-  - Cinematic quality visuals
-  - Native audio generation
-  - Cost-effective compared to Pro
-  - Up to 15 seconds duration
-- **Supported Durations:** 3s, 5s, 10s, 15s
-- **Supported Aspect Ratios:** 16:9, 9:16, 1:1
-- **Parameters:**
-  - Duration: 3s, 5s, 10s, 15s (default: 5s)
   - Aspect Ratio: 16:9, 9:16, 1:1 (default: 16:9)
   - Generate Audio: true (default)
 
@@ -72,31 +156,6 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### Sora 2 Text-to-Video Pro
-- **Provider:** OpenAI
-- **Price:** $0.30-0.50
-- **Resolution:** 720p / 1080p
-- **Max Duration:** 12 seconds
-- **Description:** High-quality text-to-video with 1080p support
-- **Features:**
-  - Multiple resolution options
-  - Extended duration support
-  - Wide aspect ratio support
-  - Advanced prompt adherence
-- **Supported Resolutions:** 720p, 1080p
-- **Supported Durations:** 2s, 3s, 4s, 5s, 6s, 8s, 10s
-- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4, 21:9
-- **Parameters:**
-  - Duration: 2-10s (default: 5s)
-  - Resolution: 720p, 1080p (default: 1080p)
-  - Aspect Ratio: Multiple options (default: 16:9)
-  - Negative Prompt: supported
-  - Prompt Expansion: supported
-  - Seed: supported
-  - Safety Checker: supported
-
----
-
 ### Veo 3.1 Text-to-Video
 - **Provider:** Google
 - **Price:** $3.20
@@ -118,60 +177,6 @@ The Text-to-Video panel supports **18 different AI models** from various provide
   - Generate Audio: true (default)
   - Enhance Prompt: true (default)
   - Auto Fix: true (default)
-
----
-
-### WAN v2.6 T2V
-- **Provider:** fal.ai
-- **Price:** $0.75 (per-second pricing: $0.10-0.15/s)
-- **Resolution:** 720p / 1080p
-- **Max Duration:** 15 seconds
-- **Description:** Latest WAN model with 15s duration, multi-shot support, and audio sync
-- **Features:**
-  - 15-second maximum duration (longest)
-  - Multi-shot support
-  - Audio synchronization
-  - Prompt expansion
-  - Per-second pricing based on resolution
-- **Supported Resolutions:** 720p, 1080p
-- **Supported Durations:** 5s, 10s, 15s
-- **Supported Aspect Ratios:** 16:9, 9:16, 1:1, 4:3, 3:4
-- **Per-Second Pricing:**
-  - 720p: $0.10/s
-  - 1080p: $0.15/s
-- **Parameters:**
-  - Duration: 5s, 10s, 15s (default: 5s)
-  - Resolution: 720p, 1080p (default: 1080p)
-  - Aspect Ratio: Multiple options (default: 16:9)
-  - Enable Prompt Expansion: true (default)
-  - Multi Shots: false (default)
-  - Negative Prompt: supported
-  - Seed: supported
-  - Safety Checker: supported
-
----
-
-### LTX Video 2.0 Fast T2V
-- **Provider:** Lightricks
-- **Price:** $0.04-0.16
-- **Resolution:** 1080p / 1440p / 2160p (4K)
-- **Max Duration:** 20 seconds
-- **Description:** Text-to-video with audio generation (6-20s, up to 4K)
-- **Features:**
-  - Up to 4K resolution (2160p)
-  - 20-second maximum duration
-  - Audio generation
-  - Variable FPS support
-  - Cost-effective pricing
-- **Supported Resolutions:** 1080p, 1440p, 2160p
-- **Supported Durations:** 6s, 8s, 10s, 12s, 14s, 16s, 18s, 20s
-- **Parameters:**
-  - Duration: 6-20s (default: 6s)
-  - Resolution: 1080p, 1440p, 2160p (default: 1080p)
-  - Aspect Ratio: 16:9 only
-  - FPS: 25 (default)
-  - Generate Audio: true (default)
-  - Seed: supported
 
 ---
 
@@ -381,28 +386,6 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 
 ---
 
-### WAN v2.5 Preview
-- **Provider:** fal.ai
-- **Price:** $0.12
-- **Resolution:** 1080p
-- **Max Duration:** 10 seconds
-- **Description:** Next-generation WAN model with improved quality
-- **Features:**
-  - Improved quality over v2.0
-  - High quality preset
-  - Cinematic style
-- **Supported Resolutions:** 480p, 720p, 1080p
-- **Supported Durations:** 5s, 10s
-- **Parameters:**
-  - Duration: 5s, 10s (default: 5s)
-  - Resolution: 480p, 720p, 1080p (default: 1080p)
-  - Quality: high (default)
-  - Style Preset: cinematic (default)
-  - Seed: supported
-  - Safety Checker: supported
-
----
-
 ### Vidu Q3 Text-to-Video
 - **Provider:** Vidu
 - **Price:** $0.07-0.154/s
@@ -422,6 +405,28 @@ The Text-to-Video panel supports **18 different AI models** from various provide
   - Resolution: 360p, 540p, 720p, 1080p (default: 720p)
   - Aspect Ratio: Multiple options (default: 16:9)
   - Seed: supported
+
+---
+
+### WAN v2.5 Preview
+- **Provider:** fal.ai
+- **Price:** $0.12
+- **Resolution:** 1080p
+- **Max Duration:** 10 seconds
+- **Description:** Next-generation WAN model with improved quality
+- **Features:**
+  - Improved quality over v2.0
+  - High quality preset
+  - Cinematic style
+- **Supported Resolutions:** 480p, 720p, 1080p
+- **Supported Durations:** 5s, 10s
+- **Parameters:**
+  - Duration: 5s, 10s (default: 5s)
+  - Resolution: 480p, 720p, 1080p (default: 1080p)
+  - Quality: high (default)
+  - Style Preset: cinematic (default)
+  - Seed: supported
+  - Safety Checker: supported
 
 ---
 
@@ -454,14 +459,16 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 5. WAN v2.5 Preview - $0.12
 6. Kling v2.5 Turbo Pro - $0.18
 7. Seedance v1 Lite - $0.18
-8. Hailuo 2.3 Standard T2V - $0.28-0.56
-9. Sora 2 Text-to-Video Pro - $0.30-0.50
-10. Hailuo 2.3 Pro T2V - $0.49
-11. Seedance v1 Pro - $0.62
-12. Kling v2.6 Pro T2V - $0.70
-13. WAN v2.6 T2V - $0.75
-14. Veo 3.1 Fast - $1.20
-15. Veo 3.1 - $3.20
+8. Kling v3 Standard T2V - $0.252
+9. Hailuo 2.3 Standard T2V - $0.28-0.56
+10. Sora 2 Text-to-Video Pro - $0.30-0.50
+11. Kling v3 Pro T2V - $0.336
+12. Hailuo 2.3 Pro T2V - $0.49
+13. Seedance v1 Pro - $0.62
+14. Kling v2.6 Pro T2V - $0.70
+15. WAN v2.6 T2V - $0.75
+16. Veo 3.1 Fast - $1.20
+17. Veo 3.1 - $3.20
 
 ### By Provider
 - **Google (Veo):** 2 models (Fast, Pro)
@@ -477,9 +484,12 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 ## Feature Comparison
 
 ### Audio Generation Support
+- Kling v3 Pro T2V
+- Kling v3 Standard T2V
 - Kling v2.6 Pro T2V
 - Veo 3.1 (both versions)
 - LTX Video 2.0 (both versions)
+- WAN v2.6 T2V (audio sync)
 
 ### Negative Prompt Support
 - Sora 2 (both versions)
@@ -488,7 +498,6 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 - LTX Video 2.0 Pro T2V
 - Veo 3.1 (both versions)
 - WAN v2.6 T2V
-- Hailuo 2.3 Pro T2V
 
 ### Prompt Expansion
 - Sora 2 (both versions)
@@ -509,21 +518,32 @@ qcut/apps/web/src/lib/ai-video/generators/text-to-video.ts
 
 Model configurations are defined in:
 ```
-qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts
+qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config/
 ```
+
+Files:
+- `models.ts` - Model definitions (single source of truth)
+- `order.ts` - Priority order and aliases
+- `capabilities.ts` - Per-model capability flags
+- `helpers.ts` - Helper functions (combined capabilities, ordering)
+- `index.ts` - Re-exports
 
 ---
 
 ## Model Selection Priority Order
 
-Models are displayed in the UI in this order (premium to cost-effective):
-1. Kling v3 Pro T2V
-2. Kling v3 Standard T2V
-3. Kling v2.6 Pro T2V
-4. Sora 2 Text-to-Video Pro
-5. Veo 3.1 Text-to-Video
-6. WAN v2.6 T2V
-7. LTX Video 2.0 Fast T2V
+Models are displayed in the UI using a badge-first ordering system. Badged models always appear at the top, followed by the remaining models ordered by quality/capability.
+
+### Badged Picks (always on top)
+1. Sora 2 Text-to-Video Pro - **Recommended**
+2. LTX Video 2.0 Fast T2V - **Fast**
+3. WAN v2.6 T2V - **Budget**
+4. Kling v3 Standard T2V - **Cinematic**
+
+### Remaining Models
+5. Kling v3 Pro T2V
+6. Kling v2.6 Pro T2V
+7. Veo 3.1 Text-to-Video
 8. LTX Video 2.0 Pro T2V
 9. Hailuo 2.3 Pro T2V
 10. Veo 3.1 Fast Text-to-Video
@@ -541,5 +561,5 @@ Models are displayed in the UI in this order (premium to cost-effective):
 ## Related Documentation
 
 - [Text-to-Video Generator](../../../../apps/web/src/lib/ai-video/generators/text-to-video.ts)
-- [Text-to-Video Model Config](../../../../apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts)
+- [Text-to-Video Model Config](../../../../apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config/)
 - [AI Video Workflow](../../ai-video-workflow.md)
