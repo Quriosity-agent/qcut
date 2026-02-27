@@ -23,6 +23,7 @@ export interface EditorOptions {
 	trackId?: string;
 	toTrack?: string;
 	splitTime?: number;
+	seekTime?: number;
 	startTime?: number;
 	endTime?: number;
 	newName?: string;

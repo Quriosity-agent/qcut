@@ -18,6 +18,12 @@ type ProgressFn = (progress: {
 }) => void;
 
 const BATCH_LIMIT = 50;
+const TIMELINE_ACTIONS = [
+	"export", "import", "add-element", "batch-add", "update-element",
+	"batch-update", "delete-element", "batch-delete", "split", "move", "arrange",
+	"select", "get-selection", "clear-selection", "play", "pause", "toggle-play",
+	"seek",
+] as const;
 
 // ---------------------------------------------------------------------------
 // Dispatcher
@@ -86,10 +92,18 @@ async function dispatchTimeline(
 			return timelineGetSelection(client, opts);
 		case "clear-selection":
 			return timelineClearSelection(client, opts);
+		case "play":
+			return timelinePlayback(client, opts, "play");
+		case "pause":
+			return timelinePlayback(client, opts, "pause");
+		case "toggle-play":
+			return timelinePlayback(client, opts, "toggle");
+		case "seek":
+			return timelineSeek(client, opts);
 		default:
 			return {
 				success: false,
-				error: `Unknown timeline action: ${action}`,
+				error: `Unknown timeline action: ${action}. Available: ${TIMELINE_ACTIONS.join(", ")}`,
 			};
 	}
 }
@@ -474,6 +488,44 @@ async function timelineClearSelection(
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
 	const data = await client.delete(
 		`/api/claude/timeline/${opts.projectId}/selection`
+	);
+	return { success: true, data };
+}
+
+async function timelinePlayback(
+	client: EditorApiClient,
+	opts: CLIRunOptions,
+	action: "play" | "pause" | "toggle"
+): Promise<CLIResult> {
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+	const data = await client.post(
+		`/api/claude/timeline/${opts.projectId}/playback`,
+		{ action }
+	);
+	return { success: true, data };
+}
+
+async function timelineSeek(
+	client: EditorApiClient,
+	opts: CLIRunOptions
+): Promise<CLIResult> {
+	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+
+	const rawSeekTime = (opts as CLIRunOptions & { seekTime?: number | string })
+		.seekTime;
+	const seekTimeInput = rawSeekTime ?? opts.startTime;
+	const seekTime =
+		typeof seekTimeInput === "string"
+			? Number.parseFloat(seekTimeInput)
+			: seekTimeInput;
+
+	if (seekTime === undefined || Number.isNaN(seekTime)) {
+		return { success: false, error: "Missing --time" };
+	}
+
+	const data = await client.post(
+		`/api/claude/timeline/${opts.projectId}/playback`,
+		{ action: "seek", time: seekTime }
 	);
 	return { success: true, data };
 }
