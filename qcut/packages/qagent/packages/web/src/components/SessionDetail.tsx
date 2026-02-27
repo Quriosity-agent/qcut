@@ -462,13 +462,40 @@ export function SessionDetail({
 							Terminal
 						</span>
 					</div>
-					<DirectTerminal
-						sessionId={session.id}
-						tmuxName={session.metadata?.tmuxName}
-						startFullscreen={startFullscreen}
-						variant={terminalVariant}
-						height={terminalHeight}
-					/>
+					{session.metadata?.agent ? (
+						<div className="rounded-[6px] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] p-6">
+							<p className="text-[13px] text-[var(--color-text-secondary)]">
+								This{" "}
+								{session.metadata.agent === "claude-code"
+									? "Claude Code"
+									: "Codex"}{" "}
+								session is running directly in your terminal.
+							</p>
+							<div className="mt-3 space-y-1.5 font-[var(--font-mono)] text-[12px] text-[var(--color-text-muted)]">
+								<p>PID: {session.metadata.pid}</p>
+								<p>TTY: {session.metadata.tty}</p>
+								{session.metadata.cwd && (
+									<p>CWD: {session.metadata.cwd}</p>
+								)}
+								<p>CMD: {session.metadata.command}</p>
+							</div>
+							<p className="mt-4 text-[11px] text-[var(--color-text-tertiary)]">
+								Switch to terminal tab{" "}
+								<span className="font-[var(--font-mono)] text-[var(--color-accent)]">
+									{session.metadata.tty}
+								</span>{" "}
+								to interact with this session.
+							</p>
+						</div>
+					) : (
+						<DirectTerminal
+							sessionId={session.id}
+							tmuxName={session.metadata?.tmuxName}
+							startFullscreen={startFullscreen}
+							variant={terminalVariant}
+							height={terminalHeight}
+						/>
+					)}
 				</div>
 			</div>
 		</div>

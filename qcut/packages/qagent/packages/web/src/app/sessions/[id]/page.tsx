@@ -46,7 +46,9 @@ interface ZoneCounts {
 
 export default function SessionPage() {
 	const params = useParams();
-	const id = params.id as string;
+	const rawId = params.id as string;
+	// Decode once — useParams() may return URL-encoded values (e.g. "codex%3A1302")
+	const id = decodeURIComponent(rawId);
 	const isOrchestrator = id.endsWith("-orchestrator");
 
 	const [session, setSession] = useState<DashboardSession | null>(null);

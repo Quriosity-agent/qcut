@@ -22,6 +22,7 @@ interface SessionCardProps {
 	onKill?: (sessionId: string) => void;
 	onMerge?: (prNumber: number) => void;
 	onRestore?: (sessionId: string) => void;
+	onLabelChange?: (sessionId: string, label: string | null) => void;
 }
 
 const borderColorByLevel: Record<AttentionLevel, string> = {
@@ -39,9 +40,13 @@ export function SessionCard({
 	onKill,
 	onMerge,
 	onRestore,
+	onLabelChange,
 }: SessionCardProps) {
 	const [expanded, setExpanded] = useState(false);
 	const [sendingAction, setSendingAction] = useState<string | null>(null);
+	const [editingLabel, setEditingLabel] = useState(false);
+	const [labelDraft, setLabelDraft] = useState(session.label ?? "");
+	const labelInputRef = useRef<HTMLInputElement>(null);
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const level = getAttentionLevel(session);
 	const pr = session.pr;
@@ -51,6 +56,22 @@ export function SessionCard({
 			if (timerRef.current) clearTimeout(timerRef.current);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (editingLabel && labelInputRef.current) {
+			labelInputRef.current.focus();
+			labelInputRef.current.select();
+		}
+	}, [editingLabel]);
+
+	const commitLabel = () => {
+		const trimmed = labelDraft.trim();
+		const newLabel = trimmed || null;
+		setEditingLabel(false);
+		if (newLabel !== (session.label ?? null)) {
+			onLabelChange?.(session.id, newLabel);
+		}
+	};
 
 	const handleAction = async (action: string, message: string) => {
 		setSendingAction(action);
@@ -73,7 +94,7 @@ export function SessionCard({
 	return (
 		<div
 			className={cn(
-				"session-card cursor-pointer border border-l-[3px]",
+				"session-card group cursor-pointer border border-l-[3px]",
 				"hover:border-[var(--color-border-strong)]",
 				borderColorByLevel[level],
 				isReadyToMerge
@@ -94,12 +115,55 @@ export function SessionCard({
 				setExpanded(!expanded);
 			}}
 		>
-			{/* Header row: dot + session ID + terminal link */}
+			{/* Header row: dot + label/ID + terminal link */}
 			<div className="flex items-center gap-2 px-4 pt-4 pb-2">
 				<ActivityDot activity={session.activity} />
-				<span className="font-[var(--font-mono)] text-[11px] tracking-wide text-[var(--color-text-muted)]">
-					{session.id}
-				</span>
+				<div className="flex items-center gap-1.5 min-w-0">
+					{editingLabel ? (
+						<input
+							ref={labelInputRef}
+							value={labelDraft}
+							onChange={(e) => setLabelDraft(e.target.value)}
+							onBlur={commitLabel}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") commitLabel();
+								if (e.key === "Escape") {
+									setLabelDraft(session.label ?? "");
+									setEditingLabel(false);
+								}
+							}}
+							className="w-28 rounded border border-[var(--color-accent)] bg-transparent px-1 py-0 font-[var(--font-mono)] text-[11px] text-[var(--color-text-primary)] outline-none"
+							placeholder="label…"
+						/>
+					) : session.label ? (
+						<button
+							onClick={(e) => {
+								e.stopPropagation();
+								setLabelDraft(session.label ?? "");
+								setEditingLabel(true);
+							}}
+							className="truncate rounded px-1 py-0 text-[11px] font-medium text-[var(--color-text-primary)] transition-colors hover:bg-[var(--color-bg-subtle)]"
+							title="Click to edit label"
+						>
+							{session.label}
+						</button>
+					) : (
+						<button
+							onClick={(e) => {
+								e.stopPropagation();
+								setLabelDraft("");
+								setEditingLabel(true);
+							}}
+							className="hidden rounded px-1 py-0 text-[10px] text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-muted)] group-hover:inline-block"
+							title="Add label"
+						>
+							+label
+						</button>
+					)}
+					<span className="font-[var(--font-mono)] text-[11px] tracking-wide text-[var(--color-text-muted)]">
+						{session.label ? `(${session.id})` : session.id}
+					</span>
+				</div>
 				{!session.managed && (
 					<span className="rounded-sm bg-[rgba(139,92,246,0.15)] px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wider text-[rgba(139,92,246,0.8)]">
 						{session.metadata.agent === "claude-code"

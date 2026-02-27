@@ -7,6 +7,8 @@ import {
 	enrichSessionPR,
 	enrichSessionsMetadata,
 } from "@/lib/serialize";
+import { findCLISession } from "@/lib/cli-sessions";
+import { getLabel } from "@/lib/session-labels";
 
 export async function GET(
 	_request: NextRequest,
@@ -14,6 +16,15 @@ export async function GET(
 ) {
 	try {
 		const { id } = await params;
+
+		// Check CLI sessions first — their IDs contain ":" which is invalid
+		// for the core session manager's metadata file lookup
+		const cliSession = await findCLISession(id);
+		if (cliSession) {
+			cliSession.label = getLabel(id);
+			return NextResponse.json(cliSession);
+		}
+
 		const { config, registry, sessionManager } = await getServices();
 
 		const coreSession = await sessionManager.get(id);
@@ -49,6 +60,7 @@ export async function GET(
 			} catch {
 				// tmux unavailable - fall through to 404
 			}
+
 			return NextResponse.json({ error: "Session not found" }, { status: 404 });
 		}
 
@@ -80,6 +92,7 @@ export async function GET(
 			}
 		}
 
+		dashboardSession.label = getLabel(id);
 		return NextResponse.json(dashboardSession);
 	} catch (error) {
 		console.error("Failed to fetch session:", error);

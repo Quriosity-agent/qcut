@@ -79,6 +79,8 @@ export interface DashboardSession {
 	pr: DashboardPR | null;
 	metadata: Record<string, string>;
 	managed: boolean;
+	/** User-assigned custom label for this session */
+	label?: string | null;
 }
 
 /**

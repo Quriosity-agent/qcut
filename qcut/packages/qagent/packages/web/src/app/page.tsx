@@ -13,6 +13,7 @@ import { prCache, prCacheKey } from "@/lib/cache";
 import { getProjectName } from "@/lib/project-name";
 import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
 import { mergeWithUnmanagedCLI } from "@/lib/cli-sessions";
+import { applyLabels } from "@/lib/session-labels";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,7 @@ export default async function Home() {
 		// Merge with unmanaged tmux sessions, then unmanaged CLI agents
 		sessions = await mergeWithUnmanagedTmux(sessions);
 		sessions = await mergeWithUnmanagedCLI(sessions);
+		applyLabels(sessions);
 	} catch {
 		// Config not found or services unavailable — show empty dashboard
 	}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/serialize";
 import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
 import { mergeWithUnmanagedCLI } from "@/lib/cli-sessions";
+import { applyLabels } from "@/lib/session-labels";
 
 /** GET /api/sessions — List all sessions with full state
  * Query params:
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
 		// Merge with unmanaged tmux sessions, then unmanaged CLI agents
 		dashboardSessions = await mergeWithUnmanagedTmux(dashboardSessions);
 		dashboardSessions = await mergeWithUnmanagedCLI(dashboardSessions);
+		applyLabels(dashboardSessions);
 
 		return NextResponse.json({
 			sessions: dashboardSessions,
