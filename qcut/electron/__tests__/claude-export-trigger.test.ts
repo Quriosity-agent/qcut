@@ -260,6 +260,141 @@ describe("Claude export trigger", () => {
 		).rejects.toThrow("empty timeline");
 	});
 
+	it("starts export with image-only timeline", async () => {
+		const result = await startExportJob({
+			projectId: "project_img",
+			request: {
+				preset: "youtube-1080p",
+				outputPath: "/tmp/export-image.mp4",
+			},
+			timeline: {
+				name: "Image Timeline",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						index: 0,
+						name: "Track 1",
+						type: "media",
+						elements: [
+							{
+								id: "el_img_1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 5,
+								duration: 5,
+								type: "image" as const,
+								sourceId: "media_img_1",
+							},
+							{
+								id: "el_img_2",
+								trackIndex: 0,
+								startTime: 5,
+								endTime: 10,
+								duration: 5,
+								type: "image" as const,
+								sourceId: "media_img_2",
+							},
+						],
+					},
+				],
+			},
+			mediaFiles: [
+				{
+					id: "media_img_1",
+					name: "photo1.png",
+					type: "image" as const,
+					path: "/tmp/photo1.png",
+					size: 2048,
+					createdAt: Date.now(),
+					modifiedAt: Date.now(),
+				},
+				{
+					id: "media_img_2",
+					name: "photo2.png",
+					type: "image" as const,
+					path: "/tmp/photo2.png",
+					size: 3072,
+					createdAt: Date.now(),
+					modifiedAt: Date.now(),
+				},
+			],
+		});
+
+		expect(result.jobId).toMatch(/^export_/);
+		expect(result.status).toBe("queued");
+	});
+
+	it("starts export with mixed image and video timeline", async () => {
+		const result = await startExportJob({
+			projectId: "project_mixed",
+			request: {
+				preset: "youtube-1080p",
+				outputPath: "/tmp/export-mixed.mp4",
+			},
+			timeline: {
+				name: "Mixed Timeline",
+				duration: 10,
+				width: 1920,
+				height: 1080,
+				fps: 30,
+				tracks: [
+					{
+						index: 0,
+						name: "Track 1",
+						type: "media",
+						elements: [
+							{
+								id: "el_vid_1",
+								trackIndex: 0,
+								startTime: 0,
+								endTime: 5,
+								duration: 5,
+								type: "media" as const,
+								sourceId: "media_1",
+							},
+							{
+								id: "el_img_1",
+								trackIndex: 0,
+								startTime: 5,
+								endTime: 10,
+								duration: 5,
+								type: "image" as const,
+								sourceId: "media_img_1",
+							},
+						],
+					},
+				],
+			},
+			mediaFiles: [
+				{
+					id: "media_1",
+					name: "clip.mp4",
+					type: "video" as const,
+					path: "/tmp/clip.mp4",
+					size: 1024,
+					duration: 5,
+					createdAt: Date.now(),
+					modifiedAt: Date.now(),
+				},
+				{
+					id: "media_img_1",
+					name: "photo.png",
+					type: "image" as const,
+					path: "/tmp/photo.png",
+					size: 2048,
+					createdAt: Date.now(),
+					modifiedAt: Date.now(),
+				},
+			],
+		});
+
+		expect(result.jobId).toMatch(/^export_/);
+		expect(result.status).toBe("queued");
+	});
+
 	it("rejects concurrent export requests for same project", async () => {
 		spawnMode = "hang";
 

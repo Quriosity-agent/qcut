@@ -19,6 +19,7 @@ export interface ExportSegment {
 	startTime: number;
 	duration: number;
 	sourceId: string;
+	isImage?: boolean;
 }
 
 export interface ResolvedExportSettings {
