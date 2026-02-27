@@ -65,9 +65,11 @@ export function SessionCard({
 	}, [editingLabel]);
 
 	const commitLabel = () => {
-		const trimmed = labelDraft.trim();
+		// Read directly from input to avoid stale closure with batched state updates
+		const trimmed = (labelInputRef.current?.value ?? labelDraft).trim();
 		const newLabel = trimmed || null;
 		setEditingLabel(false);
+		setLabelDraft(trimmed);
 		if (newLabel !== (session.label ?? null)) {
 			onLabelChange?.(session.id, newLabel);
 		}

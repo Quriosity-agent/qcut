@@ -30,11 +30,23 @@ const KANBAN_LEVELS = [
 ] as const;
 
 export function Dashboard({
-	sessions,
+	sessions: initialSessions,
 	stats,
 	orchestratorId,
 	projectName,
 }: DashboardProps) {
+	const [labelOverrides, setLabelOverrides] = useState<
+		Record<string, string | null>
+	>({});
+	const sessions = useMemo(
+		() =>
+			initialSessions.map((s) =>
+				s.id in labelOverrides
+					? { ...s, label: labelOverrides[s.id] }
+					: s
+			),
+		[initialSessions, labelOverrides]
+	);
 	const [rateLimitDismissed, setRateLimitDismissed] = useState(false);
 	const grouped = useMemo(() => {
 		const zones: Record<AttentionLevel, DashboardSession[]> = {
@@ -108,6 +120,28 @@ export function Dashboard({
 		);
 		if (!res.ok) {
 			console.error(`Failed to restore ${sessionId}:`, await res.text());
+		}
+	};
+
+	const handleLabelChange = async (
+		sessionId: string,
+		label: string | null
+	) => {
+		// Optimistic update
+		setLabelOverrides((prev) => ({ ...prev, [sessionId]: label }));
+		const res = await fetch(
+			`/api/sessions/${encodeURIComponent(sessionId)}/label`,
+			{
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ label }),
+			}
+		);
+		if (!res.ok) {
+			console.error(
+				`Failed to update label for ${sessionId}:`,
+				await res.text()
+			);
 		}
 	};
 
@@ -198,6 +232,7 @@ export function Dashboard({
 									onKill={handleKill}
 									onMerge={handleMerge}
 									onRestore={handleRestore}
+									onLabelChange={handleLabelChange}
 								/>
 							</div>
 						) : null
@@ -216,6 +251,7 @@ export function Dashboard({
 						onKill={handleKill}
 						onMerge={handleMerge}
 						onRestore={handleRestore}
+						onLabelChange={handleLabelChange}
 					/>
 				</div>
 			)}
