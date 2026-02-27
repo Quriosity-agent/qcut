@@ -39,7 +39,7 @@ Add Nano Banana 2 Edit to the frontend image-edit capabilities and client.
 
 **`apps/web/src/lib/ai-clients/image-edit-client.ts`**
 - Add `"nano-banana-2"` endpoint mapping in `MODEL_ENDPOINTS`:
-  ```
+  ```typescript
   endpoint: "fal-ai/nano-banana-2/edit"
   defaults: { output_format: "png", num_images: 1, sync_mode: true }
   ```

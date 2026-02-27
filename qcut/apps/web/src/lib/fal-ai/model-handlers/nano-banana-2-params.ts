@@ -47,9 +47,9 @@ export function convertNanoBanana2Parameters(
 		});
 	}
 
-	// Clamp num_images to valid range (1-4)
+	// Clamp num_images to valid range (1-4), rounding to integer
 	const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
-	const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : rawNumImages;
+	const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : Math.round(rawNumImages);
 	const numImages = Math.max(1, Math.min(4, requestedNumImages));
 
 	if (numImages !== requestedNumImages) {
@@ -102,16 +102,14 @@ export function convertNanoBanana2Parameters(
 	);
 	const safetyTolerance = Number.isNaN(rawSafety)
 		? 4
-		: Math.max(1, Math.min(6, rawSafety));
+		: Math.max(1, Math.min(6, Math.round(rawSafety)));
 
-	// Boolean parameters
-	const syncMode = Boolean(params.sync_mode ?? params.syncMode ?? true);
-	const enableWebSearch = Boolean(
-		params.enable_web_search ?? params.enableWebSearch ?? false
-	);
-	const limitGenerations = Boolean(
-		params.limit_generations ?? params.limitGenerations ?? true
-	);
+	// Boolean parameters — use strict equality to avoid "false" string coercing to true
+	const syncMode = (params.sync_mode ?? params.syncMode ?? true) === true;
+	const enableWebSearch =
+		(params.enable_web_search ?? params.enableWebSearch ?? false) === true;
+	const limitGenerations =
+		(params.limit_generations ?? params.limitGenerations ?? true) === true;
 
 	// Sanitize prompt
 	const prompt = (params.prompt || "") as string;

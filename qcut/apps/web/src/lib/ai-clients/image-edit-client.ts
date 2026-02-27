@@ -434,11 +434,13 @@ export async function editImage(
 	}
 
 	// Nano Banana 2 specific parameters
-	if (request.enableWebSearch !== undefined) {
-		payload.enable_web_search = request.enableWebSearch;
-	}
-	if (request.limitGenerations !== undefined) {
-		payload.limit_generations = request.limitGenerations;
+	if (request.model === "nano-banana-2") {
+		if (request.enableWebSearch !== undefined) {
+			payload.enable_web_search = request.enableWebSearch;
+		}
+		if (request.limitGenerations !== undefined) {
+			payload.limit_generations = request.limitGenerations;
+		}
 	}
 
 	// GPT Image 1.5 Edit specific parameters
