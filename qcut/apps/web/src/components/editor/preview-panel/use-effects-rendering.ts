@@ -8,9 +8,7 @@ import {
 /** Compute the aggregate CSS filter string for an element's enabled effects. */
 export function useEffectsRendering(elementId: string | null, enabled = false) {
 	const effects = useEffectsStore((state) =>
-		!enabled || !elementId
-			? []
-			: state.activeEffects.get(elementId) || []
+		!enabled || !elementId ? [] : state.activeEffects.get(elementId) || []
 	);
 
 	const filterStyle = useMemo(() => {

@@ -56,8 +56,7 @@ export function usePreviewDrag({
 			const deltaX = e.clientX - ds.startX;
 			const deltaY = e.clientY - ds.startY;
 
-			const scaleRatio =
-				canvasWidth > 0 ? previewWidth / canvasWidth : 1;
+			const scaleRatio = canvasWidth > 0 ? previewWidth / canvasWidth : 1;
 			const newX = ds.initialElementX + deltaX / scaleRatio;
 			const newY = ds.initialElementY + deltaY / scaleRatio;
 
