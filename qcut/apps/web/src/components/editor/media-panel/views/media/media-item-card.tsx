@@ -1,6 +1,13 @@
 import type { MediaItem } from "@/stores/media/media-store-types";
 import type { MediaFolder } from "@/stores/media/media-store-types";
-import { Edit, Layers, Copy, FolderInput, ExternalLink } from "lucide-react";
+import {
+	Edit,
+	Layers,
+	Copy,
+	FolderInput,
+	ExternalLink,
+	FileJson,
+} from "lucide-react";
 import { toast } from "sonner";
 import { debugLog, debugError } from "@/lib/debug/debug-config";
 import {
@@ -185,6 +192,35 @@ export function MediaItemCard({
 				>
 					<Copy className="h-4 w-4 mr-2" aria-hidden="true" />
 					Copy File Path
+				</ContextMenuItem>
+
+				{/* Copy Media Info (JSON for CLI agents) */}
+				<ContextMenuItem
+					onClick={async (e) => {
+						e.stopPropagation();
+						const info = {
+							id: item.id,
+							name: item.name,
+							type: item.type,
+							localPath: item.localPath || null,
+							url: item.url && !item.url.startsWith("blob:") ? item.url : null,
+							duration: item.duration || null,
+							width: item.width || null,
+							height: item.height || null,
+						};
+						try {
+							await navigator.clipboard.writeText(
+								JSON.stringify(info, null, 2)
+							);
+							toast.success("Media info copied to clipboard");
+						} catch (error) {
+							debugError("[Media View] Clipboard copy failed:", error);
+							toast.error("Failed to copy media info");
+						}
+					}}
+				>
+					<FileJson className="h-4 w-4 mr-2" aria-hidden="true" />
+					Copy Media Info
 				</ContextMenuItem>
 
 				{/* Open in Explorer (Electron only) */}
