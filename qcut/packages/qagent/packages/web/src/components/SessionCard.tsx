@@ -102,7 +102,11 @@ export function SessionCard({
 				</span>
 				{!session.managed && (
 					<span className="rounded-sm bg-[rgba(139,92,246,0.15)] px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wider text-[rgba(139,92,246,0.8)]">
-						tmux
+						{session.metadata.agent === "claude-code"
+							? "claude"
+							: session.metadata.agent === "codex"
+								? "codex"
+								: "tmux"}
 					</span>
 				)}
 				<div className="flex-1" />
@@ -332,14 +336,33 @@ export function SessionCard({
 
 					{!session.managed && (
 						<div className="mb-2.5">
-							<p className="text-[12px] text-[var(--color-text-tertiary)]">
-								Unmanaged tmux session — not tracked by qagent.
-							</p>
-							<p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
-								{session.metadata.windows} window
-								{session.metadata.windows !== "1" ? "s" : ""}
-								{session.metadata.attached === "true" ? " · attached" : ""}
-							</p>
+							{session.metadata.agent ? (
+								<>
+									<p className="text-[12px] text-[var(--color-text-tertiary)]">
+										Unmanaged{" "}
+										{session.metadata.agent === "claude-code"
+											? "Claude Code"
+											: "Codex"}{" "}
+										session — not tracked by qagent.
+									</p>
+									<p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+										PID {session.metadata.pid}
+										{session.metadata.tty ? ` · ${session.metadata.tty}` : ""}
+										{session.metadata.cwd ? ` · ${session.metadata.cwd}` : ""}
+									</p>
+								</>
+							) : (
+								<>
+									<p className="text-[12px] text-[var(--color-text-tertiary)]">
+										Unmanaged tmux session — not tracked by qagent.
+									</p>
+									<p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+										{session.metadata.windows} window
+										{session.metadata.windows !== "1" ? "s" : ""}
+										{session.metadata.attached === "true" ? " · attached" : ""}
+									</p>
+								</>
+							)}
 						</div>
 					)}
 
