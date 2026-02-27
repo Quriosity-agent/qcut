@@ -728,12 +728,23 @@ function formatElementForExport(
 
 	// Add type-specific fields
 	switch (element.type) {
-		case "media":
+		case "media": {
+			// Resolve the actual media file name from the store for reliable export matching
+			let sourceName = element.name;
+			if (element.mediaId) {
+				const mediaItem = useMediaStore
+					.getState()
+					.mediaItems.find((item) => item.id === element.mediaId);
+				if (mediaItem?.name) {
+					sourceName = mediaItem.name;
+				}
+			}
 			return {
 				...baseElement,
 				sourceId: element.mediaId,
-				sourceName: element.name,
+				sourceName,
 			};
+		}
 		case "text":
 			return {
 				...baseElement,
