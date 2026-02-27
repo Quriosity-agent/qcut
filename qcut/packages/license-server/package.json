@@ -1,0 +1,19 @@
+﻿{
+  "name": "@qcut/license-server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "stripe": "^17.0.0",
+    "@qcut/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "wrangler": "^3.0.0"
+  }
+}
