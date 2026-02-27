@@ -9,18 +9,25 @@
 export { convertV3Parameters } from "./v3-params";
 export { convertV4Parameters, V4_VALID_IMAGE_PRESETS } from "./v4-params";
 export { convertNanoBananaParameters } from "./nano-banana-params";
+export { convertNanoBanana2Parameters } from "./nano-banana-2-params";
 export { convertFluxParameters } from "./flux-params";
 
 // Import for local use in convertParametersForModel
 import { convertV3Parameters } from "./v3-params";
 import { convertV4Parameters } from "./v4-params";
 import { convertNanoBananaParameters } from "./nano-banana-params";
+import { convertNanoBanana2Parameters } from "./nano-banana-2-params";
 import { convertFluxParameters } from "./flux-params";
 
 /**
  * Model version types for routing.
  */
-export type ModelVersion = "v3" | "v4" | "nano-banana" | "flux";
+export type ModelVersion =
+	| "v3"
+	| "v4"
+	| "nano-banana"
+	| "nano-banana-2"
+	| "flux";
 
 /**
  * Detects the model version based on model ID.
@@ -37,6 +44,7 @@ export type ModelVersion = "v3" | "v4" | "nano-banana" | "flux";
  */
 export function detectModelVersion(modelId: string): ModelVersion {
 	if (modelId === "seeddream-v4") return "v4";
+	if (modelId === "nano-banana-2") return "nano-banana-2";
 	if (modelId === "nano-banana") return "nano-banana";
 	if (modelId.includes("flux")) return "flux";
 	return "v3"; // default to V3 for backward compatibility
@@ -64,6 +72,8 @@ export function convertParametersForModel(
 	switch (version) {
 		case "v4":
 			return convertV4Parameters(params);
+		case "nano-banana-2":
+			return convertNanoBanana2Parameters(params);
 		case "nano-banana":
 			return convertNanoBananaParameters(params);
 		case "flux":

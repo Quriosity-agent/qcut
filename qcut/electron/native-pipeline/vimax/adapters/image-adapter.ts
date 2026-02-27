@@ -48,6 +48,7 @@ const MODEL_MAP: Record<string, string> = {
 	flux_schnell: "fal-ai/flux/schnell",
 	imagen4: "google/imagen-4",
 	nano_banana_pro: "fal-ai/nano-banana-pro",
+	nano_banana_2: "fal-ai/nano-banana-2",
 	gpt_image_1_5: "fal-ai/gpt-image-1-5",
 	seedream_v3: "fal-ai/seedream-v3",
 };
@@ -55,6 +56,7 @@ const MODEL_MAP: Record<string, string> = {
 /** Model → FAL endpoint for image-to-image with reference. */
 const REFERENCE_MODEL_MAP: Record<string, string> = {
 	nano_banana_pro: "fal-ai/nano-banana-pro/edit",
+	nano_banana_2: "fal-ai/nano-banana-2/edit",
 	flux_kontext: "fal-ai/flux-kontext/max/image-to-image",
 	flux_redux: "fal-ai/flux-pro/v1.1-ultra/redux",
 	seededit_v3: "fal-ai/seededit-v3",
@@ -62,11 +64,12 @@ const REFERENCE_MODEL_MAP: Record<string, string> = {
 };
 
 /** Models that use image_urls array instead of image_url. */
-const ARRAY_IMAGE_MODELS = new Set(["nano_banana_pro"]);
+const ARRAY_IMAGE_MODELS = new Set(["nano_banana_pro", "nano_banana_2"]);
 
 /** Models that use aspect_ratio param directly. */
 const ASPECT_RATIO_MODELS = new Set([
 	"nano_banana_pro",
+	"nano_banana_2",
 	"gpt_image_1_5",
 	"seedream_v3",
 	"imagen4",
@@ -78,9 +81,11 @@ const COST_MAP: Record<string, number> = {
 	flux_schnell: 0.001,
 	imagen4: 0.004,
 	nano_banana_pro: 0.002,
+	nano_banana_2: 0.08,
 	gpt_image_1_5: 0.003,
 	seedream_v3: 0.002,
 	nano_banana_pro_edit: 0.15,
+	nano_banana_2_edit: 0.08,
 	flux_kontext: 0.025,
 	flux_redux: 0.02,
 	seededit_v3: 0.025,
@@ -93,6 +98,7 @@ const MAX_STEPS_MAP: Record<string, number> = {
 	flux_schnell: 4,
 	imagen4: 50,
 	nano_banana_pro: 50,
+	nano_banana_2: 50,
 	gpt_image_1_5: 50,
 	seedream_v3: 50,
 	flux_kontext: 28,
