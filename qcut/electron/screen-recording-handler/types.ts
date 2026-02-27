@@ -74,6 +74,7 @@ export interface StopScreenRecordingResult {
 	bytesWritten: number;
 	durationMs: number;
 	discarded: boolean;
+	error?: string;
 }
 
 export interface ScreenRecordingStatus {

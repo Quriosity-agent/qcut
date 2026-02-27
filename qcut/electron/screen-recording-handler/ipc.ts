@@ -204,11 +204,12 @@ export function setupScreenRecordingIPC(): void {
 			const sessionToStop = getActiveSession();
 			if (!sessionToStop) {
 				return {
-					success: true,
+					success: false,
 					filePath: null,
 					bytesWritten: 0,
 					durationMs: 0,
-					discarded: true,
+					discarded: false,
+					error: "No active screen recording session",
 				};
 			}
 
