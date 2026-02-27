@@ -14,6 +14,7 @@ import {
 	ChevronLeft,
 	Type,
 	Copy,
+	FileJson,
 	RefreshCw,
 	EyeOff,
 	Eye,
@@ -624,6 +625,50 @@ function TimelineElementComponent({
 						Replace clip
 					</ContextMenuItem>
 				)}
+				<ContextMenuSeparator />
+				<ContextMenuItem
+					onClick={async (e) => {
+						e.stopPropagation();
+						const { id: _id, ...props } = element;
+						const info = {
+							id: element.id,
+							type: element.type,
+							name: element.name,
+							startTime: element.startTime,
+							endTime:
+								element.startTime +
+								(element.duration - element.trimStart - element.trimEnd),
+							duration: element.duration,
+							trackId: track.id,
+							...props,
+						};
+						try {
+							await navigator.clipboard.writeText(
+								JSON.stringify(info, null, 2)
+							);
+							toast.success("Element info copied to clipboard");
+						} catch {
+							toast.error("Failed to copy element info");
+						}
+					}}
+				>
+					<FileJson className="h-4 w-4 mr-2" />
+					Copy Element Info
+				</ContextMenuItem>
+				<ContextMenuItem
+					onClick={async (e) => {
+						e.stopPropagation();
+						try {
+							await navigator.clipboard.writeText(element.id);
+							toast.success("Element ID copied");
+						} catch {
+							toast.error("Failed to copy element ID");
+						}
+					}}
+				>
+					<Copy className="h-4 w-4 mr-2" />
+					Copy Element ID
+				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuItem
 					onClick={handleElementDeleteContext}
