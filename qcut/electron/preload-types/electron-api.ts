@@ -140,6 +140,16 @@ export interface ElectronAPI {
 		getProjectDir: (projectId: string) => Promise<string>;
 	};
 
+	// Screenshot capture
+	screenshot?: {
+		capture: (options?: { fileName?: string }) => Promise<{
+			filePath: string;
+			width: number;
+			height: number;
+			timestamp: number;
+		}>;
+	};
+
 	// Screen recording operations
 	screenRecording?: {
 		getSources: () => Promise<ScreenCaptureSource[]>;
@@ -861,7 +871,11 @@ export interface ElectronAPI {
 		};
 		ui: {
 			onSwitchPanelRequest: (
-				callback: (data: { requestId: string; panel: string }) => void
+				callback: (data: {
+					requestId: string;
+					panel: string;
+					tab?: string;
+				}) => void
 			) => void;
 			sendSwitchPanelResponse: (
 				requestId: string,
@@ -925,6 +939,18 @@ export interface ElectronAPI {
 			text?: string;
 			error?: string;
 		}>;
+		isClaudeAvailable: () => Promise<boolean>;
+		onParsed: (callback: (data: Record<string, unknown>) => void) => void;
+		removeParseListener: () => void;
+		onSetScript: (callback: (data: { text: string }) => void) => void;
+		onTriggerParse: (callback: () => void) => void;
+		onStatusRequest: (callback: (data: { requestId: string }) => void) => void;
+		sendStatusResponse: (
+			requestId: string,
+			result?: Record<string, unknown>,
+			error?: string
+		) => void;
+		removeMoyinBridgeListeners: () => void;
 	};
 
 	// Update and release notes operations
