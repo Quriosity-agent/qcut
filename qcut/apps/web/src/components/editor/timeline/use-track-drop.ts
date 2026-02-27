@@ -316,6 +316,7 @@ export function useTrackDrop({
 		dragCounterRef.current = 0;
 		setIsDropping(false);
 		setWouldOverlap(false);
+		setDropPosition(null);
 
 		const hasTimelineElement = e.dataTransfer.types.includes(
 			"application/x-timeline-element"
