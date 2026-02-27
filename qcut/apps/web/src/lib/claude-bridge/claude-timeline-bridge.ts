@@ -391,6 +391,45 @@ export function setupClaudeTimelineBridge(): void {
 		}
 	});
 
+	// Handle playback commands (fire-and-forget)
+	if (typeof claudeAPI.onPlayback === "function") {
+		claudeAPI.onPlayback(async (data: { action: string; time?: number }) => {
+			try {
+				const { usePlaybackStore } = await import(
+					"@/stores/editor/playback-store"
+				);
+				const store = usePlaybackStore.getState();
+				switch (data.action) {
+					case "play":
+						store.play();
+						break;
+					case "pause":
+						store.pause();
+						break;
+					case "toggle":
+						store.toggle();
+						break;
+					case "seek":
+						if (typeof data.time === "number") {
+							store.seek(data.time);
+						}
+						break;
+					default:
+						debugWarn(
+							"[ClaudeTimelineBridge] Unknown playback action:",
+							data.action
+						);
+				}
+				debugLog("[ClaudeTimelineBridge] Playback action applied:", data.action);
+			} catch (error) {
+				debugError(
+					"[ClaudeTimelineBridge] Failed to handle playback:",
+					error
+				);
+			}
+		});
+	}
+
 	// Handle clear selection (fire-and-forget)
 	claudeAPI.onClearSelection(() => {
 		try {

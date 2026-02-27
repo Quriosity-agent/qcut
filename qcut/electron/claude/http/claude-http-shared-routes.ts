@@ -496,6 +496,21 @@ export function registerSharedRoutes(
 		win.webContents.send("claude:timeline:clearSelection");
 		return { cleared: true };
 	});
+
+	router.post("/api/claude/timeline/:projectId/playback", async (req) => {
+		const win = accessor.getWindow();
+		const { action, time } = req.body as {
+			action: "play" | "pause" | "toggle" | "seek";
+			time?: number;
+		};
+		if (!action) throw new HttpError(400, "Missing action in request body");
+		if (action === "seek" && (time === undefined || Number.isNaN(time))) {
+			throw new HttpError(400, "Missing or invalid time for seek action");
+		}
+		win.webContents.send("claude:timeline:playback", { action, time });
+		return { action, time, applied: true };
+	});
+
 	registerTransactionRoutes({ router, accessor });
 
 	// ==========================================================================
