@@ -132,7 +132,13 @@ export function collectExportSegments({
 
 		for (const track of timeline.tracks) {
 			for (const element of track.elements) {
-				if (!(element.type === "media" || element.type === "video" || element.type === "image")) {
+				if (
+					!(
+						element.type === "media" ||
+						element.type === "video" ||
+						element.type === "image"
+					)
+				) {
 					continue;
 				}
 
@@ -311,7 +317,14 @@ export async function executeExportJob({
 			);
 
 			const inputArgs: string[] = segment.isImage
-				? ["-loop", "1", "-t", String(segment.duration), "-i", segment.sourcePath]
+				? [
+						"-loop",
+						"1",
+						"-t",
+						String(segment.duration),
+						"-i",
+						segment.sourcePath,
+					]
 				: ["-i", segment.sourcePath, "-t", String(segment.duration)];
 
 			await runFFmpegCommand({
