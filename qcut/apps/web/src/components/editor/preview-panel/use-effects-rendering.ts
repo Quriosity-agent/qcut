@@ -6,13 +6,8 @@ import {
 } from "@/lib/effects/effects-utils";
 
 /** Compute the aggregate CSS filter string for an element's enabled effects. */
-export function useEffectsRendering(
-	elementId: string | null,
-	enabled = false
-) {
-	const getElementEffects = useEffectsStore(
-		(state) => state.getElementEffects
-	);
+export function useEffectsRendering(elementId: string | null, enabled = false) {
+	const getElementEffects = useEffectsStore((state) => state.getElementEffects);
 
 	const effects = useMemo(() => {
 		if (!enabled || !elementId) {

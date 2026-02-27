@@ -77,7 +77,9 @@ export function getChipHelpText({ word }: { word: WordItem }): string {
 /** Sum the duration of all words marked for removal (AI or user-removed). */
 export function calculateRemovedDuration({
 	words,
-}: { words: WordItem[] }): number {
+}: {
+	words: WordItem[];
+}): number {
 	try {
 		const ranges = words
 			.filter(

@@ -676,10 +676,7 @@ export function useTrackDrop({
 								);
 								if (!newTargetTrack) return;
 								targetTrack = newTargetTrack;
-							} else if (
-								mainTrack.elements.length === 0 &&
-								dropZone === "on"
-							) {
+							} else if (mainTrack.elements.length === 0 && dropZone === "on") {
 								// Main track exists and is empty, use it
 								targetTrackId = mainTrack.id;
 								targetTrack = mainTrack;
