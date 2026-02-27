@@ -5,6 +5,11 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { parse } from "node:url";
+import { generateId } from "./helpers.js";
+import type {
+	CommandLifecycle,
+	CorrelationId,
+} from "../../types/claude-api.js";
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1MB
 
@@ -22,6 +27,12 @@ export interface ParsedRequest {
 	params: Record<string, string>;
 	query: Record<string, string>;
 	body: any;
+	responseMeta?: RouteResponseMeta;
+}
+
+export interface RouteResponseMeta {
+	correlationId?: CorrelationId;
+	lifecycle?: CommandLifecycle;
 }
 
 interface Route {
@@ -90,9 +101,38 @@ export function createRouter(): Router {
 		routes.push({ method: method.toUpperCase(), pattern, paramNames, handler });
 	}
 
-	function sendJson(res: ServerResponse, status: number, data: unknown) {
-		res.writeHead(status, { "Content-Type": "application/json" });
-		res.end(JSON.stringify(data));
+	function sendJson({
+		res,
+		status,
+		data,
+		meta,
+	}: {
+		res: ServerResponse;
+		status: number;
+		data: Record<string, unknown>;
+		meta?: RouteResponseMeta;
+	}) {
+		let correlationId = meta?.correlationId;
+		try {
+			correlationId = correlationId ?? (generateId("corr") as CorrelationId);
+		} catch {
+			correlationId =
+				`corr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}` as CorrelationId;
+		}
+
+		const responseBody: Record<string, unknown> = {
+			...data,
+			correlationId,
+		};
+		if (meta?.lifecycle) {
+			responseBody.lifecycle = meta.lifecycle;
+		}
+
+		res.writeHead(status, {
+			"Content-Type": "application/json",
+			"X-Correlation-Id": correlationId,
+		});
+		res.end(JSON.stringify(responseBody));
 	}
 
 	async function handle(req: IncomingMessage, res: ServerResponse) {
@@ -109,6 +149,7 @@ export function createRouter(): Router {
 			const match = pathname.match(route.pattern);
 			if (!match) continue;
 
+			const responseMeta: RouteResponseMeta = {};
 			try {
 				const params: Record<string, string> = {};
 				for (let i = 0; i < route.paramNames.length; i++) {
@@ -124,32 +165,57 @@ export function createRouter(): Router {
 				) {
 					body = await parseBody(req);
 				}
-				const result = await route.handler({ params, query, body });
-				sendJson(res, 200, {
-					success: true,
-					data: result,
-					timestamp: Date.now(),
+				const result = await route.handler({
+					params,
+					query,
+					body,
+					responseMeta,
+				});
+				sendJson({
+					res,
+					status: 200,
+					data: {
+						success: true,
+						data: result,
+						timestamp: Date.now(),
+					},
+					meta: responseMeta,
 				});
 			} catch (error: unknown) {
 				if (error instanceof URIError) {
-					sendJson(res, 400, {
-						success: false,
-						error: "Invalid URL encoding",
-						timestamp: Date.now(),
+					sendJson({
+						res,
+						status: 400,
+						data: {
+							success: false,
+							error: "Invalid URL encoding",
+							timestamp: Date.now(),
+						},
+						meta: responseMeta,
 					});
 				} else if (error instanceof HttpError) {
-					sendJson(res, error.status, {
-						success: false,
-						error: error.message,
-						timestamp: Date.now(),
+					sendJson({
+						res,
+						status: error.status,
+						data: {
+							success: false,
+							error: error.message,
+							timestamp: Date.now(),
+						},
+						meta: responseMeta,
 					});
 				} else {
 					const message =
 						error instanceof Error ? error.message : "Internal server error";
-					sendJson(res, 500, {
-						success: false,
-						error: message,
-						timestamp: Date.now(),
+					sendJson({
+						res,
+						status: 500,
+						data: {
+							success: false,
+							error: message,
+							timestamp: Date.now(),
+						},
+						meta: responseMeta,
 					});
 				}
 			}
@@ -157,10 +223,14 @@ export function createRouter(): Router {
 		}
 
 		// No route matched
-		sendJson(res, 404, {
-			success: false,
-			error: `Not found: ${method} ${pathname}`,
-			timestamp: Date.now(),
+		sendJson({
+			res,
+			status: 404,
+			data: {
+				success: false,
+				error: `Not found: ${method} ${pathname}`,
+				timestamp: Date.now(),
+			},
 		});
 	}
 

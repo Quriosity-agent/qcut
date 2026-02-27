@@ -131,6 +131,33 @@ Transcribe audio to text with optional SRT.
 | `--keyterms` | | string[] | | Domain keywords (repeatable) |
 | `--raw-json` | | boolean | `false` | Save raw JSON response |
 
+### `query-video`
+
+Query video segments for keep/cut analysis.
+
+| Flag | Short | Type | Default | Description |
+|------|-------|------|---------|-------------|
+| `--input` | `-i` | string | | Video file or URL (required) |
+| `--prompt` | | string | | Query prompt |
+| `--text` | `-t` | string | | Alias for prompt |
+| `--model` | `-m` | string | `gemini_qa` | Vision model |
+| `--output-format` | `-f` | string | `json` | Output format |
+
+---
+
+## Script Parsing
+
+### `moyin:parse-script`
+
+Parse a screenplay into structured data (characters, scenes).
+
+| Flag | Short | Type | Description |
+|------|-------|------|-------------|
+| `--text` | `-t` | string | Script text or file path (required) |
+| `--input` | `-i` | string | Alias for text |
+
+Output: structured JSON with characters and scenes.
+
 ---
 
 ## YAML Pipelines

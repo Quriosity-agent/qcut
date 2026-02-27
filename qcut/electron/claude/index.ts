@@ -13,6 +13,8 @@ export { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
 export { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
 export { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
 export { setupClaudeNavigatorIPC } from "./handlers/claude-navigator-handler.js";
+export { setupClaudeStateIPC } from "./handlers/claude-state-handler.js";
+export { setupClaudeEventsIPC } from "./handlers/claude-events-handler.js";
 export {
 	startClaudeHTTPServer,
 	stopClaudeHTTPServer,
@@ -26,6 +28,8 @@ import { setupClaudeExportIPC } from "./handlers/claude-export-handler.js";
 import { setupClaudeDiagnosticsIPC } from "./handlers/claude-diagnostics-handler.js";
 import { setupClaudeAnalyzeIPC } from "./handlers/claude-analyze-handler.js";
 import { setupClaudeNavigatorIPC } from "./handlers/claude-navigator-handler.js";
+import { setupClaudeStateIPC } from "./handlers/claude-state-handler.js";
+import { setupClaudeEventsIPC } from "./handlers/claude-events-handler.js";
 import { startClaudeHTTPServer } from "./http/claude-http-server.js";
 
 /**
@@ -42,6 +46,8 @@ export function setupAllClaudeIPC(): void {
 	setupClaudeDiagnosticsIPC();
 	setupClaudeAnalyzeIPC();
 	setupClaudeNavigatorIPC();
+	setupClaudeStateIPC();
+	setupClaudeEventsIPC();
 
 	// HTTP server now runs in utility process (started via utility-bridge.ts)
 	// See electron/utility/utility-http-server.ts

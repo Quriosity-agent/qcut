@@ -25,6 +25,9 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
+	EditorStateRequest,
+	EditorStateSnapshot,
 } from "../types/claude-api";
 
 import type {
@@ -701,6 +704,94 @@ export interface ElectronAPI {
 			) => void;
 			removeListeners: () => void;
 		};
+		transaction: {
+			onBegin: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					label?: string;
+					timeoutMs: number;
+					createdAt: number;
+					expiresAt: number;
+				}) => void
+			) => void;
+			sendBeginResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+				}
+			) => void;
+			onCommit: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					label?: string;
+				}) => void
+			) => void;
+			sendCommitResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+					historyEntryAdded?: boolean;
+				}
+			) => void;
+			onRollback: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					reason?: string;
+				}) => void
+			) => void;
+			sendRollbackResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+				}
+			) => void;
+			onUndo: (callback: (data: { requestId: string }) => void) => void;
+			sendUndoResponse: (
+				requestId: string,
+				result: {
+					applied: boolean;
+					undoCount: number;
+					redoCount: number;
+				}
+			) => void;
+			onRedo: (callback: (data: { requestId: string }) => void) => void;
+			sendRedoResponse: (
+				requestId: string,
+				result: {
+					applied: boolean;
+					undoCount: number;
+					redoCount: number;
+				}
+			) => void;
+			onHistory: (callback: (data: { requestId: string }) => void) => void;
+			sendHistoryResponse: (
+				requestId: string,
+				result: {
+					undoCount: number;
+					redoCount: number;
+					entries: Array<{
+						label: string;
+						timestamp: number;
+						transactionId?: string;
+					}>;
+					redoEntries?: Array<{
+						label: string;
+						timestamp: number;
+						transactionId?: string;
+					}>;
+				}
+			) => void;
+			removeListeners: () => void;
+		};
 		project: {
 			getSettings: (projectId: string) => Promise<ProjectSettings>;
 			updateSettings: (
@@ -762,6 +853,12 @@ export interface ElectronAPI {
 					description: string;
 				}>;
 			}>;
+		};
+		events: {
+			emit: (
+				event: Omit<EditorEvent, "eventId" | "timestamp"> &
+					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
+			) => void;
 		};
 		navigator: {
 			onProjectsRequest: (
@@ -880,6 +977,20 @@ export interface ElectronAPI {
 			sendSwitchPanelResponse: (
 				requestId: string,
 				result?: { switched: boolean; panel: string; group: string },
+				error?: string
+			) => void;
+			removeListeners: () => void;
+		};
+		state: {
+			onSnapshotRequest: (
+				callback: (data: {
+					requestId: string;
+					request?: EditorStateRequest;
+				}) => void
+			) => void;
+			sendSnapshotResponse: (
+				requestId: string,
+				result?: EditorStateSnapshot,
 				error?: string
 			) => void;
 			removeListeners: () => void;

@@ -14,6 +14,7 @@ import type { IncomingMessage, Server, ServerResponse } from "node:http";
 import { app, BrowserWindow } from "electron";
 import { createRouter, HttpError } from "../utils/http-router.js";
 import { claudeLog } from "../utils/logger.js";
+import { generateId } from "../utils/helpers.js";
 import {
 	requestTimelineFromRenderer,
 	requestSplitFromRenderer,
@@ -23,6 +24,15 @@ import {
 	batchDeleteElements,
 	arrangeTimeline,
 } from "../handlers/claude-timeline-handler.js";
+import {
+	beginTransaction,
+	commitTransaction,
+	rollbackTransaction,
+	getTransactionStatus,
+	undoTimeline,
+	redoTimeline,
+	getHistorySummary,
+} from "../handlers/claude-transaction-handler.js";
 import { getProjectStats } from "../handlers/claude-project-handler.js";
 import {
 	registerSharedRoutes,
@@ -32,6 +42,16 @@ import {
 	requestProjectsFromRenderer,
 	requestNavigateToProject,
 } from "../handlers/claude-navigator-handler.js";
+import { registerStateRoutes } from "./claude-http-state-routes.js";
+import { requestEditorStateSnapshotFromRenderer } from "../handlers/claude-state-handler.js";
+import {
+	getClaudeEvents,
+	subscribeClaudeEvents,
+} from "../handlers/claude-events-handler.js";
+import {
+	handleClaudeEventsStreamRequest,
+	registerClaudeEventsRoutes,
+} from "./claude-http-events-routes.js";
 
 let server: Server | null = null;
 
@@ -83,21 +103,47 @@ export function startClaudeHTTPServer(
 	const accessor: WindowAccessor = {
 		getWindow,
 		requestTimeline: () => requestTimelineFromRenderer(getWindow()),
-		requestSelection: () => requestSelectionFromRenderer(getWindow()),
-		requestSplit: (elementId, splitTime, mode) =>
-			requestSplitFromRenderer(getWindow(), elementId, splitTime, mode),
+		requestSelection: (correlationId) =>
+			requestSelectionFromRenderer(getWindow(), correlationId),
+		requestSplit: (elementId, splitTime, mode, correlationId) =>
+			requestSplitFromRenderer(
+				getWindow(),
+				elementId,
+				splitTime,
+				mode,
+				correlationId
+			),
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		getAppVersion: () => app.getVersion(),
-		batchAddElements: (projectId, elements) =>
-			batchAddElements(getWindow(), projectId, elements),
-		batchUpdateElements: (updates) => batchUpdateElements(getWindow(), updates),
-		batchDeleteElements: (elements, ripple) =>
-			batchDeleteElements(getWindow(), elements, ripple),
-		arrangeTimeline: (data) => arrangeTimeline(getWindow(), data),
+		batchAddElements: (projectId, elements, correlationId) =>
+			batchAddElements(getWindow(), projectId, elements, correlationId),
+		batchUpdateElements: (updates, correlationId) =>
+			batchUpdateElements(getWindow(), updates, correlationId),
+		batchDeleteElements: (elements, ripple, correlationId) =>
+			batchDeleteElements(getWindow(), elements, ripple, correlationId),
+		arrangeTimeline: (data, correlationId) =>
+			arrangeTimeline(getWindow(), data, correlationId),
+		beginTransaction: (request) =>
+			beginTransaction({ win: getWindow(), request }),
+		commitTransaction: (transactionId) => commitTransaction({ transactionId }),
+		rollbackTransaction: (transactionId, reason) =>
+			rollbackTransaction({ transactionId, reason }),
+		getTransactionStatus: (transactionId) =>
+			Promise.resolve(getTransactionStatus({ transactionId })),
+		undoTimeline: () => undoTimeline({ win: getWindow() }),
+		redoTimeline: () => redoTimeline({ win: getWindow() }),
+		getHistorySummary: () => getHistorySummary({ win: getWindow() }),
 	};
 
 	// Register all shared routes
 	registerSharedRoutes(router, accessor);
+	registerStateRoutes(router, {
+		requestSnapshot: (request) =>
+			requestEditorStateSnapshotFromRenderer(getWindow(), request),
+	});
+	registerClaudeEventsRoutes(router, {
+		listEvents: async (filter) => getClaudeEvents(filter),
+	});
 
 	// ==========================================================================
 	// Navigator routes (project listing + editor navigation)
@@ -130,35 +176,62 @@ export function startClaudeHTTPServer(
 	// ==========================================================================
 	server = createServer((req, res) => {
 		setCorsHeaders(res);
+		let requestCorrelationId = "";
+		try {
+			requestCorrelationId = generateId("corr");
+		} catch {
+			requestCorrelationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+		}
+		res.setHeader("X-Correlation-Id", requestCorrelationId);
 
 		if (req.method === "OPTIONS") {
-			res.writeHead(204);
+			res.writeHead(204, { "X-Correlation-Id": requestCorrelationId });
 			res.end();
 			return;
 		}
 
 		// 30s request timeout
 		req.setTimeout(30_000, () => {
-			res.writeHead(408, { "Content-Type": "application/json" });
+			res.writeHead(408, {
+				"Content-Type": "application/json",
+				"X-Correlation-Id": requestCorrelationId,
+			});
 			res.end(
 				JSON.stringify({
 					success: false,
 					error: "Request timeout",
 					timestamp: Date.now(),
+					correlationId: requestCorrelationId,
 				})
 			);
 		});
 
 		// Auth check
 		if (!checkAuth(req)) {
-			res.writeHead(401, { "Content-Type": "application/json" });
+			res.writeHead(401, {
+				"Content-Type": "application/json",
+				"X-Correlation-Id": requestCorrelationId,
+			});
 			res.end(
 				JSON.stringify({
 					success: false,
 					error: "Unauthorized",
 					timestamp: Date.now(),
+					correlationId: requestCorrelationId,
 				})
 			);
+			return;
+		}
+
+		if (
+			handleClaudeEventsStreamRequest({
+				req,
+				res,
+				listEvents: async (filter) => getClaudeEvents(filter),
+				subscribeToEvents: ({ listener }) =>
+					subscribeClaudeEvents({ listener }),
+			})
+		) {
 			return;
 		}
 

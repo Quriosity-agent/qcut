@@ -18,6 +18,10 @@ import * as path from "node:path";
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
 import { isValidSourcePath } from "../utils/helpers.js";
+import type {
+	Transaction,
+	TransactionRequest,
+} from "../../types/claude-api.js";
 
 import {
 	listMediaFiles,
@@ -59,6 +63,16 @@ import {
 import { generatePersonaPlex } from "../handlers/claude-personaplex-handler.js";
 import { registerAnalysisRoutes } from "./claude-http-analysis-routes.js";
 import { registerGenerateRoutes } from "./claude-http-generate-routes.js";
+import {
+	getRequestCorrelationId,
+	registerMetaRoutes,
+	wrapRouterWithCorrelationTracking,
+} from "./claude-http-meta-routes.js";
+import {
+	registerTransactionRoutes,
+	type ClaudeHistorySummary,
+	type ClaudeUndoRedoResponse,
+} from "./claude-http-transaction-routes.js";
 
 /** Abstraction over how the server accesses renderer-dependent features */
 export interface WindowAccessor {
@@ -67,25 +81,53 @@ export interface WindowAccessor {
 	/** Request full timeline data from renderer */
 	requestTimeline(): Promise<any>;
 	/** Request current selection from renderer */
-	requestSelection(): Promise<any>;
+	requestSelection(correlationId?: string): Promise<any>;
 	/** Request an element split from renderer */
 	requestSplit(
 		elementId: string,
 		splitTime: number,
-		mode: string
+		mode: string,
+		correlationId?: string
 	): Promise<any>;
 	/** Get project stats (may need renderer) */
 	getProjectStats(projectId: string): Promise<any>;
 	/** Get the app version string */
 	getAppVersion(): string;
 	/** Batch add elements (may need BrowserWindow or proxy) */
-	batchAddElements(projectId: string, elements: any[]): Promise<any>;
+	batchAddElements(
+		projectId: string,
+		elements: any[],
+		correlationId?: string
+	): Promise<any>;
 	/** Batch update elements */
-	batchUpdateElements(updates: any[]): Promise<any>;
+	batchUpdateElements(updates: any[], correlationId?: string): Promise<any>;
 	/** Batch delete elements */
-	batchDeleteElements(elements: any[], ripple: boolean): Promise<any>;
+	batchDeleteElements(
+		elements: any[],
+		ripple: boolean,
+		correlationId?: string
+	): Promise<any>;
 	/** Arrange timeline */
-	arrangeTimeline(data: any): Promise<any>;
+	arrangeTimeline(data: any, correlationId?: string): Promise<any>;
+	/** Begin a grouped transaction */
+	beginTransaction(request?: TransactionRequest): Promise<Transaction>;
+	/** Commit a grouped transaction */
+	commitTransaction(
+		transactionId: string
+	): Promise<{ transaction: Transaction; historyEntryAdded: boolean }>;
+	/** Rollback a grouped transaction */
+	rollbackTransaction(
+		transactionId: string,
+		reason?: string
+	): Promise<{ transaction: Transaction }>;
+	/** Get transaction status */
+	getTransactionStatus(transactionId: string): Promise<Transaction | null>;
+	/** Trigger undo */
+	undoTimeline(): Promise<ClaudeUndoRedoResponse>;
+	/** Trigger redo */
+	redoTimeline(): Promise<ClaudeUndoRedoResponse>;
+	/** Read renderer history summary */
+	getHistorySummary(): Promise<ClaudeHistorySummary>;
 }
 
 /**
@@ -96,14 +138,11 @@ export function registerSharedRoutes(
 	router: Router,
 	accessor: WindowAccessor
 ): void {
-	// ==========================================================================
-	// Health check
-	// ==========================================================================
-	router.get("/api/claude/health", async () => ({
-		status: "ok",
-		version: accessor.getAppVersion(),
-		uptime: process.uptime(),
-	}));
+	wrapRouterWithCorrelationTracking({ router });
+	registerMetaRoutes({
+		router,
+		getAppVersion: () => accessor.getAppVersion(),
+	});
 
 	// ==========================================================================
 	// Media routes (file-system based -- no renderer needed)
@@ -254,7 +293,9 @@ export function registerSharedRoutes(
 		}
 		validateTimeline(timeline);
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		win.webContents.send("claude:timeline:apply", {
+			correlationId,
 			timeline,
 			replace: req.body.replace === true,
 		});
@@ -265,10 +306,12 @@ export function registerSharedRoutes(
 		if (!req.body)
 			throw new HttpError(400, "Missing element data in request body");
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		const elementId =
 			req.body.id ||
 			`element_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 		win.webContents.send("claude:timeline:addElement", {
+			correlationId,
 			...req.body,
 			id: elementId,
 		});
@@ -281,7 +324,8 @@ export function registerSharedRoutes(
 		try {
 			return await accessor.batchAddElements(
 				req.params.projectId,
-				req.body.elements
+				req.body.elements,
+				getRequestCorrelationId({ req })
 			);
 		} catch (error) {
 			throw new HttpError(
@@ -297,7 +341,10 @@ export function registerSharedRoutes(
 			if (!Array.isArray(req.body?.updates))
 				throw new HttpError(400, "Missing 'updates' array in request body");
 			try {
-				return await accessor.batchUpdateElements(req.body.updates);
+				return await accessor.batchUpdateElements(
+					req.body.updates,
+					getRequestCorrelationId({ req })
+				);
 			} catch (error) {
 				throw new HttpError(
 					400,
@@ -311,7 +358,9 @@ export function registerSharedRoutes(
 		"/api/claude/timeline/:projectId/elements/:elementId",
 		async (req) => {
 			const win = accessor.getWindow();
+			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:updateElement", {
+				correlationId,
 				elementId: req.params.elementId,
 				changes: req.body || {},
 			});
@@ -327,7 +376,8 @@ export function registerSharedRoutes(
 			try {
 				return await accessor.batchDeleteElements(
 					req.body.elements,
-					Boolean(req.body.ripple)
+					Boolean(req.body.ripple),
+					getRequestCorrelationId({ req })
 				);
 			} catch (error) {
 				throw new HttpError(
@@ -361,13 +411,16 @@ export function registerSharedRoutes(
 				"Invalid mode. Use sequential, spaced, or manual"
 			);
 		try {
-			return await accessor.arrangeTimeline({
-				trackId: req.body.trackId,
-				mode: req.body.mode,
-				gap: req.body.gap,
-				order: req.body.order,
-				startOffset: req.body.startOffset,
-			});
+			return await accessor.arrangeTimeline(
+				{
+					trackId: req.body.trackId,
+					mode: req.body.mode,
+					gap: req.body.gap,
+					order: req.body.order,
+					startOffset: req.body.startOffset,
+				},
+				getRequestCorrelationId({ req })
+			);
 		} catch (error) {
 			throw new HttpError(
 				400,
@@ -393,7 +446,8 @@ export function registerSharedRoutes(
 			return accessor.requestSplit(
 				req.params.elementId,
 				req.body.splitTime,
-				mode
+				mode,
+				getRequestCorrelationId({ req })
 			);
 		}
 	);
@@ -404,7 +458,9 @@ export function registerSharedRoutes(
 			if (!req.body?.toTrackId)
 				throw new HttpError(400, "Missing 'toTrackId' in request body");
 			const win = accessor.getWindow();
+			const correlationId = getRequestCorrelationId({ req });
 			win.webContents.send("claude:timeline:moveElement", {
+				correlationId,
 				elementId: req.params.elementId,
 				toTrackId: req.body.toTrackId,
 				newStartTime: req.body.newStartTime,
@@ -417,15 +473,17 @@ export function registerSharedRoutes(
 		if (!Array.isArray(req.body?.elements))
 			throw new HttpError(400, "Missing 'elements' array in request body");
 		const win = accessor.getWindow();
+		const correlationId = getRequestCorrelationId({ req });
 		win.webContents.send("claude:timeline:selectElements", {
+			correlationId,
 			elements: req.body.elements,
 		});
 		return { selected: req.body.elements.length };
 	});
 
-	router.get("/api/claude/timeline/:projectId/selection", async () => {
+	router.get("/api/claude/timeline/:projectId/selection", async (req) => {
 		const elements = await Promise.race([
-			accessor.requestSelection(),
+			accessor.requestSelection(getRequestCorrelationId({ req })),
 			new Promise<never>((_, reject) =>
 				setTimeout(() => reject(new HttpError(504, "Renderer timed out")), 5000)
 			),
@@ -438,6 +496,7 @@ export function registerSharedRoutes(
 		win.webContents.send("claude:timeline:clearSelection");
 		return { cleared: true };
 	});
+	registerTransactionRoutes({ router, accessor });
 
 	// ==========================================================================
 	// Project routes

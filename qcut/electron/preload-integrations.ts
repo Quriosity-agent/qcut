@@ -27,6 +27,9 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
+	EditorStateRequest,
+	EditorStateSnapshot,
 } from "./types/claude-api.js";
 
 // ============================================================================
@@ -451,6 +454,82 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:speech:load");
 			},
 		},
+		transaction: {
+			onBegin: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:begin");
+				ipcRenderer.on("claude:transaction:begin", (_, data) => callback(data));
+			},
+			sendBeginResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:begin:response", {
+					requestId,
+					result,
+				});
+			},
+			onCommit: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:commit");
+				ipcRenderer.on("claude:transaction:commit", (_, data) =>
+					callback(data)
+				);
+			},
+			sendCommitResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:commit:response", {
+					requestId,
+					result,
+				});
+			},
+			onRollback: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:rollback");
+				ipcRenderer.on("claude:transaction:rollback", (_, data) =>
+					callback(data)
+				);
+			},
+			sendRollbackResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:rollback:response", {
+					requestId,
+					result,
+				});
+			},
+			onUndo: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:undo");
+				ipcRenderer.on("claude:transaction:undo", (_, data) => callback(data));
+			},
+			sendUndoResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:undo:response", {
+					requestId,
+					result,
+				});
+			},
+			onRedo: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:redo");
+				ipcRenderer.on("claude:transaction:redo", (_, data) => callback(data));
+			},
+			sendRedoResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:redo:response", {
+					requestId,
+					result,
+				});
+			},
+			onHistory: (callback) => {
+				ipcRenderer.removeAllListeners("claude:transaction:history");
+				ipcRenderer.on("claude:transaction:history", (_, data) =>
+					callback(data)
+				);
+			},
+			sendHistoryResponse: (requestId, result) => {
+				ipcRenderer.send("claude:transaction:history:response", {
+					requestId,
+					result,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:transaction:begin");
+				ipcRenderer.removeAllListeners("claude:transaction:commit");
+				ipcRenderer.removeAllListeners("claude:transaction:rollback");
+				ipcRenderer.removeAllListeners("claude:transaction:undo");
+				ipcRenderer.removeAllListeners("claude:transaction:redo");
+				ipcRenderer.removeAllListeners("claude:transaction:history");
+			},
+		},
 		project: {
 			getSettings: (projectId) =>
 				ipcRenderer.invoke("claude:project:getSettings", projectId),
@@ -496,6 +575,14 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			run: (projectId, options) =>
 				ipcRenderer.invoke("claude:analyze:run", projectId, options),
 			models: () => ipcRenderer.invoke("claude:analyze:models"),
+		},
+		events: {
+			emit: (
+				event: Omit<EditorEvent, "eventId" | "timestamp"> &
+					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
+			) => {
+				ipcRenderer.send("claude:events:emit", event);
+			},
 		},
 		navigator: {
 			onProjectsRequest: (callback) => {
@@ -589,6 +676,40 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 			},
 			removeListeners: () => {
 				ipcRenderer.removeAllListeners("claude:ui:switch-panel:request");
+			},
+		},
+		state: {
+			onSnapshotRequest: (
+				callback: (data: {
+					requestId: string;
+					request?: EditorStateRequest;
+				}) => void
+			) => {
+				ipcRenderer.removeAllListeners("claude:state:snapshot");
+				ipcRenderer.on(
+					"claude:state:snapshot",
+					(
+						_: unknown,
+						data: {
+							requestId: string;
+							request?: EditorStateRequest;
+						}
+					) => callback(data)
+				);
+			},
+			sendSnapshotResponse: (
+				requestId: string,
+				result?: EditorStateSnapshot,
+				error?: string
+			) => {
+				ipcRenderer.send("claude:state:snapshot:response", {
+					requestId,
+					result,
+					error,
+				});
+			},
+			removeListeners: () => {
+				ipcRenderer.removeAllListeners("claude:state:snapshot");
 			},
 		},
 		projectCrud: {

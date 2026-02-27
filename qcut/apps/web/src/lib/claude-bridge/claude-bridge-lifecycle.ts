@@ -25,6 +25,18 @@ import {
 	cleanupClaudeMoyinBridge,
 	setupClaudeMoyinBridge,
 } from "@/lib/claude-bridge/claude-moyin-bridge";
+import {
+	cleanupClaudeTransactionBridge,
+	setupClaudeTransactionBridge,
+} from "@/lib/claude-bridge/claude-transaction-bridge";
+import {
+	cleanupClaudeStateBridge,
+	setupClaudeStateBridge,
+} from "@/lib/claude-bridge/claude-state-bridge";
+import {
+	cleanupClaudeEventsBridge,
+	setupClaudeEventsBridge,
+} from "@/lib/claude-bridge/claude-events-bridge";
 
 type ClaudeBridgeErrorHandler = (message: string, error: unknown) => void;
 
@@ -51,6 +63,11 @@ function runBridgeStep({ message, step, onError }: RunBridgeStepInput): void {
 export function setupClaudeBridgeLifecycle({
 	onError = debugError,
 }: SetupClaudeBridgeLifecycleOptions = {}): () => void {
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup transaction bridge",
+		step: setupClaudeTransactionBridge,
+		onError,
+	});
 	runBridgeStep({
 		message: "[ClaudeBridge] Failed to setup timeline bridge",
 		step: setupClaudeTimelineBridge,
@@ -86,8 +103,23 @@ export function setupClaudeBridgeLifecycle({
 		step: setupClaudeMoyinBridge,
 		onError,
 	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup state bridge",
+		step: setupClaudeStateBridge,
+		onError,
+	});
+	runBridgeStep({
+		message: "[ClaudeBridge] Failed to setup events bridge",
+		step: setupClaudeEventsBridge,
+		onError,
+	});
 
 	return () => {
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup transaction bridge",
+			step: cleanupClaudeTransactionBridge,
+			onError,
+		});
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup timeline bridge",
 			step: cleanupClaudeTimelineBridge,
@@ -121,6 +153,16 @@ export function setupClaudeBridgeLifecycle({
 		runBridgeStep({
 			message: "[ClaudeBridge] Failed to cleanup moyin bridge",
 			step: cleanupClaudeMoyinBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup state bridge",
+			step: cleanupClaudeStateBridge,
+			onError,
+		});
+		runBridgeStep({
+			message: "[ClaudeBridge] Failed to cleanup events bridge",
+			step: cleanupClaudeEventsBridge,
 			onError,
 		});
 	};

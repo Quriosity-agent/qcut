@@ -1,22 +1,42 @@
-/**
- * Shared type definitions for Claude Code Integration API
- * These types are used across main process handlers and renderer process
- */
-
-// ============================================================================
+/** Shared type definitions for Claude Code Integration API. */
 // Response Types
-// ============================================================================
 
 export interface ClaudeAPIResponse<T> {
 	success: boolean;
 	data?: T;
 	error?: string;
 	timestamp: number;
+	correlationId?: CorrelationId;
+	lifecycle?: CommandLifecycle;
 }
 
-// ============================================================================
+export type CorrelationId = string;
+export const CLAUDE_COMMAND_STATES = {
+	PENDING: "pending",
+	ACCEPTED: "accepted",
+	APPLYING: "applying",
+	APPLIED: "applied",
+	FAILED: "failed",
+} as const;
+export type CommandState =
+	(typeof CLAUDE_COMMAND_STATES)[keyof typeof CLAUDE_COMMAND_STATES];
+
+export interface CommandLifecycle {
+	state: CommandState;
+	createdAt: number;
+	acceptedAt?: number;
+	appliedAt?: number;
+	failedAt?: number;
+	error?: string;
+	duration?: number;
+}
+
+export interface CommandRecord extends CommandLifecycle {
+	correlationId: CorrelationId;
+	command: string;
+	params: Record<string, unknown>;
+}
 // Media Types
-// ============================================================================
 
 export interface MediaFile {
 	id: string;
@@ -41,10 +61,7 @@ export interface MediaMetadata {
 	audioChannels?: number;
 	sampleRate?: number;
 }
-
-// ============================================================================
 // Timeline Types (Claude-compatible format for export/import)
-// ============================================================================
 
 export interface ClaudeTimeline {
 	name: string;
@@ -93,10 +110,7 @@ export interface ClaudeElement {
 	trimStart?: number;
 	trimEnd?: number;
 }
-
-// ============================================================================
 // Project Types
-// ============================================================================
 
 export interface ProjectSettings {
 	name: string;
@@ -118,9 +132,7 @@ export interface ProjectStats {
 	fileSize: number;
 }
 
-// ============================================================================
 // Export Types
-// ============================================================================
 
 export interface ExportPreset {
 	id: string;
@@ -171,9 +183,7 @@ export interface ExportJobStatus {
 	presetId?: string;
 }
 
-// ============================================================================
 // Summary & Report Types (Stage 5)
-// ============================================================================
 
 export interface ProjectSummary {
 	markdown: string;
@@ -202,9 +212,7 @@ export interface PipelineReport {
 	savedTo?: string;
 }
 
-// ============================================================================
 // Timeline Operation Types (split, move, selection)
-// ============================================================================
 
 export interface ClaudeSplitRequest {
 	splitTime: number;
@@ -787,3 +795,32 @@ export interface FillerAnalysisResult {
 	totalFillerTime: number;
 	totalSilenceTime: number;
 }
+export const TRANSACTION_STATE = {
+	active: "active",
+	committed: "committed",
+	rolledBack: "rolledBack",
+	timedOut: "timedOut",
+} as const;
+export type TransactionState =
+	(typeof TRANSACTION_STATE)[keyof typeof TRANSACTION_STATE];
+export interface TransactionRequest {
+	label?: string;
+	timeoutMs?: number;
+}
+export interface Transaction {
+	id: string;
+	label?: string;
+	state: TransactionState;
+	createdAt: number;
+	updatedAt: number;
+	expiresAt: number;
+	error?: string;
+}
+export type {
+	ApiVersionInfo,
+	Capability,
+	CapabilityManifest,
+	CommandRegistryEntry,
+} from "./claude-api-capabilities.js";
+export * from "./claude-events-api";
+export * from "./claude-state-api";

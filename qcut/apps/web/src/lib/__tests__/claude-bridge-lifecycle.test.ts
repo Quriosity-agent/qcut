@@ -5,6 +5,10 @@ import {
 	setupClaudeProjectBridge,
 	setupClaudeTimelineBridge,
 } from "@/lib/claude-bridge/claude-timeline-bridge";
+import {
+	cleanupClaudeTransactionBridge,
+	setupClaudeTransactionBridge,
+} from "@/lib/claude-bridge/claude-transaction-bridge";
 import { setupClaudeBridgeLifecycle } from "@/lib/claude-bridge/claude-bridge-lifecycle";
 
 vi.mock("@/lib/claude-bridge/claude-timeline-bridge", () => ({
@@ -12,6 +16,10 @@ vi.mock("@/lib/claude-bridge/claude-timeline-bridge", () => ({
 	setupClaudeProjectBridge: vi.fn(),
 	cleanupClaudeTimelineBridge: vi.fn(),
 	cleanupClaudeProjectBridge: vi.fn(),
+}));
+vi.mock("@/lib/claude-bridge/claude-transaction-bridge", () => ({
+	setupClaudeTransactionBridge: vi.fn(),
+	cleanupClaudeTransactionBridge: vi.fn(),
 }));
 
 describe("setupClaudeBridgeLifecycle", () => {
@@ -22,11 +30,13 @@ describe("setupClaudeBridgeLifecycle", () => {
 	it("sets up and cleans up both bridges", () => {
 		const cleanup = setupClaudeBridgeLifecycle();
 
+		expect(setupClaudeTransactionBridge).toHaveBeenCalledTimes(1);
 		expect(setupClaudeTimelineBridge).toHaveBeenCalledTimes(1);
 		expect(setupClaudeProjectBridge).toHaveBeenCalledTimes(1);
 
 		cleanup();
 
+		expect(cleanupClaudeTransactionBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupClaudeTimelineBridge).toHaveBeenCalledTimes(1);
 		expect(cleanupClaudeProjectBridge).toHaveBeenCalledTimes(1);
 	});

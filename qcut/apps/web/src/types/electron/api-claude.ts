@@ -26,10 +26,17 @@ import type {
 	ExportRecommendation,
 	ErrorReport,
 	DiagnosticResult,
+	EditorEvent,
 } from "../../../../../electron/types/claude-api";
+
+type EmitPayload = Omit<EditorEvent, "eventId" | "timestamp"> &
+	Partial<Pick<EditorEvent, "eventId" | "timestamp">>;
 
 export interface ElectronClaudeOps {
 	claude?: {
+		events: {
+			emit: (event: EmitPayload) => void;
+		};
 		media: {
 			list: (projectId: string) => Promise<MediaFile[]>;
 			info: (projectId: string, mediaId: string) => Promise<MediaFile | null>;
@@ -227,6 +234,94 @@ export interface ElectronClaudeOps {
 				}) => void
 			) => void;
 			sendResponse: (timeline: ClaudeTimeline) => void;
+			removeListeners: () => void;
+		};
+		transaction: {
+			onBegin: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					label?: string;
+					timeoutMs: number;
+					createdAt: number;
+					expiresAt: number;
+				}) => void
+			) => void;
+			sendBeginResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+				}
+			) => void;
+			onCommit: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					label?: string;
+				}) => void
+			) => void;
+			sendCommitResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+					historyEntryAdded?: boolean;
+				}
+			) => void;
+			onRollback: (
+				callback: (data: {
+					requestId: string;
+					transactionId: string;
+					reason?: string;
+				}) => void
+			) => void;
+			sendRollbackResponse: (
+				requestId: string,
+				result: {
+					success: boolean;
+					error?: string;
+					message?: string;
+				}
+			) => void;
+			onUndo: (callback: (data: { requestId: string }) => void) => void;
+			sendUndoResponse: (
+				requestId: string,
+				result: {
+					applied: boolean;
+					undoCount: number;
+					redoCount: number;
+				}
+			) => void;
+			onRedo: (callback: (data: { requestId: string }) => void) => void;
+			sendRedoResponse: (
+				requestId: string,
+				result: {
+					applied: boolean;
+					undoCount: number;
+					redoCount: number;
+				}
+			) => void;
+			onHistory: (callback: (data: { requestId: string }) => void) => void;
+			sendHistoryResponse: (
+				requestId: string,
+				result: {
+					undoCount: number;
+					redoCount: number;
+					entries: Array<{
+						label: string;
+						timestamp: number;
+						transactionId?: string;
+					}>;
+					redoEntries?: Array<{
+						label: string;
+						timestamp: number;
+						transactionId?: string;
+					}>;
+				}
+			) => void;
 			removeListeners: () => void;
 		};
 		project: {

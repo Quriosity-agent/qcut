@@ -6,16 +6,22 @@
 import { app } from "electron";
 import { spawn } from "node:child_process";
 import * as fsPromises from "node:fs/promises";
+import * as os from "node:os";
 import * as path from "node:path";
 import { getFFmpegPath, parseProgress } from "../../../ffmpeg/utils.js";
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
+import { emitClaudeEvent } from "../claude-events-handler.js";
 import type {
 	ClaudeTimeline,
 	ClaudeElement,
 	ExportJobRequest,
 	MediaFile,
 } from "../../../types/claude-api";
+import {
+	CLAUDE_EDITOR_EVENT_ACTION,
+	CLAUDE_EDITOR_EVENT_CATEGORY,
+} from "../../../types/claude-api.js";
 import {
 	HANDLER_NAME,
 	EXPORT_JOB_STATUS,
@@ -283,8 +289,14 @@ export async function executeExportJob({
 
 		await ensureDirectory({ directory: path.dirname(outputPath) });
 
+		let tempBase: string;
+		try {
+			tempBase = app.getPath("temp");
+		} catch {
+			tempBase = os.tmpdir();
+		}
 		tempDir = await fsPromises.mkdtemp(
-			path.join(app.getPath("temp"), "qcut-claude-export-")
+			path.join(tempBase, "qcut-claude-export-")
 		);
 
 		const segmentOutputs: string[] = [];
@@ -411,6 +423,21 @@ export async function executeExportJob({
 				outputPath,
 			},
 		});
+		emitClaudeEvent({
+			category: CLAUDE_EDITOR_EVENT_CATEGORY.exportCompleted,
+			action: CLAUDE_EDITOR_EVENT_ACTION.completed,
+			correlationId: jobId,
+			source: "main.export-handler",
+			data: {
+				jobId,
+				projectId,
+				presetId: settings.presetId,
+				outputPath,
+				duration,
+				fileSize: outputStats.size,
+				completedAt: finishedJob.completedAt ?? Date.now(),
+			},
+		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Export failed";
 		const failedJob = exportJobs.get(jobId);
@@ -429,6 +456,19 @@ export async function executeExportJob({
 			metadata: {
 				jobId,
 				preset: settings.presetId,
+			},
+		});
+		emitClaudeEvent({
+			category: CLAUDE_EDITOR_EVENT_CATEGORY.exportFailed,
+			action: CLAUDE_EDITOR_EVENT_ACTION.failed,
+			correlationId: jobId,
+			source: "main.export-handler",
+			data: {
+				jobId,
+				projectId,
+				presetId: settings.presetId,
+				error: message,
+				completedAt: failedJob?.completedAt ?? Date.now(),
 			},
 		});
 

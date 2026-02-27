@@ -5,6 +5,7 @@
 
 import { claudeLog } from "../../utils/logger.js";
 import { logOperation } from "../../claude-operation-log.js";
+import { emitClaudeEvent } from "../claude-events-handler.js";
 import type {
 	ClaudeTimeline,
 	ExportPreset,
@@ -13,6 +14,10 @@ import type {
 	ExportJobStatus,
 	MediaFile,
 } from "../../../types/claude-api";
+import {
+	CLAUDE_EDITOR_EVENT_ACTION,
+	CLAUDE_EDITOR_EVENT_CATEGORY,
+} from "../../../types/claude-api.js";
 import {
 	HANDLER_NAME,
 	EXPORT_JOB_STATUS,
@@ -187,6 +192,23 @@ export async function startExportJob({
 				preset: settings.presetId,
 			},
 		});
+		try {
+			emitClaudeEvent({
+				category: CLAUDE_EDITOR_EVENT_CATEGORY.exportStarted,
+				action: CLAUDE_EDITOR_EVENT_ACTION.started,
+				correlationId: jobId,
+				source: "main.export-handler",
+				data: {
+					jobId,
+					projectId,
+					presetId: settings.presetId,
+					outputPath,
+					status: EXPORT_JOB_STATUS.queued,
+				},
+			});
+		} catch {
+			// Telemetry emission must not block export execution
+		}
 
 		executeExportJob({
 			jobId,

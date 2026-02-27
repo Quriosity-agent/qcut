@@ -92,6 +92,54 @@ vi.mock("../handlers/claude-timeline-handler.js", () => ({
 	validateTimeline: vi.fn(),
 }));
 
+vi.mock("../handlers/claude-transaction-handler.js", () => ({
+	beginTransaction: vi.fn(async () => ({
+		id: "txn_test_1",
+		label: "Test Txn",
+		state: "active",
+		createdAt: Date.now(),
+		updatedAt: Date.now(),
+		expiresAt: Date.now() + 30_000,
+	})),
+	commitTransaction: vi.fn(async () => ({
+		transaction: {
+			id: "txn_test_1",
+			label: "Test Txn",
+			state: "committed",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		},
+		historyEntryAdded: true,
+	})),
+	rollbackTransaction: vi.fn(async () => ({
+		transaction: {
+			id: "txn_test_1",
+			label: "Test Txn",
+			state: "rolledBack",
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+			expiresAt: Date.now() + 30_000,
+		},
+	})),
+	getTransactionStatus: vi.fn(() => null),
+	undoTimeline: vi.fn(async () => ({
+		applied: true,
+		undoCount: 1,
+		redoCount: 0,
+	})),
+	redoTimeline: vi.fn(async () => ({
+		applied: true,
+		undoCount: 2,
+		redoCount: 0,
+	})),
+	getHistorySummary: vi.fn(async () => ({
+		undoCount: 2,
+		redoCount: 1,
+		entries: [{ label: "Edit", timestamp: 123 }],
+	})),
+}));
+
 vi.mock("../handlers/claude-project-handler.js", () => ({
 	getProjectSettings: vi.fn(async () => ({
 		name: "Test",
@@ -199,6 +247,7 @@ import {
 } from "../http/claude-http-server";
 import { BrowserWindow } from "electron";
 import * as timelineHandler from "../handlers/claude-timeline-handler.js";
+import * as transactionHandler from "../handlers/claude-transaction-handler.js";
 import * as rangeHandler from "../handlers/claude-range-handler.js";
 import { HttpError } from "../utils/http-router";
 
@@ -317,7 +366,8 @@ describe("Claude HTTP Server", () => {
 			mockWindow,
 			"element_abc",
 			3.5,
-			"split"
+			"split",
+			expect.any(String)
 		);
 	});
 
@@ -370,11 +420,14 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.moved).toBe(true);
-		expect(send).toHaveBeenCalledWith("claude:timeline:moveElement", {
-			elementId: "element_abc",
-			toTrackId: "track_2",
-			newStartTime: 5,
-		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:moveElement",
+			expect.objectContaining({
+				elementId: "element_abc",
+				toTrackId: "track_2",
+				newStartTime: 5,
+			})
+		);
 	});
 
 	it("POST /api/claude/timeline/:projectId/elements/batch calls batch add handler", async () => {
@@ -408,7 +461,8 @@ describe("Claude HTTP Server", () => {
 		expect(timelineHandler.batchAddElements).toHaveBeenCalledWith(
 			mockWindow,
 			"proj_123",
-			expect.any(Array)
+			expect.any(Array),
+			expect.any(String)
 		);
 	});
 
@@ -435,7 +489,8 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.data.updatedCount).toBe(1);
 		expect(timelineHandler.batchUpdateElements).toHaveBeenCalledWith(
 			mockWindow,
-			[{ elementId: "el_1", startTime: 3 }]
+			[{ elementId: "el_1", startTime: 3 }],
+			expect.any(String)
 		);
 	});
 
@@ -464,7 +519,8 @@ describe("Claude HTTP Server", () => {
 		expect(timelineHandler.batchDeleteElements).toHaveBeenCalledWith(
 			mockWindow,
 			[{ trackId: "track_1", elementId: "el_1" }],
-			true
+			true,
+			expect.any(String)
 		);
 	});
 
@@ -530,7 +586,8 @@ describe("Claude HTTP Server", () => {
 			expect.objectContaining({
 				trackId: "track_1",
 				mode: "sequential",
-			})
+			}),
+			expect.any(String)
 		);
 	});
 
@@ -548,9 +605,12 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.selected).toBe(1);
-		expect(send).toHaveBeenCalledWith("claude:timeline:selectElements", {
-			elements,
-		});
+		expect(send).toHaveBeenCalledWith(
+			"claude:timeline:selectElements",
+			expect.objectContaining({
+				elements,
+			})
+		);
 	});
 
 	it("GET /api/claude/timeline/:projectId/selection returns renderer selection", async () => {
@@ -570,7 +630,8 @@ describe("Claude HTTP Server", () => {
 			{ trackId: "track_1", elementId: "element_abc" },
 		]);
 		expect(timelineHandler.requestSelectionFromRenderer).toHaveBeenCalledWith(
-			mockWindow
+			mockWindow,
+			expect.any(String)
 		);
 	});
 
@@ -605,6 +666,69 @@ describe("Claude HTTP Server", () => {
 		expect(send).toHaveBeenCalledWith("claude:timeline:clearSelection");
 	});
 
+	it("POST /api/claude/transaction/begin returns transactionId", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/transaction/begin", {
+			method: "POST",
+			body: JSON.stringify({ label: "Batch add" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.transactionId).toBe("txn_test_1");
+		expect(transactionHandler.beginTransaction).toHaveBeenCalled();
+	});
+
+	it("POST /api/claude/transaction/:id/commit proxies to handler", async () => {
+		const res = await fetch("/api/claude/transaction/txn_test_1/commit", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.historyEntryAdded).toBe(true);
+		expect(transactionHandler.commitTransaction).toHaveBeenCalledWith({
+			transactionId: "txn_test_1",
+		});
+	});
+
+	it("POST /api/claude/undo proxies to handler", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/undo", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.applied).toBe(true);
+		expect(transactionHandler.undoTimeline).toHaveBeenCalled();
+	});
+
+	it("GET /api/claude/history returns history summary", async () => {
+		const mockWindow = {
+			webContents: { send: vi.fn() },
+		} as unknown as BrowserWindow;
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValueOnce([mockWindow]);
+
+		const res = await fetch("/api/claude/history");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.undoCount).toBe(2);
+		expect(Array.isArray(res.body.data.entries)).toBe(true);
+		expect(transactionHandler.getHistorySummary).toHaveBeenCalled();
+	});
+
 	it("POST /api/claude/timeline/:projectId/import rejects malformed markdown", async () => {
 		const send = vi.fn();
 		const mockWindow = { webContents: { send } } as unknown as BrowserWindow;
@@ -633,8 +757,65 @@ describe("Claude HTTP Server", () => {
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.status).toBe("ok");
 		expect(res.body.data.version).toBe("1.0.0-test");
+		expect(res.body.data.appVersion).toBe("1.0.0-test");
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.protocolVersion).toBeTypeOf("string");
+		expect(Array.isArray(res.body.data.capabilities)).toBe(true);
+		expect(res.body.data.capabilities.length).toBeGreaterThan(0);
+		expect(res.body.data.capabilities[0]).toHaveProperty("name");
+		expect(res.body.data.capabilities[0]).toHaveProperty("version");
 		expect(res.body.data.uptime).toBeTypeOf("number");
 		expect(res.headers["access-control-allow-origin"]).toBe("*");
+	});
+
+	it("GET /api/claude/capabilities returns capability manifest", async () => {
+		const res = await fetch("/api/claude/capabilities");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.protocolVersion).toBeTypeOf("string");
+		expect(res.body.data.appVersion).toBe("1.0.0-test");
+		expect(Array.isArray(res.body.data.capabilities)).toBe(true);
+		expect(
+			res.body.data.capabilities.some(
+				(cap: { name: string }) => cap.name === "state.health"
+			)
+		).toBe(true);
+	});
+
+	it("GET /api/claude/capabilities/:name checks support and version", async () => {
+		const supported = await fetch("/api/claude/capabilities/state.health");
+		expect(supported.status).toBe(200);
+		expect(supported.body.success).toBe(true);
+		expect(supported.body.data.supported).toBe(true);
+		expect(supported.body.data.version).toBeTypeOf("string");
+		expect(supported.body.data.since).toBeTypeOf("string");
+
+		const unsupported = await fetch(
+			"/api/claude/capabilities/state.health?minVersion=99.0.0"
+		);
+		expect(unsupported.status).toBe(200);
+		expect(unsupported.body.success).toBe(true);
+		expect(unsupported.body.data.supported).toBe(false);
+		expect(unsupported.body.data.version).toBeTypeOf("string");
+	});
+
+	it("GET /api/claude/commands/registry returns command metadata", async () => {
+		const res = await fetch("/api/claude/commands/registry");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data.apiVersion).toBeTypeOf("string");
+		expect(res.body.data.count).toBeGreaterThan(0);
+		expect(Array.isArray(res.body.data.commands)).toBe(true);
+		expect(
+			res.body.data.commands.some(
+				(cmd: { name: string }) => cmd.name === "editor:health"
+			)
+		).toBe(true);
+		expect(res.body.data.commands[0]).toHaveProperty("paramsSchema");
+		expect(res.body.data.commands[0]).toHaveProperty("requiredCapability");
 	});
 
 	it("responds to CORS preflight OPTIONS requests", async () => {

@@ -1,172 +1,95 @@
 ---
-name: Native CLI
+name: native-cli
 description: Run QCut's native TypeScript pipeline CLI for AI content generation, video analysis, transcription, YAML pipelines, ViMax agentic video production, and project management. Use when user asks to generate images/videos, run pipelines, manage API keys, or use ViMax commands.
-dependencies: bun (package manager)
 ---
 
 # Native Pipeline CLI Skill
 
 Run QCut's built-in TypeScript pipeline CLI (`qcut-pipeline` / `bun run pipeline`).
 
-Reference files:
-- `REFERENCE.md` - full command reference with all flags and options
-- `EDITOR-CLI.md` - editor CLI commands (`editor:*`) for controlling a running QCut instance
-- `ANALYSIS-REMOTION-NAVIGATOR.md` - video analysis, Remotion generation, and editor navigation commands
+## Additional resources
+
+- For standalone CLI commands (generate, analyze, transcribe, pipelines, ViMax, project management, API keys), see [REFERENCE.md](REFERENCE.md)
+- For editor commands: media, project, timeline, editing, export, diagnostics, MCP, see [editor-core.md](editor-core.md)
+- For editor AI commands: video analysis, transcription, AI generation, Remotion, navigator, see [editor-ai.md](editor-ai.md)
+
+## Step 1: Ensure QCut is Running
+
+Before any `editor:*` command, check if QCut is running. If not, build and launch it.
+
+```bash
+# Check if QCut is running
+curl -s --connect-timeout 2 http://127.0.0.1:8765/api/claude/health || echo "NOT_RUNNING"
+```
+
+If NOT_RUNNING:
+
+```bash
+bun run build                # Build first
+bun run electron &           # Launch in background
+sleep 5                      # Wait for startup
+```
+
+## Step 2: Find Project, Media & Timeline
+
+Most editor commands need `--project-id`, `--media-id`, or `--element-id`. Run these to discover them.
+
+```bash
+# 1. List projects → get project-id
+bun run pipeline editor:navigator:projects
+
+# 2. Open a project (navigates the editor)
+bun run pipeline editor:navigator:open --project-id <project-id>
+
+# 3. List media → get media-id values
+bun run pipeline editor:media:list --project-id <project-id> --json
+
+# 4. Export timeline → get track-id and element-id values
+bun run pipeline editor:timeline:export --project-id <project-id> --json
+```
+
+Now you have the IDs needed for all other editor commands.
 
 ## How to Run
 
 ```bash
-# Dev (recommended)
-bun run pipeline <command> [options]
+bun run pipeline <command> [options]            # Dev (recommended)
+bun run electron/native-pipeline/cli/cli.ts <command> [options]  # Direct source
+qcut-pipeline <command> [options]               # Production binary
+```
 
-# Direct source
-bun run electron/native-pipeline/cli.ts <command> [options]
+## Quick Commands
 
-# Production binary (after build)
-qcut-pipeline <command> [options]
+```bash
+bun run pipeline list-models                          # List all models
+bun run pipeline generate-image -t "A cinematic portrait at golden hour"
+bun run pipeline create-video -m kling_2_6_pro -t "Ocean waves at sunset" -d 5s
+bun run pipeline generate-avatar -m omnihuman_v1_5 -t "Hello world" --image-url avatar.png
+bun run pipeline analyze-video -i video.mp4 --analysis-type summary
+bun run pipeline transcribe -i audio.mp3 --srt
+bun run pipeline run-pipeline -c pipeline.yaml -i "A sunset" --no-confirm
+bun run pipeline estimate-cost -m veo3 -d 8s
+```
+
+## ViMax Quick Start
+
+```bash
+bun run pipeline vimax:idea2video --idea "A detective in 1920s Paris" -d 120
+bun run pipeline vimax:script2video --script script.json --portraits registry.json
+bun run pipeline vimax:novel2movie --novel book.txt --max-scenes 20
 ```
 
 ## API Key Setup
 
-Keys are stored in `~/.qcut/.env` (mode `0600`).
+Keys stored in `~/.qcut/.env` (mode `0600`).
 
 ```bash
-# Create .env template
-bun run pipeline setup
-
-# Set a key (interactive hidden prompt - preferred)
-bun run pipeline set-key --name FAL_KEY
-
-# Check which keys are configured
-bun run pipeline check-keys
+bun run pipeline setup          # Create .env template
+bun run pipeline set-key --name FAL_KEY   # Set a key (interactive)
+bun run pipeline check-keys     # Check configured keys
 ```
 
 **Supported keys:** `FAL_KEY`, `GEMINI_API_KEY`, `GOOGLE_AI_API_KEY`, `OPENROUTER_API_KEY`, `ELEVENLABS_API_KEY`, `OPENAI_API_KEY`, `RUNWAY_API_KEY`, `HEYGEN_API_KEY`, `DID_API_KEY`, `SYNTHESIA_API_KEY`
-
-## Quick Commands
-
-Always check available models first:
-
-```bash
-bun run pipeline list-models
-bun run pipeline list-models --category text_to_video
-```
-
-### Generate Image
-
-```bash
-bun run pipeline generate-image -t "A cinematic portrait at golden hour"
-# Default model: nano_banana_pro. Override with -m:
-bun run pipeline generate-image -m flux_dev -t "A cinematic portrait at golden hour"
-```
-
-### Generate Video
-
-```bash
-bun run pipeline create-video -m kling_2_6_pro -t "Ocean waves at sunset" -d 5s
-```
-
-### Generate Avatar
-
-```bash
-bun run pipeline generate-avatar -m omnihuman_v1_5 -t "Hello world" --image-url avatar.png
-```
-
-### Transfer Motion
-
-```bash
-bun run pipeline transfer-motion --image-url subject.png --video-url motion.mp4
-```
-
-### Image Grid
-
-```bash
-bun run pipeline generate-grid -t "Forest at dawn" --layout 2x2 --style "cinematic"
-```
-
-### Upscale Image
-
-```bash
-bun run pipeline upscale-image --image photo.jpg --target 1080p
-```
-
-### Analyze Video
-
-```bash
-bun run pipeline analyze-video -i video.mp4 --analysis-type summary
-bun run pipeline analyze-video -i video.mp4 --prompt "Count people in each scene" -f json
-```
-
-### Transcribe Audio
-
-```bash
-bun run pipeline transcribe -i audio.mp3 --srt --srt-max-words 8
-```
-
-### Run YAML Pipeline
-
-```bash
-bun run pipeline run-pipeline -c pipeline.yaml -i "A sunset over mountains" --no-confirm
-```
-
-### Cost Estimation
-
-```bash
-bun run pipeline estimate-cost -m veo3 -d 8s
-```
-
-## ViMax — Agentic Video Production
-
-### Full Pipelines
-
-```bash
-# Idea to video (end-to-end)
-bun run pipeline vimax:idea2video --idea "A detective in 1920s Paris" -d 120
-
-# Script to video (from existing script.json)
-bun run pipeline vimax:script2video --script script.json --portraits registry.json
-
-# Novel to movie
-bun run pipeline vimax:novel2movie --novel book.txt --max-scenes 20
-```
-
-### Individual Steps
-
-```bash
-# Extract characters from text
-bun run pipeline vimax:extract-characters --input story.txt
-
-# Generate screenplay
-bun run pipeline vimax:generate-script --idea "A robot learns to paint" -d 60
-
-# Generate character portraits
-bun run pipeline vimax:generate-portraits --input story.txt --views front,side
-
-# Generate storyboard from script
-bun run pipeline vimax:generate-storyboard --script script.json --portraits registry.json
-
-# Build portrait registry from files
-bun run pipeline vimax:create-registry --input ./portraits
-
-# List ViMax models
-bun run pipeline vimax:list-models
-```
-
-## Project Management
-
-```bash
-# Initialize project structure
-bun run pipeline init-project --directory ./my-project
-
-# Organize loose files into categories
-bun run pipeline organize-project --directory ./my-project --recursive
-
-# Show file counts
-bun run pipeline structure-info --directory ./my-project
-
-# Get example YAML pipelines
-bun run pipeline create-examples -o ./my-pipelines
-```
 
 ## Global Options
 
@@ -184,10 +107,12 @@ bun run pipeline create-examples -o ./my-pipelines
 
 | Component | File |
 |-----------|------|
-| CLI entry point | `electron/native-pipeline/cli.ts` |
-| Command router | `electron/native-pipeline/cli-runner.ts` |
-| ViMax handlers | `electron/native-pipeline/vimax-cli-handlers.ts` |
-| Admin handlers | `electron/native-pipeline/cli-handlers-admin.ts` |
-| Media handlers | `electron/native-pipeline/cli-handlers-media.ts` |
+| CLI entry point | `electron/native-pipeline/cli/cli.ts` |
+| Command router | `electron/native-pipeline/cli/cli-runner/runner.ts` |
+| Editor dispatch | `electron/native-pipeline/cli/cli-handlers-editor.ts` |
+| Admin handlers | `electron/native-pipeline/cli/cli-handlers-admin.ts` |
+| Media handlers | `electron/native-pipeline/cli/cli-handlers-media.ts` |
+| ViMax handlers | `electron/native-pipeline/cli/vimax-cli-handlers.ts` |
+| Remotion handler | `electron/native-pipeline/cli/cli-handlers-remotion.ts` |
+| Moyin handler | `electron/native-pipeline/cli/cli-handlers-moyin.ts` |
 | Key manager | `electron/native-pipeline/key-manager.ts` |
-| Example pipelines | `electron/native-pipeline/example-pipelines.ts` |

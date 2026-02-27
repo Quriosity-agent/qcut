@@ -9,7 +9,7 @@
 	"homepage": "https://github.com/Quriosity-agent/qcut",
 	"main": "dist/electron/main.js",
 	"bin": {
-		"qcut-pipeline": "dist/electron/native-pipeline/cli.js"
+		"qcut-pipeline": "dist/electron/native-pipeline/cli/cli.js"
 	},
 	"packageManager": "bun@1.2.18",
 	"devDependencies": {
@@ -87,7 +87,7 @@
 		"stage:all-binaries": "bun run stage-ffmpeg-binaries && bun run stage-aicp-binaries",
 		"aicp:install": "cd packages/video-agent-skill && pip install -e \".[dev]\"",
 		"aicp:test": "cd packages/video-agent-skill && python -m pytest tests/ -x --tb=short",
-		"pipeline": "bun run electron/native-pipeline/cli.ts",
+		"pipeline": "bun run electron/native-pipeline/cli/cli.ts",
 		"aicp:list-models": "cd packages/video-agent-skill && python -m ai_content_pipeline list-models",
 		"submodule:init": "git submodule update --init --recursive",
 		"submodule:update": "git submodule update --remote --recursive",

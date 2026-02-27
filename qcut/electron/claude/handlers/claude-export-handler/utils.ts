@@ -4,6 +4,7 @@
  */
 
 import { app } from "electron";
+import * as os from "node:os";
 import * as path from "node:path";
 import { claudeLog } from "../../utils/logger.js";
 import { HANDLER_NAME, MAX_JOBS } from "./types.js";
@@ -108,20 +109,26 @@ export function getDefaultOutputPath({
 	projectId: string;
 	format: string;
 }): string {
+	let documentsPath: string;
+	try {
+		documentsPath = app.getPath("documents");
+	} catch {
+		documentsPath = path.join(os.homedir(), "Documents");
+	}
 	try {
 		const now = new Date();
 		const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
 		const safeProjectId = sanitizeFileName({ input: projectId }) || "project";
 		const extension = format || "mp4";
 		return path.join(
-			app.getPath("documents"),
+			documentsPath,
 			"QCut",
 			"Exports",
 			`${safeProjectId}-${stamp}.${extension}`
 		);
 	} catch {
 		return path.join(
-			app.getPath("documents"),
+			documentsPath,
 			"QCut",
 			"Exports",
 			`export-${Date.now()}.mp4`

@@ -169,6 +169,19 @@ export interface GetProjectStatsRequest {
 	projectId: string;
 }
 
+export interface TransactionBeginRequest {
+	request?: { label?: string; timeoutMs?: number };
+}
+
+export interface TransactionFinalizeRequest {
+	transactionId: string;
+	reason?: string;
+}
+
+export interface TransactionStatusRequest {
+	transactionId: string;
+}
+
 // ─── PTY spawn options from renderer ───
 
 export interface PtySpawnOptions {
