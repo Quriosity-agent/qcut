@@ -49,7 +49,9 @@ export function convertNanoBanana2Parameters(
 
 	// Clamp num_images to valid range (1-4), rounding to integer
 	const rawNumImages = Number(params.num_images ?? params.numImages ?? 1);
-	const requestedNumImages = Number.isNaN(rawNumImages) ? 1 : Math.round(rawNumImages);
+	const requestedNumImages = Number.isNaN(rawNumImages)
+		? 1
+		: Math.round(rawNumImages);
 	const numImages = Math.max(1, Math.min(4, requestedNumImages));
 
 	if (numImages !== requestedNumImages) {
