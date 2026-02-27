@@ -19,9 +19,23 @@ type ProgressFn = (progress: {
 
 const BATCH_LIMIT = 50;
 const TIMELINE_ACTIONS = [
-	"export", "import", "add-element", "batch-add", "update-element",
-	"batch-update", "delete-element", "batch-delete", "split", "move", "arrange",
-	"select", "get-selection", "clear-selection", "play", "pause", "toggle-play",
+	"export",
+	"import",
+	"add-element",
+	"batch-add",
+	"update-element",
+	"batch-update",
+	"delete-element",
+	"batch-delete",
+	"split",
+	"move",
+	"arrange",
+	"select",
+	"get-selection",
+	"clear-selection",
+	"play",
+	"pause",
+	"toggle-play",
 	"seek",
 ] as const;
 
