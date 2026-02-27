@@ -71,6 +71,7 @@ import { getClaudeEvents } from "../claude/handlers/claude-events-handler.js";
 import {
 	listCaptureSources,
 	buildStatus as buildScreenRecordingStatus,
+	forceStopActiveScreenRecordingSession,
 } from "../screen-recording-handler.js";
 import * as fs from "node:fs";
 import type {
@@ -400,6 +401,16 @@ async function handleMainRequest(
 			return requestStopRecordingFromRenderer(win, {
 				discard: req.discard,
 			});
+		}
+
+		case "screen-recording:force-stop": {
+			try {
+				return await forceStopActiveScreenRecordingSession();
+			} catch (error: unknown) {
+				throw new Error(
+					`Failed to force-stop screen recording session: ${error instanceof Error ? error.message : String(error)}`
+				);
+			}
 		}
 
 		case "screenshot:capture": {

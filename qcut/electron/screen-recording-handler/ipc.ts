@@ -9,6 +9,7 @@ import type {
 	AppendScreenRecordingChunkResult,
 	StopScreenRecordingOptions,
 	StopScreenRecordingResult,
+	ForceStopScreenRecordingResult,
 	ScreenRecordingStatus,
 } from "./types.js";
 import { resolveOutputPath, resolveOutputFormat } from "./path-utils.js";
@@ -31,6 +32,70 @@ import {
 	ensureDisplayMediaHandlerConfigured,
 	buildStatus,
 } from "./session.js";
+
+async function discardActiveSession({
+	sessionData,
+}: {
+	sessionData: NonNullable<ReturnType<typeof getActiveSession>>;
+}): Promise<{
+	filePath: string;
+	bytesWritten: number;
+	durationMs: number;
+}> {
+	try {
+		const durationMs = Math.max(0, Date.now() - sessionData.startedAt);
+		await sessionData.writeQueue;
+		await closeStream({ fileStream: sessionData.fileStream });
+		await cleanupSessionFiles({ sessionData });
+		return {
+			filePath: sessionData.filePath,
+			bytesWritten: sessionData.bytesWritten,
+			durationMs,
+		};
+	} catch (error: unknown) {
+		throw new Error(
+			`Failed to discard active screen recording session: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+export async function forceStopActiveScreenRecordingSession(): Promise<ForceStopScreenRecordingResult> {
+	const sessionToStop = getActiveSession();
+	if (!sessionToStop) {
+		return {
+			success: true,
+			wasRecording: false,
+		};
+	}
+
+	try {
+		const result = await discardActiveSession({ sessionData: sessionToStop });
+		setActiveSession(null);
+		return {
+			success: true,
+			wasRecording: true,
+			filePath: result.filePath,
+			bytesWritten: result.bytesWritten,
+			durationMs: result.durationMs,
+			discarded: true,
+		};
+	} catch (error: unknown) {
+		const sessionToCleanup = getActiveSession();
+		if (sessionToCleanup) {
+			setActiveSession(null);
+			try {
+				await closeStream({ fileStream: sessionToCleanup.fileStream });
+			} catch {
+				// best-effort stream cleanup
+			}
+			await cleanupSessionFiles({ sessionData: sessionToCleanup });
+		}
+
+		throw new Error(
+			`Failed to force stop screen recording: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
 
 export function setupScreenRecordingIPC(): void {
 	ensureDisplayMediaHandlerConfigured();
@@ -269,6 +334,13 @@ export function setupScreenRecordingIPC(): void {
 					`Failed to stop screen recording: ${error instanceof Error ? error.message : String(error)}`
 				);
 			}
+		}
+	);
+
+	ipcMain.handle(
+		"screen:forceStopRecording",
+		async (): Promise<ForceStopScreenRecordingResult> => {
+			return await forceStopActiveScreenRecordingSession();
 		}
 	);
 

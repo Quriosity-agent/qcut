@@ -92,6 +92,7 @@ export interface CLIRunOptions {
 	trackId?: string;
 	toTrack?: string;
 	splitTime?: number;
+	seekTime?: number;
 	startTime?: number;
 	endTime?: number;
 	newName?: string;
@@ -139,6 +140,7 @@ export interface CLIRunOptions {
 	// screen-recording options
 	sourceId?: string;
 	discard?: boolean;
+	force?: boolean;
 	// ui options
 	panel?: string;
 	tab?: string;

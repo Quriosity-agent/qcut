@@ -228,6 +228,14 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		);
 	});
 
+	router.post("/api/claude/screen-recording/force-stop", async () => {
+		return await withTimeout(
+			requestFromMain("screen-recording:force-stop", {}),
+			60_000,
+			"Recording force-stop timed out"
+		);
+	});
+
 	// ==========================================================================
 	// Project CRUD routes
 	// ==========================================================================

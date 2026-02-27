@@ -165,6 +165,13 @@ async function handleScreenRecordingCommand(
 			return { success: true, data };
 		}
 		case "start": {
+			if (options.force) {
+				try {
+					await client.post("/api/claude/screen-recording/force-stop", {});
+				} catch {
+					// best-effort pre-cleanup for orphaned sessions
+				}
+			}
 			const body: Record<string, unknown> = {};
 			if (options.sourceId) body.sourceId = options.sourceId;
 			if (options.filename) body.fileName = options.filename;

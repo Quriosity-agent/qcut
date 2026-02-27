@@ -77,6 +77,16 @@ export interface StopScreenRecordingResult {
 	error?: string;
 }
 
+export interface ForceStopScreenRecordingResult {
+	success: boolean;
+	wasRecording: boolean;
+	filePath?: string | null;
+	bytesWritten?: number;
+	durationMs?: number;
+	discarded?: boolean;
+	error?: string;
+}
+
 export interface ScreenRecordingStatus {
 	state: ScreenRecordingState;
 	recording: boolean;
