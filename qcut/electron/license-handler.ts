@@ -105,8 +105,8 @@ export function setupLicenseIPC(): void {
 				headers: { Authorization: `Bearer ${getAuthToken()}` },
 			});
 			if (response.ok) {
-				const data = await response.json();
-				const license = data.license as LicenseInfo;
+				const data = (await response.json()) as { license: LicenseInfo };
+				const license = data.license;
 				cacheLicense(license);
 				return license;
 			}
@@ -136,7 +136,7 @@ export function setupLicenseIPC(): void {
 					}
 				);
 				if (response.ok) {
-					const data = await response.json();
+					const data = (await response.json()) as { license: LicenseInfo };
 					cacheLicense(data.license);
 					return true;
 				}
