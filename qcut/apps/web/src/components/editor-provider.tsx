@@ -9,6 +9,7 @@ import {
 } from "@/hooks/keyboard/use-keybindings";
 import { useEditorActions } from "@/hooks/use-editor-actions";
 import { ScenesMigrator } from "@/components/providers/migrators/scenes-migrator";
+import { useLicenseStore } from "@/stores/license-store";
 
 interface EditorProviderProps {
 	children: React.ReactNode;
@@ -36,6 +37,12 @@ export function EditorProvider({ children }: EditorProviderProps) {
 	useEffect(() => {
 		initializeApp();
 	}, [initializeApp]);
+
+	// Check license on editor load
+	const checkLicense = useLicenseStore((s) => s.checkLicense);
+	useEffect(() => {
+		checkLicense();
+	}, [checkLicense]);
 
 	// Show loading screen while initializing
 	if (isInitializing || !isPanelsReady) {

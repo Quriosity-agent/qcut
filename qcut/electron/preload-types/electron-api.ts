@@ -1113,6 +1113,28 @@ export interface ElectronAPI {
 		) => () => void;
 	};
 
+	// License operations
+	license?: {
+		check: () => Promise<{
+			plan: "free" | "pro" | "team";
+			status: "active" | "past_due" | "cancelled" | "expired";
+			currentPeriodEnd?: string;
+			credits: {
+				planCredits: number;
+				topUpCredits: number;
+				totalCredits: number;
+				planCreditsResetAt: string;
+			};
+		}>;
+		activate: (token: string) => Promise<boolean>;
+		deductCredits: (
+			amount: number,
+			modelKey: string,
+			description: string
+		) => Promise<boolean>;
+		deactivate: () => Promise<boolean>;
+	};
+
 	isElectron: boolean;
 }
 

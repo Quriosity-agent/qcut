@@ -1,4 +1,4 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/donghaozhang/qcut)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Quriosity-agent/qcut)
 
 <table width="100%">
   <tr>
