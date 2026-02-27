@@ -68,32 +68,40 @@ export async function forceStopActiveScreenRecordingSession(): Promise<ForceStop
 		};
 	}
 
+	// Clear session immediately to reject incoming chunks
+	setActiveSession(null);
+
+	const durationMs = Math.max(0, Date.now() - sessionToStop.startedAt);
+
 	try {
-		const result = await discardActiveSession({ sessionData: sessionToStop });
-		setActiveSession(null);
+		// Destroy the stream immediately — don't use end() which waits for
+		// pending writes and hangs if the renderer is still sending chunks
+		sessionToStop.fileStream.destroy();
+		// Transcode whatever was written so far
+		await finalizeRecordingOutput({ sessionData: sessionToStop });
 		return {
 			success: true,
 			wasRecording: true,
-			filePath: result.filePath,
-			bytesWritten: result.bytesWritten,
-			durationMs: result.durationMs,
+			filePath: sessionToStop.filePath,
+			bytesWritten: sessionToStop.bytesWritten,
+			durationMs,
+			discarded: false,
+		};
+	} catch {
+		// Finalization failed — clean up temp files
+		try {
+			await cleanupSessionFiles({ sessionData: sessionToStop });
+		} catch {
+			// best-effort cleanup
+		}
+		return {
+			success: true,
+			wasRecording: true,
+			filePath: sessionToStop.filePath,
+			bytesWritten: sessionToStop.bytesWritten,
+			durationMs,
 			discarded: true,
 		};
-	} catch (error: unknown) {
-		const sessionToCleanup = getActiveSession();
-		if (sessionToCleanup) {
-			setActiveSession(null);
-			try {
-				await closeStream({ fileStream: sessionToCleanup.fileStream });
-			} catch {
-				// best-effort stream cleanup
-			}
-			await cleanupSessionFiles({ sessionData: sessionToCleanup });
-		}
-
-		throw new Error(
-			`Failed to force stop screen recording: ${error instanceof Error ? error.message : String(error)}`
-		);
 	}
 }
 
