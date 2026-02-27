@@ -627,5 +627,14 @@ export function useHandleGenerate(
 		wan26EnablePromptExpansion,
 		extendVideoAspectRatio,
 		extendVideoGenerateAudio,
+		setCurrentModelIndex,
+		setGeneratedVideos,
+		setJobId,
+		setStatusMessage,
+		setIsGenerating,
+		setProgressLogs,
+		setGenerationStartTime,
+		setElapsedTime,
+		setGenerationProgress,
 	]);
 }

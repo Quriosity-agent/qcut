@@ -32,6 +32,7 @@ import { AutoSaveIndicator } from "./editor/auto-save-indicator";
 import { ScreenRecordingControl } from "./editor/screen-recording-control";
 import { ScreenshotControl } from "./editor/screenshot-control";
 import type { KeyboardEvent } from "react";
+import { CreditBalance } from "./license/credit-balance";
 
 /** Editor header bar with project name, export, screenshot, and recording controls. */
 export function EditorHeader() {
@@ -150,6 +151,7 @@ export function EditorHeader() {
 	const rightContent = (
 		<nav className="flex items-center gap-2">
 			<AutoSaveIndicator className="whitespace-nowrap" />
+			<CreditBalance />
 			<PanelPresetSelector />
 			<ScreenshotControl />
 			<ScreenRecordingControl />

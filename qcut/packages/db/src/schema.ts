@@ -1,4 +1,10 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+	pgTable,
+	text,
+	timestamp,
+	boolean,
+	integer,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
 	id: text("id").primaryKey(),
@@ -61,6 +67,78 @@ export const verifications = pgTable("verifications", {
 export const waitlist = pgTable("waitlist", {
 	id: text("id").primaryKey(),
 	email: text("email").notNull().unique(),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();
+
+// --- Payment & License tables ---
+
+export const licenses = pgTable("licenses", {
+	id: text("id").primaryKey(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	plan: text("plan", { enum: ["free", "pro", "team"] })
+		.notNull()
+		.default("free"),
+	status: text("status", {
+		enum: ["active", "past_due", "cancelled", "expired"],
+	})
+		.notNull()
+		.default("active"),
+	stripeCustomerId: text("stripe_customer_id"),
+	stripeSubscriptionId: text("stripe_subscription_id"),
+	currentPeriodEnd: timestamp("current_period_end"),
+	maxDevices: integer("max_devices").notNull().default(1),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+	updatedAt: timestamp("updated_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();
+
+export const deviceActivations = pgTable("device_activations", {
+	id: text("id").primaryKey(),
+	licenseId: text("license_id")
+		.notNull()
+		.references(() => licenses.id, { onDelete: "cascade" }),
+	deviceFingerprint: text("device_fingerprint").notNull(),
+	deviceName: text("device_name").notNull(),
+	lastSeenAt: timestamp("last_seen_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+	isActive: boolean("is_active").notNull().default(true),
+}).enableRLS();
+
+export const creditBalances = pgTable("credit_balances", {
+	id: text("id").primaryKey(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" })
+		.unique(),
+	planCredits: integer("plan_credits").notNull().default(50),
+	topUpCredits: integer("top_up_credits").notNull().default(0),
+	planCreditsResetAt: timestamp("plan_credits_reset_at").notNull(),
+	updatedAt: timestamp("updated_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();
+
+export const creditTransactions = pgTable("credit_transactions", {
+	id: text("id").primaryKey(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	type: text("type", {
+		enum: ["plan_grant", "top_up", "deduction", "refund", "expiry"],
+	}).notNull(),
+	amount: integer("amount").notNull(),
+	balanceAfter: integer("balance_after").notNull(),
+	description: text("description"),
+	modelKey: text("model_key"),
+	stripePaymentId: text("stripe_payment_id"),
 	createdAt: timestamp("created_at")
 		.$defaultFn(() => /* @__PURE__ */ new Date())
 		.notNull(),
