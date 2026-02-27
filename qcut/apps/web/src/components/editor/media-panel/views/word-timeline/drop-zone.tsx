@@ -6,6 +6,7 @@ import { Upload, Loader2, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { isMediaFile, isJsonFile } from "./helpers";
+import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 
 export interface DropZoneProps {
 	onJsonSelect: (file: File) => void;
@@ -27,12 +28,12 @@ export function DropZone({
 
 	const handleDrop = useCallback(
 		(files: FileList) => {
-			console.log("[WordTimeline] handleDrop called");
-			console.log("[WordTimeline] Files count:", files.length);
+			debugLog("[WordTimeline] handleDrop called");
+			debugLog("[WordTimeline] Files count:", files.length);
 			try {
 				const file = files[0];
 				if (!file) {
-					console.log("[WordTimeline] No file found in drop");
+					debugLog("[WordTimeline] No file found in drop");
 					return;
 				}
 
@@ -40,7 +41,7 @@ export function DropZone({
 				const filePath =
 					window.electronAPI?.getPathForFile?.(file) ?? undefined;
 
-				console.log("[WordTimeline] File dropped:", {
+				debugLog("[WordTimeline] File dropped:", {
 					name: file.name,
 					type: file.type,
 					size: file.size,
@@ -48,27 +49,25 @@ export function DropZone({
 				});
 
 				if (isJsonFile(file.name)) {
-					console.log(
-						"[WordTimeline] Detected JSON file, calling onJsonSelect"
-					);
+					debugLog("[WordTimeline] Detected JSON file, calling onJsonSelect");
 					onJsonSelect(file);
 				} else if (isMediaFile(file.name)) {
-					console.log("[WordTimeline] Detected media file");
-					console.log("[WordTimeline] File path from Electron:", filePath);
+					debugLog("[WordTimeline] Detected media file");
+					debugLog("[WordTimeline] File path from Electron:", filePath);
 					if (filePath) {
-						console.log(
+						debugLog(
 							"[WordTimeline] Calling onMediaSelect with path:",
 							filePath
 						);
 						onMediaSelect(filePath);
 					} else {
-						console.error(
+						debugError(
 							"[WordTimeline] No file path available - not running in Electron?"
 						);
 						toast.error("Media transcription requires the desktop app");
 					}
 				} else {
-					console.warn(
+					debugWarn(
 						"[WordTimeline] Unsupported file type:",
 						file.name,
 						file.type
@@ -78,7 +77,7 @@ export function DropZone({
 					);
 				}
 			} catch (err) {
-				console.error("[WordTimeline] Error processing dropped file:", err);
+				debugError("[WordTimeline] Error processing dropped file:", err);
 				toast.error("Unable to process the dropped file");
 			}
 		},
@@ -88,25 +87,25 @@ export function DropZone({
 	const { isDragOver, dragProps } = useDragDrop({ onDrop: handleDrop });
 
 	const handleClick = useCallback(async () => {
-		console.log("[WordTimeline] handleClick called (file picker button)");
+		debugLog("[WordTimeline] handleClick called (file picker button)");
 		try {
 			// Use Electron's native file dialog to get the file path
-			console.log("[WordTimeline] Checking for Electron file dialog API...");
-			console.log(
+			debugLog("[WordTimeline] Checking for Electron file dialog API...");
+			debugLog(
 				"[WordTimeline] window.electronAPI exists:",
 				!!window.electronAPI
 			);
-			console.log(
+			debugLog(
 				"[WordTimeline] openFileDialog exists:",
 				!!window.electronAPI?.openFileDialog
 			);
 
 			if (window.electronAPI?.openFileDialog) {
-				console.log("[WordTimeline] Opening native file dialog...");
+				debugLog("[WordTimeline] Opening native file dialog...");
 				const dialogResult = await window.electronAPI.openFileDialog();
 
-				console.log("[WordTimeline] File dialog result:", dialogResult);
-				console.log("[WordTimeline] Result type:", typeof dialogResult);
+				debugLog("[WordTimeline] File dialog result:", dialogResult);
+				debugLog("[WordTimeline] Result type:", typeof dialogResult);
 
 				// Handle both string (expected) and object (raw dialog result) formats
 				let filePath: string | null = null;
@@ -118,7 +117,7 @@ export function DropZone({
 						canceled?: boolean;
 						filePaths?: string[];
 					};
-					console.log("[WordTimeline] Raw dialog object:", rawResult);
+					debugLog("[WordTimeline] Raw dialog object:", rawResult);
 					if (
 						!rawResult.canceled &&
 						rawResult.filePaths &&
@@ -128,28 +127,28 @@ export function DropZone({
 					}
 				}
 
-				console.log("[WordTimeline] Extracted file path:", filePath);
+				debugLog("[WordTimeline] Extracted file path:", filePath);
 
 				if (!filePath) {
-					console.log(
+					debugLog(
 						"[WordTimeline] No file selected (dialog cancelled or empty)"
 					);
 					return;
 				}
 
 				const fileName = filePath.split(/[/\\]/).pop() || "";
-				console.log("[WordTimeline] Selected file name:", fileName);
+				debugLog("[WordTimeline] Selected file name:", fileName);
 
 				if (isJsonFile(fileName)) {
-					console.log("[WordTimeline] JSON file detected, reading content...");
+					debugLog("[WordTimeline] JSON file detected, reading content...");
 					// For JSON, we need to read the file content
 					if (!window.electronAPI.readFile) {
-						console.error("[WordTimeline] readFile API not available");
+						debugError("[WordTimeline] readFile API not available");
 						toast.error("File reading not available");
 						return;
 					}
 					const buffer = await window.electronAPI.readFile(filePath);
-					console.log(
+					debugLog(
 						"[WordTimeline] File buffer received, size:",
 						buffer?.length
 					);
@@ -159,27 +158,25 @@ export function DropZone({
 						const file = new File([blob], fileName, {
 							type: "application/json",
 						});
-						console.log("[WordTimeline] Calling onJsonSelect with File object");
+						debugLog("[WordTimeline] Calling onJsonSelect with File object");
 						onJsonSelect(file);
 					}
 				} else if (isMediaFile(fileName)) {
-					console.log(
-						"[WordTimeline] Media file detected, calling onMediaSelect"
-					);
-					console.log("[WordTimeline] File path:", filePath);
+					debugLog("[WordTimeline] Media file detected, calling onMediaSelect");
+					debugLog("[WordTimeline] File path:", filePath);
 					onMediaSelect(filePath);
 				} else {
-					console.warn("[WordTimeline] Unsupported file type:", fileName);
+					debugWarn("[WordTimeline] Unsupported file type:", fileName);
 					toast.error("Unsupported file type. Select JSON or media files.");
 				}
 			} else {
-				console.log(
+				debugLog(
 					"[WordTimeline] Electron API not available, using HTML file input"
 				);
 				fileInputRef.current?.click();
 			}
 		} catch (err) {
-			console.error("[WordTimeline] Error in handleClick:", err);
+			debugError("[WordTimeline] Error in handleClick:", err);
 			toast.error("Unable to open the file picker");
 		}
 	}, [onJsonSelect, onMediaSelect]);
@@ -216,7 +213,7 @@ export function DropZone({
 
 				nativeEvent.preventDefault();
 				handleClick();
-			} catch (error) {
+			} catch {
 				toast.error("Unable to open the file picker");
 			}
 		},

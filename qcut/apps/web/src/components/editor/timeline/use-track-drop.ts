@@ -20,6 +20,7 @@ import {
 import { useProjectStore } from "@/stores/project-store";
 import { useTimelineSnapping } from "@/hooks/timeline/use-timeline-snapping";
 import { usePlaybackStore } from "@/stores/editor/playback-store";
+import { debugLog, debugError } from "@/lib/debug/debug-config";
 
 /**
  * Custom hook encapsulating all drag-and-drop handling for timeline tracks.
@@ -220,7 +221,7 @@ export function useTrackDrop({
 						(t: TimelineTrack) => t.id === fromTrackId
 					);
 					const movingElement = sourceTrack?.elements.find(
-						(c: any) => c.id === elementId
+						(c: TimelineElementType) => c.id === elementId
 					);
 
 					if (movingElement) {
@@ -298,7 +299,7 @@ export function useTrackDrop({
 
 		if (!hasTimelineElement && !hasMediaItem) return;
 
-		dragCounterRef.current--;
+		dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
 
 		if (dragCounterRef.current === 0) {
 			setIsDropping(false);
@@ -624,7 +625,7 @@ export function useTrackDrop({
 					});
 				} else {
 					// Handle media items
-					console.log("[TimelineTrack] Processing media item drop:", {
+					debugLog("[TimelineTrack] Processing media item drop:", {
 						dragDataId: dragData.id,
 						dragDataType: dragData.type,
 						dragDataName: dragData.name,
@@ -633,7 +634,7 @@ export function useTrackDrop({
 
 					const mediaItem = mediaItems.find((item) => item.id === dragData.id);
 
-					console.log("[TimelineTrack] Found media item:", {
+					debugLog("[TimelineTrack] Found media item:", {
 						found: !!mediaItem,
 						mediaItemId: mediaItem?.id,
 						mediaItemUrl: mediaItem?.url,
@@ -778,7 +779,7 @@ export function useTrackDrop({
 				}
 			}
 		} catch (error) {
-			console.error("Error handling drop:", error);
+			debugError("Error handling drop:", error);
 			toast.error("Failed to add media to track");
 		}
 	};

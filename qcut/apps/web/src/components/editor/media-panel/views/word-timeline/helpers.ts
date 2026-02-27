@@ -19,7 +19,9 @@ export const MEDIA_EXTENSIONS = [
 
 /** Check if a file is a supported media file */
 export function isMediaFile(fileName: string): boolean {
-	const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+	const dotIndex = fileName.lastIndexOf(".");
+	if (dotIndex === -1) return false;
+	const ext = fileName.toLowerCase().slice(dotIndex);
 	return MEDIA_EXTENSIONS.includes(ext);
 }
 
