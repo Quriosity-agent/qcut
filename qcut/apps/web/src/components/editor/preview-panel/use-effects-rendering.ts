@@ -5,40 +5,37 @@ import {
 	mergeEffectParameters,
 } from "@/lib/effects/effects-utils";
 
+const EMPTY_EFFECTS: readonly never[] = [];
+
 /** Compute the aggregate CSS filter string for an element's enabled effects. */
 export function useEffectsRendering(elementId: string | null, enabled = false) {
-	const effects = useEffectsStore((state) =>
-		!enabled || !elementId ? [] : state.activeEffects.get(elementId) || []
-	);
+	const effects = useEffectsStore((state) => {
+		if (!enabled || !elementId) return EMPTY_EFFECTS;
+		return state.activeEffects.get(elementId) ?? EMPTY_EFFECTS;
+	});
 
-	const filterStyle = useMemo(() => {
-		if (!enabled || !effects || effects.length === 0) {
-			return "";
+	return useMemo(() => {
+		if (!enabled || effects.length === 0) {
+			return { filterStyle: "", hasEffects: false };
 		}
 
 		try {
-			// Filter for enabled effects first
 			const enabledEffects = effects.filter((e) => e.enabled);
 
-			// Guard against zero enabled effects
 			if (enabledEffects.length === 0) {
-				return "";
+				return { filterStyle: "", hasEffects: false };
 			}
 
-			// Merge all active effect parameters
 			const mergedParams = mergeEffectParameters(
 				...enabledEffects.map((e) => e.parameters)
 			);
 
-			const cssFilter = parametersToCSSFilters(mergedParams);
-			return cssFilter;
-		} catch (error) {
-			return "";
+			return {
+				filterStyle: parametersToCSSFilters(mergedParams),
+				hasEffects: true,
+			};
+		} catch {
+			return { filterStyle: "", hasEffects: false };
 		}
 	}, [enabled, effects]);
-
-	// Check if there are any enabled effects, not just any effects
-	const hasEnabledEffects = effects?.some?.((e) => e.enabled) ?? false;
-
-	return { filterStyle, hasEffects: hasEnabledEffects };
 }
