@@ -25,7 +25,10 @@ import { createInterface } from "node:readline";
 import { parseArgs } from "node:util";
 import type { CLIRunOptions, CLIResult, ProgressFn } from "./types.js";
 import type { CLIPipelineRunner } from "./runner.js";
-import { EditorApiClient, createEditorClient } from "../../editor/editor-api-client.js";
+import {
+	EditorApiClient,
+	createEditorClient,
+} from "../../editor/editor-api-client.js";
 
 /**
  * Shared editor client for session mode.
@@ -72,7 +75,7 @@ export function resetSessionState(): void {
  */
 export function parseSessionLine(
 	line: string,
-	baseOptions: Partial<CLIRunOptions>,
+	baseOptions: Partial<CLIRunOptions>
 ): CLIRunOptions | null {
 	const trimmed = line.trim();
 
@@ -196,7 +199,8 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values["audio-url"]) result.audioUrl = values["audio-url"] as string;
 		if (values["output-dir"]) result.outputDir = values["output-dir"] as string;
 		if (values.duration) result.duration = values.duration as string;
-		if (values["aspect-ratio"]) result.aspectRatio = values["aspect-ratio"] as string;
+		if (values["aspect-ratio"])
+			result.aspectRatio = values["aspect-ratio"] as string;
 		if (values.resolution) result.resolution = values.resolution as string;
 		if (values["project-id"]) result.projectId = values["project-id"] as string;
 		if (values["media-id"]) result.mediaId = values["media-id"] as string;
@@ -213,7 +217,8 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.panel) result.panel = values.panel as string;
 		if (values.tab) result.tab = values.tab as string;
 		if (values.url) result.url = values.url as string;
-		if (values["negative-prompt"]) result.negativePrompt = values["negative-prompt"] as string;
+		if (values["negative-prompt"])
+			result.negativePrompt = values["negative-prompt"] as string;
 		if (values["voice-id"]) result.voiceId = values["voice-id"] as string;
 		if (values.force) result.force = true;
 		if (values.discard) result.discard = true;
@@ -245,7 +250,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 export async function runSession(
 	runner: CLIPipelineRunner,
 	baseOptions: Partial<CLIRunOptions>,
-	onProgress: ProgressFn,
+	onProgress: ProgressFn
 ): Promise<void> {
 	const isInteractive = process.stdin.isTTY === true;
 	const output = baseOptions.json ? "json" : "text";
@@ -288,7 +293,7 @@ export async function runSession(
 						command: options.command,
 						...result,
 						sessionDuration: (Date.now() - startTime) / 1000,
-					}),
+					})
 				);
 			} else if (result.success) {
 				if (result.outputPath) {

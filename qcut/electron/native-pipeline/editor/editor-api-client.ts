@@ -299,7 +299,8 @@ export class EditorApiClient {
 				);
 			}
 
-			const interval = fixedInterval ?? getAdaptivePollInterval(Date.now() - start);
+			const interval =
+				fixedInterval ?? getAdaptivePollInterval(Date.now() - start);
 			await sleep(interval);
 		}
 	}

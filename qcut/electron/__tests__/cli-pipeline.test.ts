@@ -1020,10 +1020,7 @@ describe("CLI pipeline", () => {
 		});
 
 		it("parses --skip-health flag", () => {
-			const opts = parseCliArgs([
-				"editor:health",
-				"--skip-health",
-			]);
+			const opts = parseCliArgs(["editor:health", "--skip-health"]);
 			expect(opts.skipHealth).toBe(true);
 		});
 
@@ -1238,19 +1235,13 @@ describe("CLI pipeline", () => {
 		});
 
 		it("parses --count flag in session", () => {
-			const opts = parseSessionLine(
-				"generate-image -t test --count 3",
-				{}
-			);
+			const opts = parseSessionLine("generate-image -t test --count 3", {});
 			expect(opts).not.toBeNull();
 			expect(opts!.count).toBe(3);
 		});
 
 		it("handles single-quoted strings", () => {
-			const opts = parseSessionLine(
-				"generate-image -t 'hello world'",
-				{}
-			);
+			const opts = parseSessionLine("generate-image -t 'hello world'", {});
 			expect(opts).not.toBeNull();
 			expect(opts!.text).toBe("hello world");
 		});

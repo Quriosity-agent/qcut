@@ -739,11 +739,16 @@ export async function main(
 
 		// Parse host/port/token if provided
 		for (let i = 0; i < sessionArgv.length; i++) {
-			if (sessionArgv[i] === "--host" && sessionArgv[i + 1]) baseOptions.host = sessionArgv[++i];
-			if (sessionArgv[i] === "--port" && sessionArgv[i + 1]) baseOptions.port = sessionArgv[++i];
-			if (sessionArgv[i] === "--token" && sessionArgv[i + 1]) baseOptions.token = sessionArgv[++i];
-			if (sessionArgv[i] === "--output-dir" && sessionArgv[i + 1]) baseOptions.outputDir = sessionArgv[++i];
-			if (sessionArgv[i] === "-o" && sessionArgv[i + 1]) baseOptions.outputDir = sessionArgv[++i];
+			if (sessionArgv[i] === "--host" && sessionArgv[i + 1])
+				baseOptions.host = sessionArgv[++i];
+			if (sessionArgv[i] === "--port" && sessionArgv[i + 1])
+				baseOptions.port = sessionArgv[++i];
+			if (sessionArgv[i] === "--token" && sessionArgv[i + 1])
+				baseOptions.token = sessionArgv[++i];
+			if (sessionArgv[i] === "--output-dir" && sessionArgv[i + 1])
+				baseOptions.outputDir = sessionArgv[++i];
+			if (sessionArgv[i] === "-o" && sessionArgv[i + 1])
+				baseOptions.outputDir = sessionArgv[++i];
 		}
 
 		const runner = new CLIPipelineRunner();

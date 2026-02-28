@@ -164,12 +164,21 @@ async function mediaBatchImport(
 
 	// Convenience: --sources "file1.png,file2.png" → auto-build items array
 	if (o.sources && !o.items) {
-		const paths = o.sources.split(",").map((s) => s.trim()).filter(Boolean);
+		const paths = o.sources
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean);
 		if (paths.length === 0) {
-			return { success: false, error: "--sources must contain at least one file path" };
+			return {
+				success: false,
+				error: "--sources must contain at least one file path",
+			};
 		}
 		if (paths.length > 20) {
-			return { success: false, error: `Batch limit exceeded: ${paths.length} items (max 20)` };
+			return {
+				success: false,
+				error: `Batch limit exceeded: ${paths.length} items (max 20)`,
+			};
 		}
 		const items = paths.map((p) => ({ path: p }));
 		const data = await client.post(
@@ -182,7 +191,8 @@ async function mediaBatchImport(
 	if (!o.items)
 		return {
 			success: false,
-			error: "Missing --items or --sources (JSON array, @file.json, or comma-separated paths)",
+			error:
+				"Missing --items or --sources (JSON array, @file.json, or comma-separated paths)",
 		};
 
 	const parsed = await resolveJsonInput(o.items);

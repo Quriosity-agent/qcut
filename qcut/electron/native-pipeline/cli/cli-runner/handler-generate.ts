@@ -28,7 +28,7 @@ async function runSingleGeneration(
 	signal: AbortSignal,
 	jobIndex: number,
 	outputDir: string,
-	params: Record<string, unknown>,
+	params: Record<string, unknown>
 ): Promise<CLIResult> {
 	const startTime = Date.now();
 	const model = ModelRegistry.get(options.model!);
@@ -111,7 +111,7 @@ export async function handleGenerate(
 	options: CLIRunOptions,
 	onProgress: ProgressFn,
 	executor: PipelineExecutor,
-	signal: AbortSignal,
+	signal: AbortSignal
 ): Promise<CLIResult> {
 	if (!options.model) {
 		if (options.command === "generate-image") {
@@ -187,7 +187,7 @@ export async function handleGenerate(
 			signal,
 			-1,
 			outputDir,
-			params,
+			params
 		);
 	}
 
@@ -199,7 +199,7 @@ export async function handleGenerate(
 		executor,
 		signal,
 		outputDir,
-		params,
+		params
 	);
 }
 
@@ -228,7 +228,7 @@ async function runParallelGeneration(
 	executor: PipelineExecutor,
 	signal: AbortSignal,
 	outputDir: string,
-	params: Record<string, unknown>,
+	params: Record<string, unknown>
 ): Promise<CLIResult> {
 	const startTime = Date.now();
 
@@ -248,8 +248,8 @@ async function runParallelGeneration(
 			signal,
 			index,
 			outputDir,
-			params,
-		),
+			params
+		)
 	);
 
 	const results = await Promise.allSettled(jobs);
