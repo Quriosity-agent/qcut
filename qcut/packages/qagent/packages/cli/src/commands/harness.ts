@@ -9,8 +9,17 @@ import {
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import chalk from "chalk";
 import type { Command } from "commander";
-import type { OrchestratorConfig, SessionManager } from "@composio/ao-core";
-import { loadConfig } from "@composio/ao-core";
+import type {
+	OrchestratorConfig,
+	SessionManager,
+	TeamManager,
+	TeamMessage,
+} from "@composio/ao-core";
+import {
+	createTeamManager,
+	loadConfig,
+	parseTeamProtocolMessage,
+} from "@composio/ao-core";
 import { getSessionManager } from "../lib/create-session-manager.js";
 import { exec } from "../lib/shell.js";
 

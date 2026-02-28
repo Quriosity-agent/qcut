@@ -1,10 +1,41 @@
 import { ipcMain } from "electron";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { EditorEvent } from "../types/claude-api.js";
 import { formatOperationForTerminal } from "./utils/operation-formatter.js";
 import { claudeLog } from "./utils/logger.js";
 
 const HANDLER_NAME = "NotificationBridge";
 const MAX_NOTIFICATION_HISTORY = 50;
+
+const NOTIFICATION_LOG_DIR = join(homedir(), ".qcut");
+const NOTIFICATION_LOG_PATH = join(NOTIFICATION_LOG_DIR, "notifications.log");
+
+function ensureLogDirectory(): void {
+	try {
+		mkdirSync(NOTIFICATION_LOG_DIR, { recursive: true });
+	} catch {
+		// no-op
+	}
+}
+
+function appendToLogFile({ line }: { line: string }): void {
+	try {
+		appendFileSync(NOTIFICATION_LOG_PATH, `${line}\n`, "utf-8");
+	} catch {
+		// no-op — file write failures must never block notifications
+	}
+}
+
+function truncateLogFile(): void {
+	try {
+		ensureLogDirectory();
+		writeFileSync(NOTIFICATION_LOG_PATH, "", "utf-8");
+	} catch {
+		// no-op
+	}
+}
 
 type NotificationBridgeWriter = (args: {
 	sessionId: string;
@@ -58,6 +89,7 @@ export class NotificationBridge {
 			}
 			this.enabled = true;
 			this.targetSessionId = trimmed;
+			truncateLogFile();
 			return this.getStatus();
 		} catch (error) {
 			const message =
@@ -119,6 +151,7 @@ export class NotificationBridge {
 			}
 
 			this.pushHistory({ value: formatted });
+			appendToLogFile({ line: formatted });
 
 			const writeSuccess = this.writer({
 				sessionId: this.targetSessionId,

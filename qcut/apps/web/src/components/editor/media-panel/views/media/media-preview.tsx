@@ -1,5 +1,5 @@
 import type { MediaItem } from "@/stores/media/media-store-types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, Loader2, Music, Video } from "lucide-react";
 
 /** Format seconds as mm:ss */
@@ -14,15 +14,28 @@ interface MediaPreviewProps {
 }
 
 function VideoPreview({ item }: MediaPreviewProps) {
-	const previewUrl = item.thumbnailUrl || item.url;
-	const [isLoading, setIsLoading] = useState(Boolean(previewUrl));
+	const previewUrl = item.thumbnailUrl;
+	const [isLoading, setIsLoading] = useState(Boolean(item.thumbnailUrl));
 	const [hasError, setHasError] = useState(false);
+	const isGenerating =
+		item.thumbnailStatus === "pending" || item.thumbnailStatus === "loading";
+
+	useEffect(() => {
+		setHasError(false);
+		setIsLoading(Boolean(item.thumbnailUrl));
+	}, [item.thumbnailUrl, item.id]);
 
 	if (!previewUrl || hasError) {
 		return (
 			<div className="w-full h-full bg-linear-to-br from-blue-500/20 to-cyan-500/20 flex flex-col items-center justify-center text-muted-foreground rounded border border-blue-500/20">
-				<Video className="h-6 w-6 mb-1" />
-				<span className="text-xs">Video</span>
+				{isGenerating ? (
+					<Loader2 className="h-6 w-6 mb-1 animate-spin" />
+				) : (
+					<Video className="h-6 w-6 mb-1" />
+				)}
+				<span className="text-xs">
+					{isGenerating ? "Generating..." : "Video"}
+				</span>
 				{item.duration && (
 					<span className="text-xs opacity-70">
 						{formatDuration(item.duration)}

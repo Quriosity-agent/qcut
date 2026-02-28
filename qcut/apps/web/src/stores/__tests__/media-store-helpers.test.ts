@@ -168,9 +168,11 @@ describe("media-store-helpers", () => {
 				naturalHeight: 1080,
 			};
 			originalImage = window.Image;
-			// Replace Image constructor with a factory that returns our mock
-			(window as unknown as Record<string, unknown>).Image = (() =>
-				mockImg) as unknown as typeof Image;
+			// Replace Image constructor with a function that can be instantiated via `new`.
+			const MockImage = function () {
+				return mockImg;
+			} as unknown as typeof Image;
+			window.Image = MockImage;
 		});
 
 		afterEach(() => {
@@ -224,13 +226,27 @@ describe("media-store-helpers", () => {
 	describe("generateVideoThumbnailBrowser", () => {
 		let mockVideo: Record<string, unknown>;
 		let mockCanvas: Record<string, unknown>;
+		let mockAnalysisCanvas: Record<string, unknown>;
 		let mockCtx: Record<string, unknown>;
+		let mockAnalysisCtx: Record<string, unknown>;
+		let videoEventHandlers: Record<string, Array<() => void>>;
 
 		beforeEach(() => {
 			vi.useFakeTimers();
+			videoEventHandlers = {
+				loadedmetadata: [],
+				error: [],
+				seeked: [],
+			};
 
 			mockCtx = {
 				drawImage: vi.fn(),
+			};
+			mockAnalysisCtx = {
+				drawImage: vi.fn(),
+				getImageData: vi.fn(() => ({
+					data: new Uint8ClampedArray([200, 200, 200, 255]),
+				})),
 			};
 			mockCanvas = {
 				width: 0,
@@ -239,8 +255,22 @@ describe("media-store-helpers", () => {
 				toDataURL: vi.fn(() => "data:image/jpeg;base64,thumb"),
 				remove: vi.fn(),
 			};
+			mockAnalysisCanvas = {
+				width: 0,
+				height: 0,
+				getContext: vi.fn(() => mockAnalysisCtx),
+				remove: vi.fn(),
+			};
 			mockVideo = {
-				addEventListener: vi.fn(),
+				addEventListener: vi.fn((event: string, handler: () => void) => {
+					videoEventHandlers[event] ??= [];
+					videoEventHandlers[event].push(handler);
+				}),
+				removeEventListener: vi.fn((event: string, handler: () => void) => {
+					videoEventHandlers[event] = (videoEventHandlers[event] || []).filter(
+						(existingHandler) => existingHandler !== handler
+					);
+				}),
 				remove: vi.fn(),
 				src: "",
 				load: vi.fn(),
@@ -251,9 +281,15 @@ describe("media-store-helpers", () => {
 				error: null,
 			};
 
+			let canvasCreationCount = 0;
 			vi.spyOn(document, "createElement").mockImplementation(((tag: string) => {
 				if (tag === "video") return mockVideo as unknown as HTMLVideoElement;
-				if (tag === "canvas") return mockCanvas as unknown as HTMLCanvasElement;
+				if (tag === "canvas") {
+					canvasCreationCount += 1;
+					return (canvasCreationCount === 1
+						? mockCanvas
+						: mockAnalysisCanvas) as unknown as HTMLCanvasElement;
+				}
 				return document.createElement(tag);
 			}) as typeof document.createElement);
 		});
@@ -269,19 +305,11 @@ describe("media-store-helpers", () => {
 			const promise = generateVideoThumbnailBrowser(file);
 
 			// Trigger loadedmetadata
-			const loadedHandler = (
-				mockVideo.addEventListener as ReturnType<typeof vi.fn>
-			).mock.calls.find(
-				(call: unknown[]) => call[0] === "loadedmetadata"
-			)?.[1] as () => void;
+			const loadedHandler = videoEventHandlers.loadedmetadata[0];
 			loadedHandler();
 
 			// Trigger seeked
-			const seekedHandler = (
-				mockVideo.addEventListener as ReturnType<typeof vi.fn>
-			).mock.calls.find(
-				(call: unknown[]) => call[0] === "seeked"
-			)?.[1] as () => void;
+			const seekedHandler = videoEventHandlers.seeked[0];
 			seekedHandler();
 
 			const result = await promise;
@@ -297,11 +325,7 @@ describe("media-store-helpers", () => {
 
 			const promise = generateVideoThumbnailBrowser(file);
 
-			const errorHandler = (
-				mockVideo.addEventListener as ReturnType<typeof vi.fn>
-			).mock.calls.find(
-				(call: unknown[]) => call[0] === "error"
-			)?.[1] as () => void;
+			const errorHandler = videoEventHandlers.error[0];
 			errorHandler();
 
 			await expect(promise).rejects.toThrow("Video loading failed");
@@ -321,12 +345,58 @@ describe("media-store-helpers", () => {
 
 			const promise = generateVideoThumbnailBrowser(file);
 
-			// Advance past 10s timeout
-			vi.advanceTimersByTime(10_001);
+			// Advance past thumbnail generation timeout
+			vi.advanceTimersByTime(15_001);
 
 			await expect(promise).rejects.toThrow(
 				"Video thumbnail generation timed out"
 			);
+		});
+
+		it("tries a later frame when first candidate is too dark", async () => {
+			const createFrameData = (brightness: number) => {
+				const pixels = new Uint8ClampedArray(32 * 18 * 4);
+				for (let index = 0; index < pixels.length; index += 4) {
+					pixels[index] = brightness;
+					pixels[index + 1] = brightness;
+					pixels[index + 2] = brightness;
+					pixels[index + 3] = 255;
+				}
+				return { data: pixels };
+			};
+
+			(mockAnalysisCtx.getImageData as ReturnType<typeof vi.fn>)
+				.mockReturnValueOnce(createFrameData(0))
+				.mockReturnValueOnce(createFrameData(220));
+
+			const file = new File([""], "video.mp4", { type: "video/mp4" });
+			const promise = generateVideoThumbnailBrowser(file);
+
+			const loadedHandler = videoEventHandlers.loadedmetadata[0];
+			loadedHandler();
+
+			const firstSeekHandler = (
+				mockVideo.addEventListener as ReturnType<typeof vi.fn>
+			).mock.calls.find((call: unknown[]) => call[0] === "seeked")?.[1] as
+				| (() => void)
+				| undefined;
+			expect(firstSeekHandler).toBeTypeOf("function");
+			firstSeekHandler!();
+
+			await Promise.resolve();
+			await Promise.resolve();
+			const seekHandlers = (
+				mockVideo.addEventListener as ReturnType<typeof vi.fn>
+			).mock.calls
+				.filter((call: unknown[]) => call[0] === "seeked")
+				.map((call: unknown[]) => call[1] as () => void);
+			const secondSeekHandler = seekHandlers[1];
+			expect(secondSeekHandler).toBeTypeOf("function");
+			secondSeekHandler();
+
+			const result = await promise;
+			expect(result.thumbnailUrl).toBe("data:image/jpeg;base64,thumb");
+			expect(mockCanvas.toDataURL).toHaveBeenCalledTimes(2);
 		});
 	});
 
