@@ -25,7 +25,7 @@
 
 ## Proposed Split
 
-```
+```text
 draw/hooks/
 ├── use-canvas-objects.ts       (~150 lines) Main hook (state, composition, return)
 ├── canvas-object-types.ts      (~68 lines)  All interfaces and types

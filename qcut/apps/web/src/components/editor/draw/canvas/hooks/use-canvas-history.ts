@@ -62,7 +62,9 @@ export function useCanvasHistory({
 						),
 					}
 				);
-				loadDrawingFromDataUrl(historyState);
+				loadDrawingFromDataUrl(historyState).catch(() => {
+					// Error handled inside loadDrawingFromDataUrl
+				});
 			} else {
 				if (import.meta.env.DEV) {
 					console.log(

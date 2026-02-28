@@ -173,9 +173,11 @@ export function useCanvasHandlers({
 							imageWidth: img.width,
 							imageHeight: img.height,
 						});
+						URL.revokeObjectURL(img.src);
 						resolve();
 					};
 					img.onerror = () => {
+						URL.revokeObjectURL(img.src);
 						console.error("🖼️ IMAGE DEBUG - Failed to load image");
 						reject(new Error("Failed to load image"));
 					};

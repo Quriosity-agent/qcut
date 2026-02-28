@@ -39,7 +39,7 @@
 
 The main issue is `createClaudeAPI` at 658 lines. Split the Claude API into 3 focused functions:
 
-```
+```text
 electron/
 ├── preload-integrations.ts             (~50 lines)  Barrel re-export
 ├── integrations/

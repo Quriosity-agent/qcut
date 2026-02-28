@@ -31,7 +31,7 @@
 
 The `startTranscription` callback at 345 lines is the main problem. Extract it and the UI into focused modules:
 
-```
+```text
 media-panel/views/captions/
 ├── captions.tsx                        (~250 lines) Main component orchestrator
 ├── types.ts                            (~20 lines)  TranscriptionState interface

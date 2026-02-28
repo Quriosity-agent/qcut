@@ -28,7 +28,7 @@
 
 ## Proposed Split
 
-```
+```text
 electron/utility/
 ├── utility-bridge.ts                   (~80 lines)  Barrel re-export + public API
 ├── utility-lifecycle.ts                (~220 lines) Process start/stop/cleanup

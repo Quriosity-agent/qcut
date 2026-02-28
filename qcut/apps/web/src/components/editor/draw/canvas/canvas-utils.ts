@@ -38,23 +38,20 @@ export function useCanvasUtils({
 		(operation: () => any, operationType: string) => {
 			// Set flag to prevent history restoration during object creation
 			recentObjectCreation.current = true;
-			if (import.meta.env.DEV) {
-				console.log(`🛡️ Object creation protection enabled: ${operationType}`);
-			}
+			debug(`🛡️ Object creation protection enabled: ${operationType}`);
 
-			const result = operation();
-
-			// Clear flag after a delay to allow rendering and history operations to complete
-			setTimeout(() => {
-				recentObjectCreation.current = false;
-				if (import.meta.env.DEV) {
-					console.log(
+			try {
+				const result = operation();
+				return result;
+			} finally {
+				// Clear flag after a delay to allow rendering and history operations to complete
+				setTimeout(() => {
+					recentObjectCreation.current = false;
+					debug(
 						`✅ Object creation protection cleared: ${operationType}`
 					);
-				}
-			}, 200);
-
-			return result;
+				}, 200);
+			}
 		},
 		[]
 	);
@@ -114,34 +111,30 @@ export function useCanvasUtils({
 
 	// Save current canvas state to history
 	const saveCanvasToHistory = useCallback(() => {
-		if (import.meta.env.DEV) {
-			console.log("💾 DRAW DEBUG - Saving canvas to history:", {
-				objectCount: objects.length,
-			});
-		}
+		debug("💾 DRAW DEBUG - Saving canvas to history:", {
+			objectCount: objects.length,
+		});
 		const saveSnapshot = () => {
 			const dataUrl = getCanvasDataUrl();
 			if (dataUrl) {
-				if (import.meta.env.DEV) {
-					console.log(
-						"💾 DRAW DEBUG - Saving to history, length:",
-						dataUrl.length
-					);
-				}
+				debug(
+					"💾 DRAW DEBUG - Saving to history, length:",
+					dataUrl.length
+				);
 
 				// Set flag to prevent history restoration during save
 				isSavingToHistory.current = true;
-				saveToHistory(dataUrl);
-
-				// Clear flag after a longer delay to coordinate with object creation protection
-				setTimeout(() => {
-					isSavingToHistory.current = false;
-					if (import.meta.env.DEV) {
-						console.log("💾 DRAW DEBUG - Save operation completed");
-					}
-				}, 250); // Increased to 250ms to ensure it's after object creation protection clears (200ms)
+				try {
+					saveToHistory(dataUrl);
+				} finally {
+					// Clear flag after a longer delay to coordinate with object creation protection
+					setTimeout(() => {
+						isSavingToHistory.current = false;
+						debug("💾 DRAW DEBUG - Save operation completed");
+					}, 250); // Increased to 250ms to ensure it's after object creation protection clears (200ms)
+				}
 			} else {
-				console.error("❌ DRAW DEBUG - No dataUrl to save to history");
+				debug("❌ DRAW DEBUG - No dataUrl to save to history");
 			}
 		};
 

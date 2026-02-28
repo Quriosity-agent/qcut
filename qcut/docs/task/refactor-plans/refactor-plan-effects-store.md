@@ -27,7 +27,7 @@
 
 The EFFECT_PRESETS constant alone is 346 lines — extracting it immediately drops the main file well under 800.
 
-```
+```text
 stores/ai/effects/
 ├── effects-store.ts            (~180 lines) Store definition + assembly
 ├── presets.ts                  (~380 lines) EFFECT_PRESETS constant

@@ -93,16 +93,13 @@ export function useDrawingConfig({
 		onDrawingStart: useCallback(() => {
 			if (disabled) return;
 			try {
-				if (import.meta.env.DEV) {
-					console.log("🎯 DRAW DEBUG - Drawing started");
-				}
+				debug("🎯 DRAW DEBUG - Drawing started");
 				setDrawing(true);
 				setIsDrawing(true);
 				if (canvasRef.current) {
 					saveToHistory(canvasRef.current.toDataURL());
 				}
 			} catch (error) {
-				console.error("❌ PENCIL DEBUG - Error in drawing start:", error);
 				handleError(error, {
 					operation: "canvas drawing start",
 					category: ErrorCategory.UI,
@@ -114,9 +111,7 @@ export function useDrawingConfig({
 		onDrawingEnd: useCallback(() => {
 			if (disabled) return;
 			try {
-				if (import.meta.env.DEV) {
-					console.log("🎯 DRAW DEBUG - Drawing ended");
-				}
+				debug("🎯 DRAW DEBUG - Drawing ended");
 				setDrawing(false);
 				setIsDrawing(false);
 
@@ -127,7 +122,6 @@ export function useDrawingConfig({
 					onDrawingChange(canvasRef.current.toDataURL());
 				}
 			} catch (error) {
-				console.error("❌ PENCIL DEBUG - Error in drawing end:", error);
 				handleError(error, {
 					operation: "canvas drawing end",
 					category: ErrorCategory.UI,
@@ -245,28 +239,21 @@ export function useDrawingConfig({
 
 		onCreateText: useCallback(
 			(text: string, position: { x: number; y: number }, style: TextStyle) => {
-				console.log("📝 TEXT DEBUG - Text creation starting:", {
-					text,
+				debug("📝 TEXT DEBUG - Text creation starting:", {
 					position,
 					style,
 					currentObjectCount: objects.length,
-					timestamp: Date.now(),
 				});
 
 				return withObjectCreationProtection(() => {
-					console.log("📝 TEXT DEBUG - Adding text object to store");
 					const objectId = addText(text, position, style);
-					console.log("📝 TEXT DEBUG - Text object added with ID:", objectId);
+					debug("📝 TEXT DEBUG - Text object added with ID:", objectId);
 
-					console.log(
-						"📝 TEXT DEBUG - Saving canvas to history after text creation"
-					);
 					saveCanvasToHistory();
 
-					console.log("📝 TEXT DEBUG - Text creation completed:", {
+					debug("📝 TEXT DEBUG - Text creation completed:", {
 						objectId,
 						newObjectCount: objects.length + 1,
-						timestamp: Date.now(),
 					});
 
 					return objectId;

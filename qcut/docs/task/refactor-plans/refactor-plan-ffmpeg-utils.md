@@ -24,7 +24,8 @@
 
 ```
 lib/ffmpeg/
-├── index.ts                (~50 lines)  Barrel re-export + shared global state
+├── index.ts                (~40 lines)  Barrel re-export
+├── state.ts                (~20 lines)  Shared mutable state (ffmpeg instance, flags)
 ├── environment.ts          (~100 lines) Environment detection & validation
 ├── resources.ts            (~100 lines) WASM resource URL resolution
 ├── lifecycle.ts            (~80 lines)  Cleanup scheduling & usage tracking
@@ -37,7 +38,8 @@ lib/ffmpeg/
 
 | New File | Lines | Content |
 |----------|-------|---------|
-| `index.ts` | 50 | Global state vars, blob error listener, barrel re-exports |
+| `index.ts` | 40 | Barrel re-exports |
+| `state.ts` | 20 | Shared mutable state (ffmpeg instance, flags, blob error listener) |
 | `environment.ts` | 100 | isElectron, isPackagedElectron, checkEnvironment |
 | `resources.ts` | 100 | getFFmpegResourceUrl with app/HTTP/public fallbacks |
 | `lifecycle.ts` | 80 | scheduleFFmpegCleanup, updateLastUsed, timer state |
@@ -50,18 +52,20 @@ lib/ffmpeg/
 ```
 environment.ts → (standalone)
 resources.ts → environment.ts
-lifecycle.ts → (standalone, uses global state from index.ts)
-init.ts → environment.ts, resources.ts, lifecycle.ts
+state.ts → (standalone, mutable globals)
+lifecycle.ts → state.ts
+init.ts → environment.ts, resources.ts, lifecycle.ts, state.ts
 operations.ts → init.ts (getFFmpegInstance)
-index.ts → re-exports all
+index.ts → re-exports all, imports state.ts
 ```
 
 ## Migration Steps
 
 1. Create `environment.ts` (no dependencies, easiest)
 2. Create `resources.ts` (depends on environment)
-3. Create `lifecycle.ts` (standalone + global state)
-4. Create `init.ts` (depends on environment, resources, lifecycle)
-5. Create `operations.ts` (depends on init for FFmpeg instance)
-6. Create `index.ts` barrel with global state management
-7. Update imports throughout codebase
+3. Create `state.ts` (shared mutable state, no dependencies)
+4. Create `lifecycle.ts` (depends on state.ts)
+5. Create `init.ts` (depends on environment, resources, lifecycle)
+6. Create `operations.ts` (depends on init for FFmpeg instance)
+7. Create `index.ts` barrel re-export
+8. Update imports throughout codebase
