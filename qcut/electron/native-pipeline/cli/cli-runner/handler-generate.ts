@@ -107,6 +107,7 @@ async function runSingleGeneration(
 	};
 }
 
+/** Validate inputs, build prompt list, and dispatch single or parallel generation. */
 export async function handleGenerate(
 	options: CLIRunOptions,
 	onProgress: ProgressFn,

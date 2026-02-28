@@ -326,6 +326,7 @@ Examples:
 	);
 }
 
+/** Parse process argv into CLIRunOptions, exiting on --help/--version. */
 export function parseCliArgs(argv: string[]): CLIRunOptions {
 	const command = argv[0];
 
@@ -721,6 +722,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 	};
 }
 
+/** CLI entry point: parse args and run the appropriate command or session. */
 export async function main(
 	argv: string[] = process.argv.slice(2)
 ): Promise<void> {

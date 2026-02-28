@@ -22,6 +22,7 @@ type ProgressFn = (progress: {
 // Dispatcher
 // ---------------------------------------------------------------------------
 
+/** Route an `editor:media:*` or `editor:project:*` command to its handler. */
 export async function handleMediaProjectCommand(
 	client: EditorApiClient,
 	options: CLIRunOptions,
@@ -51,6 +52,7 @@ export async function handleMediaProjectCommand(
 // Health
 // ---------------------------------------------------------------------------
 
+/** Check editor health via the `/api/claude/health` endpoint. */
 export async function handleEditorHealth(
 	client: EditorApiClient
 ): Promise<CLIResult> {
@@ -155,6 +157,7 @@ async function mediaImportUrl(
 	return { success: true, data };
 }
 
+/** Batch-import media files via --sources (comma-separated paths) or --items (JSON). */
 async function mediaBatchImport(
 	client: EditorApiClient,
 	opts: CLIRunOptions
