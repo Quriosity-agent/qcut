@@ -1,7 +1,7 @@
-import { eq, or, type SQL } from "drizzle-orm";
+import { and, eq, isNull, lt, or, type SQL } from "drizzle-orm";
 import Stripe from "stripe";
 import { db } from "@qcut/db";
-import { licenses } from "@qcut/db/schema";
+import { licenses, stripeWebhookEvents } from "@qcut/db/schema";
 import {
 	addTopUpPackCreditsForUser,
 	downgradeToFreeCreditsForUser,
@@ -11,6 +11,16 @@ import {
 import { getLicenseByUserId, updateLicense } from "./license-service";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const WEBHOOK_LOCK_STALE_MS = 5 * 60 * 1000;
+
+const WEBHOOK_LOCK_RESULT = {
+	acquired: "acquired",
+	alreadyProcessed: "already_processed",
+	inProgress: "in_progress",
+} as const;
+
+type WebhookLockResult =
+	(typeof WEBHOOK_LOCK_RESULT)[keyof typeof WEBHOOK_LOCK_RESULT];
 
 const SUBSCRIPTION_PRICE_IDS: Record<string, string> = {
 	pro_month: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || "",
@@ -126,6 +136,126 @@ async function findLicenseByStripeIds({
 	} catch (error) {
 		throw new Error(
 			`Failed to find license by Stripe IDs: ${error instanceof Error ? error.message : "Unknown error"}`
+		);
+	}
+}
+
+async function acquireWebhookEventLock({
+	eventId,
+	eventType,
+}: {
+	eventId: string;
+	eventType: string;
+}): Promise<WebhookLockResult> {
+	try {
+		const now = new Date();
+		const [inserted] = await db
+			.insert(stripeWebhookEvents)
+			.values({
+				id: crypto.randomUUID(),
+				eventId,
+				eventType,
+				processedAt: null,
+				lastError: null,
+				createdAt: now,
+				updatedAt: now,
+			})
+			.onConflictDoNothing({ target: stripeWebhookEvents.eventId })
+			.returning({ id: stripeWebhookEvents.id });
+
+		if (inserted) {
+			return WEBHOOK_LOCK_RESULT.acquired;
+		}
+
+		const [existing] = await db
+			.select({
+				processedAt: stripeWebhookEvents.processedAt,
+			})
+			.from(stripeWebhookEvents)
+			.where(eq(stripeWebhookEvents.eventId, eventId))
+			.limit(1);
+
+		if (existing?.processedAt) {
+			return WEBHOOK_LOCK_RESULT.alreadyProcessed;
+		}
+
+		const staleThreshold = new Date(now.getTime() - WEBHOOK_LOCK_STALE_MS);
+		const [reclaimed] = await db
+			.update(stripeWebhookEvents)
+			.set({
+				eventType,
+				lastError: null,
+				updatedAt: now,
+			})
+			.where(
+				and(
+					eq(stripeWebhookEvents.eventId, eventId),
+					isNull(stripeWebhookEvents.processedAt),
+					lt(stripeWebhookEvents.updatedAt, staleThreshold)
+				)
+			)
+			.returning({ id: stripeWebhookEvents.id });
+
+		if (reclaimed) {
+			return WEBHOOK_LOCK_RESULT.acquired;
+		}
+
+		return WEBHOOK_LOCK_RESULT.inProgress;
+	} catch (error) {
+		throw new Error(
+			`Failed to acquire webhook lock for ${eventId}: ${error instanceof Error ? error.message : "Unknown error"}`
+		);
+	}
+}
+
+async function markWebhookEventProcessed({
+	eventId,
+}: {
+	eventId: string;
+}): Promise<void> {
+	try {
+		const now = new Date();
+		const [updated] = await db
+			.update(stripeWebhookEvents)
+			.set({
+				processedAt: now,
+				lastError: null,
+				updatedAt: now,
+			})
+			.where(eq(stripeWebhookEvents.eventId, eventId))
+			.returning({ id: stripeWebhookEvents.id });
+
+		if (!updated) {
+			throw new Error("No webhook lock row found to mark processed");
+		}
+	} catch (error) {
+		throw new Error(
+			`Failed to mark webhook event ${eventId} as processed: ${error instanceof Error ? error.message : "Unknown error"}`
+		);
+	}
+}
+
+async function releaseWebhookEventLock({
+	eventId,
+	errorMessage,
+}: {
+	eventId: string;
+	errorMessage: string;
+}): Promise<void> {
+	try {
+		await db
+			.delete(stripeWebhookEvents)
+			.where(
+				and(
+					eq(stripeWebhookEvents.eventId, eventId),
+					isNull(stripeWebhookEvents.processedAt)
+				)
+			);
+	} catch (releaseError) {
+		console.error(
+			`[Stripe] Failed to release webhook lock for ${eventId}: ${
+				releaseError instanceof Error ? releaseError.message : "Unknown error"
+			}; original error: ${errorMessage}`
 		);
 	}
 }
@@ -453,38 +583,60 @@ export async function handleWebhook({
 			signature,
 			webhookSecret
 		);
-
-		switch (event.type) {
-			case "checkout.session.completed":
-				await handleCheckoutCompleted({
-					session: event.data.object as Stripe.Checkout.Session,
-				});
-				break;
-			case "customer.subscription.updated":
-				await handleSubscriptionUpdated({
-					subscription: event.data.object as Stripe.Subscription,
-				});
-				break;
-			case "customer.subscription.deleted":
-				await handleSubscriptionDeleted({
-					subscription: event.data.object as Stripe.Subscription,
-				});
-				break;
-			case "invoice.payment_succeeded":
-				await handleInvoicePaymentSucceeded({
-					invoice: event.data.object as Stripe.Invoice,
-				});
-				break;
-			case "invoice.payment_failed":
-				await handleInvoicePaymentFailed({
-					invoice: event.data.object as Stripe.Invoice,
-				});
-				break;
-			default:
-				break;
+		const lockResult = await acquireWebhookEventLock({
+			eventId: event.id,
+			eventType: event.type,
+		});
+		if (lockResult === WEBHOOK_LOCK_RESULT.alreadyProcessed) {
+			return { received: true };
+		}
+		if (lockResult === WEBHOOK_LOCK_RESULT.inProgress) {
+			throw new Error(`Webhook event ${event.id} is currently processing`);
 		}
 
-		return { received: true };
+		try {
+			switch (event.type) {
+				case "checkout.session.completed":
+					await handleCheckoutCompleted({
+						session: event.data.object as Stripe.Checkout.Session,
+					});
+					break;
+				case "customer.subscription.updated":
+					await handleSubscriptionUpdated({
+						subscription: event.data.object as Stripe.Subscription,
+					});
+					break;
+				case "customer.subscription.deleted":
+					await handleSubscriptionDeleted({
+						subscription: event.data.object as Stripe.Subscription,
+					});
+					break;
+				case "invoice.payment_succeeded":
+					await handleInvoicePaymentSucceeded({
+						invoice: event.data.object as Stripe.Invoice,
+					});
+					break;
+				case "invoice.payment_failed":
+					await handleInvoicePaymentFailed({
+						invoice: event.data.object as Stripe.Invoice,
+					});
+					break;
+				default:
+					break;
+			}
+
+			await markWebhookEventProcessed({ eventId: event.id });
+			return { received: true };
+		} catch (processingError) {
+			await releaseWebhookEventLock({
+				eventId: event.id,
+				errorMessage:
+					processingError instanceof Error
+						? processingError.message
+						: "Unknown processing error",
+			});
+			throw processingError;
+		}
 	} catch (error) {
 		throw new Error(
 			`Stripe webhook handling failed: ${error instanceof Error ? error.message : "Unknown error"}`
