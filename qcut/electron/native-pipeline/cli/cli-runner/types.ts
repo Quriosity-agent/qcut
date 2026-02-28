@@ -152,6 +152,8 @@ export interface CLIRunOptions {
 	skipHealth?: boolean;
 	/** Session mode: read commands from stdin, one per line */
 	session?: boolean;
+	/** Comma-separated sources for batch-import convenience */
+	sources?: string;
 }
 
 export interface CLIResult {

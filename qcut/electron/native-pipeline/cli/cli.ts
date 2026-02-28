@@ -209,7 +209,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:media:list/info     List or inspect media files
   editor:media:import        Import local file (--source)
   editor:media:import-url    Import from URL (--url)
-  editor:media:batch-import  Batch import (--items, max 20)
+  editor:media:batch-import  Batch import (--items or --sources, max 20)
   editor:media:extract-frame Extract video frame (--timestamp)
   editor:media:rename/delete Rename or delete media
   editor:project:settings    Get/update project settings
@@ -489,6 +489,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// batch generation options
 			count: { type: "string" },
 			prompts: { type: "string", multiple: true },
+			// batch import convenience
+			sources: { type: "string" },
 			// performance flags
 			"skip-health": { type: "boolean", default: false },
 			session: { type: "boolean", default: false },
@@ -708,6 +710,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseInt(values.count as string, 10)
 			: undefined,
 		prompts: values.prompts as string[] | undefined,
+		// batch import convenience
+		sources: values.sources as string | undefined,
 		// performance flags
 		skipHealth: (values["skip-health"] as boolean) ?? false,
 		session: (values.session as boolean) ?? false,
