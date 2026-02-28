@@ -93,7 +93,9 @@ const persistFolders = () => {
 };
 ```
 
-### 2. Media Store Integration (`apps/web/src/stores/media/media-store.ts`)
+### 2. Media Store Folder Operations (`apps/web/src/stores/media/media-store-folders.ts`)
+
+Folder assignment logic lives in a dedicated slice file, imported by the main media store.
 
 **Folder Assignment Methods:**
 ```typescript
@@ -212,9 +214,11 @@ Media items have folder-related context menu options:
 
 | File | Purpose |
 |------|---------|
-| `stores/media-store-types.ts` | MediaFolder interface, constraints |
+| `stores/media/media-store-types.ts` | MediaFolder interface, constraints (primary) |
+| `stores/media-store-types.ts` | Re-export shim (`export * from "./media/media-store-types"`) |
 | `stores/folder-store.ts` | Folder state management |
-| `stores/media-store.ts` | Folder assignment methods |
+| `stores/media/media-store-folders.ts` | Folder assignment methods (addToFolder, removeFromFolder, etc.) |
+| `stores/media/media-store.ts` | Main media store (imports folder actions) |
 | `lib/storage/storage-service.ts` | Folder persistence |
 | `components/editor/media-panel/folder-tree.tsx` | Folder sidebar UI |
 | `components/editor/media-panel/folder-item.tsx` | Folder row component |

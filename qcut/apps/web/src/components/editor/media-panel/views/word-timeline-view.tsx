@@ -24,7 +24,7 @@ import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useElevenLabsTranscription } from "@/hooks/media/use-elevenlabs-transcription";
 import { X, Loader2, AlertCircle } from "lucide-react";
-import { WORD_FILTER_STATE } from "@/types/word-timeline";
+import { WORD_FILTER_STATE, type WordItem } from "@/types/word-timeline";
 import { toast } from "sonner";
 import {
 	formatTime,
@@ -330,7 +330,7 @@ export function WordTimelineView() {
 	);
 
 	const handleWordPrimaryAction = useCallback(
-		(word: { id: string; filterState: string; start: number }) => {
+		(word: WordItem) => {
 			try {
 				selectWord(word.id);
 				if (word.filterState === WORD_FILTER_STATE.NONE) {
@@ -358,7 +358,7 @@ export function WordTimelineView() {
 	);
 
 	const handleWordQuickRemove = useCallback(
-		(word: { id: string }) => {
+		(word: WordItem) => {
 			try {
 				setFilterState(word.id, WORD_FILTER_STATE.USER_REMOVE);
 			} catch {

@@ -199,14 +199,20 @@ When choosing a model, consider:
 ## Technical Implementation
 
 All models are accessed via the FAL.ai API through the `image-edit-client.ts` module located at:
-```
-qcut/apps/web/src/lib/image-edit-client.ts
+```text
+qcut/apps/web/src/lib/ai-clients/image-edit-client.ts
 ```
 
 The model capabilities are defined in:
+```text
+qcut/apps/web/src/lib/ai-clients/image-edit-capabilities.ts
 ```
-qcut/apps/web/src/lib/image-edit-capabilities.ts
-```
+
+Related files in `qcut/apps/web/src/lib/ai-clients/`:
+- `image-edit-models-info.ts` - Model metadata and info
+- `image-edit-polling.ts` - Queue-based polling logic
+- `image-edit-types.ts` - TypeScript type definitions
+- `image-edit-utils.ts` - Shared utility functions
 
 The Adjustment Panel UI is located at:
 ```
@@ -217,6 +223,7 @@ qcut/apps/web/src/components/editor/adjustment/index.tsx
 
 ## Related Documentation
 
-- [Image Edit Client API](../../apps/web/src/lib/image-edit-client.ts)
-- [Adjustment Panel Component](../../apps/web/src/components/editor/adjustment/index.tsx)
-- [Model Selector Component](../../apps/web/src/components/editor/adjustment/model-selector.tsx)
+- [Image Edit Client API](../../../../../apps/web/src/lib/ai-clients/image-edit-client.ts)
+- [Image Edit Capabilities](../../../../../apps/web/src/lib/ai-clients/image-edit-capabilities.ts)
+- [Adjustment Panel Component](../../../../../apps/web/src/components/editor/adjustment/index.tsx)
+- [Model Selector Component](../../../../../apps/web/src/components/editor/adjustment/model-selector.tsx)

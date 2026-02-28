@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { TimelineTrack, TimelineElement } from "@/types/timeline";
 import type { TextElementDragState } from "@/types/editor";
 
@@ -44,19 +44,24 @@ export function usePreviewDrag({
 		elementHeight: 0,
 	});
 
+	// Use a ref to avoid re-binding listeners on every drag update
+	const dragStateRef = useRef(dragState);
+	dragStateRef.current = dragState;
+
 	useEffect(() => {
 		const handleMouseMove = (e: MouseEvent) => {
-			if (!dragState.isDragging) return;
+			const ds = dragStateRef.current;
+			if (!ds.isDragging) return;
 
-			const deltaX = e.clientX - dragState.startX;
-			const deltaY = e.clientY - dragState.startY;
+			const deltaX = e.clientX - ds.startX;
+			const deltaY = e.clientY - ds.startY;
 
-			const scaleRatio = previewWidth / canvasWidth;
-			const newX = dragState.initialElementX + deltaX / scaleRatio;
-			const newY = dragState.initialElementY + deltaY / scaleRatio;
+			const scaleRatio = canvasWidth > 0 ? previewWidth / canvasWidth : 1;
+			const newX = ds.initialElementX + deltaX / scaleRatio;
+			const newY = ds.initialElementY + deltaY / scaleRatio;
 
-			const halfWidth = dragState.elementWidth / scaleRatio / 2;
-			const halfHeight = dragState.elementHeight / scaleRatio / 2;
+			const halfWidth = ds.elementWidth / scaleRatio / 2;
+			const halfHeight = ds.elementHeight / scaleRatio / 2;
 
 			const constrainedX = Math.max(
 				-canvasWidth / 2 + halfWidth,
@@ -75,19 +80,20 @@ export function usePreviewDrag({
 		};
 
 		const handleMouseUp = () => {
-			if (dragState.isDragging && dragState.trackId && dragState.elementId) {
+			const ds = dragStateRef.current;
+			if (ds.isDragging && ds.trackId && ds.elementId) {
 				// Find element type to use appropriate update method
-				const track = tracks.find((t) => t.id === dragState.trackId);
-				const el = track?.elements.find((e) => e.id === dragState.elementId);
+				const track = tracks.find((t) => t.id === ds.trackId);
+				const el = track?.elements.find((e) => e.id === ds.elementId);
 				if (el?.type === "text") {
-					updateTextElement(dragState.trackId, dragState.elementId, {
-						x: dragState.currentX,
-						y: dragState.currentY,
+					updateTextElement(ds.trackId, ds.elementId, {
+						x: ds.currentX,
+						y: ds.currentY,
 					});
 				} else {
-					updateElementPosition(dragState.elementId, {
-						x: dragState.currentX,
-						y: dragState.currentY,
+					updateElementPosition(ds.elementId, {
+						x: ds.currentX,
+						y: ds.currentY,
 					});
 				}
 			}
@@ -108,7 +114,7 @@ export function usePreviewDrag({
 			document.body.style.userSelect = "";
 		};
 	}, [
-		dragState,
+		dragState.isDragging,
 		previewWidth,
 		canvasWidth,
 		canvasHeight,

@@ -1,6 +1,6 @@
 # E2E Testing Infrastructure - QCut Video Editor
 
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-02-28
 
 ## How to Run E2E Tests
 
@@ -28,6 +28,9 @@ bun run test:e2e
 # Run all E2E tests and collect videos to docs/completed/e2e-videos/
 bun run test:e2e:record
 
+# Combine collected E2E video artifacts
+bun run test:e2e:combine
+
 # Run with interactive UI
 bun run test:e2e:ui
 
@@ -41,28 +44,28 @@ bun run test:e2e:workflow
 #### Using Playwright Directly
 ```bash
 # Run all tests
-bun x playwright test --project=electron
+playwright test
 
 # Run specific test file
-bun x playwright test simple-navigation.e2e.ts --project=electron
+playwright test simple-navigation.e2e.ts
 
 # Run by test name pattern
-bun x playwright test --project=electron --grep "should create project"
+playwright test --grep "should create project"
 
 # Run specific test by line number
-bun x playwright test project-workflow-part1.e2e.ts:19 --project=electron
+playwright test project-workflow-part1.e2e.ts:19
 ```
 
 #### Debug Mode
 ```bash
 # Run with headed browser for debugging
-bun x playwright test --project=electron --headed
+playwright test --headed
 
 # Run with debug mode (step through)
-bun x playwright test --project=electron --debug
+playwright test --debug
 
 # Run with UI mode (interactive)
-bun x playwright test --project=electron --ui
+playwright test --ui
 ```
 
 #### Test Reports
@@ -75,9 +78,12 @@ bun x playwright show-report
 
 ### Configuration (`playwright.config.ts`)
 ```typescript
+import { defineConfig, devices } from "@playwright/test";
+
 export default defineConfig({
   testDir: './apps/web/src/test/e2e',
   fullyParallel: false,           // Sequential execution for Electron
+  forbidOnly: !!process.env.CI,
   workers: 1,                     // Single worker to avoid port conflicts
   retries: process.env.CI ? 2 : 0,
   timeout: 60_000,                // 1-minute test timeout
@@ -91,7 +97,11 @@ export default defineConfig({
   },
   projects: [{
     name: 'electron',
-    testMatch: '**/*.e2e.ts'
+    testDir: './apps/web/src/test/e2e',
+    testMatch: '**/*.e2e.ts',
+    use: {
+      ...devices["Desktop Chrome"],
+    },
   }],
   testIgnore: [
     '**/node_modules/**',
@@ -110,7 +120,7 @@ QCut's End-to-End (E2E) testing infrastructure provides comprehensive testing fo
 ## Architecture
 
 ### Tech Stack
-- **Framework**: Playwright 1.40.0 with TypeScript
+- **Framework**: Playwright ^1.58.2 with TypeScript
 - **Target**: Electron application (Chromium-based)
 - **Test Runner**: Playwright Test Runner
 - **Configuration**: Single-worker sequential execution to avoid port conflicts
@@ -129,12 +139,23 @@ qcut/
 ├── apps/web/src/test/e2e/
 │   ├── helpers/
 │   │   └── electron-helpers.ts             # Core helper functions (19KB)
+│   ├── utils/
+│   │   └── screenshot-helper.ts            # Screenshot capture utilities
+│   ├── render-remotion-video.mts           # Remotion video render script
 │   ├── fixtures/
-│   │   └── media/                          # Test media files
-│   │       ├── README.md                   # Media fixtures documentation
-│   │       ├── sample-video.mp4            # 5-second 720p test video (81KB)
-│   │       ├── sample-audio.mp3            # Test audio file
-│   │       └── sample-image.png            # 1280x720 test image (4KB)
+│   │   ├── media/                          # Test media files
+│   │   │   ├── README.md                   # Media fixtures documentation
+│   │   │   ├── sample-video.mp4            # 5-second 720p test video (81KB)
+│   │   │   ├── sample-audio.mp3            # Test audio file
+│   │   │   ├── sample-image.png            # 1280x720 test image (4KB)
+│   │   │   └── test-scenes.mp4             # Multi-scene test video
+│   │   └── remotion/                       # Remotion test fixtures
+│   │       ├── README.md                   # Remotion fixtures documentation
+│   │       ├── valid-project/              # Valid Remotion project with compositions
+│   │       ├── invalid-project/            # Missing remotion dependency
+│   │       └── no-root-project/            # Missing Root.tsx
+│   │
+│   ├── screenshots/                        # E2E test screenshots
 │   │
 │   └── [Test Files]
 │       ├── simple-navigation.e2e.ts        # Basic navigation tests
@@ -145,7 +166,6 @@ qcut/
 │       ├── multi-media-management-part1.e2e.ts  # Multi-media import
 │       ├── multi-media-management-part2.e2e.ts  # Multi-media timeline
 │       ├── ai-enhancement-export-integration.e2e.ts  # AI export features
-│       ├── ai-transcription-caption-generation.e2e.ts # AI captions
 │       ├── sticker-overlay-testing.e2e.ts  # Sticker overlay tests
 │       ├── text-overlay-testing.e2e.ts     # Text overlay tests
 │       ├── auto-save-export-file-management.e2e.ts  # Auto-save tests
@@ -154,6 +174,8 @@ qcut/
 │       ├── project-folder-sync.e2e.ts               # Project folder sync
 │       ├── remotion-folder-import.e2e.ts             # Remotion folder import
 │       ├── remotion-panel-stability.e2e.ts           # Remotion panel stability
+│       ├── remotion-export-pipeline.e2e.ts           # Remotion export pipeline
+│       ├── screen-recording-repro.e2e.ts             # Screen recording repro
 │       ├── sticker-overlay-export.e2e.ts             # Sticker overlay export
 │       ├── terminal-paste.e2e.ts                     # Terminal paste
 │       ├── timeline-duration-limit.e2e.ts            # Timeline duration limits
@@ -177,7 +199,6 @@ qcut/
 | `multi-media-management-part1.e2e.ts` | Multiple media import | Media |
 | `multi-media-management-part2.e2e.ts` | Multi-media timeline | Timeline |
 | `ai-enhancement-export-integration.e2e.ts` | AI video enhancement export | AI |
-| `ai-transcription-caption-generation.e2e.ts` | AI transcription/captions | AI |
 | `sticker-overlay-testing.e2e.ts` | Sticker overlay features | Overlays |
 | `text-overlay-testing.e2e.ts` | Text overlay features | Overlays |
 | `auto-save-export-file-management.e2e.ts` | Auto-save functionality | Persistence |
@@ -186,6 +207,8 @@ qcut/
 | `project-folder-sync.e2e.ts` | Project folder synchronization | Sync |
 | `remotion-folder-import.e2e.ts` | Remotion folder importing | Remotion |
 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | Remotion |
+| `remotion-export-pipeline.e2e.ts` | Remotion export pipeline | Remotion |
+| `screen-recording-repro.e2e.ts` | Screen recording reproduction | Recording |
 | `sticker-overlay-export.e2e.ts` | Sticker overlay export | Overlays |
 | `terminal-paste.e2e.ts` | Terminal paste functionality | Terminal |
 | `timeline-duration-limit.e2e.ts` | Timeline duration limits | Timeline |
@@ -296,37 +319,37 @@ export async function waitForAppReady(page: Page)
 
 ### 2. Waiting Strategies
 ```typescript
-// ✅ Good: State-based waiting
+// Good: State-based waiting
 await page.waitForSelector('[data-testid="timeline-track"]');
 
-// ✅ Good: Wait for specific condition
+// Good: Wait for specific condition
 await expect(page.getByTestId('project-title')).toBeVisible();
 
-// ❌ Bad: Fixed timeouts
+// Bad: Fixed timeouts
 await page.waitForTimeout(5000);
 ```
 
 ### 3. Element Selection
 ```typescript
-// ✅ Good: Use data-testid attributes
+// Good: Use data-testid attributes
 await page.getByTestId('new-project-button').click();
 
-// ✅ Good: Use semantic selectors as fallback
+// Good: Use semantic selectors as fallback
 await page.getByRole('button', { name: 'New Project' }).click();
 
-// ❌ Bad: Use fragile CSS selectors
+// Bad: Use fragile CSS selectors
 await page.locator('.btn-primary.header-button').click();
 ```
 
 ### 4. Error Handling
 ```typescript
-// ✅ Good: Graceful degradation
+// Good: Graceful degradation
 const button = page.getByTestId('optional-button');
 if (await button.isVisible()) {
   await button.click();
 }
 
-// ✅ Good: Multiple fallback strategies
+// Good: Multiple fallback strategies
 await Promise.race([
   page.waitForSelector('[data-testid="success"]'),
   page.waitForSelector('[data-testid="error"]')
@@ -379,13 +402,13 @@ ls -la apps/web/src/test/e2e/fixtures/media/
 bun run electron
 
 # Run single test with full output
-bun x playwright test simple-navigation.e2e.ts --project=electron --reporter=list
+playwright test simple-navigation.e2e.ts --reporter=list
 
 # Debug test with browser visible
-bun x playwright test --project=electron --headed --debug
+playwright test --headed --debug
 
 # Run with trace enabled
-bun x playwright test --project=electron --trace on
+playwright test --trace on
 ```
 
 ## Development Guidelines
@@ -509,6 +532,7 @@ When using `bun run test:e2e:record`, videos are also copied to `docs/completed/
 |--------|-------------|
 | `bun run test:e2e` | Run all E2E tests |
 | `bun run test:e2e:record` | Run all E2E tests and collect videos |
+| `bun run test:e2e:combine` | Combine collected E2E video artifacts |
 | `bun run test:e2e:ui` | Run with Playwright UI |
 | `bun run test:e2e:headed` | Run with visible browser |
 | `bun run test:e2e:workflow` | Run project workflow tests only |

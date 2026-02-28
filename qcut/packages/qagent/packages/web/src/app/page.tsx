@@ -12,15 +12,19 @@ import {
 import { prCache, prCacheKey } from "@/lib/cache";
 import { getProjectName } from "@/lib/project-name";
 import { mergeWithUnmanagedTmux } from "@/lib/tmux-sessions";
+import { mergeWithUnmanagedCLI } from "@/lib/cli-sessions";
+import { applyLabels } from "@/lib/session-labels";
 
 export const dynamic = "force-dynamic";
 
+/** Generate page metadata with the project name in the title. */
 export async function generateMetadata(): Promise<Metadata> {
 	const projectName = getProjectName();
 	// Use absolute to opt out of the layout's "%s | project" template
 	return { title: { absolute: `ao | ${projectName}` } };
 }
 
+/** Server-rendered dashboard home page — fetches sessions and renders the Dashboard component. */
 export default async function Home() {
 	let sessions: DashboardSession[] = [];
 	let orchestratorId: string | null = null;
@@ -122,8 +126,10 @@ export default async function Home() {
 		);
 		await Promise.race([Promise.allSettled(enrichPromises), enrichTimeout]);
 
-		// Merge with unmanaged tmux sessions
+		// Merge with unmanaged tmux sessions, then unmanaged CLI agents
 		sessions = await mergeWithUnmanagedTmux(sessions);
+		sessions = await mergeWithUnmanagedCLI(sessions);
+		await applyLabels(sessions);
 	} catch {
 		// Config not found or services unavailable — show empty dashboard
 	}

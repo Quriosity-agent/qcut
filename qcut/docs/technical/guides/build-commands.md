@@ -1,11 +1,11 @@
 # QCut Build Commands Guide
 
-**Last Updated:** 2026-02-16
-**Current Version:** 2026.02.16.1 (date-based versioning)
+**Last Updated:** 2026-02-28
+**Current Version:** 2026.02.28.2 (date-based versioning)
 
 ## Prerequisites
 ```bash
-git clone https://github.com/donghaozhang/qcut.git
+git clone https://github.com/Quriosity-agent/qcut.git
 cd qcut
 bun install
 bun run build  # Required before Electron builds
@@ -64,6 +64,8 @@ bun run test:e2e          # Playwright tests
 bun run test:e2e:ui       # Playwright with UI
 bun run test:e2e:headed   # Headed browser mode
 bun run test:e2e:workflow # Project workflow tests
+bun run test:e2e:record   # Run all E2E tests and collect videos
+bun run test:e2e:combine  # Combine E2E videos
 ```
 
 ### Electron TypeScript
@@ -121,6 +123,7 @@ bun run release:promote   # Promote prerelease to stable
 | `electron:dev` | Run Electron in development mode |
 | `build:electron` | Compile Electron TypeScript |
 | `build:electron:watch` | Watch mode for Electron TypeScript |
+| `compile-afterpack` | Build afterPack script for electron-builder |
 | `dist` | Build with electron-builder |
 | `dist:dir` | Build unpacked directory |
 | `dist:win` | Build Windows installer |
@@ -133,11 +136,34 @@ bun run release:promote   # Promote prerelease to stable
 | `build:exe` | Build + package with electron-packager |
 | `setup-ffmpeg` | Copy FFmpeg WASM files to public |
 | `copy-ffmpeg` | Copy FFmpeg for packaged builds |
+| `stage-ffmpeg-binaries` | Stage native FFmpeg binaries for packaging |
+| `stage-aicp-binaries` | Stage AICP binaries for packaging |
+| `stage:all-binaries` | Stage both FFmpeg and AICP binaries |
+| `verify:packaged-ffmpeg` | Verify FFmpeg binaries in packaged build |
+| `verify:packaged-aicp` | Verify AICP binaries in packaged build |
+| `sync-skills` | Synchronize skills to resources |
+| `check:circular` | Check for circular dependencies with madge |
 | `release` | Date-based version bump + release |
+| `release:alpha` | Alpha prerelease version |
+| `release:beta` | Beta prerelease version |
+| `release:rc` | Release candidate version |
+| `release:promote` | Promote prerelease to stable |
+| `test` | Run Vitest unit tests (apps/web) |
 | `test:e2e` | Run Playwright E2E tests |
 | `test:e2e:ui` | Playwright with interactive UI |
 | `test:e2e:headed` | Playwright in headed mode |
 | `test:e2e:workflow` | Run project workflow tests |
+| `test:e2e:record` | Run all E2E tests and collect videos |
+| `test:e2e:combine` | Combine E2E test videos |
+| `pipeline` | Run native pipeline CLI |
+| `aicp:install` | Install AICP Python package (editable) |
+| `aicp:test` | Run AICP Python tests |
+| `aicp:list-models` | List available AICP models |
+| `submodule:init` | Initialize git submodules |
+| `submodule:update` | Update git submodules to latest remote |
+| `qagent:build` | Build QAgent packages |
+| `qagent:init` | Install and build QAgent |
+| `qagent:setup` | Setup QAgent (alias for qagent:init) |
 
 ### Web App (`apps/web/package.json`)
 | Script | Description |
@@ -198,9 +224,9 @@ NODE_ENV=development                       # Development mode
 
 ## Tech Stack Versions
 - **Bun**: 1.2.18
-- **Electron**: 37.4.0
-- **Turbo**: 2.6.3
-- **Vite**: 7.1.3
-- **TypeScript**: 5.9.2
-- **Vitest**: 3.2.4
-- **Playwright**: 1.40.0
+- **Electron**: ^40.6.0
+- **Turbo**: ^2.8.10
+- **Vite**: ^7.3.1
+- **TypeScript**: ^5.9.3
+- **Vitest**: ^4.0.0
+- **Playwright**: ^1.58.2

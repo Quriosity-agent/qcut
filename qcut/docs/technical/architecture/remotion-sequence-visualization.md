@@ -39,12 +39,13 @@ interface SequenceMetadata {
   from: number;
   durationInFrames: number;
   color?: string;
+  description?: string;
 }
 
 interface TransitionMetadata {
   afterSequenceIndex: number;
   durationInFrames: number;
-  presentation?: "fade" | "slide" | "wipe" | "zoom";
+  presentation?: "fade" | "slide" | "wipe" | "zoom" | "custom";
 }
 
 interface SequenceStructure {
@@ -58,10 +59,28 @@ interface SequenceStructure {
 
 | File | Purpose |
 |------|---------|
-| `lib/remotion/types.ts` | Type definitions |
-| `lib/remotion/duration-calculator.ts` | Duration/position calculations |
-| `lib/remotion/sequence-parser.ts` | AST extraction from source |
-| `lib/remotion/sequence-analysis-service.ts` | LRU caching service |
+| `lib/remotion/types.ts` | Type definitions (sequence, component, instance, cache, sync, export) |
+| `lib/remotion/index.ts` | Barrel re-exports for the entire remotion module |
+| `lib/remotion/duration-calculator.ts` | Duration/position calculations with overlap handling |
+| `lib/remotion/sequence-parser.ts` | AST extraction of sequences/transitions from source |
+| `lib/remotion/sequence-analysis-service.ts` | LRU caching service for parsed analysis |
+| `lib/remotion/component-loader.ts` | Barrel re-export for `component-loader/` subdirectory |
+| `lib/remotion/component-loader/loader.ts` | Core component loading from code/file/IndexedDB |
+| `lib/remotion/component-loader/folder-import.ts` | Folder-based Remotion project import |
+| `lib/remotion/component-loader/indexeddb.ts` | IndexedDB persistence for imported components |
+| `lib/remotion/component-loader/types.ts` | Types for load results, stored components, folder imports |
+| `lib/remotion/component-loader/constants.ts` | DB name, version, store name constants |
+| `lib/remotion/component-loader/index.ts` | Barrel re-exports for the subdirectory |
+| `lib/remotion/component-validator.ts` | Security and correctness validation for component code |
+| `lib/remotion/compositor.ts` | Frame compositing: merges QCut canvas with Remotion frames |
+| `lib/remotion/dynamic-loader.ts` | Runtime loading of bundled components via blob URLs |
+| `lib/remotion/export-engine-remotion.ts` | Export engine for pre-rendering and encoding Remotion elements |
+| `lib/remotion/folder-validator.ts` | Client-side validation for Remotion folder imports |
+| `lib/remotion/keyframe-converter.ts` | Converts QCut keyframes to Remotion `interpolate()` calls |
+| `lib/remotion/player-wrapper.tsx` | Wraps `@remotion/player` for timeline/playback integration |
+| `lib/remotion/pre-renderer.ts` | Renders Remotion elements to frame sequences before export |
+| `lib/remotion/schema-parser.ts` | Parses Zod schemas to generate dynamic prop editor fields |
+| `lib/remotion/sync-manager.ts` | Frame synchronization between QCut timeline and Remotion players |
 | `components/editor/timeline/remotion-sequences.tsx` | Author metadata visualization |
 | `components/editor/timeline/parsed-sequence-overlay.tsx` | Parsed analysis visualization |
 | `components/editor/timeline/remotion-element.tsx` | Integration point |
@@ -71,7 +90,10 @@ interface SequenceStructure {
 ```
 Component Import
        │
-       ├─► component-loader.ts (validation)
+       ├─► component-loader/ (validation, persistence, folder import)
+       │        ├── loader.ts → loadComponentFromCode / loadComponentFromFile
+       │        ├── folder-import.ts → importFromFolder
+       │        └── indexeddb.ts → IndexedDB storage
        │
        └─► sequence-analysis-service.ts
                     │
@@ -120,10 +142,17 @@ AST parsing marks computed values (e.g., `from={index * 30}`) as `"dynamic"` and
 calculateTotalDuration(structure: SequenceStructure): number
 
 // Get frame positions for each sequence
-calculateSequencePositions(structure: SequenceStructure): Array<{from, to}>
+calculateSequencePositions(structure: SequenceStructure): SequencePosition[]
 
-// Find sequences at a specific frame
-getOverlappingSequences(structure, frame): SequenceMetadata[]
+// Find sequence indices at a specific frame
+getOverlappingSequences(positions: SequencePosition[], frame: number): number[]
+
+// Find transition and overlap region at a given frame
+findTransitionAtFrame(structure: SequenceStructure, positions: SequencePosition[], frame: number):
+  { transition: TransitionMetadata; overlapStart: number; overlapEnd: number } | null
+
+// Validate internal consistency of a sequence structure
+validateSequenceStructure(structure: SequenceStructure): string[]
 
 // Check for dynamic values
 hasDynamicValues(parsed: ParsedStructure): boolean
@@ -132,9 +161,21 @@ hasDynamicValues(parsed: ParsedStructure): boolean
 ## Tests
 
 - `duration-calculator.test.ts` - 24 tests
-- `remotion-sequences.test.tsx` - 14 tests
 - `sequence-parser.test.ts` - 26 tests
 - `sequence-analysis-service.test.ts` - 17 tests
+- `remotion-sequences.test.tsx` - 14 tests
+- `component-loader.test.ts` - 36 tests
+- `component-loader-analysis.test.ts` - 6 tests
+- `component-validator.test.ts` - 59 tests
+- `compositor.test.ts` - 24 tests
+- `dynamic-loader.test.ts` - 11 tests
+- `export-engine-remotion.test.ts` - 16 tests
+- `keyframe-converter.test.ts` - 50 tests
+- `player-wrapper-trim.test.ts` - 8 tests
+- `pre-renderer.test.ts` - 24 tests
+- `schema-parser.test.ts` - 32 tests
+- `sync-manager.test.ts` - 24 tests
+- `types.test.ts` - 20 tests
 
 ## Related Docs
 

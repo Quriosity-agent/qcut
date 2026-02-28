@@ -4,7 +4,7 @@
 
 QCut includes comprehensive AI-powered video generation capabilities, allowing users to create custom videos from text prompts and images directly within the video editor. This system integrates with multiple leading AI video models via FAL.ai and seamlessly adds generated content to the timeline.
 
-> **⚠️ Desktop App Only**: AI video generation features require the Electron desktop application. These features are not available in web-only mode because they rely on Electron IPC for secure API key storage and management.
+> **Warning: Desktop App Only**: AI video generation features require the Electron desktop application. These features are not available in web-only mode because they rely on Electron IPC for secure API key storage and management.
 
 
 sequenceDiagram
@@ -21,16 +21,16 @@ sequenceDiagram
     Model->>Capabilities: getCombinedCapabilities(selectedModels)
     Capabilities-->>UI: Return intersected capabilities
     UI->>UI: Render clamped T2V settings<br/>(aspect_ratio, duration, resolution)
-    
+
     User->>UI: Enter prompt + adjust settings
     User->>UI: Click Generate
     UI->>Generation: Call generateVideo with t2v*Props
-    
+
     Generation->>Generation: Validate duration vs. capabilities<br/>(getSafeDuration clamping)
     Generation->>Generation: Build unifiedParams<br/>(sanitize to capability ranges)
     Generation->>API: Send request with unifiedParams
     API-->>Generation: Return video_url + metadata
-    
+
     Generation->>MediaStore: Download + create media item
     Generation->>MediaStore: addMediaItem with unified metadata
     MediaStore-->>Generation: Persist to storage
@@ -46,31 +46,23 @@ sequenceDiagram
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
 | **Sora 2 T2V** | 720p | 12s | $0.10/s | State-of-the-art text-to-video |
-| **Sora 2 T2V Pro** | 720p/1080p | 12s | $0.075-0.125/s | High-quality with 1080p support |
+| **Sora 2 T2V Pro** | 720p/1080p | 12s | $0.30-0.50 | High-quality with 1080p support |
 
 #### Google Veo 3.1
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
-| **Veo 3.1 Fast** | 720p/1080p | 8s | $0.15/s (~$1.20/8s) | Faster, budget-friendly |
-| **Veo 3.1** | 720p/1080p | 8s | $0.40/s (~$3.20/8s) | Premium quality |
-
-#### Google Veo 3 (Legacy)
-| Model | Resolution | Max Duration | Price | Best For |
-|-------|------------|--------------|-------|----------|
-| **Veo3 Fast** | 1080p | 30s | $2.00 | High quality, faster |
-| **Veo3** | 1080p | 30s | $3.00 | Highest quality |
+| **Veo 3.1 Fast** | 720p/1080p | 8s | $1.20 | Faster, budget-friendly |
+| **Veo 3.1** | 720p/1080p | 8s | $3.20 | Premium quality |
 
 #### LTX Video 2.0
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
-| **LTX Video 2.0 Pro** | 1080p-4K | 10s | $0.06/s | Audio generation, up to 4K |
-| **LTX Video 2.0 Fast** | 1080p-4K | 20s | $0.04-0.16/s | Extended duration, up to 4K |
+| **LTX Video 2.0 Pro** | 1080p-4K | 10s | $0.06 | Audio generation, up to 4K |
+| **LTX Video 2.0 Fast** | 1080p-4K | 20s | $0.04-0.16 | Extended duration, up to 4K |
 
 #### MiniMax Hailuo
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
-| **Hailuo 02** | 768p | 6s | $0.27 | Budget-friendly, realistic physics |
-| **Hailuo 02 Pro** | 1080p | 6s | $0.48 | Ultra-realistic physics |
 | **Hailuo 2.3 Standard** | 768p | 10s | $0.28-0.56 | Budget text-to-video |
 | **Hailuo 2.3 Pro** | 1080p | 10s | $0.49 | Cinematic camera control |
 
@@ -85,8 +77,9 @@ sequenceDiagram
 |-------|------------|--------------|-------|----------|
 | **Kling v3 Pro** | 1080p | 15s | $0.336 | Latest flagship with audio generation |
 | **Kling v3 Standard** | 1080p | 15s | $0.252 | Cost-effective v3 with audio |
-| **Kling v2.1 Master** | 1080p | 10s | $0.15 | Unparalleled motion fluidity |
+| **Kling v2.6 Pro** | 1080p | 10s | $0.70 | Cinematic visuals with audio |
 | **Kling v2.5 Turbo Pro** | 1080p | 10s | $0.18 | Enhanced turbo performance |
+| **Kling v2.5 Turbo Standard** | 720p | 10s | $0.10 | Efficient text-to-video |
 
 #### Vidu
 | Model | Resolution | Max Duration | Price | Best For |
@@ -96,8 +89,8 @@ sequenceDiagram
 #### Alibaba WAN
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
+| **WAN v2.6 T2V** | 720p/1080p | 15s | $0.10-0.15/s | Multi-shot support, audio sync |
 | **WAN v2.5 Preview** | 1080p | 10s | $0.12 | Next-gen quality |
-| **WAN v2.2 Turbo** | 720p | 5s | $0.10 | High-speed photorealistic |
 
 ### Image-to-Video Models
 
@@ -105,21 +98,21 @@ sequenceDiagram
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
 | **Sora 2 I2V** | 720p | 12s | $0.10/s | Image animation |
-| **Sora 2 I2V Pro** | 720p/1080p | 12s | $0.075-0.125/s | High-quality animation |
+| **Sora 2 I2V Pro** | 720p/1080p | 12s | $0.30-0.50 | High-quality animation |
 
 #### Google Veo 3.1
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
-| **Veo 3.1 Fast I2V** | 720p/1080p | 8s | $0.15/s | Fast image animation |
-| **Veo 3.1 Fast Frame-to-Video** | 720p/1080p | 8s | $0.15/s | First/last frame animation |
-| **Veo 3.1 I2V** | 720p/1080p | 8s | $0.40/s | Premium image animation |
-| **Veo 3.1 Frame-to-Video** | 720p/1080p | 8s | $0.40/s | Premium frame animation |
+| **Veo 3.1 Fast I2V** | 720p/1080p | 8s | $1.20 | Fast image animation |
+| **Veo 3.1 Fast Frame-to-Video** | 720p/1080p | 8s | $1.20 | First/last frame animation |
+| **Veo 3.1 I2V** | 720p/1080p | 8s | $3.20 | Premium image animation |
+| **Veo 3.1 Frame-to-Video** | 720p/1080p | 8s | $3.20 | Premium frame animation |
 
 #### LTX Video 2.0
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
-| **LTX Video 2.0 I2V** | 1080p-4K | 10s | $0.06/s | Audio + image animation |
-| **LTX Video 2.0 Fast I2V** | 1080p-4K | 20s | $0.04-0.16/s | Extended I2V |
+| **LTX Video 2.0 I2V** | 1080p-4K | 10s | $0.36 | Audio + image animation |
+| **LTX Video 2.0 Fast I2V** | 1080p-4K | 20s | $0.04-0.16 | Extended I2V |
 
 #### ByteDance Seedance
 | Model | Resolution | Max Duration | Price | Best For |
@@ -132,7 +125,9 @@ sequenceDiagram
 |-------|------------|--------------|-------|----------|
 | **Kling v3 Pro I2V** | 1080p | 12s | $0.336 | Latest flagship I2V with audio |
 | **Kling v3 Standard I2V** | 1080p | 12s | $0.252 | Cost-effective v3 I2V with audio |
+| **Kling v2.6 Pro I2V** | 1080p | 10s | $0.70 | Cinematic visuals with audio |
 | **Kling v2.5 Turbo Pro I2V** | 1080p | 10s | $0.35 | Cinematic motion |
+| **Kling O1 I2V** | 1080p | 10s | $0.112 | Start/end frame transitions |
 
 #### MiniMax Hailuo
 | Model | Resolution | Max Duration | Price | Best For |
@@ -144,31 +139,57 @@ sequenceDiagram
 #### Alibaba WAN
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
+| **WAN v2.6 I2V** | 720p/1080p | 15s | $0.10-0.15/s | Multi-shot, audio sync |
 | **WAN v2.5 Preview I2V** | 480p-1080p | 10s | $0.05-0.15/s | Music + prompt expansion |
 
 #### Vidu
 | Model | Resolution | Max Duration | Price | Best For |
 |-------|------------|--------------|-------|----------|
 | **Vidu Q3 I2V** | 360p-1080p | 16s | $0.07-0.154/s | Flexible duration, audio generation |
-| **Vidu Q2 Turbo I2V** | 720p | 8s | $0.05/s | Motion control |
+| **Vidu Q2 Turbo I2V** | 720p | 8s | $0.05 | Motion control |
 
-### Avatar Models
+### Avatar & Video Transformation Models
 
 | Model | Resolution | Max Duration | Price | Required Inputs |
 |-------|------------|--------------|-------|-----------------|
+| **Kling Avatar v2 Pro** | 1080p | 60s | $0.115/s | Image + Audio |
+| **Kling Avatar v2 Standard** | 1080p | 60s | $0.0562/s | Image + Audio |
 | **Kling Avatar Pro** | 1080p | 10s | $0.25 | Image + Audio |
 | **Kling Avatar Standard** | 720p | 10s | $0.15 | Image + Audio |
 | **ByteDance OmniHuman v1.5** | 1080p | 30s | $0.20 | Image + Audio |
+| **Sync Lipsync React-1** | Preserves source | 15s | $0.10 | Video + Audio |
+| **WAN v2.6 Ref2V** | 720p/1080p | 15s | $0.10-0.15/s | Reference Video |
 | **WAN Animate/Replace** | 480p-720p | 30s | $0.075 | Image + Video |
+| **Kling O1 Video Reference** | 1080p | 10s | $0.112 | Source Video |
+| **Kling O1 Video Edit** | 1080p | 10s | $0.168 | Source Video |
+| **Kling O1 Reference-to-Video** | 1080p | 10s | $0.112 | Reference Images |
+| **Veo 3.1 Fast Extend** | 720p | 7s | $0.15/s | Source Video |
+| **Veo 3.1 Extend** | 720p | 7s | $0.40/s | Source Video |
 | **Sora 2 Video Remix** | Preserves source | 12s | Dynamic | Sora video ID |
+
+### Cinematic Angles (SHOTS)
+
+| Model | Resolution | Price | Best For |
+|-------|------------|-------|----------|
+| **SHOTS Cinematic Angles** | 1080p | $0.40 | 9 camera angles from a single image |
+
+Generates 9 cinematic camera perspectives (Front, Front-Left 45, Left 90, Back-Left 135, Back 180, Back-Right 225, Right 270, Front-Right 315, Top-Down) using Seeddream v4.5. Angles are processed in batches of 3 for FAL rate limit compliance.
+
+### Image Upscale Models
+
+| Model | Max Scale | Price | Best For |
+|-------|-----------|-------|----------|
+| **Crystal Upscaler** | 10x | $0.02/image | Budget-friendly, fast, social media |
+| **SeedVR Upscale** | 16x | mid-tier | Creative upscaling with detail synthesis |
+| **Topaz Upscale** | 8x+ | $0.50+ | Professional quality, tile overlap |
 
 ### Video Upscale Models
 
 | Model | Output | Max Duration | Price | Best For |
 |-------|--------|--------------|-------|----------|
-| **ByteDance Upscaler** | 1080p/2K/4K | 2 min | $0.007-0.058/s | AI upscaling, optional 60fps |
-| **FlashVSR Upscaler** | 1x-4x | 2 min | $0.0005/megapixel | Fastest, customizable |
-| **Topaz Upscale** | Up to 8x | 2 min | $0.50+ | Professional quality |
+| **ByteDance Upscaler** | 1080p/2K/4K | 2 min | $0.05 | AI upscaling, optional 60fps |
+| **FlashVSR** | Up to 4x | 2 min | $0.03 | Fastest, customizable |
+| **Topaz Video AI** | Up to 8x | 2 min | $0.50+ | Professional quality |
 
 ## Generation Modes
 
@@ -215,17 +236,27 @@ Create talking head videos from images and audio.
 
 **Input Requirements**:
 - Character image (JPG, PNG, WebP)
-- Audio file (MP3, WAV, AAC - max 50MB)
-- Optional: Source video for WAN Animate/Replace
+- Audio file (MP3, WAV, AAC - max 50MB; max 5MB for Kling Avatar v2)
+- Optional: Source video for WAN Animate/Replace, Sync Lipsync, or Kling O1 models
+
+### Cinematic Angles (SHOTS)
+Generate 9 camera perspectives from a single image.
+
+**Input Requirements**:
+- Source image (single reference image)
+- Each angle appends a camera perspective suffix to the prompt
+- Uses Seeddream v4.5 backend for image generation
 
 ## AI Video Workflow Steps
 
 ### Step 1: Access AI Video Generation
-1. Navigate to **Media Panel → AI tab**
+1. Navigate to **Media Panel -> AI tab**
 2. Choose generation mode:
    - **Text to Video**: Generate from text descriptions
    - **Image to Video**: Animate existing images
-   - **Avatar**: Create talking head videos
+   - **Avatar**: Create talking head videos, video transformations, lip-sync
+   - **Angles**: Generate cinematic camera angles
+   - **Upscale**: Upscale images or videos
 
 ### Step 2: Configure Generation Settings
 
@@ -272,33 +303,52 @@ Create talking head videos from images and audio.
 ### Architecture Overview
 ```
 AI Video Generation Flow:
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   User Input    │───▶│  AI Video Module │───▶│   FAL AI APIs   │
-│ (Text/Image)    │    │  (Modular)       │    │   (40+ models)  │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                                ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Media Store   │◀───│  Video Download  │◀───│   Video URLs    │
-│   (Timeline)    │    │   & Processing   │    │   (fal.media)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │
-         ▼
-┌─────────────────┐    ┌──────────────────┐
-│ Storage Service │───▶│   Project DB     │
-│  (Persistence)  │    │ (IndexedDB/OPFS) │
-└─────────────────┘    └──────────────────┘
++-----------------+    +------------------+    +-----------------+
+|   User Input    |--->|  AI Video Module  |--->|   FAL AI APIs   |
+| (Text/Image)    |    |  (Modular)       |    |   (50+ models)  |
++-----------------+    +------------------+    +-----------------+
+                                |
+                                v
++-----------------+    +------------------+    +-----------------+
+|   Media Store   |<---|  Video Download  |<---|   Video URLs    |
+|   (Timeline)    |    |   & Processing   |    |   (fal.media)   |
++-----------------+    +------------------+    +-----------------+
+         |
+         v
++-----------------+    +------------------+
+| Storage Service |--->|   Project DB     |
+|  (Persistence)  |    | (IndexedDB/OPFS) |
++-----------------+    +------------------+
 ```
 
 ### Key Components
 
-#### 1. **AI Constants** (`components/editor/media-panel/views/ai/constants/ai-constants.ts`)
-- Centralized model configuration with endpoints, pricing, capabilities
-- 40+ AI models with full parameter specifications
-- Model helper functions for filtering and selection
+#### 1. **AI Constants** (`components/editor/media-panel/views/ai/constants/`)
+Organized by model category for maintainability:
+
+```
+constants/
+├── ai-constants.ts              # Consolidated re-exports, API config, UI constants
+├── ai-model-options.ts          # Model option enums and defaults
+├── angles-config.ts             # SHOTS cinematic angles (9 perspectives)
+├── avatar-models-config.ts      # Avatar/talking-head model definitions
+├── error-messages.ts            # Centralized error message strings
+├── image2video-models-config.ts # I2V model definitions
+├── model-config-validation.ts   # Model ID uniqueness and order validation
+├── model-provider-logos.ts      # Provider logo mappings
+├── text2video-models-config/    # T2V capability definitions (refactored)
+│   ├── index.ts                 # Barrel exports
+│   ├── models.ts                # T2V model definitions
+│   ├── capabilities.ts          # Per-model capability maps
+│   ├── helpers.ts               # getCombinedCapabilities, getT2VModelsInOrder
+│   └── order.ts                 # Display order and ID aliases
+└── __tests__/
+    ├── kling-v3-models.test.ts
+    └── model-provider-logos.test.ts
+```
 
 #### 2. **AI Video Module** (`lib/ai-video/`)
-Modular architecture for AI video generation, refactored from monolithic `ai-video-client.ts`:
+Modular architecture for AI video generation:
 
 ```
 lib/ai-video/
@@ -310,69 +360,175 @@ lib/ai-video/
 │   ├── polling.ts              # Queue polling with progress updates
 │   └── streaming.ts            # Video streaming download
 ├── generators/
-│   ├── base-generator.ts       # Common utilities (fileToDataURL, response building)
-│   ├── text-to-video.ts        # T2V generators (Sora 2, Veo, Kling, etc.)
-│   ├── image-to-video.ts       # I2V generators
+│   ├── angles.ts               # Cinematic angles generation
 │   ├── avatar.ts               # Avatar/talking head generation
+│   ├── base-generator.ts       # Common utilities (fileToDataURL, response building)
+│   ├── image-to-video.ts       # I2V generators
+│   ├── image.ts                # Seeddream image generation
+│   ├── kling-generators.ts     # Kling-specific generation logic
+│   ├── misc-generators.ts      # Miscellaneous model generators
+│   ├── text-to-video.ts        # Legacy T2V entry point
+│   ├── text-to-video/          # Refactored T2V subdirectory
+│   │   ├── index.ts            # Barrel exports
+│   │   ├── generate-video.ts   # Main T2V generation orchestrator
+│   │   ├── shared.ts           # Shared T2V utilities
+│   │   ├── hailuo-generator.ts # Hailuo-specific T2V logic
+│   │   ├── ltxv2-generator.ts  # LTX Video 2.0 T2V logic
+│   │   ├── vidu-generator.ts   # Vidu-specific T2V logic
+│   │   └── wan26-generator.ts  # WAN v2.6 T2V logic
 │   ├── upscale.ts              # Video upscaling (ByteDance, FlashVSR, Topaz)
-│   └── image.ts                # Seeddream image generation
+│   ├── vidu-generators.ts      # Vidu-specific generation logic
+│   └── wan-generators.ts       # WAN-specific generation logic
 ├── models/
 │   └── sora2.ts                # Sora 2 specific parameter conversion
 └── validation/
-    └── validators.ts           # Input validation (duration, resolution, audio)
+    ├── validators.ts           # Top-level validation entry point
+    └── validators/             # Per-model validators
+        ├── index.ts            # Barrel exports
+        ├── hailuo-validators.ts
+        ├── kling-validators.ts
+        ├── lipsync-validators.ts
+        ├── ltxv2-validators.ts
+        ├── reve-validators.ts
+        ├── vidu-validators.ts
+        └── wan-validators.ts
 ```
 
 - Direct integration with FAL AI APIs
-- Handles text-to-video, image-to-video, and avatar generation
+- Handles text-to-video, image-to-video, avatar, angles, and upscale generation
 - Multi-model support with sequential processing
 - Progress tracking and status polling
-- Centralized error handling and validation
+- Centralized error handling and per-model validation
 
-#### 3. **FAL AI Client** (`lib/fal-ai-client.ts`)
-- Low-level FAL API integration
-- Veo 3.1 specific implementations
-- Request/response handling
+#### 3. **FAL AI Clients** (`lib/ai-clients/`)
+Split into focused modules:
 
-#### 4. **AI View Component** (`components/editor/media-panel/views/ai/`)
+```
+lib/ai-clients/
+├── fal-ai-client.ts              # Core FAL API integration
+├── fal-ai-client-generation.ts   # Generation-specific FAL logic
+├── fal-ai-client-internal-types.ts # Internal type definitions
+├── fal-ai-client-reve.ts         # Reve text-to-image FAL integration
+├── fal-ai-client-veo31.ts        # Veo 3.1 specific implementations
+├── ai-video-client.ts            # High-level video generation client
+├── ai-video-output.ts            # Video output processing
+├── image-edit-capabilities.ts    # Image editing capability definitions
+├── image-edit-client.ts          # Image editing API client
+├── image-edit-models-info.ts     # Image editing model info
+├── image-edit-polling.ts         # Image editing polling logic
+├── image-edit-types.ts           # Image editing types
+├── image-edit-utils.ts           # Image editing utilities
+├── sam3-client.ts                # SAM3 segmentation client
+├── sam3-models.ts                # SAM3 model definitions
+└── video-edit-client.ts          # Video editing API client
+```
+
+#### 4. **AI Models Library** (`lib/ai-models/`)
+Shared model definitions and utilities:
+
+```
+lib/ai-models/
+├── index.ts                    # Barrel exports
+├── camera-prompt-builder.ts    # Camera prompt construction
+├── image-validation.ts         # Image upload validation
+├── model-utils.ts              # Model utility functions
+├── text2image-models.ts        # Text-to-image model definitions
+└── upscale-models.ts           # Image upscale model catalog
+```
+
+#### 5. **AI View Component** (`components/editor/media-panel/views/ai/`)
 Modular UI architecture for AI video generation:
 
 ```
 views/ai/
 ├── index.tsx                   # Main AI panel component
 ├── __tests__/                  # Unit tests
-│   └── ai-constants.test.ts
+│   ├── ai-constants.test.ts
+│   ├── angles-config.test.ts
+│   └── extend-video.test.ts
 ├── components/                 # Reusable UI components
+│   ├── ai-generation-feedback.tsx  # Generation progress/feedback UI
 │   ├── ai-history-panel.tsx    # Generation history panel
 │   ├── ai-image-upload.tsx     # Image upload component
+│   ├── ai-kling-v25-settings.tsx   # Kling v2.5 model settings
+│   ├── ai-kling-v26-settings.tsx   # Kling v2.6 model settings
+│   ├── ai-ltx-fast-i2v-settings.tsx # LTX Fast I2V settings
+│   ├── ai-ltx-i2v-settings.tsx # LTX I2V settings
+│   ├── ai-model-selection-grid.tsx # Model selection grid UI
+│   ├── ai-seedance-settings.tsx    # Seedance model settings
 │   ├── ai-select-fields.tsx    # Dropdown select fields
-│   └── ai-settings-panel.tsx   # Settings panel wrapper
-├── constants/                  # Configuration constants
-│   ├── ai-constants.ts         # 40+ model definitions, endpoints, pricing
-│   ├── ai-model-options.ts     # Model option enums and defaults
-│   └── text2video-models-config.ts  # T2V capability definitions
+│   ├── ai-settings-panel.tsx   # Settings panel wrapper
+│   ├── ai-validation-messages.tsx  # Validation error display
+│   ├── ai-vidu-q2-settings.tsx # Vidu Q2 model settings
+│   ├── ai-wan25-settings.tsx   # WAN v2.5 model settings
+│   └── __tests__/
+│       ├── ai-model-settings.test.tsx
+│       └── phase3-components.test.ts
+├── constants/                  # (see section 1 above)
 ├── hooks/                      # React hooks
 │   ├── generation/             # Generation-specific hooks
 │   │   ├── index.ts            # Barrel exports
-│   │   ├── media-integration.ts    # Media store integration
-│   │   └── model-handlers.ts   # Model-specific generation handlers
+│   │   ├── media-integration.ts        # Media store integration
+│   │   ├── model-handlers.ts           # Model routing logic
+│   │   ├── model-handler-implementations.ts # Handler implementations
+│   │   ├── model-handler-types.ts      # Handler type definitions
+│   │   ├── handlers/                   # Per-category handlers
+│   │   │   ├── avatar-handlers.ts      # Avatar generation handlers
+│   │   │   ├── image-to-video-handlers.ts  # I2V generation handlers
+│   │   │   ├── text-to-video-handlers.ts   # T2V generation handlers
+│   │   │   ├── upscale-handlers.ts     # Upscale handlers
+│   │   │   └── __tests__/
+│   │   │       └── handler-exports.test.ts
+│   │   └── __tests__/
+│   │       └── model-handlers-routing.test.ts
+│   ├── use-ai-angles-tab-state.ts  # Angles tab state management
 │   ├── use-ai-avatar-tab-state.ts  # Avatar tab state management
-│   ├── use-ai-generation.ts    # Main generation hook (57KB)
-│   ├── use-ai-history.ts       # History management
+│   ├── use-ai-generation.ts        # Main generation hook (orchestrator, ~200 lines)
+│   ├── use-ai-generation-can-generate.ts # Validation logic
+│   ├── use-ai-generation-core.ts   # Core generation callback
+│   ├── use-ai-generation-helpers.ts # Generation helper utilities
+│   ├── use-ai-generation-state.ts  # State declarations and effects
+│   ├── use-ai-history.ts           # History management
 │   ├── use-ai-image-tab-state.ts   # Image tab state management
+│   ├── use-ai-mock-generation.ts   # Mock generation for testing
+│   ├── use-ai-panel-effects.ts     # Panel-level side effects
+│   ├── use-ai-polling.ts           # FAL polling logic
 │   ├── use-ai-tab-state-base.ts    # Shared tab state logic
 │   ├── use-ai-text-tab-state.ts    # Text tab state management
-│   └── use-ai-upscale-tab-state.ts # Upscale tab state management
+│   ├── use-ai-upscale-tab-state.ts # Upscale tab state management
+│   ├── use-cost-calculation.ts     # Cost calculation hook
+│   ├── use-reve-edit-state.ts      # Reve edit state management
+│   ├── use-veo31-state.ts          # Veo 3.1 state management
+│   └── __tests__/
+│       ├── use-ai-generation-contract.test.ts
+│       ├── use-ai-generation-helpers.test.ts
+│       ├── use-ai-mock-generation.test.ts
+│       ├── use-ai-panel-effects.test.ts
+│       ├── use-ai-polling.test.ts
+│       ├── use-cost-calculation.test.ts
+│       ├── use-reve-edit-state.test.ts
+│       └── use-veo31-state.test.ts
 ├── settings/                   # Model-specific settings components
 │   ├── ai-reve-settings.tsx    # Reve text-to-image settings
 │   ├── ai-sora-settings.tsx    # Sora 2 settings
 │   └── ai-veo-settings.tsx     # Veo 3.1 settings
 ├── tabs/                       # Tab content components
+│   ├── ai-angles-tab.tsx       # Cinematic angles tab
 │   ├── ai-avatar-tab.tsx       # Avatar generation tab
 │   ├── ai-image-tab.tsx        # Image-to-video tab
 │   ├── ai-text-tab.tsx         # Text-to-video tab
-│   └── ai-upscale-tab.tsx      # Video upscale tab
+│   └── ai-upscale-tab.tsx      # Video/image upscale tab
 ├── types/                      # TypeScript type definitions
-│   └── ai-types.ts             # AI-related interfaces and types
+│   ├── ai-types.ts             # Legacy barrel (re-exports from ai-types/)
+│   └── ai-types/               # Refactored type modules
+│       ├── index.ts            # Barrel exports
+│       ├── generation.ts       # Generation-related types
+│       ├── hook-props.ts       # Hook prop interfaces
+│       ├── lipsync-types.ts    # Lip-sync specific types
+│       ├── model-config.ts     # Model configuration types
+│       ├── request-types.ts    # API request types
+│       ├── seeddream-types.ts  # Seeddream/angles types
+│       └── sora2-types.ts      # Sora 2 specific types
 └── utils/                      # Utility functions
     └── ai-cost-calculators.ts  # Cost calculation utilities
 ```
@@ -382,52 +538,44 @@ views/ai/
 - Progress visualization and status updates
 - Integration with media panel and timeline
 
-#### 5. **Text-to-Video Models Config** (`components/editor/media-panel/views/ai/constants/text2video-models-config.ts`)
-- Model capability definitions (aspect ratios, resolutions, durations)
-- Combined capability computation for multi-model selection
-- Model ID aliasing for compatibility
-
 ### Model Endpoints
 
 #### Text-to-Video Endpoints
 ```typescript
 const TEXT_TO_VIDEO_ENDPOINTS = {
   // OpenAI Sora 2
-  "sora2": "fal-ai/sora-2/text-to-video",
-  "sora2_pro": "fal-ai/sora-2/text-to-video/pro",
+  "sora2_text_to_video": "fal-ai/sora-2/text-to-video",
+  "sora2_text_to_video_pro": "fal-ai/sora-2/text-to-video/pro",
 
-  // Google Veo
-  "veo31_fast": "fal-ai/veo3.1/fast",
-  "veo31": "fal-ai/veo3.1",
-  "veo3_fast": "fal-ai/google/veo3/fast",
-  "veo3": "fal-ai/google/veo3",
+  // Google Veo 3.1
+  "veo31_fast_text_to_video": "fal-ai/veo3.1/fast",
+  "veo31_text_to_video": "fal-ai/veo3.1",
 
   // LTX Video
-  "ltxv2_pro": "fal-ai/ltxv-2/text-to-video",
-  "ltxv2_fast": "fal-ai/ltxv-2/text-to-video/fast",
+  "ltxv2_pro_t2v": "fal-ai/ltxv-2/text-to-video",
+  "ltxv2_fast_t2v": "fal-ai/ltxv-2/text-to-video/fast",
 
   // Hailuo
-  "hailuo_02": "fal-ai/minimax/hailuo-02/standard/text-to-video",
-  "hailuo_02_pro": "fal-ai/minimax/hailuo-02/pro/text-to-video",
-  "hailuo_23_standard": "fal-ai/minimax/hailuo-2.3/standard/text-to-video",
-  "hailuo_23_pro": "fal-ai/minimax/hailuo-2.3/pro/text-to-video",
+  "hailuo23_standard_t2v": "fal-ai/minimax/hailuo-2.3/standard/text-to-video",
+  "hailuo23_pro_t2v": "fal-ai/minimax/hailuo-2.3/pro/text-to-video",
 
   // Seedance
-  "seedance_lite": "fal-ai/bytedance/seedance/v1/lite/text-to-video",
+  "seedance": "fal-ai/bytedance/seedance/v1/lite/text-to-video",
   "seedance_pro": "fal-ai/bytedance/seedance/v1/pro/text-to-video",
 
   // Kling
-  "kling_v3_pro": "fal-ai/kling-video/v3/pro/text-to-video",
-  "kling_v3_standard": "fal-ai/kling-video/v3/standard/text-to-video",
-  // Note: "kling_v2_1" ("fal-ai/kling-video/v2.1/master") was removed - endpoint no longer exists in the codebase
-  "kling_v2_5": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+  "kling_v3_pro_t2v": "fal-ai/kling-video/v3/pro/text-to-video",
+  "kling_v3_standard_t2v": "fal-ai/kling-video/v3/standard/text-to-video",
+  "kling_v26_pro_t2v": "fal-ai/kling-video/v2.6/pro/text-to-video",
+  "kling_v2_5_turbo": "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
+  "kling_v2_5_turbo_standard": "fal-ai/kling-video/v2.5-turbo/standard/text-to-video",
 
-  // WAN
-  "wan_26": "fal-ai/wan/v2.6/text-to-video",
-  "wan_25": "fal-ai/wan-25-preview/text-to-video",
+  // WAN (note: no fal-ai/ prefix for WAN endpoints)
+  "wan_26_t2v": "wan/v2.6/text-to-video",
+  "wan_25_preview": "wan-25-preview/text-to-video",
 
   // Vidu
-  "vidu_q3": "fal-ai/vidu/q3/text-to-video",
+  "vidu_q3_t2v": "fal-ai/vidu/q3/text-to-video",
 };
 ```
 
@@ -435,14 +583,14 @@ const TEXT_TO_VIDEO_ENDPOINTS = {
 ```typescript
 const IMAGE_TO_VIDEO_ENDPOINTS = {
   // OpenAI Sora 2
-  "sora2_i2v": "fal-ai/sora-2/image-to-video",
-  "sora2_i2v_pro": "fal-ai/sora-2/image-to-video/pro",
+  "sora2_image_to_video": "fal-ai/sora-2/image-to-video",
+  "sora2_image_to_video_pro": "fal-ai/sora-2/image-to-video/pro",
 
   // Google Veo 3.1
-  "veo31_fast_i2v": "fal-ai/veo3.1/fast/image-to-video",
-  "veo31_fast_f2v": "fal-ai/veo3.1/fast/first-last-frame-to-video",
-  "veo31_i2v": "fal-ai/veo3.1/image-to-video",
-  "veo31_f2v": "fal-ai/veo3.1/first-last-frame-to-video",
+  "veo31_fast_image_to_video": "fal-ai/veo3.1/fast/image-to-video",
+  "veo31_fast_frame_to_video": "fal-ai/veo3.1/fast/first-last-frame-to-video",
+  "veo31_image_to_video": "fal-ai/veo3.1/image-to-video",
+  "veo31_frame_to_video": "fal-ai/veo3.1/first-last-frame-to-video",
 
   // LTX Video
   "ltxv2_i2v": "fal-ai/ltxv-2/image-to-video",
@@ -455,25 +603,61 @@ const IMAGE_TO_VIDEO_ENDPOINTS = {
   // Kling
   "kling_v3_pro_i2v": "fal-ai/kling-video/v3/pro/image-to-video",
   "kling_v3_standard_i2v": "fal-ai/kling-video/v3/standard/image-to-video",
-  "kling_v2_5_i2v": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+  "kling_v26_pro_i2v": "fal-ai/kling-video/v2.6/pro/image-to-video",
+  "kling_v2_5_turbo_i2v": "fal-ai/kling-video/v2.5-turbo/pro/image-to-video",
+  "kling_o1_i2v": "fal-ai/kling-video/o1/image-to-video",
 
   // Hailuo
-  "hailuo_23_standard": "fal-ai/minimax/hailuo-2.3/standard/image-to-video",
-  "hailuo_23_fast_pro": "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video",
-  "hailuo_23_pro": "fal-ai/minimax/hailuo-2.3/pro/image-to-video",
+  "hailuo23_standard": "fal-ai/minimax/hailuo-2.3/standard/image-to-video",
+  "hailuo23_fast_pro": "fal-ai/minimax/hailuo-2.3-fast/pro/image-to-video",
+  "hailuo23_pro": "fal-ai/minimax/hailuo-2.3/pro/image-to-video",
 
-  // WAN
-  "wan_25_i2v": "fal-ai/wan-25-preview/image-to-video",
+  // WAN (note: no fal-ai/ prefix for WAN endpoints)
+  "wan_26_i2v": "wan/v2.6/image-to-video",
+  "wan_25_preview_i2v": "wan-25-preview/image-to-video",
 
   // Vidu
   "vidu_q3_i2v": "fal-ai/vidu/q3/image-to-video",
-  "vidu_q2_i2v": "fal-ai/vidu/q2/image-to-video/turbo",
+  "vidu_q2_turbo_i2v": "fal-ai/vidu/q2/image-to-video/turbo",
+};
+```
+
+#### Avatar & Transformation Endpoints
+```typescript
+const AVATAR_ENDPOINTS = {
+  // Kling Avatar
+  "kling_avatar_v2_pro": "fal-ai/kling-video/ai-avatar/v2/pro",
+  "kling_avatar_v2_standard": "fal-ai/kling-video/ai-avatar/v2/standard",
+  "kling_avatar_pro": "fal-ai/kling-video/v1/pro/ai-avatar",
+  "kling_avatar_standard": "fal-ai/kling-video/v1/standard/ai-avatar",
+
+  // ByteDance
+  "bytedance_omnihuman_v1_5": "fal-ai/bytedance/omnihuman/v1.5",
+
+  // Sync Lipsync
+  "sync_lipsync_react1": "fal-ai/sync-lipsync/react-1",
+
+  // Kling O1 series
+  "kling_o1_v2v_reference": "fal-ai/kling-video/o1/video-to-video/reference",
+  "kling_o1_v2v_edit": "fal-ai/kling-video/o1/video-to-video/edit",
+  "kling_o1_ref2video": "fal-ai/kling-video/o1/reference-to-video",
+
+  // WAN (no fal-ai/ prefix)
+  "wan_26_ref2v": "wan/v2.6/reference-to-video",
+  "wan_animate_replace": "wan/v2.2-14b/animate/replace",
+
+  // Veo 3.1 Extend
+  "veo31_fast_extend_video": "fal-ai/veo3.1/fast/extend-video",
+  "veo31_extend_video": "fal-ai/veo3.1/extend-video",
+
+  // Sora 2 Remix
+  "sora2_video_to_video_remix": "fal-ai/sora-2/video-to-video/remix",
 };
 ```
 
 ### Generation Parameters
 ```typescript
-// Text-to-Video request (lib/ai-video/generators/text-to-video.ts)
+// Text-to-Video request (lib/ai-video/generators/text-to-video/)
 interface VideoGenerationRequest {
   prompt: string;
   model: string;
@@ -492,7 +676,7 @@ interface ImageToVideoRequest {
   aspect_ratio?: string;
 }
 
-// Veo 3.1 Frame-to-Video request (ai-generation.ts)
+// Veo 3.1 Frame-to-Video request
 // Used for first-last-frame-to-video generation
 interface Veo31FrameToVideoInput {
   prompt: string;              // Required: Animation description
@@ -505,9 +689,9 @@ interface Veo31FrameToVideoInput {
 ```
 
 > **Note**: Model-specific requests may have additional optional fields. Check the
-> individual generator files in `lib/ai-video/generators/` and `fal-ai-client.ts` for
+> individual generator files in `lib/ai-video/generators/` and `lib/ai-clients/fal-ai-client*.ts` for
 > complete parameter lists (e.g., `generate_audio`, `enhance_prompt`, `negative_prompt`,
-> `seed` are available on specific model endpoints).
+> `seed`, `cfg_scale`, `multi_shots` are available on specific model endpoints).
 
 ### Video Processing Pipeline
 
@@ -516,7 +700,7 @@ interface Veo31FrameToVideoInput {
 // 1. Generate video via FAL API
 const response = await generateVideo({
   prompt: "A cat playing with yarn",
-  model: "kling_v2_1",
+  model: "kling_v3_pro_t2v",
   resolution: "1080p",
   duration: 5
 });
@@ -568,12 +752,12 @@ VITE_FAL_API_KEY=your_fal_api_key_here
   - Vidu Q2: 3000 characters
   - SeedDream V4 / FAL AI: 5000 characters
 - **Max Image Size**: 10MB (8MB for Veo 3.1)
-- **Max Audio Size**: 50MB (for avatar models)
+- **Max Audio Size**: 50MB (for avatar models; 5MB for Kling Avatar v2)
 - **Max Video Size**: 100MB (500MB for upscale)
 - **History Limit**: 10 most recent generations
 
 ### UI Responsive Breakpoints
-- **Collapsed**: Width ≤ min width + 2px (icon only)
+- **Collapsed**: Width <= min width + 2px (icon only)
 - **Compact**: Width < 18% (simplified UI)
 - **Expanded**: Width > 25% (full feature set)
 
@@ -602,7 +786,7 @@ debugLogger.log("AIView", "VIDEO_GENERATED", {
 ### Real-time Cost Calculation
 - Displays total cost for selected models
 - Individual model pricing shown in selection UI
-- Cost range: $0.04 - $3.20+ per video
+- Cost range: $0.02 - $3.20+ per generation
 - Multi-model generation allows cost vs. quality comparison
 - Per-second pricing for variable-duration models
 
@@ -635,16 +819,18 @@ debugLogger.log("AIView", "VIDEO_GENERATED", {
 
 | Use Case | Recommended Models | Reasoning |
 |----------|-------------------|-----------|
-| **Quick Prototyping** | Seedance v1 Lite, Hailuo 02, WAN Turbo | Cost-effective, fast |
-| **Professional Content** | Kling v2.1, Veo 3.1, Sora 2 Pro | High quality |
+| **Quick Prototyping** | Seedance v1 Lite, WAN v2.5 Preview | Cost-effective, fast |
+| **Professional Content** | Kling v3 Pro, Veo 3.1, Sora 2 Pro | High quality |
 | **4K/High Resolution** | LTX Video 2.0 Pro/Fast | Up to 2160p support |
-| **Long Duration** | LTX Video 2.0 Fast, Seedance | Up to 20s |
-| **With Audio** | LTX Video 2.0, Veo 3.1 | Built-in audio generation |
-| **Realistic Physics** | Hailuo 02/Pro, Veo 3.1 | Physics simulation |
-| **Fast Turnaround** | Seedance Lite, Veo3 Fast, LTX Fast | Optimized for speed |
-| **Budget Projects** | Seedance v1 Lite, WAN Turbo | Lowest cost |
-| **Premium Quality** | Veo 3.1, Sora 2 Pro, Kling v2.1 | Highest quality |
-| **Talking Heads** | OmniHuman, Kling Avatar | Avatar generation |
+| **Long Duration** | LTX Video 2.0 Fast, Seedance, WAN v2.6 | Up to 15-20s |
+| **With Audio** | LTX Video 2.0, Veo 3.1, Kling v3 | Built-in audio generation |
+| **Realistic Physics** | Hailuo 2.3 Pro, Veo 3.1 | Physics simulation |
+| **Fast Turnaround** | Seedance Lite, Veo 3.1 Fast, LTX Fast | Optimized for speed |
+| **Budget Projects** | Seedance v1 Lite, WAN v2.5 Preview, Kling v2.5 Standard | Lowest cost |
+| **Premium Quality** | Veo 3.1, Sora 2 Pro, Kling v3 Pro | Highest quality |
+| **Talking Heads** | Kling Avatar v2, OmniHuman, Sync Lipsync | Avatar generation |
+| **Video Extension** | Veo 3.1 Extend, Veo 3.1 Fast Extend | Continue existing videos |
+| **Cinematic Angles** | SHOTS Cinematic Angles | 9 camera perspectives |
 
 ## Troubleshooting
 
@@ -652,7 +838,7 @@ debugLogger.log("AIView", "VIDEO_GENERATED", {
 
 #### 1. **API Key Not Configured**
 - **Symptoms**: "FAL API key not configured" error
-- **Solution**: Add API key in Settings → API Keys (desktop app)
+- **Solution**: Add API key in Settings -> API Keys (desktop app)
 - **Verification**: Check console for key length confirmation
 
 #### 2. **Generation Failed**
@@ -671,7 +857,7 @@ debugLogger.log("AIView", "VIDEO_GENERATED", {
 - **Expected Times**:
   - Veo 3.1: 5-10 minutes
   - Sora 2: 2-5 minutes
-  - Kling v2.1: 2-3 minutes
+  - Kling v3: 2-3 minutes
   - Seedance: 30-60 seconds
   - LTX Fast: 30-60 seconds
 
@@ -698,10 +884,10 @@ Enable detailed logging in browser console:
 
 ### Generation Times (Approximate)
 - **Seedance v1 Lite**: 30-60 seconds
-- **WAN Turbo**: 30-60 seconds
+- **WAN v2.5 Preview**: 30-60 seconds
 - **LTX Video 2.0 Fast**: 30-90 seconds
-- **Hailuo 02**: 60-120 seconds
-- **Kling v2.1**: 120-180 seconds
+- **Hailuo 2.3**: 60-120 seconds
+- **Kling v3**: 120-180 seconds
 - **Sora 2**: 120-300 seconds
 - **Veo 3.1 Fast**: 180-360 seconds
 - **Veo 3.1**: 300-600 seconds
@@ -738,9 +924,9 @@ Enable detailed logging in browser console:
 
 ---
 
-*Last Updated: 2026-02-23*
-*QCut AI Video Models: 40+ models via FAL.ai*
-*Price Range: $0.04 - $3.20+ per video*
+*Last Updated: 2026-02-28*
+*QCut AI Video Models: 50+ models via FAL.ai*
+*Price Range: $0.02 - $3.20+ per generation*
 
 
 # AI Video Flow (Steps)
@@ -761,7 +947,7 @@ User selects T2V models in the AI Panel UI; the UI updates the selected models a
 ### Step 2 - Capability Computation
 The capability system returns intersected capabilities and the UI renders clamped T2V settings (aspect_ratio, duration, resolution) based on them.
 - **Function**: `getCombinedCapabilities`
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config/helpers.ts`
 - **Console**: `step 2: combinedCapabilities updated`
   - **Step 2.1**: `getCombinedCapabilities` computes intersection of supported features.
   - **Step 2.2**: `AiView` receives updated `combinedCapabilities`.
@@ -769,8 +955,8 @@ The capability system returns intersected capabilities and the UI renders clampe
 
 ### Step 3 - Generation Invoked
 The user enters a prompt, adjusts settings, and clicks Generate; the UI invokes generateVideo with the T2V properties.
-- **Function**: `handleGenerate`
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+- **Function**: `handleGenerate` (via `useHandleGenerate`)
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation-core.ts`
 - **Console Logs**:
   - `step 3: handleGenerate invoked (AI video flow)`
   - `step 3a: pre-generation state check`
@@ -783,7 +969,7 @@ The user enters a prompt, adjusts settings, and clicks Generate; the UI invokes 
 ### Step 4 - Parameter Sanitization
 Generation validates the requested duration against capabilities (getSafeDuration clamping) and builds unifiedParams sanitized to capability ranges.
 - **Function**: `handleGenerate` (calls `getSafeDuration`)
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation-core.ts`
 - **Console**: `step 4: sanitized params for ${modelId}`
 - **Sub-steps**:
   - **Step 4.1**: Iterate through `selectedModels`.
@@ -792,9 +978,14 @@ Generation validates the requested duration against capabilities (getSafeDuratio
   - **Step 4.4**: Construct `unifiedParams` object with sanitized parameters.
 
 ### Step 5 - API Request
-Generation sends the request to the FAL API with unifiedParams and receives a video_url plus metadata.
-- **Function**: Request dispatch in `handleGenerate` (model-specific helpers like `generateLTXV2Video`)
-- **File**: `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+Generation sends the request to the FAL API with unifiedParams and receives a video_url plus metadata. Model-specific handlers are routed via the `handlers/` directory.
+- **Function**: Request dispatch via `routeTextToVideoHandler` / `routeImageToVideoHandler` / `routeAvatarHandler` / `routeUpscaleHandler`
+- **Files**:
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/model-handlers.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/text-to-video-handlers.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/image-to-video-handlers.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/avatar-handlers.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/handlers/upscale-handlers.ts`
 - **Console**: `step 5a: post-API response analysis`
 - **Sub-steps**:
   - **Step 5.1**: Identify specific API function based on model ID.
@@ -804,9 +995,9 @@ Generation sends the request to the FAL API with unifiedParams and receives a vi
 
 ### Step 6 - Media Integration
 Generation downloads the video, creates a media item, and adds it to the media store with unified metadata.
-- **Function**: `handleGenerate` (inside success block), `addMediaItem` (store action)
+- **Function**: `integrateVideoToMediaStore` (generation/media-integration.ts), `addMediaItem` (store action)
 - **Files**:
-  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/generation/media-integration.ts`
   - `qcut/apps/web/src/stores/media/media-store.ts`
 - **Console Logs** (in order):
   - `step 6a: media integration condition check`
@@ -827,14 +1018,14 @@ Generation downloads the video, creates a media item, and adds it to the media s
   - **Step 6.5**: Call `addMediaItem` to add to the project.
   - **Step 6.6**: Generate `localUrl = URL.createObjectURL(file)` and store as `mediaItem.url` (primary), keep `mediaItem.originalUrl` for fallback.
   - **Step 6.7**: Capture `fileSize` for downstream checks.
-- **Remote vs Local note**: Videos stay remote (only `video_url` stored) when we skip download—for example, if `activeProject`/`addMediaItem` are unavailable or in polling mode pre-completion. When both project and media store are present, the flow downloads the blob and saves a local `File` before adding.
+- **Remote vs Local note**: Videos stay remote (only `video_url` stored) when we skip download -- for example, if `activeProject`/`addMediaItem` are unavailable or in polling mode pre-completion. When both project and media store are present, the flow downloads the blob and saves a local `File` before adding.
 
 ### Step 7 - UI Completion
 The media store persists the item; generation updates UI progress to 100% and fires onComplete; the UI shows the generated video to the user.
 - **Function**: `addMediaItem` (store action), `handleGenerate` (UI update)
 - **Files**:
   - `qcut/apps/web/src/stores/media/media-store.ts`
-  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts`
+  - `qcut/apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation-core.ts`
 - **Console**: `step 7: generation flow complete; updating UI and callbacks`
 - **Sub-steps**:
   - **Step 7.1**: `MediaStore` generates a unique ID and updates local state.
