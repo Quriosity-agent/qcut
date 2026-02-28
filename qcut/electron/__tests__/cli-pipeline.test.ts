@@ -9,6 +9,10 @@ import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import { PipelineExecutor } from "../native-pipeline/execution/executor.js";
 import * as apiCaller from "../native-pipeline/infra/api-caller.js";
+import {
+	parseSessionLine,
+	resetSessionState,
+} from "../native-pipeline/cli/cli-runner/session.js";
 
 function defaultOptions(overrides: Partial<CLIRunOptions> = {}): CLIRunOptions {
 	return {
@@ -1170,6 +1174,103 @@ describe("CLI pipeline", () => {
 			// Single path, not wrapped in batch output
 			expect(result.outputPath).toBe("/tmp/output.png");
 			expect(mockExecuteStep).toHaveBeenCalledTimes(1);
+
+			mockExecuteStep.mockRestore();
+		});
+	});
+
+	describe("Session mode (parseSessionLine)", () => {
+		afterEach(() => {
+			resetSessionState();
+		});
+
+		it("parses a simple command", () => {
+			const opts = parseSessionLine("list-models", {});
+			expect(opts).not.toBeNull();
+			expect(opts!.command).toBe("list-models");
+		});
+
+		it("parses command with flags", () => {
+			const opts = parseSessionLine(
+				'generate-image -t "A cat in space" -m flux_dev',
+				{}
+			);
+			expect(opts).not.toBeNull();
+			expect(opts!.command).toBe("generate-image");
+			expect(opts!.text).toBe("A cat in space");
+			expect(opts!.model).toBe("flux_dev");
+		});
+
+		it("parses editor command with project-id", () => {
+			const opts = parseSessionLine(
+				"editor:navigator:open --project-id abc123",
+				{}
+			);
+			expect(opts).not.toBeNull();
+			expect(opts!.command).toBe("editor:navigator:open");
+			expect(opts!.projectId).toBe("abc123");
+		});
+
+		it("returns null for empty lines", () => {
+			expect(parseSessionLine("", {})).toBeNull();
+			expect(parseSessionLine("   ", {})).toBeNull();
+		});
+
+		it("returns null for comments", () => {
+			expect(parseSessionLine("# this is a comment", {})).toBeNull();
+		});
+
+		it("returns null for exit/quit", () => {
+			expect(parseSessionLine("exit", {})).toBeNull();
+			expect(parseSessionLine("quit", {})).toBeNull();
+		});
+
+		it("inherits base options", () => {
+			const opts = parseSessionLine("list-models", {
+				json: true,
+				host: "192.168.1.1",
+				port: "9999",
+			});
+			expect(opts).not.toBeNull();
+			expect(opts!.json).toBe(true);
+			expect(opts!.host).toBe("192.168.1.1");
+			expect(opts!.port).toBe("9999");
+		});
+
+		it("parses --count flag in session", () => {
+			const opts = parseSessionLine(
+				"generate-image -t test --count 3",
+				{}
+			);
+			expect(opts).not.toBeNull();
+			expect(opts!.count).toBe(3);
+		});
+
+		it("handles single-quoted strings", () => {
+			const opts = parseSessionLine(
+				"generate-image -t 'hello world'",
+				{}
+			);
+			expect(opts).not.toBeNull();
+			expect(opts!.text).toBe("hello world");
+		});
+
+		it("dispatches parsed command through runner", async () => {
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockResolvedValue({
+					success: true,
+					outputPath: "/tmp/session-out.png",
+					duration: 1.0,
+					cost: 0.01,
+				});
+
+			const runner = new CLIPipelineRunner();
+			const opts = parseSessionLine("generate-image -t test", {});
+			expect(opts).not.toBeNull();
+
+			const result = await runner.run(opts!, vi.fn());
+			expect(result.success).toBe(true);
 
 			mockExecuteStep.mockRestore();
 		});

@@ -22,6 +22,7 @@ import { getExitCode, formatErrorForCli } from "../output/errors.js";
 import { CLIOutput } from "../cli/cli-output.js";
 import { StreamEmitter, NullEmitter } from "../infra/stream-emitter.js";
 import { formatCommandOutput } from "./cli-output-formatters.js";
+import { runSession } from "./cli-runner/session.js";
 
 const VERSION = "1.0.0";
 
@@ -717,6 +718,41 @@ export async function main(
 	argv: string[] = process.argv.slice(2)
 ): Promise<void> {
 	initRegistry();
+
+	// Check for --session before command parsing (session doesn't require a command)
+	if (argv.includes("--session")) {
+		const sessionArgv = argv.filter((a) => a !== "--session");
+		const baseOptions: Partial<CLIRunOptions> = {
+			json: sessionArgv.includes("--json"),
+			quiet: sessionArgv.includes("--quiet") || sessionArgv.includes("-q"),
+			verbose: sessionArgv.includes("--verbose") || sessionArgv.includes("-v"),
+			skipHealth: sessionArgv.includes("--skip-health"),
+			session: true,
+		};
+
+		// Parse host/port/token if provided
+		for (let i = 0; i < sessionArgv.length; i++) {
+			if (sessionArgv[i] === "--host" && sessionArgv[i + 1]) baseOptions.host = sessionArgv[++i];
+			if (sessionArgv[i] === "--port" && sessionArgv[i + 1]) baseOptions.port = sessionArgv[++i];
+			if (sessionArgv[i] === "--token" && sessionArgv[i + 1]) baseOptions.token = sessionArgv[++i];
+			if (sessionArgv[i] === "--output-dir" && sessionArgv[i + 1]) baseOptions.outputDir = sessionArgv[++i];
+			if (sessionArgv[i] === "-o" && sessionArgv[i + 1]) baseOptions.outputDir = sessionArgv[++i];
+		}
+
+		const runner = new CLIPipelineRunner();
+		const reporter = createProgressReporter({
+			json: baseOptions.json ?? false,
+			quiet: baseOptions.quiet ?? false,
+		});
+
+		process.on("SIGINT", () => {
+			runner.abort();
+			process.exit(0);
+		});
+
+		await runSession(runner, baseOptions, reporter);
+		return;
+	}
 
 	const options = parseCliArgs(argv);
 	const output = new CLIOutput({
