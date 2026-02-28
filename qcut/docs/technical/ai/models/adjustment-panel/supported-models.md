@@ -199,12 +199,12 @@ When choosing a model, consider:
 ## Technical Implementation
 
 All models are accessed via the FAL.ai API through the `image-edit-client.ts` module located at:
-```
+```text
 qcut/apps/web/src/lib/ai-clients/image-edit-client.ts
 ```
 
 The model capabilities are defined in:
-```
+```text
 qcut/apps/web/src/lib/ai-clients/image-edit-capabilities.ts
 ```
 

@@ -17,6 +17,7 @@ docs/technical/
 ## Quick Links
 
 ### Architecture
+
 | Document | Description |
 |----------|-------------|
 | [source-code-structure.md](architecture/source-code-structure.md) | Complete codebase structure with file counts |
@@ -25,12 +26,14 @@ docs/technical/
 | [remotion-sequence-visualization.md](architecture/remotion-sequence-visualization.md) | Sequence/transition visualization in timeline |
 
 ### Remotion Integration
+
 | Document | Description |
 |----------|-------------|
 | [remotion-timeline-rendering.md](remotion-timeline-rendering.md) | Remotion component rendering on timeline |
 | [remotion-sequence-visualization.md](architecture/remotion-sequence-visualization.md) | AST-based sequence detection and visualization |
 
 ### AI Video Generation
+
 | Document | Description |
 |----------|-------------|
 | [workflow.md](ai/workflow.md) | End-to-end AI video generation workflow |
@@ -38,6 +41,7 @@ docs/technical/
 | [models/](ai/models/) | Per-category model documentation |
 
 ### AI Models by Category
+
 | Category | Path | Models |
 |----------|------|--------|
 | Text-to-Video | [ai/models/text-to-video/](ai/models/text-to-video/) | 18 models: Sora 2, Veo 3/3.1, Kling v2-v3, Hailuo, Seedance, LTX, WAN, Vidu |
@@ -50,28 +54,33 @@ docs/technical/
 | Adjustment | [ai/models/adjustment-panel/](ai/models/adjustment-panel/) | 10 models: AI image editing and color grading |
 
 ### Testing
+
 | Document | Description |
 |----------|-------------|
 | [infrastructure.md](testing/infrastructure.md) | Test setup, mocking, Vitest config |
 | [e2e.md](testing/e2e.md) | End-to-end testing with Playwright |
 
 ### Workflows
+
 | Document | Description |
 |----------|-------------|
 | [effects-sequence.md](workflows/effects-sequence.md) | Video effects pipeline flow |
 | [drawing-canvas-sequence.md](workflows/drawing-canvas-sequence.md) | Canvas drawing implementation |
 
 ### Reference
+
 | Document | Description |
 |----------|-------------|
 | [media-panel-reference.md](media-panel-reference.md) | All 20 editor panels documented |
 
 ### AI Content Pipeline
+
 | Document | Description |
 |----------|-------------|
 | [ai-content-pipeline-submodule.md](ai/ai-content-pipeline-submodule.md) | AICP git submodule integration |
 
 ### Guides
+
 | Document | Description |
 |----------|-------------|
 | [build-commands.md](guides/build-commands.md) | Build, run, and deploy commands |

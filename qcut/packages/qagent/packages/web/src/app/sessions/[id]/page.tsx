@@ -48,7 +48,12 @@ export default function SessionPage() {
 	const params = useParams();
 	const rawId = params.id as string;
 	// Decode once — useParams() may return URL-encoded values (e.g. "codex%3A1302")
-	const id = decodeURIComponent(rawId);
+	let id: string;
+	try {
+		id = decodeURIComponent(rawId);
+	} catch {
+		id = rawId;
+	}
 	const isOrchestrator = id.endsWith("-orchestrator");
 
 	const [session, setSession] = useState<DashboardSession | null>(null);

@@ -899,7 +899,8 @@ function CLITerminalPanel({ session }: { session: DashboardSession }) {
 				const data = await res.json().catch(() => ({}));
 				setError(data.error ?? "Failed to open terminal");
 			}
-		} catch {
+		} catch (err) {
+			console.error("[CLITerminalPanel] Failed to open terminal:", err);
 			setError("Failed to open terminal");
 		} finally {
 			setOpening(false);
@@ -934,7 +935,11 @@ function CLITerminalPanel({ session }: { session: DashboardSession }) {
 					</div>
 				</div>
 				<button
+					type="button"
 					onClick={openTerminal}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") openTerminal();
+					}}
 					disabled={opening}
 					className={cn(
 						"mt-2 flex items-center gap-2 rounded-[6px] px-5 py-2.5 text-[13px] font-medium transition-colors",

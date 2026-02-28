@@ -229,6 +229,8 @@ claude --dangerously-skip-permissions --model <selectedClaudeModel>
 ```
 Uses Claude Pro/Max subscription by default (login authentication). An Anthropic API key is optional and will be passed as `ANTHROPIC_API_KEY` if configured. Sets `QCUT_PROJECT_ID`, `QCUT_PROJECT_ROOT`, and `QCUT_API_BASE_URL` environment variables for project context. Claude has direct access to read skill files from the project directory.
 
+> **Security note:** The `--dangerously-skip-permissions` flag bypasses Claude Code's interactive permission prompts, allowing file system access and command execution without user confirmation. This is required for unattended agent operation within QCut's orchestrator. The flag is scoped to the spawned session and does not affect system-wide permissions. Users should only enable Claude Code mode in trusted project directories.
+
 ### Legacy Compatibility
 
 The `isGeminiMode` boolean is derived from `cliProvider` for backward compatibility:

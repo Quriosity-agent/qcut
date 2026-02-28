@@ -526,6 +526,6 @@ Models are prioritized in this order (as defined by `TEXT2IMAGE_MODEL_ORDER` in 
 
 ## Related Documentation
 
-- [Text2Image Models Module](../../../../apps/web/src/lib/text2image-models/)
-- [Text2Image View Component](../../../../apps/web/src/components/editor/media-panel/views/text2image.tsx)
-- [Text2Image Store](../../../../apps/web/src/stores/ai/text2image-store.ts)
+- [Text2Image Models Module](../../../../../apps/web/src/lib/text2image-models/)
+- [Text2Image View Component](../../../../../apps/web/src/components/editor/media-panel/views/text2image.tsx)
+- [Text2Image Store](../../../../../apps/web/src/stores/ai/text2image-store.ts)

@@ -15,7 +15,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 - **Badge:** Recommended
 - **Price:** $0.30-0.50
 - **Resolution:** 720p / 1080p
-- **Max Duration:** 12 seconds
+- **Max Duration:** 10 seconds
 - **Description:** High-quality text-to-video with 1080p support
 - **Features:**
   - Multiple resolution options
@@ -41,18 +41,18 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 - **Badge:** Fast
 - **Price:** $0.04-0.16
 - **Resolution:** 1080p / 1440p / 2160p (4K)
-- **Max Duration:** 20 seconds
-- **Description:** Text-to-video with audio generation (6-20s, up to 4K)
+- **Max Duration:** 10 seconds
+- **Description:** Text-to-video with audio generation (2-10s, up to 4K)
 - **Features:**
   - Up to 4K resolution (2160p)
-  - 20-second maximum duration
+  - 10-second maximum duration
   - Audio generation
   - Variable FPS support
   - Cost-effective pricing
 - **Supported Resolutions:** 1080p, 1440p, 2160p
 - **Supported Durations:** 2s, 3s, 4s, 5s, 6s, 8s, 10s
 - **Parameters:**
-  - Duration: 2-10s (default: 6s)
+  - Duration: 2s, 3s, 4s, 5s, 6s, 8s, 10s (default: 6s)
   - Resolution: 1080p, 1440p, 2160p (default: 1080p)
   - Aspect Ratio: 16:9 only
   - FPS: 25 (default)
@@ -560,6 +560,6 @@ Models are displayed in the UI using a badge-first ordering system. Badged model
 
 ## Related Documentation
 
-- [Text-to-Video Generator](../../../../apps/web/src/lib/ai-video/generators/text-to-video.ts)
-- [Text-to-Video Model Config](../../../../apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config/)
+- [Text-to-Video Generator](../../../../../apps/web/src/lib/ai-video/generators/text-to-video.ts)
+- [Text-to-Video Model Config](../../../../../apps/web/src/components/editor/media-panel/views/ai/constants/text2video-models-config/)
 - [AI Video Workflow](../../ai-video-workflow.md)
