@@ -42,7 +42,7 @@ export async function transcodeWebmToMp4({
 					windowsHide: true,
 				});
 
-				/** Reduced from 300s — FFmpeg re-mux (copy codec) takes <10s for typical recordings. */
+				/** Reduced from 300s — FFmpeg transcoding (libx264 veryfast) typically takes <60s for short recordings. */
 				const TRANSCODE_TIMEOUT_MS = 60_000;
 				const timeout = setTimeout(() => {
 					ffmpegProcess.kill();
