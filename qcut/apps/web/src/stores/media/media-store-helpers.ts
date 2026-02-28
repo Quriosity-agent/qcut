@@ -8,10 +8,7 @@
  * @module stores/media/media-store-helpers
  */
 
-import {
-	createObjectURL,
-	revokeObjectURL,
-} from "@/lib/media/blob-manager";
+import { createObjectURL, revokeObjectURL } from "@/lib/media/blob-manager";
 import type { MediaItem, MediaType } from "./media-store-types";
 
 const THUMBNAIL_GENERATION_TIMEOUT_MS = 15_000;
@@ -245,7 +242,9 @@ export const generateVideoThumbnailBrowser = (
 	return new Promise((resolve, reject) => {
 		const video = document.createElement("video") as HTMLVideoElement;
 		const canvas = document.createElement("canvas") as HTMLCanvasElement;
-		const analysisCanvas = document.createElement("canvas") as HTMLCanvasElement;
+		const analysisCanvas = document.createElement(
+			"canvas"
+		) as HTMLCanvasElement;
 		const ctx = canvas.getContext("2d");
 		const analysisCtx = analysisCanvas.getContext("2d");
 

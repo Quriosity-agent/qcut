@@ -23,7 +23,7 @@ function VideoPreview({ item }: MediaPreviewProps) {
 	useEffect(() => {
 		setHasError(false);
 		setIsLoading(Boolean(item.thumbnailUrl));
-	}, [item.thumbnailUrl, item.id]);
+	}, [item.thumbnailUrl]);
 
 	if (!previewUrl || hasError) {
 		return (

@@ -177,7 +177,12 @@ const extractVideoMetadataBackground = async (
 				browserError
 			);
 			await delay(VIDEO_METADATA_RETRY_DELAY_MS * attempt);
-			return extractVideoMetadataBackground(file, itemId, projectId, attempt + 1);
+			return extractVideoMetadataBackground(
+				file,
+				itemId,
+				projectId,
+				attempt + 1
+			);
 		}
 
 		// Set status to failed
