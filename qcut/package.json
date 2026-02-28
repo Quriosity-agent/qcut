@@ -53,7 +53,8 @@
 	"workspaces": [
 		"apps/*",
 		"packages/auth",
-		"packages/db"
+		"packages/db",
+		"packages/license-server"
 	],
 	"scripts": {
 		"dev": "turbo run dev",

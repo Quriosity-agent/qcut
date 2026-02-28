@@ -254,7 +254,7 @@ describe("editor screen-recording CLI handlers", () => {
 			path: "/api/claude/screen-recording/status",
 			entry: () => {
 				statusChecks += 1;
-				return statusChecks === 1
+				return statusChecks <= 3
 					? makeStatus({ recording: true })
 					: makeStatus({ recording: false });
 			},

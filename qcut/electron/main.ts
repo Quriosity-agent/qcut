@@ -131,6 +131,58 @@ const {
 let mainWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticServerPort = 8080;
+let pendingLicenseActivationToken: string | null = null;
+
+function extractActivationTokenFromUrl(url: string): string | null {
+	try {
+		if (!url.startsWith("qcut://")) {
+			return null;
+		}
+
+		const parsedUrl = new URL(url);
+		const pathName = parsedUrl.pathname.replace(/^\//, "");
+		if (pathName !== "activate" && parsedUrl.hostname !== "activate") {
+			return null;
+		}
+
+		const token = parsedUrl.searchParams.get("token");
+		if (!token || token.trim().length === 0) {
+			return null;
+		}
+
+		return token.trim();
+	} catch {
+		return null;
+	}
+}
+
+function deliverActivationTokenToRenderer(token: string): void {
+	try {
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("license:activation-token", token);
+			return;
+		}
+	} catch (error) {
+		logger.warn("[DeepLink] Failed to deliver activation token immediately:", error);
+	}
+
+	pendingLicenseActivationToken = token;
+}
+
+function consumeActivationTokenFromArgs(args: string[]): void {
+	try {
+		for (const arg of args) {
+			const token = extractActivationTokenFromUrl(arg);
+			if (!token) {
+				continue;
+			}
+			deliverActivationTokenToRenderer(token);
+			return;
+		}
+	} catch (error) {
+		logger.warn("[DeepLink] Failed to parse activation token from args:", error);
+	}
+}
 
 // Suppress Electron DevTools Autofill errors
 app.commandLine.appendSwitch("disable-features", "Autofill");
@@ -500,6 +552,25 @@ function createWindow(): void {
 		mainWindow.loadURL("app://./index.html");
 	}
 
+	mainWindow.webContents.on("did-finish-load", () => {
+		if (!pendingLicenseActivationToken) {
+			return;
+		}
+
+		try {
+			mainWindow?.webContents.send(
+				"license:activation-token",
+				pendingLicenseActivationToken
+			);
+			pendingLicenseActivationToken = null;
+		} catch (error) {
+			logger.warn(
+				"[DeepLink] Failed to send pending activation token after load:",
+				error
+			);
+		}
+	});
+
 	// Handle external links
 	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
 		shell.openExternal(url);
@@ -516,6 +587,23 @@ function createWindow(): void {
 const CLI_KEY_COMMANDS = ["set-key", "check-keys", "delete-key"];
 const cliArgs = process.argv.slice(app.isPackaged ? 1 : 2);
 const isCliKeyCommand = CLI_KEY_COMMANDS.includes(cliArgs[0]);
+
+if (!isCliKeyCommand) {
+	consumeActivationTokenFromArgs(process.argv);
+}
+
+app.on("open-url", (event, url) => {
+	try {
+		event.preventDefault();
+		const token = extractActivationTokenFromUrl(url);
+		if (!token) {
+			return;
+		}
+		deliverActivationTokenToRenderer(token);
+	} catch (error) {
+		logger.warn("[DeepLink] Failed to handle open-url event:", error);
+	}
+});
 
 if (isCliKeyCommand) {
 	app.whenReady().then(async () => {

@@ -30,6 +30,9 @@ interface ScreenRecordingStatusResponse {
 	recording?: boolean;
 }
 
+const SCREEN_RECORDING_STATUS_MAX_ATTEMPTS = 3;
+const SCREEN_RECORDING_STATUS_RETRY_DELAY_MS = 250;
+
 function isObjectRecord({
 	value,
 }: {
@@ -57,6 +60,51 @@ function isRecordingActive({
 	}
 }
 
+async function waitMs({
+	delayMs,
+}: {
+	delayMs: number;
+}): Promise<void> {
+	try {
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, delayMs);
+		});
+	} catch (error) {
+		throw new Error(
+			`Failed to wait before status retry: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+async function fetchStatusWithRetry({
+	client,
+	remainingAttempts,
+}: {
+	client: EditorApiClient;
+	remainingAttempts: number;
+}): Promise<ScreenRecordingStatusResponse> {
+	try {
+		const statusAfterStop =
+			await client.get<ScreenRecordingStatusResponse>(
+				"/api/claude/screen-recording/status"
+			);
+		const isActive = isRecordingActive({ status: statusAfterStop });
+		if (!isActive || remainingAttempts <= 1) {
+			return statusAfterStop;
+		}
+
+		await waitMs({ delayMs: SCREEN_RECORDING_STATUS_RETRY_DELAY_MS });
+		return await fetchStatusWithRetry({
+			client,
+			remainingAttempts: remainingAttempts - 1,
+		});
+	} catch (error) {
+		throw new Error(
+			`Failed to fetch screen recording status: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
 async function verifyScreenRecordingStopped({
 	client,
 }: {
@@ -66,10 +114,10 @@ async function verifyScreenRecordingStopped({
 	forceStopData?: unknown;
 }> {
 	try {
-		const statusAfterStop =
-			await client.get<ScreenRecordingStatusResponse>(
-				"/api/claude/screen-recording/status"
-			);
+		const statusAfterStop = await fetchStatusWithRetry({
+			client,
+			remainingAttempts: SCREEN_RECORDING_STATUS_MAX_ATTEMPTS,
+		});
 		if (!isRecordingActive({ status: statusAfterStop })) {
 			return { recoveredViaForceStop: false };
 		}
@@ -78,10 +126,10 @@ async function verifyScreenRecordingStopped({
 			"/api/claude/screen-recording/force-stop",
 			{}
 		);
-		const statusAfterForceStop =
-			await client.get<ScreenRecordingStatusResponse>(
-				"/api/claude/screen-recording/status"
-			);
+		const statusAfterForceStop = await fetchStatusWithRetry({
+			client,
+			remainingAttempts: SCREEN_RECORDING_STATUS_MAX_ATTEMPTS,
+		});
 		if (isRecordingActive({ status: statusAfterForceStop })) {
 			throw new Error(
 				"Screen recording is still active after force-stop recovery"
