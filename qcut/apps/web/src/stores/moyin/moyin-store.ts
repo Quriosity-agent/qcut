@@ -45,6 +45,11 @@ import {
 	reorderScenesAction,
 } from "./moyin-generation";
 import { pushUndo, popUndo, popRedo } from "./moyin-undo";
+import {
+	runCalibrationPipeline,
+	attemptPtyParse,
+	getModelLabel,
+} from "./moyin-parse-actions";
 
 // Types
 
@@ -99,6 +104,9 @@ interface MoyinState {
 	createStatus: "idle" | "generating" | "done" | "error";
 	createError: string | null;
 	selectedShotIds: Set<string>;
+	parseModel: string;
+	parseProvider: string;
+	_pendingTempScriptPath: string | null;
 }
 
 interface MoyinActions {
@@ -113,6 +121,7 @@ interface MoyinActions {
 	setLanguage: (lang: string) => void;
 	setSceneCount: (count: string) => void;
 	setShotCount: (count: string) => void;
+	setParseModel: (model: string) => void;
 	checkApiKeyStatus: () => Promise<void>;
 	updateCharacter: (id: string, updates: Partial<ScriptCharacter>) => void;
 	addCharacter: (char: ScriptCharacter) => void;
@@ -206,6 +215,9 @@ const initialState: MoyinState = {
 	createStatus: "idle",
 	createError: null,
 	selectedShotIds: new Set<string>(),
+	parseModel: "gemini",
+	parseProvider: "",
+	_pendingTempScriptPath: null,
 };
 
 export const useMoyinStore = create<MoyinStore>((set, get) => {
