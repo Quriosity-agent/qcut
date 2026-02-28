@@ -259,6 +259,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		setLanguage: (lang) => set({ language: lang }),
 		setSceneCount: (count) => set({ sceneCount: count }),
 		setShotCount: (count) => set({ shotCount: count }),
+		setParseModel: (model) => set({ parseModel: model }),
 
 		checkApiKeyStatus: async () => {
 			try {
