@@ -14,7 +14,7 @@ export async function PATCH(
 				? body.label.trim()
 				: null;
 
-		setLabel(id, label);
+		await setLabel(id, label);
 
 		return NextResponse.json({ id, label });
 	} catch (error) {
@@ -36,5 +36,5 @@ export async function GET(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	const { id } = await params;
-	return NextResponse.json({ id, label: getLabel(id) });
+	return NextResponse.json({ id, label: await getLabel(id) });
 }

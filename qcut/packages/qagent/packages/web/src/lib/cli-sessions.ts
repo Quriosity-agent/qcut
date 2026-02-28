@@ -196,6 +196,7 @@ function cliProcessToDashboard(
 export async function findCLISession(
 	id: string,
 ): Promise<DashboardSession | null> {
+	if (process.platform === "win32") return null;
 	const match = id.match(/^(claude-code|codex):(\d+)$/);
 	if (!match) return null;
 
@@ -223,6 +224,9 @@ export async function findCLISession(
 export async function mergeWithUnmanagedCLI(
 	managedSessions: DashboardSession[],
 ): Promise<DashboardSession[]> {
+	// CLI process discovery relies on Unix ps/lsof — skip on non-Unix platforms
+	if (process.platform === "win32") return managedSessions;
+
 	const processes = await discoverCLIProcesses();
 	if (processes.length === 0) return managedSessions;
 

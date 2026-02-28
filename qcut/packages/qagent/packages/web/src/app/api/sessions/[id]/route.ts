@@ -21,7 +21,7 @@ export async function GET(
 		// for the core session manager's metadata file lookup
 		const cliSession = await findCLISession(id);
 		if (cliSession) {
-			cliSession.label = getLabel(id);
+			cliSession.label = await getLabel(id);
 			return NextResponse.json(cliSession);
 		}
 
@@ -92,7 +92,7 @@ export async function GET(
 			}
 		}
 
-		dashboardSession.label = getLabel(id);
+		dashboardSession.label = await getLabel(id);
 		return NextResponse.json(dashboardSession);
 	} catch (error) {
 		console.error("Failed to fetch session:", error);

@@ -416,7 +416,7 @@ The Text-to-Video panel supports **18 different AI models** from various provide
 - **Description:** Next-generation WAN model with improved quality
 - **Features:**
   - Improved quality over v2.0
-  - High quality preset
+  - High-quality preset
   - Cinematic style
 - **Supported Resolutions:** 480p, 720p, 1080p
 - **Supported Durations:** 5s, 10s

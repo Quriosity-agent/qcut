@@ -46,6 +46,7 @@ This document describes QCut's integrated terminal system, which provides full P
 The main process handler that manages PTY sessions using `node-pty`.
 
 **IPC Channels:**
+
 | Channel | Direction | Description |
 |---------|-----------|-------------|
 | `pty:spawn` | invoke | Create new PTY session |
@@ -103,6 +104,7 @@ interface CliProviderConfig {
 ```
 
 **Provider configurations:**
+
 | Provider | Name | Command | API Key | Skill Injection |
 |----------|------|---------|---------|-----------------|
 | `gemini` | Gemini CLI | `npx @google/gemini-cli@latest` | No (OAuth) | Prompt injection (delayed write) |
@@ -149,6 +151,7 @@ interface PtyTerminalState {
 ```
 
 **Key Actions:**
+
 | Action | Description |
 |--------|-------------|
 | `connect(options?)` | Spawn new PTY session with optional `ConnectOptions` |

@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 		// Merge with unmanaged tmux sessions, then unmanaged CLI agents
 		dashboardSessions = await mergeWithUnmanagedTmux(dashboardSessions);
 		dashboardSessions = await mergeWithUnmanagedCLI(dashboardSessions);
-		applyLabels(dashboardSessions);
+		await applyLabels(dashboardSessions);
 
 		return NextResponse.json({
 			sessions: dashboardSessions,

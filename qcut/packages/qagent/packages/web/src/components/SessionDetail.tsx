@@ -928,11 +928,15 @@ function CLITerminalPanel({ session }: { session: DashboardSession }) {
 					<p className="text-[13px] text-[var(--color-text-secondary)]">
 						This {agentName} session is running in your terminal
 					</p>
+					{(session.metadata.pid || session.metadata.tty) && (
 					<div className="flex items-center gap-3 font-[var(--font-mono)] text-[11px] text-[var(--color-text-muted)]">
-						<span>PID {session.metadata.pid}</span>
-						<span className="text-[var(--color-border-strong)]">&middot;</span>
-						<span>TTY {session.metadata.tty}</span>
+						{session.metadata.pid && <span>PID {session.metadata.pid}</span>}
+						{session.metadata.pid && session.metadata.tty && (
+							<span className="text-[var(--color-border-strong)]">&middot;</span>
+						)}
+						{session.metadata.tty && <span>TTY {session.metadata.tty}</span>}
 					</div>
+				)}
 				</div>
 				<button
 					type="button"
@@ -963,12 +967,7 @@ function CLITerminalPanel({ session }: { session: DashboardSession }) {
 						{error}
 					</p>
 				)}
-				{session.metadata.cwd && (
-					<p className="mt-2 font-[var(--font-mono)] text-[10px] text-[var(--color-text-tertiary)]">
-						{session.metadata.cwd}
-					</p>
-				)}
-			</div>
+				</div>
 		</div>
 	);
 }

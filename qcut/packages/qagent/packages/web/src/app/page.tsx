@@ -127,7 +127,7 @@ export default async function Home() {
 		// Merge with unmanaged tmux sessions, then unmanaged CLI agents
 		sessions = await mergeWithUnmanagedTmux(sessions);
 		sessions = await mergeWithUnmanagedCLI(sessions);
-		applyLabels(sessions);
+		await applyLabels(sessions);
 	} catch {
 		// Config not found or services unavailable — show empty dashboard
 	}
