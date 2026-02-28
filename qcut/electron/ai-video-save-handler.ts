@@ -5,6 +5,15 @@ import { randomBytes } from "crypto";
 
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024; // 5GB limit for AI videos
 
+/** Safe console wrapper that catches EPIPE errors from broken stdout */
+function safeLog(...args: unknown[]): void {
+	try {
+		console.log(...args);
+	} catch {
+		// Ignore EPIPE — stdout disconnected during shutdown
+	}
+}
+
 /**
  * Sanitize filename to prevent path traversal attacks
  */
@@ -340,12 +349,12 @@ export function registerAIVideoHandlers(): void {
 		"ai-video:get-project-dir",
 		async (event, projectId: string): Promise<string> => {
 			const dir = getAIVideoDir(projectId);
-			console.log(`[AI Video IPC] get-project-dir("${projectId}") → ${dir}`);
+			safeLog(`[AI Video IPC] get-project-dir("${projectId}") → ${dir}`);
 			return dir;
 		}
 	);
 
-	console.log("✅ AI Video save handlers registered (Documents-based paths)");
+	safeLog("✅ AI Video save handlers registered (Documents-based paths)");
 }
 
 // --- Migration ---
@@ -372,17 +381,17 @@ export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
 	};
 
 	const legacyRoot = path.join(app.getPath("userData"), "projects");
-	console.log(`[AI Video Migration] Legacy root: ${legacyRoot}`);
-	console.log(
+	safeLog(`[AI Video Migration] Legacy root: ${legacyRoot}`);
+	safeLog(
 		`[AI Video Migration] Documents base: ${app.getPath("documents")}`
 	);
 
 	// Early return if no legacy directory
 	try {
 		await fs.promises.access(legacyRoot);
-		console.log("[AI Video Migration] Legacy root exists, scanning...");
+		safeLog("[AI Video Migration] Legacy root exists, scanning...");
 	} catch {
-		console.log("[AI Video Migration] No legacy root found, skipping.");
+		safeLog("[AI Video Migration] No legacy root found, skipping.");
 		return result;
 	}
 

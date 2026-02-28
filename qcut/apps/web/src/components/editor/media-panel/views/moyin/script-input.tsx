@@ -5,6 +5,7 @@
 
 import { useState, useMemo } from "react";
 import { useMoyinStore } from "@/stores/moyin/moyin-store";
+import { MODEL_OPTIONS } from "@/stores/moyin/moyin-parse-actions";
 import { ImportProgress } from "./import-progress";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -128,6 +129,8 @@ export function ScriptInput() {
 	const shotCount = useMoyinStore((s) => s.shotCount);
 	const setShotCount = useMoyinStore((s) => s.setShotCount);
 
+	const parseModel = useMoyinStore((s) => s.parseModel);
+	const setParseModel = useMoyinStore((s) => s.setParseModel);
 	const selectedStyleId = useMoyinStore((s) => s.selectedStyleId);
 	const setSelectedStyleId = useMoyinStore((s) => s.setSelectedStyleId);
 	const selectedProfileId = useMoyinStore((s) => s.selectedProfileId);
@@ -426,6 +429,27 @@ export function ScriptInput() {
 						</SelectTrigger>
 						<SelectContent>
 							{LANGUAGE_OPTIONS.map((opt) => (
+								<SelectItem
+									key={opt.value}
+									value={opt.value}
+									className="text-xs"
+								>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				{/* Parse Model */}
+				<div className="space-y-1">
+					<Label className="text-xs">Parse Model</Label>
+					<Select value={parseModel} onValueChange={setParseModel}>
+						<SelectTrigger className="h-7 text-xs">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{MODEL_OPTIONS.map((opt) => (
 								<SelectItem
 									key={opt.value}
 									value={opt.value}

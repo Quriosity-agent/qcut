@@ -798,16 +798,27 @@ if (!isCliKeyCommand) {
 					projectsProcessed: number;
 					errors: string[];
 				}) => {
-					console.log(
-						`[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
-					);
-					if (result.errors.length > 0) {
-						console.warn("[AI Video Migration] Errors:", result.errors);
+					try {
+						console.log(
+							`[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
+						);
+						if (result.errors.length > 0) {
+							console.warn(
+								"[AI Video Migration] Errors:",
+								result.errors
+							);
+						}
+					} catch {
+						// Ignore EPIPE — stdout may disconnect during shutdown
 					}
 				}
 			)
 			.catch((err: Error) => {
-				console.error("[AI Video Migration] Failed:", err.message);
+				try {
+					console.error("[AI Video Migration] Failed:", err.message);
+				} catch {
+					// Ignore EPIPE
+				}
 			});
 		// Note: font-resolver removed - handler not implemented
 
