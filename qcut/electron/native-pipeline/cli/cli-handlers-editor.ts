@@ -33,24 +33,28 @@ interface ScreenRecordingStatusResponse {
 const SCREEN_RECORDING_STATUS_MAX_ATTEMPTS = 3;
 const SCREEN_RECORDING_STATUS_RETRY_DELAY_MS = 250;
 
-function isObjectRecord({
+function toObjectRecord({
 	value,
 }: {
 	value: unknown;
-}): value is Record<string, unknown> {
+}): Record<string, unknown> | undefined {
 	try {
-		return typeof value === "object" && value !== null;
+		if (typeof value !== "object" || value === null) {
+			return undefined;
+		}
+		return value as Record<string, unknown>;
 	} catch {
-		return false;
+		return undefined;
 	}
 }
 
 function isRecordingActive({ status }: { status: unknown }): boolean {
 	try {
-		if (!isObjectRecord({ value: status })) {
+		const statusRecord = toObjectRecord({ value: status });
+		if (!statusRecord) {
 			return false;
 		}
-		return status.recording === true;
+		return statusRecord.recording === true;
 	} catch {
 		return false;
 	}
@@ -307,11 +311,12 @@ async function handleScreenRecordingCommand(
 				return { success: true, data: stopData };
 			}
 
-			if (isObjectRecord({ value: stopData })) {
+			const stopDataRecord = toObjectRecord({ value: stopData });
+			if (stopDataRecord) {
 				return {
 					success: true,
 					data: {
-						...stopData,
+						...stopDataRecord,
 						recoveredViaForceStop: true,
 						forceStopData: verification.forceStopData,
 					},

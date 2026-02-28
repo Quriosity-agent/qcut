@@ -191,4 +191,49 @@ describe("team manager", () => {
 		expect(Array.isArray(saved)).toBe(true);
 		expect(saved).toHaveLength(2);
 	});
+
+	it("handles concurrent writes without losing messages", async () => {
+		const manager = createTeamManager({ rootDir });
+		await manager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["team-lead", "observer"],
+		});
+
+		const sendCount = 50;
+		await Promise.all(
+			Array.from({ length: sendCount }, (_, index) =>
+				manager.sendMessage({
+					teamId: "alpha-team",
+					from: "observer",
+					to: "team-lead",
+					text: `msg-${index}`,
+				})
+			)
+		);
+
+		const all = await manager.readInbox({
+			teamId: "alpha-team",
+			member: "team-lead",
+		});
+		expect(all).toHaveLength(sendCount);
+		expect(new Set(all.map((message) => message.text)).size).toBe(sendCount);
+	});
+
+	it("throws when inbox file is malformed JSON", async () => {
+		const manager = createTeamManager({ rootDir });
+		await manager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["team-lead"],
+		});
+
+		const inboxPath = join(rootDir, "alpha-team", "inboxes", "team-lead.json");
+		writeFileSync(inboxPath, "{ bad json", "utf-8");
+
+		await expect(
+			manager.readInbox({
+				teamId: "alpha-team",
+				member: "team-lead",
+			})
+		).rejects.toThrow("Failed to read inbox");
+	});
 });

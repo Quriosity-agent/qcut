@@ -15,6 +15,13 @@
 			"when": 1761960000000,
 			"tag": "0001_payment_license_system",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1762012800000,
+			"tag": "0002_payment_reliability_updates",
+			"breakpoints": true
 		}
 	]
 }

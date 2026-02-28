@@ -4,6 +4,7 @@ import {
 	timestamp,
 	boolean,
 	integer,
+	numeric,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -118,8 +119,20 @@ export const creditBalances = pgTable("credit_balances", {
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" })
 		.unique(),
-	planCredits: integer("plan_credits").notNull().default(50),
-	topUpCredits: integer("top_up_credits").notNull().default(0),
+	planCredits: numeric("plan_credits", {
+		precision: 12,
+		scale: 3,
+		mode: "number",
+	})
+		.notNull()
+		.default(50),
+	topUpCredits: numeric("top_up_credits", {
+		precision: 12,
+		scale: 3,
+		mode: "number",
+	})
+		.notNull()
+		.default(0),
 	planCreditsResetAt: timestamp("plan_credits_reset_at").notNull(),
 	updatedAt: timestamp("updated_at")
 		.$defaultFn(() => /* @__PURE__ */ new Date())
@@ -134,12 +147,30 @@ export const creditTransactions = pgTable("credit_transactions", {
 	type: text("type", {
 		enum: ["plan_grant", "top_up", "deduction", "refund", "expiry"],
 	}).notNull(),
-	amount: integer("amount").notNull(),
-	balanceAfter: integer("balance_after").notNull(),
+	amount: numeric("amount", { precision: 12, scale: 3, mode: "number" }).notNull(),
+	balanceAfter: numeric("balance_after", {
+		precision: 12,
+		scale: 3,
+		mode: "number",
+	}).notNull(),
 	description: text("description"),
 	modelKey: text("model_key"),
 	stripePaymentId: text("stripe_payment_id"),
 	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();
+
+export const stripeWebhookEvents = pgTable("stripe_webhook_events", {
+	id: text("id").primaryKey(),
+	eventId: text("event_id").notNull().unique(),
+	eventType: text("event_type").notNull(),
+	processedAt: timestamp("processed_at"),
+	lastError: text("last_error"),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+	updatedAt: timestamp("updated_at")
 		.$defaultFn(() => /* @__PURE__ */ new Date())
 		.notNull(),
 }).enableRLS();

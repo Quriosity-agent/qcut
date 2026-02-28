@@ -223,4 +223,72 @@ describe("team command", () => {
 		expect(protocol.from).toBe("observer");
 		expect(protocol.idleReason).toBe("available");
 	});
+
+	it("rejects invalid --payload JSON", async () => {
+		await program.parseAsync([
+			"node",
+			"test",
+			"team",
+			"init",
+			"alpha-team",
+			"team-lead",
+			"observer",
+			"--root",
+			rootDir,
+		]);
+
+		await expect(
+			program.parseAsync([
+				"node",
+				"test",
+				"team",
+				"send",
+				"alpha-team",
+				"observer",
+				"team-lead",
+				"--protocol",
+				"idle_notification",
+				"--payload",
+				"{bad-json",
+				"--root",
+				rootDir,
+			])
+		).rejects.toThrow("process.exit(1)");
+
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Failed to send team message")
+		);
+	});
+
+	it("rejects empty non-protocol message", async () => {
+		await program.parseAsync([
+			"node",
+			"test",
+			"team",
+			"init",
+			"alpha-team",
+			"team-lead",
+			"observer",
+			"--root",
+			rootDir,
+		]);
+
+		await expect(
+			program.parseAsync([
+				"node",
+				"test",
+				"team",
+				"send",
+				"alpha-team",
+				"observer",
+				"team-lead",
+				"--root",
+				rootDir,
+			])
+		).rejects.toThrow("process.exit(1)");
+
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("message text is required")
+		);
+	});
 });
