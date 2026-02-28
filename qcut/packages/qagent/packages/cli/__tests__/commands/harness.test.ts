@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
 	createTeamManager,
+	parseTeamProtocolMessage,
 	type Session,
 	type SessionManager,
 	type RuntimeHandle,
@@ -366,7 +367,7 @@ describe("harness command", () => {
 		expect(unread).toEqual([]);
 	});
 
-	it("relays tmux output to peer inbox members", async () => {
+	it("does not relay raw tmux output in protocol mode", async () => {
 		mockSessionManager.spawn.mockResolvedValue(makeSession({ id: "app-1" }));
 		mockSessionManager.get.mockResolvedValue(
 			makeSession({
@@ -418,10 +419,130 @@ describe("harness command", () => {
 			member: "team-lead",
 			unreadOnly: true,
 		});
+		expect(inbox).toHaveLength(0);
+	});
+
+	it("relays tmux output to peer inbox members in raw mode", async () => {
+		mockSessionManager.spawn.mockResolvedValue(makeSession({ id: "app-1" }));
+		mockSessionManager.get.mockResolvedValue(
+			makeSession({
+				id: "app-1",
+				runtimeHandle: makeRuntimeHandle({ id: "tmux-target-1" }),
+			})
+		);
+		mockExec.mockImplementation(async (cmd: string, args: string[]) => {
+			if (cmd === "tmux" && args[0] === "capture-pane") {
+				return {
+					stdout: "build started\nall tests passed",
+					stderr: "",
+				};
+			}
+			return { stdout: "", stderr: "" };
+		});
+
+		const teamManager = createTeamManager({ rootDir: tmpDir });
+		await teamManager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["codex", "team-lead"],
+		});
+
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"spawn",
+			"codex",
+			"start",
+		]);
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"relay",
+			"--team",
+			"alpha-team",
+			"--member",
+			"codex",
+			"--root",
+			tmpDir,
+			"--once",
+			"--output-mode",
+			"raw",
+			"--emit-initial-output",
+		]);
+
+		const inbox = await teamManager.readInbox({
+			teamId: "alpha-team",
+			member: "team-lead",
+			unreadOnly: true,
+		});
 		expect(inbox).toHaveLength(1);
 		expect(inbox[0].from).toBe("codex");
 		expect(inbox[0].text).toContain("all tests passed");
 		expect(mockSessionManager.send).not.toHaveBeenCalled();
+	});
+
+	it("relays structured protocol output once and decrements ttl", async () => {
+		mockSessionManager.spawn.mockResolvedValue(makeSession({ id: "app-1" }));
+		mockSessionManager.get.mockResolvedValue(
+			makeSession({
+				id: "app-1",
+				runtimeHandle: makeRuntimeHandle({ id: "tmux-target-1" }),
+			})
+		);
+		mockExec.mockImplementation(async (cmd: string, args: string[]) => {
+			if (cmd === "tmux" && args[0] === "capture-pane") {
+				return {
+					stdout: [
+						'{"type":"task_update","from":"codex","id":"msg-1","ttl":2,"body":"done"}',
+						'{"type":"task_update","from":"codex","id":"msg-1","ttl":2,"body":"done"}',
+					].join("\n"),
+					stderr: "",
+				};
+			}
+			return { stdout: "", stderr: "" };
+		});
+
+		const teamManager = createTeamManager({ rootDir: tmpDir });
+		await teamManager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["codex", "team-lead"],
+		});
+
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"spawn",
+			"codex",
+			"start",
+		]);
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"relay",
+			"--team",
+			"alpha-team",
+			"--member",
+			"codex",
+			"--root",
+			tmpDir,
+			"--once",
+			"--emit-initial-output",
+		]);
+
+		const inbox = await teamManager.readInbox({
+			teamId: "alpha-team",
+			member: "team-lead",
+			unreadOnly: true,
+		});
+		expect(inbox).toHaveLength(1);
+		const protocol = parseTeamProtocolMessage({ message: inbox[0] });
+		expect(protocol).not.toBeNull();
+		expect(protocol?.type).toBe("task_update");
+		expect(protocol?.id).toBe("msg-1");
+		expect(protocol?.ttl).toBe(1);
 	});
 
 	it("rejects invalid mode", async () => {

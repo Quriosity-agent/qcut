@@ -35,10 +35,19 @@ const VALID_THREAD_MODE = {
 	HERE: "here",
 	OFF: "off",
 } as const;
+const RELAY_OUTPUT_MODE = {
+	PROTOCOL: "protocol",
+	RAW: "raw",
+} as const;
+const RELAY_PROTOCOL_PREFIX = "[qagent-protocol]";
+const RELAY_DEFAULT_PROTOCOL_TTL = 2;
+const RELAY_DEFAULT_DEDUP_CACHE_SIZE = 1024;
 
 type HarnessMode = (typeof VALID_MODE)[keyof typeof VALID_MODE];
 type HarnessThreadMode =
 	(typeof VALID_THREAD_MODE)[keyof typeof VALID_THREAD_MODE];
+type RelayOutputMode =
+	(typeof RELAY_OUTPUT_MODE)[keyof typeof RELAY_OUTPUT_MODE];
 
 interface HarnessRuntimeOptions {
 	model?: string;
@@ -101,6 +110,9 @@ interface HarnessRelayOptions extends HarnessTargetOptions {
 	maxChars?: string;
 	once?: boolean;
 	output?: boolean;
+	outputMode?: string;
+	protocolTtl?: string;
+	dedupCache?: string;
 	emitInitialOutput?: boolean;
 }
 
@@ -130,6 +142,9 @@ interface RelayParsedOptions {
 	maxChars: number;
 	once: boolean;
 	outputEnabled: boolean;
+	outputMode: RelayOutputMode;
+	protocolTTL: number;
+	dedupCacheSize: number;
 	emitInitialOutput: boolean;
 }
 
@@ -142,6 +157,8 @@ interface RelayRunConfig extends RelayParsedOptions {
 
 interface RelayState {
 	previousOutput: string | null;
+	seenProtocolIds: Set<string>;
+	seenProtocolOrder: string[];
 }
 
 interface RelaySignalController {
@@ -330,6 +347,23 @@ function parsePositiveIntegerOption({
 	const parsed = Number.parseInt(value, 10);
 	if (Number.isNaN(parsed) || parsed < 1) {
 		throw new Error(`${flag} must be a positive integer`);
+	}
+	return parsed;
+}
+
+function parseNonNegativeIntegerOption({
+	value,
+	flag,
+}: {
+	value: string | undefined;
+	flag: string;
+}): number | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+	const parsed = Number.parseInt(value, 10);
+	if (Number.isNaN(parsed) || parsed < 0) {
+		throw new Error(`${flag} must be a non-negative integer`);
 	}
 	return parsed;
 }
@@ -700,6 +734,22 @@ function resolveTeamRoot({
 	return root ?? process.env.QAGENT_TEAM_ROOT ?? "~/.claude/teams";
 }
 
+function parseRelayOutputMode({
+	value,
+}: {
+	value: string | undefined;
+}): RelayOutputMode {
+	if (!value || value === RELAY_OUTPUT_MODE.PROTOCOL) {
+		return RELAY_OUTPUT_MODE.PROTOCOL;
+	}
+	if (value === RELAY_OUTPUT_MODE.RAW) {
+		return RELAY_OUTPUT_MODE.RAW;
+	}
+	throw new Error(
+		`Invalid --output-mode '${value}'. Use '${RELAY_OUTPUT_MODE.PROTOCOL}' or '${RELAY_OUTPUT_MODE.RAW}'.`
+	);
+}
+
 function parseRelayOptions({
 	options,
 }: {
@@ -738,6 +788,17 @@ function parseRelayOptions({
 			}) ?? 4_000,
 		once: Boolean(options.once),
 		outputEnabled: options.output !== false,
+		outputMode: parseRelayOutputMode({ value: options.outputMode }),
+		protocolTTL:
+			parseNonNegativeIntegerOption({
+				value: options.protocolTtl,
+				flag: "--protocol-ttl",
+			}) ?? RELAY_DEFAULT_PROTOCOL_TTL,
+		dedupCacheSize:
+			parsePositiveIntegerOption({
+				value: options.dedupCache,
+				flag: "--dedup-cache",
+			}) ?? RELAY_DEFAULT_DEDUP_CACHE_SIZE,
 		emitInitialOutput: Boolean(options.emitInitialOutput),
 	};
 }
@@ -831,6 +892,153 @@ function formatInboundRelayMessage({
 	}
 
 	return `${headerParts.join(" ")}\n${message.text}`;
+}
+
+function isLegacyRelayNoiseMessage({
+	message,
+}: {
+	message: TeamMessage;
+}): boolean {
+	try {
+		const summary = message.summary ?? "";
+		if (summary.startsWith("relay:")) {
+			return true;
+		}
+		return message.text.startsWith("[qagent-harness-relay]");
+	} catch {
+		return false;
+	}
+}
+
+function parseProtocolId({
+	value,
+}: {
+	value: unknown;
+}): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function parseProtocolTTL({
+	value,
+}: {
+	value: unknown;
+}): number | null {
+	if (typeof value === "number" && Number.isInteger(value)) {
+		return value;
+	}
+	if (typeof value === "string") {
+		const parsed = Number.parseInt(value, 10);
+		if (!Number.isNaN(parsed)) {
+			return parsed;
+		}
+	}
+	return null;
+}
+
+function buildRelayMessageId({
+	member,
+	payload,
+}: {
+	member: string;
+	payload?: string;
+}): string {
+	const seed = payload ?? `${Date.now()}-${Math.random()}`;
+	let hash = 0;
+	for (let index = 0; index < seed.length; index++) {
+		hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+	}
+	return [
+		"relay",
+		member,
+		hash.toString(36),
+		Date.now().toString(36),
+	].join("-");
+}
+
+function markProtocolSeen({
+	state,
+	id,
+	maxSize,
+}: {
+	state: RelayState;
+	id: string;
+	maxSize: number;
+}): boolean {
+	if (state.seenProtocolIds.has(id)) {
+		return false;
+	}
+	state.seenProtocolIds.add(id);
+	state.seenProtocolOrder.push(id);
+	while (state.seenProtocolOrder.length > maxSize) {
+		const evicted = state.seenProtocolOrder.shift();
+		if (!evicted) {
+			continue;
+		}
+		state.seenProtocolIds.delete(evicted);
+	}
+	return true;
+}
+
+function parseProtocolFromInlineJSON({
+	value,
+}: {
+	value: string;
+}): TeamMessage | null {
+	try {
+		const parsed = JSON.parse(value) as unknown;
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			return null;
+		}
+		const candidate = parsed as Record<string, unknown>;
+		if (typeof candidate.type !== "string" || typeof candidate.from !== "string") {
+			return null;
+		}
+		return {
+			from: candidate.from,
+			text: JSON.stringify(candidate),
+			timestamp: new Date().toISOString(),
+			read: false,
+		};
+	} catch {
+		return null;
+	}
+}
+
+function extractProtocolPayloadsFromOutput({
+	delta,
+}: {
+	delta: string;
+}): TeamMessage[] {
+	try {
+		const lines = splitLines({ value: delta });
+		const extracted: TeamMessage[] = [];
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (!trimmed) {
+				continue;
+			}
+			let jsonCandidate: string | null = null;
+			if (trimmed.startsWith(RELAY_PROTOCOL_PREFIX)) {
+				jsonCandidate = trimmed.slice(RELAY_PROTOCOL_PREFIX.length).trim();
+			} else if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+				jsonCandidate = trimmed;
+			}
+			if (!jsonCandidate) {
+				continue;
+			}
+			const parsed = parseProtocolFromInlineJSON({ value: jsonCandidate });
+			if (parsed) {
+				extracted.push(parsed);
+			}
+		}
+		return extracted;
+	} catch {
+		return [];
+	}
 }
 
 function clipRelayText({
@@ -956,6 +1164,8 @@ async function relayInboxToHarness({
 	batchSize,
 	record,
 	sm,
+	state,
+	dedupCacheSize,
 }: {
 	teamManager: TeamManager;
 	teamId: string;
@@ -963,6 +1173,8 @@ async function relayInboxToHarness({
 	batchSize: number;
 	record: HarnessSessionRecord;
 	sm: SessionManager;
+	state: RelayState;
+	dedupCacheSize: number;
 }): Promise<number> {
 	try {
 		const inbound = await teamManager.readInbox({
@@ -972,7 +1184,24 @@ async function relayInboxToHarness({
 			markAsRead: true,
 			limit: batchSize,
 		});
-		const forwardable = inbound.filter((message) => message.from !== member);
+		const forwardable = inbound.filter((message) => {
+			if (message.from === member) {
+				return false;
+			}
+			const protocol = parseTeamProtocolMessage({ message });
+			if (!protocol) {
+				return !isLegacyRelayNoiseMessage({ message });
+			}
+			const protocolId = parseProtocolId({ value: protocol.id });
+			if (!protocolId) {
+				return true;
+			}
+			return markProtocolSeen({
+				state,
+				id: protocolId,
+				maxSize: dedupCacheSize,
+			});
+		});
 		await Promise.all(
 			forwardable.map(async (message) => {
 				const envelope = formatInboundRelayMessage({ message });
@@ -996,6 +1225,9 @@ async function relayHarnessToTeam({
 	state,
 	outputLines,
 	maxChars,
+	outputMode,
+	protocolTTL,
+	dedupCacheSize,
 	emitInitialOutput,
 	sm,
 }: {
@@ -1007,6 +1239,9 @@ async function relayHarnessToTeam({
 	state: RelayState;
 	outputLines: number;
 	maxChars: number;
+	outputMode: RelayOutputMode;
+	protocolTTL: number;
+	dedupCacheSize: number;
 	emitInitialOutput: boolean;
 	sm: SessionManager;
 }): Promise<number> {
@@ -1034,31 +1269,90 @@ async function relayHarnessToTeam({
 			return 0;
 		}
 
-		const clipped = clipRelayText({
-			text: delta,
-			maxChars,
-		});
-		const relayMessage = [
-			`[qagent-harness-relay] session=${record.key}`,
-			`timestamp=${new Date().toISOString()}`,
-			"",
-			clipped,
-		].join("\n");
+		if (outputMode === RELAY_OUTPUT_MODE.RAW) {
+			const clipped = clipRelayText({
+				text: delta,
+				maxChars,
+			});
+			const relayMessage = [
+				`[qagent-harness-relay] session=${record.key}`,
+				`timestamp=${new Date().toISOString()}`,
+				"",
+				clipped,
+			].join("\n");
 
-		await Promise.all(
-			peers.map(async (peer) => {
-				await teamManager.sendMessage({
+			await Promise.all(
+				peers.map(async (peer) => {
+					await teamManager.sendMessage({
+						teamId,
+						from: member,
+						to: peer,
+						text: relayMessage,
+						summary: `relay:${record.agentId}`,
+						color: "cyan",
+						read: false,
+					});
+				})
+			);
+			return peers.length;
+		}
+
+		const protocolMessages = extractProtocolPayloadsFromOutput({
+			delta,
+		});
+		if (protocolMessages.length === 0) {
+			return 0;
+		}
+
+		let sentCount = 0;
+		for (const protocolMessage of protocolMessages) {
+			const protocol = parseTeamProtocolMessage({
+				message: protocolMessage,
+			});
+			if (!protocol) {
+				continue;
+			}
+			const ttl = parseProtocolTTL({ value: protocol.ttl }) ?? protocolTTL;
+			if (ttl <= 0) {
+				continue;
+			}
+			const protocolId =
+				parseProtocolId({ value: protocol.id }) ??
+				buildRelayMessageId({
+					member,
+					payload: JSON.stringify(protocol),
+				});
+			const isNew = markProtocolSeen({
+				state,
+				id: protocolId,
+				maxSize: dedupCacheSize,
+			});
+			if (!isNew) {
+				continue;
+			}
+
+			const nextTTL = ttl - 1;
+			const payload: Record<string, unknown> = {
+				...protocol,
+				id: protocolId,
+				ttl: nextTTL,
+			};
+			for (const peer of peers) {
+				await teamManager.sendProtocol({
 					teamId,
 					from: member,
 					to: peer,
-					text: relayMessage,
-					summary: `relay:${record.agentId}`,
+					type: protocol.type,
+					payload,
+					summary: `relay-protocol:${protocol.type}`,
 					color: "cyan",
 					read: false,
 				});
-			})
-		);
-		return peers.length;
+				sentCount += 1;
+			}
+		}
+
+		return sentCount;
 	} catch (error) {
 		throw new Error("Failed to relay harness output to team", { cause: error });
 	}
@@ -1079,6 +1373,8 @@ async function runRelayCycle({
 			batchSize: config.batchSize,
 			record: config.record,
 			sm: config.sm,
+			state,
+			dedupCacheSize: config.dedupCacheSize,
 		});
 
 		let outboundCount = 0;
@@ -1092,6 +1388,9 @@ async function runRelayCycle({
 				state,
 				outputLines: config.outputLines,
 				maxChars: config.maxChars,
+				outputMode: config.outputMode,
+				protocolTTL: config.protocolTTL,
+				dedupCacheSize: config.dedupCacheSize,
 				emitInitialOutput: config.emitInitialOutput,
 				sm: config.sm,
 			});
@@ -1387,6 +1686,21 @@ export function registerHarness(program: Command): void {
 		.option("--once", "Run one relay cycle then exit")
 		.option("--no-output", "Disable harness->team output relay")
 		.option(
+			"--output-mode <mode>",
+			"Outbound relay mode: protocol (default) or raw",
+			RELAY_OUTPUT_MODE.PROTOCOL
+		)
+		.option(
+			"--protocol-ttl <count>",
+			"Default TTL for protocol messages when missing",
+			String(RELAY_DEFAULT_PROTOCOL_TTL)
+		)
+		.option(
+			"--dedup-cache <count>",
+			"Max protocol message IDs to keep for dedup",
+			String(RELAY_DEFAULT_DEDUP_CACHE_SIZE)
+		)
+		.option(
 			"--emit-initial-output",
 			"Forward current harness output snapshot on the first poll"
 		)
@@ -1423,6 +1737,8 @@ export function registerHarness(program: Command): void {
 				};
 				const state: RelayState = {
 					previousOutput: null,
+					seenProtocolIds: new Set<string>(),
+					seenProtocolOrder: [],
 				};
 
 				console.log(
@@ -1432,6 +1748,7 @@ export function registerHarness(program: Command): void {
 				);
 				if (parsed.outputEnabled) {
 					console.log(chalk.dim(`  outbound peers: ${peers.join(", ")}`));
+					console.log(chalk.dim(`  output mode: ${parsed.outputMode}`));
 				}
 
 				while (!signalController.isStopped()) {
