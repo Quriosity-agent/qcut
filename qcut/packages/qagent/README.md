@@ -116,6 +116,8 @@ qagent session restore <session>           # Revive a crashed agent
 qagent team init <team> <members...>       # Initialize filesystem inbox queue
 qagent team send <team> <from> <to> "..."  # Send teammate message/protocol
 qagent team inbox <team> <member> --unread # Read teammate inbox
+qagent harness spawn codex "Fix tests"     # Spawn managed harness-style session
+qagent harness status --json               # Show harness runtime/options state
 qagent dashboard                           # Open web dashboard
 ```
 

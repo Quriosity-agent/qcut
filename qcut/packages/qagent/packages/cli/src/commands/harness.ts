@@ -2,12 +2,14 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	renameSync,
+	unlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import chalk from "chalk";
 import type { Command } from "commander";
-import type { OrchestratorConfig, Session, SessionManager } from "@composio/ao-core";
+import type { OrchestratorConfig, SessionManager } from "@composio/ao-core";
 import { loadConfig } from "@composio/ao-core";
 import { getSessionManager } from "../lib/create-session-manager.js";
 import { exec } from "../lib/shell.js";
@@ -202,9 +204,19 @@ function saveStore({
 	store: HarnessStore;
 }): void {
 	const tempPath = `${storePath}.tmp-${Date.now()}`;
-	mkdirSync(dirname(storePath), { recursive: true });
-	writeFileSync(tempPath, `${JSON.stringify(store, null, 2)}\n`, "utf-8");
-	writeFileSync(storePath, readFileSync(tempPath, "utf-8"), "utf-8");
+	try {
+		mkdirSync(dirname(storePath), { recursive: true });
+		writeFileSync(tempPath, `${JSON.stringify(store, null, 2)}\n`, "utf-8");
+		renameSync(tempPath, storePath);
+	} finally {
+		if (existsSync(tempPath)) {
+			try {
+				unlinkSync(tempPath);
+			} catch {
+				// Best effort temp cleanup.
+			}
+		}
+	}
 }
 
 function parseMode({

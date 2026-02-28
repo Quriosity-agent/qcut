@@ -59,6 +59,17 @@ qagent team inbox qcut-team team-lead --unread --json
 qagent team ack qcut-team team-lead
 ```
 
+### Harness-style runtime controls
+```bash
+qagent harness spawn codex "Audit failing tests and fix them"
+qagent harness status
+qagent harness steer "tighten logs and continue"
+qagent harness cancel
+qagent harness model openai/gpt-5.2
+qagent harness permissions strict
+qagent harness close
+```
+
 ### Check and handle PR reviews automatically
 ```bash
 qagent review-check qcut         # Check all Qcut PRs for review comments
