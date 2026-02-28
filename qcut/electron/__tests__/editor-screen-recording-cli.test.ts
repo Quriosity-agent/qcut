@@ -1,11 +1,4 @@
-import {
-	afterAll,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-} from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { handleEditorCommand } from "../native-pipeline/cli/cli-handlers-editor.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 
@@ -21,7 +14,8 @@ type RouteHandler = () => RouteResponse;
 type RouteEntry = RouteResponse | RouteHandler;
 
 const routes = new Map<string, RouteEntry>();
-const requestLog: Array<{ method: string; path: string; body: string | null }> = [];
+const requestLog: Array<{ method: string; path: string; body: string | null }> =
+	[];
 
 function setRoute({
 	method,
@@ -84,11 +78,7 @@ function registerHealthyEditorRoutes(): void {
 	});
 }
 
-function makeStatus({
-	recording,
-}: {
-	recording: boolean;
-}): RouteResponse {
+function makeStatus({ recording }: { recording: boolean }): RouteResponse {
 	return jsonEnvelope({
 		data: {
 			state: recording ? "recording" : "idle",

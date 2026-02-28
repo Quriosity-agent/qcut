@@ -132,7 +132,8 @@ export function getNotifiableOperation({
 }): NotifiableOperationDefinition | null {
 	try {
 		return (
-			notifiableOperationMap.get(createOperationKey({ category, action })) ?? null
+			notifiableOperationMap.get(createOperationKey({ category, action })) ??
+			null
 		);
 	} catch {
 		return null;

@@ -8,7 +8,10 @@ const PLAN_CREDITS: Record<"free" | "pro" | "team", number> = {
 	team: 2000,
 };
 
-const TOP_UP_PACK_CREDITS: Record<"starter" | "standard" | "pro" | "mega", number> = {
+const TOP_UP_PACK_CREDITS: Record<
+	"starter" | "standard" | "pro" | "mega",
+	number
+> = {
 	starter: 50,
 	standard: 120,
 	pro: 350,
@@ -48,7 +51,10 @@ export interface CreditHistoryItem {
 function buildCreditBalanceInfo({
 	balance,
 }: {
-	balance: Pick<CreditBalanceRow, "planCredits" | "topUpCredits" | "planCreditsResetAt">;
+	balance: Pick<
+		CreditBalanceRow,
+		"planCredits" | "topUpCredits" | "planCreditsResetAt"
+	>;
 }): CreditBalanceInfo {
 	const planCredits = balance.planCredits;
 	const topUpCredits = balance.topUpCredits;
@@ -130,7 +136,11 @@ async function createInitialBalance({
 	}
 }
 
-async function ensureCreditBalance({ userId }: { userId: string }): Promise<CreditBalanceRow> {
+async function ensureCreditBalance({
+	userId,
+}: {
+	userId: string;
+}): Promise<CreditBalanceRow> {
 	try {
 		const [existing] = await db
 			.select()

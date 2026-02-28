@@ -13,6 +13,50 @@ interface MediaPreviewProps {
 	item: MediaItem;
 }
 
+function VideoPreview({ item }: MediaPreviewProps) {
+	const previewUrl = item.thumbnailUrl || item.url;
+	const [isLoading, setIsLoading] = useState(Boolean(previewUrl));
+	const [hasError, setHasError] = useState(false);
+
+	if (!previewUrl || hasError) {
+		return (
+			<div className="w-full h-full bg-linear-to-br from-blue-500/20 to-cyan-500/20 flex flex-col items-center justify-center text-muted-foreground rounded border border-blue-500/20">
+				<Video className="h-6 w-6 mb-1" />
+				<span className="text-xs">Video</span>
+				{item.duration && (
+					<span className="text-xs opacity-70">
+						{formatDuration(item.duration)}
+					</span>
+				)}
+			</div>
+		);
+	}
+
+	return (
+		<div className="w-full h-full relative flex items-center justify-center overflow-hidden rounded">
+			{isLoading && (
+				<div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+					<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+				</div>
+			)}
+			<img
+				src={previewUrl}
+				alt={item.name}
+				className="max-w-full max-h-full object-cover"
+				loading="lazy"
+				onLoad={() => setIsLoading(false)}
+				onError={() => {
+					setHasError(true);
+					setIsLoading(false);
+				}}
+			/>
+			<div className="absolute bottom-1 right-1 bg-black/65 text-white text-[10px] px-1 py-0.5 rounded">
+				{item.duration ? formatDuration(item.duration) : "Video"}
+			</div>
+		</div>
+	);
+}
+
 /** Renders a preview thumbnail for a single media item based on its type. */
 export function MediaPreview({ item }: MediaPreviewProps) {
 	if (item.type === "image") {

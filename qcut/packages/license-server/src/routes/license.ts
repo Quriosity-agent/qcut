@@ -31,9 +31,7 @@ licenseRoutes.get("/", async (c) => {
 		return c.json(
 			{
 				error:
-					error instanceof Error
-						? error.message
-						: "Failed to load license",
+					error instanceof Error ? error.message : "Failed to load license",
 			},
 			500
 		);
@@ -52,7 +50,10 @@ licenseRoutes.post("/activate", async (c) => {
 			typeof payload?.deviceName === "string" ? payload.deviceName.trim() : "";
 
 		if (deviceFingerprint.length === 0 || deviceName.length === 0) {
-			return c.json({ error: "deviceFingerprint and deviceName required" }, 400);
+			return c.json(
+				{ error: "deviceFingerprint and deviceName required" },
+				400
+			);
 		}
 
 		const license = await getLicenseByUserId({ userId });
@@ -73,7 +74,8 @@ licenseRoutes.post("/activate", async (c) => {
 			},
 		});
 	} catch (error) {
-		const message = error instanceof Error ? error.message : "Activation failed";
+		const message =
+			error instanceof Error ? error.message : "Activation failed";
 		if (message.includes("Device limit reached")) {
 			return c.json({ error: message }, 403);
 		}
@@ -85,7 +87,8 @@ licenseRoutes.delete("/deactivate", async (c) => {
 	try {
 		const userId = c.get("userId") as string;
 		const payload = await c.req.json();
-		const deviceId = typeof payload?.deviceId === "string" ? payload.deviceId : "";
+		const deviceId =
+			typeof payload?.deviceId === "string" ? payload.deviceId : "";
 		if (deviceId.length === 0) {
 			return c.json({ error: "deviceId required" }, 400);
 		}
@@ -100,7 +103,9 @@ licenseRoutes.delete("/deactivate", async (c) => {
 		return c.json(
 			{
 				error:
-					error instanceof Error ? error.message : "Failed to deactivate device",
+					error instanceof Error
+						? error.message
+						: "Failed to deactivate device",
 			},
 			500
 		);

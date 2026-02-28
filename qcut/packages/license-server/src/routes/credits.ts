@@ -74,9 +74,7 @@ creditsRoutes.post("/deduct", async (c) => {
 		return c.json(
 			{
 				error:
-					error instanceof Error
-						? error.message
-						: "Failed to deduct credits",
+					error instanceof Error ? error.message : "Failed to deduct credits",
 			},
 			500
 		);

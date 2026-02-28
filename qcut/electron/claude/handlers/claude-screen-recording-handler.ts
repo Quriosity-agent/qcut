@@ -48,7 +48,9 @@ export interface StopRecordingResponse {
 function mapForceStopToStopResponse({
 	forceStopResult,
 }: {
-	forceStopResult: Awaited<ReturnType<typeof forceStopActiveScreenRecordingSession>>;
+	forceStopResult: Awaited<
+		ReturnType<typeof forceStopActiveScreenRecordingSession>
+	>;
 }): StopRecordingResponse {
 	try {
 		return {
@@ -219,7 +221,9 @@ export async function requestStopRecordingFromRenderer(
 		});
 	} catch (error) {
 		const reason =
-			error instanceof Error ? error.message : "Renderer stop failed unexpectedly";
+			error instanceof Error
+				? error.message
+				: "Renderer stop failed unexpectedly";
 		return await forceStopWithFallbackReason({
 			reason: `Renderer stop failed (${reason}). Using force-stop fallback.`,
 		});

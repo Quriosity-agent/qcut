@@ -10,7 +10,8 @@ import os from "node:os";
 import path from "node:path";
 
 const LICENSE_SERVER_URL =
-	process.env.QCUT_LICENSE_SERVER_URL || "https://qcut-license-server.workers.dev";
+	process.env.QCUT_LICENSE_SERVER_URL ||
+	"https://qcut-license-server.workers.dev";
 const CACHE_FILE = "license-cache.enc";
 const OFFLINE_GRACE_DAYS = 7;
 
@@ -207,17 +208,20 @@ export function setupLicenseIPC(): void {
 				return false;
 			}
 			try {
-				const response = await fetch(`${LICENSE_SERVER_URL}/api/license/activate`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({
-						deviceFingerprint: getDeviceFingerprint(),
-						deviceName: getDeviceName(),
-					}),
-				});
+				const response = await fetch(
+					`${LICENSE_SERVER_URL}/api/license/activate`,
+					{
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${token}`,
+						},
+						body: JSON.stringify({
+							deviceFingerprint: getDeviceFingerprint(),
+							deviceName: getDeviceName(),
+						}),
+					}
+				);
 				if (!response.ok) {
 					return false;
 				}
@@ -273,7 +277,11 @@ export function setupLicenseIPC(): void {
 			modelKey: string,
 			description: string
 		): Promise<boolean> => {
-			if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+			if (
+				typeof amount !== "number" ||
+				!Number.isFinite(amount) ||
+				amount <= 0
+			) {
 				return false;
 			}
 			if (typeof modelKey !== "string" || modelKey.trim().length === 0) {
@@ -289,14 +297,17 @@ export function setupLicenseIPC(): void {
 					return false;
 				}
 
-				const response = await fetch(`${LICENSE_SERVER_URL}/api/credits/deduct`, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						Authorization: `Bearer ${token}`,
-					},
-					body: JSON.stringify({ amount, modelKey, description }),
-				});
+				const response = await fetch(
+					`${LICENSE_SERVER_URL}/api/credits/deduct`,
+					{
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${token}`,
+						},
+						body: JSON.stringify({ amount, modelKey, description }),
+					}
+				);
 				if (!response.ok) {
 					return false;
 				}

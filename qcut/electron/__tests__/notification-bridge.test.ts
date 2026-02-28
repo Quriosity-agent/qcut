@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { EditorEvent } from "../types/claude-api";
 import { notificationBridge } from "../claude/notification-bridge";
 
-function buildEvent({
-	eventId,
-}: {
-	eventId: string;
-}): EditorEvent {
+function buildEvent({ eventId }: { eventId: string }): EditorEvent {
 	return {
 		eventId,
 		timestamp: 1_706_000_000_000,

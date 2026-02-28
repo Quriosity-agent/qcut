@@ -19,7 +19,10 @@ stripeRoutes.post("/checkout", authMiddleware, async (c) => {
 		const interval =
 			typeof payload?.interval === "string" ? payload.interval.trim() : "";
 
-		if ((plan !== "pro" && plan !== "team") || (interval !== "month" && interval !== "year")) {
+		if (
+			(plan !== "pro" && plan !== "team") ||
+			(interval !== "month" && interval !== "year")
+		) {
 			return c.json({ error: "Invalid plan or interval" }, 400);
 		}
 
@@ -107,7 +110,8 @@ stripeRoutes.post("/webhook", async (c) => {
 	} catch (error) {
 		return c.json(
 			{
-				error: error instanceof Error ? error.message : "Webhook processing failed",
+				error:
+					error instanceof Error ? error.message : "Webhook processing failed",
 			},
 			400
 		);

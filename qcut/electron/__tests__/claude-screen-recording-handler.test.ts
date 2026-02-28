@@ -54,7 +54,10 @@ function createWindowWithRendererStopResponse({
 
 	vi.mocked(ipcMain.on).mockImplementation((channel, handler) => {
 		if (channel === "claude:screen-recording:stop:response") {
-			stopResponseHandler = handler as (event: unknown, payload: unknown) => void;
+			stopResponseHandler = handler as (
+				event: unknown,
+				payload: unknown
+			) => void;
 		}
 		return ipcMain;
 	});
@@ -70,7 +73,10 @@ function createWindowWithRendererStopResponse({
 						throw new Error("Stop response handler was not registered");
 					}
 					const typedPayload = payload as { requestId: string };
-					stopResponseHandler({}, { requestId: typedPayload.requestId, ...response });
+					stopResponseHandler(
+						{},
+						{ requestId: typedPayload.requestId, ...response }
+					);
 				} catch (error) {
 					throw new Error(
 						`Failed to simulate renderer stop response: ${error instanceof Error ? error.message : String(error)}`

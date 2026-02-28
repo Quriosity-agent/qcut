@@ -90,7 +90,10 @@ function getTextToVideoDurationSeconds({
 	modelId: string;
 	settings: TextToVideoSettings;
 }): number | undefined {
-	if (modelId === "veo31_fast_text_to_video" || modelId === "veo31_text_to_video") {
+	if (
+		modelId === "veo31_fast_text_to_video" ||
+		modelId === "veo31_text_to_video"
+	) {
 		return parseVeoDuration({ duration: settings.veo31Settings.duration });
 	}
 	if (modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v") {
@@ -115,7 +118,10 @@ function getImageToVideoDurationSeconds({
 	modelId: string;
 	settings: ImageToVideoSettings;
 }): number | undefined {
-	if (modelId === "veo31_fast_image_to_video" || modelId === "veo31_image_to_video") {
+	if (
+		modelId === "veo31_fast_image_to_video" ||
+		modelId === "veo31_image_to_video"
+	) {
 		return parseVeoDuration({ duration: settings.veo31Settings.duration });
 	}
 	if (modelId === "vidu_q2_turbo_i2v") {

@@ -118,8 +118,7 @@ export function startClaudeHTTPServer(
 		getAppVersion: () => app.getVersion(),
 		enableNotifications: (sessionId) =>
 			Promise.resolve(notificationBridge.enable({ sessionId })),
-		disableNotifications: () =>
-			Promise.resolve(notificationBridge.disable()),
+		disableNotifications: () => Promise.resolve(notificationBridge.disable()),
 		getNotificationsStatus: () =>
 			Promise.resolve(notificationBridge.getStatus()),
 		getNotificationsHistory: (limit) =>

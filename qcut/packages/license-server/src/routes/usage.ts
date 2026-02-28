@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../middleware/auth";
 import { getLicenseByUserId } from "../services/license-service";
-import { checkUsageLimit, getUsage, trackUsage } from "../services/usage-service";
+import {
+	checkUsageLimit,
+	getUsage,
+	trackUsage,
+} from "../services/usage-service";
 
 const usageRoutes = new Hono();
 
@@ -16,10 +20,7 @@ usageRoutes.get("/", async (c) => {
 	} catch (error) {
 		return c.json(
 			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Failed to read usage",
+				error: error instanceof Error ? error.message : "Failed to read usage",
 			},
 			500
 		);
@@ -39,7 +40,10 @@ usageRoutes.post("/track", async (c) => {
 		const license = await getLicenseByUserId({ userId });
 		const withinLimit = await checkUsageLimit({ licenseId: license.id, type });
 		if (!withinLimit) {
-			return c.json({ error: "Usage limit reached", upgradeRequired: true }, 403);
+			return c.json(
+				{ error: "Usage limit reached", upgradeRequired: true },
+				403
+			);
 		}
 
 		await trackUsage({
@@ -50,10 +54,7 @@ usageRoutes.post("/track", async (c) => {
 	} catch (error) {
 		return c.json(
 			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Failed to track usage",
+				error: error instanceof Error ? error.message : "Failed to track usage",
 			},
 			500
 		);

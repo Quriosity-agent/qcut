@@ -45,11 +45,7 @@ function isObjectRecord({
 	}
 }
 
-function isRecordingActive({
-	status,
-}: {
-	status: unknown;
-}): boolean {
+function isRecordingActive({ status }: { status: unknown }): boolean {
 	try {
 		if (!isObjectRecord({ value: status })) {
 			return false;
@@ -60,11 +56,7 @@ function isRecordingActive({
 	}
 }
 
-async function waitMs({
-	delayMs,
-}: {
-	delayMs: number;
-}): Promise<void> {
+async function waitMs({ delayMs }: { delayMs: number }): Promise<void> {
 	try {
 		await new Promise<void>((resolve) => {
 			setTimeout(resolve, delayMs);
@@ -84,10 +76,9 @@ async function fetchStatusWithRetry({
 	remainingAttempts: number;
 }): Promise<ScreenRecordingStatusResponse> {
 	try {
-		const statusAfterStop =
-			await client.get<ScreenRecordingStatusResponse>(
-				"/api/claude/screen-recording/status"
-			);
+		const statusAfterStop = await client.get<ScreenRecordingStatusResponse>(
+			"/api/claude/screen-recording/status"
+		);
 		const isActive = isRecordingActive({ status: statusAfterStop });
 		if (!isActive || remainingAttempts <= 1) {
 			return statusAfterStop;
@@ -303,56 +294,56 @@ async function handleScreenRecordingCommand(
 			);
 			return { success: true, data };
 		}
-			case "stop": {
-				const body: Record<string, unknown> = {};
-				if (options.discard) body.discard = true;
-				const stopData = await client.post(
-					"/api/claude/screen-recording/stop",
-					body,
-					{ timeout: 90_000 }
-				);
-				const verification = await verifyScreenRecordingStopped({ client });
-				if (!verification.recoveredViaForceStop) {
-					return { success: true, data: stopData };
-				}
+		case "stop": {
+			const body: Record<string, unknown> = {};
+			if (options.discard) body.discard = true;
+			const stopData = await client.post(
+				"/api/claude/screen-recording/stop",
+				body,
+				{ timeout: 90_000 }
+			);
+			const verification = await verifyScreenRecordingStopped({ client });
+			if (!verification.recoveredViaForceStop) {
+				return { success: true, data: stopData };
+			}
 
-				if (isObjectRecord({ value: stopData })) {
-					return {
-						success: true,
-						data: {
-							...stopData,
-							recoveredViaForceStop: true,
-							forceStopData: verification.forceStopData,
-						},
-					};
-				}
-
+			if (isObjectRecord({ value: stopData })) {
 				return {
 					success: true,
 					data: {
-						stopData,
+						...stopData,
 						recoveredViaForceStop: true,
 						forceStopData: verification.forceStopData,
 					},
 				};
 			}
-			case "force-stop": {
-				const data = await client.post(
-					"/api/claude/screen-recording/force-stop",
-					{}
-				);
-				return { success: true, data };
-			}
-			case "status": {
-				const data = await client.get("/api/claude/screen-recording/status");
-				return { success: true, data };
-			}
-			default:
-				return {
-					success: false,
-					error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, force-stop, status`,
-				};
+
+			return {
+				success: true,
+				data: {
+					stopData,
+					recoveredViaForceStop: true,
+					forceStopData: verification.forceStopData,
+				},
+			};
 		}
+		case "force-stop": {
+			const data = await client.post(
+				"/api/claude/screen-recording/force-stop",
+				{}
+			);
+			return { success: true, data };
+		}
+		case "status": {
+			const data = await client.get("/api/claude/screen-recording/status");
+			return { success: true, data };
+		}
+		default:
+			return {
+				success: false,
+				error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, force-stop, status`,
+			};
+	}
 }
 
 /**

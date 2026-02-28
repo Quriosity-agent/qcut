@@ -163,7 +163,10 @@ function deliverActivationTokenToRenderer(token: string): void {
 			return;
 		}
 	} catch (error) {
-		logger.warn("[DeepLink] Failed to deliver activation token immediately:", error);
+		logger.warn(
+			"[DeepLink] Failed to deliver activation token immediately:",
+			error
+		);
 	}
 
 	pendingLicenseActivationToken = token;
@@ -180,7 +183,10 @@ function consumeActivationTokenFromArgs(args: string[]): void {
 			return;
 		}
 	} catch (error) {
-		logger.warn("[DeepLink] Failed to parse activation token from args:", error);
+		logger.warn(
+			"[DeepLink] Failed to parse activation token from args:",
+			error
+		);
 	}
 }
 

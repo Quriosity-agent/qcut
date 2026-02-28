@@ -98,7 +98,11 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 			if (!licenseApi) {
 				return false;
 			}
-			const success = await licenseApi.deductCredits(amount, modelKey, description);
+			const success = await licenseApi.deductCredits(
+				amount,
+				modelKey,
+				description
+			);
 			if (!success) {
 				return false;
 			}

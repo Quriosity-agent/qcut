@@ -55,14 +55,22 @@ function resolveLicenseStatus({
 	return SUBSCRIPTION_STATUS_TO_LICENSE[status] ?? "past_due";
 }
 
-function resolvePlanFromPriceId({ priceId }: { priceId?: string | null }): "pro" | "team" | null {
+function resolvePlanFromPriceId({
+	priceId,
+}: {
+	priceId?: string | null;
+}): "pro" | "team" | null {
 	if (!priceId) {
 		return null;
 	}
 	return SUBSCRIPTION_PRICE_TO_PLAN[priceId] ?? null;
 }
 
-function getMaxDevicesForPlan({ plan }: { plan: "free" | "pro" | "team" }): number {
+function getMaxDevicesForPlan({
+	plan,
+}: {
+	plan: "free" | "pro" | "team";
+}): number {
 	if (plan === "team") {
 		return 10;
 	}
@@ -290,7 +298,10 @@ async function handleSubscriptionUpdated({
 				? subscription.customer
 				: undefined;
 		const subscriptionId = subscription.id;
-		const license = await findLicenseByStripeIds({ customerId, subscriptionId });
+		const license = await findLicenseByStripeIds({
+			customerId,
+			subscriptionId,
+		});
 		if (!license) {
 			return;
 		}
@@ -367,10 +378,15 @@ async function handleInvoicePaymentSucceeded({
 }): Promise<void> {
 	try {
 		const subscriptionId =
-			typeof invoice.subscription === "string" ? invoice.subscription : undefined;
+			typeof invoice.subscription === "string"
+				? invoice.subscription
+				: undefined;
 		const customerId =
 			typeof invoice.customer === "string" ? invoice.customer : undefined;
-		const license = await findLicenseByStripeIds({ customerId, subscriptionId });
+		const license = await findLicenseByStripeIds({
+			customerId,
+			subscriptionId,
+		});
 		if (!license) {
 			return;
 		}
@@ -395,10 +411,15 @@ async function handleInvoicePaymentFailed({
 }): Promise<void> {
 	try {
 		const subscriptionId =
-			typeof invoice.subscription === "string" ? invoice.subscription : undefined;
+			typeof invoice.subscription === "string"
+				? invoice.subscription
+				: undefined;
 		const customerId =
 			typeof invoice.customer === "string" ? invoice.customer : undefined;
-		const license = await findLicenseByStripeIds({ customerId, subscriptionId });
+		const license = await findLicenseByStripeIds({
+			customerId,
+			subscriptionId,
+		});
 		if (!license) {
 			return;
 		}
@@ -427,7 +448,11 @@ export async function handleWebhook({
 			throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
 		}
 
-		const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+		const event = stripe.webhooks.constructEvent(
+			body,
+			signature,
+			webhookSecret
+		);
 
 		switch (event.type) {
 			case "checkout.session.completed":

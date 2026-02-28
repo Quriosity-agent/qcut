@@ -26,7 +26,10 @@ function tryDecodeJwtUserId({ token }: { token: string }): string | null {
 			typeof atobFn === "function"
 				? atobFn(base64)
 				: Buffer.from(base64, "base64").toString("utf-8");
-		const payload = JSON.parse(payloadRaw) as { sub?: unknown; userId?: unknown };
+		const payload = JSON.parse(payloadRaw) as {
+			sub?: unknown;
+			userId?: unknown;
+		};
 		if (typeof payload.sub === "string") {
 			return payload.sub;
 		}
@@ -40,7 +43,9 @@ function tryDecodeJwtUserId({ token }: { token: string }): string | null {
 }
 
 export async function authMiddleware(c: Context, next: Next) {
-	const token = extractBearerToken({ authHeader: c.req.header("Authorization") });
+	const token = extractBearerToken({
+		authHeader: c.req.header("Authorization"),
+	});
 	if (token.length === 0) {
 		return c.json({ error: "Unauthorized" }, 401);
 	}

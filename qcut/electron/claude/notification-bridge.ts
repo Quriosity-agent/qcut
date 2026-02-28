@@ -125,10 +125,17 @@ export class NotificationBridge {
 				data: formatted,
 			});
 			if (!writeSuccess) {
-				claudeLog.debug(HANDLER_NAME, "Skipped notification write (no PTY target)");
+				claudeLog.debug(
+					HANDLER_NAME,
+					"Skipped notification write (no PTY target)"
+				);
 			}
 		} catch (error) {
-			claudeLog.warn(HANDLER_NAME, "Failed to forward operation notification:", error);
+			claudeLog.warn(
+				HANDLER_NAME,
+				"Failed to forward operation notification:",
+				error
+			);
 		}
 	}
 
@@ -208,6 +215,10 @@ export function setupClaudeNotificationIPC(): void {
 
 		claudeLog.info(HANDLER_NAME, "Claude notification bridge IPC registered");
 	} catch (error) {
-		claudeLog.warn(HANDLER_NAME, "Failed to setup notification bridge IPC:", error);
+		claudeLog.warn(
+			HANDLER_NAME,
+			"Failed to setup notification bridge IPC:",
+			error
+		);
 	}
 }

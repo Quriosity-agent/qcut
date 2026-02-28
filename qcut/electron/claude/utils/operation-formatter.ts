@@ -14,11 +14,7 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 	}
 }
 
-function sanitizeInlineText({
-	value,
-}: {
-	value: unknown;
-}): string | undefined {
+function sanitizeInlineText({ value }: { value: unknown }): string | undefined {
 	try {
 		if (typeof value !== "string") {
 			return undefined;
@@ -33,11 +29,7 @@ function sanitizeInlineText({
 	}
 }
 
-function sanitizeNumber({
-	value,
-}: {
-	value: unknown;
-}): number | undefined {
+function sanitizeNumber({ value }: { value: unknown }): number | undefined {
 	try {
 		if (typeof value !== "number" || !Number.isFinite(value)) {
 			return undefined;
@@ -48,11 +40,7 @@ function sanitizeNumber({
 	}
 }
 
-function formatTimeOfDay({
-	timestamp,
-}: {
-	timestamp: number;
-}): string {
+function formatTimeOfDay({ timestamp }: { timestamp: number }): string {
 	try {
 		return new Date(timestamp).toLocaleTimeString("en-US", {
 			hour12: false,
@@ -65,11 +53,7 @@ function formatTimeOfDay({
 	}
 }
 
-function formatTimelineTime({
-	seconds,
-}: {
-	seconds: number;
-}): string {
+function formatTimelineTime({ seconds }: { seconds: number }): string {
 	try {
 		const safeSeconds = Math.max(0, seconds);
 		const totalMilliseconds = Math.round(safeSeconds * 1000);
@@ -123,11 +107,7 @@ function isUserInitiatedEvent({ event }: { event: EditorEvent }): boolean {
 	}
 }
 
-function getElementTypeLabel({
-	value,
-}: {
-	value: unknown;
-}): string {
+function getElementTypeLabel({ value }: { value: unknown }): string {
 	try {
 		const normalized = sanitizeInlineText({ value })?.toLowerCase();
 		if (normalized) {
@@ -139,11 +119,7 @@ function getElementTypeLabel({
 	}
 }
 
-function getTextLabel({
-	event,
-}: {
-	event: EditorEvent;
-}): string | undefined {
+function getTextLabel({ event }: { event: EditorEvent }): string | undefined {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const directContent = sanitizeInlineText({ value: data.content });
@@ -165,11 +141,7 @@ function getTextLabel({
 	}
 }
 
-function buildTimelineAddedSummary({
-	event,
-}: {
-	event: EditorEvent;
-}): string {
+function buildTimelineAddedSummary({ event }: { event: EditorEvent }): string {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const element = isObjectRecord(data.element) ? data.element : {};
@@ -228,11 +200,7 @@ function buildTimelineRemovedSummary({
 	}
 }
 
-function buildMediaImportedSummary({
-	event,
-}: {
-	event: EditorEvent;
-}): string {
+function buildMediaImportedSummary({ event }: { event: EditorEvent }): string {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const mediaName = sanitizeInlineText({ value: data.name });
@@ -245,11 +213,7 @@ function buildMediaImportedSummary({
 	}
 }
 
-function buildMediaDeletedSummary({
-	event,
-}: {
-	event: EditorEvent;
-}): string {
+function buildMediaDeletedSummary({ event }: { event: EditorEvent }): string {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const mediaName = sanitizeInlineText({ value: data.name });
@@ -262,11 +226,7 @@ function buildMediaDeletedSummary({
 	}
 }
 
-function buildExportStartedSummary({
-	event,
-}: {
-	event: EditorEvent;
-}): string {
+function buildExportStartedSummary({ event }: { event: EditorEvent }): string {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const presetId = sanitizeInlineText({ value: data.presetId });
@@ -296,11 +256,7 @@ function buildExportCompletedSummary({
 	}
 }
 
-function buildExportFailedSummary({
-	event,
-}: {
-	event: EditorEvent;
-}): string {
+function buildExportFailedSummary({ event }: { event: EditorEvent }): string {
 	try {
 		const data = isObjectRecord(event.data) ? event.data : {};
 		const errorMessage = sanitizeInlineText({ value: data.error });
@@ -393,7 +349,10 @@ export function toOperationNotification({
 			id: event.eventId,
 			timestamp: event.timestamp,
 			operation: operation.operation,
-			summary: buildSummary({ event, defaultSummary: operation.defaultSummary }),
+			summary: buildSummary({
+				event,
+				defaultSummary: operation.defaultSummary,
+			}),
 			details: isObjectRecord(event.data) ? event.data : {},
 			source: resolveNotificationSource({ source: event.source }),
 		};

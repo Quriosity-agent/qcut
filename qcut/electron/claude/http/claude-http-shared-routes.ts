@@ -98,9 +98,15 @@ export interface WindowAccessor {
 		sessionId: string
 	): Promise<{ enabled: boolean; sessionId: string | null }>;
 	/** Disable operation notifications */
-	disableNotifications(): Promise<{ enabled: boolean; sessionId: string | null }>;
+	disableNotifications(): Promise<{
+		enabled: boolean;
+		sessionId: string | null;
+	}>;
 	/** Read operation notification bridge status */
-	getNotificationsStatus(): Promise<{ enabled: boolean; sessionId: string | null }>;
+	getNotificationsStatus(): Promise<{
+		enabled: boolean;
+		sessionId: string | null;
+	}>;
 	/** Read operation notification history */
 	getNotificationsHistory(limit?: number): Promise<string[]>;
 	/** Batch add elements (may need BrowserWindow or proxy) */

@@ -16,7 +16,9 @@ export interface ElectronLicenseOps {
 	license?: {
 		check: () => Promise<LicenseInfo>;
 		activate: (token: string) => Promise<boolean>;
-		trackUsage: (type: "ai_generation" | "export" | "render") => Promise<boolean>;
+		trackUsage: (
+			type: "ai_generation" | "export" | "render"
+		) => Promise<boolean>;
 		deductCredits: (
 			amount: number,
 			modelKey: string,

@@ -8,14 +8,20 @@ const {
 	mockDeductCredits,
 } = vi.hoisted(() => ({
 	mockGetFalApiKeyAsync: vi.fn<() => Promise<string | undefined>>(),
-	mockEstimateCreditCost: vi.fn<
-		(modelKey: string, params?: { durationSeconds?: number }) => number
-	>(),
+	mockEstimateCreditCost:
+		vi.fn<
+			(modelKey: string, params?: { durationSeconds?: number }) => number
+		>(),
 	mockCheckLicense: vi.fn<() => Promise<void>>(),
 	mockHasCredits: vi.fn<(amount: number) => boolean>(),
-	mockDeductCredits: vi.fn<
-		(amount: number, modelKey: string, description: string) => Promise<boolean>
-	>(),
+	mockDeductCredits:
+		vi.fn<
+			(
+				amount: number,
+				modelKey: string,
+				description: string
+			) => Promise<boolean>
+		>(),
 }));
 
 const mockStoreState = {

@@ -74,7 +74,9 @@ describe("operation formatter", () => {
 		});
 
 		const formatted = formatOperationForTerminal({ event });
-		expect(formatted).toContain('User started export (preset: "youtube-1080p")');
+		expect(formatted).toContain(
+			'User started export (preset: "youtube-1080p")'
+		);
 	});
 
 	it("formats all remaining notifiable categories", () => {
