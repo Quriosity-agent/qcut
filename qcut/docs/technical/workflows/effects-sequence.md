@@ -1,6 +1,6 @@
 # Effects Workflow Sequence Diagram
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-28
 
 ## Overview
 This diagram illustrates the complete workflow for effects processing in the QCut editor, from user interaction through to final export.
@@ -11,21 +11,26 @@ This diagram illustrates the complete workflow for effects processing in the QCu
 ```
 apps/web/src/
 ├── stores/
-│   └── effects-store.ts         # Main effects state management (23KB)
+│   ├── effects-store.ts             # Re-export from ai/ (< 1KB)
+│   └── ai/
+│       └── effects-store.ts         # Main effects state management (22KB)
 ├── types/
-│   └── effects.ts               # Effect type definitions (4KB)
+│   └── effects.ts                   # Effect type definitions (4KB)
 ├── lib/
-│   ├── effects-chaining.ts      # Chain processing & animations (9KB)
-│   ├── effects-utils.ts         # Utility functions (10KB)
-│   ├── effects-keyframes.ts     # Keyframe interpolation (7KB)
-│   ├── effects-templates.ts     # Custom templates (20KB)
-│   ├── effects-canvas-advanced.ts # Canvas rendering (11KB)
-│   └── ffmpeg-filter-chain.ts   # FFmpeg filter generation
+│   ├── effects/
+│   │   ├── index.ts                 # Barrel exports (< 1KB)
+│   │   ├── effects-chaining.ts      # Chain processing & animations (8KB)
+│   │   ├── effects-utils.ts         # Utility functions (10KB)
+│   │   ├── effects-keyframes.ts     # Keyframe interpolation (7KB)
+│   │   ├── effects-canvas-advanced.ts # Canvas rendering (10KB)
+│   │   └── canvas-utils.ts          # Canvas helper utilities (4KB)
+│   └── ffmpeg/
+│       └── ffmpeg-filter-chain.ts   # FFmpeg filter generation (2KB)
 ├── components/editor/
-│   ├── effect-chain-manager.tsx # Chain management UI (10KB)
-│   └── effect-templates-panel.tsx # Templates panel (12KB)
+│   ├── effect-chain-manager.tsx     # Chain management UI (8KB)
+│   └── effect-templates-panel.tsx   # Templates panel (10KB)
 └── config/
-    └── features.ts              # EFFECTS_ENABLED flag
+    └── features.ts                  # EFFECTS_ENABLED flag
 ```
 
 ## Sequence Flow
@@ -85,6 +90,8 @@ sequenceDiagram
 ### useEffectsStore (ES)
 Main Zustand store for effect state management.
 
+Located at `stores/ai/effects-store.ts` (re-exported from `stores/effects-store.ts`).
+
 **State:**
 ```typescript
 interface EffectsStore {
@@ -104,13 +111,20 @@ interface EffectsStore {
 | `updateEffectParameters` | Update effect parameters |
 | `toggleEffect` | Enable/disable effect |
 | `clearEffects` | Remove all effects from element |
+| `setSelectedCategory` | Set the active effect category filter |
+| `setSelectedEffect` | Set the currently selected effect instance |
+| `getElementEffects` | Get effects for an element |
+| `getEffectsForElement` | Alias for `getElementEffects` (backward compat) |
 | `duplicateEffect` | Clone an effect |
 | `reorderEffects` | Change effect order |
 | `resetEffectToDefaults` | Reset to preset defaults |
+| `resetEffectParameters` | Alias for `resetEffectToDefaults` |
 | `updateEffectAnimations` | Add/update keyframe animations |
 | `createChain` | Create effect chain |
 | `removeChain` | Delete effect chain |
 | `updateChainBlendMode` | Change chain blend mode |
+| `toggleEffectInChain` | Toggle an effect within a chain |
+| `moveEffectInChain` | Move an effect to a new index |
 | `getProcessedEffects` | Get merged parameters for time |
 | `getFFmpegFilterChain` | Get FFmpeg filter string |
 
@@ -162,7 +176,7 @@ type EffectType =
 - Overlay, Multiply, Screen, Color Dodge
 
 ### Effect Chaining (EC)
-Located in `lib/effects-chaining.ts`.
+Located in `lib/effects/effects-chaining.ts`.
 
 **Chain Processing:**
 ```typescript
@@ -207,11 +221,11 @@ interface AnimatedParameter {
 ```
 
 ### FFmpeg Filter Chain (FF)
-Converts effect parameters to FFmpeg filter syntax.
+Located in `lib/ffmpeg/ffmpeg-filter-chain.ts`. Converts effect parameters to FFmpeg filter syntax.
 
 **Example Output:**
 ```
-eq=brightness=0.2,eq=contrast=1.3,hue=s=1.4,boxblur=2:1
+eq=brightness=0.2,eq=contrast=1.3,eq=saturation=1.4,boxblur=2:1
 ```
 
 **Supported Filters:**
@@ -219,7 +233,7 @@ eq=brightness=0.2,eq=contrast=1.3,hue=s=1.4,boxblur=2:1
 |--------|---------------|
 | brightness | `eq=brightness=X` |
 | contrast | `eq=contrast=X` |
-| saturation | `hue=s=X` |
+| saturation | `eq=saturation=X` |
 | hue | `hue=h=X` |
 | blur | `boxblur=X:1` |
 | grayscale | `hue=s=0` |

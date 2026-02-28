@@ -198,7 +198,7 @@ interface Sam3BoxPrompt {
 
 ### Example 1: Text Prompt Segmentation
 ```typescript
-import { segmentWithText } from '@/lib/sam3-client';
+import { segmentWithText } from '@/lib/ai-clients/sam3-client';
 
 const result = await segmentWithText(
   "https://example.com/image.jpg",
@@ -214,7 +214,7 @@ const result = await segmentWithText(
 
 ### Example 2: Point-Based Segmentation
 ```typescript
-import { segmentWithPoints } from '@/lib/sam3-client';
+import { segmentWithPoints } from '@/lib/ai-clients/sam3-client';
 
 const points = [
   { x: 0.5, y: 0.5, label: 1 },    // Foreground point
@@ -230,7 +230,7 @@ const result = await segmentWithPoints(
 
 ### Example 3: Bounding Box Segmentation
 ```typescript
-import { segmentWithBox } from '@/lib/sam3-client';
+import { segmentWithBox } from '@/lib/ai-clients/sam3-client';
 
 const box = {
   x_min: 0.2,
@@ -248,7 +248,7 @@ const result = await segmentWithBox(
 
 ### Example 4: Video Segmentation with Progress
 ```typescript
-import { segmentVideoWithText } from '@/lib/sam3-client';
+import { segmentVideoWithText } from '@/lib/ai-clients/sam3-client';
 
 const result = await segmentVideoWithText(
   "https://example.com/video.mp4",
@@ -377,7 +377,7 @@ interface Sam3VideoOutput {
 ## Technical Implementation
 
 ### Client Module
-Located at: `qcut/apps/web/src/lib/sam3-client.ts`
+Located at: `qcut/apps/web/src/lib/ai-clients/sam3-client.ts`
 
 **Key Features:**
 - Singleton pattern for consistent API configuration
@@ -386,7 +386,7 @@ Located at: `qcut/apps/web/src/lib/sam3-client.ts`
 - Convenience methods for each prompt type
 
 ### Model Configuration
-Located at: `qcut/apps/web/src/lib/sam3-models.ts`
+Located at: `qcut/apps/web/src/lib/ai-clients/sam3-models.ts`
 
 **Contains:**
 - Model metadata and pricing
@@ -418,7 +418,7 @@ window.electronAPI.apiKeys.set({ falApiKey: 'your_key' });
 
 ### Verification
 ```typescript
-import { sam3Client } from '@/lib/sam3-client';
+import { sam3Client } from '@/lib/ai-clients/sam3-client';
 
 const available = await sam3Client.isAvailable();
 console.log('SAM-3 available:', available);
@@ -493,11 +493,11 @@ Potential improvements being considered:
 
 ## Related Documentation
 
-- [SAM-3 Client Implementation](../../apps/web/src/lib/sam3-client.ts)
-- [SAM-3 Model Configuration](../../apps/web/src/lib/sam3-models.ts)
-- [Segmentation UI Components](../../apps/web/src/components/editor/segmentation/)
-- [SAM-3 Types Definitions](../../apps/web/src/types/sam3.ts)
-- [Segmentation Store](../../apps/web/src/stores/segmentation-store.ts)
+- [SAM-3 Client Implementation](../../../../../apps/web/src/lib/ai-clients/sam3-client.ts)
+- [SAM-3 Model Configuration](../../../../../apps/web/src/lib/ai-clients/sam3-models.ts)
+- [Segmentation UI Components](../../../../../apps/web/src/components/editor/segmentation/)
+- [SAM-3 Types Definitions](../../../../../apps/web/src/types/sam3.ts)
+- [Segmentation Store](../../../../../apps/web/src/stores/ai/segmentation-store.ts)
 
 ---
 

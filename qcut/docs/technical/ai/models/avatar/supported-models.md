@@ -116,38 +116,7 @@ Models that extend video duration:
 
 ---
 
-### 3. ByteDance OmniHuman v1.5
-- **Provider:** ByteDance
-- **Category:** Talking Head / Avatar Generation
-- **Estimated Cost:** $0.20 per generation
-- **Resolution:** 1080p
-- **Max Duration:** 30 seconds
-- **Description:** Realistic human avatar with emotion-synced audio
-- **Required Inputs:**
-  - Character image
-  - Audio file
-- **Best For:**
-  - Realistic human avatars
-  - Emotion-synced content
-  - Professional presentations
-  - Training videos
-- **Strengths:**
-  - Realistic human avatar generation
-  - Emotion synchronization with audio
-  - 1080p resolution
-  - Up to 30 seconds
-- **Limitations:**
-  - Fixed cost per generation (not per second)
-  - Shorter max duration (30s vs 60s)
-  - Focused on human avatars only
-- **Parameters:**
-  - **Resolution:** 1080p (fixed)
-- **Cost Example:**
-  - Any duration up to 30s: $0.20
-
----
-
-### 4. Sync Lipsync React-1
+### 3. Sync Lipsync React-1
 - **Provider:** Sync Labs
 - **Category:** Lip-Sync & Video Replacement
 - **Estimated Cost:** $0.10 per generation
@@ -184,6 +153,37 @@ Models that extend video duration:
   - Neutral
   - Disgusted
   - Surprised
+
+---
+
+### 4. ByteDance OmniHuman v1.5
+- **Provider:** ByteDance
+- **Category:** Talking Head / Avatar Generation
+- **Estimated Cost:** $0.20 per generation
+- **Resolution:** 1080p
+- **Max Duration:** 30 seconds
+- **Description:** Realistic human avatar with emotion-synced audio
+- **Required Inputs:**
+  - Character image
+  - Audio file
+- **Best For:**
+  - Realistic human avatars
+  - Emotion-synced content
+  - Professional presentations
+  - Training videos
+- **Strengths:**
+  - Realistic human avatar generation
+  - Emotion synchronization with audio
+  - 1080p resolution
+  - Up to 30 seconds
+- **Limitations:**
+  - Fixed cost per generation (not per second)
+  - Shorter max duration (30s vs 60s)
+  - Focused on human avatars only
+- **Parameters:**
+  - **Resolution:** 1080p (fixed)
+- **Cost Example:**
+  - Any duration up to 30s: $0.20
 
 ---
 
@@ -623,8 +623,8 @@ qcut/apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx
 Models are displayed in this order in the UI (by capability and popularity):
 1. Kling Avatar v2 Pro
 2. Kling Avatar v2 Standard
-3. ByteDance OmniHuman v1.5
-4. Sync Lipsync React-1
+3. Sync Lipsync React-1
+4. ByteDance OmniHuman v1.5
 5. WAN v2.6 Ref2V
 6. Kling O1 Video Reference
 7. Kling O1 Video Edit
@@ -734,8 +734,8 @@ Potential improvements being considered:
 
 ## Related Documentation
 
-- [Avatar Generator Module](../../apps/web/src/lib/ai-video/generators/avatar.ts)
-- [Avatar Models Configuration](../../apps/web/src/components/editor/media-panel/views/ai/constants/avatar-models-config.ts)
-- [Avatar Tab UI Component](../../apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx)
-- [AI Types Definitions](../../apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts)
-- [Cost Calculators](../../apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts)
+- [Avatar Generator Module](../../../../../apps/web/src/lib/ai-video/generators/avatar.ts)
+- [Avatar Models Configuration](../../../../../apps/web/src/components/editor/media-panel/views/ai/constants/avatar-models-config.ts)
+- [Avatar Tab UI Component](../../../../../apps/web/src/components/editor/media-panel/views/ai/tabs/ai-avatar-tab.tsx)
+- [AI Types Definitions](../../../../../apps/web/src/components/editor/media-panel/views/ai/types/ai-types.ts)
+- [Cost Calculators](../../../../../apps/web/src/components/editor/media-panel/views/ai/utils/ai-cost-calculators.ts)

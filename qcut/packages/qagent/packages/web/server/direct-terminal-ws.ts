@@ -65,6 +65,7 @@ export function createDirectTerminalServer(
 	wss.on("connection", (ws, req) => {
 		const url = new URL(req.url ?? "/", "ws://localhost");
 		const sessionId = url.searchParams.get("session");
+		const cwd = url.searchParams.get("cwd");
 
 		if (!sessionId) {
 			console.error("[DirectTerminal] Missing session parameter");
@@ -72,62 +73,13 @@ export function createDirectTerminalServer(
 			return;
 		}
 
-		// Validate session ID format
-		if (!validateSessionId(sessionId)) {
-			console.error("[DirectTerminal] Invalid session ID:", sessionId);
-			ws.close(1008, "Invalid session ID");
-			return;
-		}
-
-		// Resolve tmux session name: try exact match first, then suffix match
-		// (hash-prefixed sessions like "8474d6f29887-ao-15" are accessed by user-facing ID "ao-15")
-		const tmuxSessionId = resolveTmuxSession(sessionId, TMUX);
-		if (!tmuxSessionId) {
-			console.error("[DirectTerminal] tmux session not found:", sessionId);
-			ws.close(1008, "Session not found");
-			return;
-		}
-
-		console.log(
-			`[DirectTerminal] New connection for session: ${tmuxSessionId}`
-		);
-
-		// Enable mouse mode for scrollback support
-		const mouseProc = spawn(TMUX, [
-			"set-option",
-			"-t",
-			tmuxSessionId,
-			"mouse",
-			"on",
-		]);
-		mouseProc.on("error", (err) => {
-			console.error(
-				`[DirectTerminal] Failed to set mouse mode for ${tmuxSessionId}:`,
-				err.message
-			);
-		});
-
-		// Hide the green status bar for cleaner appearance
-		const statusProc = spawn(TMUX, [
-			"set-option",
-			"-t",
-			tmuxSessionId,
-			"status",
-			"off",
-		]);
-		statusProc.on("error", (err) => {
-			console.error(
-				`[DirectTerminal] Failed to hide status bar for ${tmuxSessionId}:`,
-				err.message
-			);
-		});
-
 		// Build complete environment - node-pty requires proper env setup
 		const homeDir = process.env.HOME || homedir();
 		const currentUser = process.env.USER || userInfo().username;
+		const userShell = process.env.SHELL || "/bin/bash";
 		const env = {
 			HOME: homeDir,
-			SHELL: process.env.SHELL || "/bin/bash",
+			SHELL: userShell,
 			USER: currentUser,
 			PATH:
 				process.env.PATH || "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
@@ -137,27 +89,108 @@ export function createDirectTerminalServer(
 		};
 
 		let pty: IPty;
-		try {
+
+		if (cwd) {
+			// CLI session mode: spawn a shell in the given CWD
+			// Validate cwd is an absolute path
+			if (!cwd.startsWith("/")) {
+				console.error("[DirectTerminal] Invalid cwd (not absolute):", cwd);
+				ws.close(1008, "Invalid cwd");
+				return;
+			}
+
 			console.log(
-				`[DirectTerminal] Spawning PTY: tmux attach-session -t ${tmuxSessionId}`
+				`[DirectTerminal] Spawning shell in CWD: ${cwd} for ${sessionId}`
 			);
 
-			pty = ptySpawn(TMUX, ["attach-session", "-t", tmuxSessionId], {
-				name: "xterm-256color",
-				cols: 80,
-				rows: 24,
-				cwd: homeDir,
-				env,
+			try {
+				pty = ptySpawn(userShell, ["-l"], {
+					name: "xterm-256color",
+					cols: 80,
+					rows: 24,
+					cwd,
+					env,
+				});
+				console.log("[DirectTerminal] Shell PTY spawned successfully");
+			} catch (err) {
+				console.error("[DirectTerminal] Failed to spawn shell PTY:", err);
+				ws.close(
+					1011,
+					`Failed to spawn terminal: ${err instanceof Error ? err.message : String(err)}`
+				);
+				return;
+			}
+		} else {
+			// Tmux session mode: attach to existing tmux session
+			if (!validateSessionId(sessionId)) {
+				console.error("[DirectTerminal] Invalid session ID:", sessionId);
+				ws.close(1008, "Invalid session ID");
+				return;
+			}
+
+			const tmuxSessionId = resolveTmuxSession(sessionId, TMUX);
+			if (!tmuxSessionId) {
+				console.error("[DirectTerminal] tmux session not found:", sessionId);
+				ws.close(1008, "Session not found");
+				return;
+			}
+
+			console.log(
+				`[DirectTerminal] New connection for session: ${tmuxSessionId}`
+			);
+
+			// Enable mouse mode for scrollback support
+			const mouseProc = spawn(TMUX, [
+				"set-option",
+				"-t",
+				tmuxSessionId,
+				"mouse",
+				"on",
+			]);
+			mouseProc.on("error", (err) => {
+				console.error(
+					`[DirectTerminal] Failed to set mouse mode for ${tmuxSessionId}:`,
+					err.message
+				);
 			});
 
-			console.log("[DirectTerminal] PTY spawned successfully");
-		} catch (err) {
-			console.error("[DirectTerminal] Failed to spawn PTY:", err);
-			ws.close(
-				1011,
-				`Failed to spawn terminal: ${err instanceof Error ? err.message : String(err)}`
-			);
-			return;
+			// Hide the green status bar for cleaner appearance
+			const statusProc = spawn(TMUX, [
+				"set-option",
+				"-t",
+				tmuxSessionId,
+				"status",
+				"off",
+			]);
+			statusProc.on("error", (err) => {
+				console.error(
+					`[DirectTerminal] Failed to hide status bar for ${tmuxSessionId}:`,
+					err.message
+				);
+			});
+
+			try {
+				console.log(
+					`[DirectTerminal] Spawning PTY: tmux attach-session -t ${tmuxSessionId}`
+				);
+
+				pty = ptySpawn(TMUX, ["attach-session", "-t", tmuxSessionId], {
+					name: "xterm-256color",
+					cols: 80,
+					rows: 24,
+					cwd: homeDir,
+					env,
+				});
+
+				console.log("[DirectTerminal] PTY spawned successfully");
+			} catch (err) {
+				console.error("[DirectTerminal] Failed to spawn PTY:", err);
+				ws.close(
+					1011,
+					`Failed to spawn terminal: ${err instanceof Error ? err.message : String(err)}`
+				);
+				return;
+			}
 		}
 
 		const session: TerminalSession = { sessionId, pty, ws };
