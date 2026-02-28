@@ -64,6 +64,12 @@ A pure function that takes an `EditorEvent` and returns a formatted terminal mes
   - Example: `[QCut] 14:24:01 — User started export (preset: "YouTube 1080p")`
 - Filter out internal/system events — only forward user-initiated actions
 - Keep messages concise — Claude Code should get context, not noise
+- **Sanitize user-provided strings** (file names, element names, preset names) before including them in the formatted notification — strip terminal control characters and newlines to prevent terminal injection:
+  ```ts
+  function sanitizeForTerminal(str: string): string {
+    return str.replace(/[\x00-\x1F\x7F]/g, '');
+  }
+  ```
 
 ### Tests
 - `electron/__tests__/operation-formatter.test.ts` — test formatting for each event category, test null returns for filtered events
@@ -116,15 +122,13 @@ Connect the notification bridge output to the PTY session where Claude Code is r
 
 ### Details
 - Add a `writeToSession(sessionId: string, data: string)` IPC message type in `utility-ipc-types.ts`
-- In `utility-pty-manager.ts`, handle the new message by writing to the PTY's stdin:
+- In `utility-pty-manager.ts`, handle the new message by writing to the PTY's **output stream** (stdout side), so the notification appears as terminal output without being executed as a command:
   ```ts
-  // Write notification as a comment/no-op line so it appears in terminal
-  // but does NOT execute as a command
-  pty.write(`# ${notification}\n`);
+  // Write notification to PTY output stream — appears as output, never executed
+  pty.emit('data', `${notification}\n`);
   ```
 - In `notification-bridge.ts`, use the utility bridge to send the formatted message to the target PTY
-- The `#` prefix ensures the shell treats it as a comment — visible but not executed
-- Alternative: write to PTY output stream (stdout side) instead of stdin, so it appears as output rather than input — this is safer and prevents any accidental execution
+- Writing to the output stream (not stdin) ensures notifications are purely visual and cannot be accidentally executed by the shell
 
 ### Tests
 - `electron/__tests__/notification-pty-integration.test.ts` — test that bridge messages arrive at PTY output
