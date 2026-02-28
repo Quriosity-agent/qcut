@@ -1,28 +1,65 @@
 # moyin:parse-script CLI
 
-Parse screenplay/story text into structured ScriptData (characters, scenes, episodes) using Claude CLI. Runs standalone — no API keys required beyond Claude CLI auth.
+Parse screenplay/story text into structured ScriptData (characters, scenes, episodes) using multiple LLM providers. Supports OpenRouter (Kimi K2.5, MiniMax M2.5, Gemini), direct Gemini API, and Claude CLI fallback with streaming output.
 
-**Last verified**: 2026-03-01 — all tests pass.
+**Last verified**: 2026-03-01 — all provider paths and streaming tested.
 
 ## User Guide
 
 ### Prerequisites
 
-- [Claude CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code) installed and authenticated
 - QCut project built (`bun run build`)
+- One of:
+  - `OPENROUTER_API_KEY` — access to Kimi, MiniMax, Gemini, and 200+ models via [OpenRouter](https://openrouter.ai)
+  - `GEMINI_API_KEY` — direct Google Gemini API access
+  - [Claude CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code) installed (zero-config fallback)
+
+### Setting an API Key
+
+```bash
+bun run pipeline set-key --name OPENROUTER_API_KEY --value sk-or-...
+bun run pipeline check-keys   # verify
+```
+
+Keys are stored in `~/.qcut/.env` and loaded automatically on every CLI run.
 
 ### Basic Usage
 
 ```bash
-# From a file
+# From a file (auto-detects best provider from available keys)
 bun run pipeline moyin:parse-script --script screenplay.txt
+
+# Choose a specific model
+bun run pipeline moyin:parse-script --script screenplay.txt --model kimi
+bun run pipeline moyin:parse-script --script screenplay.txt --model minimax
+bun run pipeline moyin:parse-script --script screenplay.txt --model gemini
 
 # Pipe from stdin
 cat script.txt | bun run pipeline moyin:parse-script --input -
 
 # Inline text
 bun run pipeline moyin:parse-script --text "A story about a detective..."
+
+# Streaming output (shows progress as tokens arrive)
+bun run pipeline moyin:parse-script --script screenplay.txt --model gemini --stream
 ```
+
+### Available Models
+
+| Alias | OpenRouter Model ID | Notes |
+|-------|-------------------|-------|
+| `kimi` / `kimi-k2.5` | `moonshotai/kimi-k2.5` | Good at Chinese + English scripts |
+| `minimax` / `minimax-m2.5` | `minimax/minimax-m2.5` | Fast, good structured output |
+| `gemini` / `gemini-flash` | `google/gemini-2.5-flash` | Default, cheapest, fast |
+| `gemini-pro` | `google/gemini-2.5-pro` | Higher quality, slower |
+
+Any OpenRouter model ID (e.g., `anthropic/claude-3.5-sonnet`) can also be passed directly via `--model`.
+
+### Provider Priority
+
+1. `OPENROUTER_API_KEY` set → uses OpenRouter with selected model
+2. `GEMINI_API_KEY` set → uses direct Gemini API
+3. Neither set → falls back to Claude CLI subprocess (no API key needed)
 
 ### Output Modes
 
@@ -31,7 +68,7 @@ bun run pipeline moyin:parse-script --text "A story about a detective..."
 bun run pipeline moyin:parse-script --script screenplay.txt
 # Output:
 #   ✓ Output: /path/to/output/parsed-script.json
-#   Duration: 56.0s
+#   Duration: 12.8s
 #
 #   Title:      The Last Garden
 #   Genre:      Drama
@@ -39,13 +76,13 @@ bun run pipeline moyin:parse-script --script screenplay.txt
 #   Characters: 4
 #   Scenes:     4
 #   Episodes:   2
+#   Provider:   OpenRouter (google/gemini-2.5-flash)
 
 # JSON mode — machine-readable envelope
 bun run pipeline moyin:parse-script --script screenplay.txt --json
-# Output: { "schema_version": "1", "command": "moyin:parse-script", "success": true, ... }
 
-# Quiet mode — suppress progress, print result only
-bun run pipeline moyin:parse-script --script screenplay.txt --quiet
+# Streaming mode — live progress as tokens arrive
+bun run pipeline moyin:parse-script --script screenplay.txt --stream
 ```
 
 ### Options
@@ -55,6 +92,8 @@ bun run pipeline moyin:parse-script --script screenplay.txt --quiet
 | `--script <file>` | Path to screenplay/story file |
 | `--input <file\|->` | File path or `-` for stdin |
 | `--text <string>` | Inline script text |
+| `--model <name>` | Model alias or full OpenRouter ID (default: `gemini-flash`) |
+| `--stream` | Enable streaming output (live progress during LLM inference) |
 | `--language <lang>` | Hint language (default: auto-detect) |
 | `--max-scenes <n>` | Limit number of extracted scenes |
 | `--output-dir <dir>` | Output directory (default: `./output`) |
@@ -103,30 +142,41 @@ When QCut editor is running, parsed data is automatically pushed to the Director
 
 ## What Works
 
-Verified via real test run (1052-char screenplay, ~56s parse time):
+Verified via real test runs (1052-char screenplay):
 
 | Area | Status | Details |
 |------|--------|---------|
+| OpenRouter provider | OK | Tested with Kimi K2.5, MiniMax M2.5, Gemini Flash |
+| Gemini direct provider | OK | Uses `generativelanguage.googleapis.com` API |
+| Claude CLI fallback | OK | Spawns `claude -p --model haiku` when no API keys |
+| Model alias resolution | OK | `--model kimi` → `moonshotai/kimi-k2.5` |
+| Full OpenRouter model ID | OK | `--model anthropic/claude-3.5-sonnet` passes through |
+| Streaming (OpenRouter) | OK | SSE parsing, live progress updates during inference |
+| Streaming (Gemini) | OK | SSE via `streamGenerateContent?alt=sse` |
+| Provider auto-detection | OK | Checks OPENROUTER_API_KEY → GEMINI_API_KEY → Claude CLI |
 | `--script` file input | OK | Reads file via `readScriptInput()` |
 | `--input -` stdin pipe | OK | Piped content parsed correctly |
 | `--text` inline input | OK | Direct text argument works |
-| Claude CLI spawn | OK | `claude -p --model haiku --output-format json --max-turns 1 --system-prompt` |
-| Error on missing CLI | OK | Catches ENOENT, prints install instructions |
-| Error on non-zero exit | OK | Captures stderr (first 200 chars) |
-| Empty response check | OK | Rejects with "Empty response from Claude CLI" |
-| `is_error` check | OK | Detects Claude CLI error envelope |
-| JSON envelope unwrap | OK | Handles `--output-format json` wrapper `{type, result}` |
-| JSON extraction | OK | Strips markdown fences, brace-matches outermost `{}` |
 | Schema validation | OK | `validateScriptData()` rejects missing title/characters/scenes |
-| TTY output formatter | OK | Prints Title/Genre/Logline/Characters/Scenes/Episodes |
-| JSON mode output | OK | Prints structured JSON envelope to stdout |
-| Output file write | OK | Creates `./output/parsed-script.json` |
+| TTY output formatter | OK | Shows Title/Genre/Logline/Characters/Scenes/Episodes/Provider |
+| JSON mode output | OK | Includes `provider` and `model` fields in data |
 | Transient error retry | OK | Auto-retries once on rate limit / 429 / 503 / network errors |
 | stdin error handling | OK | Try-catch around `child.stdin.write()` / `.end()` |
 | stderr forwarding | OK | `process.stderr.write(chunk)` shows Claude CLI warnings live |
-| Timeout | OK | 180s (3 min), kills subprocess on expiry |
+| Timeout | OK | 120s for API calls, 180s for Claude CLI |
 | Editor UI push | OK | Pushes to `/api/claude/moyin/parse-result` when editor is running |
-| Env cleanup | OK | Deletes `CLAUDE_CODE`, `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SSE_PORT` |
+| Key storage | OK | `set-key --name OPENROUTER_API_KEY --value ...` persists to `~/.qcut/.env` |
+
+## Performance by Provider
+
+Measured from real test runs (1052-char screenplay):
+
+| Provider | Model | Time | Notes |
+|----------|-------|------|-------|
+| OpenRouter | `google/gemini-2.5-flash` | ~12s | Fastest, cheapest |
+| OpenRouter | `minimax/minimax-m2.5` | ~30s | Good quality, fast |
+| OpenRouter | `moonshotai/kimi-k2.5` | ~59-107s | Best for Chinese scripts |
+| Claude CLI | `haiku` | ~54s | Zero-config fallback |
 
 ## Known Limitations
 
@@ -136,87 +186,30 @@ Verified via real test run (1052-char screenplay, ~56s parse time):
 const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
 ```
 
-- Nested markdown fences inside the LLM response break the regex (greedy `[\s\S]*?` captures first closing fence)
-- Brace-matching fallback doesn't account for braces inside JSON string values containing `{` or `}`
-- No `JSON.parse` error context (line/column) on malformed output
+Nested markdown fences inside the LLM response can break the regex. In practice, OpenRouter/Gemini return clean JSON more reliably than Claude CLI.
 
-**Mitigation**: In practice, the `--output-format json` flag causes Claude CLI to return a JSON envelope directly (not markdown-wrapped), so the regex rarely fires. The brace-matcher handles the common case.
+### No streaming for Claude CLI fallback
 
-### No streaming progress during LLM inference
+Claude CLI buffers the entire response (`--output-format json`). Streaming is only available when using OpenRouter or Gemini direct.
 
-User sees progress messages at 10% (parsing) and 80% (extracting) but nothing during the 30-90s LLM inference gap. No token-by-token feedback.
+### Large script backpressure (Claude CLI only)
 
-### Cold start on every call
-
-Each invocation spawns a fresh `claude` subprocess (~500ms overhead). No connection pooling or session reuse. The subprocess overhead is <1.5% of total time so impact is minimal.
-
-### Large script backpressure
-
-If script text exceeds ~10MB, `child.stdin.write()` may block without backpressure handling. The try-catch prevents silent failure but doesn't handle partial writes.
-
-## Performance Profile
-
-Measured from real test run (1052-char screenplay):
-
-| Phase | Time | % of Total |
-|-------|------|------------|
-| Subprocess spawn | ~500ms | ~1% |
-| Prompt delivery via stdin | ~50ms | <0.1% |
-| **LLM inference** | **43-68s** | **~97%** |
-| JSON extraction + validation | ~10ms | <0.1% |
-| File write | ~5ms | <0.1% |
-| Editor UI push | ~100-500ms | ~1% |
-| **Total** | **~43-68s** | |
-
-LLM inference is the dominant cost. Model is `haiku` (fastest tier). Longer scripts produce more output tokens and take proportionally longer.
+If script text exceeds ~10MB, `child.stdin.write()` may block without backpressure handling. OpenRouter/Gemini use HTTP body which handles large payloads natively.
 
 ## Future Improvements
 
 | Priority | Improvement | Impact | Effort |
 |----------|-------------|--------|--------|
-| P2 | Stream LLM output (`--output-format stream-json`) | Live progress during 60s wait | 1 hour |
-| P3 | Direct Anthropic API call instead of subprocess | Eliminates 500ms spawn, proper streaming, token tracking | 2 hours |
-| P3 | Route via editor IPC when QCut is running | Fastest path, no subprocess | 1 hour |
-| P3 | `--timeout` CLI flag to override 180s default | User control for very long scripts | 15 min |
-
-### Direct Anthropic API (P3 detail)
-
-Replace `callClaudeCLI()` with direct HTTP:
-
-```typescript
-import Anthropic from "@anthropic-ai/sdk";
-
-async function callAnthropicDirect(system: string, user: string): Promise<string> {
-  const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
-  const msg = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    system,
-    messages: [{ role: "user", content: user }],
-  });
-  return msg.content[0].type === "text" ? msg.content[0].text : "";
-}
-```
-
-**Trade-off**: Requires `ANTHROPIC_API_KEY` in env (currently uses Claude CLI's built-in auth).
-
-### Editor IPC Fallback (P3 detail)
-
-When QCut editor is running, skip subprocess entirely:
-
-```typescript
-const client = createEditorClient(options);
-if (await client.checkHealth()) {
-  return await client.post("/api/claude/moyin/parse", { script: rawScript });
-}
-// Fall back to Claude CLI subprocess
-response = await callClaudeCLI(PARSE_SYSTEM_PROMPT, userPrompt);
-```
+| P3 | Direct Anthropic API as fourth provider | Native Claude access without CLI subprocess | 1 hour |
+| P3 | Route via editor IPC when QCut is running | Fastest path, no network calls | 1 hour |
+| P3 | `--timeout` CLI flag to override defaults | User control for slow models | 15 min |
 
 ## Source Files
 
 | File | Purpose |
 |------|---------|
-| `electron/native-pipeline/cli/cli-handlers-moyin.ts` | Handler, Claude CLI spawn, JSON extraction, validation |
-| `electron/native-pipeline/cli/cli-output-formatters.ts` | TTY output formatting (line 198-214) |
-| `electron/native-pipeline/cli/cli.ts` | CLI entry, routing, output dispatch (line 800-832) |
+| `electron/native-pipeline/cli/cli-handlers-moyin.ts` | Handler, LLM routing, streaming, JSON extraction, validation |
+| `electron/native-pipeline/cli/cli-output-formatters.ts` | TTY output formatting (line 198-218) |
+| `electron/native-pipeline/cli/cli.ts` | CLI entry, routing, output dispatch |
+| `electron/native-pipeline/infra/api-caller.ts` | `envApiKeyProvider()` for CLI-safe key resolution |
+| `electron/native-pipeline/infra/key-manager.ts` | Key storage (`~/.qcut/.env`) and loading |

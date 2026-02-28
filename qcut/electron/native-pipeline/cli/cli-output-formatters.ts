@@ -203,6 +203,8 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 			characters?: number;
 			scenes?: number;
 			episodes?: number;
+			provider?: string;
+			model?: string;
 		};
 		console.log(`\nTitle:      ${d.title || "Untitled"}`);
 		console.log(`Genre:      ${d.genre || "Unknown"}`);
@@ -210,6 +212,9 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 		console.log(`Characters: ${d.characters ?? 0}`);
 		console.log(`Scenes:     ${d.scenes ?? 0}`);
 		console.log(`Episodes:   ${d.episodes ?? 0}`);
+		if (d.provider) {
+			console.log(`Provider:   ${d.provider} (${d.model || "default"})`);
+		}
 		return;
 	}
 

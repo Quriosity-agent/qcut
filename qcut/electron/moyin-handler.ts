@@ -3,8 +3,10 @@
  * Handles script parsing and storyboard generation via LLM calls.
  */
 
-import { ipcMain } from "electron";
+import { ipcMain, app } from "electron";
 import { spawn, execSync } from "node:child_process";
+import { writeFileSync, unlinkSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
 interface Logger {
@@ -546,6 +548,53 @@ export function setupMoyinIPC(): void {
 	ipcMain.handle("moyin:is-claude-available", async (): Promise<boolean> => {
 		return isClaudeCLIAvailable();
 	});
+
+	// Save raw script text to a temp file (for PTY terminal CLI execution)
+	ipcMain.handle(
+		"moyin:save-temp-script",
+		async (
+			_event,
+			options: { rawScript: string }
+		): Promise<{
+			success: boolean;
+			filePath?: string;
+			projectRoot?: string;
+			error?: string;
+		}> => {
+			try {
+				const tempDir = app.getPath("temp");
+				const filename = `moyin-script-${Date.now()}.txt`;
+				const filePath = join(tempDir, filename);
+				writeFileSync(filePath, options.rawScript, "utf-8");
+				log.info(
+					`[Moyin] Saved temp script: ${filePath} (${options.rawScript.length} chars)`
+				);
+				return { success: true, filePath, projectRoot: process.cwd() };
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Failed to save temp script";
+				log.error("[Moyin] Save temp script failed:", message);
+				return { success: false, error: message };
+			}
+		}
+	);
+
+	// Clean up a temp script file
+	ipcMain.handle(
+		"moyin:cleanup-temp-script",
+		async (_event, filePath: string): Promise<void> => {
+			try {
+				if (existsSync(filePath)) {
+					unlinkSync(filePath);
+					log.info(`[Moyin] Cleaned up temp script: ${filePath}`);
+				}
+			} catch {
+				// Ignore cleanup errors
+			}
+		}
+	);
 }
 
 // CommonJS export for compiled JavaScript compatibility

@@ -1,28 +1,65 @@
 # moyin:parse-script CLI 命令文档
 
-将剧本/故事文本解析为结构化 ScriptData（角色、场景、集数），使用 Claude CLI 作为 LLM 后端。独立运行，无需额外 API 密钥，仅需 Claude CLI 已认证。
+将剧本/故事文本解析为结构化 ScriptData（角色、场景、集数），支持多个 LLM 提供商。通过 OpenRouter 支持 Kimi K2.5、MiniMax M2.5、Gemini，以及直接 Gemini API 和 Claude CLI 回退，支持流式输出。
 
-**最后验证日期**：2026-03-01 — 全部测试通过。
+**最后验证日期**：2026-03-01 — 全部提供商路径和流式输出已测试通过。
 
 ## 使用指南
 
 ### 前置条件
 
-- 已安装并认证 [Claude CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code)
 - QCut 项目已构建（`bun run build`）
+- 以下任一：
+  - `OPENROUTER_API_KEY` — 通过 [OpenRouter](https://openrouter.ai) 访问 Kimi、MiniMax、Gemini 等 200+ 模型
+  - `GEMINI_API_KEY` — 直接 Google Gemini API 访问
+  - 已安装 [Claude CLI](https://www.npmjs.com/package/@anthropic-ai/claude-code)（零配置回退）
+
+### 设置 API 密钥
+
+```bash
+bun run pipeline set-key --name OPENROUTER_API_KEY --value sk-or-...
+bun run pipeline check-keys   # 验证
+```
+
+密钥存储在 `~/.qcut/.env`，每次 CLI 运行时自动加载。
 
 ### 基本用法
 
 ```bash
-# 从文件解析
+# 从文件解析（自动检测最佳提供商）
 bun run pipeline moyin:parse-script --script screenplay.txt
+
+# 选择特定模型
+bun run pipeline moyin:parse-script --script screenplay.txt --model kimi
+bun run pipeline moyin:parse-script --script screenplay.txt --model minimax
+bun run pipeline moyin:parse-script --script screenplay.txt --model gemini
 
 # 从标准输入管道
 cat script.txt | bun run pipeline moyin:parse-script --input -
 
 # 内联文本
 bun run pipeline moyin:parse-script --text "一个关于侦探的故事..."
+
+# 流式输出（实时显示 token 接收进度）
+bun run pipeline moyin:parse-script --script screenplay.txt --model gemini --stream
 ```
+
+### 可用模型
+
+| 别名 | OpenRouter 模型 ID | 说明 |
+|------|-------------------|------|
+| `kimi` / `kimi-k2.5` | `moonshotai/kimi-k2.5` | 擅长中英文剧本 |
+| `minimax` / `minimax-m2.5` | `minimax/minimax-m2.5` | 速度快，结构化输出好 |
+| `gemini` / `gemini-flash` | `google/gemini-2.5-flash` | 默认，最便宜，速度快 |
+| `gemini-pro` | `google/gemini-2.5-pro` | 更高质量，速度较慢 |
+
+也可以直接传入任何 OpenRouter 模型 ID（如 `anthropic/claude-3.5-sonnet`）。
+
+### 提供商优先级
+
+1. 设置了 `OPENROUTER_API_KEY` → 使用 OpenRouter + 所选模型
+2. 设置了 `GEMINI_API_KEY` → 使用 Gemini 直连 API
+3. 均未设置 → 回退到 Claude CLI 子进程（无需 API 密钥）
 
 ### 输出模式
 
@@ -31,7 +68,7 @@ bun run pipeline moyin:parse-script --text "一个关于侦探的故事..."
 bun run pipeline moyin:parse-script --script screenplay.txt
 # 输出：
 #   ✓ Output: /path/to/output/parsed-script.json
-#   Duration: 56.0s
+#   Duration: 12.8s
 #
 #   Title:      最后的花园
 #   Genre:      剧情
@@ -39,13 +76,13 @@ bun run pipeline moyin:parse-script --script screenplay.txt
 #   Characters: 4
 #   Scenes:     4
 #   Episodes:   2
+#   Provider:   OpenRouter (google/gemini-2.5-flash)
 
 # JSON 模式 — 机器可读信封
 bun run pipeline moyin:parse-script --script screenplay.txt --json
-# 输出：{ "schema_version": "1", "command": "moyin:parse-script", "success": true, ... }
 
-# 静默模式 — 抑制进度输出，仅打印结果
-bun run pipeline moyin:parse-script --script screenplay.txt --quiet
+# 流式模式 — 推理期间实时显示进度
+bun run pipeline moyin:parse-script --script screenplay.txt --stream
 ```
 
 ### 参数说明
@@ -55,6 +92,8 @@ bun run pipeline moyin:parse-script --script screenplay.txt --quiet
 | `--script <file>` | 剧本/故事文件路径 |
 | `--input <file\|->` | 文件路径或 `-` 表示标准输入 |
 | `--text <string>` | 内联剧本文本 |
+| `--model <name>` | 模型别名或完整 OpenRouter ID（默认：`gemini-flash`） |
+| `--stream` | 启用流式输出（LLM 推理期间实时显示进度） |
 | `--language <lang>` | 语言提示（默认：自动检测） |
 | `--max-scenes <n>` | 限制提取的场景数量 |
 | `--output-dir <dir>` | 输出目录（默认：`./output`） |
@@ -103,30 +142,41 @@ bun run pipeline moyin:parse-script --script screenplay.txt --quiet
 
 ## 正常工作的功能
 
-通过真实测试验证（1052 字符剧本，约 56 秒解析时间）：
+通过真实测试验证（1052 字符剧本）：
 
 | 功能 | 状态 | 详情 |
 |------|------|------|
+| OpenRouter 提供商 | 正常 | 已测试 Kimi K2.5、MiniMax M2.5、Gemini Flash |
+| Gemini 直连提供商 | 正常 | 使用 `generativelanguage.googleapis.com` API |
+| Claude CLI 回退 | 正常 | 无 API 密钥时启动 `claude -p --model haiku` |
+| 模型别名解析 | 正常 | `--model kimi` → `moonshotai/kimi-k2.5` |
+| 完整 OpenRouter 模型 ID | 正常 | `--model anthropic/claude-3.5-sonnet` 直接传递 |
+| 流式输出（OpenRouter） | 正常 | SSE 解析，推理期间实时进度更新 |
+| 流式输出（Gemini） | 正常 | 通过 `streamGenerateContent?alt=sse` SSE |
+| 提供商自动检测 | 正常 | 检查 OPENROUTER_API_KEY → GEMINI_API_KEY → Claude CLI |
 | `--script` 文件输入 | 正常 | 通过 `readScriptInput()` 读取文件 |
 | `--input -` 标准输入管道 | 正常 | 管道内容正确解析 |
 | `--text` 内联输入 | 正常 | 直接文本参数正常 |
-| Claude CLI 进程启动 | 正常 | `claude -p --model haiku --output-format json --max-turns 1 --system-prompt` |
-| CLI 未安装错误 | 正常 | 捕获 ENOENT，打印安装说明 |
-| 非零退出码错误 | 正常 | 捕获 stderr（前 200 字符） |
-| 空响应检查 | 正常 | 拒绝并提示 "Empty response from Claude CLI" |
-| `is_error` 检查 | 正常 | 检测 Claude CLI 错误信封 |
-| JSON 信封解包 | 正常 | 处理 `--output-format json` 包装器 `{type, result}` |
-| JSON 提取 | 正常 | 去除 markdown 代码块，大括号匹配最外层 `{}` |
 | Schema 验证 | 正常 | `validateScriptData()` 拒绝缺少 title/characters/scenes 的数据 |
-| TTY 输出格式化 | 正常 | 打印 Title/Genre/Logline/Characters/Scenes/Episodes |
-| JSON 模式输出 | 正常 | 将结构化 JSON 信封打印到 stdout |
-| 输出文件写入 | 正常 | 创建 `./output/parsed-script.json` |
+| TTY 输出格式化 | 正常 | 显示 Title/Genre/Logline/Characters/Scenes/Episodes/Provider |
+| JSON 模式输出 | 正常 | 数据中包含 `provider` 和 `model` 字段 |
 | 瞬态错误重试 | 正常 | 遇到速率限制 / 429 / 503 / 网络错误时自动重试一次 |
 | stdin 错误处理 | 正常 | `child.stdin.write()` / `.end()` 包含 try-catch |
 | stderr 转发 | 正常 | `process.stderr.write(chunk)` 实时显示 Claude CLI 警告 |
-| 超时控制 | 正常 | 180 秒（3 分钟），超时后终止子进程 |
+| 超时控制 | 正常 | API 调用 120 秒，Claude CLI 180 秒 |
 | 编辑器 UI 推送 | 正常 | 编辑器运行时推送到 `/api/claude/moyin/parse-result` |
-| 环境变量清理 | 正常 | 删除 `CLAUDE_CODE`、`CLAUDECODE`、`CLAUDE_CODE_ENTRYPOINT`、`CLAUDE_CODE_SSE_PORT` |
+| 密钥存储 | 正常 | `set-key --name OPENROUTER_API_KEY --value ...` 持久化到 `~/.qcut/.env` |
+
+## 各提供商性能对比
+
+基于真实测试（1052 字符剧本）的实测数据：
+
+| 提供商 | 模型 | 耗时 | 说明 |
+|--------|------|------|------|
+| OpenRouter | `google/gemini-2.5-flash` | ~12 秒 | 最快，最便宜 |
+| OpenRouter | `minimax/minimax-m2.5` | ~30 秒 | 质量好，速度快 |
+| OpenRouter | `moonshotai/kimi-k2.5` | ~59-107 秒 | 最适合中文剧本 |
+| Claude CLI | `haiku` | ~54 秒 | 零配置回退 |
 
 ## 已知限制
 
@@ -136,87 +186,30 @@ bun run pipeline moyin:parse-script --script screenplay.txt --quiet
 const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
 ```
 
-- LLM 响应中嵌套的 markdown 代码块会导致正则匹配错误（`[\s\S]*?` 捕获第一个闭合标记）
-- 大括号匹配不考虑 JSON 字符串值中包含的 `{` 或 `}`
-- 解析失败时无 `JSON.parse` 错误上下文（行/列号）
+LLM 响应中嵌套的 markdown 代码块可能导致正则匹配错误。实际使用中，OpenRouter/Gemini 返回的 JSON 比 Claude CLI 更干净。
 
-**缓解措施**：实际使用中，`--output-format json` 标志使 Claude CLI 直接返回 JSON 信封（非 markdown 包装），因此正则很少触发。大括号匹配器可处理常见情况。
+### Claude CLI 回退无流式输出
 
-### LLM 推理期间无流式进度
+Claude CLI 缓冲整个响应（`--output-format json`）。流式输出仅在使用 OpenRouter 或 Gemini 直连时可用。
 
-用户在 10%（解析中）和 80%（提取中）看到进度消息，但在 30-90 秒的 LLM 推理期间无任何反馈，无逐 token 进度显示。
+### 大脚本背压问题（仅 Claude CLI）
 
-### 每次调用冷启动
-
-每次调用都会启动新的 `claude` 子进程（约 500ms 开销）。无连接池或会话复用。子进程开销占总时间不到 1.5%，影响较小。
-
-### 大脚本背压问题
-
-如果脚本文本超过约 10MB，`child.stdin.write()` 可能会阻塞且无背压处理。try-catch 防止了静默失败，但不处理部分写入。
-
-## 性能分析
-
-基于真实测试（1052 字符剧本）的实测数据：
-
-| 阶段 | 耗时 | 占比 |
-|------|------|------|
-| 子进程启动 | ~500ms | ~1% |
-| stdin 传递提示词 | ~50ms | <0.1% |
-| **LLM 推理** | **43-68 秒** | **~97%** |
-| JSON 提取 + 验证 | ~10ms | <0.1% |
-| 文件写入 | ~5ms | <0.1% |
-| 编辑器 UI 推送 | ~100-500ms | ~1% |
-| **总计** | **~43-68 秒** | |
-
-LLM 推理是主要耗时。使用 `haiku` 模型（最快档）。较长的脚本会产生更多输出 token，耗时相应增加。
+如果脚本文本超过约 10MB，`child.stdin.write()` 可能会阻塞且无背压处理。OpenRouter/Gemini 使用 HTTP body，天然支持大数据。
 
 ## 未来改进
 
 | 优先级 | 改进项 | 影响 | 工作量 |
 |--------|--------|------|--------|
-| P2 | 流式 LLM 输出（`--output-format stream-json`） | 60 秒等待期间有实时进度 | 1 小时 |
-| P3 | 直接调用 Anthropic API 替代子进程 | 消除 500ms 启动开销，支持流式、token 追踪 | 2 小时 |
-| P3 | QCut 运行时通过编辑器 IPC 路由 | 最快路径，无子进程 | 1 小时 |
-| P3 | `--timeout` CLI 参数覆盖默认 180 秒 | 用户可控制超长脚本的超时时间 | 15 分钟 |
-
-### 直接 Anthropic API 调用（P3 详情）
-
-将 `callClaudeCLI()` 替换为直接 HTTP 调用：
-
-```typescript
-import Anthropic from "@anthropic-ai/sdk";
-
-async function callAnthropicDirect(system: string, user: string): Promise<string> {
-  const client = new Anthropic(); // 从环境变量读取 ANTHROPIC_API_KEY
-  const msg = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4096,
-    system,
-    messages: [{ role: "user", content: user }],
-  });
-  return msg.content[0].type === "text" ? msg.content[0].text : "";
-}
-```
-
-**权衡**：需要环境变量中设置 `ANTHROPIC_API_KEY`（当前使用 Claude CLI 内置认证）。
-
-### 编辑器 IPC 回退（P3 详情）
-
-QCut 编辑器运行时跳过子进程，直接走 IPC：
-
-```typescript
-const client = createEditorClient(options);
-if (await client.checkHealth()) {
-  return await client.post("/api/claude/moyin/parse", { script: rawScript });
-}
-// 回退到 Claude CLI 子进程
-response = await callClaudeCLI(PARSE_SYSTEM_PROMPT, userPrompt);
-```
+| P3 | 直接 Anthropic API 作为第四提供商 | 无需 CLI 子进程即可使用 Claude | 1 小时 |
+| P3 | QCut 运行时通过编辑器 IPC 路由 | 最快路径，无网络调用 | 1 小时 |
+| P3 | `--timeout` CLI 参数覆盖默认值 | 用户可控制慢模型的超时时间 | 15 分钟 |
 
 ## 源文件
 
 | 文件 | 用途 |
 |------|------|
-| `electron/native-pipeline/cli/cli-handlers-moyin.ts` | 处理器、Claude CLI 启动、JSON 提取、验证 |
-| `electron/native-pipeline/cli/cli-output-formatters.ts` | TTY 输出格式化（第 198-214 行） |
-| `electron/native-pipeline/cli/cli.ts` | CLI 入口、路由、输出调度（第 800-832 行） |
+| `electron/native-pipeline/cli/cli-handlers-moyin.ts` | 处理器、LLM 路由、流式输出、JSON 提取、验证 |
+| `electron/native-pipeline/cli/cli-output-formatters.ts` | TTY 输出格式化（第 198-218 行） |
+| `electron/native-pipeline/cli/cli.ts` | CLI 入口、路由、输出调度 |
+| `electron/native-pipeline/infra/api-caller.ts` | `envApiKeyProvider()` CLI 安全的密钥解析 |
+| `electron/native-pipeline/infra/key-manager.ts` | 密钥存储（`~/.qcut/.env`）和加载 |
