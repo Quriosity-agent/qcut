@@ -729,27 +729,33 @@ export async function main(
 	// Check for --session before command parsing (session doesn't require a command)
 	if (argv.includes("--session")) {
 		const sessionArgv = argv.filter((a) => a !== "--session");
+		const { values: sessionValues } = parseArgs({
+			args: sessionArgv,
+			options: {
+				json: { type: "boolean", default: false },
+				quiet: { type: "boolean", short: "q", default: false },
+				verbose: { type: "boolean", short: "v", default: false },
+				"skip-health": { type: "boolean", default: false },
+				"no-capability-check": { type: "boolean", default: false },
+				host: { type: "string" },
+				port: { type: "string" },
+				token: { type: "string" },
+				"output-dir": { type: "string", short: "o" },
+			},
+			strict: false,
+		});
 		const baseOptions: Partial<CLIRunOptions> = {
-			json: sessionArgv.includes("--json"),
-			quiet: sessionArgv.includes("--quiet") || sessionArgv.includes("-q"),
-			verbose: sessionArgv.includes("--verbose") || sessionArgv.includes("-v"),
-			skipHealth: sessionArgv.includes("--skip-health"),
+			json: sessionValues.json as boolean,
+			quiet: sessionValues.quiet as boolean,
+			verbose: sessionValues.verbose as boolean,
+			skipHealth: sessionValues["skip-health"] as boolean,
+			noCapabilityCheck: sessionValues["no-capability-check"] as boolean,
+			host: sessionValues.host as string | undefined,
+			port: sessionValues.port as string | undefined,
+			token: sessionValues.token as string | undefined,
+			outputDir: sessionValues["output-dir"] as string | undefined,
 			session: true,
 		};
-
-		// Parse host/port/token if provided
-		for (let i = 0; i < sessionArgv.length; i++) {
-			if (sessionArgv[i] === "--host" && sessionArgv[i + 1])
-				baseOptions.host = sessionArgv[++i];
-			if (sessionArgv[i] === "--port" && sessionArgv[i + 1])
-				baseOptions.port = sessionArgv[++i];
-			if (sessionArgv[i] === "--token" && sessionArgv[i + 1])
-				baseOptions.token = sessionArgv[++i];
-			if (sessionArgv[i] === "--output-dir" && sessionArgv[i + 1])
-				baseOptions.outputDir = sessionArgv[++i];
-			if (sessionArgv[i] === "-o" && sessionArgv[i + 1])
-				baseOptions.outputDir = sessionArgv[++i];
-		}
 
 		const runner = new CLIPipelineRunner();
 		const reporter = createProgressReporter({
