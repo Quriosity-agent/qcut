@@ -93,7 +93,7 @@
 		"submodule:init": "git submodule update --init --recursive",
 		"submodule:update": "git submodule update --remote --recursive",
 		"qagent:build": "cd packages/qagent && bun run --filter '!@composio/ao-web' build",
-		"qagent:init": "cd packages/qagent && bun install && bun run --filter '!@composio/ao-web' build",
+		"qagent:init": "cd packages/qagent && bun install && node scripts/link-core.js && bun run --filter '!@composio/ao-web' build",
 		"qagent:setup": "bun run qagent:init",
 		"predev": "bun run setup-ffmpeg",
 		"prebuild": "bun run setup-ffmpeg && bun run stage-ffmpeg-binaries && bun run sync-skills",

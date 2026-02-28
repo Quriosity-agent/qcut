@@ -27,7 +27,7 @@
 		"version-packages": "changeset version",
 		"release": "bun run --filter '!@composio/ao-web' build && changeset publish",
 		"prepare": "husky",
-		"postinstall": "node scripts/rebuild-node-pty.js"
+		"postinstall": "node scripts/link-core.js && node scripts/rebuild-node-pty.js"
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.29.8",

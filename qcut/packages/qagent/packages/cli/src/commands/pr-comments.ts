@@ -1,9 +1,7 @@
 import chalk from "chalk";
 import ora from "ora";
 import type { Command } from "commander";
-import { loadConfig } from "@composio/ao-core";
 import { exec } from "../lib/shell.js";
-import { getSessionManager } from "../lib/create-session-manager.js";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,6 +100,25 @@ export function registerPRComments(program: Command): void {
 		)
 		.argument("<session>", "Session ID")
 		.action(async (sessionId: string) => {
+			let loadConfig: Awaited<
+				typeof import("@composio/ao-core")
+			>["loadConfig"];
+			let getSessionManager: Awaited<
+				typeof import("../lib/create-session-manager.js")
+			>["getSessionManager"];
+			try {
+				({ loadConfig } = await import("@composio/ao-core"));
+				({ getSessionManager } = await import(
+					"../lib/create-session-manager.js"
+				));
+			} catch (error) {
+				console.error(
+					chalk.red(
+						`forward unavailable: ${error instanceof Error ? error.message : String(error)}`
+					)
+				);
+				process.exit(1);
+			}
 			const config = loadConfig();
 			const sm = await getSessionManager(config);
 			const sessions = await sm.list();
