@@ -1,8 +1,16 @@
-﻿import { ipcMain, safeStorage, app, IpcMainInvokeEvent } from "electron";
-import path from "node:path";
+import {
+	app,
+	ipcMain,
+	safeStorage,
+	session,
+	type IpcMainInvokeEvent,
+} from "electron";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-const LICENSE_SERVER_URL = "https://qcut-license-server.workers.dev"; // TODO: update with real URL
+const LICENSE_SERVER_URL =
+	process.env.QCUT_LICENSE_SERVER_URL || "https://qcut-license-server.workers.dev";
 const CACHE_FILE = "license-cache.enc";
 const OFFLINE_GRACE_DAYS = 7;
 
@@ -21,9 +29,43 @@ interface LicenseInfo {
 	cachedAt?: number;
 }
 
-function getAuthToken(): string {
-	// TODO: Get from BetterAuth session
-	return "";
+let authToken = "";
+
+function setAuthToken({ token }: { token: string }): void {
+	authToken = token.trim();
+}
+
+async function getAuthToken(): Promise<string> {
+	try {
+		if (authToken.length > 0) {
+			return authToken;
+		}
+
+		const envToken = process.env.QCUT_AUTH_TOKEN;
+		if (typeof envToken === "string" && envToken.trim().length > 0) {
+			return envToken.trim();
+		}
+
+		const cookieNames = [
+			"better-auth.session_token",
+			"better-auth.session-token",
+			"session_token",
+			"auth_token",
+		];
+		for (const name of cookieNames) {
+			const cookies = await session.defaultSession.cookies.get({ name });
+			const matchingCookie = cookies.find(
+				(cookie) => typeof cookie.value === "string" && cookie.value.length > 0
+			);
+			if (matchingCookie?.value) {
+				return matchingCookie.value;
+			}
+		}
+
+		return "";
+	} catch {
+		return "";
+	}
 }
 
 function getCachePath(): string {
@@ -34,16 +76,16 @@ function getCachePath(): string {
 	}
 }
 
-function cacheLicense(license: LicenseInfo): void {
+function cacheLicense({ license }: { license: LicenseInfo }): void {
 	try {
 		const data = JSON.stringify({ ...license, cachedAt: Date.now() });
 		const cachePath = getCachePath();
 		if (safeStorage.isEncryptionAvailable()) {
 			const encrypted = safeStorage.encryptString(data);
 			fs.writeFileSync(cachePath, encrypted);
-		} else {
-			fs.writeFileSync(cachePath, data, { mode: 0o600 });
+			return;
 		}
+		fs.writeFileSync(cachePath, data, { mode: 0o600 });
 	} catch (error) {
 		console.error("[License] Failed to cache license:", error);
 	}
@@ -63,116 +105,166 @@ const FREE_FALLBACK: LicenseInfo = {
 };
 
 function getCachedLicense(): LicenseInfo {
-	const fallback = FREE_FALLBACK;
 	const cachePath = getCachePath();
-	if (!fs.existsSync(cachePath)) return fallback;
+	if (!fs.existsSync(cachePath)) {
+		return FREE_FALLBACK;
+	}
 
 	try {
 		const raw = fs.readFileSync(cachePath);
-		let decrypted: string;
-
-		if (safeStorage.isEncryptionAvailable()) {
-			decrypted = safeStorage.decryptString(raw);
-		} else {
-			decrypted = raw.toString("utf-8");
-		}
-
+		const decrypted = safeStorage.isEncryptionAvailable()
+			? safeStorage.decryptString(raw)
+			: raw.toString("utf-8");
 		const cached = JSON.parse(decrypted) as LicenseInfo;
-
-		// Check if cache is too old
-		const daysSinceCached =
+		const cacheAgeInDays =
 			(Date.now() - (cached.cachedAt || 0)) / (1000 * 60 * 60 * 24);
-		if (daysSinceCached > OFFLINE_GRACE_DAYS) {
-			return fallback; // Downgrade to free
+		if (cacheAgeInDays > OFFLINE_GRACE_DAYS) {
+			return FREE_FALLBACK;
 		}
-
 		return cached;
 	} catch {
-		return fallback;
+		return FREE_FALLBACK;
 	}
 }
 
 function clearCachedLicense(): void {
 	try {
 		const cachePath = getCachePath();
-		if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+		if (fs.existsSync(cachePath)) {
+			fs.unlinkSync(cachePath);
+		}
 	} catch (error) {
 		console.error("[License] Failed to clear cache:", error);
 	}
 }
 
-export function setupLicenseIPC(): void {
-	// license:check — validate license online, fallback to encrypted cache
-	ipcMain.handle("license:check", async (): Promise<LicenseInfo> => {
-		try {
-			const response = await fetch(`${LICENSE_SERVER_URL}/api/license`, {
-				headers: { Authorization: `Bearer ${getAuthToken()}` },
-			});
-			if (response.ok) {
-				const data = (await response.json()) as { license: LicenseInfo };
-				const license = data.license;
-				cacheLicense(license);
-				return license;
-			}
-		} catch {
-			// Offline — use cache
+function getDeviceFingerprint(): string {
+	return `${process.platform}-${os.hostname()}`;
+}
+
+function getDeviceName(): string {
+	return os.hostname();
+}
+
+async function getOnlineLicense(): Promise<LicenseInfo | null> {
+	try {
+		const token = await getAuthToken();
+		if (token.length === 0) {
+			return null;
 		}
-		return getCachedLicense();
+
+		const response = await fetch(`${LICENSE_SERVER_URL}/api/license`, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+		if (!response.ok) {
+			return null;
+		}
+
+		const payload = (await response.json()) as {
+			license?: LicenseInfo;
+		};
+		if (!payload.license) {
+			return null;
+		}
+
+		cacheLicense({ license: payload.license });
+		return payload.license;
+	} catch {
+		return null;
+	}
+}
+
+export function setupLicenseIPC(): void {
+	ipcMain.handle("license:set-auth-token", async (_event, token: string) => {
+		if (typeof token !== "string") {
+			return false;
+		}
+		setAuthToken({ token });
+		return authToken.length > 0;
 	});
 
-	// license:activate — handle qcut://activate?token=xxx
+	ipcMain.handle("license:clear-auth-token", async () => {
+		setAuthToken({ token: "" });
+		return true;
+	});
+
+	ipcMain.handle("license:check", async (): Promise<LicenseInfo> => {
+		try {
+			const onlineLicense = await getOnlineLicense();
+			if (onlineLicense) {
+				return onlineLicense;
+			}
+			return getCachedLicense();
+		} catch {
+			return getCachedLicense();
+		}
+	});
+
 	ipcMain.handle(
 		"license:activate",
 		async (_event: IpcMainInvokeEvent, token: string): Promise<boolean> => {
-			if (typeof token !== "string" || token.trim().length === 0) return false;
-			try {
-				const response = await fetch(
-					`${LICENSE_SERVER_URL}/api/license/activate`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${token}`,
-						},
-						body: JSON.stringify({
-							deviceFingerprint: getDeviceFingerprint(),
-							deviceName: getDeviceName(),
-						}),
-					}
-				);
-				if (response.ok) {
-					const data = (await response.json()) as { license: LicenseInfo };
-					cacheLicense(data.license);
-					return true;
-				}
-			} catch {
-				// Activation failed
+			if (typeof token !== "string" || token.trim().length === 0) {
+				return false;
 			}
-			return false;
-		}
-	);
-
-	// license:track-usage
-	ipcMain.handle(
-		"license:track-usage",
-		async (_event: IpcMainInvokeEvent, type: string): Promise<void> => {
-			if (typeof type !== "string" || type.trim().length === 0) return;
 			try {
-				await fetch(`${LICENSE_SERVER_URL}/api/usage/track`, {
+				const response = await fetch(`${LICENSE_SERVER_URL}/api/license/activate`, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
-						Authorization: `Bearer ${getAuthToken()}`,
+						Authorization: `Bearer ${token}`,
 					},
-					body: JSON.stringify({ type }),
+					body: JSON.stringify({
+						deviceFingerprint: getDeviceFingerprint(),
+						deviceName: getDeviceName(),
+					}),
 				});
+				if (!response.ok) {
+					return false;
+				}
+
+				const payload = (await response.json()) as {
+					license?: LicenseInfo;
+				};
+				if (payload.license) {
+					cacheLicense({ license: payload.license });
+				}
+				return true;
 			} catch {
-				// Queue for later if offline — TODO: implement offline queue
+				return false;
 			}
 		}
 	);
 
-	// license:deduct-credits
+	ipcMain.handle(
+		"license:track-usage",
+		async (
+			_event: IpcMainInvokeEvent,
+			type: "ai_generation" | "export" | "render"
+		): Promise<boolean> => {
+			if (typeof type !== "string" || type.trim().length === 0) {
+				return false;
+			}
+			try {
+				const token = await getAuthToken();
+				if (token.length === 0) {
+					return false;
+				}
+
+				const response = await fetch(`${LICENSE_SERVER_URL}/api/usage/track`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${token}`,
+					},
+					body: JSON.stringify({ type }),
+				});
+				return response.ok;
+			} catch {
+				return false;
+			}
+		}
+	);
+
 	ipcMain.handle(
 		"license:deduct-credits",
 		async (
@@ -181,45 +273,54 @@ export function setupLicenseIPC(): void {
 			modelKey: string,
 			description: string
 		): Promise<boolean> => {
-			if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)
+			if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
 				return false;
-			if (typeof modelKey !== "string" || modelKey.trim().length === 0)
+			}
+			if (typeof modelKey !== "string" || modelKey.trim().length === 0) {
 				return false;
-			if (typeof description !== "string") return false;
+			}
+			if (typeof description !== "string" || description.trim().length === 0) {
+				return false;
+			}
+
 			try {
-				const response = await fetch(
-					`${LICENSE_SERVER_URL}/api/credits/deduct`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${getAuthToken()}`,
-						},
-						body: JSON.stringify({ amount, modelKey, description }),
-					}
-				);
-				return response.ok;
+				const token = await getAuthToken();
+				if (token.length === 0) {
+					return false;
+				}
+
+				const response = await fetch(`${LICENSE_SERVER_URL}/api/credits/deduct`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${token}`,
+					},
+					body: JSON.stringify({ amount, modelKey, description }),
+				});
+				if (!response.ok) {
+					return false;
+				}
+
+				const refreshedLicense = await getOnlineLicense();
+				if (refreshedLicense) {
+					cacheLicense({ license: refreshedLicense });
+				}
+
+				return true;
 			} catch {
 				return false;
 			}
 		}
 	);
 
-	// license:deactivate
 	ipcMain.handle("license:deactivate", async (): Promise<boolean> => {
-		clearCachedLicense();
-		return true;
+		try {
+			clearCachedLicense();
+			return true;
+		} catch {
+			return false;
+		}
 	});
 }
 
-function getDeviceFingerprint(): string {
-	// TODO: Generate a stable device fingerprint
-	return `${process.platform}-${require("os").hostname()}`;
-}
-
-function getDeviceName(): string {
-	return require("os").hostname();
-}
-
-module.exports = { setupLicenseIPC };
 export type { LicenseInfo };
