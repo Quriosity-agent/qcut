@@ -22,7 +22,7 @@ import type {
 } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 
-const CLAUDE_CLI_TIMEOUT_MS = 600_000;
+const CLAUDE_CLI_TIMEOUT_MS = 180_000;
 
 const PARSE_SYSTEM_PROMPT = `You are a professional screenplay analyst. Analyze the screenplay/story text provided by the user and extract structured information.
 
@@ -136,6 +136,7 @@ function callClaudeCLI(
 		];
 
 		const env = { ...process.env };
+		delete env.CLAUDE_CODE;
 		delete env.CLAUDECODE;
 		delete env.CLAUDE_CODE_ENTRYPOINT;
 		delete env.CLAUDE_CODE_SSE_PORT;
@@ -154,6 +155,7 @@ function callClaudeCLI(
 		});
 		child.stderr.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString();
+			process.stderr.write(chunk);
 		});
 
 		const timeoutId = setTimeout(() => {
@@ -162,7 +164,7 @@ function callClaudeCLI(
 				child.kill("SIGTERM");
 				reject(
 					new Error(
-						"Claude CLI timed out after 600s. Configure an API key for faster parsing."
+						"Claude CLI timed out after 180s. Configure an API key for faster parsing."
 					)
 				);
 			}
@@ -220,9 +222,48 @@ function callClaudeCLI(
 			);
 		});
 
-		child.stdin.write(userPrompt);
-		child.stdin.end();
+		try {
+			child.stdin.write(userPrompt);
+			child.stdin.end();
+		} catch (err) {
+			if (!settled) {
+				settled = true;
+				clearTimeout(timeoutId);
+				reject(
+					new Error(
+						`Failed to write to Claude CLI stdin: ${err instanceof Error ? err.message : String(err)}`
+					)
+				);
+			}
+		}
 	});
+}
+
+/** Check if an error message indicates a transient/retriable failure. */
+function isTransientError(message: string): boolean {
+	const lower = message.toLowerCase();
+	return (
+		lower.includes("rate limit") ||
+		lower.includes("overloaded") ||
+		lower.includes("429") ||
+		lower.includes("503") ||
+		lower.includes("econnreset") ||
+		lower.includes("etimedout") ||
+		lower.includes("socket hang up")
+	);
+}
+
+/** Validate that parsed script data has required fields. */
+function validateScriptData(data: Record<string, unknown>): void {
+	if (!data.title || typeof data.title !== "string") {
+		throw new Error("Missing required field: title");
+	}
+	if (!Array.isArray(data.characters) || data.characters.length === 0) {
+		throw new Error("No characters found in parsed script");
+	}
+	if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+		throw new Error("No scenes found in parsed script");
+	}
 }
 
 /** Extract the outermost JSON object from an LLM response. */
@@ -283,16 +324,35 @@ export async function handleMoyinParseScript(
 		userPrompt = `[Max scenes: ${options.maxScenes}]\n\n${userPrompt}`;
 	}
 
-	// 3. Call Claude CLI
+	// 3. Call Claude CLI (with one retry on transient errors)
 	let response: string;
 	try {
 		response = await callClaudeCLI(PARSE_SYSTEM_PROMPT, userPrompt);
 	} catch (err) {
-		return {
-			success: false,
-			error: err instanceof Error ? err.message : String(err),
-			duration: (Date.now() - startTime) / 1000,
-		};
+		const msg = err instanceof Error ? err.message : String(err);
+		if (isTransientError(msg)) {
+			onProgress({
+				stage: "retry",
+				percent: 15,
+				message: "Transient error, retrying...",
+			});
+			try {
+				response = await callClaudeCLI(PARSE_SYSTEM_PROMPT, userPrompt);
+			} catch (retryErr) {
+				return {
+					success: false,
+					error:
+						retryErr instanceof Error ? retryErr.message : String(retryErr),
+					duration: (Date.now() - startTime) / 1000,
+				};
+			}
+		} else {
+			return {
+				success: false,
+				error: msg,
+				duration: (Date.now() - startTime) / 1000,
+			};
+		}
 	}
 
 	onProgress({
@@ -301,10 +361,11 @@ export async function handleMoyinParseScript(
 		message: "Extracting structured data from response...",
 	});
 
-	// 4. Extract JSON
+	// 4. Extract and validate JSON
 	let parsed: Record<string, unknown>;
 	try {
 		parsed = extractJSON(response);
+		validateScriptData(parsed);
 	} catch (err) {
 		return {
 			success: false,

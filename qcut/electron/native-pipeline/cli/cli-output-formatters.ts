@@ -195,6 +195,24 @@ export function formatCommandOutput(command: string, result: CLIResult): void {
 		return;
 	}
 
+	if (command === "moyin:parse-script") {
+		const d = result.data as {
+			title?: string;
+			genre?: string;
+			logline?: string;
+			characters?: number;
+			scenes?: number;
+			episodes?: number;
+		};
+		console.log(`\nTitle:      ${d.title || "Untitled"}`);
+		console.log(`Genre:      ${d.genre || "Unknown"}`);
+		console.log(`Logline:    ${d.logline || "-"}`);
+		console.log(`Characters: ${d.characters ?? 0}`);
+		console.log(`Scenes:     ${d.scenes ?? 0}`);
+		console.log(`Episodes:   ${d.episodes ?? 0}`);
+		return;
+	}
+
 	if (command === "vimax:show-registry") {
 		const data = result.data as {
 			project_id: string;
