@@ -1,11 +1,5 @@
-/**
- * Barrel re-export for backwards compatibility.
- * All consuming files import from "@/stores/ai/remotion-store".
- * Actual implementation is in ./remotion/ directory.
- */
+export { useRemotionStore, initializeRemotionStore } from "./store";
 export {
-	useRemotionStore,
-	initializeRemotionStore,
 	selectAllComponents,
 	selectAllInstances,
 	selectPendingJobs,
@@ -15,6 +9,8 @@ export {
 	selectSyncState,
 	selectImportedFolders,
 	selectIsFolderImporting,
+} from "./selectors";
+export {
 	useRemotionComponent,
 	useRemotionInstance,
 	useComponentsByCategory,
@@ -23,4 +19,5 @@ export {
 	useComponentAnalysis,
 	useImportedFolders,
 	useFolderImporting,
-} from "./remotion";
+} from "./hooks";
+import "./debug";
