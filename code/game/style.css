@@ -1,0 +1,215 @@
+:root {
+  color-scheme: light;
+  --bg: #f4f7f2;
+  --panel: #ffffff;
+  --ink: #18201a;
+  --muted: #5b665c;
+  --accent: #2c7a47;
+  --accent-strong: #16572d;
+  --danger: #ad2e2e;
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 15%, rgb(44 122 71 / 0.12), transparent 35%),
+    radial-gradient(circle at 85% 80%, rgb(22 87 45 / 0.14), transparent 28%),
+    var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.game-shell {
+  width: min(980px, 100%);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.9rem 1rem;
+}
+
+.hud__brand {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.hud__eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud__title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.hud__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.stat {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+}
+
+.stat dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.stat dd {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.play-area {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+#game-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: linear-gradient(180deg, #d9ece8 0%, #f4fbf7 58%, #e8f5eb 100%);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(8 20 14 / 0.5);
+  padding: 1rem;
+}
+
+.overlay.is-hidden {
+  display: none;
+}
+
+.panel {
+  max-width: 530px;
+  width: min(100%, 530px);
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.2rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.45rem;
+}
+
+.panel__body {
+  margin: 0;
+  color: var(--muted);
+}
+
+.instruction-list {
+  margin: 0.95rem 0 1rem;
+  padding-left: 1.1rem;
+  color: var(--ink);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.62rem 1rem;
+  background: #dde8df;
+  color: var(--ink);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.button--primary:hover,
+.button--primary:focus-visible {
+  background: var(--accent-strong);
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.75rem 1rem;
+}
+
+.status-line {
+  margin: 0;
+  color: var(--muted);
+}
+
+.controls__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-line.is-danger {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .hud,
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hud__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .stat {
+    justify-items: start;
+  }
+
+  .controls__actions {
+    justify-content: flex-end;
+  }
+}

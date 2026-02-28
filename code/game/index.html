@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QCut Mini Game</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="hud" aria-live="polite">
+        <div class="hud__brand">
+          <p class="hud__eyebrow">QCut Arcade</p>
+          <h1 class="hud__title">Sky Catch</h1>
+        </div>
+
+        <dl class="hud__stats">
+          <div class="stat">
+            <dt>Score</dt>
+            <dd id="score-value">0</dd>
+          </div>
+          <div class="stat">
+            <dt>Best</dt>
+            <dd id="best-value">0</dd>
+          </div>
+          <div class="stat">
+            <dt>Lives</dt>
+            <dd id="lives-value">3</dd>
+          </div>
+        </dl>
+      </header>
+
+      <section class="play-area" aria-label="Game area">
+        <canvas
+          id="game-canvas"
+          width="960"
+          height="540"
+          role="img"
+          aria-label="Catch stars with the paddle and avoid dropping them"
+        ></canvas>
+
+        <div id="start-screen" class="overlay" role="dialog" aria-labelledby="start-title">
+          <div class="panel">
+            <h2 id="start-title">Ready to play?</h2>
+            <p class="panel__body">
+              Move the paddle to catch falling stars. Missing stars costs a life.
+            </p>
+            <ul class="instruction-list">
+              <li><strong>Desktop:</strong> Arrow keys or mouse movement</li>
+              <li><strong>Mobile:</strong> Drag or tap where you want the paddle</li>
+              <li><strong>Goal:</strong> Beat your best score before lives run out</li>
+            </ul>
+            <button id="start-button" class="button button--primary" type="button">Start game</button>
+          </div>
+        </div>
+
+        <div id="game-over-screen" class="overlay is-hidden" role="dialog" aria-labelledby="game-over-title">
+          <div class="panel">
+            <h2 id="game-over-title">Run complete</h2>
+            <p class="panel__body">Final score: <strong id="final-score">0</strong></p>
+            <button id="restart-overlay-button" class="button button--primary" type="button">
+              Restart run
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="controls">
+        <p id="status-line" class="status-line">Press Start to begin your run.</p>
+        <div class="controls__actions">
+          <button id="restart-button" class="button" type="button" disabled>Restart</button>
+        </div>
+      </footer>
+    </main>
+
+    <script src="./game.js" type="module"></script>
+  </body>
+</html>
