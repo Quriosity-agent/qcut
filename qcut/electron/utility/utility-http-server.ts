@@ -240,7 +240,7 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		const discard = req.body?.discard === true;
 		return await withTimeout(
 			requestFromMain("screen-recording:stop", { discard }),
-			90_000,
+			30_000,
 			"Recording stop timed out"
 		);
 	});

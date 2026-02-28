@@ -10,3 +10,9 @@ export {
 	guessExtFromCommand,
 	renderProgressBar,
 } from "./progress.js";
+export {
+	runSession,
+	parseSessionLine,
+	getSessionClient,
+	resetSessionState,
+} from "./session.js";

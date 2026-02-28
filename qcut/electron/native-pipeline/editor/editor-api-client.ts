@@ -12,6 +12,7 @@ import type {
 	ApiVersionInfo,
 	CapabilityManifest,
 } from "../../types/claude-api.js";
+import { getAdaptivePollInterval } from "../infra/api-caller.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +22,8 @@ export interface EditorApiConfig {
 	baseUrl: string;
 	token?: string;
 	timeout: number;
+	/** Skip per-request capability warning checks (saves ~1-2s in E2E flows) */
+	skipCapabilityCheck?: boolean;
 }
 
 export class EditorApiError extends Error {
@@ -88,6 +91,7 @@ export class EditorApiClient {
 			baseUrl: config?.baseUrl ?? "http://127.0.0.1:8765",
 			token: config?.token,
 			timeout: config?.timeout ?? 30_000,
+			skipCapabilityCheck: config?.skipCapabilityCheck ?? false,
 		};
 	}
 
@@ -256,7 +260,7 @@ export class EditorApiClient {
 		statusPath: string,
 		options: PollOptions = {}
 	): Promise<T> {
-		const interval = options.interval ?? 3_000;
+		const fixedInterval = options.interval;
 		const timeout = options.timeout ?? 300_000;
 		const start = Date.now();
 
@@ -295,6 +299,8 @@ export class EditorApiClient {
 				);
 			}
 
+			const interval =
+				fixedInterval ?? getAdaptivePollInterval(Date.now() - start);
 			await sleep(interval);
 		}
 	}
@@ -311,6 +317,9 @@ export class EditorApiClient {
 		path: string;
 	}): Promise<void> {
 		try {
+			if (this.config.skipCapabilityCheck) {
+				return;
+			}
 			if (this.shouldSkipCapabilityCheck({ path })) {
 				return;
 			}
@@ -645,6 +654,7 @@ export function createEditorClient(options: CLIRunOptions): EditorApiClient {
 		baseUrl: `http://${host}:${port}`,
 		token: token as string | undefined,
 		timeout,
+		skipCapabilityCheck: options.noCapabilityCheck ?? false,
 	});
 }
 

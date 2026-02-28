@@ -144,6 +144,18 @@ export interface CLIRunOptions {
 	// ui options
 	panel?: string;
 	tab?: string;
+	// batch generation options
+	count?: number;
+	/** Prompts for batch generation (alternative to --count with same --text) */
+	prompts?: string[];
+	/** Skip editor health check (caller guarantees editor is up) */
+	skipHealth?: boolean;
+	/** Session mode: read commands from stdin, one per line */
+	session?: boolean;
+	/** Comma-separated sources for batch-import convenience */
+	sources?: string;
+	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
+	noCapabilityCheck?: boolean;
 }
 
 export interface CLIResult {

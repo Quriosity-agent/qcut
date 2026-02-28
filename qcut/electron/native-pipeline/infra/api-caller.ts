@@ -160,7 +160,20 @@ const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_RETRIES = 2;
-const POLL_INTERVAL_MS = 3000;
+
+/**
+ * Adaptive polling interval based on elapsed time.
+ * Starts aggressive (500ms) for quick jobs, backs off for longer ones.
+ *
+ * - 0–10s elapsed: 500ms intervals (catches quick completions)
+ * - 10–30s elapsed: 2s intervals (typical image generation)
+ * - 30s+ elapsed: 4s intervals (long-running jobs)
+ */
+export function getAdaptivePollInterval(elapsedMs: number): number {
+	if (elapsedMs < 10_000) return 500;
+	if (elapsedMs < 30_000) return 2_000;
+	return 4_000;
+}
 
 /** Resolve API key from environment variables only (no Electron dependency). */
 export function envApiKeyProvider(provider: ProviderName): Promise<string> {
@@ -395,7 +408,8 @@ export async function pollQueueStatus(
 			options.onProgress(lastPercent, `Processing... (${status.status})`);
 		}
 
-		await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+		const interval = getAdaptivePollInterval(Date.now() - startTime);
+		await new Promise((r) => setTimeout(r, interval));
 	}
 }
 

@@ -22,6 +22,7 @@ type ProgressFn = (progress: {
 // Dispatcher
 // ---------------------------------------------------------------------------
 
+/** Route an `editor:media:*` or `editor:project:*` command to its handler. */
 export async function handleMediaProjectCommand(
 	client: EditorApiClient,
 	options: CLIRunOptions,
@@ -51,6 +52,7 @@ export async function handleMediaProjectCommand(
 // Health
 // ---------------------------------------------------------------------------
 
+/** Check editor health via the `/api/claude/health` endpoint. */
 export async function handleEditorHealth(
 	client: EditorApiClient
 ): Promise<CLIResult> {
@@ -155,16 +157,52 @@ async function mediaImportUrl(
 	return { success: true, data };
 }
 
+/** Batch-import media files via --sources (comma-separated paths) or --items (JSON). */
 async function mediaBatchImport(
 	client: EditorApiClient,
 	opts: CLIRunOptions
 ): Promise<CLIResult> {
-	const o = opts as CLIRunOptions & { items?: string };
+	const o = opts as CLIRunOptions & { items?: string; sources?: string };
 	if (!opts.projectId) return { success: false, error: "Missing --project-id" };
+
+	// Convenience: --sources "file1.png,file2.png" → auto-build items array
+	if (o.sources && !o.items) {
+		const paths = o.sources
+			.split(",")
+			.map((s) => s.trim())
+			.filter(Boolean);
+		if (paths.length === 0) {
+			return {
+				success: false,
+				error: "--sources must contain at least one file path",
+			};
+		}
+		if (paths.length > 20) {
+			return {
+				success: false,
+				error: `Batch limit exceeded: ${paths.length} items (max 20)`,
+			};
+		}
+		const missing = paths.filter((p) => !fs.existsSync(p));
+		if (missing.length > 0) {
+			return {
+				success: false,
+				error: `File(s) not found: ${missing.join(", ")}`,
+			};
+		}
+		const items = paths.map((p) => ({ path: p }));
+		const data = await client.post(
+			`/api/claude/media/${opts.projectId}/batch-import`,
+			{ items }
+		);
+		return { success: true, data };
+	}
+
 	if (!o.items)
 		return {
 			success: false,
-			error: "Missing --items (JSON array or @file.json)",
+			error:
+				"Missing --items or --sources (JSON array, @file.json, or comma-separated paths)",
 		};
 
 	const parsed = await resolveJsonInput(o.items);
