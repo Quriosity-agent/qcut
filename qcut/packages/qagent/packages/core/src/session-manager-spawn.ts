@@ -79,18 +79,13 @@ export async function spawnSession({
 
 	const existingSessions = listMetadata(sessionsDir);
 	let issueSlug = "";
-	if (spawnConfig.issueId && plugins.tracker) {
-		try {
-			const issue = await plugins.tracker.getIssue(spawnConfig.issueId, project);
-			issueSlug = issue.title
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, "-")
-				.replace(/^-|-$/g, "")
-				.slice(0, 30)
-				.replace(/-$/, "");
-		} catch {
-			// Fall back to numeric ID
-		}
+	if (resolvedIssue) {
+		issueSlug = resolvedIssue.title
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "")
+			.slice(0, 30)
+			.replace(/-$/, "");
 	}
 
 	let num = getNextSessionNumber(existingSessions, project.sessionPrefix);

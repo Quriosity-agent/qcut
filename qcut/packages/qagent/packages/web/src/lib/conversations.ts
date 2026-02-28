@@ -52,7 +52,7 @@ function toRootDir({
 	rootDir: string | undefined;
 }): string {
 	if (!rootDir || rootDir.trim().length === 0) {
-		return resolve(join(homedir(), ".qagent-teams"));
+		return resolve(join(homedir(), ".claude", "teams"));
 	}
 	return resolve(rootDir.trim());
 }
@@ -66,7 +66,7 @@ function getRootCandidates({
 		return [toRootDir({ rootDir })];
 	}
 	const candidates = [
-		resolve(join(homedir(), ".qagent-teams")),
+		resolve(join(homedir(), ".claude", "teams")),
 		resolve(join(homedir(), "Desktop", ".qagent-teams")),
 	];
 	return Array.from(new Set(candidates));

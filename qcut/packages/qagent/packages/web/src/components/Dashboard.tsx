@@ -18,7 +18,6 @@ import { ConversationsPanel } from "./ConversationsPanel";
 
 interface DashboardProps {
 	sessions: DashboardSession[];
-	stats: DashboardStats;
 	orchestratorId?: string | null;
 	projectName?: string;
 }

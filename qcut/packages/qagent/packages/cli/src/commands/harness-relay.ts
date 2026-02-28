@@ -426,7 +426,7 @@ async function readHarnessOutputSnapshot({
 			"-p",
 			"-S",
 			`-${lines}`,
-		]);
+		], { timeout: 10_000 });
 		return stdout.trim();
 	} catch (error) {
 		throw new Error("Failed to capture harness output", { cause: error });

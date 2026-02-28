@@ -127,7 +127,9 @@ export async function runCancel({
 	const sm = await getSessionManagerForContext({ context });
 	const session = await sm.get(record.sessionId);
 	if (session?.runtimeHandle?.runtimeName === "tmux") {
-		await exec("tmux", ["send-keys", "-t", session.runtimeHandle.id, "C-c"]);
+		await exec("tmux", ["send-keys", "-t", session.runtimeHandle.id, "C-c"], {
+			timeout: 10_000,
+		});
 		return;
 	}
 	await sm.send(
