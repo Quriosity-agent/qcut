@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QCut Bonus Round: Comet Cut</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="QCut mini game">
+      <header class="game-head">
+        <p class="eyebrow">QCut Bonus Round</p>
+        <h1>Comet Cut</h1>
+        <p class="tagline">Dodge debris, clip comets, and chase a new high score.</p>
+      </header>
+
+      <section class="hud" aria-label="Game status and score">
+        <div class="hud-item">
+          <span class="hud-label">Score</span>
+          <span class="hud-value" id="score">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Best</span>
+          <span class="hud-value" id="high-score">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Lives</span>
+          <span class="hud-value" id="lives">3</span>
+        </div>
+        <p id="game-status" class="game-status" role="status" aria-live="polite">
+          Press Start to play.
+        </p>
+      </section>
+
+      <section class="arena" aria-label="Game arena">
+        <canvas id="game-canvas" width="720" height="420" aria-label="Game canvas"></canvas>
+        <div class="overlay" id="overlay">
+          <button id="start-button" class="btn btn-primary" type="button">Start Game</button>
+          <button id="restart-button" class="btn" type="button" hidden>Restart</button>
+        </div>
+      </section>
+
+      <section class="help" aria-label="How to play">
+        <h2>How To Play</h2>
+        <ul>
+          <li>Move with <kbd>Arrow Keys</kbd> or <kbd>A</kbd><kbd>D</kbd>.</li>
+          <li>Stay alive to keep stacking points.</li>
+          <li>Collect power cells to stabilize your ship.</li>
+        </ul>
+      </section>
+    </main>
+
+    <noscript class="noscript">This mini game needs JavaScript enabled.</noscript>
+    <script src="./game.js" defer></script>
+  </body>
+</html>
