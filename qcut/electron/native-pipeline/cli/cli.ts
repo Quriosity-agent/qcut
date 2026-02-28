@@ -136,6 +136,7 @@ const COMMANDS = [
 	"editor:screen-recording:sources",
 	"editor:screen-recording:start",
 	"editor:screen-recording:stop",
+	"editor:screen-recording:force-stop",
 	"editor:screen-recording:status",
 	// Remotion element commands
 	"editor:remotion:list",
@@ -250,6 +251,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:screen-recording:sources  List capture sources
   editor:screen-recording:start    Start recording (--source-id, --force)
   editor:screen-recording:stop     Stop recording (--discard)
+  editor:screen-recording:force-stop Force-stop active recording
   editor:screen-recording:status   Get recording status
   editor:remotion:list       List Remotion elements on timeline
   editor:remotion:inspect    Inspect a Remotion element (--element-id)

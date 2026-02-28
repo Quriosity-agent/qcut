@@ -8,6 +8,13 @@
 			"when": 1750753385927,
 			"tag": "0000_brainy_saracen",
 			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1761960000000,
+			"tag": "0001_payment_license_system",
+			"breakpoints": true
 		}
 	]
 }

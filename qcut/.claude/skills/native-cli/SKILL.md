@@ -1,6 +1,6 @@
 ---
 name: native-cli
-description: Run QCut's native TypeScript pipeline CLI for AI content generation, video analysis, transcription, YAML pipelines, ViMax agentic video production, and project management. Use when user asks to generate images/videos, run pipelines, manage API keys, or use ViMax commands.
+description: Run QCut's native TypeScript pipeline CLI for AI content generation, video analysis, transcription, YAML pipelines, ViMax agentic video production, and project management. Also use for editor HTTP automation tasks (state snapshots, events, transactions, and notification bridge control) when user needs deterministic state-aware control.
 ---
 
 # Native Pipeline CLI Skill
@@ -12,6 +12,7 @@ Run QCut's built-in TypeScript pipeline CLI (`qcut-pipeline` / `bun run pipeline
 - For standalone CLI commands (generate, analyze, transcribe, pipelines, ViMax, project management, API keys), see [REFERENCE.md](REFERENCE.md)
 - For editor commands: media, project, timeline, editing, export, diagnostics, MCP, see [editor-core.md](editor-core.md)
 - For editor AI commands: video analysis, transcription, AI generation, Remotion, navigator, see [editor-ai.md](editor-ai.md)
+- For editor state automation: snapshots, event streams, correlation IDs, transactions, capabilities, and notification bridge endpoints, see [editor-state-control.md](editor-state-control.md)
 
 ## Step 1: Ensure QCut is Running
 

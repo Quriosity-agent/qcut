@@ -143,3 +143,20 @@ export const creditTransactions = pgTable("credit_transactions", {
 		.$defaultFn(() => /* @__PURE__ */ new Date())
 		.notNull(),
 }).enableRLS();
+
+export const usageRecords = pgTable("usage_records", {
+	id: text("id").primaryKey(),
+	licenseId: text("license_id")
+		.notNull()
+		.references(() => licenses.id, { onDelete: "cascade" }),
+	type: text("type", { enum: ["ai_generation", "export", "render"] }).notNull(),
+	count: integer("count").notNull().default(1),
+	periodStart: timestamp("period_start").notNull(),
+	periodEnd: timestamp("period_end").notNull(),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+	updatedAt: timestamp("updated_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();

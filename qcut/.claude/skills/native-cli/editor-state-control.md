@@ -101,6 +101,82 @@ Streams Server-Sent Events. Heartbeat pings every 15s.
 
 ---
 
+## Operation Notification Bridge (QCut → Claude Terminal)
+
+Forward meaningful user actions from QCut into an active Claude PTY session as context lines.
+
+This bridge is **one-way only**:
+- QCut emits context to Claude terminal.
+- Claude terminal notifications are display-only context and should not trigger re-execution.
+
+### Check bridge status
+
+```bash
+curl http://127.0.0.1:8765/api/claude/notifications/status
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "enabled": false,
+    "sessionId": null
+  }
+}
+```
+
+### Enable bridge for a PTY session
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/notifications/enable \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"pty-123abc"}'
+```
+
+### Disable bridge
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/claude/notifications/disable
+```
+
+### Toggle bridge (single endpoint)
+
+```bash
+# Enable
+curl -X POST http://127.0.0.1:8765/api/claude/notifications/toggle \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true,"sessionId":"pty-123abc"}'
+
+# Disable
+curl -X POST http://127.0.0.1:8765/api/claude/notifications/toggle \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":false}'
+```
+
+### Read recent notification history
+
+```bash
+curl "http://127.0.0.1:8765/api/claude/notifications/history?limit=20"
+```
+
+### Notification format
+
+Each bridged line is formatted like:
+
+```text
+[QCut] 14:23:05 - User imported media file "clip.mp4"
+```
+
+Typical forwarded operations include:
+- timeline element add/update/remove
+- media import/delete
+- export start/complete/fail
+- project settings changes
+
+---
+
 ## Correlation IDs & Command Lifecycle
 
 Every HTTP API response includes a `correlationId` for tracking commands through their full lifecycle.

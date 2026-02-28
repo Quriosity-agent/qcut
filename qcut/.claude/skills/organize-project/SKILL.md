@@ -1,135 +1,104 @@
 ---
 name: organize-project
-description: Organize files and folders into QCut's standard project structure. Use when setting up a new project, cleaning up files, or when the user asks to organize their workspace.
+description: Organize files and folders with QCut's native pipeline CLI. Use for project setup, media categorization, and structure audits.
 ---
 
-# QCut Project Organization Skill
+# Organize Project (CLI First)
 
-Organize files and folders according to QCut's standard project structure.
+Use QCut's built-in TypeScript CLI commands instead of ad-hoc shell moves.
+This skill is intentionally narrow and delegates to:
 
-## Standard QCut Project Structure
+- `bun run pipeline init-project`
+- `bun run pipeline organize-project`
+- `bun run pipeline structure-info`
+
+For broader CLI coverage, use `.claude/skills/native-cli/SKILL.md`.
+
+## Standard Pipeline Structure
 
 ```
-Documents/QCut/Projects/{project-name}/
-├── project.qcut              # Project metadata file
-├── media/                    # All media files
-│   ├── imported/             # User-imported media (videos, images, audio)
-│   ├── generated/            # AI-generated content (from skills)
-│   └── temp/                 # Temporary processing files
-├── skills/                   # Project-specific skills
-│   ├── ai-content-pipeline/  # AI content generation skill
-│   │   ├── Skill.md
-│   │   ├── REFERENCE.md
-│   │   └── EXAMPLES.md
-│   └── ffmpeg-skill/         # FFmpeg processing skill
-│       ├── Skill.md
-│       └── REFERENCE.md
-├── output/                   # Exported videos and renders
-├── cache/                    # FFmpeg and processing cache
-└── docs/                     # Project documentation (optional)
+{project-dir}/
+├── input/
+│   ├── images/
+│   ├── videos/
+│   ├── audio/
+│   ├── text/
+│   └── pipelines/
+├── output/
+│   ├── images/
+│   ├── videos/
+│   └── audio/
+└── config/
 ```
 
-## Organization Rules
+## File Categorization Rules
 
-### Media Files
-- **Videos** (.mp4, .mov, .webm, .avi): → `media/imported/` or `media/generated/`
-- **Images** (.jpg, .png, .webp, .gif): → `media/imported/` or `media/generated/`
-- **Audio** (.mp3, .wav, .aac, .m4a): → `media/imported/` or `media/generated/`
-- AI-generated content goes to `media/generated/`
-- User-imported content goes to `media/imported/`
+- Images: `.png .jpg .jpeg .gif .webp .bmp .svg .tiff` -> `input/images/`
+- Videos: `.mp4 .mov .avi .mkv .webm .flv .wmv` -> `input/videos/`
+- Audio: `.mp3 .wav .flac .aac .ogg .m4a .wma` -> `input/audio/`
+- Text/config assets: `.txt .md .json .yaml .yml .csv` -> `input/text/`
 
-### Hybrid Symlink Import System
-QCut uses a **hybrid symlink/copy system** for imported media:
-- **Symlinks preferred**: Creates symbolic links to original files (saves disk space)
-- **Copy fallback**: Falls back to copying when symlinks unavailable (Windows without admin, network drives)
-- **Metadata tracking**: Each import tracks `importMethod`, `originalPath`, and `fileSize`
+Unknown extensions are skipped.
 
-Files in `media/imported/` may be:
-- **Symlinks** pointing to the original file location
-- **Copies** of the original file (when symlink creation fails)
+## Default Workflow
 
-### Skills
-- Each skill is a folder with `Skill.md` as the entry point
-- Additional reference files: `REFERENCE.md`, `EXAMPLES.md`, `CONCEPTS.md`
-- Skills can have a `scripts/` subfolder for helper scripts
-
-### Output
-- Final rendered videos go to `output/`
-- Use descriptive names: `{project-name}_{date}_{resolution}.mp4`
-
-### Temporary Files
-- Processing intermediates go to `media/temp/`
-- Cache files go to `cache/`
-- Clean up temp files after export
-
-## Virtual Folder System
-
-QCut uses a **virtual folder system** for organizing media in the UI:
-- Virtual folders are metadata-only (files stay in original locations)
-- Items can belong to multiple folders (like tags)
-- Special "Skills" folder shows project skills
-- Max folder depth: 3 levels
-
-### Virtual Folder Naming Conventions
-- Use clear, descriptive names (max 50 characters)
-- Examples: "Raw Footage", "B-Roll", "Music", "Sound Effects"
-- Color-code folders for quick identification
-
-## When Organizing
-
-1. **Identify file types** - Categorize by extension and source
-2. **Check existing structure** - Don't duplicate folders
-3. **Move files** - Use mv to relocate files to standard locations
-4. **Update references** - Ensure project files still point to correct paths
-5. **Clean up empty folders** - Remove unused directories
-
-## Commands to Help
+1. Create missing folders.
+2. Preview organization with `--dry-run`.
+3. Run actual organization.
+4. Verify counts with `structure-info`.
 
 ```bash
-# List all media files recursively
-find . -type f \( -name "*.mp4" -o -name "*.mov" -o -name "*.jpg" -o -name "*.png" -o -name "*.mp3" \)
+# 1) Initialize structure
+bun run pipeline init-project --directory ./my-project
 
-# Create standard structure
-mkdir -p media/{imported,generated,temp} output cache skills docs
+# 2) Preview file moves (safe)
+bun run pipeline organize-project \
+  --directory ./my-project \
+  --source ./incoming-media \
+  --recursive \
+  --dry-run
 
-# Move videos to imported
-mv *.mp4 *.mov *.webm media/imported/ 2>/dev/null
+# 3) Execute organization
+bun run pipeline organize-project \
+  --directory ./my-project \
+  --source ./incoming-media \
+  --recursive
 
-# Find large files (over 100MB)
-find . -type f -size +100M
-
-# Clean temp files
-rm -rf media/temp/* cache/*
-
-# === Symlink Commands ===
-
-# List all symlinks in imported folder
-find media/imported -type l
-
-# Check if a file is a symlink
-ls -la media/imported/
-
-# Find broken symlinks
-find media/imported -xtype l
-
-# Show symlink target
-readlink media/imported/video-id.mp4
-
-# Create symlink manually (Unix/macOS)
-ln -s /path/to/original.mp4 media/imported/video-id.mp4
-
-# Create symlink manually (Windows - requires admin or dev mode)
-mklink media\imported\video-id.mp4 C:\path\to\original.mp4
+# 4) Verify structure and counts
+bun run pipeline structure-info --directory ./my-project
 ```
 
-## Example Organization Task
+## Safety Rules
 
-When asked to organize:
+- Always run `--dry-run` first when moving user files.
+- Use `--source` for external ingest folders instead of scanning the project root blindly.
+- Use `--recursive` only when you need nested scanning.
+- Avoid `--include-output` unless you intentionally want to reorganize files under `output/`.
 
-1. First, scan the current directory structure
-2. Identify files that need to be moved
-3. Create missing directories
-4. Move files to appropriate locations
-5. Report what was organized
+## Common Commands
 
-**Always confirm before moving files that might break project references.**
+```bash
+# JSON output for automation
+bun run pipeline structure-info --directory ./my-project --json
+
+# Organize current directory into input/* categories
+bun run pipeline organize-project --directory .
+
+# Organize and target output/* instead of input/*
+bun run pipeline organize-project --directory . --include-output
+
+# Initialize then inspect
+bun run pipeline init-project --directory ./my-project
+bun run pipeline structure-info --directory ./my-project
+```
+
+## Failure Handling
+
+If a move fails, the CLI reports errors and returns non-zero exit status.
+Common causes:
+- Missing source directory
+- Permission denied
+- Locked files
+- Cross-device rename fallback failure
+
+Use `--json` to capture machine-readable failure details.
