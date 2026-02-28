@@ -40,7 +40,8 @@ try {
 		"[UtilityPTY] Failed to load node-pty from standard path:",
 		error
 	);
-	const modulePath = path.join(process.resourcesPath, "node_modules/node-pty");
+	const resourcesPath = process.resourcesPath ?? "";
+	const modulePath = path.join(resourcesPath, "node_modules/node-pty");
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		pty = require(modulePath);
