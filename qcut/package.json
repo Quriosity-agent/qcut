@@ -54,9 +54,7 @@
 		"apps/*",
 		"packages/auth",
 		"packages/db",
-		"packages/license-server",
-		"packages/qagent/packages/*",
-		"packages/qagent/packages/plugins/*"
+		"packages/license-server"
 	],
 	"scripts": {
 		"dev": "turbo run dev",
