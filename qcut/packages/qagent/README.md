@@ -118,6 +118,7 @@ qagent team send <team> <from> <to> "..."  # Send teammate message/protocol
 qagent team inbox <team> <member> --unread # Read teammate inbox
 qagent harness spawn codex "Fix tests"     # Spawn managed harness-style session
 qagent harness status --json               # Show harness runtime/options state
+qagent harness relay --team ai --member codex --once --no-output
 qagent dashboard                           # Open web dashboard
 ```
 

@@ -13,10 +13,11 @@ import { CI_STATUS } from "@composio/ao-core/types";
 import { AttentionZone } from "./AttentionZone";
 import { PRTableRow } from "./PRStatus";
 import { DynamicFavicon } from "./DynamicFavicon";
+import { SessionCard } from "./SessionCard";
+import { ConversationsPanel } from "./ConversationsPanel";
 
 interface DashboardProps {
 	sessions: DashboardSession[];
-	stats: DashboardStats;
 	orchestratorId?: string | null;
 	projectName?: string;
 }
@@ -28,6 +29,7 @@ const KANBAN_LEVELS = [
 	"respond",
 	"merge",
 ] as const;
+const RELAY_SESSION_PREFIX = "relay-";
 
 /** Main dashboard view with kanban-style session grouping and live SSE updates. */
 export function Dashboard({
@@ -35,6 +37,7 @@ export function Dashboard({
 	orchestratorId,
 	projectName,
 }: DashboardProps) {
+	const [showRelaySessions, setShowRelaySessions] = useState(false);
 	const [labelOverrides, setLabelOverrides] = useState<
 		Record<string, string | null>
 	>({});
@@ -91,6 +94,14 @@ export function Dashboard({
 			}),
 		[initialSessions, labelOverrides, liveOverrides]
 	);
+	const relaySessions = useMemo(
+		() => sessions.filter((session) => isRelaySession({ session })),
+		[sessions]
+	);
+	const visibleSessions = useMemo(
+		() => sessions.filter((session) => !isRelaySession({ session })),
+		[sessions]
+	);
 	const [rateLimitDismissed, setRateLimitDismissed] = useState(false);
 	const grouped = useMemo(() => {
 		const zones: Record<AttentionLevel, DashboardSession[]> = {
@@ -101,21 +112,21 @@ export function Dashboard({
 			working: [],
 			done: [],
 		};
-		for (const session of sessions) {
+		for (const session of visibleSessions) {
 			zones[getAttentionLevel(session)].push(session);
 		}
 		return zones;
-	}, [sessions]);
+	}, [visibleSessions]);
 
 	const openPRs = useMemo(() => {
-		return sessions
+		return visibleSessions
 			.filter(
 				(s): s is DashboardSession & { pr: DashboardPR } =>
 					s.pr?.state === "open"
 			)
 			.map((s) => s.pr)
 			.sort((a, b) => mergeScore(a) - mergeScore(b));
-	}, [sessions]);
+	}, [visibleSessions]);
 
 	const handleSend = async (sessionId: string, message: string) => {
 		const res = await fetch(
@@ -194,7 +205,7 @@ export function Dashboard({
 		let workingSessions = 0;
 		let openPRs = 0;
 		let needsReview = 0;
-		for (const s of sessions) {
+		for (const s of visibleSessions) {
 			if (s.activity === "active" || s.status === "working") workingSessions++;
 			if (s.pr?.state === "open") {
 				openPRs++;
@@ -202,23 +213,23 @@ export function Dashboard({
 			}
 		}
 		return {
-			totalSessions: sessions.length,
+			totalSessions: visibleSessions.length,
 			workingSessions,
 			openPRs,
 			needsReview,
 		};
-	}, [sessions]);
+	}, [visibleSessions]);
 
 	const hasKanbanSessions = KANBAN_LEVELS.some((l) => grouped[l].length > 0);
 
 	const anyRateLimited = useMemo(
-		() => sessions.some((s) => s.pr && isPRRateLimited(s.pr)),
-		[sessions]
+		() => visibleSessions.some((s) => s.pr && isPRRateLimited(s.pr)),
+		[visibleSessions]
 	);
 
 	return (
 		<div className="px-8 py-7">
-			<DynamicFavicon sessions={sessions} projectName={projectName} />
+			<DynamicFavicon sessions={visibleSessions} projectName={projectName} />
 			{/* Header */}
 			<div className="mb-8 flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-6">
 				<div className="flex items-center gap-6">
@@ -227,24 +238,45 @@ export function Dashboard({
 					</h1>
 					<StatusLine stats={liveStats} />
 				</div>
-				{orchestratorId && (
-					<a
-						href={`/sessions/${encodeURIComponent(orchestratorId)}`}
-						className="orchestrator-btn flex items-center gap-2 rounded-[7px] px-4 py-2 text-[12px] font-semibold hover:no-underline"
-					>
-						<span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)] opacity-80" />
-						orchestrator
-						<svg
-							className="h-3 w-3 opacity-70"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="2"
-							viewBox="0 0 24 24"
+				<div className="flex items-center gap-3">
+					{relaySessions.length > 0 && (
+						<label className="flex cursor-pointer items-center gap-2 rounded-[7px] border border-[var(--color-border-subtle)] bg-[rgba(255,255,255,0.02)] px-3 py-1.5 text-[11px] text-[var(--color-text-secondary)]">
+							<input
+								type="checkbox"
+								checked={showRelaySessions}
+								onChange={(event) =>
+									setShowRelaySessions(event.target.checked)
+								}
+								className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+								aria-label="show relay daemons"
+							/>
+							<span className="uppercase tracking-[0.08em] text-[var(--color-text-tertiary)]">
+								Relay
+							</span>
+							<span className="rounded-[4px] bg-[rgba(255,255,255,0.05)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-text-primary)]">
+								{relaySessions.length}
+							</span>
+						</label>
+					)}
+					{orchestratorId && (
+						<a
+							href={`/sessions/${encodeURIComponent(orchestratorId)}`}
+							className="orchestrator-btn flex items-center gap-2 rounded-[7px] px-4 py-2 text-[12px] font-semibold hover:no-underline"
 						>
-							<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
-						</svg>
-					</a>
-				)}
+							<span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)] opacity-80" />
+							orchestrator
+							<svg
+								className="h-3 w-3 opacity-70"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="2"
+								viewBox="0 0 24 24"
+							>
+								<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+							</svg>
+						</a>
+					)}
+				</div>
 			</div>
 
 			{/* Rate limit notice */}
@@ -320,6 +352,14 @@ export function Dashboard({
 				</div>
 			)}
 
+			{showRelaySessions && relaySessions.length > 0 && (
+				<div className="mb-8">
+					<RelaySessionsPanel sessions={relaySessions} />
+				</div>
+			)}
+
+			<ConversationsPanel />
+
 			{/* PR Table */}
 			{openPRs.length > 0 && (
 				<div className="mx-auto max-w-[900px]">
@@ -359,6 +399,43 @@ export function Dashboard({
 					</div>
 				</div>
 			)}
+		</div>
+	);
+}
+
+function isRelaySession({
+	session,
+}: {
+	session: Pick<DashboardSession, "id">;
+}): boolean {
+	return session.id.startsWith(RELAY_SESSION_PREFIX);
+}
+
+function RelaySessionsPanel({
+	sessions,
+}: {
+	sessions: DashboardSession[];
+}) {
+	return (
+		<div className="rounded-[8px] border border-[var(--color-border-subtle)] bg-[rgba(148,163,184,0.06)] px-4 py-4">
+			<div className="mb-3 flex items-center justify-between">
+				<div>
+					<h2 className="text-[10px] font-bold uppercase tracking-[0.10em] text-[var(--color-text-tertiary)]">
+						Relay Daemons
+					</h2>
+					<p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+						Bridge sessions that sync team inbox messages with harness terminals.
+					</p>
+				</div>
+				<span className="rounded-[4px] border border-[var(--color-border-subtle)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]">
+					{sessions.length} running
+				</span>
+			</div>
+			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+				{sessions.map((session) => (
+					<SessionCard key={session.id} session={session} />
+				))}
+			</div>
 		</div>
 	);
 }

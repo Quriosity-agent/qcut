@@ -470,7 +470,15 @@ export function SessionDetail({
 							Terminal
 						</span>
 					</div>
-					{session.metadata?.agent && session.metadata?.cwd ? (
+					{session.managed ? (
+						<DirectTerminal
+							sessionId={session.id}
+							tmuxName={session.metadata?.tmuxName}
+							startFullscreen={startFullscreen}
+							variant={terminalVariant}
+							height={terminalHeight}
+						/>
+					) : session.metadata?.agent && session.metadata?.cwd ? (
 						<DirectTerminal
 							sessionId={session.id}
 							cwd={session.metadata.cwd}

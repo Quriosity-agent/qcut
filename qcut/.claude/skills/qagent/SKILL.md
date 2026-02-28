@@ -10,17 +10,28 @@ Use the `qagent` CLI to spawn and manage parallel AI coding agents for Qcut deve
 ## Quick Start
 
 ```bash
-# Spawn an agent on a GitHub issue
+# 1) Start visualization first (keep this terminal running)
+qagent dashboard --no-open
+# Then open: http://localhost:3000
+
+# If dashboard fails with Turbopack/500, use local web package Next:
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT/packages/qagent/packages/web"
+QAGENT_CONFIG_PATH="$ROOT/qagent.yaml" ./node_modules/.bin/next dev -p 3000
+
+# Back to repo root for normal workflow
+cd "$ROOT"
+
+# 2) Spawn an agent on a GitHub issue
 qagent spawn qcut 170
 
-# Spawn multiple agents in parallel
+# 3) Spawn multiple agents in parallel
 qagent batch-spawn qcut 170 171 172 173
 
-# Check all sessions
+# 4) Check all sessions
 qagent status
 
-# Open the web dashboard
-qagent dashboard
+# 5) Keep dashboard + session list side-by-side while operating
 ```
 
 ## Common Workflows
@@ -67,6 +78,7 @@ qagent harness steer "tighten logs and continue"
 qagent harness cancel
 qagent harness model openai/gpt-5.2
 qagent harness permissions strict
+qagent harness relay --team qcut-team --member codex
 qagent harness close
 ```
 
