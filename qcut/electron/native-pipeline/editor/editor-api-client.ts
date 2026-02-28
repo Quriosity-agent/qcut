@@ -12,6 +12,7 @@ import type {
 	ApiVersionInfo,
 	CapabilityManifest,
 } from "../../types/claude-api.js";
+import { getAdaptivePollInterval } from "../infra/api-caller.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -256,7 +257,7 @@ export class EditorApiClient {
 		statusPath: string,
 		options: PollOptions = {}
 	): Promise<T> {
-		const interval = options.interval ?? 3_000;
+		const fixedInterval = options.interval;
 		const timeout = options.timeout ?? 300_000;
 		const start = Date.now();
 
@@ -295,6 +296,7 @@ export class EditorApiClient {
 				);
 			}
 
+			const interval = fixedInterval ?? getAdaptivePollInterval(Date.now() - start);
 			await sleep(interval);
 		}
 	}

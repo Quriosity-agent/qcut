@@ -10,7 +10,7 @@ vi.mock("../api-key-handler.js", () => ({
 }));
 
 // We need to dynamically import after mocking
-const { callModelApi } = await import("../native-pipeline/infra/api-caller.js");
+const { callModelApi, getAdaptivePollInterval } = await import("../native-pipeline/infra/api-caller.js");
 
 function clearEnv(key: string) {
 	delete process.env[key];
@@ -172,6 +172,26 @@ describe("api-caller", () => {
 		it("is a callable function", () => {
 			expect(callModelApi).toBeDefined();
 			expect(typeof callModelApi).toBe("function");
+		});
+	});
+
+	describe("getAdaptivePollInterval", () => {
+		it("returns 500ms for first 10 seconds", () => {
+			expect(getAdaptivePollInterval(0)).toBe(500);
+			expect(getAdaptivePollInterval(5_000)).toBe(500);
+			expect(getAdaptivePollInterval(9_999)).toBe(500);
+		});
+
+		it("returns 2000ms between 10-30 seconds", () => {
+			expect(getAdaptivePollInterval(10_000)).toBe(2_000);
+			expect(getAdaptivePollInterval(20_000)).toBe(2_000);
+			expect(getAdaptivePollInterval(29_999)).toBe(2_000);
+		});
+
+		it("returns 4000ms after 30 seconds", () => {
+			expect(getAdaptivePollInterval(30_000)).toBe(4_000);
+			expect(getAdaptivePollInterval(60_000)).toBe(4_000);
+			expect(getAdaptivePollInterval(120_000)).toBe(4_000);
 		});
 	});
 });
