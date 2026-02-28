@@ -502,6 +502,6 @@ export function getTopUpPackCredits({ pack }: { pack: TopUpPack }): number {
 	return TOP_UP_PACK_CREDITS[pack];
 }
 
-export function isTopUpPack({ pack }: { pack: string }): pack is TopUpPack {
+export function isTopUpPack(pack: string): pack is TopUpPack {
 	return pack in TOP_UP_PACK_CREDITS;
 }

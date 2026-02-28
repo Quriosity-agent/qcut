@@ -109,7 +109,7 @@ creditsRoutes.post("/topup", async (c) => {
 		const payload = await c.req.json();
 		const pack = typeof payload?.pack === "string" ? payload.pack.trim() : "";
 
-		if (!isTopUpPack({ pack })) {
+		if (!isTopUpPack(pack)) {
 			return c.json({ error: "Invalid top-up pack" }, 400);
 		}
 

@@ -21,7 +21,11 @@ function tryDecodeJwtUserId({ token }: { token: string }): string | null {
 			.replace(/-/g, "+")
 			.replace(/_/g, "/")
 			.padEnd(Math.ceil(tokenParts[1].length / 4) * 4, "=");
-		const payloadRaw = atob(base64);
+		const atobFn = (globalThis as { atob?: (value: string) => string }).atob;
+		const payloadRaw =
+			typeof atobFn === "function"
+				? atobFn(base64)
+				: Buffer.from(base64, "base64").toString("utf-8");
 		const payload = JSON.parse(payloadRaw) as { sub?: unknown; userId?: unknown };
 		if (typeof payload.sub === "string") {
 			return payload.sub;

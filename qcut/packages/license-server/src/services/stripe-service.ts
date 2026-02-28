@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, type SQL } from "drizzle-orm";
 import Stripe from "stripe";
 import { db } from "@qcut/db";
 import { licenses } from "@qcut/db/schema";
@@ -96,7 +96,7 @@ async function findLicenseByStripeIds({
 			return null;
 		}
 
-		const predicates = [];
+		const predicates: SQL[] = [];
 		if (customerId) {
 			predicates.push(eq(licenses.stripeCustomerId, customerId));
 		}
@@ -227,7 +227,7 @@ async function handleCheckoutCompleted({
 
 		if (type === "topup") {
 			const pack = session.metadata?.pack || "";
-			if (!isTopUpPack({ pack })) {
+			if (!isTopUpPack(pack)) {
 				throw new Error(`Invalid top-up pack metadata: ${pack}`);
 			}
 			await addTopUpPackCreditsForUser({
