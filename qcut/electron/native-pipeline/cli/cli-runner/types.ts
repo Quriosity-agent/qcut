@@ -154,6 +154,8 @@ export interface CLIRunOptions {
 	session?: boolean;
 	/** Comma-separated sources for batch-import convenience */
 	sources?: string;
+	/** Skip capability warnings on every request (saves ~1-2s in E2E flows) */
+	noCapabilityCheck?: boolean;
 }
 
 export interface CLIResult {

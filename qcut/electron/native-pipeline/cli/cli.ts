@@ -295,8 +295,9 @@ Pipeline Options:
   --max-workers       Max concurrent workers (default: 8)
 
 Performance Options:
-  --skip-health       Skip editor health check (use when editor is known up)
-  --session           Session mode: read commands from stdin, one per line
+  --skip-health           Skip editor health check (use when editor is known up)
+  --no-capability-check   Skip per-request capability warnings
+  --session               Session mode: read commands from stdin, one per line
 
 Editor Options (see docs for full list):
   --project-id   Project ID    --media-id   Media ID
@@ -493,6 +494,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			sources: { type: "string" },
 			// performance flags
 			"skip-health": { type: "boolean", default: false },
+			"no-capability-check": { type: "boolean", default: false },
 			session: { type: "boolean", default: false },
 		},
 		strict: false,
@@ -714,6 +716,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		sources: values.sources as string | undefined,
 		// performance flags
 		skipHealth: (values["skip-health"] as boolean) ?? false,
+		noCapabilityCheck: (values["no-capability-check"] as boolean) ?? false,
 		session: (values.session as boolean) ?? false,
 	};
 }

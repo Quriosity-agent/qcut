@@ -161,10 +161,11 @@ export async function handleEditorCommand(
 		: createEditorClient(options);
 
 	// Health check before any command (skip for editor:health itself)
-	// In session mode with --skip-health, skip after first successful check
+	// --skip-health: in one-shot mode, skip unconditionally (caller guarantees editor is up)
+	//                in session mode, skip after first successful check
 	const shouldSkipHealth =
 		options.command === "editor:health" ||
-		(options.skipHealth && isSessionHealthChecked());
+		(options.skipHealth && (!options.session || isSessionHealthChecked()));
 
 	if (!shouldSkipHealth) {
 		const healthy = await client.checkHealth();
