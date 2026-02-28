@@ -38,6 +38,7 @@ const activityMeta: Record<string, { label: string; color: string }> = {
 	exited: { label: "Exited", color: "var(--color-status-error)" },
 };
 
+/** Convert a snake_case status string to title case with common abbreviations. */
 function humanizeStatus(status: string): string {
 	return status
 		.replace(/_/g, " ")
@@ -46,6 +47,7 @@ function humanizeStatus(status: string): string {
 		.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Format an ISO timestamp as a human-readable relative time string. */
 function relativeTime(iso: string): string {
 	const ms = new Date(iso).getTime();
 	if (!iso || isNaN(ms)) return "unknown";
@@ -60,6 +62,7 @@ function relativeTime(iso: string): string {
 	return `${days}d ago`;
 }
 
+/** Extract title and description from a bugbot-style PR comment body. */
 function cleanBugbotComment(body: string): {
 	title: string;
 	description: string;
@@ -82,14 +85,17 @@ function cleanBugbotComment(body: string): {
 	return { title: "Comment", description: body.trim() };
 }
 
+/** Build the GitHub URL for a PR's source branch. */
 function buildGitHubBranchUrl(pr: DashboardPR): string {
 	return `https://github.com/${pr.owner}/${pr.repo}/tree/${pr.branch}`;
 }
 
+/** Build the GitHub URL for a PR's repository. */
 function buildGitHubRepoUrl(pr: DashboardPR): string {
 	return `https://github.com/${pr.owner}/${pr.repo}`;
 }
 
+/** Send a review comment to an agent session for automated fixing. */
 async function askAgentToFix(
 	sessionId: string,
 	comment: { url: string; path: string; body: string },
@@ -117,6 +123,7 @@ async function askAgentToFix(
 
 // ── Orchestrator status strip ─────────────────────────────────────────
 
+/** Compact status bar showing orchestrator zone counts and uptime. */
 function OrchestratorStatusStrip({
 	zones,
 	createdAt,
@@ -251,6 +258,7 @@ function OrchestratorStatusStrip({
 
 // ── Main component ────────────────────────────────────────────────────
 
+/** Full session detail view with terminal, PR card, and metadata. */
 export function SessionDetail({
 	session,
 	isOrchestrator = false,
@@ -489,6 +497,7 @@ export function SessionDetail({
 
 // ── Client-side timestamps ────────────────────────────────────────────
 
+/** Render relative timestamps that update client-side to avoid hydration mismatch. */
 function ClientTimestamps({
 	status,
 	createdAt,
@@ -529,6 +538,7 @@ function ClientTimestamps({
 
 // ── PR Card ───────────────────────────────────────────────────────────
 
+/** Pull request card with CI status, review state, and action buttons. */
 function PRCard({ pr, sessionId }: { pr: DashboardPR; sessionId: string }) {
 	const [sendingComments, setSendingComments] = useState<Set<string>>(
 		new Set()
@@ -790,6 +800,7 @@ function PRCard({ pr, sessionId }: { pr: DashboardPR; sessionId: string }) {
 
 // ── Issues list (pre-merge blockers) ─────────────────────────────────
 
+/** List of pre-merge blockers derived from PR state (CI, reviews, conflicts). */
 function IssuesList({ pr }: { pr: DashboardPR }) {
 	const issues: Array<{ icon: string; color: string; text: string }> = [];
 
@@ -883,6 +894,7 @@ function IssuesList({ pr }: { pr: DashboardPR }) {
 
 // ── CLI Terminal Panel ───────────────────────────────────────────────
 
+/** Fallback panel for CLI agent sessions without a CWD, with "Open in Terminal" button. */
 function CLITerminalPanel({ session }: { session: DashboardSession }) {
 	const [opening, setOpening] = useState(false);
 	const [error, setError] = useState<string | null>(null);

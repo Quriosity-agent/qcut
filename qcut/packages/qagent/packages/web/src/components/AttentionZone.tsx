@@ -55,6 +55,7 @@ const zoneConfig: Record<
 	},
 };
 
+/** Kanban column grouping sessions by attention level with collapse/expand. */
 export function AttentionZone({
 	level,
 	sessions,

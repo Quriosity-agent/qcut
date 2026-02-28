@@ -29,6 +29,7 @@ const KANBAN_LEVELS = [
 	"merge",
 ] as const;
 
+/** Main dashboard view with kanban-style session grouping and live SSE updates. */
 export function Dashboard({
 	sessions: initialSessions,
 	orchestratorId,
@@ -362,6 +363,7 @@ export function Dashboard({
 	);
 }
 
+/** Compact stats summary showing session and PR counts. */
 function StatusLine({ stats }: { stats: DashboardStats }) {
 	if (stats.totalSessions === 0) {
 		return (
@@ -418,6 +420,7 @@ function StatusLine({ stats }: { stats: DashboardStats }) {
 	);
 }
 
+/** Compute a numeric merge-readiness score for PR sorting (higher = closer to merge). */
 function mergeScore(
 	pr: Pick<
 		DashboardPR,

@@ -10,6 +10,7 @@ import {
 import { findCLISession } from "@/lib/cli-sessions";
 import { getLabel } from "@/lib/session-labels";
 
+/** GET /api/sessions/[id] — Fetch a single session by ID (managed, tmux, or CLI). */
 export async function GET(
 	_request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }

@@ -17,12 +17,14 @@ import { applyLabels } from "@/lib/session-labels";
 
 export const dynamic = "force-dynamic";
 
+/** Generate page metadata with the project name in the title. */
 export async function generateMetadata(): Promise<Metadata> {
 	const projectName = getProjectName();
 	// Use absolute to opt out of the layout's "%s | project" template
 	return { title: { absolute: `ao | ${projectName}` } };
 }
 
+/** Server-rendered dashboard home page — fetches sessions and renders the Dashboard component. */
 export default async function Home() {
 	let sessions: DashboardSession[] = [];
 	let orchestratorId: string | null = null;

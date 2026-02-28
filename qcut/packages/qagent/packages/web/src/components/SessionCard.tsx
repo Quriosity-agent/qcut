@@ -34,6 +34,7 @@ const borderColorByLevel: Record<AttentionLevel, string> = {
 	done: "border-l-[var(--color-border-default)]",
 };
 
+/** Compact session card with inline label editing, activity dot, and action buttons. */
 export function SessionCard({
 	session,
 	onSend,
@@ -465,6 +466,7 @@ export function SessionCard({
 	);
 }
 
+/** Collapsible section within the expanded session card. */
 function DetailSection({
 	label,
 	children,
@@ -492,6 +494,7 @@ interface Alert {
 	actionMessage?: string;
 }
 
+/** Derive actionable alerts from a session's PR state (CI failures, review requests). */
 function getAlerts(session: DashboardSession): Alert[] {
 	const pr = session.pr;
 	if (!pr || pr.state !== "open") return [];

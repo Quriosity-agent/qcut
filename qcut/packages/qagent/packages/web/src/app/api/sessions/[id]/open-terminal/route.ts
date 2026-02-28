@@ -6,10 +6,12 @@ import { findCLISession } from "@/lib/cli-sessions";
 
 const execFileAsync = promisify(execFile);
 
+/** Escape a string for safe embedding in AppleScript double-quoted strings. */
 function escapeAppleScript(s: string): string {
 	return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+/** Normalize a TTY identifier to its full /dev/ path. */
 function normalizeTTY(tty: string): string {
 	if (tty.startsWith("/dev/")) return tty;
 	return tty.startsWith("tty") ? `/dev/${tty}` : `/dev/tty${tty}`;
@@ -48,6 +50,7 @@ async function detectTerminalApp(pid: number): Promise<string | null> {
 	return null;
 }
 
+/** Bring a macOS app to the foreground via AppleScript. */
 async function activateApp(appName: string): Promise<boolean> {
 	const safe = escapeAppleScript(appName);
 	try {
@@ -62,6 +65,7 @@ async function activateApp(appName: string): Promise<boolean> {
 	}
 }
 
+/** Find and activate the iTerm2 tab matching the given TTY. */
 async function activateITerm2Tab(tty: string): Promise<boolean> {
 	const fullTTY = escapeAppleScript(normalizeTTY(tty));
 	const script = `
@@ -92,6 +96,7 @@ end tell`;
 	}
 }
 
+/** Find and activate the macOS Terminal.app tab matching the given TTY. */
 async function activateTerminalTab(tty: string): Promise<boolean> {
 	const fullTTY = escapeAppleScript(normalizeTTY(tty));
 	const script = `

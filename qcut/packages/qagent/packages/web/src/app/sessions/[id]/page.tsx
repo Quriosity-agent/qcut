@@ -10,6 +10,7 @@ import {
 } from "@/lib/types";
 import { activityIcon } from "@/lib/activity-icons";
 
+/** Truncate a string to a maximum length with ellipsis. */
 function truncate(s: string, max: number): string {
 	return s.length > max ? s.slice(0, max) + "..." : s;
 }
@@ -44,6 +45,7 @@ interface ZoneCounts {
 	done: number;
 }
 
+/** Client-side session detail page with SSE-based live updates. */
 export default function SessionPage() {
 	const params = useParams();
 	const rawId = params.id as string;

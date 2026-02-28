@@ -156,6 +156,7 @@ async function resolveProcessCwd(pid: number): Promise<string | null> {
 	}
 }
 
+/** Convert a discovered CLI process into a DashboardSession object. */
 function cliProcessToDashboard(
 	proc: CLIProcess,
 	cwd: string | null,

@@ -15,6 +15,7 @@ const LABELS_FILE = join(LABELS_DIR, "session-labels.json");
 
 type LabelMap = Record<string, string>;
 
+/** Read the session labels map from disk, returning empty object on error. */
 async function readLabels(): Promise<LabelMap> {
 	try {
 		return JSON.parse(await readFile(LABELS_FILE, "utf-8")) as LabelMap;
@@ -23,6 +24,7 @@ async function readLabels(): Promise<LabelMap> {
 	}
 }
 
+/** Persist the session labels map to disk, creating the directory if needed. */
 async function writeLabels(labels: LabelMap): Promise<void> {
 	await mkdir(LABELS_DIR, { recursive: true });
 	await writeFile(LABELS_FILE, JSON.stringify(labels, null, "\t") + "\n");
