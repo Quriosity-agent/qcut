@@ -147,7 +147,11 @@ export const creditTransactions = pgTable("credit_transactions", {
 	type: text("type", {
 		enum: ["plan_grant", "top_up", "deduction", "refund", "expiry"],
 	}).notNull(),
-	amount: numeric("amount", { precision: 12, scale: 3, mode: "number" }).notNull(),
+	amount: numeric("amount", {
+		precision: 12,
+		scale: 3,
+		mode: "number",
+	}).notNull(),
 	balanceAfter: numeric("balance_after", {
 		precision: 12,
 		scale: 3,
