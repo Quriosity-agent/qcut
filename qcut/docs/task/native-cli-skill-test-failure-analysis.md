@@ -1,159 +1,126 @@
-# Native CLI Skill Test Failure Analysis
+# Native CLI Skill Test Failure Analysis (Revalidation)
 
-**Session**: `8717bd6b` | **Date**: 2026-02-27 17:07 | **CWD**: `~/Documents/QCut Projects/fea526ea-...`
-**Final Outcome**: FAILED at Step 4 of 8. User interrupted.
+**Original session**: `8717bd6b` (2026-02-27)  
+**Revalidated on codebase**: 2026-02-28  
+**Method**: direct code inspection + targeted tests
 
-## What Was Tested
-
-An 8-step end-to-end workflow using the native-cli skill:
+## Original Workflow (Historical)
 
 1. Find project
 2. Enter editor
 3. Start recording
-4. Generate images (nano_banana_2_edit, sci-fi theme, reference image)
+4. Generate images
 5. Move images into timeline
 6. Play timeline
 7. Finish recording
 8. Verify recording
 
-## Step Results
+## Status of Original Findings
 
-| Step | Command | Result |
-|------|---------|--------|
-| 1. Find project | `editor:navigator:projects` | PASS |
-| 2. Enter editor | `editor:navigator:open --project-id ...` | PASS |
-| 3. Start recording | `editor:screen-recording:start` | **FAIL** (4 attempts) |
-| 4. Generate images | `generate-image -m nano_banana_2_edit` | **PARTIAL** (1/2 images, user killed 2nd) |
-| 5-8 | Never reached | SKIPPED |
+| Original Finding | Current Status | Notes |
+|---|---|---|
+| Bug 1: screen recording stop can be a no-op | **Partially fixed; residual risk remains** | Singleton state + force-stop path now exist, but a stale renderer-state edge case can still report success without clearing main-process session |
+| Bug 2: no CLI timeline playback commands | **Fixed** | `play/pause/toggle-play/seek` are implemented end-to-end |
+| Bug 3: no force-stop/cleanup for stale recordings | **Mostly fixed** | `/force-stop` route exists and CLI `editor:screen-recording:start --force` performs pre-cleanup |
 
-## Bug 1: Screen Recording Stop is a No-Op (Critical)
+## Evidence: What Is Now Implemented
 
-**Severity**: Critical
-**Component**: `electron/screen-recording-handler.ts` (IPC)
+### 1) Timeline playback CLI is implemented
 
-### Symptoms
+- Command registration includes:
+  - `editor:timeline:play`
+  - `editor:timeline:pause`
+  - `editor:timeline:toggle-play`
+  - `editor:timeline:seek`
+  - File: `electron/native-pipeline/cli/cli.ts`
+- Timeline handler dispatches these actions:
+  - File: `electron/native-pipeline/editor/editor-handlers-timeline.ts`
+- HTTP route exists:
+  - `POST /api/claude/timeline/:projectId/playback`
+  - File: `electron/claude/http/claude-http-shared-routes.ts`
+- Renderer bridge applies actions to playback store (`play/pause/toggle/seek`):
+  - File: `apps/web/src/lib/claude-bridge/claude-timeline-bridge.ts`
 
-- A stale recording was active from a previous session (`7887ec1c`)
-- `editor:screen-recording:stop` returns `{ success: true }` but does NOT actually stop
-- `editor:screen-recording:stop --discard` also returns success but recording continues
-- Status check immediately after stop shows same session still recording with growing `bytesWritten`
+### 2) Screen recording lifecycle is now centralized
 
-### Reproduction
+- Main process maintains a singleton active session:
+  - `getActiveSession()/setActiveSession()`
+  - File: `electron/screen-recording-handler/session.ts`
+- Start/append/stop IPC handlers use shared active session:
+  - File: `electron/screen-recording-handler/ipc.ts`
+- Explicit force-stop exists:
+  - `forceStopActiveScreenRecordingSession()`
+  - File: `electron/screen-recording-handler/ipc.ts`
+- Utility HTTP exposes force-stop:
+  - `POST /api/claude/screen-recording/force-stop`
+  - File: `electron/utility/utility-http-server.ts`
+- CLI uses pre-cleanup on start:
+  - `editor:screen-recording:start --force`
+  - File: `electron/native-pipeline/cli/cli-handlers-editor.ts`
 
-```bash
-# Start a recording, then try to stop it from a different session
-bun run pipeline editor:screen-recording:stop
-# Returns: { success: true, filePath: null, bytesWritten: 0, durationMs: 0 }
+## Residual Risk (Important)
 
-bun run pipeline editor:screen-recording:status
-# Returns: recording STILL active, bytesWritten increasing
-```
+This is an inferred risk from current control flow:
 
-### Root Cause (Likely)
+- Renderer-side `stopScreenRecording()` returns success when local `activeRecording` is null:
+  - File: `apps/web/src/lib/project/screen-recording-controller.ts`
+- Main-process stop request handler only force-stops on timeout/error, not on this “success with no active local recorder” case:
+  - File: `electron/claude/handlers/claude-screen-recording-handler.ts`
 
-The stop handler may be:
-1. Checking a different internal state than the actual MediaRecorder/desktopCapturer session
-2. Creating a "new" recording context on each IPC call, so `stop` stops a phantom empty recording (hence `filePath: null, bytesWritten: 0`) while the real one keeps running
-3. Not properly referencing the singleton recording state across IPC boundaries
+Implication:
 
-### Fix Required
+- If renderer local runtime state is lost while main-process session is still active, stop can return success but leave the main session alive (the same symptom family as the original failure).
 
-- Screen recording must be a true singleton: one active recording at a time across the entire app
-- `stop` must kill the actual running MediaRecorder, not just clear local state
-- If a recording is "orphaned" (started by a different session/caller), `stop` should still terminate it
-- Return an error if stop fails, not `{ success: true }`
+## Test Verification Performed
 
-## Bug 2: No CLI Command for Timeline Playback (Gap)
-
-**Severity**: Medium
-**Component**: `electron/native-pipeline/cli/cli-handlers-editor.ts`
-
-### Symptoms
-
-The assistant searched extensively for play/transport/playback CLI commands and found none. There is no `editor:timeline:play` or `editor:transport:toggle` command.
-
-### Impact
-
-Step 6 ("play it in the timeline") cannot be completed via CLI. The workaround was to use AppleScript to simulate spacebar - fragile and platform-dependent.
-
-### Fix Required
-
-Add `editor:timeline:play`, `editor:timeline:pause`, `editor:timeline:seek` commands that dispatch to the timeline store's `setPlaying(true/false)` and `seekTo(time)`.
-
-## Bug 3: No Force-Stop / Cleanup for Stale Recordings (Robustness)
-
-**Severity**: Medium
-
-### Symptoms
-
-When a recording was started by a previous Claude session (or manually), the new session had no way to forcefully terminate it. The 4-attempt retry loop with sleep was futile.
-
-### Fix Required
-
-- Add `editor:screen-recording:force-stop` that kills any active recording regardless of origin
-- Or make the normal `stop` command work properly (Bug 1 fix)
-- Add `editor:screen-recording:start --force` that stops any existing recording first
-
-## Recommendations to Make Industry-Level Robust
-
-### 1. Screen Recording Singleton (Priority: P0)
-
-```typescript
-// screen-recording-handler.ts
-class ScreenRecordingManager {
-  private static instance: ScreenRecordingManager;
-  private activeRecorder: MediaRecorder | null = null;
-  private sessionId: string | null = null;
-
-  stop(): { success: boolean; filePath: string | null } {
-    if (!this.activeRecorder) {
-      return { success: false, error: "No active recording" };
-    }
-    this.activeRecorder.stop(); // Actually stop the real recorder
-    // ... flush, save, cleanup
-  }
-}
-```
-
-### 2. Add Missing Timeline Transport Commands (Priority: P1)
-
-```typescript
-// cli-handlers-editor.ts
-"editor:timeline:play": async () => { /* setPlaying(true) */ },
-"editor:timeline:pause": async () => { /* setPlaying(false) */ },
-"editor:timeline:toggle-play": async () => { /* toggle */ },
-"editor:timeline:seek": async ({ time }) => { /* seekTo(time) */ },
-```
-
-### 3. Idempotent Start/Stop (Priority: P1)
-
-- `start` when already recording: return current session info (or stop + restart with `--force`)
-- `stop` when not recording: return `{ success: true, wasRecording: false }` (not an error)
-- `stop` must ALWAYS actually stop: verify the recorder is dead before returning success
-
-### 4. Health Check for Stale State (Priority: P2)
+Executed:
 
 ```bash
-bun run pipeline editor:screen-recording:status --heal
-# If recording session is stale (no bytesWritten growth), force cleanup
+bunx vitest run \
+  electron/__tests__/cli-timeline-playback-args.test.ts \
+  electron/__tests__/editor-handlers-timeline-playback.test.ts
 ```
 
-### 5. CLI Workflow Integration Test (Priority: P2)
+Result:
 
-Add an automated test that runs the full 8-step workflow:
+- 2 test files passed
+- 8 tests passed
+- Confirms playback command parsing and handler routing
 
-```bash
-bun run pipeline test:cli-workflow \
-  --steps "find-project,open-editor,start-recording,generate-image,add-to-timeline,play,stop-recording,verify"
-```
+## Remaining Gaps
 
-This would catch regressions in the end-to-end CLI skill flow.
+1. No direct CLI command `editor:screen-recording:force-stop` (only API route + `start --force` pre-cleanup path).
+2. No automated regression test for stale/orphan recording state across renderer desync/reload.
 
-## Files to Investigate
+## Recommended Next Fixes
+
+### P0
+
+When renderer `stopScreenRecording()` has no local `activeRecording`, query main-process status and force-stop if status is still recording.
+
+### P1
+
+Add explicit CLI command:
+
+- `editor:screen-recording:force-stop`
+
+### P1
+
+After `editor:screen-recording:stop`, verify with `status` that recording is false before returning final success in CLI flow.
+
+### P2
+
+Add end-to-end regression test that simulates stale-session conditions and validates recovery with stop/force-stop.
+
+## File Map (Current)
 
 | File | Why |
-|------|-----|
-| `electron/screen-recording-handler.ts` | Bug 1: stop not actually stopping |
-| `electron/native-pipeline/cli/cli-handlers-editor.ts` | Bug 2: missing play/seek commands |
-| `apps/web/src/stores/timeline-store.ts` | Timeline play/pause state for new commands |
-| `electron/preload.ts` | IPC bridge for screen recording |
+|---|---|
+| `electron/screen-recording-handler/ipc.ts` | Main singleton session + stop/force-stop lifecycle |
+| `electron/screen-recording-handler/session.ts` | Active session source of truth |
+| `apps/web/src/lib/project/screen-recording-controller.ts` | Renderer runtime state and stop behavior |
+| `electron/claude/handlers/claude-screen-recording-handler.ts` | Stop timeout fallback logic |
+| `electron/native-pipeline/cli/cli.ts` | Playback and recording command surface |
+| `electron/native-pipeline/editor/editor-handlers-timeline.ts` | Playback command dispatch |
+| `electron/claude/http/claude-http-shared-routes.ts` | Playback HTTP endpoint |
+| `apps/web/src/lib/claude-bridge/claude-timeline-bridge.ts` | Renderer playback action application |

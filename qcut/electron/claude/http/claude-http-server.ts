@@ -48,6 +48,7 @@ import {
 	getClaudeEvents,
 	subscribeClaudeEvents,
 } from "../handlers/claude-events-handler.js";
+import { notificationBridge } from "../notification-bridge.js";
 import {
 	handleClaudeEventsStreamRequest,
 	registerClaudeEventsRoutes,
@@ -115,6 +116,14 @@ export function startClaudeHTTPServer(
 			),
 		getProjectStats: (projectId) => getProjectStats(getWindow(), projectId),
 		getAppVersion: () => app.getVersion(),
+		enableNotifications: (sessionId) =>
+			Promise.resolve(notificationBridge.enable({ sessionId })),
+		disableNotifications: () =>
+			Promise.resolve(notificationBridge.disable()),
+		getNotificationsStatus: () =>
+			Promise.resolve(notificationBridge.getStatus()),
+		getNotificationsHistory: (limit) =>
+			Promise.resolve(notificationBridge.getHistory({ limit })),
 		batchAddElements: (projectId, elements, correlationId) =>
 			batchAddElements(getWindow(), projectId, elements, correlationId),
 		batchUpdateElements: (updates, correlationId) =>

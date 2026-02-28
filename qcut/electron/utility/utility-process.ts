@@ -130,6 +130,9 @@ parentPort.on(
 			case "pty:write":
 				ptyManager.write(msg.sessionId, msg.data);
 				break;
+			case "pty:output":
+				ptyManager.output(msg.sessionId, msg.data);
+				break;
 			case "pty:resize":
 				ptyManager.resize(msg.sessionId, msg.cols, msg.rows);
 				break;

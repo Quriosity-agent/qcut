@@ -863,6 +863,14 @@ export interface ElectronAPI {
 					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
 			) => void;
 		};
+		notifications: {
+			enable: (
+				sessionId: string
+			) => Promise<{ enabled: boolean; sessionId: string | null }>;
+			disable: () => Promise<{ enabled: boolean; sessionId: string | null }>;
+			status: () => Promise<{ enabled: boolean; sessionId: string | null }>;
+			history: (limit?: number) => Promise<string[]>;
+		};
 		navigator: {
 			onProjectsRequest: (
 				callback: (data: { requestId: string }) => void

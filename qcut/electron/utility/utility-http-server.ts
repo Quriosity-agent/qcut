@@ -107,6 +107,23 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		getProjectStats: (projectId) =>
 			requestFromMain("get-project-stats", { projectId }),
 		getAppVersion: () => appVersion,
+		enableNotifications: (sessionId) =>
+			requestFromMain("notifications:enable", { sessionId }) as Promise<{
+				enabled: boolean;
+				sessionId: string | null;
+			}>,
+		disableNotifications: () =>
+			requestFromMain("notifications:disable", {}) as Promise<{
+				enabled: boolean;
+				sessionId: string | null;
+			}>,
+		getNotificationsStatus: () =>
+			requestFromMain("notifications:status", {}) as Promise<{
+				enabled: boolean;
+				sessionId: string | null;
+			}>,
+		getNotificationsHistory: (limit) =>
+			requestFromMain("notifications:history", { limit }) as Promise<string[]>,
 		batchAddElements: (projectId, elements) =>
 			requestFromMain("batch-add-elements", { projectId, elements }),
 		batchUpdateElements: (updates) =>

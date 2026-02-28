@@ -1,462 +1,218 @@
-# Large Files Refactoring Plan v6 — Three 1000+ Line Files
+# Large Files Refactoring Plan v6 — Current Editor Hotspots
 
 > Generated: 2026-02-28 | Continues from: large-files-refactor-plan-v5.md
-> **STATUS: PENDING**
+> **STATUS: PENDING (REFRESHED WITH CURRENT CODEBASE STATE)**
+
+---
+
+## Reality Check (Why v6 Needed Refresh)
+
+The prior `v6` draft targeted files that have already been reduced below the 800-line limit:
+
+| File | Previous Size in Plan | Current Size (2026-02-28) |
+|---|---:|---:|
+| `apps/web/src/lib/export/export-engine-cli.ts` | 1,128 | 589 |
+| `apps/web/src/stores/timeline/timeline-store.ts` | 1,091 | 209 |
+| `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1,085 | 206 |
+
+Those are now historical wins, not current priorities.
 
 ---
 
 ## Selection Criteria
 
-These are the three largest remaining files in the codebase, all exceeding the 800-line
-limit by 250+ lines. Each has clear internal boundaries and existing extraction patterns
-in sibling modules that demonstrate the target architecture.
+This refreshed plan targets the largest remaining **runtime editor files** in `apps/web` (excluding tests) with clear extraction seams and strong impact on maintainability.
 
 | # | File | Lines | Risk |
-|---|------|-------|------|
-| 1 | `apps/web/src/lib/export/export-engine-cli.ts` | 1,128 | Medium |
-| 2 | `apps/web/src/stores/timeline/timeline-store.ts` | 1,091 | Medium-High |
-| 3 | `apps/web/src/components/editor/media-panel/views/ai/hooks/use-ai-generation.ts` | 1,085 | Medium |
+|---|---|---:|---|
+| 1 | `apps/web/src/components/editor/draw/canvas/drawing-canvas.tsx` | 1,136 | High |
+| 2 | `apps/web/src/components/editor/media-panel/views/ai/index.tsx` | 985 | Medium |
+| 3 | `apps/web/src/components/editor/timeline/index.tsx` | 952 | Medium-High |
 
 ---
 
-## 1. `export-engine-cli.ts` (1,128 lines → ~350 lines)
+## 1. `drawing-canvas.tsx` (1,136 lines -> ~320 lines)
 
 ### Current Structure Analysis
 
-The file contains the `CLIExportEngine` class, a single class extending `ExportEngine`.
-Previous refactoring already extracted filters, sources, utilities, and audio preparation
-into sibling modules. What remains is:
-
 | Section | Lines | Description |
-|---------|-------|-------------|
-| Imports + type alias | 1–58 | 13 import groups, `EffectsStore` type |
-| Constructor | 60–94 | Electron env validation, audio options setup |
-| Wrapper methods | 96–234 | 7 thin wrappers delegating to extracted modules |
-| Utility delegators | 251–305 | 5 methods (`invokeIfAvailable`, `fileExists`, etc.) |
-| **`export()`** | 307–499 | Main export orchestration (~190 lines) |
-| `createExportSession()` | 501–509 | Simple IPC call |
-| **`exportWithCLI()`** | 515–1056 | Audio validation + mode selection + FFmpeg call (~540 lines) |
-| `readOutputFile()` | 1058–1064 | 7 lines |
-| `calculateTotalFrames()` | 1066–1068 | 3 lines |
-| `logActualVideoDurationCLI()` | 1070–1106 | Blob duration debug logging |
-| `cleanup()` | 1108–1127 | Session cleanup |
+|---|---|---|
+| Imports + types | 1-59 | Component types + ref handle types |
+| Canvas state + object hooks | 60-248 | Refs, modal state, stores, object hooks, history helpers |
+| `useCanvasDrawing` wiring | 249-457 | Large callback bundle (`onDrawingStart`, `onCreateText`, `onMoveObject`, etc.) |
+| Init effect | 460-563 | Canvas setup + background image setup |
+| Text/image handlers | 566-769 | Text confirm/cancel, disabled restore flow, image upload |
+| History sync effect | 772-835 | Undo/redo restoration with guard refs |
+| Render effects | 838-980 | Foreground/background canvas rendering |
+| Imperative handle | 983-1073 | Proxy-based `ref` API with group/image ops |
+| JSX output | 1075-1134 | Layered canvas + modal |
 
-**Key insight**: `exportWithCLI()` is 540 lines — it contains audio validation (~90 lines),
-mode decision logic (~120 lines), export options assembly (~80 lines), debug logging (~60 lines),
-and the FFmpeg invocation (~40 lines). These are clearly separable concerns.
+### Key Problems
+
+1. Too many responsibilities in one component (interaction orchestration, rendering, history, image upload, imperative API).
+2. Heavy callback object passed to `useCanvasDrawing`, difficult to scan and test.
+3. Mixed concerns between state mutation and rendering side effects.
+4. Non-essential debug logging dominates many hot paths.
 
 ### Proposed Split
 
 ```text
-apps/web/src/lib/export/
-  export-engine-cli.ts           → Slim class: constructor, export(), wrappers (~350 lines)
-  export-engine-cli-validation.ts → Audio file validation pipeline (~120 lines)
-  export-engine-cli-mode.ts      → Mode decision logic + export options assembly (~200 lines)
-  export-engine-cli-ffmpeg.ts    → FFmpeg invocation + result handling (~130 lines)
-  export-engine-cli-debug.ts     → Duration logging, debug output (EXISTING, extend) (~120 lines)
-  export-engine-cli-utils.ts     → (EXISTING, keep as-is) (~132 lines)
-  export-engine-cli-audio.ts     → (EXISTING, keep as-is) (~236 lines)
+apps/web/src/components/editor/draw/canvas/
+  drawing-canvas.tsx                     -> UI composition + refs only (~320)
+  use-drawing-canvas-interactions.ts     -> useCanvasDrawing callback wiring (~250)
+  use-drawing-canvas-history.ts          -> save/restore guards + history sync (~180)
+  use-drawing-canvas-rendering.ts        -> foreground/background render effects (~170)
+  use-drawing-canvas-imperative.ts       -> ref proxy + exposed methods (~140)
+  drawing-canvas-image-utils.ts          -> background fit + image upload helpers (~120)
 ```
-
-### File Details
-
-#### `export-engine-cli-validation.ts` (~120 lines) — NEW
-```text
-Exports:
-  validateAudioFiles(audioFiles, deps) → AudioFileInput[]
-
-Contents:
-  - Parallel audio file validation logic (current lines 569–659)
-  - File existence checks, size validation, ffprobe format validation
-  - Filter out files with no audio streams
-  - Dependencies injected: fileExists, getFileInfo, validateAudioWithFfprobe
-```
-
-#### `export-engine-cli-mode.ts` (~200 lines) — NEW
-```text
-Exports:
-  determineExportMode(analysis, tracks, ...) → ExportModeDecision
-  buildExportOptions(decision, sessionId, ...) → ExportOptions
-
-Contents:
-  - Word filter detection + keep-segment calculation (current lines 790–903)
-  - Mode 1/1.5/2 decision tree (current lines 800–844, 904–926)
-  - Export options object assembly (current lines 929–966)
-  - Types: ExportModeDecision, ExportOptions
-```
-
-#### `export-engine-cli-ffmpeg.ts` (~130 lines) — NEW
-```text
-Exports:
-  invokeFFmpegExport(options) → string (outputFile)
-  logExportConfiguration(options) → void
-
-Contents:
-  - Debug console.log block for export config (current lines 968–1009)
-  - FFmpeg CLI invocation via electronAPI (current lines 1019–1055)
-  - Error handling and timing
-```
-
-#### `export-engine-cli-debug.ts` (~120 lines) — EXTEND EXISTING
-```text
-Additions:
-  logActualVideoDurationCLI(videoBlob, totalDuration) → void
-
-Contents:
-  - Existing debug utilities (92 lines)
-  - Move blob duration logging here (current lines 1070–1106)
-```
-
-### Barrel Re-export Strategy
-
-The existing `apps/web/src/lib/export/index.ts` already uses `export * from "./export-engine-cli"`.
-No changes needed — `CLIExportEngine` stays exported from the same file. New modules are
-internal implementation details, not re-exported from the barrel.
 
 ### Migration Steps
 
-1. Create `export-engine-cli-validation.ts` — extract `validateAudioFiles()` as a pure function
-2. Create `export-engine-cli-mode.ts` — extract mode decision + options builder as pure functions
-3. Create `export-engine-cli-ffmpeg.ts` — extract FFmpeg invocation + config logging
-4. Move `logActualVideoDurationCLI` to existing `export-engine-cli-debug.ts`
-5. Refactor `exportWithCLI()` to call the new modules sequentially
-6. Remove wrapper methods that add no value (thin delegators to utility functions can be inlined)
-7. Verify: `bun check-types; bun run test`
+1. Extract history logic (`isSavingToHistory`, `recentObjectCreation`, save/restore effect) into `use-drawing-canvas-history.ts`.
+2. Extract render effects into `use-drawing-canvas-rendering.ts`.
+3. Move image/background helpers into `drawing-canvas-image-utils.ts`.
+4. Move imperative `ref` proxy creation into `use-drawing-canvas-imperative.ts`.
+5. Keep `drawing-canvas.tsx` as orchestrator + JSX only.
 
-### Estimated Result
+### Tests
 
-| File | Before | After |
-|------|--------|-------|
-| `export-engine-cli.ts` | 1,128 | ~350 |
-| `export-engine-cli-validation.ts` | — | ~120 |
-| `export-engine-cli-mode.ts` | — | ~200 |
-| `export-engine-cli-ffmpeg.ts` | — | ~130 |
-| `export-engine-cli-debug.ts` | 92 | ~120 |
+1. Add `drawing-canvas-history` unit tests (restore guard behavior, threshold behavior).
+2. Add `drawing-canvas-image-utils` tests for aspect-ratio fitting.
+3. Add integration test for imperative API contract (`handleImageUpload`, `handleCreateGroup`, `handleUngroup`).
 
 ---
 
-## 2. `timeline-store.ts` (1,091 lines → ~350 lines)
+## 2. `AiView` in `ai/index.tsx` (985 lines -> ~300 lines)
 
 ### Current Structure Analysis
 
-The file creates the main Zustand timeline store using `create<TimelineStore>()`. Previous
-refactoring already extracted heavy operations into `timeline-store-operations.ts` which
-composes `timeline-add-ops.ts`, `timeline-element-ops.ts`, and `timeline-track-ops.ts`.
-What remains is:
-
 | Section | Lines | Description |
-|---------|-------|-------------|
-| Imports | 1–31 | 8 import groups |
-| `normalizeMarkdownElement()` | 38–69 | Markdown element normalization |
-| `normalizeLoadedTracks()` | 71–82 | Track normalization on load |
-| `autoSaveTimer` | 36 | Module-level debounce timer |
-| Closure helpers | 84–200 | `updateTracks`, `autoSaveTimeline`, `autoSaveTimelineGuarded`, `updateTracksAndSave` |
-| Initial state | 202–225 | Default values for all state fields |
-| Selection methods | 226–286 | `getSortedTracks`, `pushHistory`, `undo`, `selectElement`, `deselectElement`, `clearSelectedElements`, `setSelectedElements` |
-| **Track/element CRUD** | 288–492 | `addTrack`, `insertTrackAt`, `addElementToTrack` (190 lines!) |
-| **Element updates** | 494–828 | `removeElementFromTrack`, `moveElementToTrack`, 7x `update*` methods |
-| **Queries & persistence** | 830–953 | `getTotalDuration`, `getProjectThumbnail`, `redo`, `loadProjectTimeline`, `saveProjectTimeline` |
-| **Settings & utilities** | 955–1089 | `saveImmediate`, `clearTimeline`, `restoreTracks`, toggles, `checkElementOverlap`, `findOrCreateTrack`, spread operations |
+|---|---|---|
+| Imports | 1-74 | Large import surface across hooks/components/settings |
+| Shared state + tab state wiring | 85-203 | Cross-tab local state and hook composition |
+| Generation input assembly | 207-328 | Massive prop object passed to `useAIGeneration` |
+| Panel/cost helpers | 330-377 | Layout flags + cost hook |
+| Main JSX | 409-985 | Large render tree with tab-specific prop plumbing |
 
-**Key insight**: The store has three extractable concerns:
-1. **Auto-save infrastructure** (closure helpers) — 120 lines of async save logic
-2. **Element CRUD** (add/remove/move/update) — 340 lines of track mutation methods
-3. **Persistence & queries** — 120 lines of load/save/thumbnail
+### Key Problems
+
+1. `useAIGeneration` config assembly is too large and tightly coupled to local state shape.
+2. JSX is long mostly due prop plumbing for tab components.
+3. Cross-tab state and UI composition are mixed in one file.
+4. Inline callback wrappers create noise and make behavior harder to scan.
 
 ### Proposed Split
 
 ```text
-apps/web/src/stores/timeline/
-  timeline-store.ts              → Slim store: initial state + compose slices (~350 lines)
-  timeline-store-autosave.ts     → Auto-save helpers and debounce logic (~130 lines)
-  timeline-store-crud.ts         → Element add/remove/move + validation (~340 lines)
-  timeline-store-persistence.ts  → load/save/immediate/thumbnail/clear (~160 lines)
-  timeline-store-normalization.ts → normalizeMarkdownElement, normalizeLoadedTracks (~50 lines)
-  timeline-store-operations.ts   → (EXISTING, keep as-is) (~51 lines)
-  timeline-add-ops.ts            → (EXISTING, keep as-is) (~428 lines)
-  timeline-element-ops.ts        → (EXISTING, keep as-is) (~518 lines)
-  timeline-track-ops.ts          → (EXISTING, keep as-is) (~475 lines)
-  index.ts                       → (EXISTING, add new module re-exports if needed)
+apps/web/src/components/editor/media-panel/views/ai/
+  index.tsx                               -> shell composition + panel layout (~300)
+  hooks/use-ai-view-state.ts              -> shared state + model defaulting (~180)
+  hooks/use-ai-generation-config.ts       -> build useAIGeneration input object (~220)
+  hooks/use-ai-tab-props.ts               -> map state to tab props (~220)
+  components/ai-tabs-content.tsx          -> Tabs + tab content rendering (~220)
 ```
-
-### File Details
-
-#### `timeline-store-autosave.ts` (~130 lines) — NEW
-```text
-Exports:
-  createAutoSaveHelpers(set, get) → { updateTracks, autoSaveTimeline, autoSaveTimelineGuarded, updateTracksAndSave }
-
-Contents:
-  - Module-level autoSaveTimer (current line 36)
-  - updateTracks() — ensureMainTrack + sort + set (current lines 86–93)
-  - autoSaveTimeline() — dynamic import project-store, get projectId (current lines 96–102)
-  - autoSaveTimelineGuarded(projectId) — cross-project guard + save (current lines 106–170)
-  - updateTracksAndSave() — update + debounced save (current lines 174–200)
-```
-
-#### `timeline-store-crud.ts` (~340 lines) — NEW
-```text
-Exports:
-  createCrudOperations(get, set, deps) → Partial<TimelineStore>
-
-Contents:
-  - addTrack, insertTrackAt (current lines 288–303)
-  - addElementToTrack — validation + normalization + first-element canvas sizing (current lines 305–492)
-  - removeElementFromTrack — sticker cleanup + ripple support (current lines 494–533)
-  - moveElementToTrack — validation + track mutation (current lines 535–588)
-  - updateElementTrim, updateElementDuration, updateElementStartTime (current lines 590–657)
-  - toggleTrackMute, toggleElementHidden (current lines 659–684)
-  - updateTextElement, updateMarkdownElement (current lines 686–737)
-  - updateElementTransform, updateElementPosition, updateElementSize, updateElementRotation (current lines 740–783)
-  - updateMediaElement, updateRemotionElement (current lines 785–828)
-  - Dependencies injected: { updateTracksAndSave, pushHistory }
-```
-
-#### `timeline-store-persistence.ts` (~160 lines) — NEW
-```text
-Exports:
-  createPersistenceOperations(get, set, deps) → Partial<TimelineStore>
-
-Contents:
-  - getTotalDuration() (current lines 830–846)
-  - getProjectThumbnail() (current lines 848–891)
-  - redo() (current lines 893–899)
-  - loadProjectTimeline() (current lines 902–932)
-  - saveProjectTimeline() (current lines 934–953)
-  - saveImmediate() (current lines 956–994)
-  - clearTimeline() (current lines 996–1000)
-  - restoreTracks() (current lines 1002–1007)
-  - Dependencies injected: { updateTracks, normalizeLoadedTracks }
-```
-
-#### `timeline-store-normalization.ts` (~50 lines) — NEW
-```text
-Exports:
-  normalizeMarkdownElement(element) → TimelineElement
-  normalizeLoadedTracks(tracks) → TimelineTrack[]
-
-Contents:
-  - Pure functions, no side effects (current lines 38–82)
-```
-
-### Barrel Re-export Strategy
-
-The main store export (`useTimelineStore`) stays in `timeline-store.ts`. The barrel
-`index.ts` does NOT currently export `timeline-store.ts` — consumers import it directly
-via `@/stores/timeline/timeline-store`. No barrel changes needed. New modules are internal
-implementation details imported only by `timeline-store.ts`.
 
 ### Migration Steps
 
-1. Create `timeline-store-normalization.ts` — move pure normalization functions
-2. Create `timeline-store-autosave.ts` — extract closure helpers into a factory function
-3. Create `timeline-store-crud.ts` — extract all add/remove/move/update methods
-4. Create `timeline-store-persistence.ts` — extract load/save/query methods
-5. Refactor `timeline-store.ts` to compose slices: call factories, spread results into store
-6. Verify: `bun check-types; bun run test`
+1. Extract local state and default-model tab switching into `use-ai-view-state.ts`.
+2. Create `use-ai-generation-config.ts` to return a typed config object for `useAIGeneration`.
+3. Create `use-ai-tab-props.ts` to centralize per-tab prop mapping.
+4. Move the tab JSX block into `components/ai-tabs-content.tsx`.
+5. Keep `index.tsx` focused on layout, history panel, and high-level orchestration.
 
-### Pattern: Dependency Injection
+### Tests
 
-Follow the existing pattern from `timeline-store-operations.ts`:
-
-```typescript
-// timeline-store-crud.ts
-export function createCrudOperations(
-  get: StoreGet,
-  set: StoreSet,
-  deps: { updateTracksAndSave: (tracks: TimelineTrack[]) => void }
-): Partial<TimelineStore> {
-  return {
-    addTrack: (type) => { ... },
-    removeElementFromTrack: (trackId, elementId) => { ... },
-    // ...
-  };
-}
-```
-
-### Estimated Result
-
-| File | Before | After |
-|------|--------|-------|
-| `timeline-store.ts` | 1,091 | ~350 |
-| `timeline-store-autosave.ts` | — | ~130 |
-| `timeline-store-crud.ts` | — | ~340 |
-| `timeline-store-persistence.ts` | — | ~160 |
-| `timeline-store-normalization.ts` | — | ~50 |
+1. Add tests for `use-ai-generation-config` to ensure model settings map correctly.
+2. Add tests for `use-ai-tab-props` to verify required props per tab.
+3. Keep existing hook tests (`use-ai-generation-contract`, polling, panel effects) as regression suite.
 
 ---
 
-## 3. `use-ai-generation.ts` (1,085 lines → ~280 lines)
+## 3. `timeline/index.tsx` (952 lines -> ~320 lines)
 
 ### Current Structure Analysis
 
-This is a React hook (`useAIGeneration`) that manages AI video generation. Previous
-refactoring already extracted helpers, polling, mock generation, model handlers, and
-sub-state hooks into sibling modules. What remains is:
-
 | Section | Lines | Description |
-|---------|-------|-------------|
-| Imports | 1–53 | 15 import groups |
-| Props destructuring | 62–170 | **109 lines** of destructured props with defaults |
-| State declarations | 172–208 | 14 `useState` calls |
-| Sub-hook composition | 210–232 | `useVeo31State`, `useReveEditState` |
-| Derived flags | 234–244 | `isSora2Selected`, `isVeo31Selected`, etc. |
-| Effects | 254–319 | 5 `useEffect` hooks (timer, cleanup, parent notifications) |
-| Stable callbacks | 321–333 | 3 `useCallback` wrappers for helpers |
-| Polling setup | 335–350 | `useAIPolling` configuration |
-| `handleMockGenerate` | 352–409 | Mock generation callback |
-| **`handleGenerate`** | 411–883 | **470 lines** — main generation logic |
-| `resetGenerationState` | 885–906 | State reset callback |
-| `generationState` object | 908–922 | State aggregation |
-| **Return value** | 924–1083 | **160 lines** — massive return object |
-| Type export | 1085 | `UseAIGenerationReturn` type |
+|---|---|---|
+| Store selectors + refs + local state | 53-190 | Many selectors and refs in one component |
+| Interaction handlers | 191-325 | Mouse tracking + click-to-seek rules |
+| Sync effects | 327-413 | Duration sync and scroll sync listeners |
+| Main JSX | 433-951 | Ruler, markers, labels, tracks, context menu, effects lane |
 
-**Key insight**: Three problems drive the size:
-1. `handleGenerate` at 470 lines — already delegates to route handlers but still assembles
-   settings objects and processes responses inline
-2. The return value is 160 lines — exposing too much internal state
-3. Props destructuring is 109 lines — the hook accepts too many parameters
+### Key Problems
+
+1. Rendering and interaction logic are intertwined.
+2. Ruler markers/time formatting are inlined in JSX IIFEs.
+3. Scroll synchronization effect is large and not reusable.
+4. Track row/context-menu rendering is mixed with container concerns.
 
 ### Proposed Split
 
 ```text
-apps/web/src/components/editor/media-panel/views/ai/hooks/
-  use-ai-generation.ts              → Slim orchestrator: compose sub-hooks, return API (~280 lines)
-  use-ai-generation-core.ts         → handleGenerate logic (~350 lines)
-  use-ai-generation-state.ts        → State declarations + effects + reset (~180 lines)
-  use-ai-generation-can-generate.ts → canGenerate computed logic (~100 lines)
-  use-ai-generation-helpers.ts      → (EXISTING, keep as-is) (~583 lines)
-  use-ai-mock-generation.ts         → (EXISTING, keep as-is) (~169 lines)
-  use-ai-polling.ts                 → (EXISTING, keep as-is) (~226 lines)
+apps/web/src/components/editor/timeline/
+  index.tsx                               -> compose timeline subcomponents (~320)
+  hooks/use-timeline-click-seek.ts        -> mouse tracking + seek decision logic (~170)
+  hooks/use-timeline-scroll-sync.ts       -> horizontal/vertical scroll sync (~140)
+  timeline-ruler.tsx                      -> ruler, time markers, bookmarks, filter markers (~220)
+  timeline-track-labels.tsx               -> left track label column (~120)
+  timeline-track-layers.tsx               -> track content rows + context menus (~220)
 ```
-
-### File Details
-
-#### `use-ai-generation-state.ts` (~180 lines) — NEW
-```text
-Exports:
-  useAIGenerationState(props) → AIGenerationInternalState
-
-Contents:
-  - All 14 useState declarations (current lines 173–208)
-  - Sub-hook composition: useVeo31State, useReveEditState (current lines 210–232)
-  - Derived flags: isSora2Selected, isVeo31Selected, etc. (current lines 234–244)
-  - useAsyncMediaStoreActions hook (current lines 247–251)
-  - All 5 useEffect hooks (current lines 254–319)
-  - Stable callback wrappers: downloadVideoToMemory, uploadImageToFal, uploadAudioToFal (current lines 321–333)
-  - Polling setup via useAIPolling (current lines 335–350)
-  - resetGenerationState callback (current lines 886–906)
-  - generationState aggregation object (current lines 908–922)
-  - Types: AIGenerationInternalState (bundles all state + setters for internal use)
-```
-
-#### `use-ai-generation-core.ts` (~350 lines) — NEW
-```text
-Exports:
-  useHandleGenerate(state, props) → () => Promise<void>
-
-Contents:
-  - The handleGenerate useCallback (current lines 411–883)
-  - Settings assembly for text/image/upscale/avatar tabs
-  - Sequential model loop with progress tracking
-  - Response processing via processModelResponse
-  - Error handling and cleanup
-  - This is a single useCallback — extract as a custom hook that
-    receives state/setters as parameters
-```
-
-#### `use-ai-generation-can-generate.ts` (~100 lines) — NEW
-```text
-Exports:
-  useCanGenerate(props, state) → boolean
-
-Contents:
-  - The canGenerate computed value (current lines 957–1042)
-  - Model-specific requirement checks per tab
-  - Frame-to-video validation for Veo 3.1
-  - Avatar model requirement matrix
-  - Pure derivation from props + state
-```
-
-### Barrel Re-export Strategy
-
-There is no barrel `index.ts` in the hooks directory. `use-ai-generation.ts` is imported
-directly by consumers. The public API (`useAIGeneration` function and `UseAIGenerationReturn`
-type) stays in `use-ai-generation.ts`. New modules are internal implementation details.
-
-**No import changes needed for consumers.**
 
 ### Migration Steps
 
-1. Create `use-ai-generation-can-generate.ts` — extract canGenerate as a custom hook
-2. Create `use-ai-generation-state.ts` — extract all state, effects, and derived values
-3. Create `use-ai-generation-core.ts` — extract handleGenerate as a custom hook
-4. Refactor `use-ai-generation.ts` to compose: call sub-hooks, assemble return value
-5. Verify: `bun check-types; bun run test`
+1. Move click classification and seek calculation to `use-timeline-click-seek.ts`.
+2. Move scroll sync listener effect to `use-timeline-scroll-sync.ts`.
+3. Extract ruler rendering (time markers/bookmarks/AI markers) to `timeline-ruler.tsx`.
+4. Extract track labels and track layers into separate components.
+5. Keep `index.tsx` as orchestration shell.
 
-### Pattern: Hook Composition
+### Tests
 
-```typescript
-// use-ai-generation.ts (after refactoring)
-export function useAIGeneration(props: UseAIGenerationProps) {
-  const state = useAIGenerationState(props);
-  const handleGenerate = useHandleGenerate(state, props);
-  const handleMockGenerate = useHandleMockGenerate(state, props);
-  const canGenerate = useCanGenerate(props, state);
-
-  return {
-    ...state.publicState,
-    handleGenerate,
-    handleMockGenerate,
-    canGenerate,
-    // ... remaining return values
-  };
-}
-```
-
-### Estimated Result
-
-| File | Before | After |
-|------|--------|-------|
-| `use-ai-generation.ts` | 1,085 | ~280 |
-| `use-ai-generation-state.ts` | — | ~180 |
-| `use-ai-generation-core.ts` | — | ~350 |
-| `use-ai-generation-can-generate.ts` | — | ~100 |
+1. Add unit tests for click-to-seek behavior (drag vs click thresholds).
+2. Add tests for scroll-sync hook attach/cleanup behavior.
+3. Add focused render tests for ruler marker visibility and formatting.
 
 ---
 
 ## Summary
 
-### Total Impact
+### Total Impact (Target)
 
 | File | Before | After | New Files |
-|------|--------|-------|-----------|
-| `export-engine-cli.ts` | 1,128 | ~350 | 3 new + 1 extended |
-| `timeline-store.ts` | 1,091 | ~350 | 4 new |
-| `use-ai-generation.ts` | 1,085 | ~280 | 3 new |
-| **Totals** | **3,304** | **~980** | **10 new files** |
-
-All resulting files will be under the 800-line CLAUDE.md limit.
+|---|---:|---:|---:|
+| `drawing-canvas.tsx` | 1,136 | ~320 | 5 |
+| `ai/index.tsx` | 985 | ~300 | 4 |
+| `timeline/index.tsx` | 952 | ~320 | 5 |
+| **Totals** | **3,073** | **~940** | **14** |
 
 ### Risk Assessment
 
-| File | Risk | Reason |
-|------|------|--------|
-| `export-engine-cli.ts` | Medium | Class method extraction; private methods become module functions |
-| `timeline-store.ts` | Medium-High | Zustand closure helpers require careful DI wiring |
-| `use-ai-generation.ts` | Medium | React hook composition; dependency arrays must be preserved |
+| File | Risk | Why |
+|---|---|---|
+| `drawing-canvas.tsx` | High | Multi-canvas rendering + imperative API contract + history behavior |
+| `ai/index.tsx` | Medium | Mostly prop wiring and composition, lower algorithmic risk |
+| `timeline/index.tsx` | Medium-High | Dense interaction logic + synchronized scrolling + playback coupling |
 
-### Verification Checklist (per file)
+### Verification Checklist (Per Refactor)
 
-1. `bun check-types` — no new TypeScript errors
-2. `bun run test` — all existing tests pass
-3. `bun lint:clean` — no lint violations in new files
-4. Manual: Export flow works in `bun run electron:dev`
-5. Manual: Timeline operations work (add/remove/save/load)
-6. Manual: AI generation works (text-to-video, image-to-video)
+1. `bun check-types`
+2. `bunx vitest run` targeted suites for modified modules
+3. `bunx eslint <changed files>`
+4. Manual editor checks:
+   - Draw: create/select/move/group/undo-redo/image upload
+   - AI: tab switching, validation states, generation dispatch
+   - Timeline: seek, selection box, scrolling sync, context menu mute
 
 ### Implementation Order
 
-1. **`use-ai-generation.ts`** — Lowest risk, pure hook composition, most tests
-2. **`export-engine-cli.ts`** — Medium risk, class decomposition, integration tests
-3. **`timeline-store.ts`** — Highest risk, Zustand closure wiring, core store
+1. `ai/index.tsx` (lowest risk)
+2. `timeline/index.tsx` (medium-high risk)
+3. `drawing-canvas.tsx` (highest risk)
+
+---
+
+## Notes
+
+- Keep extraction boundaries behavior-preserving first; avoid functional changes in the same PR.
+- Prefer pure helpers for mapping/derivation logic.
+- Ensure all extracted async paths preserve existing error handling (`try/catch` + existing logger utilities).

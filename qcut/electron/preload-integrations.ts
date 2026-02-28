@@ -595,6 +595,14 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.send("claude:events:emit", event);
 			},
 		},
+		notifications: {
+			enable: (sessionId) =>
+				ipcRenderer.invoke("claude:notifications:enable", { sessionId }),
+			disable: () => ipcRenderer.invoke("claude:notifications:disable"),
+			status: () => ipcRenderer.invoke("claude:notifications:status"),
+			history: (limit) =>
+				ipcRenderer.invoke("claude:notifications:history", { limit }),
+		},
 		navigator: {
 			onProjectsRequest: (callback) => {
 				ipcRenderer.removeAllListeners("claude:navigator:projects:request");

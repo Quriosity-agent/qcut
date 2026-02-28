@@ -102,6 +102,12 @@ export interface MainPtyWriteMessage {
 	data: string;
 }
 
+export interface MainPtyOutputMessage {
+	type: "pty:output";
+	sessionId: string;
+	data: string;
+}
+
 export interface MainPtyResizeMessage {
 	type: "pty:resize";
 	sessionId: string;
@@ -132,6 +138,7 @@ export type MainToUtilityMessage =
 	| MainResponseMessage
 	| MainPtySpawnMessage
 	| MainPtyWriteMessage
+	| MainPtyOutputMessage
 	| MainPtyResizeMessage
 	| MainPtyKillMessage
 	| MainPtyKillAllMessage
