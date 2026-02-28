@@ -1,5 +1,10 @@
 {
 	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@composio/ao-core": ["packages/core/src/index.ts"],
+			"@composio/ao-core/*": ["packages/core/src/*"]
+		},
 		"target": "ES2022",
 		"module": "Node16",
 		"moduleResolution": "Node16",
