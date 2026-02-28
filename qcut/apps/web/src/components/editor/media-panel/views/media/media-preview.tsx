@@ -1,4 +1,5 @@
 import type { MediaItem } from "@/stores/media/media-store-types";
+import { useState } from "react";
 import { Image, Loader2, Music, Video } from "lucide-react";
 
 /** Format seconds as mm:ss */
@@ -39,58 +40,7 @@ export function MediaPreview({ item }: MediaPreviewProps) {
 	}
 
 	if (item.type === "video") {
-		// Show loading spinner while thumbnail is being generated
-		if (
-			item.thumbnailStatus === "loading" ||
-			item.thumbnailStatus === "pending"
-		) {
-			return (
-				<div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
-					<Loader2 className="h-6 w-6 mb-1 animate-spin" />
-					<span className="text-xs">Loading...</span>
-					{item.duration && (
-						<span className="text-xs opacity-70">
-							{formatDuration(item.duration)}
-						</span>
-					)}
-				</div>
-			);
-		}
-
-		// Show thumbnail if available
-		if (item.thumbnailUrl) {
-			return (
-				<div className="relative w-full h-full">
-					<img
-						src={item.thumbnailUrl}
-						alt={item.name}
-						className="w-full h-full object-cover rounded"
-						loading="lazy"
-					/>
-					<div className="absolute inset-0 flex items-center justify-center bg-background/20 rounded">
-						<Video className="h-6 w-6 text-foreground drop-shadow-md" />
-					</div>
-					{item.duration && (
-						<div className="absolute bottom-1 right-1 bg-background/70 text-foreground text-xs px-1 rounded">
-							{formatDuration(item.duration)}
-						</div>
-					)}
-				</div>
-			);
-		}
-
-		// Fallback: no thumbnail available
-		return (
-			<div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center text-muted-foreground rounded">
-				<Video className="h-6 w-6 mb-1" />
-				<span className="text-xs">Video</span>
-				{item.duration && (
-					<span className="text-xs opacity-70">
-						{formatDuration(item.duration)}
-					</span>
-				)}
-			</div>
-		);
+		return <VideoPreview item={item} />;
 	}
 
 	if (item.type === "audio") {
