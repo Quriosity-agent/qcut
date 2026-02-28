@@ -106,25 +106,38 @@ export function parseSessionLine(
 		json: baseOptions.json ?? false,
 		verbose: baseOptions.verbose ?? false,
 		quiet: baseOptions.quiet ?? false,
-		// Carry over host/port/token from base options
+		// Carry over host/port/token/performance flags from base options
 		host: baseOptions.host,
 		port: baseOptions.port,
 		token: baseOptions.token,
 		skipHealth: baseOptions.skipHealth,
+		noCapabilityCheck: baseOptions.noCapabilityCheck,
+		session: baseOptions.session,
 		...parsed,
 	};
 }
 
 /**
  * Tokenize a string respecting double and single quotes.
+ * Supports backslash-escaped quotes inside quoted strings.
  */
 function tokenize(input: string): string[] {
 	const tokens: string[] = [];
 	let current = "";
 	let inSingle = false;
 	let inDouble = false;
+	let escaped = false;
 
 	for (const ch of input) {
+		if (escaped) {
+			current += ch;
+			escaped = false;
+			continue;
+		}
+		if (ch === "\\" && (inDouble || inSingle)) {
+			escaped = true;
+			continue;
+		}
 		if (ch === "'" && !inDouble) {
 			inSingle = !inSingle;
 		} else if (ch === '"' && !inSingle) {
