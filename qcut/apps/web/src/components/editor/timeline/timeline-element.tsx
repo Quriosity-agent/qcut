@@ -631,6 +631,7 @@ function TimelineElementComponent({
 						e.stopPropagation();
 						const { id: _id, ...props } = element;
 						const info = {
+							...props,
 							id: element.id,
 							type: element.type,
 							name: element.name,
@@ -640,7 +641,6 @@ function TimelineElementComponent({
 								(element.duration - element.trimStart - element.trimEnd),
 							duration: element.duration,
 							trackId: track.id,
-							...props,
 						};
 						try {
 							await navigator.clipboard.writeText(
