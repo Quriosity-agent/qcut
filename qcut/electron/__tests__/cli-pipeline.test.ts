@@ -992,6 +992,189 @@ describe("CLI pipeline", () => {
 		});
 	});
 
+	describe("Parallel generation (--count / --prompts)", () => {
+		it("parses --count flag", () => {
+			const opts = parseCliArgs([
+				"generate-image",
+				"-t",
+				"A cat in space",
+				"--count",
+				"3",
+			]);
+			expect(opts.count).toBe(3);
+		});
+
+		it("parses --prompts flag (multiple)", () => {
+			const opts = parseCliArgs([
+				"generate-image",
+				"--prompts",
+				"A cat",
+				"--prompts",
+				"A dog",
+			]);
+			expect(opts.prompts).toEqual(["A cat", "A dog"]);
+		});
+
+		it("parses --skip-health flag", () => {
+			const opts = parseCliArgs([
+				"editor:health",
+				"--skip-health",
+			]);
+			expect(opts.skipHealth).toBe(true);
+		});
+
+		it("runs parallel generation with --count", async () => {
+			let callCount = 0;
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockImplementation(async () => {
+					callCount++;
+					return {
+						success: true,
+						outputPath: `/tmp/output_${callCount}.png`,
+						duration: 1.0,
+						cost: 0.01,
+					};
+				});
+
+			const runner = new CLIPipelineRunner();
+			const progress = vi.fn();
+			const result = await runner.run(
+				defaultOptions({
+					command: "generate-image",
+					text: "A cat",
+					count: 3,
+				}),
+				progress
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.outputPaths).toHaveLength(3);
+			expect(mockExecuteStep).toHaveBeenCalledTimes(3);
+			expect(result.cost).toBeCloseTo(0.03, 2);
+
+			mockExecuteStep.mockRestore();
+		});
+
+		it("runs parallel generation with --prompts", async () => {
+			let callIndex = 0;
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockImplementation(async () => {
+					callIndex++;
+					return {
+						success: true,
+						outputPath: `/tmp/output_${callIndex}.png`,
+						duration: 1.0,
+						cost: 0.02,
+					};
+				});
+
+			const runner = new CLIPipelineRunner();
+			const result = await runner.run(
+				defaultOptions({
+					command: "generate-image",
+					prompts: ["A cat", "A dog"],
+				}),
+				vi.fn()
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.outputPaths).toHaveLength(2);
+			expect(mockExecuteStep).toHaveBeenCalledTimes(2);
+
+			mockExecuteStep.mockRestore();
+		});
+
+		it("reports partial success when some jobs fail", async () => {
+			let callIndex = 0;
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockImplementation(async () => {
+					callIndex++;
+					if (callIndex === 2) {
+						return { success: false, error: "API timeout", duration: 5 };
+					}
+					return {
+						success: true,
+						outputPath: `/tmp/output_${callIndex}.png`,
+						duration: 1.0,
+						cost: 0.01,
+					};
+				});
+
+			const runner = new CLIPipelineRunner();
+			const result = await runner.run(
+				defaultOptions({
+					command: "generate-image",
+					text: "A cat",
+					count: 3,
+				}),
+				vi.fn()
+			);
+
+			// Still succeeds because 2/3 completed
+			expect(result.success).toBe(true);
+			expect(result.outputPaths).toHaveLength(2);
+			expect(result.data).toHaveProperty("errors");
+
+			mockExecuteStep.mockRestore();
+		});
+
+		it("fails when all jobs fail", async () => {
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockResolvedValue({
+					success: false,
+					error: "API timeout",
+					duration: 5,
+				});
+
+			const runner = new CLIPipelineRunner();
+			const result = await runner.run(
+				defaultOptions({
+					command: "generate-image",
+					text: "A cat",
+					count: 2,
+				}),
+				vi.fn()
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain("All 2 jobs failed");
+
+			mockExecuteStep.mockRestore();
+		});
+
+		it("single generation (count=1) uses fast path", async () => {
+			const mockExecuteStep = vi
+				.spyOn(PipelineExecutor.prototype, "executeStep")
+				.mockResolvedValue({
+					success: true,
+					outputPath: "/tmp/output.png",
+					duration: 1.0,
+					cost: 0.01,
+				});
+
+			const runner = new CLIPipelineRunner();
+			const result = await runner.run(
+				defaultOptions({
+					command: "generate-image",
+					text: "A cat",
+					count: 1,
+				}),
+				vi.fn()
+			);
+
+			expect(result.success).toBe(true);
+			// Single path, not wrapped in batch output
+			expect(result.outputPath).toBe("/tmp/output.png");
+			expect(mockExecuteStep).toHaveBeenCalledTimes(1);
+
+			mockExecuteStep.mockRestore();
+		});
+	});
+
 	describe("envApiKeyProvider", () => {
 		it("reads FAL_KEY from environment", async () => {
 			const orig = process.env.FAL_KEY;

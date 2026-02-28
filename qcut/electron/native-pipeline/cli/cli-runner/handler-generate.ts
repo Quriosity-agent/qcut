@@ -1,5 +1,8 @@
 /**
  * Generate handler (image/video/avatar).
+ *
+ * Supports single generation and parallel batch generation via --count or --prompts.
+ *
  * @module electron/native-pipeline/cli/cli-runner/handler-generate
  */
 
@@ -13,11 +16,102 @@ import { resolveOutputDir } from "../../output/output-utils.js";
 import type { CLIRunOptions, CLIResult, ProgressFn } from "./types.js";
 import { guessExtFromCommand } from "./progress.js";
 
+/**
+ * Run a single generation step and download the result.
+ * Shared by both single and batch paths.
+ */
+async function runSingleGeneration(
+	options: CLIRunOptions,
+	promptText: string,
+	onProgress: ProgressFn,
+	executor: PipelineExecutor,
+	signal: AbortSignal,
+	jobIndex: number,
+	outputDir: string,
+	params: Record<string, unknown>,
+): Promise<CLIResult> {
+	const startTime = Date.now();
+	const model = ModelRegistry.get(options.model!);
+	const prefix = jobIndex >= 0 ? `[${jobIndex + 1}] ` : "";
+
+	onProgress({
+		stage: "starting",
+		percent: 0,
+		message: `${prefix}Starting ${model.name}...`,
+		model: options.model,
+	});
+
+	const step: PipelineStep = {
+		type: model.categories[0],
+		model: options.model!,
+		params,
+		enabled: true,
+		retryCount: 0,
+	};
+
+	const input = {
+		text: promptText,
+		imageUrl: options.imageUrl,
+		videoUrl: options.videoUrl,
+		audioUrl: options.audioUrl,
+	};
+
+	const result = await executor.executeStep(step, input, {
+		outputDir,
+		onProgress: (percent, message) => {
+			onProgress({
+				stage: "processing",
+				percent,
+				message: `${prefix}${message}`,
+				model: options.model,
+			});
+		},
+		signal,
+	});
+
+	if (!result.success) {
+		return {
+			success: false,
+			error: `${prefix}${result.error}`,
+			duration: (Date.now() - startTime) / 1000,
+		};
+	}
+
+	if (!result.outputPath && result.outputUrl && outputDir) {
+		const ext = guessExtFromCommand(options.command);
+		const suffix = jobIndex >= 0 ? `_${jobIndex}` : "";
+		const filename = `output_${Date.now()}${suffix}${ext}`;
+		const destPath = path.join(outputDir, filename);
+		try {
+			result.outputPath = await downloadOutput(result.outputUrl, destPath);
+		} catch {
+			// URL still available in result
+		}
+	}
+
+	onProgress({
+		stage: "complete",
+		percent: 100,
+		message: `${prefix}Done`,
+		model: options.model,
+	});
+
+	const cost = result.cost ?? estimateCost(options.model!, params).totalCost;
+
+	return {
+		success: true,
+		outputPath: result.outputPath,
+		outputPaths: result.outputPath ? [result.outputPath] : undefined,
+		cost,
+		duration: (Date.now() - startTime) / 1000,
+	};
+}
+
 export async function handleGenerate(
 	options: CLIRunOptions,
 	onProgress: ProgressFn,
 	executor: PipelineExecutor,
-	signal: AbortSignal
+	signal: AbortSignal,
 ): Promise<CLIResult> {
 	if (!options.model) {
 		if (options.command === "generate-image") {
@@ -39,8 +133,9 @@ export async function handleGenerate(
 	const hasTextInput = !!options.text;
 	const hasImageInput = !!options.imageUrl;
 	const hasAudioInput = !!options.audioUrl;
+	const hasPrompts = options.prompts && options.prompts.length > 0;
 
-	if (options.command === "generate-image" && !hasTextInput) {
+	if (options.command === "generate-image" && !hasTextInput && !hasPrompts) {
 		return {
 			success: false,
 			error: "Missing --text/-t (prompt for image generation).",
@@ -63,8 +158,6 @@ export async function handleGenerate(
 		};
 	}
 
-	const startTime = Date.now();
-	const model = ModelRegistry.get(options.model);
 	const sessionId = `cli-${Date.now()}`;
 	const outputDir = resolveOutputDir(options.outputDir, sessionId);
 
@@ -81,74 +174,128 @@ export async function handleGenerate(
 		}
 	}
 
+	// Build list of prompts for batch generation
+	const prompts = buildPromptList(options);
+
+	// Single generation (no --count, no --prompts): original fast path
+	if (prompts.length <= 1) {
+		return runSingleGeneration(
+			options,
+			prompts[0] ?? options.text ?? "",
+			onProgress,
+			executor,
+			signal,
+			-1,
+			outputDir,
+			params,
+		);
+	}
+
+	// Parallel batch generation
+	return runParallelGeneration(
+		options,
+		prompts,
+		onProgress,
+		executor,
+		signal,
+		outputDir,
+		params,
+	);
+}
+
+/**
+ * Build the list of prompts to generate.
+ * --prompts takes priority, otherwise --count duplicates --text.
+ */
+function buildPromptList(options: CLIRunOptions): string[] {
+	if (options.prompts && options.prompts.length > 0) {
+		return options.prompts;
+	}
+	if (options.count && options.count > 1 && options.text) {
+		return Array.from({ length: options.count }, () => options.text!);
+	}
+	return options.text ? [options.text] : [];
+}
+
+/**
+ * Run multiple generation jobs in parallel using Promise.allSettled.
+ * Reports per-job progress and aggregates results.
+ */
+async function runParallelGeneration(
+	options: CLIRunOptions,
+	prompts: string[],
+	onProgress: ProgressFn,
+	executor: PipelineExecutor,
+	signal: AbortSignal,
+	outputDir: string,
+	params: Record<string, unknown>,
+): Promise<CLIResult> {
+	const startTime = Date.now();
+
 	onProgress({
 		stage: "starting",
 		percent: 0,
-		message: `Starting ${model.name}...`,
+		message: `Starting parallel generation of ${prompts.length} jobs...`,
 		model: options.model,
 	});
 
-	const step: PipelineStep = {
-		type: model.categories[0],
-		model: options.model,
-		params,
-		enabled: true,
-		retryCount: 0,
-	};
+	const jobs = prompts.map((prompt, index) =>
+		runSingleGeneration(
+			options,
+			prompt,
+			onProgress,
+			executor,
+			signal,
+			index,
+			outputDir,
+			params,
+		),
+	);
 
-	const input = {
-		text: options.text,
-		imageUrl: options.imageUrl,
-		videoUrl: options.videoUrl,
-		audioUrl: options.audioUrl,
-	};
+	const results = await Promise.allSettled(jobs);
 
-	const result = await executor.executeStep(step, input, {
-		outputDir,
-		onProgress: (percent, message) => {
-			onProgress({
-				stage: "processing",
-				percent,
-				message,
-				model: options.model,
-			});
-		},
-		signal,
-	});
+	const outputPaths: string[] = [];
+	let totalCost = 0;
+	const errors: string[] = [];
 
-	if (!result.success) {
-		return {
-			success: false,
-			error: result.error,
-			duration: (Date.now() - startTime) / 1000,
-		};
+	for (const [i, result] of results.entries()) {
+		if (result.status === "fulfilled") {
+			if (result.value.success) {
+				if (result.value.outputPath) {
+					outputPaths.push(result.value.outputPath);
+				}
+				totalCost += result.value.cost ?? 0;
+			} else {
+				errors.push(`[${i + 1}] ${result.value.error}`);
+			}
+		} else {
+			errors.push(`[${i + 1}] ${result.reason}`);
+		}
 	}
 
-	if (!result.outputPath && result.outputUrl && outputDir) {
-		const ext = guessExtFromCommand(options.command);
-		const filename = `output_${Date.now()}${ext}`;
-		const destPath = path.join(outputDir, filename);
-		try {
-			result.outputPath = await downloadOutput(result.outputUrl, destPath);
-		} catch {
-			// URL still available in result
-		}
+	const duration = (Date.now() - startTime) / 1000;
+
+	if (outputPaths.length === 0) {
+		return {
+			success: false,
+			error: `All ${prompts.length} jobs failed: ${errors.join("; ")}`,
+			duration,
+		};
 	}
 
 	onProgress({
 		stage: "complete",
 		percent: 100,
-		message: "Done",
+		message: `Completed ${outputPaths.length}/${prompts.length} jobs${errors.length > 0 ? ` (${errors.length} failed)` : ""}`,
 		model: options.model,
 	});
 
-	const cost = result.cost ?? estimateCost(options.model!, params).totalCost;
-
 	return {
 		success: true,
-		outputPath: result.outputPath,
-		outputPaths: result.outputPath ? [result.outputPath] : undefined,
-		cost,
-		duration: (Date.now() - startTime) / 1000,
+		outputPath: outputPaths[0],
+		outputPaths,
+		cost: totalCost,
+		duration,
+		data: errors.length > 0 ? { errors } : undefined,
 	};
 }

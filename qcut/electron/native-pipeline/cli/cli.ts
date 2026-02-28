@@ -283,6 +283,8 @@ Generation Options:
   --duration, -d      Duration (e.g. "5s", "10")
   --aspect-ratio      Aspect ratio (e.g. "16:9", "9:16")
   --resolution        Resolution (e.g. "1080p", "720p")
+  --count             Generate N copies in parallel (e.g. --count 3)
+  --prompts           Multiple prompts for parallel generation (repeatable)
 
 Pipeline Options:
   --config, -c        Path to YAML pipeline config
@@ -290,6 +292,10 @@ Pipeline Options:
   --save-intermediates Save intermediate step outputs
   --parallel          Enable parallel step execution
   --max-workers       Max concurrent workers (default: 8)
+
+Performance Options:
+  --skip-health       Skip editor health check (use when editor is known up)
+  --session           Session mode: read commands from stdin, one per line
 
 Editor Options (see docs for full list):
   --project-id   Project ID    --media-id   Media ID
@@ -479,6 +485,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// ui options
 			panel: { type: "string" },
 			tab: { type: "string" },
+			// batch generation options
+			count: { type: "string" },
+			prompts: { type: "string", multiple: true },
+			// performance flags
+			"skip-health": { type: "boolean", default: false },
+			session: { type: "boolean", default: false },
 		},
 		strict: false,
 	});
@@ -688,6 +700,16 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// ui options
 		panel: values.panel as string | undefined,
 		tab: values.tab as string | undefined,
+		// batch generation options
+		count: values.count
+			? Number.isNaN(parseInt(values.count as string, 10))
+				? undefined
+				: parseInt(values.count as string, 10)
+			: undefined,
+		prompts: values.prompts as string[] | undefined,
+		// performance flags
+		skipHealth: (values["skip-health"] as boolean) ?? false,
+		session: (values.session as boolean) ?? false,
 	};
 }
 
