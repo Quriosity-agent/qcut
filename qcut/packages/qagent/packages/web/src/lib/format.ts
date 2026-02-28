@@ -50,9 +50,14 @@ export function getSessionTitle(session: DashboardSession): string {
 	// 4. Any summary — even fallback excerpts beat branch names
 	if (session.summary) return session.summary;
 
-	// 5. Humanized branch
+	// 5. CWD for unmanaged CLI sessions — branch is already shown in a pill
+	if (session.metadata?.cwd && session.branch) {
+		return session.metadata.cwd;
+	}
+
+	// 6. Humanized branch
 	if (session.branch) return humanizeBranch(session.branch);
 
-	// 6. Status
+	// 7. Status
 	return session.status;
 }

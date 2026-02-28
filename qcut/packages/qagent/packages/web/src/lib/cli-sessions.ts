@@ -91,6 +91,24 @@ async function getTmuxPaneTTYs(): Promise<Set<string>> {
 }
 
 /**
+ * Resolve the current git branch for a directory.
+ * Returns null if not a git repo or on error.
+ */
+async function resolveGitBranch(cwd: string): Promise<string | null> {
+	try {
+		const { stdout } = await execFileAsync(
+			"git",
+			["rev-parse", "--abbrev-ref", "HEAD"],
+			{ timeout: 3_000, cwd },
+		);
+		const branch = stdout.trim();
+		return branch || null;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * Resolve a process's working directory via lsof.
  */
 async function resolveProcessCwd(pid: number): Promise<string | null> {
@@ -114,6 +132,7 @@ async function resolveProcessCwd(pid: number): Promise<string | null> {
 function cliProcessToDashboard(
 	proc: CLIProcess,
 	cwd: string | null,
+	branch: string | null,
 ): DashboardSession {
 	const now = new Date().toISOString();
 	return {
@@ -121,7 +140,7 @@ function cliProcessToDashboard(
 		projectId: "",
 		status: "working",
 		activity: null,
-		branch: null,
+		branch,
 		issueId: null,
 		issueUrl: null,
 		issueLabel: null,
@@ -160,7 +179,8 @@ export async function findCLISession(
 	if (!proc) return null;
 
 	const cwd = await resolveProcessCwd(pid);
-	return cliProcessToDashboard(proc, cwd);
+	const branch = cwd ? await resolveGitBranch(cwd) : null;
+	return cliProcessToDashboard(proc, cwd, branch);
 }
 
 /**
@@ -202,8 +222,13 @@ export async function mergeWithUnmanagedCLI(
 		unmanaged.map((p) => resolveProcessCwd(p.pid)),
 	);
 
+	// Resolve git branches in parallel for processes with a CWD
+	const branches = await Promise.all(
+		cwds.map((cwd) => (cwd ? resolveGitBranch(cwd) : Promise.resolve(null))),
+	);
+
 	const unmanagedSessions = unmanaged.map((p, i) =>
-		cliProcessToDashboard(p, cwds[i] ?? null),
+		cliProcessToDashboard(p, cwds[i] ?? null, branches[i] ?? null),
 	);
 
 	return [...managedSessions, ...unmanagedSessions];

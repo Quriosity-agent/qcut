@@ -215,8 +215,11 @@ export function SessionCard({
 			{/* Meta row: branch + PR pills */}
 			<div className="flex flex-wrap items-center gap-1.5 px-4 pb-2.5">
 				{session.branch && (
-					<span className="font-[var(--font-mono)] text-[10px] text-[var(--color-text-muted)]">
-						{session.branch}
+					<span className="inline-flex items-center gap-1.5 rounded-[4px] bg-[rgba(136,192,208,0.08)] px-1.5 py-0.5 text-[10px]">
+						<span className="text-[var(--color-text-tertiary)]">branch</span>
+						<span className="font-[var(--font-mono)] text-[rgba(136,192,208,0.75)]">
+							{session.branch}
+						</span>
 					</span>
 				)}
 				{session.branch && pr && (

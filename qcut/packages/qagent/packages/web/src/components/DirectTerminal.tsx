@@ -16,6 +16,9 @@ interface DirectTerminalProps {
 	/** Actual tmux session name (hash-prefixed). If provided, used for WebSocket
 	 *  connection instead of sessionId. The sessionId is still shown in the UI. */
 	tmuxName?: string;
+	/** Working directory for CLI sessions. When provided, spawns a shell in this
+	 *  directory instead of attaching to a tmux session. */
+	cwd?: string;
 	startFullscreen?: boolean;
 	/** Visual variant. "orchestrator" uses violet accent; "agent" (default) uses blue. */
 	variant?: "agent" | "orchestrator";
@@ -37,6 +40,7 @@ interface DirectTerminalProps {
 export function DirectTerminal({
 	sessionId,
 	tmuxName,
+	cwd,
 	startFullscreen = false,
 	variant = "agent",
 	height = "max(440px, calc(100vh - 440px))",
@@ -172,7 +176,10 @@ export function DirectTerminal({
 				const hostname = window.location.hostname;
 				const port = process.env.NEXT_PUBLIC_DIRECT_TERMINAL_PORT ?? "14801";
 				const wsSessionId = tmuxName || sessionId;
-				const wsUrl = `${protocol}//${hostname}:${port}/ws?session=${encodeURIComponent(wsSessionId)}`;
+				let wsUrl = `${protocol}//${hostname}:${port}/ws?session=${encodeURIComponent(wsSessionId)}`;
+				if (cwd) {
+					wsUrl += `&cwd=${encodeURIComponent(cwd)}`;
+				}
 
 				console.log("[DirectTerminal] Connecting to:", wsUrl);
 				const websocket = new WebSocket(wsUrl);
@@ -262,7 +269,7 @@ export function DirectTerminal({
 			mounted = false;
 			cleanup?.();
 		};
-	}, [sessionId, tmuxName, variant, error, status]);
+	}, [sessionId, tmuxName, cwd, variant, error, status]);
 
 	// Re-fit terminal when fullscreen changes
 	useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { type DashboardSession, type DashboardPR } from "@/lib/types";
 import { CI_STATUS } from "@composio/ao-core/types";
@@ -462,31 +462,16 @@ export function SessionDetail({
 							Terminal
 						</span>
 					</div>
-					{session.metadata?.agent ? (
-						<div className="rounded-[6px] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] p-6">
-							<p className="text-[13px] text-[var(--color-text-secondary)]">
-								This{" "}
-								{session.metadata.agent === "claude-code"
-									? "Claude Code"
-									: "Codex"}{" "}
-								session is running directly in your terminal.
-							</p>
-							<div className="mt-3 space-y-1.5 font-[var(--font-mono)] text-[12px] text-[var(--color-text-muted)]">
-								<p>PID: {session.metadata.pid}</p>
-								<p>TTY: {session.metadata.tty}</p>
-								{session.metadata.cwd && (
-									<p>CWD: {session.metadata.cwd}</p>
-								)}
-								<p>CMD: {session.metadata.command}</p>
-							</div>
-							<p className="mt-4 text-[11px] text-[var(--color-text-tertiary)]">
-								Switch to terminal tab{" "}
-								<span className="font-[var(--font-mono)] text-[var(--color-accent)]">
-									{session.metadata.tty}
-								</span>{" "}
-								to interact with this session.
-							</p>
-						</div>
+					{session.metadata?.agent && session.metadata?.cwd ? (
+						<DirectTerminal
+							sessionId={session.id}
+							cwd={session.metadata.cwd}
+							startFullscreen={startFullscreen}
+							variant={terminalVariant}
+							height={terminalHeight}
+						/>
+					) : session.metadata?.agent ? (
+						<CLITerminalPanel session={session} />
 					) : (
 						<DirectTerminal
 							sessionId={session.id}
@@ -892,6 +877,93 @@ function IssuesList({ pr }: { pr: DashboardPR }) {
 					</span>
 				</div>
 			))}
+		</div>
+	);
+}
+
+// ── CLI Terminal Panel ───────────────────────────────────────────────
+
+function CLITerminalPanel({ session }: { session: DashboardSession }) {
+	const [opening, setOpening] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	const openTerminal = useCallback(async () => {
+		setOpening(true);
+		setError(null);
+		try {
+			const res = await fetch(
+				`/api/sessions/${encodeURIComponent(session.id)}/open-terminal`,
+				{ method: "POST" },
+			);
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
+				setError(data.error ?? "Failed to open terminal");
+			}
+		} catch {
+			setError("Failed to open terminal");
+		} finally {
+			setOpening(false);
+		}
+	}, [session.id]);
+
+	const agentName =
+		session.metadata.agent === "claude-code" ? "Claude Code" : "Codex";
+
+	return (
+		<div className="rounded-[6px] border border-[var(--color-border-default)] bg-[#0a0a0f] overflow-hidden">
+			{/* Chrome bar */}
+			<div className="flex items-center gap-2 border-b border-[var(--color-border-subtle)] bg-[var(--color-bg-elevated)] px-3 py-2">
+				<div className="h-2 w-2 shrink-0 rounded-full bg-[var(--color-status-working)]" />
+				<span className="font-[var(--font-mono)] text-[11px] text-[var(--color-accent)]">
+					{session.id}
+				</span>
+				<span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--color-text-tertiary)]">
+					{agentName}
+				</span>
+			</div>
+			{/* Body */}
+			<div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
+				<div className="flex flex-col items-center gap-1.5 text-center">
+					<p className="text-[13px] text-[var(--color-text-secondary)]">
+						This {agentName} session is running in your terminal
+					</p>
+					<div className="flex items-center gap-3 font-[var(--font-mono)] text-[11px] text-[var(--color-text-muted)]">
+						<span>PID {session.metadata.pid}</span>
+						<span className="text-[var(--color-border-strong)]">&middot;</span>
+						<span>TTY {session.metadata.tty}</span>
+					</div>
+				</div>
+				<button
+					onClick={openTerminal}
+					disabled={opening}
+					className={cn(
+						"mt-2 flex items-center gap-2 rounded-[6px] px-5 py-2.5 text-[13px] font-medium transition-colors",
+						"bg-[var(--color-accent)] text-white hover:brightness-110",
+						"disabled:opacity-50 disabled:cursor-not-allowed",
+					)}
+				>
+					<svg
+						className="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						viewBox="0 0 24 24"
+					>
+						<path d="M4 17l6-5-6-5M12 19h8" />
+					</svg>
+					{opening ? "Opening…" : "Open in Terminal"}
+				</button>
+				{error && (
+					<p className="text-[11px] text-[var(--color-status-error)]">
+						{error}
+					</p>
+				)}
+				{session.metadata.cwd && (
+					<p className="mt-2 font-[var(--font-mono)] text-[10px] text-[var(--color-text-tertiary)]">
+						{session.metadata.cwd}
+					</p>
+				)}
+			</div>
 		</div>
 	);
 }
