@@ -319,7 +319,7 @@ async function handleScreenRecordingCommand(
 			const stopData = await client.post(
 				"/api/claude/screen-recording/stop",
 				body,
-				{ timeout: 90_000 }
+				{ timeout: 30_000 }
 			);
 			const verification = await verifyScreenRecordingStopped({ client });
 			if (!verification.recoveredViaForceStop) {

@@ -214,7 +214,8 @@ function stopMediaTracks({ mediaStream }: { mediaStream: MediaStream }): void {
 	}
 }
 
-const RECORDER_STOP_TIMEOUT_MS = 30_000;
+/** MediaRecorder.stop() emits synchronously — 10s is generous. */
+const RECORDER_STOP_TIMEOUT_MS = 10_000;
 
 async function waitForRecorderStop({
 	mediaRecorder,
