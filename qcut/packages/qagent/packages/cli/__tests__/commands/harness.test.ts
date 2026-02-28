@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type {
-	Session,
-	SessionManager,
-	RuntimeHandle,
+import {
+	createTeamManager,
+	type Session,
+	type SessionManager,
+	type RuntimeHandle,
 } from "@composio/ao-core";
 
 const { mockConfigRef, mockSessionManager, mockExec } = vi.hoisted(() => ({
@@ -308,6 +309,119 @@ describe("harness command", () => {
 		};
 		expect(store.defaultSessionKey).toBeNull();
 		expect(Object.keys(store.sessions)).toHaveLength(0);
+	});
+
+	it("relays unread team inbox messages into the harness session", async () => {
+		mockSessionManager.spawn.mockResolvedValue(makeSession({ id: "app-1" }));
+
+		const teamManager = createTeamManager({ rootDir: tmpDir });
+		await teamManager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["codex", "team-lead"],
+		});
+		await teamManager.sendMessage({
+			teamId: "alpha-team",
+			from: "team-lead",
+			to: "codex",
+			text: "Please run tests and summarize failures.",
+		});
+
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"spawn",
+			"codex",
+			"start",
+		]);
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"relay",
+			"--team",
+			"alpha-team",
+			"--member",
+			"codex",
+			"--root",
+			tmpDir,
+			"--once",
+			"--no-output",
+		]);
+
+		expect(mockSessionManager.send).toHaveBeenCalledWith(
+			"app-1",
+			expect.stringContaining("Please run tests and summarize failures.")
+		);
+		expect(mockSessionManager.send).toHaveBeenCalledWith(
+			"app-1",
+			expect.stringContaining("from=team-lead")
+		);
+
+		const unread = await teamManager.readInbox({
+			teamId: "alpha-team",
+			member: "codex",
+			unreadOnly: true,
+		});
+		expect(unread).toEqual([]);
+	});
+
+	it("relays tmux output to peer inbox members", async () => {
+		mockSessionManager.spawn.mockResolvedValue(makeSession({ id: "app-1" }));
+		mockSessionManager.get.mockResolvedValue(
+			makeSession({
+				id: "app-1",
+				runtimeHandle: makeRuntimeHandle({ id: "tmux-target-1" }),
+			})
+		);
+		mockExec.mockImplementation(async (cmd: string, args: string[]) => {
+			if (cmd === "tmux" && args[0] === "capture-pane") {
+				return {
+					stdout: "build started\nall tests passed",
+					stderr: "",
+				};
+			}
+			return { stdout: "", stderr: "" };
+		});
+
+		const teamManager = createTeamManager({ rootDir: tmpDir });
+		await teamManager.ensureTeam({
+			teamId: "alpha-team",
+			members: ["codex", "team-lead"],
+		});
+
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"spawn",
+			"codex",
+			"start",
+		]);
+		await program.parseAsync([
+			"node",
+			"test",
+			"harness",
+			"relay",
+			"--team",
+			"alpha-team",
+			"--member",
+			"codex",
+			"--root",
+			tmpDir,
+			"--once",
+			"--emit-initial-output",
+		]);
+
+		const inbox = await teamManager.readInbox({
+			teamId: "alpha-team",
+			member: "team-lead",
+			unreadOnly: true,
+		});
+		expect(inbox).toHaveLength(1);
+		expect(inbox[0].from).toBe("codex");
+		expect(inbox[0].text).toContain("all tests passed");
+		expect(mockSessionManager.send).not.toHaveBeenCalled();
 	});
 
 	it("rejects invalid mode", async () => {

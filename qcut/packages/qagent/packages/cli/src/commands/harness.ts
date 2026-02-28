@@ -90,6 +90,20 @@ interface HarnessOptionSetOptions extends HarnessTargetOptions {
 	apply?: boolean;
 }
 
+interface HarnessRelayOptions extends HarnessTargetOptions {
+	team?: string;
+	member?: string;
+	to?: string;
+	root?: string;
+	interval?: string;
+	batch?: string;
+	lines?: string;
+	maxChars?: string;
+	once?: boolean;
+	output?: boolean;
+	emitInitialOutput?: boolean;
+}
+
 interface HarnessStoreContext {
 	config: OrchestratorConfig;
 	storePath: string;
@@ -104,6 +118,35 @@ interface HarnessResolvedTarget {
 interface HarnessStatusRecord extends HarnessSessionRecord {
 	liveStatus: string;
 	activity: string | null;
+}
+
+interface RelayParsedOptions {
+	teamId: string;
+	member: string;
+	rootDir: string;
+	intervalMs: number;
+	batchSize: number;
+	outputLines: number;
+	maxChars: number;
+	once: boolean;
+	outputEnabled: boolean;
+	emitInitialOutput: boolean;
+}
+
+interface RelayRunConfig extends RelayParsedOptions {
+	peers: string[];
+	record: HarnessSessionRecord;
+	teamManager: TeamManager;
+	sm: SessionManager;
+}
+
+interface RelayState {
+	previousOutput: string | null;
+}
+
+interface RelaySignalController {
+	isStopped: () => boolean;
+	dispose: () => void;
 }
 
 function createEmptyStore(): HarnessStore {
@@ -270,6 +313,23 @@ function parseTimeout({
 	const parsed = Number.parseInt(timeout, 10);
 	if (Number.isNaN(parsed) || parsed < 1) {
 		throw new Error("timeout must be a positive integer");
+	}
+	return parsed;
+}
+
+function parsePositiveIntegerOption({
+	value,
+	flag,
+}: {
+	value: string | undefined;
+	flag: string;
+}): number | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+	const parsed = Number.parseInt(value, 10);
+	if (Number.isNaN(parsed) || parsed < 1) {
+		throw new Error(`${flag} must be a positive integer`);
 	}
 	return parsed;
 }
@@ -632,6 +692,417 @@ function parseTaskText({
 	return parts.join(" ").trim();
 }
 
+function resolveTeamRoot({
+	root,
+}: {
+	root?: string;
+}): string {
+	return root ?? process.env.QAGENT_TEAM_ROOT ?? "~/.claude/teams";
+}
+
+function parseRelayOptions({
+	options,
+}: {
+	options: HarnessRelayOptions;
+}): RelayParsedOptions {
+	if (!options.team || !options.team.trim()) {
+		throw new Error("--team is required");
+	}
+	if (!options.member || !options.member.trim()) {
+		throw new Error("--member is required");
+	}
+
+	return {
+		teamId: options.team.trim(),
+		member: options.member.trim(),
+		rootDir: resolveTeamRoot({ root: options.root }),
+		intervalMs:
+			parsePositiveIntegerOption({
+				value: options.interval,
+				flag: "--interval",
+			}) ?? 1_500,
+		batchSize:
+			parsePositiveIntegerOption({
+				value: options.batch,
+				flag: "--batch",
+			}) ?? 20,
+		outputLines:
+			parsePositiveIntegerOption({
+				value: options.lines,
+				flag: "--lines",
+			}) ?? 120,
+		maxChars:
+			parsePositiveIntegerOption({
+				value: options.maxChars,
+				flag: "--max-chars",
+			}) ?? 4_000,
+		once: Boolean(options.once),
+		outputEnabled: options.output !== false,
+		emitInitialOutput: Boolean(options.emitInitialOutput),
+	};
+}
+
+async function resolveRelayPeers({
+	teamManager,
+	teamId,
+	member,
+	to,
+}: {
+	teamManager: TeamManager;
+	teamId: string;
+	member: string;
+	to?: string;
+}): Promise<string[]> {
+	try {
+		const members = await teamManager.listMembers({ teamId });
+		if (members.length === 0) {
+			throw new Error(`Team '${teamId}' has no members`);
+		}
+		if (!members.includes(member)) {
+			throw new Error(`Member '${member}' not found in team '${teamId}'`);
+		}
+
+		let peers: string[];
+		if (to && to.trim()) {
+			const requested = to
+				.split(",")
+				.map((entry) => entry.trim())
+				.filter(Boolean);
+			const uniqueRequested = [...new Set(requested)];
+			for (const peer of uniqueRequested) {
+				if (!members.includes(peer)) {
+					throw new Error(`Peer '${peer}' not found in team '${teamId}'`);
+				}
+			}
+			peers = uniqueRequested.filter((peer) => peer !== member);
+		} else {
+			peers = members.filter((candidate) => candidate !== member);
+		}
+
+		return peers;
+	} catch (error) {
+		throw new Error("Failed to resolve relay peers", { cause: error });
+	}
+}
+
+function createRelaySignalController(): RelaySignalController {
+	let stopped = false;
+	const onSignal = (): void => {
+		stopped = true;
+	};
+	process.on("SIGINT", onSignal);
+	process.on("SIGTERM", onSignal);
+	return {
+		isStopped: () => stopped,
+		dispose: () => {
+			process.off("SIGINT", onSignal);
+			process.off("SIGTERM", onSignal);
+		},
+	};
+}
+
+async function sleep({
+	ms,
+}: {
+	ms: number;
+}): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+function formatInboundRelayMessage({
+	message,
+}: {
+	message: TeamMessage;
+}): string {
+	const protocol = parseTeamProtocolMessage({ message });
+	const headerParts = [
+		"[qagent-team-relay]",
+		`from=${message.from}`,
+		`timestamp=${message.timestamp}`,
+	];
+	if (message.summary) {
+		headerParts.push(`summary=${message.summary}`);
+	}
+
+	if (protocol) {
+		return `${headerParts.join(" ")}\n${JSON.stringify(protocol, null, 2)}`;
+	}
+
+	return `${headerParts.join(" ")}\n${message.text}`;
+}
+
+function clipRelayText({
+	text,
+	maxChars,
+}: {
+	text: string;
+	maxChars: number;
+}): string {
+	if (text.length <= maxChars) {
+		return text;
+	}
+	const trimmedSize = text.length - maxChars;
+	return `[truncated ${trimmedSize} chars]\n${text.slice(-maxChars)}`;
+}
+
+function splitLines({
+	value,
+}: {
+	value: string;
+}): string[] {
+	if (!value) {
+		return [];
+	}
+	return value.split("\n");
+}
+
+function findLineOverlap({
+	previous,
+	current,
+}: {
+	previous: string[];
+	current: string[];
+}): number {
+	const maxOverlap = Math.min(previous.length, current.length);
+	for (let size = maxOverlap; size > 0; size--) {
+		let matched = true;
+		for (let index = 0; index < size; index++) {
+			const previousLine = previous[previous.length - size + index];
+			const currentLine = current[index];
+			if (previousLine !== currentLine) {
+				matched = false;
+				break;
+			}
+		}
+		if (matched) {
+			return size;
+		}
+	}
+	return 0;
+}
+
+function computeOutputDelta({
+	previousOutput,
+	nextOutput,
+	emitInitialOutput,
+}: {
+	previousOutput: string | null;
+	nextOutput: string;
+	emitInitialOutput: boolean;
+}): string | null {
+	if (!nextOutput.trim()) {
+		return null;
+	}
+	if (previousOutput === null) {
+		return emitInitialOutput ? nextOutput : null;
+	}
+	if (previousOutput === nextOutput) {
+		return null;
+	}
+
+	const previousLines = splitLines({ value: previousOutput });
+	const nextLines = splitLines({ value: nextOutput });
+	const overlap = findLineOverlap({
+		previous: previousLines,
+		current: nextLines,
+	});
+	const deltaLines = nextLines.slice(overlap);
+	if (deltaLines.length === 0) {
+		return null;
+	}
+	return deltaLines.join("\n").trim();
+}
+
+async function readHarnessOutputSnapshot({
+	sm,
+	record,
+	lines,
+}: {
+	sm: SessionManager;
+	record: HarnessSessionRecord;
+	lines: number;
+}): Promise<string | null> {
+	try {
+		const session = await sm.get(record.sessionId);
+		if (!session) {
+			throw new Error(`Harness session '${record.sessionId}' not found`);
+		}
+		if (!session.runtimeHandle) {
+			return null;
+		}
+		if (session.runtimeHandle.runtimeName !== "tmux") {
+			return null;
+		}
+		const { stdout } = await exec("tmux", [
+			"capture-pane",
+			"-t",
+			session.runtimeHandle.id,
+			"-p",
+			"-S",
+			`-${lines}`,
+		]);
+		return stdout.trim();
+	} catch (error) {
+		throw new Error("Failed to capture harness output", { cause: error });
+	}
+}
+
+async function relayInboxToHarness({
+	teamManager,
+	teamId,
+	member,
+	batchSize,
+	record,
+	sm,
+}: {
+	teamManager: TeamManager;
+	teamId: string;
+	member: string;
+	batchSize: number;
+	record: HarnessSessionRecord;
+	sm: SessionManager;
+}): Promise<number> {
+	try {
+		const inbound = await teamManager.readInbox({
+			teamId,
+			member,
+			unreadOnly: true,
+			markAsRead: true,
+			limit: batchSize,
+		});
+		const forwardable = inbound.filter((message) => message.from !== member);
+		await Promise.all(
+			forwardable.map(async (message) => {
+				const envelope = formatInboundRelayMessage({ message });
+				await sm.send(record.sessionId, envelope);
+			})
+		);
+		return forwardable.length;
+	} catch (error) {
+		throw new Error("Failed to relay inbox messages to harness", {
+			cause: error,
+		});
+	}
+}
+
+async function relayHarnessToTeam({
+	teamManager,
+	teamId,
+	member,
+	peers,
+	record,
+	state,
+	outputLines,
+	maxChars,
+	emitInitialOutput,
+	sm,
+}: {
+	teamManager: TeamManager;
+	teamId: string;
+	member: string;
+	peers: string[];
+	record: HarnessSessionRecord;
+	state: RelayState;
+	outputLines: number;
+	maxChars: number;
+	emitInitialOutput: boolean;
+	sm: SessionManager;
+}): Promise<number> {
+	try {
+		if (peers.length === 0) {
+			return 0;
+		}
+
+		const snapshot = await readHarnessOutputSnapshot({
+			sm,
+			record,
+			lines: outputLines,
+		});
+		if (snapshot === null) {
+			return 0;
+		}
+
+		const delta = computeOutputDelta({
+			previousOutput: state.previousOutput,
+			nextOutput: snapshot,
+			emitInitialOutput,
+		});
+		state.previousOutput = snapshot;
+		if (!delta) {
+			return 0;
+		}
+
+		const clipped = clipRelayText({
+			text: delta,
+			maxChars,
+		});
+		const relayMessage = [
+			`[qagent-harness-relay] session=${record.key}`,
+			`timestamp=${new Date().toISOString()}`,
+			"",
+			clipped,
+		].join("\n");
+
+		await Promise.all(
+			peers.map(async (peer) => {
+				await teamManager.sendMessage({
+					teamId,
+					from: member,
+					to: peer,
+					text: relayMessage,
+					summary: `relay:${record.agentId}`,
+					color: "cyan",
+					read: false,
+				});
+			})
+		);
+		return peers.length;
+	} catch (error) {
+		throw new Error("Failed to relay harness output to team", { cause: error });
+	}
+}
+
+async function runRelayCycle({
+	config,
+	state,
+}: {
+	config: RelayRunConfig;
+	state: RelayState;
+}): Promise<{ inboundCount: number; outboundCount: number }> {
+	try {
+		const inboundCount = await relayInboxToHarness({
+			teamManager: config.teamManager,
+			teamId: config.teamId,
+			member: config.member,
+			batchSize: config.batchSize,
+			record: config.record,
+			sm: config.sm,
+		});
+
+		let outboundCount = 0;
+		if (config.outputEnabled) {
+			outboundCount = await relayHarnessToTeam({
+				teamManager: config.teamManager,
+				teamId: config.teamId,
+				member: config.member,
+				peers: config.peers,
+				record: config.record,
+				state,
+				outputLines: config.outputLines,
+				maxChars: config.maxChars,
+				emitInitialOutput: config.emitInitialOutput,
+				sm: config.sm,
+			});
+		}
+
+		return { inboundCount, outboundCount };
+	} catch (error) {
+		throw new Error("Relay cycle failed", { cause: error });
+	}
+}
+
 async function runCancel({
 	record,
 	context,
@@ -889,6 +1360,118 @@ export function registerHarness(program: Command): void {
 					error instanceof Error ? error.message : String(error);
 				console.error(chalk.red(`Failed to close harness session: ${message}`));
 				process.exit(1);
+			}
+		});
+
+	harness
+		.command("relay")
+		.description(
+			"Run team<->harness bridge loop (inbox messages to harness; harness output back to peers)"
+		)
+		.requiredOption("--team <id>", "Team identifier")
+		.requiredOption("--member <name>", "Team member bound to the harness session")
+		.option(
+			"--to <members>",
+			"Comma-separated peer list (defaults to all members except --member)"
+		)
+		.option("--root <path>", "Team root directory (default ~/.claude/teams)")
+		.option("-s, --session <target>", "Session target")
+		.option("--interval <ms>", "Polling interval in milliseconds", "1500")
+		.option("--batch <count>", "Unread inbox batch size per poll", "20")
+		.option("--lines <count>", "Captured tmux output lines per poll", "120")
+		.option(
+			"--max-chars <count>",
+			"Maximum outbound relay payload size per poll",
+			"4000"
+		)
+		.option("--once", "Run one relay cycle then exit")
+		.option("--no-output", "Disable harness->team output relay")
+		.option(
+			"--emit-initial-output",
+			"Forward current harness output snapshot on the first poll"
+		)
+		.action(async (options: HarnessRelayOptions): Promise<void> => {
+			const signalController = createRelaySignalController();
+			try {
+				const parsed = parseRelayOptions({ options });
+				const context = getTargetContext();
+				const { record } = resolveTarget({
+					context,
+					target: options.session,
+				});
+				const teamManager = createTeamManager({
+					rootDir: parsed.rootDir,
+				});
+				const peers = await resolveRelayPeers({
+					teamManager,
+					teamId: parsed.teamId,
+					member: parsed.member,
+					to: options.to,
+				});
+				if (parsed.outputEnabled && peers.length === 0) {
+					throw new Error(
+						"No relay peers found. Add another member or use --to/--no-output."
+					);
+				}
+				const sm = await getSessionManagerForContext({ context });
+				const relayConfig: RelayRunConfig = {
+					...parsed,
+					peers,
+					record,
+					teamManager,
+					sm,
+				};
+				const state: RelayState = {
+					previousOutput: null,
+				};
+
+				console.log(
+					chalk.green(
+						`Relay started for ${record.key} (team=${parsed.teamId}, member=${parsed.member})`
+					)
+				);
+				if (parsed.outputEnabled) {
+					console.log(chalk.dim(`  outbound peers: ${peers.join(", ")}`));
+				}
+
+				while (!signalController.isStopped()) {
+					try {
+						const result = await runRelayCycle({
+							config: relayConfig,
+							state,
+						});
+						if (result.inboundCount > 0 || result.outboundCount > 0) {
+							record.updatedAt = new Date().toISOString();
+							updateRecord({ context, record });
+							console.log(
+								chalk.dim(
+									`[relay] inbound=${result.inboundCount} outbound=${result.outboundCount}`
+								)
+							);
+						}
+					} catch (error) {
+						if (parsed.once) {
+							throw error;
+						}
+						const message =
+							error instanceof Error ? error.message : String(error);
+						console.error(chalk.red(`Relay cycle error: ${message}`));
+					}
+
+					if (parsed.once) {
+						break;
+					}
+					await sleep({ ms: parsed.intervalMs });
+				}
+
+				console.log(chalk.green(`Relay stopped for ${record.key}`));
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : String(error);
+				console.error(chalk.red(`Failed to run harness relay: ${message}`));
+				process.exit(1);
+			} finally {
+				signalController.dispose();
 			}
 		});
 
