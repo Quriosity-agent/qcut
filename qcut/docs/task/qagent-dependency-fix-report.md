@@ -36,7 +36,7 @@ The following qagent commands are **unavailable** due to the missing dependency:
 - `dashboard`
 - `open`
 
-Only `init` and `pr-comments` work (they do not depend on `@composio/ao-core`).
+Only `init` and `pr-comments` work (except the `pr-comments forward` subcommand, which depends on `@composio/ao-core`).
 
 ## Possible Solutions
 

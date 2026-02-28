@@ -49,8 +49,21 @@ async function registerOptionalCommands(prog: Command): Promise<void> {
 					mod[fn](prog);
 				}
 			}
-		} catch {
-			skipped.push(modPath.replace("./commands/", "").replace(".js", ""));
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			const isModuleNotFound =
+				message.includes("Cannot find package") ||
+				message.includes("ERR_MODULE_NOT_FOUND");
+
+			if (isModuleNotFound) {
+				skipped.push(
+					modPath.replace("./commands/", "").replace(".js", "")
+				);
+				continue;
+			}
+
+			throw error;
 		}
 	}
 
@@ -62,4 +75,11 @@ async function registerOptionalCommands(prog: Command): Promise<void> {
 	}
 }
 
-registerOptionalCommands(program).then(() => program.parse());
+registerOptionalCommands(program)
+	.then(() => program.parse())
+	.catch((error) => {
+		console.error(
+			`Failed to initialize CLI: ${error instanceof Error ? error.message : String(error)}`
+		);
+		process.exit(1);
+	});
