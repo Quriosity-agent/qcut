@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	type DashboardSession,
 	type DashboardStats,
@@ -31,21 +31,64 @@ const KANBAN_LEVELS = [
 
 export function Dashboard({
 	sessions: initialSessions,
-	stats,
 	orchestratorId,
 	projectName,
 }: DashboardProps) {
 	const [labelOverrides, setLabelOverrides] = useState<
 		Record<string, string | null>
 	>({});
+
+	// Live activity/status overrides from SSE stream
+	const [liveOverrides, setLiveOverrides] = useState<
+		Record<string, { status?: string; activity?: string }>
+	>({});
+
+	useEffect(() => {
+		const es = new EventSource("/api/events");
+		es.onmessage = (ev) => {
+			try {
+				const data = JSON.parse(ev.data) as {
+					type: string;
+					sessions?: Array<{
+						id: string;
+						status?: string;
+						activity?: string;
+					}>;
+				};
+				if (data.type === "snapshot" && data.sessions) {
+					const overrides: Record<
+						string,
+						{ status?: string; activity?: string }
+					> = {};
+					for (const s of data.sessions) {
+						overrides[s.id] = {
+							status: s.status,
+							activity: s.activity,
+						};
+					}
+					setLiveOverrides(overrides);
+				}
+			} catch {
+				// Ignore malformed events
+			}
+		};
+		return () => es.close();
+	}, []);
+
 	const sessions = useMemo(
 		() =>
-			initialSessions.map((s) =>
-				s.id in labelOverrides
-					? { ...s, label: labelOverrides[s.id] }
-					: s
-			),
-		[initialSessions, labelOverrides]
+			initialSessions.map((s) => {
+				const live = liveOverrides[s.id];
+				const label =
+					s.id in labelOverrides ? labelOverrides[s.id] : s.label;
+				return {
+					...s,
+					...(label !== undefined ? { label } : {}),
+					...(live?.status ? { status: live.status as DashboardSession["status"] } : {}),
+					...(live?.activity ? { activity: live.activity as DashboardSession["activity"] } : {}),
+				};
+			}),
+		[initialSessions, labelOverrides, liveOverrides]
 	);
 	const [rateLimitDismissed, setRateLimitDismissed] = useState(false);
 	const grouped = useMemo(() => {
@@ -145,6 +188,26 @@ export function Dashboard({
 		}
 	};
 
+	// Compute live stats from the session list (reflects SSE updates)
+	const liveStats = useMemo<DashboardStats>(() => {
+		let workingSessions = 0;
+		let openPRs = 0;
+		let needsReview = 0;
+		for (const s of sessions) {
+			if (s.activity === "active" || s.status === "working") workingSessions++;
+			if (s.pr?.state === "open") {
+				openPRs++;
+				if (getAttentionLevel(s) === "review") needsReview++;
+			}
+		}
+		return {
+			totalSessions: sessions.length,
+			workingSessions,
+			openPRs,
+			needsReview,
+		};
+	}, [sessions]);
+
 	const hasKanbanSessions = KANBAN_LEVELS.some((l) => grouped[l].length > 0);
 
 	const anyRateLimited = useMemo(
@@ -161,7 +224,7 @@ export function Dashboard({
 					<h1 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]">
 						Orchestrator
 					</h1>
-					<StatusLine stats={stats} />
+					<StatusLine stats={liveStats} />
 				</div>
 				{orchestratorId && (
 					<a

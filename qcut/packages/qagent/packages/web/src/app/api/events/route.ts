@@ -62,7 +62,7 @@ export async function GET(): Promise<Response> {
 				}
 			}, 15000);
 
-			// Poll for session state changes every 5 seconds
+			// Poll for session state changes every 2 seconds
 			updates = setInterval(() => {
 				void (async () => {
 					let dashboardSessions;
@@ -98,7 +98,7 @@ export async function GET(): Promise<Response> {
 						clearInterval(heartbeat);
 					}
 				})();
-			}, 5000);
+			}, 2000);
 		},
 		cancel() {
 			clearInterval(heartbeat);

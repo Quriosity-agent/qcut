@@ -50,6 +50,13 @@ async function discoverCLIProcesses(): Promise<CLIProcess[]> {
 		// Skip background processes (Claude Desktop, daemons)
 		if (tty === "??" || tty === "-") continue;
 
+		// Skip desktop app bundle processes (Claude.app, Codex.app, etc.)
+		if (args.includes(".app/Contents/")) continue;
+
+		// Skip Claude Desktop API-mode instances (spawned by Claude Desktop, not user CLI)
+		if (args.includes("--output-format stream-json")) continue;
+		if (args.includes("--permission-prompt-tool stdio")) continue;
+
 		let agent: "claude-code" | "codex" | null = null;
 		if (CLAUDE_RE.test(args)) agent = "claude-code";
 		else if (CODEX_RE.test(args)) agent = "codex";
@@ -87,6 +94,26 @@ async function getTmuxPaneTTYs(): Promise<Set<string>> {
 	} catch {
 		// tmux not running or not installed — no pane TTYs to exclude
 		return new Set();
+	}
+}
+
+/**
+ * Detect whether a process is active or idle via CPU usage.
+ * Returns "active" if %CPU > 1, "idle" otherwise.
+ */
+async function resolveProcessActivity(
+	pid: number,
+): Promise<"active" | "idle"> {
+	try {
+		const { stdout } = await execFileAsync(
+			"ps",
+			["-o", "%cpu=", "-p", String(pid)],
+			{ timeout: 3_000 },
+		);
+		const cpu = parseFloat(stdout.trim());
+		return Number.isFinite(cpu) && cpu > 1 ? "active" : "idle";
+	} catch {
+		return "idle";
 	}
 }
 
@@ -133,13 +160,14 @@ function cliProcessToDashboard(
 	proc: CLIProcess,
 	cwd: string | null,
 	branch: string | null,
+	activity: "active" | "idle" = "idle",
 ): DashboardSession {
 	const now = new Date().toISOString();
 	return {
 		id: `${proc.agent}:${proc.pid}`,
 		projectId: "",
 		status: "working",
-		activity: null,
+		activity,
 		branch,
 		issueId: null,
 		issueUrl: null,
@@ -178,9 +206,12 @@ export async function findCLISession(
 	const proc = processes.find((p) => p.agent === agent && p.pid === pid);
 	if (!proc) return null;
 
-	const cwd = await resolveProcessCwd(pid);
+	const [cwd, activity] = await Promise.all([
+		resolveProcessCwd(pid),
+		resolveProcessActivity(pid),
+	]);
 	const branch = cwd ? await resolveGitBranch(cwd) : null;
-	return cliProcessToDashboard(proc, cwd, branch);
+	return cliProcessToDashboard(proc, cwd, branch, activity);
 }
 
 /**
@@ -217,10 +248,11 @@ export async function mergeWithUnmanagedCLI(
 
 	if (unmanaged.length === 0) return managedSessions;
 
-	// Resolve CWDs in parallel
-	const cwds = await Promise.all(
-		unmanaged.map((p) => resolveProcessCwd(p.pid)),
-	);
+	// Resolve CWDs and activity in parallel
+	const [cwds, activities] = await Promise.all([
+		Promise.all(unmanaged.map((p) => resolveProcessCwd(p.pid))),
+		Promise.all(unmanaged.map((p) => resolveProcessActivity(p.pid))),
+	]);
 
 	// Resolve git branches in parallel for processes with a CWD
 	const branches = await Promise.all(
@@ -228,7 +260,7 @@ export async function mergeWithUnmanagedCLI(
 	);
 
 	const unmanagedSessions = unmanaged.map((p, i) =>
-		cliProcessToDashboard(p, cwds[i] ?? null, branches[i] ?? null),
+		cliProcessToDashboard(p, cwds[i] ?? null, branches[i] ?? null, activities[i]),
 	);
 
 	return [...managedSessions, ...unmanagedSessions];
