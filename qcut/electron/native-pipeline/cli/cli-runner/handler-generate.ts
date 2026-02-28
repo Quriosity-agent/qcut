@@ -174,6 +174,14 @@ export async function handleGenerate(
 		}
 	}
 
+	// Validate --count
+	if (options.count !== undefined && options.count < 1) {
+		return {
+			success: false,
+			error: `Invalid --count: ${options.count}. Must be a positive integer.`,
+		};
+	}
+
 	// Build list of prompts for batch generation
 	const prompts = buildPromptList(options);
 
@@ -256,11 +264,13 @@ async function runParallelGeneration(
 
 	const outputPaths: string[] = [];
 	let totalCost = 0;
+	let successCount = 0;
 	const errors: string[] = [];
 
 	for (const [i, result] of results.entries()) {
 		if (result.status === "fulfilled") {
 			if (result.value.success) {
+				successCount++;
 				if (result.value.outputPath) {
 					outputPaths.push(result.value.outputPath);
 				}
@@ -275,7 +285,7 @@ async function runParallelGeneration(
 
 	const duration = (Date.now() - startTime) / 1000;
 
-	if (outputPaths.length === 0) {
+	if (successCount === 0) {
 		return {
 			success: false,
 			error: `All ${prompts.length} jobs failed: ${errors.join("; ")}`,
