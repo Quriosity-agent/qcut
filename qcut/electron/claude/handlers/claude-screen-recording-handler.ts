@@ -10,7 +10,10 @@
 import { ipcMain, BrowserWindow, type IpcMainEvent } from "electron";
 import { generateId } from "../utils/helpers.js";
 import { claudeLog } from "../utils/logger.js";
-import { forceStopActiveScreenRecordingSession } from "../../screen-recording-handler/index.js";
+import {
+	buildStatus,
+	forceStopActiveScreenRecordingSession,
+} from "../../screen-recording-handler/index.js";
 
 const HANDLER_NAME = "ScreenRecording";
 const START_TIMEOUT_MS = 30_000;
@@ -40,6 +43,47 @@ export interface StopRecordingResponse {
 	bytesWritten: number;
 	durationMs: number;
 	discarded: boolean;
+}
+
+function mapForceStopToStopResponse({
+	forceStopResult,
+}: {
+	forceStopResult: Awaited<
+		ReturnType<typeof forceStopActiveScreenRecordingSession>
+	>;
+}): StopRecordingResponse {
+	try {
+		return {
+			success: forceStopResult.success,
+			filePath: forceStopResult.filePath ?? null,
+			bytesWritten: forceStopResult.bytesWritten ?? 0,
+			durationMs: forceStopResult.durationMs ?? 0,
+			discarded: forceStopResult.discarded ?? true,
+		};
+	} catch (error) {
+		throw new Error(
+			`Failed to map force-stop response: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+async function forceStopWithFallbackReason({
+	reason,
+}: {
+	reason: string;
+}): Promise<StopRecordingResponse> {
+	try {
+		claudeLog.warn(HANDLER_NAME, reason);
+		const forceStopResult = await forceStopActiveScreenRecordingSession();
+		if (!forceStopResult.success) {
+			throw new Error(forceStopResult.error ?? "Force-stop failed");
+		}
+		return mapForceStopToStopResponse({ forceStopResult });
+	} catch (error) {
+		throw new Error(
+			`Failed to force-stop screen recording session: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
 }
 
 /**
@@ -97,67 +141,92 @@ export async function requestStopRecordingFromRenderer(
 	win: BrowserWindow,
 	options: StopRecordingRequest
 ): Promise<StopRecordingResponse> {
+	const hadActiveSessionBeforeStop = (() => {
+		try {
+			return buildStatus().recording;
+		} catch {
+			return false;
+		}
+	})();
+
 	try {
-		return await new Promise<StopRecordingResponse>((resolve, reject) => {
-			let resolved = false;
-			const requestId = generateId("sr-stop");
+		const rendererResult = await new Promise<StopRecordingResponse>(
+			(resolve, reject) => {
+				let resolved = false;
+				const requestId = generateId("sr-stop");
 
-			const timeout = setTimeout(() => {
-				if (resolved) return;
-				resolved = true;
-				ipcMain.removeListener(
-					"claude:screen-recording:stop:response",
-					handler
-				);
-				reject(new Error("Renderer stop timed out"));
-			}, RENDERER_STOP_TIMEOUT_MS);
-
-			const handler = (
-				_event: IpcMainEvent,
-				data: {
-					requestId: string;
-					result?: StopRecordingResponse;
-					error?: string;
-				}
-			) => {
-				if (data.requestId !== requestId || resolved) return;
-				resolved = true;
-				clearTimeout(timeout);
-				ipcMain.removeListener(
-					"claude:screen-recording:stop:response",
-					handler
-				);
-				if (data.error) {
-					reject(new Error(data.error));
-				} else if (data.result) {
-					resolve(data.result);
-				} else {
-					reject(
-						new Error("Renderer returned empty result for stop recording")
+				const timeout = setTimeout(() => {
+					if (resolved) return;
+					resolved = true;
+					ipcMain.removeListener(
+						"claude:screen-recording:stop:response",
+						handler
 					);
-				}
-			};
+					reject(new Error("Renderer stop timed out"));
+				}, RENDERER_STOP_TIMEOUT_MS);
 
-			ipcMain.on("claude:screen-recording:stop:response", handler);
-			win.webContents.send("claude:screen-recording:stop:request", {
-				requestId,
-				options,
-			});
-		});
-	} catch {
-		// Renderer didn't respond — force-stop from main process
-		claudeLog.warn(
-			HANDLER_NAME,
-			"Renderer stop timed out, using force-stop fallback"
+				const handler = (
+					_event: IpcMainEvent,
+					data: {
+						requestId: string;
+						result?: StopRecordingResponse;
+						error?: string;
+					}
+				) => {
+					if (data.requestId !== requestId || resolved) return;
+					resolved = true;
+					clearTimeout(timeout);
+					ipcMain.removeListener(
+						"claude:screen-recording:stop:response",
+						handler
+					);
+					if (data.error) {
+						reject(new Error(data.error));
+					} else if (data.result) {
+						resolve(data.result);
+					} else {
+						reject(
+							new Error("Renderer returned empty result for stop recording")
+						);
+					}
+				};
+
+				ipcMain.on("claude:screen-recording:stop:response", handler);
+				win.webContents.send("claude:screen-recording:stop:request", {
+					requestId,
+					options,
+				});
+			}
 		);
-		const result = await forceStopActiveScreenRecordingSession();
-		return {
-			success: result.success,
-			filePath: result.filePath ?? null,
-			bytesWritten: result.bytesWritten ?? 0,
-			durationMs: result.durationMs ?? 0,
-			discarded: result.discarded ?? true,
-		};
+
+		if (!hadActiveSessionBeforeStop) {
+			return rendererResult;
+		}
+
+		const recordingStillActiveAfterRendererStop = (() => {
+			try {
+				return buildStatus().recording;
+			} catch {
+				return false;
+			}
+		})();
+
+		if (!recordingStillActiveAfterRendererStop) {
+			return rendererResult;
+		}
+
+		return await forceStopWithFallbackReason({
+			reason:
+				"Renderer stop completed but main-process recording session is still active. Using force-stop fallback.",
+		});
+	} catch (error) {
+		const reason =
+			error instanceof Error
+				? error.message
+				: "Renderer stop failed unexpectedly";
+		return await forceStopWithFallbackReason({
+			reason: `Renderer stop failed (${reason}). Using force-stop fallback.`,
+		});
 	}
 }
 

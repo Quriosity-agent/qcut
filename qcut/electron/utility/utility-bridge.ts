@@ -68,6 +68,7 @@ import {
 	requestDuplicateProject,
 } from "../claude/handlers/claude-project-crud-handler.js";
 import { getClaudeEvents } from "../claude/handlers/claude-events-handler.js";
+import { notificationBridge } from "../claude/notification-bridge.js";
 import {
 	listCaptureSources,
 	buildStatus as buildScreenRecordingStatus,
@@ -228,6 +229,51 @@ function flushMessageQueue(): void {
 	}
 }
 
+export function writeToPtySessionOutput({
+	sessionId,
+	data,
+}: {
+	sessionId: string;
+	data: string;
+}): boolean {
+	try {
+		const trimmedSessionId = sessionId.trim();
+		if (!trimmedSessionId) {
+			return false;
+		}
+
+		if (
+			!sessionRegistry.has(trimmedSessionId) &&
+			!sessionToWebContentsId.has(trimmedSessionId)
+		) {
+			return false;
+		}
+
+		sendToUtility({
+			type: "pty:output",
+			sessionId: trimmedSessionId,
+			data,
+		});
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function configureNotificationBridgeWriter(): void {
+	try {
+		notificationBridge.setWriter({
+			writer: ({ sessionId, data }) =>
+				writeToPtySessionOutput({
+					sessionId,
+					data,
+				}),
+		});
+	} catch {
+		// no-op
+	}
+}
+
 /** Get the first active BrowserWindow */
 function getWindow(): BrowserWindow | null {
 	return BrowserWindow.getAllWindows()[0] ?? null;
@@ -276,6 +322,21 @@ async function handleMainRequest(
 			after: req.after,
 			source: req.source,
 		});
+	}
+	if (channel === "notifications:enable") {
+		const req = data as { sessionId?: string };
+		const sessionId = typeof req.sessionId === "string" ? req.sessionId : "";
+		return notificationBridge.enable({ sessionId });
+	}
+	if (channel === "notifications:disable") {
+		return notificationBridge.disable();
+	}
+	if (channel === "notifications:status") {
+		return notificationBridge.getStatus();
+	}
+	if (channel === "notifications:history") {
+		const req = data as { limit?: number };
+		return notificationBridge.getHistory({ limit: req.limit });
 	}
 
 	const win = getWindow();
@@ -567,6 +628,7 @@ export function startUtilityProcess(): void {
 		logger.warn("[UtilityBridge] Utility process already running");
 		return;
 	}
+	configureNotificationBridgeWriter();
 
 	stoppingUtility = false;
 	utilityReady = false;
@@ -749,6 +811,7 @@ export function stopUtilityProcess(): void {
 /** Setup PTY IPC handlers that proxy to utility process */
 export function setupUtilityPtyIPC(): void {
 	logger.info("[UtilityBridge] Setting up PTY IPC handlers (proxy mode)...");
+	configureNotificationBridgeWriter();
 
 	// Clean up PTY sessions when renderer is destroyed
 	app.on("web-contents-created", (_, contents) => {

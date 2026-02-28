@@ -249,6 +249,7 @@ import { BrowserWindow } from "electron";
 import * as timelineHandler from "../handlers/claude-timeline-handler.js";
 import * as transactionHandler from "../handlers/claude-transaction-handler.js";
 import * as rangeHandler from "../handlers/claude-range-handler.js";
+import { notificationBridge } from "../notification-bridge";
 import { HttpError } from "../utils/http-router";
 
 // ---------------------------------------------------------------------------
@@ -338,6 +339,7 @@ afterAll(() => {
 
 describe("Claude HTTP Server", () => {
 	beforeEach(() => {
+		notificationBridge.resetForTests();
 		vi.mocked(BrowserWindow.getAllWindows).mockReset();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([]);
 	});
@@ -928,6 +930,60 @@ describe("Claude HTTP Server", () => {
 		expect(res.status).toBe(200);
 		expect(res.body.success).toBe(true);
 		expect(res.body.data.forwarded).toBe(false);
+	});
+
+	it("GET /api/claude/notifications/status returns initial disabled state", async () => {
+		const res = await fetch("/api/claude/notifications/status");
+
+		expect(res.status).toBe(200);
+		expect(res.body.success).toBe(true);
+		expect(res.body.data).toEqual({
+			enabled: false,
+			sessionId: null,
+		});
+	});
+
+	it("POST /api/claude/notifications/enable validates sessionId", async () => {
+		const res = await fetch("/api/claude/notifications/enable", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+
+		expect(res.status).toBe(400);
+		expect(res.body.success).toBe(false);
+		expect(res.body.error).toContain("sessionId");
+	});
+
+	it("notification routes support enable/disable/history flow", async () => {
+		const enableRes = await fetch("/api/claude/notifications/enable", {
+			method: "POST",
+			body: JSON.stringify({ sessionId: "pty-test-1" }),
+		});
+		expect(enableRes.status).toBe(200);
+		expect(enableRes.body.data).toEqual({
+			enabled: true,
+			sessionId: "pty-test-1",
+		});
+
+		const statusRes = await fetch("/api/claude/notifications/status");
+		expect(statusRes.status).toBe(200);
+		expect(statusRes.body.data.enabled).toBe(true);
+		expect(statusRes.body.data.sessionId).toBe("pty-test-1");
+
+		const historyRes = await fetch("/api/claude/notifications/history?limit=5");
+		expect(historyRes.status).toBe(200);
+		expect(historyRes.body.success).toBe(true);
+		expect(Array.isArray(historyRes.body.data)).toBe(true);
+
+		const disableRes = await fetch("/api/claude/notifications/disable", {
+			method: "POST",
+			body: JSON.stringify({}),
+		});
+		expect(disableRes.status).toBe(200);
+		expect(disableRes.body.data).toEqual({
+			enabled: false,
+			sessionId: null,
+		});
 	});
 
 	it("returns 404 for unknown routes", async () => {

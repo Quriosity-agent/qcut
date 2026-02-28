@@ -378,6 +378,8 @@ const electronAPI: ElectronAPI = {
 	license: {
 		check: () => ipcRenderer.invoke("license:check"),
 		activate: (token: string) => ipcRenderer.invoke("license:activate", token),
+		trackUsage: (type: "ai_generation" | "export" | "render") =>
+			ipcRenderer.invoke("license:track-usage", type),
 		deductCredits: (amount: number, modelKey: string, description: string) =>
 			ipcRenderer.invoke(
 				"license:deduct-credits",
@@ -385,6 +387,16 @@ const electronAPI: ElectronAPI = {
 				modelKey,
 				description
 			),
+		setAuthToken: (token: string) =>
+			ipcRenderer.invoke("license:set-auth-token", token),
+		clearAuthToken: () => ipcRenderer.invoke("license:clear-auth-token"),
+		onActivationToken: (callback: (token: string) => void) => {
+			const listener = (_event: unknown, token: string) => callback(token);
+			ipcRenderer.on("license:activation-token", listener);
+			return () => {
+				ipcRenderer.removeListener("license:activation-token", listener);
+			};
+		},
 		deactivate: () => ipcRenderer.invoke("license:deactivate"),
 	},
 

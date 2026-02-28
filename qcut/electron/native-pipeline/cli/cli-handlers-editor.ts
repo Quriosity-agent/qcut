@@ -26,6 +26,122 @@ type ProgressFn = (progress: {
 	model?: string;
 }) => void;
 
+interface ScreenRecordingStatusResponse {
+	recording?: boolean;
+}
+
+const SCREEN_RECORDING_STATUS_MAX_ATTEMPTS = 3;
+const SCREEN_RECORDING_STATUS_RETRY_DELAY_MS = 250;
+
+function toObjectRecord({
+	value,
+}: {
+	value: unknown;
+}): Record<string, unknown> | undefined {
+	try {
+		if (typeof value !== "object" || value === null) {
+			return undefined;
+		}
+		return value as Record<string, unknown>;
+	} catch {
+		return undefined;
+	}
+}
+
+function isRecordingActive({ status }: { status: unknown }): boolean {
+	try {
+		const statusRecord = toObjectRecord({ value: status });
+		if (!statusRecord) {
+			return false;
+		}
+		return statusRecord.recording === true;
+	} catch {
+		return false;
+	}
+}
+
+async function waitMs({ delayMs }: { delayMs: number }): Promise<void> {
+	try {
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, delayMs);
+		});
+	} catch (error) {
+		throw new Error(
+			`Failed to wait before status retry: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+async function fetchStatusWithRetry({
+	client,
+	remainingAttempts,
+}: {
+	client: EditorApiClient;
+	remainingAttempts: number;
+}): Promise<ScreenRecordingStatusResponse> {
+	try {
+		const statusAfterStop = await client.get<ScreenRecordingStatusResponse>(
+			"/api/claude/screen-recording/status"
+		);
+		const isActive = isRecordingActive({ status: statusAfterStop });
+		if (!isActive || remainingAttempts <= 1) {
+			return statusAfterStop;
+		}
+
+		await waitMs({ delayMs: SCREEN_RECORDING_STATUS_RETRY_DELAY_MS });
+		return await fetchStatusWithRetry({
+			client,
+			remainingAttempts: remainingAttempts - 1,
+		});
+	} catch (error) {
+		throw new Error(
+			`Failed to fetch screen recording status: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
+async function verifyScreenRecordingStopped({
+	client,
+}: {
+	client: EditorApiClient;
+}): Promise<{
+	recoveredViaForceStop: boolean;
+	forceStopData?: unknown;
+}> {
+	try {
+		const statusAfterStop = await fetchStatusWithRetry({
+			client,
+			remainingAttempts: SCREEN_RECORDING_STATUS_MAX_ATTEMPTS,
+		});
+		if (!isRecordingActive({ status: statusAfterStop })) {
+			return { recoveredViaForceStop: false };
+		}
+
+		const forceStopData = await client.post(
+			"/api/claude/screen-recording/force-stop",
+			{}
+		);
+		const statusAfterForceStop = await fetchStatusWithRetry({
+			client,
+			remainingAttempts: SCREEN_RECORDING_STATUS_MAX_ATTEMPTS,
+		});
+		if (isRecordingActive({ status: statusAfterForceStop })) {
+			throw new Error(
+				"Screen recording is still active after force-stop recovery"
+			);
+		}
+
+		return {
+			recoveredViaForceStop: true,
+			forceStopData,
+		};
+	} catch (error) {
+		throw new Error(
+			`Failed to verify screen recording stop state: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
 /**
  * Main entry point for all `editor:*` commands.
  * Called from cli-runner.ts when command starts with "editor:".
@@ -150,6 +266,7 @@ async function handleNavigatorCommand(
  * - `sources` — list available capture sources
  * - `start` — start screen recording
  * - `stop` — stop screen recording
+ * - `force-stop` — force stop active screen recording
  * - `status` — get current recording status
  */
 async function handleScreenRecordingCommand(
@@ -184,10 +301,41 @@ async function handleScreenRecordingCommand(
 		case "stop": {
 			const body: Record<string, unknown> = {};
 			if (options.discard) body.discard = true;
-			const data = await client.post(
+			const stopData = await client.post(
 				"/api/claude/screen-recording/stop",
 				body,
 				{ timeout: 90_000 }
+			);
+			const verification = await verifyScreenRecordingStopped({ client });
+			if (!verification.recoveredViaForceStop) {
+				return { success: true, data: stopData };
+			}
+
+			const stopDataRecord = toObjectRecord({ value: stopData });
+			if (stopDataRecord) {
+				return {
+					success: true,
+					data: {
+						...stopDataRecord,
+						recoveredViaForceStop: true,
+						forceStopData: verification.forceStopData,
+					},
+				};
+			}
+
+			return {
+				success: true,
+				data: {
+					stopData,
+					recoveredViaForceStop: true,
+					forceStopData: verification.forceStopData,
+				},
+			};
+		}
+		case "force-stop": {
+			const data = await client.post(
+				"/api/claude/screen-recording/force-stop",
+				{}
 			);
 			return { success: true, data };
 		}
@@ -198,7 +346,7 @@ async function handleScreenRecordingCommand(
 		default:
 			return {
 				success: false,
-				error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, status`,
+				error: `Unknown screen-recording action: ${action}. Available: sources, start, stop, force-stop, status`,
 			};
 	}
 }

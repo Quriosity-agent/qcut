@@ -1,8 +1,9 @@
-﻿import { Hono } from "hono";
+import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { licenseRoutes } from "./routes/license";
 import { usageRoutes } from "./routes/usage";
 import { stripeRoutes } from "./routes/stripe";
+import { creditsRoutes } from "./routes/credits";
 
 const app = new Hono();
 
@@ -26,6 +27,7 @@ app.get("/health", (c) =>
 
 app.route("/api/license", licenseRoutes);
 app.route("/api/usage", usageRoutes);
+app.route("/api/credits", creditsRoutes);
 app.route("/api/stripe", stripeRoutes);
 
 export default app;

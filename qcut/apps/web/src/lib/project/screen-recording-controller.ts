@@ -395,13 +395,38 @@ export async function stopScreenRecording({
 	options?: StopScreenRecordingOptions;
 } = {}): Promise<StopScreenRecordingResult> {
 	if (!activeRecording) {
-		return {
-			success: true,
-			filePath: null,
-			bytesWritten: 0,
-			durationMs: 0,
-			discarded: true,
-		};
+		try {
+			const recordingApi = getRecordingApi();
+			if (!recordingApi) {
+				return {
+					success: true,
+					filePath: null,
+					bytesWritten: 0,
+					durationMs: 0,
+					discarded: true,
+				};
+			}
+
+			const remoteStatus = await recordingApi.getStatus();
+			if (!remoteStatus.recording) {
+				return {
+					success: true,
+					filePath: null,
+					bytesWritten: 0,
+					durationMs: 0,
+					discarded: true,
+				};
+			}
+
+			return await recordingApi.stop({
+				discard: options.discard,
+			});
+		} catch (error) {
+			const stopError = toError({ error });
+			throw new Error(
+				`Failed to stop screen recording without local runtime state: ${stopError.message}`
+			);
+		}
 	}
 
 	if (isStopInProgress) {

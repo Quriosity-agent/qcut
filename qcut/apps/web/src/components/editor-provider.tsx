@@ -44,6 +44,29 @@ export function EditorProvider({ children }: EditorProviderProps) {
 		checkLicense();
 	}, [checkLicense]);
 
+	// Handle deep-link activation tokens delivered by the main process.
+	useEffect(() => {
+		const licenseApi = window.electronAPI?.license;
+		if (!licenseApi?.onActivationToken) {
+			return;
+		}
+
+		const unsubscribe = licenseApi.onActivationToken(async (token) => {
+			try {
+				const activated = await licenseApi.activate(token);
+				if (activated) {
+					await checkLicense();
+				}
+			} catch {
+				// Activation failures should not crash editor boot.
+			}
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	}, [checkLicense]);
+
 	// Show loading screen while initializing
 	if (isInitializing || !isPanelsReady) {
 		return (

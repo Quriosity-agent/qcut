@@ -11,6 +11,8 @@ import { registerDashboard } from "./commands/dashboard.js";
 import { registerOpen } from "./commands/open.js";
 import { registerStart, registerStop } from "./commands/start.js";
 import { registerPRComments } from "./commands/pr-comments.js";
+import { registerTeam } from "./commands/team.js";
+import { registerHarness } from "./commands/harness.js";
 
 const program = new Command();
 
@@ -31,5 +33,7 @@ registerReviewCheck(program);
 registerDashboard(program);
 registerOpen(program);
 registerPRComments(program);
+registerTeam(program);
+registerHarness(program);
 
 program.parse();

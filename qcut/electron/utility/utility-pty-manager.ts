@@ -244,6 +244,22 @@ export class UtilityPtyManager {
 		this.sessions.get(sessionId)?.process.write(data);
 	}
 
+	output(sessionId: string, data: string): void {
+		try {
+			if (!this.sessions.has(sessionId)) {
+				return;
+			}
+			const normalized = data.endsWith("\n") ? data : `${data}\r\n`;
+			this.parentPort.postMessage({
+				type: "pty:data",
+				sessionId,
+				data: normalized,
+			});
+		} catch {
+			// no-op
+		}
+	}
+
 	resize(sessionId: string, cols: number, rows: number): void {
 		this.sessions.get(sessionId)?.process.resize(cols, rows);
 	}

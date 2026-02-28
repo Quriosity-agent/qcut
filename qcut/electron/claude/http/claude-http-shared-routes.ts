@@ -93,6 +93,22 @@ export interface WindowAccessor {
 	getProjectStats(projectId: string): Promise<any>;
 	/** Get the app version string */
 	getAppVersion(): string;
+	/** Enable operation notifications to a PTY session */
+	enableNotifications(
+		sessionId: string
+	): Promise<{ enabled: boolean; sessionId: string | null }>;
+	/** Disable operation notifications */
+	disableNotifications(): Promise<{
+		enabled: boolean;
+		sessionId: string | null;
+	}>;
+	/** Read operation notification bridge status */
+	getNotificationsStatus(): Promise<{
+		enabled: boolean;
+		sessionId: string | null;
+	}>;
+	/** Read operation notification history */
+	getNotificationsHistory(limit?: number): Promise<string[]>;
 	/** Batch add elements (may need BrowserWindow or proxy) */
 	batchAddElements(
 		projectId: string,
@@ -142,6 +158,52 @@ export function registerSharedRoutes(
 	registerMetaRoutes({
 		router,
 		getAppVersion: () => accessor.getAppVersion(),
+	});
+
+	// ==========================================================================
+	// Notifications bridge routes
+	// ==========================================================================
+	router.post("/api/claude/notifications/enable", async (req) => {
+		const sessionId =
+			typeof req.body?.sessionId === "string" ? req.body.sessionId : "";
+		if (!sessionId.trim()) {
+			throw new HttpError(400, "Missing 'sessionId' in request body");
+		}
+		return await accessor.enableNotifications(sessionId.trim());
+	});
+
+	router.post("/api/claude/notifications/disable", async () => {
+		return await accessor.disableNotifications();
+	});
+
+	router.get("/api/claude/notifications/status", async () => {
+		return await accessor.getNotificationsStatus();
+	});
+
+	router.get("/api/claude/notifications/history", async (req) => {
+		const limit = Number.parseInt(req.query.limit ?? "", 10);
+		const resolvedLimit =
+			Number.isFinite(limit) && limit > 0 ? Math.trunc(limit) : undefined;
+		return await accessor.getNotificationsHistory(resolvedLimit);
+	});
+
+	router.post("/api/claude/notifications/toggle", async (req) => {
+		const enabled = req.body?.enabled;
+		if (enabled === true) {
+			const sessionId =
+				typeof req.body?.sessionId === "string" ? req.body.sessionId : "";
+			if (!sessionId.trim()) {
+				throw new HttpError(
+					400,
+					"Missing 'sessionId' in request body when enabled=true"
+				);
+			}
+			return await accessor.enableNotifications(sessionId.trim());
+		}
+		if (enabled === false) {
+			return await accessor.disableNotifications();
+		}
+		throw new HttpError(400, "Missing 'enabled' boolean in request body");
 	});
 
 	// ==========================================================================

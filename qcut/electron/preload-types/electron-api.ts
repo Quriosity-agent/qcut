@@ -863,6 +863,14 @@ export interface ElectronAPI {
 					Partial<Pick<EditorEvent, "eventId" | "timestamp">>
 			) => void;
 		};
+		notifications: {
+			enable: (
+				sessionId: string
+			) => Promise<{ enabled: boolean; sessionId: string | null }>;
+			disable: () => Promise<{ enabled: boolean; sessionId: string | null }>;
+			status: () => Promise<{ enabled: boolean; sessionId: string | null }>;
+			history: (limit?: number) => Promise<string[]>;
+		};
 		navigator: {
 			onProjectsRequest: (
 				callback: (data: { requestId: string }) => void
@@ -1127,11 +1135,17 @@ export interface ElectronAPI {
 			};
 		}>;
 		activate: (token: string) => Promise<boolean>;
+		trackUsage: (
+			type: "ai_generation" | "export" | "render"
+		) => Promise<boolean>;
 		deductCredits: (
 			amount: number,
 			modelKey: string,
 			description: string
 		) => Promise<boolean>;
+		setAuthToken: (token: string) => Promise<boolean>;
+		clearAuthToken: () => Promise<boolean>;
+		onActivationToken: (callback: (token: string) => void) => () => void;
 		deactivate: () => Promise<boolean>;
 	};
 

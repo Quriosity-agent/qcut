@@ -73,6 +73,14 @@ interface MediaStore extends FolderActions {
 	) => Promise<import("@/lib/project/project-folder-sync").SyncResult>;
 }
 
+const VIDEO_METADATA_MAX_RETRIES = 2;
+const VIDEO_METADATA_RETRY_DELAY_MS = 300;
+
+const delay = (ms: number): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+
 // Helper to update a single field on a media item (in-memory only)
 const updateMediaItemField = (itemId: string, updates: Partial<MediaItem>) => {
 	const mediaStore = useMediaStore.getState();
@@ -122,7 +130,8 @@ const updateMediaMetadataAndPersist = async (
 const extractVideoMetadataBackground = async (
 	file: File,
 	itemId: string,
-	projectId: string
+	projectId: string,
+	attempt = 1
 ) => {
 	try {
 		// Set status to loading
@@ -131,28 +140,57 @@ const extractVideoMetadataBackground = async (
 		// Clone file to isolate temporary operations from display URL
 		const fileClone = cloneFileForTemporaryUse(file);
 
-		// Try browser processing first - it's fast and reliable
-		const [thumbnailData, duration] = await Promise.all([
+		const [thumbnailResult, durationResult] = await Promise.allSettled([
 			generateVideoThumbnailBrowserImpl(fileClone),
 			getMediaDurationImpl(fileClone),
 		]);
 
+		if (thumbnailResult.status === "rejected") {
+			throw thumbnailResult.reason;
+		}
+
 		const result = {
-			thumbnailUrl: thumbnailData.thumbnailUrl,
+			thumbnailUrl: thumbnailResult.value.thumbnailUrl,
 			thumbnailStatus: "ready" as const,
-			width: thumbnailData.width,
-			height: thumbnailData.height,
-			duration,
+			width: thumbnailResult.value.width,
+			height: thumbnailResult.value.height,
 			fps: 30,
+			...(durationResult.status === "fulfilled"
+				? { duration: durationResult.value }
+				: {}),
 		};
+
+		if (durationResult.status === "rejected") {
+			debugError(
+				`[MediaStore] Duration extraction failed for ${itemId}, keeping thumbnail`,
+				durationResult.reason
+			);
+		}
 
 		// Update the media item with real metadata and persist to storage
 		await updateMediaMetadataAndPersist(itemId, projectId, result);
 		return result;
 	} catch (browserError) {
+		if (attempt < VIDEO_METADATA_MAX_RETRIES) {
+			debugError(
+				`[MediaStore] Thumbnail generation attempt ${attempt} failed for ${itemId}, retrying`,
+				browserError
+			);
+			await delay(VIDEO_METADATA_RETRY_DELAY_MS * attempt);
+			return extractVideoMetadataBackground(
+				file,
+				itemId,
+				projectId,
+				attempt + 1
+			);
+		}
+
 		// Set status to failed
 		updateMediaItemField(itemId, { thumbnailStatus: "failed" });
-		debugError("[MediaStore] Thumbnail generation failed:", browserError);
+		debugError(
+			`[MediaStore] Thumbnail generation failed for ${itemId} after ${attempt} attempt(s):`,
+			browserError
+		);
 	}
 };
 

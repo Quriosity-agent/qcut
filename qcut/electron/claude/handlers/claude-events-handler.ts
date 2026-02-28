@@ -7,6 +7,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { ipcMain } from "electron";
 import { claudeLog } from "../utils/logger.js";
+import { notificationBridge } from "../notification-bridge.js";
 import type {
 	EditorEvent,
 	EditorEventAction,
@@ -224,6 +225,11 @@ export function emitClaudeEvent(input: ClaudeEventEmitInput): EditorEvent {
 		editorEvents.push(nextEvent);
 		pruneEvents();
 		claudeEventsEmitter.emit(CLAUDE_EVENTS_EMITTED, nextEvent);
+		try {
+			notificationBridge.notify({ event: nextEvent });
+		} catch {
+			// Notification bridge errors must never block event emission.
+		}
 		return nextEvent;
 	} catch (error) {
 		const message =

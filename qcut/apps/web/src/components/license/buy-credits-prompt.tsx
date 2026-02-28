@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLicenseStore } from "@/stores/license-store";
+import { useExportStore } from "@/stores/export-store";
 
 interface BuyCreditsPromptProps {
 	open: boolean;
@@ -24,7 +25,17 @@ export function BuyCreditsPrompt({
 }: BuyCreditsPromptProps) {
 	const license = useLicenseStore((s) => s.license);
 	const openBuyCreditsPage = useLicenseStore((s) => s.openBuyCreditsPage);
+	const setPanelView = useExportStore((s) => s.setPanelView);
 	const remainingCredits = license?.credits.totalCredits ?? 0;
+
+	const openApiKeySettings = () => {
+		try {
+			setPanelView("settings");
+			onOpenChange(false);
+		} catch {
+			onOpenChange(false);
+		}
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,6 +50,9 @@ export function BuyCreditsPrompt({
 				<DialogFooter className="gap-2 sm:gap-0">
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel
+					</Button>
+					<Button variant="outline" onClick={openApiKeySettings}>
+						Add API Key
 					</Button>
 					<Button
 						onClick={() => {

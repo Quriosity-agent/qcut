@@ -52,6 +52,23 @@ export type { SessionManagerDeps } from "./session-manager.js";
 export { createLifecycleManager } from "./lifecycle-manager.js";
 export type { LifecycleManagerDeps } from "./lifecycle-manager.js";
 
+// Team manager — filesystem inbox queue for teammate communication
+export {
+	createTeamManager,
+	parseTeamProtocolMessage,
+	TEAM_PROTOCOL_TYPE,
+} from "./team-manager.js";
+export type {
+	TeamManager,
+	TeamManagerConfig,
+	TeamDefinition,
+	TeamMessage,
+	TeamProtocolPayload,
+	TeamReadInboxInput,
+	TeamSendMessageInput,
+	TeamSendProtocolInput,
+} from "./team-manager.js";
+
 // Prompt builder — layered prompt composition
 export { buildPrompt, BASE_AGENT_PROMPT } from "./prompt-builder.js";
 export type { PromptBuildConfig } from "./prompt-builder.js";

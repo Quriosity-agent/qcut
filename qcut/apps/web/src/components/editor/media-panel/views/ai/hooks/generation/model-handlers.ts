@@ -63,6 +63,7 @@ import type {
 	TextToVideoSettings,
 	UpscaleSettings,
 } from "./model-handler-types";
+import { enforceCreditRequirement } from "@/lib/license/credit-guard";
 
 // ============================================================================
 // CONSTANTS
@@ -73,6 +74,126 @@ export const VEO31_FRAME_MODELS = new Set([
 	"veo31_fast_frame_to_video",
 	"veo31_frame_to_video",
 ]);
+
+function parseVeoDuration({
+	duration,
+}: {
+	duration: "4s" | "6s" | "8s";
+}): number {
+	return Number.parseInt(duration.replace("s", ""), 10);
+}
+
+function getTextToVideoDurationSeconds({
+	modelId,
+	settings,
+}: {
+	modelId: string;
+	settings: TextToVideoSettings;
+}): number | undefined {
+	if (
+		modelId === "veo31_fast_text_to_video" ||
+		modelId === "veo31_text_to_video"
+	) {
+		return parseVeoDuration({ duration: settings.veo31Settings.duration });
+	}
+	if (modelId === "hailuo23_standard_t2v" || modelId === "hailuo23_pro_t2v") {
+		return settings.hailuoT2VDuration;
+	}
+	if (modelId === "ltxv2_pro_t2v") {
+		return settings.ltxv2Duration;
+	}
+	if (modelId === "ltxv2_fast_t2v") {
+		return settings.ltxv2FastDuration;
+	}
+	if (modelId === "wan_26_t2v") {
+		return settings.wan26T2VDuration;
+	}
+	return settings.duration;
+}
+
+function getImageToVideoDurationSeconds({
+	modelId,
+	settings,
+}: {
+	modelId: string;
+	settings: ImageToVideoSettings;
+}): number | undefined {
+	if (
+		modelId === "veo31_fast_image_to_video" ||
+		modelId === "veo31_image_to_video"
+	) {
+		return parseVeoDuration({ duration: settings.veo31Settings.duration });
+	}
+	if (modelId === "vidu_q2_turbo_i2v") {
+		return settings.viduQ2Duration;
+	}
+	if (modelId === "ltxv2_i2v") {
+		return settings.ltxv2I2VDuration;
+	}
+	if (modelId === "ltxv2_fast_i2v") {
+		return settings.ltxv2ImageDuration;
+	}
+	if (modelId === "seedance_pro_fast_i2v" || modelId === "seedance_pro_i2v") {
+		return settings.seedanceDuration;
+	}
+	if (modelId === "kling_v2_5_turbo_i2v") {
+		return settings.klingDuration;
+	}
+	if (
+		modelId === "kling_v26_pro_i2v" ||
+		modelId === "kling_v3_pro_i2v" ||
+		modelId === "kling_v3_standard_i2v"
+	) {
+		return settings.kling26Duration;
+	}
+	if (modelId === "wan_25_preview_i2v") {
+		return settings.wan25Duration;
+	}
+	if (modelId === "wan_26_i2v") {
+		return settings.wan26Duration;
+	}
+	return settings.duration;
+}
+
+function getAvatarDurationSeconds({
+	modelId,
+	settings,
+}: {
+	modelId: string;
+	settings: AvatarSettings;
+}): number | undefined {
+	if (modelId === "wan_26_ref2v") {
+		return settings.wan26RefDuration;
+	}
+	return settings.videoDuration ?? settings.audioDuration ?? undefined;
+}
+
+async function ensureGenerationCredits({
+	modelId,
+	modelName,
+	durationSeconds,
+}: {
+	modelId: string;
+	modelName: string;
+	durationSeconds?: number;
+}): Promise<ModelHandlerResult | null> {
+	const creditResult = await enforceCreditRequirement({
+		modelId,
+		durationSeconds,
+		description: `${modelName} generation`,
+	});
+	if (creditResult.allowed) {
+		return null;
+	}
+
+	return {
+		response: undefined,
+		shouldSkip: true,
+		skipReason:
+			creditResult.reason ??
+			`Insufficient credits for ${modelName}. Required: ${creditResult.requiredCredits}.`,
+	};
+}
 
 // ============================================================================
 // MODEL ROUTING
@@ -85,6 +206,18 @@ export async function routeTextToVideoHandler(
 	ctx: ModelHandlerContext,
 	settings: TextToVideoSettings
 ): Promise<ModelHandlerResult> {
+	const creditFailure = await ensureGenerationCredits({
+		modelId: ctx.modelId,
+		modelName: ctx.modelName,
+		durationSeconds: getTextToVideoDurationSeconds({
+			modelId: ctx.modelId,
+			settings,
+		}),
+	});
+	if (creditFailure) {
+		return creditFailure;
+	}
+
 	switch (ctx.modelId) {
 		case "veo31_fast_text_to_video":
 			return handleVeo31FastT2V(ctx, settings);
@@ -113,6 +246,18 @@ export async function routeImageToVideoHandler(
 	ctx: ModelHandlerContext,
 	settings: ImageToVideoSettings
 ): Promise<ModelHandlerResult> {
+	const creditFailure = await ensureGenerationCredits({
+		modelId: ctx.modelId,
+		modelName: ctx.modelName,
+		durationSeconds: getImageToVideoDurationSeconds({
+			modelId: ctx.modelId,
+			settings,
+		}),
+	});
+	if (creditFailure) {
+		return creditFailure;
+	}
+
 	switch (ctx.modelId) {
 		case "veo31_fast_image_to_video":
 			return handleVeo31FastI2V(ctx, settings);
@@ -166,6 +311,14 @@ export async function routeUpscaleHandler(
 	ctx: ModelHandlerContext,
 	settings: UpscaleSettings
 ): Promise<ModelHandlerResult> {
+	const creditFailure = await ensureGenerationCredits({
+		modelId: ctx.modelId,
+		modelName: ctx.modelName,
+	});
+	if (creditFailure) {
+		return creditFailure;
+	}
+
 	switch (ctx.modelId) {
 		case "bytedance_video_upscaler":
 			return handleByteDanceUpscale(ctx, settings);
@@ -189,6 +342,18 @@ export async function routeAvatarHandler(
 	ctx: ModelHandlerContext,
 	settings: AvatarSettings
 ): Promise<ModelHandlerResult> {
+	const creditFailure = await ensureGenerationCredits({
+		modelId: ctx.modelId,
+		modelName: ctx.modelName,
+		durationSeconds: getAvatarDurationSeconds({
+			modelId: ctx.modelId,
+			settings,
+		}),
+	});
+	if (creditFailure) {
+		return creditFailure;
+	}
+
 	switch (ctx.modelId) {
 		case "kling_o1_ref2video":
 			return handleKlingO1Ref2Video(ctx, settings);

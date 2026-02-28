@@ -50,6 +50,26 @@ qagent send qcut-170 "Focus on the FFmpeg handler, not the UI"
 qagent send qcut-170 "CI is failing on lint, please fix"
 ```
 
+### Team inbox messaging (filesystem queue)
+```bash
+qagent team init qcut-team team-lead observer
+qagent team send qcut-team observer team-lead "Observer reporting in"
+qagent team send qcut-team observer team-lead --protocol idle_notification --payload '{"idleReason":"available"}'
+qagent team inbox qcut-team team-lead --unread --json
+qagent team ack qcut-team team-lead
+```
+
+### Harness-style runtime controls
+```bash
+qagent harness spawn codex "Audit failing tests and fix them"
+qagent harness status
+qagent harness steer "tighten logs and continue"
+qagent harness cancel
+qagent harness model openai/gpt-5.2
+qagent harness permissions strict
+qagent harness close
+```
+
 ### Check and handle PR reviews automatically
 ```bash
 qagent review-check qcut         # Check all Qcut PRs for review comments
