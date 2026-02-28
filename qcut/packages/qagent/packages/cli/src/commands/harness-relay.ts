@@ -596,12 +596,7 @@ async function relayHarnessToTeam({
 					member,
 					payload: JSON.stringify(protocol),
 				});
-			const isNew = markProtocolSeen({
-				state,
-				id: protocolId,
-				maxSize: dedupCacheSize,
-			});
-			if (!isNew) {
+			if (state.seenProtocolIds.has(protocolId)) {
 				continue;
 			}
 
@@ -611,19 +606,26 @@ async function relayHarnessToTeam({
 				id: protocolId,
 				ttl: nextTTL,
 			};
-			for (const peer of peers) {
-				await teamManager.sendProtocol({
-					teamId,
-					from: member,
-					to: peer,
-					type: protocol.type,
-					payload,
-					summary: `relay-protocol:${protocol.type}`,
-					color: "cyan",
-					read: false,
-				});
-				sentCount += 1;
-			}
+			await Promise.all(
+				peers.map(async (peer) => {
+					await teamManager.sendProtocol({
+						teamId,
+						from: member,
+						to: peer,
+						type: protocol.type,
+						payload,
+						summary: `relay-protocol:${protocol.type}`,
+						color: "cyan",
+						read: false,
+					});
+				})
+			);
+			markProtocolSeen({
+				state,
+				id: protocolId,
+				maxSize: dedupCacheSize,
+			});
+			sentCount += peers.length;
 		}
 
 		return sentCount;

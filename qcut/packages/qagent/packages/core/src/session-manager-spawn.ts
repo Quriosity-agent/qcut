@@ -115,15 +115,7 @@ export async function spawnSession({
 		}
 	}
 
-	sessionId = issueSlug
-		? `${project.sessionPrefix}-${issueSlug}`
-		: `${project.sessionPrefix}-${num}`;
-	if (!listMetadata(sessionsDir).includes(sessionId)) {
-		reserveSessionId(sessionsDir, sessionId);
-	}
-	if (config.configPath) {
-		tmuxName = generateTmuxName(config.configPath, project.sessionPrefix, num);
-	}
+	// sessionId and tmuxName are already set from the reservation loop above
 
 	let branch: string;
 	if (spawnConfig.branch) {
@@ -325,6 +317,14 @@ export async function spawnOrchestratorSession({
 	if (config.configPath) {
 		validateAndStoreOrigin(config.configPath, project.path);
 	}
+
+	const existingMeta = listMetadata(sessionsDir);
+	if (existingMeta.includes(sessionId)) {
+		throw new Error(
+			`Orchestrator session '${sessionId}' already exists. Kill the existing session before re-spawning.`
+		);
+	}
+	reserveSessionId(sessionsDir, sessionId);
 
 	if (plugins.agent.setupWorkspaceHooks) {
 		await plugins.agent.setupWorkspaceHooks(project.path, {
