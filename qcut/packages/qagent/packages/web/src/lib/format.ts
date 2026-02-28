@@ -52,7 +52,8 @@ export function getSessionTitle(session: DashboardSession): string {
 
 	// 5. CWD for unmanaged CLI sessions — branch is already shown in a pill
 	if (session.metadata?.cwd && session.branch) {
-		return session.metadata.cwd;
+		const parts = session.metadata.cwd.split("/").filter(Boolean);
+		return parts.length > 3 ? parts.slice(-3).join("/") : session.metadata.cwd;
 	}
 
 	// 6. Humanized branch
