@@ -180,6 +180,13 @@ async function mediaBatchImport(
 				error: `Batch limit exceeded: ${paths.length} items (max 20)`,
 			};
 		}
+		const missing = paths.filter((p) => !fs.existsSync(p));
+		if (missing.length > 0) {
+			return {
+				success: false,
+				error: `File(s) not found: ${missing.join(", ")}`,
+			};
+		}
 		const items = paths.map((p) => ({ path: p }));
 		const data = await client.post(
 			`/api/claude/media/${opts.projectId}/batch-import`,
