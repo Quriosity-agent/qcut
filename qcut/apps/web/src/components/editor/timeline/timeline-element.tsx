@@ -629,17 +629,11 @@ function TimelineElementComponent({
 				<ContextMenuItem
 					onClick={async (e) => {
 						e.stopPropagation();
-						const { id: _id, ...props } = element;
 						const info = {
-							...props,
-							id: element.id,
-							type: element.type,
-							name: element.name,
-							startTime: element.startTime,
+							...element,
 							endTime:
 								element.startTime +
 								(element.duration - element.trimStart - element.trimEnd),
-							duration: element.duration,
 							trackId: track.id,
 						};
 						try {
@@ -647,7 +641,8 @@ function TimelineElementComponent({
 								JSON.stringify(info, null, 2)
 							);
 							toast.success("Element info copied to clipboard");
-						} catch {
+						} catch (error) {
+							console.error("Failed to copy element info:", error);
 							toast.error("Failed to copy element info");
 						}
 					}}
@@ -661,7 +656,8 @@ function TimelineElementComponent({
 						try {
 							await navigator.clipboard.writeText(element.id);
 							toast.success("Element ID copied");
-						} catch {
+						} catch (error) {
+							console.error("Failed to copy element ID:", error);
 							toast.error("Failed to copy element ID");
 						}
 					}}
