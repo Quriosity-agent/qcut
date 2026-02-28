@@ -11,6 +11,11 @@ import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 import type { EditorApiClient } from "../editor/editor-api-client.js";
 import {
+	getSessionClient,
+	isSessionHealthChecked,
+	markSessionHealthChecked,
+} from "./cli-runner/session.js";
+import {
 	handleEditorHealth,
 	handleMediaProjectCommand,
 } from "../editor/editor-handlers-media.js";
@@ -150,10 +155,19 @@ export async function handleEditorCommand(
 	options: CLIRunOptions,
 	onProgress: ProgressFn
 ): Promise<CLIResult> {
-	const client = createEditorClient(options);
+	// In session mode, reuse the shared client. Otherwise create a new one.
+	const client = options.session
+		? getSessionClient(options)
+		: createEditorClient(options);
 
 	// Health check before any command (skip for editor:health itself)
-	if (options.command !== "editor:health") {
+	// --skip-health: in one-shot mode, skip unconditionally (caller guarantees editor is up)
+	//                in session mode, skip after first successful check
+	const shouldSkipHealth =
+		options.command === "editor:health" ||
+		(options.skipHealth && (!options.session || isSessionHealthChecked()));
+
+	if (!shouldSkipHealth) {
 		const healthy = await client.checkHealth();
 		if (!healthy) {
 			const host = options.host ?? process.env.QCUT_API_HOST ?? "127.0.0.1";
@@ -163,6 +177,7 @@ export async function handleEditorCommand(
 				error: `QCut editor not running at http://${host}:${port}\nStart QCut with: bun run electron:dev`,
 			};
 		}
+		markSessionHealthChecked();
 	}
 
 	// Extract module: "editor:media:list" → "media"
@@ -304,7 +319,7 @@ async function handleScreenRecordingCommand(
 			const stopData = await client.post(
 				"/api/claude/screen-recording/stop",
 				body,
-				{ timeout: 90_000 }
+				{ timeout: 30_000 }
 			);
 			const verification = await verifyScreenRecordingStopped({ client });
 			if (!verification.recoveredViaForceStop) {

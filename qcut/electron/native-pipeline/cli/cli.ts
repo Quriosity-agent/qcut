@@ -22,6 +22,7 @@ import { getExitCode, formatErrorForCli } from "../output/errors.js";
 import { CLIOutput } from "../cli/cli-output.js";
 import { StreamEmitter, NullEmitter } from "../infra/stream-emitter.js";
 import { formatCommandOutput } from "./cli-output-formatters.js";
+import { runSession } from "./cli-runner/session.js";
 
 const VERSION = "1.0.0";
 
@@ -208,7 +209,7 @@ Editor Commands (requires running QCut — use --project-id for all):
   editor:media:list/info     List or inspect media files
   editor:media:import        Import local file (--source)
   editor:media:import-url    Import from URL (--url)
-  editor:media:batch-import  Batch import (--items, max 20)
+  editor:media:batch-import  Batch import (--items or --sources, max 20)
   editor:media:extract-frame Extract video frame (--timestamp)
   editor:media:rename/delete Rename or delete media
   editor:project:settings    Get/update project settings
@@ -283,6 +284,8 @@ Generation Options:
   --duration, -d      Duration (e.g. "5s", "10")
   --aspect-ratio      Aspect ratio (e.g. "16:9", "9:16")
   --resolution        Resolution (e.g. "1080p", "720p")
+  --count             Generate N copies in parallel (e.g. --count 3)
+  --prompts           Multiple prompts for parallel generation (repeatable)
 
 Pipeline Options:
   --config, -c        Path to YAML pipeline config
@@ -290,6 +293,11 @@ Pipeline Options:
   --save-intermediates Save intermediate step outputs
   --parallel          Enable parallel step execution
   --max-workers       Max concurrent workers (default: 8)
+
+Performance Options:
+  --skip-health           Skip editor health check (use when editor is known up)
+  --no-capability-check   Skip per-request capability warnings
+  --session               Session mode: read commands from stdin, one per line
 
 Editor Options (see docs for full list):
   --project-id   Project ID    --media-id   Media ID
@@ -318,6 +326,7 @@ Examples:
 	);
 }
 
+/** Parse process argv into CLIRunOptions, exiting on --help/--version. */
 export function parseCliArgs(argv: string[]): CLIRunOptions {
 	const command = argv[0];
 
@@ -479,6 +488,15 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			// ui options
 			panel: { type: "string" },
 			tab: { type: "string" },
+			// batch generation options
+			count: { type: "string" },
+			prompts: { type: "string", multiple: true },
+			// batch import convenience
+			sources: { type: "string" },
+			// performance flags
+			"skip-health": { type: "boolean", default: false },
+			"no-capability-check": { type: "boolean", default: false },
+			session: { type: "boolean", default: false },
 		},
 		strict: false,
 	});
@@ -688,13 +706,73 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		// ui options
 		panel: values.panel as string | undefined,
 		tab: values.tab as string | undefined,
+		// batch generation options
+		count: values.count
+			? Number.isNaN(parseInt(values.count as string, 10))
+				? undefined
+				: parseInt(values.count as string, 10)
+			: undefined,
+		prompts: values.prompts as string[] | undefined,
+		// batch import convenience
+		sources: values.sources as string | undefined,
+		// performance flags
+		skipHealth: (values["skip-health"] as boolean) ?? false,
+		noCapabilityCheck: (values["no-capability-check"] as boolean) ?? false,
+		session: (values.session as boolean) ?? false,
 	};
 }
 
+/** CLI entry point: parse args and run the appropriate command or session. */
 export async function main(
 	argv: string[] = process.argv.slice(2)
 ): Promise<void> {
 	initRegistry();
+
+	// Check for --session before command parsing (session doesn't require a command)
+	if (argv.includes("--session")) {
+		const sessionArgv = argv.filter((a) => a !== "--session");
+		const { values: sessionValues } = parseArgs({
+			args: sessionArgv,
+			options: {
+				json: { type: "boolean", default: false },
+				quiet: { type: "boolean", short: "q", default: false },
+				verbose: { type: "boolean", short: "v", default: false },
+				"skip-health": { type: "boolean", default: false },
+				"no-capability-check": { type: "boolean", default: false },
+				host: { type: "string" },
+				port: { type: "string" },
+				token: { type: "string" },
+				"output-dir": { type: "string", short: "o" },
+			},
+			strict: false,
+		});
+		const baseOptions: Partial<CLIRunOptions> = {
+			json: sessionValues.json as boolean,
+			quiet: sessionValues.quiet as boolean,
+			verbose: sessionValues.verbose as boolean,
+			skipHealth: sessionValues["skip-health"] as boolean,
+			noCapabilityCheck: sessionValues["no-capability-check"] as boolean,
+			host: sessionValues.host as string | undefined,
+			port: sessionValues.port as string | undefined,
+			token: sessionValues.token as string | undefined,
+			outputDir: sessionValues["output-dir"] as string | undefined,
+			session: true,
+		};
+
+		const runner = new CLIPipelineRunner();
+		const reporter = createProgressReporter({
+			json: baseOptions.json ?? false,
+			quiet: baseOptions.quiet ?? false,
+		});
+
+		process.on("SIGINT", () => {
+			runner.abort();
+			process.exit(0);
+		});
+
+		await runSession(runner, baseOptions, reporter);
+		return;
+	}
 
 	const options = parseCliArgs(argv);
 	const output = new CLIOutput({

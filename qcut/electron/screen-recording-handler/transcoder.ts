@@ -42,7 +42,8 @@ export async function transcodeWebmToMp4({
 					windowsHide: true,
 				});
 
-				const TRANSCODE_TIMEOUT_MS = 300_000;
+				/** Reduced from 300s — FFmpeg transcoding (libx264 veryfast) typically takes <60s for short recordings. */
+				const TRANSCODE_TIMEOUT_MS = 60_000;
 				const timeout = setTimeout(() => {
 					ffmpegProcess.kill();
 					reject(

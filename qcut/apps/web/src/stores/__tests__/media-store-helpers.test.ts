@@ -168,8 +168,10 @@ describe("media-store-helpers", () => {
 				naturalHeight: 1080,
 			};
 			originalImage = window.Image;
-			// Replace Image constructor with a function that can be instantiated via `new`.
-			const MockImage = (() => mockImg) as unknown as typeof Image;
+			// Replace Image constructor with a regular function (arrow functions can't be `new`ed).
+			const MockImage = function () {
+				return mockImg;
+			} as unknown as typeof Image;
 			window.Image = MockImage;
 		});
 
