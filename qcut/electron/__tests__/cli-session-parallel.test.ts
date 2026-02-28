@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelRegistry } from "../native-pipeline/infra/registry.js";
 import { initRegistry, resetInitState } from "../native-pipeline/init.js";
-import {
-	CLIPipelineRunner,
-} from "../native-pipeline/cli/cli-runner.js";
+import { CLIPipelineRunner } from "../native-pipeline/cli/cli-runner.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
 import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import { PipelineExecutor } from "../native-pipeline/execution/executor.js";
