@@ -568,16 +568,12 @@ function createWindow(): void {
 		process.env.QCUT_E2E_VIRTUAL_DESKTOP ||
 		process.env.QCUT_E2E_OFFSCREEN
 	) {
-		// macOS clamps window positions to keep them on-screen, so
-		// use hide() + showInactive() to render without focus/visibility.
-		if (process.platform === "darwin") {
-			mainWindow.hide();
-			mainWindow.showInactive();
-			mainWindow.setPosition(-10000, -10000);
-		} else {
-			mainWindow.setPosition(-10000, -10000);
-		}
-		logger.log("[E2E] Window positioned offscreen");
+		// Make window invisible: fully transparent + ignore mouse events.
+		// macOS clamps offscreen positions, so transparency is more reliable
+		// for multi-monitor setups than trying to move beyond all displays.
+		mainWindow.setOpacity(0);
+		mainWindow.setIgnoreMouseEvents(true);
+		logger.log("[E2E] Window hidden (opacity=0, ignoreMouseEvents=true)");
 	}
 
 	// Load the app
