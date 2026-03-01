@@ -6,27 +6,33 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 
 - **Test Framework**: Playwright with Electron
 - **Location**: `apps/web/src/test/e2e/`
-- **Run Command**: `bun run test:e2e`
-- **Total Test Files**: 17
-- **Total Test Cases**: ~83
+- **Run Command**: `npx playwright test`
+- **Total Test Files**: 22
+- **Total Test Cases**: 131
 
-### Latest Test Run Summary (2026-02-21, post-fix)
+### Latest Test Run Summary (2026-03-01)
 
 | Status | Count |
 |--------|-------|
-| ✅ Passed | 74 |
-| ❌ Failed | 0 |
-| ⏭️ Skipped | 9 |
-| **Total** | **83** |
+| ✅ Passed | 110 |
+| ❌ Failed | 3 |
+| ⏭️ Skipped | 18 |
+| **Total** | **131** |
 
-**Pass Rate**: 100% (excluding skipped)
+**Pass Rate**: 97.3% (110/113 non-skipped)
 
-**Fixes Applied**: Updated test selectors for restructured media panel with group-based navigation (Library/Create/Edit/Agents groups and subgroups). Added `ensureMediaTabActive`, `ensureTextTabActive`, `ensureStickersTabActive`, `ensurePanelTabActive` helpers to `electron-helpers.ts`.
+**Failed Tests**:
+1. `audio-video-simultaneous-export.e2e.ts` — "exports both streams when timeline has separate video and audio tracks": Export did not complete successfully (timeout 20s exceeded)
+2. `project-folder-sync.e2e.ts` — "should handle missing electronAPI gracefully": `apiWasUndefined` expected `true`, got `false` (electronAPI cannot be nullified in Electron context)
+3. `remotion-export-pipeline.e2e.ts` — "export dialog shows Remotion engine indicator when timeline has Remotion elements": Remotion engine UI indicator not found
 
-**Skipped Tests**:
-- Test 10 (AI Transcription): 6 tests skipped - `captions-panel-tab` removed from UI (CaptionsView no longer in media panel tabs)
-- Test 11 (AI Enhancement): 1 test skipped (upscale image workflow - requires FAL API)
-- Test 14 (Terminal): 2 tests skipped (PTY-dependent, require `PTY_AVAILABLE=true`)
+**Skipped Tests (18)**:
+- `sticker-overlay-export.e2e.ts`: 12 tests skipped (all tests in file)
+- `ai-enhancement-export-integration.e2e.ts`: 1 test skipped (upscale image workflow — requires FAL API)
+- `editor-navigation.e2e.ts`: 1 test skipped
+- `remotion-folder-import.e2e.ts`: 1 test skipped
+- `terminal-paste.e2e.ts`: 2 tests skipped (PTY-dependent, require `PTY_AVAILABLE=true`)
+- `remotion-folder-import.e2e.ts`: 1 test skipped
 
 ---
 
@@ -43,35 +49,43 @@ This document provides a comprehensive overview of all End-to-End (E2E) tests in
 | 7 | `multi-media-management-part2.e2e.ts` | Timeline controls & editing | 7 | ✅ 7/7 |
 | 8 | `text-overlay-testing.e2e.ts` | Text overlay functionality | 6 | ✅ 6/6 |
 | 9 | `sticker-overlay-testing.e2e.ts` | Sticker overlay functionality | 6 | ✅ 6/6 |
-| 10 | `ai-transcription-caption-generation.e2e.ts` | AI transcription & captions | 6 | ⏭️ 6 skipped |
-| 11 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 | ✅ 7/8 (1 skip) |
-| 12 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 | ✅ 8/8 |
-| 13 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ✅ 6/6 |
-| 14 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ✅ 2/4 (2 skip) |
-| 15 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 |
-| 16 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ✅ 24/24 |
-| 17 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ✅ 1/1 |
+| 10 | `ai-enhancement-export-integration.e2e.ts` | AI enhancement & export | 8 | ✅ 7/8 (1 skip) |
+| 11 | `file-operations-storage-management.e2e.ts` | File operations & storage | 8 | ✅ 8/8 |
+| 12 | `auto-save-export-file-management.e2e.ts` | Auto-save & export management | 6 | ✅ 6/6 |
+| 13 | `terminal-paste.e2e.ts` | Terminal UI & paste functionality | 4 | ✅ 2/4 (2 skip) |
+| 14 | `remotion-panel-stability.e2e.ts` | Remotion panel stability | 3 | ✅ 3/3 |
+| 15 | `project-folder-sync.e2e.ts` | Project folder sync feature | 24 | ❌ 23/24 (1 fail) |
+| 16 | `debug-projectid.e2e.ts` | Debug test for database issues | 1 | ✅ 1/1 |
+| 17 | `audio-video-simultaneous-export.e2e.ts` | Audio + video simultaneous export | 1 | ❌ 0/1 |
+| 18 | `remotion-export-pipeline.e2e.ts` | Remotion export pipeline | 4 | ❌ 3/4 (1 fail) |
+| 19 | `remotion-folder-import.e2e.ts` | Remotion folder import | 19 | ✅ 18/19 (1 skip) |
+| 20 | `screen-recording-repro.e2e.ts` | Screen recording reproduction | 1 | ✅ 1/1 |
+| 21 | `sticker-overlay-export.e2e.ts` | Sticker overlay export | 12 | ⏭️ 12 skipped |
+| 22 | `timeline-duration-limit.e2e.ts` | Timeline 2-hour duration support | 1 | ✅ 1/1 |
 
 ---
 
-## Key Changes Made (2026-02-21)
+## Fixed Test Details (2026-03-01)
 
-### Root Cause
-The media panel was restructured into a group-based navigation system:
-- **Groups**: Library, Create, Edit, Agents (with testids `group-media`, `group-ai-create`, `group-edit`, `group-agents`)
-- **Edit subgroups**: "AI Assist" and "Manual Edit"
-- Tab testids follow pattern `${tabKey}-panel-tab`
+### 1. `audio-video-simultaneous-export.e2e.ts:326` — Export timeout (FIXED)
+- **Root cause**: Console message mismatch — test waited for `"FFmpeg export completed successfully"` but actual log is `"FFmpeg export completed in Xs"`. Also, `debugLog()` is gated behind `isDebugEnabled()`.
+- **Fix**: Enable debug mode via `localStorage.setItem("qcut_debug_mode", "true")` and match the actual log message pattern.
 
-### Fixes
-1. **`electron-helpers.ts`**: Added navigation helpers (`ensureMediaTabActive`, `ensureTextTabActive`, `ensureStickersTabActive`, `ensurePanelTabActive`) that click the correct group/subgroup before accessing tabs
-2. **`uploadTestMedia`**: Now calls `ensureMediaTabActive` before clicking `import-media-button`
-3. **`group-tools` → `group-agents`**: Renamed testid in terminal-paste tests
-4. **Text/Sticker panel access**: Navigate to Edit > Manual Edit subgroup first
-5. **AI panel access**: Navigate to Create group first
-6. **Terminal tests**: Handle auto-connect behavior (terminal connects automatically, no start button visible)
-7. **AI Transcription tests**: Skipped - CaptionsView removed from media panel tabs
-8. **Sticker selection test**: Relaxed assertion (click may add to canvas instead of selecting)
-9. **Zoom timeout**: Increased from 2s to 5s
+### 2. `project-folder-sync.e2e.ts:890` — Missing electronAPI test (FIXED)
+- **Root cause**: `contextBridge.exposeInMainWorld` makes `electronAPI` non-configurable. Simple assignment `window.electronAPI = undefined` silently fails.
+- **Fix**: Use `Object.defineProperty(window, "electronAPI", { value: undefined, configurable: true, writable: true })`.
+
+### 3. `remotion-export-pipeline.e2e.ts:154` — Remotion engine indicator (FIXED)
+- **Root cause**: Exact text selector `"Remotion Engine"` didn't match `"Remotion Engine (Medium Performance)"`.
+- **Fix**: Changed to regex partial match: `page.getByText(/Remotion Engine/)`.
+
+### 4. `sticker-overlay-export.e2e.ts` — 12 tests skipped (FIXED)
+- **Root cause**: `addStickerToCanvas()` depends on Iconify API network calls. When unreachable, `fetchCollections()` sets error state preventing the sticker panel from rendering.
+- **Fix**: Added Iconify API route mocking in `addStickerToCanvas()` helper — intercepts all 3 API hosts with mock collection and SVG responses.
+
+### 5. `ai-enhancement-export-integration.e2e.ts` — Upscale test skipped (FIXED)
+- **Root cause**: `getFalApiKey()` returns null and throws before the mocked `fal.run` route is reached.
+- **Fix**: Set a mock FAL API key via `electronAPI.apiKeys.set()` before the upscale button click.
 
 ---
 
@@ -79,17 +93,17 @@ The media panel was restructured into a group-based navigation system:
 
 ### Run All E2E Tests
 ```bash
-bun run test:e2e
+npx playwright test
 ```
 
 ### Run Specific Test File
 ```bash
-bun run test:e2e -- apps/web/src/test/e2e/project-workflow-part1.e2e.ts
+npx playwright test apps/web/src/test/e2e/project-workflow-part1.e2e.ts
 ```
 
 ### Run with Headed Browser
 ```bash
-bun run test:e2e -- --headed
+npx playwright test --headed
 ```
 
 ---
@@ -114,4 +128,4 @@ Common test utilities are in `helpers/electron-helpers.ts`:
 
 ---
 
-*Last Updated: 2026-02-21*
+*Last Updated: 2026-03-01*
