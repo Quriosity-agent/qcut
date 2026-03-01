@@ -285,17 +285,7 @@ export async function cleanupDatabase(page: Page) {
 export const test = base.extend<ElectronFixtures>({
 	// biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require empty destructuring
 	electronApp: async ({}, use) => {
-		// Launch Electron app
-		const electronApp = await electron.launch({
-			args: ["dist/electron/main.js"],
-			env: {
-				...process.env,
-				NODE_ENV: "test",
-				// Disable hardware acceleration for consistent testing
-				ELECTRON_DISABLE_GPU: "1",
-			},
-		});
-
+		const electronApp = await startElectronApp();
 		await use(electronApp);
 		await electronApp.close();
 	},
