@@ -35,6 +35,7 @@ interface TimelineRulerProps {
 	silenceGapSegments: WordItem[];
 }
 
+/** Renders the timeline ruler with time markers, bookmarks, and word/silence indicators. */
 export function TimelineRuler({
 	duration,
 	zoomLevel,

@@ -4,6 +4,7 @@ import {
 } from "@/lib/remotion/sequence-analysis-service";
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for analyzing Remotion component source code and caching results. */
 export function createAnalysisActions(set: SetFn, get: GetFn) {
 	return {
 		setAnalysisResult: (componentId: string, result: AnalysisResult) => {

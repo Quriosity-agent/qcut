@@ -9,6 +9,7 @@ import {
 } from "@/lib/remotion/component-loader";
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for importing, refreshing, and removing Remotion component folders. */
 export function createFolderImportActions(set: SetFn, get: GetFn) {
 	return {
 		importFromFolder: async (

@@ -1,5 +1,6 @@
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for syncing playback state across Remotion instances. */
 export function createSyncActions(set: SetFn, get: GetFn) {
 	return {
 		syncToGlobalFrame: (frame: number) => {

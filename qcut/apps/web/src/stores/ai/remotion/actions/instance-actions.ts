@@ -5,6 +5,7 @@ import type {
 import type { PlayerRef } from "@remotion/player";
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for Remotion instance lifecycle: create, destroy, update props, and set player refs. */
 export function createInstanceActions(set: SetFn, get: GetFn) {
 	return {
 		createInstance: (

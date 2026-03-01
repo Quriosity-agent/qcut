@@ -1,5 +1,6 @@
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for Remotion instance playback: seek, play, pause, and rate control. */
 export function createPlaybackActions(set: SetFn, get: GetFn) {
 	return {
 		seekInstance: (elementId: string, frame: number) => {

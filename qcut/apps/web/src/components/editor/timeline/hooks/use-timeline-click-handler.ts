@@ -18,6 +18,7 @@ interface UseTimelineClickHandlerOptions {
 	tracksScrollRef: RefObject<HTMLDivElement | null>;
 }
 
+/** Hook for timeline click-to-seek, distinguishing real clicks from drag ends. */
 export function useTimelineClickHandler({
 	duration,
 	zoomLevel,

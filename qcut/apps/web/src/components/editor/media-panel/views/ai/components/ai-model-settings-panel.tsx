@@ -53,6 +53,7 @@ interface AIModelSettingsPanelProps {
 	setReveOutputFormat: (v: ReveOutputFormatOption) => void;
 }
 
+/** Renders model-specific settings panels based on selected AI models. */
 export function AIModelSettingsPanel({
 	activeTab,
 	selectedModels,

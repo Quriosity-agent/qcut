@@ -1,6 +1,7 @@
 import type { RemotionError } from "@/lib/remotion/types";
 import type { SetFn } from "./types";
 
+/** Creates actions for tracking and clearing Remotion errors. */
 export function createErrorActions(set: SetFn) {
 	return {
 		addError: (error: RemotionError) => {

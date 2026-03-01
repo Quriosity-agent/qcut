@@ -4,6 +4,7 @@ import type {
 } from "@/lib/remotion/types";
 import type { SetFn, GetFn } from "./types";
 
+/** Creates actions for registering, unregistering, and querying Remotion components. */
 export function createRegistryActions(set: SetFn, get: GetFn) {
 	return {
 		registerComponent: (definition: RemotionComponentDefinition) => {

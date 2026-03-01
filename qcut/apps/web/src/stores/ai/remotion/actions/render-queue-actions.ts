@@ -5,6 +5,7 @@ import type {
 import { generateUUID } from "@/lib/utils";
 import type { SetFn } from "./types";
 
+/** Creates actions for managing the Remotion render job queue. */
 export function createRenderQueueActions(set: SetFn) {
 	return {
 		addRenderJob: (job: Omit<RenderJob, "id" | "createdAt">) => {
