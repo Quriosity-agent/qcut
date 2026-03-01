@@ -127,6 +127,7 @@ function readScriptInput(options: CLIRunOptions): string | null {
 		return readFileSync(scriptPath, "utf-8");
 	}
 	if (options.input) {
+		if (options.input === "-") return readFileSync(0, "utf-8");
 		const inputPath = resolve(options.input);
 		if (existsSync(inputPath)) return readFileSync(inputPath, "utf-8");
 		return options.input;

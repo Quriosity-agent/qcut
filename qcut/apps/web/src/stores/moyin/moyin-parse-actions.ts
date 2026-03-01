@@ -213,11 +213,11 @@ export async function attemptPtyParse(
 		// 3. Ensure shell session is running
 		const ptyState = usePtyTerminalStore.getState();
 
-		// If connected to a non-shell provider, disconnect and reconnect as shell
+		// If connected to a non-shell provider, bail out to IPC fallback
+		// (don't kill an active agent session just to run parse)
 		if (ptyState.status === "connected" && ptyState.cliProvider !== "shell") {
-			await usePtyTerminalStore.getState().disconnect({ userInitiated: true });
-			// Small delay for clean disconnect
-			await new Promise((resolve) => setTimeout(resolve, 300));
+			api.cleanupTempScript(saveResult.filePath)?.catch(() => {});
+			return { success: false };
 		}
 
 		// Spawn a shell session if not connected
