@@ -41,7 +41,7 @@ If the PTY terminal is unavailable (e.g., Claude Code is running in it), the sys
 
 ## Data Flow
 
-```
+```text
 [Parse Button] → Save temp file (moyin:save-temp-script IPC)
                → Switch to PTY terminal tab
                → Run: bun run pipeline moyin:parse-script --script /tmp/... --model gemini --stream
@@ -59,7 +59,7 @@ If the PTY terminal is unavailable (e.g., Claude Code is running in it), the sys
 ```
 
 Fallback (PTY unavailable):
-```
+```text
 [Parse Button] → IPC moyin:parse-script → moyin-handler.ts callLLM() → result → calibration
 ```
 

@@ -6,7 +6,7 @@
 import { ipcMain, app } from "electron";
 import { spawn, execSync } from "node:child_process";
 import { writeFileSync, unlinkSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, basename, normalize } from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
 interface Logger {
@@ -579,14 +579,23 @@ export function setupMoyinIPC(): void {
 		}
 	);
 
-	// Clean up a temp script file
+	// Clean up a temp script file (restricted to app temp dir with expected prefix)
 	ipcMain.handle(
 		"moyin:cleanup-temp-script",
 		async (_event, filePath: string): Promise<void> => {
 			try {
-				if (existsSync(filePath)) {
-					unlinkSync(filePath);
-					log.info(`[Moyin] Cleaned up temp script: ${filePath}`);
+				const tempDir = app.getPath("temp");
+				const resolved = normalize(filePath);
+				if (
+					!resolved.startsWith(tempDir) ||
+					!basename(resolved).startsWith("moyin-script-")
+				) {
+					log.warn(`[Moyin] Blocked cleanup of non-temp path: ${filePath}`);
+					return;
+				}
+				if (existsSync(resolved)) {
+					unlinkSync(resolved);
+					log.info(`[Moyin] Cleaned up temp script: ${resolved}`);
 				}
 			} catch {
 				// Ignore cleanup errors

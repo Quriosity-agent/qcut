@@ -176,7 +176,7 @@ export async function attemptPtyParse(
 
 		const projectRoot = saveResult.projectRoot;
 		if (!projectRoot) {
-			api.cleanupTempScript(saveResult.filePath);
+			api.cleanupTempScript(saveResult.filePath)?.catch(() => {});
 			return { success: false };
 		}
 
@@ -207,19 +207,19 @@ export async function attemptPtyParse(
 
 		const sessionId = usePtyTerminalStore.getState().sessionId;
 		if (!sessionId) {
-			api.cleanupTempScript(saveResult.filePath);
+			api.cleanupTempScript(saveResult.filePath)?.catch(() => {});
 			return { success: false };
 		}
 
-		// 4. Build and write CLI command
-		const escapedPath = saveResult.filePath.replace(/ /g, "\\ ");
-		const cmd = `cd ${projectRoot.replace(/ /g, "\\ ")} && bun run pipeline moyin:parse-script --script ${escapedPath} --model ${model} --stream`;
+		// 4. Build and write CLI command (shell-quote values to prevent injection)
+		const q = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
+		const cmd = `cd ${q(projectRoot)} && bun run pipeline moyin:parse-script --script ${q(saveResult.filePath)} --model ${model} --stream`;
 
 		await ptyApi.write(sessionId, cmd + "\n");
 
 		// 5. Schedule temp file cleanup after 5 minutes
 		setTimeout(() => {
-			api.cleanupTempScript(saveResult.filePath!);
+			api.cleanupTempScript(saveResult.filePath!)?.catch(() => {});
 		}, 300_000);
 
 		return { success: true, tempPath: saveResult.filePath };

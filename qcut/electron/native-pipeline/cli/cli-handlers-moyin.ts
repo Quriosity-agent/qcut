@@ -450,6 +450,13 @@ function callClaudeCLI(
 			);
 		});
 
+		child.stdin.on("error", (err) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutId);
+			reject(new Error(`Claude CLI stdin error: ${err.message}`));
+		});
+
 		try {
 			child.stdin.write(userPrompt);
 			child.stdin.end();
@@ -598,30 +605,30 @@ export async function handleMoyinParseScript(
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : String(err);
-		if (isTransientError(msg)) {
-			onProgress({
-				stage: "retry",
-				percent: 15,
-				message: "Transient error, retrying...",
-			});
-			try {
-				result = await callLLM(PARSE_SYSTEM_PROMPT, userPrompt, {
-					model: modelFlag,
-					stream: streamEnabled,
-					onChunk,
-				});
-			} catch (retryErr) {
-				return {
-					success: false,
-					error:
-						retryErr instanceof Error ? retryErr.message : String(retryErr),
-					duration: (Date.now() - startTime) / 1000,
-				};
-			}
-		} else {
+		if (!isTransientError(msg)) {
 			return {
 				success: false,
 				error: msg,
+				duration: (Date.now() - startTime) / 1000,
+			};
+		}
+
+		onProgress({
+			stage: "retry",
+			percent: 15,
+			message: "Transient error, retrying...",
+		});
+		try {
+			result = await callLLM(PARSE_SYSTEM_PROMPT, userPrompt, {
+				model: modelFlag,
+				stream: streamEnabled,
+				onChunk,
+			});
+		} catch (retryErr) {
+			return {
+				success: false,
+				error:
+					retryErr instanceof Error ? retryErr.message : String(retryErr),
 				duration: (Date.now() - startTime) / 1000,
 			};
 		}

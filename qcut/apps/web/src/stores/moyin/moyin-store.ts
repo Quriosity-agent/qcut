@@ -310,11 +310,15 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			// --- PTY path: stream output in terminal, data arrives via onParsed ---
 			const ptyResult = await attemptPtyParse(rawScript, parseModel);
 			if (ptyResult.success) {
-				set({ _pendingTempScriptPath: ptyResult.tempPath ?? null });
-				// Set a 3-minute timeout for PTY path
+				const pendingPath = ptyResult.tempPath ?? null;
+				set({ _pendingTempScriptPath: pendingPath });
+				// Set a 3-minute timeout for PTY path (scoped to this run)
 				setTimeout(() => {
 					const s = get();
-					if (s.parseStatus === "parsing" && s._pendingTempScriptPath) {
+					if (
+						s.parseStatus === "parsing" &&
+						s._pendingTempScriptPath === pendingPath
+					) {
 						set({
 							parseStatus: "error",
 							parseError: "Parse timed out. Check Terminal tab for errors.",
@@ -839,9 +843,9 @@ if (typeof window !== "undefined") {
 
 		// Clean up temp file from PTY parse
 		if (state._pendingTempScriptPath) {
-			window.electronAPI?.moyin?.cleanupTempScript(
-				state._pendingTempScriptPath
-			);
+			window.electronAPI?.moyin
+				?.cleanupTempScript(state._pendingTempScriptPath)
+				?.catch(() => {});
 			useMoyinStore.setState({ _pendingTempScriptPath: null });
 		}
 
