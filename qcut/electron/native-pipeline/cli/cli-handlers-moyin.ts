@@ -627,8 +627,7 @@ export async function handleMoyinParseScript(
 		} catch (retryErr) {
 			return {
 				success: false,
-				error:
-					retryErr instanceof Error ? retryErr.message : String(retryErr),
+				error: retryErr instanceof Error ? retryErr.message : String(retryErr),
 				duration: (Date.now() - startTime) / 1000,
 			};
 		}
