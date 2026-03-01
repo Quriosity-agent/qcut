@@ -60,6 +60,25 @@ vi.mock("lucide-react", () => {
 		Volume2Icon: icon("volume2"),
 		XIcon: icon("x"),
 		ZapIcon: icon("zap"),
+		// Media panel store tab icons (transitive import via moyin-parse-actions)
+		ArrowLeftRightIcon: icon("arrow-left-right"),
+		ArrowUpFromLineIcon: icon("arrow-up-from-line"),
+		BlendIcon: icon("blend"),
+		BotIcon: icon("bot"),
+		ClapperboardIcon: icon("clapperboard"),
+		FolderOpenIcon: icon("folder-open"),
+		FolderSync: icon("folder-sync"),
+		Layers: icon("layers"),
+		PaletteIcon: icon("palette"),
+		ScissorsIcon: icon("scissors"),
+		SquareTerminalIcon: icon("square-terminal"),
+		StickerIcon: icon("sticker"),
+		TextSelect: icon("text-select"),
+		TypeIcon: icon("type"),
+		VolumeXIcon: icon("volume-x"),
+		Wand2Icon: icon("wand-2"),
+		WandIcon: icon("wand"),
+		WrenchIcon: icon("wrench"),
 	};
 });
 
