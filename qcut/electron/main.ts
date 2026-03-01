@@ -551,6 +551,35 @@ function createWindow(): void {
 		// Fallback for headless/CI environments without a display
 	}
 
+	// E2E virtual display: position window on virtual display or offscreen
+	if (process.env.QCUT_E2E_DISPLAY_ID) {
+		const displays = screen.getAllDisplays();
+		const target = displays.find(
+			(d) => String(d.id) === process.env.QCUT_E2E_DISPLAY_ID
+		);
+		if (target) {
+			mainWindow.setBounds(target.bounds);
+			logger.log(`[E2E] Window positioned on virtual display ${target.id}`);
+		} else {
+			mainWindow.setPosition(-2000, -2000);
+			logger.log("[E2E] Virtual display not found, using offscreen fallback");
+		}
+	} else if (
+		process.env.QCUT_E2E_VIRTUAL_DESKTOP ||
+		process.env.QCUT_E2E_OFFSCREEN
+	) {
+		// macOS clamps window positions to keep them on-screen, so
+		// use hide() + showInactive() to render without focus/visibility.
+		if (process.platform === "darwin") {
+			mainWindow.hide();
+			mainWindow.showInactive();
+			mainWindow.setPosition(-10000, -10000);
+		} else {
+			mainWindow.setPosition(-10000, -10000);
+		}
+		logger.log("[E2E] Window positioned offscreen");
+	}
+
 	// Load the app
 	const isDev = process.env.NODE_ENV === "development";
 	if (isDev) {

@@ -6,7 +6,7 @@
  *
  * Platform strategies:
  *   Windows — Virtual Desktop via PowerShell COM, fallback to offscreen (-2000,-2000)
- *   macOS   — CGVirtualDisplay (macOS 14+), fallback to offscreen (-2000,-2000)
+ *   macOS   — Offscreen window positioning (-2000,-2000)
  *   Linux   — xvfb-run wrapper, fallback to existing $DISPLAY
  */
 
@@ -162,138 +162,22 @@ class WindowsVirtualDesktop implements VirtualDisplayStrategy {
 // macOS — CGVirtualDisplay via Swift helper
 // ---------------------------------------------------------------------------
 
-class MacOSVirtualDisplay implements VirtualDisplayStrategy {
-	private helperProcess: ChildProcess | null = null;
-	private swiftSrc: string;
-	private compiledPath: string;
-
-	constructor() {
-		this.swiftSrc = resolve(
-			import.meta.dirname,
-			"e2e-virtual-display-mac.swift",
-		);
-		this.compiledPath = resolve(
-			import.meta.dirname,
-			"..",
-			".cache",
-			"e2e-vdisplay",
-		);
-	}
-
+/**
+ * macOS — Offscreen window positioning.
+ *
+ * CGVirtualDisplay is process-local on macOS: the virtual display is only
+ * visible within the creator process, not to other processes like Electron.
+ * Therefore we use offscreen positioning (-2000, -2000) which fully renders
+ * the window without stealing the user's mouse/keyboard focus.
+ */
+class MacOSOffscreen implements VirtualDisplayStrategy {
 	async setup(): Promise<Record<string, string>> {
-		if (!existsSync(this.swiftSrc)) {
-			log("Swift helper not found, falling back to offscreen");
-			return { QCUT_E2E_OFFSCREEN: "1" };
-		}
-
-		const hasSwiftc = await commandExists("swiftc");
-		if (!hasSwiftc) {
-			log(
-				"swiftc not found — install Xcode CLI tools. Falling back to offscreen.",
-			);
-			return { QCUT_E2E_OFFSCREEN: "1" };
-		}
-
-		try {
-			// Ensure cache directory exists
-			const cacheDir = resolve(import.meta.dirname, "..", ".cache");
-			if (!existsSync(cacheDir)) {
-				const { mkdirSync } = await import("node:fs");
-				mkdirSync(cacheDir, { recursive: true });
-			}
-
-			// Compile Swift helper (cached — only recompile if source is newer)
-			const { statSync } = await import("node:fs");
-			let needsCompile = !existsSync(this.compiledPath);
-			if (!needsCompile) {
-				const srcStat = statSync(this.swiftSrc);
-				const binStat = statSync(this.compiledPath);
-				needsCompile = srcStat.mtimeMs > binStat.mtimeMs;
-			}
-
-			if (needsCompile) {
-				log("Compiling Swift virtual display helper...");
-				await execPromise("swiftc", [
-					"-O",
-					this.swiftSrc,
-					"-o",
-					this.compiledPath,
-				]);
-			}
-
-			// Launch helper — it keeps the virtual display alive until stdin closes
-			const helper = spawn(this.compiledPath, [], {
-				stdio: ["pipe", "pipe", "inherit"],
-			});
-			this.helperProcess = helper;
-
-			const displayId = await new Promise<string>((resolve, reject) => {
-				let data = "";
-				const timeout = setTimeout(() => {
-					reject(new Error("Swift helper timed out"));
-				}, 10_000);
-
-				helper.stdout!.on("data", (chunk: Buffer) => {
-					data += chunk.toString();
-					const lines = data.split("\n");
-					for (const line of lines) {
-						const trimmed = line.trim();
-						if (trimmed === "FALLBACK") {
-							clearTimeout(timeout);
-							resolve("FALLBACK");
-							return;
-						}
-						if (trimmed.startsWith("DISPLAY_ID=")) {
-							clearTimeout(timeout);
-							resolve(trimmed.replace("DISPLAY_ID=", ""));
-							return;
-						}
-					}
-				});
-
-				helper.on("error", (err) => {
-					clearTimeout(timeout);
-					reject(err);
-				});
-				helper.on("exit", (code) => {
-					clearTimeout(timeout);
-					if (code !== 0) {
-						reject(new Error(`Swift helper exited with code ${code}`));
-					}
-				});
-			});
-
-			if (displayId === "FALLBACK") {
-				log(
-					"CGVirtualDisplay unavailable (macOS < 14), using offscreen fallback",
-				);
-				this.helperProcess?.kill();
-				this.helperProcess = null;
-				return { QCUT_E2E_OFFSCREEN: "1" };
-			}
-
-			log(`Virtual display created: ${displayId}`);
-			return { QCUT_E2E_DISPLAY_ID: displayId };
-		} catch (err) {
-			log(
-				`macOS virtual display failed, falling back to offscreen: ${err instanceof Error ? err.message : String(err)}`,
-			);
-			this.helperProcess?.kill();
-			this.helperProcess = null;
-			return { QCUT_E2E_OFFSCREEN: "1" };
-		}
+		log("macOS: using offscreen window positioning");
+		return { QCUT_E2E_OFFSCREEN: "1" };
 	}
 
 	async teardown(): Promise<void> {
-		if (!this.helperProcess) return;
-		try {
-			this.helperProcess.stdin?.end();
-			this.helperProcess.kill();
-			log("Virtual display helper terminated");
-		} catch {
-			// Process may already be gone
-		}
-		this.helperProcess = null;
+		// Nothing to clean up
 	}
 }
 
@@ -354,7 +238,7 @@ function createStrategy(plat: NodeJS.Platform): VirtualDisplayStrategy {
 		case "win32":
 			return new WindowsVirtualDesktop();
 		case "darwin":
-			return new MacOSVirtualDisplay();
+			return new MacOSOffscreen();
 		case "linux":
 			return new LinuxXvfb();
 		default:
