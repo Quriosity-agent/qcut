@@ -247,21 +247,33 @@ function TimeMarkers({
 }
 
 function BookmarkMarkers({ zoomLevel }: { zoomLevel: number }) {
-	const { activeProject } = useProjectStore.getState();
-	if (!activeProject?.bookmarks?.length) return null;
+	const bookmarks = useProjectStore(
+		(state) => state.activeProject?.bookmarks
+	);
+	if (!bookmarks?.length) return null;
 
 	return (
 		<>
-			{activeProject.bookmarks.map((bookmarkTime, i) => (
+			{bookmarks.map((bookmarkTime, i) => (
 				<div
 					key={`bookmark-${i}`}
-					className="absolute top-0 h-10 w-0.5 !bg-primary cursor-pointer"
+					role="button"
+					tabIndex={0}
+					aria-label={`Bookmark at ${bookmarkTime.toFixed(1)}s`}
+					className="absolute top-0 h-10 w-0.5 !bg-primary cursor-pointer focus:ring-2 focus:ring-primary focus:outline-none"
 					style={{
 						left: `${bookmarkTime * TIMELINE_CONSTANTS.PIXELS_PER_SECOND * zoomLevel}px`,
 					}}
 					onClick={(e) => {
 						e.stopPropagation();
 						usePlaybackStore.getState().seek(bookmarkTime);
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							e.stopPropagation();
+							usePlaybackStore.getState().seek(bookmarkTime);
+						}
 					}}
 				>
 					<div className="absolute top-[-1px] left-[-5px] text-primary">

@@ -24,9 +24,9 @@ export const generateThumbnail = async (
 	videoFile: File,
 	timeInSeconds = 1
 ): Promise<string> => {
-	console.log("[FFmpeg] generateThumbnail called");
+	debugLog("[FFmpeg] generateThumbnail called");
 	const ffmpeg = await initFFmpeg();
-	console.log("[FFmpeg] FFmpeg initialized for thumbnail generation");
+	debugLog("[FFmpeg] FFmpeg initialized for thumbnail generation");
 
 	const inputName = "input.mp4";
 	const outputName = "thumbnail.jpg";
@@ -45,7 +45,7 @@ export const generateThumbnail = async (
 			new Uint8Array(await videoFile.arrayBuffer())
 		);
 
-		console.log("[FFmpeg] Starting thumbnail generation...");
+		debugLog("[FFmpeg] Starting thumbnail generation...");
 
 		await Promise.race([
 			ffmpeg.exec([
@@ -64,7 +64,7 @@ export const generateThumbnail = async (
 			timeoutPromise,
 		]);
 
-		console.log("[FFmpeg] Thumbnail generation completed");
+		debugLog("[FFmpeg] Thumbnail generation completed");
 
 		const data = await ffmpeg.readFile(outputName);
 		const blob = new Blob([data as unknown as ArrayBuffer], {
@@ -115,37 +115,56 @@ export const trimVideo = async (
 		(ffmpeg as any).on("progress", progressHandler);
 	}
 
-	await ffmpeg.writeFile(
-		inputName,
-		new Uint8Array(await videoFile.arrayBuffer())
-	);
+	try {
+		await ffmpeg.writeFile(
+			inputName,
+			new Uint8Array(await videoFile.arrayBuffer())
+		);
 
-	const duration = endTime - startTime;
+		const duration = endTime - startTime;
 
-	await ffmpeg.exec([
-		"-i",
-		inputName,
-		"-ss",
-		startTime.toString(),
-		"-t",
-		duration.toString(),
-		"-c",
-		"copy",
-		outputName,
-	]);
+		await ffmpeg.exec([
+			"-i",
+			inputName,
+			"-ss",
+			startTime.toString(),
+			"-t",
+			duration.toString(),
+			"-c",
+			"copy",
+			outputName,
+		]);
 
-	const data = await ffmpeg.readFile(outputName);
-	const blob = new Blob([data as unknown as ArrayBuffer], {
-		type: "video/mp4",
-	});
+		const data = await ffmpeg.readFile(outputName);
+		const blob = new Blob([data as unknown as ArrayBuffer], {
+			type: "video/mp4",
+		});
 
-	await ffmpeg.deleteFile(inputName);
-	await ffmpeg.deleteFile(outputName);
+		await ffmpeg.deleteFile(inputName);
+		await ffmpeg.deleteFile(outputName);
 
-	if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
+		if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
 
-	updateLastUsed();
-	return blob;
+		updateLastUsed();
+		return blob;
+	} catch (error) {
+		if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
+
+		handleMediaProcessingError(error, "Trim video", {
+			videoFile: videoFile.name,
+			startTime,
+			endTime,
+		});
+
+		try {
+			await ffmpeg.deleteFile(inputName);
+		} catch {}
+		try {
+			await ffmpeg.deleteFile(outputName);
+		} catch {}
+
+		throw error;
+	}
 };
 
 /**
@@ -254,37 +273,54 @@ export const convertToWebM = async (
 		(ffmpeg as any).on("progress", progressHandler);
 	}
 
-	await ffmpeg.writeFile(
-		inputName,
-		new Uint8Array(await videoFile.arrayBuffer())
-	);
+	try {
+		await ffmpeg.writeFile(
+			inputName,
+			new Uint8Array(await videoFile.arrayBuffer())
+		);
 
-	await ffmpeg.exec([
-		"-i",
-		inputName,
-		"-c:v",
-		"libvpx-vp9",
-		"-crf",
-		"30",
-		"-b:v",
-		"0",
-		"-c:a",
-		"libopus",
-		outputName,
-	]);
+		await ffmpeg.exec([
+			"-i",
+			inputName,
+			"-c:v",
+			"libvpx-vp9",
+			"-crf",
+			"30",
+			"-b:v",
+			"0",
+			"-c:a",
+			"libopus",
+			outputName,
+		]);
 
-	const data = await ffmpeg.readFile(outputName);
-	const blob = new Blob([data as unknown as ArrayBuffer], {
-		type: "video/webm",
-	});
+		const data = await ffmpeg.readFile(outputName);
+		const blob = new Blob([data as unknown as ArrayBuffer], {
+			type: "video/webm",
+		});
 
-	await ffmpeg.deleteFile(inputName);
-	await ffmpeg.deleteFile(outputName);
+		await ffmpeg.deleteFile(inputName);
+		await ffmpeg.deleteFile(outputName);
 
-	if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
+		if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
 
-	updateLastUsed();
-	return blob;
+		updateLastUsed();
+		return blob;
+	} catch (error) {
+		if (progressHandler) (ffmpeg as any).off?.("progress", progressHandler);
+
+		handleMediaProcessingError(error, "Convert to WebM", {
+			videoFile: videoFile.name,
+		});
+
+		try {
+			await ffmpeg.deleteFile(inputName);
+		} catch {}
+		try {
+			await ffmpeg.deleteFile(outputName);
+		} catch {}
+
+		throw error;
+	}
 };
 
 /**
@@ -306,30 +342,46 @@ export const extractAudio = async (
 	const inputName = `input.${ext}`;
 	const outputName = `output.${format}`;
 
-	await ffmpeg.writeFile(
-		inputName,
-		new Uint8Array(await videoFile.arrayBuffer())
-	);
+	try {
+		await ffmpeg.writeFile(
+			inputName,
+			new Uint8Array(await videoFile.arrayBuffer())
+		);
 
-	await ffmpeg.exec([
-		"-i",
-		inputName,
-		"-vn",
-		"-acodec",
-		format === "mp3" ? "libmp3lame" : "pcm_s16le",
-		outputName,
-	]);
+		await ffmpeg.exec([
+			"-i",
+			inputName,
+			"-vn",
+			"-acodec",
+			format === "mp3" ? "libmp3lame" : "pcm_s16le",
+			outputName,
+		]);
 
-	const data = await ffmpeg.readFile(outputName);
-	const blob = new Blob([data as unknown as ArrayBuffer], {
-		type: `audio/${format}`,
-	});
+		const data = await ffmpeg.readFile(outputName);
+		const blob = new Blob([data as unknown as ArrayBuffer], {
+			type: `audio/${format}`,
+		});
 
-	await ffmpeg.deleteFile(inputName);
-	await ffmpeg.deleteFile(outputName);
+		await ffmpeg.deleteFile(inputName);
+		await ffmpeg.deleteFile(outputName);
 
-	updateLastUsed();
-	return blob;
+		updateLastUsed();
+		return blob;
+	} catch (error) {
+		handleMediaProcessingError(error, "Extract audio", {
+			videoFile: videoFile.name,
+			format,
+		});
+
+		try {
+			await ffmpeg.deleteFile(inputName);
+		} catch {}
+		try {
+			await ffmpeg.deleteFile(outputName);
+		} catch {}
+
+		throw error;
+	}
 };
 
 /**

@@ -49,7 +49,7 @@ lib/ffmpeg/
 
 ## Dependency Chain
 
-```
+```text
 environment.ts → (standalone)
 resources.ts → environment.ts
 state.ts → (standalone, mutable globals)

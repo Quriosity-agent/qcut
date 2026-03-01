@@ -1,5 +1,11 @@
 import { useEffect, type RefObject } from "react";
 import type { CanvasObject, ImageObject } from "../../hooks/use-canvas-objects";
+import { debug } from "../canvas-utils";
+import {
+	handleError,
+	ErrorCategory,
+	ErrorSeverity,
+} from "@/lib/debug/error-handler";
 
 /**
  * Hook for canvas rendering effects: drawing objects on the main canvas
@@ -24,20 +30,17 @@ export function useCanvasRendering({
 		const canvas = canvasRef.current;
 		const ctx = canvas?.getContext("2d");
 		if (!ctx || !canvas) {
-			if (import.meta.env.DEV)
-				console.error("❌ Canvas or context not available");
+			debug("❌ Canvas or context not available");
 			return;
 		}
 
-		if (import.meta.env.DEV) {
-			console.log("🎨 CANVAS LAYER DEBUG - Drawing canvas render:", {
-				canvasElement: "Drawing Canvas (z-index: 2)",
-				clearingWithTransparent: true,
-				willShowBackgroundCanvas: true,
-				backgroundCanvasHasImages:
-					objects.filter((obj) => obj.type === "image").length > 0,
-			});
-		}
+		debug("🎨 CANVAS LAYER - Drawing canvas render:", {
+			canvasElement: "Drawing Canvas (z-index: 2)",
+			clearingWithTransparent: true,
+			willShowBackgroundCanvas: true,
+			backgroundCanvasHasImages:
+				objects.filter((obj) => obj.type === "image").length > 0,
+		});
 
 		// Clear and set white background for drawing canvas
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -53,30 +56,22 @@ export function useCanvasRendering({
 		const nonImageObjects = objects.filter((obj) => obj.type !== "image");
 
 		if (nonImageObjects.length > 0) {
-			if (import.meta.env.DEV) {
-				const imageCount = objects.filter((obj) => obj.type === "image").length;
-				console.log("🎨 DRAWING CANVAS - Rendering non-image objects:", {
-					canvasElement: "Drawing Canvas (z-index: 2)",
-					totalObjects: objects.length,
-					renderingToDrawingCanvas: nonImageObjects.length,
-					imagesSkipped: imageCount,
-					renderingTypes: [...new Set(nonImageObjects.map((obj) => obj.type))],
-					imagesHandledSeparately: "Background Canvas (z-index: 1)",
-				});
-			}
+			debug("🎨 DRAWING CANVAS - Rendering non-image objects:", {
+				canvasElement: "Drawing Canvas (z-index: 2)",
+				totalObjects: objects.length,
+				renderingToDrawingCanvas: nonImageObjects.length,
+				imagesSkipped: objects.filter((obj) => obj.type === "image").length,
+				renderingTypes: [...new Set(nonImageObjects.map((obj) => obj.type))],
+				imagesHandledSeparately: "Background Canvas (z-index: 1)",
+			});
 
 			renderObjects(ctx, nonImageObjects);
 
-			if (import.meta.env.DEV) {
-				console.log("✅ DRAWING CANVAS - Render completed:", {
-					objectsRendered: nonImageObjects.length,
-					timestamp: Date.now(),
-				});
-			}
+			debug("✅ DRAWING CANVAS - Render completed:", {
+				objectsRendered: nonImageObjects.length,
+			});
 		} else {
-			if (import.meta.env.DEV) {
-				console.log("🎨 DRAWING CANVAS - No non-image objects to render");
-			}
+			debug("🎨 DRAWING CANVAS - No non-image objects to render");
 		}
 	}, [objects, renderObjects]);
 
@@ -99,21 +94,19 @@ export function useCanvasRendering({
 		const imageObjects = objects.filter((obj) => obj.type === "image");
 
 		if (imageObjects.length > 0) {
-			if (import.meta.env.DEV) {
-				console.log("🖼️ BACKGROUND CANVAS - Rendering images:", {
-					canvasElement: "Background Canvas (z-index: 1)",
-					imageCount: imageObjects.length,
-					images: imageObjects.map((img) => ({
-						id: img.id,
-						bounds: {
-							x: img.x,
-							y: img.y,
-							width: img.width,
-							height: img.height,
-						},
-					})),
-				});
-			}
+			debug("🖼️ BACKGROUND CANVAS - Rendering images:", {
+				canvasElement: "Background Canvas (z-index: 1)",
+				imageCount: imageObjects.length,
+				images: imageObjects.map((img) => ({
+					id: img.id,
+					bounds: {
+						x: img.x,
+						y: img.y,
+						width: img.width,
+						height: img.height,
+					},
+				})),
+			});
 
 			// Render each image to background canvas
 			for (const obj of imageObjects) {
@@ -124,12 +117,10 @@ export function useCanvasRendering({
 
 				// Check if image is loaded
 				if (!image.element.complete) {
-					if (import.meta.env.DEV) {
-						console.warn(
-							"🖼️ BACKGROUND CANVAS - Image not fully loaded, skipping:",
-							image.id
-						);
-					}
+					debug(
+						"🖼️ BACKGROUND CANVAS - Image not fully loaded, skipping:",
+						image.id
+					);
 					bgCtx.restore();
 					continue;
 				}
@@ -143,16 +134,15 @@ export function useCanvasRendering({
 
 				try {
 					bgCtx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
-					if (import.meta.env.DEV) {
-						console.log(
-							"✅ BACKGROUND CANVAS - Image rendered successfully:",
-							image.id
-						);
-					}
+					debug(
+						"✅ BACKGROUND CANVAS - Image rendered successfully:",
+						image.id
+					);
 				} catch (error) {
-					console.error("❌ BACKGROUND CANVAS - Failed to render image:", {
-						id: image.id,
-						error,
+					handleError(error, {
+						operation: "render background image",
+						category: ErrorCategory.UI,
+						severity: ErrorSeverity.LOW,
 					});
 				}
 

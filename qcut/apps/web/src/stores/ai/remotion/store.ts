@@ -108,7 +108,7 @@ export const useRemotionStore = create<RemotionStore>()(
 
 				set((state) => ({
 					isLoading: false,
-					recentErrors: [...state.recentErrors.slice(-9), remotionError],
+					recentErrors: [...state.recentErrors.slice(-19), remotionError],
 				}));
 			}
 		},

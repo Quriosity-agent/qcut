@@ -55,10 +55,9 @@ export function createFolderImportActions(set: SetFn, get: GetFn) {
 				for (const component of result.components) {
 					newComponents.set(component.id, component);
 					componentIds.push(component.id);
-					console.log(
-						`[RemotionStore] ✅ Registered component: ${component.name} (${component.id})`
+					debugLog(
+						`[REMOTION] ✅ Registered component: ${component.name} (${component.id})`
 					);
-					debugLog("[REMOTION] Registered folder component:", component.id);
 				}
 
 				const folderInfo: ImportedFolderInfo = {

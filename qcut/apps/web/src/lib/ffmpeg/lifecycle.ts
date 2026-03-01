@@ -5,7 +5,7 @@
  * Uses shared global state from the ffmpeg-state module.
  */
 
-import { debugLog } from "@/lib/debug/debug-config";
+import { debugLog, debugWarn } from "@/lib/debug/debug-config";
 import {
 	getFFmpegState,
 	setFFmpegState,
@@ -26,12 +26,16 @@ export const scheduleFFmpegCleanup = () => {
 	setCleanupTimer(
 		window.setTimeout(
 			async () => {
-				const { ffmpeg, isFFmpegLoaded } = getFFmpegState();
-				if (ffmpeg && isFFmpegLoaded) {
-					debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
-					// Dynamic import to avoid circular dependency
-					const { terminateFFmpeg } = await import("./operations");
-					terminateFFmpeg();
+				try {
+					const { ffmpeg, isFFmpegLoaded } = getFFmpegState();
+					if (ffmpeg && isFFmpegLoaded) {
+						debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
+						// Dynamic import to avoid circular dependency
+						const { terminateFFmpeg } = await import("./operations");
+						await terminateFFmpeg();
+					}
+				} catch (error) {
+					debugWarn("[FFmpeg Utils] ⚠️ Error during auto-termination:", error);
 				}
 			},
 			5 * 60 * 1000

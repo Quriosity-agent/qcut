@@ -34,26 +34,34 @@ export function createAnalysisActions(set: SetFn, get: GetFn) {
 		},
 
 		analyzeComponentSource: async (componentId: string, sourceCode: string) => {
-			const service = getSequenceAnalysisService();
-			const result = await service.analyzeComponent(componentId, sourceCode);
-			get().setAnalysisResult(componentId, result);
+			try {
+				const service = getSequenceAnalysisService();
+				const result = await service.analyzeComponent(componentId, sourceCode);
+				get().setAnalysisResult(componentId, result);
 
-			if (result.structure) {
-				set((state) => {
-					const components = new Map(state.registeredComponents);
-					const existing = components.get(componentId);
-					if (existing && !existing.sequenceStructure) {
-						components.set(componentId, {
-							...existing,
-							sequenceStructure: result.structure!,
-						});
-						return { registeredComponents: components };
-					}
-					return state;
-				});
+				if (result.structure) {
+					set((state) => {
+						const components = new Map(state.registeredComponents);
+						const existing = components.get(componentId);
+						if (existing && !existing.sequenceStructure) {
+							components.set(componentId, {
+								...existing,
+								sequenceStructure: result.structure!,
+							});
+							return { registeredComponents: components };
+						}
+						return state;
+					});
+				}
+
+				return result;
+			} catch (error) {
+				const errorMessage =
+					error instanceof Error ? error.message : "Analysis failed";
+				throw new Error(
+					`Failed to analyze component ${componentId}: ${errorMessage}`
+				);
 			}
-
-			return result;
 		},
 	};
 }
