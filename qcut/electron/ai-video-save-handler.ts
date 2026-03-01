@@ -5,7 +5,6 @@ import { randomBytes } from "crypto";
 
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024; // 5GB limit for AI videos
 
-
 /**
  * Sanitize filename to prevent path traversal attacks
  */
@@ -374,7 +373,9 @@ export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
 
 	const legacyRoot = path.join(app.getPath("userData"), "projects");
 	console.log(`[AI Video Migration] Legacy root: ${legacyRoot}`);
-	console.log(`[AI Video Migration] Documents base: ${app.getPath("documents")}`);
+	console.log(
+		`[AI Video Migration] Documents base: ${app.getPath("documents")}`
+	);
 
 	// Early return if no legacy directory
 	try {

@@ -46,7 +46,8 @@ export function ImportProgress() {
 	const pipelineProgress = useMoyinStore((s) => s.pipelineProgress);
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
 	const parseModel = useMoyinStore((s) => s.parseModel);
-	const parseProvider = parseStatus === "parsing" ? getModelLabel(parseModel) : "";
+	const parseProvider =
+		parseStatus === "parsing" ? getModelLabel(parseModel) : "";
 
 	if (!pipelineStep) return null;
 
