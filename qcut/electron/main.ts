@@ -551,26 +551,10 @@ function createWindow(): void {
 		// Fallback for headless/CI environments without a display
 	}
 
-	// E2E virtual display: position window on virtual display or offscreen
-	if (process.env.QCUT_E2E_DISPLAY_ID) {
-		const displays = screen.getAllDisplays();
-		const target = displays.find(
-			(d) => String(d.id) === process.env.QCUT_E2E_DISPLAY_ID
-		);
-		if (target) {
-			mainWindow.setBounds(target.bounds);
-			logger.log(`[E2E] Window positioned on virtual display ${target.id}`);
-		} else {
-			mainWindow.setPosition(-2000, -2000);
-			logger.log("[E2E] Virtual display not found, using offscreen fallback");
-		}
-	} else if (
-		process.env.QCUT_E2E_VIRTUAL_DESKTOP ||
-		process.env.QCUT_E2E_OFFSCREEN
-	) {
-		// Make window invisible: fully transparent + ignore mouse events.
-		// macOS clamps offscreen positions, so transparency is more reliable
-		// for multi-monitor setups than trying to move beyond all displays.
+	// E2E invisible mode: make window fully transparent so tests run
+	// without stealing focus. Activated by QCUT_E2E_OFFSCREEN env var,
+	// set automatically by `bun run test:e2e:bg`.
+	if (process.env.QCUT_E2E_OFFSCREEN) {
 		mainWindow.setOpacity(0);
 		mainWindow.setIgnoreMouseEvents(true);
 		logger.log("[E2E] Window hidden (opacity=0, ignoreMouseEvents=true)");
