@@ -917,7 +917,11 @@ export async function addStickerToCanvas(
 		const MOCK_SVG =
 			'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>';
 		const MOCK_COLLECTIONS = JSON.stringify({
-			"simple-icons": { prefix: "simple-icons", name: "Simple Icons", total: 20 },
+			"simple-icons": {
+				prefix: "simple-icons",
+				name: "Simple Icons",
+				total: 20,
+			},
 			tabler: { prefix: "tabler", name: "Tabler Icons", total: 20 },
 		});
 

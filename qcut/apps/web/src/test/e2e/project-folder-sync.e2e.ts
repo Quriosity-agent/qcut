@@ -901,7 +901,10 @@ test.describe("Project Folder Sync", () => {
 			// so we use Object.defineProperty to force-override it for testing.
 			const result = await page.evaluate(async (pid) => {
 				const originalAPI = (window as any).electronAPI;
-				const descriptor = Object.getOwnPropertyDescriptor(window, "electronAPI");
+				const descriptor = Object.getOwnPropertyDescriptor(
+					window,
+					"electronAPI"
+				);
 
 				try {
 					// Force-override the non-configurable property

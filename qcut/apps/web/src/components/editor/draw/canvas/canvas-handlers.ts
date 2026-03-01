@@ -98,12 +98,15 @@ export function useCanvasHandlers({
 			color,
 			opacity,
 			onDrawingChange,
+			canvasRef.current,
+			objects.length,
+			setTextInputModal,
 		]
 	);
 
 	const handleTextCancel = useCallback(() => {
 		setTextInputModal((prev) => ({ ...prev, isOpen: false }));
-	}, []);
+	}, [setTextInputModal]);
 
 	// Load drawing from data URL (for saved drawings)
 	const loadDrawingFromDataUrl = useCallback(
@@ -136,7 +139,7 @@ export function useCanvasHandlers({
 				});
 			}
 		},
-		[onDrawingChange]
+		[onDrawingChange, canvasRef.current, objects.length]
 	);
 
 	// Image upload handler
@@ -235,6 +238,8 @@ export function useCanvasHandlers({
 			addImageObject,
 			onDrawingChange,
 			withObjectCreationProtection,
+			canvasRef.current,
+			objects.length,
 		]
 	);
 

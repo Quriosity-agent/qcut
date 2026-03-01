@@ -127,7 +127,7 @@ export function useCanvasInit({
 				severity: ErrorSeverity.HIGH,
 			});
 		}
-	}, [canvasDimensions, backgroundImage]);
+	}, [backgroundImage, canvasRef, backgroundCanvasRef, containerRef]);
 
 	return { canvasDimensions };
 }

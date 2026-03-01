@@ -51,7 +51,10 @@ export function useCanvasUtils({
 				}, 200);
 			}
 		},
-		[]
+		[
+			// Set flag to prevent history restoration during object creation
+			recentObjectCreation,
+		]
 	);
 
 	// Export canvas contents to data URL without mutating the visible canvas
@@ -105,7 +108,7 @@ export function useCanvasUtils({
 		});
 
 		return dataUrl;
-	}, [objects, renderObjects]);
+	}, [objects, renderObjects, backgroundCanvasRef.current, canvasRef.current]);
 
 	// Save current canvas state to history
 	const saveCanvasToHistory = useCallback(() => {
@@ -144,7 +147,12 @@ export function useCanvasUtils({
 		} else {
 			saveSnapshot();
 		}
-	}, [getCanvasDataUrl, saveToHistory]);
+	}, [
+		getCanvasDataUrl,
+		saveToHistory, // Set flag to prevent history restoration during save
+		isSavingToHistory,
+		objects.length,
+	]);
 
 	return {
 		withObjectCreationProtection,

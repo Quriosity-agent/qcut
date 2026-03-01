@@ -1,7 +1,4 @@
-import type {
-	RenderJob,
-	RenderJobStatus,
-} from "@/lib/remotion/types";
+import type { RenderJob, RenderJobStatus } from "@/lib/remotion/types";
 import { generateUUID } from "@/lib/utils";
 import type { SetFn } from "./types";
 

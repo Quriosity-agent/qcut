@@ -113,5 +113,6 @@ export function useCanvasRef({
 		groups,
 		getCanvasDataUrl,
 		clearAll,
+		canvasRef.current,
 	]);
 }

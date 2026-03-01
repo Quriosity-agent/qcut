@@ -1,7 +1,4 @@
-import type {
-	RemotionInstance,
-	RemotionError,
-} from "@/lib/remotion/types";
+import type { RemotionInstance, RemotionError } from "@/lib/remotion/types";
 import type { PlayerRef } from "@remotion/player";
 import type { SetFn, GetFn } from "./types";
 

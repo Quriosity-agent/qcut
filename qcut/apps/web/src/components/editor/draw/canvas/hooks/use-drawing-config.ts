@@ -110,7 +110,7 @@ export function useDrawingConfig({
 					severity: ErrorSeverity.MEDIUM,
 				});
 			}
-		}, [disabled, setDrawing, setIsDrawing, saveToHistory]),
+		}, [disabled, setDrawing, setIsDrawing, saveToHistory, canvasRef.current]),
 
 		onDrawingEnd: useCallback(() => {
 			if (disabled) return;
@@ -138,24 +138,28 @@ export function useDrawingConfig({
 			setIsDrawing,
 			saveCanvasToHistory,
 			onDrawingChange,
+			canvasRef.current,
 		]),
 
-		onTextInput: useCallback((canvasPosition: { x: number; y: number }) => {
-			const canvas = canvasRef.current;
-			if (!canvas) return;
+		onTextInput: useCallback(
+			(canvasPosition: { x: number; y: number }) => {
+				const canvas = canvasRef.current;
+				if (!canvas) return;
 
-			const rect = canvas.getBoundingClientRect();
-			const screenPosition = {
-				x: rect.left + (canvasPosition.x * rect.width) / canvas.width,
-				y: rect.top + (canvasPosition.y * rect.height) / canvas.height,
-			};
+				const rect = canvas.getBoundingClientRect();
+				const screenPosition = {
+					x: rect.left + (canvasPosition.x * rect.width) / canvas.width,
+					y: rect.top + (canvasPosition.y * rect.height) / canvas.height,
+				};
 
-			setTextInputModal({
-				isOpen: true,
-				position: screenPosition,
-				canvasPosition,
-			});
-		}, []),
+				setTextInputModal({
+					isOpen: true,
+					position: screenPosition,
+					canvasPosition,
+				});
+			},
+			[canvasRef.current, setTextInputModal]
+		),
 
 		onSelectObject: useCallback(
 			(canvasPosition: { x: number; y: number }, isMultiSelect = false) => {
@@ -267,6 +271,7 @@ export function useDrawingConfig({
 				addText,
 				saveCanvasToHistory,
 				withObjectCreationProtection,
+				objects.length,
 			]
 		),
 	});

@@ -60,5 +60,7 @@ export function useCanvasHistory({
 		getCurrentHistoryState,
 		getCanvasDataUrl,
 		loadDrawingFromDataUrl,
+		recentObjectCreation,
+		isSavingToHistory.current,
 	]);
 }

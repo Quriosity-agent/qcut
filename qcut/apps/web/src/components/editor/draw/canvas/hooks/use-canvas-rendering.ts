@@ -78,7 +78,7 @@ export function useCanvasRendering({
 		} else {
 			debug("🎨 DRAWING CANVAS - No non-image objects to render");
 		}
-	}, [objects, renderObjects]);
+	}, [objects, renderObjects, canvasRef.current]);
 
 	// Render images to BACKGROUND canvas (z-index: 1)
 	useEffect(() => {
@@ -140,13 +140,7 @@ export function useCanvasRendering({
 					bgCtx.translate(-centerX, -centerY);
 
 					try {
-						bgCtx.drawImage(
-							image.element,
-							obj.x,
-							obj.y,
-							obj.width,
-							obj.height
-						);
+						bgCtx.drawImage(image.element, obj.x, obj.y, obj.width, obj.height);
 						debug(
 							"✅ BACKGROUND CANVAS - Image rendered successfully:",
 							image.id
@@ -203,5 +197,5 @@ export function useCanvasRendering({
 		} else {
 			drawImageObjects();
 		}
-	}, [objects, backgroundImage]);
+	}, [objects, backgroundImage, backgroundCanvasRef.current]);
 }
