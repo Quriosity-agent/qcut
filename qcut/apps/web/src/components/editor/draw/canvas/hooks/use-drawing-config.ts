@@ -10,7 +10,8 @@ import {
 	ErrorCategory,
 	ErrorSeverity,
 } from "@/lib/debug/error-handler";
-import type { CanvasObject } from "../../hooks/use-canvas-objects";
+import type { AnyCanvasObject } from "../../hooks/use-canvas-objects";
+import type { DrawingToolConfig } from "@/types/white-draw";
 import { debug } from "../canvas-utils";
 
 /**
@@ -43,7 +44,7 @@ export function useDrawingConfig({
 	withObjectCreationProtection,
 }: {
 	canvasRef: RefObject<HTMLCanvasElement | null>;
-	currentTool: { cursor: string; [key: string]: unknown };
+	currentTool: DrawingToolConfig;
 	brushSize: number;
 	color: string;
 	opacity: number;
@@ -52,10 +53,13 @@ export function useDrawingConfig({
 	setIsDrawing: (isDrawing: boolean) => void;
 	saveToHistory: (dataUrl: string) => void;
 	onDrawingChange?: (dataUrl: string) => void;
-	objects: CanvasObject[];
+	objects: AnyCanvasObject[];
 	selectedObjectIds: string[];
 	isDragging: boolean;
-	addStroke: (points: { x: number; y: number }[], style: StrokeStyle) => string;
+	addStroke: (
+		points: { x: number; y: number }[],
+		style: StrokeStyle
+	) => string | null;
 	addShape: (
 		shapeType: "rectangle" | "circle" | "line",
 		bounds: { x: number; y: number; width: number; height: number },
@@ -66,7 +70,7 @@ export function useDrawingConfig({
 		position: { x: number; y: number },
 		style: TextStyle
 	) => string;
-	getObjectAtPosition: (x: number, y: number) => CanvasObject | undefined;
+	getObjectAtPosition: (x: number, y: number) => AnyCanvasObject | null;
 	selectObjects: (ids: string[], isMultiSelect?: boolean) => void;
 	startDrag: (x: number, y: number) => void;
 	updateDrag: (x: number, y: number) => void;

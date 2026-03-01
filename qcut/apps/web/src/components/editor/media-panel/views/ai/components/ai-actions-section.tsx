@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AIGenerationFeedback } from "./ai-generation-feedback";
 import { AIValidationMessages } from "./ai-validation-messages";
-import type { AIActiveTab } from "../types/ai-types";
+import type { AIActiveTab, GeneratedVideoResult } from "../types/ai-types";
 
 interface AIActionsSectionProps {
 	activeTab: AIActiveTab;
@@ -16,7 +16,7 @@ interface AIActionsSectionProps {
 		statusMessage: string;
 		elapsedTime: number;
 		hasResults: boolean;
-		generatedVideos: unknown[];
+		generatedVideos: GeneratedVideoResult[];
 		canGenerate: boolean;
 		handleGenerate: () => void;
 		hasVeo31FrameToVideo: boolean;

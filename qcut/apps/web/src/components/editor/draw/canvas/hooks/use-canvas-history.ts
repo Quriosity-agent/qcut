@@ -13,7 +13,7 @@ export function useCanvasHistory({
 	recentObjectCreation,
 }: {
 	historyIndex: number;
-	getCurrentHistoryState: () => string | null;
+	getCurrentHistoryState: () => string | undefined;
 	getCanvasDataUrl: () => string | null;
 	loadDrawingFromDataUrl: (dataUrl: string) => Promise<void>;
 	isSavingToHistory: RefObject<boolean>;

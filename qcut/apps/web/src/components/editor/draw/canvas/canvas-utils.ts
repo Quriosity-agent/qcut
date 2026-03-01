@@ -1,5 +1,5 @@
 import { useCallback, type RefObject } from "react";
-import type { CanvasObject } from "../hooks/use-canvas-objects";
+import type { AnyCanvasObject } from "../hooks/use-canvas-objects";
 
 // Debug logging function that only logs in development mode when enabled
 export const debug = (...args: unknown[]) => {
@@ -24,10 +24,10 @@ export function useCanvasUtils({
 }: {
 	canvasRef: RefObject<HTMLCanvasElement | null>;
 	backgroundCanvasRef: RefObject<HTMLCanvasElement | null>;
-	objects: CanvasObject[];
+	objects: AnyCanvasObject[];
 	renderObjects: (
 		ctx: CanvasRenderingContext2D,
-		objectsToRender?: CanvasObject[]
+		objectsToRender?: AnyCanvasObject[]
 	) => void;
 	saveToHistory: (dataUrl: string) => void;
 	isSavingToHistory: RefObject<boolean>;

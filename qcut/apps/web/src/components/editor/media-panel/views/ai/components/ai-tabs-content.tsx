@@ -9,6 +9,7 @@ import type { useImageTabState } from "../hooks/use-ai-image-tab-state";
 import type { useAvatarTabState } from "../hooks/use-ai-avatar-tab-state";
 import type { useUpscaleTabState } from "../hooks/use-ai-upscale-tab-state";
 import type { useAnglesTabState } from "../hooks/use-ai-angles-tab-state";
+import type { T2VModelCapabilities } from "../constants/text2video-models-config";
 
 interface AITabsContentProps {
 	prompt: string;
@@ -22,18 +23,14 @@ interface AITabsContentProps {
 	avatarTabState: ReturnType<typeof useAvatarTabState>;
 	upscaleTabState: ReturnType<typeof useUpscaleTabState>;
 	anglesTabState: ReturnType<typeof useAnglesTabState>;
-	combinedCapabilities: {
-		aspectRatios: string[];
-		resolutions: string[];
-		durations: number[];
-	};
+	combinedCapabilities: T2VModelCapabilities;
 	generation: {
 		isSora2Selected: boolean;
 		setFirstFrame?: (file: File | null) => void;
 		setLastFrame?: (file: File | null) => void;
 	};
-	bytedanceEstimatedCost: number;
-	flashvsrEstimatedCost: number;
+	bytedanceEstimatedCost: string;
+	flashvsrEstimatedCost: string;
 }
 
 export function AITabsContent({

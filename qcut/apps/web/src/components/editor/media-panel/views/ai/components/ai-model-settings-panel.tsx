@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { AISora2Settings } from "../settings/ai-sora-settings";
-import { AIVeo31Settings } from "../settings/ai-veo-settings";
+import {
+	AIVeo31Settings,
+	type Veo31Settings,
+	type Veo31Resolution,
+	type Veo31Duration,
+	type Veo31AspectRatio,
+} from "../settings/ai-veo-settings";
 import {
 	AIReveTextToImageSettings,
 	AIReveEditSettings,
@@ -18,30 +24,23 @@ interface AIModelSettingsPanelProps {
 	generation: {
 		isSora2Selected: boolean;
 		isVeo31Selected: boolean;
-		duration: number;
-		setDuration: (v: number) => void;
-		aspectRatio: string;
-		setAspectRatio: (v: string) => void;
-		resolution: string;
-		setResolution: (v: string) => void;
+		duration: 4 | 8 | 12;
+		setDuration: (v: 4 | 8 | 12) => void;
+		aspectRatio: "16:9" | "9:16";
+		setAspectRatio: (v: "16:9" | "9:16") => void;
+		resolution: "auto" | "720p" | "1080p";
+		setResolution: (v: "auto" | "720p" | "1080p") => void;
 		hasSora2Pro: boolean;
-		veo31Settings: {
-			duration: number;
-			resolution: string;
-			aspectRatio: string;
-			generateAudio: boolean;
-			enhancePrompt: boolean;
-			autoFix: boolean;
-		};
-		setVeo31Resolution: (v: string) => void;
-		setVeo31Duration: (v: number) => void;
-		setVeo31AspectRatio: (v: string) => void;
+		veo31Settings: Veo31Settings;
+		setVeo31Resolution: (v: Veo31Resolution) => void;
+		setVeo31Duration: (v: Veo31Duration) => void;
+		setVeo31AspectRatio: (v: Veo31AspectRatio) => void;
 		setVeo31GenerateAudio: (v: boolean) => void;
 		setVeo31EnhancePrompt: (v: boolean) => void;
 		setVeo31AutoFix: (v: boolean) => void;
 		uploadedImageForEdit: File | null;
 		uploadedImagePreview: string | null;
-		handleImageUploadForEdit: (file: File) => void;
+		handleImageUploadForEdit: (file: File) => Promise<void>;
 		clearUploadedImageForEdit: () => void;
 	};
 	prompt: string;

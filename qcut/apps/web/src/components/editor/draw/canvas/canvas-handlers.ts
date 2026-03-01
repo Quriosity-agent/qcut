@@ -1,5 +1,5 @@
 import { useCallback, type RefObject } from "react";
-import type { CanvasObject } from "../hooks/use-canvas-objects";
+import type { AnyCanvasObject } from "../hooks/use-canvas-objects";
 import {
 	handleError,
 	ErrorCategory,
@@ -25,7 +25,7 @@ export function useCanvasHandlers({
 	withObjectCreationProtection,
 }: {
 	canvasRef: RefObject<HTMLCanvasElement | null>;
-	objects: CanvasObject[];
+	objects: AnyCanvasObject[];
 	textInputModal: {
 		isOpen: boolean;
 		position: { x: number; y: number };

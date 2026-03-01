@@ -1,5 +1,8 @@
 import { useEffect, type RefObject } from "react";
-import type { CanvasObject, ImageObject } from "../../hooks/use-canvas-objects";
+import type {
+	AnyCanvasObject,
+	ImageObject,
+} from "../../hooks/use-canvas-objects";
 import { debug } from "../canvas-utils";
 import {
 	handleError,
@@ -19,10 +22,10 @@ export function useCanvasRendering({
 }: {
 	canvasRef: RefObject<HTMLCanvasElement | null>;
 	backgroundCanvasRef: RefObject<HTMLCanvasElement | null>;
-	objects: CanvasObject[];
+	objects: AnyCanvasObject[];
 	renderObjects: (
 		ctx: CanvasRenderingContext2D,
-		objectsToRender?: CanvasObject[]
+		objectsToRender?: AnyCanvasObject[]
 	) => void;
 }) {
 	// Re-render canvas when objects change
