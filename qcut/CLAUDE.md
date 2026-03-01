@@ -24,7 +24,10 @@ No code file longer than 800 lines, longer consider a new code file
 | Test | `bun run test` |
 | Type check | `bun check-types` |
 | Release | `bun run release` |
-| Build EXE | `npx electron-packager . QCut --platform=win32 --arch=x64 --out=dist-packager --overwrite` |
+| Pipeline CLI | `bun run pipeline` |
+| Dist (macOS) | `bun run dist:mac` |
+| Dist (Windows) | `bun run dist:win` |
+| E2E tests | `bun run test:e2e` |
 
 ## Project Overview
 
@@ -46,22 +49,32 @@ See `package.json` for current versions.
 
 ```
 qcut/
-├── apps/web/src/
-│   ├── routes/          # TanStack Router (primary)
-│   ├── app/             # Next.js-style (legacy, non-functional in Vite)
-│   ├── stores/          # Zustand state management
-│   ├── components/      # React components
-│   └── lib/             # Utilities and services
+├── apps/
+│   ├── web/src/             # Main Electron renderer app
+│   │   ├── routes/          # TanStack Router (primary)
+│   │   ├── stores/          # Zustand state management
+│   │   ├── components/      # React components
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── services/        # Service layer
+│   │   ├── lib/             # Utilities and services
+│   │   └── types/           # TypeScript type definitions
+│   └── transcription/       # Python transcription app
 ├── packages/
-│   ├── auth/            # @qcut/auth
-│   ├── db/              # @qcut/db
-│   └── video-agent-skill/ # Git submodule: AICP source, tests, YAML pipelines
-├── electron/            # TypeScript IPC handlers
-│   ├── main.ts          # Main process
-│   ├── preload.ts       # Renderer bridge
-│   ├── *-handler.ts     # IPC handlers
-│   └── claude/          # Claude integration handlers
-└── docs/                # Documentation
+│   ├── auth/                # @qcut/auth
+│   ├── db/                  # @qcut/db
+│   ├── license-server/      # License management service
+│   ├── qagent/              # AI agent orchestration (separate build)
+│   └── video-agent-skill/   # Git submodule: AICP source, tests, YAML pipelines
+├── electron/                # Electron main process
+│   ├── main.ts              # Main process entry
+│   ├── preload.ts           # Renderer bridge
+│   ├── *-handler.ts         # IPC handlers (22 handler files)
+│   ├── claude/              # Claude integration handlers
+│   └── native-pipeline/     # TypeScript CLI pipeline (AICP, ViMax)
+├── scripts/                 # Build and utility scripts
+├── resources/               # Runtime resources (skills, binaries)
+├── plugins/                 # Plugins (code-review)
+└── docs/                    # Documentation
 ```
 
 ## Key Entry Points
@@ -72,8 +85,10 @@ qcut/
 | Timeline Store | `apps/web/src/stores/timeline-store.ts` |
 | AI Video | `apps/web/src/lib/ai-video/index.ts` |
 | Electron Main | `electron/main.ts` |
-| IPC Handlers | `electron/*-handler.ts` |
+| IPC Handlers | `electron/*-handler.ts` (22 files) |
 | Claude HTTP API | `electron/claude/claude-http-server.ts` |
+| Native Pipeline CLI | `electron/native-pipeline/cli/cli.ts` |
+| Agent Config | `qagent.yaml` |
 
 ## Code Standards
 
@@ -102,9 +117,8 @@ qcut/
 - Use Electron IPC for backend functionality
 
 ### DON'T
-- Expect `src/app/api/` routes to work (use Electron IPC)
 - Use `process.env` in client code (use `import.meta.env`)
-- Add features requiring Next.js runtime
+- Add Next.js API routes or features requiring Next.js runtime (use Electron IPC)
 
 ### Electron API Best Practices
 - Use structured methods: `window.electronAPI.sounds.search()`
@@ -113,20 +127,26 @@ qcut/
 
 ## Testing
 
-- **Framework**: Vitest + @testing-library/react
-- **Run**: `bun run test`
+- **Unit**: Vitest + @testing-library/react — `bun run test`
+- **E2E**: Playwright — `bun run test:e2e`
 - **Details**: [Testing Guide](docs/reference/testing-guide.md)
 
 ## Environment Variables
 
 ```bash
+# Active — used by Electron handlers and native pipeline
+VITE_FAL_API_KEY        # FAL.ai API
+GEMINI_API_KEY          # Google Gemini (chat, transcription, Veo/Imagen)
+OPENROUTER_API_KEY      # OpenRouter provider routing
+ANTHROPIC_API_KEY       # Anthropic Claude API
+ELEVENLABS_API_KEY      # ElevenLabs TTS
+FREESOUND_API_KEY       # Freesound sound effects
+OPENAI_API_KEY          # OpenAI/Sora
+
+# Legacy — defined in apps/web/src/env.ts but not actively used in Electron
 DATABASE_URL            # PostgreSQL
 BETTER_AUTH_SECRET      # Auth
 UPSTASH_REDIS_REST_URL  # Redis
-VITE_FAL_API_KEY        # FAL.ai API
-GOOGLE_AI_API_KEY       # Google Veo/Imagen
-OPENAI_API_KEY          # OpenRouter/Sora provider routing
-ELEVENLABS_API_KEY      # ElevenLabs TTS
 ```
 
 ## When Working on Features
