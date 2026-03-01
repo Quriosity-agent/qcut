@@ -1,15 +1,8 @@
 import type {
-	RemotionStore,
 	RemotionComponentDefinition,
 	RemotionComponentCategory,
 } from "@/lib/remotion/types";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
-type GetFn = () => RemotionStore;
+import type { SetFn, GetFn } from "./types";
 
 export function createRegistryActions(set: SetFn, get: GetFn) {
 	return {

@@ -1,5 +1,4 @@
 import type {
-	RemotionStore,
 	ImportedFolderInfo,
 	FolderImportResult,
 } from "@/lib/remotion/types";
@@ -8,13 +7,7 @@ import {
 	importFromFolder as importFromFolderLoader,
 	isFolderImportAvailable,
 } from "@/lib/remotion/component-loader";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
-type GetFn = () => RemotionStore;
+import type { SetFn, GetFn } from "./types";
 
 export function createFolderImportActions(set: SetFn, get: GetFn) {
 	return {

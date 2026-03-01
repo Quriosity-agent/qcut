@@ -144,7 +144,7 @@ export function useCanvasUtils({
 		} else {
 			saveSnapshot();
 		}
-	}, [getCanvasDataUrl, saveToHistory, objects.length]);
+	}, [getCanvasDataUrl, saveToHistory]);
 
 	return {
 		withObjectCreationProtection,

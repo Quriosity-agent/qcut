@@ -98,7 +98,6 @@ export function useCanvasHandlers({
 			color,
 			opacity,
 			onDrawingChange,
-			objects.length,
 		]
 	);
 
@@ -137,7 +136,7 @@ export function useCanvasHandlers({
 				});
 			}
 		},
-		[onDrawingChange, objects.length]
+		[onDrawingChange]
 	);
 
 	// Image upload handler
@@ -236,7 +235,6 @@ export function useCanvasHandlers({
 			addImageObject,
 			onDrawingChange,
 			withObjectCreationProtection,
-			objects.length,
 		]
 	);
 

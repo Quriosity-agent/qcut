@@ -11,7 +11,6 @@ import {
 	AIReveTextToImageSettings,
 	AIReveEditSettings,
 } from "../settings/ai-reve-settings";
-import { REVE_TEXT_TO_IMAGE_MODEL } from "../constants/ai-constants";
 import type {
 	ReveAspectRatioOption,
 	ReveOutputFormatOption,

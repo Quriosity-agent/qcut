@@ -1,15 +1,8 @@
-import type { RemotionStore } from "@/lib/remotion/types";
 import {
 	getSequenceAnalysisService,
 	type AnalysisResult,
 } from "@/lib/remotion/sequence-analysis-service";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
-type GetFn = () => RemotionStore;
+import type { SetFn, GetFn } from "./types";
 
 export function createAnalysisActions(set: SetFn, get: GetFn) {
 	return {

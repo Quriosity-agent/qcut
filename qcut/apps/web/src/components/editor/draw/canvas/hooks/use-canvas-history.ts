@@ -21,13 +21,6 @@ export function useCanvasHistory({
 }) {
 	// Handle undo/redo by restoring canvas state from history
 	useEffect(() => {
-		const historyState = getCurrentHistoryState();
-		if (historyState && historyState !== getCanvasDataUrl()) {
-			debug("🔄 DRAW - History restoration triggered:", {
-				historyIndex,
-			});
-		}
-
 		// Skip restoration if we're currently saving to history or recently created object
 		if (isSavingToHistory.current || recentObjectCreation.current) {
 			debug("🚫 DRAW - Skipping restoration:", {
@@ -37,8 +30,15 @@ export function useCanvasHistory({
 			return;
 		}
 
+		const historyState = getCurrentHistoryState();
+		if (!historyState) return;
+
 		// Add debounce protection for rapid restoration calls
 		const currentCanvasData = getCanvasDataUrl();
+
+		debug("🔄 DRAW - History restoration triggered:", {
+			historyIndex,
+		});
 		if (
 			historyState &&
 			currentCanvasData &&

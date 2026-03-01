@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import { DEFAULT_CANVAS_SIZE } from "@/stores/project-store";
 import {
 	handleError,
@@ -21,10 +21,7 @@ export function useCanvasInit({
 	containerRef: RefObject<HTMLDivElement | null>;
 	backgroundImage?: string;
 }) {
-	// Memoize canvas dimensions for performance
-	const canvasDimensions = useMemo(() => {
-		return DEFAULT_CANVAS_SIZE;
-	}, []);
+	const canvasDimensions = DEFAULT_CANVAS_SIZE;
 
 	// Initialize canvases with error handling
 	useEffect(() => {

@@ -1,10 +1,5 @@
-import type { RemotionStore, RemotionError } from "@/lib/remotion/types";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
+import type { RemotionError } from "@/lib/remotion/types";
+import type { SetFn } from "./types";
 
 export function createErrorActions(set: SetFn) {
 	return {

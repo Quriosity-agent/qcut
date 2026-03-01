@@ -37,33 +37,33 @@ export function useCanvasRendering({
 			return;
 		}
 
+		// Partition objects once
+		const nonImageObjects = objects.filter((obj) => obj.type !== "image");
+		const hasImages = nonImageObjects.length < objects.length;
+
 		debug("🎨 CANVAS LAYER - Drawing canvas render:", {
 			canvasElement: "Drawing Canvas (z-index: 2)",
 			clearingWithTransparent: true,
 			willShowBackgroundCanvas: true,
-			backgroundCanvasHasImages:
-				objects.filter((obj) => obj.type === "image").length > 0,
+			backgroundCanvasHasImages: hasImages,
 		});
 
 		// Clear and set white background for drawing canvas
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 
 		// Set white background ONLY if there are no images
-		const hasImages = objects.some((obj) => obj.type === "image");
 		if (!hasImages) {
 			ctx.fillStyle = "white";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 		}
 
 		// Render non-image objects to DRAWING canvas (strokes, shapes, text)
-		const nonImageObjects = objects.filter((obj) => obj.type !== "image");
-
 		if (nonImageObjects.length > 0) {
 			debug("🎨 DRAWING CANVAS - Rendering non-image objects:", {
 				canvasElement: "Drawing Canvas (z-index: 2)",
 				totalObjects: objects.length,
 				renderingToDrawingCanvas: nonImageObjects.length,
-				imagesSkipped: objects.filter((obj) => obj.type === "image").length,
+				imagesSkipped: objects.length - nonImageObjects.length,
 				renderingTypes: [...new Set(nonImageObjects.map((obj) => obj.type))],
 				imagesHandledSeparately: "Background Canvas (z-index: 1)",
 			});

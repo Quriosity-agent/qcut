@@ -1,16 +1,9 @@
 import type {
-	RemotionStore,
 	RemotionInstance,
 	RemotionError,
 } from "@/lib/remotion/types";
 import type { PlayerRef } from "@remotion/player";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
-type GetFn = () => RemotionStore;
+import type { SetFn, GetFn } from "./types";
 
 export function createInstanceActions(set: SetFn, get: GetFn) {
 	return {

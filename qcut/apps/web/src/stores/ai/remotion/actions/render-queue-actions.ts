@@ -1,15 +1,9 @@
 import type {
-	RemotionStore,
 	RenderJob,
 	RenderJobStatus,
 } from "@/lib/remotion/types";
 import { generateUUID } from "@/lib/utils";
-
-type SetFn = (
-	partial:
-		| Partial<RemotionStore>
-		| ((state: RemotionStore) => Partial<RemotionStore>)
-) => void;
+import type { SetFn } from "./types";
 
 export function createRenderQueueActions(set: SetFn) {
 	return {

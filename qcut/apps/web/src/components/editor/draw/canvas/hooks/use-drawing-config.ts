@@ -267,7 +267,6 @@ export function useDrawingConfig({
 				addText,
 				saveCanvasToHistory,
 				withObjectCreationProtection,
-				objects.length,
 			]
 		),
 	});
