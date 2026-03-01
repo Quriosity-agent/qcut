@@ -83,10 +83,10 @@ export function useDrawingConfig({
 		}>
 	>;
 	saveCanvasToHistory: () => void;
-	withObjectCreationProtection: (
-		operation: () => any,
+	withObjectCreationProtection: <T>(
+		operation: () => T,
 		operationType: string
-	) => any;
+	) => T;
 }) {
 	return useCanvasDrawing(canvasRef, {
 		tool: currentTool,

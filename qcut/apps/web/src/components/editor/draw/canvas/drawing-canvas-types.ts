@@ -7,7 +7,7 @@ export interface DrawingCanvasProps {
 
 // Export the type for the canvas handle that includes both HTMLCanvasElement methods and custom methods
 export interface DrawingCanvasHandle extends HTMLCanvasElement {
-	handleImageUpload: (file: File) => Promise<void>;
+	handleImageUpload: (file: File) => Promise<string | undefined>;
 	loadDrawingFromDataUrl: (dataUrl: string) => Promise<void>;
 	getSelectedCount: () => number;
 	getHasGroups: () => boolean;

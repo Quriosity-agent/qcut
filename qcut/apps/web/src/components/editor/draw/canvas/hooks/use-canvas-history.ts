@@ -44,28 +44,16 @@ export function useCanvasHistory({
 			currentCanvasData &&
 			historyState !== currentCanvasData
 		) {
-			// Additional protection: only restore if the difference is significant enough
-			if (Math.abs(historyState.length - currentCanvasData.length) > 100) {
-				debug(
-					"⚠️ DRAW - Restoring canvas from history (objects will be cleared)",
-					{
-						historyStateLength: historyState.length,
-						currentStateLength: currentCanvasData.length,
-						sizeDifference: Math.abs(
-							historyState.length - currentCanvasData.length
-						),
-					}
-				);
-				loadDrawingFromDataUrl(historyState).catch(() => {
-					// Error handled inside loadDrawingFromDataUrl
-				});
-			} else {
-				debug("🚫 DRAW - Skipping restoration due to minimal difference:", {
-					sizeDifference: Math.abs(
-						historyState.length - currentCanvasData.length
-					),
-				});
-			}
+			debug(
+				"⚠️ DRAW - Restoring canvas from history (objects will be cleared)",
+				{
+					historyStateLength: historyState.length,
+					currentStateLength: currentCanvasData.length,
+				}
+			);
+			loadDrawingFromDataUrl(historyState).catch((error) => {
+				debug("❌ DRAW - History restoration failed:", error);
+			});
 		}
 	}, [
 		historyIndex,

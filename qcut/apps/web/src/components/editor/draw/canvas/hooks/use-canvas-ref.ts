@@ -20,7 +20,7 @@ export function useCanvasRef({
 }: {
 	ref: React.ForwardedRef<DrawingCanvasHandle>;
 	canvasRef: RefObject<HTMLCanvasElement | null>;
-	handleImageUpload: (file: File) => Promise<void>;
+	handleImageUpload: (file: File) => Promise<string | undefined>;
 	loadDrawingFromDataUrl: (dataUrl: string) => Promise<void>;
 	selectedObjectIds: string[];
 	groups: ObjectGroup[];

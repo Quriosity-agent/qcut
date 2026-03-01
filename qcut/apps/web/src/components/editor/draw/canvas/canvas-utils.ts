@@ -35,7 +35,7 @@ export function useCanvasUtils({
 }) {
 	// Helper function to apply object creation protection
 	const withObjectCreationProtection = useCallback(
-		(operation: () => any, operationType: string) => {
+		<T>(operation: () => T, operationType: string): T => {
 			// Set flag to prevent history restoration during object creation
 			recentObjectCreation.current = true;
 			debug(`🛡️ Object creation protection enabled: ${operationType}`);

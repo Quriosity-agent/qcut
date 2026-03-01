@@ -56,10 +56,10 @@ export function useCanvasHandlers({
 	color: string;
 	opacity: number;
 	onDrawingChange?: (dataUrl: string) => void;
-	withObjectCreationProtection: (
-		operation: () => any,
+	withObjectCreationProtection: <T>(
+		operation: () => T,
 		operationType: string
-	) => any;
+	) => T;
 }) {
 	// Text input handlers
 	const handleTextConfirm = useCallback(

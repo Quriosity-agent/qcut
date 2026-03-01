@@ -174,6 +174,7 @@ export const DrawingCanvas = forwardRef<
 		backgroundCanvasRef,
 		objects,
 		renderObjects,
+		backgroundImage,
 	});
 
 	// Expose canvas ref and object/group functions to parent
