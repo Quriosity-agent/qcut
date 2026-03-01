@@ -29,7 +29,9 @@ export const scheduleFFmpegCleanup = () => {
 				try {
 					const { ffmpeg, isFFmpegLoaded } = getFFmpegState();
 					if (ffmpeg && isFFmpegLoaded) {
-						debugLog("[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity");
+						debugLog(
+							"[FFmpeg Utils] Auto-terminating FFmpeg due to inactivity"
+						);
 						// Dynamic import to avoid circular dependency
 						const { terminateFFmpeg } = await import("./operations");
 						await terminateFFmpeg();
