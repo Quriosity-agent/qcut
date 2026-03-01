@@ -73,6 +73,29 @@ try {
 }
 const logger: Logger = log || console;
 
+// Prevent EPIPE crashes when stdout/stderr pipe is broken during lifecycle events.
+// stream.on("error") alone is insufficient — EPIPE can throw synchronously from
+// console.log/error/warn, bypassing event handlers entirely.
+for (const stream of [process.stdout, process.stderr]) {
+	stream?.on?.("error", (err: NodeJS.ErrnoException) => {
+		if (err.code === "EPIPE") return;
+	});
+}
+for (const method of ["log", "warn", "error", "info", "debug"] as const) {
+	const original = console[method];
+	if (typeof original === "function") {
+		(console as unknown as Record<string, unknown>)[method] = (
+			...args: unknown[]
+		) => {
+			try {
+				original.apply(console, args);
+			} catch (err: unknown) {
+				if ((err as NodeJS.ErrnoException)?.code !== "EPIPE") throw err;
+			}
+		};
+	}
+}
+
 // Auto-updater - wrapped in try-catch for packaged builds
 let autoUpdater: AutoUpdater | null = null;
 try {

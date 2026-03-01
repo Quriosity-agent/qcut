@@ -16,10 +16,10 @@ import type { PipelineStep, PipelineStepStatus } from "./moyin-store";
 // ==================== Model Options ====================
 
 export const MODEL_OPTIONS = [
+	{ value: "minimax", label: "MiniMax M2.5" },
 	{ value: "gemini", label: "Gemini Flash" },
 	{ value: "gemini-pro", label: "Gemini Pro" },
 	{ value: "kimi", label: "Kimi K2.5" },
-	{ value: "minimax", label: "MiniMax M2.5" },
 	{ value: "claude", label: "Claude (no key)" },
 ] as const;
 
@@ -197,17 +197,18 @@ export async function attemptPtyParse(
 		);
 		const ptyState = usePtyTerminalStore.getState();
 
-		// Don't kill a user's active AI agent session
+		// If connected to a non-shell provider, disconnect and reconnect as shell
 		if (
 			ptyState.status === "connected" &&
 			ptyState.cliProvider !== "shell"
 		) {
-			api.cleanupTempScript(saveResult.filePath);
-			return { success: false };
+			await usePtyTerminalStore.getState().disconnect({ userInitiated: true });
+			// Small delay for clean disconnect
+			await new Promise((resolve) => setTimeout(resolve, 300));
 		}
 
 		// Spawn a shell session if not connected
-		if (ptyState.status !== "connected") {
+		if (usePtyTerminalStore.getState().status !== "connected") {
 			usePtyTerminalStore.getState().setCliProvider("shell");
 			await usePtyTerminalStore.getState().connect({ manual: true });
 			// Give shell time to initialize

@@ -215,7 +215,7 @@ const initialState: MoyinState = {
 	createStatus: "idle",
 	createError: null,
 	selectedShotIds: new Set<string>(),
-	parseModel: "gemini",
+	parseModel: "minimax",
 	parseProvider: "",
 	_pendingTempScriptPath: null,
 };
