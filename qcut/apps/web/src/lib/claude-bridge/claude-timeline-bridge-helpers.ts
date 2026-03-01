@@ -1,26 +1,33 @@
 /**
  * Claude Timeline Bridge Helpers
- * Utility functions for element resolution, formatting, and import operations.
- * Extracted from claude-timeline-bridge.ts to keep files under 800 lines.
+ * Utility functions for element resolution and import operations.
+ * Format/query helpers → claude-timeline-bridge-format.ts
+ * Remotion helpers → claude-timeline-bridge-remotion.ts
  */
 
 import { useTimelineStore } from "@/stores/timeline/timeline-store";
 import { useProjectStore } from "@/stores/project-store";
 import { useMediaStore, type MediaItem } from "@/stores/media/media-store";
-import type { TimelineElement, TimelineTrack } from "@/types/timeline";
 import type {
 	ClaudeTimeline,
-	ClaudeTrack,
 	ClaudeElement,
 } from "../../../../../electron/types/claude-api";
 import { debugLog, debugWarn, debugError } from "@/lib/debug/debug-config";
+import {
+	getEffectiveDuration,
+	isClaudeMediaElementType,
+} from "./claude-timeline-bridge-format";
+import { addClaudeRemotionElement } from "./claude-timeline-bridge-remotion";
 
-const CLAUDE_MEDIA_ELEMENT_TYPES = {
-	media: "media",
-	video: "video",
-	audio: "audio",
-	image: "image",
-} as const;
+// Re-export everything from extracted modules so existing consumers are unaffected
+export {
+	getEffectiveDuration,
+	calculateTimelineDuration,
+	findTrackByElementId,
+	isClaudeMediaElementType,
+	formatTracksForExport,
+} from "./claude-timeline-bridge-format";
+export { addClaudeRemotionElement } from "./claude-timeline-bridge-remotion";
 
 const DEFAULT_MEDIA_DURATION_SECONDS = 10;
 const DEFAULT_TEXT_DURATION_SECONDS = 5;
@@ -30,60 +37,6 @@ const CLAUDE_DETERMINISTIC_MEDIA_ID_PREFIX = "media_";
 export type TimelineStoreState = ReturnType<typeof useTimelineStore.getState>;
 
 const projectMediaSyncInFlight = new Map<string, Promise<void>>();
-
-/**
- * Calculate effective duration with safe trim handling
- */
-export function getEffectiveDuration(element: TimelineElement): number {
-	const trimStart = element.trimStart ?? 0;
-	const trimEnd = element.trimEnd ?? 0;
-	const effectiveDuration = element.duration - trimStart - trimEnd;
-	return Math.max(0, effectiveDuration);
-}
-
-/**
- * Calculate total duration from tracks
- */
-export function calculateTimelineDuration(tracks: TimelineTrack[]): number {
-	let maxEndTime = 0;
-	for (const track of tracks) {
-		for (const element of track.elements) {
-			const effectiveDuration = getEffectiveDuration(element);
-			const endTime = element.startTime + effectiveDuration;
-			if (endTime > maxEndTime) {
-				maxEndTime = endTime;
-			}
-		}
-	}
-	return maxEndTime;
-}
-
-/**
- * Find track containing an element
- */
-export function findTrackByElementId(
-	tracks: TimelineTrack[],
-	elementId: string
-): TimelineTrack | null {
-	return (
-		tracks.find((track) => track.elements.some((e) => e.id === elementId)) ||
-		null
-	);
-}
-
-/** Check if element type is a media type (media, video, audio, image). */
-export function isClaudeMediaElementType({
-	type,
-}: {
-	type: Partial<ClaudeElement>["type"] | undefined;
-}): boolean {
-	return (
-		type === CLAUDE_MEDIA_ELEMENT_TYPES.media ||
-		type === CLAUDE_MEDIA_ELEMENT_TYPES.video ||
-		type === CLAUDE_MEDIA_ELEMENT_TYPES.audio ||
-		type === CLAUDE_MEDIA_ELEMENT_TYPES.image
-	);
-}
 
 /** Get element start time, defaulting to 0 if not set. */
 function getElementStartTime({
@@ -451,338 +404,6 @@ export function addClaudeMarkdownElement({
 		"[ClaudeTimelineBridge] Added markdown element:",
 		markdownContent.slice(0, 50)
 	);
-}
-
-const DEFAULT_REMOTION_DURATION_SECONDS = 5;
-
-/**
- * Bundle, load, and register a Remotion component from a .tsx file path.
- * Returns the registered componentId on success, or null on failure.
- */
-async function bundleAndRegisterComponent({
-	componentPath,
-	componentId,
-	componentName,
-	durationInFrames = 150,
-	fps = 30,
-	width = 1920,
-	height = 1080,
-}: {
-	componentPath: string;
-	componentId: string;
-	componentName: string;
-	durationInFrames?: number;
-	fps?: number;
-	width?: number;
-	height?: number;
-}): Promise<string | null> {
-	try {
-		const api = window.electronAPI?.remotionFolder;
-		if (!api?.bundleFile) {
-			debugWarn(
-				"[ClaudeTimelineBridge] remotionFolder.bundleFile not available"
-			);
-			return null;
-		}
-
-		debugLog("[ClaudeTimelineBridge] Bundling component:", componentPath);
-		const bundleResult = await api.bundleFile(componentPath, componentId);
-
-		if (!bundleResult.success || !bundleResult.code) {
-			debugError("[ClaudeTimelineBridge] Bundle failed:", bundleResult.error);
-			return null;
-		}
-
-		debugLog("[ClaudeTimelineBridge] Loading bundled component...");
-		const { loadBundledComponent } = await import(
-			"@/lib/remotion/dynamic-loader"
-		);
-		const loadResult = await loadBundledComponent(
-			bundleResult.code,
-			componentId
-		);
-
-		if (!loadResult.success || !loadResult.component) {
-			debugError(
-				"[ClaudeTimelineBridge] Dynamic load failed:",
-				loadResult.error
-			);
-			return null;
-		}
-
-		debugLog("[ClaudeTimelineBridge] Registering component in store...");
-		const { useRemotionStore } = await import("@/stores/ai/remotion-store");
-		useRemotionStore.getState().registerComponent({
-			id: componentId,
-			name: componentName,
-			description: `Generated component: ${componentName}`,
-			category: "custom",
-			durationInFrames,
-			fps,
-			width,
-			height,
-			// Dynamically generated components don't export a Zod schema;
-			// accept any props since the component handles its own defaults.
-			schema: { safeParse: () => ({ success: true, data: {} }) } as never,
-			defaultProps: {},
-			component: loadResult.component,
-			source: "imported",
-			tags: ["claude-generated"],
-		});
-
-		debugLog("[ClaudeTimelineBridge] Component registered:", componentId);
-		return componentId;
-	} catch (error) {
-		debugError("[ClaudeTimelineBridge] Bundle/register failed:", error);
-		return null;
-	}
-}
-
-/**
- * Import a Remotion folder using the existing folder import pipeline.
- * Scans Root.tsx, bundles all compositions, loads components, registers in store.
- * Returns the list of registered component IDs.
- */
-async function importRemotionFolder({
-	folderPath,
-}: {
-	folderPath: string;
-}): Promise<string[]> {
-	try {
-		const api = window.electronAPI?.remotionFolder;
-		if (!api?.import) {
-			debugWarn("[ClaudeTimelineBridge] remotionFolder.import not available");
-			return [];
-		}
-
-		debugLog("[ClaudeTimelineBridge] Importing folder:", folderPath);
-		const importResult = await api.import(folderPath);
-
-		if (
-			!importResult.success ||
-			!importResult.bundle ||
-			!importResult.scan?.compositions
-		) {
-			debugError(
-				"[ClaudeTimelineBridge] Folder import failed:",
-				importResult.error
-			);
-			return [];
-		}
-
-		const { loadComponentsFromFolder } = await import(
-			"@/lib/remotion/component-loader"
-		);
-		const loadResult = await loadComponentsFromFolder(
-			folderPath,
-			importResult.scan.compositions,
-			importResult.bundle.results
-		);
-
-		if (!loadResult.success || loadResult.components.length === 0) {
-			debugError(
-				"[ClaudeTimelineBridge] Component loading failed:",
-				loadResult.errors
-			);
-			return [];
-		}
-
-		const { useRemotionStore } = await import("@/stores/ai/remotion-store");
-		const store = useRemotionStore.getState();
-		const registeredIds: string[] = [];
-
-		for (const component of loadResult.components) {
-			store.registerComponent(component);
-			registeredIds.push(component.id);
-			debugLog("[ClaudeTimelineBridge] Registered component:", component.id);
-		}
-
-		return registeredIds;
-	} catch (error) {
-		debugError("[ClaudeTimelineBridge] Folder import/register failed:", error);
-		return [];
-	}
-}
-
-/** Add a Claude remotion element to the timeline store. */
-export async function addClaudeRemotionElement({
-	element,
-	timelineStore,
-}: {
-	element: Partial<ClaudeElement>;
-	timelineStore: TimelineStoreState;
-}): Promise<void> {
-	const componentName = element.sourceName || "Remotion";
-
-	// Folder-based import: use the existing remotion-folder pipeline
-	if (element.folderPath) {
-		const registeredIds = await importRemotionFolder({
-			folderPath: element.folderPath,
-		});
-
-		if (registeredIds.length === 0) {
-			debugWarn("[ClaudeTimelineBridge] No components imported from folder");
-			return;
-		}
-
-		const trackId = timelineStore.findOrCreateTrack("remotion");
-		const startTime = getElementStartTime({ element });
-		const duration = getElementDuration({
-			element,
-			fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
-		});
-
-		// Add a timeline element for each imported composition
-		let offset = startTime;
-		for (const compId of registeredIds) {
-			timelineStore.addElementToTrack(trackId, {
-				type: "remotion",
-				name: compId,
-				componentId: compId,
-				props: element.props || {},
-				renderMode: "live",
-				startTime: offset,
-				duration,
-				trimStart: 0,
-				trimEnd: 0,
-				opacity: 1,
-			});
-			offset += duration;
-		}
-
-		debugLog(
-			"[ClaudeTimelineBridge] Added",
-			registeredIds.length,
-			"remotion elements from folder"
-		);
-		return;
-	}
-
-	// Single-file fallback: bundle one .tsx file
-	const componentId = element.sourceId || `remotion-${Date.now()}`;
-
-	if (element.componentPath) {
-		const fps = 30;
-		const durationSec = element.duration || DEFAULT_REMOTION_DURATION_SECONDS;
-		const registeredId = await bundleAndRegisterComponent({
-			componentPath: element.componentPath,
-			componentId,
-			componentName,
-			durationInFrames: Math.round(durationSec * fps),
-			fps,
-		});
-
-		if (!registeredId) {
-			debugWarn(
-				"[ClaudeTimelineBridge] Component registration failed, adding element without preview"
-			);
-		}
-	}
-
-	const trackId = timelineStore.findOrCreateTrack("remotion");
-	const startTime = getElementStartTime({ element });
-	const duration = getElementDuration({
-		element,
-		fallbackDuration: DEFAULT_REMOTION_DURATION_SECONDS,
-	});
-
-	timelineStore.addElementToTrack(trackId, {
-		type: "remotion",
-		name: componentName,
-		componentId,
-		componentPath: element.componentPath,
-		props: element.props || {},
-		renderMode: "live",
-		startTime,
-		duration,
-		trimStart: 0,
-		trimEnd: 0,
-		opacity: 1,
-	});
-
-	debugLog("[ClaudeTimelineBridge] Added remotion element:", componentName);
-}
-
-/**
- * Format internal tracks for Claude export
- */
-export function formatTracksForExport(tracks: TimelineTrack[]): ClaudeTrack[] {
-	return tracks.map((track, index) => ({
-		id: track.id,
-		index,
-		name: track.name || `Track ${index + 1}`,
-		type: track.type,
-		elements: track.elements.map((element) =>
-			formatElementForExport(element, index)
-		),
-	}));
-}
-
-/**
- * Format a single element for export
- */
-function formatElementForExport(
-	element: TimelineElement,
-	trackIndex: number
-): ClaudeElement {
-	const effectiveDuration = getEffectiveDuration(element);
-
-	const baseElement: ClaudeElement = {
-		id: element.id,
-		trackIndex,
-		startTime: element.startTime,
-		endTime: element.startTime + effectiveDuration,
-		duration: effectiveDuration,
-		type: element.type === "markdown" ? "text" : element.type,
-	};
-
-	// Add type-specific fields
-	switch (element.type) {
-		case "media": {
-			// Resolve the actual media file name from the store for reliable export matching
-			let sourceName = element.name;
-			if (element.mediaId) {
-				const mediaItem = useMediaStore
-					.getState()
-					.mediaItems.find((item) => item.id === element.mediaId);
-				if (mediaItem?.name) {
-					sourceName = mediaItem.name;
-				}
-			}
-			return {
-				...baseElement,
-				sourceId: element.mediaId,
-				sourceName,
-			};
-		}
-		case "text":
-			return {
-				...baseElement,
-				content: element.content,
-			};
-		case "captions":
-			return {
-				...baseElement,
-				content: element.text,
-			};
-		case "sticker":
-			return {
-				...baseElement,
-				sourceId: element.stickerId,
-			};
-		case "remotion":
-			return {
-				...baseElement,
-				sourceId: element.componentId,
-			};
-		case "markdown":
-			return {
-				...baseElement,
-				content: element.markdownContent,
-			};
-		default:
-			return baseElement;
-	}
 }
 
 /**
