@@ -572,9 +572,7 @@ export function setupMoyinIPC(): void {
 				return { success: true, filePath, projectRoot: process.cwd() };
 			} catch (error) {
 				const message =
-					error instanceof Error
-						? error.message
-						: "Failed to save temp script";
+					error instanceof Error ? error.message : "Failed to save temp script";
 				log.error("[Moyin] Save temp script failed:", message);
 				return { success: false, error: message };
 			}

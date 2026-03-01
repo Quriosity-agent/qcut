@@ -317,8 +317,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 					if (s.parseStatus === "parsing" && s._pendingTempScriptPath) {
 						set({
 							parseStatus: "error",
-							parseError:
-								"Parse timed out. Check Terminal tab for errors.",
+							parseError: "Parse timed out. Check Terminal tab for errors.",
 						});
 					}
 				}, 180_000);

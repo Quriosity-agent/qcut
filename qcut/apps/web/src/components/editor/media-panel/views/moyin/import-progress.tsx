@@ -58,9 +58,7 @@ export function ImportProgress() {
 					<button
 						type="button"
 						className="flex items-center gap-1 text-[10px] text-primary hover:underline"
-						onClick={() =>
-							useMediaPanelStore.getState().setActiveTab("pty")
-						}
+						onClick={() => useMediaPanelStore.getState().setActiveTab("pty")}
 					>
 						<SquareTerminalIcon className="h-3 w-3" />
 						View in Terminal
@@ -70,9 +68,7 @@ export function ImportProgress() {
 			{parseProvider && parseStatus === "parsing" && (
 				<p className="text-[10px] text-muted-foreground">
 					Parsing with{" "}
-					<span className="font-medium text-foreground">
-						{parseProvider}
-					</span>
+					<span className="font-medium text-foreground">{parseProvider}</span>
 				</p>
 			)}
 			<div className="space-y-1" aria-live="polite" aria-atomic="true">

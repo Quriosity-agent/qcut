@@ -382,9 +382,7 @@ export async function migrateAIVideosToDocuments(): Promise<MigrationResult> {
 
 	const legacyRoot = path.join(app.getPath("userData"), "projects");
 	safeLog(`[AI Video Migration] Legacy root: ${legacyRoot}`);
-	safeLog(
-		`[AI Video Migration] Documents base: ${app.getPath("documents")}`
-	);
+	safeLog(`[AI Video Migration] Documents base: ${app.getPath("documents")}`);
 
 	// Early return if no legacy directory
 	try {

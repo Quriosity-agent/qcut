@@ -826,10 +826,7 @@ if (!isCliKeyCommand) {
 							`[AI Video Migration] Done: copied=${result.copied}, skipped=${result.skipped}, projects=${result.projectsProcessed}, errors=${result.errors.length}`
 						);
 						if (result.errors.length > 0) {
-							console.warn(
-								"[AI Video Migration] Errors:",
-								result.errors
-							);
+							console.warn("[AI Video Migration] Errors:", result.errors);
 						}
 					} catch {
 						// Ignore EPIPE — stdout may disconnect during shutdown

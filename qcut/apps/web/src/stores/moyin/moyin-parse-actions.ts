@@ -59,10 +59,7 @@ export async function runCalibrationPipeline(
 	rawScript: string,
 	store: StoreRef
 ): Promise<void> {
-	const advancePipeline = (
-		step: PipelineStep,
-		status: PipelineStepStatus
-	) => {
+	const advancePipeline = (step: PipelineStep, status: PipelineStepStatus) => {
 		const progress = { ...store.getState().pipelineProgress, [step]: status };
 		store.setState({ pipelineStep: step, pipelineProgress: progress });
 	};
@@ -121,9 +118,7 @@ export async function runCalibrationPipeline(
 			);
 			store.setState((state) => ({
 				shots: [
-					...state.shots.filter(
-						(s) => !newShots.some((ns) => ns.id === s.id)
-					),
+					...state.shots.filter((s) => !newShots.some((ns) => ns.id === s.id)),
 					...newShots,
 				],
 			}));
@@ -192,16 +187,11 @@ export async function attemptPtyParse(
 		useMediaPanelStore.getState().setActiveTab("pty");
 
 		// 3. Ensure shell session is running
-		const { usePtyTerminalStore } = await import(
-			"@/stores/pty-terminal-store"
-		);
+		const { usePtyTerminalStore } = await import("@/stores/pty-terminal-store");
 		const ptyState = usePtyTerminalStore.getState();
 
 		// If connected to a non-shell provider, disconnect and reconnect as shell
-		if (
-			ptyState.status === "connected" &&
-			ptyState.cliProvider !== "shell"
-		) {
+		if (ptyState.status === "connected" && ptyState.cliProvider !== "shell") {
 			await usePtyTerminalStore.getState().disconnect({ userInitiated: true });
 			// Small delay for clean disconnect
 			await new Promise((resolve) => setTimeout(resolve, 300));

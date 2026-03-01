@@ -153,7 +153,7 @@ async function callOpenRouter(
 	apiKey: string,
 	systemPrompt: string,
 	userPrompt: string,
-	options: LLMCallOptions = {},
+	options: LLMCallOptions = {}
 ): Promise<LLMCallResult> {
 	const model = resolveModel(options.model);
 	const controller = new AbortController();
@@ -184,7 +184,7 @@ async function callOpenRouter(
 			if (!response.ok) {
 				const errText = await response.text().catch(() => "");
 				throw new Error(
-					`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`,
+					`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`
 				);
 			}
 			let accumulated = "";
@@ -216,7 +216,8 @@ async function callOpenRouter(
 					}
 				}
 			}
-			if (!accumulated) throw new Error("Empty streaming response from OpenRouter");
+			if (!accumulated)
+				throw new Error("Empty streaming response from OpenRouter");
 			return { text: accumulated, provider: "OpenRouter", model };
 		}
 
@@ -233,7 +234,7 @@ async function callOpenRouter(
 		if (!response.ok) {
 			const errText = await response.text().catch(() => "");
 			throw new Error(
-				`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`,
+				`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`
 			);
 		}
 		const data = (await response.json()) as {
@@ -252,7 +253,7 @@ async function callGeminiDirect(
 	apiKey: string,
 	systemPrompt: string,
 	userPrompt: string,
-	options: LLMCallOptions = {},
+	options: LLMCallOptions = {}
 ): Promise<LLMCallResult> {
 	const model = options.model?.startsWith("gemini-")
 		? options.model
@@ -273,12 +274,12 @@ async function callGeminiDirect(
 						generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
 					}),
 					signal: controller.signal,
-				},
+				}
 			);
 			if (!response.ok) {
 				const errText = await response.text().catch(() => "");
 				throw new Error(
-					`Gemini API error (${response.status}): ${errText.slice(0, 200)}`,
+					`Gemini API error (${response.status}): ${errText.slice(0, 200)}`
 				);
 			}
 			let accumulated = "";
@@ -300,8 +301,7 @@ async function callGeminiDirect(
 								content?: { parts?: Array<{ text?: string }> };
 							}>;
 						};
-						const chunk =
-							parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+						const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
 						if (chunk) {
 							accumulated += chunk;
 							options.onChunk?.(chunk);
@@ -327,12 +327,12 @@ async function callGeminiDirect(
 					generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
 				}),
 				signal: controller.signal,
-			},
+			}
 		);
 		if (!response.ok) {
 			const errText = await response.text().catch(() => "");
 			throw new Error(
-				`Gemini API error (${response.status}): ${errText.slice(0, 200)}`,
+				`Gemini API error (${response.status}): ${errText.slice(0, 200)}`
 			);
 		}
 		const data = (await response.json()) as {
@@ -351,7 +351,7 @@ async function callGeminiDirect(
 /** Spawn claude -p with system prompt and user prompt via stdin. */
 function callClaudeCLI(
 	systemPrompt: string,
-	userPrompt: string,
+	userPrompt: string
 ): Promise<LLMCallResult> {
 	return new Promise((resolveP, reject) => {
 		const args = [
@@ -395,8 +395,8 @@ function callClaudeCLI(
 				child.kill("SIGTERM");
 				reject(
 					new Error(
-						"Claude CLI timed out after 180s. Configure an API key for faster parsing.",
-					),
+						"Claude CLI timed out after 180s. Configure an API key for faster parsing."
+					)
 				);
 			}
 		}, CLAUDE_CLI_TIMEOUT_MS);
@@ -408,8 +408,8 @@ function callClaudeCLI(
 			if (code !== 0) {
 				reject(
 					new Error(
-						`Claude CLI failed (exit ${code}): ${stderr.trim().slice(0, 200)}`,
-					),
+						`Claude CLI failed (exit ${code}): ${stderr.trim().slice(0, 200)}`
+					)
 				);
 			} else {
 				const raw = stdout.trim();
@@ -425,7 +425,7 @@ function callClaudeCLI(
 					};
 					if (envelope.is_error === true) {
 						reject(
-							new Error(`Claude CLI error: ${envelope.result || "unknown"}`),
+							new Error(`Claude CLI error: ${envelope.result || "unknown"}`)
 						);
 						return;
 					}
@@ -445,8 +445,8 @@ function callClaudeCLI(
 			clearTimeout(timeoutId);
 			reject(
 				new Error(
-					`Claude CLI not found: ${err.message}. Install with: npm install -g @anthropic-ai/claude-code`,
-				),
+					`Claude CLI not found: ${err.message}. Install with: npm install -g @anthropic-ai/claude-code`
+				)
 			);
 		});
 
@@ -459,8 +459,8 @@ function callClaudeCLI(
 				clearTimeout(timeoutId);
 				reject(
 					new Error(
-						`Failed to write to Claude CLI stdin: ${err instanceof Error ? err.message : String(err)}`,
-					),
+						`Failed to write to Claude CLI stdin: ${err instanceof Error ? err.message : String(err)}`
+					)
 				);
 			}
 		}
@@ -473,7 +473,7 @@ function callClaudeCLI(
 async function callLLM(
 	systemPrompt: string,
 	userPrompt: string,
-	options: LLMCallOptions = {},
+	options: LLMCallOptions = {}
 ): Promise<LLMCallResult> {
 	const openRouterKey = await envApiKeyProvider("openrouter");
 	if (openRouterKey) {
@@ -547,7 +547,7 @@ function extractJSON(response: string): Record<string, unknown> {
 
 export async function handleMoyinParseScript(
 	options: CLIRunOptions,
-	onProgress: ProgressFn,
+	onProgress: ProgressFn
 ): Promise<CLIResult> {
 	const startTime = Date.now();
 
