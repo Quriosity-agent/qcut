@@ -289,6 +289,7 @@ export const test = base.extend<ElectronFixtures>({
 		const electronApp = await electron.launch({
 			args: ["dist/electron/main.js"],
 			env: {
+				...process.env,
 				NODE_ENV: "test",
 				// Disable hardware acceleration for consistent testing
 				ELECTRON_DISABLE_GPU: "1",
@@ -811,6 +812,7 @@ export async function startElectronApp() {
 	return await electron.launch({
 		args: ["dist/electron/main.js"],
 		env: {
+			...process.env,
 			NODE_ENV: "test",
 			ELECTRON_DISABLE_GPU: "1",
 		},
