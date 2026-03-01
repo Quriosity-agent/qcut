@@ -45,6 +45,13 @@ import {
 	reorderScenesAction,
 } from "./moyin-generation";
 import { pushUndo, popUndo, popRedo } from "./moyin-undo";
+import {
+	runCalibrationPipeline,
+	attemptPtyParse,
+	getModelLabel,
+	getPendingTempScriptPath,
+	clearPendingParse,
+} from "./moyin-parse-actions";
 
 // Types
 
@@ -99,6 +106,7 @@ interface MoyinState {
 	createStatus: "idle" | "generating" | "done" | "error";
 	createError: string | null;
 	selectedShotIds: Set<string>;
+	parseModel: string;
 }
 
 interface MoyinActions {
@@ -113,6 +121,7 @@ interface MoyinActions {
 	setLanguage: (lang: string) => void;
 	setSceneCount: (count: string) => void;
 	setShotCount: (count: string) => void;
+	setParseModel: (model: string) => void;
 	checkApiKeyStatus: () => Promise<void>;
 	updateCharacter: (id: string, updates: Partial<ScriptCharacter>) => void;
 	addCharacter: (char: ScriptCharacter) => void;
@@ -206,7 +215,11 @@ const initialState: MoyinState = {
 	createStatus: "idle",
 	createError: null,
 	selectedShotIds: new Set<string>(),
+	parseModel: "minimax",
 };
+
+/** Module-scoped: timeout ID for the 3-minute PTY parse guard. */
+let parseTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
 export const useMoyinStore = create<MoyinStore>((set, get) => {
 	const patchShot = (shotId: string, updates: Partial<Shot>) =>
@@ -247,6 +260,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		setLanguage: (lang) => set({ language: lang }),
 		setSceneCount: (count) => set({ sceneCount: count }),
 		setShotCount: (count) => set({ shotCount: count }),
+		setParseModel: (model) => set({ parseModel: model }),
 
 		checkApiKeyStatus: async () => {
 			try {
@@ -273,7 +287,7 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 		},
 
 		parseScript: async () => {
-			const { rawScript } = get();
+			const { rawScript, parseModel } = get();
 			if (!rawScript.trim()) return;
 
 			const advancePipeline = (
@@ -291,9 +305,33 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 				pipelineProgress: initialState.pipelineProgress,
 			});
 
-			try {
-				advancePipeline("import", "active");
+			advancePipeline("import", "active");
 
+			// --- PTY path: stream output in terminal, data arrives via onParsed ---
+			const ptyResult = await attemptPtyParse(rawScript, parseModel);
+			if (ptyResult.success) {
+				const pendingPath = ptyResult.tempPath ?? null;
+				// Set a 3-minute timeout for PTY path (scoped to this run)
+				const parseTimeoutId = setTimeout(() => {
+					const s = get();
+					if (
+						s.parseStatus === "parsing" &&
+						getPendingTempScriptPath() === pendingPath
+					) {
+						clearPendingParse();
+						set({
+							parseStatus: "error",
+							parseError: "Parse timed out. Check Terminal tab for errors.",
+						});
+					}
+				}, 180_000);
+				// Store timeout ID so onParsed can cancel it
+				parseTimeoutRef = parseTimeoutId;
+				return; // onParsed listener handles the rest
+			}
+
+			// --- IPC fallback: direct call when PTY is unavailable ---
+			try {
 				const api = window.electronAPI?.moyin;
 				if (!api) {
 					throw new Error("Moyin API not available. Please run in Electron.");
@@ -305,102 +343,16 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 					throw new Error(result.error || "Failed to parse script");
 				}
 
-				advancePipeline("import", "done");
-
 				const data = result.data as unknown as ScriptData;
-
-				// Set data immediately so user can see results while calibration runs
 				set({
-					scriptData: data,
-					characters: data.characters ?? [],
-					scenes: data.scenes ?? [],
-					episodes: data.episodes ?? [],
-					shots: [],
 					shotGenerationStatus: {},
 					selectedShotIds: new Set<string>(),
 					activeStep: "characters",
 				});
-
-				// --- Title Calibration ---
-				advancePipeline("title_calibration", "active");
-				try {
-					const { title, logline } = await calibrateTitleLLM(data, rawScript);
-					const updated = { ...data, title, logline };
-					set({ scriptData: updated });
-					advancePipeline("title_calibration", "done");
-				} catch (err) {
-					console.warn("[Moyin] Title calibration failed:", err);
-					advancePipeline("title_calibration", "error");
-				}
-
-				// --- Synopsis Generation ---
-				advancePipeline("synopsis", "active");
-				try {
-					const synopsis = await generateSynopsisLLM(
-						get().scriptData ?? data,
-						rawScript
-					);
-					const current = get().scriptData;
-					if (current) {
-						set({ scriptData: { ...current, logline: synopsis } });
-					}
-					advancePipeline("synopsis", "done");
-				} catch (err) {
-					console.warn("[Moyin] Synopsis generation failed:", err);
-					advancePipeline("synopsis", "error");
-				}
-
-				// --- Shot Calibration ---
-				advancePipeline("shot_calibration", "active");
-				try {
-					const { episodes, scenes, scriptData: sd } = get();
-					for (const ep of episodes) {
-						const epScenes = scenes.filter((s) => ep.sceneIds.includes(s.id));
-						if (epScenes.length === 0) continue;
-						const newShots = await generateShotsForEpisodeAction(
-							epScenes,
-							ep.title,
-							sd?.title || "Unknown"
-						);
-						set((state) => ({
-							shots: [
-								...state.shots.filter(
-									(s) => !newShots.some((ns) => ns.id === s.id)
-								),
-								...newShots,
-							],
-						}));
-					}
-					advancePipeline("shot_calibration", "done");
-				} catch (err) {
-					console.warn("[Moyin] Shot calibration failed:", err);
-					advancePipeline("shot_calibration", "error");
-				}
-
-				// --- Character Calibration ---
-				advancePipeline("character_calibration", "active");
-				try {
-					const { characters: chars, scriptData: sd2 } = get();
-					const enhanced = await enhanceCharactersLLM(chars, sd2, rawScript);
-					set({ characters: enhanced });
-					advancePipeline("character_calibration", "done");
-				} catch (err) {
-					console.warn("[Moyin] Character calibration failed:", err);
-					advancePipeline("character_calibration", "error");
-				}
-
-				// --- Scene Calibration ---
-				advancePipeline("scene_calibration", "active");
-				try {
-					const { scenes: scns, scriptData: sd3 } = get();
-					const enhanced = await enhanceScenesLLM(scns, sd3, rawScript);
-					set({ scenes: enhanced });
-					advancePipeline("scene_calibration", "done");
-				} catch (err) {
-					console.warn("[Moyin] Scene calibration failed:", err);
-					advancePipeline("scene_calibration", "error");
-				}
-
+				await runCalibrationPipeline(data, rawScript, {
+					getState: get,
+					setState: set,
+				});
 				set({ parseStatus: "ready" });
 			} catch (error) {
 				const currentStep = get().pipelineStep;
@@ -888,14 +840,41 @@ useMoyinStore.subscribe((state) => {
 // Listen for parsed script data pushed from CLI via HTTP API
 if (typeof window !== "undefined") {
 	window.electronAPI?.moyin?.onParsed?.((data: Record<string, unknown>) => {
+		const state = useMoyinStore.getState();
 		const scriptData = data as unknown as ScriptData;
+
+		// Cancel timers and clean up temp file from PTY parse
+		if (parseTimeoutRef != null) {
+			clearTimeout(parseTimeoutRef);
+			parseTimeoutRef = null;
+		}
+		const tempPath = getPendingTempScriptPath();
+		if (tempPath) {
+			window.electronAPI?.moyin?.cleanupTempScript(tempPath)?.catch(() => {});
+		}
+		clearPendingParse();
+
+		// Set initial data and switch to characters tab
 		useMoyinStore.setState({
-			scriptData,
-			characters: scriptData.characters ?? [],
-			scenes: scriptData.scenes ?? [],
-			episodes: scriptData.episodes ?? [],
-			parseStatus: "ready",
+			shotGenerationStatus: {},
+			selectedShotIds: new Set<string>(),
 			activeStep: "characters",
 		});
+
+		// Run full calibration pipeline (title, synopsis, shots, characters, scenes)
+		runCalibrationPipeline(scriptData, state.rawScript, {
+			getState: useMoyinStore.getState,
+			setState: useMoyinStore.setState,
+		})
+			.then(() => {
+				useMoyinStore.setState({ parseStatus: "ready" });
+			})
+			.catch((err) => {
+				console.error("[Moyin] Calibration after CLI push failed:", err);
+				useMoyinStore.setState({
+					parseStatus: "error",
+					parseError: String(err),
+				});
+			});
 	});
 }

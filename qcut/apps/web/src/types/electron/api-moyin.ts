@@ -32,6 +32,13 @@ export interface ElectronMoyinOps {
 			error?: string;
 		}>;
 		isClaudeAvailable: () => Promise<boolean>;
+		saveTempScript: (options: { rawScript: string }) => Promise<{
+			success: boolean;
+			filePath?: string;
+			projectRoot?: string;
+			error?: string;
+		}>;
+		cleanupTempScript: (filePath: string) => Promise<void>;
 		onParsed: (callback: (data: Record<string, unknown>) => void) => void;
 		removeParseListener: () => void;
 		onSetScript: (callback: (data: { text: string }) => void) => void;

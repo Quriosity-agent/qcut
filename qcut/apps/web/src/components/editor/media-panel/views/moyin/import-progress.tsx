@@ -8,11 +8,14 @@ import type {
 	PipelineStep,
 	PipelineStepStatus,
 } from "@/stores/moyin/moyin-store";
+import { getModelLabel } from "@/stores/moyin/moyin-parse-actions";
+import { useMediaPanelStore } from "../../store";
 import { cn } from "@/lib/utils";
 import {
 	CheckCircle2Icon,
 	CircleIcon,
 	Loader2,
+	SquareTerminalIcon,
 	XCircleIcon,
 } from "lucide-react";
 
@@ -41,14 +44,36 @@ function StepIcon({ status }: { status: PipelineStepStatus }) {
 export function ImportProgress() {
 	const pipelineStep = useMoyinStore((s) => s.pipelineStep);
 	const pipelineProgress = useMoyinStore((s) => s.pipelineProgress);
+	const parseStatus = useMoyinStore((s) => s.parseStatus);
+	const parseModel = useMoyinStore((s) => s.parseModel);
+	const parseProvider =
+		parseStatus === "parsing" ? getModelLabel(parseModel) : "";
 
 	if (!pipelineStep) return null;
 
 	return (
 		<div className="rounded-md border bg-muted/20 p-2.5 space-y-1.5">
-			<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-				Import Pipeline
-			</p>
+			<div className="flex items-center justify-between">
+				<p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+					Import Pipeline
+				</p>
+				{parseStatus === "parsing" && (
+					<button
+						type="button"
+						className="flex items-center gap-1 text-[10px] text-primary hover:underline"
+						onClick={() => useMediaPanelStore.getState().setActiveTab("pty")}
+					>
+						<SquareTerminalIcon className="h-3 w-3" />
+						View in Terminal
+					</button>
+				)}
+			</div>
+			{parseProvider && parseStatus === "parsing" && (
+				<p className="text-[10px] text-muted-foreground">
+					Parsing with{" "}
+					<span className="font-medium text-foreground">{parseProvider}</span>
+				</p>
+			)}
 			<div className="space-y-1" aria-live="polite" aria-atomic="true">
 				{PIPELINE_STEPS.map((step) => {
 					const status = pipelineProgress[step.key];

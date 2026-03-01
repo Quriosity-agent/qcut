@@ -73,6 +73,10 @@ try {
 }
 const logger: Logger = log || console;
 
+// Prevent EPIPE crashes when stdout/stderr pipe is broken during lifecycle events.
+import { installEpipeGuard } from "./safe-console.js";
+installEpipeGuard();
+
 // Auto-updater - wrapped in try-catch for packaged builds
 let autoUpdater: AutoUpdater | null = null;
 try {

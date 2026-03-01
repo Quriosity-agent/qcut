@@ -29,6 +29,17 @@ try {
 	logger = console;
 }
 
+// Prevent EPIPE crashes — utility process stdout/stderr may be disconnected
+import { installEpipeGuard } from "../safe-console.js";
+installEpipeGuard();
+process.on("uncaughtException", (err: NodeJS.ErrnoException) => {
+	if (err.code === "EPIPE") return;
+	logger.error("[UtilityProcess] Uncaught exception:", err.message, err.stack);
+});
+process.on("unhandledRejection", (reason) => {
+	logger.error("[UtilityProcess] Unhandled rejection:", reason);
+});
+
 // Utility process has process.parentPort for communicating with main.
 // We cast via `unknown` because Electron's utility process augments the
 // global `process` with `parentPort`, but the base Node.js types don't

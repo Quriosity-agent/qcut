@@ -2,11 +2,13 @@
  * CLI Moyin Script Parsing Handler
  *
  * Parses screenplay/story text into structured ScriptData (characters, scenes,
- * episodes) using Claude CLI as the LLM backend. Runs standalone without
- * Electron — no API keys required.
+ * episodes) via OpenRouter, Gemini, or Claude CLI fallback.
+ *
+ * Provider priority: OPENROUTER_API_KEY → GEMINI_API_KEY → Claude CLI
  *
  * Usage:
- *   qcut-pipeline moyin:parse-script --script screenplay.txt --json
+ *   qcut-pipeline moyin:parse-script --script screenplay.txt
+ *   qcut-pipeline moyin:parse-script --script screenplay.txt --model kimi --stream
  *   cat script.txt | qcut-pipeline moyin:parse-script --input - --json
  *
  * @module electron/native-pipeline/cli/cli-handlers-moyin
@@ -21,8 +23,35 @@ import type {
 	ProgressFn,
 } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
+import {
+	envApiKeyProvider,
+	OPENROUTER_BASE,
+	GEMINI_BASE,
+} from "../infra/api-caller.js";
 
-const CLAUDE_CLI_TIMEOUT_MS = 600_000;
+// ==================== Constants ====================
+
+const CLAUDE_CLI_TIMEOUT_MS = 180_000;
+const REQUEST_TIMEOUT_MS = 120_000;
+
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+
+/** Map user-friendly model names to OpenRouter model IDs. */
+const MODEL_ALIASES: Record<string, string> = {
+	kimi: "moonshotai/kimi-k2.5",
+	"kimi-k2.5": "moonshotai/kimi-k2.5",
+	minimax: "minimax/minimax-m2.5",
+	"minimax-m2.5": "minimax/minimax-m2.5",
+	gemini: "google/gemini-2.5-flash",
+	"gemini-flash": "google/gemini-2.5-flash",
+	"gemini-pro": "google/gemini-2.5-pro",
+};
+
+function resolveModel(model?: string): string {
+	if (!model) return DEFAULT_OPENROUTER_MODEL;
+	return MODEL_ALIASES[model] ?? model;
+}
 
 const PARSE_SYSTEM_PROMPT = `You are a professional screenplay analyst. Analyze the screenplay/story text provided by the user and extract structured information.
 
@@ -88,40 +117,244 @@ Important requirements:
 7. Episode IDs use ep_1, ep_2 format
 8. visualPrompt for scenes must be in English`;
 
+// ==================== Input Reader ====================
+
 /** Read script text from --script (file), --input (file/stdin), or --text (inline). */
 function readScriptInput(options: CLIRunOptions): string | null {
-	// --script <file>
 	if (options.script) {
 		const scriptPath = resolve(options.script);
-		if (!existsSync(scriptPath)) {
-			return null;
-		}
+		if (!existsSync(scriptPath)) return null;
 		return readFileSync(scriptPath, "utf-8");
 	}
-
-	// --input (already resolved to content by runner.ts if "-")
 	if (options.input) {
+		if (options.input === "-") return readFileSync(0, "utf-8");
 		const inputPath = resolve(options.input);
-		if (existsSync(inputPath)) {
-			return readFileSync(inputPath, "utf-8");
-		}
-		// If not a file path, treat as inline text (stdin content from runner)
+		if (existsSync(inputPath)) return readFileSync(inputPath, "utf-8");
 		return options.input;
 	}
-
-	// --text "inline script"
-	if (options.text) {
-		return options.text;
-	}
-
+	if (options.text) return options.text;
 	return null;
+}
+
+// ==================== LLM Providers ====================
+
+interface LLMCallOptions {
+	model?: string;
+	stream?: boolean;
+	onChunk?: (text: string) => void;
+}
+
+interface LLMCallResult {
+	text: string;
+	provider: string;
+	model: string;
+}
+
+/** Call OpenRouter's OpenAI-compatible chat/completions endpoint. */
+async function callOpenRouter(
+	apiKey: string,
+	systemPrompt: string,
+	userPrompt: string,
+	options: LLMCallOptions = {}
+): Promise<LLMCallResult> {
+	const model = resolveModel(options.model);
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+	try {
+		const body: Record<string, unknown> = {
+			model,
+			messages: [
+				{ role: "system", content: systemPrompt },
+				{ role: "user", content: userPrompt },
+			],
+			temperature: 0.7,
+			max_tokens: 8192,
+		};
+
+		if (options.stream) {
+			body.stream = true;
+			const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${apiKey}`,
+				},
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
+			if (!response.ok) {
+				const errText = await response.text().catch(() => "");
+				throw new Error(
+					`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`
+				);
+			}
+			let accumulated = "";
+			const reader = response.body?.getReader();
+			if (!reader) throw new Error("No response body for streaming");
+			const decoder = new TextDecoder();
+			let buffer = "";
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split("\n");
+				buffer = lines.pop() || "";
+				for (const line of lines) {
+					if (!line.startsWith("data: ")) continue;
+					const payload = line.slice(6).trim();
+					if (payload === "[DONE]") break;
+					try {
+						const parsed = JSON.parse(payload) as {
+							choices?: Array<{ delta?: { content?: string } }>;
+						};
+						const delta = parsed.choices?.[0]?.delta?.content;
+						if (delta) {
+							accumulated += delta;
+							options.onChunk?.(delta);
+						}
+					} catch {
+						// skip malformed SSE lines
+					}
+				}
+			}
+			if (!accumulated)
+				throw new Error("Empty streaming response from OpenRouter");
+			return { text: accumulated, provider: "OpenRouter", model };
+		}
+
+		// Non-streaming
+		const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify(body),
+			signal: controller.signal,
+		});
+		if (!response.ok) {
+			const errText = await response.text().catch(() => "");
+			throw new Error(
+				`OpenRouter API error (${response.status}): ${errText.slice(0, 200)}`
+			);
+		}
+		const data = (await response.json()) as {
+			choices?: Array<{ message?: { content?: string } }>;
+		};
+		const content = data.choices?.[0]?.message?.content;
+		if (!content) throw new Error("Empty response from OpenRouter");
+		return { text: content, provider: "OpenRouter", model };
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+/** Call the Google Gemini generative language API directly. */
+async function callGeminiDirect(
+	apiKey: string,
+	systemPrompt: string,
+	userPrompt: string,
+	options: LLMCallOptions = {}
+): Promise<LLMCallResult> {
+	const model = options.model?.startsWith("gemini-")
+		? options.model
+		: DEFAULT_GEMINI_MODEL;
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+	try {
+		if (options.stream) {
+			const response = await fetch(
+				`${GEMINI_BASE}/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						system_instruction: { parts: [{ text: systemPrompt }] },
+						contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+						generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+					}),
+					signal: controller.signal,
+				}
+			);
+			if (!response.ok) {
+				const errText = await response.text().catch(() => "");
+				throw new Error(
+					`Gemini API error (${response.status}): ${errText.slice(0, 200)}`
+				);
+			}
+			let accumulated = "";
+			const reader = response.body?.getReader();
+			if (!reader) throw new Error("No response body for streaming");
+			const decoder = new TextDecoder();
+			let buffer = "";
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				buffer += decoder.decode(value, { stream: true });
+				const lines = buffer.split("\n");
+				buffer = lines.pop() || "";
+				for (const line of lines) {
+					if (!line.startsWith("data: ")) continue;
+					try {
+						const parsed = JSON.parse(line.slice(6)) as {
+							candidates?: Array<{
+								content?: { parts?: Array<{ text?: string }> };
+							}>;
+						};
+						const chunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+						if (chunk) {
+							accumulated += chunk;
+							options.onChunk?.(chunk);
+						}
+					} catch {
+						// skip malformed SSE lines
+					}
+				}
+			}
+			if (!accumulated) throw new Error("Empty streaming response from Gemini");
+			return { text: accumulated, provider: "Gemini", model };
+		}
+
+		// Non-streaming
+		const response = await fetch(
+			`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					system_instruction: { parts: [{ text: systemPrompt }] },
+					contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+					generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+				}),
+				signal: controller.signal,
+			}
+		);
+		if (!response.ok) {
+			const errText = await response.text().catch(() => "");
+			throw new Error(
+				`Gemini API error (${response.status}): ${errText.slice(0, 200)}`
+			);
+		}
+		const data = (await response.json()) as {
+			candidates?: Array<{
+				content?: { parts?: Array<{ text?: string }> };
+			}>;
+		};
+		const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+		if (!text) throw new Error("Empty response from Gemini");
+		return { text, provider: "Gemini", model };
+	} finally {
+		clearTimeout(timeout);
+	}
 }
 
 /** Spawn claude -p with system prompt and user prompt via stdin. */
 function callClaudeCLI(
 	systemPrompt: string,
 	userPrompt: string
-): Promise<string> {
+): Promise<LLMCallResult> {
 	return new Promise((resolveP, reject) => {
 		const args = [
 			"-p",
@@ -136,6 +369,7 @@ function callClaudeCLI(
 		];
 
 		const env = { ...process.env };
+		delete env.CLAUDE_CODE;
 		delete env.CLAUDECODE;
 		delete env.CLAUDE_CODE_ENTRYPOINT;
 		delete env.CLAUDE_CODE_SSE_PORT;
@@ -154,6 +388,7 @@ function callClaudeCLI(
 		});
 		child.stderr.on("data", (chunk: Buffer) => {
 			stderr += chunk.toString();
+			process.stderr.write(chunk);
 		});
 
 		const timeoutId = setTimeout(() => {
@@ -162,7 +397,7 @@ function callClaudeCLI(
 				child.kill("SIGTERM");
 				reject(
 					new Error(
-						"Claude CLI timed out after 600s. Configure an API key for faster parsing."
+						"Claude CLI timed out after 180s. Configure an API key for faster parsing."
 					)
 				);
 			}
@@ -184,8 +419,6 @@ function callClaudeCLI(
 					reject(new Error("Empty response from Claude CLI"));
 					return;
 				}
-
-				// --output-format json wraps result in {type, result, ...}
 				let text = raw;
 				try {
 					const envelope = JSON.parse(raw) as {
@@ -204,8 +437,7 @@ function callClaudeCLI(
 				} catch {
 					// Not JSON envelope — use raw stdout as-is
 				}
-
-				resolveP(text);
+				resolveP({ text, provider: "Claude CLI", model: "haiku" });
 			}
 		});
 
@@ -220,18 +452,86 @@ function callClaudeCLI(
 			);
 		});
 
-		child.stdin.write(userPrompt);
-		child.stdin.end();
+		child.stdin.on("error", (err) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutId);
+			reject(new Error(`Claude CLI stdin error: ${err.message}`));
+		});
+
+		try {
+			child.stdin.write(userPrompt);
+			child.stdin.end();
+		} catch (err) {
+			if (!settled) {
+				settled = true;
+				clearTimeout(timeoutId);
+				reject(
+					new Error(
+						`Failed to write to Claude CLI stdin: ${err instanceof Error ? err.message : String(err)}`
+					)
+				);
+			}
+		}
 	});
+}
+
+// ==================== LLM Router ====================
+
+/** Route LLM call to OpenRouter, Gemini, or Claude CLI based on available keys. */
+async function callLLM(
+	systemPrompt: string,
+	userPrompt: string,
+	options: LLMCallOptions = {}
+): Promise<LLMCallResult> {
+	const openRouterKey = await envApiKeyProvider("openrouter");
+	if (openRouterKey) {
+		return callOpenRouter(openRouterKey, systemPrompt, userPrompt, options);
+	}
+
+	const geminiKey = await envApiKeyProvider("google");
+	if (geminiKey) {
+		return callGeminiDirect(geminiKey, systemPrompt, userPrompt, options);
+	}
+
+	// Fallback — no streaming support
+	return callClaudeCLI(systemPrompt, userPrompt);
+}
+
+// ==================== Helpers ====================
+
+/** Check if an error message indicates a transient/retriable failure. */
+function isTransientError(message: string): boolean {
+	const lower = message.toLowerCase();
+	return (
+		lower.includes("rate limit") ||
+		lower.includes("overloaded") ||
+		lower.includes("429") ||
+		lower.includes("503") ||
+		lower.includes("econnreset") ||
+		lower.includes("etimedout") ||
+		lower.includes("socket hang up")
+	);
+}
+
+/** Validate that parsed script data has required fields. */
+function validateScriptData(data: Record<string, unknown>): void {
+	if (!data.title || typeof data.title !== "string") {
+		throw new Error("Missing required field: title");
+	}
+	if (!Array.isArray(data.characters) || data.characters.length === 0) {
+		throw new Error("No characters found in parsed script");
+	}
+	if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+		throw new Error("No scenes found in parsed script");
+	}
 }
 
 /** Extract the outermost JSON object from an LLM response. */
 function extractJSON(response: string): Record<string, unknown> {
-	// Strip markdown code fences
 	const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
 	let cleaned = jsonMatch ? jsonMatch[1].trim() : response.trim();
 
-	// Find outermost JSON object via brace matching
 	const firstBrace = cleaned.indexOf("{");
 	if (firstBrace === -1) {
 		throw new Error("No JSON found in LLM response");
@@ -252,6 +552,8 @@ function extractJSON(response: string): Record<string, unknown> {
 	return JSON.parse(cleaned);
 }
 
+// ==================== Main Handler ====================
+
 export async function handleMoyinParseScript(
 	options: CLIRunOptions,
 	onProgress: ProgressFn
@@ -268,10 +570,13 @@ export async function handleMoyinParseScript(
 		};
 	}
 
+	const modelFlag = options.model || options.llmModel;
+	const streamEnabled = options.stream ?? false;
+
 	onProgress({
 		stage: "parsing",
 		percent: 10,
-		message: `Parsing script (${rawScript.length} chars) via Claude CLI...`,
+		message: `Parsing script (${rawScript.length} chars)...`,
 	});
 
 	// 2. Build user prompt with optional language/scene hints
@@ -283,28 +588,68 @@ export async function handleMoyinParseScript(
 		userPrompt = `[Max scenes: ${options.maxScenes}]\n\n${userPrompt}`;
 	}
 
-	// 3. Call Claude CLI
-	let response: string;
+	// 3. Call LLM with provider routing and optional streaming
+	let streamChars = 0;
+	const onChunk = streamEnabled
+		? (chunk: string) => {
+				streamChars += chunk.length;
+				// Write raw tokens to stderr so users see live text in their terminal
+				process.stderr.write(chunk);
+			}
+		: undefined;
+
+	let result: LLMCallResult;
 	try {
-		response = await callClaudeCLI(PARSE_SYSTEM_PROMPT, userPrompt);
+		result = await callLLM(PARSE_SYSTEM_PROMPT, userPrompt, {
+			model: modelFlag,
+			stream: streamEnabled,
+			onChunk,
+		});
 	} catch (err) {
-		return {
-			success: false,
-			error: err instanceof Error ? err.message : String(err),
-			duration: (Date.now() - startTime) / 1000,
-		};
+		const msg = err instanceof Error ? err.message : String(err);
+		if (!isTransientError(msg)) {
+			return {
+				success: false,
+				error: msg,
+				duration: (Date.now() - startTime) / 1000,
+			};
+		}
+
+		onProgress({
+			stage: "retry",
+			percent: 15,
+			message: "Transient error, retrying...",
+		});
+		try {
+			result = await callLLM(PARSE_SYSTEM_PROMPT, userPrompt, {
+				model: modelFlag,
+				stream: streamEnabled,
+				onChunk,
+			});
+		} catch (retryErr) {
+			return {
+				success: false,
+				error: retryErr instanceof Error ? retryErr.message : String(retryErr),
+				duration: (Date.now() - startTime) / 1000,
+			};
+		}
+	}
+
+	if (streamEnabled && streamChars > 0) {
+		process.stderr.write("\n");
 	}
 
 	onProgress({
 		stage: "extracting",
 		percent: 80,
-		message: "Extracting structured data from response...",
+		message: `Extracting structured data (via ${result.provider}/${result.model})...`,
 	});
 
-	// 4. Extract JSON
+	// 4. Extract and validate JSON
 	let parsed: Record<string, unknown>;
 	try {
-		parsed = extractJSON(response);
+		parsed = extractJSON(result.text);
+		validateScriptData(parsed);
 	} catch (err) {
 		return {
 			success: false,
@@ -345,7 +690,7 @@ export async function handleMoyinParseScript(
 	onProgress({
 		stage: "complete",
 		percent: 100,
-		message: `Parsed: ${characters} characters, ${scenes} scenes, ${episodes} episodes (${duration.toFixed(1)}s)`,
+		message: `Parsed: ${characters} characters, ${scenes} scenes, ${episodes} episodes (${duration.toFixed(1)}s) via ${result.provider}`,
 	});
 
 	return {
@@ -359,6 +704,8 @@ export async function handleMoyinParseScript(
 			characters,
 			scenes,
 			episodes,
+			provider: result.provider,
+			model: result.model,
 		},
 	};
 }
