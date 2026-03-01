@@ -155,8 +155,8 @@ export async function uploadToFalStorage(
 }
 
 const ELEVENLABS_BASE = "https://api.elevenlabs.io/v1";
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+export const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+export const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
 const DEFAULT_RETRIES = 2;

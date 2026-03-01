@@ -108,6 +108,7 @@ export async function runCalibrationPipeline(
 	advancePipeline("shot_calibration", "active");
 	try {
 		const { episodes, scenes, scriptData: sd } = store.getState();
+		const allNewShots: import("@/types/moyin-script").Shot[] = [];
 		for (const ep of episodes) {
 			const epScenes = scenes.filter((s) => ep.sceneIds.includes(s.id));
 			if (epScenes.length === 0) continue;
@@ -116,10 +117,15 @@ export async function runCalibrationPipeline(
 				ep.title,
 				sd?.title || "Unknown"
 			);
+			allNewShots.push(...newShots);
+		}
+		// Single setState: deduplicate with a Set for O(n) instead of O(n*m)
+		if (allNewShots.length > 0) {
+			const newIds = new Set(allNewShots.map((s) => s.id));
 			store.setState((state) => ({
 				shots: [
-					...state.shots.filter((s) => !newShots.some((ns) => ns.id === s.id)),
-					...newShots,
+					...state.shots.filter((s) => !newIds.has(s.id)),
+					...allNewShots,
 				],
 			}));
 		}

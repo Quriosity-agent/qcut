@@ -23,15 +23,16 @@ import type {
 	ProgressFn,
 } from "./cli-runner/types.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
-import { envApiKeyProvider } from "../infra/api-caller.js";
+import {
+	envApiKeyProvider,
+	OPENROUTER_BASE,
+	GEMINI_BASE,
+} from "../infra/api-caller.js";
 
 // ==================== Constants ====================
 
 const CLAUDE_CLI_TIMEOUT_MS = 180_000;
 const REQUEST_TIMEOUT_MS = 120_000;
-
-const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
