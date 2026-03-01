@@ -60,14 +60,11 @@ export function useCanvasHistory({
 					// Error handled inside loadDrawingFromDataUrl
 				});
 			} else {
-				debug(
-					"🚫 DRAW - Skipping restoration due to minimal difference:",
-					{
-						sizeDifference: Math.abs(
-							historyState.length - currentCanvasData.length
-						),
-					}
-				);
+				debug("🚫 DRAW - Skipping restoration due to minimal difference:", {
+					sizeDifference: Math.abs(
+						historyState.length - currentCanvasData.length
+					),
+				});
 			}
 		}
 	}, [

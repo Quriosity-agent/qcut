@@ -47,9 +47,7 @@ export function useCanvasUtils({
 				// Clear flag after a delay to allow rendering and history operations to complete
 				setTimeout(() => {
 					recentObjectCreation.current = false;
-					debug(
-						`✅ Object creation protection cleared: ${operationType}`
-					);
+					debug(`✅ Object creation protection cleared: ${operationType}`);
 				}, 200);
 			}
 		},
@@ -117,10 +115,7 @@ export function useCanvasUtils({
 		const saveSnapshot = () => {
 			const dataUrl = getCanvasDataUrl();
 			if (dataUrl) {
-				debug(
-					"💾 DRAW DEBUG - Saving to history, length:",
-					dataUrl.length
-				);
+				debug("💾 DRAW DEBUG - Saving to history, length:", dataUrl.length);
 
 				// Set flag to prevent history restoration during save
 				isSavingToHistory.current = true;

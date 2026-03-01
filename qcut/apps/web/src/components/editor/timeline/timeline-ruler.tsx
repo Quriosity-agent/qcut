@@ -247,9 +247,7 @@ function TimeMarkers({
 }
 
 function BookmarkMarkers({ zoomLevel }: { zoomLevel: number }) {
-	const bookmarks = useProjectStore(
-		(state) => state.activeProject?.bookmarks
-	);
+	const bookmarks = useProjectStore((state) => state.activeProject?.bookmarks);
 	if (!bookmarks?.length) return null;
 
 	return (

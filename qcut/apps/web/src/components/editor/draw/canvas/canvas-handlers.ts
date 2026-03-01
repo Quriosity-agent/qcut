@@ -87,9 +87,7 @@ export function useCanvasHandlers({
 					onDrawingChange(canvasRef.current.toDataURL());
 				}
 			} else {
-				debug(
-					"📝 TEXT - Text input cancelled - no position or empty text"
-				);
+				debug("📝 TEXT - Text input cancelled - no position or empty text");
 			}
 			setTextInputModal((prev) => ({ ...prev, isOpen: false }));
 		},
