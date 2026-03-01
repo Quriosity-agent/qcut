@@ -5,7 +5,7 @@
 
 import { ipcMain, app } from "electron";
 import { spawn, execSync } from "node:child_process";
-import { writeFileSync, unlinkSync, existsSync } from "node:fs";
+import { writeFile, unlink } from "node:fs/promises";
 import { join, basename, normalize } from "node:path";
 import { getDecryptedApiKeys } from "./api-key-handler.js";
 
@@ -565,7 +565,7 @@ export function setupMoyinIPC(): void {
 				const tempDir = app.getPath("temp");
 				const filename = `moyin-script-${Date.now()}.txt`;
 				const filePath = join(tempDir, filename);
-				writeFileSync(filePath, options.rawScript, "utf-8");
+				await writeFile(filePath, options.rawScript, "utf-8");
 				log.info(
 					`[Moyin] Saved temp script: ${filePath} (${options.rawScript.length} chars)`
 				);
@@ -593,12 +593,10 @@ export function setupMoyinIPC(): void {
 					log.warn(`[Moyin] Blocked cleanup of non-temp path: ${filePath}`);
 					return;
 				}
-				if (existsSync(resolved)) {
-					unlinkSync(resolved);
-					log.info(`[Moyin] Cleaned up temp script: ${resolved}`);
-				}
+				await unlink(resolved);
+				log.info(`[Moyin] Cleaned up temp script: ${resolved}`);
 			} catch {
-				// Ignore cleanup errors
+				// Ignore cleanup errors (e.g., file already deleted)
 			}
 		}
 	);

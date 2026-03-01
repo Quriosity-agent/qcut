@@ -8,6 +8,7 @@ import type {
 	PipelineStep,
 	PipelineStepStatus,
 } from "@/stores/moyin/moyin-store";
+import { getModelLabel } from "@/stores/moyin/moyin-parse-actions";
 import { useMediaPanelStore } from "../../store";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +45,8 @@ export function ImportProgress() {
 	const pipelineStep = useMoyinStore((s) => s.pipelineStep);
 	const pipelineProgress = useMoyinStore((s) => s.pipelineProgress);
 	const parseStatus = useMoyinStore((s) => s.parseStatus);
-	const parseProvider = useMoyinStore((s) => s.parseProvider);
+	const parseModel = useMoyinStore((s) => s.parseModel);
+	const parseProvider = parseStatus === "parsing" ? getModelLabel(parseModel) : "";
 
 	if (!pipelineStep) return null;
 

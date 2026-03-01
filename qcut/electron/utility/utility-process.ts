@@ -30,25 +30,8 @@ try {
 }
 
 // Prevent EPIPE crashes — utility process stdout/stderr may be disconnected
-for (const stream of [process.stdout, process.stderr]) {
-	stream?.on?.("error", (err: NodeJS.ErrnoException) => {
-		if (err.code === "EPIPE") return;
-	});
-}
-for (const method of ["log", "warn", "error", "info", "debug"] as const) {
-	const original = console[method];
-	if (typeof original === "function") {
-		(console as unknown as Record<string, unknown>)[method] = (
-			...args: unknown[]
-		) => {
-			try {
-				original.apply(console, args);
-			} catch (err: unknown) {
-				if ((err as NodeJS.ErrnoException)?.code !== "EPIPE") throw err;
-			}
-		};
-	}
-}
+import { installEpipeGuard } from "../safe-console.js";
+installEpipeGuard();
 process.on("uncaughtException", (err: NodeJS.ErrnoException) => {
 	if (err.code === "EPIPE") return;
 	logger.error("[UtilityProcess] Uncaught exception:", err.message, err.stack);

@@ -156,6 +156,27 @@ export async function runCalibrationPipeline(
 
 // ==================== PTY Terminal Execution ====================
 
+import { useMediaPanelStore } from "@/components/editor/media-panel/store";
+import { usePtyTerminalStore } from "@/stores/pty-terminal-store";
+
+/** Module-scoped state for the active PTY parse run. */
+let pendingTempScriptPath: string | null = null;
+let cleanupTimerId: ReturnType<typeof setTimeout> | null = null;
+
+/** Get the current pending temp script path (used by onParsed guard). */
+export function getPendingTempScriptPath(): string | null {
+	return pendingTempScriptPath;
+}
+
+/** Cancel the cleanup timer and clear the pending path after successful parse. */
+export function clearPendingParse(): void {
+	if (cleanupTimerId != null) {
+		clearTimeout(cleanupTimerId);
+		cleanupTimerId = null;
+	}
+	pendingTempScriptPath = null;
+}
+
 /**
  * Attempt to run parse-script via PTY terminal for streaming output.
  * Returns true if successfully initiated; data arrives via onParsed listener.
@@ -181,13 +202,9 @@ export async function attemptPtyParse(
 		}
 
 		// 2. Switch to PTY terminal tab
-		const { useMediaPanelStore } = await import(
-			"@/components/editor/media-panel/store"
-		);
 		useMediaPanelStore.getState().setActiveTab("pty");
 
 		// 3. Ensure shell session is running
-		const { usePtyTerminalStore } = await import("@/stores/pty-terminal-store");
 		const ptyState = usePtyTerminalStore.getState();
 
 		// If connected to a non-shell provider, disconnect and reconnect as shell
@@ -217,9 +234,15 @@ export async function attemptPtyParse(
 
 		await ptyApi.write(sessionId, cmd + "\n");
 
-		// 5. Schedule temp file cleanup after 5 minutes
-		setTimeout(() => {
-			api.cleanupTempScript(saveResult.filePath!)?.catch(() => {});
+		// 5. Track the pending parse and schedule fallback cleanup (cancelled on success)
+		pendingTempScriptPath = saveResult.filePath;
+		if (cleanupTimerId != null) clearTimeout(cleanupTimerId);
+		cleanupTimerId = setTimeout(() => {
+			cleanupTimerId = null;
+			if (pendingTempScriptPath === saveResult.filePath) {
+				pendingTempScriptPath = null;
+				api.cleanupTempScript(saveResult.filePath!)?.catch(() => {});
+			}
 		}, 300_000);
 
 		return { success: true, tempPath: saveResult.filePath };

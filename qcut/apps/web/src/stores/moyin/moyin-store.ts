@@ -49,6 +49,8 @@ import {
 	runCalibrationPipeline,
 	attemptPtyParse,
 	getModelLabel,
+	getPendingTempScriptPath,
+	clearPendingParse,
 } from "./moyin-parse-actions";
 
 // Types
@@ -105,8 +107,6 @@ interface MoyinState {
 	createError: string | null;
 	selectedShotIds: Set<string>;
 	parseModel: string;
-	parseProvider: string;
-	_pendingTempScriptPath: string | null;
 }
 
 interface MoyinActions {
@@ -216,9 +216,10 @@ const initialState: MoyinState = {
 	createError: null,
 	selectedShotIds: new Set<string>(),
 	parseModel: "minimax",
-	parseProvider: "",
-	_pendingTempScriptPath: null,
 };
+
+/** Module-scoped: timeout ID for the 3-minute PTY parse guard. */
+let parseTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
 export const useMoyinStore = create<MoyinStore>((set, get) => {
 	const patchShot = (shotId: string, updates: Partial<Shot>) =>
@@ -300,7 +301,6 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			set({
 				parseStatus: "parsing",
 				parseError: null,
-				parseProvider: getModelLabel(parseModel),
 				pipelineStep: "import",
 				pipelineProgress: initialState.pipelineProgress,
 			});
@@ -311,20 +311,22 @@ export const useMoyinStore = create<MoyinStore>((set, get) => {
 			const ptyResult = await attemptPtyParse(rawScript, parseModel);
 			if (ptyResult.success) {
 				const pendingPath = ptyResult.tempPath ?? null;
-				set({ _pendingTempScriptPath: pendingPath });
 				// Set a 3-minute timeout for PTY path (scoped to this run)
-				setTimeout(() => {
+				const parseTimeoutId = setTimeout(() => {
 					const s = get();
 					if (
 						s.parseStatus === "parsing" &&
-						s._pendingTempScriptPath === pendingPath
+						getPendingTempScriptPath() === pendingPath
 					) {
+						clearPendingParse();
 						set({
 							parseStatus: "error",
 							parseError: "Parse timed out. Check Terminal tab for errors.",
 						});
 					}
 				}, 180_000);
+				// Store timeout ID so onParsed can cancel it
+				parseTimeoutRef = parseTimeoutId;
 				return; // onParsed listener handles the rest
 			}
 
@@ -841,13 +843,16 @@ if (typeof window !== "undefined") {
 		const state = useMoyinStore.getState();
 		const scriptData = data as unknown as ScriptData;
 
-		// Clean up temp file from PTY parse
-		if (state._pendingTempScriptPath) {
-			window.electronAPI?.moyin
-				?.cleanupTempScript(state._pendingTempScriptPath)
-				?.catch(() => {});
-			useMoyinStore.setState({ _pendingTempScriptPath: null });
+		// Cancel timers and clean up temp file from PTY parse
+		if (parseTimeoutRef != null) {
+			clearTimeout(parseTimeoutRef);
+			parseTimeoutRef = null;
 		}
+		const tempPath = getPendingTempScriptPath();
+		if (tempPath) {
+			window.electronAPI?.moyin?.cleanupTempScript(tempPath)?.catch(() => {});
+		}
+		clearPendingParse();
 
 		// Set initial data and switch to characters tab
 		useMoyinStore.setState({
