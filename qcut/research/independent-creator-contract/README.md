@@ -152,3 +152,44 @@ instrumented. Four intentional implementation mutants and two identity guards
 fail as expected. Full transaction commit/rollback and application undo remain
 outside this contract. See
 [creator-record-contract-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-record-contract-2026-09-07.zh.md).
+
+## Record restoration and object ownership (2026-09-08)
+
+`record_restore.*` implements the graph-free `CommonPoint`/`CommonKeyframe`
+restoration operations and the actual `CommonKeyframes → NodeArray<CommonKeyframe>`
+restore chain. This is an executable reconstruction of payload restoration,
+identity-map reuse, ordered list replacement, retained references, and mutation
+state. The Session undo stack, transaction selection and stash generation remain
+outside its boundary.
+
+The separate `RecordFrame` model carries shared ownership of the numeric vector:
+`restore_frame_copy` allocates independent controls (even when the source controls
+alias) while sharing values. `restore_frame_from` preserves destination control
+objects, replaces only numerically unequal value vectors, and marks only changed
+payload fields. An ID-only change does not dirty a node; equal signed zeros retain
+destination bits, while NaNs trigger writes even in self-restoration.
+
+List restoration follows source order and uses the supplied ID index without
+extending it. Duplicate mapped IDs reuse one live object; duplicate missing IDs
+produce separate frame/control copies. Old active IDs absent from the source are
+appended to retained without assigning deletion code three. Newly introduced IDs
+follow the destination's child-tracking setting. Reordering alone and tracked
+same-size replacement can preserve the array's own dirty state. Clock-write
+counts come from static call sites, not measured clock values.
+
+All active/mapped frames must have nonnull values and controls and no graph.
+Validation precedes model mutations; allocation-failure atomicity is not claimed.
+The typed index uses owning string keys; a null entry represents the native null
+or incompatible-type fallback. Retained-only input is neither traversed nor
+restored. `restore_group_from(nullptr)` and `restore_frame_from(nullptr)` are
+no-ops, matching their native pointer gates.
+
+Ten portable CTest groups contain 1,229 assertions (86 new), passing Release and
+fail-fast ASan/UBSan. `creator-native-record` uses SDK-created objects and verified
+restore/deleting-destructor entrypoints: 3,842 cases and 440,390 comparisons, zero
+mismatches in Release and ASan/UBSan. It checks payload bits, both directions of
+alias equivalence, ordered active/retained lists, index preservation, and weak
+reference lifetimes. Six compiled mutants fail by native comparison; two identity
+guards and the fast-math compilation guard also reject as expected. The vendor
+library itself is not sanitizer-instrumented. See
+[creator-undo-record-2026-09-08.zh.md](../../docs/task/jianying-filter-runtime-research/creator-undo-record-2026-09-08.zh.md).
