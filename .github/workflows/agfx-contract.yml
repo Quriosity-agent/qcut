@@ -5,6 +5,10 @@ on:
     branches: [master]
     paths:
       - qcut/research/independent-*-contract/**
+      - qcut/research/independent-soft-glow/**
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
       - .github/workflows/agfx-contract.yml
@@ -12,6 +16,10 @@ on:
     branches: [master]
     paths:
       - qcut/research/independent-*-contract/**
+      - qcut/research/independent-soft-glow/**
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
       - .github/workflows/agfx-contract.yml
@@ -52,3 +60,6 @@ jobs:
         run: |
           cmake -S qcut/research/independent-binary-contract -B build-native-contract -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DBINARY_CONTRACT_NATIVE_PROBES=ON
           cmake --build build-native-contract --config Release --parallel 2
+      - name: Verify CGL observer with original fixtures
+        if: runner.os == 'macOS'
+        run: python3 qcut/research/jianying-runtime-probe/cgl-pass-capture-test.py --output-dir "$RUNNER_TEMP/cgl-observer-test"
