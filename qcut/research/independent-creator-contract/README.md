@@ -66,3 +66,24 @@ native-call validation. The request and state units are validated against
 bounded static evidence and explicit golden fixtures.
 
 See [the Chinese evidence and contract](../../docs/task/jianying-filter-runtime-research/vecreator-cpp-contract-2026-09-07.zh.md).
+
+## Actual editor state transitions (2026-09-07 follow-up)
+
+`common_keyframes.*` and `editor_events.*` now implement the verified downstream
+material write, existing-ID keyframe graph/value updates, and reset's literal 1.0
+plus removal of every common-keyframe group into its retained list. They reuse the
+original editor contract's material setter. Six test groups contain 957 assertions.
+
+The host supplies a resolved filter and the result of the native filter-group
+lookup. `capture_lookup_required` means the material write has happened but time
+lookup/new-keyframe creation remains outside this contract. Retained groups are
+not presented as a reconstructed undo stack. Null reset groups and a resolved
+non-filter property are rejected by an explicit QCut boundary policy.
+
+The optional macOS arm64 `creator-native-events` diagnostic checks the isolated
+raw-value vector method with SHA/UUID guards and read-only input pages. It does
+not call a handler or mutate an SDK object. Run it with the absolute installed
+`libvideoeditor.dylib` path and the app Frameworks directory in
+`DYLD_LIBRARY_PATH`. The native option also retains the previous VECreator
+constant probe. Detailed evidence and boundaries:
+[creator-editor-events-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-editor-events-2026-09-07.zh.md).
