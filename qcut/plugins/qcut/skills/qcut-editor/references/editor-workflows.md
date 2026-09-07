@@ -146,6 +146,9 @@ confirm-tier like clicks and drags.
 external file drop (for example onto the media library to import them), and
 `editor keyboard type --key-events` types with real keyDown/keyUp events when a
 control listens for keydown instead of input.
+`editor pointer drag --from timeline.playhead --to-time <s>` scrubs the real
+playhead along the ruler scale and reports `achievedTime`; pass
+`--seek-mode api` to seek through the API with a display-only animation.
 
 ## Apply and adjust a video speed curve
 
