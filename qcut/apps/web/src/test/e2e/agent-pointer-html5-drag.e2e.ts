@@ -29,10 +29,54 @@ interface PointerDragEnvelopeData {
 	};
 }
 
+interface PointerHitTestData {
+	action?: string;
+	hit?: boolean;
+	element?: { testId?: string | null; tagName?: string } | null;
+	ancestors?: Array<{ tagName: string; testId: string }>;
+}
+
 interface TimelineSummary {
 	tracks: number;
 	elements: number;
 	mediaElements: number;
+	selectedElements: number;
+}
+
+/** The CLI wraps editor responses as data.{schema_version, command, data}. */
+function editorData<T>(
+	envelope: { data?: unknown } | undefined
+): T | undefined {
+	return (envelope?.data as { data?: T } | undefined)?.data;
+}
+
+async function runPointer({
+	apiPort,
+	args,
+}: {
+	apiPort: number;
+	args: string[];
+}) {
+	const evidence = await runQCutPipelineCli({ apiPort, args });
+	const envelope = evidence.envelopes.find(
+		(candidate) => candidate.status === "ok"
+	);
+	expect(envelope?.status, JSON.stringify(evidence.envelopes)).toBe("ok");
+	return envelope;
+}
+
+async function clipBox({ page, index }: { page: PageHandle; index: number }) {
+	const clip = page.locator('[data-testid="timeline-element"]').nth(index);
+	await expect(clip).toBeVisible({ timeout: 10_000 });
+	const box = await clip.boundingBox();
+	if (!box) throw new Error(`timeline element ${index} has no bounding box`);
+	return {
+		box,
+		center: {
+			x: Math.round(box.x + box.width / 2),
+			y: Math.round(box.y + box.height / 2),
+		},
+	};
 }
 
 type PageHandle = import("@playwright/test").Page;
@@ -103,6 +147,7 @@ function readTimeline(page: PageHandle) {
 						tracks: Array<{
 							elements: Array<{ type?: string; mediaId?: string }>;
 						}>;
+						selectedElements?: unknown[];
 					};
 				};
 			}
@@ -113,13 +158,16 @@ function readTimeline(page: PageHandle) {
 			elements: elements.length,
 			mediaElements: elements.filter((element) => element.type === "media")
 				.length,
+			selectedElements:
+				(store as unknown as { selectedElements?: unknown[] }).selectedElements
+					?.length ?? 0,
 		};
 	});
 }
 
 isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 	isolatedElectronTest(
-		"drops a media panel item onto the timeline through the CLI",
+		"drops a media item, hit-tests it, multi-selects with shift, and zooms with ctrl+wheel through the CLI",
 		async ({ page, apiPort }) => {
 			isolatedElectronTest.setTimeout(180_000);
 			await createTestProject(page, "Pointer HTML5 Drag");
@@ -183,9 +231,130 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 			await page.screenshot({
 				path: resolve(evidenceDirectory, "after-drop.png"),
 			});
+
+			// Hit-test: the point where the clip landed must resolve to the clip.
+			const firstClip = await clipBox({ page, index: 0 });
+			const hitEnvelope = await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:hit-test",
+					"--x",
+					String(firstClip.center.x),
+					"--y",
+					String(firstClip.center.y),
+				],
+			});
+			const hit = editorData<PointerHitTestData>(hitEnvelope);
+			expect(hit?.hit, JSON.stringify(hit)).toBe(true);
+			const hitTestIds = [
+				hit?.element?.testId ?? null,
+				...(hit?.ancestors ?? []).map((ancestor) => ancestor.testId),
+			];
+			expect(hitTestIds, JSON.stringify(hit)).toContain("timeline-element");
+
+			// Modifier click: select the clip, duplicate it with cmd+d, then
+			// shift-click the copy so both are selected.
+			await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:click",
+					"--x",
+					String(firstClip.center.x),
+					"--y",
+					String(firstClip.center.y),
+					"--force",
+				],
+			});
+			await runPointer({
+				apiPort,
+				args: ["editor:keyboard:press", "--keys", "cmd+d", "--force"],
+			});
+			await expect(
+				page.locator('[data-testid="timeline-element"]')
+			).toHaveCount(2, { timeout: 10_000 });
+			const clipA = await clipBox({ page, index: 0 });
+			const clipB = await clipBox({ page, index: 1 });
+			await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:click",
+					"--x",
+					String(clipA.center.x),
+					"--y",
+					String(clipA.center.y),
+					"--force",
+				],
+			});
+			expect((await readTimeline(page)).selectedElements).toBe(1);
+			const shiftClick = await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:click",
+					"--x",
+					String(clipB.center.x),
+					"--y",
+					String(clipB.center.y),
+					"--modifiers",
+					"shift",
+					"--force",
+				],
+			});
+			expect(
+				editorData<{ modifiers?: string[] }>(shiftClick)?.modifiers
+			).toEqual(["Shift"]);
+			await expect
+				.poll(async () => (await readTimeline(page)).selectedElements, {
+					timeout: 5_000,
+				})
+				.toBe(2);
+
+			// Modifier wheel: ctrl + wheel zooms the timeline, so the clip gets wider.
+			const widthBefore = clipA.box.width;
+			const zoom = await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:scroll",
+					"--x",
+					String(clipA.center.x),
+					"--y",
+					String(clipA.center.y),
+					"--delta-y",
+					"-120",
+					"--modifiers",
+					"ctrl",
+				],
+			});
+			expect(editorData<{ modifiers?: string[] }>(zoom)?.modifiers).toEqual([
+				"Control",
+			]);
+			await expect
+				.poll(async () => (await clipBox({ page, index: 0 })).box.width, {
+					timeout: 5_000,
+				})
+				.toBeGreaterThan(widthBefore);
+			const widthAfter = (await clipBox({ page, index: 0 })).box.width;
+
+			await page.screenshot({
+				path: resolve(evidenceDirectory, "after-multiselect-zoom.png"),
+			});
 			await writeFile(
 				resolve(evidenceDirectory, "cli-envelope.json"),
-				JSON.stringify({ from, to, before, after, envelope }, null, 2)
+				JSON.stringify(
+					{
+						from,
+						to,
+						before,
+						after,
+						envelope,
+						hit,
+						selectedAfterShiftClick: (await readTimeline(page))
+							.selectedElements,
+						widthBefore,
+						widthAfter,
+					},
+					null,
+					2
+				)
 			);
 		}
 	);
