@@ -58,7 +58,12 @@ export async function handlePointerCommand({
 			return { success: true, data };
 		}
 		case "state": {
-			const data = await client.get("/api/claude/pointer/state");
+			const data = await client.get(
+				"/api/claude/pointer/state",
+				typeof options.windowId === "number"
+					? { windowId: String(options.windowId) }
+					: undefined
+			);
 			return { success: true, data };
 		}
 		case "hit-test":
@@ -73,6 +78,9 @@ export async function handlePointerCommand({
 	}
 }
 
-export { handleKeyboardCommand } from "./cli-handlers-pointer-actions.js";
+export {
+	handleKeyboardCommand,
+	handleWindowsCommand,
+} from "./cli-handlers-pointer-actions.js";
 export { waitForEditorUi } from "./cli-handlers-pointer-targets.js";
 export { runPointerSequence } from "./cli-handlers-pointer-sequence.js";
