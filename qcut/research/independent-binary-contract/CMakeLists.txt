@@ -13,6 +13,7 @@ foreach(contract AGFX EDITOR CREATOR)
 endforeach()
 set(LENS_CONTRACT_NATIVE_ORACLE ${BINARY_CONTRACT_NATIVE_PROBES} CACHE BOOL "" FORCE)
 set(SOFT_GLOW_SANITIZERS ${BINARY_CONTRACT_SANITIZERS} CACHE BOOL "" FORCE)
+set(SOFT_GLOW_NATIVE_PROBE ${BINARY_CONTRACT_NATIVE_PROBES} CACHE BOOL "" FORCE)
 
 foreach(contract agfx editor creator lens)
     add_subdirectory(../independent-${contract}-contract ${contract})
