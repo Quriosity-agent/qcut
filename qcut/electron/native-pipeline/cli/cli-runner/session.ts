@@ -268,6 +268,26 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				plan: { type: "string" },
 				"delta-x": { type: "string" },
 				"delta-y": { type: "string" },
+				// pointer, keyboard, and sequence options
+				foreground: { type: "boolean", default: false },
+				keys: { type: "string" },
+				actions: { type: "string" },
+				record: { type: "string" },
+				"to-index": { type: "string" },
+				via: { type: "string" },
+				"hold-ms": { type: "string" },
+				"duration-ms": { type: "string" },
+				steps: { type: "string" },
+				"release-delay-ms": { type: "string" },
+				"interval-ms": { type: "string" },
+				verify: { type: "boolean" },
+				"no-verify": { type: "boolean", default: false },
+				dnd: { type: "string" },
+				modifiers: { type: "string" },
+				button: { type: "string" },
+				"click-count": { type: "string" },
+				"key-events": { type: "boolean", default: false },
+				files: { type: "string" },
 				force: { type: "boolean", default: false },
 				discard: { type: "boolean", default: false },
 				replace: { type: "boolean", default: false },
@@ -392,6 +412,33 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values.plan) result.plan = values.plan as string;
 		result.deltaX = parseFiniteSessionNumber({ value: values["delta-x"] });
 		result.deltaY = parseFiniteSessionNumber({ value: values["delta-y"] });
+		if (values.foreground) result.foreground = true;
+		if (values.keys) result.keys = values.keys as string;
+		if (values.actions) result.actions = values.actions as string;
+		if (values.record) result.record = values.record as string;
+		result.toIndex = parseFiniteSessionNumber({ value: values["to-index"] });
+		if (values.via) result.via = values.via as string;
+		result.holdMs = parseFiniteSessionNumber({ value: values["hold-ms"] });
+		result.durationMs = parseFiniteSessionNumber({
+			value: values["duration-ms"],
+		});
+		result.steps = parseFiniteSessionNumber({ value: values.steps });
+		result.releaseDelayMs = parseFiniteSessionNumber({
+			value: values["release-delay-ms"],
+		});
+		result.intervalMs = parseFiniteSessionNumber({
+			value: values["interval-ms"],
+		});
+		if (values["no-verify"]) result.verify = false;
+		else if (typeof values.verify === "boolean") result.verify = values.verify;
+		if (values.dnd) result.dnd = values.dnd as string;
+		if (values.modifiers) result.modifiers = values.modifiers as string;
+		if (values.button) result.button = values.button as string;
+		result.clickCount = parseFiniteSessionNumber({
+			value: values["click-count"],
+		});
+		if (values["key-events"]) result.keyEvents = true;
+		if (values.files) result.files = values.files as string;
 		if (values.force) result.force = true;
 		if (values.discard) result.discard = true;
 		if (values.replace) result.replace = true;
