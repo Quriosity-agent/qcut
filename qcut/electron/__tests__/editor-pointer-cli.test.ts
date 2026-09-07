@@ -1148,6 +1148,167 @@ describe("editor pointer CLI handlers", () => {
 		});
 	});
 
+	it("drags the playhead along the ruler scale for --to-time", async () => {
+		let dragged = false;
+		const rulerLabel = (time: number) => ({
+			ref: `@label-${time}`,
+			testId: null,
+			textPreview: `${time}s`,
+			bounds: { x: 200 + time * 50, y: 760, width: 14, height: 10 },
+		});
+		const get = vi.fn(async (url: string, query?: Record<string, string>) => {
+			if (url === "/api/claude/navigator/projects") {
+				return { activeProjectId: "project-1" };
+			}
+			if (url === "/api/claude/snapshot" && query?.interactive === "false") {
+				return {
+					elements: [
+						rulerLabel(0),
+						rulerLabel(5),
+						rulerLabel(10),
+						// A stray "5s" badge in another row must not skew the fit.
+						{
+							ref: "@badge",
+							testId: null,
+							textPreview: "5s",
+							bounds: { x: 900, y: 120, width: 14, height: 10 },
+						},
+					],
+				};
+			}
+			if (url === "/api/claude/snapshot") {
+				return {
+					elements: [
+						{
+							ref: "@playhead",
+							testId: "timeline-playhead",
+							bounds: {
+								x: dragged ? 349 : 199,
+								y: 300,
+								width: 2,
+								height: 200,
+							},
+						},
+					],
+				};
+			}
+			throw new Error(`Unexpected GET ${url}`);
+		});
+		const post = vi.fn(async (url: string) => {
+			if (url === "/api/claude/pointer/drag") dragged = true;
+			return { url };
+		});
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					from: "timeline.playhead",
+					toTime: 3,
+					projectId: "project-1",
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({
+				from: { x: 200, y: 765 },
+				to: { x: 350, y: 765 },
+				dnd: "mouse",
+			})
+		);
+		expect(post.mock.calls.map(([url]) => url)).not.toContain(
+			"/api/claude/timeline/project-1/playback"
+		);
+		expect(result.data).toEqual(
+			expect.objectContaining({
+				method: "drag",
+				achievedTime: 3,
+				calibration: expect.objectContaining({
+					pixelsPerSecond: 50,
+					originX: 200,
+					labelCount: 3,
+				}),
+			})
+		);
+	});
+
+	it("seeks through the API when --seek-mode api is requested", async () => {
+		const get = vi.fn(async (url: string) => {
+			if (url === "/api/claude/navigator/projects") {
+				return { activeProjectId: "project-1" };
+			}
+			return {
+				elements: [
+					{
+						ref: "@playhead",
+						testId: "timeline-playhead",
+						bounds: { x: 100, y: 300, width: 2, height: 200 },
+					},
+				],
+			};
+		});
+		const post = vi.fn(async (url: string) => ({ url }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					from: "timeline.playhead",
+					toTime: 4,
+					projectId: "project-1",
+					seekMode: "api",
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/timeline/project-1/playback",
+			{ action: "seek", time: 4 }
+		);
+		expect(result.data).toEqual(
+			expect.objectContaining({ method: "api-seek" })
+		);
+		expect(
+			get.mock.calls.some(([, query]) => query?.interactive === "false")
+		).toBe(false);
+	});
+
+	it("parses --no-checked and --seek-mode in one-shot and session modes", () => {
+		expect(
+			parseCliArgs(["editor:snapshot:check", "--ref", "@e4", "--no-checked"])
+		).toEqual(expect.objectContaining({ checked: false }));
+		expect(
+			parseCliArgs(["editor:snapshot:check", "--ref", "@e4", "--checked"])
+		).toEqual(expect.objectContaining({ checked: true }));
+		expect(
+			parseSessionLine("editor:snapshot:check --ref @e4 --no-checked", {
+				json: true,
+			})
+		).toEqual(expect.objectContaining({ checked: false }));
+		expect(
+			parseSessionLine(
+				"editor:pointer:drag --from timeline.playhead --to-time 2 --seek-mode api",
+				{ json: true }
+			)
+		).toEqual(expect.objectContaining({ toTime: 2, seekMode: "api" }));
+	});
+
 	it("separates semantic playhead seek from its display-only animation", async () => {
 		let sought = false;
 		const get = vi.fn(async (url: string) => {
