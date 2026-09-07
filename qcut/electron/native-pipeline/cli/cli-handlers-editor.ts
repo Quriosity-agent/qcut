@@ -49,6 +49,7 @@ import {
 	handleKeyboardCommand,
 	handlePointerCommand,
 	waitForEditorUi,
+	handleWindowsCommand,
 } from "./cli-handlers-pointer.js";
 import { resolveEditorInstance } from "./instance-selection.js";
 import { ensureEditorProjectReady } from "../editor/editor-project-readiness.js";
@@ -353,6 +354,9 @@ export async function handleEditorCommand(
 
 				case "pointer":
 					return await handlePointerCommand({ client, options });
+
+				case "windows":
+					return await handleWindowsCommand({ client });
 
 				case "demo":
 					if (parts[2] !== "run") {
