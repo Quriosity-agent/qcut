@@ -421,6 +421,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			modifiers: { type: "string" },
 			button: { type: "string" },
 			"click-count": { type: "string" },
+			"key-events": { type: "boolean", default: false },
+			files: { type: "string" },
 			"hold-ms": { type: "string" },
 			"duration-ms": { type: "string" },
 			steps: { type: "string" },
@@ -1084,6 +1086,8 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		modifiers: values.modifiers as string | undefined,
 		button: values.button as string | undefined,
 		clickCount: parseFiniteCliNumber({ value: values["click-count"] }),
+		keyEvents: (values["key-events"] as boolean) ?? false,
+		files: values.files as string | undefined,
 		holdMs: parseFiniteCliNumber({ value: values["hold-ms"] }),
 		durationMs: parseFiniteCliNumber({ value: values["duration-ms"] }),
 		steps: values.steps
