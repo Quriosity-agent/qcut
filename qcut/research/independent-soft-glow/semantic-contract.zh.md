@@ -1,6 +1,6 @@
 # 电影柔光：算法语义契约
 
-版本：2026-09-06。资源 `7447126702137904420` / `9673f80b8e2f5a07f02f9ce1130b784a`。
+版本：2026-09-07，v3 精度修正。资源 `7447126702137904420` / `9673f80b8e2f5a07f02f9ce1130b784a`。
 
 本契约定义**不透明SDR图像的固定算法图与两种显式强度模式**：默认`output-mix`保留已对照的静态场景末端混合；`ui-snapshot`按实测剪映导出快照选择内部参数。实现者可根据输入、公式、连接和约束重新实现算法，不需要把既有C++实现当作算法定义。
 
@@ -12,11 +12,11 @@
 | --- | --- | --- |
 | 静态读取 | 当前精确包中直接存在 | scene连接、实际读取的字段、Shader算式 |
 | 语义推导 | 由多个静态事实推出 | 居中103%缩放、LUT两次Y翻转抵消、工作尺寸 |
-| 输出验证 | 相同输入与固定原生终点比较 | 三种输入、两种强度，RGB MAE 0.006540–0.054485 |
+| 输出验证 | 相同输入与固定原生终点比较 | 三种输入、两种强度，新 RGB MAE 0.006529–0.050648 |
 | 实现约定 | 独立实现选定的边界 | top-down布局、明确舍入、拒绝透明整链输入 |
-| 待确认 | 缺少执行或状态证据 | 旧CGL逐Pass分配、包内事件的宿主依赖 |
+| 待确认 | 缺少执行或状态证据 | 完整采样算术精度、包内事件的宿主依赖 |
 
-不能把末端输出接近升级为已截获每个原生Pass。原生参考来自D634私有兼容CGL宿主；安装版11.3.0的AGFX格式映射是另一份证据。
+末端输出接近与中间状态捕获分别验收：后续已独立取得 D634 的 252 个中间目标及有效 sampler 参数。原生参考来自 D634 私有兼容 CGL 宿主；安装版 11.3.0 的 AGFX 格式映射是另一份证据。
 
 整链输入为紧密排列的 `W×H×4` RGBA8，所有Alpha=255。运算对象是归一化通道值，未加入ICC或额外sRGB转换；Gaussian的gamma幂运算属于该算子的步骤，不代表整链做了标准sRGB解码。
 
@@ -63,7 +63,7 @@ flowchart LR
 
 ## 3. 采样、单位和精度
 
-记 `Q(c)=round(clamp(c,0,1)×255)/255`，对RGBA逐通道应用。每个输出目标按Q写出；卷积累积期间不量化。半值取整是CPU约定，旧CGL驱动精确舍入尚未逐目标测量。
+记 `Q(c)=round(double(clamp(c,0,1))×255)/255`，对RGBA逐通道应用。乘 255 在 double 中精确完成，再进行半值向上取整；卷积累积期间不量化。自产 CGL 的 float→RGBA8 转换已对 666,580 通道验证，旧 float 乘法有 127 项二次舍入错误，见[精度修正](../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md)。这不证明全部 shader 算术和采样逐位相同。
 
 像素中心为 `u=(x+0.5)/width`、`v=(y+0.5)/height`；输入采样位置为 `(u×inputWidth−0.5,v×inputHeight−0.5)`，按四个相邻texel双线性插值。
 
@@ -73,7 +73,7 @@ flowchart LR
 - scene的Layer opacity／scale是百分数，转为0.7／1.03；其余quality、threshold为比例。
 - Gaussian半径／步长是UV单位；Glow半径／步长是工作纹理像素单位，采样时除以对应轴像素数。
 
-`.rt`格式43及采样枚举是静态证据。逐目标RGBA8与双线性缩放受到末端对照支持，尚无旧CGL逐目标分配回执。
+`.rt`格式43及采样枚举是静态证据。D634 固定场景已实际捕获每帧 12 draw + 2 blit：全部 RGBA8，包含有效 sampler object 参数和双线性 blit；完整驱动插值精度仍待确认。
 
 ## 4. 固定场景的数学定义
 
@@ -146,7 +146,8 @@ v = (floor(j/8)×64+0.5+63×E.g)/512
 mapped = mix(sample(T,uvLower),sample(T,uvUpper),fract(z))
 L.rgb = Q(mix(E.rgb,mapped.rgb,0.8×E.a)); L.a = E.a
 F = Q(0.36×B+0.64×L)
-O = Q((1−intensity)×I+intensity×F)
+O.rgb = round(I8.rgb + (F8.rgb−I8.rgb)×intensity) / 255
+O.a = I.a (intensity<1); O = F (intensity=1)
 ```
 
 v针对top-down解码图集。资源元数据要求加载时翻转Y，LUT Shader也翻转查表Y；由此推导的组合契约在此表示中抵消。额外翻转一次LUT的单因素实验显著变差，支持当前组合方向；仍未直接截获引擎内部的加载翻转。以上公式表示默认`output-mix`：用户强度只改变最后一个式子，0完整保留I。
@@ -196,6 +197,6 @@ Gaussian、SoftLight及其他Glow参数保持固定。0返回SoftLight结果B，
 
 私有实验目录：`/Users/peter/Downloads/QCut-Soft-Glow-Semantics-2026-09-06/`，含`semantic-probe.cpp`、编译命令、`semantic-experiments.json`、输入／参考／输出hash及全部变体raw。供应商资源仅留本机。
 
-继续实现时保留：output-mix零强度恒等／ui-snapshot零强度SoftLight；Gaussian恒色；RG／BA打包解析值；逐目标量化；完整source分支；细白线保持；重复一致。当前九组算法测试、流协议及真实CLI参数测试覆盖两模式；历史六组原生对照属于output-mix，见 [README.zh.md](README.zh.md)。历史源文件hash保持原有快照身份，默认模式重放六组输出仍逐字节一致。
+继续实现时保留：output-mix零强度恒等／ui-snapshot零强度SoftLight；Gaussian恒色；RG／BA打包解析值；逐目标量化；完整source分支；细白线保持；重复一致。当前九组算法测试、流协议及真实CLI参数测试覆盖两模式；历史六组原生对照属于output-mix，见 [README.zh.md](README.zh.md)。历史源文件 hash 保持原有快照身份；09-07 量化及末端混合修正的六组新结果另行记录，不再要求与旧 C++ 输出字节一致。
 
-待确认：原生逐Pass格式／采样／舍入；精确dither／坐标残差来源；透明／HDR整链；完整事件宿主依赖及实时预览历史；极端尺寸的原生分配行为。运动视频处理和UI导出快照具有各自范围的实测，见 [帧流](stream.zh.md)与[强度模式](intensity-modes.zh.md)；尚未形成所有输入、编码和时间线的等价性结论。
+待确认：原生完整采样算术精度与其他 GPU 的转换行为；精确dither／坐标残差来源；透明／HDR整链；完整事件宿主依赖及实时预览历史；极端尺寸的原生分配行为。运动视频处理和UI导出快照具有各自范围的实测，见 [帧流](stream.zh.md)与[强度模式](intensity-modes.zh.md)；尚未形成所有输入、编码和时间线的等价性结论。
