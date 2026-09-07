@@ -34,8 +34,8 @@ std::size_t pixel_count(int width, int height) {
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 11) {
-      throw std::runtime_error("Usage: lens-image-warp W H OUT_W OUT_H a b tx c d ty < input.rgba > output.rgba");
+    if (argc != 11 && argc != 13) {
+      throw std::runtime_error("Usage: lens-image-warp W H OUT_W OUT_H a b tx c d ty [--backend fsnew|image-transform] < input.rgba > output.rgba");
     }
 #ifdef _WIN32
     if (_setmode(_fileno(stdin), _O_BINARY) == -1 ||
@@ -44,6 +44,13 @@ int main(int argc, char** argv) {
     const int width = number<int>(argv[1]);
     const int height = number<int>(argv[2]);
     lens_contract::AffineWarpRequest request{{}, number<int>(argv[3]), number<int>(argv[4])};
+    if (argc == 13) {
+      const std::string_view flag(argv[11]), backend(argv[12]);
+      if (flag != "--backend" || (backend != "fsnew" && backend != "image-transform")) {
+        throw std::runtime_error("Invalid backend argument");
+      }
+      if (backend == "image-transform") request.backend = lens_contract::AffineWarpBackend::image_transform;
+    }
     pixel_count(request.width, request.height);
     for (std::size_t index = 0; index < 6; ++index) {
       request.source_to_destination[index] = number<float>(argv[index + 5]);
