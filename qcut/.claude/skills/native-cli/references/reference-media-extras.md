@@ -160,6 +160,14 @@ qcut instances use --port 8878 --json
 The global `--host`, `--port`, and `--token` flags override the selected
 instance for a single command.
 
+Every editor request carries a bearer token. The app uses `QCUT_API_TOKEN`
+when it was launched with one and otherwise mints a token per launch, written
+owner-only to `<state dir>/instances/<port>.json` (`~/.local/state/qcut-pipeline`
+on macOS and Linux, `%LOCALAPPDATA%\qcut-pipeline\state` on Windows,
+`XDG_STATE_HOME` overrides). The CLI reads that file for the port it targets,
+so no flag is needed; `instances list` probes every published port with its own
+token.
+
 ## Flat commands without a group route
 
 `generate-grid`, `record`, `record-daemon`, `create-element`, `list-elements`,
