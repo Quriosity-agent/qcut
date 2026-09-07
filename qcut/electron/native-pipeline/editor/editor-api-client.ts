@@ -8,6 +8,7 @@
  */
 
 import type { CLIRunOptions } from "../cli/cli-runner/types.js";
+import { readClaudeInstanceInfo } from "../../claude/http/claude-api-token.js";
 import type {
 	ApiVersionInfo,
 	CapabilityManifest,
@@ -1018,11 +1019,36 @@ export class EditorApiClient {
 // Factory
 // ---------------------------------------------------------------------------
 
+/**
+ * Token published by the running editor for this port, when neither `--token`
+ * nor `QCUT_API_TOKEN` was given. Editors mint one per launch; see
+ * `claude-api-token.ts`.
+ */
+function nonEmpty(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
+function discoverClaudeApiToken({
+	port,
+	stateDir,
+}: {
+	port: string | number;
+	stateDir?: string;
+}): string | undefined {
+	const parsed = Number.parseInt(String(port), 10);
+	if (!Number.isInteger(parsed) || parsed <= 0) return undefined;
+	return readClaudeInstanceInfo({ port: parsed, stateDir })?.token;
+}
+
 /** Create an EditorApiClient from CLI options + environment variables. */
 export function createEditorClient(options: CLIRunOptions): EditorApiClient {
 	const host = options.host ?? process.env.QCUT_API_HOST ?? "127.0.0.1";
 	const port = options.port ?? process.env.QCUT_API_PORT ?? "8765";
-	const token = options.token ?? process.env.QCUT_API_TOKEN ?? undefined;
+	const token =
+		options.token ??
+		nonEmpty(process.env.QCUT_API_TOKEN) ??
+		discoverClaudeApiToken({ port, stateDir: options.stateDir });
 	const timeout =
 		options.timeout !== undefined ? Number(options.timeout) * 1000 : 30_000;
 

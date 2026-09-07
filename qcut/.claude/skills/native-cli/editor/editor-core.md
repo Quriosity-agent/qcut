@@ -10,15 +10,21 @@ Core `editor:*` commands for controlling a running QCut desktop instance. Comman
 ## Quick Start
 
 ```bash
-# Start QCut first
-bun run electron:dev
+# Start QCut first: open the installed desktop app, or from a source checkout run
+bun run electron   # source checkout only
 
-# Run editor commands
-qcut editor:<command> [options]
+# Run editor commands: three-level group syntax, or the legacy colon form
+qcut editor <area> <action> [options]      # e.g. qcut editor timeline export --project-id <id> --json
+qcut editor:<area>:<action> [options]      # e.g. qcut editor:timeline:export --project-id <id> --json
 
 # Check connection
-qcut editor:health
+qcut editor health
 ```
+
+Editor commands are split across these files:
+
+- [editor-media.md](editor-media.md), [editor-timeline.md](editor-timeline.md), [editor-output.md](editor-output.md), [editor-ai.md](editor-ai.md), [editor-state-control.md](editor-state-control.md), [editor-agent.md](editor-agent.md)
+- [editor-tracks-stickers-search.md](editor-tracks-stickers-search.md) — tracks, element patch, timeline manifests, stickers, transcript search, audio/caption export, keyboard, UI waits, demo runs, and the Moyin/novel helpers
 
 ## Connection Options
 
@@ -26,7 +32,7 @@ qcut editor:health
 |------|-------------|---------|
 | `--host` | API host | `127.0.0.1` |
 | `--port` | API port | `8765` |
-| `--token` | API auth token | - |
+| `--token` | API bearer token (default: `QCUT_API_TOKEN`, then the editor's published instance file) | - |
 | `--timeout` | Job timeout in seconds | `300` (export: `600`) |
 | `--poll` | Auto-poll async jobs until complete | `false` |
 | `--poll-interval` | Poll interval in seconds | `3` |
@@ -114,8 +120,8 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 
 | Command | Description |
 |---------|-------------|
-| `editor:auth:token` | Get current token (`--reveal` for full value, `--set <val>` to set) |
-| `editor:auth:activate` | Set token and activate license (`--token <val>`) |
+| `editor:auth:token` | Get the masked token and `authenticated` flag; `--from-stdin` sets it from a hidden prompt or pipe (`--set <val>` and `--reveal` expose the value) |
+| `editor:auth:activate` | Activate the license (`--from-stdin` reads the token hidden, or `--token <val>`) |
 | `editor:auth:logout` | Clear the current auth token |
 
 ```bash
@@ -123,7 +129,7 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 qcut editor:auth:token --json
 
 # Set token and activate
-qcut editor:auth:activate --token <token> --json
+qcut editor:auth:activate --from-stdin --json
 
 # Logout
 qcut editor:auth:logout --json

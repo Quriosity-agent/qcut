@@ -18,6 +18,7 @@ import {
 	handleMediaProjectCommand,
 } from "../native-pipeline/editor/editor-handlers-media.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner.js";
+import { writeClaudeInstanceInfo } from "../claude/http/claude-api-token.js";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -925,5 +926,101 @@ describe("Project handlers", () => {
 		);
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("--project-id");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Token discovery
+// ---------------------------------------------------------------------------
+
+describe("createEditorClient token discovery", () => {
+	const tempDirs: string[] = [];
+	const fetchBefore = globalThis.fetch;
+
+	function cliOptions(overrides: Partial<CLIRunOptions>): CLIRunOptions {
+		return {
+			command: "editor:health",
+			outputDir: "./output",
+			saveIntermediates: false,
+			json: true,
+			verbose: false,
+			quiet: false,
+			noCapabilityCheck: true,
+			...overrides,
+		};
+	}
+
+	function recordingFetch(): Array<{ url: string; authorization?: string }> {
+		const calls: Array<{ url: string; authorization?: string }> = [];
+		globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+			const headers = (init?.headers ?? {}) as Record<string, string>;
+			calls.push({ url: String(input), authorization: headers.Authorization });
+			return new Response(
+				JSON.stringify({ success: true, data: { status: "ok" } }),
+				{ status: 200, headers: { "Content-Type": "application/json" } }
+			);
+		};
+		return calls;
+	}
+
+	afterEach(() => {
+		globalThis.fetch = fetchBefore;
+		vi.unstubAllEnvs();
+		for (const dir of tempDirs.splice(0)) {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("uses the token the running editor published for the port", async () => {
+		const stateDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "qcut-client-token-")
+		);
+		tempDirs.push(stateDir);
+		vi.stubEnv("QCUT_API_TOKEN", "");
+		writeClaudeInstanceInfo({ port: 19877, token: "instance-token", stateDir });
+		const calls = recordingFetch();
+
+		const client = createEditorClient(cliOptions({ port: "19877", stateDir }));
+		await client.get("/api/claude/health");
+
+		expect(calls[0]?.url).toBe("http://127.0.0.1:19877/api/claude/health");
+		expect(calls[0]?.authorization).toBe("Bearer instance-token");
+	});
+
+	it("prefers QCUT_API_TOKEN and --token over the instance file", async () => {
+		const stateDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "qcut-client-token-")
+		);
+		tempDirs.push(stateDir);
+		writeClaudeInstanceInfo({ port: 19877, token: "instance-token", stateDir });
+		const calls = recordingFetch();
+
+		vi.stubEnv("QCUT_API_TOKEN", "env-token");
+		await createEditorClient(cliOptions({ port: "19877", stateDir })).get(
+			"/api/claude/health"
+		);
+		await createEditorClient(
+			cliOptions({ port: "19877", stateDir, token: "flag-token" })
+		).get("/api/claude/health");
+
+		expect(calls.map((call) => call.authorization)).toEqual([
+			"Bearer env-token",
+			"Bearer flag-token",
+		]);
+	});
+
+	it("sends no bearer when nothing is configured or published", async () => {
+		const stateDir = fs.mkdtempSync(
+			path.join(os.tmpdir(), "qcut-client-token-")
+		);
+		tempDirs.push(stateDir);
+		vi.stubEnv("QCUT_API_TOKEN", "");
+		const calls = recordingFetch();
+
+		await createEditorClient(cliOptions({ port: "19877", stateDir })).get(
+			"/api/claude/health"
+		);
+
+		expect(calls[0]?.authorization).toBeUndefined();
 	});
 });

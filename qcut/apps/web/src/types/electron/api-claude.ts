@@ -597,6 +597,8 @@ export interface ElectronClaudeOps {
 			) => void;
 			removeListeners: () => void;
 		};
+		/** Bearer token for the editor HTTP API (minted per launch when unset). */
+		getApiToken: () => Promise<string | null>;
 	};
 }
 

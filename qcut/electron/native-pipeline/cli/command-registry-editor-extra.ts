@@ -31,6 +31,19 @@ export function createExtraEditorCommands({
 		f("--speed", "number", "Pointer animation speed multiplier", {
 			default: 1,
 		}),
+		f("--duration-ms", "number", "Pointer movement duration in milliseconds", {
+			default: 220,
+		}),
+		f(
+			"--window-id",
+			"number",
+			"BrowserWindow id from editor:windows (default: first window)"
+		),
+		f(
+			"--modifiers",
+			"string",
+			"Comma-separated modifiers held during the action: alt, ctrl, cmd, shift"
+		),
 		f(
 			"--foreground",
 			"boolean",
@@ -73,13 +86,20 @@ export function createExtraEditorCommands({
 			"editor:auth:token",
 			"Auth: Get or set the current auth token",
 			[
-				f("--set", "string", "Set token to this value"),
+				f(
+					"--from-stdin",
+					"boolean",
+					"Set the token from a hidden prompt (TTY) or stdin (pipe) so it never appears in argv",
+					{ default: false }
+				),
+				f("--set", "string", "Set token to this value (prefer --from-stdin)"),
 				f("--reveal", "boolean", "Show full token (default: masked)", {
 					default: false,
 				}),
 			],
 			[
 				"qcut-pipeline editor:auth:token --json",
+				"qcut-pipeline editor:auth:token --from-stdin --json",
 				"qcut-pipeline editor:auth:token --reveal --json",
 				"qcut-pipeline editor:auth:token --set <token> --json",
 			]
@@ -87,8 +107,19 @@ export function createExtraEditorCommands({
 		"editor:auth:activate": ed(
 			"editor:auth:activate",
 			"Auth: Set token and activate license on this device",
-			[f("--token", "string", "Auth token", { required: true })],
-			["qcut-pipeline editor:auth:activate --token <token> --json"]
+			[
+				f(
+					"--from-stdin",
+					"boolean",
+					"Read the token from a hidden prompt (TTY) or stdin (pipe)",
+					{ default: false }
+				),
+				f("--token", "string", "Auth token (prefer --from-stdin)"),
+			],
+			[
+				"qcut-pipeline editor:auth:activate --from-stdin --json",
+				"qcut-pipeline editor:auth:activate --token <token> --json",
+			]
 		),
 		"editor:auth:logout": ed(
 			"editor:auth:logout",
@@ -135,6 +166,13 @@ export function createExtraEditorCommands({
 						"properties",
 						"export",
 						"api-keys",
+						"captions",
+						"adjustments",
+						"templates",
+						"ai-chat",
+						"hyperframes",
+						"search",
+						"digital-human",
 					],
 				}),
 				f("--tab", "string", "Inner tab (for moyin panel)", {
@@ -255,8 +293,26 @@ export function createExtraEditorCommands({
 		"editor:pointer:click": ed(
 			"editor:pointer:click",
 			"Click with real Electron mouseDown and mouseUp events",
-			pointerTargetFlags(),
-			["qcut-pipeline editor:pointer:click --ref @e12 --force --json"]
+			[
+				...pointerTargetFlags(),
+				f("--button", "string", "Mouse button to press", {
+					default: "left",
+					enum: ["left", "middle", "right"],
+				}),
+				f(
+					"--click-count",
+					"number",
+					"Press cycles: 1 click, 2 double, 3 triple",
+					{
+						default: 1,
+					}
+				),
+			],
+			[
+				"qcut-pipeline editor:pointer:click --ref @e12 --force --json",
+				"qcut editor pointer click --ref @e12 --modifiers shift --force --json",
+				"qcut editor pointer click --ref @e12 --click-count 3 --force --json",
+			]
 		),
 		"editor:pointer:double-click": ed(
 			"editor:pointer:double-click",
@@ -272,7 +328,7 @@ export function createExtraEditorCommands({
 		),
 		"editor:pointer:drag": ed(
 			"editor:pointer:drag",
-			"Drag between snapshot refs or editor coordinates",
+			"Drag between snapshot refs or editor coordinates; HTML5 drag-and-drop sources such as media panel items are intercepted and dropped on the destination",
 			[
 				f("--from", "string", "Semantic starting target"),
 				f("--to", "string", "Semantic destination target"),
@@ -289,8 +345,12 @@ export function createExtraEditorCommands({
 				f(
 					"--to-time",
 					"number",
-					"Directly seek the timeline, then animate the pointer to the playhead"
+					"Drag the playhead to this timeline time using the ruler scale; falls back to an API seek with a display-only animation"
 				),
+				f("--seek-mode", "string", "How --to-time moves the playhead", {
+					default: "drag",
+					enum: ["drag", "api"],
+				}),
 				f("--to-index", "number", "Destination index in the source list"),
 				f("--via", "string", "JSON array or @file of intermediate targets"),
 				f("--hold-ms", "number", "Pause after mouseDown", { default: 120 }),
@@ -301,6 +361,27 @@ export function createExtraEditorCommands({
 				f("--release-delay-ms", "number", "Pause before mouseUp", {
 					default: 100,
 				}),
+				f(
+					"--dnd",
+					"string",
+					"HTML5 drag-and-drop: auto intercepts a drag the page starts, html5 requires one, mouse never intercepts",
+					{ default: "auto", enum: ["auto", "html5", "mouse"] }
+				),
+				f(
+					"--drag-start-timeout-ms",
+					"number",
+					"How long to wait for the page to start an HTML5 drag before auto falls back to a mouse drag or html5 fails",
+					{ default: 250 }
+				),
+				f("--button", "string", "Mouse button held during the drag", {
+					default: "left",
+					enum: ["left", "middle", "right"],
+				}),
+				f(
+					"--modifiers",
+					"string",
+					"Comma-separated modifiers held during the drag: alt, ctrl, cmd, shift"
+				),
 				f("--verify", "boolean", "Verify the resulting list index", {
 					default: true,
 				}),
@@ -321,6 +402,7 @@ export function createExtraEditorCommands({
 			[
 				"qcut-pipeline editor:pointer:drag --from-ref @e12 --to-ref @e27 --force --json",
 				"qcut-pipeline editor:pointer:drag --from-x 400 --from-y 700 --to-x 700 --to-y 700 --force --json",
+				"qcut editor pointer drag --from testid:media-item --to testid:timeline-track --dnd html5 --force --json",
 			]
 		),
 		"editor:pointer:wait-for": ed(
@@ -353,6 +435,64 @@ export function createExtraEditorCommands({
 			"Hide the Agent pointer overlay",
 			[],
 			["qcut-pipeline editor:pointer:hide --json"]
+		),
+		"editor:windows": ed(
+			"editor:windows",
+			"List open QCut windows with ids, titles, focus, visibility, and bounds for --window-id",
+			[],
+			["qcut editor windows --json"]
+		),
+		"editor:pointer:state": ed(
+			"editor:pointer:state",
+			"Read the Agent pointer overlay state: position, action, pressed button, input mode",
+			[],
+			["qcut editor pointer state --json"]
+		),
+		"editor:pointer:drop-files": ed(
+			"editor:pointer:drop-files",
+			"Drop local files on a target as an external HTML5 file drop (media panel import, file drop zones)",
+			[
+				f("--files", "string", "Comma-separated local file paths", {
+					required: true,
+				}),
+				f("--target", "string", "Semantic target, for example panel.media"),
+				f("--ref", "string", "Snapshot ref, for example @e12"),
+				f("--x", "number", "Editor viewport X coordinate"),
+				f("--y", "number", "Editor viewport Y coordinate"),
+				f("--normalized-x", "number", "Horizontal viewport ratio from 0 to 1"),
+				f("--normalized-y", "number", "Vertical viewport ratio from 0 to 1"),
+				f(
+					"--modifiers",
+					"string",
+					"Comma-separated modifiers held during the drop: alt, ctrl, cmd, shift"
+				),
+				f("--wait-for", "string", "Wait for a semantic target or visible text"),
+				f("--timeout-ms", "number", "Target wait timeout in milliseconds", {
+					default: 5000,
+				}),
+			],
+			[
+				"qcut editor pointer drop-files --files ./clip.mp4,./cover.png --target panel.media --force --json",
+			]
+		),
+		"editor:pointer:hit-test": ed(
+			"editor:pointer:hit-test",
+			"Report the element under a target without dispatching input: tag, role, name, test id, ref, bounds, and ancestor test ids",
+			[
+				f("--target", "string", "Semantic target, for example panel.text"),
+				f("--ref", "string", "Snapshot ref, for example @e12"),
+				f("--x", "number", "Editor viewport X coordinate"),
+				f("--y", "number", "Editor viewport Y coordinate"),
+				f("--normalized-x", "number", "Horizontal viewport ratio from 0 to 1"),
+				f("--normalized-y", "number", "Vertical viewport ratio from 0 to 1"),
+				f("--timeout-ms", "number", "Target wait timeout in milliseconds", {
+					default: 5000,
+				}),
+			],
+			[
+				"qcut editor pointer hit-test --x 388 --y 879 --json",
+				"qcut editor pointer hit-test --target timeline.playhead --json",
+			]
 		),
 		"editor:pointer:sequence": ed(
 			"editor:pointer:sequence",
@@ -405,6 +545,12 @@ export function createExtraEditorCommands({
 			"Type text into the focused editor control",
 			[
 				f("--text", "string", "Text to type", { required: true }),
+				f(
+					"--key-events",
+					"boolean",
+					"Dispatch keyDown/keyUp per character so keydown handlers fire, instead of inserting text",
+					{ default: false }
+				),
 				f("--interval-ms", "number", "Delay between characters"),
 				f("--foreground", "boolean", "Use foreground native input", {
 					default: false,

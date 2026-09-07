@@ -78,7 +78,10 @@ import type {
 import type { ClaudeConsoleEntry } from "../claude/handlers/claude-console-handler.js";
 import type {
 	AgentPointerResult,
+	AgentPointerHitTestResult,
+	AgentPointerRulerLabelsResult,
 	AgentPointerVisualState,
+	EditorWindowsResult,
 	AgentKeyboardResult,
 	EditorSnapshotActionResult,
 	EditorSnapshotResponse,
@@ -510,8 +513,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		resetCollector: () => requestFromMain("playback-diagnostics:reset", {}),
 	});
 	registerAgentPointerRoutes(router, {
-		getState: async () =>
-			(await requestFromMain("pointer:state", {})) as AgentPointerVisualState,
+		getState: async (request) =>
+			(await requestFromMain("pointer:state", {
+				request,
+			})) as AgentPointerVisualState,
+		listWindows: async () =>
+			(await requestFromMain("windows:list", {})) as EditorWindowsResult,
 		move: async (request) =>
 			(await requestFromMain("pointer:move", {
 				request,
@@ -542,6 +549,18 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			})) as AgentPointerResult,
 		hide: async () =>
 			(await requestFromMain("pointer:hide", {})) as AgentPointerResult,
+		hitTest: async (request) =>
+			(await requestFromMain("pointer:hit-test", {
+				request,
+			})) as AgentPointerHitTestResult,
+		dropFiles: async (request) =>
+			(await requestFromMain("pointer:drop-files", {
+				request,
+			})) as AgentPointerResult,
+		rulerLabels: async (request) =>
+			(await requestFromMain("pointer:ruler-labels", {
+				request,
+			})) as AgentPointerRulerLabelsResult,
 		pressKeys: async (request) =>
 			(await requestFromMain("keyboard:press", {
 				request,

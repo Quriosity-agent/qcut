@@ -885,6 +885,7 @@ export function createClaudeAPI(): NonNullable<ElectronAPI["claude"]> {
 				ipcRenderer.removeAllListeners("claude:pointer:state");
 			},
 		},
+		getApiToken: () => ipcRenderer.invoke("claude:api-token:get"),
 		state: {
 			onSnapshotRequest: (
 				callback: (data: {
