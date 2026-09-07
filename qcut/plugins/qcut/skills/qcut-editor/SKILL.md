@@ -147,8 +147,11 @@ Known targets include `panel.media`, `panel.audio`, `panel.text`,
 `panel.stickers`, `panel.effects`, `panel.transitions`, `panel.captions`,
 `panel.filters`, `panel.adjustments`, `panel.templates`, `export.button`,
 `export.start`, `timeline.playhead`, `timeline.toolbar`, `timeline.zoom-in`,
-`timeline.zoom-out`, `timeline.play`, `timeline.pause`, `preview.canvas`, and
-`media.import`. Use
+`timeline.zoom-out`, `timeline.play`, `timeline.pause`, `preview.canvas`,
+`media.import`, `text.add`, `text.content`, `text.font-size`, `text.animation`,
+`text.animation.entrance`, `text.animation.loop`, and `text.animation.exit`;
+`text.animation.<entrance|loop|exit>.<preset-id>` addresses one animation card
+and `testid:<data-testid>` any element by test id. Use
 `testid:<data-testid>` for an explicit app test ID.
 
 Before recording or capturing a visual result, wait for a frame rather than
