@@ -312,8 +312,12 @@ export function createExtraEditorCommands({
 				f(
 					"--to-time",
 					"number",
-					"Directly seek the timeline, then animate the pointer to the playhead"
+					"Drag the playhead to this timeline time using the ruler scale; falls back to an API seek with a display-only animation"
 				),
+				f("--seek-mode", "string", "How --to-time moves the playhead", {
+					default: "drag",
+					enum: ["drag", "api"],
+				}),
 				f("--to-index", "number", "Destination index in the source list"),
 				f("--via", "string", "JSON array or @file of intermediate targets"),
 				f("--hold-ms", "number", "Pause after mouseDown", { default: 120 }),
