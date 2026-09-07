@@ -8,7 +8,9 @@
 [二进制与 C++ 还原剩余工作台账（2026-09-06）](binary-cpp-reconstruction-backlog-2026-09-06.zh.md)。
 
 2026-09-07 从 master 新建分支后的实际推进见[顺序执行记录](binary-cpp-execution-2026-09-07.zh.md)：
-AGFX 格式与采样器两个独立 C++ 单元已交付，下一项是单 Pass 纹理上传、采样及读回。
+四线并行交付 AGFX 纹理像素、videoeditor 值/时间/关键帧、VECreator 请求/聚合、lens 六个数值原语；
+[统一 C++ 构建](../../../research/independent-binary-contract/README.zh.md)本机 Release 与 ASan/UBSan 均 12/12。
+具体完成域和余下事件链/算法链见执行记录，整库还原仍为 0/6。
 
 本目录只提交 QCut 自有的研究文字和探针源码，用于记录剪映滤镜包的运行时行为、GL 纹理上下文要求和可复现实验方法。
 
