@@ -1,9 +1,9 @@
 #include "image.hpp"
 #include "../jianying-runtime-probe/cgl-diagnostic-context.hpp"
+#include "../jianying-runtime-probe/cgl-image-target.hpp"
 
 #include <OpenGL/gl3.h>
 #include <OpenGL/CGLRenderers.h>
-#include <array>
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -40,42 +40,13 @@ std::vector<float> inputs() {
     return values;
 }
 
-struct Targets {
-    std::array<GLuint, 2> textures{};
-    std::array<GLuint, 2> framebuffers{};
-    Targets() {
-        glGenTextures(2, textures.data());
-        glGenFramebuffers(2, framebuffers.data());
-    }
-    ~Targets() {
-        glDeleteFramebuffers(2, framebuffers.data());
-        glDeleteTextures(2, textures.data());
-    }
-    Targets(const Targets&) = delete;
-    Targets& operator=(const Targets&) = delete;
-};
-
 std::vector<std::uint8_t> native_conversion(const std::vector<float>& values, GLsizei width, GLsizei height) {
-    Targets targets;
-    for (std::size_t index = 0; index < 2; ++index) {
-        glBindTexture(GL_TEXTURE_2D, targets.textures[index]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, index == 0 ? GL_RGBA32F : GL_RGBA8,
-            width, height, 0, GL_RGBA, GL_FLOAT, index == 0 ? values.data() : nullptr);
-        for (GLenum channel : {GL_TEXTURE_RED_SIZE, GL_TEXTURE_GREEN_SIZE, GL_TEXTURE_BLUE_SIZE, GL_TEXTURE_ALPHA_SIZE}) {
-            GLint bits = 0;
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, channel, &bits);
-            require(bits == (index == 0 ? 32 : 8), "Unexpected native texture channel precision");
-        }
-        glBindFramebuffer(GL_FRAMEBUFFER, targets.framebuffers[index]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targets.textures[index], 0);
-        require(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Incomplete quantization framebuffer");
-    }
+    const qcut_diagnostic::CglImageTarget source(width, height, GL_RGBA32F, GL_FLOAT, values.data());
+    const qcut_diagnostic::CglImageTarget target(width, height, GL_RGBA8, GL_FLOAT, nullptr);
     glDisable(GL_DITHER);
     glDisable(GL_BLEND);
     glDisable(GL_FRAMEBUFFER_SRGB);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets.framebuffers[0]);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, source.framebuffer);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     std::vector<float> uploaded(values.size());
     glReadPixels(0, 0, width, height, GL_RGBA, GL_FLOAT, uploaded.data());
@@ -83,17 +54,17 @@ std::vector<std::uint8_t> native_conversion(const std::vector<float>& values, GL
         require(std::bit_cast<std::uint32_t>(uploaded[index]) == std::bit_cast<std::uint32_t>(values[index]),
             "RGBA32F upload/readback changed input bits");
     }
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets.framebuffers[1]);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.framebuffer);
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets.framebuffers[1]);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, target.framebuffer);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     std::vector<std::uint8_t> pixels(values.size());
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
     require(glGetError() == GL_NO_ERROR, "CGL quantization or readback failed");
     std::vector<std::uint8_t> pattern(values.size()), roundtrip(values.size());
     for (std::size_t index = 0; index < pattern.size(); ++index) pattern[index] = static_cast<std::uint8_t>(index % 256);
-    glBindTexture(GL_TEXTURE_2D, targets.textures[1]);
+    glBindTexture(GL_TEXTURE_2D, target.texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pattern.data());
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, roundtrip.data());
     require(glGetError() == GL_NO_ERROR && pattern == roundtrip, "RGBA8 upload/readback changed known bytes");
