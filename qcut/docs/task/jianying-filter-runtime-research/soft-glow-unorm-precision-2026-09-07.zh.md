@@ -23,7 +23,16 @@ cmake -S research/independent-soft-glow -B /tmp/soft-glow-precision \
 cmake --build /tmp/soft-glow-precision --parallel 4
 ctest --test-dir /tmp/soft-glow-precision --output-on-failure
 /tmp/soft-glow-precision/soft-glow-native-quantization
+/tmp/soft-glow-precision/soft-glow-native-quantization --software
 ```
+
+### CI 发现的 Apple Software Renderer 差异
+
+首次 macOS CI 的转换测试失败。补输出后，并在本机强制 `kCGLRendererGenericFloatID` 复现：Apple Software Renderer (`4.1 APPLE-23.1.1`) 与 M4 的 Metal 驱动有 **128/666,580** 个转换差异，输出 FNV 为 `1f77524e37b9516f`。软件后端精确符合分两步执行的 `floor(float(float(c*255)+0.5))`，全样本零公式差异；旧 `round(float(c*255))` 仍有 1 项不同。额外一项 `0x3b008080` 的乘积为 `0.4999999701976776`，float 加 0.5 又舍入成 1。
+
+因此 CI 验证两个**显式后端合同**，不再把软件渲染器当作本机 D634 的硬件参考。探针按 renderer 身份选择已验证的精确公式，保留与独立 CPU 算法的真实差异计数；未知 renderer 拒绝，任何本后端公式差异也失败，不采用 ±1 容差。新增实际 32/8 位通道检查、RGBA32F 上传/浮点读回逐位检查、已知 RGBA8 全字节值往返与重复转换。默认与强制 software 模式在本机 Release/ASan 均通过各自精确合同。标准 C++ 算法和有理数测试仍保持 M4 参考的精确转换语义，未为了 CI 改成软件近似。
+
+硬件与软件的新报告为 `renderer-profiles-release.json` 和 `renderer-profiles-sanitized.json`；CI 原始失败记录另存，不覆盖最初 M4 证据。这项差异说明“同为 CGL”不足以证明驱动像素精度相同。
 
 ## 宿主强度混合
 
