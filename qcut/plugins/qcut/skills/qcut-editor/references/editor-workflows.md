@@ -142,6 +142,10 @@ Use `editor pointer hit-test` to confirm what sits under a point before or
 after an action, and `editor pointer state` to read the overlay position.
 Sequences, keyboard input, snapshot `select`/`check`, and `demo run` are
 confirm-tier like clicks and drags.
+`editor pointer drop-files --files <paths>` drops local files on a target as an
+external file drop (for example onto the media library to import them), and
+`editor keyboard type --key-events` types with real keyDown/keyUp events when a
+control listens for keydown instead of input.
 
 ## Apply and adjust a video speed curve
 
