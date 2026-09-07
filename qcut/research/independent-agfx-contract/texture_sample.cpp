@@ -1,4 +1,5 @@
 #include "texture_sample.hpp"
+#include "texture_address.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -55,29 +56,15 @@ void validate_settings(const SampleSettings& settings) {
   }
 }
 
-std::int64_t address(std::int64_t index, std::uint32_t size, TexelWrap wrap) {
-  const auto extent = static_cast<std::int64_t>(size);
-  if (wrap == TexelWrap::clamp) return std::clamp(index, std::int64_t{0}, extent - 1);
-  if (wrap == TexelWrap::border) return index < 0 || index >= extent ? -1 : index;
-  const auto period = wrap == TexelWrap::mirror ? 2 * extent : extent;
-  auto reduced = index % period;
-  if (reduced < 0) reduced += period;
-  return reduced < extent ? reduced : period - 1 - reduced;
-}
-
 std::array<float, 4> texel(const TextureView& texture, std::int64_t x,
                          std::int64_t y, std::int64_t z,
                          const SampleSettings& settings) {
-  x = address(x, texture.width, settings.wrap_s);
-  y = address(y, texture.height, settings.wrap_t);
-  z = address(z, texture.depth, settings.wrap_r);
+  x = detail::address_texel(x, texture.width, settings.wrap_s);
+  y = detail::address_texel(y, texture.height, settings.wrap_t);
+  z = detail::address_texel(z, texture.depth, settings.wrap_r);
   if (x < 0 || y < 0 || z < 0) return settings.border_color;
-  const auto offset = static_cast<std::size_t>(z) * texture.slice_stride +
-      static_cast<std::size_t>(y) * texture.row_stride + static_cast<std::size_t>(x) * 4;
-  const auto* bytes = texture.bytes.data() + offset;
-  const auto red = texture.order == ChannelOrder::rgba ? 0 : 2;
-  const auto blue = texture.order == ChannelOrder::rgba ? 2 : 0;
-  return {bytes[red] / 255.0F, bytes[1] / 255.0F, bytes[blue] / 255.0F, bytes[3] / 255.0F};
+  const auto bytes = detail::rgba8_texel(texture, x, y, z);
+  return {bytes[0] / 255.0F, bytes[1] / 255.0F, bytes[2] / 255.0F, bytes[3] / 255.0F};
 }
 
 struct Axis {
@@ -122,6 +109,10 @@ std::array<float, 4> sample_validated(const TextureView& texture,
 }
 
 } // namespace
+
+void validate_sample_settings(const SampleSettings& settings) {
+  validate_settings(settings);
+}
 
 TextureView validate_texture_view(const TextureView& texture) {
   return validate(texture);
