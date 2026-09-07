@@ -81,7 +81,8 @@ qcut editor:snapshot:check --ref @e4 --no-checked --force --json
 
 `select` and `check` mutate the editor, so they sit in the action policy's
 confirm tier next to `click` and `fill`: interactive sessions prompt,
-non-interactive ones need `--force`.
+non-interactive ones need `--force`. `--no-checked` is parsed as
+`checked: false` in both one-shot and session mode.
 
 Toggles a checkbox, radio button, or switch role by ref.
 
