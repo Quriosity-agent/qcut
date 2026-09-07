@@ -1,6 +1,6 @@
 # Independent editor contracts
 
-Original C++20 implementations of nine bounded contracts observed in Jianying
+Original C++20 implementations of ten bounded contracts observed in Jianying
 11.3.0 `libvideoeditor.dylib` and `libcccreator.dylib` (arm64). The static library uses only the standard
 library. It neither loads Jianying nor implements a video renderer.
 
@@ -15,6 +15,7 @@ library. It neither loads Jianying nor implements a video renderer.
 | `time_adapter` | Already-resolved record/control coordinates and separate interval bounds to float cubic/progress | Static float adaptation; constant-speed upstream timing covered separately below |
 | `segment_time` | Video source/timeline conversion, strict 1000-unit endpoint snap, relative offset, separately clamped control records | Genuine detached SegmentVideo tree; 6,336 three-helper queries and 6,336 record transforms, zero mismatches |
 | `linear_property` | Two preselected, graph-free, curve-zero Video keyframes; mapped-time progress and separate double arithmetic | 1,153 native property calls; 8,353 values, zero mismatches |
+| `nonlinear_property` | Graph-free mixed/nonzero curve sides, record selection, constant-speed controls, float cubic evaluation and double-copy fallbacks | 117,515 actual property calls; 784,545 values, zero mismatches |
 
 The models describe observed fields with ordinary C++ values; they do not expose
 vendor object layouts. State codes remain numeric because their broader event or
@@ -106,6 +107,26 @@ operations. A native `.1 → .9` fixture at progress `4/17` distinguishes this f
 FMA by one bit. Exact hits, full list selection, caption rotation rules, graph-backed
 and curved property branches, and nonconstant speed are outside this API.
 
+`evaluate_nonlinear_property_interval` covers the corresponding two-frame branch
+with at least one nonzero int32 curve code. A zero-curve side clears its controls
+before record time conversion. The cubic uses the selected left record's outgoing
+control and right record's incoming control. The raw query argument is the window
+midpoint already resolved by the caller, strictly between the preselected raw
+endpoints; selecting the window and handling exact hits remain separate. Both
+mapped endpoint times and resolved record times must be nondecreasing. The same
+2^20 scalar budget and positive finite constant-speed domain apply.
+
+Mapped range checks, record selection and cubic progress have different clocks.
+After mapping the query, the normal two-record path uses resolved record times as
+its progress bounds. At/before the first record, it selects that same record at
+both ends while retaining the original mapped left progress bound. Past the last
+record it copies the original right values. Cubic paths narrow to float and widen
+the result to double; copy paths retain double bits, including NaN payloads and
+signed zero. This distinction remains observable even near a snapped endpoint.
+The API represents no graph, per-channel graph control arrays, nonconstant speed,
+Caption rules or complete property dispatch. Numeric curve codes have not been
+mapped to UI curve names.
+
 ## Optional private diagnostic
 
 The optional `editor-native-probe` is an isolated macOS arm64 executable. It
@@ -123,6 +144,7 @@ DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-native-probe "
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-evaluation-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-evaluation.json 2> /tmp/editor-evaluation.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-window-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" > /tmp/editor-window.json 2> /tmp/editor-window.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-segment_time-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" > /tmp/editor-segment-time.json 2> /tmp/editor-segment-time.stderr
+DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-nonlinear_property-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-nonlinear-property.json 2> /tmp/editor-nonlinear-property.stderr
 ```
 
 The original diagnostic accepts this `libvideoeditor` identity:
@@ -134,7 +156,7 @@ The evaluation diagnostic additionally pins `libcccreator` SHA-256
 `b09c395d934169cb20ec865dd1d4032ca68023b287a7264e1b06ff4d71fd1be4` and arm64
 UUID `100726E3-FCB0-31BC-98EE-1B196A1714A3`. It calls the genuine `getVEUtils`
 singleton and verifies virtual slot `0x168` before evaluating curves. The
-resampler uses ordinary libc++ vectors, not synthetic SDK objects. The four
+resampler uses ordinary libc++ vectors, not synthetic SDK objects. The five
 diagnostics intentionally keep private images loaded until their process exits.
 Dependency-library identities beyond these two images are not pinned.
 
@@ -158,6 +180,15 @@ the optional sanitized executable checks the independent code and diagnostic lay
 Library handles intentionally remain loaded until process exit. Leak detection was
 disabled only for that native sanitizer run, not the standalone CTest suite.
 
+The nonlinear diagnostic also obtains the genuine shared VEUtils handle through
+the exact factory used by the property call, verifying its creator image, vtable
+and cubic slot before proceeding. Its matrix crosses 48 nonzero/mixed curve-code
+pairs, nine speeds and eight time/range configurations. It checks 6,912 source
+frame snapshots after evaluation, including values, controls, graph presence and
+local mutation bytes. This is evidence of read-only frame behavior in this corpus,
+not a guarantee about all SDK globals or the playback seek state machine. Eleven
+native goldens and the full numeric fingerprint are pinned in standalone tests.
+
 The similarly named free `getInterpolationCubicBezier` is a different floating
 implementation: 4,047 finite results differ from the actual virtual entrypoint in
 the same 40,000-case corpus. It is recorded as a counterexample, not substituted
@@ -179,3 +210,6 @@ property dispatch and full seek boundaries explicit.
 The [Segment timing evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-segment-time-2026-09-07.zh.md)
 closes constant-speed Video timing and the bounded non-hit linear property branch,
 including native factories, negative controls and remaining dispatch boundaries.
+The [nonlinear property evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-nonlinear-property-2026-09-07.zh.md)
+connects real record preparation to the cubic runtime and distinguishes nonlinear
+computation from endpoint copies without extending the claim to full dispatch.
