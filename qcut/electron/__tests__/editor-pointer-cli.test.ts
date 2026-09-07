@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -422,6 +422,151 @@ describe("editor pointer CLI handlers", () => {
 				modifiers: "shift,cmd",
 				button: "middle",
 				clickCount: 3,
+			})
+		);
+	});
+
+	it("drops local files on a target and requires the HTML5 capability", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "qcut-drop-files-"));
+		const stillPath = join(directory, "still.png");
+		writeFileSync(stillPath, "png");
+		try {
+			const { client, post, requireCapability } = createClient();
+			const result = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: `${stillPath}, ` },
+				}),
+			});
+			expect(result.success).toBe(true);
+			expect(post).toHaveBeenCalledWith("/api/claude/pointer/drop-files", {
+				x: 300,
+				y: 200,
+				files: [stillPath],
+				inputMode: "background",
+			});
+			expect(requireCapability).toHaveBeenCalledWith(HTML5_DRAG_REQUIREMENT);
+
+			const missing = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: join(directory, "nope.png") },
+				}),
+			});
+			expect(missing.success).toBe(false);
+			expect(missing.error).toContain("Dropped file not found");
+
+			const foreground = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: stillPath, foreground: true },
+				}),
+			});
+			expect(foreground.success).toBe(false);
+			expect(foreground.error).toContain("--foreground");
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("resolves semantic, normalized, and ref waypoints in --via", async () => {
+		const get = vi.fn(async () => ({
+			viewport: { width: 1200, height: 800 },
+			elements: [],
+		}));
+		const post = vi.fn(async () => ({ action: "drag" }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 0,
+					fromY: 700,
+					toX: 800,
+					toY: 700,
+					via: JSON.stringify([
+						{ normalizedX: 0.5, normalizedY: 0.25 },
+						{ ref: "@e3" },
+						{ x: 10, y: 20 },
+					]),
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({
+				via: [{ x: 600, y: 200 }, { ref: "@e3" }, { x: 10, y: 20 }],
+			})
+		);
+	});
+
+	it("passes --key-events through keyboard type", async () => {
+		const { client, post } = createClient();
+		await handleKeyboardCommand({
+			client,
+			options: makeOptions({
+				command: "editor:keyboard:type",
+				values: { text: "hi", keyEvents: true },
+			}),
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/keyboard/type", {
+			text: "hi",
+			intervalMs: undefined,
+			inputMode: "background",
+			keyEvents: true,
+		});
+	});
+
+	it("keeps pointer flags in session mode", () => {
+		const session = parseSessionLine(
+			"editor:pointer:drag --from-ref @e1 --to-ref @e2 --dnd html5 --modifiers shift --button right --steps 12 --hold-ms 50 --no-verify --foreground",
+			{ json: true }
+		);
+		expect(session).toEqual(
+			expect.objectContaining({
+				command: "editor:pointer:drag",
+				fromRef: "@e1",
+				toRef: "@e2",
+				dnd: "html5",
+				modifiers: "shift",
+				button: "right",
+				steps: 12,
+				holdMs: 50,
+				verify: false,
+				foreground: true,
+			})
+		);
+		const typed = parseSessionLine(
+			"editor:keyboard:type --text hello --key-events --interval-ms 20",
+			{ json: true }
+		);
+		expect(typed).toEqual(
+			expect.objectContaining({
+				keyEvents: true,
+				intervalMs: 20,
+				text: "hello",
+			})
+		);
+		const drop = parseSessionLine(
+			"editor:pointer:drop-files --files ./a.png,./b.mp4 --target panel.media --click-count 2",
+			{ json: true }
+		);
+		expect(drop).toEqual(
+			expect.objectContaining({
+				files: "./a.png,./b.mp4",
+				target: "panel.media",
+				clickCount: 2,
 			})
 		);
 	});
