@@ -58,7 +58,10 @@ Editor Commands (requires running QCut — use --project-id for most):
   editor:navigator:*,
   editor:pointer:move, editor:pointer:hover, editor:pointer:click,
   editor:pointer:double-click, editor:pointer:right-click,
-  editor:pointer:drag, editor:pointer:scroll, editor:pointer:hide
+  editor:pointer:drag, editor:pointer:scroll, editor:pointer:hide,
+  editor:pointer:wait-for, editor:pointer:sequence,
+  editor:pointer:state, editor:pointer:hit-test,
+  editor:keyboard:press, editor:keyboard:type
 
 Local Jianying Reference (read-only; does not require running QCut):
   editor:jianying-transition:*
