@@ -244,6 +244,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				prompts: { type: "string", multiple: true },
 				value: { type: "string" },
 				checked: { type: "boolean" },
+				"no-checked": { type: "boolean", default: false },
 				ref: { type: "string" },
 				target: { type: "string" },
 				from: { type: "string" },
@@ -288,6 +289,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				"click-count": { type: "string" },
 				"key-events": { type: "boolean", default: false },
 				files: { type: "string" },
+				"seek-mode": { type: "string" },
 				force: { type: "boolean", default: false },
 				discard: { type: "boolean", default: false },
 				replace: { type: "boolean", default: false },
@@ -374,7 +376,9 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 			result.negativePrompt = values["negative-prompt"] as string;
 		if (values["voice-id"]) result.voiceId = values["voice-id"] as string;
 		if (values.value) result.selectValue = values.value as string;
-		if (typeof values.checked === "boolean") result.checked = values.checked;
+		if (values["no-checked"]) result.checked = false;
+		else if (typeof values.checked === "boolean")
+			result.checked = values.checked;
 		if (values.ref) result.ref = values.ref as string;
 		if (values.target) result.target = values.target as string;
 		if (values.from) result.from = values.from as string;
@@ -439,6 +443,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		});
 		if (values["key-events"]) result.keyEvents = true;
 		if (values.files) result.files = values.files as string;
+		if (values["seek-mode"]) result.seekMode = values["seek-mode"] as string;
 		if (values.force) result.force = true;
 		if (values.discard) result.discard = true;
 		if (values.replace) result.replace = true;
