@@ -617,6 +617,114 @@ describe("AgentPointerController buttons, modifiers, and click counts", () => {
 	});
 });
 
+describe("AgentPointerController typing and file drops", () => {
+	it("types with per-character key events when requested", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.typeText({
+			text: "ab",
+			keyEvents: true,
+		});
+
+		const keyEvents = harness.debuggerCommands.filter(
+			(command) => command.method === "Input.dispatchKeyEvent"
+		);
+		expect(keyEvents.map((command) => command.params?.type)).toEqual([
+			"keyDown",
+			"keyUp",
+			"keyDown",
+			"keyUp",
+		]);
+		expect(
+			harness.debuggerCommands.some(
+				(command) => command.method === "Input.insertText"
+			)
+		).toBe(false);
+		expect(result).toEqual(
+			expect.objectContaining({ characterCount: 2, method: "key-events" })
+		);
+	});
+
+	it("still inserts text by default", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.typeText({ text: "hello" });
+
+		expect(harness.debuggerCommands.at(-1)).toEqual({
+			method: "Input.insertText",
+			params: { text: "hello" },
+		});
+		expect(result.method).toBe("insert-text");
+	});
+
+	it("drops files on a target with HTML5 drag events", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.dropFiles({
+			ref: "@e12",
+			files: ["/tmp/clip.mp4", "/tmp/cover.png"],
+			modifiers: ["Alt"],
+		});
+
+		const dragEvents = harness.debuggerCommands.filter(
+			(command) => command.method === "Input.dispatchDragEvent"
+		);
+		expect(dragEvents.map((command) => command.params?.type)).toEqual([
+			"dragEnter",
+			"dragOver",
+			"drop",
+		]);
+		expect(dragEvents[2]?.params).toEqual(
+			expect.objectContaining({
+				x: 240,
+				y: 180,
+				modifiers: 1,
+				data: {
+					items: [],
+					files: ["/tmp/clip.mp4", "/tmp/cover.png"],
+					dragOperationsMask: 1,
+				},
+			})
+		);
+		expect(
+			harness.debuggerCommands.some(
+				(command) => command.params?.type === "mousePressed"
+			)
+		).toBe(false);
+		expect(result).toEqual(
+			expect.objectContaining({
+				action: "drop-files",
+				modifiers: ["Alt"],
+				dnd: expect.objectContaining({
+					backend: "cdp-dispatch-drag-event",
+					fileCount: 2,
+					intercepted: false,
+				}),
+			})
+		);
+		expect(harness.visualStates).toContainEqual(
+			expect.objectContaining({ action: "drop-files", dragging: true })
+		);
+		expect(harness.visualStates.at(-1)).toEqual(
+			expect.objectContaining({ dragging: false })
+		);
+		await harness.controller.hide();
+	});
+
+	it("refuses file drops through foreground input", async () => {
+		const harness = createPointerHarness();
+
+		await expect(
+			harness.controller.dropFiles({
+				ref: "@e12",
+				files: ["/tmp/clip.mp4"],
+				inputMode: "foreground",
+			})
+		).rejects.toThrow("require background pointer input");
+		expect(harness.inputEvents).toEqual([]);
+	});
+});
+
 describe("buildPointerMovementPath", () => {
 	it("keeps the internal path limited to pointer coordinates", () => {
 		const path = buildPointerMovementPath({
