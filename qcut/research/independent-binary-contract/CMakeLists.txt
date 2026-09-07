@@ -5,7 +5,7 @@ option(BINARY_CONTRACT_SANITIZERS "Enable fail-closed ASan and UBSan for all con
 option(BINARY_CONTRACT_NATIVE_PROBES "Compile optional macOS arm64 diagnostics" OFF)
 
 enable_testing()
-foreach(contract AGFX EDITOR CREATOR LENS)
+foreach(contract AGFX EDITOR CREATOR LENS FOG)
     set(${contract}_CONTRACT_SANITIZERS ${BINARY_CONTRACT_SANITIZERS} CACHE BOOL "" FORCE)
 endforeach()
 foreach(contract AGFX EDITOR CREATOR)
@@ -19,6 +19,7 @@ foreach(contract agfx editor creator lens)
     add_subdirectory(../independent-${contract}-contract ${contract})
 endforeach()
 add_subdirectory(../independent-soft-glow soft-glow)
+add_subdirectory(../independent-fog-contract fog)
 
 if(BINARY_CONTRACT_NATIVE_PROBES)
     add_library(cgl-pass-capture SHARED ../jianying-runtime-probe/cgl-pass-capture.cpp)
