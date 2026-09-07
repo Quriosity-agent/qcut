@@ -1,6 +1,6 @@
 # 电影柔光：算法语义契约
 
-版本：2026-09-07，v3 精度修正。资源 `7447126702137904420` / `9673f80b8e2f5a07f02f9ce1130b784a`。
+版本：2026-09-07，v4 缩放精度修正。资源 `7447126702137904420` / `9673f80b8e2f5a07f02f9ce1130b784a`。
 
 本契约定义**不透明SDR图像的固定算法图与两种显式强度模式**：默认`output-mix`保留已对照的静态场景末端混合；`ui-snapshot`按实测剪映导出快照选择内部参数。实现者可根据输入、公式、连接和约束重新实现算法，不需要把既有C++实现当作算法定义。
 
@@ -65,7 +65,7 @@ flowchart LR
 
 记 `Q(c)=round(double(clamp(c,0,1))×255)/255`，对RGBA逐通道应用。乘 255 在 double 中精确完成，再进行半值向上取整；卷积累积期间不量化。自产 CGL 的 float→RGBA8 转换已对 666,580 通道验证，旧 float 乘法有 127 项二次舍入错误，见[精度修正](../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md)。这不证明全部 shader 算术和采样逐位相同。
 
-像素中心为 `u=(x+0.5)/width`、`v=(y+0.5)/height`；输入采样位置为 `(u×inputWidth−0.5,v×inputHeight−0.5)`，按四个相邻texel双线性插值。
+像素中心为 `u=(x+0.5)/width`、`v=(y+0.5)/height`；输入采样位置为 `(u×inputWidth−0.5,v×inputHeight−0.5)`，按四个相邻texel双线性插值。Gaussian 的两次 framebuffer blit 使用独立 `blit_resize`：权重量化到 1/256，四点合并结果一次舍入到 1/16 字节，再以 float 除以 4080，RGBA8 目标最后应用 Q。半值向较高源坐标取整；反向 Y 在权重量化前处理。此配置已在 Apple M4 Pro 原生 CGL 的浮点和字节目标上验证，详见[缩放精度报告](../../docs/task/jianying-filter-runtime-research/soft-glow-blit-precision-2026-09-07.zh.md)。卷积与其他 draw 的纹理采样仍单独待解。
 
 - clamp复制边缘。Gaussian的Normal边界还会跳过超出轴UV `[0,1]` 的tap并重新归一化。
 - mirror将坐标以2为周期折返，用于当前辉光中间纹理。
@@ -73,7 +73,7 @@ flowchart LR
 - scene的Layer opacity／scale是百分数，转为0.7／1.03；其余quality、threshold为比例。
 - Gaussian半径／步长是UV单位；Glow半径／步长是工作纹理像素单位，采样时除以对应轴像素数。
 
-`.rt`格式43及采样枚举是静态证据。D634 固定场景已实际捕获每帧 12 draw + 2 blit：全部 RGBA8，包含有效 sampler object 参数和双线性 blit；完整驱动插值精度仍待确认。
+`.rt`格式43及采样枚举是静态证据。D634 固定场景已实际捕获每帧 12 draw + 2 blit：全部 RGBA8，包含有效 sampler object 参数和双线性 blit；两次 blit 的上述精度配置已验证；draw 纹理采样、其他 GPU 和未测格式仍待确认。
 
 ## 4. 固定场景的数学定义
 
