@@ -260,6 +260,11 @@ export interface ClaudePointerAPI {
 	};
 }
 
+/** Bearer token for the editor HTTP API (minted per launch when unset). */
+export interface ClaudeApiTokenAPI {
+	getApiToken: () => Promise<string | null>;
+}
+
 /** Claude editor state snapshot bridge. */
 export interface ClaudeStateAPI {
 	state: {
