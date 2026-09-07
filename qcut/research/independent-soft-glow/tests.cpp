@@ -212,7 +212,9 @@ void pipeline_detail_and_strength() {
     const Image partial = cinematic_soft_glow({chart, atlas, 0.37F, {}});
     for (std::size_t index = 0; index < chart.pixels.size(); ++index) {
         for (std::size_t channel = 0; channel < 4; ++channel) {
-            const float expected = std::round(std::lerp(chart.pixels[index][channel], full.pixels[index][channel], 0.37F) * 255) / 255;
+            const double base = std::round(static_cast<double>(chart.pixels[index][channel]) * 255);
+            const double target = std::round(static_cast<double>(full.pixels[index][channel]) * 255);
+            const float expected = static_cast<float>(std::round(base + (target - base) * static_cast<double>(0.37F))) / 255;
             near(partial.pixels[index][channel], expected);
         }
     }
