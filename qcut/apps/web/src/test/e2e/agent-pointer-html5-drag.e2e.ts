@@ -79,7 +79,10 @@ async function dropPointOnTrack({
 }: {
 	page: PageHandle;
 }): Promise<{ x: number; y: number }> {
-	const { box, viewport } = await visibleBox({ page, testId: "timeline-track" });
+	const { box, viewport } = await visibleBox({
+		page,
+		testId: "timeline-track",
+	});
 	const visibleLeft = Math.max(box.x, 0);
 	const visibleRight = Math.min(box.x + box.width, viewport.width);
 	if (visibleRight <= visibleLeft) {
@@ -170,10 +173,9 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 			});
 			expect(data?.dnd?.mimeTypes).toContain("application/x-media-item");
 
-			await expect(page.locator('[data-testid="timeline-element"]')).toHaveCount(
-				1,
-				{ timeout: 10_000 }
-			);
+			await expect(
+				page.locator('[data-testid="timeline-element"]')
+			).toHaveCount(1, { timeout: 10_000 });
 			const after = await readTimeline(page);
 			expect(after.elements).toBe(1);
 			expect(after.mediaElements).toBe(1);
