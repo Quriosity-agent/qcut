@@ -9,6 +9,29 @@ namespace lens_contract::diagnostic {
 inline constexpr char smoother_constructor[] =
     "_ZN4LENS9ALGORITHM10OnlineMove12RectSmootherC1Ev";
 
+template <class T> T read_temporal_crop_field(const void* object, std::size_t offset) {
+  T result;
+  std::memcpy(&result, static_cast<const std::uint8_t*>(object) + offset, sizeof(T));
+  return result;
+}
+inline TemporalCropState read_temporal_crop_state(const void* object) {
+  TemporalCropState result;
+  result.frame_width = read_temporal_crop_field<std::int32_t>(object, 0);
+  result.frame_height = read_temporal_crop_field<std::int32_t>(object, 4);
+  result.history_limit = read_temporal_crop_field<float>(object, 8);
+  result.motion_fraction = read_temporal_crop_field<float>(object, 12);
+  result.center_x = read_temporal_crop_field<float>(object, 16);
+  result.center_y = read_temporal_crop_field<float>(object, 20);
+  result.horizontal_extent = read_temporal_crop_field<float>(object, 24);
+  const auto first = read_temporal_crop_field<std::uint8_t>(object, 28);
+  require(first <= 1, "Unexpected first-frame representation");
+  result.first_frame = first != 0;
+  result.processed_frames = read_temporal_crop_field<std::uint32_t>(object, 32);
+  result.output = {read_temporal_crop_field<std::int32_t>(object, 36), read_temporal_crop_field<std::int32_t>(object, 40),
+                   read_temporal_crop_field<std::int32_t>(object, 44), read_temporal_crop_field<std::int32_t>(object, 48)};
+  return result;
+}
+
 class NativeTemporalCrop {
  public:
   explicit NativeTemporalCrop(const Oracle& oracle)
@@ -45,21 +68,7 @@ class NativeTemporalCrop {
     return output;
   }
   TemporalCropState state() const {
-    TemporalCropState result;
-    result.frame_width = read<std::int32_t>(0);
-    result.frame_height = read<std::int32_t>(4);
-    result.history_limit = read<float>(8);
-    result.motion_fraction = read<float>(12);
-    result.center_x = read<float>(16);
-    result.center_y = read<float>(20);
-    result.horizontal_extent = read<float>(24);
-    const auto first = read<std::uint8_t>(28);
-    require(first <= 1, "Unexpected first-frame representation");
-    result.first_frame = first != 0;
-    result.processed_frames = read<std::uint32_t>(32);
-    result.output = {read<std::int32_t>(36), read<std::int32_t>(40),
-                     read<std::int32_t>(44), read<std::int32_t>(48)};
-    return result;
+    return read_temporal_crop_state(storage_.data() + guard_size);
   }
   void guards() const {
     for (std::size_t index = 0; index < storage_.size(); ++index) {
@@ -81,10 +90,6 @@ class NativeTemporalCrop {
   void (*process_)(void*, int, int, int, int, int, int, float, float);
   CropFunction crop_;
   void* data() { return storage_.data() + guard_size; }
-  template <class T> T read(std::size_t offset) const {
-    T result;
-    std::memcpy(&result, storage_.data() + guard_size + offset, sizeof(T));
-    return result;
-  }
+
 };
 }  // namespace lens_contract::diagnostic
