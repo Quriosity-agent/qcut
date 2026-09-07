@@ -24,7 +24,7 @@ const TARGET_DIR = "resources/default-skills";
 const CODEX_TARGET_DIR = ".agents/skills";
 
 // Skills to sync (add new bundled skills here)
-const BUNDLED_SKILLS = ["ai-content-pipeline", "native-cli", "qcut-toolkit"];
+const BUNDLED_SKILLS = ["native-cli", "qcut-toolkit"];
 const CODEX_SKILLS = [
 	"codex-delegate",
 	"libtv-skill",

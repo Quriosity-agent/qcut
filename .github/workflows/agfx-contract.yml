@@ -1,0 +1,76 @@
+name: Independent binary C++ contracts
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - qcut/research/independent-*-contract/**
+      - qcut/research/independent-soft-glow/**
+      - qcut/research/second-filter-native-reference/**
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
+      - qcut/research/jianying-runtime-probe/cgl-image-target.hpp
+      - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
+      - qcut/research/jianying-runtime-probe/agfx-*
+      - qcut/research/jianying-runtime-probe/graphics-*.h
+      - .github/workflows/agfx-contract.yml
+  push:
+    branches: [master]
+    paths:
+      - qcut/research/independent-*-contract/**
+      - qcut/research/independent-soft-glow/**
+      - qcut/research/second-filter-native-reference/**
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
+      - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
+      - qcut/research/jianying-runtime-probe/cgl-image-target.hpp
+      - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
+      - qcut/research/jianying-runtime-probe/agfx-*
+      - qcut/research/jianying-runtime-probe/graphics-*.h
+      - .github/workflows/agfx-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: C++ contract (${{ matrix.runner }}, sanitizers=${{ matrix.sanitizers }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            sanitizers: 'OFF'
+          - runner: macos-latest
+            sanitizers: 'OFF'
+          - runner: windows-latest
+            sanitizers: 'OFF'
+          - runner: ubuntu-24.04
+            sanitizers: 'ON'
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure independent C++
+        run: >-
+          cmake -S qcut/research/independent-binary-contract -B build-binary-contract
+          -DCMAKE_BUILD_TYPE=Release
+          -DBINARY_CONTRACT_SANITIZERS=${{ matrix.sanitizers }}
+      - name: Build
+        run: cmake --build build-binary-contract --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build-binary-contract --build-config Release --output-on-failure
+      - name: Compile macOS arm64 diagnostic without loading private libraries
+        if: runner.os == 'macOS'
+        run: |
+          cmake -S qcut/research/independent-binary-contract -B build-native-contract -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DBINARY_CONTRACT_NATIVE_PROBES=ON
+          cmake --build build-native-contract --config Release --parallel 2
+      - name: Verify CGL observer with original fixtures
+        if: runner.os == 'macOS'
+        run: python3 qcut/research/jianying-runtime-probe/cgl-pass-capture-test.py --output-dir "$RUNNER_TEMP/cgl-observer-test"
+      - name: Verify explicit CGL conversion profile and upload/readback
+        if: runner.os == 'macOS'
+        run: |
+          build-native-contract/soft-glow/soft-glow-native-quantization
+          build-native-contract/soft-glow/soft-glow-native-quantization --software

@@ -4,6 +4,7 @@
 #include "glow.hpp"
 #include "layer.hpp"
 #include "lut.hpp"
+#include "output_mix.hpp"
 
 #include <cmath>
 #include <stdexcept>
@@ -24,43 +25,19 @@ std::string_view intensity_mode_name(IntensityMode mode) {
     throw std::invalid_argument("unsupported intensity mode");
 }
 
-Image cinematic_soft_glow(const PipelineRequest& request) {
-    const auto& [source, lut, intensity, sink, intensity_mode] = request;
-    intensity_mode_name(intensity_mode);
-    const bool ui_snapshot = intensity_mode == IntensityMode::ui_snapshot;
-    validate_image(source);
-    validate_image(lut);
-    if (lut.width != 512 || lut.height != 512) {
-        throw std::invalid_argument("pipeline LUT must be 512 by 512");
-    }
+PipelineParameters pipeline_parameters(const PipelineParameterRequest& request) {
+    const float intensity = request.intensity;
+    intensity_mode_name(request.mode);
+    const bool ui_snapshot = request.mode == IntensityMode::ui_snapshot;
     if (!std::isfinite(intensity) || intensity < 0 || intensity > 1) {
         throw std::invalid_argument("pipeline intensity must be in [0, 1]");
     }
-    for (const auto& pixel : source.pixels) {
-        if (pixel[3] != 1) {
-            throw std::invalid_argument("pipeline currently requires opaque source pixels");
-        }
-    }
-    const auto record = [&](std::string_view name, const Image& stage) {
-        if (sink) sink(name, stage);
-    };
-    record("00-input", source);
-    if (!ui_snapshot && intensity == 0) {
-        record("06-output", source);
-        return source;
-    }
-
-    const auto blurred = gaussian_blur({source, GaussianParams{}, sink});
-    record("01-gaussian", blurred);
     LayerParams soft_light;
     soft_light.mode = LayerBlend::soft_light;
     soft_light.type = LayerType::precomp;
     soft_light.opacity = 0.7F;
     soft_light.scale_x = 1.03F;
     soft_light.scale_y = 1.03F;
-    const auto base = composite_layer({source, blurred, soft_light});
-    record("02-soft-light", base);
-
     GlowParameters glow_parameters;
     glow_parameters.threshold = 0.84F;
     glow_parameters.brightness = 2.4F;
@@ -76,27 +53,49 @@ Image cinematic_soft_glow(const PipelineRequest& request) {
         glow_parameters.threshold = 1 - 0.175F * intensity;
         glow_parameters.brightness = 3 * intensity;
     }
-    const auto glowing = glow(base, glow_parameters, sink);
-    record("03-glow", glowing);
-    const auto graded = apply_lut(glowing, lut, ui_snapshot ? 0.8F * intensity : 0.8F);
-    record("04-lut", graded);
-
     LayerParams normal;
     normal.opacity = 0.64F;
-    const auto composed = composite_layer({base, graded, normal});
+    return {soft_light, glow_parameters, ui_snapshot ? 0.8F * intensity : 0.8F, normal};
+}
+
+Image cinematic_soft_glow(const PipelineRequest& request) {
+    const auto& [source, lut, intensity, sink, intensity_mode] = request;
+    if (!std::isfinite(intensity) || intensity < 0 || intensity > 1) {
+        throw std::invalid_argument("pipeline intensity must be in [0, 1]");
+    }
+    const auto parameters = pipeline_parameters({static_cast<float>(intensity), intensity_mode});
+    const bool ui_snapshot = intensity_mode == IntensityMode::ui_snapshot;
+    validate_image(source);
+    validate_image(lut);
+    if (lut.width != 512 || lut.height != 512) {
+        throw std::invalid_argument("pipeline LUT must be 512 by 512");
+    }
+    for (const auto& pixel : source.pixels) {
+        if (pixel[3] != 1) throw std::invalid_argument("pipeline currently requires opaque source pixels");
+    }
+    const auto record = [&](std::string_view name, const Image& stage) {
+        if (sink) sink(name, stage);
+    };
+    record("00-input", source);
+    if (!ui_snapshot && intensity == 0) {
+        record("06-output", source);
+        return source;
+    }
+    const auto blurred = gaussian_blur({source, GaussianParams{}, sink});
+    record("01-gaussian", blurred);
+    const auto base = composite_layer({source, blurred, parameters.soft_light});
+    record("02-soft-light", base);
+    const auto glowing = glow(base, parameters.glow, sink);
+    record("03-glow", glowing);
+    const auto graded = apply_lut(glowing, lut, parameters.lut_opacity);
+    record("04-lut", graded);
+    const auto composed = composite_layer({base, graded, parameters.normal});
     record("05-normal", composed);
     if (ui_snapshot) {
         record("06-output", composed);
         return composed;
     }
-    Image output(source.width, source.height);
-    for (std::size_t index = 0; index < output.pixels.size(); ++index) {
-        Pixel pixel = source.pixels[index];
-        for (std::size_t channel = 0; channel < 4; ++channel) {
-            pixel[channel] = std::lerp(pixel[channel], composed.pixels[index][channel], intensity);
-        }
-        output.pixels[index] = rgba8(pixel);
-    }
+    const Image output = mix_output({source, composed, intensity});
     record("06-output", output);
     return output;
 }

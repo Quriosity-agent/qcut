@@ -33,6 +33,7 @@ struct SampleRequest {
 using StageSink = std::function<void(std::string_view, const Image&)>;
 
 float saturate(float value);
+std::uint8_t quantize_unorm8(float value);
 Pixel rgba8(Pixel value);
 Pixel sample(const SampleRequest& request);
 Image resize(const Image& source, int width, int height, Border border = Border::clamp);

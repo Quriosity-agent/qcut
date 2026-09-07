@@ -212,7 +212,9 @@ void pipeline_detail_and_strength() {
     const Image partial = cinematic_soft_glow({chart, atlas, 0.37F, {}});
     for (std::size_t index = 0; index < chart.pixels.size(); ++index) {
         for (std::size_t channel = 0; channel < 4; ++channel) {
-            const float expected = std::round(std::lerp(chart.pixels[index][channel], full.pixels[index][channel], 0.37F) * 255) / 255;
+            const double base = std::round(static_cast<double>(chart.pixels[index][channel]) * 255);
+            const double target = std::round(static_cast<double>(full.pixels[index][channel]) * 255);
+            const float expected = static_cast<float>(std::round(base + (target - base) * static_cast<double>(0.37F))) / 255;
             near(partial.pixels[index][channel], expected);
         }
     }
@@ -271,7 +273,7 @@ void pipeline_intensity_modes() {
     same(render(1), cinematic_soft_glow({chart, atlas, 1, {}, IntensityMode::output_mix}));
 
     const Image gray(1, 1, rgba8({0.84F, 0.84F, 0.84F, 1}));
-    for (const auto [intensity, cutoff] : {std::pair{0.37F, 0.93525F}, {0.8F, 0.86F}, {0.81F, 0.84F}}) {
+    for (const auto& [intensity, cutoff] : {std::pair{0.37F, 0.93525F}, {0.8F, 0.86F}, {0.81F, 0.84F}}) {
         stages.clear();
         cinematic_soft_glow({gray, atlas, intensity, sink, IntensityMode::ui_snapshot});
         const float base = stages.at("02-soft-light").at(0, 0)[0];

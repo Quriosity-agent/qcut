@@ -5,6 +5,26 @@ and text-effect runtime. It contains independently written parsers and behaviora
 models, but no Jianying binaries, assets, source code, or copied proprietary
 implementation.
 
+The 2026-09-07 [independent C++ build](../independent-binary-contract/README.zh.md)
+now contains six projects. Soft Glow and Fog are two complete filter algorithm
+chains; AGFX, videoeditor, VECreator and Lens provide bounded contracts or image
+primitives. This is **0/6 whole-library reconstructions**, not six rewritten SDKs.
+The new Fog chain uses unchanged-package Swing numeric events as its native
+reference: 30 isolated processes, 210 output requests, and four distinct strength
+outputs per fixture. Its 12 CPU comparisons pass a declared pixel tolerance;
+the chain is not claimed byte-exact; see the [final Fog verification](../../docs/task/jianying-filter-runtime-research/fog-cpp-verification-2026-09-07.zh.md). The generic graph, Fog CPU product adapter,
+Preview/Export and new UI E2E remain unfinished. Historical Fog Metal integration
+does not establish these CPU results.
+
+The current batch also adds a real Video-object nonlinear-property subdomain;
+it does not implement complete graph dispatch or playback seek. The combined suite contains 40 CTests. Local Release (including all optional
+native-probe builds) and fail-closed ASan/UBSan each pass 40/40. Remote CI for the
+new commit remains pending push and verification. See the [execution record](../../docs/task/jianying-filter-runtime-research/binary-cpp-execution-2026-09-07.zh.md)
+and [remaining-work ledger](../../docs/task/jianying-filter-runtime-research/binary-cpp-reconstruction-backlog-2026-09-06.zh.md)
+for the eight open work packages and the distinction between algorithms,
+native probes and product validation. Vendor libraries, raw output, LUTs and
+package sources remain outside the repository.
+
 The static format and algorithm recovery notes live in
 [`DECOMPILATION.md`](./DECOMPILATION.md). The accompanying tools parse recovered
 metadata without bundling proprietary fixtures:

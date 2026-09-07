@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.16)
+project(independent_agfx_contract LANGUAGES CXX)
+
+option(AGFX_CONTRACT_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)
+option(AGFX_CONTRACT_NATIVE_PROBE "Build the optional macOS arm64 diagnostic probe" OFF)
+
+add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp)
+target_compile_features(agfx_contract PUBLIC cxx_std_20)
+target_include_directories(agfx_contract PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_executable(agfx-format-tests pixel_format_tests.cpp)
+target_link_libraries(agfx-format-tests PRIVATE agfx_contract)
+add_executable(agfx-sampler-tests sampler_tests.cpp)
+target_link_libraries(agfx-sampler-tests PRIVATE agfx_contract)
+add_executable(agfx-texture-tests texture_sample_tests.cpp)
+target_link_libraries(agfx-texture-tests PRIVATE agfx_contract)
+
+set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests)
+
+if(AGFX_CONTRACT_NATIVE_PROBE)
+    if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        message(FATAL_ERROR "The private diagnostic ABI is only verified on macOS arm64")
+    endif()
+    enable_language(OBJCXX)
+    add_executable(agfx-native-probe ../jianying-runtime-probe/agfx-format-probe.mm)
+    set_target_properties(agfx-native-probe PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED YES)
+    target_link_libraries(agfx-native-probe PRIVATE agfx_contract "-framework Foundation" "-framework Metal")
+    target_compile_options(agfx-native-probe PRIVATE -fobjc-arc -Wno-deprecated-declarations)
+    list(APPEND contract_targets agfx-native-probe)
+    add_executable(agfx-texture-probe
+        ../jianying-runtime-probe/agfx-texture-probe.mm
+        ../jianying-runtime-probe/agfx-texture-runtime.mm
+        ../jianying-runtime-probe/agfx-texture-kernel.mm)
+    set_target_properties(agfx-texture-probe PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED YES)
+    target_link_libraries(agfx-texture-probe PRIVATE agfx_contract "-framework Foundation" "-framework Metal" "-framework CoreVideo")
+    target_compile_options(agfx-texture-probe PRIVATE -fobjc-arc -Wno-deprecated-declarations)
+    list(APPEND contract_targets agfx-texture-probe)
+endif()
+
+foreach(target IN LISTS contract_targets)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /WX)
+        if(AGFX_CONTRACT_SANITIZERS)
+            message(FATAL_ERROR "Combined ASan/UBSan requires Clang or GCC")
+        endif()
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        if(AGFX_CONTRACT_SANITIZERS)
+            target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+            target_link_options(${target} PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all)
+        endif()
+    endif()
+endforeach()
+
+enable_testing()
+add_test(NAME agfx-pixel-format-contract COMMAND agfx-format-tests)
+add_test(NAME agfx-sampler-contract COMMAND agfx-sampler-tests)
+add_test(NAME agfx-texture-contract COMMAND agfx-texture-tests)

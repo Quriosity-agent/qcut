@@ -6,7 +6,7 @@
 
 ## 图像与中间结果
 
-每像素四个归一化浮点数，数据顺序为 top-down RGBA。每次写入模拟的 RGBA8 渲染目标时执行 `round(clamp(c,0,1) × 255) / 255`。内部运算保留浮点精度；不把所有计算统一改成整数。
+每像素四个归一化浮点数，数据顺序为 top-down RGBA。每次写入模拟的 RGBA8 渲染目标时执行 `round(double(clamp(c,0,1)) × 255) / 255`，先精确乘 255 再舍入，避免 float 中间乘法的二次舍入。内部运算保留浮点精度；不把所有计算统一改成整数。
 
 归一化坐标 `(u,v)` 对应像素坐标 `(u × width − 0.5, v × height − 0.5)`。双线性插值在相邻四点进行；mirror 使用周期为 2 的折返坐标，clamp 复制边缘，transparent 在边界外返回零。
 
@@ -48,4 +48,4 @@ CLI默认 `output-mix` 在完整效果之后执行用户强度混合。显式 `u
 
 ## 精度范围
 
-CPU 使用标准浮点数学函数与显式RGBA8量化。GPU纹理插值、着色器mediump、浮点运算重排及量化实现可能造成数值差异；当前没有逐Pass原生截帧，尚不能把剩余误差唯一归因于某一项。具体已测误差见 [README.zh.md](README.zh.md)，不能把“可能原因”写成已定位根因。
+CPU 使用标准浮点数学函数与显式RGBA8量化。GPU纹理插值、着色器mediump、浮点运算重排及量化实现可能造成数值差异；已有逐 Pass 原生截帧与独立上游重放，并验证了 UNORM 转换原语；完整剩余误差仍不能唯一归因于某一项，见[精度报告](../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md)。具体已测误差见 [README.zh.md](README.zh.md)，不能把“可能原因”写成已定位根因。

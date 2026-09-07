@@ -15,6 +15,8 @@ interface SyncSkillsForClaudeOptions {
 	bundledSkillsPath?: string;
 	documentsPath?: string;
 	managedSkillFolders?: readonly string[];
+	/** Retired bundled skills whose untouched mirror copies may be removed. */
+	retiredSkillFolders?: readonly string[];
 }
 
 export interface SkillsSyncForClaudeResult {
@@ -26,11 +28,13 @@ export interface SkillsSyncForClaudeResult {
 	error?: string;
 }
 
-const MANAGED_SKILL_FOLDERS = [
-	"qcut-toolkit",
-	"native-cli",
-	"ai-content-pipeline",
-] as const;
+const MANAGED_SKILL_FOLDERS = ["qcut-toolkit", "native-cli"] as const;
+
+/**
+ * Bundled skills that were retired. A project's mirror copy is removed only
+ * while it still matches what an earlier sync wrote, so user edits survive.
+ */
+const RETIRED_SKILL_FOLDERS = ["ai-content-pipeline"] as const;
 
 const SYNC_MANIFEST_VERSION = 1;
 const SYNC_MANIFEST_FILENAME = ".skills-sync-manifest.json";
@@ -209,11 +213,13 @@ async function syncCanonicalToClaudeMirror({
 	claudeMirrorSkillsPath,
 	manifestPath,
 	managedSkillFolders,
+	retiredSkillFolders,
 }: {
 	canonicalSkillsPath: string;
 	claudeMirrorSkillsPath: string;
 	manifestPath: string;
 	managedSkillFolders: readonly string[];
+	retiredSkillFolders: readonly string[];
 }): Promise<{
 	copied: number;
 	skipped: number;
@@ -269,9 +275,10 @@ async function syncCanonicalToClaudeMirror({
 	const previouslyManagedFolders = previousManifest?.managedFolders || [];
 	for (const oldFolderName of previouslyManagedFolders) {
 		const isStillManaged = managedSkillFolders.includes(oldFolderName);
+		const isRetired = retiredSkillFolders.includes(oldFolderName);
 		const existsInNextManifest =
 			Object.keys(nextFolderHashes).includes(oldFolderName);
-		if (!isStillManaged || existsInNextManifest) {
+		if (existsInNextManifest || !(isStillManaged || isRetired)) {
 			continue;
 		}
 
@@ -279,6 +286,18 @@ async function syncCanonicalToClaudeMirror({
 		const hasStaleFolder = await pathExists({ targetPath: staleTargetPath });
 		if (!hasStaleFolder) {
 			continue;
+		}
+
+		if (isRetired && !isStillManaged) {
+			// Only remove the copy an earlier sync wrote; a user-edited folder
+			// no longer belongs to us.
+			const recordedHash = previousManifest?.folderHashes[oldFolderName];
+			const currentHash = await hashDirectory({
+				directoryPath: staleTargetPath,
+			});
+			if (!recordedHash || currentHash !== recordedHash) {
+				continue;
+			}
 		}
 
 		await fs.rm(staleTargetPath, { recursive: true, force: true });
@@ -331,6 +350,7 @@ export async function syncSkillsForClaudeProject({
 	bundledSkillsPath,
 	documentsPath,
 	managedSkillFolders = MANAGED_SKILL_FOLDERS,
+	retiredSkillFolders = RETIRED_SKILL_FOLDERS,
 }: SyncSkillsForClaudeOptions): Promise<SkillsSyncForClaudeResult> {
 	const result: SkillsSyncForClaudeResult = {
 		synced: false,
@@ -387,6 +407,7 @@ export async function syncSkillsForClaudeProject({
 			claudeMirrorSkillsPath,
 			manifestPath,
 			managedSkillFolders,
+			retiredSkillFolders,
 		});
 		result.copied += mirrorResult.copied;
 		result.skipped += mirrorResult.skipped;
