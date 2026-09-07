@@ -1,4 +1,5 @@
 #include "native_library.hpp"
+#include "native_output.hpp"
 #include "keyframe.hpp"
 #include "test_support.hpp"
 #include "value_state.hpp"
@@ -15,27 +16,7 @@ namespace {
 
 using editor_test::require;
 
-class NativeOutputScope {
- public:
-  NativeOutputScope() : saved_stdout_(dup(STDOUT_FILENO)) {
-    if (saved_stdout_ < 0) {
-      throw std::runtime_error("Cannot preserve diagnostic stdout");
-    }
-    if (dup2(STDERR_FILENO, STDOUT_FILENO) < 0) {
-      close(saved_stdout_);
-      throw std::runtime_error("Cannot isolate native initializer output");
-    }
-  }
-  ~NativeOutputScope() {
-    std::fflush(stdout);
-    dup2(saved_stdout_, STDOUT_FILENO);
-    close(saved_stdout_);
-  }
-  NativeOutputScope(const NativeOutputScope&) = delete;
-  NativeOutputScope& operator=(const NativeOutputScope&) = delete;
- private:
-  int saved_stdout_;
-};
+using editor_probe::NativeOutputScope;
 
 struct alignas(16) GuardedObject {
   std::array<std::uint8_t, 16> before;
