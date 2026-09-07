@@ -19,7 +19,8 @@ export type AgentPointerAction =
 	| "double-click"
 	| "right-click"
 	| "drag"
-	| "scroll";
+	| "scroll"
+	| "drop-files";
 
 export interface AgentPointerPoint {
 	x: number;
@@ -129,6 +130,8 @@ export interface AgentKeyboardPressRequest extends AgentPointerInputOptions {
 export interface AgentKeyboardTypeRequest extends AgentPointerInputOptions {
 	text: string;
 	intervalMs?: number;
+	/** Dispatch keyDown/keyUp per character so keydown handlers fire, instead of inserting text. */
+	keyEvents?: boolean;
 }
 
 export interface AgentKeyboardResult {
@@ -138,6 +141,17 @@ export interface AgentKeyboardResult {
 	windowFocused: boolean;
 	keyCount?: number;
 	characterCount?: number;
+	/** How typed text reached the page. */
+	method?: "insert-text" | "key-events";
+}
+
+/** Drop local files onto a target as an external HTML5 file drop. */
+export interface AgentPointerDropFilesRequest
+	extends AgentPointerTarget,
+		AgentPointerInputOptions,
+		AgentPointerModifierOptions {
+	files: string[];
+	durationMs?: number;
 }
 
 export interface AgentPointerScrollRequest
