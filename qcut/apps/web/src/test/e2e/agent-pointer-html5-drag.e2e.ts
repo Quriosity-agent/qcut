@@ -167,7 +167,7 @@ function readTimeline(page: PageHandle) {
 
 isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 	isolatedElectronTest(
-		"drops a media item, hit-tests, multi-selects, zooms, drops a file, survives page zoom, and scrubs the playhead through the CLI",
+		"drives drops, hit-tests, multi-select, zoom, file drops, page zoom, playhead scrubs, and window ids through the CLI",
 		async ({ page, apiPort, electronApp }) => {
 			isolatedElectronTest.setTimeout(180_000);
 			await createTestProject(page, "Pointer HTML5 Drag");
@@ -338,6 +338,44 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 				path: resolve(evidenceDirectory, "after-multiselect-zoom.png"),
 			});
 
+			// Window selection: list windows, then target the first one by id.
+			const windows = editorData<{
+				count?: number;
+				windows?: Array<{ id: number; title: string; main: boolean }>;
+			}>(await runPointer({ apiPort, args: ["editor:windows"] }));
+			expect(windows?.count ?? 0).toBeGreaterThanOrEqual(1);
+			const mainWindow = windows?.windows?.find((entry) => entry.main);
+			expect(mainWindow?.id, JSON.stringify(windows)).toBeGreaterThan(0);
+			const scopedHit = editorData<PointerHitTestData>(
+				await runPointer({
+					apiPort,
+					args: [
+						"editor:pointer:hit-test",
+						"--x",
+						String(firstClip.center.x),
+						"--y",
+						String(firstClip.center.y),
+						"--window-id",
+						String(mainWindow?.id),
+					],
+				})
+			);
+			expect(scopedHit?.hit, JSON.stringify(scopedHit)).toBe(true);
+			await expect(
+				runQCutPipelineCli({
+					apiPort,
+					args: [
+						"editor:pointer:hit-test",
+						"--x",
+						"10",
+						"--y",
+						"10",
+						"--window-id",
+						"999999",
+					],
+				})
+			).rejects.toThrow(/No QCut window with id 999999/);
+
 			// External file drop: drop a PNG on the media library through CDP DragData.files.
 			const mediaItemsBefore = await page
 				.locator('[data-testid="media-item"]')
@@ -466,6 +504,7 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 						zoomedHit,
 						seek,
 						currentTimeAfterSeek: currentTime,
+						windows,
 					},
 					null,
 					2
