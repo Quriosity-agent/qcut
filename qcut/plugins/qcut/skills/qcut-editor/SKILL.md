@@ -247,8 +247,13 @@ qcut editor demo run \
   --record demo.mp4 \
   --speed 1.5 \
   --skip-idle \
+  --force \
   --json
 ```
+
+`demo run`, `pointer sequence`, and keyboard input are confirm-tier actions:
+they prompt in an interactive terminal and need `--force` (after the user has
+agreed) when run non-interactively.
 
 Prefer a version 2 plan for repeatable recording:
 
