@@ -454,6 +454,13 @@ describe("AgentPointerController HTML5 drag-and-drop", () => {
 		expect(types.some((type) => type.startsWith("drag:"))).toBe(false);
 		const pressed = types.indexOf("mouse:mousePressed");
 		const released = types.indexOf("mouse:mouseReleased");
+		// Interception is switched off before the mouse fallback finishes the
+		// gesture, so Chromium handles the remaining drag natively.
+		const disabled = types.indexOf("intercept:false");
+		expect(disabled).toBeGreaterThan(pressed);
+		expect(disabled).toBeLessThan(released);
+		expect(types.slice(disabled + 1, released)).toContain("mouse:mouseMoved");
+		expect(types.filter((type) => type === "intercept:false")).toHaveLength(1);
 		expect(
 			types
 				.slice(pressed + 1, released)
