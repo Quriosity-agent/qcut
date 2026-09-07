@@ -8,6 +8,7 @@
  */
 
 import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
+import { readHiddenInput } from "./interactive.js";
 import { createEditorClient } from "../editor/editor-api-client.js";
 import type { EditorApiClient } from "../editor/editor-api-client.js";
 import {
@@ -967,7 +968,8 @@ async function handleScreenshotCommand(
  * - `activate` — set token and activate license
  * - `logout` — clear the auth token
  */
-async function handleAuthCommand(
+/** Exported for tests; dispatched from handleEditorCommand. */
+export async function handleAuthCommand(
 	client: EditorApiClient,
 	options: CLIRunOptions
 ): Promise<CLIResult> {
@@ -976,29 +978,38 @@ async function handleAuthCommand(
 
 	switch (action) {
 		case "token": {
-			if (options.set) {
+			const newToken = options.fromStdin
+				? await readAuthTokenInput()
+				: options.set;
+			if (options.fromStdin && !newToken) {
+				return { success: false, error: "No auth token was entered" };
+			}
+			if (newToken) {
 				const data = await client.post("/api/claude/auth/token", {
-					token: options.set,
+					token: newToken,
 				});
 				return { success: true, data };
 			}
 			const data = await client.get<{ token: string; authenticated: boolean }>(
 				"/api/claude/auth/token"
 			);
-			if (!options.reveal && data.token && data.token.length > 8) {
-				data.token =
-					data.token.substring(0, 4) +
-					"..." +
-					data.token.substring(data.token.length - 4);
+			if (!options.reveal && data.token) {
+				data.token = maskAuthToken(data.token);
 			}
 			return { success: true, data };
 		}
 		case "activate": {
-			if (!options.token) {
-				return { success: false, error: "Missing --token" };
+			const token = options.fromStdin
+				? await readAuthTokenInput()
+				: options.token;
+			if (!token) {
+				return {
+					success: false,
+					error: "Missing --token (or pass --from-stdin to enter it hidden)",
+				};
 			}
 			const data = await client.post("/api/claude/auth/activate", {
-				token: options.token,
+				token,
 			});
 			return { success: true, data };
 		}
@@ -1012,4 +1023,17 @@ async function handleAuthCommand(
 				error: `Unknown auth action: ${action}. Available: token, activate, logout`,
 			};
 	}
+}
+
+/** Keep the token off argv: hidden prompt on a TTY, raw stdin when piped. */
+async function readAuthTokenInput(): Promise<string> {
+	return (await readHiddenInput("Enter auth token: ")).trim();
+}
+
+/** Show only the ends of long tokens and nothing of short ones. */
+function maskAuthToken(token: string): string {
+	if (token.length > 8) {
+		return `${token.substring(0, 4)}...${token.substring(token.length - 4)}`;
+	}
+	return "****";
 }
