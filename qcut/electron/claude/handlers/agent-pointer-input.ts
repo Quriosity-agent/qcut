@@ -367,13 +367,19 @@ export class AgentPointerInput {
 		modifiers?: AgentKeyboardModifier[];
 	}): Promise<void> {
 		if (session.inputMode === "foreground") {
+			const zoom = this.zoomFactor();
 			const event: MouseInputEvent = {
 				type,
-				x: point.x,
-				y: point.y,
+				x: Math.round(point.x * zoom),
+				y: Math.round(point.y * zoom),
 				...(button ? { button } : {}),
 				...(typeof clickCount === "number" ? { clickCount } : {}),
-				...(movement ? { movementX: movement.x, movementY: movement.y } : {}),
+				...(movement
+					? {
+							movementX: Math.round(movement.x * zoom),
+							movementY: Math.round(movement.y * zoom),
+						}
+					: {}),
 				...(modifiers.length > 0
 					? { modifiers: electronModifiers(modifiers) }
 					: {}),
@@ -523,10 +529,11 @@ export class AgentPointerInput {
 		modifiers?: AgentKeyboardModifier[];
 	}): Promise<void> {
 		if (session.inputMode === "foreground") {
+			const zoom = this.zoomFactor();
 			this.win.webContents.sendInputEvent({
 				type: "mouseWheel",
-				x: point.x,
-				y: point.y,
+				x: Math.round(point.x * zoom),
+				y: Math.round(point.y * zoom),
 				deltaX,
 				deltaY,
 				canScroll: true,
@@ -617,22 +624,72 @@ export class AgentPointerInput {
 		});
 	}
 
+	/**
+	 * Page zoom factor. CDP coordinates and snapshot bounds are CSS pixels,
+	 * while Electron's sendInputEvent and getContentSize use device-independent
+	 * pixels, so foreground input and viewport checks scale by this value.
+	 */
+	private zoomFactor(): number {
+		const webContents = this.win.webContents as {
+			getZoomFactor?: () => number;
+		};
+		const zoom =
+			typeof webContents.getZoomFactor === "function"
+				? webContents.getZoomFactor()
+				: 1;
+		return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+	}
+
+	/** Type one character with real key events instead of text insertion. */
+	async sendTextKey({
+		session,
+		character,
+	}: {
+		session: AgentPointerInputSession;
+		character: string;
+	}): Promise<void> {
+		const key =
+			character === "\n" || character === "\r"
+				? "Enter"
+				: character === "\t"
+					? "Tab"
+					: character;
+		if (session.inputMode === "foreground") {
+			const webContents = this.win.webContents;
+			webContents.sendInputEvent({ type: "keyDown", keyCode: key });
+			if (key.length === 1) {
+				webContents.sendInputEvent({ type: "char", keyCode: key });
+			}
+			webContents.sendInputEvent({ type: "keyUp", keyCode: key });
+			return;
+		}
+		await this.sendKey({ session, type: "keyDown", key });
+		await this.sendKey({ session, type: "keyUp", key });
+	}
+
 	isWindowFocused(): boolean {
 		return !this.win.isDestroyed() && this.win.isFocused();
 	}
 
-	assertInsideViewport({ point }: { point: AgentPointerPoint }): void {
+	/** Viewport size in CSS pixels, the coordinate space pointer targets use. */
+	private cssViewport(): { width: number; height: number } {
 		const [width, height] = this.win.getContentSize();
+		const zoom = this.zoomFactor();
+		return { width: width / zoom, height: height / zoom };
+	}
+
+	assertInsideViewport({ point }: { point: AgentPointerPoint }): void {
+		const { width, height } = this.cssViewport();
 		if (point.x < 0 || point.y < 0 || point.x >= width || point.y >= height) {
 			throw new AgentPointerError({
-				message: `Pointer coordinates (${point.x}, ${point.y}) are outside the editor viewport (${width} x ${height}).`,
+				message: `Pointer coordinates (${point.x}, ${point.y}) are outside the editor viewport (${Math.round(width)} x ${Math.round(height)} CSS px at zoom ${this.zoomFactor()}).`,
 				statusCode: 400,
 			});
 		}
 	}
 
 	getViewportCenter(): AgentPointerPoint {
-		const [width, height] = this.win.getContentSize();
+		const { width, height } = this.cssViewport();
 		return {
 			x: Math.max(0, Math.round(width / 2)),
 			y: Math.max(0, Math.round(height / 2)),
