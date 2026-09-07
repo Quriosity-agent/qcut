@@ -149,6 +149,8 @@ control listens for keydown instead of input.
 `editor pointer drag --from timeline.playhead --to-time <s>` scrubs the real
 playhead along the ruler scale and reports `achievedTime`; pass
 `--seek-mode api` to seek through the API with a display-only animation.
+`editor windows --json` lists open windows; pass `--window-id <id>` when the
+target is not the first window.
 
 ## Apply and adjust a video speed curve
 
