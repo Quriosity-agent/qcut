@@ -8,6 +8,7 @@ import {
 	resolveEditorInstance,
 } from "../native-pipeline/cli/instance-selection.js";
 import type { CLIRunOptions } from "../native-pipeline/cli/cli-runner/types.js";
+import { writeClaudeInstanceInfo } from "../claude/http/claude-api-token.js";
 
 function options(
 	command: string,
@@ -62,6 +63,39 @@ describe("QCut instance selection", () => {
 
 		expect(instances.map((instance) => instance.port)).toEqual([8765, 8878]);
 		expect(instances[1].appVersion).toBe("test-8878");
+	});
+
+	it("probes ports published by running editors with their bearer token", async () => {
+		const stateDir = mkdtempSync(join(tmpdir(), "qcut-instances-"));
+		tempDirs.push(stateDir);
+		vi.stubEnv("QCUT_API_TOKEN", "");
+		writeClaudeInstanceInfo({ port: 9123, token: "published-token", stateDir });
+		const authorizationByPort = new Map<string, string | undefined>();
+		const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
+			const port = new URL(String(url)).port;
+			const headers = (init?.headers ?? {}) as Record<string, string>;
+			authorizationByPort.set(port, headers.Authorization);
+			if (port !== "9123") {
+				throw new Error("offline");
+			}
+			return new Response(
+				JSON.stringify({
+					success: true,
+					data: { status: "ok", appVersion: "published" },
+				}),
+				{ status: 200, headers: { "content-type": "application/json" } }
+			);
+		}) as unknown as typeof fetch;
+
+		const instances = await discoverQCutInstances({
+			stateDir,
+			fetchImpl,
+			timeoutMs: 50,
+		});
+
+		expect(instances.map((instance) => instance.port)).toEqual([9123]);
+		expect(authorizationByPort.get("9123")).toBe("Bearer published-token");
+		expect(authorizationByPort.get("8765")).toBeUndefined();
 	});
 
 	it("fails fast when multiple instances are live and none is selected", async () => {
