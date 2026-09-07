@@ -377,6 +377,8 @@ export interface CLIRunOptions {
 	keyEvents?: boolean;
 	/** Comma-separated local file paths for editor:pointer:drop-files. */
 	files?: string;
+	/** editor:pointer:drag --to-time: drag the playhead (default) or seek through the API. */
+	seekMode?: string;
 	holdMs?: number;
 	durationMs?: number;
 	steps?: number;
