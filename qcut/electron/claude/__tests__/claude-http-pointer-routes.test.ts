@@ -6,6 +6,7 @@ import {
 	parseAgentPointerInputMode,
 	parseAgentPointerModifiers,
 	parseAgentPointerTarget,
+	parseAgentPointerWindowId,
 } from "../http/claude-http-pointer-routes.js";
 
 describe("parseAgentPointerTarget", () => {
@@ -90,6 +91,19 @@ describe("parseAgentPointerTarget", () => {
 		);
 		expect(() => parseAgentPointerClickCount({ value: 1.5 })).toThrow(
 			"from 1 to 3"
+		);
+	});
+
+	it("accepts positive integer window ids from bodies and query strings", () => {
+		expect(parseAgentPointerWindowId({ value: undefined })).toBeUndefined();
+		expect(parseAgentPointerWindowId({ value: "" })).toBeUndefined();
+		expect(parseAgentPointerWindowId({ value: 3 })).toBe(3);
+		expect(parseAgentPointerWindowId({ value: "12" })).toBe(12);
+		expect(() => parseAgentPointerWindowId({ value: 0 })).toThrow(
+			"positive integer"
+		);
+		expect(() => parseAgentPointerWindowId({ value: "main" })).toThrow(
+			"positive integer"
 		);
 	});
 });
