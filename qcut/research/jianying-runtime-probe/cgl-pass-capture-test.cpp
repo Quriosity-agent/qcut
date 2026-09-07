@@ -1,5 +1,6 @@
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl3.h>
+#include "cgl-diagnostic-context.hpp"
 
 #include <algorithm>
 #include <array>
@@ -34,30 +35,7 @@ void no_error(const char* label) {
   require(error == GL_NO_ERROR, std::string(label) + " GL error=" + std::to_string(error));
 }
 
-class Context {
- public:
-  Context() {
-    const CGLPixelFormatAttribute attributes[]{
-        kCGLPFAOpenGLProfile, static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_3_2_Core),
-        kCGLPFAAllowOfflineRenderers, static_cast<CGLPixelFormatAttribute>(0)};
-    CGLPixelFormatObj format = nullptr;
-    GLint count = 0;
-    require(CGLChoosePixelFormat(attributes, &format, &count) == kCGLNoError && format,
-            "Cannot choose self-test CGL format");
-    const auto result = CGLCreateContext(format, nullptr, &context_);
-    CGLDestroyPixelFormat(format);
-    require(result == kCGLNoError && context_, "Cannot create self-test CGL context");
-    require(CGLSetCurrentContext(context_) == kCGLNoError, "Cannot activate self-test context");
-  }
-  ~Context() {
-    CGLSetCurrentContext(nullptr);
-    if (context_) CGLReleaseContext(context_);
-  }
-  Context(const Context&) = delete;
-  Context& operator=(const Context&) = delete;
- private:
-  CGLContextObj context_ = nullptr;
-};
+using Context = qcut_diagnostic::CglContext;
 
 bool sampler_supported() {
   const auto major = integer(GL_MAJOR_VERSION), minor = integer(GL_MINOR_VERSION);
