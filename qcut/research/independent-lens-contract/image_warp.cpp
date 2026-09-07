@@ -25,9 +25,13 @@ bool valid_source(const RgbaImageView& source) {
   return remaining_rows <= (source.bytes.size() - row_bytes) / source.row_stride;
 }
 
-bool inverse_affine(const std::array<float, 6>& forward, std::array<float, 6>& inverse) {
+bool inverse_affine(const std::array<float, 6>& forward, AffineWarpBackend backend,
+                    std::array<float, 6>& inverse) {
   for (float value : forward) if (!std::isfinite(value)) return false;
-  const float determinant = forward[0] * forward[4] - forward[1] * forward[3];
+  const float cross = forward[1] * forward[3];
+  const float determinant = backend == AffineWarpBackend::image_transform
+      ? std::fma(forward[0], forward[4], -cross)
+      : forward[0] * forward[4] - cross;
   if (!std::isfinite(determinant) || determinant == 0) return false;
   const float reciprocal = static_cast<float>(1.0 / static_cast<double>(determinant));
   inverse[0] = forward[4] * reciprocal;
@@ -40,8 +44,7 @@ bool inverse_affine(const std::array<float, 6>& forward, std::array<float, 6>& i
   return true;
 }
 
-bool coordinate_term(float value, std::int16_t& output) {
-  const float scaled = value * 1024.0F;
+bool scaled_coordinate_term(float scaled, std::int16_t& output) {
   if (!std::isfinite(scaled)) return false;
   const double rounded = std::nearbyint(static_cast<double>(scaled));
   if (rounded < std::numeric_limits<std::int32_t>::min() ||
@@ -55,24 +58,44 @@ bool coordinate_term(float value, std::int16_t& output) {
   return true;
 }
 
+bool coordinate_term(float value, std::int16_t& output) {
+  return scaled_coordinate_term(value * 1024.0F, output);
+}
+
 struct AxisTerm {
   std::int16_t x;
   std::int16_t y;
 };
 
-bool coordinate_axes(const std::array<float, 6>& inverse, int width, int height,
+bool coordinate_axes(const std::array<float, 6>& inverse, const AffineWarpRequest& request,
                      std::vector<AxisTerm>& columns, std::vector<AxisTerm>& rows) {
+  const int width = request.width;
+  const int height = request.height;
   columns.resize(static_cast<std::size_t>(width));
   rows.resize(static_cast<std::size_t>(height));
   for (int x = 0; x < width; ++x) {
     auto& term = columns[static_cast<std::size_t>(x)];
-    if (!coordinate_term(inverse[0] * static_cast<float>(x) + inverse[2], term.x) ||
-        !coordinate_term(inverse[3] * static_cast<float>(x) + inverse[5], term.y)) {
+    float column_x = inverse[0] * static_cast<float>(x) + inverse[2];
+    float column_y = inverse[3] * static_cast<float>(x) + inverse[5];
+    if (request.backend == AffineWarpBackend::image_transform) {
+      const float shifted_x = static_cast<float>(x) - request.source_to_destination[2];
+      const float translation_y = request.source_to_destination[5];
+      // These explicit FMAs preserve the ImageTransform path at quantization boundaries.
+      column_x = std::fma(inverse[0], shifted_x, -(inverse[1] * translation_y));
+      column_y = std::fma(inverse[3], shifted_x, -(inverse[4] * translation_y));
+    }
+    if (!coordinate_term(column_x, term.x) || !coordinate_term(column_y, term.y)) {
       return false;
     }
   }
   for (int y = 0; y < height; ++y) {
     auto& term = rows[static_cast<std::size_t>(y)];
+    if (request.backend == AffineWarpBackend::image_transform) {
+      const float scaled_y = static_cast<float>(y) * 1024.0F;
+      if (!scaled_coordinate_term(scaled_y * inverse[1], term.x) ||
+          !scaled_coordinate_term(scaled_y * inverse[4], term.y)) return false;
+      continue;
+    }
     if (!coordinate_term(inverse[1] * static_cast<float>(y), term.x) ||
         !coordinate_term(inverse[4] * static_cast<float>(y), term.y)) return false;
   }
@@ -85,10 +108,12 @@ bool warp_affine_rgba(const RgbaImageView& source, const AffineWarpRequest& requ
                       AffineWarpResult& output) {
   if (std::fegetround() != FE_TONEAREST || !valid_source(source) ||
       !valid_size(request.width, request.height)) return false;
+  if (request.backend != AffineWarpBackend::fsnew &&
+      request.backend != AffineWarpBackend::image_transform) return false;
   std::array<float, 6> inverse{};
-  if (!inverse_affine(request.source_to_destination, inverse)) return false;
+  if (!inverse_affine(request.source_to_destination, request.backend, inverse)) return false;
   std::vector<AxisTerm> columns, rows;
-  if (!coordinate_axes(inverse, request.width, request.height, columns, rows)) return false;
+  if (!coordinate_axes(inverse, request, columns, rows)) return false;
   const auto count = static_cast<std::size_t>(request.width) *
                      static_cast<std::size_t>(request.height);
   AffineWarpResult result{std::vector<std::uint8_t>(count * 4),
