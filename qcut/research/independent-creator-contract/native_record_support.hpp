@@ -1,6 +1,7 @@
 #pragma once
 
 #include "record_restore.hpp"
+#include "record_graph.hpp"
 #include "../independent-editor-contract/native_keyframes.hpp"
 
 #include <bit>
@@ -102,6 +103,24 @@ class Native {
     // The API returns an owned raw Node; its verified deleting destructor releases the SDK allocation.
     return Handle(raw, editor_probe::entry<void (*)(void*)>(library_, 0xc82d0c));
   }
+  const Handle& graph(const Handle& frame) const {
+    return editor_probe::entry<const Handle& (*)(void*)>(library_, 0xc7e508)(frame.get());
+  }
+  const Handle& graph_array(const Handle& graph_value) const {
+    return editor_probe::entry<const Handle& (*)(void*)>(library_, 0xd9807c)(graph_value.get());
+  }
+  const Handle& coordinate(const Handle& point_value) const {
+    return editor_probe::entry<const Handle& (*)(void*)>(library_, 0xda3010)(point_value.get());
+  }
+  static std::int32_t integer(const Handle& value, std::size_t offset) {
+    std::int32_t result; std::memcpy(&result, static_cast<const std::uint8_t*>(value.get()) + offset, 4); return result;
+  }
+  static double number(const Handle& value, std::size_t offset) {
+    double result; std::memcpy(&result, static_cast<const std::uint8_t*>(value.get()) + offset, 8); return result;
+  }
+  const std::string& graph_text(const Handle& value, bool name) const {
+    return editor_probe::entry<const std::string& (*)(void*)>(library_, name ? 0xd97f3c : 0xd97e48)(value.get());
+  }
   Handle frame(std::size_t seed) const {
     const std::array<double, 8> numbers{0.0, -0.0, .37, -.8, std::numeric_limits<double>::infinity(),
         -std::numeric_limits<double>::infinity(), std::bit_cast<double>(std::uint64_t{0x7ff8000000004321}),
@@ -136,6 +155,8 @@ class Native {
 struct Snapshot {
   const Native& native;
   std::unordered_map<void*, std::shared_ptr<RecordFrame>> frames;
+  std::unordered_map<void*, std::shared_ptr<RecordGraph>> graphs;
+  std::unordered_map<void*, std::shared_ptr<RecordGraphPoint>> graph_points;
   std::unordered_map<void*, std::shared_ptr<RecordPoint>> points;
   std::unordered_map<void*, std::shared_ptr<std::vector<double>>> values;
   explicit Snapshot(const Native& input) : native(input) {}
@@ -152,12 +173,43 @@ struct Snapshot {
   std::shared_ptr<RecordFrame> frame(const Handle& actual) {
     auto& result = frames[actual.get()];
     if (result) return result;
-    if (native.factory.has_graph(actual)) throw std::runtime_error("Graph is outside native restore domain");
+
     auto& value = values[Native::values_owner(actual).get()];
     if (!value) value = std::make_shared<std::vector<double>>(native.factory.values(actual));
     result = std::make_shared<RecordFrame>(RecordFrame{Native::id(actual), native.factory.curve(actual),
         native.factory.time(actual), point(actual, false), point(actual, true), value, native.text(actual),
-        Native::state(actual), false});
+        Native::state(actual), native.factory.has_graph(actual), graph(native.graph(actual))});
+    return result;
+  }
+  std::shared_ptr<RecordGraphPoint> graph_point(const Handle& actual) {
+    auto& result = graph_points[actual.get()];
+    if (result) return result;
+    const auto coordinate = native.coordinate(actual);
+    auto& point_value = points[coordinate.get()];
+    if (!point_value) point_value = std::make_shared<RecordPoint>(RecordPoint{Native::id(coordinate),
+        Native::number(coordinate, 0x30), Native::number(coordinate, 0x38), Native::state(coordinate)});
+    result = std::make_shared<RecordGraphPoint>(RecordGraphPoint{Native::id(actual),
+        Native::integer(actual, 0x2c), point_value, Native::state(actual)});
+    return result;
+  }
+  std::shared_ptr<RecordGraph> graph(const Handle& actual) {
+    if (!actual) return {};
+    auto& result = graphs[actual.get()];
+    if (result) return result;
+    result = std::make_shared<RecordGraph>();
+    result->id = Native::id(actual);
+    result->resource_id = native.graph_text(actual, false);
+    result->resource_name = native.graph_text(actual, true);
+    result->source_platform = Native::integer(actual, 0x60);
+    result->mutation = Native::state(actual);
+    const auto array = native.graph_array(actual);
+    result->points.mutation = Native::state(array);
+    result->points.track_children = static_cast<const std::uint8_t*>(array.get())[0x60] != 0;
+    for (bool retained : {false, true}) {
+      for (const auto& element : Native::list(array, retained)) {
+        (retained ? result->points.retained : result->points.active).push_back(graph_point(element));
+      }
+    }
     return result;
   }
   RecordGroup group(const Handle& actual) {
@@ -196,7 +248,8 @@ struct Compare {
     checks.require(native.factory.time(actual) == expected->time_offset, "Frame time differs");
     checks.require(native.factory.curve(actual) == expected->curve_type, "Frame curve differs");
     checks.require(native.text(actual) == expected->string_value, "String value differs");
-    checks.require(!native.factory.has_graph(actual), "Unexpected graph");
+    checks.require(native.factory.has_graph(actual) == static_cast<bool>(expected->graph), "Graph presence differs");
+    if (expected->graph) graph(native.graph(actual), expected->graph);
     identity(Native::values_owner(actual).get(), expected->values.get());
     const auto& values = native.factory.values(actual);
     checks.require(values.size() == expected->values->size(), "Values count differs");
@@ -210,6 +263,37 @@ struct Compare {
       const auto coordinates = native.factory.control(actual, right);
       checks.bits(coordinates.time, owned->x);
       checks.bits(coordinates.value, owned->y);
+    }
+  }
+  void graph_point(const Handle& actual, const std::shared_ptr<RecordGraphPoint>& expected) {
+    identity(actual.get(), expected.get());
+    checks.require(Native::id(actual) == expected->id, "Graph point ID differs");
+    checks.require(Native::state(actual) == expected->mutation, "Graph point mutation differs");
+    checks.require(Native::integer(actual, 0x2c) == expected->type, "Graph point type differs");
+    const auto coordinate = native.coordinate(actual);
+    identity(coordinate.get(), expected->point.get());
+    checks.require(Native::id(coordinate) == expected->point->id, "Graph coordinate ID differs");
+    checks.require(Native::state(coordinate) == expected->point->mutation, "Graph coordinate mutation differs");
+    checks.bits(Native::number(coordinate, 0x30), expected->point->x);
+    checks.bits(Native::number(coordinate, 0x38), expected->point->y);
+  }
+  void graph(const Handle& actual, const std::shared_ptr<RecordGraph>& expected) {
+    identity(actual.get(), expected.get());
+    checks.require(Native::id(actual) == expected->id, "Graph ID differs");
+    checks.require(Native::state(actual) == expected->mutation, "Graph mutation differs");
+    checks.require(native.graph_text(actual, false) == expected->resource_id, "Graph resource ID differs");
+    checks.require(native.graph_text(actual, true) == expected->resource_name, "Graph resource name differs");
+    checks.require(Native::integer(actual, 0x60) == expected->source_platform, "Graph platform differs");
+    const auto array = native.graph_array(actual);
+    identity(array.get(), &expected->points);
+    checks.require(Native::state(array) == expected->points.mutation, "Graph list mutation differs");
+    checks.require((static_cast<const std::uint8_t*>(array.get())[0x60] != 0) ==
+                   expected->points.track_children, "Graph child tracking differs");
+    for (const bool retained : {false, true}) {
+      const auto& actual_list = Native::list(array, retained);
+      const auto& owned = retained ? expected->points.retained : expected->points.active;
+      checks.require(actual_list.size() == owned.size(), "Graph list length differs");
+      for (std::size_t i = 0; i < owned.size(); ++i) graph_point(actual_list[i], owned[i]);
     }
   }
   void group(const Handle& actual, const RecordGroup& expected) {
