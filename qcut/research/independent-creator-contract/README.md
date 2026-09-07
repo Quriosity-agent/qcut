@@ -2,8 +2,8 @@
 
 Original C++20 reconstruction of a bounded filter-inspector contract in Jianying
 11.3.0 `libVECreator.dylib`. The library has no Qt, editor, renderer, or vendor
-runtime dependency. It builds request descriptions and state-transition plans;
-it does not send requests, change drafts, remove keyframes, or render pixels.
+runtime dependency. It builds request descriptions and transforms original,
+in-memory state models. It does not send requests, change live drafts, or render pixels.
 
 | Unit | Recovered contract |
 | --- | --- |
@@ -61,8 +61,8 @@ DYLD_FRAMEWORK_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks \
 
 Loading the library runs its initializers and can print vendor startup messages;
 the final line is the probe result. No wrapper/model object, callback, draft, or
-application process is passed to this diagnostic. Only the two constants have
-native-call validation. The request and state units are validated against
+application process is passed to this diagnostic. Within the initial four units,
+only the two constants have native-call validation. The request and state units are validated against
 bounded static evidence and explicit golden fixtures.
 
 See [the Chinese evidence and contract](../../docs/task/jianying-filter-runtime-research/vecreator-cpp-contract-2026-09-07.zh.md).
@@ -87,3 +87,36 @@ not call a handler or mutate an SDK object. Run it with the absolute installed
 `DYLD_LIBRARY_PATH`. The native option also retains the previous VECreator
 constant probe. Detailed evidence and boundaries:
 [creator-editor-events-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-editor-events-2026-09-07.zh.md).
+
+## Keyframe insertion and neighboring controls
+
+`keyframe_insertion.*` continues the missing-ID path after the host resolves the
+playhead to keyframe time. It constructs the observed `fields=5` time/value payload,
+ensures a property/material group, reuses a frame within the wrapped ±1000 window,
+or creates a curve-zero frame and inserts it before the first strictly later
+time. The editor contract's `window.*` implementation is reused without a second
+finder. Existing value dimensions truncate or repeat the first requested value;
+new frames retain the complete numeric shape. Graph cleanup uses the first ID
+match, including duplicate IDs.
+
+`keyframe_controls.*` repairs the two adjacent pairs. For each nonzero-curve
+endpoint, a zero x handle becomes 40% of the signed, wrapped time difference and
+y becomes zero; nonzero handles clamp only the observed side. NaN and infinities
+follow the recovered floating comparisons. No interpolation or pixel claim is
+attached to these model updates.
+
+Eight portable test groups now contain 1082 assertions. Release and fail-fast
+ASan/UBSan pass. The optional `creator-native-insertion` uses genuine native
+keyframe/group factories and public setters on diagnostic-owned objects;
+1,200 insertion cases plus 3,000 control cases compare 82,752 values/state fields
+with zero mismatches. Relative paths and unknown library hashes fail closed.
+This probe loads only the verified installed `libvideoeditor.dylib`; it does not
+inject into the app or fabricate model/control-block memory.
+
+Only `fields=5` with a nonempty numeric payload is implemented. Other masks,
+string values, capture-time evaluation, segment/FPS mapping, UUID generation,
+full handler dispatch and transaction commit/rollback remain outside this API.
+Insertion/neighborhood APIs reject null list entries as a QCut boundary policy.
+Container tracking codes and clock-write counts are observable bookkeeping,
+not a reconstructed undo stack. Detailed evidence:
+[creator-keyframe-insertion-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-keyframe-insertion-2026-09-07.zh.md).
