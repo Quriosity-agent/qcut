@@ -81,8 +81,8 @@ export const QCUT_ENV_MAP = {
  * Field → env-var-name for the subset AICP's Python binary understands.
  *
  * AICP's credential file historically owns only these three keys — see
- * `resources/default-skills/ai-content-pipeline/Skill.md`. Everything else
- * is a native-CLI-only concern.
+ * `resources/default-skills/qcut-toolkit/ai-content-pipeline/SKILL.md`.
+ * Everything else is a native-CLI-only concern.
  */
 export const AICP_ENV_MAP = {
 	falApiKey: "FAL_KEY",
