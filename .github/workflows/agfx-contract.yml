@@ -6,6 +6,7 @@ on:
     paths:
       - qcut/research/independent-*-contract/**
       - qcut/research/independent-soft-glow/**
+      - qcut/research/second-filter-native-reference/**
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
       - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
@@ -19,6 +20,7 @@ on:
     paths:
       - qcut/research/independent-*-contract/**
       - qcut/research/independent-soft-glow/**
+      - qcut/research/second-filter-native-reference/**
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
       - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
