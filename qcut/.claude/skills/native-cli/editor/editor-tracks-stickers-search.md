@@ -1,8 +1,9 @@
 # QCut Editor CLI — Tracks, Elements, Stickers, Search, and Input Helpers
 
 Editor commands that were added after the original editor reference files.
-All of them need a running QCut editor and accept `--project-id` (defaulting
-to the active project where noted). Use either spelling:
+The `editor` commands need a running QCut editor and accept `--project-id`
+(defaulting to the active project where noted); the standalone commands called
+out below (sticker search and reference tooling) run without one. Use either spelling:
 
 ```bash
 qcut editor track list --project-id <id> --json      # group syntax
@@ -135,8 +136,10 @@ Pointer commands drive a visible Agent pointer with real Electron input events.
 Targets come from accessibility snapshots (`editor snapshot`, see
 [editor-agent.md](editor-agent.md)) as `--ref @e12`, from semantic
 `--target` names, or from `--x/--y` and `--normalized-x/--normalized-y`
-coordinates. Every pointer command accepts `--modifiers` with a comma-separated
-list of `alt`, `ctrl`, `cmd` (meta), and `shift`; the timeline treats a
+coordinates. The pointer-input commands (`move`, `hover`, `click`,
+`double-click`, `right-click`, `drag`, `scroll`, `drop-files`) accept
+`--modifiers` with a comma-separated list of `alt`, `ctrl`, `cmd` (meta), and
+`shift`; the timeline treats a
 modifier-click as multi-select and ctrl/cmd + wheel as zoom.
 
 Clicks, drags, sequences, keyboard input, snapshot `select`/`check`, and
@@ -152,12 +155,12 @@ confirmation.
 | `editor pointer click` | — | same as `move`, plus `--button left\|middle\|right`, `--click-count 1..3` | Click with real mouseDown and mouseUp events; 3 press cycles select a paragraph |
 | `editor pointer double-click` | — | same as `move` | Double-click |
 | `editor pointer right-click` | — | same as `move` | Open a context menu with a real right-click |
-| `editor pointer drag` | — | `--from-ref/--to-ref`, `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--seek-mode drag\|api`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse`, `--button` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped; `--from timeline.playhead --to-time N` scrubs the playhead |
+| `editor pointer drag` | — | `--from/--to` (semantic targets), `--from-ref/--to-ref` (snapshot refs), `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--seek-mode drag\|api`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse`, `--drag-start-timeout-ms`, `--button` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped; `--from timeline.playhead --to-time N` scrubs the playhead |
 | `editor pointer scroll` | — | `--delta-x`, `--delta-y`, plus targeting flags | Scroll at the pointer, a ref, or a coordinate |
 | `editor pointer wait-for` | — | `--target`, `--text`, `--timeout-ms`, `--interval-ms` | Wait for a semantic target or visible text |
 | `editor pointer hide` | — | — | Hide the Agent pointer overlay |
 | `editor pointer state` | — | — | Read the overlay state: position, action, pressed button, input mode |
-| `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
+| `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/--normalized-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
 | `editor pointer drop-files` | `--files a.mp4,b.png` | targeting flags, `--modifiers`, `--wait-for` | Drop local files on a target as an external HTML5 file drop (media library import, file drop zones); background input only |
 | `editor windows` | — | — | List open QCut windows (id, title, focused, visible, bounds, `main`) for `--window-id` |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
