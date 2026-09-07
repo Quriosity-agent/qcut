@@ -101,6 +101,7 @@ const DEFAULT_CONFIRM_PATTERNS = [
 	"editor:pointer:double-click",
 	"editor:pointer:right-click",
 	"editor:pointer:drag",
+	"editor:pointer:drop-files",
 	// Sequences, keyboard input, demo runs, and context menus can perform
 	// every gesture above, so they confirm too instead of bypassing the tier.
 	"editor:pointer:sequence",
