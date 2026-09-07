@@ -65,14 +65,7 @@ void validate_parameters(const GlowParameters& parameters) {
     }
 }
 
-struct MaskRequest {
-    const Image& source;
-    const GlowParameters& parameters;
-    int width;
-    int height;
-};
-
-Image threshold_mask(const MaskRequest& request) {
+Image threshold_mask(const GlowMaskRequest& request) {
     const auto& [source, parameters, width, height] = request;
     Image result(width, height);
     for (int y = 0; y < height; ++y) {
@@ -261,14 +254,7 @@ float combine_channel(const CombineRequest& request) {
     throw std::invalid_argument("unsupported glow combine mode");
 }
 
-struct CompositeRequest {
-    const Image& source;
-    const Image& red_green;
-    const Image& blue_alpha;
-    const GlowParameters& parameters;
-};
-
-Image composite(const CompositeRequest& request) {
+Image composite(const GlowCompositeRequest& request) {
     const auto& [source, red_green, blue_alpha, parameters] = request;
     Image result(source.width, source.height);
     for (int y = 0; y < source.height; ++y) {
@@ -299,6 +285,50 @@ Image composite(const CompositeRequest& request) {
 
 } // namespace
 
+GlowPlan glow_plan(const GlowPlanRequest& request) {
+    validate_parameters(request.parameters);
+    if (request.width < 1 || request.height < 1 || request.width > 16384 || request.height > 16384) {
+        throw std::invalid_argument("Glow source dimensions must be in [1, 16384]");
+    }
+    const double maximum_width = std::clamp(static_cast<double>(request.parameters.quality) * 1200.0, 120.0, 360.0);
+    const double blur_width = std::min(static_cast<double>(request.width), maximum_width);
+    const int width = static_cast<int>(std::floor(blur_width));
+    const int height = static_cast<int>(std::floor(request.height * blur_width / request.width));
+    if (height < 1) {
+        throw std::invalid_argument("glow quality and aspect ratio produce an empty render target");
+    }
+    return {width, height, static_cast<float>(request.parameters.glow_width * blur_width)};
+}
+
+Image glow_mask(const GlowMaskRequest& request) {
+    validate_image(request.source);
+    validate_parameters(request.parameters);
+    return threshold_mask(request);
+}
+
+Image glow_blur_pass(const GlowBlurPassRequest& request) {
+    validate_image(request.source);
+    validate_parameters(request.parameters);
+    if (!std::isfinite(request.radius) || request.radius < 0 || request.radius > 360 ||
+        (request.first_channel != 0 && request.first_channel != 2)) {
+        throw std::invalid_argument("Invalid glow pass radius or channel pair");
+    }
+    const auto kernel = make_kernel({request.parameters, request.radius,
+        request.vertical ? request.parameters.width_y : request.parameters.width_x});
+    return blur_pair({request.source, kernel, request.parameters, request.vertical, request.first_channel});
+}
+
+Image glow_composite(const GlowCompositeRequest& request) {
+    validate_image(request.source);
+    validate_image(request.red_green);
+    validate_image(request.blue_alpha);
+    validate_parameters(request.parameters);
+    if (request.red_green.width != request.blue_alpha.width || request.red_green.height != request.blue_alpha.height) {
+        throw std::invalid_argument("Packed glow targets must have equal dimensions");
+    }
+    return composite(request);
+}
+
 Image glow(const Image& source, const GlowParameters& parameters, const StageSink& sink) {
     validate_image(source);
     validate_parameters(parameters);
@@ -307,14 +337,7 @@ Image glow(const Image& source, const GlowParameters& parameters, const StageSin
         if (sink) sink("glow.threshold", mask);
         return mask;
     }
-    const double maximum_width = std::clamp(static_cast<double>(parameters.quality) * 1200.0, 120.0, 360.0);
-    const double blur_width = std::min(static_cast<double>(source.width), maximum_width);
-    const int width = static_cast<int>(std::floor(blur_width));
-    const int height = static_cast<int>(std::floor(source.height * blur_width / source.width));
-    if (width < 1 || height < 1) {
-        throw std::invalid_argument("glow quality and aspect ratio produce an empty render target");
-    }
-    const float radius = static_cast<float>(parameters.glow_width * blur_width);
+    const auto [width, height, radius] = glow_plan({source.width, source.height, parameters});
     const Kernel horizontal = make_kernel({parameters, radius, parameters.width_x});
     const Kernel vertical = make_kernel({parameters, radius, parameters.width_y});
     const Image mask = threshold_mask({source, parameters, width, height});
