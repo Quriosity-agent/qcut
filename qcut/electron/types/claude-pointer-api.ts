@@ -34,6 +34,11 @@ export interface AgentPointerInputOptions {
 	inputMode?: AgentPointerInputMode;
 }
 
+/** Keyboard modifiers held while a pointer event is dispatched. */
+export interface AgentPointerModifierOptions {
+	modifiers?: AgentKeyboardModifier[];
+}
+
 export interface AgentPointerBounds extends AgentPointerPoint {
 	width: number;
 	height: number;
@@ -51,14 +56,20 @@ export interface AgentPointerResolvedTarget extends AgentPointerPoint {
 
 export interface AgentPointerMoveRequest
 	extends AgentPointerTarget,
-		AgentPointerInputOptions {
+		AgentPointerInputOptions,
+		AgentPointerModifierOptions {
 	durationMs?: number;
 }
 
 export interface AgentPointerClickRequest
 	extends AgentPointerTarget,
-		AgentPointerInputOptions {
+		AgentPointerInputOptions,
+		AgentPointerModifierOptions {
 	durationMs?: number;
+	/** Mouse button for `click`; `double-click` and `right-click` fix their own. */
+	button?: AgentPointerButton;
+	/** Number of press cycles for `click` (1 to 3); 3 selects a paragraph in text. */
+	clickCount?: number;
 }
 
 /**
@@ -91,9 +102,13 @@ export interface AgentPointerDragOutcome {
 	dragOperationsMask: number | null;
 }
 
-export interface AgentPointerDragRequest extends AgentPointerInputOptions {
+export interface AgentPointerDragRequest
+	extends AgentPointerInputOptions,
+		AgentPointerModifierOptions {
 	from: AgentPointerTarget;
 	to: AgentPointerTarget;
+	/** Button held during the drag; defaults to left. */
+	button?: AgentPointerButton;
 	via?: AgentPointerTarget[];
 	holdMs?: number;
 	durationMs?: number;
@@ -127,7 +142,8 @@ export interface AgentKeyboardResult {
 
 export interface AgentPointerScrollRequest
 	extends AgentPointerTarget,
-		AgentPointerInputOptions {
+		AgentPointerInputOptions,
+		AgentPointerModifierOptions {
 	deltaX?: number;
 	deltaY?: number;
 }
@@ -156,4 +172,32 @@ export interface AgentPointerResult extends AgentPointerPoint {
 	deltaX?: number;
 	deltaY?: number;
 	dnd?: AgentPointerDragOutcome;
+	/** Button used for click and drag actions. */
+	button?: AgentPointerButton;
+	/** Modifiers held during the action, when any. */
+	modifiers?: AgentKeyboardModifier[];
+	/** Press cycles dispatched for click actions. */
+	clickCount?: number;
+}
+
+/** What `document.elementFromPoint` finds under an editor viewport point. */
+export interface AgentPointerHitTestRequest extends AgentPointerPoint {}
+
+export interface AgentPointerHitTestElement {
+	tagName: string;
+	role: string | null;
+	name: string | null;
+	value: string | null;
+	testId: string | null;
+	ref: string | null;
+	disabled: boolean;
+	bounds: AgentPointerBounds;
+}
+
+export interface AgentPointerHitTestResult extends AgentPointerPoint {
+	action: "hit-test";
+	hit: boolean;
+	element: AgentPointerHitTestElement | null;
+	/** Nearest ancestors carrying a `data-testid`, closest first. */
+	ancestors: Array<{ tagName: string; testId: string }>;
 }
