@@ -1,10 +1,14 @@
 import type {
+	AgentKeyboardModifier,
 	AgentKeyboardPressRequest,
 	AgentKeyboardResult,
 	AgentKeyboardTypeRequest,
+	AgentPointerButton,
 	AgentPointerClickRequest,
 	AgentPointerDragMode,
 	AgentPointerDragRequest,
+	AgentPointerHitTestRequest,
+	AgentPointerHitTestResult,
 	AgentPointerMoveRequest,
 	AgentPointerResult,
 	AgentPointerScrollRequest,
@@ -31,6 +35,9 @@ interface AgentPointerRouteHandlers {
 	drag: (request: AgentPointerDragRequest) => Promise<AgentPointerResult>;
 	scroll: (request: AgentPointerScrollRequest) => Promise<AgentPointerResult>;
 	hide: () => Promise<AgentPointerResult>;
+	hitTest: (
+		request: AgentPointerHitTestRequest
+	) => Promise<AgentPointerHitTestResult>;
 	pressKeys: (
 		request: AgentKeyboardPressRequest
 	) => Promise<AgentKeyboardResult>;
@@ -146,11 +153,106 @@ export function parseAgentPointerDragMode({
 	);
 }
 
+const MODIFIER_ALIASES: Record<string, AgentKeyboardModifier> = {
+	alt: "Alt",
+	option: "Alt",
+	ctrl: "Control",
+	control: "Control",
+	cmd: "Meta",
+	command: "Meta",
+	meta: "Meta",
+	super: "Meta",
+	shift: "Shift",
+};
+
+export function parseAgentPointerModifiers({
+	value,
+}: {
+	value: unknown;
+}): AgentKeyboardModifier[] | undefined {
+	if (value === undefined) return undefined;
+	const list = Array.isArray(value)
+		? value
+		: typeof value === "string"
+			? value.split(",")
+			: null;
+	if (!list) {
+		throw new HttpError(
+			400,
+			'Pointer \'modifiers\' must be an array such as ["Shift", "Meta"].'
+		);
+	}
+	const modifiers: AgentKeyboardModifier[] = [];
+	for (const entry of list) {
+		if (typeof entry !== "string") {
+			throw new HttpError(400, "Pointer modifiers must be strings.");
+		}
+		const trimmed = entry.trim();
+		if (!trimmed) continue;
+		const modifier = MODIFIER_ALIASES[trimmed.toLowerCase()];
+		if (!modifier) {
+			throw new HttpError(
+				400,
+				`Unsupported pointer modifier '${trimmed}'. Use alt, ctrl, cmd/meta, or shift.`
+			);
+		}
+		if (!modifiers.includes(modifier)) modifiers.push(modifier);
+	}
+	return modifiers;
+}
+
+export function parseAgentPointerButton({
+	value,
+}: {
+	value: unknown;
+}): AgentPointerButton | undefined {
+	if (value === undefined) return undefined;
+	if (value === "left" || value === "middle" || value === "right") return value;
+	throw new HttpError(
+		400,
+		"Pointer 'button' must be 'left', 'middle', or 'right'."
+	);
+}
+
+export function parseAgentPointerClickCount({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (value === undefined) return undefined;
+	if (
+		typeof value === "number" &&
+		Number.isInteger(value) &&
+		value >= 1 &&
+		value <= 3
+	) {
+		return value;
+	}
+	throw new HttpError(
+		400,
+		"Pointer 'clickCount' must be an integer from 1 to 3."
+	);
+}
+
+function parseHitTestRequest({
+	body,
+}: {
+	body: unknown;
+}): AgentPointerHitTestRequest {
+	const parsed = requireBodyObject({ body });
+	const x = parseFiniteNumber({ value: parsed.x, field: "x" });
+	const y = parseFiniteNumber({ value: parsed.y, field: "y" });
+	if (x === undefined || y === undefined) {
+		throw new HttpError(400, "Pointer hit-test requires x and y coordinates.");
+	}
+	return { x, y };
+}
+
 function parseTargetRequest({
 	body,
 }: {
 	body: unknown;
-}): AgentPointerMoveRequest {
+}): AgentPointerClickRequest {
 	const parsed = requireBodyObject({ body });
 	const durationMs = parseFiniteNumber({
 		value: parsed.durationMs,
@@ -163,6 +265,9 @@ function parseTargetRequest({
 		...parseAgentPointerTarget({ value: parsed }),
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
 		durationMs,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		button: parseAgentPointerButton({ value: parsed.button }),
+		clickCount: parseAgentPointerClickCount({ value: parsed.clickCount }),
 	};
 }
 
@@ -228,6 +333,8 @@ function parseDragRequest({
 		steps,
 		dnd: parseAgentPointerDragMode({ value: parsed.dnd }),
 		dragStartTimeoutMs,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		button: parseAgentPointerButton({ value: parsed.button }),
 	};
 }
 
@@ -298,6 +405,7 @@ function parseScrollRequest({
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
 		deltaX,
 		deltaY,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
 	};
 }
 
@@ -401,6 +509,14 @@ export function registerAgentPointerRoutes(
 
 	router.post("/api/claude/pointer/hide", async () => {
 		return await withPointerTimeout({ timeoutMs, work: handlers.hide });
+	});
+
+	router.post("/api/claude/pointer/hit-test", async (req) => {
+		const request = parseHitTestRequest({ body: req.body });
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.hitTest(request),
+		});
 	});
 
 	router.post("/api/claude/keyboard/press", async (req) => {
