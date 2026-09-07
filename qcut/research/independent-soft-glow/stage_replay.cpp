@@ -1,4 +1,5 @@
 #include "gaussian.hpp"
+#include "blit.hpp"
 #include "glow.hpp"
 #include "image_io.hpp"
 #include "layer.hpp"
@@ -54,10 +55,10 @@ void replay(const std::filesystem::path& input, const std::filesystem::path& out
     const auto write = [&](const char* name, const Image& image) {
         write_raw(output / (std::string(name) + ".rgba"), image);
     };
-    write("gaussian.downsample", resize(source, gaussian.work_width, gaussian.work_height));
+    write("gaussian.downsample", blit_resize({source, gaussian.work_width, gaussian.work_height}));
     write("gaussian.x", gaussian_axis({downsampled, width, height, {}, GaussianDirection::horizontal}));
     write("gaussian.y", gaussian_axis({horizontal, width, height, {}, GaussianDirection::vertical}));
-    write("gaussian.output", resize(vertical, width, height));
+    write("gaussian.output", blit_resize({vertical, width, height}));
     write("02-soft-light", composite_layer({source, blurred, parameters.soft_light}));
     write("glow.mask", glow_mask({base, parameters.glow, glow_w, glow_h}));
     write("glow.horizontal_rg", glow_blur_pass({mask, parameters.glow, radius, false, 0}));
