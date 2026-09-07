@@ -1,6 +1,6 @@
 #include "agfx-texture-runtime.hpp"
 #include "agfx-texture-kernel.hpp"
-#include "../independent-agfx-contract/texture_sample.hpp"
+#include "../independent-agfx-contract/mip_sample.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -74,17 +74,12 @@ std::array<float, 4> reference_sample(const TextureUpload& upload,
   const SampleSettings settings{source.mag == 0 ? TexelFilter::nearest : TexelFilter::linear,
       static_cast<TexelWrap>(source.wrap_s), static_cast<TexelWrap>(source.wrap_t),
       static_cast<TexelWrap>(source.wrap_r), {}};
-  const float lod = source.mip == 0 ? 0.0F :
-      std::clamp(point[3], 0.0F, static_cast<float>(upload.levels.size() - 1));
-  const auto first = static_cast<std::size_t>(source.mip == 1 ? std::ceil(lod - 0.5F) : std::floor(lod));
   const SamplePoint coordinate{point[0], point[1], point[2]};
-  auto result = sample_texture(view(upload, first), coordinate, settings);
-  if (source.mip == 2 && first + 1 < upload.levels.size()) {
-    const auto second = sample_texture(view(upload, first + 1), coordinate, settings);
-    const float fraction = lod - static_cast<float>(first);
-    for (std::size_t c = 0; c < 4; ++c) result[c] += (second[c] - result[c]) * fraction;
-  }
-  return result;
+  if (upload.depth > 1) return sample_texture(view(upload), coordinate, settings);
+  std::vector<TextureView> levels;
+  levels.reserve(upload.levels.size());
+  for (std::size_t level = 0; level < upload.levels.size(); ++level) levels.push_back(view(upload, level));
+  return sample_m4_mip_texture({levels, coordinate, settings, point[3], static_cast<MipFilter>(source.mip)});
 }
 
 NSDictionary* check_upload_and_samples(TextureRuntime& runtime, TextureKernel& kernel,
@@ -112,7 +107,6 @@ NSDictionary* check_upload_and_samples(TextureRuntime& runtime, TextureKernel& k
   const auto points = queries(upload.depth > 1);
   double max_reference_error = 0;
   std::size_t cpu_comparisons = 0;
-  std::size_t excluded_mip_boundary_channels = 0;
   for (int code = 0; code < 768; ++code) {
     @autoreleasepool {
       const auto source = source_sampler(code);
@@ -125,15 +119,6 @@ NSDictionary* check_upload_and_samples(TextureRuntime& runtime, TextureKernel& k
       }
       if (source.mag == source.min) {
         for (std::size_t index = 0; index < native.size(); ++index) {
-          // Arbitrary fractional LOD and nearest ties differ from continuous CPU math.
-          // Keep every GPU comparison; limit CPU mip checks to exact quarter levels without nearest ties.
-          const float lod = points[index][3];
-          const bool non_quarter_lod = lod * 4.0F != std::floor(lod * 4.0F);
-          const bool nearest_tie = source.mip == 1 && lod - std::floor(lod) == 0.5F;
-          if (source.mip != 0 && upload.levels.size() > 1 && (non_quarter_lod || nearest_tie)) {
-            excluded_mip_boundary_channels += 4;
-            continue;
-          }
           const auto reference = reference_sample(upload, points[index], source);
           for (std::size_t c = 0; c < 4; ++c) {
             const double error = std::abs(static_cast<double>(reference[c]) - native[index][c]);
@@ -164,7 +149,7 @@ NSDictionary* check_upload_and_samples(TextureRuntime& runtime, TextureKernel& k
     @"wrongWrapNegativeControlDetected": @YES,
     @"queriesPerSampler": @(points.size()), @"gpuPixelComparisons": @(points.size() * 768),
     @"gpuSamplerResultsBitEqual": @YES, @"cpuChannelComparisons": @(cpu_comparisons),
-    @"cpuMipBoundaryExcludedChannels": @(excluded_mip_boundary_channels),
+    @"cpuMipBoundaryExcludedChannels": @0,
     @"maxCpuError": @(max_reference_error), @"cpuErrorLimit": @(1.0 / 255.0),
   };
 }
@@ -190,7 +175,7 @@ NSDictionary* run(const LibraryIdentity& library) {
     @"device": device.name, @"cases": cases,
     @"scope": @"Real AGFX upload/setters/readback; same native texture and original shader with native versus independent sampler; separate CPU spatial/mip reference",
     @"synchronization": @"AGFX finish before access; original compute command waits until completed and checks error",
-    @"notCovered": @"Actual effect passes, cross-version CGL parity, HDR, anisotropy other than 1, UI/export state, CPU mag/min transition and fractional-LOD quantization/nearest ties",
+    @"notCovered": @"Actual effect passes, cross-version CGL parity, HDR, anisotropy other than 1, UI/export state, CPU mag/min transition, bit-exact spatial and cross-level amplitudes in the composed float reference, non-M4 mip precision",
   };
 }
 
