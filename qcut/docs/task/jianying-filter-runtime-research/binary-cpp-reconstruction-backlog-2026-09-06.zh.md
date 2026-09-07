@@ -3,7 +3,7 @@
 初始盘点日期：2026-09-06。当时工作分支：`timeline-fixed-prfix`；源码基线：`c8ac87f132eb963cc9fa7805c8530f5325e1755d`。
 09-06 盘点只核对已有代码、研究报告和本机安装清单，没有新增反编译或算法实现。下述安装文件与资源卡库存仍保留该日期的历史快照。
 
-2026-09-07 更新：从 master `29d4700a5` 新建 `codex/jianying-binary-cpp-next`，AGFX、videoeditor、VECreator、Lens 四线持续推进，并将已有柔光纳入统一五工程构建。本次新增实际属性 Bézier/合并重采样、服务端材质/关键帧/reset 状态、RGBA 图像仿射，以及柔光 252 个原生中间目标和独立阶段重放。逐项状态见[执行记录](binary-cpp-execution-2026-09-07.zh.md)。**仍有 8 个未完整关闭的工作包；完整效果链仍为柔光 1 条，整库仍 0/6。**
+2026-09-07 更新：从 master `29d4700a5` 新建 `codex/jianying-binary-cpp-next`，AGFX、videoeditor、VECreator、Lens 四线持续推进，并将已有柔光纳入统一五工程构建。本次在已有 Bézier/重采样/reset/图像 warp 与柔光阶段重放基础上，补真实 SDK 窗口选帧、创建/插入与相邻控制点、NEON/ImageTransform 后端以及已验证的 UNORM 和末端混合精度修正。逐项状态见[执行记录](binary-cpp-execution-2026-09-07.zh.md)。**仍有 8 个未完整关闭的工作包；完整效果链仍为柔光 1 条，整库仍 0/6。**
 
 ## 现在到底还剩多少
 
@@ -24,10 +24,10 @@
 | 核心库 | 已经知道/已经做过 | 独立 C++ 现状 | 尚需分析与实现 |
 | --- | --- | --- | --- |
 | `libcccreator.dylib` | Effect/Swing/FeatureSegment 宿主、滤镜与转场入口、序列化资源、文字/人像/跟踪的部分合同；电影柔光固定资源图与强度语义 | 柔光已提炼为独立 C++20；也有自有后处理代码。大量 `.mm/.cpp` 文件仍是调用原生库的探针或桥，不能算原生算法已重写 | 通用多 Pass 图、其他复杂滤镜、文本动画和转场的完整独立执行；Bach/GRU/跟踪等核心算法与模型仍有私有依赖 |
-| `libAGFX.dylib` | 格式转换含 113 项映射、28 项平台条件，每次 208,911 次原生差分；采样器 768 种组合；新增 5 个纹素夹具 × 768 sampler 的真实像素对照，全部逐位相同，RGBA/BGRA 读回及 3D 空间采样也已通过 | [独立 C++20 合同与纹素原语](../../../research/independent-agfx-contract/README.zh.md)已有可运行源码及测试；详见[AGFX 像素验证](agfx-texture-pixels-2026-09-07.zh.md)。这是格式/采样/读回单元，未恢复通用 AGFX 引擎 | CPU mip 边界尚未闭合，不计完成；D634 柔光逐 Pass 格式/采样已实测，但精度仍有残差；还需颜色/Alpha、资源寿命、同步及多 Pass 图整合 |
-| `libvideoeditor.dylib` | 保留 3,858,432 次状态、1,650 次 JSON 原生对照；新增 88,392 个合并重采样值与 40,000 个实际属性 Bézier 值，非 NaN 逐位一致、NaN 分类一致 | [独立 C++](../../../research/independent-editor-contract/README.md)已有两种求值算法，且服务端状态另由 Creator 工程组合；见[实际求值报告](videoeditor-keyframe-evaluation-2026-09-07.zh.md) | 完整 SDK 对象图、窗口选帧/图形分派、时间适配、真实 seek/export/undo 与效果事件传播仍缺；数值求值不等于完整时间线引擎 |
-| `libVECreator.dylib` | 既有选择/请求/回调基础上，跨入 videoeditor 的真实 update/reset 注册表和处理器；确认 reset 字面量 1.0、全 common 组移走、已有 ID graph 清空/values 替换 | [独立 C++](../../../research/independent-creator-contract/README.md)957 项检查通过；10,008 原生单值 vector 位型一致，完整 handler 状态仍为静态证据；见[事件报告](creator-editor-events-2026-09-07.zh.md) | 缺失 ID 的当前时间定位、新建关键帧、record rollback/undo、完整 request→SDK→effect 更新与真实 UI 回放仍未闭合 |
-| `liblens.dylib` | 六个数值原语 4,441 案例/139,213 值逐位一致；新增 base RGBA 图像仿射/BGR，3,892 案例/161,540,260 字节零差异 | [独立 C++ 库、图像 CLI 与测试](../../../research/independent-lens-contract/README.zh.md)已编译，split 量化/signed16 回绕/透明边界有原生证据；见[图像 warp 报告](lens-image-warp-2026-09-07.zh.md) | 仍缺产品选择哪一 warp 后端、VAS 运动估计/crop/时序链；Deflicker 独立时序/GPU 核心、UMVFI 模型/补帧、VMB 光流/融合仍未完成 |
+| `libAGFX.dylib` | 格式转换含 113 项映射、28 项平台条件，每次 208,911 次原生差分；采样器 768 种组合；新增 5 个纹素夹具 × 768 sampler 的真实像素对照，全部逐位相同，RGBA/BGRA 读回及 3D 空间采样也已通过 | [独立 C++20 合同与纹素原语](../../../research/independent-agfx-contract/README.zh.md)已有可运行源码及测试；详见[AGFX 像素验证](agfx-texture-pixels-2026-09-07.zh.md)。这是格式/采样/读回单元，未恢复通用 AGFX 引擎 | CPU mip 边界尚未闭合，不计完成；D634 柔光逐 Pass 格式/采样已实测；666,580 通道验证修正 UNORM 转换，整链精度仍有残差；还需颜色/Alpha、资源寿命、同步及多 Pass 图整合 |
+| `libvideoeditor.dylib` | 保留 3,858,432 次状态、1,650 次 JSON 原生对照；新增 88,392 个合并重采样值与 40,000 个实际属性 Bézier 值，非 NaN 逐位一致、NaN 分类一致 | [独立 C++](../../../research/independent-editor-contract/README.md)已有两种求值算法，且服务端状态另由 Creator 工程组合；见[实际求值报告](videoeditor-keyframe-evaluation-2026-09-07.zh.md) | 真实 SDK 工厂对象上的窗口/移除/exact-hit 已验证；完整对象图、图形分派、Segment trim/speed 时间适配、真实 seek/export/undo 与效果事件传播仍缺；数值求值不等于完整时间线引擎 |
+| `libVECreator.dylib` | 既有选择/请求/回调基础上，跨入 videoeditor 的真实 update/reset 注册表和处理器；确认 reset 字面量 1.0、全 common 组移走、已有 ID graph 清空/values 替换 | [独立 C++](../../../research/independent-creator-contract/README.md)957 项检查通过；10,008 原生单值 vector 位型一致，完整 handler 状态仍为静态证据；见[事件报告](creator-editor-events-2026-09-07.zh.md) | 已解析时间的新建/插入/碰撞更新及 control 修复已有独立实现和局部原生对照；当前时间到真实 Segment 的完整定位、record rollback/undo、完整 request→SDK→effect 与 UI 回放仍未闭合 |
+| `liblens.dylib` | 六个数值原语 4,441 案例/139,213 值逐位一致；新增 base RGBA 图像仿射/BGR，3,892 案例/161,540,260 字节零差异 | [独立 C++ 库、图像 CLI 与测试](../../../research/independent-lens-contract/README.zh.md)已编译，split 量化/signed16 回绕/透明边界有原生证据；见[图像 warp 报告](lens-image-warp-2026-09-07.zh.md) | 已恢复预处理器两后端分派及 NEON 真正 SIMD 条件，各 10,998 案例零差异；仍缺上游产品/VAS 实际选择、运动估计/crop/时序链；Deflicker 独立时序/GPU 核心、UMVFI 模型/补帧、VMB 光流/融合仍未完成 |
 | `libbytenn.dylib` | ByteNN 模型加载、`SetInput` 张量元数据与输入预处理边界，部分模型路由 | **尚无 ByteNN 推理引擎及相关降噪/分割模型的完整独立 C++ 替代** | 张量布局、算子/后端、输出协议、时序状态与模型依赖。恢复推理调用合同不等于取得模型训练源码或权重的独立替代 |
 
 上述证据来自不同时间与不同二进制版本。当前已安装 11.3.0 与柔光历史 D634 CGL 参考分开记录，地址/ABI/像素结论不能跨版本直接套用。
@@ -62,9 +62,9 @@
 | 目录 | 已交付内容 | 复用边界 |
 | --- | --- | --- |
 | [independent-agfx-contract](../../../research/independent-agfx-contract/README.zh.md) | 格式、sampler 和 CPU 纹素算法；隔离原生纹理上传、采样与读回验证 | CPU mip 边界和真实滤镜的完整多 Pass 图仍待闭合 |
-| [independent-editor-contract](../../../research/independent-editor-contract/README.md) | 数值赋值状态、时间端点计算、关键帧元数据 | 完整对象生命周期和动作链未恢复；元数据语义相同不代表 JSON 字节相同 |
-| [independent-creator-contract](../../../research/independent-creator-contract/README.md) | 选择聚合、请求记录、模型门控和确认回调计划 | 原生执行证据仅覆盖两纯常量；计划不实际操作编辑器 |
-| [independent-lens-contract](../../../research/independent-lens-contract/README.zh.md) | 六个有数值原生对照的 CPU 原语及 CLI | 尚未连接为完整防抖/防闪烁/补帧算法，也没有图像重采样 |
+| [independent-editor-contract](../../../research/independent-editor-contract/README.md) | 值状态、时间端点、元数据、实际 Bézier/重采样和窗口选帧 | 完整对象生命周期和动作链未恢复；元数据语义相同不代表 JSON 字节相同 |
+| [independent-creator-contract](../../../research/independent-creator-contract/README.md) | 选择/请求/回调、材质/reset、已解析时间的关键帧创建/插入/control | 常量、向量和局部 SDK 模型变更有原生对照；完整时间转换与 undo 未闭合 |
+| [independent-lens-contract](../../../research/independent-lens-contract/README.zh.md) | 六个 CPU 数值原语、base/NEON 与 ImageTransform 图像 warp、CLI | 有实际图像字节对照；尚未连接为完整防抖/防闪烁/补帧算法 |
 
 仓库另外已有独立 Metal 滤镜及人像后处理代码，例如 [`host.mm`](../../../electron/qcut-independent-filter/host.mm)、[`alpha-refinement.cpp`](../../../electron/jianying-person-cutout/native/alpha-refinement.cpp)、[`alpha-temporal-stabilizer.cpp`](../../../electron/jianying-person-cutout/native/alpha-temporal-stabilizer.cpp)。它们应保留和复用；不能因为本轮只有一份标准 C++ 算法链交付，就说整个仓库其他 C++ 都没写。
 
@@ -110,6 +110,10 @@
 - [基础视频探针与验证等级](../jianying-video-basic-panel-reference/PROBES.zh-CN.md)
 - [Deflicker 私有运行时现状及缺口](../jianying-video-basic-panel-reference/PRIVATE_RUNTIME_DEFLICKER.zh-CN.md)
 - [ByteNN 模型输入边界](model-input-boundary.zh.md)
+- [09-07 真实 SDK 窗口选帧](videoeditor-window-selection-2026-09-07.zh.md)
+- [09-07 新建关键帧与控制点](creator-keyframe-insertion-2026-09-07.zh.md)
+- [09-07 Lens 实际 warp 后端](lens-warp-backends-2026-09-07.zh.md)
+- [09-07 柔光 UNORM 与末端混合](soft-glow-unorm-precision-2026-09-07.zh.md)
 - [柔光算法语义契约](../../../research/independent-soft-glow/semantic-contract.zh.md)
 
 安装文件库存可用以下只读命令重算；升级应用后应更新日期和计数：
