@@ -373,6 +373,10 @@ export interface CLIRunOptions {
 	button?: string;
 	/** Press cycles for editor:pointer:click (1 to 3). */
 	clickCount?: number;
+	/** editor:keyboard:type: dispatch keyDown/keyUp per character instead of inserting text. */
+	keyEvents?: boolean;
+	/** Comma-separated local file paths for editor:pointer:drop-files. */
+	files?: string;
 	holdMs?: number;
 	durationMs?: number;
 	steps?: number;
