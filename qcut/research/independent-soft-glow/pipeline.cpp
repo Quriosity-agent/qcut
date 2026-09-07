@@ -4,6 +4,7 @@
 #include "glow.hpp"
 #include "layer.hpp"
 #include "lut.hpp"
+#include "output_mix.hpp"
 
 #include <cmath>
 #include <stdexcept>
@@ -59,7 +60,10 @@ PipelineParameters pipeline_parameters(const PipelineParameterRequest& request) 
 
 Image cinematic_soft_glow(const PipelineRequest& request) {
     const auto& [source, lut, intensity, sink, intensity_mode] = request;
-    const auto parameters = pipeline_parameters({intensity, intensity_mode});
+    if (!std::isfinite(intensity) || intensity < 0 || intensity > 1) {
+        throw std::invalid_argument("pipeline intensity must be in [0, 1]");
+    }
+    const auto parameters = pipeline_parameters({static_cast<float>(intensity), intensity_mode});
     const bool ui_snapshot = intensity_mode == IntensityMode::ui_snapshot;
     validate_image(source);
     validate_image(lut);
@@ -91,14 +95,7 @@ Image cinematic_soft_glow(const PipelineRequest& request) {
         record("06-output", composed);
         return composed;
     }
-    Image output(source.width, source.height);
-    for (std::size_t index = 0; index < output.pixels.size(); ++index) {
-        Pixel pixel = source.pixels[index];
-        for (std::size_t channel = 0; channel < 4; ++channel) {
-            pixel[channel] = std::lerp(pixel[channel], composed.pixels[index][channel], intensity);
-        }
-        output.pixels[index] = rgba8(pixel);
-    }
+    const Image output = mix_output({source, composed, intensity});
     record("06-output", output);
     return output;
 }
