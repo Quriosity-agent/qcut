@@ -379,6 +379,8 @@ export interface CLIRunOptions {
 	files?: string;
 	/** editor:pointer:drag --to-time: drag the playhead (default) or seek through the API. */
 	seekMode?: string;
+	/** BrowserWindow id for pointer, keyboard, hit-test, and file-drop commands (default: first window). */
+	windowId?: number;
 	holdMs?: number;
 	durationMs?: number;
 	steps?: number;
