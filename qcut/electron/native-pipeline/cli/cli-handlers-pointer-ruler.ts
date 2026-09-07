@@ -40,8 +40,10 @@ interface RulerLabelPoint {
 
 async function readRulerLabelPoints({
 	client,
+	windowId,
 }: {
 	client: EditorApiClient;
+	windowId?: number;
 }): Promise<{
 	points: RulerLabelPoint[];
 	source: "ruler-labels" | "snapshot";
@@ -50,7 +52,10 @@ async function readRulerLabelPoints({
 	try {
 		const probe = await client.get<{
 			labels?: Array<{ time: number; x: number; y: number; height: number }>;
-		}>("/api/claude/pointer/ruler-labels");
+		}>(
+			"/api/claude/pointer/ruler-labels",
+			windowId !== undefined ? { windowId: String(windowId) } : undefined
+		);
 		if (Array.isArray(probe.labels)) {
 			return {
 				points: probe.labels
@@ -115,8 +120,10 @@ export async function calibrateTimelineRuler({
  */
 export async function attemptTimelineRulerCalibration({
 	client,
+	windowId,
 }: {
 	client: EditorApiClient;
+	windowId?: number;
 }): Promise<TimelineRulerCalibrationAttempt> {
 	const {
 		points: labels,
@@ -124,6 +131,7 @@ export async function attemptTimelineRulerCalibration({
 		reason,
 	} = await readRulerLabelPoints({
 		client,
+		windowId,
 	});
 	if (reason) return { calibration: null, source, reason, labelCount: 0 };
 	// Labels share the ruler row; keep the most populated row so a stray
