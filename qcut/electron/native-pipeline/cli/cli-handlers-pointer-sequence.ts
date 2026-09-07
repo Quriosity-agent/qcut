@@ -123,6 +123,7 @@ async function executeSequenceAction({
 				steps: numberValue(action, "steps"),
 				releaseDelayMs: numberValue(action, "releaseDelayMs"),
 				dnd: stringValue(action, "dnd"),
+				dragStartTimeoutMs: numberValue(action, "dragStartTimeoutMs"),
 				modifiers: modifiersValue(action),
 				button: stringValue(action, "button"),
 				verify:
