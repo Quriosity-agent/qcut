@@ -1,14 +1,14 @@
 {
-	"schema_version": 2,
-	"id": "cinematic-soft-glow-opaque-intensity-v2",
-	"date": "2026-09-06",
+	"schema_version": 3,
+	"id": "cinematic-soft-glow-opaque-intensity-v3",
+	"date": "2026-09-07",
 	"scope": "Opaque SDR RGBA8 fixed graph with explicit output-mix (default, historical CGL reference) and ui-snapshot (measured editor export parameter reconstruction); not a complete preview or event model.",
 	"package": {
 		"resource_id": "7447126702137904420",
 		"version": "9673f80b8e2f5a07f02f9ce1130b784a",
 		"files": 121,
 		"tree_sha256": "9db2974298a914c4a465c4fc42a1e797f4c2e416bd2d9442d2ab57174526f971",
-		"tree_hash_rule": "Relative paths sorted by code point; concatenate path UTF-8, NUL, file bytes, NUL."
+		"tree_hash_rule": "Historical Python Path ordering compares path components; concatenate relative path UTF-8, NUL, bytes, NUL. The later capture profile uses whole-path string ordering and a separate hash."
 	},
 	"evidence_levels": [
 		"static-read",
@@ -45,7 +45,8 @@
 			"unit": "fraction",
 			"applies_to": "Selected by intensity_mode; see intensity_modes",
 			"zero_behavior": "output-mix: byte-identical I; ui-snapshot: SoftLight result B",
-			"package_event_dispatched": false
+			"package_event_dispatched": false,
+			"storage": "binary64, validated before any scene-parameter narrowing"
 		},
 		"intensity_mode": {
 			"values": ["output-mix", "ui-snapshot"],
@@ -55,13 +56,15 @@
 		}
 	},
 	"precision": {
-		"accumulation": "floating point; C++ reference uses float except selected sizing/geometry arithmetic",
-		"target_write": "Q(c)=round(clamp(c,0,1)*255)/255",
+		"accumulation": "binary32 shader reconstruction; selected sizing/geometry and byte-domain provider mixing use binary64",
+		"target_write": "Q(c)=round(double(clamp(c,0,1))*255)/255; exact product before rounding",
 		"cpu_halfway_rounding": "away from zero",
-		"target_write_status": "implementation-convention supported by endpoint verification, not captured old-CGL per-pass rounding",
+		"target_write_status": "666580 original float inputs matched actual CGL RGBA32F-to-RGBA8 blit/readback on Apple M4 Pro; all GPU arithmetic is not verified",
 		"pixel_centers": "((x+0.5)/width,(y+0.5)/height)",
 		"sampler": "bilinear before nonlinear gamma or packed-channel decode",
-		"gpu_bit_exact": false
+		"gpu_bit_exact": false,
+		"output_mix": "For RGB byte inputs: delta=(F8-I8)*t; O8=round(I8+delta), binary64 without FMA. Preserve source alpha below full intensity; full returns F.",
+		"evidence": "../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md"
 	},
 	"dimensions": {
 		"full": {
@@ -348,7 +351,7 @@
 			"source_evidence": [],
 			"semantic_status": ["endpoint-verified"],
 			"by_mode": {
-				"output-mix": "Q((1-t)*I+t*F)",
+				"output-mix": "RGB: round(I8+(F8-I8)*t)/255 using binary64; alpha from I below t=1; full F at t=1",
 				"ui-snapshot": "F"
 			}
 		}
@@ -395,7 +398,7 @@
 		"ui-snapshot retains the threshold branch change between 0.8 and 0.81"
 	],
 	"unresolved": [
-		"actual old-CGL intermediate formats, sampler precision, rounding and matrix arithmetic",
+		"remaining sampler/coordinate precision, shader arithmetic reordering, packed interpolation and dither; captured D634 targets are RGBA8",
 		"host bindings for SGlow step/mix and LumiLayer self.LumiLayer_301",
 		"full transparent/HDR and package-event behavior",
 		"complete preview history, arbitrary timeline/export paths and broader video parity",
@@ -537,17 +540,17 @@
 		"portable_metrics": "semantic-experiments.json",
 		"intensity_mode": "output-mix"
 	},
-	"previous_contract": "cinematic-soft-glow-static-opaque-v1",
+	"previous_contract": "cinematic-soft-glow-opaque-intensity-v2",
 	"intensity_modes": {
 		"output-mix": {
 			"parameter_source": "parameters (instantiated static scene)",
 			"glow_threshold": 0.84,
 			"glow_brightness": 2.4,
 			"lut_opacity": 0.8,
-			"output": "Q((1-t)*I+t*F)",
+			"output": "RGB: round(I8+(F8-I8)*t)/255 using binary64; alpha from I below t=1; full F at t=1",
 			"zero_behavior": "byte-identical I",
-			"source_evidence": "historical private D634 CGL endpoint outputs",
-			"historical_hashes": "Historical source hashes identify that earlier build; six outputs reproduced byte-identically by the new default CLI."
+			"source_evidence": "QCut blendNativeEffectOutput byte arithmetic plus fixed private D634 endpoint references",
+			"historical_hashes": "Historical v2 hashes remain unchanged as evidence; v3 intentionally fixes boundary pixels. New six-case results are in the precision report."
 		},
 		"ui-snapshot": {
 			"parameter_source": "parameters with explicit overrides below",
@@ -568,5 +571,13 @@
 			"human_evidence": "intensity-modes.zh.md",
 			"local_evidence_snapshot": "/Users/peter/Downloads/QCut-Soft-Glow-Video-2026-09-06/intensity-modes/ui-evidence-snapshot.json"
 		}
+	},
+	"native_pass_followup": {
+		"profile": "d634-soft-glow-cgl-rgba8-v1",
+		"targets": 252,
+		"all_rgba8": true,
+		"capture_report": "../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md",
+		"precision_report": "../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md",
+		"bit_exact_pipeline": false
 	}
 }
