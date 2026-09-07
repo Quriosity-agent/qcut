@@ -1,8 +1,8 @@
 #include "segment_time.hpp"
+#include "integer_time.hpp"
 #include "wrapped_time.hpp"
 
 #include <cmath>
-#include <limits>
 #include <stdexcept>
 
 #if defined(__FAST_MATH__) || (defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__)
@@ -17,14 +17,6 @@ void validate(const ConstantSpeedSegment& segment) {
       !std::isfinite(segment.speed) || segment.speed <= 0) {
     throw std::invalid_argument("Only nonnegative ranges and positive finite constant speed are verified");
   }
-}
-
-std::int64_t truncate_time(double value) noexcept {
-  // ARM64 FCVTZS saturates; an out-of-range C++ floating-to-integer cast would be undefined.
-  if (std::isnan(value)) return 0;
-  if (value >= 0x1p63) return std::numeric_limits<std::int64_t>::max();
-  if (value <= -0x1p63) return std::numeric_limits<std::int64_t>::min();
-  return static_cast<std::int64_t>(value);
 }
 
 bool near_endpoint(std::int64_t delta, std::int64_t endpoint) noexcept {
