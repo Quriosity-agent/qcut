@@ -146,6 +146,35 @@ describe("action policy", () => {
 		).toBe("confirm");
 	});
 
+	it("confirms sequences, keyboard input, and snapshot mutations by default", () => {
+		for (const command of [
+			"editor:pointer:sequence",
+			"editor:keyboard:press",
+			"editor:keyboard:type",
+			"editor:snapshot:select",
+			"editor:snapshot:check",
+			"editor:ui:context-menu",
+			"editor:demo:run",
+		]) {
+			expect(
+				evaluateActionPolicy({ command, policy: DEFAULT_ACTION_POLICY })
+					.decision,
+				command
+			).toBe("confirm");
+		}
+		for (const command of [
+			"editor:pointer:state",
+			"editor:pointer:hit-test",
+			"editor:pointer:wait-for",
+		]) {
+			expect(
+				evaluateActionPolicy({ command, policy: DEFAULT_ACTION_POLICY })
+					.decision,
+				command
+			).toBe("allow");
+		}
+	});
+
 	it("keeps masked auth token reads in allow tier", () => {
 		const result = evaluateActionPolicy({
 			options: defaultOptions({
