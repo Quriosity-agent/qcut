@@ -27,7 +27,7 @@ inline M4TextureFixture m4_fixture(std::uint32_t width, std::uint32_t height, bo
   std::uint32_t seed = width * 1741U + height * 4729U;
   for (std::uint32_t level = 0; level < count; ++level) {
     const auto stride = static_cast<std::size_t>(width) * 4 + 12;
-    auto& pixels = result.storage.emplace_back(stride * height, 0xbd);
+    auto& pixels = result.storage.emplace_back(stride * height, std::uint8_t{0xbd});
     for (std::uint32_t y = 0; y < height; ++y) {
       for (std::uint32_t x = 0; x < width; ++x) {
         const auto bits = next_value(seed);
