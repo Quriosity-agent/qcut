@@ -399,6 +399,33 @@ export function createExtraEditorCommands({
 			[],
 			["qcut editor pointer state --json"]
 		),
+		"editor:pointer:drop-files": ed(
+			"editor:pointer:drop-files",
+			"Drop local files on a target as an external HTML5 file drop (media panel import, file drop zones)",
+			[
+				f("--files", "string", "Comma-separated local file paths", {
+					required: true,
+				}),
+				f("--target", "string", "Semantic target, for example panel.media"),
+				f("--ref", "string", "Snapshot ref, for example @e12"),
+				f("--x", "number", "Editor viewport X coordinate"),
+				f("--y", "number", "Editor viewport Y coordinate"),
+				f("--normalized-x", "number", "Horizontal viewport ratio from 0 to 1"),
+				f("--normalized-y", "number", "Vertical viewport ratio from 0 to 1"),
+				f(
+					"--modifiers",
+					"string",
+					"Comma-separated modifiers held during the drop: alt, ctrl, cmd, shift"
+				),
+				f("--wait-for", "string", "Wait for a semantic target or visible text"),
+				f("--timeout-ms", "number", "Target wait timeout in milliseconds", {
+					default: 5000,
+				}),
+			],
+			[
+				"qcut editor pointer drop-files --files ./clip.mp4,./cover.png --target panel.media --force --json",
+			]
+		),
 		"editor:pointer:hit-test": ed(
 			"editor:pointer:hit-test",
 			"Report the element under a target without dispatching input: tag, role, name, test id, ref, bounds, and ancestor test ids",
@@ -469,6 +496,12 @@ export function createExtraEditorCommands({
 			"Type text into the focused editor control",
 			[
 				f("--text", "string", "Text to type", { required: true }),
+				f(
+					"--key-events",
+					"boolean",
+					"Dispatch keyDown/keyUp per character so keydown handlers fire, instead of inserting text",
+					{ default: false }
+				),
 				f("--interval-ms", "number", "Delay between characters"),
 				f("--foreground", "boolean", "Use foreground native input", {
 					default: false,
