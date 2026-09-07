@@ -1,17 +1,19 @@
-name: Independent AGFX contract
+name: Independent binary C++ contracts
 
 on:
   pull_request:
     branches: [master]
     paths:
-      - qcut/research/independent-agfx-contract/**
-      - qcut/research/jianying-runtime-probe/agfx-format-probe.mm
+      - qcut/research/independent-*-contract/**
+      - qcut/research/jianying-runtime-probe/agfx-*
+      - qcut/research/jianying-runtime-probe/graphics-*.h
       - .github/workflows/agfx-contract.yml
   push:
     branches: [master]
     paths:
-      - qcut/research/independent-agfx-contract/**
-      - qcut/research/jianying-runtime-probe/agfx-format-probe.mm
+      - qcut/research/independent-*-contract/**
+      - qcut/research/jianying-runtime-probe/agfx-*
+      - qcut/research/jianying-runtime-probe/graphics-*.h
       - .github/workflows/agfx-contract.yml
   workflow_dispatch:
 
@@ -38,20 +40,15 @@ jobs:
       - uses: actions/checkout@v6
       - name: Configure independent C++
         run: >-
-          cmake -S qcut/research/independent-agfx-contract -B build-agfx-contract
+          cmake -S qcut/research/independent-binary-contract -B build-binary-contract
           -DCMAKE_BUILD_TYPE=Release
-          -DAGFX_CONTRACT_SANITIZERS=${{ matrix.sanitizers }}
+          -DBINARY_CONTRACT_SANITIZERS=${{ matrix.sanitizers }}
       - name: Build
-        run: cmake --build build-agfx-contract --config Release --parallel 2
+        run: cmake --build build-binary-contract --config Release --parallel 2
       - name: Test
-        run: ctest --test-dir build-agfx-contract --build-config Release --output-on-failure
+        run: ctest --test-dir build-binary-contract --build-config Release --output-on-failure
       - name: Compile macOS arm64 diagnostic without loading private libraries
         if: runner.os == 'macOS'
-        run: >-
-          xcrun clang++ -arch arm64 -std=c++20 -fobjc-arc
-          -Wall -Wextra -Wpedantic -Werror -Wno-deprecated-declarations
-          qcut/research/jianying-runtime-probe/agfx-format-probe.mm
-          qcut/research/independent-agfx-contract/pixel_format.cpp
-          qcut/research/independent-agfx-contract/sampler.cpp
-          -framework Foundation -framework Metal
-          -o build-agfx-contract/agfx-native-probe
+        run: |
+          cmake -S qcut/research/independent-binary-contract -B build-native-contract -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DBINARY_CONTRACT_NATIVE_PROBES=ON
+          cmake --build build-native-contract --config Release --parallel 2
