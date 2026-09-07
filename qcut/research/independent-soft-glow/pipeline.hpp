@@ -14,7 +14,7 @@ std::string_view intensity_mode_name(IntensityMode mode);
 struct PipelineRequest {
     const Image& source;
     const Image& lut;
-    float intensity = 1;
+    double intensity = 1;
     StageSink sink;
     IntensityMode intensity_mode = IntensityMode::output_mix;
 };
