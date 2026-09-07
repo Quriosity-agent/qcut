@@ -1,4 +1,5 @@
 #include "gaussian.hpp"
+#include "blit.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -214,7 +215,7 @@ Image gaussian_blur(const GaussianRequest& request) {
     if (!plan.horizontal && !plan.vertical) {
         return quantized(request.source);
     }
-    Image working = resize(request.source, plan.work_width, plan.work_height);
+    Image working = blit_resize({request.source, plan.work_width, plan.work_height});
     if (request.sink) {
         request.sink("gaussian.downsample", working);
     }
@@ -230,7 +231,7 @@ Image gaussian_blur(const GaussianRequest& request) {
             request.sink("gaussian.y", working);
         }
     }
-    Image output = resize(working, request.source.width, request.source.height);
+    Image output = blit_resize({working, request.source.width, request.source.height});
     if (request.sink) {
         request.sink("gaussian.output", output);
     }
