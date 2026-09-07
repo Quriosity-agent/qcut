@@ -286,26 +286,30 @@ qcut update --check --json
 Get, set, or clear the QCut auth token directly from the CLI. No need for DevTools.
 
 ```bash
-# Get current token (masked by default)
+# Check the current token (masked) and whether the editor is authenticated
 qcut editor auth token --json
 
-# Get token with full value revealed
-qcut editor auth token --reveal --json
+# Set a token without putting it on the command line: hidden prompt on a
+# TTY, or pipe it in
+qcut editor auth token --from-stdin --json
+printf '%s' "$QCUT_AUTH_TOKEN" | qcut editor auth token --from-stdin --json
 
-# Set a token
-qcut editor auth token --set <token> --json
-
-# Activate license on this device
-qcut editor auth activate --token <token> --json
+# Activate the license on this device the same way
+qcut editor auth activate --from-stdin --json
 
 # Clear token (logout)
 qcut editor auth logout --json
 ```
 
+`--set <token>` and `--token <token>` still work but land in shell history
+and process listings, and `--reveal` prints the full value; all three are
+confirm-tier actions. Prefer `--from-stdin` and check `authenticated` in the
+masked response instead of reading the token back.
+
 | Command | Description |
 |---------|-------------|
-| `editor auth token` | Get current token (add `--reveal` for full value, `--set <val>` to set) |
-| `editor auth activate` | Set token and activate license on this device |
+| `editor auth token` | Get the masked token and `authenticated` flag; `--from-stdin` sets it from a hidden prompt or pipe (`--set <val>` / `--reveal` exist but expose the value) |
+| `editor auth activate` | Activate the license on this device; `--from-stdin` reads the token hidden (or `--token <val>`) |
 | `editor auth logout` | Clear the current auth token |
 
 Never paste a revealed token into prompts, logs, or generated files.
@@ -318,11 +322,11 @@ Upload videos to YouTube after authenticating with Google OAuth.
 - Logged in via Google OAuth in QCut app
 - YouTube Data API v3 enabled in Google Cloud Console
 - YouTube channel created on the Google account
-- Auth token set (use `qcut editor auth token --reveal --json` to check)
+- Auth token set (`qcut editor auth token --json` reports `authenticated`)
 
 ```bash
-# Set auth token for CLI usage (preferred: use editor auth token --set)
-qcut editor auth token --set <token> --json
+# Set the auth token for CLI usage without exposing it (hidden prompt or pipe)
+qcut editor auth token --from-stdin --json
 
 # Upload a video (private by default)
 qcut youtube:upload -i video.mp4 --title "My Video"
