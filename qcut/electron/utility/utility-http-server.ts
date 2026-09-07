@@ -79,6 +79,7 @@ import type { ClaudeConsoleEntry } from "../claude/handlers/claude-console-handl
 import type {
 	AgentPointerResult,
 	AgentPointerHitTestResult,
+	AgentPointerRulerLabelsResult,
 	AgentPointerVisualState,
 	AgentKeyboardResult,
 	EditorSnapshotActionResult,
@@ -551,6 +552,11 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			(await requestFromMain("pointer:drop-files", {
 				request,
 			})) as AgentPointerResult,
+		rulerLabels: async () =>
+			(await requestFromMain(
+				"pointer:ruler-labels",
+				{}
+			)) as AgentPointerRulerLabelsResult,
 		pressKeys: async (request) =>
 			(await requestFromMain("keyboard:press", {
 				request,
