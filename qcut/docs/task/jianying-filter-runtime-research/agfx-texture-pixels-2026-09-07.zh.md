@@ -1,5 +1,7 @@
 # AGFX：纹理上传、真实 sampler 与像素差分
 
+2026-09-08 续篇：[新分支四线推进与当前验证](binary-cpp-scaleup-2026-09-08.zh.md)。本文保留09-07的历史结果；本轮 mip 边界、非空 graph、记录恢复、时序裁切的新状态以续篇为准。
+
 2026-09-07。本轮交付 RGBA8/BGRA8 的独立 C++ 空间采样参考，以及调用真实 AGFX 对象的受控 GPU 差分探针。已验证上传适配、通道顺序、Alpha、边界、三维 R 轴和显式 mip 层。**这不是实际滤镜 Pass、整套 AGFX 引擎或剪映 UI 像素一致性证明。**
 
 源码：[独立采样接口](../../../research/independent-agfx-contract/texture_sample.hpp)、[实现](../../../research/independent-agfx-contract/texture_sample.cpp)、[测试](../../../research/independent-agfx-contract/texture_sample_tests.cpp)、[原生探针](../../../research/jianying-runtime-probe/agfx-texture-probe.mm)。统一构建见[四工程入口](../../../research/independent-binary-contract/README.zh.md)。
