@@ -70,6 +70,21 @@ function getDefaultOutputDir(): string {
 	);
 }
 
+/**
+ * Like parseFiniteCliNumber, but a flag that is present yet not a number
+ * becomes NaN so the handler's range check rejects it instead of silently
+ * treating the flag as omitted.
+ */
+function parseStrictCliNumber({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (typeof value !== "string") return undefined;
+	const parsed = parseFiniteCliNumber({ value });
+	return parsed === undefined ? Number.NaN : parsed;
+}
+
 function parseFiniteCliNumber({
 	value,
 }: {
@@ -266,6 +281,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"batch-id": { type: "string" },
 			offset: { type: "string" },
 			reveal: { type: "boolean", default: false },
+			"from-stdin": { type: "boolean", default: false },
 			"no-confirm": { type: "boolean", default: false },
 			"prompt-file": { type: "string" },
 			portraits: { type: "string", short: "p" },
@@ -418,6 +434,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"to-index": { type: "string" },
 			via: { type: "string" },
 			dnd: { type: "string" },
+			"drag-start-timeout-ms": { type: "string" },
 			modifiers: { type: "string" },
 			button: { type: "string" },
 			"click-count": { type: "string" },
@@ -767,6 +784,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		batchId: values["batch-id"] as string | undefined,
 		offset: parseIntegerCliNumber({ value: values.offset }),
 		reveal: (values.reveal as boolean) ?? false,
+		fromStdin: (values["from-stdin"] as boolean) ?? false,
 		noConfirm: (values["no-confirm"] as boolean) ?? false,
 		promptFile: values["prompt-file"] as string | undefined,
 		portraits: values.portraits as string | undefined,
@@ -1086,9 +1104,12 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			: undefined,
 		via: values.via as string | undefined,
 		dnd: values.dnd as string | undefined,
+		dragStartTimeoutMs: parseFiniteCliNumber({
+			value: values["drag-start-timeout-ms"],
+		}),
 		modifiers: values.modifiers as string | undefined,
 		button: values.button as string | undefined,
-		clickCount: parseFiniteCliNumber({ value: values["click-count"] }),
+		clickCount: parseStrictCliNumber({ value: values["click-count"] }),
 		keyEvents: (values["key-events"] as boolean) ?? false,
 		files: values.files as string | undefined,
 		seekMode: values["seek-mode"] as string | undefined,
