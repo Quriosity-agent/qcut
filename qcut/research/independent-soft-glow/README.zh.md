@@ -101,3 +101,24 @@ python3 verify_reference.py \
 真实视频的持续处理、重复与乱序验证见 [帧流报告](stream.zh.md)；UI强度快照证据见 [双模式报告](intensity-modes.zh.md)。这些结果各有输入、编码与采样范围，不能把上述旧CGL的误差表当作当前编辑器视频逐帧一致性结论。透明图像整链原生对齐、HDR、全部事件宿主依赖和跨平台等价仍未覆盖。Gaussian极小工作尺寸保底为1；SGlow工作高度取整为0时拒绝输入，两者均为独立实现边界，未经原生验证。Gaussian非零空间抖动、任意图层3D变换及matte均不在该固定场景范围。
 
 源码没有携带供应商二进制、Shader、Lua、模型或 LUT；私有 LUT 仅用于本机实测。
+
+## 2026-09-07：逐阶段原生输入重放
+
+新增 `soft-glow-stage-replay`，复用 Gaussian、Glow、Layer、LUT 自有实现，把每个原生上游输入单独送入对应阶段；`glow_plan` 与 `pipeline_parameters` 统一尺寸/半径和场景参数。新增 180 项 C++ 阶段检查与 17 项 Python 分析检查；整个工程也已加入[统一跨平台构建](../independent-binary-contract/README.zh.md)。
+
+本机实际捕获每帧 12 draw、2 blit，目标全部 RGBA8；三种图样两次独立进程共 252 个中间输出稳定。Normal 单独重放全零差异，其余阶段仍有采样/量化残差。六组原有 C++ 输出 SHA 均未改变。身份、方向、有效 sampler object 状态和误差表见[逐阶段报告](../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md)。
+
+从 QCut package 目录运行，变量均指向仓库外私有证据；`CAPTURE` 和 `ANALYSIS` 必须是新目录，父目录已存在：
+
+```sh
+cmake -S research/independent-binary-contract -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DBINARY_CONTRACT_NATIVE_PROBES=ON
+cmake --build "$BUILD" --parallel 4
+bun research/jianying-runtime-probe/capture-soft-glow-passes.ts \
+  "$INPUT" 320 180 "$PACKAGE" "$BUILD/libcgl-pass-capture.dylib" "$CAPTURE"
+python3 research/independent-soft-glow/analyze_native_passes.py \
+  --capture "$CAPTURE" --lut "$LUT" --output "$ANALYSIS" \
+  --replay-cli "$BUILD/soft-glow/soft-glow-stage-replay" \
+  --pipeline-cli "$BUILD/soft-glow/soft-glow"
+```
+
+启动器仅支持已固定的 macOS arm64 D634 私有运行时、对应资源、不透明 RGBA8、100% 场景。将 observer 参数改为 `off` 可取得无捕获的控制输出。普通 C++ 阶段 CLI 本身不需要厂商运行时：`soft-glow-stage-replay input-directory width height lut.rgba new-output-directory`；输入目录的标准文件名由分析器生成，格式/尺寸不符即失败。
