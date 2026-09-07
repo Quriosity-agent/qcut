@@ -78,6 +78,7 @@ import type {
 import type { ClaudeConsoleEntry } from "../claude/handlers/claude-console-handler.js";
 import type {
 	AgentPointerResult,
+	AgentPointerHitTestResult,
 	AgentPointerVisualState,
 	AgentKeyboardResult,
 	EditorSnapshotActionResult,
@@ -542,6 +543,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			})) as AgentPointerResult,
 		hide: async () =>
 			(await requestFromMain("pointer:hide", {})) as AgentPointerResult,
+		hitTest: async (request) =>
+			(await requestFromMain("pointer:hit-test", {
+				request,
+			})) as AgentPointerHitTestResult,
 		pressKeys: async (request) =>
 			(await requestFromMain("keyboard:press", {
 				request,
