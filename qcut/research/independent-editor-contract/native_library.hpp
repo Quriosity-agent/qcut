@@ -22,6 +22,19 @@ struct Library {
   NSString* uuid;
 };
 
+struct LibraryIdentity {
+  const char* sha256;
+  const char* uuid;
+  const char* anchor_symbol;
+  std::uintptr_t anchor_address;
+};
+
+constexpr LibraryIdentity kVideoEditorIdentity{
+    kSha256, kUuid, "_ZNK4lvve14MaterialEffect9get_valueEv", 0xf1cc6c};
+constexpr LibraryIdentity kCreatorIdentity{
+    "b09c395d934169cb20ec865dd1d4032ca68023b287a7264e1b06ff4d71fd1be4",
+    "100726E3-FCB0-31BC-98EE-1B196A1714A3", "getVEUtils", 0x1c3077c};
+
 inline NSString* hash_file(const char* path) {
   NSData* bytes = [NSData dataWithContentsOfFile:@(path)
                                       options:NSDataReadingMappedIfSafe error:nil];
@@ -33,19 +46,20 @@ inline NSString* hash_file(const char* path) {
   return hash;
 }
 
-inline Library load_verified(const char* path) {
+inline Library load_verified(const char* path,
+                             const LibraryIdentity& identity = kVideoEditorIdentity) {
   if (!path || path[0] != '/') throw std::runtime_error("Library path must be absolute");
   const auto hash = hash_file(path);
-  if (![hash isEqualToString:@(kSha256)]) {
-    throw std::runtime_error("Unknown libvideoeditor SHA-256; refusing private ABI");
+  if (![hash isEqualToString:@(identity.sha256)]) {
+    throw std::runtime_error("Unknown library SHA-256; refusing private ABI");
   }
   void* handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
   if (!handle) throw std::runtime_error(dlerror());
   Dl_info image{};
-  void* anchor = dlsym(handle, "_ZNK4lvve14MaterialEffect9get_valueEv");
+  void* anchor = dlsym(handle, identity.anchor_symbol);
   if (!anchor || !dladdr(anchor, &image) ||
       ![hash_file(image.dli_fname) isEqualToString:hash]) {
-    throw std::runtime_error("Loaded libvideoeditor image identity differs");
+    throw std::runtime_error("Loaded library image identity differs");
   }
   const auto* header = static_cast<const mach_header_64*>(image.dli_fbase);
   if (header->magic != MH_MAGIC_64 || header->cputype != CPU_TYPE_ARM64) {
@@ -71,12 +85,12 @@ inline Library load_verified(const char* path) {
     }
     cursor += command->cmdsize;
   }
-  if (![found_uuid isEqualToString:@(kUuid)]) {
-    throw std::runtime_error("Unknown libvideoeditor UUID; refusing private ABI");
+  if (![found_uuid isEqualToString:@(identity.uuid)]) {
+    throw std::runtime_error("Unknown library UUID; refusing private ABI");
   }
   // The verified leaf entrypoint also anchors the unslid VM-address convention.
   const auto* base = static_cast<const std::uint8_t*>(image.dli_fbase);
-  if (anchor != base + 0xf1cc6c) throw std::runtime_error("Unexpected image address layout");
+  if (anchor != base + identity.anchor_address) throw std::runtime_error("Unexpected image address layout");
   return {base, hash, found_uuid};
 }
 
