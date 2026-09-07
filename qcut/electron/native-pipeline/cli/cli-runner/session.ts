@@ -79,6 +79,17 @@ export function resetSessionState(): void {
 	sessionHealthChecked = false;
 }
 
+/** A present but non-numeric flag becomes NaN so range checks reject it. */
+function parseStrictSessionNumber({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (typeof value !== "string") return undefined;
+	const parsed = parseFiniteSessionNumber({ value });
+	return parsed === undefined ? Number.NaN : parsed;
+}
+
 function parseFiniteSessionNumber({
 	value,
 }: {
@@ -284,6 +295,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				verify: { type: "boolean" },
 				"no-verify": { type: "boolean", default: false },
 				dnd: { type: "string" },
+				"drag-start-timeout-ms": { type: "string" },
 				modifiers: { type: "string" },
 				button: { type: "string" },
 				"click-count": { type: "string" },
@@ -437,9 +449,12 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values["no-verify"]) result.verify = false;
 		else if (typeof values.verify === "boolean") result.verify = values.verify;
 		if (values.dnd) result.dnd = values.dnd as string;
+		result.dragStartTimeoutMs = parseFiniteSessionNumber({
+			value: values["drag-start-timeout-ms"],
+		});
 		if (values.modifiers) result.modifiers = values.modifiers as string;
 		if (values.button) result.button = values.button as string;
-		result.clickCount = parseFiniteSessionNumber({
+		result.clickCount = parseStrictSessionNumber({
 			value: values["click-count"],
 		});
 		if (values["key-events"]) result.keyEvents = true;
