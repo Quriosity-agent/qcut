@@ -1,4 +1,5 @@
 #include "lens_contract.hpp"
+#include "transform_plan.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -35,6 +36,26 @@ void print(const Values& values) {
 }
 
 void run(const std::string& mode) {
+  if (mode == "resize-plan" || mode == "crop-plan") {
+    TransformPlan output{};
+    bool valid = false;
+    if (mode == "resize-plan") {
+      AnchorResizeRequest request{};
+      for (float& value : request.source_points) value = read<float>();
+      for (float& value : request.destination_points) value = read<float>();
+      end_input();
+      valid = plan_anchor_resize(request, output);
+    } else {
+      const CropResizeRequest request{read<float>(), read<float>(), read<float>(), read<float>(),
+                                       read<int>(), read<int>()};
+      end_input();
+      valid = plan_crop_resize(request, output);
+    }
+    if (!valid) throw std::runtime_error("Transform plan outside the supported finite domain");
+    print(output.source_to_destination);
+    print(output.destination_to_source);
+    return;
+  }
   if (mode == "multiply" || mode == "inverse") {
     Matrix3 a{}, b{}, output{};
     for (double& value : a) value = read<double>();
@@ -82,7 +103,7 @@ void run(const std::string& mode) {
     for (auto point : output) std::cout << point.x << ' ' << point.y << '\n';
     return;
   }
-  throw std::runtime_error("Mode must be multiply, inverse, kernel, smooth, rotate or warp");
+  throw std::runtime_error("Mode must be multiply, inverse, kernel, smooth, rotate, warp, resize-plan or crop-plan");
 }
 }  // namespace
 
