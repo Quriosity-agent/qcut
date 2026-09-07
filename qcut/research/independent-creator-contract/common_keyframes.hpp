@@ -34,6 +34,7 @@ struct CommonKeyframeGroup {
   std::string material_id = {};
   bool track_inserted_children = false;
   editor_contract::MutationState list_mutation = {};
+  std::vector<std::shared_ptr<CommonKeyframe>> retained_keyframes = {};
 };
 
 struct CommonKeyframeArray {
