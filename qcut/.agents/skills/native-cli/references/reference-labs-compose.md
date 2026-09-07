@@ -164,7 +164,7 @@ on a machine with Jianying Professional installed.
 | `draft inspect` | `editor jianying-import inspect` | `--draft` | `--format` | Read-only inspection: profile, counts, capabilities, issues |
 | `draft plan` | `editor jianying-import plan` | `--draft` | `--format` | Build an expiring, single-use import plan; writes nothing |
 | `draft import` | `editor jianying-import import` | `--draft` | `--format`, `--accept-warning <fingerprint>` | Plan, validate, and queue a draft for QCut desktop |
-| `draft commit` | `editor jianying-import commit` | `--plan-token` | `--accept-warning` | Freeze a planned import and queue it in the validated desktop inbox |
+| `draft commit` | `editor jianying-import commit` | `--plan-token` | `--accept-warning <fingerprint>` (repeatable; the set must match the plan's warnings exactly) | Freeze a planned import and queue it in the validated desktop inbox |
 | `draft verify-roundtrip` | `editor jianying-import verify-roundtrip` | `--draft` | `--format` | Verify the active plaintext subdraft's no-op projection byte-for-byte |
 | `draft export` | `editor interop jianying-export` | `--project-id` | `--format` | Write supported edits from a persisted QCut project into a registered Jianying project |
 
@@ -177,9 +177,9 @@ Related `editor interop` commands:
 | `editor interop writeback-recover` | `--recovery-token` | — | Recover an interrupted same-profile writeback |
 
 ```bash
-qcut draft inspect --draft "~/Movies/JianyingPro Drafts/my-draft" --json
-qcut draft import --format jianying --draft "~/Movies/JianyingPro Drafts/my-draft" --json
-qcut draft verify-roundtrip --format jianying --draft "~/Movies/JianyingPro Drafts/my-draft" --json
+qcut draft inspect --draft "$HOME/Movies/JianyingPro Drafts/my-draft" --json
+qcut draft import --format jianying --draft "$HOME/Movies/JianyingPro Drafts/my-draft" --json
+qcut draft verify-roundtrip --format jianying --draft "$HOME/Movies/JianyingPro Drafts/my-draft" --json
 ```
 
 Import is fail-closed: unknown or unverified structures are kept as raw
