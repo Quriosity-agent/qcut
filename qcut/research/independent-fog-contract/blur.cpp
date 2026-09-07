@@ -15,7 +15,7 @@ softglow::Pixel threshold(softglow::Pixel pixel) {
     const float red = pixel[0] * 0.299F;
     const float green = pixel[1] * 0.587F;
     const float blue = pixel[2] * 0.114F;
-    pixel[3] = (red + green) + blue > 0.5F ? 0 : 1;
+    pixel[3] = (red + green) + blue > 0.5F ? 0.0F : 1.0F;
     return pixel;
 }
 
