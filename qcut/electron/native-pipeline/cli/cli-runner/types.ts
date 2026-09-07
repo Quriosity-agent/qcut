@@ -138,6 +138,8 @@ export interface CLIRunOptions {
 	includeOutput?: boolean;
 	source?: string;
 	reveal?: boolean;
+	/** Read the auth token from a hidden prompt (TTY) or stdin (pipe) instead of an argument. */
+	fromStdin?: boolean;
 	noConfirm?: boolean;
 	promptFile?: string;
 	portraits?: string;
@@ -367,6 +369,8 @@ export interface CLIRunOptions {
 	via?: string;
 	/** HTML5 drag-and-drop handling for editor:pointer:drag: auto, html5, or mouse. */
 	dnd?: string;
+	/** How long editor:pointer:drag waits for the page to start an HTML5 drag (ms). */
+	dragStartTimeoutMs?: number;
 	/** Comma-separated keyboard modifiers held during a pointer action (alt, ctrl, cmd, shift). */
 	modifiers?: string;
 	/** Mouse button for pointer click and drag: left, middle, or right. */
