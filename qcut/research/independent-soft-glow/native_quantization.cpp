@@ -95,20 +95,33 @@ int main() {
         const auto repeated = native_conversion(values, width, height);
         require(pixels == repeated, "Repeated native conversion changed");
         std::size_t mismatches = 0, old_mismatches = 0;
+        std::vector<std::size_t> mismatch_samples;
         std::uint64_t fingerprint = 14695981039346656037ULL;
         for (std::size_t index = 0; index < tested; ++index) {
             mismatches += softglow::quantize_unorm8(values[index]) != pixels[index];
+            if (softglow::quantize_unorm8(values[index]) != pixels[index] && mismatch_samples.size() < 16) {
+                mismatch_samples.push_back(index);
+            }
             const auto old = static_cast<std::uint8_t>(std::round(softglow::saturate(values[index]) * 255.0F));
             old_mismatches += old != pixels[index];
             fingerprint = (fingerprint ^ pixels[index]) * 1099511628211ULL;
         }
-        require(mismatches == 0, "Independent UNORM conversion differs from native");
-        require(old_mismatches == 127, "Expected double-rounding negative control differs");
         std::cout << "{\"tested_channels\":" << tested << ",\"padded_channels\":" << values.size()
             << ",\"mismatches\":" << mismatches << ",\"old_mismatches\":" << old_mismatches
             << ",\"repeat_identical\":true,\"output_fnv1a64\":\"" << std::hex << fingerprint << std::dec
             << "\",\"gl_version\":" << std::quoted(reinterpret_cast<const char*>(glGetString(GL_VERSION)))
-            << ",\"gl_renderer\":" << std::quoted(reinterpret_cast<const char*>(glGetString(GL_RENDERER))) << "}\n";
+            << ",\"gl_renderer\":" << std::quoted(reinterpret_cast<const char*>(glGetString(GL_RENDERER)))
+            << ",\"mismatch_samples\":[";
+        for (std::size_t sample = 0; sample < mismatch_samples.size(); ++sample) {
+            const auto index = mismatch_samples[sample];
+            if (sample != 0) std::cout << ',';
+            std::cout << "{\"index\":" << index << ",\"float_bits\":" << std::bit_cast<std::uint32_t>(values[index])
+                << ",\"expected\":" << static_cast<unsigned>(softglow::quantize_unorm8(values[index]))
+                << ",\"actual\":" << static_cast<unsigned>(pixels[index]) << '}';
+        }
+        std::cout << "]}" << std::endl;
+        require(mismatches == 0, "Independent UNORM conversion differs from native");
+        require(old_mismatches == 127, "Expected double-rounding negative control differs");
         return 0;
     } catch (const std::exception& error) {
         std::cerr << error.what() << '\n';
