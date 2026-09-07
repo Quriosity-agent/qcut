@@ -167,6 +167,7 @@ describe("action policy", () => {
 			"editor:pointer:state",
 			"editor:pointer:hit-test",
 			"editor:pointer:wait-for",
+			"editor:windows",
 		]) {
 			expect(
 				evaluateActionPolicy({ command, policy: DEFAULT_ACTION_POLICY })
