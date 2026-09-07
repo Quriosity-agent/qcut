@@ -503,6 +503,120 @@ describe("AgentPointerController HTML5 drag-and-drop", () => {
 	});
 });
 
+describe("AgentPointerController buttons, modifiers, and click counts", () => {
+	it("clicks with the requested button, modifiers, and click count", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.click({
+			ref: "@e12",
+			button: "middle",
+			clickCount: 3,
+			modifiers: ["Shift", "Meta"],
+		});
+
+		const presses = harness.debuggerCommands.filter(
+			(command) => command.params?.type === "mousePressed"
+		);
+		expect(presses.map((command) => command.params?.clickCount)).toEqual([
+			1, 2, 3,
+		]);
+		expect(presses[0]?.params).toEqual(
+			expect.objectContaining({ button: "middle", buttons: 4, modifiers: 12 })
+		);
+		const releases = harness.debuggerCommands.filter(
+			(command) => command.params?.type === "mouseReleased"
+		);
+		expect(releases).toHaveLength(3);
+		expect(result).toEqual(
+			expect.objectContaining({
+				action: "click",
+				button: "middle",
+				clickCount: 3,
+				modifiers: ["Shift", "Meta"],
+			})
+		);
+		await harness.controller.hide();
+	});
+
+	it("clamps click counts and omits modifiers from results when none were held", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.click({
+			ref: "@e12",
+			clickCount: 9,
+		});
+
+		expect(
+			harness.debuggerCommands.filter(
+				(command) => command.params?.type === "mousePressed"
+			)
+		).toHaveLength(3);
+		expect(result.clickCount).toBe(3);
+		expect(result.button).toBe("left");
+		expect(result).not.toHaveProperty("modifiers");
+		await harness.controller.hide();
+	});
+
+	it("drags with the right button and modifiers held throughout", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.drag({
+			from: { x: 200, y: 700 },
+			to: { x: 820, y: 700 },
+			button: "right",
+			modifiers: ["Alt"],
+			dnd: "mouse",
+		});
+
+		const pressed = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mousePressed"
+		);
+		const released = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mouseReleased"
+		);
+		const pressedMoves = harness.debuggerCommands.filter(
+			(command) =>
+				command.params?.type === "mouseMoved" && command.params?.buttons === 2
+		);
+		expect(pressed?.params).toEqual(
+			expect.objectContaining({ button: "right", buttons: 2, modifiers: 1 })
+		);
+		expect(released?.params).toEqual(
+			expect.objectContaining({ button: "right", buttons: 0, modifiers: 1 })
+		);
+		expect(pressedMoves.length).toBeGreaterThan(2);
+		expect(
+			pressedMoves.every((command) => command.params?.modifiers === 1)
+		).toBe(true);
+		expect(result).toEqual(
+			expect.objectContaining({ button: "right", modifiers: ["Alt"] })
+		);
+		await harness.controller.hide();
+	});
+
+	it("scrolls with modifiers for ctrl-wheel zoom", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.scroll({
+			x: 640,
+			y: 360,
+			deltaY: -120,
+			modifiers: ["Control"],
+		});
+
+		const wheel = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mouseWheel"
+		);
+		expect(wheel?.params).toEqual(
+			expect.objectContaining({ deltaY: -120, modifiers: 2 })
+		);
+		expect(result).toEqual(
+			expect.objectContaining({ action: "scroll", modifiers: ["Control"] })
+		);
+		await harness.controller.hide();
+	});
+});
+
 describe("buildPointerMovementPath", () => {
 	it("keeps the internal path limited to pointer coordinates", () => {
 		const path = buildPointerMovementPath({
