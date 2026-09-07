@@ -147,6 +147,9 @@ async function notifyPreviewPanel({
 					headers: {
 						"Content-Type": "application/json",
 						"Content-Length": Buffer.byteLength(payload),
+						...(process.env.QCUT_API_TOKEN
+							? { Authorization: `Bearer ${process.env.QCUT_API_TOKEN}` }
+							: {}),
 					},
 					timeout: 2000,
 				},

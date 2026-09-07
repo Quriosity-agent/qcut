@@ -15,6 +15,18 @@ export interface CursorTelemetryData {
 	points: CursorTelemetryPoint[];
 }
 
+/** A cursor sample in screen coordinates supplied by something other than the OS cursor. */
+export interface CursorTelemetrySample {
+	x: number;
+	y: number;
+	pressed?: boolean;
+	/** Tag stored on the point (`c`), for example "agent" for the Agent pointer. */
+	source?: string;
+}
+
+/** Returns the current sample, or null to fall back to the OS cursor. */
+export type CursorTelemetryProvider = () => CursorTelemetrySample | null;
+
 const POLL_INTERVAL_MS = 16; // ~60Hz
 
 /** Minimal type for the uiohook-napi module when loaded dynamically. */
@@ -43,13 +55,17 @@ export class CursorTelemetryRecorder {
 	private uiohook: UIOHookModule | null = null;
 	private mouseDownHandler: (() => void) | null = null;
 	private mouseUpHandler: (() => void) | null = null;
+	private provider: CursorTelemetryProvider | null = null;
 
-	start(captureRect: {
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	}): void {
+	start(
+		captureRect: {
+			x: number;
+			y: number;
+			width: number;
+			height: number;
+		},
+		options: { provider?: CursorTelemetryProvider } = {}
+	): void {
 		if (this.recording) return;
 
 		this.recording = true;
@@ -57,6 +73,7 @@ export class CursorTelemetryRecorder {
 		this.points = [];
 		this.captureRect = captureRect;
 		this.pressed = false;
+		this.provider = options.provider ?? null;
 
 		this.startCapture();
 	}
@@ -123,8 +140,21 @@ export class CursorTelemetryRecorder {
 		this.pollTimer = setInterval(() => {
 			if (!this.recording) return;
 			try {
-				const point = screen.getCursorScreenPoint();
 				const t = Date.now() - this.startTime;
+				// A driven pointer (the Agent overlay) is what viewers see, so it
+				// wins over the physical cursor while it is visible.
+				const sample = this.provider?.() ?? null;
+				if (sample) {
+					this.points.push({
+						t,
+						x: sample.x,
+						y: sample.y,
+						p: sample.pressed ?? this.pressed,
+						c: sample.source ?? "agent",
+					});
+					return;
+				}
+				const point = screen.getCursorScreenPoint();
 				this.points.push({ t, x: point.x, y: point.y, p: this.pressed });
 			} catch {
 				// Ignore transient errors during polling

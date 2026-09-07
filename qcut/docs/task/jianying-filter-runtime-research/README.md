@@ -4,6 +4,21 @@
 
 ## 范围
 
+当前二进制分析进度、独立 C++ 已有源码、剩余数量与优先级，见
+[二进制与 C++ 还原剩余工作台账（2026-09-06）](binary-cpp-reconstruction-backlog-2026-09-06.zh.md)。
+
+2026-09-07 从 master 新建分支后的实际推进见[顺序执行记录](binary-cpp-execution-2026-09-07.zh.md)：
+四线持续交付 AGFX 纹理像素、videoeditor 恒速 Segment/线性及非线性属性、Creator dirty/retained 生命周期、Lens crop 与 warp；
+本批完成第二条标准 C++ 滤镜算法链迷雾，连同已有电影柔光，共两条完整滤镜链。
+[统一 C++ 构建](../../../research/independent-binary-contract/README.zh.md)现含六工程，本机 Release 与禁止恢复的 ASan/UBSan 均 40/40；新提交的远端 CI 待推送后检查，本机通过不作为新 head 绿灯。
+迷雾 CPU 产品 adapter、Preview/Export、新 UI E2E 和通用图仍未完成；八个完整工作包继续保留，整库还原仍为 0/6。
+
+迷雾的新标准 C++ 语义、默认值与数值事件区别、四阶段算法和透明度边界见
+[第二条复杂滤镜语义核验](second-complex-filter-semantics-2026-09-07.zh.md)。未修改原包的 Swing 参考覆盖三张自产图、四档强度、30进程/210帧，
+12组 C++ 像素对照本机 MAE 0–0.017425、最大误差2；[最终 C++ 验证](fog-cpp-verification-2026-09-07.zh.md)记录严格门禁和负控，按容差验收，未声称逐字节完全一致或本轮 UI 平价。
+真实 Video 对象的非线性属性新增 117,515次调用/784,545值对照，受限分派与 NaN 边界见
+[非线性属性报告](videoeditor-nonlinear-property-2026-09-07.zh.md)。
+
 本目录只提交 QCut 自有的研究文字和探针源码，用于记录剪映滤镜包的运行时行为、GL 纹理上下文要求和可复现实验方法。
 
 本目录不包含，也不得后续加入：

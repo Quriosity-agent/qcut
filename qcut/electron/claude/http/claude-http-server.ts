@@ -88,6 +88,10 @@ import {
 } from "./claude-http-playback-routes.js";
 import { registerAgentPointerRoutes } from "./claude-http-pointer-routes.js";
 import {
+	hitTestEditorPoint,
+	readTimelineRulerLabels,
+} from "../handlers/agent-pointer-hit-test.js";
+import {
 	checkEditorSnapshotRef,
 	clickEditorSnapshotRef,
 	fillEditorSnapshotRef,
@@ -96,6 +100,10 @@ import {
 	selectEditorSnapshotRef,
 } from "../handlers/claude-snapshot-handler.js";
 import { getAgentPointerController } from "../handlers/agent-pointer-controller.js";
+import {
+	describeEditorWindows,
+	resolveEditorWindow,
+} from "../handlers/editor-windows.js";
 import {
 	getClaudeEvents,
 	subscribeClaudeEvents,
@@ -166,9 +174,20 @@ export function startClaudeHTTPServer(
 	}
 
 	const router = createRouter();
-	const pointerController = () =>
+	const windowFor = (request?: { windowId?: number }) => {
+		try {
+			return resolveEditorWindow({
+				windowId: request?.windowId,
+				fallback: getWindow,
+			});
+		} catch (error) {
+			if (error instanceof HttpError) throw error;
+			throw new HttpError(404, (error as Error).message);
+		}
+	};
+	const pointerController = (request?: { windowId?: number }) =>
 		getAgentPointerController({
-			win: getWindow(),
+			win: windowFor(request),
 			resolveRef: resolveEditorSnapshotRef,
 		});
 
@@ -335,17 +354,21 @@ export function startClaudeHTTPServer(
 		resetCollector: () => resetPlaybackDiagnosticsInRenderer(getWindow()),
 	});
 	registerAgentPointerRoutes(router, {
-		getState: async () => pointerController().getState(),
-		move: (request) => pointerController().move(request),
-		hover: (request) => pointerController().hover(request),
-		click: (request) => pointerController().click(request),
-		doubleClick: (request) => pointerController().doubleClick(request),
-		rightClick: (request) => pointerController().rightClick(request),
-		drag: (request) => pointerController().drag(request),
-		scroll: (request) => pointerController().scroll(request),
+		getState: async (request) => pointerController(request).getState(),
+		listWindows: async () => describeEditorWindows(),
+		move: (request) => pointerController(request).move(request),
+		hover: (request) => pointerController(request).hover(request),
+		click: (request) => pointerController(request).click(request),
+		doubleClick: (request) => pointerController(request).doubleClick(request),
+		rightClick: (request) => pointerController(request).rightClick(request),
+		drag: (request) => pointerController(request).drag(request),
+		scroll: (request) => pointerController(request).scroll(request),
 		hide: () => pointerController().hide(),
-		pressKeys: (request) => pointerController().pressKeys(request),
-		typeText: (request) => pointerController().typeText(request),
+		hitTest: (request) => hitTestEditorPoint(windowFor(request), request),
+		rulerLabels: (request) => readTimelineRulerLabels(windowFor(request)),
+		dropFiles: (request) => pointerController(request).dropFiles(request),
+		pressKeys: (request) => pointerController(request).pressKeys(request),
+		typeText: (request) => pointerController(request).typeText(request),
 	});
 	registerClaudeEventsRoutes(router, {
 		/** Lists recorded Claude/editor events. */

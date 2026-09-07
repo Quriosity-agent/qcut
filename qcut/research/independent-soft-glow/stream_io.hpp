@@ -13,7 +13,7 @@ struct StreamRequest {
     const Image& lut;
     int width;
     int height;
-    float intensity = 1;
+    double intensity = 1;
     IntensityMode intensity_mode = IntensityMode::output_mix;
 };
 

@@ -129,6 +129,29 @@ After click or drag, verify the resulting editor or timeline state rather than
 treating a successful input event as proof of the intended edit. Use
 `editor:undo` to restore an E2E drag fixture after verification.
 
+Panel items (media, text, effects, transitions, sounds) are HTML5 drag sources.
+`editor:pointer:drag` intercepts the drag the page starts and drops it on the
+destination automatically (`--dnd auto`); pass `--dnd html5` when the drop must
+be an HTML5 drop, or `--dnd mouse` for a plain pointer drag. HTML5 drops need
+background input and a QCut editor advertising `state.pointer` 1.2.0 or newer;
+the result's `dnd.intercepted` and `dnd.mimeTypes` show what was dropped.
+
+Pointer commands accept `--modifiers alt,ctrl,cmd,shift`; `click` also takes
+`--button middle|right` and `--click-count 3`, and `drag` takes `--button`.
+Use `editor pointer hit-test` to confirm what sits under a point before or
+after an action, and `editor pointer state` to read the overlay position.
+Sequences, keyboard input, snapshot `select`/`check`, and `demo run` are
+confirm-tier like clicks and drags.
+`editor pointer drop-files --files <paths>` drops local files on a target as an
+external file drop (for example onto the media library to import them), and
+`editor keyboard type --key-events` types with real keyDown/keyUp events when a
+control listens for keydown instead of input.
+`editor pointer drag --from timeline.playhead --to-time <s>` scrubs the real
+playhead along the ruler scale and reports `achievedTime`; pass
+`--seek-mode api` to seek through the API with a display-only animation.
+`editor windows --json` lists open windows; pass `--window-id <id>` when the
+target is not the first window.
+
 ## Apply and adjust a video speed curve
 
 Export the selected element before touching the UI:
@@ -170,6 +193,7 @@ qcut editor demo run \
   --event-track demo.pointer.json \
   --speed 1.5 \
   --skip-idle \
+  --force \
   --json
 ```
 

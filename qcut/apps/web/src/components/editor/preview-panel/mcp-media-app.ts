@@ -275,6 +275,7 @@ export const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
       const resultMeta = document.getElementById("result-meta");
 
       const projectId = __PROJECT_ID_JSON__;
+      const apiToken = __API_TOKEN_JSON__;
       const apiBaseUrl = "http://127.0.0.1:8765";
 
       function setStatus(message, type) {
@@ -341,7 +342,12 @@ export const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
             apiBaseUrl + "/api/claude/personaplex/generate",
             {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: apiToken
+                ? {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + apiToken,
+                  }
+                : { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
               signal: controller.signal,
             }
@@ -403,23 +409,29 @@ export const MCP_MEDIA_APP_TEMPLATE = `<!doctype html>
   </body>
 </html>`;
 
-/** Build the MCP media app HTML template with an escaped projectId injected. */
+/**
+ * Build the MCP media app HTML template with an escaped projectId and the
+ * editor API bearer token injected (the app fetches 127.0.0.1:8765 directly).
+ */
 export function buildMcpMediaAppHtml({
 	projectId,
+	apiToken = null,
 }: {
 	projectId: string | null;
+	apiToken?: string | null;
 }): string {
+	const safeToken = JSON.stringify(apiToken?.trim() || null);
 	try {
 		const resolvedProjectId = (projectId || "default").trim() || "default";
 		const safeProjectId = JSON.stringify(resolvedProjectId);
 		return MCP_MEDIA_APP_TEMPLATE.replace(
 			/__PROJECT_ID_JSON__/g,
 			safeProjectId
-		);
+		).replace(/__API_TOKEN_JSON__/g, safeToken);
 	} catch {
 		return MCP_MEDIA_APP_TEMPLATE.replace(
 			/__PROJECT_ID_JSON__/g,
 			JSON.stringify("default")
-		);
+		).replace(/__API_TOKEN_JSON__/g, safeToken);
 	}
 }

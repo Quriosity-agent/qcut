@@ -122,8 +122,10 @@ export async function waitForEditorApiHealth({
 		.poll(
 			async () => {
 				try {
+					const token = process.env.QCUT_API_TOKEN?.trim();
 					const response = await fetch(
-						`http://127.0.0.1:${apiPort}/api/claude/health`
+						`http://127.0.0.1:${apiPort}/api/claude/health`,
+						token ? { headers: { Authorization: `Bearer ${token}` } } : {}
 					);
 					return response.ok;
 				} catch {

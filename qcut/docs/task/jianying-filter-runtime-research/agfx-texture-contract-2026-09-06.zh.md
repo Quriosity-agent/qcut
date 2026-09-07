@@ -2,6 +2,8 @@
 
 日期：2026-09-06。分支：`timeline-fixed-prfix`。本轮只新增研究代码和文档。
 
+2026-09-07 后续：[独立 C++ 格式与采样器合同](../../../research/independent-agfx-contract/README.zh.md)已完成，覆盖 113 项格式、208,911 次/进程原生差分和 768 个 sampler 组合。以下七用例是历史起点；新发现 `164..191` 的平台分支可能返回 true 而不写输出，不能把此函数的布尔结果普遍解释为纹理支持。
+
 本轮对已安装剪映 11.3.0 的 ARM64 `libAGFX.dylib` 做了定点反汇编，并用固定二进制身份的隔离进程调用格式转换函数。已确认 **AGFX 格式 43 对应 Metal `RGBA8Unorm`，格式 127 在该转换入口不受支持**。同时恢复了采样模式映射，并确认 `commitCommandBuffer(true)` 等待的是调度，不能替代 GPU 完成等待。
 
 这些结果是后续独立滤镜实现的底层约束，不等于已经捕获电影柔光每一个实际 GPU Pass，也不代表其独立实现已完成。
@@ -121,6 +123,8 @@ mkdir -p "$JY_EVIDENCE"
 xcrun clang++ -std=c++20 -fobjc-arc -Wall -Wextra -Werror \
   -Wno-deprecated-declarations \
   research/jianying-runtime-probe/agfx-format-probe.mm \
+  research/independent-agfx-contract/pixel_format.cpp \
+  research/independent-agfx-contract/sampler.cpp \
   -framework Foundation -framework Metal \
   -o "$JY_EVIDENCE/agfx-format-probe"
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" "$JY_EVIDENCE/agfx-format-probe" \

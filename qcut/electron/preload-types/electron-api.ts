@@ -50,6 +50,7 @@ import type {
 	ClaudeScreenRecordingBridgeAPI,
 	ClaudeProjectCrudAPI,
 	ClaudePointerAPI,
+	ClaudeApiTokenAPI,
 	ClaudeUiAPI,
 	ClaudeStateAPI,
 	ClaudeImportEvidenceAPI,
@@ -154,6 +155,7 @@ export interface ElectronAPI
 		ClaudeScreenRecordingBridgeAPI &
 		ClaudeProjectCrudAPI &
 		ClaudePointerAPI &
+		ClaudeApiTokenAPI &
 		ClaudeUiAPI &
 		ClaudeStateAPI &
 		ClaudeImportEvidenceAPI &

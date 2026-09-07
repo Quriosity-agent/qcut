@@ -32,6 +32,46 @@ struct GlowParameters {
     bool show_threshold = false;
 };
 
+struct GlowMaskRequest {
+    const Image& source;
+    const GlowParameters& parameters;
+    int width;
+    int height;
+};
+
+struct GlowPlanRequest {
+    int width;
+    int height;
+    const GlowParameters& parameters;
+};
+
+struct GlowPlan {
+    int width;
+    int height;
+    float radius;
+};
+
+GlowPlan glow_plan(const GlowPlanRequest& request);
+
+struct GlowBlurPassRequest {
+    const Image& source;
+    const GlowParameters& parameters;
+    float radius;
+    bool vertical;
+    std::size_t first_channel;
+};
+
+struct GlowCompositeRequest {
+    const Image& source;
+    const Image& red_green;
+    const Image& blue_alpha;
+    const GlowParameters& parameters;
+};
+
+Image glow_mask(const GlowMaskRequest& request);
+Image glow_blur_pass(const GlowBlurPassRequest& request);
+Image glow_composite(const GlowCompositeRequest& request);
+
 Image glow(const Image& source, const GlowParameters& parameters,
            const StageSink& sink = {});
 

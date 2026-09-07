@@ -80,10 +80,20 @@ import {
 	resetPlaybackDiagnosticsInRenderer,
 } from "../claude/http/claude-http-playback-routes.js";
 import { getAgentPointerController } from "../claude/handlers/agent-pointer-controller.js";
+import {
+	hitTestEditorPoint,
+	readTimelineRulerLabels,
+} from "../claude/handlers/agent-pointer-hit-test.js";
+import {
+	describeEditorWindows,
+	resolveEditorWindow,
+} from "../claude/handlers/editor-windows.js";
 import type {
 	AgentKeyboardPressRequest,
 	AgentKeyboardTypeRequest,
 	AgentPointerClickRequest,
+	AgentPointerDropFilesRequest,
+	AgentPointerHitTestRequest,
 	AgentPointerDragRequest,
 	AgentPointerMoveRequest,
 	AgentPointerScrollRequest,
@@ -482,10 +492,14 @@ async function handleMainRequest(
 
 	const win = getWindow();
 	if (!win) throw new Error("No active window");
-	const pointerController = getAgentPointerController({
-		win,
-		resolveRef: resolveEditorSnapshotRef,
-	});
+	const windowFor = (request?: { windowId?: number }) =>
+		resolveEditorWindow({ windowId: request?.windowId, fallback: () => win });
+	const controllerFor = (request?: { windowId?: number }) =>
+		getAgentPointerController({
+			win: windowFor(request),
+			resolveRef: resolveEditorSnapshotRef,
+		});
+	const pointerController = controllerFor();
 
 	switch (channel) {
 		case UTILITY_LOCAL_VIDEO_EXPORT_CHANNEL: {
@@ -609,57 +623,78 @@ async function handleMainRequest(
 			return resetPlaybackDiagnosticsInRenderer(win);
 		}
 
+		case "windows:list": {
+			return describeEditorWindows();
+		}
+
 		case "pointer:state": {
-			return pointerController.getState();
+			return controllerFor(
+				(data as { request?: { windowId?: number } }).request
+			).getState();
 		}
 
 		case "pointer:move": {
 			const req = data as { request: AgentPointerMoveRequest };
-			return pointerController.move(req.request);
+			return controllerFor(req.request).move(req.request);
 		}
 
 		case "pointer:hover": {
 			const req = data as { request: AgentPointerMoveRequest };
-			return pointerController.hover(req.request);
+			return controllerFor(req.request).hover(req.request);
 		}
 
 		case "pointer:click": {
 			const req = data as { request: AgentPointerClickRequest };
-			return pointerController.click(req.request);
+			return controllerFor(req.request).click(req.request);
 		}
 
 		case "pointer:double-click": {
 			const req = data as { request: AgentPointerClickRequest };
-			return pointerController.doubleClick(req.request);
+			return controllerFor(req.request).doubleClick(req.request);
 		}
 
 		case "pointer:right-click": {
 			const req = data as { request: AgentPointerClickRequest };
-			return pointerController.rightClick(req.request);
+			return controllerFor(req.request).rightClick(req.request);
 		}
 
 		case "pointer:drag": {
 			const req = data as { request: AgentPointerDragRequest };
-			return pointerController.drag(req.request);
+			return controllerFor(req.request).drag(req.request);
 		}
 
 		case "pointer:scroll": {
 			const req = data as { request: AgentPointerScrollRequest };
-			return pointerController.scroll(req.request);
+			return controllerFor(req.request).scroll(req.request);
 		}
 
 		case "pointer:hide": {
 			return pointerController.hide();
 		}
 
+		case "pointer:hit-test": {
+			const req = data as { request: AgentPointerHitTestRequest };
+			return hitTestEditorPoint(windowFor(req.request), req.request);
+		}
+
+		case "pointer:drop-files": {
+			const req = data as { request: AgentPointerDropFilesRequest };
+			return controllerFor(req.request).dropFiles(req.request);
+		}
+
+		case "pointer:ruler-labels": {
+			const req = data as { request?: { windowId?: number } };
+			return readTimelineRulerLabels(windowFor(req.request));
+		}
+
 		case "keyboard:press": {
 			const req = data as { request: AgentKeyboardPressRequest };
-			return pointerController.pressKeys(req.request);
+			return controllerFor(req.request).pressKeys(req.request);
 		}
 
 		case "keyboard:type": {
 			const req = data as { request: AgentKeyboardTypeRequest };
-			return pointerController.typeText(req.request);
+			return controllerFor(req.request).typeText(req.request);
 		}
 
 		case "split-element": {

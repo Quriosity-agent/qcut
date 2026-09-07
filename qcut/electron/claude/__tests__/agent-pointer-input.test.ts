@@ -7,11 +7,13 @@ function createInputHarness({
 	devToolsOpened = false,
 	minimized: initiallyMinimized = false,
 	attachError,
+	zoomFactor,
 }: {
 	visible?: boolean;
 	devToolsOpened?: boolean;
 	minimized?: boolean;
 	attachError?: Error;
+	zoomFactor?: number;
 } = {}) {
 	const inputEvents: MouseInputEvent[] = [];
 	const debuggerCommands: Array<{
@@ -41,21 +43,43 @@ function createInputHarness({
 	const detach = vi.fn(() => {
 		debuggerAttached = false;
 	});
+	type DebuggerListener = (
+		event: unknown,
+		method: string,
+		params: Record<string, unknown>
+	) => void;
+	const debuggerListeners: DebuggerListener[] = [];
 	const webContents = {
 		backgroundThrottling: true,
 		isDestroyed: () => false,
 		isDevToolsOpened: () => devToolsOpened,
 		sendInputEvent: (event: MouseInputEvent) => inputEvents.push(event),
+		...(zoomFactor !== undefined ? { getZoomFactor: () => zoomFactor } : {}),
 		debugger: {
 			isAttached: () => debuggerAttached,
 			attach,
 			detach,
+			on: (_event: string, listener: DebuggerListener) => {
+				debuggerListeners.push(listener);
+			},
+			removeListener: (_event: string, listener: DebuggerListener) => {
+				const index = debuggerListeners.indexOf(listener);
+				if (index >= 0) debuggerListeners.splice(index, 1);
+			},
 			sendCommand: vi.fn(
 				async (method: string, params?: Record<string, unknown>) => {
 					debuggerCommands.push({ method, params });
 				}
 			),
 		},
+	};
+	const emitDebuggerMessage = (
+		method: string,
+		params: Record<string, unknown>
+	) => {
+		for (const listener of [...debuggerListeners]) {
+			listener({}, method, params);
+		}
 	};
 	const win = {
 		isDestroyed: () => false,
@@ -73,7 +97,9 @@ function createInputHarness({
 	return {
 		attach,
 		debuggerCommands,
+		debuggerListeners,
 		detach,
+		emitDebuggerMessage,
 		focus,
 		input: new AgentPointerInput({ win }),
 		inputEvents,
@@ -258,5 +284,267 @@ describe("AgentPointerInput", () => {
 		);
 		expect(harness.focus).not.toHaveBeenCalled();
 		expect(harness.webContents.backgroundThrottling).toBe(true);
+	});
+
+	it("intercepts HTML5 drags and replays them as CDP drag events", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "background" });
+
+		const interception = await harness.input.beginDragInterception({ session });
+		expect(interception).not.toBeNull();
+		expect(harness.debuggerCommands.at(-1)).toEqual({
+			method: "Input.setInterceptDrags",
+			params: { enabled: true },
+		});
+		expect(harness.debuggerListeners).toHaveLength(1);
+		expect(interception?.intercepted()).toBeNull();
+
+		const pending = interception!.waitForIntercept({ timeoutMs: 1000 });
+		harness.emitDebuggerMessage("Input.dragIntercepted", {
+			data: {
+				items: [
+					{ mimeType: "application/x-media-item", data: '{"id":"m1"}' },
+					{ mimeType: 7, data: "ignored" },
+				],
+				files: ["/tmp/still.png"],
+				dragOperationsMask: 1,
+			},
+		});
+		const data = {
+			items: [{ mimeType: "application/x-media-item", data: '{"id":"m1"}' }],
+			files: ["/tmp/still.png"],
+			dragOperationsMask: 1,
+		};
+		await expect(pending).resolves.toEqual(data);
+		expect(interception?.intercepted()).toEqual(data);
+
+		await harness.input.sendDrag({
+			session,
+			type: "drop",
+			point: { x: 10, y: 20 },
+			data,
+		});
+		expect(harness.debuggerCommands.at(-1)).toEqual({
+			method: "Input.dispatchDragEvent",
+			params: { type: "drop", x: 10, y: 20, data },
+		});
+
+		await interception!.dispose();
+		expect(harness.debuggerCommands.at(-1)).toEqual({
+			method: "Input.setInterceptDrags",
+			params: { enabled: false },
+		});
+		expect(harness.debuggerListeners).toHaveLength(0);
+		await harness.input.end({ session });
+	});
+
+	it("resolves null when no drag is intercepted before the timeout", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "background" });
+		const interception = await harness.input.beginDragInterception({ session });
+
+		await expect(
+			interception!.waitForIntercept({ timeoutMs: 0 })
+		).resolves.toBeNull();
+		harness.emitDebuggerMessage("Input.dragIntercepted", { data: null });
+		expect(interception?.intercepted()).toBeNull();
+
+		await interception!.dispose();
+		await harness.input.end({ session });
+	});
+
+	it("cannot intercept or dispatch drags through foreground Electron input", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "foreground" });
+
+		await expect(
+			harness.input.beginDragInterception({ session })
+		).resolves.toBeNull();
+		await expect(
+			harness.input.sendDrag({
+				session,
+				type: "dragEnter",
+				point: { x: 1, y: 1 },
+				data: { items: [], dragOperationsMask: 1 },
+			})
+		).rejects.toThrow("require background pointer input");
+		expect(harness.debuggerCommands).toEqual([]);
+	});
+
+	it("carries keyboard modifiers on background mouse, wheel, and drag events", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "background" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseDown",
+			point: { x: 10, y: 20 },
+			button: "middle",
+			clickCount: 1,
+			modifiers: ["Shift", "Meta"],
+		});
+		await harness.input.sendWheel({
+			session,
+			point: { x: 10, y: 20 },
+			deltaX: 0,
+			deltaY: -120,
+			modifiers: ["Control"],
+		});
+		await harness.input.sendDrag({
+			session,
+			type: "drop",
+			point: { x: 30, y: 40 },
+			data: { items: [], dragOperationsMask: 1 },
+			modifiers: ["Alt"],
+		});
+
+		const [press, wheel, drop] = harness.debuggerCommands.filter((command) =>
+			command.method.startsWith("Input.dispatch")
+		);
+		expect(press?.params).toEqual(
+			expect.objectContaining({
+				type: "mousePressed",
+				button: "middle",
+				buttons: 4,
+				modifiers: 8 | 4,
+			})
+		);
+		expect(wheel?.params).toEqual(
+			expect.objectContaining({ type: "mouseWheel", modifiers: 2 })
+		);
+		expect(drop?.params).toEqual(
+			expect.objectContaining({ type: "drop", modifiers: 1 })
+		);
+		await harness.input.end({ session });
+	});
+
+	it("maps modifiers onto foreground Electron input events", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "foreground" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseDown",
+			point: { x: 10, y: 20 },
+			button: "right",
+			clickCount: 1,
+			modifiers: ["Shift", "Control"],
+		});
+		await harness.input.sendWheel({
+			session,
+			point: { x: 10, y: 20 },
+			deltaX: 0,
+			deltaY: 40,
+			modifiers: ["Meta"],
+		});
+
+		expect(harness.inputEvents[0]).toEqual(
+			expect.objectContaining({
+				type: "mouseDown",
+				button: "right",
+				modifiers: ["shift", "control"],
+			})
+		);
+		expect(harness.inputEvents[1]).toEqual(
+			expect.objectContaining({ type: "mouseWheel", modifiers: ["meta"] })
+		);
+	});
+
+	it("scales foreground input by the page zoom and checks the CSS viewport", async () => {
+		const harness = createInputHarness({ zoomFactor: 2 });
+		const session = await harness.input.begin({ inputMode: "foreground" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseMove",
+			point: { x: 100, y: 50 },
+			movement: { x: 10, y: 5 },
+		});
+		await harness.input.sendWheel({
+			session,
+			point: { x: 100, y: 50 },
+			deltaX: 0,
+			deltaY: 30,
+		});
+
+		expect(harness.inputEvents[0]).toEqual(
+			expect.objectContaining({ x: 200, y: 100, movementX: 20, movementY: 10 })
+		);
+		expect(harness.inputEvents[1]).toEqual(
+			expect.objectContaining({ type: "mouseWheel", x: 200, y: 100 })
+		);
+		// 1200x800 DIP at zoom 2 is a 600x400 CSS viewport.
+		expect(harness.input.getViewportCenter()).toEqual({ x: 300, y: 200 });
+		expect(() =>
+			harness.input.assertInsideViewport({ point: { x: 650, y: 10 } })
+		).toThrow("600 x 400 CSS px at zoom 2");
+		harness.input.assertInsideViewport({ point: { x: 599, y: 399 } });
+	});
+
+	it("keeps CDP coordinates in CSS pixels regardless of zoom", async () => {
+		const harness = createInputHarness({ zoomFactor: 1.5 });
+		const session = await harness.input.begin({ inputMode: "background" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseMove",
+			point: { x: 100, y: 50 },
+		});
+
+		expect(harness.debuggerCommands.at(-1)?.params).toEqual(
+			expect.objectContaining({ type: "mouseMoved", x: 100, y: 50 })
+		);
+		await harness.input.end({ session });
+	});
+
+	it("keeps letter case when typing background key events", async () => {
+		const background = createInputHarness();
+		const session = await background.input.begin({ inputMode: "background" });
+		await background.input.sendTextKey({ session, character: "H" });
+		await background.input.sendTextKey({ session, character: "i" });
+		const keyDowns = background.debuggerCommands.filter(
+			(command) =>
+				command.method === "Input.dispatchKeyEvent" &&
+				command.params?.type === "keyDown"
+		);
+		expect(keyDowns[0]?.params).toEqual(
+			expect.objectContaining({ key: "H", text: "H", modifiers: 8 })
+		);
+		expect(keyDowns[1]?.params).toEqual(
+			expect.objectContaining({ key: "i", text: "i" })
+		);
+		await background.input.end({ session });
+	});
+
+	it("types characters as real key events on both backends", async () => {
+		const background = createInputHarness();
+		const session = await background.input.begin({ inputMode: "background" });
+		await background.input.sendTextKey({ session, character: "a" });
+		await background.input.sendTextKey({ session, character: "\n" });
+		const keyEvents = background.debuggerCommands.filter(
+			(command) => command.method === "Input.dispatchKeyEvent"
+		);
+		expect(keyEvents.map((command) => command.params?.type)).toEqual([
+			"keyDown",
+			"keyUp",
+			"rawKeyDown",
+			"keyUp",
+		]);
+		expect(keyEvents[0]?.params).toEqual(
+			expect.objectContaining({ key: "a", text: "a" })
+		);
+		expect(keyEvents[2]?.params).toEqual(
+			expect.objectContaining({ key: "Enter" })
+		);
+		await background.input.end({ session });
+
+		const foreground = createInputHarness();
+		const fgSession = await foreground.input.begin({ inputMode: "foreground" });
+		await foreground.input.sendTextKey({ session: fgSession, character: "b" });
+		expect(foreground.inputEvents.map((event) => event.type)).toEqual([
+			"keyDown",
+			"char",
+			"keyUp",
+		]);
 	});
 });

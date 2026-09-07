@@ -25,6 +25,8 @@ function actionLabel({ action }: { action: AgentPointerAction }): string {
 			return "拖拽";
 		case "scroll":
 			return "滚动";
+		case "drop-files":
+			return "拖入文件";
 		case "idle":
 			return "Agent 已就绪";
 		case "hidden":

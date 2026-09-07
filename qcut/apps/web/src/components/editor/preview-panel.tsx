@@ -331,10 +331,32 @@ export function PreviewPanel() {
 		(state) => state.setPreviewExpanded
 	);
 
+	// The built-in media app calls the editor HTTP API directly, so it needs
+	// the per-launch bearer token the main process minted.
+	const [editorApiToken, setEditorApiToken] = useState<string | null>(null);
+	useEffect(() => {
+		if (!localMcpActive || editorApiToken !== null) return;
+		let cancelled = false;
+		window.electronAPI?.claude
+			?.getApiToken?.()
+			.then((token) => {
+				if (!cancelled) setEditorApiToken(token ?? "");
+			})
+			.catch(() => {
+				if (!cancelled) setEditorApiToken("");
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [localMcpActive, editorApiToken]);
+
 	// Local MCP: derive HTML fresh from template every render (auto-reload on HMR)
 	// External MCP: use stored HTML from IPC
 	const activeHtml = localMcpActive
-		? buildMcpMediaAppHtml({ projectId: activeProject?.id ?? null })
+		? buildMcpMediaAppHtml({
+				projectId: activeProject?.id ?? null,
+				apiToken: editorApiToken,
+			})
 		: externalHtml;
 	const activeToolName = localMcpActive
 		? MCP_MEDIA_TOOL_NAME

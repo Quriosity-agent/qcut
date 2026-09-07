@@ -50,7 +50,16 @@ struct GaussianRequest {
     StageSink sink = {};
 };
 
+struct GaussianAxisRequest {
+    const Image& working_source;
+    int original_width;
+    int original_height;
+    GaussianParams params = {};
+    GaussianDirection axis = GaussianDirection::horizontal;
+};
+
 GaussianPlan gaussian_plan(const GaussianPlanRequest& request);
 Image gaussian_blur(const GaussianRequest& request);
+Image gaussian_axis(const GaussianAxisRequest& request);
 
 } // namespace softglow

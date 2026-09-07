@@ -32,13 +32,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--evidence", required=True, type=Path)
+    parser.add_argument("--output", type=Path, help="Separate destination for a new implementation revision")
     parser.add_argument("--max-mae", type=float, default=0.25)
     parser.add_argument("--max-error", type=int, default=8)
     options = parser.parse_args()
     root = options.evidence.resolve()
     oracle = json.loads((root / "oracle/manifest.json").read_text())
-    destination = root / "cpp-verification"
-    destination.mkdir(exist_ok=True)
+    destination = options.output.resolve() if options.output else root / "cpp-verification"
+    destination.mkdir(parents=True, exist_ok=True)
     results = []
     for case in oracle["results"]:
         name = case["fixture"]

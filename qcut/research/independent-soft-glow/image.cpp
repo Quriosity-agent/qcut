@@ -65,9 +65,14 @@ float saturate(float value) {
     return std::clamp(value, 0.0F, 1.0F);
 }
 
+std::uint8_t quantize_unorm8(float value) {
+    // A float product can round a value below an output midpoint onto that midpoint.
+    return static_cast<std::uint8_t>(std::round(static_cast<double>(saturate(value)) * 255.0));
+}
+
 Pixel rgba8(Pixel value) {
     for (auto& channel : value) {
-        channel = std::round(saturate(channel) * 255.0F) / 255.0F;
+        channel = quantize_unorm8(channel) / 255.0F;
     }
     return value;
 }
@@ -141,7 +146,7 @@ std::vector<std::uint8_t> to_rgba8(const Image& image) {
     std::vector<std::uint8_t> bytes(image.pixels.size() * 4);
     for (std::size_t index = 0; index < image.pixels.size(); ++index) {
         for (std::size_t channel = 0; channel < 4; ++channel) {
-            bytes[index * 4 + channel] = static_cast<std::uint8_t>(std::round(image.pixels[index][channel] * 255.0F));
+            bytes[index * 4 + channel] = quantize_unorm8(image.pixels[index][channel]);
         }
     }
     return bytes;
