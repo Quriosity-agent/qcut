@@ -367,6 +367,12 @@ export interface CLIRunOptions {
 	via?: string;
 	/** HTML5 drag-and-drop handling for editor:pointer:drag: auto, html5, or mouse. */
 	dnd?: string;
+	/** Comma-separated keyboard modifiers held during a pointer action (alt, ctrl, cmd, shift). */
+	modifiers?: string;
+	/** Mouse button for pointer click and drag: left, middle, or right. */
+	button?: string;
+	/** Press cycles for editor:pointer:click (1 to 3). */
+	clickCount?: number;
 	holdMs?: number;
 	durationMs?: number;
 	steps?: number;
