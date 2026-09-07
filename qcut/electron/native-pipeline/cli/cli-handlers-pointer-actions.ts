@@ -44,6 +44,27 @@ import {
 	resolveListDragContext,
 } from "./cli-handlers-pointer-list-drag.js";
 
+/** Optional window scope shared by every pointer, keyboard, and probe request. */
+function windowScope(options: Pick<CLIRunOptions, "windowId">): {
+	windowId?: number;
+} {
+	return typeof options.windowId === "number" &&
+		Number.isInteger(options.windowId) &&
+		options.windowId > 0
+		? { windowId: options.windowId }
+		: {};
+}
+
+/** List the QCut windows a `--window-id` can target. */
+export async function handleWindowsCommand({
+	client,
+}: {
+	client: EditorApiClient;
+}): Promise<CLIResult> {
+	const data = await client.get("/api/claude/windows");
+	return { success: true, data };
+}
+
 export async function postTargetAction({
 	client,
 	options,
@@ -83,6 +104,7 @@ export async function postTargetAction({
 			? { durationMs: scaledDuration(options.durationMs, speed, 220) }
 			: {}),
 		...inputFields.fields,
+		...windowScope(options),
 	});
 	if (options.waitFor) {
 		const waited = await waitForRequestedState({
@@ -140,7 +162,10 @@ async function handleSemanticTimelineSeek({
 
 	const attempt =
 		seekMode === "drag"
-			? await attemptTimelineRulerCalibration({ client })
+			? await attemptTimelineRulerCalibration({
+					client,
+					windowId: windowScope(options).windowId,
+				})
 			: null;
 	const calibration = attempt?.calibration ?? null;
 	if (calibration) {
@@ -161,6 +186,7 @@ async function handleSemanticTimelineSeek({
 			from: fromPoint,
 			to: toPoint,
 			inputMode,
+			...windowScope(options),
 			dnd: "mouse",
 			holdMs: scaledDuration(options.holdMs, speed, 120),
 			durationMs: scaledDuration(options.durationMs, speed, 450),
@@ -208,11 +234,13 @@ async function handleSemanticTimelineSeek({
 	const animationStart = await client.post("/api/claude/pointer/move", {
 		...fromPoint,
 		inputMode,
+		...windowScope(options),
 		durationMs: scaledDuration(undefined, speed, 120),
 	});
 	const animationEnd = await client.post("/api/claude/pointer/move", {
 		...toPoint,
 		inputMode,
+		...windowScope(options),
 		durationMs: scaledDuration(options.durationMs, speed, 450),
 	});
 	return {
@@ -373,6 +401,7 @@ export async function handleDrag({
 		releaseDelayMs: scaledDuration(options.releaseDelayMs, speed, 100),
 		...(dragMode.mode ? { dnd: dragMode.mode } : {}),
 		...inputFields.fields,
+		...windowScope(options),
 	};
 	await requirePointerInputSupport({ client, options });
 	if (dragMode.mode === "html5") {
@@ -445,6 +474,7 @@ export async function handleScroll({
 		...(hasDeltaX ? { deltaX: options.deltaX } : {}),
 		...(hasDeltaY ? { deltaY: options.deltaY } : {}),
 		...inputFields.fields,
+		...windowScope(options),
 	};
 	const hasTargetOption =
 		options.target !== undefined ||
@@ -497,6 +527,7 @@ export async function handleKeyboardCommand({
 			keys,
 			intervalMs: options.intervalMs,
 			inputMode: pointerInputMode({ options }),
+			...windowScope(options),
 		});
 		return { success: true, data };
 	}
@@ -509,6 +540,7 @@ export async function handleKeyboardCommand({
 			intervalMs: options.intervalMs,
 			inputMode: pointerInputMode({ options }),
 			...(options.keyEvents ? { keyEvents: true } : {}),
+			...windowScope(options),
 		});
 		return { success: true, data };
 	}
@@ -576,6 +608,7 @@ export async function handleDropFiles({
 			? { durationMs: scaledDuration(options.durationMs, speed, 220) }
 			: {}),
 		...inputFields.fields,
+		...windowScope(options),
 	});
 	if (options.waitFor) {
 		const waited = await waitForRequestedState({
@@ -621,6 +654,9 @@ export async function handleHitTest({
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
-	const data = await client.post("/api/claude/pointer/hit-test", point);
+	const data = await client.post("/api/claude/pointer/hit-test", {
+		...point,
+		...windowScope(options),
+	});
 	return { success: true, data };
 }
