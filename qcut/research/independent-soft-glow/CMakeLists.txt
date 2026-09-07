@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 project(independent_soft_glow LANGUAGES CXX)
 
 option(SOFT_GLOW_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)
+option(SOFT_GLOW_NATIVE_PROBE "Build the original macOS CGL quantization diagnostic" OFF)
 
-add_library(softglow STATIC image.cpp gaussian.cpp glow.cpp layer.cpp lut.cpp pipeline.cpp)
+add_library(softglow STATIC image.cpp gaussian.cpp glow.cpp layer.cpp lut.cpp output_mix.cpp pipeline.cpp)
 target_compile_features(softglow PUBLIC cxx_std_20)
 target_include_directories(softglow PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -22,6 +23,10 @@ target_link_libraries(soft-glow-stage-tests PRIVATE softglow)
 add_executable(soft-glow-stage-replay stage_replay.cpp)
 target_link_libraries(soft-glow-stage-replay PRIVATE softglow_io)
 
+add_executable(soft-glow-quantization-tests quantization_tests.cpp)
+target_link_libraries(soft-glow-quantization-tests PRIVATE softglow)
+add_test(NAME soft-glow-quantization COMMAND soft-glow-quantization-tests)
+
 add_library(softglow_stream_io STATIC stream_io.cpp)
 target_link_libraries(softglow_stream_io PUBLIC softglow)
 
@@ -31,7 +36,7 @@ target_link_libraries(soft-glow-stream PRIVATE softglow_stream_io softglow_io)
 add_executable(soft-glow-stream-tests stream_tests.cpp)
 target_link_libraries(soft-glow-stream-tests PRIVATE softglow_stream_io softglow_io)
 
-foreach(target softglow softglow_io softglow_stream_io soft-glow soft-glow-tests soft-glow-stream soft-glow-stream-tests soft-glow-stage-replay soft-glow-stage-tests)
+foreach(target softglow softglow_io softglow_stream_io soft-glow soft-glow-tests soft-glow-stream soft-glow-stream-tests soft-glow-stage-replay soft-glow-stage-tests soft-glow-quantization-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /WX /fp:strict)
         if(SOFT_GLOW_SANITIZERS)
@@ -45,6 +50,19 @@ foreach(target softglow softglow_io softglow_stream_io soft-glow soft-glow-tests
         endif()
     endif()
 endforeach()
+
+if(SOFT_GLOW_NATIVE_PROBE)
+    if(NOT APPLE)
+        message(FATAL_ERROR "The CGL quantization diagnostic requires macOS")
+    endif()
+    add_executable(soft-glow-native-quantization native_quantization.cpp)
+    target_link_libraries(soft-glow-native-quantization PRIVATE softglow "-framework OpenGL")
+    target_compile_options(soft-glow-native-quantization PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-deprecated-declarations -ffp-contract=off)
+    if(SOFT_GLOW_SANITIZERS)
+        target_compile_options(soft-glow-native-quantization PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+        target_link_options(soft-glow-native-quantization PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all)
+    endif()
+endif()
 
 enable_testing()
 add_test(NAME soft-glow-stage-contract COMMAND soft-glow-stage-tests)
