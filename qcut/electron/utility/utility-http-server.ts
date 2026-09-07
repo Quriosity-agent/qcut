@@ -547,6 +547,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			(await requestFromMain("pointer:hit-test", {
 				request,
 			})) as AgentPointerHitTestResult,
+		dropFiles: async (request) =>
+			(await requestFromMain("pointer:drop-files", {
+				request,
+			})) as AgentPointerResult,
 		pressKeys: async (request) =>
 			(await requestFromMain("keyboard:press", {
 				request,
