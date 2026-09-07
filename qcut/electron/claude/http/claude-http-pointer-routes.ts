@@ -7,6 +7,7 @@ import type {
 	AgentPointerClickRequest,
 	AgentPointerDragMode,
 	AgentPointerDragRequest,
+	AgentPointerDropFilesRequest,
 	AgentPointerHitTestRequest,
 	AgentPointerHitTestResult,
 	AgentPointerMoveRequest,
@@ -38,6 +39,9 @@ interface AgentPointerRouteHandlers {
 	hitTest: (
 		request: AgentPointerHitTestRequest
 	) => Promise<AgentPointerHitTestResult>;
+	dropFiles: (
+		request: AgentPointerDropFilesRequest
+	) => Promise<AgentPointerResult>;
 	pressKeys: (
 		request: AgentKeyboardPressRequest
 	) => Promise<AgentKeyboardResult>;
@@ -381,10 +385,54 @@ function parseKeyboardTypeRequest(body: unknown): AgentKeyboardTypeRequest {
 	if (intervalMs !== undefined && intervalMs < 0) {
 		throw new HttpError(400, "Keyboard 'intervalMs' must be >= 0.");
 	}
+	if (parsed.keyEvents !== undefined && typeof parsed.keyEvents !== "boolean") {
+		throw new HttpError(400, "Keyboard 'keyEvents' must be a boolean.");
+	}
 	return {
 		text: parsed.text,
 		intervalMs,
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
+		...(parsed.keyEvents === true ? { keyEvents: true } : {}),
+	};
+}
+
+const MAX_DROP_FILES = 50;
+
+function parseDropFilesRequest({
+	body,
+}: {
+	body: unknown;
+}): AgentPointerDropFilesRequest {
+	const parsed = requireBodyObject({ body });
+	if (
+		!Array.isArray(parsed.files) ||
+		parsed.files.length === 0 ||
+		parsed.files.length > MAX_DROP_FILES
+	) {
+		throw new HttpError(
+			400,
+			`Pointer drop-files requires 1 to ${MAX_DROP_FILES} file paths in 'files'.`
+		);
+	}
+	const files = parsed.files.map((file) => {
+		if (typeof file !== "string" || !file.trim()) {
+			throw new HttpError(400, "Every dropped file must be a non-empty path.");
+		}
+		return file;
+	});
+	const durationMs = parseFiniteNumber({
+		value: parsed.durationMs,
+		field: "durationMs",
+	});
+	if (durationMs !== undefined && durationMs < 0) {
+		throw new HttpError(400, "Pointer 'durationMs' must be >= 0.");
+	}
+	return {
+		...parseAgentPointerTarget({ value: parsed }),
+		files,
+		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		durationMs,
 	};
 }
 
@@ -516,6 +564,14 @@ export function registerAgentPointerRoutes(
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.hitTest(request),
+		});
+	});
+
+	router.post("/api/claude/pointer/drop-files", async (req) => {
+		const request = parseDropFilesRequest({ body: req.body });
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.dropFiles(request),
 		});
 	});
 
