@@ -9,17 +9,26 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 export const SOFT_GLOW_HOST = "qcut-independent-soft-glow-host";
 const SOURCE = "research/independent-soft-glow";
-const UNITS = [
+/**
+ * Translation units of the soft-glow stream host. Keep in step with the
+ * `softglow`, `softglow_io`, and `softglow_stream_io` targets in
+ * research/independent-soft-glow/CMakeLists.txt; a unit missing here links
+ * fine in the C++ CI but fails the packaged host build with undefined symbols.
+ */
+export const SOFT_GLOW_UNITS = [
 	"image",
+	"blit",
 	"gaussian",
 	"glow",
 	"layer",
 	"lut",
+	"output_mix",
 	"pipeline",
 	"image_io",
 	"stream_io",
 	"stream_main",
-];
+] as const;
+const UNITS: readonly string[] = SOFT_GLOW_UNITS;
 let pending: Promise<string> | undefined;
 
 export async function compileSoftGlowHost({
