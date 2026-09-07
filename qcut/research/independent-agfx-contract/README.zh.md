@@ -1,10 +1,10 @@
-# AGFX 格式与采样器：独立 C++20 合同
+# AGFX 格式、采样器与纹理：独立 C++20 合同
 
 2026-09-07，分支 `codex/jianying-binary-cpp-next`，从 master `29d4700a5` 开始。
 
-本工程交付两个可独立编译的函数单元：**113 个 AGFX→Metal 格式映射及平台条件，和六个采样器字段的映射**。源码是根据静态控制流与原生输入输出重新组织的原创 C++；没有包含厂商头文件、机器码或反编译代码。
+本工程交付三个可独立编译的单元：**113 个 AGFX→Metal 格式映射及平台条件、六个采样器字段映射、RGBA/BGRA 的 2D/3D 空间采样参考**。源码是根据静态控制流与原生输入输出重新组织的原创 C++；没有包含厂商头文件、机器码或反编译代码。
 
-这两个单元不读取像素、不执行 shader，也不是整个 AGFX 渲染引擎。后续逐项工作见[执行队列](../../docs/task/jianying-filter-runtime-research/binary-cpp-execution-2026-09-07.zh.md)。
+格式与枚举单元不读取像素；新增 `texture_sample` 负责最近点/双线性/三维插值、四种寻址与 row/slice padding。它是标准 C++ CPU 参考，不是整个 AGFX 渲染引擎。实际原生 sampler 与原创 Metal shader 的像素差分见[像素报告](../../docs/task/jianying-filter-runtime-research/agfx-texture-pixels-2026-09-07.zh.md)。后续逐项工作见[执行队列](../../docs/task/jianying-filter-runtime-research/binary-cpp-execution-2026-09-07.zh.md)。
 
 ## 独立构建与使用
 
@@ -18,7 +18,7 @@ cmake --build /tmp/qcut-agfx-contract --config Release --parallel 4
 ctest --test-dir /tmp/qcut-agfx-contract --build-config Release --output-on-failure
 ```
 
-产物包括 `agfx_contract` 静态库和两个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
+产物包括 `agfx_contract` 静态库和三个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
 
 ```cpp
 #include "pixel_format.hpp"
@@ -67,7 +67,7 @@ Metal 值 `5` 不是 clamp-to-zero (`4`)；mirror-repeat (`3`) 也不是 mirror-
 
 原生 `setTexFilterWrapMode`（`0x8e0c4–0x8e1fc`）是带 renderer/texture 对象的状态方法，先保存六个 int32，再通过有符号索引读取表，**没有边界检查**。本工程对任何非法字段返回 false，并保持整个输出结构不变，这是 **QCut 自有的输入保护策略**，不是从原生恢复出的错误处理协议。
 
-原生各向异性值来自 texture 已有字段；本单元没有推断它的默认值，也未恢复 mip 生成、LOD、border color、texture 状态提交、对象所有权或 shader 实际采样行为。
+原生各向异性值来自 texture 已有字段。新增纹理探针已核验本次创建路径的默认值为 1、透明黑 border、真实 setter/对象及像素；这不扩展为任意各向异性或完整资源状态机。mip 生成分支与尚未解出的 LOD 舍入见像素报告。
 
 ## 3. 已完成验证
 
@@ -79,12 +79,12 @@ Metal 值 `5` 不是 clamp-to-zero (`4`)；mirror-repeat (`3`) 也不是 mirror-
 
 | 验证层 | 结果与限制 |
 | --- | --- |
-| 默认独立库 / 测试 | Release CTest **2/2**；不需要加载厂商库 |
-| 内存与未定义行为检查 | Debug + ASan/UBSan CTest **2/2** |
+| 默认独立库 / 测试 | Release CTest **3/3**；不需要加载厂商库 |
+| 内存与未定义行为检查 | Debug + ASan/UBSan CTest **3/3** |
 | 全枚举域单测 | `1..205` × 两个平台条件；85/28/92 分类；完整行为指纹 `e87db91f1384326f`；别名、空洞、输出复用与四种哨兵 |
 | 原生格式差分 | 每次 **69,637 个输入 × 3 个哨兵 = 208,911 次**；返回值、64 位输出及相邻保护值全部一致；两个独立进程报告逐字节相同 |
 | 采样器独立单测 | **768** 个合法组合、**24** 个单字段越界值、重复调用和拒绝后恢复全部通过 |
-| 采样器参考检查 | 768 个组合与已核验 AGFX 加载镜像中的表一致，并成功创建 768 个 Apple sampler state；**没有调用 AGFX setter 或渲染采样像素** |
+| 采样器参考检查 | 768 个组合与已核验 AGFX 加载镜像中的表一致，并成功创建 768 个 Apple sampler state；初始表检查不涉及 setter；新增像素探针已对真实 setter 的全部 768 组合做逐像素验证 |
 | 旧探针回归 | 7/7；仅 `43/50/97/128` 另有 Apple 4×3 纹理分配验证 |
 | 失败门禁 | 缺参、相对路径、未知库均拒绝；私有临时实现故意将 `43→70` 改为 `43→71` 后，原生差分正确失败；实际 CMake sanitizer flags 下的故意溢出用例非零退出 |
 
@@ -92,7 +92,7 @@ Metal 值 `5` 不是 clamp-to-zero (`4`)；mirror-repeat (`3`) 也不是 mirror-
 
 完整域测试指纹来自独立原生观察；编码为 source `LE u32`、return `u8`、written `u8`、output `LE u64`。原生完整域的行为表不是从 C++ 实现重新生成的期望值。
 
-仓库新增[三平台 CMake CI](../../../.github/workflows/agfx-contract.yml)，另有 Linux sanitizer 配置和 macOS ARM64 探针仅编译检查。Sanitizer 配置使用 `-fno-sanitize-recover=all`，错误会令测试失败。截至本次本地交付，**尚未运行云端 Linux/Windows CI**。本轮没有运行 QCut 全应用回归或逐帧 UI 比较。
+仓库新增[三平台 CMake CI](../../../.github/workflows/agfx-contract.yml)，另有 Linux sanitizer 配置和 macOS ARM64 探针仅编译检查。Sanitizer 配置使用 `-fno-sanitize-recover=all`，错误会令测试失败。初始两单元的云端三平台及 Linux sanitizer 已通过；本次四工程扩展须查看当前 PR head，不能把旧 head 状态沿用为新结果。本轮没有运行 QCut 全应用回归或逐帧 UI 比较。
 
 ## 4. 可选原生差分复现
 
@@ -110,4 +110,4 @@ DYLD_LIBRARY_PATH="$AGFX_FRAMEWORKS" "$AGFX_EVIDENCE/build-release/agfx-native-p
 
 原始二进制、反汇编和原生 JSON 保存在仓库外。此次私有证据根目录为上述 `AGFX_EVIDENCE`，含 `differential-run-1.json`、`differential-run-2.json`、构建/CTest 产物和 `verification.json`。这份报告与旧 D634 CGL 柔光宿主分属不同版本，不能将映射验证升级为柔光逐 Pass 精度验证。
 
-下一项：用自有像素补单 Pass 的上传、坐标、stride、实际采样及完成等待后的读回，再回到柔光中间 Pass 的误差归因。
+纹理扩展已完成 384 项独立测试、8 次原生 RGBA/BGRA 字节读回和两次完整 GPU 复跑。CPU 空间参考接受有限坐标并校验尺寸、跨度、溢出及截断；depth=1 仍按三维接口处理 R 轴，2D 使用 w=0.5。具体计数、排除的 LOD 域、失败实验和复现命令见像素报告。下一项是真实柔光中间 Pass 的误差归因。
