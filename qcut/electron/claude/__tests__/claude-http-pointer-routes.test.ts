@@ -7,6 +7,7 @@ import {
 	parseAgentPointerModifiers,
 	parseAgentPointerTarget,
 	parseAgentPointerWindowId,
+	parseTargetRequest,
 } from "../http/claude-http-pointer-routes.js";
 
 describe("parseAgentPointerTarget", () => {
@@ -92,6 +93,28 @@ describe("parseAgentPointerTarget", () => {
 		expect(() => parseAgentPointerClickCount({ value: 1.5 })).toThrow(
 			"from 1 to 3"
 		);
+	});
+
+	it("rejects button and clickCount on routes that ignore them", () => {
+		expect(
+			parseTargetRequest({ body: { x: 10, y: 20, button: "middle" } }).button
+		).toBe("middle");
+		for (const action of [
+			"move",
+			"hover",
+			"double-click",
+			"right-click",
+		] as const) {
+			expect(() =>
+				parseTargetRequest({ body: { x: 10, y: 20, button: "middle" }, action })
+			).toThrow("click route only");
+			expect(() =>
+				parseTargetRequest({ body: { x: 10, y: 20, clickCount: 2 }, action })
+			).toThrow("click route only");
+			expect(
+				parseTargetRequest({ body: { x: 10, y: 20 }, action }).button
+			).toBeUndefined();
+		}
 	});
 
 	it("accepts positive integer window ids from bodies and query strings", () => {
