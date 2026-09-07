@@ -1,5 +1,7 @@
 # 2026-09-08：从 master 继续独立 C++ 还原
 
+后续同分支新增曲线时间、图快照、取景选择与空间精度，统一测试现为52项；当前交付与未完成项见[第二批验收](binary-cpp-batch2-2026-09-08.zh.md)。下文保留首批46项的历史记录。
+
 本批从远端默认分支 `master` 的 `513a1c67d06fbdbb2a3b89bd27c6e37d3153eaf7` 新建 `codex/jianying-binary-cpp-scaleup-20260908`。工作树为 `/Users/peter/Desktop/code/qcut-binary-cpp-scaleup-wt/qcut`。上一批 [PR #468](https://github.com/Quriosity-agent/qcut/pull/468) 已于 2026-09-07 合并，合并点 `c577078ab132e4c45b8908c001f8f647e47b5e89` 已包含在本批起点中。
 
 继承六个独立 C++ 工程、两条完整滤镜算法链和 40 项 CTest。前一批的原生对照、适用域和未解决问题保留在[执行队列](binary-cpp-execution-2026-09-07.zh.md)及[剩余台账](binary-cpp-reconstruction-backlog-2026-09-06.zh.md)。起点已有代码不是本批新增结果；整库恢复仍没有完成。
