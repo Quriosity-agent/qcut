@@ -34,6 +34,11 @@ import {
 	stringValue,
 } from "./cli-handlers-pointer-targets.js";
 import {
+	attemptTimelineRulerCalibration,
+	rulerTimeToX,
+	rulerXToTime,
+} from "./cli-handlers-pointer-ruler.js";
+import {
 	type ListDragContext,
 	findSnapshotElement,
 	resolveListDragContext,
@@ -92,6 +97,13 @@ export async function postTargetAction({
 	return { success: true, data };
 }
 
+/**
+ * `--to-time`: drag the playhead to a timeline time. The ruler labels give the
+ * time → x mapping, so the playhead handle is pressed and released at the
+ * matching x like a real scrub; the achieved time is read back from where the
+ * playhead landed. When the labels cannot be read (or `--seek-mode api`), the
+ * timeline is seeked through the API and the pointer only animates.
+ */
 async function handleSemanticTimelineSeek({
 	client,
 	options,
@@ -108,6 +120,10 @@ async function handleSemanticTimelineSeek({
 	) {
 		return { success: false, error: "--to-time must be a number >= 0" };
 	}
+	const seekMode = options.seekMode ?? "drag";
+	if (seekMode !== "drag" && seekMode !== "api") {
+		return { success: false, error: "--seek-mode must be drag or api" };
+	}
 	const navigator = await client.get<{ activeProjectId?: string | null }>(
 		"/api/claude/navigator/projects"
 	);
@@ -119,6 +135,61 @@ async function handleSemanticTimelineSeek({
 		};
 	}
 	const speed = speedMultiplier(options);
+	await requirePointerInputSupport({ client, options });
+	const inputMode = pointerInputMode({ options });
+
+	const attempt =
+		seekMode === "drag"
+			? await attemptTimelineRulerCalibration({ client })
+			: null;
+	const calibration = attempt?.calibration ?? null;
+	if (calibration) {
+		const playhead = await waitForSemanticTarget({
+			client,
+			target: "timeline.playhead",
+			timeoutMs: options.timeoutMs,
+		});
+		const fromPoint = {
+			x: playhead.bounds.x + playhead.bounds.width / 2,
+			y: calibration.rulerY,
+		};
+		const toPoint = {
+			x: Math.round(rulerTimeToX({ calibration, time: options.toTime })),
+			y: Math.round(calibration.rulerY),
+		};
+		const drag = await client.post("/api/claude/pointer/drag", {
+			from: fromPoint,
+			to: toPoint,
+			inputMode,
+			dnd: "mouse",
+			holdMs: scaledDuration(options.holdMs, speed, 120),
+			durationMs: scaledDuration(options.durationMs, speed, 450),
+			steps: options.steps ?? 24,
+			releaseDelayMs: scaledDuration(options.releaseDelayMs, speed, 100),
+		});
+		await sleep(Math.max(20, 120 / speed));
+		const landed = await waitForSemanticTarget({
+			client,
+			target: "timeline.playhead",
+			timeoutMs: options.timeoutMs,
+		});
+		const achievedTime = rulerXToTime({
+			calibration,
+			x: landed.bounds.x + landed.bounds.width / 2,
+		});
+		return {
+			success: true,
+			data: {
+				projectId,
+				time: options.toTime,
+				method: "drag",
+				achievedTime: Number(achievedTime.toFixed(3)),
+				calibration: { ...calibration, source: attempt?.source },
+				drag: { from: fromPoint, to: toPoint, result: drag },
+			},
+		};
+	}
+
 	const fromPoint = await materializeTargetPoint({ client, target: from });
 	const operation = await client.post(
 		`/api/claude/timeline/${encodeURIComponent(projectId)}/playback`,
@@ -134,8 +205,6 @@ async function handleSemanticTimelineSeek({
 		x: playhead.bounds.x + playhead.bounds.width / 2,
 		y: playhead.bounds.y + playhead.bounds.height / 2,
 	};
-	await requirePointerInputSupport({ client, options });
-	const inputMode = pointerInputMode({ options });
 	const animationStart = await client.post("/api/claude/pointer/move", {
 		...fromPoint,
 		inputMode,
@@ -151,6 +220,11 @@ async function handleSemanticTimelineSeek({
 		data: {
 			projectId,
 			time: options.toTime,
+			method: "api-seek",
+			reason:
+				seekMode === "api"
+					? "requested with --seek-mode api"
+					: `ruler calibration failed (${attempt?.reason ?? "unknown"}); seeked through the API instead`,
 			operation,
 			animation: {
 				type: "display-only",
