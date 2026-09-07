@@ -4,8 +4,8 @@
 
 - 分支：`codex/render-pipeline-optimization`
 - 固定基线：`2b9f355bd7accfd24a0e02a584e6ab6f223853d0`
-- 基线 worktree：`/Users/peter/Desktop/code/qcut-render-pipeline-baseline-wt/qcut`
-- 优化 worktree：`/Users/peter/Desktop/code/qcut-render-pipeline-opt-wt/qcut`
+- 基线 worktree：仓库的另一份 checkout，固定在上述基线提交
+- 优化 worktree：本分支的 checkout（同一仓库根目录 `qcut/`）
 - 没有委派给 Claude，也没有改动原工作区中的 Compose WIP。
 
 两边都从同一个父提交构建。基线 worktree 只临时复制了 benchmark 和探针代码，
