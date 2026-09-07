@@ -21,6 +21,7 @@ struct MipSelection {
 
 // Explicit-LOD profile measured on Apple M4; not a portable Metal hardware guarantee.
 MipSelection select_m4_mip(const MipRequest& request);
+void validate_mip_chain(std::span<const TextureView> levels);
 
 struct MipTexelBlend {
   std::array<std::uint8_t, 4> first;
