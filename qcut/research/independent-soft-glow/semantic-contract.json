@@ -1,6 +1,6 @@
 {
-	"schema_version": 3,
-	"id": "cinematic-soft-glow-opaque-intensity-v3",
+	"schema_version": 4,
+	"id": "cinematic-soft-glow-opaque-intensity-v4",
 	"date": "2026-09-07",
 	"scope": "Opaque SDR RGBA8 fixed graph with explicit output-mix (default, historical CGL reference) and ui-snapshot (measured editor export parameter reconstruction); not a complete preview or event model.",
 	"package": {
@@ -61,10 +61,13 @@
 		"cpu_halfway_rounding": "away from zero",
 		"target_write_status": "666580 original float inputs matched actual CGL RGBA32F-to-RGBA8 blit/readback on Apple M4 Pro; all GPU arithmetic is not verified",
 		"pixel_centers": "((x+0.5)/width,(y+0.5)/height)",
-		"sampler": "bilinear before nonlinear gamma or packed-channel decode",
+		"sampler": "Shader draw sampling remains generic bilinear before nonlinear gamma or packed-channel decode; measured fixed-point profile applies only to Gaussian down/up framebuffer blits.",
 		"gpu_bit_exact": false,
 		"output_mix": "For RGB byte inputs: delta=(F8-I8)*t; O8=round(I8+delta), binary64 without FMA. Preserve source alpha below full intensity; full returns F.",
-		"evidence": "../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md"
+		"evidence": "../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md",
+		"blit": "M4 CGL RGBA8 source profile: integer pixel-center coordinates; 8-bit nearest weights with ties toward higher source coordinate; one combined four-tap sum rounded to 1/16 byte with ties upward; float(subbyte)/4080, then Q for RGBA8 target.",
+		"blit_evidence": "../../docs/task/jianying-filter-runtime-research/soft-glow-blit-precision-2026-09-07.zh.md",
+		"blit_orientation": "reverse_source_y reverses source coordinates before weight rounding; source reversal and half-weight rounding do not commute."
 	},
 	"dimensions": {
 		"full": {
@@ -161,7 +164,7 @@
 	"nodes": [
 		{
 			"id": "GD",
-			"operation": "bilinear-resize",
+			"operation": "m4-cgl-rgba8-bilinear-blit",
 			"inputs": {
 				"source": "I"
 			},
@@ -200,7 +203,7 @@
 		},
 		{
 			"id": "GU",
-			"operation": "bilinear-resize",
+			"operation": "m4-cgl-rgba8-bilinear-blit",
 			"inputs": {
 				"source": "GY"
 			},
@@ -540,7 +543,7 @@
 		"portable_metrics": "semantic-experiments.json",
 		"intensity_mode": "output-mix"
 	},
-	"previous_contract": "cinematic-soft-glow-opaque-intensity-v2",
+	"previous_contract": "cinematic-soft-glow-opaque-intensity-v3",
 	"intensity_modes": {
 		"output-mix": {
 			"parameter_source": "parameters (instantiated static scene)",
@@ -550,7 +553,7 @@
 			"output": "RGB: round(I8+(F8-I8)*t)/255 using binary64; alpha from I below t=1; full F at t=1",
 			"zero_behavior": "byte-identical I",
 			"source_evidence": "QCut blendNativeEffectOutput byte arithmetic plus fixed private D634 endpoint references",
-			"historical_hashes": "Historical v2 hashes remain unchanged as evidence; v3 intentionally fixes boundary pixels. New six-case results are in the precision report."
+			"historical_hashes": "Historical v2 and v3 reports remain unchanged; v4 additionally fixes Gaussian blit sampling. New outputs and residuals are in the blit precision report."
 		},
 		"ui-snapshot": {
 			"parameter_source": "parameters with explicit overrides below",
@@ -578,6 +581,7 @@
 		"all_rgba8": true,
 		"capture_report": "../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md",
 		"precision_report": "../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md",
-		"bit_exact_pipeline": false
+		"bit_exact_pipeline": false,
+		"blit_precision_report": "../../docs/task/jianying-filter-runtime-research/soft-glow-blit-precision-2026-09-07.zh.md"
 	}
 }
