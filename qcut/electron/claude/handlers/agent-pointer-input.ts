@@ -356,6 +356,7 @@ export class AgentPointerInput {
 		button,
 		clickCount,
 		movement,
+		modifiers = [],
 	}: {
 		session: AgentPointerInputSession;
 		type: PointerMouseEventType;
@@ -363,6 +364,7 @@ export class AgentPointerInput {
 		button?: AgentPointerButton;
 		clickCount?: number;
 		movement?: AgentPointerPoint;
+		modifiers?: AgentKeyboardModifier[];
 	}): Promise<void> {
 		if (session.inputMode === "foreground") {
 			const event: MouseInputEvent = {
@@ -372,6 +374,9 @@ export class AgentPointerInput {
 				...(button ? { button } : {}),
 				...(typeof clickCount === "number" ? { clickCount } : {}),
 				...(movement ? { movementX: movement.x, movementY: movement.y } : {}),
+				...(modifiers.length > 0
+					? { modifiers: electronModifiers(modifiers) }
+					: {}),
 			};
 			this.win.webContents.sendInputEvent(event);
 			return;
@@ -386,6 +391,9 @@ export class AgentPointerInput {
 				buttons: type === "mouseUp" ? 0 : buttonMask({ button }),
 				clickCount: clickCount ?? 0,
 				pointerType: "mouse",
+				...(modifiers.length > 0
+					? { modifiers: cdpModifierMask(modifiers) }
+					: {}),
 			},
 		});
 	}
@@ -472,11 +480,13 @@ export class AgentPointerInput {
 		type,
 		point,
 		data,
+		modifiers = [],
 	}: {
 		session: AgentPointerInputSession;
 		type: DragEventType;
 		point: AgentPointerPoint;
 		data: AgentPointerDragData;
+		modifiers?: AgentKeyboardModifier[];
 	}): Promise<void> {
 		if (session.inputMode !== "background") {
 			throw new AgentPointerError({
@@ -487,7 +497,15 @@ export class AgentPointerInput {
 		}
 		await this.dispatchBackgroundCommand({
 			method: "Input.dispatchDragEvent",
-			params: { type, x: point.x, y: point.y, data },
+			params: {
+				type,
+				x: point.x,
+				y: point.y,
+				data,
+				...(modifiers.length > 0
+					? { modifiers: cdpModifierMask(modifiers) }
+					: {}),
+			},
 		});
 	}
 
@@ -496,11 +514,13 @@ export class AgentPointerInput {
 		point,
 		deltaX,
 		deltaY,
+		modifiers = [],
 	}: {
 		session: AgentPointerInputSession;
 		point: AgentPointerPoint;
 		deltaX: number;
 		deltaY: number;
+		modifiers?: AgentKeyboardModifier[];
 	}): Promise<void> {
 		if (session.inputMode === "foreground") {
 			this.win.webContents.sendInputEvent({
@@ -511,6 +531,9 @@ export class AgentPointerInput {
 				deltaY,
 				canScroll: true,
 				hasPreciseScrollingDeltas: true,
+				...(modifiers.length > 0
+					? { modifiers: electronModifiers(modifiers) }
+					: {}),
 			});
 			return;
 		}
@@ -525,6 +548,9 @@ export class AgentPointerInput {
 				deltaX,
 				deltaY,
 				pointerType: "mouse",
+				...(modifiers.length > 0
+					? { modifiers: cdpModifierMask(modifiers) }
+					: {}),
 			},
 		});
 	}
