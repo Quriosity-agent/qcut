@@ -51,8 +51,8 @@ inline GraphFixture graph_fixture(std::size_t graph, std::size_t config) {
 
 inline GraphFixture graph_rounding_fixture() {
   auto fixture = graph_fixture(0, 3);
-  fixture.input.left_values = {-1};
-  fixture.input.right_values = {0x1p-52};
+  fixture.input.left_values.assign(1, -1.0);
+  fixture.input.right_values.assign(1, 0x1p-52);
   fixture.points = {{0, 0, 0}, {0, .5, 0x1.fffffffffffffp-1}, {0, 1, 1}};
   return fixture;
 }
