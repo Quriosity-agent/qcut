@@ -47,6 +47,10 @@ void validate_levels(std::span<const TextureView> levels) {
 
 } // namespace
 
+void validate_mip_chain(std::span<const TextureView> levels) {
+  validate_levels(levels);
+}
+
 MipSelection select_m4_mip(const MipRequest& request) {
   if (!std::isfinite(request.lod) || request.level_count == 0 || request.level_count > 15) {
     throw std::invalid_argument("Explicit LOD must be finite with 1..15 levels");
