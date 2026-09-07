@@ -120,3 +120,35 @@ Insertion/neighborhood APIs reject null list entries as a QCut boundary policy.
 Container tracking codes and clock-write counts are observable bookkeeping,
 not a reconstructed undo stack. Detailed evidence:
 [creator-keyframe-insertion-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-keyframe-insertion-2026-09-07.zh.md).
+
+## Dirty propagation and retained-reference cleanup
+
+`dirty_tree.*` now closes a concrete lifecycle after insertion/removal: dirty
+queries visit the active frame/control/group tree, reset recursively clears
+active dirty state, and the two array levels release their retained references.
+Removed-only objects are not reset. An object shared by active and retained is
+reset through its active occurrence and remains alive while active owns it.
+Neither operation restores earlier values or reinserts removed objects.
+
+Node reset clears `changed` and clears `state_code` only when `tracking != 0`.
+Dirty queries ignore the state code and retained nodes. Both indexed removal
+APIs preserve identity/order, append to retained, apply the observed code-three
+gate, dirty the array, and report one clock-write event. Array configuration and
+active storage capacity survive reset.
+
+The verified traversal domain has no graph and has two nonnull controls per
+active frame. Null active nodes and noncanonical dirty booleans are rejected
+before mutation, including when a dirty ancestor could otherwise short-circuit.
+This preflight is an explicit QCut boundary policy. Retained-only objects are
+not traversed or inspected.
+
+Nine portable groups contain 1143 assertions and pass Release and fail-fast
+ASan/UBSan. `creator-native-dirty` uses real keyframe/group factories plus a
+complete detached SegmentVideo tree created by the SDK. Its 2,000 frame-list
+cases, 240 group-array cases and 4 weak-pointer lifetime cases compare 407,020
+values/state observations with zero mismatches. The native diagnostic also
+passes ASan/UBSan for the probe/original code; the vendor dylib is not
+instrumented. Four intentional implementation mutants and two identity guards
+fail as expected. Full transaction commit/rollback and application undo remain
+outside this contract. See
+[creator-record-contract-2026-09-07.zh.md](../../docs/task/jianying-filter-runtime-research/creator-record-contract-2026-09-07.zh.md).
