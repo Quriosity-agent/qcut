@@ -11,6 +11,7 @@ import type {
 	AgentPointerHitTestRequest,
 	AgentPointerHitTestResult,
 	AgentPointerMoveRequest,
+	AgentPointerRulerLabelsResult,
 	AgentPointerResult,
 	AgentPointerScrollRequest,
 	AgentPointerTarget,
@@ -42,6 +43,7 @@ interface AgentPointerRouteHandlers {
 	dropFiles: (
 		request: AgentPointerDropFilesRequest
 	) => Promise<AgentPointerResult>;
+	rulerLabels: () => Promise<AgentPointerRulerLabelsResult>;
 	pressKeys: (
 		request: AgentKeyboardPressRequest
 	) => Promise<AgentKeyboardResult>;
@@ -557,6 +559,10 @@ export function registerAgentPointerRoutes(
 
 	router.post("/api/claude/pointer/hide", async () => {
 		return await withPointerTimeout({ timeoutMs, work: handlers.hide });
+	});
+
+	router.get("/api/claude/pointer/ruler-labels", async () => {
+		return await withPointerTimeout({ timeoutMs, work: handlers.rulerLabels });
 	});
 
 	router.post("/api/claude/pointer/hit-test", async (req) => {
