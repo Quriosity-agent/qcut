@@ -1,4 +1,5 @@
 #include "record_restore.hpp"
+#include "record_graph.hpp"
 
 #include "mutation.hpp"
 
@@ -12,16 +13,17 @@
 
 namespace creator_contract {
 namespace {
-void validate(const RecordFrame& frame) {
-  if (frame.has_graph || !frame.left || !frame.right || !frame.values) {
-    throw std::invalid_argument("Restoration requires a graph-free frame with values and both controls");
+void validate(const RecordFrame& frame, const RecordGraphPointIndex& graph_points = {}) {
+  if ((frame.has_graph && !frame.graph) || !frame.left || !frame.right || !frame.values) {
+    throw std::invalid_argument("Restoration requires typed graph data, values and both controls");
   }
+  if (frame.graph) validate_graph_record(*frame.graph, graph_points);
 }
 
-void validate(const RecordFrameList& list) {
+void validate(const RecordFrameList& list, const RecordGraphPointIndex& graph_points = {}) {
   for (const auto& frame : list.active) {
     if (!frame) throw std::invalid_argument("Null active record frame");
-    validate(*frame);
+    validate(*frame, graph_points);
   }
 }
 
@@ -46,10 +48,11 @@ std::shared_ptr<RecordPoint> restore_point_copy(const RecordPoint& source) {
   return copy;
 }
 
-void restore_frame_from(RecordFrame& destination, const RecordFrame* source) {
+void restore_frame_from(RecordFrame& destination, const RecordFrame* source,
+                        const RecordGraphPointIndex& graph_points) {
   if (!source) return;
   validate(destination);
-  validate(*source);
+  validate(*source, graph_points);
   destination.id = source->id;
   restore_value(destination.curve_type, source->curve_type, destination.mutation);
   restore_value(destination.time_offset, source->time_offset, destination.mutation);
@@ -60,76 +63,74 @@ void restore_frame_from(RecordFrame& destination, const RecordFrame* source) {
     detail::mark_changed(destination.mutation);
   }
   restore_value(destination.string_value, source->string_value, destination.mutation);
+  if (destination.graph && source->graph) {
+    restore_graph_from(*destination.graph, source->graph.get(), graph_points);
+  } else if (source->graph) {
+    destination.graph = restore_graph_copy(*source->graph, graph_points);
+    destination.graph->mutation.tracking = 0;
+    detail::mark_changed(destination.graph->mutation);
+    detail::mark_changed(destination.mutation);
+  } else if (destination.graph) {
+    destination.graph.reset();
+    detail::mark_changed(destination.mutation);
+  }
+  destination.has_graph = static_cast<bool>(destination.graph);
 }
 
-std::shared_ptr<RecordFrame> restore_frame_copy(const RecordFrame& source) {
-  validate(source);
+std::shared_ptr<RecordFrame> restore_frame_copy(const RecordFrame& source,
+                                               const RecordGraphPointIndex& graph_points) {
+  validate(source, graph_points);
   auto copy = std::make_shared<RecordFrame>(source);
   copy->left = restore_point_copy(*source.left);
   copy->right = restore_point_copy(*source.right);
+  if (source.graph) copy->graph = restore_graph_copy(*source.graph, graph_points);
   detail::mark_changed(copy->mutation);
   return copy;
 }
 
 std::size_t restore_frame_list(RecordFrameList& destination, const RecordFrameList& source,
-                             const RecordFrameIndex& existing) {
+                             const RecordFrameIndex& existing, const RecordGraphPointIndex& graph_points) {
   validate(destination);
-  validate(source);
+  validate(source, graph_points);
   for (const auto& frame : source.active) {
     const auto found = existing.find(frame->id);
-    if (found != existing.end() && found->second) validate(*found->second);
+    if (found != existing.end() && found->second) validate(*found->second, graph_points);
   }
 
-  std::vector<std::shared_ptr<RecordFrame>> restored;
-  restored.reserve(source.active.size());
-  std::unordered_set<std::string> requested_ids;
-  for (const auto& frame : source.active) {
-    requested_ids.insert(frame->id);
-    const auto found = existing.find(frame->id);
-    if (found != existing.end() && found->second) {
-      restore_frame_from(*found->second, frame.get());
-      restored.push_back(found->second);
-    } else {
-      restored.push_back(restore_frame_copy(*frame));
-    }
-  }
-
-  std::unordered_set<std::string> previously_present;
-  for (const auto& frame : destination.active) {
-    if (requested_ids.contains(frame->id)) previously_present.insert(frame->id);
-    else destination.retained.push_back(frame);
-  }
-
-  std::size_t clock_writes = 1;
-  for (const auto& frame : restored) {
-    if (previously_present.contains(frame->id)) continue;
-    frame->mutation.tracking = static_cast<std::uint8_t>(destination.track_children);
-    if (destination.track_children) frame->mutation.state_code = 1;
-    else {
-      detail::mark_changed(frame->mutation);
-      detail::mark_changed(destination.mutation);
-    }
-    ++clock_writes;
-    detail::mark_changed(frame->mutation);
-  }
-  if (source.active.size() != destination.active.size()) detail::mark_changed(destination.mutation);
-  destination.active = std::move(restored);
-  return clock_writes;
+  return detail::reconcile_record_list(destination, source, existing,
+      [&](RecordFrame& live, const RecordFrame* history) { restore_frame_from(live, history, graph_points); },
+      [&](const RecordFrame& history) { return restore_frame_copy(history, graph_points); });
 }
 
 std::size_t restore_group_from(RecordGroup& destination, const RecordGroup* source,
-                             const RecordFrameIndex& existing) {
+                             const RecordFrameIndex& existing, const RecordGraphPointIndex& graph_points) {
   if (!source) return 0;
   validate(destination.frames);
-  validate(source->frames);
+  validate(source->frames, graph_points);
   for (const auto& frame : source->frames.active) {
     const auto found = existing.find(frame->id);
-    if (found != existing.end() && found->second) validate(*found->second);
+    if (found != existing.end() && found->second) validate(*found->second, graph_points);
   }
   destination.id = source->id;
   restore_value(destination.material_id, source->material_id, destination.mutation);
   restore_value(destination.property, source->property, destination.mutation);
-  return restore_frame_list(destination.frames, source->frames, existing);
+  return restore_frame_list(destination.frames, source->frames, existing, graph_points);
+}
+
+std::shared_ptr<RecordGroup> restore_group_copy(const RecordGroup& source,
+                                               const RecordFrameIndex& existing,
+                                               const RecordGraphPointIndex& graph_points) {
+  validate(source.frames, graph_points);
+  for (const auto& frame : source.frames.active) {
+    const auto found = existing.find(frame->id);
+    if (found != existing.end() && found->second) validate(*found->second, graph_points);
+  }
+  auto copy = std::make_shared<RecordGroup>(source);
+  copy->frames = detail::copy_record_list(source.frames, existing,
+      [&](RecordFrame& live, const RecordFrame* history) { restore_frame_from(live, history, graph_points); },
+      [&](const RecordFrame& history) { return restore_frame_copy(history, graph_points); });
+  detail::mark_changed(copy->mutation);
+  return copy;
 }
 
 }  // namespace creator_contract
