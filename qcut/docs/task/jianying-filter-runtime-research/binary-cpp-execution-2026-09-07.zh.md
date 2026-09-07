@@ -13,13 +13,13 @@
 | 01 / **已完成** | AGFX：格式转换器 `0x8b6e4–0x8bd24` 的独立 C++ 合同 | 113 项映射、85/28/92 分类与平台条件；每次 208,911 次原生差分零差异，两进程报告一致。旧 macOS 条件来自静态恢复与单测，未实机调用。 |
 | 02 / **已完成（枚举合同）** | AGFX：`setTexFilterWrapMode` 的枚举映射 | 六字段独立转换；768 合法组合与加载镜像表一致，Apple sampler 分配成功；24 非法字段用例通过。拒绝非法输入是自有保护策略；真实 setter 和像素验证已由 03 补齐。 |
 | 03 / **已完成受控像素单元** | AGFX：自有纹理上传 → 原生 sampler → 自有 shader → 读回 | 5 张 RGBA/BGRA/3D/mip 图案 × 768 sampler；每进程 3,732,480 个 GPU float4 逐位一致、7,008,768 个 CPU 通道通过。8 次原生 RGBA/BGRA 读回字节一致。CPU 任意 LOD 量化/nearest 半层点仍未解，排除项单列；见[像素报告](agfx-texture-pixels-2026-09-07.zh.md)。 |
-| 04 / **量化已修正，整链精度未闭合** | AGFX + 已有柔光：逐 Pass 格式、量化与采样归因 | 保留 252 个 D634 RGBA8 目标与 13 阶段重放；新增自产 CGL 666,580 通道转换零差异、旧实现 127 个负控差异，修正 UNORM 与字节域 double 末端混合。chart downsample 237→0 字节差异，其他采样/Glow/LUT 残差仍在；见[量化报告](soft-glow-unorm-precision-2026-09-07.zh.md)。 |
-| 05 / **真实对象选帧已交付，完整 seek/事件待补** | videoeditor：材料值、时间区间、重采样、Bézier 与窗口选帧 | 保留 128,392 数值对照；真实工厂构造 1,905 个 SDK 对象，100,832 次窗口调用、18,544 次移除、18,544 个 exact-hit 属性值验证。新增明确输入域的时间/控制记录适配；真实 Segment trim/speed 与 seek/export 仍未闭合，见[窗口报告](videoeditor-window-selection-2026-09-07.zh.md)。 |
-| 06 / **创建/插入局部语义已交付，完整定位/undo 待补** | VECreator → videoeditor：请求、材质、公共关键帧与 reset | 在已有 ID/reset 基础上补 numeric payload、已解析时间的窗口碰撞/有序插入、graph 清理与相邻 control 修复；真实 SDK 插入/控制点有原生对照。完整请求时间转换、record rollback/undo 和 UI 仍待补，见[插入报告](creator-keyframe-insertion-2026-09-07.zh.md)。 |
+| 04 / **两个缩放阶段已闭合，整链精度未闭合** | AGFX + 柔光：逐 Pass 格式、量化与采样归因 | 新增 M4 CGL 权重/四点舍入/反向坐标的独立 blit；111 组/444 次调用，58,017,272 float 通道及同数量字节通道零差异，三图两次缩放独立重放均 0 差异。卷积/Glow/LUT 仍有残差；见[缩放报告](soft-glow-blit-precision-2026-09-07.zh.md)。 |
+| 05 / **真实 Segment 恒速时间与局部属性已交付，完整 seek/事件待补** | videoeditor：窗口选帧 → Segment trim/speed → 属性值 | 保留窗口 100,832 次调用；新增真实 SegmentVideo 源/目标区间、恒速、偏移、端点吸附、record 时间与控制点适配，以及无 graph/线性曲线的非命中属性分支。变速曲线、完整 seek/export 仍未闭合；见[Segment 报告](videoeditor-segment-time-2026-09-07.zh.md)。 |
+| 06 / **插入与 dirty/retained 生命周期已交付，完整 undo 待补** | VECreator → videoeditor：请求、材质、公共关键帧与 reset | 新增真实对象的 active/retained 清理、递归 dirty、别名与释放；2244 组原生生命周期零差异。删除后保留的对象不被当成 active 子节点重置。完整 record rollback/undo、会话及 UI 仍待补，见[生命周期报告](creator-record-contract-2026-09-07.zh.md)。 |
 | 07 / 待做 | cccreator：最小通用图执行器 + 下一张真实复杂滤镜 | 接 04–06；选定一张缓存真实卡后先登记资源身份，再建立有效图。复用现有 Gaussian/Layer/Glow/LUT，补该卡确实需要的原语；独立编译、重复/乱序帧、原生差分和 QCut 预览/导出分别验收。此处尚未指定或宣称完成第二张卡。 |
 | 08 / 待做 | lens：Deflicker 的连续帧合同与独立算法 | 从已有原生连续帧桥取得固定输入、强度、历史窗口、首尾帧、reset/seek 的输出证据，再实现并比较自有算法。测试稳定亮度、周期闪烁与运动序列；仅加载模型或调用私有库不计独立实现。 |
 | 09 / 待做 | bytenn：一个已选模型的张量合同与独立后端 | 先点名模型及上游功能，恢复布局、dtype、归一化、输出及历史状态；用可独立使用的模型/后端验证真实张量和像素。模型资产来源与运行时源码分别记录；模型依赖未解决时不宣布算法独立。此项可成为 08 或后续补帧的必要前置，届时显式调整队列。 |
-| 10 / **实际后端分支与 warp 已交付，VAS 链待补** | lens：VAS 配置 → 变换矩阵 → warp | 保留六原语与 base 像素证据；新 NEON/ImageTransform 各 10,998 例，合计 445,847,787 字节零差异，恢复 ImageTransform 的独立 FMA 顺序与预处理器分派条件。上游产品/VAS 选择、运动估计和 crop 仍待补，见[后端报告](lens-warp-backends-2026-09-07.zh.md)。 |
+| 10 / **crop 变换计划到真实 warp 已交付，VAS 链待补** | lens：坐标端点 → 变换矩阵 → warp | 新增四锚点 LU、前/逆矩阵与 crop 端点合同：30,307 组/363,684 float，306 次真实对象 warp/1,324,512 RGBA 字节零差异。上游 crop 端点调用是静态证据，完整人脸检测/VAS/运动估计仍未运行；见[变换计划报告](lens-transform-planning-2026-09-07.zh.md)。 |
 | 11 / 待做 | lens：UMVFI 补帧；随后单独做 VMB 光流/帧融合 | 两者各自建立帧对、时间参数、历史状态和输出合同。模型相关前置接 09；每个单元分别编译、差分和视频验收，不能用一个宿主调用覆盖两项完成状态。 |
 
 `libTracking.dylib` 是遥测库，不排进视觉 tracker 队列。LumiGeneRuntime、fastcv、samicore、speechsdk 仍是台账候选；未解决上表依赖前不扩大为逐库扫描任务。
@@ -37,17 +37,17 @@
 
 完成记录与复现入口：[独立工程及语义说明](../../../research/independent-agfx-contract/README.zh.md)。Release CTest **2/2**、ASan/UBSan CTest **2/2**；格式输入条目 **69,637 × 3 个哨兵 = 208,911 次/进程**，两次报告完全一致。macOS 26.6.2 / ARM64 / Apple Clang 21.0.0 / M4 Pro。四种 Apple 纹理分配及旧七用例回归通过；没有把其他压缩/深度格式的映射当作 GPU 可用性。
 
-私有证据：`/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/agfx/`，含两次差分 JSON、完整输入生成参数、构建/测试产物及 `verification.json` 源码哈希清单。最初两个单元的三平台 CI 及 Linux sanitizer 已通过；本次已扩为四工程，新的远端结果以当前 PR head 为准，不沿用旧 head 绿灯。
+私有证据：`/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/agfx/`，含两次差分 JSON、完整输入生成参数、构建/测试产物及 `verification.json` 源码哈希清单。最初两个单元的三平台 CI 及 Linux sanitizer 已通过；本次已扩为五工程，新的远端结果以当前 PR head 为准，不沿用旧 head 绿灯。
 
 ## 并行批次结果与下一步
 
-前两批分别交付四工程 12 组和五工程 23 组 CTest；本批继续补真实关键帧窗口/插入、Lens 后端差异及柔光量化。统一入口 [independent-binary-contract](../../../research/independent-binary-contract/README.zh.md) 现在包含 **五工程、29 组 CTest**。原生差分仍在隔离进程中运行，不并入无需厂商资产的默认测试。
+此前批次分别交付 12、23、29 组 CTest；本批继续补真实 Segment 时间与线性属性、dirty/retained 生命周期、Lens crop 变换计划及柔光缩放精度。统一入口 [independent-binary-contract](../../../research/independent-binary-contract/README.zh.md) 现在包含 **五工程、34 组 CTest**。原生差分仍在隔离进程中运行，不并入无需厂商资产的默认测试。
 
 队列仍是 **3 个已交付的受限 AGFX 单元，8 个尚未完整关闭的工作包**。04、05、06、10 的局部验收继续推进，整库仍 0/6；完整标准 C++ 效果链仍为柔光 1 条，且不宣称所有像素完全一致。
 
-本机 AppleClang/macOS arm64 的 Release 与 ASan/UBSan 各 **29/29** 通过，可选原生诊断全部编译。CGL 捕获器两个正控、两个预期拒绝仍通过，新增纯自产浮点转换诊断。原始参考、前两批报告保持原样，本批构建/源码哈希与差分入口汇总在 `/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/precision-verification.json`。远端各平台状态以 PR 当前 head 为准，不沿用旧提交绿灯。
+本机 AppleClang/macOS arm64 的 Release 与 ASan/UBSan 各 **34/34** 通过，可选原生诊断全部编译。CGL 捕获器两个正控、两个预期拒绝仍通过，纯自产转换诊断回归及新增正反坐标缩放诊断通过。原始参考、前两批报告保持原样，本批构建/源码哈希与差分入口汇总在 `/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/segment-blit-verification.json`。远端各平台状态以 PR 当前 head 为准，不沿用旧提交绿灯。
 
-接下来优先解释 04 的剩余缩放坐标与插值、Glow dither/packed 和 LUT 残差；05–06 推进真实 Segment 的 trim/speed、当前时间定位、record rollback/undo；10 向实际产品/VAS 后端选择、运动估计和 crop 连接。07 第二张完整复杂滤镜、08/09/11 时序算法与模型合同仍未完成。本次更新现有 PR #468，继续单文件单提交，不执行合并或发版。
+接下来优先解释 04 的卷积与 draw 采样、Glow dither/packed 和 LUT 残差；05–06 向变速曲线、当前时间定位、完整 request/record rollback/undo 推进；10 继续实际人脸检测或 VAS 的上游选择与运动估计。07 第二张完整复杂滤镜、08/09/11 时序算法与模型合同仍未完成。本次更新现有 PR #468，继续单文件单提交，不执行合并或发版。
 
 ## 证据边界
 
