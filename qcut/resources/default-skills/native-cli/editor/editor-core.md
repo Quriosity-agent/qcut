@@ -32,7 +32,7 @@ Editor commands are split across these files:
 |------|-------------|---------|
 | `--host` | API host | `127.0.0.1` |
 | `--port` | API port | `8765` |
-| `--token` | API auth token | - |
+| `--token` | API bearer token (default: `QCUT_API_TOKEN`, then the editor's published instance file) | - |
 | `--timeout` | Job timeout in seconds | `300` (export: `600`) |
 | `--poll` | Auto-poll async jobs until complete | `false` |
 | `--poll-interval` | Poll interval in seconds | `3` |
