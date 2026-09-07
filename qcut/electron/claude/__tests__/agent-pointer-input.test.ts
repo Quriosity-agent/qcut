@@ -367,4 +367,83 @@ describe("AgentPointerInput", () => {
 		).rejects.toThrow("require background pointer input");
 		expect(harness.debuggerCommands).toEqual([]);
 	});
+
+	it("carries keyboard modifiers on background mouse, wheel, and drag events", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "background" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseDown",
+			point: { x: 10, y: 20 },
+			button: "middle",
+			clickCount: 1,
+			modifiers: ["Shift", "Meta"],
+		});
+		await harness.input.sendWheel({
+			session,
+			point: { x: 10, y: 20 },
+			deltaX: 0,
+			deltaY: -120,
+			modifiers: ["Control"],
+		});
+		await harness.input.sendDrag({
+			session,
+			type: "drop",
+			point: { x: 30, y: 40 },
+			data: { items: [], dragOperationsMask: 1 },
+			modifiers: ["Alt"],
+		});
+
+		const [press, wheel, drop] = harness.debuggerCommands.filter((command) =>
+			command.method.startsWith("Input.dispatch")
+		);
+		expect(press?.params).toEqual(
+			expect.objectContaining({
+				type: "mousePressed",
+				button: "middle",
+				buttons: 4,
+				modifiers: 8 | 4,
+			})
+		);
+		expect(wheel?.params).toEqual(
+			expect.objectContaining({ type: "mouseWheel", modifiers: 2 })
+		);
+		expect(drop?.params).toEqual(
+			expect.objectContaining({ type: "drop", modifiers: 1 })
+		);
+		await harness.input.end({ session });
+	});
+
+	it("maps modifiers onto foreground Electron input events", async () => {
+		const harness = createInputHarness();
+		const session = await harness.input.begin({ inputMode: "foreground" });
+
+		await harness.input.sendMouse({
+			session,
+			type: "mouseDown",
+			point: { x: 10, y: 20 },
+			button: "right",
+			clickCount: 1,
+			modifiers: ["Shift", "Control"],
+		});
+		await harness.input.sendWheel({
+			session,
+			point: { x: 10, y: 20 },
+			deltaX: 0,
+			deltaY: 40,
+			modifiers: ["Meta"],
+		});
+
+		expect(harness.inputEvents[0]).toEqual(
+			expect.objectContaining({
+				type: "mouseDown",
+				button: "right",
+				modifiers: ["shift", "control"],
+			})
+		);
+		expect(harness.inputEvents[1]).toEqual(
+			expect.objectContaining({ type: "mouseWheel", modifiers: ["meta"] })
+		);
+	});
 });
