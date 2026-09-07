@@ -3,6 +3,8 @@
 盘点日期：2026-09-06。工作分支：`timeline-fixed-prfix`；源码基线：`c8ac87f132eb963cc9fa7805c8530f5325e1755d`。
 本次只核对已有代码、研究报告和本机安装清单，记录后续任务；没有新增反编译或算法实现。
 
+2026-09-07 更新：从 master `29d4700a5` 新建 `codex/jianying-binary-cpp-next`，已追加 AGFX 格式与采样器两个独立 C++ 合同单元。后续逐项状态以[顺序执行记录](binary-cpp-execution-2026-09-07.zh.md)为准；下述库存数仍是 09-06 快照，两个函数单元不增加“完整效果算法链”或“整库完成”数量。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
@@ -21,7 +23,7 @@
 | 核心库 | 已经知道/已经做过 | 独立 C++ 现状 | 尚需分析与实现 |
 | --- | --- | --- | --- |
 | `libcccreator.dylib` | Effect/Swing/FeatureSegment 宿主、滤镜与转场入口、序列化资源、文字/人像/跟踪的部分合同；电影柔光固定资源图与强度语义 | 柔光已提炼为独立 C++20；也有自有后处理代码。大量 `.mm/.cpp` 文件仍是调用原生库的探针或桥，不能算原生算法已重写 | 通用多 Pass 图、其他复杂滤镜、文本动画和转场的完整独立执行；Bach/GRU/跟踪等核心算法与模型仍有私有依赖 |
-| `libAGFX.dylib` | ARM64 格式转换、采样器映射、GPU 调度/完成语义；格式探针 7/7；`43 → RGBA8Unorm` | 自有 Metal 滤镜后端已经存在；柔光有 CPU 采样与量化实现。没有恢复一个通用 AGFX C++ 引擎 | 真正逐 Pass 的目标格式、采样精度、颜色/Alpha、资源寿命和同步；补齐目标效果需要的 GPU 原语，不以整库照搬为目标 |
+| `libAGFX.dylib` | ARM64 格式转换、采样器映射、GPU 调度/完成语义；09-07 扩展至 113 项映射、28 项平台条件与每次 208,911 次原生差分；768 种 sampler 组合与加载镜像表一致 | 新增[独立 C++20 格式及 sampler 合同](../../../research/independent-agfx-contract/README.zh.md)，Release 与 ASan/UBSan 均通过；已有 Metal 后端与柔光 CPU 原语继续复用。未恢复通用 AGFX 引擎 | 单 Pass 上传/采样/读回，以及实际逐 Pass 格式、精度、颜色/Alpha、资源寿命和同步；sampler setter 的真实像素行为仍未验证 |
 | `libvideoeditor.dylib` | 材料强度存储、关键帧转换、序列时间与 Clip 本地时间的局部调用链 | 没有该库的完整 C++ 重建；QCut 已有自己的时间线实现 | 请求处理到实际效果事件的中间链、clamp/default/reset、subtype、seek/export 时间语义；先形成可测试合同，再接到 QCut |
 | `libVECreator.dylib` | UI 默认值/精度、连续更新和接受更新、多选、重置请求、百分比埋点 | 没有该库的完整 C++ 重建；QCut UI 使用自己的实现 | UI 百分比转换的确切位置、服务端 action、撤销/重做和多选传播。以恢复行为合同为主，不要求重建原来的 UI 工程 |
 | `liblens.dylib` | 已有 Deflicker 连续帧原生桥、VAS/VMB 对象调用、UMVFI 模型加载；还恢复过局部颜色转换表 | **尚无这些核心算法的独立 C++ 实现**；现有 Deflicker 宿主仍加载私有库 | 防闪烁时序/强度映射；VAS 防抖配置与矩阵；UMVFI 补帧输入/状态；VMB 光流与帧融合。逐个恢复完整帧合同，再写自有实现 |
