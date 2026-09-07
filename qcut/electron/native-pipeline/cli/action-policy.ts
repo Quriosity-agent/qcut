@@ -18,6 +18,7 @@ const POLICY_SENSITIVE_OPTION_FLAGS: Array<{
 }> = [
 	{ key: "set", flag: "--set" },
 	{ key: "reveal", flag: "--reveal" },
+	{ key: "fromStdin", flag: "--from-stdin" },
 	{ key: "clear", flag: "--clear" },
 	{ key: "discard", flag: "--discard" },
 	{ key: "replace", flag: "--replace" },
@@ -83,6 +84,7 @@ const DEFAULT_CONFIRM_PATTERNS = [
 	"editor:auth:activate",
 	"editor:auth:logout",
 	"editor:auth:token --set",
+	"editor:auth:token --from-stdin",
 	"editor:auth:token --reveal",
 	"editor:console --clear",
 	"editor:errors --clear",
