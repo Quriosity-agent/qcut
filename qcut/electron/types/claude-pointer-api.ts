@@ -208,6 +208,17 @@ export interface AgentPointerHitTestElement {
 	bounds: AgentPointerBounds;
 }
 
+export interface AgentPointerRulerLabel extends AgentPointerBounds {
+	time: number;
+}
+
+/** Timeline ruler tick labels with their viewport bounds. */
+export interface AgentPointerRulerLabelsResult {
+	action: "ruler-labels";
+	labels: AgentPointerRulerLabel[];
+	count: number;
+}
+
 export interface AgentPointerHitTestResult extends AgentPointerPoint {
 	action: "hit-test";
 	hit: boolean;
