@@ -346,6 +346,7 @@ export function startClaudeHTTPServer(
 		scroll: (request) => pointerController().scroll(request),
 		hide: () => pointerController().hide(),
 		hitTest: (request) => hitTestEditorPoint(getWindow(), request),
+		dropFiles: (request) => pointerController().dropFiles(request),
 		pressKeys: (request) => pointerController().pressKeys(request),
 		typeText: (request) => pointerController().typeText(request),
 	});
