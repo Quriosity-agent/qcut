@@ -85,6 +85,7 @@ import type {
 	AgentKeyboardPressRequest,
 	AgentKeyboardTypeRequest,
 	AgentPointerClickRequest,
+	AgentPointerDropFilesRequest,
 	AgentPointerHitTestRequest,
 	AgentPointerDragRequest,
 	AgentPointerMoveRequest,
@@ -657,6 +658,11 @@ async function handleMainRequest(
 		case "pointer:hit-test": {
 			const req = data as { request: AgentPointerHitTestRequest };
 			return hitTestEditorPoint(win, req.request);
+		}
+
+		case "pointer:drop-files": {
+			const req = data as { request: AgentPointerDropFilesRequest };
+			return pointerController.dropFiles(req.request);
 		}
 
 		case "keyboard:press": {
