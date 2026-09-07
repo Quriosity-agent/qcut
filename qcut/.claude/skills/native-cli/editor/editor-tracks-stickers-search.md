@@ -159,6 +159,7 @@ confirmation.
 | `editor pointer state` | — | — | Read the overlay state: position, action, pressed button, input mode |
 | `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
 | `editor pointer drop-files` | `--files a.mp4,b.png` | targeting flags, `--modifiers`, `--wait-for` | Drop local files on a target as an external HTML5 file drop (media library import, file drop zones); background input only |
+| `editor windows` | — | — | List open QCut windows (id, title, focused, visible, bounds, `main`) for `--window-id` |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
 
 ```bash
@@ -218,6 +219,16 @@ and only animates the pointer (`method: "api-seek"`, `reason` says why,
 `qcut editor --help` lists the editor areas (`track`, `timeline`, `pointer`, …)
 with their action counts; `qcut editor <area> <action> --help --json` gives the
 flags.
+
+Every pointer, keyboard, hit-test, drop-files, and ruler request targets the
+first window by default. `editor windows --json` lists the open windows;
+`--window-id <id>` scopes a command to another one (an unknown id fails with
+"No QCut window with id …" instead of driving the wrong window).
+
+While the Agent pointer overlay is visible, screen recordings started from
+QCut (`--record`, `demo run`) store its position in the cursor telemetry track
+(`c: "agent"`) instead of the idle physical mouse, so recorded demos follow the
+pointer viewers actually saw.
 
 The result carries `dnd: { mode, intercepted, backend, mimeTypes, fileCount,
 dragOperationsMask }`; `mimeTypes` lists what the page put in the drag, for
