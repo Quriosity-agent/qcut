@@ -10,8 +10,8 @@ Core `editor:*` commands for controlling a running QCut desktop instance. Comman
 ## Quick Start
 
 ```bash
-# Start QCut first (packaged app, or from a source checkout)
-bun run electron
+# Start QCut first: open the installed desktop app, or from a source checkout run
+bun run electron   # source checkout only
 
 # Run editor commands: three-level group syntax, or the legacy colon form
 qcut editor <area> <action> [options]      # e.g. qcut editor timeline export --project-id <id> --json
@@ -120,8 +120,8 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 
 | Command | Description |
 |---------|-------------|
-| `editor:auth:token` | Get current token (`--reveal` for full value, `--set <val>` to set) |
-| `editor:auth:activate` | Set token and activate license (`--token <val>`) |
+| `editor:auth:token` | Get the masked token and `authenticated` flag; `--from-stdin` sets it from a hidden prompt or pipe (`--set <val>` and `--reveal` expose the value) |
+| `editor:auth:activate` | Activate the license (`--from-stdin` reads the token hidden, or `--token <val>`) |
 | `editor:auth:logout` | Clear the current auth token |
 
 ```bash
@@ -129,7 +129,7 @@ echo '{"type":"text"}' | ... --data -         # From stdin
 qcut editor:auth:token --json
 
 # Set token and activate
-qcut editor:auth:activate --token <token> --json
+qcut editor:auth:activate --from-stdin --json
 
 # Logout
 qcut editor:auth:logout --json
