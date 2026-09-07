@@ -6,6 +6,7 @@ import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import {
 	handleKeyboardCommand,
 	handlePointerCommand,
+	handleWindowsCommand,
 	waitForEditorUi,
 } from "../native-pipeline/cli/cli-handlers-pointer.js";
 import { parseSessionLine } from "../native-pipeline/cli/cli-runner/session.js";
@@ -569,6 +570,78 @@ describe("editor pointer CLI handlers", () => {
 				clickCount: 2,
 			})
 		);
+	});
+
+	it("scopes pointer, keyboard, and probe requests to --window-id", async () => {
+		const get = vi.fn(async () => ({ visible: true, x: 1, y: 2 }));
+		const post = vi.fn(async () => ({ ok: true }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", windowId: 2 },
+			}),
+		});
+		await handleKeyboardCommand({
+			client,
+			options: makeOptions({
+				command: "editor:keyboard:press",
+				values: { keys: "Enter", windowId: 2 },
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { x: 5, y: 6, windowId: 2 },
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:state",
+				values: { windowId: 2 },
+			}),
+		});
+
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/click",
+			expect.objectContaining({ ref: "@e12", windowId: 2 })
+		);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/keyboard/press",
+			expect.objectContaining({ keys: ["Enter"], windowId: 2 })
+		);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 5,
+			y: 6,
+			windowId: 2,
+		});
+		expect(get).toHaveBeenCalledWith("/api/claude/pointer/state", {
+			windowId: "2",
+		});
+	});
+
+	it("lists windows and parses --window-id in one-shot and session modes", async () => {
+		const get = vi.fn(async () => ({ count: 1, windows: [{ id: 1 }] }));
+		const client = { get } as unknown as EditorApiClient;
+		const result = await handleWindowsCommand({ client });
+		expect(result.success).toBe(true);
+		expect(get).toHaveBeenCalledWith("/api/claude/windows");
+		expect(
+			parseCliArgs(["editor:pointer:click", "--ref", "@e1", "--window-id", "3"])
+		).toEqual(expect.objectContaining({ windowId: 3 }));
+		expect(
+			parseSessionLine("editor:pointer:hit-test --x 1 --y 2 --window-id 4", {
+				json: true,
+			})
+		).toEqual(expect.objectContaining({ windowId: 4 }));
 	});
 
 	it("drags flattened interactive list items by semantic index", async () => {
