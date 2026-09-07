@@ -279,10 +279,23 @@ function parseHitTestRequest({
 	};
 }
 
-function parseTargetRequest({
+export type AgentPointerTargetRoute =
+	| "move"
+	| "hover"
+	| "click"
+	| "double-click"
+	| "right-click";
+
+function isProvided(value: unknown): boolean {
+	return value !== undefined && value !== null;
+}
+
+export function parseTargetRequest({
 	body,
+	action = "click",
 }: {
 	body: unknown;
+	action?: AgentPointerTargetRoute;
 }): AgentPointerClickRequest {
 	const parsed = requireBodyObject({ body });
 	const durationMs = parseFiniteNumber({
@@ -291,6 +304,17 @@ function parseTargetRequest({
 	});
 	if (durationMs !== undefined && durationMs < 0) {
 		throw new HttpError(400, "Pointer 'durationMs' must be >= 0.");
+	}
+	// Only the click route honors these; double-click and right-click fix the
+	// button and count themselves, and move/hover never press anything.
+	if (
+		action !== "click" &&
+		(isProvided(parsed.button) || isProvided(parsed.clickCount))
+	) {
+		throw new HttpError(
+			400,
+			`Pointer 'button' and 'clickCount' apply to the click route only; '${action}' would ignore them.`
+		);
 	}
 	return {
 		...parseAgentPointerTarget({ value: parsed }),
@@ -543,7 +567,7 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/move", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({ body: req.body, action: "move" });
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.move(request),
@@ -551,7 +575,7 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/hover", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({ body: req.body, action: "hover" });
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.hover(request),
@@ -567,7 +591,10 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/double-click", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({
+			body: req.body,
+			action: "double-click",
+		});
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.doubleClick(request),
@@ -575,7 +602,10 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/right-click", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({
+			body: req.body,
+			action: "right-click",
+		});
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.rightClick(request),
