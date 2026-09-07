@@ -7,6 +7,8 @@
 
 2026-09-08 更新：从最新 master `513a1c67d` 新建 `codex/jianying-binary-cpp-scaleup-20260908`，四线新增非空graph、局部记录恢复、连续帧裁切和M4 mip精度profile。六工程本机 Release/ASanUBSan各46/46，详见[本批交付与验收](binary-cpp-scaleup-2026-09-08.zh.md)。两条完整滤镜链、8个未完整关闭的大工作包、整库0/6的口径均不变。
 
+2026-09-08 第二批更新：继续同分支/PR #469，新增正向曲线时间、Graph子树与两级stash、CenterFocus取景输入链、M4二维空间精度；本机Release/ASanUBSan各52/52。子项原生结果、失败范围与下一顺序见[第二批验收](binary-cpp-batch2-2026-09-08.zh.md)。下方旧“变速/graph-free”等说明以第二批具体合同补充，完整dispatch/Session undo/视频链仍未关闭。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
