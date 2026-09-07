@@ -118,7 +118,7 @@ editor.
 | --- | --- | --- | --- |
 | `editor demo run` | `--plan` | `--record`, `--recording-quality`, `--event-track`, `--preroll-ms`, `--postroll-ms`, `--speed`, `--skip-idle`, `--project-id`, `--timeout-ms` | Prepare, record, export, and verify an editor demo from one plan |
 | `editor keyboard press` | `--keys` | `--interval-ms`, `--foreground` | Press a comma-separated key or shortcut sequence |
-| `editor keyboard type` | `--text` | `--interval-ms`, `--foreground` | Type text into the focused editor control |
+| `editor keyboard type` | `--text` | `--interval-ms`, `--key-events`, `--foreground` | Type into the focused control; `--key-events` sends keyDown/keyUp per character so keydown handlers fire (default inserts text) |
 | `editor ui wait` | — | `--ref`, `--text`, `--value`, `--timeout-ms`, `--interval-ms` | Wait until visible UI state matches a ref, text, or value |
 | `editor ui context-menu` | `--element-id` | `--verbose` | Dispatch a right-click context menu on a timeline element (debug) |
 | `editor screen-recording diagnose` | — | — | Diagnose recording permission and capture sources |
@@ -158,6 +158,7 @@ confirmation.
 | `editor pointer hide` | — | — | Hide the Agent pointer overlay |
 | `editor pointer state` | — | — | Read the overlay state: position, action, pressed button, input mode |
 | `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
+| `editor pointer drop-files` | `--files a.mp4,b.png` | targeting flags, `--modifiers`, `--wait-for` | Drop local files on a target as an external HTML5 file drop (media library import, file drop zones); background input only |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
 
 ```bash
@@ -168,6 +169,8 @@ qcut editor pointer drag --from testid:media-item --to testid:timeline-track --d
 qcut editor pointer click --ref @e12 --modifiers shift --force --json          # add to the selection
 qcut editor pointer scroll --target timeline.toolbar --delta-y -120 --modifiers ctrl --json   # zoom the timeline
 qcut editor pointer hit-test --x 388 --y 879 --json                            # what is under that point?
+qcut editor pointer drop-files --files ./clip.mp4 --target panel.media --force --json   # import by dropping
+qcut editor keyboard type --text "Intro" --key-events --force --json           # real key events
 qcut editor pointer sequence --actions @demo-actions.json --record demo.mp4 --force --json
 ```
 
@@ -185,6 +188,22 @@ the destination, then releases the button.
 - `--dnd html5`: require an intercepted drag; fails with 409 when the source
   is not draggable. Needs `state.pointer` 1.2.0 and background input.
 - `--dnd mouse`: never intercept (the pre-1.2.0 behavior).
+- `--via` waypoints accept the same spellings as `--from`/`--to`: semantic
+  targets, refs, viewport coordinates, or normalized ratios.
+
+`editor pointer drop-files` is the other direction: it dispatches
+`dragEnter → dragOver → drop` with `DragData.files`, so the page receives real
+`File` objects with local paths. Dropping on the media library imports the
+files; the result reports `dnd.fileCount`.
+
+Coordinates are CSS pixels of the editor page. With a page zoom other than 1
+the CDP path is unaffected, foreground Electron input is scaled by the zoom,
+and the viewport bound check uses the CSS viewport, so snapshot bounds and
+hit-test results stay valid targets.
+
+Session mode (`qcut --session`) accepts the same pointer flags as one-shot
+commands (`--foreground`, `--dnd`, `--modifiers`, `--button`, `--click-count`,
+`--via`, `--steps`, `--hold-ms`, `--no-verify`, `--key-events`, `--files`).
 
 The result carries `dnd: { mode, intercepted, backend, mimeTypes, fileCount,
 dragOperationsMask }`; `mimeTypes` lists what the page put in the drag, for
