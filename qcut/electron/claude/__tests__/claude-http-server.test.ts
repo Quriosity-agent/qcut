@@ -1124,6 +1124,29 @@ describe("Claude HTTP Server", () => {
 		});
 	});
 
+	it("serves timeline ruler labels from the renderer", async () => {
+		const executeJavaScript = vi.fn(async () => ({
+			action: "ruler-labels",
+			count: 2,
+			labels: [
+				{ time: 0, x: 240, y: 760, width: 10, height: 10 },
+				{ time: 5, x: 490, y: 760, width: 10, height: 10 },
+			],
+		}));
+		const { mockWindow } = createPointerWindow({ executeJavaScript });
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+
+		const res = await fetch("/api/claude/pointer/ruler-labels");
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual(
+			expect.objectContaining({ action: "ruler-labels", count: 2 })
+		);
+		expect(String(executeJavaScript.mock.calls[0]?.[0])).toContain(
+			"ruler-labels"
+		);
+	});
+
 	it("drops files and types key events through the pointer routes", async () => {
 		const { mockWindow, sendCommand } = createPointerWindow();
 		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
