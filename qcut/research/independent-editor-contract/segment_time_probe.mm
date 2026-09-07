@@ -59,18 +59,6 @@ void configure(const editor_probe::SegmentFactories& factory, const KeyframeHand
   factory.set_offset(video, segment.offset);
 }
 
-void set_control(const editor_probe::Library& library, const KeyframeHandle& frame,
-                 std::uintptr_t getter, ControlOffset control) {
-  const auto point = editor_probe::entry<const KeyframeHandle& (*)(void*)>(library, getter)(frame.get());
-  require(point != nullptr, "Factory control point is missing");
-  // Move away from zero first: equal-value setters otherwise preserve the factory's +0 bits.
-  const double seed = 1;
-  editor_probe::entry<void (*)(void*, const double&)>(library, 0xc8ebac)(point.get(), seed);
-  editor_probe::entry<void (*)(void*, const double&)>(library, 0xc8ebfc)(point.get(), seed);
-  editor_probe::entry<void (*)(void*, const double&)>(library, 0xc8ebac)(point.get(), control.time);
-  editor_probe::entry<void (*)(void*, const double&)>(library, 0xc8ebfc)(point.get(), control.value);
-}
-
 NSDictionary* compare(const editor_probe::Library& library) {
   using Time = std::int64_t (*)(KeyframeHandle, std::int64_t);
   const auto to_timeline = editor_probe::entry<Time>(library, 0x340737c);
@@ -111,10 +99,9 @@ NSDictionary* compare(const editor_probe::Library& library) {
         const ControlTimeRecord input{time, {std::bit_cast<double>(a), -0.0},
                                      {std::bit_cast<double>(b), 0.37}};
         const auto frame = frames.frame(time, 0.37);
-        const std::int32_t curve = 1;
-        editor_probe::entry<void (*)(void*, const std::int32_t&)>(library, 0xc7df78)(frame.get(), curve);
-        set_control(library, frame, 0xc7dff0, input.left);
-        set_control(library, frame, 0xc7e0d4, input.right);
+        frames.set_curve(frame, 1);
+        frames.set_control(frame, false, input.left);
+        frames.set_control(frame, true, input.right);
         const auto record = pack(frame, false);
         require(record != nullptr, "Native record factory returned no object");
         compared.integer(read_field<std::int64_t>(record, 0), time, "packed time" + context);
