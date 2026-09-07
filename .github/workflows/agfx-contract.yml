@@ -8,6 +8,7 @@ on:
       - qcut/research/independent-soft-glow/**
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
       - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
@@ -19,6 +20,7 @@ on:
       - qcut/research/independent-soft-glow/**
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
+      - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
       - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
@@ -63,3 +65,6 @@ jobs:
       - name: Verify CGL observer with original fixtures
         if: runner.os == 'macOS'
         run: python3 qcut/research/jianying-runtime-probe/cgl-pass-capture-test.py --output-dir "$RUNNER_TEMP/cgl-observer-test"
+      - name: Verify CGL quantization with original floats
+        if: runner.os == 'macOS'
+        run: build-native-contract/soft-glow/soft-glow-native-quantization
