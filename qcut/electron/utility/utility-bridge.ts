@@ -80,7 +80,10 @@ import {
 	resetPlaybackDiagnosticsInRenderer,
 } from "../claude/http/claude-http-playback-routes.js";
 import { getAgentPointerController } from "../claude/handlers/agent-pointer-controller.js";
-import { hitTestEditorPoint } from "../claude/handlers/agent-pointer-hit-test.js";
+import {
+	hitTestEditorPoint,
+	readTimelineRulerLabels,
+} from "../claude/handlers/agent-pointer-hit-test.js";
 import type {
 	AgentKeyboardPressRequest,
 	AgentKeyboardTypeRequest,
@@ -663,6 +666,10 @@ async function handleMainRequest(
 		case "pointer:drop-files": {
 			const req = data as { request: AgentPointerDropFilesRequest };
 			return pointerController.dropFiles(req.request);
+		}
+
+		case "pointer:ruler-labels": {
+			return readTimelineRulerLabels(win);
 		}
 
 		case "keyboard:press": {
