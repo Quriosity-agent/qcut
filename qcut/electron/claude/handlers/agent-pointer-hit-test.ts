@@ -2,6 +2,7 @@ import type { BrowserWindow } from "electron";
 import type {
 	AgentPointerHitTestRequest,
 	AgentPointerHitTestResult,
+	AgentPointerRulerLabelsResult,
 } from "../../types/claude-api.js";
 import { buildSnapshotActionPrelude } from "./claude-snapshot-handler.js";
 
@@ -76,4 +77,46 @@ export async function hitTestEditorPoint(
 		throw new Error("Renderer returned an invalid pointer hit-test result");
 	}
 	return result as AgentPointerHitTestResult;
+}
+
+const RULER_LABEL_SCRIPT = `(() => {
+	const pattern = /^(\\d+(?:\\.\\d+)?)s$/;
+	const labels = [];
+	for (const element of document.querySelectorAll("span, div")) {
+		if (labels.length >= 400) break;
+		if (element.children.length > 0) continue;
+		const text = (element.textContent || "").trim();
+		const match = pattern.exec(text);
+		if (!match) continue;
+		const rect = element.getBoundingClientRect();
+		if (rect.width <= 0 || rect.height <= 0) continue;
+		labels.push({
+			time: Number.parseFloat(match[1]),
+			x: Math.round(rect.left * 100) / 100,
+			y: Math.round(rect.top * 100) / 100,
+			width: Math.round(rect.width * 100) / 100,
+			height: Math.round(rect.height * 100) / 100,
+		});
+	}
+	return { action: "ruler-labels", labels, count: labels.length };
+})()`;
+
+/**
+ * Read the timeline ruler's tick labels ("0s", "5s", …) with their viewport
+ * bounds straight from the renderer. Unlike a full snapshot this cannot be
+ * truncated, so the CLI can recover the time → x scale reliably.
+ */
+export async function readTimelineRulerLabels(
+	win: BrowserWindow
+): Promise<AgentPointerRulerLabelsResult> {
+	const result = await win.webContents.executeJavaScript(RULER_LABEL_SCRIPT);
+	if (
+		typeof result !== "object" ||
+		result === null ||
+		(result as { action?: unknown }).action !== "ruler-labels" ||
+		!Array.isArray((result as { labels?: unknown }).labels)
+	) {
+		throw new Error("Renderer returned an invalid ruler label result");
+	}
+	return result as AgentPointerRulerLabelsResult;
 }
