@@ -124,8 +124,8 @@ editor.
 | `editor screen-recording diagnose` | — | — | Diagnose recording permission and capture sources |
 
 ```bash
-qcut editor demo run --plan promo.json --record demo.mp4 --speed 1.5 --skip-idle --json
-qcut editor keyboard press --keys "cmd+s" --json
+qcut editor demo run --plan promo.json --record demo.mp4 --speed 1.5 --skip-idle --force --json
+qcut editor keyboard press --keys "cmd+s" --force --json
 qcut editor ui wait --text "Auto-saved" --timeout-ms 5000 --json
 ```
 
@@ -135,20 +135,29 @@ Pointer commands drive a visible Agent pointer with real Electron input events.
 Targets come from accessibility snapshots (`editor snapshot`, see
 [editor-agent.md](editor-agent.md)) as `--ref @e12`, from semantic
 `--target` names, or from `--x/--y` and `--normalized-x/--normalized-y`
-coordinates. Clicks and drags are policy-gated; pass `--force` to bypass the
-confirmation when the action policy allows it.
+coordinates. Every pointer command accepts `--modifiers` with a comma-separated
+list of `alt`, `ctrl`, `cmd` (meta), and `shift`; the timeline treats a
+modifier-click as multi-select and ctrl/cmd + wheel as zoom.
+
+Clicks, drags, sequences, keyboard input, snapshot `select`/`check`, and
+`demo run` are in the action policy's confirm tier: interactive sessions get a
+prompt, non-interactive ones need `--force` or a `--policy` file. `move`,
+`hover`, `scroll`, `wait-for`, `state`, and `hit-test` run without
+confirmation.
 
 | Command | Required | Key options | What it does |
 | --- | --- | --- | --- |
 | `editor pointer move` | — | `--target`, `--ref`, `--x`, `--y`, `--wait-for`, `--speed`, `--foreground` | Move the pointer without activating QCut |
 | `editor pointer hover` | — | same as `move` | Move and settle long enough to trigger hover UI |
-| `editor pointer click` | — | same as `move` | Click with real mouseDown and mouseUp events |
+| `editor pointer click` | — | same as `move`, plus `--button left\|middle\|right`, `--click-count 1..3` | Click with real mouseDown and mouseUp events; 3 press cycles select a paragraph |
 | `editor pointer double-click` | — | same as `move` | Double-click |
 | `editor pointer right-click` | — | same as `move` | Open a context menu with a real right-click |
-| `editor pointer drag` | — | `--from-ref/--to-ref`, `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped |
+| `editor pointer drag` | — | `--from-ref/--to-ref`, `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse`, `--button` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped |
 | `editor pointer scroll` | — | `--delta-x`, `--delta-y`, plus targeting flags | Scroll at the pointer, a ref, or a coordinate |
 | `editor pointer wait-for` | — | `--target`, `--text`, `--timeout-ms`, `--interval-ms` | Wait for a semantic target or visible text |
 | `editor pointer hide` | — | — | Hide the Agent pointer overlay |
+| `editor pointer state` | — | — | Read the overlay state: position, action, pressed button, input mode |
+| `editor pointer hit-test` | — | `--target`, `--ref`, `--x/--y`, `--normalized-x/-y` | Report the element under a point without input: tag, role, name, test id, ref, bounds, ancestor test ids |
 | `editor pointer sequence` | `--actions` | `--record`, `--recording-quality`, `--event-track`, `--speed`, `--skip-idle`, `--foreground` | Run pointer, keyboard, wait, and snapshot actions from one JSON file |
 
 ```bash
@@ -156,7 +165,10 @@ qcut editor snapshot --interactive --json
 qcut editor pointer click --ref @e12 --force --json
 qcut editor pointer drag --from-ref @e12 --to-ref @e27 --force --json
 qcut editor pointer drag --from testid:media-item --to testid:timeline-track --dnd html5 --force --json
-qcut editor pointer sequence --actions @demo-actions.json --record demo.mp4 --json
+qcut editor pointer click --ref @e12 --modifiers shift --force --json          # add to the selection
+qcut editor pointer scroll --target timeline.toolbar --delta-y -120 --modifiers ctrl --json   # zoom the timeline
+qcut editor pointer hit-test --x 388 --y 879 --json                            # what is under that point?
+qcut editor pointer sequence --actions @demo-actions.json --record demo.mp4 --force --json
 ```
 
 ### HTML5 drag-and-drop
