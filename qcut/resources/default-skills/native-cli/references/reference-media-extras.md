@@ -6,8 +6,9 @@ Flag-level reference for the `gen`, `analyze`, `edit`, `flow`, `system`, and
 [reference-vimax.md](reference-vimax.md) do not cover, plus the flat commands
 that have no group route.
 
-Always confirm flags with `qcut <group> <action> --help --json`; only required
-flags and the most useful options are listed here.
+Always confirm flags with `qcut <group> <action> --help --json` (or
+`qcut <command> --help --json` for the flat commands); only required flags and
+the most useful options are listed here.
 
 ## `gen` — audio and voice
 
@@ -132,14 +133,15 @@ qcut replicate:generate --input recipe.json
 | `system doctor` | — | — | Report environment health (bun, ffmpeg, `.env`, keys) as JSON; use `--skip-health` when no editor is running |
 | `system keys` | — | `--configured`, `--missing`, `--category` | Show configured and missing API keys |
 | `system sync-keys` | — | `--pull` (default), `--push`, `--force` | Sync API keys with the cloud vault; requires login |
-| `system login` | `--email` | `--password` | Log in to QCut with email and password |
-| `system signup` | `--email --name` | `--password` | Create a new QCut account |
+| `system login` | `--email` | `--password` (prompted hidden when omitted; read from stdin when piped) | Log in to QCut with email and password |
+| `system signup` | `--email --name` | `--password` (prompted hidden when omitted; read from stdin when piped) | Create a new QCut account |
 | `system logout` | — | — | Log out and clear the stored session token |
 
 ```bash
 qcut update --check --json
 qcut system doctor --json --skip-health
 qcut system keys --missing --json
+qcut system login --email you@example.com --json        # password prompted, never on the command line
 ```
 
 `update` quits a running editor before installing. Ask before running it with
@@ -170,7 +172,7 @@ token.
 
 ## Flat commands without a group route
 
-`generate-grid`, `record`, `record-daemon`, `create-element`, `list-elements`,
+`update`, `generate-grid`, `record`, `record-daemon`, `create-element`, `list-elements`,
 `delete-element`, `moyin:parse-script`, `youtube:upload`, `phota:edit`,
 `phota:enhance`, `phota:profile`, `vimax:list-models`, `replicate`,
 `replicate:analyze`, `replicate:generate`.
