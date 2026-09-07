@@ -31,6 +31,14 @@ export function createExtraEditorCommands({
 		f("--speed", "number", "Pointer animation speed multiplier", {
 			default: 1,
 		}),
+		f("--duration-ms", "number", "Pointer movement duration in milliseconds", {
+			default: 220,
+		}),
+		f(
+			"--window-id",
+			"number",
+			"BrowserWindow id from editor:windows (default: first window)"
+		),
 		f(
 			"--modifiers",
 			"string",
@@ -140,6 +148,13 @@ export function createExtraEditorCommands({
 						"properties",
 						"export",
 						"api-keys",
+						"captions",
+						"adjustments",
+						"templates",
+						"ai-chat",
+						"hyperframes",
+						"search",
+						"digital-human",
 					],
 				}),
 				f("--tab", "string", "Inner tab (for moyin panel)", {
@@ -396,6 +411,12 @@ export function createExtraEditorCommands({
 			"Hide the Agent pointer overlay",
 			[],
 			["qcut-pipeline editor:pointer:hide --json"]
+		),
+		"editor:windows": ed(
+			"editor:windows",
+			"List open QCut windows with ids, titles, focus, visibility, and bounds for --window-id",
+			[],
+			["qcut editor windows --json"]
 		),
 		"editor:pointer:state": ed(
 			"editor:pointer:state",
