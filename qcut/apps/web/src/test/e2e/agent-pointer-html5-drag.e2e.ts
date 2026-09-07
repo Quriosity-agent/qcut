@@ -167,7 +167,7 @@ function readTimeline(page: PageHandle) {
 
 isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 	isolatedElectronTest(
-		"drops a media item, hit-tests it, multi-selects, zooms, drops a file, and survives page zoom through the CLI",
+		"drops a media item, hit-tests, multi-selects, zooms, drops a file, survives page zoom, and scrubs the playhead through the CLI",
 		async ({ page, apiPort, electronApp }) => {
 			isolatedElectronTest.setTimeout(180_000);
 			await createTestProject(page, "Pointer HTML5 Drag");
@@ -408,6 +408,44 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 			await electronApp.evaluate(({ BrowserWindow }) => {
 				BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1);
 			});
+			await page.waitForTimeout(300);
+
+			// Real playhead drag: --to-time scrubs the playhead along the ruler
+			// scale, and the renderer's playback store must land near the target.
+			const seek = editorData<{
+				method?: string;
+				achievedTime?: number;
+				calibration?: { pixelsPerSecond?: number; labelCount?: number };
+			}>(
+				await runPointer({
+					apiPort,
+					args: [
+						"editor:pointer:drag",
+						"--from",
+						"timeline.playhead",
+						"--to-time",
+						"3",
+						"--force",
+					],
+				})
+			);
+			expect(seek?.method, JSON.stringify(seek)).toBe("drag");
+			expect(seek?.calibration?.labelCount ?? 0).toBeGreaterThanOrEqual(2);
+			const currentTime = await page.evaluate(
+				() =>
+					(
+						window as unknown as {
+							__playbackStore: { getState: () => { currentTime: number } };
+						}
+					).__playbackStore.getState().currentTime
+			);
+			expect(
+				Math.abs(currentTime - 3),
+				`currentTime=${currentTime}`
+			).toBeLessThan(0.25);
+			expect(Math.abs((seek?.achievedTime ?? 0) - currentTime)).toBeLessThan(
+				0.25
+			);
 			await writeFile(
 				resolve(evidenceDirectory, "cli-envelope.json"),
 				JSON.stringify(
@@ -426,6 +464,8 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 						mediaItemsAfter: mediaNames.length,
 						mediaNames,
 						zoomedHit,
+						seek,
+						currentTimeAfterSeek: currentTime,
 					},
 					null,
 					2
