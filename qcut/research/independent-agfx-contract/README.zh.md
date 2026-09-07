@@ -1,5 +1,7 @@
 # AGFX 格式、采样器与纹理：独立 C++20 合同
 
+2026-09-08 新增第四单元：[Apple M4 显式 mip profile](../../docs/task/jianying-filter-runtime-research/agfx-mip-sampling-2026-09-08.zh.md)，含 LOD 选择、精确字节域跨层混合和有界组合参考。当前独立 CTest 为4组；旧 mip 排除项456,192通道已纳入验证。下文09-07计数保留为历史记录，当前验证见[新批次](../../docs/task/jianying-filter-runtime-research/binary-cpp-scaleup-2026-09-08.zh.md)。
+
 2026-09-07，分支 `codex/jianying-binary-cpp-next`，从 master `29d4700a5` 开始。
 
 本工程交付三个可独立编译的单元：**113 个 AGFX→Metal 格式映射及平台条件、六个采样器字段映射、RGBA/BGRA 的 2D/3D 空间采样参考**。源码是根据静态控制流与原生输入输出重新组织的原创 C++；没有包含厂商头文件、机器码或反编译代码。
@@ -18,7 +20,7 @@ cmake --build /tmp/qcut-agfx-contract --config Release --parallel 4
 ctest --test-dir /tmp/qcut-agfx-contract --build-config Release --output-on-failure
 ```
 
-产物包括 `agfx_contract` 静态库和三个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
+产物包括 `agfx_contract` 静态库和四个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
 
 ```cpp
 #include "pixel_format.hpp"
