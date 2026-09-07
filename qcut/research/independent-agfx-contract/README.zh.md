@@ -1,5 +1,7 @@
 # AGFX 格式、采样器与纹理：独立 C++20 合同
 
+2026-09-08 第二批新增[二维空间精度profile](../../docs/task/jianying-filter-runtime-research/agfx-spatial-sampling-2026-09-08.zh.md)：M4 Pro空间8位权重、寻址顺序和最终字节/16量化，72,474,112通道逐位零差异；每轴坐标只接受signed zero或abs∈[2^-24,8]，多层linear+linear仍拒绝。当前5组CTest，[本批验收](../../docs/task/jianying-filter-runtime-research/binary-cpp-batch2-2026-09-08.zh.md)取代下方历史测试计数。
+
 2026-09-08 新增第四单元：[Apple M4 显式 mip profile](../../docs/task/jianying-filter-runtime-research/agfx-mip-sampling-2026-09-08.zh.md)，含 LOD 选择、精确字节域跨层混合和有界组合参考。当前独立 CTest 为4组；旧 mip 排除项456,192通道已纳入验证。下文09-07计数保留为历史记录，当前验证见[新批次](../../docs/task/jianying-filter-runtime-research/binary-cpp-scaleup-2026-09-08.zh.md)。
 
 2026-09-07，分支 `codex/jianying-binary-cpp-next`，从 master `29d4700a5` 开始。
@@ -20,7 +22,7 @@ cmake --build /tmp/qcut-agfx-contract --config Release --parallel 4
 ctest --test-dir /tmp/qcut-agfx-contract --build-config Release --output-on-failure
 ```
 
-产物包括 `agfx_contract` 静态库和四个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
+产物包括 `agfx_contract` 静态库和五个测试程序。上面的 `/tmp` 路径是 Unix 示例，Windows 可换成本地构建目录。
 
 ```cpp
 #include "pixel_format.hpp"
