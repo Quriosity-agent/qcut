@@ -424,6 +424,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"key-events": { type: "boolean", default: false },
 			files: { type: "string" },
 			"seek-mode": { type: "string" },
+			"window-id": { type: "string" },
 			"hold-ms": { type: "string" },
 			"duration-ms": { type: "string" },
 			steps: { type: "string" },
@@ -1091,6 +1092,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		keyEvents: (values["key-events"] as boolean) ?? false,
 		files: values.files as string | undefined,
 		seekMode: values["seek-mode"] as string | undefined,
+		windowId: parseFiniteCliNumber({ value: values["window-id"] }),
 		holdMs: parseFiniteCliNumber({ value: values["hold-ms"] }),
 		durationMs: parseFiniteCliNumber({ value: values["duration-ms"] }),
 		steps: values.steps
