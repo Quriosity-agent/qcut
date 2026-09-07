@@ -37,6 +37,7 @@ struct SampleSettings {
 };
 
 TextureView validate_texture_view(const TextureView& texture);
+void validate_sample_settings(const SampleSettings& settings);
 
 std::vector<std::uint8_t> tight_rgba8(const TextureView& texture);
 std::array<float, 4> sample_texture(const TextureView& texture,
