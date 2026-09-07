@@ -458,7 +458,7 @@ See [editor-media.md](editor/editor-media.md) for the full project.json schema.
 | `--no-capability-check` | | Skip per-request capability warnings |
 | `--host` | | Editor API host (default `127.0.0.1`) |
 | `--port` | | Editor API port (auto-selected when omitted; see `instances use`) |
-| `--token` | | Editor API auth token |
+| `--token` | | Editor API bearer token; defaults to `QCUT_API_TOKEN`, then the token the running editor published for the port |
 | `--help` | `-h` | Print help |
 | `--version` | | Print the CLI version |
 
