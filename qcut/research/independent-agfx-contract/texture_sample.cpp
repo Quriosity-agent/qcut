@@ -123,6 +123,10 @@ std::array<float, 4> sample_validated(const TextureView& texture,
 
 } // namespace
 
+TextureView validate_texture_view(const TextureView& texture) {
+  return validate(texture);
+}
+
 std::vector<std::uint8_t> tight_rgba8(const TextureView& input) {
   const auto texture = validate(input);
   std::vector<std::uint8_t> output(product(product(product(texture.width, texture.height), texture.depth), 4));
