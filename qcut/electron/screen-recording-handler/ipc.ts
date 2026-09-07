@@ -42,6 +42,7 @@ import {
 	buildStatus,
 } from "./session.js";
 import { CursorTelemetryRecorder, getCaptureRect } from "./cursor-telemetry.js";
+import { createAgentPointerCursorProvider } from "./agent-pointer-cursor.js";
 import {
 	writeCursorTelemetry,
 	readCursorTelemetry,
@@ -301,7 +302,13 @@ export function setupScreenRecordingIPC(): void {
 
 				// Start cursor telemetry capture
 				const captureRect = getCaptureRect(selectedSource.id);
-				cursorRecorder.start(captureRect);
+				cursorRecorder.start(captureRect, {
+					provider: createAgentPointerCursorProvider({
+						win:
+							BrowserWindow.fromWebContents(event.sender) ??
+							BrowserWindow.getAllWindows()[0],
+					}),
+				});
 
 				return {
 					sessionId,
