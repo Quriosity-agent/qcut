@@ -167,8 +167,8 @@ function readTimeline(page: PageHandle) {
 
 isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 	isolatedElectronTest(
-		"drops a media item, hit-tests it, multi-selects with shift, and zooms with ctrl+wheel through the CLI",
-		async ({ page, apiPort }) => {
+		"drops a media item, hit-tests it, multi-selects, zooms, drops a file, and survives page zoom through the CLI",
+		async ({ page, apiPort, electronApp }) => {
 			isolatedElectronTest.setTimeout(180_000);
 			await createTestProject(page, "Pointer HTML5 Drag");
 			await importTestVideo(page);
@@ -337,6 +337,77 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 			await page.screenshot({
 				path: resolve(evidenceDirectory, "after-multiselect-zoom.png"),
 			});
+
+			// External file drop: drop a PNG on the media library through CDP DragData.files.
+			const mediaItemsBefore = await page
+				.locator('[data-testid="media-item"]')
+				.count();
+			const library = await centerOf({ page, testId: "media-library-items" });
+			const dropFiles = await runPointer({
+				apiPort,
+				args: [
+					"editor:pointer:drop-files",
+					"--files",
+					resolve(
+						process.cwd(),
+						"apps/web/src/test/e2e/fixtures/media/sample-image.png"
+					),
+					"--x",
+					String(library.x),
+					"--y",
+					String(library.y),
+					"--force",
+				],
+			});
+			expect(
+				editorData<{ dnd?: { fileCount?: number } }>(dropFiles)?.dnd?.fileCount
+			).toBe(1);
+			await expect(page.locator('[data-testid="media-item"]')).toHaveCount(
+				mediaItemsBefore + 1,
+				{ timeout: 15_000 }
+			);
+			const mediaNames = await page.evaluate(() =>
+				(
+					window as unknown as {
+						__mediaStore: {
+							getState: () => { mediaItems: Array<{ name?: string }> };
+						};
+					}
+				).__mediaStore
+					.getState()
+					.mediaItems.map((item) => item.name ?? "")
+			);
+			expect(mediaNames).toContain("sample-image.png");
+
+			// Page zoom: pointer coordinates stay in CSS pixels, so a hit-test at
+			// the zoomed clip's CSS center still resolves to the clip.
+			await electronApp.evaluate(({ BrowserWindow }) => {
+				BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1.25);
+			});
+			await page.waitForTimeout(300);
+			const zoomedClip = await clipBox({ page, index: 0 });
+			const zoomedHit = editorData<PointerHitTestData>(
+				await runPointer({
+					apiPort,
+					args: [
+						"editor:pointer:hit-test",
+						"--x",
+						String(zoomedClip.center.x),
+						"--y",
+						String(zoomedClip.center.y),
+					],
+				})
+			);
+			const zoomedTestIds = [
+				zoomedHit?.element?.testId ?? null,
+				...(zoomedHit?.ancestors ?? []).map((ancestor) => ancestor.testId),
+			];
+			expect(zoomedTestIds, JSON.stringify(zoomedHit)).toContain(
+				"timeline-element"
+			);
+			await electronApp.evaluate(({ BrowserWindow }) => {
+				BrowserWindow.getAllWindows()[0]?.webContents.setZoomFactor(1);
+			});
 			await writeFile(
 				resolve(evidenceDirectory, "cli-envelope.json"),
 				JSON.stringify(
@@ -351,6 +422,10 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 							.selectedElements,
 						widthBefore,
 						widthAfter,
+						mediaItemsBefore,
+						mediaItemsAfter: mediaNames.length,
+						mediaNames,
+						zoomedHit,
 					},
 					null,
 					2
