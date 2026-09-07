@@ -81,6 +81,7 @@ import type {
 	AgentPointerHitTestResult,
 	AgentPointerRulerLabelsResult,
 	AgentPointerVisualState,
+	EditorWindowsResult,
 	AgentKeyboardResult,
 	EditorSnapshotActionResult,
 	EditorSnapshotResponse,
@@ -512,8 +513,12 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 		resetCollector: () => requestFromMain("playback-diagnostics:reset", {}),
 	});
 	registerAgentPointerRoutes(router, {
-		getState: async () =>
-			(await requestFromMain("pointer:state", {})) as AgentPointerVisualState,
+		getState: async (request) =>
+			(await requestFromMain("pointer:state", {
+				request,
+			})) as AgentPointerVisualState,
+		listWindows: async () =>
+			(await requestFromMain("windows:list", {})) as EditorWindowsResult,
 		move: async (request) =>
 			(await requestFromMain("pointer:move", {
 				request,
@@ -552,11 +557,10 @@ export function startUtilityHttpServer(config: UtilityHttpConfig): void {
 			(await requestFromMain("pointer:drop-files", {
 				request,
 			})) as AgentPointerResult,
-		rulerLabels: async () =>
-			(await requestFromMain(
-				"pointer:ruler-labels",
-				{}
-			)) as AgentPointerRulerLabelsResult,
+		rulerLabels: async (request) =>
+			(await requestFromMain("pointer:ruler-labels", {
+				request,
+			})) as AgentPointerRulerLabelsResult,
 		pressKeys: async (request) =>
 			(await requestFromMain("keyboard:press", {
 				request,
