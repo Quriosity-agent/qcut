@@ -177,14 +177,16 @@ follow the destination's child-tracking setting. Reordering alone and tracked
 same-size replacement can preserve the array's own dirty state. Clock-write
 counts come from static call sites, not measured clock values.
 
-All active/mapped frames must have nonnull values and controls and no graph.
+All active/mapped frames must have nonnull values and controls. The original
+graph-free domain now also accepts the typed graph payload described below;
+a legacy `has_graph` capture without its graph data still rejects.
 Validation precedes model mutations; allocation-failure atomicity is not claimed.
 The typed index uses owning string keys; a null entry represents the native null
 or incompatible-type fallback. Retained-only input is neither traversed nor
 restored. `restore_group_from(nullptr)` and `restore_frame_from(nullptr)` are
 no-ops, matching their native pointer gates.
 
-Ten portable CTest groups contain 1,229 assertions (86 new), passing Release and
+The initial ten portable CTest groups contain 1,229 assertions (86 new), passing Release and
 fail-fast ASan/UBSan. `creator-native-record` uses SDK-created objects and verified
 restore/deleting-destructor entrypoints: 3,842 cases and 440,390 comparisons, zero
 mismatches in Release and ASan/UBSan. It checks payload bits, both directions of
@@ -193,3 +195,30 @@ reference lifetimes. Six compiled mutants fail by native comparison; two identit
 guards and the fast-math compilation guard also reject as expected. The vendor
 library itself is not sanitizer-instrumented. See
 [creator-undo-record-2026-09-08.zh.md](../../docs/task/jianying-filter-runtime-research/creator-undo-record-2026-09-08.zh.md).
+
+## Graph restoration and graph-point stash selection
+
+`record_graph` extends restoration through Graph → GraphPoint array → CommonPoint.
+Mapped graph points restore in place; missing entries create separate point and
+coordinate copies. `restore_group_copy` closes group/array restore-to, including
+shared retained entries and the distinction between missing and present-null ID
+map entries. The common array algorithm is shared in `record_list.hpp`.
+
+Frames now handle graph attachment, removal, recursive in-place restore and
+copying. Attachment creates an untracked graph copy and marks the parent;
+recursive changes to an already-present graph do not mark the parent frame.
+
+`record_stash` reconstructs actual GraphPoint/CommonPoint historical snapshot
+selection. A clean point with matching typed history produces no replacement,
+even if its coordinates differ. A graph-point type change can produce a snapshot
+with historical tracking, current state/changed flags, and the shared historical
+coordinate; a changed coordinate produces its own copy. This is narrower than
+Graph-wide stash traversal, diff application or Session undo.
+
+Eleven portable CTest groups now contain 1,275 assertions, passing Release and
+ASan/UBSan. The new `creator-native-graph-record` checks 4,738 cases and 692,606
+comparisons with zero mismatches in Release, a separate repeat, and ASan/UBSan.
+The previous native restore matrix remains 3,842 cases / 440,390 comparisons.
+Eight compiled mutants are rejected by native comparisons, including a null
+snapshot branch that required an explicit controlled corpus. See
+[creator-graph-snapshot-2026-09-08.zh.md](../../docs/task/jianying-filter-runtime-research/creator-graph-snapshot-2026-09-08.zh.md).
