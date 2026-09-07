@@ -265,9 +265,12 @@ isolatedElectronTest.describe("Agent pointer HTML5 drag-and-drop", () => {
 					"--force",
 				],
 			});
+			// The editor binds duplicate to the platform command key.
+			const duplicateShortcut =
+				process.platform === "darwin" ? "cmd+d" : "ctrl+d";
 			await runPointer({
 				apiPort,
-				args: ["editor:keyboard:press", "--keys", "cmd+d", "--force"],
+				args: ["editor:keyboard:press", "--keys", duplicateShortcut, "--force"],
 			});
 			await expect(
 				page.locator('[data-testid="timeline-element"]')
