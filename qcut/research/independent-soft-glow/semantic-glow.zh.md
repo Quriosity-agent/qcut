@@ -1,5 +1,7 @@
 # SGlow：可独立实现的算法语义
 
+2026-09-07 后续：已新增[真实阶段读回与独立重放](../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md)。该实验实测确认 RGBA8、实际 sampler object 的 linear/mirror 参数，并将 packed 字节误差按双字节强度解码。本文保留 09-06 的静态来源与历史源码 hash；新的接口抽取不改变六组旧 C++ 输出，Glow dither/packed 插值的精确残差仍未闭合。
+
 审计日期：2026-09-06。对象为电影柔光资源 `7447126702137904420`、版本 `9673f80b8e2f5a07f02f9ce1130b784a` 中的 **SGlow0**。本文以原始数学表达解释本地脚本、Shader 和资源连接，不包含供应商源码副本。整链约束见 [算法语义契约](/Users/peter/Desktop/code/qcut/qcut/research/independent-soft-glow/semantic-contract.zh.md)。
 
 证据标记：**静态**表示精确包的直接事实；**推导**表示从这些事实恢复的运算；**输出验证**表示固定原生宿主的末端比较；**实现约定**表示独立 CPU 实现选择的输入、采样和舍入边界。本文中的源文件别名与行号均可在文末定位。
