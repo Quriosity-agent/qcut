@@ -129,6 +129,9 @@ function buildClaudeMcpServersEnv(opts: {
 	if (opts.projectId) qcutEnv.QCUT_PROJECT_ID = opts.projectId;
 	if (opts.projectRoot) qcutEnv.QCUT_PROJECT_ROOT = opts.projectRoot;
 	if (opts.apiBaseUrl) qcutEnv.QCUT_API_BASE_URL = opts.apiBaseUrl;
+	if (process.env.QCUT_API_TOKEN) {
+		qcutEnv.QCUT_API_TOKEN = process.env.QCUT_API_TOKEN;
+	}
 	return JSON.stringify({
 		...existing,
 		qcut: { command: "node", args: [opts.mcpServerPath], env: qcutEnv },
