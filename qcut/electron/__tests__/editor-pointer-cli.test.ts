@@ -405,6 +405,94 @@ describe("editor pointer CLI handlers", () => {
 		});
 	});
 
+	it("rejects a malformed --click-count instead of treating it as omitted", async () => {
+		const oneShot = parseCliArgs([
+			"editor:pointer:click",
+			"--ref",
+			"@e12",
+			"--click-count",
+			"nope",
+		]);
+		expect(Number.isNaN(oneShot.clickCount)).toBe(true);
+		const session = parseSessionLine(
+			"editor:pointer:click --ref @e12 --click-count nope",
+			makeOptions({ command: "editor:pointer:click", values: {} })
+		);
+		expect(Number.isNaN(session?.clickCount)).toBe(true);
+		expect(
+			parseCliArgs(["editor:pointer:click", "--ref", "@e12"]).clickCount
+		).toBeUndefined();
+
+		const { client } = createClient();
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", clickCount: Number.NaN },
+			}),
+		});
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("--click-count must be 1, 2, or 3");
+	});
+
+	it("forwards --drag-start-timeout-ms to the drag request and rejects negatives", async () => {
+		const { client, post } = createClient();
+		const forwarded = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 10,
+					fromY: 20,
+					toX: 30,
+					toY: 40,
+					dragStartTimeoutMs: 50,
+				},
+			}),
+		});
+		expect(forwarded.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({ dragStartTimeoutMs: 50 })
+		);
+
+		const rejected = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 10,
+					fromY: 20,
+					toX: 30,
+					toY: 40,
+					dragStartTimeoutMs: -1,
+				},
+			}),
+		});
+		expect(rejected.success).toBe(false);
+		expect(rejected.error).toContain("--drag-start-timeout-ms");
+	});
+
+	it("parses --drag-start-timeout-ms for one-shot and session drags", () => {
+		expect(
+			parseCliArgs([
+				"editor:pointer:drag",
+				"--from-ref",
+				"@e1",
+				"--to-ref",
+				"@e2",
+				"--drag-start-timeout-ms",
+				"50",
+			]).dragStartTimeoutMs
+		).toBe(50);
+		expect(
+			parseSessionLine(
+				"editor:pointer:drag --from-ref @e1 --to-ref @e2 --drag-start-timeout-ms 75",
+				makeOptions({ command: "editor:pointer:drag", values: {} })
+			)?.dragStartTimeoutMs
+		).toBe(75);
+	});
+
 	it("parses --modifiers, --button, and --click-count for one-shot pointer commands", () => {
 		expect(
 			parseCliArgs([
