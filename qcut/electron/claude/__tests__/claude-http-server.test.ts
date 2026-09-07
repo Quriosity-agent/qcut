@@ -1124,6 +1124,42 @@ describe("Claude HTTP Server", () => {
 		});
 	});
 
+	it("drops files and types key events through the pointer routes", async () => {
+		const { mockWindow, sendCommand } = createPointerWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+
+		const drop = await fetch("/api/claude/pointer/drop-files", {
+			method: "POST",
+			body: JSON.stringify({ x: 300, y: 200, files: ["/tmp/still.png"] }),
+		});
+		const typed = await fetch("/api/claude/keyboard/type", {
+			method: "POST",
+			body: JSON.stringify({ text: "ok", keyEvents: true }),
+		});
+		const invalid = await fetch("/api/claude/pointer/drop-files", {
+			method: "POST",
+			body: JSON.stringify({ x: 300, y: 200, files: [] }),
+		});
+
+		expect(drop.status).toBe(200);
+		expect(drop.body.data).toEqual(
+			expect.objectContaining({
+				action: "drop-files",
+				dnd: expect.objectContaining({ fileCount: 1 }),
+			})
+		);
+		expect(
+			sendCommand.mock.calls
+				.filter(([method]) => method === "Input.dispatchDragEvent")
+				.map(([, params]) => params.type)
+		).toEqual(["dragEnter", "dragOver", "drop"]);
+		expect(typed.status).toBe(200);
+		expect(typed.body.data).toEqual(
+			expect.objectContaining({ method: "key-events", characterCount: 2 })
+		);
+		expect(invalid.status).toBe(400);
+	});
+
 	it("pointer routes use background CDP input without focusing QCut", async () => {
 		const { focus, mockWindow, sendCommand, sendInputEvent } =
 			createPointerWindow();
