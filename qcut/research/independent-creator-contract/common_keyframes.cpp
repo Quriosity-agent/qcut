@@ -1,15 +1,11 @@
 #include "common_keyframes.hpp"
+#include "mutation.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
 namespace creator_contract {
-namespace {
-void mark_changed(editor_contract::MutationState& state) noexcept {
-  if (state.tracking != 0 && state.state_code == 0) state.state_code = 2;
-  state.changed = 1;
-}
-}  // namespace
+using detail::mark_changed;
 
 std::vector<double> filter_keyframe_values(const double& intensity) {
   return {intensity};
