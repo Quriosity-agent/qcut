@@ -4,6 +4,8 @@ Readable, standalone CPU reconstruction of one Jianying filter's instantiated al
 
 See [Chinese build and validation report](README.zh.md), [algorithm explanation](algorithm.zh.md), and [graph evidence](graph-evidence.zh.md).
 
+The [2026-09-07 native pass report](../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md) adds actual RGBA8 draw/blit readbacks and the standalone `soft-glow-stage-replay` executable. It replays 13 stages independently from supplied native upstream images, separating local residuals from accumulated pipeline error. Three fixtures reproduce the final Normal stage exactly; the complete effect still has numerical residuals. All six historical pipeline outputs remain byte-identical after exposing these APIs. This project now also participates in the shared five-project CMake and cross-platform CI.
+
 The [semantic contract](semantic-contract.zh.md) and its [machine-readable JSON](semantic-contract.json) define the dataflow, units, formulas, channel layouts and lifecycle boundaries independently of the C++ implementation. Three inputs with nine single-factor substitutions plus a baseline produced 30 outputs: each substitution increased error against the fixed native reference. Those historical results apply to the static scene and provider output blending. A separate `ui-snapshot` intensity mode reconstructs measured editor export behavior without repairing or executing vendor scripts.
 
 ```sh
