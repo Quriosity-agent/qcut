@@ -9,6 +9,7 @@ on:
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
       - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
+      - qcut/research/jianying-runtime-probe/cgl-image-target.hpp
       - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
@@ -21,6 +22,7 @@ on:
       - qcut/research/jianying-runtime-probe/cgl-pass-capture.cpp
       - qcut/research/jianying-runtime-probe/cgl-pass-capture-test.*
       - qcut/research/jianying-runtime-probe/cgl-diagnostic-context.hpp
+      - qcut/research/jianying-runtime-probe/cgl-image-target.hpp
       - qcut/research/jianying-runtime-probe/capture-soft-glow-passes.ts
       - qcut/research/jianying-runtime-probe/agfx-*
       - qcut/research/jianying-runtime-probe/graphics-*.h
