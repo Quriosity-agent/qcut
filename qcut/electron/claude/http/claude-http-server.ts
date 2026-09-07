@@ -87,7 +87,10 @@ import {
 	resetPlaybackDiagnosticsInRenderer,
 } from "./claude-http-playback-routes.js";
 import { registerAgentPointerRoutes } from "./claude-http-pointer-routes.js";
-import { hitTestEditorPoint } from "../handlers/agent-pointer-hit-test.js";
+import {
+	hitTestEditorPoint,
+	readTimelineRulerLabels,
+} from "../handlers/agent-pointer-hit-test.js";
 import {
 	checkEditorSnapshotRef,
 	clickEditorSnapshotRef,
@@ -346,6 +349,7 @@ export function startClaudeHTTPServer(
 		scroll: (request) => pointerController().scroll(request),
 		hide: () => pointerController().hide(),
 		hitTest: (request) => hitTestEditorPoint(getWindow(), request),
+		rulerLabels: () => readTimelineRulerLabels(getWindow()),
 		dropFiles: (request) => pointerController().dropFiles(request),
 		pressKeys: (request) => pointerController().pressKeys(request),
 		typeText: (request) => pointerController().typeText(request),
