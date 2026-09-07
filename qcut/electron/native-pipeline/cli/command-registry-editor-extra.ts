@@ -32,6 +32,11 @@ export function createExtraEditorCommands({
 			default: 1,
 		}),
 		f(
+			"--modifiers",
+			"string",
+			"Comma-separated modifiers held during the action: alt, ctrl, cmd, shift"
+		),
+		f(
 			"--foreground",
 			"boolean",
 			"Focus QCut and use native Electron input instead of background input",
@@ -255,8 +260,26 @@ export function createExtraEditorCommands({
 		"editor:pointer:click": ed(
 			"editor:pointer:click",
 			"Click with real Electron mouseDown and mouseUp events",
-			pointerTargetFlags(),
-			["qcut-pipeline editor:pointer:click --ref @e12 --force --json"]
+			[
+				...pointerTargetFlags(),
+				f("--button", "string", "Mouse button to press", {
+					default: "left",
+					enum: ["left", "middle", "right"],
+				}),
+				f(
+					"--click-count",
+					"number",
+					"Press cycles: 1 click, 2 double, 3 triple",
+					{
+						default: 1,
+					}
+				),
+			],
+			[
+				"qcut-pipeline editor:pointer:click --ref @e12 --force --json",
+				"qcut editor pointer click --ref @e12 --modifiers shift --force --json",
+				"qcut editor pointer click --ref @e12 --click-count 3 --force --json",
+			]
 		),
 		"editor:pointer:double-click": ed(
 			"editor:pointer:double-click",
@@ -306,6 +329,15 @@ export function createExtraEditorCommands({
 					"string",
 					"HTML5 drag-and-drop: auto intercepts a drag the page starts, html5 requires one, mouse never intercepts",
 					{ default: "auto", enum: ["auto", "html5", "mouse"] }
+				),
+				f("--button", "string", "Mouse button held during the drag", {
+					default: "left",
+					enum: ["left", "middle", "right"],
+				}),
+				f(
+					"--modifiers",
+					"string",
+					"Comma-separated modifiers held during the drag: alt, ctrl, cmd, shift"
 				),
 				f("--verify", "boolean", "Verify the resulting list index", {
 					default: true,
@@ -360,6 +392,31 @@ export function createExtraEditorCommands({
 			"Hide the Agent pointer overlay",
 			[],
 			["qcut-pipeline editor:pointer:hide --json"]
+		),
+		"editor:pointer:state": ed(
+			"editor:pointer:state",
+			"Read the Agent pointer overlay state: position, action, pressed button, input mode",
+			[],
+			["qcut editor pointer state --json"]
+		),
+		"editor:pointer:hit-test": ed(
+			"editor:pointer:hit-test",
+			"Report the element under a target without dispatching input: tag, role, name, test id, ref, bounds, and ancestor test ids",
+			[
+				f("--target", "string", "Semantic target, for example panel.text"),
+				f("--ref", "string", "Snapshot ref, for example @e12"),
+				f("--x", "number", "Editor viewport X coordinate"),
+				f("--y", "number", "Editor viewport Y coordinate"),
+				f("--normalized-x", "number", "Horizontal viewport ratio from 0 to 1"),
+				f("--normalized-y", "number", "Vertical viewport ratio from 0 to 1"),
+				f("--timeout-ms", "number", "Target wait timeout in milliseconds", {
+					default: 5000,
+				}),
+			],
+			[
+				"qcut editor pointer hit-test --x 388 --y 879 --json",
+				"qcut editor pointer hit-test --target timeline.playhead --json",
+			]
 		),
 		"editor:pointer:sequence": ed(
 			"editor:pointer:sequence",
