@@ -1124,6 +1124,65 @@ describe("Claude HTTP Server", () => {
 		});
 	});
 
+	it("lists windows and routes pointer requests to a window id", async () => {
+		const first = createPointerWindow();
+		const second = createPointerWindow();
+		const describe = (
+			mock: ReturnType<typeof createPointerWindow>["mockWindow"],
+			id: number,
+			title: string
+		) =>
+			Object.assign(mock, {
+				id,
+				getTitle: () => title,
+				isMinimized: () => false,
+				getContentBounds: () => ({
+					x: id * 10,
+					y: 0,
+					width: 1200,
+					height: 800,
+				}),
+			});
+		describe(first.mockWindow, 1, "QCut");
+		describe(second.mockWindow, 2, "Filter Lab");
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			first.mockWindow,
+			second.mockWindow,
+		]);
+		const browserWindow = BrowserWindow as unknown as {
+			fromId?: (id: number) => unknown;
+		};
+		const previousFromId = browserWindow.fromId;
+		browserWindow.fromId = (id: number) =>
+			id === 2 ? second.mockWindow : id === 1 ? first.mockWindow : null;
+		try {
+			const windows = await fetch("/api/claude/windows");
+			const click = await fetch("/api/claude/pointer/click", {
+				method: "POST",
+				body: JSON.stringify({ x: 120, y: 160, windowId: 2 }),
+			});
+			const missing = await fetch("/api/claude/pointer/click", {
+				method: "POST",
+				body: JSON.stringify({ x: 120, y: 160, windowId: 99 }),
+			});
+
+			expect(windows.status).toBe(200);
+			expect(windows.body.data).toEqual({
+				count: 2,
+				windows: [
+					expect.objectContaining({ id: 1, title: "QCut", main: true }),
+					expect.objectContaining({ id: 2, title: "Filter Lab", main: false }),
+				],
+			});
+			expect(click.status).toBe(200);
+			expect(second.sendCommand).toHaveBeenCalled();
+			expect(first.sendCommand).not.toHaveBeenCalled();
+			expect(missing.status).toBe(404);
+		} finally {
+			browserWindow.fromId = previousFromId;
+		}
+	});
+
 	it("serves timeline ruler labels from the renderer", async () => {
 		const executeJavaScript = vi.fn(async () => ({
 			action: "ruler-labels",
