@@ -68,6 +68,7 @@ const DEFAULT_ALLOW_PATTERNS = [
 	"editor:pointer:hover",
 	"editor:pointer:scroll",
 	"editor:pointer:hide",
+	"editor:windows",
 	"editor:pointer:state",
 	"editor:pointer:hit-test",
 	"editor:pointer:wait-for",
