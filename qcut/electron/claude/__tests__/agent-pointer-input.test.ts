@@ -497,6 +497,25 @@ describe("AgentPointerInput", () => {
 		await harness.input.end({ session });
 	});
 
+	it("keeps letter case when typing background key events", async () => {
+		const background = createInputHarness();
+		const session = await background.input.begin({ inputMode: "background" });
+		await background.input.sendTextKey({ session, character: "H" });
+		await background.input.sendTextKey({ session, character: "i" });
+		const keyDowns = background.debuggerCommands.filter(
+			(command) =>
+				command.method === "Input.dispatchKeyEvent" &&
+				command.params?.type === "keyDown"
+		);
+		expect(keyDowns[0]?.params).toEqual(
+			expect.objectContaining({ key: "H", text: "H", modifiers: 8 })
+		);
+		expect(keyDowns[1]?.params).toEqual(
+			expect.objectContaining({ key: "i", text: "i" })
+		);
+		await background.input.end({ session });
+	});
+
 	it("types characters as real key events on both backends", async () => {
 		const background = createInputHarness();
 		const session = await background.input.begin({ inputMode: "background" });
