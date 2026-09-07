@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+	parseAgentPointerButton,
+	parseAgentPointerClickCount,
 	parseAgentPointerDragMode,
 	parseAgentPointerInputMode,
+	parseAgentPointerModifiers,
 	parseAgentPointerTarget,
 } from "../http/claude-http-pointer-routes.js";
 
@@ -55,6 +58,38 @@ describe("parseAgentPointerTarget", () => {
 		);
 		expect(() => parseAgentPointerDragMode({ value: 1 })).toThrow(
 			"'auto', 'html5', or 'mouse'"
+		);
+	});
+
+	it("normalizes modifier aliases and rejects unknown ones", () => {
+		expect(parseAgentPointerModifiers({ value: undefined })).toBeUndefined();
+		expect(
+			parseAgentPointerModifiers({ value: ["shift", "cmd", "Shift", "ctrl"] })
+		).toEqual(["Shift", "Meta", "Control"]);
+		expect(parseAgentPointerModifiers({ value: "option, super" })).toEqual([
+			"Alt",
+			"Meta",
+		]);
+		expect(() => parseAgentPointerModifiers({ value: ["hyper"] })).toThrow(
+			"Unsupported pointer modifier"
+		);
+		expect(() => parseAgentPointerModifiers({ value: 3 })).toThrow(
+			"must be an array"
+		);
+	});
+
+	it("validates buttons and click counts", () => {
+		expect(parseAgentPointerButton({ value: undefined })).toBeUndefined();
+		expect(parseAgentPointerButton({ value: "middle" })).toBe("middle");
+		expect(() => parseAgentPointerButton({ value: "back" })).toThrow(
+			"'left', 'middle', or 'right'"
+		);
+		expect(parseAgentPointerClickCount({ value: 3 })).toBe(3);
+		expect(() => parseAgentPointerClickCount({ value: 4 })).toThrow(
+			"from 1 to 3"
+		);
+		expect(() => parseAgentPointerClickCount({ value: 1.5 })).toThrow(
+			"from 1 to 3"
 		);
 	});
 });
