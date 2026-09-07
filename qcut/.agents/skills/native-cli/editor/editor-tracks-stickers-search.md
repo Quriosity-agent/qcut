@@ -152,7 +152,7 @@ confirmation.
 | `editor pointer click` | — | same as `move`, plus `--button left\|middle\|right`, `--click-count 1..3` | Click with real mouseDown and mouseUp events; 3 press cycles select a paragraph |
 | `editor pointer double-click` | — | same as `move` | Double-click |
 | `editor pointer right-click` | — | same as `move` | Open a context menu with a real right-click |
-| `editor pointer drag` | — | `--from-ref/--to-ref`, `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse`, `--button` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped |
+| `editor pointer drag` | — | `--from-ref/--to-ref`, `--from-x/--from-y/--to-x/--to-y`, `--to-time`, `--seek-mode drag\|api`, `--to-index`, `--via`, `--hold-ms`, `--duration-ms`, `--steps`, `--verify`, `--dnd auto\|html5\|mouse`, `--button` | Drag between refs or coordinates; HTML5 drag sources are intercepted and dropped; `--from timeline.playhead --to-time N` scrubs the playhead |
 | `editor pointer scroll` | — | `--delta-x`, `--delta-y`, plus targeting flags | Scroll at the pointer, a ref, or a coordinate |
 | `editor pointer wait-for` | — | `--target`, `--text`, `--timeout-ms`, `--interval-ms` | Wait for a semantic target or visible text |
 | `editor pointer hide` | — | — | Hide the Agent pointer overlay |
@@ -203,7 +203,21 @@ hit-test results stay valid targets.
 
 Session mode (`qcut --session`) accepts the same pointer flags as one-shot
 commands (`--foreground`, `--dnd`, `--modifiers`, `--button`, `--click-count`,
-`--via`, `--steps`, `--hold-ms`, `--no-verify`, `--key-events`, `--files`).
+`--via`, `--steps`, `--hold-ms`, `--no-verify`, `--key-events`, `--files`,
+`--seek-mode`).
+
+`--from timeline.playhead --to-time <seconds>` is a real scrub: the CLI reads
+the ruler labels ("0s", "5s", …) through `GET /api/claude/pointer/ruler-labels`
+(a renderer probe; older editors fall back to a full snapshot) to recover
+pixels per second, presses the playhead, drags it to the matching x, releases,
+and reports `achievedTime` from where the playhead landed. When the labels
+cannot be read, or with `--seek-mode api`, it seeks through the playback API
+and only animates the pointer (`method: "api-seek"`, `reason` says why,
+`animation.type: "display-only"`).
+
+`qcut editor --help` lists the editor areas (`track`, `timeline`, `pointer`, …)
+with their action counts; `qcut editor <area> <action> --help --json` gives the
+flags.
 
 The result carries `dnd: { mode, intercepted, backend, mimeTypes, fileCount,
 dragOperationsMask }`; `mimeTypes` lists what the page put in the drag, for
