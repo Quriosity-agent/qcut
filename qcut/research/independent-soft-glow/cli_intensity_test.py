@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 from pathlib import Path
 import subprocess
 import tempfile
@@ -57,7 +58,24 @@ def verify(image_cli, stream_cli, directory):
     assert outputs[("ui-snapshot", "0.37")] != outputs[(None, "0.37")]
     assert outputs[("ui-snapshot", "0.8")] != outputs[("ui-snapshot", "0.81")]
 
+    full = outputs[(None, "1")]
+    for strength in (0.37, math.nextafter(0.05, 0), 0.05, math.nextafter(0.05, 1)):
+        expected = bytearray(frame)
+        for index, (base, target) in enumerate(zip(frame, full)):
+            if index % 4 != 3:
+                value = base + (target - base) * strength
+                integer = math.floor(value)
+                expected[index] = integer + (value - integer >= 0.5)
+        flags = ["--intensity", repr(strength)]
+        run(image_args + flags)
+        assert output.read_bytes() == expected, (strength, "byte-domain double output mix")
+        assert run(stream_args + flags, frame).stdout == expected
+
     for executable_args in (image_args, stream_args):
+        for strength in ("-1e-300", "1.0000000000000002", "nan", "inf"):
+            result = subprocess.run(executable_args + ["--intensity", strength],
+                                    input=b"", capture_output=True, timeout=30)
+            assert result.returncode != 0 and result.stdout == b"", strength
         for flags in (["--intensity-mode", "unknown"], ["--intensity-mode"],
                       ["--intensity-mode", "ui_snapshot"]):
             result = subprocess.run(executable_args + flags, input=b"", capture_output=True, timeout=30)
