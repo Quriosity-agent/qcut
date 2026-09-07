@@ -423,6 +423,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"click-count": { type: "string" },
 			"key-events": { type: "boolean", default: false },
 			files: { type: "string" },
+			"seek-mode": { type: "string" },
 			"hold-ms": { type: "string" },
 			"duration-ms": { type: "string" },
 			steps: { type: "string" },
@@ -441,6 +442,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"delta-y": { type: "string" },
 			foreground: { type: "boolean", default: false },
 			checked: { type: "boolean" },
+			"no-checked": { type: "boolean", default: false },
 			replace: { type: "boolean", default: false },
 			ripple: { type: "boolean", default: false },
 			"cross-track-ripple": { type: "boolean", default: false },
@@ -1088,6 +1090,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		clickCount: parseFiniteCliNumber({ value: values["click-count"] }),
 		keyEvents: (values["key-events"] as boolean) ?? false,
 		files: values.files as string | undefined,
+		seekMode: values["seek-mode"] as string | undefined,
 		holdMs: parseFiniteCliNumber({ value: values["hold-ms"] }),
 		durationMs: parseFiniteCliNumber({ value: values["duration-ms"] }),
 		steps: values.steps
@@ -1112,7 +1115,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		deltaY: parseFiniteCliNumber({ value: values["delta-y"] }),
 		foreground: (values.foreground as boolean) ?? false,
 		selectValue: values.value as string | undefined,
-		checked: values.checked as boolean | undefined,
+		checked: values["no-checked"]
+			? false
+			: (values.checked as boolean | undefined),
 		replace: (values.replace as boolean) ?? false,
 		ripple: (values.ripple as boolean) ?? false,
 		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,
