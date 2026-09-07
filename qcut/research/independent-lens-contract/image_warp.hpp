@@ -16,10 +16,13 @@ struct RgbaImageView {
   std::size_t row_stride;
 };
 
+enum class AffineWarpBackend { fsnew, image_transform };
+
 struct AffineWarpRequest {
   std::array<float, 6> source_to_destination;
   int width;
   int height;
+  AffineWarpBackend backend = AffineWarpBackend::fsnew;
 };
 
 struct AffineWarpResult {
@@ -28,7 +31,7 @@ struct AffineWarpResult {
   bool operator==(const AffineWarpResult&) const = default;
 };
 
-// The recovered base backend rounds each row/column contribution separately.
+// Both backends round row/column contributions separately; their float order differs.
 // This contract requires FE_TONEAREST and copies straight RGBA, including alpha.
 bool warp_affine_rgba(const RgbaImageView& source, const AffineWarpRequest& request,
                       AffineWarpResult& output);
