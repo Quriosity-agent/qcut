@@ -133,6 +133,12 @@ export async function runAgentPointerDrag({
 	let buttonDown = false;
 	let dragData: AgentPointerDragData | null = null;
 	let dropped = false;
+	let interceptionDisposed = false;
+	const disposeInterception = async (): Promise<void> => {
+		if (!interception || interceptionDisposed) return;
+		interceptionDisposed = true;
+		await interception.dispose();
+	};
 	let destination: AgentPointerResolvedTarget | undefined;
 	try {
 		host.visual.update({
@@ -260,6 +266,9 @@ export async function runAgentPointerDrag({
 			});
 			dropped = true;
 		} else {
+			// Nothing to replay: hand the rest of the gesture back to Chromium so a
+			// late Input.dragIntercepted cannot capture a drag nobody will finish.
+			await disposeInterception();
 			await host.moveAlongPath({
 				session,
 				points,
@@ -301,7 +310,7 @@ export async function runAgentPointerDrag({
 				});
 			}
 		} finally {
-			await interception?.dispose();
+			await disposeInterception();
 			host.visual.update({
 				action: "drag",
 				inputMode: session.inputMode,
