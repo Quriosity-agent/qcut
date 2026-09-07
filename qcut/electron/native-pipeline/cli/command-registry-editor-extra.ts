@@ -86,13 +86,20 @@ export function createExtraEditorCommands({
 			"editor:auth:token",
 			"Auth: Get or set the current auth token",
 			[
-				f("--set", "string", "Set token to this value"),
+				f(
+					"--from-stdin",
+					"boolean",
+					"Set the token from a hidden prompt (TTY) or stdin (pipe) so it never appears in argv",
+					{ default: false }
+				),
+				f("--set", "string", "Set token to this value (prefer --from-stdin)"),
 				f("--reveal", "boolean", "Show full token (default: masked)", {
 					default: false,
 				}),
 			],
 			[
 				"qcut-pipeline editor:auth:token --json",
+				"qcut-pipeline editor:auth:token --from-stdin --json",
 				"qcut-pipeline editor:auth:token --reveal --json",
 				"qcut-pipeline editor:auth:token --set <token> --json",
 			]
@@ -100,8 +107,19 @@ export function createExtraEditorCommands({
 		"editor:auth:activate": ed(
 			"editor:auth:activate",
 			"Auth: Set token and activate license on this device",
-			[f("--token", "string", "Auth token", { required: true })],
-			["qcut-pipeline editor:auth:activate --token <token> --json"]
+			[
+				f(
+					"--from-stdin",
+					"boolean",
+					"Read the token from a hidden prompt (TTY) or stdin (pipe)",
+					{ default: false }
+				),
+				f("--token", "string", "Auth token (prefer --from-stdin)"),
+			],
+			[
+				"qcut-pipeline editor:auth:activate --from-stdin --json",
+				"qcut-pipeline editor:auth:activate --token <token> --json",
+			]
 		),
 		"editor:auth:logout": ed(
 			"editor:auth:logout",
@@ -348,6 +366,12 @@ export function createExtraEditorCommands({
 					"string",
 					"HTML5 drag-and-drop: auto intercepts a drag the page starts, html5 requires one, mouse never intercepts",
 					{ default: "auto", enum: ["auto", "html5", "mouse"] }
+				),
+				f(
+					"--drag-start-timeout-ms",
+					"number",
+					"How long to wait for the page to start an HTML5 drag before auto falls back to a mouse drag or html5 fails",
+					{ default: 250 }
 				),
 				f("--button", "string", "Mouse button held during the drag", {
 					default: "left",
