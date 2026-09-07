@@ -1,14 +1,14 @@
 # 剪映局部语义：五个独立 C++ 工程
 
-本入口统一构建五个标准 C++20 工程及 29 组 CTest（含 Python CLI/分析测试）；默认不加载剪映、不依赖 Qt 或 Metal。
+本入口统一构建五个标准 C++20 工程及 34 组 CTest（含 Python CLI/分析测试）；默认不加载剪映、不依赖 Qt 或 Metal。
 
 | 工程 | 自有实现 | 原生证据范围 |
 | --- | --- | --- |
 | [AGFX](../independent-agfx-contract/README.zh.md) | 格式、sampler 枚举、RGBA/BGRA 空间采样 | 格式差分、真实纹理与 sampler 像素；部分 LOD 边界未解 |
-| [videoeditor](../independent-editor-contract/README.md) | 值状态、时间区间、关键帧投影、多通道重采样、实际属性 Bézier | 新增 128,392 个值的原生对照；NaN 只比较分类；新增真实 SDK 窗口 100,832 次调用零差异；完整 Segment 时间/seek 未闭合 |
-| [VECreator](../independent-creator-contract/README.md) | 多选、请求、回调、服务端材质/reset、已有 ID 更新、已解析时间的新建/插入/control | 实际处理器静态恢复；常量、向量和新增插入/control 有真实 SDK 对照；完整定位/undo 未闭合 |
-| [lens](../independent-lens-contract/README.zh.md) | 六个数值原语、真实图像仿射与 RGBA→BGR | 保留 base 对照；NEON/ImageTransform 各 10,998 组，445,847,787 字节零差异；不是完整防抖/去闪烁 |
-| [Soft Glow](../independent-soft-glow/README.zh.md) | 完整柔光管线、13 个独立阶段重放、精确 UNORM8 与字节域末端混合 | D634 CGL 252 个实际阶段读回，末端 Normal 独立重放一致；自产 CGL 转换 666,580 通道零差异；整链精度仍有残差 |
+| [videoeditor](../independent-editor-contract/README.md) | 值状态、时间区间、关键帧投影、多通道重采样、实际属性 Bézier | 新增 128,392 个值的原生对照；NaN 只比较分类；新增真实 SDK 窗口 100,832 次调用零差异；真实 Segment 恒速时间、record 控制点及线性非命中属性已验证，完整变速/seek 未闭合 |
+| [VECreator](../independent-creator-contract/README.md) | 多选、请求、回调、服务端材质/reset、已有 ID 更新、已解析时间的新建/插入/control | 实际处理器静态恢复；常量、向量和新增插入/control 有真实 SDK 对照；新增 2244 组 dirty/retained 生命周期原生对照；完整定位/undo 未闭合 |
+| [lens](../independent-lens-contract/README.zh.md) | 六个数值原语、真实图像仿射与 RGBA→BGR | 保留 base 对照；NEON/ImageTransform 各 10,998 组，445,847,787 字节零差异；新增 crop 变换计划 363,684 float 与真实对象 warp 1,324,512 字节零差异；不是完整防抖/去闪烁 |
+| [Soft Glow](../independent-soft-glow/README.zh.md) | 完整柔光管线、13 个独立阶段重放、精确 UNORM8 与字节域末端混合 | D634 CGL 252 个实际阶段读回，末端 Normal 独立重放一致；自产 CGL 转换 666,580 通道零差异；新增 M4 blit 的浮点/字节及反向坐标配置验证，两次缩放独立重放均 0 差异；整链精度仍有残差 |
 
 从 QCut 包目录运行：
 
