@@ -254,6 +254,178 @@ describe("editor pointer CLI handlers", () => {
 		).toEqual(expect.objectContaining({ dnd: "html5" }));
 	});
 
+	it("passes modifiers, buttons, and click counts through pointer clicks", async () => {
+		const { client, post } = createClient();
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: {
+					ref: "@e12",
+					modifiers: "shift, cmd",
+					button: "middle",
+					clickCount: 3,
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/click", {
+			ref: "@e12",
+			inputMode: "background",
+			modifiers: ["shift", "cmd"],
+			button: "middle",
+			clickCount: 3,
+		});
+	});
+
+	it("rejects buttons and click counts on actions that cannot use them", async () => {
+		const { client, post } = createClient();
+		const hover = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hover",
+				values: { ref: "@e12", button: "middle" },
+			}),
+		});
+		const rightClick = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:right-click",
+				values: { ref: "@e12", clickCount: 2 },
+			}),
+		});
+		const badButton = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", button: "back" },
+			}),
+		});
+
+		expect(hover.success).toBe(false);
+		expect(hover.error).toContain("--button only applies");
+		expect(rightClick.success).toBe(false);
+		expect(rightClick.error).toContain("--click-count only applies");
+		expect(badButton.success).toBe(false);
+		expect(badButton.error).toContain("--button must be one of");
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it("passes buttons and modifiers through drags and modifiers through scrolls", async () => {
+		const { client, post } = createClient();
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 0,
+					fromY: 700,
+					toX: 800,
+					toY: 700,
+					button: "right",
+					modifiers: "alt",
+				},
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:scroll",
+				values: { x: 640, y: 360, deltaY: -120, modifiers: "ctrl" },
+			}),
+		});
+
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({ button: "right", modifiers: ["alt"] })
+		);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/scroll",
+			expect.objectContaining({ deltaY: -120, modifiers: ["ctrl"] })
+		);
+	});
+
+	it("reads pointer state and hit-tests a target without dispatching input", async () => {
+		const get = vi.fn(async (path: string) => {
+			if (path === "/api/claude/pointer/state") {
+				return { visible: true, x: 10, y: 20, action: "idle" };
+			}
+			return {
+				elements: [
+					{
+						ref: "@e12",
+						bounds: { x: 100, y: 200, width: 40, height: 20 },
+					},
+				],
+			};
+		});
+		const post = vi.fn(async () => ({
+			action: "hit-test",
+			hit: true,
+			element: { testId: "timeline-element" },
+		}));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const state = await handlePointerCommand({
+			client,
+			options: makeOptions({ command: "editor:pointer:state" }),
+		});
+		const hit = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { ref: "@e12" },
+			}),
+		});
+		const hitByCoordinates = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { x: 388, y: 879 },
+			}),
+		});
+
+		expect(state.success).toBe(true);
+		expect(state.data).toEqual(expect.objectContaining({ action: "idle" }));
+		expect(hit.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 120,
+			y: 210,
+		});
+		expect(hitByCoordinates.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 388,
+			y: 879,
+		});
+	});
+
+	it("parses --modifiers, --button, and --click-count for one-shot pointer commands", () => {
+		expect(
+			parseCliArgs([
+				"editor:pointer:click",
+				"--ref",
+				"@e12",
+				"--modifiers",
+				"shift,cmd",
+				"--button",
+				"middle",
+				"--click-count",
+				"3",
+			])
+		).toEqual(
+			expect.objectContaining({
+				modifiers: "shift,cmd",
+				button: "middle",
+				clickCount: 3,
+			})
+		);
+	});
+
 	it("drags flattened interactive list items by semantic index", async () => {
 		const before = [
 			{
