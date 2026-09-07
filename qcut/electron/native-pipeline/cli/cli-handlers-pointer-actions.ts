@@ -388,6 +388,16 @@ export async function handleDrag({
 				"--dnd html5 needs background input; drop --foreground or use --dnd mouse",
 		};
 	}
+	if (
+		options.dragStartTimeoutMs !== undefined &&
+		(!Number.isFinite(options.dragStartTimeoutMs) ||
+			options.dragStartTimeoutMs < 0)
+	) {
+		return {
+			success: false,
+			error: "--drag-start-timeout-ms must be a non-negative number",
+		};
+	}
 
 	const speed = speedMultiplier(options);
 	const request: AgentPointerDragRequest = {
@@ -400,6 +410,9 @@ export async function handleDrag({
 		steps: options.steps ?? 24,
 		releaseDelayMs: scaledDuration(options.releaseDelayMs, speed, 100),
 		...(dragMode.mode ? { dnd: dragMode.mode } : {}),
+		...(options.dragStartTimeoutMs !== undefined
+			? { dragStartTimeoutMs: options.dragStartTimeoutMs }
+			: {}),
 		...inputFields.fields,
 		...windowScope(options),
 	};
