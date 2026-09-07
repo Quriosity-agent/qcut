@@ -122,6 +122,19 @@ describe("action policy", () => {
 		expect(result.matchedPattern).toBe("editor:auth:token --set");
 	});
 
+	it("classifies hidden token input as a confirm-tier auth mutation", () => {
+		const result = evaluateActionPolicy({
+			options: defaultOptions({
+				command: "editor:auth:token",
+				fromStdin: true,
+			}),
+			policy: DEFAULT_ACTION_POLICY,
+		});
+
+		expect(result.decision).toBe("confirm");
+		expect(result.matchedPattern).toBe("editor:auth:token --from-stdin");
+	});
+
 	it("allows default read-only commands", () => {
 		const result = evaluateActionPolicy({
 			command: "editor:timeline:export",
