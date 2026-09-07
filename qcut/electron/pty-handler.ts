@@ -187,6 +187,9 @@ function buildClaudeMcpServersEnv({
 	if (apiBaseUrl) {
 		qcutEnv.QCUT_API_BASE_URL = apiBaseUrl;
 	}
+	if (process.env.QCUT_API_TOKEN) {
+		qcutEnv.QCUT_API_TOKEN = process.env.QCUT_API_TOKEN;
+	}
 
 	const qcutConfig = {
 		command: "node",
