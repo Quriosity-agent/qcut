@@ -1,4 +1,6 @@
 import type {
+	AgentKeyboardModifier,
+	AgentPointerButton,
 	AgentPointerDragRequest,
 	AgentPointerScrollRequest,
 	AgentPointerTarget,
@@ -127,6 +129,80 @@ function parseDragMode({
 		ok: false,
 		error: `--dnd must be one of ${DRAG_MODES.join(", ")} (got ${value})`,
 	};
+}
+
+const POINTER_BUTTONS = ["left", "middle", "right"] as const;
+
+/** Shared pointer input fields (modifiers, button, click count) validated from CLI options. */
+function pointerInputFields({
+	options,
+	allowButton = false,
+	allowClickCount = false,
+}: {
+	options: Pick<CLIRunOptions, "modifiers" | "button" | "clickCount">;
+	allowButton?: boolean;
+	allowClickCount?: boolean;
+}):
+	| {
+			ok: true;
+			fields: {
+				modifiers?: AgentKeyboardModifier[];
+				button?: AgentPointerButton;
+				clickCount?: number;
+			};
+	  }
+	| { ok: false; error: string } {
+	const fields: {
+		modifiers?: AgentKeyboardModifier[];
+		button?: AgentPointerButton;
+		clickCount?: number;
+	} = {};
+	if (options.modifiers !== undefined) {
+		const modifiers = options.modifiers
+			.split(",")
+			.map((entry) => entry.trim())
+			.filter(Boolean);
+		if (modifiers.length === 0) {
+			return {
+				ok: false,
+				error: "--modifiers must list at least one modifier",
+			};
+		}
+		// Aliases such as cmd or ctrl are normalized by the editor route.
+		fields.modifiers = modifiers as AgentKeyboardModifier[];
+	}
+	if (options.button !== undefined) {
+		if (!allowButton) {
+			return {
+				ok: false,
+				error: "--button only applies to pointer click and drag",
+			};
+		}
+		if (!(POINTER_BUTTONS as readonly string[]).includes(options.button)) {
+			return {
+				ok: false,
+				error: `--button must be one of ${POINTER_BUTTONS.join(", ")} (got ${options.button})`,
+			};
+		}
+		fields.button = options.button as AgentPointerButton;
+	}
+	if (options.clickCount !== undefined) {
+		if (!allowClickCount) {
+			return {
+				ok: false,
+				error: "--click-count only applies to pointer click",
+			};
+		}
+		if (
+			!Number.isInteger(options.clickCount) ||
+			options.clickCount < 1 ||
+			options.clickCount > 3
+		) {
+			return { ok: false, error: "--click-count must be 1, 2, or 3" };
+		}
+		fields.clickCount = options.clickCount;
+	}
+	return { ok: true, fields };
 }
 
 function pointerInputMode({
@@ -714,6 +790,12 @@ async function postTargetAction({
 		timeoutMs: options.timeoutMs,
 	});
 	if (!target.ok) return { success: false, error: target.error };
+	const inputFields = pointerInputFields({
+		options,
+		allowButton: action === "click",
+		allowClickCount: action === "click",
+	});
+	if (!inputFields.ok) return { success: false, error: inputFields.error };
 
 	await requirePointerInputSupport({ client, options });
 	const speed = speedMultiplier(options);
@@ -723,6 +805,7 @@ async function postTargetAction({
 		...(options.speed !== undefined || options.durationMs !== undefined
 			? { durationMs: scaledDuration(options.durationMs, speed, 220) }
 			: {}),
+		...inputFields.fields,
 	});
 	if (options.waitFor) {
 		const waited = await waitForRequestedState({
@@ -930,6 +1013,8 @@ async function handleDrag({
 
 	const dragMode = parseDragMode({ value: options.dnd });
 	if (!dragMode.ok) return { success: false, error: dragMode.error };
+	const inputFields = pointerInputFields({ options, allowButton: true });
+	if (!inputFields.ok) return { success: false, error: inputFields.error };
 	if (dragMode.mode === "html5" && options.foreground) {
 		return {
 			success: false,
@@ -949,6 +1034,7 @@ async function handleDrag({
 		steps: options.steps ?? 24,
 		releaseDelayMs: scaledDuration(options.releaseDelayMs, speed, 100),
 		...(dragMode.mode ? { dnd: dragMode.mode } : {}),
+		...inputFields.fields,
 	};
 	await requirePointerInputSupport({ client, options });
 	if (dragMode.mode === "html5") {
@@ -1014,10 +1100,13 @@ async function handleScroll({
 		};
 	}
 
+	const inputFields = pointerInputFields({ options });
+	if (!inputFields.ok) return { success: false, error: inputFields.error };
 	const request: AgentPointerScrollRequest = {
 		inputMode: pointerInputMode({ options }),
 		...(hasDeltaX ? { deltaX: options.deltaX } : {}),
 		...(hasDeltaY ? { deltaY: options.deltaY } : {}),
+		...inputFields.fields,
 	};
 	const hasTargetOption =
 		options.target !== undefined ||
@@ -1149,6 +1238,9 @@ async function executeSequenceAction({
 				y: numberValue(action, "y"),
 				normalizedX: numberValue(action, "normalizedX"),
 				normalizedY: numberValue(action, "normalizedY"),
+				modifiers: modifiersValue(action),
+				button: stringValue(action, "button"),
+				clickCount: numberValue(action, "clickCount"),
 			},
 			action: name as
 				| "move"
@@ -1200,6 +1292,8 @@ async function executeSequenceAction({
 				steps: numberValue(action, "steps"),
 				releaseDelayMs: numberValue(action, "releaseDelayMs"),
 				dnd: stringValue(action, "dnd"),
+				modifiers: modifiersValue(action),
+				button: stringValue(action, "button"),
 				verify:
 					typeof action.verify === "boolean"
 						? action.verify
@@ -1221,6 +1315,7 @@ async function executeSequenceAction({
 				normalizedY: numberValue(action, "normalizedY"),
 				deltaX: numberValue(action, "deltaX"),
 				deltaY: numberValue(action, "deltaY"),
+				modifiers: modifiersValue(action),
 			},
 		});
 	}
@@ -1372,6 +1467,18 @@ async function runSequenceAction({
 		success: true,
 		data: { action: result.data, waitFor: waited.data },
 	};
+}
+
+/** Sequence actions may spell modifiers as an array or a comma-separated string. */
+function modifiersValue(action: Record<string, unknown>): string | undefined {
+	const raw = action.modifiers;
+	if (Array.isArray(raw)) {
+		const entries = raw.filter(
+			(entry): entry is string => typeof entry === "string"
+		);
+		return entries.length > 0 ? entries.join(",") : undefined;
+	}
+	return stringValue(action, "modifiers");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1689,6 +1796,41 @@ export async function runPointerSequence({
 	};
 }
 
+/** Report what the editor renders under a target without dispatching input. */
+async function handleHitTest({
+	client,
+	options,
+}: {
+	client: EditorApiClient;
+	options: CLIRunOptions;
+}): Promise<CLIResult> {
+	const target = await resolvePointerTarget({
+		client,
+		options: {
+			target: options.target,
+			ref: options.ref,
+			x: options.x,
+			y: options.y,
+			normalizedX: options.normalizedX,
+			normalizedY: options.normalizedY,
+		},
+		label: "Pointer hit-test",
+		timeoutMs: options.timeoutMs,
+	});
+	if (!target.ok) return { success: false, error: target.error };
+	let point: { x: number; y: number };
+	try {
+		point = await materializeTargetPoint({ client, target: target.target });
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+	const data = await client.post("/api/claude/pointer/hit-test", point);
+	return { success: true, data };
+}
+
 export async function handlePointerCommand({
 	client,
 	options,
@@ -1730,10 +1872,16 @@ export async function handlePointerCommand({
 			const data = await client.post("/api/claude/pointer/hide", {});
 			return { success: true, data };
 		}
+		case "state": {
+			const data = await client.get("/api/claude/pointer/state");
+			return { success: true, data };
+		}
+		case "hit-test":
+			return await handleHitTest({ client, options });
 		default:
 			return {
 				success: false,
-				error: `Unknown pointer action: ${action ?? ""}. Available: move, hover, click, double-click, right-click, drag, scroll, wait-for, sequence, hide`,
+				error: `Unknown pointer action: ${action ?? ""}. Available: move, hover, click, double-click, right-click, drag, scroll, wait-for, sequence, hide, state, hit-test`,
 			};
 	}
 }
