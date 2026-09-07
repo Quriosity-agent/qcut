@@ -2,24 +2,24 @@
 
 记录日期：2026-09-07。工作区：`/Users/peter/Desktop/code/qcut-binary-cpp-wt/qcut`；分支：`codex/jianying-binary-cpp-next`；起点：`29d4700a5bdd4e1ae88299e0beeecbd31ec34b5b`。
 
-本轮按可独立验收的函数合同、渲染原语和算法链逐项推进。**已完成 AGFX 格式转换与采样器枚举两个独立 C++ 单元，下一项是单 Pass 上传、采样与读回；六个核心库的整库源码还原完成数仍为 0。** 本文是执行队列，不把计划、旧实验或局部函数完成写成整库完成。
+本轮按可独立验收的函数合同、渲染原语和算法链逐项推进。**AGFX 格式、采样器和受控纹理像素单元已交付；videoeditor、VECreator、lens 三条线新增可独立编译的局部语义与数值源码。六个核心库的整库还原完成数仍为 0。** 本文是执行队列，不把计划、旧实验或局部函数完成写成整库完成。
 
-已有电影柔光 C++20 算法、持续帧协议和 QCut 接入继续复用，不重新实现。完整库存与历史交付范围见[剩余工作台账](binary-cpp-reconstruction-backlog-2026-09-06.zh.md)。以下顺序优先解决后续像素差分所依赖的基础行为；请求层研究并非必须依赖 GPU 才能开展，但本轮按表逐项交付。
+已有电影柔光 C++20 算法、持续帧协议和 QCut 接入继续复用，不重新实现。完整库存与历史交付范围见[剩余工作台账](binary-cpp-reconstruction-backlog-2026-09-06.zh.md)。以下顺序优先解决后续像素差分所依赖的基础行为；请求层研究并非必须依赖 GPU 才能开展，本次按四条独立任务线并行交付，表中保留完整工作包与局部验收的区别。
 
 ## 顺序队列
 
 | 顺序 / 状态 | 具体单元 | 前置证据与验收出口 |
 | --- | --- | --- |
 | 01 / **已完成** | AGFX：格式转换器 `0x8b6e4–0x8bd24` 的独立 C++ 合同 | 113 项映射、85/28/92 分类与平台条件；每次 208,911 次原生差分零差异，两进程报告一致。旧 macOS 条件来自静态恢复与单测，未实机调用。 |
-| 02 / **已完成（枚举合同）** | AGFX：`setTexFilterWrapMode` 的枚举映射 | 六字段独立转换；768 合法组合与加载镜像表一致，Apple sampler 分配成功；24 非法字段用例通过。拒绝非法输入是自有保护策略；未调用 AGFX setter 或验证采样像素。 |
-| 03 / 待做 | AGFX：一张纹理的上传 → 单 Pass 采样 → 读回 | 接 01、02；用自有像素测试 RGBA/BGRA、奇数尺寸、带 padding 的 stride、上下方向与半 texel。完成等待后读回；完整记录格式、坐标、Alpha、资源寿命与错误。格式整数相等不能代替像素验证。 |
+| 02 / **已完成（枚举合同）** | AGFX：`setTexFilterWrapMode` 的枚举映射 | 六字段独立转换；768 合法组合与加载镜像表一致，Apple sampler 分配成功；24 非法字段用例通过。拒绝非法输入是自有保护策略；真实 setter 和像素验证已由 03 补齐。 |
+| 03 / **已完成受控像素单元** | AGFX：自有纹理上传 → 原生 sampler → 自有 shader → 读回 | 5 张 RGBA/BGRA/3D/mip 图案 × 768 sampler；每进程 3,732,480 个 GPU float4 逐位一致、7,008,768 个 CPU 通道通过。8 次原生 RGBA/BGRA 读回字节一致。CPU 任意 LOD 量化/nearest 半层点仍未解，排除项单列；见[像素报告](agfx-texture-pixels-2026-09-07.zh.md)。 |
 | 04 / 待做 | AGFX + 已有柔光：逐 Pass 格式、量化与采样归因 | 接 03；固定资源 ID `7447126702137904420`、版本 `9673f80b8e2f5a07f02f9ce1130b784a` 和源帧。记录实际目标描述符、中间输出及首个差异阶段；误差阈值、舍入和颜色空间按阶段解释，不能只展示最终 MAE。 |
-| 05 / 待做 | videoeditor：材料值、关键帧与两套时间区间 | 先恢复 `MaterialEffect::set_value`、关键帧转换和 insert/update 的小函数合同，再补请求到效果事件的连接。覆盖非零起点、subtype 分支、负起点、相等值、关键帧端点、seek 与导出；序列区间、Clip trim、time_offset 独立保存，单位未证实时不转换。 |
-| 06 / 待做 | VECreator → videoeditor：一次更新、接受、reset 与多选 | 接 05；从 `UpdateGlobalFilterReqStruct` / `ResetGlobalFilterReqStruct` 找到下游处理器。用单选和两个片段对照连续更新、接受、撤销/重做、reset 与重开，确定默认值、关键帧处置及混合状态。C++ 只表达已恢复的请求行为，不重建整套 Qt UI。 |
+| 05 / **局部 C++ 已交付，事件链待补** | videoeditor：材料值、关键帧与两套时间区间 | 值/状态、sequence/trim、关键帧投影已独立编译；原生状态比较 3,858,432 次与 JSON 1,650 次零差异。插入路径是静态语义，完整 SDK 构造、请求→effect event、seek/导出仍待做；见[报告](videoeditor-cpp-contract-2026-09-07.zh.md)。 |
+| 06 / **请求侧 C++ 已交付，服务端链待补** | VECreator → videoeditor：多选、更新/reset、模型门控、对话回调 | 四模块 525 项断言；原生只对两个常量做 2,048 次比较，其他来自静态控制流。Server::invoke 下游、撤销/重做、reset 默认值与关键帧处置尚未闭环；见[报告](vecreator-cpp-contract-2026-09-07.zh.md)。 |
 | 07 / 待做 | cccreator：最小通用图执行器 + 下一张真实复杂滤镜 | 接 04–06；选定一张缓存真实卡后先登记资源身份，再建立有效图。复用现有 Gaussian/Layer/Glow/LUT，补该卡确实需要的原语；独立编译、重复/乱序帧、原生差分和 QCut 预览/导出分别验收。此处尚未指定或宣称完成第二张卡。 |
 | 08 / 待做 | lens：Deflicker 的连续帧合同与独立算法 | 从已有原生连续帧桥取得固定输入、强度、历史窗口、首尾帧、reset/seek 的输出证据，再实现并比较自有算法。测试稳定亮度、周期闪烁与运动序列；仅加载模型或调用私有库不计独立实现。 |
 | 09 / 待做 | bytenn：一个已选模型的张量合同与独立后端 | 先点名模型及上游功能，恢复布局、dtype、归一化、输出及历史状态；用可独立使用的模型/后端验证真实张量和像素。模型资产来源与运行时源码分别记录；模型依赖未解决时不宣布算法独立。此项可成为 08 或后续补帧的必要前置，届时显式调整队列。 |
-| 10 / 待做 | lens：VAS 配置 → 变换矩阵 → warp | 固定运动输入，核对坐标方向、裁切、首尾帧与状态重置，交付独立矩阵/warp 及输出对照；不把配置对象恢复算成完整防抖算法。 |
+| 10 / **六个数值原语已交付，VAS 链待补** | lens：VAS 配置 → 变换矩阵 → warp | 矩阵乘/逆、高斯核/轨迹平滑、旋转/点变换已独立 C++；4,441 案例、139,213 值逐位一致。尚缺运动估计、配置到原语连接、裁切及图像 warp；不是完整防抖；见[报告](lens-cpp-contract-2026-09-07.zh.md)。 |
 | 11 / 待做 | lens：UMVFI 补帧；随后单独做 VMB 光流/帧融合 | 两者各自建立帧对、时间参数、历史状态和输出合同。模型相关前置接 09；每个单元分别编译、差分和视频验收，不能用一个宿主调用覆盖两项完成状态。 |
 
 `libTracking.dylib` 是遥测库，不排进视觉 tracker 队列。LumiGeneRuntime、fastcv、samicore、speechsdk 仍是台账候选；未解决上表依赖前不扩大为逐库扫描任务。
@@ -37,13 +37,15 @@
 
 完成记录与复现入口：[独立工程及语义说明](../../../research/independent-agfx-contract/README.zh.md)。Release CTest **2/2**、ASan/UBSan CTest **2/2**；格式输入条目 **69,637 × 3 个哨兵 = 208,911 次/进程**，两次报告完全一致。macOS 26.6.2 / ARM64 / Apple Clang 21.0.0 / M4 Pro。四种 Apple 纹理分配及旧七用例回归通过；没有把其他压缩/深度格式的映射当作 GPU 可用性。
 
-私有证据：`/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/agfx/`，含两次差分 JSON、完整输入生成参数、构建/测试产物及 `verification.json` 源码哈希清单。新增三平台 CMake CI 与 macOS 探针仅编译检查；云端 CI 尚未运行，不能把本机通过写成 Linux/Windows 已实测。
+私有证据：`/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/agfx/`，含两次差分 JSON、完整输入生成参数、构建/测试产物及 `verification.json` 源码哈希清单。最初两个单元的三平台 CI 及 Linux sanitizer 已通过；本次已扩为四工程，新的远端结果以当前 PR head 为准，不沿用旧 head 绿灯。
 
-## 紧接着做什么
+## 并行批次结果与下一步
 
-下一项为 **03：单 Pass 上传、采样与读回**。先以奇数尺寸、RGBA/BGRA、stride padding、边界 UV 及非对称自有像素固定输入，分别观测上传字节、采样输出和完成等待后的读回。已完成的枚举映射只解决参数转换；要证明实际 nearest/linear/wrap，还需用真实原生 state 驱动受控 shader。S/T 与 3D 的 R 轴、mip/LOD 需分别验证。
+统一入口 [independent-binary-contract](../../../research/independent-binary-contract/README.zh.md) 已将四个独立库、12 组 CTest 和五个可选原生诊断编译整合。本机 Release **12/12**、ASan/UBSan **12/12** 通过。原始输入输出、未知身份拒绝、故意错误负控与源码哈希保存在 `/Users/peter/Downloads/QCut-Binary-CPP-2026-09-07/`，各报告明确动态、静态及自有保护策略。
 
-再往下仍有三处关键断口：`commitCommandBuffer(true)` 只等待 scheduled，读回需完成边界；videoeditor 的关键帧输入记录尚未与 UI 请求结构连通；VECreator 的 reset 是独立请求，不能因为默认常量为 `1.0` 就等同于直接写入 `1.0`。分别见[AGFX](agfx-texture-contract-2026-09-06.zh.md)、[videoeditor](videoeditor-filter-chain-2026-09-06.zh.md)与[VECreator](vecreator-filter-params-2026-09-06.zh.md)。
+队列现在是 **3 个已交付的受限 AGFX 单元，8 个尚未完整关闭的工作包**；其中 05、06、10 已有本轮独立源码，不能称为完全未开始，也不能因为原语数量多就扣掉完整事件链/算法链的剩余数。
+
+下一轮主线为 04 的真实柔光逐 Pass 格式/量化归因；并行补 05–06 的 Server::invoke 到材料/关键帧事件桥，以及 10 的轨迹输入到图像 warp。AGFX CPU LOD 量化独立保留待办，08/09/11 的时序算法与模型合同仍未完成。
 
 ## 证据边界
 
