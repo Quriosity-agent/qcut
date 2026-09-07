@@ -290,6 +290,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 				"key-events": { type: "boolean", default: false },
 				files: { type: "string" },
 				"seek-mode": { type: "string" },
+				"window-id": { type: "string" },
 				force: { type: "boolean", default: false },
 				discard: { type: "boolean", default: false },
 				replace: { type: "boolean", default: false },
@@ -444,6 +445,7 @@ function parseSessionArgs(args: string[]): Partial<CLIRunOptions> {
 		if (values["key-events"]) result.keyEvents = true;
 		if (values.files) result.files = values.files as string;
 		if (values["seek-mode"]) result.seekMode = values["seek-mode"] as string;
+		result.windowId = parseFiniteSessionNumber({ value: values["window-id"] });
 		if (values.force) result.force = true;
 		if (values.discard) result.discard = true;
 		if (values.replace) result.replace = true;
