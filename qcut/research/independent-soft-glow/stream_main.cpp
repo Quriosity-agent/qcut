@@ -24,7 +24,7 @@ struct Options {
     std::filesystem::path lut;
     int width = 0;
     int height = 0;
-    float intensity = 1;
+    double intensity = 1;
     softglow::IntensityMode intensity_mode = softglow::IntensityMode::output_mix;
 };
 
@@ -57,7 +57,7 @@ Options parse_options(int argc, char** argv) {
         else if (flag == "--intensity-mode") options.intensity_mode = softglow::parse_intensity_mode(value);
         else {
             std::size_t end = 0;
-            options.intensity = std::stof(value, &end);
+            options.intensity = std::stod(value, &end);
             if (end != value.size() || !std::isfinite(options.intensity) ||
                 options.intensity < 0 || options.intensity > 1) {
                 throw std::invalid_argument("intensity must be in [0, 1]");
