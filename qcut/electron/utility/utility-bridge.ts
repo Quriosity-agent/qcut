@@ -80,10 +80,12 @@ import {
 	resetPlaybackDiagnosticsInRenderer,
 } from "../claude/http/claude-http-playback-routes.js";
 import { getAgentPointerController } from "../claude/handlers/agent-pointer-controller.js";
+import { hitTestEditorPoint } from "../claude/handlers/agent-pointer-hit-test.js";
 import type {
 	AgentKeyboardPressRequest,
 	AgentKeyboardTypeRequest,
 	AgentPointerClickRequest,
+	AgentPointerHitTestRequest,
 	AgentPointerDragRequest,
 	AgentPointerMoveRequest,
 	AgentPointerScrollRequest,
@@ -650,6 +652,11 @@ async function handleMainRequest(
 
 		case "pointer:hide": {
 			return pointerController.hide();
+		}
+
+		case "pointer:hit-test": {
+			const req = data as { request: AgentPointerHitTestRequest };
+			return hitTestEditorPoint(win, req.request);
 		}
 
 		case "keyboard:press": {
