@@ -778,6 +778,15 @@ export class AgentPointerController {
 
 const controllerByWindow = new WeakMap<BrowserWindow, AgentPointerController>();
 
+/** Current Agent pointer overlay state for a window, without creating a controller. */
+export function peekAgentPointerState({
+	win,
+}: {
+	win: BrowserWindow;
+}): AgentPointerVisualState | null {
+	return controllerByWindow.get(win)?.getState() ?? null;
+}
+
 export function getAgentPointerController({
 	win,
 	resolveRef,
