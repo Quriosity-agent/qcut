@@ -12,7 +12,7 @@ using softglow::Image;
 
 void constants() {
     for (auto color : {softglow::Pixel{0, 0, 0, 0}, {1, 1, 1, 1}, {1, 0, 0, 1}, {0, 1, 0, 0}}) {
-        const float mask = color[1] == 1 ? 0 : 1;
+        const float mask = color[1] == 1 ? 0.0F : 1.0F;
         for (float size : {0.0F, 0.25F, 1.332F, 3.6F, 4.0F}) {
             const Image input(3, 7, color);
             const auto horizontal = weighted_blur({input, size, BlurAxis::horizontal});
