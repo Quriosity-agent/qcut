@@ -1,0 +1,57 @@
+name: Independent AGFX contract
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - qcut/research/independent-agfx-contract/**
+      - qcut/research/jianying-runtime-probe/agfx-format-probe.mm
+      - .github/workflows/agfx-contract.yml
+  push:
+    branches: [master]
+    paths:
+      - qcut/research/independent-agfx-contract/**
+      - qcut/research/jianying-runtime-probe/agfx-format-probe.mm
+      - .github/workflows/agfx-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: C++ contract (${{ matrix.runner }}, sanitizers=${{ matrix.sanitizers }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            sanitizers: 'OFF'
+          - runner: macos-latest
+            sanitizers: 'OFF'
+          - runner: windows-latest
+            sanitizers: 'OFF'
+          - runner: ubuntu-24.04
+            sanitizers: 'ON'
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure independent C++
+        run: >-
+          cmake -S qcut/research/independent-agfx-contract -B build-agfx-contract
+          -DCMAKE_BUILD_TYPE=Release
+          -DAGFX_CONTRACT_SANITIZERS=${{ matrix.sanitizers }}
+      - name: Build
+        run: cmake --build build-agfx-contract --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build-agfx-contract --build-config Release --output-on-failure
+      - name: Compile macOS arm64 diagnostic without loading private libraries
+        if: runner.os == 'macOS'
+        run: >-
+          xcrun clang++ -arch arm64 -std=c++20 -fobjc-arc
+          -Wall -Wextra -Wpedantic -Werror -Wno-deprecated-declarations
+          qcut/research/jianying-runtime-probe/agfx-format-probe.mm
+          qcut/research/independent-agfx-contract/pixel_format.cpp
+          qcut/research/independent-agfx-contract/sampler.cpp
+          -framework Foundation -framework Metal
+          -o build-agfx-contract/agfx-native-probe
