@@ -19,7 +19,7 @@ ctest --test-dir build --output-on-failure
 
 ```sh
 c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -ffp-contract=off \
-  image.cpp gaussian.cpp glow.cpp layer.cpp lut.cpp pipeline.cpp \
+  image.cpp gaussian.cpp glow.cpp layer.cpp lut.cpp output_mix.cpp pipeline.cpp \
   image_io.cpp main.cpp -o soft-glow
 ./soft-glow --demo --output demo.ppm
 ```
@@ -49,6 +49,7 @@ c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -ffp-contract=off \
 | `layer.cpp` / `layer.hpp` | 居中缩放、SoftLight／Normal、Precomp／Adjustment 合成 |
 | `glow.cpp` / `glow.hpp` | 阈值提取、RG／BA 高精度打包模糊、dither、辉光混合 |
 | `lut.cpp` / `lut.hpp` | 64³ 图集插值、identity LUT 生成 |
+| `output_mix.cpp` / `output_mix.hpp` | 字节域 double 强度混合及宿主 alpha 合同 |
 | `image.cpp` / `image.hpp` | 图像数据、双线性采样、边界和 RGBA8 量化 |
 | `image_io.cpp` / `image_io.hpp` | raw／PPM、可复现测试图 |
 | `main.cpp` | 独立 CLI |
@@ -106,7 +107,7 @@ python3 verify_reference.py \
 
 新增 `soft-glow-stage-replay`，复用 Gaussian、Glow、Layer、LUT 自有实现，把每个原生上游输入单独送入对应阶段；`glow_plan` 与 `pipeline_parameters` 统一尺寸/半径和场景参数。新增 180 项 C++ 阶段检查与 17 项 Python 分析检查；整个工程也已加入[统一跨平台构建](../independent-binary-contract/README.zh.md)。
 
-本机实际捕获每帧 12 draw、2 blit，目标全部 RGBA8；三种图样两次独立进程共 252 个中间输出稳定。Normal 单独重放全零差异，其余阶段仍有采样/量化残差。六组原有 C++ 输出 SHA 均未改变。身份、方向、有效 sampler object 状态和误差表见[逐阶段报告](../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md)。
+本机实际捕获每帧 12 draw、2 blit，目标全部 RGBA8；三种图样两次独立进程共 252 个中间输出稳定。Normal 单独重放全零差异，其余阶段仍有采样/量化残差。该阶段 API 提取时六组原有 C++ 输出 SHA 均未改变；后续量化修正已改变边界像素，见下节。身份、方向、有效 sampler object 状态和误差表见[逐阶段报告](../../docs/task/jianying-filter-runtime-research/soft-glow-pass-precision-2026-09-07.zh.md)。
 
 从 QCut package 目录运行，变量均指向仓库外私有证据；`CAPTURE` 和 `ANALYSIS` 必须是新目录，父目录已存在：
 
@@ -122,3 +123,7 @@ python3 research/independent-soft-glow/analyze_native_passes.py \
 ```
 
 启动器仅支持已固定的 macOS arm64 D634 私有运行时、对应资源、不透明 RGBA8、100% 场景。将 observer 参数改为 `off` 可取得无捕获的控制输出。普通 C++ 阶段 CLI 本身不需要厂商运行时：`soft-glow-stage-replay input-directory width height lut.rgba new-output-directory`；输入目录的标准文件名由分析器生成，格式/尺寸不符即失败。
+
+## 2026-09-07：量化与末端混合修正
+
+新 `quantize_unorm8` 在 double 中精确乘 255 后舍入；自产 CGL 666,580 通道零差异，旧 float 乘法负控有 127 项差异。`output_mix` 采用宿主实际字节输入与 double 强度，单帧/流 CLI 保留解析精度。六项 CTest 覆盖有理数量化、全部字节对、邻接 double、协议与阶段回归。新六组原生参考 RGB MAE 为 0.006529–0.050648，最大 6；旧表和 SHA 属于历史构建。UI 导出帧两种输入的复测结果及剩余误差见[精度修正报告](../../docs/task/jianying-filter-runtime-research/soft-glow-unorm-precision-2026-09-07.zh.md)。默认独立库仍不使用 GPU；`SOFT_GLOW_NATIVE_PROBE=ON` 仅用于可选 macOS 诊断。
