@@ -8,6 +8,7 @@ import {
 	type AgentPointerButton,
 	type AgentPointerClickRequest,
 	type AgentPointerDragRequest,
+	type AgentPointerDropFilesRequest,
 	type AgentPointerMoveRequest,
 	type AgentPointerPoint,
 	type AgentPointerResolvedTarget,
@@ -398,7 +399,16 @@ export class AgentPointerController {
 			inputMode: request.inputMode,
 			operation: async ({ session }) => {
 				const characters = Array.from(request.text);
-				if (request.intervalMs && request.intervalMs > 0) {
+				if (request.keyEvents) {
+					for (const [index, character] of characters.entries()) {
+						await this.input.sendTextKey({ session, character });
+						if (index < characters.length - 1) {
+							await this.sleep({
+								durationMs: request.intervalMs ?? KEY_SEQUENCE_INTERVAL_MS,
+							});
+						}
+					}
+				} else if (request.intervalMs && request.intervalMs > 0) {
 					for (const [index, character] of characters.entries()) {
 						await this.input.insertText({ session, text: character });
 						if (index < characters.length - 1) {
@@ -417,6 +427,105 @@ export class AgentPointerController {
 					inputMode: session.inputMode,
 					windowFocused: this.input.isWindowFocused(),
 					characterCount: characters.length,
+					method: request.keyEvents ? "key-events" : "insert-text",
+				};
+			},
+		});
+	}
+
+	/** Drop local files on a target as an external HTML5 file drop. */
+	dropFiles(
+		request: AgentPointerDropFilesRequest
+	): Promise<AgentPointerResult> {
+		return this.operations.runInput({
+			inputMode: request.inputMode,
+			operation: async ({ session }) => {
+				if (session.inputMode !== "background") {
+					throw new AgentPointerError({
+						message:
+							"File drops require background pointer input. Retry without --foreground.",
+						statusCode: 400,
+					});
+				}
+				const target = await this.moveTo({
+					session,
+					target: request,
+					action: "drop-files",
+					durationMs: request.durationMs,
+					modifiers: request.modifiers,
+				});
+				const data = {
+					items: [],
+					files: request.files,
+					dragOperationsMask: 1,
+				};
+				this.visual.update({
+					action: "drop-files",
+					inputMode: session.inputMode,
+					dragging: true,
+					pressed: false,
+					button: null,
+					x: target.x,
+					y: target.y,
+				});
+				let dropped = false;
+				try {
+					await this.input.sendDrag({
+						session,
+						type: "dragEnter",
+						point: target,
+						data,
+						modifiers: request.modifiers,
+					});
+					await this.input.sendDrag({
+						session,
+						type: "dragOver",
+						point: target,
+						data,
+						modifiers: request.modifiers,
+					});
+					await this.sleep({ durationMs: POINTER_PRESS_MS });
+					await this.input.sendDrag({
+						session,
+						type: "drop",
+						point: target,
+						data,
+						modifiers: request.modifiers,
+					});
+					dropped = true;
+				} finally {
+					if (!dropped) {
+						try {
+							await this.input.sendDrag({
+								session,
+								type: "dragCancel",
+								point: target,
+								data,
+							});
+						} catch {
+							// The page never received the drop; nothing else to unwind.
+						}
+					}
+					this.visual.update({
+						action: "drop-files",
+						inputMode: session.inputMode,
+						dragging: false,
+						pressed: false,
+						button: null,
+					});
+					this.visual.scheduleIdle();
+				}
+				return {
+					...this.buildResult({ session, action: "drop-files", target }),
+					dnd: {
+						mode: "html5",
+						intercepted: false,
+						backend: "cdp-dispatch-drag-event",
+						mimeTypes: [],
+						fileCount: request.files.length,
+						dragOperationsMask: 1,
+					},
+					...reportedModifiers(request.modifiers),
 				};
 			},
 		});
