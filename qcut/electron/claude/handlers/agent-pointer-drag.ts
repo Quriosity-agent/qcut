@@ -1,4 +1,5 @@
 import {
+	type AgentKeyboardModifier,
 	type AgentPointerAction,
 	type AgentPointerButton,
 	type AgentPointerDragData,
@@ -41,6 +42,7 @@ export interface AgentPointerDragHost {
 		session: AgentPointerInputSession;
 		target: AgentPointerTarget;
 		action: AgentPointerAction;
+		modifiers?: AgentKeyboardModifier[];
 	}) => Promise<AgentPointerResolvedTarget>;
 	moveStep: (input: {
 		session: AgentPointerInputSession;
@@ -48,6 +50,7 @@ export interface AgentPointerDragHost {
 		action: AgentPointerAction;
 		button: AgentPointerButton | null;
 		dragging: boolean;
+		modifiers?: AgentKeyboardModifier[];
 	}) => Promise<void>;
 	moveAlongPath: (input: {
 		session: AgentPointerInputSession;
@@ -57,6 +60,7 @@ export interface AgentPointerDragHost {
 		button: AgentPointerButton | null;
 		dragging: boolean;
 		stepDelayMs?: number;
+		modifiers?: AgentKeyboardModifier[];
 	}) => Promise<void>;
 }
 
@@ -103,12 +107,17 @@ export async function runAgentPointerDrag({
 }): Promise<{
 	destination: AgentPointerResolvedTarget;
 	outcome: AgentPointerDragOutcome;
+	button: AgentPointerButton;
+	modifiers: AgentKeyboardModifier[];
 }> {
 	const mode: AgentPointerDragMode = request.dnd ?? "auto";
+	const button: AgentPointerButton = request.button ?? "left";
+	const modifiers = request.modifiers ?? [];
 	const from = await host.moveTo({
 		session,
 		target: request.from,
 		action: "drag",
+		modifiers,
 	});
 	const interception =
 		mode === "mouse"
@@ -131,14 +140,15 @@ export async function runAgentPointerDrag({
 			inputMode: session.inputMode,
 			pressed: true,
 			dragging: true,
-			button: "left",
+			button,
 		});
 		await host.input.sendMouse({
 			session,
 			type: "mouseDown",
 			point: from,
-			button: "left",
+			button,
 			clickCount: 1,
+			modifiers,
 		});
 		buttonDown = true;
 		await host.sleep({
@@ -183,8 +193,9 @@ export async function runAgentPointerDrag({
 					session,
 					point: points[index],
 					action: "drag",
-					button: "left",
+					button,
 					dragging: true,
+					modifiers,
 				});
 				index += 1;
 				if (index < points.length) {
@@ -212,6 +223,7 @@ export async function runAgentPointerDrag({
 				type: "dragEnter",
 				point: host.getPosition() ?? from,
 				data: dragData,
+				modifiers,
 			});
 			for (; index < points.length; index += 1) {
 				const point = points[index];
@@ -220,6 +232,7 @@ export async function runAgentPointerDrag({
 					type: "dragOver",
 					point,
 					data: dragData,
+					modifiers,
 				});
 				host.setPosition({ x: point.x, y: point.y });
 				host.visual.update({
@@ -229,7 +242,7 @@ export async function runAgentPointerDrag({
 					y: point.y,
 					pressed: true,
 					dragging: true,
-					button: "left",
+					button,
 				});
 				if (index < points.length - 1) {
 					await host.sleep({ durationMs: stepDelayMs });
@@ -243,6 +256,7 @@ export async function runAgentPointerDrag({
 				type: "drop",
 				point: finalTarget,
 				data: dragData,
+				modifiers,
 			});
 			dropped = true;
 		} else {
@@ -251,9 +265,10 @@ export async function runAgentPointerDrag({
 				points,
 				index,
 				action: "drag",
-				button: "left",
+				button,
 				dragging: true,
 				stepDelayMs,
+				modifiers,
 			});
 			await host.sleep({
 				durationMs: request.releaseDelayMs ?? POINTER_PRESS_MS,
@@ -269,6 +284,7 @@ export async function runAgentPointerDrag({
 						type: "dragCancel",
 						point: host.getPosition() ?? from,
 						data: dragData,
+						modifiers,
 					});
 				} catch {
 					// The button release below still ends the gesture.
@@ -279,8 +295,9 @@ export async function runAgentPointerDrag({
 					session,
 					type: "mouseUp",
 					point: host.getPosition() ?? from,
-					button: "left",
+					button,
 					clickCount: 1,
+					modifiers,
 				});
 			}
 		} finally {
@@ -302,5 +319,10 @@ export async function runAgentPointerDrag({
 			statusCode: 500,
 		});
 	}
-	return { destination, outcome: describeDragOutcome({ mode, dragData }) };
+	return {
+		destination,
+		outcome: describeDragOutcome({ mode, dragData }),
+		button,
+		modifiers,
+	};
 }
