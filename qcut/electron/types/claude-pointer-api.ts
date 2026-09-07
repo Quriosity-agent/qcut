@@ -33,6 +33,25 @@ export interface AgentPointerTarget extends Partial<AgentPointerPoint> {
 
 export interface AgentPointerInputOptions {
 	inputMode?: AgentPointerInputMode;
+	/** BrowserWindow id to drive; defaults to the first editor window. */
+	windowId?: number;
+}
+
+/** A QCut BrowserWindow as listed by `GET /api/claude/windows`. */
+export interface EditorWindowInfo {
+	id: number;
+	title: string;
+	focused: boolean;
+	visible: boolean;
+	minimized: boolean;
+	bounds: AgentPointerBounds;
+	/** True for the first window, which every request targets by default. */
+	main: boolean;
+}
+
+export interface EditorWindowsResult {
+	windows: EditorWindowInfo[];
+	count: number;
 }
 
 /** Keyboard modifiers held while a pointer event is dispatched. */
@@ -195,7 +214,9 @@ export interface AgentPointerResult extends AgentPointerPoint {
 }
 
 /** What `document.elementFromPoint` finds under an editor viewport point. */
-export interface AgentPointerHitTestRequest extends AgentPointerPoint {}
+export interface AgentPointerHitTestRequest extends AgentPointerPoint {
+	windowId?: number;
+}
 
 export interface AgentPointerHitTestElement {
 	tagName: string;
