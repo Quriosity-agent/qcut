@@ -136,6 +136,13 @@ be an HTML5 drop, or `--dnd mouse` for a plain pointer drag. HTML5 drops need
 background input and a QCut editor advertising `state.pointer` 1.2.0 or newer;
 the result's `dnd.intercepted` and `dnd.mimeTypes` show what was dropped.
 
+Pointer commands accept `--modifiers alt,ctrl,cmd,shift`; `click` also takes
+`--button middle|right` and `--click-count 3`, and `drag` takes `--button`.
+Use `editor pointer hit-test` to confirm what sits under a point before or
+after an action, and `editor pointer state` to read the overlay position.
+Sequences, keyboard input, snapshot `select`/`check`, and `demo run` are
+confirm-tier like clicks and drags.
+
 ## Apply and adjust a video speed curve
 
 Export the selected element before touching the UI:
@@ -177,6 +184,7 @@ qcut editor demo run \
   --event-track demo.pointer.json \
   --speed 1.5 \
   --skip-idle \
+  --force \
   --json
 ```
 
