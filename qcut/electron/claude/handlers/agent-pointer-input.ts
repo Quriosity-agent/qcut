@@ -663,8 +663,12 @@ export class AgentPointerInput {
 			webContents.sendInputEvent({ type: "keyUp", keyCode: key });
 			return;
 		}
-		await this.sendKey({ session, type: "keyDown", key });
-		await this.sendKey({ session, type: "keyUp", key });
+		// describeCdpKey lowercases letters unless Shift is held.
+		const modifiers: AgentKeyboardModifier[] = /^[A-Z]$/.test(key)
+			? ["Shift"]
+			: [];
+		await this.sendKey({ session, type: "keyDown", key, modifiers });
+		await this.sendKey({ session, type: "keyUp", key, modifiers });
 	}
 
 	isWindowFocused(): boolean {
