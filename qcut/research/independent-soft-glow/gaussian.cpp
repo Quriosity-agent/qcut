@@ -237,4 +237,19 @@ Image gaussian_blur(const GaussianRequest& request) {
     return output;
 }
 
+Image gaussian_axis(const GaussianAxisRequest& request) {
+    validate_image(request.working_source);
+    const auto plan = gaussian_plan({request.original_width, request.original_height, request.params});
+    if (request.working_source.width != plan.work_width || request.working_source.height != plan.work_height) {
+        throw std::invalid_argument("Gaussian axis input differs from planned working dimensions");
+    }
+    if (request.axis == GaussianDirection::horizontal && plan.horizontal) {
+        return blur_axis({request.working_source, request.params, plan.samples_x, plan.step_x, plan.sigma_x, true});
+    }
+    if (request.axis == GaussianDirection::vertical && plan.vertical) {
+        return blur_axis({request.working_source, request.params, plan.samples_y, plan.step_y, plan.sigma_y, false});
+    }
+    throw std::invalid_argument("Gaussian axis must select one enabled direction");
+}
+
 } // namespace softglow
