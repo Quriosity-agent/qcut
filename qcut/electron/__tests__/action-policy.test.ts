@@ -149,6 +149,7 @@ describe("action policy", () => {
 	it("confirms sequences, keyboard input, and snapshot mutations by default", () => {
 		for (const command of [
 			"editor:pointer:sequence",
+			"editor:pointer:drop-files",
 			"editor:keyboard:press",
 			"editor:keyboard:type",
 			"editor:snapshot:select",
