@@ -130,6 +130,8 @@ ELECTRON_RUN_AS_NODE=1 "/Applications/QCut AI Video Editor.app/Contents/MacOS/QC
 
 Editor commands need the desktop app running; generation, analysis, labs, and compose rendering do not. The full command reference is the bundled [native-cli skill](qcut/.claude/skills/native-cli/SKILL.md).
 
+**Authentication.** The editor HTTP API always requires a bearer token. Set `QCUT_API_TOKEN` before launching the app to choose it; otherwise the app mints one per launch and publishes it, readable only by your user account, in `~/.local/state/qcut-pipeline/instances/<port>.json` (`%LOCALAPPDATA%\qcut-pipeline\state\instances\<port>.json` on Windows). The CLI, the agent plugins, and the built-in MCP server pick that file up by port; other HTTP clients read it or pass `--token`.
+
 ## Demo
 
 <a href="https://www.youtube.com/watch?v=H6rH5Z9HrH8">
