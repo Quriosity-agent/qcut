@@ -58,7 +58,7 @@ void known_cases(Checks& checks) {
 void native_fingerprint(Checks& checks) {
   auto fixture = agfx_test::m4_fixture(3, 5, false);
   auto queries = agfx_test::m4_queries(3, 5);
-  auto hash = 14695981039346656037ULL;
+  std::uint64_t hash = 14695981039346656037ULL;
   for (int spatial = 0; spatial < 2; ++spatial) {
     for (int mip = 0; mip < 3; ++mip) {
       if (spatial == 1 && mip == 2) continue;
