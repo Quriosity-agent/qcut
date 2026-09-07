@@ -93,7 +93,7 @@ See the [QCut plugin documentation](qcut/plugins/qcut/README.md) for setup, diag
 
 ## QCut CLI
 
-Every QCut build ships a structured command-line interface. It has 280 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`), and `--help --json` works at the root, group, command, and flag level.
+Every QCut build ships a structured command-line interface. It has 280 commands in 14 groups, every command accepts `--json` and returns a consistent envelope (`status`, `command_id`, `duration_ms`, `data`; the one exception is an async job, which answers `{ "status": "pending", "jobId": ... }` for you to poll), and `--help --json` works at the root, group, command, and flag level.
 
 ```bash
 qcut --help --json                                   # groups, commands, global flags
@@ -126,7 +126,7 @@ ELECTRON_RUN_AS_NODE=1 "/Applications/QCut AI Video Editor.app/Contents/MacOS/QC
   "/Applications/QCut AI Video Editor.app/Contents/Resources/app.asar/electron/native-pipeline/cli/cli.js" --help
 ```
 
-  On Windows and Linux the file lives at `<install dir>/resources/app.asar/electron/native-pipeline/cli/cli.js` next to the executable. Wrap that command in a shell alias or script named `qcut`, or point the plugins at it with `QCUT_CLI_PATH`.
+  On Windows and on Linux `.deb` installs the file lives at `<install dir>/resources/app.asar/electron/native-pipeline/cli/cli.js` next to the executable (`/opt/QCut AI Video Editor/` for the `.deb`). A Linux AppImage has no reachable `app.asar`: extract it once with `./QCut*.AppImage --appimage-extract` and use `squashfs-root/resources/app.asar/...` with `squashfs-root/qcut` as the executable, or build the CLI from a source checkout. Wrap that command in a shell alias or script named `qcut`, or point the plugins at it with `QCUT_CLI_PATH`.
 
 Editor commands need the desktop app running; generation, analysis, labs, and compose rendering do not. The full command reference is the bundled [native-cli skill](qcut/.claude/skills/native-cli/SKILL.md).
 
