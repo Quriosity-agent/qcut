@@ -1,4 +1,5 @@
 #include "native_segments.hpp"
+#include "native_property.hpp"
 #include "native_output.hpp"
 #include "nonlinear_property_fixtures.hpp"
 #include "wrapped_time.hpp"
@@ -45,14 +46,7 @@ class NativeProperty {
  public:
   NativeProperty(const editor_probe::Library& editor, const editor_probe::Library& creator)
       : frames(editor), segments(editor), property(editor_probe::entry<Property>(editor, 0x33f35f4)) {
-    utility_ = editor_probe::entry<KeyframeHandle (*)()>(editor, 0x2e877bc)();
-    require(utility_ != nullptr, "Property runtime utility factory returned no object");
-    const void* vtable;
-    const void* cubic;
-    std::memcpy(&vtable, utility_.get(), sizeof(vtable));
-    require(vtable == creator.base + 0x36aced0, "Property runtime has an unknown VEUtils vtable");
-    std::memcpy(&cubic, static_cast<const std::byte*>(vtable) + 0x168, sizeof(cubic));
-    require(cubic == creator.base + 0x1d803e8, "Property runtime cubic virtual slot differs");
+    utility_ = editor_probe::hold_cubic_utility(editor, creator);
   }
 
   KeyframeHandle video(const NonlinearFixture& fixture) const {
