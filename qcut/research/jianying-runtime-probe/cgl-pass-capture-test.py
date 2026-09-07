@@ -81,7 +81,7 @@ def run(output):
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     source = Path(__file__).resolve().parent
     source_hashes = {}
-    for name in ["cgl-pass-capture.cpp", "cgl-pass-capture-test.cpp", "cgl-pass-capture-test.py"]:
+    for name in ["cgl-pass-capture.cpp", "cgl-pass-capture-test.cpp", "cgl-pass-capture-test.py", "cgl-diagnostic-context.hpp"]:
         original = source / name
         (output / name).write_bytes(original.read_bytes())
         source_hashes[name] = sha256(original)
