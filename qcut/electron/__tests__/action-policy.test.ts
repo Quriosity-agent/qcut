@@ -122,6 +122,19 @@ describe("action policy", () => {
 		expect(result.matchedPattern).toBe("editor:auth:token --set");
 	});
 
+	it("classifies hidden token input as a confirm-tier auth mutation", () => {
+		const result = evaluateActionPolicy({
+			options: defaultOptions({
+				command: "editor:auth:token",
+				fromStdin: true,
+			}),
+			policy: DEFAULT_ACTION_POLICY,
+		});
+
+		expect(result.decision).toBe("confirm");
+		expect(result.matchedPattern).toBe("editor:auth:token --from-stdin");
+	});
+
 	it("allows default read-only commands", () => {
 		const result = evaluateActionPolicy({
 			command: "editor:timeline:export",
@@ -144,6 +157,37 @@ describe("action policy", () => {
 				policy: DEFAULT_ACTION_POLICY,
 			}).decision
 		).toBe("confirm");
+	});
+
+	it("confirms sequences, keyboard input, and snapshot mutations by default", () => {
+		for (const command of [
+			"editor:pointer:sequence",
+			"editor:pointer:drop-files",
+			"editor:keyboard:press",
+			"editor:keyboard:type",
+			"editor:snapshot:select",
+			"editor:snapshot:check",
+			"editor:ui:context-menu",
+			"editor:demo:run",
+		]) {
+			expect(
+				evaluateActionPolicy({ command, policy: DEFAULT_ACTION_POLICY })
+					.decision,
+				command
+			).toBe("confirm");
+		}
+		for (const command of [
+			"editor:pointer:state",
+			"editor:pointer:hit-test",
+			"editor:pointer:wait-for",
+			"editor:windows",
+		]) {
+			expect(
+				evaluateActionPolicy({ command, policy: DEFAULT_ACTION_POLICY })
+					.decision,
+				command
+			).toBe("allow");
+		}
 	});
 
 	it("keeps masked auth token reads in allow tier", () => {

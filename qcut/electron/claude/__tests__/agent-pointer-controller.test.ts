@@ -6,12 +6,29 @@ import {
 } from "../handlers/agent-pointer-controller.js";
 import type { AgentPointerResolvedTarget } from "../../types/claude-api.js";
 
-function createPointerHarness() {
+type DebuggerListener = (
+	event: unknown,
+	method: string,
+	params: Record<string, unknown>
+) => void;
+
+const INTERCEPTED_DRAG_DATA = {
+	items: [{ mimeType: "application/x-media-item", data: '{"id":"media-1"}' }],
+	dragOperationsMask: 1,
+};
+
+function createPointerHarness({
+	dragIntercept = "never",
+}: {
+	dragIntercept?: "on-first-move" | "never";
+} = {}) {
 	const inputEvents: MouseInputEvent[] = [];
 	const debuggerCommands: Array<{
 		method: string;
 		params?: Record<string, unknown>;
 	}> = [];
+	const debuggerListeners: DebuggerListener[] = [];
+	let dragInterceptedEmitted = false;
 	const visualStates: Array<Record<string, unknown>> = [];
 	const resolvedTarget: AgentPointerResolvedTarget = {
 		ref: "@e12",
@@ -56,9 +73,33 @@ function createPointerHarness() {
 				detach: vi.fn(() => {
 					debuggerAttached = false;
 				}),
+				on: vi.fn((_event: string, listener: DebuggerListener) => {
+					debuggerListeners.push(listener);
+				}),
+				removeListener: vi.fn((_event: string, listener: DebuggerListener) => {
+					const index = debuggerListeners.indexOf(listener);
+					if (index >= 0) debuggerListeners.splice(index, 1);
+				}),
 				sendCommand: vi.fn(
 					async (method: string, params?: Record<string, unknown>) => {
 						debuggerCommands.push({ method, params });
+						const pressedMove =
+							method === "Input.dispatchMouseEvent" &&
+							params?.type === "mouseMoved" &&
+							params?.buttons === 1;
+						if (
+							pressedMove &&
+							dragIntercept === "on-first-move" &&
+							!dragInterceptedEmitted
+						) {
+							// Chromium reports the page's drag payload instead of starting an OS drag.
+							dragInterceptedEmitted = true;
+							for (const listener of [...debuggerListeners]) {
+								listener({}, "Input.dragIntercepted", {
+									data: INTERCEPTED_DRAG_DATA,
+								});
+							}
+						}
 					}
 				),
 			},
@@ -72,6 +113,7 @@ function createPointerHarness() {
 	return {
 		controller,
 		debuggerCommands,
+		debuggerListeners,
 		destroy: () => {
 			destroyed = true;
 		},
@@ -311,6 +353,382 @@ describe("AgentPointerController", () => {
 			expect.objectContaining({ action: "hidden", visible: false })
 		);
 		expect(harness.visualStates).toHaveLength(0);
+	});
+});
+
+describe("AgentPointerController HTML5 drag-and-drop", () => {
+	const from = { x: 200, y: 700 };
+	const to = { x: 820, y: 700 };
+
+	function commandTypes(
+		commands: Array<{ method: string; params?: Record<string, unknown> }>
+	): string[] {
+		return commands.map((command) => {
+			if (command.method === "Input.setInterceptDrags") {
+				return `intercept:${String(command.params?.enabled)}`;
+			}
+			return `${command.method === "Input.dispatchDragEvent" ? "drag" : "mouse"}:${String(command.params?.type)}`;
+		});
+	}
+
+	it("replays an intercepted HTML5 drag with CDP drag events", async () => {
+		const harness = createPointerHarness({ dragIntercept: "on-first-move" });
+
+		const result = await harness.controller.drag({ from, to, dnd: "html5" });
+
+		const types = commandTypes(harness.debuggerCommands);
+		const enable = types.indexOf("intercept:true");
+		const pressed = types.indexOf("mouse:mousePressed");
+		const enter = types.indexOf("drag:dragEnter");
+		const drop = types.indexOf("drag:drop");
+		const released = types.indexOf("mouse:mouseReleased");
+		const disable = types.indexOf("intercept:false");
+		expect(enable).toBeGreaterThanOrEqual(0);
+		expect(pressed).toBeGreaterThan(enable);
+		expect(enter).toBeGreaterThan(pressed);
+		expect(
+			types.filter((type) => type === "drag:dragOver").length
+		).toBeGreaterThan(2);
+		expect(drop).toBeGreaterThan(enter);
+		expect(released).toBeGreaterThan(drop);
+		expect(disable).toBeGreaterThan(released);
+		// Pressed mouse moves stop once the page owns the drag.
+		expect(
+			types.slice(enter).filter((type) => type === "mouse:mouseMoved")
+		).toEqual([]);
+		expect(harness.debuggerCommands[drop]?.params).toEqual({
+			type: "drop",
+			x: 820,
+			y: 700,
+			data: INTERCEPTED_DRAG_DATA,
+		});
+		expect(result.dnd).toEqual({
+			mode: "html5",
+			intercepted: true,
+			backend: "cdp-dispatch-drag-event",
+			mimeTypes: ["application/x-media-item"],
+			fileCount: 0,
+			dragOperationsMask: 1,
+		});
+		expect(result).toEqual(expect.objectContaining({ x: 820, y: 700 }));
+		expect(harness.debuggerListeners).toEqual([]);
+		expect(harness.visualStates.at(-1)).toEqual(
+			expect.objectContaining({ dragging: false, pressed: false })
+		);
+		await harness.controller.hide();
+	});
+
+	it("fails closed when html5 is required but the page never starts a drag", async () => {
+		const harness = createPointerHarness({ dragIntercept: "never" });
+
+		await expect(
+			harness.controller.drag({ from, to, dnd: "html5", dragStartTimeoutMs: 0 })
+		).rejects.toThrow("did not start an HTML5 drag-and-drop");
+
+		const types = commandTypes(harness.debuggerCommands);
+		expect(types).toContain("mouse:mouseReleased");
+		expect(types).toContain("intercept:false");
+		expect(types.some((type) => type.startsWith("drag:"))).toBe(false);
+		expect(harness.debuggerListeners).toEqual([]);
+		expect(harness.visualStates.at(-1)).toEqual(
+			expect.objectContaining({
+				action: "drag",
+				dragging: false,
+				pressed: false,
+			})
+		);
+		await harness.controller.hide();
+	});
+
+	it("falls back to a mouse drag in auto mode when nothing is intercepted", async () => {
+		const harness = createPointerHarness({ dragIntercept: "never" });
+
+		const result = await harness.controller.drag({
+			from,
+			to,
+			dragStartTimeoutMs: 0,
+		});
+
+		const types = commandTypes(harness.debuggerCommands);
+		expect(types).toContain("intercept:true");
+		expect(types.some((type) => type.startsWith("drag:"))).toBe(false);
+		const pressed = types.indexOf("mouse:mousePressed");
+		const released = types.indexOf("mouse:mouseReleased");
+		// Interception is switched off before the mouse fallback finishes the
+		// gesture, so Chromium handles the remaining drag natively.
+		const disabled = types.indexOf("intercept:false");
+		expect(disabled).toBeGreaterThan(pressed);
+		expect(disabled).toBeLessThan(released);
+		expect(types.slice(disabled + 1, released)).toContain("mouse:mouseMoved");
+		expect(types.filter((type) => type === "intercept:false")).toHaveLength(1);
+		expect(
+			types
+				.slice(pressed + 1, released)
+				.filter((type) => type === "mouse:mouseMoved").length
+		).toBeGreaterThan(2);
+		expect(result.dnd).toEqual({
+			mode: "auto",
+			intercepted: false,
+			backend: "mouse",
+			mimeTypes: [],
+			fileCount: 0,
+			dragOperationsMask: null,
+		});
+		await harness.controller.hide();
+	});
+
+	it("never intercepts in mouse mode", async () => {
+		const harness = createPointerHarness({ dragIntercept: "on-first-move" });
+
+		const result = await harness.controller.drag({ from, to, dnd: "mouse" });
+
+		const types = commandTypes(harness.debuggerCommands);
+		expect(types.some((type) => type.startsWith("intercept:"))).toBe(false);
+		expect(types.some((type) => type.startsWith("drag:"))).toBe(false);
+		expect(result.dnd).toEqual(
+			expect.objectContaining({ mode: "mouse", intercepted: false })
+		);
+		await harness.controller.hide();
+	});
+
+	it("rejects html5 drags in foreground mode before pressing the button", async () => {
+		const harness = createPointerHarness({ dragIntercept: "on-first-move" });
+
+		await expect(
+			harness.controller.drag({
+				from,
+				to,
+				dnd: "html5",
+				inputMode: "foreground",
+			})
+		).rejects.toThrow("requires background pointer input");
+
+		expect(harness.inputEvents.map((event) => event.type)).not.toContain(
+			"mouseDown"
+		);
+		await harness.controller.hide();
+	});
+});
+
+describe("AgentPointerController buttons, modifiers, and click counts", () => {
+	it("clicks with the requested button, modifiers, and click count", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.click({
+			ref: "@e12",
+			button: "middle",
+			clickCount: 3,
+			modifiers: ["Shift", "Meta"],
+		});
+
+		const presses = harness.debuggerCommands.filter(
+			(command) => command.params?.type === "mousePressed"
+		);
+		expect(presses.map((command) => command.params?.clickCount)).toEqual([
+			1, 2, 3,
+		]);
+		expect(presses[0]?.params).toEqual(
+			expect.objectContaining({ button: "middle", buttons: 4, modifiers: 12 })
+		);
+		const releases = harness.debuggerCommands.filter(
+			(command) => command.params?.type === "mouseReleased"
+		);
+		expect(releases).toHaveLength(3);
+		expect(result).toEqual(
+			expect.objectContaining({
+				action: "click",
+				button: "middle",
+				clickCount: 3,
+				modifiers: ["Shift", "Meta"],
+			})
+		);
+		await harness.controller.hide();
+	});
+
+	it("clamps click counts and omits modifiers from results when none were held", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.click({
+			ref: "@e12",
+			clickCount: 9,
+		});
+
+		expect(
+			harness.debuggerCommands.filter(
+				(command) => command.params?.type === "mousePressed"
+			)
+		).toHaveLength(3);
+		expect(result.clickCount).toBe(3);
+		expect(result.button).toBe("left");
+		expect(result).not.toHaveProperty("modifiers");
+		await harness.controller.hide();
+	});
+
+	it("drags with the right button and modifiers held throughout", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.drag({
+			from: { x: 200, y: 700 },
+			to: { x: 820, y: 700 },
+			button: "right",
+			modifiers: ["Alt"],
+			dnd: "mouse",
+		});
+
+		const pressed = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mousePressed"
+		);
+		const released = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mouseReleased"
+		);
+		const pressedMoves = harness.debuggerCommands.filter(
+			(command) =>
+				command.params?.type === "mouseMoved" && command.params?.buttons === 2
+		);
+		expect(pressed?.params).toEqual(
+			expect.objectContaining({ button: "right", buttons: 2, modifiers: 1 })
+		);
+		expect(released?.params).toEqual(
+			expect.objectContaining({ button: "right", buttons: 0, modifiers: 1 })
+		);
+		expect(pressedMoves.length).toBeGreaterThan(2);
+		expect(
+			pressedMoves.every((command) => command.params?.modifiers === 1)
+		).toBe(true);
+		expect(result).toEqual(
+			expect.objectContaining({ button: "right", modifiers: ["Alt"] })
+		);
+		await harness.controller.hide();
+	});
+
+	it("scrolls with modifiers for ctrl-wheel zoom", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.scroll({
+			x: 640,
+			y: 360,
+			deltaY: -120,
+			modifiers: ["Control"],
+		});
+
+		const wheel = harness.debuggerCommands.find(
+			(command) => command.params?.type === "mouseWheel"
+		);
+		expect(wheel?.params).toEqual(
+			expect.objectContaining({ deltaY: -120, modifiers: 2 })
+		);
+		expect(result).toEqual(
+			expect.objectContaining({ action: "scroll", modifiers: ["Control"] })
+		);
+		await harness.controller.hide();
+	});
+});
+
+describe("AgentPointerController typing and file drops", () => {
+	it("types with per-character key events when requested", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.typeText({
+			text: "ab",
+			keyEvents: true,
+		});
+
+		const keyEvents = harness.debuggerCommands.filter(
+			(command) => command.method === "Input.dispatchKeyEvent"
+		);
+		expect(keyEvents.map((command) => command.params?.type)).toEqual([
+			"keyDown",
+			"keyUp",
+			"keyDown",
+			"keyUp",
+		]);
+		expect(
+			harness.debuggerCommands.some(
+				(command) => command.method === "Input.insertText"
+			)
+		).toBe(false);
+		expect(result).toEqual(
+			expect.objectContaining({ characterCount: 2, method: "key-events" })
+		);
+	});
+
+	it("still inserts text by default", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.typeText({ text: "hello" });
+
+		expect(harness.debuggerCommands.at(-1)).toEqual({
+			method: "Input.insertText",
+			params: { text: "hello" },
+		});
+		expect(result.method).toBe("insert-text");
+	});
+
+	it("drops files on a target with HTML5 drag events", async () => {
+		const harness = createPointerHarness();
+
+		const result = await harness.controller.dropFiles({
+			ref: "@e12",
+			files: ["/tmp/clip.mp4", "/tmp/cover.png"],
+			modifiers: ["Alt"],
+		});
+
+		const dragEvents = harness.debuggerCommands.filter(
+			(command) => command.method === "Input.dispatchDragEvent"
+		);
+		expect(dragEvents.map((command) => command.params?.type)).toEqual([
+			"dragEnter",
+			"dragOver",
+			"drop",
+		]);
+		expect(dragEvents[2]?.params).toEqual(
+			expect.objectContaining({
+				x: 240,
+				y: 180,
+				modifiers: 1,
+				data: {
+					items: [],
+					files: ["/tmp/clip.mp4", "/tmp/cover.png"],
+					dragOperationsMask: 1,
+				},
+			})
+		);
+		expect(
+			harness.debuggerCommands.some(
+				(command) => command.params?.type === "mousePressed"
+			)
+		).toBe(false);
+		expect(result).toEqual(
+			expect.objectContaining({
+				action: "drop-files",
+				modifiers: ["Alt"],
+				dnd: expect.objectContaining({
+					backend: "cdp-dispatch-drag-event",
+					fileCount: 2,
+					intercepted: false,
+				}),
+			})
+		);
+		expect(harness.visualStates).toContainEqual(
+			expect.objectContaining({ action: "drop-files", dragging: true })
+		);
+		expect(harness.visualStates.at(-1)).toEqual(
+			expect.objectContaining({ dragging: false })
+		);
+		await harness.controller.hide();
+	});
+
+	it("refuses file drops through foreground input", async () => {
+		const harness = createPointerHarness();
+
+		await expect(
+			harness.controller.dropFiles({
+				ref: "@e12",
+				files: ["/tmp/clip.mp4"],
+				inputMode: "foreground",
+			})
+		).rejects.toThrow("require background pointer input");
+		expect(harness.inputEvents).toEqual([]);
 	});
 });
 

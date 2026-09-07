@@ -58,7 +58,10 @@ Editor Commands (requires running QCut — use --project-id for most):
   editor:navigator:*,
   editor:pointer:move, editor:pointer:hover, editor:pointer:click,
   editor:pointer:double-click, editor:pointer:right-click,
-  editor:pointer:drag, editor:pointer:scroll, editor:pointer:hide
+  editor:pointer:drag, editor:pointer:scroll, editor:pointer:hide,
+  editor:pointer:wait-for, editor:pointer:sequence,
+  editor:pointer:state, editor:pointer:hit-test, editor:pointer:drop-files,
+  editor:keyboard:press, editor:keyboard:type, editor:windows
 
 Local Jianying Reference (read-only; does not require running QCut):
   editor:jianying-transition:*
@@ -82,11 +85,44 @@ Examples:
   ${bin} gen image -t "A cat in space"
   ${bin} gen video -m kling_2_6_pro -t "Ocean waves" -d 5s
   ${bin} flow run -c pipeline.yaml -i "A sunset"
-  ${bin} analyze transcribe --video-url video.mp4
+  ${bin} analyze transcribe -i video.mp4 --srt
   ${bin} system models --json
   ${bin} editor:timeline:export --project-id my-proj --json
 `.trim()
 	);
+}
+
+/**
+ * The editor group resolves `editor <area> <action>` dynamically instead of
+ * declaring actions, so derive its areas from the registry keys.
+ */
+export function listEditorAreas(): Array<{
+	area: string;
+	actions: string[];
+}> {
+	const byArea = new Map<string, string[]>();
+	for (const name of Object.keys(COMMANDS_REGISTRY)) {
+		if (!name.startsWith("editor:")) continue;
+		const [, area, ...rest] = name.split(":");
+		if (!area) continue;
+		const action = rest.join(":");
+		const actions = byArea.get(area) ?? [];
+		if (action) actions.push(action);
+		byArea.set(area, actions);
+	}
+	return [...byArea.entries()]
+		.map(([area, actions]) => ({ area, actions: actions.sort() }))
+		.sort((a, b) => a.area.localeCompare(b.area));
+}
+
+function editorAreaLines(): string[] {
+	return listEditorAreas().map(({ area, actions }) => {
+		const summary =
+			actions.length === 0
+				? "(no sub-actions)"
+				: `${actions.length} action${actions.length === 1 ? "" : "s"}: ${actions.slice(0, 6).join(", ")}${actions.length > 6 ? ", …" : ""}`;
+		return `  ${area.padEnd(20)} ${summary}`;
+	});
 }
 
 /** Print help for a specific command group. */
@@ -96,6 +132,25 @@ export function printGroupHelp(groupName: string): void {
 	if (!group) {
 		console.error(`Unknown group: ${groupName}`);
 		process.exit(2);
+	}
+
+	if (group.name === "editor") {
+		console.log(
+			`
+${bin} editor — ${group.label}
+
+${group.description}
+
+Usage: ${bin} editor <area> <action> [options]
+       ${bin} editor <action> [options]            (health, snapshot, undo, redo, console, errors)
+
+Areas:
+${editorAreaLines().join("\n")}
+
+Run "${bin} editor <area> <action> --help --json" for action flags.
+`.trim()
+		);
+		return;
 	}
 
 	const actionLines: string[] = [];
@@ -128,14 +183,35 @@ export function printGroupHelpJson(groupName: string): void {
 		jsonError(`Unknown group: ${groupName}`, "help:unknown-group");
 		return;
 	}
-	const actions = Object.entries(group.actions).map(([action, internalCmd]) => {
-		const cmd = getCommand(internalCmd);
-		return {
-			action,
-			command: internalCmd,
-			description: cmd?.description ?? internalCmd,
-		};
-	});
+	const actions =
+		group.name === "editor"
+			? listEditorAreas().flatMap(({ area, actions: areaActions }) =>
+					areaActions.length === 0
+						? [
+								{
+									action: area,
+									command: `editor:${area}`,
+									description:
+										getCommand(`editor:${area}`)?.description ??
+										`editor:${area}`,
+								},
+							]
+						: areaActions.map((action) => ({
+								action: `${area} ${action}`,
+								command: `editor:${area}:${action}`,
+								description:
+									getCommand(`editor:${area}:${action}`)?.description ??
+									`editor:${area}:${action}`,
+							}))
+				)
+			: Object.entries(group.actions).map(([action, internalCmd]) => {
+					const cmd = getCommand(internalCmd);
+					return {
+						action,
+						command: internalCmd,
+						description: cmd?.description ?? internalCmd,
+					};
+				});
 	jsonOk({
 		group: group.name,
 		label: group.label,

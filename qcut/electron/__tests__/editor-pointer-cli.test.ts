@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -6,6 +6,7 @@ import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import {
 	handleKeyboardCommand,
 	handlePointerCommand,
+	handleWindowsCommand,
 	waitForEditorUi,
 } from "../native-pipeline/cli/cli-handlers-pointer.js";
 import { parseSessionLine } from "../native-pipeline/cli/cli-runner/session.js";
@@ -18,6 +19,14 @@ const BACKGROUND_POINTER_REQUIREMENT = {
 	feature: "Background pointer input",
 	remediation:
 		"Update QCut. Editors advertising state.pointer 1.0.0 can retry with --foreground.",
+} as const;
+
+const HTML5_DRAG_REQUIREMENT = {
+	name: "state.pointer",
+	minVersion: "1.2.0",
+	feature: "HTML5 drag-and-drop",
+	remediation:
+		"Update QCut, or retry with --dnd auto so older editors fall back to a mouse drag.",
 } as const;
 
 function makeOptions({
@@ -178,6 +187,549 @@ describe("editor pointer CLI handlers", () => {
 		expect(requireCapability).toHaveBeenCalledWith(
 			BACKGROUND_POINTER_REQUIREMENT
 		);
+	});
+
+	it("passes the HTML5 drag mode through and requires the newer pointer capability", async () => {
+		const { client, post, requireCapability } = createClient();
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: { fromX: 0, fromY: 700, toX: 800, toY: 700, dnd: "html5" },
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({ dnd: "html5", inputMode: "background" })
+		);
+		expect(requireCapability).toHaveBeenCalledWith(
+			BACKGROUND_POINTER_REQUIREMENT
+		);
+		expect(requireCapability).toHaveBeenCalledWith(HTML5_DRAG_REQUIREMENT);
+	});
+
+	it("rejects invalid or foreground HTML5 drag modes before sending a request", async () => {
+		const { client, post } = createClient();
+		const invalid = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: { fromX: 0, fromY: 700, toX: 800, toY: 700, dnd: "native" },
+			}),
+		});
+		expect(invalid.success).toBe(false);
+		expect(invalid.error).toContain("--dnd must be one of");
+
+		const foreground = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 0,
+					fromY: 700,
+					toX: 800,
+					toY: 700,
+					dnd: "html5",
+					foreground: true,
+				},
+			}),
+		});
+		expect(foreground.success).toBe(false);
+		expect(foreground.error).toContain("--foreground");
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it("parses --dnd for one-shot drags", () => {
+		expect(
+			parseCliArgs([
+				"editor:pointer:drag",
+				"--from-ref",
+				"@e12",
+				"--to-ref",
+				"@e27",
+				"--dnd",
+				"html5",
+			])
+		).toEqual(expect.objectContaining({ dnd: "html5" }));
+	});
+
+	it("passes modifiers, buttons, and click counts through pointer clicks", async () => {
+		const { client, post } = createClient();
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: {
+					ref: "@e12",
+					modifiers: "shift, cmd",
+					button: "middle",
+					clickCount: 3,
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/click", {
+			ref: "@e12",
+			inputMode: "background",
+			modifiers: ["shift", "cmd"],
+			button: "middle",
+			clickCount: 3,
+		});
+	});
+
+	it("rejects buttons and click counts on actions that cannot use them", async () => {
+		const { client, post } = createClient();
+		const hover = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hover",
+				values: { ref: "@e12", button: "middle" },
+			}),
+		});
+		const rightClick = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:right-click",
+				values: { ref: "@e12", clickCount: 2 },
+			}),
+		});
+		const badButton = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", button: "back" },
+			}),
+		});
+
+		expect(hover.success).toBe(false);
+		expect(hover.error).toContain("--button only applies");
+		expect(rightClick.success).toBe(false);
+		expect(rightClick.error).toContain("--click-count only applies");
+		expect(badButton.success).toBe(false);
+		expect(badButton.error).toContain("--button must be one of");
+		expect(post).not.toHaveBeenCalled();
+	});
+
+	it("passes buttons and modifiers through drags and modifiers through scrolls", async () => {
+		const { client, post } = createClient();
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 0,
+					fromY: 700,
+					toX: 800,
+					toY: 700,
+					button: "right",
+					modifiers: "alt",
+				},
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:scroll",
+				values: { x: 640, y: 360, deltaY: -120, modifiers: "ctrl" },
+			}),
+		});
+
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({ button: "right", modifiers: ["alt"] })
+		);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/scroll",
+			expect.objectContaining({ deltaY: -120, modifiers: ["ctrl"] })
+		);
+	});
+
+	it("reads pointer state and hit-tests a target without dispatching input", async () => {
+		const get = vi.fn(async (path: string) => {
+			if (path === "/api/claude/pointer/state") {
+				return { visible: true, x: 10, y: 20, action: "idle" };
+			}
+			return {
+				elements: [
+					{
+						ref: "@e12",
+						bounds: { x: 100, y: 200, width: 40, height: 20 },
+					},
+				],
+			};
+		});
+		const post = vi.fn(async () => ({
+			action: "hit-test",
+			hit: true,
+			element: { testId: "timeline-element" },
+		}));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const state = await handlePointerCommand({
+			client,
+			options: makeOptions({ command: "editor:pointer:state" }),
+		});
+		const hit = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { ref: "@e12" },
+			}),
+		});
+		const hitByCoordinates = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { x: 388, y: 879 },
+			}),
+		});
+
+		expect(state.success).toBe(true);
+		expect(state.data).toEqual(expect.objectContaining({ action: "idle" }));
+		expect(hit.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 120,
+			y: 210,
+		});
+		expect(hitByCoordinates.success).toBe(true);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 388,
+			y: 879,
+		});
+	});
+
+	it("rejects a malformed --click-count instead of treating it as omitted", async () => {
+		const oneShot = parseCliArgs([
+			"editor:pointer:click",
+			"--ref",
+			"@e12",
+			"--click-count",
+			"nope",
+		]);
+		expect(Number.isNaN(oneShot.clickCount)).toBe(true);
+		const session = parseSessionLine(
+			"editor:pointer:click --ref @e12 --click-count nope",
+			makeOptions({ command: "editor:pointer:click", values: {} })
+		);
+		expect(Number.isNaN(session?.clickCount)).toBe(true);
+		expect(
+			parseCliArgs(["editor:pointer:click", "--ref", "@e12"]).clickCount
+		).toBeUndefined();
+
+		const { client } = createClient();
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", clickCount: Number.NaN },
+			}),
+		});
+		expect(result.success).toBe(false);
+		expect(result.error).toContain("--click-count must be 1, 2, or 3");
+	});
+
+	it("forwards --drag-start-timeout-ms to the drag request and rejects negatives", async () => {
+		const { client, post } = createClient();
+		const forwarded = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 10,
+					fromY: 20,
+					toX: 30,
+					toY: 40,
+					dragStartTimeoutMs: 50,
+				},
+			}),
+		});
+		expect(forwarded.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({ dragStartTimeoutMs: 50 })
+		);
+
+		const rejected = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 10,
+					fromY: 20,
+					toX: 30,
+					toY: 40,
+					dragStartTimeoutMs: -1,
+				},
+			}),
+		});
+		expect(rejected.success).toBe(false);
+		expect(rejected.error).toContain("--drag-start-timeout-ms");
+	});
+
+	it("parses --drag-start-timeout-ms for one-shot and session drags", () => {
+		expect(
+			parseCliArgs([
+				"editor:pointer:drag",
+				"--from-ref",
+				"@e1",
+				"--to-ref",
+				"@e2",
+				"--drag-start-timeout-ms",
+				"50",
+			]).dragStartTimeoutMs
+		).toBe(50);
+		expect(
+			parseSessionLine(
+				"editor:pointer:drag --from-ref @e1 --to-ref @e2 --drag-start-timeout-ms 75",
+				makeOptions({ command: "editor:pointer:drag", values: {} })
+			)?.dragStartTimeoutMs
+		).toBe(75);
+	});
+
+	it("parses --modifiers, --button, and --click-count for one-shot pointer commands", () => {
+		expect(
+			parseCliArgs([
+				"editor:pointer:click",
+				"--ref",
+				"@e12",
+				"--modifiers",
+				"shift,cmd",
+				"--button",
+				"middle",
+				"--click-count",
+				"3",
+			])
+		).toEqual(
+			expect.objectContaining({
+				modifiers: "shift,cmd",
+				button: "middle",
+				clickCount: 3,
+			})
+		);
+	});
+
+	it("drops local files on a target and requires the HTML5 capability", async () => {
+		const directory = mkdtempSync(join(tmpdir(), "qcut-drop-files-"));
+		const stillPath = join(directory, "still.png");
+		writeFileSync(stillPath, "png");
+		try {
+			const { client, post, requireCapability } = createClient();
+			const result = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: `${stillPath}, ` },
+				}),
+			});
+			expect(result.success).toBe(true);
+			expect(post).toHaveBeenCalledWith("/api/claude/pointer/drop-files", {
+				x: 300,
+				y: 200,
+				files: [stillPath],
+				inputMode: "background",
+			});
+			expect(requireCapability).toHaveBeenCalledWith(HTML5_DRAG_REQUIREMENT);
+
+			const missing = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: join(directory, "nope.png") },
+				}),
+			});
+			expect(missing.success).toBe(false);
+			expect(missing.error).toContain("Dropped file not found");
+
+			const foreground = await handlePointerCommand({
+				client,
+				options: makeOptions({
+					command: "editor:pointer:drop-files",
+					values: { x: 300, y: 200, files: stillPath, foreground: true },
+				}),
+			});
+			expect(foreground.success).toBe(false);
+			expect(foreground.error).toContain("--foreground");
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("resolves semantic, normalized, and ref waypoints in --via", async () => {
+		const get = vi.fn(async () => ({
+			viewport: { width: 1200, height: 800 },
+			elements: [],
+		}));
+		const post = vi.fn(async () => ({ action: "drag" }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					fromX: 0,
+					fromY: 700,
+					toX: 800,
+					toY: 700,
+					via: JSON.stringify([
+						{ normalizedX: 0.5, normalizedY: 0.25 },
+						{ ref: "@e3" },
+						{ x: 10, y: 20 },
+					]),
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({
+				via: [{ x: 600, y: 200 }, { ref: "@e3" }, { x: 10, y: 20 }],
+			})
+		);
+	});
+
+	it("passes --key-events through keyboard type", async () => {
+		const { client, post } = createClient();
+		await handleKeyboardCommand({
+			client,
+			options: makeOptions({
+				command: "editor:keyboard:type",
+				values: { text: "hi", keyEvents: true },
+			}),
+		});
+		expect(post).toHaveBeenCalledWith("/api/claude/keyboard/type", {
+			text: "hi",
+			intervalMs: undefined,
+			inputMode: "background",
+			keyEvents: true,
+		});
+	});
+
+	it("keeps pointer flags in session mode", () => {
+		const session = parseSessionLine(
+			"editor:pointer:drag --from-ref @e1 --to-ref @e2 --dnd html5 --modifiers shift --button right --steps 12 --hold-ms 50 --no-verify --foreground",
+			{ json: true }
+		);
+		expect(session).toEqual(
+			expect.objectContaining({
+				command: "editor:pointer:drag",
+				fromRef: "@e1",
+				toRef: "@e2",
+				dnd: "html5",
+				modifiers: "shift",
+				button: "right",
+				steps: 12,
+				holdMs: 50,
+				verify: false,
+				foreground: true,
+			})
+		);
+		const typed = parseSessionLine(
+			"editor:keyboard:type --text hello --key-events --interval-ms 20",
+			{ json: true }
+		);
+		expect(typed).toEqual(
+			expect.objectContaining({
+				keyEvents: true,
+				intervalMs: 20,
+				text: "hello",
+			})
+		);
+		const drop = parseSessionLine(
+			"editor:pointer:drop-files --files ./a.png,./b.mp4 --target panel.media --click-count 2",
+			{ json: true }
+		);
+		expect(drop).toEqual(
+			expect.objectContaining({
+				files: "./a.png,./b.mp4",
+				target: "panel.media",
+				clickCount: 2,
+			})
+		);
+	});
+
+	it("scopes pointer, keyboard, and probe requests to --window-id", async () => {
+		const get = vi.fn(async () => ({ visible: true, x: 1, y: 2 }));
+		const post = vi.fn(async () => ({ ok: true }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:click",
+				values: { ref: "@e12", windowId: 2 },
+			}),
+		});
+		await handleKeyboardCommand({
+			client,
+			options: makeOptions({
+				command: "editor:keyboard:press",
+				values: { keys: "Enter", windowId: 2 },
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:hit-test",
+				values: { x: 5, y: 6, windowId: 2 },
+			}),
+		});
+		await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:state",
+				values: { windowId: 2 },
+			}),
+		});
+
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/click",
+			expect.objectContaining({ ref: "@e12", windowId: 2 })
+		);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/keyboard/press",
+			expect.objectContaining({ keys: ["Enter"], windowId: 2 })
+		);
+		expect(post).toHaveBeenCalledWith("/api/claude/pointer/hit-test", {
+			x: 5,
+			y: 6,
+			windowId: 2,
+		});
+		expect(get).toHaveBeenCalledWith("/api/claude/pointer/state", {
+			windowId: "2",
+		});
+	});
+
+	it("lists windows and parses --window-id in one-shot and session modes", async () => {
+		const get = vi.fn(async () => ({ count: 1, windows: [{ id: 1 }] }));
+		const client = { get } as unknown as EditorApiClient;
+		const result = await handleWindowsCommand({ client });
+		expect(result.success).toBe(true);
+		expect(get).toHaveBeenCalledWith("/api/claude/windows");
+		expect(
+			parseCliArgs(["editor:pointer:click", "--ref", "@e1", "--window-id", "3"])
+		).toEqual(expect.objectContaining({ windowId: 3 }));
+		expect(
+			parseSessionLine("editor:pointer:hit-test --x 1 --y 2 --window-id 4", {
+				json: true,
+			})
+		).toEqual(expect.objectContaining({ windowId: 4 }));
 	});
 
 	it("drags flattened interactive list items by semantic index", async () => {
@@ -755,6 +1307,167 @@ describe("editor pointer CLI handlers", () => {
 			y: 200,
 			inputMode: "background",
 		});
+	});
+
+	it("drags the playhead along the ruler scale for --to-time", async () => {
+		let dragged = false;
+		const rulerLabel = (time: number) => ({
+			ref: `@label-${time}`,
+			testId: null,
+			textPreview: `${time}s`,
+			bounds: { x: 200 + time * 50, y: 760, width: 14, height: 10 },
+		});
+		const get = vi.fn(async (url: string, query?: Record<string, string>) => {
+			if (url === "/api/claude/navigator/projects") {
+				return { activeProjectId: "project-1" };
+			}
+			if (url === "/api/claude/snapshot" && query?.interactive === "false") {
+				return {
+					elements: [
+						rulerLabel(0),
+						rulerLabel(5),
+						rulerLabel(10),
+						// A stray "5s" badge in another row must not skew the fit.
+						{
+							ref: "@badge",
+							testId: null,
+							textPreview: "5s",
+							bounds: { x: 900, y: 120, width: 14, height: 10 },
+						},
+					],
+				};
+			}
+			if (url === "/api/claude/snapshot") {
+				return {
+					elements: [
+						{
+							ref: "@playhead",
+							testId: "timeline-playhead",
+							bounds: {
+								x: dragged ? 349 : 199,
+								y: 300,
+								width: 2,
+								height: 200,
+							},
+						},
+					],
+				};
+			}
+			throw new Error(`Unexpected GET ${url}`);
+		});
+		const post = vi.fn(async (url: string) => {
+			if (url === "/api/claude/pointer/drag") dragged = true;
+			return { url };
+		});
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					from: "timeline.playhead",
+					toTime: 3,
+					projectId: "project-1",
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/pointer/drag",
+			expect.objectContaining({
+				from: { x: 200, y: 765 },
+				to: { x: 350, y: 765 },
+				dnd: "mouse",
+			})
+		);
+		expect(post.mock.calls.map(([url]) => url)).not.toContain(
+			"/api/claude/timeline/project-1/playback"
+		);
+		expect(result.data).toEqual(
+			expect.objectContaining({
+				method: "drag",
+				achievedTime: 3,
+				calibration: expect.objectContaining({
+					pixelsPerSecond: 50,
+					originX: 200,
+					labelCount: 3,
+				}),
+			})
+		);
+	});
+
+	it("seeks through the API when --seek-mode api is requested", async () => {
+		const get = vi.fn(async (url: string) => {
+			if (url === "/api/claude/navigator/projects") {
+				return { activeProjectId: "project-1" };
+			}
+			return {
+				elements: [
+					{
+						ref: "@playhead",
+						testId: "timeline-playhead",
+						bounds: { x: 100, y: 300, width: 2, height: 200 },
+					},
+				],
+			};
+		});
+		const post = vi.fn(async (url: string) => ({ url }));
+		const client = {
+			get,
+			post,
+			requireCapability: vi.fn(async () => undefined),
+		} as unknown as EditorApiClient;
+
+		const result = await handlePointerCommand({
+			client,
+			options: makeOptions({
+				command: "editor:pointer:drag",
+				values: {
+					from: "timeline.playhead",
+					toTime: 4,
+					projectId: "project-1",
+					seekMode: "api",
+				},
+			}),
+		});
+
+		expect(result.success).toBe(true);
+		expect(post).toHaveBeenCalledWith(
+			"/api/claude/timeline/project-1/playback",
+			{ action: "seek", time: 4 }
+		);
+		expect(result.data).toEqual(
+			expect.objectContaining({ method: "api-seek" })
+		);
+		expect(
+			get.mock.calls.some(([, query]) => query?.interactive === "false")
+		).toBe(false);
+	});
+
+	it("parses --no-checked and --seek-mode in one-shot and session modes", () => {
+		expect(
+			parseCliArgs(["editor:snapshot:check", "--ref", "@e4", "--no-checked"])
+		).toEqual(expect.objectContaining({ checked: false }));
+		expect(
+			parseCliArgs(["editor:snapshot:check", "--ref", "@e4", "--checked"])
+		).toEqual(expect.objectContaining({ checked: true }));
+		expect(
+			parseSessionLine("editor:snapshot:check --ref @e4 --no-checked", {
+				json: true,
+			})
+		).toEqual(expect.objectContaining({ checked: false }));
+		expect(
+			parseSessionLine(
+				"editor:pointer:drag --from timeline.playhead --to-time 2 --seek-mode api",
+				{ json: true }
+			)
+		).toEqual(expect.objectContaining({ toTime: 2, seekMode: "api" }));
 	});
 
 	it("separates semantic playhead seek from its display-only animation", async () => {

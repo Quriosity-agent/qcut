@@ -70,6 +70,21 @@ function getDefaultOutputDir(): string {
 	);
 }
 
+/**
+ * Like parseFiniteCliNumber, but a flag that is present yet not a number
+ * becomes NaN so the handler's range check rejects it instead of silently
+ * treating the flag as omitted.
+ */
+function parseStrictCliNumber({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (typeof value !== "string") return undefined;
+	const parsed = parseFiniteCliNumber({ value });
+	return parsed === undefined ? Number.NaN : parsed;
+}
+
 function parseFiniteCliNumber({
 	value,
 }: {
@@ -266,6 +281,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"batch-id": { type: "string" },
 			offset: { type: "string" },
 			reveal: { type: "boolean", default: false },
+			"from-stdin": { type: "boolean", default: false },
 			"no-confirm": { type: "boolean", default: false },
 			"prompt-file": { type: "string" },
 			portraits: { type: "string", short: "p" },
@@ -417,6 +433,15 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"to-time": { type: "string" },
 			"to-index": { type: "string" },
 			via: { type: "string" },
+			dnd: { type: "string" },
+			"drag-start-timeout-ms": { type: "string" },
+			modifiers: { type: "string" },
+			button: { type: "string" },
+			"click-count": { type: "string" },
+			"key-events": { type: "boolean", default: false },
+			files: { type: "string" },
+			"seek-mode": { type: "string" },
+			"window-id": { type: "string" },
 			"hold-ms": { type: "string" },
 			"duration-ms": { type: "string" },
 			steps: { type: "string" },
@@ -435,6 +460,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 			"delta-y": { type: "string" },
 			foreground: { type: "boolean", default: false },
 			checked: { type: "boolean" },
+			"no-checked": { type: "boolean", default: false },
 			replace: { type: "boolean", default: false },
 			ripple: { type: "boolean", default: false },
 			"cross-track-ripple": { type: "boolean", default: false },
@@ -758,6 +784,7 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		batchId: values["batch-id"] as string | undefined,
 		offset: parseIntegerCliNumber({ value: values.offset }),
 		reveal: (values.reveal as boolean) ?? false,
+		fromStdin: (values["from-stdin"] as boolean) ?? false,
 		noConfirm: (values["no-confirm"] as boolean) ?? false,
 		promptFile: values["prompt-file"] as string | undefined,
 		portraits: values.portraits as string | undefined,
@@ -1076,6 +1103,17 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 				: parseInt(values["to-index"] as string, 10)
 			: undefined,
 		via: values.via as string | undefined,
+		dnd: values.dnd as string | undefined,
+		dragStartTimeoutMs: parseFiniteCliNumber({
+			value: values["drag-start-timeout-ms"],
+		}),
+		modifiers: values.modifiers as string | undefined,
+		button: values.button as string | undefined,
+		clickCount: parseStrictCliNumber({ value: values["click-count"] }),
+		keyEvents: (values["key-events"] as boolean) ?? false,
+		files: values.files as string | undefined,
+		seekMode: values["seek-mode"] as string | undefined,
+		windowId: parseFiniteCliNumber({ value: values["window-id"] }),
 		holdMs: parseFiniteCliNumber({ value: values["hold-ms"] }),
 		durationMs: parseFiniteCliNumber({ value: values["duration-ms"] }),
 		steps: values.steps
@@ -1100,7 +1138,9 @@ export function parseCliArgs(argv: string[]): CLIRunOptions {
 		deltaY: parseFiniteCliNumber({ value: values["delta-y"] }),
 		foreground: (values.foreground as boolean) ?? false,
 		selectValue: values.value as string | undefined,
-		checked: values.checked as boolean | undefined,
+		checked: values["no-checked"]
+			? false
+			: (values.checked as boolean | undefined),
 		replace: (values.replace as boolean) ?? false,
 		ripple: (values.ripple as boolean) ?? false,
 		crossTrackRipple: (values["cross-track-ripple"] as boolean) ?? false,

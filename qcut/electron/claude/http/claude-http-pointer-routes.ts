@@ -1,14 +1,22 @@
 import type {
+	AgentKeyboardModifier,
 	AgentKeyboardPressRequest,
 	AgentKeyboardResult,
 	AgentKeyboardTypeRequest,
+	AgentPointerButton,
 	AgentPointerClickRequest,
+	AgentPointerDragMode,
 	AgentPointerDragRequest,
+	AgentPointerDropFilesRequest,
+	AgentPointerHitTestRequest,
+	AgentPointerHitTestResult,
 	AgentPointerMoveRequest,
+	AgentPointerRulerLabelsResult,
 	AgentPointerResult,
 	AgentPointerScrollRequest,
 	AgentPointerTarget,
 	AgentPointerVisualState,
+	EditorWindowsResult,
 } from "../../types/claude-api.js";
 import { DEFAULT_AGENT_POINTER_INPUT_MODE } from "../../types/claude-api.js";
 import { AgentPointerError } from "../handlers/agent-pointer-controller.js";
@@ -16,8 +24,13 @@ import { EditorSnapshotActionError } from "../handlers/claude-snapshot-handler.j
 import type { Router } from "../utils/http-router.js";
 import { HttpError } from "../utils/http-router.js";
 
+interface WindowScopedRequest {
+	windowId?: number;
+}
+
 interface AgentPointerRouteHandlers {
-	getState: () => Promise<AgentPointerVisualState>;
+	getState: (request: WindowScopedRequest) => Promise<AgentPointerVisualState>;
+	listWindows: () => Promise<EditorWindowsResult>;
 	move: (request: AgentPointerMoveRequest) => Promise<AgentPointerResult>;
 	hover: (request: AgentPointerMoveRequest) => Promise<AgentPointerResult>;
 	click: (request: AgentPointerClickRequest) => Promise<AgentPointerResult>;
@@ -30,6 +43,15 @@ interface AgentPointerRouteHandlers {
 	drag: (request: AgentPointerDragRequest) => Promise<AgentPointerResult>;
 	scroll: (request: AgentPointerScrollRequest) => Promise<AgentPointerResult>;
 	hide: () => Promise<AgentPointerResult>;
+	hitTest: (
+		request: AgentPointerHitTestRequest
+	) => Promise<AgentPointerHitTestResult>;
+	dropFiles: (
+		request: AgentPointerDropFilesRequest
+	) => Promise<AgentPointerResult>;
+	rulerLabels: (
+		request: WindowScopedRequest
+	) => Promise<AgentPointerRulerLabelsResult>;
 	pressKeys: (
 		request: AgentKeyboardPressRequest
 	) => Promise<AgentKeyboardResult>;
@@ -121,11 +143,160 @@ export function parseAgentPointerInputMode({
 	);
 }
 
-function parseTargetRequest({
+const AGENT_POINTER_DRAG_MODES: readonly AgentPointerDragMode[] = [
+	"auto",
+	"html5",
+	"mouse",
+];
+
+export function parseAgentPointerDragMode({
+	value,
+}: {
+	value: unknown;
+}): AgentPointerDragMode | undefined {
+	if (value === undefined) return undefined;
+	if (
+		typeof value === "string" &&
+		(AGENT_POINTER_DRAG_MODES as readonly string[]).includes(value)
+	) {
+		return value as AgentPointerDragMode;
+	}
+	throw new HttpError(
+		400,
+		"Pointer 'dnd' must be 'auto', 'html5', or 'mouse'."
+	);
+}
+
+const MODIFIER_ALIASES: Record<string, AgentKeyboardModifier> = {
+	alt: "Alt",
+	option: "Alt",
+	ctrl: "Control",
+	control: "Control",
+	cmd: "Meta",
+	command: "Meta",
+	meta: "Meta",
+	super: "Meta",
+	shift: "Shift",
+};
+
+export function parseAgentPointerModifiers({
+	value,
+}: {
+	value: unknown;
+}): AgentKeyboardModifier[] | undefined {
+	if (value === undefined) return undefined;
+	const list = Array.isArray(value)
+		? value
+		: typeof value === "string"
+			? value.split(",")
+			: null;
+	if (!list) {
+		throw new HttpError(
+			400,
+			'Pointer \'modifiers\' must be an array such as ["Shift", "Meta"].'
+		);
+	}
+	const modifiers: AgentKeyboardModifier[] = [];
+	for (const entry of list) {
+		if (typeof entry !== "string") {
+			throw new HttpError(400, "Pointer modifiers must be strings.");
+		}
+		const trimmed = entry.trim();
+		if (!trimmed) continue;
+		const modifier = MODIFIER_ALIASES[trimmed.toLowerCase()];
+		if (!modifier) {
+			throw new HttpError(
+				400,
+				`Unsupported pointer modifier '${trimmed}'. Use alt, ctrl, cmd/meta, or shift.`
+			);
+		}
+		if (!modifiers.includes(modifier)) modifiers.push(modifier);
+	}
+	return modifiers;
+}
+
+export function parseAgentPointerButton({
+	value,
+}: {
+	value: unknown;
+}): AgentPointerButton | undefined {
+	if (value === undefined) return undefined;
+	if (value === "left" || value === "middle" || value === "right") return value;
+	throw new HttpError(
+		400,
+		"Pointer 'button' must be 'left', 'middle', or 'right'."
+	);
+}
+
+export function parseAgentPointerClickCount({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (value === undefined) return undefined;
+	if (
+		typeof value === "number" &&
+		Number.isInteger(value) &&
+		value >= 1 &&
+		value <= 3
+	) {
+		return value;
+	}
+	throw new HttpError(
+		400,
+		"Pointer 'clickCount' must be an integer from 1 to 3."
+	);
+}
+
+export function parseAgentPointerWindowId({
+	value,
+}: {
+	value: unknown;
+}): number | undefined {
+	if (value === undefined || value === "" || value === null) return undefined;
+	const parsed = typeof value === "string" ? Number(value) : value;
+	if (typeof parsed === "number" && Number.isInteger(parsed) && parsed > 0) {
+		return parsed;
+	}
+	throw new HttpError(400, "Pointer 'windowId' must be a positive integer.");
+}
+
+function parseHitTestRequest({
 	body,
 }: {
 	body: unknown;
-}): AgentPointerMoveRequest {
+}): AgentPointerHitTestRequest {
+	const parsed = requireBodyObject({ body });
+	const x = parseFiniteNumber({ value: parsed.x, field: "x" });
+	const y = parseFiniteNumber({ value: parsed.y, field: "y" });
+	if (x === undefined || y === undefined) {
+		throw new HttpError(400, "Pointer hit-test requires x and y coordinates.");
+	}
+	return {
+		x,
+		y,
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
+	};
+}
+
+export type AgentPointerTargetRoute =
+	| "move"
+	| "hover"
+	| "click"
+	| "double-click"
+	| "right-click";
+
+function isProvided(value: unknown): boolean {
+	return value !== undefined && value !== null;
+}
+
+export function parseTargetRequest({
+	body,
+	action = "click",
+}: {
+	body: unknown;
+	action?: AgentPointerTargetRoute;
+}): AgentPointerClickRequest {
 	const parsed = requireBodyObject({ body });
 	const durationMs = parseFiniteNumber({
 		value: parsed.durationMs,
@@ -134,10 +305,25 @@ function parseTargetRequest({
 	if (durationMs !== undefined && durationMs < 0) {
 		throw new HttpError(400, "Pointer 'durationMs' must be >= 0.");
 	}
+	// Only the click route honors these; double-click and right-click fix the
+	// button and count themselves, and move/hover never press anything.
+	if (
+		action !== "click" &&
+		(isProvided(parsed.button) || isProvided(parsed.clickCount))
+	) {
+		throw new HttpError(
+			400,
+			`Pointer 'button' and 'clickCount' apply to the click route only; '${action}' would ignore them.`
+		);
+	}
 	return {
 		...parseAgentPointerTarget({ value: parsed }),
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
 		durationMs,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		button: parseAgentPointerButton({ value: parsed.button }),
+		clickCount: parseAgentPointerClickCount({ value: parsed.clickCount }),
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
 	};
 }
 
@@ -157,10 +343,15 @@ function parseDragRequest({
 		field: "releaseDelayMs",
 	});
 	const steps = parseFiniteNumber({ value: parsed.steps, field: "steps" });
+	const dragStartTimeoutMs = parseFiniteNumber({
+		value: parsed.dragStartTimeoutMs,
+		field: "dragStartTimeoutMs",
+	});
 	for (const [field, value] of [
 		["holdMs", holdMs],
 		["durationMs", durationMs],
 		["releaseDelayMs", releaseDelayMs],
+		["dragStartTimeoutMs", dragStartTimeoutMs],
 	] as const) {
 		if (value !== undefined && value < 0) {
 			throw new HttpError(400, `Pointer '${field}' must be >= 0.`);
@@ -196,6 +387,11 @@ function parseDragRequest({
 		durationMs,
 		releaseDelayMs,
 		steps,
+		dnd: parseAgentPointerDragMode({ value: parsed.dnd }),
+		dragStartTimeoutMs,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		button: parseAgentPointerButton({ value: parsed.button }),
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
 	};
 }
 
@@ -227,6 +423,7 @@ function parseKeyboardPressRequest(body: unknown): AgentKeyboardPressRequest {
 		keys,
 		intervalMs,
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
 	};
 }
 
@@ -242,10 +439,56 @@ function parseKeyboardTypeRequest(body: unknown): AgentKeyboardTypeRequest {
 	if (intervalMs !== undefined && intervalMs < 0) {
 		throw new HttpError(400, "Keyboard 'intervalMs' must be >= 0.");
 	}
+	if (parsed.keyEvents !== undefined && typeof parsed.keyEvents !== "boolean") {
+		throw new HttpError(400, "Keyboard 'keyEvents' must be a boolean.");
+	}
 	return {
 		text: parsed.text,
 		intervalMs,
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
+		...(parsed.keyEvents === true ? { keyEvents: true } : {}),
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
+	};
+}
+
+const MAX_DROP_FILES = 50;
+
+function parseDropFilesRequest({
+	body,
+}: {
+	body: unknown;
+}): AgentPointerDropFilesRequest {
+	const parsed = requireBodyObject({ body });
+	if (
+		!Array.isArray(parsed.files) ||
+		parsed.files.length === 0 ||
+		parsed.files.length > MAX_DROP_FILES
+	) {
+		throw new HttpError(
+			400,
+			`Pointer drop-files requires 1 to ${MAX_DROP_FILES} file paths in 'files'.`
+		);
+	}
+	const files = parsed.files.map((file) => {
+		if (typeof file !== "string" || !file.trim()) {
+			throw new HttpError(400, "Every dropped file must be a non-empty path.");
+		}
+		return file;
+	});
+	const durationMs = parseFiniteNumber({
+		value: parsed.durationMs,
+		field: "durationMs",
+	});
+	if (durationMs !== undefined && durationMs < 0) {
+		throw new HttpError(400, "Pointer 'durationMs' must be >= 0.");
+	}
+	return {
+		...parseAgentPointerTarget({ value: parsed }),
+		files,
+		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		durationMs,
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
 	};
 }
 
@@ -266,6 +509,8 @@ function parseScrollRequest({
 		inputMode: parseAgentPointerInputMode({ value: parsed.inputMode }),
 		deltaX,
 		deltaY,
+		modifiers: parseAgentPointerModifiers({ value: parsed.modifiers }),
+		windowId: parseAgentPointerWindowId({ value: parsed.windowId }),
 	};
 }
 
@@ -307,12 +552,22 @@ export function registerAgentPointerRoutes(
 ): void {
 	const timeoutMs = handlers.timeoutMs ?? 15_000;
 
-	router.get("/api/claude/pointer/state", async () => {
-		return await withPointerTimeout({ timeoutMs, work: handlers.getState });
+	router.get("/api/claude/pointer/state", async (req) => {
+		const request = {
+			windowId: parseAgentPointerWindowId({ value: req.query.windowId }),
+		};
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.getState(request),
+		});
+	});
+
+	router.get("/api/claude/windows", async () => {
+		return await withPointerTimeout({ timeoutMs, work: handlers.listWindows });
 	});
 
 	router.post("/api/claude/pointer/move", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({ body: req.body, action: "move" });
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.move(request),
@@ -320,7 +575,7 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/hover", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({ body: req.body, action: "hover" });
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.hover(request),
@@ -336,7 +591,10 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/double-click", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({
+			body: req.body,
+			action: "double-click",
+		});
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.doubleClick(request),
@@ -344,7 +602,10 @@ export function registerAgentPointerRoutes(
 	});
 
 	router.post("/api/claude/pointer/right-click", async (req) => {
-		const request = parseTargetRequest({ body: req.body });
+		const request = parseTargetRequest({
+			body: req.body,
+			action: "right-click",
+		});
 		return await withPointerTimeout({
 			timeoutMs,
 			work: async () => await handlers.rightClick(request),
@@ -369,6 +630,32 @@ export function registerAgentPointerRoutes(
 
 	router.post("/api/claude/pointer/hide", async () => {
 		return await withPointerTimeout({ timeoutMs, work: handlers.hide });
+	});
+
+	router.get("/api/claude/pointer/ruler-labels", async (req) => {
+		const request = {
+			windowId: parseAgentPointerWindowId({ value: req.query.windowId }),
+		};
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.rulerLabels(request),
+		});
+	});
+
+	router.post("/api/claude/pointer/hit-test", async (req) => {
+		const request = parseHitTestRequest({ body: req.body });
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.hitTest(request),
+		});
+	});
+
+	router.post("/api/claude/pointer/drop-files", async (req) => {
+		const request = parseDropFilesRequest({ body: req.body });
+		return await withPointerTimeout({
+			timeoutMs,
+			work: async () => await handlers.dropFiles(request),
+		});
 	});
 
 	router.post("/api/claude/keyboard/press", async (req) => {

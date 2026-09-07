@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+	parseAgentPointerButton,
+	parseAgentPointerClickCount,
+	parseAgentPointerDragMode,
 	parseAgentPointerInputMode,
+	parseAgentPointerModifiers,
 	parseAgentPointerTarget,
+	parseAgentPointerWindowId,
+	parseTargetRequest,
 } from "../http/claude-http-pointer-routes.js";
 
 describe("parseAgentPointerTarget", () => {
@@ -41,6 +47,86 @@ describe("parseAgentPointerTarget", () => {
 		);
 		expect(() => parseAgentPointerInputMode({ value: "silent" })).toThrow(
 			"background' or 'foreground"
+		);
+	});
+
+	it("accepts the HTML5 drag modes and rejects anything else", () => {
+		expect(parseAgentPointerDragMode({ value: undefined })).toBeUndefined();
+		expect(parseAgentPointerDragMode({ value: "auto" })).toBe("auto");
+		expect(parseAgentPointerDragMode({ value: "html5" })).toBe("html5");
+		expect(parseAgentPointerDragMode({ value: "mouse" })).toBe("mouse");
+		expect(() => parseAgentPointerDragMode({ value: "native" })).toThrow(
+			"'auto', 'html5', or 'mouse'"
+		);
+		expect(() => parseAgentPointerDragMode({ value: 1 })).toThrow(
+			"'auto', 'html5', or 'mouse'"
+		);
+	});
+
+	it("normalizes modifier aliases and rejects unknown ones", () => {
+		expect(parseAgentPointerModifiers({ value: undefined })).toBeUndefined();
+		expect(
+			parseAgentPointerModifiers({ value: ["shift", "cmd", "Shift", "ctrl"] })
+		).toEqual(["Shift", "Meta", "Control"]);
+		expect(parseAgentPointerModifiers({ value: "option, super" })).toEqual([
+			"Alt",
+			"Meta",
+		]);
+		expect(() => parseAgentPointerModifiers({ value: ["hyper"] })).toThrow(
+			"Unsupported pointer modifier"
+		);
+		expect(() => parseAgentPointerModifiers({ value: 3 })).toThrow(
+			"must be an array"
+		);
+	});
+
+	it("validates buttons and click counts", () => {
+		expect(parseAgentPointerButton({ value: undefined })).toBeUndefined();
+		expect(parseAgentPointerButton({ value: "middle" })).toBe("middle");
+		expect(() => parseAgentPointerButton({ value: "back" })).toThrow(
+			"'left', 'middle', or 'right'"
+		);
+		expect(parseAgentPointerClickCount({ value: 3 })).toBe(3);
+		expect(() => parseAgentPointerClickCount({ value: 4 })).toThrow(
+			"from 1 to 3"
+		);
+		expect(() => parseAgentPointerClickCount({ value: 1.5 })).toThrow(
+			"from 1 to 3"
+		);
+	});
+
+	it("rejects button and clickCount on routes that ignore them", () => {
+		expect(
+			parseTargetRequest({ body: { x: 10, y: 20, button: "middle" } }).button
+		).toBe("middle");
+		for (const action of [
+			"move",
+			"hover",
+			"double-click",
+			"right-click",
+		] as const) {
+			expect(() =>
+				parseTargetRequest({ body: { x: 10, y: 20, button: "middle" }, action })
+			).toThrow("click route only");
+			expect(() =>
+				parseTargetRequest({ body: { x: 10, y: 20, clickCount: 2 }, action })
+			).toThrow("click route only");
+			expect(
+				parseTargetRequest({ body: { x: 10, y: 20 }, action }).button
+			).toBeUndefined();
+		}
+	});
+
+	it("accepts positive integer window ids from bodies and query strings", () => {
+		expect(parseAgentPointerWindowId({ value: undefined })).toBeUndefined();
+		expect(parseAgentPointerWindowId({ value: "" })).toBeUndefined();
+		expect(parseAgentPointerWindowId({ value: 3 })).toBe(3);
+		expect(parseAgentPointerWindowId({ value: "12" })).toBe(12);
+		expect(() => parseAgentPointerWindowId({ value: 0 })).toThrow(
+			"positive integer"
+		);
+		expect(() => parseAgentPointerWindowId({ value: "main" })).toThrow(
+			"positive integer"
 		);
 	});
 });

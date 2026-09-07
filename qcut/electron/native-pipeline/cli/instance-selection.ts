@@ -1,5 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+	listClaudeInstancePorts,
+	readClaudeInstanceInfo,
+} from "../../claude/http/claude-api-token.js";
 import { readDaemonInfo } from "../../headless-recorder/lifecycle.js";
 import { stateDir as resolveStateDir } from "../infra/xdg-paths.js";
 import type { CLIRunOptions, CLIResult } from "./cli-runner/types.js";
@@ -109,6 +113,7 @@ function candidatePorts({
 			...(extraPorts ?? []),
 			...(selected ? [selected.port] : []),
 			...(daemon ? [daemon.port] : []),
+			...listClaudeInstancePorts({ stateDir }),
 		]),
 	].sort((left, right) => left - right);
 }
@@ -119,20 +124,28 @@ async function probeInstance({
 	selected,
 	timeoutMs,
 	fetchImpl,
+	stateDir,
 }: {
 	host: string;
 	port: number;
 	selected: boolean;
 	timeoutMs: number;
 	fetchImpl: typeof fetch;
+	stateDir?: string;
 }): Promise<QCutInstance | null> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), timeoutMs);
 	const url = `http://${host}:${port}`;
+	const token =
+		process.env.QCUT_API_TOKEN?.trim() ||
+		readClaudeInstanceInfo({ port, stateDir })?.token;
 	try {
 		const response = await fetchImpl(`${url}/api/claude/health`, {
 			signal: controller.signal,
-			headers: { Accept: "application/json" },
+			headers: {
+				Accept: "application/json",
+				...(token ? { Authorization: `Bearer ${token}` } : {}),
+			},
 		});
 		if (!response.ok) return null;
 		const raw = (await response.json()) as Record<string, unknown>;
@@ -182,6 +195,7 @@ export async function discoverQCutInstances({
 				selected: selected?.host === host && selected.port === port,
 				timeoutMs,
 				fetchImpl,
+				stateDir,
 			})
 		)
 	);

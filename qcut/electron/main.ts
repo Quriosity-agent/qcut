@@ -49,6 +49,12 @@ import {
 	cleanupUtilityProcess,
 } from "./utility/utility-bridge.js";
 import {
+	ensureClaudeApiToken,
+	removeClaudeInstanceInfo,
+	writeClaudeInstanceInfo,
+} from "./claude/http/claude-api-token.js";
+import { resolveQCutRuntimeEndpoint } from "./claude/runtime-endpoint.js";
+import {
 	clampBoundsToWorkArea,
 	resolveInitialWindowSize,
 } from "./window-sizing.js";
@@ -142,6 +148,9 @@ try {
 	// electron-log not available, will use fallback
 }
 const logger: Logger = log || console;
+
+/** Port whose instance file this process published; retracted on quit. */
+let claudeInstancePort: number | null = null;
 
 // Prevent EPIPE crashes when stdout/stderr pipe is broken during lifecycle events.
 import { installEpipeGuard } from "./safe-console.js";
@@ -1018,6 +1027,15 @@ if (isCliKeyCommand && !isHeadlessRecorder) {
 
 if (!isCliKeyCommand && !isHeadlessRecorder) {
 	app.whenReady().then(async () => {
+		// Mint the editor API token before any child process snapshots the
+		// environment (utility HTTP server, PTY sessions, MCP server).
+		const claudeApiToken = ensureClaudeApiToken();
+		ipcMain.handle("claude:api-token:get", () => claudeApiToken.token);
+		logger.log(
+			claudeApiToken.source === "env"
+				? "🔐 Editor API token taken from QCUT_API_TOKEN"
+				: "🔐 Editor API token generated for this launch"
+		);
 		// Set macOS dock icon (requires PNG format)
 		if (process.platform === "darwin" && app.dock) {
 			const iconPath = app.isPackaged
@@ -1251,6 +1269,14 @@ if (!isCliKeyCommand && !isHeadlessRecorder) {
 		} catch (err: any) {
 			logger.error("❌ Utility process failed to start:", err.message);
 		}
+		try {
+			const apiPort = resolveQCutRuntimeEndpoint({}).port;
+			writeClaudeInstanceInfo({ port: apiPort, token: claudeApiToken.token });
+			claudeInstancePort = apiPort;
+			logger.log(`🔐 Editor API instance published for port ${apiPort}`);
+		} catch (err: any) {
+			logger.warn("⚠️ Could not publish the editor API instance:", err.message);
+		}
 
 		// Configure auto-updater for production builds
 		if (app.isPackaged) {
@@ -1286,6 +1312,10 @@ app.on("before-quit", () => {
 	// A real quit is underway; the staged-update close prompt must not
 	// preventDefault the window teardown.
 	stagedUpdateVisibility?.setQuitting();
+	if (claudeInstancePort !== null) {
+		removeClaudeInstanceInfo({ port: claudeInstancePort });
+		claudeInstancePort = null;
+	}
 	if (isHeadlessRecorder) return;
 	jianyingDraftExportController?.dispose();
 	jianyingDraftExportController = null;

@@ -525,7 +525,7 @@ describe("Claude HTTP Server", () => {
 			(cap: { name: string }) => cap.name === "state.pointer"
 		);
 		expect(pointerCapability).toMatchObject({
-			version: "1.1.0",
+			version: "1.2.0",
 			since: "1.2.0",
 		});
 	});
@@ -1122,6 +1122,124 @@ describe("Claude HTTP Server", () => {
 			method: "POST",
 			body: JSON.stringify({}),
 		});
+	});
+
+	it("lists windows and routes pointer requests to a window id", async () => {
+		const first = createPointerWindow();
+		const second = createPointerWindow();
+		const describe = (
+			mock: ReturnType<typeof createPointerWindow>["mockWindow"],
+			id: number,
+			title: string
+		) =>
+			Object.assign(mock, {
+				id,
+				getTitle: () => title,
+				isMinimized: () => false,
+				getContentBounds: () => ({
+					x: id * 10,
+					y: 0,
+					width: 1200,
+					height: 800,
+				}),
+			});
+		describe(first.mockWindow, 1, "QCut");
+		describe(second.mockWindow, 2, "Filter Lab");
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([
+			first.mockWindow,
+			second.mockWindow,
+		]);
+		const browserWindow = BrowserWindow as unknown as {
+			fromId?: (id: number) => unknown;
+		};
+		const previousFromId = browserWindow.fromId;
+		browserWindow.fromId = (id: number) =>
+			id === 2 ? second.mockWindow : id === 1 ? first.mockWindow : null;
+		try {
+			const windows = await fetch("/api/claude/windows");
+			const click = await fetch("/api/claude/pointer/click", {
+				method: "POST",
+				body: JSON.stringify({ x: 120, y: 160, windowId: 2 }),
+			});
+			const missing = await fetch("/api/claude/pointer/click", {
+				method: "POST",
+				body: JSON.stringify({ x: 120, y: 160, windowId: 99 }),
+			});
+
+			expect(windows.status).toBe(200);
+			expect(windows.body.data).toEqual({
+				count: 2,
+				windows: [
+					expect.objectContaining({ id: 1, title: "QCut", main: true }),
+					expect.objectContaining({ id: 2, title: "Filter Lab", main: false }),
+				],
+			});
+			expect(click.status).toBe(200);
+			expect(second.sendCommand).toHaveBeenCalled();
+			expect(first.sendCommand).not.toHaveBeenCalled();
+			expect(missing.status).toBe(404);
+		} finally {
+			browserWindow.fromId = previousFromId;
+		}
+	});
+
+	it("serves timeline ruler labels from the renderer", async () => {
+		const executeJavaScript = vi.fn(async () => ({
+			action: "ruler-labels",
+			count: 2,
+			labels: [
+				{ time: 0, x: 240, y: 760, width: 10, height: 10 },
+				{ time: 5, x: 490, y: 760, width: 10, height: 10 },
+			],
+		}));
+		const { mockWindow } = createPointerWindow({ executeJavaScript });
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+
+		const res = await fetch("/api/claude/pointer/ruler-labels");
+
+		expect(res.status).toBe(200);
+		expect(res.body.data).toEqual(
+			expect.objectContaining({ action: "ruler-labels", count: 2 })
+		);
+		expect(String(executeJavaScript.mock.calls[0]?.[0])).toContain(
+			"ruler-labels"
+		);
+	});
+
+	it("drops files and types key events through the pointer routes", async () => {
+		const { mockWindow, sendCommand } = createPointerWindow();
+		vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([mockWindow]);
+
+		const drop = await fetch("/api/claude/pointer/drop-files", {
+			method: "POST",
+			body: JSON.stringify({ x: 300, y: 200, files: ["/tmp/still.png"] }),
+		});
+		const typed = await fetch("/api/claude/keyboard/type", {
+			method: "POST",
+			body: JSON.stringify({ text: "ok", keyEvents: true }),
+		});
+		const invalid = await fetch("/api/claude/pointer/drop-files", {
+			method: "POST",
+			body: JSON.stringify({ x: 300, y: 200, files: [] }),
+		});
+
+		expect(drop.status).toBe(200);
+		expect(drop.body.data).toEqual(
+			expect.objectContaining({
+				action: "drop-files",
+				dnd: expect.objectContaining({ fileCount: 1 }),
+			})
+		);
+		expect(
+			sendCommand.mock.calls
+				.filter(([method]) => method === "Input.dispatchDragEvent")
+				.map(([, params]) => params.type)
+		).toEqual(["dragEnter", "dragOver", "drop"]);
+		expect(typed.status).toBe(200);
+		expect(typed.body.data).toEqual(
+			expect.objectContaining({ method: "key-events", characterCount: 2 })
+		);
+		expect(invalid.status).toBe(400);
 	});
 
 	it("pointer routes use background CDP input without focusing QCut", async () => {

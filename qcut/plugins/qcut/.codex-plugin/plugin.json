@@ -29,8 +29,8 @@
 			"Update the QCut application"
 		],
 		"websiteURL": "https://quriosity.com.au/",
-		"privacyPolicyURL": "https://github.com/Quriosity-agent/qcut/blob/qcut-plugin-v1.2.0/qcut/plugins/qcut/PRIVACY.md",
-		"termsOfServiceURL": "https://github.com/Quriosity-agent/qcut/blob/qcut-plugin-v1.2.0/qcut/plugins/qcut/TERMS.md",
+		"privacyPolicyURL": "https://github.com/Quriosity-agent/qcut/blob/master/qcut/plugins/qcut/PRIVACY.md",
+		"termsOfServiceURL": "https://github.com/Quriosity-agent/qcut/blob/master/qcut/plugins/qcut/TERMS.md",
 		"brandColor": "#18B8B8",
 		"composerIcon": "./assets/icon.png",
 		"logo": "./assets/icon.png",

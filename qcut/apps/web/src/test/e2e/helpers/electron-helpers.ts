@@ -6,6 +6,7 @@
  * Export/recording helpers: e2e-export-helpers.ts
  */
 
+import { randomBytes } from "node:crypto";
 import { test as base, Page } from "@playwright/test";
 import { mkdir, rm } from "node:fs/promises";
 import { spawn } from "node:child_process";
@@ -589,6 +590,10 @@ export async function startElectronApp({
 }: {
 	userDataDirectory?: string;
 } = {}) {
+	// The editor HTTP API always requires a bearer token. Fix one in this
+	// worker's environment so helpers that read QCUT_API_TOKEN match the app.
+	process.env.QCUT_API_TOKEN =
+		process.env.QCUT_API_TOKEN?.trim() || randomBytes(16).toString("hex");
 	return await electron.launch({
 		args: [
 			"dist/electron/main.js",

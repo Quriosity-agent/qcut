@@ -11,8 +11,8 @@
 - **Short description:** Create and edit video in QCut
 - **Website:** <https://quriosity.com.au/>
 - **Support:** <https://github.com/Quriosity-agent/qcut/issues>
-- **Privacy:** <https://github.com/Quriosity-agent/qcut/blob/qcut-plugin-v1.2.0/qcut/plugins/qcut/PRIVACY.md>
-- **Terms:** <https://github.com/Quriosity-agent/qcut/blob/qcut-plugin-v1.2.0/qcut/plugins/qcut/TERMS.md>
+- **Privacy:** <https://github.com/Quriosity-agent/qcut/blob/master/qcut/plugins/qcut/PRIVACY.md>
+- **Terms:** <https://github.com/Quriosity-agent/qcut/blob/master/qcut/plugins/qcut/TERMS.md>
 
 ## Long Description
 

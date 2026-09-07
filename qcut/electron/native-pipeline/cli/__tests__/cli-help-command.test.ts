@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { printCommandHelp, printGroupHelp, printHelp } from "../cli-help.js";
+import {
+	printCommandHelp,
+	printGroupHelp,
+	printHelp,
+	printGroupHelpJson,
+	listEditorAreas,
+} from "../cli-help.js";
 
 function captureStdout({ run }: { run: () => void }): string {
 	const lines: string[] = [];
@@ -58,6 +64,20 @@ describe("printCommandHelp", () => {
 
 		expect(output).toContain("[default: 2]");
 		expect(output).toContain("<number>");
+	});
+
+	it("lists editor areas instead of an empty action table", () => {
+		const output = captureStdout({ run: () => printGroupHelp("editor") });
+
+		expect(output).toContain("Areas:");
+		expect(output).toMatch(/\n\s+pointer\s+\d+ actions: /);
+		expect(output).toMatch(/\n\s+timeline\s+\d+ actions: /);
+		expect(output).toContain("editor <area> <action> --help --json");
+		const areas = listEditorAreas();
+		expect(areas.find((entry) => entry.area === "pointer")?.actions).toEqual(
+			expect.arrayContaining(["click", "drag", "hit-test", "drop-files"])
+		);
+		expect(areas.find((entry) => entry.area === "health")?.actions).toEqual([]);
 	});
 
 	it("still distinguishes root and group help", () => {
