@@ -65,6 +65,8 @@ jobs:
       - name: Verify CGL observer with original fixtures
         if: runner.os == 'macOS'
         run: python3 qcut/research/jianying-runtime-probe/cgl-pass-capture-test.py --output-dir "$RUNNER_TEMP/cgl-observer-test"
-      - name: Verify CGL quantization with original floats
+      - name: Verify explicit CGL conversion profile and upload/readback
         if: runner.os == 'macOS'
-        run: build-native-contract/soft-glow/soft-glow-native-quantization
+        run: |
+          build-native-contract/soft-glow/soft-glow-native-quantization
+          build-native-contract/soft-glow/soft-glow-native-quantization --software
