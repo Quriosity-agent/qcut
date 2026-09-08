@@ -1,3 +1,4 @@
+import { QCUT_FILTER_COMPARE } from "../qcut-independent-filter/comparison-contract.js";
 // @vitest-environment node
 import type { BrowserWindow, IpcMainInvokeEvent } from "electron";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +17,9 @@ const mock = vi.hoisted(() => ({
 	load: vi.fn(),
 	render: vi.fn(),
 	dispose: vi.fn(async () => {}),
+}));
+vi.mock("../qcut-independent-filter/comparison.js", () => ({
+	createFogComparison: () => vi.fn(),
 }));
 vi.mock("electron", () => ({
 	ipcMain: { handle: mock.handle, removeHandler: mock.remove },
@@ -63,6 +67,7 @@ describe("independent filter IPC boundary", () => {
 		QCUT_FILTER_LOAD,
 		QCUT_FILTER_RENDER,
 		QCUT_FILTER_LIST,
+		QCUT_FILTER_COMPARE,
 	])("rejects subframes on %s", (channel) => {
 		const { event } = setup();
 		expect(() =>
@@ -106,6 +111,7 @@ describe("independent filter IPC boundary", () => {
 			QCUT_FILTER_LOAD,
 			QCUT_FILTER_RENDER,
 			QCUT_FILTER_LIST,
+			QCUT_FILTER_COMPARE,
 		]);
 		expect(mock.dispose).toHaveBeenCalledOnce();
 	});
