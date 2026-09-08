@@ -43,3 +43,7 @@ Creator的这些记录实现实际位于videoeditor，曲线速度底层实现�
 5. ByteNN与cccreator分割/降噪明确张量和模型资产合同，独立交付运行时算法和获授权模型路径。
 
 本批仍在PR #469推进，不合并、不发版；源码交付、原生合同、UI对标和产品集成分别验收。
+
+## 第三批后续
+
+本页为第二批历史快照。graph 与曲线时间组合、Graph 整树 stash/diff、MergeUtil 的 border=11 Move 数值核以及有界 M4 多层联合线性采样已在[第三批收尾记录](binary-cpp-batch3-2026-09-08.zh.md)继续交付；统一本机测试增至 58/58。完整 Session undo、整个 MergeUtil、其他 GPU 和产品集成仍缺。
