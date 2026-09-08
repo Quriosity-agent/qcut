@@ -1,6 +1,6 @@
 # 独立 Lens 数值与图像算法
 
-这里是 QCut 自行编写的 C++20 库、命令行工具和测试。默认构建只依赖 C++ 标准库，不加载剪映、OpenCV、模型或 GPU 程序。当前恢复了 `liblens` 中 `LENS::ALGORITHM::MoveSys::Util` 的六个 CPU 数值原语、`fsnew` 的 RGBA 仿射图像采样与 BGR 转换、`ImageTransform` 的另一种仿射坐标计算顺序，两对锚点和已处理裁切矩形到缩放矩阵的算法，以及 `OnlineMove::RectSmoother` 的连续帧裁切平滑。新增 `CenterFocus` / `RectCropper` 将已选检测框或缺失检测送入真实的边界跟随、尺度规划和时序裁切链。六个数值原语是 3×3 矩阵乘法、求逆、点旋转、刚性点变换、高斯核、轨迹高斯平滑。
+这里是 QCut 自行编写的 C++20 库、命令行工具和测试。默认构建只依赖 C++ 标准库，不加载剪映、OpenCV、模型或 GPU 程序。当前恢复了 `liblens` 中 `LENS::ALGORITHM::MoveSys::Util` 的六个 CPU 数值原语、`fsnew` 的 RGBA 仿射图像采样与 BGR 转换、`ImageTransform` 的另一种仿射坐标计算顺序，两对锚点和已处理裁切矩形到缩放矩阵的算法，以及 `OnlineMove::RectSmoother` 的连续帧裁切平滑。`CenterFocus` / `RectCropper` 将已选检测框或缺失检测送入真实的边界跟随、尺度规划和时序裁切链。第三批新增 `Move::Run` 的 border=11 运动约束核，限制像素空间的缩放、旋转和平移。六个数值原语是 3×3 矩阵乘法、求逆、点旋转、刚性点变换、高斯核、轨迹高斯平滑。
 
 这些单元有当前版本二进制静态证据和隔离进程的原生对照。新增像素单元在 3,892 组矩阵、尺寸和布局组合中，RGBA/BGR 共 161,540,260 字节逐字节一致；与原有点变换 `warp_points` 是不同接口。这里尚不提供完整 VAS 防抖、Deflicker、UMVFI、VMB 或成片导出，也未证明剪映当前界面选择这个 `base` 后端。
 
@@ -137,9 +137,27 @@ EOF
 
 第二批本机 Release 与 fail-closed ASan/UBSan **各 12/12 CTest**，新增 C++ **4,197 个检查**及 3 组外部 CLI 测试。真实 C1/Init/Process 对照覆盖 65,536 主序列帧、80 边界帧、4,096 Cropper 帧和 128 次组合；**3,208,960 个状态字段、2,632,192 RGBA 字节零差异**。七个错误算法变体均被原测试拒绝，五个旧原生诊断结果保持一致。本轮 Windows/远程 CI 仍由新 head 的统一验收决定。组合没有恢复 SmartMotion preview 的下游 `MergeUtil`，不能因此宣称完整 VAS、Deflicker 或产品自动取景。
 
+## 像素空间运动约束
+
+[motion_constraint.hpp](motion_constraint.hpp) 的 `constrain_motion` 恢复 `MergeUtil` 实际使用的 `Move::Run` / border=11 完整分支。先把 scale 限制到 `[minimum_scale,1]`，围绕指定中心裁切包含末端像素的四角，再执行最多 30 轮增量旋转搜索，最后裁切平移。旋转和位移的旁路条件是绝对值不超过 `1e-5F`；面积不足一个像素时不做旋转/平移限制。两条平移边界先排序，保留原生的小幅负边界和最后候选返回行为，不能把输出强制修成理想几何。
+
+参数为有限 float：宽高 `1..32768`、中心位于 `[0,width]×[0,height]`、minimum scale `.01..1`、输入 scale `-4..4`、角度 `-180..180` 度、两轴平移各不超过相应边长四倍；舍入模式必须为 `FE_TONEAREST`。输出可与输入引用同一对象；拒绝时保持输出。这里接受的是 `Rigid2Lock` **之后的像素参数**，不能直接把模板向量 `[scale,angle,tx,ty]` 当成这四个字段。
+
+```sh
+/tmp/qcut-independent-lens/lens-motion-constraint <<'EOF'
+run 100 100 50 50 .2 100 -100 0 .5
+EOF
+```
+
+输出 `{"translation":[24.5,-25],"degrees":0,"scale":0.5}`。每行字段为 `run width height center_x center_y minimum_scale tx ty degrees scale`；成功立即 flush，非法输入非零退出且不写成功占位。
+
+第三批本机 Release 与 fail-closed ASan/UBSan **各 15/15 CTest**；新增 C++ **4,152 项检查**和三组 CLI 测试。249,411 次真实 Move 调用的 **997,644 个 float 输出逐 bit 零差异**，另 2,048 帧真实 CenterFocus 的 8,192 个 bbox 值一致后接约束核。两种构建的原生报告完全一致，六个旧原生诊断 JSON 保持不变。七个错误算法变体和两个身份负控被拒绝；删除一次单位缩放复裁的试验变体在当前矩阵未改变输出，不计入错误检出数。
+
+详见 [运动约束与 MergeUtil 断点](../../docs/task/jianying-filter-runtime-research/lens-crop-merge-2026-09-08.zh.md)。本轮没有恢复 MergeUtil 两侧的坐标转换，也未安全配置 SettingInfo 后调用整个 MergeUtil；没有新增产品像素或 VAS/Deflicker 完整链声明。本轮远程 CI 按新 head 另行验收。
+
 ## 可选原生诊断
 
-只有显式开启 `LENS_CONTRACT_NATIVE_ORACLE=ON` 才编译 [数值诊断](native_oracle.cpp)、[原 base 图像诊断](image_warp_native_oracle.cpp)、[后端诊断](image_warp_backend_native_oracle.cpp) 、[矩阵计划诊断](transform_plan_native_oracle.cpp) 、[连续帧诊断](temporal_crop_native_oracle.cpp) 和 [检测框裁切诊断](crop_selection_native_oracle.cpp)。工具限 macOS arm64；共用 [身份校验](native_identity.hpp)，在装载前检查完整文件 SHA256，解析每个导出符号后检查已加载 Mach-O UUID，不匹配即退出。图像诊断调用真实 `Mat` 构造和析构，矩阵计划诊断还调用真实 `ImageTransform` 构造和析构；额外检查导出锚点地址后才使用固定版本的内部入口。[共享诊断支持](image_warp_native_support.hpp) 避免重复 Mat ABI 和旧图像样本。
+只有显式开启 `LENS_CONTRACT_NATIVE_ORACLE=ON` 才编译 [数值诊断](native_oracle.cpp)、[原 base 图像诊断](image_warp_native_oracle.cpp)、[后端诊断](image_warp_backend_native_oracle.cpp) 、[矩阵计划诊断](transform_plan_native_oracle.cpp) 、[连续帧诊断](temporal_crop_native_oracle.cpp)、[检测框裁切诊断](crop_selection_native_oracle.cpp) 和 [运动约束诊断](motion_constraint_native_oracle.cpp)。工具限 macOS arm64；共用 [身份校验](native_identity.hpp)，在装载前检查完整文件 SHA256，解析每个导出符号后检查已加载 Mach-O UUID，不匹配即退出。图像诊断调用真实 `Mat` 构造和析构，矩阵计划诊断还调用真实 `ImageTransform` 构造和析构；额外检查导出锚点地址后才使用固定版本的内部入口。[共享诊断支持](image_warp_native_support.hpp) 避免重复 Mat ABI 和旧图像样本。
 
 ```sh
 cmake -S research/independent-lens-contract -B /tmp/qcut-independent-lens-native -DCMAKE_BUILD_TYPE=Release -DLENS_CONTRACT_NATIVE_ORACLE=ON
@@ -150,6 +168,7 @@ DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/q
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-transform-plan-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-temporal-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-crop-selection-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
+DYLD_LIBRARY_PATH=/Applications/VideoFusion-macOS.app/Contents/Frameworks /tmp/qcut-independent-lens-native/lens-motion-native-oracle /Applications/VideoFusion-macOS.app/Contents/Frameworks/liblens.dylib
 ```
 
 工具只在隔离进程中调用被固定身份验证的函数，不启动或注入剪映、不读取项目。原生依赖的诊断信息写入标准错误；JSON 验证统计写入标准输出。默认库与 CLI 都不会链接这个诊断工具，也不会包含私有运行库。
