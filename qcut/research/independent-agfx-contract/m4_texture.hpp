@@ -18,7 +18,7 @@ struct M4TextureBatch {
 
 // M4 Pro RGBA8/BGRA8 profile: normalized 2D coordinates, transparent border, equal mag/min.
 // Each coordinate must be signed zero or have magnitude in [2^-24,8]; smaller nonzero values are unverified.
-// Combined spatial-linear and mip-linear filtering of multiple levels remains outside this exact API.
+// Spatial/mip nearest and linear modes share the measured joint-weight quantization.
 std::array<float, 4> sample_m4_texture(const MipTextureRequest& request);
 std::vector<std::array<float, 4>> sample_m4_texture_points(const M4TextureBatch& request);
 
