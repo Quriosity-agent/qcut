@@ -52,7 +52,8 @@ void known_cases(Checks& checks) {
   request.filter = MipFilter::linear;
   checks.require(sample_m4_texture(request) == blend_m4_mip_texels({{0, 85, 255, 1}, next, 1}), "nearest spatial and exact cross-level blending compose");
   request.settings.filter = TexelFilter::linear;
-  checks.rejects([&] { sample_m4_texture(request); }, "unverified trilinear amplitude rejected");
+  request.settings.wrap_s = TexelWrap::clamp;
+  checks.require(sample_m4_texture(request) == blend_m4_mip_texels({{0, 85, 255, 1}, next, 1}), "linear spatial and mip blend preserve texel-center golden");
 }
 
 void native_fingerprint(Checks& checks) {
