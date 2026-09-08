@@ -9,6 +9,8 @@
 
 2026-09-08 第二批更新：继续同分支/PR #469，新增正向曲线时间、Graph子树与两级stash、CenterFocus取景输入链、M4二维空间精度；本机Release/ASanUBSan各52/52。子项原生结果、失败范围与下一顺序见[第二批验收](binary-cpp-batch2-2026-09-08.zh.md)。下方旧“变速/graph-free”等说明以第二批具体合同补充，完整dispatch/Session undo/视频链仍未关闭。
 
+2026-09-08 第三批收尾：graph 与曲线时间组合、Graph 整树 stash/diff、Lens border=11 运动约束、M4 多层联合线性采样已交付，本机统一 Release/ASanUBSan 各 **58/58**。具体原生计数和输入域见[第三批记录](binary-cpp-batch3-2026-09-08.zh.md)。以下历史描述中的 graph+变速、Graph stash/diff、多层 linear+linear 缺口在该有界合同内关闭；完整分派/Session undo、整个 MergeUtil、其他设备、通用图与产品接入仍缺。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
