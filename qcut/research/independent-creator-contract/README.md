@@ -222,3 +222,19 @@ The previous native restore matrix remains 3,842 cases / 440,390 comparisons.
 Eight compiled mutants are rejected by native comparisons, including a null
 snapshot branch that required an explicit controlled corpus. See
 [creator-graph-snapshot-2026-09-08.zh.md](../../docs/task/jianying-filter-runtime-research/creator-graph-snapshot-2026-09-08.zh.md).
+
+## Graph tree stash and differential restoration
+
+`graph_tree.*` and `graph_diff.*` add typed Graph/array historical snapshots,
+suppressed change propagation, shared-owner substitution and field-level diff
+application. Array reorder alone may produce no snapshot; diff visits active
+children only and preserves live fields that have no before/after change.
+Clock ownership is represented without inventing SDK timestamp behavior.
+
+Twelve portable CTest groups pass Release and ASan/UBSan. The optional
+`creator-native-graph-diff` checks 5,890 real SDK cases / 8,123,755 comparisons
+with zero mismatches; repeated and sanitizer reports agree. Eight compiled
+mutants fail both standalone and native comparison. Prior graph and restore
+reports remain unchanged. Full Session history selection, transactions and
+application undo are still outside scope. See the
+[third-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-graph-diff-2026-09-08.zh.md).
