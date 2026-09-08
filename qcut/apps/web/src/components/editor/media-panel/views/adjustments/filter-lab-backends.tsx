@@ -1,3 +1,4 @@
+import { FilterComparisonLab } from "./filter-comparison-lab";
 import { useState, type ComponentProps } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { JianyingFilterLab } from "./jianying-filter-lab";
@@ -14,11 +15,12 @@ export function FilterLabBackends(
 			className="flex min-h-0 flex-1 flex-col gap-2"
 		>
 			<TabsList
-				className="grid w-full shrink-0 grid-cols-2"
+				className="grid w-full shrink-0 grid-cols-3"
 				aria-label="滤镜渲染器"
 			>
 				<TabsTrigger value="jianying">剪映本机</TabsTrigger>
 				<TabsTrigger value="independent">QCut Metal</TabsTrigger>
+				<TabsTrigger value="comparison">算法对照</TabsTrigger>
 			</TabsList>
 			<TabsContent
 				value="jianying"
@@ -31,6 +33,12 @@ export function FilterLabBackends(
 				className="mt-0 min-h-0 flex-1 overflow-y-auto"
 			>
 				<IndependentFilterShelf {...props} />
+			</TabsContent>
+			<TabsContent
+				value="comparison"
+				className="mt-0 min-h-0 flex-1 overflow-y-auto"
+			>
+				<FilterComparisonLab />
 			</TabsContent>
 		</Tabs>
 	);
