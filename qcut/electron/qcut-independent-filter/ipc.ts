@@ -1,3 +1,5 @@
+import { QCUT_FILTER_COMPARE } from "./comparison-contract.js";
+import { createFogComparison } from "./comparison.js";
 import { ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from "electron";
 import { parseFilterLabRenderLocalEffectRequest } from "../jianying-filter-lab-request.js";
 import { validateIndependentFilterIdentity } from "./assets.js";
@@ -22,6 +24,7 @@ export function setupIndependentFilterIPC({
 	getMainWindow: () => BrowserWindow | null;
 }) {
 	const provider = createIndependentFilterProvider();
+	const compare = createFogComparison();
 	const lutProvider = createIndependentLutProvider();
 	const softGlowProvider = createSoftGlowProvider();
 	const assertTrusted = ({ event }: { event: IpcMainInvokeEvent }) => {
@@ -37,6 +40,10 @@ export function setupIndependentFilterIPC({
 			throw new Error("Independent filter rejected an untrusted renderer.");
 		}
 	};
+	ipcMain.handle(QCUT_FILTER_COMPARE, (event, request: unknown) => {
+		assertTrusted({ event });
+		return compare({ request });
+	});
 	ipcMain.handle(QCUT_FILTER_LIST, (event, request: unknown) => {
 		assertTrusted({ event });
 		return listIndependentFilters({
@@ -86,6 +93,7 @@ export function setupIndependentFilterIPC({
 			ipcMain.removeHandler(QCUT_FILTER_LOAD);
 			ipcMain.removeHandler(QCUT_FILTER_RENDER);
 			ipcMain.removeHandler(QCUT_FILTER_LIST);
+			ipcMain.removeHandler(QCUT_FILTER_COMPARE);
 			void provider.dispose();
 			void lutProvider.dispose();
 			void softGlowProvider.dispose();
