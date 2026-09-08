@@ -10,13 +10,16 @@ struct RecordGraphPoint {
   editor_contract::MutationState mutation;
 };
 
-struct RecordGraph {
+struct RecordGraphMetadata {
   std::string id;
   std::string resource_id;
   std::string resource_name;
   std::int32_t source_platform = 0;
-  RecordNodeList<RecordGraphPoint> points;
   editor_contract::MutationState mutation;
+};
+
+struct RecordGraph : RecordGraphMetadata {
+  RecordNodeList<RecordGraphPoint> points;
 };
 
 void validate_graph_record(const RecordGraph& graph, const RecordGraphPointIndex& existing = {});
