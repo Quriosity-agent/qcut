@@ -4,7 +4,7 @@ project(independent_agfx_contract LANGUAGES CXX)
 option(AGFX_CONTRACT_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)
 option(AGFX_CONTRACT_NATIVE_PROBE "Build the optional macOS arm64 diagnostic probe" OFF)
 
-add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp)
+add_library(agfx_contract STATIC pixel_format.cpp sampler.cpp texture_sample.cpp mip_sample.cpp m4_texture.cpp m4_spatial.cpp)
 target_compile_features(agfx_contract PUBLIC cxx_std_20)
 target_include_directories(agfx_contract PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -18,8 +18,10 @@ add_executable(agfx-mip-tests mip_sample_tests.cpp)
 target_link_libraries(agfx-mip-tests PRIVATE agfx_contract)
 add_executable(agfx-m4-texture-tests m4_texture_tests.cpp)
 target_link_libraries(agfx-m4-texture-tests PRIVATE agfx_contract)
+add_executable(agfx-m4-trilinear-tests m4_trilinear_tests.cpp)
+target_link_libraries(agfx-m4-trilinear-tests PRIVATE agfx_contract)
 
-set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests)
+set(contract_targets agfx_contract agfx-format-tests agfx-sampler-tests agfx-texture-tests agfx-mip-tests agfx-m4-texture-tests agfx-m4-trilinear-tests)
 
 if(AGFX_CONTRACT_NATIVE_PROBE)
     if(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -31,7 +33,7 @@ if(AGFX_CONTRACT_NATIVE_PROBE)
     target_link_libraries(agfx-native-probe PRIVATE agfx_contract "-framework Foundation" "-framework Metal")
     target_compile_options(agfx-native-probe PRIVATE -fobjc-arc -Wno-deprecated-declarations)
     list(APPEND contract_targets agfx-native-probe)
-    foreach(probe texture mip spatial)
+    foreach(probe texture mip spatial trilinear)
       add_executable(agfx-${probe}-probe
         ../jianying-runtime-probe/agfx-${probe}-probe.mm
         ../jianying-runtime-probe/agfx-texture-runtime.mm
@@ -64,3 +66,4 @@ add_test(NAME agfx-sampler-contract COMMAND agfx-sampler-tests)
 add_test(NAME agfx-texture-contract COMMAND agfx-texture-tests)
 add_test(NAME agfx-mip-contract COMMAND agfx-mip-tests)
 add_test(NAME agfx-m4-texture-contract COMMAND agfx-m4-texture-tests)
+add_test(NAME agfx-m4-trilinear-contract COMMAND agfx-m4-trilinear-tests)
