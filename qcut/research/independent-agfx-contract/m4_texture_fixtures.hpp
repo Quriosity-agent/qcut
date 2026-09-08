@@ -19,12 +19,12 @@ inline std::uint32_t next_value(std::uint32_t& state) {
   return state;
 }
 
-inline M4TextureFixture m4_fixture(std::uint32_t width, std::uint32_t height, bool bgra) {
+inline M4TextureFixture m4_fixture(std::uint32_t width, std::uint32_t height, bool bgra, std::uint32_t variant = 0) {
   M4TextureFixture result;
   const auto count = static_cast<std::uint32_t>(std::bit_width(std::max(width, height)));
   result.storage.reserve(count);
   result.levels.reserve(count);
-  std::uint32_t seed = width * 1741U + height * 4729U;
+  std::uint32_t seed = (width * 1741U + height * 4729U) ^ variant;
   for (std::uint32_t level = 0; level < count; ++level) {
     const auto stride = static_cast<std::size_t>(width) * 4 + 12;
     auto& pixels = result.storage.emplace_back(stride * height, std::uint8_t{0xbd});
