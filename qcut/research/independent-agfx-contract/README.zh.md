@@ -115,3 +115,12 @@ DYLD_LIBRARY_PATH="$AGFX_FRAMEWORKS" "$AGFX_EVIDENCE/build-release/agfx-native-p
 原始二进制、反汇编和原生 JSON 保存在仓库外。此次私有证据根目录为上述 `AGFX_EVIDENCE`，含 `differential-run-1.json`、`differential-run-2.json`、构建/CTest 产物和 `verification.json`。这份报告与旧 D634 CGL 柔光宿主分属不同版本，不能将映射验证升级为柔光逐 Pass 精度验证。
 
 纹理扩展已完成 384 项独立测试、8 次原生 RGBA/BGRA 字节读回和两次完整 GPU 复跑。CPU 空间参考接受有限坐标并校验尺寸、跨度、溢出及截断；depth=1 仍按三维接口处理 R 轴，2D 使用 w=0.5。具体计数、排除的 LOD 域、失败实验和复现命令见像素报告。下一项是真实柔光中间 Pass 的误差归因。
+
+## 2026-09-08 第三批：多层联合线性采样
+
+`sample_m4_texture` 已闭合 M4 Pro 有界二维域内的多层 spatial linear + mip linear。
+联合 16 位 tap 系数、行相关中点舍入、重复地址合并与镜像方向规约有真实输出证据。
+512 配置、230,661,120 通道逐 bit 一致；独立 GPU 路线也为零差异。
+独立 Release/ASanUBSan 各 6/6，七个已编译错误变体均被两套测试检出，旧原生矩阵不变。
+完整/部分 mip 链和 RGBA/BGRA 已覆盖；其他设备、极小/大坐标、HDR、实际滤镜逐 Pass 和产品接入仍缺。
+详见[联合采样研究](../../docs/task/jianying-filter-runtime-research/agfx-trilinear-sampling-2026-09-08.zh.md)。
