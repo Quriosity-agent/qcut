@@ -1,15 +1,9 @@
 #include "graph.hpp"
+#include "resolved_graph.hpp"
 
 #include <stdexcept>
 
 namespace editor_contract {
-namespace {
-ControlOffset control(const GraphRecord& record, bool outgoing, std::size_t channel) {
-  const auto& channels = outgoing ? record.channel_outgoing : record.channel_incoming;
-  if (channel < channels.values.size()) return {static_cast<double>(channels.time), channels.values[channel]};
-  return outgoing ? record.outgoing : record.incoming;
-}
-}  // namespace
 
 std::vector<double> evaluate_graph_property(const ConstantSpeedSegment& segment,
     const NonlinearPropertyInterval& interval, std::span<const GraphPoint> graph,
@@ -34,30 +28,7 @@ std::vector<double> evaluate_graph_property(const ConstantSpeedSegment& segment,
     record.outgoing = resolved.right;
     // Native constant-speed preparation leaves graph channel offsets in their original integer units.
   }
-  for (std::size_t i = 1; i < records.size(); ++i) {
-    if (records[i - 1].time > records[i].time) {
-      throw std::invalid_argument("Descending graph records are outside the verified property domain");
-    }
-  }
-  std::size_t previous = 0;
-  auto progress_left = mapped_left;
-  for (std::size_t selected = 0; selected < records.size(); ++selected) {
-    const auto& end = records[selected];
-    if (end.time < query) {
-      previous = selected;
-      progress_left = end.time;
-      continue;
-    }
-    const auto& start = records[previous];
-    std::vector<double> result(start.values.size());
-    for (std::size_t channel = 0; channel < result.size(); ++channel) {
-      const auto prepared = prepare_cubic_interval({start.time, end.time, start.values[channel], end.values[channel],
-          control(start, true, channel), control(end, false, channel)}, {progress_left, end.time, query});
-      result[channel] = static_cast<double>(evaluate_cubic(prepared.curve, prepared.progress));
-    }
-    return result;
-  }
-  return {right.values.begin(), right.values.end()};
+  return graph_detail::evaluate_records(records, right.values, mapped_left, query);
 }
 
 }  // namespace editor_contract
