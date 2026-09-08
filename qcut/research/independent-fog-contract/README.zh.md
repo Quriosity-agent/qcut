@@ -55,3 +55,10 @@ python3 research/independent-fog-contract/verify_native.py \
 当前实测与私有可重查结果见 [C++ 验证记录](../../docs/task/jianying-filter-runtime-research/fog-cpp-verification-2026-09-07.zh.md)。小于容差不等于逐位原生复刻：通用 CPU 采样器、GLSL/Metal 的插值/FMA和设备量化仍有差异。没有套用 Soft Glow 的设备转换 profile。
 
 完整性限定于这条静态、不透明 SDR、外部 LUT 算法链。通用场景图、HDR/透明图、连续移动画面、实时性能、CPU 产品适配及 Preview/Export E2E 仍未完成；本轮没有新增剪映 UI 导出。
+
+## 实验室对照入口（2026-09-08）
+
+QCut 的「滤镜实验室 → 算法对照」现使用本工程 CLI 和五个阶段输出，
+与已有 Metal 迷雾做同图比较，支持图片、强度、误差图和可重放报告。
+这是实验室参考 adapter；本工程尚未成为产品 Preview/Export 的 CPU renderer。
+详见[接入与验证记录](../../docs/task/jianying-filter-runtime-research/filter-lab-cpp-comparison-2026-09-08.zh.md)。
