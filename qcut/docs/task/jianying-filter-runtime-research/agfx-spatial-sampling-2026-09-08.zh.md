@@ -70,3 +70,9 @@ DYLD_LIBRARY_PATH="$AGFX_FRAMEWORKS" /tmp/qcut-agfx-spatial/agfx-spatial-probe "
 ```
 
 默认省略 native 选项即可仅构建独立 C++。本目录现有5组CTest；本批六工程统一构建、sanitizer及当前head云端结果见[第二批总验收](binary-cpp-batch2-2026-09-08.zh.md)。原生sanitizer仅检查自有代码和调用侧，厂商库本身没有插桩。
+
+## 第三批后续
+
+本文记录的多层 spatial linear + mip linear 拒绝状态已由
+[第三批联合采样](agfx-trilinear-sampling-2026-09-08.zh.md)在同一有界 M4 Pro profile 内关闭。
+本文原始失败实验和旧 72,474,112 通道矩阵保留为历史证据；其他设备及域外坐标仍未覆盖。
