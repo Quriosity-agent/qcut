@@ -1,6 +1,6 @@
 # Independent editor contracts
 
-Original C++20 implementations of ten bounded contracts observed in Jianying
+Original C++20 implementations of thirteen bounded contracts observed in Jianying
 11.3.0 `libvideoeditor.dylib` and `libcccreator.dylib` (arm64). The static library uses only the standard
 library. It neither loads Jianying nor implements a video renderer.
 
@@ -16,6 +16,9 @@ library. It neither loads Jianying nor implements a video renderer.
 | `segment_time` | Video source/timeline conversion, strict 1000-unit endpoint snap, relative offset, separately clamped control records | Genuine detached SegmentVideo tree; 6,336 three-helper queries and 6,336 record transforms, zero mismatches |
 | `linear_property` | Two preselected, graph-free, curve-zero Video keyframes; mapped-time progress and separate double arithmetic | 1,153 native property calls; 8,353 values, zero mismatches |
 | `nonlinear_property` | Graph-free mixed/nonzero curve sides, record selection, constant-speed controls, float cubic evaluation and double-copy fallbacks | 117,515 actual property calls; 784,545 values, zero mismatches |
+| `graph` | Right-frame anchor/control expansion, quadratic elevation, per-channel controls and bounded constant-speed Video property | 1,673 native configurations; 43,880 property calls and 9,886 record comparisons, zero mismatches |
+| `variable_time` | Positive continuous speed normalization, three-piece integration and quadratic inverse, Video endpoint/fallback timing, control records and preselected graph-free nonlinear property | 384 genuine native configurations; 628,308 map calls, 46,080 records and 7,872 property calls, zero mismatches |
+| `variable_graph` | Nonempty graph expansion followed by curve-speed record mapping, raw channel controls versus mapped scalar controls, closed-record selection and actual multichannel property | 1,330 genuine native configurations; 95,372 property calls and 10,764 record comparisons, zero mismatches |
 
 The models describe observed fields with ordinary C++ values; they do not expose
 vendor object layouts. State codes remain numeric because their broader event or
@@ -127,6 +130,24 @@ The API represents no graph, per-channel graph control arrays, nonconstant speed
 Caption rules or complete property dispatch. Numeric curve codes have not been
 mapped to UI curve names.
 
+`expand_graph` adds the nonempty right-frame graph branch. Graph type zero denotes
+an anchor; all nonzero int32 types denote controls. Endpoint anchors reuse the
+input records, including their raw double values; interior anchors receive mapped
+times/values and numeric curve code 3. One intervening control is elevated from
+quadratic to cubic with separately rounded 1/3 and 2/3 products. With two or more
+controls, only the first two are used. The per-channel value offsets and integer
+time offsets are kept separate from ordinary scalar controls.
+
+`evaluate_graph_property` connects those records to the existing cubic evaluator.
+The native constant-speed resolver transforms record time and scalar controls but
+leaves graph integer time offsets unchanged; scaling those offsets would change
+the result. The graph must start/end with anchors and fit a 2^20 point×channel
+budget. Expansion itself preserves wrapped int64 arithmetic and does not sort;
+property evaluation rejects descending resolved records. Duplicate times remain
+valid. The two input keyframes are already selected, one curve must be nonzero,
+and the raw query is strictly interior. Exact hits, leading/trailing controls,
+curve-speed, Caption rules and full dispatch remain outside this API.
+
 ## Optional private diagnostic
 
 The optional `editor-native-probe` is an isolated macOS arm64 executable. It
@@ -145,6 +166,9 @@ DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-evaluation-pro
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-window-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" > /tmp/editor-window.json 2> /tmp/editor-window.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-segment_time-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" > /tmp/editor-segment-time.json 2> /tmp/editor-segment-time.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-nonlinear_property-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-nonlinear-property.json 2> /tmp/editor-nonlinear-property.stderr
+DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-graph-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-graph.json 2> /tmp/editor-graph.stderr
+DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-variable_time-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-variable-time.json 2> /tmp/editor-variable-time.stderr
+DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-variable_graph-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-variable-graph.json 2> /tmp/editor-variable-graph.stderr
 ```
 
 The original diagnostic accepts this `libvideoeditor` identity:
@@ -156,7 +180,7 @@ The evaluation diagnostic additionally pins `libcccreator` SHA-256
 `b09c395d934169cb20ec865dd1d4032ca68023b287a7264e1b06ff4d71fd1be4` and arm64
 UUID `100726E3-FCB0-31BC-98EE-1B196A1714A3`. It calls the genuine `getVEUtils`
 singleton and verifies virtual slot `0x168` before evaluating curves. The
-resampler uses ordinary libc++ vectors, not synthetic SDK objects. The five
+resampler uses ordinary libc++ vectors, not synthetic SDK objects. The eight
 diagnostics intentionally keep private images loaded until their process exits.
 Dependency-library identities beyond these two images are not pinned.
 
@@ -189,6 +213,17 @@ local mutation bytes. This is evidence of read-only frame behavior in this corpu
 not a guarantee about all SDK globals or the playback seek state machine. Eleven
 native goldens and the full numeric fingerprint are pinned in standalone tests.
 
+The graph diagnostic invokes the real Graph/GraphPoint/CommonPoint factory using
+its bounded read-only value-argument layout with genuine libc++ strings/vectors.
+The aggregate sits on a read-only page ending at a guard page. SDK model storage,
+vtables and shared control blocks are created by that factory. Before any setter
+correction, direct output must match the requested type, coordinates and resource
+strings; only numerically equal signed zeros may differ. It then uses real
+keyframe attachment, record packing, expansion, time resolution and property
+entrypoints. The native source graphs and frame snapshots remain unchanged in
+3,346 checks. Weak-pointer checks cover release of attached graphs and points.
+This does not establish global SDK purity or full playback state behavior.
+
 The similarly named free `getInterpolationCubicBezier` is a different floating
 implementation: 4,047 finite results differ from the actual virtual entrypoint in
 the same 40,000-case corpus. It is recorded as a counterexample, not substituted
@@ -198,7 +233,7 @@ entrypoint and reject altered Newton, fused time-Horner, and duplicate handling.
 This is not a whole-library reconstruction or a QCut product integration. It does
 not implement portable SDK object construction, dirty-child traversal, request/event routing,
 undo, the complete keyframe-selection/seek state machine, sequence insertion into
-an editor, preview/export, curve-speed mapping, or seconds/frame-rate conversion. The portable sources and tests were executed locally
+an editor, preview/export, arbitrary/reverse curve-speed mapping or seconds/frame-rate conversion. The portable sources and tests were executed locally
 with AppleClang 21 on macOS arm64; Linux/Windows execution remains to be verified.
 See the [Chinese evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-cpp-contract-2026-09-07.zh.md).
 The [evaluation evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-keyframe-evaluation-2026-09-07.zh.md)
@@ -213,3 +248,38 @@ including native factories, negative controls and remaining dispatch boundaries.
 The [nonlinear property evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-nonlinear-property-2026-09-07.zh.md)
 connects real record preparation to the cubic runtime and distinguishes nonlinear
 computation from endpoint copies without extending the claim to full dispatch.
+The [graph evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-graph-contract-2026-09-08.zh.md)
+adds genuine nonempty graph construction, expansion and the bounded per-channel
+property chain, with arithmetic-order goldens and native negative controls.
+
+The [variable-speed evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-variable-time-2026-09-08.zh.md)
+closes positive continuous curve normalization, numerical integration/inversion,
+genuine Video range/control mapping and a graph-free nonlinear property subdomain.
+`VariableSpeedCurve` owns float-normalized points; it requires 2–4,096 finite positive
+points, distinct float source coordinates and endpoints 0/1. These are independent
+safety/domain limits, not a claim about native rejection behavior. The duration is
+a positive integer in the caller's existing time unit. Negative raw Segment deltas
+use `negative_time_speed`; bare curve queries clamp negatives to zero.
+The native three-piece speed shape uses float-derived constants and explicit
+fused arithmetic. Even the low-64-bit integer square before conversion is preserved
+for extreme query values. Whole-curve averaging and an unbounded real-number
+quadratic are different algorithms. The portable suite pins a native map corpus
+fingerprint, while the optional diagnostic additionally compares real records and
+actual property calls. Nonempty graph plus variable speed is covered separately by the bounded `variable_graph` unit below.
+
+`prepare_variable_graph` combines existing graph expansion and positive curve-speed
+record conversion. It preserves graph channel offsets in their original integer
+time units while mapping scalar control times through the curve. The function
+requires valid source/target durations; the unused fallback speed/offset fields do
+not affect record preparation. `evaluate_variable_graph_property` additionally
+validates the full VariableSpeedSegment and the same preselected nonzero-curve,
+interior-query domain as nonlinear evaluation. It uses per-channel graph controls
+when present and scalar controls otherwise, preserving first closed-record
+selection, float cubic evaluation and untouched double-copy fallbacks.
+Both constant and variable graph paths share `resolved_graph.cpp`; the old native
+graph fingerprint remains unchanged after extraction. The native diagnostic
+constructs real speed/graph/Video/keyframe models and compares expanded and
+resolved records before calling the actual property entrypoint. Four captured
+goldens and a 46,464-call native fingerprint run without proprietary dependencies
+in standalone tests. See the [variable graph evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-variable-graph-2026-09-08.zh.md)
+for per-channel/scalar boundaries, negative controls and remaining dispatch work.

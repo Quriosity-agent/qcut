@@ -1,3 +1,4 @@
+import { QCUT_FILTER_COMPARE } from "./qcut-independent-filter/comparison-contract.js";
 /**
  * Electron preload script that exposes a secure API to the renderer process.
  * Uses contextBridge to safely expose IPC methods without exposing the full Electron API.
@@ -248,6 +249,7 @@ const electronAPI: ElectronAPI & Record<string, unknown> = {
 			ipcRenderer.invoke(JIANYING_TRANSITION_RENDER_TIMELINE_CHANNEL, request),
 	},
 	qcutIndependentFilter: {
+		compare: (request) => ipcRenderer.invoke(QCUT_FILTER_COMPARE, request),
 		load: (request) => ipcRenderer.invoke(QCUT_FILTER_LOAD, request),
 		list: (request) => ipcRenderer.invoke(QCUT_FILTER_LIST, request),
 		render: (request) => ipcRenderer.invoke(QCUT_FILTER_RENDER, request),

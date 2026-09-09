@@ -1,3 +1,4 @@
+import type { FilterComparisonAPI } from "./comparison-contract.js";
 import type {
 	JianyingFilterLabLoadRendererResult,
 	JianyingFilterLabRenderLocalEffectRequest,
@@ -36,7 +37,7 @@ export interface IndependentFilterResult {
 	rgba: Uint8Array;
 }
 
-export interface IndependentFilterAPI {
+export interface IndependentFilterAPI extends FilterComparisonAPI {
 	load: (
 		request?: IndependentFilterIdentity
 	) => Promise<JianyingFilterLabLoadRendererResult>;

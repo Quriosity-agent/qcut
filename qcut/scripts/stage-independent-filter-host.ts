@@ -1,3 +1,7 @@
+import {
+	compileFogCpuHost,
+	FOG_CPU_HOST,
+} from "../electron/qcut-independent-filter/fog-cpu-bridge.js";
 import { resolve } from "node:path";
 import {
 	compileSoftGlowHost,
@@ -24,6 +28,13 @@ if (process.platform === "darwin") {
 	);
 	await compileSoftGlowHost({ projectRoot, outputPath: softGlowPath });
 	console.log(`Staged QCut independent CPU soft glow host: ${softGlowPath}`);
+	const fogCpuPath = resolve(
+		projectRoot,
+		"electron/resources/bin",
+		FOG_CPU_HOST
+	);
+	await compileFogCpuHost({ projectRoot, outputPath: fogCpuPath });
+	console.log(`Staged QCut Fog C++ reference: ${fogCpuPath}`);
 } else {
 	console.log("Skipping QCut Metal host: macOS only.");
 }

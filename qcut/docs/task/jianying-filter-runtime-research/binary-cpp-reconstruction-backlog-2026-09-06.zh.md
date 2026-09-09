@@ -5,6 +5,12 @@
 
 2026-09-07 更新：从 master `29d4700a5` 新建 `codex/jianying-binary-cpp-next`，AGFX、videoeditor、VECreator、Lens 四线持续推进，统一构建现含柔光和迷雾，共六个 C++ 工程。本批新增迷雾完整四段算法和真实 Segment 非线性属性子域；本机 Release 与禁止恢复的 ASan/UBSan 均 40/40，实际数值与像素已有原生对照；新提交的远端 CI 待推送后检查。逐项状态见[执行记录](binary-cpp-execution-2026-09-07.zh.md)。**完整标准 C++ 滤镜链为柔光、迷雾 2 条；仍有 8 个未完整关闭的工作包，整库仍 0/6。**
 
+2026-09-08 更新：从最新 master `513a1c67d` 新建 `codex/jianying-binary-cpp-scaleup-20260908`，四线新增非空graph、局部记录恢复、连续帧裁切和M4 mip精度profile。六工程本机 Release/ASanUBSan各46/46，详见[本批交付与验收](binary-cpp-scaleup-2026-09-08.zh.md)。两条完整滤镜链、8个未完整关闭的大工作包、整库0/6的口径均不变。
+
+2026-09-08 第二批更新：继续同分支/PR #469，新增正向曲线时间、Graph子树与两级stash、CenterFocus取景输入链、M4二维空间精度；本机Release/ASanUBSan各52/52。子项原生结果、失败范围与下一顺序见[第二批验收](binary-cpp-batch2-2026-09-08.zh.md)。下方旧“变速/graph-free”等说明以第二批具体合同补充，完整dispatch/Session undo/视频链仍未关闭。
+
+2026-09-08 第三批收尾：graph 与曲线时间组合、Graph 整树 stash/diff、Lens border=11 运动约束、M4 多层联合线性采样已交付，本机统一 Release/ASanUBSan 各 **58/58**。具体原生计数和输入域见[第三批记录](binary-cpp-batch3-2026-09-08.zh.md)。以下历史描述中的 graph+变速、Graph stash/diff、多层 linear+linear 缺口在该有界合同内关闭；完整分派/Session undo、整个 MergeUtil、其他设备、通用图与产品接入仍缺。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
@@ -24,10 +30,10 @@
 | 核心库 | 已经知道/已经做过 | 独立 C++ 现状 | 尚需分析与实现 |
 | --- | --- | --- | --- |
 | `libcccreator.dylib` | Effect/Swing/FeatureSegment 宿主、序列化资源及部分文本/人像/跟踪合同；电影柔光和迷雾固定资源图与强度语义 | 两条滤镜链已提炼为独立 C++20；迷雾使用未修改原包的 Swing JSON 数值事件参考，30 进程/210 帧稳定。大量 `.mm/.cpp` 仍只是原生探针或桥 | 通用多 Pass 图、迷雾 CPU 产品接入与 UI 验收、其他复杂滤镜/文本/转场；Bach/GRU/跟踪核心和模型仍有私有依赖 |
-| `libAGFX.dylib` | 格式转换含 113 项映射、28 项平台条件，每次 208,911 次原生差分；采样器 768 种组合；新增 5 个纹素夹具 × 768 sampler 的真实像素对照，全部逐位相同，RGBA/BGRA 读回及 3D 空间采样也已通过 | [独立 C++20 合同与纹素原语](../../../research/independent-agfx-contract/README.zh.md)已有可运行源码及测试；详见[AGFX 像素验证](agfx-texture-pixels-2026-09-07.zh.md)。这是格式/采样/读回单元，未恢复通用 AGFX 引擎 | CPU mip 边界尚未闭合，不计完成；D634 柔光逐 Pass 格式/采样已实测；666,580 通道验证修正 UNORM 转换，两次 blit 新增权重与舍入实测，三个图样独立阶段零差异；整链仍有残差，还需颜色/Alpha、资源寿命、同步及多 Pass 图整合 |
-| `libvideoeditor.dylib` | 保留状态、JSON、合并重采样、实际 Bézier、窗口与恒速 Segment 对照；本批新增非线性属性 117,515 次调用/784,545 个值，729,127 个非 NaN 值逐位一致、55,418 个 NaN 分类一致 | [独立 C++](../../../research/independent-editor-contract/README.md)已连接恒速时间适配、控制记录及预选两帧的非线性属性求值；见[非线性属性报告](videoeditor-nonlinear-property-2026-09-07.zh.md) | 新单元限 Video、无 graph、至少一侧 curve 非零、raw midpoint 非命中且映射/记录不降序。完整分派、exact-hit 与该新分支的整合、变速曲线、其他 Segment、seek/export/undo 及效果事件传播仍缺 |
-| `libVECreator.dylib` | 既有选择/请求/回调基础上，跨入 videoeditor 的真实 update/reset 注册表和处理器；确认 reset 字面量 1.0、全 common 组移走、已有 ID graph 清空/values 替换 | [独立 C++](../../../research/independent-creator-contract/README.md)1143 项检查通过；10,008 原生单值 vector 位型一致，完整 handler 状态仍为静态证据；见[事件报告](creator-editor-events-2026-09-07.zh.md) | 已解析时间的新建/插入/碰撞更新及 control 修复已有独立实现和局部原生对照；新增 2244 组 dirty/retained 生命周期原生对照；当前时间到真实 Segment 的完整定位、record rollback/undo、完整 request→SDK→effect 与 UI 回放仍未闭合 |
-| `liblens.dylib` | 六个数值原语 4,441 案例/139,213 值逐位一致；新增 base RGBA 图像仿射/BGR，3,892 案例/161,540,260 字节零差异 | [独立 C++ 库、图像 CLI 与测试](../../../research/independent-lens-contract/README.zh.md)已编译，split 量化/signed16 回绕/透明边界有原生证据；见[图像 warp 报告](lens-image-warp-2026-09-07.zh.md) | 已恢复预处理器两后端分派及 NEON 真正 SIMD 条件，各 10,998 案例零差异；仍缺上游产品/VAS 实际选择、运动估计/时序链；crop 四锚点规划及真实 ImageTransform→warp 已局部闭合；Deflicker 独立时序/GPU 核心、UMVFI 模型/补帧、VMB 光流/融合仍未完成 |
+| `libAGFX.dylib` | 格式转换含 113 项映射、28 项平台条件，每次 208,911 次原生差分；采样器 768 种组合；新增 5 个纹素夹具 × 768 sampler 的真实像素对照，全部逐位相同，RGBA/BGRA 读回及 3D 空间采样也已通过 | [独立 C++20 合同与纹素原语](../../../research/independent-agfx-contract/README.zh.md)已有可运行源码及测试；详见[AGFX 像素验证](agfx-texture-pixels-2026-09-07.zh.md)。这是格式/采样/读回单元，未恢复通用 AGFX 引擎 | 09-08 M4显式mip的选择/字节混合已实测闭合，旧456,192排除通道已纳入；任意空间/跨层幅值组合及其他设备仍未逐位闭合；D634 柔光逐 Pass 格式/采样已实测；666,580 通道验证修正 UNORM 转换，两次 blit 新增权重与舍入实测，三个图样独立阶段零差异；整链仍有残差，还需颜色/Alpha、资源寿命、同步及多 Pass 图整合 |
+| `libvideoeditor.dylib` | 保留状态、JSON、合并重采样、实际 Bézier、窗口与恒速 Segment 对照；本批新增非线性属性 117,515 次调用/784,545 个值，729,127 个非 NaN 值逐位一致、55,418 个 NaN 分类一致 | [独立 C++](../../../research/independent-editor-contract/README.md)已连接恒速时间适配、控制记录及预选两帧的非线性属性求值；见[非线性属性报告](videoeditor-nonlinear-property-2026-09-07.zh.md) | 09-08已新增非空graph展开与逐通道property，限Video、至少一侧curve非零、raw midpoint非命中且映射/记录不降序。完整分派、exact-hit 与该新分支的整合、变速曲线、其他 Segment、seek/export/undo 及效果事件传播仍缺 |
+| `libVECreator.dylib` | 既有选择/请求/回调基础上，跨入 videoeditor 的真实 update/reset 注册表和处理器；确认 reset 字面量 1.0、全 common 组移走、已有 ID graph 清空/values 替换 | [独立 C++](../../../research/independent-creator-contract/README.md)1143 项检查通过；10,008 原生单值 vector 位型一致，完整 handler 状态仍为静态证据；见[事件报告](creator-editor-events-2026-09-07.zh.md) | 已解析时间的新建/插入/碰撞更新及 control 修复已有独立实现和局部原生对照；新增 2244 组 dirty/retained 生命周期原生对照；09-08已交付graph-free point/frame/group-list restore，3,842案例/440,390比较零差异；当前时间完整定位、Session选择记录与完整request→SDK→effect/undo/UI回放仍未闭合 |
+| `liblens.dylib` | 六个数值原语 4,441 案例/139,213 值逐位一致；新增 base RGBA 图像仿射/BGR，3,892 案例/161,540,260 字节零差异 | [独立 C++ 库、图像 CLI 与测试](../../../research/independent-lens-contract/README.zh.md)已编译，split 量化/signed16 回绕/透明边界有原生证据；见[图像 warp 报告](lens-image-warp-2026-09-07.zh.md) | 已恢复预处理器两后端分派及 NEON 真正 SIMD 条件，各 10,998 案例零差异；仍缺上游产品/VAS 实际选择、运动估计/时序链；crop 四锚点规划及真实 ImageTransform→warp 已局部闭合；09-08新增RectSmoother连续帧裁切及128帧warp组合，但检测器/VAS上游、Deflicker独立时序/GPU核心、UMVFI模型/补帧、VMB光流/融合仍未完成 |
 | `libbytenn.dylib` | ByteNN 模型加载、`SetInput` 张量元数据与输入预处理边界，部分模型路由 | **尚无 ByteNN 推理引擎及相关降噪/分割模型的完整独立 C++ 替代** | 张量布局、算子/后端、输出协议、时序状态与模型依赖。恢复推理调用合同不等于取得模型训练源码或权重的独立替代 |
 
 上述证据来自不同时间与不同二进制版本。当前已安装 11.3.0 与柔光历史 D634 CGL 参考分开记录，地址/ABI/像素结论不能跨版本直接套用。
@@ -68,9 +74,9 @@
 
 | 目录 | 已交付内容 | 复用边界 |
 | --- | --- | --- |
-| [independent-agfx-contract](../../../research/independent-agfx-contract/README.zh.md) | 格式、sampler 和 CPU 纹素算法；隔离原生纹理上传、采样与读回验证 | CPU mip 边界和真实滤镜的完整多 Pass 图仍待闭合 |
+| [independent-agfx-contract](../../../research/independent-agfx-contract/README.zh.md) | 格式、sampler 和 CPU 纹素算法；隔离原生纹理上传、采样与读回验证 | M4显式mip受限精度已闭合；其他设备、任意空间幅值和完整多Pass图仍待闭合 |
 | [independent-editor-contract](../../../research/independent-editor-contract/README.md) | 值状态、时间端点、元数据、实际 Bézier/重采样、窗口选帧及恒速 Segment 的线性/非线性属性子域 | 完整分派、变速曲线、对象生命周期和动作链未恢复；NaN 分类一致不代表 payload 一致 |
-| [independent-creator-contract](../../../research/independent-creator-contract/README.md) | 选择/请求/回调、材质/reset、已解析时间的关键帧创建/插入/control 和 dirty/retained 生命周期 | 常量、向量和局部 SDK 模型变更有原生对照；完整时间转换与 undo 未闭合 |
+| [independent-creator-contract](../../../research/independent-creator-contract/README.md) | 选择/请求/回调、材质/reset、已解析时间的关键帧创建/插入/control 和 dirty/retained 生命周期 | 常量、向量、局部SDK模型变更和graph-free记录恢复有原生对照；完整时间转换与Session undo未闭合 |
 | [independent-lens-contract](../../../research/independent-lens-contract/README.zh.md) | 六个 CPU 数值原语、base/NEON/ImageTransform warp、crop 变换计划及 CLI | 有实际图像字节对照；尚未连接为完整防抖/防闪烁/补帧算法 |
 
 仓库另外已有独立 Metal 滤镜及人像后处理代码，例如 [`host.mm`](../../../electron/qcut-independent-filter/host.mm)、[`alpha-refinement.cpp`](../../../electron/jianying-person-cutout/native/alpha-refinement.cpp)、[`alpha-temporal-stabilizer.cpp`](../../../electron/jianying-person-cutout/native/alpha-temporal-stabilizer.cpp)。它们应保留和复用；两条标准 C++ 滤镜链不是整个仓库自有 C++ 的总量。
@@ -80,20 +86,20 @@
 | 优先级 | 可执行任务 | 完成门槛 |
 | --- | --- | --- |
 | P0 | 复用已完成的柔光/迷雾算法，建立通用图执行与迷雾 CPU 产品 adapter | 预览、导出、强度切换、禁原生回退和新 UI E2E 分别验收；已有 CLI 像素差分不替代产品闭环 |
-| P0 | 在已验证 AGFX 上传/空间采样/读回基础上闭合 CPU mip 边界，再补柔光实际逐 Pass 证据和 GPU/SIMD 路径 | 数值差异有归因；CPU/GPU 对照、尺寸/强度切换、预览/导出和性能数据均有证据 |
+| P0 | 在已验证AGFX上传/空间采样/读回及M4 mip profile基础上，补其他精度域、柔光实际逐Pass证据和GPU/SIMD路径 | 数值差异有归因；CPU/GPU 对照、尺寸/强度切换、预览/导出和性能数据均有证据 |
 | P1 | 复用 Lens 已恢复数值原语，连接运动矩阵生成、裁切与像素 warp；并继续恢复 Deflicker、防抖/补帧/VMB 的各自核心 | 先恢复帧输入输出、时序状态和 UI 参数合同，再交付不加载该库的完整算法与视频对照；坐标或轨迹通过不替代帧验证 |
 | P1 | `libbytenn` 与 cccreator 的分割/降噪链 | 明确哪些是通用推理代码、哪些是模型资产；独立/已授权后端产出真实张量和像素，不以 model-loaded 计完成 |
 | P2 | 在 creator 请求计划和 editor 状态/元数据单元之间补齐真实类型、对象生命周期与事件链，再连接 cccreator | reset、多选、关键帧、seek、重开和导出合同被测试覆盖；需要的语义接入 QCut，不重复实现整套原 UI |
 
 已关闭的算法子项：迷雾真实卡语义契约、标准 C++ 四段实现及本机原生像素差分。后续八个完整工作包：
 
-- [ ] 04：闭合 AGFX CPU mip、柔光/迷雾逐 Pass 采样与舍入归因，并补 GPU/SIMD 性能和跨平台原生像素验证。
+- [ ] 04：扩展已闭合的M4 mip受限profile，完成柔光/迷雾逐Pass采样与舍入归因，并补 GPU/SIMD 性能和跨平台原生像素验证。
 - [ ] 05：videoeditor 完整类型/属性分派、变速时间适配、seek/export 与效果事件传播。
-- [ ] 06：Creator 当前时间定位、完整 request/record rollback/undo 与 UI 生命周期。
+- [ ] 06：复用已完成的局部记录恢复，补Creator当前时间定位、Session记录选择/完整undo与UI生命周期。
 - [ ] 07：通用多 Pass 图与迷雾 CPU 产品 adapter、Preview/Export、新 UI E2E。
 - [ ] 08：Deflicker 从私有运行时桥推进到独立连续帧算法。
 - [ ] 09：ByteNN 相关降噪/分割明确模型替代与独立推理路径。
-- [ ] 10：Lens crop/warp 上游的实际产品选择、运动估计与完整 VAS。
+- [ ] 10：复用crop/warp与RectSmoother时序裁切，补上游实际产品选择、运动估计与完整VAS。
 - [ ] 11：UMVFI 与 VMB 分别补齐帧合同、模型边界和独立补帧/融合实现。
 
 这八条与执行队列 04–11 一一对应；03 受控空间采样之外的 CPU mip 余项归入 04，性能与跨平台像素验证也在该包。此前按主题拆分的八条重新按队列归组，并不表示余项全部完成。07 的迷雾算法子项已关闭，但通用图和产品出口仍未完成，因此工作包数保持 8。没有函数级覆盖率，不估算“还差百分之多少”或全部完成工时。
@@ -105,6 +111,8 @@
 [转场解构报告](../../../research/jianying-runtime-probe/DECOMPILATION.md) 已恢复 13 个代表性转场的公式/结构，部分数学代码在 TypeScript；其原生差分通过不代表 13 套完整独立 C++ 渲染器已经交付。`.ausl`、`graph.dat` 等资源文件也不并入本表的动态库数量。
 
 ## 证据入口与盘点方法
+
+- [09-08新分支四线交付和当前测试](binary-cpp-scaleup-2026-09-08.zh.md)
 
 - [二进制第一轮总报告](binary-priority-research-2026-09-06.zh.md)
 - [AGFX 纹理契约](agfx-texture-contract-2026-09-06.zh.md)
@@ -144,3 +152,8 @@ PY
 ```
 
 本台账只保存原创说明和定位信息；原始库、模型、资源包与原生证据保持在仓库外。
+
+## 2026-09-08 产品接入首项
+
+[滤镜实验室 C++ 对照](filter-lab-cpp-comparison-2026-09-08.zh.md)已把独立迷雾作为诊断参考，连接到 QCut Metal 同图比较、误差显示与报告重放。
+这个实验室 adapter 不关闭迷雾 CPU Preview/Export、视频对照或其它滤镜迁移工作包；整库 0/6 与两条完整算法链的统计保持不变。

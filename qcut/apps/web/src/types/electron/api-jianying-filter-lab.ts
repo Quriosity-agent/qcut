@@ -65,3 +65,8 @@ export type {
 	JianyingFilterVerificationStatus,
 	JianyingLutRole,
 } from "../../../../../electron/jianying-filter-lab-contract";
+
+export type {
+	FilterComparisonResult,
+	FilterComparisonImage,
+} from "../../../../../electron/qcut-independent-filter/comparison-contract";

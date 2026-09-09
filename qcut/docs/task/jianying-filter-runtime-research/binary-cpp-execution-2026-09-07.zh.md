@@ -1,5 +1,7 @@
 # 剪映二进制 → 独立 C++：顺序执行记录
 
+2026-09-08 续篇：[新分支四线推进与当前验证](binary-cpp-scaleup-2026-09-08.zh.md)。本文保留09-07的历史结果；本轮 mip 边界、非空 graph、记录恢复、时序裁切的新状态以续篇为准。
+
 记录日期：2026-09-07。工作区：`/Users/peter/Desktop/code/qcut-binary-cpp-wt/qcut`；分支：`codex/jianying-binary-cpp-next`；起点：`29d4700a5bdd4e1ae88299e0beeecbd31ec34b5b`。
 
 本轮按可独立验收的函数合同、渲染原语和算法链逐项推进。**统一入口已有六个标准 C++ 工程，完整滤镜算法链为电影柔光与迷雾两条；AGFX、videoeditor、VECreator、lens 另有受限局部语义与数值交付。六个核心库的整库还原完成数仍为 0/6。** 本文是执行队列，不把算法、产品接入与整库完成混算。
