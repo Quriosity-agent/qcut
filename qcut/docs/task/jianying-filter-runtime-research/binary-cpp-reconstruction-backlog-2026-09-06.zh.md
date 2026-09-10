@@ -13,6 +13,8 @@
 
 2026-09-10 第四批更新：PR #469 已于 09-09 合并（`a52a891d1`）并随 v2026.09.09.1 发版；从 master `97cf30a83` 新建 `codex/jianying-binary-cpp-batch4-20260910`。四线新增 videoeditor 返回值分派、Creator 节点历史索引、Lens 的 Rigid2Lock/Lock2Rigid 两侧转换和 AGFX 的 CoreVideo 平面格式解析，本机统一 Release/ASanUBSan 各 **64/64**。具体原生计数、负控与未检出项见[第四批记录](binary-cpp-batch4-2026-09-10.zh.md)。**本批四个子项各自闭合一个有界单元，下方八个工作包一个都没有关闭**；其中 AGFX 交付的是平面格式解析而不是原定的 04 逐 Pass 残差，04 没有推进。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
 
+2026-09-10 第五批更新：同分支同 PR #470 继续，新增 videoeditor 的 Caption 颜色求值、VECreator 的节点级 `get_stash_copy` 记录选择、Lens 的 MergeUtil 整链和 AGFX 柔光两个高斯 Pass 的片元算术 profile，本机统一 Release/ASanUBSan 各 **70/70**。详见[第五批记录](binary-cpp-batch5-2026-09-10.zh.md)。**工作包 04 首次被正面推进，但只闭合柔光链里的两个 Pass，八个工作包仍然一个都没关闭。** Lens 整链有 52,836 次原生调用被独立实现拒绝，零差异只成立于被比较的 334,645 次；VECreator 交付的是节点层而非既定的 Session 层。整库 0/6、完整滤镜链 2 条、8 个大工作包口径不变。
+
 ## 现在到底还剩多少
 
 | 统计口径 | 已有结果 | 还剩什么 |
