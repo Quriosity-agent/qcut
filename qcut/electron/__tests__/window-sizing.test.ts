@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	clampBoundsToWorkArea,
 	resolveInitialWindowSize,
+	resolveRequestedDisplay,
 } from "../window-sizing.js";
 
 describe("initial QCut window size", () => {
@@ -59,5 +60,52 @@ describe("clamping the window to a display work area", () => {
 				workArea: { x: 0, y: 25, width: 2560, height: 1415 },
 			})
 		).toEqual(bounds);
+	});
+});
+
+describe("QCUT_WINDOW_DISPLAY display selection", () => {
+	const displays = [
+		{ id: 1, workArea: { x: 0, y: 30, width: 2560, height: 1309 } },
+		{ id: 2, workArea: { x: -1920, y: 30, width: 1920, height: 1050 } },
+	];
+
+	it("stays on the primary display when nothing is requested", () => {
+		expect(
+			resolveRequestedDisplay({ requested: undefined, displays, primaryId: 1 })
+		).toBeNull();
+		expect(
+			resolveRequestedDisplay({ requested: "", displays, primaryId: 1 })
+		).toBeNull();
+	});
+
+	it("picks the first non-primary display for 'secondary'", () => {
+		expect(
+			resolveRequestedDisplay({
+				requested: "secondary",
+				displays,
+				primaryId: 1,
+			})?.id
+		).toBe(2);
+		expect(
+			resolveRequestedDisplay({
+				requested: "secondary",
+				displays: displays.slice(0, 1),
+				primaryId: 1,
+			})
+		).toBeNull();
+	});
+
+	it("accepts a 1-based index and rejects everything else", () => {
+		expect(
+			resolveRequestedDisplay({ requested: "2", displays, primaryId: 1 })?.id
+		).toBe(2);
+		expect(
+			resolveRequestedDisplay({ requested: "1", displays, primaryId: 1 })?.id
+		).toBe(1);
+		for (const requested of ["0", "3", "1.5", "left", "-1"]) {
+			expect(
+				resolveRequestedDisplay({ requested, displays, primaryId: 1 })
+			).toBeNull();
+		}
 	});
 });
