@@ -98,6 +98,7 @@ export class ExportEngineMuxer extends ExportEngine {
 				);
 			}
 
+			await this.prepareStabilization(progressCallback);
 			// Dynamic import to avoid loading mediabunny on desktop
 			const {
 				Output,
