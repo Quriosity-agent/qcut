@@ -12,9 +12,17 @@ export function buildDurationPreservingFrameInterpolationFilter({
 	mode,
 	fps,
 }: {
-	mode?: "none" | "blend" | "motion-compensated";
+	/** "neural" is resolved before the graph is built (see neural-frame-interpolation.ts). */
+	mode?: "none" | "blend" | "motion-compensated" | "neural";
 	fps: number;
 }): string {
+	// A neural segment that reaches graph construction was never prepared;
+	// silently exporting it uninterpolated would misrepresent the setting.
+	if (mode === "neural") {
+		throw new Error(
+			"Neural frame interpolation must be resolved before the filter graph is built"
+		);
+	}
 	if (mode !== "blend" && mode !== "motion-compensated") return "";
 	if (!Number.isFinite(fps) || fps <= 0) {
 		throw new RangeError("fps must be a positive finite number");
