@@ -755,8 +755,10 @@ const EN_TRANSLATIONS = {
 	"audioProperties.speed.pitchShift": "Shift audio pitch",
 	"audioProperties.speed.frameInterpolation": "Smart frame interpolation",
 	"audioProperties.speed.frameInterpolationOff": "Off",
-	"audioProperties.speed.frameInterpolationMotion": "Motion compensated (FFmpeg)",
-	"audioProperties.speed.frameInterpolationNeural": "Neural (RIFE, applied on export)",
+	"audioProperties.speed.frameInterpolationMotion":
+		"Motion compensated (FFmpeg)",
+	"audioProperties.speed.frameInterpolationNeural":
+		"Neural (RIFE, applied on export)",
 	"audioProperties.speed.enabled": "Enabled",
 	"audioProperties.speed.reverse": "Reverse",
 	"audioProperties.speed.freeze": "Freeze frame",
@@ -2843,7 +2845,8 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"audioProperties.speed.frameInterpolation": "智能补帧",
 	"audioProperties.speed.frameInterpolationOff": "关闭",
 	"audioProperties.speed.frameInterpolationMotion": "运动补偿（FFmpeg）",
-	"audioProperties.speed.frameInterpolationNeural": "神经补帧（RIFE，导出时生效）",
+	"audioProperties.speed.frameInterpolationNeural":
+		"神经补帧（RIFE，导出时生效）",
 	"audioProperties.speed.enabled": "已开启",
 	"audioProperties.speed.reverse": "倒放",
 	"audioProperties.speed.freeze": "定格",
