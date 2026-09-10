@@ -1,6 +1,9 @@
-import { Sparkles } from "lucide-react";
+import { LoaderCircle, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 import type { MediaEnhancements } from "@/types/timeline";
 import { useTranslation } from "@/lib/i18n";
+import type { MediaItem } from "@/stores/media/media-store-types";
+import { useStabilizationStore } from "@/stores/stabilization-store";
 import {
 	DEFAULT_STABILIZATION_LEVEL,
 	STABILIZATION_LEVELS,
@@ -40,10 +43,80 @@ interface EnhancementSectionProps {
 	onInteractionEnd: () => void;
 }
 
+/** Analysis state of the in-house stabilizer for the clip's source media. */
+function StabilizationAnalysisStatus({
+	mediaItem,
+	enabled,
+}: {
+	mediaItem: MediaItem;
+	enabled: boolean;
+}) {
+	const { t } = useTranslation();
+	const entry = useStabilizationStore((state) => state.entries[mediaItem.id]);
+	const ensureAnalysis = useStabilizationStore((state) => state.ensureAnalysis);
+	const forget = useStabilizationStore((state) => state.forget);
+	const status = entry?.status ?? "idle";
+	useEffect(() => {
+		if (!enabled || status !== "idle") return;
+		void ensureAnalysis({ mediaItem }).catch(() => {});
+	}, [enabled, ensureAnalysis, mediaItem, status]);
+	if (!enabled || status === "idle") return null;
+	if (status === "error") {
+		return (
+			<PropertyItem>
+				<div
+					className="flex w-full items-center justify-between gap-2 text-xs text-destructive"
+					data-testid="media-stabilization-status"
+					data-status="error"
+				>
+					<span className="truncate">
+						{t("mediaProperties.stabilizationStatus.error", {
+							error: entry?.error ?? "",
+						})}
+					</span>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-6 shrink-0 px-2 text-xs"
+						onClick={() => forget({ mediaId: mediaItem.id })}
+					>
+						{t("mediaProperties.stabilizationStatus.retry")}
+					</Button>
+				</div>
+			</PropertyItem>
+		);
+	}
+	return (
+		<PropertyItem>
+			<div
+				className="flex w-full items-center gap-2 text-xs text-muted-foreground"
+				data-testid="media-stabilization-status"
+				data-status={status}
+			>
+				{status === "ready" ? null : (
+					<LoaderCircle className="size-3.5 animate-spin" />
+				)}
+				<span>
+					{status === "ready"
+						? t("mediaProperties.stabilizationStatus.ready")
+						: status === "hashing"
+							? t("mediaProperties.stabilizationStatus.hashing")
+							: t("mediaProperties.stabilizationStatus.analyzing", {
+									percent: Math.round((entry?.progress ?? 0) * 100),
+								})}
+				</span>
+			</div>
+		</PropertyItem>
+	);
+}
+
 export function StabilizationSection({
 	enhancements,
 	onChange,
-}: Pick<EnhancementSectionProps, "enhancements" | "onChange">) {
+	mediaItem,
+}: Pick<EnhancementSectionProps, "enhancements" | "onChange"> & {
+	mediaItem?: MediaItem;
+}) {
 	const { t } = useTranslation();
 	const title = t("mediaProperties.stabilization");
 	const level =
@@ -96,6 +169,9 @@ export function StabilizationSection({
 					</SelectContent>
 				</Select>
 			</PropertyItem>
+			{mediaItem ? (
+				<StabilizationAnalysisStatus mediaItem={mediaItem} enabled={enabled} />
+			) : null}
 		</PropertyGroup>
 	);
 }

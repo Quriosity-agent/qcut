@@ -106,11 +106,31 @@ describe("useVideoEnhancementProxy", () => {
 				sourceDuration: 4,
 				width: 960,
 				height: 540,
-				enhancements,
+				// Stabilization is rendered by the in-house canvas path, never by
+				// the FFmpeg proxy.
+				enhancements: { ...enhancements, stabilization: 0 },
 			})
 		);
 		expect(result.current.url).toBe("app://video-preview-proxy/result.mp4");
 		expect(result.current.sourceTimeOffset).toBe(1.5);
+	});
+
+	it("does not request a proxy when stabilization is the only enhancement", async () => {
+		const { result } = renderHook(() =>
+			useVideoEnhancementProxy(
+				hookProps({
+					nextEnhancements: {
+						...enhancements,
+						denoise: 0,
+						clarity: 0,
+						relight: 0,
+						stabilization: 100,
+					},
+				})
+			)
+		);
+		await waitFor(() => expect(result.current.status).toBe("idle"));
+		expect(renderVideoPreviewProxy).not.toHaveBeenCalled();
 	});
 
 	it("reports generation progress and cancels stale work", async () => {

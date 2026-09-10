@@ -16,8 +16,9 @@ const allPresets = [
 describe("Transition Lab filters", () => {
 	it("keeps public QCut shaders separate from local Jianying entries", () => {
 		expect(TRANSITION_LAB_SOURCE_OPTIONS).toEqual([
-			{ id: "all", label: "全部", count: 526 },
+			{ id: "all", label: "全部", count: 649 },
 			{ id: "qcut", label: "QCut Shader", count: 6 },
+			{ id: "gl-transitions", label: "开源 Shader", count: 123 },
 			{ id: "jianying-local", label: "本机剪映", count: 520 },
 		]);
 		expect(
@@ -27,6 +28,14 @@ describe("Transition Lab filters", () => {
 				group: "all",
 			})
 		).toHaveLength(6);
+		// The vendored gl-transitions never count as QCut's own shaders.
+		expect(
+			filterTransitionLabPresets({
+				presets: allPresets,
+				source: "gl-transitions",
+				group: "all",
+			})
+		).toHaveLength(123);
 		expect(
 			filterTransitionLabPresets({
 				presets: allPresets,

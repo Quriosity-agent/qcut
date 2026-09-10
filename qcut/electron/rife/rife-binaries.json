@@ -1,0 +1,43 @@
+{
+	"schemaVersion": 1,
+	"source": "https://github.com/nihui/rife-ncnn-vulkan",
+	"release": "20221029",
+	"license": "MIT",
+	"model": "rife-v4.6",
+	"executableName": "rife-ncnn-vulkan",
+	"targets": {
+		"darwin": {
+			"url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-macos.zip",
+			"sha256": "4a63a1f3c9c715773c57d2ee51df1b315ed20cd6c63103e45c483ecc4400b595",
+			"executable": "rife-ncnn-vulkan-20221029-macos/rife-ncnn-vulkan",
+			"executableSha256": "d11429c72f0cddfb170fd131ee9373dc5329a5729c4382c0acfd40092e5ed19a",
+			"modelDir": "rife-ncnn-vulkan-20221029-macos/rife-v4.6",
+			"modelFiles": {
+				"flownet.bin": "f334ed2260149ce0188a6dcf049844e8b0cdd912e01cbcfb63553157d2508958",
+				"flownet.param": "724569596bcd1e7b9fa50455c604777ebed99746d2ef40aa86e31b5725f1053c"
+			}
+		},
+		"linux": {
+			"url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-ubuntu.zip",
+			"sha256": "1e2c7ee7fa7daa326542d50622f0afedc80cf6f1858bda411d16385ffa5cdf68",
+			"executable": "rife-ncnn-vulkan-20221029-ubuntu/rife-ncnn-vulkan",
+			"executableSha256": "5c256556195216ddfca103073b0fd37e33e154c8aa40666775fcae8d6a6580b4",
+			"modelDir": "rife-ncnn-vulkan-20221029-ubuntu/rife-v4.6",
+			"modelFiles": {
+				"flownet.bin": "f334ed2260149ce0188a6dcf049844e8b0cdd912e01cbcfb63553157d2508958",
+				"flownet.param": "724569596bcd1e7b9fa50455c604777ebed99746d2ef40aa86e31b5725f1053c"
+			}
+		},
+		"win32": {
+			"url": "https://github.com/nihui/rife-ncnn-vulkan/releases/download/20221029/rife-ncnn-vulkan-20221029-windows.zip",
+			"sha256": "d8e4d772d26cd8006ef0ad0bc82eb191b53c68677d1ae2f42506d74cbbbea606",
+			"executable": "rife-ncnn-vulkan-20221029-windows/rife-ncnn-vulkan.exe",
+			"executableSha256": "4b970319db2814c82b15fceed8193151560a676a9eb63f20d4877be77b98f44f",
+			"modelDir": "rife-ncnn-vulkan-20221029-windows/rife-v4.6",
+			"modelFiles": {
+				"flownet.bin": "f334ed2260149ce0188a6dcf049844e8b0cdd912e01cbcfb63553157d2508958",
+				"flownet.param": "28df14d57a225725ee5386f52eba422488450d37c9f40800ed4f62e8ba846692"
+			}
+		}
+	}
+}

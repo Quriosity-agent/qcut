@@ -20,6 +20,7 @@ import { JIANYING_TEXT_RUNTIME_BRIDGE_FILE_NAME } from "../../electron/jianying-
 import { JIANYING_TRANSITION_BRIDGE_FILE_NAME } from "../../electron/jianying-transition/bridge-resolver.js";
 import { INDEPENDENT_FILTER_HOST } from "../../electron/qcut-independent-filter/bridge.js";
 import { SOFT_GLOW_HOST } from "../../electron/qcut-independent-filter/soft-glow-bridge.js";
+import { FOG_CPU_HOST } from "../../electron/qcut-independent-filter/fog-cpu-bridge.js";
 import { verifyPackagedJianyingRuntimeBridges } from "../verify-packaged-jianying-runtime-bridges.js";
 
 const temporaryDirectories: string[] = [];
@@ -112,6 +113,10 @@ async function createFixture({
 			name: SOFT_GLOW_HOST,
 			contents: "#!/bin/sh\n# independent-soft-glow-host\nexit 0\n",
 		},
+		{
+			name: FOG_CPU_HOST,
+			contents: "#!/bin/sh\n# independent-fog-cpu-host\nexit 0\n",
+		},
 	];
 	await Promise.all(
 		bridges.flatMap(({ name, contents }) => [
@@ -163,10 +168,15 @@ describe("packaged Jianying runtime bridge verification", () => {
 			deflickerHost: expect.stringContaining(JIANYING_DEFLICKER_HOST_FILE_NAME),
 			independentFilterHost: expect.stringContaining(INDEPENDENT_FILTER_HOST),
 			softGlowHost: expect.stringContaining(SOFT_GLOW_HOST),
+			fogCpuHost: expect.stringContaining(FOG_CPU_HOST),
 		});
 	});
 
-	describe.each([INDEPENDENT_FILTER_HOST, SOFT_GLOW_HOST])("%s", (hostName) => {
+	describe.each([
+		INDEPENDENT_FILTER_HOST,
+		SOFT_GLOW_HOST,
+		FOG_CPU_HOST,
+	])("%s", (hostName) => {
 		it("rejects a helper omitted from the packaged app", async () => {
 			const fixture = await createFixture();
 			await rm(path.join(fixture.packagedRoot, hostName));

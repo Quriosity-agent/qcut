@@ -217,3 +217,6 @@ apps/web/public/sticker-lab/*
 
 # Filter lab cube bake — regenerate with scripts/generate-filter-lab-cubes.ts
 electron/native-pipeline/filters/filter-lab-cubes.generated.json
+
+# RIFE frame interpolation binaries are staged from electron/rife/rife-binaries.json, never committed
+electron/resources/rife/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { useEffect, useId, useMemo } from "react";
 import { AudioPlayer } from "@/components/ui/audio-player";
 import { VideoPlayer } from "@/components/ui/video-player";
 import { TEST_MEDIA_ID } from "@/constants/timeline-constants";
@@ -22,6 +22,7 @@ import {
 	resolveMediaKeyframes,
 } from "@/lib/video/video-properties";
 import { useMaskEditorStore } from "@/stores/editor/mask-editor-store";
+import { useStabilizationStore } from "@/stores/stabilization-store";
 import { buildCssPerspectiveTransform } from "@/lib/video/video-perspective";
 import {
 	buildMediaChromaKeyCssFilter,
@@ -46,6 +47,7 @@ import {
 	selectMediaAudioSources,
 } from "@/lib/audio/audio-source-selection";
 import { ColorPreviewCanvas } from "./color-preview-canvas";
+import { StabilizedVideoCanvas } from "./stabilized-video-canvas";
 import { PortraitManualBodyOverlay } from "./portrait-manual-body-overlay";
 import { CustomCutoutOverlay } from "./custom-cutout-overlay";
 import {
@@ -321,13 +323,56 @@ export function PreviewElementRenderer({
 	const previewMediaItem = elementData.mediaItem;
 	const previewEnhancements =
 		previewMediaVisual?.enhancements ?? DEFAULT_MEDIA_ENHANCEMENTS;
+	// In-house stabilization: kick off (or reuse) the source's motion analysis
+	// and resolve the per-frame plan for the clip's level.
+	const stabilizationValue =
+		elementData.element.type === "media" && previewMediaItem?.type === "video"
+			? previewEnhancements.stabilization
+			: 0;
+	const stabilizationEntry = useStabilizationStore((state) =>
+		previewMediaItem ? state.entries[previewMediaItem.id] : undefined
+	);
+	const ensureStabilizationAnalysis = useStabilizationStore(
+		(state) => state.ensureAnalysis
+	);
+	const stabilizationStatus = stabilizationEntry?.status ?? "idle";
+	useEffect(() => {
+		if (
+			stabilizationValue <= 0 ||
+			!previewMediaItem ||
+			stabilizationStatus !== "idle"
+		) {
+			return;
+		}
+		void ensureStabilizationAnalysis({ mediaItem: previewMediaItem }).catch(
+			() => {}
+		);
+	}, [
+		ensureStabilizationAnalysis,
+		previewMediaItem,
+		stabilizationStatus,
+		stabilizationValue,
+	]);
+	const stabilizationAnalysis = stabilizationEntry?.analysis ?? null;
+	const stabilizationPlan = useMemo(
+		() =>
+			stabilizationValue > 0 && previewMediaItem && stabilizationAnalysis
+				? useStabilizationStore.getState().getPlan({
+						mediaId: previewMediaItem.id,
+						stabilization: stabilizationValue,
+					})
+				: null,
+		[previewMediaItem, stabilizationAnalysis, stabilizationValue]
+	);
 	const previewQualityOption = resolveEffectivePreviewQualityOption({
 		quality: previewQuality,
 		runtimeQuality: runtimePreviewQuality,
 		sourceWidth: previewMediaItem?.width ?? canvasSize.width,
 		sourceHeight: previewMediaItem?.height ?? canvasSize.height,
+		// Stabilization renders on the in-house canvas path; only the FFmpeg
+		// enhancements should push auto quality onto the proxy preset.
 		hasEnhancements: hasMediaEnhancements({
-			enhancements: previewEnhancements,
+			enhancements: { ...previewEnhancements, stabilization: 0 },
 		}),
 	});
 	const previewEffectRenderMode = resolvePreviewEffectRenderMode({
@@ -956,9 +1001,16 @@ export function PreviewElementRenderer({
 					? `${mediaItem.id}-mask-${generatedMask?.sourceMediaId}`
 					: mediaItem.id;
 				const nativePreviewId = `${sourceVideoId}-native-enhancement`;
-				const colorPreviewSourceSelector = nativePreviewUrl
+				const stabilizedSourceId = `${sourceVideoId}-stabilized`;
+				const usesStabilizedCanvas =
+					Boolean(stabilizationPlan) && !generatedMaskSource;
+				const videoSourceSelector = `video[data-video-id="${sourceVideoId.replaceAll('"', '\\"')}"]`;
+				const mediaSourceSelector = nativePreviewUrl
 					? `img[data-native-enhancement-id="${nativePreviewId.replaceAll('"', '\\"')}"]`
-					: `video[data-video-id="${sourceVideoId.replaceAll('"', '\\"')}"]`;
+					: videoSourceSelector;
+				const colorPreviewSourceSelector = usesStabilizedCanvas
+					? `canvas[data-stabilized-source-id="${stabilizedSourceId.replaceAll('"', '\\"')}"]`
+					: mediaSourceSelector;
 				const selectedMask =
 					isEditingMask && selectedMaskElementId === element.id
 						? visual.masks.find((mask) => mask.id === selectedMaskId)
@@ -1026,6 +1078,7 @@ export function PreviewElementRenderer({
 					>
 						<div
 							className="size-full"
+							data-timeline-element-id={element.id}
 							data-native-enhancement-preview-status={
 								nativeEnhancementPreview.status
 							}
@@ -1085,7 +1138,10 @@ export function PreviewElementRenderer({
 								style={{
 									objectFit: visual.fitMode,
 									filter: combinedFilter || undefined,
-									opacity: nativePreviewUrl || usesPixelColor ? 0 : undefined,
+									opacity:
+										nativePreviewUrl || usesPixelColor || usesStabilizedCanvas
+											? 0
+											: undefined,
 								}}
 							/>
 							{nativePreviewUrl ? (
@@ -1098,8 +1154,21 @@ export function PreviewElementRenderer({
 									style={{
 										objectFit: "fill",
 										filter: combinedFilter || undefined,
-										opacity: usesPixelColor ? 0 : undefined,
+										opacity:
+											usesPixelColor || usesStabilizedCanvas ? 0 : undefined,
 									}}
+								/>
+							) : null}
+							{usesStabilizedCanvas && stabilizationPlan ? (
+								<StabilizedVideoCanvas
+									sourceId={stabilizedSourceId}
+									sourceSelector={mediaSourceSelector}
+									timeSourceSelector={videoSourceSelector}
+									sourceTimeOffset={previewSource.sourceTimeOffset}
+									plan={stabilizationPlan}
+									fitMode={nativePreviewUrl ? "fill" : visual.fitMode}
+									filter={combinedFilter || undefined}
+									hidden={usesPixelColor}
 								/>
 							) : null}
 							{usesPixelColor || isColorPickerTarget ? (
@@ -1410,6 +1479,7 @@ export function PreviewElementRenderer({
 						>
 							<div
 								className="size-full"
+								data-timeline-element-id={element.id}
 								data-preview-effect-render-mode={previewEffectRenderMode}
 								style={{
 									...buildClipTransitionContentStyle({

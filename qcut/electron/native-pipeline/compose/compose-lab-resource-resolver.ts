@@ -91,7 +91,7 @@ export type ComposeTransitionResolution =
 	  }
 	| {
 			status: "unsupported";
-			backend: "editor-preset" | "jianying-local";
+			backend: "editor-preset" | "transition-lab" | "jianying-local";
 			detail: string;
 	  };
 
@@ -291,6 +291,15 @@ export async function resolveComposeTransitionReference({
 	}
 	const recipe = TRANSITION_LAB_RECIPES.find((entry) => entry.id === assetId);
 	if (recipe) {
+		// The compose runtime renders transitions with FFmpeg; GLSL recipes only
+		// run on the editor's canvas engines and must not be admitted here.
+		if (recipe.clip.type === "shader") {
+			return {
+				status: "unsupported",
+				backend: "transition-lab",
+				detail: `${recipe.name} is a GLSL shader transition; the compose runtime cannot run it. Apply it in the editor and export with the canvas engine.`,
+			};
+		}
 		return {
 			status: "ready",
 			backend: "transition-lab",

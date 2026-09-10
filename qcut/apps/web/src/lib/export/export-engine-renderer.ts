@@ -36,6 +36,14 @@ import {
 	type ClipTransitionLayer,
 } from "./export-clip-transitions";
 import {
+	beginShaderTransitionLayer,
+	destroyShaderTransitionLayers,
+} from "./export-shader-transitions";
+import {
+	destroyExportStabilizationCanvases,
+	stabilizeExportFrame,
+} from "./export-stabilization";
+import {
 	resolveActiveClipTransitionPreview,
 	type ClipTransitionPreviewState,
 } from "@/lib/transitions/clip-transition-preview";
@@ -196,6 +204,8 @@ export function destroyExportCompositor(): void {
 	adjustmentFrameCanvas = null;
 	adjustmentFrameCtx = null;
 	destroyClipTransitionLayer();
+	destroyShaderTransitionLayers();
+	destroyExportStabilizationCanvases();
 }
 
 /**
@@ -213,6 +223,16 @@ function beginMediaTransitionLayer({
 }): ClipTransitionLayer {
 	if (!transitionState) {
 		return { ctx: context.ctx, active: false, finish: () => undefined };
+	}
+	// GLSL transitions read both clips at once, so they bypass the per-clip
+	// presentation model and composite in their own offscreen pass.
+	if (transitionState.transition.type === "shader") {
+		return beginShaderTransitionLayer({
+			ctx: context.ctx,
+			width: context.canvas.width,
+			height: context.canvas.height,
+			transitionState,
+		});
 	}
 	const presentation = getClipTransitionLayerPresentation({
 		transition: transitionState.transition,
@@ -994,6 +1014,18 @@ async function renderVideoAttempt(
 			sourceTimestamp = video.currentTime;
 		}
 
+		// Stabilized clips are pre-warped in source space so bounds, crop,
+		// colour and transitions below see a steady frame.
+		if ((mediaElement.enhancements?.stabilization ?? 0) > 0) {
+			source = stabilizeExportFrame({
+				element: mediaElement,
+				mediaItem,
+				source,
+				sourceWidth,
+				sourceHeight,
+				sourceTimestamp,
+			});
+		}
 		const resolvedSource = source;
 		const { x, y, width, height } = calculateElementBounds(
 			element,

@@ -893,6 +893,7 @@ test.describe("Local video lab real-video matrix", () => {
 			page,
 			target: speedPanel.getByTestId("speed-frame-interpolation"),
 		});
+		await page.getByRole("option", { name: "运动补偿（FFmpeg）" }).click();
 		await expect
 			.poll(
 				async () =>

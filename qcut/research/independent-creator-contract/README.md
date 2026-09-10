@@ -11,6 +11,8 @@ in-memory state models. It does not send requests, change live drafts, or render
 | `requests` | Update, click/shortcut accept, reset request subset; dispatch metadata; raw double independent of telemetry integer |
 | `model_gate` | Batch-selection keyframe-removal flag and deferred acceptance |
 | `dialog_callbacks` | Two callbacks in argument order; preview dismissal call, cache update, notification count |
+| `history_index` | Node-history index construction over the seven walked classes: visit order, ID-view keys, strong-copy values, first-wins duplicates, active-list-only traversal, and the provably inert escape hooks |
+| `keyframe_stash` | Record selection for `CommonKeyframes` → `NodeArray<CommonKeyframe>` → `CommonKeyframe` → its two controls and graph slot: which subtree produces a record, what the record is made of, which object each element slot ends up holding, and when the caller's changed flag is written |
 
 `ResolvedCandidate` is an explicit boundary: the caller supplies segment-type
 resolution and the value returned by the timeline evaluator at the current
@@ -238,3 +240,93 @@ mutants fail both standalone and native comparison. Prior graph and restore
 reports remain unchanged. Full Session history selection, transactions and
 application undo are still outside scope. See the
 [third-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-graph-diff-2026-09-08.zh.md).
+
+## Node-history index and the escape channel (2026-09-10)
+
+`history_index.*` builds the node-history index that the five exported roots produce over
+`CommonPoint`, `CommonKeyframe`, `NodeArray<CommonKeyframe>`, `CommonKeyframes`, `Graph`,
+`GraphPointArray` and `GraphPoint`. Visit order is fixed by the class, not by content: a
+keyframe takes its left control, its right control and then its graph, the single null gate
+in the whole traversal; a group, a graph and a graph point each take their one child; both
+array levels walk `[+0x30, +0x38)` at a 16-byte stride and never load the retained vector.
+Each child is inserted and only then recursed into, and a walked root never inserts itself.
+
+The key is a `string_view` over the child's own `id`, so empty IDs, embedded NUL and
+heap-form IDs are all in domain and nothing is truncated at the first NUL. The mapped value
+is a strong copy of the parent-held reference; on a duplicate key libc++ destroys the copy it
+had already made and keeps both the stored entry and the stored key bytes, which is why a
+pre-seeded caller map accumulates rather than being overwritten. The map's own reference is
+what keeps a key's bytes alive once the parent is released. Iteration order of the returned
+map is a libc++ bucket artifact and is not reproduced; comparisons are by key lookup only.
+The SDK's `string_view` hash is not reproduced either.
+
+Null controls, null array elements and a missing array are rejected by an explicit QCut
+preflight, because the native walk dereferences them unguarded; this is an input policy, not
+a claim about the SDK's own behaviour. Retained entries are shape-checked but never traversed.
+
+`get_escape_history_nodes` and `set_escape_history_nodes` walk the identical spine and insert
+nothing for this family, so both are observably inert. That is delivered as a proven boundary
+— it is what makes an empty escape map a legitimate input to the earlier stash probes — and
+not as a recovered selection rule. The cost is stated openly: three variants that only change
+the escape spine were compiled and run, and neither the standalone tests nor the native
+comparison detects them.
+
+Thirteen portable CTest groups now hold 1,371 assertions (58 new) and pass Release and
+fail-fast ASan/UBSan. The optional `creator-native-history` resolves all fifteen entrypoints
+by exported mangled name *and* by recorded address before calling anything, then checks 4,614
+real SDK cases and 159,401 comparisons with zero mismatches; the repeat run and the sanitized
+run agree on every count. Its corpus reached all five roots (2,392 / 615 / 664 / 324 / 613),
+4,190 non-empty maps, 3,200 pre-seeded maps, 308 trees with retained lists and 1,296 trees
+holding two live objects under one ID. Same-ID pairs come from the SDK's own restore copies;
+no vtable, control block or object storage is fabricated. Eleven compiled mutants are detected
+by both the standalone tests and the native comparison. Four role-labelled golden cases from a
+real run are pinned into the default CTest, since the SDK's generated UUIDs cannot be
+reproduced. Session history selection, transaction commit/rollback and undo/redo replay remain
+outside this contract. See the
+[fourth-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-history-index-2026-09-10.zh.md).
+
+## Keyframe record selection (2026-09-10, fifth batch)
+
+`keyframe_stash.*` reconstructs `get_stash_copy` for the keyframe family: `CommonKeyframes`
+(exported at 0xc84570), `NodeArray<CommonKeyframe>` (0xc873f8, reached only through vtable slot
+0x38) and `CommonKeyframe` (0xc7ea80), with the two controls and the optional graph delegating to
+the graph-side walks the second batch already delivered. **Only the keyframe node level and the
+group level are newly reconstructed here.** The array level is the second instantiation of one
+class template — after normalising branch targets, `NodeArray<CommonKeyframe>::get_stash_copy`
+and `GraphPointArray::get_stash_copy` are 412 identical instructions apart from three constants
+— so it is reused and re-verified rather than recovered again, and the graph half stays where the
+second batch left it.
+
+A record is the historical node's payload wearing the current node's state code and changed flag,
+with a field written only where the two nodes differ. A history miss, a present-but-null entry and
+a present-but-wrong-type entry are all the same branch: report a change and return a deep copy.
+The value vector is compared by IEEE equality and not bit for bit, so opposite signed zeros are
+equal and any NaN forces a replacement vector. Both controls and the graph report through the
+caller's own flag; the one graph transition this level reports by itself is losing a graph the
+history still holds, which clears the record's graph slot. The array level gives each element a
+flag of its own, resolves a silent element through the index to the *historical* object, and uses
+that object's own ID — not the key it was found under — to decide whether the substitution counts
+as a change. An array with no substitution and an empty retained list produces no record at all.
+
+Fourteen portable CTest groups now hold 114 new assertions and pass Release and fail-fast
+ASan/UBSan. The optional `creator-native-keyframe-stash` resolves the five exported entry points
+by mangled name *and* by recorded address, and reaches the two unexported array levels only after
+reading a live object's vptr and checking its 0x38 slot. It then checks 2,207 real SDK cases and
+397,277 comparisons with zero mismatches; the repeat run and the sanitized run agree on every
+count. Its corpus reached all three roots (508 / 400 / 292), 1,100 records and 100 silent walks,
+220 empty indexes, 50 null and 50 wrong-typed entries, 66 dropped and 132 gained graphs, 129
+arrays with a retained list, 120 arrays with the change-suppression flag set, and 209 record
+slots holding a historical element. Fourteen compiled mutants are rejected by both the standalone
+tests and the native comparison; two further variants are recorded as semantically identical
+programs rather than mutations, and two escape-channel variants as structurally unobservable.
+
+Two reconnaissance findings were corrected in the process and are recorded rather than quietly
+fixed: the array's change-suppression flag *is* reachable, through the same `make_shared` helper
+the graph-point array factory already uses, so the suppression branches were actually exercised;
+and the array's `deep_copy_raw` clears only the tracking flag, copying the state code and changed
+flag across, which is what the second batch's `deep_array` already did.
+
+Session-level record selection, `Draft::get_stash_copy`, `Draft::reorganize_dirty_states`,
+`Session::draftTransaction`, the IOManager transaction pair and the patch-JSON family are all
+untouched. See the
+[fifth-batch evidence](../../docs/task/jianying-filter-runtime-research/creator-keyframe-stash-2026-09-10-batch5.zh.md).

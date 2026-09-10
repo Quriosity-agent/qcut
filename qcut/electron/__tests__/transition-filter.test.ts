@@ -60,6 +60,9 @@ describe("FFmpeg transition filters", () => {
 				`${preset.id} is missing its timeline mapping`
 			).not.toBeNull();
 			if (!config) continue;
+			// GLSL recipes have no FFmpeg form; they are covered by the refusal
+			// test below and exported through the canvas engine instead.
+			if (config.type === "shader") continue;
 
 			const configuredTransition: VideoTransition = {
 				...transition({
@@ -222,6 +225,7 @@ describe("FFmpeg transition filters", () => {
 			const config = getClipTransitionPresetConfig({ preset });
 			expect(config).not.toBeNull();
 			if (!config) continue;
+			if (config.type === "shader") continue;
 
 			const filter = buildXfadeTransitionFilter({
 				transition: {
@@ -238,6 +242,22 @@ describe("FFmpeg transition filters", () => {
 
 			expect(filter.expression, preset.id).not.toMatch(/\b(?:st|ld)\(/);
 		}
+	});
+
+	it("refuses GLSL shader transitions and points at the canvas engine", () => {
+		const shaderPresets = transitionPresets.filter(
+			(preset) => getClipTransitionPresetConfig({ preset })?.type === "shader"
+		);
+		expect(shaderPresets.length).toBeGreaterThan(0);
+		expect(() =>
+			buildXfadeTransitionFilter({
+				transition: {
+					...transition(),
+					type: "shader" as VideoTransition["type"],
+					presetId: shaderPresets[0].id,
+				},
+			})
+		).toThrow(/GLSL shader transition.*canvas engine/);
 	});
 
 	it("uses the Jianying quint curve for move transition exports", () => {

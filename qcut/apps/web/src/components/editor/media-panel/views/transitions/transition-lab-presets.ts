@@ -36,7 +36,16 @@ export const TRANSITION_LAB_PRESETS: TransitionPreset[] =
 			easing: recipe.clip.easing,
 			tuning: recipe.clip.tuning,
 			defaultDuration: recipe.defaultDuration,
-			tags: ["shader", "GLSL", "clean-room", recipe.clip.type],
+			labOrigin: recipe.shader.origin,
+			tags: [
+				"shader",
+				"GLSL",
+				recipe.shader.origin === "qcut-clean-room"
+					? "clean-room"
+					: "gl-transitions",
+				recipe.clip.type,
+				...(recipe.shader.author ? [recipe.shader.author] : []),
+			],
 			latest: true,
 		})
 	);

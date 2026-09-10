@@ -754,6 +754,11 @@ const EN_TRANSLATIONS = {
 	"audioProperties.speed.preservePitch": "Preserve pitch",
 	"audioProperties.speed.pitchShift": "Shift audio pitch",
 	"audioProperties.speed.frameInterpolation": "Smart frame interpolation",
+	"audioProperties.speed.frameInterpolationOff": "Off",
+	"audioProperties.speed.frameInterpolationMotion":
+		"Motion compensated (FFmpeg)",
+	"audioProperties.speed.frameInterpolationNeural":
+		"Neural (RIFE, applied on export)",
 	"audioProperties.speed.enabled": "Enabled",
 	"audioProperties.speed.reverse": "Reverse",
 	"audioProperties.speed.freeze": "Freeze frame",
@@ -1785,7 +1790,14 @@ const EN_TRANSLATIONS = {
 	"mediaProperties.stabilizationLevel.high": "High",
 	"mediaProperties.stabilizationLevel.max": "Maximum",
 	"mediaProperties.stabilizationInfo":
-		"Smooths camera shake locally on export. Higher levels search a wider area.",
+		"Analyses the camera path locally, smooths it and crops the edges. Higher levels smooth more and crop more. Preview and canvas export use the same in-house stabilizer; CLI/API exports fall back to FFmpeg deshake.",
+	"mediaProperties.stabilizationStatus.hashing": "Reading the clip…",
+	"mediaProperties.stabilizationStatus.analyzing":
+		"Analysing camera motion… {{percent}}%",
+	"mediaProperties.stabilizationStatus.ready": "Motion analysis ready",
+	"mediaProperties.stabilizationStatus.error":
+		"Motion analysis failed: {{error}}",
+	"mediaProperties.stabilizationStatus.retry": "Retry analysis",
 	"mediaProperties.quickEnhance": "One-click quality boost",
 	"mediaProperties.quickEnhanceInfo":
 		"Sharpens the clip locally at a preset strength. AI enhancement is on the AI tab.",
@@ -2838,6 +2850,10 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"audioProperties.speed.preservePitch": "音调不变",
 	"audioProperties.speed.pitchShift": "声音变调",
 	"audioProperties.speed.frameInterpolation": "智能补帧",
+	"audioProperties.speed.frameInterpolationOff": "关闭",
+	"audioProperties.speed.frameInterpolationMotion": "运动补偿（FFmpeg）",
+	"audioProperties.speed.frameInterpolationNeural":
+		"神经补帧（RIFE，导出时生效）",
 	"audioProperties.speed.enabled": "已开启",
 	"audioProperties.speed.reverse": "倒放",
 	"audioProperties.speed.freeze": "定格",
@@ -3830,7 +3846,13 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"mediaProperties.stabilizationLevel.high": "高",
 	"mediaProperties.stabilizationLevel.max": "最强",
 	"mediaProperties.stabilizationInfo":
-		"导出时在本地平滑机身抖动；等级越高搜索范围越大。",
+		"在本地分析镜头运动轨迹，平滑后裁掉边缘；等级越高越平滑、裁切越多。预览与画布导出使用同一套自研防抖；CLI/API 导出回退为 FFmpeg deshake。",
+	"mediaProperties.stabilizationStatus.hashing": "正在读取素材…",
+	"mediaProperties.stabilizationStatus.analyzing":
+		"正在分析镜头运动… {{percent}}%",
+	"mediaProperties.stabilizationStatus.ready": "运动分析已就绪",
+	"mediaProperties.stabilizationStatus.error": "运动分析失败：{{error}}",
+	"mediaProperties.stabilizationStatus.retry": "重新分析",
 	"mediaProperties.quickEnhance": "一键画质提升",
 	"mediaProperties.quickEnhanceInfo":
 		"以预设强度做本地清晰度增强；AI 画质增强在「AI效果」页。",

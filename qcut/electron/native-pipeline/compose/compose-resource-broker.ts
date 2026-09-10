@@ -188,7 +188,10 @@ function soundResource({
 }
 
 function qcutTransitionResources(): ComposeAssetReference[] {
-	return TRANSITION_LAB_RECIPES.map((recipe) => ({
+	// GLSL recipes are editor-only; the compose runtime cannot render them.
+	return TRANSITION_LAB_RECIPES.filter(
+		(recipe) => recipe.clip.type !== "shader"
+	).map((recipe) => ({
 		provider: "local",
 		assetType: "transition",
 		assetId: recipe.id,

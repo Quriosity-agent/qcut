@@ -519,6 +519,10 @@ export function getClipTransitionLayerPresentation({
 	};
 
 	switch (transition.type) {
+		// A GLSL transition blends both clips itself: the preview overlay and the
+		// export compositor draw the pair, so each clip's own layer stays identity.
+		case "shader":
+			return base;
 		case "dissolve":
 			return {
 				...base,

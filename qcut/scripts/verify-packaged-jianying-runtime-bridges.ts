@@ -18,6 +18,7 @@ import {
 	JIANYING_DEFLICKER_HOST_REQUIRED_MARKERS,
 } from "../electron/jianying-basic-video-runtime/bridge-resolver.js";
 import { INDEPENDENT_FILTER_HOST } from "../electron/qcut-independent-filter/bridge.js";
+import { FOG_CPU_HOST } from "../electron/qcut-independent-filter/fog-cpu-bridge.js";
 import { SOFT_GLOW_HOST } from "../electron/qcut-independent-filter/soft-glow-bridge.js";
 import { verifyPackagedJianyingRuntimeBridge } from "./verify-packaged-jianying-runtime-bridge.js";
 
@@ -162,6 +163,7 @@ export async function verifyPackagedJianyingRuntimeBridges({
 		deflickerHost,
 		independentFilterHost,
 		softGlowHost,
+		fogCpuHost,
 	] = await Promise.all([
 		verifyPackagedJianyingRuntimeBridge({
 			bridgeFileName: JIANYING_TRANSITION_BRIDGE_FILE_NAME,
@@ -218,6 +220,14 @@ export async function verifyPackagedJianyingRuntimeBridges({
 			distRoot,
 			projectRoot,
 		}),
+		// stage-independent-filter-host.ts compiles this one into
+		// electron/resources/bin too, so a packaging miss must fail here
+		// rather than at the first comparison run on a user's machine.
+		verifyPackagedJianyingRuntimeBridge({
+			bridgeFileName: FOG_CPU_HOST,
+			distRoot,
+			projectRoot,
+		}),
 	]);
 	await requireTransitionModes({ bridgePath: transitionBridge });
 	await Promise.all([
@@ -240,6 +250,7 @@ export async function verifyPackagedJianyingRuntimeBridges({
 		deflickerHost,
 		independentFilterHost,
 		softGlowHost,
+		fogCpuHost,
 	};
 }
 

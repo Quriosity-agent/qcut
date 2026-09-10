@@ -8,6 +8,7 @@ import {
 } from "@/lib/ffmpeg/ffmpeg-video-recorder";
 import { debugLog, debugError, debugWarn } from "@/lib/debug/debug-config";
 import { preloadStickerImages } from "@/lib/stickers/sticker-export-helper";
+import { prepareExportStabilization } from "./export-stabilization";
 import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { useMediaStore } from "@/stores/media/media-store";
 import { useEffectsStore } from "@/stores/ai/effects-store";
@@ -318,6 +319,7 @@ export class ExportEngine {
 			"[ExportEngine] ⚡ Optimizations: 500-2000ms timeout, retry mechanism, frame validation"
 		);
 
+		await this.prepareStabilization(progressCallback);
 		// Preload sticker images before export starts
 		try {
 			const stickersStore = useStickersOverlayStore.getState();
@@ -683,6 +685,24 @@ export class ExportEngine {
 	}
 
 	// Pre-load all videos for performance
+	/**
+	 * Stabilized clips need their motion analysis before the first frame;
+	 * a failure here aborts the export instead of rendering the shaky source.
+	 */
+	protected async prepareStabilization(
+		progressCallback?: ProgressCallback
+	): Promise<void> {
+		await prepareExportStabilization({
+			tracks: this.tracks,
+			mediaItems: this.mediaItems,
+			onProgress: (progress) =>
+				progressCallback?.(
+					0,
+					`Analysing camera motion for stabilization… ${Math.round(progress * 100)}%`
+				),
+		});
+	}
+
 	protected async preloadAllVideos(): Promise<void> {
 		const videoUrls = new Set<string>();
 

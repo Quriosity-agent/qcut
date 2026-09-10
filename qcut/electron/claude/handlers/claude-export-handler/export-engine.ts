@@ -24,6 +24,7 @@ import type {
 } from "../../../ffmpeg/types.js";
 import { buildVideoFitFilter } from "../../../ffmpeg/video-fit-filter.js";
 import { buildDurationPreservingFrameInterpolationFilter } from "../../../ffmpeg/frame-interpolation-filter.js";
+import { resolveNeuralInterpolationSegment } from "./export-neural-segment.js";
 import {
 	buildVideoEnhancementFilter,
 	hasVideoEnhancements,
@@ -512,7 +513,8 @@ export async function collectExportSegments({
 				const enhancements = readElementEnhancements({ element });
 				const frameInterpolation =
 					element.frameInterpolation === "blend" ||
-					element.frameInterpolation === "motion-compensated"
+					element.frameInterpolation === "motion-compensated" ||
+					element.frameInterpolation === "neural"
 						? element.frameInterpolation
 						: undefined;
 				resolvedMediaFiles?.push(media);
@@ -1374,11 +1376,19 @@ export async function executeExportJob({
 		const segmentOutputs: string[] = [];
 		const totalSegments = segments.length;
 
-		for (const [index, segment] of segments.entries()) {
+		for (const [index, rawSegment] of segments.entries()) {
 			const outputSegmentPath = path.join(
 				tempDir,
 				`segment-${String(index).padStart(4, "0")}.mp4`
 			);
+			// Neural interpolation runs RIFE ahead of the graph and swaps in a
+			// lossless intermediate; the rest of the loop never sees the mode.
+			const segment = await resolveNeuralInterpolationSegment({
+				segment: rawSegment,
+				settings,
+				tempDir,
+				index,
+			});
 
 			const inputArgs = buildExportSegmentInputArgs({ segment });
 			const scaleFilter = buildExportSegmentScaleFilter({

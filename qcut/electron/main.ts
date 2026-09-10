@@ -57,6 +57,7 @@ import { resolveQCutRuntimeEndpoint } from "./claude/runtime-endpoint.js";
 import {
 	clampBoundsToWorkArea,
 	resolveInitialWindowSize,
+	resolveRequestedDisplay,
 } from "./window-sizing.js";
 import { toReleaseVersion } from "./update-version.js";
 import {
@@ -751,6 +752,30 @@ function createWindow(): void {
 		});
 		mainWindow.setSize(w, h);
 		mainWindow.center();
+		// Developer/E2E affordance: QCUT_WINDOW_DISPLAY="secondary" (or a
+		// 1-based display index) opens the window centred on that display so a
+		// test instance can stay off the user's primary screen.
+		const targetDisplay = resolveRequestedDisplay({
+			requested: process.env.QCUT_WINDOW_DISPLAY,
+			displays: screen.getAllDisplays(),
+			primaryId: screen.getPrimaryDisplay().id,
+		});
+		if (targetDisplay) {
+			const area = targetDisplay.workArea;
+			const size = resolveInitialWindowSize({
+				workAreaWidth: area.width,
+				workAreaHeight: area.height,
+			});
+			mainWindow.setBounds({
+				x: area.x + Math.round((area.width - size.width) / 2),
+				y: area.y + Math.round((area.height - size.height) / 2),
+				width: size.width,
+				height: size.height,
+			});
+			logger.log(
+				`[window] QCUT_WINDOW_DISPLAY=${process.env.QCUT_WINDOW_DISPLAY} → display ${targetDisplay.id}, bounds ${JSON.stringify(mainWindow.getBounds())}`
+			);
+		}
 	} catch {
 		// Fallback for headless/CI environments without a display
 	}

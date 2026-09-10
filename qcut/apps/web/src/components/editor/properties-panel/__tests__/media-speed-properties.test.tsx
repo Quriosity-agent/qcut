@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MediaElement } from "@/types/timeline";
 import { MediaSpeedProperties } from "../media-speed-properties";
 
+// Radix Select reads these on open; jsdom implements none of them.
+Element.prototype.scrollIntoView ??= () => undefined;
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => undefined;
+Element.prototype.releasePointerCapture ??= () => undefined;
+
 const mocks = vi.hoisted(() => ({
 	updateMediaTiming: vi.fn(),
 	pushHistory: vi.fn(),
@@ -322,7 +328,15 @@ describe("MediaSpeedProperties", () => {
 		fireEvent.mouseDown(screen.getByTestId("speed-mode-curve"), {
 			button: 0,
 		});
-		fireEvent.click(screen.getByTestId("speed-frame-interpolation"));
+		// Radix Select: open from the keyboard, then commit an option with Enter.
+		// jsdom lacks the pointer-capture and scrollIntoView APIs the pointer
+		// path needs, and the keyboard path selects without either.
+		const trigger = screen.getByTestId("speed-frame-interpolation");
+		fireEvent.keyDown(trigger, { key: "ArrowDown" });
+		fireEvent.keyDown(
+			screen.getByRole("option", { name: /motion compensated|运动补偿/i }),
+			{ key: "Enter" }
+		);
 		expect(mocks.updateMediaTiming).toHaveBeenLastCalledWith(
 			"track",
 			"clip",

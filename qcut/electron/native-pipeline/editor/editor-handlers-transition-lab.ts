@@ -18,6 +18,10 @@ function publicRecipe({ recipe }: { recipe: TransitionLabRecipe }) {
 			origin: recipe.shader.origin,
 			license: recipe.shader.license,
 			binaryAssets: recipe.shader.binaryAssets,
+			...(recipe.shader.author ? { author: recipe.shader.author } : {}),
+			...(recipe.shader.sourceFile
+				? { sourceFile: recipe.shader.sourceFile }
+				: {}),
 		},
 	};
 }

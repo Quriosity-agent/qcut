@@ -15,10 +15,14 @@ describe("Transition Lab catalog", () => {
 		).toBe(TRANSITION_LAB_PRESETS.length);
 	});
 
-	it("contains only distributable clean-room shader source", () => {
+	it("contains only distributable shader source", () => {
 		expect(TRANSITION_LAB_VERTEX_SHADER).toContain("void main()");
 		for (const recipe of TRANSITION_LAB_RECIPES) {
-			expect(recipe.shader.origin).toBe("qcut-clean-room");
+			// Clean-room recipes are QCut's own; gl-transitions are vendored MIT
+			// GLSL with per-file authors. Both ship as source, never as assets.
+			expect(["qcut-clean-room", "gl-transitions"]).toContain(
+				recipe.shader.origin
+			);
 			expect(recipe.shader.license).toBe("MIT");
 			expect(recipe.shader.binaryAssets).toBe(false);
 			expect(recipe.shader.fragmentSource).toContain("void main()");

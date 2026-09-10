@@ -1,5 +1,9 @@
 import type { MediaColorSettings } from "@/types/timeline";
 import { reportColorDegradation } from "./color-degradation";
+import {
+	isIndependentFilterProvider,
+	isNativeLocalEffectProvider,
+} from "@qcut/editor-core";
 
 export function canRenderJianyingLocalEffect({
 	settings,
@@ -11,13 +15,7 @@ export function canRenderJianyingLocalEffect({
 		settings.enabled &&
 			multiPass?.enabled &&
 			multiPass.fidelity === "native-local" &&
-			(multiPass.nativeEffect?.provider === "jianying-local-effect-v1" ||
-				multiPass.nativeEffect?.provider === "qcut-metal-fog-v1" ||
-				multiPass.nativeEffect?.provider === "qcut-metal-lut-v1" ||
-				multiPass.nativeEffect?.provider === "qcut-metal-graph-v1" ||
-				multiPass.nativeEffect?.provider === "qcut-cpu-soft-glow-v1" ||
-				multiPass.nativeEffect?.provider ===
-					"qcut-cpu-soft-glow-ui-snapshot-v1") &&
+			isNativeLocalEffectProvider(multiPass.nativeEffect?.provider) &&
 			multiPass.nativeEffect.resourceId
 	);
 }
@@ -85,11 +83,9 @@ export async function renderJianyingLocalEffectPreview({
 		);
 	}
 	const api = window.electronAPI?.jianyingFilterLab;
-	const independent =
-		nativeEffect.provider === "qcut-metal-fog-v1" ||
-		nativeEffect.provider === "qcut-metal-lut-v1" ||
-		nativeEffect.provider === "qcut-metal-graph-v1" ||
-		nativeEffect.provider === "qcut-cpu-soft-glow-ui-snapshot-v1";
+	// The retired qcut-cpu-soft-glow-v1 throws above, so it never reaches the
+	// independent bridge even though the shared list still names it.
+	const independent = isIndependentFilterProvider(nativeEffect.provider);
 	const independentApi = window.electronAPI?.qcutIndependentFilter;
 	if (independent && !independentApi)
 		throw new Error("QCut independent renderer is unavailable.");

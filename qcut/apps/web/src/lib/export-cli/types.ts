@@ -207,7 +207,7 @@ export interface VideoSourceInput {
 	reverse: boolean;
 	freezeFrameTime?: number;
 	freezeFrameDuration: number;
-	frameInterpolation?: "none" | "blend" | "motion-compensated";
+	frameInterpolation?: "none" | "blend" | "motion-compensated" | "neural";
 	visual?: VideoVisualInput;
 	effectFilter?: string;
 	effectRenderProgram?: EffectRenderProgram;

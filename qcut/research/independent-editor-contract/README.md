@@ -1,6 +1,6 @@
 # Independent editor contracts
 
-Original C++20 implementations of thirteen bounded contracts observed in Jianying
+Original C++20 implementations of fifteen bounded contracts observed in Jianying
 11.3.0 `libvideoeditor.dylib` and `libcccreator.dylib` (arm64). The static library uses only the standard
 library. It neither loads Jianying nor implements a video renderer.
 
@@ -19,6 +19,8 @@ library. It neither loads Jianying nor implements a video renderer.
 | `graph` | Right-frame anchor/control expansion, quadratic elevation, per-channel controls and bounded constant-speed Video property | 1,673 native configurations; 43,880 property calls and 9,886 record comparisons, zero mismatches |
 | `variable_time` | Positive continuous speed normalization, three-piece integration and quadratic inverse, Video endpoint/fallback timing, control records and preselected graph-free nonlinear property | 384 genuine native configurations; 628,308 map calls, 46,080 records and 7,872 property calls, zero mismatches |
 | `variable_graph` | Nonempty graph expansion followed by curve-speed record mapping, raw channel controls versus mapped scalar controls, closed-record selection and actual multichannel property | 1,330 genuine native configurations; 95,372 property calls and 10,764 record comparisons, zero mismatches |
+| `property_dispatch` | Single-Video window dispatch: exact-hit and single-neighbor copies, mapped out-of-range clamping, curve routing into the existing linear and record paths, and the reported Segment-default and Caption gates | 384 genuine native configurations; 15,903 actual property calls and 15,903 finder attribution checks, zero mismatches |
+| `caption_color` | The Caption color evaluator itself: shape and range gates, the polar form with wrapped 32-bit channel differences, shortest-arc blending, the six-sector table and the 255 quantizer, plus the exported caption type predicate | 473,918 actual evaluator calls and 1,895,672 doubles, zero mismatches; 50 predicate calls in both string layouts |
 
 The models describe observed fields with ordinary C++ values; they do not expose
 vendor object layouts. State codes remain numeric because their broader event or
@@ -148,6 +150,23 @@ valid. The two input keyframes are already selected, one curve must be nonzero,
 and the raw query is strictly interior. Exact hits, leading/trailing controls,
 curve-speed, Caption rules and full dispatch remain outside this API.
 
+`dispatch_property_values` covers every branch of the native entrypoint that returns
+values, for one Video segment with graph-free keyframes. It selects the window,
+copies an exact hit or a single neighbor verbatim, rejects unequal neighbor shapes,
+maps the wrapped midpoint and both neighbor times, clamps outside the mapped range by
+copying that side, and then routes zero curve codes to separate
+difference/product/sum arithmetic and any nonzero
+code to the existing record and cubic path. The result names its branch.
+`SegmentDefault` reports the eleven native Segment-type getters without values; that
+chain, the Caption color path, graph-backed frames, other Segment types and variable
+speed remain outside this API. A Caption color property with the Caption predicate
+set, a graph-carrying frame, and two equally empty neighbor value arrays are refused
+rather than guessed. Equal mapped bounds reproduce the native zero-divided-by-zero
+NaN instead of being rejected, which is why this branch does not call
+`evaluate_linear_property_interval`. When the list is nonempty the finder always
+returns a neighbor, so the native both-null branch is unreachable here and is
+documented rather than tested.
+
 ## Optional private diagnostic
 
 The optional `editor-native-probe` is an isolated macOS arm64 executable. It
@@ -169,6 +188,7 @@ DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-nonlinear_prop
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-graph-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-graph.json 2> /tmp/editor-graph.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-variable_time-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-variable-time.json 2> /tmp/editor-variable-time.stderr
 DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-variable_graph-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-variable-graph.json 2> /tmp/editor-variable-graph.stderr
+DYLD_LIBRARY_PATH="$JY_FRAMEWORKS" /tmp/qcut-editor-native/editor-property_dispatch-probe "$JY_FRAMEWORKS/libvideoeditor.dylib" "$JY_FRAMEWORKS/libcccreator.dylib" > /tmp/editor-property-dispatch.json 2> /tmp/editor-property-dispatch.stderr
 ```
 
 The original diagnostic accepts this `libvideoeditor` identity:
@@ -180,7 +200,7 @@ The evaluation diagnostic additionally pins `libcccreator` SHA-256
 `b09c395d934169cb20ec865dd1d4032ca68023b287a7264e1b06ff4d71fd1be4` and arm64
 UUID `100726E3-FCB0-31BC-98EE-1B196A1714A3`. It calls the genuine `getVEUtils`
 singleton and verifies virtual slot `0x168` before evaluating curves. The
-resampler uses ordinary libc++ vectors, not synthetic SDK objects. The eight
+resampler uses ordinary libc++ vectors, not synthetic SDK objects. The nine
 diagnostics intentionally keep private images loaded until their process exits.
 Dependency-library identities beyond these two images are not pinned.
 
@@ -283,3 +303,36 @@ resolved records before calling the actual property entrypoint. Four captured
 goldens and a 46,464-call native fingerprint run without proprietary dependencies
 in standalone tests. See the [variable graph evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-variable-graph-2026-09-08.zh.md)
 for per-channel/scalar boundaries, negative controls and remaining dispatch work.
+
+The dispatch diagnostic reuses those genuine factories and additionally cross-checks
+every branch against the real `findKeyframeByTimeOffset_` object identities, so branch
+attribution is not assigned after the fact. It verifies that `isCaptionText` is false
+for a Video segment and that replacing the property key with `KFTypeTextColor` leaves
+1,156 results bit-identical. Nine deliberately wrong implementations were compiled
+separately: eight are caught by both the standalone tests and the native comparison,
+while returning an empty copy instead of falling back is caught only by the standalone
+branch assertions, because the native entrypoint returns an empty vector either way.
+See the [property dispatch evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-property-dispatch-2026-09-10.zh.md)
+for the branch map, the reported-but-unimplemented Segment-default and Caption gates,
+and the remaining boundaries.
+
+`evaluate_caption_color` reconstructs the unexported evaluator the Caption color branch
+calls, and `is_caption_type` the exported predicate its gate ends in. It is the evaluator
+and that one leaf, not the whole path: `isCaptionText`, the four color key comparisons and
+the positive mapped span are still only static conclusions, and `property_dispatch` still
+refuses the Caption branch rather than calling this unit. The two units were deliberately
+not connected, because the composed branch has no native counterpart while a Video segment
+is the only reachable segment type. Each side needs at least three doubles and a progress
+inside the closed unit interval; a NaN progress is deliberately not out of range, and its
+arithmetic collapses back onto the guard result, so no native comparison can separate the
+two. Channel scaling narrows through saturating toward-zero conversions and the resulting
+32-bit differences wrap, which is how a hue far outside one turn and the unsigned
+out-of-table sector are reached at all. Output is not clamped into a UI range: saturated
+channels produce values far above one. `caption_color_progress` is transcribed from four
+instructions and has no native call site here; it is excluded from the zero-mismatch count.
+Fourteen deliberately wrong implementations were compiled from the shipped source: eleven
+are caught by the native comparison and all fourteen by the standalone suite. The three the
+native comparison cannot see are a NaN-progress guard and a dropped zero turn, both
+structurally invisible in the return value, and the binary32 progress, which has no native
+call site. See the [caption color evidence record](../../docs/task/jianying-filter-runtime-research/videoeditor-caption-color-2026-09-10-batch5.zh.md)
+for the branch map, the measured reachability of both invisible controls, and what is not closed.

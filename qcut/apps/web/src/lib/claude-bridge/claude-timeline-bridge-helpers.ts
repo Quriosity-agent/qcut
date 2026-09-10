@@ -444,7 +444,8 @@ export function getClaudeMediaTimingProperties({
 	if (
 		frameInterpolation === "none" ||
 		frameInterpolation === "blend" ||
-		frameInterpolation === "motion-compensated"
+		frameInterpolation === "motion-compensated" ||
+		frameInterpolation === "neural"
 	) {
 		properties.frameInterpolation = frameInterpolation;
 	}

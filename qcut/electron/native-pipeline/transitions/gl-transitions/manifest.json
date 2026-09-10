@@ -1,0 +1,632 @@
+{
+	"source": "https://github.com/gl-transitions/gl-transitions",
+	"commit": "902218a1b63773ac0d0d9f491951da3392365bfe",
+	"license": "MIT",
+	"excluded": [
+		{
+			"file": "displacement.glsl",
+			"reason": "requires an extra displacementMap sampler"
+		},
+		{
+			"file": "luma.glsl",
+			"reason": "requires an extra luma sampler"
+		}
+	],
+	"files": [
+		{
+			"file": "AdvancedMosaic.glsl",
+			"author": "Sergey Kosarevsky",
+			"sha256": "0affe1a5ec5bf3451e5ccac3e456f0c775c70488f140350c23c2414884fc3c5d"
+		},
+		{
+			"file": "BlockDissolve.glsl",
+			"author": "nwoeanhinnogaehr",
+			"sha256": "3c5ff21627dc8ab470e16e6f5f917c5a596a7018b0f8467defdde115e02c2e63"
+		},
+		{
+			"file": "BookFlip.glsl",
+			"author": "hong",
+			"sha256": "23dbb4648973ff0359468f40cf579a38997d087af45571f872c3a3cd3f1ac0d5"
+		},
+		{
+			"file": "Bounce.glsl",
+			"author": "Adrian Purser",
+			"sha256": "69e75c9dcff1bbe955396cf78aba652cea814fd17d3cd44475e751c0881a97a8"
+		},
+		{
+			"file": "BowTieHorizontal.glsl",
+			"author": "huynx",
+			"sha256": "d55ccb94783dcd7223af5982a0ef5af3dc74ac41dec90c5f454655d8d60ec98e"
+		},
+		{
+			"file": "BowTieVertical.glsl",
+			"author": "huynx",
+			"sha256": "fff6f1e169414e77a732b25c59417a19aba574ac5ac0b53541da5f22cf43797e"
+		},
+		{
+			"file": "BowTieWithParameter.glsl",
+			"author": "KMojek",
+			"sha256": "a2dcdd2190144eb4863f937ccd4eaf98e453982b8c2d65f43288706a03705faa"
+		},
+		{
+			"file": "Box.glsl",
+			"author": "lql",
+			"sha256": "5f36d498b7692ab3b6000a559b5d5e9b677e12e78a7a0e01ea7443b2db0ee36b"
+		},
+		{
+			"file": "ButterflyWaveScrawler.glsl",
+			"author": "mandubian",
+			"sha256": "b21137cdba5613177e7cd40b89b7f7587eb89711e70fd077d599eac42ee29dea"
+		},
+		{
+			"file": "CircleCrop.glsl",
+			"author": "fkuteken",
+			"sha256": "dca6731aed06a5dfc6834e0b9cd8857730883ecb507d8333e0b6ba13c61aae18"
+		},
+		{
+			"file": "ColourDistance.glsl",
+			"author": "P-Seebauer",
+			"sha256": "78787cf8028d60a8c31fccdb640f3a3aeb4b9a917258720d795c15eb818dfb37"
+		},
+		{
+			"file": "CrazyParametricFun.glsl",
+			"author": "mandubian",
+			"sha256": "369e7ca26de7aaefd276a272121b697a1238968426f7346623131ccacfa2e25d"
+		},
+		{
+			"file": "CrossZoom.glsl",
+			"author": "rectalogic",
+			"sha256": "38602ea2d7217904a7c25dbd3e0f266597e488b275f4140273b97716ebf5b18f"
+		},
+		{
+			"file": "DefocusBlur.glsl",
+			"author": "Sergey Kosarevsky",
+			"sha256": "240b8de3f8ef08ba29445c8c3a37ba4861bd9fd7daab7dd16cae8ae76eb16aac"
+		},
+		{
+			"file": "Directional.glsl",
+			"author": "Gaëtan Renaudeau",
+			"sha256": "0f3cb7e1249cd9e4b5615a2e453779ea1acdb757a69fe0260bd2f2bc61fae8e4"
+		},
+		{
+			"file": "DirectionalScaled.glsl",
+			"author": "Thibaut Foussard",
+			"sha256": "3a06f605188cca92da4398e99676245daa9e37ae4f14e2ebeff271ab45df953f"
+		},
+		{
+			"file": "DoomScreenTransition.glsl",
+			"author": "Zeh Fernando",
+			"sha256": "6fe6a62eaa94bdef64dde27524629efc85806b9c2df8ab86ced9b4ee4ff2082c"
+		},
+		{
+			"file": "Dreamy.glsl",
+			"author": "mikolalysenko",
+			"sha256": "4afafcc23301fd89a5399bf3da650b46c8f64f1684f7088ae21f36f5e8061077"
+		},
+		{
+			"file": "DreamyZoom.glsl",
+			"author": "Zeh Fernando",
+			"sha256": "1e54f99356d18538d0ed34fd61127f7063ce1be17d8a0bf1b895283330838d09"
+		},
+		{
+			"file": "Drop_Zone_Flicker.glsl",
+			"author": "bread",
+			"sha256": "196757c24b32bc9704e72fc335dc22b5247caca95029534071d6edbe2ee8cbd9"
+		},
+		{
+			"file": "EdgeTransition.glsl",
+			"author": "Woohyun Kim",
+			"sha256": "95b7e664b32453ef4a4f24a27b0896ef9098b326fc86c8866a2af2fea3719fe9"
+		},
+		{
+			"file": "FilmBurn.glsl",
+			"author": "Anastasia Dunbar",
+			"sha256": "95f464e637f6a455543f608eab2417996e94f22539b9de7711a972fcfba19a9c"
+		},
+		{
+			"file": "Fold.glsl",
+			"author": "nwoeanhinnogaehr",
+			"sha256": "13e78ed152d46601ce56c1c304320d370f67b44b8c39efc0a9374d0f19ab8080"
+		},
+		{
+			"file": "GlitchDisplace.glsl",
+			"author": "Matt DesLauriers",
+			"sha256": "7ebe05478a603b570fc8fd22abebe7501a09beddc249c17b433d9184a5dd5545"
+		},
+		{
+			"file": "GlitchMemories.glsl",
+			"author": "Gunnar Roth",
+			"sha256": "9b634e77504806a42e7029e0de9ea06c873002968413a8274e28ea9945bba663"
+		},
+		{
+			"file": "GridFlip.glsl",
+			"author": "TimDonselaar",
+			"sha256": "5f7326abd67f7775333d1598dc139c5a2fcb08964f8bd76cff84384b9d3370e7"
+		},
+		{
+			"file": "HSVfade.glsl",
+			"author": "nwoeanhinnogaehr",
+			"sha256": "276b670e9399331e042efbf57a47799114d2a6d2f7a3c736323217fd8ef35b12"
+		},
+		{
+			"file": "HorizontalClose.glsl",
+			"author": "martiniti",
+			"sha256": "7991d30a608859253d53bc7fae51bc283593a2dce7548b036ecacf17a5e969c1"
+		},
+		{
+			"file": "HorizontalOpen.glsl",
+			"author": "martiniti",
+			"sha256": "847aa4d7fa84573581113c68d43564a7da4ddab1a268d38948e0c949292974ef"
+		},
+		{
+			"file": "InvertedPageCurl.glsl",
+			"author": "Hewlett-Packard",
+			"sha256": "34829a5cf29d9d5a5965213d7b591c551d80672294a9ec4315be65c372eaeab7"
+		},
+		{
+			"file": "LeftRight.glsl",
+			"author": "zhmy",
+			"sha256": "9bb05f7449a5a9500fb16d6407090202b65cb71af358c21e68d09c67a673b9b9"
+		},
+		{
+			"file": "LinearBlur.glsl",
+			"author": "gre",
+			"sha256": "c050f00e27d6b3229587dcdf4e57ed139bdf80a12e031180cf5a5b92b8813eb9"
+		},
+		{
+			"file": "Mosaic.glsl",
+			"author": "Xaychru",
+			"sha256": "44014bdfa8ca2f6e1c5e7b0f5d332c0d1a190cafd921d666f3f63ef098e2d3b6"
+		},
+		{
+			"file": "Overexposure.glsl",
+			"author": "Ben Zhang",
+			"sha256": "2dc20be3888f8f1f2c4aa3354b6c22e639e2d7b4543929991ca95949564eebcc"
+		},
+		{
+			"file": "PolkaDotsCurtain.glsl",
+			"author": "bobylito",
+			"sha256": "9b99f2c589b9bcfe3927412c90828bff9e78f75309da50f21420d35e6aeaac9a"
+		},
+		{
+			"file": "PuzzleRight.glsl",
+			"author": "JustKirillS",
+			"sha256": "3fa07899c88f4000adab74d49b5ddc1be24262abe8cf0e6ace4b6ad40da0afa4"
+		},
+		{
+			"file": "Radial.glsl",
+			"author": "Xaychru",
+			"sha256": "a275c8a125f7d552108a4776ed409f994a68b9e6dfb30ac05cee78e112e87e63"
+		},
+		{
+			"file": "Rectangle.glsl",
+			"author": "martiniti",
+			"sha256": "4a6bfc60f92877f11af7a42f804c9b8d22e8cb2b84fede44b39bc25c0e13cb3c"
+		},
+		{
+			"file": "RectangleCrop.glsl",
+			"author": "martiniti",
+			"sha256": "f5ad3d6276258440279b14f39e36b7751de299e381daeaee35a1e96ff2dcb967"
+		},
+		{
+			"file": "Revolve_Left.glsl",
+			"author": "bread",
+			"sha256": "c7a86839f68aa5a7414658363e4f69654f57a9104f338a2f0bc37581de175cb0"
+		},
+		{
+			"file": "Rolls.glsl",
+			"author": "Mark Craig",
+			"sha256": "43fd99c06859cfb18bac0ad57e990dcc6f9009191cb1b75d3df7e7bc5bb6ca19"
+		},
+		{
+			"file": "RotateScaleVanish.glsl",
+			"author": "Mark Craig",
+			"sha256": "050a014eb9e0827fff98a4598cd7f917fdacbdbf411735a96617a644e8205026"
+		},
+		{
+			"file": "SimpleFlip.glsl",
+			"author": "nwoeanhinnogaehr",
+			"sha256": "b6d4b6324cf6b7ff6a039f8a7792b6adfd8d99f22afa59cb67ec7356b402656c"
+		},
+		{
+			"file": "SimpleZoom.glsl",
+			"author": "0gust1",
+			"sha256": "e3b3473142574b554c0799ac73e1ba3c2b3b64f8535a82879b684ec4f7e178e7"
+		},
+		{
+			"file": "SimpleZoomOut.glsl",
+			"author": "Tianshuo",
+			"sha256": "40c9cc125b20e1f375391ae248fde1d65fdc94f07bc80d64c5febca085694527"
+		},
+		{
+			"file": "Slides.glsl",
+			"author": "Mark Craig",
+			"sha256": "abd2dac652c2497c53bd3d7e6eccac80e10e98a471a2422f2010d667a9c3da6b"
+		},
+		{
+			"file": "StarWipe.glsl",
+			"author": "Ben Lucas",
+			"sha256": "c3019f2e9f59c58a71b2c600e58eb251432252c671f6df83cb838d83940c9f5c"
+		},
+		{
+			"file": "StaticFade.glsl",
+			"author": "Ben Lucas",
+			"sha256": "8d6098e8839ada6f4aa3ab49e7f53a695bc6541ee7e324e5529ecb91e4ea1804"
+		},
+		{
+			"file": "StereoViewer.glsl",
+			"author": "Ted Schundler",
+			"sha256": "15114cc0c45f0697c250e9e3f4935d30c8362c82c87e0f38169d0490d8dc00ce"
+		},
+		{
+			"file": "StripDatamoshGlitch.glsl",
+			"author": "bread",
+			"sha256": "3cf42ebb8e4bd6f180fc7e28a51c9c1bcda0f0dfd2fa24f9751fd85057929e30"
+		},
+		{
+			"file": "Swirl.glsl",
+			"author": "Sergey Kosarevsky",
+			"sha256": "5ce1c017bb08a5a5a5a684d834563ae71b9f225fcd8ad172d75158f0565deea9"
+		},
+		{
+			"file": "TVStatic.glsl",
+			"author": "Brandon Anzaldi",
+			"sha256": "12f62893e4b8daee47e92ef2cd70bfba8d6894c8d7e3a871db735ad3c01ed102"
+		},
+		{
+			"file": "TilesWave.glsl",
+			"author": "numb3r23",
+			"sha256": "96d8c506dab6adda880c36dfafe1ab3b17ad57f8fdbf9ce62be58a5781f1a166"
+		},
+		{
+			"file": "TopBottom.glsl",
+			"author": "zhmy",
+			"sha256": "16e0aa3af9c14e9438e4ee452ac25dcf7274bd7f7c8a5de95d500789abdcef84"
+		},
+		{
+			"file": "VerticalClose.glsl",
+			"author": "martiniti",
+			"sha256": "6f40f60736543feaf29f541f64fd06d87be29b90b7a1830df33b632b9eecada2"
+		},
+		{
+			"file": "VerticalOpen.glsl",
+			"author": "martiniti",
+			"sha256": "ab28b52e5936882c5d1b7615bf9b3c703a154c352966b4c2e5366779cfbd8605"
+		},
+		{
+			"file": "WaterDrop.glsl",
+			"author": "Paweł Płóciennik",
+			"sha256": "145e6201b4460e5107cac485718a976f1b0197e9856d5a4daba75f81d9c3d897"
+		},
+		{
+			"file": "ZoomInCircles.glsl",
+			"author": "dycm8009",
+			"sha256": "2e5d3380a292c799f86b283e4b5b9a8131a03b1ad5352db68d834f4f4183b9d8"
+		},
+		{
+			"file": "ZoomLeftWipe.glsl",
+			"author": "Handk",
+			"sha256": "13d14bdd5d7f15a876184fa2f9164c4124be13d164886bbcb851adc3c057c17d"
+		},
+		{
+			"file": "ZoomRigthWipe.glsl",
+			"author": "Handk",
+			"sha256": "53e4e2f3ba9b8f66830325beb65ba22038e02d538b6773c7dacc5d8173d5a338"
+		},
+		{
+			"file": "angular.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "c44f5019c8163045ff54e1b32cd8ecce77632f1dc614876385bc74ed079e08cd"
+		},
+		{
+			"file": "burn.glsl",
+			"author": "gre",
+			"sha256": "8e452dd332be77cb1b2823fdd3dabbea992f42e58df15e6936ab40d95937ca53"
+		},
+		{
+			"file": "burn0.glsl",
+			"author": "liubailin2020@gmail.com",
+			"sha256": "ffe6733b78b82caa29fe9c22f01f8544e8bd7296d0892084aa457473636a06a0"
+		},
+		{
+			"file": "cannabisleaf.glsl",
+			"author": "@Flexi23",
+			"sha256": "42d1d002f2a40fac8f5f0749899408b8aa09f61eb3b36bb4fa95f55d627efed7"
+		},
+		{
+			"file": "chessboard.glsl",
+			"author": "lql",
+			"sha256": "d2a97e486b6f934e68511f928ee9a3c8d95d4d11704620395e82b080cbe7405d"
+		},
+		{
+			"file": "circle.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "2538d236bd4a1630618ff6de6dd97c29dd13b85ba3430642705c19e7e0755482"
+		},
+		{
+			"file": "circleopen.glsl",
+			"author": "gre",
+			"sha256": "2dd91ce847cd8c2a8aeaeef8f58dfc80fc7bb693a8eac080e1deb6de321eb376"
+		},
+		{
+			"file": "colorphase.glsl",
+			"author": "gre",
+			"sha256": "8905b6eff2404ac8ce4078c430a93f1483e82833df8872257ffcc7e10c1742b1"
+		},
+		{
+			"file": "coord-from-in.glsl",
+			"author": "haiyoucuv",
+			"sha256": "874d3c2e9701dbeaa432c872abb0d9f3632441b715986f7d123e9abcf796ee72"
+		},
+		{
+			"file": "crosshatch.glsl",
+			"author": "pthrasher",
+			"sha256": "ea49f73260f32d432e78c5d85e2d5a94bf2f180588ad56eac0903749def6f992"
+		},
+		{
+			"file": "crosswarp.glsl",
+			"author": "Eke Péter <peterekepeter@gmail.com>",
+			"sha256": "f3bb6ddca7dcaa1b9ec7e6c8673969f4e19b61cae6a3daaccfe163c0ebd3637c"
+		},
+		{
+			"file": "cube.glsl",
+			"author": "gre",
+			"sha256": "1e70444af315f102e0a40f74664e037470541af50902a569a0408d7552f9135e"
+		},
+		{
+			"file": "directional-easing.glsl",
+			"author": "Max Plotnikov",
+			"sha256": "b3da2837f43f27676bb77afbb5e30271c0d1b7732290450c7bd19e60f7c56a78"
+		},
+		{
+			"file": "directionalwarp.glsl",
+			"author": "pschroen",
+			"sha256": "633a962a9f6c59bc9d3567cf894333a5ec8a870ad18396e34e1bc5ddc632c102"
+		},
+		{
+			"file": "directionalwipe.glsl",
+			"author": "gre",
+			"sha256": "24e80bc7acc356f59f537d094c85640c7c425b30b51e2abfb354216010af635d"
+		},
+		{
+			"file": "dissolve.glsl",
+			"author": "hjm1fb",
+			"sha256": "ed40197c1e18ca4c6c108a0eff3cd95f9d142058adace7379761a547653cfc52"
+		},
+		{
+			"file": "doorway.glsl",
+			"author": "gre",
+			"sha256": "f0870222f2ef4262af16b102390c9da97e527dc8d31eda208342c51b7386f411"
+		},
+		{
+			"file": "fade.glsl",
+			"author": "gre",
+			"sha256": "a16074d9812e440fb84e829a68ba7b078dd32182370d48bef05dbe71358e732e"
+		},
+		{
+			"file": "fadecolor.glsl",
+			"author": "gre",
+			"sha256": "2ecad64044e7b0e4c2d3bd196b3d4a069294e5f66a304a81fd9499055a3063ca"
+		},
+		{
+			"file": "fadegrayscale.glsl",
+			"author": "gre",
+			"sha256": "79f9466b1803518d3bed78394082c8017398031d2211be5bc5dd5889ff0da26d"
+		},
+		{
+			"file": "flyeye.glsl",
+			"author": "gre",
+			"sha256": "869be5c8e2aa9f3aa8cb07c17c4500cccac74640d520429a915ca0ab1b10e973"
+		},
+		{
+			"file": "fragment.glsl",
+			"author": "lbl",
+			"sha256": "7392e0eb4ecb1ceca1766be968bd9b17deba1f9401490704d8fe0af72f88ea8d"
+		},
+		{
+			"file": "heart.glsl",
+			"author": "gre",
+			"sha256": "ae2807141569bcdb469dc9fc229d6a02b6bc9419f45afce8f04049b84cc2e18a"
+		},
+		{
+			"file": "hexagonalize.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "3935761ca2dff2ed443e1757143a20b15099110d2caf635c6aedf1d812ae0a1a"
+		},
+		{
+			"file": "kaleidoscope.glsl",
+			"author": "nwoeanhinnogaehr",
+			"sha256": "588b864e89f43640e1e35ce5570c0772c19e7594e2d1122c60f581b5c322ec35"
+		},
+		{
+			"file": "luminance_melt.glsl",
+			"author": "0gust1",
+			"sha256": "f39a371548e81fe4ff9cdf39ed45b564e1143855f6c06d4f37f4c580ed7030e4"
+		},
+		{
+			"file": "morph.glsl",
+			"author": "paniq",
+			"sha256": "1773c8fc94a2a65f2e42dcfbe5c74749e66bdc7e649737f28464086cdd8de4ba"
+		},
+		{
+			"file": "mosaic_transition.glsl",
+			"author": "YueDev",
+			"sha256": "5976de28693348e0b86175da459197690845b8cab534b1af9e684c7b6a97323b"
+		},
+		{
+			"file": "multiply_blend.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "40913fd1831de850c7d47b2077768263878af1b113553bdc1a6e397fc8f2d0a0"
+		},
+		{
+			"file": "old_tv_lost_signal.glsl",
+			"author": "mernking gitlab: Godswork",
+			"sha256": "274814dee2f8b54b5227980917d2596e200c30abe11d2a2d35e1fc3b29fdc05e"
+		},
+		{
+			"file": "parametric_glitch.glsl",
+			"author": "Yoni Maltsman @friendlyspinach",
+			"sha256": "fafd595b905ca2c20c5d7c8beaf1e5b4e92fb8058ebaf7bea3a0999e03b094c5"
+		},
+		{
+			"file": "perlin.glsl",
+			"author": "Rich Harris",
+			"sha256": "55bcac03a3777a51b7bffd31af602e5279e1860390aa35043457a25cd3cc96c6"
+		},
+		{
+			"file": "pinwheel.glsl",
+			"author": "Mr Speaker",
+			"sha256": "7285b8f493ee605cfbbb8acef048d86159e6a916d1cda753c01ede1bbf0b6258"
+		},
+		{
+			"file": "pixelize.glsl",
+			"author": "gre",
+			"sha256": "6fa7ae826e07a3d45fb7a0f8309310d38858d88fd48a098120d0207b66fbf2e1"
+		},
+		{
+			"file": "polar_function.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "d0644846d58cc5dcdeeb26bfea0cbeabbd8c8a652a9fc98350880d80fd4e6f44"
+		},
+		{
+			"file": "powerKaleido.glsl",
+			"author": "Boundless",
+			"sha256": "20ae03da2bc8d5365f6f799ca6832b6af8d2cfa6945408635e0d144842bf18ee"
+		},
+		{
+			"file": "randomNoisex.glsl",
+			"author": "towrabbit",
+			"sha256": "e3882b3b8aeb107506b7717bce27d1aa4e5b6350ffadfe2ecfcb09c86f035b7a"
+		},
+		{
+			"file": "randomsquares.glsl",
+			"author": "gre",
+			"sha256": "87b24da45728c58e014cc4eb2abd4b947ec2ee257a0f18f18f10da2eb644863a"
+		},
+		{
+			"file": "ripple.glsl",
+			"author": "gre",
+			"sha256": "0bcdcb7006aff268adff577e3359ca68ab7aa1fc83cc4da267b7dab0e241ceda"
+		},
+		{
+			"file": "rotateTransition.glsl",
+			"author": "haiyoucuv",
+			"sha256": "9a310fc7d1eda2f0c181cea1c70f72b7fccd6eef514809722bffa05dd9d7d7d8"
+		},
+		{
+			"file": "rotate_scale_fade.glsl",
+			"author": "Fernando Kuteken",
+			"sha256": "92bb7cc6c39d5b78b710d0170f22ee5c936918a87ebe1b552ee8a16d425b28b6"
+		},
+		{
+			"file": "scale-in.glsl",
+			"author": "haiyoucuv",
+			"sha256": "c9c1808bb7e07723daea14cb3d0d06bc9a81a7f5a3a7bd26cba5ea8a301a46af"
+		},
+		{
+			"file": "splitSlideInHorizontal.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "e543ff3ee3fd3f8e11b761984019e05d52290f08a7ca0e93ba619f58235ecee5"
+		},
+		{
+			"file": "splitSlideInOutHorizontal.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "0f598be728714ae7cdb6252438aa4f2cb968dd21402402e91fc893806ff0621b"
+		},
+		{
+			"file": "splitSlideInOutVertical.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "b011afbbe53d7c3f0e93fcf8e56bba6bbac9c85eba766b951a8c80916dda473b"
+		},
+		{
+			"file": "splitSlideInVertical.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "ddc71ccecdabbc4b200623bec709cd0e76e1b1c22f8daa173a1331ec05d65541"
+		},
+		{
+			"file": "splitSlideOutHorizontal.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "2f486e615f1943e2a27449dab391c00cb15d708ffc4872cdac441eaf20d1d682"
+		},
+		{
+			"file": "splitSlideOutVertical.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "b54781e52695daac04983781481a7ba815acdab6dc2f30ea8d446d835f63fb6b"
+		},
+		{
+			"file": "squareswire.glsl",
+			"author": "gre",
+			"sha256": "c94709836a2ddbeae69f676d32f0eb9822b2614802c932b644f6d878103f182e"
+		},
+		{
+			"file": "squeeze.glsl",
+			"author": "gre",
+			"sha256": "515f78c4f2cac0a941ee2df3f120526b4d4b2b9cb6d92019fa0c6e1eec3613f1"
+		},
+		{
+			"file": "static_wipe.glsl",
+			"author": "Ben Lucas",
+			"sha256": "2c02aa43819db3c5fc69d609caf68f070eff4566d27563796c97558617a4ba67"
+		},
+		{
+			"file": "swap.glsl",
+			"author": "gre",
+			"sha256": "f45af429feae5e90f652537a6dbba0bf705784eb8d7e0c8bfe7d58cb59d499af"
+		},
+		{
+			"file": "tangentMotionBlur.glsl",
+			"author": "chenkai",
+			"sha256": "b8367b1c5445bcba823df3f1b6adc8ba3217bd5f93cb067b1be3c7ec5c63f4e4"
+		},
+		{
+			"file": "undulatingBurnOut.glsl",
+			"author": "pthrasher",
+			"sha256": "75ec1bb6013b66ea51ad44139069bbb30f1682621b34e4469df495177fbc23cf"
+		},
+		{
+			"file": "wind.glsl",
+			"author": "gre",
+			"sha256": "bc29c5584865aa14dfb0bc27f70d789f05a55a8e3bcce58247ff8fa063141364"
+		},
+		{
+			"file": "windowblinds.glsl",
+			"author": "Fabien Benetou",
+			"sha256": "4a531478746232536291f3ba8ab0744794b75bca9cf9f305210bc083fc613e33"
+		},
+		{
+			"file": "windowslice.glsl",
+			"author": "gre",
+			"sha256": "693dff9c66e359fedf742e4d61a1ac75a712102ea1640d7c9699c098d65bc65d"
+		},
+		{
+			"file": "wipeDown.glsl",
+			"author": "Jake Nelson",
+			"sha256": "0e9897ab1b6fc5383772f0b4c4ea49551942d138bc5d363a1a401e43832a21ea"
+		},
+		{
+			"file": "wipeLeft.glsl",
+			"author": "Jake Nelson",
+			"sha256": "e877946d2df38eed3510a388c246c04f8898d158d056f1925301dc0852288e51"
+		},
+		{
+			"file": "wipeRight.glsl",
+			"author": "Jake Nelson",
+			"sha256": "986db07618558edb7a46d9734ac572fa4d9c2b001afdfc46acd8690571db46c8"
+		},
+		{
+			"file": "wipeUp.glsl",
+			"author": "Jake Nelson",
+			"sha256": "37e389eb3c245d67bd27f4ad8cdb76de419425e149ed5df0dd2a0b7c673d91f7"
+		},
+		{
+			"file": "x_axis_translation.glsl",
+			"author": "lizhongjian",
+			"sha256": "e695bda9750e11228e471b9ce2af75525655558000c370f63501897d67642cad"
+		},
+		{
+			"file": "zoomInOut.glsl",
+			"author": "OllyOllyOlly",
+			"sha256": "850c1eefb0d0ed8b4b09535aef020d809f30dee9f34c2b6d4c1424c93ae83c44"
+		}
+	]
+}
