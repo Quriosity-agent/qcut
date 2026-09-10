@@ -37,6 +37,7 @@ import { handleMode1_5 } from "./ffmpeg-export-mode15.js";
 import { validateAudioInputStreams } from "./ffmpeg/audio-input-validation.js";
 import { prepareFFmpegFilterComplexScripts } from "./ffmpeg/filter-complex-script.js";
 import { formatFFmpegFailure } from "./ffmpeg/process-error.js";
+import { resolveNeuralVideoSources } from "./ffmpeg/neural-video-sources.js";
 
 /**
  * Registers the export-video-cli IPC handler.
@@ -194,6 +195,17 @@ export function setupExportHandler(tempManager: TempManager): void {
 				);
 			}
 			const validatedOptions = { ...options, audioFiles };
+			// RIFE has to finish before the graph is built: each "neural" source is
+			// swapped for a lossless intermediate covering exactly its read window.
+			const videoSources = options.videoSources?.some(
+				(source) => source.frameInterpolation === "neural"
+			)
+				? await resolveNeuralVideoSources({
+						videoSources: options.videoSources,
+						fps,
+						workDir: path.join(tempManager.getFrameDir(sessionId), "neural"),
+					})
+				: options.videoSources;
 
 			return new Promise<ExportResult>((resolve, reject) => {
 				// Get session directories
@@ -245,7 +257,7 @@ export function setupExportHandler(tempManager: TempManager): void {
 						textAssLayers: textAssLayerPaths,
 						textRasterLayers,
 						useDirectCopy: effectiveUseDirectCopy,
-						videoSources: options.videoSources,
+						videoSources,
 						videoTransitions: options.videoTransitions,
 						stickerFilterChain,
 						stickerSources,
