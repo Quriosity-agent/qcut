@@ -1026,6 +1026,7 @@ export function PreviewElementRenderer({
 					>
 						<div
 							className="size-full"
+							data-timeline-element-id={element.id}
 							data-native-enhancement-preview-status={
 								nativeEnhancementPreview.status
 							}
@@ -1410,6 +1411,7 @@ export function PreviewElementRenderer({
 						>
 							<div
 								className="size-full"
+								data-timeline-element-id={element.id}
 								data-preview-effect-render-mode={previewEffectRenderMode}
 								style={{
 									...buildClipTransitionContentStyle({
