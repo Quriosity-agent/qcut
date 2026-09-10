@@ -81,9 +81,12 @@ function vendor({ from, commit }: { from: string; commit: string }): void {
 	copyFileSync(license, path.join(VENDOR_DIR, "LICENSE"));
 	for (const file of readdirSync(sourceShaders)) {
 		if (!file.endsWith(".glsl") || file in EXCLUDED) continue;
-		copyFileSync(
-			path.join(sourceShaders, file),
-			path.join(VENDOR_SHADERS, file)
+		// The repo normalises text to LF on commit (.gitattributes); hash and
+		// vendor the LF form so manifest.json matches the checked-in bytes.
+		const source = readFileSync(path.join(sourceShaders, file), "utf8");
+		writeFileSync(
+			path.join(VENDOR_SHADERS, file),
+			source.replace(/\r\n?/g, "\n")
 		);
 	}
 	const files: ManifestFile[] = readdirSync(VENDOR_SHADERS)
