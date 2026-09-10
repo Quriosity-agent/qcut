@@ -211,6 +211,7 @@ export type ClipTransitionType =
 	| "vortex"
 	| "shockwave"
 	| "cube"
+	| "shader"
 	| "color-swipe";
 
 export type ClipTransitionDirection = "left" | "right" | "up" | "down";
@@ -836,7 +837,7 @@ export interface MediaElement extends BaseTimelineElement {
 	freezeFrameTime?: number;
 	freezeFrameDuration?: number;
 	preservePitch?: boolean;
-	frameInterpolation?: "none" | "blend" | "motion-compensated";
+	frameInterpolation?: "none" | "blend" | "motion-compensated" | "neural";
 	/** Nested media preserved behind a single editable timeline container. */
 	compound?: MediaCompound;
 }
