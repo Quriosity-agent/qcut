@@ -229,7 +229,9 @@ export function useVideoEnhancementProxy({
 	const retry = useCallback(() => setRetrySequence((value) => value + 1), []);
 	const enhancementSnapshot = useMemo<MediaEnhancements>(
 		() => ({
-			stabilization: enhancements.stabilization,
+			// Stabilization is rendered by the in-house canvas path, so the
+			// FFmpeg deshake proxy must not be requested for it.
+			stabilization: 0,
 			denoise: enhancements.denoise,
 			clarity: enhancements.clarity,
 			upscale: enhancements.upscale,
@@ -249,7 +251,6 @@ export function useVideoEnhancementProxy({
 			enhancements.labLocalSuperResolution,
 			enhancements.labOpticalFlowMotionBlur,
 			enhancements.relight,
-			enhancements.stabilization,
 			enhancements.upscale,
 		]
 	);
