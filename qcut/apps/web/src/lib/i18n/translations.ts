@@ -1790,7 +1790,14 @@ const EN_TRANSLATIONS = {
 	"mediaProperties.stabilizationLevel.high": "High",
 	"mediaProperties.stabilizationLevel.max": "Maximum",
 	"mediaProperties.stabilizationInfo":
-		"Smooths camera shake locally on export. Higher levels search a wider area.",
+		"Analyses the camera path locally, smooths it and crops the edges. Higher levels smooth more and crop more. Preview and canvas export use the same in-house stabilizer; CLI/API exports fall back to FFmpeg deshake.",
+	"mediaProperties.stabilizationStatus.hashing": "Reading the clip…",
+	"mediaProperties.stabilizationStatus.analyzing":
+		"Analysing camera motion… {{percent}}%",
+	"mediaProperties.stabilizationStatus.ready": "Motion analysis ready",
+	"mediaProperties.stabilizationStatus.error":
+		"Motion analysis failed: {{error}}",
+	"mediaProperties.stabilizationStatus.retry": "Retry analysis",
 	"mediaProperties.quickEnhance": "One-click quality boost",
 	"mediaProperties.quickEnhanceInfo":
 		"Sharpens the clip locally at a preset strength. AI enhancement is on the AI tab.",
@@ -3839,7 +3846,13 @@ const ZH_TRANSLATIONS: Record<TranslationKey, string> = {
 	"mediaProperties.stabilizationLevel.high": "高",
 	"mediaProperties.stabilizationLevel.max": "最强",
 	"mediaProperties.stabilizationInfo":
-		"导出时在本地平滑机身抖动；等级越高搜索范围越大。",
+		"在本地分析镜头运动轨迹，平滑后裁掉边缘；等级越高越平滑、裁切越多。预览与画布导出使用同一套自研防抖；CLI/API 导出回退为 FFmpeg deshake。",
+	"mediaProperties.stabilizationStatus.hashing": "正在读取素材…",
+	"mediaProperties.stabilizationStatus.analyzing":
+		"正在分析镜头运动… {{percent}}%",
+	"mediaProperties.stabilizationStatus.ready": "运动分析已就绪",
+	"mediaProperties.stabilizationStatus.error": "运动分析失败：{{error}}",
+	"mediaProperties.stabilizationStatus.retry": "重新分析",
 	"mediaProperties.quickEnhance": "一键画质提升",
 	"mediaProperties.quickEnhanceInfo":
 		"以预设强度做本地清晰度增强；AI 画质增强在「AI效果」页。",
