@@ -58,7 +58,8 @@ export type TransitionType =
 	| "page"
 	| "texture"
 	| "flare"
-	| "cube";
+	| "cube"
+	| "shader";
 
 export interface TransitionPreset {
 	id: string;
@@ -85,6 +86,8 @@ export interface TransitionPreset {
 	downloaded?: boolean;
 	popular?: boolean;
 	latest?: boolean;
+	/** Which Transition Lab shader family a lab preset came from. */
+	labOrigin?: "qcut-clean-room" | "gl-transitions";
 }
 
 export interface ClipTransitionPresetConfig {
