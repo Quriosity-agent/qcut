@@ -11,6 +11,7 @@ import { parseCliArgs } from "../native-pipeline/cli/cli.js";
 import { printHelp } from "../native-pipeline/cli/cli-help.js";
 import { EditorApiClient } from "../native-pipeline/editor/editor-api-client.js";
 import { handleTransitionLabCommand } from "../native-pipeline/editor/editor-handlers-transition-lab.js";
+import { TRANSITION_LAB_RECIPES } from "../native-pipeline/transitions/transition-lab-catalog.js";
 import {
 	BASE_URL,
 	clearRoutes,
@@ -92,9 +93,19 @@ describe("Transition Lab CLI", () => {
 		};
 
 		expect(result.success).toBe(true);
-		expect(data.count).toBe(6);
+		expect(data.count).toBe(TRANSITION_LAB_RECIPES.length);
 		expect(data.recipes).toContainEqual(
 			expect.objectContaining({ id: "lab-cube-rotate" })
+		);
+		expect(data.recipes).toContainEqual(
+			expect.objectContaining({
+				id: "gl-fade",
+				shader: expect.objectContaining({
+					origin: "gl-transitions",
+					license: "MIT",
+					author: "gre",
+				}),
+			})
 		);
 		expect(data.recipes.every((recipe) => !recipe.shader.binaryAssets)).toBe(
 			true
