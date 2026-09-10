@@ -99,6 +99,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
 import { useJianyingTimelineTransitionPreview } from "./preview-panel/use-jianying-timeline-transition-preview";
 import { JianyingTimelineTransitionOverlay } from "./preview-panel/jianying-timeline-transition-overlay";
+import { ShaderTimelineTransitionOverlay } from "./preview-panel/shader-timeline-transition-overlay";
 import {
 	JianyingTextPlaybackOverlay,
 	type JianyingTextPlaybackStatus,
@@ -570,13 +571,30 @@ export function PreviewPanel() {
 	});
 	const renderJianyingTimelineOverlay = useCallback(
 		() => (
-			<JianyingTimelineTransitionOverlay
-				preview={jianyingTimelinePreview}
-				currentTime={transitionPreviewTime}
-				isPlaying={isPlaying}
-			/>
+			<>
+				<JianyingTimelineTransitionOverlay
+					preview={jianyingTimelinePreview}
+					currentTime={transitionPreviewTime}
+					isPlaying={isPlaying}
+				/>
+				<ShaderTimelineTransitionOverlay
+					tracks={renderTracks}
+					statesByElementId={activeTransitionPreview.statesByElementId}
+					canvasSize={canvasSize}
+					fps={activeProject?.fps ?? 30}
+					currentTime={transitionPreviewTime}
+				/>
+			</>
 		),
-		[jianyingTimelinePreview, transitionPreviewTime, isPlaying]
+		[
+			jianyingTimelinePreview,
+			transitionPreviewTime,
+			isPlaying,
+			renderTracks,
+			activeTransitionPreview.statesByElementId,
+			canvasSize,
+			activeProject?.fps,
+		]
 	);
 	const getActiveElements = useCallback((): ActiveElement[] => {
 		try {
