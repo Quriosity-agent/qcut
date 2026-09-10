@@ -37,6 +37,7 @@
 - **时间线预览**：`ShaderTimelineTransitionOverlay` 盖在舞台上，按 `data-timeline-element-id` 取两段的 `<video>`/`<img>`/调色 canvas，用导出同一套 `calculateElementBounds` + `drawWithMediaTransform` 画进离屏，再由 `ShaderTransitionCompositor` 合成。**这是预览近似**：不采样每段的遮罩和滤镜；无 WebGL 时不渲染（表现为硬切）并 warn 一次。
 - **导出**：`export-shader-transitions.ts` 在 `beginMediaTransitionLayer` 前拦截 shader 状态：from 段画进离屏 A 并寄存，to 段画进离屏 B 后合成并画回主画布。**不回退**：缺 recipe、缺 WebGL、to 先于 from 都直接抛错，不会悄悄变成硬切。
 - **引擎策略**：时间线含 shader 转场时强制 canvas muxer 引擎（CLI FFmpeg 跑不了 GLSL）。compose CLI 的 `transition-lab apply` 会把 `clip.type: "shader"` 写进时间线，随后走同一条预览/导出路径。
+- **FFmpeg 路径明确拒绝**：`transition-filter.ts` 收到 shader 类型时抛出指向 canvas 引擎的错误；compose 运行时（`compose-lab-resource-resolver.ts`）把 shader recipe 判为 `unsupported/transition-lab`，compose 资源清单不列出它们；`transition-lab list` 的公开元数据带 `author` / `sourceFile` 用于署名。
 
 ### 明确没做
 
