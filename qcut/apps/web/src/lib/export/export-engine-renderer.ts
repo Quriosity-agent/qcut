@@ -40,6 +40,10 @@ import {
 	destroyShaderTransitionLayers,
 } from "./export-shader-transitions";
 import {
+	destroyExportStabilizationCanvases,
+	stabilizeExportFrame,
+} from "./export-stabilization";
+import {
 	resolveActiveClipTransitionPreview,
 	type ClipTransitionPreviewState,
 } from "@/lib/transitions/clip-transition-preview";
@@ -201,6 +205,7 @@ export function destroyExportCompositor(): void {
 	adjustmentFrameCtx = null;
 	destroyClipTransitionLayer();
 	destroyShaderTransitionLayers();
+	destroyExportStabilizationCanvases();
 }
 
 /**
@@ -1009,6 +1014,18 @@ async function renderVideoAttempt(
 			sourceTimestamp = video.currentTime;
 		}
 
+		// Stabilized clips are pre-warped in source space so bounds, crop,
+		// colour and transitions below see a steady frame.
+		if ((mediaElement.enhancements?.stabilization ?? 0) > 0) {
+			source = stabilizeExportFrame({
+				element: mediaElement,
+				mediaItem,
+				source,
+				sourceWidth,
+				sourceHeight,
+				sourceTimestamp,
+			});
+		}
 		const resolvedSource = source;
 		const { x, y, width, height } = calculateElementBounds(
 			element,
