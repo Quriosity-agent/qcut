@@ -154,15 +154,18 @@ describe("Sound Effects Lab resolution", () => {
 
 describe("transition runtime admission", () => {
 	it("resolves every QCut clean-room transition recipe", async () => {
+		const cleanRoom = TRANSITION_LAB_RECIPES.filter(
+			(recipe) => recipe.shader.origin === "qcut-clean-room"
+		);
 		const resolutions = await Promise.all(
-			TRANSITION_LAB_RECIPES.map(({ id }) =>
+			cleanRoom.map(({ id }) =>
 				resolveComposeTransitionReference({ assetId: id })
 			)
 		);
 		expect(resolutions).toHaveLength(6);
 		expect(resolutions).toEqual(
 			expect.arrayContaining(
-				TRANSITION_LAB_RECIPES.map((recipe) =>
+				cleanRoom.map((recipe) =>
 					expect.objectContaining({
 						status: "ready",
 						backend: "transition-lab",
@@ -171,6 +174,25 @@ describe("transition runtime admission", () => {
 				)
 			)
 		);
+	});
+
+	// The compose runtime is FFmpeg; GLSL recipes only run on the canvas engines.
+	it("refuses every GLSL shader recipe instead of admitting it to FFmpeg", async () => {
+		const shaders = TRANSITION_LAB_RECIPES.filter(
+			(recipe) => recipe.clip.type === "shader"
+		);
+		expect(shaders.length).toBeGreaterThan(100);
+		for (const recipe of shaders) {
+			await expect(
+				resolveComposeTransitionReference({ assetId: recipe.id })
+			).resolves.toEqual(
+				expect.objectContaining({
+					status: "unsupported",
+					backend: "transition-lab",
+					detail: expect.stringContaining("GLSL shader transition"),
+				})
+			);
+		}
 	});
 
 	it("admits an exact Jianying package without exposing its path", async () => {
