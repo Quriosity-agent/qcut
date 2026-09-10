@@ -31,6 +31,14 @@
 | 旧原生回归 | Editor graph / nonlinear_property / variable_graph 与 Lens 七个既有 oracle 重跑，JSON 与既有记录一致 |
 | 新 head 跨平台 CI | 推送后在新 PR 验收；本机结果不代替云端结果，旧 PR #469 绿灯不沿用 |
 
+### 云端 CI 推翻了一条本机断言
+
+首次推送（head `800f722bd`，[PR #470](https://github.com/Quriosity-agent/qcut/pull/470)）的 C++ 流水线四个 job 里 **macOS 通过、ubuntu-24.04（含 ASan/UBSan）与 windows-latest 三个失败**，全部是同一项：`lens-rigid-lock-contract` 报 `8192 native-observed zero-angle results changed`。
+
+原因是 Lens 那一批把 8,192 个结果的有符号零角度指纹当成了 libm 无关的逐位合同。实际不是：分解尾部仍然对扫出来的矩阵元素调用 `powf` 和 `atan2f`，实参并不总是精确零。8 个手挑的定点样例在三个平台上都精确，只有随机扫出来的那一族会分叉。本机四条线加对抗审计**全部只在 macOS arm64 上跑**，所以本机和审计都没能发现——这正是本工程 README 早就写明的「数值逐位对照目前只在 Apple Silicon/macOS 上验证」被违反的地方。
+
+修正：该指纹改为只在原生对照实际运行过的平台（Apple Silicon / macOS arm64）上逐位断言，其他平台检查接受、计数与有限性；相关论证已在[刚体锁转换交付](lens-rigid-lock-conversion-2026-09-10.zh.md)第 4 条改正。**这条记录保留，不抹掉**：它说明本机全绿加对抗审计仍然不能代替跨平台云端验收。
+
 统一构建入口为 [independent-binary-contract](../../../research/independent-binary-contract/README.zh.md)。
 
 ## 负控与未检出项
