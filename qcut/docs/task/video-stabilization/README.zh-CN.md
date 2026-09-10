@@ -57,7 +57,7 @@
 
 ## 四b、真机测试（2026-09-10，可见的隔离 QCut 实例，副屏）
 
-用 `QCUT_WINDOW_DISPLAY=secondary QCUT_API_PORT=8791 … bun run electron -- --user-data-dir=<临时目录>` 起本分支构建的第二个 QCut（与用户正在跑的 QCut 共存），全部操作走编辑器 HTTP API（建项目 → 导入 → 上时间线 → PATCH `enhancements.stabilization=50` → 选中 → 导出），截图在 `docs/task/recordly/screenshots/stabilization-2026-09-10/`。
+用 `QCUT_WINDOW_DISPLAY=secondary QCUT_API_PORT=8791 … bun run electron -- --user-data-dir=<临时目录>` 起本分支构建的第二个 QCut（与用户正在跑的 QCut 共存），全部操作走编辑器 HTTP API（建项目 → 导入 → 上时间线 → PATCH `enhancements.stabilization=50` → 选中 → 导出），截图在 `docs/task/recordly/screenshots/stabilization-2026-09-10/`（该目录被 .gitignore 忽略，只在本机保留）。
 
 1. **真实手机素材 `~/Movies/6月21日.mov`（1920×1080 @30，143 s，4298 帧）**：整段分析完成（面板显示「运动分析已就绪」，见 `04-analysis-ready.png`），muxer 导出 143 s 用时 22 s（4299 帧，bt709）。但用同一估计器量输入本身，逐帧运动只有 **0.02 px RMS**——这段是架着拍屏幕的，几乎没有抖动，所以输出只体现裁切放大（`05-before-after-10s.png`），比值无意义（噪声地板）。**这段素材证明的是链路能跑通，不能证明去抖效果。**
 2. **同一素材 10–40 s 叠加合成手持抖动**（多频正弦平移 ±77 px、旋转 ±1°，真实纹理，`handheld-shake-30s.mp4`）：导入 → 分析 → 导出 30 s 用时 6 s。同一估计器测量：
