@@ -8,6 +8,7 @@ import { useStickersOverlayStore } from "@/stores/stickers-overlay-store";
 import { platform } from "@qcut/platform-core";
 import { requiresJianyingLocalColorExport } from "./jianying-local-color-export";
 import { timelineHasEnabledFilterStack } from "./export-filter-stack-policy";
+import { timelineHasShaderTransition } from "./export-shader-transitions";
 import {
 	hasStickerRuntimeForExport,
 	StickerRuntimeExportUnsupportedError,
@@ -145,6 +146,15 @@ export class ExportEngineFactory {
 				engineType: ExportEngineType.MUXER,
 				reason:
 					"Timeline uses per-clip Filter Lab stacks; the canvas muxer shares the preview's ordered layer chain",
+				capabilities,
+				estimatedPerformance: "medium",
+			};
+		}
+		if (tracks && timelineHasShaderTransition({ tracks })) {
+			return {
+				engineType: ExportEngineType.MUXER,
+				reason:
+					"Timeline uses GLSL shader transitions; only the canvas muxer can run them",
 				capabilities,
 				estimatedPerformance: "medium",
 			};
