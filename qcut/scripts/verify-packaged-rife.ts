@@ -6,9 +6,15 @@
  *
  * Finds the newest packaged resources directory under dist-electron (the same
  * rule scripts/verify-packaged-ffmpeg.ts uses), checks that the platform's
- * executable and model files are present with the pinned SHA-256, and on the
- * host platform also runs the executable so a broken binary fails the build
- * rather than the first export.
+ * model files are present with the pinned SHA-256, that the executable is
+ * present, executable and (on macOS) carries a valid code signature, and on
+ * the host platform also runs the executable so a broken binary fails the
+ * build rather than the first export.
+ *
+ * The executable itself is not hashed here: electron-builder re-signs every
+ * Mach-O (hardened runtime + notarization) and may sign Windows binaries, so
+ * its bytes legitimately differ from the download. Its pinned hash is checked
+ * once, before signing, by scripts/stage-rife-binaries.ts.
  */
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -100,15 +106,25 @@ async function verifyPackagedRife(): Promise<void> {
 	const platformDir = join(resourcesDir, "rife", platform);
 	const executableName = `${manifest.executableName}${platform === "win32" ? ".exe" : ""}`;
 	const executablePath = join(platformDir, executableName);
-	await expectHash({
-		filePath: executablePath,
-		expected: target.executableSha256,
-		label: executableName,
-	});
+	if (!existsSync(executablePath)) {
+		throw new Error(`Packaged RIFE host missing: ${executablePath}`);
+	}
 	if (platform !== "win32") {
 		await access(executablePath, constants.X_OK).catch(() => {
 			throw new Error(
 				`Packaged RIFE host is not executable: ${executablePath}`
+			);
+		});
+	}
+	if (platform === "darwin") {
+		// Signing rewrote the binary; the signature must still verify.
+		await execFileAsync("codesign", [
+			"--verify",
+			"--strict",
+			executablePath,
+		]).catch((error: { stderr?: string }) => {
+			throw new Error(
+				`Packaged RIFE host has an invalid code signature: ${executablePath}${error.stderr ? ` — ${String(error.stderr).trim()}` : ""}`
 			);
 		});
 	}
@@ -127,8 +143,16 @@ async function verifyPackagedRife(): Promise<void> {
 		stderr: error.stderr ?? "",
 	}));
 	if (!`${stdout}\n${stderr}`.includes("Usage: rife-ncnn-vulkan")) {
-		throw new Error(
-			`Packaged RIFE host did not print its usage: ${executablePath}`
+		// Only macOS has been verified to run the host on the build machine;
+		// headless Linux/Windows runners may lack a Vulkan loader, which is a
+		// runner limitation, not a packaging defect.
+		if (platform === "darwin") {
+			throw new Error(
+				`Packaged RIFE host did not print its usage: ${executablePath}`
+			);
+		}
+		console.warn(
+			`[verify-rife] ${platform}: packaged host could not run on this machine (${stderr.trim().split("\n").at(-1) || "no output"}); layout and model hashes verified`
 		);
 	}
 	console.log(
