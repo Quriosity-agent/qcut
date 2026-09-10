@@ -4,6 +4,7 @@ import type {
 	TimelineTrack,
 } from "@/types/timeline";
 import { hasMediaPortraitAdjustments } from "@qcut/editor-core";
+import { isNativeLocalEffectProvider } from "@qcut/editor-core";
 
 function requiresLocalColorRuntime({
 	color,
@@ -15,12 +16,7 @@ function requiresLocalColorRuntime({
 	if (
 		multiPass?.enabled &&
 		multiPass.fidelity === "native-local" &&
-		(multiPass.nativeEffect?.provider === "jianying-local-effect-v1" ||
-			multiPass.nativeEffect?.provider === "qcut-metal-fog-v1" ||
-			multiPass.nativeEffect?.provider === "qcut-metal-lut-v1" ||
-			multiPass.nativeEffect?.provider === "qcut-metal-graph-v1" ||
-			multiPass.nativeEffect?.provider === "qcut-cpu-soft-glow-v1" ||
-			multiPass.nativeEffect?.provider === "qcut-cpu-soft-glow-ui-snapshot-v1")
+		isNativeLocalEffectProvider(multiPass.nativeEffect?.provider)
 	) {
 		return true;
 	}
@@ -45,16 +41,7 @@ function filterStackRequiresLocalColorRuntime({
 			effect.enabled &&
 			effect.color.multiPass?.enabled &&
 			effect.color.multiPass.fidelity === "native-local" &&
-			(effect.color.multiPass.nativeEffect?.provider ===
-				"jianying-local-effect-v1" ||
-				effect.color.multiPass.nativeEffect?.provider === "qcut-metal-fog-v1" ||
-				effect.color.multiPass.nativeEffect?.provider === "qcut-metal-lut-v1" ||
-				effect.color.multiPass.nativeEffect?.provider ===
-					"qcut-metal-graph-v1" ||
-				effect.color.multiPass.nativeEffect?.provider ===
-					"qcut-cpu-soft-glow-v1" ||
-				effect.color.multiPass.nativeEffect?.provider ===
-					"qcut-cpu-soft-glow-ui-snapshot-v1")
+			isNativeLocalEffectProvider(effect.color.multiPass.nativeEffect?.provider)
 	);
 }
 
