@@ -1,11 +1,19 @@
-import { execFile } from "node:child_process";
+import { type ExecFileOptions, execFile } from "node:child_process";
 import { constants, existsSync } from "node:fs";
 import { access, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import manifest from "./rife-binaries.json";
 
-const execFileAsync = promisify(execFile);
+// Resolved at call time: export-engine tests mock node:child_process with
+// only spawn, and promisify(undefined) at import time would break them.
+function execFileAsync(
+	file: string,
+	args: readonly string[],
+	options: Omit<ExecFileOptions, "encoding">
+): Promise<{ stdout: string; stderr: string }> {
+	return promisify(execFile)(file, args, { ...options, encoding: "utf8" });
+}
 
 /**
  * Locates and runs the pinned rife-ncnn-vulkan build.
